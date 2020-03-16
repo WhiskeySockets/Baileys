@@ -1,0 +1,1889 @@
+{
+  "nested": {
+    "proto": {
+      "nested": {
+        "HydratedQuickReplyButton": {
+          "fields": {
+            "displayText": {
+              "type": "string",
+              "id": 1
+            },
+            "id": {
+              "type": "string",
+              "id": 2
+            }
+          }
+        },
+        "HydratedURLButton": {
+          "fields": {
+            "displayText": {
+              "type": "string",
+              "id": 1
+            },
+            "url": {
+              "type": "string",
+              "id": 2
+            }
+          }
+        },
+        "HydratedCallButton": {
+          "fields": {
+            "displayText": {
+              "type": "string",
+              "id": 1
+            },
+            "phoneNumber": {
+              "type": "string",
+              "id": 2
+            }
+          }
+        },
+        "HydratedTemplateButton": {
+          "oneofs": {
+            "hydratedButton": {
+              "oneof": [
+                "quickReplyButton",
+                "urlButton",
+                "callButton"
+              ]
+            }
+          },
+          "fields": {
+            "index": {
+              "type": "uint32",
+              "id": 4
+            },
+            "quickReplyButton": {
+              "type": "HydratedQuickReplyButton",
+              "id": 1
+            },
+            "urlButton": {
+              "type": "HydratedURLButton",
+              "id": 2
+            },
+            "callButton": {
+              "type": "HydratedCallButton",
+              "id": 3
+            }
+          }
+        },
+        "QuickReplyButton": {
+          "fields": {
+            "displayText": {
+              "type": "HighlyStructuredMessage",
+              "id": 1
+            },
+            "id": {
+              "type": "string",
+              "id": 2
+            }
+          }
+        },
+        "URLButton": {
+          "fields": {
+            "displayText": {
+              "type": "HighlyStructuredMessage",
+              "id": 1
+            },
+            "url": {
+              "type": "HighlyStructuredMessage",
+              "id": 2
+            }
+          }
+        },
+        "CallButton": {
+          "fields": {
+            "displayText": {
+              "type": "HighlyStructuredMessage",
+              "id": 1
+            },
+            "phoneNumber": {
+              "type": "HighlyStructuredMessage",
+              "id": 2
+            }
+          }
+        },
+        "TemplateButton": {
+          "oneofs": {
+            "button": {
+              "oneof": [
+                "quickReplyButton",
+                "urlButton",
+                "callButton"
+              ]
+            }
+          },
+          "fields": {
+            "index": {
+              "type": "uint32",
+              "id": 4
+            },
+            "quickReplyButton": {
+              "type": "QuickReplyButton",
+              "id": 1
+            },
+            "urlButton": {
+              "type": "URLButton",
+              "id": 2
+            },
+            "callButton": {
+              "type": "CallButton",
+              "id": 3
+            }
+          }
+        },
+        "Location": {
+          "fields": {
+            "degreesLatitude": {
+              "type": "double",
+              "id": 1
+            },
+            "degreesLongitude": {
+              "type": "double",
+              "id": 2
+            },
+            "name": {
+              "type": "string",
+              "id": 3
+            }
+          }
+        },
+        "Point": {
+          "fields": {
+            "x": {
+              "type": "double",
+              "id": 3
+            },
+            "y": {
+              "type": "double",
+              "id": 4
+            }
+          }
+        },
+        "InteractiveAnnotation": {
+          "oneofs": {
+            "action": {
+              "oneof": [
+                "location"
+              ]
+            }
+          },
+          "fields": {
+            "polygonVertices": {
+              "rule": "repeated",
+              "type": "Point",
+              "id": 1
+            },
+            "location": {
+              "type": "Location",
+              "id": 2
+            }
+          }
+        },
+        "AdReplyInfo": {
+          "fields": {
+            "advertiserName": {
+              "type": "string",
+              "id": 1
+            },
+            "mediaType": {
+              "type": "AD_REPLY_INFO_MEDIATYPE",
+              "id": 2
+            },
+            "jpegThumbnail": {
+              "type": "bytes",
+              "id": 16
+            },
+            "caption": {
+              "type": "string",
+              "id": 17
+            }
+          },
+          "nested": {
+            "AD_REPLY_INFO_MEDIATYPE": {
+              "values": {
+                "NONE": 0,
+                "IMAGE": 1,
+                "VIDEO": 2
+              }
+            }
+          }
+        },
+        "ContextInfo": {
+          "fields": {
+            "stanzaId": {
+              "type": "string",
+              "id": 1
+            },
+            "participant": {
+              "type": "string",
+              "id": 2
+            },
+            "quotedMessage": {
+              "type": "Message",
+              "id": 3
+            },
+            "remoteJid": {
+              "type": "string",
+              "id": 4
+            },
+            "mentionedJid": {
+              "rule": "repeated",
+              "type": "string",
+              "id": 15
+            },
+            "conversionSource": {
+              "type": "string",
+              "id": 18
+            },
+            "conversionData": {
+              "type": "bytes",
+              "id": 19
+            },
+            "conversionDelaySeconds": {
+              "type": "uint32",
+              "id": 20
+            },
+            "forwardingScore": {
+              "type": "uint32",
+              "id": 21
+            },
+            "isForwarded": {
+              "type": "bool",
+              "id": 22
+            },
+            "quotedAd": {
+              "type": "AdReplyInfo",
+              "id": 23
+            },
+            "placeholderKey": {
+              "type": "MessageKey",
+              "id": 24
+            },
+            "expiration": {
+              "type": "uint32",
+              "id": 25
+            }
+          }
+        },
+        "SenderKeyDistributionMessage": {
+          "fields": {
+            "groupId": {
+              "type": "string",
+              "id": 1
+            },
+            "axolotlSenderKeyDistributionMessage": {
+              "type": "bytes",
+              "id": 2
+            }
+          }
+        },
+        "ImageMessage": {
+          "fields": {
+            "url": {
+              "type": "string",
+              "id": 1
+            },
+            "mimetype": {
+              "type": "string",
+              "id": 2
+            },
+            "caption": {
+              "type": "string",
+              "id": 3
+            },
+            "fileSha256": {
+              "type": "bytes",
+              "id": 4
+            },
+            "fileLength": {
+              "type": "uint64",
+              "id": 5
+            },
+            "height": {
+              "type": "uint32",
+              "id": 6
+            },
+            "width": {
+              "type": "uint32",
+              "id": 7
+            },
+            "mediaKey": {
+              "type": "bytes",
+              "id": 8
+            },
+            "fileEncSha256": {
+              "type": "bytes",
+              "id": 9
+            },
+            "interactiveAnnotations": {
+              "rule": "repeated",
+              "type": "InteractiveAnnotation",
+              "id": 10
+            },
+            "directPath": {
+              "type": "string",
+              "id": 11
+            },
+            "mediaKeyTimestamp": {
+              "type": "int64",
+              "id": 12
+            },
+            "jpegThumbnail": {
+              "type": "bytes",
+              "id": 16
+            },
+            "contextInfo": {
+              "type": "ContextInfo",
+              "id": 17
+            },
+            "firstScanSidecar": {
+              "type": "bytes",
+              "id": 18
+            },
+            "firstScanLength": {
+              "type": "uint32",
+              "id": 19
+            },
+            "experimentGroupId": {
+              "type": "uint32",
+              "id": 20
+            },
+            "scansSidecar": {
+              "type": "bytes",
+              "id": 21
+            },
+            "scanLengths": {
+              "rule": "repeated",
+              "type": "uint32",
+              "id": 22,
+              "options": {
+                "packed": false
+              }
+            },
+            "midQualityFileSha256": {
+              "type": "bytes",
+              "id": 23
+            },
+            "midQualityFileEncSha256": {
+              "type": "bytes",
+              "id": 24
+            }
+          }
+        },
+        "ContactMessage": {
+          "fields": {
+            "displayName": {
+              "type": "string",
+              "id": 1
+            },
+            "vcard": {
+              "type": "string",
+              "id": 16
+            },
+            "contextInfo": {
+              "type": "ContextInfo",
+              "id": 17
+            }
+          }
+        },
+        "LocationMessage": {
+          "fields": {
+            "degreesLatitude": {
+              "type": "double",
+              "id": 1
+            },
+            "degreesLongitude": {
+              "type": "double",
+              "id": 2
+            },
+            "name": {
+              "type": "string",
+              "id": 3
+            },
+            "address": {
+              "type": "string",
+              "id": 4
+            },
+            "url": {
+              "type": "string",
+              "id": 5
+            },
+            "jpegThumbnail": {
+              "type": "bytes",
+              "id": 16
+            },
+            "contextInfo": {
+              "type": "ContextInfo",
+              "id": 17
+            }
+          }
+        },
+        "ExtendedTextMessage": {
+          "fields": {
+            "text": {
+              "type": "string",
+              "id": 1
+            },
+            "matchedText": {
+              "type": "string",
+              "id": 2
+            },
+            "canonicalUrl": {
+              "type": "string",
+              "id": 4
+            },
+            "description": {
+              "type": "string",
+              "id": 5
+            },
+            "title": {
+              "type": "string",
+              "id": 6
+            },
+            "textArgb": {
+              "type": "fixed32",
+              "id": 7
+            },
+            "backgroundArgb": {
+              "type": "fixed32",
+              "id": 8
+            },
+            "font": {
+              "type": "EXTENDED_TEXT_MESSAGE_FONTTYPE",
+              "id": 9
+            },
+            "previewType": {
+              "type": "EXTENDED_TEXT_MESSAGE_PREVIEWTYPE",
+              "id": 10
+            },
+            "jpegThumbnail": {
+              "type": "bytes",
+              "id": 16
+            },
+            "contextInfo": {
+              "type": "ContextInfo",
+              "id": 17
+            },
+            "doNotPlayInline": {
+              "type": "bool",
+              "id": 18
+            }
+          },
+          "nested": {
+            "EXTENDED_TEXT_MESSAGE_FONTTYPE": {
+              "values": {
+                "SANS_SERIF": 0,
+                "SERIF": 1,
+                "NORICAN_REGULAR": 2,
+                "BRYNDAN_WRITE": 3,
+                "BEBASNEUE_REGULAR": 4,
+                "OSWALD_HEAVY": 5
+              }
+            },
+            "EXTENDED_TEXT_MESSAGE_PREVIEWTYPE": {
+              "values": {
+                "NONE": 0,
+                "VIDEO": 1
+              }
+            }
+          }
+        },
+        "DocumentMessage": {
+          "fields": {
+            "url": {
+              "type": "string",
+              "id": 1
+            },
+            "mimetype": {
+              "type": "string",
+              "id": 2
+            },
+            "title": {
+              "type": "string",
+              "id": 3
+            },
+            "fileSha256": {
+              "type": "bytes",
+              "id": 4
+            },
+            "fileLength": {
+              "type": "uint64",
+              "id": 5
+            },
+            "pageCount": {
+              "type": "uint32",
+              "id": 6
+            },
+            "mediaKey": {
+              "type": "bytes",
+              "id": 7
+            },
+            "fileName": {
+              "type": "string",
+              "id": 8
+            },
+            "fileEncSha256": {
+              "type": "bytes",
+              "id": 9
+            },
+            "directPath": {
+              "type": "string",
+              "id": 10
+            },
+            "mediaKeyTimestamp": {
+              "type": "int64",
+              "id": 11
+            },
+            "jpegThumbnail": {
+              "type": "bytes",
+              "id": 16
+            },
+            "contextInfo": {
+              "type": "ContextInfo",
+              "id": 17
+            }
+          }
+        },
+        "AudioMessage": {
+          "fields": {
+            "url": {
+              "type": "string",
+              "id": 1
+            },
+            "mimetype": {
+              "type": "string",
+              "id": 2
+            },
+            "fileSha256": {
+              "type": "bytes",
+              "id": 3
+            },
+            "fileLength": {
+              "type": "uint64",
+              "id": 4
+            },
+            "seconds": {
+              "type": "uint32",
+              "id": 5
+            },
+            "ptt": {
+              "type": "bool",
+              "id": 6
+            },
+            "mediaKey": {
+              "type": "bytes",
+              "id": 7
+            },
+            "fileEncSha256": {
+              "type": "bytes",
+              "id": 8
+            },
+            "directPath": {
+              "type": "string",
+              "id": 9
+            },
+            "mediaKeyTimestamp": {
+              "type": "int64",
+              "id": 10
+            },
+            "contextInfo": {
+              "type": "ContextInfo",
+              "id": 17
+            },
+            "streamingSidecar": {
+              "type": "bytes",
+              "id": 18
+            }
+          }
+        },
+        "VideoMessage": {
+          "fields": {
+            "url": {
+              "type": "string",
+              "id": 1
+            },
+            "mimetype": {
+              "type": "string",
+              "id": 2
+            },
+            "fileSha256": {
+              "type": "bytes",
+              "id": 3
+            },
+            "fileLength": {
+              "type": "uint64",
+              "id": 4
+            },
+            "seconds": {
+              "type": "uint32",
+              "id": 5
+            },
+            "mediaKey": {
+              "type": "bytes",
+              "id": 6
+            },
+            "caption": {
+              "type": "string",
+              "id": 7
+            },
+            "gifPlayback": {
+              "type": "bool",
+              "id": 8
+            },
+            "height": {
+              "type": "uint32",
+              "id": 9
+            },
+            "width": {
+              "type": "uint32",
+              "id": 10
+            },
+            "fileEncSha256": {
+              "type": "bytes",
+              "id": 11
+            },
+            "interactiveAnnotations": {
+              "rule": "repeated",
+              "type": "InteractiveAnnotation",
+              "id": 12
+            },
+            "directPath": {
+              "type": "string",
+              "id": 13
+            },
+            "mediaKeyTimestamp": {
+              "type": "int64",
+              "id": 14
+            },
+            "jpegThumbnail": {
+              "type": "bytes",
+              "id": 16
+            },
+            "contextInfo": {
+              "type": "ContextInfo",
+              "id": 17
+            },
+            "streamingSidecar": {
+              "type": "bytes",
+              "id": 18
+            },
+            "gifAttribution": {
+              "type": "VIDEO_MESSAGE_ATTRIBUTION",
+              "id": 19
+            }
+          },
+          "nested": {
+            "VIDEO_MESSAGE_ATTRIBUTION": {
+              "values": {
+                "NONE": 0,
+                "GIPHY": 1,
+                "TENOR": 2
+              }
+            }
+          }
+        },
+        "Call": {
+          "fields": {
+            "callKey": {
+              "type": "bytes",
+              "id": 1
+            }
+          }
+        },
+        "Chat": {
+          "fields": {
+            "displayName": {
+              "type": "string",
+              "id": 1
+            },
+            "id": {
+              "type": "string",
+              "id": 2
+            }
+          }
+        },
+        "ProtocolMessage": {
+          "fields": {
+            "key": {
+              "type": "MessageKey",
+              "id": 1
+            },
+            "type": {
+              "type": "PROTOCOL_MESSAGE_TYPE",
+              "id": 2
+            },
+            "ephemeralExpiration": {
+              "type": "uint32",
+              "id": 4
+            }
+          },
+          "nested": {
+            "PROTOCOL_MESSAGE_TYPE": {
+              "values": {
+                "REVOKE": 0,
+                "EPHEMERAL_SETTING": 3
+              }
+            }
+          }
+        },
+        "ContactsArrayMessage": {
+          "fields": {
+            "displayName": {
+              "type": "string",
+              "id": 1
+            },
+            "contacts": {
+              "rule": "repeated",
+              "type": "ContactMessage",
+              "id": 2
+            },
+            "contextInfo": {
+              "type": "ContextInfo",
+              "id": 17
+            }
+          }
+        },
+        "HSMCurrency": {
+          "fields": {
+            "currencyCode": {
+              "type": "string",
+              "id": 1
+            },
+            "amount1000": {
+              "type": "int64",
+              "id": 2
+            }
+          }
+        },
+        "HSMDateTimeComponent": {
+          "fields": {
+            "dayOfWeek": {
+              "type": "HSM_DATE_TIME_COMPONENT_DAYOFWEEKTYPE",
+              "id": 1
+            },
+            "year": {
+              "type": "uint32",
+              "id": 2
+            },
+            "month": {
+              "type": "uint32",
+              "id": 3
+            },
+            "dayOfMonth": {
+              "type": "uint32",
+              "id": 4
+            },
+            "hour": {
+              "type": "uint32",
+              "id": 5
+            },
+            "minute": {
+              "type": "uint32",
+              "id": 6
+            },
+            "calendar": {
+              "type": "HSM_DATE_TIME_COMPONENT_CALENDARTYPE",
+              "id": 7
+            }
+          },
+          "nested": {
+            "HSM_DATE_TIME_COMPONENT_DAYOFWEEKTYPE": {
+              "values": {
+                "MONDAY": 1,
+                "TUESDAY": 2,
+                "WEDNESDAY": 3,
+                "THURSDAY": 4,
+                "FRIDAY": 5,
+                "SATURDAY": 6,
+                "SUNDAY": 7
+              }
+            },
+            "HSM_DATE_TIME_COMPONENT_CALENDARTYPE": {
+              "values": {
+                "GREGORIAN": 1,
+                "SOLAR_HIJRI": 2
+              }
+            }
+          }
+        },
+        "HSMDateTimeUnixEpoch": {
+          "fields": {
+            "timestamp": {
+              "type": "int64",
+              "id": 1
+            }
+          }
+        },
+        "HSMDateTime": {
+          "oneofs": {
+            "datetimeOneof": {
+              "oneof": [
+                "component",
+                "unixEpoch"
+              ]
+            }
+          },
+          "fields": {
+            "component": {
+              "type": "HSMDateTimeComponent",
+              "id": 1
+            },
+            "unixEpoch": {
+              "type": "HSMDateTimeUnixEpoch",
+              "id": 2
+            }
+          }
+        },
+        "HSMLocalizableParameter": {
+          "oneofs": {
+            "paramOneof": {
+              "oneof": [
+                "currency",
+                "dateTime"
+              ]
+            }
+          },
+          "fields": {
+            "default": {
+              "type": "string",
+              "id": 1
+            },
+            "currency": {
+              "type": "HSMCurrency",
+              "id": 2
+            },
+            "dateTime": {
+              "type": "HSMDateTime",
+              "id": 3
+            }
+          }
+        },
+        "HighlyStructuredMessage": {
+          "fields": {
+            "namespace": {
+              "type": "string",
+              "id": 1
+            },
+            "elementName": {
+              "type": "string",
+              "id": 2
+            },
+            "params": {
+              "rule": "repeated",
+              "type": "string",
+              "id": 3
+            },
+            "fallbackLg": {
+              "type": "string",
+              "id": 4
+            },
+            "fallbackLc": {
+              "type": "string",
+              "id": 5
+            },
+            "localizableParams": {
+              "rule": "repeated",
+              "type": "HSMLocalizableParameter",
+              "id": 6
+            },
+            "deterministicLg": {
+              "type": "string",
+              "id": 7
+            },
+            "deterministicLc": {
+              "type": "string",
+              "id": 8
+            },
+            "hydratedHsm": {
+              "type": "TemplateMessage",
+              "id": 9
+            }
+          }
+        },
+        "SendPaymentMessage": {
+          "fields": {
+            "noteMessage": {
+              "type": "Message",
+              "id": 2
+            },
+            "requestMessageKey": {
+              "type": "MessageKey",
+              "id": 3
+            }
+          }
+        },
+        "RequestPaymentMessage": {
+          "fields": {
+            "noteMessage": {
+              "type": "Message",
+              "id": 4
+            },
+            "currencyCodeIso4217": {
+              "type": "string",
+              "id": 1
+            },
+            "amount1000": {
+              "type": "uint64",
+              "id": 2
+            },
+            "requestFrom": {
+              "type": "string",
+              "id": 3
+            },
+            "expiryTimestamp": {
+              "type": "int64",
+              "id": 5
+            }
+          }
+        },
+        "DeclinePaymentRequestMessage": {
+          "fields": {
+            "key": {
+              "type": "MessageKey",
+              "id": 1
+            }
+          }
+        },
+        "CancelPaymentRequestMessage": {
+          "fields": {
+            "key": {
+              "type": "MessageKey",
+              "id": 1
+            }
+          }
+        },
+        "LiveLocationMessage": {
+          "fields": {
+            "degreesLatitude": {
+              "type": "double",
+              "id": 1
+            },
+            "degreesLongitude": {
+              "type": "double",
+              "id": 2
+            },
+            "accuracyInMeters": {
+              "type": "uint32",
+              "id": 3
+            },
+            "speedInMps": {
+              "type": "float",
+              "id": 4
+            },
+            "degreesClockwiseFromMagneticNorth": {
+              "type": "uint32",
+              "id": 5
+            },
+            "caption": {
+              "type": "string",
+              "id": 6
+            },
+            "sequenceNumber": {
+              "type": "int64",
+              "id": 7
+            },
+            "timeOffset": {
+              "type": "uint32",
+              "id": 8
+            },
+            "jpegThumbnail": {
+              "type": "bytes",
+              "id": 16
+            },
+            "contextInfo": {
+              "type": "ContextInfo",
+              "id": 17
+            }
+          }
+        },
+        "StickerMessage": {
+          "fields": {
+            "url": {
+              "type": "string",
+              "id": 1
+            },
+            "fileSha256": {
+              "type": "bytes",
+              "id": 2
+            },
+            "fileEncSha256": {
+              "type": "bytes",
+              "id": 3
+            },
+            "mediaKey": {
+              "type": "bytes",
+              "id": 4
+            },
+            "mimetype": {
+              "type": "string",
+              "id": 5
+            },
+            "height": {
+              "type": "uint32",
+              "id": 6
+            },
+            "width": {
+              "type": "uint32",
+              "id": 7
+            },
+            "directPath": {
+              "type": "string",
+              "id": 8
+            },
+            "fileLength": {
+              "type": "uint64",
+              "id": 9
+            },
+            "mediaKeyTimestamp": {
+              "type": "int64",
+              "id": 10
+            },
+            "firstFrameLength": {
+              "type": "uint32",
+              "id": 11
+            },
+            "firstFrameSidecar": {
+              "type": "bytes",
+              "id": 12
+            },
+            "contextInfo": {
+              "type": "ContextInfo",
+              "id": 17
+            }
+          }
+        },
+        "FourRowTemplate": {
+          "oneofs": {
+            "title": {
+              "oneof": [
+                "documentMessage",
+                "highlyStructuredMessage",
+                "imageMessage",
+                "videoMessage",
+                "locationMessage"
+              ]
+            }
+          },
+          "fields": {
+            "content": {
+              "type": "HighlyStructuredMessage",
+              "id": 6
+            },
+            "footer": {
+              "type": "HighlyStructuredMessage",
+              "id": 7
+            },
+            "buttons": {
+              "rule": "repeated",
+              "type": "TemplateButton",
+              "id": 8
+            },
+            "documentMessage": {
+              "type": "DocumentMessage",
+              "id": 1
+            },
+            "highlyStructuredMessage": {
+              "type": "HighlyStructuredMessage",
+              "id": 2
+            },
+            "imageMessage": {
+              "type": "ImageMessage",
+              "id": 3
+            },
+            "videoMessage": {
+              "type": "VideoMessage",
+              "id": 4
+            },
+            "locationMessage": {
+              "type": "LocationMessage",
+              "id": 5
+            }
+          }
+        },
+        "HydratedFourRowTemplate": {
+          "oneofs": {
+            "title": {
+              "oneof": [
+                "documentMessage",
+                "hydratedTitleText",
+                "imageMessage",
+                "videoMessage",
+                "locationMessage"
+              ]
+            }
+          },
+          "fields": {
+            "hydratedContentText": {
+              "type": "string",
+              "id": 6
+            },
+            "hydratedFooterText": {
+              "type": "string",
+              "id": 7
+            },
+            "hydratedButtons": {
+              "rule": "repeated",
+              "type": "HydratedTemplateButton",
+              "id": 8
+            },
+            "templateId": {
+              "type": "string",
+              "id": 9
+            },
+            "documentMessage": {
+              "type": "DocumentMessage",
+              "id": 1
+            },
+            "hydratedTitleText": {
+              "type": "string",
+              "id": 2
+            },
+            "imageMessage": {
+              "type": "ImageMessage",
+              "id": 3
+            },
+            "videoMessage": {
+              "type": "VideoMessage",
+              "id": 4
+            },
+            "locationMessage": {
+              "type": "LocationMessage",
+              "id": 5
+            }
+          }
+        },
+        "TemplateMessage": {
+          "oneofs": {
+            "format": {
+              "oneof": [
+                "fourRowTemplate",
+                "hydratedFourRowTemplate"
+              ]
+            }
+          },
+          "fields": {
+            "contextInfo": {
+              "type": "ContextInfo",
+              "id": 3
+            },
+            "hydratedTemplate": {
+              "type": "HydratedFourRowTemplate",
+              "id": 4
+            },
+            "fourRowTemplate": {
+              "type": "FourRowTemplate",
+              "id": 1
+            },
+            "hydratedFourRowTemplate": {
+              "type": "HydratedFourRowTemplate",
+              "id": 2
+            }
+          }
+        },
+        "TemplateButtonReplyMessage": {
+          "fields": {
+            "selectedId": {
+              "type": "string",
+              "id": 1
+            },
+            "selectedDisplayText": {
+              "type": "string",
+              "id": 2
+            },
+            "contextInfo": {
+              "type": "ContextInfo",
+              "id": 3
+            },
+            "selectedIndex": {
+              "type": "uint32",
+              "id": 4
+            }
+          }
+        },
+        "ProductSnapshot": {
+          "fields": {
+            "productImage": {
+              "type": "ImageMessage",
+              "id": 1
+            },
+            "productId": {
+              "type": "string",
+              "id": 2
+            },
+            "title": {
+              "type": "string",
+              "id": 3
+            },
+            "description": {
+              "type": "string",
+              "id": 4
+            },
+            "currencyCode": {
+              "type": "string",
+              "id": 5
+            },
+            "priceAmount1000": {
+              "type": "int64",
+              "id": 6
+            },
+            "retailerId": {
+              "type": "string",
+              "id": 7
+            },
+            "url": {
+              "type": "string",
+              "id": 8
+            },
+            "productImageCount": {
+              "type": "uint32",
+              "id": 9
+            },
+            "firstImageId": {
+              "type": "string",
+              "id": 11
+            }
+          }
+        },
+        "ProductMessage": {
+          "fields": {
+            "product": {
+              "type": "ProductSnapshot",
+              "id": 1
+            },
+            "businessOwnerJid": {
+              "type": "string",
+              "id": 2
+            },
+            "contextInfo": {
+              "type": "ContextInfo",
+              "id": 17
+            }
+          }
+        },
+        "GroupInviteMessage": {
+          "fields": {
+            "groupJid": {
+              "type": "string",
+              "id": 1
+            },
+            "inviteCode": {
+              "type": "string",
+              "id": 2
+            },
+            "inviteExpiration": {
+              "type": "int64",
+              "id": 3
+            },
+            "groupName": {
+              "type": "string",
+              "id": 4
+            },
+            "jpegThumbnail": {
+              "type": "bytes",
+              "id": 5
+            },
+            "caption": {
+              "type": "string",
+              "id": 6
+            },
+            "contextInfo": {
+              "type": "ContextInfo",
+              "id": 7
+            }
+          }
+        },
+        "DeviceSentMessage": {
+          "fields": {
+            "destinationJid": {
+              "type": "string",
+              "id": 1
+            },
+            "message": {
+              "type": "Message",
+              "id": 2
+            }
+          }
+        },
+        "DeviceSyncMessage": {
+          "fields": {
+            "serializedXmlBytes": {
+              "type": "bytes",
+              "id": 1
+            }
+          }
+        },
+        "Message": {
+          "fields": {
+            "conversation": {
+              "type": "string",
+              "id": 1
+            },
+            "senderKeyDistributionMessage": {
+              "type": "SenderKeyDistributionMessage",
+              "id": 2
+            },
+            "imageMessage": {
+              "type": "ImageMessage",
+              "id": 3
+            },
+            "contactMessage": {
+              "type": "ContactMessage",
+              "id": 4
+            },
+            "locationMessage": {
+              "type": "LocationMessage",
+              "id": 5
+            },
+            "extendedTextMessage": {
+              "type": "ExtendedTextMessage",
+              "id": 6
+            },
+            "documentMessage": {
+              "type": "DocumentMessage",
+              "id": 7
+            },
+            "audioMessage": {
+              "type": "AudioMessage",
+              "id": 8
+            },
+            "videoMessage": {
+              "type": "VideoMessage",
+              "id": 9
+            },
+            "call": {
+              "type": "Call",
+              "id": 10
+            },
+            "chat": {
+              "type": "Chat",
+              "id": 11
+            },
+            "protocolMessage": {
+              "type": "ProtocolMessage",
+              "id": 12
+            },
+            "contactsArrayMessage": {
+              "type": "ContactsArrayMessage",
+              "id": 13
+            },
+            "highlyStructuredMessage": {
+              "type": "HighlyStructuredMessage",
+              "id": 14
+            },
+            "fastRatchetKeySenderKeyDistributionMessage": {
+              "type": "SenderKeyDistributionMessage",
+              "id": 15
+            },
+            "sendPaymentMessage": {
+              "type": "SendPaymentMessage",
+              "id": 16
+            },
+            "liveLocationMessage": {
+              "type": "LiveLocationMessage",
+              "id": 18
+            },
+            "requestPaymentMessage": {
+              "type": "RequestPaymentMessage",
+              "id": 22
+            },
+            "declinePaymentRequestMessage": {
+              "type": "DeclinePaymentRequestMessage",
+              "id": 23
+            },
+            "cancelPaymentRequestMessage": {
+              "type": "CancelPaymentRequestMessage",
+              "id": 24
+            },
+            "templateMessage": {
+              "type": "TemplateMessage",
+              "id": 25
+            },
+            "stickerMessage": {
+              "type": "StickerMessage",
+              "id": 26
+            },
+            "groupInviteMessage": {
+              "type": "GroupInviteMessage",
+              "id": 28
+            },
+            "templateButtonReplyMessage": {
+              "type": "TemplateButtonReplyMessage",
+              "id": 29
+            },
+            "productMessage": {
+              "type": "ProductMessage",
+              "id": 30
+            },
+            "deviceSentMessage": {
+              "type": "DeviceSentMessage",
+              "id": 31
+            },
+            "deviceSyncMessage": {
+              "type": "DeviceSyncMessage",
+              "id": 32
+            }
+          }
+        },
+        "MessageKey": {
+          "fields": {
+            "remoteJid": {
+              "type": "string",
+              "id": 1
+            },
+            "fromMe": {
+              "type": "bool",
+              "id": 2
+            },
+            "id": {
+              "type": "string",
+              "id": 3
+            },
+            "participant": {
+              "type": "string",
+              "id": 4
+            }
+          }
+        },
+        "WebFeatures": {
+          "fields": {
+            "labelsDisplay": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 1
+            },
+            "voipIndividualOutgoing": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 2
+            },
+            "groupsV3": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 3
+            },
+            "groupsV3Create": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 4
+            },
+            "changeNumberV2": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 5
+            },
+            "queryStatusV3Thumbnail": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 6
+            },
+            "liveLocations": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 7
+            },
+            "queryVname": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 8
+            },
+            "voipIndividualIncoming": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 9
+            },
+            "quickRepliesQuery": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 10
+            },
+            "payments": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 11
+            },
+            "stickerPackQuery": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 12
+            },
+            "liveLocationsFinal": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 13
+            },
+            "labelsEdit": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 14
+            },
+            "mediaUpload": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 15
+            },
+            "mediaUploadRichQuickReplies": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 18
+            },
+            "vnameV2": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 19
+            },
+            "videoPlaybackUrl": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 20
+            },
+            "statusRanking": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 21
+            },
+            "voipIndividualVideo": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 22
+            },
+            "thirdPartyStickers": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 23
+            },
+            "frequentlyForwardedSetting": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 24
+            },
+            "groupsV4JoinPermission": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 25
+            },
+            "recentStickers": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 26
+            },
+            "catalog": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 27
+            },
+            "starredStickers": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 28
+            },
+            "voipGroupCall": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 29
+            },
+            "templateMessage": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 30
+            },
+            "templateMessageInteractivity": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 31
+            },
+            "ephemeralMessages": {
+              "type": "WEB_FEATURES_FLAG",
+              "id": 32
+            }
+          },
+          "nested": {
+            "WEB_FEATURES_FLAG": {
+              "values": {
+                "NOT_STARTED": 0,
+                "FORCE_UPGRADE": 1,
+                "DEVELOPMENT": 2,
+                "PRODUCTION": 3
+              }
+            }
+          }
+        },
+        "TabletNotificationsInfo": {
+          "fields": {
+            "timestamp": {
+              "type": "uint64",
+              "id": 2
+            },
+            "unreadChats": {
+              "type": "uint32",
+              "id": 3
+            },
+            "notifyMessageCount": {
+              "type": "uint32",
+              "id": 4
+            },
+            "notifyMessage": {
+              "rule": "repeated",
+              "type": "NotificationMessageInfo",
+              "id": 5
+            }
+          }
+        },
+        "NotificationMessageInfo": {
+          "fields": {
+            "key": {
+              "type": "MessageKey",
+              "id": 1
+            },
+            "message": {
+              "type": "Message",
+              "id": 2
+            },
+            "messageTimestamp": {
+              "type": "uint64",
+              "id": 3
+            },
+            "participant": {
+              "type": "string",
+              "id": 4
+            }
+          }
+        },
+        "WebNotificationsInfo": {
+          "fields": {
+            "timestamp": {
+              "type": "uint64",
+              "id": 2
+            },
+            "unreadChats": {
+              "type": "uint32",
+              "id": 3
+            },
+            "notifyMessageCount": {
+              "type": "uint32",
+              "id": 4
+            },
+            "notifyMessages": {
+              "rule": "repeated",
+              "type": "WebMessageInfo",
+              "id": 5
+            }
+          }
+        },
+        "PaymentInfo": {
+          "fields": {
+            "amount1000": {
+              "type": "uint64",
+              "id": 2
+            },
+            "receiverJid": {
+              "type": "string",
+              "id": 3
+            },
+            "status": {
+              "type": "PAYMENT_INFO_STATUS",
+              "id": 4
+            },
+            "transactionTimestamp": {
+              "type": "uint64",
+              "id": 5
+            },
+            "requestMessageKey": {
+              "type": "MessageKey",
+              "id": 6
+            },
+            "expiryTimestamp": {
+              "type": "uint64",
+              "id": 7
+            },
+            "futureproofed": {
+              "type": "bool",
+              "id": 8
+            },
+            "currency": {
+              "type": "string",
+              "id": 9
+            }
+          },
+          "nested": {
+            "PAYMENT_INFO_STATUS": {
+              "values": {
+                "UNKNOWN_STATUS": 0,
+                "PROCESSING": 1,
+                "SENT": 2,
+                "NEED_TO_ACCEPT": 3,
+                "COMPLETE": 4,
+                "COULD_NOT_COMPLETE": 5,
+                "REFUNDED": 6,
+                "EXPIRED": 7,
+                "REJECTED": 8,
+                "CANCELLED": 9,
+                "WAITING_FOR_PAYER": 10,
+                "WAITING": 11
+              }
+            }
+          }
+        },
+        "WebMessageInfo": {
+          "fields": {
+            "key": {
+              "rule": "required",
+              "type": "MessageKey",
+              "id": 1
+            },
+            "message": {
+              "type": "Message",
+              "id": 2
+            },
+            "messageTimestamp": {
+              "type": "uint64",
+              "id": 3
+            },
+            "status": {
+              "type": "WEB_MESSAGE_INFO_STATUS",
+              "id": 4
+            },
+            "participant": {
+              "type": "string",
+              "id": 5
+            },
+            "ignore": {
+              "type": "bool",
+              "id": 16
+            },
+            "starred": {
+              "type": "bool",
+              "id": 17
+            },
+            "broadcast": {
+              "type": "bool",
+              "id": 18
+            },
+            "pushName": {
+              "type": "string",
+              "id": 19
+            },
+            "mediaCiphertextSha256": {
+              "type": "bytes",
+              "id": 20
+            },
+            "multicast": {
+              "type": "bool",
+              "id": 21
+            },
+            "urlText": {
+              "type": "bool",
+              "id": 22
+            },
+            "urlNumber": {
+              "type": "bool",
+              "id": 23
+            },
+            "messageStubType": {
+              "type": "WEB_MESSAGE_INFO_STUBTYPE",
+              "id": 24
+            },
+            "clearMedia": {
+              "type": "bool",
+              "id": 25
+            },
+            "messageStubParameters": {
+              "rule": "repeated",
+              "type": "string",
+              "id": 26
+            },
+            "duration": {
+              "type": "uint32",
+              "id": 27
+            },
+            "labels": {
+              "rule": "repeated",
+              "type": "string",
+              "id": 28
+            },
+            "paymentInfo": {
+              "type": "PaymentInfo",
+              "id": 29
+            },
+            "finalLiveLocation": {
+              "type": "LiveLocationMessage",
+              "id": 30
+            },
+            "quotedPaymentInfo": {
+              "type": "PaymentInfo",
+              "id": 31
+            },
+            "ephemeralStartTimestamp": {
+              "type": "uint64",
+              "id": 32
+            },
+            "ephemeralDuration": {
+              "type": "uint32",
+              "id": 33
+            }
+          },
+          "nested": {
+            "WEB_MESSAGE_INFO_STATUS": {
+              "values": {
+                "ERROR": 0,
+                "PENDING": 1,
+                "SERVER_ACK": 2,
+                "DELIVERY_ACK": 3,
+                "READ": 4,
+                "PLAYED": 5
+              }
+            },
+            "WEB_MESSAGE_INFO_STUBTYPE": {
+              "values": {
+                "UNKNOWN": 0,
+                "REVOKE": 1,
+                "CIPHERTEXT": 2,
+                "FUTUREPROOF": 3,
+                "NON_VERIFIED_TRANSITION": 4,
+                "UNVERIFIED_TRANSITION": 5,
+                "VERIFIED_TRANSITION": 6,
+                "VERIFIED_LOW_UNKNOWN": 7,
+                "VERIFIED_HIGH": 8,
+                "VERIFIED_INITIAL_UNKNOWN": 9,
+                "VERIFIED_INITIAL_LOW": 10,
+                "VERIFIED_INITIAL_HIGH": 11,
+                "VERIFIED_TRANSITION_ANY_TO_NONE": 12,
+                "VERIFIED_TRANSITION_ANY_TO_HIGH": 13,
+                "VERIFIED_TRANSITION_HIGH_TO_LOW": 14,
+                "VERIFIED_TRANSITION_HIGH_TO_UNKNOWN": 15,
+                "VERIFIED_TRANSITION_UNKNOWN_TO_LOW": 16,
+                "VERIFIED_TRANSITION_LOW_TO_UNKNOWN": 17,
+                "VERIFIED_TRANSITION_NONE_TO_LOW": 18,
+                "VERIFIED_TRANSITION_NONE_TO_UNKNOWN": 19,
+                "GROUP_CREATE": 20,
+                "GROUP_CHANGE_SUBJECT": 21,
+                "GROUP_CHANGE_ICON": 22,
+                "GROUP_CHANGE_INVITE_LINK": 23,
+                "GROUP_CHANGE_DESCRIPTION": 24,
+                "GROUP_CHANGE_RESTRICT": 25,
+                "GROUP_CHANGE_ANNOUNCE": 26,
+                "GROUP_PARTICIPANT_ADD": 27,
+                "GROUP_PARTICIPANT_REMOVE": 28,
+                "GROUP_PARTICIPANT_PROMOTE": 29,
+                "GROUP_PARTICIPANT_DEMOTE": 30,
+                "GROUP_PARTICIPANT_INVITE": 31,
+                "GROUP_PARTICIPANT_LEAVE": 32,
+                "GROUP_PARTICIPANT_CHANGE_NUMBER": 33,
+                "BROADCAST_CREATE": 34,
+                "BROADCAST_ADD": 35,
+                "BROADCAST_REMOVE": 36,
+                "GENERIC_NOTIFICATION": 37,
+                "E2E_IDENTITY_CHANGED": 38,
+                "E2E_ENCRYPTED": 39,
+                "CALL_MISSED_VOICE": 40,
+                "CALL_MISSED_VIDEO": 41,
+                "INDIVIDUAL_CHANGE_NUMBER": 42,
+                "GROUP_DELETE": 43,
+                "GROUP_ANNOUNCE_MODE_MESSAGE_BOUNCE": 44,
+                "CALL_MISSED_GROUP_VOICE": 45,
+                "CALL_MISSED_GROUP_VIDEO": 46,
+                "PAYMENT_CIPHERTEXT": 47,
+                "PAYMENT_FUTUREPROOF": 48,
+                "PAYMENT_TRANSACTION_STATUS_UPDATE_FAILED": 49,
+                "PAYMENT_TRANSACTION_STATUS_UPDATE_REFUNDED": 50,
+                "PAYMENT_TRANSACTION_STATUS_UPDATE_REFUND_FAILED": 51,
+                "PAYMENT_TRANSACTION_STATUS_RECEIVER_PENDING_SETUP": 52,
+                "PAYMENT_TRANSACTION_STATUS_RECEIVER_SUCCESS_AFTER_HICCUP": 53,
+                "PAYMENT_ACTION_ACCOUNT_SETUP_REMINDER": 54,
+                "PAYMENT_ACTION_SEND_PAYMENT_REMINDER": 55,
+                "PAYMENT_ACTION_SEND_PAYMENT_INVITATION": 56,
+                "PAYMENT_ACTION_REQUEST_DECLINED": 57,
+                "PAYMENT_ACTION_REQUEST_EXPIRED": 58,
+                "PAYMENT_ACTION_REQUEST_CANCELLED": 59,
+                "BIZ_VERIFIED_TRANSITION_TOP_TO_BOTTOM": 60,
+                "BIZ_VERIFIED_TRANSITION_BOTTOM_TO_TOP": 61,
+                "BIZ_INTRO_TOP": 62,
+                "BIZ_INTRO_BOTTOM": 63,
+                "BIZ_NAME_CHANGE": 64,
+                "BIZ_MOVE_TO_CONSUMER_APP": 65,
+                "BIZ_TWO_TIER_MIGRATION_TOP": 66,
+                "BIZ_TWO_TIER_MIGRATION_BOTTOM": 67,
+                "OVERSIZED": 68,
+                "GROUP_CHANGE_NO_FREQUENTLY_FORWARDED": 69,
+                "GROUP_V4_ADD_INVITE_SENT": 70,
+                "GROUP_PARTICIPANT_ADD_REQUEST_JOIN": 71,
+                "CHANGE_EPHEMERAL_SETTING": 72
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
