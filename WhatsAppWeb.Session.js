@@ -166,6 +166,8 @@ module.exports = function (WhatsAppWeb) {
 			}
         }, 25 * 1000)
 	}
+	// disconnect from the phone. Your auth credentials become invalid after sending a disconnect request.
+	// use close() if you just want to close the connection
 	WhatsAppWeb.prototype.disconnect = function () {
 		if (this.status === Status.connected) {
 			this.conn.send('goodbye,["admin","Conn","disconnect"]', null, () => {
@@ -177,6 +179,7 @@ module.exports = function (WhatsAppWeb) {
 			this.close()
 		}
 	}
+	// close the connection
 	WhatsAppWeb.prototype.close = function () {
 		this.conn.close()
 		this.conn = null

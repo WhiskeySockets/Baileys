@@ -39,7 +39,7 @@ const readline = require('readline').createInterface({
 })
 readline.question("type exit to disconnect\n", (txt) => {
     if (txt === "exit") {
-        client.disconnect()
+        client.close()
         process.exit(0)
     }
 })
