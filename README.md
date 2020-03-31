@@ -15,18 +15,18 @@ Baileys is super easy to use:
     ``` 
     If the connection is successful, you will see a QR code printed on your terminal screen, scan it with WhatsApp on your phone and you'll be logged in!
 3. Implement the following event handlers in your code:
-    1. ``` javascript 
+    ``` javascript 
         client.handlers.onConnected = () => { /* when you're successfully authenticated with the WhatsApp Web servers */ } 
-        ```
-    2. ``` javascript 
+    ```
+    ``` javascript 
         client.handlers.onUnreadMessage = (message) => { /* called when you have a pending unread message or recieve a new message */ } 
-        ```
-    3. ``` javascript 
+    ```
+    ``` javascript 
         client.handlers.onError = (error) => { /* called when there was an error */ } 
-        ```
-    4. ``` javascript 
+    ```
+    ``` javascript 
         client.handlers.onDisconnect = () => { /* called when internet gets disconnected */ } 
-        ```
+    ```
 4. Send a text message using 
     ``` javascript 
     client.sendTextMessage(id, txtMessage) 
