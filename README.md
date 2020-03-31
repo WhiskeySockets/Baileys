@@ -36,7 +36,7 @@ Baileys is super easy to use:
     ``` javascript 
         client.sendReadReceipt(id, messageID) 
     ```
-    The id is in the same format as above. The message ID is the unique identifier of the message that you are marking as read
+    The id is in the same format as mentioned earlier. The message ID is the unique identifier of the message that you are marking as read
 6. Tell someone what your status is right now by using 
     ``` javascript
         client.updatePresence(id, presence) 
@@ -51,8 +51,19 @@ Baileys is super easy to use:
             paused: "paused" // I have no clue
         }
     ```
+7. Once you want to close your session, you can get your authentication credentials using:
+     ``` javascript
+        const authJSON = client.base64EncodedAuthInfo() 
+    ```
+    and then save this JSON to a file
+8. If you want to restore your session (i.e. log back in without having to scan the QR code), simply retreive your previously saved credentials and use
+    ``` javascript
+        const authJSON = JSON.parse( fs.readFileSync("auth_info.json") )
+        client.login( authJSON )
+    ```
+    This will use the credentials to connect & log back in. No need to call ``` connect() ``` after calling this function
 
-Check out test.js to see example usage of all these.
+Do check out test.js to see example usage of all these functions.
 
 # Note
  I am in no way affiliated with WhatsApp. This was written for educational purposes. Use at your own discretion.
