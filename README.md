@@ -4,7 +4,9 @@
  Thank you to [Sigalor](https://github.com/sigalor/whatsapp-web-reveng) for writing the guide reverse engineering WhatsApp Web and to the go reimplementation written by [Rhymen](https://github.com/Rhymen/go-whatsapp/tree/484cfe758705761d76724e01839d6fc473dc10c4)
 
 Baileys is super easy to use:
-1. Import using 
+0. Install from npm using
+    ``` npm install github:adiwajshing/Baileys ```
+1. Then import using 
     ``` javascript 
         const WhatsAppWeb = require('Baileys') 
     ```
