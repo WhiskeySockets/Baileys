@@ -27,6 +27,7 @@ module.exports = function(WhatsAppWeb) {
             let json
             if (data[0] === "[" || data[0] === "{") { // if the first character is a "[", then the data must just be plain JSON array or object
                 json = JSON.parse( data ) // simply parse the JSON
+                console.log("JSON: " + data)
             } else if (this.status === Status.connected) { 
                 /* 
                     If the data recieved was not a JSON, then it must be an encrypted message.
@@ -114,7 +115,7 @@ module.exports = function(WhatsAppWeb) {
                         const id = json[0][2].key.remoteJid // get the ID whose chats we just processed
                         this.clearUnreadMessages(id) // forward to the handler any any unread messages
                     }
-                    break
+                    return
                 case "response":
                     // if it is the list of all the people the WhatsApp account has chats with
                     if (json[1].type === "chat") {
@@ -131,42 +132,62 @@ module.exports = function(WhatsAppWeb) {
                         })
                         
                     }
-                    break
+                    return
                 default:
                     break
             }
 
-            // if the recieved JSON wasn't an array, then we must have recieved a status for a request we made
-            // this would include creating new sessions & logging in
-            switch (json.status) {
-                case 200: // all good and we can procede to generate a QR code for new connection, or can now login given present auth info
-                    
-                    if (this.status === Status.creatingNewConnection){ // if we're trying to start a connection
-                        if (this.authInfo.encKey && this.authInfo.macKey) { // if we have the info to restore a closed session
-                            this.status = Status.loggingIn
-                            // create the login request
-                            const data = ["admin", "login", this.authInfo.clientToken, this.authInfo.serverToken, this.authInfo.clientID, "takeover"]
-                            this.sendJSON( data )
-                        } else {
-                            this.generateKeysForAuth(json.ref)
+            /* 
+             if the recieved JSON wasn't an array, then we must have recieved a status for a request we made
+             this would include creating new sessions, logging in & queries
+            */
+            // if we're connected and we had a pending query 
+            if (this.status === Status.connected) {
+                if (json.status && this.queryCallbacks.length > 0) {
+                    for (var i in this.queryCallbacks) {
+                        if (this.queryCallbacks[i].queryJSON[1] === "exist") {
+                            this.queryCallbacks[i].callback(json.status == 200, this.queryCallbacks[i].queryJSON[2])
+                            this.queryCallbacks.splice(i, 1)
+                            break
                         }
-                    } else {
+                    }
+                }
+            } else {
+                // if we're trying to establish a new connection or are trying to log in
+                switch (json.status) {
+                    case 200: // all good and we can procede to generate a QR code for new connection, or can now login given present auth info
                         
-                    }    
-                    break
-                case 401: // if the phone was unpaired
-                    this.close()						
-                    return this.gotError([json.status, "unpaired from phone", message])
-                case 429: // request to login was denied, don't know why it happens
-                    this.close()
-                    return this.gotError([ json.status, "request denied, try reconnecting", message ])
-                case 304: // request to generate a new key for a QR code was denied
-                    console.log("reuse previous ref")
-                    return this.gotError([ json.status, "request for new key denied", message ])
-                default:
-                    break
+                        if (this.status === Status.creatingNewConnection){ // if we're trying to start a connection
+                            if (this.authInfo.encKey && this.authInfo.macKey) { // if we have the info to restore a closed session
+                                this.status = Status.loggingIn
+                                // create the login request
+                                const data = ["admin", "login", this.authInfo.clientToken, this.authInfo.serverToken, this.authInfo.clientID, "takeover"]
+                                this.sendJSON( data )
+                            } else {
+                                this.generateKeysForAuth(json.ref)
+                            }
+                        } else if (this.queryCallbacks.length > 0) {
+                            for (var i in this.queryCallbacks) {
+                                if (this.queryCallbacks[i].queryJSON[1] == "query") {
+                                    this.queryCallbacks[i].callback(  )
+                                }
+                            }
+                        }
+                        
+                        break
+                    case 401: // if the phone was unpaired
+                        this.close()						
+                        return this.gotError([json.status, "unpaired from phone", message])
+                    case 429: // request to login was denied, don't know why it happens
+                        this.close()
+                        return this.gotError([ json.status, "request denied, try reconnecting", message ])
+                    case 304: // request to generate a new key for a QR code was denied
+                        console.log("reuse previous ref")
+                        return this.gotError([ json.status, "request for new key denied", message ])
+                    default:
+                        break
+                }
             }
-
         }
     }
     // shoot off notifications to the handler that new unread message are available

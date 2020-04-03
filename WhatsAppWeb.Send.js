@@ -18,6 +18,17 @@ module.exports = function(WhatsAppWeb) {
             this.chats[jid].user.count = 0 // reset read count
         }
 	}
+	// check if given number is registered on WhatsApp
+    WhatsAppWeb.prototype.isOnWhatsApp = function (jid, callback) {
+        const json = [
+            "query", 
+            "exist", 
+            jid
+        ]
+		this.sendJSON(json) // send
+		
+		this.queryCallbacks.push({queryJSON: json, callback: callback})
+	}
 	// tell someone about your presence -- online, typing, offline etc.
     WhatsAppWeb.prototype.updatePresence = function (jid, type) {
         const json = [ 

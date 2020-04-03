@@ -6,7 +6,7 @@
 Baileys is super easy to use:
 1. Install from npm using
     ``` npm install github:adiwajshing/Baileys ```
-2. Then import using 
+2. Then import in your code using 
     ``` javascript 
         const WhatsAppWeb = require('Baileys') 
     ```
@@ -64,6 +64,18 @@ Baileys is super easy to use:
         client.login( authJSON )
     ```
     This will use the credentials to connect & log back in. No need to call ``` connect() ``` after calling this function
+10. If you want to query whether a number is registered on WhatsApp, use:
+    ``` javascript
+        client.isOnWhatsApp ("[countrycode][some10digitnumber]@s.whatsapp.net", (exists, id) => {
+            if (exists) {
+                console.log(id + " is on WhatsApp")
+            } else {
+                console.log(id + " is not on WhatsApp :(")
+            }
+        })
+    ```
+    Of course, replace ``` [countrycode][some10digitnumber] ``` with an actual country code & number
+
 
 Do check out test.js to see example usage of all these functions.
 
