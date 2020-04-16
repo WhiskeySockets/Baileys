@@ -1,4 +1,7 @@
 const Utils = require("./WhatsAppWeb.Utils")
+const HKDF = require("futoin-hkdf")
+const fs = require("fs")
+const fetch = require("node-fetch")
 /*
     Contains the code for recieving messages and forwarding what to do with them to the correct functions
 */
@@ -23,11 +26,15 @@ module.exports = function(WhatsAppWeb) {
                 // got an empty message, usually get one after sending a message or something, just return then
                 return
             }
+            // get the message tag. 
+            // If a query was done, the server will respond with the same message tag we sent the query with
+            const messageTag = message.slice(0, commaIndex) 
+            //console.log(messageTag)
 
             let json
             if (data[0] === "[" || data[0] === "{") { // if the first character is a "[", then the data must just be plain JSON array or object
-                json = JSON.parse( data ) // simply parse the JSON
-                console.log("JSON: " + data)
+                json = JSON.parse( data ) // parse the JSON
+                //console.log("JSON: " + data)
             } else if (this.status === Status.connected) { 
                 /* 
                     If the data recieved was not a JSON, then it must be an encrypted message.
@@ -51,8 +58,7 @@ module.exports = function(WhatsAppWeb) {
                 // if we recieved a message that was encrypted but we weren't conencted, then there must be an error
                 return this.gotError([3, "recieved encrypted message when not connected: " + this.status, message])
             }
-
-            //console.log(json)
+            
             // the first item in the recieved JSON, if it exists, it tells us what the message is about
             switch (json[0]) {
                 case "Conn":
@@ -108,9 +114,10 @@ module.exports = function(WhatsAppWeb) {
                             if (!this.chats[ id ]) { // if we haven't added this ID before, add them now
                                 this.chats[ id ] = {user: { jid: id, count: 0 }, messages: []}
                             }
-
                             this.chats[id].messages.push(message[2]) // append this message to the array
+                            
                         }
+                        
 
                         const id = json[0][2].key.remoteJid // get the ID whose chats we just processed
                         this.clearUnreadMessages(id) // forward to the handler any any unread messages
@@ -139,18 +146,17 @@ module.exports = function(WhatsAppWeb) {
 
             /* 
              if the recieved JSON wasn't an array, then we must have recieved a status for a request we made
-             this would include creating new sessions, logging in & queries
             */
-            // if we're connected and we had a pending query 
             if (this.status === Status.connected) {
-                if (json.status && this.queryCallbacks.length > 0) {
-                    for (var i in this.queryCallbacks) {
-                        if (this.queryCallbacks[i].queryJSON[1] === "exist") {
-                            this.queryCallbacks[i].callback(json.status == 200, this.queryCallbacks[i].queryJSON[2])
-                            this.queryCallbacks.splice(i, 1)
-                            break
-                        }
+                // if this message is responding to a query
+                if (this.queryCallbacks[messageTag]) {
+                    const q = this.queryCallbacks[messageTag]
+                    if (q.queryJSON[1] === "exist") {
+                        q.callback(json.status == 200, q.queryJSON[2])
+                    } else if (q.queryJSON[1] === "mediaConn") {
+                        q.callback(json.media_conn)
                     }
+                    delete this.queryCallbacks[messageTag]
                 }
             } else {
                 // if we're trying to establish a new connection or are trying to log in
@@ -166,12 +172,6 @@ module.exports = function(WhatsAppWeb) {
                             } else {
                                 this.generateKeysForAuth(json.ref)
                             }
-                        } else if (this.queryCallbacks.length > 0) {
-                            for (var i in this.queryCallbacks) {
-                                if (this.queryCallbacks[i].queryJSON[1] == "query") {
-                                    this.queryCallbacks[i].callback(  )
-                                }
-                            }
                         }
                         
                         break
@@ -185,7 +185,7 @@ module.exports = function(WhatsAppWeb) {
                         console.log("reuse previous ref")
                         return this.gotError([ json.status, "request for new key denied", message ])
                     default:
-                        break
+                        return this.gotError([ json.status, "unknown error", message ])
                 }
             }
         }
@@ -221,6 +221,70 @@ module.exports = function(WhatsAppWeb) {
 				this.handlers.onUnreadMessage ( message )
 			}
 		}
-	}
+    }
+    
+    // get what type of message it is
+    WhatsAppWeb.prototype.getMessageType = function (message) {
+        return Object.keys(message)[0]
+        /*for (var key in WhatsAppWeb.MessageType) {
+            if (WhatsAppWeb.MessageType[key] === relvantKey) {
+                return key
+            }
+        }*/
+    }
+    
+    // decode a media message (video, image, document, audio) & save it to the given file; returns a promise with metadata
+    WhatsAppWeb.prototype.decodeMediaMessage = function (message, fileName) {
+        
+        const getExtension = function (mimetype) {
+            const str = mimetype.split(";")[0].split("/")
+            return str[1]
+        }
+        /* 
+            can infer media type from the key in the message
+            it is usually written as [mediaType]Message. Eg. imageMessage, audioMessage etc.
+        */
+        let type = this.getMessageType(message)
+        if (!type) {
+            return Promise.reject("unknown message type")
+        }
+        if (type === WhatsAppWeb.MessageType.extendedText || type === WhatsAppWeb.MessageType.text) {
+            return Promise.reject("cannot decode text message")
+        }
+
+        message = message[type]
+        // get the keys to decrypt the message
+        const mediaKeys = Utils.getMediaKeys(Buffer.from(message.mediaKey, 'base64'), type)
+        const iv = mediaKeys.iv
+        const cipherKey = mediaKeys.cipherKey
+        const macKey = mediaKeys.macKey
+
+        // download the message
+        let p = fetch(message.url).then (res => res.buffer())
+        p = p.then(buffer => {
+            // first part is actual file
+            let file = buffer.slice(0, buffer.length-10)
+            // last 10 bytes is HMAC sign of file
+            let mac = buffer.slice(buffer.length-10, buffer.length)
+            
+            // sign IV+file & check for match with mac
+            let testBuff = Buffer.concat([iv, file])
+            let sign = Utils.hmacSign(testBuff, macKey).slice(0, 10)
+            
+            // our sign should equal the mac
+            if (sign.equals(mac)) {
+                let decrypted = Utils.aesDecryptWithIV(file, cipherKey, iv) // decrypt media
+
+                const trueFileName = fileName + "." + getExtension(message.mimetype)
+                fs.writeFileSync(trueFileName, decrypted)
+
+                message.fileName = trueFileName
+                return message
+            } else {
+                throw "HMAC sign does not match"
+            }
+        })
+        return p
+    }
 
 }

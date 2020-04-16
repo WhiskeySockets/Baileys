@@ -22,6 +22,16 @@ class WhatsAppWeb {
 		paused: "paused" // I have no clue
 	}
 
+	// set of message types that are supported by the library
+	static MessageType = {
+		text: "conversation",
+		image: "imageMessage",
+		video: "videoMessage",
+		sticker: "stickerMessage",
+		document: "documentMessage",
+		extendedText: "extendedTextMessage"
+	}
+
 	constructor() {
 		this.conn = null // the websocket connection
 
@@ -34,7 +44,7 @@ class WhatsAppWeb {
 		this.autoReconnect = true // reconnect automatically after an unexpected disconnect
 		this.lastSeen = null // updated by sending a keep alive request to the server, and the server responds with our updated last seen
 
-		this.queryCallbacks = []
+		this.queryCallbacks = {}
 
 		this.encoder = new BinaryCoding.Encoder()
 		this.decoder = new BinaryCoding.Decoder()

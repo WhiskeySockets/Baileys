@@ -1,6 +1,5 @@
 const WebSocket = require('ws')
 const Curve = require ('curve25519-js')
-const HKDF = require('futoin-hkdf')
 const Utils = require('./WhatsAppWeb.Utils')
 const QR = require('qrcode-terminal')
 
@@ -68,7 +67,7 @@ module.exports = function (WhatsAppWeb) {
 			// generate shared key from our private key & the secret shared by the server
 			const sharedKey = Curve.sharedKey( this.curveKeys.private, secret.slice(0, 32) )
 			// expand the key to 80 bytes using HKDF
-			const expandedKey = HKDF(sharedKey, 80, [ Buffer.alloc(32), '', 'SHA-256' ])
+			const expandedKey = Utils.hkdf(sharedKey, 80)
 
 			// perform HMAC validation.
 			const hmacValidationKey = expandedKey.slice(32, 64)
