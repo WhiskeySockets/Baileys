@@ -28,6 +28,9 @@ Baileys is super easy to use:
         client.handlers.onError = (error) => { /* called when there was an error */ } 
     ```
     ``` javascript 
+        client.handlers.presenceUpdated = (id, presence) => { /* called when you recieve an update on someone's presence */ } 
+    ```
+    ``` javascript 
         client.handlers.onDisconnect = () => { /* called when internet gets disconnected */ } 
     ```
 * Get the type of message using
@@ -133,7 +136,7 @@ Baileys is super easy to use:
             }
         })
     ```
-    Of course, replace ``` [countrycode][some10digitnumber] ``` with an actual country code & number. ``` isOnWhatsApp ``` returns a promise.
+    Of course, replace ``` [countrycode][some10digitnumber] ``` with an actual country code & number.
 
 
 Do check out & run [example.js](example/example.js) to see example usage of all these functions.

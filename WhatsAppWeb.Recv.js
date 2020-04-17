@@ -140,6 +140,11 @@ module.exports = function(WhatsAppWeb) {
                         
                     }
                     return
+                case "Presence":
+                    if (this.handlers.presenceUpdated) {
+                        this.handlers.presenceUpdated(json[1].id, json[1].type)
+                    }
+                    return
                 default:
                     break
             }
@@ -155,6 +160,8 @@ module.exports = function(WhatsAppWeb) {
                         q.callback(json.status == 200, q.queryJSON[2])
                     } else if (q.queryJSON[1] === "mediaConn") {
                         q.callback(json.media_conn)
+                    } else {
+                        q.callback(json)
                     }
                     delete this.queryCallbacks[messageTag]
                 }

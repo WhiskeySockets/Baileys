@@ -37,6 +37,10 @@ module.exports = function(WhatsAppWeb) {
         ]
         this.sendBinary(json, [10, 128])
 	}
+	// check the presence status of a given jid
+	WhatsAppWeb.prototype.requestPresenceUpdate = function (jid) {
+		this.query(["action","presence","subscribe",jid])
+	}
 	// send a text message to someone, optionally you can provide a quoted message & the timestamp for the message
     WhatsAppWeb.prototype.sendTextMessage = function (id, txt, quoted=null, timestamp=null) {
 		let message
