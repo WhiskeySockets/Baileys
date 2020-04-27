@@ -1,6 +1,6 @@
 # Baileys
 
- Reverse Engineered WhatsApp Web API in pure Node.js. Baileys does not require Selenium or any other browser to be interface with WhatsApp Web, it does so directly using a WebSocket.
+ Reverse Engineered WhatsApp Web API in pure Node.js. Baileys does not require Selenium or any other browser to be interface with WhatsApp Web, it does so directly using a WebSocket. Not running Selenium or Chromimum saves you like half a gig of ram :/ 
  
  Thank you to [Sigalor](https://github.com/sigalor/whatsapp-web-reveng) for writing the guide to reverse engineering WhatsApp Web and thanks to [Rhymen](https://github.com/Rhymen/go-whatsapp/tree/484cfe758705761d76724e01839d6fc473dc10c4) for the __go__ reimplementation.
 
@@ -26,6 +26,9 @@ Baileys is super easy to use:
     ```
     ``` javascript 
         client.handlers.onError = (error) => { /* called when there was an error */ } 
+    ```
+    ``` javascript 
+        client.handlers.onGotContact = (contactArray) => { /* called when we recieve the contacts (contactArray is an array) */ } 
     ```
     ``` javascript 
         client.handlers.presenceUpdated = (id, presence) => { /* called when you recieve an update on someone's presence */ } 
@@ -105,13 +108,12 @@ Baileys is super easy to use:
     ```
     This lets the person with ``` id ``` know your status. where ``` presence ``` can be one of the following:
     ``` javascript
-        static Presence = {
-            available: "available", // "online"
-            unavailable: "unavailable", // offline
-            composing: "composing", // "typing..."
-            recording: "recording", // "recording..."
-            paused: "paused" // I have no clue
-        }
+        [
+            WhatsAppWeb.Presence.available, // online
+            WhatsAppWeb.Presence.unavailable, // offline
+            WhatsAppWeb.Presence.composing, // typing...
+            WhatsAppWeb.Presence.recording // recording...
+        ]
     ```
     
 * Once you want to close your session, you can get your authentication credentials using:
@@ -125,18 +127,46 @@ Baileys is super easy to use:
         client.login(authJSON)
     ```
     This will use the credentials to connect & log back in. No need to call ``` connect() ``` after calling this function
-* If you want to query whether a number is registered on WhatsApp, use:
+* To query things like chat history and all, use:
+    * To check if a given ID is on WhatsApp
     ``` javascript
-        client.isOnWhatsApp ("[countrycode][some10digitnumber]@s.whatsapp.net")
-        .then ((exists, id) => {
-            if (exists) {
-                console.log(id + " is on WhatsApp")
-            } else {
-                console.log(id + " is not on WhatsApp :(")
-            }
-        })
+        client.isOnWhatsApp ("xyz@c.us")
+        .then ((exists, id) => console.log(id + (exists ? " exists " : " does not exist") + "on WhatsApp"))
     ```
-    Of course, replace ``` [countrycode][some10digitnumber] ``` with an actual country code & number.
+    * To query chat history on a group or with someone
+    ``` javascript
+        client.getMessages ("xyz@c.us", 25) // query the last 25 messages (replace 25 with the number of messages you want to query)
+        .then (messages => console.log("got back " + messages.length + " messages"))
+    ```
+    * To query the entire chat history
+    ``` javascript
+        client.getAllMessages ("xyz@c.us", (message) => {
+            console.log("GOT message with ID: " + message.key.id)
+        })
+        .then (() => console.log("queried all messages")) // promise ends once all messages are retreived
+    ```
+    * To query someone's status
+    ``` javascript
+        client.getStatus ("xyz@c.us")
+        .then (json => console.log("status: " + json.status))
+    ```
+    * To get someone's profile picture
+    ``` javascript
+        client.getStatus ("xyz@c.us") // 
+        .then (json => console.log("download profile picture from: " + json.eurl))
+    ```
+    * To get someone's presence (if they're typing, online)
+    ``` javascript
+        client.requestPresenceUpdate ("xyz@c.us")
+        // the presence update is fetched and called here
+        client.handlers.presenceUpdated = (id, presence) => {
+            console.log(id + " has status: " + presence)
+        } 
+
+    ```
+    
+    Of course, replace ``` xyz ``` with an actual country code & number. 
+    Also, append ``` @c.us ``` for individuals & ``` @g.us ``` for groups.
 
 
 Do check out & run [example.js](example/example.js) to see example usage of all these functions.

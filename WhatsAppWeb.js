@@ -16,7 +16,7 @@ class WhatsAppWeb {
 	// set of statuses visible to other people; see updatePresence() in WhatsAppWeb.Send
 	static Presence = {
 		available: "available", // "online"
-		unavailable: "unavailable", // offline
+		unavailable: "unavailable", // "offline"
 		composing: "composing", // "typing..."
 		recording: "recording", // "recording..."
 		paused: "paused" // I have no clue
@@ -39,12 +39,21 @@ class WhatsAppWeb {
 
 		this.userMetaData = null // metadata of the user i.e. name, phone number, phone stats
 		this.chats = {} // all chats of the user, mapped by the user ID
-		this.handlers = {} // data for the event handlers
 		this.msgCount = 0 // number of messages sent to the server; required field for sending messages etc.
 		this.autoReconnect = true // reconnect automatically after an unexpected disconnect
 		this.lastSeen = null // updated by sending a keep alive request to the server, and the server responds with our updated last seen
 
-		this.queryCallbacks = {}
+		// object to hold the event handlers
+		this.handlers = {
+			onError: null,
+			onConnected: null,
+			presenceUpdated: null,
+			onDisconnect: null,
+			onUnreadMessage: null,
+			gotContact: null
+		}
+
+		this.callbacks = {}
 
 		this.encoder = new BinaryCoding.Encoder()
 		this.decoder = new BinaryCoding.Decoder()
@@ -65,9 +74,8 @@ class WhatsAppWeb {
 
 		if (this.reconnectLoop) { // if we connected after being disconnected
 			clearInterval(this.reconnectLoop) // kill the loop to reconnect us
-		} else { // if we connected for the first time, i.e. not after being disconnected
-			if (this.handlers.onConnected) // tell the handler that we're connected
-				this.handlers.onConnected()
+		} else if (this.handlers.onConnected) { // if we connected for the first time, i.e. not after being disconnected
+			this.handlers.onConnected()
 		}
 	}
 	// base 64 encode the authentication credentials and return them, these can then be saved used to login again
@@ -87,5 +95,6 @@ class WhatsAppWeb {
 require("./WhatsAppWeb.Session.js")(WhatsAppWeb)
 require("./WhatsAppWeb.Recv.js")(WhatsAppWeb)
 require("./WhatsAppWeb.Send.js")(WhatsAppWeb)
+require("./WhatsAppWeb.Query")(WhatsAppWeb)
 
 module.exports = WhatsAppWeb

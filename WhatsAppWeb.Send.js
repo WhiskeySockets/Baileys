@@ -11,22 +11,11 @@ module.exports = function(WhatsAppWeb) {
         const json = [ 
             "action", 
             { epoch: this.msgCount.toString(), type: "set" }, 
-            [ ["read", {count: "1", index: messageID, jid: jid, owner: "false"}, null] ] 
+            [ 
+				["read", {count: "1", index: messageID, jid: jid, owner: "false"}, null] 
+			] 
         ]
-        this.sendBinary(json, [10, 128]) // encrypt and send  off
-
-        if (this.chats[ jid ]) {
-            this.chats[jid].user.count = 0 // reset read count
-        }
-	}
-	// check if given number is registered on WhatsApp
-    WhatsAppWeb.prototype.isOnWhatsApp = function (jid) {
-        const json = [
-            "query", 
-            "exist", 
-            jid
-        ]
-		return this.query(json)
+        return this.query(json, [10, 128]) // encrypt and send  off
 	}
 	// tell someone about your presence -- online, typing, offline etc.
     WhatsAppWeb.prototype.updatePresence = function (jid, type) {
@@ -35,11 +24,7 @@ module.exports = function(WhatsAppWeb) {
             { epoch: this.msgCount.toString(), type: "set" }, 
             [ ["presence", {type: type, to: jid}, null] ] 
         ]
-        this.sendBinary(json, [10, 128])
-	}
-	// check the presence status of a given jid
-	WhatsAppWeb.prototype.requestPresenceUpdate = function (jid) {
-		this.query(["action","presence","subscribe",jid])
+        return this.query(json, [10, 128])
 	}
 	// send a text message to someone, optionally you can provide a quoted message & the timestamp for the message
     WhatsAppWeb.prototype.sendTextMessage = function (id, txt, quoted=null, timestamp=null) {
@@ -105,10 +90,9 @@ module.exports = function(WhatsAppWeb) {
 		// url safe Base64 encode the SHA256 hash of the body
 		const fileEncSha256B64 = Utils.sha256(body).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/\=+$/, '')
 
-		const promise = 
-		Utils.generateThumbnail(buffer, mediaType, info)
+		return Utils.generateThumbnail(buffer, mediaType, info)
 		.then (() => this.query(["query", "mediaConn"])) // send a query JSON to obtain the url & auth token to upload our media
-		.then ((json) => {
+		.then (json => {
 			const auth = json.auth // the auth token
 			let hostname = "https://" + json.hosts[0].hostname // first hostname available
 			hostname += mediaPathMap[mediaType] + "/" + fileEncSha256B64 // append path
@@ -143,8 +127,6 @@ module.exports = function(WhatsAppWeb) {
 			//console.log(message)
 			return this.sendMessage(id, message, timestamp)
 		})
-
-		return promise
 	}
 	// generic send message construct
 	WhatsAppWeb.prototype.sendMessage = function (id, message, timestamp=null) {
@@ -169,8 +151,20 @@ module.exports = function(WhatsAppWeb) {
 			{epoch: this.msgCount.toString(), type: "relay" }, 
 			[ ['message', null, messageJSON] ] 
 		]
-		this.sendBinary(json, [16, 128])
-		return messageJSON
+		return this.query(json, [16, 128])
+	}
+	// send query message to WhatsApp servers; returns a promise
+    WhatsAppWeb.prototype.query = function (json, binaryTags=null) {
+		const promise = new Promise((resolve, reject) => {
+			let tag
+			if (binaryTags) {
+				tag = this.sendBinary(json, binaryTags)
+			} else {
+				tag = this.sendJSON(json)
+			} 
+			this.callbacks[tag] = {queryJSON: json, callback: resolve, errCallback: reject}
+		})
+		return promise
 	}
 	// send a binary message, the tags parameter tell WhatsApp what the message is all about
 	WhatsAppWeb.prototype.sendBinary = function (json, tags) {
@@ -187,14 +181,6 @@ module.exports = function(WhatsAppWeb) {
 		])
 		this.send(buff) // send it off
 		return tag
-	}
-	// send query message to WhatsApp servers; returns a promise
-    WhatsAppWeb.prototype.query = function (json) {
-		const promise = new Promise((resolve, reject) => {
-			const tag = this.sendJSON(json) // send
-			this.queryCallbacks[tag] = {queryJSON: json, callback: resolve, errCallback: reject}
-		})
-		return promise
 	}
 	// send a JSON message to WhatsApp servers
     WhatsAppWeb.prototype.sendJSON = function (json) {

@@ -22,14 +22,19 @@ module.exports = function(WhatsAppWeb) {
             }
 
             var data = message.slice(commaIndex+1, message.length)
-            if (data.length === 0) {
-                // got an empty message, usually get one after sending a message or something, just return then
-                return
-            }
             // get the message tag. 
             // If a query was done, the server will respond with the same message tag we sent the query with
             const messageTag = message.slice(0, commaIndex) 
             //console.log(messageTag)
+            if (data.length === 0) {
+                // got an empty message, usually get one after sending a message or something
+                if (this.callbacks[messageTag]) {
+                    const q = this.callbacks[messageTag]
+                    q.callback()
+                    delete this.callbacks[messageTag]
+                }
+                return
+            }
 
             let json
             if (data[0] === "[" || data[0] === "{") { // if the first character is a "[", then the data must just be plain JSON array or object
@@ -102,7 +107,7 @@ module.exports = function(WhatsAppWeb) {
                         /* 
                             if we're recieving a full chat log
                             if json[1].add equals before: if its non-recent messages
-                            if json[1].add equals last: contains the last message of the conversation between the sender and us
+                            if json[1].add equals last: contains the last message of the conversation
                         */
 
                         json = json[2] // json[2] is the relevant part    
@@ -126,6 +131,7 @@ module.exports = function(WhatsAppWeb) {
                 case "response":
                     // if it is the list of all the people the WhatsApp account has chats with
                     if (json[1].type === "chat") {
+                        
                         json[2].forEach (chat => {
                             if (chat[0] === "chat" && chat[1].jid) {
                                 const jid = chat[1].jid.replace("@c.us", "@s.whatsapp.net") // format ID
@@ -137,9 +143,14 @@ module.exports = function(WhatsAppWeb) {
                                 }
                             }
                         })
-                        
+                        return
+                    } else if (json[1].type === "contacts") {
+                        if (this.handlers.gotContact) {
+                            this.handlers.gotContact(json[2])
+                        }
+                        return
                     }
-                    return
+                    break
                 case "Presence":
                     if (this.handlers.presenceUpdated) {
                         this.handlers.presenceUpdated(json[1].id, json[1].type)
@@ -153,9 +164,10 @@ module.exports = function(WhatsAppWeb) {
              if the recieved JSON wasn't an array, then we must have recieved a status for a request we made
             */
             if (this.status === Status.connected) {
+                
                 // if this message is responding to a query
-                if (this.queryCallbacks[messageTag]) {
-                    const q = this.queryCallbacks[messageTag]
+                if (this.callbacks[messageTag]) {
+                    const q = this.callbacks[messageTag]
                     if (q.queryJSON[1] === "exist") {
                         q.callback(json.status == 200, q.queryJSON[2])
                     } else if (q.queryJSON[1] === "mediaConn") {
@@ -163,7 +175,7 @@ module.exports = function(WhatsAppWeb) {
                     } else {
                         q.callback(json)
                     }
-                    delete this.queryCallbacks[messageTag]
+                    delete this.callbacks[messageTag]
                 }
             } else {
                 // if we're trying to establish a new connection or are trying to log in

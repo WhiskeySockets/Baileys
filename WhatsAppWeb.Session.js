@@ -55,9 +55,21 @@ module.exports = function (WhatsAppWeb) {
 	// once the QR code is scanned and we can validate our connection,
 	// or we resolved the challenge when logging back in
     WhatsAppWeb.prototype.validateNewConnection = function (json) {
+
+		const onValidationSuccess = () => {
+			this.userMetaData = {
+				id: json.wid, // one's WhatsApp ID [cc][number]@s.whatsapp.net
+				name: json.pushname, // name set on whatsapp
+				phone: json.phone  // information about the phone one has logged in to
+			}
+			this.status = Status.CONNECTED
+
+			this.didConnectSuccessfully()
+		}
+
         if (json.connected) { // only if we're connected
             if (!json.secret) { // if we didn't get a secret, that is we don't need it
-                return this.didConnectSuccessfully()
+                return onValidationSuccess()
             }
 			const secret = Buffer.from(json.secret, 'base64')
 
@@ -89,14 +101,7 @@ module.exports = function (WhatsAppWeb) {
 					serverToken: json.serverToken,
 					clientID: this.authInfo.clientID
 				}
-				this.userMetaData = {
-					id: json.wid, // one's WhatsApp ID [cc][number]@s.whatsapp.net
-					name: json.pushname, // name set on whatsapp
-					phone: json.phone  // information about the phone one has logged in to
-				}
-				this.status = Status.CONNECTED
-
-                this.didConnectSuccessfully()
+				onValidationSuccess()
 			} else { // if the checksums didn't match
                 this.close()
                 this.gotError([5, "HMAC validation failed"])
@@ -195,8 +200,7 @@ module.exports = function (WhatsAppWeb) {
 		if (this.status !== Status.creatingNewConnection) { // if we're not in the process of connecting
 			return
 		}
-		const json = ["admin", "Conn", "reref"]
-		this.sendJSON(json)
+		this.sendJSON(["admin", "Conn", "reref"])
 	}
 
 }
