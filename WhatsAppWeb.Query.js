@@ -28,10 +28,10 @@ module.exports = function(WhatsAppWeb) {
             {epoch: this.msgCount.toString(), type: "contacts"},
             null
         ]
-        return this.query(json, true) // this has to be an encrypted query
+        return this.query(json, [10, 64]) // this has to be an encrypted query
     }
     // load messages from a group or sender
-    WhatsAppWeb.prototype.getMessages = function (jid, count, beforeMessage=null) {
+    WhatsAppWeb.prototype.getMessages = function (jid, count, indexMessage=null, mode="before") {
         // construct JSON
         let json = [
             "query",
@@ -39,34 +39,44 @@ module.exports = function(WhatsAppWeb) {
                 epoch: this.msgCount.toString(), 
                 type: "message", 
                 jid: jid,
-                kind: "before", 
+                kind: mode, 
                 owner: "true",
                 count: count.toString()
             },
             null
         ]
-        // if we have some index before which we want to query
-        if (beforeMessage) {
-            json[1].index = beforeMessage.id
-            json[1].owner = beforeMessage.fromMe ? "true" : "false"
+        // if we have some index from which we want to query
+        if (indexMessage) {
+            json[1].index = indexMessage.id
+            json[1].owner = indexMessage.fromMe ? "true" : "false"
         }
-        return this.query(json, true)
+        
+        return this.query(json, [10, 128])
     }
     // loads all the conversation you've had with given ID
-    WhatsAppWeb.prototype.getAllMessages = function (jid, onMessage, chunkSize=25) {
+    WhatsAppWeb.prototype.getAllMessages = function (jid, onMessage, chunkSize=25, mode="before") {
         var offsetID = null
 
         const loadMessage = () => {
-            return this.getMessages(jid, chunkSize, offsetID)
+            return this.getMessages(jid, chunkSize, offsetID, mode)
             .then (json => {
                 if (json[2]) {
                     // callback with most recent message first (descending order of date)
-                    for (var i = json[2].length-1; i >= 0;i--) {
-                        onMessage(json[2][i][2])
+                    let lastMessage
+                    if (mode === "before") {
+                        for (var i = json[2].length-1; i >= 0;i--) {
+                            onMessage(json[2][i][2])
+                            lastMessage = json[2][i][2]
+                        }
+                    } else {
+                        for (var i = 0; i < json[2].length;i++) {
+                            onMessage(json[2][i][2])
+                            lastMessage = json[2][i][2]
+                        }
                     }
                     // if there are still more messages
                     if (json[2].length >= chunkSize) {
-                        offsetID = json[2][0][2].key // get the oldest message
+                        offsetID = lastMessage.key // get the last message
                         return new Promise ( (resolve, reject) => {
                             // send query after 200 ms
                             setTimeout( () => loadMessage().then (resolve).catch(reject), 200)

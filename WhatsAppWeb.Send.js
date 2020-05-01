@@ -28,6 +28,9 @@ module.exports = function(WhatsAppWeb) {
 	}
 	// send a text message to someone, optionally you can provide a quoted message & the timestamp for the message
     WhatsAppWeb.prototype.sendTextMessage = function (id, txt, quoted=null, timestamp=null) {
+		if (typeof txt !== "string") {
+			return Promise.reject("")
+		}
 		let message
 		if (quoted) {
 			message = {
@@ -149,9 +152,9 @@ module.exports = function(WhatsAppWeb) {
 		const json = [
 			"action", 
 			{epoch: this.msgCount.toString(), type: "relay" }, 
-			[ ['message', null, messageJSON] ] 
+			[ ["message", null, messageJSON] ] 
 		]
-		return this.query(json, [16, 128])
+		return this.query(json, [16, 64])
 	}
 	// send query message to WhatsApp servers; returns a promise
     WhatsAppWeb.prototype.query = function (json, binaryTags=null) {
@@ -169,7 +172,7 @@ module.exports = function(WhatsAppWeb) {
 	// send a binary message, the tags parameter tell WhatsApp what the message is all about
 	WhatsAppWeb.prototype.sendBinary = function (json, tags) {
 		const binary = this.encoder.write(json) // encode the JSON to the WhatsApp binary format
-
+		
 		var buff = Utils.aesEncrypt(binary, this.authInfo.encKey) // encrypt it using AES and our encKey
 		const sign = Utils.hmacSign(buff, this.authInfo.macKey) // sign the message using HMAC and our macKey
 		const tag = Utils.generateMessageTag()

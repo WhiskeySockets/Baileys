@@ -27,12 +27,7 @@ module.exports = function(WhatsAppWeb) {
             const messageTag = message.slice(0, commaIndex) 
             //console.log(messageTag)
             if (data.length === 0) {
-                // got an empty message, usually get one after sending a message or something
-                if (this.callbacks[messageTag]) {
-                    const q = this.callbacks[messageTag]
-                    q.callback()
-                    delete this.callbacks[messageTag]
-                }
+                // got an empty message, usually get one after sending a query with the 128 tag
                 return
             }
 
@@ -84,6 +79,7 @@ module.exports = function(WhatsAppWeb) {
                     }
                     return
                 case "action":
+                    
                     /*
                         this is when some action was taken on a chat or that we recieve a message.
                         json[1] tells us more about the message, it can be null
@@ -122,13 +118,12 @@ module.exports = function(WhatsAppWeb) {
                             this.chats[id].messages.push(message[2]) // append this message to the array
                             
                         }
-                        
-
                         const id = json[0][2].key.remoteJid // get the ID whose chats we just processed
                         this.clearUnreadMessages(id) // forward to the handler any any unread messages
                     }
                     return
                 case "response":
+                    //console.log(json[1])
                     // if it is the list of all the people the WhatsApp account has chats with
                     if (json[1].type === "chat") {
                         
@@ -149,6 +144,8 @@ module.exports = function(WhatsAppWeb) {
                             this.handlers.gotContact(json[2])
                         }
                         return
+                    } else if (json[1].type === "message") {
+
                     }
                     break
                 case "Presence":
@@ -214,8 +211,8 @@ module.exports = function(WhatsAppWeb) {
 		const chat = this.chats[id] // get the chat
         var j = 0
         let unreadMessages = chat.user.count
-        while (unreadMessages > 0) {
-            if (!chat.messages[j].key.fromMe) { // only forward if the message is from the sender
+        while (unreadMessages > 0 && chat.messages[j]) {
+            if (!chat.messages[j].key.fromMe && this.handlers.onUnreadMessage) { // only forward if the message is from the sender
                 this.handlers.onUnreadMessage( chat.messages[j] ) // send off the unread message
                 unreadMessages -= 1 // reduce
             }
@@ -236,7 +233,7 @@ module.exports = function(WhatsAppWeb) {
 				this.chats[ message.key.remoteJid ].messages.splice(0, 0, message)
 			}
 
-			if (!message.key.fromMe) { // if this message was sent to us, notify the handler
+			if (!message.key.fromMe && this.handlers.onUnreadMessage) { // if this message was sent to us, notify the handler
 				this.handlers.onUnreadMessage ( message )
 			}
 		}
