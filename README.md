@@ -34,6 +34,9 @@ Baileys is super easy to use:
         client.handlers.presenceUpdated = (id, presence) => { /* called when you recieve an update on someone's presence */ } 
     ```
     ``` javascript 
+        client.handlers.onMessageStatusChanged = (id, messageID, status) => { /* called when your message gets delivered or read */ } 
+    ```
+    ``` javascript 
         client.handlers.onDisconnect = () => { /* called when internet gets disconnected */ } 
     ```
 * Get the type of message using

@@ -21,7 +21,12 @@ class WhatsAppWeb {
 		recording: "recording", // "recording..."
 		paused: "paused" // I have no clue
 	}
-
+	// set of statuses visible to other people; see updatePresence() in WhatsAppWeb.Send
+	static MessageStatus = {
+		sent: "sent",
+		received: "received",
+		read: "read"
+	}
 	// set of message types that are supported by the library
 	static MessageType = {
 		text: "conversation",
@@ -50,7 +55,8 @@ class WhatsAppWeb {
 			presenceUpdated: null,
 			onDisconnect: null,
 			onUnreadMessage: null,
-			gotContact: null
+			gotContact: null,
+			onMessageStatusChanged: null
 		}
 
 		this.callbacks = {}

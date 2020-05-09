@@ -84,7 +84,9 @@ module.exports = function(WhatsAppWeb) {
                         this is when some action was taken on a chat or that we recieve a message.
                         json[1] tells us more about the message, it can be null
                     */
+                   //console.log (JSON.stringify (json))
                    if (!json[1]) {  // if json[1] is null
+                        
                         json = json[2][0] // set json to the first element in json[2]; it contains the relevant part
                     
                         if (json[0] === "read") { // if one marked a chat as read or unread on the phone 
@@ -98,7 +100,26 @@ module.exports = function(WhatsAppWeb) {
                         }
         
                     } else if (json[1].add === "relay") { // if we just recieved a new message sent to us
-                        this.onNewMessage( json[2][0][2] ) // handle this new message
+                        json = json[2][0]
+                        if (json[0] === "received") {
+                            if (json[1].owner) {
+                                let type
+                                switch (json[1].type) {
+                                    case "read":
+                                        type = WhatsAppWeb.MessageStatus.read
+                                        break
+                                    case "message":
+                                        type = WhatsAppWeb.MessageStatus.received
+                                        break
+                                    default:
+                                        type = json[1].type
+                                        break
+                                }
+                                this.handlers.onMessageStatusChanged (json[1].jid, json[1].index, type)
+                            }
+                        } else if (json[1] === "message") {
+                            this.onNewMessage( json[2][0][2] ) // handle this new message
+                        }
                     } else if (json[1].add === "before" || json[1].add === "last") { 
                         /* 
                             if we're recieving a full chat log

@@ -5,7 +5,7 @@ const fs = require("fs")
  * Extract all your WhatsApp conversations & save them to a file
  * produceAnonData => should the Id of the chat be recorded
  * */ 
-function extractChats (authCreds, outputFile, produceAnonData) {
+function extractChats (authCreds, outputFile, produceAnonData=false, offset=null) {
     let client = new WhatsAppWeb() // instantiate an instance
     if (authCreds) { // login if creds are present
         client.login(authCreds)
@@ -14,13 +14,27 @@ function extractChats (authCreds, outputFile, produceAnonData) {
     }
     // internal extract function
     const extract = function () {
-        fs.writeFileSync(outputFile, "chat,input,output\n") // write header to file
-
         let rows = 0
         let chats = Object.keys(client.chats)
+        let encounteredOffset
+        if (offset) {
+            encounteredOffset = false
+        } else {
+            encounteredOffset = true
+            fs.writeFileSync(outputFile, "chat,input,output\n") // write header to file
+        }
 
         const extractChat = function (index) {
             const id = chats[index]
+            if (id.includes("g.us") || !encounteredOffset) { // skip groups
+                if (id === offset) {
+                    encounteredOffset = true
+                }
+                if (index+1 < chats.length) {
+                    return extractChat(index+1)
+                }
+                return
+            }
             console.log("extracting for " + id + "...")
 
             var curInput = ""
@@ -92,5 +106,5 @@ function extractChats (authCreds, outputFile, produceAnonData) {
         console.log("got error: " + error)
     }
 }
-let creds = JSON.parse(fs.readFileSync("auth_info.json"))
-extractChats(creds, "output.csv", true)
+let creds = null//JSON.parse(fs.readFileSync("auth_info.json"))
+extractChats(creds, "output.csv", true, "919820038582@s.whatsapp.net")

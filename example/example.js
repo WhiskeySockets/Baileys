@@ -23,6 +23,10 @@ client.handlers.onConnected = () => {
 client.handlers.presenceUpdated = (id, type) => {
     console.log("presence of " + id + " is " + type)
 }
+// called when your message gets delivered or read
+client.handlers.onMessageStatusChanged = (id, messageID, status) => {
+    console.log(id + " acknowledged message '" + messageID + "' status as " + status)
+}
 // called when you have a pending unread message or recieve a new message
 client.handlers.onUnreadMessage = (m) => { 
     // console.log("recieved message: " + JSON.stringify(m)) // uncomment to see what the raw message looks like
