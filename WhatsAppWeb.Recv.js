@@ -117,8 +117,8 @@ module.exports = function(WhatsAppWeb) {
                                 }
                                 this.handlers.onMessageStatusChanged (json[1].jid, json[1].index, type)
                             }
-                        } else if (json[1] === "message") {
-                            this.onNewMessage( json[2][0][2] ) // handle this new message
+                        } else if (json[0] === "message") {
+                            this.onNewMessage(json[2]) // handle this new message
                         }
                     } else if (json[1].add === "before" || json[1].add === "last") { 
                         /* 
