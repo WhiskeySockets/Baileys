@@ -115,7 +115,9 @@ module.exports = function(WhatsAppWeb) {
                                         type = json[1].type
                                         break
                                 }
-                                this.handlers.onMessageStatusChanged (json[1].jid, json[1].index, type)
+                                if (this.handlers.onMessageStatusChanged) {
+                                    this.handlers.onMessageStatusChanged (json[1].jid, json[1].index, type)
+                                }
                             }
                         } else if (json[0] === "message") {
                             this.onNewMessage(json[2]) // handle this new message
