@@ -54,16 +54,23 @@ client.handlers.onUnreadMessage = (m) => {
     setTimeout(() => client.sendReadReceipt(m.key.remoteJid, m.key.id), 2*1000) // send a read reciept for the message in 2 seconds
     setTimeout(() => client.updatePresence(m.key.remoteJid, WhatsAppWeb.Presence.composing), 2.5*1000) // let them know you're typing in 2.5 seconds
     setTimeout(() => {
+        let promise
         if (Math.random() > 0.5) { // choose at random
-            client.sendTextMessage(m.key.remoteJid, "hello!", m) // send a "hello!" & quote the message recieved
+            promise = client.sendTextMessage(m.key.remoteJid, "hello!", m) // send a "hello!" & quote the message recieved
         } else {
             const buffer = fs.readFileSync("./ma_gif.mp4") // load the gif
             const info = {
                 gif: true,  // the video is a gif
                 caption: "hello!" // the caption
             }
-            client.sendMediaMessage (m.key.remoteJid, buffer, WhatsAppWeb.MessageType.video, info) // send this gif!
+            promise = client.sendMediaMessage (m.key.remoteJid, buffer, WhatsAppWeb.MessageType.video, info) // send this gif!
         }
+        promise.then (([m, q]) => {
+            const success = m.status === 200
+            const messageID = q[2][0][2].key.id
+            console.log("sent message with ID '" + messageID + "' successfully: " + success)
+        })
+
     }, 4*1000) // send after 4 seconds
 }
 

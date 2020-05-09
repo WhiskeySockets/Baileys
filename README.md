@@ -134,7 +134,7 @@ Baileys is super easy to use:
     * To check if a given ID is on WhatsApp
     ``` javascript
         client.isOnWhatsApp ("xyz@c.us")
-        .then ((exists, id) => console.log(id + (exists ? " exists " : " does not exist") + "on WhatsApp"))
+        .then (([exists, id]) => console.log(id + (exists ? " exists " : " does not exist") + "on WhatsApp"))
     ```
     * To query chat history on a group or with someone
     ``` javascript

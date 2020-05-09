@@ -186,13 +186,7 @@ module.exports = function(WhatsAppWeb) {
                 // if this message is responding to a query
                 if (this.callbacks[messageTag]) {
                     const q = this.callbacks[messageTag]
-                    if (q.queryJSON[1] === "exist") {
-                        q.callback(json.status == 200, q.queryJSON[2])
-                    } else if (q.queryJSON[1] === "mediaConn") {
-                        q.callback(json.media_conn)
-                    } else {
-                        q.callback(json)
-                    }
+                    q.callback([json, q.queryJSON])
                     delete this.callbacks[messageTag]
                 }
             } else {

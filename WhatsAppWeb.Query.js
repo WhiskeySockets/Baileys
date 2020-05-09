@@ -4,7 +4,7 @@
 module.exports = function(WhatsAppWeb) {
     // check if given number is registered on WhatsApp
     WhatsAppWeb.prototype.isOnWhatsApp = function (jid) {
-		return this.query(["query", "exist", jid])
+		return this.query(["query", "exist", jid]).then (([m, q]) => [m.status === 200, q[2]])
 	}
 	// check the presence status of a given jid
 	WhatsAppWeb.prototype.requestPresenceUpdate = function (jid) {

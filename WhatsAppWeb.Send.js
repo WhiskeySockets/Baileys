@@ -95,7 +95,8 @@ module.exports = function(WhatsAppWeb) {
 
 		return Utils.generateThumbnail(buffer, mediaType, info)
 		.then (() => this.query(["query", "mediaConn"])) // send a query JSON to obtain the url & auth token to upload our media
-		.then (json => {
+		.then (([json,_]) => {
+			json = json.media_conn
 			const auth = json.auth // the auth token
 			let hostname = "https://" + json.hosts[0].hostname // first hostname available
 			hostname += mediaPathMap[mediaType] + "/" + fileEncSha256B64 // append path
@@ -151,7 +152,7 @@ module.exports = function(WhatsAppWeb) {
 		
 		const json = [
 			"action", 
-			{epoch: this.msgCount.toString(), type: "relay" }, 
+			{epoch: this.msgCount.toString(), type: "relay"}, 
 			[ ["message", null, messageJSON] ] 
 		]
 		return this.query(json, [16, 64])
