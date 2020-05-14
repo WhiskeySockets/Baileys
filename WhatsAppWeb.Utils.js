@@ -104,7 +104,16 @@ module.exports = {
     },
     // generate a buffer with random bytes of the specified length
     randomBytes: function (length) { return Crypto.randomBytes(length) },
-
+    promiseTimeout: function(ms, promise) {
+        // Create a promise that rejects in <ms> milliseconds
+        let timeout = new Promise((_, reject) => {
+            let id = setTimeout(() => {
+                clearTimeout(id)
+                reject('Timed out')
+            }, ms)
+        })
+        return Promise.race([promise, timeout])
+    },
     // whatsapp requires a message tag for every message, we just use the timestamp as one
     generateMessageTag: function () { return new Date().getTime().toString() },
     // generate a random 16 byte client ID

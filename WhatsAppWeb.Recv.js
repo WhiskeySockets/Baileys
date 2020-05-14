@@ -1,17 +1,18 @@
 const Utils = require("./WhatsAppWeb.Utils")
-const HKDF = require("futoin-hkdf")
 const fs = require("fs")
 const fetch = require("node-fetch")
 /*
     Contains the code for recieving messages and forwarding what to do with them to the correct functions
 */
-module.exports = function(WhatsAppWeb) {
-
-    const Status = WhatsAppWeb.Status
-
-    WhatsAppWeb.prototype.onMessageRecieved = function (message) {
-
-        if (message[0] === "!") { // when the first character in the message is an '!', the server is updating on the last seen
+module.exports = {
+    /**
+     * Called when a message is recieved on the socket
+     * @private
+     * @param {string|buffer} message 
+     * @param {function(any)} reject 
+     */
+    onMessageRecieved: function (message) {
+        if (message[0] === "!") { // when the first character in the message is an '!', the server is updating the last seen
 			const timestamp = message.slice(1,message.length)
 			this.lastSeen = new Date( parseInt(timestamp) )
 		} else {
@@ -24,8 +25,7 @@ module.exports = function(WhatsAppWeb) {
             var data = message.slice(commaIndex+1, message.length)
             // get the message tag. 
             // If a query was done, the server will respond with the same message tag we sent the query with
-            const messageTag = message.slice(0, commaIndex) 
-            //console.log(messageTag)
+            const messageTag = message.slice(0, commaIndex).toString ()
             if (data.length === 0) {
                 // got an empty message, usually get one after sending a query with the 128 tag
                 return
@@ -34,14 +34,11 @@ module.exports = function(WhatsAppWeb) {
             let json
             if (data[0] === "[" || data[0] === "{") { // if the first character is a "[", then the data must just be plain JSON array or object
                 json = JSON.parse( data ) // parse the JSON
-                //console.log("JSON: " + data)
-            } else if (this.status === Status.connected) { 
+            } else if (this.authInfo.macKey && this.authInfo.encKey) { 
                 /* 
                     If the data recieved was not a JSON, then it must be an encrypted message.
                     Such a message can only be decrypted if we're connected successfully to the servers & have encryption keys
-                 */
-
-                data = Buffer.from(data, 'binary') // convert the string to a buffer                
+                 */           
                 const checksum = data.slice(0, 32) // the first 32 bytes of the buffer are the HMAC sign of the message
                 data = data.slice(32, data.length) // the actual message
 
@@ -51,224 +48,157 @@ module.exports = function(WhatsAppWeb) {
                     const decrypted = Utils.aesDecrypt(data, this.authInfo.encKey) // decrypt using AES
                     json = this.decoder.read( decrypted ) // decode the binary message into a JSON array
                 } else {
-                    return this.gotError([7, "checksums don't match"])
+                    this.unexpectedDisconnect([7, "checksums don't match"])
+                    return
                 }
-                //console.log("enc_json: " + JSON.stringify(json))
             } else {
-                // if we recieved a message that was encrypted but we weren't conencted, then there must be an error
-                return this.gotError([3, "recieved encrypted message when not connected: " + this.status, message])
+                // if we recieved a message that was encrypted but we don't have the keys, then there must be an error
+                this.unexpectedDisconnect([3, "recieved encrypted message when auth creds not available", message])
+                return
             }
-            
-            // the first item in the recieved JSON, if it exists, it tells us what the message is about
-            switch (json[0]) {
-                case "Conn":
-                    /*
-                        we get this message when a new connection is established, 
-                        whether we're starting a new session or are logging back in.
-                        Sometimes, we also recieve it when one opens their phone
-                     */
-                    this.validateNewConnection(json[1])
-                    return
-                case "Cmd":
-                    /* 
-                        WhatsApp usually sends this when we're trying to restore a closed session,
-                        WhatsApp will challenge us to see whether we still have the keys
-                    */
-                    if (json[1].type === "challenge") { // if it really is a challenge
-                        this.respondToChallenge(json[1].challenge)
-                    }
-                    return
-                case "action":
-                    
-                    /*
-                        this is when some action was taken on a chat or that we recieve a message.
-                        json[1] tells us more about the message, it can be null
-                    */
-                   //console.log (JSON.stringify (json))
-                   if (!json[1]) {  // if json[1] is null
-                        
-                        json = json[2][0] // set json to the first element in json[2]; it contains the relevant part
-                    
-                        if (json[0] === "read") { // if one marked a chat as read or unread on the phone 
-                            const id = json[1].jid.replace("@c.us", "@s.whatsapp.net") // format the sender's ID
-                            if (this.chats[id] && json[1].type === 'false') { // if it was marked unread
-                                this.chats[id].user.count = 1 // up the read count
-                                this.clearUnreadMessages(id) // send notification to the handler about the unread message
-                            } else { // if it was marked read
-                                this.chats[id].user.count = 0 // set the read count to zero
-                            }
-                        }
-        
-                    } else if (json[1].add === "relay") { // if we just recieved a new message sent to us
-                        json = json[2][0]
-                        if (json[0] === "received") {
-                            if (json[1].owner) {
-                                let type
-                                switch (json[1].type) {
-                                    case "read":
-                                        type = WhatsAppWeb.MessageStatus.read
-                                        break
-                                    case "message":
-                                        type = WhatsAppWeb.MessageStatus.received
-                                        break
-                                    default:
-                                        type = json[1].type
-                                        break
-                                }
-                                if (this.handlers.onMessageStatusChanged) {
-                                    this.handlers.onMessageStatusChanged (json[1].jid, json[1].index, type)
-                                }
-                            }
-                        } else if (json[0] === "message") {
-                            this.onNewMessage(json[2]) // handle this new message
-                        }
-                    } else if (json[1].add === "before" || json[1].add === "last") { 
-                        /* 
-                            if we're recieving a full chat log
-                            if json[1].add equals before: if its non-recent messages
-                            if json[1].add equals last: contains the last message of the conversation
-                        */
-
-                        json = json[2] // json[2] is the relevant part    
-                        /* reverse for loop, because messages are sent ordered by most recent
-                           I can order them by recency if I add them in reverse order */          
-                        for (var k = json.length-1;k >= 0;k--) { 
-                            const message = json[k]
-                            const id = message[2].key.remoteJid
-                            if (!this.chats[ id ]) { // if we haven't added this ID before, add them now
-                                this.chats[ id ] = {user: { jid: id, count: 0 }, messages: []}
-                            }
-                            this.chats[id].messages.push(message[2]) // append this message to the array
-                            
-                        }
-                        const id = json[0][2].key.remoteJid // get the ID whose chats we just processed
-                        this.clearUnreadMessages(id) // forward to the handler any any unread messages
-                    }
-                    return
-                case "response":
-                    //console.log(json[1])
-                    // if it is the list of all the people the WhatsApp account has chats with
-                    if (json[1].type === "chat") {
-                        
-                        json[2].forEach (chat => {
-                            if (chat[0] === "chat" && chat[1].jid) {
-                                const jid = chat[1].jid.replace("@c.us", "@s.whatsapp.net") // format ID
-                                this.chats[ jid ] = {
-                                    user: {
-                                        jid: jid, // the ID of the person
-                                        count: chat[1].count}, // number of unread messages we have from them
-                                    messages: [ ] // empty messages, is filled by content in the previous section
-                                }
-                            }
-                        })
-                        return
-                    } else if (json[1].type === "contacts") {
-                        if (this.handlers.gotContact) {
-                            this.handlers.gotContact(json[2])
-                        }
-                        return
-                    } else if (json[1].type === "message") {
-
-                    }
-                    break
-                case "Presence":
-                    if (this.handlers.presenceUpdated) {
-                        this.handlers.presenceUpdated(json[1].id, json[1].type)
-                    }
-                    return
-                default:
-                    break
-            }
-
             /* 
-             if the recieved JSON wasn't an array, then we must have recieved a status for a request we made
+             Check if this is a response to a message we sent
             */
-            if (this.status === Status.connected) {
-                
-                // if this message is responding to a query
-                if (this.callbacks[messageTag]) {
-                    const q = this.callbacks[messageTag]
-                    q.callback([json, q.queryJSON])
-                    delete this.callbacks[messageTag]
+            if (this.callbacks[messageTag]) {
+                const q = this.callbacks[messageTag]
+                //console.log (messageTag + ", " + q.queryJSON)
+                q.callback([json, q.queryJSON])
+                delete this.callbacks[messageTag]
+                return
+            }
+            /* 
+             Check if this is a response to a message we are expecting
+            */
+            if (this.callbacks["function:" + json[0]]) {
+                let callbacks = this.callbacks["function:" + json[0]]
+                var callbacks2
+                var callback
+                for (var key in json[1] ?? {}) {
+                    callbacks2 = callbacks[key + ":" + json[1][key]]
+                    if (callbacks2) { break }
                 }
-            } else {
-                // if we're trying to establish a new connection or are trying to log in
-                switch (json.status) {
-                    case 200: // all good and we can procede to generate a QR code for new connection, or can now login given present auth info
-                        
-                        if (this.status === Status.creatingNewConnection){ // if we're trying to start a connection
-                            if (this.authInfo.encKey && this.authInfo.macKey) { // if we have the info to restore a closed session
-                                this.status = Status.loggingIn
-                                // create the login request
-                                const data = ["admin", "login", this.authInfo.clientToken, this.authInfo.serverToken, this.authInfo.clientID, "takeover"]
-                                this.sendJSON( data )
-                            } else {
-                                this.generateKeysForAuth(json.ref)
-                            }
-                        }
-                        
-                        break
-                    case 401: // if the phone was unpaired
-                        this.close()						
-                        return this.gotError([json.status, "unpaired from phone", message])
-                    case 429: // request to login was denied, don't know why it happens
-                        this.close()
-                        return this.gotError([ json.status, "request denied, try reconnecting", message ])
-                    case 304: // request to generate a new key for a QR code was denied
-                        console.log("reuse previous ref")
-                        return this.gotError([ json.status, "request for new key denied", message ])
-                    default:
-                        return this.gotError([ json.status, "unknown error", message ])
+                if (!callbacks2) {
+                    for (var key in json[1] ?? {}) {
+                        callbacks2 = callbacks[key]
+                        if (callbacks2) { break }
+                    }
+                }
+                if (!callbacks2) {
+                    callbacks2 = callbacks[""]
+                }
+                if (callbacks2) {
+                    callback = callbacks2[ json[2] && json[2][0][0] ]
+                    if (!callback) {
+                        callback = callbacks2[""]
+                    }        
+                }
+                if (callback) {
+                    callback (json)
+                    return
                 }
             }
-        }
-    }
-    // shoot off notifications to the handler that new unread message are available
-    WhatsAppWeb.prototype.clearUnreadMessages = function (id) {
-		const chat = this.chats[id] // get the chat
-        var j = 0
-        let unreadMessages = chat.user.count
-        while (unreadMessages > 0 && chat.messages[j]) {
-            if (!chat.messages[j].key.fromMe && this.handlers.onUnreadMessage) { // only forward if the message is from the sender
-                this.handlers.onUnreadMessage( chat.messages[j] ) // send off the unread message
-                unreadMessages -= 1 // reduce
+            if (this.logUnhandledMessages) {
+                this.log("[Unhandled] " + messageTag + ", " + JSON.stringify(json))
             }
-            j += 1
         }
-    }
-    // when a new message is recieved
-	WhatsAppWeb.prototype.onNewMessage = function (message) {
-
-		if (message && message.message) { // confirm that the message really is valid
-			if (!this.chats[message.key.remoteJid]) { // if we don't have any chats from this ID before, add them to our DB
-				this.chats[message.key.remoteJid] = { 
-					user: { jid: message.key.remoteJid, count: 0 },
-					messages: [ message ]
-				}
-			} else { 
-                // if the chat was already there, then insert the message at the front of the array
-				this.chats[ message.key.remoteJid ].messages.splice(0, 0, message)
-			}
-
-			if (!message.key.fromMe && this.handlers.onUnreadMessage) { // if this message was sent to us, notify the handler
-				this.handlers.onUnreadMessage ( message )
-			}
+    },
+    /**
+     * Type of notification
+     * @param {object} message 
+     * @param {object} [message.message] should be present for actual encrypted messages
+     * @param {object} [message.messageStubType] should be present for group add, leave etc. notifications
+     * @return {[string, string]} [type of notification, specific type of message]
+     */
+    getNotificationType: function (message) {
+        if (message.message) {
+            return ["message", Object.keys(message.message)[0]]
+        } else if (message.messageStubType) {
+            return [WhatsAppWeb.MessageStubTypes[message.messageStubType] , null]
+        } else {
+            return ["unknown", null]
+        }
+    },
+    /**
+     * Register for a callback for a certain function, will cancel automatically after one execution
+     * @param {[string, object, string] | string} parameters name of the function along with some optional specific parameters 
+     * @return {promise<object>} when the function is received
+     */
+    registerCallbackOneTime: function (parameters) {
+        return new Promise ((resolve, reject) => this.registerCallback (parameters, resolve))
+                .then (json => {
+                    this.deregisterCallback (parameters)
+                    return json
+                })
+    },
+    /**
+     * Register for a callback for a certain function
+     * @param {[string, string, string] | string} parameters name of the function along with some optional specific parameters 
+     * @param {function(any)} callback
+     */
+    registerCallback: function (parameters, callback) {
+        if (typeof parameters === "string") {
+            return this.registerCallback ([parameters], callback)
+        }
+        if (!Array.isArray (parameters)) {
+            throw "parameters (" + parameters + ") must be a string or array"
+        }
+        const func = "function:" + parameters[0]
+        const key = parameters[1] ?? ""
+        const key2 = parameters[2] ?? ""
+        if (!this.callbacks[func]) {
+            this.callbacks[func] = {}
+        }
+        if (!this.callbacks[func][key]) {
+            this.callbacks[func][key] = {}
+        }
+        this.callbacks[func][key][key2] = callback
+    },
+    /**
+     * Cancel all further callback events associated with the given parameters
+     * @param {[string, object, string] | string} parameters name of the function along with some optional specific parameters 
+     */
+    deregisterCallback: function (parameters) {
+        if (typeof parameters === "string") {
+            return this.deregisterCallback ([parameters])
+        }
+        if (!Array.isArray (parameters)) {
+            throw "parameters (" + parameters + ") must be a string or array"
+        }
+        const func = "function:" + parameters[0]
+        const key = parameters[1] ?? ""
+        const key2 = parameters[2] ?? ""
+        if (this.callbacks[func] && this.callbacks[func][key] && this.callbacks[func][key][key2]) {
+            delete this.callbacks[func][key][key2]
+            return
+        }
+        this.log ("WARNING: could not find " + JSON.stringify (parameters) + " to deregister")
+    },
+    /**
+     * Wait for a message with a certain tag to be received
+     * @param {string} tag the message tag to await
+     * @param {object} [json] query that was sent
+     * @param {number} [timeoutMs] timeout after which the promise will reject
+     */
+    waitForMessage: function (tag, json, timeoutMs) {
+		const promise = new Promise((resolve, reject) => 
+				this.callbacks[tag] = {queryJSON: json, callback: resolve, errCallback: reject})
+		if (timeoutMs) {
+			return Utils.promiseTimeout (timeoutMs, promise)
+				.catch (err => {
+					delete this.callbacks[tag]
+					throw err
+				})
+		} else {
+			return promise
 		}
-    }
-    
-    // get what type of message it is
-    WhatsAppWeb.prototype.getMessageType = function (message) {
-        return Object.keys(message)[0]
-        /*for (var key in WhatsAppWeb.MessageType) {
-            if (WhatsAppWeb.MessageType[key] === relvantKey) {
-                return key
-            }
-        }*/
-    }
-    
-    // decode a media message (video, image, document, audio) & save it to the given file; returns a promise with metadata
-    WhatsAppWeb.prototype.decodeMediaMessage = function (message, fileName) {
-        
+    },
+    /**
+     * Decode a media message (video, image, document, audio) & save it to the given file
+     * @param {object} message the media message you want to decode
+     * @param {string} filename the name of the file where the media will be saved
+     * @return {Promise<object>} promise once the file is successfully saved, with the metadata
+     */
+    decodeMediaMessage: function (message, filename) {
         const getExtension = function (mimetype) {
             const str = mimetype.split(";")[0].split("/")
             return str[1]
@@ -277,7 +207,7 @@ module.exports = function(WhatsAppWeb) {
             can infer media type from the key in the message
             it is usually written as [mediaType]Message. Eg. imageMessage, audioMessage etc.
         */
-        let type = this.getMessageType(message)
+        let type = Object.keys(message)[0]
         if (!type) {
             return Promise.reject("unknown message type")
         }
@@ -293,31 +223,30 @@ module.exports = function(WhatsAppWeb) {
         const macKey = mediaKeys.macKey
 
         // download the message
-        let p = fetch(message.url).then (res => res.buffer())
-        p = p.then(buffer => {
-            // first part is actual file
-            let file = buffer.slice(0, buffer.length-10)
-            // last 10 bytes is HMAC sign of file
-            let mac = buffer.slice(buffer.length-10, buffer.length)
-            
-            // sign IV+file & check for match with mac
-            let testBuff = Buffer.concat([iv, file])
-            let sign = Utils.hmacSign(testBuff, macKey).slice(0, 10)
-            
-            // our sign should equal the mac
-            if (sign.equals(mac)) {
-                let decrypted = Utils.aesDecryptWithIV(file, cipherKey, iv) // decrypt media
+        return fetch(message.url).then (res => res.buffer())
+            .then(buffer => {
+                // first part is actual file
+                let file = buffer.slice(0, buffer.length-10)
+                // last 10 bytes is HMAC sign of file
+                let mac = buffer.slice(buffer.length-10, buffer.length)
+                
+                // sign IV+file & check for match with mac
+                let testBuff = Buffer.concat([iv, file])
+                let sign = Utils.hmacSign(testBuff, macKey).slice(0, 10)
+                
+                // our sign should equal the mac
+                if (sign.equals(mac)) {
+                    let decrypted = Utils.aesDecryptWithIV(file, cipherKey, iv) // decrypt media
 
-                const trueFileName = fileName + "." + getExtension(message.mimetype)
-                fs.writeFileSync(trueFileName, decrypted)
+                    const trueFileName = filename + "." + getExtension(message.mimetype)
+                    fs.writeFileSync(trueFileName, decrypted)
 
-                message.fileName = trueFileName
-                return message
-            } else {
-                throw "HMAC sign does not match"
-            }
-        })
-        return p
+                    message.filename = trueFileName
+                    return message
+                } else {
+                    throw "HMAC sign does not match"
+                }
+            })
     }
 
 }

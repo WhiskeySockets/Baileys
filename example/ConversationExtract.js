@@ -1,4 +1,4 @@
-const WhatsAppWeb = require("./WhatsAppWeb")
+const WhatsAppWeb = require("../WhatsAppWeb")
 const fs = require("fs")
 
 /** 
@@ -7,11 +7,6 @@ const fs = require("fs")
  * */ 
 function extractChats (authCreds, outputFile, produceAnonData=false, offset=null) {
     let client = new WhatsAppWeb() // instantiate an instance
-    if (authCreds) { // login if creds are present
-        client.login(authCreds)
-    } else { // create a new connection otherwise
-        client.connect()
-    }
     // internal extract function
     const extract = function () {
         let rows = 0
@@ -40,7 +35,7 @@ function extractChats (authCreds, outputFile, produceAnonData=false, offset=null
             var curInput = ""
             var curOutput = ""
             var lastMessage
-            return client.getAllMessages (id, m => {
+            return client.loadEntireConversation (id, m => {
                 var text
                 if (!m.message) { // if message not present, return
                     return
@@ -79,7 +74,7 @@ function extractChats (authCreds, outputFile, produceAnonData=false, offset=null
                 }
 
                 lastMessage = m
-            }, 50, "after") // load from the start, in chunks of 50
+            }, 50, false) // load from the start, in chunks of 50
             .then (() => console.log("finished extraction for " + id))
             .then (() => {
                 if (index+1 < chats.length) {
@@ -91,20 +86,12 @@ function extractChats (authCreds, outputFile, produceAnonData=false, offset=null
         extractChat(0)
         .then (() => {
             console.log("extracted all; total " + rows + " rows")
-            client.disconnect ()
+            client.logout ()
         })
     }
-
-    client.handlers.onConnected = () => {
-        // start extracting 4 seconds after the connection
-        setTimeout(extract, 4000)
-    }   
-    client.handlers.onUnreadMessage = (message) => {
-
-    }
-    client.handlers.onError = (error) => {
-        console.log("got error: " + error)
-    }
+    client.connect (authCreds)
+    .then (() => extract())
+    .catch (err => console.log("got error: " + error))
 }
 let creds = null//JSON.parse(fs.readFileSync("auth_info.json"))
-extractChats(creds, "output.csv", true, "919820038582@s.whatsapp.net")
+extractChats(creds, "output.csv")

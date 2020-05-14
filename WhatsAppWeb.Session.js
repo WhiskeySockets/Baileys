@@ -2,79 +2,171 @@ const WebSocket = require('ws')
 const Curve = require ('curve25519-js')
 const Utils = require('./WhatsAppWeb.Utils')
 const QR = require('qrcode-terminal')
-
 /*
 	Contains the code for connecting to WhatsApp Web, establishing a new session & logging back in
 */
-module.exports = function (WhatsAppWeb) {
-    const Status = WhatsAppWeb.Status
-	
-	// connect to the WhatsApp Web servers
-    WhatsAppWeb.prototype.connect = function () {
-		if (this.status != Status.notConnected) { 
-            return this.gotError([1, "already connected or connecting"])
-        }
-
-		this.status = Status.connecting
-		
-		this.conn = new WebSocket("wss://web.whatsapp.com/ws", {origin: "https://web.whatsapp.com"})
-		
-		this.conn.on('open', () => this.onConnect())
-		this.conn.on('message', (m) => this.onMessageRecieved(m)) // in WhatsAppWeb.Recv.js
-		this.conn.on('error', (error) => { // if there was an error in the WebSocket
-            this.close()
-            this.gotError([20, error])			
-		})
-		this.conn.on('close', () => { })
-	}
-	// once a connection has been successfully established
-    WhatsAppWeb.prototype.onConnect = function () {
-        console.log("connected to WhatsApp Web")
-
-        this.status = Status.creatingNewConnection
-        if (!this.authInfo) { // if no auth info is present, that is, a new session has to be established
-            this.authInfo = { clientID: Utils.generateClientID() } // generate a client ID
-        }
-        
-        const data = ["admin", "init", WhatsAppWeb.version, WhatsAppWeb.browserDescriptions, this.authInfo.clientID, true]
-		
-		this.sendJSON( data )
-	}
-	// restore a previously closed session using the given authentication information
-	WhatsAppWeb.prototype.login = function (authInfo) {
-		this.authInfo = {
-			clientID: authInfo.clientID,
-			serverToken: authInfo.serverToken,
-			clientToken: authInfo.clientToken,
-			encKey: Buffer.from( authInfo.encKey, 'base64' ),
-			macKey: Buffer.from( authInfo.macKey, 'base64' )
+module.exports = {
+	/**
+	 * Connect to WhatsAppWeb
+	 * @param {object} [authInfo] credentials to log back in
+	 * @param {number} [timeoutMs] timeout after which the connect will fail, set to null for an infinite timeout
+	 * @return {promise<[object, any[], any[], any[]]>} returns [userMetaData, chats, contacts, unreadMessages]
+	 */
+    connect: function (authInfo, timeoutMs) {
+		// set authentication credentials if required
+		if (authInfo) {
+			this.authInfo = Object.assign ({}, authInfo) // copy credentials
+			this.authInfo.encKey = Buffer.from(authInfo.encKey, 'base64') // decode from base64
+			this.authInfo.macKey = Buffer.from(authInfo.macKey, 'base64')
 		}
+		// if we're already connected, throw an error
+		if (this.conn) { 
+            return Promise.reject([1, "already connected or connecting"])
+        }
+		this.conn = new WebSocket("wss://web.whatsapp.com/ws", {origin: "https://web.whatsapp.com"})
 
-        this.connect()
-	}
-	// once the QR code is scanned and we can validate our connection,
-	// or we resolved the challenge when logging back in
-    WhatsAppWeb.prototype.validateNewConnection = function (json) {
+		const promise = new Promise ( (resolve, reject) => {
+			this.conn.on('open', () => {
+				this.conn.on('message', (m) => this.onMessageRecieved(m)) // in WhatsAppWeb.Recv.js	
+				this.beginAuthentication ().then (resolve).catch (reject)
+			})
+			this.conn.on('error', error => { // if there was an error in the WebSocket
+				this.close()
+				reject (error)	
+			})
+		})
+		if (timeoutMs) {
+			return Utils.promiseTimeout (timeoutMs, promise)
+			.catch (error => {
+				this.close()
+				throw error
+			})
+		} else {
+			return promise
+		}
+	},
+	/** once a connection has been successfully established
+	 * @private
+	 * @return {promise<object[]>}
+	 */
+    beginAuthentication: function () {
+        this.log("connected to WhatsApp Web")
 
-		const onValidationSuccess = () => {
-			this.userMetaData = {
-				id: json.wid, // one's WhatsApp ID [cc][number]@s.whatsapp.net
-				name: json.pushname, // name set on whatsapp
-				phone: json.phone  // information about the phone one has logged in to
+        if (!this.authInfo.clientID) { // if no auth info is present, that is, a new session has to be established
+            this.authInfo = { clientID: Utils.generateClientID() } // generate a client ID
+		}
+		
+		let chats = []
+		let contacts = []
+		let unreadMessages = []
+		let unreadMap = {}
+        
+        const data = ["admin", "init", this.version, this.browserDescriptions, this.authInfo.clientID, true]
+		return this.query(data)
+		.then (([json, _]) => {
+			// we're trying to establish a new connection or are trying to log in
+			switch (json.status) {
+				case 200: // all good and we can procede to generate a QR code for new connection, or can now login given present auth info
+					if (this.authInfo.encKey && this.authInfo.macKey) { // if we have the info to restore a closed session
+						const data = ["admin", "login", this.authInfo.clientToken, this.authInfo.serverToken, this.authInfo.clientID, "takeover"]
+						return this.query(data, null, null, "s1") // wait for response with tag "s1"
+					} else {
+						return this.generateKeysForAuth(json.ref)
+					}
+				case 401: // if the phone was unpaired				
+					throw [json.status, "unpaired from phone", message]
+				case 429: // request to login was denied, don't know why it happens
+					throw [json.status, "request denied, try reconnecting", message]
+				case 304: // request to generate a new key for a QR code was denied
+					throw [json.status, "request for new key denied", message]
+				default:
+					throw [json.status, "unknown error", message]
 			}
-			this.status = Status.CONNECTED
+		})
+		.then (([json, q]) => {
+			if (json[1] && json[1].challenge) { // if its a challenge request (we get it when logging in)
+				return this.respondToChallenge(json[1].challenge)
+				.then (([json, _]) => { 
+					if (json.status !== 200) { // throw an error if the challenge failed
+						throw [json.status, "unknown error", json] 
+					}
+					return this.waitForMessage ("s2", []) // otherwise wait for the validation message
+				})
+			} else { // otherwise just chain the promise further
+				return [json, q]
+			}
+		})
+		.then (([json, _]) => {
+			this.validateNewConnection (json[1]) 
+			this.log("validated connection successfully")
+			this.lastSeen = new Date() // set last seen to right now
+			this.startKeepAliveRequest() // start sending keep alive requests (keeps the WebSocket alive & updates our last seen)
+		}) // validate the connection
+		.then (() => {
+			this.log ("waiting for chats & contacts") // wait for the message with chats
 
-			this.didConnectSuccessfully()
+			const waitForConvos = new Promise ((resolve, _) => {
+				const chatUpdate = (json) => {
+					const isLast = json[1].last
+					json = json[2]
+					for (var k = json.length-1;k >= 0;k--) { 
+						const message = json[k][2]
+						const jid = message.key.remoteJid.replace ("@s.whatsapp.net", "@c.us")
+						if (!message.key.fromMe && unreadMap[jid] > 0) { // only forward if the message is from the sender
+							unreadMessages.push (message)
+							unreadMap[jid] -= 1 // reduce
+						}
+					}
+					if (isLast) {
+						// de-register the callbacks, so that they don't get called again
+						this.deregisterCallback (["action", "add:last"])
+						this.deregisterCallback (["action", "add:before"])
+						resolve ()
+					}
+				}
+				// wait for actual messages to load, "last" is the most recent message, "before" contains prior messages
+				this.registerCallback (["action", "add:last"], chatUpdate)
+				this.registerCallback (["action", "add:before"], chatUpdate)
+			})
+			const waitForChats = this.registerCallbackOneTime (["response",  "type:chat"]).then (json => {
+				chats = json[2] // chats data (log json to see what it looks like)
+				chats.forEach (chat => unreadMap [chat[1].jid] = chat[1].count) // store the number of unread messages for each sender
+			})
+			const waitForContacts = this.registerCallbackOneTime (["response", "type:contacts"])
+									.then (json => contacts = json[2])
+			// wait for the chats & contacts to load
+			return Promise.all ([waitForConvos, waitForChats, waitForContacts])
+		})
+		.then (() => {
+			// now we're successfully connected
+			this.log("connected successfully")
+			// resolve the promise
+			return [this.userMetaData, chats, contacts, unreadMessages]
+		})
+		.catch (err => {
+			this.close ()
+			throw err
+		})
+	},
+	/**
+	 * Once the QR code is scanned and we can validate our connection, or we resolved the challenge when logging back in
+	 * @private
+	 * @param {object} json 
+	 */
+    validateNewConnection: function (json) {
+		const onValidationSuccess = () => {
+			// set metadata: one's WhatsApp ID [cc][number]@s.whatsapp.net, name on WhatsApp, info about the phone
+			this.userMetaData = {id: json.wid.replace("@c.us", "@s.whatsapp.net"), name: json.pushname, phone: json.phone}
+			return this.userMetaData
 		}
 
         if (json.connected) { // only if we're connected
-            if (!json.secret) { // if we didn't get a secret, that is we don't need it
+            if (!json.secret) { // if we didn't get a secret, we don't need it, we're validated
                 return onValidationSuccess()
             }
 			const secret = Buffer.from(json.secret, 'base64')
-
 			if (secret.length !== 144) {
-				return this.gotError([4, "incorrect secret length: " + secret.length])
+				throw [4, "incorrect secret length: " + secret.length]
 			}
 			// generate shared key from our private key & the secret shared by the server
 			const sharedKey = Curve.sharedKey( this.curveKeys.private, secret.slice(0, 32) )
@@ -87,13 +179,12 @@ module.exports = function (WhatsAppWeb) {
 
 			const hmac = Utils.hmacSign(hmacValidationMessage, hmacValidationKey)
 		
-			if ( hmac.equals(secret.slice(32, 64)) ) { // computed HMAC should equal secret[32:64]
+			if (hmac.equals(secret.slice(32, 64))) { // computed HMAC should equal secret[32:64]
 				// expandedKey[64:] + secret[64:] are the keys, encrypted using AES, that are used to encrypt/decrypt the messages recieved from WhatsApp
 				// they are encrypted using key: expandedKey[0:32]
 				const encryptedAESKeys = Buffer.concat([ expandedKey.slice(64, expandedKey.length), secret.slice(64, secret.length) ])
 				const decryptedKeys = Utils.aesDecrypt(encryptedAESKeys, expandedKey.slice(0,32))
-				
-				// this data is required to restore closed sessions
+				// set the credentials
 				this.authInfo = {
 					encKey: decryptedKeys.slice(0, 32), // first 32 bytes form the key to encrypt/decrypt messages
 					macKey: decryptedKeys.slice(32, 64), // last 32 bytes from the key to sign messages
@@ -101,106 +192,101 @@ module.exports = function (WhatsAppWeb) {
 					serverToken: json.serverToken,
 					clientID: this.authInfo.clientID
 				}
-				onValidationSuccess()
+				return onValidationSuccess()
 			} else { // if the checksums didn't match
-                this.close()
-                this.gotError([5, "HMAC validation failed"])
+                throw [5, "HMAC validation failed"]
 			}
 		} else { // if we didn't get the connected field (usually we get this message when one opens WhatsApp on their phone)
-            if (this.status !== Status.connected) { // and we're not already connected
-                this.close()
-                this.gotError([6, "json connection failed", json])
-            }
+			throw [6, "json connection failed", json]
 		}
-	}
-	/*
-		when logging back in (restoring a previously closed session), WhatsApp may challenge one to check if one still has the encryption keys
-		WhatsApp does that by asking for us to sign a string it sends with our macKey
+	},
+	/** 
+	 * When logging back in (restoring a previously closed session), WhatsApp may challenge one to check if one still has the encryption keys
+	 * WhatsApp does that by asking for us to sign a string it sends with our macKey
+	 * @private
 	*/
-	WhatsAppWeb.prototype.respondToChallenge = function (challenge) {
+	respondToChallenge: function (challenge) {
 		const bytes =  Buffer.from(challenge, 'base64') // decode the base64 encoded challenge string
 		const signed = Utils.hmacSign(bytes, this.authInfo.macKey).toString('base64') // sign the challenge string with our macKey
 		const data = ["admin", "challenge", signed, this.authInfo.serverToken, this.authInfo.clientID] // prepare to send this signed string with the serverToken & clientID
-
-		console.log( "resolving challenge" )
-
-		this.sendJSON( data )
-	}
-	/*
-		when starting a new session, generate a QR code by generating a private/public key pair & the keys the server sends
+		this.log("resolving login challenge")
+		return this.query(data)
+	},
+	/** 
+	 * When starting a new session, generate a QR code by generating a private/public key pair & the keys the server sends
+	 * @private
 	*/
-	WhatsAppWeb.prototype.generateKeysForAuth = function (ref) {
+	generateKeysForAuth: function (ref) {
 		this.curveKeys = Curve.generateKeyPair( Utils.randomBytes(32) )
-
 		const publicKeyStr = Buffer.from(this.curveKeys.public).toString('base64')
-		//console.log ("private key: " + Buffer.from(this.curveKeys.private) )
-
 		let str = ref + "," + publicKeyStr + "," + this.authInfo.clientID
 		
-		console.log("authenticating... Converting to QR: " + str)
+		this.log("authenticating... Converting to QR: " + str)
 
 		QR.generate(str, {small: true})
-    }
-    // send a keep alive request every 25 seconds, server updates & responds with last seen
-    WhatsAppWeb.prototype.startKeepAliveRequest = function () {
+		return this.waitForMessage ("s1", [])
+    },
+    /** 
+	 * Send a keep alive request every X seconds, server updates & responds with last seen 
+	 * @private
+	*/
+    startKeepAliveRequest: function () {
+		const refreshInterval = 20
 		this.keepAliveReq = setInterval(() => {
 			const diff = (new Date().getTime()-this.lastSeen.getTime())/1000
 			/* 
 				check if it's been a suspicious amount of time since the server responded with our last seen
-				could be that the network is down, or the phone got disconnected or unpaired
+				it could be that the network is down, or the phone got unpaired from our connection
 			*/
-			if (diff > 25+10) {
-				console.log("disconnected")
-				
+			if (diff > refreshInterval+5) {
 				this.close()
-				if (this.handlers.onDisconnect)
-						this.handlers.onDisconnect()
-				
+
 				if (this.autoReconnect) { // attempt reconnecting if the user wants us to
-					// keep trying to connect
-					this.reconnectLoop = setInterval( () => {
-						// only connect if we're not already in the prcoess of connectin
-						if (this.status === Status.notConnected) {
-							this.connect() 
-						}
-					}, 10 * 1000)
+					this.log("disconnected unexpectedly, reconnecting...")
+					const reconnectLoop = () => this.connect (null, 25*1000).catch (reconnectLoop)
+					reconnectLoop () // keep trying to connect
+				} else {
+					this.unexpectedDisconnect ("lost connection unexpectedly")
 				}
 			} else { // if its all good, send a keep alive request
-				this.send( "?,," ) 
+				this.send("?,,") 
 			}
-        }, 25 * 1000)
-	}
-	// disconnect from the phone. Your auth credentials become invalid after sending a disconnect request.
-	// use close() if you just want to close the connection
-	WhatsAppWeb.prototype.disconnect = function () {
-		if (this.status === Status.connected) {
-			this.conn.send('goodbye,["admin","Conn","disconnect"]', null, () => {
-                this.close()
-                if (this.handlers.onDisconnect)
-                    this.handlers.onDisconnect()
-			})
-		} else if (this.conn) {
-			this.close()
-		}
-	}
-	// close the connection
-	WhatsAppWeb.prototype.close = function () {
-		this.conn.close()
-		this.conn = null
-        this.status = Status.notConnected
+        }, refreshInterval * 1000)
+	},
+	/**
+	 * Disconnect from the phone. Your auth credentials become invalid after sending a disconnect request.
+	 * Use close() if you just want to close the connection
+	 * @return {Promise<void>}
+	 */
+	logout: function () {
+		return new Promise ( (resolve, reject) => {
+			if (this.conn) {
+				this.conn.send('goodbye,["admin","Conn","disconnect"]', null, () => {
+					this.authInfo = {}
+					resolve ()
+				})
+			} else {
+				throw "You're not even connected, you can't log out"
+			}
+		})
+		.then (() => this.close ())
+	},
+	/** Close the connection to WhatsApp Web */
+	close: function () {
         this.msgCount = 0
-        this.chats = {}
-
+		if (this.conn) {
+			this.conn.close()
+			this.conn = null
+		}
+		const keys = Object.keys (this.callbacks)
+		keys.forEach (key => {
+			if (!key.includes ("function:")) {
+				this.callbacks[key].reject ("connection closed")
+				delete this.callbacks[key]
+			}
+		} )
 		if (this.keepAliveReq) {
 			clearInterval(this.keepAliveReq)
 		}
 	}
-	// request a new QR code from the server (HAVEN'T TESTED THIS OUT YET)
-    WhatsAppWeb.prototype.requestNewQRCode = function () {
-		if (this.status !== Status.creatingNewConnection) { // if we're not in the process of connecting
-			return
-		}
-		this.sendJSON(["admin", "Conn", "reref"])
-	}
-
 }
