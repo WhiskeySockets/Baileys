@@ -73,12 +73,12 @@ module.exports = {
                 let callbacks = this.callbacks["function:" + json[0]]
                 var callbacks2
                 var callback
-                for (var key in json[1] ?? {}) {
+                for (var key in json[1] || {}) {
                     callbacks2 = callbacks[key + ":" + json[1][key]]
                     if (callbacks2) { break }
                 }
                 if (!callbacks2) {
-                    for (var key in json[1] ?? {}) {
+                    for (var key in json[1] || {}) {
                         callbacks2 = callbacks[key]
                         if (callbacks2) { break }
                     }
@@ -110,10 +110,15 @@ module.exports = {
      * @return {[string, string]} [type of notification, specific type of message]
      */
     getNotificationType: function (message) {
+        const MessageStubTypes = {
+            20: "addedToGroup",
+            32: "leftGroup",
+            39: "createdGroup"
+        }
         if (message.message) {
             return ["message", Object.keys(message.message)[0]]
         } else if (message.messageStubType) {
-            return [WhatsAppWeb.MessageStubTypes[message.messageStubType] , null]
+            return [MessageStubTypes[message.messageStubType] , null]
         } else {
             return ["unknown", null]
         }
@@ -143,8 +148,8 @@ module.exports = {
             throw "parameters (" + parameters + ") must be a string or array"
         }
         const func = "function:" + parameters[0]
-        const key = parameters[1] ?? ""
-        const key2 = parameters[2] ?? ""
+        const key = parameters[1] || ""
+        const key2 = parameters[2] || ""
         if (!this.callbacks[func]) {
             this.callbacks[func] = {}
         }
@@ -165,8 +170,8 @@ module.exports = {
             throw "parameters (" + parameters + ") must be a string or array"
         }
         const func = "function:" + parameters[0]
-        const key = parameters[1] ?? ""
-        const key2 = parameters[2] ?? ""
+        const key = parameters[1] || ""
+        const key2 = parameters[2] || ""
         if (this.callbacks[func] && this.callbacks[func][key] && this.callbacks[func][key][key2]) {
             delete this.callbacks[func][key][key2]
             return
@@ -211,7 +216,7 @@ module.exports = {
         if (!type) {
             return Promise.reject("unknown message type")
         }
-        if (type === WhatsAppWeb.MessageType.extendedText || type === WhatsAppWeb.MessageType.text) {
+        if (type === "extendedTextMessage" || type === "conversation") {
             return Promise.reject("cannot decode text message")
         }
 

@@ -73,17 +73,21 @@ module.exports = {
 					} else {
 						return this.generateKeysForAuth(json.ref)
 					}
-				case 401: // if the phone was unpaired				
-					throw [json.status, "unpaired from phone", message]
-				case 429: // request to login was denied, don't know why it happens
-					throw [json.status, "request denied, try reconnecting", message]
-				case 304: // request to generate a new key for a QR code was denied
-					throw [json.status, "request for new key denied", message]
 				default:
-					throw [json.status, "unknown error", message]
+					throw [json.status, "unknown error", json]
 			}
 		})
 		.then (([json, q]) => {
+			switch (json.status) {
+				case 401: // if the phone was unpaired				
+					throw [json.status, "unpaired from phone", json]
+				case 429: // request to login was denied, don't know why it happens
+					throw [json.status, "request denied, try reconnecting", json]
+				case 304: // request to generate a new key for a QR code was denied
+					throw [json.status, "request for new key denied", json]
+				default:
+					break
+			}
 			if (json[1] && json[1].challenge) { // if its a challenge request (we get it when logging in)
 				return this.respondToChallenge(json[1].challenge)
 				.then (([json, _]) => { 

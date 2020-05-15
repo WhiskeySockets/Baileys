@@ -23,7 +23,7 @@ module.exports = {
      * @return {Promise<[object, object]>}
      */
 	getStatus: function (jid) {
-        jid = jid ?? this.userMetaData.id
+        jid = jid || this.userMetaData.id
 		return this.query(["query","Status",jid])
     },
     /**
@@ -32,7 +32,7 @@ module.exports = {
      * @return {Promise<[object, object]>}
      */
 	getProfilePicture: function (jid) {
-        jid = jid ?? this.userMetaData.id
+        jid = jid || this.userMetaData.id
 		return this.query(["query","ProfilePicThumb",jid])
     },
     /**

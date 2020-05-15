@@ -50,7 +50,7 @@ client.connect (authInfo, 30*1000) // connect or timeout in 30 seconds
             // decode, decrypt & save the media. 
             // The extension to the is applied automatically based on the media type
             client.decodeMediaMessage(m.message, "media_in_" + m.key.id)
-            .then (meta => console.log(sender + " sent media, saved at: " + meta.fileName))
+            .then (meta => console.log(sender + " sent media, saved at: " + meta.filename))
             .catch (err => console.log("error in decoding message: " + err))
         }
         // send a reply after 3 seconds

@@ -252,7 +252,7 @@ module.exports = {
 		
 		var buff = Utils.aesEncrypt(binary, this.authInfo.encKey) // encrypt it using AES and our encKey
 		const sign = Utils.hmacSign(buff, this.authInfo.macKey) // sign the message using HMAC and our macKey
-		tag = tag ?? Utils.generateMessageTag()
+		tag = tag || Utils.generateMessageTag()
 		buff = Buffer.concat([ 
 			Buffer.from(tag + ","), // generate & prefix the message tag
 			Buffer.from(tags), // prefix some bytes that tell whatsapp what the message is about
@@ -271,7 +271,7 @@ module.exports = {
 	 */
     sendJSON: function (json, tag) {
 		const str = JSON.stringify(json)
-		tag = tag ?? Utils.generateMessageTag()
+		tag = tag || Utils.generateMessageTag()
 		this.send(tag + "," + str)
 		return tag
 	},
