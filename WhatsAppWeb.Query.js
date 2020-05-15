@@ -69,7 +69,7 @@ module.exports = {
      * @param {boolean} [mostRecentFirst] retreive the most recent message first or retreive from the converation start
      * @return {Promise} Promise of the messages loaded
      */
-    loadConveration: function (jid, count, indexMessage=null, mostRecentFirst=true) {
+    loadConversation: function (jid, count, indexMessage=null, mostRecentFirst=true) {
         // construct JSON
         let json = [
             "query",
@@ -101,7 +101,7 @@ module.exports = {
         var offsetID = null
 
         const loadMessage = () => {
-            return this.getMessages(jid, chunkSize, offsetID, mostRecentFirst)
+            return this.loadConversation(jid, chunkSize, offsetID, mostRecentFirst)
             .then (json => {
                 if (json[2]) {
                     // callback with most recent message first (descending order of date)
@@ -120,10 +120,10 @@ module.exports = {
                     // if there are still more messages
                     if (json[2].length >= chunkSize) {
                         offsetID = lastMessage.key // get the last message
-                        return new Promise ( (resolve, reject) => {
+                        return new Promise ((resolve, reject) => {
                             // send query after 200 ms
                             setTimeout( () => loadMessage().then (resolve).catch(reject), 200)
-                        } )
+                        })
                     }  
                 }
             })

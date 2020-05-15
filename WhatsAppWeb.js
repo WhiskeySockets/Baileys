@@ -237,7 +237,7 @@ WhatsAppWeb.prototype.getChats = query.getChats
 /** Query whether your phone is still connected to this WhatsApp Web */
 WhatsAppWeb.prototype.isPhoneConnected = query.isPhoneConnected
 /** Load the conversation with a group or person */
-WhatsAppWeb.prototype.loadConveration = query.loadConveration
+WhatsAppWeb.prototype.loadConversation = query.loadConversation
 /** Load the entire friggin conversation with a group or person */
 WhatsAppWeb.prototype.loadEntireConversation = query.loadEntireConversation
 /** Create a group */
