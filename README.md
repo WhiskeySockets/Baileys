@@ -159,15 +159,15 @@
         client.loadEntireConversation ("xyz@c.us", (message) => console.log("Loaded message with ID: " + message.key.id))
         .then (() => console.log("queried all messages")) // promise resolves once all messages are retreived
         ```
-    - To get the status of some person/group
+    - To get the status of some person
         ``` javascript
         client.getStatus ("xyz@c.us") // leave empty to get your own
-        .then (json => console.log("status: " + json.status))
+        .then ((json, q) => console.log("status: " + json.status))
         ```
     - To get the display picture of some person/group
         ``` javascript
-        client.getStatus ("xyz@g.us") // leave empty to get your own
-        .then (json => console.log("download profile picture from: " + json.eurl))
+        client.getProfilePicture ("xyz@g.us") // leave empty to get your own
+        .then (([json, q]) => console.log("download profile picture from: " + json.eurl))
         ```
     - To get someone's presence (if they're typing, online)
         ``` javascript
@@ -178,6 +178,11 @@
     
     Of course, replace ``` xyz ``` with an actual ID. Also, append ``` @c.us ``` for individuals & ``` @g.us ``` for groups.
 * __Groups__
+    - To query the metadata of a group
+        ``` javascript
+        client.groupMetadata ("abcd-xyz@g.us")
+        .then (([json, _]) => console.log(json.id + ", title: " + json.subject + ", description: " + json.desc))
+        ```
     - To create a group
         ``` javascript
         client.groupCreate ("My Fab Group", ["abcd@s.whatsapp.net", "efgh@s.whatsapp.net"]) // title & participants

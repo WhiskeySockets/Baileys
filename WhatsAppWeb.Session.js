@@ -1,7 +1,6 @@
 const WebSocket = require('ws')
 const Curve = require ('curve25519-js')
 const Utils = require('./WhatsAppWeb.Utils')
-const QR = require('qrcode-terminal')
 /*
 	Contains the code for connecting to WhatsApp Web, establishing a new session & logging back in
 */
@@ -221,13 +220,9 @@ module.exports = {
 	 * @private
 	*/
 	generateKeysForAuth: function (ref) {
-		this.curveKeys = Curve.generateKeyPair( Utils.randomBytes(32) )
-		const publicKeyStr = Buffer.from(this.curveKeys.public).toString('base64')
-		let str = ref + "," + publicKeyStr + "," + this.authInfo.clientID
-		
-		this.log("authenticating... Converting to QR: " + str)
-
-		QR.generate(str, {small: true})
+		this.curveKeys = Curve.generateKeyPair(Utils.randomBytes(32))
+		const phoneAuthInfo = [ref, Buffer.from(this.curveKeys.public).toString('base64'), this.authInfo.clientID]
+		this.onReadyForPhoneAuthentication (phoneAuthInfo)
 		return this.waitForMessage ("s1", [])
     },
     /** 

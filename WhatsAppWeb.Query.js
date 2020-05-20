@@ -18,7 +18,7 @@ module.exports = {
 		return this.query(["action","presence","subscribe",jid])
     },
     /**
-     * Query the status of the person
+     * Query the status of the person (see groupMetadata() for groups)
      * @param {string} [jid] the whatsapp ID of the person
      * @return {Promise<[object, object]>}
      */
@@ -130,6 +130,14 @@ module.exports = {
         } 
 
         return loadMessage()
+    },
+    /**
+     * Get the metadata of the group
+     * @param {string} jid the ID of the group
+     * @return {Promise<[object, object]>}
+     */
+    groupMetadata: function (jid) {
+		return this.query (["query", "GroupMetadata", jid])
     },
     /**
      * Create a group

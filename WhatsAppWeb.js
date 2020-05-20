@@ -1,4 +1,5 @@
 const BinaryCoding = require('./binary_coding/binary_encoder.js')
+const QR = require('qrcode-terminal')
 
 class WhatsAppWeb {
 	/** 
@@ -27,7 +28,8 @@ class WhatsAppWeb {
 		image: "imageMessage",
 		video: "videoMessage",
 		sticker: "stickerMessage",
-		document: "documentMessage",
+        document: "documentMessage",
+        audio: "audioMessage",
 		extendedText: "extendedTextMessage"
     }
     /** 
@@ -66,8 +68,14 @@ class WhatsAppWeb {
         /** Log messages that are not handled, so you can debug & see what custom stuff you can implement */
         this.logUnhandledMessages = false
         /** @private */
-		this.callbacks = {}
+        this.callbacks = {}
+        
+        /**
+         * What to do when you need the phone to authenticate the connection (generate QR code by default)
+         */
+        this.onReadyForPhoneAuthentication = this.generateQRCode
 
+        this.onRe
 		this.encoder = new BinaryCoding.Encoder()
         this.decoder = new BinaryCoding.Decoder()
         
@@ -144,7 +152,13 @@ class WhatsAppWeb {
 			encKey: this.authInfo.encKey.toString('base64'),
 			macKey: this.authInfo.macKey.toString('base64')
         }        
-	}
+    }
+    /** Generate a QR code from the ref & the curve public key. This is scanned by the phone */
+    generateQRCode ([ref, publicKey, clientID]) {
+        const str = ref + "," + publicKey + "," + clientID
+		QR.generate(str, {small: true})
+    }
+
 	log (text) {
 		console.log ("[Baileys] " + text)
 	}
@@ -226,7 +240,7 @@ const query = require("./WhatsAppWeb.Query")
 WhatsAppWeb.prototype.isOnWhatsApp = query.isOnWhatsApp
 /** Check the presence of a given person (online, offline) */
 WhatsAppWeb.prototype.requestPresenceUpdate = query.requestPresenceUpdate
-/** Query the status of the person */
+/** Query the status of the person (see groupMetadata() for groups) */
 WhatsAppWeb.prototype.getStatus = query.getStatus
 /** Get the URL to download the profile picture of a person/group */
 WhatsAppWeb.prototype.getProfilePicture = query.getProfilePicture
@@ -240,6 +254,8 @@ WhatsAppWeb.prototype.isPhoneConnected = query.isPhoneConnected
 WhatsAppWeb.prototype.loadConversation = query.loadConversation
 /** Load the entire friggin conversation with a group or person */
 WhatsAppWeb.prototype.loadEntireConversation = query.loadEntireConversation
+/** Get the metadata of the group */
+WhatsAppWeb.prototype.groupMetadata = query.groupMetadata
 /** Create a group */
 WhatsAppWeb.prototype.groupCreate = query.groupCreate
 /** Leave a group */
@@ -252,5 +268,6 @@ WhatsAppWeb.prototype.groupRemove = query.groupRemove
 WhatsAppWeb.prototype.groupMakeAdmin = query.groupMakeAdmin
 /** Get the invite code of the group */
 WhatsAppWeb.prototype.groupInviteCode = query.groupInviteCode
+
 
 module.exports = WhatsAppWeb

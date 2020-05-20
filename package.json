@@ -1,8 +1,10 @@
 {
   "name": "baileys",
-  "version": "1.0.0",
-  "description": "Whatsapp Web API",
+  "version": "1.0.2",
+  "description": "WhatsApp Web API",
   "main": "WhatsAppWeb.js",
+  "homepage": "https://github.com/adiwajshing/Baileys",
+  "keywords": ["whatsapp", "js-whatsapp", "reverse engineer", "whatsapp api"],
   "scripts": {
     "test": "node test.js"
   },
