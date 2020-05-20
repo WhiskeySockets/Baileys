@@ -62,14 +62,15 @@
         ``` 
     - Send text messages & quote another message using
         ``` javascript 
-            client.sendTextMessage(id, "oh hello there", quotedMessage) 
+            const options = {quoted: quotedMessage}
+            client.sendTextMessage(id, "oh hello there", options) 
         ``` 
         ``` quotedMessage ``` is a message object
     - Send a media (image, video, sticker, pdf) message using
         ``` javascript
             const buffer = fs.readFileSync("example/ma_gif.mp4") // load some gif
-            const info = {gif: true, caption: "hello!"} // some metadata & caption
-            client.sendMediaMessage(id, buffer, WhatsAppWeb.MessageType.video, info)
+            const options = {gif: true, caption: "hello!"} // some metadata & caption
+            client.sendMediaMessage(id, buffer, WhatsAppWeb.MessageType.video, options)
         ```
         - The thumbnail can be generated automatically for images & stickers. Though, to automatically generate thumbnails for videos, you need to have ``` ffmpeg ``` installed on your system
         - ```mediaBuffer``` is just a Buffer containing the contents of the media you want to send
@@ -82,23 +83,25 @@
                     WhatsAppWeb.MessageType.sticker // a sticker message
                 ]
             ```
-        - ```info``` is a JSON object, providing some information about the media. It can have the following __optional__ values:
-            ``` javascript
-                info = {
-                    caption: "hello there!", // the caption to send with the media (cannot be sent with stickers though)
-                    thumbnail: null, /* has to be a base 64 encoded JPEG if you want to send a custom thumb, 
-                                        or set to null if you don't want to send a thumbnail.
-                                        Do not enter this field if you want to automatically generate a thumb
-                                    */
-                    mimetype: "application/pdf", /* specify the type of media (optional for all media types except documents),
-                                                    for pdf files => set to "application/pdf",
-                                                    for txt files => set to "application/txt"
-                                                    etc.
-                                                */
-                    gif: true // only applicable to video messages, if the video should be treated as a GIF
-                }
-            ```
         - Tested formats: png, jpeg, webp (sticker), mp4, ogg
+    ```options``` is a JSON object, providing some information about the message. It can have the following __optional__ values:
+    ``` javascript
+        info = {
+            caption: "hello there!", // (for media messages) the caption to send with the media (cannot be sent with stickers though)
+            thumbnail: null, /*  (for media messages) has to be a base 64 encoded JPEG if you want to send a custom thumb, 
+                                or set to null if you don't want to send a thumbnail.
+                                Do not enter this field if you want to automatically generate a thumb
+                            */
+            mimetype: "application/pdf", /* (for media messages) specify the type of media (optional for all media types except documents),
+                                            for pdf files => set to "application/pdf",
+                                            for txt files => set to "application/txt"
+                                            etc.
+                                        */
+            gif: true, // (for video messages) if the video should be treated as a GIF
+            quoted: quotedMessage, // the message you want to quote (can used with sending all kinds of messages now)
+            timestamp: Date() // optional, if you want to manually set the timestamp of the message
+        }
+    ```
     ``` id ``` is the WhatsApp id of the person or group you're sending the message to. 
     It must be in the format ```[country code][phone number]@s.whatsapp.net```, for example ```+19999999999@s.whatsapp.net``` for people. For groups, it must be in the format ``` 123456789-123345@g.us ```.
 * __Sending Read Receipts__

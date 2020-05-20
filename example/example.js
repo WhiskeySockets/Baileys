@@ -59,15 +59,14 @@ client.connect (authInfo, 30*1000) // connect or timeout in 30 seconds
             .then (() => client.updatePresence(m.key.remoteJid, WhatsAppWeb.Presence.available)) // tell them we're available
             .then (() => client.updatePresence(m.key.remoteJid, WhatsAppWeb.Presence.composing)) // tell them we're composing
             .then (() => { // send the message
-                if (Math.random() > 0.5) { // choose at random
-                    return client.sendTextMessage(m.key.remoteJid, "hello!", m) // send a "hello!" & quote the message recieved
+                let options = {quoted: m}
+                if (Math.random() > 0.7) { // choose at random
+                    return client.sendTextMessage(m.key.remoteJid, "hello!", options) // send a "hello!" & quote the message recieved
                 } else {
-                    const buffer = fs.readFileSync("./ma_gif.mp4") // load the gif
-                    const info = {
-                        gif: true,  // the video is a gif
-                        caption: "hello!" // the caption
-                    }
-                    return client.sendMediaMessage (m.key.remoteJid, buffer, WhatsAppWeb.MessageType.video, info) // send this gif!
+                    const buffer = fs.readFileSync("example/ma_gif.mp4") // load the gif
+                    options.gif = true // the video is a gif
+                    options.caption = "hello!" // the caption
+                    return client.sendMediaMessage (m.key.remoteJid, buffer, WhatsAppWeb.MessageType.video, options) // send this gif!
                 }
             })
             .then (([m, q]) => { // check if it went successfully

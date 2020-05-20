@@ -124,12 +124,14 @@ module.exports = {
 						// de-register the callbacks, so that they don't get called again
 						this.deregisterCallback (["action", "add:last"])
 						this.deregisterCallback (["action", "add:before"])
+						this.deregisterCallback (["action", "add:unread"])
 						resolve ()
 					}
 				}
 				// wait for actual messages to load, "last" is the most recent message, "before" contains prior messages
 				this.registerCallback (["action", "add:last"], chatUpdate)
 				this.registerCallback (["action", "add:before"], chatUpdate)
+				this.registerCallback (["action", "add:unread"], chatUpdate)
 			})
 			const waitForChats = this.registerCallbackOneTime (["response",  "type:chat"]).then (json => {
 				chats = json[2] // chats data (log json to see what it looks like)

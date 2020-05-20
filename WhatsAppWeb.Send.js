@@ -36,46 +36,38 @@ module.exports = {
 	 * Send a text message
 	 * @param {string} id the JID of the person/group you're sending the message to
 	 * @param {string} txt the actual text of the message
-	 * @param {object} [quoted] the message you may wanna quote along with this message
-	 * @param {Date} [timestamp] optionally set the timestamp of the message in Unix time MS 
+	 * @param {object} [options] some additional options
+	 * @param {object} [options.quoted] the message you may wanna quote along with this message
+	 * @param {Date} [options.timestamp] optionally set the timestamp of the message in Unix time MS 
 	 * @return {Promise<[object, object]>}
 	 */
-    sendTextMessage: function (id, txt, quoted, timestamp) {
+    sendTextMessage: function (id, txt, options) {
 		if (typeof txt !== "string") {
 			return Promise.reject("expected text to be a string")
 		}
 		let message
-		if (quoted) {
-			message = {
-				extendedTextMessage: {
-					text: txt,
-					contextInfo: {
-						participant: quoted.key.remoteJid,
-						stanzaId: quoted.key.id,
-						quotedMessage: quoted.message
-					}
-				}
-			}
+		if (options.quoted) {
+			message = {extendedTextMessage: { text: txt }}
 		} else {
 			message = {conversation: txt}
 		}
-		
-		return this.sendMessage(id, message, timestamp)
+		return this.sendMessage(id, message, options)
 	},
 	/**
 	 * Send a media message
 	 * @param {string} id the JID of the person/group you're sending the message to
 	 * @param {Buffer} buffer the buffer of the actual media you're sending
 	 * @param {string} mediaType the type of media, can be one of [imageMessage, documentMessage, stickerMessage, videoMessage]
-	 * @param {Object} [info] object to hold some metadata or caption about the media
-	 * @param {string} [info.caption] caption to go along with the media
-	 * @param {string} [info.thumbnail] base64 encoded thumbnail for the media
-	 * @param {string} [info.mimetype] specify the Mimetype of the media (required for document messages)
-	 * @param {boolean} [info.gif] whether the media is a gif or not, only valid for video messages
-	 * @param {Date} [timestamp] optionally set the timestamp of the message in Unix time MS 
+	 * @param {Object} [options] additional information about the message
+	 * @param {string} [options.caption] caption to go along with the media
+	 * @param {string} [options.thumbnail] base64 encoded thumbnail for the media
+	 * @param {string} [options.mimetype] specify the Mimetype of the media (required for document messages)
+	 * @param {boolean} [options.gif] whether the media is a gif or not, only valid for video messages
+	 * @param {object} [options.quoted] the message you may wanna quote along with this message
+	 * @param {Date} [options.timestamp] optionally set the timestamp of the message in Unix time MS 
 	 * @return {Promise<[object, object]>}
 	 */
-	sendMediaMessage: function (id, buffer, mediaType, info, timestamp) {
+	sendMediaMessage: function (id, buffer, mediaType, options) {
 		// path to upload the media 
 		const mediaPathMap = {
 			imageMessage: "/mms/image",
@@ -92,20 +84,20 @@ module.exports = {
 			audioMessage: "audio/ogg; codecs=opus",
 			stickerMessage: "image/webp"
 		}
-		if (!info) {
-			info = {}
+		if (!options) {
+			options = {}
 		}
 		if (mediaType === "conversation" || mediaType === "extendedTextMessage") {
 			return Promise.reject("use sendTextMessage() to send text messages")
 		}
-		if (mediaType === "documentMessage" && !info.mimetype) {
+		if (mediaType === "documentMessage" && !options.mimetype) {
 			return Promise.reject("mimetype required to send a document")
 		}
-		if (mediaType === "stickerMessage" && info.caption) {
+		if (mediaType === "stickerMessage" && options.caption) {
 			return Promise.reject("cannot send a caption with a sticker")
 		}
-		if (!info.mimetype) {
-			info.mimetype = defaultMimetypeMap[mediaType]
+		if (!options.mimetype) {
+			options.mimetype = defaultMimetypeMap[mediaType]
 		}
 
 		// generate a media key
@@ -118,7 +110,7 @@ module.exports = {
 		// url safe Base64 encode the SHA256 hash of the body
 		const fileEncSha256B64 = Utils.sha256(body).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/\=+$/, '')
 
-		return Utils.generateThumbnail(buffer, mediaType, info)
+		return Utils.generateThumbnail(buffer, mediaType, options)
 		.then (() => this.query(["query", "mediaConn"])) // send a query JSON to obtain the url & auth token to upload our media
 		.then (([json,_]) => {
 			json = json.media_conn
@@ -141,19 +133,19 @@ module.exports = {
 		.then (url => {
 			let message = {}
 			message[mediaType] = {
-				caption: info.caption,
+				caption: options.caption,
 				url: url,
 				mediaKey: mediaKey.toString('base64'),
-				mimetype: info.mimetype,
+				mimetype: options.mimetype,
 				fileEncSha256: fileEncSha256B64,
 				fileSha256: fileSha256.toString('base64'),
 				fileLength: buffer.length,
-				jpegThumbnail: info.thumbnail
+				jpegThumbnail: options.thumbnail
 			}
-			if (mediaType === "videoMessage" && info.gif) {
-				message[mediaType].gifPlayback = info.gif
+			if (mediaType === "videoMessage" && options.gif) {
+				message[mediaType].gifPlayback = options.gif
 			}
-			return this.sendMessage(id, message, timestamp)
+			return this.sendMessage(id, message, options)
 		})
 	},
 	/**
@@ -161,14 +153,33 @@ module.exports = {
 	 * @private
 	 * @param {string} id who to send the message to
 	 * @param {object} message like, the message
-	 * @param {Date} [timestamp] timestamp for the message
+	 * @param {object} [options] some additional options
+	 * @param {object} [options.quoted] the message you may wanna quote along with this message
+	 * @param {Date} [options.timestamp] timestamp for the message
 	 * @return {Promise<[object, object]>} array of the recieved JSON & the query JSON
 	 */
-	sendMessage: function (id, message, timestamp) {
-		if (!timestamp) { // if no timestamp was provided,
-			timestamp = new Date() // set timestamp to now
+	sendMessage: function (id, message, options) {
+		if (!options.timestamp) { // if no timestamp was provided,
+			options.timestamp = new Date() // set timestamp to now
 		}
-		timestamp = timestamp.getTime()/1000
+		const timestamp = options.timestamp.getTime()/1000
+		const quoted = options.quoted
+		if (quoted) {
+			const key = Object.keys(message)[0]
+			const participant = quoted.key.participant || quoted.key.remoteJid
+			message[key].contextInfo = {
+				participant: participant,
+				stanzaId: quoted.key.id,
+				quotedMessage: quoted.message
+			} 
+			// if a participant is quoted, then it must be a group
+			// hence, remoteJid of group must also be entered
+			if (quoted.key.participant) {
+				message[key].contextInfo.remoteJid = quoted.key.remoteJid
+			}
+		}
+		console.log(JSON.stringify(quoted))
+		console.log(JSON.stringify(message))
 
 		let messageJSON = {
 			key: {
@@ -180,13 +191,15 @@ module.exports = {
 			messageTimestamp: timestamp,
 			status: "ERROR"
 		}
+		
 		if (id.includes ("@g.us")) {
 			messageJSON.participant = this.userMetaData.id
 		}
 		const json = [
 			"action", 
 			{epoch: this.msgCount.toString(), type: "relay"}, 
-			[ ["message", null, messageJSON] ]]
+			[ ["message", null, messageJSON] ]
+		]
 		return this.query(json, [16, 128], null, messageJSON.key.id)
 	},
 	/**
