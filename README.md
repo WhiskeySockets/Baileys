@@ -84,6 +84,7 @@
                 ]
             ```
         - Tested formats: png, jpeg, webp (sticker), mp4, ogg
+
     ```options``` is a JSON object, providing some information about the message. It can have the following __optional__ values:
     ``` javascript
         info = {
