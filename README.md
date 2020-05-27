@@ -11,7 +11,7 @@
     Create and cd to your NPM project directory and then in terminal, write: ``` npm install baileys ```
     Then import in your code using:
     ``` javascript 
-        const WhatsAppWeb = require('Baileys') 
+        const WhatsAppWeb = require('baileys') 
     ```
 * __Connecting__
     ``` javascript
