@@ -113,7 +113,7 @@ class WhatsAppWeb {
                 participant: json.participant,
                 timestamp: new Date (json.t*1000),
                 ids: ids,
-                type: ackTypes[json.ack-1] ?? "unknown (" + json.ack + ")"
+                type: ackTypes[json.ack-1] || "unknown (" + json.ack + ")"
             }
             callback (data)
         }
