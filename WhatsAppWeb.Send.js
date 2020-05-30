@@ -41,7 +41,7 @@ module.exports = {
 	 * @param {Date} [options.timestamp] optionally set the timestamp of the message in Unix time MS 
 	 * @return {Promise<[object, object]>}
 	 */
-    sendTextMessage: function (id, txt, options) {
+    sendTextMessage: function (id, txt, options={}) {
 		if (typeof txt !== "string") {
 			return Promise.reject("expected text to be a string")
 		}
@@ -67,7 +67,7 @@ module.exports = {
 	 * @param {Date} [options.timestamp] optionally set the timestamp of the message in Unix time MS 
 	 * @return {Promise<[object, object]>}
 	 */
-	sendMediaMessage: function (id, buffer, mediaType, options) {
+	sendMediaMessage: function (id, buffer, mediaType, options={}) {
 		// path to upload the media 
 		const mediaPathMap = {
 			imageMessage: "/mms/image",
