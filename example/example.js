@@ -36,16 +36,32 @@ client.connect (authInfo, 30*1000) // connect or timeout in 30 seconds
         if (notificationType !== "message") {
             return
         }
+
         let sender = m.key.remoteJid
         if (m.key.participant) { // participant exists if the message is in a group 
             sender += " ("+m.key.participant+")"
         }
         if (messageType === WhatsAppWeb.MessageType.text) {
+
             const text =  m.message.conversation
             console.log (sender + " sent: " + text)
         } else if (messageType === WhatsAppWeb.MessageType.extendedText) {
+
             const text =  m.message.extendedTextMessage.text
             console.log (sender + " sent: " + text + " and quoted message: " + JSON.stringify(m.message))
+        } else if (messageType === WhatsAppWeb.MessageType.contact) {
+
+            const contact = m.message.contactMessage
+            console.log (sender + " sent contact (" + contact.displayName + "): " + contact.vcard)
+        } else if (messageType === WhatsAppWeb.MessageType.location || messageType === WhatsAppWeb.MessageType.liveLocation) {
+
+            const locMessage = m.message[messageType]
+            console.log (sender + " sent location (lat: " + locMessage.degreesLatitude + ", long: " + locMessage.degreesLongitude + "), saving thumbnail...")
+            client.decodeMediaMessage(m.message, "loc_thumb_in_" + m.key.id)
+
+            if (messageType === WhatsAppWeb.MessageType.liveLocation) {
+                console.log (sender + " sent live location for duration: " + m.duration/60 + " minutes, seq number: " + locMessage.sequenceNumber)
+            }
         } else { // if it is a media (audio, image, video) message
             // decode, decrypt & save the media. 
             // The extension to the is applied automatically based on the media type
@@ -60,8 +76,11 @@ client.connect (authInfo, 30*1000) // connect or timeout in 30 seconds
             .then (() => client.updatePresence(m.key.remoteJid, WhatsAppWeb.Presence.composing)) // tell them we're composing
             .then (() => { // send the message
                 let options = {quoted: m}
-                if (Math.random() > 0.7) { // choose at random
+                const rand = Math.random()
+                if (rand > 0.66) { // choose at random
                     return client.sendTextMessage(m.key.remoteJid, "hello!", options) // send a "hello!" & quote the message recieved
+                } else if (rand > 0.33) { // choose at random
+                    return client.sendLocationMessage(m.key.remoteJid, 32.123123, 12.12123123) // send a random location lol
                 } else {
                     const buffer = fs.readFileSync("example/ma_gif.mp4") // load the gif
                     options.gif = true // the video is a gif

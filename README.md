@@ -33,7 +33,7 @@
         client.setOnUnreadMessage (m => {
             const [notificationType, messageType] = client.getNotificationType(m) // get what type of notification it is -- message, group add notification etc.
             console.log("got notification of type: " + notificationType) // message, groupAdd, groupLeave
-            console.log("message type: " + messageType) // conversation, imageMessage, videoMessage etc.
+            console.log("message type: " + messageType) // conversation, imageMessage, videoMessage, contactMessage etc.
         })
     - Called when you recieve an update on someone's presence, they went offline or online
         ``` javascript 
@@ -66,6 +66,21 @@
             client.sendTextMessage(id, "oh hello there", options) 
         ``` 
         ``` quotedMessage ``` is a message object
+    - Send a location using
+        ``` javascript
+            client.sendLocationMessage(id, 24.121231, 55.1121221) // the latitude, longitude of the location
+        ```
+    - Send a contact using
+        ``` javascript
+            // format the contact as a VCARD
+            const vcard = 'BEGIN:VCARD\n' // metadata of the contact card
+                        + 'VERSION:3.0\n' 
+                        + 'FN:Jeff Singh\n' // full name
+                        + 'ORG:Ashoka Uni;\n' // the organization of the contact
+                        + 'TEL;type=CELL;type=VOICE;waid=911234567890:+91 12345 67890\n' // WhatsApp ID + phone number
+                        + 'END:VCARD'
+            client.sendContactMessage(id, "Jeff", vcard) 
+        ```
     - Send a media (image, video, sticker, pdf) message using
         ``` javascript
             const buffer = fs.readFileSync("example/ma_gif.mp4") // load some gif
@@ -84,22 +99,21 @@
                 ]
             ```
         - Tested formats: png, jpeg, webp (sticker), mp4, ogg
-
     ```options``` is a JSON object, providing some information about the message. It can have the following __optional__ values:
     ``` javascript
         info = {
             caption: "hello there!", // (for media messages) the caption to send with the media (cannot be sent with stickers though)
-            thumbnail: null, /*  (for media messages) has to be a base 64 encoded JPEG if you want to send a custom thumb, 
-                                or set to null if you don't want to send a thumbnail.
-                                Do not enter this field if you want to automatically generate a thumb
-                            */
+            thumbnail: "23GD#4/==", /*  (for location & media messages) has to be a base 64 encoded JPEG if you want to send a custom thumb, 
+                                        or set to null if you don't want to send a thumbnail.
+                                        Do not enter this field if you want to automatically generate a thumb
+                                    */
             mimetype: "application/pdf", /* (for media messages) specify the type of media (optional for all media types except documents),
                                             for pdf files => set to "application/pdf",
                                             for txt files => set to "application/txt"
                                             etc.
                                         */
             gif: true, // (for video messages) if the video should be treated as a GIF
-            quoted: quotedMessage, // the message you want to quote (can used with sending all kinds of messages now)
+            quoted: quotedMessage, // the message you want to quote (can be used with sending all kinds of messages)
             timestamp: Date() // optional, if you want to manually set the timestamp of the message
         }
     ```

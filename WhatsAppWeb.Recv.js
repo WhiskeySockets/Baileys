@@ -130,7 +130,7 @@ module.exports = {
      */
     registerCallbackOneTime: function (parameters) {
         return new Promise ((resolve, reject) => this.registerCallback (parameters, resolve))
-                .then (json => {
+                .finally (json => {
                     this.deregisterCallback (parameters)
                     return json
                 })
@@ -201,23 +201,25 @@ module.exports = {
      * Decode a media message (video, image, document, audio) & save it to the given file
      * @param {object} message the media message you want to decode
      * @param {string} filename the name of the file where the media will be saved
-     * @return {Promise<object>} promise once the file is successfully saved, with the metadata
+     * @return {Promise<Object>} promise once the file is successfully saved, with the metadata
      */
-    decodeMediaMessage: function (message, filename) {
-        const getExtension = function (mimetype) {
-            const str = mimetype.split(";")[0].split("/")
-            return str[1]
-        }
+    decodeMediaMessage: async function (message, filename) {
+        const getExtension = (mimetype) => mimetype.split(";")[0].split("/")[1]
+        
         /* 
-            can infer media type from the key in the message
+            One can infer media type from the key in the message
             it is usually written as [mediaType]Message. Eg. imageMessage, audioMessage etc.
         */
         let type = Object.keys(message)[0]
         if (!type) {
-            return Promise.reject("unknown message type")
+            throw "unknown message type"
         }
         if (type === "extendedTextMessage" || type === "conversation") {
-            return Promise.reject("cannot decode text message")
+            throw "cannot decode text message"
+        }
+        if (type === "locationMessage" || type === "liveLocationMessage") {
+            fs.writeFileSync (filename + ".jpeg", message[type].jpegThumbnail)
+            return {filename: filename + ".jpeg"}
         }
 
         message = message[type]
@@ -228,30 +230,27 @@ module.exports = {
         const macKey = mediaKeys.macKey
 
         // download the message
-        return fetch(message.url).then (res => res.buffer())
-            .then(buffer => {
-                // first part is actual file
-                let file = buffer.slice(0, buffer.length-10)
-                // last 10 bytes is HMAC sign of file
-                let mac = buffer.slice(buffer.length-10, buffer.length)
-                
-                // sign IV+file & check for match with mac
-                let testBuff = Buffer.concat([iv, file])
-                let sign = Utils.hmacSign(testBuff, macKey).slice(0, 10)
-                
-                // our sign should equal the mac
-                if (sign.equals(mac)) {
-                    let decrypted = Utils.aesDecryptWithIV(file, cipherKey, iv) // decrypt media
+        const buffer = await fetch(message.url).buffer()
+        // first part is actual file
+        let file = buffer.slice(0, buffer.length-10)
+        // last 10 bytes is HMAC sign of file
+        let mac = buffer.slice(buffer.length-10, buffer.length)
+        
+        // sign IV+file & check for match with mac
+        let testBuff = Buffer.concat([iv, file])
+        let sign = Utils.hmacSign(testBuff, macKey).slice(0, 10)
+        // our sign should equal the mac
+        if (sign.equals(mac)) {
+            let decrypted = Utils.aesDecryptWithIV(file, cipherKey, iv) // decrypt media
 
-                    const trueFileName = filename + "." + getExtension(message.mimetype)
-                    fs.writeFileSync(trueFileName, decrypted)
+            const trueFileName = filename + "." + getExtension(message.mimetype)
+            fs.writeFileSync(trueFileName, decrypted)
 
-                    message.filename = trueFileName
-                    return message
-                } else {
-                    throw "HMAC sign does not match"
-                }
-            })
+            message.filename = trueFileName
+            return message
+        } else {
+            throw "HMAC sign does not match"
+        }
     }
 
 }

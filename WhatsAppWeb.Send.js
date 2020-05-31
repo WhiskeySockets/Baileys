@@ -3,6 +3,15 @@ const fetch = require('node-fetch')
 /* 
 	Contains the code for sending stuff to WhatsApp 
 */
+/**
+ * @typedef {Object} MessageOptions
+ * @property {Object} [quoted] the message you may wanna quote along with this message
+ * @property {Date} [timestamp] optionally set the timestamp of the message in Unix time MS 
+ * @property {string} [caption] (for media messages) caption to go along with the media
+ * @property {string} [thumbnail] (for media & location messages) base64 encoded thumbnail
+ * @property {string} [mimetype] (for media messages) specify the Mimetype of the media, required for document messages
+ * @property {boolean} [gif] (for video messages) whether the media is a gif or not
+ */
 module.exports = {
 	/**
 	 * Send a read receipt to the given ID for a certain message
@@ -36,9 +45,7 @@ module.exports = {
 	 * Send a text message
 	 * @param {string} id the JID of the person/group you're sending the message to
 	 * @param {string} txt the actual text of the message
-	 * @param {object} [options] some additional options
-	 * @param {object} [options.quoted] the message you may wanna quote along with this message
-	 * @param {Date} [options.timestamp] optionally set the timestamp of the message in Unix time MS 
+	 * @param {MessageOptions} [options] some additional options
 	 * @return {Promise<[object, object]>}
 	 */
     sendTextMessage: function (id, txt, options={}) {
@@ -54,17 +61,36 @@ module.exports = {
 		return this.sendMessage(id, message, options)
 	},
 	/**
+	 * Send a contact message
+	 * @param {string} id the JID of the person/group you're sending the message to
+	 * @param {string} displayName the name of the person on the contact, will be displayed on WhatsApp
+	 * @param {string} vcard the VCARD formatted contact
+	 * @param {MessageOptions} [options] some additional options
+	 * @return {Promise<[object, object]>}
+	 */
+    sendContactMessage: function (id, displayName, vcard, options={}) {
+		if (typeof displayName !== "string") {
+			return Promise.reject("expected text to be a string")
+		}
+		return this.sendMessage(id, {contactMessage: {displayName: displayName, vcard: vcard}}, options)
+	},
+	/**
+	 * Send a location message
+	 * @param {string} id the JID of the person/group you're sending the message to
+	 * @param {number} lat the latitude of the location
+	 * @param {number} long the longitude of the location
+	 * @param {MessageOptions} [options] some additional options
+	 * @return {Promise<[object, object]>}
+	 */
+    sendLocationMessage: function (id, lat, long, options={}) {
+		return this.sendMessage(id, {locationMessage: {degreesLatitude: lat, degreesLongitude: long}}, options)
+	},
+	/**
 	 * Send a media message
 	 * @param {string} id the JID of the person/group you're sending the message to
 	 * @param {Buffer} buffer the buffer of the actual media you're sending
 	 * @param {string} mediaType the type of media, can be one of [imageMessage, documentMessage, stickerMessage, videoMessage]
-	 * @param {Object} [options] additional information about the message
-	 * @param {string} [options.caption] caption to go along with the media
-	 * @param {string} [options.thumbnail] base64 encoded thumbnail for the media
-	 * @param {string} [options.mimetype] specify the Mimetype of the media (required for document messages)
-	 * @param {boolean} [options.gif] whether the media is a gif or not, only valid for video messages
-	 * @param {object} [options.quoted] the message you may wanna quote along with this message
-	 * @param {Date} [options.timestamp] optionally set the timestamp of the message in Unix time MS 
+	 * @param {MessageOptions} [options] additional information about the message
 	 * @return {Promise<[object, object]>}
 	 */
 	sendMediaMessage: function (id, buffer, mediaType, options={}) {
@@ -133,14 +159,12 @@ module.exports = {
 		.then (url => {
 			let message = {}
 			message[mediaType] = {
-				caption: options.caption,
 				url: url,
 				mediaKey: mediaKey.toString('base64'),
 				mimetype: options.mimetype,
 				fileEncSha256: fileEncSha256B64,
 				fileSha256: fileSha256.toString('base64'),
-				fileLength: buffer.length,
-				jpegThumbnail: options.thumbnail
+				fileLength: buffer.length
 			}
 			if (mediaType === "videoMessage" && options.gif) {
 				message[mediaType].gifPlayback = options.gif
@@ -153,19 +177,17 @@ module.exports = {
 	 * @private
 	 * @param {string} id who to send the message to
 	 * @param {object} message like, the message
-	 * @param {object} [options] some additional options
-	 * @param {object} [options.quoted] the message you may wanna quote along with this message
-	 * @param {Date} [options.timestamp] timestamp for the message
+	 * @param {MessageOptions} [options] some additional options
 	 * @return {Promise<[object, object]>} array of the recieved JSON & the query JSON
 	 */
 	sendMessage: function (id, message, options) {
 		if (!options.timestamp) { // if no timestamp was provided,
 			options.timestamp = new Date() // set timestamp to now
 		}
+		const key = Object.keys(message)[0]
 		const timestamp = options.timestamp.getTime()/1000
 		const quoted = options.quoted
 		if (quoted) {
-			const key = Object.keys(message)[0]
 			const participant = quoted.key.participant || quoted.key.remoteJid
 			message[key].contextInfo = {
 				participant: participant,
@@ -178,8 +200,15 @@ module.exports = {
 				message[key].contextInfo.remoteJid = quoted.key.remoteJid
 			}
 		}
-		console.log(JSON.stringify(quoted))
-		console.log(JSON.stringify(message))
+		if (options.caption) {
+			message[key].caption = options.caption
+		}
+		if (options.thumbnail) {
+			if (typeof options.thumbnail !== "string") {
+				return Promise.reject("expected JPEG to be a base64 encoded string")
+			}
+			message[key].jpegThumbnail = options.thumbnail 
+		}
 
 		let messageJSON = {
 			key: {

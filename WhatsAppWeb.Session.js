@@ -7,7 +7,7 @@ const Utils = require('./WhatsAppWeb.Utils')
 module.exports = {
 	/**
 	 * Connect to WhatsAppWeb
-	 * @param {object} [authInfo] credentials to log back in
+	 * @param {Object} [authInfo] credentials to log back in
 	 * @param {number} [timeoutMs] timeout after which the connect will fail, set to null for an infinite timeout
 	 * @return {promise<[object, any[], any[], any[]]>} returns [userMetaData, chats, contacts, unreadMessages]
 	 */
@@ -24,7 +24,7 @@ module.exports = {
         }
 		this.conn = new WebSocket("wss://web.whatsapp.com/ws", {origin: "https://web.whatsapp.com"})
 
-		const promise = new Promise ( (resolve, reject) => {
+		let promise = new Promise ( (resolve, reject) => {
 			this.conn.on('open', () => {
 				this.conn.on('message', (m) => this.onMessageRecieved(m)) // in WhatsAppWeb.Recv.js	
 				this.beginAuthentication ().then (resolve).catch (reject)
@@ -34,15 +34,11 @@ module.exports = {
 				reject (error)	
 			})
 		})
-		if (timeoutMs) {
-			return Utils.promiseTimeout (timeoutMs, promise)
-			.catch (error => {
-				this.close()
-				throw error
-			})
-		} else {
-			return promise
-		}
+		promise = timeoutMs ? Utils.promiseTimeout (timeoutMs, promise) : promise
+		return promise.catch (err => {
+			this.close ()
+			throw err
+		})
 	},
 	/** once a connection has been successfully established
 	 * @private
@@ -147,10 +143,6 @@ module.exports = {
 			this.log("connected successfully")
 			// resolve the promise
 			return [this.userMetaData, chats, contacts, unreadMessages]
-		})
-		.catch (err => {
-			this.close ()
-			throw err
 		})
 	},
 	/**

@@ -1,5 +1,18 @@
 const BinaryCoding = require('./binary_coding/binary_encoder.js')
 const QR = require('qrcode-terminal')
+const Utils = require('./WhatsAppWeb.Utils')
+
+/**
+ * @typedef WhatsAppMessage
+ * @property {Object} key metadata about the sender
+ * @property {string} key.remoteJid sender ID (could be group or individual)
+ * @property {bool} key.fromMe
+ * @property {string} key.id ID of the message
+ * @property {string} [key.participant] if its a group, which individual sent it
+ * @property {Object} [message] the actual message
+ * @property {string} messageTimestamp unix timestamp
+ * @property {number} [duration] the duration of the live location
+ */
 
 class WhatsAppWeb {
 	/** 
@@ -30,7 +43,10 @@ class WhatsAppWeb {
 		sticker: "stickerMessage",
         document: "documentMessage",
         audio: "audioMessage",
-		extendedText: "extendedTextMessage"
+        extendedText: "extendedTextMessage",
+        contact: "contactMessage",
+        location: "locationMessage",
+        liveLocation: "liveLocationMessage"
     }
     /** 
 	 * Tells us what kind of message it is
@@ -122,7 +138,7 @@ class WhatsAppWeb {
     }
     /**
      * Set the callback for new/unread messages, if someone sends a message, this callback will be fired
-     * @param {function(object)} callback
+     * @param {function(WhatsAppMessage)} callback
      */
     setOnUnreadMessage (callback) {
         this.registerCallback (["action", "add:relay", "message"], (json) => {
@@ -199,28 +215,13 @@ WhatsAppWeb.prototype.sendReadReceipt = send.sendReadReceipt
  * @see WhatsAppWeb.Presence for all presence types
 */
 WhatsAppWeb.prototype.updatePresence = send.updatePresence
-/**
- * Send a text message
- * @param {string} id the JID of the person/group you're sending the message to
- * @param {string} txt the actual text of the message
- * @param {object} [quoted] the message you may wanna quote along with this message
- * @param {Date} [timestamp] optionally set the timestamp of the message in Unix time MS 
- * @return {Promise<[object, object]>}
- */
+/** Send a text message */
 WhatsAppWeb.prototype.sendTextMessage = send.sendTextMessage
-/**
- * Send a media message
- * @param {string} id the JID of the person/group you're sending the message to
- * @param {Buffer} buffer the buffer of the actual media you're sending
- * @param {string} mediaType the type of media, can be one of WhatsAppWeb.MessageType
- * @param {Object} [info] object to hold some metadata or caption about the media
- * @param {string} [info.caption] caption to go along with the media
- * @param {string} [info.thumbnail] base64 encoded thumbnail for the media
- * @param {string} [info.mimetype] specify the Mimetype of the media (required for document messages)
- * @param {boolean} [info.gif] whether the media is a gif or not, only valid for video messages
- * @param {Date} [timestamp] optionally set the timestamp of the message in Unix time MS 
- * @return {Promise<[object, object]>}
- */
+/** Send a contact message */
+WhatsAppWeb.prototype.sendContactMessage = send.sendContactMessage
+/** Send a location message */
+WhatsAppWeb.prototype.sendLocationMessage = send.sendLocationMessage
+/** Send a media message */
 WhatsAppWeb.prototype.sendMediaMessage = send.sendMediaMessage
 /** @private */
 WhatsAppWeb.prototype.sendMessage = send.sendMessage
