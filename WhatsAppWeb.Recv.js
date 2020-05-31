@@ -230,7 +230,8 @@ module.exports = {
         const macKey = mediaKeys.macKey
 
         // download the message
-        const buffer = await fetch(message.url).buffer()
+        const fetched = await fetch(message.url)
+        const buffer = await fetched.buffer()
         // first part is actual file
         let file = buffer.slice(0, buffer.length-10)
         // last 10 bytes is HMAC sign of file
