@@ -137,14 +137,17 @@ class WhatsAppWeb {
         this.registerCallback ("MsgInfo", func)
     }
     /**
-     * Set the callback for new/unread messages, if someone sends a message, this callback will be fired
+     * Set the callback for new/unread messages; if someone sends you a message, this callback will be fired
      * @param {function(WhatsAppMessage)} callback
+     * @param {boolean} callbackOnMyMessages - should the callback be fired on a message you sent 
      */
-    setOnUnreadMessage (callback) {
+    setOnUnreadMessage (callback, callbackOnMyMessages=false) {
         this.registerCallback (["action", "add:relay", "message"], (json) => {
             const message = json[2][0][2]
-            if (!message.key.fromMe) { // if this message was sent to us, notify
+            if (!message.key.fromMe || callbackOnMyMessages) { // if this message was sent to us, notify
                 callback (message)
+            } else if (this.logUnhandledMessages) {
+                this.log (`[Unhandled] message - ${JSON.stringify(message)}`)
             }
         })
     }
@@ -176,7 +179,7 @@ class WhatsAppWeb {
     }
 
 	log (text) {
-		console.log ("[Baileys] " + text)
+		console.log (`[Baileys] ${text}"`)
 	}
 }
 

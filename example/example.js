@@ -36,25 +36,25 @@ client.connect (authInfo, 30*1000) // connect or timeout in 30 seconds
         if (notificationType !== "message") {
             return
         }
+        if (m.key.fromMe) {
+            console.log ("relayed my own message")
+            return
+        }
 
         let sender = m.key.remoteJid
         if (m.key.participant) { // participant exists if the message is in a group 
             sender += " ("+m.key.participant+")"
         }
         if (messageType === WhatsAppWeb.MessageType.text) {
-
             const text =  m.message.conversation
             console.log (sender + " sent: " + text)
         } else if (messageType === WhatsAppWeb.MessageType.extendedText) {
-
             const text =  m.message.extendedTextMessage.text
             console.log (sender + " sent: " + text + " and quoted message: " + JSON.stringify(m.message))
         } else if (messageType === WhatsAppWeb.MessageType.contact) {
-
             const contact = m.message.contactMessage
             console.log (sender + " sent contact (" + contact.displayName + "): " + contact.vcard)
         } else if (messageType === WhatsAppWeb.MessageType.location || messageType === WhatsAppWeb.MessageType.liveLocation) {
-
             const locMessage = m.message[messageType]
             console.log (sender + " sent location (lat: " + locMessage.degreesLatitude + ", long: " + locMessage.degreesLongitude + "), saving thumbnail...")
             client.decodeMediaMessage(m.message, "loc_thumb_in_" + m.key.id)
@@ -94,7 +94,7 @@ client.connect (authInfo, 30*1000) // connect or timeout in 30 seconds
                 console.log("sent message with ID '" + messageID + "' successfully: " + success)
             })
         }, 3*1000)
-    })
+    }, true) // set to false to not relay your own sent messages
     /* custom functionality for tracking battery */
     client.registerCallback (["action", null, "battery"], json => {
         const batteryLevelStr = json[2][0][1].value

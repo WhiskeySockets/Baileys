@@ -103,8 +103,7 @@ module.exports = {
 		}) // validate the connection
 		.then (() => {
 			this.log ("waiting for chats & contacts") // wait for the message with chats
-
-			const waitForConvos = new Promise ((resolve, _) => {
+			const waitForConvos = () => new Promise ((resolve, _) => {
 				const chatUpdate = (json) => {
 					const isLast = json[1].last
 					json = json[2]
@@ -132,11 +131,14 @@ module.exports = {
 			const waitForChats = this.registerCallbackOneTime (["response",  "type:chat"]).then (json => {
 				chats = json[2] // chats data (log json to see what it looks like)
 				chats.forEach (chat => unreadMap [chat[1].jid] = chat[1].count) // store the number of unread messages for each sender
+				if (chats.length > 0) {
+					return waitForConvos ()
+				}
 			})
 			const waitForContacts = this.registerCallbackOneTime (["response", "type:contacts"])
 									.then (json => contacts = json[2])
 			// wait for the chats & contacts to load
-			return Promise.all ([waitForConvos, waitForChats, waitForContacts])
+			return Promise.all ([waitForChats, waitForContacts])
 		})
 		.then (() => {
 			// now we're successfully connected

@@ -34,7 +34,8 @@
             const [notificationType, messageType] = client.getNotificationType(m) // get what type of notification it is -- message, group add notification etc.
             console.log("got notification of type: " + notificationType) // message, groupAdd, groupLeave
             console.log("message type: " + messageType) // conversation, imageMessage, videoMessage, contactMessage etc.
-        })
+        }, false) // set to `true` if you want to receive outgoing messages that may be sent from your phone
+        ```
     - Called when you recieve an update on someone's presence, they went offline or online
         ``` javascript 
         client.setOnPresenceUpdate (json => console.log(json.id + " presence is " + json.type))
