@@ -107,12 +107,14 @@ module.exports = {
 				const chatUpdate = (json) => {
 					const isLast = json[1].last
 					json = json[2]
-					for (var k = json.length-1;k >= 0;k--) { 
-						const message = json[k][2]
-						const jid = message.key.remoteJid.replace ("@s.whatsapp.net", "@c.us")
-						if (!message.key.fromMe && unreadMap[jid] > 0) { // only forward if the message is from the sender
-							unreadMessages.push (message)
-							unreadMap[jid] -= 1 // reduce
+					if (json) {
+						for (var k = json.length-1;k >= 0;k--) { 
+							const message = json[k][2]
+							const jid = message.key.remoteJid.replace ("@s.whatsapp.net", "@c.us")
+							if (!message.key.fromMe && unreadMap[jid] > 0) { // only forward if the message is from the sender
+								unreadMessages.push (message)
+								unreadMap[jid] -= 1 // reduce
+							}
 						}
 					}
 					if (isLast) {
@@ -131,7 +133,7 @@ module.exports = {
 			const waitForChats = this.registerCallbackOneTime (["response",  "type:chat"]).then (json => {
 				chats = json[2] // chats data (log json to see what it looks like)
 				chats.forEach (chat => unreadMap [chat[1].jid] = chat[1].count) // store the number of unread messages for each sender
-				if (chats.length > 0) {
+				if (chats && chats.length > 0) {
 					return waitForConvos ()
 				}
 			})
