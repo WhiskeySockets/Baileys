@@ -119,7 +119,7 @@
         }
     ```
     ``` id ``` is the WhatsApp id of the person or group you're sending the message to. 
-    It must be in the format ```[country code][phone number]@s.whatsapp.net```, for example ```+19999999999@s.whatsapp.net``` for people. For groups, it must be in the format ``` 123456789-123345@g.us ```.
+    It must be in the format ```[country code][phone number]@s.whatsapp.net```, for example ```+19999999999@s.whatsapp.net``` for people. For groups, it must be in the format ``` 123456789-123345@g.us ```. **Do not attach** `@c.us` for individual people IDs, It won't work
 * __Sending Read Receipts__
     ``` javascript 
         client.sendReadReceipt(id, messageID) 
