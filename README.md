@@ -6,6 +6,8 @@
 
  Baileys has also been written from the ground up to be very extensible and simple to use. 
  If you require more functionality than provided, it'll super easy for you to write an extension (More on this at the end).
+ 
+ If you're interested in building a WhatsApp bot, you may wanna check out [WhatsAppInfoBot](https://github.com/adiwajshing/WhatsappInfoBot) and an actual bot built with it, [Messcat](https://github.com/adiwajshing/Messcat).
 
 ## Install
 Create and cd to your NPM project directory and then in terminal, write: ``` npm install baileys ```
