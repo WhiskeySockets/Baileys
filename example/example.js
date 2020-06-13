@@ -11,7 +11,7 @@ try {
     authInfo = JSON.parse(file)
 } catch { }
 
-client.connect (authInfo, 30*1000) // connect or timeout in 30 seconds
+client.connect (authInfo, 20*1000) // connect or timeout in 20 seconds
 .then (([user, chats, contacts, unread]) => {
     console.log ("oh hello " + user.name + " (" + user.id + ")")
     console.log ("you have " + unread.length + " unread messages")

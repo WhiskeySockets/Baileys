@@ -9,9 +9,20 @@ module.exports = {
 	 * Connect to WhatsAppWeb
 	 * @param {Object} [authInfo] credentials to log back in
 	 * @param {number} [timeoutMs] timeout after which the connect will fail, set to null for an infinite timeout
-	 * @return {promise<[object, any[], any[], any[]]>} returns [userMetaData, chats, contacts, unreadMessages]
+	 * @return {[object, object[], object[], object[]]} returns [userMetaData, chats, contacts, unreadMessages]
 	 */
-    connect: function (authInfo, timeoutMs) {
+    connect: async function (authInfo, timeoutMs) {
+		const userInfo = await this.connectSlim (authInfo, timeoutMs)
+		const chats = await this.receiveChatsAndContacts (authInfo, timeoutMs)
+		return [userInfo, ...chats]
+	},
+	/**
+	 * Connect to WhatsAppWeb, resolves without waiting for chats & contacts
+	 * @param {Object} [authInfo] credentials to log back in
+	 * @param {number} [timeoutMs] timeout after which the connect will fail, set to null for an infinite timeout
+	 * @return {Promise<Object>} returns [userMetaData, chats, contacts, unreadMessages]
+	 */
+    connectSlim: function (authInfo, timeoutMs) {
 		// set authentication credentials if required
 		if (authInfo) {
 			this.authInfo = Object.assign ({}, authInfo) // copy credentials
@@ -26,7 +37,7 @@ module.exports = {
 
 		let promise = new Promise ( (resolve, reject) => {
 			this.conn.on('open', () => {
-				this.conn.on('message', (m) => this.onMessageRecieved(m)) // in WhatsAppWeb.Recv.js	
+				this.conn.on('message', m => this.onMessageRecieved(m)) // in WhatsAppWeb.Recv.js	
 				this.beginAuthentication ().then (resolve).catch (reject)
 			})
 			this.conn.on('error', error => { // if there was an error in the WebSocket
@@ -35,12 +46,10 @@ module.exports = {
 			})
 		})
 		promise = timeoutMs ? Utils.promiseTimeout (timeoutMs, promise) : promise
-		return promise.catch (err => {
-			this.close ()
-			throw err
-		})
+		return promise.catch (err => {this.close (); throw err;})
 	},
-	/** once a connection has been successfully established
+	/** 
+	 * Once a connection has been successfully established
 	 * @private
 	 * @return {promise<object[]>}
 	 */
@@ -50,12 +59,7 @@ module.exports = {
         if (!this.authInfo.clientID) { // if no auth info is present, that is, a new session has to be established
             this.authInfo = { clientID: Utils.generateClientID() } // generate a client ID
 		}
-		
-		let chats = []
-		let contacts = []
-		let unreadMessages = []
-		let unreadMap = {}
-        
+		    
         const data = ["admin", "init", this.version, this.browserDescriptions, this.authInfo.clientID, true]
 		return this.query(data)
 		.then (([json, _]) => {
@@ -102,52 +106,60 @@ module.exports = {
 			this.startKeepAliveRequest() // start sending keep alive requests (keeps the WebSocket alive & updates our last seen)
 		}) // validate the connection
 		.then (() => {
-			this.log ("waiting for chats & contacts") // wait for the message with chats
-			const waitForConvos = () => new Promise ((resolve, _) => {
-				const chatUpdate = (json) => {
-					const isLast = json[1].last
-					json = json[2]
-					if (json) {
-						for (var k = json.length-1;k >= 0;k--) { 
-							const message = json[k][2]
-							const jid = message.key.remoteJid.replace ("@s.whatsapp.net", "@c.us")
-							if (!message.key.fromMe && unreadMap[jid] > 0) { // only forward if the message is from the sender
-								unreadMessages.push (message)
-								unreadMap[jid] -= 1 // reduce
-							}
+			this.log("connected successfully")
+			return this.userMetaData
+		})
+	},
+	/**
+	 * Sets up callbacks to receive chats, contacts & unread messages. 
+	 * Must be called immediately after connect
+	 * @returns {[ object[], object[], object[] ]} - [chats, contacts, unreadMessages]
+	 */
+	receiveChatsAndContacts: function () {
+		let chats = []
+		let contacts = []
+		let unreadMessages = []
+		let unreadMap = {}
+
+		this.log ("waiting for chats & contacts") // wait for the message with chats
+		const waitForConvos = () => new Promise ((resolve, _) => {
+			const chatUpdate = (json) => {
+				const isLast = json[1].last
+				json = json[2]
+				if (json) {
+					for (var k = json.length-1;k >= 0;k--) { 
+						const message = json[k][2]
+						const jid = message.key.remoteJid.replace ("@s.whatsapp.net", "@c.us")
+						if (!message.key.fromMe && unreadMap[jid] > 0) { // only forward if the message is from the sender
+							unreadMessages.push (message)
+							unreadMap[jid] -= 1 // reduce
 						}
 					}
-					if (isLast) {
-						// de-register the callbacks, so that they don't get called again
-						this.deregisterCallback (["action", "add:last"])
-						this.deregisterCallback (["action", "add:before"])
-						this.deregisterCallback (["action", "add:unread"])
-						resolve ()
-					}
 				}
-				// wait for actual messages to load, "last" is the most recent message, "before" contains prior messages
-				this.registerCallback (["action", "add:last"], chatUpdate)
-				this.registerCallback (["action", "add:before"], chatUpdate)
-				this.registerCallback (["action", "add:unread"], chatUpdate)
-			})
-			const waitForChats = this.registerCallbackOneTime (["response",  "type:chat"]).then (json => {
-				chats = json[2] // chats data (log json to see what it looks like)
-				chats.forEach (chat => unreadMap [chat[1].jid] = chat[1].count) // store the number of unread messages for each sender
-				if (chats && chats.length > 0) {
-					return waitForConvos ()
+				if (isLast) {
+					// de-register the callbacks, so that they don't get called again
+					this.deregisterCallback (["action", "add:last"])
+					this.deregisterCallback (["action", "add:before"])
+					this.deregisterCallback (["action", "add:unread"])
+					resolve ()
 				}
-			})
-			const waitForContacts = this.registerCallbackOneTime (["response", "type:contacts"])
-									.then (json => contacts = json[2])
-			// wait for the chats & contacts to load
-			return Promise.all ([waitForChats, waitForContacts])
+			}
+			// wait for actual messages to load, "last" is the most recent message, "before" contains prior messages
+			this.registerCallback (["action", "add:last"], chatUpdate)
+			this.registerCallback (["action", "add:before"], chatUpdate)
+			this.registerCallback (["action", "add:unread"], chatUpdate)
 		})
-		.then (() => {
-			// now we're successfully connected
-			this.log("connected successfully")
-			// resolve the promise
-			return [this.userMetaData, chats, contacts, unreadMessages]
+		const waitForChats = this.registerCallbackOneTime (["response",  "type:chat"]).then (json => {
+			chats = json[2] // chats data (log json to see what it looks like)
+			chats.forEach (chat => unreadMap [chat[1].jid] = chat[1].count) // store the number of unread messages for each sender
+			if (chats && chats.length > 0) {
+				return waitForConvos ()
+			}
 		})
+		const waitForContacts = this.registerCallbackOneTime (["response", "type:contacts"])
+								.then (json => contacts = json[2])
+		// wait for the chats & contacts to load
+		return Promise.all ([waitForChats, waitForContacts]).then (() => [chats, contacts, unreadMessages])
 	},
 	/**
 	 * Once the QR code is scanned and we can validate our connection, or we resolved the challenge when logging back in

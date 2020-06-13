@@ -178,9 +178,7 @@ class WhatsAppWeb {
 		QR.generate(str, {small: true})
     }
 
-	log (text) {
-		console.log (`[Baileys] ${text}"`)
-	}
+	log (text) { console.log (`[Baileys] ${text}`) }
 }
 
 /* Import the rest of the code */
@@ -203,6 +201,8 @@ WhatsAppWeb.prototype.decodeMediaMessage = recv.decodeMediaMessage
 
 const session = require("./WhatsAppWeb.Session")
 WhatsAppWeb.prototype.connect = session.connect
+WhatsAppWeb.prototype.connectSlim = session.connectSlim
+WhatsAppWeb.prototype.receiveChatsAndContacts = session.receiveChatsAndContacts
 WhatsAppWeb.prototype.beginAuthentication = session.beginAuthentication
 WhatsAppWeb.prototype.validateNewConnection = session.validateNewConnection
 WhatsAppWeb.prototype.respondToChallenge = session.respondToChallenge
