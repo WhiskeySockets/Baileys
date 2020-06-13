@@ -7,16 +7,17 @@
  Baileys has also been written from the ground up to be very extensible and simple to use. 
  If you require more functionality than provided, it'll super easy for you to write an extension (More on this at the end).
 
-* __Install__
+## Install
     Create and cd to your NPM project directory and then in terminal, write: ``` npm install baileys ```
     Then import in your code using:
     ``` javascript 
         const WhatsAppWeb = require('baileys') 
     ```
-* __Connecting__
+## Connecting
+
     ``` javascript
         const client = new WhatsAppWeb() 
-        client.connect()
+        client.connect() 
         .then (([user, chats, contacts, unread]) => {
             console.log ("oh hello " + user.name + " (" + user.id + ")")
             console.log ("you have " + unread.length + " unread messages")
@@ -25,7 +26,24 @@
         .catch (err => console.log("unexpected error: " + err) )
     ``` 
     If the connection is successful, you will see a QR code printed on your terminal screen, scan it with WhatsApp on your phone and you'll be logged in!
-* __Handling Events__
+
+    If you don't want to wait for WhatsApp to send all your chats while connecting, you can use the following function:
+    ``` javascript
+        const client = new WhatsAppWeb() 
+        client.connectSlim() // does not wait for chats & contacts
+        .then (user => {
+            console.log ("oh hello " + user.name + " (" + user.id + ")")
+            
+            client.receiveChatsAndContacts () // wait for chats & contacts in the background
+            .then (([chats, contacts, unread]) => {
+                console.log ("you have " + unread.length + " unread messages")
+                console.log ("you have " + chats.length + " chats")
+            })
+        })
+        .catch (err => console.log("unexpected error: " + err))
+    ``` 
+## Handling Events
+
     Implement the following callbacks in your code:
 
     - Called when you have a pending unread message or recieve a new message
@@ -54,7 +72,8 @@
         ``` javascript 
         client.setOnUnexpectedDisconnect (err => console.log ("disconnected unexpectedly: " + err) )
         ```
-* __Sending Messages__
+## Sending Messages
+
     It's super simple
 
     - Send text messages using
@@ -120,12 +139,12 @@
     ```
     ``` id ``` is the WhatsApp id of the person or group you're sending the message to. 
     It must be in the format ```[country code][phone number]@s.whatsapp.net```, for example ```+19999999999@s.whatsapp.net``` for people. For groups, it must be in the format ``` 123456789-123345@g.us ```. **Do not attach** `@c.us` for individual people IDs, It won't work
-* __Sending Read Receipts__
+## Sending Read Receipts
     ``` javascript 
         client.sendReadReceipt(id, messageID) 
     ```
     The id is in the same format as mentioned earlier. The message ID is the unique identifier of the message that you are marking as read. On a message object, it can be accessed using ```messageID = message.key.id```.
-* __Update Presence__
+## Update Presence
     ``` javascript
         client.updatePresence(id, WhatsAppWeb.Presence.available) 
     ```
@@ -138,7 +157,7 @@
             WhatsAppWeb.Presence.recording // recording...
         ]
     ```
-* __Decoding Media__
+## Decoding Media
     If you want to save & process some images, videos, documents or stickers you received
     ``` javascript
         client.setOnUnreadMessage (m => {
@@ -151,7 +170,7 @@
             }
         }
     ```
-* __Restoring Sessions__
+## Restoring Sessions
     Once you connect successfully, you can get your authentication credentials using
      ``` javascript
         const authJSON = client.base64EncodedAuthInfo() 
@@ -162,7 +181,7 @@
         client.connect (authJSON)
         .then (([user, chats, contacts, unread]) => console.log ("yay connected"))
     ```
-* __Querying__
+## Querying
     - To check if a given ID is on WhatsApp
         ``` javascript
             client.isOnWhatsApp ("xyz@c.us")
@@ -196,7 +215,7 @@
         ```
     
     Of course, replace ``` xyz ``` with an actual ID. Also, append ``` @c.us ``` for individuals & ``` @g.us ``` for groups.
-* __Groups__
+## Groups
     - To query the metadata of a group
         ``` javascript
         client.groupMetadata ("abcd-xyz@g.us")
@@ -230,7 +249,7 @@
         client.groupInviteCode ("abcd-xyz@g.us")
         .then (code => console.log(code))
         ```
-* __Writing Custom Functionality__
+## Writing Custom Functionality
     Baileys is also written, keeping in mind, that you may require other functionality. Hence, instead of having to fork the project & re-write the internals, you can simply write extensions in your own code.
 
     First, enable the logging of unhandled messages from WhatsApp by setting
@@ -283,11 +302,11 @@
     A little more testing will reveal that almost all WhatsApp messages are in the format illustrated above. 
     Note: except for the first parameter (in the above cases, ```"action"``` or ```"Conn"```), all the other parameters are optional.
 
-* __Example__
+## Example
     Do check out & run [example.js](example/example.js) to see example usage of these functions.
     To run the example script, download or clone the repo and then type the following in terminal:
     1. ``` cd path/to/Baileys/example ```
     2. ``` node example.js ```
 
-# Note
+### Note
  I am in no way affiliated with WhatsApp. This was written for educational purposes. Use at your own discretion.
