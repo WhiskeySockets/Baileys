@@ -102,7 +102,7 @@ module.exports = {
 
         const loadMessage = () => {
             return this.loadConversation(jid, chunkSize, offsetID, mostRecentFirst)
-            .then (json => {
+            .then (([json]) => {
                 if (json[2]) {
                     // callback with most recent message first (descending order of date)
                     let lastMessage

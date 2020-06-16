@@ -6,6 +6,8 @@
 
  Baileys has also been written from the ground up to be very extensible and simple to use. 
  If you require more functionality than provided, it'll super easy for you to write an extension (More on this at the end).
+ 
+ If you're interested in building a WhatsApp bot, you may wanna check out [WhatsAppInfoBot](https://github.com/adiwajshing/WhatsappInfoBot) and an actual bot built with it, [Messcat](https://github.com/adiwajshing/Messcat).
 
 ## Install
 Create and cd to your NPM project directory and then in terminal, write: ``` npm install baileys ```
@@ -13,6 +15,7 @@ Then import in your code using:
 ``` javascript 
     const WhatsAppWeb = require('baileys') 
 ```
+
 ## Connecting
 ``` javascript
     const client = new WhatsAppWeb() 
@@ -170,24 +173,25 @@ It's super simple
             ]
         ```
     - Tested formats: png, jpeg, webp (sticker), mp4, ogg
-    `options` is a JSON object, providing some information about the message. It can have the following __optional__ values:
-    ``` javascript
-    info = {
-        caption: "hello there!", // (for media messages) the caption to send with the media (cannot be sent with stickers though)
-        thumbnail: "23GD#4/==", /*  (for location & media messages) has to be a base 64 encoded JPEG if you want to send a custom thumb, 
-                                    or set to null if you don't want to send a thumbnail.
-                                    Do not enter this field if you want to automatically generate a thumb
+
+The last parameter when sending messages is `info`, a JSON object, providing some information about the message. It can have the following __optional__ values:
+``` javascript
+info = {
+    caption: "hello there!", // (for media messages) the caption to send with the media (cannot be sent with stickers though)
+    thumbnail: "23GD#4/==", /*  (for location & media messages) has to be a base 64 encoded JPEG if you want to send a custom thumb, 
+                                or set to null if you don't want to send a thumbnail.
+                                Do not enter this field if you want to automatically generate a thumb
+                            */
+    mimetype: "application/pdf", /* (for media messages) specify the type of media (optional for all media types except documents),
+                                    for pdf files => set to "application/pdf",
+                                    for txt files => set to "application/txt"
+                                    etc.
                                 */
-        mimetype: "application/pdf", /* (for media messages) specify the type of media (optional for all media types except documents),
-                                        for pdf files => set to "application/pdf",
-                                        for txt files => set to "application/txt"
-                                        etc.
-                                    */
-        gif: true, // (for video messages) if the video should be treated as a GIF
-        quoted: quotedMessage, // the message you want to quote (can be used with sending all kinds of messages)
-        timestamp: Date() // optional, if you want to manually set the timestamp of the message
-    }
-    ```
+    gif: true, // (for video messages) if the video should be treated as a GIF
+    quoted: quotedMessage, // the message you want to quote (can be used with sending all kinds of messages)
+    timestamp: Date() // optional, if you want to manually set the timestamp of the message
+}
+```
 
 ``` id ``` is the WhatsApp id of the person or group you're sending the message to. 
 
