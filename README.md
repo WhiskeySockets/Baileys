@@ -76,70 +76,16 @@ Implement the following callbacks in your code:
     ```
 ## Sending Messages
 It's super simple
-
-- Called when you have a pending unread message or recieve a new message
+- Send text messages using
     ``` javascript 
-    client.setOnUnreadMessage (m => {
-        const [notificationType, messageType] = client.getNotificationType(m) // get what type of notification it is -- message, group add notification etc.
-        console.log("got notification of type: " + notificationType) // message, groupAdd, groupLeave
-        console.log("message type: " + messageType) // conversation, imageMessage, videoMessage, contactMessage etc.
-    }, false) // set to `true` if you want to receive outgoing messages that may be sent from your phone
-    ```
-- Called when you recieve an update on someone's presence, they went offline or online
+    client.sendTextMessage(id, "oh hello there!") 
+    ``` 
+- Send text messages & quote another message using
     ``` javascript 
-    client.setOnPresenceUpdate (json => console.log(json.id + " presence is " + json.type))
-    ```
-- Called when your message gets delivered or read
-    ``` javascript 
-    client.setOnMessageStatusChange (json => {
-        let sent = json.to
-        if (json.participant) // participant exists when the message is from a group
-            sent += " ("+json.participant+")" // mention as the one sent to
-        // log that they acknowledged the message
-        console.log(sent + " acknowledged message(s) " + json.ids + " as " + json.type + " at " + json.timestamp)
-    })
-    ```
-- Called when the connection gets disconnected (either the server loses internet or the phone gets unpaired)
-    ``` javascript 
-    client.setOnUnexpectedDisconnect (err => console.log ("disconnected unexpectedly: " + err) )
-    ```d text messages using
-        ``` javascript 
-        client.sendTextMessage(id, "oh hello there!") 
-        ``` 
-    - Send text messages & quote another message using
-        ``` javascript 
-            const options = {quoted: quotedMessage}
-            client.sendTextMessage(id, "oh hello there", options) 
-        ``` 
-        `Implement the following callbacks in your code:
-
-- Called when you have a pending unread message or recieve a new message
-    ``` javascript 
-    client.setOnUnreadMessage (m => {
-        const [notificationType, messageType] = client.getNotificationType(m) // get what type of notification it is -- message, group add notification etc.
-        console.log("got notification of type: " + notificationType) // message, groupAdd, groupLeave
-        console.log("message type: " + messageType) // conversation, imageMessage, videoMessage, contactMessage etc.
-    }, false) // set to `true` if you want to receive outgoing messages that may be sent from your phone
-    ```
-- Called when you recieve an update on someone's presence, they went offline or online
-    ``` javascript 
-    client.setOnPresenceUpdate (json => console.log(json.id + " presence is " + json.type))
-    ```
-- Called when your message gets delivered or read
-    ``` javascript 
-    client.setOnMessageStatusChange (json => {
-        let sent = json.to
-        if (json.participant) // participant exists when the message is from a group
-            sent += " ("+json.participant+")" // mention as the one sent to
-        // log that they acknowledged the message
-        console.log(sent + " acknowledged message(s) " + json.ids + " as " + json.type + " at " + json.timestamp)
-    })
-    ```
-- Called when the connection gets disconnected (either the server loses internet or the phone gets unpaired)
-    ``` javascript 
-    client.setOnUnexpectedDisconnect (err => console.log ("disconnected unexpectedly: " + err) )
-    ```
-    ` quotedMessage ` is a message object
+        const options = {quoted: quotedMessage}
+        client.sendTextMessage(id, "oh hello there", options) 
+    ``` 
+    ``` quotedMessage ``` is a message object
 - Send a location using
     ``` javascript
         client.sendLocationMessage(id, 24.121231, 55.1121221) // the latitude, longitude of the location
