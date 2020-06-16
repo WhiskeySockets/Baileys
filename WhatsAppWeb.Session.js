@@ -121,10 +121,16 @@ module.exports = {
 		let unreadMessages = []
 		let unreadMap = {}
 
+		let encounteredAddBefore = false
+		var convoResolve
+
 		this.log ("waiting for chats & contacts") // wait for the message with chats
 		const waitForConvos = () => new Promise ((resolve, _) => {
+			convoResolve = resolve
 			const chatUpdate = (json) => {
 				const isLast = json[1].last
+				encounteredAddBefore = json[1].add === "before" ? true : encounteredAddBefore
+				
 				json = json[2]
 				if (json) {
 					for (var k = json.length-1;k >= 0;k--) { 
@@ -149,15 +155,19 @@ module.exports = {
 			this.registerCallback (["action", "add:before"], chatUpdate)
 			this.registerCallback (["action", "add:unread"], chatUpdate)
 		})
-		const waitForChats = this.registerCallbackOneTime (["response",  "type:chat"]).then (json => {
-			chats = json[2] // chats data (log json to see what it looks like)
-			chats.forEach (chat => unreadMap [chat[1].jid] = chat[1].count) // store the number of unread messages for each sender
-			if (chats && chats.length > 0) {
-				return waitForConvos ()
-			}
-		})
+		const waitForChats = this.registerCallbackOneTime (["response",  "type:chat"])
+							.then (json => {
+								chats = json[2] // chats data (log json to see what it looks like)
+								chats.forEach (chat => unreadMap [chat[1].jid] = chat[1].count) // store the number of unread messages for each sender
+								if (chats && chats.length > 0) return waitForConvos ()
+							})
 		const waitForContacts = this.registerCallbackOneTime (["response", "type:contacts"])
-								.then (json => contacts = json[2])
+								.then (json => {
+									contacts = json[2]
+									// if no add:before messages are sent, and you receive contacts
+									// should probably resolve the promise
+									if (!encounteredAddBefore && convoResolve) convoResolve ()
+								})
 		// wait for the chats & contacts to load
 		return Promise.all ([waitForChats, waitForContacts]).then (() => [chats, contacts, unreadMessages])
 	},

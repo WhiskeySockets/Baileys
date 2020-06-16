@@ -8,11 +8,11 @@
  If you require more functionality than provided, it'll super easy for you to write an extension (More on this at the end).
 
 ## Install
-    Create and cd to your NPM project directory and then in terminal, write: ``` npm install baileys ```
-    Then import in your code using:
-    ``` javascript 
-        const WhatsAppWeb = require('baileys') 
-    ```
+Create and cd to your NPM project directory and then in terminal, write: ``` npm install baileys ```
+Then import in your code using:
+``` javascript 
+    const WhatsAppWeb = require('baileys') 
+```
 ## Connecting
 ``` javascript
     const client = new WhatsAppWeb() 
