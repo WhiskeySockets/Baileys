@@ -90,9 +90,7 @@ class WhatsAppWeb {
          * What to do when you need the phone to authenticate the connection (generate QR code by default)
          */
         this.onReadyForPhoneAuthentication = this.generateQRCode
-
-        this.onRe
-		this.encoder = new BinaryCoding.Encoder()
+	this.encoder = new BinaryCoding.Encoder()
         this.decoder = new BinaryCoding.Decoder()
         
         this.unexpectedDisconnect = (err) => { this.close () }
