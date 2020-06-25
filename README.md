@@ -10,7 +10,7 @@
  If you're interested in building a WhatsApp bot, you may wanna check out [WhatsAppInfoBot](https://github.com/adiwajshing/WhatsappInfoBot) and an actual bot built with it, [Messcat](https://github.com/adiwajshing/Messcat).
 
 ## Install
-Create and cd to your NPM project directory and then in terminal, write: ``` npm install baileys ```
+Create and cd to your NPM project directory and then in terminal, write: `npm install @adiwajshing/baileys`
 Then import in your code using:
 ``` javascript 
     const WhatsAppWeb = require('baileys') 
