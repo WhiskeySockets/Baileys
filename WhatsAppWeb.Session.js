@@ -285,7 +285,7 @@ module.exports = {
 					resolve ()
 				})
 			} else {
-				throw "You're not even connected, you can't log out"
+				reject("You're not even connected, you can't log out")
 			}
 		})
 		.then (() => this.close ())
@@ -300,7 +300,7 @@ module.exports = {
 		const keys = Object.keys (this.callbacks)
 		keys.forEach (key => {
 			if (!key.includes ("function:")) {
-				this.callbacks[key].reject ("connection closed")
+				this.callbacks[key].errCallback ("connection closed")
 				delete this.callbacks[key]
 			}
 		} )
