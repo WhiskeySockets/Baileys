@@ -2,9 +2,9 @@
   "name": "@adiwajshing/baileys",
   "version": "2.0.0",
   "description": "WhatsApp Web API",
-  "main": "lib/WAClient/WAClient.js",
   "homepage": "https://github.com/adiwajshing/Baileys",
-  "type": "module",
+  "main": "lib/WAClient/WAClient.js",
+  "types": "lib/WAClient/WAClient.d.ts",
   "keywords": [
     "whatsapp",
     "js-whatsapp",
@@ -17,11 +17,10 @@
     "automation"
   ],
   "scripts": {
-    "prepare": "npm run tsc",
+    "prepare": "npm run build",
     "test": "mocha --timeout 30000 -r ts-node/register */Tests.ts",
     "lint": "eslint '*/*.ts' --quiet --fix",
-    "tsc": "tsc",
-    "dev": "ts-node-dev --respawn --transpileOnly ./app/app.ts",
+    "build": "tsc",
     "example": "npx ts-node Example/example.ts"
   },
   "author": "Adhiraj Singh",

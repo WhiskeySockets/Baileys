@@ -2,15 +2,14 @@
   "compilerOptions": {
     "target": "es5",
     "module": "commonjs",
-    "moduleResolution": "node",
     "allowJs": true,
     "checkJs": false,
-    "outDir": "lib/",
+    "outDir": "lib",
     "strict": false,
     "noImplicitThis": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true
+    "declaration": true
   },
   "include": ["*/*.ts"],
   "exclude": ["node_modules", "*/Tests.ts"]
