@@ -1,28 +1,40 @@
-# Baileys - WhatsApp Web API for Node.js
+# Baileys 2.0 - Typescript/Javascript WhatsApp Web API
+ 
+ Baileys does not require Selenium or any other browser to be interface with WhatsApp Web, it does so directly using a **WebSocket**. Not running Selenium or Chromimum saves you like **half a gig** of ram :/ 
 
- Reverse Engineered WhatsApp Web API in pure Node.js. Baileys does not require Selenium or any other browser to be interface with WhatsApp Web, it does so directly using a WebSocket. Not running Selenium or Chromimum saves you like half a gig of ram :/ 
+ Thank you to [@Sigalor](https://github.com/sigalor/whatsapp-web-reveng) for writing the guide to reverse engineering WhatsApp Web and thanks to [@Rhymen](https://github.com/Rhymen/go-whatsapp/) for the __go__ implementation.
 
- Thank you to [@Sigalor](https://github.com/sigalor/whatsapp-web-reveng) for writing the guide to reverse engineering WhatsApp Web and thanks to [@Rhymen](https://github.com/Rhymen/go-whatsapp/) for the __go__ reimplementation.
-
- Baileys has also been written from the ground up to be very extensible and simple to use. 
- If you require more functionality than provided, it'll super easy for you to write an extension (More on this at the end).
+ Baileys is type-safe, extensible and simple to use. If you require more functionality than provided, it'll super easy for you to write an extension. More on this [here](#WritingCustomFunctionality).
  
  If you're interested in building a WhatsApp bot, you may wanna check out [WhatsAppInfoBot](https://github.com/adiwajshing/WhatsappInfoBot) and an actual bot built with it, [Messcat](https://github.com/adiwajshing/Messcat).
 
+## Example
+Do check out & run [example.ts](Example/example.ts) to see example usage of the library.
+The script covers most common use cases.
+To run the example script, download or clone the repo and then type the following in terminal:
+1. ``` cd path/to/Baileys ```
+2. ``` npm install ```
+3. ``` npm run example ```
+
+## Unit Tests
+Baileys also comes with a unit test suite. Simply cd into the Baileys directory & run `npm test`.
+
+You will require a phone with WhatsApp to test, and a second WhatsApp number to send messages to.
+Set the phone number you can randomly send messages to in a `.env` file with `TEST_JID=1234@s.whatsapp.net` 
+
 ## Install
 Create and cd to your NPM project directory and then in terminal, write: 
-```
-	echo @adiwajshing:registry=https://npm.pkg.github.com > .npmrc
-	npm install @adiwajshing/baileys
-```
+` npm install @adiwajshing/baileys `
+
 Then import in your code using:
-``` javascript 
-    const WhatsAppWeb = require('@adiwajshing/baileys') 
+``` ts 
+    import { WAClient } from '@adiwajshing/baileys'
 ```
 
 ## Connecting
-``` javascript
-    const client = new WhatsAppWeb() 
+``` ts
+    const client = new WAClient() 
+    
     client.connect() 
     .then (([user, chats, contacts, unread]) => {
         console.log ("oh hello " + user.name + " (" + user.id + ")")
@@ -35,8 +47,8 @@ If the connection is successful, you will see a QR code printed on your terminal
 
 If you don't want to wait for WhatsApp to send all your chats while connecting, you can use the following function:
 
-``` javascript
-    const client = new WhatsAppWeb() 
+``` ts
+    const client = new WAClient() 
     client.connectSlim() // does not wait for chats & contacts
     .then (user => {
         console.log ("oh hello " + user.name + " (" + user.id + ")")
@@ -49,24 +61,56 @@ If you don't want to wait for WhatsApp to send all your chats while connecting, 
     })
     .catch (err => console.log("unexpected error: " + err))
 ``` 
+
+## Saving & Restoring Sessions
+
+You obviously don't want to keep scanning the QR code every time you want to connect. 
+
+So, do the following the first time you connect:
+``` ts
+    import * as fs from 'fs'
+
+    const client = new WAClient() 
+    client.connectSlim() // connect first
+    .then (user => {
+        const creds = client.base64EncodedAuthInfo () // contains all the keys you need to restore a session
+        fs.writeFileSync('./auth_info.json', JSON.stringify(creds, null, '\t')) // save JSON to file
+    })
+```
+
+Then, to restore a session:
+``` ts
+    const client = new WAClient() 
+    client.connectSlim('./auth_info.json') // will load JSON credentials from file
+    .then (user => {
+        // yay connected without scanning QR
+    })
+```
+
+Optionally, you can load the credentials yourself from somewhere & pass in the JSON object as well.
+
 ## Handling Events
 Implement the following callbacks in your code:
 
 - Called when you have a pending unread message or recieve a new message
-    ``` javascript 
-    client.setOnUnreadMessage (m => {
-        const [notificationType, messageType] = client.getNotificationType(m) // get what type of notification it is -- message, group add notification etc.
+    ``` ts 
+    import { getNotificationType } from '@adiwajshing/baileys'
+    // set first param to `true` if you want to receive outgoing messages that may be sent from your phone
+    client.setOnUnreadMessage (false, (m: WAMessage) => {
+        // get what type of notification it is -- message, group add notification etc.
+        const [notificationType, messageType] = getNotificationType(m)
+
         console.log("got notification of type: " + notificationType) // message, groupAdd, groupLeave
         console.log("message type: " + messageType) // conversation, imageMessage, videoMessage, contactMessage etc.
-    }, false) // set to `true` if you want to receive outgoing messages that may be sent from your phone
+    })
     ```
 - Called when you recieve an update on someone's presence, they went offline or online
-    ``` javascript 
-    client.setOnPresenceUpdate (json => console.log(json.id + " presence is " + json.type))
+    ``` ts 
+    client.setOnPresenceUpdate ((json: PresenceUpdate) => console.log(json.id + " presence is " + json.type))
     ```
 - Called when your message gets delivered or read
-    ``` javascript 
-    client.setOnMessageStatusChange (json => {
+    ``` ts 
+    client.setOnMessageStatusChange ((json: MessageStatusUpdate) => {
         let sent = json.to
         if (json.participant) // participant exists when the message is from a group
             sent += " ("+json.participant+")" // mention as the one sent to
@@ -75,200 +119,170 @@ Implement the following callbacks in your code:
     })
     ```
 - Called when the connection gets disconnected (either the server loses internet or the phone gets unpaired)
-    ``` javascript 
+    ``` ts 
     client.setOnUnexpectedDisconnect (err => console.log ("disconnected unexpectedly: " + err) )
     ```
 ## Sending Messages
-It's super simple
-- Send text messages using
-    ``` javascript 
-    client.sendTextMessage(id, "oh hello there!") 
-    ``` 
-- Send text messages & quote another message using
-    ``` javascript 
-        const options = {quoted: quotedMessage}
-        client.sendTextMessage(id, "oh hello there", options) 
-    ``` 
-    ``` quotedMessage ``` is a message object
-- Send a location using
-    ``` javascript
-        client.sendLocationMessage(id, 24.121231, 55.1121221) // the latitude, longitude of the location
-    ```
-- Send a contact using
-    ``` javascript
-        // format the contact as a VCARD
-        const vcard = 'BEGIN:VCARD\n' // metadata of the contact card
-                    + 'VERSION:3.0\n' 
-                    + 'FN:Jeff Singh\n' // full name
-                    + 'ORG:Ashoka Uni;\n' // the organization of the contact
-                    + 'TEL;type=CELL;type=VOICE;waid=911234567890:+91 12345 67890\n' // WhatsApp ID + phone number
-                    + 'END:VCARD'
-        client.sendContactMessage(id, "Jeff", vcard) 
-    ```
-- Send a media (image, video, sticker, pdf) message using
-    ``` javascript
-        const buffer = fs.readFileSync("example/ma_gif.mp4") // load some gif
-        const options = {gif: true, caption: "hello!"} // some metadata & caption
-        client.sendMediaMessage(id, buffer, WhatsAppWeb.MessageType.video, options)
-    ```
-    - The thumbnail can be generated automatically for images & stickers. Though, to automatically generate thumbnails for videos, you need to have ``` ffmpeg ``` installed on your system
-    - ```mediaBuffer``` is just a Buffer containing the contents of the media you want to send
-    - ```mediaType``` represents the type of message you are sending. This can be one of the following:
-        ``` javascript
-            [
-                WhatsAppWeb.MessageType.image, // an image message
-                WhatsAppWeb.MessageType.video, // a video message
-                WhatsAppWeb.MessageType.audio, // an audio message
-                WhatsAppWeb.MessageType.sticker // a sticker message
-            ]
-        ```
-    - Tested formats: png, jpeg, webp (sticker), mp4, ogg
 
-The last parameter when sending messages is `info`, a JSON object, providing some information about the message. It can have the following __optional__ values:
-``` javascript
-info = {
-    caption: "hello there!", // (for media messages) the caption to send with the media (cannot be sent with stickers though)
-    thumbnail: "23GD#4/==", /*  (for location & media messages) has to be a base 64 encoded JPEG if you want to send a custom thumb, 
-                                or set to null if you don't want to send a thumbnail.
-                                Do not enter this field if you want to automatically generate a thumb
-                            */
-    mimetype: "application/pdf", /* (for media messages) specify the type of media (optional for all media types except documents),
-                                    for pdf files => set to "application/pdf",
-                                    for txt files => set to "application/txt"
-                                    etc.
-                                */
-    gif: true, // (for video messages) if the video should be treated as a GIF
-    quoted: quotedMessage, // the message you want to quote (can be used with sending all kinds of messages)
-    timestamp: Date() // optional, if you want to manually set the timestamp of the message
-}
+Send like, all types of messages with a single function:
+``` ts
+    import { MessageType, MessageOptions, Mimetype } from '@adiwajshing/baileys'
+
+    const id = 'abcd@s.whatsapp.net' // the WhatsApp ID 
+    // send a simple text!
+    client.sendMessage (id, 'oh hello there', MessageType.text)
+    // send a location!
+    client.sendMessage(id, {degreeslatitude: 24.121231, degreesLongitude: 55.1121221}, MessageType.location)
+    // send a contact!
+    const vcard = 'BEGIN:VCARD\n' // metadata of the contact card
+                + 'VERSION:3.0\n' 
+                + 'FN:Jeff Singh\n' // full name
+                + 'ORG:Ashoka Uni;\n' // the organization of the contact
+                + 'TEL;type=CELL;type=VOICE;waid=911234567890:+91 12345 67890\n' // WhatsApp ID + phone number
+                + 'END:VCARD'
+    client.sendMessage(id, {displayname: "Jeff", vcard: vcard}, MessageType.contact)
+    // send a gif
+    const buffer = fs.readFileSync("Media/ma_gif.mp4") // load some gif
+    const options: MessageOptions = {mimetype: Mimetype.gif, caption: "hello!"} // some metadata & caption
+    client.sendMessage(id, buffer, MessageType.video, options)
 ```
-
-``` id ``` is the WhatsApp id of the person or group you're sending the message to. 
-
-It must be in the format ```[country code][phone number]@s.whatsapp.net```, for example ```+19999999999@s.whatsapp.net``` for people. For groups, it must be in the format ``` 123456789-123345@g.us ```. **Do not attach** `@c.us` for individual people IDs, It won't work
+To note:
+- `id` is the WhatsApp ID of the person or group you're sending the message to. 
+    - It must be in the format ```[country code][phone number]@s.whatsapp.net```, for example ```+19999999999@s.whatsapp.net``` for people. For groups, it must be in the format ``` 123456789-123345@g.us ```. 
+    - **Do not attach** `@c.us` for individual people IDs, It won't work.
+- For media messages, the thumbnail can be generated automatically for images & stickers. Thumbnails for videos can also be generated automatically, though, you need to have `ffmpeg` installed on your system.
+- **MessageOptions**: some extra info about the message. It can have the following __optional__ values:
+``` ts
+    const info: MessageOptions = {
+        quoted: quotedMessage, // the message you want to quote
+        timestamp: Date() // optional, if you want to manually set the timestamp of the message
+        caption: "hello there!", // (for media messages) the caption to send with the media (cannot be sent with stickers though)
+        thumbnail: "23GD#4/==", /*  (for location & media messages) has to be a base 64 encoded JPEG if you want to send a custom thumb, 
+                                    or set to null if you don't want to send a thumbnail.
+                                    Do not enter this field if you want to automatically generate a thumb
+                                */
+        mimetype: Mimetype.pdf, /* (for media messages) specify the type of media (optional for all media types except documents),
+                                        import {Mimetype} from '@adiwajshing/baileys'
+                                */
+    }
+```
 
 ## Sending Read Receipts
-``` javascript 
+``` ts 
     client.sendReadReceipt(id, messageID) 
 ```
-The id is in the same format as mentioned earlier. The message ID is the unique identifier of the message that you are marking as read. On a message object, it can be accessed using ```messageID = message.key.id```.
+The id is in the same format as mentioned earlier. The message ID is the unique identifier of the message that you are marking as read. On a `WAMessage`, it can be accessed using ```messageID = message.key.id```.
 
 ## Update Presence
-``` javascript
+``` ts
     client.updatePresence(id, WhatsAppWeb.Presence.available) 
 ```
 This lets the person/group with ``` id ``` know whether you're online, offline, typing etc. where ``` presence ``` can be one of the following:
-``` javascript
-    [
-        WhatsAppWeb.Presence.available, // online
-        WhatsAppWeb.Presence.unavailable, // offline
-        WhatsAppWeb.Presence.composing, // typing...
-        WhatsAppWeb.Presence.recording // recording...
-    ]
+``` ts
+    // call: import { Presence } from '@adiwajshing/baileys'
+    export enum Presence {
+        available = 'available', // "online"
+        unavailable = 'unavailable', // "offline"
+        composing = 'composing', // "typing..."
+        recording = 'recording', // "recording..."
+        paused = 'paused', // I have no clue
+    }
 ```
 
 ## Decoding Media
 If you want to save & process some images, videos, documents or stickers you received
-``` javascript
-    client.setOnUnreadMessage (m => {
-        const messageType = client.getMessageType(m.message) // get what type of message it is -- text, image, video
+``` ts
+    import { getNotificationType, MessageType } from '@adiwajshing/baileys'
+    client.setOnUnreadMessage (false, async m => {
+        const messageType = getNotificationType(m.message) // get what type of message it is -- text, image, video
         // if the message is not a text message
-        if (messageType !== WhatsAppWeb.MessageType.text && messageType !== WhatsAppWeb.MessageType.extendedText) {
-            client.decodeMediaMessage(m.message, "filename") // extension applied automatically
-            .then (meta => console.log(m.key.remoteJid + " sent media, saved at: " + meta.filename))
-            .catch (err => console.log("error in decoding message: " + err))
+        if (messageType !== MessageType.text && messageType !== MessageType.extendedText) {
+            const savedFilename = await client.decodeMediaMessage(m.message, "filename") // extension applied automatically
+            console.log(m.key.remoteJid + " sent media, saved at: " + savedFilename)
         }
     }
 ```
 
-## Restoring Sessions
-Once you connect successfully, you can get your authentication credentials using
-``` javascript
-    const authJSON = client.base64EncodedAuthInfo() 
-```
-Then you can use this JSON to log back in without needing to scan a QR code using
-``` javascript
-    const authJSON = JSON.parse( fs.readFileSync("auth_info.json") )
-    client.connect (authJSON)
-    .then (([user, chats, contacts, unread]) => console.log ("yay connected"))
-```
-
 ## Querying
 - To check if a given ID is on WhatsApp
-    ``` javascript
-        client.isOnWhatsApp ("xyz@c.us")
-        .then (([exists, id]) => console.log(id + (exists ? " exists " : " does not exist") + "on WhatsApp"))
+    ``` ts
+    const id = 'xyz@s.whatsapp.net'
+    const exists = await client.isOnWhatsApp (id)
+    console.log (`${id} ${exists ? " exists " : " does not exist"} on WhatsApp`)
     ```
 - To query chat history on a group or with someone
-    ``` javascript
-    client.loadConversation ("xyz-abc@g.us", 25) // query the last 25 messages (replace 25 with the number of messages you want to query)
-    .then (messages => console.log("got back " + messages.length + " messages"))
+    ``` ts
+    // query the last 25 messages (replace 25 with the number of messages you want to query)
+    const messages = await client.loadConversation ("xyz-abc@g.us", 25)
+    console.log("got back " + messages.length + " messages")
     ```
     You can also load the entire conversation history if you want
-    ``` javascript
-    client.loadEntireConversation ("xyz@c.us", (message) => console.log("Loaded message with ID: " + message.key.id))
-    .then (() => console.log("queried all messages")) // promise resolves once all messages are retreived
+    ``` ts
+    await client.loadEntireConversation ("xyz@c.us", message => console.log("Loaded message with ID: " + message.key.id))
+    console.log("queried all messages") // promise resolves once all messages are retreived
     ```
 - To get the status of some person
-    ``` javascript
-    client.getStatus ("xyz@c.us") // leave empty to get your own
-    .then ((json, q) => console.log("status: " + json.status))
+    ``` ts
+    const status = await client.getStatus ("xyz@c.us") // leave empty to get your own status
+    console.log("status: " + status)
     ```
 - To get the display picture of some person/group
-    ``` javascript
-    client.getProfilePicture ("xyz@g.us") // leave empty to get your own
-    .then (([json, q]) => console.log("download profile picture from: " + json.eurl))
+    ``` ts
+    const ppUrl = await client.getProfilePicture ("xyz@g.us") // leave empty to get your own
+    console.log("download profile picture from: " + ppUrl)
     ```
 - To get someone's presence (if they're typing, online)
-    ``` javascript
-    client.requestPresenceUpdate ("xyz@c.us")
+    ``` ts
     // the presence update is fetched and called here
     client.setOnPresenceUpdate (json => console.log(json.id + " presence is " + json.type))
+
+    await client.requestPresenceUpdate ("xyz@c.us")
     ```
 
-Of course, replace ``` xyz ``` with an actual ID. Also, append ``` @c.us ``` for individuals & ``` @g.us ``` for groups.
+Of course, replace ``` xyz ``` with an actual ID. 
+Also, append ``` @s.whatsapp.net ``` for individuals & ``` @g.us ``` for groups.
 
 ## Groups
 - To query the metadata of a group
-    ``` javascript
-    client.groupMetadata ("abcd-xyz@g.us")
-    .then (([json, _]) => console.log(json.id + ", title: " + json.subject + ", description: " + json.desc))
+    ``` ts
+    const metadata = await client.groupMetadata ("abcd-xyz@g.us")
+    console.log(json.id + ", title: " + json.subject + ", description: " + json.desc)
     ```
 - To create a group
-    ``` javascript
-    client.groupCreate ("My Fab Group", ["abcd@s.whatsapp.net", "efgh@s.whatsapp.net"]) // title & participants
-    .then (([json, _]) => {
-        console.log ("created group with id: " + json.gid)
-        client.sendTextMessage(json.gid, "hello everyone") // say hello to everyone on the group
-    })
+    ``` ts
+    // title & participants
+    const group = await client.groupCreate ("My Fab Group", ["abcd@s.whatsapp.net", "efgh@s.whatsapp.net"])
+    console.log ("created group with id: " + group.gid)
+    client.sendTextMessage(group.gid, "hello everyone") // say hello to everyone on the group
     ```
 - To add people to a group
-    ``` javascript
-    client.groupAdd ("abcd-xyz@g.us", ["abcd@s.whatsapp.net", "efgh@s.whatsapp.net"]) // id & people to add to the group
-    .then (([json, _]) => console.log("added successfully: " + (json.status===200)))
+    ``` ts
+    // id & people to add to the group
+    const response = await client.groupAdd ("abcd-xyz@g.us", ["abcd@s.whatsapp.net", "efgh@s.whatsapp.net"])
+    console.log("added successfully: " + (response.status===200))
     ```
 - To make someone admin on a group
-    ``` javascript
-    client.groupMakeAdmin ("abcd-xyz@g.us", ["abcd@s.whatsapp.net", "efgh@s.whatsapp.net"]) // id & people to make admin
-    .then (([json, _]) => console.log("made admin successfully: " + (json.status===200)))
+    ``` ts
+    const response = await client.groupMakeAdmin ("abcd-xyz@g.us", ["abcd@s.whatsapp.net", "efgh@s.whatsapp.net"]) // id & people to make admin
+    console.log("made admin successfully: " + (response.status===200))
     ```
 - To leave a group
-    ``` javascript
-    client.groupLeave ("abcd-xyz@g.us")
-    .then (([json, _]) => console.log("left group successfully: " + (json.status===200)))
+    ``` ts
+    const response = await client.groupLeave ("abcd-xyz@g.us")
+    console.log("left group successfully: " + (response.status===200))
     ```
 - To get the invite code for a group
-    ``` javascript
-    client.groupInviteCode ("abcd-xyz@g.us")
-    .then (code => console.log(code))
+    ``` ts
+    const code = await client.groupInviteCode ("abcd-xyz@g.us")
+    console.log("group code: " + code)
     ```
 
 ## Writing Custom Functionality
 Baileys is written, keeping in mind, that you may require other custom functionality. Hence, instead of having to fork the project & re-write the internals, you can simply write extensions in your own code.
 
 First, enable the logging of unhandled messages from WhatsApp by setting
-``` javascript
-client.logUnhandledMessages = true
+``` ts
+client.logLevel = MessageLogLevel.unhandled // set to MessageLogLevel.all to see all messages received
 ```
 This will enable you to see all sorts of messages WhatsApp sends in the console. Some examples:
 
@@ -283,7 +297,7 @@ This will enable you to see all sorts of messages WhatsApp sends in the console.
     - ```bMessage[2][0][0]``` is always ``` "battery" ```
 
     Hence, you can register a callback for an event using the following:
-    ``` javascript
+    ``` ts
     client.registerCallback (["action", null, "battery"], json => {
         const batteryLevelStr = json[2][0][1].value
         const batterylevel = parseInt (batteryLevelStr)
@@ -303,7 +317,7 @@ This will enable you to see all sorts of messages WhatsApp sends in the console.
     - ```pMessage[2]``` is always ``` undefined ```
 
     Following this, one can implement the following callback:
-    ``` javascript
+    ``` ts
     client.registerCallback (["Conn", "pushname"], json => {
         const pushname = json[1].pushname
         client.userMetaData.name = pushname // update on client too
@@ -316,11 +330,5 @@ This will enable you to see all sorts of messages WhatsApp sends in the console.
 A little more testing will reveal that almost all WhatsApp messages are in the format illustrated above. 
 Note: except for the first parameter (in the above cases, ```"action"``` or ```"Conn"```), all the other parameters are optional.
 
-## Example
-Do check out & run [example.js](example/example.js) to see example usage of these functions.
-To run the example script, download or clone the repo and then type the following in terminal:
-1. ``` cd path/to/Baileys/example ```
-2. ``` node example.js ```
-
 ### Note
- I am in no way affiliated with WhatsApp. This was written for educational purposes. Use at your own discretion.
+ This library is in no way affiliated with WhatsApp. Use at your own discretion. Do not spam people with this.

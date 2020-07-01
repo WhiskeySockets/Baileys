@@ -7,7 +7,7 @@ import { decodeMediaMessage } from './Utils'
 import { promiseTimeout } from '../WAConnection/Utils'
 
 require ('dotenv').config () // dotenv to load test jid
-const testJid = process.env.TEST_JID // set TEST_JID=xyz@s.whatsapp.net in a .env file in the root directory
+const testJid = process.env.TEST_JID || '1234@s.whatsapp.net' // set TEST_JID=xyz@s.whatsapp.net in a .env file in the root directory
 
 const createTimeout = (timeout) => new Promise(resolve => setTimeout(resolve, timeout))
 
@@ -21,7 +21,6 @@ async function sendAndRetreiveMessage(client: WAClient, content, type: MessageTy
 function WAClientTest(name: string, func: (client: WAClient) => void) {
     describe(name, () => {
         const client = new WAClient()
-        console.log (`test jid: ${testJid}`)
         before(async () => {
             const file = './auth_info.json'
             await client.connectSlim(file)

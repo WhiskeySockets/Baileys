@@ -1,7 +1,5 @@
 node_modules
 auth_info.json
-test_pvt.js
-media_decode_tests.js
 output.csv
 package-lock.json
 */.DS_Store

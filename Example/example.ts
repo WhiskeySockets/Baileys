@@ -64,7 +64,7 @@ async function example() {
             const locMessage = m.message[messageType] as WALocationMessage
             console.log(`${sender} sent location (lat: ${locMessage.degreesLatitude}, long: ${locMessage.degreesLongitude})`)
             
-            decodeMediaMessage(m.message, './Media/loc_thumb_in_' + m.key.id) // save location thumbnail
+            decodeMediaMessage(m.message, './Media/media_loc_thumb_in_' + m.key.id) // save location thumbnail
 
             if (messageType === MessageType.liveLocation) {
                 console.log(`${sender} sent live location for duration: ${m.duration/60}`)
