@@ -24,7 +24,8 @@ Set the phone number you can randomly send messages to in a `.env` file with `TE
 
 ## Install
 Create and cd to your NPM project directory and then in terminal, write: 
-` npm install @adiwajshing/baileys `
+1. stable: `npm install @adiwajshing/baileys`
+2. stabl-ish (but quicker fixes): `npm install github:adiwajshing/baileys`
 
 Then import in your code using:
 ``` ts 
