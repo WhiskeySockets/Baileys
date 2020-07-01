@@ -1,4 +1,4 @@
-import assert from 'assert'
+import * as assert from 'assert'
 import WAConnection from './WAConnection'
 import { AuthenticationCredentialsBase64 } from './Constants'
 
@@ -22,17 +22,16 @@ describe('Test Connect', () => {
     it('should connect', async () => {
         console.log('please be ready to scan with your phone')
         const conn = new WAConnection()
-        await assert.doesNotReject(async () => conn.connectSlim(null), 'initial connection failed')
-        assert.ok(conn.userMetaData)
-        assert.ok(conn.userMetaData.id)
+        const user = await conn.connectSlim(null)
+        assert.ok(user)
+        assert.ok(user.id)
 
         conn.close()
         auth = conn.base64EncodedAuthInfo()
     })
     it('should reconnect', async () => {
         const conn = new WAConnection()
-
-        const [user, chats, contacts, unread] = await conn.connect('./auth_info.json', 20 * 1000)
+        const [user, chats, contacts, unread] = await conn.connect(auth, 20*1000)
 
         assert.ok(user)
         assert.ok(user.id)

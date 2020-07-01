@@ -8,6 +8,7 @@ import {
     WAGroupCreateResponse,
     WAGroupMetadata,
     WAGroupModification,
+    MessageLogLevel,
 } from '../WAConnection/Constants'
 import { generateMessageTag } from '../WAConnection/Utils'
 
@@ -51,7 +52,7 @@ export default class WhatsAppWebBase extends WAConnection {
             if (!message.key.fromMe || callbackOnMyMessages) {
                 // if this message was sent to us, notify
                 callback(message as WAMessage)
-            } else if (this.logUnhandledMessages) {
+            } else if (this.logLevel >= MessageLogLevel.unhandled) {
                 this.log(`[Unhandled] message - ${JSON.stringify(message)}`)
             }
         })

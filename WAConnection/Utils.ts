@@ -1,5 +1,5 @@
-import Crypto from 'crypto'
-import HKDF from 'futoin-hkdf'
+import * as Crypto from 'crypto'
+import * as HKDF from 'futoin-hkdf'
 
 /** decrypt AES 256 CBC; where the IV is prefixed to the buffer */
 
@@ -38,6 +38,7 @@ export function randomBytes(length) {
     return Crypto.randomBytes(length)
 }
 export function promiseTimeout<T>(ms: number, promise: Promise<T>) {
+    if (!ms) { return promise }
     // Create a promise that rejects in <ms> milliseconds
     const timeout = new Promise((_, reject) => {
         const id = setTimeout(() => {

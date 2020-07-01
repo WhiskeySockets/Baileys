@@ -20,7 +20,7 @@
     "lint": "eslint '*/*.ts' --quiet --fix",
     "tsc": "tsc",
     "dev": "ts-node-dev --respawn --transpileOnly ./app/app.ts",
-    "prod": "tsc && node ./build/app.js"
+    "example": "npx ts-node Example/example.ts"
   },
   "author": "Adhiraj Singh",
   "license": "MIT",
@@ -40,9 +40,11 @@
     "@types/mocha": "^7.0.2",
     "@types/node": "^14.0.14",
     "@types/sharp": "^0.25.0",
+    "@types/ws": "^7.2.6",
     "@typescript-eslint/eslint-plugin": "^3.5.0",
     "@typescript-eslint/parser": "^3.5.0",
     "assert": "^2.0.0",
+    "dotenv": "^8.2.0",
     "eslint": "^7.3.1",
     "eslint-config-prettier": "^6.11.0",
     "eslint-plugin-prettier": "^3.1.4",

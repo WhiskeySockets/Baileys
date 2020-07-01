@@ -1,7 +1,6 @@
-import WS from 'ws'
-
+import * as WS from 'ws'
 import * as Utils from './Utils'
-import { AuthenticationCredentialsBase64, UserMetaData, WAMessage, WAChat, WAContact } from './Constants'
+import { AuthenticationCredentialsBase64, UserMetaData, WAMessage, WAChat, WAContact, MessageLogLevel } from './Constants'
 import WAConnectionValidator from './Validation'
 
 export default class WAConnectionConnector extends WAConnectionValidator {
@@ -13,7 +12,7 @@ export default class WAConnectionConnector extends WAConnectionValidator {
      */
     async connect(authInfo: AuthenticationCredentialsBase64 | string = null, timeoutMs: number = null) {
         const userInfo = await this.connectSlim(authInfo, timeoutMs)
-        const chats = await this.receiveChatsAndContacts()
+        const chats = await this.receiveChatsAndContacts(timeoutMs)
         return [userInfo, ...chats] as [UserMetaData, WAChat[], WAContact[], WAMessage[]]
     }
     /**
@@ -31,7 +30,7 @@ export default class WAConnectionConnector extends WAConnectionValidator {
         try {
             this.loadAuthInfoFromBase64(authInfo)
         } catch {}
-
+        
         this.conn = new WS('wss://web.whatsapp.com/ws', null, { origin: 'https://web.whatsapp.com' })
 
         let promise: Promise<UserMetaData> = new Promise((resolve, reject) => {
@@ -52,8 +51,8 @@ export default class WAConnectionConnector extends WAConnectionValidator {
                 reject(error)
             })
         })
-        promise = timeoutMs ? Utils.promiseTimeout(timeoutMs, promise) : promise
-        return promise.catch((err) => {
+        promise = Utils.promiseTimeout(timeoutMs, promise)
+        return promise.catch(err => {
             this.close()
             throw err
         })
@@ -61,25 +60,31 @@ export default class WAConnectionConnector extends WAConnectionValidator {
     /**
      * Sets up callbacks to receive chats, contacts & unread messages.
      * Must be called immediately after connect
-     * [chats, contacts, unreadMessages]
+     * @returns [chats, contacts, unreadMessages]
      */
-    receiveChatsAndContacts() {
-        const chats: Array<WAChat> = []
+    async receiveChatsAndContacts(timeoutMs: number = null) {
+        let chats: Array<WAChat> = []
         let contacts: Array<WAContact> = []
-        const unreadMessages: Array<WAMessage> = []
-        const unreadMap = {}
+        let unreadMessages: Array<WAMessage> = []
+        let unreadMap: Record<string, number> = {}
 
-        let encounteredAddBefore = false
+        let receivedContacts = false
+        let receivedMessages = false
         let convoResolve
 
         this.log('waiting for chats & contacts') // wait for the message with chats
         const waitForConvos = () =>
-            new Promise((resolve, _) => {
-                convoResolve = resolve
-                const chatUpdate = (json) => {
+            new Promise(resolve => {
+                convoResolve = () => {
+                    // de-register the callbacks, so that they don't get called again
+                    this.deregisterCallback(['action', 'add:last'])
+                    this.deregisterCallback(['action', 'add:before'])
+                    this.deregisterCallback(['action', 'add:unread'])
+                    resolve()
+                }
+                const chatUpdate = json => {
+                    receivedMessages = true
                     const isLast = json[1].last
-                    encounteredAddBefore = json[1].add === 'before' ? true : encounteredAddBefore
-
                     json = json[2]
                     if (json) {
                         for (let k = json.length - 1; k >= 0; k--) {
@@ -92,12 +97,8 @@ export default class WAConnectionConnector extends WAConnectionValidator {
                             }
                         }
                     }
-                    if (isLast) {
-                        // de-register the callbacks, so that they don't get called again
-                        this.deregisterCallback(['action', 'add:last'])
-                        this.deregisterCallback(['action', 'add:before'])
-                        this.deregisterCallback(['action', 'add:unread'])
-                        resolve()
+                    if (isLast && receivedContacts) { // if received contacts before messages
+                        convoResolve ()   
                     }
                 }
                 // wait for actual messages to load, "last" is the most recent message, "before" contains prior messages
@@ -105,22 +106,27 @@ export default class WAConnectionConnector extends WAConnectionValidator {
                 this.registerCallback(['action', 'add:before'], chatUpdate)
                 this.registerCallback(['action', 'add:unread'], chatUpdate)
             })
-        const waitForChats = this.registerCallbackOneTime(['response', 'type:chat']).then((json) => {
-            json[2].forEach((chat) => {
+        const waitForChats = async () => {
+            const json = await this.registerCallbackOneTime(['response', 'type:chat'])
+            json[2].forEach(chat => {
                 chats.push(chat[1]) // chats data (log json to see what it looks like)
                 // store the number of unread messages for each sender
                 unreadMap[chat[1].jid] = chat[1].count
             })
-            if (chats && chats.length > 0) return waitForConvos()
-        })
-        const waitForContacts = this.registerCallbackOneTime(['response', 'type:contacts']).then((json) => {
-            contacts = json[2].map((item) => item[1])
-            // if no add:before messages are sent, and you receive contacts
+            if (chats.length > 0) return waitForConvos()
+        }
+        const waitForContacts = async () => {
+            const json = await this.registerCallbackOneTime(['response', 'type:contacts'])
+            contacts = json[2].map(item => item[1])
+            receivedContacts = true
+            // if you receive contacts after messages
             // should probably resolve the promise
-            if (!encounteredAddBefore && convoResolve) convoResolve()
-        })
+            if (receivedMessages) convoResolve()
+        }
         // wait for the chats & contacts to load
-        return Promise.all([waitForChats, waitForContacts]).then(() => [chats, contacts, unreadMessages])
+        const promise = Promise.all([waitForChats(), waitForContacts()])
+        await Utils.promiseTimeout (timeoutMs, promise)
+        return [chats, contacts, unreadMessages] as [WAChat[], WAContact[], WAMessage[]]
     }
     private onMessageRecieved(message) {
         if (message[0] === '!') {
@@ -170,6 +176,9 @@ export default class WAConnectionConnector extends WAConnectionValidator {
                 // if we recieved a message that was encrypted but we don't have the keys, then there must be an error
                 throw [3, 'recieved encrypted message when auth creds not available', message]
             }
+            if (this.logLevel === MessageLogLevel.all) {
+                this.log(messageTag + ', ' + JSON.stringify(json))
+            }
             /* 
              Check if this is a response to a message we sent
             */
@@ -214,7 +223,7 @@ export default class WAConnectionConnector extends WAConnectionValidator {
                     return
                 }
             }
-            if (this.logUnhandledMessages) {
+            if (this.logLevel === MessageLogLevel.unhandled) {
                 this.log('[Unhandled] ' + messageTag + ', ' + JSON.stringify(json))
             }
         }

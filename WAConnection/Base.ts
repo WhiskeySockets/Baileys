@@ -1,10 +1,11 @@
-import WS from 'ws'
-import QR from 'qrcode-terminal'
-import fs from 'fs'
+import * as QR from 'qrcode-terminal'
+import * as fs from 'fs'
+import * as WS from 'ws'
 import * as Utils from './Utils'
 import Encoder from '../Binary/Encoder'
 import Decoder from '../Binary/Decoder'
-import { AuthenticationCredentials, UserMetaData, WANode, AuthenticationCredentialsBase64, WATag } from './Constants'
+import { AuthenticationCredentials, UserMetaData, WANode, AuthenticationCredentialsBase64, WATag, MessageLogLevel } from './Constants'
+
 
 /** Generate a QR code from the ref & the curve public key. This is scanned by the phone */
 const generateQRCode = function ([ref, publicKey, clientID]) {
@@ -23,7 +24,7 @@ export default class WAConnectionBase {
     autoReconnect = true
     lastSeen: Date = null
     /** Log messages that are not handled, so you can debug & see what custom stuff you can implement */
-    logUnhandledMessages = false
+    logLevel: MessageLogLevel = MessageLogLevel.none
     /** Data structure of tokens & IDs used to establish one's identiy to WhatsApp Web */
     protected authInfo: AuthenticationCredentials = {
         clientID: null,
@@ -259,6 +260,6 @@ export default class WAConnectionBase {
         }
     }
     protected log(text) {
-        console.log(`[Baileys] ${text}`)
+        console.log(`[Baileys][${new Date().toLocaleString()}] ${text}`)
     }
 }

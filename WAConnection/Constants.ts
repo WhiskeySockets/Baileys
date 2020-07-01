@@ -1,6 +1,11 @@
 import { WA } from '../Binary/Constants'
 import { proto } from '../Binary/WAMessage'
 
+export enum MessageLogLevel {
+    none=0,
+    unhandled=1,
+    all=2
+}
 export interface AuthenticationCredentials {
     clientID: string
     serverToken: string

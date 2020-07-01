@@ -1,53 +1,40 @@
 import {
     WAClient,
-    AuthenticationCredentialsBase64,
     getNotificationType,
     MessageType,
     decodeMediaMessage,
     Presence,
     MessageOptions,
     Mimetype,
+    WALocationMessage,
+    MessageLogLevel,
 } from '../WAClient/WAClient'
-import fs from 'fs'
+import * as fs from 'fs'
 
 async function example() {
     const client = new WAClient() // instantiate
     client.autoReconnect = true // auto reconnect on disconnect
-    client.logUnhandledMessages = false // set to true to see what kind of stuff you can implement
+    client.logLevel = MessageLogLevel.none // set to unhandled to see what kind of stuff you can implement
 
-    let authInfo: AuthenticationCredentialsBase64 = null
-    try {
-        const file = fs.readFileSync('auth_info.json') // load a closed session back if it exists
-        authInfo = JSON.parse(file)
-    } catch {}
-
-    // connect or timeout in 20 seconds
-    const [user, chats, contacts, unread] = await client.connect(authInfo, 20 * 1000)
+    // connect or timeout in 20 seconds (loads the auth file credentials if present)
+    const [user, chats, contacts, unread] = await client.connect('./auth_info.json', 20 * 1000)
 
     console.log('oh hello ' + user.name + ' (' + user.id + ')')
     console.log('you have ' + unread.length + ' unread messages')
     console.log('you have ' + chats.length + ' chats & ' + contacts.length + ' contacts')
 
-    authInfo = client.base64EncodedAuthInfo() // get all the auth info we need to restore this session
+    const authInfo = client.base64EncodedAuthInfo() // get all the auth info we need to restore this session
     fs.writeFileSync('./auth_info.json', JSON.stringify(authInfo, null, '\t')) // save this info to a file
     /*  Note: one can take this auth_info.json file and login again from any computer without having to scan the QR code, 
         and get full access to one's WhatsApp. Despite the convenience, be careful with this file */
 
-    client.setOnPresenceUpdate((json) => console.log(json.id + ' presence is ' + json.type))
-    client.setOnMessageStatusChange((json) => {
+    client.setOnPresenceUpdate(json => console.log(json.id + ' presence is ' + json.type))
+    client.setOnMessageStatusChange(json => {
         const participant = json.participant ? ' (' + json.participant + ')' : '' // participant exists when the message is from a group
-        console.log(
-            json.to +
-                participant +
-                ' acknowledged message(s) ' +
-                json.ids +
-                ' as ' +
-                json.type +
-                ' at ' +
-                json.timestamp,
-        )
+        console.log(`${json.to}${participant} acknlowledged message(s) ${json.ids} as ${json.type}`)
     })
-    client.setOnUnreadMessage(async (m) => {
+     // set to false to NOT relay your own sent messages
+    client.setOnUnreadMessage(true, async (m) => {
         const [notificationType, messageType] = getNotificationType(m) // get what type of notification it is -- message, group add notification etc.
         console.log('got notification of type: ' + notificationType)
 
@@ -74,32 +61,20 @@ async function example() {
             const contact = m.message.contactMessage
             console.log(sender + ' sent contact (' + contact.displayName + '): ' + contact.vcard)
         } else if (messageType === MessageType.location || messageType === MessageType.liveLocation) {
-            const locMessage = m.message[messageType]
-            console.log(
-                sender +
-                    ' sent location (lat: ' +
-                    locMessage.degreesLatitude +
-                    ', long: ' +
-                    locMessage.degreesLongitude +
-                    '), saving thumbnail...',
-            )
-            decodeMediaMessage(m.message, 'loc_thumb_in_' + m.key.id)
+            const locMessage = m.message[messageType] as WALocationMessage
+            console.log(`${sender} sent location (lat: ${locMessage.degreesLatitude}, long: ${locMessage.degreesLongitude})`)
+            
+            decodeMediaMessage(m.message, './Media/loc_thumb_in_' + m.key.id) // save location thumbnail
 
             if (messageType === MessageType.liveLocation) {
-                console.log(
-                    sender +
-                        ' sent live location for duration: ' +
-                        m.duration / 60 +
-                        ' minutes, seq number: ' +
-                        locMessage.sequenceNumber,
-                )
+                console.log(`${sender} sent live location for duration: ${m.duration/60}`)
             }
         } else {
             // if it is a media (audio, image, video) message
             // decode, decrypt & save the media.
             // The extension to the is applied automatically based on the media type
             try {
-                const savedFile = await decodeMediaMessage(m.message, 'media_in_' + m.key.id)
+                const savedFile = await decodeMediaMessage(m.message, './Media/media_in_' + m.key.id)
                 console.log(sender + ' sent media, saved at: ' + savedFile)
             } catch (err) {
                 console.log('error in decoding message: ' + err)
@@ -124,21 +99,22 @@ async function example() {
                 content = { degreesLatitude: 32.123123, degreesLongitude: 12.12123123 }
                 type = MessageType.location
             } else {
-                content = fs.readFileSync('example/ma_gif.mp4') // load the gif
+                content = fs.readFileSync('./Media/ma_gif.mp4') // load the gif
                 options.mimetype = Mimetype.gif
+                type = MessageType.video
             }
             const response = await client.sendMessage(m.key.remoteJid, content, type, options)
             console.log("sent message with ID '" + response.messageID + "' successfully: " + (response.status === 200))
         }, 3 * 1000)
-    }, true) // set to false to not relay your own sent messages
+    })
 
     /* example of custom functionality for tracking battery */
-    client.registerCallback(['action', null, 'battery'], (json) => {
+    client.registerCallback(['action', null, 'battery'], json => {
         const batteryLevelStr = json[2][0][1].value
         const batterylevel = parseInt(batteryLevelStr)
         console.log('battery level: ' + batterylevel)
     })
-    client.setOnUnexpectedDisconnect((err) => console.log('disconnected unexpectedly: ' + err))
+    client.setOnUnexpectedDisconnect(err => console.log('disconnected unexpectedly: ' + err))
 }
 
 example().catch((err) => console.log(`encountered error: ${err}`))

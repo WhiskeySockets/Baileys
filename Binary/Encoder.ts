@@ -17,7 +17,7 @@ export default class Encoder {
         this.pushBytes([(value >> 16) & 0x0f, (value >> 8) & 0xff, value & 0xff])
     }
     pushBytes(bytes: Uint8Array | Array<number>) {
-        this.data.push(...bytes)
+        this.data.push.apply(this.data, bytes)
     }
     pushString(str: string) {
         const bytes = new TextEncoder().encode(str)

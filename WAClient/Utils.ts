@@ -1,6 +1,6 @@
 import { MessageType, HKDFInfoKeys, MessageOptions, MessageStubTypes } from './Constants'
-import sharp from 'sharp'
-import fs from 'fs'
+import * as sharp from 'sharp'
+import * as fs from 'fs'
 import fetch from 'node-fetch'
 import { WAMessage, WAMessageContent } from '../WAConnection/Constants'
 import { hmacSign, aesDecryptWithIV, hkdf } from '../WAConnection/Utils'
