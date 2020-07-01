@@ -1,5 +1,5 @@
 import { WA } from '../Binary/Constants'
-import { proto } from '../Binary/WAMessage'
+import { proto } from '../../WAMessage/WAMessage'
 
 export enum MessageLogLevel {
     none=0,

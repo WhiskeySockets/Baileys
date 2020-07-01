@@ -1,4 +1,4 @@
-import { proto as Coding } from './WAMessage'
+import { proto as Coding } from '../../WAMessage/WAMessage'
 
 export namespace WA {
     export const Tags = {

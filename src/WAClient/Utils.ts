@@ -4,7 +4,7 @@ import * as fs from 'fs'
 import fetch from 'node-fetch'
 import { WAMessage, WAMessageContent } from '../WAConnection/Constants'
 import { hmacSign, aesDecryptWithIV, hkdf } from '../WAConnection/Utils'
-import { proto } from '../Binary/WAMessage'
+import { proto } from '../../WAMessage/WAMessage'
 import { randomBytes } from 'crypto'
 import { exec } from 'child_process'
 

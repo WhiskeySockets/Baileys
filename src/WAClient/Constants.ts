@@ -1,5 +1,5 @@
 import { WAMessage } from '../WAConnection/Constants'
-import { proto } from '../Binary/WAMessage'
+import { proto } from '../../WAMessage/WAMessage'
 /**
  * set of statuses visible to other people; see updatePresence() in WhatsAppWeb.Send
  */

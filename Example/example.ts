@@ -8,7 +8,7 @@ import {
     Mimetype,
     WALocationMessage,
     MessageLogLevel,
-} from '../WAClient/WAClient'
+} from '../src/WAClient/WAClient'
 import * as fs from 'fs'
 
 async function example() {

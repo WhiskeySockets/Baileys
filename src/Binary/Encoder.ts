@@ -1,5 +1,5 @@
 import { WA } from './Constants'
-import { proto } from './WAMessage'
+import { proto } from '../../WAMessage/WAMessage'
 
 export default class Encoder {
     data: Array<number> = []
