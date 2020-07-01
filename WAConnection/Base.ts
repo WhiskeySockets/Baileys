@@ -1,6 +1,6 @@
 import * as QR from 'qrcode-terminal'
 import * as fs from 'fs'
-import * as WS from 'ws'
+import WS from 'ws'
 import * as Utils from './Utils'
 import Encoder from '../Binary/Encoder'
 import Decoder from '../Binary/Decoder'

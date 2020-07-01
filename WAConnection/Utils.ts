@@ -1,5 +1,5 @@
 import * as Crypto from 'crypto'
-import * as HKDF from 'futoin-hkdf'
+import HKDF from 'futoin-hkdf'
 
 /** decrypt AES 256 CBC; where the IV is prefixed to the buffer */
 

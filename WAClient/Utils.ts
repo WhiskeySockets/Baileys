@@ -1,5 +1,5 @@
 import { MessageType, HKDFInfoKeys, MessageOptions, MessageStubTypes } from './Constants'
-import * as sharp from 'sharp'
+import sharp from 'sharp'
 import * as fs from 'fs'
 import fetch from 'node-fetch'
 import { WAMessage, WAMessageContent } from '../WAConnection/Constants'

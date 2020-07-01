@@ -1,4 +1,4 @@
-import * as WS from 'ws'
+import WS from 'ws'
 import * as Utils from './Utils'
 import { AuthenticationCredentialsBase64, UserMetaData, WAMessage, WAChat, WAContact, MessageLogLevel } from './Constants'
 import WAConnectionValidator from './Validation'
