@@ -4,6 +4,7 @@
   "description": "WhatsApp Web API",
   "main": "WAClient/WAClient.ts",
   "homepage": "https://github.com/adiwajshing/Baileys",
+  "type": "module",
   "keywords": [
     "whatsapp",
     "js-whatsapp",
