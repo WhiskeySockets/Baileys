@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "module": "commonjs",
+    "allowJs": true,
+    "checkJs": false,
+    "outDir": "build/",
+    "strict": false,
+    "noImplicitThis": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
+  },
+  "include": ["*.ts"],
+  "exclude": ["node_modules", "*/Tests.ts"]
+}
