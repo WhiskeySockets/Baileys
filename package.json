@@ -2,7 +2,7 @@
   "name": "@adiwajshing/baileys",
   "version": "2.0.0",
   "description": "WhatsApp Web API",
-  "main": "WhatsAppWeb.js",
+  "main": "WAClient/WAClient.ts",
   "homepage": "https://github.com/adiwajshing/Baileys",
   "keywords": [
     "whatsapp",
