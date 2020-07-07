@@ -34,15 +34,14 @@ export enum MessageType {
     document = 'documentMessage',
     audio = 'audioMessage',
 }
-/**
- * Tells us what kind of message it is
- */
-export const MessageStubTypes = {
-    20: 'addedToGroup',
-    32: 'leftGroup',
-    39: 'createdGroup',
-}
+export const WAMessageType = function () {
+    const types = proto.WebMessageInfo.WEB_MESSAGE_INFO_STUBTYPE
+    const dict: Record<number, string> = {}
+    Object.keys(types).forEach(element => dict[ types[element] ] = element)
+    return dict 
+}()
 export const HKDFInfoKeys = (function () {
+    
     const dict: Record<string, string> = {}
     dict[MessageType.image] = 'WhatsApp Image Keys'
     dict[MessageType.video] = 'WhatsApp Audio Keys'
@@ -65,10 +64,12 @@ export interface MessageOptions {
     caption?: string
     thumbnail?: string
     mimetype?: Mimetype
+    validateID?: boolean
 }
 export interface MessageStatusUpdate {
     from: string
     to: string
+    /** Which participant caused the update (only for groups) */
     participant?: string
     timestamp: Date
     /** Message IDs read/delivered */

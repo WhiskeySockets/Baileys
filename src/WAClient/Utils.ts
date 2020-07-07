@@ -1,4 +1,4 @@
-import { MessageType, HKDFInfoKeys, MessageOptions, MessageStubTypes } from './Constants'
+import { MessageType, HKDFInfoKeys, MessageOptions, WAMessageType } from './Constants'
 import sharp from 'sharp'
 import * as fs from 'fs'
 import fetch from 'node-fetch'
@@ -8,18 +8,28 @@ import { proto } from '../../WAMessage/WAMessage'
 import { randomBytes } from 'crypto'
 import { exec } from 'child_process'
 
+export function validateJIDForSending (jid: string) {
+    const regexp = /^[0-9]{1,20}(-[0-9]{1,20}@g.us|@s.whatsapp.net)$/
+    if (!regexp.test (jid)) {
+        throw new Error (
+            `Invalid WhatsApp id: ${jid}
+            1. Please ensure you suffix '@s.whatsapp.net' for individual numbers & '@g.us' for groups
+            2. Please do not put any alphabets or special characters like a '+' in the number. A '-' symbol in groups is fine`
+        )
+    }
+}
+
 /** Type of notification */
-export function getNotificationType(message: WAMessage) {
+export function getNotificationType(message: WAMessage): [string, string] {
     if (message.message) {
         return ['message', Object.keys(message.message)[0]]
     } else if (message.messageStubType) {
-        return [MessageStubTypes[message.messageStubType], null]
+        return [WAMessageType[message.messageStubType], null]
     } else {
         return ['unknown', null]
     }
 }
 /** generates all the keys required to encrypt/decrypt & sign a media message */
-
 export function getMediaKeys(buffer, mediaType: MessageType) {
     // expand using HKDF to 112 bytes, also pass in the relevant app info
     const expandedMediaKey = hkdf(buffer, 112, HKDFInfoKeys[mediaType])

@@ -3,7 +3,7 @@ import { MessageType, MessageOptions, Mimetype, Presence } from './Constants'
 import * as fs from 'fs'
 import * as assert from 'assert'
 
-import { decodeMediaMessage } from './Utils'
+import { decodeMediaMessage, validateJIDForSending } from './Utils'
 import { promiseTimeout } from '../WAConnection/Utils'
 
 require ('dotenv').config () // dotenv to load test jid
@@ -59,6 +59,18 @@ WAClientTest('Messages', (client) => {
         const message = await sendAndRetreiveMessage(client, content, MessageType.image, { quoted: messages[0] })
         const file = await decodeMediaMessage(message.message, './Media/received_img')
         assert.strictEqual(message.message.imageMessage.contextInfo.stanzaId, messages[0].key.id)
+    })
+})
+describe('Validate WhatsApp IDs', () => {
+    it ('should correctly validate', () => {
+        assert.doesNotThrow (() => validateJIDForSending ('12345@s.whatsapp.net'))
+        assert.doesNotThrow (() => validateJIDForSending ('919999999999@s.whatsapp.net'))
+        assert.doesNotThrow (() => validateJIDForSending ('10203040506@s.whatsapp.net'))
+        assert.doesNotThrow (() => validateJIDForSending ('12345-3478@g.us'))
+        assert.doesNotThrow (() => validateJIDForSending ('1234567890-34712121238@g.us'))
+        assert.throws (() => validateJIDForSending ('123454677@c.us'))
+        assert.throws (() => validateJIDForSending ('+123454677@s.whatsapp.net'))
+        assert.throws (() => validateJIDForSending ('+12345-3478@g.us'))
     })
 })
 WAClientTest('Presence', (client) => {

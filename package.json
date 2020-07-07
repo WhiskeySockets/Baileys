@@ -1,6 +1,6 @@
 {
   "name": "@adiwajshing/baileys",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "WhatsApp Web API",
   "homepage": "https://github.com/adiwajshing/Baileys",
   "main": "lib/WAClient/WAClient.js",
@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "prepare": "npm run build",
-    "test": "mocha --timeout 30000 -r ts-node/register */Tests.ts",
+    "test": "mocha --timeout 30000 -r ts-node/register src/*/Tests.ts",
     "lint": "eslint '*/*.ts' --quiet --fix",
     "build": "tsc",
     "example": "npx ts-node Example/example.ts"

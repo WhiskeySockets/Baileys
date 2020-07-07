@@ -13,7 +13,7 @@ import {
 } from './Constants'
 import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes } from '../WAConnection/Utils'
 import { WAMessageContent, WAMetric, WAFlag } from '../WAConnection/Constants'
-import { generateThumbnail, getMediaKeys } from './Utils'
+import { validateJIDForSending, generateThumbnail, getMediaKeys } from './Utils'
 
 export default class WhatsAppWebMessages extends WhatsAppWebBase {
     /**
@@ -48,6 +48,9 @@ export default class WhatsAppWebMessages extends WhatsAppWebBase {
         type: MessageType,
         options: MessageOptions = {},
     ) {
+        if (options.validateID === true || !('validateID' in options)) {
+            validateJIDForSending (id)
+        }
         let m: any = {}
         switch (type) {
             case MessageType.text:

@@ -151,12 +151,14 @@ To note:
 - `id` is the WhatsApp ID of the person or group you're sending the message to. 
     - It must be in the format ```[country code][phone number]@s.whatsapp.net```, for example ```+19999999999@s.whatsapp.net``` for people. For groups, it must be in the format ``` 123456789-123345@g.us ```. 
     - **Do not attach** `@c.us` for individual people IDs, It won't work.
+    - Please do not explicitly disable ID validation (in `MessageOptions`) because then your messages may fail for no apparent reason.
 - For media messages, the thumbnail can be generated automatically for images & stickers. Thumbnails for videos can also be generated automatically, though, you need to have `ffmpeg` installed on your system.
 - **MessageOptions**: some extra info about the message. It can have the following __optional__ values:
 ``` ts
     const info: MessageOptions = {
         quoted: quotedMessage, // the message you want to quote
-        timestamp: Date() // optional, if you want to manually set the timestamp of the message
+        timestamp: Date(), // optional, if you want to manually set the timestamp of the message
+        validateID: true, // if you want to validate the ID before sending the message, true by default
         caption: "hello there!", // (for media messages) the caption to send with the media (cannot be sent with stickers though)
         thumbnail: "23GD#4/==", /*  (for location & media messages) has to be a base 64 encoded JPEG if you want to send a custom thumb, 
                                     or set to null if you don't want to send a thumbnail.
