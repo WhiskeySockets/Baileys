@@ -9,11 +9,12 @@ import {
     WALocationMessage,
     WAContactMessage,
     WASendMessageResponse,
-    Presence,
+    WAMessageKey,
 } from './Constants'
 import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes } from '../WAConnection/Utils'
-import { WAMessageContent, WAMetric, WAFlag } from '../WAConnection/Constants'
+import { WAMessageContent, WAMetric, WAFlag, WANode, WAMessage } from '../WAConnection/Constants'
 import { validateJIDForSending, generateThumbnail, getMediaKeys } from './Utils'
+import { proto } from '../../WAMessage/WAMessage'
 
 export default class WhatsAppWebMessages extends WhatsAppWebBase {
     /**
@@ -30,17 +31,52 @@ export default class WhatsAppWebMessages extends WhatsAppWebBase {
         return this.queryExpecting200(json, [WAMetric.group, WAFlag.ignore]) // encrypt and send  off
     }
     /**
-     * Tell someone about your presence -- online, typing, offline etc.
-     * @param jid the ID of the person/group who you are updating
-     * @param type your presence
+     * Search WhatsApp messages with a given text string
+     * @param txt the search string
+     * @param count number of results to return
+     * @param page page number of results
      */
-    async updatePresence(jid: string, type: Presence) {
+    async searchMessages(txt: string, count: number, page: number) {
+        const json = [
+            'query',
+            { 
+                epoch: this.msgCount.toString(), 
+                type: 'search',
+                search: txt,
+                count: count.toString(),
+                page: page.toString()
+            },
+            null,
+        ]
+        const response: WANode = await this.queryExpecting200(json, [WAMetric.group, WAFlag.ignore]) // encrypt and send  off
+        const messages = response[2] ? response[2].map (row => row[2]) : []
+        return { last: response[1]['last'] === 'true', messages: messages as WAMessage[] }
+    }
+    /**
+     * Mark a given chat as unread
+     * @param jid 
+     */
+    async markChatUnread (jid: string) {
         const json = [
             'action',
             { epoch: this.msgCount.toString(), type: 'set' },
-            [['presence', { type: type, to: jid }, null]],
+            [['read', {jid: jid, type: 'false', count: '1'}, null]]
         ]
-        return this.queryExpecting200(json, [WAMetric.group, WAFlag.acknowledge]) as Promise<{ status: number }>
+        return this.queryExpecting200(json, [WAMetric.group, WAFlag.ignore]) as Promise<{ status: number }>
+    }
+    /**
+     * Delete a message in a chat
+     * @param id the person or group where you're trying to delete the message
+     * @param messageKey key of the message you want to delete
+     */
+    async deleteMessage (id: string, messageKey: WAMessageKey) {
+        const json: WAMessageContent = {
+            protocolMessage: {
+                key: messageKey,
+                type: proto.ProtocolMessage.PROTOCOL_MESSAGE_TYPE.REVOKE
+            }
+        }
+        return this.sendGenericMessage (id, json, {})
     }
     async sendMessage(
         id: string,
@@ -168,7 +204,7 @@ export default class WhatsAppWebMessages extends WhatsAppWebBase {
             messageTimestamp: timestamp,
             participant: id.includes('@g.us') ? this.userMetaData.id : null,
         }
-        const json = ['action', { epoch: this.msgCount.toString(), type: 'relay' }, [['message', null, messageJSON]]]
+        const json = ['action', {epoch: this.msgCount.toString(), type: 'relay'}, [['message', null, messageJSON]]]
         const response = await this.queryExpecting200(json, [WAMetric.message, WAFlag.ignore], null, messageJSON.key.id)
         return { status: response.status as number, messageID: messageJSON.key.id } as WASendMessageResponse
     }

@@ -20,9 +20,9 @@ export function validateJIDForSending (jid: string) {
 }
 
 /** Type of notification */
-export function getNotificationType(message: WAMessage): [string, string] {
+export function getNotificationType(message: WAMessage): [string, MessageType?] {
     if (message.message) {
-        return ['message', Object.keys(message.message)[0]]
+        return ['message', Object.keys(message.message)[0] as MessageType]
     } else if (message.messageStubType) {
         return [WAMessageType[message.messageStubType], null]
     } else {
@@ -87,8 +87,9 @@ export async function generateThumbnail(buffer: Buffer, mediaType: MessageType, 
  * Decode a media message (video, image, document, audio) & save it to the given file
  * @param message the media message you want to decode
  * @param filename the name of the file where the media will be saved
+ * @param attachExtension should the correct extension be applied automatically to the file
  */
-export async function decodeMediaMessage(message: WAMessageContent, filename: string) {
+export async function decodeMediaMessage(message: WAMessageContent, filename: string, attachExtension: boolean=true) {
     const getExtension = (mimetype) => mimetype.split(';')[0].split('/')[1]
     /* 
         One can infer media type from the key in the message
@@ -132,7 +133,7 @@ export async function decodeMediaMessage(message: WAMessageContent, filename: st
     if (sign.equals(mac)) {
         const decrypted = aesDecryptWithIV(file, cipherKey, iv) // decrypt media
 
-        const trueFileName = filename + '.' + getExtension(messageContent.mimetype)
+        const trueFileName = attachExtension ? (filename + '.' + getExtension(messageContent.mimetype)) : filename
         fs.writeFileSync(trueFileName, decrypted)
 
         return trueFileName

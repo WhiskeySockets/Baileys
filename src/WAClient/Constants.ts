@@ -40,15 +40,13 @@ export const WAMessageType = function () {
     Object.keys(types).forEach(element => dict[ types[element] ] = element)
     return dict 
 }()
-export const HKDFInfoKeys = (function () {
-    
-    const dict: Record<string, string> = {}
-    dict[MessageType.image] = 'WhatsApp Image Keys'
-    dict[MessageType.video] = 'WhatsApp Audio Keys'
-    dict[MessageType.document] = 'WhatsApp Document Keys'
-    dict[MessageType.sticker] = 'WhatsApp Image Keys'
-    return dict
-})()
+export const HKDFInfoKeys = {
+    [MessageType.image]: 'WhatsApp Image Keys',
+    [MessageType.audio]: 'WhatsApp Audio Keys',
+    [MessageType.video]: 'WhatsApp Video Keys',
+    [MessageType.document]: 'WhatsApp Document Keys',
+    [MessageType.sticker]: 'WhatsApp Image Keys'
+}
 export enum Mimetype {
     jpeg = 'image/jpeg',
     mp4 = 'video/mp4',
@@ -108,3 +106,4 @@ export interface WALocationMessage {
     address?: string
 }
 export type WAContactMessage = proto.ContactMessage
+export type WAMessageKey = proto.IMessageKey

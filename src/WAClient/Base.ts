@@ -1,5 +1,5 @@
 import WAConnection from '../WAConnection/WAConnection'
-import { MessageStatus, MessageStatusUpdate, PresenceUpdate } from './Constants'
+import { MessageStatus, MessageStatusUpdate, PresenceUpdate, Presence } from './Constants'
 import {
     WAMessage,
     WANode,
@@ -63,11 +63,25 @@ export default class WhatsAppWebBase extends WAConnection {
     }
     /** Query whether a given number is registered on WhatsApp */
     isOnWhatsApp = (jid: string) => this.query(['query', 'exist', jid]).then((m) => m.status === 200)
+    /**
+     * Tell someone about your presence -- online, typing, offline etc.
+     * @param jid the ID of the person/group who you are updating
+     * @param type your presence
+     */
+    async updatePresence(jid: string, type: Presence) {
+        const json = [
+            'action',
+            { epoch: this.msgCount.toString(), type: 'set' },
+            [['presence', { type: type, to: jid }, null]],
+        ]
+        return this.queryExpecting200(json, [WAMetric.group, WAFlag.acknowledge]) as Promise<{ status: number }>
+    }
     /** Request an update on the presence of a user */
-    requestPresenceUpdate = (jid: string) => this.queryExpecting200(['action', 'presence', 'subscribe', jid])
+    requestPresenceUpdate = async (jid: string) => this.queryExpecting200(['action', 'presence', 'subscribe', jid])
     /** Query the status of the person (see groupMetadata() for groups) */
-    getStatus = (jid: string | null) =>
-        this.query(['query', 'Status', jid || this.userMetaData.id]) as Promise<{ status: string }>
+    async getStatus (jid?: string) {
+        return this.query(['query', 'Status', jid || this.userMetaData.id]) as Promise<{ status: string }>
+    }
     /** Get the URL to download the profile picture of a person/group */
     async getProfilePicture(jid: string | null) {
         const response = await this.queryExpecting200(['query', 'ProfilePicThumb', jid || this.userMetaData.id])
@@ -84,6 +98,18 @@ export default class WhatsAppWebBase extends WAConnection {
     getChats() {
         const json = ['query', { epoch: this.msgCount.toString(), type: 'chat' }, null]
         return this.query(json, [WAMetric.group, WAFlag.ignore]) // this has to be an encrypted query
+    }
+    /**
+     * Archive a given chat
+     * @param jid the ID of the person/group you are archiving
+     */
+    async archiveChat(jid: string) {
+        const json = [
+            'action',
+            { epoch: this.msgCount.toString(), type: 'set' },
+            [['chat', { type: 'archive', jid: jid }, null]],
+        ]
+        return this.queryExpecting200(json, [WAMetric.group, WAFlag.acknowledge]) as Promise<{ status: number }>
     }
     /**
      * Check if your phone is connected

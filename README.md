@@ -174,7 +174,13 @@ To note:
 ``` ts 
     client.sendReadReceipt(id, messageID) 
 ```
-The id is in the same format as mentioned earlier. The message ID is the unique identifier of the message that you are marking as read. On a `WAMessage`, it can be accessed using ```messageID = message.key.id```.
+
+Also, to mark a chat unread:
+``` ts
+    client.markChatUnread(id)
+```
+
+`id` is in the same format as mentioned earlier. The message ID is the unique identifier of the message that you are marking as read. On a `WAMessage`, it can be accessed using ```messageID = message.key.id```.
 
 ## Update Presence
 ``` ts
@@ -204,6 +210,19 @@ If you want to save & process some images, videos, documents or stickers you rec
             console.log(m.key.remoteJid + " sent media, saved at: " + savedFilename)
         }
     }
+```
+
+## Deleting Messages
+
+``` ts
+    const jid = '1234@s.whatsapp.net' // can also be a group
+    const response = await client.sendMessage (jid, 'hello!', MessageType.text) // send a message
+    await client.deleteMessage (jid, {id: response.messageID, remoteJid: jid, fromMe: true}) // will delete the sent message!
+```
+
+You can also archive a chat using:
+``` ts
+    await client.archiveChat(jid)
 ```
 
 ## Querying
@@ -238,12 +257,15 @@ If you want to save & process some images, videos, documents or stickers you rec
     ``` ts
     // the presence update is fetched and called here
     client.setOnPresenceUpdate (json => console.log(json.id + " presence is " + json.type))
-
-    await client.requestPresenceUpdate ("xyz@c.us")
+    await client.requestPresenceUpdate ("xyz@c.us") // request the update
     ```
-
+- To search through messages
+    ``` ts
+    const response = await client.searchMessages ('so cool', 25, 0) // get 25 messages of the first page of results 
+    console.log (`got ${response.messages.length} messages in search`)
+    ```
 Of course, replace ``` xyz ``` with an actual ID. 
-Also, append ``` @s.whatsapp.net ``` for individuals & ``` @g.us ``` for groups.
+Append ``` @s.whatsapp.net ``` for individuals & ``` @g.us ``` for groups.
 
 ## Groups
 - To query the metadata of a group
@@ -260,19 +282,17 @@ Also, append ``` @s.whatsapp.net ``` for individuals & ``` @g.us ``` for groups.
     ```
 - To add people to a group
     ``` ts
-    // id & people to add to the group
+    // id & people to add to the group (will throw error if it fails)
     const response = await client.groupAdd ("abcd-xyz@g.us", ["abcd@s.whatsapp.net", "efgh@s.whatsapp.net"])
-    console.log("added successfully: " + (response.status===200))
     ```
 - To make someone admin on a group
     ``` ts
-    const response = await client.groupMakeAdmin ("abcd-xyz@g.us", ["abcd@s.whatsapp.net", "efgh@s.whatsapp.net"]) // id & people to make admin
-    console.log("made admin successfully: " + (response.status===200))
+    // id & people to make admin (will throw error if it fails)
+    await client.groupMakeAdmin ("abcd-xyz@g.us", ["abcd@s.whatsapp.net", "efgh@s.whatsapp.net"]) 
     ```
 - To leave a group
     ``` ts
-    const response = await client.groupLeave ("abcd-xyz@g.us")
-    console.log("left group successfully: " + (response.status===200))
+    await client.groupLeave ("abcd-xyz@g.us") // (will throw error if it fails)
     ```
 - To get the invite code for a group
     ``` ts
