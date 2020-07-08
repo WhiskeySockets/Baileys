@@ -1,5 +1,5 @@
 import { WAClient } from './WAClient'
-import { MessageType, MessageOptions, Mimetype, Presence } from './Constants'
+import { MessageType, MessageOptions, Mimetype, Presence, ChatModification } from './Constants'
 import * as fs from 'fs'
 import * as assert from 'assert'
 
@@ -110,8 +110,27 @@ WAClientTest('Misc', (client) => {
         assert.rejects(client.getProfilePicture('abcd@s.whatsapp.net'))
     })
     it('should mark a chat unread', async () => {
-        const response = await client.markChatUnread(testJid)
-        assert.ok(response)
+        await client.sendReadReceipt(testJid, null, 'unread')
+    })
+    it('should archive & unarchive', async () => {
+        await client.modifyChat (testJid, ChatModification.archive)
+        await createTimeout (2000)
+        await client.modifyChat (testJid, ChatModification.unarchive)
+    })
+    it('should pin & unpin a chat', async () => {
+        const pindate = new Date()
+        await client.modifyChat (testJid, ChatModification.pin, {stamp: pindate})
+        await createTimeout (2000)
+        await client.modifyChat (testJid, ChatModification.unpin, {stamp: pindate})
+    })
+    it('should mute & unmute a chat', async () => {
+        const mutedate = new Date (new Date().getTime() + 8*60*60*1000) // 8 hours in the future
+        await client.modifyChat (testJid, ChatModification.mute, {stamp: mutedate})
+        await createTimeout (2000)
+        await client.modifyChat (testJid, ChatModification.unmute, {stamp: mutedate})
+    })
+    it('should unpin a chat', async () => {
+        await client.modifyChat (testJid, ChatModification.unpin)
     })
     it('should return search results', async () => {
         const response = await client.searchMessages('Adh', 25, 0)

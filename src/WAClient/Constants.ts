@@ -34,6 +34,14 @@ export enum MessageType {
     document = 'documentMessage',
     audio = 'audioMessage',
 }
+export enum ChatModification {
+    archive='archive',
+    unarchive='unarchive',
+    pin='pin',
+    unpin='unpin',
+    mute='mute',
+    unmute='unmute'
+}
 export const WAMessageType = function () {
     const types = proto.WebMessageInfo.WEB_MESSAGE_INFO_STUBTYPE
     const dict: Record<number, string> = {}

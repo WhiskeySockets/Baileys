@@ -10,6 +10,7 @@ import {
     WAContactMessage,
     WASendMessageResponse,
     WAMessageKey,
+    ChatModification,
 } from './Constants'
 import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes } from '../WAConnection/Utils'
 import { WAMessageContent, WAMetric, WAFlag, WANode, WAMessage } from '../WAConnection/Constants'
@@ -20,15 +21,43 @@ export default class WhatsAppWebMessages extends WhatsAppWebBase {
     /**
      * Send a read receipt to the given ID for a certain message
      * @param {string} jid the ID of the person/group whose message you want to mark read
-     * @param {string} messageID the message ID
+     * @param {string} [messageID] optionally, the message ID
      */
-    sendReadReceipt(jid: string, messageID: string) {
-        const json = [
-            'action',
-            { epoch: this.msgCount.toString(), type: 'set' },
-            [['read', { count: '1', index: messageID, jid: jid, owner: 'false' }, null]],
-        ]
-        return this.queryExpecting200(json, [WAMetric.group, WAFlag.ignore]) // encrypt and send  off
+    async sendReadReceipt(jid: string, messageID?: string, type: 'read' | 'unread' = 'read') {
+        const attributes = {
+            jid: jid, 
+            count: messageID ? '1' : null, 
+            index: messageID, 
+            owner: 'false',
+            type: type==='unread' && 'false'
+        }
+        return this.setQuery ([['read', attributes, null]])
+    }
+    /** Mark a given chat as unread */
+    async markChatUnread (jid: string) { return this.sendReadReceipt (jid, null, 'unread') }
+    async archiveChat (jid: string) { return this.modifyChat (jid, ChatModification.archive) }
+    /**
+     * Modify a given chat (archive, pin etc.)
+     * @param jid the ID of the person/group you are modifiying
+     */
+    async modifyChat (jid: string, type: ChatModification, options: {stamp: Date} = {stamp: new Date()}) {
+        let chatAttrs: Record<string, string> = {jid: jid}
+        switch (type) {
+            case ChatModification.pin:
+            case ChatModification.mute:
+                chatAttrs.type = type
+                chatAttrs[type] = Math.round(options.stamp.getTime ()/1000).toString ()
+                break
+            case ChatModification.unpin:
+            case ChatModification.unmute:
+                chatAttrs.type = type.replace ('un', '') // replace 'unpin' with 'pin'
+                chatAttrs.previous = Math.round(options.stamp.getTime ()/1000).toString ()
+                break
+            default:
+                chatAttrs.type = type
+                break
+        }
+        return this.setQuery ([['chat', chatAttrs, null]])
     }
     /**
      * Search WhatsApp messages with a given text string
@@ -51,18 +80,6 @@ export default class WhatsAppWebMessages extends WhatsAppWebBase {
         const response: WANode = await this.queryExpecting200(json, [WAMetric.group, WAFlag.ignore]) // encrypt and send  off
         const messages = response[2] ? response[2].map (row => row[2]) : []
         return { last: response[1]['last'] === 'true', messages: messages as WAMessage[] }
-    }
-    /**
-     * Mark a given chat as unread
-     * @param jid 
-     */
-    async markChatUnread (jid: string) {
-        const json = [
-            'action',
-            { epoch: this.msgCount.toString(), type: 'set' },
-            [['read', {jid: jid, type: 'false', count: '1'}, null]]
-        ]
-        return this.queryExpecting200(json, [WAMetric.group, WAFlag.ignore]) as Promise<{ status: number }>
     }
     /**
      * Delete a message in a chat

@@ -1,5 +1,5 @@
 import WAConnection from '../WAConnection/WAConnection'
-import { MessageStatus, MessageStatusUpdate, PresenceUpdate, Presence } from './Constants'
+import { MessageStatus, MessageStatusUpdate, PresenceUpdate, Presence, ChatModification } from './Constants'
 import {
     WAMessage,
     WANode,
@@ -100,18 +100,6 @@ export default class WhatsAppWebBase extends WAConnection {
         return this.query(json, [WAMetric.group, WAFlag.ignore]) // this has to be an encrypted query
     }
     /**
-     * Archive a given chat
-     * @param jid the ID of the person/group you are archiving
-     */
-    async archiveChat(jid: string) {
-        const json = [
-            'action',
-            { epoch: this.msgCount.toString(), type: 'set' },
-            [['chat', { type: 'archive', jid: jid }, null]],
-        ]
-        return this.queryExpecting200(json, [WAMetric.group, WAFlag.acknowledge]) as Promise<{ status: number }>
-    }
-    /**
      * Check if your phone is connected
      * @param timeoutMs max time for the phone to respond
      */
@@ -189,8 +177,13 @@ export default class WhatsAppWebBase extends WAConnection {
         }
         return loadMessage() as Promise<void>
     }
+    /** Generic function for action, set queries */
+    async setQuery (nodes: WANode[]) {
+        const json = ['action', {epoch: this.msgCount.toString(), type: 'set'}, nodes]
+        return this.queryExpecting200(json, [WAMetric.group, WAFlag.ignore]) as Promise<{status: number}>
+    }
     /** Generic function for group queries */
-    groupQuery(type: string, jid?: string, subject?: string, participants?: string[]) {
+    async groupQuery(type: string, jid?: string, subject?: string, participants?: string[]) {
         const json: WANode = [
             'group',
             {
