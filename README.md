@@ -16,12 +16,6 @@ To run the example script, download or clone the repo and then type the followin
 2. ``` npm install ```
 3. ``` npm run example ```
 
-## Unit Tests
-Baileys also comes with a unit test suite. Simply cd into the Baileys directory & run `npm test`.
-
-You will require a phone with WhatsApp to test, and a second WhatsApp number to send messages to.
-Set the phone number you can randomly send messages to in a `.env` file with `TEST_JID=1234@s.whatsapp.net` 
-
 ## Install
 Create and cd to your NPM project directory and then in terminal, write: 
 1. stable: `npm install @adiwajshing/baileys`
@@ -31,6 +25,12 @@ Then import in your code using:
 ``` ts 
 import { WAClient } from '@adiwajshing/baileys'
 ```
+
+## Unit Tests
+Baileys also comes with a unit test suite. Simply cd into the Baileys directory & run `npm test`.
+
+You will require a phone with WhatsApp to test, and a second WhatsApp number to send messages to.
+Set the phone number you can randomly send messages to in a `.env` file with `TEST_JID=1234@s.whatsapp.net` 
 
 ## Connecting
 ``` ts

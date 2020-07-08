@@ -66,7 +66,7 @@ export default class WAConnectionConnector extends WAConnectionValidator {
         let chats: Array<WAChat> = []
         let contacts: Array<WAContact> = []
         let unreadMessages: Array<WAMessage> = []
-        let unreadMap: Record<string, number> = {}
+        let chatMap: Record<string, {index: number, count: number}> = {}
 
         let receivedContacts = false
         let receivedMessages = false
@@ -90,10 +90,14 @@ export default class WAConnectionConnector extends WAConnectionValidator {
                         for (let k = json.length - 1; k >= 0; k--) {
                             const message = json[k][2]
                             const jid = message.key.remoteJid.replace('@s.whatsapp.net', '@c.us')
-                            if (!message.key.fromMe && unreadMap[jid] > 0) {
+                            const index = chatMap[jid]
+                            if (!message.key.fromMe && index && index.count > 0) {
                                 // only forward if the message is from the sender
                                 unreadMessages.push(message)
-                                unreadMap[jid] -= 1 // reduce
+                                index.count -= 1 // reduce
+                            }
+                            if (index) {
+                                chats[index.index].messages.push (message)
                             }
                         }
                     }
@@ -110,8 +114,9 @@ export default class WAConnectionConnector extends WAConnectionValidator {
             const json = await this.registerCallbackOneTime(['response', 'type:chat'])
             json[2].forEach(chat => {
                 chats.push(chat[1]) // chats data (log json to see what it looks like)
+                chats[chats.length-1].messages = []
                 // store the number of unread messages for each sender
-                unreadMap[chat[1].jid] = chat[1].count
+                chatMap[chat[1].jid] = {index: chats.length-1, count: chat[1].count} //chat[1].count
             })
             if (chats.length > 0) return waitForConvos()
         }

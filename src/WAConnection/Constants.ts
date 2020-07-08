@@ -59,6 +59,7 @@ export interface WAChat {
     spam: 'false' | 'true'
     jid: string
     modify_tag: string
+    messages: WAMessage[]
 }
 export enum WAMetric {
     liveLocation = 3,
