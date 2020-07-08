@@ -29,38 +29,38 @@ Create and cd to your NPM project directory and then in terminal, write:
 
 Then import in your code using:
 ``` ts 
-    import { WAClient } from '@adiwajshing/baileys'
+import { WAClient } from '@adiwajshing/baileys'
 ```
 
 ## Connecting
 ``` ts
-    const client = new WAClient() 
-    
-    client.connect() 
-    .then (([user, chats, contacts, unread]) => {
-        console.log ("oh hello " + user.name + " (" + user.id + ")")
-        console.log ("you have " + unread.length + " unread messages")
-        console.log ("you have " + chats.length + " chats")
-    })
-    .catch (err => console.log("unexpected error: " + err) )
+const client = new WAClient() 
+
+client.connect() 
+.then (([user, chats, contacts, unread]) => {
+    console.log ("oh hello " + user.name + " (" + user.id + ")")
+    console.log ("you have " + unread.length + " unread messages")
+    console.log ("you have " + chats.length + " chats")
+})
+.catch (err => console.log("unexpected error: " + err) )
 ``` 
 If the connection is successful, you will see a QR code printed on your terminal screen, scan it with WhatsApp on your phone and you'll be logged in!
 
 If you don't want to wait for WhatsApp to send all your chats while connecting, you can use the following function:
 
 ``` ts
-    const client = new WAClient() 
-    client.connectSlim() // does not wait for chats & contacts
-    .then (user => {
-        console.log ("oh hello " + user.name + " (" + user.id + ")")
-        
-        client.receiveChatsAndContacts () // wait for chats & contacts in the background
-        .then (([chats, contacts, unread]) => {
-            console.log ("you have " + unread.length + " unread messages")
-            console.log ("you have " + chats.length + " chats")
-        })
+const client = new WAClient() 
+client.connectSlim() // does not wait for chats & contacts
+.then (user => {
+    console.log ("oh hello " + user.name + " (" + user.id + ")")
+    
+    client.receiveChatsAndContacts () // wait for chats & contacts in the background
+    .then (([chats, contacts, unread]) => {
+        console.log ("you have " + unread.length + " unread messages")
+        console.log ("you have " + chats.length + " chats")
     })
-    .catch (err => console.log("unexpected error: " + err))
+})
+.catch (err => console.log("unexpected error: " + err))
 ``` 
 
 ## Saving & Restoring Sessions
@@ -69,23 +69,23 @@ You obviously don't want to keep scanning the QR code every time you want to con
 
 So, do the following the first time you connect:
 ``` ts
-    import * as fs from 'fs'
+import * as fs from 'fs'
 
-    const client = new WAClient() 
-    client.connectSlim() // connect first
-    .then (user => {
-        const creds = client.base64EncodedAuthInfo () // contains all the keys you need to restore a session
-        fs.writeFileSync('./auth_info.json', JSON.stringify(creds, null, '\t')) // save JSON to file
-    })
+const client = new WAClient() 
+client.connectSlim() // connect first
+.then (user => {
+    const creds = client.base64EncodedAuthInfo () // contains all the keys you need to restore a session
+    fs.writeFileSync('./auth_info.json', JSON.stringify(creds, null, '\t')) // save JSON to file
+})
 ```
 
 Then, to restore a session:
 ``` ts
-    const client = new WAClient() 
-    client.connectSlim('./auth_info.json') // will load JSON credentials from file
-    .then (user => {
-        // yay connected without scanning QR
-    })
+const client = new WAClient() 
+client.connectSlim('./auth_info.json') // will load JSON credentials from file
+.then (user => {
+    // yay connected without scanning QR
+})
 ```
 
 Optionally, you can load the credentials yourself from somewhere & pass in the JSON object as well.
@@ -127,25 +127,25 @@ Implement the following callbacks in your code:
 
 Send like, all types of messages with a single function:
 ``` ts
-    import { MessageType, MessageOptions, Mimetype } from '@adiwajshing/baileys'
+import { MessageType, MessageOptions, Mimetype } from '@adiwajshing/baileys'
 
-    const id = 'abcd@s.whatsapp.net' // the WhatsApp ID 
-    // send a simple text!
-    client.sendMessage (id, 'oh hello there', MessageType.text)
-    // send a location!
-    client.sendMessage(id, {degreeslatitude: 24.121231, degreesLongitude: 55.1121221}, MessageType.location)
-    // send a contact!
-    const vcard = 'BEGIN:VCARD\n' // metadata of the contact card
-                + 'VERSION:3.0\n' 
-                + 'FN:Jeff Singh\n' // full name
-                + 'ORG:Ashoka Uni;\n' // the organization of the contact
-                + 'TEL;type=CELL;type=VOICE;waid=911234567890:+91 12345 67890\n' // WhatsApp ID + phone number
-                + 'END:VCARD'
-    client.sendMessage(id, {displayname: "Jeff", vcard: vcard}, MessageType.contact)
-    // send a gif
-    const buffer = fs.readFileSync("Media/ma_gif.mp4") // load some gif
-    const options: MessageOptions = {mimetype: Mimetype.gif, caption: "hello!"} // some metadata & caption
-    client.sendMessage(id, buffer, MessageType.video, options)
+const id = 'abcd@s.whatsapp.net' // the WhatsApp ID 
+// send a simple text!
+client.sendMessage (id, 'oh hello there', MessageType.text)
+// send a location!
+client.sendMessage(id, {degreeslatitude: 24.121231, degreesLongitude: 55.1121221}, MessageType.location)
+// send a contact!
+const vcard = 'BEGIN:VCARD\n' // metadata of the contact card
+            + 'VERSION:3.0\n' 
+            + 'FN:Jeff Singh\n' // full name
+            + 'ORG:Ashoka Uni;\n' // the organization of the contact
+            + 'TEL;type=CELL;type=VOICE;waid=911234567890:+91 12345 67890\n' // WhatsApp ID + phone number
+            + 'END:VCARD'
+client.sendMessage(id, {displayname: "Jeff", vcard: vcard}, MessageType.contact)
+// send a gif
+const buffer = fs.readFileSync("Media/ma_gif.mp4") // load some gif
+const options: MessageOptions = {mimetype: Mimetype.gif, caption: "hello!"} // some metadata & caption
+client.sendMessage(id, buffer, MessageType.video, options)
 ```
 To note:
 - `id` is the WhatsApp ID of the person or group you're sending the message to. 
@@ -154,7 +154,7 @@ To note:
     - Please do not explicitly disable ID validation (in `MessageOptions`) because then your messages may fail for no apparent reason.
 - For media messages, the thumbnail can be generated automatically for images & stickers. Thumbnails for videos can also be generated automatically, though, you need to have `ffmpeg` installed on your system.
 - **MessageOptions**: some extra info about the message. It can have the following __optional__ values:
-``` ts
+    ``` ts
     const info: MessageOptions = {
         quoted: quotedMessage, // the message you want to quote
         timestamp: Date(), // optional, if you want to manually set the timestamp of the message
@@ -168,61 +168,58 @@ To note:
                                         import {Mimetype} from '@adiwajshing/baileys'
                                 */
     }
-```
+    ```
 
 ## Sending Read Receipts
 ``` ts 
-    client.sendReadReceipt(id, messageID) 
-```
+const id = '1234-123@g.us'
+const messageID = 'AHASHH123123AHGA' // id of the message you want to read
+await client.sendReadReceipt(id, messageID) // mark as read
 
-Also, to mark a chat unread:
-``` ts
-    client.markChatUnread(id)
+await client.markChatUnread(id) // to mark chat as unread
 ```
 
 `id` is in the same format as mentioned earlier. The message ID is the unique identifier of the message that you are marking as read. On a `WAMessage`, it can be accessed using ```messageID = message.key.id```.
 
 ## Update Presence
 ``` ts
-    client.updatePresence(id, WhatsAppWeb.Presence.available) 
+client.updatePresence(id, WhatsAppWeb.Presence.available) 
 ```
 This lets the person/group with ``` id ``` know whether you're online, offline, typing etc. where ``` presence ``` can be one of the following:
 ``` ts
-    // call: import { Presence } from '@adiwajshing/baileys'
-    export enum Presence {
-        available = 'available', // "online"
-        unavailable = 'unavailable', // "offline"
-        composing = 'composing', // "typing..."
-        recording = 'recording', // "recording..."
-        paused = 'paused', // I have no clue
-    }
+// call: import { Presence } from '@adiwajshing/baileys'
+export enum Presence {
+    available = 'available', // "online"
+    unavailable = 'unavailable', // "offline"
+    composing = 'composing', // "typing..."
+    recording = 'recording', // "recording..."
+    paused = 'paused', // I have no clue
+}
 ```
 
 ## Decoding Media
 If you want to save & process some images, videos, documents or stickers you received
 ``` ts
-    import { getNotificationType, MessageType } from '@adiwajshing/baileys'
-    client.setOnUnreadMessage (false, async m => {
-        const messageType = getNotificationType(m.message) // get what type of message it is -- text, image, video
-        // if the message is not a text message
-        if (messageType !== MessageType.text && messageType !== MessageType.extendedText) {
-            const savedFilename = await client.decodeMediaMessage(m.message, "filename") // extension applied automatically
-            console.log(m.key.remoteJid + " sent media, saved at: " + savedFilename)
-        }
+import { getNotificationType, MessageType } from '@adiwajshing/baileys'
+client.setOnUnreadMessage (false, async m => {
+    const messageType = getNotificationType(m.message) // get what type of message it is -- text, image, video
+    // if the message is not a text message
+    if (messageType !== MessageType.text && messageType !== MessageType.extendedText) {
+        const savedFilename = await client.decodeMediaMessage(m.message, "filename") // extension applied automatically
+        console.log(m.key.remoteJid + " sent media, saved at: " + savedFilename)
     }
+}
 ```
 
 ## Deleting Messages
 
 ``` ts
-    const jid = '1234@s.whatsapp.net' // can also be a group
-    const response = await client.sendMessage (jid, 'hello!', MessageType.text) // send a message
-    await client.deleteMessage (jid, {id: response.messageID, remoteJid: jid, fromMe: true}) // will delete the sent message!
-```
+const jid = '1234@s.whatsapp.net' // can also be a group
+const response = await client.sendMessage (jid, 'hello!', MessageType.text) // send a message
+await client.deleteMessage (jid, {id: response.messageID, remoteJid: jid, fromMe: true}) // will delete the sent message!
 
-You can also archive a chat using:
-``` ts
-    await client.archiveChat(jid)
+// You can also archive a chat using:
+await client.archiveChat(jid)
 ```
 
 ## Querying
