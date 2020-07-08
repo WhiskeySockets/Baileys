@@ -113,8 +113,9 @@ export default class WAConnectionConnector extends WAConnectionValidator {
         const waitForChats = async () => {
             const json = await this.registerCallbackOneTime(['response', 'type:chat'])
             json[2].forEach(chat => {
+                chat[1].count = parseInt(chat[1].count)
+                chat[1].messages = []
                 chats.push(chat[1]) // chats data (log json to see what it looks like)
-                chats[chats.length-1].messages = []
                 // store the number of unread messages for each sender
                 chatMap[chat[1].jid] = {index: chats.length-1, count: chat[1].count} //chat[1].count
             })

@@ -55,7 +55,9 @@ export interface WAContact {
 }
 export interface WAChat {
     t: string
-    count: string
+    count: number
+    archive?: 'true' | 'false'
+    read_only?: 'true' | 'false'
     spam: 'false' | 'true'
     jid: string
     modify_tag: string
