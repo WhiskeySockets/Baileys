@@ -19,7 +19,7 @@ To run the example script, download or clone the repo and then type the followin
 ## Install
 Create and cd to your NPM project directory and then in terminal, write: 
 1. stable: `npm install @adiwajshing/baileys`
-2. stabl-ish (but quicker fixes): `npm install github:adiwajshing/baileys`
+2. stabl-ish (but quicker fixes & latest features): `npm install github:adiwajshing/baileys`
 
 Then import in your code using:
 ``` ts 
@@ -86,9 +86,22 @@ client.connectSlim('./auth_info.json') // will load JSON credentials from file
 .then (user => {
     // yay connected without scanning QR
 })
+
+/*
+    Optionally, you can load the credentials yourself from somewhere 
+    & pass in the JSON object to connectSlim () as well.
+*/
 ```
 
-Optionally, you can load the credentials yourself from somewhere & pass in the JSON object as well.
+If you're considering switching from a Chromium/Puppeteer based library, you can use WhatsApp Web's Browser credentials to restore sessions too:
+``` ts
+client.loadAuthInfoFromBrowser ('./auth_info_browser.json')
+client.connectSlim(null, 20*1000) // use loaded credentials & timeout in 20s
+.then (user => {
+    // yay! connected using browser keys & without scanning QR
+})
+```
+See the browser credentials type [here](/src/WAConnection/Constants.ts).
 
 ## Handling Events
 Implement the following callbacks in your code:
@@ -217,11 +230,26 @@ client.setOnUnreadMessage (false, async m => {
 const jid = '1234@s.whatsapp.net' // can also be a group
 const response = await client.sendMessage (jid, 'hello!', MessageType.text) // send a message
 await client.deleteMessage (jid, {id: response.messageID, remoteJid: jid, fromMe: true}) // will delete the sent message!
-
-// You can also archive a chat using:
-await client.archiveChat(jid)
 ```
 
+## Modifying Chats
+
+``` ts
+const jid = '1234@s.whatsapp.net' // can also be a group
+await client.modifyChat (jid, ChatModification.archive) // archive chat
+await client.modifyChat (jid, ChatModification.unarchive) // unarchive chat
+
+const response = await client.modifyChat (jid, ChatModification.pin) // pin the chat
+await client.modifyChat (jid, ChatModification.unarchive, {stamp: response.stamp})
+
+const mutedate = new Date (new Date().getTime() + 8*60*60*1000) // mute for 8 hours in the future
+await client.modifyChat (jid, ChatModification.mute, {stamp: mutedate}) // mute
+setTimeout (() => {
+    client.modifyChat (jid, ChatModification.unmute, {stamp: mutedate})
+}, 5000) // unmute after 5 seconds
+```
+
+**Note:** to unmute or unpin a chat, one must pass the timestamp of the pinning or muting. This is returned by the pin & mute functions. This is also available in the `WAChat` objects of the respective chats, as a `mute` or `pin` property.
 ## Querying
 - To check if a given ID is on WhatsApp
     ``` ts

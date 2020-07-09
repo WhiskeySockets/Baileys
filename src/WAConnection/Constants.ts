@@ -20,6 +20,12 @@ export interface AuthenticationCredentialsBase64 {
     encKey: string
     macKey: string
 }
+export interface AuthenticationCredentialsBrowser {
+    WABrowserId: string
+    WASecretBundle: {encKey: string, macKey: string}
+    WAToken1: string
+    WAToken2: string
+}
 export interface UserMetaData {
     id: string
     name: string
@@ -58,6 +64,8 @@ export interface WAChat {
     count: number
     archive?: 'true' | 'false'
     read_only?: 'true' | 'false'
+    mute?: string
+    pin?: string
     spam: 'false' | 'true'
     jid: string
     modify_tag: string

@@ -39,25 +39,34 @@ export default class WhatsAppWebMessages extends WhatsAppWebBase {
     /**
      * Modify a given chat (archive, pin etc.)
      * @param jid the ID of the person/group you are modifiying
+     * @param options.stamp the timestamp of pinning/muting the chat. Is required when unpinning/unmuting 
      */
-    async modifyChat (jid: string, type: ChatModification, options: {stamp: Date} = {stamp: new Date()}) {
+    async modifyChat (jid: string, type: ChatModification, options: {stamp: Date | string} = {stamp: new Date()}) {
         let chatAttrs: Record<string, string> = {jid: jid}
+        if ((type === ChatModification.unpin || type === ChatModification.unmute) && !options?.stamp) {
+            throw 'options.stamp must be set to the timestamp of the time of pinning/unpinning of the chat'
+        }
+        const strStamp = options.stamp && 
+                        (typeof options.stamp === 'string' ? options.stamp : Math.round(options.stamp.getTime ()/1000).toString ())
         switch (type) {
             case ChatModification.pin:
             case ChatModification.mute:
                 chatAttrs.type = type
-                chatAttrs[type] = Math.round(options.stamp.getTime ()/1000).toString ()
+                chatAttrs[type] = strStamp
                 break
             case ChatModification.unpin:
             case ChatModification.unmute:
                 chatAttrs.type = type.replace ('un', '') // replace 'unpin' with 'pin'
-                chatAttrs.previous = Math.round(options.stamp.getTime ()/1000).toString ()
+                chatAttrs.previous = strStamp
                 break
             default:
                 chatAttrs.type = type
                 break
         }
-        return this.setQuery ([['chat', chatAttrs, null]])
+        console.log (chatAttrs)
+        let response = await this.setQuery ([['chat', chatAttrs, null]]) as any
+        response.stamp = strStamp
+        return response as {status: number, stamp: string}
     }
     /**
      * Search WhatsApp messages with a given text string
@@ -82,7 +91,22 @@ export default class WhatsAppWebMessages extends WhatsAppWebBase {
         return { last: response[1]['last'] === 'true', messages: messages as WAMessage[] }
     }
     /**
-     * Delete a message in a chat
+     * Delete a message in a chat for yourself
+     * @param messageKey key of the message you want to delete
+     */
+    async clearMessage (messageKey: WAMessageKey) {
+        const tag = Math.round(Math.random ()*1000000)
+        const attrs: WANode = [
+            'chat',
+            { jid: messageKey.remoteJid, modify_tag: tag.toString(), type: 'clear' },
+            [
+                ['item', {owner: `${messageKey.fromMe}`, index: messageKey.id}, null]
+            ]
+        ]
+        return this.setQuery ([attrs])
+    }
+    /**
+     * Delete a message in a chat for everyone
      * @param id the person or group where you're trying to delete the message
      * @param messageKey key of the message you want to delete
      */

@@ -62,9 +62,13 @@ WAClientTest('Messages', (client) => {
     })
     it('should send a text message & delete it', async () => {
         const message = await sendAndRetreiveMessage(client, 'hello fren', MessageType.text)
-        assert.strictEqual(message.message.conversation, 'hello fren')
         await createTimeout (2000)
         await client.deleteMessage (testJid, message.key)
+    })
+    it('should clear the most recent message', async () => {
+        const messages = await client.loadConversation (testJid, 1)
+        await createTimeout (2000)
+        await client.clearMessage (messages[0].key)
     })
 })
 
@@ -118,19 +122,15 @@ WAClientTest('Misc', (client) => {
         await client.modifyChat (testJid, ChatModification.unarchive)
     })
     it('should pin & unpin a chat', async () => {
-        const pindate = new Date()
-        await client.modifyChat (testJid, ChatModification.pin, {stamp: pindate})
+        const response = await client.modifyChat (testJid, ChatModification.pin)
         await createTimeout (2000)
-        await client.modifyChat (testJid, ChatModification.unpin, {stamp: pindate})
+        await client.modifyChat (testJid, ChatModification.unpin, {stamp: response.stamp})
     })
     it('should mute & unmute a chat', async () => {
         const mutedate = new Date (new Date().getTime() + 8*60*60*1000) // 8 hours in the future
         await client.modifyChat (testJid, ChatModification.mute, {stamp: mutedate})
         await createTimeout (2000)
         await client.modifyChat (testJid, ChatModification.unmute, {stamp: mutedate})
-    })
-    it('should unpin a chat', async () => {
-        await client.modifyChat (testJid, ChatModification.unpin)
     })
     it('should return search results', async () => {
         const response = await client.searchMessages('Adh', 25, 0)

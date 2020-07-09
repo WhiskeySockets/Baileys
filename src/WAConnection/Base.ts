@@ -4,7 +4,7 @@ import WS from 'ws'
 import * as Utils from './Utils'
 import Encoder from '../Binary/Encoder'
 import Decoder from '../Binary/Decoder'
-import { AuthenticationCredentials, UserMetaData, WANode, AuthenticationCredentialsBase64, WATag, MessageLogLevel } from './Constants'
+import { AuthenticationCredentials, UserMetaData, WANode, AuthenticationCredentialsBase64, WATag, MessageLogLevel, AuthenticationCredentialsBrowser } from './Constants'
 
 
 /** Generate a QR code from the ref & the curve public key. This is scanned by the phone */
@@ -80,6 +80,27 @@ export default class WAConnectionBase {
             clientToken: authInfo.clientToken,
             encKey: Buffer.from(authInfo.encKey, 'base64'), // decode from base64
             macKey: Buffer.from(authInfo.macKey, 'base64'), // decode from base64
+        }
+    }
+    /**
+     * Load in the authentication credentials
+     * @param authInfo the authentication credentials or path to browser credentials JSON
+     */
+    loadAuthInfoFromBrowser(authInfo: AuthenticationCredentialsBrowser | string) {
+        if (!authInfo) {
+            throw 'given authInfo is null'
+        }
+        if (typeof authInfo === 'string') {
+            this.log(`loading authentication credentials from ${authInfo}`)
+            const file = fs.readFileSync(authInfo, { encoding: 'utf-8' }) // load a closed session back if it exists
+            authInfo = JSON.parse(file) as AuthenticationCredentialsBrowser
+        }
+        this.authInfo = {
+            clientID: authInfo.WABrowserId.replace (/\"/g, ''),
+            serverToken: authInfo.WAToken2.replace (/\"/g, ''),
+            clientToken: authInfo.WAToken1.replace (/\"/g, ''),
+            encKey: Buffer.from(authInfo.WASecretBundle.encKey, 'base64'), // decode from base64
+            macKey: Buffer.from(authInfo.WASecretBundle.macKey, 'base64'), // decode from base64
         }
     }
     /**
