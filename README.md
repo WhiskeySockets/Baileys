@@ -1,4 +1,4 @@
-# Baileys 2.0 - Typescript/Javascript WhatsApp Web API
+# Baileys - Typescript/Javascript WhatsApp Web API
  
  Baileys does not require Selenium or any other browser to be interface with WhatsApp Web, it does so directly using a **WebSocket**. Not running Selenium or Chromimum saves you like **half a gig** of ram :/ 
 
@@ -19,7 +19,7 @@ To run the example script, download or clone the repo and then type the followin
 ## Install
 Create and cd to your NPM project directory and then in terminal, write: 
 1. stable: `npm install @adiwajshing/baileys`
-2. stabl-ish (but quicker fixes & latest features): `npm install github:adiwajshing/baileys`
+2. stabl-ish w quicker fixes & latest features: `npm install github:adiwajshing/baileys`
 
 Then import in your code using:
 ``` ts 

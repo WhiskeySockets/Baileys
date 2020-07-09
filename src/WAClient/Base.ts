@@ -59,7 +59,7 @@ export default class WhatsAppWebBase extends WAConnection {
     }
     /** Set the callback for presence updates; if someone goes offline/online, this callback will be fired */
     setOnPresenceUpdate(callback: (p: PresenceUpdate) => void) {
-        this.registerCallback('Presence', (json) => callback(json[1]))
+        this.registerCallback('Presence', json => callback(json[1]))
     }
     /** Query whether a given number is registered on WhatsApp */
     isOnWhatsApp = (jid: string) => this.query(['query', 'exist', jid]).then((m) => m.status === 200)

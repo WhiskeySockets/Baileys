@@ -85,7 +85,8 @@ export interface MessageStatusUpdate {
 }
 export interface PresenceUpdate {
     id: string
-    type?: string
+    participant?: string
+    type?: Presence
     deny?: boolean
 }
 // path to upload the media

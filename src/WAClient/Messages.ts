@@ -29,7 +29,7 @@ export default class WhatsAppWebMessages extends WhatsAppWebBase {
             count: messageID ? '1' : null, 
             index: messageID, 
             owner: 'false',
-            type: type==='unread' && 'false'
+            type: type==='unread' ? 'false' : null
         }
         return this.setQuery ([['read', attributes, null]])
     }
@@ -63,7 +63,6 @@ export default class WhatsAppWebMessages extends WhatsAppWebBase {
                 chatAttrs.type = type
                 break
         }
-        console.log (chatAttrs)
         let response = await this.setQuery ([['chat', chatAttrs, null]]) as any
         response.stamp = strStamp
         return response as {status: number, stamp: string}
