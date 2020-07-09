@@ -240,7 +240,7 @@ await client.modifyChat (jid, ChatModification.archive) // archive chat
 await client.modifyChat (jid, ChatModification.unarchive) // unarchive chat
 
 const response = await client.modifyChat (jid, ChatModification.pin) // pin the chat
-await client.modifyChat (jid, ChatModification.unarchive, {stamp: response.stamp})
+await client.modifyChat (jid, ChatModification.unpin, {stamp: response.stamp})
 
 const mutedate = new Date (new Date().getTime() + 8*60*60*1000) // mute for 8 hours in the future
 await client.modifyChat (jid, ChatModification.mute, {stamp: mutedate}) // mute
