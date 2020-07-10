@@ -25,7 +25,7 @@ export default class Encoder {
     }
     writeByteLength(length: number) {
         if (length >= 4294967296) {
-            throw 'string too large to encode: ' + length
+            throw new Error('string too large to encode: ' + length)
         }
         if (length >= 1 << 20) {
             this.pushByte(WA.Tags.BINARY_32)
@@ -51,7 +51,7 @@ export default class Encoder {
         if (token < 245) {
             this.pushByte(token)
         } else if (token <= 500) {
-            throw 'invalid token'
+            throw new Error('invalid token')
         }
     }
     writeString(token: string, i: boolean = null) {
@@ -69,7 +69,7 @@ export default class Encoder {
                 const overflow = tokenIndex - WA.Tags.SINGLE_BYTE_MAX
                 const dictionaryIndex = overflow >> 8
                 if (dictionaryIndex < 0 || dictionaryIndex > 3) {
-                    throw 'double byte dict token out of range: ' + token + ', ' + tokenIndex
+                    throw new Error('double byte dict token out of range: ' + token + ', ' + tokenIndex)
                 }
                 this.writeToken(WA.Tags.DICTIONARY_0 + dictionaryIndex)
                 this.writeToken(overflow % 256)
@@ -118,7 +118,7 @@ export default class Encoder {
             this.writeByteLength(buffer.length)
             this.pushBytes(buffer)
         } else {
-            throw 'invalid children: ' + children + ' (' + typeof children + ')'
+            throw new Error('invalid children: ' + children + ' (' + typeof children + ')')
         }
     }
     getValidKeys(obj: Object) {
@@ -128,7 +128,7 @@ export default class Encoder {
         if (!node) {
             return
         } else if (node.length !== 3) {
-            throw 'invalid node given: ' + node
+            throw new Error('invalid node given: ' + node)
         }
         const validAttributes = this.getValidKeys(node[1])
 

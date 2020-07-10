@@ -186,7 +186,7 @@ WAClientTest('Events', (client) => {
         const response = await client.sendMessage(testJid, 'My Name Jeff', MessageType.text)
         await promiseTimeout(10000, waitForUpdate())
     })
-    /* it ('should update me on presence', async () => {
+    /*it ('should update me on presence', async () => {
         //client.logUnhandledMessages = true
         client.setOnPresenceUpdate (presence => {
             console.log (presence)

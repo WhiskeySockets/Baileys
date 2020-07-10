@@ -6,7 +6,7 @@ export default class Decoder {
 
     checkEOS(length: number) {
         if (this.index + length > this.buffer.length) {
-            throw 'end of stream'
+            throw new Error('end of stream')
         }
     }
     next() {
@@ -48,7 +48,7 @@ export default class Decoder {
         if (value >= 0 && value < 16) {
             return value < 10 ? '0'.charCodeAt(0) + value : 'A'.charCodeAt(0) + value - 10
         }
-        throw 'invalid hex: ' + value
+        throw new Error('invalid hex: ' + value)
     }
     unpackNibble(value: number) {
         if (value >= 0 && value <= 9) {
@@ -62,7 +62,7 @@ export default class Decoder {
             case 15:
                 return '\0'.charCodeAt(0)
             default:
-                throw 'invalid nibble: ' + value
+                throw new Error('invalid nibble: ' + value)
         }
     }
     unpackByte(tag: number, value: number) {
@@ -71,7 +71,7 @@ export default class Decoder {
         } else if (tag === WA.Tags.HEX_8) {
             return this.unpackHex(value)
         } else {
-            throw 'unknown tag: ' + tag
+            throw new Error('unknown tag: ' + tag)
         }
     }
     readPacked8(tag: number) {
@@ -90,7 +90,7 @@ export default class Decoder {
     }
     readRangedVarInt(min, max, description = 'unknown') {
         // value =
-        throw 'WTF; should not be called'
+        throw new Error('WTF; should not be called')
     }
     isListTag(tag: number) {
         return tag === WA.Tags.LIST_EMPTY || tag === WA.Tags.LIST_8 || tag === WA.Tags.LIST_16
@@ -104,7 +104,7 @@ export default class Decoder {
             case WA.Tags.LIST_16:
                 return this.readInt(2)
             default:
-                throw 'invalid tag for list size: ' + tag
+                throw new Error('invalid tag for list size: ' + tag)
         }
     }
 
@@ -134,12 +134,12 @@ export default class Decoder {
                 if (i && j) {
                     return i + '@' + j
                 }
-                throw 'invalid jid pair: ' + i + ', ' + j
+                throw new Error('invalid jid pair: ' + i + ', ' + j)
             case WA.Tags.HEX_8:
             case WA.Tags.NIBBLE_8:
                 return this.readPacked8(tag)
             default:
-                throw 'invalid string with tag: ' + tag
+                throw new Error('invalid string with tag: ' + tag)
         }
     }
     readAttributes(n: number) {
@@ -161,14 +161,14 @@ export default class Decoder {
     }
     getToken(index: number) {
         if (index < 3 || index >= WA.SingleByteTokens.length) {
-            throw 'invalid token index: ' + index
+            throw new Error('invalid token index: ' + index)
         }
         return WA.SingleByteTokens[index]
     }
     getTokenDouble(index1, index2): string {
         const n = 256 * index1 + index2
         if (n < 0 || n > WA.DoubleByteTokens.length) {
-            throw 'invalid double token index: ' + n
+            throw new Error('invalid double token index: ' + n)
         }
         return WA.DoubleByteTokens[n]
     }
@@ -176,12 +176,12 @@ export default class Decoder {
         const listSize = this.readListSize(this.readByte())
         const descrTag = this.readByte()
         if (descrTag === WA.Tags.STREAM_END) {
-            throw 'unexpected stream end'
+            throw new Error('unexpected stream end')
         }
 
         const descr = this.readString(descrTag)
         if (listSize === 0 || !descr) {
-            throw 'invalid node'
+            throw new Error('invalid node')
         }
 
         const attrs = this.readAttributes((listSize - 1) >> 1)

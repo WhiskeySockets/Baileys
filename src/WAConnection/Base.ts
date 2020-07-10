@@ -75,7 +75,7 @@ export default class WAConnectionBase {
      */
     loadAuthInfoFromBase64(authInfo: AuthenticationCredentialsBase64 | string) {
         if (!authInfo) {
-            throw 'given authInfo is null'
+            throw new Error('given authInfo is null')
         }
         if (typeof authInfo === 'string') {
             this.log(`loading authentication credentials from ${authInfo}`)
@@ -96,7 +96,7 @@ export default class WAConnectionBase {
      */
     loadAuthInfoFromBrowser(authInfo: AuthenticationCredentialsBrowser | string) {
         if (!authInfo) {
-            throw 'given authInfo is null'
+            throw new Error('given authInfo is null')
         }
         if (typeof authInfo === 'string') {
             this.log(`loading authentication credentials from ${authInfo}`)
@@ -130,7 +130,7 @@ export default class WAConnectionBase {
             return this.registerCallback([parameters, null, null], callback)
         }
         if (!Array.isArray(parameters)) {
-            throw 'parameters (' + parameters + ') must be a string or array'
+            throw new Error('parameters (' + parameters + ') must be a string or array')
         }
         const func = 'function:' + parameters[0]
         const key = parameters[1] || ''
@@ -152,7 +152,7 @@ export default class WAConnectionBase {
             return this.deregisterCallback([parameters])
         }
         if (!Array.isArray(parameters)) {
-            throw 'parameters (' + parameters + ') must be a string or array'
+            throw new Error('parameters (' + parameters + ') must be a string or array')
         }
         const func = 'function:' + parameters[0]
         const key = parameters[1] || ''
@@ -250,7 +250,7 @@ export default class WAConnectionBase {
     /** Send some message to the WhatsApp servers */
     protected send(m) {
         if (!this.conn) {
-            throw 'cannot send message, disconnected from WhatsApp'
+            throw new Error('cannot send message, disconnected from WhatsApp')
         }
         this.msgCount += 1 // increment message count, it makes the 'epoch' field when sending binary messages
         this.conn.send(m)
@@ -261,7 +261,7 @@ export default class WAConnectionBase {
      */
     async logout() {
         if (!this.conn) {
-            throw "You're not even connected, you can't log out"
+            throw new Error("You're not even connected, you can't log out")
         }
         await new Promise((resolve) => {
             this.conn.send('goodbye,["admin","Conn","disconnect"]', null, () => {

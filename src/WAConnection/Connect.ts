@@ -25,7 +25,7 @@ export default class WAConnectionConnector extends WAConnectionValidator {
     async connectSlim(authInfo: AuthenticationCredentialsBase64 | string = null, timeoutMs: number = null) {
         // if we're already connected, throw an error
         if (this.conn) {
-            throw [1, 'already connected or connecting']
+            throw new Error('already connected or connecting')
         }
         // set authentication credentials if required
         try {

@@ -2,6 +2,8 @@ import * as Curve from 'curve25519-js'
 import * as Utils from './Utils'
 import WAConnectionBase from './Base'
 
+const StatusError = (message: any, description: string='unknown error') => new Error (`unexpected status: ${message.status} on JSON: ${JSON.stringify(message)}`)
+
 export default class WAConnectionValidator extends WAConnectionBase {
     /** Authenticate the connection */
     protected async authenticate() {
@@ -37,31 +39,30 @@ export default class WAConnectionValidator extends WAConnectionBase {
                             return this.generateKeysForAuth(json.ref)
                         }
                     default:
-                        throw [json.status, 'unknown error', json]
+                        throw StatusError (json)
                 }
             })
             .then((json) => {
                 if ('status' in json) {
                     switch (json.status) {
                         case 401: // if the phone was unpaired
-                            throw [json.status, 'unpaired from phone', json]
+                            throw StatusError (json, 'unpaired from phone')
                         case 429: // request to login was denied, don't know why it happens
-                            throw [json.status, 'request denied, try reconnecting', json]
-                        case 304: // request to generate a new key for a QR code was denied
-                            throw [json.status, 'request for new key denied', json]
+                            throw StatusError (json, 'request denied, try reconnecting')
                         default:
-                            throw [json.status, 'unknown error status', json]
+                            throw StatusError (json)
                     }
                 }
                 if (json[1] && json[1].challenge) {
                     // if its a challenge request (we get it when logging in)
-                    return this.respondToChallenge(json[1].challenge).then((json) => {
-                        if (json.status !== 200) {
-                            // throw an error if the challenge failed
-                            throw [json.status, 'unknown error', json]
-                        }
-                        return this.waitForMessage('s2', []) // otherwise wait for the validation message
-                    })
+                    return this.respondToChallenge(json[1].challenge)
+                        .then((json) => {
+                            if (json.status !== 200) {
+                                // throw an error if the challenge failed
+                                throw StatusError (json)
+                            }
+                            return this.waitForMessage('s2', []) // otherwise wait for the validation message
+                        })
                 } else {
                     // otherwise just chain the promise further
                     return json
@@ -107,7 +108,7 @@ export default class WAConnectionValidator extends WAConnectionBase {
             }
             const secret = Buffer.from(json.secret, 'base64')
             if (secret.length !== 144) {
-                throw [4, 'incorrect secret length: ' + secret.length]
+                throw new Error ('incorrect secret length received: ' + secret.length)
             }
             // generate shared key from our private key & the secret shared by the server
             const sharedKey = Curve.sharedKey(this.curveKeys.private, secret.slice(0, 32))
@@ -140,11 +141,11 @@ export default class WAConnectionValidator extends WAConnectionBase {
                 return onValidationSuccess()
             } else {
                 // if the checksums didn't match
-                throw [5, 'HMAC validation failed']
+                throw new Error ('HMAC validation failed')
             }
         } else {
             // if we didn't get the connected field (usually we get this message when one opens WhatsApp on their phone)
-            throw [6, 'json connection failed', json]
+            throw new Error (`incorrect JSON: ${JSON.stringify(json)}`)
         }
     }
     /**

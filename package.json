@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "prepare": "npm run build",
-    "test": "mocha --timeout 30000 -r ts-node/register src/*/Tests.ts",
+    "test": "mocha --timeout 60000 -r ts-node/register src/*/Tests.ts",
     "lint": "eslint '*/*.ts' --quiet --fix",
     "build": "tsc",
     "example": "npx ts-node Example/example.ts",

@@ -80,7 +80,7 @@ export function decryptWA (message: any, macKey: Buffer, encKey: Buffer, decoder
     const commaIndex = message.indexOf(',') // all whatsapp messages have a tag and a comma, followed by the actual message
     if (commaIndex < 0) {
         // if there was no comma, then this message must be not be valid
-        throw [2, 'invalid message', message]
+        throw Error ('invalid message: ' + message)
     }
     let data = message.slice(commaIndex+1, message.length)
     // get the message tag.
@@ -99,7 +99,7 @@ export function decryptWA (message: any, macKey: Buffer, encKey: Buffer, decoder
     } else {
         if (!macKey || !encKey) {
             // if we recieved a message that was encrypted but we don't have the keys, then there must be an error
-            throw [3, 'recieved encrypted message when auth creds not available', data]
+            throw new Error ('recieved encrypted buffer when auth creds unavailable')
         }
         /* 
             If the data recieved was not a JSON, then it must be an encrypted message.
@@ -115,9 +115,8 @@ export function decryptWA (message: any, macKey: Buffer, encKey: Buffer, decoder
         const computedChecksum = hmacSign(data, macKey) // compute the sign of the message we recieved using our macKey
         
         if (!checksum.equals(computedChecksum)) {
-            throw [7, "checksums don't match"]
+            throw new Error (`Checksums don't match:\nog: ${checksum.toString('hex')}\ncomputed: ${computedChecksum.toString('hex')}`)
         }
-        
         // the checksum the server sent, must match the one we computed for the message to be valid
         const decrypted = aesDecrypt(data, encKey) // decrypt using AES
         json = decoder.read(decrypted) // decode the binary message into a JSON array

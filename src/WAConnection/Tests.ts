@@ -58,7 +58,7 @@ describe('Test Connect', () => {
         assert.ok(chats)
         if (chats.length > 0) {
             assert.ok(chats[0].jid)
-            assert.ok(chats[0].count)
+            assert.ok(chats[0].count !== null)
         }
         assert.ok(contacts)
         if (contacts.length > 0) {
