@@ -13,6 +13,14 @@ import {
 import { generateMessageTag } from '../WAConnection/Utils'
 
 export default class WhatsAppWebBase extends WAConnection {
+    /** Set the callback for when the connection is taken over somewhere else */
+    setOnTakenOver(callback: (kind: 'replaced' | string | null) => void) {
+        this.registerCallback (['Cmd', 'type:disconnect'], json => {
+            this.log ('connection taken over elsewhere')
+            this.close ()
+            callback (json[1].kind)
+        })
+    }
     /** Set the callback for unexpected disconnects */
     setOnUnexpectedDisconnect(callback: (error: Error) => void) {
         this.unexpectedDisconnect = (err) => {

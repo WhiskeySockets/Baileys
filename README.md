@@ -104,6 +104,7 @@ client.connectSlim(null, 20*1000) // use loaded credentials & timeout in 20s
 See the browser credentials type [here](/src/WAConnection/Constants.ts).
 
 ## Handling Events
+
 Implement the following callbacks in your code:
 
 - Called when you have a pending unread message or recieve a new message
@@ -135,6 +136,13 @@ Implement the following callbacks in your code:
 - Called when the connection gets disconnected (either the server loses internet or the phone gets unpaired)
     ``` ts 
     client.setOnUnexpectedDisconnect (err => console.log ("disconnected unexpectedly: " + err) )
+    ```
+- Called when you log into WhatsApp Web somewhere else
+    ``` ts
+    client.setOnTakenOver (async () => {
+        // reconnect to gain connection back here
+        await client.connect ()
+    })
     ```
 ## Sending Messages
 
@@ -183,16 +191,20 @@ To note:
     }
     ```
 
-## Sending Read Receipts
+## Reading Messages
 ``` ts 
 const id = '1234-123@g.us'
 const messageID = 'AHASHH123123AHGA' // id of the message you want to read
-await client.sendReadReceipt(id, messageID) // mark as read
 
-await client.markChatUnread(id) // to mark chat as unread
+await client.sendReadReceipt(id, messageID) // mark as read
+await client.sendReadReceipt (id) // mark all messages in chat as read
+
+await client.sendReadReceipt(id, null, 'unread') // mark the chat as unread
 ```
 
-`id` is in the same format as mentioned earlier. The message ID is the unique identifier of the message that you are marking as read. On a `WAMessage`, it can be accessed using ```messageID = message.key.id```.
+- `id` is in the same format as mentioned earlier. 
+- The message ID is the unique identifier of the message that you are marking as read. 
+- On a `WAMessage`, the `messageID` can be accessed using ```messageID = message.key.id```.
 
 ## Update Presence
 ``` ts
