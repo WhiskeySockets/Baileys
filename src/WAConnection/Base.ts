@@ -103,12 +103,13 @@ export default class WAConnectionBase {
             const file = fs.readFileSync(authInfo, { encoding: 'utf-8' }) // load a closed session back if it exists
             authInfo = JSON.parse(file) as AuthenticationCredentialsBrowser
         }
+        const secretBundle: {encKey: string, macKey: string} = typeof authInfo === 'string' ? JSON.parse (authInfo): authInfo
         this.authInfo = {
             clientID: authInfo.WABrowserId.replace(/\"/g, ''),
             serverToken: authInfo.WAToken2.replace(/\"/g, ''),
             clientToken: authInfo.WAToken1.replace(/\"/g, ''),
-            encKey: Buffer.from(authInfo.WASecretBundle.encKey, 'base64'), // decode from base64
-            macKey: Buffer.from(authInfo.WASecretBundle.macKey, 'base64'), // decode from base64
+            encKey: Buffer.from(secretBundle.encKey, 'base64'), // decode from base64
+            macKey: Buffer.from(secretBundle.macKey, 'base64'), // decode from base64
         }
     }
     /**

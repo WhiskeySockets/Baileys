@@ -27,7 +27,7 @@ export interface AuthenticationCredentialsBase64 {
 }
 export interface AuthenticationCredentialsBrowser {
     WABrowserId: string
-    WASecretBundle: {encKey: string, macKey: string}
+    WASecretBundle: {encKey: string, macKey: string} | string
     WAToken1: string
     WAToken2: string
 }
