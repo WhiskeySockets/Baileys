@@ -74,10 +74,14 @@ export default class WAConnectionValidator extends WAConnectionBase {
                 return this.userMetaData
             })
     }
-    /** Refresh QR Code */
-    protected refreshQRCode() {
+    /** 
+     * Refresh QR Code 
+     * @returns the new ref
+     */
+    async generateNewQRCode() {
         const data = ['admin', 'Conn', 'reref']
-        return this.query(data)
+        const response = await this.query(data)
+        return response.ref as string
     }
     /**
      * Once the QR code is scanned and we can validate our connection, or we resolved the challenge when logging back in
@@ -154,31 +158,14 @@ export default class WAConnectionValidator extends WAConnectionBase {
         this.log('resolving login challenge')
         return this.query(data)
     }
-    /**
-     * When starting a new session, generate a QR code by generating a private/public key pair & the keys the server sends
-     * @private
-     */
+    /** When starting a new session, generate a QR code by generating a private/public key pair & the keys the server sends */
     protected async generateKeysForAuth(ref: string) {
         this.curveKeys = Curve.generateKeyPair(Utils.randomBytes(32))
-
-        let retries = 0
-        let _ref = ref
-
-        while (retries < 5) {
-            retries++
-
-            this.onReadyForPhoneAuthentication([
-                _ref,
-                Buffer.from(this.curveKeys.public).toString('base64'),
-                this.authInfo.clientID,
-            ])
-
-            try {
-                return await this.waitForMessage('s1', [], 20 * 1000)
-            } catch (err) {
-                const json = await this.refreshQRCode()
-                _ref = json.ref
-            }
-        }
+        this.onReadyForPhoneAuthentication([
+            ref,
+            Buffer.from(this.curveKeys.public).toString('base64'),
+            this.authInfo.clientID,
+        ])
+        return this.waitForMessage('s1', [])
     }
 }

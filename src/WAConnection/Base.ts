@@ -12,6 +12,7 @@ import {
     WATag,
     MessageLogLevel,
     AuthenticationCredentialsBrowser,
+    Browsers,
 } from './Constants'
 
 /** Generate a QR code from the ref & the curve public key. This is scanned by the phone */
@@ -22,9 +23,9 @@ const generateQRCode = function ([ref, publicKey, clientID]) {
 
 export default class WAConnectionBase {
     /** The version of WhatsApp Web we're telling the servers we are */
-    version: [number, number, number] = [2, 2025, 6]
+    version: [number, number, number] = [2, 2027, 10]
     /** The Browser we're telling the WhatsApp Web servers we are */
-    browserDescription: [string, string] = ['Baileys', 'Baileys']
+    browserDescription: [string, string, string] = Browsers.baileys ('Baileys')
     /** Metadata like WhatsApp id, name set on WhatsApp etc. */
     userMetaData: UserMetaData = { id: null, name: null, phone: null }
     /** Should reconnect automatically after an unexpected disconnect */

@@ -4,12 +4,10 @@ import * as fs from 'fs'
 import * as assert from 'assert'
 
 import { decodeMediaMessage, validateJIDForSending } from './Utils'
-import { promiseTimeout } from '../WAConnection/Utils'
+import { promiseTimeout, createTimeout } from '../WAConnection/Utils'
 
 require ('dotenv').config () // dotenv to load test jid
 const testJid = process.env.TEST_JID || '1234@s.whatsapp.net' // set TEST_JID=xyz@s.whatsapp.net in a .env file in the root directory
-
-const createTimeout = (timeout) => new Promise(resolve => setTimeout(resolve, timeout))
 
 async function sendAndRetreiveMessage(client: WAClient, content, type: MessageType, options: MessageOptions = {}) {
     const response = await client.sendMessage(testJid, content, type, options)

@@ -21,7 +21,8 @@
     "test": "mocha --timeout 30000 -r ts-node/register src/*/Tests.ts",
     "lint": "eslint '*/*.ts' --quiet --fix",
     "build": "tsc",
-    "example": "npx ts-node Example/example.ts"
+    "example": "npx ts-node Example/example.ts",
+    "browser-decode": "npx ts-node src/WAConnection/BrowserMessageDecoding.ts"
   },
   "author": "Adhiraj Singh",
   "license": "MIT",

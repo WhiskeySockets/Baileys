@@ -1,8 +1,9 @@
 import * as Crypto from 'crypto'
 import HKDF from 'futoin-hkdf'
+import Decoder from '../Binary/Decoder'
+import { off } from 'process'
 
 /** decrypt AES 256 CBC; where the IV is prefixed to the buffer */
-
 export function aesDecrypt(buffer: Buffer, key: Buffer) {
     return aesDecryptWithIV(buffer.slice(16, buffer.length), key, buffer.slice(0, 16))
 }
@@ -37,6 +38,7 @@ export function hkdf(buffer: Buffer, expandedLength: number, info = null) {
 export function randomBytes(length) {
     return Crypto.randomBytes(length)
 }
+export const createTimeout = (timeout) => new Promise(resolve => setTimeout(resolve, timeout))
 export function promiseTimeout<T>(ms: number, promise: Promise<T>) {
     if (!ms) {
         return promise
@@ -66,10 +68,59 @@ export function generateMessageID() {
 }
 
 export function errorOnNon200Status(p: Promise<any>) {
-    return p.then((json) => {
+    return p.then(json => {
         if (json.status && typeof json.status === 'number' && Math.floor(json.status / 100) !== 2) {
             throw new Error(`Unexpected status code: ${json.status}`)
         }
         return json
     })
+}
+
+export function decryptWA (message: any, macKey: Buffer, encKey: Buffer, decoder: Decoder, fromMe: boolean=false): [string, Object, [number, number]?] {
+    const commaIndex = message.indexOf(',') // all whatsapp messages have a tag and a comma, followed by the actual message
+    if (commaIndex < 0) {
+        // if there was no comma, then this message must be not be valid
+        throw [2, 'invalid message', message]
+    }
+    let data = message.slice(commaIndex+1, message.length)
+    // get the message tag.
+    // If a query was done, the server will respond with the same message tag we sent the query with
+    const messageTag: string = message.slice(0, commaIndex).toString()
+    if (data.length === 0) {
+        // got an empty message, usually get one after sending a query with the 128 tag
+        return 
+    }
+
+    let json
+    let tags = null
+    if (data[0] === '[' || data[0] === '{') {
+        // if the first character is a "[", then the data must just be plain JSON array or object
+        json = JSON.parse(data) // parse the JSON
+    } else {
+        if (!macKey || !encKey) {
+            // if we recieved a message that was encrypted but we don't have the keys, then there must be an error
+            throw [3, 'recieved encrypted message when auth creds not available', data]
+        }
+        /* 
+            If the data recieved was not a JSON, then it must be an encrypted message.
+            Such a message can only be decrypted if we're connected successfully to the servers & have encryption keys
+        */
+        if (fromMe) {
+            tags = [data[0], data[1]]
+            data = data.slice(2, data.length)
+        }
+        
+        const checksum = data.slice(0, 32) // the first 32 bytes of the buffer are the HMAC sign of the message
+        data = data.slice(32, data.length) // the actual message
+        const computedChecksum = hmacSign(data, macKey) // compute the sign of the message we recieved using our macKey
+        
+        if (!checksum.equals(computedChecksum)) {
+            throw [7, "checksums don't match"]
+        }
+        
+        // the checksum the server sent, must match the one we computed for the message to be valid
+        const decrypted = aesDecrypt(data, encKey) // decrypt using AES
+        json = decoder.read(decrypted) // decode the binary message into a JSON array
+    }
+    return [messageTag, json, tags]
 }

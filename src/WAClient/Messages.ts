@@ -20,16 +20,16 @@ import { proto } from '../../WAMessage/WAMessage'
 export default class WhatsAppWebMessages extends WhatsAppWebBase {
     /**
      * Send a read receipt to the given ID for a certain message
-     * @param {string} jid the ID of the person/group whose message you want to mark read
-     * @param {string} [messageID] optionally, the message ID
+     * @param jid the ID of the person/group whose message you want to mark read
+     * @param messageID optionally, the message ID
+     * @param type whether to read or unread the message
      */
     async sendReadReceipt(jid: string, messageID?: string, type: 'read' | 'unread' = 'read') {
         const attributes = {
             jid: jid, 
-            count: messageID ? '1' : null, 
+            count: type === 'read' ? '1' : '-2', 
             index: messageID, 
-            owner: 'false',
-            type: type==='unread' ? 'false' : null
+            owner: messageID ? 'false' : null
         }
         return this.setQuery ([['read', attributes, null]])
     }

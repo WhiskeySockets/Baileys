@@ -1,6 +1,8 @@
 import * as assert from 'assert'
+import * as QR from 'qrcode-terminal'
 import WAConnection from './WAConnection'
 import { AuthenticationCredentialsBase64 } from './Constants'
+import { createTimeout } from './Utils'
 
 describe('QR generation', () => {
     it('should generate QR', async () => {
@@ -28,6 +30,23 @@ describe('Test Connect', () => {
 
         conn.close()
         auth = conn.base64EncodedAuthInfo()
+    })
+    it('should re-generate QR & connect', async () => {
+        const conn = new WAConnection()
+        conn.onReadyForPhoneAuthentication = async ([ref, publicKey, clientID]) => {
+            for (let i = 0; i < 2; i++) {
+                console.log ('called QR ' + i + ' times')
+                await createTimeout (3000)
+                ref = await conn.generateNewQRCode ()
+            }
+            const str = ref + ',' + publicKey + ',' + clientID
+            QR.generate(str, { small: true })
+        }
+        const user = await conn.connectSlim(null)
+        assert.ok(user)
+        assert.ok(user.id)
+
+        conn.close()
     })
     it('should reconnect', async () => {
         const conn = new WAConnection()

@@ -1,6 +1,11 @@
 import { WA } from '../Binary/Constants'
 import { proto } from '../../WAMessage/WAMessage'
 
+export const Browsers: Record<string, (string) => [string, string, string]> = {
+    ubuntu: browser => ['Ubuntu', browser, '18.04'],
+    macOS: browser => ['Mac OS', browser, '10.15.3'],
+    baileys: browser => ['Baileys', browser, '2.0']
+}
 export enum MessageLogLevel {
     none=0,
     unhandled=1,
