@@ -4,8 +4,15 @@ import WS from 'ws'
 import * as Utils from './Utils'
 import Encoder from '../Binary/Encoder'
 import Decoder from '../Binary/Decoder'
-import { AuthenticationCredentials, UserMetaData, WANode, AuthenticationCredentialsBase64, WATag, MessageLogLevel, AuthenticationCredentialsBrowser } from './Constants'
-
+import {
+    AuthenticationCredentials,
+    UserMetaData,
+    WANode,
+    AuthenticationCredentialsBase64,
+    WATag,
+    MessageLogLevel,
+    AuthenticationCredentialsBrowser,
+} from './Constants'
 
 /** Generate a QR code from the ref & the curve public key. This is scanned by the phone */
 const generateQRCode = function ([ref, publicKey, clientID]) {
@@ -96,9 +103,9 @@ export default class WAConnectionBase {
             authInfo = JSON.parse(file) as AuthenticationCredentialsBrowser
         }
         this.authInfo = {
-            clientID: authInfo.WABrowserId.replace (/\"/g, ''),
-            serverToken: authInfo.WAToken2.replace (/\"/g, ''),
-            clientToken: authInfo.WAToken1.replace (/\"/g, ''),
+            clientID: authInfo.WABrowserId.replace(/\"/g, ''),
+            serverToken: authInfo.WAToken2.replace(/\"/g, ''),
+            clientToken: authInfo.WAToken1.replace(/\"/g, ''),
             encKey: Buffer.from(authInfo.WASecretBundle.encKey, 'base64'), // decode from base64
             macKey: Buffer.from(authInfo.WASecretBundle.macKey, 'base64'), // decode from base64
         }
@@ -216,7 +223,7 @@ export default class WAConnectionBase {
 
         let buff = Utils.aesEncrypt(binary, this.authInfo.encKey) // encrypt it using AES and our encKey
         const sign = Utils.hmacSign(buff, this.authInfo.macKey) // sign the message using HMAC and our macKey
-        tag = tag || Utils.generateMessageTag()
+        tag = tag || Utils.generateMessageTag(this.msgCount)
         buff = Buffer.concat([
             Buffer.from(tag + ','), // generate & prefix the message tag
             Buffer.from(tags), // prefix some bytes that tell whatsapp what the message is about
@@ -234,7 +241,7 @@ export default class WAConnectionBase {
      * @return the message tag
      */
     private sendJSON(json: any[] | WANode, tag: string = null) {
-        tag = tag || Utils.generateMessageTag()
+        tag = tag || Utils.generateMessageTag(this.msgCount)
         this.send(tag + ',' + JSON.stringify(json))
         return tag
     }

@@ -7,3 +7,4 @@ package-lock.json
 .env
 lib
 auth_info_browser.json
+yarn.lock
