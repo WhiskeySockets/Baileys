@@ -63,7 +63,7 @@ export async function generateThumbnail(buffer: Buffer, mediaType: MessageType, 
     if (info.thumbnail === null || info.thumbnail) {
         // don't do anything if the thumbnail is already provided, or is null
         if (mediaType === MessageType.audio) {
-            throw 'audio messages cannot have thumbnails'
+            throw new Error('audio messages cannot have thumbnails')
         }
     } else if (mediaType === MessageType.image || mediaType === MessageType.sticker) {
         const buff = await sharp(buffer).resize(48, 48).jpeg().toBuffer()
@@ -97,10 +97,10 @@ export async function decodeMediaMessage(message: WAMessageContent, filename: st
     */
     const type = Object.keys(message)[0] as MessageType
     if (!type) {
-        throw 'unknown message type'
+        throw new Error('unknown message type')
     }
     if (type === MessageType.text || type === MessageType.extendedText) {
-        throw 'cannot decode text message'
+        throw new Error('cannot decode text message')
     }
     if (type === MessageType.location || type === MessageType.liveLocation) {
         fs.writeFileSync(filename + '.jpeg', message[type].jpegThumbnail)
@@ -138,6 +138,6 @@ export async function decodeMediaMessage(message: WAMessageContent, filename: st
 
         return trueFileName
     } else {
-        throw 'HMAC sign does not match'
+        throw new Error('HMAC sign does not match')
     }
 }

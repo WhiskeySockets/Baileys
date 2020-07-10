@@ -44,7 +44,7 @@ export default class WhatsAppWebMessages extends WhatsAppWebBase {
     async modifyChat (jid: string, type: ChatModification, options: {stamp: Date | string} = {stamp: new Date()}) {
         let chatAttrs: Record<string, string> = {jid: jid}
         if ((type === ChatModification.unpin || type === ChatModification.unmute) && !options?.stamp) {
-            throw 'options.stamp must be set to the timestamp of the time of pinning/unpinning of the chat'
+            throw new Error('options.stamp must be set to the timestamp of the time of pinning/unpinning of the chat')
         }
         const strStamp = options.stamp && 
                         (typeof options.stamp === 'string' ? options.stamp : Math.round(options.stamp.getTime ()/1000).toString ())
@@ -132,7 +132,7 @@ export default class WhatsAppWebMessages extends WhatsAppWebBase {
             case MessageType.text:
             case MessageType.extendedText:
                 if (typeof message !== 'string') {
-                    throw 'expected message to be a string'
+                    throw new Error('expected message to be a string')
                 }
                 m.extendedTextMessage = { text: message }
                 break
@@ -152,10 +152,10 @@ export default class WhatsAppWebMessages extends WhatsAppWebBase {
     /** Prepare a media message for sending */
     protected async prepareMediaMessage(buffer: Buffer, mediaType: MessageType, options: MessageOptions = {}) {
         if (mediaType === MessageType.document && !options.mimetype) {
-            throw 'mimetype required to send a document'
+            throw new Error('mimetype required to send a document')
         }
         if (mediaType === MessageType.sticker && options.caption) {
-            throw 'cannot send a caption with a sticker'
+            throw new Error('cannot send a caption with a sticker')
         }
         if (!options.mimetype) {
             options.mimetype = MimetypeMap[mediaType]
@@ -195,7 +195,7 @@ export default class WhatsAppWebMessages extends WhatsAppWebBase {
         })
         const responseJSON = await urlFetch.json()
         if (!responseJSON.url) {
-            throw 'UPLOAD FAILED GOT: ' + JSON.stringify(responseJSON)
+            throw new Error('Upload failed got: ' + JSON.stringify(responseJSON))
         }
         const message = {}
         message[mediaType] = {
