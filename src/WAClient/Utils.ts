@@ -112,32 +112,41 @@ export async function decodeMediaMessage(message: WAMessageContent, filename: st
         | proto.ImageMessage
         | proto.AudioMessage
         | proto.DocumentMessage
-    // get the keys to decrypt the message
-    const mediaKeys = getMediaKeys(messageContent.mediaKey, type) //getMediaKeys(Buffer.from(messageContent.mediaKey, 'base64'), type)
-    const iv = mediaKeys.iv
-    const cipherKey = mediaKeys.cipherKey
-    const macKey = mediaKeys.macKey
 
     // download the message
     const fetched = await fetch(messageContent.url, {})
     const buffer = await fetched.buffer()
-    // first part is actual file
-    const file = buffer.slice(0, buffer.length - 10)
-    // last 10 bytes is HMAC sign of file
-    const mac = buffer.slice(buffer.length - 10, buffer.length)
 
-    // sign IV+file & check for match with mac
-    const testBuff = Buffer.concat([iv, file])
-    const sign = hmacSign(testBuff, macKey).slice(0, 10)
-    // our sign should equal the mac
-    if (sign.equals(mac)) {
-        const decrypted = aesDecryptWithIV(file, cipherKey, iv) // decrypt media
-
-        const trueFileName = attachExtension ? (filename + '.' + getExtension(messageContent.mimetype)) : filename
-        fs.writeFileSync(trueFileName, decrypted)
-
-        return trueFileName
-    } else {
-        throw new Error('HMAC sign does not match')
+    const decryptedMedia = (type: MessageType) => {
+        // get the keys to decrypt the message
+        const mediaKeys = getMediaKeys(messageContent.mediaKey, type) //getMediaKeys(Buffer.from(messageContent.mediaKey, 'base64'), type)
+        // first part is actual file
+        const file = buffer.slice(0, buffer.length - 10)
+        // last 10 bytes is HMAC sign of file
+        const mac = buffer.slice(buffer.length - 10, buffer.length)
+        // sign IV+file & check for match with mac
+        const testBuff = Buffer.concat([mediaKeys.iv, file])
+        const sign = hmacSign(testBuff, mediaKeys.macKey).slice(0, 10)
+        // our sign should equal the mac
+        if (sign.equals(mac)) {
+            return aesDecryptWithIV(file, mediaKeys.cipherKey, mediaKeys.iv) // decrypt media
+        } else {
+            throw new Error('HMAC sign does not match')
+        }
     }
+    const allTypes = [type, ...Object.keys(HKDFInfoKeys)]
+    for (let i = 0; i < allTypes.length;i++) {
+        try {
+            const decrypted = decryptedMedia (allTypes[i] as MessageType)
+            
+            if (i > 0) { console.log (`decryption of ${type} media with HKDF key of ${allTypes[i]}`) }
+            
+            const trueFileName = attachExtension ? (filename + '.' + getExtension(messageContent.mimetype)) : filename
+            fs.writeFileSync(trueFileName, decrypted)
+            return trueFileName
+        } catch {
+            if (i === 0) { console.log (`decryption of ${type} media with original HKDF key failed`) }
+        }
+    }
+    throw new Error('HMAC sign does not match')
 }
