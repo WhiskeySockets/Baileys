@@ -103,6 +103,30 @@ client.connectSlim(null, 20*1000) // use loaded credentials & timeout in 20s
 ```
 See the browser credentials type [here](/src/WAConnection/Constants.ts).
 
+## QR Overriding
+
+If you want to do some custom processing with the QR code used to authenticate, you can override the following method:
+``` ts
+client.onReadyForPhoneAuthentication = ([ref, publicKey, clientID]) => {
+    const str = ref + ',' + publicKey + ',' + clientID // the QR string
+    // Now, use 'str' to display in QR UI or send somewhere
+}
+const user = await client.connect ()
+```
+
+If you need to regenerate the QR, you can also do so using:
+``` ts
+let generateQR: async () => void // call generateQR on some timeout or error
+client.onReadyForPhoneAuthentication = ([ref, publicKey, clientID]) => {
+    generateQR = async () => {
+        ref = await client.generateQRCode () // returns a new ref code to use for QR generation
+        const str = ref + ',' + publicKey + ',' + clientID // the QR string
+        // re-print str as QR or update in UI or send somewhere
+        //QR.generate(str, { small: true })
+    }
+}
+const user = await client.connect ()
+```
 ## Handling Events
 
 Implement the following callbacks in your code:
@@ -298,8 +322,10 @@ setTimeout (() => {
     ```
 - To search through messages
     ``` ts
-    const response = await client.searchMessages ('so cool', 25, 0) // get 25 messages of the first page of results 
+    const response = await client.searchMessages ('so cool', null, 25, 1) // search in all chats
     console.log (`got ${response.messages.length} messages in search`)
+
+    const response2 = await client.searchMessages ('so cool', '1234@c.us', 25, 1) // search in given chat
     ```
 Of course, replace ``` xyz ``` with an actual ID. 
 Append ``` @s.whatsapp.net ``` for individuals & ``` @g.us ``` for groups.

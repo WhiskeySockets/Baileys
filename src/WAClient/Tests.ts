@@ -131,9 +131,12 @@ WAClientTest('Misc', (client) => {
         await client.modifyChat (testJid, ChatModification.unmute, {stamp: mutedate})
     })
     it('should return search results', async () => {
-        const response = await client.searchMessages('Adh', 25, 0)
-        assert.ok (response.messages)
-        assert.ok (response.messages.length >= 0)
+        const jids = [null, testJid]
+        for (let i in jids) {
+            const response = await client.searchMessages('Hello', jids[i], 25, 1)
+            assert.ok (response.messages)
+            assert.ok (response.messages.length >= 0)
+        }
     })
 })
 WAClientTest('Groups', (client) => {

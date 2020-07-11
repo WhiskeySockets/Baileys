@@ -70,10 +70,11 @@ export default class WhatsAppWebMessages extends WhatsAppWebBase {
     /**
      * Search WhatsApp messages with a given text string
      * @param txt the search string
+     * @param inJid the ID of the chat to search in, set to null to search all chats 
      * @param count number of results to return
-     * @param page page number of results
+     * @param page page number of results (starts from 1)
      */
-    async searchMessages(txt: string, count: number, page: number) {
+    async searchMessages(txt: string, inJid: string | null, count: number, page: number) {
         const json = [
             'query',
             { 
@@ -81,7 +82,8 @@ export default class WhatsAppWebMessages extends WhatsAppWebBase {
                 type: 'search',
                 search: txt,
                 count: count.toString(),
-                page: page.toString()
+                page: page.toString(),
+                jid: inJid
             },
             null,
         ]

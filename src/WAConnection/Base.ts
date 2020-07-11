@@ -50,9 +50,7 @@ export default class WAConnectionBase {
     protected callbacks = {}
     protected encoder = new Encoder()
     protected decoder = new Decoder()
-    /**
-     * What to do when you need the phone to authenticate the connection (generate QR code by default)
-     */
+    /** What to do when you need the phone to authenticate the connection (generate QR code by default) */
     onReadyForPhoneAuthentication = generateQRCode
     unexpectedDisconnect = (err) => this.close()
     /**

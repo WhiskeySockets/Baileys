@@ -22,7 +22,7 @@ const decrypt = buffer => {
 }
 
 json.messages.forEach ((str, i) => {
-    const buffer = Buffer.from (str, 'hex')
+    const buffer = Buffer.from (str, 'base64')
     try {
         const [tag, json, binaryTags] = decrypt (buffer)
         console.log (
