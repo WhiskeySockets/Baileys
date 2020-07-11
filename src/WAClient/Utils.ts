@@ -31,6 +31,9 @@ export function getNotificationType(message: WAMessage): [string, MessageType?] 
 }
 /** generates all the keys required to encrypt/decrypt & sign a media message */
 export function getMediaKeys(buffer, mediaType: MessageType) {
+    if (typeof buffer === 'string') {
+        buffer = Buffer.from (buffer.replace('data:;base64,', ''), 'base64')
+    }
     // expand using HKDF to 112 bytes, also pass in the relevant app info
     const expandedMediaKey = hkdf(buffer, 112, HKDFInfoKeys[mediaType])
     return {
@@ -131,7 +134,7 @@ export async function decodeMediaMessage(message: WAMessageContent, filename: st
         if (sign.equals(mac)) {
             return aesDecryptWithIV(file, mediaKeys.cipherKey, mediaKeys.iv) // decrypt media
         } else {
-            throw new Error('HMAC sign does not match')
+            throw new Error('')
         }
     }
     const allTypes = [type, ...Object.keys(HKDFInfoKeys)]
@@ -148,5 +151,5 @@ export async function decodeMediaMessage(message: WAMessageContent, filename: st
             if (i === 0) { console.log (`decryption of ${type} media with original HKDF key failed`) }
         }
     }
-    throw new Error('HMAC sign does not match')
+    throw new Error('HMAC sign does not match for: ' + buffer.toString('utf-8'))
 }
