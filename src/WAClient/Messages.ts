@@ -117,7 +117,7 @@ export default class WhatsAppWebMessages extends WhatsAppWebBase {
         
         const query = ['query',{type: 'media', index: message.key.id, owner: message.key.fromMe ? 'true' : 'false', jid: message.key.remoteJid, epoch: this.msgCount.toString()},null]
         const response = await this.query (query, [WAMetric.queryMedia, WAFlag.ignore])
-        if (response[1].code !== 200) throw new Error ('unexpected status ' + response[1].code)
+        if (parseInt(response[1].code) !== 200) throw new Error ('unexpected status ' + response[1].code)
         
         Object.keys (response[1]).forEach (key => content[key] = response[1][key]) // update message
     }
