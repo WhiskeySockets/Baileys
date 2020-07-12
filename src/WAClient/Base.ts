@@ -210,7 +210,6 @@ export default class WhatsAppWebBase extends WAConnection {
     /** Get the metadata (works after you've left the group also) */
     groupCreatorAndParticipants = async (jid: string) => {
         const response = await this.queryExpecting200(['query', {type: 'group', jid: jid, epoch: '5'}, null], [WAMetric.group, WAFlag.ignore])
-        if (!response[2] || !response[2][1]) throw new Error ('Data missing in ' + JSON.stringify(response))
         const json = response[2]
         return {
             id: jid,
