@@ -212,13 +212,16 @@ export default class WhatsAppWebBase extends WAConnection {
         const query = ['query', {type: 'group', jid: jid, epoch: this.msgCount.toString()}, null]
         const response = await this.queryExpecting200(query, [WAMetric.group, WAFlag.ignore])
         const json = response[2][0]
+        const participants = json[2] ? json[2].filter (item => item[0] === 'participant') : []
+        const description = json[2] ? json[2].find (item => item[0] === 'description') : null
         return {
             id: jid,
             owner: json[1].creator,
             creator: json[1].creator,
             creation: parseInt(json[1].create),
             subject: null,
-            participants: json[2] ? json[2].map (item => ({ id: item[1].jid, isAdmin: item[1].type==='admin' })) : []
+            desc: description ? description[2].toString('utf-8') : null,
+            participants: participants.map (item => ({ id: item[1].jid, isAdmin: item[1].type==='admin' }))
         } as WAGroupMetadata
     }
     /**
