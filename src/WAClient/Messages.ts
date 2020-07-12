@@ -11,6 +11,7 @@ import {
     WASendMessageResponse,
     WAMessageKey,
     ChatModification,
+    MessageInfo,
 } from './Constants'
 import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes } from '../WAConnection/Utils'
 import { WAMessageContent, WAMetric, WAFlag, WANode, WAMessage } from '../WAConnection/Constants'
@@ -21,7 +22,19 @@ export default class WhatsAppWebMessages extends WhatsAppWebBase {
     /** Get the message info, who has read it, who its been delivered to */
     async messageInfo (jid: string, messageID: string) {
         const query = ['query', {type: 'message_info', index: messageID, jid: jid, epoch: this.msgCount.toString()}, null]
-        return this.queryExpecting200 (query, [22, WAFlag.ignore])
+        const response = (await this.queryExpecting200 (query, [22, WAFlag.ignore]))[2] as WANode[]
+        
+        const info: MessageInfo = {reads: [], deliveries: []}
+
+        const reads = response.filter (node => node[0] === 'read')
+        if (reads[0]) {
+            info.reads = reads[0][2].map (item => item[1])
+        }
+        const deliveries = response.filter (node => node[0] === 'delivery')
+        if (reads[0]) {
+            info.reads = reads[0][2].map (item => item[1])
+        }
+        return info
     }
     /**
      * Send a read receipt to the given ID for a certain message

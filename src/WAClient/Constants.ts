@@ -58,6 +58,7 @@ export const HKDFInfoKeys = {
 }
 export enum Mimetype {
     jpeg = 'image/jpeg',
+    png = 'image/png',
     mp4 = 'video/mp4',
     gif = 'video/gif',
     pdf = 'appliction/pdf',
@@ -73,6 +74,10 @@ export interface MessageOptions {
     mimetype?: Mimetype
     validateID?: boolean,
     filename?: string
+}
+export interface MessageInfo {
+    reads: {jid: string, t: string}[]
+    deliveries: {jid: string, t: string}[]
 }
 export interface MessageStatusUpdate {
     from: string
