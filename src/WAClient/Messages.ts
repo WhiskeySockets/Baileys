@@ -25,14 +25,15 @@ export default class WhatsAppWebMessages extends WhatsAppWebBase {
         const response = (await this.queryExpecting200 (query, [22, WAFlag.ignore]))[2] as WANode[]
         
         const info: MessageInfo = {reads: [], deliveries: []}
-
-        const reads = response.filter (node => node[0] === 'read')
-        if (reads[0]) {
-            info.reads = reads[0][2].map (item => item[1])
-        }
-        const deliveries = response.filter (node => node[0] === 'delivery')
-        if (reads[0]) {
-            info.reads = reads[0][2].map (item => item[1])
+        if (response) {
+            const reads = response.filter (node => node[0] === 'read')
+            if (reads[0]) {
+                info.reads = reads[0][2].map (item => item[1])
+            }
+            const deliveries = response.filter (node => node[0] === 'delivery')
+            if (reads[0]) {
+                info.deliveries = deliveries[0][2].map (item => item[1])
+            }
         }
         return info
     }
