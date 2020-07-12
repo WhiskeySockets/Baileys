@@ -212,6 +212,7 @@ To note:
         mimetype: Mimetype.pdf, /* (for media messages) specify the type of media (optional for all media types except documents),
                                         import {Mimetype} from '@adiwajshing/baileys'
                                 */
+        filename: 'somefile.pdf' // (for media messages) file name for the media
     }
     ```
 

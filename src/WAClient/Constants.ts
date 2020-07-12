@@ -70,7 +70,8 @@ export interface MessageOptions {
     caption?: string
     thumbnail?: string
     mimetype?: Mimetype
-    validateID?: boolean
+    validateID?: boolean,
+    filename?: string
 }
 export interface MessageStatusUpdate {
     from: string

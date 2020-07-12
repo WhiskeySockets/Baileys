@@ -109,7 +109,6 @@ export async function decodeMediaMessage(message: WAMessageContent, filename: st
         fs.writeFileSync(filename + '.jpeg', message[type].jpegThumbnail)
         return { filename: filename + '.jpeg' }
     }
-
     const messageContent = message[type] as
         | proto.VideoMessage
         | proto.ImageMessage
@@ -117,8 +116,12 @@ export async function decodeMediaMessage(message: WAMessageContent, filename: st
         | proto.DocumentMessage
 
     // download the message
-    const fetched = await fetch(messageContent.url, {})
+    const fetched = await fetch(messageContent.url, { headers: { Origin: 'https://web.whatsapp.com' } })
     const buffer = await fetched.buffer()
+
+    if (buffer.length === 0) {
+        throw new Error ('Empty buffer returned. File has possibly been deleted from WA servers. Run `client.updateMediaMessage()` to refresh the url')
+    }
 
     const decryptedMedia = (type: MessageType) => {
         // get the keys to decrypt the message
@@ -134,7 +137,7 @@ export async function decodeMediaMessage(message: WAMessageContent, filename: st
         if (sign.equals(mac)) {
             return aesDecryptWithIV(file, mediaKeys.cipherKey, mediaKeys.iv) // decrypt media
         } else {
-            throw new Error('')
+            throw new Error()
         }
     }
     const allTypes = [type, ...Object.keys(HKDFInfoKeys)]
@@ -151,5 +154,5 @@ export async function decodeMediaMessage(message: WAMessageContent, filename: st
             if (i === 0) { console.log (`decryption of ${type} media with original HKDF key failed`) }
         }
     }
-    throw new Error('HMAC sign does not match for: ' + buffer.toString('utf-8'))
+    throw new Error('HMAC sign does not match for ' + buffer.length)
 }

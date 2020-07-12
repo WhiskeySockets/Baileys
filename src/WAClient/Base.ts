@@ -144,7 +144,7 @@ export default class WhatsAppWebBase extends WAConnection {
             },
             null,
         ]
-        const response = await this.query(json, [WAMetric.group, WAFlag.ignore])
+        const response = await this.query(json, [WAMetric.queryMessages, WAFlag.ignore])
 
         if (response.status) throw new Error(`error in query, got status: ${response.status}`)
 
@@ -158,7 +158,6 @@ export default class WhatsAppWebBase extends WAConnection {
      */
     loadEntireConversation(jid: string, onMessage: (m: WAMessage) => void, chunkSize = 25, mostRecentFirst = true) {
         let offsetID = null
-
         const loadMessage = async () => {
             const json = await this.loadConversation(jid, chunkSize, offsetID, mostRecentFirst)
             // callback with most recent message first (descending order of date)
@@ -208,6 +207,20 @@ export default class WhatsAppWebBase extends WAConnection {
     }
     /** Get the metadata of the group */
     groupMetadata = (jid: string) => this.queryExpecting200(['query', 'GroupMetadata', jid]) as Promise<WAGroupMetadata>
+    /** Get the metadata (works after you've left the group also) */
+    groupCreatorAndParticipants = async (jid: string) => {
+        const response = await this.queryExpecting200(['query', {type: 'group', jid: jid, epoch: '5'}, null], [WAMetric.group, WAFlag.ignore])
+        if (!response[2] || !response[2][1]) throw new Error ('Data missing in ' + JSON.stringify(response))
+        const json = response[2]
+        return {
+            id: jid,
+            owner: json[1].creator,
+            creator: json[1].creator,
+            creation: parseInt(json[1].create),
+            subject: null,
+            participants: json[2] ? json[2].map (item => ({ id: item[1].jid, isAdmin: item[1].type==='admin' })) : []
+        } as WAGroupMetadata
+    }
     /**
      * Create a group
      * @param title like, the title of the group

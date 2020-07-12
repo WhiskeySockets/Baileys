@@ -5,6 +5,7 @@ import * as assert from 'assert'
 
 import { decodeMediaMessage, validateJIDForSending } from './Utils'
 import { promiseTimeout, createTimeout } from '../WAConnection/Utils'
+import { WAMessageContent, WAMessage } from '../WAConnection/Constants'
 
 require ('dotenv').config () // dotenv to load test jid
 const testJid = process.env.TEST_JID || '1234@s.whatsapp.net' // set TEST_JID=xyz@s.whatsapp.net in a .env file in the root directory
@@ -171,6 +172,7 @@ WAClientTest('Groups', (client) => {
     })
     it('should leave the group', async () => {
         await client.groupLeave(gid)
+        await client.groupCreatorAndParticipants (gid)
     })
     it('should archive the group', async () => {
         await client.archiveChat(gid)

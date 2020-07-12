@@ -5,7 +5,11 @@ import Decoder from '../Binary/Decoder'
 interface BrowserMessagesInfo {
     encKey: string,
     macKey: string,
-    messages: string[]
+    harFilePath: string
+}
+interface WSMessage {
+    type: 'send' | 'receive',
+    data: string
 }
 const file = fs.readFileSync ('./browser-messages.json', {encoding: 'utf-8'})
 const json: BrowserMessagesInfo = JSON.parse (file)
@@ -13,6 +17,14 @@ const json: BrowserMessagesInfo = JSON.parse (file)
 const encKey = Buffer.from (json.encKey, 'base64')
 const macKey = Buffer.from (json.macKey, 'base64')
 
+const harFile = JSON.parse ( fs.readFileSync( json.harFilePath , {encoding: 'utf-8'}))
+const entries = harFile['log']['entries']
+let wsMessages: WSMessage[] = []
+entries.forEach ((e, i) => {    
+    if ('_webSocketMessages' in e) {
+        wsMessages.push (...e['_webSocketMessages'])
+    }
+})
 const decrypt = buffer => {
     try {
         return decryptWA (buffer, macKey, encKey, new Decoder())
@@ -21,19 +33,16 @@ const decrypt = buffer => {
     }
 }
 
-json.messages.forEach ((str, i) => {
-    const buffer = Buffer.from (str, 'base64')
+console.log ('parsing ' + wsMessages.length + ' messages')
+const list = wsMessages.map ((item, i) => {
+    const buffer = Buffer.from (item.data, 'base64')
     try {
         const [tag, json, binaryTags] = decrypt (buffer)
-        console.log (
-            `
-            ${i}.
-            messageTag: ${tag}
-            output: ${JSON.stringify(json)}
-            binaryTags: ${binaryTags}
-            `
-        )
+        return {tag, json: JSON.stringify(json), binaryTags}
     } catch (error) {
         console.error (`received error in decoding ${i}: ${error}`)
+        return null
     }
 })
+const str = JSON.stringify (list, null, '\t')
+fs.writeFileSync ('decoded-ws.json', str)

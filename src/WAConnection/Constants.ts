@@ -78,6 +78,8 @@ export interface WAChat {
 }
 export enum WAMetric {
     liveLocation = 3,
+    queryMedia = 4,
+    queryMessages = 7,
     group = 10,
     message = 16,
     queryLiveLocation = 33,

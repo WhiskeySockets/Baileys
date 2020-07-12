@@ -107,6 +107,21 @@ export default class WhatsAppWebMessages extends WhatsAppWebBase {
         return this.setQuery ([attrs])
     }
     /**
+     * Fetches the latest url & media key for the given message.
+     * You may need to call this when the message is old & the content is deleted off of the WA servers
+     * @param message 
+     */
+    async updateMediaMessage (message: WAMessage) {
+        const content = message.message?.audioMessage || message.message?.videoMessage || message.message?.imageMessage || message.message?.stickerMessage || message.message?.documentMessage 
+        if (!content) throw new Error (`given message ${message.key.id} is not a media message`)
+        
+        const query = ['query',{type: 'media', index: message.key.id, owner: message.key.fromMe ? 'true' : 'false', jid: message.key.remoteJid, epoch: this.msgCount.toString()},null]
+        const response = await this.query (query, [WAMetric.queryMedia, WAFlag.ignore])
+        if (response[1].code !== 200) throw new Error ('unexpected status ' + response[1].code)
+        
+        Object.keys (response[1]).forEach (key => content[key] = response[1][key]) // update message
+    }
+    /**
      * Delete a message in a chat for everyone
      * @param id the person or group where you're trying to delete the message
      * @param messageKey key of the message you want to delete
@@ -207,9 +222,10 @@ export default class WhatsAppWebMessages extends WhatsAppWebBase {
             fileEncSha256: fileEncSha256B64,
             fileSha256: fileSha256.toString('base64'),
             fileLength: buffer.length,
+            fileName: options.filename || 'file',
             gifPlayback: isGIF || null,
         }
-        return message
+        return message as WAMessageContent
     }
     /** Generic send message function */
     async sendGenericMessage(id: string, message: WAMessageContent, options: MessageOptions) {
