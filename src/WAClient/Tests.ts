@@ -69,6 +69,15 @@ WAClientTest('Messages', (client) => {
         await createTimeout (2000)
         await client.clearMessage (messages[0].key)
     })
+    it ('should load convo', async () => {
+        const [chats] = await client.receiveChatsAndContacts ()
+        for (var i in chats) {
+            if (chats[i].jid.includes('@g.us')) {
+                console.log (chats[i].jid)
+                const data = await client.groupCreatorAndParticipants (chats[i].jid)
+            }
+        }
+    })
 })
 
 describe('Validate WhatsApp IDs', () => {
