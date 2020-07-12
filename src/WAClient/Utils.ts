@@ -87,13 +87,10 @@ export async function generateThumbnail(buffer: Buffer, mediaType: MessageType, 
     }
 }
 /**
- * Decode a media message (video, image, document, audio) & save it to the given file
+ * Decode a media message (video, image, document, audio) & return decrypted buffer
  * @param message the media message you want to decode
- * @param filename the name of the file where the media will be saved
- * @param attachExtension should the correct extension be applied automatically to the file
  */
-export async function decodeMediaMessage(message: WAMessageContent, filename: string, attachExtension: boolean=true) {
-    const getExtension = (mimetype) => mimetype.split(';')[0].split('/')[1]
+export async function decodeMediaMessageBuffer(message: WAMessageContent) {
     /* 
         One can infer media type from the key in the message
         it is usually written as [mediaType]Message. Eg. imageMessage, audioMessage etc.
@@ -106,15 +103,17 @@ export async function decodeMediaMessage(message: WAMessageContent, filename: st
         throw new Error('cannot decode text message')
     }
     if (type === MessageType.location || type === MessageType.liveLocation) {
-        fs.writeFileSync(filename + '.jpeg', message[type].jpegThumbnail)
-        return { filename: filename + '.jpeg' }
+        return new Buffer(message[type].jpegThumbnail)
     }
-    const messageContent = message[type] as
-        | proto.VideoMessage
-        | proto.ImageMessage
-        | proto.AudioMessage
-        | proto.DocumentMessage
-
+    let messageContent: proto.IVideoMessage | proto.IImageMessage | proto.IAudioMessage | proto.IDocumentMessage
+    if (message.productMessage) {
+        const product = message.productMessage.product?.productImage
+        if (!product) throw new Error ('product has no image')
+        messageContent = product
+    } else {
+        messageContent = message[type]
+    }
+    
     // download the message
     const fetched = await fetch(messageContent.url, { headers: { Origin: 'https://web.whatsapp.com' } })
     const buffer = await fetched.buffer()
@@ -146,13 +145,38 @@ export async function decodeMediaMessage(message: WAMessageContent, filename: st
             const decrypted = decryptedMedia (allTypes[i] as MessageType)
             
             if (i > 0) { console.log (`decryption of ${type} media with HKDF key of ${allTypes[i]}`) }
-            
-            const trueFileName = attachExtension ? (filename + '.' + getExtension(messageContent.mimetype)) : filename
-            fs.writeFileSync(trueFileName, decrypted)
-            return trueFileName
+            return decrypted
         } catch {
             if (i === 0) { console.log (`decryption of ${type} media with original HKDF key failed`) }
         }
     }
     throw new Error('HMAC sign does not match for ' + buffer.length)
 }
+/**
+ * Decode a media message (video, image, document, audio) & save it to the given file
+ * @param message the media message you want to decode
+ * @param filename the name of the file where the media will be saved
+ * @param attachExtension should the correct extension be applied automatically to the file
+ */
+export async function decodeMediaMessage(message: WAMessageContent, filename: string, attachExtension: boolean=true) {
+    const getExtension = (mimetype) => mimetype.split(';')[0].split('/')[1]
+    
+    const buffer = await decodeMediaMessageBuffer (message)
+    const type = Object.keys(message)[0] as MessageType
+    let extension
+    if (type === MessageType.location || type === MessageType.liveLocation) {
+        extension = '.jpeg'
+    } else {
+        const messageContent = message[type] as
+                                | proto.VideoMessage
+                                | proto.ImageMessage
+                                | proto.AudioMessage
+                                | proto.DocumentMessage
+        extension = getExtension (messageContent.mimetype)
+    }
+    
+    const trueFileName = attachExtension ? (filename + '.' + extension) : filename
+    fs.writeFileSync(trueFileName, buffer)
+    return trueFileName
+}
+

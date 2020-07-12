@@ -18,6 +18,11 @@ import { validateJIDForSending, generateThumbnail, getMediaKeys } from './Utils'
 import { proto } from '../../WAMessage/WAMessage'
 
 export default class WhatsAppWebMessages extends WhatsAppWebBase {
+    /** Get the message info, who has read it, who its been delivered to */
+    async messageInfo (jid: string, messageID: string) {
+        const query = ['query', {type: 'message_info', index: messageID, jid: jid, epoch: this.msgCount.toString()}, null]
+        return this.queryExpecting200 (query, [22, WAFlag.ignore])
+    }
     /**
      * Send a read receipt to the given ID for a certain message
      * @param jid the ID of the person/group whose message you want to mark read
@@ -66,6 +71,15 @@ export default class WhatsAppWebMessages extends WhatsAppWebBase {
         let response = await this.setQuery ([['chat', chatAttrs, null]]) as any
         response.stamp = strStamp
         return response as {status: number, stamp: string}
+    }
+    async loadMessage (jid: string, messageID: string) {
+        const messages = await this.loadConversation (jid, 1, {id: messageID, fromMe: false}, false)
+        var index = null
+        if (messages.length > 0) {
+            index = {id: messages[0].key.id, fromMe: false}
+        }
+        const actual = await this.loadConversation (jid, 1, index)
+        return actual[0]
     }
     /**
      * Search WhatsApp messages with a given text string

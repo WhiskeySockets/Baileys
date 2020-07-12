@@ -33,6 +33,7 @@ export enum MessageType {
     sticker = 'stickerMessage',
     document = 'documentMessage',
     audio = 'audioMessage',
+    product = 'productMessage'
 }
 export enum ChatModification {
     archive='archive',

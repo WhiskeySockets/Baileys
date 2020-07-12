@@ -171,8 +171,8 @@ WAClientTest('Groups', (client) => {
         await client.groupRemove(gid, [testJid])
     })
     it('should leave the group', async () => {
-       // await client.groupLeave(gid)
-        await client.groupCreatorAndParticipants ('919324993767-1593506879@g.us')
+        await client.groupLeave(gid)
+        await client.groupCreatorAndParticipants (gid)
     })
     it('should archive the group', async () => {
         await client.archiveChat(gid)
