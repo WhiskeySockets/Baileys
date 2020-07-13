@@ -51,7 +51,13 @@ export default class WAConnectionBase {
     protected decoder = new Decoder()
     /** What to do when you need the phone to authenticate the connection (generate QR code by default) */
     onReadyForPhoneAuthentication = generateQRCode
-    unexpectedDisconnect = (err) => this.close()
+    unexpectedDisconnect = (err: string) => this.close()
+    
+    /** Set the callback for unexpected disconnects including take over events, log out events etc. */
+    setOnUnexpectedDisconnect(callback: (error: string) => void) {
+        this.registerCallback (['Cmd', 'type:disconnect'], json => this.unexpectedDisconnect(json[1].kind))
+        this.unexpectedDisconnect = err => { this.close(); callback(err) }
+    }
     /**
      * base 64 encode the authentication credentials and return them
      * these can then be used to login again by passing the object to the connect () function.

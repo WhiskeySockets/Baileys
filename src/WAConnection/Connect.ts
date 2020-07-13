@@ -39,18 +39,19 @@ export default class WAConnectionConnector extends WAConnectionValidator {
                 this.log('connected to WhatsApp Web, authenticating...')
                 // start sending keep alive requests (keeps the WebSocket alive & updates our last seen)
                 this.authenticate()
-                    .then((user) => {
-                        this.startKeepAliveRequest()
-                        resolve(user)
-                    })
-                    .catch(reject)
+                .then(user => {
+                    this.startKeepAliveRequest()
+                    
+                    this.conn.on ('error', null)
+                    this.conn.on ('close', () => this.unexpectedDisconnect ('closed'))
+
+                    resolve(user)
+                })
+                .catch(reject)
             })
-            this.conn.on('message', (m) => this.onMessageRecieved(m)) // in WhatsAppWeb.Recv.js
-            this.conn.on('error', (error) => {
-                // if there was an error in the WebSocket
-                this.close()
-                reject(error)
-            })
+            this.conn.on('message', m => this.onMessageRecieved(m))
+            // if there was an error in the WebSocket
+            this.conn.on('error', error => { this.close(); reject(error) })
         })
         promise = Utils.promiseTimeout(timeoutMs, promise)
         return promise.catch(err => {

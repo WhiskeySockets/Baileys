@@ -53,9 +53,7 @@ export function randomBytes(length) {
 }
 export const createTimeout = (timeout) => new Promise(resolve => setTimeout(resolve, timeout))
 export function promiseTimeout<T>(ms: number, promise: Promise<T>) {
-    if (!ms) {
-        return promise
-    }
+    if (!ms) return promise
     // Create a promise that rejects in <ms> milliseconds
     const timeout = new Promise((_, reject) => {
         const id = setTimeout(() => {

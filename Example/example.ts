@@ -27,14 +27,6 @@ async function example() {
     fs.writeFileSync('./auth_info.json', JSON.stringify(authInfo, null, '\t')) // save this info to a file
     /*  Note: one can take this auth_info.json file and login again from any computer without having to scan the QR code, 
         and get full access to one's WhatsApp. Despite the convenience, be careful with this file */
-    client.setOnDisconnect (async kind => {
-        if (kind === 'replaced') {
-            // uncomment to reconnect whenever the connection gets taken over from somewhere else
-            // await client.connect ()
-        } else {
-            console.log ('oh no got logged out!')
-        }
-    })
     client.setOnPresenceUpdate(json => console.log(json.id + ' presence is ' + json.type))
     client.setOnMessageStatusChange(json => {
         const participant = json.participant ? ' (' + json.participant + ')' : '' // participant exists when the message is from a group
@@ -121,7 +113,14 @@ async function example() {
         const batterylevel = parseInt(batteryLevelStr)
         console.log('battery level: ' + batterylevel)
     })
-    client.setOnUnexpectedDisconnect(err => console.log('disconnected unexpectedly: ' + err))
+    client.setOnUnexpectedDisconnect(reason => {
+        if (reason === 'replaced') {
+            // uncomment to reconnect whenever the connection gets taken over from somewhere else
+            // await client.connect ()
+        } else {
+            console.log ('oh no got disconnected: ' + reason)
+        }
+    })
 }
 
 example().catch((err) => console.log(`encountered error: ${err}`))
