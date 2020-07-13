@@ -75,6 +75,11 @@ export interface MessageOptions {
     validateID?: boolean,
     filename?: string
 }
+export interface WABroadcastListInfo {
+    status: number
+    name: string
+    recipients?: {id: string}[]
+}
 export interface MessageInfo {
     reads: {jid: string, t: string}[]
     deliveries: {jid: string, t: string}[]

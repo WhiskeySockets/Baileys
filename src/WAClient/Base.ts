@@ -1,5 +1,5 @@
 import WAConnection from '../WAConnection/WAConnection'
-import { MessageStatus, MessageStatusUpdate, PresenceUpdate, Presence, ChatModification } from './Constants'
+import { MessageStatus, MessageStatusUpdate, PresenceUpdate, Presence, ChatModification, WABroadcastListInfo } from './Constants'
 import {
     WAMessage,
     WANode,
@@ -95,17 +95,33 @@ export default class WhatsAppWebBase extends WAConnection {
         const response = await this.queryExpecting200(['query', 'ProfilePicThumb', jid || this.userMetaData.id])
         return response.eurl as string
     }
+    /** Query broadcast list info */
+    async getBroadcastListInfo(jid: string) { return this.queryExpecting200(['query', 'contact', jid]) as Promise<WABroadcastListInfo> }
     /** Get your contacts */
     async getContacts() {
         const json = ['query', { epoch: this.msgCount.toString(), type: 'contacts' }, null]
-        const response = await this.query(json, [WAMetric.group, WAFlag.ignore]) // this has to be an encrypted query
-        console.log(response)
+        const response = await this.query(json, [6, WAFlag.ignore]) // this has to be an encrypted query
         return response
     }
+    /** Get the stories of your contacts */
+    async getStories() {
+        const json = ['query', { epoch: this.msgCount.toString(), type: 'status' }, null]
+        const response = await this.queryExpecting200(json, [30, WAFlag.ignore]) as WANode
+        if (Array.isArray(response[2])) {
+            return response[2].map (row => (
+                { 
+                    unread: row[1]?.unread, 
+                    count: row[1]?.count, 
+                    messages: Array.isArray(row[2]) ? row[2].map (m => m[2]) : []
+                } as {unread: number, count: number, messages: WAMessage[]}
+            ))
+        }
+        return []
+    }
     /** Fetch your chats */
-    getChats() {
+    async getChats() {
         const json = ['query', { epoch: this.msgCount.toString(), type: 'chat' }, null]
-        return this.query(json, [WAMetric.group, WAFlag.ignore]) // this has to be an encrypted query
+        return this.query(json, [5, WAFlag.ignore]) // this has to be an encrypted query
     }
     /**
      * Check if your phone is connected
@@ -188,87 +204,5 @@ export default class WhatsAppWebBase extends WAConnection {
     async setQuery (nodes: WANode[]) {
         const json = ['action', {epoch: this.msgCount.toString(), type: 'set'}, nodes]
         return this.queryExpecting200(json, [WAMetric.group, WAFlag.ignore]) as Promise<{status: number}>
-    }
-    /** Generic function for group queries */
-    async groupQuery(type: string, jid?: string, subject?: string, participants?: string[]) {
-        const json: WANode = [
-            'group',
-            {
-                author: this.userMetaData.id,
-                id: generateMessageTag(),
-                type: type,
-                jid: jid,
-                subject: subject,
-            },
-            participants ? participants.map((str) => ['participant', { jid: str }, null]) : [],
-        ]
-        const q = ['action', { type: 'set', epoch: this.msgCount.toString() }, [json]]
-        return this.queryExpecting200(q, [WAMetric.group, WAFlag.ignore])
-    }
-    /** Get the metadata of the group */
-    groupMetadata = (jid: string) => this.queryExpecting200(['query', 'GroupMetadata', jid]) as Promise<WAGroupMetadata>
-    /** Get the metadata (works after you've left the group also) */
-    groupCreatorAndParticipants = async (jid: string) => {
-        const query = ['query', {type: 'group', jid: jid, epoch: this.msgCount.toString()}, null]
-        const response = await this.queryExpecting200(query, [WAMetric.group, WAFlag.ignore])
-        const json = response[2][0]
-        const creatorDesc = json[1]
-        const participants = json[2] ? json[2].filter (item => item[0] === 'participant') : []
-        const description = json[2] ? json[2].find (item => item[0] === 'description') : null
-        return {
-            id: jid,
-            owner: creatorDesc?.creator,
-            creator: creatorDesc?.creator,
-            creation: parseInt(creatorDesc?.create),
-            subject: null,
-            desc: description ? description[2].toString('utf-8') : null,
-            participants: participants.map (item => ({ id: item[1].jid, isAdmin: item[1].type==='admin' }))
-        } as WAGroupMetadata
-    }
-    /**
-     * Create a group
-     * @param title like, the title of the group
-     * @param participants people to include in the group
-     */
-    groupCreate = (title: string, participants: string[]) =>
-        this.groupQuery('create', null, title, participants) as Promise<WAGroupCreateResponse>
-    /**
-     * Leave a group
-     * @param jid the ID of the group
-     */
-    groupLeave = (jid: string) => this.groupQuery('leave', jid) as Promise<{ status: number }>
-    /**
-     * Update the subject of the group
-     * @param {string} jid the ID of the group
-     * @param {string} title the new title of the group
-     */
-    groupUpdateSubject = (jid: string, title: string) =>
-        this.groupQuery('subject', jid, title) as Promise<{ status: number }>
-    /**
-     * Add somebody to the group
-     * @param jid the ID of the group
-     * @param participants the people to add
-     */
-    groupAdd = (jid: string, participants: string[]) =>
-        this.groupQuery('add', jid, null, participants) as Promise<WAGroupModification>
-    /**
-     * Remove somebody from the group
-     * @param jid the ID of the group
-     * @param participants the people to remove
-     */
-    groupRemove = (jid: string, participants: string[]) =>
-        this.groupQuery('remove', jid, null, participants) as Promise<WAGroupModification>
-    /**
-     * Make someone admin on the group
-     * @param jid the ID of the group
-     * @param participants the people to make admin
-     */
-    groupMakeAdmin = (jid: string, participants: string[]) =>
-        this.groupQuery('promote', jid, null, participants) as Promise<WAGroupModification>
-    /** Get the invite link of the given group */
-    async groupInviteCode(jid: string) {
-        const json = ['query', 'inviteCode', jid]
-        const response = await this.queryExpecting200(json)
-        return response.code as string
     }
 }

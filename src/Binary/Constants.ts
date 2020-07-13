@@ -199,7 +199,7 @@ export namespace WA {
         'recent',
     ]
     export const Message = Coding.WebMessageInfo
-    export type NodeAttributes = Record<string, string> | string | null
+    export type NodeAttributes = { [key: string]: string } | string | null
     export type NodeData = Array<Node> | any | null
     export type Node = [string, NodeAttributes, NodeData]
 }

@@ -70,13 +70,14 @@ WAClientTest('Messages', (client) => {
         await client.clearMessage (messages[0].key)
     })
     it ('should load convo', async () => {
-        const [chats] = await client.receiveChatsAndContacts ()
+        /*const [chats] = await client.receiveChatsAndContacts ()
         for (var i in chats) {
             if (chats[i].jid.includes('@g.us')) {
                 console.log (chats[i].jid)
                 const data = await client.groupCreatorAndParticipants (chats[i].jid)
             }
-        }
+        }*/
+        
     })
 })
 
@@ -115,6 +116,9 @@ WAClientTest('Misc', (client) => {
         const response = await client.getStatus(testJid)
         assert.ok(response.status)
         assert.strictEqual(typeof response.status, 'string')
+    })
+    it('should return the stories', async () => {
+        await client.getStories()
     })
     it('should return the profile picture', async () => {
         const response = await client.getProfilePicture(testJid)

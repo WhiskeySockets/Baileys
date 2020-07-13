@@ -77,11 +77,11 @@ export function errorOnNon200Status(p: Promise<any>) {
 }
 
 export function decryptWA (message: any, macKey: Buffer, encKey: Buffer, decoder: Decoder, fromMe: boolean=false): [string, Object, [number, number]?] {
-    const commaIndex = message.indexOf(',') // all whatsapp messages have a tag and a comma, followed by the actual message
-    if (commaIndex < 0) {
-        // if there was no comma, then this message must be not be valid
-        throw Error ('invalid message: ' + message)
-    }
+    let commaIndex = message.indexOf(',') // all whatsapp messages have a tag and a comma, followed by the actual message
+    
+    if (commaIndex < 0) throw Error ('invalid message: ' + message) // if there was no comma, then this message must be not be valid
+    
+    if (message[commaIndex+1] === ',') commaIndex += 1
     let data = message.slice(commaIndex+1, message.length)
     // get the message tag.
     // If a query was done, the server will respond with the same message tag we sent the query with
