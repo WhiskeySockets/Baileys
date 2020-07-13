@@ -1,8 +1,21 @@
 import * as Crypto from 'crypto'
 import HKDF from 'futoin-hkdf'
 import Decoder from '../Binary/Decoder'
-import { off } from 'process'
+import {platform, release} from 'os'
 
+const platformMap = {
+    'aix': 'AIX',
+    'darwin': 'Mac OS',
+    'win32': 'Windows',
+    'android': 'Android'
+}
+export const Browsers = {
+    ubuntu: browser => ['Ubuntu', browser, '18.04'] as [string, string, string],
+    macOS: browser => ['Mac OS', browser, '10.15.3'] as [string, string, string],
+    baileys: browser => ['Baileys', browser, '2.0'] as [string, string, string],
+    /** The appropriate browser based on your OS & release */
+    appropriate: browser => [ platformMap [platform()] || 'Ubuntu', browser, release() ] as [string, string, string]
+}
 /** decrypt AES 256 CBC; where the IV is prefixed to the buffer */
 export function aesDecrypt(buffer: Buffer, key: Buffer) {
     return aesDecryptWithIV(buffer.slice(16, buffer.length), key, buffer.slice(0, 16))
