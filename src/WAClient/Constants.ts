@@ -100,7 +100,7 @@ export interface MessageStatusUpdate {
     /** Message IDs read/delivered */
     ids: string[]
     /** Status of the Message IDs */
-    type: string
+    type: proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS
 }
 export interface PresenceUpdate {
     id: string

@@ -18,14 +18,13 @@ export default class WhatsAppWebBase extends WAConnection {
             if (json.cmd === 'ack') {
                 ids = [json.id]
             }
-            const ackTypes = [MessageStatus.sent, MessageStatus.received, MessageStatus.read]
             const data: MessageStatusUpdate = {
                 from: json.from,
                 to: json.to,
                 participant: json.participant,
                 timestamp: new Date(json.t * 1000),
                 ids: ids,
-                type: ackTypes[json.ack - 1] || 'unknown (' + json.ack + ')',
+                type: json.ack,
             }
             callback(data)
         }
