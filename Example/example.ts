@@ -27,9 +27,13 @@ async function example() {
     fs.writeFileSync('./auth_info.json', JSON.stringify(authInfo, null, '\t')) // save this info to a file
     /*  Note: one can take this auth_info.json file and login again from any computer without having to scan the QR code, 
         and get full access to one's WhatsApp. Despite the convenience, be careful with this file */
-    client.setOnTakenOver (async () => {
-        // uncomment to reconnect whenever the connection gets taken over from somewhere else
-        // await client.connect ()
+    client.setOnDisconnect (async kind => {
+        if (kind === 'replaced') {
+            // uncomment to reconnect whenever the connection gets taken over from somewhere else
+            // await client.connect ()
+        } else {
+            console.log ('oh no got logged out!')
+        }
     })
     client.setOnPresenceUpdate(json => console.log(json.id + ' presence is ' + json.type))
     client.setOnMessageStatusChange(json => {
