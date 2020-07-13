@@ -110,6 +110,12 @@ WAClientTest('Misc', (client) => {
     it('should return the stories', async () => {
         await client.getStories()
     })
+    it('should return a preview', async () => {
+        const info = await client.urlQuery ('fren have you seen https://www.github.com/adiwajshing/Baileys')
+        assert.equal (info["matched-text"], 'https://www.github.com/adiwajshing/Baileys')
+
+        await assert.rejects (() => client.urlQuery('oh hello there'))
+    })
     it('should return the profile picture', async () => {
         const response = await client.getProfilePicture(testJid)
         assert.ok(response)

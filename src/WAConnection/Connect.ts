@@ -42,7 +42,7 @@ export default class WAConnectionConnector extends WAConnectionValidator {
                 .then(user => {
                     this.startKeepAliveRequest()
                     
-                    this.conn.on ('error', null)
+                    this.conn.removeAllListeners ('error')
                     this.conn.on ('close', () => this.unexpectedDisconnect ('closed'))
 
                     resolve(user)

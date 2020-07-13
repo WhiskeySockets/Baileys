@@ -80,6 +80,13 @@ export interface WABroadcastListInfo {
     name: string
     recipients?: {id: string}[]
 }
+export interface WAUrlInfo {
+    'canonical-url': string
+    'matched-text': string
+    title: string
+    description: string
+    jpegThumbnail?: Buffer
+}
 export interface MessageInfo {
     reads: {jid: string, t: string}[]
     deliveries: {jid: string, t: string}[]
