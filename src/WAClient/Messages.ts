@@ -267,7 +267,7 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
             options.timestamp = new Date() // set timestamp to now
         }
         const key = Object.keys(message)[0]
-        const timestamp = options.timestamp.getTime() / 1000
+        const timestamp = options.timestamp.getTime()/1000
         const quoted = options.quoted
         if (quoted) {
             const participant = quoted.key.participant || quoted.key.remoteJid
@@ -293,49 +293,14 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
             },
             message: message,
             messageTimestamp: timestamp,
-            participant: id.includes('@g.us') ? this.userMetaData.id : null,
+            participant: id.includes('@g.us') ? this.userMetaData.id : null
         }
         const json = ['action', {epoch: this.msgCount.toString(), type: 'relay'}, [['message', null, messageJSON]]]
         const response = await this.queryExpecting200(json, [WAMetric.message, WAFlag.ignore], null, messageJSON.key.id)
-        return { status: response.status as number, messageID: messageJSON.key.id } as WASendMessageResponse
-    }
-    /**
-     * Load the entire friggin conversation with a group or person
-     * @param onMessage callback for every message retreived
-     * @param [chunkSize] the number of messages to load in a single request
-     * @param [mostRecentFirst] retreive the most recent message first or retreive from the converation start
-     */
-    loadEntireConversation(jid: string, onMessage: (m: WAMessage) => void, chunkSize = 25, mostRecentFirst = true) {
-        let offsetID = null
-        const loadMessage = async () => {
-            const json = await this.loadConversation(jid, chunkSize, offsetID, mostRecentFirst)
-            // callback with most recent message first (descending order of date)
-            let lastMessage
-            if (mostRecentFirst) {
-                for (let i = json.length - 1; i >= 0; i--) {
-                    onMessage(json[i])
-                    lastMessage = json[i]
-                }
-            } else {
-                for (let i = 0; i < json.length; i++) {
-                    onMessage(json[i])
-                    lastMessage = json[i]
-                }
-            }
-            // if there are still more messages
-            if (json.length >= chunkSize) {
-                offsetID = lastMessage.key // get the last message
-                return new Promise((resolve, reject) => {
-                    // send query after 200 ms
-                    setTimeout(() => loadMessage().then(resolve).catch(reject), 200)
-                })
-            }
-        }
-        return loadMessage() as Promise<void>
-    }
-    /** Generic function for action, set queries */
-    async setQuery (nodes: WANode[]) {
-        const json = ['action', {epoch: this.msgCount.toString(), type: 'set'}, nodes]
-        return this.queryExpecting200(json, [WAMetric.group, WAFlag.ignore]) as Promise<{status: number}>
+        return { 
+            status: response.status as number, 
+            messageID: messageJSON.key.id,
+            message: messageJSON as WAMessage
+        } as WASendMessageResponse
     }
 }

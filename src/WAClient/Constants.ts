@@ -127,6 +127,7 @@ export const MimetypeMap = {
 export interface WASendMessageResponse {
     status: number
     messageID: string
+    message: WAMessage
 }
 export interface WALocationMessage {
     degreesLatitude: number
