@@ -88,11 +88,15 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
         return response as {status: number, stamp: string}
     }
     async loadMessage (jid: string, messageID: string) {
-        const messages = await this.loadConversation (jid, 1, {id: messageID, fromMe: false}, false)
-        var index = null
-        if (messages.length > 0) {
-            index = {id: messages[0].key.id, fromMe: false}
+        let messages
+        try {
+            messages = await this.loadConversation (jid, 1, {id: messageID, fromMe: true}, false)
+        } catch {
+            messages = await this.loadConversation (jid, 1, {id: messageID, fromMe: false}, false)
         }
+        var index = null
+        if (messages.length > 0) index = messages[0].key
+        
         const actual = await this.loadConversation (jid, 1, index)
         return actual[0]
     }
