@@ -278,6 +278,7 @@ export default class WAConnectionBase {
     close() {
         this.msgCount = 0
         if (this.conn) {
+            this.conn.removeAllListeners ('close')
             this.conn.close()
             this.conn = null
         }
