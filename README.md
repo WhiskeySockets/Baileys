@@ -157,9 +157,9 @@ Implement the following callbacks in your code:
         console.log(sent + " acknowledged message(s) " + json.ids + " as " + json.type + " at " + json.timestamp)
     })
     ```
-- Called when the connection gets disconnected (either the server loses internet or the phone gets unpaired)
+- Called when the connection gets disconnected (either the server loses internet, the phone gets unpaired, or the connection is taken over from somewhere)
     ``` ts 
-    client.setOnUnexpectedDisconnect (err => console.log ("disconnected unexpectedly: " + err) )
+    client.setOnUnexpectedDisconnect (reason => console.log ("disconnected unexpectedly: " + reason) )
     ```
 - Called when you log into WhatsApp Web somewhere else
     ``` ts
