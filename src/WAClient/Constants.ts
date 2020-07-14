@@ -136,3 +136,4 @@ export interface WALocationMessage {
 }
 export type WAContactMessage = proto.ContactMessage
 export type WAMessageKey = proto.IMessageKey
+export type WATextMessage = proto.ExtendedTextMessage

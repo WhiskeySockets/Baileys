@@ -1,5 +1,5 @@
 import WAConnection from '../WAConnection/WAConnection'
-import { MessageStatus, MessageStatusUpdate, PresenceUpdate, Presence, ChatModification, WABroadcastListInfo, WAUrlInfo } from './Constants'
+import { MessageStatusUpdate, PresenceUpdate, Presence, WABroadcastListInfo } from './Constants'
 import {
     WAMessage,
     WANode,
@@ -7,7 +7,6 @@ import {
     WAFlag,
     MessageLogLevel,
 } from '../WAConnection/Constants'
-import { proto } from '../../WAMessage/WAMessage'
 
 export default class WhatsAppWebBase extends WAConnection {
     /** Set the callback for message status updates (when a message is delivered, read etc.) */
@@ -185,14 +184,5 @@ export default class WhatsAppWebBase extends WAConnection {
     async setQuery (nodes: WANode[]) {
         const json = ['action', {epoch: this.msgCount.toString(), type: 'set'}, nodes]
         return this.queryExpecting200(json, [WAMetric.group, WAFlag.ignore]) as Promise<{status: number}>
-    }
-    /** Query a string to check if it has a url, if it does, return required info */
-    async urlQuery (text: string) {
-        const query = ['query', {type: 'url', url: text, epoch: this.msgCount.toString()}, null]
-        const response = await this.queryExpecting200 (query, [26, WAFlag.ignore])
-        if (response[1]) {
-            response[1].jpegThumbnail = response[2]
-        }
-        return response[1] as WAUrlInfo
     }
 }

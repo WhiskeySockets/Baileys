@@ -60,8 +60,9 @@ const extractVideoThumb = async (
         })
     }) as Promise<void>
 
-/** generates a thumbnail for a given media, if required */
+export const compressImage = async (buffer: Buffer) => sharp(buffer).resize(48, 48).jpeg().toBuffer()
 
+/** generates a thumbnail for a given media, if required */
 export async function generateThumbnail(buffer: Buffer, mediaType: MessageType, info: MessageOptions) {
     if (info.thumbnail === null || info.thumbnail) {
         // don't do anything if the thumbnail is already provided, or is null
@@ -69,7 +70,7 @@ export async function generateThumbnail(buffer: Buffer, mediaType: MessageType, 
             throw new Error('audio messages cannot have thumbnails')
         }
     } else if (mediaType === MessageType.image || mediaType === MessageType.sticker) {
-        const buff = await sharp(buffer).resize(48, 48).jpeg().toBuffer()
+        const buff = await compressImage (buffer)
         info.thumbnail = buff.toString('base64')
     } else if (mediaType === MessageType.video) {
         const filename = './' + randomBytes(5).toString('hex') + '.mp4'

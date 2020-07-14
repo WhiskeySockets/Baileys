@@ -33,6 +33,14 @@ WAClientTest('Messages', (client) => {
         const message = await sendAndRetreiveMessage(client, 'hello fren', MessageType.text)
         assert.strictEqual(message.message.conversation, 'hello fren')
     })
+    it('should send a link preview', async () => {
+        const content = await client.generateLinkPreview ('hello this is from https://www.github.com/adiwajshing/Baileys')
+        const message = await sendAndRetreiveMessage(client, content, MessageType.text)
+        const received = message.message.extendedTextMessage
+        assert.strictEqual(received.text, content.text)
+        
+        fs.writeFileSync ('Media/received-thumb.jpeg', content.jpegThumbnail)
+    })
     it('should quote a message', async () => {
         const messages = await client.loadConversation(testJid, 2)
         const message = await sendAndRetreiveMessage(client, 'hello fren 2', MessageType.extendedText, {
@@ -108,12 +116,6 @@ WAClientTest('Misc', (client) => {
     })
     it('should return the stories', async () => {
         await client.getStories()
-    })
-    it('should return a preview', async () => {
-        const info = await client.urlQuery ('fren have you seen https://www.github.com/adiwajshing/Baileys')
-        assert.equal (info["matched-text"], 'https://www.github.com/adiwajshing/Baileys')
-
-        await assert.rejects (() => client.urlQuery('oh hello there'))
     })
     it('should return the profile picture', async () => {
         const response = await client.getProfilePicture(testJid)

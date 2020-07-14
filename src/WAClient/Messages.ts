@@ -12,9 +12,11 @@ import {
     WAMessageKey,
     ChatModification,
     MessageInfo,
+    WATextMessage,
+    WAUrlInfo,
 } from './Constants'
 import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes } from '../WAConnection/Utils'
-import { WAMessageContent, WAMetric, WAFlag, WANode, WAMessage } from '../WAConnection/Constants'
+import { WAMessageContent, WAMetric, WAFlag, WANode, WAMessage, WAMessageProto } from '../WAConnection/Constants'
 import { validateJIDForSending, generateThumbnail, getMediaKeys } from './Utils'
 import { proto } from '../../WAMessage/WAMessage'
 
@@ -100,6 +102,23 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
         const actual = await this.loadConversation (jid, 1, index)
         return actual[0]
     }
+    /** Query a string to check if it has a url, if it does, return required extended text message */
+    async generateLinkPreview (text: string) {
+        const query = ['query', {type: 'url', url: text, epoch: this.msgCount.toString()}, null]
+        const response = await this.queryExpecting200 (query, [26, WAFlag.ignore])
+        
+        if (response[1]) response[1].jpegThumbnail = response[2]
+        const data = response[1] as WAUrlInfo
+
+        const content = {text} as WATextMessage
+        content.canonicalUrl = data['canonical-url']
+        content.matchedText = data['matched-text']
+        content.jpegThumbnail = data.jpegThumbnail
+        content.description = data.description
+        content.title = data.title
+        content.previewType = 0
+        return content
+    }
     /**
      * Search WhatsApp messages with a given text string
      * @param txt the search string
@@ -170,21 +189,24 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
     }
     async sendMessage(
         id: string,
-        message: string | WALocationMessage | WAContactMessage | Buffer,
+        message: string | WATextMessage | WALocationMessage | WAContactMessage | Buffer,
         type: MessageType,
         options: MessageOptions = {},
     ) {
         if (options.validateID === true || !('validateID' in options)) {
             validateJIDForSending (id)
         }
-        let m: any = {}
+        let m: WAMessageContent = {}
         switch (type) {
             case MessageType.text:
             case MessageType.extendedText:
-                if (typeof message !== 'string') {
-                    throw new Error('expected message to be a string')
+                if (typeof message === 'string') {
+                    m.extendedTextMessage = {text: message}
+                } else if ('text' in message) {
+                    m.extendedTextMessage = message as WATextMessage
+                } else {
+                    throw new Error ('message needs to be a string or object with property \'text\'')
                 }
-                m.extendedTextMessage = { text: message }
                 break
             case MessageType.location:
             case MessageType.liveLocation:
@@ -197,7 +219,7 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
                 m = await this.prepareMediaMessage(message as Buffer, type, options)
                 break
         }
-        return this.sendGenericMessage(id, m as WAMessageContent, options)
+        return this.sendGenericMessage(id, m, options)
     }
     /** Prepare a media message for sending */
     protected async prepareMediaMessage(buffer: Buffer, mediaType: MessageType, options: MessageOptions = {}) {
@@ -283,7 +305,7 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
             }
         }
         message[key].caption = options?.caption
-        message[key].jpegThumbnail = options?.thumbnail
+        if (!message[key].jpegThumbnail) message[key].jpegThumbnail = options?.thumbnail
 
         const messageJSON = {
             key: {
@@ -293,7 +315,8 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
             },
             message: message,
             messageTimestamp: timestamp,
-            participant: id.includes('@g.us') ? this.userMetaData.id : null
+            participant: id.includes('@g.us') ? this.userMetaData.id : null,
+            status: WAMessageProto.proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS.PENDING
         }
         const json = ['action', {epoch: this.msgCount.toString(), type: 'relay'}, [['message', null, messageJSON]]]
         const response = await this.queryExpecting200(json, [WAMetric.message, WAFlag.ignore], null, messageJSON.key.id)
