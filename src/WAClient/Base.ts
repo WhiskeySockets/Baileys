@@ -6,6 +6,7 @@ import {
     WAMetric,
     WAFlag,
     MessageLogLevel,
+    WATag,
 } from '../WAConnection/Constants'
 
 export default class WhatsAppWebBase extends WAConnection {
@@ -75,8 +76,6 @@ export default class WhatsAppWebBase extends WAConnection {
         const response = await this.queryExpecting200(['query', 'ProfilePicThumb', jid || this.userMetaData.id])
         return response.eurl as string
     }
-    /** Query broadcast list info */
-    async getBroadcastListInfo(jid: string) { return this.queryExpecting200(['query', 'contact', jid]) as Promise<WABroadcastListInfo> }
     /** Get your contacts */
     async getContacts() {
         const json = ['query', { epoch: this.msgCount.toString(), type: 'contacts' }, null]
@@ -102,6 +101,12 @@ export default class WhatsAppWebBase extends WAConnection {
     async getChats() {
         const json = ['query', { epoch: this.msgCount.toString(), type: 'chat' }, null]
         return this.query(json, [5, WAFlag.ignore]) // this has to be an encrypted query
+    }
+    /** Query broadcast list info */
+    async getBroadcastListInfo(jid: string) { return this.queryExpecting200(['query', 'contact', jid]) as Promise<WABroadcastListInfo> }
+    /** Delete the chat of a given ID */
+    async deleteChat (jid: string) {
+        return this.setQuery ([ ['chat', {type: 'delete', jid: jid}, null] ], [12, WAFlag.ignore]) as Promise<{status: number}>
     }
     /**
      * Check if your phone is connected
@@ -181,8 +186,8 @@ export default class WhatsAppWebBase extends WAConnection {
         return loadMessage() as Promise<void>
     }
     /** Generic function for action, set queries */
-    async setQuery (nodes: WANode[]) {
+    async setQuery (nodes: WANode[], binaryTags: WATag = [WAMetric.group, WAFlag.ignore]) {
         const json = ['action', {epoch: this.msgCount.toString(), type: 'set'}, nodes]
-        return this.queryExpecting200(json, [WAMetric.group, WAFlag.ignore]) as Promise<{status: number}>
+        return this.queryExpecting200(json, binaryTags) as Promise<{status: number}>
     }
 }

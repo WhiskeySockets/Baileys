@@ -187,6 +187,9 @@ WAClientTest('Groups', (client) => {
     it('should archive the group', async () => {
         await client.archiveChat(gid)
     })
+    it('should delete the group', async () => {
+        await client.deleteChat(gid)
+    })
 })
 WAClientTest('Events', (client) => {
     it('should deliver a message', async () => {
