@@ -1,5 +1,5 @@
 import { MessageType, HKDFInfoKeys, MessageOptions, WAMessageType } from './Constants'
-import sharp from 'sharp'
+import Jimp from 'jimp'
 import * as fs from 'fs'
 import fetch from 'node-fetch'
 import { WAMessage, WAMessageContent } from '../WAConnection/Constants'
@@ -60,8 +60,10 @@ const extractVideoThumb = async (
         })
     }) as Promise<void>
 
-export const compressImage = async (buffer: Buffer) => sharp(buffer).resize(48, 48).jpeg().toBuffer()
-
+export const compressImage = async (buffer: Buffer) => {
+    const jimp = await Jimp.read (buffer)
+    return jimp.resize(48, 48).getBufferAsync (Jimp.MIME_JPEG)
+}
 /** generates a thumbnail for a given media, if required */
 export async function generateThumbnail(buffer: Buffer, mediaType: MessageType, info: MessageOptions) {
     if (info.thumbnail === null || info.thumbnail) {

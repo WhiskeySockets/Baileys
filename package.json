@@ -32,16 +32,15 @@
   "dependencies": {
     "curve25519-js": "0.0.4",
     "futoin-hkdf": "^1.3.2",
+    "jimp": "^0.14.0",
     "node-fetch": "^2.6.0",
     "protobufjs": "^6.9.0",
     "qrcode-terminal": "^0.12.0",
-    "sharp": "^0.25.4",
     "ws": "^7.3.0"
   },
   "devDependencies": {
     "@types/mocha": "^7.0.2",
     "@types/node": "^14.0.14",
-    "@types/sharp": "^0.25.0",
     "@types/ws": "^7.2.6",
     "@typescript-eslint/eslint-plugin": "^3.5.0",
     "@typescript-eslint/parser": "^3.5.0",
