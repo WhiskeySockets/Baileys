@@ -38,7 +38,7 @@ export type WAMessageContent = proto.IMessage
 export interface WAGroupCreateResponse {
     status: number
     gid?: string
-    participants?: { [key: string]: any }
+    participants?: [{ [key: string]: any }]
 }
 export interface WAGroupMetadata {
     id: string

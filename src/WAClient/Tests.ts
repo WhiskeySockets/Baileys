@@ -155,7 +155,7 @@ WAClientTest('Groups', (client) => {
     it('should create a group', async () => {
         const response = await client.groupCreate('Cool Test Group', [testJid])
         gid = response.gid
-        console.log('created group: ' + gid)
+        console.log('created group: ' + JSON.stringify(response))
     })
     it('should retreive group invite code', async () => {
         const code = await client.groupInviteCode(gid)
