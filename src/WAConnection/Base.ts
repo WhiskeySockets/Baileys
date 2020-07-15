@@ -32,6 +32,12 @@ export default class WAConnectionBase {
     lastSeen: Date = null
     /** Log messages that are not handled, so you can debug & see what custom stuff you can implement */
     logLevel: MessageLogLevel = MessageLogLevel.none
+    /** Should requests be queued when the connection breaks in between; if false, then an error will be thrown */
+    pendingRequestTimeoutMs: number = null
+    /** What to do when you need the phone to authenticate the connection (generate QR code by default) */
+    onReadyForPhoneAuthentication = generateQRCode
+    
+    protected unexpectedDisconnectCallback: (err: string) => any
     /** Data structure of tokens & IDs used to establish one's identiy to WhatsApp Web */
     protected authInfo: AuthenticationCredentials = {
         clientID: null,
@@ -49,14 +55,22 @@ export default class WAConnectionBase {
     protected callbacks = {}
     protected encoder = new Encoder()
     protected decoder = new Decoder()
-    /** What to do when you need the phone to authenticate the connection (generate QR code by default) */
-    onReadyForPhoneAuthentication = generateQRCode
-    unexpectedDisconnect = (err: string) => this.close()
-    
+    protected pendingRequests: (() => void)[] = []
+    protected reconnectLoop: () => Promise<void>
+
+    constructor () {
+        this.registerCallback (['Cmd', 'type:disconnect'], json => this.unexpectedDisconnect(json[1].kind))
+    }
+    async unexpectedDisconnect (error: string) {
+        this.close()
+        if ((error === 'lost' || error === 'closed') && this.autoReconnect) {
+            await this.reconnectLoop ()
+        }
+        if (this.unexpectedDisconnectCallback) this.unexpectedDisconnectCallback (error)
+    }
     /** Set the callback for unexpected disconnects including take over events, log out events etc. */
     setOnUnexpectedDisconnect(callback: (error: string) => void) {
-        this.registerCallback (['Cmd', 'type:disconnect'], json => this.unexpectedDisconnect(json[1].kind))
-        this.unexpectedDisconnect = err => { this.close(); callback(err) }
+        this.unexpectedDisconnectCallback = callback
     }
     /**
      * base 64 encode the authentication credentials and return them
@@ -98,9 +112,8 @@ export default class WAConnectionBase {
      * @param authInfo the authentication credentials or path to browser credentials JSON
      */
     loadAuthInfoFromBrowser(authInfo: AuthenticationCredentialsBrowser | string) {
-        if (!authInfo) {
-            throw new Error('given authInfo is null')
-        }
+        if (!authInfo) throw new Error('given authInfo is null')
+        
         if (typeof authInfo === 'string') {
             this.log(`loading authentication credentials from ${authInfo}`)
             const file = fs.readFileSync(authInfo, { encoding: 'utf-8' }) // load a closed session back if it exists
@@ -203,27 +216,25 @@ export default class WAConnectionBase {
     /**
      * Query something from the WhatsApp servers
      * @param json the query itself
-     * @param [binaryTags] the tags to attach if the query is supposed to be sent encoded in binary
-     * @param [timeoutMs] timeout after which the query will be failed (set to null to disable a timeout)
-     * @param [tag] the tag to attach to the message
+     * @param binaryTags the tags to attach if the query is supposed to be sent encoded in binary
+     * @param timeoutMs timeout after which the query will be failed (set to null to disable a timeout)
+     * @param tag the tag to attach to the message
      * recieved JSON
      */
     async query(json: any[] | WANode, binaryTags: WATag = null, timeoutMs: number = null, tag: string = null) {
-        if (binaryTags) {
-            tag = this.sendBinary(json as WANode, binaryTags, tag)
-        } else {
-            tag = this.sendJSON(json, tag)
-        }
+        if (binaryTags) tag = await this.sendBinary(json as WANode, binaryTags, tag)
+        else tag = await this.sendJSON(json, tag)
+       
         return this.waitForMessage(tag, json, timeoutMs)
     }
     /**
      * Send a binary encoded message
      * @param json the message to encode & send
-     * @param {[number, number]} tags the binary tags to tell WhatsApp what the message is all about
-     * @param {string} [tag] the tag to attach to the message
-     * @return {string} the message tag
+     * @param tags the binary tags to tell WhatsApp what the message is all about
+     * @param tag the tag to attach to the message
+     * @return the message tag
      */
-    private sendBinary(json: WANode, tags: [number, number], tag: string) {
+    private async sendBinary(json: WANode, tags: WATag, tag: string) {
         const binary = this.encoder.write(json) // encode the JSON to the WhatsApp binary format
 
         let buff = Utils.aesEncrypt(binary, this.authInfo.encKey) // encrypt it using AES and our encKey
@@ -235,38 +246,42 @@ export default class WAConnectionBase {
             sign, // the HMAC sign of the message
             buff, // the actual encrypted buffer
         ])
-        this.send(buff) // send it off
+        await this.send(buff) // send it off
         return tag
     }
     /**
      * Send a plain JSON message to the WhatsApp servers
-     * @private
      * @param json the message to send
-     * @param [tag] the tag to attach to the message
+     * @param tag the tag to attach to the message
      * @return the message tag
      */
-    private sendJSON(json: any[] | WANode, tag: string = null) {
+    private async sendJSON(json: any[] | WANode, tag: string = null) {
         tag = tag || Utils.generateMessageTag(this.msgCount)
-        this.send(tag + ',' + JSON.stringify(json))
+        await this.send(tag + ',' + JSON.stringify(json))
         return tag
     }
     /** Send some message to the WhatsApp servers */
-    protected send(m) {
+    protected async send(m) {
         if (!this.conn) {
-            throw new Error('cannot send message, disconnected from WhatsApp')
+            const timeout = this.pendingRequestTimeoutMs 
+            try {
+                const task = new Promise (resolve => this.pendingRequests.push(resolve))
+                await Utils.promiseTimeout (timeout, task)
+            } catch {
+                throw new Error('cannot send message, disconnected from WhatsApp')
+            }
         }
         this.msgCount += 1 // increment message count, it makes the 'epoch' field when sending binary messages
-        this.conn.send(m)
+        return this.conn.send(m)
     }
     /**
      * Disconnect from the phone. Your auth credentials become invalid after sending a disconnect request.
      * @see close() if you just want to close the connection
      */
     async logout() {
-        if (!this.conn) {
-            throw new Error("You're not even connected, you can't log out")
-        }
-        await new Promise((resolve) => {
+        if (!this.conn) throw new Error("You're not even connected, you can't log out")
+        
+        await new Promise(resolve => {
             this.conn.send('goodbye,["admin","Conn","disconnect"]', null, () => {
                 this.authInfo = null
                 resolve()
@@ -274,6 +289,7 @@ export default class WAConnectionBase {
         })
         this.close()
     }
+    
     /** Close the connection to WhatsApp Web */
     close() {
         this.msgCount = 0

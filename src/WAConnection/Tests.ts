@@ -70,7 +70,33 @@ describe('Test Connect', () => {
         }
 
         await conn.logout()
-
         await assert.rejects(async () => conn.connectSlim(auth), 'reconnect should have failed')
+    })
+})
+describe ('Pending Requests', async () => {
+    it('should queue requests when closed', async () => {
+          const conn = new WAConnection ()
+          conn.pendingRequestTimeoutMs = null
+
+          await conn.connectSlim ()
+          
+          await createTimeout (2000)
+
+          conn.close ()
+
+          const task: Promise<any> = new Promise ((resolve, reject) => {
+            conn.query(['query', 'Status', conn.userMetaData.id])
+            .then (json => resolve(json))
+            .catch (error => reject ('should not have failed, got error: ' + error))
+          })
+
+          await createTimeout (2000)
+
+          await conn.connectSlim ()
+          const json = await task
+          
+          assert.ok (json.status)
+
+          conn.close ()
     })
 })

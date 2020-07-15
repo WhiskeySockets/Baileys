@@ -24,9 +24,7 @@ export default class WAConnectionConnector extends WAConnectionValidator {
      */
     async connectSlim(authInfo: AuthenticationCredentialsBase64 | string = null, timeoutMs: number = null) {
         // if we're already connected, throw an error
-        if (this.conn) {
-            throw new Error('already connected or connecting')
-        }
+        if (this.conn) throw new Error('already connected or connecting')
         // set authentication credentials if required
         try {
             this.loadAuthInfoFromBase64(authInfo)
@@ -34,7 +32,7 @@ export default class WAConnectionConnector extends WAConnectionValidator {
         
         this.conn = new WS('wss://web.whatsapp.com/ws', null, { origin: 'https://web.whatsapp.com' })
 
-        let promise: Promise<UserMetaData> = new Promise((resolve, reject) => {
+        const promise: Promise<UserMetaData> = new Promise((resolve, reject) => {
             this.conn.on('open', () => {
                 this.log('connected to WhatsApp Web, authenticating...')
                 // start sending keep alive requests (keeps the WebSocket alive & updates our last seen)
@@ -53,11 +51,12 @@ export default class WAConnectionConnector extends WAConnectionValidator {
             // if there was an error in the WebSocket
             this.conn.on('error', error => { this.close(); reject(error) })
         })
-        promise = Utils.promiseTimeout(timeoutMs, promise)
-        return promise.catch(err => {
-            this.close()
-            throw err
-        })
+        const user = await Utils.promiseTimeout(timeoutMs, promise).catch(err => {this.close(); throw err})
+        
+        this.pendingRequests.forEach (send => send()) // send off all pending request
+        this.pendingRequests = []
+
+        return user
     }
     /**
      * Sets up callbacks to receive chats, contacts & unread messages.
@@ -207,23 +206,16 @@ export default class WAConnectionConnector extends WAConnectionValidator {
             const diff = (new Date().getTime() - this.lastSeen.getTime()) / 1000
             /* 
 				check if it's been a suspicious amount of time since the server responded with our last seen
-				it could be that the network is down, or the phone got unpaired from our connection
+				it could be that the network is down
 			*/
-            if (diff > refreshInterval + 5) {
-                this.close()
-
-                if (this.autoReconnect) {
-                    // attempt reconnecting if the user wants us to
-                    this.log('disconnected unexpectedly, reconnecting...')
-                    const reconnectLoop = () => this.connect(null, 25 * 1000).catch(reconnectLoop)
-                    reconnectLoop() // keep trying to connect
-                } else {
-                    this.unexpectedDisconnect('lost connection unexpectedly')
-                }
-            } else {
-                // if its all good, send a keep alive request
-                this.send('?,,')
-            }
+            if (diff > refreshInterval + 5) this.unexpectedDisconnect ('lost')
+            else this.send ('?,,') // if its all good, send a keep alive request
         }, refreshInterval * 1000)
+    }
+
+    reconnectLoop = async () => {
+        // attempt reconnecting if the user wants us to
+        this.log('network is down, reconnecting...')
+        return this.connectSlim(null, 25*1000).catch(this.reconnectLoop)
     }
 }
