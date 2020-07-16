@@ -65,8 +65,9 @@ export default class WAConnectionBase {
         this.close()
         if ((error === 'lost' || error === 'closed') && this.autoReconnect) {
             await this.reconnectLoop ()
+        } else if (this.unexpectedDisconnectCallback) {
+            this.unexpectedDisconnectCallback (error)
         }
-        if (this.unexpectedDisconnectCallback) this.unexpectedDisconnectCallback (error)
     }
     /** Set the callback for unexpected disconnects including take over events, log out events etc. */
     setOnUnexpectedDisconnect(callback: (error: string) => void) {
