@@ -34,7 +34,7 @@ export default class WAConnectionConnector extends WAConnectionValidator {
 
         const promise: Promise<UserMetaData> = new Promise((resolve, reject) => {
             this.conn.on('open', () => {
-                this.log('connected to WhatsApp Web, authenticating...')
+                this.log('connected to WhatsApp Web, authenticating...', MessageLogLevel.info)
                 // start sending keep alive requests (keeps the WebSocket alive & updates our last seen)
                 this.authenticate()
                 .then(user => {
@@ -73,7 +73,7 @@ export default class WAConnectionConnector extends WAConnectionValidator {
         let receivedMessages = false
         let convoResolve
 
-        this.log('waiting for chats & contacts') // wait for the message with chats
+        this.log('waiting for chats & contacts', MessageLogLevel.info) // wait for the message with chats
         const waitForConvos = () =>
             new Promise(resolve => {
                 convoResolve = () => {
@@ -148,7 +148,7 @@ export default class WAConnectionConnector extends WAConnectionValidator {
             const [messageTag, json] = decrypted
             
             if (this.logLevel === MessageLogLevel.all) {
-                this.log(messageTag + ', ' + JSON.stringify(json))
+                this.log(messageTag + ', ' + JSON.stringify(json), MessageLogLevel.all)
             }
             /* 
              Check if this is a response to a message we sent
@@ -195,7 +195,7 @@ export default class WAConnectionConnector extends WAConnectionValidator {
                 }
             }
             if (this.logLevel === MessageLogLevel.unhandled) {
-                this.log('[Unhandled] ' + messageTag + ', ' + JSON.stringify(json))
+                this.log('[Unhandled] ' + messageTag + ', ' + JSON.stringify(json), MessageLogLevel.unhandled)
             }
         }
     }
@@ -215,7 +215,7 @@ export default class WAConnectionConnector extends WAConnectionValidator {
 
     reconnectLoop = async () => {
         // attempt reconnecting if the user wants us to
-        this.log('network is down, reconnecting...')
+        this.log('network is down, reconnecting...', MessageLogLevel.info)
         return this.connectSlim(null, 25*1000).catch(this.reconnectLoop)
     }
 }

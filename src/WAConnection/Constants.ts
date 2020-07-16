@@ -3,8 +3,9 @@ import { proto } from '../../WAMessage/WAMessage'
 
 export enum MessageLogLevel {
     none=0,
-    unhandled=1,
-    all=2
+    info=1,
+    unhandled=2,
+    all=3
 }
 export interface AuthenticationCredentials {
     clientID: string

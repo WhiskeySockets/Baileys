@@ -14,7 +14,7 @@ import * as fs from 'fs'
 async function example() {
     const client = new WAClient() // instantiate
     client.autoReconnect = true // auto reconnect on disconnect
-    client.logLevel = MessageLogLevel.none // set to unhandled to see what kind of stuff you can implement
+    client.logLevel = MessageLogLevel.info // set to unhandled to see what kind of stuff you can implement
 
     // connect or timeout in 20 seconds (loads the auth file credentials if present)
     const [user, chats, contacts, unread] = await client.connect('./auth_info.json', 20 * 1000)

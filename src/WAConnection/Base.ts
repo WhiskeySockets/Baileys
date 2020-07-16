@@ -30,8 +30,8 @@ export default class WAConnectionBase {
     /** Should reconnect automatically after an unexpected disconnect */
     autoReconnect = true
     lastSeen: Date = null
-    /** Log messages that are not handled, so you can debug & see what custom stuff you can implement */
-    logLevel: MessageLogLevel = MessageLogLevel.none
+    /** What level of messages to log to the console */
+    logLevel: MessageLogLevel = MessageLogLevel.info
     /** Should requests be queued when the connection breaks in between; if false, then an error will be thrown */
     pendingRequestTimeoutMs: number = null
     /** What to do when you need the phone to authenticate the connection (generate QR code by default) */
@@ -95,7 +95,7 @@ export default class WAConnectionBase {
             throw new Error('given authInfo is null')
         }
         if (typeof authInfo === 'string') {
-            this.log(`loading authentication credentials from ${authInfo}`)
+            this.log(`loading authentication credentials from ${authInfo}`, MessageLogLevel.info)
             const file = fs.readFileSync(authInfo, { encoding: 'utf-8' }) // load a closed session back if it exists
             authInfo = JSON.parse(file) as AuthenticationCredentialsBase64
         }
@@ -115,7 +115,7 @@ export default class WAConnectionBase {
         if (!authInfo) throw new Error('given authInfo is null')
         
         if (typeof authInfo === 'string') {
-            this.log(`loading authentication credentials from ${authInfo}`)
+            this.log(`loading authentication credentials from ${authInfo}`, MessageLogLevel.info)
             const file = fs.readFileSync(authInfo, { encoding: 'utf-8' }) // load a closed session back if it exists
             authInfo = JSON.parse(file) as AuthenticationCredentialsBrowser
         }
@@ -177,7 +177,7 @@ export default class WAConnectionBase {
             delete this.callbacks[func][key][key2]
             return
         }
-        this.log('WARNING: could not find ' + JSON.stringify(parameters) + ' to deregister')
+        this.log('WARNING: could not find ' + JSON.stringify(parameters) + ' to deregister', MessageLogLevel.info)
     }
     /**
      * Wait for a message with a certain tag to be received
@@ -309,7 +309,8 @@ export default class WAConnectionBase {
             clearInterval(this.keepAliveReq)
         }
     }
-    protected log(text) {
-        console.log(`[Baileys][${new Date().toLocaleString()}] ${text}`)
+    protected log(text, level: MessageLogLevel) {
+        if (this.logLevel >= level)
+            console.log(`[Baileys][${new Date().toLocaleString()}] ${text}`)
     }
 }

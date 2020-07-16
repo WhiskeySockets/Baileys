@@ -1,6 +1,7 @@
 import * as Curve from 'curve25519-js'
 import * as Utils from './Utils'
 import WAConnectionBase from './Base'
+import { MessageLogLevel } from './Constants'
 
 const StatusError = (message: any, description: string='unknown error') => new Error (`unexpected status: ${message.status} on JSON: ${JSON.stringify(message)}`)
 
@@ -70,7 +71,7 @@ export default class WAConnectionValidator extends WAConnectionBase {
             })
             .then((json) => {
                 this.validateNewConnection(json[1]) // validate the connection
-                this.log('validated connection successfully')
+                this.log('validated connection successfully', MessageLogLevel.info)
                 this.lastSeen = new Date() // set last seen to right now
                 return this.userMetaData
             })
@@ -156,7 +157,7 @@ export default class WAConnectionValidator extends WAConnectionBase {
         const bytes = Buffer.from(challenge, 'base64') // decode the base64 encoded challenge string
         const signed = Utils.hmacSign(bytes, this.authInfo.macKey).toString('base64') // sign the challenge string with our macKey
         const data = ['admin', 'challenge', signed, this.authInfo.serverToken, this.authInfo.clientID] // prepare to send this signed string with the serverToken & clientID
-        this.log('resolving login challenge')
+        this.log('resolving login challenge', MessageLogLevel.info)
         return this.query(data)
     }
     /** When starting a new session, generate a QR code by generating a private/public key pair & the keys the server sends */
