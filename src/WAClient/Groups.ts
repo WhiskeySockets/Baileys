@@ -85,7 +85,7 @@ export default class WhatsAppWebGroups extends WhatsAppWebBase {
      * @param jid the ID of the group
      * @param participants the people to make admin
      */
-    groupRemoveAdmin = (jid: string, participants: string[]) =>
+    groupDemoteAdmin = (jid: string, participants: string[]) =>
         this.groupQuery('demote', jid, null, participants) as Promise<WAGroupModification>
     /**
      * Make demote an admin on the group
