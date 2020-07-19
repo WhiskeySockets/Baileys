@@ -2,12 +2,12 @@ import { WA } from './Constants'
 import { proto } from '../../WAMessage/WAMessage'
 
 export default class Encoder {
-    data: Array<number> = []
+    data: number[] = []
 
     pushByte(value: number) {
         this.data.push(value & 0xff)
     }
-    pushInt(value: number, n: number, littleEndian = false) {
+    pushInt(value: number, n: number, littleEndian=false) {
         for (let i = 0; i < n; i++) {
             const curShift = littleEndian ? i : n - 1 - i
             this.data.push((value >> (curShift * 8)) & 0xff)
@@ -16,17 +16,17 @@ export default class Encoder {
     pushInt20(value: number) {
         this.pushBytes([(value >> 16) & 0x0f, (value >> 8) & 0xff, value & 0xff])
     }
-    pushBytes(bytes: Uint8Array | Array<number>) {
-        this.data.push.apply(this.data, bytes)
+    pushBytes(bytes: Uint8Array | Buffer | number[]) {
+        bytes.forEach (b => this.data.push(b))
+        //this.data.push.apply(this.data, bytes)
     }
     pushString(str: string) {
         const bytes = Buffer.from (str, 'utf-8')
         this.pushBytes(bytes)
     }
     writeByteLength(length: number) {
-        if (length >= 4294967296) {
-            throw new Error('string too large to encode: ' + length)
-        }
+        if (length >= 4294967296) throw new Error('string too large to encode: ' + length)
+        
         if (length >= 1 << 20) {
             this.pushByte(WA.Tags.BINARY_32)
             this.pushInt(length, 4) // 32 bit integer
@@ -101,19 +101,18 @@ export default class Encoder {
             this.pushBytes([WA.Tags.LIST_16, listSize])
         }
     }
-    writeChildren(children: string | Array<WA.Node> | Object) {
-        if (!children) {
-            return
-        }
+    writeChildren(children: string | Array<WA.Node> | Buffer | Object) {
+        if (!children) return
 
         if (typeof children === 'string') {
             this.writeString(children, true)
+        } else if (Buffer.isBuffer(children)) {
+            this.writeByteLength (children.length)
+            this.pushBytes(children)
         } else if (Array.isArray(children)) {
             this.writeListStart(children.length)
-            children.forEach((c) => {
-                if (c) this.writeNode(c)
-            })
-        } else if (typeof children === 'object') {
+            children.forEach(c => c && this.writeNode(c))
+        }  else if (typeof children === 'object') {
             const buffer = WA.Message.encode(children as proto.WebMessageInfo).finish()
             this.writeByteLength(buffer.length)
             this.pushBytes(buffer)

@@ -66,7 +66,7 @@ export function promiseTimeout<T>(ms: number, promise: Promise<T>) {
 // whatsapp requires a message tag for every message, we just use the timestamp as one
 export function generateMessageTag(epoch?: number) {
     let tag = new Date().getTime().toString()
-    if (epoch) tag += '-' + epoch // attach epoch if provided
+    if (epoch) tag += '.--' + epoch // attach epoch if provided
     return tag
 }
 // generate a random 16 byte client ID

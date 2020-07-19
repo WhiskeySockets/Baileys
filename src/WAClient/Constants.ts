@@ -81,6 +81,11 @@ export interface WAUrlInfo {
     description: string
     jpegThumbnail?: Buffer
 }
+export interface WAProfilePictureChange {
+    status: number
+    tag: string
+    eurl: string
+}
 export interface MessageInfo {
     reads: {jid: string, t: string}[]
     deliveries: {jid: string, t: string}[]
@@ -94,7 +99,11 @@ export interface MessageStatusUpdate {
     /** Message IDs read/delivered */
     ids: string[]
     /** Status of the Message IDs */
-    type: proto.WebMessageInfo.WEB_MESSAGE_INFO_STUBTYPE
+    type: proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS
+}
+export enum GroupSettingChange {
+    messageSend = 'announcement',
+    settingsChange = 'locked',
 }
 export interface PresenceUpdate {
     id: string
