@@ -161,13 +161,6 @@ Implement the following callbacks in your code:
     ``` ts 
     client.setOnUnexpectedDisconnect (reason => console.log ("disconnected unexpectedly: " + reason) )
     ```
-- Called when you log into WhatsApp Web somewhere else
-    ``` ts
-    client.setOnTakenOver (async () => {
-        // reconnect to gain connection back here
-        await client.connect ()
-    })
-    ```
 ## Sending Messages
 
 Send like, all types of messages with a single function:
@@ -296,7 +289,8 @@ await client.deleteChat (jid) // will delete the chat (can be a group or broadca
 
 **Note:** to unmute or unpin a chat, one must pass the timestamp of the pinning or muting. This is returned by the pin & mute functions. This is also available in the `WAChat` objects of the respective chats, as a `mute` or `pin` property.
 
-## Querying
+## Misc
+
 - To check if a given ID is on WhatsApp
     ``` ts
     const id = 'xyz@s.whatsapp.net'
@@ -323,6 +317,12 @@ await client.deleteChat (jid) // will delete the chat (can be a group or broadca
     ``` ts
     const ppUrl = await client.getProfilePicture ("xyz@g.us") // leave empty to get your own
     console.log("download profile picture from: " + ppUrl)
+    ```
+- To change your display picture or a group's
+    ``` ts
+    const jid = '111234567890-1594482450@g.us' // can be your own too
+    const img = fs.readFileSync ('new-profile-picture.jpeg') // can be PNG also
+    await client.updateProfilePicture (jid, newPP)
     ```
 - To get someone's presence (if they're typing, online)
     ``` ts
@@ -353,10 +353,21 @@ Append ``` @s.whatsapp.net ``` for individuals & ``` @g.us ``` for groups.
     // id & people to add to the group (will throw error if it fails)
     const response = await client.groupAdd ("abcd-xyz@g.us", ["abcd@s.whatsapp.net", "efgh@s.whatsapp.net"])
     ```
-- To make someone admin on a group
+- To make/demote admins on a group
     ``` ts
     // id & people to make admin (will throw error if it fails)
-    await client.groupMakeAdmin ("abcd-xyz@g.us", ["abcd@s.whatsapp.net", "efgh@s.whatsapp.net"]) 
+    await client.groupMakeAdmin ("abcd-xyz@g.us", ["abcd@s.whatsapp.net", "efgh@s.whatsapp.net"])
+    await client.groupDemoteAdmin ("abcd-xyz@g.us", ["abcd@s.whatsapp.net", "efgh@s.whatsapp.net"]) // demote admins
+    ```
+- To change group settings
+    ``` ts
+    import { GroupSettingChange } from '@adiwajshing/baileys'
+    // only allow admins to send messages
+    await client.groupSettingChange ("abcd-xyz@g.us", GroupSettingChange.messageSend, true)
+    // allow everyone to modify the group's settings -- like display picture etc.
+    await client.groupSettingChange ("abcd-xyz@g.us", GroupSettingChange.settingChange, false)
+    // only allow admins to modify the group's settings
+    await client.groupSettingChange ("abcd-xyz@g.us", GroupSettingChange.settingChange, true)
     ```
 - To leave a group
     ``` ts

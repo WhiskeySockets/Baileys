@@ -326,7 +326,8 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
             status: WAMessageProto.proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS.PENDING
         }
         const json = ['action', {epoch: this.msgCount.toString(), type: 'relay'}, [['message', null, messageJSON]]]
-        const response = await this.queryExpecting200(json, [WAMetric.message, WAFlag.ignore], null, messageJSON.key.id)
+        const flag = id === this.userMetaData.id ? WAFlag.acknowledge : WAFlag.ignore // acknowledge when sending message to oneself
+        const response = await this.queryExpecting200(json, [WAMetric.message, flag], null, messageJSON.key.id)
         return { 
             status: response.status as number, 
             messageID: messageJSON.key.id,

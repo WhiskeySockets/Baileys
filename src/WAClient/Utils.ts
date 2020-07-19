@@ -67,6 +67,15 @@ export const compressImage = async (buffer: Buffer) => {
     const jimp = await Jimp.read (buffer)
     return jimp.resize(48, 48).getBufferAsync (Jimp.MIME_JPEG)
 }
+export const generateProfilePicture = async (buffer: Buffer) => {
+    const jimp = await Jimp.read (buffer)
+    const min = Math.min(jimp.getWidth (), jimp.getHeight ())
+    const cropped = jimp.crop (0, 0, min, min)
+    return {
+        img: await cropped.resize(640, 640).getBufferAsync (Jimp.MIME_JPEG),
+        preview: await cropped.resize(96, 96).getBufferAsync (Jimp.MIME_JPEG)
+    }
+}
 /** generates a thumbnail for a given media, if required */
 export async function generateThumbnail(buffer: Buffer, mediaType: MessageType, info: MessageOptions) {
     if (info.thumbnail === null || info.thumbnail) {

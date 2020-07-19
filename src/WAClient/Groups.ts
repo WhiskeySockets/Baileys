@@ -1,23 +1,24 @@
 import WhatsAppWebBase from './Base'
 import { WAMessage, WAMetric, WAFlag, WANode, WAGroupMetadata, WAGroupCreateResponse, WAGroupModification } from '../WAConnection/Constants'
+import { GroupSettingChange } from './Constants'
 import { generateMessageTag } from '../WAConnection/Utils'
 
 export default class WhatsAppWebGroups extends WhatsAppWebBase {
     /** Generic function for group queries */
-    async groupQuery(type: string, jid?: string, subject?: string, participants?: string[]) {
+    async groupQuery(type: string, jid?: string, subject?: string, participants?: string[], additionalNodes?: WANode[]) {
+        const tag = generateMessageTag(this.msgCount)
         const json: WANode = [
             'group',
             {
                 author: this.userMetaData.id,
-                id: generateMessageTag(),
+                id: tag,
                 type: type,
                 jid: jid,
                 subject: subject,
             },
-            participants ? participants.map((str) => ['participant', { jid: str }, null]) : [],
+            participants ? participants.map(str => ['participant', { jid: str }, null]) : additionalNodes,
         ]
-        const q = ['action', { type: 'set', epoch: this.msgCount.toString() }, [json]]
-        return this.queryExpecting200(q, [WAMetric.group, WAFlag.ignore])
+        return this.setQuery ([json], [WAMetric.group, WAFlag.ignore], tag)
     }
     /** Get the metadata of the group */
     groupMetadata = (jid: string) => this.queryExpecting200(['query', 'GroupMetadata', jid]) as Promise<WAGroupMetadata>
@@ -79,6 +80,22 @@ export default class WhatsAppWebGroups extends WhatsAppWebBase {
      */
     groupMakeAdmin = (jid: string, participants: string[]) =>
         this.groupQuery('promote', jid, null, participants) as Promise<WAGroupModification>
+    /**
+     * Make demote an admin on the group
+     * @param jid the ID of the group
+     * @param participants the people to make admin
+     */
+    groupDemoteAdmin = (jid: string, participants: string[]) =>
+        this.groupQuery('demote', jid, null, participants) as Promise<WAGroupModification>
+    /**
+     * Make demote an admin on the group
+     * @param jid the ID of the group
+     * @param participants the people to make admin
+     */
+    groupSettingChange = (jid: string, setting: GroupSettingChange, onlyAdmins: boolean) => {
+        const node: WANode = [ setting, {value: onlyAdmins ? 'true' : 'false'}, null ]
+        return this.groupQuery('prop', jid, null, null, [node]) as Promise<{status: number}>
+    }
     /** Get the invite link of the given group */
     async groupInviteCode(jid: string) {
         const json = ['query', 'inviteCode', jid]

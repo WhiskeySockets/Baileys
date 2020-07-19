@@ -1,5 +1,5 @@
 import WAConnection from '../WAConnection/WAConnection'
-import { MessageStatusUpdate, PresenceUpdate, Presence, WABroadcastListInfo } from './Constants'
+import { MessageStatusUpdate, PresenceUpdate, Presence, WABroadcastListInfo, WAProfilePictureChange } from './Constants'
 import {
     WAMessage,
     WANode,
@@ -8,6 +8,9 @@ import {
     MessageLogLevel,
     WATag,
 } from '../WAConnection/Constants'
+import { generateProfilePicture } from '../WAClient/Utils'
+import { generateMessageTag } from '../WAConnection/Utils'
+
 
 export default class WhatsAppWebBase extends WAConnection {
     /** Set the callback for message status updates (when a message is delivered, read etc.) */
@@ -185,9 +188,22 @@ export default class WhatsAppWebBase extends WAConnection {
         }
         return loadMessage() as Promise<void>
     }
+    async updateProfilePicture (jid: string, img: Buffer) {
+        const data = await generateProfilePicture (img)
+        const tag = generateMessageTag (this.msgCount)
+        const query: WANode = [
+            'picture', 
+            { jid: jid, id: tag, type: 'set' }, 
+            [
+                ['image', null, data.img],
+                ['preview', null, data.preview]
+            ]
+        ]
+        return this.setQuery ([query], [14, 136], tag) as Promise<WAProfilePictureChange>
+    }
     /** Generic function for action, set queries */
-    async setQuery (nodes: WANode[], binaryTags: WATag = [WAMetric.group, WAFlag.ignore]) {
+    async setQuery (nodes: WANode[], binaryTags: WATag = [WAMetric.group, WAFlag.ignore], tag?: string) {
         const json = ['action', {epoch: this.msgCount.toString(), type: 'set'}, nodes]
-        return this.queryExpecting200(json, binaryTags) as Promise<{status: number}>
+        return this.queryExpecting200(json, binaryTags, null, tag) as Promise<{status: number}>
     }
 }

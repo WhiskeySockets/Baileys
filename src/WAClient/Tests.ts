@@ -1,7 +1,8 @@
 import { WAClient } from './WAClient'
-import { MessageType, MessageOptions, Mimetype, Presence, ChatModification } from './Constants'
+import { MessageType, MessageOptions, Mimetype, Presence, ChatModification, GroupSettingChange } from './Constants'
 import * as fs from 'fs'
 import * as assert from 'assert'
+import fetch from 'node-fetch'
 
 import { decodeMediaMessage, validateJIDForSending } from './Utils'
 import { promiseTimeout, createTimeout } from '../WAConnection/Utils'
@@ -117,6 +118,20 @@ WAClientTest('Misc', (client) => {
     it('should return the stories', async () => {
         await client.getStories()
     })
+    it('should change the profile picture', async () => {
+        await createTimeout (5000)
+
+        const ppUrl = await client.getProfilePicture(client.userMetadata.id)
+        const fetched = await fetch(ppUrl, { headers: { Origin: 'https://web.whatsapp.com' } })
+        const buff = await fetched.buffer ()
+
+        const newPP = fs.readFileSync ('./Media/cat.jpeg')
+        const response = await client.updateProfilePicture (client.userMetadata.id, newPP)
+
+        await createTimeout (10000)
+
+        await client.updateProfilePicture (client.userMetaData.id, buff) // revert back
+    })
     it('should return the profile picture', async () => {
         const response = await client.getProfilePicture(testJid)
         assert.ok(response)
@@ -177,6 +192,11 @@ WAClientTest('Groups', (client) => {
         const metadata = await client.groupMetadata(gid)
         assert.strictEqual(metadata.subject, subject)
     })
+    it('should update the group settings', async () => {
+        await client.groupSettingChange (gid, GroupSettingChange.messageSend, true)
+        await createTimeout (5000)
+        await client.groupSettingChange (gid, GroupSettingChange.settingsChange, true)
+    })
     it('should remove someone from a group', async () => {
         await client.groupRemove(gid, [testJid])
     })
@@ -204,18 +224,4 @@ WAClientTest('Events', (client) => {
         const response = await client.sendMessage(testJid, 'My Name Jeff', MessageType.text)
         await promiseTimeout(10000, waitForUpdate())
     })
-    /*it ('should update me on presence', async () => {
-        //client.logUnhandledMessages = true
-        client.setOnPresenceUpdate (presence => {
-            console.log (presence)
-        })
-        const response = await client.requestPresenceUpdate (client.userMetaData)
-        assert.strictEqual (response.status, 200)
-        await createTimeout (25000)
-    })*/
 })
-/*WAClientTest ('Testz', client => {
-    it ('should work', async () => {
-       
-    })
-})*/
