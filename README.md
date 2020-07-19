@@ -232,12 +232,14 @@ await client.sendReadReceipt(id, null, 'unread') // mark the chat as unread
 - On a `WAMessage`, the `messageID` can be accessed using ```messageID = message.key.id```.
 
 ## Update Presence
+
 ``` ts
-client.updatePresence(id, WhatsAppWeb.Presence.available) 
+import { Presence } from '@adiwajshing/baileys'
+
+client.updatePresence(id, Presence.available) 
 ```
 This lets the person/group with ``` id ``` know whether you're online, offline, typing etc. where ``` presence ``` can be one of the following:
 ``` ts
-// call: import { Presence } from '@adiwajshing/baileys'
 export enum Presence {
     available = 'available', // "online"
     unavailable = 'unavailable', // "offline"
@@ -250,9 +252,11 @@ export enum Presence {
 ## Decoding Media
 If you want to save & process some images, videos, documents or stickers you received
 ``` ts
-import { getNotificationType, MessageType } from '@adiwajshing/baileys'
+import { MessageType } from '@adiwajshing/baileys'
 client.setOnUnreadMessage (false, async m => {
-    const messageType = getNotificationType(m.message) // get what type of message it is -- text, image, video
+    if (!m.message) return // if there is no text or media message
+
+    const messageType = Object.keys (m.message)[0]// get what type of message it is -- text, image, video
     // if the message is not a text message
     if (messageType !== MessageType.text && messageType !== MessageType.extendedText) {
         const savedFilename = await client.decodeMediaMessage(m.message, "filename") // extension applied automatically
@@ -266,7 +270,9 @@ client.setOnUnreadMessage (false, async m => {
 ``` ts
 const jid = '1234@s.whatsapp.net' // can also be a group
 const response = await client.sendMessage (jid, 'hello!', MessageType.text) // send a message
-await client.deleteMessage (jid, {id: response.messageID, remoteJid: jid, fromMe: true}) // will delete the sent message!
+
+await client.deleteMessage (jid, {id: response.messageID, remoteJid: jid, fromMe: true}) // will delete the sent message for everyone!
+await client.clearMessage (jid, {id: response.messageID, remoteJid: jid, fromMe: true}) // will delete the sent message for only you!
 ```
 
 ## Modifying Chats
@@ -284,9 +290,12 @@ await client.modifyChat (jid, ChatModification.mute, {stamp: mutedate}) // mute
 setTimeout (() => {
     client.modifyChat (jid, ChatModification.unmute, {stamp: mutedate})
 }, 5000) // unmute after 5 seconds
+
+await client.deleteChat (jid) // will delete the chat (can be a group or broadcast list)
 ```
 
 **Note:** to unmute or unpin a chat, one must pass the timestamp of the pinning or muting. This is returned by the pin & mute functions. This is also available in the `WAChat` objects of the respective chats, as a `mute` or `pin` property.
+
 ## Querying
 - To check if a given ID is on WhatsApp
     ``` ts
@@ -332,11 +341,6 @@ Of course, replace ``` xyz ``` with an actual ID.
 Append ``` @s.whatsapp.net ``` for individuals & ``` @g.us ``` for groups.
 
 ## Groups
-- To query the metadata of a group
-    ``` ts
-    const metadata = await client.groupMetadata ("abcd-xyz@g.us")
-    console.log(json.id + ", title: " + json.subject + ", description: " + json.desc)
-    ```
 - To create a group
     ``` ts
     // title & participants
@@ -362,6 +366,25 @@ Append ``` @s.whatsapp.net ``` for individuals & ``` @g.us ``` for groups.
     ``` ts
     const code = await client.groupInviteCode ("abcd-xyz@g.us")
     console.log("group code: " + code)
+    ```
+- To query the metadata of a group
+    ``` ts
+    const metadata = await client.groupMetadata ("abcd-xyz@g.us") 
+    console.log(json.id + ", title: " + json.subject + ", description: " + json.desc)
+
+    // Or if you've left the group -- call this
+    const metadata2 = await client.groupMetadataMinimal ("abcd-xyz@g.us") 
+    ```
+
+## Broadcast Lists & Stories
+
+- You can send messages to broadcast lists the same way you send messages to groups & individual chats.
+- Unfortunately, WA Web does not support creating broadcast lists right now but you can still delete them.
+- Broadcast IDs are in the format `12345678@broadcast`
+- To query a broadcast list's recipients & name:
+    ``` ts
+    const bList = await client.getBroadcastListInfo ("1234@broadcast")
+    console.log (`list name: ${bList.name}, recps: ${bList.recipients}`)
     ```
 
 ## Writing Custom Functionality

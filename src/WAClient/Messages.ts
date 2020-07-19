@@ -55,8 +55,15 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
         }
         return this.setQuery ([['read', attributes, null]])
     }
-    /** Mark a given chat as unread */
+    /** 
+     * Mark a given chat as unread 
+     * @deprecated since 2.0.0, use `sendReadReceipt (jid, null, 'unread')` instead
+    */
     async markChatUnread (jid: string) { return this.sendReadReceipt (jid, null, 'unread') }
+    /** 
+     * Archive a chat
+     * @deprecated since 2.0.0, use `modifyChat (jid, ChatModification.archive)` instead
+    */
     async archiveChat (jid: string) { return this.modifyChat (jid, ChatModification.archive) }
     /**
      * Modify a given chat (archive, pin etc.)

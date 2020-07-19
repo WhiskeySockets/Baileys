@@ -22,7 +22,7 @@ export default class WhatsAppWebGroups extends WhatsAppWebBase {
     /** Get the metadata of the group */
     groupMetadata = (jid: string) => this.queryExpecting200(['query', 'GroupMetadata', jid]) as Promise<WAGroupMetadata>
     /** Get the metadata (works after you've left the group also) */
-    groupCreatorAndParticipants = async (jid: string) => {
+    groupMetadataMinimal = async (jid: string) => {
         const query = ['query', {type: 'group', jid: jid, epoch: this.msgCount.toString()}, null]
         const response = await this.queryExpecting200(query, [WAMetric.group, WAFlag.ignore])
         const json = response[2][0]

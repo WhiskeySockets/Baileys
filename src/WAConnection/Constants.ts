@@ -92,7 +92,6 @@ export enum WAFlag {
 }
 /** Tag used with binary queries */
 export type WATag = [WAMetric, WAFlag]
-export * as WAMessageProto from '../../WAMessage/WAMessage'
-
+export * as WAMessageProto from '../../WAMessage/WAMessage' 
 
 

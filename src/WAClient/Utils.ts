@@ -19,7 +19,10 @@ export function validateJIDForSending (jid: string) {
     }
 }
 
-/** Type of notification */
+/** 
+ * Type of notification 
+ * @deprecated use WA_MESSAGE_STUB_TYPE instead
+ * */
 export function getNotificationType(message: WAMessage): [string, MessageType?] {
     if (message.message) {
         return ['message', Object.keys(message.message)[0] as MessageType]

@@ -23,7 +23,7 @@ export default class Decoder {
         const value = this.buffer.slice(this.index, this.index + length)
 
         this.index += length
-        return new TextDecoder().decode(value)
+        return value.toString ('utf-8')
     }
     readBytes(n: number): Buffer {
         this.checkEOS(n)

@@ -182,7 +182,7 @@ WAClientTest('Groups', (client) => {
     })
     it('should leave the group', async () => {
         await client.groupLeave(gid)
-        await client.groupCreatorAndParticipants (gid)
+        await client.groupMetadataMinimal (gid)
     })
     it('should archive the group', async () => {
         await client.archiveChat(gid)

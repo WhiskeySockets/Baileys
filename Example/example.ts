@@ -1,6 +1,5 @@
 import {
     WAClient,
-    getNotificationType,
     MessageType,
     decodeMediaMessage,
     Presence,
@@ -8,6 +7,7 @@ import {
     Mimetype,
     WALocationMessage,
     MessageLogLevel,
+    WAMessageType,
 } from '../src/WAClient/WAClient'
 import * as fs from 'fs'
 
@@ -34,12 +34,12 @@ async function example() {
     })
      // set to false to NOT relay your own sent messages
     client.setOnUnreadMessage(true, async (m) => {
-        const [notificationType, messageType] = getNotificationType(m) // get what type of notification it is -- message, group add notification etc.
-        console.log('got notification of type: ' + notificationType)
+        const messageStubType = WAMessageType[m.messageStubType] ||  'MESSAGE'
+        console.log('got notification of type: ' + messageStubType)
 
-        if (notificationType !== 'message') {
-            return
-        }
+        const messageContent = m.message
+        // if it is not a regular text or media message
+        if (!messageContent) return
         if (m.key.fromMe) {
             console.log('relayed my own message')
             return
@@ -50,6 +50,7 @@ async function example() {
             // participant exists if the message is in a group
             sender += ' (' + m.key.participant + ')'
         }
+        const messageType = Object.keys (messageContent)[0] // message will always contain one key signifying what kind of message
         if (messageType === MessageType.text) {
             const text = m.message.conversation
             console.log(sender + ' sent: ' + text)

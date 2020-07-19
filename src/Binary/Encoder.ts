@@ -20,7 +20,7 @@ export default class Encoder {
         this.data.push.apply(this.data, bytes)
     }
     pushString(str: string) {
-        const bytes = new TextEncoder().encode(str)
+        const bytes = Buffer.from (str, 'utf-8')
         this.pushBytes(bytes)
     }
     writeByteLength(length: number) {

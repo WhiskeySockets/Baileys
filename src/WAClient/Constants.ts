@@ -43,12 +43,6 @@ export enum ChatModification {
     mute='mute',
     unmute='unmute'
 }
-export const WAMessageType = function () {
-    const types = proto.WebMessageInfo.WEB_MESSAGE_INFO_STUBTYPE
-    const dict: Record<number, string> = {}
-    Object.keys(types).forEach(element => dict[ types[element] ] = element)
-    return dict 
-}()
 export const HKDFInfoKeys = {
     [MessageType.image]: 'WhatsApp Image Keys',
     [MessageType.audio]: 'WhatsApp Audio Keys',
@@ -100,7 +94,7 @@ export interface MessageStatusUpdate {
     /** Message IDs read/delivered */
     ids: string[]
     /** Status of the Message IDs */
-    type: proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS
+    type: proto.WebMessageInfo.WEB_MESSAGE_INFO_STUBTYPE
 }
 export interface PresenceUpdate {
     id: string
@@ -134,6 +128,16 @@ export interface WALocationMessage {
     degreesLongitude: number
     address?: string
 }
+export const WA_MESSAGE_STUB_TYPE = proto.WebMessageInfo.WEB_MESSAGE_INFO_STUBTYPE
+export const WA_MESSAGE_STATUS_TYPE = proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS
+
+/** Reverse stub type dictionary */
+export const WAMessageType = function () {
+    const types = WA_MESSAGE_STUB_TYPE
+    const dict: Record<number, string> = {}
+    Object.keys(types).forEach(element => dict[ types[element] ] = element)
+    return dict
+}()
 export type WAContactMessage = proto.ContactMessage
 export type WAMessageKey = proto.IMessageKey
 export type WATextMessage = proto.ExtendedTextMessage
