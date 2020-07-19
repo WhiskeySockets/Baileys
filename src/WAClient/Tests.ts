@@ -121,12 +121,12 @@ WAClientTest('Misc', (client) => {
     it('should change the profile picture', async () => {
         await createTimeout (5000)
 
-        const ppUrl = await client.getProfilePicture(client.userMetadata.id)
+        const ppUrl = await client.getProfilePicture(client.userMetaData.id)
         const fetched = await fetch(ppUrl, { headers: { Origin: 'https://web.whatsapp.com' } })
         const buff = await fetched.buffer ()
 
         const newPP = fs.readFileSync ('./Media/cat.jpeg')
-        const response = await client.updateProfilePicture (client.userMetadata.id, newPP)
+        const response = await client.updateProfilePicture (client.userMetaData.id, newPP)
 
         await createTimeout (10000)
 

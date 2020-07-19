@@ -322,6 +322,7 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
             },
             message: message,
             messageTimestamp: timestamp,
+            messageStubParameters: [],
             participant: id.includes('@g.us') ? this.userMetaData.id : null,
             status: WAMessageProto.proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS.PENDING
         }
