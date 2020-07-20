@@ -112,7 +112,9 @@ export default class WAConnectionConnector extends WAConnectionValidator {
                 this.registerCallback(['action', 'add:unread'], chatUpdate)
             })
         const waitForChats = async () => {
-            const json = await this.registerCallbackOneTime(['response', 'type:chat'])
+            let json = await this.registerCallbackOneTime(['response', 'type:chat'])
+            if (json[1].duplicate) json = await this.registerCallbackOneTime (['response', 'type:chat'])
+
             json[2].forEach(chat => {
                 chat[1].count = parseInt(chat[1].count)
                 chat[1].messages = []
@@ -123,7 +125,9 @@ export default class WAConnectionConnector extends WAConnectionValidator {
             if (chats.length > 0) return waitForConvos()
         }
         const waitForContacts = async () => {
-            const json = await this.registerCallbackOneTime(['response', 'type:contacts'])
+            let json = await this.registerCallbackOneTime(['response', 'type:contacts'])
+            if (json[1].duplicate) json = await this.registerCallbackOneTime (['response', 'type:contacts'])
+
             contacts = json[2].map(item => item[1])
             receivedContacts = true
             // if you receive contacts after messages
