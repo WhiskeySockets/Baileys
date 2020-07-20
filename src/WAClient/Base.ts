@@ -9,7 +9,6 @@ import {
     WATag,
 } from '../WAConnection/Constants'
 import { generateProfilePicture } from '../WAClient/Utils'
-import { generateMessageTag } from '../WAConnection/Utils'
 
 
 export default class WhatsAppWebBase extends WAConnection {
@@ -190,7 +189,7 @@ export default class WhatsAppWebBase extends WAConnection {
     }
     async updateProfilePicture (jid: string, img: Buffer) {
         const data = await generateProfilePicture (img)
-        const tag = generateMessageTag (this.msgCount)
+        const tag = this.generateMessageTag ()
         const query: WANode = [
             'picture', 
             { jid: jid, id: tag, type: 'set' }, 
@@ -199,7 +198,7 @@ export default class WhatsAppWebBase extends WAConnection {
                 ['preview', null, data.preview]
             ]
         ]
-        return this.setQuery ([query], [14, 136], tag) as Promise<WAProfilePictureChange>
+        return this.setQuery ([query], [WAMetric.picture, 136], tag) as Promise<WAProfilePictureChange>
     }
     /** Generic function for action, set queries */
     async setQuery (nodes: WANode[], binaryTags: WATag = [WAMetric.group, WAFlag.ignore], tag?: string) {

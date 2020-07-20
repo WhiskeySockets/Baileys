@@ -57,6 +57,7 @@ export default class WAConnectionBase {
     protected decoder = new Decoder()
     protected pendingRequests: (() => void)[] = []
     protected reconnectLoop: () => Promise<void>
+    protected referenceDate = new Date () // used for generating tags
 
     constructor () {
         this.registerCallback (['Cmd', 'type:disconnect'], json => this.unexpectedDisconnect(json[1].kind))
@@ -235,12 +236,12 @@ export default class WAConnectionBase {
      * @param tag the tag to attach to the message
      * @return the message tag
      */
-    private async sendBinary(json: WANode, tags: WATag, tag: string) {
+    protected async sendBinary(json: WANode, tags: WATag, tag?: string) {
         const binary = this.encoder.write(json) // encode the JSON to the WhatsApp binary format
 
         let buff = Utils.aesEncrypt(binary, this.authInfo.encKey) // encrypt it using AES and our encKey
         const sign = Utils.hmacSign(buff, this.authInfo.macKey) // sign the message using HMAC and our macKey
-        tag = tag || Utils.generateMessageTag(this.msgCount)
+        tag = tag || this.generateMessageTag()
         buff = Buffer.concat([
             Buffer.from(tag + ','), // generate & prefix the message tag
             Buffer.from(tags), // prefix some bytes that tell whatsapp what the message is about
@@ -256,8 +257,8 @@ export default class WAConnectionBase {
      * @param tag the tag to attach to the message
      * @return the message tag
      */
-    private async sendJSON(json: any[] | WANode, tag: string = null) {
-        tag = tag || Utils.generateMessageTag(this.msgCount)
+    protected async sendJSON(json: any[] | WANode, tag: string = null) {
+        tag = tag || this.generateMessageTag()
         await this.send(tag + ',' + JSON.stringify(json))
         return tag
     }
@@ -282,12 +283,8 @@ export default class WAConnectionBase {
     async logout() {
         if (!this.conn) throw new Error("You're not even connected, you can't log out")
         
-        await new Promise(resolve => {
-            this.conn.send('goodbye,["admin","Conn","disconnect"]', null, () => {
-                this.authInfo = null
-                resolve()
-            })
-        })
+        await new Promise(resolve => this.conn.send('goodbye,["admin","Conn","disconnect"]', null, resolve))
+        this.authInfo = null
         this.close()
     }
     
@@ -300,7 +297,7 @@ export default class WAConnectionBase {
             this.conn = null
         }
         const keys = Object.keys(this.callbacks)
-        keys.forEach((key) => {
+        keys.forEach(key => {
             if (!key.includes('function:')) {
                 this.callbacks[key].errCallback('connection closed')
                 delete this.callbacks[key]
@@ -309,6 +306,9 @@ export default class WAConnectionBase {
         if (this.keepAliveReq) {
             clearInterval(this.keepAliveReq)
         }
+    }
+    generateMessageTag () {
+        return `${this.referenceDate.getTime()/1000}.--${this.msgCount}`
     }
     protected log(text, level: MessageLogLevel) {
         if (this.logLevel >= level)

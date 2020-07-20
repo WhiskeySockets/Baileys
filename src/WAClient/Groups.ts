@@ -1,12 +1,11 @@
 import WhatsAppWebBase from './Base'
 import { WAMessage, WAMetric, WAFlag, WANode, WAGroupMetadata, WAGroupCreateResponse, WAGroupModification } from '../WAConnection/Constants'
 import { GroupSettingChange } from './Constants'
-import { generateMessageTag } from '../WAConnection/Utils'
 
 export default class WhatsAppWebGroups extends WhatsAppWebBase {
     /** Generic function for group queries */
     async groupQuery(type: string, jid?: string, subject?: string, participants?: string[], additionalNodes?: WANode[]) {
-        const tag = generateMessageTag(this.msgCount)
+        const tag = this.generateMessageTag()
         const json: WANode = [
             'group',
             {

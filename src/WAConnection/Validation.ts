@@ -1,7 +1,8 @@
 import * as Curve from 'curve25519-js'
 import * as Utils from './Utils'
 import WAConnectionBase from './Base'
-import { MessageLogLevel } from './Constants'
+import { MessageLogLevel, WAMetric, WAFlag } from './Constants'
+import { Presence } from '../WAClient/WAClient'
 
 const StatusError = (message: any, description: string='unknown error') => new Error (`unexpected status: ${message.status} on JSON: ${JSON.stringify(message)}`)
 
@@ -19,32 +20,28 @@ export default class WAConnectionValidator extends WAConnectionBase {
                 macKey: null,
             }
         }
+        
+        this.referenceDate = new Date () // refresh reference date
         const data = ['admin', 'init', this.version, this.browserDescription, this.authInfo.clientID, true]
-        return this.query(data)
-            .then((json) => {
+        return this.queryExpecting200(data)
+            .then(json => {
                 // we're trying to establish a new connection or are trying to log in
-                switch (json.status) {
-                    case 200: // all good and we can procede to generate a QR code for new connection, or can now login given present auth info
-                        if (this.authInfo.encKey && this.authInfo.macKey) {
-                            // if we have the info to restore a closed session
-                            const data = [
-                                'admin',
-                                'login',
-                                this.authInfo.clientToken,
-                                this.authInfo.serverToken,
-                                this.authInfo.clientID,
-                                'takeover',
-                            ]
-                            return this.query(data, null, null, 's1') // wait for response with tag "s1"
-                        } else {
-                            return this.generateKeysForAuth(json.ref)
-                        }
-                    default:
-                        throw StatusError (json)
+                if (this.authInfo.encKey && this.authInfo.macKey) {
+                    // if we have the info to restore a closed session
+                    const data = [
+                        'admin',
+                        'login',
+                        this.authInfo.clientToken,
+                        this.authInfo.serverToken,
+                        this.authInfo.clientID,
+                        'takeover',
+                    ]
+                    return this.query(data, null, null, 's1') // wait for response with tag "s1"
                 }
+                return this.generateKeysForAuth(json.ref) // generate keys which will in turn be the QR
             })
-            .then((json) => {
-                if ('status' in json) {
+            .then(json => {
+                if ('status' in json) { 
                     switch (json.status) {
                         case 401: // if the phone was unpaired
                             throw StatusError (json, 'unpaired from phone')
@@ -54,27 +51,35 @@ export default class WAConnectionValidator extends WAConnectionBase {
                             throw StatusError (json)
                     }
                 }
-                if (json[1] && json[1].challenge) {
-                    // if its a challenge request (we get it when logging in)
+                // if its a challenge request (we get it when logging in)
+                if (json[1]?.challenge) {
                     return this.respondToChallenge(json[1].challenge)
-                        .then((json) => {
-                            if (json.status !== 200) {
-                                // throw an error if the challenge failed
-                                throw StatusError (json)
-                            }
-                            return this.waitForMessage('s2', []) // otherwise wait for the validation message
-                        })
-                } else {
-                    // otherwise just chain the promise further
-                    return json
+                        .then (() => this.waitForMessage('s2', []))
                 }
+                // otherwise just chain the promise further
+                return json
             })
-            .then((json) => {
+            .then(async json => {
                 this.validateNewConnection(json[1]) // validate the connection
                 this.log('validated connection successfully', MessageLogLevel.info)
+
+                await this.sendPostConnectQueries ()
+                
                 this.lastSeen = new Date() // set last seen to right now
                 return this.userMetaData
             })
+    }
+    /**
+     * Send the same queries WA Web sends after connect
+     */
+    async sendPostConnectQueries () {
+        await this.sendBinary (['query', {type: 'contacts', epoch: '1'}, null], [ WAMetric.queryContact, WAFlag.ignore ])
+        await this.sendBinary (['query', {type: 'chat', epoch: '1'}, null], [ WAMetric.queryChat, WAFlag.ignore ])
+        await this.sendBinary (['query', {type: 'status', epoch: '1'}, null], [ WAMetric.queryStatus, WAFlag.ignore ])
+        await this.sendBinary (['query', {type: 'quick_reply', epoch: '1'}, null], [ WAMetric.queryQuickReply, WAFlag.ignore ])
+        await this.sendBinary (['query', {type: 'label', epoch: '1'}, null], [ WAMetric.queryLabel, WAFlag.ignore ])
+        await this.sendBinary (['query', {type: 'emoji', epoch: '1'}, null], [ WAMetric.queryEmoji, WAFlag.ignore ])
+        await this.sendBinary (['action', {type: 'set', epoch: '1'}, [['presence', {type: Presence.available}, null]] ], [ WAMetric.presence, 160 ])
     }
     /** 
      * Refresh QR Code 
@@ -158,7 +163,7 @@ export default class WAConnectionValidator extends WAConnectionBase {
         const signed = Utils.hmacSign(bytes, this.authInfo.macKey).toString('base64') // sign the challenge string with our macKey
         const data = ['admin', 'challenge', signed, this.authInfo.serverToken, this.authInfo.clientID] // prepare to send this signed string with the serverToken & clientID
         this.log('resolving login challenge', MessageLogLevel.info)
-        return this.query(data)
+        return this.queryExpecting200(data)
     }
     /** When starting a new session, generate a QR code by generating a private/public key pair & the keys the server sends */
     protected async generateKeysForAuth(ref: string) {
