@@ -17,7 +17,7 @@ import {
 } from './Constants'
 import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes } from '../WAConnection/Utils'
 import { WAMessageContent, WAMetric, WAFlag, WANode, WAMessage, WAMessageProto } from '../WAConnection/Constants'
-import { validateJIDForSending, generateThumbnail, getMediaKeys } from './Utils'
+import { validateJIDForSending, generateThumbnail, getMediaKeys, decodeMediaMessageBuffer } from './Utils'
 import { proto } from '../../WAMessage/WAMessage'
 
 export default class WhatsAppWebMessages extends WhatsAppWebGroups {
@@ -334,5 +334,20 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
             messageID: messageJSON.key.id,
             message: messageJSON as WAMessage
         } as WASendMessageResponse
+    }
+    /**
+     * Securely downloads the media from the message. 
+     * Renews the download url automatically, if necessary.
+     */
+    async downloadMediaMessage (message: WAMessage) {
+        try {
+            return decodeMediaMessageBuffer (message.message)
+        } catch (error) {
+            if (error.toString().includes('Empty buffer returned')) {
+                await this.updateMediaMessage (message)
+                return decodeMediaMessageBuffer (message.message)
+            }
+            throw error
+        }
     }
 }

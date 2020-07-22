@@ -133,7 +133,7 @@ export async function decodeMediaMessageBuffer(message: WAMessageContent) {
     const fetched = await fetch(messageContent.url, { headers: { Origin: 'https://web.whatsapp.com' } })
     const buffer = await fetched.buffer()
 
-    if (buffer.length === 0) {
+    if (buffer.length <= 10) {
         throw new Error ('Empty buffer returned. File has possibly been deleted from WA servers. Run `client.updateMediaMessage()` to refresh the url')
     }
 
@@ -148,11 +148,9 @@ export async function decodeMediaMessageBuffer(message: WAMessageContent) {
         const testBuff = Buffer.concat([mediaKeys.iv, file])
         const sign = hmacSign(testBuff, mediaKeys.macKey).slice(0, 10)
         // our sign should equal the mac
-        if (sign.equals(mac)) {
-            return aesDecryptWithIV(file, mediaKeys.cipherKey, mediaKeys.iv) // decrypt media
-        } else {
-            throw new Error()
-        }
+        if (!sign.equals(mac)) throw new Error()
+        
+        return aesDecryptWithIV(file, mediaKeys.cipherKey, mediaKeys.iv) // decrypt media
     }
     const allTypes = [type, ...Object.keys(HKDFInfoKeys)]
     for (let i = 0; i < allTypes.length;i++) {
@@ -165,7 +163,7 @@ export async function decodeMediaMessageBuffer(message: WAMessageContent) {
             if (i === 0) { console.log (`decryption of ${type} media with original HKDF key failed`) }
         }
     }
-    throw new Error('HMAC sign does not match for ' + buffer.length)
+    throw new Error('Decryption failed, HMAC sign does not match')
 }
 /**
  * Decode a media message (video, image, document, audio) & save it to the given file

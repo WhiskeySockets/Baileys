@@ -52,7 +52,8 @@ WAClientTest('Messages', (client) => {
     it('should send a gif', async () => {
         const content = fs.readFileSync('./Media/ma_gif.mp4')
         const message = await sendAndRetreiveMessage(client, content, MessageType.video, { mimetype: Mimetype.gif })
-        const file = await decodeMediaMessage(message.message, './Media/received_vid')
+        const buffer = await client.downloadMediaMessage(message)
+        fs.writeFileSync ('./Media/received_vid.mp4', buffer)
     })
     it('should send an image', async () => {
         const content = fs.readFileSync('./Media/meme.jpeg')
