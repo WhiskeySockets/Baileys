@@ -165,18 +165,10 @@ export async function decodeMediaMessageBuffer(message: WAMessageContent) {
     }
     throw new Error('Decryption failed, HMAC sign does not match')
 }
-/**
- * Decode a media message (video, image, document, audio) & save it to the given file
- * @param message the media message you want to decode
- * @param filename the name of the file where the media will be saved
- * @param attachExtension should the correct extension be applied automatically to the file
- */
-export async function decodeMediaMessage(message: WAMessageContent, filename: string, attachExtension: boolean=true) {
-    const getExtension = (mimetype) => mimetype.split(';')[0].split('/')[1]
-    
-    const buffer = await decodeMediaMessageBuffer (message)
+export function extensionForMediaMessage(message: WAMessageContent) {
+    const getExtension = (mimetype: string) => mimetype.split(';')[0].split('/')[1]
     const type = Object.keys(message)[0] as MessageType
-    let extension
+    let extension: string
     if (type === MessageType.location || type === MessageType.liveLocation) {
         extension = '.jpeg'
     } else {
@@ -187,7 +179,16 @@ export async function decodeMediaMessage(message: WAMessageContent, filename: st
                                 | proto.DocumentMessage
         extension = getExtension (messageContent.mimetype)
     }
-    
+    return extension
+}
+
+/**
+ * Decode a media message (video, image, document, audio) & save it to the given file
+ * @deprecated use `client.downloadAndSaveMediaMessage`
+ */
+export async function decodeMediaMessage(message: WAMessageContent, filename: string, attachExtension: boolean=true) {
+    const buffer = await decodeMediaMessageBuffer (message)
+    const extension = extensionForMediaMessage (message)
     const trueFileName = attachExtension ? (filename + '.' + extension) : filename
     fs.writeFileSync(trueFileName, buffer)
     return trueFileName

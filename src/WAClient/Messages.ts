@@ -1,5 +1,6 @@
 import WhatsAppWebGroups from './Groups'
 import fetch from 'node-fetch'
+import { promises as fs } from 'fs'
 import {
     MessageOptions,
     MessageType,
@@ -17,7 +18,7 @@ import {
 } from './Constants'
 import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes } from '../WAConnection/Utils'
 import { WAMessageContent, WAMetric, WAFlag, WANode, WAMessage, WAMessageProto } from '../WAConnection/Constants'
-import { validateJIDForSending, generateThumbnail, getMediaKeys, decodeMediaMessageBuffer } from './Utils'
+import { validateJIDForSending, generateThumbnail, getMediaKeys, decodeMediaMessageBuffer, extensionForMediaMessage } from './Utils'
 import { proto } from '../../WAMessage/WAMessage'
 
 export default class WhatsAppWebMessages extends WhatsAppWebGroups {
@@ -349,5 +350,19 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
             }
             throw error
         }
+    }
+    /**
+     * Securely downloads the media from the message and saves to a file. 
+     * Renews the download url automatically, if necessary.
+     * @param message the media message you want to decode
+     * @param filename the name of the file where the media will be saved
+     * @param attachExtension should the parsed extension be applied automatically to the file
+     */
+    async downloadAndSaveMediaMessage (message: WAMessage, filename: string, attachExtension: boolean=true) {
+        const buffer = await this.downloadMediaMessage (message)
+        const extension = extensionForMediaMessage (message.message)
+        const trueFileName = attachExtension ? (filename + '.' + extension) : filename
+        await fs.writeFile (trueFileName, buffer)
+        return trueFileName
     }
 }

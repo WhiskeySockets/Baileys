@@ -242,17 +242,19 @@ export enum Presence {
 }
 ```
 
-## Decoding Media
-If you want to save & process some images, videos, documents or stickers you received
+## Downloading Media
+If you want to save the media you received
 ``` ts
-import { MessageType } from '@adiwajshing/baileys'
+import { MessageType, extensionForMediaMessage } from '@adiwajshing/baileys'
 client.setOnUnreadMessage (false, async m => {
     if (!m.message) return // if there is no text or media message
 
     const messageType = Object.keys (m.message)[0]// get what type of message it is -- text, image, video
     // if the message is not a text message
     if (messageType !== MessageType.text && messageType !== MessageType.extendedText) {
-        const savedFilename = await client.decodeMediaMessage(m.message, "filename") // extension applied automatically
+        const buffer = await client.downloadMediaMessage(m) // to decrypt & use as a buffer
+        
+        const savedFilename = await client.downloadAndSaveMediaMessage (m) // to decrypt & save to file
         console.log(m.key.remoteJid + " sent media, saved at: " + savedFilename)
     }
 }
