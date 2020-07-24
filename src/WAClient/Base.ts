@@ -59,7 +59,7 @@ export default class WhatsAppWebBase extends WAConnection {
      * @param jid the ID of the person/group who you are updating
      * @param type your presence
      */
-    async updatePresence(jid: string, type: Presence) {
+    async updatePresence(jid: string | null, type: Presence) {
         const json = [
             'action',
             { epoch: this.msgCount.toString(), type: 'set' },

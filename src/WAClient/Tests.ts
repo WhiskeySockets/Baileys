@@ -12,7 +12,6 @@ const testJid = process.env.TEST_JID || '1234@s.whatsapp.net' // set TEST_JID=xy
 
 async function sendAndRetreiveMessage(client: WAClient, content, type: MessageType, options: MessageOptions = {}) {
     const response = await client.sendMessage(testJid, content, type, options)
-    assert.strictEqual(response.status, 200)
     const messages = await client.loadConversation(testJid, 1, null, true)
     assert.strictEqual(messages[0].key.id, response.messageID)
     return messages[0]

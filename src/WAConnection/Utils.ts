@@ -2,6 +2,7 @@ import * as Crypto from 'crypto'
 import HKDF from 'futoin-hkdf'
 import Decoder from '../Binary/Decoder'
 import {platform, release} from 'os'
+import { BaileysError } from './Constants'
 
 const platformMap = {
     'aix': 'AIX',
@@ -55,12 +56,7 @@ export const createTimeout = (timeout) => new Promise(resolve => setTimeout(reso
 export function promiseTimeout<T>(ms: number, promise: Promise<T>) {
     if (!ms) return promise
     // Create a promise that rejects in <ms> milliseconds
-    const timeout = new Promise((_, reject) => {
-        const id = setTimeout(() => {
-            clearTimeout(id)
-            reject('Timed out')
-        }, ms)
-    })
+    const timeout = createTimeout (ms).then (() => { throw new BaileysError ('Timed out', promise) })
     return Promise.race([promise, timeout]) as Promise<T>
 }
 // whatsapp requires a message tag for every message, we just use the timestamp as one
@@ -77,16 +73,6 @@ export function generateClientID() {
 export function generateMessageID() {
     return randomBytes(10).toString('hex').toUpperCase()
 }
-
-export function errorOnNon200Status(p: Promise<any>) {
-    return p.then(json => {
-        if (json.status && typeof json.status === 'number' && Math.floor(json.status / 100) !== 2) {
-            throw new Error(`Unexpected status code: ${json.status}`)
-        }
-        return json
-    })
-}
-
 export function decryptWA (message: any, macKey: Buffer, encKey: Buffer, decoder: Decoder, fromMe: boolean=false): [string, Object, [number, number]?] {
     let commaIndex = message.indexOf(',') // all whatsapp messages have a tag and a comma, followed by the actual message
     

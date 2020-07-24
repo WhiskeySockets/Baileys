@@ -1,6 +1,19 @@
 import { WA } from '../Binary/Constants'
 import { proto } from '../../WAMessage/WAMessage'
 
+
+export class BaileysError extends Error {
+    status?: number
+    context: any
+
+    constructor (message: string, context: any) {
+        super (message)
+        this.name = 'BaileysError'
+        this.status = context.status
+        this.context = context
+    }
+}
+
 export enum MessageLogLevel {
     none=0,
     info=1,

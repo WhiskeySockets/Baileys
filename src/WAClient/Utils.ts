@@ -2,7 +2,7 @@ import { MessageType, HKDFInfoKeys, MessageOptions, WAMessageType } from './Cons
 import Jimp from 'jimp'
 import * as fs from 'fs'
 import fetch from 'node-fetch'
-import { WAMessage, WAMessageContent } from '../WAConnection/Constants'
+import { WAMessage, WAMessageContent, BaileysError } from '../WAConnection/Constants'
 import { hmacSign, aesDecryptWithIV, hkdf } from '../WAConnection/Utils'
 import { proto } from '../../WAMessage/WAMessage'
 import { randomBytes } from 'crypto'
@@ -55,11 +55,8 @@ const extractVideoThumb = async (
     new Promise((resolve, reject) => {
         const cmd = `ffmpeg -ss ${time} -i ${path} -y -s ${size.width}x${size.height} -vframes 1 -f image2 ${destPath}`
         exec(cmd, (err) => {
-            if (err) {
-                reject(err)
-            } else {
-                resolve()
-            }
+            if (err) reject(err)
+            else resolve()
         })
     }) as Promise<void>
 
@@ -112,10 +109,10 @@ export async function decodeMediaMessageBuffer(message: WAMessageContent) {
     */
     const type = Object.keys(message)[0] as MessageType
     if (!type) {
-        throw new Error('unknown message type')
+        throw new BaileysError('unknown message type', message)
     }
     if (type === MessageType.text || type === MessageType.extendedText) {
-        throw new Error('cannot decode text message')
+        throw new BaileysError('cannot decode text message', message)
     }
     if (type === MessageType.location || type === MessageType.liveLocation) {
         return new Buffer(message[type].jpegThumbnail)
@@ -123,7 +120,7 @@ export async function decodeMediaMessageBuffer(message: WAMessageContent) {
     let messageContent: proto.IVideoMessage | proto.IImageMessage | proto.IAudioMessage | proto.IDocumentMessage
     if (message.productMessage) {
         const product = message.productMessage.product?.productImage
-        if (!product) throw new Error ('product has no image')
+        if (!product) throw new BaileysError ('product has no image', message)
         messageContent = product
     } else {
         messageContent = message[type]
@@ -134,7 +131,7 @@ export async function decodeMediaMessageBuffer(message: WAMessageContent) {
     const buffer = await fetched.buffer()
 
     if (buffer.length <= 10) {
-        throw new Error ('Empty buffer returned. File has possibly been deleted from WA servers. Run `client.updateMediaMessage()` to refresh the url')
+        throw new BaileysError ('Empty buffer returned. File has possibly been deleted from WA servers. Run `client.updateMediaMessage()` to refresh the url', {status: 404})
     }
 
     const decryptedMedia = (type: MessageType) => {
@@ -163,7 +160,7 @@ export async function decodeMediaMessageBuffer(message: WAMessageContent) {
             if (i === 0) { console.log (`decryption of ${type} media with original HKDF key failed`) }
         }
     }
-    throw new Error('Decryption failed, HMAC sign does not match')
+    throw new BaileysError('Decryption failed, HMAC sign does not match', {status: 400})
 }
 export function extensionForMediaMessage(message: WAMessageContent) {
     const getExtension = (mimetype: string) => mimetype.split(';')[0].split('/')[1]

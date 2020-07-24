@@ -12,6 +12,7 @@ import {
     WATag,
     MessageLogLevel,
     AuthenticationCredentialsBrowser,
+    BaileysError,
 } from './Constants'
 
 /** Generate a QR code from the ref & the curve public key. This is scanned by the phone */
@@ -213,7 +214,11 @@ export default class WAConnectionBase {
         timeoutMs: number = null,
         tag: string = null,
     ) {
-        return Utils.errorOnNon200Status(this.query(json, binaryTags, timeoutMs, tag))
+        const response = await this.query(json, binaryTags, timeoutMs, tag)
+        if (response.status && Math.floor(+response.status / 100) !== 2) {
+            throw new BaileysError(`Unexpected status code: ${response.status}`, {query: json})
+        }
+        return response
     }
     /**
      * Query something from the WhatsApp servers

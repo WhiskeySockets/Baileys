@@ -1,10 +1,8 @@
 import * as Curve from 'curve25519-js'
 import * as Utils from './Utils'
 import WAConnectionBase from './Base'
-import { MessageLogLevel, WAMetric, WAFlag } from './Constants'
+import { MessageLogLevel, WAMetric, WAFlag, BaileysError } from './Constants'
 import { Presence } from '../WAClient/WAClient'
-
-const StatusError = (message: any, description: string='unknown error') => new Error (`unexpected status: ${message.status} on JSON: ${JSON.stringify(message)}`)
 
 export default class WAConnectionValidator extends WAConnectionBase {
     /** Authenticate the connection */
@@ -40,21 +38,21 @@ export default class WAConnectionValidator extends WAConnectionBase {
                 }
                 return this.generateKeysForAuth(json.ref) // generate keys which will in turn be the QR
             })
-            .then(json => {
+            .then(async json => {
                 if ('status' in json) { 
                     switch (json.status) {
                         case 401: // if the phone was unpaired
-                            throw StatusError (json, 'unpaired from phone')
+                            throw new BaileysError ('unpaired from phone', json)
                         case 429: // request to login was denied, don't know why it happens
-                            throw StatusError (json, 'request denied, try reconnecting')
+                            throw new BaileysError ('request denied, try reconnecting', json)
                         default:
-                            throw StatusError (json)
+                            throw new BaileysError ('unexpected status', json)
                     }
                 }
                 // if its a challenge request (we get it when logging in)
                 if (json[1]?.challenge) {
-                    return this.respondToChallenge(json[1].challenge)
-                        .then (() => this.waitForMessage('s2', []))
+                    await this.respondToChallenge(json[1].challenge)
+                    return this.waitForMessage('s2', [])
                 }
                 // otherwise just chain the promise further
                 return json
@@ -147,11 +145,11 @@ export default class WAConnectionValidator extends WAConnectionBase {
                 return onValidationSuccess()
             } else {
                 // if the checksums didn't match
-                throw new Error ('HMAC validation failed')
+                throw new BaileysError ('HMAC validation failed', json)
             }
         } else {
             // if we didn't get the connected field (usually we get this message when one opens WhatsApp on their phone)
-            throw new Error (`incorrect JSON: ${JSON.stringify(json)}`)
+            throw new BaileysError (`invalid JSON`, json)
         }
     }
     /**

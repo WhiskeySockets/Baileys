@@ -17,7 +17,7 @@ import {
     WAUrlInfo,
 } from './Constants'
 import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes } from '../WAConnection/Utils'
-import { WAMessageContent, WAMetric, WAFlag, WANode, WAMessage, WAMessageProto } from '../WAConnection/Constants'
+import { WAMessageContent, WAMetric, WAFlag, WANode, WAMessage, WAMessageProto, BaileysError } from '../WAConnection/Constants'
 import { validateJIDForSending, generateThumbnail, getMediaKeys, decodeMediaMessageBuffer, extensionForMediaMessage } from './Utils'
 import { proto } from '../../WAMessage/WAMessage'
 
@@ -173,11 +173,11 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
      */
     async updateMediaMessage (message: WAMessage) {
         const content = message.message?.audioMessage || message.message?.videoMessage || message.message?.imageMessage || message.message?.stickerMessage || message.message?.documentMessage 
-        if (!content) throw new Error (`given message ${message.key.id} is not a media message`)
+        if (!content) throw new BaileysError (`given message ${message.key.id} is not a media message`, message)
         
         const query = ['query',{type: 'media', index: message.key.id, owner: message.key.fromMe ? 'true' : 'false', jid: message.key.remoteJid, epoch: this.msgCount.toString()},null]
         const response = await this.query (query, [WAMetric.queryMedia, WAFlag.ignore])
-        if (parseInt(response[1].code) !== 200) throw new Error ('unexpected status ' + response[1].code)
+        if (parseInt(response[1].code) !== 200) throw new BaileysError ('unexpected status ' + response[1].code, response)
         
         Object.keys (response[1]).forEach (key => content[key] = response[1][key]) // update message
     }
@@ -213,7 +213,7 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
                 } else if ('text' in message) {
                     m.extendedTextMessage = message as WATextMessage
                 } else {
-                    throw new Error ('message needs to be a string or object with property \'text\'')
+                    throw new BaileysError ('message needs to be a string or object with property \'text\'', message)
                 }
                 break
             case MessageType.location:
