@@ -17,7 +17,7 @@ import {
     WAUrlInfo,
 } from './Constants'
 import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes } from '../WAConnection/Utils'
-import { WAMessageContent, WAMetric, WAFlag, WANode, WAMessage, WAMessageProto, BaileysError } from '../WAConnection/Constants'
+import { WAMessageContent, WAMetric, WAFlag, WANode, WAMessage, WAMessageProto, BaileysError, MessageLogLevel } from '../WAConnection/Constants'
 import { validateJIDForSending, generateThumbnail, getMediaKeys, decodeMediaMessageBuffer, extensionForMediaMessage } from './Utils'
 import { proto } from '../../WAMessage/WAMessage'
 
@@ -342,11 +342,14 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
      */
     async downloadMediaMessage (message: WAMessage) {
         try {
-            return decodeMediaMessageBuffer (message.message)
+            const buff = await decodeMediaMessageBuffer (message.message)
+            return buff
         } catch (error) {
             if (error instanceof BaileysError && error.status === 404) { // media needs to be updated
+                this.log (`updating media of message: ${message.key.id}`, MessageLogLevel.info)
                 await this.updateMediaMessage (message)
-                return decodeMediaMessageBuffer (message.message)
+                const buff = await decodeMediaMessageBuffer (message.message)
+                return buff
             }
             throw error
         }
