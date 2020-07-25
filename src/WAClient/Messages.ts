@@ -344,7 +344,7 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
         try {
             return decodeMediaMessageBuffer (message.message)
         } catch (error) {
-            if (error.toString().includes('Empty buffer returned')) {
+            if (error instanceof BaileysError && error.status === 404) { // media needs to be updated
                 await this.updateMediaMessage (message)
                 return decodeMediaMessageBuffer (message.message)
             }
