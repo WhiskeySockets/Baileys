@@ -3,6 +3,7 @@ import HKDF from 'futoin-hkdf'
 import Decoder from '../Binary/Decoder'
 import {platform, release} from 'os'
 import { BaileysError } from './Constants'
+import UserAgent from 'user-agents'
 
 const platformMap = {
     'aix': 'AIX',
@@ -16,6 +17,10 @@ export const Browsers = {
     baileys: browser => ['Baileys', browser, '2.0'] as [string, string, string],
     /** The appropriate browser based on your OS & release */
     appropriate: browser => [ platformMap [platform()] || 'Ubuntu', browser, release() ] as [string, string, string]
+}
+export function userAgentString (browser) {
+    const agent = new UserAgent (new RegExp(browser))
+    return agent.toString ()
 }
 /** decrypt AES 256 CBC; where the IV is prefixed to the buffer */
 export function aesDecrypt(buffer: Buffer, key: Buffer) {

@@ -59,8 +59,9 @@ export default class WAConnectionBase {
     protected pendingRequests: (() => void)[] = []
     protected reconnectLoop: () => Promise<void>
     protected referenceDate = new Date () // used for generating tags
-
+    protected userAgentString: string 
     constructor () {
+        this.userAgentString = Utils.userAgentString (this.browserDescription[1])
         this.registerCallback (['Cmd', 'type:disconnect'], json => this.unexpectedDisconnect(json[1].kind))
     }
     async unexpectedDisconnect (error: string) {

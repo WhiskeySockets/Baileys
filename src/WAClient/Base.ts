@@ -12,6 +12,7 @@ import { generateProfilePicture } from '../WAClient/Utils'
 
 
 export default class WhatsAppWebBase extends WAConnection {
+
     /** Set the callback for message status updates (when a message is delivered, read etc.) */
     setOnMessageStatusChange(callback: (update: MessageStatusUpdate) => void) {
         const func = (json) => {

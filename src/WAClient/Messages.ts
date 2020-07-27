@@ -271,7 +271,10 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
         const urlFetch = await fetch(hostname, {
             method: 'POST',
             body: body,
-            headers: { Origin: 'https://web.whatsapp.com' },
+            headers: { 
+                Origin: 'https://web.whatsapp.com',
+                'User-Agent': this.userAgentString
+            },
         })
         const responseJSON = await urlFetch.json()
         if (!responseJSON.url) {
@@ -341,14 +344,15 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
      * Renews the download url automatically, if necessary.
      */
     async downloadMediaMessage (message: WAMessage) {
+        const fetchHeaders = { 'User-Agent': this.userAgentString }
         try {
-            const buff = await decodeMediaMessageBuffer (message.message)
+            const buff = await decodeMediaMessageBuffer (message.message, fetchHeaders)
             return buff
         } catch (error) {
             if (error instanceof BaileysError && error.status === 404) { // media needs to be updated
                 this.log (`updating media of message: ${message.key.id}`, MessageLogLevel.info)
                 await this.updateMediaMessage (message)
-                const buff = await decodeMediaMessageBuffer (message.message)
+                const buff = await decodeMediaMessageBuffer (message.message, fetchHeaders)
                 return buff
             }
             throw error

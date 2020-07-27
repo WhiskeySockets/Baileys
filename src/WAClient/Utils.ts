@@ -18,7 +18,6 @@ export function validateJIDForSending (jid: string) {
         )
     }
 }
-
 /** 
  * Type of notification 
  * @deprecated use WA_MESSAGE_STUB_TYPE instead
@@ -102,7 +101,7 @@ export async function generateThumbnail(buffer: Buffer, mediaType: MessageType, 
  * Decode a media message (video, image, document, audio) & return decrypted buffer
  * @param message the media message you want to decode
  */
-export async function decodeMediaMessageBuffer(message: WAMessageContent) {
+export async function decodeMediaMessageBuffer(message: WAMessageContent, fetchHeaders: {[k: string]: string} = {}) {
     /* 
         One can infer media type from the key in the message
         it is usually written as [mediaType]Message. Eg. imageMessage, audioMessage etc.
@@ -127,7 +126,11 @@ export async function decodeMediaMessageBuffer(message: WAMessageContent) {
     }
     
     // download the message
-    const fetched = await fetch(messageContent.url, { headers: { Origin: 'https://web.whatsapp.com' } })
+    const headers = {
+        Origin: 'https://web.whatsapp.com',
+        ...fetchHeaders
+    }
+    const fetched = await fetch(messageContent.url, { headers })
     const buffer = await fetched.buffer()
 
     if (buffer.length <= 10) {
@@ -184,7 +187,7 @@ export function extensionForMediaMessage(message: WAMessageContent) {
  * @deprecated use `client.downloadAndSaveMediaMessage`
  */
 export async function decodeMediaMessage(message: WAMessageContent, filename: string, attachExtension: boolean=true) {
-    const buffer = await decodeMediaMessageBuffer (message)
+    const buffer = await decodeMediaMessageBuffer (message, {})
     const extension = extensionForMediaMessage (message)
     const trueFileName = attachExtension ? (filename + '.' + extension) : filename
     fs.writeFileSync(trueFileName, buffer)

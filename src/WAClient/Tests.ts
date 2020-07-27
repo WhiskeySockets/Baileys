@@ -5,7 +5,7 @@ import * as assert from 'assert'
 import fetch from 'node-fetch'
 
 import { decodeMediaMessage, validateJIDForSending } from './Utils'
-import { promiseTimeout, createTimeout } from '../WAConnection/Utils'
+import { promiseTimeout, createTimeout, Browsers } from '../WAConnection/Utils'
 
 require ('dotenv').config () // dotenv to load test jid
 const testJid = process.env.TEST_JID || '1234@s.whatsapp.net' // set TEST_JID=xyz@s.whatsapp.net in a .env file in the root directory
