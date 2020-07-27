@@ -119,7 +119,7 @@ If you need to regenerate the QR, you can also do so using:
 let generateQR: async () => void // call generateQR on some timeout or error
 client.onReadyForPhoneAuthentication = ([ref, publicKey, clientID]) => {
     generateQR = async () => {
-        ref = await client.generateQRCode () // returns a new ref code to use for QR generation
+        ref = await client.generateNewQRCode () // returns a new ref code to use for QR generation
         const str = ref + ',' + publicKey + ',' + clientID // the QR string
         // re-print str as QR or update in UI or send somewhere
         //QR.generate(str, { small: true })
