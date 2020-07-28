@@ -33,6 +33,15 @@ WAClientTest('Messages', (client) => {
         const message = await sendAndRetreiveMessage(client, 'hello fren', MessageType.text)
         assert.strictEqual(message.message.conversation, 'hello fren')
     })
+    it('should forward a message', async () => {
+        let messages = await client.loadConversation (testJid, 1)
+        await client.forardMessage (testJid, messages[0])
+        
+        messages = await client.loadConversation (testJid, 1)
+        const message = messages[0]
+        const content = message.message[ Object.keys(message.message)[0] ]
+        assert.equal (content?.contextInfo?.isForwarded, true)
+    })
     it('should send a link preview', async () => {
         const content = await client.generateLinkPreview ('hello this is from https://www.github.com/adiwajshing/Baileys')
         const message = await sendAndRetreiveMessage(client, content, MessageType.text)

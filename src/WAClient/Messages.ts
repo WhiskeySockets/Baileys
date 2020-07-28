@@ -195,6 +195,27 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
         }
         return this.sendGenericMessage (id, json, {})
     }
+    /**
+     * Forward a message like WA does
+     * @param id the id to forward the message to
+     * @param message the message to forward
+     */
+    async forardMessage(id: string, message: WAMessage) {
+        const content = message.message
+        if (!content) throw new Error ('no content in message')
+        
+        let key = Object.keys(content)[0]
+        
+        const score = content[key].contextInfo?.forwardingScore || 0
+        if (key === MessageType.text) {
+            content[MessageType.extendedText] = { text: content[key] }
+            delete content[MessageType.text]
+
+            key = MessageType.extendedText
+        }
+        content[key].contextInfo = { forwardingScore: (score+1), isForwarded: true }
+        return this.sendGenericMessage (id, content, {})
+    }
     async sendMessage(
         id: string,
         message: string | WATextMessage | WALocationMessage | WAContactMessage | Buffer,
@@ -292,20 +313,22 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
     }
     /** Generic send message function */
     async sendGenericMessage(id: string, message: WAMessageContent, options: MessageOptions) {
-        if (!options.timestamp) {
-            // if no timestamp was provided,
-            options.timestamp = new Date() // set timestamp to now
-        }
+        
+        if (!options.timestamp) options.timestamp = new Date() // set timestamp to now
+        
         const key = Object.keys(message)[0]
         const timestamp = options.timestamp.getTime()/1000
         const quoted = options.quoted
+        
+        if (options.contextInfo) message[key].contextInfo = options.contextInfo
+
         if (quoted) {
             const participant = quoted.key.participant || quoted.key.remoteJid
-            message[key].contextInfo = {
-                participant: participant,
-                stanzaId: quoted.key.id,
-                quotedMessage: quoted.message,
-            }
+
+            message[key].contextInfo = message[key].contextInfo || { }
+            message[key].contextInfo.participant = participant
+            message[key].contextInfo.stanzaId = quoted.key.id
+            message[key].contextInfo.quotedMessage = quoted.message
             // if a participant is quoted, then it must be a group
             // hence, remoteJid of group must also be entered
             if (quoted.key.participant) {

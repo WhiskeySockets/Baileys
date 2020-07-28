@@ -62,6 +62,7 @@ export enum Mimetype {
 }
 export interface MessageOptions {
     quoted?: WAMessage
+    contextInfo?: WAContextInfo
     timestamp?: Date
     caption?: string
     thumbnail?: string
@@ -150,3 +151,4 @@ export const WAMessageType = function () {
 export type WAContactMessage = proto.ContactMessage
 export type WAMessageKey = proto.IMessageKey
 export type WATextMessage = proto.ExtendedTextMessage
+export type WAContextInfo = proto.IContextInfo
