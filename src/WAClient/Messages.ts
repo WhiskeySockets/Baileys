@@ -271,10 +271,7 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
         const urlFetch = await fetch(hostname, {
             method: 'POST',
             body: body,
-            headers: { 
-                Origin: 'https://web.whatsapp.com',
-                'User-Agent': this.userAgentString
-            },
+            headers: { Origin: 'https://web.whatsapp.com' },
         })
         const responseJSON = await urlFetch.json()
         if (!responseJSON.url) {

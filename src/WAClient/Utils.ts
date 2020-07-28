@@ -126,10 +126,7 @@ export async function decodeMediaMessageBuffer(message: WAMessageContent, fetchH
     }
     
     // download the message
-    const headers = {
-        Origin: 'https://web.whatsapp.com',
-        ...fetchHeaders
-    }
+    const headers = { Origin: 'https://web.whatsapp.com' }
     const fetched = await fetch(messageContent.url, { headers })
     const buffer = await fetched.buffer()
 
