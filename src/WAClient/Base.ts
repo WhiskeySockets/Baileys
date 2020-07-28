@@ -27,7 +27,7 @@ export default class WhatsAppWebBase extends WAConnection {
                 participant: json.participant,
                 timestamp: new Date(json.t * 1000),
                 ids: ids,
-                type: json.ack,
+                type: (+json.ack)+1,
             }
             callback(data)
         }
