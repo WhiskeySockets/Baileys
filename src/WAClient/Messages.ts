@@ -200,7 +200,7 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
      * @param id the id to forward the message to
      * @param message the message to forward
      */
-    async forardMessage(id: string, message: WAMessage) {
+    async forwardMessage(id: string, message: WAMessage) {
         const content = message.message
         if (!content) throw new Error ('no content in message')
         

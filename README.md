@@ -195,6 +195,8 @@ To note:
     ``` ts
     const info: MessageOptions = {
         quoted: quotedMessage, // the message you want to quote
+        contextInfo: { forwardingScore: 2, isForwarded: true }, // some random context info 
+        // (can show a forwarded message with this too)
         timestamp: Date(), // optional, if you want to manually set the timestamp of the message
         validateID: true, // if you want to validate the ID before sending the message, true by default
         caption: "hello there!", // (for media messages) the caption to send with the media (cannot be sent with stickers though)
@@ -208,6 +210,13 @@ To note:
         filename: 'somefile.pdf' // (for media messages) file name for the media
     }
     ```
+## Forwarding Messages
+
+``` ts
+const messages = await client.loadConversation ('1234@s.whatsapp.net', 1)
+const message = messages[0] // get the last message from this conversation
+await client.forwardMessage ('455@s.whatsapp.net', message) // WA forward the message!
+```
 
 ## Reading Messages
 ``` ts 

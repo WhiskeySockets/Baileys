@@ -35,7 +35,7 @@ WAClientTest('Messages', (client) => {
     })
     it('should forward a message', async () => {
         let messages = await client.loadConversation (testJid, 1)
-        await client.forardMessage (testJid, messages[0])
+        await client.forwardMessage (testJid, messages[0])
         
         messages = await client.loadConversation (testJid, 1)
         const message = messages[0]
