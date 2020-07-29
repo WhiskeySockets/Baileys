@@ -206,15 +206,15 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
         
         let key = Object.keys(content)[0]
         
-        const score = content[key].contextInfo?.forwardingScore || 0
+        let score = content[key].contextInfo?.forwardingScore || 0
+        score += message.key.fromMe ? 0 : 1
         if (key === MessageType.text) {
             content[MessageType.extendedText] = { text: content[key] }
             delete content[MessageType.text]
 
             key = MessageType.extendedText
         }
-        
-        if (!message.key.fromMe) content[key].contextInfo = { forwardingScore: (score+1), isForwarded: true }
+        if (score > 0) content[key].contextInfo = { forwardingScore: score, isForwarded: true }
         else content[key].contextInfo = {}
 
         return this.sendGenericMessage (id, content, {})
