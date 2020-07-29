@@ -109,6 +109,7 @@ export enum GroupSettingChange {
 export interface PresenceUpdate {
     id: string
     participant?: string
+    t?: string
     type?: Presence
     deny?: boolean
 }
