@@ -213,7 +213,10 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
 
             key = MessageType.extendedText
         }
-        content[key].contextInfo = { forwardingScore: (score+1), isForwarded: true }
+        
+        if (!message.key.fromMe) content[key].contextInfo = { forwardingScore: (score+1), isForwarded: true }
+        else content[key].contextInfo = {}
+
         return this.sendGenericMessage (id, content, {})
     }
     async sendMessage(

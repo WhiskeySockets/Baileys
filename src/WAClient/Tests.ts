@@ -146,6 +146,10 @@ WAClientTest('Misc', (client) => {
         assert.ok(response)
         assert.rejects(client.getProfilePicture('abcd@s.whatsapp.net'))
     })
+    it('should send typing indicator', async () => {
+        const response = await client.updatePresence(testJid, Presence.composing)
+        assert.ok(response)
+    })
     it('should mark a chat unread', async () => {
         await client.sendReadReceipt(testJid, null, 'unread')
     })
