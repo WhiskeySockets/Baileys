@@ -91,6 +91,18 @@ export default class WAConnectionBase {
         }
     }
     /**
+     * Clear authentication info so a new connection can be created
+     */
+    clearAuthInfo () {
+        this.authInfo = {
+            clientID: null,
+            serverToken: null,
+            clientToken: null,
+            encKey: null,
+            macKey: null,
+        }
+    }
+    /**
      * Load in the authentication credentials
      * @param authInfo the authentication credentials or path to auth credentials JSON
      */
