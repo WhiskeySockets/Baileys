@@ -12,9 +12,14 @@ export default class WAConnectionConnector extends WAConnectionValidator {
      * @return returns [userMetaData, chats, contacts, unreadMessages]
      */
     async connect(authInfo: AuthenticationCredentialsBase64 | string = null, timeoutMs: number = null) {
-        const userInfo = await this.connectSlim(authInfo, timeoutMs)
-        const chats = await this.receiveChatsAndContacts(timeoutMs)
-        return [userInfo, ...chats] as [UserMetaData, WAChat[], WAContact[], WAMessage[]]
+        try {
+            const userInfo = await this.connectSlim(authInfo, timeoutMs)
+            const chats = await this.receiveChatsAndContacts(timeoutMs)
+            return [userInfo, ...chats] as [UserMetaData, WAChat[], WAContact[], WAMessage[]]
+        } catch (error) {
+            this.close ()
+            throw error
+        }
     }
     /**
      * Connect to WhatsAppWeb, resolves without waiting for chats & contacts
