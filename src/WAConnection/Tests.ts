@@ -50,25 +50,25 @@ describe('Test Connect', () => {
     })
     it('should reconnect', async () => {
         const conn = new WAConnection()
-        const [user, chats, contacts, unread] = await conn.connect(auth, 20*1000)
+        const [user, chats, contacts] = await conn.connect(auth, 20*1000)
 
         assert.ok(user)
         assert.ok(user.id)
 
         assert.ok(chats)
-        if (chats.length > 0) {
-            assert.ok(chats[0].jid)
-            assert.ok(chats[0].count !== null)
+        
+        const chatArray = chats.all()
+        if (chatArray.length > 0) {
+            assert.ok(chatArray[0].jid)
+            assert.ok(chatArray[0].count !== null)
+            if (chatArray[0].messages.length > 0) {
+                assert.ok(chatArray[0].messages[0])
+            }  
         }
         assert.ok(contacts)
         if (contacts.length > 0) {
             assert.ok(contacts[0].jid)
         }
-        assert.ok(unread)
-        if (unread.length > 0) {
-            assert.ok(unread[0].key)
-        }
-
         await conn.logout()
         await assert.rejects(async () => conn.connectSlim(auth), 'reconnect should have failed')
     })

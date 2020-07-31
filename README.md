@@ -34,34 +34,52 @@ Set the phone number you can randomly send messages to in a `.env` file with `TE
 
 ## Connecting
 ``` ts
-const client = new WAClient() 
+import { WAClient } from '@adiwajshing/baileys'
 
-client.connect() 
-.then (([user, chats, contacts, unread]) => {
+async function connectToWhatsApp () {
+    const client = new WAClient() 
+    const [user, chats, contacts] = await client.connect ()
     console.log ("oh hello " + user.name + " (" + user.id + ")")
-    console.log ("you have " + unread.length + " unread messages")
     console.log ("you have " + chats.length + " chats")
-})
-.catch (err => console.log("unexpected error: " + err) )
+
+    // every chat object has a list of most recent messages
+    // can use that to retreive all your pending unread messages
+    // the 'count' property a chat object reflects the number of unread messages 
+    // the 'count' property is -1 if the entire thread has been marked unread
+    const unread = chats.all().flatMap (chat => chat.messages.slice(chat.messages.length-chat.count))
+
+    console.log ("you have " + unread.length + " unread messages")
+}
+
+// run in main file
+connectToWhatsApp ()
+.catch (err => console.log("unexpected error: " + err) ) // catch any errors
 ``` 
+
 If the connection is successful, you will see a QR code printed on your terminal screen, scan it with WhatsApp on your phone and you'll be logged in!
-
 If you don't want to wait for WhatsApp to send all your chats while connecting, you can use the following function:
-
 ``` ts
-const client = new WAClient() 
-client.connectSlim() // does not wait for chats & contacts
-.then (user => {
+import { WAClient } from '@adiwajshing/baileys'
+
+async function connectToWhatsApp () {
+    const client = new WAClient() 
+    const user = await client.connectSlim ()
     console.log ("oh hello " + user.name + " (" + user.id + ")")
-    
+
     client.receiveChatsAndContacts () // wait for chats & contacts in the background
-    .then (([chats, contacts, unread]) => {
-        console.log ("you have " + unread.length + " unread messages")
-        console.log ("you have " + chats.length + " chats")
+    .then (([chats, contacts]) => {
+        console.log ("you have " + chats.all().length + " chats and " + contacts.length + " contacts")
     })
-})
-.catch (err => console.log("unexpected error: " + err))
+}
+// run in main file
+connectToWhatsApp ()
+.catch (err => console.log("unexpected error: " + err) ) // catch any errors
 ``` 
+
+Do note, the `chats` object returned is now a [KeyedDB](https://github.com/adiwajshing/keyed-db). This is done for the following reasons:
+- Most applications require chats to be ordered in descending order of time. (`KeyedDB` does this in `log(N)` time)
+- Most applications require pagination of chats (Use `chats.paginated()`)
+- Most applications require **O(1)** access to chats via the chat ID. (Use `chats.get(jid)` with `KeyedDB`)
 
 ## Saving & Restoring Sessions
 

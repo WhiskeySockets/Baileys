@@ -1,6 +1,7 @@
 import WS from 'ws'
+import KeyedDB from '@adiwajshing/keyed-db'
 import * as Utils from './Utils'
-import { AuthenticationCredentialsBase64, UserMetaData, WAMessage, WAChat, WAContact, MessageLogLevel } from './Constants'
+import { AuthenticationCredentialsBase64, UserMetaData, WAMessage, WAChat, WAContact, MessageLogLevel, WANode } from './Constants'
 import WAConnectionValidator from './Validation'
 import Decoder from '../Binary/Decoder'
 
@@ -9,13 +10,13 @@ export default class WAConnectionConnector extends WAConnectionValidator {
      * Connect to WhatsAppWeb
      * @param [authInfo] credentials or path to credentials to log back in
      * @param [timeoutMs] timeout after which the connect will fail, set to null for an infinite timeout
-     * @return returns [userMetaData, chats, contacts, unreadMessages]
+     * @return returns [userMetaData, chats, contacts]
      */
     async connect(authInfo: AuthenticationCredentialsBase64 | string = null, timeoutMs: number = null) {
         try {
             const userInfo = await this.connectSlim(authInfo, timeoutMs)
             const chats = await this.receiveChatsAndContacts(timeoutMs)
-            return [userInfo, ...chats] as [UserMetaData, WAChat[], WAContact[], WAMessage[]]
+            return [userInfo, ...chats] as [UserMetaData, KeyedDB<WAChat>, WAContact[]]
         } catch (error) {
             this.close ()
             throw error
@@ -66,13 +67,11 @@ export default class WAConnectionConnector extends WAConnectionValidator {
     /**
      * Sets up callbacks to receive chats, contacts & unread messages.
      * Must be called immediately after connect
-     * @returns [chats, contacts, unreadMessages]
+     * @returns [chats, contacts]
      */
     async receiveChatsAndContacts(timeoutMs: number = null) {
-        let chats: Array<WAChat> = []
-        let contacts: Array<WAContact> = []
-        let unreadMessages: Array<WAMessage> = []
-        let chatMap: Record<string, {index: number, count: number}> = {}
+        let contacts: WAContact[] = []
+        const chats: KeyedDB<WAChat> = new KeyedDB (Utils.waChatUniqueKey, value => value.jid)
 
         let receivedContacts = false
         let receivedMessages = false
@@ -91,25 +90,17 @@ export default class WAConnectionConnector extends WAConnectionValidator {
                 const chatUpdate = json => {
                     receivedMessages = true
                     const isLast = json[1].last
-                    json = json[2]
-                    if (json) {
-                        for (let k = json.length - 1; k >= 0; k--) {
-                            const message = json[k][2]
+                    const messages = json[2] as WANode[]
+
+                    if (messages) {
+                        messages.reverse().forEach (([, __, message]: ['message', null, WAMessage]) => {
                             const jid = message.key.remoteJid.replace('@s.whatsapp.net', '@c.us')
-                            const index = chatMap[jid]
-                            if (!message.key.fromMe && index && index.count > 0) {
-                                // only forward if the message is from the sender
-                                unreadMessages.push(message)
-                                index.count -= 1 // reduce
-                            }
-                            if (index) {
-                                chats[index.index].messages.push (message)
-                            }
-                        }
+                            const chat = chats.get(jid)
+                            chat?.messages.unshift (message)
+                        }) 
                     }
-                    if (isLast && receivedContacts) { // if received contacts before messages
-                        convoResolve ()   
-                    }
+                    // if received contacts before messages
+                    if (isLast && receivedContacts) convoResolve ()
                 }
                 // wait for actual messages to load, "last" is the most recent message, "before" contains prior messages
                 this.registerCallback(['action', 'add:last'], chatUpdate)
@@ -120,14 +111,13 @@ export default class WAConnectionConnector extends WAConnectionValidator {
             let json = await this.registerCallbackOneTime(['response', 'type:chat'])
             if (json[1].duplicate) json = await this.registerCallbackOneTime (['response', 'type:chat'])
 
-            json[2].forEach(chat => {
-                chat[1].count = parseInt(chat[1].count)
-                chat[1].messages = []
-                chats.push(chat[1]) // chats data (log json to see what it looks like)
-                // store the number of unread messages for each sender
-                chatMap[chat[1].jid] = {index: chats.length-1, count: chat[1].count} //chat[1].count
+            json[2].forEach(([_, chat]: [any, WAChat]) => {
+                chat.count = +chat.count
+                chat.messages = []
+                chats.insert (chat) // chats data (log json to see what it looks like)
             })
-            if (chats.length > 0) return waitForConvos()
+
+            if (chats.all().length > 0) return waitForConvos()
         }
         const waitForContacts = async () => {
             let json = await this.registerCallbackOneTime(['response', 'type:contacts'])
@@ -142,7 +132,8 @@ export default class WAConnectionConnector extends WAConnectionValidator {
         // wait for the chats & contacts to load
         const promise = Promise.all([waitForChats(), waitForContacts()])
         await Utils.promiseTimeout (timeoutMs, promise)
-        return [chats, contacts, unreadMessages] as [WAChat[], WAContact[], WAMessage[]]
+        
+        return [chats, contacts] as [KeyedDB<WAChat>, WAContact[]]
     }
     private onMessageRecieved(message) {
         if (message[0] === '!') {

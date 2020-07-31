@@ -55,7 +55,7 @@ export enum Mimetype {
     png = 'image/png',
     mp4 = 'video/mp4',
     gif = 'video/gif',
-    pdf = 'appliction/pdf',
+    pdf = 'application/pdf',
     ogg = 'audio/ogg; codecs=opus',
     /** for stickers */
     webp = 'image/webp',
@@ -66,7 +66,7 @@ export interface MessageOptions {
     timestamp?: Date
     caption?: string
     thumbnail?: string
-    mimetype?: Mimetype
+    mimetype?: Mimetype | string
     validateID?: boolean,
     filename?: string
 }

@@ -17,11 +17,12 @@ async function example() {
     client.logLevel = MessageLogLevel.info // set to unhandled to see what kind of stuff you can implement
 
     // connect or timeout in 20 seconds (loads the auth file credentials if present)
-    const [user, chats, contacts, unread] = await client.connect('./auth_info.json', 20 * 1000)
+    const [user, chats, contacts] = await client.connect('./auth_info.json', 20 * 1000)
+    const unread = chats.all().flatMap (chat => chat.messages.slice(chat.messages.length-chat.count))
 
     console.log('oh hello ' + user.name + ' (' + user.id + ')')
-    console.log('you have ' + unread.length + ' unread messages')
-    console.log('you have ' + chats.length + ' chats & ' + contacts.length + ' contacts')
+    console.log('you have ' + chats.all().length + ' chats & ' + contacts.length + ' contacts')
+    console.log ('you have ' + unread.length + ' unread messages')
 
     const authInfo = client.base64EncodedAuthInfo() // get all the auth info we need to restore this session
     fs.writeFileSync('./auth_info.json', JSON.stringify(authInfo, null, '\t')) // save this info to a file

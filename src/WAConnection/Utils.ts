@@ -2,7 +2,7 @@ import * as Crypto from 'crypto'
 import HKDF from 'futoin-hkdf'
 import Decoder from '../Binary/Decoder'
 import {platform, release} from 'os'
-import { BaileysError } from './Constants'
+import { BaileysError, WAChat } from './Constants'
 import UserAgent from 'user-agents'
 
 const platformMap = {
@@ -18,6 +18,13 @@ export const Browsers = {
     /** The appropriate browser based on your OS & release */
     appropriate: browser => [ platformMap [platform()] || 'Ubuntu', browser, release() ] as [string, string, string]
 }
+function hashCode(s: string) {
+    for(var i = 0, h = 0; i < s.length; i++)
+        h = Math.imul(31, h) + s.charCodeAt(i) | 0;
+    return h;
+}
+export const waChatUniqueKey = (c: WAChat) => ((+c.t*1000) + (hashCode(c.jid)%1000))*-1 // -1 to sort descending
+
 export function userAgentString (browser) {
     const agent = new UserAgent (new RegExp(browser))
     return agent.toString ()
