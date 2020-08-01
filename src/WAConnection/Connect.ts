@@ -35,7 +35,7 @@ export default class WAConnectionConnector extends WAConnectionValidator {
         try {
             this.loadAuthInfoFromBase64(authInfo)
         } catch {}
-        
+
         this.conn = new WS('wss://web.whatsapp.com/ws', null, { origin: 'https://web.whatsapp.com' })
 
         const promise: Promise<UserMetaData> = new Promise((resolve, reject) => {
@@ -45,7 +45,7 @@ export default class WAConnectionConnector extends WAConnectionValidator {
                 this.authenticate()
                 .then(user => {
                     this.startKeepAliveRequest()
-                    
+
                     this.conn.removeAllListeners ('error')
                     this.conn.on ('close', () => this.unexpectedDisconnect ('closed'))
 
@@ -58,7 +58,7 @@ export default class WAConnectionConnector extends WAConnectionValidator {
             this.conn.on('error', error => { this.close(); reject(error) })
         })
         const user = await Utils.promiseTimeout(timeoutMs, promise).catch(err => {this.close(); throw err})
-        
+
         this.pendingRequests.forEach (send => send()) // send off all pending request
         this.pendingRequests = []
 
@@ -97,7 +97,7 @@ export default class WAConnectionConnector extends WAConnectionValidator {
                             const jid = message.key.remoteJid.replace('@s.whatsapp.net', '@c.us')
                             const chat = chats.get(jid)
                             chat?.messages.unshift (message)
-                        }) 
+                        })
                     }
                     // if received contacts before messages
                     if (isLast && receivedContacts) convoResolve ()
@@ -111,6 +111,7 @@ export default class WAConnectionConnector extends WAConnectionValidator {
             let json = await this.registerCallbackOneTime(['response', 'type:chat'])
             if (json[1].duplicate) json = await this.registerCallbackOneTime (['response', 'type:chat'])
 
+            if (!json[2]) return
             json[2].forEach(([_, chat]: [any, WAChat]) => {
                 chat.count = +chat.count
                 chat.messages = []
@@ -132,7 +133,7 @@ export default class WAConnectionConnector extends WAConnectionValidator {
         // wait for the chats & contacts to load
         const promise = Promise.all([waitForChats(), waitForContacts()])
         await Utils.promiseTimeout (timeoutMs, promise)
-        
+
         return [chats, contacts] as [KeyedDB<WAChat>, WAContact[]]
     }
     private onMessageRecieved(message) {
@@ -146,11 +147,11 @@ export default class WAConnectionConnector extends WAConnectionValidator {
                 return
             }
             const [messageTag, json] = decrypted
-            
+
             if (this.logLevel === MessageLogLevel.all) {
                 this.log(messageTag + ', ' + JSON.stringify(json), MessageLogLevel.all)
             }
-            /* 
+            /*
              Check if this is a response to a message we sent
             */
             if (this.callbacks[messageTag]) {
@@ -159,7 +160,7 @@ export default class WAConnectionConnector extends WAConnectionValidator {
                 delete this.callbacks[messageTag]
                 return
             }
-            /* 
+            /*
              Check if this is a response to a message we are expecting
             */
             if (this.callbacks['function:' + json[0]]) {
@@ -204,7 +205,7 @@ export default class WAConnectionConnector extends WAConnectionValidator {
         const refreshInterval = 20
         this.keepAliveReq = setInterval(() => {
             const diff = (new Date().getTime() - this.lastSeen.getTime()) / 1000
-            /* 
+            /*
 				check if it's been a suspicious amount of time since the server responded with our last seen
 				it could be that the network is down
 			*/
