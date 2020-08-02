@@ -254,7 +254,7 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
         return this.sendGenericMessage(id, m, options)
     }
     /** Prepare a media message for sending */
-    protected async prepareMediaMessage(buffer: Buffer, mediaType: MessageType, options: MessageOptions = {}) {
+    async prepareMediaMessage(buffer: Buffer, mediaType: MessageType, options: MessageOptions = {}) {
         if (mediaType === MessageType.document && !options.mimetype) {
             throw new Error('mimetype required to send a document')
         }
@@ -278,10 +278,10 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
         const fileSha256 = sha256(buffer)
         // url safe Base64 encode the SHA256 hash of the body
         const fileEncSha256B64 = sha256(body)
-            .toString('base64')
-            .replace(/\+/g, '-')
-            .replace(/\//g, '_')
-            .replace(/\=+$/, '')
+                                .toString('base64')
+                                .replace(/\+/g, '-')
+                                .replace(/\//g, '_')
+                                .replace(/\=+$/, '')
 
         await generateThumbnail(buffer, mediaType, options)
         // send a query JSON to obtain the url & auth token to upload our media
@@ -311,6 +311,7 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
             fileLength: buffer.length,
             fileName: options.filename || 'file',
             gifPlayback: isGIF || null,
+            caption: options.caption
         }
         return message as WAMessageContent
     }
@@ -332,13 +333,13 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
             message[key].contextInfo.participant = participant
             message[key].contextInfo.stanzaId = quoted.key.id
             message[key].contextInfo.quotedMessage = quoted.message
+            
             // if a participant is quoted, then it must be a group
             // hence, remoteJid of group must also be entered
             if (quoted.key.participant) {
                 message[key].contextInfo.remoteJid = quoted.key.remoteJid
             }
         }
-        message[key].caption = options?.caption
         if (!message[key].jpegThumbnail) message[key].jpegThumbnail = options?.thumbnail
 
         const messageJSON = {

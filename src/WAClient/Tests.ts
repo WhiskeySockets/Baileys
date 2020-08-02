@@ -5,7 +5,8 @@ import * as assert from 'assert'
 import fetch from 'node-fetch'
 
 import { decodeMediaMessage, validateJIDForSending } from './Utils'
-import { promiseTimeout, createTimeout, Browsers } from '../WAConnection/Utils'
+import { promiseTimeout, createTimeout, Browsers, generateMessageTag } from '../WAConnection/Utils'
+import { MessageLogLevel } from '../WAConnection/Constants'
 
 require ('dotenv').config () // dotenv to load test jid
 const testJid = process.env.TEST_JID || '1234@s.whatsapp.net' // set TEST_JID=xyz@s.whatsapp.net in a .env file in the root directory
@@ -19,6 +20,8 @@ async function sendAndRetreiveMessage(client: WAClient, content, type: MessageTy
 function WAClientTest(name: string, func: (client: WAClient) => void) {
     describe(name, () => {
         const client = new WAClient()
+        client.logLevel = MessageLogLevel.info
+
         before(async () => {
             const file = './auth_info.json'
             await client.connectSlim(file)
@@ -121,8 +124,23 @@ WAClientTest('Misc', (client) => {
     })
     it('should return the status', async () => {
         const response = await client.getStatus(testJid)
-        assert.ok(response.status)
         assert.strictEqual(typeof response.status, 'string')
+    })
+    it('should update status', async () => {
+        const newStatus = 'v cool status'
+
+        const response = await client.getStatus()
+        assert.strictEqual(typeof response.status, 'string')
+
+        await createTimeout (1000)
+
+        await client.setStatus (newStatus)
+        const response2 = await client.getStatus()
+        assert.equal (response2.status, newStatus)
+
+        await createTimeout (1000)
+
+        await client.setStatus (response.status) // update back
     })
     it('should return the stories', async () => {
         await client.getStories()
@@ -194,6 +212,15 @@ WAClientTest('Groups', (client) => {
         const metadata = await client.groupMetadata(gid)
         assert.strictEqual(metadata.id, gid)
         assert.strictEqual(metadata.participants.filter((obj) => obj.id.split('@')[0] === testJid.split('@')[0]).length, 1)
+    })
+    it('should update the group description', async () => {
+        const newDesc = 'Wow this was set from Baileys'
+
+        await client.groupUpdateDescription (gid, newDesc)
+        await createTimeout (1000)
+
+        const metadata = await client.groupMetadata(gid)
+        assert.strictEqual(metadata.desc, newDesc)
     })
     it('should send a message on the group', async () => {
         await client.sendMessage(gid, 'hello', MessageType.text)

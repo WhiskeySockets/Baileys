@@ -74,6 +74,15 @@ export default class WhatsAppWebBase extends WAConnection {
     async getStatus (jid?: string) {
         return this.query(['query', 'Status', jid || this.userMetaData.id]) as Promise<{ status: string }>
     }
+    async setStatus (status: string) {
+        return this.setQuery ([
+            [
+                'status',
+                null,
+                Buffer.from (status, 'utf-8')
+            ]
+        ]) 
+    }
     /** Get the URL to download the profile picture of a person/group */
     async getProfilePicture(jid: string | null) {
         const response = await this.queryExpecting200(['query', 'ProfilePicThumb', jid || this.userMetaData.id])
@@ -204,6 +213,7 @@ export default class WhatsAppWebBase extends WAConnection {
     /** Generic function for action, set queries */
     async setQuery (nodes: WANode[], binaryTags: WATag = [WAMetric.group, WAFlag.ignore], tag?: string) {
         const json = ['action', {epoch: this.msgCount.toString(), type: 'set'}, nodes]
-        return this.queryExpecting200(json, binaryTags, null, tag) as Promise<{status: number}>
+        const result = await this.queryExpecting200(json, binaryTags, null, tag) as Promise<{status: number}>
+        return result
     }
 }

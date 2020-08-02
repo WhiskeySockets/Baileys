@@ -326,7 +326,7 @@ export default class WAConnectionBase {
         }
     }
     generateMessageTag () {
-        return `${this.referenceDate.getTime()/1000}.--${this.msgCount}`
+        return `${Math.round(this.referenceDate.getTime())/1000}.--${this.msgCount}`
     }
     protected log(text, level: MessageLogLevel) {
         if (this.logLevel >= level)

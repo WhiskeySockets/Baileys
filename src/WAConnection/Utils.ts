@@ -65,15 +65,23 @@ export function randomBytes(length) {
     return Crypto.randomBytes(length)
 }
 export const createTimeout = (timeout) => new Promise(resolve => setTimeout(resolve, timeout))
-export function promiseTimeout<T>(ms: number, promise: Promise<T>) {
+export async function promiseTimeout<T>(ms: number, promise: Promise<T>) {
     if (!ms) return promise
     // Create a promise that rejects in <ms> milliseconds
-    const timeout = createTimeout (ms).then (() => { throw new BaileysError ('Timed out', promise) })
-    return Promise.race([promise, timeout]) as Promise<T>
+    let timeoutI
+    const timeout = new Promise(
+        (_, reject) => timeoutI = setTimeout(() => reject(new BaileysError ('Timed out', promise)), ms)
+    )
+    try {
+        const content = await Promise.race([promise, timeout])
+        return content as T
+    } finally {
+        clearTimeout (timeoutI)
+    }
 }
 // whatsapp requires a message tag for every message, we just use the timestamp as one
 export function generateMessageTag(epoch?: number) {
-    let tag = new Date().getTime().toString()
+    let tag = Math.round(new Date().getTime()/1000).toString()
     if (epoch) tag += '.--' + epoch // attach epoch if provided
     return tag
 }

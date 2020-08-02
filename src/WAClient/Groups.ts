@@ -1,6 +1,7 @@
 import WhatsAppWebBase from './Base'
 import { WAMessage, WAMetric, WAFlag, WANode, WAGroupMetadata, WAGroupCreateResponse, WAGroupModification } from '../WAConnection/Constants'
 import { GroupSettingChange } from './Constants'
+import { generateMessageID } from '../WAConnection/Utils'
 
 export default class WhatsAppWebGroups extends WhatsAppWebBase {
     /** Generic function for group queries */
@@ -17,7 +18,8 @@ export default class WhatsAppWebGroups extends WhatsAppWebBase {
             },
             participants ? participants.map(str => ['participant', { jid: str }, null]) : additionalNodes,
         ]
-        return this.setQuery ([json], [WAMetric.group, WAFlag.ignore], tag)
+        const result = await this.setQuery ([json], [WAMetric.group, WAFlag.ignore], tag)
+        return result
     }
     /** Get the metadata of the group */
     groupMetadata = (jid: string) => this.queryExpecting200(['query', 'GroupMetadata', jid]) as Promise<WAGroupMetadata>
@@ -58,6 +60,20 @@ export default class WhatsAppWebGroups extends WhatsAppWebBase {
      */
     groupUpdateSubject = (jid: string, title: string) =>
         this.groupQuery('subject', jid, title) as Promise<{ status: number }>
+    /**
+     * Update the group description
+     * @param {string} jid the ID of the group
+     * @param {string} title the new title of the group
+     */
+    groupUpdateDescription = async (jid: string, description: string) => {
+        const metadata = await this.groupMetadata (jid)
+        const node: WANode = [
+            'description',
+            {id: generateMessageID(), prev: metadata?.descId},
+            Buffer.from (description, 'utf-8')
+        ]
+        return this.groupQuery ('description', jid, null, null, [node])
+    }
     /**
      * Add somebody to the group
      * @param jid the ID of the group

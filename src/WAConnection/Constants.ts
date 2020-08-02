@@ -61,6 +61,7 @@ export interface WAGroupMetadata {
     creation: number
     desc?: string
     descOwner?: string
+    descId?: string
     participants: [{ id: string; isAdmin: boolean; isSuperAdmin: boolean }]
 }
 export interface WAGroupModification {
