@@ -100,7 +100,7 @@ export interface MessageStatusUpdate {
     /** Message IDs read/delivered */
     ids: string[]
     /** Status of the Message IDs */
-    type: proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS
+    type: WA_MESSAGE_STATUS_TYPE
 }
 export enum GroupSettingChange {
     messageSend = 'announcement',
@@ -139,8 +139,8 @@ export interface WALocationMessage {
     degreesLongitude: number
     address?: string
 }
-export const WA_MESSAGE_STUB_TYPE = proto.WebMessageInfo.WEB_MESSAGE_INFO_STUBTYPE
-export const WA_MESSAGE_STATUS_TYPE = proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS
+export import WA_MESSAGE_STUB_TYPE = proto.WebMessageInfo.WEB_MESSAGE_INFO_STUBTYPE
+export import WA_MESSAGE_STATUS_TYPE = proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS
 
 /** Reverse stub type dictionary */
 export const WAMessageType = function () {

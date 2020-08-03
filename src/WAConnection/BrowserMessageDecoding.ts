@@ -37,6 +37,7 @@ console.log ('parsing ' + wsMessages.length + ' messages')
 const list = wsMessages.map ((item, i) => {
     const buffer = Buffer.from (item.data, 'base64')
     try {
+
         const [tag, json, binaryTags] = decrypt (buffer)
         return {tag, json: JSON.stringify(json), binaryTags}
     } catch (error) {
@@ -44,7 +45,7 @@ const list = wsMessages.map ((item, i) => {
             const [tag, json, binaryTags] = decrypt (item.data)
             return {tag, json: JSON.stringify(json), binaryTags}
         } catch (error) {
-            console.log ('error in decoding: ' + error)
+            console.log ('error in decoding: ' + item.data + ': ' + error)
             return null
         }
         
