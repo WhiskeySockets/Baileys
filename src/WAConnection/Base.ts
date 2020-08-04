@@ -255,6 +255,8 @@ export default class WAConnectionBase {
      * @return the message tag
      */
     protected async sendBinary(json: WANode, tags: WATag, tag?: string) {
+        if (!this.conn) await this.waitForConnection ()
+
         const binary = this.encoder.write(json) // encode the JSON to the WhatsApp binary format
 
         let buff = Utils.aesEncrypt(binary, this.authInfo.encKey) // encrypt it using AES and our encKey
@@ -282,17 +284,19 @@ export default class WAConnectionBase {
     }
     /** Send some message to the WhatsApp servers */
     protected async send(m) {
-        if (!this.conn) {
-            const timeout = this.pendingRequestTimeoutMs 
-            try {
-                const task = new Promise (resolve => this.pendingRequests.push(resolve))
-                await Utils.promiseTimeout (timeout, task)
-            } catch {
-                throw new Error('cannot send message, disconnected from WhatsApp')
-            }
-        }
+        if (!this.conn) await this.waitForConnection ()
+        
         this.msgCount += 1 // increment message count, it makes the 'epoch' field when sending binary messages
         return this.conn.send(m)
+    }
+    protected async waitForConnection () {
+        const timeout = this.pendingRequestTimeoutMs 
+        try {
+            const task = new Promise (resolve => this.pendingRequests.push(resolve))
+            await Utils.promiseTimeout (timeout, task)
+        } catch {
+            throw new Error('cannot send message, disconnected from WhatsApp')
+        }
     }
     /**
      * Disconnect from the phone. Your auth credentials become invalid after sending a disconnect request.
