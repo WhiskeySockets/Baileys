@@ -193,7 +193,7 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
                 type: proto.ProtocolMessage.PROTOCOL_MESSAGE_TYPE.REVOKE
             }
         }
-        return this.sendGenericMessage (id, json, {})
+        return this.sendMessageContent (id, json, {})
     }
     /**
      * Forward a message like WA does
@@ -217,7 +217,7 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
         if (score > 0) content[key].contextInfo = { forwardingScore: score, isForwarded: true }
         else content[key].contextInfo = {}
 
-        return this.sendGenericMessage (id, content, {})
+        return this.sendMessageContent (id, content, {})
     }
     async sendMessage(
         id: string,
@@ -251,7 +251,7 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
                 m = await this.prepareMediaMessage(message as Buffer, type, options)
                 break
         }
-        return this.sendGenericMessage(id, m, options)
+        return this.sendMessageContent(id, m, options)
     }
     /** Prepare a media message for sending */
     async prepareMediaMessage(buffer: Buffer, mediaType: MessageType, options: MessageOptions = {}) {
@@ -315,9 +315,13 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
         }
         return message as WAMessageContent
     }
-    /** Generic send message function */
-    async sendGenericMessage(id: string, message: WAMessageContent, options: MessageOptions) {
-        
+    /** Send message content */
+    async sendMessageContent(id: string, message: WAMessageContent, options: MessageOptions) {
+        const messageJSON = this.generateWAMessage (id, message, options)
+        return this.sendWAMessage (messageJSON)
+    }
+    /** generates a WAMessage from the given content & options */
+    generateWAMessage(id: string, message: WAMessageContent, options: MessageOptions) {
         if (!options.timestamp) options.timestamp = new Date() // set timestamp to now
         
         const key = Object.keys(message)[0]
@@ -354,13 +358,19 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
             participant: id.includes('@g.us') ? this.userMetaData.id : null,
             status: WAMessageProto.proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS.PENDING
         }
-        const json = ['action', {epoch: this.msgCount.toString(), type: 'relay'}, [['message', null, messageJSON]]]
-        const flag = id === this.userMetaData.id ? WAFlag.acknowledge : WAFlag.ignore // acknowledge when sending message to oneself
-        const response = await this.queryExpecting200(json, [WAMetric.message, flag], null, messageJSON.key.id)
+        return messageJSON as WAMessage
+    }
+    /** 
+     * Send a WAMessage; more advanced functionality, you may want to stick with sendMessage()
+     * */
+    async sendWAMessage(message: WAMessage) {
+        const json = ['action', {epoch: this.msgCount.toString(), type: 'relay'}, [['message', null, message]]]
+        const flag = message.key.remoteJid === this.userMetaData.id ? WAFlag.acknowledge : WAFlag.ignore // acknowledge when sending message to oneself
+        const response = await this.queryExpecting200(json, [WAMetric.message, flag], null, message.key.id)
         return { 
             status: response.status as number, 
-            messageID: messageJSON.key.id,
-            message: messageJSON as WAMessage
+            messageID: message.key.id,
+            message: message as WAMessage
         } as WASendMessageResponse
     }
     /**
