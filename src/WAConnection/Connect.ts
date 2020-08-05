@@ -1,7 +1,7 @@
 import WS from 'ws'
 import KeyedDB from '@adiwajshing/keyed-db'
 import * as Utils from './Utils'
-import { AuthenticationCredentialsBase64, UserMetaData, WAMessage, WAChat, WAContact, MessageLogLevel, WANode } from './Constants'
+import { AuthenticationCredentialsBase64, UserMetaData, WAMessage, WAChat, WAContact, MessageLogLevel, WANode, WAConnectionMode } from './Constants'
 import WAConnectionValidator from './Validation'
 import Decoder from '../Binary/Decoder'
 
@@ -58,10 +58,7 @@ export default class WAConnectionConnector extends WAConnectionValidator {
             this.conn.on('error', error => { this.close(); reject(error) })
         })
         const user = await Utils.promiseTimeout(timeoutMs, promise).catch(err => {this.close(); throw err})
-
-        this.pendingRequests.forEach (send => send()) // send off all pending request
-        this.pendingRequests = []
-
+        if (this.connectionMode === WAConnectionMode.onlyRequireValidation) this.releasePendingRequests ()
         return user
     }
     /**
@@ -134,7 +131,13 @@ export default class WAConnectionConnector extends WAConnectionValidator {
         const promise = Promise.all([waitForChats(), waitForContacts()])
         await Utils.promiseTimeout (timeoutMs, promise)
 
+        if (this.connectionMode === WAConnectionMode.requireChatsAndContacts) this.releasePendingRequests ()
+
         return [chats, contacts] as [KeyedDB<WAChat>, WAContact[]]
+    }
+    private releasePendingRequests () {
+        this.pendingRequests.forEach (send => send()) // send off all pending request
+        this.pendingRequests = []
     }
     private onMessageRecieved(message) {
         if (message[0] === '!') {

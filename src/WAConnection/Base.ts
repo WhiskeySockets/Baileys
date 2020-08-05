@@ -13,6 +13,7 @@ import {
     MessageLogLevel,
     AuthenticationCredentialsBrowser,
     BaileysError,
+    WAConnectionMode,
 } from './Constants'
 
 /** Generate a QR code from the ref & the curve public key. This is scanned by the phone */
@@ -35,6 +36,7 @@ export default class WAConnectionBase {
     logLevel: MessageLogLevel = MessageLogLevel.info
     /** Should requests be queued when the connection breaks in between; if false, then an error will be thrown */
     pendingRequestTimeoutMs: number = null
+    connectionMode: WAConnectionMode = WAConnectionMode.onlyRequireValidation
     /** What to do when you need the phone to authenticate the connection (generate QR code by default) */
     onReadyForPhoneAuthentication = generateQRCode
     

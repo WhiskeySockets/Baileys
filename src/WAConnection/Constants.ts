@@ -49,6 +49,12 @@ export type WANode = WA.Node
 export type WAMessage = proto.WebMessageInfo
 export type WAMessageContent = proto.IMessage
 
+export enum WAConnectionMode {
+    /** Baileys will let requests through after a simple connect */
+    onlyRequireValidation = 0,
+    /** Baileys will let requests through only after chats & contacts are received */
+    requireChatsAndContacts = 1
+}
 export interface WAGroupCreateResponse {
     status: number
     gid?: string
