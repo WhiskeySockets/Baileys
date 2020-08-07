@@ -264,4 +264,12 @@ WAClientTest('Events', (client) => {
         const response = await client.sendMessage(testJid, 'My Name Jeff', MessageType.text)
         await promiseTimeout(10000, waitForUpdate())
     })
+    /*it('should retreive all conversations', async () => {
+        const [chats] = await client.receiveChatsAndContacts (10000)
+        for (let chat of chats.all()) {
+            console.log ('receiving ' + chat.jid)
+            const convo = await client.loadConversation (chat.jid.replace('@s.whatsapp.net', '@c.us'), 25)
+            await createTimeout (200)
+        }
+    })*/
 })

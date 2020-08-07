@@ -221,17 +221,11 @@ export default class WAConnectionBase {
      * @param [binaryTags] the tags to attach if the query is supposed to be sent encoded in binary
      * @param [timeoutMs] timeout after which the query will be failed (set to null to disable a timeout)
      * @param [tag] the tag to attach to the message
-     * recieved JSON
      */
-    async queryExpecting200(
-        json: any[] | WANode,
-        binaryTags: WATag = null,
-        timeoutMs: number = null,
-        tag: string = null,
-    ) {
+    async queryExpecting200(json: any[] | WANode, binaryTags?: WATag, timeoutMs?: number, tag?: string) {
         const response = await this.query(json, binaryTags, timeoutMs, tag)
         if (response.status && Math.floor(+response.status / 100) !== 2) {
-            throw new BaileysError(`Unexpected status code: ${response.status}`, {query: json})
+            throw new BaileysError(`Unexpected status code in '${json[0] || 'generic query'}': ${response.status}`, {query: json})
         }
         return response
     }
@@ -243,7 +237,7 @@ export default class WAConnectionBase {
      * @param tag the tag to attach to the message
      * recieved JSON
      */
-    async query(json: any[] | WANode, binaryTags: WATag = null, timeoutMs: number = null, tag: string = null) {
+    async query(json: any[] | WANode, binaryTags?: WATag, timeoutMs?: number, tag?: string) {
         if (binaryTags) tag = await this.sendBinary(json as WANode, binaryTags, tag)
         else tag = await this.sendJSON(json, tag)
        

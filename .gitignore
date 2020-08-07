@@ -5,7 +5,6 @@ package-lock.json
 */.DS_Store
 .DS_Store
 .env
-lib
 auth_info_browser.json
 yarn.lock
 browser-messages.json
