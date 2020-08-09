@@ -21,6 +21,7 @@
     "test": "mocha --timeout 60000 -r ts-node/register src/*/Tests.ts",
     "lint": "eslint '*/*.ts' --quiet --fix",
     "build": "tsc",
+    "build:docs":"typedoc",
     "example": "npx ts-node Example/example.ts",
     "browser-decode": "npx ts-node src/WAConnection/BrowserMessageDecoding.ts"
   },
@@ -54,6 +55,7 @@
     "mocha": "^8.0.1",
     "prettier": "^2.0.5",
     "ts-node-dev": "^1.0.0-pre.49",
+    "typedoc": "^0.18.0",
     "typescript": "^3.9.5"
   }
 }
