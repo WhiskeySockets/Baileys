@@ -166,7 +166,7 @@ export function extensionForMediaMessage(message: WAMessageContent) {
     const getExtension = (mimetype: string) => mimetype.split(';')[0].split('/')[1]
     const type = Object.keys(message)[0] as MessageType
     let extension: string
-    if (type === MessageType.location || type === MessageType.liveLocation) {
+    if (type === MessageType.location || type === MessageType.liveLocation || type === MessageType.product) {
         extension = '.jpeg'
     } else {
         const messageContent = message[type] as
