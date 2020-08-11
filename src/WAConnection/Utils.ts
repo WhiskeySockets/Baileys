@@ -23,7 +23,7 @@ function hashCode(s: string) {
         h = Math.imul(31, h) + s.charCodeAt(i) | 0;
     return h;
 }
-export const waChatUniqueKey = (c: WAChat) => ((+c.t*1000) + (hashCode(c.jid)%1000))*-1 // -1 to sort descending
+export const waChatUniqueKey = (c: WAChat) => ((+c.t*100000) + (hashCode(c.jid)%100000))*-1 // -1 to sort descending
 
 export function userAgentString (browser) {
     const agent = new UserAgent (new RegExp(browser))
