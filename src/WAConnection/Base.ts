@@ -251,7 +251,7 @@ export default class WAConnectionBase {
      * @return the message tag
      */
     protected async sendBinary(json: WANode, tags: WATag, tag?: string) {
-        if (!this.conn) await this.waitForConnection ()
+        if (!this.conn || this.conn.readyState !== this.conn.OPEN) await this.waitForConnection ()
 
         const binary = this.encoder.write(json) // encode the JSON to the WhatsApp binary format
 
@@ -280,7 +280,7 @@ export default class WAConnectionBase {
     }
     /** Send some message to the WhatsApp servers */
     protected async send(m) {
-        if (!this.conn) await this.waitForConnection ()
+        if (!this.conn || this.conn.readyState !== this.conn.OPEN) await this.waitForConnection ()
         
         this.msgCount += 1 // increment message count, it makes the 'epoch' field when sending binary messages
         return this.conn.send(m)
