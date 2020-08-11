@@ -7,6 +7,8 @@
  Baileys is type-safe, extensible and simple to use. If you require more functionality than provided, it'll super easy for you to write an extension. More on this [here](#WritingCustomFunctionality).
  
  If you're interested in building a WhatsApp bot, you may wanna check out [WhatsAppInfoBot](https://github.com/adiwajshing/WhatsappInfoBot) and an actual bot built with it, [Messcat](https://github.com/adiwajshing/Messcat).
+ 
+ **Read the docs [here](https://adiwajshing.github.io/Baileys)**
 
 ## Example
 Do check out & run [example.ts](Example/example.ts) to see example usage of the library.
