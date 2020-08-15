@@ -109,11 +109,16 @@ export default class WAConnectionConnector extends WAConnectionValidator {
             if (json[1].duplicate) json = await this.registerCallbackOneTime (['response', 'type:chat'])
 
             if (!json[2]) return
-            json[2].forEach(([_, chat]: [any, WAChat]) => {
+            json[2].forEach(([item, chat]: [any, WAChat]) => {
+                if (!chat) {
+                    this.log (`unexpectedly got null chat: ${item}, ${chat}`, MessageLogLevel.info)
+                    return
+                }
                 chat.count = +chat.count
                 chat.messages = []
                 chats.insert (chat) // chats data (log json to see what it looks like)
             })
+            .filter (Boolean)
 
             if (chats.all().length > 0) return waitForConvos()
         }

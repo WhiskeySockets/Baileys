@@ -104,52 +104,46 @@ export default class WAConnectionValidator extends WAConnectionBase {
             return this.userMetaData
         }
 
-        if (json.connected) {
-            // only if we're connected
-            if (!json.secret) {
-                // if we didn't get a secret, we don't need it, we're validated
-                return onValidationSuccess()
-            }
-            const secret = Buffer.from(json.secret, 'base64')
-            if (secret.length !== 144) {
-                throw new Error ('incorrect secret length received: ' + secret.length)
-            }
-            // generate shared key from our private key & the secret shared by the server
-            const sharedKey = Curve.sharedKey(this.curveKeys.private, secret.slice(0, 32))
-            // expand the key to 80 bytes using HKDF
-            const expandedKey = Utils.hkdf(sharedKey as Buffer, 80)
+        if (!json.secret) {
+            // if we didn't get a secret, we don't need it, we're validated
+            return onValidationSuccess()
+        }
+        const secret = Buffer.from(json.secret, 'base64')
+        if (secret.length !== 144) {
+            throw new Error ('incorrect secret length received: ' + secret.length)
+        }
+        // generate shared key from our private key & the secret shared by the server
+        const sharedKey = Curve.sharedKey(this.curveKeys.private, secret.slice(0, 32))
+        // expand the key to 80 bytes using HKDF
+        const expandedKey = Utils.hkdf(sharedKey as Buffer, 80)
 
-            // perform HMAC validation.
-            const hmacValidationKey = expandedKey.slice(32, 64)
-            const hmacValidationMessage = Buffer.concat([secret.slice(0, 32), secret.slice(64, secret.length)])
+        // perform HMAC validation.
+        const hmacValidationKey = expandedKey.slice(32, 64)
+        const hmacValidationMessage = Buffer.concat([secret.slice(0, 32), secret.slice(64, secret.length)])
 
-            const hmac = Utils.hmacSign(hmacValidationMessage, hmacValidationKey)
+        const hmac = Utils.hmacSign(hmacValidationMessage, hmacValidationKey)
 
-            if (hmac.equals(secret.slice(32, 64))) {
-                // computed HMAC should equal secret[32:64]
-                // expandedKey[64:] + secret[64:] are the keys, encrypted using AES, that are used to encrypt/decrypt the messages recieved from WhatsApp
-                // they are encrypted using key: expandedKey[0:32]
-                const encryptedAESKeys = Buffer.concat([
-                    expandedKey.slice(64, expandedKey.length),
-                    secret.slice(64, secret.length),
-                ])
-                const decryptedKeys = Utils.aesDecrypt(encryptedAESKeys, expandedKey.slice(0, 32))
-                // set the credentials
-                this.authInfo = {
-                    encKey: decryptedKeys.slice(0, 32), // first 32 bytes form the key to encrypt/decrypt messages
-                    macKey: decryptedKeys.slice(32, 64), // last 32 bytes from the key to sign messages
-                    clientToken: json.clientToken,
-                    serverToken: json.serverToken,
-                    clientID: this.authInfo.clientID,
-                }
-                return onValidationSuccess()
-            } else {
-                // if the checksums didn't match
-                throw new BaileysError ('HMAC validation failed', json)
+        if (hmac.equals(secret.slice(32, 64))) {
+            // computed HMAC should equal secret[32:64]
+            // expandedKey[64:] + secret[64:] are the keys, encrypted using AES, that are used to encrypt/decrypt the messages recieved from WhatsApp
+            // they are encrypted using key: expandedKey[0:32]
+            const encryptedAESKeys = Buffer.concat([
+                expandedKey.slice(64, expandedKey.length),
+                secret.slice(64, secret.length),
+            ])
+            const decryptedKeys = Utils.aesDecrypt(encryptedAESKeys, expandedKey.slice(0, 32))
+            // set the credentials
+            this.authInfo = {
+                encKey: decryptedKeys.slice(0, 32), // first 32 bytes form the key to encrypt/decrypt messages
+                macKey: decryptedKeys.slice(32, 64), // last 32 bytes from the key to sign messages
+                clientToken: json.clientToken,
+                serverToken: json.serverToken,
+                clientID: this.authInfo.clientID,
             }
+            return onValidationSuccess()
         } else {
-            // if we didn't get the connected field (usually we get this message when one opens WhatsApp on their phone)
-            throw new BaileysError (`invalid JSON`, json)
+            // if the checksums didn't match
+            throw new BaileysError ('HMAC validation failed', json)
         }
     }
     /**
