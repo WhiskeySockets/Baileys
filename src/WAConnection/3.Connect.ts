@@ -72,7 +72,7 @@ export class WAConnection extends Base {
 
         let receivedContacts = false
         let receivedMessages = false
-        let convoResolve
+        let convoResolve: () => void
 
         this.log('waiting for chats & contacts', MessageLogLevel.info) // wait for the message with chats
         const waitForConvos = () =>
@@ -91,7 +91,7 @@ export class WAConnection extends Base {
 
                     if (messages) {
                         messages.reverse().forEach (([, __, message]: ['message', null, WAMessage]) => {
-                            const jid = message.key.remoteJid.replace('@s.whatsapp.net', '@c.us')
+                            const jid = message.key.remoteJid
                             const chat = chats.get(jid)
                             chat?.messages.unshift (message)
                         })
@@ -114,6 +114,7 @@ export class WAConnection extends Base {
                     this.log (`unexpectedly got null chat: ${item}, ${chat}`, MessageLogLevel.info)
                     return
                 }
+                chat.jid = Utils.whatsappID (chat.jid)
                 chat.count = +chat.count
                 chat.messages = []
                 chats.insert (chat) // chats data (log json to see what it looks like)

@@ -17,7 +17,7 @@ import {
     WAUrlInfo,
     WAMessageContent, WAMetric, WAFlag, WANode, WAMessage, WAMessageProto, BaileysError, MessageLogLevel, WA_MESSAGE_STATUS_TYPE
 } from './Constants'
-import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes, generateThumbnail, getMediaKeys, decodeMediaMessageBuffer, extensionForMediaMessage  } from './Utils'
+import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes, generateThumbnail, getMediaKeys, decodeMediaMessageBuffer, extensionForMediaMessage, whatsappID  } from './Utils'
 
 export class WAConnection extends Base {
     /** Get the message info, who has read it, who its been delivered to */
@@ -328,7 +328,7 @@ export class WAConnection extends Base {
         if (!options.timestamp) options.timestamp = new Date() // set timestamp to now
         
         // prevent an annoying bug (WA doesn't accept sending messages with '@c.us')
-        id = id.replace ('@c.us', '@s.whatsapp') 
+        id = whatsappID (id)
 
         const key = Object.keys(message)[0]
         const timestamp = options.timestamp.getTime()/1000

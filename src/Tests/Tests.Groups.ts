@@ -1,6 +1,6 @@
-import { MessageType, GroupSettingChange, createTimeout, ChatModification } from '../WAConnection/WAConnection'
+import { MessageType, GroupSettingChange, createTimeout, ChatModification, whatsappID } from '../WAConnection/WAConnection'
 import * as assert from 'assert'
-import { WAConnectionTest, testJid } from './Common'
+import { WAConnectionTest, testJid, sendAndRetreiveMessage } from './Common'
 
 WAConnectionTest('Groups', (conn) => {
     let gid: string
@@ -30,6 +30,17 @@ WAConnectionTest('Groups', (conn) => {
     })
     it('should send a message on the group', async () => {
         await conn.sendMessage(gid, 'hello', MessageType.text)
+    })
+    it('should quote a message on the group', async () => {
+        const messages = await conn.loadConversation (gid, 20)
+        const quotableMessage = messages.find (m => m.message)
+        assert.ok (quotableMessage, 'need at least one message')
+        
+        const response = await conn.sendMessage(gid, 'hello', MessageType.extendedText, {quoted: messages[0]})
+        const messagesNew = await conn.loadConversation(gid, 10, null, true)
+        const message = messagesNew.find (m => m.key.id === response.key.id)?.message?.extendedTextMessage
+        assert.ok(message)
+        assert.equal (message.contextInfo.stanzaId, quotableMessage.key.id)
     })
     it('should update the subject', async () => {
         const subject = 'V Cool Title'

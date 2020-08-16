@@ -38,7 +38,6 @@
     "node-fetch": "^2.6.0",
     "protobufjs": "^6.9.0",
     "qrcode-terminal": "^0.12.0",
-    "user-agents": "^1.0.559",
     "ws": "^7.3.0"
   },
   "devDependencies": {

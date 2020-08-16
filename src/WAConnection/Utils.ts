@@ -29,10 +29,9 @@ function hashCode(s: string) {
 }
 export const waChatUniqueKey = (c: WAChat) => ((+c.t*100000) + (hashCode(c.jid)%100000))*-1 // -1 to sort descending
 
-/*export function userAgentString (browser) {
-    const agent = new UserAgent (new RegExp(browser))
-    return agent.toString ()
-}*/
+export function whatsappID (jid: string) {
+    return jid.replace ('@c.us', '@s.whatsapp.net')
+}
 /** decrypt AES 256 CBC; where the IV is prefixed to the buffer */
 export function aesDecrypt(buffer: Buffer, key: Buffer) {
     return aesDecryptWithIV(buffer.slice(16, buffer.length), key, buffer.slice(0, 16))
