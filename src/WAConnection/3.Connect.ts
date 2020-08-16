@@ -109,7 +109,9 @@ export class WAConnection extends Base {
             if (json[1].duplicate) json = await this.registerCallbackOneTime (['response', 'type:chat'])
 
             if (!json[2]) return
-            json[2].forEach(([item, chat]: [any, WAChat]) => {
+            
+            json[2]
+            .map(([item, chat]: [any, WAChat]) => {
                 if (!chat) {
                     this.log (`unexpectedly got null chat: ${item}, ${chat}`, MessageLogLevel.info)
                     return
