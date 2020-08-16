@@ -1,10 +1,10 @@
 {
   "name": "@adiwajshing/baileys",
-  "version": "2.3.1",
+  "version": "3.0.0",
   "description": "WhatsApp Web API",
   "homepage": "https://github.com/adiwajshing/Baileys",
-  "main": "lib/WAClient/WAClient.js",
-  "types": "lib/WAClient/WAClient.d.ts",
+  "main": "lib/WAConnection/WAConnection.js",
+  "types": "lib/WAConnection/WAConnection.d.ts",
   "keywords": [
     "whatsapp",
     "js-whatsapp",
@@ -18,12 +18,12 @@
   ],
   "scripts": {
     "prepare": "npm run build",
-    "test": "mocha --timeout 60000 -r ts-node/register src/*/Tests.ts",
+    "test": "mocha --timeout 60000 -r ts-node/register src/Tests/Tests.*.ts",
     "lint": "eslint '*/*.ts' --quiet --fix",
     "build": "tsc",
     "build:docs": "typedoc",
     "example": "npx ts-node Example/example.ts",
-    "browser-decode": "npx ts-node src/WAConnection/BrowserMessageDecoding.ts"
+    "browser-decode": "npx ts-node src/BrowserMessageDecoding.ts"
   },
   "author": "Adhiraj Singh",
   "license": "MIT",

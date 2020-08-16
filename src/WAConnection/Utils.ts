@@ -1,9 +1,13 @@
 import * as Crypto from 'crypto'
 import HKDF from 'futoin-hkdf'
-import Decoder from '../Binary/Decoder'
+import Jimp from 'jimp'
+import fs from 'fs/promises'
+import fetch from 'node-fetch'
+import { exec } from 'child_process'
 import {platform, release} from 'os'
-import { BaileysError, WAChat } from './Constants'
-import UserAgent from 'user-agents'
+
+import Decoder from '../Binary/Decoder'
+import { MessageType, HKDFInfoKeys, MessageOptions, WAChat, WAMessageType, WAMessage, WAMessageContent, BaileysError, WAMessageProto } from './Constants'
 
 const platformMap = {
     'aix': 'AIX',
@@ -25,10 +29,10 @@ function hashCode(s: string) {
 }
 export const waChatUniqueKey = (c: WAChat) => ((+c.t*100000) + (hashCode(c.jid)%100000))*-1 // -1 to sort descending
 
-export function userAgentString (browser) {
+/*export function userAgentString (browser) {
     const agent = new UserAgent (new RegExp(browser))
     return agent.toString ()
-}
+}*/
 /** decrypt AES 256 CBC; where the IV is prefixed to the buffer */
 export function aesDecrypt(buffer: Buffer, key: Buffer) {
     return aesDecryptWithIV(buffer.slice(16, buffer.length), key, buffer.slice(0, 16))
@@ -65,6 +69,7 @@ export function randomBytes(length) {
     return Crypto.randomBytes(length)
 }
 export const createTimeout = (timeout) => new Promise(resolve => setTimeout(resolve, timeout))
+
 export async function promiseTimeout<T>(ms: number, promise: Promise<T>) {
     if (!ms) return promise
     // Create a promise that rejects in <ms> milliseconds
@@ -139,4 +144,151 @@ export function decryptWA (message: string | Buffer, macKey: Buffer, encKey: Buf
         json = decoder.read(decrypted) // decode the binary message into a JSON array
     }
     return [messageTag, json, tags]
+}
+/** generates all the keys required to encrypt/decrypt & sign a media message */
+export function getMediaKeys(buffer, mediaType: MessageType) {
+    if (typeof buffer === 'string') {
+        buffer = Buffer.from (buffer.replace('data:;base64,', ''), 'base64')
+    }
+    // expand using HKDF to 112 bytes, also pass in the relevant app info
+    const expandedMediaKey = hkdf(buffer, 112, HKDFInfoKeys[mediaType])
+    return {
+        iv: expandedMediaKey.slice(0, 16),
+        cipherKey: expandedMediaKey.slice(16, 48),
+        macKey: expandedMediaKey.slice(48, 80),
+    }
+}
+/** Extracts video thumb using FFMPEG */
+const extractVideoThumb = async (
+    path: string,
+    destPath: string,
+    time: string,
+    size: { width: number; height: number },
+) =>
+    new Promise((resolve, reject) => {
+        const cmd = `ffmpeg -ss ${time} -i ${path} -y -s ${size.width}x${size.height} -vframes 1 -f image2 ${destPath}`
+        exec(cmd, (err) => {
+            if (err) reject(err)
+            else resolve()
+        })
+    }) as Promise<void>
+
+export const compressImage = async (buffer: Buffer) => {
+    const jimp = await Jimp.read (buffer)
+    return jimp.resize(48, 48).getBufferAsync (Jimp.MIME_JPEG)
+}
+export const generateProfilePicture = async (buffer: Buffer) => {
+    const jimp = await Jimp.read (buffer)
+    const min = Math.min(jimp.getWidth (), jimp.getHeight ())
+    const cropped = jimp.crop (0, 0, min, min)
+    return {
+        img: await cropped.resize(640, 640).getBufferAsync (Jimp.MIME_JPEG),
+        preview: await cropped.resize(96, 96).getBufferAsync (Jimp.MIME_JPEG)
+    }
+}
+/** generates a thumbnail for a given media, if required */
+export async function generateThumbnail(buffer: Buffer, mediaType: MessageType, info: MessageOptions) {
+    if (info.thumbnail === null || info.thumbnail) {
+        // don't do anything if the thumbnail is already provided, or is null
+        if (mediaType === MessageType.audio) {
+            throw new Error('audio messages cannot have thumbnails')
+        }
+    } else if (mediaType === MessageType.image || mediaType === MessageType.sticker) {
+        const buff = await compressImage (buffer)
+        info.thumbnail = buff.toString('base64')
+    } else if (mediaType === MessageType.video) {
+        const filename = './' + randomBytes(5).toString('hex') + '.mp4'
+        const imgFilename = filename + '.jpg'
+        await fs.writeFile(filename, buffer)
+        try {
+            await extractVideoThumb(filename, imgFilename, '00:00:00', { width: 48, height: 48 })
+            const buff = await fs.readFile(imgFilename)
+            info.thumbnail = buff.toString('base64')
+            await fs.unlink(imgFilename)
+        } catch (err) {
+            console.log('could not generate video thumb: ' + err)
+        }
+        await fs.unlink(filename)
+    }
+}
+/**
+ * Decode a media message (video, image, document, audio) & return decrypted buffer
+ * @param message the media message you want to decode
+ */
+export async function decodeMediaMessageBuffer(message: WAMessageContent, fetchHeaders: {[k: string]: string} = {}) {
+    /* 
+        One can infer media type from the key in the message
+        it is usually written as [mediaType]Message. Eg. imageMessage, audioMessage etc.
+    */
+    const type = Object.keys(message)[0] as MessageType
+    if (!type) {
+        throw new BaileysError('unknown message type', message)
+    }
+    if (type === MessageType.text || type === MessageType.extendedText) {
+        throw new BaileysError('cannot decode text message', message)
+    }
+    if (type === MessageType.location || type === MessageType.liveLocation) {
+        return new Buffer(message[type].jpegThumbnail)
+    }
+    let messageContent: WAMessageProto.IVideoMessage | WAMessageProto.IImageMessage | WAMessageProto.IAudioMessage | WAMessageProto.IDocumentMessage
+    if (message.productMessage) {
+        const product = message.productMessage.product?.productImage
+        if (!product) throw new BaileysError ('product has no image', message)
+        messageContent = product
+    } else {
+        messageContent = message[type]
+    }
+    
+    // download the message
+    const headers = { Origin: 'https://web.whatsapp.com' }
+    const fetched = await fetch(messageContent.url, { headers })
+    const buffer = await fetched.buffer()
+
+    if (buffer.length <= 10) {
+        throw new BaileysError ('Empty buffer returned. File has possibly been deleted from WA servers. Run `client.updateMediaMessage()` to refresh the url', {status: 404})
+    }
+
+    const decryptedMedia = (type: MessageType) => {
+        // get the keys to decrypt the message
+        const mediaKeys = getMediaKeys(messageContent.mediaKey, type) //getMediaKeys(Buffer.from(messageContent.mediaKey, 'base64'), type)
+        // first part is actual file
+        const file = buffer.slice(0, buffer.length - 10)
+        // last 10 bytes is HMAC sign of file
+        const mac = buffer.slice(buffer.length - 10, buffer.length)
+        // sign IV+file & check for match with mac
+        const testBuff = Buffer.concat([mediaKeys.iv, file])
+        const sign = hmacSign(testBuff, mediaKeys.macKey).slice(0, 10)
+        // our sign should equal the mac
+        if (!sign.equals(mac)) throw new Error()
+        
+        return aesDecryptWithIV(file, mediaKeys.cipherKey, mediaKeys.iv) // decrypt media
+    }
+    const allTypes = [type, ...Object.keys(HKDFInfoKeys)]
+    for (let i = 0; i < allTypes.length;i++) {
+        try {
+            const decrypted = decryptedMedia (allTypes[i] as MessageType)
+            
+            if (i > 0) { console.log (`decryption of ${type} media with HKDF key of ${allTypes[i]}`) }
+            return decrypted
+        } catch {
+            if (i === 0) { console.log (`decryption of ${type} media with original HKDF key failed`) }
+        }
+    }
+    throw new BaileysError('Decryption failed, HMAC sign does not match', {status: 400})
+}
+export function extensionForMediaMessage(message: WAMessageContent) {
+    const getExtension = (mimetype: string) => mimetype.split(';')[0].split('/')[1]
+    const type = Object.keys(message)[0] as MessageType
+    let extension: string
+    if (type === MessageType.location || type === MessageType.liveLocation || type === MessageType.product) {
+        extension = '.jpeg'
+    } else {
+        const messageContent = message[type] as
+                                | WAMessageProto.VideoMessage
+                                | WAMessageProto.ImageMessage
+                                | WAMessageProto.AudioMessage
+                                | WAMessageProto.DocumentMessage
+        extension = getExtension (messageContent.mimetype)
+    }
+    return extension
 }

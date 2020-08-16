@@ -1,6 +1,6 @@
-import WhatsAppWebGroups from './Groups'
+import {WAConnection as Base} from './4.User'
 import fetch from 'node-fetch'
-import { promises as fs } from 'fs'
+import fs from 'fs/promises'
 import {
     MessageOptions,
     MessageType,
@@ -15,13 +15,11 @@ import {
     MessageInfo,
     WATextMessage,
     WAUrlInfo,
+    WAMessageContent, WAMetric, WAFlag, WANode, WAMessage, WAMessageProto, BaileysError, MessageLogLevel, WA_MESSAGE_STATUS_TYPE
 } from './Constants'
-import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes } from '../WAConnection/Utils'
-import { WAMessageContent, WAMetric, WAFlag, WANode, WAMessage, WAMessageProto, BaileysError, MessageLogLevel } from '../WAConnection/Constants'
-import { validateJIDForSending, generateThumbnail, getMediaKeys, decodeMediaMessageBuffer, extensionForMediaMessage } from './Utils'
-import { proto } from '../../WAMessage/WAMessage'
+import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes, generateThumbnail, getMediaKeys, decodeMediaMessageBuffer, extensionForMediaMessage  } from './Utils'
 
-export default class WhatsAppWebMessages extends WhatsAppWebGroups {
+export class WAConnection extends Base {
     /** Get the message info, who has read it, who its been delivered to */
     async messageInfo (jid: string, messageID: string) {
         const query = ['query', {type: 'message_info', index: messageID, jid: jid, epoch: this.msgCount.toString()}, null]
@@ -56,16 +54,6 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
         }
         return this.setQuery ([['read', attributes, null]])
     }
-    /** 
-     * Mark a given chat as unread 
-     * @deprecated since 2.0.0, use `sendReadReceipt (jid, null, 'unread')` instead
-    */
-    async markChatUnread (jid: string) { return this.sendReadReceipt (jid, null, 'unread') }
-    /** 
-     * Archive a chat
-     * @deprecated since 2.0.0, use `modifyChat (jid, ChatModification.archive)` instead
-    */
-    async archiveChat (jid: string) { return this.modifyChat (jid, ChatModification.archive) }
     /**
      * Modify a given chat (archive, pin etc.)
      * @param jid the ID of the person/group you are modifiying
@@ -190,24 +178,27 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
         const json: WAMessageContent = {
             protocolMessage: {
                 key: messageKey,
-                type: proto.ProtocolMessage.PROTOCOL_MESSAGE_TYPE.REVOKE
+                type: WAMessageProto.ProtocolMessage.PROTOCOL_MESSAGE_TYPE.REVOKE
             }
         }
-        return this.sendMessageContent (id, json, {})
+        const waMessage = this.generateWAMessage (id, json, {})
+        await this.relayWAMessage (waMessage)
+        return waMessage
     }
     /**
      * Forward a message like WA does
      * @param id the id to forward the message to
      * @param message the message to forward
+     * @param forceForward will show the message as forwarded even if it is from you
      */
-    async forwardMessage(id: string, message: WAMessage) {
+    async forwardMessage(id: string, message: WAMessage, forceForward: boolean=false) {
         const content = message.message
         if (!content) throw new Error ('no content in message')
         
         let key = Object.keys(content)[0]
         
         let score = content[key].contextInfo?.forwardingScore || 0
-        score += message.key.fromMe ? 0 : 1
+        score += message.key.fromMe && !forceForward ? 0 : 1
         if (key === MessageType.text) {
             content[MessageType.extendedText] = { text: content[key] }
             delete content[MessageType.text]
@@ -216,18 +207,35 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
         }
         if (score > 0) content[key].contextInfo = { forwardingScore: score, isForwarded: true }
         else content[key].contextInfo = {}
-
-        return this.sendMessageContent (id, content, {})
+        
+        const waMessage = this.generateWAMessage (id, content, {}) 
+        await this.relayWAMessage (waMessage)
+        return waMessage
     }
+    /**
+     * Send a message to the given ID (can be group, single, or broadcast)
+     * @param id 
+     * @param message 
+     * @param type 
+     * @param options 
+     */
     async sendMessage(
         id: string,
         message: string | WATextMessage | WALocationMessage | WAContactMessage | Buffer,
         type: MessageType,
         options: MessageOptions = {},
     ) {
-        if (options.validateID === true || !('validateID' in options)) {
-            validateJIDForSending (id)
-        }
+        const waMessage = await this.prepareMessage (id, message, type, options)
+        await this.relayWAMessage (waMessage)
+        return waMessage
+    }
+    /** Prepares a message for sending via sendWAMessage () */
+    async prepareMessage(
+        id: string,
+        message: string | WATextMessage | WALocationMessage | WAContactMessage | Buffer,
+        type: MessageType,
+        options: MessageOptions = {},
+    ) {
         let m: WAMessageContent = {}
         switch (type) {
             case MessageType.text:
@@ -251,7 +259,7 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
                 m = await this.prepareMediaMessage(message as Buffer, type, options)
                 break
         }
-        return this.sendMessageContent(id, m, options)
+        return this.generateWAMessage(id, m, options)
     }
     /** Prepare a media message for sending */
     async prepareMediaMessage(buffer: Buffer, mediaType: MessageType, options: MessageOptions = {}) {
@@ -315,15 +323,13 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
         }
         return message as WAMessageContent
     }
-    /** Send message content */
-    async sendMessageContent(id: string, message: WAMessageContent, options: MessageOptions) {
-        const messageJSON = this.generateWAMessage (id, message, options)
-        return this.sendWAMessage (messageJSON)
-    }
     /** generates a WAMessage from the given content & options */
     generateWAMessage(id: string, message: WAMessageContent, options: MessageOptions) {
         if (!options.timestamp) options.timestamp = new Date() // set timestamp to now
         
+        // prevent an annoying bug (WA doesn't accept sending messages with '@c.us')
+        id = id.replace ('@c.us', '@s.whatsapp') 
+
         const key = Object.keys(message)[0]
         const timestamp = options.timestamp.getTime()/1000
         const quoted = options.quoted
@@ -356,29 +362,22 @@ export default class WhatsAppWebMessages extends WhatsAppWebGroups {
             messageTimestamp: timestamp,
             messageStubParameters: [],
             participant: id.includes('@g.us') ? this.userMetaData.id : null,
-            status: WAMessageProto.proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS.PENDING
+            status: WA_MESSAGE_STATUS_TYPE.PENDING
         }
         return messageJSON as WAMessage
     }
-    /** 
-     * Send a WAMessage; more advanced functionality, you may want to stick with sendMessage()
-     * */
-    async sendWAMessage(message: WAMessage) {
+    /** Relay (send) a WAMessage; more advanced functionality to send a built WA Message, you may want to stick with sendMessage() */
+    async relayWAMessage(message: WAMessage) {
         const json = ['action', {epoch: this.msgCount.toString(), type: 'relay'}, [['message', null, message]]]
         const flag = message.key.remoteJid === this.userMetaData.id ? WAFlag.acknowledge : WAFlag.ignore // acknowledge when sending message to oneself
-        const response = await this.queryExpecting200(json, [WAMetric.message, flag], null, message.key.id)
-        return { 
-            status: response.status as number, 
-            messageID: message.key.id,
-            message: message as WAMessage
-        } as WASendMessageResponse
+        await this.queryExpecting200(json, [WAMetric.message, flag], null, message.key.id)
     }
     /**
      * Securely downloads the media from the message. 
      * Renews the download url automatically, if necessary.
      */
     async downloadMediaMessage (message: WAMessage) {
-        const fetchHeaders = { 'User-Agent': this.userAgentString }
+        const fetchHeaders = {  }
         try {
             const buff = await decodeMediaMessageBuffer (message.message, fetchHeaders)
             return buff

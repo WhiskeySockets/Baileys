@@ -1,10 +1,10 @@
 import * as assert from 'assert'
 import * as QR from 'qrcode-terminal'
-import WAConnection from './WAConnection'
-import { AuthenticationCredentialsBase64 } from './Constants'
-import { createTimeout } from './Utils'
+import {WAConnection} from '../WAConnection/WAConnection'
+import { AuthenticationCredentialsBase64 } from '../WAConnection/Constants'
+import { createTimeout } from '../WAConnection/Utils'
 
-describe('QR generation', () => {
+describe('QR Generation', () => {
     it('should generate QR', async () => {
         const conn = new WAConnection()
         let calledQR = false

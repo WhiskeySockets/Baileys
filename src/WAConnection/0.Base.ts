@@ -14,6 +14,11 @@ import {
     AuthenticationCredentialsBrowser,
     BaileysError,
     WAConnectionMode,
+    WAMessage,
+    PresenceUpdate,
+    MessageStatusUpdate,
+    WAMetric,
+    WAFlag,
 } from './Constants'
 
 /** Generate a QR code from the ref & the curve public key. This is scanned by the phone */
@@ -22,7 +27,7 @@ const generateQRCode = function ([ref, publicKey, clientID]) {
     QR.generate(str, { small: true })
 }
 
-export default class WAConnectionBase {
+export class WAConnection {
     /** The version of WhatsApp Web we're telling the servers we are */
     version: [number, number, number] = [2, 2027, 10]
     /** The Browser we're telling the WhatsApp Web servers we are */
@@ -61,9 +66,7 @@ export default class WAConnectionBase {
     protected pendingRequests: (() => void)[] = []
     protected reconnectLoop: () => Promise<void>
     protected referenceDate = new Date () // used for generating tags
-    protected userAgentString: string 
     constructor () {
-        this.userAgentString = Utils.userAgentString (this.browserDescription[1])
         this.registerCallback (['Cmd', 'type:disconnect'], json => this.unexpectedDisconnect(json[1].kind))
     }
     async unexpectedDisconnect (error: string) {
@@ -73,6 +76,46 @@ export default class WAConnectionBase {
         } else if (this.unexpectedDisconnectCallback) {
             this.unexpectedDisconnectCallback (error)
         }
+    }
+    /** Set the callback for message status updates (when a message is delivered, read etc.) */
+    setOnMessageStatusChange(callback: (update: MessageStatusUpdate) => void) {
+        const func = json => {
+            json = json[1]
+            let ids = json.id
+            if (json.cmd === 'ack') {
+                ids = [json.id]
+            }
+            const data: MessageStatusUpdate = {
+                from: json.from,
+                to: json.to,
+                participant: json.participant,
+                timestamp: new Date(json.t * 1000),
+                ids: ids,
+                type: (+json.ack)+1,
+            }
+            callback(data)
+        }
+        this.registerCallback('Msg', func)
+        this.registerCallback('MsgInfo', func)
+    }
+    /**
+     * Set the callback for new/unread messages; if someone sends you a message, this callback will be fired
+     * @param callbackOnMyMessages - should the callback be fired on a message you sent from the phone
+     */
+    setOnUnreadMessage(callbackOnMyMessages = false, callback: (m: WAMessage) => void) {
+        this.registerCallback(['action', 'add:relay', 'message'], (json) => {
+            const message = json[2][0][2]
+            if (!message.key.fromMe || callbackOnMyMessages) {
+                // if this message was sent to us, notify
+                callback(message as WAMessage)
+            } else {
+                this.log(`[Unhandled] message - ${JSON.stringify(message)}`, MessageLogLevel.unhandled)
+            }
+        })
+    }
+    /** Set the callback for presence updates; if someone goes offline/online, this callback will be fired */
+    setOnPresenceUpdate(callback: (p: PresenceUpdate) => void) {
+        this.registerCallback('Presence', json => callback(json[1]))
     }
     /** Set the callback for unexpected disconnects including take over events, log out events etc. */
     setOnUnexpectedDisconnect(callback: (error: string) => void) {
@@ -242,6 +285,12 @@ export default class WAConnectionBase {
         else tag = await this.sendJSON(json, tag)
        
         return this.waitForMessage(tag, json, timeoutMs)
+    }
+    /** Generic function for action, set queries */
+    async setQuery (nodes: WANode[], binaryTags: WATag = [WAMetric.group, WAFlag.ignore], tag?: string) {
+        const json = ['action', {epoch: this.msgCount.toString(), type: 'set'}, nodes]
+        const result = await this.queryExpecting200(json, binaryTags, null, tag) as Promise<{status: number}>
+        return result
     }
     /**
      * Send a binary encoded message

@@ -1,10 +1,10 @@
 import * as Curve from 'curve25519-js'
 import * as Utils from './Utils'
-import WAConnectionBase from './Base'
-import { MessageLogLevel, WAMetric, WAFlag, BaileysError } from './Constants'
-import { Presence } from '../WAClient/WAClient'
+import {WAConnection as Base} from './0.Base'
+import { MessageLogLevel, WAMetric, WAFlag, BaileysError, Presence } from './Constants'
 
-export default class WAConnectionValidator extends WAConnectionBase {
+export class WAConnection extends Base {
+    
     /** Authenticate the connection */
     protected async authenticate() {
         if (!this.authInfo.clientID) {
@@ -21,6 +21,7 @@ export default class WAConnectionValidator extends WAConnectionBase {
         
         this.referenceDate = new Date () // refresh reference date
         const data = ['admin', 'init', this.version, this.browserDescription, this.authInfo.clientID, true]
+
         return this.queryExpecting200(data)
             .then(json => {
                 // we're trying to establish a new connection or are trying to log in

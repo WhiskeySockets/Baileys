@@ -2,10 +2,10 @@ import WS from 'ws'
 import KeyedDB from '@adiwajshing/keyed-db'
 import * as Utils from './Utils'
 import { AuthenticationCredentialsBase64, UserMetaData, WAMessage, WAChat, WAContact, MessageLogLevel, WANode, WAConnectionMode } from './Constants'
-import WAConnectionValidator from './Validation'
+import {WAConnection as Base} from './1.Validation'
 import Decoder from '../Binary/Decoder'
 
-export default class WAConnectionConnector extends WAConnectionValidator {
+export class WAConnection extends Base {
     /**
      * Connect to WhatsAppWeb
      * @param [authInfo] credentials or path to credentials to log back in

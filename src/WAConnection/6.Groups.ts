@@ -1,9 +1,9 @@
-import WhatsAppWebBase from './Base'
-import { WAMessage, WAMetric, WAFlag, WANode, WAGroupMetadata, WAGroupCreateResponse, WAGroupModification } from '../WAConnection/Constants'
+import {WAConnection as Base} from './5.Messages'
+import { WAMetric, WAFlag, WANode, WAGroupMetadata, WAGroupCreateResponse, WAGroupModification } from '../WAConnection/Constants'
 import { GroupSettingChange } from './Constants'
 import { generateMessageID } from '../WAConnection/Utils'
 
-export default class WhatsAppWebGroups extends WhatsAppWebBase {
+export class WAConnection extends Base {
     /** Generic function for group queries */
     async groupQuery(type: string, jid?: string, subject?: string, participants?: string[], additionalNodes?: WANode[]) {
         const tag = this.generateMessageTag()

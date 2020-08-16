@@ -1,6 +1,6 @@
 import { strict as assert } from 'assert'
-import Encoder from './Encoder'
-import Decoder from './Decoder'
+import Encoder from '../Binary/Encoder'
+import Decoder from '../Binary/Decoder'
 
 describe('Binary Coding Tests', () => {
     const testVectors: [string, Object][] = [
