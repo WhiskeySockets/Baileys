@@ -1,5 +1,5 @@
 import { MessageType, Presence, ChatModification, promiseTimeout, createTimeout } from '../WAConnection/WAConnection'
-import fs from 'fs/promises'
+import {promises as fs} from 'fs'
 import * as assert from 'assert'
 import fetch from 'node-fetch'
 import { WAConnectionTest, testJid } from './Common'

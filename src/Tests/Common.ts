@@ -1,6 +1,6 @@
 import { WAConnection, MessageLogLevel, MessageOptions, MessageType } from '../WAConnection/WAConnection'
 import * as assert from 'assert'
-import fs from 'fs/promises'
+import {promises as fs} from 'fs'
 
 require ('dotenv').config () // dotenv to load test jid
 export const testJid = process.env.TEST_JID || '1234@s.whatsapp.net' // set TEST_JID=xyz@s.whatsapp.net in a .env file in the root directory

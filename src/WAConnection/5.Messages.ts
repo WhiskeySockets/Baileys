@@ -1,6 +1,6 @@
 import {WAConnection as Base} from './4.User'
 import fetch from 'node-fetch'
-import fs from 'fs/promises'
+import {promises as fs} from 'fs'
 import {
     MessageOptions,
     MessageType,

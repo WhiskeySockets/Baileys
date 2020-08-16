@@ -1,7 +1,7 @@
 import * as Crypto from 'crypto'
 import HKDF from 'futoin-hkdf'
 import Jimp from 'jimp'
-import fs from 'fs/promises'
+import {promises as fs} from 'fs'
 import fetch from 'node-fetch'
 import { exec } from 'child_process'
 import {platform, release} from 'os'

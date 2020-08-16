@@ -1,5 +1,5 @@
 import { MessageType, Mimetype, createTimeout } from '../WAConnection/WAConnection'
-import fs from 'fs/promises'
+import {promises as fs} from 'fs'
 import * as assert from 'assert'
 import { WAConnectionTest, testJid, sendAndRetreiveMessage } from './Common'
 
