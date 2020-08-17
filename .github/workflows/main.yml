@@ -1,0 +1,94 @@
+name: CI
+
+on: ["push"]
+jobs:
+  Build:
+    runs-on: ubuntu-latest
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    - name: Checkout Commit
+      uses: actions/checkout@v2
+
+    - name: Parsing Package Info
+      id: packageInfo
+    - name: Setup Node.js environment
+      uses: actions/setup-node@v2.1.1
+      with:
+        # Set always-auth in npmrc
+        always-auth: false
+        # Version Spec of the version to use.  Examples: 12.x, 10.15.1, >=10.15.0
+        node-version: 12.x
+        # Set this option if you want the action to check for the latest available version that satisfies the version spec
+        check-latest: true
+        # Optional registry to set up for auth. Will set the registry in a project level .npmrc and .yarnrc file, and set up auth to read in from env.NODE_AUTH_TOKEN
+        registry-url: false
+        # Optional scope for authenticating against scoped registries
+        scope: false
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v2.1.4
+
+    - name: Install Dependencies
+      run: npm install
+
+    - name: Build
+      run: npm run build:all
+
+  Publish-Docs:
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    needs: Build
+  
+    steps:
+    - name: Publish to Pages
+      uses: crazy-max/ghaction-github-pages@v2
+      with:
+        target_branch: gh-pages
+        build_dir: docs
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+  Publish-Package:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    needs: Build
+    steps:
+    - name: Download the Build Artifact
+      uses: actions/download-artifact@v2.0.5
+    - name: Create Release
+      id: releaseCreate
+      continue-on-error: true
+      uses: actions/create-release@v1
+      env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        # The name of the tag. This should come from the webhook payload, `github.GITHUB_REF` when a user pushes a new tag
+        tag_name: v${{ steps.packageInfo.outputs.package-version }}
+        # The name of the release. For example, `Release v1.0.1`
+        release_name: v${{steps.packageInfo.outputs.package-version}}
+        # Text describing the contents of the tag.
+        body: ${{steps.packageInfo.outputs.commit-msg}}
+        # `true` to create a draft (unpublished) release, `false` to create a published one. Default: `false`
+        draft: false
+        # `true` to identify the release as a prerelease. `false` to identify the release as a full release. Default: `false`
+        prerelease: false
+
+    - name: Pack
+      run: npm pack
+
+    - name: Upload Package to Release
+      continue-on-error: true
+      uses: actions/upload-release-asset@v1.0.2
+      env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        # The URL for uploading assets to the release
+        upload_url: ${{steps.releaseCreate.outputs.upload_url}}
+        # The path to the asset you want to upload
+        asset_path: ${{github.workspace}}/${{steps.packageInfo.outputs.package-scope}}-${{steps.packageInfo.outputs.package-name}}-${{steps.packageInfo.outputs.package-version}}.tgz
+        asset_name: NPM-Package-${{steps.packageInfo.outputs.package-name}}-${{steps.packageInfo.outputs.package-version}}.tgz
+        # The content-type of the asset you want to upload. See the supported Media Types here: https://www.iana.org/assignments/media-types/media-types.xhtml for more information
+        asset_content_type: application/x-compressed-tar
+    - name: NPM Publish
+      uses: JS-DevTools/npm-publish@v1
+      with:
+        token: ${{ secrets.NPM_TOKEN }}
