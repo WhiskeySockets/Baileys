@@ -116,7 +116,6 @@ describe ('Reconnects', () => {
                     
                     // let it fail reconnect a few times
                     if (closes > 4) {
-                        console.log ('here')
                         conn.removeAllListeners ('closed')
                         conn.removeAllListeners ('connecting')
                         resolve ()

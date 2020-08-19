@@ -32,9 +32,9 @@ async function example() {
     /*  Note: one can take this auth_info.json file and login again from any computer without having to scan the QR code, 
         and get full access to one's WhatsApp. Despite the convenience, be careful with this file */
     conn.on ('user-presence-update', json => console.log(json.id + ' presence is ' + json.type))
-    conn.on ('message-update', message => {
-        //const participant = json.participant ? ' (' + json.participant + ')' : '' // participant exists when the message is from a group
-        //console.log(`${json.to}${participant} acknlowledged message(s) ${json.ids} as ${json.type}`)
+    conn.on ('message-update', json => {
+        const participant = json.participant ? ' (' + json.participant + ')' : '' // participant exists when the message is from a group
+        console.log(`${json.to}${participant} acknlowledged message(s) ${json.ids} as ${json.type}`)
     })
      // set to false to NOT relay your own sent messages
     conn.on('message-new', async (m) => {

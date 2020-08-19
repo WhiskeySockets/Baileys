@@ -1,6 +1,6 @@
 import WS from 'ws'
 import * as Utils from './Utils'
-import { WAMessage, WAChat, WAContact, MessageLogLevel, WANode, KEEP_ALIVE_INTERVAL_MS } from './Constants'
+import { WAMessage, WAChat, WAContact, MessageLogLevel, WANode, KEEP_ALIVE_INTERVAL_MS, BaileysError } from './Constants'
 import {WAConnection as Base} from './1.Validation'
 import Decoder from '../Binary/Decoder'
 
@@ -266,6 +266,10 @@ export class WAConnection extends Base {
                     this.cancelReconnect = null
                     break
                 } catch (error) {
+                    // don't continue reconnecting if error is 400
+                    if (error instanceof BaileysError && error.status >= 400) {
+                        break
+                    }
                     this.log (`error in reconnecting: ${error}, reconnecting...`, MessageLogLevel.info)
                 }
             }

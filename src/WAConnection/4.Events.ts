@@ -127,7 +127,8 @@ export class WAConnection extends Base {
             
             const chat = this.chats.get( whatsappID(update.to) )
             if (!chat) return
-
+            
+            this.emit ('message-update', update) 
             this.chatUpdatedMessage (update.ids, update.type, chat)
         }
         this.registerCallback('Msg', func)
@@ -183,11 +184,19 @@ export class WAConnection extends Base {
                 case WAMessageProto.ProtocolMessage.PROTOCOL_MESSAGE_TYPE.REVOKE:
                     const found = chat.messages.find(m => m.key.id === protocolMessage.key.id)
                     if (found && found.message) {
-                        //this.log ('deleting message: ' + protocolMessage.key.id + ' in chat: ' + protocolMessage.key.remoteJid)
+                        
+                        this.log ('deleting message: ' + protocolMessage.key.id + ' in chat: ' + protocolMessage.key.remoteJid, MessageLogLevel.info)
+                        
                         found.messageStubType = WA_MESSAGE_STUB_TYPE.REVOKE
                         found.message = null
-                        
-                        this.emit ('message-update', found)
+                        const update: MessageStatusUpdate = {
+                            from: this.user.id,
+                            to: message.key.remoteJid,
+                            ids: [message.key.id],
+                            timestamp: new Date(),
+                            type: -1
+                        }
+                        this.emit ('message-update', update)
                     }
                     break
                 default:
@@ -249,8 +258,6 @@ export class WAConnection extends Base {
             if (messageIDs.includes(msg.key.id)) {
                 if (isGroupID(chat.jid)) msg.status = WA_MESSAGE_STATUS_TYPE.SERVER_ACK
                 else msg.status = status
-
-                this.emit ('message-update', msg)
             }
         }
     }
@@ -294,8 +301,8 @@ export class WAConnection extends Base {
     on (event: 'chat-update', listener: (chat: Partial<WAChat> & { jid: string }) => void): this
     /** when a new message is relayed */
     on (event: 'message-new', listener: (message: WAMessage) => void): this
-    /** when a message is updated (deleted, delivered, read) */
-    on (event: 'message-update', listener: (message: WAMessage) => void): this
+    /** when a message is updated (deleted, delivered, read, sent etc.) */
+    on (event: 'message-update', listener: (message: MessageStatusUpdate) => void): this
     /** when participants are added to a group */
     on (event: 'group-participants-add', listener: (update: {jid: string, participants: string[], actor?: string}) => void): this
     /** when participants are removed or leave from a group */
