@@ -68,8 +68,7 @@ jobs:
     - name: Publish to Pages
       uses: crazy-max/ghaction-github-pages@v2
       with:
-        target_branch: gh-pages
-        if-no-files-found: error        
+        target_branch: gh-pages     
         build_dir: docs
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
