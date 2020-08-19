@@ -261,7 +261,7 @@ export class WAConnection extends Base {
     }
     protected registerPhoneConnectionPoll () {
         this.phoneCheck = setInterval (() => {
-            this.checkPhoneConnection (7500) // 7500 ms for timeout
+            this.checkPhoneConnection (5000) // 5000 ms for timeout
             .then (connected => {
                 if (this.phoneConnected != connected) {
                     this.emit ('connection-phone-change', {connected})
@@ -269,7 +269,7 @@ export class WAConnection extends Base {
                 this.phoneConnected = connected
             })
             .catch (error => this.log(`error in getting phone connection: ${error}`, MessageLogLevel.info))
-        }, 20000)
+        }, 15000)
     }
 
     // Add all event types

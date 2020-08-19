@@ -28,6 +28,7 @@ export class WAConnection extends Base {
                     this.startKeepAliveRequest()
 
                     this.conn.removeAllListeners ('error')
+                    this.conn.removeAllListeners ('close')
                     this.conn.on ('close', () => this.unexpectedDisconnect ('closed'))
 
                     this.state = 'open'
@@ -37,7 +38,8 @@ export class WAConnection extends Base {
             })
             this.conn.on('message', m => this.onMessageRecieved(m))
             // if there was an error in the WebSocket
-            this.conn.on('error', error => { this.closeInternal(error.message as any); reject(error) })
+            this.conn.on('error', reject)
+            this.conn.on('close', () => reject(new Error('closed')))
         })
 
         try {
@@ -77,7 +79,6 @@ export class WAConnection extends Base {
         let receivedMessages = false
         let convoResolve: () => void
 
-        this.log('waiting for chats & contacts', MessageLogLevel.info) // wait for the message with chats
         const waitForConvos = () =>
             Utils.promiseTimeout(timeoutMs, resolve => {
                 convoResolve = () => {
@@ -91,7 +92,7 @@ export class WAConnection extends Base {
                 }
                 const chatUpdate = json => {
                     receivedMessages = true
-                    const isLast = json[1].last || (json[1].add === 'last' && stopAfterMostRecentMessage)
+                    const isLast = json[1].last || stopAfterMostRecentMessage
                     const messages = json[2] as WANode[]
 
                     if (messages) {
@@ -133,6 +134,8 @@ export class WAConnection extends Base {
                     
                     this.deregisterCallback(['response', 'type:chat'])
                     
+                    this.log ('received chats list', MessageLogLevel.info)
+                    
                     if (this.chats.all().length > 0) waitForConvos().then (resolve)
                     else resolve ()
                 })   
@@ -157,6 +160,8 @@ export class WAConnection extends Base {
                     resolve ()
 
                     this.deregisterCallback(['response', 'type:contacts'])
+
+                    this.log ('received contacts list', MessageLogLevel.info)
                 })
             })
         )
@@ -259,6 +264,7 @@ export class WAConnection extends Base {
                 try {
                     await this.connect ()
                     this.cancelReconnect = null
+                    break
                 } catch (error) {
                     this.log (`error in reconnecting: ${error}, reconnecting...`, MessageLogLevel.info)
                 }

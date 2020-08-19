@@ -73,12 +73,12 @@ export class WAConnection extends EventEmitter {
         this.registerCallback (['Cmd', 'type:disconnect'], json => this.unexpectedDisconnect(json[1].kind))
     }
     async unexpectedDisconnect (error?: DisconnectReason) {
-        const willReconnect = this.autoReconnect === ReconnectMode.onAllErrors || (this.autoReconnect === ReconnectMode.onConnectionLost && (error === 'lost' || error === 'closed'))
+        const willReconnect = this.autoReconnect === ReconnectMode.onAllErrors || (this.autoReconnect === ReconnectMode.onConnectionLost && (error !== 'replaced'))
         
         this.log (`got disconnected, reason ${error || 'unknown'}${willReconnect ? ', reconnecting in a few seconds...' : ''}`, MessageLogLevel.info)        
-        
         this.closeInternal(error, willReconnect)
-        willReconnect && this.reconnectLoop ()
+
+        willReconnect && !this.cancelReconnect && this.reconnectLoop ()
     }
     /**
      * base 64 encode the authentication credentials and return them
@@ -285,7 +285,7 @@ export class WAConnection extends EventEmitter {
         this.pendingRequests.forEach (({reject}) => reject(new Error('closed')))
         this.pendingRequests = []
     }
-    protected closeInternal (reason?: DisconnectReason, isReconnecting: boolean = false) {
+    protected closeInternal (reason?: DisconnectReason, isReconnecting: boolean=false) {
         this.qrTimeout && clearTimeout (this.qrTimeout)
         this.phoneCheck && clearTimeout (this.phoneCheck)
 
@@ -303,8 +303,8 @@ export class WAConnection extends EventEmitter {
             }
         })
         if (this.keepAliveReq) clearInterval(this.keepAliveReq)
-
-        this.emit ('closed', { reason, isReconnecting })
+        // reconnecting if the timeout is active for the reconnect loop
+        this.emit ('closed', { reason, isReconnecting: this.cancelReconnect || isReconnecting })
     }
     protected async reconnectLoop () {
 

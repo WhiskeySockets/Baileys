@@ -134,7 +134,7 @@ export class WAConnection extends Base {
     /** Get the invite link of the given group */
     async groupInviteCode(jid: string) {
         const json = ['query', 'inviteCode', jid]
-        const response = await this.query({json})
+        const response = await this.query({json, expect200: true})
         return response.code as string
     }
 }

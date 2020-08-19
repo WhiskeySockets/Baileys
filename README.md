@@ -124,6 +124,8 @@ conn.regenerateQRIntervalMs = 20000 // QR regen every 20 seconds
 Baileys now uses the EventEmitter syntax for events. 
 They're all nicely typed up, so you shouldn't have any issues with an Intellisense editor like VS Code.
 
+Also, these events are fired regardless of whether they are initiated by the Baileys client or are relayed from your phone.
+
 ``` ts
 
 /** when the connection has opened successfully */
