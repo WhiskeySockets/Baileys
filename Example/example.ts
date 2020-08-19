@@ -7,39 +7,44 @@ import {
     WALocationMessage,
     MessageLogLevel,
     WAMessageType,
+    ReconnectMode,
 } from '../src/WAConnection/WAConnection'
 import * as fs from 'fs'
 
 async function example() {
     const conn = new WAConnection() // instantiate
-    conn.autoReconnect = true // auto reconnect on disconnect
+    conn.autoReconnect = ReconnectMode.onConnectionLost // only automatically reconnect when the connection breaks
     conn.logLevel = MessageLogLevel.info // set to unhandled to see what kind of stuff you can implement
 
-    // connect or timeout in 20 seconds (loads the auth file credentials if present)
-    const [user, chats, contacts] = await conn.connect('./auth_info.json', 20 * 1000)
-    const unread = chats.all().flatMap (chat => chat.messages.slice(chat.messages.length-chat.count))
+    // loads the auth file credentials if present
+    if (fs.existsSync('./auth_info.json')) conn.loadAuthInfo ('./auth_info.json')
+    // connect or timeout in 20 seconds
+    await conn.connect(20 * 1000)
 
-    console.log('oh hello ' + user.name + ' (' + user.id + ')')
-    console.log('you have ' + chats.all().length + ' chats & ' + contacts.length + ' contacts')
+    const unread = await conn.loadAllUnreadMessages ()
+    
+    console.log('oh hello ' + conn.user.name + ' (' + conn.user.id + ')')
+    console.log('you have ' + conn.chats.all().length + ' chats & ' + Object.keys(conn.contacts).length + ' contacts')
     console.log ('you have ' + unread.length + ' unread messages')
 
     const authInfo = conn.base64EncodedAuthInfo() // get all the auth info we need to restore this session
     fs.writeFileSync('./auth_info.json', JSON.stringify(authInfo, null, '\t')) // save this info to a file
     /*  Note: one can take this auth_info.json file and login again from any computer without having to scan the QR code, 
         and get full access to one's WhatsApp. Despite the convenience, be careful with this file */
-    conn.setOnPresenceUpdate(json => console.log(json.id + ' presence is ' + json.type))
-    conn.setOnMessageStatusChange(json => {
-        const participant = json.participant ? ' (' + json.participant + ')' : '' // participant exists when the message is from a group
-        console.log(`${json.to}${participant} acknlowledged message(s) ${json.ids} as ${json.type}`)
+    conn.on ('user-presence-update', json => console.log(json.id + ' presence is ' + json.type))
+    conn.on ('message-update', message => {
+        //const participant = json.participant ? ' (' + json.participant + ')' : '' // participant exists when the message is from a group
+        //console.log(`${json.to}${participant} acknlowledged message(s) ${json.ids} as ${json.type}`)
     })
      // set to false to NOT relay your own sent messages
-    conn.setOnUnreadMessage(true, async (m) => {
+    conn.on('message-new', async (m) => {
         const messageStubType = WAMessageType[m.messageStubType] ||  'MESSAGE'
         console.log('got notification of type: ' + messageStubType)
 
         const messageContent = m.message
         // if it is not a regular text or media message
         if (!messageContent) return
+        
         if (m.key.fromMe) {
             console.log('relayed my own message')
             return
@@ -112,14 +117,9 @@ async function example() {
         const batterylevel = parseInt(batteryLevelStr)
         console.log('battery level: ' + batterylevel)
     })
-    conn.setOnUnexpectedDisconnect(reason => {
-        if (reason === 'replaced') {
-            // uncomment to reconnect whenever the connection gets taken over from somewhere else
-            // await conn.connect ()
-        } else {
-            console.log ('oh no got disconnected: ' + reason)
-        }
-    })
+    conn.on('closed', ({reason, isReconnecting}) => (
+        console.log ('oh no got disconnected: ' + reason + ', reconnecting: ' + isReconnecting)
+    ))
 }
 
 example().catch((err) => console.log(`encountered error: ${err}`))

@@ -7,35 +7,29 @@ export class WAConnection extends Base {
     
     /** Authenticate the connection */
     protected async authenticate() {
-        if (!this.authInfo.clientID) {
-            // if no auth info is present, that is, a new session has to be established
-            // generate a client ID
-            this.authInfo = {
-                clientID: Utils.generateClientID(),
-                clientToken: null,
-                serverToken: null,
-                encKey: null,
-                macKey: null,
-            }
+        // if no auth info is present, that is, a new session has to be established
+        // generate a client ID
+        if (!this.authInfo?.clientID) {
+            this.authInfo = { clientID: Utils.generateClientID() } as any
         }
         
         this.referenceDate = new Date () // refresh reference date
-        const data = ['admin', 'init', this.version, this.browserDescription, this.authInfo.clientID, true]
+        const json = ['admin', 'init', this.version, this.browserDescription, this.authInfo?.clientID, true]
 
-        return this.queryExpecting200(data)
+        return this.query({json, expect200: true, waitForOpen: false})
             .then(json => {
                 // we're trying to establish a new connection or are trying to log in
-                if (this.authInfo.encKey && this.authInfo.macKey) {
+                if (this.authInfo?.encKey && this.authInfo?.macKey) {
                     // if we have the info to restore a closed session
-                    const data = [
+                    const json = [
                         'admin',
                         'login',
-                        this.authInfo.clientToken,
-                        this.authInfo.serverToken,
-                        this.authInfo.clientID,
+                        this.authInfo?.clientToken,
+                        this.authInfo?.serverToken,
+                        this.authInfo?.clientID,
                         'takeover',
                     ]
-                    return this.query(data, null, null, 's1') // wait for response with tag "s1"
+                    return this.query({ json, tag: 's1', waitForOpen: false }) // wait for response with tag "s1"
                 }
                 return this.generateKeysForAuth(json.ref) // generate keys which will in turn be the QR
             })
@@ -62,31 +56,29 @@ export class WAConnection extends Base {
                 this.validateNewConnection(json[1]) // validate the connection
                 this.log('validated connection successfully', MessageLogLevel.info)
 
-                await this.sendPostConnectQueries ()
+                this.sendPostConnectQueries ()
                 
                 this.lastSeen = new Date() // set last seen to right now
-                return this.userMetaData
             })
     }
     /**
      * Send the same queries WA Web sends after connect
      */
-    async sendPostConnectQueries () {
-        await this.sendBinary (['query', {type: 'contacts', epoch: '1'}, null], [ WAMetric.queryContact, WAFlag.ignore ])
-        await this.sendBinary (['query', {type: 'chat', epoch: '1'}, null], [ WAMetric.queryChat, WAFlag.ignore ])
-        await this.sendBinary (['query', {type: 'status', epoch: '1'}, null], [ WAMetric.queryStatus, WAFlag.ignore ])
-        await this.sendBinary (['query', {type: 'quick_reply', epoch: '1'}, null], [ WAMetric.queryQuickReply, WAFlag.ignore ])
-        await this.sendBinary (['query', {type: 'label', epoch: '1'}, null], [ WAMetric.queryLabel, WAFlag.ignore ])
-        await this.sendBinary (['query', {type: 'emoji', epoch: '1'}, null], [ WAMetric.queryEmoji, WAFlag.ignore ])
-        await this.sendBinary (['action', {type: 'set', epoch: '1'}, [['presence', {type: Presence.available}, null]] ], [ WAMetric.presence, 160 ])
+    sendPostConnectQueries () {
+        this.sendBinary (['query', {type: 'contacts', epoch: '1'}, null], [ WAMetric.queryContact, WAFlag.ignore ])
+        this.sendBinary (['query', {type: 'chat', epoch: '1'}, null], [ WAMetric.queryChat, WAFlag.ignore ])
+        this.sendBinary (['query', {type: 'status', epoch: '1'}, null], [ WAMetric.queryStatus, WAFlag.ignore ])
+        this.sendBinary (['query', {type: 'quick_reply', epoch: '1'}, null], [ WAMetric.queryQuickReply, WAFlag.ignore ])
+        this.sendBinary (['query', {type: 'label', epoch: '1'}, null], [ WAMetric.queryLabel, WAFlag.ignore ])
+        this.sendBinary (['query', {type: 'emoji', epoch: '1'}, null], [ WAMetric.queryEmoji, WAFlag.ignore ])
+        this.sendBinary (['action', {type: 'set', epoch: '1'}, [['presence', {type: Presence.available}, null]] ], [ WAMetric.presence, 160 ])
     }
     /** 
      * Refresh QR Code 
      * @returns the new ref
      */
-    async generateNewQRCode() {
-        const data = ['admin', 'Conn', 'reref']
-        const response = await this.query(data)
+    async generateNewQRCodeRef() {
+        const response = await this.query({json: ['admin', 'Conn', 'reref'], expect200: true, waitForOpen: false})
         return response.ref as string
     }
     /**
@@ -97,12 +89,13 @@ export class WAConnection extends Base {
     private validateNewConnection(json) {
         const onValidationSuccess = () => {
             // set metadata: one's WhatsApp ID [cc][number]@s.whatsapp.net, name on WhatsApp, info about the phone
-            this.userMetaData = {
-                id: json.wid.replace('@c.us', '@s.whatsapp.net'),
+            this.user = {
+                id: Utils.whatsappID(json.wid),
                 name: json.pushname,
                 phone: json.phone,
+                imgUrl: null
             }
-            return this.userMetaData
+            return this.user
         }
 
         if (!json.secret) {
@@ -154,18 +147,40 @@ export class WAConnection extends Base {
     protected respondToChallenge(challenge: string) {
         const bytes = Buffer.from(challenge, 'base64') // decode the base64 encoded challenge string
         const signed = Utils.hmacSign(bytes, this.authInfo.macKey).toString('base64') // sign the challenge string with our macKey
-        const data = ['admin', 'challenge', signed, this.authInfo.serverToken, this.authInfo.clientID] // prepare to send this signed string with the serverToken & clientID
+        const json = ['admin', 'challenge', signed, this.authInfo.serverToken, this.authInfo.clientID] // prepare to send this signed string with the serverToken & clientID
         this.log('resolving login challenge', MessageLogLevel.info)
-        return this.queryExpecting200(data)
+        return this.query({json, expect200: true, waitForOpen: false})
     }
     /** When starting a new session, generate a QR code by generating a private/public key pair & the keys the server sends */
     protected async generateKeysForAuth(ref: string) {
         this.curveKeys = Curve.generateKeyPair(Utils.randomBytes(32))
-        this.onReadyForPhoneAuthentication([
-            ref,
-            Buffer.from(this.curveKeys.public).toString('base64'),
-            this.authInfo.clientID,
-        ])
-        return this.waitForMessage('s1', [])
+        const publicKey = Buffer.from(this.curveKeys.public).toString('base64')
+
+        const emitQR = () => {
+            const qr = [ref, publicKey, this.authInfo.clientID].join(',')
+            this.emit ('qr', qr)
+        }
+        const regenQR = () => {
+            this.qrTimeout = setTimeout (() => {
+                if (this.state === 'open') return
+
+                this.log ('regenerated QR', MessageLogLevel.info)
+                
+                this.generateNewQRCodeRef ()
+                .then (newRef => ref = newRef)
+                .then (emitQR)
+                .then (regenQR)
+                .catch (err => this.log (`error in QR gen: ${err}`, MessageLogLevel.info))
+            }, this.regenerateQRIntervalMs)
+        }
+        if (this.regenerateQRIntervalMs) {
+            regenQR ()
+        }
+
+        const json = await this.waitForMessage('s1', [])
+        this.qrTimeout && clearTimeout (this.qrTimeout)
+        this.qrTimeout = null
+        
+        return json
     }
 }

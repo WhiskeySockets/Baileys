@@ -1,6 +1,32 @@
 import { WA } from '../Binary/Constants'
 import { proto } from '../../WAMessage/WAMessage'
 
+export const KEEP_ALIVE_INTERVAL_MS = 20*1000
+
+// export the WAMessage Prototypes
+export { proto as WAMessageProto }
+export type WANode = WA.Node
+export type WAMessage = proto.WebMessageInfo
+export type WAMessageContent = proto.IMessage
+export type WAContactMessage = proto.ContactMessage
+export type WAMessageKey = proto.IMessageKey
+export type WATextMessage = proto.ExtendedTextMessage
+export type WAContextInfo = proto.IContextInfo
+export import WA_MESSAGE_STUB_TYPE = proto.WebMessageInfo.WEB_MESSAGE_INFO_STUBTYPE
+export import WA_MESSAGE_STATUS_TYPE = proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS
+
+export interface WALocationMessage {
+    degreesLatitude: number
+    degreesLongitude: number
+    address?: string
+}
+/** Reverse stub type dictionary */
+export const WAMessageType = function () {
+    const types = WA_MESSAGE_STUB_TYPE
+    const dict: Record<number, string> = {}
+    Object.keys(types).forEach(element => dict[ types[element] ] = element)
+    return dict
+}()
 
 export class BaileysError extends Error {
     status?: number
@@ -13,7 +39,25 @@ export class BaileysError extends Error {
         this.context = context
     }
 }
+export interface WAQuery {
+    json: any[] | WANode
+    binaryTags?: WATag
+    timeoutMs?: number
+    tag?: string
+    expect200?: boolean
+    waitForOpen?: boolean
+}
+export enum ReconnectMode {
+    /** does not reconnect */
+    off = 0,
+    /** reconnects only when the connection is 'lost' or 'closed' */
+    onConnectionLost = 1,
+    /** reconnects on all disconnects, including take overs */
+    onAllErrors = 2
+}
 
+export type WAConnectionState = 'open' | 'connecting' | 'closed'
+export type DisconnectReason = 'closed' | 'lost' | 'replaced' | 'intentional'
 export enum MessageLogLevel {
     none=0,
     info=1,
@@ -40,21 +84,14 @@ export interface AuthenticationCredentialsBrowser {
     WAToken1: string
     WAToken2: string
 }
-export interface UserMetaData {
+export type AnyAuthenticationCredentials = AuthenticationCredentialsBrowser | AuthenticationCredentialsBase64 | AuthenticationCredentials
+export interface WAUser {
     id: string
     name: string
     phone: string
+    imgUrl: string
 }
-export type WANode = WA.Node
-export type WAMessage = proto.WebMessageInfo
-export type WAMessageContent = proto.IMessage
 
-export enum WAConnectionMode {
-    /** Baileys will let requests through after a simple connect */
-    onlyRequireValidation = 0,
-    /** Baileys will let requests through only after chats & contacts are received */
-    requireChatsAndContacts = 1
-}
 export interface WAGroupCreateResponse {
     status: number
     gid?: string
@@ -68,6 +105,10 @@ export interface WAGroupMetadata {
     desc?: string
     descOwner?: string
     descId?: string
+    /** is set when the group only allows admins to change group settings */
+    restrict?: 'true' 
+    /** is set when the group only allows admins to write messages */
+    announce?: 'true' 
     participants: [{ id: string; isAdmin: boolean; isSuperAdmin: boolean }]
 }
 export interface WAGroupModification {
@@ -83,16 +124,22 @@ export interface WAContact {
     short?: string
 }
 export interface WAChat {
-    t: string
+    jid: string
+
+    t: number
+    /** number of unread messages, is < 0 if the chat is manually marked unread */
     count: number
     archive?: 'true' | 'false'
     read_only?: 'true' | 'false'
     mute?: string
     pin?: string
     spam: 'false' | 'true'
-    jid: string
     modify_tag: string
+    
+    // Baileys added properties
     messages: WAMessage[]
+    title?: string
+    imgUrl?: string
 }
 export enum WAMetric {
     debugLog = 1,
@@ -133,8 +180,6 @@ export enum WAFlag {
 }
 /** Tag used with binary queries */
 export type WATag = [WAMetric, WAFlag]
-// export the WAMessage Prototype as well
-export { proto as WAMessageProto } from '../../WAMessage/WAMessage' 
 
 /** set of statuses visible to other people; see updatePresence() in WhatsAppWeb.Send */
 export enum Presence {
@@ -263,22 +308,21 @@ export interface WASendMessageResponse {
     messageID: string
     message: WAMessage
 }
-export interface WALocationMessage {
-    degreesLatitude: number
-    degreesLongitude: number
-    address?: string
-}
-export import WA_MESSAGE_STUB_TYPE = proto.WebMessageInfo.WEB_MESSAGE_INFO_STUBTYPE
-export import WA_MESSAGE_STATUS_TYPE = proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS
-
-/** Reverse stub type dictionary */
-export const WAMessageType = function () {
-    const types = WA_MESSAGE_STUB_TYPE
-    const dict: Record<number, string> = {}
-    Object.keys(types).forEach(element => dict[ types[element] ] = element)
-    return dict
-}()
-export type WAContactMessage = proto.ContactMessage
-export type WAMessageKey = proto.IMessageKey
-export type WATextMessage = proto.ExtendedTextMessage
-export type WAContextInfo = proto.IContextInfo
+export type BaileysEvent = 
+    'open' | 
+    'connecting' |
+    'closed' |
+    'qr' |
+    'connection-phone-change' |
+    'user-presence-update' |
+    'user-status-update' |
+    'chat-new' |
+    'chat-update' |
+    'message-new' |
+    'message-update' |
+    'group-participants-add' |
+    'group-participants-remove' |
+    'group-participants-promote' |
+    'group-participants-demote' |
+    'group-settings-update' |
+    'group-description-update'

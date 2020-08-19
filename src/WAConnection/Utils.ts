@@ -27,11 +27,10 @@ function hashCode(s: string) {
         h = Math.imul(31, h) + s.charCodeAt(i) | 0;
     return h;
 }
-export const waChatUniqueKey = (c: WAChat) => ((+c.t*100000) + (hashCode(c.jid)%100000))*-1 // -1 to sort descending
+export const waChatUniqueKey = (c: WAChat) => ((c.t*100000) + (hashCode(c.jid)%100000))*-1 // -1 to sort descending
+export const whatsappID = (jid: string) => jid?.replace ('@c.us', '@s.whatsapp.net')
+export const isGroupID = (jid: string) => jid?.includes ('@g.us')
 
-export function whatsappID (jid: string) {
-    return jid.replace ('@c.us', '@s.whatsapp.net')
-}
 /** decrypt AES 256 CBC; where the IV is prefixed to the buffer */
 export function aesDecrypt(buffer: Buffer, key: Buffer) {
     return aesDecryptWithIV(buffer.slice(16, buffer.length), key, buffer.slice(0, 16))
@@ -67,25 +66,49 @@ export function hkdf(buffer: Buffer, expandedLength: number, info = null) {
 export function randomBytes(length) {
     return Crypto.randomBytes(length)
 }
-export const createTimeout = (timeout) => new Promise(resolve => setTimeout(resolve, timeout))
+/** unix timestamp of a date in seconds */
+export const unixTimestampSeconds = (date: Date = new Date()) => Math.floor(date.getTime()/1000)
 
-export async function promiseTimeout<T>(ms: number, promise: Promise<T>) {
-    if (!ms) return promise
+export const delay = (ms: number) => delayCancellable (ms).delay
+export const delayCancellable = (ms: number) => {
+    let timeout: NodeJS.Timeout
+    let reject: (error) => void
+    const delay: Promise<void> = new Promise((resolve, _reject) => {
+        timeout = setTimeout(resolve, ms)
+        reject = _reject
+    })
+    const cancel = () => {
+        clearTimeout (timeout)
+        reject (new Error('cancelled'))
+    }
+    return { delay, cancel }
+}
+export async function promiseTimeout<T>(ms: number, promise: (resolve: (v?: T)=>void, reject: (error) => void) => void) {
+    if (!ms) return new Promise (promise)
+
     // Create a promise that rejects in <ms> milliseconds
-    let timeoutI
-    const timeout = new Promise(
-        (_, reject) => timeoutI = setTimeout(() => reject(new BaileysError ('Timed out', promise)), ms)
-    )
+    const {delay, cancel} = delayCancellable (ms) 
+    
+    let pReject: (error) => void
+    const p = new Promise ((resolve, reject) => {
+        promise (resolve, reject)
+        pReject = reject
+    })
+    
     try {
-        const content = await Promise.race([promise, timeout])
+        const content = await Promise.race([
+            p, 
+            delay.then(() => pReject(new BaileysError('timed out', p)))
+        ])
+        cancel ()
         return content as T
     } finally {
-        clearTimeout (timeoutI)
+        cancel ()
     }
 }
 // whatsapp requires a message tag for every message, we just use the timestamp as one
 export function generateMessageTag(epoch?: number) {
-    let tag = Math.round(new Date().getTime()/1000).toString()
+    let tag = unixTimestampSeconds().toString()
     if (epoch) tag += '.--' + epoch // attach epoch if provided
     return tag
 }

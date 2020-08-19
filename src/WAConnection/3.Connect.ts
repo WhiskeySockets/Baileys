@@ -1,74 +1,77 @@
 import WS from 'ws'
-import KeyedDB from '@adiwajshing/keyed-db'
 import * as Utils from './Utils'
-import { AuthenticationCredentialsBase64, UserMetaData, WAMessage, WAChat, WAContact, MessageLogLevel, WANode, WAConnectionMode } from './Constants'
+import { WAMessage, WAChat, WAContact, MessageLogLevel, WANode, KEEP_ALIVE_INTERVAL_MS } from './Constants'
 import {WAConnection as Base} from './1.Validation'
 import Decoder from '../Binary/Decoder'
 
 export class WAConnection extends Base {
     /**
      * Connect to WhatsAppWeb
-     * @param [authInfo] credentials or path to credentials to log back in
-     * @param [timeoutMs] timeout after which the connect will fail, set to null for an infinite timeout
-     * @return returns [userMetaData, chats, contacts]
+     * @param timeoutMs timeout after which the connect will fail, set to null for an infinite timeout
+     * @param waitForChats should the chats be waited for
      */
-    async connect(authInfo: AuthenticationCredentialsBase64 | string = null, timeoutMs: number = null) {
-        try {
-            const userInfo = await this.connectSlim(authInfo, timeoutMs)
-            const chats = await this.receiveChatsAndContacts(timeoutMs)
-            return [userInfo, ...chats] as [UserMetaData, KeyedDB<WAChat>, WAContact[]]
-        } catch (error) {
-            this.close ()
-            throw error
-        }
-    }
-    /**
-     * Connect to WhatsAppWeb, resolves without waiting for chats & contacts
-     * @param [authInfo] credentials to log back in
-     * @param [timeoutMs] timeout after which the connect will fail, set to null for an infinite timeout
-     * @return [userMetaData, chats, contacts, unreadMessages]
-     */
-    async connectSlim(authInfo: AuthenticationCredentialsBase64 | string = null, timeoutMs: number = null) {
+    async connect(timeoutMs: number = null, waitForChats: boolean = true) {
         // if we're already connected, throw an error
-        if (this.conn) throw new Error('already connected or connecting')
-        // set authentication credentials if required
-        try {
-            this.loadAuthInfoFromBase64(authInfo)
-        } catch {}
+        if (this.state !== 'closed') throw new Error('cannot connect when state=' + this.state)
+        
+        this.state = 'connecting'
+        this.emit ('connecting')
 
         this.conn = new WS('wss://web.whatsapp.com/ws', null, { origin: 'https://web.whatsapp.com' })
 
-        const promise: Promise<UserMetaData> = new Promise((resolve, reject) => {
+        const promise: Promise<void> = Utils.promiseTimeout(timeoutMs, (resolve, reject) => {
             this.conn.on('open', () => {
-                this.log('connected to WhatsApp Web, authenticating...', MessageLogLevel.info)
+                this.log('connected to WhatsApp Web server, authenticating...', MessageLogLevel.info)
                 // start sending keep alive requests (keeps the WebSocket alive & updates our last seen)
                 this.authenticate()
-                .then(user => {
+                .then(() => {
                     this.startKeepAliveRequest()
 
                     this.conn.removeAllListeners ('error')
                     this.conn.on ('close', () => this.unexpectedDisconnect ('closed'))
 
-                    resolve(user)
+                    this.state = 'open'
+                    resolve()
                 })
                 .catch(reject)
             })
             this.conn.on('message', m => this.onMessageRecieved(m))
             // if there was an error in the WebSocket
-            this.conn.on('error', error => { this.close(); reject(error) })
+            this.conn.on('error', error => { this.closeInternal(error.message as any); reject(error) })
         })
-        const user = await Utils.promiseTimeout(timeoutMs, promise).catch(err => {this.close(); throw err})
-        if (this.connectionMode === WAConnectionMode.onlyRequireValidation) this.releasePendingRequests ()
-        return user
+
+        try {
+            await promise
+            waitForChats && await this.receiveChatsAndContacts(timeoutMs, true)
+
+            this.phoneConnected = true
+            this.state = 'open'
+            
+            this.user.imgUrl = await this.getProfilePicture (this.user.id).catch (err => '')
+            
+            this.emit ('open')
+
+            this.releasePendingRequests ()
+            this.log ('opened connection to WhatsApp Web', MessageLogLevel.info)
+            return this
+        } catch (error) {
+            this.closeInternal (error.message)
+            throw error
+        }
+    }
+    /** Get the URL to download the profile picture of a person/group */
+    async getProfilePicture(jid: string | null) {
+        const response = await this.query({ json: ['query', 'ProfilePicThumb', jid || this.user.id] })
+        return response.eurl as string
     }
     /**
-     * Sets up callbacks to receive chats, contacts & unread messages.
+     * Sets up callbacks to receive chats, contacts & messages.
      * Must be called immediately after connect
      * @returns [chats, contacts]
      */
-    async receiveChatsAndContacts(timeoutMs: number = null) {
-        let contacts: WAContact[] = []
-        const chats: KeyedDB<WAChat> = new KeyedDB (Utils.waChatUniqueKey, value => value.jid)
+    protected async receiveChatsAndContacts(timeoutMs: number = null, stopAfterMostRecentMessage: boolean=false) {
+        this.contacts = {}
+        this.chats.clear ()
 
         let receivedContacts = false
         let receivedMessages = false
@@ -76,75 +79,97 @@ export class WAConnection extends Base {
 
         this.log('waiting for chats & contacts', MessageLogLevel.info) // wait for the message with chats
         const waitForConvos = () =>
-            new Promise(resolve => {
+            Utils.promiseTimeout(timeoutMs, resolve => {
                 convoResolve = () => {
                     // de-register the callbacks, so that they don't get called again
                     this.deregisterCallback(['action', 'add:last'])
-                    this.deregisterCallback(['action', 'add:before'])
-                    this.deregisterCallback(['action', 'add:unread'])
+                    if (!stopAfterMostRecentMessage) {
+                        this.deregisterCallback(['action', 'add:before'])
+                        this.deregisterCallback(['action', 'add:unread'])
+                    }
                     resolve()
                 }
                 const chatUpdate = json => {
                     receivedMessages = true
-                    const isLast = json[1].last
+                    const isLast = json[1].last || (json[1].add === 'last' && stopAfterMostRecentMessage)
                     const messages = json[2] as WANode[]
 
                     if (messages) {
-                        messages.reverse().forEach (([, __, message]: ['message', null, WAMessage]) => {
+                        messages.reverse().forEach (([,, message]: ['message', null, WAMessage]) => {
                             const jid = message.key.remoteJid
-                            const chat = chats.get(jid)
+                            const chat = this.chats.get(jid)
                             chat?.messages.unshift (message)
                         })
                     }
                     // if received contacts before messages
                     if (isLast && receivedContacts) convoResolve ()
                 }
+
                 // wait for actual messages to load, "last" is the most recent message, "before" contains prior messages
                 this.registerCallback(['action', 'add:last'], chatUpdate)
-                this.registerCallback(['action', 'add:before'], chatUpdate)
-                this.registerCallback(['action', 'add:unread'], chatUpdate)
-            })
-        const waitForChats = async () => {
-            let json = await this.registerCallbackOneTime(['response', 'type:chat'])
-            if (json[1].duplicate) json = await this.registerCallbackOneTime (['response', 'type:chat'])
-
-            if (!json[2]) return
-            
-            json[2]
-            .map(([item, chat]: [any, WAChat]) => {
-                if (!chat) {
-                    this.log (`unexpectedly got null chat: ${item}, ${chat}`, MessageLogLevel.info)
-                    return
+                
+                if (!stopAfterMostRecentMessage) {
+                    this.registerCallback(['action', 'add:before'], chatUpdate)
+                    this.registerCallback(['action', 'add:unread'], chatUpdate)
                 }
-                chat.jid = Utils.whatsappID (chat.jid)
-                chat.count = +chat.count
-                chat.messages = []
-                chats.insert (chat) // chats data (log json to see what it looks like)
             })
-            .filter (Boolean)
+        const waitForChats = async () => (
+            Utils.promiseTimeout (timeoutMs, resolve => {
+                this.registerCallback(['response', 'type:chat'], json => {
+                    if (json[1].duplicate || !json[2]) return
+    
+                    json[2]
+                    .forEach(([item, chat]: [any, WAChat]) => {
+                        if (!chat) {
+                            this.log (`unexpectedly got null chat: ${item}, ${chat}`, MessageLogLevel.info)
+                            return
+                        }
+                        chat.jid = Utils.whatsappID (chat.jid)
+                        chat.t = +chat.t
+                        chat.count = +chat.count
+                        chat.messages = []
+                        this.chats.insert (chat) // chats data (log json to see what it looks like)
+                    })
+                    
+                    this.deregisterCallback(['response', 'type:chat'])
+                    
+                    if (this.chats.all().length > 0) waitForConvos().then (resolve)
+                    else resolve ()
+                })   
+            })
+        )
+        const waitForContacts = async () => (
+            new Promise (resolve => {
+                this.registerCallback(['response', 'type:contacts'], json => {
+                    if (json[1].duplicate) return
 
-            if (chats.all().length > 0) return waitForConvos()
-        }
-        const waitForContacts = async () => {
-            let json = await this.registerCallbackOneTime(['response', 'type:contacts'])
-            if (json[1].duplicate) json = await this.registerCallbackOneTime (['response', 'type:contacts'])
+                    receivedContacts = true
+                    
+                    json[2].forEach(([type, contact]: ['user', WAContact]) => {
+                        if (!contact) return this.log (`unexpectedly got null contact: ${type}, ${contact}`, MessageLogLevel.info)
+                        
+                        contact.jid = Utils.whatsappID (contact.jid)
+                        this.contacts[contact.jid] = contact
+                    })
+                    // if you receive contacts after messages
+                    // should probably resolve the promise
+                    if (receivedMessages) convoResolve()
+                    resolve ()
 
-            contacts = json[2].map(item => item[1])
-            receivedContacts = true
-            // if you receive contacts after messages
-            // should probably resolve the promise
-            if (receivedMessages) convoResolve()
-        }
+                    this.deregisterCallback(['response', 'type:contacts'])
+                })
+            })
+        )
         // wait for the chats & contacts to load
-        const promise = Promise.all([waitForChats(), waitForContacts()])
-        await Utils.promiseTimeout (timeoutMs, promise)
+        await Promise.all( [waitForChats(), waitForContacts()] )
 
-        if (this.connectionMode === WAConnectionMode.requireChatsAndContacts) this.releasePendingRequests ()
-
-        return [chats, contacts] as [KeyedDB<WAChat>, WAContact[]]
+        this.chats.all ().forEach (chat => {
+            const respectiveContact = this.contacts[chat.jid]
+            chat.title = respectiveContact?.name || respectiveContact?.notify
+        })
     }
     private releasePendingRequests () {
-        this.pendingRequests.forEach (send => send()) // send off all pending request
+        this.pendingRequests.forEach (({resolve}) => resolve()) // send off all pending request
         this.pendingRequests = []
     }
     private onMessageRecieved(message) {
@@ -213,21 +238,45 @@ export class WAConnection extends Base {
     }
     /** Send a keep alive request every X seconds, server updates & responds with last seen */
     private startKeepAliveRequest() {
-        const refreshInterval = 20
         this.keepAliveReq = setInterval(() => {
-            const diff = (new Date().getTime() - this.lastSeen.getTime()) / 1000
+            const diff = (new Date().getTime() - this.lastSeen.getTime())
             /*
 				check if it's been a suspicious amount of time since the server responded with our last seen
 				it could be that the network is down
 			*/
-            if (diff > refreshInterval + 5) this.unexpectedDisconnect ('lost')
+            if (diff > KEEP_ALIVE_INTERVAL_MS+5000) this.unexpectedDisconnect ('lost')
             else this.send ('?,,') // if its all good, send a keep alive request
-        }, refreshInterval * 1000)
+        }, KEEP_ALIVE_INTERVAL_MS)
     }
+    protected async reconnectLoop () {
+        this.cancelledReconnect = false
+        try {
+            while (true) {
+                const {delay, cancel} = Utils.delayCancellable (5000)
+                this.cancelReconnect = cancel
+                
+                await delay
+                try {
+                    await this.connect ()
+                    this.cancelReconnect = null
+                } catch (error) {
+                    this.log (`error in reconnecting: ${error}, reconnecting...`, MessageLogLevel.info)
+                }
+            }
+        } catch {
 
-    reconnectLoop = async () => {
-        // attempt reconnecting if the user wants us to
-        this.log('network is down, reconnecting...', MessageLogLevel.info)
-        return this.connectSlim(null, 25*1000).catch(this.reconnectLoop)
+        }
+    }
+    /**
+     * Check if your phone is connected
+     * @param timeoutMs max time for the phone to respond
+     */
+    async checkPhoneConnection(timeoutMs = 5000) {
+        try {
+            const response = await this.query({json: ['admin', 'test'], timeoutMs})
+            return response[1] as boolean
+        } catch (error) {
+            return false
+        }
     }
 }

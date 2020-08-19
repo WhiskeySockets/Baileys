@@ -2,7 +2,7 @@
  
  Baileys does not require Selenium or any other browser to be interface with WhatsApp Web, it does so directly using a **WebSocket**. Not running Selenium or Chromimum saves you like **half a gig** of ram :/ 
 
- Thank you to [@Sigalor](https://github.com/sigalor/whatsapp-web-reveng) for writing the guide to reverse engineering WhatsApp Web and thanks to [@Rhymen](https://github.com/Rhymen/go-whatsapp/) for the __go__ implementation.
+ Thank you to [@Sigalor](https://github.com/sigalor/whatsapp-web-reveng) for writing his observations on the workings of WhatsApp Web and thanks to [@Rhymen](https://github.com/Rhymen/go-whatsapp/) for the __go__ implementation.
 
  Baileys is type-safe, extensible and simple to use. If you require more functionality than provided, it'll super easy for you to write an extension. More on this [here](#WritingCustomFunctionality).
  
@@ -21,7 +21,9 @@ To run the example script, download or clone the repo and then type the followin
 ## Install
 Create and cd to your NPM project directory and then in terminal, write: 
 1. stable: `npm install @adiwajshing/baileys`
-2. stabl-ish w quicker fixes & latest features: `npm install github:adiwajshing/baileys` (major changes incoming right now)
+2. stabl-ish w quicker fixes & latest features: `npm install github:adiwajshing/baileys` 
+
+Do note, the library will most likely vary if you're using the NPM package, read that [here](https://www.npmjs.com/package/@adiwajshing/baileys)
 
 Then import in your code using:
 ``` ts 
@@ -40,16 +42,14 @@ import { WAConnection } from '@adiwajshing/baileys'
 
 async function connectToWhatsApp () {
     const conn = new WAConnection() 
-    const [user, chats, contacts] = await conn.connect ()
-    console.log ("oh hello " + user.name + " (" + user.id + ")")
-    console.log ("you have " + chats.length + " chats")
-
+    
+    // 20 second timeout
+    await conn.connect (20*1000)
+    console.log ("oh hello " + conn.user.name + " (" + conn.user.id + ")")
     // every chat object has a list of most recent messages
-    // can use that to retreive all your pending unread messages
-    // the 'count' property a chat object reflects the number of unread messages 
-    // the 'count' property is -1 if the entire thread has been marked unread
-    const unread = chats.all().flatMap (chat => chat.messages.slice(chat.messages.length-chat.count))
+    console.log ("you have " + conn.chats.all().length + " chats")
 
+    const unread = await conn.loadAllUnreadMessages ()
     console.log ("you have " + unread.length + " unread messages")
 }
 
@@ -59,23 +59,10 @@ connectToWhatsApp ()
 ``` 
 
 If the connection is successful, you will see a QR code printed on your terminal screen, scan it with WhatsApp on your phone and you'll be logged in!
+
 If you don't want to wait for WhatsApp to send all your chats while connecting, you can use the following function:
 ``` ts
-import { WAConnection } from '@adiwajshing/baileys'
-
-async function connectToWhatsApp () {
-    const conn = new WAConnection() 
-    const user = await conn.connectSlim ()
-    console.log ("oh hello " + user.name + " (" + user.id + ")")
-
-    conn.receiveChatsAndContacts () // wait for chats & contacts in the background
-    .then (([chats, contacts]) => {
-        console.log ("you have " + chats.all().length + " chats and " + contacts.length + " contacts")
-    })
-}
-// run in main file
-connectToWhatsApp ()
-.catch (err => console.log("unexpected error: " + err) ) // catch any errors
+await conn.connect (20*1000, false)
 ``` 
 
 Do note, the `chats` object returned is now a [KeyedDB](https://github.com/adiwajshing/keyed-db). This is done for the following reasons:
@@ -87,100 +74,94 @@ Do note, the `chats` object returned is now a [KeyedDB](https://github.com/adiwa
 
 You obviously don't want to keep scanning the QR code every time you want to connect. 
 
-So, do the following the first time you connect:
+So, do the following every time you open a new connection:
 ``` ts
 import * as fs from 'fs'
 
 const conn = new WAConnection() 
-conn.connectSlim() // connect first
-.then (user => {
-    const creds = conn.base64EncodedAuthInfo () // contains all the keys you need to restore a session
-    fs.writeFileSync('./auth_info.json', JSON.stringify(creds, null, '\t')) // save JSON to file
-})
+await conn.connect() // connect first
+const creds = conn.base64EncodedAuthInfo () // contains all the keys you need to restore a session
+fs.writeFileSync('./auth_info.json', JSON.stringify(creds, null, '\t')) // save JSON to file
 ```
 
 Then, to restore a session:
 ``` ts
 const conn = new WAConnection() 
-conn.connectSlim('./auth_info.json') // will load JSON credentials from file
-.then (user => {
-    // yay connected without scanning QR
-})
-
+conn.loadAuthInfo ('./auth_info.json') // will load JSON credentials from file
+await conn.connect() 
+// yay connected without scanning QR
 /*
     Optionally, you can load the credentials yourself from somewhere 
-    & pass in the JSON object to connectSlim () as well.
+    & pass in the JSON object to loadAuthInfo () as well.
 */
 ```
 
 If you're considering switching from a Chromium/Puppeteer based library, you can use WhatsApp Web's Browser credentials to restore sessions too:
 ``` ts
-conn.loadAuthInfoFromBrowser ('./auth_info_browser.json')
-conn.connectSlim(null, 20*1000) // use loaded credentials & timeout in 20s
-.then (user => {
-    // yay! connected using browser keys & without scanning QR
-})
+conn.loadAuthInfo ('./auth_info_browser.json') // use loaded credentials & timeout in 20s
+await conn.connect() // works the same
 ```
-See the browser credentials type [here](/src/WAConnection/Constants.ts).
+See the browser credentials type in the docs.
 
 ## QR Overriding
 
 If you want to do some custom processing with the QR code used to authenticate, you can override the following method:
 ``` ts
-conn.onReadyForPhoneAuthentication = ([ref, publicKey, clientID]) => {
-    const str = ref + ',' + publicKey + ',' + clientID // the QR string
-    // Now, use 'str' to display in QR UI or send somewhere
+conn.on('qr', qr => {
+    // Now, use the 'qr' string to display in QR UI or send somewhere
 }
-const user = await conn.connect ()
+await conn.connect ()
 ```
 
-If you need to regenerate the QR, you can also do so using:
+The QR will auto-regenerate and will fire a new `qr` event after 30 seconds, if you don't want to regenerate or want to change the re-gen interval:
 ``` ts
-let generateQR: async () => void // call generateQR on some timeout or error
-conn.onReadyForPhoneAuthentication = ([ref, publicKey, clientID]) => {
-    generateQR = async () => {
-        ref = await conn.generateNewQRCode () // returns a new ref code to use for QR generation
-        const str = ref + ',' + publicKey + ',' + clientID // the QR string
-        // re-print str as QR or update in UI or send somewhere
-        //QR.generate(str, { small: true })
-    }
-}
-const user = await conn.connect ()
+conn.regenerateQRIntervalMs = null // no QR regen
+conn.regenerateQRIntervalMs = 20000 // QR regen every 20 seconds
 ```
+
 ## Handling Events
 
-Implement the following callbacks in your code:
+Baileys now uses the EventEmitter syntax for events. 
+They're all nicely typed up, so you shouldn't have any issues with an Intellisense editor like VS Code.
 
-- Called when you have a pending unread message or recieve a new message
-    ``` ts 
-    import { getNotificationType } from '@adiwajshing/baileys'
-    // set first param to `true` if you want to receive outgoing messages that may be sent from your phone
-    conn.setOnUnreadMessage (false, (m: WAMessage) => {
-        // get what type of notification it is -- message, group add notification etc.
-        const [notificationType, messageType] = getNotificationType(m)
+``` ts
 
-        console.log("got notification of type: " + notificationType) // message, groupAdd, groupLeave
-        console.log("message type: " + messageType) // conversation, imageMessage, videoMessage, contactMessage etc.
-    })
-    ```
-- Called when you recieve an update on someone's presence, they went offline or online
-    ``` ts 
-    conn.setOnPresenceUpdate ((json: PresenceUpdate) => console.log(json.id + " presence is " + json.type))
-    ```
-- Called when your message gets delivered or read
-    ``` ts 
-    conn.setOnMessageStatusChange ((json: MessageStatusUpdate) => {
-        let sent = json.to
-        if (json.participant) // participant exists when the message is from a group
-            sent += " ("+json.participant+")" // mention as the one sent to
-        // log that they acknowledged the message
-        console.log(sent + " acknowledged message(s) " + json.ids + " as " + json.type + " at " + json.timestamp)
-    })
-    ```
-- Called when the connection gets disconnected (either the server loses internet, the phone gets unpaired, or the connection is taken over from somewhere)
-    ``` ts 
-    conn.setOnUnexpectedDisconnect (reason => console.log ("disconnected unexpectedly: " + reason) )
-    ```
+/** when the connection has opened successfully */
+on (event: 'open', listener: () => void): this
+/** when the connection is opening */
+on (event: 'connecting', listener: () => void): this
+/** when the connection has closed */
+on (event: 'closed', listener: (err: {reason?: string, isReconnecting: boolean}) => void): this
+/** when a new QR is generated, ready for scanning */
+on (event: 'qr', listener: (qr: string) => void): this
+/** when the connection to the phone changes */
+on (event: 'connection-phone-change', listener: (state: {connected: boolean}) => void): this
+/** when a user's presence is updated */
+on (event: 'user-presence-update', listener: (update: PresenceUpdate) => void): this
+/** when a user's status is updated */
+on (event: 'user-status-update', listener: (update: {jid: string, status?: string}) => void): this
+/** when a new chat is added */
+on (event: 'chat-new', listener: (chat: WAChat) => void): this
+/** when a chat is updated (archived, deleted, pinned, read, unread, name changed) */
+on (event: 'chat-update', listener: (chat: Partial<WAChat> & { jid: string }) => void): this
+/** when a new message is relayed */
+on (event: 'message-new', listener: (message: WAMessage) => void): this
+/** when a message is updated (deleted, delivered, read) */
+on (event: 'message-update', listener: (message: WAMessage) => void): this
+/** when participants are added to a group */
+on (event: 'group-participants-add', listener: (update: {jid: string, participants: string[], actor?: string}) => void): this
+/** when participants are removed or leave from a group */
+on (event: 'group-participants-remove', listener: (update: {jid: string, participants: string[], actor?: string}) => void): this
+/** when participants are promoted in a group */
+on (event: 'group-participants-promote', listener: (update: {jid: string, participants: string[], actor?: string}) => void): this
+/** when participants are demoted in a group */
+on (event: 'group-participants-demote', listener: (update: {jid: string, participants: string[], actor?: string}) => void): this
+/** when the group settings is updated */
+on (event: 'group-settings-update', listener: (update: {jid: string, restrict?: string, announce?: string, actor?: string}) => void): this
+/** when the group description is updated */
+on (event: 'group-description-update', listener: (update: {jid: string, description?: string, actor?: string}) => void): this
+```
+
 ## Sending Messages
 
 Send like, all types of messages with a single function:
@@ -191,7 +172,7 @@ const id = 'abcd@s.whatsapp.net' // the WhatsApp ID
 // send a simple text!
 conn.sendMessage (id, 'oh hello there', MessageType.text)
 // send a location!
-conn.sendMessage(id, {degreeslatitude: 24.121231, degreesLongitude: 55.1121221}, MessageType.location)
+conn.sendMessage(id, {degreesLatitude: 24.121231, degreesLongitude: 55.1121221}, MessageType.location)
 // send a contact!
 const vcard = 'BEGIN:VCARD\n' // metadata of the contact card
             + 'VERSION:3.0\n' 
@@ -205,11 +186,10 @@ const buffer = fs.readFileSync("Media/ma_gif.mp4") // load some gif
 const options: MessageOptions = {mimetype: Mimetype.gif, caption: "hello!"} // some metadata & caption
 conn.sendMessage(id, buffer, MessageType.video, options)
 ```
+
 To note:
 - `id` is the WhatsApp ID of the person or group you're sending the message to. 
     - It must be in the format ```[country code][phone number]@s.whatsapp.net```, for example ```+19999999999@s.whatsapp.net``` for people. For groups, it must be in the format ``` 123456789-123345@g.us ```. 
-    - **Do not attach** `@c.us` for individual people IDs, It won't work.
-    - Please do not explicitly disable ID validation (in `MessageOptions`) because then your messages may fail for no apparent reason.
 - For media messages, the thumbnail can be generated automatically for images & stickers. Thumbnails for videos can also be generated automatically, though, you need to have `ffmpeg` installed on your system.
 - **MessageOptions**: some extra info about the message. It can have the following __optional__ values:
     ``` ts
@@ -218,7 +198,6 @@ To note:
         contextInfo: { forwardingScore: 2, isForwarded: true }, // some random context info 
         // (can show a forwarded message with this too)
         timestamp: Date(), // optional, if you want to manually set the timestamp of the message
-        validateID: true, // if you want to validate the ID before sending the message, true by default
         caption: "hello there!", // (for media messages) the caption to send with the media (cannot be sent with stickers though)
         thumbnail: "23GD#4/==", /*  (for location & media messages) has to be a base 64 encoded JPEG if you want to send a custom thumb, 
                                     or set to null if you don't want to send a thumbnail.
@@ -239,45 +218,44 @@ await conn.forwardMessage ('455@s.whatsapp.net', message) // WA forward the mess
 ```
 
 ## Reading Messages
+
 ``` ts 
 const id = '1234-123@g.us'
 const messageID = 'AHASHH123123AHGA' // id of the message you want to read
 
-await conn.sendReadReceipt(id, messageID) // mark as read
 await conn.sendReadReceipt (id) // mark all messages in chat as read
+await conn.sendReadReceipt(id, messageID, 1) // mark the mentioned message as read
 
-await conn.sendReadReceipt(id, null, 'unread') // mark the chat as unread
+await conn.sendReadReceipt(id, null, -2) // mark the chat as unread
 ```
 
-- `id` is in the same format as mentioned earlier. 
-- The message ID is the unique identifier of the message that you are marking as read. 
-- On a `WAMessage`, the `messageID` can be accessed using ```messageID = message.key.id```.
+The message ID is the unique identifier of the message that you are marking as read. On a `WAMessage`, the `messageID` can be accessed using ```messageID = message.key.id```.
 
 ## Update Presence
 
 ``` ts
 import { Presence } from '@adiwajshing/baileys'
+await conn.updatePresence(id, Presence.available) 
 
-conn.updatePresence(id, Presence.available) 
 ```
 This lets the person/group with ``` id ``` know whether you're online, offline, typing etc. where ``` presence ``` can be one of the following:
 ``` ts
 export enum Presence {
     available = 'available', // "online"
-    unavailable = 'unavailable', // "offline"
     composing = 'composing', // "typing..."
     recording = 'recording', // "recording..."
-    paused = 'paused', // I have no clue
 }
 ```
 
-## Downloading Media
+The presence expires after about 10 seconds.
+
+## Downloading Media Messages
+
 If you want to save the media you received
 ``` ts
-import { MessageType, extensionForMediaMessage } from '@adiwajshing/baileys'
-conn.setOnUnreadMessage (false, async m => {
+import { MessageType } from '@adiwajshing/baileys'
+conn.on ('message-new', async m => {
     if (!m.message) return // if there is no text or media message
-
     const messageType = Object.keys (m.message)[0]// get what type of message it is -- text, image, video
     // if the message is not a text message
     if (messageType !== MessageType.text && messageType !== MessageType.extendedText) {
@@ -322,6 +300,13 @@ await conn.deleteChat (jid) // will delete the chat (can be a group or broadcast
 
 ## Misc
 
+- To load chats in a paginated manner
+    ``` ts
+    const {chats, cursor} = await conn.loadChats (25)
+    if (cursor) {
+        const moreChats = await conn.loadChats (25, cursor) // load the next 25 chats
+    }
+    ```
 - To check if a given ID is on WhatsApp
     ``` ts
     const id = 'xyz@s.whatsapp.net'
@@ -331,12 +316,12 @@ await conn.deleteChat (jid) // will delete the chat (can be a group or broadcast
 - To query chat history on a group or with someone
     ``` ts
     // query the last 25 messages (replace 25 with the number of messages you want to query)
-    const messages = await conn.loadConversation ("xyz-abc@g.us", 25)
+    const messages = await conn.loadMessages ("xyz-abc@g.us", 25)
     console.log("got back " + messages.length + " messages")
     ```
     You can also load the entire conversation history if you want
     ``` ts
-    await conn.loadEntireConversation ("xyz@c.us", message => console.log("Loaded message with ID: " + message.key.id))
+    await conn.loadAllMessages ("xyz@c.us", message => console.log("Loaded message with ID: " + message.key.id))
     console.log("queried all messages") // promise resolves once all messages are retreived
     ```
 - To get the status of some person
@@ -353,12 +338,12 @@ await conn.deleteChat (jid) // will delete the chat (can be a group or broadcast
     ``` ts
     const jid = '111234567890-1594482450@g.us' // can be your own too
     const img = fs.readFileSync ('new-profile-picture.jpeg') // can be PNG also
-    await conn.updateProfilePicture (jid, newPP)
+    await conn.updateProfilePicture (jid, img)
     ```
 - To get someone's presence (if they're typing, online)
     ``` ts
     // the presence update is fetched and called here
-    conn.setOnPresenceUpdate (json => console.log(json.id + " presence is " + json.type))
+    conn.on ('user-presence-update', json => console.log(json.id + " presence is " + json.type))
     await conn.requestPresenceUpdate ("xyz@c.us") // request the update
     ```
 - To search through messages
@@ -369,7 +354,6 @@ await conn.deleteChat (jid) // will delete the chat (can be a group or broadcast
     const response2 = await conn.searchMessages ('so cool', '1234@c.us', 25, 1) // search in given chat
     ```
 Of course, replace ``` xyz ``` with an actual ID. 
-Append ``` @s.whatsapp.net ``` for individuals & ``` @g.us ``` for groups.
 
 ## Groups
 - To create a group
@@ -472,7 +456,7 @@ This will enable you to see all sorts of messages WhatsApp sends in the console.
     ``` ts
     conn.registerCallback (["Conn", "pushname"], json => {
         const pushname = json[1].pushname
-        conn.userMetaData.name = pushname // update on client too
+        conn.user.name = pushname // update on client too
         console.log ("Name updated: " + pushname)
     })
     ```
@@ -483,4 +467,4 @@ A little more testing will reveal that almost all WhatsApp messages are in the f
 Note: except for the first parameter (in the above cases, ```"action"``` or ```"Conn"```), all the other parameters are optional.
 
 ### Note
- This library is in no way affiliated with WhatsApp. Use at your own discretion. Do not spam people with this.
+ This library was originally a project for **CS-2362 at Ashoka University** and is in no way affiliated with WhatsApp. Use at your own discretion. Do not spam people with this.
