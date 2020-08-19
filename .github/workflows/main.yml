@@ -2,22 +2,21 @@ name: CI
 
 on: ["push"]
 jobs:
-  Test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Commit
-        uses: actions/checkout@v2
-        
-      - name: Setup Node.js environment
-        uses: actions/setup-node@v2.1.1
-        
-      - name: Install Dependencies
-        run: npm install
-        
-      - name: Run Tests
-        run: npm run test
+#  Test:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout Commit
+#        uses: actions/checkout@v2
+#        
+#      - name: Setup Node.js environment
+#        uses: actions/setup-node@v2.1.1
+#        
+#      - name: Install Dependencies
+#        run: npm install
+#        
+#      - name: Run Tests
+#        run: npm run test
   Build:
-    needs: Test
     runs-on: ubuntu-latest
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
