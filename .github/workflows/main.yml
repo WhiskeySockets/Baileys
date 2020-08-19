@@ -2,6 +2,21 @@ name: CI
 
 on: ["push"]
 jobs:
+
+#  Test:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout Commit
+#        uses: actions/checkout@v2
+#        
+#      - name: Setup Node.js environment
+#        uses: actions/setup-node@v2.1.1
+#        
+#      - name: Install Dependencies
+#        run: npm install
+#        
+#      - name: Run Tests
+#        run: npm run test
   Build:
     runs-on: ubuntu-latest
     # Steps represent a sequence of tasks that will be executed as part of the job
@@ -24,6 +39,16 @@ jobs:
 
     - name: Build
       run: npm run build:all
+      
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v2.1.4
+      with:
+        name: baileysBuilt
+        path: |
+          docs/**/*
+          lib/**/*
+          package.json
+
       
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v2.1.4
