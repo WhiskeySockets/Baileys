@@ -254,7 +254,7 @@ export class WAConnection extends EventEmitter {
         this.msgCount += 1 // increment message count, it makes the 'epoch' field when sending binary messages
         return this.conn.send(m)
     }
-    protected async waitForConnection (waitForOpen: boolean) {
+    protected async waitForConnection (waitForOpen: boolean=true) {
         if (!waitForOpen || this.state === 'open') return
 
         const timeout = this.pendingRequestTimeoutMs 
@@ -298,6 +298,7 @@ export class WAConnection extends EventEmitter {
 
         Object.keys(this.callbacks).forEach(key => {
             if (!key.includes('function:')) {
+                this.log (`cancelling message wait: ${key}`, MessageLogLevel.info)
                 this.callbacks[key].errCallback(new Error('closed'))
                 delete this.callbacks[key]
             }

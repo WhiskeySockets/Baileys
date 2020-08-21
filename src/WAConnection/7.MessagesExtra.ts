@@ -227,7 +227,7 @@ export class WAConnection extends Base {
                 type: WAMessageProto.ProtocolMessage.PROTOCOL_MESSAGE_TYPE.REVOKE
             }
         }
-        const waMessage = this.generateWAMessage (id, json, {})
+        const waMessage = this.prepareMessageFromContent (id, json, {})
         await this.relayWAMessage (waMessage)
         return waMessage
     }
@@ -254,7 +254,7 @@ export class WAConnection extends Base {
         if (score > 0) content[key].contextInfo = { forwardingScore: score, isForwarded: true }
         else content[key].contextInfo = {}
         
-        const waMessage = this.generateWAMessage (id, content, {}) 
+        const waMessage = this.prepareMessageFromContent (id, content, {}) 
         await this.relayWAMessage (waMessage)
         return waMessage
     }

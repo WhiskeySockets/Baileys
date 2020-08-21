@@ -129,6 +129,10 @@ export class WAConnection extends Base {
                         chat.t = +chat.t
                         chat.count = +chat.count
                         chat.messages = []
+                        
+                        const oldChat = this.chats.get(chat.jid) 
+                        oldChat && this.chats.delete (oldChat)
+
                         this.chats.insert (chat) // chats data (log json to see what it looks like)
                     })
                     

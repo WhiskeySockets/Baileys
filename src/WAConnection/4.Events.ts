@@ -129,7 +129,7 @@ export class WAConnection extends Base {
             if (!chat) return
             
             this.emit ('message-update', update) 
-            this.chatUpdatedMessage (update.ids, update.type, chat)
+            this.chatUpdatedMessage (update.ids, update.type as number, chat)
         }
         this.registerCallback('Msg', func)
         this.registerCallback('MsgInfo', func)
@@ -194,7 +194,7 @@ export class WAConnection extends Base {
                             to: message.key.remoteJid,
                             ids: [message.key.id],
                             timestamp: new Date(),
-                            type: -1
+                            type: 'delete'
                         }
                         this.emit ('message-update', update)
                     }

@@ -39,6 +39,16 @@ export class WAConnection extends Base {
         type: MessageType,
         options: MessageOptions = {},
     ) {
+        const content = await this.prepareMessageContent (
+            message,
+            type,
+            options
+        )
+        const preparedMessage = this.prepareMessageFromContent(id, content, options)
+        return preparedMessage
+    }
+    /** Prepares the message content */
+    async prepareMessageContent (message: string | WATextMessage | WALocationMessage | WAContactMessage | Buffer, type: MessageType, options: MessageOptions) {
         let m: WAMessageContent = {}
         switch (type) {
             case MessageType.text:
@@ -59,13 +69,13 @@ export class WAConnection extends Base {
                 m.contactMessage = message as WAContactMessage
                 break
             default:
-                m = await this.prepareMediaMessage(message as Buffer, type, options)
+                m = await this.prepareMessageMedia(message as Buffer, type, options)
                 break
         }
-        return this.generateWAMessage(id, m, options)
+        return m
     }
     /** Prepare a media message for sending */
-    async prepareMediaMessage(buffer: Buffer, mediaType: MessageType, options: MessageOptions = {}) {
+    async prepareMessageMedia(buffer: Buffer, mediaType: MessageType, options: MessageOptions = {}) {
         if (mediaType === MessageType.document && !options.mimetype) {
             throw new Error('mimetype required to send a document')
         }
@@ -126,8 +136,8 @@ export class WAConnection extends Base {
         }
         return message as WAMessageContent
     }
-    /** generates a WAMessage from the given content & options */
-    generateWAMessage(id: string, message: WAMessageContent, options: MessageOptions) {
+    /** prepares a WAMessage for sending from the given content & options */
+    prepareMessageFromContent(id: string, message: WAMessageContent, options: MessageOptions) {
         if (!options.timestamp) options.timestamp = new Date() // set timestamp to now
         
         // prevent an annoying bug (WA doesn't accept sending messages with '@c.us')

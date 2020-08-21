@@ -1,4 +1,4 @@
-import { MessageType, Mimetype, delay, promiseTimeout, WAMessage, WA_MESSAGE_STATUS_TYPE } from '../WAConnection/WAConnection'
+import { MessageType, Mimetype, delay, promiseTimeout, WAMessage, WA_MESSAGE_STATUS_TYPE, MessageStatusUpdate } from '../WAConnection/WAConnection'
 import {promises as fs} from 'fs'
 import * as assert from 'assert'
 import { WAConnectionTest, testJid, sendAndRetreiveMessage } from './Common'
@@ -70,14 +70,14 @@ WAConnectionTest('Message Events', (conn) => {
     it('should deliver a message', async () => {
         const waitForUpdate = 
             promiseTimeout(15000, resolve => {
-                conn.on('message-update', message => {
-                    if (message.key.id === response.key.id) {
-                        resolve(message)
+                conn.on('message-update', update => {
+                    if (update.ids.includes(response.key.id)) {
+                        resolve(update)
                     }
                 })
-            }) as Promise<WAMessage>
+            }) as Promise<MessageStatusUpdate>
         const response = await conn.sendMessage(testJid, 'My Name Jeff', MessageType.text)
         const m = await waitForUpdate
-        assert.ok (m.status >= WA_MESSAGE_STATUS_TYPE.DELIVERY_ACK)
+        assert.ok (m.type >= WA_MESSAGE_STATUS_TYPE.DELIVERY_ACK)
     })
 })

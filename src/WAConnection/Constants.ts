@@ -189,12 +189,6 @@ export enum Presence {
     recording = 'recording', // "recording..."
     paused = 'paused', // I have no clue
 }
-/** Status of a message sent or received */
-export enum MessageStatus {
-    sent = 'sent',
-    received = 'received',
-    read = 'read',
-}
 /** Set of message types that are supported by the library */
 export enum MessageType {
     text = 'conversation',
@@ -274,7 +268,7 @@ export interface MessageStatusUpdate {
     /** Message IDs read/delivered */
     ids: string[]
     /** Status of the Message IDs */
-    type: WA_MESSAGE_STATUS_TYPE
+    type: WA_MESSAGE_STATUS_TYPE | 'delete'
 }
 export enum GroupSettingChange {
     messageSend = 'announcement',
