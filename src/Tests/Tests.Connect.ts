@@ -1,8 +1,7 @@
 import * as assert from 'assert'
 import {WAConnection} from '../WAConnection/WAConnection'
-import { AuthenticationCredentialsBase64, BaileysError, MessageLogLevel, ReconnectMode } from '../WAConnection/Constants'
-import { delay, promiseTimeout } from '../WAConnection/Utils'
-import { close } from 'fs'
+import { AuthenticationCredentialsBase64, BaileysError, ReconnectMode } from '../WAConnection/Constants'
+import { delay } from '../WAConnection/Utils'
 
 describe('QR Generation', () => {
     it('should generate QR', async () => {
@@ -13,7 +12,7 @@ describe('QR Generation', () => {
         conn.removeAllListeners ('qr')
         conn.on ('qr', qr => calledQR += 1)
         
-        await conn.connect(15000)
+        await conn.connect({ timeoutMs: 15000 })
             .then (() => assert.fail('should not have succeeded'))
             .catch (error => {
                 assert.equal (error.message, 'timed out')
@@ -42,7 +41,7 @@ describe('Test Connect', () => {
         const conn = new WAConnection()
         await conn
         .loadAuthInfo (auth)
-        .connect (20*1000)
+        .connect ({timeoutMs: 20*1000})
         .then (conn => {
             assert.ok(conn.user)
             assert.ok(conn.user.id)
@@ -96,7 +95,7 @@ describe ('Reconnects', () => {
             conn.close ()
         }
     })
-    it ('should reconnect connection', async () => {
+    it ('should reconnect on broken connection', async () => {
         const conn = new WAConnection ()
         conn.autoReconnect = ReconnectMode.onConnectionLost
 
@@ -108,7 +107,7 @@ describe ('Reconnects', () => {
             
             const task = new Promise (resolve => {
                 let closes = 0
-                conn.on ('closed', ({reason, isReconnecting}) => {
+                conn.on ('close', ({reason, isReconnecting}) => {
                     console.log (`closed: ${reason}`)
                     assert.ok (reason)
                     assert.ok (isReconnecting)
@@ -116,14 +115,14 @@ describe ('Reconnects', () => {
                     
                     // let it fail reconnect a few times
                     if (closes > 4) {
-                        conn.removeAllListeners ('closed')
+                        conn.removeAllListeners ('close')
                         conn.removeAllListeners ('connecting')
                         resolve ()
                     }
                 })
                 conn.on ('connecting', () => {
                     // close again
-                    delay (500).then (closeConn)   
+                    delay (3500).then (closeConn)   
                 })
             })
 
@@ -143,7 +142,7 @@ describe ('Reconnects', () => {
             await delay (2000)
         } finally {
             conn.removeAllListeners ('connecting')
-            conn.removeAllListeners ('closed')
+            conn.removeAllListeners ('close')
             conn.removeAllListeners ('open')
             conn.close ()
         }

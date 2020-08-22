@@ -44,7 +44,7 @@ async function connectToWhatsApp () {
     const conn = new WAConnection() 
     
     // 20 second timeout
-    await conn.connect (20*1000)
+    await conn.connect ({timeoutMs: 30*1000})
     console.log ("oh hello " + conn.user.name + " (" + conn.user.id + ")")
     // every chat object has a list of most recent messages
     console.log ("you have " + conn.chats.all().length + " chats")
@@ -62,7 +62,7 @@ If the connection is successful, you will see a QR code printed on your terminal
 
 If you don't want to wait for WhatsApp to send all your chats while connecting, you can use the following function:
 ``` ts
-await conn.connect (20*1000, false)
+await conn.connect ({timeoutMs: 30*1000}, false)
 ``` 
 
 Do note, the `chats` object returned is now a [KeyedDB](https://github.com/adiwajshing/keyed-db). This is done for the following reasons:
@@ -133,7 +133,7 @@ on (event: 'open', listener: () => void): this
 /** when the connection is opening */
 on (event: 'connecting', listener: () => void): this
 /** when the connection has closed */
-on (event: 'closed', listener: (err: {reason?: string, isReconnecting: boolean}) => void): this
+on (event: 'close', listener: (err: {reason?: string, isReconnecting: boolean}) => void): this
 /** when a new QR is generated, ready for scanning */
 on (event: 'qr', listener: (qr: string) => void): this
 /** when the connection to the phone changes */

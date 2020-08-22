@@ -35,7 +35,7 @@ export class WAConnection extends EventEmitter {
     /** Should requests be queued when the connection breaks in between; if false, then an error will be thrown */
     pendingRequestTimeoutMs: number = null
     /** The connection state */
-    state: WAConnectionState = 'closed'
+    state: WAConnectionState = 'close'
     /** New QR generation interval, set to null if you don't want to regenerate */
     regenerateQRIntervalMs = 30*1000
 
@@ -73,7 +73,10 @@ export class WAConnection extends EventEmitter {
         this.registerCallback (['Cmd', 'type:disconnect'], json => this.unexpectedDisconnect(json[1].kind))
     }
     async unexpectedDisconnect (error?: DisconnectReason) {
-        const willReconnect = this.autoReconnect === ReconnectMode.onAllErrors || (this.autoReconnect === ReconnectMode.onConnectionLost && (error !== 'replaced'))
+        const willReconnect = 
+            (this.autoReconnect === ReconnectMode.onAllErrors || 
+            (this.autoReconnect === ReconnectMode.onConnectionLost && (error !== 'replaced'))) &&
+            error !== 'invalid_session'
         
         this.log (`got disconnected, reason ${error || 'unknown'}${willReconnect ? ', reconnecting in a few seconds...' : ''}`, MessageLogLevel.info)        
         this.closeInternal(error, willReconnect)
@@ -280,16 +283,15 @@ export class WAConnection extends EventEmitter {
         this.closeInternal ('intentional')
         
         this.cancelReconnect && this.cancelReconnect ()
-        this.cancelledReconnect = true
         
-        this.pendingRequests.forEach (({reject}) => reject(new Error('closed')))
+        this.pendingRequests.forEach (({reject}) => reject(new Error('close')))
         this.pendingRequests = []
     }
     protected closeInternal (reason?: DisconnectReason, isReconnecting: boolean=false) {
         this.qrTimeout && clearTimeout (this.qrTimeout)
         this.phoneCheck && clearTimeout (this.phoneCheck)
 
-        this.state = 'closed'
+        this.state = 'close'
         this.msgCount = 0
         this.conn?.removeAllListeners ('close')
         this.conn?.close()
@@ -299,13 +301,13 @@ export class WAConnection extends EventEmitter {
         Object.keys(this.callbacks).forEach(key => {
             if (!key.includes('function:')) {
                 this.log (`cancelling message wait: ${key}`, MessageLogLevel.info)
-                this.callbacks[key].errCallback(new Error('closed'))
+                this.callbacks[key].errCallback(new Error('close'))
                 delete this.callbacks[key]
             }
         })
         if (this.keepAliveReq) clearInterval(this.keepAliveReq)
         // reconnecting if the timeout is active for the reconnect loop
-        this.emit ('closed', { reason, isReconnecting: this.cancelReconnect || isReconnecting })
+        this.emit ('close', { reason, isReconnecting: this.cancelReconnect || isReconnecting})
     }
     protected async reconnectLoop () {
 

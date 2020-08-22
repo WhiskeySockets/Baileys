@@ -286,7 +286,7 @@ export class WAConnection extends Base {
     /** when the connection is opening */
     on (event: 'connecting', listener: () => void): this
     /** when the connection has closed */
-    on (event: 'closed', listener: (err: {reason?: string, isReconnecting: boolean}) => void): this
+    on (event: 'close', listener: (err: {reason?: string, isReconnecting: boolean}) => void): this
     /** when a new QR is generated, ready for scanning */
     on (event: 'qr', listener: (qr: string) => void): this
     /** when the connection to the phone changes */

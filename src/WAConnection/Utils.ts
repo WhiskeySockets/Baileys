@@ -5,9 +5,10 @@ import {promises as fs} from 'fs'
 import fetch from 'node-fetch'
 import { exec } from 'child_process'
 import {platform, release} from 'os'
+import WS from 'ws'
 
 import Decoder from '../Binary/Decoder'
-import { MessageType, HKDFInfoKeys, MessageOptions, WAChat, WAMessageType, WAMessage, WAMessageContent, BaileysError, WAMessageProto } from './Constants'
+import { MessageType, HKDFInfoKeys, MessageOptions, WAChat, WAMessageContent, BaileysError, WAMessageProto } from './Constants'
 
 const platformMap = {
     'aix': 'AIX',
@@ -18,7 +19,7 @@ const platformMap = {
 export const Browsers = {
     ubuntu: browser => ['Ubuntu', browser, '18.04'] as [string, string, string],
     macOS: browser => ['Mac OS', browser, '10.15.3'] as [string, string, string],
-    baileys: browser => ['Baileys', browser, '2.0'] as [string, string, string],
+    baileys: browser => ['Baileys', browser, '3.0'] as [string, string, string],
     /** The appropriate browser based on your OS & release */
     appropriate: browser => [ platformMap [platform()] || 'Ubuntu', browser, release() ] as [string, string, string]
 }
@@ -106,6 +107,42 @@ export async function promiseTimeout<T>(ms: number, promise: (resolve: (v?: T)=>
         cancel ()
     }
 }
+
+export const openWebSocketConnection = (timeoutMs: number, retryOnNetworkError: boolean) => {
+    const newWS = async () => {
+        const conn = new WS('wss://web.whatsapp.com/ws', null, { origin: 'https://web.whatsapp.com', timeout: timeoutMs })
+        await new Promise ((resolve, reject) => {
+            conn.on('open', () => {
+                conn.removeAllListeners ('error')
+                conn.removeAllListeners ('close')
+                conn.removeAllListeners ('open')
+
+                resolve ()
+            })
+            // if there was an error in the WebSocket
+            conn.on('error', reject)
+            conn.on('close', () => reject(new Error('close')))
+        })
+        return conn
+    } 
+    let cancelled = false
+    const connect = async () => {
+        while (!cancelled) {
+            try {
+                const ws = await newWS()
+                if (!cancelled) return ws
+                break
+            } catch (error) {
+                if (!retryOnNetworkError) throw error 
+                await delay (1000)
+            }
+        }
+        throw new Error ('cancelled')
+    }
+    const cancel = () => cancelled = true
+    return { ws: connect(), cancel }
+}
+
 // whatsapp requires a message tag for every message, we just use the timestamp as one
 export function generateMessageTag(epoch?: number) {
     let tag = unixTimestampSeconds().toString()
@@ -138,7 +175,6 @@ export function decryptWA (message: string | Buffer, macKey: Buffer, encKey: Buf
     let json
     let tags = null
     if (typeof data === 'string') {
-        // if the first character is a "[", then the data must just be plain JSON array or object
         json = JSON.parse(data) // parse the JSON
     } else {
         if (!macKey || !encKey) {
@@ -159,7 +195,12 @@ export function decryptWA (message: string | Buffer, macKey: Buffer, encKey: Buf
         const computedChecksum = hmacSign(data, macKey) // compute the sign of the message we recieved using our macKey
         
         if (!checksum.equals(computedChecksum)) {
-            throw new Error (`Checksums don't match:\nog: ${checksum.toString('hex')}\ncomputed: ${computedChecksum.toString('hex')}`)
+            throw new Error (`
+                Checksums don't match:
+                og: ${checksum.toString('hex')}
+                computed: ${computedChecksum.toString('hex')}
+                message: ${message.slice(0, 80).toString()}
+            `)
         }
         // the checksum the server sent, must match the one we computed for the message to be valid
         const decrypted = aesDecrypt(data, encKey) // decrypt using AES

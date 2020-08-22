@@ -39,9 +39,9 @@ export class WAConnection extends Base {
                         case 401: // if the phone was unpaired
                             throw new BaileysError ('unpaired from phone', json)
                         case 429: // request to login was denied, don't know why it happens
-                            throw new BaileysError ('request denied, try reconnecting', json)
+                            throw new BaileysError ('request denied', json)
                         default:
-                            throw new BaileysError ('unexpected status', json)
+                            throw new BaileysError ('unexpected status ' + json.status, json)
                     }
                 }
                 // if its a challenge request (we get it when logging in)
@@ -160,6 +160,7 @@ export class WAConnection extends Base {
             const qr = [ref, publicKey, this.authInfo.clientID].join(',')
             this.emit ('qr', qr)
         }
+
         const regenQR = () => {
             this.qrTimeout = setTimeout (() => {
                 if (this.state === 'open') return
@@ -173,9 +174,9 @@ export class WAConnection extends Base {
                 .catch (err => this.log (`error in QR gen: ${err}`, MessageLogLevel.info))
             }, this.regenerateQRIntervalMs)
         }
-        if (this.regenerateQRIntervalMs) {
-            regenQR ()
-        }
+
+        emitQR ()
+        if (this.regenerateQRIntervalMs) regenQR ()
 
         const json = await this.waitForMessage('s1', [])
         this.qrTimeout && clearTimeout (this.qrTimeout)

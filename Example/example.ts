@@ -6,7 +6,7 @@ import {
     Mimetype,
     WALocationMessage,
     MessageLogLevel,
-    WAMessageType,
+    WA_MESSAGE_STUB_TYPES,
     ReconnectMode,
 } from '../src/WAConnection/WAConnection'
 import * as fs from 'fs'
@@ -18,8 +18,9 @@ async function example() {
 
     // loads the auth file credentials if present
     if (fs.existsSync('./auth_info.json')) conn.loadAuthInfo ('./auth_info.json')
-    // connect or timeout in 20 seconds
-    await conn.connect(20 * 1000)
+    conn.on ('qr', qr => console.log (qr))
+    // connect or timeout in 30 seconds
+    await conn.connect({ timeoutMs: 30 * 1000 })
 
     const unread = await conn.loadAllUnreadMessages ()
     
@@ -38,7 +39,7 @@ async function example() {
     })
      // set to false to NOT relay your own sent messages
     conn.on('message-new', async (m) => {
-        const messageStubType = WAMessageType[m.messageStubType] ||  'MESSAGE'
+        const messageStubType = WA_MESSAGE_STUB_TYPES[m.messageStubType] ||  'MESSAGE'
         console.log('got notification of type: ' + messageStubType)
 
         const messageContent = m.message
@@ -117,7 +118,7 @@ async function example() {
         const batterylevel = parseInt(batteryLevelStr)
         console.log('battery level: ' + batterylevel)
     })
-    conn.on('closed', ({reason, isReconnecting}) => (
+    conn.on('close', ({reason, isReconnecting}) => (
         console.log ('oh no got disconnected: ' + reason + ', reconnecting: ' + isReconnecting)
     ))
 }

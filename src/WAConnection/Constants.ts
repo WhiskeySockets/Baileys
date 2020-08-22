@@ -21,7 +21,7 @@ export interface WALocationMessage {
     address?: string
 }
 /** Reverse stub type dictionary */
-export const WAMessageType = function () {
+export const WA_MESSAGE_STUB_TYPES = function () {
     const types = WA_MESSAGE_STUB_TYPE
     const dict: Record<number, string> = {}
     Object.keys(types).forEach(element => dict[ types[element] ] = element)
@@ -50,14 +50,22 @@ export interface WAQuery {
 export enum ReconnectMode {
     /** does not reconnect */
     off = 0,
-    /** reconnects only when the connection is 'lost' or 'closed' */
+    /** reconnects only when the connection is 'lost' or 'close' */
     onConnectionLost = 1,
     /** reconnects on all disconnects, including take overs */
     onAllErrors = 2
 }
+export type WAConnectOptions = {
+    /** timeout after which the connect will fail, set to null for an infinite timeout */
+    timeoutMs?: number
+    /** should the chats be waited for */
+    waitForChats?: boolean
+    /** retry on network errors while connecting */
+    retryOnNetworkErrors?: boolean
+}
 
-export type WAConnectionState = 'open' | 'connecting' | 'closed'
-export type DisconnectReason = 'closed' | 'lost' | 'replaced' | 'intentional'
+export type WAConnectionState = 'open' | 'connecting' | 'close'
+export type DisconnectReason = 'close' | 'lost' | 'replaced' | 'intentional' | 'invalid_session'
 export enum MessageLogLevel {
     none=0,
     info=1,
@@ -305,7 +313,7 @@ export interface WASendMessageResponse {
 export type BaileysEvent = 
     'open' | 
     'connecting' |
-    'closed' |
+    'close' |
     'qr' |
     'connection-phone-change' |
     'user-presence-update' |
