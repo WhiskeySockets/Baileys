@@ -94,7 +94,7 @@ export class WAConnection extends Base {
     async loadChats (count: number, before: number | null, searchString?: string) {
         let db = this.chats
         if (searchString) {
-            db = db.filter (value => value.title?.includes (searchString) || value.jid?.startsWith(searchString))
+            db = db.filter (value => value.name?.includes (searchString) || value.jid?.startsWith(searchString))
         }
         const chats = db.paginated (before, count)
         await Promise.all (

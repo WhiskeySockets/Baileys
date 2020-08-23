@@ -70,12 +70,11 @@ export class WAConnection extends Base {
      */
     groupUpdateSubject = async (jid: string, title: string) => {
         const chat = this.chats.get (jid)
-        if (chat?.title === title) throw new Error ('redundant change')
+        if (chat?.name === title) throw new Error ('redundant change')
+        
         const response = await this.groupQuery('subject', jid, title)
-        if (chat) {
-            chat.title = title
-            //this.emit ('chat-update', {jid, title})
-        }
+        if (chat) chat.name = title
+        
         return response
     }
         

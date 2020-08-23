@@ -35,8 +35,8 @@ export class WAConnection extends Base {
 
                 const chat = this.chats.get (user.jid)
                 if (chat) {
-                    chat.title = user.name || user.notify
-                    this.emit ('chat-update', { jid: chat.jid, title: chat.title })
+                    chat.name = user.name || user.notify
+                    this.emit ('chat-update', { jid: chat.jid, name: chat.name })
                 }
             }
         })
@@ -145,7 +145,7 @@ export class WAConnection extends Base {
         this.registerCallback('Presence', json => this.emit('user-presence-update', json[1] as PresenceUpdate))
     }
     /** inserts an empty chat into the DB */
-    protected async chatAdd (jid: string, title?: string) {
+    protected async chatAdd (jid: string, name?: string) {
         const chat: WAChat = {
             jid: jid,
             t: unixTimestampSeconds(),
@@ -153,7 +153,7 @@ export class WAConnection extends Base {
             count: 0,
             modify_tag: '',
             spam: 'false',
-            title
+            name
         }
         await this.setProfilePicture (chat)
         this.chats.insert (chat)
@@ -246,8 +246,8 @@ export class WAConnection extends Base {
                         this.emit ('group-description-update', { jid, actor })
                         break
                     case WA_MESSAGE_STUB_TYPE.GROUP_CHANGE_SUBJECT:
-                        chat.title = message.messageStubParameters[0]
-                        this.emit ('chat-update', { jid, title: chat.title })
+                        chat.name = message.messageStubParameters[0]
+                        this.emit ('chat-update', { jid, name: chat.name })
                         break 
                 }
             }
