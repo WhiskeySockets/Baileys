@@ -128,35 +128,37 @@ export class WAConnection extends Base {
     /**
      * Modify a given chat (archive, pin etc.)
      * @param jid the ID of the person/group you are modifiying
-     * @param options.stamp the timestamp of pinning/muting the chat. Is required when unpinning/unmuting 
+     * @param durationMs only for muting, how long to mute the chat for
      */
-    async modifyChat (jid: string, type: ChatModification, options: {stamp: Date | string} = {stamp: new Date()}) {
+    async modifyChat (jid: string, type: ChatModification, durationMs?: number) {
         jid = whatsappID (jid)
+        const chat = this.assertChatGet (jid)
+
         let chatAttrs: Record<string, string> = {jid: jid}
-        if ((type === ChatModification.unpin || type === ChatModification.unmute) && !options?.stamp) {
-            throw new Error('options.stamp must be set to the timestamp of the time of pinning/unpinning of the chat')
+        if (type === ChatModification.mute && !durationMs) {
+            throw new Error('duration must be set to the timestamp of the time of pinning/unpinning of the chat')
         }
-        const strStamp = options.stamp && 
-                        (typeof options.stamp === 'string' ? options.stamp : unixTimestampSeconds(options.stamp).toString ())
+
+        durationMs = durationMs || 0
         switch (type) {
             case ChatModification.pin:
             case ChatModification.mute:
+                const strStamp = (unixTimestampSeconds() + Math.floor(durationMs/1000)).toString()
                 chatAttrs.type = type
                 chatAttrs[type] = strStamp
                 break
             case ChatModification.unpin:
             case ChatModification.unmute:
                 chatAttrs.type = type.replace ('un', '') // replace 'unpin' with 'pin'
-                chatAttrs.previous = strStamp
+                chatAttrs.previous = chat[type.replace ('un', '')]
                 break
             default:
                 chatAttrs.type = type
                 break
         }
-        let response = await this.setQuery ([['chat', chatAttrs, null]]) as {status: number, stamp: string}
-        response.stamp = strStamp
 
-        const chat = this.chats.get (jid)
+        const response = await this.setQuery ([['chat', chatAttrs, null]])
+
         if (chat) {
             if (type.includes('un')) {
                 type = type.replace ('un', '') as ChatModification
@@ -167,6 +169,7 @@ export class WAConnection extends Base {
                 this.emit ('chat-update', { jid, [type]: chat[type] })
             }
         }
+
         return response
     }
 }

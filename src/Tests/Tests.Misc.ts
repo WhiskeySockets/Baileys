@@ -89,15 +89,24 @@ WAConnectionTest('Misc', (conn) => {
         await conn.modifyChat (testJid, ChatModification.unarchive)
     })
     it('should pin & unpin a chat', async () => {
-        const response = await conn.modifyChat (testJid, ChatModification.pin)
+        await conn.modifyChat (testJid, ChatModification.pin)
         await delay (2000)
-        await conn.modifyChat (testJid, ChatModification.unpin, {stamp: response.stamp})
+        await conn.modifyChat (testJid, ChatModification.unpin)
     })
     it('should mute & unmute a chat', async () => {
-        const mutedate = new Date (new Date().getTime() + 8*60*60*1000) // 8 hours in the future
-        await conn.modifyChat (testJid, ChatModification.mute, {stamp: mutedate})
+        const waitForEvent = new Promise (resolve => {
+            conn.on ('chat-update', ({jid, mute}) => {
+                if (jid === testJid ) {
+                    assert.ok (mute)
+                    conn.removeAllListeners ('chat-update')
+                    resolve ()
+                }
+            })
+        })
+        await conn.modifyChat (testJid, ChatModification.mute, 8*60*60*1000) // 8 hours in the future
+        await waitForEvent
         await delay (2000)
-        await conn.modifyChat (testJid, ChatModification.unmute, {stamp: mutedate})
+        await conn.modifyChat (testJid, ChatModification.unmute)
     })
     it('should return search results', async () => {
         const jids = [null, testJid]

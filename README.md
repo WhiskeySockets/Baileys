@@ -287,15 +287,14 @@ await conn.modifyChat (jid, ChatModification.archive) // archive chat
 await conn.modifyChat (jid, ChatModification.unarchive) // unarchive chat
 
 const response = await conn.modifyChat (jid, ChatModification.pin) // pin the chat
-await conn.modifyChat (jid, ChatModification.unpin, {stamp: response.stamp})
+await conn.modifyChat (jid, ChatModification.unpin) // unpin it
 
-const mutedate = new Date (new Date().getTime() + 8*60*60*1000) // mute for 8 hours in the future
-await conn.modifyChat (jid, ChatModification.mute, {stamp: mutedate}) // mute
+await conn.modifyChat (jid, ChatModification.mute, 8*60*60*1000) // mute for 8 hours
 setTimeout (() => {
-    conn.modifyChat (jid, ChatModification.unmute, {stamp: mutedate})
+    conn.modifyChat (jid, ChatModification.unmute)
 }, 5000) // unmute after 5 seconds
 
-await conn.deleteChat (jid) // will delete the chat (can be a group or broadcast list)
+await conn.deleteChat (jid) // will delete the chat (can be a group or broadcast list as well)
 ```
 
 **Note:** to unmute or unpin a chat, one must pass the timestamp of the pinning or muting. This is returned by the pin & mute functions. This is also available in the `WAChat` objects of the respective chats, as a `mute` or `pin` property.
