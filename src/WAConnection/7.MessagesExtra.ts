@@ -59,7 +59,7 @@ export class WAConnection extends Base {
         }
         const read = await this.setQuery ([['read', attributes, null]])
         if (chat) {
-            chat.count = count < 0 ? -1 : chat.count-count
+            chat.count = count > 0 ? Math.max(chat.count-count, 0) : -1
             this.emit ('chat-update', {jid, count: chat.count})
         }
         return read
