@@ -162,9 +162,11 @@ export class WAConnection extends Base {
             this.on ('close', rejectTask)
         }).finally (deregisterCallbacks)
         
-        this.chats.all ().forEach (chat => {
+        this.chats
+        .all ()
+        .forEach (chat => {
             const respectiveContact = this.contacts[chat.jid]
-            chat.title = respectiveContact?.name || respectiveContact?.notify
+            chat.name = respectiveContact?.name || respectiveContact?.notify || chat.name
         })
     }
     private releasePendingRequests () {

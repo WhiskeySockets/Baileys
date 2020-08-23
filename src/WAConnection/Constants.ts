@@ -143,10 +143,10 @@ export interface WAChat {
     pin?: string
     spam: 'false' | 'true'
     modify_tag: string
+    name?: string
     
     // Baileys added properties
     messages: WAMessage[]
-    title?: string
     imgUrl?: string
 }
 export enum WAMetric {
