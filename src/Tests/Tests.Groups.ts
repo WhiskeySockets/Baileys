@@ -61,9 +61,9 @@ WAConnectionTest('Groups', (conn) => {
     it('should update the subject', async () => {
         const subject = 'Baileyz ' + Math.floor(Math.random()*5)
         const waitForEvent = new Promise (resolve => {
-            conn.on ('chat-update', ({jid, title}) => {
+            conn.on ('chat-update', ({jid, name}) => {
                 if (jid === gid) {
-                    assert.equal (title, subject)
+                    assert.equal (name, subject)
                     resolve ()
                 }
             })
