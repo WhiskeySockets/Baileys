@@ -142,7 +142,7 @@ export class WAConnection extends Base {
     }
     /** Set the callback for presence updates; if someone goes offline/online, this callback will be fired */
     protected registerOnPresenceUpdate() {
-        this.registerCallback('Presence', json => this.emit('user-presence-update', json[1]))
+        this.registerCallback('Presence', json => this.emit('user-presence-update', json[1] as PresenceUpdate))
     }
     /** inserts an empty chat into the DB */
     protected async chatAdd (jid: string, title?: string) {
