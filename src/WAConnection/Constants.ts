@@ -62,10 +62,12 @@ export type WAConnectOptions = {
     waitForChats?: boolean
     /** retry on network errors while connecting */
     retryOnNetworkErrors?: boolean
+    /** use the 'reconnect' tag to reconnect instead of the 'takeover' tag */
+    reconnectID?: string
 }
 
 export type WAConnectionState = 'open' | 'connecting' | 'close'
-export type DisconnectReason = 'close' | 'lost' | 'replaced' | 'intentional' | 'invalid_session'
+export type DisconnectReason = 'close' | 'lost' | 'replaced' | 'intentional' | 'invalid_session' | 'unknown' | 'bad_session'
 export enum MessageLogLevel {
     none=0,
     info=1,

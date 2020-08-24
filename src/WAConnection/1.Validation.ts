@@ -6,7 +6,7 @@ import { MessageLogLevel, WAMetric, WAFlag, BaileysError, Presence } from './Con
 export class WAConnection extends Base {
     
     /** Authenticate the connection */
-    protected async authenticate() {
+    protected async authenticate (reconnect?: string) {
         // if no auth info is present, that is, a new session has to be established
         // generate a client ID
         if (!this.authInfo?.clientID) {
@@ -27,8 +27,9 @@ export class WAConnection extends Base {
                         this.authInfo?.clientToken,
                         this.authInfo?.serverToken,
                         this.authInfo?.clientID,
-                        'takeover',
                     ]
+                    if (reconnect) json.push(...['reconnect', reconnect.replace('@s.whatsapp.net', '@c.us')])
+                    else json.push ('takeover')
                     return this.query({ json, tag: 's1', waitForOpen: false }) // wait for response with tag "s1"
                 }
                 return this.generateKeysForAuth(json.ref) // generate keys which will in turn be the QR

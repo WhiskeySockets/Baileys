@@ -20,8 +20,8 @@ export class WAConnection extends Base {
             ws
             .then (conn => this.conn = conn)
             .then (() => this.conn.on('message', data => this.onMessageRecieved(data as any)))
-            .then (() => this.log('connected to WhatsApp Web server, authenticating...', MessageLogLevel.info))
-            .then (() => this.authenticate())
+            .then (() => this.log(`connected to WhatsApp Web server, authenticating via ${options.reconnectID ? 'reconnect' : 'takeover'}`, MessageLogLevel.info))
+            .then (() => this.authenticate(options?.reconnectID))
             .then (() => {
                 this.startKeepAliveRequest()
                 this.conn.removeAllListeners ('error')
@@ -261,7 +261,8 @@ export class WAConnection extends Base {
                 
                 await delay
                 try {
-                    await this.connect ({ timeoutMs: 30000, retryOnNetworkErrors: true })
+                    const reconnectID = this.lastDisconnectReason !== 'replaced' && this.user ? this.user.id.replace ('@s.whatsapp.net', '@c.us') : null
+                    await this.connect ({ timeoutMs: 30000, retryOnNetworkErrors: true, reconnectID })
                     this.cancelReconnect = null
                     break
                 } catch (error) {

@@ -18,14 +18,18 @@ export class WAConnection extends Base {
      * @param jid the ID of the person/group who you are updating
      * @param type your presence
      */
-    async updatePresence(jid: string | null, type: Presence) {
-        const json = [
-            'action',
-            { epoch: this.msgCount.toString(), type: 'set' },
-            [['presence', { type: type, to: jid }, null]],
-        ]
-        return this.query({json, binaryTags: [WAMetric.group, WAFlag.acknowledge]}) as Promise<{ status: number }>
-    }
+    updatePresence = (jid: string | null, type: Presence) =>
+        this.query(
+            {
+                json: [
+                    'action',
+                    { epoch: this.msgCount.toString(), type: 'set' },
+                    [['presence', { type: type, to: jid }, null]],
+                ], 
+                binaryTags: [WAMetric.group, WAFlag.acknowledge], 
+                expect200: true
+            }
+        ) as Promise<{status: number}>
     /** Request an update on the presence of a user */
     requestPresenceUpdate = async (jid: string) => this.query({json: ['action', 'presence', 'subscribe', jid]})
     /** Query the status of the person (see groupMetadata() for groups) */

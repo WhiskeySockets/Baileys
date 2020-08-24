@@ -65,20 +65,21 @@ export class WAConnection extends EventEmitter {
     protected qrTimeout: NodeJS.Timeout
     protected phoneCheck: NodeJS.Timeout
 
+    protected lastDisconnectReason: DisconnectReason
     protected cancelledReconnect = false
     protected cancelReconnect: () => void
 
     constructor () {
         super ()
-        this.registerCallback (['Cmd', 'type:disconnect'], json => this.unexpectedDisconnect(json[1].kind))
+        this.registerCallback (['Cmd', 'type:disconnect'], json => this.unexpectedDisconnect(json[1].kind || 'unknown'))
     }
-    async unexpectedDisconnect (error?: DisconnectReason) {
+    async unexpectedDisconnect (error: DisconnectReason) {
         const willReconnect = 
             (this.autoReconnect === ReconnectMode.onAllErrors || 
             (this.autoReconnect === ReconnectMode.onConnectionLost && (error !== 'replaced'))) &&
             error !== 'invalid_session'
         
-        this.log (`got disconnected, reason ${error || 'unknown'}${willReconnect ? ', reconnecting in a few seconds...' : ''}`, MessageLogLevel.info)        
+        this.log (`got disconnected, reason ${error}${willReconnect ? ', reconnecting in a few seconds...' : ''}`, MessageLogLevel.info)        
         this.closeInternal(error, willReconnect)
 
         willReconnect && !this.cancelReconnect && this.reconnectLoop ()
@@ -215,6 +216,11 @@ export class WAConnection extends EventEmitter {
        
         const response = await this.waitForMessage(tag, json, timeoutMs)
         if (expect200 && response.status && Math.floor(+response.status / 100) !== 2) {
+            if (response.status >= 500) {
+                this.unexpectedDisconnect ('bad_session')
+                const response = await this.query ({json, binaryTags, tag, timeoutMs, expect200, waitForOpen})
+                return response
+            }
             throw new BaileysError(`Unexpected status code in '${json[0] || 'generic query'}': ${response.status}`, {query: json})
         }
         return response
@@ -282,11 +288,7 @@ export class WAConnection extends EventEmitter {
     /** Close the connection to WhatsApp Web */
     close () {
         this.closeInternal ('intentional')
-        
         this.cancelReconnect && this.cancelReconnect ()
-        
-        this.pendingRequests.forEach (({reject}) => reject(new Error('close')))
-        this.pendingRequests = []
     }
     protected closeInternal (reason?: DisconnectReason, isReconnecting: boolean=false) {
         this.qrTimeout && clearTimeout (this.qrTimeout)
@@ -298,6 +300,12 @@ export class WAConnection extends EventEmitter {
         this.conn?.close()
         this.conn = null
         this.phoneConnected = false
+        this.lastDisconnectReason = reason
+
+        if (reason === 'invalid_session' || reason === 'intentional') {
+            this.pendingRequests.forEach (({reject}) => reject(new Error('close')))
+            this.pendingRequests = []
+        }
 
         Object.keys(this.callbacks).forEach(key => {
             if (!key.includes('function:')) {
@@ -307,6 +315,7 @@ export class WAConnection extends EventEmitter {
             }
         })
         if (this.keepAliveReq) clearInterval(this.keepAliveReq)
+
         // reconnecting if the timeout is active for the reconnect loop
         this.emit ('close', { reason, isReconnecting: this.cancelReconnect || isReconnecting})
     }
