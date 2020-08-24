@@ -1,15 +1,12 @@
 node_modules
 auth_info.json
 output.csv
-package-lock.json
 */.DS_Store
 .DS_Store
 .env
 auth_info_browser.json
 yarn.lock
 browser-messages.json
-package-lock.json
-package-lock.json
 decoded-ws.json
 auth_info2.json
 lib

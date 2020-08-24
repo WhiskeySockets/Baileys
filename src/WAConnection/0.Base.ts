@@ -272,10 +272,11 @@ export class WAConnection extends EventEmitter {
      * @see close() if you just want to close the connection
      */
     async logout () {
-        if (this.state !== 'open') throw new Error("You're not even connected, you can't log out")
-        
-        await new Promise(resolve => this.conn.send('goodbye,["admin","Conn","disconnect"]', null, resolve))
         this.authInfo = null
+        if (this.state === 'open') {
+            //throw new Error("You're not even connected, you can't log out")
+            await new Promise(resolve => this.conn.send('goodbye,["admin","Conn","disconnect"]', null, resolve))
+        }
         this.close()
     }
     /** Close the connection to WhatsApp Web */
