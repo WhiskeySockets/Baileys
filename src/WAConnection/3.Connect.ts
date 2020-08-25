@@ -36,10 +36,12 @@ export class WAConnection extends Base {
         })
 
         try {
-            await promise
-            
+            const tasks = [promise]
+
             const waitForChats = typeof options?.waitForChats === 'undefined' ? true : options?.waitForChats
-            waitForChats && await this.receiveChatsAndContacts(options?.timeoutMs, true)
+            if (waitForChats) tasks.push (this.receiveChatsAndContacts(options?.timeoutMs, true))
+            
+            await Promise.all (tasks)
 
             this.phoneConnected = true
             this.state = 'open'
