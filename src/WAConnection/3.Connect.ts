@@ -16,7 +16,7 @@ export class WAConnection extends Base {
         this.emit ('connecting')
 
         const { ws, cancel } = Utils.openWebSocketConnection (5000, typeof options?.retryOnNetworkErrors === 'undefined' ? true : options?.retryOnNetworkErrors)
-        const promise: Promise<void> = Utils.promiseTimeout(options?.timeoutMs, (resolve, reject) => {
+        const promise = Utils.promiseTimeout(options?.timeoutMs, (resolve, reject) => {
             ws
             .then (conn => this.conn = conn)
             .then (() => this.conn.on('message', data => this.onMessageRecieved(data as any)))
@@ -29,11 +29,12 @@ export class WAConnection extends Base {
                 this.conn.on ('close', () => this.unexpectedDisconnect ('close'))
             })
             .then (resolve)
-            .catch (err => {
-                cancel ()
-                reject (err)
-            })
+            .catch (reject)
         })
+        .catch (err => {
+            cancel ()
+            throw err
+        }) as Promise<void>
 
         try {
             const tasks = [promise]
