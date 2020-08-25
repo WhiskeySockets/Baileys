@@ -73,7 +73,7 @@ export class WAConnection extends Base {
     async loadMessages (
         jid: string,
         count: number,
-        before: { id?: string; fromMe?: boolean } = null,
+        before?: { id?: string; fromMe?: boolean },
         mostRecentFirst = true
     ) {
         jid = whatsappID(jid)
@@ -149,14 +149,11 @@ export class WAConnection extends Base {
     async loadMessage (jid: string, messageID: string) {
         let messages: WAMessage[]
         try {
-            messages = (await this.loadMessages (jid, 1, {id: messageID, fromMe: true}, false)).messages
+            messages = (await this.loadMessages (jid, 1, {id: messageID, fromMe: true})).messages
         } catch {
-            messages = (await this.loadMessages (jid, 1, {id: messageID, fromMe: false}, false)).messages
+            messages = (await this.loadMessages (jid, 1, {id: messageID, fromMe: false})).messages
         }
-        var index = null
-        if (messages.length > 0) index = messages[0].key
-        
-        const actual = await this.loadMessages (jid, 1, index)
+        const actual = await this.loadMessages (jid, 1, messages[0] && messages[0].key, false)
         return actual.messages[0]
     }
     /** Query a string to check if it has a url, if it does, return required extended text message */
