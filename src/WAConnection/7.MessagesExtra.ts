@@ -74,7 +74,7 @@ export class WAConnection extends Base {
         jid: string,
         count: number,
         before?: { id?: string; fromMe?: boolean },
-        mostRecentFirst = true
+        mostRecentFirst: boolean = true
     ) {
         jid = whatsappID(jid)
 
@@ -93,7 +93,7 @@ export class WAConnection extends Base {
                 null,
             ]
             const response = await this.query({json, binaryTags: [WAMetric.queryMessages, WAFlag.ignore], expect200: true})
-            const messages = response[2] ? (response[2] as WANode[]).map((item) => item[2] as WAMessage) : []
+            const messages = response[2] ? (response[2] as WANode[]).map(item => item[2] as WAMessage) : []
     
             return messages
         }

@@ -117,9 +117,6 @@ WAConnectionTest('Misc', (conn) => {
         }
     })
     it('should load a single message', async () => {
-        const loaded = await conn.loadMessage (testJid, '5A3FF17786EBCD0EF350')
-        assert.equal (loaded.key.id, '5A3FF17786EBCD0EF350')
-
         const {messages} = await conn.loadMessages (testJid, 10)
         for (var message of messages) {
             const loaded = await conn.loadMessage (testJid, message.key.id)
