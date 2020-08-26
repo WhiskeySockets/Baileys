@@ -182,7 +182,7 @@ export class WAConnection extends Base {
             const timestamp = message.slice(1, message.length).toString ('utf-8')
             this.lastSeen = new Date(parseInt(timestamp))
         } else {
-            const decrypted = Utils.decryptWA (message, this.authInfo.macKey, this.authInfo.encKey, new Decoder())
+            const decrypted = Utils.decryptWA (message, this.authInfo?.macKey, this.authInfo?.encKey, new Decoder())
             if (!decrypted) return
             
             const [messageTag, json] = decrypted
