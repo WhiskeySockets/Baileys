@@ -28,11 +28,15 @@ WAConnectionTest('Messages', (conn) => {
         assert.ok (received.jpegThumbnail)
     })
     it('should quote a message', async () => {
-        const messages = await conn.loadMessages(testJid, 2)
+        const {messages} = await conn.loadMessages(testJid, 2)
         const message = await sendAndRetreiveMessage(conn, 'hello fren 2', MessageType.extendedText, {
             quoted: messages[0],
         })
         assert.strictEqual(message.message.extendedTextMessage.contextInfo.stanzaId, messages[0].key.id)
+        assert.strictEqual(
+            message.message.extendedTextMessage.contextInfo.participant, 
+            messages[0].key.fromMe ? conn.user.id : messages[0].key.id
+        )
     })
     it('should send a gif', async () => {
         const content = await fs.readFile('./Media/ma_gif.mp4')
