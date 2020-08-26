@@ -1,21 +1,25 @@
 import * as assert from 'assert'
-import * as QR from 'qrcode-terminal'
 import {WAConnection} from '../WAConnection/WAConnection'
-import { AuthenticationCredentialsBase64 } from '../WAConnection/Constants'
-import { createTimeout } from '../WAConnection/Utils'
+import { AuthenticationCredentialsBase64, BaileysError, ReconnectMode } from '../WAConnection/Constants'
+import { delay } from '../WAConnection/Utils'
 
 describe('QR Generation', () => {
     it('should generate QR', async () => {
+
         const conn = new WAConnection()
-        let calledQR = false
-        conn.onReadyForPhoneAuthentication = ([ref, curveKey, clientID]) => {
-            assert.ok(ref, 'ref nil')
-            assert.ok(curveKey, 'curve key nil')
-            assert.ok(clientID, 'client ID nil')
-            calledQR = true
-        }
-        await assert.rejects(async () => conn.connectSlim(null, 5000), 'should have failed connect')
-        assert.equal(calledQR, true, 'QR not called')
+        conn.regenerateQRIntervalMs = 5000
+        let calledQR = 0
+        conn.removeAllListeners ('qr')
+        conn.on ('qr', qr => calledQR += 1)
+        
+        await conn.connect({ timeoutMs: 15000 })
+            .then (() => assert.fail('should not have succeeded'))
+            .catch (error => {
+                assert.equal (error.message, 'timed out')
+            })
+        assert.equal (conn['pendingRequests'].length, 0)
+        assert.equal (Object.keys(conn['callbacks']).filter(key => !key.startsWith('function:')).length, 0)
+        assert.ok(calledQR >= 2, 'QR not called')
     })
 })
 
@@ -23,76 +27,143 @@ describe('Test Connect', () => {
     let auth: AuthenticationCredentialsBase64
     it('should connect', async () => {
         console.log('please be ready to scan with your phone')
+        
         const conn = new WAConnection()
-        const user = await conn.connectSlim(null)
-        assert.ok(user)
-        assert.ok(user.id)
+        await conn.connect (null)
+        assert.ok(conn.user?.id)
+        assert.ok(conn.user?.phone)
+        assert.ok (conn.user?.imgUrl || conn.user.imgUrl === '')
 
         conn.close()
         auth = conn.base64EncodedAuthInfo()
     })
-    it('should re-generate QR & connect', async () => {
-        const conn = new WAConnection()
-        conn.onReadyForPhoneAuthentication = async ([ref, publicKey, clientID]) => {
-            for (let i = 0; i < 2; i++) {
-                console.log ('called QR ' + i + ' times')
-                await createTimeout (3000)
-                ref = await conn.generateNewQRCode ()
-            }
-            const str = ref + ',' + publicKey + ',' + clientID
-            QR.generate(str, { small: true })
-        }
-        const user = await conn.connectSlim(null)
-        assert.ok(user)
-        assert.ok(user.id)
-
-        conn.close()
-    })
     it('should reconnect', async () => {
         const conn = new WAConnection()
-        const [user, chats, contacts] = await conn.connect(auth, 20*1000)
+        await conn
+        .loadAuthInfo (auth)
+        .connect ({timeoutMs: 20*1000})
+        .then (conn => {
+            assert.ok(conn.user)
+            assert.ok(conn.user.id)
 
-        assert.ok(user)
-        assert.ok(user.id)
-
-        assert.ok(chats)
-        
-        const chatArray = chats.all()
-        if (chatArray.length > 0) {
-            assert.ok(chatArray[0].jid)
-            assert.ok(chatArray[0].count !== null)
-            if (chatArray[0].messages.length > 0) {
-                assert.ok(chatArray[0].messages[0])
-            }  
-        }
-        assert.ok(contacts)
-        if (contacts.length > 0) {
-            assert.ok(contacts[0].jid)
-        }
-        await conn.logout()
-        await assert.rejects(async () => conn.connectSlim(auth), 'reconnect should have failed')
+            const chatArray = conn.chats.all()
+            if (chatArray.length > 0) {
+                assert.ok(chatArray[0].jid)
+                assert.ok(chatArray[0].count !== null)
+                if (chatArray[0].messages.length > 0) {
+                    assert.ok(chatArray[0].messages[0])
+                }  
+            }
+            const contactValues = Object.values(conn.contacts)
+            if (contactValues[0]) {
+                assert.ok(contactValues[0].jid)
+            }
+        })
+        .then (() => conn.logout())
+        .then (() => conn.loadAuthInfo(auth))
+        .then (() => (
+            conn.connect()
+                .then (() => assert.fail('should not have reconnected'))
+                .catch (err => {
+                    assert.ok (err instanceof BaileysError)
+                    assert.ok ((err as BaileysError).status >= 400)
+                })
+        ))
+        .finally (() => conn.close())
     })
 })
-describe ('Pending Requests', async () => {
+describe ('Reconnects', () => {
+    it ('should disconnect & reconnect phone', async () => {
+        const conn = new WAConnection ()
+        await conn.loadAuthInfo('./auth_info.json').connect ()
+        assert.equal (conn.phoneConnected, true)
+
+        try {
+            const waitForEvent = expect => new Promise (resolve => {
+                conn.on ('connection-phone-change', ({connected}) => {
+                    assert.equal (connected, expect)
+                    conn.removeAllListeners ('connection-phone-change')
+                    resolve ()
+                })
+            })
+
+            console.log ('disconnect your phone from the internet')
+            await waitForEvent (false)
+            console.log ('reconnect your phone to the internet')
+            await waitForEvent (true)
+        } finally {
+            conn.close ()
+        }
+    })
+    it ('should reconnect on broken connection', async () => {
+        const conn = new WAConnection ()
+        conn.autoReconnect = ReconnectMode.onConnectionLost
+
+        await conn.loadAuthInfo('./auth_info.json').connect ()
+        assert.equal (conn.phoneConnected, true)
+
+        try {
+            const closeConn = () => conn['conn']?.terminate ()
+            
+            const task = new Promise (resolve => {
+                let closes = 0
+                conn.on ('close', ({reason, isReconnecting}) => {
+                    console.log (`closed: ${reason}`)
+                    assert.ok (reason)
+                    assert.ok (isReconnecting)
+                    closes += 1
+                    
+                    // let it fail reconnect a few times
+                    if (closes > 4) {
+                        conn.removeAllListeners ('close')
+                        conn.removeAllListeners ('connecting')
+                        resolve ()
+                    }
+                })
+                conn.on ('connecting', () => {
+                    // close again
+                    delay (3500).then (closeConn)   
+                })
+            })
+
+            closeConn ()
+            await task
+            
+            await new Promise (resolve => {
+                conn.on ('open', () => {
+                    conn.removeAllListeners ('open')
+                    resolve ()
+                })
+            })
+
+            conn.close ()
+            
+            conn.on ('connecting', () => assert.fail('should not connect'))
+            await delay (2000)
+        } finally {
+            conn.removeAllListeners ('connecting')
+            conn.removeAllListeners ('close')
+            conn.removeAllListeners ('open')
+            conn.close ()
+        }
+    })
+})
+describe ('Pending Requests', () => {
     it('should queue requests when closed', async () => {
           const conn = new WAConnection ()
           conn.pendingRequestTimeoutMs = null
 
-          await conn.connectSlim ()
+          await conn.loadAuthInfo('./auth_info.json').connect ()
           
-          await createTimeout (2000)
+          await delay (2000)
 
           conn.close ()
 
-          const task: Promise<any> = new Promise ((resolve, reject) => {
-            conn.query(['query', 'Status', conn.userMetaData.id])
-            .then (json => resolve(json))
-            .catch (error => reject ('should not have failed, got error: ' + error))
-          })
+          const task: Promise<any> = conn.query({json: ['query', 'Status', conn.user.id]})
 
-          await createTimeout (2000)
+          await delay (2000)
 
-          await conn.connectSlim ()
+          conn.connect ()
           const json = await task
           
           assert.ok (json.status)

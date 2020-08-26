@@ -5,9 +5,10 @@ import {promises as fs} from 'fs'
 import fetch from 'node-fetch'
 import { exec } from 'child_process'
 import {platform, release} from 'os'
+import WS from 'ws'
 
 import Decoder from '../Binary/Decoder'
-import { MessageType, HKDFInfoKeys, MessageOptions, WAChat, WAMessageType, WAMessage, WAMessageContent, BaileysError, WAMessageProto } from './Constants'
+import { MessageType, HKDFInfoKeys, MessageOptions, WAChat, WAMessageContent, BaileysError, WAMessageProto } from './Constants'
 
 const platformMap = {
     'aix': 'AIX',
@@ -18,7 +19,7 @@ const platformMap = {
 export const Browsers = {
     ubuntu: browser => ['Ubuntu', browser, '18.04'] as [string, string, string],
     macOS: browser => ['Mac OS', browser, '10.15.3'] as [string, string, string],
-    baileys: browser => ['Baileys', browser, '2.0'] as [string, string, string],
+    baileys: browser => ['Baileys', browser, '3.0'] as [string, string, string],
     /** The appropriate browser based on your OS & release */
     appropriate: browser => [ platformMap [platform()] || 'Ubuntu', browser, release() ] as [string, string, string]
 }
@@ -27,11 +28,10 @@ function hashCode(s: string) {
         h = Math.imul(31, h) + s.charCodeAt(i) | 0;
     return h;
 }
-export const waChatUniqueKey = (c: WAChat) => ((+c.t*100000) + (hashCode(c.jid)%100000))*-1 // -1 to sort descending
+export const waChatUniqueKey = (c: WAChat) => ((c.t*100000) + (hashCode(c.jid)%100000))*-1 // -1 to sort descending
+export const whatsappID = (jid: string) => jid?.replace ('@c.us', '@s.whatsapp.net')
+export const isGroupID = (jid: string) => jid?.includes ('@g.us')
 
-export function whatsappID (jid: string) {
-    return jid.replace ('@c.us', '@s.whatsapp.net')
-}
 /** decrypt AES 256 CBC; where the IV is prefixed to the buffer */
 export function aesDecrypt(buffer: Buffer, key: Buffer) {
     return aesDecryptWithIV(buffer.slice(16, buffer.length), key, buffer.slice(0, 16))
@@ -67,25 +67,85 @@ export function hkdf(buffer: Buffer, expandedLength: number, info = null) {
 export function randomBytes(length) {
     return Crypto.randomBytes(length)
 }
-export const createTimeout = (timeout) => new Promise(resolve => setTimeout(resolve, timeout))
+/** unix timestamp of a date in seconds */
+export const unixTimestampSeconds = (date: Date = new Date()) => Math.floor(date.getTime()/1000)
 
-export async function promiseTimeout<T>(ms: number, promise: Promise<T>) {
-    if (!ms) return promise
+export const delay = (ms: number) => delayCancellable (ms).delay
+export const delayCancellable = (ms: number) => {
+    let timeout: NodeJS.Timeout
+    let reject: (error) => void
+    const delay: Promise<void> = new Promise((resolve, _reject) => {
+        timeout = setTimeout(resolve, ms)
+        reject = _reject
+    })
+    const cancel = () => {
+        clearTimeout (timeout)
+        reject (new Error('cancelled'))
+    }
+    return { delay, cancel }
+}
+export async function promiseTimeout<T>(ms: number, promise: (resolve: (v?: T)=>void, reject: (error) => void) => void) {
+    if (!ms) return new Promise (promise)
+
     // Create a promise that rejects in <ms> milliseconds
-    let timeoutI
-    const timeout = new Promise(
-        (_, reject) => timeoutI = setTimeout(() => reject(new BaileysError ('Timed out', promise)), ms)
-    )
+    const {delay, cancel} = delayCancellable (ms) 
+    
+    let pReject: (error) => void
+    const p = new Promise ((resolve, reject) => {
+        promise (resolve, reject)
+        pReject = reject
+    })
+    
     try {
-        const content = await Promise.race([promise, timeout])
+        const content = await Promise.race([
+            p, 
+            delay.then(() => pReject(new BaileysError('timed out', p)))
+        ])
+        cancel ()
         return content as T
     } finally {
-        clearTimeout (timeoutI)
+        cancel ()
     }
 }
+
+export const openWebSocketConnection = (timeoutMs: number, retryOnNetworkError: boolean) => {
+    const newWS = async () => {
+        const conn = new WS('wss://web.whatsapp.com/ws', null, { origin: 'https://web.whatsapp.com', timeout: timeoutMs })
+        await new Promise ((resolve, reject) => {
+            conn.on('open', () => {
+                conn.removeAllListeners ('error')
+                conn.removeAllListeners ('close')
+                conn.removeAllListeners ('open')
+
+                resolve ()
+            })
+            // if there was an error in the WebSocket
+            conn.on('error', reject)
+            conn.on('close', () => reject(new Error('close')))
+        })
+        return conn
+    } 
+    let cancelled = false
+    const connect = async () => {
+        while (!cancelled) {
+            try {
+                const ws = await newWS()
+                if (!cancelled) return ws
+                break
+            } catch (error) {
+                if (!retryOnNetworkError) throw error 
+                await delay (1000)
+            }
+        }
+        throw new Error ('cancelled')
+    }
+    const cancel = () => cancelled = true
+    return { ws: connect(), cancel }
+}
+
 // whatsapp requires a message tag for every message, we just use the timestamp as one
 export function generateMessageTag(epoch?: number) {
-    let tag = Math.round(new Date().getTime()/1000).toString()
+    let tag = unixTimestampSeconds().toString()
     if (epoch) tag += '.--' + epoch // attach epoch if provided
     return tag
 }
@@ -115,7 +175,6 @@ export function decryptWA (message: string | Buffer, macKey: Buffer, encKey: Buf
     let json
     let tags = null
     if (typeof data === 'string') {
-        // if the first character is a "[", then the data must just be plain JSON array or object
         json = JSON.parse(data) // parse the JSON
     } else {
         if (!macKey || !encKey) {
@@ -136,7 +195,12 @@ export function decryptWA (message: string | Buffer, macKey: Buffer, encKey: Buf
         const computedChecksum = hmacSign(data, macKey) // compute the sign of the message we recieved using our macKey
         
         if (!checksum.equals(computedChecksum)) {
-            throw new Error (`Checksums don't match:\nog: ${checksum.toString('hex')}\ncomputed: ${computedChecksum.toString('hex')}`)
+            throw new Error (`
+                Checksums don't match:
+                og: ${checksum.toString('hex')}
+                computed: ${computedChecksum.toString('hex')}
+                message: ${message.slice(0, 80).toString()}
+            `)
         }
         // the checksum the server sent, must match the one we computed for the message to be valid
         const decrypted = aesDecrypt(data, encKey) // decrypt using AES

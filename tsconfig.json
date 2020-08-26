@@ -13,5 +13,5 @@
     "lib": ["es2019", "esnext.array"]
   },
   "include": ["src/*/*.ts"],
-  "exclude": ["node_modules", "src/*/Tests.ts"]
+  "exclude": ["node_modules", "src/Tests/*"]
 }

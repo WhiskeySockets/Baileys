@@ -1,4 +1,4 @@
-import {WAConnection as Base} from './5.Messages'
+import {WAConnection as Base} from './7.MessagesExtra'
 import { WAMetric, WAFlag, WANode, WAGroupMetadata, WAGroupCreateResponse, WAGroupModification } from '../WAConnection/Constants'
 import { GroupSettingChange } from './Constants'
 import { generateMessageID } from '../WAConnection/Utils'
@@ -10,23 +10,23 @@ export class WAConnection extends Base {
         const json: WANode = [
             'group',
             {
-                author: this.userMetaData.id,
+                author: this.user.id,
                 id: tag,
                 type: type,
                 jid: jid,
                 subject: subject,
             },
-            participants ? participants.map(str => ['participant', { jid: str }, null]) : additionalNodes,
+            participants ? participants.map(jid => ['participant', { jid }, null]) : additionalNodes,
         ]
-        const result = await this.setQuery ([json], [WAMetric.group, WAFlag.ignore], tag)
+        const result = await this.setQuery ([json], [WAMetric.group, 136], tag)
         return result
     }
     /** Get the metadata of the group */
-    groupMetadata = (jid: string) => this.queryExpecting200(['query', 'GroupMetadata', jid]) as Promise<WAGroupMetadata>
+    groupMetadata = (jid: string) => this.query({json: ['query', 'GroupMetadata', jid], expect200: true}) as Promise<WAGroupMetadata>
     /** Get the metadata (works after you've left the group also) */
     groupMetadataMinimal = async (jid: string) => {
         const query = ['query', {type: 'group', jid: jid, epoch: this.msgCount.toString()}, null]
-        const response = await this.queryExpecting200(query, [WAMetric.group, WAFlag.ignore])
+        const response = await this.query({json: query, binaryTags: [WAMetric.group, WAFlag.ignore], expect200: true})
         const json = response[2][0]
         const creatorDesc = json[1]
         const participants = json[2] ? json[2].filter (item => item[0] === 'participant') : []
@@ -46,20 +46,38 @@ export class WAConnection extends Base {
      * @param title like, the title of the group
      * @param participants people to include in the group
      */
-    groupCreate = (title: string, participants: string[]) =>
-        this.groupQuery('create', null, title, participants) as Promise<WAGroupCreateResponse>
+    groupCreate = async (title: string, participants: string[]) => {
+        const response = await this.groupQuery('create', null, title, participants) as WAGroupCreateResponse
+        await this.chatAdd (response.gid, title)
+        return response
+    }
     /**
      * Leave a group
      * @param jid the ID of the group
      */
-    groupLeave = (jid: string) => this.groupQuery('leave', jid) as Promise<{ status: number }>
+    groupLeave = async (jid: string) => {
+        const response = await this.groupQuery('leave', jid)
+        
+        const chat = this.chats.get (jid)
+        if (chat) chat.read_only = 'true'
+        
+        return response
+    }
     /**
      * Update the subject of the group
      * @param {string} jid the ID of the group
      * @param {string} title the new title of the group
      */
-    groupUpdateSubject = (jid: string, title: string) =>
-        this.groupQuery('subject', jid, title) as Promise<{ status: number }>
+    groupUpdateSubject = async (jid: string, title: string) => {
+        const chat = this.chats.get (jid)
+        if (chat?.name === title) throw new Error ('redundant change')
+        
+        const response = await this.groupQuery('subject', jid, title)
+        if (chat) chat.name = title
+        
+        return response
+    }
+        
     /**
      * Update the group description
      * @param {string} jid the ID of the group
@@ -72,7 +90,8 @@ export class WAConnection extends Base {
             {id: generateMessageID(), prev: metadata?.descId},
             Buffer.from (description, 'utf-8')
         ]
-        return this.groupQuery ('description', jid, null, null, [node])
+        const response = await this.groupQuery ('description', jid, null, null, [node])
+        return response
     }
     /**
      * Add somebody to the group
@@ -114,7 +133,7 @@ export class WAConnection extends Base {
     /** Get the invite link of the given group */
     async groupInviteCode(jid: string) {
         const json = ['query', 'inviteCode', jid]
-        const response = await this.queryExpecting200(json)
+        const response = await this.query({json, expect200: true})
         return response.code as string
     }
 }
