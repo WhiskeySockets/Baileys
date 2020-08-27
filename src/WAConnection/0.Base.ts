@@ -122,7 +122,7 @@ export class WAConnection extends EventEmitter {
                 macKey: Buffer.isBuffer(authInfo.macKey) ? authInfo.macKey : Buffer.from(authInfo.macKey, 'base64'), 
             }
         } else {
-            const secretBundle: {encKey: string, macKey: string} = typeof authInfo === 'string' ? JSON.parse (authInfo): authInfo
+            const secretBundle: {encKey: string, macKey: string} = typeof authInfo.WASecretBundle === 'string' ? JSON.parse (authInfo.WASecretBundle): authInfo.WASecretBundle
             this.authInfo = {
                 clientID: authInfo.WABrowserId.replace(/\"/g, ''),
                 serverToken: authInfo.WAToken2.replace(/\"/g, ''),
