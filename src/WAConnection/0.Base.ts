@@ -77,9 +77,7 @@ export class WAConnection extends EventEmitter {
         const willReconnect = 
             (this.autoReconnect === ReconnectMode.onAllErrors || 
             (this.autoReconnect === ReconnectMode.onConnectionLost && (error !== 'replaced'))) &&
-            error !== 'invalid_session'
-        
-        this.log (`got disconnected, reason ${error}${willReconnect ? ', reconnecting in a few seconds...' : ''}`, MessageLogLevel.info)        
+            error !== 'invalid_session'      
         this.closeInternal(error, willReconnect)
 
         willReconnect && !this.cancelReconnect && this.reconnectLoop ()
@@ -283,6 +281,7 @@ export class WAConnection extends EventEmitter {
             //throw new Error("You're not even connected, you can't log out")
             await new Promise(resolve => this.conn.send('goodbye,["admin","Conn","disconnect"]', null, resolve))
         }
+        this.user = null
         this.close()
     }
     /** Close the connection to WhatsApp Web */
@@ -291,9 +290,11 @@ export class WAConnection extends EventEmitter {
         this.cancelReconnect && this.cancelReconnect ()
     }
     protected closeInternal (reason?: DisconnectReason, isReconnecting: boolean=false) {
+        this.log (`closed connection, reason ${reason}${isReconnecting ? ', reconnecting in a few seconds...' : ''}`, MessageLogLevel.info)  
+
         this.qrTimeout && clearTimeout (this.qrTimeout)
         this.phoneCheck && clearTimeout (this.phoneCheck)
-
+        
         this.state = 'close'
         this.msgCount = 0
         this.conn?.removeAllListeners ('close')
@@ -315,7 +316,6 @@ export class WAConnection extends EventEmitter {
             }
         })
         if (this.keepAliveReq) clearInterval(this.keepAliveReq)
-
         // reconnecting if the timeout is active for the reconnect loop
         this.emit ('close', { reason, isReconnecting: this.cancelReconnect || isReconnecting})
     }

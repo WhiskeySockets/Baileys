@@ -42,16 +42,17 @@ export class WAConnection extends Base {
             const waitForChats = typeof options?.waitForChats === 'undefined' ? true : options?.waitForChats
             if (waitForChats) tasks.push (this.receiveChatsAndContacts(options?.timeoutMs, true))
             
-            await Promise.all (tasks)
-
+            await Promise.all (tasks)        
+            
             this.phoneConnected = true
             this.state = 'open'
-            
+
             this.user.imgUrl = await this.getProfilePicture (this.user.id).catch (err => '')
+            this.registerPhoneConnectionPoll ()
             
             this.emit ('open')
-
             this.releasePendingRequests ()
+
             this.log ('opened connection to WhatsApp Web', MessageLogLevel.info)
 
             return this
@@ -117,7 +118,7 @@ export class WAConnection extends Base {
             this.registerCallback(['action', 'add:before'], chatUpdate)
             this.registerCallback(['action', 'add:unread'], chatUpdate)
         }
-
+        // get chats
         this.registerCallback(['response', 'type:chat'], json => {
             if (json[1].duplicate || !json[2]) return
 
@@ -163,7 +164,8 @@ export class WAConnection extends Base {
                 this.off ('close', rejectTask)
             }
             this.on ('close', rejectTask)
-        }).finally (deregisterCallbacks)
+        })
+        .finally (deregisterCallbacks)
         
         this.chats
         .all ()
@@ -280,13 +282,27 @@ export class WAConnection extends Base {
 
         }
     }
+    protected registerPhoneConnectionPoll () {
+        this.phoneCheck = setInterval (() => {
+            this.checkPhoneConnection (5000) // 5000 ms for timeout
+            .then (connected => {
+                if (this.phoneConnected != connected) {
+                    this.emit ('connection-phone-change', {connected})
+                }
+                this.phoneConnected = connected
+            })
+            .catch (error => this.log(`error in getting phone connection: ${error}`, MessageLogLevel.info))
+        }, 15000)
+    }
     /**
      * Check if your phone is connected
      * @param timeoutMs max time for the phone to respond
      */
     async checkPhoneConnection(timeoutMs = 5000) {
+        if (this.state !== 'open') return false
+
         try {
-            const response = await this.query({json: ['admin', 'test'], timeoutMs})
+            const response = await this.query({json: ['admin', 'test'], timeoutMs, waitForOpen: false})
             return response[1] as boolean
         } catch (error) {
             return false

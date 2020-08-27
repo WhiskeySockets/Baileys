@@ -11,7 +11,6 @@ export class WAConnection extends Base {
         this.registerOnMessageStatusChange ()
         this.registerOnUnreadMessage ()
         this.registerOnPresenceUpdate ()
-        this.registerPhoneConnectionPoll ()
         
         // If a message has been updated (usually called when a video message gets its upload url)
         this.registerCallback (['action', 'add:update', 'message'], json => {
@@ -265,18 +264,6 @@ export class WAConnection extends Base {
     /** sets the profile picture of a chat */
     protected async setProfilePicture (chat: WAChat) {
         chat.imgUrl = await this.getProfilePicture (chat.jid).catch (err => '')
-    }
-    protected registerPhoneConnectionPoll () {
-        this.phoneCheck = setInterval (() => {
-            this.checkPhoneConnection (5000) // 5000 ms for timeout
-            .then (connected => {
-                if (this.phoneConnected != connected) {
-                    this.emit ('connection-phone-change', {connected})
-                }
-                this.phoneConnected = connected
-            })
-            .catch (error => this.log(`error in getting phone connection: ${error}`, MessageLogLevel.info))
-        }, 15000)
     }
 
     // Add all event types

@@ -5,9 +5,9 @@ import { delay } from '../WAConnection/Utils'
 
 describe('QR Generation', () => {
     it('should generate QR', async () => {
-
         const conn = new WAConnection()
         conn.regenerateQRIntervalMs = 5000
+
         let calledQR = 0
         conn.removeAllListeners ('qr')
         conn.on ('qr', qr => calledQR += 1)
@@ -17,8 +17,11 @@ describe('QR Generation', () => {
             .catch (error => {
                 assert.equal (error.message, 'timed out')
             })
-        assert.equal (conn['pendingRequests'].length, 0)
-        assert.equal (Object.keys(conn['callbacks']).filter(key => !key.startsWith('function:')).length, 0)
+        assert.deepEqual (conn['pendingRequests'], [])
+        assert.deepEqual (
+            Object.keys(conn['callbacks']).filter(key => !key.startsWith('function:')), 
+            []
+        )
         assert.ok(calledQR >= 2, 'QR not called')
     })
 })
@@ -29,7 +32,7 @@ describe('Test Connect', () => {
         console.log('please be ready to scan with your phone')
         
         const conn = new WAConnection()
-        await conn.connect (null)
+        await conn.connect ()
         assert.ok(conn.user?.id)
         assert.ok(conn.user?.phone)
         assert.ok (conn.user?.imgUrl || conn.user.imgUrl === '')
@@ -114,7 +117,7 @@ describe ('Reconnects', () => {
                     closes += 1
                     
                     // let it fail reconnect a few times
-                    if (closes > 4) {
+                    if (closes > 3) {
                         conn.removeAllListeners ('close')
                         conn.removeAllListeners ('connecting')
                         resolve ()
