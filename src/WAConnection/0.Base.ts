@@ -76,10 +76,10 @@ export class WAConnection extends EventEmitter {
     async unexpectedDisconnect (error: DisconnectReason) {
         const willReconnect = 
             (this.autoReconnect === ReconnectMode.onAllErrors || 
-            (this.autoReconnect === ReconnectMode.onConnectionLost && (error !== 'replaced'))) &&
-            error !== 'invalid_session'      
+            (this.autoReconnect === ReconnectMode.onConnectionLost && (error !== DisconnectReason.replaced))) &&
+            error !== DisconnectReason.invalidSession // do not reconnect if credentials have been invalidated
+        
         this.closeInternal(error, willReconnect)
-
         willReconnect && !this.cancelReconnect && this.reconnectLoop ()
     }
     /**
@@ -215,7 +215,7 @@ export class WAConnection extends EventEmitter {
         const response = await this.waitForMessage(tag, json, timeoutMs)
         if (expect200 && response.status && Math.floor(+response.status / 100) !== 2) {
             if (response.status >= 500) {
-                this.unexpectedDisconnect ('bad_session')
+                this.unexpectedDisconnect (DisconnectReason.badSession)
                 const response = await this.query ({json, binaryTags, tag, timeoutMs, expect200, waitForOpen})
                 return response
             }
@@ -286,7 +286,7 @@ export class WAConnection extends EventEmitter {
     }
     /** Close the connection to WhatsApp Web */
     close () {
-        this.closeInternal ('intentional')
+        this.closeInternal (DisconnectReason.intentional)
         this.cancelReconnect && this.cancelReconnect ()
     }
     protected closeInternal (reason?: DisconnectReason, isReconnecting: boolean=false) {

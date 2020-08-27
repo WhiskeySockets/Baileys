@@ -1,5 +1,5 @@
 import * as Utils from './Utils'
-import { WAMessage, WAChat, WAContact, MessageLogLevel, WANode, KEEP_ALIVE_INTERVAL_MS, BaileysError, WAConnectOptions } from './Constants'
+import { WAMessage, WAChat, WAContact, MessageLogLevel, WANode, KEEP_ALIVE_INTERVAL_MS, BaileysError, WAConnectOptions, DisconnectReason } from './Constants'
 import {WAConnection as Base} from './1.Validation'
 import Decoder from '../Binary/Decoder'
 
@@ -26,7 +26,7 @@ export class WAConnection extends Base {
                 this.startKeepAliveRequest()
                 this.conn.removeAllListeners ('error')
                 this.conn.removeAllListeners ('close')
-                this.conn.on ('close', () => this.unexpectedDisconnect ('close'))
+                this.conn.on ('close', () => this.unexpectedDisconnect (DisconnectReason.close))
             })
             .then (resolve)
             .catch (reject)
@@ -249,7 +249,7 @@ export class WAConnection extends Base {
 				check if it's been a suspicious amount of time since the server responded with our last seen
 				it could be that the network is down
 			*/
-            if (diff > KEEP_ALIVE_INTERVAL_MS+5000) this.unexpectedDisconnect ('lost')
+            if (diff > KEEP_ALIVE_INTERVAL_MS+5000) this.unexpectedDisconnect (DisconnectReason.lost)
             else this.send ('?,,') // if its all good, send a keep alive request
         }, KEEP_ALIVE_INTERVAL_MS)
     }
@@ -266,7 +266,9 @@ export class WAConnection extends Base {
                 
                 await delay
                 try {
-                    const reconnectID = this.lastDisconnectReason !== 'replaced' && this.lastDisconnectReason !== 'unknown' && this.user ? this.user.id.replace ('@s.whatsapp.net', '@c.us') : null
+                    const shouldUseReconnect = this.lastDisconnectReason !== DisconnectReason.replaced && this.lastDisconnectReason !== DisconnectReason.unknown && this.user
+                    const reconnectID = shouldUseReconnect ? this.user.id.replace ('@s.whatsapp.net', '@c.us') : null
+                    
                     await this.connect ({ timeoutMs: 30000, retryOnNetworkErrors: true, reconnectID })
                     this.cancelReconnect = null
                     break

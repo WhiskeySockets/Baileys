@@ -1,6 +1,6 @@
 import * as QR from 'qrcode-terminal'
 import { WAConnection as Base } from './3.Connect'
-import { MessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, MessageLogLevel, PresenceUpdate, BaileysEvent } from './Constants'
+import { MessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, MessageLogLevel, PresenceUpdate, BaileysEvent, DisconnectReason } from './Constants'
 import { whatsappID, unixTimestampSeconds, isGroupID } from './Utils'
 
 export class WAConnection extends Base {
@@ -273,7 +273,7 @@ export class WAConnection extends Base {
     /** when the connection is opening */
     on (event: 'connecting', listener: () => void): this
     /** when the connection has closed */
-    on (event: 'close', listener: (err: {reason?: string, isReconnecting: boolean}) => void): this
+    on (event: 'close', listener: (err: {reason?: DisconnectReason | string, isReconnecting: boolean}) => void): this
     /** when a new QR is generated, ready for scanning */
     on (event: 'qr', listener: (qr: string) => void): this
     /** when the connection to the phone changes */

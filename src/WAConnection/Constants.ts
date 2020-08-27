@@ -67,7 +67,25 @@ export type WAConnectOptions = {
 }
 
 export type WAConnectionState = 'open' | 'connecting' | 'close'
-export type DisconnectReason = 'close' | 'lost' | 'replaced' | 'intentional' | 'invalid_session' | 'unknown' | 'bad_session'
+/** Types of Disconnect Reasons */
+export enum DisconnectReason {
+  /** The connection was closed intentionally */
+  intentional = 'intentional',
+  /** The connection was terminated either by the client or server */
+  close = 'close',
+  /** The connection was lost, called when the server stops responding to requests */
+  lost = 'lost',
+  /** When WA Web is opened elsewhere & this session is disconnected */
+  replaced = 'intentional',
+  /** The credentials for the session have been invalidated, i.e. logged out either from the phone or WA Web */
+  invalidSession = 'invalid_session',
+  /** Received a 500 result in a query -- something has gone very wrong */
+  badSession = 'bad_session',
+  /** No idea, can be a sign of log out too */
+  unknown = 'unknown',
+  /** Well, the connection timed out */
+  timedOut = 'timed out'
+}
 export enum MessageLogLevel {
     none=0,
     info=1,
