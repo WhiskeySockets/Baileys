@@ -287,7 +287,7 @@ export interface MessageInfo {
     reads: {jid: string, t: string}[]
     deliveries: {jid: string, t: string}[]
 }
-export interface MessageStatusUpdate {
+export interface WAMessageStatusUpdate {
     from: string
     to: string
     /** Which participant caused the update (only for groups) */
@@ -296,7 +296,7 @@ export interface MessageStatusUpdate {
     /** Message IDs read/delivered */
     ids: string[]
     /** Status of the Message IDs */
-    type: WA_MESSAGE_STATUS_TYPE | 'delete'
+    type: WA_MESSAGE_STATUS_TYPE
 }
 export enum GroupSettingChange {
     messageSend = 'announcement',
@@ -338,10 +338,12 @@ export type BaileysEvent =
     'connection-phone-change' |
     'user-presence-update' |
     'user-status-update' |
+    'contacts-received' |
     'chat-new' |
     'chat-update' |
     'message-new' |
     'message-update' |
+    'message-status-update' |
     'group-participants-add' |
     'group-participants-remove' |
     'group-participants-promote' |

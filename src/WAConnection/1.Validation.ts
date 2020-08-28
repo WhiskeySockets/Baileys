@@ -1,7 +1,7 @@
 import * as Curve from 'curve25519-js'
 import * as Utils from './Utils'
 import {WAConnection as Base} from './0.Base'
-import { MessageLogLevel, WAMetric, WAFlag, BaileysError, Presence } from './Constants'
+import { MessageLogLevel, WAMetric, WAFlag, BaileysError, Presence, WAUser } from './Constants'
 
 export class WAConnection extends Base {
     
@@ -53,14 +53,16 @@ export class WAConnection extends Base {
                 // otherwise just chain the promise further
                 return json
             })
-            .then(async json => {
-                this.validateNewConnection(json[1]) // validate the connection
+            .then(json => {
+                this.user = this.validateNewConnection(json[1]) // validate the connection
                 this.log('validated connection successfully', MessageLogLevel.info)
 
                 this.sendPostConnectQueries ()
-                
                 this.lastSeen = new Date() // set last seen to right now
             })
+            // load profile picture
+            .then (() => this.query({ json: ['query', 'ProfilePicThumb', this.user.id], waitForOpen: false, expect200: false }))
+            .then (response => this.user.imgUrl = response?.eurl || '')
     }
     /**
      * Send the same queries WA Web sends after connect
@@ -88,25 +90,24 @@ export class WAConnection extends Base {
      * @param {object} json
      */
     private validateNewConnection(json) {
-        const onValidationSuccess = () => {
-            // set metadata: one's WhatsApp ID [cc][number]@s.whatsapp.net, name on WhatsApp, info about the phone
-            this.user = {
-                id: Utils.whatsappID(json.wid),
-                name: json.pushname,
-                phone: json.phone,
-                imgUrl: null
-            }
-            return this.user
-        }
+        // set metadata: one's WhatsApp ID [cc][number]@s.whatsapp.net, name on WhatsApp, info about the phone
+        const onValidationSuccess = () => ({
+            id: Utils.whatsappID(json.wid),
+            name: json.pushname,
+            phone: json.phone,
+            imgUrl: null
+        }) as WAUser
 
         if (!json.secret) {
             // if we didn't get a secret, we don't need it, we're validated
             return onValidationSuccess()
         }
+
         const secret = Buffer.from(json.secret, 'base64')
         if (secret.length !== 144) {
             throw new Error ('incorrect secret length received: ' + secret.length)
         }
+
         // generate shared key from our private key & the secret shared by the server
         const sharedKey = Curve.sharedKey(this.curveKeys.private, secret.slice(0, 32))
         // expand the key to 80 bytes using HKDF
@@ -118,28 +119,28 @@ export class WAConnection extends Base {
 
         const hmac = Utils.hmacSign(hmacValidationMessage, hmacValidationKey)
 
-        if (hmac.equals(secret.slice(32, 64))) {
-            // computed HMAC should equal secret[32:64]
-            // expandedKey[64:] + secret[64:] are the keys, encrypted using AES, that are used to encrypt/decrypt the messages recieved from WhatsApp
-            // they are encrypted using key: expandedKey[0:32]
-            const encryptedAESKeys = Buffer.concat([
-                expandedKey.slice(64, expandedKey.length),
-                secret.slice(64, secret.length),
-            ])
-            const decryptedKeys = Utils.aesDecrypt(encryptedAESKeys, expandedKey.slice(0, 32))
-            // set the credentials
-            this.authInfo = {
-                encKey: decryptedKeys.slice(0, 32), // first 32 bytes form the key to encrypt/decrypt messages
-                macKey: decryptedKeys.slice(32, 64), // last 32 bytes from the key to sign messages
-                clientToken: json.clientToken,
-                serverToken: json.serverToken,
-                clientID: this.authInfo.clientID,
-            }
-            return onValidationSuccess()
-        } else {
+        if (!hmac.equals(secret.slice(32, 64))) {
             // if the checksums didn't match
             throw new BaileysError ('HMAC validation failed', json)
         }
+
+        // computed HMAC should equal secret[32:64]
+        // expandedKey[64:] + secret[64:] are the keys, encrypted using AES, that are used to encrypt/decrypt the messages recieved from WhatsApp
+        // they are encrypted using key: expandedKey[0:32]
+        const encryptedAESKeys = Buffer.concat([
+            expandedKey.slice(64, expandedKey.length),
+            secret.slice(64, secret.length),
+        ])
+        const decryptedKeys = Utils.aesDecrypt(encryptedAESKeys, expandedKey.slice(0, 32))
+        // set the credentials
+        this.authInfo = {
+            encKey: decryptedKeys.slice(0, 32), // first 32 bytes form the key to encrypt/decrypt messages
+            macKey: decryptedKeys.slice(32, 64), // last 32 bytes from the key to sign messages
+            clientToken: json.clientToken,
+            serverToken: json.serverToken,
+            clientID: this.authInfo.clientID,
+        }
+        return onValidationSuccess()
     }
     /**
      * When logging back in (restoring a previously closed session), WhatsApp may challenge one to check if one still has the encryption keys

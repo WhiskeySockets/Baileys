@@ -17,23 +17,29 @@ async function example() {
     conn.logLevel = MessageLogLevel.info // set to unhandled to see what kind of stuff you can implement
 
     // loads the auth file credentials if present
-    if (fs.existsSync('./auth_info.json')) conn.loadAuthInfo ('./auth_info.json')
-    conn.on ('qr', qr => console.log (qr))
-    // connect or timeout in 30 seconds
-    await conn.connect({ timeoutMs: 30 * 1000 })
+    fs.existsSync('./auth_info.json') && conn.loadAuthInfo ('./auth_info.json')
+    
+    /* Called when contacts are received, 
+     * do note, that this method may be called before the connection is done completely because WA is funny sometimes 
+     * */
+    conn.on ('contacts-received', contacts => console.log(`received ${Object.keys(contacts).length} contacts`))
+    
+    // connect or timeout in 60 seconds
+    await conn.connect({ timeoutMs: 60 * 1000, retryOnNetworkErrors: true })
 
     const unread = await conn.loadAllUnreadMessages ()
     
     console.log('oh hello ' + conn.user.name + ' (' + conn.user.id + ')')
-    console.log('you have ' + conn.chats.all().length + ' chats & ' + Object.keys(conn.contacts).length + ' contacts')
+    console.log('you have ' + conn.chats.all().length + ' chats')
     console.log ('you have ' + unread.length + ' unread messages')
 
     const authInfo = conn.base64EncodedAuthInfo() // get all the auth info we need to restore this session
     fs.writeFileSync('./auth_info.json', JSON.stringify(authInfo, null, '\t')) // save this info to a file
+
     /*  Note: one can take this auth_info.json file and login again from any computer without having to scan the QR code, 
         and get full access to one's WhatsApp. Despite the convenience, be careful with this file */
     conn.on ('user-presence-update', json => console.log(json.id + ' presence is ' + json.type))
-    conn.on ('message-update', json => {
+    conn.on ('message-status-update', json => {
         const participant = json.participant ? ' (' + json.participant + ')' : '' // participant exists when the message is from a group
         console.log(`${json.to}${participant} acknlowledged message(s) ${json.ids} as ${json.type}`)
     })

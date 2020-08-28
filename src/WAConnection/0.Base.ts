@@ -45,7 +45,6 @@ export class WAConnection extends EventEmitter {
 
     maxCachedMessages = 25
 
-    contacts: {[k: string]: WAContact} = {}
     chats: KeyedDB<WAChat> = new KeyedDB (Utils.waChatUniqueKey, value => value.jid)
 
     /** Data structure of tokens & IDs used to establish one's identiy to WhatsApp Web */

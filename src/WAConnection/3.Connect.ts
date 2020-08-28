@@ -47,10 +47,9 @@ export class WAConnection extends Base {
             this.phoneConnected = true
             this.state = 'open'
 
-            this.user.imgUrl = await this.getProfilePicture (this.user.id).catch (err => '')
-            this.registerPhoneConnectionPoll ()
-            
             this.emit ('open')
+            
+            this.registerPhoneConnectionPoll ()
             this.releasePendingRequests ()
 
             this.log ('opened connection to WhatsApp Web', MessageLogLevel.info)
@@ -64,21 +63,14 @@ export class WAConnection extends Base {
             throw error
         }
     }
-    /** Get the URL to download the profile picture of a person/group */
-    async getProfilePicture(jid: string | null) {
-        const response = await this.query({ json: ['query', 'ProfilePicThumb', jid || this.user.id] })
-        return response.eurl as string
-    }
     /**
      * Sets up callbacks to receive chats, contacts & messages.
      * Must be called immediately after connect
      * @returns [chats, contacts]
      */
     protected async receiveChatsAndContacts(timeoutMs: number = null, stopAfterMostRecentMessage: boolean=false) {
-        this.contacts = {}
         this.chats.clear ()
 
-        let receivedContacts = false
         let receivedMessages = false
 
         let resolveTask: () => void
@@ -90,12 +82,7 @@ export class WAConnection extends Base {
                 this.deregisterCallback(['action', 'add:unread'])
             }
             this.deregisterCallback(['response', 'type:chat'])
-            this.deregisterCallback(['response', 'type:contacts'])
-        }
-        const checkForResolution = () => {
-            if (receivedContacts && receivedMessages) resolveTask ()
-        }
-        
+        }        
         // wait for messages to load
         const chatUpdate = json => {
             receivedMessages = true
@@ -110,7 +97,7 @@ export class WAConnection extends Base {
                 })
             }
             // if received contacts before messages
-            if (isLast && receivedContacts) checkForResolution ()
+            if (isLast) resolveTask ()
         }
 
         // wait for actual messages to load, "last" is the most recent message, "before" contains prior messages
@@ -121,10 +108,9 @@ export class WAConnection extends Base {
         }
         // get chats
         this.registerCallback(['response', 'type:chat'], json => {
-            if (json[1].duplicate || !json[2]) return
+            if (json[1].duplicate) return
 
-            json[2]
-            .forEach(([item, chat]: [any, WAChat]) => {
+            json[2]?.forEach(([item, chat]: [any, WAChat]) => {
                 if (!chat) {
                     this.log (`unexpectedly got null chat: ${item}, ${chat}`, MessageLogLevel.info)
                     return
@@ -140,23 +126,14 @@ export class WAConnection extends Base {
                 this.chats.insert (chat) // chats data (log json to see what it looks like)
             })
             
-            this.log ('received chats list', MessageLogLevel.info)
+            this.log (`received ${this.chats.all().length} chats`, MessageLogLevel.info)
+            // if there are no chats
+            if (this.chats.all().length === 0) {
+                receivedMessages = true
+                resolveTask ()
+            }
         })
-        // get contacts
-        this.registerCallback(['response', 'type:contacts'], json => {
-            if (json[1].duplicate) return
 
-            receivedContacts = true
-            
-            json[2].forEach(([type, contact]: ['user', WAContact]) => {
-                if (!contact) return this.log (`unexpectedly got null contact: ${type}, ${contact}`, MessageLogLevel.info)
-                
-                contact.jid = Utils.whatsappID (contact.jid)
-                this.contacts[contact.jid] = contact
-            })
-            this.log ('received contacts list', MessageLogLevel.info)
-            checkForResolution ()
-        })
         // wait for the chats & contacts to load
         await Utils.promiseTimeout (timeoutMs, (resolve, reject) => {
             resolveTask = resolve
@@ -167,13 +144,6 @@ export class WAConnection extends Base {
             this.on ('close', rejectTask)
         })
         .finally (deregisterCallbacks)
-        
-        this.chats
-        .all ()
-        .forEach (chat => {
-            const respectiveContact = this.contacts[chat.jid]
-            chat.name = respectiveContact?.name || respectiveContact?.notify || chat.name
-        })
     }
     private releasePendingRequests () {
         this.pendingRequests.forEach (({resolve}) => resolve()) // send off all pending request

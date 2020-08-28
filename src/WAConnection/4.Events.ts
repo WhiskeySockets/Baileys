@@ -1,6 +1,6 @@
 import * as QR from 'qrcode-terminal'
 import { WAConnection as Base } from './3.Connect'
-import { MessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, MessageLogLevel, PresenceUpdate, BaileysEvent, DisconnectReason, WANode } from './Constants'
+import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, MessageLogLevel, PresenceUpdate, BaileysEvent, DisconnectReason, WANode } from './Constants'
 import { whatsappID, unixTimestampSeconds, isGroupID } from './Utils'
 
 export class WAConnection extends Base {
@@ -30,8 +30,7 @@ export class WAConnection extends Base {
             if (node) {
                 const user = node[1] as WAContact
                 user.jid = whatsappID(user.jid)
-                this.contacts[user.jid] = user
-
+                
                 const chat = this.chats.get (user.jid)
                 if (chat) {
                     chat.name = user.name || user.notify
@@ -104,6 +103,19 @@ export class WAConnection extends Base {
 
             this.emit ('chat-update', { jid: chat.jid, count: chat.count })
         })
+        // get contacts
+        this.registerCallback(['response', 'type:contacts'], json => {
+            if (json[1].duplicate || !json[2]) return
+            
+            const contacts: {[k: string]: WAContact} = {}
+            json[2].forEach(([type, contact]: ['user', WAContact]) => {
+                if (!contact) return this.log (`unexpectedly got null contact: ${type}, ${contact}`, MessageLogLevel.info)
+                
+                contact.jid = whatsappID (contact.jid)
+                contacts[contact.jid] = contact
+            })
+            this.emit ('contacts-received', contacts)
+        })
         /*// genetic chat action
         this.registerCallback (['Chat', 'cmd:action'], json => {
             const data = json[1].data as WANode
@@ -118,6 +130,11 @@ export class WAConnection extends Base {
 
         this.on ('qr', qr => QR.generate(qr, { small: true }))
     }
+    /** Get the URL to download the profile picture of a person/group */
+    async getProfilePicture(jid: string | null) {
+        const response = await this.query({ json: ['query', 'ProfilePicThumb', jid || this.user.id] })
+        return response.eurl as string
+    }
     /** Set the callback for message status updates (when a message is delivered, read etc.) */
     protected registerOnMessageStatusChange() {
         const func = json => {
@@ -126,7 +143,7 @@ export class WAConnection extends Base {
             
             if (json.cmd === 'ack') ids = [json.id]
             
-            const update: MessageStatusUpdate = {
+            const update: WAMessageStatusUpdate = {
                 from: json.from,
                 to: json.to,
                 participant: json.participant,
@@ -138,7 +155,7 @@ export class WAConnection extends Base {
             const chat = this.chats.get( whatsappID(update.to) )
             if (!chat) return
             
-            this.emit ('message-update', update) 
+            this.emit ('message-status-update', update) 
             this.chatUpdatedMessage (update.ids, update.type as number, chat)
         }
         this.registerCallback('Msg', func)
@@ -199,14 +216,8 @@ export class WAConnection extends Base {
                         
                         found.messageStubType = WA_MESSAGE_STUB_TYPE.REVOKE
                         found.message = null
-                        const update: MessageStatusUpdate = {
-                            from: this.user.id,
-                            to: message.key.remoteJid,
-                            ids: [message.key.id],
-                            timestamp: new Date(),
-                            type: 'delete'
-                        }
-                        this.emit ('message-update', update)
+                        
+                        this.emit ('message-update', found)
                     }
                     break
                 default:
@@ -294,14 +305,18 @@ export class WAConnection extends Base {
     on (event: 'user-presence-update', listener: (update: PresenceUpdate) => void): this
     /** when a user's status is updated */
     on (event: 'user-status-update', listener: (update: {jid: string, status?: string}) => void): this
+    /** when a user receives contacts */
+    on (event: 'contacts-received', listener: (contacts: {[k: string]: WAContact}) => void): this
     /** when a new chat is added */
     on (event: 'chat-new', listener: (chat: WAChat) => void): this
     /** when a chat is updated (archived, deleted, pinned) */
     on (event: 'chat-update', listener: (chat: Partial<WAChat> & { jid: string }) => void): this
     /** when a new message is relayed */
     on (event: 'message-new', listener: (message: WAMessage) => void): this
-    /** when a message is updated (deleted, delivered, read, sent etc.) */
-    on (event: 'message-update', listener: (message: MessageStatusUpdate) => void): this
+    /** when a message object itself is updated (receives its media info or is deleted) */
+    on (event: 'message-update', listener: (message: WAMessage) => void): this
+    /** when a message's status is updated (deleted, delivered, read, sent etc.) */
+    on (event: 'message-status-update', listener: (message: WAMessageStatusUpdate) => void): this
     /** when participants are added to a group */
     on (event: 'group-participants-add', listener: (update: {jid: string, participants: string[], actor?: string}) => void): this
     /** when participants are removed or leave from a group */

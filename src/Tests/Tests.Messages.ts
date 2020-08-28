@@ -1,4 +1,4 @@
-import { MessageType, Mimetype, delay, promiseTimeout, WAMessage, WA_MESSAGE_STATUS_TYPE, MessageStatusUpdate } from '../WAConnection/WAConnection'
+import { MessageType, Mimetype, delay, promiseTimeout, WAMessage, WA_MESSAGE_STATUS_TYPE, WAMessageStatusUpdate } from '../WAConnection/WAConnection'
 import {promises as fs} from 'fs'
 import * as assert from 'assert'
 import { WAConnectionTest, testJid, sendAndRetreiveMessage } from './Common'
@@ -79,7 +79,7 @@ WAConnectionTest('Message Events', (conn) => {
                         resolve(update)
                     }
                 })
-            }) as Promise<MessageStatusUpdate>
+            }) as Promise<WAMessageStatusUpdate>
         const response = await conn.sendMessage(testJid, 'My Name Jeff', MessageType.text)
         const m = await waitForUpdate
         assert.ok (m.type >= WA_MESSAGE_STATUS_TYPE.DELIVERY_ACK)
