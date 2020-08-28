@@ -150,7 +150,7 @@ export class WAConnection extends Base {
         if (options.contextInfo) message[key].contextInfo = options.contextInfo
 
         if (quoted) {
-            const participant = quoted.key.fromMe ? this.user.id : (quoted.key.participant || quoted.key.remoteJid)
+            const participant = quoted.key.fromMe ? this.user.jid : (quoted.key.participant || quoted.key.remoteJid)
 
             message[key].contextInfo = message[key].contextInfo || { }
             message[key].contextInfo.participant = participant
@@ -174,7 +174,7 @@ export class WAConnection extends Base {
             message: message,
             messageTimestamp: timestamp,
             messageStubParameters: [],
-            participant: id.includes('@g.us') ? this.user.id : null,
+            participant: id.includes('@g.us') ? this.user.jid : null,
             status: WA_MESSAGE_STATUS_TYPE.PENDING
         }
         return messageJSON as WAMessage
@@ -182,7 +182,7 @@ export class WAConnection extends Base {
     /** Relay (send) a WAMessage; more advanced functionality to send a built WA Message, you may want to stick with sendMessage() */
     async relayWAMessage(message: WAMessage) {
         const json = ['action', {epoch: this.msgCount.toString(), type: 'relay'}, [['message', null, message]]]
-        const flag = message.key.remoteJid === this.user.id ? WAFlag.acknowledge : WAFlag.ignore // acknowledge when sending message to oneself
+        const flag = message.key.remoteJid === this.user.jid ? WAFlag.acknowledge : WAFlag.ignore // acknowledge when sending message to oneself
         await this.query({json, binaryTags: [WAMetric.message, flag], tag: message.key.id})
         await this.chatAddMessageAppropriate (message)
     }

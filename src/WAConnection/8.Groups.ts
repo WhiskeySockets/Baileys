@@ -10,7 +10,7 @@ export class WAConnection extends Base {
         const json: WANode = [
             'group',
             {
-                author: this.user.id,
+                author: this.user.jid,
                 id: tag,
                 type: type,
                 jid: jid,

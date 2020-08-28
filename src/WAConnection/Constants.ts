@@ -113,12 +113,6 @@ export interface AuthenticationCredentialsBrowser {
     WAToken2: string
 }
 export type AnyAuthenticationCredentials = AuthenticationCredentialsBrowser | AuthenticationCredentialsBase64 | AuthenticationCredentials
-export interface WAUser {
-    id: string
-    name: string
-    phone: string
-    imgUrl: string
-}
 
 export interface WAGroupCreateResponse {
     status: number
@@ -145,11 +139,20 @@ export interface WAGroupModification {
 }
 
 export interface WAContact {
+    /** name of the contact, the contact has set on their own on WA */
     notify?: string
     jid: string
+    /** I have no idea */
+    vname?: string
+    /** name of the contact, you have saved on your WA */
     name?: string
     index?: string
+    /** short name for the contact */
     short?: string
+}
+export interface WAUser extends WAContact {
+    phone: any
+    imgUrl?: string
 }
 export interface WAChat {
     jid: string

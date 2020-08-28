@@ -238,7 +238,7 @@ export class WAConnection extends Base {
                 await delay
                 try {
                     const shouldUseReconnect = this.lastDisconnectReason !== DisconnectReason.replaced && this.lastDisconnectReason !== DisconnectReason.unknown && this.user
-                    const reconnectID = shouldUseReconnect ? this.user.id.replace ('@s.whatsapp.net', '@c.us') : null
+                    const reconnectID = shouldUseReconnect ? this.user.jid.replace ('@s.whatsapp.net', '@c.us') : null
                     
                     await this.connect ({ timeoutMs: 30000, retryOnNetworkErrors: true, reconnectID })
                     this.cancelReconnect = null

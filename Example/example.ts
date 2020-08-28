@@ -29,7 +29,7 @@ async function example() {
 
     const unread = await conn.loadAllUnreadMessages ()
     
-    console.log('oh hello ' + conn.user.name + ' (' + conn.user.id + ')')
+    console.log('oh hello ' + conn.user.name + ' (' + conn.user.jid + ')')
     console.log('you have ' + conn.chats.all().length + ' chats')
     console.log ('you have ' + unread.length + ' unread messages')
 

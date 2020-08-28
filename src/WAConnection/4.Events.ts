@@ -132,7 +132,7 @@ export class WAConnection extends Base {
     }
     /** Get the URL to download the profile picture of a person/group */
     async getProfilePicture(jid: string | null) {
-        const response = await this.query({ json: ['query', 'ProfilePicThumb', jid || this.user.id] })
+        const response = await this.query({ json: ['query', 'ProfilePicThumb', jid || this.user.jid] })
         return response.eurl as string
     }
     /** Set the callback for message status updates (when a message is delivered, read etc.) */
@@ -245,7 +245,7 @@ export class WAConnection extends Base {
                         this.emit ('group-participants-remove', { jid, actor, participants})
                         
                         // mark the chat read only if you left the group
-                        if (participants.includes(this.user.id)) {
+                        if (participants.includes(this.user.jid)) {
                             chat.read_only = 'true'
                             this.emit ('chat-update', { jid, read_only: chat.read_only })
                         }

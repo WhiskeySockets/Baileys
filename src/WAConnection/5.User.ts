@@ -34,7 +34,7 @@ export class WAConnection extends Base {
     requestPresenceUpdate = async (jid: string) => this.query({json: ['action', 'presence', 'subscribe', jid]})
     /** Query the status of the person (see groupMetadata() for groups) */
     async getStatus (jid?: string) {
-        const status: { status: string } = await this.query({json: ['query', 'Status', jid || this.user.id]})
+        const status: { status: string } = await this.query({json: ['query', 'Status', jid || this.user.jid]})
         return status
     }
     async setStatus (status: string) {
@@ -47,7 +47,7 @@ export class WAConnection extends Base {
                 ]
             ]
         ) 
-        this.emit ('user-status-update', { jid: this.user.id, status })
+        this.emit ('user-status-update', { jid: this.user.jid, status })
         return response
     }
     /** Get your contacts */
@@ -122,7 +122,7 @@ export class WAConnection extends Base {
             ]
         ]
         const response = await (this.setQuery ([query], [WAMetric.picture, 136], tag) as Promise<WAProfilePictureChange>)
-        if (jid === this.user.id) this.user.imgUrl = response.eurl
+        if (jid === this.user.jid) this.user.imgUrl = response.eurl
         else if (this.chats.get(jid)) {
             this.chats.get(jid).imgUrl = response.eurl
             this.emit ('chat-update', { jid, imgUrl: response.eurl })

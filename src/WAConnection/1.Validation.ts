@@ -61,7 +61,7 @@ export class WAConnection extends Base {
                 this.lastSeen = new Date() // set last seen to right now
             })
             // load profile picture
-            .then (() => this.query({ json: ['query', 'ProfilePicThumb', this.user.id], waitForOpen: false, expect200: false }))
+            .then (() => this.query({ json: ['query', 'ProfilePicThumb', this.user.jid], waitForOpen: false, expect200: false }))
             .then (response => this.user.imgUrl = response?.eurl || '')
     }
     /**
@@ -92,7 +92,7 @@ export class WAConnection extends Base {
     private validateNewConnection(json) {
         // set metadata: one's WhatsApp ID [cc][number]@s.whatsapp.net, name on WhatsApp, info about the phone
         const onValidationSuccess = () => ({
-            id: Utils.whatsappID(json.wid),
+            jid: Utils.whatsappID(json.wid),
             name: json.pushname,
             phone: json.phone,
             imgUrl: null
