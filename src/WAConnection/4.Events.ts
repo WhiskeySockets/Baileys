@@ -1,6 +1,6 @@
 import * as QR from 'qrcode-terminal'
 import { WAConnection as Base } from './3.Connect'
-import { MessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, MessageLogLevel, PresenceUpdate, BaileysEvent, DisconnectReason } from './Constants'
+import { MessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, MessageLogLevel, PresenceUpdate, BaileysEvent, DisconnectReason, WANode } from './Constants'
 import { whatsappID, unixTimestampSeconds, isGroupID } from './Utils'
 
 export class WAConnection extends Base {
@@ -104,6 +104,17 @@ export class WAConnection extends Base {
 
             this.emit ('chat-update', { jid: chat.jid, count: chat.count })
         })
+        /*// genetic chat action
+        this.registerCallback (['Chat', 'cmd:action'], json => {
+            const data = json[1].data as WANode
+            if (!data) return
+
+            this.log (data, MessageLogLevel.info)
+
+            if (data[0] === 'create') {
+
+            }
+        })*/
 
         this.on ('qr', qr => QR.generate(qr, { small: true }))
     }
@@ -245,6 +256,7 @@ export class WAConnection extends Base {
                         this.emit ('group-description-update', { jid, actor })
                         break
                     case WA_MESSAGE_STUB_TYPE.GROUP_CHANGE_SUBJECT:
+                    case WA_MESSAGE_STUB_TYPE.GROUP_CREATE:
                         chat.name = message.messageStubParameters[0]
                         this.emit ('chat-update', { jid, name: chat.name })
                         break 
