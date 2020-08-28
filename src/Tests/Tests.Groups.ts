@@ -31,7 +31,7 @@ WAConnectionTest('Groups', (conn) => {
         const waitForEvent = new Promise (resolve => {
             conn.on ('group-description-update', ({jid, actor}) => {
                 if (jid === gid) {
-                    assert.ok (actor, conn.user.id)
+                    assert.ok (actor, conn.user.jid)
                     resolve ()
                 }
             })

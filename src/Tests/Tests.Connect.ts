@@ -33,7 +33,7 @@ describe('Test Connect', () => {
         
         const conn = new WAConnection()
         await conn.connect ()
-        assert.ok(conn.user?.id)
+        assert.ok(conn.user?.jid)
         assert.ok(conn.user?.phone)
         assert.ok (conn.user?.imgUrl || conn.user.imgUrl === '')
 
@@ -47,7 +47,7 @@ describe('Test Connect', () => {
         .connect ({timeoutMs: 20*1000})
         .then (conn => {
             assert.ok(conn.user)
-            assert.ok(conn.user.id)
+            assert.ok(conn.user.jid)
 
             const chatArray = conn.chats.all()
             if (chatArray.length > 0) {
@@ -56,10 +56,6 @@ describe('Test Connect', () => {
                 if (chatArray[0].messages.length > 0) {
                     assert.ok(chatArray[0].messages[0])
                 }  
-            }
-            const contactValues = Object.values(conn.contacts)
-            if (contactValues[0]) {
-                assert.ok(contactValues[0].jid)
             }
         })
         .then (() => conn.logout())
@@ -162,7 +158,7 @@ describe ('Pending Requests', () => {
 
           conn.close ()
 
-          const task: Promise<any> = conn.query({json: ['query', 'Status', conn.user.id]})
+          const task: Promise<any> = conn.query({json: ['query', 'Status', conn.user.jid]})
 
           await delay (2000)
 

@@ -35,7 +35,7 @@ WAConnectionTest('Messages', (conn) => {
         assert.strictEqual(message.message.extendedTextMessage.contextInfo.stanzaId, messages[0].key.id)
         assert.strictEqual(
             message.message.extendedTextMessage.contextInfo.participant, 
-            messages[0].key.fromMe ? conn.user.id : messages[0].key.id
+            messages[0].key.fromMe ? conn.user.jid : messages[0].key.id
         )
     })
     it('should send a gif', async () => {
@@ -74,7 +74,7 @@ WAConnectionTest('Message Events', (conn) => {
     it('should deliver a message', async () => {
         const waitForUpdate = 
             promiseTimeout(15000, resolve => {
-                conn.on('message-update', update => {
+                conn.on('message-status-update', update => {
                     if (update.ids.includes(response.key.id)) {
                         resolve(update)
                     }

@@ -21,7 +21,7 @@ WAConnectionTest('Misc', (conn) => {
 
         const waitForEvent = new Promise (resolve => {
             conn.on ('user-status-update', ({jid, status}) => {
-                if (jid === conn.user.id) {
+                if (jid === conn.user.jid) {
                     assert.equal (status, newStatus)
                     conn.removeAllListeners ('user-status-update')
                     resolve ()
@@ -50,16 +50,16 @@ WAConnectionTest('Misc', (conn) => {
     it('should change the profile picture', async () => {
         await delay (5000)
 
-        const ppUrl = await conn.getProfilePicture(conn.user.id)
+        const ppUrl = await conn.getProfilePicture(conn.user.jid)
         const fetched = await fetch(ppUrl, { headers: { Origin: 'https://web.whatsapp.com' } })
         const buff = await fetched.buffer ()
 
         const newPP = await fs.readFile ('./Media/cat.jpeg')
-        const response = await conn.updateProfilePicture (conn.user.id, newPP)
+        const response = await conn.updateProfilePicture (conn.user.jid, newPP)
 
         await delay (10000)
 
-        await conn.updateProfilePicture (conn.user.id, buff) // revert back
+        await conn.updateProfilePicture (conn.user.jid, buff) // revert back
     })
     it('should return the profile picture', async () => {
         const response = await conn.getProfilePicture(testJid)
