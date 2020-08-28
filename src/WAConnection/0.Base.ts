@@ -214,7 +214,7 @@ export class WAConnection extends EventEmitter {
        
         const response = await this.waitForMessage(tag, json, timeoutMs)
         if (expect200 && response.status && Math.floor(+response.status / 100) !== 2) {
-            if (response.status >= 500) {
+            if (response.status === 599) {
                 this.unexpectedDisconnect (DisconnectReason.badSession)
                 const response = await this.query ({json, binaryTags, tag, timeoutMs, expect200, waitForOpen})
                 return response

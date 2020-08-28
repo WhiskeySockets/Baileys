@@ -57,8 +57,9 @@ export class WAConnection extends Base {
 
             return this
         } catch (error) {
-            const loggedOut = error instanceof BaileysError && error.status >= 400
+            const loggedOut = error instanceof BaileysError && error.status === 401
             if (loggedOut && this.cancelReconnect) this.cancelReconnect ()
+            
             this.closeInternal (loggedOut ? 'invalid_session' : error.message)
             throw error
         }
@@ -273,8 +274,8 @@ export class WAConnection extends Base {
                     this.cancelReconnect = null
                     break
                 } catch (error) {
-                    // don't continue reconnecting if error is 400
-                    if (error instanceof BaileysError && error.status >= 400) {
+                    // don't continue reconnecting if error is 401
+                    if (error instanceof BaileysError && error.status === 401) {
                         break
                     }
                     this.log (`error in reconnecting: ${error}, reconnecting...`, MessageLogLevel.info)

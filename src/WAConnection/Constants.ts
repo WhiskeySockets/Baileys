@@ -76,7 +76,7 @@ export enum DisconnectReason {
   /** The connection was lost, called when the server stops responding to requests */
   lost = 'lost',
   /** When WA Web is opened elsewhere & this session is disconnected */
-  replaced = 'intentional',
+  replaced = 'replaced',
   /** The credentials for the session have been invalidated, i.e. logged out either from the phone or WA Web */
   invalidSession = 'invalid_session',
   /** Received a 500 result in a query -- something has gone very wrong */
