@@ -23,7 +23,6 @@ export class WAConnection extends Base {
             .then (() => this.log(`connected to WhatsApp Web server, authenticating via ${options.reconnectID ? 'reconnect' : 'takeover'}`, MessageLogLevel.info))
             .then (() => this.authenticate(options?.reconnectID))
             .then (() => {
-                this.startKeepAliveRequest()
                 this.conn.removeAllListeners ('error')
                 this.conn.removeAllListeners ('close')
                 this.conn.on ('close', () => this.unexpectedDisconnect (DisconnectReason.close))
@@ -35,6 +34,8 @@ export class WAConnection extends Base {
             cancel ()
             throw err
         }) as Promise<void>
+
+        this.on ('close', cancel)
 
         try {
             const tasks = [promise]
@@ -49,6 +50,7 @@ export class WAConnection extends Base {
 
             this.emit ('open')
             
+            this.startKeepAliveRequest()
             this.registerPhoneConnectionPoll ()
             this.releasePendingRequests ()
 
@@ -59,8 +61,13 @@ export class WAConnection extends Base {
             const loggedOut = error instanceof BaileysError && error.status === 401
             if (loggedOut && this.cancelReconnect) this.cancelReconnect ()
             
-            this.closeInternal (loggedOut ? 'invalid_session' : error.message)
+            if ((this.state as string) !== 'close') {
+                this.closeInternal (loggedOut ? 'invalid_session' : error.message)
+            }
+            
             throw error
+        } finally {
+            this.off ('close', cancel)
         }
     }
     /**

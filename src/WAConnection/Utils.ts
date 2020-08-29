@@ -130,8 +130,10 @@ export const openWebSocketConnection = (timeoutMs: number, retryOnNetworkError: 
         while (!cancelled) {
             try {
                 const ws = await newWS()
-                if (!cancelled) return ws
-                break
+                if (cancelled) {
+                    ws.close ()
+                    break
+                } else return ws
             } catch (error) {
                 if (!retryOnNetworkError) throw error 
                 await delay (1000)

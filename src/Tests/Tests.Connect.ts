@@ -40,6 +40,28 @@ describe('Test Connect', () => {
         conn.close()
         auth = conn.base64EncodedAuthInfo()
     })
+    /**
+     * the idea is to test closing the connection at multiple points in the connection 
+     * and see if the library cleans up resources correctly
+     */
+    it('should cleanup correctly', async () => {
+        const conn = new WAConnection()
+        conn.loadAuthInfo ('./auth_info.json')
+
+        let timeout = 0.1
+
+        while (true) {
+            setTimeout (() => conn.close(), timeout*1000)
+            try {
+                await conn.connect ()
+                break
+            } catch (error) {
+
+            }
+            // exponentially increase the timeout disconnect
+            timeout *= 2
+        }
+    })
     it('should reconnect', async () => {
         const conn = new WAConnection()
         await conn
