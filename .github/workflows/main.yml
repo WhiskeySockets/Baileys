@@ -85,7 +85,7 @@ jobs:
         
   Publish-Package:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/master'
     needs: Build
     steps:
     - name: Download Build Artifact
