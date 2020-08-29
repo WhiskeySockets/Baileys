@@ -182,8 +182,9 @@ export class WAConnection extends Base {
             spam: 'false',
             name
         }
-        await this.setProfilePicture (chat)
         this.chats.insert (chat)
+
+        await this.setProfilePicture (chat)
         this.emit ('chat-new', chat)
         return chat
     }
