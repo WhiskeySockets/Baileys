@@ -293,6 +293,7 @@ export class WAConnection extends EventEmitter {
 
         this.qrTimeout && clearTimeout (this.qrTimeout)
         this.phoneCheck && clearTimeout (this.phoneCheck)
+        this.keepAliveReq && clearInterval(this.keepAliveReq)
         
         this.state = 'close'
         this.msgCount = 0
@@ -314,7 +315,7 @@ export class WAConnection extends EventEmitter {
                 delete this.callbacks[key]
             }
         })
-        if (this.keepAliveReq) clearInterval(this.keepAliveReq)
+        
         // reconnecting if the timeout is active for the reconnect loop
         this.emit ('close', { reason, isReconnecting: this.cancelReconnect || isReconnecting})
     }
