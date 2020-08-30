@@ -99,7 +99,6 @@ jobs:
       
     - name: Create Release
       id: releaseCreate
-      continue-on-error: true
       uses: actions/create-release@v1
       env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -122,7 +121,6 @@ jobs:
       run: mv *.tgz npmPackage.tgz
       
     - name: Upload Package to Release
-      continue-on-error: true
       uses: actions/upload-release-asset@v1.0.2
       env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
