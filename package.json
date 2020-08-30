@@ -31,8 +31,8 @@
     "url": "git@github.com:adiwajshing/baileys.git"
   },
   "files": [
-    "./lib",
-    "./WAMessage"
+    "./lib/.",
+    "./WAMessage/."
   ],
   "dependencies": {
     "@adiwajshing/keyed-db": "^0.1.2",
