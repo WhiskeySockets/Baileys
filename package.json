@@ -16,11 +16,13 @@
     "automation"
   ],
   "scripts": {
+    "test": "mocha --timeout 60000 -r ts-node/register src/Tests/Tests.*.ts",
     "prepare": "npm run build",
-    "test": "mocha --timeout 120000 -r ts-node/register src/Tests/Tests.*.ts",
     "lint": "eslint '*/*.ts' --quiet --fix",
-    "build": "tsc",
+    "build:tsc": "tsc",
     "build:docs": "typedoc",
+    "build:all": "npm run build:tsc && npm run build:docs",
+    "build": "",
     "example": "npx ts-node Example/example.ts",
     "browser-decode": "npx ts-node src/BrowserMessageDecoding.ts"
   },
@@ -29,6 +31,9 @@
   "repository": {
     "url": "git@github.com:adiwajshing/baileys.git"
   },
+  "files": [
+    "./lib/**/*.js"
+  ],
   "dependencies": {
     "@adiwajshing/keyed-db": "^0.1.2",
     "curve25519-js": "^0.0.4",
