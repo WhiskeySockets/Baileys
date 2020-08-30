@@ -218,7 +218,7 @@ export class WAConnection extends EventEmitter {
                 const response = await this.query ({json, binaryTags, tag, timeoutMs, expect200, waitForOpen})
                 return response
             }
-            throw new BaileysError(`Unexpected status code in '${json[0] || 'generic query'}': ${response.status}`, {query: json})
+            throw new BaileysError(`Unexpected status code in '${json[0] || 'generic query'}': ${response.status}`, {query: json, status: response.status})
         }
         return response
     }

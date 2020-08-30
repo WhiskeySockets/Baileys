@@ -201,6 +201,9 @@ export enum WAMetric {
     queryLabel = 36,
     queryQuickReply = 39
 }
+
+export const STORIES_JID = 'status@broadcast'
+
 export enum WAFlag {
     ignore = 1 << 7,
     acknowledge = 1 << 6,

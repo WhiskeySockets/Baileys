@@ -1,5 +1,5 @@
 import { Presence, ChatModification, delay } from '../WAConnection/WAConnection'
-import {promises as fs} from 'fs'
+import { promises as fs } from 'fs'
 import * as assert from 'assert'
 import fetch from 'node-fetch'
 import { WAConnectionTest, testJid } from './Common'
@@ -133,5 +133,12 @@ WAConnectionTest('Misc', (conn) => {
 
             await delay(1500)
         }
+    })
+    it('should generate link previews correctly', async () => {
+        await conn.generateLinkPreview ('hello this is from https://www.github.com/adiwajshing/Baileys')
+        // two links should fail
+        await assert.rejects (
+            conn.generateLinkPreview ('I sent links to https://teachyourselfcs.com/ and https://www.fast.ai/')
+        )
     })
 })
