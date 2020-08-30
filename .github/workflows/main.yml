@@ -1,6 +1,8 @@
 name: CI
 
+
 on: "workflow_dispatch"
+
 jobs:
 
 #  Test:
@@ -26,7 +28,6 @@ jobs:
 
     - name: Parsing Package Info
       id: packageInfo
-      
       run: |
         echo "::set-output name=package-name::$(jq -r .name package.json)"
         echo "::set-output name=package-version::$(jq -r .version package.json)"
@@ -40,6 +41,15 @@ jobs:
 
     - name: Build
       run: npm run build:all
+      
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v2.1.4
+      with:
+        name: baileysBuilt
+        path: |
+          docs/**/*
+          lib/**/*
+          package.json
 
       
     - name: Upload a Build Artifact
@@ -57,6 +67,7 @@ jobs:
     needs: Build
     
     steps:
+    
     - name: Download Build Artifact
       uses: actions/download-artifact@v2.0.5
       with:
@@ -75,7 +86,7 @@ jobs:
         
   Publish-Package:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/master'
     needs: Build
     steps:
     - name: Download Build Artifact
