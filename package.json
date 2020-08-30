@@ -31,7 +31,7 @@
     "url": "git@github.com:adiwajshing/baileys.git"
   },
   "files": [
-    "./lib/**/*.js"
+    "./lib/*"
   ],
   "dependencies": {
     "@adiwajshing/keyed-db": "^0.1.2",
