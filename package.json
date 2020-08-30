@@ -30,9 +30,6 @@
   "repository": {
     "url": "git@github.com:adiwajshing/baileys.git"
   },
-  "files": [
-    "./lib/*"
-  ],
   "dependencies": {
     "@adiwajshing/keyed-db": "^0.1.2",
     "curve25519-js": "^0.0.4",
