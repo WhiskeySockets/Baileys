@@ -1,20 +1,9 @@
-import { MessageType, Presence, ChatModification, promiseTimeout, createTimeout } from '../WAConnection/WAConnection'
+import { Presence, ChatModification, delay } from '../WAConnection/WAConnection'
 import {promises as fs} from 'fs'
 import * as assert from 'assert'
 import fetch from 'node-fetch'
 import { WAConnectionTest, testJid } from './Common'
 
-WAConnectionTest('Presence', (conn) => {
-    it('should update presence', async () => {
-        const presences = Object.values(Presence)
-        for (const i in presences) {
-            const response = await conn.updatePresence(testJid, presences[i])
-            assert.strictEqual(response.status, 200)
-
-            await createTimeout(1500)
-        }
-    })
-})
 WAConnectionTest('Misc', (conn) => {
     it('should tell if someone has an account on WhatsApp', async () => {
         const response = await conn.isOnWhatsApp(testJid)
@@ -30,16 +19,28 @@ WAConnectionTest('Misc', (conn) => {
     it('should update status', async () => {
         const newStatus = 'v cool status'
 
+        const waitForEvent = new Promise (resolve => {
+            conn.on ('user-status-update', ({jid, status}) => {
+                if (jid === conn.user.id) {
+                    assert.equal (status, newStatus)
+                    conn.removeAllListeners ('user-status-update')
+                    resolve ()
+                }
+            })
+        })
+
         const response = await conn.getStatus()
         assert.strictEqual(typeof response.status, 'string')
 
-        await createTimeout (1000)
+        await delay (1000)
 
         await conn.setStatus (newStatus)
         const response2 = await conn.getStatus()
         assert.equal (response2.status, newStatus)
 
-        await createTimeout (1000)
+        await waitForEvent
+
+        await delay (1000)
 
         await conn.setStatus (response.status) // update back
     })
@@ -47,18 +48,18 @@ WAConnectionTest('Misc', (conn) => {
         await conn.getStories()
     })
     it('should change the profile picture', async () => {
-        await createTimeout (5000)
+        await delay (5000)
 
-        const ppUrl = await conn.getProfilePicture(conn.userMetaData.id)
+        const ppUrl = await conn.getProfilePicture(conn.user.id)
         const fetched = await fetch(ppUrl, { headers: { Origin: 'https://web.whatsapp.com' } })
         const buff = await fetched.buffer ()
 
         const newPP = await fs.readFile ('./Media/cat.jpeg')
-        const response = await conn.updateProfilePicture (conn.userMetaData.id, newPP)
+        const response = await conn.updateProfilePicture (conn.user.id, newPP)
 
-        await createTimeout (10000)
+        await delay (10000)
 
-        await conn.updateProfilePicture (conn.userMetaData.id, buff) // revert back
+        await conn.updateProfilePicture (conn.user.id, buff) // revert back
     })
     it('should return the profile picture', async () => {
         const response = await conn.getProfilePicture(testJid)
@@ -70,23 +71,42 @@ WAConnectionTest('Misc', (conn) => {
         assert.ok(response)
     })
     it('should mark a chat unread', async () => {
-        await conn.sendReadReceipt(testJid, null, 'unread')
+        const waitForEvent = new Promise (resolve => {
+            conn.on ('chat-update', ({jid, count}) => {
+                if (jid === testJid) {
+                    assert.ok (count < 0)
+                    conn.removeAllListeners ('chat-update')
+                    resolve ()
+                }
+            })
+        })
+        await conn.sendReadReceipt(testJid, null, -2)
+        await waitForEvent
     })
     it('should archive & unarchive', async () => {
         await conn.modifyChat (testJid, ChatModification.archive)
-        await createTimeout (2000)
+        await delay (2000)
         await conn.modifyChat (testJid, ChatModification.unarchive)
     })
     it('should pin & unpin a chat', async () => {
-        const response = await conn.modifyChat (testJid, ChatModification.pin)
-        await createTimeout (2000)
-        await conn.modifyChat (testJid, ChatModification.unpin, {stamp: response.stamp})
+        await conn.modifyChat (testJid, ChatModification.pin)
+        await delay (2000)
+        await conn.modifyChat (testJid, ChatModification.unpin)
     })
     it('should mute & unmute a chat', async () => {
-        const mutedate = new Date (new Date().getTime() + 8*60*60*1000) // 8 hours in the future
-        await conn.modifyChat (testJid, ChatModification.mute, {stamp: mutedate})
-        await createTimeout (2000)
-        await conn.modifyChat (testJid, ChatModification.unmute, {stamp: mutedate})
+        const waitForEvent = new Promise (resolve => {
+            conn.on ('chat-update', ({jid, mute}) => {
+                if (jid === testJid ) {
+                    assert.ok (mute)
+                    conn.removeAllListeners ('chat-update')
+                    resolve ()
+                }
+            })
+        })
+        await conn.modifyChat (testJid, ChatModification.mute, 8*60*60*1000) // 8 hours in the future
+        await waitForEvent
+        await delay (2000)
+        await conn.modifyChat (testJid, ChatModification.unmute)
     })
     it('should return search results', async () => {
         const jids = [null, testJid]
@@ -96,18 +116,22 @@ WAConnectionTest('Misc', (conn) => {
             assert.ok (response.messages.length >= 0)
         }
     })
-})
-WAConnectionTest('Events', (conn) => {
-    it('should deliver a message', async () => {
-        const waitForUpdate = () =>
-            new Promise((resolve) => {
-                conn.setOnMessageStatusChange((update) => {
-                    if (update.ids.includes(response.key.id)) {
-                        resolve()
-                    }
-                })
-            })
-        const response = await conn.sendMessage(testJid, 'My Name Jeff', MessageType.text)
-        await promiseTimeout(15000, waitForUpdate())
+    it('should load a single message', async () => {
+        const {messages} = await conn.loadMessages (testJid, 10)
+        for (var message of messages) {
+            const loaded = await conn.loadMessage (testJid, message.key.id)
+            assert.equal (loaded.key.id, message.key.id)
+            await delay (1000)
+        }        
+    })
+
+    it('should update presence', async () => {
+        const presences = Object.values(Presence)
+        for (const i in presences) {
+            const response = await conn.updatePresence(testJid, presences[i])
+            assert.strictEqual(response.status, 200)
+
+            await delay(1500)
+        }
     })
 })

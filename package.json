@@ -8,7 +8,6 @@
   "keywords": [
     "whatsapp",
     "js-whatsapp",
-    "reverse engineer",
     "whatsapp-api",
     "whatsapp-web",
     "whatsapp",
@@ -18,6 +17,7 @@
   ],
   "scripts": {
     "test": "mocha --timeout 60000 -r ts-node/register src/Tests/Tests.*.ts",
+    "prepare": "npm run build",
     "lint": "eslint '*/*.ts' --quiet --fix",
     "build:tsc": "tsc",
     "build:docs": "typedoc",
@@ -35,24 +35,24 @@
     "./lib/**/*.js"
   ],
   "dependencies": {
-    "@adiwajshing/keyed-db": "^0.1.1",
-    "curve25519-js": "0.0.4",
+    "@adiwajshing/keyed-db": "^0.1.2",
+    "curve25519-js": "^0.0.4",
     "futoin-hkdf": "^1.3.2",
     "jimp": "^0.14.0",
     "node-fetch": "^2.6.0",
-    "protobufjs": "^6.9.0",
+    "protobufjs": "^6.10.1",
     "qrcode-terminal": "^0.12.0",
-    "ws": "^7.3.0"
+    "ws": "^7.3.1"
   },
   "devDependencies": {
     "@types/mocha": "^7.0.2",
-    "@types/node": "^14.0.14",
+    "@types/node": "^14.6.0",
     "@types/ws": "^7.2.6",
     "assert": "^2.0.0",
     "dotenv": "^8.2.0",
-    "mocha": "^8.0.1",
-    "ts-node-dev": "^1.0.0-pre.49",
+    "mocha": "^8.1.1",
+    "ts-node-dev": "^1.0.0-pre.60",
     "typedoc": "^0.18.0",
-    "typescript": "^3.9.5"
+    "typescript": "^3.9.7"
   }
 }
