@@ -87,6 +87,10 @@ jobs:
     - name: Setup Node.js environment
       uses: actions/setup-node@v2.1.1
       
+      
+    - name: Debug Release Creation
+      run: "echo ${{ toJson(needs) }}"
+      
     - name: Create Release
       id: releaseCreate
       continue-on-error: true
