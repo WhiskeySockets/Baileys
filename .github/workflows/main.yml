@@ -51,15 +51,6 @@ jobs:
           lib/**/*
           package.json
 
-      
-    - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v2.1.4
-      with:
-        name: baileysBuilt
-        path: |
-          docs/**/*
-          lib/**/*
-          package.json
 
   Publish-Docs:
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
@@ -100,7 +91,7 @@ jobs:
       
       
     - name: Debug Release Creation
-      run: "echo ${{ toJson(needs) }}"
+      run: echo "${{ toJson(needs) }}"
       
     - name: Create Release
       id: releaseCreate
