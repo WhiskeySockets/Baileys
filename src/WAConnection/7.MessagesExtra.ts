@@ -92,7 +92,7 @@ export class WAConnection extends Base {
                 },
                 null,
             ]
-            const response = await this.query({json, binaryTags: [WAMetric.queryMessages, WAFlag.ignore], expect200: true})
+            const response = await this.query({json, binaryTags: [WAMetric.queryMessages, WAFlag.ignore], expect200: false})
             const messages = response[2] ? (response[2] as WANode[]).map(item => item[2] as WAMessage) : []
     
             return messages
