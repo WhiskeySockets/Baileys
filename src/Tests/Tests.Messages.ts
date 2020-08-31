@@ -51,6 +51,13 @@ WAConnectionTest('Messages', conn => {
         await conn.downloadMediaMessage(message)
         //const message2 = await sendAndRetreiveMessage (conn, 'this is a quote', MessageType.extendedText)
     })
+    it('should send a sticker', async () => {
+        const content = await fs.readFile('./Media/octopus.webp')
+        const message = await sendAndRetreiveMessage(conn, content, MessageType.sticker)
+        
+        await conn.downloadMediaMessage(message)
+        //const message2 = await sendAndRetreiveMessage (conn, 'this is a quote', MessageType.extendedText)
+    })
     it('should send an image & quote', async () => {
         const {messages} = await conn.loadMessages(testJid, 1)
         const content = await fs.readFile('./Media/meme.jpeg')

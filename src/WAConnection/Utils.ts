@@ -258,7 +258,7 @@ export async function generateThumbnail(buffer: Buffer, mediaType: MessageType, 
         if (mediaType === MessageType.audio) {
             throw new Error('audio messages cannot have thumbnails')
         }
-    } else if (mediaType === MessageType.image || mediaType === MessageType.sticker) {
+    } else if (mediaType === MessageType.image) {
         const buff = await compressImage (buffer)
         info.thumbnail = buff.toString('base64')
     } else if (mediaType === MessageType.video) {

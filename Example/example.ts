@@ -80,7 +80,7 @@ async function example() {
                 console.log(`${sender} sent live location for duration: ${m.duration/60}`)
             }
         } else {
-            // if it is a media (audio, image, video) message
+            // if it is a media (audio, image, video, sticker) message
             // decode, decrypt & save the media.
             // The extension to the is applied automatically based on the media type
             try {
@@ -112,7 +112,7 @@ async function example() {
                 type = MessageType.video
             }
             const response = await conn.sendMessage(m.key.remoteJid, content, type, options)
-            console.log("sent message with ID '" + response.key.id + "' successfully: " + (response.status === 200))
+            console.log("sent message with ID '" + response.key.id + "' successfully")
         }, 3 * 1000)
     })
 
