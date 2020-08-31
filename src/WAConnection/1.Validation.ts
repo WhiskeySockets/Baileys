@@ -58,7 +58,6 @@ export class WAConnection extends Base {
                 this.log('validated connection successfully', MessageLogLevel.info)
 
                 this.sendPostConnectQueries ()
-                this.lastSeen = new Date() // set last seen to right now
             })
             // load profile picture
             .then (() => this.query({ json: ['query', 'ProfilePicThumb', this.user.jid], waitForOpen: false, expect200: false }))

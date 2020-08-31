@@ -43,8 +43,7 @@ import { WAConnection } from '@adiwajshing/baileys'
 async function connectToWhatsApp () {
     const conn = new WAConnection() 
     
-    // 20 second timeout
-    await conn.connect ({timeoutMs: 30*1000})
+    await conn.connect ()
     console.log ("oh hello " + conn.user.name + " (" + conn.user.id + ")")
     // every chat object has a list of most recent messages
     console.log ("you have " + conn.chats.all().length + " chats")
@@ -60,9 +59,9 @@ connectToWhatsApp ()
 
 If the connection is successful, you will see a QR code printed on your terminal screen, scan it with WhatsApp on your phone and you'll be logged in!
 
-If you don't want to wait for WhatsApp to send all your chats while connecting, you can use the following function:
+If you don't want to wait for WhatsApp to send all your chats while connecting, you can set the following property to false:
 ``` ts
-await conn.connect ({timeoutMs: 30*1000}, false)
+conn.connectOptions.waitForChats = false
 ``` 
 
 Do note, the `chats` object returned is now a [KeyedDB](https://github.com/adiwajshing/keyed-db). This is done for the following reasons:
@@ -103,9 +102,9 @@ await conn.connect() // works the same
 ```
 See the browser credentials type in the docs.
 
-## QR Overriding
+## QR Callback
 
-If you want to do some custom processing with the QR code used to authenticate, you can override the following method:
+If you want to do some custom processing with the QR code used to authenticate, you can register for the following event:
 ``` ts
 conn.on('qr', qr => {
     // Now, use the 'qr' string to display in QR UI or send somewhere

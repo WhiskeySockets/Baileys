@@ -8,7 +8,7 @@ import {platform, release} from 'os'
 import WS from 'ws'
 
 import Decoder from '../Binary/Decoder'
-import { MessageType, HKDFInfoKeys, MessageOptions, WAChat, WAMessageContent, BaileysError, WAMessageProto } from './Constants'
+import { MessageType, HKDFInfoKeys, MessageOptions, WAChat, WAMessageContent, BaileysError, WAMessageProto, TimedOutError, CancelledError } from './Constants'
 
 const platformMap = {
     'aix': 'AIX',
@@ -80,7 +80,7 @@ export const delayCancellable = (ms: number) => {
     })
     const cancel = () => {
         clearTimeout (timeout)
-        reject (new Error('cancelled'))
+        reject (CancelledError())
     }
     return { delay, cancel }
 }
@@ -99,7 +99,7 @@ export async function promiseTimeout<T>(ms: number, promise: (resolve: (v?: T)=>
     try {
         const content = await Promise.race([
             p, 
-            delay.then(() => pReject(new BaileysError('timed out', p)))
+            delay.then(() => pReject(TimedOutError()))
         ])
         cancel ()
         return content as T
@@ -139,7 +139,7 @@ export const openWebSocketConnection = (timeoutMs: number, retryOnNetworkError: 
                 await delay (1000)
             }
         }
-        throw new Error ('cancelled')
+        throw CancelledError()
     }
     const cancel = () => cancelled = true
     return { ws: connect(), cancel }

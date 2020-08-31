@@ -19,18 +19,16 @@ async function example() {
     // loads the auth file credentials if present
     fs.existsSync('./auth_info.json') && conn.loadAuthInfo ('./auth_info.json')
     
-    /* Called when contacts are received, 
-     * do note, that this method may be called before the connection is done completely because WA is funny sometimes 
-     * */
-    conn.on ('contacts-received', contacts => console.log(`received ${Object.keys(contacts).length} contacts`))
-    
     // connect or timeout in 60 seconds
-    await conn.connect({ timeoutMs: 60 * 1000, retryOnNetworkErrors: true })
+    conn.connectOptions.timeoutMs = 60*1000
+    // attempt to reconnect at most 10 times
+    conn.connectOptions.maxRetries = 10
+    await conn.connect()
 
     const unread = await conn.loadAllUnreadMessages ()
     
     console.log('oh hello ' + conn.user.name + ' (' + conn.user.jid + ')')
-    console.log('you have ' + conn.chats.all().length + ' chats')
+    console.log('you have ' + conn.chats.all().length + ' chats & ' + Object.keys(conn.contacts).length + ' contacts')
     console.log ('you have ' + unread.length + ' unread messages')
 
     const authInfo = conn.base64EncodedAuthInfo() // get all the auth info we need to restore this session

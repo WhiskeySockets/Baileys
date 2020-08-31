@@ -19,6 +19,7 @@ import {
     WAChat,
     WAQuery,
     ReconnectMode,
+    WAConnectOptions,
 } from './Constants'
 import { EventEmitter } from 'events'
 import KeyedDB from '@adiwajshing/keyed-db'
@@ -38,7 +39,12 @@ export class WAConnection extends EventEmitter {
     state: WAConnectionState = 'close'
     /** New QR generation interval, set to null if you don't want to regenerate */
     regenerateQRIntervalMs = 30*1000
-
+    connectOptions: WAConnectOptions = {
+        timeoutMs: 60*1000,
+        waitForChats: true,
+        maxRetries: 5
+    }
+    /** When to auto-reconnect */
     autoReconnect = ReconnectMode.onConnectionLost 
     /** Whether the phone is connected */
     phoneConnected: boolean = false
@@ -46,6 +52,7 @@ export class WAConnection extends EventEmitter {
     maxCachedMessages = 25
 
     chats: KeyedDB<WAChat> = new KeyedDB (Utils.waChatUniqueKey, value => value.jid)
+    contacts: { [k: string]: WAContact } = {}
 
     /** Data structure of tokens & IDs used to establish one's identiy to WhatsApp Web */
     protected authInfo: AuthenticationCredentials = null
@@ -62,24 +69,30 @@ export class WAConnection extends EventEmitter {
     protected referenceDate = new Date () // used for generating tags
     protected lastSeen: Date = null // last keep alive received
     protected qrTimeout: NodeJS.Timeout
-    protected phoneCheck: NodeJS.Timeout
 
     protected lastDisconnectReason: DisconnectReason
-    protected cancelledReconnect = false
-    protected cancelReconnect: () => void
 
     constructor () {
         super ()
-        this.registerCallback (['Cmd', 'type:disconnect'], json => this.unexpectedDisconnect(json[1].kind || 'unknown'))
+        this.registerCallback (['Cmd', 'type:disconnect'], json => (
+            this.unexpectedDisconnect(json[1].kind || 'unknown')
+        ))
+    }
+    /**
+     * Connect to WhatsAppWeb
+     * @param options the connect options
+     */
+    async connect() {
+        return this
     }
     async unexpectedDisconnect (error: DisconnectReason) {
         const willReconnect = 
             (this.autoReconnect === ReconnectMode.onAllErrors || 
-            (this.autoReconnect === ReconnectMode.onConnectionLost && (error !== DisconnectReason.replaced))) &&
+            (this.autoReconnect === ReconnectMode.onConnectionLost && error !== DisconnectReason.replaced)) &&
             error !== DisconnectReason.invalidSession // do not reconnect if credentials have been invalidated
         
         this.closeInternal(error, willReconnect)
-        willReconnect && !this.cancelReconnect && this.reconnectLoop ()
+        willReconnect && this.connect ()
     }
     /**
      * base 64 encode the authentication credentials and return them
@@ -213,6 +226,7 @@ export class WAConnection extends EventEmitter {
        
         const response = await this.waitForMessage(tag, json, timeoutMs)
         if (expect200 && response.status && Math.floor(+response.status / 100) !== 2) {
+            // read here: http://getstatuscode.com/599
             if (response.status === 599) {
                 this.unexpectedDisconnect (DisconnectReason.badSession)
                 const response = await this.query ({json, binaryTags, tag, timeoutMs, expect200, waitForOpen})
@@ -286,13 +300,11 @@ export class WAConnection extends EventEmitter {
     /** Close the connection to WhatsApp Web */
     close () {
         this.closeInternal (DisconnectReason.intentional)
-        this.cancelReconnect && this.cancelReconnect ()
     }
     protected closeInternal (reason?: DisconnectReason, isReconnecting: boolean=false) {
         this.log (`closed connection, reason ${reason}${isReconnecting ? ', reconnecting in a few seconds...' : ''}`, MessageLogLevel.info)  
 
         this.qrTimeout && clearTimeout (this.qrTimeout)
-        this.phoneCheck && clearTimeout (this.phoneCheck)
         this.keepAliveReq && clearInterval(this.keepAliveReq)
         
         this.state = 'close'
@@ -308,6 +320,11 @@ export class WAConnection extends EventEmitter {
             this.pendingRequests = []
         }
 
+        this.removePendingCallbacks ()
+        // reconnecting if the timeout is active for the reconnect loop
+        this.emit ('close', { reason, isReconnecting })
+    }
+    protected removePendingCallbacks () {
         Object.keys(this.callbacks).forEach(key => {
             if (!key.includes('function:')) {
                 this.log (`cancelling message wait: ${key}`, MessageLogLevel.info)
@@ -315,12 +332,6 @@ export class WAConnection extends EventEmitter {
                 delete this.callbacks[key]
             }
         })
-        
-        // reconnecting if the timeout is active for the reconnect loop
-        this.emit ('close', { reason, isReconnecting: this.cancelReconnect || isReconnecting})
-    }
-    protected async reconnectLoop () {
-
     }
     generateMessageTag () {
         return `${Utils.unixTimestampSeconds(this.referenceDate)}.--${this.msgCount}`

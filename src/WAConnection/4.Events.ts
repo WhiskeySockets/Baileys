@@ -31,9 +31,11 @@ export class WAConnection extends Base {
                 const user = node[1] as WAContact
                 user.jid = whatsappID(user.jid)
                 
+                this.contacts[user.jid] = user
+                
                 const chat = this.chats.get (user.jid)
                 if (chat) {
-                    chat.name = user.name || user.notify
+                    chat.name = user.name || user.notify || chat.name
                     this.emit ('chat-update', { jid: chat.jid, name: chat.name })
                 }
             }
@@ -102,19 +104,6 @@ export class WAConnection extends Base {
             else chat.count = 0
 
             this.emit ('chat-update', { jid: chat.jid, count: chat.count })
-        })
-        // get contacts
-        this.registerCallback(['response', 'type:contacts'], json => {
-            if (json[1].duplicate || !json[2]) return
-            
-            const contacts: {[k: string]: WAContact} = {}
-            json[2].forEach(([type, contact]: ['user', WAContact]) => {
-                if (!contact) return this.log (`unexpectedly got null contact: ${type}, ${contact}`, MessageLogLevel.info)
-                
-                contact.jid = whatsappID (contact.jid)
-                contacts[contact.jid] = contact
-            })
-            this.emit ('contacts-received', contacts)
         })
         /*// genetic chat action
         this.registerCallback (['Chat', 'cmd:action'], json => {
@@ -306,8 +295,6 @@ export class WAConnection extends Base {
     on (event: 'user-presence-update', listener: (update: PresenceUpdate) => void): this
     /** when a user's status is updated */
     on (event: 'user-status-update', listener: (update: {jid: string, status?: string}) => void): this
-    /** when a user receives contacts */
-    on (event: 'contacts-received', listener: (contacts: {[k: string]: WAContact}) => void): this
     /** when a new chat is added */
     on (event: 'chat-new', listener: (chat: WAChat) => void): this
     /** when a chat is updated (archived, deleted, pinned) */

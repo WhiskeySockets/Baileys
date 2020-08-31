@@ -12,7 +12,7 @@ describe('QR Generation', () => {
         conn.removeAllListeners ('qr')
         conn.on ('qr', qr => calledQR += 1)
         
-        await conn.connect({ timeoutMs: 15000 })
+        await conn.connect()
             .then (() => assert.fail('should not have succeeded'))
             .catch (error => {
                 assert.equal (error.message, 'timed out')
@@ -49,11 +49,14 @@ describe('Test Connect', () => {
         conn.loadAuthInfo ('./auth_info.json')
 
         let timeout = 0.1
-
         while (true) {
-            setTimeout (() => conn.close(), timeout*1000)
+            let tmout = setTimeout (() => conn.close(), timeout*1000)
             try {
                 await conn.connect ()
+                
+                clearTimeout (tmout)
+                conn.close ()
+
                 break
             } catch (error) {
 
@@ -64,9 +67,10 @@ describe('Test Connect', () => {
     })
     it('should reconnect', async () => {
         const conn = new WAConnection()
+        conn.connectOptions.timeoutMs = 20*1000
         await conn
         .loadAuthInfo (auth)
-        .connect ({timeoutMs: 20*1000})
+        .connect ()
         .then (conn => {
             assert.ok(conn.user)
             assert.ok(conn.user.jid)
@@ -135,7 +139,7 @@ describe ('Reconnects', () => {
                     closes += 1
                     
                     // let it fail reconnect a few times
-                    if (closes > 3) {
+                    if (closes >= 1) {
                         conn.removeAllListeners ('close')
                         conn.removeAllListeners ('connecting')
                         resolve ()

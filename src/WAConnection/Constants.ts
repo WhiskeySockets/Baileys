@@ -39,6 +39,9 @@ export class BaileysError extends Error {
         this.context = context
     }
 }
+export const TimedOutError = () => new BaileysError ('timed out', { status: 408 })
+export const CancelledError = () => new BaileysError ('cancelled', { status: 500 })
+
 export interface WAQuery {
     json: any[] | WANode
     binaryTags?: WATag
@@ -56,17 +59,17 @@ export enum ReconnectMode {
     onAllErrors = 2
 }
 export type WAConnectOptions = {
-    /** timeout after which the connect will fail, set to null for an infinite timeout */
+    /** timeout after which the connect attempt will fail, set to null for default timeout value */
     timeoutMs?: number
+    /** maximum attempts to connect */
+    maxRetries?: number
     /** should the chats be waited for */
     waitForChats?: boolean
-    /** retry on network errors while connecting */
-    retryOnNetworkErrors?: boolean
-    /** use the 'reconnect' tag to reconnect instead of the 'takeover' tag */
-    reconnectID?: string
 }
 
 export type WAConnectionState = 'open' | 'connecting' | 'close'
+
+export const UNAUTHORIZED_CODES = [401, 419]
 /** Types of Disconnect Reasons */
 export enum DisconnectReason {
   /** The connection was closed intentionally */
@@ -344,7 +347,6 @@ export type BaileysEvent =
     'connection-phone-change' |
     'user-presence-update' |
     'user-status-update' |
-    'contacts-received' |
     'chat-new' |
     'chat-update' |
     'message-new' |
