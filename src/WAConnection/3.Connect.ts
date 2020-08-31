@@ -71,7 +71,7 @@ export class WAConnection extends Base {
             // determine whether reconnect should be used or not
             const shouldUseReconnect = this.lastDisconnectReason !== DisconnectReason.replaced && 
                                        this.lastDisconnectReason !== DisconnectReason.unknown &&
-                                       this.lastDisconnectReason !== DisconnectReason.intentional && this.user
+                                       this.lastDisconnectReason !== DisconnectReason.intentional && this.user?.jid
             const reconnectID = shouldUseReconnect ? this.user.jid.replace ('@s.whatsapp.net', '@c.us') : null
 
             const promise = Utils.promiseTimeout(timeoutMs, (resolve, reject) => {

@@ -314,6 +314,7 @@ export class WAConnection extends EventEmitter {
         this.conn = null
         this.phoneConnected = false
         this.lastDisconnectReason = reason
+        this.lastSeen = null
 
         if (reason === 'invalid_session' || reason === 'intentional') {
             this.pendingRequests.forEach (({reject}) => reject(new Error('close')))
