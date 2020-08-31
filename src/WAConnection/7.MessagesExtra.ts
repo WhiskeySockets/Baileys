@@ -147,12 +147,10 @@ export class WAConnection extends Base {
     }
     /** Load a single message specified by the ID */
     async loadMessage (jid: string, messageID: string) {
-        let messages: WAMessage[]
-        try {
-            messages = (await this.loadMessages (jid, 1, {id: messageID, fromMe: true})).messages
-        } catch {
-            messages = (await this.loadMessages (jid, 1, {id: messageID, fromMe: false})).messages
-        }
+        // load the message before the given message
+        let messages = (await this.loadMessages (jid, 1, {id: messageID, fromMe: true})).messages
+        if (!messages[0]) messages = (await this.loadMessages (jid, 1, {id: messageID, fromMe: false})).messages
+        // the message after the loaded message is the message required
         const actual = await this.loadMessages (jid, 1, messages[0] && messages[0].key, false)
         return actual.messages[0]
     }

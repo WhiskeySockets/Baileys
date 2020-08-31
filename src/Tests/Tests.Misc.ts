@@ -116,13 +116,14 @@ WAConnectionTest('Misc', (conn) => {
             assert.ok (response.messages.length >= 0)
         }
     })
+
     it('should load a single message', async () => {
-        const {messages} = await conn.loadMessages (testJid, 10)
+        const {messages} = await conn.loadMessages (testJid, 25)
         for (var message of messages) {
             const loaded = await conn.loadMessage (testJid, message.key.id)
-            assert.equal (loaded.key.id, message.key.id)
-            await delay (1000)
-        }        
+            assert.equal (loaded.key.id, message.key.id, `loaded message ${JSON.stringify(message)} incorrectly`)
+            await delay (500)
+        } 
     })
 
     it('should update presence', async () => {
