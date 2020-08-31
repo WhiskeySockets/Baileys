@@ -34,7 +34,7 @@ export class WAConnection extends Base {
     requestPresenceUpdate = async (jid: string) => this.query({json: ['action', 'presence', 'subscribe', jid]})
     /** Query the status of the person (see groupMetadata() for groups) */
     async getStatus (jid?: string) {
-        const status: { status: string } = await this.query({json: ['query', 'Status', jid || this.user.jid]})
+        const status: { status: string } = await this.query({json: ['query', 'Status', jid || this.user.jid], expect200: true})
         return status
     }
     async setStatus (status: string) {
@@ -53,7 +53,7 @@ export class WAConnection extends Base {
     /** Get your contacts */
     async getContacts() {
         const json = ['query', { epoch: this.msgCount.toString(), type: 'contacts' }, null]
-        const response = await this.query({ json, binaryTags: [6, WAFlag.ignore] }) // this has to be an encrypted query
+        const response = await this.query({ json, binaryTags: [6, WAFlag.ignore], expect200: true }) // this has to be an encrypted query
         return response
     }
     /** Get the stories of your contacts */
@@ -74,7 +74,7 @@ export class WAConnection extends Base {
     /** Fetch your chats */
     async getChats() {
         const json = ['query', { epoch: this.msgCount.toString(), type: 'chat' }, null]
-        return this.query({ json, binaryTags: [5, WAFlag.ignore]}) // this has to be an encrypted query
+        return this.query({ json, binaryTags: [5, WAFlag.ignore], expect200: true }) // this has to be an encrypted query
     }
     /** Query broadcast list info */
     async getBroadcastListInfo(jid: string) { return this.query({json: ['query', 'contact', jid], expect200: true}) as Promise<WABroadcastListInfo> }

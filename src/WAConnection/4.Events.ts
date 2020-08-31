@@ -7,11 +7,16 @@ export class WAConnection extends Base {
 
     constructor () {
         super ()
-
-        this.registerOnMessageStatusChange ()
-        this.registerOnUnreadMessage ()
-        this.registerOnPresenceUpdate ()
         
+        // new messages
+        this.registerCallback(['action', 'add:relay', 'message'], json => {
+            const message = json[2][0][2] as WAMessage
+            this.chatAddMessageAppropriate (message)
+        })
+        // presence updates
+        this.registerCallback('Presence', json => (
+            this.emit('user-presence-update', json[1] as PresenceUpdate)
+        ))
         // If a message has been updated (usually called when a video message gets its upload url)
         this.registerCallback (['action', 'add:update', 'message'], json => {
             const message: WAMessage = json[2][0][2]
@@ -105,6 +110,40 @@ export class WAConnection extends Base {
 
             this.emit ('chat-update', { jid: chat.jid, count: chat.count })
         })
+        this.registerCallback (['action', 'add:relay', 'received'], json => {
+            json = json[2][0][1]
+            if (json.type === 'error') {
+                const update: WAMessageStatusUpdate = {
+                    from: this.user.jid,
+                    to: json.jid,
+                    participant: this.user.jid,
+                    timestamp: new Date(),
+                    ids: [ json.index ],
+                    type: WA_MESSAGE_STATUS_TYPE.ERROR,
+                }
+                this.forwardStatusUpdate (update)
+            }
+            
+        })
+
+        const func = json => {
+            json = json[1]
+            let ids = json.id
+            
+            if (json.cmd === 'ack') ids = [json.id]
+            
+            const update: WAMessageStatusUpdate = {
+                from: json.from,
+                to: json.to,
+                participant: json.participant,
+                timestamp: new Date(json.t * 1000),
+                ids: ids,
+                type: (+json.ack)+1,
+            }
+            this.forwardStatusUpdate (update)
+        }
+        this.registerCallback('Msg', func)
+        this.registerCallback('MsgInfo', func)
         /*// genetic chat action
         this.registerCallback (['Chat', 'cmd:action'], json => {
             const data = json[1].data as WANode
@@ -121,44 +160,15 @@ export class WAConnection extends Base {
     }
     /** Get the URL to download the profile picture of a person/group */
     async getProfilePicture(jid: string | null) {
-        const response = await this.query({ json: ['query', 'ProfilePicThumb', jid || this.user.jid] })
+        const response = await this.query({ json: ['query', 'ProfilePicThumb', jid || this.user.jid], expect200: true })
         return response.eurl as string
     }
-    /** Set the callback for message status updates (when a message is delivered, read etc.) */
-    protected registerOnMessageStatusChange() {
-        const func = json => {
-            json = json[1]
-            let ids = json.id
-            
-            if (json.cmd === 'ack') ids = [json.id]
-            
-            const update: WAMessageStatusUpdate = {
-                from: json.from,
-                to: json.to,
-                participant: json.participant,
-                timestamp: new Date(json.t * 1000),
-                ids: ids,
-                type: (+json.ack)+1,
-            }
-            
-            const chat = this.chats.get( whatsappID(update.to) )
-            if (!chat) return
-            
-            this.emit ('message-status-update', update) 
-            this.chatUpdatedMessage (update.ids, update.type as number, chat)
-        }
-        this.registerCallback('Msg', func)
-        this.registerCallback('MsgInfo', func)
-    }
-    protected registerOnUnreadMessage() {
-        this.registerCallback(['action', 'add:relay', 'message'], json => {
-            const message = json[2][0][2] as WAMessage
-            this.chatAddMessageAppropriate (message)
-        })
-    }
-    /** Set the callback for presence updates; if someone goes offline/online, this callback will be fired */
-    protected registerOnPresenceUpdate() {
-        this.registerCallback('Presence', json => this.emit('user-presence-update', json[1] as PresenceUpdate))
+    protected forwardStatusUpdate (update: WAMessageStatusUpdate) {
+        const chat = this.chats.get( whatsappID(update.to) )
+        if (!chat) return
+        
+        this.emit ('message-status-update', update) 
+        this.chatUpdatedMessage (update.ids, update.type as number, chat)
     }
     /** inserts an empty chat into the DB */
     protected async chatAdd (jid: string, name?: string) {
@@ -265,10 +275,11 @@ export class WAConnection extends Base {
             }
         }
     }
-    protected chatUpdatedMessage (messageIDs: string[], status: number, chat: WAChat) {
+    protected chatUpdatedMessage (messageIDs: string[], status: WA_MESSAGE_STATUS_TYPE, chat: WAChat) {
         for (let msg of chat.messages) {
             if (messageIDs.includes(msg.key.id)) {
-                if (isGroupID(chat.jid)) msg.status = WA_MESSAGE_STATUS_TYPE.SERVER_ACK
+                if (status <= WA_MESSAGE_STATUS_TYPE.PENDING) msg.status = status
+                else if (isGroupID(chat.jid)) msg.status = status-1
                 else msg.status = status
             }
         }

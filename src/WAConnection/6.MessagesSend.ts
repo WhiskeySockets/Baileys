@@ -10,7 +10,7 @@ import {
     WALocationMessage,
     WAContactMessage,
     WATextMessage,
-    WAMessageContent, WAMetric, WAFlag, WAMessage, BaileysError, MessageLogLevel, WA_MESSAGE_STATUS_TYPE
+    WAMessageContent, WAMetric, WAFlag, WAMessage, BaileysError, MessageLogLevel, WA_MESSAGE_STATUS_TYPE, WAMessageProto
 } from './Constants'
 import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes, generateThumbnail, getMediaKeys, decodeMediaMessageBuffer, extensionForMediaMessage, whatsappID, unixTimestampSeconds  } from './Utils'
 
@@ -72,7 +72,7 @@ export class WAConnection extends Base {
                 m = await this.prepareMessageMedia(message as Buffer, type, options)
                 break
         }
-        return m
+        return WAMessageProto.Message.create (m)
     }
     /** Prepare a media message for sending */
     async prepareMessageMedia(buffer: Buffer, mediaType: MessageType, options: MessageOptions = {}) {
@@ -177,13 +177,13 @@ export class WAConnection extends Base {
             participant: id.includes('@g.us') ? this.user.jid : null,
             status: WA_MESSAGE_STATUS_TYPE.PENDING
         }
-        return messageJSON as WAMessage
+        return WAMessageProto.WebMessageInfo.create (messageJSON)
     }
     /** Relay (send) a WAMessage; more advanced functionality to send a built WA Message, you may want to stick with sendMessage() */
     async relayWAMessage(message: WAMessage) {
         const json = ['action', {epoch: this.msgCount.toString(), type: 'relay'}, [['message', null, message]]]
         const flag = message.key.remoteJid === this.user.jid ? WAFlag.acknowledge : WAFlag.ignore // acknowledge when sending message to oneself
-        await this.query({json, binaryTags: [WAMetric.message, flag], tag: message.key.id})
+        await this.query({json, binaryTags: [WAMetric.message, flag], tag: message.key.id, expect200: true})
         await this.chatAddMessageAppropriate (message)
     }
     /**
