@@ -102,8 +102,8 @@ export class WAConnection extends Base {
         // read updates
         this.registerCallback (['action', null, 'read'], async json => {
             const update = json[2][0][1]
-
-            const chat = this.chats.get ( whatsappID(update.jid) )
+            const jid = whatsappID(update.jid)
+            const chat = this.chats.get (jid) || await this.chatAdd (jid)
 
             if (update.type === 'false') chat.count = -1
             else chat.count = 0
@@ -123,7 +123,6 @@ export class WAConnection extends Base {
                 }
                 this.forwardStatusUpdate (update)
             }
-            
         })
 
         const func = json => {
@@ -168,7 +167,7 @@ export class WAConnection extends Base {
         if (!chat) return
         
         this.emit ('message-status-update', update) 
-        this.chatUpdatedMessage (update.ids, update.type as number, chat)
+        this.chatUpdatedMessage (update.ids, update.type, chat)
     }
     /** inserts an empty chat into the DB */
     protected async chatAdd (jid: string, name?: string) {
@@ -185,6 +184,7 @@ export class WAConnection extends Base {
 
         await this.setProfilePicture (chat)
         this.emit ('chat-new', chat)
+
         return chat
     }
     /** find a chat or return an error */
