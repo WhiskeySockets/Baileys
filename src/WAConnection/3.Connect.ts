@@ -243,7 +243,11 @@ export class WAConnection extends Base {
                 }
                 
                 await delay
+
                 try {
+                    // if an external connect causes the connection to be open
+                    if (this.state === 'open') break
+
                     const shouldUseReconnect = this.lastDisconnectReason !== DisconnectReason.replaced && this.lastDisconnectReason !== DisconnectReason.unknown && this.user
                     const reconnectID = shouldUseReconnect ? this.user.jid.replace ('@s.whatsapp.net', '@c.us') : null
                     
