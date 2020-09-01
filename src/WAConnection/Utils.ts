@@ -123,7 +123,7 @@ export const openWebSocketConnection = (timeoutMs: number, retryOnNetworkError: 
             try {
                 const ws = await newWS()
                 if (cancelled) {
-                    ws.close ()
+                    ws.terminate ()
                     break
                 } else return ws
             } catch (error) {

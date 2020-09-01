@@ -65,6 +65,8 @@ export type WAConnectOptions = {
     maxRetries?: number
     /** should the chats be waited for */
     waitForChats?: boolean
+
+    connectCooldownMs?: number
 }
 
 export type WAConnectionState = 'open' | 'connecting' | 'close'

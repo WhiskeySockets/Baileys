@@ -42,7 +42,8 @@ export class WAConnection extends EventEmitter {
     connectOptions: WAConnectOptions = {
         timeoutMs: 60*1000,
         waitForChats: true,
-        maxRetries: 5
+        maxRetries: 5,
+        connectCooldownMs: 5000
     }
     /** When to auto-reconnect */
     autoReconnect = ReconnectMode.onConnectionLost 
@@ -70,7 +71,8 @@ export class WAConnection extends EventEmitter {
     protected lastSeen: Date = null // last keep alive received
     protected qrTimeout: NodeJS.Timeout
 
-    protected lastDisconnectReason: DisconnectReason
+    protected lastConnectTime: Date = null
+    protected lastDisconnectReason: DisconnectReason 
 
     constructor () {
         super ()
@@ -311,7 +313,6 @@ export class WAConnection extends EventEmitter {
         this.msgCount = 0
         this.phoneConnected = false
         this.lastDisconnectReason = reason
-        
 
         this.endConnection ()
 
@@ -319,14 +320,14 @@ export class WAConnection extends EventEmitter {
             this.pendingRequests.forEach (({reject}) => reject(new Error('close')))
             this.pendingRequests = []
         }
-
-        
         // reconnecting if the timeout is active for the reconnect loop
         this.emit ('close', { reason, isReconnecting })
     }
     protected endConnection () {
         this.conn?.removeAllListeners ('close')
-        this.conn?.close()
+        this.conn?.removeAllListeners ('message')
+        this.conn?.close ()
+        this.conn?.terminate()
         this.conn = null
         this.lastSeen = null
 

@@ -18,8 +18,11 @@ export class WAConnection extends Base {
         while (this.state === 'connecting') {
             tries += 1
             try {
-                // if the first try failed, delay & connect again
-                await this.connectInternal (options, tries > 1 && 2000)
+                const diff = this.lastConnectTime ? new Date().getTime()-this.lastConnectTime.getTime() : Infinity
+                await this.connectInternal (
+                    options, 
+                    diff > this.connectOptions.connectCooldownMs ? 0 : this.connectOptions.connectCooldownMs
+                )
 
                 this.phoneConnected = true
                 this.state = 'open'
@@ -34,6 +37,8 @@ export class WAConnection extends Base {
                 }
 
                 if (!willReconnect) throw error
+            } finally {
+                this.lastConnectTime = new Date()
             }
         }
 
