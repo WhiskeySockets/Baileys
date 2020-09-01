@@ -88,24 +88,16 @@ export async function promiseTimeout<T>(ms: number, promise: (resolve: (v?: T)=>
     if (!ms) return new Promise (promise)
 
     // Create a promise that rejects in <ms> milliseconds
-    const {delay, cancel} = delayCancellable (ms) 
-    
-    let pReject: (error) => void
+    let {delay, cancel} = delayCancellable (ms) 
     const p = new Promise ((resolve, reject) => {
+        delay
+        .then(() => reject(TimedOutError()))
+        .catch (err => reject(err)) 
+        
         promise (resolve, reject)
-        pReject = reject
     })
-    
-    try {
-        const content = await Promise.race([
-            p, 
-            delay.then(() => pReject(TimedOutError()))
-        ])
-        cancel ()
-        return content as T
-    } finally {
-        cancel ()
-    }
+    .finally (cancel)
+    return p as Promise<T>
 }
 
 export const openWebSocketConnection = (timeoutMs: number, retryOnNetworkError: boolean) => {

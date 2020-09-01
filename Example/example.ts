@@ -92,7 +92,7 @@ async function example() {
         }
         // send a reply after 3 seconds
         setTimeout(async () => {
-            await conn.sendReadReceipt(m.key.remoteJid, m.key.id) // send read receipt
+            await conn.chatRead(m.key.remoteJid) // mark chat read
             await conn.updatePresence(m.key.remoteJid, Presence.available) // tell them we're available
             await conn.updatePresence(m.key.remoteJid, Presence.composing) // tell them we're composing
 

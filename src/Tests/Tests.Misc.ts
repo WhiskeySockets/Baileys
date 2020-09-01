@@ -70,7 +70,7 @@ WAConnectionTest('Misc', (conn) => {
         const response = await conn.updatePresence(testJid, Presence.composing)
         assert.ok(response)
     })
-    it('should mark a chat unread', async () => {
+    it('should change a chat read status', async () => {
         const waitForEvent = new Promise (resolve => {
             conn.on ('chat-update', ({jid, count}) => {
                 if (jid === testJid) {
@@ -80,8 +80,12 @@ WAConnectionTest('Misc', (conn) => {
                 }
             })
         })
-        await conn.sendReadReceipt(testJid, null, -2)
+        await conn.chatRead (testJid, 'unread')
         await waitForEvent
+
+        await delay (5000)
+
+        await conn.chatRead (testJid, 'read')
     })
     it('should archive & unarchive', async () => {
         await conn.modifyChat (testJid, ChatModification.archive)

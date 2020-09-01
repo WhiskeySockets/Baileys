@@ -16,7 +16,7 @@
     "automation"
   ],
   "scripts": {
-    "test": "mocha --timeout 60000 -r ts-node/register src/Tests/Tests.*.ts",
+    "test": "mocha --timeout 240000 -r ts-node/register src/Tests/Tests.*.ts",
     "prepare": "npm run build:tsc",
     "lint": "eslint '*/*.ts' --quiet --fix",
     "build:tsc": "tsc",

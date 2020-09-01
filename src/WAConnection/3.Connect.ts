@@ -1,5 +1,5 @@
 import * as Utils from './Utils'
-import { WAMessage, WAChat, MessageLogLevel, WANode, KEEP_ALIVE_INTERVAL_MS, BaileysError, WAConnectOptions, DisconnectReason, UNAUTHORIZED_CODES, WAContact, TimedOutError } from './Constants'
+import { WAMessage, WAChat, MessageLogLevel, WANode, KEEP_ALIVE_INTERVAL_MS, BaileysError, WAConnectOptions, DisconnectReason, UNAUTHORIZED_CODES, WAContact, TimedOutError, CancelledError } from './Constants'
 import {WAConnection as Base} from './1.Validation'
 import Decoder from '../Binary/Decoder'
 
@@ -53,18 +53,28 @@ export class WAConnection extends Base {
     protected async connectInternal (options: WAConnectOptions, delayMs?: number) {
         // actual connect
         const connect = () => {
-            const tasks: Promise<void>[] = []
             const timeoutMs = options?.timeoutMs || 60*1000
             
             const { ws, cancel } = Utils.openWebSocketConnection (5000, false)
 
+            let task = ws
+                    .then (conn => this.conn = conn)
+                    .then (() => this.conn.on('message', data => this.onMessageRecieved(data as any)))
+                    .then (() => (
+                        this.log(`connected to WhatsApp Web server, authenticating via ${reconnectID ? 'reconnect' : 'takeover'}`, MessageLogLevel.info)
+                    ))
+                    .then (() => this.authenticate(reconnectID))
+                    .then (() => {
+                        this.conn
+                        .removeAllListeners ('error')
+                        .removeAllListeners('close')
+                    })
+
             let cancelTask: () => void
             if (typeof options?.waitForChats === 'undefined' ? true : options?.waitForChats) {
+                const {waitForChats, cancelChats} = this.receiveChatsAndContacts(true)
                 
-                const {waitForChats, cancelChats} = this.receiveChatsAndContacts(timeoutMs, true)
-                tasks.push (waitForChats)
-
-                cancellations.push (cancelChats)
+                task = Promise.all ([task, waitForChats]).then (() => {})
                 cancelTask = () => { cancelChats(); cancel() }
             } else cancelTask = cancel
 
@@ -74,33 +84,15 @@ export class WAConnection extends Base {
                                        this.lastDisconnectReason !== DisconnectReason.intentional && this.user?.jid
             const reconnectID = shouldUseReconnect ? this.user.jid.replace ('@s.whatsapp.net', '@c.us') : null
 
-            const promise = Utils.promiseTimeout(timeoutMs, (resolve, reject) => {
-                ws
-                .then (conn => this.conn = conn)
-                .then (() => this.conn.on('message', data => this.onMessageRecieved(data as any)))
-                .then (() => (
-                    this.log(`connected to WhatsApp Web server, authenticating via ${reconnectID ? 'reconnect' : 'takeover'}`, MessageLogLevel.info)
-                ))
-                .then (() => this.authenticate(reconnectID))
-                .then (() => (
-                    this.conn
-                    .removeAllListeners ('error')
-                    .removeAllListeners('close')
-                ))
-                .then (resolve)
-                .catch (reject)
-            })
+            const promise = Utils.promiseTimeout(timeoutMs, (resolve, reject) => (
+                task.then (resolve).catch (reject)
+            ))
             .catch (err => {
-                this.removePendingCallbacks ()
+                this.endConnection ()
                 throw err
             }) as Promise<void>
 
-            tasks.push (promise)
-            
-            return {
-                promise: Promise.all (tasks),
-                cancel: cancelTask
-            }
+            return { promise, cancel: cancelTask }
         }
 
         let promise = Promise.resolve ()
@@ -120,7 +112,6 @@ export class WAConnection extends Base {
             .then (() => {
                 const {promise, cancel} = connect ()
                 cancellations.push (cancel)
-
                 return promise
             })
             .finally (() => {
@@ -133,7 +124,7 @@ export class WAConnection extends Base {
      * Must be called immediately after connect
      * @returns [chats, contacts]
      */
-    protected receiveChatsAndContacts(timeoutMs: number = null, stopAfterMostRecentMessage: boolean=false) {
+    protected receiveChatsAndContacts(stopAfterMostRecentMessage: boolean=false) {
         this.contacts = {}
         this.chats.clear ()
 
@@ -222,23 +213,22 @@ export class WAConnection extends Base {
         })
 
         // wait for the chats & contacts to load
-        const {delay, cancel} = Utils.delayCancellable (timeoutMs)
-
-        const waitForChats = Promise.race ([
-            new Promise (resolve => resolveTask = resolve),
-            delay.then (() => { throw TimedOutError() })
-        ])
-        .then (() => (
-            this.chats
-            .all ()
-            .forEach (chat => {
-                const respectiveContact = this.contacts[chat.jid]
-                chat.name = respectiveContact?.name || respectiveContact?.notify || chat.name
+        let cancelChats: () => void
+        const waitForChats = new Promise ((resolve, reject) => {
+                resolveTask = resolve
+                cancelChats = () => reject (CancelledError())
             })
-        ))
-        .finally (deregisterCallbacks)
+            .then (() => (
+                this.chats
+                .all ()
+                .forEach (chat => {
+                    const respectiveContact = this.contacts[chat.jid]
+                    chat.name = respectiveContact?.name || respectiveContact?.notify || chat.name
+                })
+            ))
+            .finally (deregisterCallbacks)
 
-        return { waitForChats, cancelChats: cancel }
+        return { waitForChats, cancelChats }
     }
     private releasePendingRequests () {
         this.pendingRequests.forEach (({resolve}) => resolve()) // send off all pending request

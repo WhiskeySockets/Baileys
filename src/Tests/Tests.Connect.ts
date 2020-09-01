@@ -1,6 +1,6 @@
 import * as assert from 'assert'
 import {WAConnection} from '../WAConnection/WAConnection'
-import { AuthenticationCredentialsBase64, BaileysError, ReconnectMode } from '../WAConnection/Constants'
+import { AuthenticationCredentialsBase64, BaileysError, ReconnectMode, DisconnectReason } from '../WAConnection/Constants'
 import { delay } from '../WAConnection/Utils'
 
 describe('QR Generation', () => {
@@ -40,31 +40,6 @@ describe('Test Connect', () => {
         conn.close()
         auth = conn.base64EncodedAuthInfo()
     })
-    /**
-     * the idea is to test closing the connection at multiple points in the connection 
-     * and see if the library cleans up resources correctly
-     */
-    it('should cleanup correctly', async () => {
-        const conn = new WAConnection()
-        conn.loadAuthInfo ('./auth_info.json')
-
-        let timeout = 0.1
-        while (true) {
-            let tmout = setTimeout (() => conn.close(), timeout*1000)
-            try {
-                await conn.connect ()
-                
-                clearTimeout (tmout)
-                conn.close ()
-
-                break
-            } catch (error) {
-
-            }
-            // exponentially increase the timeout disconnect
-            timeout *= 2
-        }
-    })
     it('should reconnect', async () => {
         const conn = new WAConnection()
         conn.connectOptions.timeoutMs = 20*1000
@@ -98,6 +73,14 @@ describe('Test Connect', () => {
     })
 })
 describe ('Reconnects', () => {
+    const verifyConnectionOpen = async (conn: WAConnection) => {
+        // check that the connection stays open
+        conn.on ('close', ({reason}) => (
+            reason !== DisconnectReason.intentional && assert.fail ('should not have closed again')
+        ))
+        await delay (60*1000)
+        conn.close ()
+    }
     it ('should disconnect & reconnect phone', async () => {
         const conn = new WAConnection ()
         await conn.loadAuthInfo('./auth_info.json').connect ()
@@ -119,6 +102,68 @@ describe ('Reconnects', () => {
         } finally {
             conn.close ()
         }
+    })
+    /**
+     * the idea is to test closing the connection at multiple points in the connection 
+     * and see if the library cleans up resources correctly
+     */
+    it('should cleanup correctly', async () => {
+        const conn = new WAConnection()
+        conn.autoReconnect = ReconnectMode.onAllErrors
+        conn.loadAuthInfo ('./auth_info.json')
+
+        let timeout = 0.1
+        while (true) {
+            let tmout = setTimeout (() => conn.close(), timeout*1000)
+            try {
+                await conn.connect ()
+                clearTimeout (tmout)
+                break
+            } catch (error) {
+
+            }
+            // exponentially increase the timeout disconnect
+            timeout *= 2
+        }
+        conn.on ('close', ({reason}) => (
+            // with v fast successive connections, WA sometimes incorrectly classifies a connection as taken over
+            (reason !== DisconnectReason.intentional && reason !== DisconnectReason.replaced) && 
+            assert.fail ('should not have closed again')
+        ))
+        await delay (90*1000)
+        conn.close ()
+    })
+    /**
+     * the idea is to test closing the connection at multiple points in the connection 
+     * and see if the library cleans up resources correctly
+     */
+    it('should cleanup correctly 2', async () => {
+        const conn = new WAConnection()
+        conn.autoReconnect = ReconnectMode.onAllErrors
+        conn.connectOptions.timeoutMs = 20000
+        conn.loadAuthInfo ('./auth_info.json')
+
+        let timeout = 1000
+        let tmout
+        const endConnection = async () => {
+            while (!conn['conn']) {
+                await delay(100)
+            }
+            conn['conn'].terminate ()
+
+            while (conn['conn']) {
+                await delay(100)
+            }
+
+            timeout *= 2
+            tmout = setTimeout (endConnection, timeout) 
+        }
+        tmout = setTimeout (endConnection, timeout) 
+
+        await conn.connect ()
+        clearTimeout (tmout)
+
+        await verifyConnectionOpen (conn)
     })
     it ('should reconnect on broken connection', async () => {
         const conn = new WAConnection ()
@@ -172,7 +217,56 @@ describe ('Reconnects', () => {
             conn.close ()
         }
     })
+    it ('should disrupt connect loop', async () => {
+        const conn = new WAConnection ()
+        conn.loadAuthInfo ('./auth_info.json')
+        conn.connectOptions.maxRetries = 20
+        conn.connectOptions.timeoutMs = 20*1000
+
+        delay (3000)
+        .then (() => conn.close())
+
+        await assert.rejects( conn.connect () )
+
+        console.log ('rejected correctly')
+
+        delay (3000)
+        .then (() => conn['conn'].terminate())
+        .then (async () => {
+            while (conn['conn']) {
+                await delay(100)
+            }
+            console.log ('destroyed WS')
+        })
+        .then (() => delay(5000))
+        .then (() => conn['conn'].terminate())
+
+        await conn.connect ()
+
+        console.log ('opened connection')
+
+        await verifyConnectionOpen (conn)
+    })
+    it ('should reconnect & stay connected', async () => {
+        const conn = new WAConnection ()
+        conn.autoReconnect = ReconnectMode.onConnectionLost
+
+        await conn.loadAuthInfo('./auth_info.json').connect ()
+        assert.equal (conn.phoneConnected, true)
+
+        await delay (30*1000)
+
+        conn['conn']?.terminate ()
+
+        conn.on ('close', () => {
+            assert.ok (!conn['lastSeen'])
+            console.log ('connection closed')
+        })
+        await new Promise (resolve => conn.on ('open', resolve))
+        await verifyConnectionOpen (conn)
+    })
 })
+
 describe ('Pending Requests', () => {
     it('should queue requests when closed', async () => {
           const conn = new WAConnection ()

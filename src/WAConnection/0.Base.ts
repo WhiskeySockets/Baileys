@@ -309,23 +309,27 @@ export class WAConnection extends EventEmitter {
         
         this.state = 'close'
         this.msgCount = 0
-        this.conn?.removeAllListeners ('close')
-        this.conn?.close()
-        this.conn = null
         this.phoneConnected = false
         this.lastDisconnectReason = reason
-        this.lastSeen = null
+        
+
+        this.endConnection ()
 
         if (reason === 'invalid_session' || reason === 'intentional') {
             this.pendingRequests.forEach (({reject}) => reject(new Error('close')))
             this.pendingRequests = []
         }
 
-        this.removePendingCallbacks ()
+        
         // reconnecting if the timeout is active for the reconnect loop
         this.emit ('close', { reason, isReconnecting })
     }
-    protected removePendingCallbacks () {
+    protected endConnection () {
+        this.conn?.removeAllListeners ('close')
+        this.conn?.close()
+        this.conn = null
+        this.lastSeen = null
+
         Object.keys(this.callbacks).forEach(key => {
             if (!key.includes('function:')) {
                 this.log (`cancelling message wait: ${key}`, MessageLogLevel.info)

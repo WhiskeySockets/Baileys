@@ -224,10 +224,8 @@ await conn.forwardMessage ('455@s.whatsapp.net', message) // WA forward the mess
 const id = '1234-123@g.us'
 const messageID = 'AHASHH123123AHGA' // id of the message you want to read
 
-await conn.sendReadReceipt (id) // mark all messages in chat as read
-await conn.sendReadReceipt(id, messageID, 1) // mark the mentioned message as read
-
-await conn.sendReadReceipt(id, null, -2) // mark the chat as unread
+await conn.chatRead (id) // mark all messages in chat as read (equivalent of opening a chat in WA)
+await conn.chatRead (id, 'unread') // mark the chat as unread
 ```
 
 The message ID is the unique identifier of the message that you are marking as read. On a `WAMessage`, the `messageID` can be accessed using ```messageID = message.key.id```.
