@@ -43,6 +43,7 @@ describe('Test Connect', () => {
     it('should reconnect', async () => {
         const conn = new WAConnection()
         conn.connectOptions.timeoutMs = 20*1000
+        
         await conn
         .loadAuthInfo (auth)
         .connect ()
@@ -96,6 +97,7 @@ describe('Test Connect', () => {
 })
 describe ('Reconnects', () => {
     const verifyConnectionOpen = async (conn: WAConnection) => {
+        assert.ok (conn.user.jid)
         // check that the connection stays open
         conn.on ('close', ({reason}) => (
             reason !== DisconnectReason.intentional && assert.fail ('should not have closed again')

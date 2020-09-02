@@ -23,7 +23,6 @@ export class WAConnection extends Base {
                     options, 
                     diff > this.connectOptions.connectCooldownMs ? 0 : this.connectOptions.connectCooldownMs
                 )
-
                 this.phoneConnected = true
                 this.state = 'open'
             } catch (error) {
@@ -64,7 +63,9 @@ export class WAConnection extends Base {
 
             let task = ws
                     .then (conn => this.conn = conn)
-                    .then (() => this.conn.on('message', data => this.onMessageRecieved(data as any)))
+                    .then (() => (
+                        this.conn.on('message', data => this.onMessageRecieved(data as any))
+                    ))
                     .then (() => (
                         this.log(`connected to WhatsApp Web server, authenticating via ${reconnectID ? 'reconnect' : 'takeover'}`, MessageLogLevel.info)
                     ))
@@ -72,7 +73,7 @@ export class WAConnection extends Base {
                     .then (() => {
                         this.conn
                         .removeAllListeners ('error')
-                        .removeAllListeners('close')
+                        .removeAllListeners ('close')
                     })
 
             let cancelTask: () => void

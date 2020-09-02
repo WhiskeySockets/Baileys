@@ -226,7 +226,7 @@ export class WAConnection extends Base {
         } else if (!chat.messages.find(m => m.key.id === message.key.id)) {
            // this.log ('adding new message from ' + chat.jid)
             chat.messages.push(message)
-            chat.messages = chat.messages.slice (-5) // only keep the last 5 messages
+            chat.messages = chat.messages.slice (-this.maxCachedMessages) // only keep the last 5 messages
             
             // only update if it's an actual message
             if (message.message) this.chatUpdateTime (chat)
@@ -243,7 +243,6 @@ export class WAConnection extends Base {
                     case WA_MESSAGE_STUB_TYPE.GROUP_PARTICIPANT_REMOVE:
                         participants = message.messageStubParameters.map (whatsappID)
                         this.emit ('group-participants-remove', { jid, actor, participants})
-                        
                         // mark the chat read only if you left the group
                         if (participants.includes(this.user.jid)) {
                             chat.read_only = 'true'

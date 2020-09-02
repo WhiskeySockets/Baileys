@@ -122,9 +122,7 @@ export class WAConnection extends Base {
                 null,
             ]
             const response = await this.query({json, binaryTags: [WAMetric.queryMessages, WAFlag.ignore], expect200: false})
-            const messages = response[2] ? (response[2] as WANode[]).map(item => item[2] as WAMessage) : []
-    
-            return messages
+            return response[2]?.map(item => item[2] as WAMessage) || []
         }
         const chat = this.chats.get (jid)
         
@@ -137,7 +135,8 @@ export class WAConnection extends Base {
             }
         } else messages = await retreive (count, before)
         
-        const cursor = messages[0] && messages[0].key
+        let cursor
+        if (messages[0]) cursor = { id: messages[0].key.id, fromMe: messages[0].key.fromMe }
         return {messages, cursor}
     }
     /**
