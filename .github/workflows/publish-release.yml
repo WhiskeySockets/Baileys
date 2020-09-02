@@ -42,7 +42,7 @@ jobs:
       run: yarn run build:all
 
     - name: Debug Release Creation
-      run: echo "${{ toJson(needs) }}"
+      run: echo "${{ toJson(steps.packageInfo.outputs) }}"
       
     - name: Create Release
       id: releaseCreate
@@ -60,6 +60,9 @@ jobs:
         draft: false
         # `true` to identify the release as a prerelease. `false` to identify the release as a full release. Default: `false`
         prerelease: false
+        
+    - name: Make Package
+      run: npm pack
       
     - name: Rename Pack
       run: mv *.tgz npmPackage.tgz
