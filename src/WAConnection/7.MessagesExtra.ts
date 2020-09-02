@@ -122,7 +122,7 @@ export class WAConnection extends Base {
                 null,
             ]
             const response = await this.query({json, binaryTags: [WAMetric.queryMessages, WAFlag.ignore], expect200: false})
-            return response[2]?.map(item => item[2] as WAMessage) || []
+            return (response[2] as WANode[])?.map(item => item[2] as WAMessage) || []
         }
         const chat = this.chats.get (jid)
         

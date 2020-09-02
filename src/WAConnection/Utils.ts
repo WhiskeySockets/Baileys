@@ -28,6 +28,7 @@ function hashCode(s: string) {
         h = Math.imul(31, h) + s.charCodeAt(i) | 0;
     return h;
 }
+export const toNumber = (t: Long | number) => (t['low'] || t) as number
 export const waChatUniqueKey = (c: WAChat) => ((c.t*100000) + (hashCode(c.jid)%100000))*-1 // -1 to sort descending
 export const whatsappID = (jid: string) => jid?.replace ('@c.us', '@s.whatsapp.net')
 export const isGroupID = (jid: string) => jid?.includes ('@g.us')
@@ -147,9 +148,9 @@ export function generateMessageTag(epoch?: number) {
 export function generateClientID() {
     return randomBytes(16).toString('base64')
 }
-// generate a random 10 byte ID to attach to a message
+// generate a random 16 byte ID to attach to a message
 export function generateMessageID() {
-    return randomBytes(10).toString('hex').toUpperCase()
+    return randomBytes(16).toString('hex').toUpperCase()
 }
 export function decryptWA (message: string | Buffer, macKey: Buffer, encKey: Buffer, decoder: Decoder, fromMe: boolean=false): [string, Object, [number, number]?] {
     let commaIndex = message.indexOf(',') // all whatsapp messages have a tag and a comma, followed by the actual message
@@ -189,12 +190,13 @@ export function decryptWA (message: string | Buffer, macKey: Buffer, encKey: Buf
         const computedChecksum = hmacSign(data, macKey) // compute the sign of the message we recieved using our macKey
         
         if (!checksum.equals(computedChecksum)) {
-            throw new Error (`
+            console.error (`
                 Checksums don't match:
                 og: ${checksum.toString('hex')}
                 computed: ${computedChecksum.toString('hex')}
                 message: ${message.slice(0, 80).toString()}
             `)
+            return
         }
         // the checksum the server sent, must match the one we computed for the message to be valid
         const decrypted = aesDecrypt(data, encKey) // decrypt using AES

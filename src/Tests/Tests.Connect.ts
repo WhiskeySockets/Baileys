@@ -2,6 +2,7 @@ import * as assert from 'assert'
 import {WAConnection} from '../WAConnection/WAConnection'
 import { AuthenticationCredentialsBase64, BaileysError, ReconnectMode, DisconnectReason } from '../WAConnection/Constants'
 import { delay } from '../WAConnection/Utils'
+import { assertChatDBIntegrity } from './Common'
 
 describe('QR Generation', () => {
     it('should generate QR', async () => {
@@ -36,6 +37,8 @@ describe('Test Connect', () => {
         assert.ok(conn.user?.jid)
         assert.ok(conn.user?.phone)
         assert.ok (conn.user?.imgUrl || conn.user.imgUrl === '')
+
+        assertChatDBIntegrity (conn)
 
         conn.close()
         auth = conn.base64EncodedAuthInfo()

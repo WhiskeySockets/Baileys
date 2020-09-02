@@ -1,7 +1,7 @@
 import * as QR from 'qrcode-terminal'
 import { WAConnection as Base } from './3.Connect'
 import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, MessageLogLevel, PresenceUpdate, BaileysEvent, DisconnectReason, WANode } from './Constants'
-import { whatsappID, unixTimestampSeconds, isGroupID } from './Utils'
+import { whatsappID, unixTimestampSeconds, isGroupID, toNumber } from './Utils'
 
 export class WAConnection extends Base {
 
@@ -204,7 +204,6 @@ export class WAConnection extends Base {
         if (!message.key.fromMe && message.message) chat.count += 1
 
         const protocolMessage = message.message?.protocolMessage
-        
         // if it's a message to delete another message
         if (protocolMessage) {
             switch (protocolMessage.type) {
@@ -223,10 +222,19 @@ export class WAConnection extends Base {
                 default:
                     break
             }
-        } else if (!chat.messages.find(m => m.key.id === message.key.id)) {
-           // this.log ('adding new message from ' + chat.jid)
-            chat.messages.push(message)
-            chat.messages = chat.messages.slice (-this.maxCachedMessages) // only keep the last 5 messages
+        } else {
+            const messages = chat.messages
+            const messageTimestamp = toNumber (message.messageTimestamp)
+            const idx = messages.findIndex(m => toNumber(m.messageTimestamp) >= messageTimestamp)
+            // if the message is already there
+            if (messages[idx]?.key.id === message.key.id) return
+            //this.log (`adding message ID: ${messageTimestamp} to ${JSON.stringify(messages.map(m => toNumber(messageTimestamp)))}`, MessageLogLevel.info)
+
+            if (idx < 0) messages.push(message) // add to end
+            else if (toNumber(messages[idx].messageTimestamp) === toNumber(message.messageTimestamp)) messages.splice (idx+1, 0, message) // insert
+            else messages.splice (idx, 0, message) // insert
+            
+            messages.splice(0, messages.length-this.maxCachedMessages)
             
             // only update if it's an actual message
             if (message.message) this.chatUpdateTime (chat)
