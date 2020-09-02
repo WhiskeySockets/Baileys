@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "test": "mocha --timeout 240000 -r ts-node/register src/Tests/Tests.*.ts",
-    "prepack": "tsc",
+    "prepare": "tsc",
     "lint": "eslint '*/*.ts' --quiet --fix",
     "build:docs": "typedoc",
     "example": "npx ts-node Example/example.ts",
