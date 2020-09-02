@@ -1,5 +1,4 @@
-name: CI
-
+name: Publish Release
 
 on: "workflow_dispatch"
 
@@ -41,59 +40,11 @@ jobs:
       uses: actions/setup-node@v2.1.1
 
     - name: Install Dependencies
-      run: npm install
+      run: yarn
 
     - name: Build
-      run: npm run build:all
-      
-    - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v2.1.4
-      with:
-        name: baileysBuilt
-        path: |
-          docs/**/*
-          lib/**/*
-          package.json
+      run: yarn run build:all
 
-
-  Publish-Docs:
-    if: github.ref == 'refs/heads/master'
-    runs-on: ubuntu-latest
-    needs: Build
-    
-    steps:
-    
-    - name: Download Build Artifact
-      uses: actions/download-artifact@v2.0.5
-      with:
-        # Artifact name
-        name: baileysBuilt
-        # Destination path
-        path: ${{ github.workspace }}
-        
-    - name: Publish to Pages
-      uses: crazy-max/ghaction-github-pages@v2
-      with:
-        target_branch: gh-pages     
-        build_dir: docs
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
-  Publish-Package:
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master'
-    needs: Build
-    steps:
-    - name: Download Build Artifact
-      uses: actions/download-artifact@v2.0.5
-      with:
-        name: baileysBuilt
-        path: ${{ github.workspace }}
-        
-    - name: Setup Node.js environment
-      uses: actions/setup-node@v2.1.1
-      
-      
     - name: Debug Release Creation
       run: echo "${{ toJson(needs) }}"
       
@@ -113,14 +64,11 @@ jobs:
         draft: false
         # `true` to identify the release as a prerelease. `false` to identify the release as a full release. Default: `false`
         prerelease: false
-
-    - name: Pack
-      run: npm pack
       
     - name: Rename Pack
       run: mv *.tgz npmPackage.tgz
       
-    - name: Upload Package to Release
+    - name: Git Release
       uses: actions/upload-release-asset@v1.0.2
       env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -132,6 +80,7 @@ jobs:
         asset_name: npmPackage.tgz
         # The content-type of the asset you want to upload. See the supported Media Types here: https://www.iana.org/assignments/media-types/media-types.xhtml for more information
         asset_content_type: application/x-compressed-tar
+    
     - name: NPM Publish
       uses: JS-DevTools/npm-publish@v1
       with:
