@@ -1,6 +1,6 @@
 import * as QR from 'qrcode-terminal'
 import { WAConnection as Base } from './3.Connect'
-import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, MessageLogLevel, PresenceUpdate, BaileysEvent, DisconnectReason, WANode } from './Constants'
+import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, MessageLogLevel, PresenceUpdate, BaileysEvent, DisconnectReason, WANode, WAOpenResult } from './Constants'
 import { whatsappID, unixTimestampSeconds, isGroupID, toNumber } from './Utils'
 
 export class WAConnection extends Base {
@@ -143,18 +143,7 @@ export class WAConnection extends Base {
         }
         this.registerCallback('Msg', func)
         this.registerCallback('MsgInfo', func)
-        /*// genetic chat action
-        this.registerCallback (['Chat', 'cmd:action'], json => {
-            const data = json[1].data as WANode
-            if (!data) return
-
-            this.log (data, MessageLogLevel.info)
-
-            if (data[0] === 'create') {
-
-            }
-        })*/
-
+        
         this.on ('qr', qr => QR.generate(qr, { small: true }))
     }
     /** Get the URL to download the profile picture of a person/group */
@@ -300,7 +289,7 @@ export class WAConnection extends Base {
     // Add all event types
 
     /** when the connection has opened successfully */
-    on (event: 'open', listener: () => void): this
+    on (event: 'open', listener: (result: WAOpenResult) => void): this
     /** when the connection is opening */
     on (event: 'connecting', listener: () => void): this
     /** when the connection has closed */

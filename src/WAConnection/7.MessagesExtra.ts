@@ -7,7 +7,7 @@ import {
     WAUrlInfo,
     WAMessageContent, WAMetric, WAFlag, WANode, WAMessage, WAMessageProto, BaileysError, MessageLogLevel, WA_MESSAGE_STATUS_TYPE
 } from './Constants'
-import { whatsappID } from './Utils'
+import { whatsappID, delay } from './Utils'
 
 export class WAConnection extends Base {
 
@@ -172,6 +172,27 @@ export class WAConnection extends Base {
             }
         }
         return loadMessage() as Promise<void>
+    }
+    /**
+     * Find a message in a given conversation
+     * @param chunkSize the number of messages to load in a single request
+     * @param onMessage callback for every message retreived, if return true -- the loop will break
+     */
+    async findMessage (jid: string, chunkSize: number, onMessage: (m: WAMessage) => boolean) {
+        const chat = this.chats.get (whatsappID(jid))
+        let count = chat?.messages?.length || chunkSize
+        let offsetID
+        while (true) {
+            const {messages, cursor} = await this.loadMessages(jid, count, offsetID, true)
+            // callback with most recent message first (descending order of date)
+            for (let i = messages.length - 1; i >= 0; i--) {
+                if (onMessage(messages[i])) return
+            }
+            if (messages.length === 0) return
+            // if there are more messages
+            offsetID = cursor
+            await delay (200)
+        }
     }
     /** Load a single message specified by the ID */
     async loadMessage (jid: string, messageID: string) {

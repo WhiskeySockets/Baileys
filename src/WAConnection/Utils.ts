@@ -33,6 +33,21 @@ export const waChatUniqueKey = (c: WAChat) => ((c.t*100000) + (hashCode(c.jid)%1
 export const whatsappID = (jid: string) => jid?.replace ('@c.us', '@s.whatsapp.net')
 export const isGroupID = (jid: string) => jid?.includes ('@g.us')
 
+export function shallowChanges <T> (old: T, current: T): Partial<T> {
+    let changes: Partial<T> = {}
+    for (let key in current) {
+        if (old[key] !== current[key]) {
+            changes[key] = current[key] || null
+        }
+    }
+    for (let key in old) {
+        if (!changes[key] && old[key] !== current[key]) {
+            changes[key] = current[key] || null
+        }
+    }
+    return changes
+}
+
 /** decrypt AES 256 CBC; where the IV is prefixed to the buffer */
 export function aesDecrypt(buffer: Buffer, key: Buffer) {
     return aesDecryptWithIV(buffer.slice(16, buffer.length), key, buffer.slice(0, 16))

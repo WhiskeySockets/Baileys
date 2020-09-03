@@ -219,7 +219,6 @@ export enum WAFlag {
 }
 /** Tag used with binary queries */
 export type WATag = [WAMetric, WAFlag]
-
 /** set of statuses visible to other people; see updatePresence() in WhatsAppWeb.Send */
 export enum Presence {
     available = 'available', // "online"
@@ -310,6 +309,15 @@ export interface WAMessageStatusUpdate {
     /** Status of the Message IDs */
     type: WA_MESSAGE_STATUS_TYPE
 }
+
+export interface WAOpenResult {
+    /** Was this connection opened via a QR scan */
+    newConnection: boolean
+    updatedChats?: {
+        [k: string]: Partial<WAChat>
+    }
+}
+
 export enum GroupSettingChange {
     messageSend = 'announcement',
     settingsChange = 'locked',

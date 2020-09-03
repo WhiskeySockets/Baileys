@@ -47,33 +47,21 @@ describe('Test Connect', () => {
         const conn = new WAConnection()
         conn.connectOptions.timeoutMs = 20*1000
         
-        await conn
-        .loadAuthInfo (auth)
-        .connect ()
-        .then (conn => {
-            assert.ok(conn.user)
-            assert.ok(conn.user.jid)
+        await conn.loadAuthInfo (auth).connect ()
+        assert.ok(conn.user)
+        assert.ok(conn.user.jid)
 
-            const chatArray = conn.chats.all()
-            if (chatArray.length > 0) {
-                assert.ok(chatArray[0].jid)
-                assert.ok(chatArray[0].count !== null)
-                if (chatArray[0].messages.length > 0) {
-                    assert.ok(chatArray[0].messages[0])
-                }  
-            }
-        })
-        .then (() => conn.logout())
-        .then (() => conn.loadAuthInfo(auth))
-        .then (() => (
-            conn.connect()
-                .then (() => assert.fail('should not have reconnected'))
-                .catch (err => {
-                    assert.ok (err instanceof BaileysError)
-                    assert.ok ((err as BaileysError).status >= 400)
-                })
-        ))
-        .finally (() => conn.close())
+        assertChatDBIntegrity (conn)
+        await conn.logout()
+        conn.loadAuthInfo(auth)
+        
+        await conn.connect()
+            .then (() => assert.fail('should not have reconnected'))
+            .catch (err => {
+                assert.ok (err instanceof BaileysError)
+                assert.ok ((err as BaileysError).status >= 400)
+            })
+        conn.close()
     })
     it ('should disconnect & reconnect phone', async () => {
         const conn = new WAConnection ()
@@ -237,6 +225,31 @@ describe ('Reconnects', () => {
 })
 
 describe ('Pending Requests', () => {
+    it ('should correctly send updates', async () => {
+        const conn = new WAConnection ()
+        conn.connectOptions.timeoutMs = 20*1000
+        conn.pendingRequestTimeoutMs = null
+
+        conn.loadAuthInfo('./auth_info.json')
+        await conn.connect ()
+
+        conn.close ()
+
+        const oldChat = conn.chats.all()[0]
+        oldChat.archive = 'true' // mark the first chat as archived
+        oldChat.modify_tag = '1234' // change modify tag to detect change
+
+        const result = await conn.connect ()
+        assert.ok (!result.newConnection)
+
+        const chat = result.updatedChats[oldChat.jid]
+        assert.ok (chat)
+        
+        assert.ok ('archive' in chat)
+        assert.equal (Object.keys(chat).length, 2)
+
+        conn.close ()
+    })
     it('should queue requests when closed', async () => {
           const conn = new WAConnection ()
           conn.pendingRequestTimeoutMs = null

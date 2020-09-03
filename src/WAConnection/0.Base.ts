@@ -33,7 +33,7 @@ export class WAConnection extends EventEmitter {
     user: WAUser
     /** What level of messages to log to the console */
     logLevel: MessageLogLevel = MessageLogLevel.info
-    /** Should requests be queued when the connection breaks in between; if false, then an error will be thrown */
+    /** Should requests be queued when the connection breaks in between; if 0, then an error will be thrown */
     pendingRequestTimeoutMs: number = null
     /** The connection state */
     state: WAConnectionState = 'close'
@@ -43,7 +43,7 @@ export class WAConnection extends EventEmitter {
         timeoutMs: 60*1000,
         waitForChats: true,
         maxRetries: 5,
-        connectCooldownMs: 5000
+        connectCooldownMs: 2250
     }
     /** When to auto-reconnect */
     autoReconnect = ReconnectMode.onConnectionLost 
@@ -71,7 +71,7 @@ export class WAConnection extends EventEmitter {
     protected lastSeen: Date = null // last keep alive received
     protected qrTimeout: NodeJS.Timeout
 
-    protected lastConnectTime: Date = null
+    protected lastDisconnectTime: Date = null
     protected lastDisconnectReason: DisconnectReason 
 
     constructor () {
@@ -85,7 +85,7 @@ export class WAConnection extends EventEmitter {
      * @param options the connect options
      */
     async connect() {
-        return this
+        return null
     }
     async unexpectedDisconnect (error: DisconnectReason) {
         const willReconnect = 
@@ -313,6 +313,7 @@ export class WAConnection extends EventEmitter {
         this.msgCount = 0
         this.phoneConnected = false
         this.lastDisconnectReason = reason
+        this.lastDisconnectTime = new Date ()
 
         this.endConnection ()
 

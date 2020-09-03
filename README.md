@@ -126,13 +126,12 @@ They're all nicely typed up, so you shouldn't have any issues with an Intellisen
 Also, these events are fired regardless of whether they are initiated by the Baileys client or are relayed from your phone.
 
 ``` ts
-
 /** when the connection has opened successfully */
-on (event: 'open', listener: () => void): this
+on (event: 'open', listener: (result: WAOpenResult) => void): this
 /** when the connection is opening */
 on (event: 'connecting', listener: () => void): this
 /** when the connection has closed */
-on (event: 'close', listener: (err: {reason?: string, isReconnecting: boolean}) => void): this
+on (event: 'close', listener: (err: {reason?: DisconnectReason | string, isReconnecting: boolean}) => void): this
 /** when a new QR is generated, ready for scanning */
 on (event: 'qr', listener: (qr: string) => void): this
 /** when the connection to the phone changes */
@@ -143,12 +142,14 @@ on (event: 'user-presence-update', listener: (update: PresenceUpdate) => void): 
 on (event: 'user-status-update', listener: (update: {jid: string, status?: string}) => void): this
 /** when a new chat is added */
 on (event: 'chat-new', listener: (chat: WAChat) => void): this
-/** when a chat is updated (archived, deleted, pinned, read, unread, name changed) */
+/** when a chat is updated (archived, deleted, pinned) */
 on (event: 'chat-update', listener: (chat: Partial<WAChat> & { jid: string }) => void): this
 /** when a new message is relayed */
 on (event: 'message-new', listener: (message: WAMessage) => void): this
-/** when a message is updated (deleted, delivered, read) */
+/** when a message object itself is updated (receives its media info or is deleted) */
 on (event: 'message-update', listener: (message: WAMessage) => void): this
+/** when a message's status is updated (deleted, delivered, read, sent etc.) */
+on (event: 'message-status-update', listener: (message: WAMessageStatusUpdate) => void): this
 /** when participants are added to a group */
 on (event: 'group-participants-add', listener: (update: {jid: string, participants: string[], actor?: string}) => void): this
 /** when participants are removed or leave from a group */
