@@ -7,7 +7,7 @@ import {
     WAUrlInfo,
     WAMessageContent, WAMetric, WAFlag, WANode, WAMessage, WAMessageProto, BaileysError, MessageLogLevel, WA_MESSAGE_STATUS_TYPE
 } from './Constants'
-import { whatsappID, delay } from './Utils'
+import { whatsappID, delay, toNumber, unixTimestampSeconds } from './Utils'
 
 export class WAConnection extends Base {
 
@@ -193,6 +193,27 @@ export class WAConnection extends Base {
             offsetID = cursor
             await delay (200)
         }
+    }
+    /**
+     * Loads all messages sent after a specific date
+     */
+    async messagesReceivedAfter (date: Date) {
+        const stamp = unixTimestampSeconds (date)
+        // find the index where the chat timestamp becomes greater
+        const idx = this.chats.all ().findIndex (c => c.t < stamp) 
+        // all chats before that index -- i.e. all chats that were updated after that
+        const chats = this.chats.all ().slice (0, idx)
+
+        const messages: WAMessage[] = []
+        await Promise.all (
+            chats.map (async chat => {
+                await this.findMessage (chat.jid, 5, m => {
+                    if (toNumber(m.messageTimestamp) < stamp) return true 
+                    messages.push (m)
+                })
+            })
+        )
+        return messages
     }
     /** Load a single message specified by the ID */
     async loadMessage (jid: string, messageID: string) {
