@@ -1,4 +1,4 @@
-import { MessageType, Mimetype, delay, promiseTimeout, WAMessage, WA_MESSAGE_STATUS_TYPE, WAMessageStatusUpdate, MessageLogLevel } from '../WAConnection/WAConnection'
+import { MessageType, Mimetype, delay, promiseTimeout, WA_MESSAGE_STATUS_TYPE, WAMessageStatusUpdate } from '../WAConnection/WAConnection'
 import {promises as fs} from 'fs'
 import * as assert from 'assert'
 import { WAConnectionTest, testJid, sendAndRetreiveMessage } from './Common'
@@ -43,6 +43,12 @@ WAConnectionTest('Messages', conn => {
         const message = await sendAndRetreiveMessage(conn, content, MessageType.video, { mimetype: Mimetype.gif })
         
         await conn.downloadAndSaveMediaMessage(message,'./Media/received_vid')
+    })
+    it('should send an audio', async () => {
+        const content = await fs.readFile('./Media/sonata.mp3')
+        const message = await sendAndRetreiveMessage(conn, content, MessageType.audio, { mimetype: Mimetype.ogg })
+        
+        await conn.downloadAndSaveMediaMessage(message,'./Media/received_aud')
     })
     it('should send an image', async () => {
         const content = await fs.readFile('./Media/meme.jpeg')

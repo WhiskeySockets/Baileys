@@ -186,6 +186,10 @@ conn.sendMessage(id, {displayname: "Jeff", vcard: vcard}, MessageType.contact)
 const buffer = fs.readFileSync("Media/ma_gif.mp4") // load some gif
 const options: MessageOptions = {mimetype: Mimetype.gif, caption: "hello!"} // some metadata & caption
 conn.sendMessage(id, buffer, MessageType.video, options)
+// send an audio file
+const buffer = fs.readFileSync("Media/audio.mp3") // can send mp3, mp4, & ogg -- but for mp3 files the mimetype must be set to ogg
+const options: MessageOptions = {mimetype: Mimetype.ogg} // some metadata (can't have caption in audio)
+conn.sendMessage(id, buffer, MessageType.audio, options)
 ```
 
 To note:

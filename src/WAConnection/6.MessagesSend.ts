@@ -150,7 +150,7 @@ export class WAConnection extends Base {
         if (options.contextInfo) message[key].contextInfo = options.contextInfo
 
         if (quoted) {
-            const participant = quoted.key.fromMe ? this.user.jid : (quoted.key.participant || quoted.key.remoteJid)
+            const participant = quoted.key.fromMe ? this.user.jid : (quoted.participant || quoted.key.participant || quoted.key.remoteJid)
 
             message[key].contextInfo = message[key].contextInfo || { }
             message[key].contextInfo.participant = participant
