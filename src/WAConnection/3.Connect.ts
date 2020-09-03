@@ -264,6 +264,7 @@ export class WAConnection extends Base {
             // when the first character in the message is an '!', the server is updating the last seen
             const timestamp = message.slice(1, message.length).toString ('utf-8')
             this.lastSeen = new Date(parseInt(timestamp))
+            this.emit ('received-pong')
         } else {
             const decrypted = Utils.decryptWA (message, this.authInfo?.macKey, this.authInfo?.encKey, new Decoder())
             if (!decrypted) return

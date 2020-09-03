@@ -324,6 +324,9 @@ export class WAConnection extends Base {
     on (event: 'group-settings-update', listener: (update: {jid: string, restrict?: string, announce?: string, actor?: string}) => void): this
     /** when the group description is updated */
     on (event: 'group-description-update', listener: (update: {jid: string, description?: string, actor?: string}) => void): this
+    /** when WA sends back a pong */
+    on (event: 'received-pong', listener: () => void): this
+
 
     on (event: BaileysEvent, listener: (...args: any[]) => void) { return super.on (event, listener) }
     emit (event: BaileysEvent, ...args: any[]) { return super.emit (event, ...args) }

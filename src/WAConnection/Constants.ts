@@ -368,4 +368,5 @@ export type BaileysEvent =
     'group-participants-promote' |
     'group-participants-demote' |
     'group-settings-update' |
-    'group-description-update'
+    'group-description-update' |
+    'received-pong'
