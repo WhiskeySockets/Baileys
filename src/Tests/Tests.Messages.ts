@@ -28,14 +28,15 @@ WAConnectionTest('Messages', conn => {
         assert.ok (received.description)
     })
     it('should quote a message', async () => {
-        const {messages} = await conn.loadMessages(testJid, 2)
-        const message = await sendAndRetreiveMessage(conn, 'hello fren 2', MessageType.extendedText, {
-            quoted: messages[0],
-        })
-        assert.strictEqual(message.message.extendedTextMessage.contextInfo.stanzaId, messages[0].key.id)
+        const quoted = (await conn.loadMessages(testJid, 2)).messages[0]
+        const message = await sendAndRetreiveMessage(conn, 'hello fren 2', MessageType.extendedText, { quoted })
+        assert.strictEqual(
+            message.message.extendedTextMessage.contextInfo.stanzaId, 
+            quoted.key.id
+        )
         assert.strictEqual(
             message.message.extendedTextMessage.contextInfo.participant, 
-            messages[0].key.fromMe ? conn.user.jid : messages[0].key.id
+            quoted.key.fromMe ? conn.user.jid : quoted.key.id
         )
     })
     it('should send a gif', async () => {
@@ -65,12 +66,12 @@ WAConnectionTest('Messages', conn => {
         //const message2 = await sendAndRetreiveMessage (conn, 'this is a quote', MessageType.extendedText)
     })
     it('should send an image & quote', async () => {
-        const {messages} = await conn.loadMessages(testJid, 1)
+        const quoted = (await conn.loadMessages(testJid, 2)).messages[0]
         const content = await fs.readFile('./Media/meme.jpeg')
-        const message = await sendAndRetreiveMessage(conn, content, MessageType.image, { quoted: messages[0] })
+        const message = await sendAndRetreiveMessage(conn, content, MessageType.image, { quoted })
         
         await conn.downloadMediaMessage(message) // check for successful decoding
-        assert.strictEqual(message.message.imageMessage.contextInfo.stanzaId, messages[0].key.id)
+        assert.strictEqual(message.message.imageMessage.contextInfo.stanzaId, quoted.key.id)
     })
     it('should send a message & delete it', async () => {
         const message = await sendAndRetreiveMessage(conn, 'hello fren', MessageType.text)

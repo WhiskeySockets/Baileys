@@ -36,8 +36,8 @@ export const WAConnectionTest = (name: string, func: (conn: WAConnection) => voi
 )
 export const assertChatDBIntegrity = (conn: WAConnection) => {
     conn.chats.all ().forEach (chat => (
-        assert.equal (
-            chat.messages.sort ((m1, m2) => toNumber(m1.messageTimestamp)-toNumber(m2.messageTimestamp)),
+        assert.deepEqual (
+            [...chat.messages].sort ((m1, m2) => toNumber(m1.messageTimestamp)-toNumber(m2.messageTimestamp)),
             chat.messages
         )
     ))

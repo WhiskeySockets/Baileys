@@ -214,15 +214,17 @@ export class WAConnection extends Base {
         } else {
             const messages = chat.messages
             const messageTimestamp = toNumber (message.messageTimestamp)
-            const idx = messages.findIndex(m => toNumber(m.messageTimestamp) >= messageTimestamp)
+            let idx = messages.length-1
+            for (idx; idx >= 0; idx--) {
+                if (toNumber(messages[idx].messageTimestamp) <= messageTimestamp) {
+                    break
+                }
+            }
             // if the message is already there
             if (messages[idx]?.key.id === message.key.id) return
             //this.log (`adding message ID: ${messageTimestamp} to ${JSON.stringify(messages.map(m => toNumber(messageTimestamp)))}`, MessageLogLevel.info)
-
-            if (idx < 0) messages.push(message) // add to end
-            else if (toNumber(messages[idx].messageTimestamp) === toNumber(message.messageTimestamp)) messages.splice (idx+1, 0, message) // insert
-            else messages.splice (idx, 0, message) // insert
             
+            messages.splice (idx+1, 0, message) // insert
             messages.splice(0, messages.length-this.maxCachedMessages)
             
             // only update if it's an actual message
