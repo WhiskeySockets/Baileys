@@ -2,6 +2,7 @@ import * as Utils from './Utils'
 import { WAMessage, WAChat, MessageLogLevel, WANode, KEEP_ALIVE_INTERVAL_MS, BaileysError, WAConnectOptions, DisconnectReason, UNAUTHORIZED_CODES, WAContact, TimedOutError, CancelledError, WAOpenResult } from './Constants'
 import {WAConnection as Base} from './1.Validation'
 import Decoder from '../Binary/Decoder'
+import WS from 'ws'
 
 export class WAConnection extends Base {
     /** Connect to WhatsApp Web */
@@ -62,48 +63,44 @@ export class WAConnection extends Base {
         // actual connect
         const connect = () => {
             const timeoutMs = options?.timeoutMs || 60*1000
-            
-            const { ws, cancel } = Utils.openWebSocketConnection (5000, false)
+            let task = Utils.promiseTimeout(timeoutMs, (resolve, reject) => {
+                // determine whether reconnect should be used or not
+                const shouldUseReconnect = this.lastDisconnectReason !== DisconnectReason.replaced && 
+                                            this.lastDisconnectReason !== DisconnectReason.unknown &&
+                                            this.lastDisconnectReason !== DisconnectReason.intentional && 
+                                            this.user?.jid
+                
+                const reconnectID = shouldUseReconnect ? this.user.jid.replace ('@s.whatsapp.net', '@c.us') : null
 
-            let task: Promise<void | { [k: string]: Partial<WAChat> }> = ws
-                    .then (conn => this.conn = conn)
+                this.conn = new WS('wss://web.whatsapp.com/ws', null, { origin: 'https://web.whatsapp.com', timeout: timeoutMs })
+                this.conn.on('message', data => this.onMessageRecieved(data as any))
+
+                this.conn.on ('open', () => {
+                    this.log(`connected to WhatsApp Web server, authenticating via ${reconnectID ? 'reconnect' : 'takeover'}`, MessageLogLevel.info)
+                    
+                    this.authenticate(reconnectID)
+                    .then (resolve)
                     .then (() => (
-                        this.conn.on('message', data => this.onMessageRecieved(data as any))
-                    ))
-                    .then (() => (
-                        this.log(`connected to WhatsApp Web server, authenticating via ${reconnectID ? 'reconnect' : 'takeover'}`, MessageLogLevel.info)
-                    ))
-                    .then (() => this.authenticate(reconnectID))
-                    .then (() => {
                         this.conn
                         .removeAllListeners ('error')
                         .removeAllListeners ('close')
-                    })
+                    ))
+                    .catch (reject)
+                })
+                this.conn.on('error', reject)
+                this.conn.on('close', () => reject(new Error('close')))
+            })
 
-            let cancelTask: () => void
+            let cancel: () => void
             if (typeof options?.waitForChats === 'undefined' ? true : options?.waitForChats) {
                 const {waitForChats, cancelChats} = this.receiveChatsAndContacts()
-                
                 task = Promise.all ([task, waitForChats]).then (([_, updates]) => updates)
-                cancelTask = () => { cancelChats(); cancel() }
-            } else cancelTask = cancel
+                cancel = cancelChats
+            }
+            
+            task = task as Promise<void | { [k: string]: Partial<WAChat> }>
 
-            // determine whether reconnect should be used or not
-            const shouldUseReconnect = this.lastDisconnectReason !== DisconnectReason.replaced && 
-                                       this.lastDisconnectReason !== DisconnectReason.unknown &&
-                                       this.lastDisconnectReason !== DisconnectReason.intentional && 
-                                       this.user?.jid
-            const reconnectID = shouldUseReconnect ? this.user.jid.replace ('@s.whatsapp.net', '@c.us') : null
-
-            const promise = Utils.promiseTimeout(timeoutMs, (resolve, reject) => (
-                task.then (resolve).catch (reject)
-            ))
-            .catch (err => {
-                this.endConnection ()
-                throw err
-            }) as Promise<void | { [k: string]: Partial<WAChat> }>
-
-            return { promise, cancel: cancelTask }
+            return { promise: task, cancel }
         }
 
         let promise = Promise.resolve ()
@@ -127,6 +124,9 @@ export class WAConnection extends Base {
 
             const final = await result.promise
             return final
+        } catch (error) {
+            this.endConnection ()
+            throw error
         } finally {
             cancel()
             this.off('close', cancel)

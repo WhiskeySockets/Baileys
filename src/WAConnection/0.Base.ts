@@ -221,7 +221,7 @@ export class WAConnection extends EventEmitter {
      */
     async query({json, binaryTags, tag, timeoutMs, expect200, waitForOpen}: WAQuery) {
         waitForOpen = typeof waitForOpen === 'undefined' ? true : waitForOpen
-        await this.waitForConnection (waitForOpen)
+        if (waitForOpen) await this.waitForConnection ()
         
         if (binaryTags) tag = await this.sendBinary(json as WANode, binaryTags, tag)
         else tag = await this.sendJSON(json, tag)
@@ -276,15 +276,12 @@ export class WAConnection extends EventEmitter {
         this.msgCount += 1 // increment message count, it makes the 'epoch' field when sending binary messages
         return this.conn.send(m)
     }
-    protected async waitForConnection (waitForOpen: boolean=true) {
-        if (!waitForOpen || this.state === 'open') return
+    protected async waitForConnection () {
+        if (this.state === 'open') return
 
-        const timeout = this.pendingRequestTimeoutMs 
-        try {
-            await Utils.promiseTimeout (timeout, (resolve, reject) => this.pendingRequests.push({resolve, reject}))
-        } catch {
-            throw new Error('cannot send message, disconnected from WhatsApp')
-        }
+        await Utils.promiseTimeout (
+            this.pendingRequestTimeoutMs, 
+            (resolve, reject) => this.pendingRequests.push({resolve, reject}))
     }
     /**
      * Disconnect from the phone. Your auth credentials become invalid after sending a disconnect request.
@@ -318,7 +315,7 @@ export class WAConnection extends EventEmitter {
         this.endConnection ()
 
         if (reason === 'invalid_session' || reason === 'intentional') {
-            this.pendingRequests.forEach (({reject}) => reject(new Error('close')))
+            this.pendingRequests.forEach (({reject}) => reject(new Error(reason)))
             this.pendingRequests = []
         }
         // reconnecting if the timeout is active for the reconnect loop
@@ -327,7 +324,7 @@ export class WAConnection extends EventEmitter {
     protected endConnection () {
         this.conn?.removeAllListeners ('close')
         this.conn?.removeAllListeners ('message')
-        this.conn?.close ()
+        //this.conn?.close ()
         this.conn?.terminate()
         this.conn = null
         this.lastSeen = null

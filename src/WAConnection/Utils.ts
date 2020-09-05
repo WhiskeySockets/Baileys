@@ -5,7 +5,6 @@ import {promises as fs} from 'fs'
 import fetch from 'node-fetch'
 import { exec } from 'child_process'
 import {platform, release} from 'os'
-import WS from 'ws'
 
 import Decoder from '../Binary/Decoder'
 import { MessageType, HKDFInfoKeys, MessageOptions, WAChat, WAMessageContent, BaileysError, WAMessageProto, TimedOutError, CancelledError } from './Constants'
@@ -115,44 +114,6 @@ export async function promiseTimeout<T>(ms: number, promise: (resolve: (v?: T)=>
     .finally (cancel)
     return p as Promise<T>
 }
-
-export const openWebSocketConnection = (timeoutMs: number, retryOnNetworkError: boolean) => {
-    const newWS = async () => {
-        const conn = new WS('wss://web.whatsapp.com/ws', null, { origin: 'https://web.whatsapp.com', timeout: timeoutMs })
-        await new Promise ((resolve, reject) => {
-            conn.on('open', () => {
-                conn.removeAllListeners ('error')
-                conn.removeAllListeners ('close')
-                conn.removeAllListeners ('open')
-
-                resolve ()
-            })
-            // if there was an error in the WebSocket
-            conn.on('error', reject)
-            conn.on('close', () => reject(new Error('close')))
-        })
-        return conn
-    } 
-    let cancelled = false
-    const connect = async () => {
-        while (!cancelled) {
-            try {
-                const ws = await newWS()
-                if (cancelled) {
-                    ws.terminate ()
-                    break
-                } else return ws
-            } catch (error) {
-                if (!retryOnNetworkError) throw error 
-                await delay (1000)
-            }
-        }
-        throw CancelledError()
-    }
-    const cancel = () => cancelled = true
-    return { ws: connect(), cancel }
-}
-
 // whatsapp requires a message tag for every message, we just use the timestamp as one
 export function generateMessageTag(epoch?: number) {
     let tag = unixTimestampSeconds().toString()

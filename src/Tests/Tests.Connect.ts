@@ -94,6 +94,10 @@ describe ('Reconnects', () => {
             reason !== DisconnectReason.intentional && assert.fail ('should not have closed again')
         ))
         await delay (60*1000)
+
+        const status = await conn.getStatus ()
+        assert.ok (status)
+
         conn.close ()
     }
     /**
@@ -252,7 +256,7 @@ describe ('Pending Requests', () => {
     })
     it('should queue requests when closed', async () => {
           const conn = new WAConnection ()
-          conn.pendingRequestTimeoutMs = null
+          //conn.pendingRequestTimeoutMs = null
 
           await conn.loadAuthInfo('./auth_info.json').connect ()
           

@@ -31,10 +31,10 @@ export class WAConnection extends Base {
             }
         ) as Promise<{status: number}>
     /** Request an update on the presence of a user */
-    requestPresenceUpdate = async (jid: string) => this.query({json: ['action', 'presence', 'subscribe', jid]})
+    requestPresenceUpdate = async (jid: string) => this.query({ json: ['action', 'presence', 'subscribe', jid] })
     /** Query the status of the person (see groupMetadata() for groups) */
     async getStatus (jid?: string) {
-        const status: { status: string } = await this.query({json: ['query', 'Status', jid || this.user.jid], expect200: true})
+        const status: { status: string } = await this.query({ json: ['query', 'Status', jid || this.user.jid] })
         return status
     }
     async setStatus (status: string) {
