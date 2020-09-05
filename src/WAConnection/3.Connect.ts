@@ -266,10 +266,8 @@ export class WAConnection extends Base {
             this.lastSeen = new Date(parseInt(timestamp))
             this.emit ('received-pong')
         } else {
-            const decrypted = Utils.decryptWA (message, this.authInfo?.macKey, this.authInfo?.encKey, new Decoder())
-            if (!decrypted) return
-            
-            const [messageTag, json] = decrypted
+            const [messageTag, json] = Utils.decryptWA (message, this.authInfo?.macKey, this.authInfo?.encKey, new Decoder())
+            if (!json) return
 
             if (this.logLevel === MessageLogLevel.all) {
                 this.log(messageTag + ', ' + JSON.stringify(json), MessageLogLevel.all)

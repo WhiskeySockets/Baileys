@@ -25,30 +25,16 @@ entries.forEach ((e, i) => {
         wsMessages.push (...e['_webSocketMessages'])
     }
 })
-const decrypt = buffer => {
-    try {
-        return decryptWA (buffer, macKey, encKey, new Decoder())
-    } catch {
-        return decryptWA (buffer, macKey, encKey, new Decoder(), true)
-    }
-}
+const decrypt = (buffer, fromMe) => decryptWA (buffer, macKey, encKey, new Decoder(), fromMe)
 
 console.log ('parsing ' + wsMessages.length + ' messages')
 const list = wsMessages.map ((item, i) => {
-    const buffer = Buffer.from (item.data, 'base64')
+    const buffer = item.data.includes(',') ? item.data : Buffer.from (item.data, 'base64')
     try {
-
-        const [tag, json, binaryTags] = decrypt (buffer)
-        return {tag, json: JSON.stringify(json), binaryTags}
+        const [tag, json, binaryTags] = decrypt (buffer, item.type === 'send')
+        return {tag, json: json && JSON.stringify(json), binaryTags}
     } catch (error) {
-        try {
-            const [tag, json, binaryTags] = decrypt (item.data)
-            return {tag, json: JSON.stringify(json), binaryTags}
-        } catch (error) {
-            console.log ('error in decoding: ' + item.data + ': ' + error)
-            return null
-        }
-        
+        return { error: error.message, data: buffer.toString('utf-8') }
     }
 })
 const str = JSON.stringify (list, null, '\t')

@@ -83,6 +83,17 @@ WAConnectionTest('Messages', conn => {
         await delay (2000)
         await conn.clearMessage (messages[0].key)
     })
+    it('should send media after close', async () => {
+        const content = await fs.readFile('./Media/octopus.webp')
+        await sendAndRetreiveMessage(conn, content, MessageType.sticker)
+
+        conn.close ()
+
+        await conn.connect ()
+
+        const content2 = await fs.readFile('./Media/cat.jpeg')
+        await sendAndRetreiveMessage(conn, content2, MessageType.image)
+    })
     it('should fail to send a text message', done => {
         const JID = '1234-1234@g.us'
         conn.sendMessage(JID, 'hello', MessageType.text)

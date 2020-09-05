@@ -10,7 +10,7 @@ import {
     WALocationMessage,
     WAContactMessage,
     WATextMessage,
-    WAMessageContent, WAMetric, WAFlag, WAMessage, BaileysError, MessageLogLevel, WA_MESSAGE_STATUS_TYPE, WAMessageProto
+    WAMessageContent, WAMetric, WAFlag, WAMessage, BaileysError, MessageLogLevel, WA_MESSAGE_STATUS_TYPE, WAMessageProto, MediaConnInfo
 } from './Constants'
 import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes, generateThumbnail, getMediaKeys, decodeMediaMessageBuffer, extensionForMediaMessage, whatsappID, unixTimestampSeconds  } from './Utils'
 
@@ -105,14 +105,12 @@ export class WAConnection extends Base {
                                 .replace(/\=+$/, '')
 
         await generateThumbnail(buffer, mediaType, options)
-        // send a query JSON to obtain the url & auth token to upload our media
-        const json = (await this.query({json: ['query', 'mediaConn']})).media_conn
-        const auth = json.auth // the auth token
-        let hostname = 'https://' + json.hosts[0].hostname // first hostname available
-        hostname += MediaPathMap[mediaType] + '/' + fileEncSha256B64 // append path
-        hostname += '?auth=' + auth // add auth token
-        hostname += '&token=' + fileEncSha256B64 // file hash
 
+        // send a query JSON to obtain the url & auth token to upload our media
+        const json = await this.refreshMediaConn ()
+        const auth = json.auth // the auth token
+        const hostname = `https://${json.hosts[0].hostname}${MediaPathMap[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
+        
         const urlFetch = await fetch(hostname, {
             method: 'POST',
             body: body,
@@ -231,5 +229,14 @@ export class WAConnection extends Base {
         const trueFileName = attachExtension ? (filename + '.' + extension) : filename
         await fs.writeFile (trueFileName, buffer)
         return trueFileName
+    }
+
+    protected async refreshMediaConn () {
+        if (!this.mediaConn || (new Date().getTime()-this.mediaConn.fetchDate.getTime()) > this.mediaConn.ttl*1000) {
+            const result = await this.query({json: ['query', 'mediaConn']})
+            this.mediaConn = result.media_conn
+            this.mediaConn.fetchDate = new Date()
+        }
+        return this.mediaConn
     }
 }

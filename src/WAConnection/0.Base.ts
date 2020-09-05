@@ -20,6 +20,7 @@ import {
     WAQuery,
     ReconnectMode,
     WAConnectOptions,
+    MediaConnInfo,
 } from './Constants'
 import { EventEmitter } from 'events'
 import KeyedDB from '@adiwajshing/keyed-db'
@@ -73,6 +74,8 @@ export class WAConnection extends EventEmitter {
 
     protected lastDisconnectTime: Date = null
     protected lastDisconnectReason: DisconnectReason 
+
+    protected mediaConn: MediaConnInfo
 
     constructor () {
         super ()

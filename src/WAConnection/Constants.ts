@@ -97,6 +97,14 @@ export enum MessageLogLevel {
     unhandled=2,
     all=3
 }
+export interface MediaConnInfo {
+    auth: string 
+    ttl: number
+    hosts: {
+        hostname: string
+    }[]
+    fetchDate: Date
+}
 export interface AuthenticationCredentials {
     clientID: string
     serverToken: string
