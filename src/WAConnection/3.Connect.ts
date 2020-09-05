@@ -3,6 +3,7 @@ import { WAMessage, WAChat, MessageLogLevel, WANode, KEEP_ALIVE_INTERVAL_MS, Bai
 import {WAConnection as Base} from './1.Validation'
 import Decoder from '../Binary/Decoder'
 import WS from 'ws'
+import KeyedDB from '@adiwajshing/keyed-db'
 
 export class WAConnection extends Base {
     /** Connect to WhatsApp Web */
@@ -138,10 +139,8 @@ export class WAConnection extends Base {
      * @returns [chats, contacts]
      */
     protected receiveChatsAndContacts() {
-        const oldChats: {[k: string]: WAChat} = this.chats['dict']
-
-        this.contacts = {}
-        this.chats.clear ()
+        const chats = new KeyedDB<WAChat>(Utils.waChatUniqueKey, c => c.jid)
+        const contacts = {}
 
         let receivedContacts = false
         let receivedMessages = false
@@ -168,7 +167,7 @@ export class WAConnection extends Base {
             if (messages) {
                 messages.reverse().forEach (([,, message]: ['message', null, WAMessage]) => {
                     const jid = message.key.remoteJid
-                    const chat = this.chats.get(jid)
+                    const chat = chats.get(jid)
                     chat?.messages.unshift (message)
                 })
             }
@@ -196,11 +195,9 @@ export class WAConnection extends Base {
                 chat.t = +chat.t
                 chat.count = +chat.count
                 chat.messages = []
-                
-                const oldChat = this.chats.get(chat.jid) 
-                oldChat && this.chats.delete (oldChat)
 
-                this.chats.insert (chat) // chats data (log json to see what it looks like)
+                // chats data (log json to see what it looks like)
+                !chats.get (chat.jid) && chats.insert (chat) 
             })
             
             this.log (`received ${json[2].length} chats`, MessageLogLevel.info)
@@ -219,7 +216,7 @@ export class WAConnection extends Base {
                 if (!contact) return this.log (`unexpectedly got null contact: ${type}, ${contact}`, MessageLogLevel.info)
                 
                 contact.jid = Utils.whatsappID (contact.jid)
-                this.contacts[contact.jid] = contact
+                contacts[contact.jid] = contact
             })
             this.log (`received ${json[2].length} contacts`, MessageLogLevel.info)
             checkForResolution ()
@@ -234,20 +231,26 @@ export class WAConnection extends Base {
                     cancelChats = () => reject (CancelledError())
                 })
 
+                const oldChats = this.chats
                 const updatedChats: { [k: string]: Partial<WAChat> } = {}
-                for (let chat of this.chats.all()) {
-                    const respectiveContact = this.contacts[chat.jid]
+
+                for (let chat of chats.all()) {
+                    const respectiveContact = contacts[chat.jid]
                     chat.name = respectiveContact?.name || respectiveContact?.notify || chat.name
                     
-                    if (!oldChats[chat.jid]) {
+                    const oldChat = oldChats.get(chat.jid)
+                    if (!oldChat) {
                         updatedChats[chat.jid] = chat
-                    } else if (oldChats[chat.jid].t < chat.t || oldChats[chat.jid].modify_tag !== chat.modify_tag) {
-                        const changes = Utils.shallowChanges (oldChats[chat.jid], chat)
+                    } else if (oldChat.t < chat.t || oldChat.modify_tag !== chat.modify_tag) {
+                        const changes = Utils.shallowChanges (oldChat, chat)
                         delete changes.messages
-
                         updatedChats[chat.jid] = changes
                     }
                 }
+
+                this.chats = chats 
+                this.contacts = contacts
+
                 return updatedChats
             } finally {
                 deregisterCallbacks ()
