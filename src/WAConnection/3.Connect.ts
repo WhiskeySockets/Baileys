@@ -1,5 +1,5 @@
 import * as Utils from './Utils'
-import { WAMessage, WAChat, MessageLogLevel, WANode, KEEP_ALIVE_INTERVAL_MS, BaileysError, WAConnectOptions, DisconnectReason, UNAUTHORIZED_CODES, WAContact, TimedOutError, CancelledError, WAOpenResult } from './Constants'
+import { WAMessage, WAChat, MessageLogLevel, WANode, KEEP_ALIVE_INTERVAL_MS, BaileysError, WAConnectOptions, DisconnectReason, UNAUTHORIZED_CODES, WAContact, TimedOutError, CancelledError, WAOpenResult, DEFAULT_ORIGIN, WS_URL } from './Constants'
 import {WAConnection as Base} from './1.Validation'
 import Decoder from '../Binary/Decoder'
 import WS from 'ws'
@@ -73,7 +73,7 @@ export class WAConnection extends Base {
                 
                 const reconnectID = shouldUseReconnect ? this.user.jid.replace ('@s.whatsapp.net', '@c.us') : null
 
-                this.conn = new WS('wss://web.whatsapp.com/ws', null, { origin: 'https://web.whatsapp.com', timeout: timeoutMs })
+                this.conn = new WS(WS_URL, null, { origin: DEFAULT_ORIGIN, timeout: timeoutMs, agent: options.agent })
                 this.conn.on('message', data => this.onMessageRecieved(data as any))
 
                 this.conn.on ('open', () => {

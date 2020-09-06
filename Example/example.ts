@@ -8,6 +8,7 @@ import {
     MessageLogLevel,
     WA_MESSAGE_STUB_TYPES,
     ReconnectMode,
+    ProxyAgent,
 } from '../src/WAConnection/WAConnection'
 import * as fs from 'fs'
 
@@ -16,6 +17,7 @@ async function example() {
     conn.autoReconnect = ReconnectMode.onConnectionLost // only automatically reconnect when the connection breaks
     conn.logLevel = MessageLogLevel.info // set to unhandled to see what kind of stuff you can implement
 
+
     // loads the auth file credentials if present
     fs.existsSync('./auth_info.json') && conn.loadAuthInfo ('./auth_info.json')
     
@@ -23,6 +25,8 @@ async function example() {
     conn.connectOptions.timeoutMs = 60*1000
     // attempt to reconnect at most 10 times
     conn.connectOptions.maxRetries = 10
+    // uncomment the following line to proxy the connection; some random proxy I got off of: https://proxyscrape.com/free-proxy-list
+    //conn.connectOptions.agent = ProxyAgent ('http://1.0.180.120:8080')
     await conn.connect()
 
     const unread = await conn.loadAllUnreadMessages ()

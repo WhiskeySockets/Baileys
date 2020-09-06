@@ -51,7 +51,6 @@ async function connectToWhatsApp () {
     const unread = await conn.loadAllUnreadMessages ()
     console.log ("you have " + unread.length + " unread messages")
 }
-
 // run in main file
 connectToWhatsApp ()
 .catch (err => console.log("unexpected error: " + err) ) // catch any errors
@@ -68,6 +67,18 @@ Do note, the `chats` object returned is now a [KeyedDB](https://github.com/adiwa
 - Most applications require chats to be ordered in descending order of time. (`KeyedDB` does this in `log(N)` time)
 - Most applications require pagination of chats (Use `chats.paginated()`)
 - Most applications require **O(1)** access to chats via the chat ID. (Use `chats.get(jid)` with `KeyedDB`)
+
+## Connecting via an HTTPS proxy
+
+``` ts
+import { WAConnection, ProxyAgent } from '@adiwajshing/baileys'
+
+const conn = new WAConnecion ()
+conn.connectOptions.agent = ProxyAgent ('http://some-host:1234')
+
+await conn.connect ()
+console.log ("oh hello " + conn.user.name + "! You connected via a proxy")
+```
 
 ## Saving & Restoring Sessions
 

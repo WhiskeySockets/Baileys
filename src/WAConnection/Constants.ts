@@ -1,7 +1,12 @@
 import { WA } from '../Binary/Constants'
 import { proto } from '../../WAMessage/WAMessage'
+import { Agent } from 'https'
+
+export const WS_URL = 'wss://web.whatsapp.com/ws'
+export const DEFAULT_ORIGIN = 'https://web.whatsapp.com'
 
 export const KEEP_ALIVE_INTERVAL_MS = 20*1000
+
 
 // export the WAMessage Prototypes
 export { proto as WAMessageProto }
@@ -14,6 +19,7 @@ export type WATextMessage = proto.ExtendedTextMessage
 export type WAContextInfo = proto.IContextInfo
 export import WA_MESSAGE_STUB_TYPE = proto.WebMessageInfo.WEB_MESSAGE_INFO_STUBTYPE
 export import WA_MESSAGE_STATUS_TYPE = proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS
+
 
 export interface WALocationMessage {
     degreesLatitude: number
@@ -67,6 +73,8 @@ export type WAConnectOptions = {
     waitForChats?: boolean
 
     connectCooldownMs?: number
+    /** agent which can be used for proxying connections */
+    agent?: Agent
 }
 
 export type WAConnectionState = 'open' | 'connecting' | 'close'

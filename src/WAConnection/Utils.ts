@@ -2,12 +2,14 @@ import * as Crypto from 'crypto'
 import HKDF from 'futoin-hkdf'
 import Jimp from 'jimp'
 import {promises as fs} from 'fs'
-import fetch from 'node-fetch'
 import { exec } from 'child_process'
 import {platform, release} from 'os'
+import HttpsProxyAgent from 'https-proxy-agent'
+import { URL } from 'url'
+import { Agent } from 'https'
 
 import Decoder from '../Binary/Decoder'
-import { MessageType, HKDFInfoKeys, MessageOptions, WAChat, WAMessageContent, BaileysError, WAMessageProto, TimedOutError, CancelledError } from './Constants'
+import { MessageType, HKDFInfoKeys, MessageOptions, WAChat, WAMessageContent, BaileysError, WAMessageProto, TimedOutError, CancelledError, DEFAULT_ORIGIN } from './Constants'
 
 const platformMap = {
     'aix': 'AIX',
@@ -220,6 +222,8 @@ export const generateProfilePicture = async (buffer: Buffer) => {
         preview: await cropped.resize(96, 96).getBufferAsync (Jimp.MIME_JPEG)
     }
 }
+export const ProxyAgent = (host: string | URL) => HttpsProxyAgent(host) as any as Agent
+
 /** generates a thumbnail for a given media, if required */
 export async function generateThumbnail(buffer: Buffer, mediaType: MessageType, info: MessageOptions) {
     if (info.thumbnail === null || info.thumbnail) {
@@ -249,7 +253,7 @@ export async function generateThumbnail(buffer: Buffer, mediaType: MessageType, 
  * Decode a media message (video, image, document, audio) & return decrypted buffer
  * @param message the media message you want to decode
  */
-export async function decodeMediaMessageBuffer(message: WAMessageContent, fetchHeaders: {[k: string]: string} = {}) {
+export async function decodeMediaMessageBuffer(message: WAMessageContent, fetchRequest: (host: string, method: string) => any) {
     /* 
         One can infer media type from the key in the message
         it is usually written as [mediaType]Message. Eg. imageMessage, audioMessage etc.
@@ -274,8 +278,7 @@ export async function decodeMediaMessageBuffer(message: WAMessageContent, fetchH
     }
     
     // download the message
-    const headers = { Origin: 'https://web.whatsapp.com' }
-    const fetched = await fetch(messageContent.url, { headers })
+    const fetched = await fetchRequest(messageContent.url, 'GET')
     const buffer = await fetched.buffer()
 
     if (buffer.length <= 10) {

@@ -1,5 +1,4 @@
 import {WAConnection as Base} from './5.User'
-import fetch from 'node-fetch'
 import {promises as fs} from 'fs'
 import {
     MessageOptions,
@@ -114,18 +113,14 @@ export class WAConnection extends Base {
         for (let host of json.hosts) {
             const hostname = `https://${host.hostname}${MediaPathMap[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
             try {
-                const urlFetch = await fetch(hostname, {
-                    method: 'POST',
-                    body: body,
-                    headers: { Origin: 'https://web.whatsapp.com' },
-                })
+                const urlFetch = await this.fetchRequest(hostname, 'POST', body)
                 mediaUrl = (await urlFetch.json())?.url
                 
                 if (mediaUrl) break
                 else throw new Error (`upload failed`)
             } catch (error) {
                 const isLast = host.hostname === json.hosts[json.hosts.length-1].hostname
-                this.log (`Error in uploading to ${host}${isLast ? '' : ', retrying...'}`, MessageLogLevel.info)
+                this.log (`Error in uploading to ${host.hostname}${isLast ? '' : ', retrying...'}`, MessageLogLevel.info)
             }
         }
         if (!mediaUrl) throw new Error('Media upload failed on all hosts')
@@ -212,15 +207,14 @@ export class WAConnection extends Base {
      * Renews the download url automatically, if necessary.
      */
     async downloadMediaMessage (message: WAMessage) {
-        const fetchHeaders = {  }
         try {
-            const buff = await decodeMediaMessageBuffer (message.message, fetchHeaders)
+            const buff = await decodeMediaMessageBuffer (message.message, this.fetchRequest)
             return buff
         } catch (error) {
             if (error instanceof BaileysError && error.status === 404) { // media needs to be updated
                 this.log (`updating media of message: ${message.key.id}`, MessageLogLevel.info)
                 await this.updateMediaMessage (message)
-                const buff = await decodeMediaMessageBuffer (message.message, fetchHeaders)
+                const buff = await decodeMediaMessageBuffer (message.message, this.fetchRequest)
                 return buff
             }
             throw error

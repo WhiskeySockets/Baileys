@@ -1,4 +1,4 @@
-import { Presence, ChatModification, delay } from '../WAConnection/WAConnection'
+import { Presence, ChatModification, delay, DEFAULT_ORIGIN } from '../WAConnection/WAConnection'
 import { promises as fs } from 'fs'
 import * as assert from 'assert'
 import fetch from 'node-fetch'
@@ -51,7 +51,7 @@ WAConnectionTest('Misc', (conn) => {
         await delay (5000)
 
         const ppUrl = await conn.getProfilePicture(conn.user.jid)
-        const fetched = await fetch(ppUrl, { headers: { Origin: 'https://web.whatsapp.com' } })
+        const fetched = await fetch(ppUrl)
         const buff = await fetched.buffer ()
 
         const newPP = await fs.readFile ('./Media/cat.jpeg')

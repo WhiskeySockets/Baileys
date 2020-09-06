@@ -3,6 +3,7 @@ import WS from 'ws'
 import * as Utils from './Utils'
 import Encoder from '../Binary/Encoder'
 import Decoder from '../Binary/Decoder'
+import fetch from 'node-fetch'
 import {
     AuthenticationCredentials,
     WAUser,
@@ -21,6 +22,7 @@ import {
     ReconnectMode,
     WAConnectOptions,
     MediaConnInfo,
+    DEFAULT_ORIGIN,
 } from './Constants'
 import { EventEmitter } from 'events'
 import KeyedDB from '@adiwajshing/keyed-db'
@@ -340,6 +342,17 @@ export class WAConnection extends EventEmitter {
             }
         })
     }
+    /**
+     * Does a fetch request with the configuration of the connection
+     */
+    protected fetchRequest = (endpoint: string, method: string = 'GET', body?: any) => (
+        fetch(endpoint, {
+            method,
+            body,
+            headers: { Origin: DEFAULT_ORIGIN },
+            agent: this.connectOptions.agent
+        })
+    )
     generateMessageTag () {
         return `${Utils.unixTimestampSeconds(this.referenceDate)}.--${this.msgCount}`
     }
