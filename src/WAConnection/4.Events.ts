@@ -160,6 +160,8 @@ export class WAConnection extends Base {
     }
     /** inserts an empty chat into the DB */
     protected async chatAdd (jid: string, name?: string) {
+        if (this.chats.get (jid)) return
+        
         const chat: WAChat = {
             jid: jid,
             t: unixTimestampSeconds(),

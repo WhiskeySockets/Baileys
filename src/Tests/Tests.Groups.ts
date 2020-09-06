@@ -101,8 +101,11 @@ WAConnectionTest('Groups', (conn) => {
                 }
             })
         })
-        await conn.groupRemove(gid, [testJid])
-        await waitForEvent
+        const metadata = await conn.groupMetadata (gid)
+        if (metadata.participants.find(({id}) => id === testJid)) {
+            await conn.groupRemove(gid, [testJid])
+            await waitForEvent   
+        }
         conn.removeAllListeners ('group-participants-remove')
     })
     it('should leave the group', async () => {
