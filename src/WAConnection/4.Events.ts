@@ -7,7 +7,6 @@ export class WAConnection extends Base {
 
     constructor () {
         super ()
-        
         // new messages
         this.registerCallback(['action', 'add:relay', 'message'], json => {
             const message = json[2][0][2] as WAMessage
