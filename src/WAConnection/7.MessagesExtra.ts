@@ -25,7 +25,7 @@ export class WAConnection extends Base {
     async messageInfo (jid: string, messageID: string) {
         const query = ['query', {type: 'message_info', index: messageID, jid: jid, epoch: this.msgCount.toString()}, null]
         const response = (await this.query ({json: query, binaryTags: [22, WAFlag.ignore], expect200: true}))[2]
-        
+
         const info: MessageInfo = {reads: [], deliveries: []}
         if (response) {
             //console.log (response)
@@ -52,7 +52,7 @@ export class WAConnection extends Base {
         if (type === 'unread') await this.sendReadReceipt (jid, null, -2)
         else if (chat.count !== 0) {
             let messageID: string
-            
+
             let messages: WAMessage[]
             let cursor: any
 
@@ -77,7 +77,7 @@ export class WAConnection extends Base {
         this.emit ('chat-update', {jid, count: chat.count})
     }
     /**
-     * Sends a read receipt for a given message; 
+     * Sends a read receipt for a given message;
      * does not update the chat do @see chatRead
      * @param jid the ID of the person/group whose message you want to mark read
      * @param messageID optionally, the message ID
@@ -85,9 +85,9 @@ export class WAConnection extends Base {
      */
     async sendReadReceipt(jid: string, messageID: string, count: number) {
         const attributes = {
-            jid: jid, 
-            count: count.toString(), 
-            index: messageID, 
+            jid: jid,
+            count: count.toString(),
+            index: messageID,
             owner: messageID ? 'false' : null
         }
         const read = await this.setQuery ([['read', attributes, null]])
@@ -125,16 +125,18 @@ export class WAConnection extends Base {
             return (response[2] as WANode[])?.map(item => item[2] as WAMessage) || []
         }
         const chat = this.chats.get (jid)
-        
         let messages: WAMessage[]
         if (!before && chat && mostRecentFirst) {
             messages = chat.messages
-            if (messages.length < count) {
-                const extra = await retreive (count-messages.length, messages[0]?.key)
-                messages.unshift (...extra) 
+            const diff = count - messages.length
+            if (diff < 0) {
+                messages.splice(0, Math.abs(diff));
+            } else if (diff > 0) {
+                const extra = await retreive (diff, messages[0]?.key)
+                messages.unshift (...extra)
             }
         } else messages = await retreive (count, before)
-        
+
         let cursor
         if (messages[0]) cursor = { id: messages[0].key.id, fromMe: messages[0].key.fromMe }
         return {messages, cursor}
@@ -200,7 +202,7 @@ export class WAConnection extends Base {
     async messagesReceivedAfter (date: Date, onlyUnrespondedMessages = false) {
         const stamp = unixTimestampSeconds (date)
         // find the index where the chat timestamp becomes greater
-        const idx = this.chats.all ().findIndex (c => c.t < stamp) 
+        const idx = this.chats.all ().findIndex (c => c.t < stamp)
         // all chats before that index -- i.e. all chats that were updated after that
         const chats = this.chats.all ().slice (0, idx)
 
@@ -208,7 +210,7 @@ export class WAConnection extends Base {
         await Promise.all (
             chats.map (async chat => {
                 await this.findMessage (chat.jid, 5, m => {
-                    if (toNumber(m.messageTimestamp) < stamp || (onlyUnrespondedMessages && m.key.fromMe)) return true 
+                    if (toNumber(m.messageTimestamp) < stamp || (onlyUnrespondedMessages && m.key.fromMe)) return true
                     messages.push (m)
                 })
             })
@@ -228,7 +230,7 @@ export class WAConnection extends Base {
     async generateLinkPreview (text: string) {
         const query = ['query', {type: 'url', url: text, epoch: this.msgCount.toString()}, null]
         const response = await this.query ({json: query, binaryTags: [26, WAFlag.ignore], expect200: true})
-        
+
         if (response[1]) response[1].jpegThumbnail = response[2]
         const data = response[1] as WAUrlInfo
 
@@ -244,15 +246,15 @@ export class WAConnection extends Base {
     /**
      * Search WhatsApp messages with a given text string
      * @param txt the search string
-     * @param inJid the ID of the chat to search in, set to null to search all chats 
+     * @param inJid the ID of the chat to search in, set to null to search all chats
      * @param count number of results to return
      * @param page page number of results (starts from 1)
      */
     async searchMessages(txt: string, inJid: string | null, count: number, page: number) {
         const json = [
             'query',
-            { 
-                epoch: this.msgCount.toString(), 
+            {
+                epoch: this.msgCount.toString(),
                 type: 'search',
                 search: txt,
                 count: count.toString(),
@@ -305,9 +307,9 @@ export class WAConnection extends Base {
     async forwardMessage(id: string, message: WAMessage, forceForward: boolean=false) {
         const content = message.message
         if (!content) throw new Error ('no content in message')
-        
+
         let key = Object.keys(content)[0]
-        
+
         let score = content[key].contextInfo?.forwardingScore || 0
         score += message.key.fromMe && !forceForward ? 0 : 1
         if (key === MessageType.text) {
@@ -318,8 +320,8 @@ export class WAConnection extends Base {
         }
         if (score > 0) content[key].contextInfo = { forwardingScore: score, isForwarded: true }
         else content[key].contextInfo = {}
-        
-        const waMessage = this.prepareMessageFromContent (id, content, {}) 
+
+        const waMessage = this.prepareMessageFromContent (id, content, {})
         await this.relayWAMessage (waMessage)
         return waMessage
     }
