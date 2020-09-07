@@ -234,7 +234,7 @@ export class WAConnection extends Base {
                 const oldChats = this.chats
                 const updatedChats: { [k: string]: Partial<WAChat> } = {}
 
-                for (let chat of chats.all()) {
+                chats.all().forEach (chat => {
                     const respectiveContact = contacts[chat.jid]
                     chat.name = respectiveContact?.name || respectiveContact?.notify || chat.name
                     
@@ -246,8 +246,8 @@ export class WAConnection extends Base {
                         delete changes.messages
                         updatedChats[chat.jid] = changes
                     }
-                }
-
+                })
+                
                 this.chats = chats 
                 this.contacts = contacts
 

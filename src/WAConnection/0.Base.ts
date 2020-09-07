@@ -26,10 +26,11 @@ import {
 } from './Constants'
 import { EventEmitter } from 'events'
 import KeyedDB from '@adiwajshing/keyed-db'
+import { STATUS_CODES } from 'http'
 
 export class WAConnection extends EventEmitter {
     /** The version of WhatsApp Web we're telling the servers we are */
-    version: [number, number, number] = [2, 2033, 7]
+    version: [number, number, number] = [2, 2035, 14]
     /** The Browser we're telling the WhatsApp Web servers we are */
     browserDescription: [string, string, string] = Utils.Browsers.baileys ('Chrome')
     /** Metadata like WhatsApp id, name set on WhatsApp etc. */
@@ -224,12 +225,12 @@ export class WAConnection extends EventEmitter {
      * @param tag the tag to attach to the message
      * recieved JSON
      */
-    async query({json, binaryTags, tag, timeoutMs, expect200, waitForOpen}: WAQuery) {
+    async query({json, binaryTags, tag, timeoutMs, expect200, waitForOpen, longTag}: WAQuery) {
         waitForOpen = typeof waitForOpen === 'undefined' ? true : waitForOpen
         if (waitForOpen) await this.waitForConnection ()
         
-        if (binaryTags) tag = await this.sendBinary(json as WANode, binaryTags, tag)
-        else tag = await this.sendJSON(json, tag)
+        if (binaryTags) tag = await this.sendBinary(json as WANode, binaryTags, tag, longTag)
+        else tag = await this.sendJSON(json, tag, longTag)
        
         const response = await this.waitForMessage(tag, json, timeoutMs)
         if (expect200 && response.status && Math.floor(+response.status / 100) !== 2) {
@@ -239,7 +240,11 @@ export class WAConnection extends EventEmitter {
                 const response = await this.query ({json, binaryTags, tag, timeoutMs, expect200, waitForOpen})
                 return response
             }
-            throw new BaileysError(`Unexpected status code in '${json[0] || 'generic query'}': ${response.status}`, {query: json, status: response.status})
+            const message = STATUS_CODES[response.status] || 'unknown'
+            throw new BaileysError(
+                `Unexpected status in '${json[0] || 'generic query'}': ${STATUS_CODES[response.status]}(${response.status})`, 
+                {query: json, message, status: response.status}
+            )
         }
         return response
     }
@@ -250,12 +255,12 @@ export class WAConnection extends EventEmitter {
      * @param tag the tag to attach to the message
      * @return the message tag
      */
-    protected sendBinary(json: WANode, tags: WATag, tag: string = null) {
+    protected sendBinary(json: WANode, tags: WATag, tag: string = null, longTag: boolean = false) {
         const binary = this.encoder.write(json) // encode the JSON to the WhatsApp binary format
 
         let buff = Utils.aesEncrypt(binary, this.authInfo.encKey) // encrypt it using AES and our encKey
         const sign = Utils.hmacSign(buff, this.authInfo.macKey) // sign the message using HMAC and our macKey
-        tag = tag || this.generateMessageTag()
+        tag = tag || this.generateMessageTag(longTag)
         buff = Buffer.concat([
             Buffer.from(tag + ','), // generate & prefix the message tag
             Buffer.from(tags), // prefix some bytes that tell whatsapp what the message is about
@@ -271,8 +276,8 @@ export class WAConnection extends EventEmitter {
      * @param tag the tag to attach to the message
      * @return the message tag
      */
-    protected sendJSON(json: any[] | WANode, tag: string = null) {
-        tag = tag || this.generateMessageTag()
+    protected sendJSON(json: any[] | WANode, tag: string = null, longTag: boolean = false) {
+        tag = tag || this.generateMessageTag(longTag)
         this.send(`${tag},${JSON.stringify(json)}`)
         return tag
     }
@@ -353,8 +358,9 @@ export class WAConnection extends EventEmitter {
             agent: this.connectOptions.agent
         })
     )
-    generateMessageTag () {
-        return `${Utils.unixTimestampSeconds(this.referenceDate)}.--${this.msgCount}`
+    generateMessageTag (longTag: boolean = false) {
+        const seconds = Utils.unixTimestampSeconds(this.referenceDate)
+        return `${longTag ? seconds : (seconds%1000)}.--${this.msgCount}`
     }
     protected log(text, level: MessageLogLevel) {
         (this.logLevel >= level) && console.log(`[Baileys][${new Date().toLocaleString()}] ${text}`)

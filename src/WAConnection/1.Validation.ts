@@ -12,15 +12,24 @@ export class WAConnection extends Base {
         if (!this.authInfo?.clientID) {
             this.authInfo = { clientID: Utils.generateClientID() } as any
         }
-        
-        this.referenceDate = new Date () // refresh reference date
-        const json = ['admin', 'init', this.version, this.browserDescription, this.authInfo?.clientID, true]
 
-        return this.query({json, expect200: true, waitForOpen: false})
-            .then(json => {
-                // we're trying to establish a new connection or are trying to log in
-                if (this.authInfo?.encKey && this.authInfo?.macKey) {
-                    // if we have the info to restore a closed session
+        const canLogin = this.authInfo?.encKey && this.authInfo?.macKey        
+        this.referenceDate = new Date () // refresh reference date
+        
+        const initQueries = [
+            (async () => {
+                const json = ['admin', 'init', this.version, this.browserDescription, this.authInfo?.clientID, true]
+                const ref = await this.query({json, expect200: true, waitForOpen: false, longTag: true})
+                if (!canLogin) {
+                    const result = await this.generateKeysForAuth (ref)
+                    return result
+                }
+            })()
+        ]
+        if (canLogin) {
+            // if we have the info to restore a closed session
+            initQueries.push (
+                (async () => {
                     const json = [
                         'admin',
                         'login',
@@ -30,38 +39,30 @@ export class WAConnection extends Base {
                     ]
                     if (reconnect) json.push(...['reconnect', reconnect.replace('@s.whatsapp.net', '@c.us')])
                     else json.push ('takeover')
-                    return this.query({ json, tag: 's1', waitForOpen: false }) // wait for response with tag "s1"
-                }
-                return this.generateKeysForAuth(json.ref) // generate keys which will in turn be the QR
-            })
-            .then(async json => {
-                if ('status' in json) { 
-                    switch (json.status) {
-                        case 401: // if the phone was unpaired
-                            throw new BaileysError ('unpaired from phone', json)
-                        case 429: // request to login was denied, don't know why it happens
-                            throw new BaileysError ('request denied', json)
-                        default:
-                            throw new BaileysError ('unexpected status ' + json.status, json)
+                    
+                    let response = await this.query({ json, tag: 's1', waitForOpen: false, expect200: true, longTag: true }) // wait for response with tag "s1"
+                    // if its a challenge request (we get it when logging in)
+                    if (response[1]?.challenge) {
+                        await this.respondToChallenge(response[1].challenge)
+                        response = await this.waitForMessage('s2', [])
                     }
-                }
-                // if its a challenge request (we get it when logging in)
-                if (json[1]?.challenge) {
-                    await this.respondToChallenge(json[1].challenge)
-                    return this.waitForMessage('s2', [])
-                }
-                // otherwise just chain the promise further
-                return json
-            })
-            .then(json => {
-                this.user = this.validateNewConnection(json[1]) // validate the connection
-                this.log('validated connection successfully', MessageLogLevel.info)
+                    return response
+                })()
+            )
+        }
 
-                this.sendPostConnectQueries ()
-            })
-            // load profile picture
-            .then (() => this.query({ json: ['query', 'ProfilePicThumb', this.user.jid], waitForOpen: false, expect200: false }))
-            .then (response => this.user.imgUrl = response?.eurl || '')
+        const validationJSON = (await Promise.all (initQueries)).slice(-1)[0] // get the last result
+
+        this.user = await this.validateNewConnection(validationJSON[1]) // validate the connection
+        
+        this.log('validated connection successfully', MessageLogLevel.info)
+
+        const response = await this.query({ json: ['query', 'ProfilePicThumb', this.user.jid], waitForOpen: false, expect200: false })
+        this.user.imgUrl = response?.eurl || ''
+
+        this.sendPostConnectQueries ()
+
+        this.log('sent init queries', MessageLogLevel.info)
     }
     /**
      * Send the same queries WA Web sends after connect
@@ -80,7 +81,7 @@ export class WAConnection extends Base {
      * @returns the new ref
      */
     async generateNewQRCodeRef() {
-        const response = await this.query({json: ['admin', 'Conn', 'reref'], expect200: true, waitForOpen: false})
+        const response = await this.query({json: ['admin', 'Conn', 'reref'], expect200: true, waitForOpen: false, longTag: true})
         return response.ref as string
     }
     /**

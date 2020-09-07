@@ -55,6 +55,7 @@ export interface WAQuery {
     tag?: string
     expect200?: boolean
     waitForOpen?: boolean
+    longTag?: boolean
 }
 export enum ReconnectMode {
     /** does not reconnect */
