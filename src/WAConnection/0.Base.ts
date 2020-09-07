@@ -47,7 +47,8 @@ export class WAConnection extends EventEmitter {
         timeoutMs: 60*1000,
         waitForChats: true,
         maxRetries: 5,
-        connectCooldownMs: 2250
+        connectCooldownMs: 2250,
+        phoneResponseTime: 7500
     }
     /** When to auto-reconnect */
     autoReconnect = ReconnectMode.onConnectionLost 

@@ -72,6 +72,8 @@ export type WAConnectOptions = {
     maxRetries?: number
     /** should the chats be waited for */
     waitForChats?: boolean
+    /** max time for the phone to respond to a connectivity test */
+    phoneResponseTime?: number
 
     connectCooldownMs?: number
     /** agent which can be used for proxying connections */

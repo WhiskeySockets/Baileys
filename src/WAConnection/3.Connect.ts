@@ -275,6 +275,10 @@ export class WAConnection extends Base {
             if (this.logLevel === MessageLogLevel.all) {
                 this.log(messageTag + ', ' + JSON.stringify(json), MessageLogLevel.all)
             }
+            if (!this.phoneConnected) {
+                this.phoneConnected = true
+                this.emit ('connection-phone-change', { connected: true })
+            }
             /*
              Check if this is a response to a message we sent
             */
@@ -340,7 +344,7 @@ export class WAConnection extends Base {
 
             // poll phone connection as well, 
             // 5000 ms for timeout
-            this.checkPhoneConnection (5000) 
+            this.checkPhoneConnection (this.connectOptions.phoneResponseTime || 7500) 
             .then (connected => {
                 this.phoneConnected !== connected && this.emit ('connection-phone-change', {connected})
                 this.phoneConnected = connected
