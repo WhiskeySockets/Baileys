@@ -197,7 +197,7 @@ export class WAConnection extends Base {
     /**
      * Loads all messages sent after a specific date
      */
-    async messagesReceivedAfter (date: Date) {
+    async messagesReceivedAfter (date: Date, onlyUnrespondedMessages = false) {
         const stamp = unixTimestampSeconds (date)
         // find the index where the chat timestamp becomes greater
         const idx = this.chats.all ().findIndex (c => c.t < stamp) 
@@ -208,7 +208,7 @@ export class WAConnection extends Base {
         await Promise.all (
             chats.map (async chat => {
                 await this.findMessage (chat.jid, 5, m => {
-                    if (toNumber(m.messageTimestamp) < stamp) return true 
+                    if (toNumber(m.messageTimestamp) < stamp || (onlyUnrespondedMessages && m.key.fromMe)) return true 
                     messages.push (m)
                 })
             })
