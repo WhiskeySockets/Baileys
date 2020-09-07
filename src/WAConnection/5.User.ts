@@ -95,11 +95,10 @@ export class WAConnection extends Base {
      * @param searchString optionally search for users
      * @returns the chats & the cursor to fetch the next page
      */
-    async loadChats (count: number, before: number | null, filters?: {searchString?: string, archived?: boolean, unread?: boolean}) {
+    async loadChats (count: number, before: number | null, filters?: {searchString?: string, custom?: (c: WAChat) => boolean}) {
         const chats = this.chats.paginated (before, count, filters && (chat => (
-            (typeof filters?.archived === 'undefined' || chat.archive === filters.archived.toString()) &&
-            (typeof filters?.searchString === 'undefined' || chat.name?.includes (filters.searchString) || chat.jid?.startsWith(filters.searchString)) &&
-            (typeof filters?.unread === 'undefined' || (filters?.unread ? chat.count !== 0 : chat.count === 0))
+            (typeof filters?.custom !== 'function' || filters?.custom(chat)) &&
+            (typeof filters?.searchString === 'undefined' || chat.name?.includes (filters.searchString) || chat.jid?.startsWith(filters.searchString))
         )))
         await Promise.all (
             chats.map (async chat => (
