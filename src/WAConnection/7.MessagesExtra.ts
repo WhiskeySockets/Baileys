@@ -130,7 +130,7 @@ export class WAConnection extends Base {
             messages = chat.messages
             const diff = count - messages.length
             if (diff < 0) {
-                messages = messages.slice(diff); // get the last X messages
+                messages = messages.slice(-count); // get the last X messages
             } else if (diff > 0) {
                 const extra = await retreive (diff, messages[0]?.key)
                 messages.unshift (...extra)
