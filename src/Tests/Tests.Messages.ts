@@ -39,6 +39,13 @@ WAConnectionTest('Messages', conn => {
             quoted.key.fromMe ? conn.user.jid : quoted.key.id
         )
     })
+    it('should upload media successfully', async () => {
+        const content = await fs.readFile('./Media/sonata.mp3')
+        // run 10 uploads
+        for (let i = 0; i < 10;i++) {
+            await conn.prepareMessageContent (content, MessageType.audio, { filename: 'audio.mp3', mimetype: Mimetype.mp4Audio })
+        }
+    })
     it('should send a gif', async () => {
         const content = await fs.readFile('./Media/ma_gif.mp4')
         const message = await sendAndRetreiveMessage(conn, content, MessageType.video, { mimetype: Mimetype.gif })
