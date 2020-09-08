@@ -55,10 +55,8 @@ export default class Encoder {
         }
     }
     writeString(token: string, i: boolean = null) {
-        if (token === 'c.us') {
-            token = 's.whatsapp.net'
-        }
-
+        if (token === 'c.us') token = 's.whatsapp.net'
+        
         const tokenIndex = WA.SingleByteTokens.indexOf(token)
         if (!i && token === 's.whatsapp.net') {
             this.writeToken(tokenIndex)

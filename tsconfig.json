@@ -13,5 +13,5 @@
     "lib": ["es2019", "esnext.array"]
   },
   "include": ["src/*/*.ts"],
-  "exclude": ["node_modules", "src/Tests/*"]
+  "exclude": ["node_modules", "src/Tests/*", "src/Binary/GenerateStatics.ts"]
 }

@@ -23,6 +23,7 @@
     "build:docs": "typedoc",
     "build:tsc": "tsc",
     "example": "npx ts-node Example/example.ts",
+    "gen-protobuf": "ts-node src/Binary/GenerateStatics.ts",
     "browser-decode": "npx ts-node src/BrowserMessageDecoding.ts"
   },
   "author": "Adhiraj Singh",

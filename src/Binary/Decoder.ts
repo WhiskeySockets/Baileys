@@ -111,7 +111,7 @@ export default class Decoder {
     readString(tag: number): string {
         if (tag >= 3 && tag <= 235) {
             const token = this.getToken(tag)
-            return token === 's.whatsapp.net' ? 'c.us' : token
+            return token// === 's.whatsapp.net' ? 'c.us' : token
         }
 
         switch (tag) {
@@ -131,7 +131,7 @@ export default class Decoder {
             case WA.Tags.JID_PAIR:
                 const i = this.readString(this.readByte())
                 const j = this.readString(this.readByte())
-                if (i && j) {
+                if (typeof i === 'string' && j) {
                     return i + '@' + j
                 }
                 throw new Error('invalid jid pair: ' + i + ', ' + j)
