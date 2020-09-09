@@ -2,7 +2,7 @@
 # yarn lockfile v1
 
 
-"@adiwajshing/keyed-db@^0.1.2":
+"@adiwajshing/keyed-db@^0.1.4":
   version "0.1.4"
   resolved "https://registry.yarnpkg.com/@adiwajshing/keyed-db/-/keyed-db-0.1.4.tgz#ed82563d8738cf2877a3c7c53a8739aa52f5efbf"
   integrity sha512-Sed2xppK0b1Ayfwy+ONl4GKTUahzIRmaxHULzraPbIiRx9QHOQ3PJon9ZT1qtkebGdSRX9uHvwruz2VU03/sCQ==

@@ -252,6 +252,10 @@ export class WAConnection extends Base {
                     case WA_MESSAGE_STUB_TYPE.GROUP_PARTICIPANT_ADD:
                     case WA_MESSAGE_STUB_TYPE.GROUP_PARTICIPANT_INVITE:
                         participants = message.messageStubParameters.map (whatsappID)
+                        if (participants.includes(this.user.jid) && chat.read_only === 'true') {
+                            delete chat.read_only
+                            this.emit ('chat-update', { jid, read_only: 'false' })
+                        }
                         this.emit ('group-participants-add', { jid, participants, actor })
                         break
                     case WA_MESSAGE_STUB_TYPE.GROUP_CHANGE_ANNOUNCE:

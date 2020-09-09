@@ -8,9 +8,11 @@ import {
     WAMessageContent, WAMetric, WAFlag, WANode, WAMessage, WAMessageProto, BaileysError, MessageLogLevel, WA_MESSAGE_STATUS_TYPE
 } from './Constants'
 import { whatsappID, delay, toNumber, unixTimestampSeconds } from './Utils'
+import { Mutex } from './Mutex'
 
 export class WAConnection extends Base {
 
+    @Mutex ()
     async loadAllUnreadMessages () {
         const tasks = this.chats.all()
                     .filter(chat => chat.count > 0)
@@ -20,8 +22,8 @@ export class WAConnection extends Base {
         list.forEach (({messages}) => combined.push(...messages))
         return combined
     }
-
     /** Get the message info, who has read it, who its been delivered to */
+    @Mutex ((jid, messageID) => jid+messageID)
     async messageInfo (jid: string, messageID: string) {
         const query = ['query', {type: 'message_info', index: messageID, jid: jid, epoch: this.msgCount.toString()}, null]
         const response = (await this.query ({json: query, binaryTags: [22, WAFlag.ignore], expect200: true}))[2]
@@ -45,6 +47,7 @@ export class WAConnection extends Base {
      * @param jid the ID of the person/group whose message you want to mark read
      * @param unread unreads the chat, if true
      */
+    @Mutex (jid => jid)
     async chatRead (jid: string, type: 'unread' | 'read' = 'read') {
         jid = whatsappID (jid)
         const chat = this.assertChatGet (jid)
@@ -99,6 +102,7 @@ export class WAConnection extends Base {
      * @param before the data for which message to offset the query by
      * @param mostRecentFirst retreive the most recent message first or retreive from the converation start
      */
+    @Mutex ((jid, _, before, mostRecentFirst) => jid + (before?.id || '') + mostRecentFirst)
     async loadMessages (
         jid: string,
         count: number,
@@ -271,6 +275,7 @@ export class WAConnection extends Base {
      * Delete a message in a chat for yourself
      * @param messageKey key of the message you want to delete
      */
+    @Mutex (m => m.remoteJid)
     async clearMessage (messageKey: WAMessageKey) {
         const tag = Math.round(Math.random ()*1000000)
         const attrs: WANode = [
@@ -280,7 +285,14 @@ export class WAConnection extends Base {
                 ['item', {owner: `${messageKey.fromMe}`, index: messageKey.id}, null]
             ]
         ]
-        return this.setQuery ([attrs])
+        const result = await this.setQuery ([attrs])
+
+        const chat = this.chats.get (whatsappID(messageKey.remoteJid))
+        if (chat) {
+            chat.messages = chat.messages.filter (m => m.key.id !== messageKey.id)
+        }
+
+        return result
     }
     /**
      * Delete a message in a chat for everyone

@@ -12,6 +12,7 @@ import {
     WAMessageContent, WAMetric, WAFlag, WAMessage, BaileysError, MessageLogLevel, WA_MESSAGE_STATUS_TYPE, WAMessageProto, MediaConnInfo
 } from './Constants'
 import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes, generateThumbnail, getMediaKeys, decodeMediaMessageBuffer, extensionForMediaMessage, whatsappID, unixTimestampSeconds  } from './Utils'
+import { Mutex } from './Mutex'
 
 export class WAConnection extends Base {
     /**
@@ -194,6 +195,7 @@ export class WAConnection extends Base {
      * You may need to call this when the message is old & the content is deleted off of the WA servers
      * @param message 
      */
+    @Mutex (message => message?.key?.id)
     async updateMediaMessage (message: WAMessage) {
         const content = message.message?.audioMessage || message.message?.videoMessage || message.message?.imageMessage || message.message?.stickerMessage || message.message?.documentMessage 
         if (!content) throw new BaileysError (`given message ${message.key.id} is not a media message`, message)
@@ -206,6 +208,7 @@ export class WAConnection extends Base {
      * Securely downloads the media from the message. 
      * Renews the download url automatically, if necessary.
      */
+    @Mutex (message => message?.key?.id)
     async downloadMediaMessage (message: WAMessage) {
         try {
             const buff = await decodeMediaMessageBuffer (message.message, this.fetchRequest)

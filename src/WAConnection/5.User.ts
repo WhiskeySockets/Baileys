@@ -7,6 +7,7 @@ import {
     WAFlag,
 } from '../WAConnection/Constants'
 import { generateProfilePicture, waChatUniqueKey, whatsappID, unixTimestampSeconds } from './Utils'
+import { Mutex } from './Mutex'
 
 // All user related functions -- get profile picture, set status etc.
 
@@ -108,6 +109,12 @@ export class WAConnection extends Base {
         const cursor = (chats[chats.length-1] && chats.length >= count) ? waChatUniqueKey (chats[chats.length-1]) : null
         return { chats, cursor }
     }
+    /**
+     * Update the profile picture
+     * @param jid 
+     * @param img 
+     */
+    @Mutex (jid => jid)
     async updateProfilePicture (jid: string, img: Buffer) {
         jid = whatsappID (jid)
         const data = await generateProfilePicture (img)
@@ -133,6 +140,7 @@ export class WAConnection extends Base {
      * @param jid the ID of the person/group you are modifiying
      * @param durationMs only for muting, how long to mute the chat for
      */
+    @Mutex ((jid, type) => jid+type)
     async modifyChat (jid: string, type: ChatModification, durationMs?: number) {
         jid = whatsappID (jid)
         const chat = this.assertChatGet (jid)

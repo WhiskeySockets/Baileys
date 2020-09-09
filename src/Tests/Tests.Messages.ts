@@ -112,6 +112,14 @@ WAConnectionTest('Messages', conn => {
             }
         })
     })
+    it('should not duplicate messages', async () => {
+        const results = await Promise.all ([
+            conn.loadMessages (testJid, 50),
+            conn.loadMessages (testJid, 50)
+        ])
+        assert.deepEqual (results[0].messages, results[1].messages)
+        assert.ok (results[0].messages.length <= 50)
+    })
     it('should deliver a message', async () => {
         const waitForUpdate = 
             promiseTimeout(15000, resolve => {

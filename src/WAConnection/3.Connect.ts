@@ -64,7 +64,17 @@ export class WAConnection extends Base {
         // actual connect
         const connect = () => {
             const timeoutMs = options?.timeoutMs || 60*1000
-            let task = Utils.promiseTimeout(timeoutMs, (resolve, reject) => {
+            
+            let cancel: () => void
+            const task = Utils.promiseTimeout(timeoutMs, (resolve, reject) => {
+                let task: Promise<any> = Promise.resolve ()
+                // add wait for chats promise if required
+                if (typeof options?.waitForChats === 'undefined' ? true : options?.waitForChats) {
+                    const {waitForChats, cancelChats} = this.receiveChatsAndContacts()
+                    task = waitForChats
+                    cancel = cancelChats
+                }
+
                 // determine whether reconnect should be used or not
                 const shouldUseReconnect = this.lastDisconnectReason !== DisconnectReason.replaced && 
                                             this.lastDisconnectReason !== DisconnectReason.unknown &&
@@ -76,30 +86,35 @@ export class WAConnection extends Base {
                 this.conn = new WS(WS_URL, null, { origin: DEFAULT_ORIGIN, timeout: timeoutMs, agent: options.agent })
                 this.conn.on('message', data => this.onMessageRecieved(data as any))
 
-                this.conn.on ('open', () => {
+                this.conn.on ('open', async () => {
                     this.log(`connected to WhatsApp Web server, authenticating via ${reconnectID ? 'reconnect' : 'takeover'}`, MessageLogLevel.info)
                     
-                    this.authenticate(reconnectID)
-                    .then (resolve)
-                    .then (() => (
-                        this.conn
-                        .removeAllListeners ('error')
-                        .removeAllListeners ('close')
-                    ))
-                    .catch (reject)
+                    try {
+                        task = Promise.all ([
+                            task,
+                            this.authenticate (reconnectID)
+                            .then (
+                                () => {
+                                    this.conn
+                                    .removeAllListeners ('error')
+                                    .removeAllListeners ('close')
+                                }
+                            )
+                        ])
+                        const [result] = await task
+                        resolve (result)
+                    } catch (error) {
+                        reject (error)
+                    }
                 })
-                this.conn.on('error', reject)
-                this.conn.on('close', () => reject(new Error('close')))
-            })
 
-            let cancel: () => void
-            if (typeof options?.waitForChats === 'undefined' ? true : options?.waitForChats) {
-                const {waitForChats, cancelChats} = this.receiveChatsAndContacts()
-                task = Promise.all ([task, waitForChats]).then (([_, updates]) => updates)
-                cancel = cancelChats
-            }
-            
-            task = task as Promise<void | { [k: string]: Partial<WAChat> }>
+                const rejectSafe = error => {
+                    task = task.catch (() => {})
+                    reject (error)
+                }
+                this.conn.on('error', rejectSafe)
+                this.conn.on('close', () => rejectSafe(new Error('close')))
+            }) as Promise<void | { [k: string]: Partial<WAChat> }>
 
             return { promise: task, cancel }
         }

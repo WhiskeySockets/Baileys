@@ -55,7 +55,7 @@ export class WAConnection extends EventEmitter {
     /** Whether the phone is connected */
     phoneConnected: boolean = false
 
-    maxCachedMessages = 25
+    maxCachedMessages = 50
 
     chats: KeyedDB<WAChat> = new KeyedDB (Utils.waChatUniqueKey, value => value.jid)
     contacts: { [k: string]: WAContact } = {}
