@@ -18,8 +18,12 @@ export class WAConnection extends Base {
         
         const initQueries = [
             (async () => {
-                const json = ['admin', 'init', this.version, this.browserDescription, this.authInfo?.clientID, true]
-                const ref = await this.query({json, expect200: true, waitForOpen: false, longTag: true})
+                const {ref} = await this.query({
+                    json: ['admin', 'init', this.version, this.browserDescription, this.authInfo?.clientID, true], 
+                    expect200: true, 
+                    waitForOpen: false, 
+                    longTag: true
+                })
                 if (!canLogin) {
                     const result = await this.generateKeysForAuth (ref)
                     return result
