@@ -7,7 +7,6 @@ export const DEFAULT_ORIGIN = 'https://web.whatsapp.com'
 
 export const KEEP_ALIVE_INTERVAL_MS = 20*1000
 
-
 // export the WAMessage Prototypes
 export { proto as WAMessageProto }
 export type WANode = WA.Node
@@ -17,9 +16,9 @@ export type WAContactMessage = proto.ContactMessage
 export type WAMessageKey = proto.IMessageKey
 export type WATextMessage = proto.ExtendedTextMessage
 export type WAContextInfo = proto.IContextInfo
+export type WAGenericMediaMessage = proto.IVideoMessage | proto.IImageMessage | proto.IAudioMessage | proto.IDocumentMessage | proto.IStickerMessage
 export import WA_MESSAGE_STUB_TYPE = proto.WebMessageInfo.WEB_MESSAGE_INFO_STUBTYPE
 export import WA_MESSAGE_STATUS_TYPE = proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS
-
 
 export interface WALocationMessage {
     degreesLatitude: number

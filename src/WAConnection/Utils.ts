@@ -9,7 +9,7 @@ import { URL } from 'url'
 import { Agent } from 'https'
 
 import Decoder from '../Binary/Decoder'
-import { MessageType, HKDFInfoKeys, MessageOptions, WAChat, WAMessageContent, BaileysError, WAMessageProto, TimedOutError, CancelledError, DEFAULT_ORIGIN } from './Constants'
+import { MessageType, HKDFInfoKeys, MessageOptions, WAChat, WAMessageContent, BaileysError, WAMessageProto, TimedOutError, CancelledError, WAGenericMediaMessage } from './Constants'
 
 const platformMap = {
     'aix': 'AIX',
@@ -223,6 +223,11 @@ export const generateProfilePicture = async (buffer: Buffer) => {
     }
 }
 export const ProxyAgent = (host: string | URL) => HttpsProxyAgent(host) as any as Agent
+/** gets the SHA256 of the given media message */
+export const mediaMessageSHA256B64 = (message: WAMessageContent) => {
+    const media = Object.values(message)[0] as WAGenericMediaMessage
+    return media?.fileSha256 && Buffer.from(media.fileSha256).toString ('base64')
+}
 
 /** generates a thumbnail for a given media, if required */
 export async function generateThumbnail(buffer: Buffer, mediaType: MessageType, info: MessageOptions) {
@@ -268,7 +273,7 @@ export async function decodeMediaMessageBuffer(message: WAMessageContent, fetchR
     if (type === MessageType.location || type === MessageType.liveLocation) {
         return new Buffer(message[type].jpegThumbnail)
     }
-    let messageContent: WAMessageProto.IVideoMessage | WAMessageProto.IImageMessage | WAMessageProto.IAudioMessage | WAMessageProto.IDocumentMessage
+    let messageContent: WAGenericMediaMessage
     if (message.productMessage) {
         const product = message.productMessage.product?.productImage
         if (!product) throw new BaileysError ('product has no image', message)
