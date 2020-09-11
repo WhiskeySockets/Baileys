@@ -280,7 +280,7 @@ export class WAConnection extends Base {
     }
     protected chatUpdatedMessage (messageIDs: string[], status: WA_MESSAGE_STATUS_TYPE, chat: WAChat) {
         for (let msg of chat.messages) {
-            if (messageIDs.includes(msg.key.id)) {
+            if (messageIDs.includes(msg.key.id) && msg.status < status) {
                 if (status <= WA_MESSAGE_STATUS_TYPE.PENDING) msg.status = status
                 else if (isGroupID(chat.jid)) msg.status = status-1
                 else msg.status = status
