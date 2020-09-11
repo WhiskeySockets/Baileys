@@ -54,28 +54,9 @@ export class WAConnection extends Base {
 
         if (type === 'unread') await this.sendReadReceipt (jid, null, -2)
         else if (chat.count !== 0) {
-            let messageID: string
-
-            let messages: WAMessage[]
-            let cursor: any
-
-            messages = chat.messages
-            cursor = messages[messages.length-1]?.key
-
-            do {
-                const m = messages.reverse().find (m => !m.key.fromMe)
-                if (m) messageID = m.key.id
-
-                const obj = await this.loadMessages (jid, 10, cursor)
-                messages = obj.messages
-                cursor = obj.cursor
-
-                if (messages.length === 0) throw new BaileysError ('no valid message found to read', { status: 404 })
-            } while (!messageID)
-
-            await this.sendReadReceipt (jid, messageID, Math.abs(chat.count))
+            const {messages} = await this.loadMessages (jid, 1)
+            await this.sendReadReceipt (jid, messages[0].key, Math.abs(chat.count))
         }
-
         chat.count = type === 'unread' ? -1 : 0
         this.emit ('chat-update', {jid, count: chat.count})
     }
@@ -83,15 +64,15 @@ export class WAConnection extends Base {
      * Sends a read receipt for a given message;
      * does not update the chat do @see chatRead
      * @param jid the ID of the person/group whose message you want to mark read
-     * @param messageID optionally, the message ID
+     * @param messageKey the key of the message
      * @param count number of messages to read, set to < 0 to unread a message
      */
-    async sendReadReceipt(jid: string, messageID: string, count: number) {
+    async sendReadReceipt(jid: string, messageKey: { id?: string, fromMe?: boolean }, count: number) {
         const attributes = {
             jid: jid,
             count: count.toString(),
-            index: messageID,
-            owner: messageID ? 'false' : null
+            index: messageKey?.id,
+            owner: messageKey?.fromMe?.toString()
         }
         const read = await this.setQuery ([['read', attributes, null]])
         return read
