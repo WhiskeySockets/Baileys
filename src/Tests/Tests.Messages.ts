@@ -63,15 +63,55 @@ WAConnectionTest('Messages', conn => {
         const message = await sendAndRetreiveMessage(conn, content, MessageType.image)
         
         await conn.downloadMediaMessage(message)
-        //const message2 = await sendAndRetreiveMessage (conn, 'this is a quote', MessageType.extendedText)
     })
     it('should send a sticker', async () => {
         const content = await fs.readFile('./Media/octopus.webp')
         const message = await sendAndRetreiveMessage(conn, content, MessageType.sticker)
         
         await conn.downloadMediaMessage(message)
-        //const message2 = await sendAndRetreiveMessage (conn, 'this is a quote', MessageType.extendedText)
     })
+    /*it('should send an interactive message', async () => {
+        
+        console.log (
+            JSON.stringify(await conn.loadMessages (testJid, 5), null, '\t')
+        )
+        const message = conn.prepareMessageFromContent (
+            testJid,
+            {
+                templateMessage: {
+                    fourRowTemplate: {
+                        content: {
+                            namespace: 'my-namespace',
+                            localizableParams: [
+                                
+                            ],
+                            params: ['hello!']
+                        },
+                        buttons: [
+                            {
+                                index: 0,
+                                quickReplyButton: {
+                                    displayText: {
+                                        params: ['my name jeff']
+                                    }
+                                }
+                            },
+                            {
+                                index: 1,
+                                quickReplyButton: {
+                                    displayText: {
+                                        params: ['my name NOT jeff'],
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            {}
+        )
+        await conn.relayWAMessage (message)
+    })*/
     it('should send an image & quote', async () => {
         const quoted = (await conn.loadMessages(testJid, 2)).messages[0]
         const content = await fs.readFile('./Media/meme.jpeg')
