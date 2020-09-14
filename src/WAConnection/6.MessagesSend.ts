@@ -70,7 +70,6 @@ export class WAConnection extends Base {
                 break
             default:
                 m = await this.prepareMessageMedia(message as Buffer, type, options)
-                console.log (m)
                 break
         }
         return WAMessageProto.Message.create (m)
