@@ -54,19 +54,19 @@ export class WAConnection extends Base {
             case MessageType.text:
             case MessageType.extendedText:
                 if (typeof message === 'string') {
-                    m.extendedTextMessage = {text: message}
+                    m.extendedTextMessage = WAMessageProto.ExtendedTextMessage.create({text: message} as any)
                 } else if ('text' in message) {
-                    m.extendedTextMessage = message as WATextMessage
+                    m.extendedTextMessage = WAMessageProto.ExtendedTextMessage.create(message as any)
                 } else {
                     throw new BaileysError ('message needs to be a string or object with property \'text\'', message)
                 }
                 break
             case MessageType.location:
             case MessageType.liveLocation:
-                m.locationMessage = message as WALocationMessage
+                m.locationMessage = WAMessageProto.LocationMessage.create(message as any)
                 break
             case MessageType.contact:
-                m.contactMessage = message as WAContactMessage
+                m.contactMessage = WAMessageProto.ContactMessage.create(message as any)
                 break
             default:
                 m = await this.prepareMessageMedia(message as Buffer, type, options)
@@ -129,16 +129,16 @@ export class WAConnection extends Base {
         const message = {}
         message[mediaType] = {
             url: mediaUrl,
-            mediaKey: mediaKey.toString('base64'),
+            mediaKey: mediaKey,
             mimetype: options.mimetype,
-            fileEncSha256: fileEncSha256B64,
-            fileSha256: fileSha256.toString('base64'),
+            fileEncSha256: sha256(body),//fileEncSha256B64,
+            fileSha256: fileSha256,
             fileLength: buffer.length,
             fileName: options.filename || 'file',
             gifPlayback: isGIF || null,
             caption: options.caption
         }
-        return message as WAMessageContent
+        return WAMessageProto.Message.create(message)// as WAMessageContent
     }
     /** prepares a WAMessage for sending from the given content & options */
     prepareMessageFromContent(id: string, message: WAMessageContent, options: MessageOptions) {
@@ -146,6 +146,8 @@ export class WAConnection extends Base {
         
         // prevent an annoying bug (WA doesn't accept sending messages with '@c.us')
         id = whatsappID (id)
+
+        message = WAMessageProto.Message.create (message)
 
         const key = Object.keys(message)[0]
         const timestamp = unixTimestampSeconds(options.timestamp)

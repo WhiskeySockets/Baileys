@@ -145,9 +145,10 @@ WAConnectionTest('Messages', conn => {
         const JID = '1234-1234@g.us'
         conn.sendMessage(JID, 'hello', MessageType.text)
 
-        conn.on ('message-status-update', update => {
+        conn.on ('message-status-update', async update => {
             if (update.to === JID) {
                 assert.equal (update.type, WA_MESSAGE_STATUS_TYPE.ERROR)
+                await conn.deleteChat (JID)
                 done ()
             }
         })
