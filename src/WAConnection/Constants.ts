@@ -260,6 +260,14 @@ export enum MessageType {
     audio = 'audioMessage',
     product = 'productMessage'
 }
+
+export const MessageTypeProto = {
+    [MessageType.image]: proto.ImageMessage,
+    [MessageType.video]: proto.VideoMessage,
+    [MessageType.audio]: proto.AudioMessage,
+    [MessageType.sticker]: proto.StickerMessage,
+    [MessageType.document]: proto.DocumentMessage,
+}
 export enum ChatModification {
     archive='archive',
     unarchive='unarchive',

@@ -9,7 +9,7 @@ import {
     WALocationMessage,
     WAContactMessage,
     WATextMessage,
-    WAMessageContent, WAMetric, WAFlag, WAMessage, BaileysError, MessageLogLevel, WA_MESSAGE_STATUS_TYPE, WAMessageProto, MediaConnInfo
+    WAMessageContent, WAMetric, WAFlag, WAMessage, BaileysError, MessageLogLevel, WA_MESSAGE_STATUS_TYPE, WAMessageProto, MediaConnInfo, MessageTypeProto
 } from './Constants'
 import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes, generateThumbnail, getMediaKeys, decodeMediaMessageBuffer, extensionForMediaMessage, whatsappID, unixTimestampSeconds  } from './Utils'
 import { Mutex } from './Mutex'
@@ -70,6 +70,7 @@ export class WAConnection extends Base {
                 break
             default:
                 m = await this.prepareMessageMedia(message as Buffer, type, options)
+                console.log (m)
                 break
         }
         return WAMessageProto.Message.create (m)
@@ -126,18 +127,22 @@ export class WAConnection extends Base {
         }
         if (!mediaUrl) throw new Error('Media upload failed on all hosts')
 
-        const message = {}
-        message[mediaType] = {
-            url: mediaUrl,
-            mediaKey: mediaKey,
-            mimetype: options.mimetype,
-            fileEncSha256: sha256(body),//fileEncSha256B64,
-            fileSha256: fileSha256,
-            fileLength: buffer.length,
-            fileName: options.filename || 'file',
-            gifPlayback: isGIF || null,
-            caption: options.caption
-        }
+        const message = {
+            [mediaType]: MessageTypeProto[mediaType].create (
+                {
+                    url: mediaUrl,
+                    mediaKey: mediaKey,
+                    mimetype: options.mimetype,
+                    fileEncSha256: sha256(body),//fileEncSha256B64,
+                    fileSha256: fileSha256,
+                    fileLength: buffer.length,
+                    fileName: options.filename || 'file',
+                    gifPlayback: isGIF || null,
+                    caption: options.caption,
+                }
+            )
+        }   
+             
         return WAMessageProto.Message.create(message)// as WAMessageContent
     }
     /** prepares a WAMessage for sending from the given content & options */
@@ -146,8 +151,6 @@ export class WAConnection extends Base {
         
         // prevent an annoying bug (WA doesn't accept sending messages with '@c.us')
         id = whatsappID (id)
-
-        message = WAMessageProto.Message.create (message)
 
         const key = Object.keys(message)[0]
         const timestamp = unixTimestampSeconds(options.timestamp)
@@ -169,7 +172,10 @@ export class WAConnection extends Base {
                 message[key].contextInfo.remoteJid = quoted.key.remoteJid
             }
         }
-        if (!message[key].jpegThumbnail) message[key].jpegThumbnail = options?.thumbnail
+        if (options?.thumbnail) {
+            message[key].jpegThumbnail = Buffer.from(options.thumbnail, 'base64')
+        }
+        message = WAMessageProto.Message.create (message)
 
         const messageJSON = {
             key: {
