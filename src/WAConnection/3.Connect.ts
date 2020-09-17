@@ -47,7 +47,7 @@ export class WAConnection extends Base {
         }
 
         const updatedChats = !!this.lastDisconnectTime && updates
-        const result: WAOpenResult = { newConnection, updatedChats }
+        const result: WAOpenResult = { user: this.user, newConnection, updatedChats }
         this.emit ('open', result)
  
         this.releasePendingRequests ()
