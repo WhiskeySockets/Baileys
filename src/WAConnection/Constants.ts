@@ -67,6 +67,8 @@ export enum ReconnectMode {
 export type WAConnectOptions = {
     /** timeout after which the connect attempt will fail, set to null for default timeout value */
     timeoutMs?: number
+    /**  */
+    maxIdleTimeMs?: number
     /** maximum attempts to connect */
     maxRetries?: number
     /** should the chats be waited for */

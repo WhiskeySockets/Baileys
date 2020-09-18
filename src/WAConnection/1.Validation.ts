@@ -6,7 +6,7 @@ import { MessageLogLevel, WAMetric, WAFlag, BaileysError, Presence, WAUser } fro
 export class WAConnection extends Base {
     
     /** Authenticate the connection */
-    protected async authenticate (reconnect?: string) {
+    protected async authenticate (onConnectionValidated: () => void, reconnect?: string) {
         // if no auth info is present, that is, a new session has to be established
         // generate a client ID
         if (!this.authInfo?.clientID) {
@@ -56,9 +56,9 @@ export class WAConnection extends Base {
         }
 
         const validationJSON = (await Promise.all (initQueries)).slice(-1)[0] // get the last result
-
         this.user = await this.validateNewConnection(validationJSON[1]) // validate the connection
         
+        onConnectionValidated ()
         this.log('validated connection successfully', MessageLogLevel.info)
 
         const response = await this.query({ json: ['query', 'ProfilePicThumb', this.user.jid], waitForOpen: false, expect200: false })

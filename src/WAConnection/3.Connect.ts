@@ -68,13 +68,18 @@ export class WAConnection extends Base {
             let cancel: () => void
             const task = Utils.promiseTimeout(timeoutMs, (resolve, reject) => {
                 let task: Promise<any> = Promise.resolve ()
+                const checkIdleTime = () => {
+                    this.debounceTimeout && clearTimeout (this.debounceTimeout)
+                    this.debounceTimeout = setTimeout (() => rejectSafe (TimedOutError()), this.connectOptions.maxIdleTimeMs)
+                }
+                const debouncedTimeout = () => this.connectOptions.maxIdleTimeMs && this.conn.addEventListener ('message', checkIdleTime)
+                
                 // add wait for chats promise if required
                 if (typeof options?.waitForChats === 'undefined' ? true : options?.waitForChats) {
                     const {waitForChats, cancelChats} = this.receiveChatsAndContacts()
                     task = waitForChats
                     cancel = cancelChats
                 }
-
                 // determine whether reconnect should be used or not
                 const shouldUseReconnect = this.lastDisconnectReason !== DisconnectReason.replaced && 
                                             this.lastDisconnectReason !== DisconnectReason.unknown &&
@@ -83,16 +88,17 @@ export class WAConnection extends Base {
                 
                 const reconnectID = shouldUseReconnect ? this.user.jid.replace ('@s.whatsapp.net', '@c.us') : null
 
-                this.conn = new WS(WS_URL, null, { origin: DEFAULT_ORIGIN, timeout: timeoutMs, agent: options.agent })
-                this.conn.on('message', data => this.onMessageRecieved(data as any))
-
+                this.conn = new WS(WS_URL, null, { origin: DEFAULT_ORIGIN, timeout: this.connectOptions.maxIdleTimeMs, agent: options.agent })
+                this.conn.addEventListener('message', ({data}) => this.onMessageRecieved(data as any))
+                
                 this.conn.on ('open', async () => {
                     this.log(`connected to WhatsApp Web server, authenticating via ${reconnectID ? 'reconnect' : 'takeover'}`, MessageLogLevel.info)
                     
                     try {
                         task = Promise.all ([
                             task,
-                            this.authenticate (reconnectID)
+                            // debounce the timeout once validated
+                            this.authenticate (debouncedTimeout, reconnectID)
                             .then (
                                 () => {
                                     this.conn
@@ -102,12 +108,14 @@ export class WAConnection extends Base {
                             )
                         ])
                         const [result] = await task
+                        
+                        this.conn.removeEventListener ('message', checkIdleTime)
+                        
                         resolve (result)
                     } catch (error) {
                         reject (error)
                     }
                 })
-
                 const rejectSafe = error => {
                     task = task.catch (() => {})
                     reject (error)
@@ -138,7 +146,7 @@ export class WAConnection extends Base {
             const result = connect ()
             cancellations.push (result.cancel)
 
-            const final = await result.promise
+            const final = await result.promise            
             return final
         } catch (error) {
             this.endConnection ()

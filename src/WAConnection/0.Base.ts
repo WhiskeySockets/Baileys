@@ -45,6 +45,7 @@ export class WAConnection extends EventEmitter {
     regenerateQRIntervalMs = 30*1000
     connectOptions: WAConnectOptions = {
         timeoutMs: 60*1000,
+        maxIdleTimeMs: 10*1000,
         waitForChats: true,
         maxRetries: 5,
         connectCooldownMs: 2250,
@@ -80,6 +81,7 @@ export class WAConnection extends EventEmitter {
     protected lastDisconnectReason: DisconnectReason 
 
     protected mediaConn: MediaConnInfo
+    protected debounceTimeout: NodeJS.Timeout
 
     constructor () {
         super ()
@@ -101,7 +103,10 @@ export class WAConnection extends EventEmitter {
             error !== DisconnectReason.invalidSession // do not reconnect if credentials have been invalidated
         
         this.closeInternal(error, willReconnect)
-        willReconnect && this.connect ()
+        willReconnect && (
+            this.connect ()
+            .catch(err => {}) // prevent unhandled exeception
+        ) 
     }
     /**
      * base 64 encode the authentication credentials and return them
@@ -316,6 +321,7 @@ export class WAConnection extends EventEmitter {
 
         this.qrTimeout && clearTimeout (this.qrTimeout)
         this.keepAliveReq && clearInterval(this.keepAliveReq)
+        this.debounceTimeout && clearTimeout (this.debounceTimeout)
         
         this.state = 'close'
         this.msgCount = 0
