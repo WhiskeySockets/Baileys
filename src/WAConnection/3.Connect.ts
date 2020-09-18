@@ -76,7 +76,7 @@ export class WAConnection extends Base {
                 
                 // add wait for chats promise if required
                 if (typeof options?.waitForChats === 'undefined' ? true : options?.waitForChats) {
-                    const {waitForChats, cancelChats} = this.receiveChatsAndContacts()
+                    const {waitForChats, cancelChats} = this.receiveChatsAndContacts(this.connectOptions.waitOnlyForLastMessage)
                     task = waitForChats
                     cancel = cancelChats
                 }
@@ -159,9 +159,8 @@ export class WAConnection extends Base {
     /**
      * Sets up callbacks to receive chats, contacts & messages.
      * Must be called immediately after connect
-     * @returns [chats, contacts]
      */
-    protected receiveChatsAndContacts() {
+    protected receiveChatsAndContacts(waitOnlyForLast: boolean) {
         const chats = new KeyedDB<WAChat>(Utils.waChatUniqueKey, c => c.jid)
         const contacts = {}
 
@@ -172,9 +171,11 @@ export class WAConnection extends Base {
         const deregisterCallbacks = () => {
             // wait for actual messages to load, "last" is the most recent message, "before" contains prior messages
             this.deregisterCallback(['action', 'add:last'])
-            this.deregisterCallback(['action', 'add:before'])
-            this.deregisterCallback(['action', 'add:unread'])
-
+            if (!waitOnlyForLast) {
+                this.deregisterCallback(['action', 'add:before'])
+                this.deregisterCallback(['action', 'add:unread'])    
+            }
+            
             this.deregisterCallback(['response', 'type:chat'])
             this.deregisterCallback(['response', 'type:contacts'])
         }
@@ -184,7 +185,7 @@ export class WAConnection extends Base {
         const chatUpdate = json => {
             receivedMessages = true
 
-            const isLast = json[1].last
+            const isLast = json[1].last || waitOnlyForLast
             const messages = json[2] as WANode[]
 
             if (messages) {

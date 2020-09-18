@@ -67,12 +67,14 @@ export enum ReconnectMode {
 export type WAConnectOptions = {
     /** timeout after which the connect attempt will fail, set to null for default timeout value */
     timeoutMs?: number
-    /**  */
+    /** fails the connection if no data is received for X seconds */
     maxIdleTimeMs?: number
     /** maximum attempts to connect */
     maxRetries?: number
     /** should the chats be waited for */
     waitForChats?: boolean
+    /** if set to true, the connect only waits for the last message of the chat */
+    waitOnlyForLastMessage?: boolean
     /** max time for the phone to respond to a connectivity test */
     phoneResponseTime?: number
 
@@ -174,6 +176,9 @@ export interface WAContact {
     index?: string
     /** short name for the contact */
     short?: string
+    // Baileys Added
+    lastKnownPresence?: Presence
+    lastSeen?: number
 }
 export interface WAUser extends WAContact {
     phone: any

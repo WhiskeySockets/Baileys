@@ -46,6 +46,7 @@ export class WAConnection extends EventEmitter {
     connectOptions: WAConnectOptions = {
         timeoutMs: 60*1000,
         maxIdleTimeMs: 10*1000,
+        waitOnlyForLastMessage: false,
         waitForChats: true,
         maxRetries: 5,
         connectCooldownMs: 2250,

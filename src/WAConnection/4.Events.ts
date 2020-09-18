@@ -13,9 +13,16 @@ export class WAConnection extends Base {
             this.chatAddMessageAppropriate (message)
         })
         // presence updates
-        this.registerCallback('Presence', json => (
-            this.emit('user-presence-update', json[1] as PresenceUpdate)
-        ))
+        this.registerCallback('Presence', json => {
+            const update = json[1] as PresenceUpdate
+            const jid = whatsappID(update.participant || update.id)
+            const contact = this.contacts[jid]
+            if (!isGroupID(jid) && contact) {
+                contact.lastKnownPresence = update.type
+                if (update.t) contact.lastSeen = +update.t
+            }
+            this.emit('user-presence-update', update)
+        })
         // If a message has been updated (usually called when a video message gets its upload url)
         this.registerCallback (['action', 'add:update', 'message'], json => {
             const message: WAMessage = json[2][0][2]
