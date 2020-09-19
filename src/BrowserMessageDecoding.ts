@@ -32,10 +32,13 @@ const list = wsMessages.map ((item, i) => {
     const buffer = item.data.includes(',') ? item.data : Buffer.from (item.data, 'base64')
     try {
         const [tag, json, binaryTags] = decrypt (buffer, item.type === 'send')
+        
+        if (json && json[1] && json[1].add) return
         return {tag, json: json && JSON.stringify(json), binaryTags}
     } catch (error) {
         return { error: error.message, data: buffer.toString('utf-8') }
     }
 })
+.filter (Boolean)
 const str = JSON.stringify (list, null, '\t')
 fs.writeFileSync ('decoded-ws.json', str)

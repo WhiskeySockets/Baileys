@@ -1,6 +1,6 @@
 import * as QR from 'qrcode-terminal'
 import { WAConnection as Base } from './3.Connect'
-import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, MessageLogLevel, PresenceUpdate, BaileysEvent, DisconnectReason, WANode, WAOpenResult } from './Constants'
+import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, MessageLogLevel, PresenceUpdate, BaileysEvent, DisconnectReason, WANode, WAOpenResult, Presence } from './Constants'
 import { whatsappID, unixTimestampSeconds, isGroupID, toNumber } from './Utils'
 
 export class WAConnection extends Base {
@@ -10,17 +10,29 @@ export class WAConnection extends Base {
         // new messages
         this.registerCallback(['action', 'add:relay', 'message'], json => {
             const message = json[2][0][2] as WAMessage
+            const jid = whatsappID( message.key.remoteJid )
+            if (jid.endsWith('@s.whatsapp.net')) {
+                const contact = this.contacts[jid]
+                if (contact && contact?.lastKnownPresence === Presence.composing) {
+                    contact.lastKnownPresence = Presence.available
+                }
+            }
             this.chatAddMessageAppropriate (message)
         })
         // presence updates
         this.registerCallback('Presence', json => {
             const update = json[1] as PresenceUpdate
-            const jid = whatsappID(update.participant || update.id)
+            
+            const jid = whatsappID(update.id)
             const contact = this.contacts[jid]
-            if (!isGroupID(jid) && contact) {
-                contact.lastKnownPresence = update.type
+            if (jid.endsWith('@s.whatsapp.net')) { // if its a single chat
                 if (update.t) contact.lastSeen = +update.t
+                else if (update.type === Presence.unavailable && contact.lastKnownPresence !== Presence.unavailable) {
+                    contact.lastSeen = unixTimestampSeconds()
+                }
+                contact.lastKnownPresence = update.type
             }
+
             this.emit('user-presence-update', update)
         })
         // If a message has been updated (usually called when a video message gets its upload url)
