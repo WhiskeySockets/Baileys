@@ -25,7 +25,7 @@ export class WAConnection extends Base {
             
             const jid = whatsappID(update.id)
             const contact = this.contacts[jid]
-            if (jid.endsWith('@s.whatsapp.net')) { // if its a single chat
+            if (contact && jid.endsWith('@s.whatsapp.net')) { // if its a single chat
                 if (update.t) contact.lastSeen = +update.t
                 else if (update.type === Presence.unavailable && contact.lastKnownPresence !== Presence.unavailable) {
                     contact.lastSeen = unixTimestampSeconds()
