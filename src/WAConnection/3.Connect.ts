@@ -35,14 +35,15 @@ export class WAConnection extends Base {
 
                 const loggedOut = error instanceof BaileysError && UNAUTHORIZED_CODES.includes(error.status)
                 const willReconnect = !loggedOut && (tries <= (options?.maxRetries || 5)) && this.state === 'connecting'
+                const reason = loggedOut ? DisconnectReason.invalidSession : error.message
 
                 this.log (`connect attempt ${tries} failed: ${error}${ willReconnect ? ', retrying...' : ''}`, MessageLogLevel.info)
 
                 if ((this.state as string) !== 'close' && !willReconnect) {
-                    this.closeInternal (loggedOut ? DisconnectReason.invalidSession : error.message)
+                    this.closeInternal (reason)
                 }
-
                 if (!willReconnect) throw error
+                this.emit ('intermediate-close', {reason})
             }
         }
 
@@ -67,19 +68,12 @@ export class WAConnection extends Base {
             
             let cancel: () => void
             const task = Utils.promiseTimeout(timeoutMs, (resolve, reject) => {
-                let task: Promise<any> = Promise.resolve ()
+                cancel = () => reject (CancelledError())
                 const checkIdleTime = () => {
                     this.debounceTimeout && clearTimeout (this.debounceTimeout)
                     this.debounceTimeout = setTimeout (() => rejectSafe (TimedOutError()), this.connectOptions.maxIdleTimeMs)
                 }
                 const debouncedTimeout = () => this.connectOptions.maxIdleTimeMs && this.conn.addEventListener ('message', checkIdleTime)
-                
-                // add wait for chats promise if required
-                if (typeof options?.waitForChats === 'undefined' ? true : options?.waitForChats) {
-                    const {waitForChats, cancelChats} = this.receiveChatsAndContacts(this.connectOptions.waitOnlyForLastMessage)
-                    task = waitForChats
-                    cancel = cancelChats
-                }
                 // determine whether reconnect should be used or not
                 const shouldUseReconnect = this.lastDisconnectReason !== DisconnectReason.replaced && 
                                             this.lastDisconnectReason !== DisconnectReason.unknown &&
@@ -93,38 +87,34 @@ export class WAConnection extends Base {
                 
                 this.conn.on ('open', async () => {
                     this.log(`connected to WhatsApp Web server, authenticating via ${reconnectID ? 'reconnect' : 'takeover'}`, MessageLogLevel.info)
-                    
+                    let waitForChats: Promise<{[k: string]: Partial<WAChat>}>
+                    // add wait for chats promise if required
+                    if (typeof options?.waitForChats === 'undefined' ? true : options?.waitForChats) {
+                        const recv = this.receiveChatsAndContacts(this.connectOptions.waitOnlyForLastMessage)
+                        waitForChats = recv.waitForChats
+                        cancel = () => {
+                            reject (CancelledError())
+                            recv.cancelChats ()
+                        }
+                    }
                     try {
-                        task = Promise.all ([
-                            task,
-                            // debounce the timeout once validated
-                            this.authenticate (debouncedTimeout, reconnectID)
-                            .then (
-                                () => {
-                                    this.conn
-                                    .removeAllListeners ('error')
-                                    .removeAllListeners ('close')
-                                }
-                            )
-                        ])
-                        const [result] = await task
-                        
+                        await this.authenticate (debouncedTimeout, reconnectID)
+                        this.conn
+                            .removeAllListeners ('error')
+                            .removeAllListeners ('close')
+                        const result = waitForChats && (await waitForChats)
                         this.conn.removeEventListener ('message', checkIdleTime)
-                        
                         resolve (result)
                     } catch (error) {
                         reject (error)
                     }
                 })
-                const rejectSafe = error => {
-                    task = task.catch (() => {})
-                    reject (error)
-                }
+                const rejectSafe = error => reject (error)
                 this.conn.on('error', rejectSafe)
                 this.conn.on('close', () => rejectSafe(new Error('close')))
             }) as Promise<void | { [k: string]: Partial<WAChat> }>
 
-            return { promise: task, cancel }
+            return { promise: task, cancel: cancel }
         }
 
         let promise = Promise.resolve ()

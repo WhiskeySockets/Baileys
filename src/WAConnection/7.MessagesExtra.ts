@@ -1,12 +1,5 @@
 import {WAConnection as Base} from './6.MessagesSend'
-import {
-    MessageType,
-    WAMessageKey,
-    MessageInfo,
-    WATextMessage,
-    WAUrlInfo,
-    WAMessageContent, WAMetric, WAFlag, WANode, WAMessage, WAMessageProto, BaileysError, MessageLogLevel, WA_MESSAGE_STATUS_TYPE
-} from './Constants'
+import { MessageType, WAMessageKey, MessageInfo, WAMessageContent, WAMetric, WAFlag, WANode, WAMessage, WAMessageProto } from './Constants'
 import { whatsappID, delay, toNumber, unixTimestampSeconds } from './Utils'
 import { Mutex } from './Mutex'
 
@@ -210,23 +203,6 @@ export class WAConnection extends Base {
         // the message after the loaded message is the message required
         const actual = await this.loadMessages (jid, 1, messages[0] && messages[0].key, false)
         return actual.messages[0]
-    }
-    /** Query a string to check if it has a url, if it does, return required extended text message */
-    async generateLinkPreview (text: string) {
-        const query = ['query', {type: 'url', url: text, epoch: this.msgCount.toString()}, null]
-        const response = await this.query ({json: query, binaryTags: [26, WAFlag.ignore], expect200: true})
-
-        if (response[1]) response[1].jpegThumbnail = response[2]
-        const data = response[1] as WAUrlInfo
-
-        const content = {text} as WATextMessage
-        content.canonicalUrl = data['canonical-url']
-        content.matchedText = data['matched-text']
-        content.jpegThumbnail = data.jpegThumbnail
-        content.description = data.description
-        content.title = data.title
-        content.previewType = 0
-        return content
     }
     /**
      * Search WhatsApp messages with a given text string

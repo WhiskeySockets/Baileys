@@ -26,7 +26,7 @@ import {
 } from './Constants'
 import { EventEmitter } from 'events'
 import KeyedDB from '@adiwajshing/keyed-db'
-import { STATUS_CODES } from 'http'
+import { STATUS_CODES, Agent } from 'http'
 
 export class WAConnection extends EventEmitter {
     /** The version of WhatsApp Web we're telling the servers we are */
@@ -341,6 +341,8 @@ export class WAConnection extends EventEmitter {
     }
     protected endConnection () {
         this.conn?.removeAllListeners ('close')
+        this.conn?.removeAllListeners ('error')
+        this.conn?.removeAllListeners ('open')
         this.conn?.removeAllListeners ('message')
         //this.conn?.close ()
         this.conn?.terminate()
@@ -358,12 +360,12 @@ export class WAConnection extends EventEmitter {
     /**
      * Does a fetch request with the configuration of the connection
      */
-    protected fetchRequest = (endpoint: string, method: string = 'GET', body?: any) => (
+    protected fetchRequest = (endpoint: string, method: string = 'GET', body?: any, agent?: Agent) => (
         fetch(endpoint, {
             method,
             body,
             headers: { Origin: DEFAULT_ORIGIN },
-            agent: this.connectOptions.agent
+            agent: agent || this.connectOptions.agent
         })
     )
     generateMessageTag (longTag: boolean = false) {

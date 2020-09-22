@@ -82,6 +82,8 @@ export type WAConnectOptions = {
     /** agent which can be used for proxying connections */
     agent?: Agent
 }
+/** from: https://stackoverflow.com/questions/3809401/what-is-a-good-regular-expression-to-match-a-url */
+export const URL_REGEX = /[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)?/gi
 
 export type WAConnectionState = 'open' | 'connecting' | 'close'
 
@@ -166,6 +168,7 @@ export interface WAGroupModification {
 }
 
 export interface WAContact {
+    verify?: string
     /** name of the contact, the contact has set on their own on WA */
     notify?: string
     jid: string
@@ -302,13 +305,30 @@ export enum Mimetype {
     webp = 'image/webp',
 }
 export interface MessageOptions {
+    /** the message you want to quote */
     quoted?: WAMessage
+    /** some random context info (can show a forwarded message with this too) */
     contextInfo?: WAContextInfo
+    /** optional, if you want to manually set the timestamp of the message */
     timestamp?: Date
+    /** (for media messages) the caption to send with the media (cannot be sent with stickers though) */
     caption?: string
+    /** 
+     * For location & media messages -- has to be a base 64 encoded JPEG if you want to send a custom thumb, 
+     * or set to null if you don't want to send a thumbnail.
+     * Do not enter this field if you want to automatically generate a thumb 
+     * */
     thumbnail?: string
+    /** (for media messages) specify the type of media (optional for all media types except documents) */
     mimetype?: Mimetype | string
+    /** (for media messages) file name for the media */
     filename?: string
+    /** For audio messages, if set to true, will send as a `voice note` */
+    ptt?: boolean 
+    /** Optional agent for media uploads */
+    uploadAgent?: Agent
+    /** If set to true (default), automatically detects if you're sending a link & attaches the preview*/
+    detectLinks?: boolean
 }
 export interface WABroadcastListInfo {
     status: number
@@ -388,6 +408,7 @@ export type BaileysEvent =
     'open' | 
     'connecting' |
     'close' |
+    'intermediate-close' |
     'qr' |
     'connection-phone-change' |
     'user-presence-update' |

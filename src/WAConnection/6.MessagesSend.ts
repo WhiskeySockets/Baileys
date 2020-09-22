@@ -9,7 +9,7 @@ import {
     WALocationMessage,
     WAContactMessage,
     WATextMessage,
-    WAMessageContent, WAMetric, WAFlag, WAMessage, BaileysError, MessageLogLevel, WA_MESSAGE_STATUS_TYPE, WAMessageProto, MediaConnInfo, MessageTypeProto
+    WAMessageContent, WAMetric, WAFlag, WAMessage, BaileysError, MessageLogLevel, WA_MESSAGE_STATUS_TYPE, WAMessageProto, MediaConnInfo, MessageTypeProto, URL_REGEX, WAUrlInfo
 } from './Constants'
 import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes, generateThumbnail, getMediaKeys, decodeMediaMessageBuffer, extensionForMediaMessage, whatsappID, unixTimestampSeconds  } from './Utils'
 import { Mutex } from './Mutex'
@@ -53,9 +53,14 @@ export class WAConnection extends Base {
         switch (type) {
             case MessageType.text:
             case MessageType.extendedText:
-                if (typeof message === 'string') {
-                    m.extendedTextMessage = WAMessageProto.ExtendedTextMessage.create({text: message} as any)
-                } else if ('text' in message) {
+                if (typeof message === 'string') message = {text: message} as WATextMessage
+                
+                if ('text' in message) {
+                    if (options.detectLinks !== false && message.text.match(URL_REGEX)) {
+                        try {
+                            message = await this.generateLinkPreview (message.text)
+                        } catch { } // ignore if fails
+                    }
                     m.extendedTextMessage = WAMessageProto.ExtendedTextMessage.create(message as any)
                 } else {
                     throw new BaileysError ('message needs to be a string or object with property \'text\'', message)
@@ -98,7 +103,8 @@ export class WAConnection extends Base {
         const body = Buffer.concat([enc, mac]) // body is enc + mac
         const fileSha256 = sha256(buffer)
         // url safe Base64 encode the SHA256 hash of the body
-        const fileEncSha256B64 = sha256(body)
+        const fileEncSha256 = sha256(body)
+        const fileEncSha256B64 = fileEncSha256
                                 .toString('base64')
                                 .replace(/\+/g, '-')
                                 .replace(/\//g, '_')
@@ -114,11 +120,14 @@ export class WAConnection extends Base {
         for (let host of json.hosts) {
             const hostname = `https://${host.hostname}${MediaPathMap[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
             try {
-                const urlFetch = await this.fetchRequest(hostname, 'POST', body)
+                const urlFetch = await this.fetchRequest(hostname, 'POST', body, options.uploadAgent)
                 mediaUrl = (await urlFetch.json())?.url
                 
                 if (mediaUrl) break
-                else throw new Error (`upload failed`)
+                else {
+                    await this.refreshMediaConn (true)
+                    throw new Error (`upload failed`)
+                }
             } catch (error) {
                 const isLast = host.hostname === json.hosts[json.hosts.length-1].hostname
                 this.log (`Error in uploading to ${host.hostname}${isLast ? '' : ', retrying...'}`, MessageLogLevel.info)
@@ -132,12 +141,13 @@ export class WAConnection extends Base {
                     url: mediaUrl,
                     mediaKey: mediaKey,
                     mimetype: options.mimetype,
-                    fileEncSha256: sha256(body),//fileEncSha256B64,
+                    fileEncSha256: fileEncSha256,
                     fileSha256: fileSha256,
                     fileLength: buffer.length,
                     fileName: options.filename || 'file',
-                    gifPlayback: isGIF || null,
+                    gifPlayback: isGIF || undefined,
                     caption: options.caption,
+                    ptt: options.ptt
                 }
             )
         }   
@@ -244,9 +254,26 @@ export class WAConnection extends Base {
         await fs.writeFile (trueFileName, buffer)
         return trueFileName
     }
+    /** Query a string to check if it has a url, if it does, return required extended text message */
+    async generateLinkPreview (text: string) {
+        const query = ['query', {type: 'url', url: text, epoch: this.msgCount.toString()}, null]
+        const response = await this.query ({json: query, binaryTags: [26, WAFlag.ignore], expect200: true})
 
-    protected async refreshMediaConn () {
-        if (!this.mediaConn || (new Date().getTime()-this.mediaConn.fetchDate.getTime()) > this.mediaConn.ttl*1000) {
+        if (response[1]) response[1].jpegThumbnail = response[2]
+        const data = response[1] as WAUrlInfo
+
+        const content = {text} as WATextMessage
+        content.canonicalUrl = data['canonical-url']
+        content.matchedText = data['matched-text']
+        content.jpegThumbnail = data.jpegThumbnail
+        content.description = data.description
+        content.title = data.title
+        content.previewType = 0
+        return content
+    }
+
+    protected async refreshMediaConn (forceGet = false) {
+        if (!this.mediaConn || (new Date().getTime()-this.mediaConn.fetchDate.getTime()) > this.mediaConn.ttl*1000 || forceGet) {
             const result = await this.query({json: ['query', 'mediaConn']})
             this.mediaConn = result.media_conn
             this.mediaConn.fetchDate = new Date()

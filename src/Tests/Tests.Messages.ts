@@ -18,11 +18,11 @@ WAConnectionTest('Messages', conn => {
         assert.equal (content?.contextInfo?.isForwarded, true)
     })
     it('should send a link preview', async () => {
-        const content = await conn.generateLinkPreview ('hello this is from https://www.github.com/adiwajshing/Baileys')
-        const message = await sendAndRetreiveMessage(conn, content, MessageType.text)
+        const text = 'hello this is from https://www.github.com/adiwajshing/Baileys'
+        const message = await sendAndRetreiveMessage(conn, text, MessageType.text, { detectLinks: true })
         const received = message.message.extendedTextMessage
         
-        assert.strictEqual(received.text, content.text)
+        assert.strictEqual(received.text, text)
         assert.ok (received.canonicalUrl)
         assert.ok (received.title)
         assert.ok (received.description)
@@ -56,6 +56,13 @@ WAConnectionTest('Messages', conn => {
         const content = await fs.readFile('./Media/sonata.mp3')
         const message = await sendAndRetreiveMessage(conn, content, MessageType.audio, { mimetype: Mimetype.ogg })
         
+        await conn.downloadAndSaveMediaMessage(message,'./Media/received_aud')
+    })
+    it('should send an audio as a voice note', async () => {
+        const content = await fs.readFile('./Media/sonata.mp3')
+        const message = await sendAndRetreiveMessage(conn, content, MessageType.audio, { mimetype: Mimetype.ogg, ptt: true })
+        
+        assert.equal (message.message?.audioMessage?.ptt, true)
         await conn.downloadAndSaveMediaMessage(message,'./Media/received_aud')
     })
     it('should send an image', async () => {
