@@ -113,11 +113,11 @@ export class WAConnection extends Base {
         await generateThumbnail(buffer, mediaType, options)
 
         // send a query JSON to obtain the url & auth token to upload our media
-        const json = await this.refreshMediaConn ()
-        const auth = json.auth // the auth token
+        let json = await this.refreshMediaConn ()
 
         let mediaUrl: string
         for (let host of json.hosts) {
+            const auth = json.auth // the auth token
             const hostname = `https://${host.hostname}${MediaPathMap[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
             try {
                 const urlFetch = await this.fetchRequest(hostname, 'POST', body, options.uploadAgent)
@@ -125,7 +125,7 @@ export class WAConnection extends Base {
                 
                 if (mediaUrl) break
                 else {
-                    await this.refreshMediaConn (true)
+                    json = await this.refreshMediaConn (true)
                     throw new Error (`upload failed`)
                 }
             } catch (error) {
@@ -151,7 +151,6 @@ export class WAConnection extends Base {
                 }
             )
         }   
-             
         return WAMessageProto.Message.create(message)// as WAMessageContent
     }
     /** prepares a WAMessage for sending from the given content & options */
@@ -271,9 +270,9 @@ export class WAConnection extends Base {
         content.previewType = 0
         return content
     }
-
+    @Mutex ()
     protected async refreshMediaConn (forceGet = false) {
-        if (!this.mediaConn || (new Date().getTime()-this.mediaConn.fetchDate.getTime()) > this.mediaConn.ttl*1000 || forceGet) {
+        if (!this.mediaConn || forceGet || (new Date().getTime()-this.mediaConn.fetchDate.getTime()) > this.mediaConn.ttl*1000) {
             const result = await this.query({json: ['query', 'mediaConn']})
             this.mediaConn = result.media_conn
             this.mediaConn.fetchDate = new Date()
