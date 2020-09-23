@@ -329,6 +329,8 @@ export interface MessageOptions {
     uploadAgent?: Agent
     /** If set to true (default), automatically detects if you're sending a link & attaches the preview*/
     detectLinks?: boolean
+    /** Fetches new media options for every media file */
+    forceNewMediaOptions?: boolean
 }
 export interface WABroadcastListInfo {
     status: number

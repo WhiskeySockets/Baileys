@@ -113,7 +113,7 @@ export class WAConnection extends Base {
         await generateThumbnail(buffer, mediaType, options)
 
         // send a query JSON to obtain the url & auth token to upload our media
-        let json = await this.refreshMediaConn ()
+        let json = await this.refreshMediaConn (options.forceNewMediaOptions)
 
         let mediaUrl: string
         for (let host of json.hosts) {
@@ -273,10 +273,13 @@ export class WAConnection extends Base {
     @Mutex ()
     protected async refreshMediaConn (forceGet = false) {
         if (!this.mediaConn || forceGet || (new Date().getTime()-this.mediaConn.fetchDate.getTime()) > this.mediaConn.ttl*1000) {
-            const result = await this.query({json: ['query', 'mediaConn']})
-            this.mediaConn = result.media_conn
+            this.mediaConn = await this.getNewMediaConn()
             this.mediaConn.fetchDate = new Date()
         }
         return this.mediaConn
+    }
+    protected async getNewMediaConn () {
+        const result = await this.query({json: ['query', 'mediaConn']})
+        return result.media_conn
     }
 }
