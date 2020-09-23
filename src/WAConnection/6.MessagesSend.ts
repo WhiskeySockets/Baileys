@@ -102,13 +102,15 @@ export class WAConnection extends Base {
         const mac = hmacSign(Buffer.concat([mediaKeys.iv, enc]), mediaKeys.macKey).slice(0, 10)
         const body = Buffer.concat([enc, mac]) // body is enc + mac
         const fileSha256 = sha256(buffer)
-        // url safe Base64 encode the SHA256 hash of the body
         const fileEncSha256 = sha256(body)
-        const fileEncSha256B64 = fileEncSha256
-                                .toString('base64')
-                                .replace(/\+/g, '-')
-                                .replace(/\//g, '_')
-                                .replace(/\=+$/, '')
+         // url safe Base64 encode the SHA256 hash of the body
+        const fileEncSha256B64 = encodeURIComponent(
+                                    fileEncSha256
+                                    .toString('base64')
+                                    .replace(/\+/g, '-')
+                                    .replace(/\//g, '_')
+                                    .replace(/\=+$/, '')
+                                )
 
         await generateThumbnail(buffer, mediaType, options)
 
@@ -117,16 +119,19 @@ export class WAConnection extends Base {
 
         let mediaUrl: string
         for (let host of json.hosts) {
-            const auth = json.auth // the auth token
-            const hostname = `https://${host.hostname}${MediaPathMap[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
+            const auth = encodeURIComponent(json.auth) // the auth token
+            const url = `https://${host.hostname}${MediaPathMap[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
+            
             try {
-                const urlFetch = await this.fetchRequest(hostname, 'POST', body, options.uploadAgent)
-                mediaUrl = (await urlFetch.json())?.url
+                const urlFetch = await this.fetchRequest(url, 'POST', body, options.uploadAgent, { 'content-type': 'application/binary' })
+                const result = await urlFetch.json()
+                mediaUrl = result?.url
+                console.log (result)
                 
                 if (mediaUrl) break
                 else {
                     json = await this.refreshMediaConn (true)
-                    throw new Error (`upload failed`)
+                    throw new Error (`upload failed, reason: ${JSON.stringify(result)}`)
                 }
             } catch (error) {
                 const isLast = host.hostname === json.hosts[json.hosts.length-1].hostname
@@ -279,7 +284,7 @@ export class WAConnection extends Base {
         return this.mediaConn
     }
     protected async getNewMediaConn () {
-        const result = await this.query({json: ['query', 'mediaConn']})
-        return result.media_conn
+        const {media_conn} = await this.query({json: ['query', 'mediaConn']})
+        return media_conn as MediaConnInfo
     }
 }

@@ -360,11 +360,11 @@ export class WAConnection extends EventEmitter {
     /**
      * Does a fetch request with the configuration of the connection
      */
-    protected fetchRequest = (endpoint: string, method: string = 'GET', body?: any, agent?: Agent) => (
+    protected fetchRequest = (endpoint: string, method: string = 'GET', body?: any, agent?: Agent, headers?: {[k: string]: string}) => (
         fetch(endpoint, {
             method,
             body,
-            headers: { Origin: DEFAULT_ORIGIN },
+            headers: { Origin: DEFAULT_ORIGIN, ...(headers || {}) },
             agent: agent || this.connectOptions.agent
         })
     )
