@@ -123,10 +123,9 @@ export class WAConnection extends Base {
             const url = `https://${host.hostname}${MediaPathMap[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
             
             try {
-                const urlFetch = await this.fetchRequest(url, 'POST', body, options.uploadAgent, { 'content-type': 'application/binary' })
+                const urlFetch = await this.fetchRequest(url, 'POST', body, options.uploadAgent, { 'Content-Type': 'application/octet-stream' })
                 const result = await urlFetch.json()
                 mediaUrl = result?.url
-                console.log (result)
                 
                 if (mediaUrl) break
                 else {
