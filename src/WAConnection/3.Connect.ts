@@ -82,7 +82,19 @@ export class WAConnection extends Base {
                 
                 const reconnectID = shouldUseReconnect ? this.user.jid.replace ('@s.whatsapp.net', '@c.us') : null
 
-                this.conn = new WS(WS_URL, null, { origin: DEFAULT_ORIGIN, timeout: this.connectOptions.maxIdleTimeMs, agent: options.agent })
+                this.conn = new WS(WS_URL, null, { 
+                    origin: DEFAULT_ORIGIN, 
+                    timeout: this.connectOptions.maxIdleTimeMs, 
+                    agent: options.agent,
+                    headers: {
+                        'Accept-Encoding': 'gzip, deflate, br',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Cache-Control': 'no-cache',
+                        'Host': 'web.whatsapp.com',
+                        'Pragma': 'no-cache',
+                        'Sec-WebSocket-Extensions': 'permessage-deflate; client_max_window_bits',
+                    }
+                })
                 this.conn.addEventListener('message', ({data}) => this.onMessageRecieved(data as any))
                 
                 this.conn.on ('open', async () => {
