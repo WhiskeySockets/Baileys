@@ -42,8 +42,8 @@ export class WAConnection extends EventEmitter {
     /** The connection state */
     state: WAConnectionState = 'close'
     connectOptions: WAConnectOptions = {
-        regenerateQRIntervalMs: 30_1000,
-        maxIdleTimeMs: 15_1000,
+        regenerateQRIntervalMs: 30_000,
+        maxIdleTimeMs: 15_000,
         waitOnlyForLastMessage: false,
         waitForChats: true,
         maxRetries: 5,
