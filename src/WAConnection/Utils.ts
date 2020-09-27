@@ -32,7 +32,7 @@ function hashCode(s: string) {
 export const toNumber = (t: Long | number) => (t['low'] || t) as number
 
 export const WA_CHAT_KEY = (c: WAChat) => ((c.t*100000) + (hashCode(c.jid)%100000))*-1 // -1 to sort descending
-export const WA_CHAT_KEY_PIN = (c: WAChat) => ((c.pin ? 1 : 0)*1000000 + (c.t*100000) + (hashCode(c.jid)%100000))*-1 // -1 to sort descending
+export const WA_CHAT_KEY_PIN = (c: WAChat) => ((c.t*100000)*(c.pin ? 2 : 1) + (hashCode(c.jid)%100000))*-1 // -1 to sort descending
 
 export const WA_MESSAGE_KEY = (m: WAMessage) => toNumber (m.messageTimestamp)*1000 + (m['epoch'] || 0)%1000
 export const WA_MESSAGE_ID = (m: WAMessage) => GET_MESSAGE_ID (m.key)

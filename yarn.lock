@@ -3,9 +3,9 @@
 
 
 "@adiwajshing/keyed-db@^0.1.5":
-  version "0.1.6"
-  resolved "https://registry.yarnpkg.com/@adiwajshing/keyed-db/-/keyed-db-0.1.6.tgz#296f4fb7a410e7a8c0b7d7b70cc9d9bbaaf4fdc0"
-  integrity sha512-9X9S/9GgF0Vie7spngnFghRnFp/kXk0+ZeSMnQ57GC0MQ1hG0dfL4Rq7J3/ajKw50vqI9DDhIFBUp4NTWUFZ7A==
+  version "0.1.7"
+  resolved "https://registry.yarnpkg.com/@adiwajshing/keyed-db/-/keyed-db-0.1.7.tgz#49a0a2703d1fd09fe2626a39a39212950f9f214b"
+  integrity sha512-MJdTNGUynoQD+zk3ndCw+P1kuAeSZhqF+Mt3fnlgntBlZnU0XNqV2L2RGDO1ciCfwFaxjzMxLqzxx/CJoDeTHA==
 
 "@babel/runtime@^7.7.2":
   version "7.11.2"
@@ -1999,9 +1999,9 @@ typescript@^3.9.7:
   integrity sha512-BLbiRkiBzAwsjut4x/dsibSTB6yWpwT5qWmC2OfuCg3GgVQCSgMs4vEctYPhsaGtd0AeuuHMkjZ2h2WG8MSzRw==
 
 uglify-js@^3.1.4:
-  version "3.10.4"
-  resolved "https://registry.yarnpkg.com/uglify-js/-/uglify-js-3.10.4.tgz#dd680f5687bc0d7a93b14a3482d16db6eba2bfbb"
-  integrity sha512-kBFT3U4Dcj4/pJ52vfjCSfyLyvG9VYYuGYPmrPvAxRw/i7xHiT4VvCev+uiEMcEEiu6UNB6KgWmGtSUYIWScbw==
+  version "3.11.0"
+  resolved "https://registry.yarnpkg.com/uglify-js/-/uglify-js-3.11.0.tgz#67317658d76c21e0e54d3224aee2df4ee6c3e1dc"
+  integrity sha512-e1KQFRCpOxnrJsJVqDUCjURq+wXvIn7cK2sRAx9XL3HYLL9aezOP4Pb1+Y3/o693EPk111Yj2Q+IUXxcpHlygQ==
 
 universalify@^1.0.0:
   version "1.0.0"
