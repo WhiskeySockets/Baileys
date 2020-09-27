@@ -208,6 +208,8 @@ export class WAConnection extends Base {
         const json = ['action', {epoch: this.msgCount.toString(), type: 'relay'}, [['message', null, message]]]
         const flag = message.key.remoteJid === this.user.jid ? WAFlag.acknowledge : WAFlag.ignore // acknowledge when sending message to oneself
         await this.query({json, binaryTags: [WAMetric.message, flag], tag: message.key.id, expect200: true})
+        
+        message.status = WA_MESSAGE_STATUS_TYPE.SERVER_ACK
         await this.chatAddMessageAppropriate (message)
     }
     /**

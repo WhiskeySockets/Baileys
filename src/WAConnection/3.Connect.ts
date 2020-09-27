@@ -64,22 +64,25 @@ export class WAConnection extends Base {
     protected async connectInternal (options: WAConnectOptions, delayMs?: number) {
         // actual connect
         const connect = () => {
-            const timeoutMs = options?.timeoutMs || 60*1000
-            
             let cancel: () => void
-            const task = Utils.promiseTimeout(timeoutMs, (resolve, reject) => {
+            const task = new Promise((resolve, reject) => {
                 cancel = () => reject (CancelledError())
-                const checkIdleTime = () => {
-                    this.debounceTimeout && clearTimeout (this.debounceTimeout)
-                    this.debounceTimeout = setTimeout (() => rejectSafe (TimedOutError()), this.connectOptions.maxIdleTimeMs)
-                }
-                const debouncedTimeout = () => this.connectOptions.maxIdleTimeMs && this.conn.addEventListener ('message', checkIdleTime)
                 // determine whether reconnect should be used or not
                 const shouldUseReconnect = this.lastDisconnectReason !== DisconnectReason.replaced && 
                                             this.lastDisconnectReason !== DisconnectReason.unknown &&
                                             this.lastDisconnectReason !== DisconnectReason.intentional && 
                                             this.user?.jid
                 
+                const checkIdleTime = () => {
+                    this.debounceTimeout && clearTimeout (this.debounceTimeout)
+                    this.debounceTimeout = setTimeout (() => rejectSafe (TimedOutError()), this.connectOptions.maxIdleTimeMs)
+                }
+                const startDebouncedTimeout = () => this.connectOptions.maxIdleTimeMs && this.conn.addEventListener ('message', checkIdleTime)
+                const stopDebouncedTimeout = () => {
+                    clearTimeout (this.debounceTimeout)
+                    this.conn.removeEventListener ('message', checkIdleTime)
+                }
+
                 const reconnectID = shouldUseReconnect ? this.user.jid.replace ('@s.whatsapp.net', '@c.us') : null
 
                 this.conn = new WS(WS_URL, null, { 
@@ -110,7 +113,7 @@ export class WAConnection extends Base {
                         }
                     }
                     try {
-                        await this.authenticate (debouncedTimeout, reconnectID)
+                        await this.authenticate (startDebouncedTimeout, stopDebouncedTimeout, reconnectID)
                         this.conn
                             .removeAllListeners ('error')
                             .removeAllListeners ('close')
@@ -124,6 +127,7 @@ export class WAConnection extends Base {
                 const rejectSafe = error => reject (error)
                 this.conn.on('error', rejectSafe)
                 this.conn.on('close', () => rejectSafe(new Error('close')))
+
             }) as Promise<void | { [k: string]: Partial<WAChat> }>
 
             return { promise: task, cancel: cancel }
@@ -163,7 +167,7 @@ export class WAConnection extends Base {
      * Must be called immediately after connect
      */
     protected receiveChatsAndContacts(waitOnlyForLast: boolean) {
-        const chats = new KeyedDB<WAChat>(Utils.waChatUniqueKey, c => c.jid)
+        const chats = new KeyedDB<WAChat>(this.chatOrderingKey, c => c.jid)
         const contacts = {}
 
         let receivedContacts = false
@@ -194,7 +198,14 @@ export class WAConnection extends Base {
                 messages.reverse().forEach (([,, message]: ['message', null, WAMessage]) => {
                     const jid = message.key.remoteJid
                     const chat = chats.get(jid)
-                    chat?.messages.unshift (message)
+                    if (chat) {
+                        const fm = chat.messages.all()[0]
+                        const prevEpoch = (fm && fm['epoch']) || 0
+                        
+                        message['epoch'] = prevEpoch-1
+                        chat.messages.insert (message)
+                    }
+                    
                 })
             }
             // if received contacts before messages
@@ -220,7 +231,7 @@ export class WAConnection extends Base {
                 chat.jid = Utils.whatsappID (chat.jid)
                 chat.t = +chat.t
                 chat.count = +chat.count
-                chat.messages = []
+                chat.messages = new KeyedDB (Utils.WA_MESSAGE_KEY, Utils.WA_MESSAGE_ID)
 
                 // chats data (log json to see what it looks like)
                 !chats.get (chat.jid) && chats.insert (chat) 

@@ -6,7 +6,7 @@ import {
     WAMetric,
     WAFlag,
 } from '../WAConnection/Constants'
-import { generateProfilePicture, waChatUniqueKey, whatsappID, unixTimestampSeconds } from './Utils'
+import { generateProfilePicture, WA_CHAT_KEY, whatsappID, unixTimestampSeconds } from './Utils'
 import { Mutex } from './Mutex'
 
 // All user related functions -- get profile picture, set status etc.
@@ -106,7 +106,7 @@ export class WAConnection extends Base {
                 chat.imgUrl === undefined && await this.setProfilePicture (chat)
             ))
         )
-        const cursor = (chats[chats.length-1] && chats.length >= count) ? waChatUniqueKey (chats[chats.length-1]) : null
+        const cursor = (chats[chats.length-1] && chats.length >= count) ? WA_CHAT_KEY (chats[chats.length-1]) : null
         return { chats, cursor }
     }
     /**

@@ -16,15 +16,14 @@ async function example() {
     const conn = new WAConnection() // instantiate
     conn.autoReconnect = ReconnectMode.onConnectionLost // only automatically reconnect when the connection breaks
     conn.logLevel = MessageLogLevel.info // set to unhandled to see what kind of stuff you can implement
-
+    // if the gap between two messages is greater than 10s, fail the connection
+    conn.connectOptions.maxIdleTimeMs = 10*1000
+    conn.connectOptions.regenerateQRIntervalMs = 5000
+    // attempt to reconnect at most 10 times
+    conn.connectOptions.maxRetries = 10
 
     // loads the auth file credentials if present
     fs.existsSync('./auth_info.json') && conn.loadAuthInfo ('./auth_info.json')
-    
-    // connect or timeout in 60 seconds
-    conn.connectOptions.timeoutMs = 60*1000
-    // attempt to reconnect at most 10 times
-    conn.connectOptions.maxRetries = 10
     // uncomment the following line to proxy the connection; some random proxy I got off of: https://proxyscrape.com/free-proxy-list
     //conn.connectOptions.agent = ProxyAgent ('http://1.0.180.120:8080')
     await conn.connect()
@@ -32,7 +31,7 @@ async function example() {
     const unread = await conn.loadAllUnreadMessages ()
     
     console.log('oh hello ' + conn.user.name + ' (' + conn.user.jid + ')')
-    console.log('you have ' + conn.chats.all().length + ' chats & ' + Object.keys(conn.contacts).length + ' contacts')
+    console.log('you have ' + conn.chats.length + ' chats & ' + Object.keys(conn.contacts).length + ' contacts')
     console.log ('you have ' + unread.length + ' unread messages')
 
     const authInfo = conn.base64EncodedAuthInfo() // get all the auth info we need to restore this session

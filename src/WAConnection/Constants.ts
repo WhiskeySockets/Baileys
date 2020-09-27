@@ -19,6 +19,7 @@ export type WAContextInfo = proto.IContextInfo
 export type WAGenericMediaMessage = proto.IVideoMessage | proto.IImageMessage | proto.IAudioMessage | proto.IDocumentMessage | proto.IStickerMessage
 export import WA_MESSAGE_STUB_TYPE = proto.WebMessageInfo.WEB_MESSAGE_INFO_STUBTYPE
 export import WA_MESSAGE_STATUS_TYPE = proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS
+import KeyedDB from '@adiwajshing/keyed-db'
 
 export interface WALocationMessage {
     degreesLatitude: number
@@ -65,8 +66,8 @@ export enum ReconnectMode {
     onAllErrors = 2
 }
 export type WAConnectOptions = {
-    /** timeout after which the connect attempt will fail, set to null for default timeout value */
-    timeoutMs?: number
+    /** New QR generation interval, set to null if you don't want to regenerate */
+    regenerateQRIntervalMs?: number
     /** fails the connection if no data is received for X seconds */
     maxIdleTimeMs?: number
     /** maximum attempts to connect */
@@ -202,7 +203,7 @@ export interface WAChat {
     name?: string
     
     // Baileys added properties
-    messages: WAMessage[]
+    messages: KeyedDB<WAMessage>
     imgUrl?: string
 }
 export enum WAMetric {

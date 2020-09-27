@@ -7,7 +7,7 @@ import { assertChatDBIntegrity } from './Common'
 describe('QR Generation', () => {
     it('should generate QR', async () => {
         const conn = new WAConnection()
-        conn.regenerateQRIntervalMs = 5000
+        conn.connectOptions.regenerateQRIntervalMs = 5000
 
         let calledQR = 0
         conn.removeAllListeners ('qr')
@@ -45,7 +45,6 @@ describe('Test Connect', () => {
     })
     it('should reconnect', async () => {
         const conn = new WAConnection()
-        conn.connectOptions.timeoutMs = 20*1000
         
         await conn.loadAuthInfo (auth).connect ()
         assert.ok(conn.user)
@@ -131,7 +130,6 @@ describe ('Reconnects', () => {
     it('should disrupt connect loop', async () => {
         const conn = new WAConnection()
         conn.autoReconnect = ReconnectMode.onAllErrors
-        conn.connectOptions.timeoutMs = 20000
         conn.loadAuthInfo ('./auth_info.json')
 
         let timeout = 1000
@@ -231,7 +229,6 @@ describe ('Reconnects', () => {
 describe ('Pending Requests', () => {
     it ('should correctly send updates', async () => {
         const conn = new WAConnection ()
-        conn.connectOptions.timeoutMs = 20*1000
         conn.pendingRequestTimeoutMs = null
 
         conn.loadAuthInfo('./auth_info.json')

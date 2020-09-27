@@ -1,9 +1,12 @@
-import { MessageType, Mimetype, delay, promiseTimeout, WA_MESSAGE_STATUS_TYPE, WAMessageStatusUpdate } from '../WAConnection/WAConnection'
+import { MessageType, Mimetype, delay, promiseTimeout, WA_MESSAGE_STATUS_TYPE, WAMessageStatusUpdate, MessageOptions, toNumber } from '../WAConnection/WAConnection'
 import {promises as fs} from 'fs'
 import * as assert from 'assert'
-import { WAConnectionTest, testJid, sendAndRetreiveMessage } from './Common'
+import { WAConnectionTest, testJid, sendAndRetreiveMessage, assertChatDBIntegrity } from './Common'
 
 WAConnectionTest('Messages', conn => {
+
+    afterEach (() => assertChatDBIntegrity (conn))
+
     it('should send a text message', async () => {
         const message = await sendAndRetreiveMessage(conn, 'hello fren', MessageType.text)
         assert.strictEqual(message.message.conversation || message.message.extendedTextMessage?.text, 'hello fren')
@@ -160,13 +163,40 @@ WAConnectionTest('Messages', conn => {
             }
         })
     })
-    it('should not duplicate messages', async () => {
+    it('should maintain message integrity', async () => {
+        // loading twice does not alter the results
         const results = await Promise.all ([
             conn.loadMessages (testJid, 50),
             conn.loadMessages (testJid, 50)
         ])
-        assert.deepEqual (results[0].messages, results[1].messages)
+        assert.equal (results[0].messages.length, results[1].messages.length)
+        for (let i = 0; i < results[1].messages.length;i++) {
+            assert.deepEqual (results[0].messages[i], results[1].messages[i], `failed equal at ${i}`)
+        }
         assert.ok (results[0].messages.length <= 50)
+
+        // check if messages match server
+        let msgs = await conn.fetchMessagesFromWA (testJid, 50)
+        for (let i = 0; i < results[1].messages.length;i++) {
+            assert.deepEqual (results[0].messages[i].key, msgs[i].key, `failed equal at ${i}`)
+        }
+        // check with some arbitary cursors
+        let cursor = results[0].messages.slice(-1)[0].key
+        
+        msgs = await conn.fetchMessagesFromWA (testJid, 20, cursor)
+        let {messages} = await conn.loadMessages (testJid, 20, cursor)
+        for (let i = 0; i < messages.length;i++) {
+            assert.deepEqual (messages[i].key, msgs[i].key, `failed equal at ${i}`)
+        }
+
+        cursor = results[0].messages[2].key
+        
+        msgs = await conn.fetchMessagesFromWA (testJid, 20, cursor)
+        messages = (await conn.loadMessages (testJid, 20, cursor)).messages
+        for (let i = 0; i < messages.length;i++) {
+            assert.deepEqual (messages[i].key, msgs[i].key, `failed equal at ${i}`)
+        }
+
     })
     it('should deliver a message', async () => {
         const waitForUpdate = 

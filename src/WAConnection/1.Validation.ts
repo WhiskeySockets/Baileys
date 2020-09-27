@@ -1,12 +1,12 @@
 import * as Curve from 'curve25519-js'
 import * as Utils from './Utils'
 import {WAConnection as Base} from './0.Base'
-import { MessageLogLevel, WAMetric, WAFlag, BaileysError, Presence, WAUser } from './Constants'
+import { MessageLogLevel, WAMetric, WAFlag, BaileysError, Presence, WAUser, DisconnectReason } from './Constants'
 
 export class WAConnection extends Base {
     
     /** Authenticate the connection */
-    protected async authenticate (onConnectionValidated: () => void, reconnect?: string) {
+    protected async authenticate (startDebouncedTimeout: () => void, stopDebouncedTimeout: () => void, reconnect?: string) {
         // if no auth info is present, that is, a new session has to be established
         // generate a client ID
         if (!this.authInfo?.clientID) {
@@ -15,6 +15,8 @@ export class WAConnection extends Base {
 
         const canLogin = this.authInfo?.encKey && this.authInfo?.macKey        
         this.referenceDate = new Date () // refresh reference date
+
+        startDebouncedTimeout ()
         
         const initQueries = [
             (async () => {
@@ -25,7 +27,9 @@ export class WAConnection extends Base {
                     longTag: true
                 })
                 if (!canLogin) {
+                    stopDebouncedTimeout () // stop the debounced timeout for QR gen
                     const result = await this.generateKeysForAuth (ref)
+                    startDebouncedTimeout () // restart debounced timeout
                     return result
                 }
             })()
@@ -58,7 +62,6 @@ export class WAConnection extends Base {
         const validationJSON = (await Promise.all (initQueries)).slice(-1)[0] // get the last result
         this.user = await this.validateNewConnection(validationJSON[1]) // validate the connection
         
-        onConnectionValidated ()
         this.log('validated connection successfully', MessageLogLevel.info)
 
         const response = await this.query({ json: ['query', 'ProfilePicThumb', this.user.jid], waitForOpen: false, expect200: false })
@@ -85,7 +88,13 @@ export class WAConnection extends Base {
      * @returns the new ref
      */
     async generateNewQRCodeRef() {
-        const response = await this.query({json: ['admin', 'Conn', 'reref'], expect200: true, waitForOpen: false, longTag: true})
+        const response = await this.query({
+            json: ['admin', 'Conn', 'reref'], 
+            expect200: true, 
+            waitForOpen: false, 
+            longTag: true,
+            timeoutMs: this.connectOptions.maxIdleTimeMs
+        })
         return response.ref as string
     }
     /**
@@ -177,12 +186,17 @@ export class WAConnection extends Base {
                 .then (newRef => ref = newRef)
                 .then (emitQR)
                 .then (regenQR)
-                .catch (err => this.log (`error in QR gen: ${err}`, MessageLogLevel.info))
-            }, this.regenerateQRIntervalMs)
+                .catch (err => {
+                    this.log (`error in QR gen: ${err}`, MessageLogLevel.info)
+                    if (err.status === 429) { // too many QR requests
+                        this.endConnection ()
+                    }
+                })
+            }, this.connectOptions.regenerateQRIntervalMs)
         }
 
         emitQR ()
-        if (this.regenerateQRIntervalMs) regenQR ()
+        if (this.connectOptions.regenerateQRIntervalMs) regenQR ()
 
         const json = await this.waitForMessage('s1', [])
         this.qrTimeout && clearTimeout (this.qrTimeout)

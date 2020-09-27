@@ -1,7 +1,8 @@
 import * as QR from 'qrcode-terminal'
 import { WAConnection as Base } from './3.Connect'
 import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, MessageLogLevel, PresenceUpdate, BaileysEvent, DisconnectReason, WANode, WAOpenResult, Presence } from './Constants'
-import { whatsappID, unixTimestampSeconds, isGroupID, toNumber } from './Utils'
+import { whatsappID, unixTimestampSeconds, isGroupID, toNumber, GET_MESSAGE_ID, WA_MESSAGE_ID, WA_MESSAGE_KEY } from './Utils'
+import KeyedDB from '@adiwajshing/keyed-db'
 
 export class WAConnection extends Base {
 
@@ -35,16 +36,15 @@ export class WAConnection extends Base {
 
             this.emit('user-presence-update', update)
         })
-        // If a message has been updated (usually called when a video message gets its upload url)
+        // If a message has been updated (usually called when a video message gets its upload url, or live locations)
         this.registerCallback (['action', 'add:update', 'message'], json => {
             const message: WAMessage = json[2][0][2]
             const jid = whatsappID(message.key.remoteJid)
             const chat = this.chats.get(jid)
             if (!chat) return
+            // reinsert to update
+            if (chat.messages.delete (message)) chat.messages.insert (message)
 
-            const messageIndex = chat.messages.findIndex(m => m.key.id === message.key.id)
-            if (messageIndex >= 0) chat.messages[messageIndex] = message
-            
             this.emit ('message-update', message)
         })
         // If a user's contact has changed
@@ -183,7 +183,7 @@ export class WAConnection extends Base {
         const chat: WAChat = {
             jid: jid,
             t: unixTimestampSeconds(),
-            messages: [],
+            messages: new KeyedDB(WA_MESSAGE_KEY, WA_MESSAGE_ID),
             count: 0,
             modify_tag: '',
             spam: 'false',
@@ -217,14 +217,12 @@ export class WAConnection extends Base {
         if (protocolMessage) {
             switch (protocolMessage.type) {
                 case WAMessageProto.ProtocolMessage.PROTOCOL_MESSAGE_TYPE.REVOKE:
-                    const found = chat.messages.find(m => m.key.id === protocolMessage.key.id)
-                    if (found && found.message) {
-                        
+                    const found = chat.messages.get (GET_MESSAGE_ID(protocolMessage.key))
+                    if (found?.message) {
                         this.log ('deleting message: ' + protocolMessage.key.id + ' in chat: ' + protocolMessage.key.remoteJid, MessageLogLevel.info)
                         
                         found.messageStubType = WA_MESSAGE_STUB_TYPE.REVOKE
-                        found.message = null
-                        
+                        delete found.message
                         this.emit ('message-update', found)
                     }
                     break
@@ -233,20 +231,18 @@ export class WAConnection extends Base {
             }
         } else {
             const messages = chat.messages
-            const messageTimestamp = toNumber (message.messageTimestamp)
-            let idx = messages.length-1
-            for (idx; idx >= 0; idx--) {
-                if (toNumber(messages[idx].messageTimestamp) <= messageTimestamp) {
-                    break
-                }
-            }
             // if the message is already there
-            if (messages[idx]?.key.id === message.key.id) return
-            //this.log (`adding message ID: ${messageTimestamp} to ${JSON.stringify(messages.map(m => toNumber(messageTimestamp)))}`, MessageLogLevel.info)
+            if (messages.get(WA_MESSAGE_ID(message))) return
             
-            messages.splice (idx+1, 0, message) // insert
-            messages.splice(0, messages.length-this.maxCachedMessages)
-            
+            const last = messages.all().slice(-1)
+            const lastEpoch = ((last && last[0]) && last[0]['epoch']) || 0
+            message['epoch'] = lastEpoch+1
+
+            messages.insert (message)
+
+            while (messages.length > this.maxCachedMessages) {
+                messages.delete (messages.all()[0]) // delete oldest messages
+            }            
             // only update if it's an actual message
             if (message.message) this.chatUpdateTime (chat)
             
@@ -299,8 +295,9 @@ export class WAConnection extends Base {
         }
     }
     protected chatUpdatedMessage (messageIDs: string[], status: WA_MESSAGE_STATUS_TYPE, chat: WAChat) {
-        for (let msg of chat.messages) {
-            if (messageIDs.includes(msg.key.id) && msg.status < status) {
+        for (let id of messageIDs) {
+            let msg = chat.messages.get (GET_MESSAGE_ID({ id, fromMe: true })) || chat.messages.get (GET_MESSAGE_ID({ id, fromMe: false }))
+            if (msg && msg.status < status) {
                 if (status <= WA_MESSAGE_STATUS_TYPE.PENDING) msg.status = status
                 else if (isGroupID(chat.jid)) msg.status = status-1
                 else msg.status = status

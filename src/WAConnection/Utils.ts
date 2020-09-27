@@ -9,7 +9,7 @@ import { URL } from 'url'
 import { Agent } from 'https'
 
 import Decoder from '../Binary/Decoder'
-import { MessageType, HKDFInfoKeys, MessageOptions, WAChat, WAMessageContent, BaileysError, WAMessageProto, TimedOutError, CancelledError, WAGenericMediaMessage } from './Constants'
+import { MessageType, HKDFInfoKeys, MessageOptions, WAChat, WAMessageContent, BaileysError, WAMessageProto, TimedOutError, CancelledError, WAGenericMediaMessage, WAMessage, WAMessageKey } from './Constants'
 
 const platformMap = {
     'aix': 'AIX',
@@ -30,9 +30,16 @@ function hashCode(s: string) {
     return h;
 }
 export const toNumber = (t: Long | number) => (t['low'] || t) as number
-export const waChatUniqueKey = (c: WAChat) => ((c.t*100000) + (hashCode(c.jid)%100000))*-1 // -1 to sort descending
+
+export const WA_CHAT_KEY = (c: WAChat) => ((c.t*100000) + (hashCode(c.jid)%100000))*-1 // -1 to sort descending
+export const WA_CHAT_KEY_PIN = (c: WAChat) => ((c.pin ? 1 : 0)*1000000 + (c.t*100000) + (hashCode(c.jid)%100000))*-1 // -1 to sort descending
+
+export const WA_MESSAGE_KEY = (m: WAMessage) => toNumber (m.messageTimestamp)*1000 + (m['epoch'] || 0)%1000
+export const WA_MESSAGE_ID = (m: WAMessage) => GET_MESSAGE_ID (m.key)
+export const GET_MESSAGE_ID = (key: WAMessageKey) => `${key.id}|${key.fromMe ? 1 : 0}`
+
 export const whatsappID = (jid: string) => jid?.replace ('@c.us', '@s.whatsapp.net')
-export const isGroupID = (jid: string) => jid?.includes ('@g.us')
+export const isGroupID = (jid: string) => jid?.endsWith ('@g.us')
 
 export function shallowChanges <T> (old: T, current: T): Partial<T> {
     let changes: Partial<T> = {}

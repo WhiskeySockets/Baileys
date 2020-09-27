@@ -30,7 +30,7 @@ import { STATUS_CODES, Agent } from 'http'
 
 export class WAConnection extends EventEmitter {
     /** The version of WhatsApp Web we're telling the servers we are */
-    version: [number, number, number] = [2, 2037, 6]
+    version: [number, number, number] = [2, 2039, 6]
     /** The Browser we're telling the WhatsApp Web servers we are */
     browserDescription: [string, string, string] = Utils.Browsers.baileys ('Chrome')
     /** Metadata like WhatsApp id, name set on WhatsApp etc. */
@@ -41,11 +41,9 @@ export class WAConnection extends EventEmitter {
     pendingRequestTimeoutMs: number = null
     /** The connection state */
     state: WAConnectionState = 'close'
-    /** New QR generation interval, set to null if you don't want to regenerate */
-    regenerateQRIntervalMs = 30*1000
     connectOptions: WAConnectOptions = {
-        timeoutMs: 60*1000,
-        maxIdleTimeMs: 10*1000,
+        regenerateQRIntervalMs: 30_1000,
+        maxIdleTimeMs: 15_1000,
         waitOnlyForLastMessage: false,
         waitForChats: true,
         maxRetries: 5,
@@ -56,10 +54,12 @@ export class WAConnection extends EventEmitter {
     autoReconnect = ReconnectMode.onConnectionLost 
     /** Whether the phone is connected */
     phoneConnected: boolean = false
+    /** key to use to order chats */
+    chatOrderingKey = Utils.WA_CHAT_KEY
 
     maxCachedMessages = 50
 
-    chats: KeyedDB<WAChat> = new KeyedDB (Utils.waChatUniqueKey, value => value.jid)
+    chats: KeyedDB<WAChat> = new KeyedDB (Utils.WA_CHAT_KEY, value => value.jid)
     contacts: { [k: string]: WAContact } = {}
 
     /** Data structure of tokens & IDs used to establish one's identiy to WhatsApp Web */

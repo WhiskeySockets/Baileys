@@ -1,5 +1,5 @@
 import {WAConnection as Base} from './7.MessagesExtra'
-import { WAMetric, WAFlag, WANode, WAGroupMetadata, WAGroupCreateResponse, WAGroupModification } from '../WAConnection/Constants'
+import { WAMetric, WAFlag, WANode, WAGroupMetadata, WAGroupCreateResponse, WAGroupModification, MessageLogLevel } from '../WAConnection/Constants'
 import { GroupSettingChange } from './Constants'
 import { generateMessageID } from '../WAConnection/Utils'
 
@@ -48,6 +48,18 @@ export class WAConnection extends Base {
      */
     groupCreate = async (title: string, participants: string[]) => {
         const response = await this.groupQuery('create', null, title, participants) as WAGroupCreateResponse
+        const gid = response.gid
+        try {
+            await this.groupMetadata (gid)
+        } catch (error) {
+            this.log (`error in group creation: ${error}, switching gid & checking`, MessageLogLevel.info)
+            // if metadata is not available
+            const comps = gid.replace ('@g.us', '').split ('-')
+            response.gid = `${comps[0]}-${+comps[1] + 1}@g.us`
+
+            await this.groupMetadata (gid)
+            this.log (`group ID switched from ${gid} to ${response.gid}`, MessageLogLevel.info)
+        }
         await this.chatAdd (response.gid, title)
         return response
     }
