@@ -65,6 +65,11 @@ export enum ReconnectMode {
     /** reconnects on all disconnects, including take overs */
     onAllErrors = 2
 }
+export type WALoadChatOptions = {
+    searchString?: string
+    custom?: (c: WAChat) => boolean
+    loadProfilePicture?: boolean
+}
 export type WAConnectOptions = {
     /** New QR generation interval, set to null if you don't want to regenerate */
     regenerateQRIntervalMs?: number
@@ -78,7 +83,6 @@ export type WAConnectOptions = {
     waitOnlyForLastMessage?: boolean
     /** max time for the phone to respond to a connectivity test */
     phoneResponseTime?: number
-
     connectCooldownMs?: number
     /** agent which can be used for proxying connections */
     agent?: Agent

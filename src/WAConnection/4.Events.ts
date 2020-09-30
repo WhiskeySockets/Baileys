@@ -3,6 +3,7 @@ import { WAConnection as Base } from './3.Connect'
 import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, MessageLogLevel, PresenceUpdate, BaileysEvent, DisconnectReason, WANode, WAOpenResult, Presence } from './Constants'
 import { whatsappID, unixTimestampSeconds, isGroupID, toNumber, GET_MESSAGE_ID, WA_MESSAGE_ID, WA_MESSAGE_KEY } from './Utils'
 import KeyedDB from '@adiwajshing/keyed-db'
+import { Mutex } from './Mutex'
 
 export class WAConnection extends Base {
 
@@ -165,6 +166,7 @@ export class WAConnection extends Base {
         this.on ('qr', qr => QR.generate(qr, { small: true }))
     }
     /** Get the URL to download the profile picture of a person/group */
+    @Mutex (jid => jid)
     async getProfilePicture(jid: string | null) {
         const response = await this.query({ json: ['query', 'ProfilePicThumb', jid || this.user.jid], expect200: true })
         return response.eurl as string

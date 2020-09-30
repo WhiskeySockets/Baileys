@@ -267,6 +267,7 @@ export class WAConnection extends Base {
                     resolveTask = resolve
                     cancelChats = () => reject (CancelledError())
                 })
+                console.log ('resolved task')
 
                 const oldChats = this.chats
                 const updatedChats: { [k: string]: Partial<WAChat> } = {}
@@ -307,12 +308,14 @@ export class WAConnection extends Base {
             this.emit ('received-pong')
         } else {
             const [messageTag, json] = Utils.decryptWA (message, this.authInfo?.macKey, this.authInfo?.encKey, new Decoder())
-            if (!json) return
+            if (this.shouldLogMessages) this.messageLog.push ({ tag: messageTag, json: JSON.stringify(json), fromMe: false })
+            
+            if (!json) {return}
 
             if (this.logLevel === MessageLogLevel.all) {
                 this.log(messageTag + ', ' + JSON.stringify(json), MessageLogLevel.all)
             }
-            if (!this.phoneConnected) {
+            if (!this.phoneConnected && this.state === 'open') {
                 this.phoneConnected = true
                 this.emit ('connection-phone-change', { connected: true })
             }

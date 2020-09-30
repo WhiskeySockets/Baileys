@@ -20,10 +20,10 @@ export async function sendAndRetreiveMessage(conn: WAConnection, content, type: 
 export const WAConnectionTest = (name: string, func: (conn: WAConnection) => void) => (
     describe(name, () => {
         const conn = new WAConnection()
-        conn.logLevel = MessageLogLevel.info
+        conn.connectOptions.maxIdleTimeMs = 30_000
+        conn.logLevel = MessageLogLevel.unhandled
 
         before(async () => {
-            //conn.logLevel = MessageLogLevel.unhandled
             const file = './auth_info.json'
             await conn.loadAuthInfo(file).connect()
             await fs.writeFile(file, JSON.stringify(conn.base64EncodedAuthInfo(), null, '\t'))

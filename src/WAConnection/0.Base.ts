@@ -30,7 +30,7 @@ import { STATUS_CODES, Agent } from 'http'
 
 export class WAConnection extends EventEmitter {
     /** The version of WhatsApp Web we're telling the servers we are */
-    version: [number, number, number] = [2, 2039, 6]
+    version: [number, number, number] = [2, 2039, 9]
     /** The Browser we're telling the WhatsApp Web servers we are */
     browserDescription: [string, string, string] = Utils.Browsers.baileys ('Chrome')
     /** Metadata like WhatsApp id, name set on WhatsApp etc. */
@@ -57,6 +57,10 @@ export class WAConnection extends EventEmitter {
     /** key to use to order chats */
     chatOrderingKey = Utils.WA_CHAT_KEY
 
+    /** log messages */
+    shouldLogMessages = false 
+    messageLog: { tag: string, json: string, fromMe: boolean, binaryTags?: any[] }[] = []
+
     maxCachedMessages = 50
 
     chats: KeyedDB<WAChat> = new KeyedDB (Utils.WA_CHAT_KEY, value => value.jid)
@@ -74,6 +78,7 @@ export class WAConnection extends EventEmitter {
     protected encoder = new Encoder()
     protected decoder = new Decoder()
     protected pendingRequests: {resolve: () => void, reject: (error) => void}[] = []
+
     protected referenceDate = new Date () // used for generating tags
     protected lastSeen: Date = null // last keep alive received
     protected qrTimeout: NodeJS.Timeout
@@ -208,15 +213,15 @@ export class WAConnection extends EventEmitter {
      * @param json query that was sent
      * @param timeoutMs timeout after which the promise will reject
      */
-    async waitForMessage(tag: string, json: Object = null, timeoutMs: number = null) {
-        let promise = Utils.promiseTimeout(timeoutMs,
-            (resolve, reject) => (this.callbacks[tag] = { queryJSON: json, callback: resolve, errCallback: reject }),
-        )
-        .catch((err) => {
+    async waitForMessage(tag: string, json?: Object, timeoutMs?: number) {
+        try {
+            const result = await Utils.promiseTimeout(timeoutMs,
+                (resolve, reject) => (this.callbacks[tag] = { queryJSON: json, callback: resolve, errCallback: reject }),
+            )
+            return result as any
+        } finally {
             delete this.callbacks[tag]
-            throw err
-        })
-        return promise as Promise<any>
+        }
     }
     /** Generic function for action, set queries */
     async setQuery (nodes: WANode[], binaryTags: WATag = [WAMetric.group, WAFlag.ignore], tag?: string) {
@@ -230,16 +235,18 @@ export class WAConnection extends EventEmitter {
      * @param binaryTags the tags to attach if the query is supposed to be sent encoded in binary
      * @param timeoutMs timeout after which the query will be failed (set to null to disable a timeout)
      * @param tag the tag to attach to the message
-     * recieved JSON
      */
     async query({json, binaryTags, tag, timeoutMs, expect200, waitForOpen, longTag}: WAQuery) {
-        waitForOpen = typeof waitForOpen === 'undefined' ? true : waitForOpen
-        if (waitForOpen) await this.waitForConnection ()
-        
+        waitForOpen = waitForOpen !== false
+        if (waitForOpen) await this.waitForConnection()
+
+        tag = tag || this.generateMessageTag (longTag)
+        const promise = this.waitForMessage(tag, json, timeoutMs)
+
         if (binaryTags) tag = await this.sendBinary(json as WANode, binaryTags, tag, longTag)
         else tag = await this.sendJSON(json, tag, longTag)
-       
-        const response = await this.waitForMessage(tag, json, timeoutMs)
+
+        const response = await promise
         if (expect200 && response.status && Math.floor(+response.status / 100) !== 2) {
             // read here: http://getstatuscode.com/599
             if (response.status === 599) {
@@ -262,43 +269,48 @@ export class WAConnection extends EventEmitter {
      * @param tag the tag to attach to the message
      * @return the message tag
      */
-    protected sendBinary(json: WANode, tags: WATag, tag: string = null, longTag: boolean = false) {
+    protected async sendBinary(json: WANode, tags: WATag, tag: string = null, longTag: boolean = false) {
         const binary = this.encoder.write(json) // encode the JSON to the WhatsApp binary format
 
         let buff = Utils.aesEncrypt(binary, this.authInfo.encKey) // encrypt it using AES and our encKey
         const sign = Utils.hmacSign(buff, this.authInfo.macKey) // sign the message using HMAC and our macKey
         tag = tag || this.generateMessageTag(longTag)
+
+        if (this.shouldLogMessages) this.messageLog.push ({ tag, json: JSON.stringify(json), fromMe: true, binaryTags: tags })
+
         buff = Buffer.concat([
             Buffer.from(tag + ','), // generate & prefix the message tag
             Buffer.from(tags), // prefix some bytes that tell whatsapp what the message is about
             sign, // the HMAC sign of the message
             buff, // the actual encrypted buffer
         ])
-        this.send(buff) // send it off
+        await this.send(buff) // send it off
         return tag
     }
     /**
      * Send a plain JSON message to the WhatsApp servers
      * @param json the message to send
      * @param tag the tag to attach to the message
-     * @return the message tag
+     * @returns the message tag
      */
-    protected sendJSON(json: any[] | WANode, tag: string = null, longTag: boolean = false) {
+    protected async sendJSON(json: any[] | WANode, tag: string = null, longTag: boolean = false) {
         tag = tag || this.generateMessageTag(longTag)
-        this.send(`${tag},${JSON.stringify(json)}`)
+        if (this.shouldLogMessages) this.messageLog.push ({ tag, json: JSON.stringify(json), fromMe: true })
+        await this.send(`${tag},${JSON.stringify(json)}`)
         return tag
     }
     /** Send some message to the WhatsApp servers */
-    protected send(m) {
+    protected async send(m) {
         this.msgCount += 1 // increment message count, it makes the 'epoch' field when sending binary messages
-        return this.conn.send(m)
+        this.conn.send(m)
     }
     protected async waitForConnection () {
         if (this.state === 'open') return
 
         await Utils.promiseTimeout (
             this.pendingRequestTimeoutMs, 
-            (resolve, reject) => this.pendingRequests.push({resolve, reject}))
+            (resolve, reject) => this.pendingRequests.push({resolve, reject})
+        )
     }
     /**
      * Disconnect from the phone. Your auth credentials become invalid after sending a disconnect request.
@@ -325,7 +337,6 @@ export class WAConnection extends EventEmitter {
         this.debounceTimeout && clearTimeout (this.debounceTimeout)
         
         this.state = 'close'
-        this.msgCount = 0
         this.phoneConnected = false
         this.lastDisconnectReason = reason
         this.lastDisconnectTime = new Date ()
@@ -344,13 +355,14 @@ export class WAConnection extends EventEmitter {
         this.conn?.removeAllListeners ('error')
         this.conn?.removeAllListeners ('open')
         this.conn?.removeAllListeners ('message')
-        //this.conn?.close ()
+        
         this.conn?.terminate()
         this.conn = null
         this.lastSeen = null
+        this.msgCount = 0
 
         Object.keys(this.callbacks).forEach(key => {
-            if (!key.includes('function:')) {
+            if (!key.startsWith('function:')) {
                 this.log (`cancelling message wait: ${key}`, MessageLogLevel.info)
                 this.callbacks[key].errCallback(new Error('close'))
                 delete this.callbacks[key]

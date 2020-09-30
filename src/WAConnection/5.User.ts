@@ -1,5 +1,5 @@
 import {WAConnection as Base} from './4.Events'
-import { Presence, WABroadcastListInfo, WAProfilePictureChange, WAChat, ChatModification } from './Constants'
+import { Presence, WABroadcastListInfo, WAProfilePictureChange, WAChat, ChatModification, WALoadChatOptions } from './Constants'
 import {
     WAMessage,
     WANode,
@@ -96,17 +96,19 @@ export class WAConnection extends Base {
      * @param searchString optionally search for users
      * @returns the chats & the cursor to fetch the next page
      */
-    async loadChats (count: number, before: number | null, filters?: {searchString?: string, custom?: (c: WAChat) => boolean}) {
-        const chats = this.chats.paginated (before, count, filters && (chat => (
-            (typeof filters?.custom !== 'function' || filters?.custom(chat)) &&
-            (typeof filters?.searchString === 'undefined' || chat.name?.includes (filters.searchString) || chat.jid?.startsWith(filters.searchString))
+    async loadChats (count: number, before: number | null, options: WALoadChatOptions = {}) {
+        const chats = this.chats.paginated (before, count, options && (chat => (
+            (typeof options?.custom !== 'function' || options?.custom(chat)) &&
+            (typeof options?.searchString === 'undefined' || chat.name?.includes (options.searchString) || chat.jid?.startsWith(options.searchString))
         )))
-        await Promise.all (
-            chats.map (async chat => (
-                chat.imgUrl === undefined && await this.setProfilePicture (chat)
-            ))
-        )
-        const cursor = (chats[chats.length-1] && chats.length >= count) ? WA_CHAT_KEY (chats[chats.length-1]) : null
+        if (options.loadProfilePicture !== false) {
+            await Promise.all (
+                chats.map (async chat => (
+                    typeof chat.imgUrl === 'undefined' && await this.setProfilePicture (chat)
+                ))
+            )
+        }
+        const cursor = (chats[chats.length-1] && chats.length >= count) && this.chatOrderingKey (chats[chats.length-1])
         return { chats, cursor }
     }
     /**
