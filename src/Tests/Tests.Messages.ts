@@ -71,7 +71,13 @@ WAConnectionTest('Messages', conn => {
     it('should send an image', async () => {
         const content = await fs.readFile('./Media/meme.jpeg')
         const message = await sendAndRetreiveMessage(conn, content, MessageType.image)
-        
+        assert.ok (message.message?.imageMessage?.jpegThumbnail)
+        await conn.downloadMediaMessage(message)
+    })
+    it('should send a png image', async () => {
+        const content = await fs.readFile('./Media/icon.png')
+        const message = await sendAndRetreiveMessage(conn, content, MessageType.image, { mimetype: 'image/png' })
+        assert.ok (message.message?.imageMessage?.jpegThumbnail)
         await conn.downloadMediaMessage(message)
     })
     it('should send a sticker', async () => {

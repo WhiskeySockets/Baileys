@@ -73,7 +73,11 @@ export class WAConnection extends Base {
             case MessageType.contact:
                 m.contactMessage = WAMessageProto.ContactMessage.create(message as any)
                 break
-            default:
+            case MessageType.image:
+            case MessageType.sticker:
+            case MessageType.document:
+            case MessageType.video:
+            case MessageType.audio:
                 m = await this.prepareMessageMedia(message as Buffer, type, options)
                 break
         }

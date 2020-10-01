@@ -238,7 +238,7 @@ export const mediaMessageSHA256B64 = (message: WAMessageContent) => {
 
 /** generates a thumbnail for a given media, if required */
 export async function generateThumbnail(buffer: Buffer, mediaType: MessageType, info: MessageOptions) {
-    if (info.thumbnail === null || info.thumbnail) {
+    if ('thumbnail' in info) {
         // don't do anything if the thumbnail is already provided, or is null
         if (mediaType === MessageType.audio) {
             throw new Error('audio messages cannot have thumbnails')
