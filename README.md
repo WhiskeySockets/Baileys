@@ -84,14 +84,19 @@ console.log ("oh hello " + conn.user.name + "! You connected via a proxy")
 
 You obviously don't want to keep scanning the QR code every time you want to connect. 
 
-So, do the following every time you open a new connection:
+So, you can save the credentials to log back in via:
 ``` ts
 import * as fs from 'fs'
 
 const conn = new WAConnection() 
-await conn.connect() // connect first
-const creds = conn.base64EncodedAuthInfo () // contains all the keys you need to restore a session
-fs.writeFileSync('./auth_info.json', JSON.stringify(creds, null, '\t')) // save JSON to file
+// this will be called as soon as the credentials are updated
+conn.on ('credentials-updated', () => {
+    // save credentials whenever updated
+    console.log (`credentials updated!`)
+    const authInfo = conn.base64EncodedAuthInfo() // get all the auth info we need to restore this session
+    fs.writeFileSync('./auth_info.json', JSON.stringify(authInfo, null, '\t')) // save this info to a file
+})
+await conn.connect() // connect
 ```
 
 Then, to restore a session:
@@ -108,10 +113,12 @@ await conn.connect()
 
 If you're considering switching from a Chromium/Puppeteer based library, you can use WhatsApp Web's Browser credentials to restore sessions too:
 ``` ts
-conn.loadAuthInfo ('./auth_info_browser.json') // use loaded credentials & timeout in 20s
+conn.loadAuthInfo ('./auth_info_browser.json')
 await conn.connect() // works the same
 ```
 See the browser credentials type in the docs.
+
+**Note**: Upon every successive connection, WA can update part of the stored credentials. Whenever that happens, the `credentials-updated` event is triggered, and you should probably update your saved credentials upon receiving that event. Not doing so *may* lead WA to log you out after a few weeks with a 419 error code.
 
 ## QR Callback
 
@@ -143,6 +150,10 @@ on (event: 'open', listener: (result: WAOpenResult) => void): this
 on (event: 'connecting', listener: () => void): this
 /** when the connection has closed */
 on (event: 'close', listener: (err: {reason?: DisconnectReason | string, isReconnecting: boolean}) => void): this
+/** when the connection has closed */
+on (event: 'intermediate-close', listener: (err: {reason?: DisconnectReason | string}) => void): this
+/** when WA updates the credentials */
+on (event: 'credentials-updated', listener: (auth: AuthenticationCredentials) => void): this
 /** when a new QR is generated, ready for scanning */
 on (event: 'qr', listener: (qr: string) => void): this
 /** when the connection to the phone changes */

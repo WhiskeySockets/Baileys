@@ -431,4 +431,5 @@ export type BaileysEvent =
     'group-participants-demote' |
     'group-settings-update' |
     'group-description-update' |
-    'received-pong'
+    'received-pong' |
+    'credentials-updated'

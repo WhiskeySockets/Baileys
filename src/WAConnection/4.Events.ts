@@ -1,6 +1,6 @@
 import * as QR from 'qrcode-terminal'
 import { WAConnection as Base } from './3.Connect'
-import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, MessageLogLevel, PresenceUpdate, BaileysEvent, DisconnectReason, WANode, WAOpenResult, Presence } from './Constants'
+import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, MessageLogLevel, PresenceUpdate, BaileysEvent, DisconnectReason, WANode, WAOpenResult, Presence, AuthenticationCredentials } from './Constants'
 import { whatsappID, unixTimestampSeconds, isGroupID, toNumber, GET_MESSAGE_ID, WA_MESSAGE_ID, WA_MESSAGE_KEY } from './Utils'
 import KeyedDB from '@adiwajshing/keyed-db'
 import { Mutex } from './Mutex'
@@ -322,6 +322,8 @@ export class WAConnection extends Base {
     on (event: 'close', listener: (err: {reason?: DisconnectReason | string, isReconnecting: boolean}) => void): this
     /** when the connection has closed */
     on (event: 'intermediate-close', listener: (err: {reason?: DisconnectReason | string}) => void): this
+    /** when WA updates the credentials */
+    on (event: 'credentials-updated', listener: (auth: AuthenticationCredentials) => void): this
     /** when a new QR is generated, ready for scanning */
     on (event: 'qr', listener: (qr: string) => void): this
     /** when the connection to the phone changes */

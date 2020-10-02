@@ -22,6 +22,13 @@ async function example() {
     // attempt to reconnect at most 10 times
     conn.connectOptions.maxRetries = 10
 
+    conn.on ('credentials-updated', () => {
+        // save credentials whenever updated
+        console.log (`credentials updated`)
+        const authInfo = conn.base64EncodedAuthInfo() // get all the auth info we need to restore this session
+        fs.writeFileSync('./auth_info.json', JSON.stringify(authInfo, null, '\t')) // save this info to a file
+    })
+
     // loads the auth file credentials if present
     fs.existsSync('./auth_info.json') && conn.loadAuthInfo ('./auth_info.json')
     // uncomment the following line to proxy the connection; some random proxy I got off of: https://proxyscrape.com/free-proxy-list
@@ -33,9 +40,6 @@ async function example() {
     console.log('oh hello ' + conn.user.name + ' (' + conn.user.jid + ')')
     console.log('you have ' + conn.chats.length + ' chats & ' + Object.keys(conn.contacts).length + ' contacts')
     console.log ('you have ' + unread.length + ' unread messages')
-
-    const authInfo = conn.base64EncodedAuthInfo() // get all the auth info we need to restore this session
-    fs.writeFileSync('./auth_info.json', JSON.stringify(authInfo, null, '\t')) // save this info to a file
 
     /*  Note: one can take this auth_info.json file and login again from any computer without having to scan the QR code, 
         and get full access to one's WhatsApp. Despite the convenience, be careful with this file */

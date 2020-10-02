@@ -112,10 +112,22 @@ export class WAConnection extends Base {
         }) as WAUser
 
         if (!json.secret) {
+            let credsChanged = false
             // if we didn't get a secret, we don't need it, we're validated
+            if (json.clientToken && json.clientToken !== this.authInfo.clientToken) {
+                console.log (`change: ${this.authInfo.clientToken}, ${json.clientToken}`)
+                this.authInfo = { ...this.authInfo, clientToken: json.clientToken }
+                credsChanged = true
+            }
+            if (json.serverToken && json.serverToken !== this.authInfo.serverToken) {
+                this.authInfo = { ...this.authInfo, serverToken: json.serverToken }
+                credsChanged = true
+            }
+            if (credsChanged) {
+                this.emit ('credentials-updated', this.authInfo)
+            }
             return onValidationSuccess()
         }
-
         const secret = Buffer.from(json.secret, 'base64')
         if (secret.length !== 144) {
             throw new Error ('incorrect secret length received: ' + secret.length)
@@ -153,6 +165,8 @@ export class WAConnection extends Base {
             serverToken: json.serverToken,
             clientID: this.authInfo.clientID,
         }
+        
+        this.emit ('credentials-updated', this.authInfo)
         return onValidationSuccess()
     }
     /**

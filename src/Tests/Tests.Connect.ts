@@ -33,10 +33,15 @@ describe('Test Connect', () => {
         console.log('please be ready to scan with your phone')
         
         const conn = new WAConnection()
+
+        let credentialsUpdateCalled = false
+        conn.on ('credentials-updated', () => credentialsUpdateCalled = true)
+
         await conn.connect ()
         assert.ok(conn.user?.jid)
         assert.ok(conn.user?.phone)
         assert.ok (conn.user?.imgUrl || conn.user.imgUrl === '')
+        assert.ok (credentialsUpdateCalled)
 
         assertChatDBIntegrity (conn)
 
@@ -45,15 +50,19 @@ describe('Test Connect', () => {
     })
     it('should reconnect', async () => {
         const conn = new WAConnection()
-        
+
+        let credentialsUpdateCalled = false
+        conn.on ('credentials-updated', () => credentialsUpdateCalled = true)
+
         await conn.loadAuthInfo (auth).connect ()
         assert.ok(conn.user)
         assert.ok(conn.user.jid)
+        assert.ok (credentialsUpdateCalled)
 
         assertChatDBIntegrity (conn)
         await conn.logout()
         conn.loadAuthInfo(auth)
-        
+
         await conn.connect()
             .then (() => assert.fail('should not have reconnected'))
             .catch (err => {
