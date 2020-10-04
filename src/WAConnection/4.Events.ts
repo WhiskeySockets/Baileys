@@ -1,7 +1,7 @@
 import * as QR from 'qrcode-terminal'
 import { WAConnection as Base } from './3.Connect'
 import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, MessageLogLevel, PresenceUpdate, BaileysEvent, DisconnectReason, WANode, WAOpenResult, Presence, AuthenticationCredentials } from './Constants'
-import { whatsappID, unixTimestampSeconds, isGroupID, toNumber, GET_MESSAGE_ID, WA_MESSAGE_ID, WA_MESSAGE_KEY } from './Utils'
+import { whatsappID, unixTimestampSeconds, isGroupID, toNumber, GET_MESSAGE_ID, WA_MESSAGE_ID, waMessageKey } from './Utils'
 import KeyedDB from '@adiwajshing/keyed-db'
 import { Mutex } from './Mutex'
 
@@ -185,7 +185,7 @@ export class WAConnection extends Base {
         const chat: WAChat = {
             jid: jid,
             t: unixTimestampSeconds(),
-            messages: new KeyedDB(WA_MESSAGE_KEY, WA_MESSAGE_ID),
+            messages: new KeyedDB(waMessageKey, WA_MESSAGE_ID),
             count: 0,
             modify_tag: '',
             spam: 'false',

@@ -1,4 +1,4 @@
-import { WAConnection, MessageLogLevel, MessageOptions, MessageType, unixTimestampSeconds, toNumber, GET_MESSAGE_ID, WA_MESSAGE_KEY } from '../WAConnection/WAConnection'
+import { WAConnection, MessageLogLevel, MessageOptions, MessageType, unixTimestampSeconds, toNumber, GET_MESSAGE_ID, waMessageKey } from '../WAConnection/WAConnection'
 import * as assert from 'assert'
 import {promises as fs} from 'fs'
 
@@ -36,7 +36,7 @@ export const WAConnectionTest = (name: string, func: (conn: WAConnection) => voi
 export const assertChatDBIntegrity = (conn: WAConnection) => {
     conn.chats.all ().forEach (chat => (
         assert.deepEqual (
-            [...chat.messages.all()].sort ((m1, m2) => WA_MESSAGE_KEY(m1)-WA_MESSAGE_KEY(m2)),
+            [...chat.messages.all()].sort ((m1, m2) => waMessageKey.compare(waMessageKey.key(m1), waMessageKey.key(m2))),
             chat.messages.all()
         )
     ))

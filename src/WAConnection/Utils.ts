@@ -29,9 +29,11 @@ export const waChatKey = (pin: boolean) => ({
     key: (c: WAChat) => (pin ? (c.pin ? '1' : '0') : '') + c.t.toString(16).padStart(8, '0') + c.jid,
     compare: (k1: string, k2: string) => k2.localeCompare (k1)
 })
-export const WA_MESSAGE_KEY = (m: WAMessage) => toNumber (m.messageTimestamp)*1000 + (m['epoch'] || 0)%1000
+export const waMessageKey = {
+    key: (m: WAMessage) => toNumber (m.messageTimestamp).toString(16) + (10000 + (m['epoch'] || 0)).toString(16),
+    compare: (k1: string, k2: string) => k1.localeCompare (k2)
+}
 export const WA_MESSAGE_ID = (m: WAMessage) => GET_MESSAGE_ID (m.key)
-
 export const GET_MESSAGE_ID = (key: WAMessageKey) => `${key.id}|${key.fromMe ? 1 : 0}`
 
 export const whatsappID = (jid: string) => jid?.replace ('@c.us', '@s.whatsapp.net')

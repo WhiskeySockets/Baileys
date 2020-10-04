@@ -231,7 +231,7 @@ export class WAConnection extends Base {
                 chat.jid = Utils.whatsappID (chat.jid)
                 chat.t = +chat.t
                 chat.count = +chat.count
-                chat.messages = new KeyedDB (Utils.WA_MESSAGE_KEY, Utils.WA_MESSAGE_ID)
+                chat.messages = new KeyedDB (Utils.waMessageKey, Utils.WA_MESSAGE_ID)
 
                 // chats data (log json to see what it looks like)
                 !chats.get (chat.jid) && chats.insert (chat) 

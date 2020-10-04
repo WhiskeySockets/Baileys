@@ -207,7 +207,7 @@ export interface WAChat {
     name?: string
     
     // Baileys added properties
-    messages: KeyedDB<WAMessage, number>
+    messages: KeyedDB<WAMessage, string>
     imgUrl?: string
 }
 export enum WAMetric {
