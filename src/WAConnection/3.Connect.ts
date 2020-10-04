@@ -167,7 +167,7 @@ export class WAConnection extends Base {
      * Must be called immediately after connect
      */
     protected receiveChatsAndContacts(waitOnlyForLast: boolean) {
-        const chats = new KeyedDB<WAChat>(this.chatOrderingKey, c => c.jid)
+        const chats = new KeyedDB(this.chatOrderingKey, c => c.jid)
         const contacts = {}
 
         let receivedContacts = false

@@ -24,18 +24,14 @@ export const Browsers = {
     /** The appropriate browser based on your OS & release */
     appropriate: browser => [ platformMap [platform()] || 'Ubuntu', browser, release() ] as [string, string, string]
 }
-function hashCode(s: string) {
-    for(var i = 0, h = 0; i < s.length; i++)
-        h = Math.imul(31, h) + s.charCodeAt(i) | 0;
-    return h;
-}
 export const toNumber = (t: Long | number) => (t['low'] || t) as number
-
-export const WA_CHAT_KEY = (c: WAChat) => ((c.t*100000) + (hashCode(c.jid)%100000))*-1 // -1 to sort descending
-export const WA_CHAT_KEY_PIN = (c: WAChat) => ((c.t*100000)*(c.pin ? 2 : 1) + (hashCode(c.jid)%100000))*-1 // -1 to sort descending
-
+export const waChatKey = (pin: boolean) => ({
+    key: (c: WAChat) => (pin ? (c.pin ? '1' : '0') : '') + c.t.toString(16).padStart(8, '0') + c.jid,
+    compare: (k1: string, k2: string) => k2.localeCompare (k1)
+})
 export const WA_MESSAGE_KEY = (m: WAMessage) => toNumber (m.messageTimestamp)*1000 + (m['epoch'] || 0)%1000
 export const WA_MESSAGE_ID = (m: WAMessage) => GET_MESSAGE_ID (m.key)
+
 export const GET_MESSAGE_ID = (key: WAMessageKey) => `${key.id}|${key.fromMe ? 1 : 0}`
 
 export const whatsappID = (jid: string) => jid?.replace ('@c.us', '@s.whatsapp.net')

@@ -6,7 +6,7 @@ import {
     WAMetric,
     WAFlag,
 } from '../WAConnection/Constants'
-import { generateProfilePicture, WA_CHAT_KEY, whatsappID, unixTimestampSeconds } from './Utils'
+import { generateProfilePicture, waChatKey, whatsappID, unixTimestampSeconds } from './Utils'
 import { Mutex } from './Mutex'
 
 // All user related functions -- get profile picture, set status etc.
@@ -96,7 +96,7 @@ export class WAConnection extends Base {
      * @param searchString optionally search for users
      * @returns the chats & the cursor to fetch the next page
      */
-    async loadChats (count: number, before: number | null, options: WALoadChatOptions = {}) {
+    async loadChats (count: number, before: string | null, options: WALoadChatOptions = {}) {
         const chats = this.chats.paginated (before, count, options && (chat => (
             (typeof options?.custom !== 'function' || options?.custom(chat)) &&
             (typeof options?.searchString === 'undefined' || chat.name?.includes (options.searchString) || chat.jid?.startsWith(options.searchString))
@@ -108,7 +108,7 @@ export class WAConnection extends Base {
                 ))
             )
         }
-        const cursor = (chats[chats.length-1] && chats.length >= count) && this.chatOrderingKey (chats[chats.length-1])
+        const cursor = (chats[chats.length-1] && chats.length >= count) && this.chatOrderingKey.key (chats[chats.length-1])
         return { chats, cursor }
     }
     /**

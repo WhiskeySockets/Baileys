@@ -55,7 +55,7 @@ export class WAConnection extends EventEmitter {
     /** Whether the phone is connected */
     phoneConnected: boolean = false
     /** key to use to order chats */
-    chatOrderingKey = Utils.WA_CHAT_KEY
+    chatOrderingKey = Utils.waChatKey(false)
 
     /** log messages */
     shouldLogMessages = false 
@@ -63,7 +63,7 @@ export class WAConnection extends EventEmitter {
 
     maxCachedMessages = 50
 
-    chats: KeyedDB<WAChat> = new KeyedDB (Utils.WA_CHAT_KEY, value => value.jid)
+    chats = new KeyedDB (Utils.waChatKey(false), value => value.jid)
     contacts: { [k: string]: WAContact } = {}
 
     /** Data structure of tokens & IDs used to establish one's identiy to WhatsApp Web */

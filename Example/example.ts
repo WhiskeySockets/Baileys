@@ -9,6 +9,7 @@ import {
     WA_MESSAGE_STUB_TYPES,
     ReconnectMode,
     ProxyAgent,
+    waChatKey,
 } from '../src/WAConnection/WAConnection'
 import * as fs from 'fs'
 
@@ -21,6 +22,7 @@ async function example() {
     conn.connectOptions.regenerateQRIntervalMs = 5000
     // attempt to reconnect at most 10 times
     conn.connectOptions.maxRetries = 10
+    conn.chatOrderingKey = waChatKey(true) // order chats such that pinned chats are on top
 
     conn.on ('credentials-updated', () => {
         // save credentials whenever updated
@@ -35,11 +37,12 @@ async function example() {
     //conn.connectOptions.agent = ProxyAgent ('http://1.0.180.120:8080')
     await conn.connect()
 
-    const unread = await conn.loadAllUnreadMessages ()
-    
     console.log('oh hello ' + conn.user.name + ' (' + conn.user.jid + ')')
     console.log('you have ' + conn.chats.length + ' chats & ' + Object.keys(conn.contacts).length + ' contacts')
-    console.log ('you have ' + unread.length + ' unread messages')
+    
+    // uncomment to load all unread messages
+    //const unread = await conn.loadAllUnreadMessages ()
+    //console.log ('you have ' + unread.length + ' unread messages')
 
     /*  Note: one can take this auth_info.json file and login again from any computer without having to scan the QR code, 
         and get full access to one's WhatsApp. Despite the convenience, be careful with this file */
