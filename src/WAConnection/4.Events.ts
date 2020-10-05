@@ -81,7 +81,8 @@ export class WAConnection extends Base {
                     return 'delete'
                 },
                 'clear': () => {
-                    json[2].forEach(item => chat.messages.filter(m => m.key.id !== item[1].index))
+                    if (!json[2]) chat.messages.clear ()
+                    else json[2].forEach(item => chat.messages.filter(m => m.key.id !== item[1].index))
                     return 'clear'
                 },
                 'archive': () => {
