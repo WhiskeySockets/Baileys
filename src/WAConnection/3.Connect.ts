@@ -195,13 +195,15 @@ export class WAConnection extends Base {
             const messages = json[2] as WANode[]
 
             if (messages) {
+                
                 messages.reverse().forEach (([,, message]: ['message', null, WAMessage]) => {
                     const jid = message.key.remoteJid
                     const chat = chats.get(jid)
                     if (chat) {
                         const fm = chat.messages.all()[0]
-                        const prevEpoch = (fm && fm['epoch']) || 0
                         
+                        const prevEpoch = (fm && fm['epoch']) || 0
+                       
                         message['epoch'] = prevEpoch-1
                         chat.messages.insert (message)
                     }
