@@ -30,7 +30,7 @@ export const waChatKey = (pin: boolean) => ({
     compare: (k1: string, k2: string) => k2.localeCompare (k1)
 })
 export const waMessageKey = {
-    key: (m: WAMessage) => toNumber (m.messageTimestamp).toString(16) + (10000 + (m['epoch'] || 0)).toString(16),
+    key: (m: WAMessage) => toNumber (m.messageTimestamp).toString(16).padStart(8, '0') + (5000 + (m['epoch'] || 0)).toString(16),
     compare: (k1: string, k2: string) => k1.localeCompare (k2)
 }
 export const WA_MESSAGE_ID = (m: WAMessage) => GET_MESSAGE_ID (m.key)
