@@ -194,15 +194,17 @@ WAConnectionTest('Messages', conn => {
         for (let i = 0; i < messages.length;i++) {
             assert.deepEqual (messages[i].key, msgs[i].key, `failed equal at ${i}`)
         }
-
-        cursor = results[0].messages[2].key
+        for (let i = 0; i < 3;i++) {
+            cursor = results[0].messages[i].key
         
-        msgs = await conn.fetchMessagesFromWA (testJid, 20, cursor)
-        messages = (await conn.loadMessages (testJid, 20, cursor)).messages
-        for (let i = 0; i < messages.length;i++) {
-            assert.deepEqual (messages[i].key, msgs[i].key, `failed equal at ${i}`)
+            msgs = await conn.fetchMessagesFromWA (testJid, 20, cursor)
+            messages = (await conn.loadMessages (testJid, 20, cursor)).messages
+            for (let i = 0; i < messages.length;i++) {
+                assert.deepEqual (messages[i].key, msgs[i].key, `failed equal at ${i}`)
+            }
         }
 
+        
     })
     it('should deliver a message', async () => {
         const waitForUpdate = 
