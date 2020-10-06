@@ -84,8 +84,10 @@ export type WAConnectOptions = {
     /** max time for the phone to respond to a connectivity test */
     phoneResponseTime?: number
     connectCooldownMs?: number
-    /** agent which can be used for proxying connections */
+    /** agent used for WS connections */
     agent?: Agent
+    /** agent used for fetch requests -- uploading/downloading media */
+    fetchAgent?: Agent
 }
 /** from: https://stackoverflow.com/questions/3809401/what-is-a-good-regular-expression-to-match-a-url */
 export const URL_REGEX = /[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)?/gi

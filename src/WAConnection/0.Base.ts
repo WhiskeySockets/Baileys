@@ -377,7 +377,7 @@ export class WAConnection extends EventEmitter {
             method,
             body,
             headers: { Origin: DEFAULT_ORIGIN, ...(headers || {}) },
-            agent: agent || this.connectOptions.agent
+            agent: agent || this.connectOptions.fetchAgent
         })
     )
     generateMessageTag (longTag: boolean = false) {
