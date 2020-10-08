@@ -44,9 +44,17 @@ export class WAConnection extends Base {
             const chat = this.chats.get(jid)
             if (!chat) return
             // reinsert to update
-            if (chat.messages.delete (message)) chat.messages.insert (message)
-
-            this.emit ('message-update', message)
+            const oldMessage = chat.messages.get (WA_MESSAGE_ID(message))
+            if (oldMessage) {
+                message['epoch'] = oldMessage['epoch']
+                chat.messages.delete (oldMessage)
+                chat.messages.insert (message)
+                this.emit ('message-update', message)
+            } else {
+                chat.messages.insert (message)
+                this.emit ('message-new', message)
+            }
+            
         })
         // If a user's contact has changed
         this.registerCallback (['action', null, 'user'], json => {
