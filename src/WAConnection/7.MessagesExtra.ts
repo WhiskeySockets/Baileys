@@ -116,7 +116,8 @@ export class WAConnection extends Base {
             if (diff < 0) {
                 messages = messages.slice(-count) // get the last X messages
             } else if (diff > 0) {
-                let fepoch = (messages[0] && messages[0]['epoch']) || 0
+                const fMessage = chat.messages.all()[0]
+                let fepoch = (fMessage && fMessage['epoch']) || 0
                 const extra = await retreive (diff, messages[0]?.key || cursor)
                 // add to DB
                 for (let i = extra.length-1;i >= 0; i--) {
