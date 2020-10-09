@@ -247,14 +247,15 @@ export class WAConnection extends Base {
             {
                 epoch: this.msgCount.toString(),
                 type: 'search',
-                search: txt,
+                search: Buffer.from(txt, 'utf-8'),
                 count: count.toString(),
                 page: page.toString(),
                 jid: inJid
             },
             null,
         ]
-        const response: WANode = await this.query({json, binaryTags: [WAMetric.group, WAFlag.ignore], expect200: true}) // encrypt and send  off
+        
+        const response: WANode = await this.query({json, binaryTags: [24, WAFlag.ignore], expect200: true}) // encrypt and send  off
         const messages = response[2] ? response[2].map (row => row[2]) : []
         return { last: response[1]['last'] === 'true', messages: messages as WAMessage[] }
     }

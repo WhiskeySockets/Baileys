@@ -115,7 +115,11 @@ WAConnectionTest('Misc', (conn) => {
     it('should return search results', async () => {
         const jids = [null, testJid]
         for (let i in jids) {
-            const response = await conn.searchMessages('Hello', jids[i], 25, 1)
+            let response = await conn.searchMessages('Hello', jids[i], 25, 1)
+            assert.ok (response.messages)
+            assert.ok (response.messages.length >= 0)
+
+            response = await conn.searchMessages('剛剛試咗😋一個字', jids[i], 25, 1)
             assert.ok (response.messages)
             assert.ok (response.messages.length >= 0)
         }
