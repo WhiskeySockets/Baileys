@@ -17,10 +17,7 @@ async function example() {
     const conn = new WAConnection() // instantiate
     conn.autoReconnect = ReconnectMode.onConnectionLost // only automatically reconnect when the connection breaks
     conn.logLevel = MessageLogLevel.info // set to unhandled to see what kind of stuff you can implement
-    // if the gap between two messages is greater than 10s, fail the connection
-    conn.connectOptions.maxIdleTimeMs = 10*1000
-    conn.connectOptions.regenerateQRIntervalMs = 5000
-    // attempt to reconnect at most 10 times
+    // attempt to reconnect at most 10 times in a row
     conn.connectOptions.maxRetries = 10
     conn.chatOrderingKey = waChatKey(true) // order chats such that pinned chats are on top
 

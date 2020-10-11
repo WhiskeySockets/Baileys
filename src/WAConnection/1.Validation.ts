@@ -115,7 +115,6 @@ export class WAConnection extends Base {
             let credsChanged = false
             // if we didn't get a secret, we don't need it, we're validated
             if (json.clientToken && json.clientToken !== this.authInfo.clientToken) {
-                console.log (`change: ${this.authInfo.clientToken}, ${json.clientToken}`)
                 this.authInfo = { ...this.authInfo, clientToken: json.clientToken }
                 credsChanged = true
             }

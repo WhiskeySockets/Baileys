@@ -221,8 +221,14 @@ export class WAConnection extends Base {
     }
     protected chatAddMessage (message: WAMessage, chat: WAChat) {
         // add to count if the message isn't from me & there exists a message
-        if (!message.key.fromMe && message.message) chat.count += 1
-
+        if (!message.key.fromMe && message.message) {
+            chat.count += 1
+            const contact = this.contacts[chat.jid]
+            if (contact && contact.lastKnownPresence === Presence.composing) { // update presence
+                contact.lastKnownPresence = Presence.available // emit change
+                this.emit ('user-presence-update', { id: chat.jid, presence: Presence.available, participant: message.participant })
+            }
+        }
         const protocolMessage = message.message?.protocolMessage
         // if it's a message to delete another message
         if (protocolMessage) {

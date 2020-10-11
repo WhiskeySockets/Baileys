@@ -68,7 +68,9 @@ Do note, the `chats` object returned is now a [KeyedDB](https://github.com/adiwa
 - Most applications require pagination of chats (Use `chats.paginated()`)
 - Most applications require **O(1)** access to chats via the chat ID. (Use `chats.get(jid)` with `KeyedDB`)
 
-## Connecting via an HTTPS proxy
+## Configuring the Connection
+
+You can configure the connection via the `connectOptions` property. You can even specify an HTTPS proxy. For example:
 
 ``` ts
 import { WAConnection, ProxyAgent } from '@adiwajshing/baileys'
@@ -78,6 +80,35 @@ conn.connectOptions.agent = ProxyAgent ('http://some-host:1234')
 
 await conn.connect ()
 console.log ("oh hello " + conn.user.name + "! You connected via a proxy")
+```
+
+The entire `WAConnectOptions` struct is mentioned here with default values:
+``` ts
+conn.connectOptions = {
+    /** New QR generation interval, set to null if you don't want to regenerate */
+    regenerateQRIntervalMs?: 30_000
+    /** fails the connection if no data is received for X seconds */
+    maxIdleTimeMs?: 15_000
+    /** maximum attempts to connect */
+    maxRetries?: 5
+    /** should the chats be waited for; 
+     * should generally keep this as true, unless you only care about sending & receiving new messages 
+     * & don't care about chat history
+     * */
+    waitForChats?: true
+    /** if set to true, the connect only waits for the last message of the chat
+     * setting to false, generally yields a faster connect
+     */
+    waitOnlyForLastMessage?: false
+    /** max time for the phone to respond to a connectivity test */
+    phoneResponseTime?: 7500
+    /** minimum time between new connections */
+    connectCooldownMs?: 3000
+    /** agent used for WS connections (could be a proxy agent) */
+    agent?: Agent = undefined
+    /** agent used for fetch requests -- uploading/downloading media */
+    fetchAgent?: Agent = undefined
+} as WAConnectOptions
 ```
 
 ## Saving & Restoring Sessions

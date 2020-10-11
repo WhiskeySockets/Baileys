@@ -52,7 +52,6 @@ export class WAConnection extends Base {
         this.emit ('open', result)
  
         this.releasePendingRequests ()
-        this.startKeepAliveRequest()
         
         this.log ('opened connection to WhatsApp Web', MessageLogLevel.info)
 
@@ -114,6 +113,9 @@ export class WAConnection extends Base {
                     }
                     try {
                         await this.authenticate (startDebouncedTimeout, stopDebouncedTimeout, reconnectID)
+                        
+                        this.startKeepAliveRequest()
+                        
                         this.conn
                             .removeAllListeners ('error')
                             .removeAllListeners ('close')
@@ -269,7 +271,6 @@ export class WAConnection extends Base {
                     resolveTask = resolve
                     cancelChats = () => reject (CancelledError())
                 })
-                console.log ('resolved task')
 
                 const oldChats = this.chats
                 const updatedChats: { [k: string]: Partial<WAChat> } = {}

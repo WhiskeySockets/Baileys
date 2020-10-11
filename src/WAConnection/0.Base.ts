@@ -30,7 +30,7 @@ import { STATUS_CODES, Agent } from 'http'
 
 export class WAConnection extends EventEmitter {
     /** The version of WhatsApp Web we're telling the servers we are */
-    version: [number, number, number] = [2, 2039, 9]
+    version: [number, number, number] = [2, 2041, 6]
     /** The Browser we're telling the WhatsApp Web servers we are */
     browserDescription: [string, string, string] = Utils.Browsers.baileys ('Chrome')
     /** Metadata like WhatsApp id, name set on WhatsApp etc. */
@@ -47,7 +47,7 @@ export class WAConnection extends EventEmitter {
         waitOnlyForLastMessage: false,
         waitForChats: true,
         maxRetries: 5,
-        connectCooldownMs: 2250,
+        connectCooldownMs: 3000,
         phoneResponseTime: 7500
     }
     /** When to auto-reconnect */
@@ -333,7 +333,6 @@ export class WAConnection extends EventEmitter {
         this.log (`closed connection, reason ${reason}${isReconnecting ? ', reconnecting in a few seconds...' : ''}`, MessageLogLevel.info)  
 
         this.qrTimeout && clearTimeout (this.qrTimeout)
-        this.keepAliveReq && clearInterval(this.keepAliveReq)
         this.debounceTimeout && clearTimeout (this.debounceTimeout)
         
         this.state = 'close'
@@ -355,8 +354,14 @@ export class WAConnection extends EventEmitter {
         this.conn?.removeAllListeners ('error')
         this.conn?.removeAllListeners ('open')
         this.conn?.removeAllListeners ('message')
-        
-        this.conn?.terminate()
+
+        this.keepAliveReq && clearInterval(this.keepAliveReq)
+        try {
+            this.conn?.close()
+            this.conn?.terminate()
+        } catch {
+
+        }
         this.conn = null
         this.lastSeen = null
         this.msgCount = 0
