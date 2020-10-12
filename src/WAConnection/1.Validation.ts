@@ -1,7 +1,7 @@
 import * as Curve from 'curve25519-js'
 import * as Utils from './Utils'
 import {WAConnection as Base} from './0.Base'
-import { MessageLogLevel, WAMetric, WAFlag, BaileysError, Presence, WAUser, DisconnectReason } from './Constants'
+import { WAMetric, WAFlag, BaileysError, Presence, WAUser } from './Constants'
 
 export class WAConnection extends Base {
     
@@ -62,14 +62,14 @@ export class WAConnection extends Base {
         const validationJSON = (await Promise.all (initQueries)).slice(-1)[0] // get the last result
         this.user = await this.validateNewConnection(validationJSON[1]) // validate the connection
         
-        this.log('validated connection successfully', MessageLogLevel.info)
+        this.logger.info('validated connection successfully')
 
         const response = await this.query({ json: ['query', 'ProfilePicThumb', this.user.jid], waitForOpen: false, expect200: false })
         this.user.imgUrl = response?.eurl || ''
 
         this.sendPostConnectQueries ()
 
-        this.log('sent init queries', MessageLogLevel.info)
+        this.logger.debug('sent init queries')
     }
     /**
      * Send the same queries WA Web sends after connect
@@ -176,7 +176,8 @@ export class WAConnection extends Base {
         const bytes = Buffer.from(challenge, 'base64') // decode the base64 encoded challenge string
         const signed = Utils.hmacSign(bytes, this.authInfo.macKey).toString('base64') // sign the challenge string with our macKey
         const json = ['admin', 'challenge', signed, this.authInfo.serverToken, this.authInfo.clientID] // prepare to send this signed string with the serverToken & clientID
-        this.log('resolving login challenge', MessageLogLevel.info)
+        
+        this.logger.info('resolving login challenge')
         return this.query({json, expect200: true, waitForOpen: false})
     }
     /** When starting a new session, generate a QR code by generating a private/public key pair & the keys the server sends */
@@ -193,14 +194,14 @@ export class WAConnection extends Base {
             this.qrTimeout = setTimeout (() => {
                 if (this.state === 'open') return
 
-                this.log ('regenerated QR', MessageLogLevel.info)
+                this.logger.debug ('regenerated QR')
                 
                 this.generateNewQRCodeRef ()
                 .then (newRef => ref = newRef)
                 .then (emitQR)
                 .then (regenQR)
                 .catch (err => {
-                    this.log (`error in QR gen: ${err}`, MessageLogLevel.info)
+                    this.logger.error (`error in QR gen: `, err)
                     if (err.status === 429) { // too many QR requests
                         this.endConnection ()
                     }

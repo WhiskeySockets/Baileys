@@ -108,6 +108,34 @@ describe ('Reconnects', () => {
 
         conn.close ()
     }
+    it('should dispose correctly on bad_session', async () => {
+        const conn = new WAConnection()
+        conn.autoReconnect = ReconnectMode.onAllErrors
+        conn.loadAuthInfo ('./auth_info.json')
+
+        let gotClose0 = false
+        let gotClose1 = false
+
+        conn.on ('intermediate-close', ({ reason }) => {
+            gotClose0 = true
+        })
+        conn.on ('close', ({ reason }) => {
+            if (reason === DisconnectReason.badSession) gotClose1 = true
+        })
+        setTimeout (() => conn['conn'].emit ('message', Buffer.from('some-tag,sdjjij1jo2ejo1je')), 1500)
+        await conn.connect ()
+
+        setTimeout (() => conn['conn'].emit ('message', Buffer.from('some-tag,sdjjij1jo2ejo1je')), 1500)
+
+        await new Promise (resolve => {
+            conn.on ('open', resolve)
+        })
+
+        assert.ok (gotClose0, 'did not receive bad_session close initially')
+        assert.ok (gotClose1, 'did not receive bad_session close')
+
+        conn.close ()
+    })
     /**
      * the idea is to test closing the connection at multiple points in the connection 
      * and see if the library cleans up resources correctly

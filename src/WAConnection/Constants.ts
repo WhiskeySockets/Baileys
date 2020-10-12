@@ -114,12 +114,6 @@ export enum DisconnectReason {
   /** Well, the connection timed out */
   timedOut = 'timed out'
 }
-export enum MessageLogLevel {
-    none=0,
-    info=1,
-    unhandled=2,
-    all=3
-}
 export interface MediaConnInfo {
     auth: string 
     ttl: number

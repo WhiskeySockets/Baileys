@@ -9,7 +9,7 @@ import {
     WALocationMessage,
     WAContactMessage,
     WATextMessage,
-    WAMessageContent, WAMetric, WAFlag, WAMessage, BaileysError, MessageLogLevel, WA_MESSAGE_STATUS_TYPE, WAMessageProto, MediaConnInfo, MessageTypeProto, URL_REGEX, WAUrlInfo
+    WAMessageContent, WAMetric, WAFlag, WAMessage, BaileysError, WA_MESSAGE_STATUS_TYPE, WAMessageProto, MediaConnInfo, MessageTypeProto, URL_REGEX, WAUrlInfo
 } from './Constants'
 import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes, generateThumbnail, getMediaKeys, decodeMediaMessageBuffer, extensionForMediaMessage, whatsappID, unixTimestampSeconds  } from './Utils'
 import { Mutex } from './Mutex'
@@ -138,7 +138,7 @@ export class WAConnection extends Base {
                 }
             } catch (error) {
                 const isLast = host.hostname === json.hosts[json.hosts.length-1].hostname
-                this.log (`Error in uploading to ${host.hostname}${isLast ? '' : ', retrying...'}`, MessageLogLevel.info)
+                this.logger.error (`Error in uploading to ${host.hostname}${isLast ? '' : ', retrying...'}`)
             }
         }
         if (!mediaUrl) throw new Error('Media upload failed on all hosts')
@@ -241,7 +241,7 @@ export class WAConnection extends Base {
             return buff
         } catch (error) {
             if (error instanceof BaileysError && error.status === 404) { // media needs to be updated
-                this.log (`updating media of message: ${message.key.id}`, MessageLogLevel.info)
+                this.logger.info (`updating media of message: ${message.key.id}`)
                 await this.updateMediaMessage (message)
                 const buff = await decodeMediaMessageBuffer (message.message, this.fetchRequest)
                 return buff

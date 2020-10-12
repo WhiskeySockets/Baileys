@@ -9,7 +9,6 @@ import {
     WAUser,
     WANode,
     WATag,
-    MessageLogLevel,
     BaileysError,
     WAMetric,
     WAFlag,
@@ -27,6 +26,9 @@ import {
 import { EventEmitter } from 'events'
 import KeyedDB from '@adiwajshing/keyed-db'
 import { STATUS_CODES, Agent } from 'http'
+import pino from 'pino'
+
+const logger = pino({ prettyPrint: { levelFirst: true, ignore: 'hostname', translateTime: true },  prettifier: require('pino-pretty') })
 
 export class WAConnection extends EventEmitter {
     /** The version of WhatsApp Web we're telling the servers we are */
@@ -35,8 +37,6 @@ export class WAConnection extends EventEmitter {
     browserDescription: [string, string, string] = Utils.Browsers.baileys ('Chrome')
     /** Metadata like WhatsApp id, name set on WhatsApp etc. */
     user: WAUser
-    /** What level of messages to log to the console */
-    logLevel: MessageLogLevel = MessageLogLevel.info
     /** Should requests be queued when the connection breaks in between; if 0, then an error will be thrown */
     pendingRequestTimeoutMs: number = null
     /** The connection state */
@@ -56,6 +56,8 @@ export class WAConnection extends EventEmitter {
     phoneConnected: boolean = false
     /** key to use to order chats */
     chatOrderingKey = Utils.waChatKey(false)
+
+    logger = logger.child ({ class: 'Baileys' })
 
     /** log messages */
     shouldLogMessages = false 
@@ -141,7 +143,7 @@ export class WAConnection extends EventEmitter {
         if (!authInfo) throw new Error('given authInfo is null')
         
         if (typeof authInfo === 'string') {
-            this.log(`loading authentication credentials from ${authInfo}`, MessageLogLevel.info)
+            this.logger.info(`loading authentication credentials from ${authInfo}`)
             const file = fs.readFileSync(authInfo, { encoding: 'utf-8' }) // load a closed session back if it exists
             authInfo = JSON.parse(file) as AnyAuthenticationCredentials
         }
@@ -205,7 +207,7 @@ export class WAConnection extends EventEmitter {
             delete this.callbacks[func][key][key2]
             return
         }
-        this.log('WARNING: could not find ' + JSON.stringify(parameters) + ' to deregister', MessageLogLevel.info)
+        this.logger.warn('Could not find ' + JSON.stringify(parameters) + ' to deregister')
     }
     /**
      * Wait for a message with a certain tag to be received
@@ -330,7 +332,7 @@ export class WAConnection extends EventEmitter {
         this.closeInternal (DisconnectReason.intentional)
     }
     protected closeInternal (reason?: DisconnectReason, isReconnecting: boolean=false) {
-        this.log (`closed connection, reason ${reason}${isReconnecting ? ', reconnecting in a few seconds...' : ''}`, MessageLogLevel.info)  
+        this.logger.info (`closed connection, reason ${reason}${isReconnecting ? ', reconnecting in a few seconds...' : ''}`)  
 
         this.qrTimeout && clearTimeout (this.qrTimeout)
         this.debounceTimeout && clearTimeout (this.debounceTimeout)
@@ -368,7 +370,7 @@ export class WAConnection extends EventEmitter {
 
         Object.keys(this.callbacks).forEach(key => {
             if (!key.startsWith('function:')) {
-                this.log (`cancelling message wait: ${key}`, MessageLogLevel.info)
+                this.logger.trace (`cancelling message wait: ${key}`)
                 this.callbacks[key].errCallback(new Error('close'))
                 delete this.callbacks[key]
             }
@@ -389,7 +391,7 @@ export class WAConnection extends EventEmitter {
         const seconds = Utils.unixTimestampSeconds(this.referenceDate)
         return `${longTag ? seconds : (seconds%1000)}.--${this.msgCount}`
     }
-    protected log(text, level: MessageLogLevel) {
+    /*protected log(text, level: MessageLogLevel) {
         (this.logLevel >= level) && console.log(`[Baileys][${new Date().toLocaleString()}] ${text}`)
-    }
+    }*/
 }

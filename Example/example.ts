@@ -5,7 +5,6 @@ import {
     MessageOptions,
     Mimetype,
     WALocationMessage,
-    MessageLogLevel,
     WA_MESSAGE_STUB_TYPES,
     ReconnectMode,
     ProxyAgent,
@@ -16,7 +15,7 @@ import * as fs from 'fs'
 async function example() {
     const conn = new WAConnection() // instantiate
     conn.autoReconnect = ReconnectMode.onConnectionLost // only automatically reconnect when the connection breaks
-    conn.logLevel = MessageLogLevel.info // set to unhandled to see what kind of stuff you can implement
+    conn.logger.level = 'debug' // set to 'debug' to see what kind of stuff you can implement
     // attempt to reconnect at most 10 times in a row
     conn.connectOptions.maxRetries = 10
     conn.chatOrderingKey = waChatKey(true) // order chats such that pinned chats are on top

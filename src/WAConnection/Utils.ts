@@ -152,8 +152,7 @@ export function decryptWA (message: string | Buffer, macKey: Buffer, encKey: Buf
             json = JSON.parse(data) // parse the JSON
         } else {
             if (!macKey || !encKey) {
-                console.warn ('recieved encrypted buffer when auth creds unavailable: ' + message)
-                return
+                throw new Error ('recieved encrypted buffer when auth creds unavailable: ' + message)
             }
             /* 
                 If the data recieved was not a JSON, then it must be an encrypted message.
@@ -173,14 +172,13 @@ export function decryptWA (message: string | Buffer, macKey: Buffer, encKey: Buf
                 const decrypted = aesDecrypt(data, encKey) // decrypt using AES
                 json = decoder.read(decrypted) // decode the binary message into a JSON array
             } else {
-                console.error (`
-                    Checksums don't match:
-                    og: ${checksum.toString('hex')}
-                    computed: ${computedChecksum.toString('hex')}
-                    data: ${data.slice(0, 80).toString()}
-                    tag: ${messageTag}
-                    message: ${message.slice(0, 80).toString()}
-                `)
+                throw new BaileysError ('checksum failed', {
+                    received: checksum.toString('hex'),
+                    computed: computedChecksum.toString('hex'),
+                    data: data.slice(0, 80).toString(),
+                    tag: messageTag,
+                    message: message.slice(0, 80).toString()
+                })
             }
         }   
     }
