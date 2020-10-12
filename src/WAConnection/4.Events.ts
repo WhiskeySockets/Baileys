@@ -51,10 +51,8 @@ export class WAConnection extends Base {
                 chat.messages.insert (message)
                 this.emit ('message-update', message)
             } else {
-                chat.messages.insert (message)
-                this.emit ('message-new', message)
+                this.logger.debug ({ unhandled: true }, 'received message update for non-present message from ' + jid)
             }
-            
         })
         // If a user's contact has changed
         this.registerCallback (['action', null, 'user'], json => {
