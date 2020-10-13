@@ -79,7 +79,7 @@ export class WAConnection extends Base {
                 // determine whether reconnect should be used or not
                 const shouldUseReconnect = (this.lastDisconnectReason === DisconnectReason.close || 
                                             this.lastDisconnectReason === DisconnectReason.lost) &&
-                                            this.user?.jid
+                                            !this.connectOptions.alwaysUseTakeover
                 const reconnectID = shouldUseReconnect && this.user.jid.replace ('@s.whatsapp.net', '@c.us')
 
                 this.conn = new WS(WS_URL, null, { 
