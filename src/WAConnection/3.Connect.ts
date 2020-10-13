@@ -66,11 +66,6 @@ export class WAConnection extends Base {
             let cancel: () => void
             const task = new Promise((resolve, reject) => {
                 cancel = () => reject (CancelledError())
-                // determine whether reconnect should be used or not
-                const shouldUseReconnect = this.lastDisconnectReason !== DisconnectReason.replaced && 
-                                            this.lastDisconnectReason !== DisconnectReason.unknown &&
-                                            this.lastDisconnectReason !== DisconnectReason.intentional && 
-                                            this.user?.jid
                 
                 const checkIdleTime = () => {
                     this.debounceTimeout && clearTimeout (this.debounceTimeout)
@@ -81,7 +76,10 @@ export class WAConnection extends Base {
                     clearTimeout (this.debounceTimeout)
                     this.conn.removeEventListener ('message', checkIdleTime)
                 }
-
+                // determine whether reconnect should be used or not
+                const shouldUseReconnect = (this.lastDisconnectReason === DisconnectReason.close || 
+                                            this.lastDisconnectReason === DisconnectReason.lost) &&
+                                            this.user?.jid
                 const reconnectID = shouldUseReconnect && this.user.jid.replace ('@s.whatsapp.net', '@c.us')
 
                 this.conn = new WS(WS_URL, null, { 
