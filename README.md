@@ -101,13 +101,15 @@ conn.connectOptions = {
      */
     waitOnlyForLastMessage?: false
     /** max time for the phone to respond to a connectivity test */
-    phoneResponseTime?: 7500
+    phoneResponseTime?: 10_000
     /** minimum time between new connections */
     connectCooldownMs?: 3000
     /** agent used for WS connections (could be a proxy agent) */
     agent?: Agent = undefined
     /** agent used for fetch requests -- uploading/downloading media */
     fetchAgent?: Agent = undefined
+    /** always uses takeover for connecting */
+    alwaysUseTakeover: true
 } as WAConnectOptions
 ```
 
