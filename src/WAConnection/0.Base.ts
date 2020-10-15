@@ -48,7 +48,7 @@ export class WAConnection extends EventEmitter {
         waitForChats: true,
         maxRetries: 5,
         connectCooldownMs: 3000,
-        phoneResponseTime: 7500,
+        phoneResponseTime: 7_500,
         alwaysUseTakeover: false
     }
     /** When to auto-reconnect */
@@ -81,6 +81,7 @@ export class WAConnection extends EventEmitter {
     protected encoder = new Encoder()
     protected decoder = new Decoder()
     protected pendingRequests: {resolve: () => void, reject: (error) => void}[] = []
+    protected phoneCheckInterval = undefined
 
     protected referenceDate = new Date () // used for generating tags
     protected lastSeen: Date = null // last keep alive received
@@ -216,13 +217,17 @@ export class WAConnection extends EventEmitter {
      * @param json query that was sent
      * @param timeoutMs timeout after which the promise will reject
      */
-    async waitForMessage(tag: string, json?: Object, timeoutMs?: number) {
+    async waitForMessage(tag: string, json: Object, requiresPhoneConnection: boolean, timeoutMs?: number) {
+        if (!this.phoneCheckInterval && requiresPhoneConnection) {
+            this.startPhoneCheckInterval ()
+        }
         try {
             const result = await Utils.promiseTimeout(timeoutMs,
                 (resolve, reject) => (this.callbacks[tag] = { queryJSON: json, callback: resolve, errCallback: reject }),
             )
             return result as any
         } finally {
+            requiresPhoneConnection && this.clearPhoneCheckInterval ()
             delete this.callbacks[tag]
         }
     }
@@ -239,31 +244,55 @@ export class WAConnection extends EventEmitter {
      * @param timeoutMs timeout after which the query will be failed (set to null to disable a timeout)
      * @param tag the tag to attach to the message
      */
-    async query({json, binaryTags, tag, timeoutMs, expect200, waitForOpen, longTag}: WAQuery) {
+    async query(q: WAQuery) {
+        let {json, binaryTags, tag, timeoutMs, expect200, waitForOpen, longTag, requiresPhoneConnection} = q
+        requiresPhoneConnection = requiresPhoneConnection !== false
         waitForOpen = waitForOpen !== false
         if (waitForOpen) await this.waitForConnection()
 
         tag = tag || this.generateMessageTag (longTag)
-        const promise = this.waitForMessage(tag, json, timeoutMs)
+        const promise = this.waitForMessage(tag, json, requiresPhoneConnection, timeoutMs)
 
-        if (binaryTags) tag = await this.sendBinary(json as WANode, binaryTags, tag, longTag)
-        else tag = await this.sendJSON(json, tag, longTag)
+        if (binaryTags) tag = await this.sendBinary(json as WANode, binaryTags, tag)
+        else tag = await this.sendJSON(json, tag)
 
         const response = await promise
+
         if (expect200 && response.status && Math.floor(+response.status / 100) !== 2) {
             // read here: http://getstatuscode.com/599
             if (response.status === 599) {
                 this.unexpectedDisconnect (DisconnectReason.badSession)
-                const response = await this.query ({json, binaryTags, tag, timeoutMs, expect200, waitForOpen})
+                const response = await this.query (q)
                 return response
             }
+
             const message = STATUS_CODES[response.status] || 'unknown'
-            throw new BaileysError(
+            throw new BaileysError (
                 `Unexpected status in '${json[0] || 'generic query'}': ${STATUS_CODES[response.status]}(${response.status})`, 
                 {query: json, message, status: response.status}
             )
         }
         return response
+    }
+    /** interval is started when a query takes too long to respond */
+    protected startPhoneCheckInterval () {
+        // if its been a long time and we haven't heard back from WA, send a ping
+        this.phoneCheckInterval = setInterval (() => {
+            if (!this.conn) return  // if disconnected, then don't do anything
+
+            this.logger.debug ('checking phone connection...')
+            this.sendAdminTest ()
+            
+            this.phoneConnected = false
+            this.emit ('connection-phone-change', { connected: false })
+        }, this.connectOptions.phoneResponseTime)
+    }
+    protected clearPhoneCheckInterval () {
+        this.phoneCheckInterval && clearInterval (this.phoneCheckInterval)
+        this.phoneCheckInterval = undefined
+    }
+    protected async sendAdminTest () {
+        return this.sendJSON (['admin', 'test'])
     }
     /**
      * Send a binary encoded message
@@ -335,9 +364,6 @@ export class WAConnection extends EventEmitter {
     protected closeInternal (reason?: DisconnectReason, isReconnecting: boolean=false) {
         this.logger.info (`closed connection, reason ${reason}${isReconnecting ? ', reconnecting in a few seconds...' : ''}`)  
 
-        this.qrTimeout && clearTimeout (this.qrTimeout)
-        this.debounceTimeout && clearTimeout (this.debounceTimeout)
-        
         this.state = 'close'
         this.phoneConnected = false
         this.lastDisconnectReason = reason
@@ -358,7 +384,12 @@ export class WAConnection extends EventEmitter {
         this.conn?.removeAllListeners ('open')
         this.conn?.removeAllListeners ('message')
 
+        this.qrTimeout && clearTimeout (this.qrTimeout)
+        this.debounceTimeout && clearTimeout (this.debounceTimeout)
         this.keepAliveReq && clearInterval(this.keepAliveReq)
+        this.clearPhoneCheckInterval ()
+
+
         try {
             this.conn?.close()
             this.conn?.terminate()

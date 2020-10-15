@@ -1,4 +1,4 @@
-import { WAConnection, MessageLogLevel, MessageOptions, MessageType, unixTimestampSeconds, toNumber, GET_MESSAGE_ID, waMessageKey } from '../WAConnection/WAConnection'
+import { WAConnection, MessageOptions, MessageType, unixTimestampSeconds, toNumber, GET_MESSAGE_ID, waMessageKey } from '../WAConnection/WAConnection'
 import * as assert from 'assert'
 import {promises as fs} from 'fs'
 
@@ -21,7 +21,7 @@ export const WAConnectionTest = (name: string, func: (conn: WAConnection) => voi
     describe(name, () => {
         const conn = new WAConnection()
         conn.connectOptions.maxIdleTimeMs = 30_000
-        conn.logLevel = MessageLogLevel.unhandled
+        conn.logger.level = 'debug'
 
         before(async () => {
             const file = './auth_info.json'

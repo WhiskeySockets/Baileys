@@ -24,7 +24,8 @@ export class WAConnection extends Base {
                     json: ['admin', 'init', this.version, this.browserDescription, this.authInfo?.clientID, true], 
                     expect200: true, 
                     waitForOpen: false, 
-                    longTag: true
+                    longTag: true,
+                    requiresPhoneConnection: false
                 })
                 if (!canLogin) {
                     stopDebouncedTimeout () // stop the debounced timeout for QR gen
@@ -48,11 +49,11 @@ export class WAConnection extends Base {
                     if (reconnect) json.push(...['reconnect', reconnect.replace('@s.whatsapp.net', '@c.us')])
                     else json.push ('takeover')
                     
-                    let response = await this.query({ json, tag: 's1', waitForOpen: false, expect200: true, longTag: true }) // wait for response with tag "s1"
+                    let response = await this.query({ json, tag: 's1', waitForOpen: false, expect200: true, longTag: true, requiresPhoneConnection: false }) // wait for response with tag "s1"
                     // if its a challenge request (we get it when logging in)
                     if (response[1]?.challenge) {
                         await this.respondToChallenge(response[1].challenge)
-                        response = await this.waitForMessage('s2', [])
+                        response = await this.waitForMessage('s2', [], true)
                     }
                     return response
                 })()
@@ -64,7 +65,7 @@ export class WAConnection extends Base {
         
         this.logger.info('validated connection successfully')
 
-        const response = await this.query({ json: ['query', 'ProfilePicThumb', this.user.jid], waitForOpen: false, expect200: false })
+        const response = await this.query({ json: ['query', 'ProfilePicThumb', this.user.jid], waitForOpen: false, expect200: false, requiresPhoneConnection: false })
         this.user.imgUrl = response?.eurl || ''
 
         this.sendPostConnectQueries ()
@@ -93,7 +94,8 @@ export class WAConnection extends Base {
             expect200: true, 
             waitForOpen: false, 
             longTag: true,
-            timeoutMs: this.connectOptions.maxIdleTimeMs
+            timeoutMs: this.connectOptions.maxIdleTimeMs,
+            requiresPhoneConnection: false
         })
         return response.ref as string
     }
@@ -212,7 +214,7 @@ export class WAConnection extends Base {
         emitQR ()
         if (this.connectOptions.regenerateQRIntervalMs) regenQR ()
 
-        const json = await this.waitForMessage('s1', [])
+        const json = await this.waitForMessage('s1', [], false)
         this.qrTimeout && clearTimeout (this.qrTimeout)
         this.qrTimeout = null
         

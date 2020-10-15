@@ -37,7 +37,7 @@ export class WAConnection extends Base {
                 const willReconnect = !loggedOut && (tries <= (options?.maxRetries || 5)) && this.state === 'connecting'
                 const reason = loggedOut ? DisconnectReason.invalidSession : error.message
 
-                this.logger.warn (`connect attempt ${tries} failed${ willReconnect ? ', retrying...' : ''}`, error)
+                this.logger.warn ({ error }, `connect attempt ${tries} failed${ willReconnect ? ', retrying...' : ''}`)
 
                 if ((this.state as string) !== 'close' && !willReconnect) {
                     this.closeInternal (reason)
@@ -317,10 +317,6 @@ export class WAConnection extends Base {
                 if (this.logger.level === 'trace') {
                     this.logger.trace(messageTag + ', ' + JSON.stringify(json))
                 }
-                if (!this.phoneConnected && this.state === 'open') {
-                    this.phoneConnected = true
-                    this.emit ('connection-phone-change', { connected: true })
-                }
                 /*
                 Check if this is a response to a message we sent
                 */
@@ -365,11 +361,18 @@ export class WAConnection extends Base {
                         return
                     }
                 }
+                if (this.state === 'open' && json[0] === 'Pong') {
+                    if (this.phoneConnected !== json[1]) {
+                        this.phoneConnected = json[1]
+                        this.emit ('connection-phone-change', { connected: this.phoneConnected })
+                        return
+                    }
+                }
                 if (this.logger.level === 'debug') {
-                    this.logger.debug({ unhandled: true }, messageTag + ', ' + JSON.stringify(json))
+                    this.logger.debug({ unhandled: true }, messageTag + ',' + JSON.stringify(json))
                 }
             } catch (error) {
-                this.logger.error (`encountered error in decrypting message, closing`, error)
+                this.logger.error ({ error }, `encountered error in decrypting message, closing`)
                 
                 if (this.state === 'open') this.unexpectedDisconnect (DisconnectReason.badSession)
                 else this.endConnection ()
@@ -389,29 +392,6 @@ export class WAConnection extends Base {
 			*/
             if (diff > KEEP_ALIVE_INTERVAL_MS+5000) this.unexpectedDisconnect (DisconnectReason.lost)
             else if (this.conn) this.send ('?,,') // if its all good, send a keep alive request
-
-            // poll phone connection as well, 
-            // 5000 ms for timeout
-            this.checkPhoneConnection (this.connectOptions.phoneResponseTime || 7500) 
-            .then (connected => {
-                this.phoneConnected !== connected && this.emit ('connection-phone-change', {connected})
-                this.phoneConnected = connected
-            })
-
         }, KEEP_ALIVE_INTERVAL_MS)
-    }
-    /**
-     * Check if your phone is connected
-     * @param timeoutMs max time for the phone to respond
-     */
-    async checkPhoneConnection(timeoutMs = 5000) {
-        if (this.state !== 'open') return false
-
-        try {
-            const response = await this.query({json: ['admin', 'test'], timeoutMs, waitForOpen: false})
-            return response[1] as boolean
-        } catch (error) {
-            return false
-        }
     }
 }

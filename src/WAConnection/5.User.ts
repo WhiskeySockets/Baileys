@@ -13,7 +13,7 @@ import { Mutex } from './Mutex'
 
 export class WAConnection extends Base {
     /** Query whether a given number is registered on WhatsApp */
-    isOnWhatsApp = (jid: string) => this.query({json: ['query', 'exist', jid]}).then((m) => m.status === 200)
+    isOnWhatsApp = (jid: string) => this.query({json: ['query', 'exist', jid], requiresPhoneConnection: false}).then((m) => m.status === 200)
     /**
      * Tell someone about your presence -- online, typing, offline etc.
      * @param jid the ID of the person/group who you are updating
@@ -35,7 +35,7 @@ export class WAConnection extends Base {
     requestPresenceUpdate = async (jid: string) => this.query({ json: ['action', 'presence', 'subscribe', jid] })
     /** Query the status of the person (see groupMetadata() for groups) */
     async getStatus (jid?: string) {
-        const status: { status: string } = await this.query({ json: ['query', 'Status', jid || this.user.jid] })
+        const status: { status: string } = await this.query({ json: ['query', 'Status', jid || this.user.jid], requiresPhoneConnection: false })
         return status
     }
     async setStatus (status: string) {
@@ -60,7 +60,7 @@ export class WAConnection extends Base {
     /** Get the stories of your contacts */
     async getStories() {
         const json = ['query', { epoch: this.msgCount.toString(), type: 'status' }, null]
-        const response = await this.query({json, binaryTags: [30, WAFlag.ignore], expect200: true}) as WANode
+        const response = await this.query({json, binaryTags: [30, WAFlag.ignore], expect200: true }) as WANode
         if (Array.isArray(response[2])) {
             return response[2].map (row => (
                 { 
@@ -78,7 +78,7 @@ export class WAConnection extends Base {
         return this.query({ json, binaryTags: [5, WAFlag.ignore], expect200: true }) // this has to be an encrypted query
     }
     /** Query broadcast list info */
-    async getBroadcastListInfo(jid: string) { return this.query({json: ['query', 'contact', jid], expect200: true}) as Promise<WABroadcastListInfo> }
+    async getBroadcastListInfo(jid: string) { return this.query({json: ['query', 'contact', jid], expect200: true }) as Promise<WABroadcastListInfo> }
     /** Delete the chat of a given ID */
     async deleteChat (jid: string) {
         const response = await this.setQuery ([ ['chat', {type: 'delete', jid: jid}, null] ], [12, WAFlag.ignore]) as {status: number}

@@ -266,7 +266,7 @@ export class WAConnection extends Base {
     /** Query a string to check if it has a url, if it does, return required extended text message */
     async generateLinkPreview (text: string) {
         const query = ['query', {type: 'url', url: text, epoch: this.msgCount.toString()}, null]
-        const response = await this.query ({json: query, binaryTags: [26, WAFlag.ignore], expect200: true})
+        const response = await this.query ({json: query, binaryTags: [26, WAFlag.ignore], expect200: true, requiresPhoneConnection: false})
 
         if (response[1]) response[1].jpegThumbnail = response[2]
         const data = response[1] as WAUrlInfo
@@ -289,7 +289,7 @@ export class WAConnection extends Base {
         return this.mediaConn
     }
     protected async getNewMediaConn () {
-        const {media_conn} = await this.query({json: ['query', 'mediaConn']})
+        const {media_conn} = await this.query({json: ['query', 'mediaConn'], requiresPhoneConnection: false})
         return media_conn as MediaConnInfo
     }
 }
