@@ -431,4 +431,5 @@ export type BaileysEvent =
     'group-settings-update' |
     'group-description-update' |
     'received-pong' |
-    'credentials-updated'
+    'credentials-updated' |
+    'connection-validated'

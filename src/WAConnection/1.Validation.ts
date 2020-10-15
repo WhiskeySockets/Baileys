@@ -64,6 +64,7 @@ export class WAConnection extends Base {
         this.user = await this.validateNewConnection(validationJSON[1]) // validate the connection
         
         this.logger.info('validated connection successfully')
+        this.emit ('connection-validated', this.user)
 
         const response = await this.query({ json: ['query', 'ProfilePicThumb', this.user.jid], waitForOpen: false, expect200: false, requiresPhoneConnection: false })
         this.user.imgUrl = response?.eurl || ''
