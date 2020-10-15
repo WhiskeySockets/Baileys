@@ -203,9 +203,9 @@ export class WAConnection extends Base {
                 .then (newRef => ref = newRef)
                 .then (emitQR)
                 .then (regenQR)
-                .catch (err => {
-                    this.logger.error (`error in QR gen: `, err)
-                    if (err.status === 429) { // too many QR requests
+                .catch (error => {
+                    this.logger.error ({ error }, `error in QR gen`)
+                    if (error.status === 429) { // too many QR requests
                         this.endConnection ()
                     }
                 })

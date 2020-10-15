@@ -34,7 +34,7 @@ export class WAConnection extends Base {
                 lastConnect = new Date()
 
                 const loggedOut = error instanceof BaileysError && UNAUTHORIZED_CODES.includes(error.status)
-                const willReconnect = !loggedOut && (tries <= (options?.maxRetries || 5)) && this.state === 'connecting'
+                const willReconnect = !loggedOut && (tries < options?.maxRetries) && (this.state === 'connecting')
                 const reason = loggedOut ? DisconnectReason.invalidSession : error.message
 
                 this.logger.warn ({ error }, `connect attempt ${tries} failed${ willReconnect ? ', retrying...' : ''}`)
