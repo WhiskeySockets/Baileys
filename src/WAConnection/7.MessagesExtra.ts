@@ -93,7 +93,7 @@ export class WAConnection extends Base {
      * @param cursor the data for which message to offset the query by
      * @param mostRecentFirst retreive the most recent message first or retreive from the converation start
      */
-    @Mutex ()
+    @Mutex (jid => jid)
     async loadMessages (
         jid: string,
         count: number,
