@@ -199,8 +199,9 @@ export class WAConnection extends Base {
             name
         }
         this.chats.insert (chat)
-
-        await this.setProfilePicture (chat)
+        if (this.loadProfilePicturesForChatsAutomatically) {
+            await this.setProfilePicture (chat)
+        }
         this.emit ('chat-new', chat)
 
         return chat

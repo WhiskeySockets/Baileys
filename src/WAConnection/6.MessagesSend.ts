@@ -85,6 +85,8 @@ export class WAConnection extends Base {
     }
     /** Prepare a media message for sending */
     async prepareMessageMedia(buffer: Buffer, mediaType: MessageType, options: MessageOptions = {}) {
+        await this.waitForConnection ()
+
         if (mediaType === MessageType.document && !options.mimetype) {
             throw new Error('mimetype required to send a document')
         }

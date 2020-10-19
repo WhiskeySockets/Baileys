@@ -65,6 +65,7 @@ export class WAConnection extends EventEmitter {
     messageLog: { tag: string, json: string, fromMe: boolean, binaryTags?: any[] }[] = []
 
     maxCachedMessages = 50
+    loadProfilePicturesForChatsAutomatically = true
 
     chats = new KeyedDB (Utils.waChatKey(false), value => value.jid)
     contacts: { [k: string]: WAContact } = {}
