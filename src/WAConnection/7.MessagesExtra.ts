@@ -23,7 +23,6 @@ export class WAConnection extends Base {
 
         const info: MessageInfo = {reads: [], deliveries: []}
         if (response) {
-            //console.log (response)
             const reads = response.filter (node => node[0] === 'read')
             if (reads[0]) {
                 info.reads = reads[0][2].map (item => item[1])

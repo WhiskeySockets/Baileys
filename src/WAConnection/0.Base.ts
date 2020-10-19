@@ -403,7 +403,7 @@ export class WAConnection extends EventEmitter {
 
         Object.keys(this.callbacks).forEach(key => {
             if (!key.startsWith('function:')) {
-                this.logger.trace (`cancelling message wait: ${key}`)
+                this.logger.debug (`cancelling message wait: ${key}`)
                 this.callbacks[key].errCallback(new Error('close'))
                 delete this.callbacks[key]
             }
@@ -424,7 +424,4 @@ export class WAConnection extends EventEmitter {
         const seconds = Utils.unixTimestampSeconds(this.referenceDate)
         return `${longTag ? seconds : (seconds%1000)}.--${this.msgCount}`
     }
-    /*protected log(text, level: MessageLogLevel) {
-        (this.logLevel >= level) && console.log(`[Baileys][${new Date().toLocaleString()}] ${text}`)
-    }*/
 }
