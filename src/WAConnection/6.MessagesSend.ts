@@ -11,7 +11,7 @@ import {
     WATextMessage,
     WAMessageContent, WAMetric, WAFlag, WAMessage, BaileysError, WA_MESSAGE_STATUS_TYPE, WAMessageProto, MediaConnInfo, MessageTypeProto, URL_REGEX, WAUrlInfo
 } from './Constants'
-import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes, generateThumbnail, getMediaKeys, decodeMediaMessageBuffer, extensionForMediaMessage, whatsappID, unixTimestampSeconds  } from './Utils'
+import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes, generateThumbnail, getMediaKeys, decodeMediaMessageBuffer, extensionForMediaMessage, whatsappID, unixTimestampSeconds, getAudioDuration  } from './Utils'
 import { Mutex } from './Mutex'
 
 export class WAConnection extends Base {
@@ -117,8 +117,14 @@ export class WAConnection extends Base {
                                     .replace(/\//g, '_')
                                     .replace(/\=+$/, '')
                                 )
-
         await generateThumbnail(buffer, mediaType, options)
+        if (mediaType === MessageType.audio && !options.duration) {
+            try {
+                options.duration = await getAudioDuration (buffer)
+            } catch (error) {
+                this.logger.debug ({ error }, 'failed to obtain audio duration: ' + error.message)
+            }
+        }
 
         // send a query JSON to obtain the url & auth token to upload our media
         let json = await this.refreshMediaConn (options.forceNewMediaOptions)
@@ -154,6 +160,7 @@ export class WAConnection extends Base {
                     fileEncSha256: fileEncSha256,
                     fileSha256: fileSha256,
                     fileLength: buffer.length,
+                    seconds: options.duration,
                     fileName: options.filename || 'file',
                     gifPlayback: isGIF || undefined,
                     caption: options.caption,

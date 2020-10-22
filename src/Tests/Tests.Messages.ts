@@ -57,14 +57,16 @@ WAConnectionTest('Messages', conn => {
     })
     it('should send an audio', async () => {
         const content = await fs.readFile('./Media/sonata.mp3')
-        const message = await sendAndRetreiveMessage(conn, content, MessageType.audio, { mimetype: Mimetype.ogg })
-        
+        const message = await sendAndRetreiveMessage(conn, content, MessageType.audio, { mimetype: Mimetype.mp4Audio })
+        // check duration was okay
+        assert.ok (message.message.audioMessage.seconds > 0)
         await conn.downloadAndSaveMediaMessage(message,'./Media/received_aud')
     })
     it('should send an audio as a voice note', async () => {
         const content = await fs.readFile('./Media/sonata.mp3')
-        const message = await sendAndRetreiveMessage(conn, content, MessageType.audio, { mimetype: Mimetype.ogg, ptt: true })
+        const message = await sendAndRetreiveMessage(conn, content, MessageType.audio, { mimetype: Mimetype.mp4Audio, ptt: true })
         
+        assert.ok (message.message.audioMessage.seconds > 0)
         assert.equal (message.message?.audioMessage?.ptt, true)
         await conn.downloadAndSaveMediaMessage(message,'./Media/received_aud')
     })
