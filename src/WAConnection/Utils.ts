@@ -7,8 +7,6 @@ import {platform, release} from 'os'
 import HttpsProxyAgent from 'https-proxy-agent'
 import { URL } from 'url'
 import { Agent } from 'https'
-import { getAudioDurationInSeconds } from 'get-audio-duration'
-import mp3Duration from 'mp3-duration'
 import Decoder from '../Binary/Decoder'
 import { MessageType, HKDFInfoKeys, MessageOptions, WAChat, WAMessageContent, BaileysError, WAMessageProto, TimedOutError, CancelledError, WAGenericMediaMessage, WAMessage, WAMessageKey } from './Constants'
 import { Readable } from 'stream'
@@ -236,9 +234,11 @@ export const mediaMessageSHA256B64 = (message: WAMessageContent) => {
 export async function getAudioDuration (buffer: Buffer) {
     let duration: number
     try {
-        duration = await mp3Duration (buffer)
+        const mp3Duration = await import ('mp3-duration')
+        duration = await mp3Duration (buffer, true)
     } catch {
         const readable = new Readable({ read () { this.push(buffer); this.push (null) } })
+        const {getAudioDurationInSeconds} = await import ('get-audio-duration')
         duration = await getAudioDurationInSeconds (readable)
     }
     return duration
