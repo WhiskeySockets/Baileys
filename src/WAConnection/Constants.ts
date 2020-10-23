@@ -57,6 +57,7 @@ export interface WAQuery {
     waitForOpen?: boolean
     longTag?: boolean
     requiresPhoneConnection?: boolean
+    startDebouncedTimeout?: boolean
 }
 export enum ReconnectMode {
     /** does not reconnect */

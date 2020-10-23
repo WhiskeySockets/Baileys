@@ -66,16 +66,6 @@ export class WAConnection extends Base {
             let cancel: () => void
             const task = new Promise((resolve, reject) => {
                 cancel = () => reject (CancelledError())
-                
-                const checkIdleTime = () => {
-                    this.debounceTimeout && clearTimeout (this.debounceTimeout)
-                    this.debounceTimeout = setTimeout (() => rejectSafe (TimedOutError()), this.connectOptions.maxIdleTimeMs)
-                }
-                const startDebouncedTimeout = () => this.connectOptions.maxIdleTimeMs && this.conn.addEventListener ('message', checkIdleTime)
-                const stopDebouncedTimeout = () => {
-                    clearTimeout (this.debounceTimeout)
-                    this.conn.removeEventListener ('message', checkIdleTime)
-                }
                 // determine whether reconnect should be used or not
                 const shouldUseReconnect = (this.lastDisconnectReason === DisconnectReason.close || 
                                             this.lastDisconnectReason === DisconnectReason.lost) &&
@@ -110,7 +100,8 @@ export class WAConnection extends Base {
                         }
                     }
                     try {
-                        await this.authenticate (startDebouncedTimeout, stopDebouncedTimeout, reconnectID)
+                        this.onDebounceTimeout = () => rejectSafe(TimedOutError())
+                        await this.authenticate (reconnectID)
                         
                         this.startKeepAliveRequest()
                         
@@ -118,7 +109,9 @@ export class WAConnection extends Base {
                             .removeAllListeners ('error')
                             .removeAllListeners ('close')
                         const result = waitForChats && (await waitForChats)
-                        this.conn.removeEventListener ('message', checkIdleTime)
+
+                        this.stopDebouncedTimeout ()
+
                         resolve (result)
                     } catch (error) {
                         reject (error)
@@ -177,10 +170,8 @@ export class WAConnection extends Base {
         const deregisterCallbacks = () => {
             // wait for actual messages to load, "last" is the most recent message, "before" contains prior messages
             this.deregisterCallback(['action', 'add:last'])
-            if (!waitOnlyForLast) {
-                this.deregisterCallback(['action', 'add:before'])
-                this.deregisterCallback(['action', 'add:unread'])    
-            }
+            this.deregisterCallback(['action', 'add:before'])
+            this.deregisterCallback(['action', 'add:unread'])    
             
             this.deregisterCallback(['response', 'type:chat'])
             this.deregisterCallback(['response', 'type:contacts'])
@@ -189,13 +180,13 @@ export class WAConnection extends Base {
         
         // wait for messages to load
         const chatUpdate = json => {
+            this.startDebouncedTimeout () // restart debounced timeout
             receivedMessages = true
 
             const isLast = json[1].last || waitOnlyForLast
             const messages = json[2] as WANode[]
 
             if (messages) {
-                
                 messages.reverse().forEach (([,, message]: ['message', null, WAMessage]) => {
                     const jid = message.key.remoteJid
                     const chat = chats.get(jid)
@@ -207,7 +198,6 @@ export class WAConnection extends Base {
                         message['epoch'] = prevEpoch-1
                         chat.messages.insert (message)
                     }
-                    
                 })
             }
             // if received contacts before messages
@@ -222,6 +212,7 @@ export class WAConnection extends Base {
         // get chats
         this.registerCallback(['response', 'type:chat'], json => {
             if (json[1].duplicate || !json[2]) return
+            this.startDebouncedTimeout () // restart debounced timeout
 
             json[2]
             .forEach(([item, chat]: [any, WAChat]) => {
@@ -248,6 +239,7 @@ export class WAConnection extends Base {
         // get contacts
         this.registerCallback(['response', 'type:contacts'], json => {
             if (json[1].duplicate || !json[2]) return
+            this.startDebouncedTimeout () // restart debounced timeout
 
             receivedContacts = true
             

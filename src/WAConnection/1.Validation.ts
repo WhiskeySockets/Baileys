@@ -6,7 +6,7 @@ import { WAMetric, WAFlag, BaileysError, Presence, WAUser } from './Constants'
 export class WAConnection extends Base {
     
     /** Authenticate the connection */
-    protected async authenticate (startDebouncedTimeout: () => void, stopDebouncedTimeout: () => void, reconnect?: string) {
+    protected async authenticate (reconnect?: string) {
         // if no auth info is present, that is, a new session has to be established
         // generate a client ID
         if (!this.authInfo?.clientID) {
@@ -16,7 +16,7 @@ export class WAConnection extends Base {
         const canLogin = this.authInfo?.encKey && this.authInfo?.macKey        
         this.referenceDate = new Date () // refresh reference date
 
-        startDebouncedTimeout ()
+        this.startDebouncedTimeout ()
         
         const initQueries = [
             (async () => {
@@ -25,12 +25,13 @@ export class WAConnection extends Base {
                     expect200: true, 
                     waitForOpen: false, 
                     longTag: true,
-                    requiresPhoneConnection: false
+                    requiresPhoneConnection: false,
+                    startDebouncedTimeout: true
                 })
                 if (!canLogin) {
-                    stopDebouncedTimeout () // stop the debounced timeout for QR gen
+                    this.stopDebouncedTimeout () // stop the debounced timeout for QR gen
                     const result = await this.generateKeysForAuth (ref)
-                    startDebouncedTimeout () // restart debounced timeout
+                    this.startDebouncedTimeout () // restart debounced timeout
                     return result
                 }
             })()
@@ -49,7 +50,15 @@ export class WAConnection extends Base {
                     if (reconnect) json.push(...['reconnect', reconnect.replace('@s.whatsapp.net', '@c.us')])
                     else json.push ('takeover')
                     
-                    let response = await this.query({ json, tag: 's1', waitForOpen: false, expect200: true, longTag: true, requiresPhoneConnection: false }) // wait for response with tag "s1"
+                    let response = await this.query({ 
+                        json, 
+                        tag: 's1', 
+                        waitForOpen: false, 
+                        expect200: true, 
+                        longTag: true, 
+                        requiresPhoneConnection: false, 
+                        startDebouncedTimeout: true 
+                    }) // wait for response with tag "s1"
                     // if its a challenge request (we get it when logging in)
                     if (response[1]?.challenge) {
                         await this.respondToChallenge(response[1].challenge)
@@ -66,9 +75,11 @@ export class WAConnection extends Base {
         this.logger.info('validated connection successfully')
         this.emit ('connection-validated', this.user)
 
-        const response = await this.query({ json: ['query', 'ProfilePicThumb', this.user.jid], waitForOpen: false, expect200: false, requiresPhoneConnection: false })
-        this.user.imgUrl = response?.eurl || ''
-
+        if (this.loadProfilePicturesForChatsAutomatically) {
+            const response = await this.query({ json: ['query', 'ProfilePicThumb', this.user.jid], waitForOpen: false, expect200: false, requiresPhoneConnection: false, startDebouncedTimeout: true  })
+            this.user.imgUrl = response?.eurl || ''
+        }
+        
         this.sendPostConnectQueries ()
 
         this.logger.debug('sent init queries')
@@ -181,7 +192,7 @@ export class WAConnection extends Base {
         const json = ['admin', 'challenge', signed, this.authInfo.serverToken, this.authInfo.clientID] // prepare to send this signed string with the serverToken & clientID
         
         this.logger.info('resolving login challenge')
-        return this.query({json, expect200: true, waitForOpen: false})
+        return this.query({json, expect200: true, waitForOpen: false, startDebouncedTimeout: true})
     }
     /** When starting a new session, generate a QR code by generating a private/public key pair & the keys the server sends */
     protected async generateKeysForAuth(ref: string) {
@@ -194,21 +205,21 @@ export class WAConnection extends Base {
         }
 
         const regenQR = () => {
-            this.qrTimeout = setTimeout (() => {
+            this.qrTimeout = setTimeout (async () => {
                 if (this.state === 'open') return
 
                 this.logger.debug ('regenerated QR')
-                
-                this.generateNewQRCodeRef ()
-                .then (newRef => ref = newRef)
-                .then (emitQR)
-                .then (regenQR)
-                .catch (error => {
+                try {
+                    const newRef = await this.generateNewQRCodeRef ()
+                    ref = newRef
+                    emitQR ()
+                    regenQR ()
+                } catch (error) {
                     this.logger.error ({ error }, `error in QR gen`)
                     if (error.status === 429) { // too many QR requests
                         this.endConnection ()
                     }
-                })
+                }
             }, this.connectOptions.regenerateQRIntervalMs)
         }
 

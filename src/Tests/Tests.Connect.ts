@@ -116,16 +116,20 @@ describe('Test Connect', () => {
 describe ('Reconnects', () => {
     const verifyConnectionOpen = async (conn: WAConnection) => {
         assert.ok (conn.user.jid)
+        let failed = false
         // check that the connection stays open
-        conn.on ('close', ({reason}) => (
-            reason !== DisconnectReason.intentional && assert.fail ('should not have closed again')
-        ))
+        conn.on ('close', ({reason}) => {
+            if(reason !== DisconnectReason.intentional) failed = true
+        })
         await delay (60*1000)
 
         const status = await conn.getStatus ()
         assert.ok (status)
+        assert.ok (!conn['debounceTimeout']) // this should be null
 
         conn.close ()
+
+        if (failed) assert.fail ('should not have closed again')
     }
     it('should dispose correctly on bad_session', async () => {
         const conn = new WAConnection()
@@ -185,6 +189,7 @@ describe ('Reconnects', () => {
      */
     it('should disrupt connect loop', async () => {
         const conn = new WAConnection()
+
         conn.autoReconnect = ReconnectMode.onAllErrors
         conn.loadAuthInfo ('./auth_info.json')
 
@@ -194,7 +199,7 @@ describe ('Reconnects', () => {
             while (!conn['conn']) {
                 await delay(100)
             }
-            conn['conn'].terminate ()
+            conn['conn'].close ()
 
             while (conn['conn']) {
                 await delay(100)

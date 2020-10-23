@@ -32,7 +32,7 @@ const logger = pino({ prettyPrint: { levelFirst: true, ignore: 'hostname', trans
 
 export class WAConnection extends EventEmitter {
     /** The version of WhatsApp Web we're telling the servers we are */
-    version: [number, number, number] = [2, 2041, 6]
+    version: [number, number, number] = [2, 2043, 8]
     /** The Browser we're telling the WhatsApp Web servers we are */
     browserDescription: [string, string, string] = Utils.Browsers.baileys ('Chrome')
     /** Metadata like WhatsApp id, name set on WhatsApp etc. */
@@ -46,8 +46,8 @@ export class WAConnection extends EventEmitter {
         maxIdleTimeMs: 15_000,
         waitOnlyForLastMessage: false,
         waitForChats: true,
-        maxRetries: 5,
-        connectCooldownMs: 3000,
+        maxRetries: 10,
+        connectCooldownMs: 4000,
         phoneResponseTime: 10_000,
         alwaysUseTakeover: true
     }
@@ -93,11 +93,12 @@ export class WAConnection extends EventEmitter {
 
     protected mediaConn: MediaConnInfo
     protected debounceTimeout: NodeJS.Timeout
+    protected onDebounceTimeout = () => {}
 
     constructor () {
         super ()
         this.registerCallback (['Cmd', 'type:disconnect'], json => (
-            this.unexpectedDisconnect(json[1].kind || 'unknown')
+            this.state === 'open' && this.unexpectedDisconnect(json[1].kind || 'unknown')
         ))
     }
     /**
@@ -246,7 +247,7 @@ export class WAConnection extends EventEmitter {
      * @param tag the tag to attach to the message
      */
     async query(q: WAQuery) {
-        let {json, binaryTags, tag, timeoutMs, expect200, waitForOpen, longTag, requiresPhoneConnection} = q
+        let {json, binaryTags, tag, timeoutMs, expect200, waitForOpen, longTag, requiresPhoneConnection, startDebouncedTimeout} = q
         requiresPhoneConnection = requiresPhoneConnection !== false
         waitForOpen = waitForOpen !== false
         if (waitForOpen) await this.waitForConnection()
@@ -273,6 +274,7 @@ export class WAConnection extends EventEmitter {
                 {query: json, message, status: response.status}
             )
         }
+        if (startDebouncedTimeout) this.stopDebouncedTimeout ()
         return response
     }
     /** interval is started when a query takes too long to respond */
@@ -319,6 +321,14 @@ export class WAConnection extends EventEmitter {
         ])
         await this.send(buff) // send it off
         return tag
+    }
+    protected startDebouncedTimeout () {
+        this.stopDebouncedTimeout ()
+        this.debounceTimeout = setTimeout (() => this.onDebounceTimeout(), this.connectOptions.maxIdleTimeMs)
+    }
+    protected stopDebouncedTimeout ()  {
+        this.debounceTimeout && clearTimeout (this.debounceTimeout)
+        this.debounceTimeout = null
     }
     /**
      * Send a plain JSON message to the WhatsApp servers
@@ -390,10 +400,9 @@ export class WAConnection extends EventEmitter {
         this.keepAliveReq && clearInterval(this.keepAliveReq)
         this.clearPhoneCheckInterval ()
 
-
         try {
             this.conn?.close()
-            this.conn?.terminate()
+            //this.conn?.terminate()
         } catch {
 
         }
