@@ -108,7 +108,7 @@ export class WAConnection extends Base {
         const cursorValue = hasCursor && chat.messages.get (GET_MESSAGE_ID(cursor))
         
         let messages: WAMessage[]
-        if (chat && mostRecentFirst && (!hasCursor || cursorValue)) {
+        if (chat?.messages && mostRecentFirst && (!hasCursor || cursorValue)) {
             messages = chat.messages.paginatedByValue (cursorValue, count, null, 'before')
             
             const diff = count - messages.length
