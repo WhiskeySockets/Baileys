@@ -9,7 +9,6 @@ import { URL } from 'url'
 import { Agent } from 'https'
 import Decoder from '../Binary/Decoder'
 import { MessageType, HKDFInfoKeys, MessageOptions, WAChat, WAMessageContent, BaileysError, WAMessageProto, TimedOutError, CancelledError, WAGenericMediaMessage, WAMessage, WAMessageKey } from './Constants'
-import { Readable } from 'stream'
 
 const platformMap = {
     'aix': 'AIX',
@@ -232,16 +231,9 @@ export const mediaMessageSHA256B64 = (message: WAMessageContent) => {
     return media?.fileSha256 && Buffer.from(media.fileSha256).toString ('base64')
 }
 export async function getAudioDuration (buffer: Buffer) {
-    let duration: number
-    try {
-        const mp3Duration = await import ('mp3-duration')
-        duration = await mp3Duration (buffer, true)
-    } catch {
-        const readable = new Readable({ read () { this.push(buffer); this.push (null) } })
-        const {getAudioDurationInSeconds} = await import ('get-audio-duration')
-        duration = await getAudioDurationInSeconds (readable)
-    }
-    return duration
+    const musicMetadata = await import ('music-metadata')
+    const metadata = await musicMetadata.parseBuffer (buffer, null, {duration: true});
+    return metadata.format.duration;
 }
 
 /** generates a thumbnail for a given media, if required */
