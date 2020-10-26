@@ -98,9 +98,10 @@ export class WAConnection extends Base {
      * @returns the chats & the cursor to fetch the next page
      */
     async loadChats (count: number, before: string | null, options: WALoadChatOptions = {}) {
+        const searchString = options.searchString?.toLowerCase()
         const chats = this.chats.paginated (before, count, options && (chat => (
             (typeof options?.custom !== 'function' || options?.custom(chat)) &&
-            (typeof options?.searchString === 'undefined' || chat.name?.includes (options.searchString) || chat.jid?.startsWith(options.searchString))
+            (typeof searchString === 'undefined' || chat.name?.toLowerCase().includes (searchString) || chat.jid?.startsWith(searchString))
         )))
         let loadPP = this.loadProfilePicturesForChatsAutomatically
         if (typeof options.loadProfilePicture !== 'undefined') loadPP = options.loadProfilePicture
