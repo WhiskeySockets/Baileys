@@ -330,7 +330,7 @@ export class WAConnection extends Base {
             */
             let anyTriggered = false
             const l0 = json[0] || ''
-            const l1 = typeof json[1] !== 'object' ? {} : json[1]
+            const l1 = typeof json[1] !== 'object' || json[1] === null ? {} : json[1]
             const l2 = ((json[2] || [])[0] || [])[0] || ''
             Object.keys(l1).forEach(key => {
                 anyTriggered = anyTriggered || this.emit (`${DEF_CALLBACK_PREFIX}${l0},${key}:${l1[key]},${l2}`, json)
