@@ -341,7 +341,7 @@ export class WAConnection extends Base {
                     this.logger.debug({ unhandled: true }, messageTag + ',' + JSON.stringify(json))
                 }
             } catch (error) {
-                this.logger.error ({ error }, `encountered error in decrypting message, closing`)
+                this.logger.error ({ error }, `encountered error in decrypting message, closing: ${error}`)
                 
                 if (this.state === 'open') this.unexpectedDisconnect (DisconnectReason.badSession)
                 else this.rejectPendingConnection (new Error(DisconnectReason.badSession))

@@ -208,7 +208,7 @@ export class WAConnection extends Base {
             this.qrTimeout = setTimeout (async () => {
                 if (this.state === 'open') return
 
-                this.logger.debug ('regenerated QR')
+                this.logger.debug ('regenerating QR')
                 try {
                     const newRef = await this.generateNewQRCodeRef ()
                     ref = newRef
@@ -217,7 +217,7 @@ export class WAConnection extends Base {
                 } catch (error) {
                     this.logger.error ({ error }, `error in QR gen`)
                     if (error.status === 429) { // too many QR requests
-                        this.endConnection ()
+                        this.rejectPendingConnection (error)
                     }
                 }
             }, this.connectOptions.regenerateQRIntervalMs)
