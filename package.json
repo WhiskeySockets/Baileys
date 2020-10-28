@@ -22,7 +22,7 @@
     "build:all": "tsc && typedoc",
     "build:docs": "typedoc",
     "build:tsc": "tsc",
-    "example": "npx ts-node Example/example.ts",
+    "example": "node --inspect -r ts-node/register Example/example.ts",
     "gen-protobuf": "ts-node src/Binary/GenerateStatics.ts",
     "browser-decode": "npx ts-node src/BrowserMessageDecoding.ts"
   },

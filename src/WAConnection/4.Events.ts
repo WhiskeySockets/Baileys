@@ -10,7 +10,7 @@ export class WAConnection extends Base {
     constructor () {
         super ()
         // new messages
-        this.registerCallback(['action', 'add:relay', 'message'], json => {
+        this.on('CB:action,add:relay,message', json => {
             const message = json[2][0][2] as WAMessage
             const jid = whatsappID( message.key.remoteJid )
             if (jid.endsWith('@s.whatsapp.net')) {
@@ -22,7 +22,7 @@ export class WAConnection extends Base {
             this.chatAddMessageAppropriate (message)
         })
         // presence updates
-        this.registerCallback('Presence', json => {
+        this.on('CB:Presence', json => {
             const update = json[1] as PresenceUpdate
             
             const jid = whatsappID(update.id)
@@ -38,7 +38,7 @@ export class WAConnection extends Base {
             this.emit('user-presence-update', update)
         })
         // If a message has been updated (usually called when a video message gets its upload url, or live locations)
-        this.registerCallback (['action', 'add:update', 'message'], json => {
+        this.on ('CB:action,add:update,message', json => {
             const message: WAMessage = json[2][0][2]
             const jid = whatsappID(message.key.remoteJid)
             const chat = this.chats.get(jid)
@@ -55,7 +55,7 @@ export class WAConnection extends Base {
             }
         })
         // If a user's contact has changed
-        this.registerCallback (['action', null, 'user'], json => {
+        this.on ('CB:action,,user', json => {
             const node = json[2][0]
             if (node) {
                 const user = node[1] as WAContact
@@ -71,7 +71,7 @@ export class WAConnection extends Base {
             }
         })
         // chat archive, pin etc.
-        this.registerCallback(['action', null, 'chat'], json => {
+        this.on('CB:action,,chat', json => {
             json = json[2][0]
 
             const updateType = json[1].type
@@ -112,7 +112,7 @@ export class WAConnection extends Base {
             }            
         })
         // profile picture updates
-        this.registerCallback(['Cmd', 'type:picture'], async json => {
+        this.on('CB:Cmd,type:picture', async json => {
             const jid = whatsappID(json[1].jid)
             const chat = this.chats.get(jid)
             if (!chat) return
@@ -121,12 +121,12 @@ export class WAConnection extends Base {
             this.emit ('chat-update', { jid, imgUrl: chat.imgUrl })
         })
         // status updates
-        this.registerCallback(['Status'], async json => {
+        this.on('CB:Status', async json => {
             const jid = whatsappID(json[1].id)
             this.emit ('user-status-update', { jid, status: json[1].status })
         })
         // read updates
-        this.registerCallback (['action', null, 'read'], async json => {
+        this.on ('CB:action,,read', async json => {
             const update = json[2][0][1]
             const jid = whatsappID(update.jid)
             const chat = this.chats.get (jid) || await this.chatAdd (jid)
@@ -136,7 +136,7 @@ export class WAConnection extends Base {
 
             this.emit ('chat-update', { jid: chat.jid, count: chat.count })
         })
-        this.registerCallback (['action', 'add:relay', 'received'], json => {
+        this.on ('CB:action,add:relay,received', json => {
             json = json[2][0][1]
             if (json.type === 'error') {
                 const update: WAMessageStatusUpdate = {
@@ -167,8 +167,8 @@ export class WAConnection extends Base {
             }
             this.forwardStatusUpdate (update)
         }
-        this.registerCallback('Msg', func)
-        this.registerCallback('MsgInfo', func)
+        this.on('CB:Msg', func)
+        this.on('CB:MsgInfo', func)
         
         this.on ('qr', qr => QR.generate(qr, { small: true }))
     }
@@ -371,7 +371,8 @@ export class WAConnection extends Base {
     /** when WA sends back a pong */
     on (event: 'received-pong', listener: () => void): this
 
+    on (event: string, listener: (json: any) => void): this
 
-    on (event: BaileysEvent, listener: (...args: any[]) => void) { return super.on (event, listener) }
-    emit (event: BaileysEvent, ...args: any[]) { return super.emit (event, ...args) }
+    on (event: BaileysEvent | string, listener: (...args: any[]) => void) { return super.on (event, listener) }
+    emit (event: BaileysEvent | string, ...args: any[]) { return super.emit (event, ...args) }
 }

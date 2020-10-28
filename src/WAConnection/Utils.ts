@@ -136,7 +136,7 @@ export function generateMessageID() {
 }
 export function decryptWA (message: string | Buffer, macKey: Buffer, encKey: Buffer, decoder: Decoder, fromMe: boolean=false): [string, Object, [number, number]?] {
     let commaIndex = message.indexOf(',') // all whatsapp messages have a tag and a comma, followed by the actual message
-    if (commaIndex < 0) throw Error ('invalid message: ' + message) // if there was no comma, then this message must be not be valid
+    if (commaIndex < 0) throw new BaileysError ('invalid message', { message }) // if there was no comma, then this message must be not be valid
     
     if (message[commaIndex+1] === ',') commaIndex += 1
     let data = message.slice(commaIndex+1, message.length)
@@ -151,7 +151,7 @@ export function decryptWA (message: string | Buffer, macKey: Buffer, encKey: Buf
             json = JSON.parse(data) // parse the JSON
         } else {
             if (!macKey || !encKey) {
-                throw new Error ('recieved encrypted buffer when auth creds unavailable: ' + message)
+                throw new BaileysError ('recieved encrypted buffer when auth creds unavailable', { message })
             }
             /* 
                 If the data recieved was not a JSON, then it must be an encrypted message.

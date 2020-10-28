@@ -123,7 +123,7 @@ async function example() {
     })
 
     /* example of custom functionality for tracking battery */
-    conn.registerCallback(['action', null, 'battery'], json => {
+    conn.on('CB:action,,battery', json => {
         const batteryLevelStr = json[2][0][1].value
         const batterylevel = parseInt(batteryLevelStr)
         console.log('battery level: ' + batterylevel)

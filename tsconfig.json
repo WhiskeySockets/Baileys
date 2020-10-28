@@ -12,7 +12,7 @@
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
-    "lib": ["es2019", "esnext.array"]
+    "lib": ["es2020", "esnext.array"]
   },
   "include": ["src/*/*.ts"],
   "exclude": ["node_modules", "src/Tests/*", "src/Binary/GenerateStatics.ts"]

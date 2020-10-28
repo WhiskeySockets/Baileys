@@ -244,7 +244,7 @@ const options: MessageOptions = {mimetype: Mimetype.gif, caption: "hello!"} // s
 conn.sendMessage(id, buffer, MessageType.video, options)
 // send an audio file
 const buffer = fs.readFileSync("Media/audio.mp3") // can send mp3, mp4, & ogg -- but for mp3 files the mimetype must be set to ogg
-const options: MessageOptions = {mimetype: Mimetype.ogg} // some metadata (can't have caption in audio)
+const options: MessageOptions = {mimetype: Mimetype.mp4Audio} // some metadata (can't have caption in audio)
 conn.sendMessage(id, buffer, MessageType.audio, options)
 ```
 
@@ -496,7 +496,7 @@ This will enable you to see all sorts of messages WhatsApp sends in the console.
 
     Hence, you can register a callback for an event using the following:
     ``` ts
-    conn.registerCallback (["action", null, "battery"], json => {
+    conn.on (["action", null, "battery"], json => {
         const batteryLevelStr = json[2][0][1].value
         const batterylevel = parseInt (batteryLevelStr)
         console.log ("battery level: " + batterylevel + "%")
@@ -516,7 +516,7 @@ This will enable you to see all sorts of messages WhatsApp sends in the console.
 
     Following this, one can implement the following callback:
     ``` ts
-    conn.registerCallback (["Conn", "pushname"], json => {
+    conn.on ('CB:Conn,pushname', json => {
         const pushname = json[1].pushname
         conn.user.name = pushname // update on client too
         console.log ("Name updated: " + pushname)

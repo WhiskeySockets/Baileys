@@ -16,17 +16,18 @@ import {
     WAConnectionState,
     AnyAuthenticationCredentials,
     WAContact,
-    WAChat,
     WAQuery,
     ReconnectMode,
     WAConnectOptions,
     MediaConnInfo,
     DEFAULT_ORIGIN,
+    TimedOutError,
 } from './Constants'
 import { EventEmitter } from 'events'
 import KeyedDB from '@adiwajshing/keyed-db'
 import { STATUS_CODES, Agent } from 'http'
 import pino from 'pino'
+import { rejects } from 'assert'
 
 const logger = pino({ prettyPrint: { levelFirst: true, ignore: 'hostname', translateTime: true },  prettifier: require('pino-pretty') })
 
@@ -81,7 +82,6 @@ export class WAConnection extends EventEmitter {
     protected callbacks: {[k: string]: any} = {}
     protected encoder = new Encoder()
     protected decoder = new Decoder()
-    protected pendingRequests: {resolve: () => void, reject: (error) => void}[] = []
     protected phoneCheckInterval = undefined
 
     protected referenceDate = new Date () // used for generating tags
@@ -93,11 +93,11 @@ export class WAConnection extends EventEmitter {
 
     protected mediaConn: MediaConnInfo
     protected debounceTimeout: NodeJS.Timeout
-    protected onDebounceTimeout = () => {}
+    protected rejectPendingConnection = (e: Error) => {}
 
     constructor () {
         super ()
-        this.registerCallback (['Cmd', 'type:disconnect'], json => (
+        this.on ('CB:Cmd,type:disconnect', json => (
             this.state === 'open' && this.unexpectedDisconnect(json[1].kind || 'unknown')
         ))
     }
@@ -170,48 +170,6 @@ export class WAConnection extends EventEmitter {
             }
         }   
         return this
-    }
-    /**
-     * Register for a callback for a certain function
-     * @param parameters name of the function along with some optional specific parameters
-     */
-    registerCallback(parameters: [string, string?, string?] | string, callback) {
-        if (typeof parameters === 'string') {
-            return this.registerCallback([parameters, null, null], callback)
-        }
-        if (!Array.isArray(parameters)) {
-            throw new Error('parameters (' + parameters + ') must be a string or array')
-        }
-        const func = 'function:' + parameters[0]
-        const key = parameters[1] || ''
-        const key2 = parameters[2] || ''
-        if (!this.callbacks[func]) {
-            this.callbacks[func] = {}
-        }
-        if (!this.callbacks[func][key]) {
-            this.callbacks[func][key] = {}
-        }
-        this.callbacks[func][key][key2] = callback
-    }
-    /**
-     * Cancel all further callback events associated with the given parameters
-     * @param parameters name of the function along with some optional specific parameters
-     */
-    deregisterCallback(parameters: [string, string?, string?] | string) {
-        if (typeof parameters === 'string') {
-            return this.deregisterCallback([parameters])
-        }
-        if (!Array.isArray(parameters)) {
-            throw new Error('parameters (' + parameters + ') must be a string or array')
-        }
-        const func = 'function:' + parameters[0]
-        const key = parameters[1] || ''
-        const key2 = parameters[2] || ''
-        if (this.callbacks[func] && this.callbacks[func][key] && this.callbacks[func][key][key2]) {
-            delete this.callbacks[func][key][key2]
-            return
-        }
-        this.logger.warn('Could not find ' + JSON.stringify(parameters) + ' to deregister')
     }
     /**
      * Wait for a message with a certain tag to be received
@@ -324,7 +282,7 @@ export class WAConnection extends EventEmitter {
     }
     protected startDebouncedTimeout () {
         this.stopDebouncedTimeout ()
-        this.debounceTimeout = setTimeout (() => this.onDebounceTimeout(), this.connectOptions.maxIdleTimeMs)
+        this.debounceTimeout = setTimeout (() => this.rejectPendingConnection(TimedOutError()), this.connectOptions.maxIdleTimeMs)
     }
     protected stopDebouncedTimeout ()  {
         this.debounceTimeout && clearTimeout (this.debounceTimeout)
@@ -352,7 +310,20 @@ export class WAConnection extends EventEmitter {
 
         await Utils.promiseTimeout (
             this.pendingRequestTimeoutMs, 
-            (resolve, reject) => this.pendingRequests.push({resolve, reject})
+            (resolve, reject) => {
+                const onClose = ({ reason }) => {
+                    if (reason === DisconnectReason.invalidSession || reason === DisconnectReason.intentional) {
+                        reject (new Error(reason))
+                    }
+                    this.off ('open', onOpen)
+                }
+                const onOpen = () => {
+                    resolve ()
+                    this.off ('close', onClose)
+                }
+                this.once ('close', onClose)
+                this.once ('open', onOpen)
+            }
         )
     }
     /**
@@ -381,11 +352,6 @@ export class WAConnection extends EventEmitter {
         this.lastDisconnectTime = new Date ()
 
         this.endConnection ()
-
-        if (reason === 'invalid_session' || reason === 'intentional') {
-            this.pendingRequests.forEach (({reject}) => reject(new Error(reason)))
-            this.pendingRequests = []
-        }
         // reconnecting if the timeout is active for the reconnect loop
         this.emit ('close', { reason, isReconnecting })
     }
@@ -400,6 +366,8 @@ export class WAConnection extends EventEmitter {
         this.keepAliveReq && clearInterval(this.keepAliveReq)
         this.clearPhoneCheckInterval ()
 
+        this.rejectPendingConnection && this.rejectPendingConnection (new Error('close'))
+
         try {
             this.conn?.close()
             //this.conn?.terminate()
@@ -411,11 +379,9 @@ export class WAConnection extends EventEmitter {
         this.msgCount = 0
 
         Object.keys(this.callbacks).forEach(key => {
-            if (!key.startsWith('function:')) {
-                this.logger.debug (`cancelling message wait: ${key}`)
-                this.callbacks[key].errCallback(new Error('close'))
-                delete this.callbacks[key]
-            }
+            this.logger.debug (`cancelling message wait: ${key}`)
+            this.callbacks[key].errCallback(new Error('close'))
+            delete this.callbacks[key]
         })
     }
     /**

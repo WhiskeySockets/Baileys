@@ -5,6 +5,8 @@ import Decoder from '../Binary/Decoder'
 import WS from 'ws'
 import KeyedDB from '@adiwajshing/keyed-db'
 
+const DEF_CALLBACK_PREFIX = 'CB:'
+
 export class WAConnection extends Base {
     /** Connect to WhatsApp Web */
     async connect () {
@@ -50,8 +52,6 @@ export class WAConnection extends Base {
         const updatedChats = !!this.lastDisconnectTime && updates
         const result: WAOpenResult = { user: this.user, newConnection, updatedChats }
         this.emit ('open', result)
- 
-        this.releasePendingRequests ()
         
         this.logger.info ('opened connection to WhatsApp Web')
 
@@ -65,6 +65,7 @@ export class WAConnection extends Base {
         const connect = () => {
             let cancel: () => void
             const task = new Promise((resolve, reject) => {
+                let rejectSafe = error => reject (error)
                 cancel = () => reject (CancelledError())
                 // determine whether reconnect should be used or not
                 const shouldUseReconnect = (this.lastDisconnectReason === DisconnectReason.close || 
@@ -94,22 +95,24 @@ export class WAConnection extends Base {
                     if (typeof options?.waitForChats === 'undefined' ? true : options?.waitForChats) {
                         const recv = this.receiveChatsAndContacts(this.connectOptions.waitOnlyForLastMessage)
                         waitForChats = recv.waitForChats
-                        cancel = () => {
-                            reject (CancelledError())
+                        rejectSafe = e => {
                             recv.cancelChats ()
+                            reject (e)
                         }
                     }
                     try {
-                        this.onDebounceTimeout = () => rejectSafe(TimedOutError())
-                        await this.authenticate (reconnectID)
+                        this.rejectPendingConnection = rejectSafe
+                        const [, result] = await Promise.all ([ 
+                            this.authenticate(reconnectID)
+                            .then(() => {
+                                this.startKeepAliveRequest()
                         
-                        this.startKeepAliveRequest()
-                        
-                        this.conn
-                            .removeAllListeners ('error')
-                            .removeAllListeners ('close')
-                        const result = waitForChats && (await waitForChats)
-
+                                this.conn
+                                    .removeAllListeners ('error')
+                                    .removeAllListeners ('close')
+                            }), 
+                            waitForChats || Promise.resolve({})
+                        ])
                         this.stopDebouncedTimeout ()
 
                         resolve (result)
@@ -117,7 +120,6 @@ export class WAConnection extends Base {
                         reject (error)
                     }
                 })
-                const rejectSafe = error => reject (error)
                 this.conn.on('error', rejectSafe)
                 this.conn.on('close', () => rejectSafe(new Error('close')))
 
@@ -145,13 +147,14 @@ export class WAConnection extends Base {
             const result = connect ()
             cancellations.push (result.cancel)
 
-            const final = await result.promise            
+            const final = await result.promise
             return final
         } catch (error) {
             this.endConnection ()
             throw error
         } finally {
             cancel()
+            this.rejectPendingConnection = null
             this.off('close', cancel)
         }
     }
@@ -167,19 +170,10 @@ export class WAConnection extends Base {
         let receivedMessages = false
 
         let resolveTask: () => void
-        const deregisterCallbacks = () => {
-            // wait for actual messages to load, "last" is the most recent message, "before" contains prior messages
-            this.deregisterCallback(['action', 'add:last'])
-            this.deregisterCallback(['action', 'add:before'])
-            this.deregisterCallback(['action', 'add:unread'])    
-            
-            this.deregisterCallback(['response', 'type:chat'])
-            this.deregisterCallback(['response', 'type:contacts'])
-        }
+        let rejectTask: (e: Error) => void
         const checkForResolution = () => receivedContacts && receivedMessages && resolveTask ()
-        
         // wait for messages to load
-        const chatUpdate = json => {
+        const messagesUpdate = json => {
             this.startDebouncedTimeout () // restart debounced timeout
             receivedMessages = true
 
@@ -203,14 +197,7 @@ export class WAConnection extends Base {
             // if received contacts before messages
             if (isLast && receivedContacts) checkForResolution ()
         }
-
-        // wait for actual messages to load, "last" is the most recent message, "before" contains prior messages
-        this.registerCallback(['action', 'add:last'], chatUpdate)
-        this.registerCallback(['action', 'add:before'], chatUpdate)
-        this.registerCallback(['action', 'add:unread'], chatUpdate)
-
-        // get chats
-        this.registerCallback(['response', 'type:chat'], json => {
+        const chatUpdate = json => {
             if (json[1].duplicate || !json[2]) return
             this.startDebouncedTimeout () // restart debounced timeout
 
@@ -235,9 +222,8 @@ export class WAConnection extends Base {
                 receivedMessages = true
                 checkForResolution ()
             }
-        })
-        // get contacts
-        this.registerCallback(['response', 'type:contacts'], json => {
+        }
+        const contactsUpdate = json => {
             if (json[1].duplicate || !json[2]) return
             this.startDebouncedTimeout () // restart debounced timeout
 
@@ -251,15 +237,32 @@ export class WAConnection extends Base {
             })
             this.logger.info (`received ${json[2].length} contacts`)
             checkForResolution ()
-        })
-
+        }
+        const registerCallbacks = () => {
+            // wait for actual messages to load, "last" is the most recent message, "before" contains prior messages
+            this.on(DEF_CALLBACK_PREFIX + 'action,add:last', messagesUpdate)
+            this.on(DEF_CALLBACK_PREFIX + 'action,add:before', messagesUpdate)
+            this.on(DEF_CALLBACK_PREFIX + 'action,add:unread', messagesUpdate)
+            // get chats
+            this.on(DEF_CALLBACK_PREFIX + 'response,type:chat', chatUpdate)
+            // get contacts
+            this.on(DEF_CALLBACK_PREFIX + 'response,type:contacts', contactsUpdate)
+        }
+        const deregisterCallbacks = () => {
+            this.off(DEF_CALLBACK_PREFIX + 'action,add:last', messagesUpdate)
+            this.off(DEF_CALLBACK_PREFIX + 'action,add:before', messagesUpdate)
+            this.off(DEF_CALLBACK_PREFIX + 'action,add:unread', messagesUpdate)
+            this.off(DEF_CALLBACK_PREFIX + 'response,type:chat', chatUpdate)
+            this.off(DEF_CALLBACK_PREFIX + 'response,type:contacts', contactsUpdate)
+        }
         // wait for the chats & contacts to load
-        let cancelChats: () => void
         const waitForChats = async () => {
             try {
+                registerCallbacks ()
+
                 await new Promise ((resolve, reject) => {
                     resolveTask = resolve
-                    cancelChats = () => reject (CancelledError())
+                    rejectTask = reject
                 })
 
                 const oldChats = this.chats
@@ -287,11 +290,7 @@ export class WAConnection extends Base {
                 deregisterCallbacks ()
             }
         }
-        return { waitForChats: waitForChats (), cancelChats }
-    }
-    private releasePendingRequests () {
-        this.pendingRequests.forEach (({resolve}) => resolve()) // send off all pending request
-        this.pendingRequests = []
+        return { waitForChats: waitForChats (), cancelChats: () => rejectTask (CancelledError()) }
     }
     private onMessageRecieved(message: string | Buffer) {
         if (message[0] === '!') {
@@ -309,9 +308,7 @@ export class WAConnection extends Base {
                 if (this.logger.level === 'trace') {
                     this.logger.trace(messageTag + ', ' + JSON.stringify(json))
                 }
-                /*
-                Check if this is a response to a message we sent
-                */
+                /* Check if this is a response to a message we sent */
                 if (this.callbacks[messageTag]) {
                     const q = this.callbacks[messageTag]
                     q.callback(json)
@@ -321,38 +318,19 @@ export class WAConnection extends Base {
                 /*
                 Check if this is a response to a message we are expecting
                 */
-                if (this.callbacks['function:' + json[0]]) {
-                    const callbacks = this.callbacks['function:' + json[0]]
-                    let callbacks2
-                    let callback
-                    for (const key in json[1] || {}) {
-                        callbacks2 = callbacks[key + ':' + json[1][key]]
-                        if (callbacks2) {
-                            break
-                        }
-                    }
-                    if (!callbacks2) {
-                        for (const key in json[1] || {}) {
-                            callbacks2 = callbacks[key]
-                            if (callbacks2) {
-                                break
-                            }
-                        }
-                    }
-                    if (!callbacks2) {
-                        callbacks2 = callbacks['']
-                    }
-                    if (callbacks2) {
-                        callback = callbacks2[json[2] && json[2][0][0]]
-                        if (!callback) {
-                            callback = callbacks2['']
-                        }
-                    }
-                    if (callback) {
-                        callback(json)
-                        return
-                    }
-                }
+                let anyTriggered = false
+                const l0 = json[0] || ''
+                const l1 = typeof json[1] !== 'object' ? {} : json[1]
+                const l2 = ((json[2] || [])[0] || [])[0] || ''
+                Object.keys(l1).forEach(key => {
+                    anyTriggered = anyTriggered || this.emit (`${DEF_CALLBACK_PREFIX}${l0},${key}:${l1[key]},${l2}`, json)
+                    console.log (`${DEF_CALLBACK_PREFIX}${l0},${key}:${l1[key]},${l2}`)
+                    anyTriggered = anyTriggered || this.emit (`${DEF_CALLBACK_PREFIX}${l0},${key}:${l1[key]}`, json)
+                })
+                anyTriggered = anyTriggered || this.emit (`${DEF_CALLBACK_PREFIX}${l0},,${l2}`, json)
+                anyTriggered = anyTriggered || this.emit (`${DEF_CALLBACK_PREFIX}${l0}`, json)
+                if (anyTriggered) return
+
                 if (this.state === 'open' && json[0] === 'Pong') {
                     if (this.phoneConnected !== json[1]) {
                         this.phoneConnected = json[1]
@@ -367,7 +345,7 @@ export class WAConnection extends Base {
                 this.logger.error ({ error }, `encountered error in decrypting message, closing`)
                 
                 if (this.state === 'open') this.unexpectedDisconnect (DisconnectReason.badSession)
-                else this.endConnection ()
+                else this.rejectPendingConnection (new Error(DisconnectReason.badSession))
             }
         }
     }
