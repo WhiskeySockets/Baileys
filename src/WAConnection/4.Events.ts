@@ -141,7 +141,7 @@ export class WAConnection extends Base {
             if (json.type === 'error') {
                 const update: WAMessageStatusUpdate = {
                     from: this.user.jid,
-                    to: json.jid,
+                    to: whatsappID(json.jid),
                     participant: this.user.jid,
                     timestamp: new Date(),
                     ids: [ json.index ],
@@ -158,9 +158,9 @@ export class WAConnection extends Base {
             if (json.cmd === 'ack') ids = [json.id]
             
             const update: WAMessageStatusUpdate = {
-                from: json.from,
-                to: json.to,
-                participant: json.participant,
+                from: whatsappID(json.from),
+                to: whatsappID(json.to),
+                participant: whatsappID(json.participant),
                 timestamp: new Date(json.t * 1000),
                 ids: ids,
                 type: (+json.ack)+1,
