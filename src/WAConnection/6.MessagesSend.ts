@@ -219,7 +219,7 @@ export class WAConnection extends Base {
     /** Relay (send) a WAMessage; more advanced functionality to send a built WA Message, you may want to stick with sendMessage() */
     async relayWAMessage(message: WAMessage) {
         const json = ['action', {epoch: this.msgCount.toString(), type: 'relay'}, [['message', null, message]]]
-        const flag = message.key.remoteJid === this.user.jid ? WAFlag.acknowledge : WAFlag.ignore // acknowledge when sending message to oneself
+        const flag = message.key.remoteJid === this.user?.jid ? WAFlag.acknowledge : WAFlag.ignore // acknowledge when sending message to oneself
         await this.query({json, binaryTags: [WAMetric.message, flag], tag: message.key.id, expect200: true})
         
         message.status = WA_MESSAGE_STATUS_TYPE.SERVER_ACK
