@@ -308,22 +308,27 @@ export class WAConnection extends EventEmitter {
     protected async waitForConnection () {
         if (this.state === 'open') return
 
-        await Utils.promiseTimeout (
-            this.pendingRequestTimeoutMs, 
-            (resolve, reject) => {
-                const onClose = ({ reason }) => {
-                    if (reason === DisconnectReason.invalidSession || reason === DisconnectReason.intentional) {
-                        reject (new Error(reason))
+        let onOpen: () => void
+        let onClose: ({ reason }) => void
+
+        await (
+            Utils.promiseTimeout (
+                this.pendingRequestTimeoutMs, 
+                (resolve, reject) => {
+                    onClose = ({ reason }) => {
+                        if (reason === DisconnectReason.invalidSession || reason === DisconnectReason.intentional) {
+                            reject (new Error(reason))
+                        }
                     }
-                    this.off ('open', onOpen)
+                    onOpen = resolve
+                    this.once ('close', onClose)
+                    this.once ('open', onOpen)
                 }
-                const onOpen = () => {
-                    resolve ()
-                    this.off ('close', onClose)
-                }
-                this.once ('close', onClose)
-                this.once ('open', onOpen)
-            }
+            )
+            .finally(() => {
+                this.off ('open', onOpen)
+                this.off ('close', onClose)
+            })
         )
     }
     /**
