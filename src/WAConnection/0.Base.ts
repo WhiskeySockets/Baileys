@@ -321,8 +321,8 @@ export class WAConnection extends EventEmitter {
                         }
                     }
                     onOpen = resolve
-                    this.once ('close', onClose)
-                    this.once ('open', onOpen)
+                    this.on ('close', onClose)
+                    this.on ('open', onOpen)
                 }
             )
             .finally(() => {
