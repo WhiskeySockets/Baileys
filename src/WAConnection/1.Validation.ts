@@ -215,9 +215,9 @@ export class WAConnection extends Base {
                     emitQR ()
                     regenQR ()
                 } catch (error) {
-                    this.logger.error ({ error }, `error in QR gen`)
+                    this.logger.warn ({ error }, `error in QR gen`)
                     if (error.status === 429) { // too many QR requests
-                        this.rejectPendingConnection (error)
+                        this.emit ('ws-close', { reason: error.message })
                     }
                 }
             }, this.connectOptions.regenerateQRIntervalMs)

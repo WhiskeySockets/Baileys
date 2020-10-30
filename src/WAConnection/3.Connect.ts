@@ -6,6 +6,7 @@ import WS from 'ws'
 import KeyedDB from '@adiwajshing/keyed-db'
 
 const DEF_CALLBACK_PREFIX = 'CB:'
+const DEF_TAG_PREFIX = 'TAG:'
 
 export class WAConnection extends Base {
     /** Connect to WhatsApp Web */
@@ -45,7 +46,6 @@ export class WAConnection extends Base {
                     this.closeInternal (reason)
                 }
                 if (!willReconnect) throw error
-                this.emit ('intermediate-close', {reason})
             }
         }
 
@@ -61,12 +61,12 @@ export class WAConnection extends Base {
     }
     /** Meat of the connect logic */
     protected async connectInternal (options: WAConnectOptions, delayMs?: number) {
+        const rejections: ((e?: Error) => void)[] = []
+        const rejectAll = (e: Error) => rejections.forEach (r => r(e))
         // actual connect
-        const connect = () => {
-            let cancel: () => void
-            const task = new Promise((resolve, reject) => {
-                let rejectSafe = error => reject (error)
-                cancel = () => reject (CancelledError())
+        const connect = () => (
+            new Promise((resolve, reject) => {
+                rejections.push (reject)
                 // determine whether reconnect should be used or not
                 const shouldUseReconnect = (this.lastDisconnectReason === DisconnectReason.close || 
                                             this.lastDisconnectReason === DisconnectReason.lost) &&
@@ -93,69 +93,46 @@ export class WAConnection extends Base {
                     let waitForChats: Promise<{[k: string]: Partial<WAChat>}>
                     // add wait for chats promise if required
                     if (typeof options?.waitForChats === 'undefined' ? true : options?.waitForChats) {
-                        const recv = this.receiveChatsAndContacts(this.connectOptions.waitOnlyForLastMessage)
-                        waitForChats = recv.waitForChats
-                        rejectSafe = e => {
-                            recv.cancelChats ()
-                            reject (e)
-                        }
+                        const {waitForChats: wPromise, cancelChats} = this.receiveChatsAndContacts(this.connectOptions.waitOnlyForLastMessage)
+                        waitForChats = wPromise
+                        rejections.push (cancelChats)
                     }
                     try {
-                        this.rejectPendingConnection = rejectSafe
-                        const [, result] = await Promise.all ([ 
-                            this.authenticate(reconnectID)
-                            .then(() => {
-                                this.startKeepAliveRequest()
-                        
-                                this.conn
-                                    .removeAllListeners ('error')
-                                    .removeAllListeners ('close')
-                            }), 
-                            waitForChats || Promise.resolve({})
-                        ])
+                        const [, result] = await Promise.all (
+                            [ 
+                                this.authenticate(reconnectID)
+                                .then(() => this.startKeepAliveRequest()),
+                                waitForChats || undefined
+                            ]
+                        )
+                        this.conn
+                            .removeAllListeners ('error')
+                            .removeAllListeners ('close')
                         this.stopDebouncedTimeout ()
-
                         resolve (result)
                     } catch (error) {
                         reject (error)
                     }
                 })
-                this.conn.on('error', rejectSafe)
-                this.conn.on('close', () => rejectSafe(new Error('close')))
-
+                this.conn.on('error', rejectAll)
+                this.conn.on('close', () => rejectAll(new Error(DisconnectReason.close)))
             }) as Promise<void | { [k: string]: Partial<WAChat> }>
+        )
 
-            return { promise: task, cancel: cancel }
-        }
-
-        let promise = Promise.resolve ()
-        let cancellations: (() => void)[] = []
-
-        const cancel = () => cancellations.forEach (cancel => cancel())
-        
-        this.on ('close', cancel)
-
-        if (delayMs) {
-            const {delay, cancel} = Utils.delayCancellable (delayMs)
-            promise = delay
-            cancellations.push (cancel)
-        }
-
+        this.on ('ws-close', rejectAll)
         try {
-            await promise
-
-            const result = connect ()
-            cancellations.push (result.cancel)
-
-            const final = await result.promise
-            return final
+            if (delayMs) {
+                const {delay, cancel} = Utils.delayCancellable (delayMs)
+                rejections.push (cancel)
+                await delay
+            }
+            const result = await connect ()
+            return result
         } catch (error) {
             this.endConnection ()
             throw error
         } finally {
-            cancel()
-            this.rejectPendingConnection = null
-            this.off('close', cancel)
+            this.off ('ws-close', rejectAll)
         }
     }
     /**
@@ -309,7 +286,7 @@ export class WAConnection extends Base {
                 this.logger.error ({ error }, `encountered error in decrypting message, closing: ${error}`)
                 
                 if (this.state === 'open') this.unexpectedDisconnect (DisconnectReason.badSession)
-                else this.rejectPendingConnection (new Error(DisconnectReason.badSession))
+                else this.emit ('ws-close', new Error(DisconnectReason.badSession))
             }
 
             if (this.shouldLogMessages) this.messageLog.push ({ tag: messageTag, json: JSON.stringify(json), fromMe: false })
@@ -318,17 +295,11 @@ export class WAConnection extends Base {
             if (this.logger.level === 'trace') {
                 this.logger.trace(messageTag + ', ' + JSON.stringify(json))
             }
-            /* Check if this is a response to a message we sent */
-            if (this.callbacks[messageTag]) {
-                const q = this.callbacks[messageTag]
-                q.callback(json)
-                delete this.callbacks[messageTag]
-                return
-            }
-            /*
-                Check if this is a response to a message we are expecting
-            */
+
             let anyTriggered = false
+            /* Check if this is a response to a message we sent */
+            anyTriggered = this.emit (`${DEF_TAG_PREFIX}${messageTag}`, json)
+            /* Check if this is a response to a message we are expecting */
             const l0 = json[0] || ''
             const l1 = typeof json[1] !== 'object' || json[1] === null ? {} : json[1]
             const l2 = ((json[2] || [])[0] || [])[0] || ''

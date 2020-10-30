@@ -186,7 +186,6 @@ export class WAConnection extends Base {
                 this.emit ('chat-update', { jid, [type]: chat[type] })
             }
         }
-
         return response
     }
 }

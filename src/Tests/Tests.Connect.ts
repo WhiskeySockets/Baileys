@@ -2,11 +2,11 @@ import * as assert from 'assert'
 import {WAConnection} from '../WAConnection/WAConnection'
 import { AuthenticationCredentialsBase64, BaileysError, ReconnectMode, DisconnectReason } from '../WAConnection/Constants'
 import { delay } from '../WAConnection/Utils'
-import { assertChatDBIntegrity, testJid } from './Common'
+import { assertChatDBIntegrity, makeConnection, testJid } from './Common'
 
 describe('QR Generation', () => {
     it('should generate QR', async () => {
-        const conn = new WAConnection()
+        const conn = makeConnection ()
         conn.connectOptions.regenerateQRIntervalMs = 5000
 
         let calledQR = 0
@@ -32,7 +32,7 @@ describe('Test Connect', () => {
     it('should connect', async () => {
         console.log('please be ready to scan with your phone')
         
-        const conn = new WAConnection()
+        const conn = makeConnection ()
 
         let credentialsUpdateCalled = false
         conn.on ('credentials-updated', () => credentialsUpdateCalled = true)
@@ -48,8 +48,8 @@ describe('Test Connect', () => {
         conn.close()
         auth = conn.base64EncodedAuthInfo()
     })
-    it('should reconnect', async () => {
-        const conn = new WAConnection()
+    it('should restore session', async () => {
+        const conn = makeConnection ()
 
         let credentialsUpdateCalled = false
         conn.on ('credentials-updated', () => credentialsUpdateCalled = true)
@@ -72,7 +72,7 @@ describe('Test Connect', () => {
         conn.close()
     })
     it ('should disconnect & reconnect phone', async () => {
-        const conn = new WAConnection ()
+        const conn = makeConnection ()
         conn.logger.level = 'debug'
         await conn.loadAuthInfo('./auth_info.json').connect ()
         assert.equal (conn.phoneConnected, true)
@@ -132,14 +132,14 @@ describe ('Reconnects', () => {
         if (failed) assert.fail ('should not have closed again')
     }
     it('should dispose correctly on bad_session', async () => {
-        const conn = new WAConnection()
+        const conn = makeConnection ()
         conn.autoReconnect = ReconnectMode.onAllErrors
         conn.loadAuthInfo ('./auth_info.json')
 
         let gotClose0 = false
         let gotClose1 = false
 
-        conn.on ('intermediate-close', ({ reason }) => {
+        conn.on ('ws-close', ({ reason }) => {
             gotClose0 = true
         })
         conn.on ('close', ({ reason }) => {
@@ -164,7 +164,7 @@ describe ('Reconnects', () => {
      * and see if the library cleans up resources correctly
      */
     it('should cleanup correctly', async () => {
-        const conn = new WAConnection()
+        const conn = makeConnection ()
         conn.autoReconnect = ReconnectMode.onAllErrors
         conn.loadAuthInfo ('./auth_info.json')
 
@@ -188,7 +188,7 @@ describe ('Reconnects', () => {
      * and see if the library cleans up resources correctly
      */
     it('should disrupt connect loop', async () => {
-        const conn = new WAConnection()
+        const conn = makeConnection ()
 
         conn.autoReconnect = ReconnectMode.onAllErrors
         conn.loadAuthInfo ('./auth_info.json')
@@ -216,7 +216,7 @@ describe ('Reconnects', () => {
         await verifyConnectionOpen (conn)
     })
     it ('should reconnect on broken connection', async () => {
-        const conn = new WAConnection ()
+        const conn = makeConnection ()
         conn.autoReconnect = ReconnectMode.onConnectionLost
 
         await conn.loadAuthInfo('./auth_info.json').connect ()
@@ -268,7 +268,7 @@ describe ('Reconnects', () => {
         }
     })
     it ('should reconnect & stay connected', async () => {
-        const conn = new WAConnection ()
+        const conn = makeConnection ()
         conn.autoReconnect = ReconnectMode.onConnectionLost
 
         await conn.loadAuthInfo('./auth_info.json').connect ()
@@ -289,7 +289,7 @@ describe ('Reconnects', () => {
 
 describe ('Pending Requests', () => {
     it ('should correctly send updates', async () => {
-        const conn = new WAConnection ()
+        const conn = makeConnection ()
         conn.pendingRequestTimeoutMs = null
 
         conn.loadAuthInfo('./auth_info.json')
@@ -323,7 +323,7 @@ describe ('Pending Requests', () => {
         conn.close ()
     })
     it('should queue requests when closed', async () => {
-          const conn = new WAConnection ()
+          const conn = makeConnection ()
           //conn.pendingRequestTimeoutMs = null
 
           await conn.loadAuthInfo('./auth_info.json').connect ()

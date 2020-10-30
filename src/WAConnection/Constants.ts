@@ -417,7 +417,7 @@ export type BaileysEvent =
     'open' | 
     'connecting' |
     'close' |
-    'intermediate-close' |
+    'ws-close' | 
     'qr' |
     'connection-phone-change' |
     'user-presence-update' |

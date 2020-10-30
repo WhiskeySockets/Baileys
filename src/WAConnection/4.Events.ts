@@ -334,8 +334,8 @@ export class WAConnection extends Base {
     on (event: 'connecting', listener: () => void): this
     /** when the connection has closed */
     on (event: 'close', listener: (err: {reason?: DisconnectReason | string, isReconnecting: boolean}) => void): this
-    /** when the connection has closed */
-    on (event: 'intermediate-close', listener: (err: {reason?: DisconnectReason | string}) => void): this
+    /** when the socket is closed */
+    on (event: 'ws-close', listener: (err: {reason?: DisconnectReason | string}) => void): this
     /** when WA updates the credentials */
     on (event: 'credentials-updated', listener: (auth: AuthenticationCredentials) => void): this
     /** when a new QR is generated, ready for scanning */

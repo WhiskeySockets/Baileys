@@ -5,6 +5,31 @@ import {promises as fs} from 'fs'
 require ('dotenv').config () // dotenv to load test jid
 export const testJid = process.env.TEST_JID || '1234@s.whatsapp.net' // set TEST_JID=xyz@s.whatsapp.net in a .env file in the root directory
 
+export const makeConnection = () => {
+    const conn = new WAConnection()
+    conn.connectOptions.maxIdleTimeMs = 30_000
+    conn.logger.level = 'debug'
+
+    let evCounts = {}
+
+    conn.on ('close', ({ isReconnecting }) => {
+        !isReconnecting && console.log ('Events registered: ', evCounts)
+    })
+
+    const onM = conn.on
+    conn.on = (...args: any[]) => {
+        evCounts[args[0]] = (evCounts[args[0]] || 0) + 1
+        return onM.apply (conn, args)
+    }
+    const offM = conn.off
+    conn.off = (...args: any[]) => {
+        evCounts[args[0]] = (evCounts[args[0]] || 0) - 1
+        if (evCounts[args[0]] <= 0) delete evCounts[args[0]]
+        return offM.apply (conn, args)
+    }
+    return conn
+}
+
 export async function sendAndRetreiveMessage(conn: WAConnection, content, type: MessageType, options: MessageOptions = {}) {
     const response = await conn.sendMessage(testJid, content, type, options)
     const {messages} = await conn.loadMessages(testJid, 10)
