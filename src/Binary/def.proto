@@ -216,6 +216,7 @@ message WebMessageInfo {
         GROUP_PARTICIPANT_ADD_REQUEST_JOIN = 71;
         CHANGE_EPHEMERAL_SETTING = 72;
         E2E_DEVICE_CHANGED = 73;
+        VIEWED_ONCE = 74;
     }
     optional WEB_MESSAGE_INFO_STUBTYPE messageStubType = 24;
     optional bool clearMedia = 25;
@@ -299,6 +300,8 @@ message InteractiveAnnotation {
     }
 }
 
+enum GlobalContextInfo {
+}
 message AdReplyInfo {
     optional string advertiserName = 1;
     enum AD_REPLY_INFO_MEDIATYPE {
@@ -438,8 +441,13 @@ message DocumentMessage {
     optional string directPath = 10;
     optional int64 mediaKeyTimestamp = 11;
     optional bool contactVcard = 12;
+    optional string thumbnailDirectPath = 13;
+    optional bytes thumbnailSha256 = 14;
+    optional bytes thumbnailEncSha256 = 15;
     optional bytes jpegThumbnail = 16;
     optional ContextInfo contextInfo = 17;
+    optional uint32 thumbnailHeight = 18;
+    optional uint32 thumbnailWidth = 19;
 }
 
 message AudioMessage {
@@ -541,7 +549,7 @@ message AppStateSyncKeyId {
 message AppStateSyncKeyFingerprint {
     optional uint32 rawId = 1;
     optional uint32 currentIndex = 2;
-    
+    repeated packed uint32 deviceIndexes = 3;
 }
 
 message AppStateSyncKeyData {
@@ -744,6 +752,47 @@ message ProductMessage {
     optional ContextInfo contextInfo = 17;
 }
 
+message OrderMessage {
+    optional string orderId = 1;
+    optional bytes thumbnail = 2;
+    optional int32 itemCount = 3;
+    enum ORDER_MESSAGE_ORDERSTATUS {
+        INQUIRY = 1;
+    }
+    optional ORDER_MESSAGE_ORDERSTATUS status = 4;
+    enum ORDER_MESSAGE_ORDERSURFACE {
+        CATALOG = 1;
+    }
+    optional ORDER_MESSAGE_ORDERSURFACE surface = 5;
+    optional string message = 6;
+    optional string orderTitle = 7;
+    optional string sellerJid = 8;
+    optional string token = 9;
+    optional ContextInfo contextInfo = 17;
+}
+
+message Row {
+    optional string title = 1;
+    optional string description = 2;
+    optional string rowId = 3;
+}
+
+message Section {
+    optional string title = 1;
+    repeated Row rows = 2;
+}
+
+message ListMessage {
+    optional string title = 1;
+    optional string description = 2;
+    optional string buttonLabel = 3;
+    enum LIST_MESSAGE_LISTTYPE {
+        SINGLE_SELECT = 1;
+    }
+    optional LIST_MESSAGE_LISTTYPE listType = 4;
+    repeated Section sections = 5;
+}
+
 message GroupInviteMessage {
     optional string groupJid = 1;
     optional string inviteCode = 2;
@@ -754,10 +803,17 @@ message GroupInviteMessage {
     optional ContextInfo contextInfo = 7;
 }
 
+message EphemeralSetting {
+    optional string chatJid = 1;
+    optional uint32 ephemeralExpiration = 2;
+    optional int64 ephemeralSettingTimestamp = 3;
+}
+
 message DeviceSentMessage {
     optional string destinationJid = 1;
     optional Message message = 2;
     optional string phash = 3;
+    repeated EphemeralSetting broadcastEphemeralSettings = 4;
 }
 
 message FutureProofMessage {
@@ -791,7 +847,10 @@ message Message {
     optional TemplateButtonReplyMessage templateButtonReplyMessage = 29;
     optional ProductMessage productMessage = 30;
     optional DeviceSentMessage deviceSentMessage = 31;
-    optional FutureProofMessage viewOnceMessage = 33;
+    optional GlobalContextInfo globalContextInfo = 35;
+    optional ListMessage listMessage = 36;
+    optional FutureProofMessage viewOnceMessage = 37;
+    optional OrderMessage orderMessage = 38;
 }
 
 message MessageKey {
