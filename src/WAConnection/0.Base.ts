@@ -94,6 +94,7 @@ export class WAConnection extends EventEmitter {
 
     constructor () {
         super ()
+        this.setMaxListeners (20)
         this.on ('CB:Cmd,type:disconnect', json => (
             this.state === 'open' && this.unexpectedDisconnect(json[1].kind || 'unknown')
         ))
@@ -185,8 +186,8 @@ export class WAConnection extends EventEmitter {
                 (resolve, reject) => {
                     onRecv = resolve
                     onErr = ({reason}) => reject(new Error(reason))
-                    this.once (`TAG:${tag}`, onRecv)
-                    this.once ('ws-close', onErr) // if the socket closes, you'll never receive the message
+                    this.on (`TAG:${tag}`, onRecv)
+                    this.on ('ws-close', onErr) // if the socket closes, you'll never receive the message
                 },
             )
             return result as any
