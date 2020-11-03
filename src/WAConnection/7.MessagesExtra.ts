@@ -44,10 +44,10 @@ export class WAConnection extends Base {
         jid = whatsappID (jid)
         const chat = this.assertChatGet (jid)
 
-        if (type === 'unread') await this.sendReadReceipt (jid, null, -2)
-        else if (chat.count !== 0) {
-            const {messages} = await this.loadMessages (jid, 1)
-            await this.sendReadReceipt (jid, messages[0].key, Math.abs(chat.count))
+        const message = (await this.loadMessages(jid, 1)).messages[0]
+        const count = type === 'unread' ? -2 : Math.abs(chat.count)
+        if (type === 'unread' || chat.count !== 0) {
+            await this.sendReadReceipt (jid, message.key, count)
         }
         chat.count = type === 'unread' ? -1 : 0
         this.emit ('chat-update', {jid, count: chat.count})
@@ -59,14 +59,15 @@ export class WAConnection extends Base {
      * @param messageKey the key of the message
      * @param count number of messages to read, set to < 0 to unread a message
      */
-    async sendReadReceipt(jid: string, messageKey: { id?: string, fromMe?: boolean }, count: number) {
+    async sendReadReceipt(jid: string, messageKey: WAMessageKey, count: number) {
         const attributes = {
-            jid: jid,
+            jid,
             count: count.toString(),
             index: messageKey?.id,
+            participant: messageKey?.participant || undefined,
             owner: messageKey?.fromMe?.toString()
         }
-        const read = await this.setQuery ([['read', attributes, null]])
+        const read = await this.setQuery ([['read', attributes, null]], [ WAMetric.read, WAFlag.ignore ])
         return read
     }
     async fetchMessagesFromWA (jid: string, count: number, indexMessage?: { id?: string; fromMe?: boolean }, mostRecentFirst: boolean = true) {

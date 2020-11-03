@@ -43,7 +43,7 @@ export class WAConnection extends EventEmitter {
     state: WAConnectionState = 'close'
     connectOptions: WAConnectOptions = {
         regenerateQRIntervalMs: 30_000,
-        maxIdleTimeMs: 15_000,
+        maxIdleTimeMs: 40_000,
         waitOnlyForLastMessage: false,
         waitForChats: true,
         maxRetries: 10,
@@ -219,6 +219,10 @@ export class WAConnection extends EventEmitter {
         tag = tag || this.generateMessageTag (longTag)
         const promise = this.waitForMessage(tag, json, requiresPhoneConnection, timeoutMs)
 
+        if (this.logger.level === 'trace') {
+            this.logger.trace ({ fromMe: true },`${tag},${JSON.stringify(json)}`)
+        }
+
         if (binaryTags) tag = await this.sendBinary(json as WANode, binaryTags, tag)
         else tag = await this.sendJSON(json, tag)
 
@@ -238,7 +242,7 @@ export class WAConnection extends EventEmitter {
                 {query: json, message, status: response.status}
             )
         }
-        if (startDebouncedTimeout) this.stopDebouncedTimeout ()
+        if (startDebouncedTimeout) this.startDebouncedTimeout ()
         return response
     }
     /** interval is started when a query takes too long to respond */

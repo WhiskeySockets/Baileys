@@ -71,21 +71,24 @@ WAConnectionTest('Misc', (conn) => {
         assert.ok(response)
     })
     it('should change a chat read status', async () => {
-        const waitForEvent = new Promise (resolve => {
-            conn.on ('chat-update', ({jid, count}) => {
-                if (jid === testJid) {
-                    assert.ok (count < 0)
-                    conn.removeAllListeners ('chat-update')
-                    resolve ()
-                }
+        const jids = conn.chats.all ().map (c => c.jid)
+        for (let jid of jids.slice(0, 5)) {
+            console.log (`changing read status for ${jid}`)
+            const waitForEvent = new Promise (resolve => {
+                conn.once ('chat-update', ({jid: tJid, count}) => {
+                    if (jid === tJid) {
+                        assert.ok (count < 0)
+                        resolve ()
+                    }
+                })
             })
-        })
-        await conn.chatRead (testJid, 'unread')
-        await waitForEvent
-
-        await delay (5000)
-
-        await conn.chatRead (testJid, 'read')
+            await conn.chatRead (jid, 'unread')
+            await waitForEvent
+    
+            await delay (5000)
+    
+            await conn.chatRead (jid, 'read')
+        }
     })
     it('should archive & unarchive', async () => {
         await conn.modifyChat (testJid, ChatModification.archive)
