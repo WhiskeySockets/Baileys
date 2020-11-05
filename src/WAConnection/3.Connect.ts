@@ -93,8 +93,8 @@ export class WAConnection extends Base {
                     let waitForChats: Promise<{[k: string]: Partial<WAChat>}>
                     // add wait for chats promise if required
                     if (typeof options?.waitForChats === 'undefined' ? true : options?.waitForChats) {
-                        const {waitForChats: wPromise, cancelChats} = this.receiveChatsAndContacts(this.connectOptions.waitOnlyForLastMessage)
-                        waitForChats = wPromise
+                        const {wait, cancelChats} = this.receiveChatsAndContacts(this.connectOptions.waitOnlyForLastMessage)
+                        waitForChats = wait
                         rejections.push (cancelChats)
                     }
                     try {
@@ -143,17 +143,17 @@ export class WAConnection extends Base {
         const chats = new KeyedDB(this.chatOrderingKey, c => c.jid)
         const contacts = {}
 
+        let receivedChats = false
         let receivedContacts = false
         let receivedMessages = false
 
         let resolveTask: () => void
         let rejectTask: (e: Error) => void
-        const checkForResolution = () => receivedContacts && receivedMessages && resolveTask ()
+        const checkForResolution = () => receivedContacts && receivedChats && receivedMessages && resolveTask ()
         // wait for messages to load
         const messagesUpdate = json => {
             this.startDebouncedTimeout () // restart debounced timeout
-            receivedMessages = true
-
+    
             const isLast = json[1].last || waitOnlyForLast
             const messages = json[2] as WANode[]
 
@@ -171,6 +171,7 @@ export class WAConnection extends Base {
                     }
                 })
             }
+            if (isLast) receivedMessages = true
             // if received contacts before messages
             if (isLast && receivedContacts) checkForResolution ()
         }
@@ -195,10 +196,10 @@ export class WAConnection extends Base {
             })
             
             this.logger.info (`received ${json[2].length} chats`)
-            if (json[2].length === 0) {
-                receivedMessages = true
-                checkForResolution ()
-            }
+            receivedChats = true
+
+            if (json[2].length === 0) receivedMessages = true
+            checkForResolution ()
         }
         const contactsUpdate = json => {
             if (json[1].duplicate || !json[2]) return
@@ -233,7 +234,7 @@ export class WAConnection extends Base {
             this.off(DEF_CALLBACK_PREFIX + 'response,type:contacts', contactsUpdate)
         }
         // wait for the chats & contacts to load
-        const waitForChats = async () => {
+        const wait = (async () => {
             try {
                 registerCallbacks ()
 
@@ -266,8 +267,8 @@ export class WAConnection extends Base {
             } finally {
                 deregisterCallbacks ()
             }
-        }
-        return { waitForChats: waitForChats (), cancelChats: () => rejectTask (CancelledError()) }
+        })()
+        return { wait, cancelChats: () => rejectTask (CancelledError()) }
     }
     private onMessageRecieved(message: string | Buffer) {
         if (message[0] === '!') {

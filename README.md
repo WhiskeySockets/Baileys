@@ -480,7 +480,7 @@ Baileys is written, keeping in mind, that you may require other custom functiona
 
 First, enable the logging of unhandled messages from WhatsApp by setting
 ``` ts
-conn.logger.level = 'unhandled'
+conn.logger.level = 'debug'
 ```
 This will enable you to see all sorts of messages WhatsApp sends in the console. Some examples:
 
