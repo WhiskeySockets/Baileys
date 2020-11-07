@@ -243,7 +243,7 @@ const buffer = fs.readFileSync("Media/ma_gif.mp4") // load some gif
 const options: MessageOptions = {mimetype: Mimetype.gif, caption: "hello!"} // some metadata & caption
 conn.sendMessage(id, buffer, MessageType.video, options)
 // send an audio file
-const buffer = fs.readFileSync("Media/audio.mp3") // can send mp3, mp4, & ogg -- but for mp3 files the mimetype must be set to ogg
+const buffer = fs.readFileSync("Media/audio.mp3") // can send mp3, mp4, & ogg
 const options: MessageOptions = {mimetype: Mimetype.mp4Audio} // some metadata (can't have caption in audio)
 conn.sendMessage(id, buffer, MessageType.audio, options)
 ```
@@ -371,9 +371,9 @@ await conn.deleteChat (jid) // will delete the chat (can be a group or broadcast
     ```
 - To check if a given ID is on WhatsApp
     ``` ts
-    const id = 'xyz@s.whatsapp.net'
+    const id = '123456'
     const exists = await conn.isOnWhatsApp (id)
-    console.log (`${id} ${exists ? " exists " : " does not exist"} on WhatsApp`)
+    if (exists) console.log (`${id} exists on WhatsApp, as jid: ${exists.jid}`)
     ```
 - To query chat history on a group or with someone
     ``` ts

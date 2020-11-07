@@ -1,20 +1,26 @@
 import {WAConnection as Base} from './4.Events'
-import { Presence, WABroadcastListInfo, WAProfilePictureChange, WAChat, ChatModification, WALoadChatOptions } from './Constants'
+import { Presence, WABroadcastListInfo, WAProfilePictureChange, ChatModification, WALoadChatOptions } from './Constants'
 import {
     WAMessage,
     WANode,
     WAMetric,
     WAFlag,
 } from '../WAConnection/Constants'
-import { generateProfilePicture, waChatKey, whatsappID, unixTimestampSeconds } from './Utils'
+import { generateProfilePicture, whatsappID, unixTimestampSeconds } from './Utils'
 import { Mutex } from './Mutex'
-import { type } from 'os'
 
 // All user related functions -- get profile picture, set status etc.
 
 export class WAConnection extends Base {
-    /** Query whether a given number is registered on WhatsApp */
-    isOnWhatsApp = (jid: string) => this.query({json: ['query', 'exist', jid], requiresPhoneConnection: false}).then((m) => m.status === 200)
+    /** 
+     * Query whether a given number is registered on WhatsApp
+     * @param str phone number/jid you want to check for
+     * @returns undefined if the number doesn't exists, otherwise the correctly formatted jid
+     */
+    isOnWhatsApp = async (str: string) => {
+        const { status, jid } = await this.query({json: ['query', 'exist', str], requiresPhoneConnection: false})
+        if (status === 200) return { exists: true, jid: whatsappID(jid) }
+    } 
     /**
      * Tell someone about your presence -- online, typing, offline etc.
      * @param jid the ID of the person/group who you are updating
