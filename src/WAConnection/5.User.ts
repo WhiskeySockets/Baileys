@@ -1,12 +1,12 @@
 import {WAConnection as Base} from './4.Events'
-import { Presence, WABroadcastListInfo, WAProfilePictureChange, ChatModification, WALoadChatOptions } from './Constants'
+import { Presence, WABroadcastListInfo, WAProfilePictureChange, WALoadChatOptions } from './Constants'
 import {
     WAMessage,
     WANode,
     WAMetric,
     WAFlag,
 } from '../WAConnection/Constants'
-import { generateProfilePicture, whatsappID, unixTimestampSeconds } from './Utils'
+import { generateProfilePicture, whatsappID } from './Utils'
 import { Mutex } from './Mutex'
 
 // All user related functions -- get profile picture, set status etc.
@@ -88,7 +88,7 @@ export class WAConnection extends Base {
     async getBroadcastListInfo(jid: string) { return this.query({json: ['query', 'contact', jid], expect200: true }) as Promise<WABroadcastListInfo> }
     /** Delete the chat of a given ID */
     async deleteChat (jid: string) {
-        const response = await this.setQuery ([ ['chat', {type: 'delete', jid: jid}, null] ], [12, WAFlag.ignore]) as {status: number}
+        const response = await this.setQuery ([ ['chat', {type: 'delete', jid: jid}, null] ], [12, WAFlag.ignore])
         const chat = this.chats.get (jid)
         if (chat) {
             this.chats.delete (chat)
@@ -144,53 +144,6 @@ export class WAConnection extends Base {
         else if (this.chats.get(jid)) {
             this.chats.get(jid).imgUrl = response.eurl
             this.emit ('chat-update', { jid, imgUrl: response.eurl })
-        }
-        return response
-    }
-    /**
-     * Modify a given chat (archive, pin etc.)
-     * @param jid the ID of the person/group you are modifiying
-     * @param durationMs only for muting, how long to mute the chat for
-     */
-    @Mutex ((jid, type) => jid+type)
-    async modifyChat (jid: string, type: ChatModification, durationMs?: number) {
-        jid = whatsappID (jid)
-        const chat = this.assertChatGet (jid)
-
-        let chatAttrs: Record<string, string> = {jid: jid}
-        if (type === ChatModification.mute && !durationMs) {
-            throw new Error('duration must be set to the timestamp of the time of pinning/unpinning of the chat')
-        }
-
-        durationMs = durationMs || 0
-        switch (type) {
-            case ChatModification.pin:
-            case ChatModification.mute:
-                const strStamp = (unixTimestampSeconds() + Math.floor(durationMs/1000)).toString()
-                chatAttrs.type = type
-                chatAttrs[type] = strStamp
-                break
-            case ChatModification.unpin:
-            case ChatModification.unmute:
-                chatAttrs.type = type.replace ('un', '') // replace 'unpin' with 'pin'
-                chatAttrs.previous = chat[type.replace ('un', '')]
-                break
-            default:
-                chatAttrs.type = type
-                break
-        }
-
-        const response = await this.setQuery ([['chat', chatAttrs, null]])
-
-        if (chat) {
-            if (type.includes('un')) {
-                type = type.replace ('un', '') as ChatModification
-                delete chat[type.replace('un','')]
-                this.emit ('chat-update', { jid, [type]: false })
-            } else {
-                chat[type] = chatAttrs[type] || 'true'
-                this.emit ('chat-update', { jid, [type]: chat[type] })
-            }
         }
         return response
     }

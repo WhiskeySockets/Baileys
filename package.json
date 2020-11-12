@@ -1,6 +1,6 @@
 {
   "name": "@adiwajshing/baileys",
-  "version": "3.2.4",
+  "version": "3.3.0",
   "description": "WhatsApp Web API",
   "homepage": "https://github.com/adiwajshing/Baileys",
   "main": "lib/WAConnection/WAConnection.js",

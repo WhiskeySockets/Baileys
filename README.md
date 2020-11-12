@@ -184,7 +184,7 @@ on (event: 'open', listener: (result: WAOpenResult) => void): this
 on (event: 'connecting', listener: () => void): this
 /** when the connection has closed */
 on (event: 'close', listener: (err: {reason?: DisconnectReason | string, isReconnecting: boolean}) => void): this
-/** when the socket has closed */
+/** when the socket is closed */
 on (event: 'ws-close', listener: (err: {reason?: DisconnectReason | string}) => void): this
 /** when WA updates the credentials */
 on (event: 'credentials-updated', listener: (auth: AuthenticationCredentials) => void): this
@@ -207,17 +207,11 @@ on (event: 'message-update', listener: (message: WAMessage) => void): this
 /** when a message's status is updated (deleted, delivered, read, sent etc.) */
 on (event: 'message-status-update', listener: (message: WAMessageStatusUpdate) => void): this
 /** when participants are added to a group */
-on (event: 'group-participants-add', listener: (update: {jid: string, participants: string[], actor?: string}) => void): this
-/** when participants are removed or leave from a group */
-on (event: 'group-participants-remove', listener: (update: {jid: string, participants: string[], actor?: string}) => void): this
-/** when participants are promoted in a group */
-on (event: 'group-participants-promote', listener: (update: {jid: string, participants: string[], actor?: string}) => void): this
-/** when participants are demoted in a group */
-on (event: 'group-participants-demote', listener: (update: {jid: string, participants: string[], actor?: string}) => void): this
-/** when the group settings is updated */
-on (event: 'group-settings-update', listener: (update: {jid: string, restrict?: string, announce?: string, actor?: string}) => void): this
-/** when the group description is updated */
-on (event: 'group-description-update', listener: (update: {jid: string, description?: string, actor?: string}) => void): this
+on (event: 'group-participants-update', listener: (update: {jid: string, participants: string[], actor?: string, action: WAParticipantAction}) => void): this
+/** when the group is updated */
+on (event: 'group-update', listener: (update: Partial<WAGroupMetadata> & {jid: string, actor?: string}) => void): this
+/** when WA sends back a pong */
+on (event: 'received-pong', listener: () => void): this
 ```
 
 ## Sending Messages

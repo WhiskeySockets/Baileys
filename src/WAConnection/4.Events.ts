@@ -1,6 +1,6 @@
 import * as QR from 'qrcode-terminal'
 import { WAConnection as Base } from './3.Connect'
-import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, PresenceUpdate, BaileysEvent, DisconnectReason, WANode, WAOpenResult, Presence, AuthenticationCredentials } from './Constants'
+import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, PresenceUpdate, BaileysEvent, DisconnectReason, WANode, WAOpenResult, Presence, AuthenticationCredentials, WAParticipantAction, WAGroupMetadata } from './Constants'
 import { whatsappID, unixTimestampSeconds, isGroupID, GET_MESSAGE_ID, WA_MESSAGE_ID, waMessageKey } from './Utils'
 import KeyedDB from '@adiwajshing/keyed-db'
 import { Mutex } from './Mutex'
@@ -20,6 +20,23 @@ export class WAConnection extends Base {
                 }
             }
             this.chatAddMessageAppropriate (message)
+        })
+        this.on('CB:Chat,cmd:action', json => {
+            const data = json[1].data
+            if (data) {
+                const emitGroupParticipantsUpdate = (action: WAParticipantAction) => this.emit(
+                    'group-participants-update', 
+                    { participants: data[2].participants.map(whatsappID), actor: data[1], jid: json[1].id, action }
+                )
+                switch (data[0]) {
+                    case "promote":
+                        emitGroupParticipantsUpdate('promote')
+                        break
+                    case "demote":
+                        emitGroupParticipantsUpdate('demote')
+                        break
+                }
+            }
         })
         // presence updates
         this.on('CB:Presence', json => {
@@ -269,11 +286,14 @@ export class WAConnection extends Base {
                 const jid = chat.jid
                 let actor = whatsappID (message.participant)
                 let participants: string[]
+                const emitParticipantsUpdate = (action: WAParticipantAction) => this.emit ('group-participants-update', { jid, actor, participants, action })
+                const emitGroupUpdate = (update: Partial<WAGroupMetadata>) => this.emit ('group-update', { jid, actor, ...update })
+                
                 switch (message.messageStubType) {
                     case WA_MESSAGE_STUB_TYPE.GROUP_PARTICIPANT_LEAVE:
                     case WA_MESSAGE_STUB_TYPE.GROUP_PARTICIPANT_REMOVE:
                         participants = message.messageStubParameters.map (whatsappID)
-                        this.emit ('group-participants-remove', { jid, actor, participants})
+                        emitParticipantsUpdate('remove')
                         // mark the chat read only if you left the group
                         if (participants.includes(this.user.jid)) {
                             chat.read_only = 'true'
@@ -288,24 +308,34 @@ export class WAConnection extends Base {
                             delete chat.read_only
                             this.emit ('chat-update', { jid, read_only: 'false' })
                         }
-                        this.emit ('group-participants-add', { jid, participants, actor })
+                        emitParticipantsUpdate('add')
                         break
                     case WA_MESSAGE_STUB_TYPE.GROUP_CHANGE_ANNOUNCE:
                         const announce = message.messageStubParameters[0] === 'on' ? 'true' : 'false'
-                        this.emit ('group-settings-update', { jid, announce, actor })
+                        emitGroupUpdate({ announce })
                         break
                     case WA_MESSAGE_STUB_TYPE.GROUP_CHANGE_ANNOUNCE:
                         const restrict = message.messageStubParameters[0] === 'on' ? 'true' : 'false'
-                        this.emit ('group-settings-update', { jid, restrict, actor })
+                        emitGroupUpdate({ restrict })
                         break
                     case WA_MESSAGE_STUB_TYPE.GROUP_CHANGE_DESCRIPTION:
-                        this.emit ('group-description-update', { jid, actor })
+                        const desc = message.messageStubParameters[0]
+                        emitGroupUpdate({ desc })
                         break
                     case WA_MESSAGE_STUB_TYPE.GROUP_CHANGE_SUBJECT:
                     case WA_MESSAGE_STUB_TYPE.GROUP_CREATE:
                         chat.name = message.messageStubParameters[0]
                         this.emit ('chat-update', { jid, name: chat.name })
                         break 
+                    case WA_MESSAGE_STUB_TYPE.GROUP_PARTICIPANT_PROMOTE:
+                    case WA_MESSAGE_STUB_TYPE.GROUP_PARTICIPANT_DEMOTE:
+                        participants = message.messageStubParameters.map (whatsappID)
+                        emitParticipantsUpdate(
+                            WA_MESSAGE_STUB_TYPE.GROUP_PARTICIPANT_PROMOTE ? 
+                            'promote' :
+                            'demote'
+                        )
+                        break
                 }
             }
         }
@@ -357,17 +387,9 @@ export class WAConnection extends Base {
     /** when a message's status is updated (deleted, delivered, read, sent etc.) */
     on (event: 'message-status-update', listener: (message: WAMessageStatusUpdate) => void): this
     /** when participants are added to a group */
-    on (event: 'group-participants-add', listener: (update: {jid: string, participants: string[], actor?: string}) => void): this
-    /** when participants are removed or leave from a group */
-    on (event: 'group-participants-remove', listener: (update: {jid: string, participants: string[], actor?: string}) => void): this
-    /** when participants are promoted in a group */
-    on (event: 'group-participants-promote', listener: (update: {jid: string, participants: string[], actor?: string}) => void): this
-    /** when participants are demoted in a group */
-    on (event: 'group-participants-demote', listener: (update: {jid: string, participants: string[], actor?: string}) => void): this
-    /** when the group settings is updated */
-    on (event: 'group-settings-update', listener: (update: {jid: string, restrict?: string, announce?: string, actor?: string}) => void): this
-    /** when the group description is updated */
-    on (event: 'group-description-update', listener: (update: {jid: string, description?: string, actor?: string}) => void): this
+    on (event: 'group-participants-update', listener: (update: {jid: string, participants: string[], actor?: string, action: WAParticipantAction}) => void): this
+    /** when the group is updated */
+    on (event: 'group-update', listener: (update: Partial<WAGroupMetadata> & {jid: string, actor?: string}) => void): this
     /** when WA sends back a pong */
     on (event: 'received-pong', listener: () => void): this
 

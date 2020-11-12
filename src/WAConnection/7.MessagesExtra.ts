@@ -1,6 +1,6 @@
 import {WAConnection as Base} from './6.MessagesSend'
-import { MessageType, WAMessageKey, MessageInfo, WAMessageContent, WAMetric, WAFlag, WANode, WAMessage, WAMessageProto } from './Constants'
-import { whatsappID, delay, toNumber, unixTimestampSeconds, GET_MESSAGE_ID, WA_MESSAGE_ID } from './Utils'
+import { MessageType, WAMessageKey, MessageInfo, WAMessageContent, WAMetric, WAFlag, WANode, WAMessage, WAMessageProto, ChatModification, BaileysError } from './Constants'
+import { whatsappID, delay, toNumber, unixTimestampSeconds, GET_MESSAGE_ID, WA_MESSAGE_ID, isGroupID } from './Utils'
 import { Mutex } from './Mutex'
 
 export class WAConnection extends Base {
@@ -324,5 +324,65 @@ export class WAConnection extends Base {
         const waMessage = this.prepareMessageFromContent (id, content, {})
         await this.relayWAMessage (waMessage)
         return waMessage
+    }
+
+
+    /**
+     * Modify a given chat (archive, pin etc.)
+     * @param jid the ID of the person/group you are modifiying
+     * @param durationMs only for muting, how long to mute the chat for
+     */
+    @Mutex ((jid, type) => jid+type)
+    async modifyChat (jid: string, type: ChatModification, durationMs?: number) {
+        jid = whatsappID (jid)
+        const chat = this.assertChatGet (jid)
+
+        let chatAttrs: Record<string, string> = {jid: jid}
+        if (type === ChatModification.mute && !durationMs) {
+            throw new BaileysError(
+                'duration must be set to the timestamp of the time of pinning/unpinning of the chat', 
+                { status: 400 }
+            )
+        }
+
+        durationMs = durationMs || 0
+        switch (type) {
+            case ChatModification.pin:
+            case ChatModification.mute:
+                const strStamp = (unixTimestampSeconds() + Math.floor(durationMs/1000)).toString()
+                chatAttrs.type = type
+                chatAttrs[type] = strStamp
+                break
+            case ChatModification.unpin:
+            case ChatModification.unmute:
+                chatAttrs.type = type.replace ('un', '') // replace 'unpin' with 'pin'
+                chatAttrs.previous = chat[type.replace ('un', '')]
+                break
+            default:
+                chatAttrs.type = type
+                const msg = (await this.loadMessages(jid, 1)).messages[0]
+                if (msg) {
+                    chatAttrs.index = msg.key.id
+                    chatAttrs.owner = msg.key.fromMe.toString()
+                }
+                if (isGroupID(jid)) {
+                    chatAttrs.participant = this.user?.jid
+                }
+                break
+        }
+
+        const response = await this.setQuery ([['chat', chatAttrs, null]], [ WAMetric.chat, WAFlag.ignore ])
+
+        if (chat) {
+            if (type.includes('un')) {
+                type = type.replace ('un', '') as ChatModification
+                delete chat[type.replace('un','')]
+                this.emit ('chat-update', { jid, [type]: false })
+            } else {
+                chat[type] = chatAttrs[type] || 'true'
+                this.emit ('chat-update', { jid, [type]: chat[type] })
+            }
+        }
+        return response
     }
 }

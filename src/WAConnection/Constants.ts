@@ -162,9 +162,9 @@ export interface WAGroupMetadata {
     descOwner?: string
     descId?: string
     /** is set when the group only allows admins to change group settings */
-    restrict?: 'true' 
+    restrict?: 'true' | 'false' 
     /** is set when the group only allows admins to write messages */
-    announce?: 'true' 
+    announce?: 'true' | 'false' 
     participants: [{ id: string; isAdmin: boolean; isSuperAdmin: boolean }]
 }
 export interface WAGroupModification {
@@ -413,6 +413,7 @@ export interface WASendMessageResponse {
     messageID: string
     message: WAMessage
 }
+export type WAParticipantAction = 'add' | 'remove' | 'promote' | 'demote'
 export type BaileysEvent = 
     'open' | 
     'connecting' |
@@ -427,12 +428,8 @@ export type BaileysEvent =
     'message-new' |
     'message-update' |
     'message-status-update' |
-    'group-participants-add' |
-    'group-participants-remove' |
-    'group-participants-promote' |
-    'group-participants-demote' |
-    'group-settings-update' |
-    'group-description-update' |
+    'group-participants-update' |
+    'group-update' |
     'received-pong' |
     'credentials-updated' |
     'connection-validated'

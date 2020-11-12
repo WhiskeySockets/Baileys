@@ -1,4 +1,4 @@
-import { MessageType, GroupSettingChange, delay, ChatModification } from '../WAConnection/WAConnection'
+import { MessageType, GroupSettingChange, delay, ChatModification, whatsappID } from '../WAConnection/WAConnection'
 import * as assert from 'assert'
 import { WAConnectionTest, testJid } from './Common'
 
@@ -29,7 +29,7 @@ WAConnectionTest('Groups', (conn) => {
         const newDesc = 'Wow this was set from Baileys'
 
         const waitForEvent = new Promise (resolve => {
-            conn.on ('group-description-update', ({jid, actor}) => {
+            conn.once ('group-update', ({jid, actor}) => {
                 if (jid === gid) {
                     assert.ok (actor, conn.user.jid)
                     resolve ()
@@ -38,8 +38,6 @@ WAConnectionTest('Groups', (conn) => {
         })
         await conn.groupUpdateDescription (gid, newDesc)
         await waitForEvent
-
-        conn.removeAllListeners ('group-description-update')
 
         const metadata = await conn.groupMetadata(gid)
         assert.strictEqual(metadata.desc, newDesc)
@@ -61,7 +59,7 @@ WAConnectionTest('Groups', (conn) => {
     it('should update the subject', async () => {
         const subject = 'Baileyz ' + Math.floor(Math.random()*5)
         const waitForEvent = new Promise (resolve => {
-            conn.on ('chat-update', ({jid, name}) => {
+            conn.once ('chat-update', ({jid, name}) => {
                 if (jid === gid) {
                     assert.equal (name, subject)
                     resolve ()
@@ -70,14 +68,14 @@ WAConnectionTest('Groups', (conn) => {
         })
         await conn.groupUpdateSubject(gid, subject)
         await waitForEvent
-        conn.removeAllListeners ('chat-update')
 
         const metadata = await conn.groupMetadata(gid)
         assert.strictEqual(metadata.subject, subject)
     })
+
     it('should update the group settings', async () => {
         const waitForEvent = new Promise (resolve => {
-            conn.on ('group-settings-update', ({jid, announce}) => {
+            conn.once ('group-update', ({jid, announce}) => {
                 if (jid === gid) {
                     assert.equal (announce, 'true')
                     resolve ()
@@ -92,25 +90,42 @@ WAConnectionTest('Groups', (conn) => {
         await delay (2000)
         await conn.groupSettingChange (gid, GroupSettingChange.settingsChange, true)
     })
-    it('should remove someone from a group', async () => {
+
+    it('should promote someone', async () => {
         const waitForEvent = new Promise (resolve => {
-            conn.on ('group-participants-remove', ({jid, participants}) => {
+            conn.once ('group-participants-update', ({ jid, action }) => {
                 if (jid === gid) {
-                    assert.equal (participants[0], testJid)
+                    assert.strictEqual (action, 'promote')
                     resolve ()
                 }
+                
             })
         })
+        await conn.groupMakeAdmin(gid, [ testJid ])
+        await waitForEvent
+    })
+
+    it('should remove someone from a group', async () => {
         const metadata = await conn.groupMetadata (gid)
-        if (metadata.participants.find(({id}) => id === testJid)) {
+        if (metadata.participants.find(({id}) => whatsappID(id) === testJid)) {
+            const waitForEvent = new Promise (resolve => {
+                conn.once ('group-participants-update', ({jid, participants, action}) => {
+                    if (jid === gid) {
+                        assert.strictEqual (participants[0], testJid)
+                        assert.strictEqual (action, 'remove')
+                        resolve ()
+                    }
+                })
+            })
+
             await conn.groupRemove(gid, [testJid])
             await waitForEvent   
-        }
-        conn.removeAllListeners ('group-participants-remove')
+        } else console.log(`could not find testJid`)
     })
+
     it('should leave the group', async () => {
         const waitForEvent = new Promise (resolve => {
-            conn.on ('chat-update', ({jid, read_only}) => {
+            conn.once ('chat-update', ({jid, read_only}) => {
                 if (jid === gid) {
                     assert.equal (read_only, 'true')
                     resolve ()
@@ -119,13 +134,12 @@ WAConnectionTest('Groups', (conn) => {
         })
         await conn.groupLeave(gid)
         await waitForEvent
-        conn.removeAllListeners ('chat-update')
 
         await conn.groupMetadataMinimal (gid)
     })
     it('should archive the group', async () => {
         const waitForEvent = new Promise (resolve => {
-            conn.on ('chat-update', ({jid, archive}) => {
+            conn.once ('chat-update', ({jid, archive}) => {
                 if (jid === gid) {
                     assert.equal (archive, 'true')
                     resolve ()
@@ -134,11 +148,10 @@ WAConnectionTest('Groups', (conn) => {
         })
         await conn.modifyChat(gid, ChatModification.archive)
         await waitForEvent
-        conn.removeAllListeners ('chat-update')
     })
     it('should delete the group', async () => {
         const waitForEvent = new Promise (resolve => {
-            conn.on ('chat-update', (chat) => {
+            conn.once ('chat-update', (chat) => {
                 if (chat.jid === gid) {
                     assert.equal (chat['delete'], 'true')
                     resolve ()
@@ -147,6 +160,5 @@ WAConnectionTest('Groups', (conn) => {
         })
         await conn.deleteChat(gid)
         await waitForEvent
-        conn.removeAllListeners ('chat-update')
     })
 })
