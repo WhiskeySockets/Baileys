@@ -47,8 +47,11 @@ async function example() {
         const participant = json.participant ? ' (' + json.participant + ')' : '' // participant exists when the message is from a group
         console.log(`${json.to}${participant} acknlowledged message(s) ${json.ids} as ${json.type}`)
     })
-     // set to false to NOT relay your own sent messages
-    conn.on('message-new', async (m) => {
+    conn.on('chat-update', async chat => {
+        // only do something when a new message is received; i.e. the unread count is updated
+        if (!chat.count) return 
+        
+        const m = chat.messages.all()[0] // pull the new message from the update
         const messageStubType = WA_MESSAGE_STUB_TYPES[m.messageStubType] ||  'MESSAGE'
         console.log('got notification of type: ' + messageStubType)
 

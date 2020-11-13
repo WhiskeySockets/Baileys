@@ -9,6 +9,7 @@ import { URL } from 'url'
 import { Agent } from 'https'
 import Decoder from '../Binary/Decoder'
 import { MessageType, HKDFInfoKeys, MessageOptions, WAChat, WAMessageContent, BaileysError, WAMessageProto, TimedOutError, CancelledError, WAGenericMediaMessage, WAMessage, WAMessageKey } from './Constants'
+import KeyedDB from '@adiwajshing/keyed-db'
 
 const platformMap = {
     'aix': 'AIX',
@@ -37,6 +38,12 @@ export const GET_MESSAGE_ID = (key: WAMessageKey) => `${key.id}|${key.fromMe ? 1
 
 export const whatsappID = (jid: string) => jid?.replace ('@c.us', '@s.whatsapp.net')
 export const isGroupID = (jid: string) => jid?.endsWith ('@g.us')
+
+export const newMessagesDB = (messages: WAMessage[] = []) => {
+    const db = new KeyedDB(waMessageKey, WA_MESSAGE_ID)
+    messages.forEach(m => db.insert(m))
+    return db
+} 
 
 export function shallowChanges <T> (old: T, current: T): Partial<T> {
     let changes: Partial<T> = {}

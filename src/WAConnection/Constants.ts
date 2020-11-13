@@ -425,8 +425,6 @@ export type BaileysEvent =
     'user-status-update' |
     'chat-new' |
     'chat-update' |
-    'message-new' |
-    'message-update' |
     'message-status-update' |
     'group-participants-update' |
     'group-update' |
