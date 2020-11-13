@@ -7,7 +7,7 @@ export const testJid = process.env.TEST_JID || '1234@s.whatsapp.net' // set TEST
 
 export const makeConnection = () => {
     const conn = new WAConnection()
-    conn.connectOptions.maxIdleTimeMs = 45_000
+    conn.connectOptions.maxIdleTimeMs = 15_000
     conn.logger.level = 'debug'
 
     let evCounts = {}

@@ -76,7 +76,13 @@ export class WAConnection extends Base {
         this.emit ('connection-validated', this.user)
 
         if (this.loadProfilePicturesForChatsAutomatically) {
-            const response = await this.query({ json: ['query', 'ProfilePicThumb', this.user.jid], waitForOpen: false, expect200: false, requiresPhoneConnection: false, startDebouncedTimeout: true  })
+            const response = await this.query({ 
+                json: ['query', 'ProfilePicThumb', this.user.jid], 
+                waitForOpen: false, 
+                expect200: false, 
+                requiresPhoneConnection: false, 
+                startDebouncedTimeout: true 
+            })
             this.user.imgUrl = response?.eurl || ''
         }
         

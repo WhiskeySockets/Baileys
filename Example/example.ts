@@ -18,6 +18,7 @@ async function example() {
     conn.logger.level = 'debug' // set to 'debug' to see what kind of stuff you can implement
     // attempt to reconnect at most 10 times in a row
     conn.connectOptions.maxRetries = 10
+    conn.connectOptions.waitForChats = false
     conn.chatOrderingKey = waChatKey(true) // order chats such that pinned chats are on top
 
     conn.on ('credentials-updated', () => {
@@ -26,6 +27,12 @@ async function example() {
         const authInfo = conn.base64EncodedAuthInfo() // get all the auth info we need to restore this session
         fs.writeFileSync('./auth_info.json', JSON.stringify(authInfo, null, '\t')) // save this info to a file
     })
+    conn.on('chats-received', ({ hasNewChats }) => {
+        console.log(`you have ${conn.chats.length} chats, new chats available: ${hasNewChats}`)
+    })
+    conn.on('contacts-received', () => {
+        console.log(`you have ${Object.keys(conn.contacts).length} chats`)
+    })
 
     // loads the auth file credentials if present
     fs.existsSync('./auth_info.json') && conn.loadAuthInfo ('./auth_info.json')
@@ -33,9 +40,7 @@ async function example() {
     //conn.connectOptions.agent = ProxyAgent ('http://1.0.180.120:8080')
     await conn.connect()
 
-    console.log('oh hello ' + conn.user.name + ' (' + conn.user.jid + ')')
-    console.log('you have ' + conn.chats.length + ' chats & ' + Object.keys(conn.contacts).length + ' contacts')
-    
+    console.log('oh hello ' + conn.user.name + ' (' + conn.user.jid + ')')    
     // uncomment to load all unread messages
     //const unread = await conn.loadAllUnreadMessages ()
     //console.log ('you have ' + unread.length + ' unread messages')

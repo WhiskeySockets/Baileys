@@ -41,7 +41,7 @@ export const isGroupID = (jid: string) => jid?.endsWith ('@g.us')
 
 export const newMessagesDB = (messages: WAMessage[] = []) => {
     const db = new KeyedDB(waMessageKey, WA_MESSAGE_ID)
-    messages.forEach(m => db.insert(m))
+    messages.forEach(m => !db.get(WA_MESSAGE_ID(m)) && db.insert(m))
     return db
 } 
 

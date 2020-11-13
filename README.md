@@ -24,7 +24,7 @@ Create and cd to your NPM project directory and then in terminal, write:
 1. stable: `npm install @adiwajshing/baileys`
 2. stabl-ish w quicker fixes & latest features: `npm install github:adiwajshing/baileys` 
 
-Do note, the library will most likely vary if you're using the NPM package, read that [here](https://www.npmjs.com/package/@adiwajshing/baileys)
+Do note, the library will likely vary if you're using the NPM package, read that [here](https://www.npmjs.com/package/@adiwajshing/baileys)
 
 Then import in your code using:
 ``` ts 
@@ -43,14 +43,29 @@ import { WAConnection } from '@adiwajshing/baileys'
 
 async function connectToWhatsApp () {
     const conn = new WAConnection() 
-    
-    await conn.connect ()
-    console.log ("oh hello " + conn.user.name + " (" + conn.user.id + ")")
-    // every chat object has a list of most recent messages
-    console.log ("you have " + conn.chats.all().length + " chats")
+    // called when WA sends chats
+    // this can take up to a few minutes if you have thousands of chats!
+    conn.on('chats-received', async ({ hasNewChats }) => {
+        console.log(`you have ${conn.chats.length} chats, new chats available: ${hasNewChats}`)
 
-    const unread = await conn.loadAllUnreadMessages ()
-    console.log ("you have " + unread.length + " unread messages")
+        const unread = await conn.loadAllUnreadMessages ()
+        console.log ("you have " + unread.length + " unread messages")
+    })
+    // called when WA sends chats
+    // this can take up to a few minutes if you have thousands of contacts!
+    conn.on('contacts-received', () => {
+        console.log('you have ' + Object.keys(conn.contacts).length + ' contacts')
+    })
+
+    await conn.connect ()
+    conn.on('chat-update', chatUpdate => {
+        // `chatUpdate` is a partial object, containing the updated properties of the chat
+        // received a new message
+        if (chatUpdate.messages && chatUpdate.count) {
+            const message = chatUpdate.messages.all()[0]
+            console.log (message)
+        } else console.log (chatUpdate) // see updates (can be archived, pinned etc.)
+    })
 }
 // run in main file
 connectToWhatsApp ()
@@ -59,12 +74,7 @@ connectToWhatsApp ()
 
 If the connection is successful, you will see a QR code printed on your terminal screen, scan it with WhatsApp on your phone and you'll be logged in!
 
-If you don't want to wait for WhatsApp to send all your chats while connecting, you can set the following property to false:
-``` ts
-conn.connectOptions.waitForChats = false
-``` 
-
-Do note, the `chats` object returned is now a [KeyedDB](https://github.com/adiwajshing/keyed-db). This is done for the following reasons:
+Do note, the `conn.chats` object is a [KeyedDB](https://github.com/adiwajshing/keyed-db). This is done for the following reasons:
 - Most applications require chats to be ordered in descending order of time. (`KeyedDB` does this in `log(N)` time)
 - Most applications require pagination of chats (Use `chats.paginated()`)
 - Most applications require **O(1)** access to chats via the chat ID. (Use `chats.get(jid)` with `KeyedDB`)
@@ -87,28 +97,19 @@ The entire `WAConnectOptions` struct is mentioned here with default values:
 ``` ts
 conn.connectOptions = {
     /** New QR generation interval, set to null if you don't want to regenerate */
-    regenerateQRIntervalMs?: 30_000
+    regenerateQRIntervalMs?: 30_000,
     /** fails the connection if no data is received for X seconds */
-    maxIdleTimeMs?: 15_000
+    maxIdleTimeMs?: 15_000,
     /** maximum attempts to connect */
-    maxRetries?: 5
-    /** should the chats be waited for; 
-     * should generally keep this as true, unless you only care about sending & receiving new messages 
-     * & don't care about chat history
-     * */
-    waitForChats?: true
-    /** if set to true, the connect only waits for the last message of the chat
-     * setting to false, generally yields a faster connect
-     */
-    waitOnlyForLastMessage?: false
+    maxRetries?: 5,
     /** max time for the phone to respond to a connectivity test */
-    phoneResponseTime?: 10_000
+    phoneResponseTime?: 10_000,
     /** minimum time between new connections */
-    connectCooldownMs?: 3000
+    connectCooldownMs?: 3000,
     /** agent used for WS connections (could be a proxy agent) */
-    agent?: Agent = undefined
+    agent?: Agent = undefined,
     /** agent used for fetch requests -- uploading/downloading media */
-    fetchAgent?: Agent = undefined
+    fetchAgent?: Agent = undefined,
     /** always uses takeover for connecting */
     alwaysUseTakeover: true
 } as WAConnectOptions
@@ -200,8 +201,14 @@ on (event: 'user-presence-update', listener: (update: PresenceUpdate) => void): 
 on (event: 'user-status-update', listener: (update: {jid: string, status?: string}) => void): this
 /** when a new chat is added */
 on (event: 'chat-new', listener: (chat: WAChat) => void): this
+/** when contacts are sent by WA */
+on (event: 'contacts-received', listener: () => void): this
+/** when chats are sent by WA */
+on (event: 'chats-received', listener: (update: {hasNewChats: boolean}) => void): this
+/** when multiple chats are updated (new message, updated message, deleted, pinned, etc) */
+on (event: 'chats-update', listener: (chats: (Partial<WAChat> & { jid: string })[]) => void): this
 /** when a chat is updated (new message, updated message, deleted, pinned, etc) */
-on (event: 'chat-update', listener: (chat: WAChatUpdate) => void): this
+on (event: 'chat-update', listener: (chat: Partial<WAChat> & { jid: string }) => void): this
 /** when a message's status is updated (deleted, delivered, read, sent etc.) */
 on (event: 'message-status-update', listener: (message: WAMessageStatusUpdate) => void): this
 /** when participants are added to a group */

@@ -1,9 +1,8 @@
 import * as Utils from './Utils'
-import { WAMessage, WAChat, WANode, KEEP_ALIVE_INTERVAL_MS, BaileysError, WAConnectOptions, DisconnectReason, UNAUTHORIZED_CODES, WAContact, TimedOutError, CancelledError, WAOpenResult, DEFAULT_ORIGIN, WS_URL } from './Constants'
+import { KEEP_ALIVE_INTERVAL_MS, BaileysError, WAConnectOptions, DisconnectReason, UNAUTHORIZED_CODES, CancelledError, WAOpenResult, DEFAULT_ORIGIN, WS_URL } from './Constants'
 import {WAConnection as Base} from './1.Validation'
 import Decoder from '../Binary/Decoder'
 import WS from 'ws'
-import KeyedDB from '@adiwajshing/keyed-db'
 
 const DEF_CALLBACK_PREFIX = 'CB:'
 const DEF_TAG_PREFIX = 'TAG:'
@@ -22,7 +21,7 @@ export class WAConnection extends Base {
 
         let tries = 0
         let lastConnect = this.lastDisconnectTime
-        var updates
+        let updates: any
         while (this.state === 'connecting') {
             tries += 1
             try {
@@ -48,9 +47,7 @@ export class WAConnection extends Base {
                 if (!willReconnect) throw error
             }
         }
-
-        const updatedChats = !!this.lastDisconnectTime && updates
-        const result: WAOpenResult = { user: this.user, newConnection, updatedChats }
+        const result: WAOpenResult = { user: this.user, newConnection, ...(updates || {}) }
         this.emit ('open', result)
         
         this.logger.info ('opened connection to WhatsApp Web')
@@ -73,7 +70,7 @@ export class WAConnection extends Base {
                                             !this.connectOptions.alwaysUseTakeover
                 const reconnectID = shouldUseReconnect && this.user.jid.replace ('@s.whatsapp.net', '@c.us')
 
-                this.conn = new WS(WS_URL, null, { 
+                this.conn = new WS(WS_URL, null, {
                     origin: DEFAULT_ORIGIN, 
                     timeout: this.connectOptions.maxIdleTimeMs, 
                     agent: options.agent,
@@ -90,12 +87,12 @@ export class WAConnection extends Base {
                 
                 this.conn.on ('open', async () => {
                     this.logger.info(`connected to WhatsApp Web server, authenticating via ${reconnectID ? 'reconnect' : 'takeover'}`)
-                    let waitForChats: Promise<{[k: string]: Partial<WAChat>}>
+                    let waitForChats: Promise<any>
                     // add wait for chats promise if required
                     if (typeof options?.waitForChats === 'undefined' ? true : options?.waitForChats) {
-                        const {wait, cancelChats} = this.receiveChatsAndContacts(this.connectOptions.waitOnlyForLastMessage)
+                        const {wait, cancellations} = this.receiveChatsAndContacts(this.connectOptions.waitOnlyForLastMessage)
                         waitForChats = wait
-                        rejections.push (cancelChats)
+                        rejections.push (...cancellations)
                     }
                     try {
                         const [, result] = await Promise.all (
@@ -116,7 +113,7 @@ export class WAConnection extends Base {
                 })
                 this.conn.on('error', rejectAll)
                 this.conn.on('close', () => rejectAll(new Error(DisconnectReason.close)))
-            }) as Promise<void | { [k: string]: Partial<WAChat> }>
+            }) as Promise<void | any>
         )
 
         this.on ('ws-close', rejectAll)
@@ -140,135 +137,30 @@ export class WAConnection extends Base {
      * Must be called immediately after connect
      */
     protected receiveChatsAndContacts(waitOnlyForLast: boolean) {
-        const chats = new KeyedDB(this.chatOrderingKey, c => c.jid)
-        const contacts = {}
-
-        let receivedChats = false
-        let receivedContacts = false
-        let receivedMessages = false
-
-        let resolveTask: () => void
-        let rejectTask: (e: Error) => void
-        const checkForResolution = () => receivedContacts && receivedChats && receivedMessages && resolveTask ()
-        // wait for messages to load
-        const messagesUpdate = json => {
-            this.startDebouncedTimeout () // restart debounced timeout
-    
-            const isLast = json[1].last || waitOnlyForLast
-            const messages = json[2] as WANode[]
-
-            if (messages) {
-                messages.reverse().forEach (([,, message]: ['message', null, WAMessage]) => {
-                    const jid = message.key.remoteJid
-                    const chat = chats.get(jid)
-                    if (chat) {
-                        const fm = chat.messages.all()[0]
-                        
-                        const prevEpoch = (fm && fm['epoch']) || 0
-                       
-                        message['epoch'] = prevEpoch-1
-                        chat.messages.insert (message)
-                    }
+        const rejectableWaitForEvent = (event: string) => {
+            let rejectTask = (_: Error) => {}
+            const task = new Promise((resolve, reject) => {
+                this.once (event, data => {
+                    this.startDebouncedTimeout() // start timeout again
+                    resolve(data)
                 })
-            }
-            if (isLast) receivedMessages = true
-            // if received contacts before messages
-            if (isLast && receivedContacts) checkForResolution ()
-        }
-        const chatUpdate = json => {
-            if (json[1].duplicate || !json[2]) return
-            this.startDebouncedTimeout () // restart debounced timeout
-
-            json[2]
-            .forEach(([item, chat]: [any, WAChat]) => {
-                if (!chat) {
-                    this.logger.warn (`unexpectedly got null chat: ${item}`, chat)
-                    return
-                }
-
-                chat.jid = Utils.whatsappID (chat.jid)
-                chat.t = +chat.t
-                chat.count = +chat.count
-                chat.messages = Utils.newMessagesDB()
-
-                // chats data (log json to see what it looks like)
-                !chats.get (chat.jid) && chats.insert (chat) 
+                rejectTask = reject
             })
-            
-            this.logger.info (`received ${json[2].length} chats`)
-            receivedChats = true
-
-            if (json[2].length === 0) receivedMessages = true
-            checkForResolution ()
+            return { reject: rejectTask, task }
         }
-        const contactsUpdate = json => {
-            if (json[1].duplicate || !json[2]) return
-            this.startDebouncedTimeout () // restart debounced timeout
+        const events = [ 'chats-received', 'contacts-received', 'CB:action,add:last' ]
+        if (!waitOnlyForLast) events.push('CB:action,add:before', 'CB:action,add:unread')
 
-            receivedContacts = true
-            
-            json[2].forEach(([type, contact]: ['user', WAContact]) => {
-                if (!contact) return this.logger.info (`unexpectedly got null contact: ${type}`, contact)
-                
-                contact.jid = Utils.whatsappID (contact.jid)
-                contacts[contact.jid] = contact
+        const cancellations = []
+        const wait = Promise.all (
+            events.map (ev => {
+                const {reject, task} = rejectableWaitForEvent(ev)
+                cancellations.push(reject)
+                return task 
             })
-            this.logger.info (`received ${json[2].length} contacts`)
-            checkForResolution ()
-        }
-        const registerCallbacks = () => {
-            // wait for actual messages to load, "last" is the most recent message, "before" contains prior messages
-            this.on(DEF_CALLBACK_PREFIX + 'action,add:last', messagesUpdate)
-            this.on(DEF_CALLBACK_PREFIX + 'action,add:before', messagesUpdate)
-            this.on(DEF_CALLBACK_PREFIX + 'action,add:unread', messagesUpdate)
-            // get chats
-            this.on(DEF_CALLBACK_PREFIX + 'response,type:chat', chatUpdate)
-            // get contacts
-            this.on(DEF_CALLBACK_PREFIX + 'response,type:contacts', contactsUpdate)
-        }
-        const deregisterCallbacks = () => {
-            this.off(DEF_CALLBACK_PREFIX + 'action,add:last', messagesUpdate)
-            this.off(DEF_CALLBACK_PREFIX + 'action,add:before', messagesUpdate)
-            this.off(DEF_CALLBACK_PREFIX + 'action,add:unread', messagesUpdate)
-            this.off(DEF_CALLBACK_PREFIX + 'response,type:chat', chatUpdate)
-            this.off(DEF_CALLBACK_PREFIX + 'response,type:contacts', contactsUpdate)
-        }
-        // wait for the chats & contacts to load
-        const wait = (async () => {
-            try {
-                registerCallbacks ()
-
-                await new Promise ((resolve, reject) => {
-                    resolveTask = resolve
-                    rejectTask = reject
-                })
-
-                const oldChats = this.chats
-                const updatedChats: { [k: string]: Partial<WAChat> } = {}
-
-                chats.all().forEach (chat => {
-                    const respectiveContact = contacts[chat.jid]
-                    chat.name = respectiveContact?.name || respectiveContact?.notify || chat.name
-                    
-                    const oldChat = oldChats.get(chat.jid)
-                    if (!oldChat) {
-                        updatedChats[chat.jid] = chat
-                    } else if (oldChat.t < chat.t || oldChat.modify_tag !== chat.modify_tag) {
-                        const changes = Utils.shallowChanges (oldChat, chat)
-                        delete changes.messages
-                        updatedChats[chat.jid] = changes
-                    }
-                })
-                
-                this.chats = chats 
-                this.contacts = contacts
-
-                return updatedChats
-            } finally {
-                deregisterCallbacks ()
-            }
-        })()
-        return { wait, cancelChats: () => rejectTask (CancelledError()) }
+        ).then(([update]) => update as { hasNewChats: boolean })
+        
+        return { wait, cancellations }
     }
     private onMessageRecieved(message: string | Buffer) {
         if (message[0] === '!') {

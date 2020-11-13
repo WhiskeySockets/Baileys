@@ -1,6 +1,6 @@
 import * as assert from 'assert'
 import {WAConnection} from '../WAConnection/WAConnection'
-import { AuthenticationCredentialsBase64, BaileysError, ReconnectMode, DisconnectReason } from '../WAConnection/Constants'
+import { AuthenticationCredentialsBase64, BaileysError, ReconnectMode, DisconnectReason, WAChat } from '../WAConnection/Constants'
 import { delay } from '../WAConnection/Utils'
 import { assertChatDBIntegrity, makeConnection, testJid } from './Common'
 
@@ -291,14 +291,11 @@ describe ('Pending Requests', () => {
     it ('should correctly send updates', async () => {
         const conn = makeConnection ()
         conn.pendingRequestTimeoutMs = null
-
         conn.loadAuthInfo('./auth_info.json')
+
+        const task = new Promise(resolve => conn.once('chats-received', resolve))
         await conn.connect ()
-
-        conn.close ()
-
-        const result0 = await conn.connect ()
-        assert.deepEqual (result0.updatedChats, {})
+        await task
 
         conn.close ()
 
@@ -306,19 +303,18 @@ describe ('Pending Requests', () => {
         oldChat.archive = 'true' // mark the first chat as archived
         oldChat.modify_tag = '1234' // change modify tag to detect change
 
-        // close the socket after a few seconds second to see if updates are correct after a reconnect
-        setTimeout (() => conn['conn'].close(), 5000) 
+        const promise = new Promise(resolve => conn.once('chats-update', resolve))
 
         const result = await conn.connect ()
         assert.ok (!result.newConnection)
 
-        const chat = result.updatedChats[oldChat.jid]
+        const chats = await promise as Partial<WAChat>[]
+        const chat = chats.find (c => c.jid === oldChat.jid)
         assert.ok (chat)
         
         assert.ok ('archive' in chat)
-        assert.equal (Object.keys(chat).length, 2)
-
-        assert.equal (Object.keys(result.updatedChats).length, 1)
+        assert.strictEqual (Object.keys(chat).length, 3)
+        assert.strictEqual (Object.keys(chats).length, 1)
 
         conn.close ()
     })

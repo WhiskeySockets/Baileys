@@ -79,9 +79,15 @@ export type WAConnectOptions = {
     maxIdleTimeMs?: number
     /** maximum attempts to connect */
     maxRetries?: number
-    /** should the chats be waited for */
+    /** 
+     * @deprecated -- use the `chats-received` & `contacts-received` events
+     * should the chats be waited for 
+     * */
     waitForChats?: boolean
-    /** if set to true, the connect only waits for the last message of the chat */
+    /** 
+     * @deprecated -- use the `chats-received` & `contacts-received` events
+     * if set to true, the connect only waits for the last message of the chat 
+     * */
     waitOnlyForLastMessage?: boolean
     /** max time for the phone to respond to a connectivity test */
     phoneResponseTime?: number
@@ -376,9 +382,7 @@ export interface WAOpenResult {
     /** Was this connection opened via a QR scan */
     newConnection: boolean
     user: WAUser
-    updatedChats?: {
-        [k: string]: Partial<WAChat>
-    }
+    hasNewChats?: boolean
 }
 
 export enum GroupSettingChange {
@@ -423,6 +427,8 @@ export type BaileysEvent =
     'connection-phone-change' |
     'user-presence-update' |
     'user-status-update' |
+    'contacts-received' |
+    'chats-received' |
     'chat-new' |
     'chat-update' |
     'message-status-update' |

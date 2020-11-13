@@ -1,7 +1,7 @@
 import * as QR from 'qrcode-terminal'
 import { WAConnection as Base } from './3.Connect'
-import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, PresenceUpdate, BaileysEvent, DisconnectReason, WAOpenResult, Presence, AuthenticationCredentials, WAParticipantAction, WAGroupMetadata, WAUser } from './Constants'
-import { whatsappID, unixTimestampSeconds, isGroupID, GET_MESSAGE_ID, WA_MESSAGE_ID, waMessageKey, newMessagesDB } from './Utils'
+import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, PresenceUpdate, BaileysEvent, DisconnectReason, WAOpenResult, Presence, AuthenticationCredentials, WAParticipantAction, WAGroupMetadata, WAUser, WANode } from './Constants'
+import { whatsappID, unixTimestampSeconds, isGroupID, GET_MESSAGE_ID, WA_MESSAGE_ID, waMessageKey, newMessagesDB, shallowChanges } from './Utils'
 import KeyedDB from '@adiwajshing/keyed-db'
 import { Mutex } from './Mutex'
 
@@ -9,6 +9,123 @@ export class WAConnection extends Base {
 
     constructor () {
         super ()
+        // chats received
+        this.on('CB:response,type:chat', json => {
+            if (json[1].duplicate || !json[2]) return
+            const chats = new KeyedDB(this.chatOrderingKey, c => c.jid)
+
+            json[2].forEach(([item, chat]: [any, WAChat]) => {
+                if (!chat) {
+                    this.logger.warn (`unexpectedly got null chat: ${item}`, chat)
+                    return
+                }
+                chat.jid = whatsappID (chat.jid)
+                chat.t = +chat.t
+                chat.count = +chat.count
+                chat.messages = newMessagesDB()
+                // chats data (log json to see what it looks like)
+                !chats.get (chat.jid) && chats.insert (chat) 
+            })
+            this.logger.info (`received ${json[2].length} chats`)
+
+            const oldChats = this.chats
+            const updatedChats = []
+            let hasNewChats = false
+
+            chats.all().forEach (chat => {
+                const respectiveContact = this.contacts[chat.jid]
+                chat.name = respectiveContact?.name || respectiveContact?.notify || chat.name
+                
+                const oldChat = oldChats.get(chat.jid)
+                if (!oldChat) {
+                    hasNewChats = true
+                } else {
+                    chat.messages = oldChat.messages
+                    if (oldChat.t !== chat.t || oldChat.modify_tag !== chat.modify_tag) {
+                        const changes = shallowChanges (oldChat, chat)
+                        delete changes.messages
+                        updatedChats.push({ jid: chat.jid, ...changes })
+                    }
+                }
+            })
+            this.chats = chats 
+            this.lastChatsReceived = new Date()
+
+            updatedChats.length > 0 && this.emit('chats-update', updatedChats)
+
+            this.emit('chats-received', { hasNewChats })
+        })
+        // we store these last messages
+        const lastMessages = {}
+        // messages received
+        const messagesUpdate = (json, style: 'prepend' | 'append') => {
+            const messages = json[2] as WANode[]
+            if (messages) {
+                const updates: { [k: string]: KeyedDB<WAMessage, string> } = {}
+                messages.reverse().forEach (([,, message]: ['message', null, WAMessage]) => {
+                    const jid = message.key.remoteJid
+                    const chat = this.chats.get(jid)
+                    const mKeyID = WA_MESSAGE_ID(message)
+                    if (chat && !chat.messages.get(mKeyID)) {
+                        if (style === 'prepend') {
+                            const fm = chat.messages.get(lastMessages[jid])
+                            if (!fm) return
+                            const prevEpoch = fm['epoch']
+                            message['epoch'] = prevEpoch-1
+                        } else if (style === 'append') {
+                            const lm = chat.messages.all()[chat.messages.length-1]
+                            const prevEpoch = (lm && lm['epoch']) || 0
+                            message['epoch'] = prevEpoch+100 // hacky way to allow more previous messages
+                        }
+                        chat.messages.insert (message)
+                        
+                        updates[jid] = updates[jid] || newMessagesDB()
+                        updates[jid].insert(message)
+
+                        lastMessages[jid] = mKeyID
+                    } else if (!chat) this.logger.debug({ jid }, `chat not found`)
+                })
+                if (Object.keys(updates).length > 0) {
+                    this.emit ('chats-update', 
+                        Object.keys(updates).map(jid => ({ jid, messages: updates[jid] }))
+                    )
+                }
+            }
+        }
+        this.on('CB:action,add:last', json =>  messagesUpdate(json, 'append'))
+        this.on('CB:action,add:before', json => messagesUpdate(json, 'prepend'))
+        this.on('CB:action,add:unread', json => messagesUpdate(json, 'prepend'))
+
+        // contacts received
+        this.on('CB:response,type:contacts', json => {
+            if (json[1].duplicate || !json[2]) return
+            const contacts: { [_: string]: WAContact } = {}
+            
+            json[2].forEach(([type, contact]: ['user', WAContact]) => {
+                if (!contact) return this.logger.info (`unexpectedly got null contact: ${type}`, contact)
+                
+                contact.jid = whatsappID (contact.jid)
+                contacts[contact.jid] = contact
+            })
+            // update chat names
+            const updatedChats = []
+            this.chats.all().forEach(c => {
+                const contact = contacts[c.jid]
+                if (contact) {
+                    const name = contact?.name || contact?.notify || c.name
+                    if (name !== c.name) {
+                        updatedChats.push({ jid: c.jid, name })
+                    }
+                }
+            })
+            updatedChats.length > 0 && this.emit('chats-update', updatedChats)
+
+            this.logger.info (`received ${json[2].length} contacts`)
+            this.contacts = contacts
+
+            this.emit('contacts-received')
+        })
+        
         // new messages
         this.on('CB:action,add:relay,message', json => {
             const message = json[2][0][2] as WAMessage
@@ -386,6 +503,12 @@ export class WAConnection extends Base {
     on (event: 'user-status-update', listener: (update: {jid: string, status?: string}) => void): this
     /** when a new chat is added */
     on (event: 'chat-new', listener: (chat: WAChat) => void): this
+    /** when contacts are sent by WA */
+    on (event: 'contacts-received', listener: () => void): this
+    /** when chats are sent by WA */
+    on (event: 'chats-received', listener: (update: {hasNewChats: boolean}) => void): this
+    /** when multiple chats are updated (new message, updated message, deleted, pinned, etc) */
+    on (event: 'chats-update', listener: (chats: (Partial<WAChat> & { jid: string })[]) => void): this
     /** when a chat is updated (new message, updated message, deleted, pinned, etc) */
     on (event: 'chat-update', listener: (chat: Partial<WAChat> & { jid: string }) => void): this
     /** 
@@ -407,7 +530,7 @@ export class WAConnection extends Base {
     /** when WA sends back a pong */
     on (event: 'received-pong', listener: () => void): this
 
-    on (event: string, listener: (json: any) => void): this
+    on (event: BaileysEvent | string, listener: (json: any) => void): this
 
     on (event: BaileysEvent | string, listener: (...args: any[]) => void) { return super.on (event, listener) }
     emit (event: BaileysEvent | string, ...args: any[]) { return super.emit (event, ...args) }
