@@ -356,7 +356,9 @@ export class WAConnection extends EventEmitter {
             //throw new Error("You're not even connected, you can't log out")
             await new Promise(resolve => this.conn.send('goodbye,["admin","Conn","disconnect"]', null, resolve))
         }
-        this.user = null
+        this.user = undefined
+        this.chats.clear()
+        this.contacts = {}
         this.close()
     }
     /** Close the connection to WhatsApp Web */

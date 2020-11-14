@@ -12,9 +12,9 @@ export class WAConnection extends Base {
         if (!this.authInfo?.clientID) {
             this.authInfo = { clientID: Utils.generateClientID() } as any
         }
-
         const canLogin = this.authInfo?.encKey && this.authInfo?.macKey        
         this.referenceDate = new Date () // refresh reference date
+        let isNewUser = false
 
         this.startDebouncedTimeout ()
         
@@ -70,7 +70,15 @@ export class WAConnection extends Base {
         }
 
         const validationJSON = (await Promise.all (initQueries)).slice(-1)[0] // get the last result
-        this.user = await this.validateNewConnection(validationJSON[1]) // validate the connection
+        const newUser = await this.validateNewConnection(validationJSON[1]) // validate the connection
+        if (newUser.jid !== this.user?.jid) {
+            isNewUser = true
+            // clear out old data
+            this.chats.clear()
+            this.contacts = {}
+        }
+        
+        this.user = newUser
         
         this.logger.info('validated connection successfully')
         this.emit ('connection-validated', this.user)
@@ -89,6 +97,8 @@ export class WAConnection extends Base {
         this.sendPostConnectQueries ()
 
         this.logger.debug('sent init queries')
+
+        return { isNewUser }
     }
     /**
      * Send the same queries WA Web sends after connect

@@ -87,7 +87,7 @@ export class WAConnection extends Base {
                 
                 this.conn.on ('open', async () => {
                     this.logger.info(`connected to WhatsApp Web server, authenticating via ${reconnectID ? 'reconnect' : 'takeover'}`)
-                    let waitForChats: Promise<any>
+                    let waitForChats: Promise<{ hasNewChats: boolean }>
                     // add wait for chats promise if required
                     if (typeof options?.waitForChats === 'undefined' ? true : options?.waitForChats) {
                         const {wait, cancellations} = this.receiveChatsAndContacts(this.connectOptions.waitOnlyForLastMessage)
@@ -95,25 +95,25 @@ export class WAConnection extends Base {
                         rejections.push (...cancellations)
                     }
                     try {
-                        const [, result] = await Promise.all (
+                        const [authResult, chatsResult] = await Promise.all (
                             [ 
-                                this.authenticate(reconnectID)
-                                .then(() => this.startKeepAliveRequest()),
+                                this.authenticate(reconnectID),
                                 waitForChats || undefined
                             ]
                         )
+                        this.startKeepAliveRequest()
                         this.conn
                             .removeAllListeners ('error')
                             .removeAllListeners ('close')
                         this.stopDebouncedTimeout ()
-                        resolve (result)
+                        resolve ({ ...authResult, ...chatsResult })
                     } catch (error) {
                         reject (error)
                     }
                 })
                 this.conn.on('error', rejectAll)
                 this.conn.on('close', () => rejectAll(new Error(DisconnectReason.close)))
-            }) as Promise<void | any>
+            }) as Promise<{ hasNewChats?: boolean, isNewUser: boolean }>
         )
 
         this.on ('ws-close', rejectAll)

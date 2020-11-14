@@ -382,6 +382,7 @@ export interface WAOpenResult {
     /** Was this connection opened via a QR scan */
     newConnection: boolean
     user: WAUser
+    isNewUser: boolean
     hasNewChats?: boolean
 }
 
