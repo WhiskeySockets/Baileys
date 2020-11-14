@@ -326,6 +326,9 @@ export class WAConnection extends EventEmitter {
         let onOpen: () => void
         let onClose: ({ reason }) => void
 
+        if (this.pendingRequestTimeoutMs <= 0) {
+            throw new BaileysError(DisconnectReason.close, { status: 428 })
+        }
         await (
             Utils.promiseTimeout (
                 this.pendingRequestTimeoutMs, 
