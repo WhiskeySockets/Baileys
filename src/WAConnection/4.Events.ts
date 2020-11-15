@@ -1,7 +1,7 @@
 import * as QR from 'qrcode-terminal'
 import { WAConnection as Base } from './3.Connect'
 import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, PresenceUpdate, BaileysEvent, DisconnectReason, WAOpenResult, Presence, AuthenticationCredentials, WAParticipantAction, WAGroupMetadata, WAUser, WANode } from './Constants'
-import { whatsappID, unixTimestampSeconds, isGroupID, GET_MESSAGE_ID, WA_MESSAGE_ID, waMessageKey, newMessagesDB, shallowChanges } from './Utils'
+import { whatsappID, unixTimestampSeconds, isGroupID, GET_MESSAGE_ID, WA_MESSAGE_ID, waMessageKey, newMessagesDB, shallowChanges, toNumber } from './Utils'
 import KeyedDB from '@adiwajshing/keyed-db'
 import { Mutex } from './Mutex'
 
@@ -404,7 +404,7 @@ export class WAConnection extends Base {
             }            
             // only update if it's an actual message
             if (message.message) {
-                this.chatUpdateTime (chat)
+                this.chatUpdateTime (chat, toNumber(message.messageTimestamp))
                 chatUpdate.t = chat.t
             }
             chatUpdate.messages = newMessagesDB([ message ])
@@ -473,7 +473,7 @@ export class WAConnection extends Base {
             }
         }
     }
-    protected chatUpdateTime = chat => this.chats.updateKey (chat, c => c.t = unixTimestampSeconds())
+    protected chatUpdateTime = (chat, stamp: number) => this.chats.updateKey (chat, c => c.t = stamp)
     /** sets the profile picture of a chat */
     protected async setProfilePicture (chat: WAChat) {
         chat.imgUrl = await this.getProfilePicture (chat.jid).catch (err => '')
