@@ -404,7 +404,7 @@ export class WAConnection extends Base {
             }            
             // only update if it's an actual message
             if (message.message) {
-                this.chatUpdateTime (chat, toNumber(message.messageTimestamp))
+                this.chatUpdateTime (chat, +toNumber(message.messageTimestamp))
                 chatUpdate.t = chat.t
             }
             chatUpdate.messages = newMessagesDB([ message ])
