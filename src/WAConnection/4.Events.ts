@@ -252,11 +252,15 @@ export class WAConnection extends Base {
         // profile picture updates
         this.on('CB:Cmd,type:picture', async json => {
             const jid = whatsappID(json[1].jid)
-            const chat = this.chats.get(jid)
-            if (!chat) return
+            const imgUrl = await this.getProfilePicture(jid)
+            const contact = this.contacts[jid]
+            if (contact) contact.imgUrl = imgUrl
             
-            await this.setProfilePicture (chat)
-            this.emit ('chat-update', { jid, imgUrl: chat.imgUrl })
+            const chat = this.chats.get(jid)
+            if (chat) {
+                chat.imgUrl = imgUrl
+                this.emit ('chat-update', { jid, imgUrl })
+            }
         })
         // status updates
         this.on('CB:Status', async json => {

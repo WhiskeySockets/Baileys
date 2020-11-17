@@ -191,12 +191,12 @@ export interface WAContact {
     /** short name for the contact */
     short?: string
     // Baileys Added
+    imgUrl?: string
     lastKnownPresence?: Presence
     lastSeen?: number
 }
 export interface WAUser extends WAContact {
     phone: any
-    imgUrl?: string
 }
 export interface WAChat {
     jid: string
