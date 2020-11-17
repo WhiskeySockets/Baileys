@@ -177,8 +177,11 @@ export interface WAGroupModification {
     status: number
     participants?: { [key: string]: any }
 }
-
-export interface WAContact {
+export interface WAPresenceData {
+    lastKnownPresence?: Presence
+    lastSeen?: number
+}
+export interface WAContact extends WAPresenceData {
     verify?: string
     /** name of the contact, the contact has set on their own on WA */
     notify?: string
@@ -192,8 +195,6 @@ export interface WAContact {
     short?: string
     // Baileys Added
     imgUrl?: string
-    lastKnownPresence?: Presence
-    lastSeen?: number
 }
 export interface WAUser extends WAContact {
     phone: any
@@ -215,6 +216,7 @@ export interface WAChat {
     // Baileys added properties
     messages: KeyedDB<WAMessage, string>
     imgUrl?: string
+    presences?: { [k: string]: WAPresenceData }
 }
 export enum WAMetric {
     debugLog = 1,
@@ -426,7 +428,6 @@ export type BaileysEvent =
     'ws-close' | 
     'qr' |
     'connection-phone-change' |
-    'user-presence-update' |
     'user-status-update' |
     'contacts-received' |
     'chats-received' |

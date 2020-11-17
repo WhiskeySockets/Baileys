@@ -1,6 +1,6 @@
 import * as QR from 'qrcode-terminal'
 import { WAConnection as Base } from './3.Connect'
-import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, PresenceUpdate, BaileysEvent, DisconnectReason, WAOpenResult, Presence, AuthenticationCredentials, WAParticipantAction, WAGroupMetadata, WAUser, WANode } from './Constants'
+import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, PresenceUpdate, BaileysEvent, DisconnectReason, WAOpenResult, Presence, AuthenticationCredentials, WAParticipantAction, WAGroupMetadata, WAUser, WANode, WAPresenceData } from './Constants'
 import { whatsappID, unixTimestampSeconds, isGroupID, GET_MESSAGE_ID, WA_MESSAGE_ID, waMessageKey, newMessagesDB, shallowChanges, toNumber } from './Utils'
 import KeyedDB from '@adiwajshing/keyed-db'
 import { Mutex } from './Mutex'
@@ -157,19 +157,8 @@ export class WAConnection extends Base {
         })
         // presence updates
         this.on('CB:Presence', json => {
-            const update = json[1] as PresenceUpdate
-            const jid = whatsappID(update.participant || update.id)
-            
-            const contact = this.contacts[jid]
-            if (contact && jid.endsWith('@s.whatsapp.net')) { // if its a single chat
-                if (update.t) contact.lastSeen = +update.t
-                else if (update.type === Presence.unavailable && contact.lastKnownPresence !== Presence.unavailable) {
-                    contact.lastSeen = unixTimestampSeconds()
-                }
-                contact.lastKnownPresence = update.type
-            }
-
-            this.emit('user-presence-update', update)
+            const chatUpdate = this.applyingPresenceUpdate(json[1])
+            chatUpdate && this.emit('chat-update', chatUpdate)
         })
         // If a message has been updated (usually called when a video message gets its upload url, or live locations)
         this.on ('CB:action,add:update,message', json => {
@@ -320,6 +309,30 @@ export class WAConnection extends Base {
         const response = await this.query({ json: ['query', 'ProfilePicThumb', jid || this.user.jid], expect200: true, requiresPhoneConnection: false })
         return response.eurl as string
     }
+    protected applyingPresenceUpdate(update: PresenceUpdate) {
+        const chatId = update.id
+        const jid = whatsappID(update.participant || update.id)
+        // emit deprecated
+        this.emit('user-presence-update', update)
+        
+        const contact = this.contacts[jid]
+        if (contact && jid.endsWith('@s.whatsapp.net')) { // if its a single chat
+            if (update.t) contact.lastSeen = +update.t
+            else if (update.type === Presence.unavailable && contact.lastKnownPresence !== Presence.unavailable) {
+                contact.lastSeen = unixTimestampSeconds()
+            }
+            contact.lastKnownPresence = update.type
+            const presence: WAPresenceData = { lastKnownPresence: contact.lastKnownPresence, lastSeen: contact.lastSeen }
+
+            const chat = this.chats.get(chatId)
+            if (chat) {
+                chat.presences = chat.presences || {}
+                chat.presences[jid] = presence
+
+                return { jid: chatId, presences: { [jid]: presence } } as Partial<WAChat>
+            }
+        }
+    }
     protected forwardStatusUpdate (update: WAMessageStatusUpdate) {
         const chat = this.chats.get( whatsappID(update.to) )
         if (!chat) return
@@ -368,10 +381,11 @@ export class WAConnection extends Base {
         if (!message.key.fromMe && message.message) {
             chat.count += 1
             chatUpdate.count = chat.count
+
             const contact = this.contacts[message.participant || chat.jid]
-            if (contact && contact.lastKnownPresence === Presence.composing) { // update presence
-                contact.lastKnownPresence = Presence.available // emit change
-                this.emit ('user-presence-update', { id: chat.jid, presence: Presence.available, participant: message.participant })
+            if (contact.lastKnownPresence === Presence.composing) { // update presence
+                const update = this.applyingPresenceUpdate({ id: chat.jid, participant: message.participant || chat.jid, type: Presence.available })
+                update && Object.assign(chatUpdate, update)
             }
         }
 
@@ -501,7 +515,10 @@ export class WAConnection extends Base {
     on (event: 'qr', listener: (qr: string) => void): this
     /** when the connection to the phone changes */
     on (event: 'connection-phone-change', listener: (state: {connected: boolean}) => void): this
-    /** when a user's presence is updated */
+    /** 
+     * when a user's presence is updated 
+     * @deprecated use `chat-update`
+     * */
     on (event: 'user-presence-update', listener: (update: PresenceUpdate) => void): this
     /** when a user's status is updated */
     on (event: 'user-status-update', listener: (update: {jid: string, status?: string}) => void): this
@@ -513,7 +530,7 @@ export class WAConnection extends Base {
     on (event: 'chats-received', listener: (update: {hasNewChats: boolean}) => void): this
     /** when multiple chats are updated (new message, updated message, deleted, pinned, etc) */
     on (event: 'chats-update', listener: (chats: (Partial<WAChat> & { jid: string })[]) => void): this
-    /** when a chat is updated (new message, updated message, deleted, pinned, etc) */
+    /** when a chat is updated (new message, updated message, deleted, pinned, presence updated etc) */
     on (event: 'chat-update', listener: (chat: Partial<WAChat> & { jid: string }) => void): this
     /** 
      * when a new message is relayed 

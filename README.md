@@ -195,8 +195,6 @@ on (event: 'credentials-updated', listener: (auth: AuthenticationCredentials) =>
 on (event: 'qr', listener: (qr: string) => void): this
 /** when the connection to the phone changes */
 on (event: 'connection-phone-change', listener: (state: {connected: boolean}) => void): this
-/** when a user's presence is updated */
-on (event: 'user-presence-update', listener: (update: PresenceUpdate) => void): this
 /** when a user's status is updated */
 on (event: 'user-status-update', listener: (update: {jid: string, status?: string}) => void): this
 /** when a new chat is added */
@@ -207,7 +205,7 @@ on (event: 'contacts-received', listener: () => void): this
 on (event: 'chats-received', listener: (update: {hasNewChats: boolean}) => void): this
 /** when multiple chats are updated (new message, updated message, deleted, pinned, etc) */
 on (event: 'chats-update', listener: (chats: (Partial<WAChat> & { jid: string })[]) => void): this
-/** when a chat is updated (new message, updated message, deleted, pinned, etc) */
+/** when a chat is updated (new message, updated message, deleted, pinned, presence updated etc) */
 on (event: 'chat-update', listener: (chat: Partial<WAChat> & { jid: string }) => void): this
 /** when a message's status is updated (deleted, delivered, read, sent etc.) */
 on (event: 'message-status-update', listener: (message: WAMessageStatusUpdate) => void): this

@@ -47,12 +47,14 @@ async function example() {
 
     /*  Note: one can take this auth_info.json file and login again from any computer without having to scan the QR code, 
         and get full access to one's WhatsApp. Despite the convenience, be careful with this file */
-    conn.on ('user-presence-update', json => console.log(json.id + ' presence is ' + json.type))
     conn.on ('message-status-update', json => {
         const participant = json.participant ? ' (' + json.participant + ')' : '' // participant exists when the message is from a group
         console.log(`${json.to}${participant} acknlowledged message(s) ${json.ids} as ${json.type}`)
     })
     conn.on('chat-update', async chat => {
+        if (chat.presences) { // receive presence updates -- composing, available, etc.
+            Object.keys(chat.presences).forEach(jid => console.log( `${jid}'s presence is ${chat.presences[jid].lastKnownPresence} in ${chat.jid}`))
+        }
         // only do something when a new message is received; i.e. the unread count is updated
         if (!chat.count) return 
         
