@@ -322,7 +322,11 @@ export class WAConnection extends Base {
                 contact.lastSeen = unixTimestampSeconds()
             }
             contact.lastKnownPresence = update.type
-            const presence: WAPresenceData = { lastKnownPresence: contact.lastKnownPresence, lastSeen: contact.lastSeen }
+            const presence: WAPresenceData = { 
+                lastKnownPresence: contact.lastKnownPresence, 
+                lastSeen: contact.lastSeen,
+                name: contact.name || contact.vname || contact.notify
+            }
 
             const chat = this.chats.get(chatId)
             if (chat) {

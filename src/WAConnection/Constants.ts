@@ -180,6 +180,7 @@ export interface WAGroupModification {
 export interface WAPresenceData {
     lastKnownPresence?: Presence
     lastSeen?: number
+    name?: string
 }
 export interface WAContact extends WAPresenceData {
     verify?: string

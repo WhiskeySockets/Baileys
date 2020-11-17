@@ -53,7 +53,7 @@ async function example() {
     })
     conn.on('chat-update', async chat => {
         if (chat.presences) { // receive presence updates -- composing, available, etc.
-            Object.keys(chat.presences).forEach(jid => console.log( `${jid}'s presence is ${chat.presences[jid].lastKnownPresence} in ${chat.jid}`))
+            Object.values(chat.presences).forEach(presence => console.log( `${presence.name}'s presence is ${presence.lastKnownPresence} in ${chat.jid}`))
         }
         // only do something when a new message is received; i.e. the unread count is updated
         if (!chat.count) return 

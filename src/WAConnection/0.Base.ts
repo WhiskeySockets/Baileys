@@ -21,7 +21,6 @@ import {
     WAConnectOptions,
     MediaConnInfo,
     DEFAULT_ORIGIN,
-    TimedOutError,
 } from './Constants'
 import { EventEmitter } from 'events'
 import KeyedDB from '@adiwajshing/keyed-db'
