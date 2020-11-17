@@ -310,7 +310,7 @@ export class WAConnection extends Base {
         return response.eurl as string
     }
     protected applyingPresenceUpdate(update: PresenceUpdate) {
-        const chatId = update.id
+        const chatId = whatsappID(update.id)
         const jid = whatsappID(update.participant || update.id)
         // emit deprecated
         this.emit('user-presence-update', update)
