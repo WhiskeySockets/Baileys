@@ -245,14 +245,18 @@ export class WAConnection extends Base {
      */
     @Mutex (message => message?.key?.id)
     async downloadMediaMessage (message: WAMessage) {
+        let mContent = message.message?.ephemeralMessage?.message || message.message
+        if (!mContent) throw new BaileysError('No message present', { status: 400 })
+        
         try {
-            const buff = await decodeMediaMessageBuffer (message.message, this.fetchRequest)
+            const buff = await decodeMediaMessageBuffer (mContent, this.fetchRequest)
             return buff
         } catch (error) {
             if (error instanceof BaileysError && error.status === 404) { // media needs to be updated
                 this.logger.info (`updating media of message: ${message.key.id}`)
                 await this.updateMediaMessage (message)
-                const buff = await decodeMediaMessageBuffer (message.message, this.fetchRequest)
+                mContent = message.message?.ephemeralMessage?.message || message.message
+                const buff = await decodeMediaMessageBuffer (mContent, this.fetchRequest)
                 return buff
             }
             throw error

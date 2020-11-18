@@ -201,12 +201,12 @@ on (event: 'user-status-update', listener: (update: {jid: string, status?: strin
 on (event: 'chat-new', listener: (chat: WAChat) => void): this
 /** when contacts are sent by WA */
 on (event: 'contacts-received', listener: () => void): this
-/** when chats are sent by WA */
-on (event: 'chats-received', listener: (update: {hasNewChats: boolean}) => void): this
+/** when chats are sent by WA, and when all messages are received from WhatsApp */
+on (event: 'chats-received', listener: (update: {hasNewChats?: boolean, hasReceivedLastMessage?: boolean}) => void): this
 /** when multiple chats are updated (new message, updated message, deleted, pinned, etc) */
-on (event: 'chats-update', listener: (chats: (Partial<WAChat> & { jid: string })[]) => void): this
+on (event: 'chats-update', listener: (chats: WAChatUpdate[]) => void): this
 /** when a chat is updated (new message, updated message, deleted, pinned, presence updated etc) */
-on (event: 'chat-update', listener: (chat: Partial<WAChat> & { jid: string }) => void): this
+on (event: 'chat-update', listener: (chat: Partial<WAChat> & { hasNewMessage: boolean }) => void): this
 /** when a message's status is updated (deleted, delivered, read, sent etc.) */
 on (event: 'message-status-update', listener: (message: WAMessageStatusUpdate) => void): this
 /** when participants are added to a group */
