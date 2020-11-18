@@ -1,4 +1,4 @@
-import { proto as Coding } from '../../WAMessage/WAMessage'
+import {proto} from '../../WAMessage/WAMessage'
 
 export namespace WA {
     export const Tags = {
@@ -198,7 +198,7 @@ export namespace WA {
         'video',
         'recent',
     ]
-    export const Message = Coding.WebMessageInfo
+    export const Message = proto.WebMessageInfo
     export type NodeAttributes = { [key: string]: string } | string | null
     export type NodeData = Array<Node> | any | null
     export type Node = [string, NodeAttributes, NodeData]

@@ -24,40 +24,43 @@ $root.proto = (function() {
          * Properties of a WebFeatures.
          * @memberof proto
          * @interface IWebFeatures
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [labelsDisplay] WebFeatures labelsDisplay
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [voipIndividualOutgoing] WebFeatures voipIndividualOutgoing
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [groupsV3] WebFeatures groupsV3
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [groupsV3Create] WebFeatures groupsV3Create
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [changeNumberV2] WebFeatures changeNumberV2
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [queryStatusV3Thumbnail] WebFeatures queryStatusV3Thumbnail
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [liveLocations] WebFeatures liveLocations
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [queryVname] WebFeatures queryVname
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [voipIndividualIncoming] WebFeatures voipIndividualIncoming
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [quickRepliesQuery] WebFeatures quickRepliesQuery
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [payments] WebFeatures payments
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [stickerPackQuery] WebFeatures stickerPackQuery
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [liveLocationsFinal] WebFeatures liveLocationsFinal
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [labelsEdit] WebFeatures labelsEdit
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [mediaUpload] WebFeatures mediaUpload
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [mediaUploadRichQuickReplies] WebFeatures mediaUploadRichQuickReplies
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [vnameV2] WebFeatures vnameV2
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [videoPlaybackUrl] WebFeatures videoPlaybackUrl
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [statusRanking] WebFeatures statusRanking
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [voipIndividualVideo] WebFeatures voipIndividualVideo
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [thirdPartyStickers] WebFeatures thirdPartyStickers
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [frequentlyForwardedSetting] WebFeatures frequentlyForwardedSetting
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [groupsV4JoinPermission] WebFeatures groupsV4JoinPermission
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [recentStickers] WebFeatures recentStickers
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [catalog] WebFeatures catalog
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [starredStickers] WebFeatures starredStickers
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [voipGroupCall] WebFeatures voipGroupCall
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [templateMessage] WebFeatures templateMessage
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [templateMessageInteractivity] WebFeatures templateMessageInteractivity
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [ephemeralMessages] WebFeatures ephemeralMessages
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [e2ENotificationSync] WebFeatures e2ENotificationSync
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [recentStickersV2] WebFeatures recentStickersV2
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [syncdRelease1] WebFeatures syncdRelease1
-         * @property {proto.WebFeatures.WEB_FEATURES_FLAG|null} [recentStickersV3] WebFeatures recentStickersV3
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [labelsDisplay] WebFeatures labelsDisplay
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [voipIndividualOutgoing] WebFeatures voipIndividualOutgoing
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [groupsV3] WebFeatures groupsV3
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [groupsV3Create] WebFeatures groupsV3Create
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [changeNumberV2] WebFeatures changeNumberV2
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [queryStatusV3Thumbnail] WebFeatures queryStatusV3Thumbnail
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [liveLocations] WebFeatures liveLocations
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [queryVname] WebFeatures queryVname
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [voipIndividualIncoming] WebFeatures voipIndividualIncoming
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [quickRepliesQuery] WebFeatures quickRepliesQuery
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [payments] WebFeatures payments
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [stickerPackQuery] WebFeatures stickerPackQuery
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [liveLocationsFinal] WebFeatures liveLocationsFinal
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [labelsEdit] WebFeatures labelsEdit
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [mediaUpload] WebFeatures mediaUpload
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [mediaUploadRichQuickReplies] WebFeatures mediaUploadRichQuickReplies
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [vnameV2] WebFeatures vnameV2
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [videoPlaybackUrl] WebFeatures videoPlaybackUrl
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [statusRanking] WebFeatures statusRanking
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [voipIndividualVideo] WebFeatures voipIndividualVideo
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [thirdPartyStickers] WebFeatures thirdPartyStickers
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [frequentlyForwardedSetting] WebFeatures frequentlyForwardedSetting
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [groupsV4JoinPermission] WebFeatures groupsV4JoinPermission
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [recentStickers] WebFeatures recentStickers
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [catalog] WebFeatures catalog
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [starredStickers] WebFeatures starredStickers
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [voipGroupCall] WebFeatures voipGroupCall
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [templateMessage] WebFeatures templateMessage
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [templateMessageInteractivity] WebFeatures templateMessageInteractivity
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [ephemeralMessages] WebFeatures ephemeralMessages
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [e2ENotificationSync] WebFeatures e2ENotificationSync
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [recentStickersV2] WebFeatures recentStickersV2
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [syncdRelease1] WebFeatures syncdRelease1
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [recentStickersV3] WebFeatures recentStickersV3
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [userNotice] WebFeatures userNotice
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [syncdRelease11] WebFeatures syncdRelease11
+         * @property {proto.WebFeatures.WebFeaturesFlag|null} [support] WebFeatures support
          */
 
         /**
@@ -77,7 +80,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures labelsDisplay.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} labelsDisplay
+         * @member {proto.WebFeatures.WebFeaturesFlag} labelsDisplay
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -85,7 +88,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures voipIndividualOutgoing.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} voipIndividualOutgoing
+         * @member {proto.WebFeatures.WebFeaturesFlag} voipIndividualOutgoing
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -93,7 +96,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures groupsV3.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} groupsV3
+         * @member {proto.WebFeatures.WebFeaturesFlag} groupsV3
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -101,7 +104,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures groupsV3Create.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} groupsV3Create
+         * @member {proto.WebFeatures.WebFeaturesFlag} groupsV3Create
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -109,7 +112,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures changeNumberV2.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} changeNumberV2
+         * @member {proto.WebFeatures.WebFeaturesFlag} changeNumberV2
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -117,7 +120,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures queryStatusV3Thumbnail.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} queryStatusV3Thumbnail
+         * @member {proto.WebFeatures.WebFeaturesFlag} queryStatusV3Thumbnail
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -125,7 +128,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures liveLocations.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} liveLocations
+         * @member {proto.WebFeatures.WebFeaturesFlag} liveLocations
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -133,7 +136,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures queryVname.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} queryVname
+         * @member {proto.WebFeatures.WebFeaturesFlag} queryVname
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -141,7 +144,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures voipIndividualIncoming.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} voipIndividualIncoming
+         * @member {proto.WebFeatures.WebFeaturesFlag} voipIndividualIncoming
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -149,7 +152,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures quickRepliesQuery.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} quickRepliesQuery
+         * @member {proto.WebFeatures.WebFeaturesFlag} quickRepliesQuery
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -157,7 +160,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures payments.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} payments
+         * @member {proto.WebFeatures.WebFeaturesFlag} payments
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -165,7 +168,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures stickerPackQuery.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} stickerPackQuery
+         * @member {proto.WebFeatures.WebFeaturesFlag} stickerPackQuery
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -173,7 +176,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures liveLocationsFinal.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} liveLocationsFinal
+         * @member {proto.WebFeatures.WebFeaturesFlag} liveLocationsFinal
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -181,7 +184,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures labelsEdit.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} labelsEdit
+         * @member {proto.WebFeatures.WebFeaturesFlag} labelsEdit
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -189,7 +192,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures mediaUpload.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} mediaUpload
+         * @member {proto.WebFeatures.WebFeaturesFlag} mediaUpload
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -197,7 +200,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures mediaUploadRichQuickReplies.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} mediaUploadRichQuickReplies
+         * @member {proto.WebFeatures.WebFeaturesFlag} mediaUploadRichQuickReplies
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -205,7 +208,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures vnameV2.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} vnameV2
+         * @member {proto.WebFeatures.WebFeaturesFlag} vnameV2
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -213,7 +216,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures videoPlaybackUrl.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} videoPlaybackUrl
+         * @member {proto.WebFeatures.WebFeaturesFlag} videoPlaybackUrl
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -221,7 +224,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures statusRanking.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} statusRanking
+         * @member {proto.WebFeatures.WebFeaturesFlag} statusRanking
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -229,7 +232,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures voipIndividualVideo.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} voipIndividualVideo
+         * @member {proto.WebFeatures.WebFeaturesFlag} voipIndividualVideo
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -237,7 +240,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures thirdPartyStickers.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} thirdPartyStickers
+         * @member {proto.WebFeatures.WebFeaturesFlag} thirdPartyStickers
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -245,7 +248,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures frequentlyForwardedSetting.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} frequentlyForwardedSetting
+         * @member {proto.WebFeatures.WebFeaturesFlag} frequentlyForwardedSetting
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -253,7 +256,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures groupsV4JoinPermission.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} groupsV4JoinPermission
+         * @member {proto.WebFeatures.WebFeaturesFlag} groupsV4JoinPermission
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -261,7 +264,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures recentStickers.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} recentStickers
+         * @member {proto.WebFeatures.WebFeaturesFlag} recentStickers
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -269,7 +272,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures catalog.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} catalog
+         * @member {proto.WebFeatures.WebFeaturesFlag} catalog
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -277,7 +280,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures starredStickers.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} starredStickers
+         * @member {proto.WebFeatures.WebFeaturesFlag} starredStickers
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -285,7 +288,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures voipGroupCall.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} voipGroupCall
+         * @member {proto.WebFeatures.WebFeaturesFlag} voipGroupCall
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -293,7 +296,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures templateMessage.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} templateMessage
+         * @member {proto.WebFeatures.WebFeaturesFlag} templateMessage
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -301,7 +304,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures templateMessageInteractivity.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} templateMessageInteractivity
+         * @member {proto.WebFeatures.WebFeaturesFlag} templateMessageInteractivity
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -309,7 +312,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures ephemeralMessages.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} ephemeralMessages
+         * @member {proto.WebFeatures.WebFeaturesFlag} ephemeralMessages
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -317,7 +320,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures e2ENotificationSync.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} e2ENotificationSync
+         * @member {proto.WebFeatures.WebFeaturesFlag} e2ENotificationSync
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -325,7 +328,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures recentStickersV2.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} recentStickersV2
+         * @member {proto.WebFeatures.WebFeaturesFlag} recentStickersV2
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -333,7 +336,7 @@ $root.proto = (function() {
 
         /**
          * WebFeatures syncdRelease1.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} syncdRelease1
+         * @member {proto.WebFeatures.WebFeaturesFlag} syncdRelease1
          * @memberof proto.WebFeatures
          * @instance
          */
@@ -341,11 +344,35 @@ $root.proto = (function() {
 
         /**
          * WebFeatures recentStickersV3.
-         * @member {proto.WebFeatures.WEB_FEATURES_FLAG} recentStickersV3
+         * @member {proto.WebFeatures.WebFeaturesFlag} recentStickersV3
          * @memberof proto.WebFeatures
          * @instance
          */
         WebFeatures.prototype.recentStickersV3 = 0;
+
+        /**
+         * WebFeatures userNotice.
+         * @member {proto.WebFeatures.WebFeaturesFlag} userNotice
+         * @memberof proto.WebFeatures
+         * @instance
+         */
+        WebFeatures.prototype.userNotice = 0;
+
+        /**
+         * WebFeatures syncdRelease11.
+         * @member {proto.WebFeatures.WebFeaturesFlag} syncdRelease11
+         * @memberof proto.WebFeatures
+         * @instance
+         */
+        WebFeatures.prototype.syncdRelease11 = 0;
+
+        /**
+         * WebFeatures support.
+         * @member {proto.WebFeatures.WebFeaturesFlag} support
+         * @memberof proto.WebFeatures
+         * @instance
+         */
+        WebFeatures.prototype.support = 0;
 
         /**
          * Creates a new WebFeatures instance using the specified properties.
@@ -439,6 +466,12 @@ $root.proto = (function() {
                 writer.uint32(/* id 35, wireType 0 =*/280).int32(message.syncdRelease1);
             if (message.recentStickersV3 != null && Object.hasOwnProperty.call(message, "recentStickersV3"))
                 writer.uint32(/* id 36, wireType 0 =*/288).int32(message.recentStickersV3);
+            if (message.userNotice != null && Object.hasOwnProperty.call(message, "userNotice"))
+                writer.uint32(/* id 37, wireType 0 =*/296).int32(message.userNotice);
+            if (message.syncdRelease11 != null && Object.hasOwnProperty.call(message, "syncdRelease11"))
+                writer.uint32(/* id 38, wireType 0 =*/304).int32(message.syncdRelease11);
+            if (message.support != null && Object.hasOwnProperty.call(message, "support"))
+                writer.uint32(/* id 39, wireType 0 =*/312).int32(message.support);
             return writer;
         };
 
@@ -574,6 +607,15 @@ $root.proto = (function() {
                     break;
                 case 36:
                     message.recentStickersV3 = reader.int32();
+                    break;
+                case 37:
+                    message.userNotice = reader.int32();
+                    break;
+                case 38:
+                    message.syncdRelease11 = reader.int32();
+                    break;
+                case 39:
+                    message.support = reader.int32();
                     break;
                 default:
                     reader.skipType(tag & 7);
@@ -944,6 +986,36 @@ $root.proto = (function() {
                 switch (message.recentStickersV3) {
                 default:
                     return "recentStickersV3: enum value expected";
+                case 0:
+                case 1:
+                case 2:
+                case 3:
+                    break;
+                }
+            if (message.userNotice != null && message.hasOwnProperty("userNotice"))
+                switch (message.userNotice) {
+                default:
+                    return "userNotice: enum value expected";
+                case 0:
+                case 1:
+                case 2:
+                case 3:
+                    break;
+                }
+            if (message.syncdRelease11 != null && message.hasOwnProperty("syncdRelease11"))
+                switch (message.syncdRelease11) {
+                default:
+                    return "syncdRelease11: enum value expected";
+                case 0:
+                case 1:
+                case 2:
+                case 3:
+                    break;
+                }
+            if (message.support != null && message.hasOwnProperty("support"))
+                switch (message.support) {
+                default:
+                    return "support: enum value expected";
                 case 0:
                 case 1:
                 case 2:
@@ -1577,6 +1649,60 @@ $root.proto = (function() {
                 message.recentStickersV3 = 3;
                 break;
             }
+            switch (object.userNotice) {
+            case "NOT_STARTED":
+            case 0:
+                message.userNotice = 0;
+                break;
+            case "FORCE_UPGRADE":
+            case 1:
+                message.userNotice = 1;
+                break;
+            case "DEVELOPMENT":
+            case 2:
+                message.userNotice = 2;
+                break;
+            case "PRODUCTION":
+            case 3:
+                message.userNotice = 3;
+                break;
+            }
+            switch (object.syncdRelease11) {
+            case "NOT_STARTED":
+            case 0:
+                message.syncdRelease11 = 0;
+                break;
+            case "FORCE_UPGRADE":
+            case 1:
+                message.syncdRelease11 = 1;
+                break;
+            case "DEVELOPMENT":
+            case 2:
+                message.syncdRelease11 = 2;
+                break;
+            case "PRODUCTION":
+            case 3:
+                message.syncdRelease11 = 3;
+                break;
+            }
+            switch (object.support) {
+            case "NOT_STARTED":
+            case 0:
+                message.support = 0;
+                break;
+            case "FORCE_UPGRADE":
+            case 1:
+                message.support = 1;
+                break;
+            case "DEVELOPMENT":
+            case 2:
+                message.support = 2;
+                break;
+            case "PRODUCTION":
+            case 3:
+                message.support = 3;
+                break;
+            }
             return message;
         };
 
@@ -1628,75 +1754,84 @@ $root.proto = (function() {
                 object.recentStickersV2 = options.enums === String ? "NOT_STARTED" : 0;
                 object.syncdRelease1 = options.enums === String ? "NOT_STARTED" : 0;
                 object.recentStickersV3 = options.enums === String ? "NOT_STARTED" : 0;
+                object.userNotice = options.enums === String ? "NOT_STARTED" : 0;
+                object.syncdRelease11 = options.enums === String ? "NOT_STARTED" : 0;
+                object.support = options.enums === String ? "NOT_STARTED" : 0;
             }
             if (message.labelsDisplay != null && message.hasOwnProperty("labelsDisplay"))
-                object.labelsDisplay = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.labelsDisplay] : message.labelsDisplay;
+                object.labelsDisplay = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.labelsDisplay] : message.labelsDisplay;
             if (message.voipIndividualOutgoing != null && message.hasOwnProperty("voipIndividualOutgoing"))
-                object.voipIndividualOutgoing = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.voipIndividualOutgoing] : message.voipIndividualOutgoing;
+                object.voipIndividualOutgoing = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.voipIndividualOutgoing] : message.voipIndividualOutgoing;
             if (message.groupsV3 != null && message.hasOwnProperty("groupsV3"))
-                object.groupsV3 = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.groupsV3] : message.groupsV3;
+                object.groupsV3 = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.groupsV3] : message.groupsV3;
             if (message.groupsV3Create != null && message.hasOwnProperty("groupsV3Create"))
-                object.groupsV3Create = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.groupsV3Create] : message.groupsV3Create;
+                object.groupsV3Create = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.groupsV3Create] : message.groupsV3Create;
             if (message.changeNumberV2 != null && message.hasOwnProperty("changeNumberV2"))
-                object.changeNumberV2 = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.changeNumberV2] : message.changeNumberV2;
+                object.changeNumberV2 = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.changeNumberV2] : message.changeNumberV2;
             if (message.queryStatusV3Thumbnail != null && message.hasOwnProperty("queryStatusV3Thumbnail"))
-                object.queryStatusV3Thumbnail = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.queryStatusV3Thumbnail] : message.queryStatusV3Thumbnail;
+                object.queryStatusV3Thumbnail = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.queryStatusV3Thumbnail] : message.queryStatusV3Thumbnail;
             if (message.liveLocations != null && message.hasOwnProperty("liveLocations"))
-                object.liveLocations = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.liveLocations] : message.liveLocations;
+                object.liveLocations = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.liveLocations] : message.liveLocations;
             if (message.queryVname != null && message.hasOwnProperty("queryVname"))
-                object.queryVname = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.queryVname] : message.queryVname;
+                object.queryVname = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.queryVname] : message.queryVname;
             if (message.voipIndividualIncoming != null && message.hasOwnProperty("voipIndividualIncoming"))
-                object.voipIndividualIncoming = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.voipIndividualIncoming] : message.voipIndividualIncoming;
+                object.voipIndividualIncoming = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.voipIndividualIncoming] : message.voipIndividualIncoming;
             if (message.quickRepliesQuery != null && message.hasOwnProperty("quickRepliesQuery"))
-                object.quickRepliesQuery = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.quickRepliesQuery] : message.quickRepliesQuery;
+                object.quickRepliesQuery = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.quickRepliesQuery] : message.quickRepliesQuery;
             if (message.payments != null && message.hasOwnProperty("payments"))
-                object.payments = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.payments] : message.payments;
+                object.payments = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.payments] : message.payments;
             if (message.stickerPackQuery != null && message.hasOwnProperty("stickerPackQuery"))
-                object.stickerPackQuery = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.stickerPackQuery] : message.stickerPackQuery;
+                object.stickerPackQuery = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.stickerPackQuery] : message.stickerPackQuery;
             if (message.liveLocationsFinal != null && message.hasOwnProperty("liveLocationsFinal"))
-                object.liveLocationsFinal = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.liveLocationsFinal] : message.liveLocationsFinal;
+                object.liveLocationsFinal = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.liveLocationsFinal] : message.liveLocationsFinal;
             if (message.labelsEdit != null && message.hasOwnProperty("labelsEdit"))
-                object.labelsEdit = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.labelsEdit] : message.labelsEdit;
+                object.labelsEdit = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.labelsEdit] : message.labelsEdit;
             if (message.mediaUpload != null && message.hasOwnProperty("mediaUpload"))
-                object.mediaUpload = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.mediaUpload] : message.mediaUpload;
+                object.mediaUpload = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.mediaUpload] : message.mediaUpload;
             if (message.mediaUploadRichQuickReplies != null && message.hasOwnProperty("mediaUploadRichQuickReplies"))
-                object.mediaUploadRichQuickReplies = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.mediaUploadRichQuickReplies] : message.mediaUploadRichQuickReplies;
+                object.mediaUploadRichQuickReplies = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.mediaUploadRichQuickReplies] : message.mediaUploadRichQuickReplies;
             if (message.vnameV2 != null && message.hasOwnProperty("vnameV2"))
-                object.vnameV2 = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.vnameV2] : message.vnameV2;
+                object.vnameV2 = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.vnameV2] : message.vnameV2;
             if (message.videoPlaybackUrl != null && message.hasOwnProperty("videoPlaybackUrl"))
-                object.videoPlaybackUrl = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.videoPlaybackUrl] : message.videoPlaybackUrl;
+                object.videoPlaybackUrl = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.videoPlaybackUrl] : message.videoPlaybackUrl;
             if (message.statusRanking != null && message.hasOwnProperty("statusRanking"))
-                object.statusRanking = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.statusRanking] : message.statusRanking;
+                object.statusRanking = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.statusRanking] : message.statusRanking;
             if (message.voipIndividualVideo != null && message.hasOwnProperty("voipIndividualVideo"))
-                object.voipIndividualVideo = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.voipIndividualVideo] : message.voipIndividualVideo;
+                object.voipIndividualVideo = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.voipIndividualVideo] : message.voipIndividualVideo;
             if (message.thirdPartyStickers != null && message.hasOwnProperty("thirdPartyStickers"))
-                object.thirdPartyStickers = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.thirdPartyStickers] : message.thirdPartyStickers;
+                object.thirdPartyStickers = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.thirdPartyStickers] : message.thirdPartyStickers;
             if (message.frequentlyForwardedSetting != null && message.hasOwnProperty("frequentlyForwardedSetting"))
-                object.frequentlyForwardedSetting = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.frequentlyForwardedSetting] : message.frequentlyForwardedSetting;
+                object.frequentlyForwardedSetting = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.frequentlyForwardedSetting] : message.frequentlyForwardedSetting;
             if (message.groupsV4JoinPermission != null && message.hasOwnProperty("groupsV4JoinPermission"))
-                object.groupsV4JoinPermission = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.groupsV4JoinPermission] : message.groupsV4JoinPermission;
+                object.groupsV4JoinPermission = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.groupsV4JoinPermission] : message.groupsV4JoinPermission;
             if (message.recentStickers != null && message.hasOwnProperty("recentStickers"))
-                object.recentStickers = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.recentStickers] : message.recentStickers;
+                object.recentStickers = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.recentStickers] : message.recentStickers;
             if (message.catalog != null && message.hasOwnProperty("catalog"))
-                object.catalog = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.catalog] : message.catalog;
+                object.catalog = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.catalog] : message.catalog;
             if (message.starredStickers != null && message.hasOwnProperty("starredStickers"))
-                object.starredStickers = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.starredStickers] : message.starredStickers;
+                object.starredStickers = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.starredStickers] : message.starredStickers;
             if (message.voipGroupCall != null && message.hasOwnProperty("voipGroupCall"))
-                object.voipGroupCall = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.voipGroupCall] : message.voipGroupCall;
+                object.voipGroupCall = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.voipGroupCall] : message.voipGroupCall;
             if (message.templateMessage != null && message.hasOwnProperty("templateMessage"))
-                object.templateMessage = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.templateMessage] : message.templateMessage;
+                object.templateMessage = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.templateMessage] : message.templateMessage;
             if (message.templateMessageInteractivity != null && message.hasOwnProperty("templateMessageInteractivity"))
-                object.templateMessageInteractivity = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.templateMessageInteractivity] : message.templateMessageInteractivity;
+                object.templateMessageInteractivity = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.templateMessageInteractivity] : message.templateMessageInteractivity;
             if (message.ephemeralMessages != null && message.hasOwnProperty("ephemeralMessages"))
-                object.ephemeralMessages = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.ephemeralMessages] : message.ephemeralMessages;
+                object.ephemeralMessages = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.ephemeralMessages] : message.ephemeralMessages;
             if (message.e2ENotificationSync != null && message.hasOwnProperty("e2ENotificationSync"))
-                object.e2ENotificationSync = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.e2ENotificationSync] : message.e2ENotificationSync;
+                object.e2ENotificationSync = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.e2ENotificationSync] : message.e2ENotificationSync;
             if (message.recentStickersV2 != null && message.hasOwnProperty("recentStickersV2"))
-                object.recentStickersV2 = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.recentStickersV2] : message.recentStickersV2;
+                object.recentStickersV2 = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.recentStickersV2] : message.recentStickersV2;
             if (message.syncdRelease1 != null && message.hasOwnProperty("syncdRelease1"))
-                object.syncdRelease1 = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.syncdRelease1] : message.syncdRelease1;
+                object.syncdRelease1 = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.syncdRelease1] : message.syncdRelease1;
             if (message.recentStickersV3 != null && message.hasOwnProperty("recentStickersV3"))
-                object.recentStickersV3 = options.enums === String ? $root.proto.WebFeatures.WEB_FEATURES_FLAG[message.recentStickersV3] : message.recentStickersV3;
+                object.recentStickersV3 = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.recentStickersV3] : message.recentStickersV3;
+            if (message.userNotice != null && message.hasOwnProperty("userNotice"))
+                object.userNotice = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.userNotice] : message.userNotice;
+            if (message.syncdRelease11 != null && message.hasOwnProperty("syncdRelease11"))
+                object.syncdRelease11 = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.syncdRelease11] : message.syncdRelease11;
+            if (message.support != null && message.hasOwnProperty("support"))
+                object.support = options.enums === String ? $root.proto.WebFeatures.WebFeaturesFlag[message.support] : message.support;
             return object;
         };
 
@@ -1712,15 +1847,15 @@ $root.proto = (function() {
         };
 
         /**
-         * WEB_FEATURES_FLAG enum.
-         * @name proto.WebFeatures.WEB_FEATURES_FLAG
+         * WebFeaturesFlag enum.
+         * @name proto.WebFeatures.WebFeaturesFlag
          * @enum {number}
          * @property {number} NOT_STARTED=0 NOT_STARTED value
          * @property {number} FORCE_UPGRADE=1 FORCE_UPGRADE value
          * @property {number} DEVELOPMENT=2 DEVELOPMENT value
          * @property {number} PRODUCTION=3 PRODUCTION value
          */
-        WebFeatures.WEB_FEATURES_FLAG = (function() {
+        WebFeatures.WebFeaturesFlag = (function() {
             var valuesById = {}, values = Object.create(valuesById);
             values[valuesById[0] = "NOT_STARTED"] = 0;
             values[valuesById[1] = "FORCE_UPGRADE"] = 1;
@@ -2306,16 +2441,16 @@ $root.proto = (function() {
          * Properties of a PaymentInfo.
          * @memberof proto
          * @interface IPaymentInfo
-         * @property {proto.PaymentInfo.PAYMENT_INFO_CURRENCY|null} [currencyDeprecated] PaymentInfo currencyDeprecated
+         * @property {proto.PaymentInfo.PaymentInfoCurrency|null} [currencyDeprecated] PaymentInfo currencyDeprecated
          * @property {number|Long|null} [amount1000] PaymentInfo amount1000
          * @property {string|null} [receiverJid] PaymentInfo receiverJid
-         * @property {proto.PaymentInfo.PAYMENT_INFO_STATUS|null} [status] PaymentInfo status
+         * @property {proto.PaymentInfo.PaymentInfoStatus|null} [status] PaymentInfo status
          * @property {number|Long|null} [transactionTimestamp] PaymentInfo transactionTimestamp
          * @property {proto.IMessageKey|null} [requestMessageKey] PaymentInfo requestMessageKey
          * @property {number|Long|null} [expiryTimestamp] PaymentInfo expiryTimestamp
          * @property {boolean|null} [futureproofed] PaymentInfo futureproofed
          * @property {string|null} [currency] PaymentInfo currency
-         * @property {proto.PaymentInfo.PAYMENT_INFO_TXNSTATUS|null} [txnStatus] PaymentInfo txnStatus
+         * @property {proto.PaymentInfo.PaymentInfoTxnStatus|null} [txnStatus] PaymentInfo txnStatus
          */
 
         /**
@@ -2335,7 +2470,7 @@ $root.proto = (function() {
 
         /**
          * PaymentInfo currencyDeprecated.
-         * @member {proto.PaymentInfo.PAYMENT_INFO_CURRENCY} currencyDeprecated
+         * @member {proto.PaymentInfo.PaymentInfoCurrency} currencyDeprecated
          * @memberof proto.PaymentInfo
          * @instance
          */
@@ -2359,7 +2494,7 @@ $root.proto = (function() {
 
         /**
          * PaymentInfo status.
-         * @member {proto.PaymentInfo.PAYMENT_INFO_STATUS} status
+         * @member {proto.PaymentInfo.PaymentInfoStatus} status
          * @memberof proto.PaymentInfo
          * @instance
          */
@@ -2407,7 +2542,7 @@ $root.proto = (function() {
 
         /**
          * PaymentInfo txnStatus.
-         * @member {proto.PaymentInfo.PAYMENT_INFO_TXNSTATUS} txnStatus
+         * @member {proto.PaymentInfo.PaymentInfoTxnStatus} txnStatus
          * @memberof proto.PaymentInfo
          * @instance
          */
@@ -2907,7 +3042,7 @@ $root.proto = (function() {
                 object.txnStatus = options.enums === String ? "UNKNOWN" : 0;
             }
             if (message.currencyDeprecated != null && message.hasOwnProperty("currencyDeprecated"))
-                object.currencyDeprecated = options.enums === String ? $root.proto.PaymentInfo.PAYMENT_INFO_CURRENCY[message.currencyDeprecated] : message.currencyDeprecated;
+                object.currencyDeprecated = options.enums === String ? $root.proto.PaymentInfo.PaymentInfoCurrency[message.currencyDeprecated] : message.currencyDeprecated;
             if (message.amount1000 != null && message.hasOwnProperty("amount1000"))
                 if (typeof message.amount1000 === "number")
                     object.amount1000 = options.longs === String ? String(message.amount1000) : message.amount1000;
@@ -2916,7 +3051,7 @@ $root.proto = (function() {
             if (message.receiverJid != null && message.hasOwnProperty("receiverJid"))
                 object.receiverJid = message.receiverJid;
             if (message.status != null && message.hasOwnProperty("status"))
-                object.status = options.enums === String ? $root.proto.PaymentInfo.PAYMENT_INFO_STATUS[message.status] : message.status;
+                object.status = options.enums === String ? $root.proto.PaymentInfo.PaymentInfoStatus[message.status] : message.status;
             if (message.transactionTimestamp != null && message.hasOwnProperty("transactionTimestamp"))
                 if (typeof message.transactionTimestamp === "number")
                     object.transactionTimestamp = options.longs === String ? String(message.transactionTimestamp) : message.transactionTimestamp;
@@ -2934,7 +3069,7 @@ $root.proto = (function() {
             if (message.currency != null && message.hasOwnProperty("currency"))
                 object.currency = message.currency;
             if (message.txnStatus != null && message.hasOwnProperty("txnStatus"))
-                object.txnStatus = options.enums === String ? $root.proto.PaymentInfo.PAYMENT_INFO_TXNSTATUS[message.txnStatus] : message.txnStatus;
+                object.txnStatus = options.enums === String ? $root.proto.PaymentInfo.PaymentInfoTxnStatus[message.txnStatus] : message.txnStatus;
             return object;
         };
 
@@ -2950,13 +3085,13 @@ $root.proto = (function() {
         };
 
         /**
-         * PAYMENT_INFO_CURRENCY enum.
-         * @name proto.PaymentInfo.PAYMENT_INFO_CURRENCY
+         * PaymentInfoCurrency enum.
+         * @name proto.PaymentInfo.PaymentInfoCurrency
          * @enum {number}
          * @property {number} UNKNOWN_CURRENCY=0 UNKNOWN_CURRENCY value
          * @property {number} INR=1 INR value
          */
-        PaymentInfo.PAYMENT_INFO_CURRENCY = (function() {
+        PaymentInfo.PaymentInfoCurrency = (function() {
             var valuesById = {}, values = Object.create(valuesById);
             values[valuesById[0] = "UNKNOWN_CURRENCY"] = 0;
             values[valuesById[1] = "INR"] = 1;
@@ -2964,8 +3099,8 @@ $root.proto = (function() {
         })();
 
         /**
-         * PAYMENT_INFO_STATUS enum.
-         * @name proto.PaymentInfo.PAYMENT_INFO_STATUS
+         * PaymentInfoStatus enum.
+         * @name proto.PaymentInfo.PaymentInfoStatus
          * @enum {number}
          * @property {number} UNKNOWN_STATUS=0 UNKNOWN_STATUS value
          * @property {number} PROCESSING=1 PROCESSING value
@@ -2980,7 +3115,7 @@ $root.proto = (function() {
          * @property {number} WAITING_FOR_PAYER=10 WAITING_FOR_PAYER value
          * @property {number} WAITING=11 WAITING value
          */
-        PaymentInfo.PAYMENT_INFO_STATUS = (function() {
+        PaymentInfo.PaymentInfoStatus = (function() {
             var valuesById = {}, values = Object.create(valuesById);
             values[valuesById[0] = "UNKNOWN_STATUS"] = 0;
             values[valuesById[1] = "PROCESSING"] = 1;
@@ -2998,8 +3133,8 @@ $root.proto = (function() {
         })();
 
         /**
-         * PAYMENT_INFO_TXNSTATUS enum.
-         * @name proto.PaymentInfo.PAYMENT_INFO_TXNSTATUS
+         * PaymentInfoTxnStatus enum.
+         * @name proto.PaymentInfo.PaymentInfoTxnStatus
          * @enum {number}
          * @property {number} UNKNOWN=0 UNKNOWN value
          * @property {number} PENDING_SETUP=1 PENDING_SETUP value
@@ -3030,7 +3165,7 @@ $root.proto = (function() {
          * @property {number} COLLECT_CANCELED=26 COLLECT_CANCELED value
          * @property {number} COLLECT_CANCELLING=27 COLLECT_CANCELLING value
          */
-        PaymentInfo.PAYMENT_INFO_TXNSTATUS = (function() {
+        PaymentInfo.PaymentInfoTxnStatus = (function() {
             var valuesById = {}, values = Object.create(valuesById);
             values[valuesById[0] = "UNKNOWN"] = 0;
             values[valuesById[1] = "PENDING_SETUP"] = 1;
@@ -3075,7 +3210,7 @@ $root.proto = (function() {
          * @property {proto.IMessageKey} key WebMessageInfo key
          * @property {proto.IMessage|null} [message] WebMessageInfo message
          * @property {number|Long|null} [messageTimestamp] WebMessageInfo messageTimestamp
-         * @property {proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS|null} [status] WebMessageInfo status
+         * @property {proto.WebMessageInfo.WebMessageInfoStatus|null} [status] WebMessageInfo status
          * @property {string|null} [participant] WebMessageInfo participant
          * @property {boolean|null} [ignore] WebMessageInfo ignore
          * @property {boolean|null} [starred] WebMessageInfo starred
@@ -3085,7 +3220,7 @@ $root.proto = (function() {
          * @property {boolean|null} [multicast] WebMessageInfo multicast
          * @property {boolean|null} [urlText] WebMessageInfo urlText
          * @property {boolean|null} [urlNumber] WebMessageInfo urlNumber
-         * @property {proto.WebMessageInfo.WEB_MESSAGE_INFO_STUBTYPE|null} [messageStubType] WebMessageInfo messageStubType
+         * @property {proto.WebMessageInfo.WebMessageInfoStubType|null} [messageStubType] WebMessageInfo messageStubType
          * @property {boolean|null} [clearMedia] WebMessageInfo clearMedia
          * @property {Array.<string>|null} [messageStubParameters] WebMessageInfo messageStubParameters
          * @property {number|null} [duration] WebMessageInfo duration
@@ -3097,6 +3232,8 @@ $root.proto = (function() {
          * @property {number|null} [ephemeralDuration] WebMessageInfo ephemeralDuration
          * @property {boolean|null} [ephemeralOffToOn] WebMessageInfo ephemeralOffToOn
          * @property {boolean|null} [ephemeralOutOfSync] WebMessageInfo ephemeralOutOfSync
+         * @property {proto.WebMessageInfo.WebMessageInfoBizPrivacyStatus|null} [bizPrivacyStatus] WebMessageInfo bizPrivacyStatus
+         * @property {string|null} [verifiedBizName] WebMessageInfo verifiedBizName
          */
 
         /**
@@ -3142,7 +3279,7 @@ $root.proto = (function() {
 
         /**
          * WebMessageInfo status.
-         * @member {proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS} status
+         * @member {proto.WebMessageInfo.WebMessageInfoStatus} status
          * @memberof proto.WebMessageInfo
          * @instance
          */
@@ -3222,7 +3359,7 @@ $root.proto = (function() {
 
         /**
          * WebMessageInfo messageStubType.
-         * @member {proto.WebMessageInfo.WEB_MESSAGE_INFO_STUBTYPE} messageStubType
+         * @member {proto.WebMessageInfo.WebMessageInfoStubType} messageStubType
          * @memberof proto.WebMessageInfo
          * @instance
          */
@@ -3317,6 +3454,22 @@ $root.proto = (function() {
         WebMessageInfo.prototype.ephemeralOutOfSync = false;
 
         /**
+         * WebMessageInfo bizPrivacyStatus.
+         * @member {proto.WebMessageInfo.WebMessageInfoBizPrivacyStatus} bizPrivacyStatus
+         * @memberof proto.WebMessageInfo
+         * @instance
+         */
+        WebMessageInfo.prototype.bizPrivacyStatus = 0;
+
+        /**
+         * WebMessageInfo verifiedBizName.
+         * @member {string} verifiedBizName
+         * @memberof proto.WebMessageInfo
+         * @instance
+         */
+        WebMessageInfo.prototype.verifiedBizName = "";
+
+        /**
          * Creates a new WebMessageInfo instance using the specified properties.
          * @function create
          * @memberof proto.WebMessageInfo
@@ -3391,6 +3544,10 @@ $root.proto = (function() {
                 writer.uint32(/* id 34, wireType 0 =*/272).bool(message.ephemeralOffToOn);
             if (message.ephemeralOutOfSync != null && Object.hasOwnProperty.call(message, "ephemeralOutOfSync"))
                 writer.uint32(/* id 35, wireType 0 =*/280).bool(message.ephemeralOutOfSync);
+            if (message.bizPrivacyStatus != null && Object.hasOwnProperty.call(message, "bizPrivacyStatus"))
+                writer.uint32(/* id 36, wireType 0 =*/288).int32(message.bizPrivacyStatus);
+            if (message.verifiedBizName != null && Object.hasOwnProperty.call(message, "verifiedBizName"))
+                writer.uint32(/* id 37, wireType 2 =*/298).string(message.verifiedBizName);
             return writer;
         };
 
@@ -3503,6 +3660,12 @@ $root.proto = (function() {
                     break;
                 case 35:
                     message.ephemeralOutOfSync = reader.bool();
+                    break;
+                case 36:
+                    message.bizPrivacyStatus = reader.int32();
+                    break;
+                case 37:
+                    message.verifiedBizName = reader.string();
                     break;
                 default:
                     reader.skipType(tag & 7);
@@ -3671,6 +3834,51 @@ $root.proto = (function() {
                 case 71:
                 case 72:
                 case 73:
+                case 74:
+                case 75:
+                case 76:
+                case 77:
+                case 78:
+                case 79:
+                case 80:
+                case 81:
+                case 82:
+                case 83:
+                case 84:
+                case 85:
+                case 86:
+                case 87:
+                case 88:
+                case 89:
+                case 90:
+                case 91:
+                case 92:
+                case 93:
+                case 94:
+                case 95:
+                case 96:
+                case 97:
+                case 98:
+                case 99:
+                case 100:
+                case 101:
+                case 102:
+                case 103:
+                case 104:
+                case 105:
+                case 106:
+                case 107:
+                case 108:
+                case 109:
+                case 110:
+                case 111:
+                case 112:
+                case 113:
+                case 114:
+                case 115:
+                case 116:
+                case 117:
+                case 118:
                     break;
                 }
             if (message.clearMedia != null && message.hasOwnProperty("clearMedia"))
@@ -3720,6 +3928,19 @@ $root.proto = (function() {
             if (message.ephemeralOutOfSync != null && message.hasOwnProperty("ephemeralOutOfSync"))
                 if (typeof message.ephemeralOutOfSync !== "boolean")
                     return "ephemeralOutOfSync: boolean expected";
+            if (message.bizPrivacyStatus != null && message.hasOwnProperty("bizPrivacyStatus"))
+                switch (message.bizPrivacyStatus) {
+                default:
+                    return "bizPrivacyStatus: enum value expected";
+                case 0:
+                case 2:
+                case 1:
+                case 3:
+                    break;
+                }
+            if (message.verifiedBizName != null && message.hasOwnProperty("verifiedBizName"))
+                if (!$util.isString(message.verifiedBizName))
+                    return "verifiedBizName: string expected";
             return null;
         };
 
@@ -4098,6 +4319,186 @@ $root.proto = (function() {
             case 73:
                 message.messageStubType = 73;
                 break;
+            case "VIEWED_ONCE":
+            case 74:
+                message.messageStubType = 74;
+                break;
+            case "E2E_ENCRYPTED_NOW":
+            case 75:
+                message.messageStubType = 75;
+                break;
+            case "BLUE_MSG_BSP_FB_TO_BSP_PREMISE":
+            case 76:
+                message.messageStubType = 76;
+                break;
+            case "BLUE_MSG_BSP_FB_TO_SELF_FB":
+            case 77:
+                message.messageStubType = 77;
+                break;
+            case "BLUE_MSG_BSP_FB_TO_SELF_PREMISE":
+            case 78:
+                message.messageStubType = 78;
+                break;
+            case "BLUE_MSG_BSP_FB_UNVERIFIED":
+            case 79:
+                message.messageStubType = 79;
+                break;
+            case "BLUE_MSG_BSP_FB_UNVERIFIED_TO_SELF_PREMISE_VERIFIED":
+            case 80:
+                message.messageStubType = 80;
+                break;
+            case "BLUE_MSG_BSP_FB_VERIFIED":
+            case 81:
+                message.messageStubType = 81;
+                break;
+            case "BLUE_MSG_BSP_FB_VERIFIED_TO_SELF_PREMISE_UNVERIFIED":
+            case 82:
+                message.messageStubType = 82;
+                break;
+            case "BLUE_MSG_BSP_PREMISE_TO_SELF_PREMISE":
+            case 83:
+                message.messageStubType = 83;
+                break;
+            case "BLUE_MSG_BSP_PREMISE_UNVERIFIED":
+            case 84:
+                message.messageStubType = 84;
+                break;
+            case "BLUE_MSG_BSP_PREMISE_UNVERIFIED_TO_SELF_PREMISE_VERIFIED":
+            case 85:
+                message.messageStubType = 85;
+                break;
+            case "BLUE_MSG_BSP_PREMISE_VERIFIED":
+            case 86:
+                message.messageStubType = 86;
+                break;
+            case "BLUE_MSG_BSP_PREMISE_VERIFIED_TO_SELF_PREMISE_UNVERIFIED":
+            case 87:
+                message.messageStubType = 87;
+                break;
+            case "BLUE_MSG_CONSUMER_TO_BSP_FB_UNVERIFIED":
+            case 88:
+                message.messageStubType = 88;
+                break;
+            case "BLUE_MSG_CONSUMER_TO_BSP_PREMISE_UNVERIFIED":
+            case 89:
+                message.messageStubType = 89;
+                break;
+            case "BLUE_MSG_CONSUMER_TO_SELF_FB_UNVERIFIED":
+            case 90:
+                message.messageStubType = 90;
+                break;
+            case "BLUE_MSG_CONSUMER_TO_SELF_PREMISE_UNVERIFIED":
+            case 91:
+                message.messageStubType = 91;
+                break;
+            case "BLUE_MSG_SELF_FB_TO_BSP_PREMISE":
+            case 92:
+                message.messageStubType = 92;
+                break;
+            case "BLUE_MSG_SELF_FB_TO_SELF_PREMISE":
+            case 93:
+                message.messageStubType = 93;
+                break;
+            case "BLUE_MSG_SELF_FB_UNVERIFIED":
+            case 94:
+                message.messageStubType = 94;
+                break;
+            case "BLUE_MSG_SELF_FB_UNVERIFIED_TO_SELF_PREMISE_VERIFIED":
+            case 95:
+                message.messageStubType = 95;
+                break;
+            case "BLUE_MSG_SELF_FB_VERIFIED":
+            case 96:
+                message.messageStubType = 96;
+                break;
+            case "BLUE_MSG_SELF_FB_VERIFIED_TO_SELF_PREMISE_UNVERIFIED":
+            case 97:
+                message.messageStubType = 97;
+                break;
+            case "BLUE_MSG_SELF_PREMISE_TO_BSP_PREMISE":
+            case 98:
+                message.messageStubType = 98;
+                break;
+            case "BLUE_MSG_SELF_PREMISE_UNVERIFIED":
+            case 99:
+                message.messageStubType = 99;
+                break;
+            case "BLUE_MSG_SELF_PREMISE_VERIFIED":
+            case 100:
+                message.messageStubType = 100;
+                break;
+            case "BLUE_MSG_TO_BSP_FB":
+            case 101:
+                message.messageStubType = 101;
+                break;
+            case "BLUE_MSG_TO_CONSUMER":
+            case 102:
+                message.messageStubType = 102;
+                break;
+            case "BLUE_MSG_TO_SELF_FB":
+            case 103:
+                message.messageStubType = 103;
+                break;
+            case "BLUE_MSG_UNVERIFIED_TO_BSP_FB_VERIFIED":
+            case 104:
+                message.messageStubType = 104;
+                break;
+            case "BLUE_MSG_UNVERIFIED_TO_BSP_PREMISE_VERIFIED":
+            case 105:
+                message.messageStubType = 105;
+                break;
+            case "BLUE_MSG_UNVERIFIED_TO_SELF_FB_VERIFIED":
+            case 106:
+                message.messageStubType = 106;
+                break;
+            case "BLUE_MSG_UNVERIFIED_TO_VERIFIED":
+            case 107:
+                message.messageStubType = 107;
+                break;
+            case "BLUE_MSG_VERIFIED_TO_BSP_FB_UNVERIFIED":
+            case 108:
+                message.messageStubType = 108;
+                break;
+            case "BLUE_MSG_VERIFIED_TO_BSP_PREMISE_UNVERIFIED":
+            case 109:
+                message.messageStubType = 109;
+                break;
+            case "BLUE_MSG_VERIFIED_TO_SELF_FB_UNVERIFIED":
+            case 110:
+                message.messageStubType = 110;
+                break;
+            case "BLUE_MSG_VERIFIED_TO_UNVERIFIED":
+            case 111:
+                message.messageStubType = 111;
+                break;
+            case "BLUE_MSG_BSP_FB_UNVERIFIED_TO_BSP_PREMISE_VERIFIED":
+            case 112:
+                message.messageStubType = 112;
+                break;
+            case "BLUE_MSG_BSP_FB_UNVERIFIED_TO_SELF_FB_VERIFIED":
+            case 113:
+                message.messageStubType = 113;
+                break;
+            case "BLUE_MSG_BSP_FB_VERIFIED_TO_BSP_PREMISE_UNVERIFIED":
+            case 114:
+                message.messageStubType = 114;
+                break;
+            case "BLUE_MSG_BSP_FB_VERIFIED_TO_SELF_FB_UNVERIFIED":
+            case 115:
+                message.messageStubType = 115;
+                break;
+            case "BLUE_MSG_SELF_FB_UNVERIFIED_TO_BSP_PREMISE_VERIFIED":
+            case 116:
+                message.messageStubType = 116;
+                break;
+            case "BLUE_MSG_SELF_FB_VERIFIED_TO_BSP_PREMISE_UNVERIFIED":
+            case 117:
+                message.messageStubType = 117;
+                break;
+            case "E2E_IDENTITY_UNAVAILABLE":
+            case 118:
+                message.messageStubType = 118;
+                break;
             }
             if (object.clearMedia != null)
                 message.clearMedia = Boolean(object.clearMedia);
@@ -4147,6 +4548,26 @@ $root.proto = (function() {
                 message.ephemeralOffToOn = Boolean(object.ephemeralOffToOn);
             if (object.ephemeralOutOfSync != null)
                 message.ephemeralOutOfSync = Boolean(object.ephemeralOutOfSync);
+            switch (object.bizPrivacyStatus) {
+            case "E2EE":
+            case 0:
+                message.bizPrivacyStatus = 0;
+                break;
+            case "FB":
+            case 2:
+                message.bizPrivacyStatus = 2;
+                break;
+            case "BSP":
+            case 1:
+                message.bizPrivacyStatus = 1;
+                break;
+            case "BSP_AND_FB":
+            case 3:
+                message.bizPrivacyStatus = 3;
+                break;
+            }
+            if (object.verifiedBizName != null)
+                message.verifiedBizName = String(object.verifiedBizName);
             return message;
         };
 
@@ -4205,6 +4626,8 @@ $root.proto = (function() {
                 object.ephemeralDuration = 0;
                 object.ephemeralOffToOn = false;
                 object.ephemeralOutOfSync = false;
+                object.bizPrivacyStatus = options.enums === String ? "E2EE" : 0;
+                object.verifiedBizName = "";
             }
             if (message.key != null && message.hasOwnProperty("key"))
                 object.key = $root.proto.MessageKey.toObject(message.key, options);
@@ -4216,7 +4639,7 @@ $root.proto = (function() {
                 else
                     object.messageTimestamp = options.longs === String ? $util.Long.prototype.toString.call(message.messageTimestamp) : options.longs === Number ? new $util.LongBits(message.messageTimestamp.low >>> 0, message.messageTimestamp.high >>> 0).toNumber(true) : message.messageTimestamp;
             if (message.status != null && message.hasOwnProperty("status"))
-                object.status = options.enums === String ? $root.proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS[message.status] : message.status;
+                object.status = options.enums === String ? $root.proto.WebMessageInfo.WebMessageInfoStatus[message.status] : message.status;
             if (message.participant != null && message.hasOwnProperty("participant"))
                 object.participant = message.participant;
             if (message.ignore != null && message.hasOwnProperty("ignore"))
@@ -4236,7 +4659,7 @@ $root.proto = (function() {
             if (message.urlNumber != null && message.hasOwnProperty("urlNumber"))
                 object.urlNumber = message.urlNumber;
             if (message.messageStubType != null && message.hasOwnProperty("messageStubType"))
-                object.messageStubType = options.enums === String ? $root.proto.WebMessageInfo.WEB_MESSAGE_INFO_STUBTYPE[message.messageStubType] : message.messageStubType;
+                object.messageStubType = options.enums === String ? $root.proto.WebMessageInfo.WebMessageInfoStubType[message.messageStubType] : message.messageStubType;
             if (message.clearMedia != null && message.hasOwnProperty("clearMedia"))
                 object.clearMedia = message.clearMedia;
             if (message.messageStubParameters && message.messageStubParameters.length) {
@@ -4268,6 +4691,10 @@ $root.proto = (function() {
                 object.ephemeralOffToOn = message.ephemeralOffToOn;
             if (message.ephemeralOutOfSync != null && message.hasOwnProperty("ephemeralOutOfSync"))
                 object.ephemeralOutOfSync = message.ephemeralOutOfSync;
+            if (message.bizPrivacyStatus != null && message.hasOwnProperty("bizPrivacyStatus"))
+                object.bizPrivacyStatus = options.enums === String ? $root.proto.WebMessageInfo.WebMessageInfoBizPrivacyStatus[message.bizPrivacyStatus] : message.bizPrivacyStatus;
+            if (message.verifiedBizName != null && message.hasOwnProperty("verifiedBizName"))
+                object.verifiedBizName = message.verifiedBizName;
             return object;
         };
 
@@ -4283,8 +4710,8 @@ $root.proto = (function() {
         };
 
         /**
-         * WEB_MESSAGE_INFO_STATUS enum.
-         * @name proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS
+         * WebMessageInfoStatus enum.
+         * @name proto.WebMessageInfo.WebMessageInfoStatus
          * @enum {number}
          * @property {number} ERROR=0 ERROR value
          * @property {number} PENDING=1 PENDING value
@@ -4293,7 +4720,7 @@ $root.proto = (function() {
          * @property {number} READ=4 READ value
          * @property {number} PLAYED=5 PLAYED value
          */
-        WebMessageInfo.WEB_MESSAGE_INFO_STATUS = (function() {
+        WebMessageInfo.WebMessageInfoStatus = (function() {
             var valuesById = {}, values = Object.create(valuesById);
             values[valuesById[0] = "ERROR"] = 0;
             values[valuesById[1] = "PENDING"] = 1;
@@ -4305,8 +4732,8 @@ $root.proto = (function() {
         })();
 
         /**
-         * WEB_MESSAGE_INFO_STUBTYPE enum.
-         * @name proto.WebMessageInfo.WEB_MESSAGE_INFO_STUBTYPE
+         * WebMessageInfoStubType enum.
+         * @name proto.WebMessageInfo.WebMessageInfoStubType
          * @enum {number}
          * @property {number} UNKNOWN=0 UNKNOWN value
          * @property {number} REVOKE=1 REVOKE value
@@ -4382,8 +4809,53 @@ $root.proto = (function() {
          * @property {number} GROUP_PARTICIPANT_ADD_REQUEST_JOIN=71 GROUP_PARTICIPANT_ADD_REQUEST_JOIN value
          * @property {number} CHANGE_EPHEMERAL_SETTING=72 CHANGE_EPHEMERAL_SETTING value
          * @property {number} E2E_DEVICE_CHANGED=73 E2E_DEVICE_CHANGED value
+         * @property {number} VIEWED_ONCE=74 VIEWED_ONCE value
+         * @property {number} E2E_ENCRYPTED_NOW=75 E2E_ENCRYPTED_NOW value
+         * @property {number} BLUE_MSG_BSP_FB_TO_BSP_PREMISE=76 BLUE_MSG_BSP_FB_TO_BSP_PREMISE value
+         * @property {number} BLUE_MSG_BSP_FB_TO_SELF_FB=77 BLUE_MSG_BSP_FB_TO_SELF_FB value
+         * @property {number} BLUE_MSG_BSP_FB_TO_SELF_PREMISE=78 BLUE_MSG_BSP_FB_TO_SELF_PREMISE value
+         * @property {number} BLUE_MSG_BSP_FB_UNVERIFIED=79 BLUE_MSG_BSP_FB_UNVERIFIED value
+         * @property {number} BLUE_MSG_BSP_FB_UNVERIFIED_TO_SELF_PREMISE_VERIFIED=80 BLUE_MSG_BSP_FB_UNVERIFIED_TO_SELF_PREMISE_VERIFIED value
+         * @property {number} BLUE_MSG_BSP_FB_VERIFIED=81 BLUE_MSG_BSP_FB_VERIFIED value
+         * @property {number} BLUE_MSG_BSP_FB_VERIFIED_TO_SELF_PREMISE_UNVERIFIED=82 BLUE_MSG_BSP_FB_VERIFIED_TO_SELF_PREMISE_UNVERIFIED value
+         * @property {number} BLUE_MSG_BSP_PREMISE_TO_SELF_PREMISE=83 BLUE_MSG_BSP_PREMISE_TO_SELF_PREMISE value
+         * @property {number} BLUE_MSG_BSP_PREMISE_UNVERIFIED=84 BLUE_MSG_BSP_PREMISE_UNVERIFIED value
+         * @property {number} BLUE_MSG_BSP_PREMISE_UNVERIFIED_TO_SELF_PREMISE_VERIFIED=85 BLUE_MSG_BSP_PREMISE_UNVERIFIED_TO_SELF_PREMISE_VERIFIED value
+         * @property {number} BLUE_MSG_BSP_PREMISE_VERIFIED=86 BLUE_MSG_BSP_PREMISE_VERIFIED value
+         * @property {number} BLUE_MSG_BSP_PREMISE_VERIFIED_TO_SELF_PREMISE_UNVERIFIED=87 BLUE_MSG_BSP_PREMISE_VERIFIED_TO_SELF_PREMISE_UNVERIFIED value
+         * @property {number} BLUE_MSG_CONSUMER_TO_BSP_FB_UNVERIFIED=88 BLUE_MSG_CONSUMER_TO_BSP_FB_UNVERIFIED value
+         * @property {number} BLUE_MSG_CONSUMER_TO_BSP_PREMISE_UNVERIFIED=89 BLUE_MSG_CONSUMER_TO_BSP_PREMISE_UNVERIFIED value
+         * @property {number} BLUE_MSG_CONSUMER_TO_SELF_FB_UNVERIFIED=90 BLUE_MSG_CONSUMER_TO_SELF_FB_UNVERIFIED value
+         * @property {number} BLUE_MSG_CONSUMER_TO_SELF_PREMISE_UNVERIFIED=91 BLUE_MSG_CONSUMER_TO_SELF_PREMISE_UNVERIFIED value
+         * @property {number} BLUE_MSG_SELF_FB_TO_BSP_PREMISE=92 BLUE_MSG_SELF_FB_TO_BSP_PREMISE value
+         * @property {number} BLUE_MSG_SELF_FB_TO_SELF_PREMISE=93 BLUE_MSG_SELF_FB_TO_SELF_PREMISE value
+         * @property {number} BLUE_MSG_SELF_FB_UNVERIFIED=94 BLUE_MSG_SELF_FB_UNVERIFIED value
+         * @property {number} BLUE_MSG_SELF_FB_UNVERIFIED_TO_SELF_PREMISE_VERIFIED=95 BLUE_MSG_SELF_FB_UNVERIFIED_TO_SELF_PREMISE_VERIFIED value
+         * @property {number} BLUE_MSG_SELF_FB_VERIFIED=96 BLUE_MSG_SELF_FB_VERIFIED value
+         * @property {number} BLUE_MSG_SELF_FB_VERIFIED_TO_SELF_PREMISE_UNVERIFIED=97 BLUE_MSG_SELF_FB_VERIFIED_TO_SELF_PREMISE_UNVERIFIED value
+         * @property {number} BLUE_MSG_SELF_PREMISE_TO_BSP_PREMISE=98 BLUE_MSG_SELF_PREMISE_TO_BSP_PREMISE value
+         * @property {number} BLUE_MSG_SELF_PREMISE_UNVERIFIED=99 BLUE_MSG_SELF_PREMISE_UNVERIFIED value
+         * @property {number} BLUE_MSG_SELF_PREMISE_VERIFIED=100 BLUE_MSG_SELF_PREMISE_VERIFIED value
+         * @property {number} BLUE_MSG_TO_BSP_FB=101 BLUE_MSG_TO_BSP_FB value
+         * @property {number} BLUE_MSG_TO_CONSUMER=102 BLUE_MSG_TO_CONSUMER value
+         * @property {number} BLUE_MSG_TO_SELF_FB=103 BLUE_MSG_TO_SELF_FB value
+         * @property {number} BLUE_MSG_UNVERIFIED_TO_BSP_FB_VERIFIED=104 BLUE_MSG_UNVERIFIED_TO_BSP_FB_VERIFIED value
+         * @property {number} BLUE_MSG_UNVERIFIED_TO_BSP_PREMISE_VERIFIED=105 BLUE_MSG_UNVERIFIED_TO_BSP_PREMISE_VERIFIED value
+         * @property {number} BLUE_MSG_UNVERIFIED_TO_SELF_FB_VERIFIED=106 BLUE_MSG_UNVERIFIED_TO_SELF_FB_VERIFIED value
+         * @property {number} BLUE_MSG_UNVERIFIED_TO_VERIFIED=107 BLUE_MSG_UNVERIFIED_TO_VERIFIED value
+         * @property {number} BLUE_MSG_VERIFIED_TO_BSP_FB_UNVERIFIED=108 BLUE_MSG_VERIFIED_TO_BSP_FB_UNVERIFIED value
+         * @property {number} BLUE_MSG_VERIFIED_TO_BSP_PREMISE_UNVERIFIED=109 BLUE_MSG_VERIFIED_TO_BSP_PREMISE_UNVERIFIED value
+         * @property {number} BLUE_MSG_VERIFIED_TO_SELF_FB_UNVERIFIED=110 BLUE_MSG_VERIFIED_TO_SELF_FB_UNVERIFIED value
+         * @property {number} BLUE_MSG_VERIFIED_TO_UNVERIFIED=111 BLUE_MSG_VERIFIED_TO_UNVERIFIED value
+         * @property {number} BLUE_MSG_BSP_FB_UNVERIFIED_TO_BSP_PREMISE_VERIFIED=112 BLUE_MSG_BSP_FB_UNVERIFIED_TO_BSP_PREMISE_VERIFIED value
+         * @property {number} BLUE_MSG_BSP_FB_UNVERIFIED_TO_SELF_FB_VERIFIED=113 BLUE_MSG_BSP_FB_UNVERIFIED_TO_SELF_FB_VERIFIED value
+         * @property {number} BLUE_MSG_BSP_FB_VERIFIED_TO_BSP_PREMISE_UNVERIFIED=114 BLUE_MSG_BSP_FB_VERIFIED_TO_BSP_PREMISE_UNVERIFIED value
+         * @property {number} BLUE_MSG_BSP_FB_VERIFIED_TO_SELF_FB_UNVERIFIED=115 BLUE_MSG_BSP_FB_VERIFIED_TO_SELF_FB_UNVERIFIED value
+         * @property {number} BLUE_MSG_SELF_FB_UNVERIFIED_TO_BSP_PREMISE_VERIFIED=116 BLUE_MSG_SELF_FB_UNVERIFIED_TO_BSP_PREMISE_VERIFIED value
+         * @property {number} BLUE_MSG_SELF_FB_VERIFIED_TO_BSP_PREMISE_UNVERIFIED=117 BLUE_MSG_SELF_FB_VERIFIED_TO_BSP_PREMISE_UNVERIFIED value
+         * @property {number} E2E_IDENTITY_UNAVAILABLE=118 E2E_IDENTITY_UNAVAILABLE value
          */
-        WebMessageInfo.WEB_MESSAGE_INFO_STUBTYPE = (function() {
+        WebMessageInfo.WebMessageInfoStubType = (function() {
             var valuesById = {}, values = Object.create(valuesById);
             values[valuesById[0] = "UNKNOWN"] = 0;
             values[valuesById[1] = "REVOKE"] = 1;
@@ -4459,6 +4931,69 @@ $root.proto = (function() {
             values[valuesById[71] = "GROUP_PARTICIPANT_ADD_REQUEST_JOIN"] = 71;
             values[valuesById[72] = "CHANGE_EPHEMERAL_SETTING"] = 72;
             values[valuesById[73] = "E2E_DEVICE_CHANGED"] = 73;
+            values[valuesById[74] = "VIEWED_ONCE"] = 74;
+            values[valuesById[75] = "E2E_ENCRYPTED_NOW"] = 75;
+            values[valuesById[76] = "BLUE_MSG_BSP_FB_TO_BSP_PREMISE"] = 76;
+            values[valuesById[77] = "BLUE_MSG_BSP_FB_TO_SELF_FB"] = 77;
+            values[valuesById[78] = "BLUE_MSG_BSP_FB_TO_SELF_PREMISE"] = 78;
+            values[valuesById[79] = "BLUE_MSG_BSP_FB_UNVERIFIED"] = 79;
+            values[valuesById[80] = "BLUE_MSG_BSP_FB_UNVERIFIED_TO_SELF_PREMISE_VERIFIED"] = 80;
+            values[valuesById[81] = "BLUE_MSG_BSP_FB_VERIFIED"] = 81;
+            values[valuesById[82] = "BLUE_MSG_BSP_FB_VERIFIED_TO_SELF_PREMISE_UNVERIFIED"] = 82;
+            values[valuesById[83] = "BLUE_MSG_BSP_PREMISE_TO_SELF_PREMISE"] = 83;
+            values[valuesById[84] = "BLUE_MSG_BSP_PREMISE_UNVERIFIED"] = 84;
+            values[valuesById[85] = "BLUE_MSG_BSP_PREMISE_UNVERIFIED_TO_SELF_PREMISE_VERIFIED"] = 85;
+            values[valuesById[86] = "BLUE_MSG_BSP_PREMISE_VERIFIED"] = 86;
+            values[valuesById[87] = "BLUE_MSG_BSP_PREMISE_VERIFIED_TO_SELF_PREMISE_UNVERIFIED"] = 87;
+            values[valuesById[88] = "BLUE_MSG_CONSUMER_TO_BSP_FB_UNVERIFIED"] = 88;
+            values[valuesById[89] = "BLUE_MSG_CONSUMER_TO_BSP_PREMISE_UNVERIFIED"] = 89;
+            values[valuesById[90] = "BLUE_MSG_CONSUMER_TO_SELF_FB_UNVERIFIED"] = 90;
+            values[valuesById[91] = "BLUE_MSG_CONSUMER_TO_SELF_PREMISE_UNVERIFIED"] = 91;
+            values[valuesById[92] = "BLUE_MSG_SELF_FB_TO_BSP_PREMISE"] = 92;
+            values[valuesById[93] = "BLUE_MSG_SELF_FB_TO_SELF_PREMISE"] = 93;
+            values[valuesById[94] = "BLUE_MSG_SELF_FB_UNVERIFIED"] = 94;
+            values[valuesById[95] = "BLUE_MSG_SELF_FB_UNVERIFIED_TO_SELF_PREMISE_VERIFIED"] = 95;
+            values[valuesById[96] = "BLUE_MSG_SELF_FB_VERIFIED"] = 96;
+            values[valuesById[97] = "BLUE_MSG_SELF_FB_VERIFIED_TO_SELF_PREMISE_UNVERIFIED"] = 97;
+            values[valuesById[98] = "BLUE_MSG_SELF_PREMISE_TO_BSP_PREMISE"] = 98;
+            values[valuesById[99] = "BLUE_MSG_SELF_PREMISE_UNVERIFIED"] = 99;
+            values[valuesById[100] = "BLUE_MSG_SELF_PREMISE_VERIFIED"] = 100;
+            values[valuesById[101] = "BLUE_MSG_TO_BSP_FB"] = 101;
+            values[valuesById[102] = "BLUE_MSG_TO_CONSUMER"] = 102;
+            values[valuesById[103] = "BLUE_MSG_TO_SELF_FB"] = 103;
+            values[valuesById[104] = "BLUE_MSG_UNVERIFIED_TO_BSP_FB_VERIFIED"] = 104;
+            values[valuesById[105] = "BLUE_MSG_UNVERIFIED_TO_BSP_PREMISE_VERIFIED"] = 105;
+            values[valuesById[106] = "BLUE_MSG_UNVERIFIED_TO_SELF_FB_VERIFIED"] = 106;
+            values[valuesById[107] = "BLUE_MSG_UNVERIFIED_TO_VERIFIED"] = 107;
+            values[valuesById[108] = "BLUE_MSG_VERIFIED_TO_BSP_FB_UNVERIFIED"] = 108;
+            values[valuesById[109] = "BLUE_MSG_VERIFIED_TO_BSP_PREMISE_UNVERIFIED"] = 109;
+            values[valuesById[110] = "BLUE_MSG_VERIFIED_TO_SELF_FB_UNVERIFIED"] = 110;
+            values[valuesById[111] = "BLUE_MSG_VERIFIED_TO_UNVERIFIED"] = 111;
+            values[valuesById[112] = "BLUE_MSG_BSP_FB_UNVERIFIED_TO_BSP_PREMISE_VERIFIED"] = 112;
+            values[valuesById[113] = "BLUE_MSG_BSP_FB_UNVERIFIED_TO_SELF_FB_VERIFIED"] = 113;
+            values[valuesById[114] = "BLUE_MSG_BSP_FB_VERIFIED_TO_BSP_PREMISE_UNVERIFIED"] = 114;
+            values[valuesById[115] = "BLUE_MSG_BSP_FB_VERIFIED_TO_SELF_FB_UNVERIFIED"] = 115;
+            values[valuesById[116] = "BLUE_MSG_SELF_FB_UNVERIFIED_TO_BSP_PREMISE_VERIFIED"] = 116;
+            values[valuesById[117] = "BLUE_MSG_SELF_FB_VERIFIED_TO_BSP_PREMISE_UNVERIFIED"] = 117;
+            values[valuesById[118] = "E2E_IDENTITY_UNAVAILABLE"] = 118;
+            return values;
+        })();
+
+        /**
+         * WebMessageInfoBizPrivacyStatus enum.
+         * @name proto.WebMessageInfo.WebMessageInfoBizPrivacyStatus
+         * @enum {number}
+         * @property {number} E2EE=0 E2EE value
+         * @property {number} FB=2 FB value
+         * @property {number} BSP=1 BSP value
+         * @property {number} BSP_AND_FB=3 BSP_AND_FB value
+         */
+        WebMessageInfo.WebMessageInfoBizPrivacyStatus = (function() {
+            var valuesById = {}, values = Object.create(valuesById);
+            values[valuesById[0] = "E2EE"] = 0;
+            values[valuesById[2] = "FB"] = 2;
+            values[valuesById[1] = "BSP"] = 1;
+            values[valuesById[3] = "BSP_AND_FB"] = 3;
             return values;
         })();
 
@@ -7102,7 +7637,7 @@ $root.proto = (function() {
          * @memberof proto
          * @interface IAdReplyInfo
          * @property {string|null} [advertiserName] AdReplyInfo advertiserName
-         * @property {proto.AdReplyInfo.AD_REPLY_INFO_MEDIATYPE|null} [mediaType] AdReplyInfo mediaType
+         * @property {proto.AdReplyInfo.AdReplyInfoMediaType|null} [mediaType] AdReplyInfo mediaType
          * @property {Uint8Array|null} [jpegThumbnail] AdReplyInfo jpegThumbnail
          * @property {string|null} [caption] AdReplyInfo caption
          */
@@ -7132,7 +7667,7 @@ $root.proto = (function() {
 
         /**
          * AdReplyInfo mediaType.
-         * @member {proto.AdReplyInfo.AD_REPLY_INFO_MEDIATYPE} mediaType
+         * @member {proto.AdReplyInfo.AdReplyInfoMediaType} mediaType
          * @memberof proto.AdReplyInfo
          * @instance
          */
@@ -7354,7 +7889,7 @@ $root.proto = (function() {
             if (message.advertiserName != null && message.hasOwnProperty("advertiserName"))
                 object.advertiserName = message.advertiserName;
             if (message.mediaType != null && message.hasOwnProperty("mediaType"))
-                object.mediaType = options.enums === String ? $root.proto.AdReplyInfo.AD_REPLY_INFO_MEDIATYPE[message.mediaType] : message.mediaType;
+                object.mediaType = options.enums === String ? $root.proto.AdReplyInfo.AdReplyInfoMediaType[message.mediaType] : message.mediaType;
             if (message.jpegThumbnail != null && message.hasOwnProperty("jpegThumbnail"))
                 object.jpegThumbnail = options.bytes === String ? $util.base64.encode(message.jpegThumbnail, 0, message.jpegThumbnail.length) : options.bytes === Array ? Array.prototype.slice.call(message.jpegThumbnail) : message.jpegThumbnail;
             if (message.caption != null && message.hasOwnProperty("caption"))
@@ -7374,14 +7909,14 @@ $root.proto = (function() {
         };
 
         /**
-         * AD_REPLY_INFO_MEDIATYPE enum.
-         * @name proto.AdReplyInfo.AD_REPLY_INFO_MEDIATYPE
+         * AdReplyInfoMediaType enum.
+         * @name proto.AdReplyInfo.AdReplyInfoMediaType
          * @enum {number}
          * @property {number} NONE=0 NONE value
          * @property {number} IMAGE=1 IMAGE value
          * @property {number} VIDEO=2 VIDEO value
          */
-        AdReplyInfo.AD_REPLY_INFO_MEDIATYPE = (function() {
+        AdReplyInfo.AdReplyInfoMediaType = (function() {
             var valuesById = {}, values = Object.create(valuesById);
             values[valuesById[0] = "NONE"] = 0;
             values[valuesById[1] = "IMAGE"] = 1;
@@ -7400,7 +7935,7 @@ $root.proto = (function() {
          * @interface IExternalAdReplyInfo
          * @property {string|null} [title] ExternalAdReplyInfo title
          * @property {string|null} [body] ExternalAdReplyInfo body
-         * @property {proto.ExternalAdReplyInfo.EXTERNAL_AD_REPLY_INFO_MEDIATYPE|null} [mediaType] ExternalAdReplyInfo mediaType
+         * @property {proto.ExternalAdReplyInfo.ExternalAdReplyInfoMediaType|null} [mediaType] ExternalAdReplyInfo mediaType
          * @property {string|null} [thumbnailUrl] ExternalAdReplyInfo thumbnailUrl
          * @property {string|null} [mediaUrl] ExternalAdReplyInfo mediaUrl
          * @property {Uint8Array|null} [thumbnail] ExternalAdReplyInfo thumbnail
@@ -7442,7 +7977,7 @@ $root.proto = (function() {
 
         /**
          * ExternalAdReplyInfo mediaType.
-         * @member {proto.ExternalAdReplyInfo.EXTERNAL_AD_REPLY_INFO_MEDIATYPE} mediaType
+         * @member {proto.ExternalAdReplyInfo.ExternalAdReplyInfoMediaType} mediaType
          * @memberof proto.ExternalAdReplyInfo
          * @instance
          */
@@ -7753,7 +8288,7 @@ $root.proto = (function() {
             if (message.body != null && message.hasOwnProperty("body"))
                 object.body = message.body;
             if (message.mediaType != null && message.hasOwnProperty("mediaType"))
-                object.mediaType = options.enums === String ? $root.proto.ExternalAdReplyInfo.EXTERNAL_AD_REPLY_INFO_MEDIATYPE[message.mediaType] : message.mediaType;
+                object.mediaType = options.enums === String ? $root.proto.ExternalAdReplyInfo.ExternalAdReplyInfoMediaType[message.mediaType] : message.mediaType;
             if (message.thumbnailUrl != null && message.hasOwnProperty("thumbnailUrl"))
                 object.thumbnailUrl = message.thumbnailUrl;
             if (message.mediaUrl != null && message.hasOwnProperty("mediaUrl"))
@@ -7781,14 +8316,14 @@ $root.proto = (function() {
         };
 
         /**
-         * EXTERNAL_AD_REPLY_INFO_MEDIATYPE enum.
-         * @name proto.ExternalAdReplyInfo.EXTERNAL_AD_REPLY_INFO_MEDIATYPE
+         * ExternalAdReplyInfoMediaType enum.
+         * @name proto.ExternalAdReplyInfo.ExternalAdReplyInfoMediaType
          * @enum {number}
          * @property {number} NONE=0 NONE value
          * @property {number} IMAGE=1 IMAGE value
          * @property {number} VIDEO=2 VIDEO value
          */
-        ExternalAdReplyInfo.EXTERNAL_AD_REPLY_INFO_MEDIATYPE = (function() {
+        ExternalAdReplyInfo.ExternalAdReplyInfoMediaType = (function() {
             var valuesById = {}, values = Object.create(valuesById);
             values[valuesById[0] = "NONE"] = 0;
             values[valuesById[1] = "IMAGE"] = 1;
@@ -10098,8 +10633,8 @@ $root.proto = (function() {
          * @property {string|null} [title] ExtendedTextMessage title
          * @property {number|null} [textArgb] ExtendedTextMessage textArgb
          * @property {number|null} [backgroundArgb] ExtendedTextMessage backgroundArgb
-         * @property {proto.ExtendedTextMessage.EXTENDED_TEXT_MESSAGE_FONTTYPE|null} [font] ExtendedTextMessage font
-         * @property {proto.ExtendedTextMessage.EXTENDED_TEXT_MESSAGE_PREVIEWTYPE|null} [previewType] ExtendedTextMessage previewType
+         * @property {proto.ExtendedTextMessage.ExtendedTextMessageFontType|null} [font] ExtendedTextMessage font
+         * @property {proto.ExtendedTextMessage.ExtendedTextMessagePreviewType|null} [previewType] ExtendedTextMessage previewType
          * @property {Uint8Array|null} [jpegThumbnail] ExtendedTextMessage jpegThumbnail
          * @property {proto.IContextInfo|null} [contextInfo] ExtendedTextMessage contextInfo
          * @property {boolean|null} [doNotPlayInline] ExtendedTextMessage doNotPlayInline
@@ -10178,7 +10713,7 @@ $root.proto = (function() {
 
         /**
          * ExtendedTextMessage font.
-         * @member {proto.ExtendedTextMessage.EXTENDED_TEXT_MESSAGE_FONTTYPE} font
+         * @member {proto.ExtendedTextMessage.ExtendedTextMessageFontType} font
          * @memberof proto.ExtendedTextMessage
          * @instance
          */
@@ -10186,7 +10721,7 @@ $root.proto = (function() {
 
         /**
          * ExtendedTextMessage previewType.
-         * @member {proto.ExtendedTextMessage.EXTENDED_TEXT_MESSAGE_PREVIEWTYPE} previewType
+         * @member {proto.ExtendedTextMessage.ExtendedTextMessagePreviewType} previewType
          * @memberof proto.ExtendedTextMessage
          * @instance
          */
@@ -10549,9 +11084,9 @@ $root.proto = (function() {
             if (message.backgroundArgb != null && message.hasOwnProperty("backgroundArgb"))
                 object.backgroundArgb = message.backgroundArgb;
             if (message.font != null && message.hasOwnProperty("font"))
-                object.font = options.enums === String ? $root.proto.ExtendedTextMessage.EXTENDED_TEXT_MESSAGE_FONTTYPE[message.font] : message.font;
+                object.font = options.enums === String ? $root.proto.ExtendedTextMessage.ExtendedTextMessageFontType[message.font] : message.font;
             if (message.previewType != null && message.hasOwnProperty("previewType"))
-                object.previewType = options.enums === String ? $root.proto.ExtendedTextMessage.EXTENDED_TEXT_MESSAGE_PREVIEWTYPE[message.previewType] : message.previewType;
+                object.previewType = options.enums === String ? $root.proto.ExtendedTextMessage.ExtendedTextMessagePreviewType[message.previewType] : message.previewType;
             if (message.jpegThumbnail != null && message.hasOwnProperty("jpegThumbnail"))
                 object.jpegThumbnail = options.bytes === String ? $util.base64.encode(message.jpegThumbnail, 0, message.jpegThumbnail.length) : options.bytes === Array ? Array.prototype.slice.call(message.jpegThumbnail) : message.jpegThumbnail;
             if (message.contextInfo != null && message.hasOwnProperty("contextInfo"))
@@ -10573,8 +11108,8 @@ $root.proto = (function() {
         };
 
         /**
-         * EXTENDED_TEXT_MESSAGE_FONTTYPE enum.
-         * @name proto.ExtendedTextMessage.EXTENDED_TEXT_MESSAGE_FONTTYPE
+         * ExtendedTextMessageFontType enum.
+         * @name proto.ExtendedTextMessage.ExtendedTextMessageFontType
          * @enum {number}
          * @property {number} SANS_SERIF=0 SANS_SERIF value
          * @property {number} SERIF=1 SERIF value
@@ -10583,7 +11118,7 @@ $root.proto = (function() {
          * @property {number} BEBASNEUE_REGULAR=4 BEBASNEUE_REGULAR value
          * @property {number} OSWALD_HEAVY=5 OSWALD_HEAVY value
          */
-        ExtendedTextMessage.EXTENDED_TEXT_MESSAGE_FONTTYPE = (function() {
+        ExtendedTextMessage.ExtendedTextMessageFontType = (function() {
             var valuesById = {}, values = Object.create(valuesById);
             values[valuesById[0] = "SANS_SERIF"] = 0;
             values[valuesById[1] = "SERIF"] = 1;
@@ -10595,13 +11130,13 @@ $root.proto = (function() {
         })();
 
         /**
-         * EXTENDED_TEXT_MESSAGE_PREVIEWTYPE enum.
-         * @name proto.ExtendedTextMessage.EXTENDED_TEXT_MESSAGE_PREVIEWTYPE
+         * ExtendedTextMessagePreviewType enum.
+         * @name proto.ExtendedTextMessage.ExtendedTextMessagePreviewType
          * @enum {number}
          * @property {number} NONE=0 NONE value
          * @property {number} VIDEO=1 VIDEO value
          */
-        ExtendedTextMessage.EXTENDED_TEXT_MESSAGE_PREVIEWTYPE = (function() {
+        ExtendedTextMessage.ExtendedTextMessagePreviewType = (function() {
             var valuesById = {}, values = Object.create(valuesById);
             values[valuesById[0] = "NONE"] = 0;
             values[valuesById[1] = "VIDEO"] = 1;
@@ -10629,8 +11164,13 @@ $root.proto = (function() {
          * @property {string|null} [directPath] DocumentMessage directPath
          * @property {number|Long|null} [mediaKeyTimestamp] DocumentMessage mediaKeyTimestamp
          * @property {boolean|null} [contactVcard] DocumentMessage contactVcard
+         * @property {string|null} [thumbnailDirectPath] DocumentMessage thumbnailDirectPath
+         * @property {Uint8Array|null} [thumbnailSha256] DocumentMessage thumbnailSha256
+         * @property {Uint8Array|null} [thumbnailEncSha256] DocumentMessage thumbnailEncSha256
          * @property {Uint8Array|null} [jpegThumbnail] DocumentMessage jpegThumbnail
          * @property {proto.IContextInfo|null} [contextInfo] DocumentMessage contextInfo
+         * @property {number|null} [thumbnailHeight] DocumentMessage thumbnailHeight
+         * @property {number|null} [thumbnailWidth] DocumentMessage thumbnailWidth
          */
 
         /**
@@ -10745,6 +11285,30 @@ $root.proto = (function() {
         DocumentMessage.prototype.contactVcard = false;
 
         /**
+         * DocumentMessage thumbnailDirectPath.
+         * @member {string} thumbnailDirectPath
+         * @memberof proto.DocumentMessage
+         * @instance
+         */
+        DocumentMessage.prototype.thumbnailDirectPath = "";
+
+        /**
+         * DocumentMessage thumbnailSha256.
+         * @member {Uint8Array} thumbnailSha256
+         * @memberof proto.DocumentMessage
+         * @instance
+         */
+        DocumentMessage.prototype.thumbnailSha256 = $util.newBuffer([]);
+
+        /**
+         * DocumentMessage thumbnailEncSha256.
+         * @member {Uint8Array} thumbnailEncSha256
+         * @memberof proto.DocumentMessage
+         * @instance
+         */
+        DocumentMessage.prototype.thumbnailEncSha256 = $util.newBuffer([]);
+
+        /**
          * DocumentMessage jpegThumbnail.
          * @member {Uint8Array} jpegThumbnail
          * @memberof proto.DocumentMessage
@@ -10759,6 +11323,22 @@ $root.proto = (function() {
          * @instance
          */
         DocumentMessage.prototype.contextInfo = null;
+
+        /**
+         * DocumentMessage thumbnailHeight.
+         * @member {number} thumbnailHeight
+         * @memberof proto.DocumentMessage
+         * @instance
+         */
+        DocumentMessage.prototype.thumbnailHeight = 0;
+
+        /**
+         * DocumentMessage thumbnailWidth.
+         * @member {number} thumbnailWidth
+         * @memberof proto.DocumentMessage
+         * @instance
+         */
+        DocumentMessage.prototype.thumbnailWidth = 0;
 
         /**
          * Creates a new DocumentMessage instance using the specified properties.
@@ -10808,10 +11388,20 @@ $root.proto = (function() {
                 writer.uint32(/* id 11, wireType 0 =*/88).int64(message.mediaKeyTimestamp);
             if (message.contactVcard != null && Object.hasOwnProperty.call(message, "contactVcard"))
                 writer.uint32(/* id 12, wireType 0 =*/96).bool(message.contactVcard);
+            if (message.thumbnailDirectPath != null && Object.hasOwnProperty.call(message, "thumbnailDirectPath"))
+                writer.uint32(/* id 13, wireType 2 =*/106).string(message.thumbnailDirectPath);
+            if (message.thumbnailSha256 != null && Object.hasOwnProperty.call(message, "thumbnailSha256"))
+                writer.uint32(/* id 14, wireType 2 =*/114).bytes(message.thumbnailSha256);
+            if (message.thumbnailEncSha256 != null && Object.hasOwnProperty.call(message, "thumbnailEncSha256"))
+                writer.uint32(/* id 15, wireType 2 =*/122).bytes(message.thumbnailEncSha256);
             if (message.jpegThumbnail != null && Object.hasOwnProperty.call(message, "jpegThumbnail"))
                 writer.uint32(/* id 16, wireType 2 =*/130).bytes(message.jpegThumbnail);
             if (message.contextInfo != null && Object.hasOwnProperty.call(message, "contextInfo"))
                 $root.proto.ContextInfo.encode(message.contextInfo, writer.uint32(/* id 17, wireType 2 =*/138).fork()).ldelim();
+            if (message.thumbnailHeight != null && Object.hasOwnProperty.call(message, "thumbnailHeight"))
+                writer.uint32(/* id 18, wireType 0 =*/144).uint32(message.thumbnailHeight);
+            if (message.thumbnailWidth != null && Object.hasOwnProperty.call(message, "thumbnailWidth"))
+                writer.uint32(/* id 19, wireType 0 =*/152).uint32(message.thumbnailWidth);
             return writer;
         };
 
@@ -10882,11 +11472,26 @@ $root.proto = (function() {
                 case 12:
                     message.contactVcard = reader.bool();
                     break;
+                case 13:
+                    message.thumbnailDirectPath = reader.string();
+                    break;
+                case 14:
+                    message.thumbnailSha256 = reader.bytes();
+                    break;
+                case 15:
+                    message.thumbnailEncSha256 = reader.bytes();
+                    break;
                 case 16:
                     message.jpegThumbnail = reader.bytes();
                     break;
                 case 17:
                     message.contextInfo = $root.proto.ContextInfo.decode(reader, reader.uint32());
+                    break;
+                case 18:
+                    message.thumbnailHeight = reader.uint32();
+                    break;
+                case 19:
+                    message.thumbnailWidth = reader.uint32();
                     break;
                 default:
                     reader.skipType(tag & 7);
@@ -10959,6 +11564,15 @@ $root.proto = (function() {
             if (message.contactVcard != null && message.hasOwnProperty("contactVcard"))
                 if (typeof message.contactVcard !== "boolean")
                     return "contactVcard: boolean expected";
+            if (message.thumbnailDirectPath != null && message.hasOwnProperty("thumbnailDirectPath"))
+                if (!$util.isString(message.thumbnailDirectPath))
+                    return "thumbnailDirectPath: string expected";
+            if (message.thumbnailSha256 != null && message.hasOwnProperty("thumbnailSha256"))
+                if (!(message.thumbnailSha256 && typeof message.thumbnailSha256.length === "number" || $util.isString(message.thumbnailSha256)))
+                    return "thumbnailSha256: buffer expected";
+            if (message.thumbnailEncSha256 != null && message.hasOwnProperty("thumbnailEncSha256"))
+                if (!(message.thumbnailEncSha256 && typeof message.thumbnailEncSha256.length === "number" || $util.isString(message.thumbnailEncSha256)))
+                    return "thumbnailEncSha256: buffer expected";
             if (message.jpegThumbnail != null && message.hasOwnProperty("jpegThumbnail"))
                 if (!(message.jpegThumbnail && typeof message.jpegThumbnail.length === "number" || $util.isString(message.jpegThumbnail)))
                     return "jpegThumbnail: buffer expected";
@@ -10967,6 +11581,12 @@ $root.proto = (function() {
                 if (error)
                     return "contextInfo." + error;
             }
+            if (message.thumbnailHeight != null && message.hasOwnProperty("thumbnailHeight"))
+                if (!$util.isInteger(message.thumbnailHeight))
+                    return "thumbnailHeight: integer expected";
+            if (message.thumbnailWidth != null && message.hasOwnProperty("thumbnailWidth"))
+                if (!$util.isInteger(message.thumbnailWidth))
+                    return "thumbnailWidth: integer expected";
             return null;
         };
 
@@ -11029,6 +11649,18 @@ $root.proto = (function() {
                     message.mediaKeyTimestamp = new $util.LongBits(object.mediaKeyTimestamp.low >>> 0, object.mediaKeyTimestamp.high >>> 0).toNumber();
             if (object.contactVcard != null)
                 message.contactVcard = Boolean(object.contactVcard);
+            if (object.thumbnailDirectPath != null)
+                message.thumbnailDirectPath = String(object.thumbnailDirectPath);
+            if (object.thumbnailSha256 != null)
+                if (typeof object.thumbnailSha256 === "string")
+                    $util.base64.decode(object.thumbnailSha256, message.thumbnailSha256 = $util.newBuffer($util.base64.length(object.thumbnailSha256)), 0);
+                else if (object.thumbnailSha256.length)
+                    message.thumbnailSha256 = object.thumbnailSha256;
+            if (object.thumbnailEncSha256 != null)
+                if (typeof object.thumbnailEncSha256 === "string")
+                    $util.base64.decode(object.thumbnailEncSha256, message.thumbnailEncSha256 = $util.newBuffer($util.base64.length(object.thumbnailEncSha256)), 0);
+                else if (object.thumbnailEncSha256.length)
+                    message.thumbnailEncSha256 = object.thumbnailEncSha256;
             if (object.jpegThumbnail != null)
                 if (typeof object.jpegThumbnail === "string")
                     $util.base64.decode(object.jpegThumbnail, message.jpegThumbnail = $util.newBuffer($util.base64.length(object.jpegThumbnail)), 0);
@@ -11039,6 +11671,10 @@ $root.proto = (function() {
                     throw TypeError(".proto.DocumentMessage.contextInfo: object expected");
                 message.contextInfo = $root.proto.ContextInfo.fromObject(object.contextInfo);
             }
+            if (object.thumbnailHeight != null)
+                message.thumbnailHeight = object.thumbnailHeight >>> 0;
+            if (object.thumbnailWidth != null)
+                message.thumbnailWidth = object.thumbnailWidth >>> 0;
             return message;
         };
 
@@ -11094,6 +11730,21 @@ $root.proto = (function() {
                 } else
                     object.mediaKeyTimestamp = options.longs === String ? "0" : 0;
                 object.contactVcard = false;
+                object.thumbnailDirectPath = "";
+                if (options.bytes === String)
+                    object.thumbnailSha256 = "";
+                else {
+                    object.thumbnailSha256 = [];
+                    if (options.bytes !== Array)
+                        object.thumbnailSha256 = $util.newBuffer(object.thumbnailSha256);
+                }
+                if (options.bytes === String)
+                    object.thumbnailEncSha256 = "";
+                else {
+                    object.thumbnailEncSha256 = [];
+                    if (options.bytes !== Array)
+                        object.thumbnailEncSha256 = $util.newBuffer(object.thumbnailEncSha256);
+                }
                 if (options.bytes === String)
                     object.jpegThumbnail = "";
                 else {
@@ -11102,6 +11753,8 @@ $root.proto = (function() {
                         object.jpegThumbnail = $util.newBuffer(object.jpegThumbnail);
                 }
                 object.contextInfo = null;
+                object.thumbnailHeight = 0;
+                object.thumbnailWidth = 0;
             }
             if (message.url != null && message.hasOwnProperty("url"))
                 object.url = message.url;
@@ -11133,10 +11786,20 @@ $root.proto = (function() {
                     object.mediaKeyTimestamp = options.longs === String ? $util.Long.prototype.toString.call(message.mediaKeyTimestamp) : options.longs === Number ? new $util.LongBits(message.mediaKeyTimestamp.low >>> 0, message.mediaKeyTimestamp.high >>> 0).toNumber() : message.mediaKeyTimestamp;
             if (message.contactVcard != null && message.hasOwnProperty("contactVcard"))
                 object.contactVcard = message.contactVcard;
+            if (message.thumbnailDirectPath != null && message.hasOwnProperty("thumbnailDirectPath"))
+                object.thumbnailDirectPath = message.thumbnailDirectPath;
+            if (message.thumbnailSha256 != null && message.hasOwnProperty("thumbnailSha256"))
+                object.thumbnailSha256 = options.bytes === String ? $util.base64.encode(message.thumbnailSha256, 0, message.thumbnailSha256.length) : options.bytes === Array ? Array.prototype.slice.call(message.thumbnailSha256) : message.thumbnailSha256;
+            if (message.thumbnailEncSha256 != null && message.hasOwnProperty("thumbnailEncSha256"))
+                object.thumbnailEncSha256 = options.bytes === String ? $util.base64.encode(message.thumbnailEncSha256, 0, message.thumbnailEncSha256.length) : options.bytes === Array ? Array.prototype.slice.call(message.thumbnailEncSha256) : message.thumbnailEncSha256;
             if (message.jpegThumbnail != null && message.hasOwnProperty("jpegThumbnail"))
                 object.jpegThumbnail = options.bytes === String ? $util.base64.encode(message.jpegThumbnail, 0, message.jpegThumbnail.length) : options.bytes === Array ? Array.prototype.slice.call(message.jpegThumbnail) : message.jpegThumbnail;
             if (message.contextInfo != null && message.hasOwnProperty("contextInfo"))
                 object.contextInfo = $root.proto.ContextInfo.toObject(message.contextInfo, options);
+            if (message.thumbnailHeight != null && message.hasOwnProperty("thumbnailHeight"))
+                object.thumbnailHeight = message.thumbnailHeight;
+            if (message.thumbnailWidth != null && message.hasOwnProperty("thumbnailWidth"))
+                object.thumbnailWidth = message.thumbnailWidth;
             return object;
         };
 
@@ -11676,7 +12339,7 @@ $root.proto = (function() {
          * @property {Uint8Array|null} [jpegThumbnail] VideoMessage jpegThumbnail
          * @property {proto.IContextInfo|null} [contextInfo] VideoMessage contextInfo
          * @property {Uint8Array|null} [streamingSidecar] VideoMessage streamingSidecar
-         * @property {proto.VideoMessage.VIDEO_MESSAGE_ATTRIBUTION|null} [gifAttribution] VideoMessage gifAttribution
+         * @property {proto.VideoMessage.VideoMessageAttribution|null} [gifAttribution] VideoMessage gifAttribution
          * @property {boolean|null} [viewOnce] VideoMessage viewOnce
          */
 
@@ -11834,7 +12497,7 @@ $root.proto = (function() {
 
         /**
          * VideoMessage gifAttribution.
-         * @member {proto.VideoMessage.VIDEO_MESSAGE_ATTRIBUTION} gifAttribution
+         * @member {proto.VideoMessage.VideoMessageAttribution} gifAttribution
          * @memberof proto.VideoMessage
          * @instance
          */
@@ -12335,7 +12998,7 @@ $root.proto = (function() {
             if (message.streamingSidecar != null && message.hasOwnProperty("streamingSidecar"))
                 object.streamingSidecar = options.bytes === String ? $util.base64.encode(message.streamingSidecar, 0, message.streamingSidecar.length) : options.bytes === Array ? Array.prototype.slice.call(message.streamingSidecar) : message.streamingSidecar;
             if (message.gifAttribution != null && message.hasOwnProperty("gifAttribution"))
-                object.gifAttribution = options.enums === String ? $root.proto.VideoMessage.VIDEO_MESSAGE_ATTRIBUTION[message.gifAttribution] : message.gifAttribution;
+                object.gifAttribution = options.enums === String ? $root.proto.VideoMessage.VideoMessageAttribution[message.gifAttribution] : message.gifAttribution;
             if (message.viewOnce != null && message.hasOwnProperty("viewOnce"))
                 object.viewOnce = message.viewOnce;
             return object;
@@ -12353,14 +13016,14 @@ $root.proto = (function() {
         };
 
         /**
-         * VIDEO_MESSAGE_ATTRIBUTION enum.
-         * @name proto.VideoMessage.VIDEO_MESSAGE_ATTRIBUTION
+         * VideoMessageAttribution enum.
+         * @name proto.VideoMessage.VideoMessageAttribution
          * @enum {number}
          * @property {number} NONE=0 NONE value
          * @property {number} GIPHY=1 GIPHY value
          * @property {number} TENOR=2 TENOR value
          */
-        VideoMessage.VIDEO_MESSAGE_ATTRIBUTION = (function() {
+        VideoMessage.VideoMessageAttribution = (function() {
             var valuesById = {}, values = Object.create(valuesById);
             values[valuesById[0] = "NONE"] = 0;
             values[valuesById[1] = "GIPHY"] = 1;
@@ -12784,12 +13447,13 @@ $root.proto = (function() {
          * @memberof proto
          * @interface IProtocolMessage
          * @property {proto.IMessageKey|null} [key] ProtocolMessage key
-         * @property {proto.ProtocolMessage.PROTOCOL_MESSAGE_TYPE|null} [type] ProtocolMessage type
+         * @property {proto.ProtocolMessage.ProtocolMessageType|null} [type] ProtocolMessage type
          * @property {number|null} [ephemeralExpiration] ProtocolMessage ephemeralExpiration
          * @property {number|Long|null} [ephemeralSettingTimestamp] ProtocolMessage ephemeralSettingTimestamp
          * @property {proto.IHistorySyncNotification|null} [historySyncNotification] ProtocolMessage historySyncNotification
          * @property {proto.IAppStateSyncKeyShare|null} [appStateSyncKeyShare] ProtocolMessage appStateSyncKeyShare
          * @property {proto.IAppStateSyncKeyRequest|null} [appStateSyncKeyRequest] ProtocolMessage appStateSyncKeyRequest
+         * @property {proto.IInitialSecurityNotificationSettingSync|null} [initialSecurityNotificationSettingSync] ProtocolMessage initialSecurityNotificationSettingSync
          */
 
         /**
@@ -12817,7 +13481,7 @@ $root.proto = (function() {
 
         /**
          * ProtocolMessage type.
-         * @member {proto.ProtocolMessage.PROTOCOL_MESSAGE_TYPE} type
+         * @member {proto.ProtocolMessage.ProtocolMessageType} type
          * @memberof proto.ProtocolMessage
          * @instance
          */
@@ -12864,6 +13528,14 @@ $root.proto = (function() {
         ProtocolMessage.prototype.appStateSyncKeyRequest = null;
 
         /**
+         * ProtocolMessage initialSecurityNotificationSettingSync.
+         * @member {proto.IInitialSecurityNotificationSettingSync|null|undefined} initialSecurityNotificationSettingSync
+         * @memberof proto.ProtocolMessage
+         * @instance
+         */
+        ProtocolMessage.prototype.initialSecurityNotificationSettingSync = null;
+
+        /**
          * Creates a new ProtocolMessage instance using the specified properties.
          * @function create
          * @memberof proto.ProtocolMessage
@@ -12901,6 +13573,8 @@ $root.proto = (function() {
                 $root.proto.AppStateSyncKeyShare.encode(message.appStateSyncKeyShare, writer.uint32(/* id 7, wireType 2 =*/58).fork()).ldelim();
             if (message.appStateSyncKeyRequest != null && Object.hasOwnProperty.call(message, "appStateSyncKeyRequest"))
                 $root.proto.AppStateSyncKeyRequest.encode(message.appStateSyncKeyRequest, writer.uint32(/* id 8, wireType 2 =*/66).fork()).ldelim();
+            if (message.initialSecurityNotificationSettingSync != null && Object.hasOwnProperty.call(message, "initialSecurityNotificationSettingSync"))
+                $root.proto.InitialSecurityNotificationSettingSync.encode(message.initialSecurityNotificationSettingSync, writer.uint32(/* id 9, wireType 2 =*/74).fork()).ldelim();
             return writer;
         };
 
@@ -12956,6 +13630,9 @@ $root.proto = (function() {
                 case 8:
                     message.appStateSyncKeyRequest = $root.proto.AppStateSyncKeyRequest.decode(reader, reader.uint32());
                     break;
+                case 9:
+                    message.initialSecurityNotificationSettingSync = $root.proto.InitialSecurityNotificationSettingSync.decode(reader, reader.uint32());
+                    break;
                 default:
                     reader.skipType(tag & 7);
                     break;
@@ -13007,6 +13684,7 @@ $root.proto = (function() {
                 case 6:
                 case 7:
                 case 8:
+                case 9:
                     break;
                 }
             if (message.ephemeralExpiration != null && message.hasOwnProperty("ephemeralExpiration"))
@@ -13029,6 +13707,11 @@ $root.proto = (function() {
                 var error = $root.proto.AppStateSyncKeyRequest.verify(message.appStateSyncKeyRequest);
                 if (error)
                     return "appStateSyncKeyRequest." + error;
+            }
+            if (message.initialSecurityNotificationSettingSync != null && message.hasOwnProperty("initialSecurityNotificationSettingSync")) {
+                var error = $root.proto.InitialSecurityNotificationSettingSync.verify(message.initialSecurityNotificationSettingSync);
+                if (error)
+                    return "initialSecurityNotificationSettingSync." + error;
             }
             return null;
         };
@@ -13079,6 +13762,10 @@ $root.proto = (function() {
             case 8:
                 message.type = 8;
                 break;
+            case "INITIAL_SECURITY_NOTIFICATION_SETTING_SYNC":
+            case 9:
+                message.type = 9;
+                break;
             }
             if (object.ephemeralExpiration != null)
                 message.ephemeralExpiration = object.ephemeralExpiration >>> 0;
@@ -13105,6 +13792,11 @@ $root.proto = (function() {
                 if (typeof object.appStateSyncKeyRequest !== "object")
                     throw TypeError(".proto.ProtocolMessage.appStateSyncKeyRequest: object expected");
                 message.appStateSyncKeyRequest = $root.proto.AppStateSyncKeyRequest.fromObject(object.appStateSyncKeyRequest);
+            }
+            if (object.initialSecurityNotificationSettingSync != null) {
+                if (typeof object.initialSecurityNotificationSettingSync !== "object")
+                    throw TypeError(".proto.ProtocolMessage.initialSecurityNotificationSettingSync: object expected");
+                message.initialSecurityNotificationSettingSync = $root.proto.InitialSecurityNotificationSettingSync.fromObject(object.initialSecurityNotificationSettingSync);
             }
             return message;
         };
@@ -13134,11 +13826,12 @@ $root.proto = (function() {
                 object.historySyncNotification = null;
                 object.appStateSyncKeyShare = null;
                 object.appStateSyncKeyRequest = null;
+                object.initialSecurityNotificationSettingSync = null;
             }
             if (message.key != null && message.hasOwnProperty("key"))
                 object.key = $root.proto.MessageKey.toObject(message.key, options);
             if (message.type != null && message.hasOwnProperty("type"))
-                object.type = options.enums === String ? $root.proto.ProtocolMessage.PROTOCOL_MESSAGE_TYPE[message.type] : message.type;
+                object.type = options.enums === String ? $root.proto.ProtocolMessage.ProtocolMessageType[message.type] : message.type;
             if (message.ephemeralExpiration != null && message.hasOwnProperty("ephemeralExpiration"))
                 object.ephemeralExpiration = message.ephemeralExpiration;
             if (message.ephemeralSettingTimestamp != null && message.hasOwnProperty("ephemeralSettingTimestamp"))
@@ -13152,6 +13845,8 @@ $root.proto = (function() {
                 object.appStateSyncKeyShare = $root.proto.AppStateSyncKeyShare.toObject(message.appStateSyncKeyShare, options);
             if (message.appStateSyncKeyRequest != null && message.hasOwnProperty("appStateSyncKeyRequest"))
                 object.appStateSyncKeyRequest = $root.proto.AppStateSyncKeyRequest.toObject(message.appStateSyncKeyRequest, options);
+            if (message.initialSecurityNotificationSettingSync != null && message.hasOwnProperty("initialSecurityNotificationSettingSync"))
+                object.initialSecurityNotificationSettingSync = $root.proto.InitialSecurityNotificationSettingSync.toObject(message.initialSecurityNotificationSettingSync, options);
             return object;
         };
 
@@ -13167,8 +13862,8 @@ $root.proto = (function() {
         };
 
         /**
-         * PROTOCOL_MESSAGE_TYPE enum.
-         * @name proto.ProtocolMessage.PROTOCOL_MESSAGE_TYPE
+         * ProtocolMessageType enum.
+         * @name proto.ProtocolMessage.ProtocolMessageType
          * @enum {number}
          * @property {number} REVOKE=0 REVOKE value
          * @property {number} EPHEMERAL_SETTING=3 EPHEMERAL_SETTING value
@@ -13177,8 +13872,9 @@ $root.proto = (function() {
          * @property {number} APP_STATE_SYNC_KEY_SHARE=6 APP_STATE_SYNC_KEY_SHARE value
          * @property {number} APP_STATE_SYNC_KEY_REQUEST=7 APP_STATE_SYNC_KEY_REQUEST value
          * @property {number} MSG_FANOUT_BACKFILL_REQUEST=8 MSG_FANOUT_BACKFILL_REQUEST value
+         * @property {number} INITIAL_SECURITY_NOTIFICATION_SETTING_SYNC=9 INITIAL_SECURITY_NOTIFICATION_SETTING_SYNC value
          */
-        ProtocolMessage.PROTOCOL_MESSAGE_TYPE = (function() {
+        ProtocolMessage.ProtocolMessageType = (function() {
             var valuesById = {}, values = Object.create(valuesById);
             values[valuesById[0] = "REVOKE"] = 0;
             values[valuesById[3] = "EPHEMERAL_SETTING"] = 3;
@@ -13187,6 +13883,7 @@ $root.proto = (function() {
             values[valuesById[6] = "APP_STATE_SYNC_KEY_SHARE"] = 6;
             values[valuesById[7] = "APP_STATE_SYNC_KEY_REQUEST"] = 7;
             values[valuesById[8] = "MSG_FANOUT_BACKFILL_REQUEST"] = 8;
+            values[valuesById[9] = "INITIAL_SECURITY_NOTIFICATION_SETTING_SYNC"] = 9;
             return values;
         })();
 
@@ -13204,7 +13901,7 @@ $root.proto = (function() {
          * @property {Uint8Array|null} [mediaKey] HistorySyncNotification mediaKey
          * @property {Uint8Array|null} [fileEncSha256] HistorySyncNotification fileEncSha256
          * @property {string|null} [directPath] HistorySyncNotification directPath
-         * @property {proto.HistorySyncNotification.HISTORY_SYNC_NOTIFICATION_HISTORYSYNCTYPE|null} [syncType] HistorySyncNotification syncType
+         * @property {proto.HistorySyncNotification.HistorySyncNotificationHistorySyncType|null} [syncType] HistorySyncNotification syncType
          * @property {number|null} [chunkOrder] HistorySyncNotification chunkOrder
          * @property {string|null} [originalMessageId] HistorySyncNotification originalMessageId
          */
@@ -13266,7 +13963,7 @@ $root.proto = (function() {
 
         /**
          * HistorySyncNotification syncType.
-         * @member {proto.HistorySyncNotification.HISTORY_SYNC_NOTIFICATION_HISTORYSYNCTYPE} syncType
+         * @member {proto.HistorySyncNotification.HistorySyncNotificationHistorySyncType} syncType
          * @memberof proto.HistorySyncNotification
          * @instance
          */
@@ -13577,7 +14274,7 @@ $root.proto = (function() {
             if (message.directPath != null && message.hasOwnProperty("directPath"))
                 object.directPath = message.directPath;
             if (message.syncType != null && message.hasOwnProperty("syncType"))
-                object.syncType = options.enums === String ? $root.proto.HistorySyncNotification.HISTORY_SYNC_NOTIFICATION_HISTORYSYNCTYPE[message.syncType] : message.syncType;
+                object.syncType = options.enums === String ? $root.proto.HistorySyncNotification.HistorySyncNotificationHistorySyncType[message.syncType] : message.syncType;
             if (message.chunkOrder != null && message.hasOwnProperty("chunkOrder"))
                 object.chunkOrder = message.chunkOrder;
             if (message.originalMessageId != null && message.hasOwnProperty("originalMessageId"))
@@ -13597,15 +14294,15 @@ $root.proto = (function() {
         };
 
         /**
-         * HISTORY_SYNC_NOTIFICATION_HISTORYSYNCTYPE enum.
-         * @name proto.HistorySyncNotification.HISTORY_SYNC_NOTIFICATION_HISTORYSYNCTYPE
+         * HistorySyncNotificationHistorySyncType enum.
+         * @name proto.HistorySyncNotification.HistorySyncNotificationHistorySyncType
          * @enum {number}
          * @property {number} INITIAL_BOOTSTRAP=0 INITIAL_BOOTSTRAP value
          * @property {number} INITIAL_STATUS_V3=1 INITIAL_STATUS_V3 value
          * @property {number} FULL=2 FULL value
          * @property {number} RECENT=3 RECENT value
          */
-        HistorySyncNotification.HISTORY_SYNC_NOTIFICATION_HISTORYSYNCTYPE = (function() {
+        HistorySyncNotification.HistorySyncNotificationHistorySyncType = (function() {
             var valuesById = {}, values = Object.create(valuesById);
             values[valuesById[0] = "INITIAL_BOOTSTRAP"] = 0;
             values[valuesById[1] = "INITIAL_STATUS_V3"] = 1;
@@ -14919,6 +15616,193 @@ $root.proto = (function() {
         return AppStateSyncKeyRequest;
     })();
 
+    proto.InitialSecurityNotificationSettingSync = (function() {
+
+        /**
+         * Properties of an InitialSecurityNotificationSettingSync.
+         * @memberof proto
+         * @interface IInitialSecurityNotificationSettingSync
+         * @property {boolean|null} [securityNotificationEnabled] InitialSecurityNotificationSettingSync securityNotificationEnabled
+         */
+
+        /**
+         * Constructs a new InitialSecurityNotificationSettingSync.
+         * @memberof proto
+         * @classdesc Represents an InitialSecurityNotificationSettingSync.
+         * @implements IInitialSecurityNotificationSettingSync
+         * @constructor
+         * @param {proto.IInitialSecurityNotificationSettingSync=} [properties] Properties to set
+         */
+        function InitialSecurityNotificationSettingSync(properties) {
+            if (properties)
+                for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * InitialSecurityNotificationSettingSync securityNotificationEnabled.
+         * @member {boolean} securityNotificationEnabled
+         * @memberof proto.InitialSecurityNotificationSettingSync
+         * @instance
+         */
+        InitialSecurityNotificationSettingSync.prototype.securityNotificationEnabled = false;
+
+        /**
+         * Creates a new InitialSecurityNotificationSettingSync instance using the specified properties.
+         * @function create
+         * @memberof proto.InitialSecurityNotificationSettingSync
+         * @static
+         * @param {proto.IInitialSecurityNotificationSettingSync=} [properties] Properties to set
+         * @returns {proto.InitialSecurityNotificationSettingSync} InitialSecurityNotificationSettingSync instance
+         */
+        InitialSecurityNotificationSettingSync.create = function create(properties) {
+            return new InitialSecurityNotificationSettingSync(properties);
+        };
+
+        /**
+         * Encodes the specified InitialSecurityNotificationSettingSync message. Does not implicitly {@link proto.InitialSecurityNotificationSettingSync.verify|verify} messages.
+         * @function encode
+         * @memberof proto.InitialSecurityNotificationSettingSync
+         * @static
+         * @param {proto.IInitialSecurityNotificationSettingSync} message InitialSecurityNotificationSettingSync message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        InitialSecurityNotificationSettingSync.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.securityNotificationEnabled != null && Object.hasOwnProperty.call(message, "securityNotificationEnabled"))
+                writer.uint32(/* id 1, wireType 0 =*/8).bool(message.securityNotificationEnabled);
+            return writer;
+        };
+
+        /**
+         * Encodes the specified InitialSecurityNotificationSettingSync message, length delimited. Does not implicitly {@link proto.InitialSecurityNotificationSettingSync.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof proto.InitialSecurityNotificationSettingSync
+         * @static
+         * @param {proto.IInitialSecurityNotificationSettingSync} message InitialSecurityNotificationSettingSync message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        InitialSecurityNotificationSettingSync.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes an InitialSecurityNotificationSettingSync message from the specified reader or buffer.
+         * @function decode
+         * @memberof proto.InitialSecurityNotificationSettingSync
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {proto.InitialSecurityNotificationSettingSync} InitialSecurityNotificationSettingSync
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        InitialSecurityNotificationSettingSync.decode = function decode(reader, length) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            var end = length === undefined ? reader.len : reader.pos + length, message = new $root.proto.InitialSecurityNotificationSettingSync();
+            while (reader.pos < end) {
+                var tag = reader.uint32();
+                switch (tag >>> 3) {
+                case 1:
+                    message.securityNotificationEnabled = reader.bool();
+                    break;
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes an InitialSecurityNotificationSettingSync message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof proto.InitialSecurityNotificationSettingSync
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {proto.InitialSecurityNotificationSettingSync} InitialSecurityNotificationSettingSync
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        InitialSecurityNotificationSettingSync.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies an InitialSecurityNotificationSettingSync message.
+         * @function verify
+         * @memberof proto.InitialSecurityNotificationSettingSync
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        InitialSecurityNotificationSettingSync.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            if (message.securityNotificationEnabled != null && message.hasOwnProperty("securityNotificationEnabled"))
+                if (typeof message.securityNotificationEnabled !== "boolean")
+                    return "securityNotificationEnabled: boolean expected";
+            return null;
+        };
+
+        /**
+         * Creates an InitialSecurityNotificationSettingSync message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof proto.InitialSecurityNotificationSettingSync
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {proto.InitialSecurityNotificationSettingSync} InitialSecurityNotificationSettingSync
+         */
+        InitialSecurityNotificationSettingSync.fromObject = function fromObject(object) {
+            if (object instanceof $root.proto.InitialSecurityNotificationSettingSync)
+                return object;
+            var message = new $root.proto.InitialSecurityNotificationSettingSync();
+            if (object.securityNotificationEnabled != null)
+                message.securityNotificationEnabled = Boolean(object.securityNotificationEnabled);
+            return message;
+        };
+
+        /**
+         * Creates a plain object from an InitialSecurityNotificationSettingSync message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof proto.InitialSecurityNotificationSettingSync
+         * @static
+         * @param {proto.InitialSecurityNotificationSettingSync} message InitialSecurityNotificationSettingSync
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        InitialSecurityNotificationSettingSync.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            var object = {};
+            if (options.defaults)
+                object.securityNotificationEnabled = false;
+            if (message.securityNotificationEnabled != null && message.hasOwnProperty("securityNotificationEnabled"))
+                object.securityNotificationEnabled = message.securityNotificationEnabled;
+            return object;
+        };
+
+        /**
+         * Converts this InitialSecurityNotificationSettingSync to JSON.
+         * @function toJSON
+         * @memberof proto.InitialSecurityNotificationSettingSync
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        InitialSecurityNotificationSettingSync.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        return InitialSecurityNotificationSettingSync;
+    })();
+
     proto.ContactsArrayMessage = (function() {
 
         /**
@@ -15408,13 +16292,13 @@ $root.proto = (function() {
          * Properties of a HSMDateTimeComponent.
          * @memberof proto
          * @interface IHSMDateTimeComponent
-         * @property {proto.HSMDateTimeComponent.HSM_DATE_TIME_COMPONENT_DAYOFWEEKTYPE|null} [dayOfWeek] HSMDateTimeComponent dayOfWeek
+         * @property {proto.HSMDateTimeComponent.HSMDateTimeComponentDayOfWeekType|null} [dayOfWeek] HSMDateTimeComponent dayOfWeek
          * @property {number|null} [year] HSMDateTimeComponent year
          * @property {number|null} [month] HSMDateTimeComponent month
          * @property {number|null} [dayOfMonth] HSMDateTimeComponent dayOfMonth
          * @property {number|null} [hour] HSMDateTimeComponent hour
          * @property {number|null} [minute] HSMDateTimeComponent minute
-         * @property {proto.HSMDateTimeComponent.HSM_DATE_TIME_COMPONENT_CALENDARTYPE|null} [calendar] HSMDateTimeComponent calendar
+         * @property {proto.HSMDateTimeComponent.HSMDateTimeComponentCalendarType|null} [calendar] HSMDateTimeComponent calendar
          */
 
         /**
@@ -15434,7 +16318,7 @@ $root.proto = (function() {
 
         /**
          * HSMDateTimeComponent dayOfWeek.
-         * @member {proto.HSMDateTimeComponent.HSM_DATE_TIME_COMPONENT_DAYOFWEEKTYPE} dayOfWeek
+         * @member {proto.HSMDateTimeComponent.HSMDateTimeComponentDayOfWeekType} dayOfWeek
          * @memberof proto.HSMDateTimeComponent
          * @instance
          */
@@ -15482,7 +16366,7 @@ $root.proto = (function() {
 
         /**
          * HSMDateTimeComponent calendar.
-         * @member {proto.HSMDateTimeComponent.HSM_DATE_TIME_COMPONENT_CALENDARTYPE} calendar
+         * @member {proto.HSMDateTimeComponent.HSMDateTimeComponentCalendarType} calendar
          * @memberof proto.HSMDateTimeComponent
          * @instance
          */
@@ -15743,7 +16627,7 @@ $root.proto = (function() {
                 object.calendar = options.enums === String ? "GREGORIAN" : 1;
             }
             if (message.dayOfWeek != null && message.hasOwnProperty("dayOfWeek"))
-                object.dayOfWeek = options.enums === String ? $root.proto.HSMDateTimeComponent.HSM_DATE_TIME_COMPONENT_DAYOFWEEKTYPE[message.dayOfWeek] : message.dayOfWeek;
+                object.dayOfWeek = options.enums === String ? $root.proto.HSMDateTimeComponent.HSMDateTimeComponentDayOfWeekType[message.dayOfWeek] : message.dayOfWeek;
             if (message.year != null && message.hasOwnProperty("year"))
                 object.year = message.year;
             if (message.month != null && message.hasOwnProperty("month"))
@@ -15755,7 +16639,7 @@ $root.proto = (function() {
             if (message.minute != null && message.hasOwnProperty("minute"))
                 object.minute = message.minute;
             if (message.calendar != null && message.hasOwnProperty("calendar"))
-                object.calendar = options.enums === String ? $root.proto.HSMDateTimeComponent.HSM_DATE_TIME_COMPONENT_CALENDARTYPE[message.calendar] : message.calendar;
+                object.calendar = options.enums === String ? $root.proto.HSMDateTimeComponent.HSMDateTimeComponentCalendarType[message.calendar] : message.calendar;
             return object;
         };
 
@@ -15771,8 +16655,8 @@ $root.proto = (function() {
         };
 
         /**
-         * HSM_DATE_TIME_COMPONENT_DAYOFWEEKTYPE enum.
-         * @name proto.HSMDateTimeComponent.HSM_DATE_TIME_COMPONENT_DAYOFWEEKTYPE
+         * HSMDateTimeComponentDayOfWeekType enum.
+         * @name proto.HSMDateTimeComponent.HSMDateTimeComponentDayOfWeekType
          * @enum {number}
          * @property {number} MONDAY=1 MONDAY value
          * @property {number} TUESDAY=2 TUESDAY value
@@ -15782,7 +16666,7 @@ $root.proto = (function() {
          * @property {number} SATURDAY=6 SATURDAY value
          * @property {number} SUNDAY=7 SUNDAY value
          */
-        HSMDateTimeComponent.HSM_DATE_TIME_COMPONENT_DAYOFWEEKTYPE = (function() {
+        HSMDateTimeComponent.HSMDateTimeComponentDayOfWeekType = (function() {
             var valuesById = {}, values = Object.create(valuesById);
             values[valuesById[1] = "MONDAY"] = 1;
             values[valuesById[2] = "TUESDAY"] = 2;
@@ -15795,13 +16679,13 @@ $root.proto = (function() {
         })();
 
         /**
-         * HSM_DATE_TIME_COMPONENT_CALENDARTYPE enum.
-         * @name proto.HSMDateTimeComponent.HSM_DATE_TIME_COMPONENT_CALENDARTYPE
+         * HSMDateTimeComponentCalendarType enum.
+         * @name proto.HSMDateTimeComponent.HSMDateTimeComponentCalendarType
          * @enum {number}
          * @property {number} GREGORIAN=1 GREGORIAN value
          * @property {number} SOLAR_HIJRI=2 SOLAR_HIJRI value
          */
-        HSMDateTimeComponent.HSM_DATE_TIME_COMPONENT_CALENDARTYPE = (function() {
+        HSMDateTimeComponent.HSMDateTimeComponentCalendarType = (function() {
             var valuesById = {}, values = Object.create(valuesById);
             values[valuesById[1] = "GREGORIAN"] = 1;
             values[valuesById[2] = "SOLAR_HIJRI"] = 2;
@@ -21205,6 +22089,1712 @@ $root.proto = (function() {
         return ProductMessage;
     })();
 
+    proto.OrderMessage = (function() {
+
+        /**
+         * Properties of an OrderMessage.
+         * @memberof proto
+         * @interface IOrderMessage
+         * @property {string|null} [orderId] OrderMessage orderId
+         * @property {Uint8Array|null} [thumbnail] OrderMessage thumbnail
+         * @property {number|null} [itemCount] OrderMessage itemCount
+         * @property {proto.OrderMessage.OrderMessageOrderStatus|null} [status] OrderMessage status
+         * @property {proto.OrderMessage.OrderMessageOrderSurface|null} [surface] OrderMessage surface
+         * @property {string|null} [message] OrderMessage message
+         * @property {string|null} [orderTitle] OrderMessage orderTitle
+         * @property {string|null} [sellerJid] OrderMessage sellerJid
+         * @property {string|null} [token] OrderMessage token
+         * @property {proto.IContextInfo|null} [contextInfo] OrderMessage contextInfo
+         */
+
+        /**
+         * Constructs a new OrderMessage.
+         * @memberof proto
+         * @classdesc Represents an OrderMessage.
+         * @implements IOrderMessage
+         * @constructor
+         * @param {proto.IOrderMessage=} [properties] Properties to set
+         */
+        function OrderMessage(properties) {
+            if (properties)
+                for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * OrderMessage orderId.
+         * @member {string} orderId
+         * @memberof proto.OrderMessage
+         * @instance
+         */
+        OrderMessage.prototype.orderId = "";
+
+        /**
+         * OrderMessage thumbnail.
+         * @member {Uint8Array} thumbnail
+         * @memberof proto.OrderMessage
+         * @instance
+         */
+        OrderMessage.prototype.thumbnail = $util.newBuffer([]);
+
+        /**
+         * OrderMessage itemCount.
+         * @member {number} itemCount
+         * @memberof proto.OrderMessage
+         * @instance
+         */
+        OrderMessage.prototype.itemCount = 0;
+
+        /**
+         * OrderMessage status.
+         * @member {proto.OrderMessage.OrderMessageOrderStatus} status
+         * @memberof proto.OrderMessage
+         * @instance
+         */
+        OrderMessage.prototype.status = 1;
+
+        /**
+         * OrderMessage surface.
+         * @member {proto.OrderMessage.OrderMessageOrderSurface} surface
+         * @memberof proto.OrderMessage
+         * @instance
+         */
+        OrderMessage.prototype.surface = 1;
+
+        /**
+         * OrderMessage message.
+         * @member {string} message
+         * @memberof proto.OrderMessage
+         * @instance
+         */
+        OrderMessage.prototype.message = "";
+
+        /**
+         * OrderMessage orderTitle.
+         * @member {string} orderTitle
+         * @memberof proto.OrderMessage
+         * @instance
+         */
+        OrderMessage.prototype.orderTitle = "";
+
+        /**
+         * OrderMessage sellerJid.
+         * @member {string} sellerJid
+         * @memberof proto.OrderMessage
+         * @instance
+         */
+        OrderMessage.prototype.sellerJid = "";
+
+        /**
+         * OrderMessage token.
+         * @member {string} token
+         * @memberof proto.OrderMessage
+         * @instance
+         */
+        OrderMessage.prototype.token = "";
+
+        /**
+         * OrderMessage contextInfo.
+         * @member {proto.IContextInfo|null|undefined} contextInfo
+         * @memberof proto.OrderMessage
+         * @instance
+         */
+        OrderMessage.prototype.contextInfo = null;
+
+        /**
+         * Creates a new OrderMessage instance using the specified properties.
+         * @function create
+         * @memberof proto.OrderMessage
+         * @static
+         * @param {proto.IOrderMessage=} [properties] Properties to set
+         * @returns {proto.OrderMessage} OrderMessage instance
+         */
+        OrderMessage.create = function create(properties) {
+            return new OrderMessage(properties);
+        };
+
+        /**
+         * Encodes the specified OrderMessage message. Does not implicitly {@link proto.OrderMessage.verify|verify} messages.
+         * @function encode
+         * @memberof proto.OrderMessage
+         * @static
+         * @param {proto.IOrderMessage} message OrderMessage message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        OrderMessage.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.orderId != null && Object.hasOwnProperty.call(message, "orderId"))
+                writer.uint32(/* id 1, wireType 2 =*/10).string(message.orderId);
+            if (message.thumbnail != null && Object.hasOwnProperty.call(message, "thumbnail"))
+                writer.uint32(/* id 2, wireType 2 =*/18).bytes(message.thumbnail);
+            if (message.itemCount != null && Object.hasOwnProperty.call(message, "itemCount"))
+                writer.uint32(/* id 3, wireType 0 =*/24).int32(message.itemCount);
+            if (message.status != null && Object.hasOwnProperty.call(message, "status"))
+                writer.uint32(/* id 4, wireType 0 =*/32).int32(message.status);
+            if (message.surface != null && Object.hasOwnProperty.call(message, "surface"))
+                writer.uint32(/* id 5, wireType 0 =*/40).int32(message.surface);
+            if (message.message != null && Object.hasOwnProperty.call(message, "message"))
+                writer.uint32(/* id 6, wireType 2 =*/50).string(message.message);
+            if (message.orderTitle != null && Object.hasOwnProperty.call(message, "orderTitle"))
+                writer.uint32(/* id 7, wireType 2 =*/58).string(message.orderTitle);
+            if (message.sellerJid != null && Object.hasOwnProperty.call(message, "sellerJid"))
+                writer.uint32(/* id 8, wireType 2 =*/66).string(message.sellerJid);
+            if (message.token != null && Object.hasOwnProperty.call(message, "token"))
+                writer.uint32(/* id 9, wireType 2 =*/74).string(message.token);
+            if (message.contextInfo != null && Object.hasOwnProperty.call(message, "contextInfo"))
+                $root.proto.ContextInfo.encode(message.contextInfo, writer.uint32(/* id 17, wireType 2 =*/138).fork()).ldelim();
+            return writer;
+        };
+
+        /**
+         * Encodes the specified OrderMessage message, length delimited. Does not implicitly {@link proto.OrderMessage.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof proto.OrderMessage
+         * @static
+         * @param {proto.IOrderMessage} message OrderMessage message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        OrderMessage.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes an OrderMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof proto.OrderMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {proto.OrderMessage} OrderMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        OrderMessage.decode = function decode(reader, length) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            var end = length === undefined ? reader.len : reader.pos + length, message = new $root.proto.OrderMessage();
+            while (reader.pos < end) {
+                var tag = reader.uint32();
+                switch (tag >>> 3) {
+                case 1:
+                    message.orderId = reader.string();
+                    break;
+                case 2:
+                    message.thumbnail = reader.bytes();
+                    break;
+                case 3:
+                    message.itemCount = reader.int32();
+                    break;
+                case 4:
+                    message.status = reader.int32();
+                    break;
+                case 5:
+                    message.surface = reader.int32();
+                    break;
+                case 6:
+                    message.message = reader.string();
+                    break;
+                case 7:
+                    message.orderTitle = reader.string();
+                    break;
+                case 8:
+                    message.sellerJid = reader.string();
+                    break;
+                case 9:
+                    message.token = reader.string();
+                    break;
+                case 17:
+                    message.contextInfo = $root.proto.ContextInfo.decode(reader, reader.uint32());
+                    break;
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes an OrderMessage message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof proto.OrderMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {proto.OrderMessage} OrderMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        OrderMessage.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies an OrderMessage message.
+         * @function verify
+         * @memberof proto.OrderMessage
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        OrderMessage.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            if (message.orderId != null && message.hasOwnProperty("orderId"))
+                if (!$util.isString(message.orderId))
+                    return "orderId: string expected";
+            if (message.thumbnail != null && message.hasOwnProperty("thumbnail"))
+                if (!(message.thumbnail && typeof message.thumbnail.length === "number" || $util.isString(message.thumbnail)))
+                    return "thumbnail: buffer expected";
+            if (message.itemCount != null && message.hasOwnProperty("itemCount"))
+                if (!$util.isInteger(message.itemCount))
+                    return "itemCount: integer expected";
+            if (message.status != null && message.hasOwnProperty("status"))
+                switch (message.status) {
+                default:
+                    return "status: enum value expected";
+                case 1:
+                    break;
+                }
+            if (message.surface != null && message.hasOwnProperty("surface"))
+                switch (message.surface) {
+                default:
+                    return "surface: enum value expected";
+                case 1:
+                    break;
+                }
+            if (message.message != null && message.hasOwnProperty("message"))
+                if (!$util.isString(message.message))
+                    return "message: string expected";
+            if (message.orderTitle != null && message.hasOwnProperty("orderTitle"))
+                if (!$util.isString(message.orderTitle))
+                    return "orderTitle: string expected";
+            if (message.sellerJid != null && message.hasOwnProperty("sellerJid"))
+                if (!$util.isString(message.sellerJid))
+                    return "sellerJid: string expected";
+            if (message.token != null && message.hasOwnProperty("token"))
+                if (!$util.isString(message.token))
+                    return "token: string expected";
+            if (message.contextInfo != null && message.hasOwnProperty("contextInfo")) {
+                var error = $root.proto.ContextInfo.verify(message.contextInfo);
+                if (error)
+                    return "contextInfo." + error;
+            }
+            return null;
+        };
+
+        /**
+         * Creates an OrderMessage message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof proto.OrderMessage
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {proto.OrderMessage} OrderMessage
+         */
+        OrderMessage.fromObject = function fromObject(object) {
+            if (object instanceof $root.proto.OrderMessage)
+                return object;
+            var message = new $root.proto.OrderMessage();
+            if (object.orderId != null)
+                message.orderId = String(object.orderId);
+            if (object.thumbnail != null)
+                if (typeof object.thumbnail === "string")
+                    $util.base64.decode(object.thumbnail, message.thumbnail = $util.newBuffer($util.base64.length(object.thumbnail)), 0);
+                else if (object.thumbnail.length)
+                    message.thumbnail = object.thumbnail;
+            if (object.itemCount != null)
+                message.itemCount = object.itemCount | 0;
+            switch (object.status) {
+            case "INQUIRY":
+            case 1:
+                message.status = 1;
+                break;
+            }
+            switch (object.surface) {
+            case "CATALOG":
+            case 1:
+                message.surface = 1;
+                break;
+            }
+            if (object.message != null)
+                message.message = String(object.message);
+            if (object.orderTitle != null)
+                message.orderTitle = String(object.orderTitle);
+            if (object.sellerJid != null)
+                message.sellerJid = String(object.sellerJid);
+            if (object.token != null)
+                message.token = String(object.token);
+            if (object.contextInfo != null) {
+                if (typeof object.contextInfo !== "object")
+                    throw TypeError(".proto.OrderMessage.contextInfo: object expected");
+                message.contextInfo = $root.proto.ContextInfo.fromObject(object.contextInfo);
+            }
+            return message;
+        };
+
+        /**
+         * Creates a plain object from an OrderMessage message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof proto.OrderMessage
+         * @static
+         * @param {proto.OrderMessage} message OrderMessage
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        OrderMessage.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            var object = {};
+            if (options.defaults) {
+                object.orderId = "";
+                if (options.bytes === String)
+                    object.thumbnail = "";
+                else {
+                    object.thumbnail = [];
+                    if (options.bytes !== Array)
+                        object.thumbnail = $util.newBuffer(object.thumbnail);
+                }
+                object.itemCount = 0;
+                object.status = options.enums === String ? "INQUIRY" : 1;
+                object.surface = options.enums === String ? "CATALOG" : 1;
+                object.message = "";
+                object.orderTitle = "";
+                object.sellerJid = "";
+                object.token = "";
+                object.contextInfo = null;
+            }
+            if (message.orderId != null && message.hasOwnProperty("orderId"))
+                object.orderId = message.orderId;
+            if (message.thumbnail != null && message.hasOwnProperty("thumbnail"))
+                object.thumbnail = options.bytes === String ? $util.base64.encode(message.thumbnail, 0, message.thumbnail.length) : options.bytes === Array ? Array.prototype.slice.call(message.thumbnail) : message.thumbnail;
+            if (message.itemCount != null && message.hasOwnProperty("itemCount"))
+                object.itemCount = message.itemCount;
+            if (message.status != null && message.hasOwnProperty("status"))
+                object.status = options.enums === String ? $root.proto.OrderMessage.OrderMessageOrderStatus[message.status] : message.status;
+            if (message.surface != null && message.hasOwnProperty("surface"))
+                object.surface = options.enums === String ? $root.proto.OrderMessage.OrderMessageOrderSurface[message.surface] : message.surface;
+            if (message.message != null && message.hasOwnProperty("message"))
+                object.message = message.message;
+            if (message.orderTitle != null && message.hasOwnProperty("orderTitle"))
+                object.orderTitle = message.orderTitle;
+            if (message.sellerJid != null && message.hasOwnProperty("sellerJid"))
+                object.sellerJid = message.sellerJid;
+            if (message.token != null && message.hasOwnProperty("token"))
+                object.token = message.token;
+            if (message.contextInfo != null && message.hasOwnProperty("contextInfo"))
+                object.contextInfo = $root.proto.ContextInfo.toObject(message.contextInfo, options);
+            return object;
+        };
+
+        /**
+         * Converts this OrderMessage to JSON.
+         * @function toJSON
+         * @memberof proto.OrderMessage
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        OrderMessage.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        /**
+         * OrderMessageOrderStatus enum.
+         * @name proto.OrderMessage.OrderMessageOrderStatus
+         * @enum {number}
+         * @property {number} INQUIRY=1 INQUIRY value
+         */
+        OrderMessage.OrderMessageOrderStatus = (function() {
+            var valuesById = {}, values = Object.create(valuesById);
+            values[valuesById[1] = "INQUIRY"] = 1;
+            return values;
+        })();
+
+        /**
+         * OrderMessageOrderSurface enum.
+         * @name proto.OrderMessage.OrderMessageOrderSurface
+         * @enum {number}
+         * @property {number} CATALOG=1 CATALOG value
+         */
+        OrderMessage.OrderMessageOrderSurface = (function() {
+            var valuesById = {}, values = Object.create(valuesById);
+            values[valuesById[1] = "CATALOG"] = 1;
+            return values;
+        })();
+
+        return OrderMessage;
+    })();
+
+    proto.Row = (function() {
+
+        /**
+         * Properties of a Row.
+         * @memberof proto
+         * @interface IRow
+         * @property {string|null} [title] Row title
+         * @property {string|null} [description] Row description
+         * @property {string|null} [rowId] Row rowId
+         */
+
+        /**
+         * Constructs a new Row.
+         * @memberof proto
+         * @classdesc Represents a Row.
+         * @implements IRow
+         * @constructor
+         * @param {proto.IRow=} [properties] Properties to set
+         */
+        function Row(properties) {
+            if (properties)
+                for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * Row title.
+         * @member {string} title
+         * @memberof proto.Row
+         * @instance
+         */
+        Row.prototype.title = "";
+
+        /**
+         * Row description.
+         * @member {string} description
+         * @memberof proto.Row
+         * @instance
+         */
+        Row.prototype.description = "";
+
+        /**
+         * Row rowId.
+         * @member {string} rowId
+         * @memberof proto.Row
+         * @instance
+         */
+        Row.prototype.rowId = "";
+
+        /**
+         * Creates a new Row instance using the specified properties.
+         * @function create
+         * @memberof proto.Row
+         * @static
+         * @param {proto.IRow=} [properties] Properties to set
+         * @returns {proto.Row} Row instance
+         */
+        Row.create = function create(properties) {
+            return new Row(properties);
+        };
+
+        /**
+         * Encodes the specified Row message. Does not implicitly {@link proto.Row.verify|verify} messages.
+         * @function encode
+         * @memberof proto.Row
+         * @static
+         * @param {proto.IRow} message Row message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        Row.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.title != null && Object.hasOwnProperty.call(message, "title"))
+                writer.uint32(/* id 1, wireType 2 =*/10).string(message.title);
+            if (message.description != null && Object.hasOwnProperty.call(message, "description"))
+                writer.uint32(/* id 2, wireType 2 =*/18).string(message.description);
+            if (message.rowId != null && Object.hasOwnProperty.call(message, "rowId"))
+                writer.uint32(/* id 3, wireType 2 =*/26).string(message.rowId);
+            return writer;
+        };
+
+        /**
+         * Encodes the specified Row message, length delimited. Does not implicitly {@link proto.Row.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof proto.Row
+         * @static
+         * @param {proto.IRow} message Row message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        Row.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a Row message from the specified reader or buffer.
+         * @function decode
+         * @memberof proto.Row
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {proto.Row} Row
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        Row.decode = function decode(reader, length) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            var end = length === undefined ? reader.len : reader.pos + length, message = new $root.proto.Row();
+            while (reader.pos < end) {
+                var tag = reader.uint32();
+                switch (tag >>> 3) {
+                case 1:
+                    message.title = reader.string();
+                    break;
+                case 2:
+                    message.description = reader.string();
+                    break;
+                case 3:
+                    message.rowId = reader.string();
+                    break;
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes a Row message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof proto.Row
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {proto.Row} Row
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        Row.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies a Row message.
+         * @function verify
+         * @memberof proto.Row
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        Row.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            if (message.title != null && message.hasOwnProperty("title"))
+                if (!$util.isString(message.title))
+                    return "title: string expected";
+            if (message.description != null && message.hasOwnProperty("description"))
+                if (!$util.isString(message.description))
+                    return "description: string expected";
+            if (message.rowId != null && message.hasOwnProperty("rowId"))
+                if (!$util.isString(message.rowId))
+                    return "rowId: string expected";
+            return null;
+        };
+
+        /**
+         * Creates a Row message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof proto.Row
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {proto.Row} Row
+         */
+        Row.fromObject = function fromObject(object) {
+            if (object instanceof $root.proto.Row)
+                return object;
+            var message = new $root.proto.Row();
+            if (object.title != null)
+                message.title = String(object.title);
+            if (object.description != null)
+                message.description = String(object.description);
+            if (object.rowId != null)
+                message.rowId = String(object.rowId);
+            return message;
+        };
+
+        /**
+         * Creates a plain object from a Row message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof proto.Row
+         * @static
+         * @param {proto.Row} message Row
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        Row.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            var object = {};
+            if (options.defaults) {
+                object.title = "";
+                object.description = "";
+                object.rowId = "";
+            }
+            if (message.title != null && message.hasOwnProperty("title"))
+                object.title = message.title;
+            if (message.description != null && message.hasOwnProperty("description"))
+                object.description = message.description;
+            if (message.rowId != null && message.hasOwnProperty("rowId"))
+                object.rowId = message.rowId;
+            return object;
+        };
+
+        /**
+         * Converts this Row to JSON.
+         * @function toJSON
+         * @memberof proto.Row
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        Row.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        return Row;
+    })();
+
+    proto.Section = (function() {
+
+        /**
+         * Properties of a Section.
+         * @memberof proto
+         * @interface ISection
+         * @property {string|null} [title] Section title
+         * @property {Array.<proto.IRow>|null} [rows] Section rows
+         */
+
+        /**
+         * Constructs a new Section.
+         * @memberof proto
+         * @classdesc Represents a Section.
+         * @implements ISection
+         * @constructor
+         * @param {proto.ISection=} [properties] Properties to set
+         */
+        function Section(properties) {
+            this.rows = [];
+            if (properties)
+                for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * Section title.
+         * @member {string} title
+         * @memberof proto.Section
+         * @instance
+         */
+        Section.prototype.title = "";
+
+        /**
+         * Section rows.
+         * @member {Array.<proto.IRow>} rows
+         * @memberof proto.Section
+         * @instance
+         */
+        Section.prototype.rows = $util.emptyArray;
+
+        /**
+         * Creates a new Section instance using the specified properties.
+         * @function create
+         * @memberof proto.Section
+         * @static
+         * @param {proto.ISection=} [properties] Properties to set
+         * @returns {proto.Section} Section instance
+         */
+        Section.create = function create(properties) {
+            return new Section(properties);
+        };
+
+        /**
+         * Encodes the specified Section message. Does not implicitly {@link proto.Section.verify|verify} messages.
+         * @function encode
+         * @memberof proto.Section
+         * @static
+         * @param {proto.ISection} message Section message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        Section.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.title != null && Object.hasOwnProperty.call(message, "title"))
+                writer.uint32(/* id 1, wireType 2 =*/10).string(message.title);
+            if (message.rows != null && message.rows.length)
+                for (var i = 0; i < message.rows.length; ++i)
+                    $root.proto.Row.encode(message.rows[i], writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim();
+            return writer;
+        };
+
+        /**
+         * Encodes the specified Section message, length delimited. Does not implicitly {@link proto.Section.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof proto.Section
+         * @static
+         * @param {proto.ISection} message Section message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        Section.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a Section message from the specified reader or buffer.
+         * @function decode
+         * @memberof proto.Section
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {proto.Section} Section
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        Section.decode = function decode(reader, length) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            var end = length === undefined ? reader.len : reader.pos + length, message = new $root.proto.Section();
+            while (reader.pos < end) {
+                var tag = reader.uint32();
+                switch (tag >>> 3) {
+                case 1:
+                    message.title = reader.string();
+                    break;
+                case 2:
+                    if (!(message.rows && message.rows.length))
+                        message.rows = [];
+                    message.rows.push($root.proto.Row.decode(reader, reader.uint32()));
+                    break;
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes a Section message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof proto.Section
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {proto.Section} Section
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        Section.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies a Section message.
+         * @function verify
+         * @memberof proto.Section
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        Section.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            if (message.title != null && message.hasOwnProperty("title"))
+                if (!$util.isString(message.title))
+                    return "title: string expected";
+            if (message.rows != null && message.hasOwnProperty("rows")) {
+                if (!Array.isArray(message.rows))
+                    return "rows: array expected";
+                for (var i = 0; i < message.rows.length; ++i) {
+                    var error = $root.proto.Row.verify(message.rows[i]);
+                    if (error)
+                        return "rows." + error;
+                }
+            }
+            return null;
+        };
+
+        /**
+         * Creates a Section message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof proto.Section
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {proto.Section} Section
+         */
+        Section.fromObject = function fromObject(object) {
+            if (object instanceof $root.proto.Section)
+                return object;
+            var message = new $root.proto.Section();
+            if (object.title != null)
+                message.title = String(object.title);
+            if (object.rows) {
+                if (!Array.isArray(object.rows))
+                    throw TypeError(".proto.Section.rows: array expected");
+                message.rows = [];
+                for (var i = 0; i < object.rows.length; ++i) {
+                    if (typeof object.rows[i] !== "object")
+                        throw TypeError(".proto.Section.rows: object expected");
+                    message.rows[i] = $root.proto.Row.fromObject(object.rows[i]);
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Creates a plain object from a Section message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof proto.Section
+         * @static
+         * @param {proto.Section} message Section
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        Section.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            var object = {};
+            if (options.arrays || options.defaults)
+                object.rows = [];
+            if (options.defaults)
+                object.title = "";
+            if (message.title != null && message.hasOwnProperty("title"))
+                object.title = message.title;
+            if (message.rows && message.rows.length) {
+                object.rows = [];
+                for (var j = 0; j < message.rows.length; ++j)
+                    object.rows[j] = $root.proto.Row.toObject(message.rows[j], options);
+            }
+            return object;
+        };
+
+        /**
+         * Converts this Section to JSON.
+         * @function toJSON
+         * @memberof proto.Section
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        Section.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        return Section;
+    })();
+
+    proto.ListMessage = (function() {
+
+        /**
+         * Properties of a ListMessage.
+         * @memberof proto
+         * @interface IListMessage
+         * @property {string|null} [title] ListMessage title
+         * @property {string|null} [description] ListMessage description
+         * @property {string|null} [buttonText] ListMessage buttonText
+         * @property {proto.ListMessage.ListMessageListType|null} [listType] ListMessage listType
+         * @property {Array.<proto.ISection>|null} [sections] ListMessage sections
+         */
+
+        /**
+         * Constructs a new ListMessage.
+         * @memberof proto
+         * @classdesc Represents a ListMessage.
+         * @implements IListMessage
+         * @constructor
+         * @param {proto.IListMessage=} [properties] Properties to set
+         */
+        function ListMessage(properties) {
+            this.sections = [];
+            if (properties)
+                for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * ListMessage title.
+         * @member {string} title
+         * @memberof proto.ListMessage
+         * @instance
+         */
+        ListMessage.prototype.title = "";
+
+        /**
+         * ListMessage description.
+         * @member {string} description
+         * @memberof proto.ListMessage
+         * @instance
+         */
+        ListMessage.prototype.description = "";
+
+        /**
+         * ListMessage buttonText.
+         * @member {string} buttonText
+         * @memberof proto.ListMessage
+         * @instance
+         */
+        ListMessage.prototype.buttonText = "";
+
+        /**
+         * ListMessage listType.
+         * @member {proto.ListMessage.ListMessageListType} listType
+         * @memberof proto.ListMessage
+         * @instance
+         */
+        ListMessage.prototype.listType = 0;
+
+        /**
+         * ListMessage sections.
+         * @member {Array.<proto.ISection>} sections
+         * @memberof proto.ListMessage
+         * @instance
+         */
+        ListMessage.prototype.sections = $util.emptyArray;
+
+        /**
+         * Creates a new ListMessage instance using the specified properties.
+         * @function create
+         * @memberof proto.ListMessage
+         * @static
+         * @param {proto.IListMessage=} [properties] Properties to set
+         * @returns {proto.ListMessage} ListMessage instance
+         */
+        ListMessage.create = function create(properties) {
+            return new ListMessage(properties);
+        };
+
+        /**
+         * Encodes the specified ListMessage message. Does not implicitly {@link proto.ListMessage.verify|verify} messages.
+         * @function encode
+         * @memberof proto.ListMessage
+         * @static
+         * @param {proto.IListMessage} message ListMessage message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        ListMessage.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.title != null && Object.hasOwnProperty.call(message, "title"))
+                writer.uint32(/* id 1, wireType 2 =*/10).string(message.title);
+            if (message.description != null && Object.hasOwnProperty.call(message, "description"))
+                writer.uint32(/* id 2, wireType 2 =*/18).string(message.description);
+            if (message.buttonText != null && Object.hasOwnProperty.call(message, "buttonText"))
+                writer.uint32(/* id 3, wireType 2 =*/26).string(message.buttonText);
+            if (message.listType != null && Object.hasOwnProperty.call(message, "listType"))
+                writer.uint32(/* id 4, wireType 0 =*/32).int32(message.listType);
+            if (message.sections != null && message.sections.length)
+                for (var i = 0; i < message.sections.length; ++i)
+                    $root.proto.Section.encode(message.sections[i], writer.uint32(/* id 5, wireType 2 =*/42).fork()).ldelim();
+            return writer;
+        };
+
+        /**
+         * Encodes the specified ListMessage message, length delimited. Does not implicitly {@link proto.ListMessage.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof proto.ListMessage
+         * @static
+         * @param {proto.IListMessage} message ListMessage message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        ListMessage.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a ListMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof proto.ListMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {proto.ListMessage} ListMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        ListMessage.decode = function decode(reader, length) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            var end = length === undefined ? reader.len : reader.pos + length, message = new $root.proto.ListMessage();
+            while (reader.pos < end) {
+                var tag = reader.uint32();
+                switch (tag >>> 3) {
+                case 1:
+                    message.title = reader.string();
+                    break;
+                case 2:
+                    message.description = reader.string();
+                    break;
+                case 3:
+                    message.buttonText = reader.string();
+                    break;
+                case 4:
+                    message.listType = reader.int32();
+                    break;
+                case 5:
+                    if (!(message.sections && message.sections.length))
+                        message.sections = [];
+                    message.sections.push($root.proto.Section.decode(reader, reader.uint32()));
+                    break;
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes a ListMessage message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof proto.ListMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {proto.ListMessage} ListMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        ListMessage.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies a ListMessage message.
+         * @function verify
+         * @memberof proto.ListMessage
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        ListMessage.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            if (message.title != null && message.hasOwnProperty("title"))
+                if (!$util.isString(message.title))
+                    return "title: string expected";
+            if (message.description != null && message.hasOwnProperty("description"))
+                if (!$util.isString(message.description))
+                    return "description: string expected";
+            if (message.buttonText != null && message.hasOwnProperty("buttonText"))
+                if (!$util.isString(message.buttonText))
+                    return "buttonText: string expected";
+            if (message.listType != null && message.hasOwnProperty("listType"))
+                switch (message.listType) {
+                default:
+                    return "listType: enum value expected";
+                case 0:
+                case 1:
+                    break;
+                }
+            if (message.sections != null && message.hasOwnProperty("sections")) {
+                if (!Array.isArray(message.sections))
+                    return "sections: array expected";
+                for (var i = 0; i < message.sections.length; ++i) {
+                    var error = $root.proto.Section.verify(message.sections[i]);
+                    if (error)
+                        return "sections." + error;
+                }
+            }
+            return null;
+        };
+
+        /**
+         * Creates a ListMessage message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof proto.ListMessage
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {proto.ListMessage} ListMessage
+         */
+        ListMessage.fromObject = function fromObject(object) {
+            if (object instanceof $root.proto.ListMessage)
+                return object;
+            var message = new $root.proto.ListMessage();
+            if (object.title != null)
+                message.title = String(object.title);
+            if (object.description != null)
+                message.description = String(object.description);
+            if (object.buttonText != null)
+                message.buttonText = String(object.buttonText);
+            switch (object.listType) {
+            case "UNKNOWN":
+            case 0:
+                message.listType = 0;
+                break;
+            case "SINGLE_SELECT":
+            case 1:
+                message.listType = 1;
+                break;
+            }
+            if (object.sections) {
+                if (!Array.isArray(object.sections))
+                    throw TypeError(".proto.ListMessage.sections: array expected");
+                message.sections = [];
+                for (var i = 0; i < object.sections.length; ++i) {
+                    if (typeof object.sections[i] !== "object")
+                        throw TypeError(".proto.ListMessage.sections: object expected");
+                    message.sections[i] = $root.proto.Section.fromObject(object.sections[i]);
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Creates a plain object from a ListMessage message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof proto.ListMessage
+         * @static
+         * @param {proto.ListMessage} message ListMessage
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        ListMessage.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            var object = {};
+            if (options.arrays || options.defaults)
+                object.sections = [];
+            if (options.defaults) {
+                object.title = "";
+                object.description = "";
+                object.buttonText = "";
+                object.listType = options.enums === String ? "UNKNOWN" : 0;
+            }
+            if (message.title != null && message.hasOwnProperty("title"))
+                object.title = message.title;
+            if (message.description != null && message.hasOwnProperty("description"))
+                object.description = message.description;
+            if (message.buttonText != null && message.hasOwnProperty("buttonText"))
+                object.buttonText = message.buttonText;
+            if (message.listType != null && message.hasOwnProperty("listType"))
+                object.listType = options.enums === String ? $root.proto.ListMessage.ListMessageListType[message.listType] : message.listType;
+            if (message.sections && message.sections.length) {
+                object.sections = [];
+                for (var j = 0; j < message.sections.length; ++j)
+                    object.sections[j] = $root.proto.Section.toObject(message.sections[j], options);
+            }
+            return object;
+        };
+
+        /**
+         * Converts this ListMessage to JSON.
+         * @function toJSON
+         * @memberof proto.ListMessage
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        ListMessage.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        /**
+         * ListMessageListType enum.
+         * @name proto.ListMessage.ListMessageListType
+         * @enum {number}
+         * @property {number} UNKNOWN=0 UNKNOWN value
+         * @property {number} SINGLE_SELECT=1 SINGLE_SELECT value
+         */
+        ListMessage.ListMessageListType = (function() {
+            var valuesById = {}, values = Object.create(valuesById);
+            values[valuesById[0] = "UNKNOWN"] = 0;
+            values[valuesById[1] = "SINGLE_SELECT"] = 1;
+            return values;
+        })();
+
+        return ListMessage;
+    })();
+
+    proto.SingleSelectReply = (function() {
+
+        /**
+         * Properties of a SingleSelectReply.
+         * @memberof proto
+         * @interface ISingleSelectReply
+         * @property {string|null} [selectedRowId] SingleSelectReply selectedRowId
+         */
+
+        /**
+         * Constructs a new SingleSelectReply.
+         * @memberof proto
+         * @classdesc Represents a SingleSelectReply.
+         * @implements ISingleSelectReply
+         * @constructor
+         * @param {proto.ISingleSelectReply=} [properties] Properties to set
+         */
+        function SingleSelectReply(properties) {
+            if (properties)
+                for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * SingleSelectReply selectedRowId.
+         * @member {string} selectedRowId
+         * @memberof proto.SingleSelectReply
+         * @instance
+         */
+        SingleSelectReply.prototype.selectedRowId = "";
+
+        /**
+         * Creates a new SingleSelectReply instance using the specified properties.
+         * @function create
+         * @memberof proto.SingleSelectReply
+         * @static
+         * @param {proto.ISingleSelectReply=} [properties] Properties to set
+         * @returns {proto.SingleSelectReply} SingleSelectReply instance
+         */
+        SingleSelectReply.create = function create(properties) {
+            return new SingleSelectReply(properties);
+        };
+
+        /**
+         * Encodes the specified SingleSelectReply message. Does not implicitly {@link proto.SingleSelectReply.verify|verify} messages.
+         * @function encode
+         * @memberof proto.SingleSelectReply
+         * @static
+         * @param {proto.ISingleSelectReply} message SingleSelectReply message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        SingleSelectReply.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.selectedRowId != null && Object.hasOwnProperty.call(message, "selectedRowId"))
+                writer.uint32(/* id 1, wireType 2 =*/10).string(message.selectedRowId);
+            return writer;
+        };
+
+        /**
+         * Encodes the specified SingleSelectReply message, length delimited. Does not implicitly {@link proto.SingleSelectReply.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof proto.SingleSelectReply
+         * @static
+         * @param {proto.ISingleSelectReply} message SingleSelectReply message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        SingleSelectReply.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a SingleSelectReply message from the specified reader or buffer.
+         * @function decode
+         * @memberof proto.SingleSelectReply
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {proto.SingleSelectReply} SingleSelectReply
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        SingleSelectReply.decode = function decode(reader, length) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            var end = length === undefined ? reader.len : reader.pos + length, message = new $root.proto.SingleSelectReply();
+            while (reader.pos < end) {
+                var tag = reader.uint32();
+                switch (tag >>> 3) {
+                case 1:
+                    message.selectedRowId = reader.string();
+                    break;
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes a SingleSelectReply message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof proto.SingleSelectReply
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {proto.SingleSelectReply} SingleSelectReply
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        SingleSelectReply.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies a SingleSelectReply message.
+         * @function verify
+         * @memberof proto.SingleSelectReply
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        SingleSelectReply.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            if (message.selectedRowId != null && message.hasOwnProperty("selectedRowId"))
+                if (!$util.isString(message.selectedRowId))
+                    return "selectedRowId: string expected";
+            return null;
+        };
+
+        /**
+         * Creates a SingleSelectReply message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof proto.SingleSelectReply
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {proto.SingleSelectReply} SingleSelectReply
+         */
+        SingleSelectReply.fromObject = function fromObject(object) {
+            if (object instanceof $root.proto.SingleSelectReply)
+                return object;
+            var message = new $root.proto.SingleSelectReply();
+            if (object.selectedRowId != null)
+                message.selectedRowId = String(object.selectedRowId);
+            return message;
+        };
+
+        /**
+         * Creates a plain object from a SingleSelectReply message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof proto.SingleSelectReply
+         * @static
+         * @param {proto.SingleSelectReply} message SingleSelectReply
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        SingleSelectReply.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            var object = {};
+            if (options.defaults)
+                object.selectedRowId = "";
+            if (message.selectedRowId != null && message.hasOwnProperty("selectedRowId"))
+                object.selectedRowId = message.selectedRowId;
+            return object;
+        };
+
+        /**
+         * Converts this SingleSelectReply to JSON.
+         * @function toJSON
+         * @memberof proto.SingleSelectReply
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        SingleSelectReply.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        return SingleSelectReply;
+    })();
+
+    proto.ListResponseMessage = (function() {
+
+        /**
+         * Properties of a ListResponseMessage.
+         * @memberof proto
+         * @interface IListResponseMessage
+         * @property {string|null} [selectedDisplayText] ListResponseMessage selectedDisplayText
+         * @property {proto.ListResponseMessage.ListResponseMessageListType|null} [listType] ListResponseMessage listType
+         * @property {proto.ISingleSelectReply|null} [singleSelectReply] ListResponseMessage singleSelectReply
+         * @property {proto.IContextInfo|null} [contextInfo] ListResponseMessage contextInfo
+         */
+
+        /**
+         * Constructs a new ListResponseMessage.
+         * @memberof proto
+         * @classdesc Represents a ListResponseMessage.
+         * @implements IListResponseMessage
+         * @constructor
+         * @param {proto.IListResponseMessage=} [properties] Properties to set
+         */
+        function ListResponseMessage(properties) {
+            if (properties)
+                for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * ListResponseMessage selectedDisplayText.
+         * @member {string} selectedDisplayText
+         * @memberof proto.ListResponseMessage
+         * @instance
+         */
+        ListResponseMessage.prototype.selectedDisplayText = "";
+
+        /**
+         * ListResponseMessage listType.
+         * @member {proto.ListResponseMessage.ListResponseMessageListType} listType
+         * @memberof proto.ListResponseMessage
+         * @instance
+         */
+        ListResponseMessage.prototype.listType = 0;
+
+        /**
+         * ListResponseMessage singleSelectReply.
+         * @member {proto.ISingleSelectReply|null|undefined} singleSelectReply
+         * @memberof proto.ListResponseMessage
+         * @instance
+         */
+        ListResponseMessage.prototype.singleSelectReply = null;
+
+        /**
+         * ListResponseMessage contextInfo.
+         * @member {proto.IContextInfo|null|undefined} contextInfo
+         * @memberof proto.ListResponseMessage
+         * @instance
+         */
+        ListResponseMessage.prototype.contextInfo = null;
+
+        /**
+         * Creates a new ListResponseMessage instance using the specified properties.
+         * @function create
+         * @memberof proto.ListResponseMessage
+         * @static
+         * @param {proto.IListResponseMessage=} [properties] Properties to set
+         * @returns {proto.ListResponseMessage} ListResponseMessage instance
+         */
+        ListResponseMessage.create = function create(properties) {
+            return new ListResponseMessage(properties);
+        };
+
+        /**
+         * Encodes the specified ListResponseMessage message. Does not implicitly {@link proto.ListResponseMessage.verify|verify} messages.
+         * @function encode
+         * @memberof proto.ListResponseMessage
+         * @static
+         * @param {proto.IListResponseMessage} message ListResponseMessage message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        ListResponseMessage.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.selectedDisplayText != null && Object.hasOwnProperty.call(message, "selectedDisplayText"))
+                writer.uint32(/* id 1, wireType 2 =*/10).string(message.selectedDisplayText);
+            if (message.listType != null && Object.hasOwnProperty.call(message, "listType"))
+                writer.uint32(/* id 2, wireType 0 =*/16).int32(message.listType);
+            if (message.singleSelectReply != null && Object.hasOwnProperty.call(message, "singleSelectReply"))
+                $root.proto.SingleSelectReply.encode(message.singleSelectReply, writer.uint32(/* id 3, wireType 2 =*/26).fork()).ldelim();
+            if (message.contextInfo != null && Object.hasOwnProperty.call(message, "contextInfo"))
+                $root.proto.ContextInfo.encode(message.contextInfo, writer.uint32(/* id 4, wireType 2 =*/34).fork()).ldelim();
+            return writer;
+        };
+
+        /**
+         * Encodes the specified ListResponseMessage message, length delimited. Does not implicitly {@link proto.ListResponseMessage.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof proto.ListResponseMessage
+         * @static
+         * @param {proto.IListResponseMessage} message ListResponseMessage message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        ListResponseMessage.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a ListResponseMessage message from the specified reader or buffer.
+         * @function decode
+         * @memberof proto.ListResponseMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {proto.ListResponseMessage} ListResponseMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        ListResponseMessage.decode = function decode(reader, length) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            var end = length === undefined ? reader.len : reader.pos + length, message = new $root.proto.ListResponseMessage();
+            while (reader.pos < end) {
+                var tag = reader.uint32();
+                switch (tag >>> 3) {
+                case 1:
+                    message.selectedDisplayText = reader.string();
+                    break;
+                case 2:
+                    message.listType = reader.int32();
+                    break;
+                case 3:
+                    message.singleSelectReply = $root.proto.SingleSelectReply.decode(reader, reader.uint32());
+                    break;
+                case 4:
+                    message.contextInfo = $root.proto.ContextInfo.decode(reader, reader.uint32());
+                    break;
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes a ListResponseMessage message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof proto.ListResponseMessage
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {proto.ListResponseMessage} ListResponseMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        ListResponseMessage.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies a ListResponseMessage message.
+         * @function verify
+         * @memberof proto.ListResponseMessage
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        ListResponseMessage.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            if (message.selectedDisplayText != null && message.hasOwnProperty("selectedDisplayText"))
+                if (!$util.isString(message.selectedDisplayText))
+                    return "selectedDisplayText: string expected";
+            if (message.listType != null && message.hasOwnProperty("listType"))
+                switch (message.listType) {
+                default:
+                    return "listType: enum value expected";
+                case 0:
+                case 1:
+                    break;
+                }
+            if (message.singleSelectReply != null && message.hasOwnProperty("singleSelectReply")) {
+                var error = $root.proto.SingleSelectReply.verify(message.singleSelectReply);
+                if (error)
+                    return "singleSelectReply." + error;
+            }
+            if (message.contextInfo != null && message.hasOwnProperty("contextInfo")) {
+                var error = $root.proto.ContextInfo.verify(message.contextInfo);
+                if (error)
+                    return "contextInfo." + error;
+            }
+            return null;
+        };
+
+        /**
+         * Creates a ListResponseMessage message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof proto.ListResponseMessage
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {proto.ListResponseMessage} ListResponseMessage
+         */
+        ListResponseMessage.fromObject = function fromObject(object) {
+            if (object instanceof $root.proto.ListResponseMessage)
+                return object;
+            var message = new $root.proto.ListResponseMessage();
+            if (object.selectedDisplayText != null)
+                message.selectedDisplayText = String(object.selectedDisplayText);
+            switch (object.listType) {
+            case "UNKNOWN":
+            case 0:
+                message.listType = 0;
+                break;
+            case "SINGLE_SELECT":
+            case 1:
+                message.listType = 1;
+                break;
+            }
+            if (object.singleSelectReply != null) {
+                if (typeof object.singleSelectReply !== "object")
+                    throw TypeError(".proto.ListResponseMessage.singleSelectReply: object expected");
+                message.singleSelectReply = $root.proto.SingleSelectReply.fromObject(object.singleSelectReply);
+            }
+            if (object.contextInfo != null) {
+                if (typeof object.contextInfo !== "object")
+                    throw TypeError(".proto.ListResponseMessage.contextInfo: object expected");
+                message.contextInfo = $root.proto.ContextInfo.fromObject(object.contextInfo);
+            }
+            return message;
+        };
+
+        /**
+         * Creates a plain object from a ListResponseMessage message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof proto.ListResponseMessage
+         * @static
+         * @param {proto.ListResponseMessage} message ListResponseMessage
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        ListResponseMessage.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            var object = {};
+            if (options.defaults) {
+                object.selectedDisplayText = "";
+                object.listType = options.enums === String ? "UNKNOWN" : 0;
+                object.singleSelectReply = null;
+                object.contextInfo = null;
+            }
+            if (message.selectedDisplayText != null && message.hasOwnProperty("selectedDisplayText"))
+                object.selectedDisplayText = message.selectedDisplayText;
+            if (message.listType != null && message.hasOwnProperty("listType"))
+                object.listType = options.enums === String ? $root.proto.ListResponseMessage.ListResponseMessageListType[message.listType] : message.listType;
+            if (message.singleSelectReply != null && message.hasOwnProperty("singleSelectReply"))
+                object.singleSelectReply = $root.proto.SingleSelectReply.toObject(message.singleSelectReply, options);
+            if (message.contextInfo != null && message.hasOwnProperty("contextInfo"))
+                object.contextInfo = $root.proto.ContextInfo.toObject(message.contextInfo, options);
+            return object;
+        };
+
+        /**
+         * Converts this ListResponseMessage to JSON.
+         * @function toJSON
+         * @memberof proto.ListResponseMessage
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        ListResponseMessage.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        /**
+         * ListResponseMessageListType enum.
+         * @name proto.ListResponseMessage.ListResponseMessageListType
+         * @enum {number}
+         * @property {number} UNKNOWN=0 UNKNOWN value
+         * @property {number} SINGLE_SELECT=1 SINGLE_SELECT value
+         */
+        ListResponseMessage.ListResponseMessageListType = (function() {
+            var valuesById = {}, values = Object.create(valuesById);
+            values[valuesById[0] = "UNKNOWN"] = 0;
+            values[valuesById[1] = "SINGLE_SELECT"] = 1;
+            return values;
+        })();
+
+        return ListResponseMessage;
+    })();
+
     proto.GroupInviteMessage = (function() {
 
         /**
@@ -21553,6 +24143,252 @@ $root.proto = (function() {
         return GroupInviteMessage;
     })();
 
+    proto.EphemeralSetting = (function() {
+
+        /**
+         * Properties of an EphemeralSetting.
+         * @memberof proto
+         * @interface IEphemeralSetting
+         * @property {string|null} [chatJid] EphemeralSetting chatJid
+         * @property {number|null} [ephemeralExpiration] EphemeralSetting ephemeralExpiration
+         * @property {number|Long|null} [ephemeralSettingTimestamp] EphemeralSetting ephemeralSettingTimestamp
+         */
+
+        /**
+         * Constructs a new EphemeralSetting.
+         * @memberof proto
+         * @classdesc Represents an EphemeralSetting.
+         * @implements IEphemeralSetting
+         * @constructor
+         * @param {proto.IEphemeralSetting=} [properties] Properties to set
+         */
+        function EphemeralSetting(properties) {
+            if (properties)
+                for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * EphemeralSetting chatJid.
+         * @member {string} chatJid
+         * @memberof proto.EphemeralSetting
+         * @instance
+         */
+        EphemeralSetting.prototype.chatJid = "";
+
+        /**
+         * EphemeralSetting ephemeralExpiration.
+         * @member {number} ephemeralExpiration
+         * @memberof proto.EphemeralSetting
+         * @instance
+         */
+        EphemeralSetting.prototype.ephemeralExpiration = 0;
+
+        /**
+         * EphemeralSetting ephemeralSettingTimestamp.
+         * @member {number|Long} ephemeralSettingTimestamp
+         * @memberof proto.EphemeralSetting
+         * @instance
+         */
+        EphemeralSetting.prototype.ephemeralSettingTimestamp = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+
+        /**
+         * Creates a new EphemeralSetting instance using the specified properties.
+         * @function create
+         * @memberof proto.EphemeralSetting
+         * @static
+         * @param {proto.IEphemeralSetting=} [properties] Properties to set
+         * @returns {proto.EphemeralSetting} EphemeralSetting instance
+         */
+        EphemeralSetting.create = function create(properties) {
+            return new EphemeralSetting(properties);
+        };
+
+        /**
+         * Encodes the specified EphemeralSetting message. Does not implicitly {@link proto.EphemeralSetting.verify|verify} messages.
+         * @function encode
+         * @memberof proto.EphemeralSetting
+         * @static
+         * @param {proto.IEphemeralSetting} message EphemeralSetting message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        EphemeralSetting.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.chatJid != null && Object.hasOwnProperty.call(message, "chatJid"))
+                writer.uint32(/* id 1, wireType 2 =*/10).string(message.chatJid);
+            if (message.ephemeralExpiration != null && Object.hasOwnProperty.call(message, "ephemeralExpiration"))
+                writer.uint32(/* id 2, wireType 0 =*/16).uint32(message.ephemeralExpiration);
+            if (message.ephemeralSettingTimestamp != null && Object.hasOwnProperty.call(message, "ephemeralSettingTimestamp"))
+                writer.uint32(/* id 3, wireType 0 =*/24).int64(message.ephemeralSettingTimestamp);
+            return writer;
+        };
+
+        /**
+         * Encodes the specified EphemeralSetting message, length delimited. Does not implicitly {@link proto.EphemeralSetting.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof proto.EphemeralSetting
+         * @static
+         * @param {proto.IEphemeralSetting} message EphemeralSetting message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        EphemeralSetting.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes an EphemeralSetting message from the specified reader or buffer.
+         * @function decode
+         * @memberof proto.EphemeralSetting
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {proto.EphemeralSetting} EphemeralSetting
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        EphemeralSetting.decode = function decode(reader, length) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            var end = length === undefined ? reader.len : reader.pos + length, message = new $root.proto.EphemeralSetting();
+            while (reader.pos < end) {
+                var tag = reader.uint32();
+                switch (tag >>> 3) {
+                case 1:
+                    message.chatJid = reader.string();
+                    break;
+                case 2:
+                    message.ephemeralExpiration = reader.uint32();
+                    break;
+                case 3:
+                    message.ephemeralSettingTimestamp = reader.int64();
+                    break;
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes an EphemeralSetting message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof proto.EphemeralSetting
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {proto.EphemeralSetting} EphemeralSetting
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        EphemeralSetting.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies an EphemeralSetting message.
+         * @function verify
+         * @memberof proto.EphemeralSetting
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        EphemeralSetting.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            if (message.chatJid != null && message.hasOwnProperty("chatJid"))
+                if (!$util.isString(message.chatJid))
+                    return "chatJid: string expected";
+            if (message.ephemeralExpiration != null && message.hasOwnProperty("ephemeralExpiration"))
+                if (!$util.isInteger(message.ephemeralExpiration))
+                    return "ephemeralExpiration: integer expected";
+            if (message.ephemeralSettingTimestamp != null && message.hasOwnProperty("ephemeralSettingTimestamp"))
+                if (!$util.isInteger(message.ephemeralSettingTimestamp) && !(message.ephemeralSettingTimestamp && $util.isInteger(message.ephemeralSettingTimestamp.low) && $util.isInteger(message.ephemeralSettingTimestamp.high)))
+                    return "ephemeralSettingTimestamp: integer|Long expected";
+            return null;
+        };
+
+        /**
+         * Creates an EphemeralSetting message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof proto.EphemeralSetting
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {proto.EphemeralSetting} EphemeralSetting
+         */
+        EphemeralSetting.fromObject = function fromObject(object) {
+            if (object instanceof $root.proto.EphemeralSetting)
+                return object;
+            var message = new $root.proto.EphemeralSetting();
+            if (object.chatJid != null)
+                message.chatJid = String(object.chatJid);
+            if (object.ephemeralExpiration != null)
+                message.ephemeralExpiration = object.ephemeralExpiration >>> 0;
+            if (object.ephemeralSettingTimestamp != null)
+                if ($util.Long)
+                    (message.ephemeralSettingTimestamp = $util.Long.fromValue(object.ephemeralSettingTimestamp)).unsigned = false;
+                else if (typeof object.ephemeralSettingTimestamp === "string")
+                    message.ephemeralSettingTimestamp = parseInt(object.ephemeralSettingTimestamp, 10);
+                else if (typeof object.ephemeralSettingTimestamp === "number")
+                    message.ephemeralSettingTimestamp = object.ephemeralSettingTimestamp;
+                else if (typeof object.ephemeralSettingTimestamp === "object")
+                    message.ephemeralSettingTimestamp = new $util.LongBits(object.ephemeralSettingTimestamp.low >>> 0, object.ephemeralSettingTimestamp.high >>> 0).toNumber();
+            return message;
+        };
+
+        /**
+         * Creates a plain object from an EphemeralSetting message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof proto.EphemeralSetting
+         * @static
+         * @param {proto.EphemeralSetting} message EphemeralSetting
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        EphemeralSetting.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            var object = {};
+            if (options.defaults) {
+                object.chatJid = "";
+                object.ephemeralExpiration = 0;
+                if ($util.Long) {
+                    var long = new $util.Long(0, 0, false);
+                    object.ephemeralSettingTimestamp = options.longs === String ? long.toString() : options.longs === Number ? long.toNumber() : long;
+                } else
+                    object.ephemeralSettingTimestamp = options.longs === String ? "0" : 0;
+            }
+            if (message.chatJid != null && message.hasOwnProperty("chatJid"))
+                object.chatJid = message.chatJid;
+            if (message.ephemeralExpiration != null && message.hasOwnProperty("ephemeralExpiration"))
+                object.ephemeralExpiration = message.ephemeralExpiration;
+            if (message.ephemeralSettingTimestamp != null && message.hasOwnProperty("ephemeralSettingTimestamp"))
+                if (typeof message.ephemeralSettingTimestamp === "number")
+                    object.ephemeralSettingTimestamp = options.longs === String ? String(message.ephemeralSettingTimestamp) : message.ephemeralSettingTimestamp;
+                else
+                    object.ephemeralSettingTimestamp = options.longs === String ? $util.Long.prototype.toString.call(message.ephemeralSettingTimestamp) : options.longs === Number ? new $util.LongBits(message.ephemeralSettingTimestamp.low >>> 0, message.ephemeralSettingTimestamp.high >>> 0).toNumber() : message.ephemeralSettingTimestamp;
+            return object;
+        };
+
+        /**
+         * Converts this EphemeralSetting to JSON.
+         * @function toJSON
+         * @memberof proto.EphemeralSetting
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        EphemeralSetting.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        return EphemeralSetting;
+    })();
+
     proto.DeviceSentMessage = (function() {
 
         /**
@@ -21562,6 +24398,7 @@ $root.proto = (function() {
          * @property {string|null} [destinationJid] DeviceSentMessage destinationJid
          * @property {proto.IMessage|null} [message] DeviceSentMessage message
          * @property {string|null} [phash] DeviceSentMessage phash
+         * @property {Array.<proto.IEphemeralSetting>|null} [broadcastEphemeralSettings] DeviceSentMessage broadcastEphemeralSettings
          */
 
         /**
@@ -21573,6 +24410,7 @@ $root.proto = (function() {
          * @param {proto.IDeviceSentMessage=} [properties] Properties to set
          */
         function DeviceSentMessage(properties) {
+            this.broadcastEphemeralSettings = [];
             if (properties)
                 for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
                     if (properties[keys[i]] != null)
@@ -21604,6 +24442,14 @@ $root.proto = (function() {
         DeviceSentMessage.prototype.phash = "";
 
         /**
+         * DeviceSentMessage broadcastEphemeralSettings.
+         * @member {Array.<proto.IEphemeralSetting>} broadcastEphemeralSettings
+         * @memberof proto.DeviceSentMessage
+         * @instance
+         */
+        DeviceSentMessage.prototype.broadcastEphemeralSettings = $util.emptyArray;
+
+        /**
          * Creates a new DeviceSentMessage instance using the specified properties.
          * @function create
          * @memberof proto.DeviceSentMessage
@@ -21633,6 +24479,9 @@ $root.proto = (function() {
                 $root.proto.Message.encode(message.message, writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim();
             if (message.phash != null && Object.hasOwnProperty.call(message, "phash"))
                 writer.uint32(/* id 3, wireType 2 =*/26).string(message.phash);
+            if (message.broadcastEphemeralSettings != null && message.broadcastEphemeralSettings.length)
+                for (var i = 0; i < message.broadcastEphemeralSettings.length; ++i)
+                    $root.proto.EphemeralSetting.encode(message.broadcastEphemeralSettings[i], writer.uint32(/* id 4, wireType 2 =*/34).fork()).ldelim();
             return writer;
         };
 
@@ -21675,6 +24524,11 @@ $root.proto = (function() {
                     break;
                 case 3:
                     message.phash = reader.string();
+                    break;
+                case 4:
+                    if (!(message.broadcastEphemeralSettings && message.broadcastEphemeralSettings.length))
+                        message.broadcastEphemeralSettings = [];
+                    message.broadcastEphemeralSettings.push($root.proto.EphemeralSetting.decode(reader, reader.uint32()));
                     break;
                 default:
                     reader.skipType(tag & 7);
@@ -21722,6 +24576,15 @@ $root.proto = (function() {
             if (message.phash != null && message.hasOwnProperty("phash"))
                 if (!$util.isString(message.phash))
                     return "phash: string expected";
+            if (message.broadcastEphemeralSettings != null && message.hasOwnProperty("broadcastEphemeralSettings")) {
+                if (!Array.isArray(message.broadcastEphemeralSettings))
+                    return "broadcastEphemeralSettings: array expected";
+                for (var i = 0; i < message.broadcastEphemeralSettings.length; ++i) {
+                    var error = $root.proto.EphemeralSetting.verify(message.broadcastEphemeralSettings[i]);
+                    if (error)
+                        return "broadcastEphemeralSettings." + error;
+                }
+            }
             return null;
         };
 
@@ -21746,6 +24609,16 @@ $root.proto = (function() {
             }
             if (object.phash != null)
                 message.phash = String(object.phash);
+            if (object.broadcastEphemeralSettings) {
+                if (!Array.isArray(object.broadcastEphemeralSettings))
+                    throw TypeError(".proto.DeviceSentMessage.broadcastEphemeralSettings: array expected");
+                message.broadcastEphemeralSettings = [];
+                for (var i = 0; i < object.broadcastEphemeralSettings.length; ++i) {
+                    if (typeof object.broadcastEphemeralSettings[i] !== "object")
+                        throw TypeError(".proto.DeviceSentMessage.broadcastEphemeralSettings: object expected");
+                    message.broadcastEphemeralSettings[i] = $root.proto.EphemeralSetting.fromObject(object.broadcastEphemeralSettings[i]);
+                }
+            }
             return message;
         };
 
@@ -21762,6 +24635,8 @@ $root.proto = (function() {
             if (!options)
                 options = {};
             var object = {};
+            if (options.arrays || options.defaults)
+                object.broadcastEphemeralSettings = [];
             if (options.defaults) {
                 object.destinationJid = "";
                 object.message = null;
@@ -21773,6 +24648,11 @@ $root.proto = (function() {
                 object.message = $root.proto.Message.toObject(message.message, options);
             if (message.phash != null && message.hasOwnProperty("phash"))
                 object.phash = message.phash;
+            if (message.broadcastEphemeralSettings && message.broadcastEphemeralSettings.length) {
+                object.broadcastEphemeralSettings = [];
+                for (var j = 0; j < message.broadcastEphemeralSettings.length; ++j)
+                    object.broadcastEphemeralSettings[j] = $root.proto.EphemeralSetting.toObject(message.broadcastEphemeralSettings[j], options);
+            }
             return object;
         };
 
@@ -22014,7 +24894,11 @@ $root.proto = (function() {
          * @property {proto.ITemplateButtonReplyMessage|null} [templateButtonReplyMessage] Message templateButtonReplyMessage
          * @property {proto.IProductMessage|null} [productMessage] Message productMessage
          * @property {proto.IDeviceSentMessage|null} [deviceSentMessage] Message deviceSentMessage
+         * @property {proto.IListMessage|null} [listMessage] Message listMessage
          * @property {proto.IFutureProofMessage|null} [viewOnceMessage] Message viewOnceMessage
+         * @property {proto.IOrderMessage|null} [orderMessage] Message orderMessage
+         * @property {proto.IListResponseMessage|null} [listResponseMessage] Message listResponseMessage
+         * @property {proto.IFutureProofMessage|null} [ephemeralMessage] Message ephemeralMessage
          */
 
         /**
@@ -22241,12 +25125,44 @@ $root.proto = (function() {
         Message.prototype.deviceSentMessage = null;
 
         /**
+         * Message listMessage.
+         * @member {proto.IListMessage|null|undefined} listMessage
+         * @memberof proto.Message
+         * @instance
+         */
+        Message.prototype.listMessage = null;
+
+        /**
          * Message viewOnceMessage.
          * @member {proto.IFutureProofMessage|null|undefined} viewOnceMessage
          * @memberof proto.Message
          * @instance
          */
         Message.prototype.viewOnceMessage = null;
+
+        /**
+         * Message orderMessage.
+         * @member {proto.IOrderMessage|null|undefined} orderMessage
+         * @memberof proto.Message
+         * @instance
+         */
+        Message.prototype.orderMessage = null;
+
+        /**
+         * Message listResponseMessage.
+         * @member {proto.IListResponseMessage|null|undefined} listResponseMessage
+         * @memberof proto.Message
+         * @instance
+         */
+        Message.prototype.listResponseMessage = null;
+
+        /**
+         * Message ephemeralMessage.
+         * @member {proto.IFutureProofMessage|null|undefined} ephemeralMessage
+         * @memberof proto.Message
+         * @instance
+         */
+        Message.prototype.ephemeralMessage = null;
 
         /**
          * Creates a new Message instance using the specified properties.
@@ -22324,8 +25240,16 @@ $root.proto = (function() {
                 $root.proto.ProductMessage.encode(message.productMessage, writer.uint32(/* id 30, wireType 2 =*/242).fork()).ldelim();
             if (message.deviceSentMessage != null && Object.hasOwnProperty.call(message, "deviceSentMessage"))
                 $root.proto.DeviceSentMessage.encode(message.deviceSentMessage, writer.uint32(/* id 31, wireType 2 =*/250).fork()).ldelim();
+            if (message.listMessage != null && Object.hasOwnProperty.call(message, "listMessage"))
+                $root.proto.ListMessage.encode(message.listMessage, writer.uint32(/* id 36, wireType 2 =*/290).fork()).ldelim();
             if (message.viewOnceMessage != null && Object.hasOwnProperty.call(message, "viewOnceMessage"))
-                $root.proto.FutureProofMessage.encode(message.viewOnceMessage, writer.uint32(/* id 33, wireType 2 =*/266).fork()).ldelim();
+                $root.proto.FutureProofMessage.encode(message.viewOnceMessage, writer.uint32(/* id 37, wireType 2 =*/298).fork()).ldelim();
+            if (message.orderMessage != null && Object.hasOwnProperty.call(message, "orderMessage"))
+                $root.proto.OrderMessage.encode(message.orderMessage, writer.uint32(/* id 38, wireType 2 =*/306).fork()).ldelim();
+            if (message.listResponseMessage != null && Object.hasOwnProperty.call(message, "listResponseMessage"))
+                $root.proto.ListResponseMessage.encode(message.listResponseMessage, writer.uint32(/* id 39, wireType 2 =*/314).fork()).ldelim();
+            if (message.ephemeralMessage != null && Object.hasOwnProperty.call(message, "ephemeralMessage"))
+                $root.proto.FutureProofMessage.encode(message.ephemeralMessage, writer.uint32(/* id 40, wireType 2 =*/322).fork()).ldelim();
             return writer;
         };
 
@@ -22438,8 +25362,20 @@ $root.proto = (function() {
                 case 31:
                     message.deviceSentMessage = $root.proto.DeviceSentMessage.decode(reader, reader.uint32());
                     break;
-                case 33:
+                case 36:
+                    message.listMessage = $root.proto.ListMessage.decode(reader, reader.uint32());
+                    break;
+                case 37:
                     message.viewOnceMessage = $root.proto.FutureProofMessage.decode(reader, reader.uint32());
+                    break;
+                case 38:
+                    message.orderMessage = $root.proto.OrderMessage.decode(reader, reader.uint32());
+                    break;
+                case 39:
+                    message.listResponseMessage = $root.proto.ListResponseMessage.decode(reader, reader.uint32());
+                    break;
+                case 40:
+                    message.ephemeralMessage = $root.proto.FutureProofMessage.decode(reader, reader.uint32());
                     break;
                 default:
                     reader.skipType(tag & 7);
@@ -22604,10 +25540,30 @@ $root.proto = (function() {
                 if (error)
                     return "deviceSentMessage." + error;
             }
+            if (message.listMessage != null && message.hasOwnProperty("listMessage")) {
+                var error = $root.proto.ListMessage.verify(message.listMessage);
+                if (error)
+                    return "listMessage." + error;
+            }
             if (message.viewOnceMessage != null && message.hasOwnProperty("viewOnceMessage")) {
                 var error = $root.proto.FutureProofMessage.verify(message.viewOnceMessage);
                 if (error)
                     return "viewOnceMessage." + error;
+            }
+            if (message.orderMessage != null && message.hasOwnProperty("orderMessage")) {
+                var error = $root.proto.OrderMessage.verify(message.orderMessage);
+                if (error)
+                    return "orderMessage." + error;
+            }
+            if (message.listResponseMessage != null && message.hasOwnProperty("listResponseMessage")) {
+                var error = $root.proto.ListResponseMessage.verify(message.listResponseMessage);
+                if (error)
+                    return "listResponseMessage." + error;
+            }
+            if (message.ephemeralMessage != null && message.hasOwnProperty("ephemeralMessage")) {
+                var error = $root.proto.FutureProofMessage.verify(message.ephemeralMessage);
+                if (error)
+                    return "ephemeralMessage." + error;
             }
             return null;
         };
@@ -22751,10 +25707,30 @@ $root.proto = (function() {
                     throw TypeError(".proto.Message.deviceSentMessage: object expected");
                 message.deviceSentMessage = $root.proto.DeviceSentMessage.fromObject(object.deviceSentMessage);
             }
+            if (object.listMessage != null) {
+                if (typeof object.listMessage !== "object")
+                    throw TypeError(".proto.Message.listMessage: object expected");
+                message.listMessage = $root.proto.ListMessage.fromObject(object.listMessage);
+            }
             if (object.viewOnceMessage != null) {
                 if (typeof object.viewOnceMessage !== "object")
                     throw TypeError(".proto.Message.viewOnceMessage: object expected");
                 message.viewOnceMessage = $root.proto.FutureProofMessage.fromObject(object.viewOnceMessage);
+            }
+            if (object.orderMessage != null) {
+                if (typeof object.orderMessage !== "object")
+                    throw TypeError(".proto.Message.orderMessage: object expected");
+                message.orderMessage = $root.proto.OrderMessage.fromObject(object.orderMessage);
+            }
+            if (object.listResponseMessage != null) {
+                if (typeof object.listResponseMessage !== "object")
+                    throw TypeError(".proto.Message.listResponseMessage: object expected");
+                message.listResponseMessage = $root.proto.ListResponseMessage.fromObject(object.listResponseMessage);
+            }
+            if (object.ephemeralMessage != null) {
+                if (typeof object.ephemeralMessage !== "object")
+                    throw TypeError(".proto.Message.ephemeralMessage: object expected");
+                message.ephemeralMessage = $root.proto.FutureProofMessage.fromObject(object.ephemeralMessage);
             }
             return message;
         };
@@ -22799,7 +25775,11 @@ $root.proto = (function() {
                 object.templateButtonReplyMessage = null;
                 object.productMessage = null;
                 object.deviceSentMessage = null;
+                object.listMessage = null;
                 object.viewOnceMessage = null;
+                object.orderMessage = null;
+                object.listResponseMessage = null;
+                object.ephemeralMessage = null;
             }
             if (message.conversation != null && message.hasOwnProperty("conversation"))
                 object.conversation = message.conversation;
@@ -22853,8 +25833,16 @@ $root.proto = (function() {
                 object.productMessage = $root.proto.ProductMessage.toObject(message.productMessage, options);
             if (message.deviceSentMessage != null && message.hasOwnProperty("deviceSentMessage"))
                 object.deviceSentMessage = $root.proto.DeviceSentMessage.toObject(message.deviceSentMessage, options);
+            if (message.listMessage != null && message.hasOwnProperty("listMessage"))
+                object.listMessage = $root.proto.ListMessage.toObject(message.listMessage, options);
             if (message.viewOnceMessage != null && message.hasOwnProperty("viewOnceMessage"))
                 object.viewOnceMessage = $root.proto.FutureProofMessage.toObject(message.viewOnceMessage, options);
+            if (message.orderMessage != null && message.hasOwnProperty("orderMessage"))
+                object.orderMessage = $root.proto.OrderMessage.toObject(message.orderMessage, options);
+            if (message.listResponseMessage != null && message.hasOwnProperty("listResponseMessage"))
+                object.listResponseMessage = $root.proto.ListResponseMessage.toObject(message.listResponseMessage, options);
+            if (message.ephemeralMessage != null && message.hasOwnProperty("ephemeralMessage"))
+                object.ephemeralMessage = $root.proto.FutureProofMessage.toObject(message.ephemeralMessage, options);
             return object;
         };
 

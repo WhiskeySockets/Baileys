@@ -1,6 +1,7 @@
 import { WA } from '../Binary/Constants'
 import { proto } from '../../WAMessage/WAMessage'
 import { Agent } from 'https'
+import KeyedDB from '@adiwajshing/keyed-db'
 
 export const WS_URL = 'wss://web.whatsapp.com/ws'
 export const DEFAULT_ORIGIN = 'https://web.whatsapp.com'
@@ -17,9 +18,8 @@ export type WAMessageKey = proto.IMessageKey
 export type WATextMessage = proto.ExtendedTextMessage
 export type WAContextInfo = proto.IContextInfo
 export type WAGenericMediaMessage = proto.IVideoMessage | proto.IImageMessage | proto.IAudioMessage | proto.IDocumentMessage | proto.IStickerMessage
-export import WA_MESSAGE_STUB_TYPE = proto.WebMessageInfo.WEB_MESSAGE_INFO_STUBTYPE
-export import WA_MESSAGE_STATUS_TYPE = proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS
-import KeyedDB from '@adiwajshing/keyed-db'
+export import WA_MESSAGE_STUB_TYPE = proto.WebMessageInfo.WebMessageInfoStubType
+export import WA_MESSAGE_STATUS_TYPE = proto.WebMessageInfo.WebMessageInfoStatus
 
 export interface WALocationMessage {
     degreesLatitude: number

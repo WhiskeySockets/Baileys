@@ -387,7 +387,7 @@ export class WAConnection extends Base {
             chatUpdate.count = chat.count
 
             const contact = this.contacts[message.participant || chat.jid]
-            if (contact.lastKnownPresence === Presence.composing) { // update presence
+            if (contact?.lastKnownPresence === Presence.composing) { // update presence
                 const update = this.applyingPresenceUpdate({ id: chat.jid, participant: message.participant || chat.jid, type: Presence.available })
                 update && Object.assign(chatUpdate, update)
             }
@@ -398,7 +398,7 @@ export class WAConnection extends Base {
         // if it's a message to delete another message
         if (protocolMessage) {
             switch (protocolMessage.type) {
-                case WAMessageProto.ProtocolMessage.PROTOCOL_MESSAGE_TYPE.REVOKE:
+                case WAMessageProto.ProtocolMessage.ProtocolMessageType.REVOKE:
                     const found = chat.messages.get (GET_MESSAGE_ID(protocolMessage.key))
                     if (found?.message) {
                         this.logger.info ('deleting message: ' + protocolMessage.key.id + ' in chat: ' + protocolMessage.key.remoteJid)

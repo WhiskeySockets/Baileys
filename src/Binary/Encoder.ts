@@ -1,5 +1,5 @@
+import { Message } from 'protobufjs'
 import { WA } from './Constants'
-import { proto } from '../../WAMessage/WAMessage'
 
 export default class Encoder {
     data: number[] = []
@@ -111,7 +111,7 @@ export default class Encoder {
             this.writeListStart(children.length)
             children.forEach(c => c && this.writeNode(c))
         }  else if (typeof children === 'object') {
-            const buffer = WA.Message.encode(children as proto.WebMessageInfo).finish()
+            const buffer = WA.Message.encode(children as any).finish()
             this.writeByteLength(buffer.length)
             this.pushBytes(buffer)
         } else {

@@ -291,7 +291,7 @@ export class WAConnection extends Base {
         const json: WAMessageContent = {
             protocolMessage: {
                 key: messageKey,
-                type: WAMessageProto.ProtocolMessage.PROTOCOL_MESSAGE_TYPE.REVOKE
+                type: WAMessageProto.ProtocolMessage.ProtocolMessageType.REVOKE
             }
         }
         const waMessage = this.prepareMessageFromContent (id, json, {})

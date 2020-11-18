@@ -6,106 +6,115 @@ export namespace proto {
     interface IWebFeatures {
 
         /** WebFeatures labelsDisplay */
-        labelsDisplay?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        labelsDisplay?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures voipIndividualOutgoing */
-        voipIndividualOutgoing?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        voipIndividualOutgoing?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures groupsV3 */
-        groupsV3?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        groupsV3?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures groupsV3Create */
-        groupsV3Create?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        groupsV3Create?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures changeNumberV2 */
-        changeNumberV2?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        changeNumberV2?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures queryStatusV3Thumbnail */
-        queryStatusV3Thumbnail?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        queryStatusV3Thumbnail?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures liveLocations */
-        liveLocations?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        liveLocations?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures queryVname */
-        queryVname?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        queryVname?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures voipIndividualIncoming */
-        voipIndividualIncoming?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        voipIndividualIncoming?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures quickRepliesQuery */
-        quickRepliesQuery?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        quickRepliesQuery?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures payments */
-        payments?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        payments?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures stickerPackQuery */
-        stickerPackQuery?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        stickerPackQuery?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures liveLocationsFinal */
-        liveLocationsFinal?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        liveLocationsFinal?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures labelsEdit */
-        labelsEdit?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        labelsEdit?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures mediaUpload */
-        mediaUpload?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        mediaUpload?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures mediaUploadRichQuickReplies */
-        mediaUploadRichQuickReplies?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        mediaUploadRichQuickReplies?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures vnameV2 */
-        vnameV2?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        vnameV2?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures videoPlaybackUrl */
-        videoPlaybackUrl?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        videoPlaybackUrl?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures statusRanking */
-        statusRanking?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        statusRanking?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures voipIndividualVideo */
-        voipIndividualVideo?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        voipIndividualVideo?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures thirdPartyStickers */
-        thirdPartyStickers?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        thirdPartyStickers?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures frequentlyForwardedSetting */
-        frequentlyForwardedSetting?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        frequentlyForwardedSetting?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures groupsV4JoinPermission */
-        groupsV4JoinPermission?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        groupsV4JoinPermission?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures recentStickers */
-        recentStickers?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        recentStickers?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures catalog */
-        catalog?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        catalog?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures starredStickers */
-        starredStickers?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        starredStickers?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures voipGroupCall */
-        voipGroupCall?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        voipGroupCall?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures templateMessage */
-        templateMessage?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        templateMessage?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures templateMessageInteractivity */
-        templateMessageInteractivity?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        templateMessageInteractivity?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures ephemeralMessages */
-        ephemeralMessages?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        ephemeralMessages?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures e2ENotificationSync */
-        e2ENotificationSync?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        e2ENotificationSync?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures recentStickersV2 */
-        recentStickersV2?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        recentStickersV2?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures syncdRelease1 */
-        syncdRelease1?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        syncdRelease1?: (proto.WebFeatures.WebFeaturesFlag|null);
 
         /** WebFeatures recentStickersV3 */
-        recentStickersV3?: (proto.WebFeatures.WEB_FEATURES_FLAG|null);
+        recentStickersV3?: (proto.WebFeatures.WebFeaturesFlag|null);
+
+        /** WebFeatures userNotice */
+        userNotice?: (proto.WebFeatures.WebFeaturesFlag|null);
+
+        /** WebFeatures syncdRelease11 */
+        syncdRelease11?: (proto.WebFeatures.WebFeaturesFlag|null);
+
+        /** WebFeatures support */
+        support?: (proto.WebFeatures.WebFeaturesFlag|null);
     }
 
     /** Represents a WebFeatures. */
@@ -118,106 +127,115 @@ export namespace proto {
         constructor(properties?: proto.IWebFeatures);
 
         /** WebFeatures labelsDisplay. */
-        public labelsDisplay: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public labelsDisplay: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures voipIndividualOutgoing. */
-        public voipIndividualOutgoing: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public voipIndividualOutgoing: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures groupsV3. */
-        public groupsV3: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public groupsV3: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures groupsV3Create. */
-        public groupsV3Create: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public groupsV3Create: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures changeNumberV2. */
-        public changeNumberV2: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public changeNumberV2: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures queryStatusV3Thumbnail. */
-        public queryStatusV3Thumbnail: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public queryStatusV3Thumbnail: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures liveLocations. */
-        public liveLocations: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public liveLocations: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures queryVname. */
-        public queryVname: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public queryVname: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures voipIndividualIncoming. */
-        public voipIndividualIncoming: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public voipIndividualIncoming: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures quickRepliesQuery. */
-        public quickRepliesQuery: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public quickRepliesQuery: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures payments. */
-        public payments: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public payments: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures stickerPackQuery. */
-        public stickerPackQuery: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public stickerPackQuery: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures liveLocationsFinal. */
-        public liveLocationsFinal: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public liveLocationsFinal: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures labelsEdit. */
-        public labelsEdit: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public labelsEdit: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures mediaUpload. */
-        public mediaUpload: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public mediaUpload: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures mediaUploadRichQuickReplies. */
-        public mediaUploadRichQuickReplies: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public mediaUploadRichQuickReplies: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures vnameV2. */
-        public vnameV2: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public vnameV2: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures videoPlaybackUrl. */
-        public videoPlaybackUrl: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public videoPlaybackUrl: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures statusRanking. */
-        public statusRanking: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public statusRanking: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures voipIndividualVideo. */
-        public voipIndividualVideo: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public voipIndividualVideo: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures thirdPartyStickers. */
-        public thirdPartyStickers: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public thirdPartyStickers: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures frequentlyForwardedSetting. */
-        public frequentlyForwardedSetting: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public frequentlyForwardedSetting: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures groupsV4JoinPermission. */
-        public groupsV4JoinPermission: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public groupsV4JoinPermission: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures recentStickers. */
-        public recentStickers: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public recentStickers: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures catalog. */
-        public catalog: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public catalog: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures starredStickers. */
-        public starredStickers: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public starredStickers: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures voipGroupCall. */
-        public voipGroupCall: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public voipGroupCall: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures templateMessage. */
-        public templateMessage: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public templateMessage: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures templateMessageInteractivity. */
-        public templateMessageInteractivity: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public templateMessageInteractivity: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures ephemeralMessages. */
-        public ephemeralMessages: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public ephemeralMessages: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures e2ENotificationSync. */
-        public e2ENotificationSync: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public e2ENotificationSync: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures recentStickersV2. */
-        public recentStickersV2: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public recentStickersV2: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures syncdRelease1. */
-        public syncdRelease1: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public syncdRelease1: proto.WebFeatures.WebFeaturesFlag;
 
         /** WebFeatures recentStickersV3. */
-        public recentStickersV3: proto.WebFeatures.WEB_FEATURES_FLAG;
+        public recentStickersV3: proto.WebFeatures.WebFeaturesFlag;
+
+        /** WebFeatures userNotice. */
+        public userNotice: proto.WebFeatures.WebFeaturesFlag;
+
+        /** WebFeatures syncdRelease11. */
+        public syncdRelease11: proto.WebFeatures.WebFeaturesFlag;
+
+        /** WebFeatures support. */
+        public support: proto.WebFeatures.WebFeaturesFlag;
 
         /**
          * Creates a new WebFeatures instance using the specified properties.
@@ -292,8 +310,8 @@ export namespace proto {
 
     namespace WebFeatures {
 
-        /** WEB_FEATURES_FLAG enum. */
-        enum WEB_FEATURES_FLAG {
+        /** WebFeaturesFlag enum. */
+        enum WebFeaturesFlag {
             NOT_STARTED = 0,
             FORCE_UPGRADE = 1,
             DEVELOPMENT = 2,
@@ -521,7 +539,7 @@ export namespace proto {
     interface IPaymentInfo {
 
         /** PaymentInfo currencyDeprecated */
-        currencyDeprecated?: (proto.PaymentInfo.PAYMENT_INFO_CURRENCY|null);
+        currencyDeprecated?: (proto.PaymentInfo.PaymentInfoCurrency|null);
 
         /** PaymentInfo amount1000 */
         amount1000?: (number|Long|null);
@@ -530,7 +548,7 @@ export namespace proto {
         receiverJid?: (string|null);
 
         /** PaymentInfo status */
-        status?: (proto.PaymentInfo.PAYMENT_INFO_STATUS|null);
+        status?: (proto.PaymentInfo.PaymentInfoStatus|null);
 
         /** PaymentInfo transactionTimestamp */
         transactionTimestamp?: (number|Long|null);
@@ -548,7 +566,7 @@ export namespace proto {
         currency?: (string|null);
 
         /** PaymentInfo txnStatus */
-        txnStatus?: (proto.PaymentInfo.PAYMENT_INFO_TXNSTATUS|null);
+        txnStatus?: (proto.PaymentInfo.PaymentInfoTxnStatus|null);
     }
 
     /** Represents a PaymentInfo. */
@@ -561,7 +579,7 @@ export namespace proto {
         constructor(properties?: proto.IPaymentInfo);
 
         /** PaymentInfo currencyDeprecated. */
-        public currencyDeprecated: proto.PaymentInfo.PAYMENT_INFO_CURRENCY;
+        public currencyDeprecated: proto.PaymentInfo.PaymentInfoCurrency;
 
         /** PaymentInfo amount1000. */
         public amount1000: (number|Long);
@@ -570,7 +588,7 @@ export namespace proto {
         public receiverJid: string;
 
         /** PaymentInfo status. */
-        public status: proto.PaymentInfo.PAYMENT_INFO_STATUS;
+        public status: proto.PaymentInfo.PaymentInfoStatus;
 
         /** PaymentInfo transactionTimestamp. */
         public transactionTimestamp: (number|Long);
@@ -588,7 +606,7 @@ export namespace proto {
         public currency: string;
 
         /** PaymentInfo txnStatus. */
-        public txnStatus: proto.PaymentInfo.PAYMENT_INFO_TXNSTATUS;
+        public txnStatus: proto.PaymentInfo.PaymentInfoTxnStatus;
 
         /**
          * Creates a new PaymentInfo instance using the specified properties.
@@ -663,14 +681,14 @@ export namespace proto {
 
     namespace PaymentInfo {
 
-        /** PAYMENT_INFO_CURRENCY enum. */
-        enum PAYMENT_INFO_CURRENCY {
+        /** PaymentInfoCurrency enum. */
+        enum PaymentInfoCurrency {
             UNKNOWN_CURRENCY = 0,
             INR = 1
         }
 
-        /** PAYMENT_INFO_STATUS enum. */
-        enum PAYMENT_INFO_STATUS {
+        /** PaymentInfoStatus enum. */
+        enum PaymentInfoStatus {
             UNKNOWN_STATUS = 0,
             PROCESSING = 1,
             SENT = 2,
@@ -685,8 +703,8 @@ export namespace proto {
             WAITING = 11
         }
 
-        /** PAYMENT_INFO_TXNSTATUS enum. */
-        enum PAYMENT_INFO_TXNSTATUS {
+        /** PaymentInfoTxnStatus enum. */
+        enum PaymentInfoTxnStatus {
             UNKNOWN = 0,
             PENDING_SETUP = 1,
             PENDING_RECEIVER_SETUP = 2,
@@ -731,7 +749,7 @@ export namespace proto {
         messageTimestamp?: (number|Long|null);
 
         /** WebMessageInfo status */
-        status?: (proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS|null);
+        status?: (proto.WebMessageInfo.WebMessageInfoStatus|null);
 
         /** WebMessageInfo participant */
         participant?: (string|null);
@@ -761,7 +779,7 @@ export namespace proto {
         urlNumber?: (boolean|null);
 
         /** WebMessageInfo messageStubType */
-        messageStubType?: (proto.WebMessageInfo.WEB_MESSAGE_INFO_STUBTYPE|null);
+        messageStubType?: (proto.WebMessageInfo.WebMessageInfoStubType|null);
 
         /** WebMessageInfo clearMedia */
         clearMedia?: (boolean|null);
@@ -795,6 +813,12 @@ export namespace proto {
 
         /** WebMessageInfo ephemeralOutOfSync */
         ephemeralOutOfSync?: (boolean|null);
+
+        /** WebMessageInfo bizPrivacyStatus */
+        bizPrivacyStatus?: (proto.WebMessageInfo.WebMessageInfoBizPrivacyStatus|null);
+
+        /** WebMessageInfo verifiedBizName */
+        verifiedBizName?: (string|null);
     }
 
     /** Represents a WebMessageInfo. */
@@ -816,7 +840,7 @@ export namespace proto {
         public messageTimestamp: (number|Long);
 
         /** WebMessageInfo status. */
-        public status: proto.WebMessageInfo.WEB_MESSAGE_INFO_STATUS;
+        public status: proto.WebMessageInfo.WebMessageInfoStatus;
 
         /** WebMessageInfo participant. */
         public participant: string;
@@ -846,7 +870,7 @@ export namespace proto {
         public urlNumber: boolean;
 
         /** WebMessageInfo messageStubType. */
-        public messageStubType: proto.WebMessageInfo.WEB_MESSAGE_INFO_STUBTYPE;
+        public messageStubType: proto.WebMessageInfo.WebMessageInfoStubType;
 
         /** WebMessageInfo clearMedia. */
         public clearMedia: boolean;
@@ -880,6 +904,12 @@ export namespace proto {
 
         /** WebMessageInfo ephemeralOutOfSync. */
         public ephemeralOutOfSync: boolean;
+
+        /** WebMessageInfo bizPrivacyStatus. */
+        public bizPrivacyStatus: proto.WebMessageInfo.WebMessageInfoBizPrivacyStatus;
+
+        /** WebMessageInfo verifiedBizName. */
+        public verifiedBizName: string;
 
         /**
          * Creates a new WebMessageInfo instance using the specified properties.
@@ -954,8 +984,8 @@ export namespace proto {
 
     namespace WebMessageInfo {
 
-        /** WEB_MESSAGE_INFO_STATUS enum. */
-        enum WEB_MESSAGE_INFO_STATUS {
+        /** WebMessageInfoStatus enum. */
+        enum WebMessageInfoStatus {
             ERROR = 0,
             PENDING = 1,
             SERVER_ACK = 2,
@@ -964,8 +994,8 @@ export namespace proto {
             PLAYED = 5
         }
 
-        /** WEB_MESSAGE_INFO_STUBTYPE enum. */
-        enum WEB_MESSAGE_INFO_STUBTYPE {
+        /** WebMessageInfoStubType enum. */
+        enum WebMessageInfoStubType {
             UNKNOWN = 0,
             REVOKE = 1,
             CIPHERTEXT = 2,
@@ -1039,7 +1069,60 @@ export namespace proto {
             GROUP_V4_ADD_INVITE_SENT = 70,
             GROUP_PARTICIPANT_ADD_REQUEST_JOIN = 71,
             CHANGE_EPHEMERAL_SETTING = 72,
-            E2E_DEVICE_CHANGED = 73
+            E2E_DEVICE_CHANGED = 73,
+            VIEWED_ONCE = 74,
+            E2E_ENCRYPTED_NOW = 75,
+            BLUE_MSG_BSP_FB_TO_BSP_PREMISE = 76,
+            BLUE_MSG_BSP_FB_TO_SELF_FB = 77,
+            BLUE_MSG_BSP_FB_TO_SELF_PREMISE = 78,
+            BLUE_MSG_BSP_FB_UNVERIFIED = 79,
+            BLUE_MSG_BSP_FB_UNVERIFIED_TO_SELF_PREMISE_VERIFIED = 80,
+            BLUE_MSG_BSP_FB_VERIFIED = 81,
+            BLUE_MSG_BSP_FB_VERIFIED_TO_SELF_PREMISE_UNVERIFIED = 82,
+            BLUE_MSG_BSP_PREMISE_TO_SELF_PREMISE = 83,
+            BLUE_MSG_BSP_PREMISE_UNVERIFIED = 84,
+            BLUE_MSG_BSP_PREMISE_UNVERIFIED_TO_SELF_PREMISE_VERIFIED = 85,
+            BLUE_MSG_BSP_PREMISE_VERIFIED = 86,
+            BLUE_MSG_BSP_PREMISE_VERIFIED_TO_SELF_PREMISE_UNVERIFIED = 87,
+            BLUE_MSG_CONSUMER_TO_BSP_FB_UNVERIFIED = 88,
+            BLUE_MSG_CONSUMER_TO_BSP_PREMISE_UNVERIFIED = 89,
+            BLUE_MSG_CONSUMER_TO_SELF_FB_UNVERIFIED = 90,
+            BLUE_MSG_CONSUMER_TO_SELF_PREMISE_UNVERIFIED = 91,
+            BLUE_MSG_SELF_FB_TO_BSP_PREMISE = 92,
+            BLUE_MSG_SELF_FB_TO_SELF_PREMISE = 93,
+            BLUE_MSG_SELF_FB_UNVERIFIED = 94,
+            BLUE_MSG_SELF_FB_UNVERIFIED_TO_SELF_PREMISE_VERIFIED = 95,
+            BLUE_MSG_SELF_FB_VERIFIED = 96,
+            BLUE_MSG_SELF_FB_VERIFIED_TO_SELF_PREMISE_UNVERIFIED = 97,
+            BLUE_MSG_SELF_PREMISE_TO_BSP_PREMISE = 98,
+            BLUE_MSG_SELF_PREMISE_UNVERIFIED = 99,
+            BLUE_MSG_SELF_PREMISE_VERIFIED = 100,
+            BLUE_MSG_TO_BSP_FB = 101,
+            BLUE_MSG_TO_CONSUMER = 102,
+            BLUE_MSG_TO_SELF_FB = 103,
+            BLUE_MSG_UNVERIFIED_TO_BSP_FB_VERIFIED = 104,
+            BLUE_MSG_UNVERIFIED_TO_BSP_PREMISE_VERIFIED = 105,
+            BLUE_MSG_UNVERIFIED_TO_SELF_FB_VERIFIED = 106,
+            BLUE_MSG_UNVERIFIED_TO_VERIFIED = 107,
+            BLUE_MSG_VERIFIED_TO_BSP_FB_UNVERIFIED = 108,
+            BLUE_MSG_VERIFIED_TO_BSP_PREMISE_UNVERIFIED = 109,
+            BLUE_MSG_VERIFIED_TO_SELF_FB_UNVERIFIED = 110,
+            BLUE_MSG_VERIFIED_TO_UNVERIFIED = 111,
+            BLUE_MSG_BSP_FB_UNVERIFIED_TO_BSP_PREMISE_VERIFIED = 112,
+            BLUE_MSG_BSP_FB_UNVERIFIED_TO_SELF_FB_VERIFIED = 113,
+            BLUE_MSG_BSP_FB_VERIFIED_TO_BSP_PREMISE_UNVERIFIED = 114,
+            BLUE_MSG_BSP_FB_VERIFIED_TO_SELF_FB_UNVERIFIED = 115,
+            BLUE_MSG_SELF_FB_UNVERIFIED_TO_BSP_PREMISE_VERIFIED = 116,
+            BLUE_MSG_SELF_FB_VERIFIED_TO_BSP_PREMISE_UNVERIFIED = 117,
+            E2E_IDENTITY_UNAVAILABLE = 118
+        }
+
+        /** WebMessageInfoBizPrivacyStatus enum. */
+        enum WebMessageInfoBizPrivacyStatus {
+            E2EE = 0,
+            FB = 2,
+            BSP = 1,
+            BSP_AND_FB = 3
         }
     }
 
@@ -2157,7 +2240,7 @@ export namespace proto {
         advertiserName?: (string|null);
 
         /** AdReplyInfo mediaType */
-        mediaType?: (proto.AdReplyInfo.AD_REPLY_INFO_MEDIATYPE|null);
+        mediaType?: (proto.AdReplyInfo.AdReplyInfoMediaType|null);
 
         /** AdReplyInfo jpegThumbnail */
         jpegThumbnail?: (Uint8Array|null);
@@ -2179,7 +2262,7 @@ export namespace proto {
         public advertiserName: string;
 
         /** AdReplyInfo mediaType. */
-        public mediaType: proto.AdReplyInfo.AD_REPLY_INFO_MEDIATYPE;
+        public mediaType: proto.AdReplyInfo.AdReplyInfoMediaType;
 
         /** AdReplyInfo jpegThumbnail. */
         public jpegThumbnail: Uint8Array;
@@ -2260,8 +2343,8 @@ export namespace proto {
 
     namespace AdReplyInfo {
 
-        /** AD_REPLY_INFO_MEDIATYPE enum. */
-        enum AD_REPLY_INFO_MEDIATYPE {
+        /** AdReplyInfoMediaType enum. */
+        enum AdReplyInfoMediaType {
             NONE = 0,
             IMAGE = 1,
             VIDEO = 2
@@ -2278,7 +2361,7 @@ export namespace proto {
         body?: (string|null);
 
         /** ExternalAdReplyInfo mediaType */
-        mediaType?: (proto.ExternalAdReplyInfo.EXTERNAL_AD_REPLY_INFO_MEDIATYPE|null);
+        mediaType?: (proto.ExternalAdReplyInfo.ExternalAdReplyInfoMediaType|null);
 
         /** ExternalAdReplyInfo thumbnailUrl */
         thumbnailUrl?: (string|null);
@@ -2315,7 +2398,7 @@ export namespace proto {
         public body: string;
 
         /** ExternalAdReplyInfo mediaType. */
-        public mediaType: proto.ExternalAdReplyInfo.EXTERNAL_AD_REPLY_INFO_MEDIATYPE;
+        public mediaType: proto.ExternalAdReplyInfo.ExternalAdReplyInfoMediaType;
 
         /** ExternalAdReplyInfo thumbnailUrl. */
         public thumbnailUrl: string;
@@ -2408,8 +2491,8 @@ export namespace proto {
 
     namespace ExternalAdReplyInfo {
 
-        /** EXTERNAL_AD_REPLY_INFO_MEDIATYPE enum. */
-        enum EXTERNAL_AD_REPLY_INFO_MEDIATYPE {
+        /** ExternalAdReplyInfoMediaType enum. */
+        enum ExternalAdReplyInfoMediaType {
             NONE = 0,
             IMAGE = 1,
             VIDEO = 2
@@ -3191,10 +3274,10 @@ export namespace proto {
         backgroundArgb?: (number|null);
 
         /** ExtendedTextMessage font */
-        font?: (proto.ExtendedTextMessage.EXTENDED_TEXT_MESSAGE_FONTTYPE|null);
+        font?: (proto.ExtendedTextMessage.ExtendedTextMessageFontType|null);
 
         /** ExtendedTextMessage previewType */
-        previewType?: (proto.ExtendedTextMessage.EXTENDED_TEXT_MESSAGE_PREVIEWTYPE|null);
+        previewType?: (proto.ExtendedTextMessage.ExtendedTextMessagePreviewType|null);
 
         /** ExtendedTextMessage jpegThumbnail */
         jpegThumbnail?: (Uint8Array|null);
@@ -3237,10 +3320,10 @@ export namespace proto {
         public backgroundArgb: number;
 
         /** ExtendedTextMessage font. */
-        public font: proto.ExtendedTextMessage.EXTENDED_TEXT_MESSAGE_FONTTYPE;
+        public font: proto.ExtendedTextMessage.ExtendedTextMessageFontType;
 
         /** ExtendedTextMessage previewType. */
-        public previewType: proto.ExtendedTextMessage.EXTENDED_TEXT_MESSAGE_PREVIEWTYPE;
+        public previewType: proto.ExtendedTextMessage.ExtendedTextMessagePreviewType;
 
         /** ExtendedTextMessage jpegThumbnail. */
         public jpegThumbnail: Uint8Array;
@@ -3324,8 +3407,8 @@ export namespace proto {
 
     namespace ExtendedTextMessage {
 
-        /** EXTENDED_TEXT_MESSAGE_FONTTYPE enum. */
-        enum EXTENDED_TEXT_MESSAGE_FONTTYPE {
+        /** ExtendedTextMessageFontType enum. */
+        enum ExtendedTextMessageFontType {
             SANS_SERIF = 0,
             SERIF = 1,
             NORICAN_REGULAR = 2,
@@ -3334,8 +3417,8 @@ export namespace proto {
             OSWALD_HEAVY = 5
         }
 
-        /** EXTENDED_TEXT_MESSAGE_PREVIEWTYPE enum. */
-        enum EXTENDED_TEXT_MESSAGE_PREVIEWTYPE {
+        /** ExtendedTextMessagePreviewType enum. */
+        enum ExtendedTextMessagePreviewType {
             NONE = 0,
             VIDEO = 1
         }
@@ -3380,11 +3463,26 @@ export namespace proto {
         /** DocumentMessage contactVcard */
         contactVcard?: (boolean|null);
 
+        /** DocumentMessage thumbnailDirectPath */
+        thumbnailDirectPath?: (string|null);
+
+        /** DocumentMessage thumbnailSha256 */
+        thumbnailSha256?: (Uint8Array|null);
+
+        /** DocumentMessage thumbnailEncSha256 */
+        thumbnailEncSha256?: (Uint8Array|null);
+
         /** DocumentMessage jpegThumbnail */
         jpegThumbnail?: (Uint8Array|null);
 
         /** DocumentMessage contextInfo */
         contextInfo?: (proto.IContextInfo|null);
+
+        /** DocumentMessage thumbnailHeight */
+        thumbnailHeight?: (number|null);
+
+        /** DocumentMessage thumbnailWidth */
+        thumbnailWidth?: (number|null);
     }
 
     /** Represents a DocumentMessage. */
@@ -3432,11 +3530,26 @@ export namespace proto {
         /** DocumentMessage contactVcard. */
         public contactVcard: boolean;
 
+        /** DocumentMessage thumbnailDirectPath. */
+        public thumbnailDirectPath: string;
+
+        /** DocumentMessage thumbnailSha256. */
+        public thumbnailSha256: Uint8Array;
+
+        /** DocumentMessage thumbnailEncSha256. */
+        public thumbnailEncSha256: Uint8Array;
+
         /** DocumentMessage jpegThumbnail. */
         public jpegThumbnail: Uint8Array;
 
         /** DocumentMessage contextInfo. */
         public contextInfo?: (proto.IContextInfo|null);
+
+        /** DocumentMessage thumbnailHeight. */
+        public thumbnailHeight: number;
+
+        /** DocumentMessage thumbnailWidth. */
+        public thumbnailWidth: number;
 
         /**
          * Creates a new DocumentMessage instance using the specified properties.
@@ -3720,7 +3833,7 @@ export namespace proto {
         streamingSidecar?: (Uint8Array|null);
 
         /** VideoMessage gifAttribution */
-        gifAttribution?: (proto.VideoMessage.VIDEO_MESSAGE_ATTRIBUTION|null);
+        gifAttribution?: (proto.VideoMessage.VideoMessageAttribution|null);
 
         /** VideoMessage viewOnce */
         viewOnce?: (boolean|null);
@@ -3787,7 +3900,7 @@ export namespace proto {
         public streamingSidecar: Uint8Array;
 
         /** VideoMessage gifAttribution. */
-        public gifAttribution: proto.VideoMessage.VIDEO_MESSAGE_ATTRIBUTION;
+        public gifAttribution: proto.VideoMessage.VideoMessageAttribution;
 
         /** VideoMessage viewOnce. */
         public viewOnce: boolean;
@@ -3865,8 +3978,8 @@ export namespace proto {
 
     namespace VideoMessage {
 
-        /** VIDEO_MESSAGE_ATTRIBUTION enum. */
-        enum VIDEO_MESSAGE_ATTRIBUTION {
+        /** VideoMessageAttribution enum. */
+        enum VideoMessageAttribution {
             NONE = 0,
             GIPHY = 1,
             TENOR = 2
@@ -4066,7 +4179,7 @@ export namespace proto {
         key?: (proto.IMessageKey|null);
 
         /** ProtocolMessage type */
-        type?: (proto.ProtocolMessage.PROTOCOL_MESSAGE_TYPE|null);
+        type?: (proto.ProtocolMessage.ProtocolMessageType|null);
 
         /** ProtocolMessage ephemeralExpiration */
         ephemeralExpiration?: (number|null);
@@ -4082,6 +4195,9 @@ export namespace proto {
 
         /** ProtocolMessage appStateSyncKeyRequest */
         appStateSyncKeyRequest?: (proto.IAppStateSyncKeyRequest|null);
+
+        /** ProtocolMessage initialSecurityNotificationSettingSync */
+        initialSecurityNotificationSettingSync?: (proto.IInitialSecurityNotificationSettingSync|null);
     }
 
     /** Represents a ProtocolMessage. */
@@ -4097,7 +4213,7 @@ export namespace proto {
         public key?: (proto.IMessageKey|null);
 
         /** ProtocolMessage type. */
-        public type: proto.ProtocolMessage.PROTOCOL_MESSAGE_TYPE;
+        public type: proto.ProtocolMessage.ProtocolMessageType;
 
         /** ProtocolMessage ephemeralExpiration. */
         public ephemeralExpiration: number;
@@ -4113,6 +4229,9 @@ export namespace proto {
 
         /** ProtocolMessage appStateSyncKeyRequest. */
         public appStateSyncKeyRequest?: (proto.IAppStateSyncKeyRequest|null);
+
+        /** ProtocolMessage initialSecurityNotificationSettingSync. */
+        public initialSecurityNotificationSettingSync?: (proto.IInitialSecurityNotificationSettingSync|null);
 
         /**
          * Creates a new ProtocolMessage instance using the specified properties.
@@ -4187,15 +4306,16 @@ export namespace proto {
 
     namespace ProtocolMessage {
 
-        /** PROTOCOL_MESSAGE_TYPE enum. */
-        enum PROTOCOL_MESSAGE_TYPE {
+        /** ProtocolMessageType enum. */
+        enum ProtocolMessageType {
             REVOKE = 0,
             EPHEMERAL_SETTING = 3,
             EPHEMERAL_SYNC_RESPONSE = 4,
             HISTORY_SYNC_NOTIFICATION = 5,
             APP_STATE_SYNC_KEY_SHARE = 6,
             APP_STATE_SYNC_KEY_REQUEST = 7,
-            MSG_FANOUT_BACKFILL_REQUEST = 8
+            MSG_FANOUT_BACKFILL_REQUEST = 8,
+            INITIAL_SECURITY_NOTIFICATION_SETTING_SYNC = 9
         }
     }
 
@@ -4218,7 +4338,7 @@ export namespace proto {
         directPath?: (string|null);
 
         /** HistorySyncNotification syncType */
-        syncType?: (proto.HistorySyncNotification.HISTORY_SYNC_NOTIFICATION_HISTORYSYNCTYPE|null);
+        syncType?: (proto.HistorySyncNotification.HistorySyncNotificationHistorySyncType|null);
 
         /** HistorySyncNotification chunkOrder */
         chunkOrder?: (number|null);
@@ -4252,7 +4372,7 @@ export namespace proto {
         public directPath: string;
 
         /** HistorySyncNotification syncType. */
-        public syncType: proto.HistorySyncNotification.HISTORY_SYNC_NOTIFICATION_HISTORYSYNCTYPE;
+        public syncType: proto.HistorySyncNotification.HistorySyncNotificationHistorySyncType;
 
         /** HistorySyncNotification chunkOrder. */
         public chunkOrder: number;
@@ -4333,8 +4453,8 @@ export namespace proto {
 
     namespace HistorySyncNotification {
 
-        /** HISTORY_SYNC_NOTIFICATION_HISTORYSYNCTYPE enum. */
-        enum HISTORY_SYNC_NOTIFICATION_HISTORYSYNCTYPE {
+        /** HistorySyncNotificationHistorySyncType enum. */
+        enum HistorySyncNotificationHistorySyncType {
             INITIAL_BOOTSTRAP = 0,
             INITIAL_STATUS_V3 = 1,
             FULL = 2,
@@ -4906,6 +5026,96 @@ export namespace proto {
         public toJSON(): { [k: string]: any };
     }
 
+    /** Properties of an InitialSecurityNotificationSettingSync. */
+    interface IInitialSecurityNotificationSettingSync {
+
+        /** InitialSecurityNotificationSettingSync securityNotificationEnabled */
+        securityNotificationEnabled?: (boolean|null);
+    }
+
+    /** Represents an InitialSecurityNotificationSettingSync. */
+    class InitialSecurityNotificationSettingSync implements IInitialSecurityNotificationSettingSync {
+
+        /**
+         * Constructs a new InitialSecurityNotificationSettingSync.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: proto.IInitialSecurityNotificationSettingSync);
+
+        /** InitialSecurityNotificationSettingSync securityNotificationEnabled. */
+        public securityNotificationEnabled: boolean;
+
+        /**
+         * Creates a new InitialSecurityNotificationSettingSync instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns InitialSecurityNotificationSettingSync instance
+         */
+        public static create(properties?: proto.IInitialSecurityNotificationSettingSync): proto.InitialSecurityNotificationSettingSync;
+
+        /**
+         * Encodes the specified InitialSecurityNotificationSettingSync message. Does not implicitly {@link proto.InitialSecurityNotificationSettingSync.verify|verify} messages.
+         * @param message InitialSecurityNotificationSettingSync message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: proto.IInitialSecurityNotificationSettingSync, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified InitialSecurityNotificationSettingSync message, length delimited. Does not implicitly {@link proto.InitialSecurityNotificationSettingSync.verify|verify} messages.
+         * @param message InitialSecurityNotificationSettingSync message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: proto.IInitialSecurityNotificationSettingSync, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes an InitialSecurityNotificationSettingSync message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns InitialSecurityNotificationSettingSync
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.InitialSecurityNotificationSettingSync;
+
+        /**
+         * Decodes an InitialSecurityNotificationSettingSync message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns InitialSecurityNotificationSettingSync
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.InitialSecurityNotificationSettingSync;
+
+        /**
+         * Verifies an InitialSecurityNotificationSettingSync message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates an InitialSecurityNotificationSettingSync message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns InitialSecurityNotificationSettingSync
+         */
+        public static fromObject(object: { [k: string]: any }): proto.InitialSecurityNotificationSettingSync;
+
+        /**
+         * Creates a plain object from an InitialSecurityNotificationSettingSync message. Also converts values to other types if specified.
+         * @param message InitialSecurityNotificationSettingSync
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: proto.InitialSecurityNotificationSettingSync, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this InitialSecurityNotificationSettingSync to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+    }
+
     /** Properties of a ContactsArrayMessage. */
     interface IContactsArrayMessage {
 
@@ -5108,7 +5318,7 @@ export namespace proto {
     interface IHSMDateTimeComponent {
 
         /** HSMDateTimeComponent dayOfWeek */
-        dayOfWeek?: (proto.HSMDateTimeComponent.HSM_DATE_TIME_COMPONENT_DAYOFWEEKTYPE|null);
+        dayOfWeek?: (proto.HSMDateTimeComponent.HSMDateTimeComponentDayOfWeekType|null);
 
         /** HSMDateTimeComponent year */
         year?: (number|null);
@@ -5126,7 +5336,7 @@ export namespace proto {
         minute?: (number|null);
 
         /** HSMDateTimeComponent calendar */
-        calendar?: (proto.HSMDateTimeComponent.HSM_DATE_TIME_COMPONENT_CALENDARTYPE|null);
+        calendar?: (proto.HSMDateTimeComponent.HSMDateTimeComponentCalendarType|null);
     }
 
     /** Represents a HSMDateTimeComponent. */
@@ -5139,7 +5349,7 @@ export namespace proto {
         constructor(properties?: proto.IHSMDateTimeComponent);
 
         /** HSMDateTimeComponent dayOfWeek. */
-        public dayOfWeek: proto.HSMDateTimeComponent.HSM_DATE_TIME_COMPONENT_DAYOFWEEKTYPE;
+        public dayOfWeek: proto.HSMDateTimeComponent.HSMDateTimeComponentDayOfWeekType;
 
         /** HSMDateTimeComponent year. */
         public year: number;
@@ -5157,7 +5367,7 @@ export namespace proto {
         public minute: number;
 
         /** HSMDateTimeComponent calendar. */
-        public calendar: proto.HSMDateTimeComponent.HSM_DATE_TIME_COMPONENT_CALENDARTYPE;
+        public calendar: proto.HSMDateTimeComponent.HSMDateTimeComponentCalendarType;
 
         /**
          * Creates a new HSMDateTimeComponent instance using the specified properties.
@@ -5232,8 +5442,8 @@ export namespace proto {
 
     namespace HSMDateTimeComponent {
 
-        /** HSM_DATE_TIME_COMPONENT_DAYOFWEEKTYPE enum. */
-        enum HSM_DATE_TIME_COMPONENT_DAYOFWEEKTYPE {
+        /** HSMDateTimeComponentDayOfWeekType enum. */
+        enum HSMDateTimeComponentDayOfWeekType {
             MONDAY = 1,
             TUESDAY = 2,
             WEDNESDAY = 3,
@@ -5243,8 +5453,8 @@ export namespace proto {
             SUNDAY = 7
         }
 
-        /** HSM_DATE_TIME_COMPONENT_CALENDARTYPE enum. */
-        enum HSM_DATE_TIME_COMPONENT_CALENDARTYPE {
+        /** HSMDateTimeComponentCalendarType enum. */
+        enum HSMDateTimeComponentCalendarType {
             GREGORIAN = 1,
             SOLAR_HIJRI = 2
         }
@@ -7239,6 +7449,691 @@ export namespace proto {
         public toJSON(): { [k: string]: any };
     }
 
+    /** Properties of an OrderMessage. */
+    interface IOrderMessage {
+
+        /** OrderMessage orderId */
+        orderId?: (string|null);
+
+        /** OrderMessage thumbnail */
+        thumbnail?: (Uint8Array|null);
+
+        /** OrderMessage itemCount */
+        itemCount?: (number|null);
+
+        /** OrderMessage status */
+        status?: (proto.OrderMessage.OrderMessageOrderStatus|null);
+
+        /** OrderMessage surface */
+        surface?: (proto.OrderMessage.OrderMessageOrderSurface|null);
+
+        /** OrderMessage message */
+        message?: (string|null);
+
+        /** OrderMessage orderTitle */
+        orderTitle?: (string|null);
+
+        /** OrderMessage sellerJid */
+        sellerJid?: (string|null);
+
+        /** OrderMessage token */
+        token?: (string|null);
+
+        /** OrderMessage contextInfo */
+        contextInfo?: (proto.IContextInfo|null);
+    }
+
+    /** Represents an OrderMessage. */
+    class OrderMessage implements IOrderMessage {
+
+        /**
+         * Constructs a new OrderMessage.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: proto.IOrderMessage);
+
+        /** OrderMessage orderId. */
+        public orderId: string;
+
+        /** OrderMessage thumbnail. */
+        public thumbnail: Uint8Array;
+
+        /** OrderMessage itemCount. */
+        public itemCount: number;
+
+        /** OrderMessage status. */
+        public status: proto.OrderMessage.OrderMessageOrderStatus;
+
+        /** OrderMessage surface. */
+        public surface: proto.OrderMessage.OrderMessageOrderSurface;
+
+        /** OrderMessage message. */
+        public message: string;
+
+        /** OrderMessage orderTitle. */
+        public orderTitle: string;
+
+        /** OrderMessage sellerJid. */
+        public sellerJid: string;
+
+        /** OrderMessage token. */
+        public token: string;
+
+        /** OrderMessage contextInfo. */
+        public contextInfo?: (proto.IContextInfo|null);
+
+        /**
+         * Creates a new OrderMessage instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns OrderMessage instance
+         */
+        public static create(properties?: proto.IOrderMessage): proto.OrderMessage;
+
+        /**
+         * Encodes the specified OrderMessage message. Does not implicitly {@link proto.OrderMessage.verify|verify} messages.
+         * @param message OrderMessage message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: proto.IOrderMessage, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified OrderMessage message, length delimited. Does not implicitly {@link proto.OrderMessage.verify|verify} messages.
+         * @param message OrderMessage message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: proto.IOrderMessage, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes an OrderMessage message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns OrderMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.OrderMessage;
+
+        /**
+         * Decodes an OrderMessage message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns OrderMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.OrderMessage;
+
+        /**
+         * Verifies an OrderMessage message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates an OrderMessage message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns OrderMessage
+         */
+        public static fromObject(object: { [k: string]: any }): proto.OrderMessage;
+
+        /**
+         * Creates a plain object from an OrderMessage message. Also converts values to other types if specified.
+         * @param message OrderMessage
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: proto.OrderMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this OrderMessage to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+    }
+
+    namespace OrderMessage {
+
+        /** OrderMessageOrderStatus enum. */
+        enum OrderMessageOrderStatus {
+            INQUIRY = 1
+        }
+
+        /** OrderMessageOrderSurface enum. */
+        enum OrderMessageOrderSurface {
+            CATALOG = 1
+        }
+    }
+
+    /** Properties of a Row. */
+    interface IRow {
+
+        /** Row title */
+        title?: (string|null);
+
+        /** Row description */
+        description?: (string|null);
+
+        /** Row rowId */
+        rowId?: (string|null);
+    }
+
+    /** Represents a Row. */
+    class Row implements IRow {
+
+        /**
+         * Constructs a new Row.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: proto.IRow);
+
+        /** Row title. */
+        public title: string;
+
+        /** Row description. */
+        public description: string;
+
+        /** Row rowId. */
+        public rowId: string;
+
+        /**
+         * Creates a new Row instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns Row instance
+         */
+        public static create(properties?: proto.IRow): proto.Row;
+
+        /**
+         * Encodes the specified Row message. Does not implicitly {@link proto.Row.verify|verify} messages.
+         * @param message Row message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: proto.IRow, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified Row message, length delimited. Does not implicitly {@link proto.Row.verify|verify} messages.
+         * @param message Row message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: proto.IRow, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a Row message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns Row
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Row;
+
+        /**
+         * Decodes a Row message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns Row
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.Row;
+
+        /**
+         * Verifies a Row message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a Row message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns Row
+         */
+        public static fromObject(object: { [k: string]: any }): proto.Row;
+
+        /**
+         * Creates a plain object from a Row message. Also converts values to other types if specified.
+         * @param message Row
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: proto.Row, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this Row to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+    }
+
+    /** Properties of a Section. */
+    interface ISection {
+
+        /** Section title */
+        title?: (string|null);
+
+        /** Section rows */
+        rows?: (proto.IRow[]|null);
+    }
+
+    /** Represents a Section. */
+    class Section implements ISection {
+
+        /**
+         * Constructs a new Section.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: proto.ISection);
+
+        /** Section title. */
+        public title: string;
+
+        /** Section rows. */
+        public rows: proto.IRow[];
+
+        /**
+         * Creates a new Section instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns Section instance
+         */
+        public static create(properties?: proto.ISection): proto.Section;
+
+        /**
+         * Encodes the specified Section message. Does not implicitly {@link proto.Section.verify|verify} messages.
+         * @param message Section message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: proto.ISection, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified Section message, length delimited. Does not implicitly {@link proto.Section.verify|verify} messages.
+         * @param message Section message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: proto.ISection, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a Section message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns Section
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Section;
+
+        /**
+         * Decodes a Section message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns Section
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.Section;
+
+        /**
+         * Verifies a Section message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a Section message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns Section
+         */
+        public static fromObject(object: { [k: string]: any }): proto.Section;
+
+        /**
+         * Creates a plain object from a Section message. Also converts values to other types if specified.
+         * @param message Section
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: proto.Section, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this Section to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+    }
+
+    /** Properties of a ListMessage. */
+    interface IListMessage {
+
+        /** ListMessage title */
+        title?: (string|null);
+
+        /** ListMessage description */
+        description?: (string|null);
+
+        /** ListMessage buttonText */
+        buttonText?: (string|null);
+
+        /** ListMessage listType */
+        listType?: (proto.ListMessage.ListMessageListType|null);
+
+        /** ListMessage sections */
+        sections?: (proto.ISection[]|null);
+    }
+
+    /** Represents a ListMessage. */
+    class ListMessage implements IListMessage {
+
+        /**
+         * Constructs a new ListMessage.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: proto.IListMessage);
+
+        /** ListMessage title. */
+        public title: string;
+
+        /** ListMessage description. */
+        public description: string;
+
+        /** ListMessage buttonText. */
+        public buttonText: string;
+
+        /** ListMessage listType. */
+        public listType: proto.ListMessage.ListMessageListType;
+
+        /** ListMessage sections. */
+        public sections: proto.ISection[];
+
+        /**
+         * Creates a new ListMessage instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns ListMessage instance
+         */
+        public static create(properties?: proto.IListMessage): proto.ListMessage;
+
+        /**
+         * Encodes the specified ListMessage message. Does not implicitly {@link proto.ListMessage.verify|verify} messages.
+         * @param message ListMessage message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: proto.IListMessage, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified ListMessage message, length delimited. Does not implicitly {@link proto.ListMessage.verify|verify} messages.
+         * @param message ListMessage message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: proto.IListMessage, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a ListMessage message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns ListMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ListMessage;
+
+        /**
+         * Decodes a ListMessage message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns ListMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.ListMessage;
+
+        /**
+         * Verifies a ListMessage message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a ListMessage message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns ListMessage
+         */
+        public static fromObject(object: { [k: string]: any }): proto.ListMessage;
+
+        /**
+         * Creates a plain object from a ListMessage message. Also converts values to other types if specified.
+         * @param message ListMessage
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: proto.ListMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this ListMessage to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+    }
+
+    namespace ListMessage {
+
+        /** ListMessageListType enum. */
+        enum ListMessageListType {
+            UNKNOWN = 0,
+            SINGLE_SELECT = 1
+        }
+    }
+
+    /** Properties of a SingleSelectReply. */
+    interface ISingleSelectReply {
+
+        /** SingleSelectReply selectedRowId */
+        selectedRowId?: (string|null);
+    }
+
+    /** Represents a SingleSelectReply. */
+    class SingleSelectReply implements ISingleSelectReply {
+
+        /**
+         * Constructs a new SingleSelectReply.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: proto.ISingleSelectReply);
+
+        /** SingleSelectReply selectedRowId. */
+        public selectedRowId: string;
+
+        /**
+         * Creates a new SingleSelectReply instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns SingleSelectReply instance
+         */
+        public static create(properties?: proto.ISingleSelectReply): proto.SingleSelectReply;
+
+        /**
+         * Encodes the specified SingleSelectReply message. Does not implicitly {@link proto.SingleSelectReply.verify|verify} messages.
+         * @param message SingleSelectReply message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: proto.ISingleSelectReply, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified SingleSelectReply message, length delimited. Does not implicitly {@link proto.SingleSelectReply.verify|verify} messages.
+         * @param message SingleSelectReply message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: proto.ISingleSelectReply, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a SingleSelectReply message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns SingleSelectReply
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SingleSelectReply;
+
+        /**
+         * Decodes a SingleSelectReply message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns SingleSelectReply
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.SingleSelectReply;
+
+        /**
+         * Verifies a SingleSelectReply message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a SingleSelectReply message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns SingleSelectReply
+         */
+        public static fromObject(object: { [k: string]: any }): proto.SingleSelectReply;
+
+        /**
+         * Creates a plain object from a SingleSelectReply message. Also converts values to other types if specified.
+         * @param message SingleSelectReply
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: proto.SingleSelectReply, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this SingleSelectReply to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+    }
+
+    /** Properties of a ListResponseMessage. */
+    interface IListResponseMessage {
+
+        /** ListResponseMessage selectedDisplayText */
+        selectedDisplayText?: (string|null);
+
+        /** ListResponseMessage listType */
+        listType?: (proto.ListResponseMessage.ListResponseMessageListType|null);
+
+        /** ListResponseMessage singleSelectReply */
+        singleSelectReply?: (proto.ISingleSelectReply|null);
+
+        /** ListResponseMessage contextInfo */
+        contextInfo?: (proto.IContextInfo|null);
+    }
+
+    /** Represents a ListResponseMessage. */
+    class ListResponseMessage implements IListResponseMessage {
+
+        /**
+         * Constructs a new ListResponseMessage.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: proto.IListResponseMessage);
+
+        /** ListResponseMessage selectedDisplayText. */
+        public selectedDisplayText: string;
+
+        /** ListResponseMessage listType. */
+        public listType: proto.ListResponseMessage.ListResponseMessageListType;
+
+        /** ListResponseMessage singleSelectReply. */
+        public singleSelectReply?: (proto.ISingleSelectReply|null);
+
+        /** ListResponseMessage contextInfo. */
+        public contextInfo?: (proto.IContextInfo|null);
+
+        /**
+         * Creates a new ListResponseMessage instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns ListResponseMessage instance
+         */
+        public static create(properties?: proto.IListResponseMessage): proto.ListResponseMessage;
+
+        /**
+         * Encodes the specified ListResponseMessage message. Does not implicitly {@link proto.ListResponseMessage.verify|verify} messages.
+         * @param message ListResponseMessage message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: proto.IListResponseMessage, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified ListResponseMessage message, length delimited. Does not implicitly {@link proto.ListResponseMessage.verify|verify} messages.
+         * @param message ListResponseMessage message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: proto.IListResponseMessage, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a ListResponseMessage message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns ListResponseMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ListResponseMessage;
+
+        /**
+         * Decodes a ListResponseMessage message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns ListResponseMessage
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.ListResponseMessage;
+
+        /**
+         * Verifies a ListResponseMessage message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a ListResponseMessage message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns ListResponseMessage
+         */
+        public static fromObject(object: { [k: string]: any }): proto.ListResponseMessage;
+
+        /**
+         * Creates a plain object from a ListResponseMessage message. Also converts values to other types if specified.
+         * @param message ListResponseMessage
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: proto.ListResponseMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this ListResponseMessage to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+    }
+
+    namespace ListResponseMessage {
+
+        /** ListResponseMessageListType enum. */
+        enum ListResponseMessageListType {
+            UNKNOWN = 0,
+            SINGLE_SELECT = 1
+        }
+    }
+
     /** Properties of a GroupInviteMessage. */
     interface IGroupInviteMessage {
 
@@ -7365,6 +8260,108 @@ export namespace proto {
         public toJSON(): { [k: string]: any };
     }
 
+    /** Properties of an EphemeralSetting. */
+    interface IEphemeralSetting {
+
+        /** EphemeralSetting chatJid */
+        chatJid?: (string|null);
+
+        /** EphemeralSetting ephemeralExpiration */
+        ephemeralExpiration?: (number|null);
+
+        /** EphemeralSetting ephemeralSettingTimestamp */
+        ephemeralSettingTimestamp?: (number|Long|null);
+    }
+
+    /** Represents an EphemeralSetting. */
+    class EphemeralSetting implements IEphemeralSetting {
+
+        /**
+         * Constructs a new EphemeralSetting.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: proto.IEphemeralSetting);
+
+        /** EphemeralSetting chatJid. */
+        public chatJid: string;
+
+        /** EphemeralSetting ephemeralExpiration. */
+        public ephemeralExpiration: number;
+
+        /** EphemeralSetting ephemeralSettingTimestamp. */
+        public ephemeralSettingTimestamp: (number|Long);
+
+        /**
+         * Creates a new EphemeralSetting instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns EphemeralSetting instance
+         */
+        public static create(properties?: proto.IEphemeralSetting): proto.EphemeralSetting;
+
+        /**
+         * Encodes the specified EphemeralSetting message. Does not implicitly {@link proto.EphemeralSetting.verify|verify} messages.
+         * @param message EphemeralSetting message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: proto.IEphemeralSetting, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified EphemeralSetting message, length delimited. Does not implicitly {@link proto.EphemeralSetting.verify|verify} messages.
+         * @param message EphemeralSetting message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: proto.IEphemeralSetting, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes an EphemeralSetting message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns EphemeralSetting
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.EphemeralSetting;
+
+        /**
+         * Decodes an EphemeralSetting message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns EphemeralSetting
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.EphemeralSetting;
+
+        /**
+         * Verifies an EphemeralSetting message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates an EphemeralSetting message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns EphemeralSetting
+         */
+        public static fromObject(object: { [k: string]: any }): proto.EphemeralSetting;
+
+        /**
+         * Creates a plain object from an EphemeralSetting message. Also converts values to other types if specified.
+         * @param message EphemeralSetting
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: proto.EphemeralSetting, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this EphemeralSetting to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+    }
+
     /** Properties of a DeviceSentMessage. */
     interface IDeviceSentMessage {
 
@@ -7376,6 +8373,9 @@ export namespace proto {
 
         /** DeviceSentMessage phash */
         phash?: (string|null);
+
+        /** DeviceSentMessage broadcastEphemeralSettings */
+        broadcastEphemeralSettings?: (proto.IEphemeralSetting[]|null);
     }
 
     /** Represents a DeviceSentMessage. */
@@ -7395,6 +8395,9 @@ export namespace proto {
 
         /** DeviceSentMessage phash. */
         public phash: string;
+
+        /** DeviceSentMessage broadcastEphemeralSettings. */
+        public broadcastEphemeralSettings: proto.IEphemeralSetting[];
 
         /**
          * Creates a new DeviceSentMessage instance using the specified properties.
@@ -7638,8 +8641,20 @@ export namespace proto {
         /** Message deviceSentMessage */
         deviceSentMessage?: (proto.IDeviceSentMessage|null);
 
+        /** Message listMessage */
+        listMessage?: (proto.IListMessage|null);
+
         /** Message viewOnceMessage */
         viewOnceMessage?: (proto.IFutureProofMessage|null);
+
+        /** Message orderMessage */
+        orderMessage?: (proto.IOrderMessage|null);
+
+        /** Message listResponseMessage */
+        listResponseMessage?: (proto.IListResponseMessage|null);
+
+        /** Message ephemeralMessage */
+        ephemeralMessage?: (proto.IFutureProofMessage|null);
     }
 
     /** Represents a Message. */
@@ -7729,8 +8744,20 @@ export namespace proto {
         /** Message deviceSentMessage. */
         public deviceSentMessage?: (proto.IDeviceSentMessage|null);
 
+        /** Message listMessage. */
+        public listMessage?: (proto.IListMessage|null);
+
         /** Message viewOnceMessage. */
         public viewOnceMessage?: (proto.IFutureProofMessage|null);
+
+        /** Message orderMessage. */
+        public orderMessage?: (proto.IOrderMessage|null);
+
+        /** Message listResponseMessage. */
+        public listResponseMessage?: (proto.IListResponseMessage|null);
+
+        /** Message ephemeralMessage. */
+        public ephemeralMessage?: (proto.IFutureProofMessage|null);
 
         /**
          * Creates a new Message instance using the specified properties.
