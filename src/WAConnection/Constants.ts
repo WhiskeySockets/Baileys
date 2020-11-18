@@ -219,6 +219,7 @@ export interface WAChat {
     imgUrl?: string
     presences?: { [k: string]: WAPresenceData }
 }
+export type WAChatUpdate = Partial<WAChat> & { jid: string, hasNewMessage?: boolean }
 export enum WAMetric {
     debugLog = 1,
     queryResume = 2,

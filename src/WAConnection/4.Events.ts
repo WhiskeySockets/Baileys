@@ -1,6 +1,6 @@
 import * as QR from 'qrcode-terminal'
 import { WAConnection as Base } from './3.Connect'
-import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, PresenceUpdate, BaileysEvent, DisconnectReason, WAOpenResult, Presence, AuthenticationCredentials, WAParticipantAction, WAGroupMetadata, WAUser, WANode, WAPresenceData } from './Constants'
+import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, PresenceUpdate, BaileysEvent, DisconnectReason, WAOpenResult, Presence, AuthenticationCredentials, WAParticipantAction, WAGroupMetadata, WAUser, WANode, WAPresenceData, WAChatUpdate } from './Constants'
 import { whatsappID, unixTimestampSeconds, isGroupID, GET_MESSAGE_ID, WA_MESSAGE_ID, waMessageKey, newMessagesDB, shallowChanges, toNumber } from './Utils'
 import KeyedDB from '@adiwajshing/keyed-db'
 import { Mutex } from './Mutex'
@@ -59,6 +59,7 @@ export class WAConnection extends Base {
         const lastMessages = {}
         // messages received
         const messagesUpdate = (json, style: 'prepend' | 'append') => {
+            const isLast = json[1].last
             const messages = json[2] as WANode[]
             if (messages) {
                 const updates: { [k: string]: KeyedDB<WAMessage, string> } = {}
@@ -90,6 +91,9 @@ export class WAConnection extends Base {
                         Object.keys(updates).map(jid => ({ jid, messages: updates[jid] }))
                     )
                 }
+            }
+            if (isLast) {
+                this.emit('chats-received', { hasReceivedLastMessage: true })
             }
         }
         this.on('CB:action,add:last', json =>  messagesUpdate(json, 'append'))
@@ -379,7 +383,7 @@ export class WAConnection extends Base {
     }
     protected chatAddMessage (message: WAMessage, chat: WAChat) {
         // store updates in this
-        const chatUpdate: Partial<WAChat> & { jid: string } = { jid: chat.jid }
+        const chatUpdate: WAChatUpdate = { jid: chat.jid }
         
         // add to count if the message isn't from me & there exists a message
         if (!message.key.fromMe && message.message) {
@@ -429,6 +433,7 @@ export class WAConnection extends Base {
                 this.chatUpdateTime (chat, +toNumber(message.messageTimestamp))
                 chatUpdate.t = chat.t
             }
+            chatUpdate.hasNewMessage = true
             chatUpdate.messages = newMessagesDB([ message ])
             // emit deprecated
             this.emit('message-new', message)
@@ -530,12 +535,12 @@ export class WAConnection extends Base {
     on (event: 'chat-new', listener: (chat: WAChat) => void): this
     /** when contacts are sent by WA */
     on (event: 'contacts-received', listener: () => void): this
-    /** when chats are sent by WA */
-    on (event: 'chats-received', listener: (update: {hasNewChats: boolean}) => void): this
+    /** when chats are sent by WA, and when all messages are received */
+    on (event: 'chats-received', listener: (update: {hasNewChats?: boolean, hasReceivedLastMessage?: boolean}) => void): this
     /** when multiple chats are updated (new message, updated message, deleted, pinned, etc) */
-    on (event: 'chats-update', listener: (chats: (Partial<WAChat> & { jid: string })[]) => void): this
+    on (event: 'chats-update', listener: (chats: WAChatUpdate[]) => void): this
     /** when a chat is updated (new message, updated message, deleted, pinned, presence updated etc) */
-    on (event: 'chat-update', listener: (chat: Partial<WAChat> & { jid: string }) => void): this
+    on (event: 'chat-update', listener: (chat: WAChatUpdate) => void): this
     /** 
      * when a new message is relayed 
      * @deprecated use `chat-update`
