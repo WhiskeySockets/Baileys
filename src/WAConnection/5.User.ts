@@ -8,6 +8,7 @@ import {
 } from '../WAConnection/Constants'
 import { generateProfilePicture, whatsappID } from './Utils'
 import { Mutex } from './Mutex'
+import { URL } from 'url'
 
 // All user related functions -- get profile picture, set status etc.
 
@@ -18,9 +19,33 @@ export class WAConnection extends Base {
      * @returns undefined if the number doesn't exists, otherwise the correctly formatted jid
      */
     isOnWhatsApp = async (str: string) => {
+        if (this.state !== 'open') {
+            return this.isOnWhatsAppNoConn(str)
+        }
         const { status, jid } = await this.query({json: ['query', 'exist', str], requiresPhoneConnection: false})
         if (status === 200) return { exists: true, jid: whatsappID(jid) }
-    } 
+    }
+    /** 
+     * Query whether a given number is registered on WhatsApp, without needing to open a WS connection
+     * @param str phone number/jid you want to check for
+     * @returns undefined if the number doesn't exists, otherwise the correctly formatted jid
+     */
+    isOnWhatsAppNoConn = async (str: string) => {
+        let phone = str.split('@')[0]
+        const url = `https://wa.me/${phone}`
+        const response = await this.fetchRequest(url, 'GET', undefined, undefined, undefined, 'manual')
+        const loc = response.headers.get('Location')
+        if (!loc) {
+            this.logger.warn({ url, status: response.status }, 'did not get location from request')
+            return
+        }
+        const locUrl = new URL('', loc)
+        if (!locUrl.pathname.endsWith('send/')) {
+            return
+        }
+        phone = locUrl.searchParams.get('phone')
+        return { exists: true, jid: `${phone}@s.whatsapp.net` } 
+    }
     /**
      * Tell someone about your presence -- online, typing, offline etc.
      * @param jid the ID of the person/group who you are updating

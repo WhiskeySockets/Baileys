@@ -368,6 +368,7 @@ await conn.deleteChat (jid) // will delete the chat (can be a group or broadcast
     }
     ```
 - To check if a given ID is on WhatsApp
+    Note: this method falls back to using `https://wa.me` to determine whether a number is on WhatsApp in case the WebSocket connection is not open yet.
     ``` ts
     const id = '123456'
     const exists = await conn.isOnWhatsApp (id)
