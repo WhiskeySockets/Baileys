@@ -435,6 +435,14 @@ Of course, replace ``` xyz ``` with an actual ID.
     await conn.groupMakeAdmin ("abcd-xyz@g.us", ["abcd@s.whatsapp.net", "efgh@s.whatsapp.net"])
     await conn.groupDemoteAdmin ("abcd-xyz@g.us", ["abcd@s.whatsapp.net", "efgh@s.whatsapp.net"]) // demote admins
     ```
+- To change the group's subject
+    ``` ts
+    await conn.groupUpdateSubject("abcd-xyz@g.us", "New Subject!")
+    ```
+- To change the group's description
+    ``` ts
+    await conn.groupUpdateDescription("abcd-xyz@g.us", "This group has a new description")
+    ```
 - To change group settings
     ``` ts
     import { GroupSettingChange } from '@adiwajshing/baileys'
