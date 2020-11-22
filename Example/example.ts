@@ -31,7 +31,7 @@ async function example() {
         console.log(`you have ${conn.chats.length} chats, new chats available: ${hasNewChats}`)
     })
     conn.on('contacts-received', () => {
-        console.log(`you have ${Object.keys(conn.contacts).length} chats`)
+        console.log(`you have ${Object.keys(conn.contacts).length} contacts`)
     })
 
     // loads the auth file credentials if present
