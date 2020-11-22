@@ -144,7 +144,7 @@ export class WAConnection extends Base {
      * @param chunkSize the number of messages to load in a single request
      * @param mostRecentFirst retreive the most recent message first or retreive from the converation start
      */
-    loadAllMessages(jid: string, onMessage: (m: WAMessage) => Promise<void>, chunkSize = 25, mostRecentFirst = true) {
+    loadAllMessages(jid: string, onMessage: (m: WAMessage) => Promise<void>|void, chunkSize = 25, mostRecentFirst = true) {
         let offsetID = null
         const loadMessage = async () => {
             const {messages} = await this.loadMessages(jid, chunkSize, offsetID, mostRecentFirst)
