@@ -11,6 +11,17 @@ WAConnectionTest('Messages', conn => {
         const message = await sendAndRetreiveMessage(conn, 'hello fren', MessageType.text)
         assert.strictEqual(message.message.conversation || message.message.extendedTextMessage?.text, 'hello fren')
     })
+    it('should send a pending message', async () => {
+        const message = await sendAndRetreiveMessage(conn, 'hello fren', MessageType.text, { waitForAck: false })
+
+        await new Promise(resolve => conn.once('message-status-update', update => {
+            if (update.ids.includes(message.key.id)) {
+                assert.strictEqual(update.type, WA_MESSAGE_STATUS_TYPE.SERVER_ACK)
+                resolve()
+            } 
+        }))
+
+    })
     it('should forward a message', async () => {
         let {messages} = await conn.loadMessages (testJid, 1)
         await conn.forwardMessage (testJid, messages[0], true)

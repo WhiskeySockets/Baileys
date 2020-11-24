@@ -29,7 +29,7 @@ export class WAConnection extends Base {
         options: MessageOptions = {},
     ) {
         const waMessage = await this.prepareMessage (id, message, type, options)
-        await this.relayWAMessage (waMessage)
+        await this.relayWAMessage (waMessage, { waitForAck: options.waitForAck !== false })
         return waMessage
     }
     /** Prepares a message for sending via sendWAMessage () */
@@ -217,12 +217,26 @@ export class WAConnection extends Base {
         return WAMessageProto.WebMessageInfo.create (messageJSON)
     }
     /** Relay (send) a WAMessage; more advanced functionality to send a built WA Message, you may want to stick with sendMessage() */
-    async relayWAMessage(message: WAMessage) {
+    async relayWAMessage(message: WAMessage, { waitForAck } = { waitForAck: true }) {
         const json = ['action', {epoch: this.msgCount.toString(), type: 'relay'}, [['message', null, message]]]
         const flag = message.key.remoteJid === this.user?.jid ? WAFlag.acknowledge : WAFlag.ignore // acknowledge when sending message to oneself
-        await this.query({json, binaryTags: [WAMetric.message, flag], tag: message.key.id, expect200: true})
-        
-        message.status = WA_MESSAGE_STATUS_TYPE.SERVER_ACK
+        const mID = message.key.id
+        message.status = WA_MESSAGE_STATUS_TYPE.PENDING
+        const promise = this.query({
+            json, 
+            binaryTags: [WAMetric.message, flag], 
+            tag: mID, 
+            expect200: true
+        })
+        .then(() => message.status = WA_MESSAGE_STATUS_TYPE.SERVER_ACK)
+
+        if (waitForAck) {
+            await promise
+        } else {
+            promise
+            .then(() => this.emit('message-status-update', { ids: [ mID ], to: message.key.remoteJid, type: WA_MESSAGE_STATUS_TYPE.SERVER_ACK }))
+            .catch(() => this.emit('message-status-update', { ids: [ mID ], to: message.key.remoteJid, type: WA_MESSAGE_STATUS_TYPE.ERROR }))
+        }
         await this.chatAddMessageAppropriate (message)
     }
     /**

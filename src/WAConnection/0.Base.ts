@@ -210,7 +210,7 @@ export class WAConnection extends EventEmitter {
      * @param timeoutMs timeout after which the query will be failed (set to null to disable a timeout)
      * @param tag the tag to attach to the message
      */
-    async query(q: WAQuery) {
+    async query(q: WAQuery): Promise<any> {
         let {json, binaryTags, tag, timeoutMs, expect200, waitForOpen, longTag, requiresPhoneConnection, startDebouncedTimeout} = q
         requiresPhoneConnection = requiresPhoneConnection !== false
         waitForOpen = waitForOpen !== false

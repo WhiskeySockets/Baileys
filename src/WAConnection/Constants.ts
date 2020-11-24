@@ -253,22 +253,24 @@ export enum WAMetric {
 export const STORIES_JID = 'status@broadcast'
 
 export enum WAFlag {
+    available = 160,
     ignore = 1 << 7,
     acknowledge = 1 << 6,
-    available = 1 << 5,
     unavailable = 1 << 4,
     expires = 1 << 3,
-    skipOffline = 1 << 2,
+    composing = 1 << 2,
+    recording = 1 << 2,
+    paused = 1 << 2
 }
 /** Tag used with binary queries */
 export type WATag = [WAMetric, WAFlag]
 /** set of statuses visible to other people; see updatePresence() in WhatsAppWeb.Send */
 export enum Presence {
-    available = 'available', // "online"
     unavailable = 'unavailable', // "offline"
+    available = 'available', // "online"
     composing = 'composing', // "typing..."
     recording = 'recording', // "recording..."
-    paused = 'paused', // I have no clue
+    paused = 'paused', // stop typing
 }
 /** Set of message types that are supported by the library */
 export enum MessageType {
@@ -348,6 +350,8 @@ export interface MessageOptions {
     duration?: number
     /** Fetches new media options for every media file */
     forceNewMediaOptions?: boolean
+    /** Wait for the message to be sent to the server (default true) */
+    waitForAck?: boolean
 }
 export interface WABroadcastListInfo {
     status: number

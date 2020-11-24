@@ -136,14 +136,17 @@ WAConnectionTest('Misc', (conn) => {
             await delay (500)
         } 
     })
+    // open the other phone and look at the updates to really verify stuff
+    it('should send presence updates', async () => {
+        conn.shouldLogMessages = true
+        conn.requestPresenceUpdate(testJid)
 
-    it('should update presence', async () => {
-        const presences = Object.values(Presence)
-        for (const i in presences) {
-            const response = await conn.updatePresence(testJid, presences[i])
-            assert.strictEqual(response.status, 200)
-
-            await delay(1500)
+        const sequence = [ Presence.available, Presence.composing, Presence.paused, Presence.recording, Presence.paused, Presence.unavailable ]
+        for (const presence of sequence) {
+            await delay(5000)
+            await conn.updatePresence(presence !== Presence.unavailable ? testJid : null, presence)
+            //console.log(conn.messageLog.slice(-1))
+            console.log('sent update ', presence)
         }
     })
     it('should generate link previews correctly', async () => {

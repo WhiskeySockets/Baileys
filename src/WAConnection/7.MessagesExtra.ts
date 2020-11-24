@@ -299,14 +299,14 @@ export class WAConnection extends Base {
         return waMessage
     }
     /**
-     * Forward a message like WA does
-     * @param id the id to forward the message to
+     * Generate forwarded message content like WA does
      * @param message the message to forward
      * @param forceForward will show the message as forwarded even if it is from you
      */
-    async forwardMessage(id: string, message: WAMessage, forceForward: boolean=false) {
-        const content = message.message
-        if (!content) throw new Error ('no content in message')
+    generateForwardMessageContent (message: WAMessage, forceForward: boolean=false) {
+        let content = message.message
+        if (!content) throw new BaileysError ('no content in message', { status: 400 })
+        content = JSON.parse(JSON.stringify(content)) // hacky copy
 
         let key = Object.keys(content)[0]
 
@@ -320,13 +320,20 @@ export class WAConnection extends Base {
         }
         if (score > 0) content[key].contextInfo = { forwardingScore: score, isForwarded: true }
         else content[key].contextInfo = {}
-
-        const waMessage = this.prepareMessageFromContent (id, content, {})
+        return content
+    }
+    /**
+     * Forward a message like WA
+     * @param jid the chat ID to forward to
+     * @param message the message to forward
+     * @param forceForward will show the message as forwarded even if it is from you
+     */
+    async forwardMessage(jid: string, message: WAMessage, forceForward: boolean=false) {
+        const content = this.generateForwardMessageContent(message, forceForward)
+        const waMessage = this.prepareMessageFromContent (jid, content, {})
         await this.relayWAMessage (waMessage)
         return waMessage
     }
-
-
     /**
      * Modify a given chat (archive, pin etc.)
      * @param jid the ID of the person/group you are modifiying
