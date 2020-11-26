@@ -18,7 +18,6 @@ async function example() {
     conn.logger.level = 'debug' // set to 'debug' to see what kind of stuff you can implement
     // attempt to reconnect at most 10 times in a row
     conn.connectOptions.maxRetries = 10
-    conn.connectOptions.waitForChats = false
     conn.chatOrderingKey = waChatKey(true) // order chats such that pinned chats are on top
 
     conn.on ('credentials-updated', () => {

@@ -21,6 +21,12 @@ export type WAGenericMediaMessage = proto.IVideoMessage | proto.IImageMessage | 
 export import WA_MESSAGE_STUB_TYPE = proto.WebMessageInfo.WebMessageInfoStubType
 export import WA_MESSAGE_STATUS_TYPE = proto.WebMessageInfo.WebMessageInfoStatus
 
+export type WAInitResponse = {
+    ref: string
+    ttl: number
+    status: 200
+}
+
 export interface WALocationMessage {
     degreesLatitude: number
     degreesLongitude: number
@@ -73,7 +79,10 @@ export type WALoadChatOptions = {
     loadProfilePicture?: boolean
 }
 export type WAConnectOptions = {
-    /** New QR generation interval, set to null if you don't want to regenerate */
+    /** 
+     * New QR generation interval, set to null if you don't want to regenerate 
+     * @deprecated no need to set this as we use WA ttl
+     * */
     regenerateQRIntervalMs?: number
     /** fails the connection if no data is received for X seconds */
     maxIdleTimeMs?: number

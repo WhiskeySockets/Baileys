@@ -96,8 +96,6 @@ console.log ("oh hello " + conn.user.name + "! You connected via a proxy")
 The entire `WAConnectOptions` struct is mentioned here with default values:
 ``` ts
 conn.connectOptions = {
-    /** New QR generation interval, set to null if you don't want to regenerate */
-    regenerateQRIntervalMs?: 30_000,
     /** fails the connection if no data is received for X seconds */
     maxIdleTimeMs?: 15_000,
     /** maximum attempts to connect */
@@ -249,6 +247,8 @@ conn.sendMessage(id, buffer, MessageType.audio, options)
 To note:
 - `id` is the WhatsApp ID of the person or group you're sending the message to. 
     - It must be in the format ```[country code][phone number]@s.whatsapp.net```, for example ```+19999999999@s.whatsapp.net``` for people. For groups, it must be in the format ``` 123456789-123345@g.us ```. 
+    - For broadcast lists it's `[timestamp of creation]@broadcast`.
+    - For stories, the ID is `status@broadcast`.
 - For media messages, the thumbnail can be generated automatically for images & stickers. Thumbnails for videos can also be generated automatically, though, you need to have `ffmpeg` installed on your system.
 - **MessageOptions**: some extra info about the message. It can have the following __optional__ values:
     ``` ts
@@ -305,6 +305,7 @@ export enum Presence {
     available = 'available', // "online"
     composing = 'composing', // "typing..."
     recording = 'recording', // "recording..."
+    paused = 'paused' // stopped typing, back to "online"
 }
 ```
 

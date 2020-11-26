@@ -41,10 +41,7 @@ export class WAConnection extends EventEmitter {
     /** The connection state */
     state: WAConnectionState = 'close'
     connectOptions: WAConnectOptions = {
-        regenerateQRIntervalMs: 30_000,
-        maxIdleTimeMs: 15_000,
-        waitOnlyForLastMessage: false,
-        waitForChats: false,
+        maxIdleTimeMs: 60_000,
         maxRetries: 10,
         connectCooldownMs: 4000,
         phoneResponseTime: 15_000,
@@ -84,7 +81,7 @@ export class WAConnection extends EventEmitter {
 
     protected referenceDate = new Date () // used for generating tags
     protected lastSeen: Date = null // last keep alive received
-    protected qrTimeout: NodeJS.Timeout
+    protected initTimeout: NodeJS.Timeout
 
     protected lastDisconnectTime: Date = null
     protected lastDisconnectReason: DisconnectReason 
@@ -92,13 +89,6 @@ export class WAConnection extends EventEmitter {
     protected mediaConn: MediaConnInfo
     protected debounceTimeout: NodeJS.Timeout
 
-    constructor () {
-        super ()
-        this.setMaxListeners (20)
-        this.on ('CB:Cmd,type:disconnect', json => (
-            this.state === 'open' && this.unexpectedDisconnect(json[1].kind || 'unknown')
-        ))
-    }
     /**
      * Connect to WhatsAppWeb
      * @param options the connect options
@@ -131,6 +121,10 @@ export class WAConnection extends EventEmitter {
             encKey: this.authInfo.encKey.toString('base64'),
             macKey: this.authInfo.macKey.toString('base64'),
         }
+    }
+    /** Can you login to WA without scanning the QR */
+    canLogin () {
+        return !!this.authInfo?.encKey && !!this.authInfo?.macKey
     }
     /** Clear authentication info so a new connection can be created */
     clearAuthInfo () {
@@ -175,7 +169,7 @@ export class WAConnection extends EventEmitter {
      * @param json query that was sent
      * @param timeoutMs timeout after which the promise will reject
      */
-    async waitForMessage(tag: string, json: Object, requiresPhoneConnection: boolean, timeoutMs?: number) {
+    async waitForMessage(tag: string, requiresPhoneConnection: boolean, timeoutMs?: number) {
         if (!this.phoneCheckInterval && requiresPhoneConnection) {
             this.startPhoneCheckInterval ()
         }
@@ -217,7 +211,7 @@ export class WAConnection extends EventEmitter {
         if (waitForOpen) await this.waitForConnection()
 
         tag = tag || this.generateMessageTag (longTag)
-        const promise = this.waitForMessage(tag, json, requiresPhoneConnection, timeoutMs)
+        const promise = this.waitForMessage(tag, requiresPhoneConnection, timeoutMs)
 
         if (this.logger.level === 'trace') {
             this.logger.trace ({ fromMe: true },`${tag},${JSON.stringify(json)}`)
@@ -385,13 +379,12 @@ export class WAConnection extends EventEmitter {
         this.conn?.removeAllListeners ('open')
         this.conn?.removeAllListeners ('message')
 
-        this.qrTimeout && clearTimeout (this.qrTimeout)
+        this.initTimeout && clearTimeout (this.initTimeout)
         this.debounceTimeout && clearTimeout (this.debounceTimeout)
         this.keepAliveReq && clearInterval(this.keepAliveReq)
         this.clearPhoneCheckInterval ()
 
         this.emit ('ws-close', { reason: DisconnectReason.close })
-        //this.rejectPendingConnection && this.rejectPendingConnection (new Error('close'))
 
         try {
             this.conn?.close()

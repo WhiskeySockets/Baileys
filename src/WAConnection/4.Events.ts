@@ -9,6 +9,11 @@ export class WAConnection extends Base {
 
     constructor () {
         super ()
+        this.setMaxListeners (30)
+        // on disconnects
+        this.on ('CB:Cmd,type:disconnect', json => (
+            this.state === 'open' && this.unexpectedDisconnect(json[1].kind || 'unknown')
+        ))
         // chats received
         this.on('CB:response,type:chat', json => {
             if (json[1].duplicate || !json[2]) return
