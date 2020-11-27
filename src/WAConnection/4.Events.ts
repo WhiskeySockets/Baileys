@@ -49,7 +49,7 @@ export class WAConnection extends Base {
                     if (oldChat.t !== chat.t || oldChat.modify_tag !== chat.modify_tag) {
                         const changes = shallowChanges (oldChat, chat)
                         delete changes.messages
-                        updatedChats.push({ jid: chat.jid, ...changes })
+                        updatedChats.push({ ...changes, jid: chat.jid })
                     }
                 }
             })
