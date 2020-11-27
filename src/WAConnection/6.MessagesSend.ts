@@ -61,17 +61,17 @@ export class WAConnection extends Base {
                             message = await this.generateLinkPreview (message.text)
                         } catch { } // ignore if fails
                     }
-                    m.extendedTextMessage = WAMessageProto.ExtendedTextMessage.create(message as any)
+                    m.extendedTextMessage = WAMessageProto.ExtendedTextMessage.fromObject(message as any)
                 } else {
                     throw new BaileysError ('message needs to be a string or object with property \'text\'', message)
                 }
                 break
             case MessageType.location:
             case MessageType.liveLocation:
-                m.locationMessage = WAMessageProto.LocationMessage.create(message as any)
+                m.locationMessage = WAMessageProto.LocationMessage.fromObject(message as any)
                 break
             case MessageType.contact:
-                m.contactMessage = WAMessageProto.ContactMessage.create(message as any)
+                m.contactMessage = WAMessageProto.ContactMessage.fromObject(message as any)
                 break
             case MessageType.image:
             case MessageType.sticker:
@@ -81,7 +81,7 @@ export class WAConnection extends Base {
                 m = await this.prepareMessageMedia(message as Buffer, type, options)
                 break
         }
-        return WAMessageProto.Message.create (m)
+        return WAMessageProto.Message.fromObject (m)
     }
     /** Prepare a media message for sending */
     async prepareMessageMedia(buffer: Buffer, mediaType: MessageType, options: MessageOptions = {}) {
@@ -152,7 +152,7 @@ export class WAConnection extends Base {
         if (!mediaUrl) throw new Error('Media upload failed on all hosts')
 
         const message = {
-            [mediaType]: MessageTypeProto[mediaType].create (
+            [mediaType]: MessageTypeProto[mediaType].fromObject (
                 {
                     url: mediaUrl,
                     mediaKey: mediaKey,
@@ -168,7 +168,7 @@ export class WAConnection extends Base {
                 }
             )
         }   
-        return WAMessageProto.Message.create(message)// as WAMessageContent
+        return WAMessageProto.Message.fromObject(message)// as WAMessageContent
     }
     /** prepares a WAMessage for sending from the given content & options */
     prepareMessageFromContent(id: string, message: WAMessageContent, options: MessageOptions) {
@@ -200,7 +200,7 @@ export class WAConnection extends Base {
         if (options?.thumbnail) {
             message[key].jpegThumbnail = Buffer.from(options.thumbnail, 'base64')
         }
-        message = WAMessageProto.Message.create (message)
+        message = WAMessageProto.Message.fromObject (message)
 
         const messageJSON = {
             key: {
@@ -214,7 +214,7 @@ export class WAConnection extends Base {
             participant: id.includes('@g.us') ? this.user.jid : null,
             status: WA_MESSAGE_STATUS_TYPE.PENDING
         }
-        return WAMessageProto.WebMessageInfo.create (messageJSON)
+        return WAMessageProto.WebMessageInfo.fromObject (messageJSON)
     }
     /** Relay (send) a WAMessage; more advanced functionality to send a built WA Message, you may want to stick with sendMessage() */
     async relayWAMessage(message: WAMessage, { waitForAck } = { waitForAck: true }) {
