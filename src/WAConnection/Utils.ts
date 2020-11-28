@@ -26,7 +26,7 @@ export const Browsers = {
 }
 export const toNumber = (t: Long | number) => (t['low'] || t) as number
 export const waChatKey = (pin: boolean) => ({
-    key: (c: WAChat) => (pin ? (c.pin ? '1' : '0') : '') + c.t.toString(16).padStart(8, '0') + c.jid,
+    key: (c: WAChat) => (pin ? (c.pin ? '1' : '0') : '') + (c.archive === 'true' ? '0' : '1') + c.t.toString(16).padStart(8, '0') + c.jid,
     compare: (k1: string, k2: string) => k2.localeCompare (k1)
 })
 export const waMessageKey = {
@@ -139,7 +139,7 @@ export function generateClientID() {
 }
 // generate a random 16 byte ID to attach to a message
 export function generateMessageID() {
-    return randomBytes(16).toString('hex').toUpperCase()
+    return '3EB0' + randomBytes(4).toString('hex').toUpperCase()
 }
 export function decryptWA (message: string | Buffer, macKey: Buffer, encKey: Buffer, decoder: Decoder, fromMe: boolean=false): [string, Object, [number, number]?] {
     let commaIndex = message.indexOf(',') // all whatsapp messages have a tag and a comma, followed by the actual message
