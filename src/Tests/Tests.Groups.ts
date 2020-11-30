@@ -9,7 +9,7 @@ WAConnectionTest('Groups', (conn) => {
         assert.ok (conn.chats.get(response.gid))
 
         const {chats} = await conn.loadChats(10, null)
-        assert.equal (chats[0].jid, response.gid) // first chat should be new group
+        assert.strictEqual (chats[0].jid, response.gid) // first chat should be new group
 
         gid = response.gid
 
@@ -54,14 +54,14 @@ WAConnectionTest('Groups', (conn) => {
         const loaded = await conn.loadMessages(gid, 10)
         const message = loaded.messages.find (m => m.key.id === response.key.id)?.message?.extendedTextMessage
         assert.ok(message)
-        assert.equal (message.contextInfo.stanzaId, quotableMessage.key.id)
+        assert.strictEqual (message.contextInfo.stanzaId, quotableMessage.key.id)
     })
     it('should update the subject', async () => {
         const subject = 'Baileyz ' + Math.floor(Math.random()*5)
         const waitForEvent = new Promise (resolve => {
             conn.once ('chat-update', ({jid, name}) => {
                 if (jid === gid) {
-                    assert.equal (name, subject)
+                    assert.strictEqual (name, subject)
                     resolve ()
                 }
             })
@@ -77,7 +77,7 @@ WAConnectionTest('Groups', (conn) => {
         const waitForEvent = new Promise (resolve => {
             conn.once ('group-update', ({jid, announce}) => {
                 if (jid === gid) {
-                    assert.equal (announce, 'true')
+                    assert.strictEqual (announce, 'true')
                     resolve ()
                 }
             })
@@ -127,7 +127,7 @@ WAConnectionTest('Groups', (conn) => {
         const waitForEvent = new Promise (resolve => {
             conn.once ('chat-update', ({jid, read_only}) => {
                 if (jid === gid) {
-                    assert.equal (read_only, 'true')
+                    assert.strictEqual (read_only, 'true')
                     resolve ()
                 }
             })
@@ -141,7 +141,7 @@ WAConnectionTest('Groups', (conn) => {
         const waitForEvent = new Promise (resolve => {
             conn.once ('chat-update', ({jid, archive}) => {
                 if (jid === gid) {
-                    assert.equal (archive, 'true')
+                    assert.strictEqual (archive, 'true')
                     resolve ()
                 }
             })
@@ -153,12 +153,12 @@ WAConnectionTest('Groups', (conn) => {
         const waitForEvent = new Promise (resolve => {
             conn.once ('chat-update', (chat) => {
                 if (chat.jid === gid) {
-                    assert.equal (chat['delete'], 'true')
+                    assert.strictEqual (chat['delete'], 'true')
                     resolve ()
                 }
             })
         })
-        await conn.deleteChat(gid)
+        await conn.modifyChat(gid, 'delete')
         await waitForEvent
     })
 })

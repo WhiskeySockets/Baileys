@@ -29,7 +29,7 @@ WAConnectionTest('Messages', conn => {
         messages = (await conn.loadMessages (testJid, 1)).messages
         const message = messages.slice (-1)[0]
         const content = message.message[ Object.keys(message.message)[0] ]
-        assert.equal (content?.contextInfo?.isForwarded, true)
+        assert.strictEqual (content?.contextInfo?.isForwarded, true)
     })
     it('should send a link preview', async () => {
         const text = 'hello this is from https://www.github.com/adiwajshing/Baileys'
@@ -78,7 +78,7 @@ WAConnectionTest('Messages', conn => {
         const message = await sendAndRetreiveMessage(conn, content, MessageType.audio, { mimetype: Mimetype.mp4Audio, ptt: true })
         
         assert.ok (message.message.audioMessage.seconds > 0)
-        assert.equal (message.message?.audioMessage?.ptt, true)
+        assert.strictEqual (message.message?.audioMessage?.ptt, true)
         await conn.downloadAndSaveMediaMessage(message,'./Media/received_aud')
     })
     it('should send an image', async () => {
@@ -176,7 +176,7 @@ WAConnectionTest('Messages', conn => {
 
         conn.on ('message-status-update', async update => {
             if (update.to === JID) {
-                assert.equal (update.type, WA_MESSAGE_STATUS_TYPE.ERROR)
+                assert.strictEqual (update.type, WA_MESSAGE_STATUS_TYPE.ERROR)
                 await conn.deleteChat (JID)
                 done ()
             }
@@ -188,16 +188,16 @@ WAConnectionTest('Messages', conn => {
             conn.loadMessages (testJid, 50),
             conn.loadMessages (testJid, 50)
         ])
-        assert.equal (results[0].messages.length, results[1].messages.length)
+        assert.strictEqual (results[0].messages.length, results[1].messages.length)
         for (let i = 0; i < results[1].messages.length;i++) {
-            assert.deepEqual (results[0].messages[i], results[1].messages[i], `failed equal at ${i}`)
+            assert.deepStrictEqual (results[0].messages[i], results[1].messages[i], `failed equal at ${i}`)
         }
         assert.ok (results[0].messages.length <= 50)
 
         // check if messages match server
         let msgs = await conn.fetchMessagesFromWA (testJid, 50)
         for (let i = 0; i < results[1].messages.length;i++) {
-            assert.deepEqual (results[0].messages[i].key, msgs[i].key, `failed equal at ${i}`)
+            assert.deepStrictEqual (results[0].messages[i].key, msgs[i].key, `failed equal at ${i}`)
         }
         // check with some arbitary cursors
         let cursor = results[0].messages.slice(-1)[0].key
@@ -205,7 +205,7 @@ WAConnectionTest('Messages', conn => {
         msgs = await conn.fetchMessagesFromWA (testJid, 20, cursor)
         let {messages} = await conn.loadMessages (testJid, 20, cursor)
         for (let i = 0; i < messages.length;i++) {
-            assert.deepEqual (messages[i].key, msgs[i].key, `failed equal at ${i}`)
+            assert.deepStrictEqual (messages[i].key, msgs[i].key, `failed equal at ${i}`)
         }
         for (let i = 0; i < 3;i++) {
             cursor = results[0].messages[i].key
@@ -213,7 +213,7 @@ WAConnectionTest('Messages', conn => {
             msgs = await conn.fetchMessagesFromWA (testJid, 20, cursor)
             messages = (await conn.loadMessages (testJid, 20, cursor)).messages
             for (let i = 0; i < messages.length;i++) {
-                assert.deepEqual (messages[i].key, msgs[i].key, `failed equal at ${i}`)
+                assert.deepStrictEqual (messages[i].key, msgs[i].key, `failed equal at ${i}`)
             }
 
             cursor = msgs[0].key
@@ -221,7 +221,7 @@ WAConnectionTest('Messages', conn => {
             msgs = await conn.fetchMessagesFromWA (testJid, 20, cursor)
             messages = (await conn.loadMessages (testJid, 20, cursor)).messages
             for (let i = 0; i < messages.length;i++) {
-                assert.deepEqual (messages[i].key, msgs[i].key, `failed equal at ${i}`)
+                assert.deepStrictEqual (messages[i].key, msgs[i].key, `failed equal at ${i}`)
             }
         }
     })

@@ -72,7 +72,7 @@ describe('Test Connect', () => {
         const conn = makeConnection ()
         conn.logger.level = 'debug'
         await conn.loadAuthInfo('./auth_info.json').connect ()
-        assert.equal (conn.phoneConnected, true)
+        assert.strictEqual (conn.phoneConnected, true)
 
         try {
             const waitForEvent = expect => new Promise (resolve => {
@@ -217,7 +217,7 @@ describe ('Reconnects', () => {
         conn.autoReconnect = ReconnectMode.onConnectionLost
 
         await conn.loadAuthInfo('./auth_info.json').connect ()
-        assert.equal (conn.phoneConnected, true)
+        assert.strictEqual (conn.phoneConnected, true)
 
         try {
             const closeConn = () => conn['conn']?.terminate ()
@@ -269,7 +269,7 @@ describe ('Reconnects', () => {
         conn.autoReconnect = ReconnectMode.onConnectionLost
 
         await conn.loadAuthInfo('./auth_info.json').connect ()
-        assert.equal (conn.phoneConnected, true)
+        assert.strictEqual (conn.phoneConnected, true)
 
         await delay (30*1000)
 

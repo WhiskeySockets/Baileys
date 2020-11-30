@@ -354,7 +354,7 @@ setTimeout (() => {
     conn.modifyChat (jid, ChatModification.unmute)
 }, 5000) // unmute after 5 seconds
 
-await conn.deleteChat (jid) // will delete the chat (can be a group or broadcast list as well)
+await conn.modifyChat (jid, ChatModification.delete) // will delete the chat (can be a group or broadcast list as well)
 ```
 
 **Note:** to unmute or unpin a chat, one must pass the timestamp of the pinning or muting. This is returned by the pin & mute functions. This is also available in the `WAChat` objects of the respective chats, as a `mute` or `pin` property.

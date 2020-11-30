@@ -60,13 +60,13 @@ export const WAConnectionTest = (name: string, func: (conn: WAConnection) => voi
 )
 export const assertChatDBIntegrity = (conn: WAConnection) => {
     conn.chats.all ().forEach (chat => (
-        assert.deepEqual (
+        assert.deepStrictEqual (
             [...chat.messages.all()].sort ((m1, m2) => waMessageKey.compare(waMessageKey.key(m1), waMessageKey.key(m2))),
             chat.messages.all()
         )
     ))
     conn.chats.all ().forEach (chat => (
-        assert.deepEqual (
+        assert.deepStrictEqual (
             chat.messages.all().filter (m => chat.messages.all().filter(m1 => m1.key.id === m.key.id).length > 1),
             []
         )

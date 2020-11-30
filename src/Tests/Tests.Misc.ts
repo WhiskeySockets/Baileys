@@ -1,4 +1,4 @@
-import { Presence, ChatModification, delay, DEFAULT_ORIGIN } from '../WAConnection/WAConnection'
+import { Presence, ChatModification, delay } from '../WAConnection/WAConnection'
 import { promises as fs } from 'fs'
 import * as assert from 'assert'
 import fetch from 'node-fetch'
@@ -22,7 +22,7 @@ WAConnectionTest('Misc', (conn) => {
         const waitForEvent = new Promise (resolve => {
             conn.on ('user-status-update', ({jid, status}) => {
                 if (jid === conn.user.jid) {
-                    assert.equal (status, newStatus)
+                    assert.strictEqual (status, newStatus)
                     conn.removeAllListeners ('user-status-update')
                     resolve ()
                 }
@@ -36,7 +36,7 @@ WAConnectionTest('Misc', (conn) => {
 
         await conn.setStatus (newStatus)
         const response2 = await conn.getStatus()
-        assert.equal (response2.status, newStatus)
+        assert.strictEqual (response2.status, newStatus)
 
         await waitForEvent
 
@@ -132,7 +132,7 @@ WAConnectionTest('Misc', (conn) => {
         const {messages} = await conn.loadMessages (testJid, 25)
         for (var message of messages) {
             const loaded = await conn.loadMessage (testJid, message.key.id)
-            assert.equal (loaded.key.id, message.key.id, `loaded message ${JSON.stringify(message)} incorrectly`)
+            assert.strictEqual (loaded.key.id, message.key.id, `loaded message ${JSON.stringify(message)} incorrectly`)
             await delay (500)
         } 
     })

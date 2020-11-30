@@ -310,7 +310,8 @@ export enum ChatModification {
     pin='pin',
     unpin='unpin',
     mute='mute',
-    unmute='unmute'
+    unmute='unmute',
+    delete='delete'
 }
 export const HKDFInfoKeys = {
     [MessageType.image]: 'WhatsApp Image Keys',

@@ -334,13 +334,20 @@ export class WAConnection extends Base {
         await this.relayWAMessage (waMessage)
         return waMessage
     }
+    /** 
+     * Delete the chat of a given ID 
+     * @deprecated -- use `modifyChat(jid, 'delete')` instead
+     * */
+    deleteChat (jid: string) {
+        return this.modifyChat(jid, 'delete')
+    }
     /**
      * Modify a given chat (archive, pin etc.)
      * @param jid the ID of the person/group you are modifiying
      * @param durationMs only for muting, how long to mute the chat for
      */
     @Mutex ((jid, type) => jid+type)
-    async modifyChat (jid: string, type: ChatModification, durationMs?: number) {
+    async modifyChat (jid: string, type: ChatModification | (keyof typeof ChatModification), durationMs?: number) {
         jid = whatsappID (jid)
         const chat = this.assertChatGet (jid)
 
@@ -373,7 +380,7 @@ export class WAConnection extends Base {
                     chatAttrs.owner = msg.key.fromMe.toString()
                 }
                 if (isGroupID(jid)) {
-                    chatAttrs.participant = this.user?.jid
+                    chatAttrs.participant = whatsappID(msg.participant || msg.key.participant)
                 }
                 break
         }

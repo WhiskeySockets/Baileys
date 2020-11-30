@@ -67,7 +67,7 @@ describe ('garbage', () => {
                 [...Array(duplicates)].map(() => stuff.myKeyedFunction (key))
             ))
         )
-        assert.deepEqual (
+        assert.deepStrictEqual (
             results.slice(0, duplicates).filter (r => r !== results[0]),
             []
         )
@@ -103,7 +103,7 @@ describe ('garbage', () => {
         const diff = new Date ().getTime()-start.getTime()
         assert.ok (diff < WAIT*FUNCS*1.1)
 
-        assert.equal (
+        assert.strictEqual (
             results.filter (r => r === 'failed').length,
             FUNCS/2 // half should fail
         )

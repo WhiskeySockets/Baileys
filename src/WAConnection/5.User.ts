@@ -108,16 +108,6 @@ export class WAConnection extends Base {
     }
     /** Query broadcast list info */
     async getBroadcastListInfo(jid: string) { return this.query({json: ['query', 'contact', jid], expect200: true }) as Promise<WABroadcastListInfo> }
-    /** Delete the chat of a given ID */
-    async deleteChat (jid: string) {
-        const response = await this.setQuery ([ ['chat', {type: 'delete', jid: jid}, null] ], [12, WAFlag.ignore])
-        const chat = this.chats.get (jid)
-        if (chat) {
-            this.chats.delete (chat)
-            this.emit ('chat-update', { jid, delete: 'true' })
-        }
-        return response
-    }
     /**
      * Load chats in a paginated manner + gets the profile picture
      * @param before chats before the given cursor
