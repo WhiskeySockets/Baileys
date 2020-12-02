@@ -86,7 +86,8 @@ export class WAConnection extends Base {
                         'Sec-WebSocket-Extensions': 'permessage-deflate; client_max_window_bits',
                     }
                 })
-                this.conn.addEventListener('message', ({data}) => this.onMessageRecieved(data as any))
+
+                this.conn.on('message', data => this.onMessageRecieved(data as any))
                 
                 this.conn.on ('open', async () => {
                     this.startKeepAliveRequest()

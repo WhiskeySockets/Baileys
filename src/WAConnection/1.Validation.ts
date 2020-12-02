@@ -48,6 +48,10 @@ export class WAConnection extends Base {
             else json.push ('takeover')
             // send login every 10s
             const sendLoginReq = () => {
+                if (this.conn.readyState !== this.conn.OPEN) {
+                    this.logger.warn('Received login timeout req when WS not open, ignoring...')
+                    return
+                }
                 this.logger.debug('sending login request')
                 this.sendJSON(json, tag)
                 this.initTimeout = setTimeout(sendLoginReq, 10_000)
