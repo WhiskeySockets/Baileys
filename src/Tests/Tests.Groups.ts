@@ -1,13 +1,13 @@
 import { MessageType, GroupSettingChange, delay, ChatModification, whatsappID } from '../WAConnection/WAConnection'
 import * as assert from 'assert'
-import { WAConnectionTest, testJid } from './Common'
+import { WAConnectionTest, testJid, sendAndRetreiveMessage } from './Common'
 
 WAConnectionTest('Groups', (conn) => {
     let gid: string
     it('should create a group', async () => {
         const response = await conn.groupCreate('Cool Test Group', [testJid])
         assert.ok (conn.chats.get(response.gid))
-
+        
         const {chats} = await conn.loadChats(10, null)
         assert.strictEqual (chats[0].jid, response.gid) // first chat should be new group
 
@@ -24,18 +24,24 @@ WAConnectionTest('Groups', (conn) => {
         const metadata = await conn.groupMetadata(gid)
         assert.strictEqual(metadata.id, gid)
         assert.strictEqual(metadata.participants.filter((obj) => obj.id.split('@')[0] === testJid.split('@')[0]).length, 1)
+        assert.ok(conn.chats.get(gid))
+        assert.ok(conn.chats.get(gid).metadata)
     })
     it('should update the group description', async () => {
         const newDesc = 'Wow this was set from Baileys'
 
-        const waitForEvent = new Promise (resolve => {
-            conn.once ('group-update', ({jid, actor}) => {
-                if (jid === gid) {
-                    assert.ok (actor, conn.user.jid)
+        const waitForEvent = new Promise (resolve => (
+            conn.once ('group-update', ({jid, desc}) => {
+                if (jid === gid && desc) {
+                    assert.strictEqual(desc, newDesc)
+                    assert.strictEqual(
+                        conn.chats.get(jid).metadata.desc,
+                        newDesc
+                    )
                     resolve ()
                 }
             })
-        })
+        ))
         await conn.groupUpdateDescription (gid, newDesc)
         await waitForEvent
 
@@ -43,7 +49,7 @@ WAConnectionTest('Groups', (conn) => {
         assert.strictEqual(metadata.desc, newDesc)
     })
     it('should send a message on the group', async () => {
-        await conn.sendMessage(gid, 'hello', MessageType.text)
+        await sendAndRetreiveMessage(conn, 'Hello!', MessageType.text, {}, gid)
     })
     it('should quote a message on the group', async () => {
         const {messages} = await conn.loadMessages (gid, 100)
@@ -61,7 +67,8 @@ WAConnectionTest('Groups', (conn) => {
         const waitForEvent = new Promise (resolve => {
             conn.once ('chat-update', ({jid, name}) => {
                 if (jid === gid) {
-                    assert.strictEqual (name, subject)
+                    assert.strictEqual(name, subject)
+                    assert.strictEqual(conn.chats.get(jid).name, subject)
                     resolve ()
                 }
             })
@@ -78,6 +85,7 @@ WAConnectionTest('Groups', (conn) => {
             conn.once ('group-update', ({jid, announce}) => {
                 if (jid === gid) {
                     assert.strictEqual (announce, 'true')
+                    assert.strictEqual(conn.chats.get(gid).metadata.announce, announce)
                     resolve ()
                 }
             })
@@ -85,7 +93,7 @@ WAConnectionTest('Groups', (conn) => {
         await conn.groupSettingChange (gid, GroupSettingChange.messageSend, true)
         
         await waitForEvent
-        conn.removeAllListeners ('group-settings-update')
+        conn.removeAllListeners ('group-update')
 
         await delay (2000)
         await conn.groupSettingChange (gid, GroupSettingChange.settingsChange, true)
@@ -93,10 +101,17 @@ WAConnectionTest('Groups', (conn) => {
 
     it('should promote someone', async () => {
         const waitForEvent = new Promise (resolve => {
-            conn.once ('group-participants-update', ({ jid, action }) => {
+            conn.once ('group-participants-update', ({ jid, action, participants }) => {
                 if (jid === gid) {
                     assert.strictEqual (action, 'promote')
-                    resolve ()
+                    console.log(participants)
+                    console.log(conn.chats.get(jid).metadata)
+                    assert.ok(
+                        conn.chats.get(jid).metadata.participants.find(({ id, isAdmin }) => (
+                            whatsappID(id) === whatsappID(participants[0]) && isAdmin
+                        )),
+                    )
+                    resolve()
                 }
                 
             })
@@ -113,6 +128,10 @@ WAConnectionTest('Groups', (conn) => {
                     if (jid === gid) {
                         assert.strictEqual (participants[0], testJid)
                         assert.strictEqual (action, 'remove')
+                        assert.deepStrictEqual(
+                            conn.chats.get(jid).metadata.participants.find(p => whatsappID(p.id) === whatsappID(participants[0])),
+                            undefined
+                        )
                         resolve ()
                     }
                 })

@@ -89,7 +89,7 @@ export class WAConnection extends Base {
 
                 this.conn.on('message', data => this.onMessageRecieved(data as any))
                 
-                this.conn.on ('open', async () => {
+                this.conn.once('open', async () => {
                     this.startKeepAliveRequest()
                     this.logger.info(`connected to WhatsApp Web server, authenticating via ${reconnectID ? 'reconnect' : 'takeover'}`)
 
@@ -109,8 +109,8 @@ export class WAConnection extends Base {
                         )
                         
                         this.conn
-                            .removeAllListeners ('error')
-                            .removeAllListeners ('close')
+                            .removeAllListeners('error')
+                            .removeAllListeners('close')
                         this.stopDebouncedTimeout ()
                         resolve ({ ...authResult, ...chatsResult })
                     } catch (error) {

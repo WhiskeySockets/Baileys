@@ -1,7 +1,8 @@
 import {WAConnection as Base} from './7.MessagesExtra'
-import { WAMetric, WAFlag, WANode, WAGroupMetadata, WAGroupCreateResponse, WAGroupModification } from '../WAConnection/Constants'
+import { WAMetric, WAFlag, WANode, WAGroupMetadata, WAGroupCreateResponse, WAGroupModification, BaileysError } from '../WAConnection/Constants'
 import { GroupSettingChange } from './Constants'
 import { generateMessageID } from '../WAConnection/Utils'
+import { Mutex } from './Mutex'
 
 export class WAConnection extends Base {
     /** Generic function for group queries */
@@ -21,8 +22,26 @@ export class WAConnection extends Base {
         const result = await this.setQuery ([json], [WAMetric.group, 136], tag)
         return result
     }
-    /** Get the metadata of the group */
-    groupMetadata = (jid: string) => this.query({json: ['query', 'GroupMetadata', jid], expect200: true}) as Promise<WAGroupMetadata>
+    /** 
+     * Get the metadata of the group
+     * Baileys automatically caches & maintains this state
+     */
+    @Mutex(jid => jid)
+    async groupMetadata (jid: string) {
+        const chat = this.chats.get(jid)
+        let metadata = chat?.metadata
+        if (!metadata) {
+            if (chat?.read_only) {
+                metadata = await this.groupMetadataMinimal(jid)
+            } else {
+                metadata = await this.fetchGroupMetadataFromWA(jid)
+            }
+            if (chat) chat.metadata = metadata
+        }
+        return metadata
+    }
+    /** Get the metadata of the group from WA */
+    fetchGroupMetadataFromWA = (jid: string) => this.query({json: ['query', 'GroupMetadata', jid], expect200: true}) as Promise<WAGroupMetadata>
     /** Get the metadata (works after you've left the group also) */
     groupMetadataMinimal = async (jid: string) => {
         const query = ['query', {type: 'group', jid: jid, epoch: this.msgCount.toString()}, null]
@@ -49,18 +68,20 @@ export class WAConnection extends Base {
     groupCreate = async (title: string, participants: string[]) => {
         const response = await this.groupQuery('create', null, title, participants) as WAGroupCreateResponse
         const gid = response.gid
+        let metadata: WAGroupMetadata
         try {
-            await this.groupMetadata (gid)
+            metadata = await this.groupMetadata (gid)
         } catch (error) {
             this.logger.warn (`error in group creation: ${error}, switching gid & checking`)
             // if metadata is not available
             const comps = gid.replace ('@g.us', '').split ('-')
             response.gid = `${comps[0]}-${+comps[1] + 1}@g.us`
 
-            await this.groupMetadata (gid)
+            metadata = await this.groupMetadata (gid)
             this.logger.warn (`group ID switched from ${gid} to ${response.gid}`)
         }
         await this.chatAdd (response.gid, title)
+        this.chats.get(response.gid).metadata = metadata
         return response
     }
     /**
@@ -82,7 +103,7 @@ export class WAConnection extends Base {
      */
     groupUpdateSubject = async (jid: string, title: string) => {
         const chat = this.chats.get (jid)
-        if (chat?.name === title) throw new Error ('redundant change')
+        if (chat?.name === title) throw new BaileysError ('redundant change', { status: 400 })
         
         const response = await this.groupQuery('subject', jid, title)
         if (chat) chat.name = title

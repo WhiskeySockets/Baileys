@@ -48,7 +48,9 @@ export class WAConnection extends Base {
                     chat.messages = oldChat.messages
                     if (oldChat.t !== chat.t || oldChat.modify_tag !== chat.modify_tag) {
                         const changes = shallowChanges (oldChat, chat)
+                        delete chat.metadata // remove group metadata as that may have changed; TODO, write better mechanism for this
                         delete changes.messages
+
                         updatedChats.push({ ...changes, jid: chat.jid })
                     }
                 }
@@ -138,28 +140,27 @@ export class WAConnection extends Base {
         // new messages
         this.on('CB:action,add:relay,message', json => {
             const message = json[2][0][2] as WAMessage
-            const jid = whatsappID( message.key.remoteJid )
-            if (jid.endsWith('@s.whatsapp.net')) {
-                const contact = this.contacts[jid]
-                if (contact && contact?.lastKnownPresence === Presence.composing) {
-                    contact.lastKnownPresence = Presence.available
-                }
-            }
             this.chatAddMessageAppropriate (message)
         })
         this.on('CB:Chat,cmd:action', json => {
             const data = json[1].data
             if (data) {
-                const emitGroupParticipantsUpdate = (action: WAParticipantAction) => this.emit(
-                    'group-participants-update', 
-                    { participants: data[2].participants.map(whatsappID), actor: data[1], jid: json[1].id, action }
-                )
+                const emitGroupParticipantsUpdate = (action: WAParticipantAction) => this.emitParticipantsUpdate
+                (json[1].id, data[2].participants.map(whatsappID), action)
+                const emitGroupUpdate = (data: Partial<WAGroupMetadata>) => this.emitGroupUpdate(json[1].id, data)
+
                 switch (data[0]) {
                     case "promote":
                         emitGroupParticipantsUpdate('promote')
                         break
                     case "demote":
                         emitGroupParticipantsUpdate('demote')
+                        break
+                    case "desc_add":
+                        emitGroupUpdate({ ...data[2], descOwner: data[1] })
+                        break
+                    default:
+                        this.logger.debug({ unhandled: true }, json)
                         break
                 }
             }
@@ -324,26 +325,24 @@ export class WAConnection extends Base {
         // emit deprecated
         this.emit('user-presence-update', update)
         
-        const contact = this.contacts[jid]
-        if (contact && jid.endsWith('@s.whatsapp.net')) { // if its a single chat
-            if (update.t) contact.lastSeen = +update.t
-            else if (update.type === Presence.unavailable && contact.lastKnownPresence !== Presence.unavailable) {
-                contact.lastSeen = unixTimestampSeconds()
+        const chat = this.chats.get(chatId)
+        if (chat && jid.endsWith('@s.whatsapp.net')) { // if its a single chat
+            chat.presences = chat.presences || {}
+            
+            const presence = { ...(chat.presences[jid] || {}) } as WAPresenceData 
+            if (update.t) presence.lastSeen = +update.t
+            else if (update.type === Presence.unavailable && presence.lastKnownPresence !== Presence.unavailable) {
+                presence.lastSeen = unixTimestampSeconds()
             }
-            contact.lastKnownPresence = update.type
-            const presence: WAPresenceData = { 
-                lastKnownPresence: contact.lastKnownPresence, 
-                lastSeen: contact.lastSeen,
-                name: contact.name || contact.vname || contact.notify
-            }
+            presence.lastKnownPresence = update.type
 
-            const chat = this.chats.get(chatId)
-            if (chat) {
-                chat.presences = chat.presences || {}
-                chat.presences[jid] = presence
-
-                return { jid: chatId, presences: { [jid]: presence } } as Partial<WAChat>
+            const contact = this.contacts[jid]
+            if (contact) {
+                presence.name = contact.name || contact.notify || contact.vname
             }
+            
+            chat.presences[jid] = presence
+            return { jid: chatId, presences: { [jid]: presence } } as Partial<WAChat>
         }
     }
     protected forwardStatusUpdate (update: WAMessageStatusUpdate) {
@@ -366,12 +365,13 @@ export class WAConnection extends Base {
             spam: 'false',
             name
         }
+
         this.chats.insert (chat)
         if (this.loadProfilePicturesForChatsAutomatically) {
             await this.setProfilePicture (chat)
         }
+        
         this.emit ('chat-new', chat)
-
         return chat
     }
     /** find a chat or return an error */
@@ -395,9 +395,10 @@ export class WAConnection extends Base {
             chat.count += 1
             chatUpdate.count = chat.count
 
-            const contact = this.contacts[message.participant || chat.jid]
+            const participant = whatsappID(message.participant || chat.jid)
+            const contact = chat.presences && chat.presences[participant]
             if (contact?.lastKnownPresence === Presence.composing) { // update presence
-                const update = this.applyingPresenceUpdate({ id: chat.jid, participant: message.participant || chat.jid, type: Presence.available })
+                const update = this.applyingPresenceUpdate({ id: chat.jid, participant, type: Presence.available })
                 update && Object.assign(chatUpdate, update)
             }
         }
@@ -446,10 +447,12 @@ export class WAConnection extends Base {
             // check if the message is an action 
             if (message.messageStubType) {
                 const jid = chat.jid
-                let actor = whatsappID (message.participant)
+                //let actor = whatsappID (message.participant)
                 let participants: string[]
-                const emitParticipantsUpdate = (action: WAParticipantAction) => this.emit ('group-participants-update', { jid, actor, participants, action })
-                const emitGroupUpdate = (update: Partial<WAGroupMetadata>) => this.emit ('group-update', { jid, actor, ...update })
+                const emitParticipantsUpdate = (action: WAParticipantAction) => (
+                    this.emitParticipantsUpdate(jid, participants, action)
+                )
+                const emitGroupUpdate = (update: Partial<WAGroupMetadata>) => this.emitGroupUpdate(jid, update)
                 
                 switch (message.messageStubType) {
                     case WA_MESSAGE_STUB_TYPE.GROUP_PARTICIPANT_LEAVE:
@@ -480,20 +483,46 @@ export class WAConnection extends Base {
                         const restrict = message.messageStubParameters[0] === 'on' ? 'true' : 'false'
                         emitGroupUpdate({ restrict })
                         break
-                    case WA_MESSAGE_STUB_TYPE.GROUP_CHANGE_DESCRIPTION:
-                        const desc = message.messageStubParameters[0]
-                        emitGroupUpdate({ desc })
-                        break
                     case WA_MESSAGE_STUB_TYPE.GROUP_CHANGE_SUBJECT:
                     case WA_MESSAGE_STUB_TYPE.GROUP_CREATE:
                         chat.name = message.messageStubParameters[0]
                         chatUpdate.name = chat.name
+                        if (chat.metadata) chat.metadata.subject = chat.name
                         break
                 }
             }
         }
 
         this.emit('chat-update', chatUpdate)
+    }
+    protected emitParticipantsUpdate = (jid: string, participants: string[], action: WAParticipantAction) => {
+        const chat = this.chats.get(jid)
+        const meta = chat?.metadata
+        if (meta) {
+            switch (action) {
+                case 'add':
+                    participants.forEach(id => (
+                        meta.participants.push({ id, isAdmin: false, isSuperAdmin: false })
+                    ))
+                    break
+                case 'remove':
+                    meta.participants = meta.participants.filter(p => !participants.includes(whatsappID(p.id)))
+                    break
+                case 'promote':
+                case 'demote':
+                    const isAdmin = action==='promote'
+                    meta.participants.forEach(p => {
+                        if (participants.includes(whatsappID(p.id))) p.isAdmin = isAdmin
+                    })
+                    break
+            }
+        }
+        this.emit ('group-participants-update', { jid, participants, action })
+    }
+    protected emitGroupUpdate = (jid: string, update: Partial<WAGroupMetadata>) => {
+        const chat = this.chats.get(jid)
+        if (chat.metadata) Object.assign(chat.metadata, update)
+        this.emit ('group-update', { jid, ...update })
     }
     protected chatUpdatedMessage (messageIDs: string[], status: WA_MESSAGE_STATUS_TYPE, chat: WAChat) {
         for (let id of messageIDs) {

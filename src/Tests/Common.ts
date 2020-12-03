@@ -30,13 +30,13 @@ export const makeConnection = () => {
     return conn
 }
 
-export async function sendAndRetreiveMessage(conn: WAConnection, content, type: MessageType, options: MessageOptions = {}) {
-    const response = await conn.sendMessage(testJid, content, type, options)
-    const {messages} = await conn.loadMessages(testJid, 10)
+export async function sendAndRetreiveMessage(conn: WAConnection, content, type: MessageType, options: MessageOptions = {}, recipientJid = testJid) {
+    const response = await conn.sendMessage(recipientJid, content, type, options)
+    const {messages} = await conn.loadMessages(recipientJid, 10)
     const message = messages.find (m => m.key.id === response.key.id)
     assert.ok(message)
 
-    const chat = conn.chats.get(testJid)
+    const chat = conn.chats.get(recipientJid)
 
     assert.ok (chat.messages.get(GET_MESSAGE_ID(message.key)))
     assert.ok (chat.t >= (unixTimestampSeconds()-5) )

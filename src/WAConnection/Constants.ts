@@ -180,7 +180,7 @@ export interface WAGroupMetadata {
     restrict?: 'true' | 'false' 
     /** is set when the group only allows admins to write messages */
     announce?: 'true' | 'false' 
-    participants: [{ id: string; isAdmin: boolean; isSuperAdmin: boolean }]
+    participants: { id: string; isAdmin: boolean; isSuperAdmin: boolean }[]
 }
 export interface WAGroupModification {
     status: number
@@ -191,7 +191,7 @@ export interface WAPresenceData {
     lastSeen?: number
     name?: string
 }
-export interface WAContact extends WAPresenceData {
+export interface WAContact {
     verify?: string
     /** name of the contact, the contact has set on their own on WA */
     notify?: string
@@ -227,6 +227,7 @@ export interface WAChat {
     messages: KeyedDB<WAMessage, string>
     imgUrl?: string
     presences?: { [k: string]: WAPresenceData }
+    metadata?: WAGroupMetadata
 }
 export type WAChatUpdate = Partial<WAChat> & { jid: string, hasNewMessage?: boolean }
 export enum WAMetric {
