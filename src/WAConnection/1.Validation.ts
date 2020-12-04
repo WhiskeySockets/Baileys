@@ -33,6 +33,7 @@ export class WAConnection extends Base {
                 this.generateKeysForAuth (ref, ttl)
             }
         })();
+        let loginTag: string
         if (canLogin) {
             // if we have the info to restore a closed session
             const json = [
@@ -42,7 +43,7 @@ export class WAConnection extends Base {
                 this.authInfo?.serverToken,
                 this.authInfo?.clientID,
             ]
-            const tag = this.generateMessageTag(true)
+            loginTag = this.generateMessageTag(true)
             
             if (reconnect) json.push(...['reconnect', reconnect.replace('@s.whatsapp.net', '@c.us')])
             else json.push ('takeover')
@@ -52,8 +53,12 @@ export class WAConnection extends Base {
                     this.logger.warn('Received login timeout req when WS not open, ignoring...')
                     return
                 }
+                if (this.state === 'open') {
+                    this.logger.warn('Received login timeout req when state=open, ignoring...')
+                    return
+                }
                 this.logger.debug('sending login request')
-                this.sendJSON(json, tag)
+                this.sendJSON(json, loginTag)
                 this.initTimeout = setTimeout(sendLoginReq, 10_000)
             }
             sendLoginReq()
@@ -62,7 +67,13 @@ export class WAConnection extends Base {
         await initQuery
 
         // wait for response with tag "s1"
-        let response = await this.waitForMessage('s1', false, undefined)
+        let response = await Promise.race(
+            [
+                this.waitForMessage('s1', false, undefined),
+                loginTag && this.waitForMessage(loginTag, false, undefined)
+            ]
+            .filter(Boolean)
+        )
         this.startDebouncedTimeout()
         this.initTimeout && clearTimeout (this.initTimeout)
         this.initTimeout = null
