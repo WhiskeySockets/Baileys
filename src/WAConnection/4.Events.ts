@@ -374,6 +374,11 @@ export class WAConnection extends Base {
         this.emit ('chat-new', chat)
         return chat
     }
+    protected contactAddOrGet (jid: string) {
+        jid = whatsappID(jid)
+        if (!this.contacts[jid]) this.contacts[jid] = { jid }
+        return this.contacts[jid]
+    }
     /** find a chat or return an error */
     protected assertChatGet = jid => {
         const chat = this.chats.get (jid)
@@ -501,18 +506,18 @@ export class WAConnection extends Base {
         if (meta) {
             switch (action) {
                 case 'add':
-                    participants.forEach(id => (
-                        meta.participants.push({ id, isAdmin: false, isSuperAdmin: false })
+                    participants.forEach(jid => (
+                        meta.participants.push({ ...this.contactAddOrGet(jid), isAdmin: false, isSuperAdmin: false })
                     ))
                     break
                 case 'remove':
-                    meta.participants = meta.participants.filter(p => !participants.includes(whatsappID(p.id)))
+                    meta.participants = meta.participants.filter(p => !participants.includes(p.jid))
                     break
                 case 'promote':
                 case 'demote':
                     const isAdmin = action==='promote'
                     meta.participants.forEach(p => {
-                        if (participants.includes(whatsappID(p.id))) p.isAdmin = isAdmin
+                        if (participants.includes( p.jid )) p.isAdmin = isAdmin
                     })
                     break
             }

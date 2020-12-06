@@ -168,6 +168,7 @@ export interface WAGroupCreateResponse {
     gid?: string
     participants?: [{ [key: string]: any }]
 }
+export type WAGroupParticipant = (WAContact & { isAdmin: boolean; isSuperAdmin: boolean })
 export interface WAGroupMetadata {
     id: string
     owner: string
@@ -180,7 +181,8 @@ export interface WAGroupMetadata {
     restrict?: 'true' | 'false' 
     /** is set when the group only allows admins to write messages */
     announce?: 'true' | 'false' 
-    participants: { id: string; isAdmin: boolean; isSuperAdmin: boolean }[]
+    // Baileys modified array
+    participants: WAGroupParticipant[]
 }
 export interface WAGroupModification {
     status: number

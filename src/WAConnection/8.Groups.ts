@@ -1,7 +1,7 @@
 import {WAConnection as Base} from './7.MessagesExtra'
 import { WAMetric, WAFlag, WANode, WAGroupMetadata, WAGroupCreateResponse, WAGroupModification, BaileysError } from '../WAConnection/Constants'
 import { GroupSettingChange } from './Constants'
-import { generateMessageID } from '../WAConnection/Utils'
+import { generateMessageID, whatsappID } from '../WAConnection/Utils'
 import { Mutex } from './Mutex'
 
 export class WAConnection extends Base {
@@ -41,7 +41,13 @@ export class WAConnection extends Base {
         return metadata
     }
     /** Get the metadata of the group from WA */
-    fetchGroupMetadataFromWA = (jid: string) => this.query({json: ['query', 'GroupMetadata', jid], expect200: true}) as Promise<WAGroupMetadata>
+    fetchGroupMetadataFromWA = async (jid: string) => {
+        const metadata = await this.query({json: ['query', 'GroupMetadata', jid], expect200: true}) 
+        metadata.participants = metadata.participants.map(p => (
+            { ...this.contactAddOrGet(p.id), ...p }
+        ))
+        return metadata as WAGroupMetadata
+    }
     /** Get the metadata (works after you've left the group also) */
     groupMetadataMinimal = async (jid: string) => {
         const query = ['query', {type: 'group', jid: jid, epoch: this.msgCount.toString()}, null]
@@ -56,8 +62,10 @@ export class WAConnection extends Base {
             creator: creatorDesc?.creator,
             creation: parseInt(creatorDesc?.create),
             subject: null,
-            desc: description ? description[2].toString('utf-8') : null,
-            participants: participants.map (item => ({ id: item[1].jid, isAdmin: item[1].type==='admin' }))
+            desc: description && description[2].toString('utf-8'),
+            participants: participants.map (item => (
+                { ...this.contactAddOrGet(item[1].jid), isAdmin: item[1].type === 'admin' }
+            ))
         } as WAGroupMetadata
     }
     /**
