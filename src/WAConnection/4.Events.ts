@@ -331,7 +331,7 @@ export class WAConnection extends Base {
             
             const presence = { ...(chat.presences[jid] || {}) } as WAPresenceData 
             if (update.t) presence.lastSeen = +update.t
-            else if (update.type === Presence.unavailable && presence.lastKnownPresence !== Presence.unavailable) {
+            else if (update.type === Presence.unavailable && (presence.lastKnownPresence === Presence.available || presence.lastKnownPresence === Presence.composing)) {
                 presence.lastSeen = unixTimestampSeconds()
             }
             presence.lastKnownPresence = update.type
