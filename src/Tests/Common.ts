@@ -54,6 +54,8 @@ export const WAConnectionTest = (name: string, func: (conn: WAConnection) => voi
             await fs.writeFile(file, JSON.stringify(conn.base64EncodedAuthInfo(), null, '\t'))
         })
         after(() => conn.close())
+
+        afterEach (() => assertChatDBIntegrity (conn))
         
         func(conn)
     })

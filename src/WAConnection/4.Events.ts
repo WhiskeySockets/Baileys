@@ -97,7 +97,7 @@ export class WAConnection extends Base {
                             message['epoch'] = prevEpoch+1000 
                         }
                         if (chat.messages.get(mKeyID)) {
-                            chat.messages.delete(message)
+                            chat.messages.delete(chat.messages.get(mKeyID))
                             overlaps[jid] = { ...(overlaps[jid] || { requiresOverlap: true }), didOverlap: true }
                         }
 

@@ -2,9 +2,10 @@ import { Presence, ChatModification, delay, newMessagesDB } from '../WAConnectio
 import { promises as fs } from 'fs'
 import * as assert from 'assert'
 import fetch from 'node-fetch'
-import { WAConnectionTest, testJid } from './Common'
+import { WAConnectionTest, testJid, assertChatDBIntegrity } from './Common'
 
-WAConnectionTest('Misc', (conn) => {
+WAConnectionTest('Misc', conn => {
+
     it('should tell if someone has an account on WhatsApp', async () => {
         const response = await conn.isOnWhatsApp(testJid)
         assert.strictEqual(response, true)
@@ -159,7 +160,9 @@ WAConnectionTest('Misc', (conn) => {
     // this test requires quite a few messages with the test JID
     it('should detect overlaps and clear messages accordingly', async () => {
         // wait for chats
-        await new Promise(resolve => conn.once('chats-received', resolve))
+        await new Promise(resolve => (
+            conn.once('chats-received', ({ hasReceivedLastMessage }) => hasReceivedLastMessage && resolve())
+        ))
 
         conn.maxCachedMessages = 100
 
@@ -174,7 +177,7 @@ WAConnectionTest('Misc', (conn) => {
         // remove all latest messages
         chat.messages = newMessagesDB( chat.messages.all().slice(0, 20) )
 
-        const task = new Promise((resolve, reject) => (
+        const task = new Promise(resolve => (
             conn.on('chats-received', ({ hasReceivedLastMessage, chatsWithMissingMessages }) => {
                 if (hasReceivedLastMessage) {
                     assert.strictEqual(Object.keys(chatsWithMissingMessages).length, 1)
@@ -191,6 +194,7 @@ WAConnectionTest('Misc', (conn) => {
         ))
 
         await conn.connect()
+
         await task
     })
 })

@@ -23,7 +23,7 @@ WAConnectionTest('Groups', (conn) => {
     it('should retreive group metadata', async () => {
         const metadata = await conn.groupMetadata(gid)
         assert.strictEqual(metadata.id, gid)
-        assert.strictEqual(metadata.participants.filter((obj) => obj.id.split('@')[0] === testJid.split('@')[0]).length, 1)
+        assert.strictEqual(metadata.participants.filter((obj) => obj.jid.split('@')[0] === testJid.split('@')[0]).length, 1)
         assert.ok(conn.chats.get(gid))
         assert.ok(conn.chats.get(gid).metadata)
     })
@@ -107,8 +107,8 @@ WAConnectionTest('Groups', (conn) => {
                     console.log(participants)
                     console.log(conn.chats.get(jid).metadata)
                     assert.ok(
-                        conn.chats.get(jid).metadata.participants.find(({ id, isAdmin }) => (
-                            whatsappID(id) === whatsappID(participants[0]) && isAdmin
+                        conn.chats.get(jid).metadata.participants.find(({ jid, isAdmin }) => (
+                            whatsappID(jid) === whatsappID(participants[0]) && isAdmin
                         )),
                     )
                     resolve()
@@ -122,14 +122,14 @@ WAConnectionTest('Groups', (conn) => {
 
     it('should remove someone from a group', async () => {
         const metadata = await conn.groupMetadata (gid)
-        if (metadata.participants.find(({id}) => whatsappID(id) === testJid)) {
+        if (metadata.participants.find(({jid}) => whatsappID(jid) === testJid)) {
             const waitForEvent = new Promise (resolve => {
                 conn.once ('group-participants-update', ({jid, participants, action}) => {
                     if (jid === gid) {
                         assert.strictEqual (participants[0], testJid)
                         assert.strictEqual (action, 'remove')
                         assert.deepStrictEqual(
-                            conn.chats.get(jid).metadata.participants.find(p => whatsappID(p.id) === whatsappID(participants[0])),
+                            conn.chats.get(jid).metadata.participants.find(p => whatsappID(p.jid) === whatsappID(participants[0])),
                             undefined
                         )
                         resolve ()

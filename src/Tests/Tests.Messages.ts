@@ -5,8 +5,6 @@ import { WAConnectionTest, testJid, sendAndRetreiveMessage, assertChatDBIntegrit
 
 WAConnectionTest('Messages', conn => {
 
-    afterEach (() => assertChatDBIntegrity (conn))
-
     it('should send a text message', async () => {
         const message = await sendAndRetreiveMessage(conn, 'hello fren', MessageType.text)
         assert.strictEqual(message.message.conversation || message.message.extendedTextMessage?.text, 'hello fren')
@@ -190,14 +188,22 @@ WAConnectionTest('Messages', conn => {
         ])
         assert.strictEqual (results[0].messages.length, results[1].messages.length)
         for (let i = 0; i < results[1].messages.length;i++) {
-            assert.deepStrictEqual (results[0].messages[i], results[1].messages[i], `failed equal at ${i}`)
+            assert.deepStrictEqual (
+                results[0].messages[i].key, 
+                results[1].messages[i].key, 
+                `failed equal at ${i}`
+            )
         }
         assert.ok (results[0].messages.length <= 50)
 
         // check if messages match server
         let msgs = await conn.fetchMessagesFromWA (testJid, 50)
         for (let i = 0; i < results[1].messages.length;i++) {
-            assert.deepStrictEqual (results[0].messages[i].key, msgs[i].key, `failed equal at ${i}`)
+            assert.deepStrictEqual (
+                results[0].messages[i].key,
+                msgs[i].key, 
+                `failed equal at ${i}`
+            )
         }
         // check with some arbitary cursors
         let cursor = results[0].messages.slice(-1)[0].key
@@ -205,7 +211,11 @@ WAConnectionTest('Messages', conn => {
         msgs = await conn.fetchMessagesFromWA (testJid, 20, cursor)
         let {messages} = await conn.loadMessages (testJid, 20, cursor)
         for (let i = 0; i < messages.length;i++) {
-            assert.deepStrictEqual (messages[i].key, msgs[i].key, `failed equal at ${i}`)
+            assert.deepStrictEqual (
+                messages[i].key, 
+                msgs[i].key, 
+                `failed equal at ${i}`
+            )
         }
         for (let i = 0; i < 3;i++) {
             cursor = results[0].messages[i].key
