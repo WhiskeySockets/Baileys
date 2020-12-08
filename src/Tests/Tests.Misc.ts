@@ -1,4 +1,4 @@
-import { Presence, ChatModification, delay } from '../WAConnection/WAConnection'
+import { Presence, ChatModification, delay, newMessagesDB } from '../WAConnection/WAConnection'
 import { promises as fs } from 'fs'
 import * as assert from 'assert'
 import fetch from 'node-fetch'
@@ -155,5 +155,42 @@ WAConnectionTest('Misc', (conn) => {
         await assert.rejects (
             conn.generateLinkPreview ('I sent links to https://teachyourselfcs.com/ and https://www.fast.ai/')
         )
+    })
+    // this test requires quite a few messages with the test JID
+    it('should detect overlaps and clear messages accordingly', async () => {
+        // wait for chats
+        await new Promise(resolve => conn.once('chats-received', resolve))
+
+        conn.maxCachedMessages = 100
+
+        const chat = conn.chats.get(testJid)
+        const oldCount = chat.messages.length
+        console.log(`test chat has ${oldCount} pre-loaded messages`)
+        // load 100 messages
+        await conn.loadMessages(testJid, 100, undefined)
+        assert.strictEqual(chat.messages.length, 100)
+        
+        conn.close()
+        // remove all latest messages
+        chat.messages = newMessagesDB( chat.messages.all().slice(0, 20) )
+
+        const task = new Promise((resolve, reject) => (
+            conn.on('chats-received', ({ hasReceivedLastMessage, chatsWithMissingMessages }) => {
+                if (hasReceivedLastMessage) {
+                    assert.strictEqual(Object.keys(chatsWithMissingMessages).length, 1)
+                    const missing = chatsWithMissingMessages.find(({ jid }) => jid === testJid)
+                    assert.ok(missing, 'missing message not detected')
+                    assert.strictEqual(
+                        conn.chats.get(testJid).messages.length,
+                        missing.count
+                    )
+                    assert.strictEqual(missing.count, oldCount)
+                    resolve()
+                }
+            })
+        ))
+
+        await conn.connect()
+        await task
     })
 })

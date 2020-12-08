@@ -1,5 +1,5 @@
 import {WAConnection as Base} from './6.MessagesSend'
-import { MessageType, WAMessageKey, MessageInfo, WAMessageContent, WAMetric, WAFlag, WANode, WAMessage, WAMessageProto, ChatModification, BaileysError } from './Constants'
+import { MessageType, WAMessageKey, MessageInfo, WAMessageContent, WAMetric, WAFlag, WANode, WAMessage, WAMessageProto, ChatModification, BaileysError, WAChatIndex } from './Constants'
 import { whatsappID, delay, toNumber, unixTimestampSeconds, GET_MESSAGE_ID, WA_MESSAGE_ID, isGroupID } from './Utils'
 import { Mutex } from './Mutex'
 
@@ -19,7 +19,7 @@ export class WAConnection extends Base {
     @Mutex ((jid, messageID) => jid+messageID)
     async messageInfo (jid: string, messageID: string) {
         const query = ['query', {type: 'message_info', index: messageID, jid: jid, epoch: this.msgCount.toString()}, null]
-        const response = (await this.query ({json: query, binaryTags: [22, WAFlag.ignore], expect200: true}))[2]
+        const [,,response] = await this.query ({json: query, binaryTags: [WAMetric.queryRead, WAFlag.ignore], expect200: true})
 
         const info: MessageInfo = {reads: [], deliveries: []}
         if (response) {
@@ -44,10 +44,12 @@ export class WAConnection extends Base {
         jid = whatsappID (jid)
         const chat = this.assertChatGet (jid)
 
-        const message = (await this.loadMessages(jid, 1)).messages[0]
-        const count = type === 'unread' ? -2 : Math.abs(chat.count)
+        const count = type === 'unread' ? '-2' : Math.abs(chat.count).toString()
         if (type === 'unread' || chat.count !== 0) {
-            await this.sendReadReceipt (jid, message.key, count)
+            const idx = await this.getChatIndex(jid)
+            await this.setQuery ([
+                ['read', { jid, count, ...idx, participant: undefined }, null]
+            ], [ WAMetric.read, WAFlag.ignore ])
         }
         chat.count = type === 'unread' ? -1 : 0
         this.emit ('chat-update', {jid, count: chat.count})
@@ -55,6 +57,7 @@ export class WAConnection extends Base {
     /**
      * Sends a read receipt for a given message;
      * does not update the chat do @see chatRead
+     * @deprecated just use chatRead()
      * @param jid the ID of the person/group whose message you want to mark read
      * @param messageKey the key of the message
      * @param count number of messages to read, set to < 0 to unread a message
@@ -124,7 +127,7 @@ export class WAConnection extends Base {
                     const m = extra[i]
                     fepoch -= 1
                     m['epoch'] = fepoch
-                    
+
                     if(chat.messages.length < this.maxCachedMessages && !chat.messages.get (WA_MESSAGE_ID(m))) {
                         chat.messages.insert(m)
                     }
@@ -374,14 +377,8 @@ export class WAConnection extends Base {
                 break
             default:
                 chatAttrs.type = type
-                const msg = (await this.loadMessages(jid, 1)).messages[0]
-                if (msg) {
-                    chatAttrs.index = msg.key.id
-                    chatAttrs.owner = msg.key.fromMe.toString()
-                }
-                if (isGroupID(jid)) {
-                    chatAttrs.participant = whatsappID(msg.participant || msg.key.participant)
-                }
+                const index = await this.getChatIndex(jid)
+                chatAttrs = { ...chatAttrs, ...index }
                 break
         }
 
@@ -398,5 +395,17 @@ export class WAConnection extends Base {
             }
         }
         return response
+    }
+    protected async getChatIndex (jid: string): Promise<WAChatIndex> {
+        const chatAttrs = {} as WAChatIndex
+        const { messages: [msg] } = await this.loadMessages(jid, 1)
+        if (msg) {
+            chatAttrs.index = msg.key.id
+            chatAttrs.owner = msg.key.fromMe.toString() as 'true' | 'false'
+        }
+        if (isGroupID(jid)) {
+            chatAttrs.participant = msg.key.fromMe ? this.user?.jid : whatsappID(msg.participant || msg.key.participant)
+        }
+        return chatAttrs
     }
 }

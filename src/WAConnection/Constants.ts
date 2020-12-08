@@ -231,6 +231,7 @@ export interface WAChat {
     presences?: { [k: string]: WAPresenceData }
     metadata?: WAGroupMetadata
 }
+export type WAChatIndex = { index: string, owner: 'true' | 'false', participant?: string }
 export type WAChatUpdate = Partial<WAChat> & { jid: string, hasNewMessage?: boolean }
 export enum WAMetric {
     debugLog = 1,
@@ -254,6 +255,7 @@ export enum WAMetric {
     queryGroup = 19,
     queryPreview = 20,
     queryEmoji = 21,
+    queryRead = 22,
     queryVCard = 29,
     queryStatus = 30,
     queryStatusUpdate = 31,

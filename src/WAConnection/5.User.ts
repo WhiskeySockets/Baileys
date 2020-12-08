@@ -1,5 +1,5 @@
 import {WAConnection as Base} from './4.Events'
-import { Presence, WABroadcastListInfo, WAProfilePictureChange, WALoadChatOptions } from './Constants'
+import { Presence, WABroadcastListInfo, WAProfilePictureChange, WALoadChatOptions, WAChatIndex } from './Constants'
 import {
     WAMessage,
     WANode,

@@ -64,8 +64,15 @@ export class WAConnection extends Base {
         })
         // we store these last messages
         const lastMessages = {}
+        // keep track of overlaps, 
+        // if there are no overlaps of messages and we had messages present, we clear the previous messages
+        // this prevents missing messages in conversations
+        let overlaps: { [_: string]: { requiresOverlap: boolean, didOverlap?: boolean } } = {}
         // messages received
-        const messagesUpdate = (json, style: 'prepend' | 'append') => {
+        const messagesUpdate = (json, style: 'previous' | 'last') => {
+            if (style === 'last') {
+                overlaps = {}
+            }
             const isLast = json[1].last
             const messages = json[2] as WANode[]
             if (messages) {
@@ -74,17 +81,26 @@ export class WAConnection extends Base {
                     const jid = message.key.remoteJid
                     const chat = this.chats.get(jid)
                     const mKeyID = WA_MESSAGE_ID(message)
-                    if (chat && !chat.messages.get(mKeyID)) {
-                        if (style === 'prepend') {
+                    if (chat) {
+                        if (style === 'previous') {
                             const fm = chat.messages.get(lastMessages[jid])
                             if (!fm) return
                             const prevEpoch = fm['epoch']
                             message['epoch'] = prevEpoch-1
-                        } else if (style === 'append') {
+                        } else if (style === 'last') {
+                            // no overlap required, if there were no previous messages
+                            overlaps[jid] = { requiresOverlap: chat.messages.length > 0 }
+                            
                             const lm = chat.messages.all()[chat.messages.length-1]
                             const prevEpoch = (lm && lm['epoch']) || 0
-                            message['epoch'] = prevEpoch+100 // hacky way to allow more previous messages
+                            // hacky way to allow more previous messages
+                            message['epoch'] = prevEpoch+1000 
                         }
+                        if (chat.messages.get(mKeyID)) {
+                            chat.messages.delete(message)
+                            overlaps[jid] = { ...(overlaps[jid] || { requiresOverlap: true }), didOverlap: true }
+                        }
+
                         chat.messages.insert (message)
                         
                         updates[jid] = updates[jid] || newMessagesDB()
@@ -100,12 +116,27 @@ export class WAConnection extends Base {
                 }
             }
             if (isLast) {
-                this.emit('chats-received', { hasReceivedLastMessage: true })
+                // find which chats had missing messages
+                // list out all the jids, and how many messages we've cached now
+                const chatsWithMissingMessages = Object.keys(overlaps).map(jid => {
+                    // if there was no overlap, delete previous messages
+                    if (!overlaps[jid].didOverlap && overlaps[jid].requiresOverlap) {
+                        this.logger.debug(`received messages for ${jid}, but did not overlap with previous messages, clearing...`)
+                        const chat = this.chats.get(jid)
+                        if (chat) {
+                            const message = chat.messages.get(lastMessages[jid])
+                            const remainingMessages = chat.messages.paginatedByValue(message, this.maxCachedMessages, undefined, 'after')
+                            chat.messages = newMessagesDB([message, ...remainingMessages])
+                            return { jid, count: chat.messages.length } // return number of messages we've left
+                        }
+                    }
+                }).filter(Boolean)
+                this.emit('chats-received', { hasReceivedLastMessage: true, chatsWithMissingMessages })
             }
         }
-        this.on('CB:action,add:last', json =>  messagesUpdate(json, 'append'))
-        this.on('CB:action,add:before', json => messagesUpdate(json, 'prepend'))
-        this.on('CB:action,add:unread', json => messagesUpdate(json, 'prepend'))
+        this.on('CB:action,add:last', json =>  messagesUpdate(json, 'last'))
+        this.on('CB:action,add:before', json => messagesUpdate(json, 'previous'))
+        this.on('CB:action,add:unread', json => messagesUpdate(json, 'previous'))
 
         // contacts received
         this.on('CB:response,type:contacts', json => {
@@ -575,7 +606,7 @@ export class WAConnection extends Base {
     /** when contacts are sent by WA */
     on (event: 'contacts-received', listener: () => void): this
     /** when chats are sent by WA, and when all messages are received */
-    on (event: 'chats-received', listener: (update: {hasNewChats?: boolean, hasReceivedLastMessage?: boolean}) => void): this
+    on (event: 'chats-received', listener: (update: {hasNewChats?: boolean, hasReceivedLastMessage?: boolean, chatsWithMissingMessages: { jid: string, count: number }[] }) => void): this
     /** when multiple chats are updated (new message, updated message, deleted, pinned, etc) */
     on (event: 'chats-update', listener: (chats: WAChatUpdate[]) => void): this
     /** when a chat is updated (new message, updated message, deleted, pinned, presence updated etc) */
