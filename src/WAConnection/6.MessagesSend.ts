@@ -59,7 +59,9 @@ export class WAConnection extends Base {
                     if (options.detectLinks !== false && message.text.match(URL_REGEX)) {
                         try {
                             message = await this.generateLinkPreview (message.text)
-                        } catch { } // ignore if fails
+                        } catch (error) { // ignore if fails
+                            this.logger.trace(`failed to generate link preview for message '${message.text}': ${error}`)
+                        } 
                     }
                     m.extendedTextMessage = WAMessageProto.ExtendedTextMessage.fromObject(message as any)
                 } else {
