@@ -254,8 +254,7 @@ To note:
     ``` ts
     const info: MessageOptions = {
         quoted: quotedMessage, // the message you want to quote
-        contextInfo: { forwardingScore: 2, isForwarded: true }, // some random context info 
-        // (can show a forwarded message with this too)
+        contextInfo: { forwardingScore: 2, isForwarded: true }, // some random context info (can show a forwarded message with this too)
         timestamp: Date(), // optional, if you want to manually set the timestamp of the message
         caption: "hello there!", // (for media messages) the caption to send with the media (cannot be sent with stickers though)
         thumbnail: "23GD#4/==", /*  (for location & media messages) has to be a base 64 encoded JPEG if you want to send a custom thumb, 
@@ -263,13 +262,16 @@ To note:
                                     Do not enter this field if you want to automatically generate a thumb
                                 */
         mimetype: Mimetype.pdf, /* (for media messages) specify the type of media (optional for all media types except documents),
-                                        import {Mimetype} from '@adiwajshing/baileys'
+                                    import {Mimetype} from '@adiwajshing/baileys'
                                 */
         filename: 'somefile.pdf', // (for media messages) file name for the media
         /* will send audio messages as voice notes, if set to true */
         ptt: true,
         // will detect links & generate a link preview automatically (default true)
-        detectLinks: true
+        detectLinks: true,
+        /** Should it send as a disappearing messages. 
+         * By default 'chat' -- which follows the setting of the chat */
+        sendEphemeral: 'chat'
     }
     ```
 ## Forwarding Messages
@@ -358,6 +360,22 @@ await conn.modifyChat (jid, ChatModification.delete) // will delete the chat (ca
 ```
 
 **Note:** to unmute or unpin a chat, one must pass the timestamp of the pinning or muting. This is returned by the pin & mute functions. This is also available in the `WAChat` objects of the respective chats, as a `mute` or `pin` property.
+
+## Disappearing Messages
+
+``` ts
+const jid = '1234@s.whatsapp.net' // can also be a group
+// turn on disappearing messages
+await conn.toggleDisappearingMessages(
+    jid, 
+    WA_DEFAULT_EPHEMERAL // this is 1 week in seconds -- how long you want messages to appear for
+) 
+// will automatically send as a disappearing message
+await conn.sendMessage(jid, 'Hello poof!', MessageType.text)
+// turn off disappearing messages
+await conn.toggleDisappearingMessages(jid, 0)
+
+```
 
 ## Misc
 

@@ -1,8 +1,8 @@
-import { Presence, ChatModification, delay, newMessagesDB } from '../WAConnection/WAConnection'
+import { Presence, ChatModification, delay, newMessagesDB, WA_DEFAULT_EPHEMERAL, MessageType } from '../WAConnection/WAConnection'
 import { promises as fs } from 'fs'
 import * as assert from 'assert'
 import fetch from 'node-fetch'
-import { WAConnectionTest, testJid, assertChatDBIntegrity } from './Common'
+import { WAConnectionTest, testJid, assertChatDBIntegrity, sendAndRetreiveMessage } from './Common'
 
 WAConnectionTest('Misc', conn => {
 
@@ -196,5 +196,66 @@ WAConnectionTest('Misc', conn => {
         await conn.connect()
 
         await task
+    })
+
+    it('should toggle disappearing messages', async () => {
+        let chat = conn.chats.get(testJid)
+        if (!chat) {
+            // wait for chats
+            await new Promise(resolve => (
+                conn.once('chats-received', () => resolve())
+            ))
+            chat = conn.chats.get(testJid)
+        }
+        
+        const waitForChatUpdate = (ephemeralOn: boolean) => (
+            new Promise(resolve => (
+                conn.on('chat-update', ({ jid, ephemeral }) => {
+                    if (jid === testJid && typeof ephemeral !== 'undefined') {
+                        assert.strictEqual(!!(+ephemeral), ephemeralOn)
+                        assert.strictEqual(!!(+chat.ephemeral), ephemeralOn)
+                        resolve()
+                        conn.removeAllListeners('chat-update')
+                    }
+                })
+            ))
+        )
+        const toggleDisappearingMessages = async (on: boolean) => {
+            const update = waitForChatUpdate(on)
+            await conn.toggleDisappearingMessages(testJid, on ? WA_DEFAULT_EPHEMERAL : 0)
+            await update
+        }
+        
+        if (!chat.eph_setting_ts) {
+            await toggleDisappearingMessages(true)
+        }
+
+        await delay(1000)
+
+        let msg = await sendAndRetreiveMessage(
+            conn,
+            'This will go poof 😱',
+            MessageType.text
+        )
+        assert.ok(msg.message?.ephemeralMessage)
+        
+        const contextInfo = msg.message?.ephemeralMessage?.message?.extendedTextMessage?.contextInfo
+        assert.strictEqual(contextInfo.expiration, chat.ephemeral)
+        assert.strictEqual(+contextInfo.ephemeralSettingTimestamp, +chat.eph_setting_ts)
+        // test message deletion
+        await conn.deleteMessage(testJid, msg.key)
+        
+        await delay(1000)
+
+        await toggleDisappearingMessages(false)
+
+        await delay(1000)
+
+        msg = await sendAndRetreiveMessage(
+            conn,
+            'This will not go poof 😔',
+            MessageType.text
+        )
+        assert.ok(msg.message.extendedTextMessage)
     })
 })

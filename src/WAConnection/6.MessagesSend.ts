@@ -9,7 +9,7 @@ import {
     WALocationMessage,
     WAContactMessage,
     WATextMessage,
-    WAMessageContent, WAMetric, WAFlag, WAMessage, BaileysError, WA_MESSAGE_STATUS_TYPE, WAMessageProto, MediaConnInfo, MessageTypeProto, URL_REGEX, WAUrlInfo
+    WAMessageContent, WAMetric, WAFlag, WAMessage, BaileysError, WA_MESSAGE_STATUS_TYPE, WAMessageProto, MediaConnInfo, MessageTypeProto, URL_REGEX, WAUrlInfo, WA_DEFAULT_EPHEMERAL
 } from './Constants'
 import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes, generateThumbnail, getMediaKeys, decodeMediaMessageBuffer, extensionForMediaMessage, whatsappID, unixTimestampSeconds, getAudioDuration  } from './Utils'
 import { Mutex } from './Mutex'
@@ -46,6 +46,22 @@ export class WAConnection extends Base {
         )
         const preparedMessage = this.prepareMessageFromContent(id, content, options)
         return preparedMessage
+    }
+    /**
+     * Toggles disappearing messages for the given chat
+     * 
+     * @param jid the chat to toggle
+     * @param ephemeralExpiration 0 to disable, enter any positive number to enable disappearing messages for the specified duration; 
+     * For the default see WA_DEFAULT_EPHEMERAL
+     */
+    async toggleDisappearingMessages(jid: string, ephemeralExpiration?: number, opts: { waitForAck: boolean } = { waitForAck: true }) {
+        const message = this.prepareMessageFromContent(
+            jid,
+            this.prepareDisappearingMessageSettingContent(ephemeralExpiration),
+            {}
+        )
+        await this.relayWAMessage(message, opts)
+        return message
     }
     /** Prepares the message content */
     async prepareMessageContent (message: string | WATextMessage | WALocationMessage | WAContactMessage | Buffer, type: MessageType, options: MessageOptions) {
@@ -84,6 +100,20 @@ export class WAConnection extends Base {
                 break
         }
         return WAMessageProto.Message.fromObject (m)
+    }
+    prepareDisappearingMessageSettingContent(ephemeralExpiration?: number) {
+        ephemeralExpiration = ephemeralExpiration || 0
+        const content: WAMessageContent = {
+            ephemeralMessage: {
+                message: {
+                    protocolMessage: {
+                        type: WAMessageProto.ProtocolMessage.ProtocolMessageType.EPHEMERAL_SETTING,
+                        ephemeralExpiration
+                    }
+                }
+            }
+        }
+        return WAMessageProto.Message.fromObject(content)
     }
     /** Prepare a media message for sending */
     async prepareMessageMedia(buffer: Buffer, mediaType: MessageType, options: MessageOptions = {}) {
@@ -175,7 +205,7 @@ export class WAConnection extends Base {
     /** prepares a WAMessage for sending from the given content & options */
     prepareMessageFromContent(id: string, message: WAMessageContent, options: MessageOptions) {
         if (!options.timestamp) options.timestamp = new Date() // set timestamp to now
-        
+        if (typeof options.sendEphemeral === 'undefined') options.sendEphemeral = 'chat'
         // prevent an annoying bug (WA doesn't accept sending messages with '@c.us')
         id = whatsappID (id)
 
@@ -202,6 +232,28 @@ export class WAConnection extends Base {
         if (options?.thumbnail) {
             message[key].jpegThumbnail = Buffer.from(options.thumbnail, 'base64')
         }
+
+        const chat = this.chats.get(id)
+        if (
+            // if we want to send a disappearing message
+            ((options?.sendEphemeral === 'chat' && chat?.ephemeral) || 
+            options?.sendEphemeral === true) &&
+            // and it's not a protocol message -- delete, toggle disappear message
+            key !== 'protocolMessage' &&
+            // already not converted to disappearing message
+            key !== 'ephemeralMessage' 
+        ) {
+            message[key].contextInfo = {
+                ...(message[key].contextInfo || {}),
+                expiration: chat?.ephemeral || WA_DEFAULT_EPHEMERAL,
+                ephemeralSettingTimestamp: chat?.eph_setting_ts
+            }
+            message = {
+                ephemeralMessage: {
+                    message
+                }
+            }
+        } 
         message = WAMessageProto.Message.fromObject (message)
 
         const messageJSON = {

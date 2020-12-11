@@ -438,6 +438,23 @@ export class WAConnection extends Base {
                 update && Object.assign(chatUpdate, update)
             }
         }
+        
+        const ephemeralProtocolMsg = message.message?.ephemeralMessage?.message?.protocolMessage
+        if (
+            ephemeralProtocolMsg && 
+            ephemeralProtocolMsg.type === WAMessageProto.ProtocolMessage.ProtocolMessageType.EPHEMERAL_SETTING
+        ) {
+            chatUpdate.eph_setting_ts = message.messageTimestamp.toString()
+            chatUpdate.ephemeral = ephemeralProtocolMsg.ephemeralExpiration.toString()
+            
+            if (ephemeralProtocolMsg.ephemeralExpiration) {
+                chat.eph_setting_ts = chatUpdate.eph_setting_ts
+                chat.ephemeral = chatUpdate.ephemeral
+            } else {
+                delete chat.eph_setting_ts
+                delete chat.ephemeral
+            }
+        }
 
         const messages = chat.messages
         const protocolMessage = message.message?.protocolMessage
@@ -471,7 +488,7 @@ export class WAConnection extends Base {
                 messages.delete (messages.all()[0]) // delete oldest messages
             }            
             // only update if it's an actual message
-            if (message.message) {
+            if (message.message && !ephemeralProtocolMsg) {
                 this.chatUpdateTime (chat, +toNumber(message.messageTimestamp))
                 chatUpdate.t = chat.t
             }
@@ -515,7 +532,7 @@ export class WAConnection extends Base {
                         const announce = message.messageStubParameters[0] === 'on' ? 'true' : 'false'
                         emitGroupUpdate({ announce })
                         break
-                    case WA_MESSAGE_STUB_TYPE.GROUP_CHANGE_ANNOUNCE:
+                    case WA_MESSAGE_STUB_TYPE.GROUP_CHANGE_RESTRICT:
                         const restrict = message.messageStubParameters[0] === 'on' ? 'true' : 'false'
                         emitGroupUpdate({ restrict })
                         break
