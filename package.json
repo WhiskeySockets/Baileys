@@ -3,8 +3,8 @@
   "version": "3.4.0",
   "description": "WhatsApp Web API",
   "homepage": "https://github.com/adiwajshing/Baileys",
-  "main": "lib/WAConnection/WAConnection.js",
-  "types": "lib/WAConnection/WAConnection.d.ts",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "keywords": [
     "whatsapp",
     "js-whatsapp",
@@ -46,8 +46,7 @@
     "ws": "^7.3.1"
   },
   "files": [
-    "lib/WAConnection/*",
-    "lib/Binary/*",
+    "lib/*",
     "WAMessage/*"
   ],
   "devDependencies": {
@@ -60,7 +59,7 @@
     "dotenv": "^8.2.0",
     "mocha": "^8.1.3",
     "ts-node-dev": "^1.0.0",
-    "typedoc": "^0.18.0",
+    "typedoc": "^0.20.0-beta.27",
     "typescript": "^4.0.0"
   }
 }
