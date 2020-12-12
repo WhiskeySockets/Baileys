@@ -141,13 +141,22 @@ export class WAConnection extends Base {
         // contacts received
         this.on('CB:response,type:contacts', json => {
             if (json[1].duplicate || !json[2]) return
-            const contacts: { [_: string]: WAContact } = {}
+            const contacts = this.contacts
+            const updatedContacts: WAContact[] = []
             
             json[2].forEach(([type, contact]: ['user', WAContact]) => {
                 if (!contact) return this.logger.info (`unexpectedly got null contact: ${type}`, contact)
                 
                 contact.jid = whatsappID (contact.jid)
-                contacts[contact.jid] = contact
+                const presentContact = contacts[contact.jid]
+                if (presentContact) {
+                    const changes = shallowChanges(presentContact, contact)
+                    if (changes && Object.keys(changes).length > 0) {
+                        updatedContacts.push({ ...changes, jid: contact.jid })
+                    }
+                } else updatedContacts.push(contact)
+
+                contacts[contact.jid] = { ...(presentContact || {}), ...contact }
             })
             // update chat names
             const updatedChats = []
@@ -165,7 +174,7 @@ export class WAConnection extends Base {
             this.logger.info (`received ${json[2].length} contacts`)
             this.contacts = contacts
 
-            this.emit('contacts-received')
+            this.emit('contacts-received', { updatedContacts })
         })
         
         // new messages
@@ -621,7 +630,7 @@ export class WAConnection extends Base {
     /** when a new chat is added */
     on (event: 'chat-new', listener: (chat: WAChat) => void): this
     /** when contacts are sent by WA */
-    on (event: 'contacts-received', listener: () => void): this
+    on (event: 'contacts-received', listener: (u: { updatedContacts: Partial<WAContact>[] }) => void): this
     /** when chats are sent by WA, and when all messages are received */
     on (event: 'chats-received', listener: (update: {hasNewChats?: boolean, hasReceivedLastMessage?: boolean, chatsWithMissingMessages: { jid: string, count: number }[] }) => void): this
     /** when multiple chats are updated (new message, updated message, deleted, pinned, etc) */

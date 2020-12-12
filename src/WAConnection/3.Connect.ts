@@ -41,7 +41,7 @@ export class WAConnection extends Base {
                 const willReconnect = !loggedOut && (tries < options?.maxRetries) && (this.state === 'connecting')
                 const reason = loggedOut ? DisconnectReason.invalidSession : error.message
 
-                this.logger.warn ({ error }, `connect attempt ${tries} failed${ willReconnect ? ', retrying...' : ''}`)
+                this.logger.warn ({ error }, `connect attempt ${tries} failed: ${error}${ willReconnect ? ', retrying...' : ''}`)
 
                 if ((this.state as string) !== 'close' && !willReconnect) {
                     this.closeInternal (reason)

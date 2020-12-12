@@ -203,7 +203,7 @@ WAConnectionTest('Misc', conn => {
         if (!chat) {
             // wait for chats
             await new Promise(resolve => (
-                conn.once('chats-received', () => resolve())
+                conn.once('chats-received', resolve)
             ))
             chat = conn.chats.get(testJid)
         }
