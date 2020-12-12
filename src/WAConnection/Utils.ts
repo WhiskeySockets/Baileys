@@ -45,16 +45,18 @@ export const newMessagesDB = (messages: WAMessage[] = []) => {
     return db
 } 
 
-export function shallowChanges <T> (old: T, current: T): Partial<T> {
+export function shallowChanges <T> (old: T, current: T, {lookForDeletedKeys}: {lookForDeletedKeys: boolean}): Partial<T> {
     let changes: Partial<T> = {}
     for (let key in current) {
         if (old[key] !== current[key]) {
             changes[key] = current[key] || null
         }
     }
-    for (let key in old) {
-        if (!changes[key] && old[key] !== current[key]) {
-            changes[key] = current[key] || null
+    if (lookForDeletedKeys) {
+        for (let key in old) {
+            if (!changes[key] && old[key] !== current[key]) {
+                changes[key] = current[key] || null
+            }
         }
     }
     return changes

@@ -47,7 +47,7 @@ export class WAConnection extends Base {
                 } else {
                     chat.messages = oldChat.messages
                     if (oldChat.t !== chat.t || oldChat.modify_tag !== chat.modify_tag) {
-                        const changes = shallowChanges (oldChat, chat)
+                        const changes = shallowChanges (oldChat, chat, { lookForDeletedKeys: true })
                         delete chat.metadata // remove group metadata as that may have changed; TODO, write better mechanism for this
                         delete changes.messages
 
@@ -150,7 +150,7 @@ export class WAConnection extends Base {
                 contact.jid = whatsappID (contact.jid)
                 const presentContact = contacts[contact.jid]
                 if (presentContact) {
-                    const changes = shallowChanges(presentContact, contact)
+                    const changes = shallowChanges(presentContact, contact, { lookForDeletedKeys: false })
                     if (changes && Object.keys(changes).length > 0) {
                         updatedContacts.push({ ...changes, jid: contact.jid })
                     }
