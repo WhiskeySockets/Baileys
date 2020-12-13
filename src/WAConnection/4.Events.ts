@@ -1,6 +1,6 @@
 import * as QR from 'qrcode-terminal'
 import { WAConnection as Base } from './3.Connect'
-import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, PresenceUpdate, BaileysEvent, DisconnectReason, WAOpenResult, Presence, AuthenticationCredentials, WAParticipantAction, WAGroupMetadata, WAUser, WANode, WAPresenceData, WAChatUpdate } from './Constants'
+import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, PresenceUpdate, BaileysEvent, DisconnectReason, WAOpenResult, Presence, AuthenticationCredentials, WAParticipantAction, WAGroupMetadata, WAUser, WANode, WAPresenceData, WAChatUpdate, BlocklistUpdate } from './Constants'
 import { whatsappID, unixTimestampSeconds, isGroupID, GET_MESSAGE_ID, WA_MESSAGE_ID, waMessageKey, newMessagesDB, shallowChanges, toNumber } from './Utils'
 import KeyedDB from '@adiwajshing/keyed-db'
 import { Mutex } from './Mutex'
@@ -352,6 +352,20 @@ export class WAConnection extends Base {
         this.on('CB:MsgInfo', func)
         
         this.on ('qr', qr => QR.generate(qr, { small: true }))
+
+        // blocklist updates
+        this.on('CB:Blocklist', json => {
+            json = json[1]
+            const initial = this.blocklist
+            this.blocklist = json.blocklist
+
+            const added = this.blocklist.filter(id => !initial.includes(id))
+            const removed = initial.filter(id => !this.blocklist.includes(id))
+
+            const update: BlocklistUpdate = { added, removed }
+
+            this.emit('blocklist-update', update)
+        })
     }
     /** Get the URL to download the profile picture of a person/group */
     @Mutex (jid => jid)
@@ -655,6 +669,8 @@ export class WAConnection extends Base {
     on (event: 'group-update', listener: (update: Partial<WAGroupMetadata> & {jid: string, actor?: string}) => void): this
     /** when WA sends back a pong */
     on (event: 'received-pong', listener: () => void): this
+    /** when a user is blocked or unblockd */
+    on (event: 'blocklist-update', listener: (update: BlocklistUpdate) => void): this
 
     on (event: BaileysEvent | string, listener: (json: any) => void): this
 

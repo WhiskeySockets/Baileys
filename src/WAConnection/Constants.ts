@@ -428,6 +428,10 @@ export interface PresenceUpdate {
     type?: Presence
     deny?: boolean
 }
+export interface BlocklistUpdate {
+    added: string[]
+    removed: string[]
+}
 // path to upload the media
 export const MediaPathMap = {
     imageMessage: '/mms/image',
@@ -467,4 +471,5 @@ export type BaileysEvent =
     'group-update' |
     'received-pong' |
     'credentials-updated' |
-    'connection-validated'
+    'connection-validated' |
+    'blocklist-update'
