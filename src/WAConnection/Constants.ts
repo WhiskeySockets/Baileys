@@ -212,6 +212,7 @@ export interface WAContact {
 export interface WAUser extends WAContact {
     phone: any
 }
+export type WAContactUpdate = Partial<WAContact> & { jid: string, status?: string }
 export interface WAChat {
     jid: string
 
@@ -474,4 +475,5 @@ export type BaileysEvent =
     'received-pong' |
     'credentials-updated' |
     'connection-validated' |
-    'blocklist-update'
+    'blocklist-update' |
+    'contact-update'

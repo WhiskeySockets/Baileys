@@ -45,6 +45,33 @@ WAConnectionTest('Misc', conn => {
 
         await conn.setStatus (response.status) // update back
     })
+    it('should update profile name', async () => {
+        const newName = 'v cool name'
+
+        await delay (1000)
+
+        const originalName = conn.user.name!
+
+        const waitForEvent = new Promise<void> (resolve => {
+            conn.on ('contact-update', ({name}) => {
+                assert.strictEqual (name, newName)
+                conn.removeAllListeners ('contact-update')
+                resolve ()
+            })
+        })
+
+        await conn.updateProfileName (newName)
+
+        await waitForEvent
+
+        await delay (1000)
+
+        assert.strictEqual (conn.user.name, newName)
+
+        await delay (1000)
+
+        await conn.updateProfileName (originalName) // update back
+    })
     it('should return the stories', async () => {
         await conn.getStories()
     })
