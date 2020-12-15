@@ -1,6 +1,6 @@
 import {WAConnection as Base} from './6.MessagesSend'
-import { MessageType, WAMessageKey, MessageInfo, WAMessageContent, WAMetric, WAFlag, WANode, WAMessage, WAMessageProto, ChatModification, BaileysError, WAChatIndex } from './Constants'
-import { whatsappID, delay, toNumber, unixTimestampSeconds, GET_MESSAGE_ID, WA_MESSAGE_ID, isGroupID } from './Utils'
+import { MessageType, WAMessageKey, MessageInfo, WAMessageContent, WAMetric, WAFlag, WANode, WAMessage, WAMessageProto, ChatModification, BaileysError, WAChatIndex, WAChat } from './Constants'
+import { whatsappID, delay, toNumber, unixTimestampSeconds, GET_MESSAGE_ID, WA_MESSAGE_ID, isGroupID, newMessagesDB } from './Utils'
 import { Mutex } from './Mutex'
 
 export class WAConnection extends Base {
@@ -286,6 +286,38 @@ export class WAConnection extends Base {
         return result
     }
     /**
+     * Star or unstar a message
+     * @param messageKey key of the message you want to star or unstar
+     */
+    @Mutex (m => m.remoteJid)
+    async starMessage (messageKey: WAMessageKey, type: 'star' | 'unstar' = 'star') { 
+        const attrs: WANode = [
+            'chat',
+            { 
+                jid: messageKey.remoteJid,
+                type
+            },
+            [
+                ['item', {owner: `${messageKey.fromMe}`, index: messageKey.id}, null]
+            ]
+        ]
+        const result = await this.setQuery ([attrs])
+
+        const chat = this.chats.get (whatsappID(messageKey.remoteJid))
+        if (result.status == 200 && chat) {
+            const message = chat.messages.get (GET_MESSAGE_ID(messageKey))
+            if (message) {
+                message.starred = type === 'star'
+
+                const chatUpdate: Partial<WAChat> = { jid: messageKey.remoteJid, messages: newMessagesDB([ message ]) }
+                this.emit ('chat-update', chatUpdate)
+                // emit deprecated
+                this.emit ('message-update', message)
+            }
+        }
+        return result
+    }
+    /**
      * Delete a message in a chat for everyone
      * @param id the person or group where you're trying to delete the message
      * @param messageKey key of the message you want to delete
@@ -345,24 +377,38 @@ export class WAConnection extends Base {
         return this.modifyChat(jid, 'delete')
     }
     /**
+     * Clear the chat messages
+     * @param jid the ID of the person/group you are modifiying
+     * @param includeStarred delete starred messages, default false
+     */
+    async modifyChat (jid: string, type: ChatModification.clear, includeStarred?: boolean): Promise<{status: number;}>;
+    /**
      * Modify a given chat (archive, pin etc.)
      * @param jid the ID of the person/group you are modifiying
      * @param durationMs only for muting, how long to mute the chat for
      */
+    async modifyChat (jid: string, type: ChatModification.pin | ChatModification.mute, durationMs: number): Promise<{status: number;}>;
+    /**
+     * Modify a given chat (archive, pin etc.)
+     * @param jid the ID of the person/group you are modifiying
+     */
+    async modifyChat (jid: string, type: ChatModification | (keyof typeof ChatModification)): Promise<{status: number;}>;
     @Mutex ((jid, type) => jid+type)
-    async modifyChat (jid: string, type: ChatModification | (keyof typeof ChatModification), durationMs?: number) {
+    async modifyChat (jid: string, type: (keyof typeof ChatModification), arg?: number | boolean): Promise<{status: number;}> {
         jid = whatsappID (jid)
         const chat = this.assertChatGet (jid)
 
         let chatAttrs: Record<string, string> = {jid: jid}
-        if (type === ChatModification.mute && !durationMs) {
+        if (type === ChatModification.mute && !arg) {
             throw new BaileysError(
                 'duration must be set to the timestamp of the time of pinning/unpinning of the chat', 
                 { status: 400 }
             )
         }
 
-        durationMs = durationMs || 0
+        const durationMs:number = arg as number || 0
+        const includeStarred:boolean = arg as boolean
+        let index: WAChatIndex;
         switch (type) {
             case ChatModification.pin:
             case ChatModification.mute:
@@ -375,16 +421,30 @@ export class WAConnection extends Base {
                 chatAttrs.type = type.replace ('un', '') // replace 'unpin' with 'pin'
                 chatAttrs.previous = chat[type.replace ('un', '')]
                 break
+            case ChatModification.clear:
+                chatAttrs.type = type
+                chatAttrs.star = includeStarred ? 'true' : 'false'
+                index = await this.getChatIndex(jid)
+                chatAttrs = { ...chatAttrs, ...index }
+                delete chatAttrs.participant
+                break
             default:
                 chatAttrs.type = type
-                const index = await this.getChatIndex(jid)
+                index = await this.getChatIndex(jid)
                 chatAttrs = { ...chatAttrs, ...index }
                 break
         }
 
         const response = await this.setQuery ([['chat', chatAttrs, null]], [ WAMetric.chat, WAFlag.ignore ])
 
-        if (chat) {
+        if (chat && response.status === 200) {
+            if (type === ChatModification.clear) {
+                if (includeStarred) {
+                    chat.messages.clear ()
+                } else {
+                    chat.messages = chat.messages.filter(m => m.starred)
+                }
+            }
             if (type.includes('un')) {
                 type = type.replace ('un', '') as ChatModification
                 delete chat[type.replace('un','')]

@@ -116,6 +116,66 @@ WAConnectionTest('Misc', conn => {
         await delay (2000)
         await conn.modifyChat (testJid, ChatModification.unmute)
     })
+    it('should star/unchar messages', async () => {
+        for (let i = 1; i <= 5; i++) {
+          await conn.sendMessage(testJid, `Message ${i}`, MessageType.text)
+          await delay(1000)
+        }
+
+        let response = await conn.loadMessages(testJid, 5)
+        let starred = response.messages.filter(m => m.starred)
+        assert.strictEqual(starred.length, 0)
+    
+        conn.starMessage(response.messages[2].key)
+        await delay(2000)
+        conn.starMessage(response.messages[4].key)
+        await delay(2000)
+    
+        response = await conn.loadMessages(testJid, 5)
+        starred = response.messages.filter(m => m.starred)
+        assert.strictEqual(starred.length, 2)
+        await delay(2000)
+        
+        conn.starMessage(response.messages[2].key, 'unstar')
+        await delay(2000)
+
+        response = await conn.loadMessages(testJid, 5)
+        starred = response.messages.filter(m => m.starred)
+        assert.strictEqual(starred.length, 1)
+    })
+    it('should clear a chat', async () => {
+        // Uses chat with yourself to avoid losing chats
+        const selfJid = conn.user.jid
+
+        for (let i = 1; i <= 5; i++) {
+          await conn.sendMessage(selfJid, `Message ${i}`, MessageType.text)
+          await delay(1000)
+        }
+
+        let response = await conn.loadMessages(selfJid, 50)
+        const initialCount = response.messages.length
+
+        assert.ok(response.messages.length >= 0)
+    
+        conn.starMessage(response.messages[2].key)
+        await delay(2000)
+        conn.starMessage(response.messages[4].key)
+        await delay(2000)
+    
+        await conn.modifyChat(selfJid, ChatModification.clear)
+        await delay(2000)
+    
+        response = await conn.loadMessages(selfJid, 50)
+        await delay(2000)
+        assert.ok(response.messages.length < initialCount)
+        assert.ok(response.messages.length > 1)
+    
+        await conn.modifyChat(selfJid, ChatModification.clear, true)
+        await delay(2000)
+    
+        response = await conn.loadMessages(selfJid, 50)
+        assert.strictEqual(response.messages.length, 1)
+    })
     it('should return search results', async () => {
         const jids = [null, testJid]
         for (let i in jids) {

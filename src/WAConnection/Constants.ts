@@ -219,6 +219,7 @@ export interface WAChat {
     /** number of unread messages, is < 0 if the chat is manually marked unread */
     count: number
     archive?: 'true' | 'false'
+    clear?: 'true' | 'false'
     read_only?: 'true' | 'false'
     mute?: string
     pin?: string
@@ -321,7 +322,8 @@ export enum ChatModification {
     unpin='unpin',
     mute='mute',
     unmute='unmute',
-    delete='delete'
+    delete='delete',
+    clear='clear'
 }
 export const HKDFInfoKeys = {
     [MessageType.image]: 'WhatsApp Image Keys',
