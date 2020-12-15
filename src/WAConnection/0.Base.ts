@@ -66,6 +66,7 @@ export class WAConnection extends EventEmitter {
     lastChatsReceived: Date
     chats = new KeyedDB (Utils.waChatKey(false), value => value.jid)
     contacts: { [k: string]: WAContact } = {}
+    blocklist: string[] = [];
 
     /** Data structure of tokens & IDs used to establish one's identiy to WhatsApp Web */
     protected authInfo: AuthenticationCredentials = null

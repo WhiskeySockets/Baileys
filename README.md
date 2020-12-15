@@ -433,6 +433,11 @@ await conn.toggleDisappearingMessages(jid, 0)
 
     const response2 = await conn.searchMessages ('so cool', '1234@c.us', 25, 1) // search in given chat
     ```
+- To block or unblock user
+    ``` ts
+    await conn.blockUser ("xyz@c.us", "add") // Block user
+    await conn.blockUser ("xyz@c.us", "remove") // Unblock user
+    ```
 Of course, replace ``` xyz ``` with an actual ID. 
 
 ## Groups

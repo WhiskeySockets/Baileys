@@ -1,5 +1,5 @@
 import {WAConnection as Base} from './4.Events'
-import { Presence, WABroadcastListInfo, WAProfilePictureChange, WALoadChatOptions, WAChatIndex } from './Constants'
+import { Presence, WABroadcastListInfo, WAProfilePictureChange, WALoadChatOptions, WAChatIndex, BlocklistUpdate } from './Constants'
 import {
     WAMessage,
     WANode,
@@ -158,5 +158,45 @@ export class WAConnection extends Base {
             this.emit ('chat-update', { jid, imgUrl: response.eurl })
         }
         return response
+    }
+    /**
+     * Add or remove user from blocklist
+     * @param jid the ID of the person who you are blocking/unblocking
+     * @param type type of operation
+     */
+    @Mutex (jid => jid)
+    async blockUser (jid: string, type: 'add' | 'remove' = 'add') {
+        jid.replace('@s.whatsapp.net', '@c.us')
+
+        const tag = this.generateMessageTag()
+        const json: WANode = [
+            'block',
+            {
+                type: type,
+            },
+            [
+                ['user', { jid }, null]
+            ],
+        ]
+        const result = await this.setQuery ([json], [WAMetric.block, WAFlag.ignore], tag)
+
+        if (result.status === 200) {
+            if (type === 'add') {
+                this.blocklist.push(jid)
+            } else {
+                const index = this.blocklist.indexOf(jid);
+                if (index !== -1) {
+                    this.blocklist.splice(index, 1);
+                }
+            }
+
+            // Blocklist update event
+            const update: BlocklistUpdate = { added: [], removed: [] }
+            let key = type === 'add' ? 'added' : 'removed'
+            update[key] = [ jid ]
+            this.emit('blocklist-update', update)
+        }
+
+        return result
     }
 }

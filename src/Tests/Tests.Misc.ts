@@ -258,4 +258,30 @@ WAConnectionTest('Misc', conn => {
         )
         assert.ok(msg.message.extendedTextMessage)
     })
+    it('should block & unblock a user', async () => {
+        const blockedCount = conn.blocklist.length;
+
+        const waitForEventAdded = new Promise<void> (resolve => {
+            conn.once ('blocklist-update', ({added}) => {
+                assert.ok (added.length)
+                resolve ()
+            })
+        })
+
+        await conn.blockUser (testJid, 'add')
+        assert.strictEqual(conn.blocklist.length, blockedCount + 1);
+        await waitForEventAdded
+
+        await delay (2000)
+        const waitForEventRemoved = new Promise<void> (resolve => {
+            conn.once ('blocklist-update', ({removed}) => {
+                assert.ok (removed.length)
+                resolve ()
+            })
+        })
+
+        await conn.blockUser (testJid, 'remove')
+        assert.strictEqual(conn.blocklist.length, blockedCount);
+        await waitForEventRemoved
+    })
 })
