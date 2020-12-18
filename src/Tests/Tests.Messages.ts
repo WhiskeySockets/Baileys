@@ -15,7 +15,7 @@ WAConnectionTest('Messages', conn => {
         await new Promise(resolve => conn.once('message-status-update', update => {
             if (update.ids.includes(message.key.id)) {
                 assert.strictEqual(update.type, WA_MESSAGE_STATUS_TYPE.SERVER_ACK)
-                resolve()
+                resolve(undefined)
             } 
         }))
 

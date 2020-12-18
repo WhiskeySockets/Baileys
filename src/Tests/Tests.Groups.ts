@@ -38,7 +38,7 @@ WAConnectionTest('Groups', (conn) => {
                         conn.chats.get(jid).metadata.desc,
                         newDesc
                     )
-                    resolve ()
+                    resolve(undefined)
                 }
             })
         ))
@@ -74,7 +74,7 @@ WAConnectionTest('Groups', (conn) => {
                 if (jid === gid) {
                     assert.strictEqual(name, subject)
                     assert.strictEqual(conn.chats.get(jid).name, subject)
-                    resolve ()
+                    resolve(undefined)
                 }
             })
         })
@@ -91,7 +91,7 @@ WAConnectionTest('Groups', (conn) => {
                 if (jid === gid) {
                     assert.strictEqual (announce, 'true')
                     assert.strictEqual(conn.chats.get(gid).metadata.announce, announce)
-                    resolve ()
+                    resolve(undefined)
                 }
             })
         })
@@ -116,7 +116,7 @@ WAConnectionTest('Groups', (conn) => {
                             whatsappID(jid) === whatsappID(participants[0]) && isAdmin
                         )),
                     )
-                    resolve()
+                    resolve(undefined)
                 }
                 
             })
@@ -137,7 +137,7 @@ WAConnectionTest('Groups', (conn) => {
                             conn.chats.get(jid).metadata.participants.find(p => whatsappID(p.jid) === whatsappID(participants[0])),
                             undefined
                         )
-                        resolve ()
+                        resolve(undefined)
                     }
                 })
             })
@@ -152,7 +152,7 @@ WAConnectionTest('Groups', (conn) => {
             conn.once ('chat-update', ({jid, read_only}) => {
                 if (jid === gid) {
                     assert.strictEqual (read_only, 'true')
-                    resolve ()
+                    resolve(undefined)
                 }
             })
         })
@@ -166,7 +166,7 @@ WAConnectionTest('Groups', (conn) => {
             conn.once ('chat-update', ({jid, archive}) => {
                 if (jid === gid) {
                     assert.strictEqual (archive, 'true')
-                    resolve ()
+                    resolve(undefined)
                 }
             })
         })
@@ -178,7 +178,7 @@ WAConnectionTest('Groups', (conn) => {
             conn.once ('chat-update', (chat) => {
                 if (chat.jid === gid) {
                     assert.strictEqual (chat['delete'], 'true')
-                    resolve ()
+                    resolve(undefined)
                 }
             })
         })

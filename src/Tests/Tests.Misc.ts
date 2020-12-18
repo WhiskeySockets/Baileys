@@ -25,7 +25,7 @@ WAConnectionTest('Misc', conn => {
                 if (jid === conn.user.jid) {
                     assert.strictEqual (status, newStatus)
                     conn.removeAllListeners ('user-status-update')
-                    resolve ()
+                    resolve(undefined)
                 }
             })
         })
@@ -79,7 +79,7 @@ WAConnectionTest('Misc', conn => {
                 conn.once ('chat-update', ({jid: tJid, count}) => {
                     if (jid === tJid) {
                         assert.ok (count < 0)
-                        resolve ()
+                        resolve(undefined)
                     }
                 })
             })
@@ -107,7 +107,7 @@ WAConnectionTest('Misc', conn => {
                 if (jid === testJid ) {
                     assert.ok (mute)
                     conn.removeAllListeners ('chat-update')
-                    resolve ()
+                    resolve(undefined)
                 }
             })
         })
@@ -161,7 +161,7 @@ WAConnectionTest('Misc', conn => {
     it('should detect overlaps and clear messages accordingly', async () => {
         // wait for chats
         await new Promise(resolve => (
-            conn.once('chats-received', ({ hasReceivedLastMessage }) => hasReceivedLastMessage && resolve())
+            conn.once('chats-received', ({ hasReceivedLastMessage }) => hasReceivedLastMessage && resolve(undefined))
         ))
 
         conn.maxCachedMessages = 100
@@ -188,7 +188,7 @@ WAConnectionTest('Misc', conn => {
                         missing.count
                     )
                     assert.strictEqual(missing.count, oldCount)
-                    resolve()
+                    resolve(undefined)
                 }
             })
         ))
@@ -214,7 +214,7 @@ WAConnectionTest('Misc', conn => {
                     if (jid === testJid && typeof ephemeral !== 'undefined') {
                         assert.strictEqual(!!(+ephemeral), ephemeralOn)
                         assert.strictEqual(!!(+chat.ephemeral), ephemeralOn)
-                        resolve()
+                        resolve(undefined)
                         conn.removeAllListeners('chat-update')
                     }
                 })

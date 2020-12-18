@@ -79,7 +79,7 @@ describe('Test Connect', () => {
                 conn.on ('connection-phone-change', ({connected}) => {
                     if (connected === expect) {
                         conn.removeAllListeners ('connection-phone-change')
-                        resolve ()
+                        resolve(undefined)
                     }
                 })
             })
@@ -234,7 +234,7 @@ describe ('Reconnects', () => {
                     if (closes >= 1) {
                         conn.removeAllListeners ('close')
                         conn.removeAllListeners ('connecting')
-                        resolve ()
+                        resolve(undefined)
                     }
                 })
                 conn.on ('connecting', () => {
@@ -249,7 +249,7 @@ describe ('Reconnects', () => {
             await new Promise (resolve => {
                 conn.on ('open', () => {
                     conn.removeAllListeners ('open')
-                    resolve ()
+                    resolve(undefined)
                 })
             })
 

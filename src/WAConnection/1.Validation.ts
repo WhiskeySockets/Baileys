@@ -87,7 +87,7 @@ export class WAConnection extends Base {
             response = await this.waitForMessage('s2', true)
         }
         
-        const newUser = await this.validateNewConnection(response[1]) // validate the connection
+        const newUser = this.validateNewConnection(response[1]) // validate the connection
         if (newUser.jid !== this.user?.jid) {
             isNewUser = true
             // clear out old data

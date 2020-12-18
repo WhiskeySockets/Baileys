@@ -29,7 +29,7 @@ export class WAConnection extends Base {
                 chat.count = +chat.count
                 chat.messages = newMessagesDB()
                 // chats data (log json to see what it looks like)
-                !chats.get (chat.jid) && chats.insert (chat) 
+                chats.insert(chat) 
             })
             this.logger.info (`received ${json[2].length} chats`)
 
@@ -80,6 +80,7 @@ export class WAConnection extends Base {
                 messages.reverse().forEach (([,, message]: ['message', null, WAMessage]) => {
                     const jid = message.key.remoteJid
                     const chat = this.chats.get(jid)
+                    
                     const mKeyID = WA_MESSAGE_ID(message)
                     if (chat) {
                         if (style === 'previous') {
@@ -96,15 +97,11 @@ export class WAConnection extends Base {
                             // hacky way to allow more previous messages
                             message['epoch'] = prevEpoch+1000 
                         }
-                        if (chat.messages.get(mKeyID)) {
-                            chat.messages.delete(chat.messages.get(mKeyID))
+                        if (chat.messages.upsert(message).length > 0) {
                             overlaps[jid] = { ...(overlaps[jid] || { requiresOverlap: true }), didOverlap: true }
-                        }
-
-                        chat.messages.insert (message)
-                        
+                        }                        
                         updates[jid] = updates[jid] || newMessagesDB()
-                        updates[jid].insert(message)
+                        updates[jid].upsert(message)
 
                         lastMessages[jid] = mKeyID
                     } else if (!chat) this.logger.debug({ jid }, `chat not found`)
@@ -220,13 +217,12 @@ export class WAConnection extends Base {
             const oldMessage = chat.messages.get (WA_MESSAGE_ID(message))
             if (oldMessage) {
                 message['epoch'] = oldMessage['epoch']
-                chat.messages.delete (oldMessage)
-                chat.messages.insert (message)
-
-                const chatUpdate: Partial<WAChat> = { jid, messages: newMessagesDB([ message ]) }
-                this.emit ('chat-update', chatUpdate)
-                // emit deprecated
-                this.emit ('message-update', message)
+                if (chat.messages.upsert(message).length) {
+                    const chatUpdate: Partial<WAChat> = { jid, messages: newMessagesDB([ message ]) }
+                    this.emit ('chat-update', chatUpdate)
+                    // emit deprecated
+                    this.emit ('message-update', message)
+                }
             } else {
                 this.logger.debug ({ unhandled: true }, 'received message update for non-present message from ' + jid)
             }
@@ -407,26 +403,24 @@ export class WAConnection extends Base {
         this.chatUpdatedMessage (update.ids, update.type, chat)
     }
     /** inserts an empty chat into the DB */
-    protected async chatAdd (jid: string, name?: string) {
-        if (this.chats.get (jid)) return
-        
+    protected async chatAdd (jid: string, name?: string) {        
         const chat: WAChat = {
-            jid: jid,
+            jid,
+            name,
             t: unixTimestampSeconds(),
-            messages: new KeyedDB(waMessageKey, WA_MESSAGE_ID),
+            messages: newMessagesDB(),
             count: 0,
             modify_tag: '',
-            spam: 'false',
-            name
+            spam: 'false'
         }
 
-        this.chats.insert (chat)
-        if (this.loadProfilePicturesForChatsAutomatically) {
-            await this.setProfilePicture (chat)
-        }
-        
-        this.emit ('chat-new', chat)
-        return chat
+        if(this.chats.insertIfAbsent (chat).length) {
+            if (this.loadProfilePicturesForChatsAutomatically) {
+                await this.setProfilePicture (chat)
+            }
+            this.emit ('chat-new', chat)
+            return chat
+        }   
     }
     protected contactAddOrGet (jid: string) {
         jid = whatsappID(jid)
@@ -506,7 +500,6 @@ export class WAConnection extends Base {
             message['epoch'] = lastEpoch+1
 
             messages.insert (message)
-
             while (messages.length > this.maxCachedMessages) {
                 messages.delete (messages.all()[0]) // delete oldest messages
             }            
@@ -519,7 +512,6 @@ export class WAConnection extends Base {
             chatUpdate.messages = newMessagesDB([ message ])
             // emit deprecated
             this.emit('message-new', message)
-
             // check if the message is an action 
             if (message.messageStubType) {
                 const jid = chat.jid

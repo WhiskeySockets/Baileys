@@ -128,8 +128,8 @@ export class WAConnection extends Base {
                     fepoch -= 1
                     m['epoch'] = fepoch
 
-                    if(chat.messages.length < this.maxCachedMessages && !chat.messages.get (WA_MESSAGE_ID(m))) {
-                        chat.messages.insert(m)
+                    if(chat.messages.length < this.maxCachedMessages) {
+                        chat.messages.insertIfAbsent(m)
                     }
                 }
                 messages.unshift (...extra)
