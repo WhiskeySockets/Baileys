@@ -290,14 +290,17 @@ export class WAConnection extends Base {
      * @param id the person or group where you're trying to delete the message
      * @param messageKey key of the message you want to delete
      */
-    async deleteMessage (id: string, messageKey: WAMessageKey) {
+    async deleteMessage (k: string | WAMessageKey, messageKey?: WAMessageKey) {
+        if (typeof k === 'object') {
+            messageKey = k
+        }
         const json: WAMessageContent = {
             protocolMessage: {
                 key: messageKey,
                 type: WAMessageProto.ProtocolMessage.ProtocolMessageType.REVOKE
             }
         }
-        const waMessage = this.prepareMessageFromContent (id, json, {})
+        const waMessage = this.prepareMessageFromContent (messageKey.remoteJid, json, {})
         await this.relayWAMessage (waMessage)
         return waMessage
     }

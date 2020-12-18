@@ -51,6 +51,11 @@ WAConnectionTest('Groups', (conn) => {
     it('should send a message on the group', async () => {
         await sendAndRetreiveMessage(conn, 'Hello!', MessageType.text, {}, gid)
     })
+    it('should delete a message on the group', async () => {
+        const message = await sendAndRetreiveMessage(conn, 'Hello!', MessageType.text, {}, gid)
+        await delay(1500)
+        await conn.deleteMessage(message.key)
+    })
     it('should quote a message on the group', async () => {
         const {messages} = await conn.loadMessages (gid, 100)
         const quotableMessage = messages.find (m => m.message)

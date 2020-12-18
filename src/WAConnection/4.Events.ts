@@ -291,7 +291,7 @@ export class WAConnection extends Base {
         // profile picture updates
         this.on('CB:Cmd,type:picture', async json => {
             const jid = whatsappID(json[1].jid)
-            const imgUrl = await this.getProfilePicture(jid)
+            const imgUrl = await this.getProfilePicture(jid).catch(() => '')
             const contact = this.contacts[jid]
             if (contact) contact.imgUrl = imgUrl
             

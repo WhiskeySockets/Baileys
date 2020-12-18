@@ -10,6 +10,7 @@ import { Agent } from 'https'
 import Decoder from '../Binary/Decoder'
 import { MessageType, HKDFInfoKeys, MessageOptions, WAChat, WAMessageContent, BaileysError, WAMessageProto, TimedOutError, CancelledError, WAGenericMediaMessage, WAMessage, WAMessageKey } from './Constants'
 import KeyedDB from '@adiwajshing/keyed-db'
+import { Response } from 'node-fetch'
 
 const platformMap = {
     'aix': 'AIX',
@@ -274,7 +275,7 @@ export async function generateThumbnail(buffer: Buffer, mediaType: MessageType, 
  * Decode a media message (video, image, document, audio) & return decrypted buffer
  * @param message the media message you want to decode
  */
-export async function decodeMediaMessageBuffer(message: WAMessageContent, fetchRequest: (host: string, method: string) => any) {
+export async function decodeMediaMessageBuffer(message: WAMessageContent, fetchRequest: (host: string, method: string) => Promise<Response>) {
     /* 
         One can infer media type from the key in the message
         it is usually written as [mediaType]Message. Eg. imageMessage, audioMessage etc.
@@ -287,7 +288,7 @@ export async function decodeMediaMessageBuffer(message: WAMessageContent, fetchR
         throw new BaileysError('cannot decode text message', message)
     }
     if (type === MessageType.location || type === MessageType.liveLocation) {
-        return new Buffer(message[type].jpegThumbnail)
+        return Buffer.from(message[type].jpegThumbnail)
     }
     let messageContent: WAGenericMediaMessage
     if (message.productMessage) {
@@ -300,11 +301,10 @@ export async function decodeMediaMessageBuffer(message: WAMessageContent, fetchR
     
     // download the message
     const fetched = await fetchRequest(messageContent.url, 'GET')
-    const buffer = await fetched.buffer()
-
-    if (buffer.length <= 10) {
-        throw new BaileysError ('Empty buffer returned. File has possibly been deleted from WA servers. Run `client.updateMediaMessage()` to refresh the url', {status: 404})
+    if (fetched.status >= 400) {
+        throw new BaileysError ('Invalid code (' + fetched.status + ') returned. File has possibly been deleted from WA servers. Run `client.updateMediaMessage()` to refresh the url', {status: fetched.status})
     }
+    const buffer = await fetched.buffer()
 
     const decryptedMedia = (type: MessageType) => {
         // get the keys to decrypt the message
