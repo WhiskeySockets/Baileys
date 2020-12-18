@@ -351,6 +351,7 @@ export class WAConnection extends Base {
 
         // blocklist updates
         this.on('CB:Blocklist', json => {
+            if (!json) return
             json = json[1]
             const initial = this.blocklist
             this.blocklist = json.blocklist
