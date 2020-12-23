@@ -195,7 +195,7 @@ export class WAConnection extends EventEmitter {
     /** Generic function for action, set queries */
     async setQuery (nodes: WANode[], binaryTags: WATag = [WAMetric.group, WAFlag.ignore], tag?: string) {
         const json = ['action', {epoch: this.msgCount.toString(), type: 'set'}, nodes]
-        const result = await this.query({ json, binaryTags, tag, expect200: true }) as Promise<{status: number}>
+        const result = await this.query({ json, binaryTags, tag, expect200: true, requiresPhoneConnection: true }) as Promise<{status: number}>
         return result
     }
     /**
