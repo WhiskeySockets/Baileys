@@ -215,7 +215,7 @@ export class WAConnection extends Base {
 
             if (this.state === 'open' && json[0] === 'Pong') {
                 if (!json[1]) {
-                    this.closeInternal(DisconnectReason.close)
+                    this.unexpectedDisconnect(DisconnectReason.close)
                     this.logger.info('Connection terminated by phone, closing...')
                     return
                 }

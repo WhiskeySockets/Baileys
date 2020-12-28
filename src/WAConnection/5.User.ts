@@ -172,9 +172,6 @@ export class WAConnection extends Base {
      */
     @Mutex (jid => jid)
     async blockUser (jid: string, type: 'add' | 'remove' = 'add') {
-        jid.replace('@s.whatsapp.net', '@c.us')
-
-        const tag = this.generateMessageTag()
         const json: WANode = [
             'block',
             {
@@ -184,7 +181,7 @@ export class WAConnection extends Base {
                 ['user', { jid }, null]
             ],
         ]
-        const result = await this.setQuery ([json], [WAMetric.block, WAFlag.ignore], tag)
+        const result = await this.setQuery ([json], [WAMetric.block, WAFlag.ignore])
 
         if (result.status === 200) {
             if (type === 'add') {
