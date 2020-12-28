@@ -260,7 +260,7 @@ export class WAConnection extends Base {
             key: {
                 remoteJid: id,
                 fromMe: true,
-                id: generateMessageID(),
+                id: options?.messageId || generateMessageID(),
             },
             message: message,
             messageTimestamp: timestamp,
