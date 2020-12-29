@@ -76,8 +76,29 @@ export class WAConnection extends Base {
                     Buffer.from (status, 'utf-8')
                 ]
             ]
-        ) 
+        )
+        this.emit ('contact-update', { jid: this.user.jid, status })
+
+        // emit deprecated
         this.emit ('user-status-update', { jid: this.user.jid, status })
+        return response
+    }
+    async updateProfileName (name: string) {
+        const response = (await this.setQuery (
+            [
+                [
+                    'profile',
+                    {
+                        name
+                    },
+                    null
+                ]
+            ]
+        )) as any as {status: number, pushname: string}
+        if (response.status === 200) {
+            this.user.name = response.pushname;
+            this.emit ('contact-update', { jid: this.user.jid, name })
+        }
         return response
     }
     /** Get your contacts */
