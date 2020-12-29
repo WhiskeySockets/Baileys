@@ -377,6 +377,8 @@ export interface MessageOptions {
     /** Should it send as a disappearing messages. 
      * By default 'chat' -- which follows the setting of the chat */
     sendEphemeral?: 'chat' | boolean
+    /** Force message id */
+    messageId?: string
 }
 export interface WABroadcastListInfo {
     status: number
