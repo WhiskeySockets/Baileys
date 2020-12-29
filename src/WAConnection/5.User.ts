@@ -104,13 +104,13 @@ export class WAConnection extends Base {
     /** Get your contacts */
     async getContacts() {
         const json = ['query', { epoch: this.msgCount.toString(), type: 'contacts' }, null]
-        const response = await this.query({ json, binaryTags: [6, WAFlag.ignore], expect200: true }) // this has to be an encrypted query
+        const response = await this.query({ json, binaryTags: [WAMetric.queryContact, WAFlag.ignore], expect200: true, requiresPhoneConnection: true }) // this has to be an encrypted query
         return response
     }
     /** Get the stories of your contacts */
     async getStories() {
         const json = ['query', { epoch: this.msgCount.toString(), type: 'status' }, null]
-        const response = await this.query({json, binaryTags: [30, WAFlag.ignore], expect200: true }) as WANode
+        const response = await this.query({json, binaryTags: [WAMetric.queryStatus, WAFlag.ignore], expect200: true, requiresPhoneConnection: true }) as WANode
         if (Array.isArray(response[2])) {
             return response[2].map (row => (
                 { 
@@ -128,7 +128,13 @@ export class WAConnection extends Base {
         return this.query({ json, binaryTags: [5, WAFlag.ignore], expect200: true }) // this has to be an encrypted query
     }
     /** Query broadcast list info */
-    async getBroadcastListInfo(jid: string) { return this.query({json: ['query', 'contact', jid], expect200: true }) as Promise<WABroadcastListInfo> }
+    async getBroadcastListInfo(jid: string) { 
+        return this.query({
+            json: ['query', 'contact', jid], 
+            expect200: true, 
+            requiresPhoneConnection: true
+        }) as Promise<WABroadcastListInfo> 
+    }
     /**
      * Load chats in a paginated manner + gets the profile picture
      * @param before chats before the given cursor
@@ -187,9 +193,6 @@ export class WAConnection extends Base {
      */
     @Mutex (jid => jid)
     async blockUser (jid: string, type: 'add' | 'remove' = 'add') {
-        jid.replace('@s.whatsapp.net', '@c.us')
-
-        const tag = this.generateMessageTag()
         const json: WANode = [
             'block',
             {
@@ -199,7 +202,7 @@ export class WAConnection extends Base {
                 ['user', { jid }, null]
             ],
         ]
-        const result = await this.setQuery ([json], [WAMetric.block, WAFlag.ignore], tag)
+        const result = await this.setQuery ([json], [WAMetric.block, WAFlag.ignore])
 
         if (result.status === 200) {
             if (type === 'add') {

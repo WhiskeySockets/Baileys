@@ -19,7 +19,12 @@ export class WAConnection extends Base {
     @Mutex ((jid, messageID) => jid+messageID)
     async messageInfo (jid: string, messageID: string) {
         const query = ['query', {type: 'message_info', index: messageID, jid: jid, epoch: this.msgCount.toString()}, null]
-        const [,,response] = await this.query ({json: query, binaryTags: [WAMetric.queryRead, WAFlag.ignore], expect200: true})
+        const [,,response] = await this.query ({
+            json: query, 
+            binaryTags: [WAMetric.queryRead, WAFlag.ignore], 
+            expect200: true,
+            requiresPhoneConnection: true
+        })
 
         const info: MessageInfo = {reads: [], deliveries: []}
         if (response) {
@@ -87,7 +92,7 @@ export class WAConnection extends Base {
             },
             null,
         ]
-        const response = await this.query({json, binaryTags: [WAMetric.queryMessages, WAFlag.ignore], expect200: false})
+        const response = await this.query({json, binaryTags: [WAMetric.queryMessages, WAFlag.ignore], expect200: false, requiresPhoneConnection: true})
         return (response[2] as WANode[])?.map(item => item[2] as WAMessage) || []
     }
     /**
@@ -109,7 +114,7 @@ export class WAConnection extends Base {
         
         const chat = this.chats.get (jid)
         const hasCursor = cursor?.id && typeof cursor?.fromMe !== 'undefined'
-        const cursorValue = hasCursor && chat.messages.get (GET_MESSAGE_ID(cursor))
+        const cursorValue = hasCursor && chat?.messages.get (GET_MESSAGE_ID(cursor))
         
         let messages: WAMessage[]
         if (chat?.messages && mostRecentFirst && (!hasCursor || cursorValue)) {

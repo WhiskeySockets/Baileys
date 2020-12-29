@@ -260,7 +260,7 @@ export class WAConnection extends Base {
             key: {
                 remoteJid: id,
                 fromMe: true,
-                id: generateMessageID(),
+                id: options?.messageId || generateMessageID(),
             },
             message: message,
             messageTimestamp: timestamp,
@@ -280,7 +280,8 @@ export class WAConnection extends Base {
             json, 
             binaryTags: [WAMetric.message, flag], 
             tag: mID, 
-            expect200: true
+            expect200: true,
+            requiresPhoneConnection: true
         })
         .then(() => message.status = WA_MESSAGE_STATUS_TYPE.SERVER_ACK)
 
@@ -304,7 +305,12 @@ export class WAConnection extends Base {
         if (!content) throw new BaileysError (`given message ${message.key.id} is not a media message`, message)
         
         const query = ['query',{type: 'media', index: message.key.id, owner: message.key.fromMe ? 'true' : 'false', jid: message.key.remoteJid, epoch: this.msgCount.toString()},null]
-        const response = await this.query ({json: query, binaryTags: [WAMetric.queryMedia, WAFlag.ignore], expect200: true})
+        const response = await this.query ({
+            json: query, 
+            binaryTags: [WAMetric.queryMedia, WAFlag.ignore], 
+            expect200: true, 
+            requiresPhoneConnection: true
+        })
         Object.keys (response[1]).forEach (key => content[key] = response[1][key]) // update message
     }
     /**
