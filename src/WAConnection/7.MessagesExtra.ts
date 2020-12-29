@@ -114,7 +114,7 @@ export class WAConnection extends Base {
         
         const chat = this.chats.get (jid)
         const hasCursor = cursor?.id && typeof cursor?.fromMe !== 'undefined'
-        const cursorValue = hasCursor && chat.messages.get (GET_MESSAGE_ID(cursor))
+        const cursorValue = hasCursor && chat.messages?.get (GET_MESSAGE_ID(cursor))
         
         let messages: WAMessage[]
         if (chat?.messages && mostRecentFirst && (!hasCursor || cursorValue)) {
