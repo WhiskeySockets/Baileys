@@ -235,6 +235,7 @@ export class WAConnection extends Base {
                 user.jid = whatsappID(user.jid)
                 
                 this.contacts[user.jid] = user
+                this.emit('contact-update', user)
                 
                 const chat = this.chats.get (user.jid)
                 if (chat) {
@@ -289,7 +290,10 @@ export class WAConnection extends Base {
             const jid = whatsappID(json[1].jid)
             const imgUrl = await this.getProfilePicture(jid).catch(() => '')
             const contact = this.contacts[jid]
-            if (contact) contact.imgUrl = imgUrl
+            if (contact) {
+                contact.imgUrl = imgUrl
+                this.emit('contact-update', { jid, imgUrl })
+            }
             
             const chat = this.chats.get(jid)
             if (chat) {
@@ -301,7 +305,6 @@ export class WAConnection extends Base {
         this.on('CB:Status,status', async json => {
             const jid = whatsappID(json[1].id)
             this.emit ('contact-update', { jid, status: json[1].status })
-
             // emit deprecated
             this.emit ('user-status-update', { jid, status: json[1].status })
         })

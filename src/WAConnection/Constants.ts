@@ -466,7 +466,6 @@ export type BaileysEvent =
     'ws-close' | 
     'qr' |
     'connection-phone-change' |
-    'user-status-update' |
     'contacts-received' |
     'chats-received' |
     'chat-new' |

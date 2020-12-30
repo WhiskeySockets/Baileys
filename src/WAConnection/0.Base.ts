@@ -79,6 +79,7 @@ export class WAConnection extends EventEmitter {
     protected encoder = new Encoder()
     protected decoder = new Decoder()
     protected phoneCheckInterval = undefined
+    protected phoneCheckListeners = 0
 
     protected referenceDate = new Date () // used for generating tags
     protected lastSeen: Date = null // last keep alive received
@@ -171,7 +172,7 @@ export class WAConnection extends EventEmitter {
      * @param timeoutMs timeout after which the promise will reject
      */
     async waitForMessage(tag: string, requiresPhoneConnection: boolean, timeoutMs?: number) {
-        if (!this.phoneCheckInterval && requiresPhoneConnection) {
+        if (requiresPhoneConnection) {
             this.startPhoneCheckInterval ()
         }
         let onRecv: (json) => void
@@ -187,7 +188,7 @@ export class WAConnection extends EventEmitter {
             )
             return result as any
         } finally {
-            requiresPhoneConnection && this.clearPhoneCheckInterval ()
+            requiresPhoneConnection && this.clearPhoneCheckInterval()
             this.off (`TAG:${tag}`, onRecv)
             this.off (`ws-close`, onErr)
         }
@@ -242,20 +243,29 @@ export class WAConnection extends EventEmitter {
     }
     /** interval is started when a query takes too long to respond */
     protected startPhoneCheckInterval () {
-        // if its been a long time and we haven't heard back from WA, send a ping
-        this.phoneCheckInterval = setInterval (() => {
-            if (!this.conn) return  // if disconnected, then don't do anything
+        this.phoneCheckListeners += 1
+        if (!this.phoneCheckInterval) {
+            // if its been a long time and we haven't heard back from WA, send a ping
+            this.phoneCheckInterval = setInterval (() => {
+                if (!this.conn) return  // if disconnected, then don't do anything
 
-            this.logger.debug ('checking phone connection...')
-            this.sendAdminTest ()
-            
-            this.phoneConnected = false
-            this.emit ('connection-phone-change', { connected: false })
-        }, this.connectOptions.phoneResponseTime)
+                this.logger.info('checking phone connection...')
+                this.sendAdminTest ()
+                
+                this.phoneConnected = false
+                this.emit ('connection-phone-change', { connected: false })
+            }, this.connectOptions.phoneResponseTime)
+        }
+        
     }
     protected clearPhoneCheckInterval () {
-        this.phoneCheckInterval && clearInterval (this.phoneCheckInterval)
-        this.phoneCheckInterval = undefined
+        this.phoneCheckListeners -= 1
+        if (this.phoneCheckListeners <= 0) {
+            this.phoneCheckInterval && clearInterval (this.phoneCheckInterval)
+            this.phoneCheckInterval = undefined
+            this.phoneCheckListeners = 0
+        }
+        
     }
     /** checks for phone connection */
     protected async sendAdminTest () {
@@ -383,7 +393,9 @@ export class WAConnection extends EventEmitter {
         this.initTimeout && clearTimeout (this.initTimeout)
         this.debounceTimeout && clearTimeout (this.debounceTimeout)
         this.keepAliveReq && clearInterval(this.keepAliveReq)
+        this.phoneCheckListeners = 0
         this.clearPhoneCheckInterval ()
+        
 
         this.emit ('ws-close', { reason: DisconnectReason.close })
 

@@ -2,7 +2,7 @@ import { Presence, ChatModification, delay, newMessagesDB, WA_DEFAULT_EPHEMERAL,
 import { promises as fs } from 'fs'
 import * as assert from 'assert'
 import fetch from 'node-fetch'
-import { WAConnectionTest, testJid, assertChatDBIntegrity, sendAndRetreiveMessage } from './Common'
+import { WAConnectionTest, testJid, sendAndRetreiveMessage } from './Common'
 
 WAConnectionTest('Misc', conn => {
 

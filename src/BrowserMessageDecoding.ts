@@ -3,8 +3,7 @@ import { decryptWA } from './WAConnection/WAConnection'
 import Decoder from './Binary/Decoder'
 
 interface BrowserMessagesInfo {
-    encKey: string,
-    macKey: string,
+    bundle: { encKey: string, macKey: string }
     harFilePath: string
 }
 interface WSMessage {
@@ -14,8 +13,8 @@ interface WSMessage {
 const file = fs.readFileSync ('./browser-messages.json', {encoding: 'utf-8'})
 const json: BrowserMessagesInfo = JSON.parse (file)
 
-const encKey = Buffer.from (json.encKey, 'base64')
-const macKey = Buffer.from (json.macKey, 'base64')
+const encKey = Buffer.from (json.bundle.encKey, 'base64')
+const macKey = Buffer.from (json.bundle.macKey, 'base64')
 
 const harFile = JSON.parse ( fs.readFileSync( json.harFilePath , {encoding: 'utf-8'}))
 const entries = harFile['log']['entries']
