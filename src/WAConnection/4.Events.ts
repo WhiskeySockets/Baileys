@@ -456,7 +456,6 @@ export class WAConnection extends Base {
     protected chatAddMessage (message: WAMessage, chat: WAChat) {
         // store updates in this
         const chatUpdate: WAChatUpdate = { jid: chat.jid }
-        
         // add to count if the message isn't from me & there exists a message
         if (!message.key.fromMe && message.message) {
             chat.count += 1
@@ -521,6 +520,11 @@ export class WAConnection extends Base {
             if (message.message && !ephemeralProtocolMsg) {
                 this.chatUpdateTime (chat, +toNumber(message.messageTimestamp))
                 chatUpdate.t = chat.t
+                // a new message unarchives the chat
+                if (chat.archive) {
+                    delete chat.archive
+                    chatUpdate.archive = 'false'
+                }
             }
             chatUpdate.hasNewMessage = true
             chatUpdate.messages = newMessagesDB([ message ])
