@@ -518,13 +518,15 @@ export class WAConnection extends Base {
             }            
             // only update if it's an actual message
             if (message.message && !ephemeralProtocolMsg) {
-                this.chatUpdateTime (chat, +toNumber(message.messageTimestamp))
-                chatUpdate.t = chat.t
-                // a new message unarchives the chat
-                if (chat.archive) {
-                    delete chat.archive
-                    chatUpdate.archive = 'false'
-                }
+                this.chats.updateKey(chat, chat => {
+                    chat.t = +toNumber(message.messageTimestamp)
+                    chatUpdate.t = chat.t
+                    // a new message unarchives the chat
+                    if (chat.archive) {
+                        delete chat.archive
+                        chatUpdate.archive = 'false'
+                    }
+                })
             }
             chatUpdate.hasNewMessage = true
             chatUpdate.messages = newMessagesDB([ message ])
