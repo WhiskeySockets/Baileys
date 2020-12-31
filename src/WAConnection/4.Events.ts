@@ -266,7 +266,7 @@ export class WAConnection extends Base {
                     return 'clear'
                 },
                 'archive': () => {
-                    chat.archive = 'true'
+                    this.chats.updateKey(chat, chat => chat.archive = 'true')
                     return 'archive'
                 },
                 'unarchive': () => {
@@ -282,7 +282,7 @@ export class WAConnection extends Base {
             
             if (func) {
                 const property = func ()
-                this.emit ('chat-update', { jid, [property]: chat[property] || null })
+                this.emit ('chat-update', { jid, [property]: chat[property] || 'false' })
             }            
         })
         // profile picture updates
@@ -508,8 +508,7 @@ export class WAConnection extends Base {
             }
         } else if (!messages.get(WA_MESSAGE_ID(message))) { // if the message is not already there
 
-            const last = messages.all().slice(-1)
-            const lastEpoch = ((last && last[0]) && last[0]['epoch']) || 0
+            const lastEpoch = (messages.last && messages.last['epoch']) || 0
             message['epoch'] = lastEpoch+1
 
             messages.insert (message)
@@ -518,7 +517,7 @@ export class WAConnection extends Base {
             }            
             // only update if it's an actual message
             if (message.message && !ephemeralProtocolMsg) {
-                this.chats.updateKey(chat, chat => {
+                this.chats.update(chat.jid, chat => {
                     chat.t = +toNumber(message.messageTimestamp)
                     chatUpdate.t = chat.t
                     // a new message unarchives the chat

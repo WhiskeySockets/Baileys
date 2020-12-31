@@ -1,10 +1,10 @@
 import {WAConnection as Base} from './6.MessagesSend'
 import { MessageType, WAMessageKey, MessageInfo, WAMessageContent, WAMetric, WAFlag, WANode, WAMessage, WAMessageProto, ChatModification, BaileysError, WAChatIndex, WAChat } from './Constants'
-import { whatsappID, delay, toNumber, unixTimestampSeconds, GET_MESSAGE_ID, WA_MESSAGE_ID, isGroupID, newMessagesDB } from './Utils'
+import { whatsappID, delay, toNumber, unixTimestampSeconds, GET_MESSAGE_ID, isGroupID, newMessagesDB } from './Utils'
 import { Mutex } from './Mutex'
 
 export class WAConnection extends Base {
-
+    
     @Mutex ()
     async loadAllUnreadMessages () {
         const tasks = this.chats.all()
@@ -453,14 +453,16 @@ export class WAConnection extends Base {
                     chat.messages = chat.messages.filter(m => m.starred)
                 }
             }
-            if (type.includes('un')) {
-                type = type.replace ('un', '') as ChatModification
-                delete chat[type.replace('un','')]
-                this.emit ('chat-update', { jid, [type]: false })
-            } else {
-                chat[type] = chatAttrs[type] || 'true'
-                this.emit ('chat-update', { jid, [type]: chat[type] })
-            }
+            this.chats.update(jid, chat => {
+                if (type.includes('un')) {
+                    type = type.replace ('un', '') as ChatModification
+                    delete chat[type.replace('un','')]
+                    this.emit ('chat-update', { jid, [type]: false })
+                } else {
+                    chat[type] = chatAttrs[type] || 'true'
+                    this.emit ('chat-update', { jid, [type]: chat[type] })
+                }
+            })
         }
         return response
     }

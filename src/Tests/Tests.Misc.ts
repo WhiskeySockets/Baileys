@@ -119,9 +119,37 @@ WAConnectionTest('Misc', conn => {
         }
     })
     it('should archive & unarchive', async () => {
+        // wait for chats
+        await new Promise(resolve => (
+            conn.once('chats-received', ({ }) => resolve(undefined))
+        ))
+
+        const idx = conn.chats.all().findIndex(chat => chat.jid === testJid)
         await conn.modifyChat (testJid, ChatModification.archive)
+        const idx2 = conn.chats.all().findIndex(chat => chat.jid === testJid)
+        assert.ok(idx < idx2) // should move further down the array
+
         await delay (2000)
         await conn.modifyChat (testJid, ChatModification.unarchive)
+        const idx3 = conn.chats.all().findIndex(chat => chat.jid === testJid)
+        assert.strictEqual(idx, idx3) // should be back there
+    })
+    it('should archive & unarchive on new message', async () => {
+        // wait for chats
+        await new Promise(resolve => (
+            conn.once('chats-received', ({ }) => resolve(undefined))
+        ))
+
+        const idx = conn.chats.all().findIndex(chat => chat.jid === testJid)
+        await conn.modifyChat (testJid, ChatModification.archive)
+        const idx2 = conn.chats.all().findIndex(chat => chat.jid === testJid)
+        assert.ok(idx < idx2) // should move further down the array
+
+        await delay (2000)
+        await sendAndRetreiveMessage(conn, 'test', MessageType.text)
+        // should be unarchived
+        const idx3 = conn.chats.all().findIndex(chat => chat.jid === testJid)
+        assert.strictEqual(idx, idx3) // should be back there
     })
     it('should pin & unpin a chat', async () => {
         await conn.modifyChat (testJid, ChatModification.pin)
