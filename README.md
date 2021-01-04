@@ -181,14 +181,10 @@ Also, these events are fired regardless of whether they are initiated by the Bai
 on (event: 'open', listener: (result: WAOpenResult) => void): this
 /** when the connection is opening */
 on (event: 'connecting', listener: () => void): this
-/** when the connection has been validated */
-on (event: 'connection-validated', listener: (user: WAUser) => void): this
 /** when the connection has closed */
 on (event: 'close', listener: (err: {reason?: DisconnectReason | string, isReconnecting: boolean}) => void): this
 /** when the socket is closed */
 on (event: 'ws-close', listener: (err: {reason?: DisconnectReason | string}) => void): this
-/** when WA updates the credentials */
-on (event: 'credentials-updated', listener: (auth: AuthenticationCredentials) => void): this
 /** when a new QR is generated, ready for scanning */
 on (event: 'qr', listener: (qr: string) => void): this
 /** when the connection to the phone changes */

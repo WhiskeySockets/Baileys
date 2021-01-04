@@ -49,7 +49,7 @@ export class WAConnection extends Base {
                 if (!willReconnect) throw error
             }
         }
-        result.newConnection = newConnection
+        if (newConnection) result.newConnection = newConnection
         this.emit ('open', result)
         
         this.logger.info ('opened connection to WhatsApp Web')

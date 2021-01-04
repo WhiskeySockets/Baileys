@@ -608,8 +608,6 @@ export class WAConnection extends Base {
     on (event: 'open', listener: (result: WAOpenResult) => void): this
     /** when the connection is opening */
     on (event: 'connecting', listener: () => void): this
-    /** when the connection has been validated */
-    on (event: 'connection-validated', listener: (item: { user: WAUser, auth: AuthenticationCredentials, isNewUser: boolean }) => void): this
     /** when the connection has closed */
     on (event: 'close', listener: (err: {reason?: DisconnectReason | string, isReconnecting: boolean}) => void): this
     /** when the socket is closed */

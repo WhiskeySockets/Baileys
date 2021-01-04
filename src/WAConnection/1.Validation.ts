@@ -1,7 +1,7 @@
 import * as Curve from 'curve25519-js'
 import * as Utils from './Utils'
 import {WAConnection as Base} from './0.Base'
-import { WAMetric, WAFlag, BaileysError, Presence, WAUser, WAInitResponse } from './Constants'
+import { WAMetric, WAFlag, BaileysError, Presence, WAUser, WAInitResponse, WAOpenResult } from './Constants'
 
 export class WAConnection extends Base {
 
@@ -87,21 +87,21 @@ export class WAConnection extends Base {
             response = await this.waitForMessage('s2', true)
         }
         
-        const {user, auth} = this.validateNewConnection(response[1]) // validate the connection
-        if (user.jid !== this.user?.jid) {
-            isNewUser = true
+        const result = this.validateNewConnection(response[1])// validate the connection
+        if (result.user.jid !== this.user?.jid) {
+            result.isNewUser = true
             // clear out old data
             this.chats.clear()
             this.contacts = {}
         }
-        this.user = user
+        this.user = result.user
         
         this.logger.info('validated connection successfully')
 
         this.sendPostConnectQueries ()
         this.logger.debug('sent init queries')
 
-        return { user, auth, isNewUser }
+        return result
     }
     /**
      * Send the same queries WA Web sends after connect
@@ -142,9 +142,9 @@ export class WAConnection extends Base {
                 name: json.pushname,
                 phone: json.phone,
                 imgUrl: null
-            } as WAUser,
+            },
             auth: this.authInfo
-        })
+        }) as WAOpenResult
 
         if (!json.secret) {
             // if we didn't get a secret, we don't need it, we're validated

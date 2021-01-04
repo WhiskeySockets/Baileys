@@ -402,9 +402,9 @@ export interface WAMessageStatusUpdate {
 
 export interface WAOpenResult {
     /** Was this connection opened via a QR scan */
-    newConnection: boolean
+    newConnection?: true
     user: WAUser
-    isNewUser: boolean
+    isNewUser?: true
     auth: AuthenticationCredentials
 }
 
@@ -420,8 +420,8 @@ export interface PresenceUpdate {
     deny?: boolean
 }
 export interface BlocklistUpdate {
-    added: string[]
-    removed: string[]
+    added?: string[]
+    removed?: string[]
 }
 // path to upload the media
 export const MediaPathMap = {
@@ -438,11 +438,6 @@ export const MimetypeMap = {
     documentMessage: Mimetype.pdf,
     audioMessage: Mimetype.ogg,
     stickerMessage: Mimetype.webp,
-}
-export interface WASendMessageResponse {
-    status: number
-    messageID: string
-    message: WAMessage
 }
 export type WAParticipantAction = 'add' | 'remove' | 'promote' | 'demote'
 export type BaileysEvent = 
