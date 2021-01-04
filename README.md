@@ -193,26 +193,28 @@ on (event: 'credentials-updated', listener: (auth: AuthenticationCredentials) =>
 on (event: 'qr', listener: (qr: string) => void): this
 /** when the connection to the phone changes */
 on (event: 'connection-phone-change', listener: (state: {connected: boolean}) => void): this
-/** when a user's status is updated */
-on (event: 'user-status-update', listener: (update: {jid: string, status?: string}) => void): this
+/** when a contact is updated */
+on (event: 'contact-update', listener: (update: WAContactUpdate) => void): this
 /** when a new chat is added */
 on (event: 'chat-new', listener: (chat: WAChat) => void): this
 /** when contacts are sent by WA */
-on (event: 'contacts-received', listener: () => void): this
-/** when chats are sent by WA, and when all messages are received from WhatsApp */
-on (event: 'chats-received', listener: (update: {hasNewChats?: boolean, hasReceivedLastMessage?: boolean}) => void): this
+on (event: 'contacts-received', listener: (u: { updatedContacts: Partial<WAContact>[] }) => void): this
+/** when chats are sent by WA, and when all messages are received */
+on (event: 'chats-received', listener: (update: {hasNewChats?: boolean}) => void): this
+/** when all initial messages are received from WA */
+on (event: 'initial-data-received', listener: (update: {chatsWithMissingMessages: { jid: string, count: number }[] }) => void): this
 /** when multiple chats are updated (new message, updated message, deleted, pinned, etc) */
 on (event: 'chats-update', listener: (chats: WAChatUpdate[]) => void): this
-/** when a chat is updated (new message, updated message, deleted, pinned, presence updated etc) */
-on (event: 'chat-update', listener: (chat: Partial<WAChat> & { hasNewMessage: boolean }) => void): this
-/** when a message's status is updated (deleted, delivered, read, sent etc.) */
-on (event: 'message-status-update', listener: (message: WAMessageStatusUpdate) => void): this
+/** when a chat is updated (new message, updated message, read message, deleted, pinned, presence updated etc) */
+on (event: 'chat-update', listener: (chat: WAChatUpdate) => void): this
 /** when participants are added to a group */
 on (event: 'group-participants-update', listener: (update: {jid: string, participants: string[], actor?: string, action: WAParticipantAction}) => void): this
 /** when the group is updated */
 on (event: 'group-update', listener: (update: Partial<WAGroupMetadata> & {jid: string, actor?: string}) => void): this
 /** when WA sends back a pong */
 on (event: 'received-pong', listener: () => void): this
+/** when a user is blocked or unblockd */
+on (event: 'blocklist-update', listener: (update: BlocklistUpdate) => void): this
 ```
 
 ## Sending Messages

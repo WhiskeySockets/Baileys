@@ -21,10 +21,10 @@ WAConnectionTest('Misc', conn => {
         const newStatus = 'v cool status'
 
         const waitForEvent = new Promise (resolve => {
-            conn.on ('user-status-update', ({jid, status}) => {
+            conn.on ('contact-update', ({jid, status}) => {
                 if (jid === conn.user.jid) {
                     assert.strictEqual (status, newStatus)
-                    conn.removeAllListeners ('user-status-update')
+                    conn.removeAllListeners ('contact-update')
                     resolve(undefined)
                 }
             })

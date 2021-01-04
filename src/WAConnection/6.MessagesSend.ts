@@ -11,7 +11,7 @@ import {
     WATextMessage,
     WAMessageContent, WAMetric, WAFlag, WAMessage, BaileysError, WA_MESSAGE_STATUS_TYPE, WAMessageProto, MediaConnInfo, MessageTypeProto, URL_REGEX, WAUrlInfo, WA_DEFAULT_EPHEMERAL
 } from './Constants'
-import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes, generateThumbnail, getMediaKeys, decodeMediaMessageBuffer, extensionForMediaMessage, whatsappID, unixTimestampSeconds, getAudioDuration  } from './Utils'
+import { generateMessageID, sha256, hmacSign, aesEncrypWithIV, randomBytes, generateThumbnail, getMediaKeys, decodeMediaMessageBuffer, extensionForMediaMessage, whatsappID, unixTimestampSeconds, getAudioDuration, newMessagesDB  } from './Utils'
 import { Mutex } from './Mutex'
 
 export class WAConnection extends Base {
@@ -288,9 +288,13 @@ export class WAConnection extends Base {
         if (waitForAck) {
             await promise
         } else {
+            const emitUpdate = (status: WA_MESSAGE_STATUS_TYPE) => {
+                message.status = status
+                this.emit('chat-update', { jid: message.key.remoteJid, messages: newMessagesDB([ message ]) })
+            }
             promise
-            .then(() => this.emit('message-status-update', { ids: [ mID ], to: message.key.remoteJid, type: WA_MESSAGE_STATUS_TYPE.SERVER_ACK }))
-            .catch(() => this.emit('message-status-update', { ids: [ mID ], to: message.key.remoteJid, type: WA_MESSAGE_STATUS_TYPE.ERROR }))
+            .then(() => emitUpdate(WA_MESSAGE_STATUS_TYPE.SERVER_ACK))
+            .catch(() => emitUpdate(WA_MESSAGE_STATUS_TYPE.ERROR))
         }
         await this.chatAddMessageAppropriate (message)
     }

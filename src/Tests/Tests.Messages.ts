@@ -12,9 +12,11 @@ WAConnectionTest('Messages', conn => {
     it('should send a pending message', async () => {
         const message = await sendAndRetreiveMessage(conn, 'hello fren', MessageType.text, { waitForAck: false })
 
-        await new Promise(resolve => conn.once('message-status-update', update => {
-            if (update.ids.includes(message.key.id)) {
-                assert.strictEqual(update.type, WA_MESSAGE_STATUS_TYPE.SERVER_ACK)
+        await new Promise(resolve => conn.on('chat-update', update => {
+            if (update.jid === testJid && 
+                update.messages && 
+                update.messages.first.key.id === message.key.id &&
+                update.messages.first.status === WA_MESSAGE_STATUS_TYPE.SERVER_ACK) {
                 resolve(undefined)
             } 
         }))

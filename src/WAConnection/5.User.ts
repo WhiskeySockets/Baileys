@@ -78,9 +78,6 @@ export class WAConnection extends Base {
             ]
         )
         this.emit ('contact-update', { jid: this.user.jid, status })
-
-        // emit deprecated
-        this.emit ('user-status-update', { jid: this.user.jid, status })
         return response
     }
     async updateProfileName (name: string) {

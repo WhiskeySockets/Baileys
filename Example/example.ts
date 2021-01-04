@@ -50,7 +50,7 @@ async function example() {
 
     /**
      * The universal event for anything that happens
-     * New messages, updated messages, read & delivered messages
+     * New messages, updated messages, read & delivered messages, participants typing etc.
      */
     conn.on('chat-update', async chat => {
         if (chat.presences) { // receive presence updates -- composing, available, etc.

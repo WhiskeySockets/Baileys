@@ -625,11 +625,6 @@ export class WAConnection extends Base {
     on (event: 'chats-update', listener: (chats: WAChatUpdate[]) => void): this
     /** when a chat is updated (new message, updated message, read message, deleted, pinned, presence updated etc) */
     on (event: 'chat-update', listener: (chat: WAChatUpdate) => void): this
-    /** 
-     * when a message's status is updated (deleted, delivered, read, sent etc.) 
-     * @deprecated will not be called anymore. Use `chat-update`
-     * */
-    on (event: 'message-status-update', listener: (message: WAMessageStatusUpdate) => void): this
     /** when participants are added to a group */
     on (event: 'group-participants-update', listener: (update: {jid: string, participants: string[], actor?: string, action: WAParticipantAction}) => void): this
     /** when the group is updated */
