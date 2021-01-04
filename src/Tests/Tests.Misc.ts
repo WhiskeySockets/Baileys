@@ -171,7 +171,7 @@ WAConnectionTest('Misc', conn => {
         await delay (2000)
         await conn.modifyChat (testJid, ChatModification.unmute)
     })
-    it('should star/unchar messages', async () => {
+    it('should star/unstar messages', async () => {
         for (let i = 1; i <= 5; i++) {
           await conn.sendMessage(testJid, `Message ${i}`, MessageType.text)
           await delay(1000)
@@ -276,7 +276,7 @@ WAConnectionTest('Misc', conn => {
     it('should detect overlaps and clear messages accordingly', async () => {
         // wait for chats
         await new Promise(resolve => (
-            conn.once('chats-received', ({ hasReceivedLastMessage }) => hasReceivedLastMessage && resolve(undefined))
+            conn.once('initial-data-received', resolve)
         ))
 
         conn.maxCachedMessages = 100
@@ -293,18 +293,16 @@ WAConnectionTest('Misc', conn => {
         chat.messages = newMessagesDB( chat.messages.all().slice(0, 20) )
 
         const task = new Promise(resolve => (
-            conn.on('chats-received', ({ hasReceivedLastMessage, chatsWithMissingMessages }) => {
-                if (hasReceivedLastMessage) {
-                    assert.strictEqual(Object.keys(chatsWithMissingMessages).length, 1)
-                    const missing = chatsWithMissingMessages.find(({ jid }) => jid === testJid)
-                    assert.ok(missing, 'missing message not detected')
-                    assert.strictEqual(
-                        conn.chats.get(testJid).messages.length,
-                        missing.count
-                    )
-                    assert.strictEqual(missing.count, oldCount)
-                    resolve(undefined)
-                }
+            conn.on('initial-data-received', ({ chatsWithMissingMessages }) => {
+                assert.strictEqual(Object.keys(chatsWithMissingMessages).length, 1)
+                const missing = chatsWithMissingMessages.find(({ jid }) => jid === testJid)
+                assert.ok(missing, 'missing message not detected')
+                assert.strictEqual(
+                    conn.chats.get(testJid).messages.length,
+                    missing.count
+                )
+                assert.strictEqual(missing.count, oldCount)
+                resolve(undefined)
             })
         ))
 

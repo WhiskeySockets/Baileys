@@ -93,33 +93,21 @@ export class WAConnection extends Base {
                     this.startKeepAliveRequest()
                     this.logger.info(`connected to WhatsApp Web server, authenticating via ${reconnectID ? 'reconnect' : 'takeover'}`)
 
-                    let waitForChats: Promise<{ hasNewChats: boolean }>
-                    // add wait for chats promise if required
-                    if (options?.waitForChats) {
-                        const {wait, cancellations} = this.receiveChatsAndContacts(this.connectOptions.waitOnlyForLastMessage)
-                        waitForChats = wait
-                        rejections.push (...cancellations)
-                    }
                     try {
-                        const [authResult, chatsResult] = await Promise.all (
-                            [ 
-                                this.authenticate(reconnectID),
-                                waitForChats || undefined
-                            ]
-                        )
+                        const authResult = await this.authenticate(reconnectID)
                         
                         this.conn
                             .removeAllListeners('error')
                             .removeAllListeners('close')
-                        this.stopDebouncedTimeout ()
-                        resolve ({ ...authResult, ...chatsResult })
+                        this.stopDebouncedTimeout()
+                        resolve(authResult)
                     } catch (error) {
-                        reject (error)
+                        reject(error)
                     }
                 })
                 this.conn.on('error', rejectAll)
                 this.conn.on('close', () => rejectAll(new Error(DisconnectReason.close)))
-            }) as Promise<{ hasNewChats?: boolean, isNewUser: boolean }>
+            }) as Promise<{ isNewUser: boolean }>
         )
 
         this.on ('ws-close', rejectAllOnWSClose)
@@ -132,45 +120,15 @@ export class WAConnection extends Base {
             const result = await connect ()
             return result
         } catch (error) {
-            this.endConnection ()
+            this.endConnection()
             throw error
         } finally {
             this.off ('ws-close', rejectAllOnWSClose)
         }
     }
-    /**
-     * Sets up callbacks to receive chats, contacts & messages.
-     * Must be called immediately after connect
-     */
-    protected receiveChatsAndContacts(waitOnlyForLast: boolean) {
-        const rejectableWaitForEvent = (event: string) => {
-            let rejectTask = (_: Error) => {}
-            const task = new Promise((resolve, reject) => {
-                this.once (event, data => {
-                    this.startDebouncedTimeout() // start timeout again
-                    resolve(data)
-                })
-                rejectTask = reject
-            })
-            return { reject: rejectTask, task }
-        }
-        const events = [ 'chats-received', 'contacts-received', 'CB:action,add:last' ]
-        if (!waitOnlyForLast) events.push('CB:action,add:before', 'CB:action,add:unread')
-
-        const cancellations = []
-        const wait = Promise.all (
-            events.map (ev => {
-                const {reject, task} = rejectableWaitForEvent(ev)
-                cancellations.push(reject)
-                return task 
-            })
-        ).then(([update]) => update as { hasNewChats: boolean })
-        
-        return { wait, cancellations }
-    }
     private onMessageRecieved(message: string | Buffer) {
         if (message[0] === '!') {
-            // when the first character in the message is an '!', the server is updating the last seen
+            // when the first character in the message is an '!', the server is sending a pong frame
             const timestamp = message.slice(1, message.length).toString ('utf-8')
             this.lastSeen = new Date(parseInt(timestamp))
             this.emit ('received-pong')

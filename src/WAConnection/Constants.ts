@@ -65,6 +65,7 @@ export interface WAQuery {
     longTag?: boolean
     requiresPhoneConnection?: boolean
     startDebouncedTimeout?: boolean
+    maxRetries?: number
 }
 export enum ReconnectMode {
     /** does not reconnect */
@@ -80,25 +81,10 @@ export type WALoadChatOptions = {
     loadProfilePicture?: boolean
 }
 export type WAConnectOptions = {
-    /** 
-     * New QR generation interval, set to null if you don't want to regenerate 
-     * @deprecated no need to set this as we use WA ttl
-     * */
-    regenerateQRIntervalMs?: number
     /** fails the connection if no data is received for X seconds */
     maxIdleTimeMs?: number
     /** maximum attempts to connect */
     maxRetries?: number
-    /** 
-     * @deprecated -- use the `chats-received` & `contacts-received` events
-     * should the chats be waited for 
-     * */
-    waitForChats?: boolean
-    /** 
-     * @deprecated -- use the `chats-received` & `contacts-received` events
-     * if set to true, the connect only waits for the last message of the chat 
-     * */
-    waitOnlyForLastMessage?: boolean
     /** max time for the phone to respond to a connectivity test */
     phoneResponseTime?: number
     connectCooldownMs?: number
@@ -465,16 +451,15 @@ export type BaileysEvent =
     'close' |
     'ws-close' | 
     'qr' |
+    'connection-validated' |
     'connection-phone-change' |
     'contacts-received' |
     'chats-received' |
     'chat-new' |
     'chat-update' |
-    'message-status-update' |
     'group-participants-update' |
     'group-update' |
     'received-pong' |
     'credentials-updated' |
-    'connection-validated' |
     'blocklist-update' |
     'contact-update'

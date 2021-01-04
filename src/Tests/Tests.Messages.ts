@@ -1,4 +1,4 @@
-import { MessageType, Mimetype, delay, promiseTimeout, WA_MESSAGE_STATUS_TYPE, WAMessageStatusUpdate } from '../WAConnection/WAConnection'
+import { MessageType, Mimetype, delay, promiseTimeout, WA_MESSAGE_STATUS_TYPE, WAMessageStatusUpdate, generateMessageID, WAMessage } from '../WAConnection/WAConnection'
 import {promises as fs} from 'fs'
 import * as assert from 'assert'
 import { WAConnectionTest, testJid, sendAndRetreiveMessage, assertChatDBIntegrity } from './Common'
@@ -168,17 +168,23 @@ WAConnectionTest('Messages', conn => {
         const content2 = await fs.readFile('./Media/cat.jpeg')
         await sendAndRetreiveMessage(conn, content2, MessageType.image)
     })
-    it('should fail to send a text message', done => {
+    it('should fail to send a text message', async () => {
         const JID = '1234-1234@g.us'
-        conn.sendMessage(JID, 'hello', MessageType.text)
+        const messageId = generateMessageID()
+        conn.sendMessage(JID, 'hello', MessageType.text, { messageId })
 
-        conn.on ('message-status-update', async update => {
-            if (update.to === JID) {
-                assert.strictEqual (update.type, WA_MESSAGE_STATUS_TYPE.ERROR)
-                await conn.deleteChat (JID)
-                done ()
-            }
-        })
+        await new Promise(resolve => (
+            conn.on ('chat-update', async update => {
+                console.log(messageId, update.messages?.first)
+                if (
+                    update.jid === JID && 
+                    update.messages?.first.key.id === messageId &&
+                    update.messages.first.status === WA_MESSAGE_STATUS_TYPE.ERROR) {
+                    resolve(undefined)
+                }
+            })
+        ))
+        conn.removeAllListeners('chat-update')
     })
     it('should maintain message integrity', async () => {
         // loading twice does not alter the results
@@ -236,16 +242,17 @@ WAConnectionTest('Messages', conn => {
         }
     })
     it('should deliver a message', async () => {
+        const response = await conn.sendMessage(testJid, 'My Name Jeff', MessageType.text)
         const waitForUpdate = 
             promiseTimeout(15000, resolve => {
-                conn.on('message-status-update', update => {
-                    if (update.ids.includes(response.key.id)) {
-                        resolve(update)
+                conn.on('chat-update', update => {
+                    if (update.messages?.first.key.id === response.key.id) {
+                        resolve(update.messages.first)
                     }
                 })
-            }) as Promise<WAMessageStatusUpdate>
-        const response = await conn.sendMessage(testJid, 'My Name Jeff', MessageType.text)
+            }) as Promise<WAMessage>
+        
         const m = await waitForUpdate
-        assert.ok (m.type >= WA_MESSAGE_STATUS_TYPE.DELIVERY_ACK)
+        assert.ok (m.status >= WA_MESSAGE_STATUS_TYPE.DELIVERY_ACK)
     })
 })

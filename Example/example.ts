@@ -9,13 +9,14 @@ import {
     ReconnectMode,
     ProxyAgent,
     waChatKey,
+    delay,
 } from '../src/WAConnection/WAConnection'
 import * as fs from 'fs'
 
 async function example() {
     const conn = new WAConnection() // instantiate
     conn.autoReconnect = ReconnectMode.onConnectionLost // only automatically reconnect when the connection breaks
-    conn.logger.level = 'debug' // set to 'debug' to see what kind of stuff you can implement
+    conn.logger.level = 'trace' // set to 'debug' to see what kind of stuff you can implement
     // attempt to reconnect at most 10 times in a row
     conn.connectOptions.maxRetries = 10
     conn.chatOrderingKey = waChatKey(true) // order chats such that pinned chats are on top
@@ -34,28 +35,34 @@ async function example() {
     })
 
     // loads the auth file credentials if present
+    /*  Note: one can take this auth_info.json file and login again from any computer without having to scan the QR code, 
+        and get full access to one's WhatsApp. Despite the convenience, be careful with this file */
     fs.existsSync('./auth_info.json') && conn.loadAuthInfo ('./auth_info.json')
     // uncomment the following line to proxy the connection; some random proxy I got off of: https://proxyscrape.com/free-proxy-list
     //conn.connectOptions.agent = ProxyAgent ('http://1.0.180.120:8080')
     await conn.connect()
 
     console.log('oh hello ' + conn.user.name + ' (' + conn.user.jid + ')')    
+
     // uncomment to load all unread messages
     //const unread = await conn.loadAllUnreadMessages ()
     //console.log ('you have ' + unread.length + ' unread messages')
 
-    /*  Note: one can take this auth_info.json file and login again from any computer without having to scan the QR code, 
-        and get full access to one's WhatsApp. Despite the convenience, be careful with this file */
-    conn.on ('message-status-update', json => {
-        const participant = json.participant ? ' (' + json.participant + ')' : '' // participant exists when the message is from a group
-        console.log(`${json.to}${participant} acknlowledged message(s) ${json.ids} as ${json.type}`)
-    })
+    /**
+     * The universal event for anything that happens
+     * New messages, updated messages, read & delivered messages
+     */
     conn.on('chat-update', async chat => {
         if (chat.presences) { // receive presence updates -- composing, available, etc.
             Object.values(chat.presences).forEach(presence => console.log( `${presence.name}'s presence is ${presence.lastKnownPresence} in ${chat.jid}`))
         }
         // only do something when a new message is received
-        if (!chat.hasNewMessage) return 
+        if (!chat.hasNewMessage) {
+            if(chat.messages) {
+                console.log('updated message: ', chat.messages.first)
+            }
+            return
+        } 
         
         const m = chat.messages.all()[0] // pull the new message from the update
         const messageStubType = WA_MESSAGE_STUB_TYPES[m.messageStubType] ||  'MESSAGE'
