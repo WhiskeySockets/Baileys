@@ -405,7 +405,7 @@ export interface WAOpenResult {
     newConnection: boolean
     user: WAUser
     isNewUser: boolean
-    hasNewChats?: boolean
+    auth: AuthenticationCredentials
 }
 
 export enum GroupSettingChange {
@@ -451,15 +451,14 @@ export type BaileysEvent =
     'close' |
     'ws-close' | 
     'qr' |
-    'connection-validated' |
     'connection-phone-change' |
     'contacts-received' |
     'chats-received' |
+    'initial-data-received' |
     'chat-new' |
     'chat-update' |
     'group-participants-update' |
     'group-update' |
     'received-pong' |
-    'credentials-updated' |
     'blocklist-update' |
     'contact-update'

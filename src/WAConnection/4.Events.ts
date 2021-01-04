@@ -11,9 +11,18 @@ export class WAConnection extends Base {
         super ()
         this.setMaxListeners (30)
         // on disconnects
-        this.on ('CB:Cmd,type:disconnect', json => (
+        this.on('CB:Cmd,type:disconnect', json => (
             this.state === 'open' && this.unexpectedDisconnect(json[1].kind || 'unknown')
         ))
+        this.on('CB:Pong', json => {
+            if (!json[1]) {
+                this.unexpectedDisconnect(DisconnectReason.close)
+                this.logger.info('Connection terminated by phone, closing...')
+            } else if (this.phoneConnected !== json[1]) {
+                this.phoneConnected = json[1]
+                this.emit ('connection-phone-change', { connected: this.phoneConnected })
+            }
+        })
         // chats received
         this.on('CB:response,type:chat', json => {
             if (json[1].duplicate || !json[2]) return
@@ -600,13 +609,11 @@ export class WAConnection extends Base {
     /** when the connection is opening */
     on (event: 'connecting', listener: () => void): this
     /** when the connection has been validated */
-    on (event: 'connection-validated', listener: (user: WAUser) => void): this
+    on (event: 'connection-validated', listener: (item: { user: WAUser, auth: AuthenticationCredentials, isNewUser: boolean }) => void): this
     /** when the connection has closed */
     on (event: 'close', listener: (err: {reason?: DisconnectReason | string, isReconnecting: boolean}) => void): this
     /** when the socket is closed */
     on (event: 'ws-close', listener: (err: {reason?: DisconnectReason | string}) => void): this
-    /** when WA updates the credentials */
-    on (event: 'credentials-updated', listener: (auth: AuthenticationCredentials) => void): this
     /** when a new QR is generated, ready for scanning */
     on (event: 'qr', listener: (qr: string) => void): this
     /** when the connection to the phone changes */

@@ -9,7 +9,6 @@ import {
     ReconnectMode,
     ProxyAgent,
     waChatKey,
-    delay,
 } from '../src/WAConnection/WAConnection'
 import * as fs from 'fs'
 
@@ -20,13 +19,6 @@ async function example() {
     // attempt to reconnect at most 10 times in a row
     conn.connectOptions.maxRetries = 10
     conn.chatOrderingKey = waChatKey(true) // order chats such that pinned chats are on top
-
-    conn.on ('credentials-updated', () => {
-        // save credentials whenever updated
-        console.log (`credentials updated`)
-        const authInfo = conn.base64EncodedAuthInfo() // get all the auth info we need to restore this session
-        fs.writeFileSync('./auth_info.json', JSON.stringify(authInfo, null, '\t')) // save this info to a file
-    })
     conn.on('chats-received', ({ hasNewChats }) => {
         console.log(`you have ${conn.chats.length} chats, new chats available: ${hasNewChats}`)
     })
@@ -41,6 +33,9 @@ async function example() {
     // uncomment the following line to proxy the connection; some random proxy I got off of: https://proxyscrape.com/free-proxy-list
     //conn.connectOptions.agent = ProxyAgent ('http://1.0.180.120:8080')
     await conn.connect()
+    // credentials are updated on every connect
+    const authInfo = conn.base64EncodedAuthInfo() // get all the auth info we need to restore this session
+    fs.writeFileSync('./auth_info.json', JSON.stringify(authInfo, null, '\t')) // save this info to a file
 
     console.log('oh hello ' + conn.user.name + ' (' + conn.user.jid + ')')    
 

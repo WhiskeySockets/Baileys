@@ -4,7 +4,7 @@ import {WAConnection as Base} from './0.Base'
 import { WAMetric, WAFlag, BaileysError, Presence, WAUser, WAInitResponse } from './Constants'
 
 export class WAConnection extends Base {
-    
+
     /** Authenticate the connection */
     protected async authenticate (reconnect?: string) {
         // if no auth info is present, that is, a new session has to be established
@@ -87,33 +87,21 @@ export class WAConnection extends Base {
             response = await this.waitForMessage('s2', true)
         }
         
-        const newUser = this.validateNewConnection(response[1]) // validate the connection
-        if (newUser.jid !== this.user?.jid) {
+        const {user, auth} = this.validateNewConnection(response[1]) // validate the connection
+        if (user.jid !== this.user?.jid) {
             isNewUser = true
             // clear out old data
             this.chats.clear()
             this.contacts = {}
         }
-        this.user = newUser
+        this.user = user
         
         this.logger.info('validated connection successfully')
-        this.emit ('connection-validated', this.user)
 
-        if (this.loadProfilePicturesForChatsAutomatically) {
-            const response = await this.query({ 
-                json: ['query', 'ProfilePicThumb', this.user.jid], 
-                waitForOpen: false, 
-                expect200: false, 
-                requiresPhoneConnection: false, 
-                startDebouncedTimeout: true 
-            })
-            this.user.imgUrl = response?.eurl || ''
-        }
-        
         this.sendPostConnectQueries ()
         this.logger.debug('sent init queries')
 
-        return { isNewUser }
+        return { user, auth, isNewUser }
     }
     /**
      * Send the same queries WA Web sends after connect
@@ -149,25 +137,22 @@ export class WAConnection extends Base {
     private validateNewConnection(json) {
         // set metadata: one's WhatsApp ID [cc][number]@s.whatsapp.net, name on WhatsApp, info about the phone
         const onValidationSuccess = () => ({
-            jid: Utils.whatsappID(json.wid),
-            name: json.pushname,
-            phone: json.phone,
-            imgUrl: null
-        }) as WAUser
+            user: {
+                jid: Utils.whatsappID(json.wid),
+                name: json.pushname,
+                phone: json.phone,
+                imgUrl: null
+            } as WAUser,
+            auth: this.authInfo
+        })
 
         if (!json.secret) {
-            let credsChanged = false
             // if we didn't get a secret, we don't need it, we're validated
             if (json.clientToken && json.clientToken !== this.authInfo.clientToken) {
                 this.authInfo = { ...this.authInfo, clientToken: json.clientToken }
-                credsChanged = true
             }
             if (json.serverToken && json.serverToken !== this.authInfo.serverToken) {
                 this.authInfo = { ...this.authInfo, serverToken: json.serverToken }
-                credsChanged = true
-            }
-            if (credsChanged) {
-                this.emit ('credentials-updated', this.authInfo)
             }
             return onValidationSuccess()
         }
@@ -208,8 +193,6 @@ export class WAConnection extends Base {
             serverToken: json.serverToken,
             clientID: this.authInfo.clientID,
         }
-        
-        this.emit ('credentials-updated', this.authInfo)
         return onValidationSuccess()
     }
     /**
@@ -238,16 +221,17 @@ export class WAConnection extends Base {
 
                 this.logger.debug ('regenerating QR')
                 try {
-                    const {ref: newRef, ttl} = await this.requestNewQRCodeRef()
+                    const {ref: newRef, ttl: newTTL} = await this.requestNewQRCodeRef()
+                    ttl = newTTL
                     ref = newRef
-                    
-                    qrLoop (ttl)
                 } catch (error) {
                     this.logger.warn ({ error }, `error in QR gen`)
                     if (error.status === 429) { // too many QR requests
-                        this.emit ('ws-close', { reason: error.message })
+                        this.endConnection(error.message)
+                        return
                     }
                 }
+                qrLoop (ttl)
             }, ttl || 20_000) // default is 20s, on the off-chance ttl is not present
         }
         qrLoop (ttl)

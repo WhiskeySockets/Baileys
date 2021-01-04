@@ -100,16 +100,20 @@ export class WAConnection extends EventEmitter {
         return null
     }
     async unexpectedDisconnect (error: DisconnectReason) {
-        const willReconnect = 
+        if (this.state === 'open') {
+            const willReconnect = 
             (this.autoReconnect === ReconnectMode.onAllErrors || 
             (this.autoReconnect === ReconnectMode.onConnectionLost && error !== DisconnectReason.replaced)) &&
             error !== DisconnectReason.invalidSession // do not reconnect if credentials have been invalidated
         
-        this.closeInternal(error, willReconnect)
-        willReconnect && (
-            this.connect ()
-            .catch(err => {}) // prevent unhandled exeception
-        ) 
+            this.closeInternal(error, willReconnect)
+            willReconnect && (
+                this.connect()
+                .catch(err => {}) // prevent unhandled exeception
+            ) 
+        } else {
+            this.endConnection(error)
+        }
     }
     /**
      * base 64 encode the authentication credentials and return them
@@ -313,7 +317,7 @@ export class WAConnection extends EventEmitter {
     protected startDebouncedTimeout () {
         this.stopDebouncedTimeout ()
         this.debounceTimeout = setTimeout (
-            () => this.emit('ws-close', { reason: DisconnectReason.timedOut }), 
+            () => this.endConnection(DisconnectReason.timedOut), 
             this.connectOptions.maxIdleTimeMs
         )
     }
@@ -394,11 +398,11 @@ export class WAConnection extends EventEmitter {
         this.lastDisconnectReason = reason
         this.lastDisconnectTime = new Date ()
 
-        this.endConnection ()
+        this.endConnection(reason)
         // reconnecting if the timeout is active for the reconnect loop
         this.emit ('close', { reason, isReconnecting })
     }
-    protected endConnection () {
+    protected endConnection (reason: DisconnectReason) {
         this.conn?.removeAllListeners ('close')
         this.conn?.removeAllListeners ('error')
         this.conn?.removeAllListeners ('open')
@@ -410,7 +414,7 @@ export class WAConnection extends EventEmitter {
         this.phoneCheckListeners = 0
         this.clearPhoneCheckInterval ()
         
-        this.emit ('ws-close', { reason: DisconnectReason.close })
+        this.emit ('ws-close', { reason })
 
         try {
             this.conn?.close()

@@ -23,12 +23,12 @@ export class WAConnection extends Base {
 
         let tries = 0
         let lastConnect = this.lastDisconnectTime
-        let updates: any
+        let result: WAOpenResult
         while (this.state === 'connecting') {
             tries += 1
             try {
                 const diff = lastConnect ? new Date().getTime()-lastConnect.getTime() : Infinity
-                updates = await this.connectInternal (
+                result = await this.connectInternal (
                     options, 
                     diff > this.connectOptions.connectCooldownMs ? 0 : this.connectOptions.connectCooldownMs
                 )
@@ -49,7 +49,7 @@ export class WAConnection extends Base {
                 if (!willReconnect) throw error
             }
         }
-        const result: WAOpenResult = { user: this.user, newConnection, ...(updates || {}) }
+        result.newConnection = newConnection
         this.emit ('open', result)
         
         this.logger.info ('opened connection to WhatsApp Web')
@@ -100,14 +100,14 @@ export class WAConnection extends Base {
                             .removeAllListeners('error')
                             .removeAllListeners('close')
                         this.stopDebouncedTimeout()
-                        resolve(authResult)
+                        resolve(authResult as WAOpenResult)
                     } catch (error) {
                         reject(error)
                     }
                 })
                 this.conn.on('error', rejectAll)
                 this.conn.on('close', () => rejectAll(new Error(DisconnectReason.close)))
-            }) as Promise<{ isNewUser: boolean }>
+            }) as Promise<WAOpenResult>
         )
 
         this.on ('ws-close', rejectAllOnWSClose)
@@ -120,7 +120,9 @@ export class WAConnection extends Base {
             const result = await connect ()
             return result
         } catch (error) {
-            this.endConnection()
+            if (this.conn) {
+                this.endConnection(error.message)
+            }
             throw error
         } finally {
             this.off ('ws-close', rejectAllOnWSClose)
@@ -142,8 +144,7 @@ export class WAConnection extends Base {
             } catch (error) {
                 this.logger.error ({ error }, `encountered error in decrypting message, closing: ${error}`)
                 
-                if (this.state === 'open') this.unexpectedDisconnect (DisconnectReason.badSession)
-                else this.emit ('ws-close', new Error(DisconnectReason.badSession))
+                this.unexpectedDisconnect(DisconnectReason.badSession)
             }
 
             if (this.shouldLogMessages) this.messageLog.push ({ tag: messageTag, json: JSON.stringify(json), fromMe: false })
@@ -171,18 +172,6 @@ export class WAConnection extends Base {
 
             if (anyTriggered) return
 
-            if (this.state === 'open' && json[0] === 'Pong') {
-                if (!json[1]) {
-                    this.unexpectedDisconnect(DisconnectReason.close)
-                    this.logger.info('Connection terminated by phone, closing...')
-                    return
-                }
-                if (this.phoneConnected !== json[1]) {
-                    this.phoneConnected = json[1]
-                    this.emit ('connection-phone-change', { connected: this.phoneConnected })
-                    return
-                }
-            }
             if (this.logger.level === 'debug') {
                 this.logger.debug({ unhandled: true }, messageTag + ',' + JSON.stringify(json))
             }
@@ -199,8 +188,8 @@ export class WAConnection extends Base {
 				check if it's been a suspicious amount of time since the server responded with our last seen
 				it could be that the network is down
 			*/
-            if (diff > KEEP_ALIVE_INTERVAL_MS+5000) this.unexpectedDisconnect (DisconnectReason.lost)
-            else if (this.conn) this.send ('?,,') // if its all good, send a keep alive request
+            if (diff > KEEP_ALIVE_INTERVAL_MS+5000) this.unexpectedDisconnect(DisconnectReason.lost)
+            else if (this.conn) this.send('?,,') // if its all good, send a keep alive request
         }, KEEP_ALIVE_INTERVAL_MS)
     }
 }
