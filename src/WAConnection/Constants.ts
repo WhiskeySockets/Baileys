@@ -55,8 +55,8 @@ export class BaileysError extends Error {
         }
     }
 }
-export const TimedOutError = (stack?: string) => new BaileysError ('timed out', { status: 408 })
-export const CancelledError = (stack?: string) => new BaileysError ('cancelled', { status: 500 })
+export const TimedOutError = (stack?: string) => new BaileysError ('timed out', { status: 408 }, stack)
+export const CancelledError = (stack?: string) => new BaileysError ('cancelled', { status: 500 }, stack)
 
 export interface WAQuery {
     json: any[] | WANode
