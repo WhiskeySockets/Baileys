@@ -139,21 +139,12 @@ export class WAConnection extends Base {
      * @param searchString optionally search for users
      * @returns the chats & the cursor to fetch the next page
      */
-    async loadChats (count: number, before: string | null, options: WALoadChatOptions = {}) {
+    loadChats (count: number, before: string | null, options: WALoadChatOptions = {}) {
         const searchString = options.searchString?.toLowerCase()
         const chats = this.chats.paginated (before, count, options && (chat => (
             (typeof options?.custom !== 'function' || options?.custom(chat)) &&
             (typeof searchString === 'undefined' || chat.name?.toLowerCase().includes (searchString) || chat.jid?.includes(searchString))
         )))
-        let loadPP = this.loadProfilePicturesForChatsAutomatically
-        if (typeof options.loadProfilePicture !== 'undefined') loadPP = options.loadProfilePicture
-        if (loadPP) {
-            await Promise.all (
-                chats.map (async chat => (
-                    typeof chat.imgUrl === 'undefined' && await this.setProfilePicture (chat)
-                ))
-            )
-        }
         const cursor = (chats[chats.length-1] && chats.length >= count) && this.chatOrderingKey.key (chats[chats.length-1])
         return { chats, cursor }
     }

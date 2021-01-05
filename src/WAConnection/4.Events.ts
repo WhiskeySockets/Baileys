@@ -318,7 +318,8 @@ export class WAConnection extends Base {
         })
         // profile picture updates
         this.on('CB:Cmd,type:picture', async json => {
-            const jid = whatsappID(json[1].jid)
+            json = json[1]
+            const jid = whatsappID(json.jid)
             const imgUrl = await this.getProfilePicture(jid).catch(() => '')
             const contact = this.contacts[jid]
             if (contact) {
@@ -340,8 +341,10 @@ export class WAConnection extends Base {
         this.on ('CB:Conn,pushname', json => {
             if (this.user) {
                 const name = json[1].pushname
-                this.user.name = name // update on client too
-                this.emit ('contact-update', { jid: this.user.jid, name })
+                if(this.user.name !== name) {
+                    this.user.name = name // update on client too
+                    this.emit ('contact-update', { jid: this.user.jid, name })
+                }   
             }
         })
         // read updates
@@ -406,7 +409,7 @@ export class WAConnection extends Base {
         }
     }
     /** inserts an empty chat into the DB */
-    protected async chatAdd (jid: string, name?: string) {        
+    protected chatAdd (jid: string, name?: string) {        
         const chat: WAChat = {
             jid,
             name,
@@ -416,11 +419,7 @@ export class WAConnection extends Base {
             modify_tag: '',
             spam: 'false'
         }
-
         if(this.chats.insertIfAbsent (chat).length) {
-            if (this.loadProfilePicturesForChatsAutomatically) {
-                await this.setProfilePicture (chat)
-            }
             this.emit ('chat-new', chat)
             return chat
         }   

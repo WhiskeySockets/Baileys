@@ -61,7 +61,10 @@ export class WAConnection extends EventEmitter {
     messageLog: { tag: string, json: string, fromMe: boolean, binaryTags?: any[] }[] = []
 
     maxCachedMessages = 50
-    /** @deprecated won't be supported soon */
+    /** 
+     * @deprecated 
+     * does not do anything
+     * */
     loadProfilePicturesForChatsAutomatically = false
 
     lastChatsReceived: Date

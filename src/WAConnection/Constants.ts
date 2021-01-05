@@ -81,6 +81,10 @@ export enum ReconnectMode {
 export type WALoadChatOptions = {
     searchString?: string
     custom?: (c: WAChat) => boolean
+    /** 
+     * @deprecated
+     * does not do anything now
+     */
     loadProfilePicture?: boolean
 }
 export type WAConnectOptions = {

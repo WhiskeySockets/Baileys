@@ -51,6 +51,10 @@ async function example() {
         if (chat.presences) { // receive presence updates -- composing, available, etc.
             Object.values(chat.presences).forEach(presence => console.log( `${presence.name}'s presence is ${presence.lastKnownPresence} in ${chat.jid}`))
         }
+        if(chat.imgUrl) {
+            console.log('imgUrl of chat changed ', chat.imgUrl)
+            return
+        }
         // only do something when a new message is received
         if (!chat.hasNewMessage) {
             if(chat.messages) {
