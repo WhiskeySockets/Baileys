@@ -45,15 +45,18 @@ export class BaileysError extends Error {
     status?: number
     context: any
 
-    constructor (message: string, context: any) {
+    constructor (message: string, context: any, stack?: string) {
         super (message)
         this.name = 'BaileysError'
         this.status = context.status
         this.context = context
+        if(stack) {
+            this.stack = stack
+        }
     }
 }
-export const TimedOutError = () => new BaileysError ('timed out', { status: 408 })
-export const CancelledError = () => new BaileysError ('cancelled', { status: 500 })
+export const TimedOutError = (stack?: string) => new BaileysError ('timed out', { status: 408 })
+export const CancelledError = (stack?: string) => new BaileysError ('cancelled', { status: 500 })
 
 export interface WAQuery {
     json: any[] | WANode

@@ -103,6 +103,7 @@ export const unixTimestampSeconds = (date: Date = new Date()) => Math.floor(date
 
 export const delay = (ms: number) => delayCancellable (ms).delay
 export const delayCancellable = (ms: number) => {
+    const stack = new Error().stack
     let timeout: NodeJS.Timeout
     let reject: (error) => void
     const delay: Promise<void> = new Promise((resolve, _reject) => {
@@ -111,18 +112,18 @@ export const delayCancellable = (ms: number) => {
     })
     const cancel = () => {
         clearTimeout (timeout)
-        reject (CancelledError())
+        reject (CancelledError(stack))
     }
     return { delay, cancel }
 }
 export async function promiseTimeout<T>(ms: number, promise: (resolve: (v?: T)=>void, reject: (error) => void) => void) {
     if (!ms) return new Promise (promise)
-
+    const stack = new Error().stack
     // Create a promise that rejects in <ms> milliseconds
     let {delay, cancel} = delayCancellable (ms) 
     const p = new Promise ((resolve, reject) => {
         delay
-        .then(() => reject(TimedOutError()))
+        .then(() => reject(TimedOutError(stack)))
         .catch (err => reject(err)) 
         
         promise (resolve, reject)
