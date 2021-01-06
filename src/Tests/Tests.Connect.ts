@@ -372,6 +372,21 @@ describe ('Pending Requests', () => {
 
           conn.close ()
     })
+    it('[MANUAL] should receive query response after phone disconnect', async () => {
+        const conn = makeConnection ()
+        await conn.loadAuthInfo('./auth_info.json').connect ()
+
+        console.log(`disconnect your phone from the internet!`)
+        await delay(5000)
+        const task = conn.loadMessages(testJid, 50)
+        setTimeout(() => console.log('reconnect your phone!'), 20_000)
+
+        const result = await task
+        assert.ok(result.messages[0])
+        assert.ok(!conn['phoneCheckInterval']) // should be undefined
+
+        conn.close ()
+    })
     it('should re-execute query on connection closed error', async () => {
         const conn = makeConnection ()
         //conn.pendingRequestTimeoutMs = 10_000

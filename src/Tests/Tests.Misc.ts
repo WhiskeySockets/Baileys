@@ -1,4 +1,4 @@
-import { Presence, ChatModification, delay, newMessagesDB, WA_DEFAULT_EPHEMERAL, MessageType } from '../WAConnection/WAConnection'
+import { Presence, ChatModification, delay, newMessagesDB, WA_DEFAULT_EPHEMERAL, MessageType, WAMessage } from '../WAConnection/WAConnection'
 import { promises as fs } from 'fs'
 import * as assert from 'assert'
 import fetch from 'node-fetch'
@@ -396,5 +396,21 @@ WAConnectionTest('Misc', conn => {
         await conn.blockUser (testJid, 'remove')
         assert.strictEqual(conn.blocklist.length, blockedCount);
         await waitForEventRemoved
+    })
+    it('should exit an invalid query', async () => {
+        // try and send an already sent message
+        let msg: WAMessage
+        await conn.findMessage(testJid, 5, m => {
+            if(m.key.fromMe) {
+                msg = m
+                return true
+            }
+        })
+        try {
+            await conn.relayWAMessage(msg)
+            assert.fail('should not have sent')
+        } catch(error) {
+            assert.strictEqual(error.status, 422)
+        }
     })
 })

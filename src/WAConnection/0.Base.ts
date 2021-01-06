@@ -180,16 +180,18 @@ export class WAConnection extends EventEmitter {
      * @param timeoutMs timeout after which the promise will reject
      */
     async waitForMessage(tag: string, requiresPhoneConnection: boolean, timeoutMs?: number) {
-        if (requiresPhoneConnection) {
-            this.startPhoneCheckInterval ()
-        }
         let onRecv: (json) => void
         let onErr: (err) => void
+        let cancelPhoneChecker: () => void
+        if (requiresPhoneConnection) {
+            this.startPhoneCheckInterval()
+            cancelPhoneChecker = this.exitQueryIfResponseNotExpected(tag, err => onErr(err))
+        }
         try {
             const result = await Utils.promiseTimeout(timeoutMs,
                 (resolve, reject) => {
                     onRecv = resolve
-                    onErr = ({reason}) => reject(new Error(reason))
+                    onErr = ({ reason, status }) => reject(new BaileysError(reason, { status }))
                     this.on (`TAG:${tag}`, onRecv)
                     this.on ('ws-close', onErr) // if the socket closes, you'll never receive the message
                 },
@@ -199,6 +201,7 @@ export class WAConnection extends EventEmitter {
             requiresPhoneConnection && this.clearPhoneCheckInterval()
             this.off (`TAG:${tag}`, onRecv)
             this.off (`ws-close`, onErr)
+            cancelPhoneChecker && cancelPhoneChecker()
         }
     }
     /** Generic function for action, set queries */
@@ -253,13 +256,35 @@ export class WAConnection extends EventEmitter {
                 // read here: http://getstatuscode.com/599
                 if (error.status === 599) {
                     this.unexpectedDisconnect (DisconnectReason.badSession)
-                } else if ((error.message === 'close' || error.message === 'lost') && waitForOpen && this.state !== 'close') {
+                } else if (
+                    (error.message === 'close' || error.message === 'lost') && 
+                    waitForOpen && 
+                    this.state !== 'close' &&
+                    (this.pendingRequestTimeoutMs === null ||
+                    this.pendingRequestTimeoutMs > 0)) {
                     // nothing here
                 } else throw error
 
                 triesLeft -= 1
                 this.logger.debug(`query failed due to ${error}, retrying...`)
             }
+        }
+    }
+    protected exitQueryIfResponseNotExpected(tag: string, cancel: ({ reason, status }) => void) {
+        let timeout: NodeJS.Timeout
+        const listener = ({ connected }) => {
+            if(connected) {
+                timeout = setTimeout(() => {
+                    this.logger.info({ tag }, `cancelling wait for message as a response is no longer expected from the phone`)
+                    cancel({ reason: 'Not expecting a response', status: 422 })
+                }, 5_000)
+                this.off('connection-phone-change', listener)
+            }
+        }
+        this.on('connection-phone-change', listener)
+        return () => {
+            this.off('connection-phone-change', listener)
+            timeout && clearTimeout(timeout)
         }
     }
     /** interval is started when a query takes too long to respond */
@@ -272,9 +297,10 @@ export class WAConnection extends EventEmitter {
 
                 this.logger.info('checking phone connection...')
                 this.sendAdminTest ()
-                
-                this.phoneConnected = false
-                this.emit ('connection-phone-change', { connected: false })
+                if(this.phoneConnected !== false) {
+                    this.phoneConnected = false
+                    this.emit ('connection-phone-change', { connected: false })
+                }
             }, this.connectOptions.phoneResponseTime)
         }
         

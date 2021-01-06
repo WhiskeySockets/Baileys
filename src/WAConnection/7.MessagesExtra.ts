@@ -265,7 +265,10 @@ export class WAConnection extends Base {
         
         const response: WANode = await this.query({json, binaryTags: [24, WAFlag.ignore], expect200: true}) // encrypt and send  off
         const messages = response[2] ? response[2].map (row => row[2]) : []
-        return { last: response[1]['last'] === 'true', messages: messages as WAMessage[] }
+        return { 
+            last: response[1]['last'] === 'true', 
+            messages: messages as WAMessage[] 
+        }
     }
     /**
      * Delete a message in a chat for yourself
