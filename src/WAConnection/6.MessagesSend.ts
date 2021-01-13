@@ -25,7 +25,7 @@ export class WAConnection extends Base {
      */
     async sendMessage(
         id: string,
-        message: string | WATextMessage | WALocationMessage | WAContactMessage | Buffer,
+        message: string | WATextMessage | WALocationMessage | WAContactMessage | WAMediaUpload,
         type: MessageType,
         options: MessageOptions = {},
     ) {
@@ -36,7 +36,7 @@ export class WAConnection extends Base {
     /** Prepares a message for sending via sendWAMessage () */
     async prepareMessage(
         id: string,
-        message: string | WATextMessage | WALocationMessage | WAContactMessage | Buffer,
+        message: string | WATextMessage | WALocationMessage | WAContactMessage | WAMediaUpload,
         type: MessageType,
         options: MessageOptions = {},
     ) {
@@ -65,7 +65,7 @@ export class WAConnection extends Base {
         return message
     }
     /** Prepares the message content */
-    async prepareMessageContent (message: string | WATextMessage | WALocationMessage | WAContactMessage | Buffer, type: MessageType, options: MessageOptions) {
+    async prepareMessageContent (message: string | WATextMessage | WALocationMessage | WAContactMessage | WAMediaUpload, type: MessageType, options: MessageOptions) {
         let m: WAMessageContent = {}
         switch (type) {
             case MessageType.text:
