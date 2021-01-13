@@ -1,7 +1,8 @@
-import { MessageType, Mimetype, delay, promiseTimeout, WA_MESSAGE_STATUS_TYPE, WAMessageStatusUpdate, generateMessageID, WAMessage } from '../WAConnection/WAConnection'
-import {promises as fs} from 'fs'
+import { MessageType, Mimetype, delay, promiseTimeout, WA_MESSAGE_STATUS_TYPE, generateMessageID, WAMessage } from '../WAConnection'
+import { promises as fs } from 'fs'
 import * as assert from 'assert'
-import { WAConnectionTest, testJid, sendAndRetreiveMessage, assertChatDBIntegrity } from './Common'
+import { WAConnectionTest, testJid, sendAndRetreiveMessage } from './Common'
+import { resolve } from 'path'
 
 WAConnectionTest('Messages', conn => {
 
@@ -61,8 +62,7 @@ WAConnectionTest('Messages', conn => {
         }
     })
     it('should send a gif', async () => {
-        const content = await fs.readFile('./Media/ma_gif.mp4')
-        const message = await sendAndRetreiveMessage(conn, content, MessageType.video, { mimetype: Mimetype.gif })
+        const message = await sendAndRetreiveMessage(conn, { url: './Media/ma_gif.mp4' }, MessageType.video, { mimetype: Mimetype.gif })
         
         await conn.downloadAndSaveMediaMessage(message,'./Media/received_vid')
     })
@@ -81,9 +81,18 @@ WAConnectionTest('Messages', conn => {
         assert.strictEqual (message.message?.audioMessage?.ptt, true)
         await conn.downloadAndSaveMediaMessage(message,'./Media/received_aud')
     })
-    it('should send an image', async () => {
-        const content = await fs.readFile('./Media/meme.jpeg')
-        const message = await sendAndRetreiveMessage(conn, content, MessageType.image)
+    it('should send a jpeg image', async () => {
+        const message = await sendAndRetreiveMessage(conn, { url: './Media/meme.jpeg' }, MessageType.image)
+        assert.ok (message.message?.imageMessage?.jpegThumbnail)
+        const msg = await conn.downloadMediaMessage(message)
+        assert.deepStrictEqual(msg, await fs.readFile('./Media/meme.jpeg'))
+    })
+    it('should send a remote jpeg image', async () => {
+        const message = await sendAndRetreiveMessage(
+            conn, 
+            { url: 'https://www.memestemplates.com/wp-content/uploads/2020/05/tom-with-phone.jpg' }, 
+            MessageType.image
+        )
         assert.ok (message.message?.imageMessage?.jpegThumbnail)
         await conn.downloadMediaMessage(message)
     })

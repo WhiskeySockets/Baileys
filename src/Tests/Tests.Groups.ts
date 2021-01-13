@@ -1,4 +1,4 @@
-import { MessageType, GroupSettingChange, delay, ChatModification, whatsappID } from '../WAConnection/WAConnection'
+import { MessageType, GroupSettingChange, delay, ChatModification, whatsappID } from '../WAConnection'
 import * as assert from 'assert'
 import { WAConnectionTest, testJid, sendAndRetreiveMessage } from './Common'
 

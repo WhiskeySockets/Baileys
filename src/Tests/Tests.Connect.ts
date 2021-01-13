@@ -1,5 +1,5 @@
 import * as assert from 'assert'
-import {WAConnection} from '../WAConnection/WAConnection'
+import {WAConnection} from '../WAConnection'
 import { AuthenticationCredentialsBase64, BaileysError, ReconnectMode, DisconnectReason, WAChat, WAContact } from '../WAConnection/Constants'
 import { delay } from '../WAConnection/Utils'
 import { assertChatDBIntegrity, makeConnection, testJid } from './Common'

@@ -1,4 +1,4 @@
-import { WAConnection, MessageOptions, MessageType, unixTimestampSeconds, toNumber, GET_MESSAGE_ID, waMessageKey } from '../WAConnection/WAConnection'
+import { WAConnection, MessageOptions, MessageType, unixTimestampSeconds, toNumber, GET_MESSAGE_ID, waMessageKey } from '../WAConnection'
 import * as assert from 'assert'
 import {promises as fs} from 'fs'
 

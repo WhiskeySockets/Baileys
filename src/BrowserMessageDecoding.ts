@@ -1,5 +1,5 @@
 import fs from 'fs'
-import { decryptWA } from './WAConnection/WAConnection'
+import { decryptWA } from './WAConnection'
 import Decoder from './Binary/Decoder'
 
 interface BrowserMessagesInfo {

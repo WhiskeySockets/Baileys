@@ -1,7 +1,7 @@
-import { Presence, ChatModification, delay, newMessagesDB, WA_DEFAULT_EPHEMERAL, MessageType, WAMessage } from '../WAConnection/WAConnection'
+import { Presence, ChatModification, delay, newMessagesDB, WA_DEFAULT_EPHEMERAL, MessageType, WAMessage } from '../WAConnection'
 import { promises as fs } from 'fs'
 import * as assert from 'assert'
-import fetch from 'node-fetch'
+import got from 'got'
 import { WAConnectionTest, testJid, sendAndRetreiveMessage } from './Common'
 
 WAConnectionTest('Misc', conn => {
@@ -79,15 +79,14 @@ WAConnectionTest('Misc', conn => {
         await delay (5000)
 
         const ppUrl = await conn.getProfilePicture(conn.user.jid)
-        const fetched = await fetch(ppUrl)
-        const buff = await fetched.buffer ()
+        const {rawBody: oldPP} = await got(ppUrl)
 
-        const newPP = await fs.readFile ('./Media/cat.jpeg')
-        const response = await conn.updateProfilePicture (conn.user.jid, newPP)
+        const newPP = await fs.readFile('./Media/cat.jpeg')
+        await conn.updateProfilePicture(conn.user.jid, newPP)
 
         await delay (10000)
 
-        await conn.updateProfilePicture (conn.user.jid, buff) // revert back
+        await conn.updateProfilePicture (conn.user.jid, oldPP) // revert back
     })
     it('should return the profile picture', async () => {
         const response = await conn.getProfilePicture(testJid)

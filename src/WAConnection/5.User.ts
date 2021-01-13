@@ -33,10 +33,10 @@ export class WAConnection extends Base {
     isOnWhatsAppNoConn = async (str: string) => {
         let phone = str.split('@')[0]
         const url = `https://wa.me/${phone}`
-        const response = await this.fetchRequest(url, 'GET', undefined, undefined, undefined, 'manual')
-        const loc = response.headers.get('Location')
+        const response = await this.fetchRequest(url, 'GET', undefined, undefined, undefined, false)
+        const loc = response.headers['Location'] as string
         if (!loc) {
-            this.logger.warn({ url, status: response.status }, 'did not get location from request')
+            this.logger.warn({ url, status: response.statusCode }, 'did not get location from request')
             return
         }
         const locUrl = new URL('', loc)

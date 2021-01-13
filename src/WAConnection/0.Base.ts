@@ -1,9 +1,9 @@
-import * as fs from 'fs'
 import WS from 'ws'
+import * as fs from 'fs'
 import * as Utils from './Utils'
 import Encoder from '../Binary/Encoder'
 import Decoder from '../Binary/Decoder'
-import fetch, { RequestRedirect } from 'node-fetch'
+import got, { Method } from 'got'
 import {
     AuthenticationCredentials,
     WAUser,
@@ -24,7 +24,8 @@ import {
 } from './Constants'
 import { EventEmitter } from 'events'
 import KeyedDB from '@adiwajshing/keyed-db'
-import { STATUS_CODES, Agent } from 'http'
+import { STATUS_CODES } from 'http'
+import { Agent } from 'https'
 import pino from 'pino'
 
 const logger = pino({ prettyPrint: { levelFirst: true, ignore: 'hostname', translateTime: true },  prettifier: require('pino-pretty') })
@@ -458,13 +459,20 @@ export class WAConnection extends EventEmitter {
     /**
      * Does a fetch request with the configuration of the connection
      */
-    protected fetchRequest = (endpoint: string, method: string = 'GET', body?: any, agent?: Agent, headers?: {[k: string]: string}, redirect: RequestRedirect = 'follow') => (
-        fetch(endpoint, {
+    protected fetchRequest = (
+        endpoint: string, 
+        method: Method = 'GET', 
+        body?: any, 
+        agent?: Agent, 
+        headers?: {[k: string]: string}, 
+        followRedirect = true
+    ) => (
+        got(endpoint, {
             method,
             body,
-            redirect,
+            followRedirect,
             headers: { Origin: DEFAULT_ORIGIN, ...(headers || {}) },
-            agent: agent || this.connectOptions.fetchAgent
+            agent: { https: agent || this.connectOptions.fetchAgent }
         })
     )
     generateMessageTag (longTag: boolean = false) {
