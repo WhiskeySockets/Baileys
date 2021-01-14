@@ -40,7 +40,7 @@ export class WAConnection extends Base {
         type: MessageType,
         options: MessageOptions = {},
     ) {
-        const content = await this.prepareMessageContent (
+        const content = await this.prepareMessageContent(
             message,
             type,
             options

@@ -294,8 +294,9 @@ export async function generateThumbnail(file: string, mediaType: MessageType, in
     }
 }
 export const getGotStream = async(url: string | URL, options: Options & { isStream?: true } = {}) => {
-    const fetched = got.stream(url, options)
+    const fetched = got.stream(url, { ...options, isStream: true })
     await new Promise((resolve, reject) => {
+        fetched.once('error', reject)
         fetched.once('response', ({statusCode: status}: Response) => {
             if (status >= 400) {
                 reject(new BaileysError (
