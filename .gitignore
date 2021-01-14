@@ -1,15 +1,12 @@
 node_modules
-auth_info.json
+auth_info*.json
 output.csv
 */.DS_Store
 .DS_Store
 .env
-auth_info_browser.json
 browser-messages.json
 decoded-ws.json
-auth_info2.json
 lib
 docs
 browser-token.json
-auth_info_messcat.json
 Proxy
