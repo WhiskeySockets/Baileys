@@ -310,7 +310,7 @@ export const getGotStream = async(url: string | URL, options: Options & { isStre
     })
     return fetched
 } 
-export const encryptedStream = async(media: WAMediaUpload, mediaType: MessageType) => {
+export const encryptedStream = async(media: WAMediaUpload, mediaType: MessageType, saveOriginalFileIfRequired = true) => {
     const { stream, type } = await getStream(media)
 
     const mediaKey = randomBytes(32)
@@ -322,7 +322,7 @@ export const encryptedStream = async(media: WAMediaUpload, mediaType: MessageTyp
     let writeStream: WriteStream
     if(type === 'file') {
         bodyPath = (media as any).url
-    } else {
+    } else if(saveOriginalFileIfRequired) {
         bodyPath = join(tmpdir(), mediaType + generateMessageID())
         writeStream = createWriteStream(bodyPath)
     }

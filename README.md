@@ -215,15 +215,18 @@ on (event: 'blocklist-update', listener: (update: BlocklistUpdate) => void): thi
 
 ## Sending Messages
 
-Send like, all types of messages with a single function:
+**Send all types of messages with a single function:**
+
+### Non-Media Messages
+
 ``` ts
 import { MessageType, MessageOptions, Mimetype } from '@adiwajshing/baileys'
 
 const id = 'abcd@s.whatsapp.net' // the WhatsApp ID 
 // send a simple text!
-conn.sendMessage (id, 'oh hello there', MessageType.text)
+const sentMsg  = await conn.sendMessage (id, 'oh hello there', MessageType.text)
 // send a location!
-conn.sendMessage(id, {degreesLatitude: 24.121231, degreesLongitude: 55.1121221}, MessageType.location)
+const sentMsg  = await conn.sendMessage(id, {degreesLatitude: 24.121231, degreesLongitude: 55.1121221}, MessageType.location)
 // send a contact!
 const vcard = 'BEGIN:VCARD\n' // metadata of the contact card
             + 'VERSION:3.0\n' 
@@ -231,18 +234,50 @@ const vcard = 'BEGIN:VCARD\n' // metadata of the contact card
             + 'ORG:Ashoka Uni;\n' // the organization of the contact
             + 'TEL;type=CELL;type=VOICE;waid=911234567890:+91 12345 67890\n' // WhatsApp ID + phone number
             + 'END:VCARD'
-conn.sendMessage(id, {displayname: "Jeff", vcard: vcard}, MessageType.contact)
-// send a gif
-const buffer = fs.readFileSync("Media/ma_gif.mp4") // load some gif
-const options: MessageOptions = {mimetype: Mimetype.gif, caption: "hello!"} // some metadata & caption
-conn.sendMessage(id, buffer, MessageType.video, options)
-// send an audio file
-const buffer = fs.readFileSync("Media/audio.mp3") // can send mp3, mp4, & ogg
-const options: MessageOptions = {mimetype: Mimetype.mp4Audio} // some metadata (can't have caption in audio)
-conn.sendMessage(id, buffer, MessageType.audio, options)
+const sentMsg  = await conn.sendMessage(id, {displayname: "Jeff", vcard: vcard}, MessageType.contact)
 ```
 
-To note:
+### Media Messages
+
+Sending media (video, stickers, images) is easier & more efficient than ever. 
+- You can specify a buffer, a local url or even a remote url.
+- When specifying a media url, Baileys never loads the entire buffer into memory, it even encrypts the media as a readable stream.
+
+``` ts
+import { MessageType, MessageOptions, Mimetype } from '@adiwajshing/baileys'
+// Sending gifs
+await conn.sendMessage(
+    id, 
+    fs.readFileSync("Media/ma_gif.mp4"), // load a gif and send it
+    MessageType.video, 
+    { mimetype: Mimetype.gif, caption: "hello!" }
+)
+await conn.sendMessage(
+    id, 
+    { url: 'Media/ma_gif.mp4' }, // send directly from local file
+    MessageType.video, 
+    { mimetype: Mimetype.gif, caption: "hello!" }
+)
+
+await conn.sendMessage(
+    id, 
+    { url: 'https://giphy.com/gifs/11JTxkrmq4bGE0/html5' }, // send directly from remote url!
+    MessageType.video, 
+    { mimetype: Mimetype.gif, caption: "hello!" }
+)
+
+// send an audio file
+await conn.sendMessage(
+    id, 
+    { url: "Media/audio.mp3" }, // can send mp3, mp4, & ogg
+    MessageType.audio, 
+    { mimetype: Mimetype.mp4Audio } // some metadata (can't have caption in audio)
+)
+```
+
+
+### Notes
+
 - `id` is the WhatsApp ID of the person or group you're sending the message to. 
     - It must be in the format ```[country code][phone number]@s.whatsapp.net```, for example ```+19999999999@s.whatsapp.net``` for people. For groups, it must be in the format ``` 123456789-123345@g.us ```. 
     - For broadcast lists it's `[timestamp of creation]@broadcast`.

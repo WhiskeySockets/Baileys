@@ -2,7 +2,6 @@ import { MessageType, Mimetype, delay, promiseTimeout, WA_MESSAGE_STATUS_TYPE, g
 import { promises as fs } from 'fs'
 import * as assert from 'assert'
 import { WAConnectionTest, testJid, sendAndRetreiveMessage } from './Common'
-import { resolve } from 'path'
 
 WAConnectionTest('Messages', conn => {
 
@@ -83,7 +82,7 @@ WAConnectionTest('Messages', conn => {
     })
     it('should send a jpeg image', async () => {
         const message = await sendAndRetreiveMessage(conn, { url: './Media/meme.jpeg' }, MessageType.image)
-        assert.ok (message.message?.imageMessage?.jpegThumbnail)
+        assert.ok(message.message.imageMessage.jpegThumbnail.length > 0)
         const msg = await conn.downloadMediaMessage(message)
         assert.deepStrictEqual(msg, await fs.readFile('./Media/meme.jpeg'))
     })

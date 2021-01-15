@@ -132,6 +132,9 @@ export class WAConnection extends Base {
             isGIF = true
             options.mimetype = MimetypeMap[MessageType.video]
         }
+        const requiresDurationComputation = mediaType === MessageType.audio && !options.duration
+        const requiresThumbnailComputation = (mediaType === MessageType.image || mediaType === MessageType.video) && !('thumbnail' in options)
+        const requiresOriginalForSomeProcessing = requiresDurationComputation || requiresThumbnailComputation
         const {
             mediaKey,
             encBodyPath,
@@ -139,7 +142,7 @@ export class WAConnection extends Base {
             fileEncSha256,
             fileSha256,
             fileLength
-        } = await encryptedStream(media, mediaType)
+        } = await encryptedStream(media, mediaType, requiresOriginalForSomeProcessing)
          // url safe Base64 encode the SHA256 hash of the body
         const fileEncSha256B64 = encodeURIComponent( 
             fileEncSha256.toString('base64')
@@ -147,8 +150,10 @@ export class WAConnection extends Base {
             .replace(/\//g, '_')
             .replace(/\=+$/, '')
         )
-        await generateThumbnail(bodyPath, mediaType, options)
-        if (mediaType === MessageType.audio && !options.duration) {
+        if(requiresThumbnailComputation) {
+            await generateThumbnail(bodyPath, mediaType, options)
+        }
+        if (requiresDurationComputation) {
             try {
                 options.duration = await getAudioDuration(bodyPath)
             } catch (error) {
@@ -176,7 +181,7 @@ export class WAConnection extends Base {
                 
                 if (mediaUrl) break
                 else {
-                    json = await this.refreshMediaConn (true)
+                    json = await this.refreshMediaConn(true)
                     throw new Error (`upload failed, reason: ${JSON.stringify(result)}`)
                 }
             } catch (error) {
@@ -187,7 +192,7 @@ export class WAConnection extends Base {
         if (!mediaUrl) throw new Error('Media upload failed on all hosts')
 
         const message = {
-            [mediaType]: MessageTypeProto[mediaType].fromObject (
+            [mediaType]: MessageTypeProto[mediaType].fromObject(
                 {
                     url: mediaUrl,
                     mediaKey: mediaKey,
@@ -202,7 +207,7 @@ export class WAConnection extends Base {
                     ptt: options.ptt
                 }
             )
-        }   
+        }
         return WAMessageProto.Message.fromObject(message)// as WAMessageContent
     }
     /** prepares a WAMessage for sending from the given content & options */
