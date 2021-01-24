@@ -223,17 +223,17 @@ export class WAConnection extends EventEmitter {
         requiresPhoneConnection = requiresPhoneConnection !== false
         waitForOpen = waitForOpen !== false
         let triesLeft = maxRetries || 2
-        tag = tag || this.generateMessageTag (longTag)
-
+        tag = tag || this.generateMessageTag(longTag)
+        
         while (triesLeft >= 0) {
             if (waitForOpen) await this.waitForConnection()
-            
+
             const promise = this.waitForMessage(tag, requiresPhoneConnection, timeoutMs)
 
             if (this.logger.level === 'trace') {
                 this.logger.trace ({ fromMe: true },`${tag},${JSON.stringify(json)}`)
             }
-
+           
             if (binaryTags) tag = await this.sendBinary(json as WANode, binaryTags, tag)
             else tag = await this.sendJSON(json, tag)
 
@@ -369,7 +369,6 @@ export class WAConnection extends EventEmitter {
     }
     /** Send some message to the WhatsApp servers */
     protected async send(m) {
-        this.msgCount += 1 // increment message count, it makes the 'epoch' field when sending binary messages
         this.conn.send(m)
     }
     protected async waitForConnection () {
@@ -477,6 +476,8 @@ export class WAConnection extends EventEmitter {
     )
     generateMessageTag (longTag: boolean = false) {
         const seconds = Utils.unixTimestampSeconds(this.referenceDate)
-        return `${longTag ? seconds : (seconds%1000)}.--${this.msgCount}`
+        const tag = `${longTag ? seconds : (seconds%1000)}.--${this.msgCount}`
+        this.msgCount += 1 // increment message count, it makes the 'epoch' field when sending binary messages
+        return tag
     }
 }

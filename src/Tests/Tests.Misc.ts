@@ -75,6 +75,26 @@ WAConnectionTest('Misc', conn => {
     it('should return the stories', async () => {
         await conn.getStories()
     })
+
+    it('should return the profile picture correctly', async () => {
+        // wait for chats
+        await new Promise(resolve => (
+            conn.once('initial-data-received', resolve)
+        )) 
+        const pictures = await Promise.all(
+            conn.chats.all().slice(0, 15).map(({ jid }) => (
+                conn.getProfilePicture(jid)
+                .catch(err => '')
+            ))
+        )
+        // pictures should return correctly
+        const truePictures = pictures.filter(pp => !!pp)
+        assert.strictEqual(
+            new Set(truePictures).size,
+            truePictures.length
+        )
+    })
+
     it('should change the profile picture', async () => {
         await delay (5000)
 
@@ -87,11 +107,6 @@ WAConnectionTest('Misc', conn => {
         await delay (10000)
 
         await conn.updateProfilePicture (conn.user.jid, oldPP) // revert back
-    })
-    it('should return the profile picture', async () => {
-        const response = await conn.getProfilePicture(testJid)
-        assert.ok(response)
-        assert.rejects(conn.getProfilePicture('abcd@s.whatsapp.net'))
     })
     it('should send typing indicator', async () => {
         const response = await conn.updatePresence(testJid, Presence.composing)

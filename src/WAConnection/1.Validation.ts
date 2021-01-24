@@ -14,7 +14,6 @@ export class WAConnection extends Base {
         }
         const canLogin = this.canLogin()      
         this.referenceDate = new Date () // refresh reference date
-        let isNewUser = false
 
         this.startDebouncedTimeout ()
         
