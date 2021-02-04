@@ -77,12 +77,31 @@ export class WAConnection extends Base {
         // if there are no overlaps of messages and we had messages present, we clear the previous messages
         // this prevents missing messages in conversations
         let overlaps: { [_: string]: { requiresOverlap: boolean, didOverlap?: boolean } } = {}
+        const onLastBatchOfDataReceived = () => {
+            // find which chats had missing messages
+            // list out all the jids, and how many messages we've cached now
+            const chatsWithMissingMessages = Object.keys(overlaps).map(jid => {
+                // if there was no overlap, delete previous messages
+                if (!overlaps[jid].didOverlap && overlaps[jid].requiresOverlap) {
+                    this.logger.debug(`received messages for ${jid}, but did not overlap with previous messages, clearing...`)
+                    const chat = this.chats.get(jid)
+                    if (chat) {
+                        const message = chat.messages.get(lastMessages[jid])
+                        const remainingMessages = chat.messages.paginatedByValue(message, this.maxCachedMessages, undefined, 'after')
+                        chat.messages = newMessagesDB([message, ...remainingMessages])
+                        return { jid, count: chat.messages.length } // return number of messages we've left
+                    }
+                }
+            }).filter(Boolean)
+            this.emit('initial-data-received', { chatsWithMissingMessages })
+        }
         // messages received
         const messagesUpdate = (json, style: 'previous' | 'last') => {
+            //console.log('msg ', json[1])
+            this.messagesDebounceTimeout.start(undefined, onLastBatchOfDataReceived)
             if (style === 'last') {
                 overlaps = {}
             }
-            const isLast = json[1].last
             const messages = json[2] as WANode[]
             if (messages) {
                 const updates: { [k: string]: KeyedDB<WAMessage, string> } = {}
@@ -120,24 +139,6 @@ export class WAConnection extends Base {
                         Object.keys(updates).map(jid => ({ jid, messages: updates[jid] }))
                     )
                 }
-            }
-            if (isLast) {
-                // find which chats had missing messages
-                // list out all the jids, and how many messages we've cached now
-                const chatsWithMissingMessages = Object.keys(overlaps).map(jid => {
-                    // if there was no overlap, delete previous messages
-                    if (!overlaps[jid].didOverlap && overlaps[jid].requiresOverlap) {
-                        this.logger.debug(`received messages for ${jid}, but did not overlap with previous messages, clearing...`)
-                        const chat = this.chats.get(jid)
-                        if (chat) {
-                            const message = chat.messages.get(lastMessages[jid])
-                            const remainingMessages = chat.messages.paginatedByValue(message, this.maxCachedMessages, undefined, 'after')
-                            chat.messages = newMessagesDB([message, ...remainingMessages])
-                            return { jid, count: chat.messages.length } // return number of messages we've left
-                        }
-                    }
-                }).filter(Boolean)
-                this.emit('initial-data-received', { chatsWithMissingMessages })
             }
         }
         this.on('CB:action,add:last', json =>  messagesUpdate(json, 'last'))

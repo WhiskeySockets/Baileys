@@ -32,7 +32,7 @@ const logger = pino({ prettyPrint: { levelFirst: true, ignore: 'hostname', trans
 
 export class WAConnection extends EventEmitter {
     /** The version of WhatsApp Web we're telling the servers we are */
-    version: [number, number, number] = [2, 2047, 10]
+    version: [number, number, number] = [2, 2102, 9]
     /** The Browser we're telling the WhatsApp Web servers we are */
     browserDescription: [string, string, string] = Utils.Browsers.baileys ('Chrome')
     /** Metadata like WhatsApp id, name set on WhatsApp etc. */
@@ -94,8 +94,11 @@ export class WAConnection extends EventEmitter {
     protected lastDisconnectReason: DisconnectReason 
 
     protected mediaConn: MediaConnInfo
-    protected debounceTimeout: NodeJS.Timeout
-
+    protected connectionDebounceTimeout = Utils.debouncedTimeout(
+        1000, 
+        () => this.endConnection(DisconnectReason.timedOut)
+    )
+    protected messagesDebounceTimeout = Utils.debouncedTimeout(2000)
     /**
      * Connect to WhatsAppWeb
      * @param options the connect options
@@ -247,7 +250,7 @@ export class WAConnection extends EventEmitter {
                     )
                 }
                 if (startDebouncedTimeout) {
-                    this.startDebouncedTimeout()
+                    this.connectionDebounceTimeout.start()
                 }
                 return response
             } catch (error) {
@@ -344,17 +347,6 @@ export class WAConnection extends EventEmitter {
         await this.send(buff) // send it off
         return tag
     }
-    protected startDebouncedTimeout () {
-        this.stopDebouncedTimeout ()
-        this.debounceTimeout = setTimeout (
-            () => this.endConnection(DisconnectReason.timedOut), 
-            this.connectOptions.maxIdleTimeMs
-        )
-    }
-    protected stopDebouncedTimeout ()  {
-        this.debounceTimeout && clearTimeout (this.debounceTimeout)
-        this.debounceTimeout = null
-    }
     /**
      * Send a plain JSON message to the WhatsApp servers
      * @param json the message to send
@@ -438,7 +430,8 @@ export class WAConnection extends EventEmitter {
         this.conn?.removeAllListeners ('message')
 
         this.initTimeout && clearTimeout (this.initTimeout)
-        this.debounceTimeout && clearTimeout (this.debounceTimeout)
+        this.connectionDebounceTimeout.cancel()
+        this.messagesDebounceTimeout.cancel()
         this.keepAliveReq && clearInterval(this.keepAliveReq)
         this.phoneCheckListeners = 0
         this.clearPhoneCheckInterval ()

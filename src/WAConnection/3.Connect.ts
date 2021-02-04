@@ -99,7 +99,7 @@ export class WAConnection extends Base {
                         this.conn
                             .removeAllListeners('error')
                             .removeAllListeners('close')
-                        this.stopDebouncedTimeout()
+                        this.connectionDebounceTimeout.start(this.connectOptions.maxIdleTimeMs)
                         resolve(authResult as WAOpenResult)
                     } catch (error) {
                         reject(error)

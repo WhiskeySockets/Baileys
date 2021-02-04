@@ -15,7 +15,7 @@ export class WAConnection extends Base {
         const canLogin = this.canLogin()      
         this.referenceDate = new Date () // refresh reference date
 
-        this.startDebouncedTimeout ()
+        this.connectionDebounceTimeout.start()
         
         const initQuery = (async () => {
             const {ref, ttl} = await this.query({
@@ -28,7 +28,7 @@ export class WAConnection extends Base {
             }) as WAInitResponse
 
             if (!canLogin) {
-                this.stopDebouncedTimeout () // stop the debounced timeout for QR gen
+                this.connectionDebounceTimeout.cancel() // stop the debounced timeout for QR gen
                 this.generateKeysForAuth (ref, ttl)
             }
         })();
@@ -73,7 +73,7 @@ export class WAConnection extends Base {
             ]
             .filter(Boolean)
         )
-        this.startDebouncedTimeout()
+        this.connectionDebounceTimeout.start()
         this.initTimeout && clearTimeout (this.initTimeout)
         this.initTimeout = null
 

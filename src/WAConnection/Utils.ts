@@ -15,7 +15,6 @@ import got, { Options, Response } from 'got'
 import { join } from 'path'
 import { IAudioMetadata } from 'music-metadata'
 
-
 const platformMap = {
     'aix': 'AIX',
     'darwin': 'Mac OS',
@@ -104,6 +103,25 @@ export function randomBytes(length) {
 }
 /** unix timestamp of a date in seconds */
 export const unixTimestampSeconds = (date: Date = new Date()) => Math.floor(date.getTime()/1000)
+
+export type DebouncedTimeout = ReturnType<typeof debouncedTimeout>
+export const debouncedTimeout = (intervalMs: number = 1000, task: () => void = undefined) => {
+    let timeout: NodeJS.Timeout
+    return {
+        start: (newIntervalMs?: number, newTask?: () => void) => {
+            task = newTask || task
+            intervalMs = newIntervalMs || intervalMs
+            timeout && clearTimeout(timeout)
+            timeout = setTimeout(task, intervalMs)
+        },
+        cancel: () => {
+            timeout && clearTimeout(timeout)
+            timeout = undefined
+        },
+        setTask: (newTask: () => void) => task = newTask,
+        setInterval: (newInterval: number) => intervalMs = newInterval
+    }
+}
 
 export const delay = (ms: number) => delayCancellable (ms).delay
 export const delayCancellable = (ms: number) => {

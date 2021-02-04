@@ -25,6 +25,9 @@ async function example() {
     conn.on('contacts-received', () => {
         console.log(`you have ${Object.keys(conn.contacts).length} contacts`)
     })
+    conn.on('initial-data-received', () => {
+        console.log('received all initial messages')
+    })
 
     // loads the auth file credentials if present
     /*  Note: one can take this auth_info.json file and login again from any computer without having to scan the QR code, 
