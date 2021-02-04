@@ -96,7 +96,7 @@ export class WAConnection extends EventEmitter {
     protected mediaConn: MediaConnInfo
     protected connectionDebounceTimeout = Utils.debouncedTimeout(
         1000, 
-        () => this.endConnection(DisconnectReason.timedOut)
+        () => this.state === 'connecting' && this.endConnection(DisconnectReason.timedOut)
     )
     protected messagesDebounceTimeout = Utils.debouncedTimeout(2000)
     /**

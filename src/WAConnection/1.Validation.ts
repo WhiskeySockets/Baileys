@@ -225,7 +225,8 @@ export class WAConnection extends Base {
                     ref = newRef
                 } catch (error) {
                     this.logger.warn ({ error }, `error in QR gen`)
-                    if (error.status === 429) { // too many QR requests
+                    // @ts-ignore
+                    if (error.status === 429 && this.state !== 'open') { // too many QR requests
                         this.endConnection(error.message)
                         return
                     }
