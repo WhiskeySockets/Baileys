@@ -34,7 +34,7 @@ export class WAConnection extends Base {
         let phone = str.split('@')[0]
         const url = `https://wa.me/${phone}`
         const response = await this.fetchRequest(url, 'GET', undefined, undefined, undefined, false)
-        const loc = response.headers['Location'] as string
+        const loc = response.headers.location as string
         if (!loc) {
             this.logger.warn({ url, status: response.statusCode }, 'did not get location from request')
             return
