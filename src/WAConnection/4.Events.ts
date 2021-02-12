@@ -26,6 +26,8 @@ export class WAConnection extends Base {
         // chats received
         this.on('CB:response,type:chat', json => {
             if (json[1].duplicate || !json[2]) return
+            
+            this.chatsDebounceTimeout.cancel()
             const chats = new KeyedDB(this.chatOrderingKey, c => c.jid)
 
             json[2].forEach(([item, chat]: [any, WAChat]) => {

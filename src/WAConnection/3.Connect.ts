@@ -94,12 +94,13 @@ export class WAConnection extends Base {
                     this.logger.info(`connected to WhatsApp Web server, authenticating via ${reconnectID ? 'reconnect' : 'takeover'}`)
 
                     try {
+                        this.connectionDebounceTimeout.setInterval(this.connectOptions.maxIdleTimeMs)
                         const authResult = await this.authenticate(reconnectID)
                         
                         this.conn
                             .removeAllListeners('error')
                             .removeAllListeners('close')
-                        this.connectionDebounceTimeout.start(this.connectOptions.maxIdleTimeMs)
+                        this.connectionDebounceTimeout.start()
                         resolve(authResult as WAOpenResult)
                     } catch (error) {
                         reject(error)

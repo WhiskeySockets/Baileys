@@ -46,7 +46,8 @@ export class WAConnection extends EventEmitter {
         maxRetries: 10,
         connectCooldownMs: 4000,
         phoneResponseTime: 15_000,
-        alwaysUseTakeover: true
+        alwaysUseTakeover: true,
+        queryChatsTillReceived: true
     }
     /** When to auto-reconnect */
     autoReconnect = ReconnectMode.onConnectionLost 
@@ -62,28 +63,23 @@ export class WAConnection extends EventEmitter {
     messageLog: { tag: string, json: string, fromMe: boolean, binaryTags?: any[] }[] = []
 
     maxCachedMessages = 50
-    /** 
-     * @deprecated 
-     * does not do anything
-     * */
-    loadProfilePicturesForChatsAutomatically = false
 
     lastChatsReceived: Date
     chats = new KeyedDB (Utils.waChatKey(false), value => value.jid)
     contacts: { [k: string]: WAContact } = {}
-    blocklist: string[] = [];
+    blocklist: string[] = []
 
     /** Data structure of tokens & IDs used to establish one's identiy to WhatsApp Web */
-    protected authInfo: AuthenticationCredentials = null
+    protected authInfo: AuthenticationCredentials
     /** Curve keys to initially authenticate */
     protected curveKeys: { private: Uint8Array; public: Uint8Array }
     /** The websocket connection */
-    protected conn: WS = null
+    protected conn: WS
     protected msgCount = 0
     protected keepAliveReq: NodeJS.Timeout
     protected encoder = new Encoder()
     protected decoder = new Decoder()
-    protected phoneCheckInterval = undefined
+    protected phoneCheckInterval
     protected phoneCheckListeners = 0
 
     protected referenceDate = new Date () // used for generating tags
@@ -99,6 +95,7 @@ export class WAConnection extends EventEmitter {
         () => this.state === 'connecting' && this.endConnection(DisconnectReason.timedOut)
     )
     protected messagesDebounceTimeout = Utils.debouncedTimeout(2000)
+    protected chatsDebounceTimeout = Utils.debouncedTimeout(10_000)
     /**
      * Connect to WhatsAppWeb
      * @param options the connect options
@@ -432,6 +429,7 @@ export class WAConnection extends EventEmitter {
         this.initTimeout && clearTimeout (this.initTimeout)
         this.connectionDebounceTimeout.cancel()
         this.messagesDebounceTimeout.cancel()
+        this.chatsDebounceTimeout.cancel()
         this.keepAliveReq && clearInterval(this.keepAliveReq)
         this.phoneCheckListeners = 0
         this.clearPhoneCheckInterval ()

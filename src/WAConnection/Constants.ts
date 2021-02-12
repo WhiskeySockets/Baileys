@@ -85,11 +85,6 @@ export enum ReconnectMode {
 export type WALoadChatOptions = {
     searchString?: string
     custom?: (c: WAChat) => boolean
-    /** 
-     * @deprecated
-     * does not do anything now
-     */
-    loadProfilePicture?: boolean
 }
 export type WAConnectOptions = {
     /** fails the connection if no data is received for X seconds */
@@ -105,6 +100,11 @@ export type WAConnectOptions = {
     fetchAgent?: Agent
     /** Always uses takeover for connections */
     alwaysUseTakeover?: boolean
+    /** 
+     * Sometimes WA does not send the chats, 
+     * this keeps pinging the phone to send the chats over
+     * */
+    queryChatsTillReceived?: boolean
 }
 /** from: https://stackoverflow.com/questions/3809401/what-is-a-good-regular-expression-to-match-a-url */
 export const URL_REGEX = /[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)?/gi

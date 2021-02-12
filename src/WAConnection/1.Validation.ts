@@ -107,12 +107,26 @@ export class WAConnection extends Base {
      */
     sendPostConnectQueries () {
         this.sendBinary (['query', {type: 'contacts', epoch: '1'}, null], [ WAMetric.queryContact, WAFlag.ignore ])
-        this.sendBinary (['query', {type: 'chat', epoch: '1'}, null], [ WAMetric.queryChat, WAFlag.ignore ])
         this.sendBinary (['query', {type: 'status', epoch: '1'}, null], [ WAMetric.queryStatus, WAFlag.ignore ])
         this.sendBinary (['query', {type: 'quick_reply', epoch: '1'}, null], [ WAMetric.queryQuickReply, WAFlag.ignore ])
         this.sendBinary (['query', {type: 'label', epoch: '1'}, null], [ WAMetric.queryLabel, WAFlag.ignore ])
         this.sendBinary (['query', {type: 'emoji', epoch: '1'}, null], [ WAMetric.queryEmoji, WAFlag.ignore ])
         this.sendBinary (['action', {type: 'set', epoch: '1'}, [['presence', {type: Presence.available}, null]] ], [ WAMetric.presence, WAFlag.available ])
+        
+        if(this.connectOptions.queryChatsTillReceived) {
+            this.chatsDebounceTimeout.start(
+                undefined, 
+                () => {
+                    this.logger.debug('pinging with chats query')
+                    this.sendChatsQuery(this.msgCount)
+                }
+            )
+        } else {
+            this.sendChatsQuery(1)
+        }
+    }
+    protected sendChatsQuery(epoch: number) {
+        return this.sendBinary(['query', {type: 'chat', epoch: epoch.toString()}, null], [ WAMetric.queryChat, WAFlag.ignore ])
     }
     /** 
      * Refresh QR Code 
