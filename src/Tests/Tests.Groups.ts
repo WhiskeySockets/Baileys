@@ -1,6 +1,6 @@
 import { MessageType, GroupSettingChange, delay, ChatModification, whatsappID } from '../WAConnection'
 import * as assert from 'assert'
-import { WAConnectionTest, testJid, sendAndRetreiveMessage } from './Common'
+import { WAConnectionTest, testJid, sendAndRetrieveMessage } from './Common'
 
 WAConnectionTest('Groups', (conn) => {
     let gid: string
@@ -15,12 +15,12 @@ WAConnectionTest('Groups', (conn) => {
 
         console.log('created group: ' + JSON.stringify(response))
     })
-    it('should retreive group invite code', async () => {
+    it('should retrieve group invite code', async () => {
         const code = await conn.groupInviteCode(gid)
         assert.ok(code)
         assert.strictEqual(typeof code, 'string')
     })
-    it('should retreive group metadata', async () => {
+    it('should retrieve group metadata', async () => {
         const metadata = await conn.groupMetadata(gid)
         assert.strictEqual(metadata.id, gid)
         assert.strictEqual(metadata.participants.filter((obj) => obj.jid.split('@')[0] === testJid.split('@')[0]).length, 1)
@@ -49,10 +49,10 @@ WAConnectionTest('Groups', (conn) => {
         assert.strictEqual(metadata.desc, newDesc)
     })
     it('should send a message on the group', async () => {
-        await sendAndRetreiveMessage(conn, 'Hello!', MessageType.text, {}, gid)
+        await sendAndRetrieveMessage(conn, 'Hello!', MessageType.text, {}, gid)
     })
     it('should delete a message on the group', async () => {
-        const message = await sendAndRetreiveMessage(conn, 'Hello!', MessageType.text, {}, gid)
+        const message = await sendAndRetrieveMessage(conn, 'Hello!', MessageType.text, {}, gid)
         await delay(1500)
         await conn.deleteMessage(message.key)
     })

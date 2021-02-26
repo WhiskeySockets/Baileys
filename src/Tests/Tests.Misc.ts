@@ -2,7 +2,7 @@ import { Presence, ChatModification, delay, newMessagesDB, WA_DEFAULT_EPHEMERAL,
 import { promises as fs } from 'fs'
 import * as assert from 'assert'
 import got from 'got'
-import { WAConnectionTest, testJid, sendAndRetreiveMessage } from './Common'
+import { WAConnectionTest, testJid, sendAndRetrieveMessage } from './Common'
 
 WAConnectionTest('Misc', conn => {
 
@@ -160,7 +160,7 @@ WAConnectionTest('Misc', conn => {
         assert.ok(idx < idx2) // should move further down the array
 
         await delay (2000)
-        await sendAndRetreiveMessage(conn, 'test', MessageType.text)
+        await sendAndRetrieveMessage(conn, 'test', MessageType.text)
         // should be unarchived
         const idx3 = conn.chats.all().findIndex(chat => chat.jid === testJid)
         assert.strictEqual(idx, idx3) // should be back there
@@ -359,7 +359,7 @@ WAConnectionTest('Misc', conn => {
 
         await delay(1000)
 
-        let msg = await sendAndRetreiveMessage(
+        let msg = await sendAndRetrieveMessage(
             conn,
             'This will go poof 😱',
             MessageType.text
@@ -378,7 +378,7 @@ WAConnectionTest('Misc', conn => {
 
         await delay(1000)
 
-        msg = await sendAndRetreiveMessage(
+        msg = await sendAndRetrieveMessage(
             conn,
             'This will not go poof 😔',
             MessageType.text

@@ -30,7 +30,7 @@ export const makeConnection = () => {
     return conn
 }
 
-export async function sendAndRetreiveMessage(conn: WAConnection, content, type: MessageType, options: MessageOptions = {}, recipientJid = testJid) {
+export async function sendAndRetrieveMessage(conn: WAConnection, content, type: MessageType, options: MessageOptions = {}, recipientJid = testJid) {
     const response = await conn.sendMessage(recipientJid, content, type, options)
     const {messages} = await conn.loadMessages(recipientJid, 10)
     const message = messages.find (m => m.key.id === response.key.id)

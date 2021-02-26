@@ -435,7 +435,7 @@ await conn.toggleDisappearingMessages(jid, 0)
     You can also load the entire conversation history if you want
     ``` ts
     await conn.loadAllMessages ("xyz@c.us", message => console.log("Loaded message with ID: " + message.key.id))
-    console.log("queried all messages") // promise resolves once all messages are retreived
+    console.log("queried all messages") // promise resolves once all messages are retrieved
     ```
 - To get the status of some person
     ``` ts

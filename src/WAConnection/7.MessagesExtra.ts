@@ -99,7 +99,7 @@ export class WAConnection extends Base {
      * Load the conversation with a group or person
      * @param count the number of messages to load
      * @param cursor the data for which message to offset the query by
-     * @param mostRecentFirst retreive the most recent message first or retreive from the converation start
+     * @param mostRecentFirst retrieve the most recent message first or retrieve from the converation start
      */
     @Mutex (jid => jid)
     async loadMessages (
@@ -110,7 +110,7 @@ export class WAConnection extends Base {
     ) {
         jid = whatsappID(jid)
 
-        const retreive = (count: number, indexMessage: any) => this.fetchMessagesFromWA (jid, count, indexMessage, mostRecentFirst)
+        const retrieve = (count: number, indexMessage: any) => this.fetchMessagesFromWA (jid, count, indexMessage, mostRecentFirst)
         
         const chat = this.chats.get (jid)
         const hasCursor = cursor?.id && typeof cursor?.fromMe !== 'undefined'
@@ -126,7 +126,7 @@ export class WAConnection extends Base {
             } else if (diff > 0) {
                 const fMessage = chat.messages.all()[0]
                 let fepoch = (fMessage && fMessage['epoch']) || 0
-                const extra = await retreive (diff, messages[0]?.key || cursor)
+                const extra = await retrieve (diff, messages[0]?.key || cursor)
                 // add to DB
                 for (let i = extra.length-1;i >= 0; i--) {
                     const m = extra[i]
@@ -139,7 +139,7 @@ export class WAConnection extends Base {
                 }
                 messages.unshift (...extra)
             }
-        } else messages = await retreive (count, cursor)
+        } else messages = await retrieve (count, cursor)
         
         if (messages[0]) cursor = { id: messages[0].key.id, fromMe: messages[0].key.fromMe }
         else cursor = null
@@ -148,9 +148,9 @@ export class WAConnection extends Base {
     }
     /**
      * Load the entire friggin conversation with a group or person
-     * @param onMessage callback for every message retreived
+     * @param onMessage callback for every message retrieved
      * @param chunkSize the number of messages to load in a single request
-     * @param mostRecentFirst retreive the most recent message first or retreive from the converation start
+     * @param mostRecentFirst retrieve the most recent message first or retrieve from the converation start
      */
     loadAllMessages(jid: string, onMessage: (m: WAMessage) => Promise<void>|void, chunkSize = 25, mostRecentFirst = true) {
         let offsetID = null
@@ -183,7 +183,7 @@ export class WAConnection extends Base {
     /**
      * Find a message in a given conversation
      * @param chunkSize the number of messages to load in a single request
-     * @param onMessage callback for every message retreived, if return true -- the loop will break
+     * @param onMessage callback for every message retrieved, if return true -- the loop will break
      */
     async findMessage (jid: string, chunkSize: number, onMessage: (m: WAMessage) => boolean) {
         const chat = this.chats.get (whatsappID(jid))
