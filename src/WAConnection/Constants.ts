@@ -16,6 +16,7 @@ export type WANode = WA.Node
 export type WAMessage = proto.WebMessageInfo
 export type WAMessageContent = proto.IMessage
 export type WAContactMessage = proto.ContactMessage
+export type WAContactsArrayMessage = proto.ContactsArrayMessage
 export type WAMessageKey = proto.IMessageKey
 export type WATextMessage = proto.ExtendedTextMessage
 export type WAContextInfo = proto.IContextInfo
@@ -295,6 +296,7 @@ export enum MessageType {
     text = 'conversation',
     extendedText = 'extendedTextMessage',
     contact = 'contactMessage',
+    contactsArray = 'contactsArrayMessage',
     location = 'locationMessage',
     liveLocation = 'liveLocationMessage',
 
