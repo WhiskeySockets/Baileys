@@ -172,10 +172,8 @@ export class WAConnection extends Base {
             // if there are still more messages
             if (messages.length >= chunkSize) {
                 offsetID = lastMessage.key // get the last message
-                return new Promise((resolve, reject) => {
-                    // send query after 200 ms
-                    setTimeout(() => loadMessage().then(resolve).catch(reject), 200)
-                })
+                await delay(200)
+                return loadMessage()
             }
         }
         return loadMessage() as Promise<void>

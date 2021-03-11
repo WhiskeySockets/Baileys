@@ -94,7 +94,9 @@ export class WAConnection extends EventEmitter {
         1000, 
         () => this.state === 'connecting' && this.endConnection(DisconnectReason.timedOut)
     )
+    // timeout to know when we're done recieving messages
     protected messagesDebounceTimeout = Utils.debouncedTimeout(2000)
+    // ping chats till recieved
     protected chatsDebounceTimeout = Utils.debouncedTimeout(10_000)
     /**
      * Connect to WhatsAppWeb

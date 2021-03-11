@@ -1,6 +1,6 @@
 import * as QR from 'qrcode-terminal'
 import { WAConnection as Base } from './3.Connect'
-import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, PresenceUpdate, BaileysEvent, DisconnectReason, WAOpenResult, Presence, AuthenticationCredentials, WAParticipantAction, WAGroupMetadata, WAUser, WANode, WAPresenceData, WAChatUpdate, BlocklistUpdate, WAContactUpdate } from './Constants'
+import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, PresenceUpdate, BaileysEvent, DisconnectReason, WAOpenResult, Presence, AuthenticationCredentials, WAParticipantAction, WAGroupMetadata, WAUser, WANode, WAPresenceData, WAChatUpdate, BlocklistUpdate, WAContactUpdate, WAMetric, WAFlag } from './Constants'
 import { whatsappID, unixTimestampSeconds, isGroupID, GET_MESSAGE_ID, WA_MESSAGE_ID, waMessageKey, newMessagesDB, shallowChanges, toNumber } from './Utils'
 import KeyedDB from '@adiwajshing/keyed-db'
 import { Mutex } from './Mutex'
@@ -10,6 +10,29 @@ export class WAConnection extends Base {
     constructor () {
         super ()
         this.setMaxListeners (30)
+        this.chatsDebounceTimeout.setTask(() => {
+            this.logger.debug('pinging with chats query')
+            this.sendChatsQuery(this.msgCount)
+
+            this.chatsDebounceTimeout.start()
+        })
+        this.on('open', () => {
+            // send queries WA Web expects
+            this.sendBinary (['query', {type: 'contacts', epoch: '1'}, null], [ WAMetric.queryContact, WAFlag.ignore ])
+            this.sendBinary (['query', {type: 'status', epoch: '1'}, null], [ WAMetric.queryStatus, WAFlag.ignore ])
+            this.sendBinary (['query', {type: 'quick_reply', epoch: '1'}, null], [ WAMetric.queryQuickReply, WAFlag.ignore ])
+            this.sendBinary (['query', {type: 'label', epoch: '1'}, null], [ WAMetric.queryLabel, WAFlag.ignore ])
+            this.sendBinary (['query', {type: 'emoji', epoch: '1'}, null], [ WAMetric.queryEmoji, WAFlag.ignore ])
+            this.sendBinary (['action', {type: 'set', epoch: '1'}, [['presence', {type: Presence.available}, null]] ], [ WAMetric.presence, WAFlag.available ])
+            
+            if(this.connectOptions.queryChatsTillReceived) {
+                this.chatsDebounceTimeout.start()
+            } else {
+                this.sendChatsQuery(1)
+            }
+
+            this.logger.debug('sent init queries')
+        })
         // on disconnects
         this.on('CB:Cmd,type:disconnect', json => (
             this.state === 'open' && this.unexpectedDisconnect(json[1].kind || 'unknown')
@@ -378,6 +401,9 @@ export class WAConnection extends Base {
 
             this.emit('blocklist-update', update)
         })
+    }
+    protected sendChatsQuery(epoch: number) {
+        return this.sendBinary(['query', {type: 'chat', epoch: epoch.toString()}, null], [ WAMetric.queryChat, WAFlag.ignore ])
     }
     /** Get the URL to download the profile picture of a person/group */
     @Mutex (jid => jid)
