@@ -1,7 +1,7 @@
 import * as QR from 'qrcode-terminal'
 import { WAConnection as Base } from './3.Connect'
-import { WAMessageStatusUpdate, WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, PresenceUpdate, BaileysEvent, DisconnectReason, WAOpenResult, Presence, AuthenticationCredentials, WAParticipantAction, WAGroupMetadata, WAUser, WANode, WAPresenceData, WAChatUpdate, BlocklistUpdate, WAContactUpdate, WAMetric, WAFlag } from './Constants'
-import { whatsappID, unixTimestampSeconds, isGroupID, GET_MESSAGE_ID, WA_MESSAGE_ID, waMessageKey, newMessagesDB, shallowChanges, toNumber } from './Utils'
+import { WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, PresenceUpdate, BaileysEvent, DisconnectReason, WAOpenResult, Presence, AuthenticationCredentials, WAParticipantAction, WAGroupMetadata, WAUser, WANode, WAPresenceData, WAChatUpdate, BlocklistUpdate, WAContactUpdate, WAMetric, WAFlag } from './Constants'
+import { whatsappID, unixTimestampSeconds, GET_MESSAGE_ID, WA_MESSAGE_ID, waMessageKey, newMessagesDB, shallowChanges, toNumber } from './Utils'
 import KeyedDB from '@adiwajshing/keyed-db'
 import { Mutex } from './Mutex'
 
@@ -316,7 +316,7 @@ export class WAConnection extends Base {
             const FUNCTIONS = {
                 'delete': () => {
                     chat['delete'] = 'true'
-                    this.chats.delete(chat)
+                    this.chats.deleteById(chat.jid)
                     return 'delete'
                 },
                 'clear': () => {
