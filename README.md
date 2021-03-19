@@ -97,13 +97,13 @@ The entire `WAConnectOptions` struct is mentioned here with default values:
 ``` ts
 conn.connectOptions = {
     /** fails the connection if no data is received for X seconds */
-    maxIdleTimeMs?: 15_000,
+    maxIdleTimeMs?: 60_000,
     /** maximum attempts to connect */
-    maxRetries?: 5,
+    maxRetries?: 10,
     /** max time for the phone to respond to a connectivity test */
-    phoneResponseTime?: 10_000,
+    phoneResponseTime?: 15_000,
     /** minimum time between new connections */
-    connectCooldownMs?: 3000,
+    connectCooldownMs?: 4000,
     /** agent used for WS connections (could be a proxy agent) */
     agent?: Agent = undefined,
     /** agent used for fetch requests -- uploading/downloading media */
