@@ -273,6 +273,7 @@ export const STORIES_JID = 'status@broadcast'
 
 export enum WAFlag {
     available = 160,
+    other = 136, // don't know this one
     ignore = 1 << 7,
     acknowledge = 1 << 6,
     unavailable = 1 << 4,

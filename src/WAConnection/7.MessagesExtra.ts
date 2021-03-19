@@ -317,8 +317,6 @@ export class WAConnection extends Base {
 
                 const chatUpdate: Partial<WAChat> = { jid: messageKey.remoteJid, messages: newMessagesDB([ message ]) }
                 this.emit ('chat-update', chatUpdate)
-                // emit deprecated
-                this.emit ('message-update', message)
             }
         }
         return result

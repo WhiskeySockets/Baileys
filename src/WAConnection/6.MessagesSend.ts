@@ -12,7 +12,7 @@ import {
     WATextMessage,
     WAMessageContent, WAMetric, WAFlag, WAMessage, BaileysError, WA_MESSAGE_STATUS_TYPE, WAMessageProto, MediaConnInfo, MessageTypeProto, URL_REGEX, WAUrlInfo, WA_DEFAULT_EPHEMERAL, WAMediaUpload
 } from './Constants'
-import { generateMessageID, extensionForMediaMessage, whatsappID, unixTimestampSeconds, getAudioDuration, newMessagesDB, encryptedStream, decryptMediaMessageBuffer, generateThumbnail  } from './Utils'
+import { isGroupID, generateMessageID, extensionForMediaMessage, whatsappID, unixTimestampSeconds, getAudioDuration, newMessagesDB, encryptedStream, decryptMediaMessageBuffer, generateThumbnail  } from './Utils'
 import { Mutex } from './Mutex'
 import { Readable } from 'stream'
 
@@ -57,13 +57,23 @@ export class WAConnection extends Base {
      * For the default see WA_DEFAULT_EPHEMERAL
      */
     async toggleDisappearingMessages(jid: string, ephemeralExpiration?: number, opts: { waitForAck: boolean } = { waitForAck: true }) {
-        const message = this.prepareMessageFromContent(
-            jid,
-            this.prepareDisappearingMessageSettingContent(ephemeralExpiration),
-            {}
-        )
-        await this.relayWAMessage(message, opts)
-        return message
+        if(isGroupID(jid)) {
+            const tag = this.generateMessageTag(true)
+            await this.setQuery([
+                [
+                    'group', 
+                    { id: tag, jid, tyoe: 'prop', author: this.user.jid }, 
+                    [ [ 'ephemeral', { value: ephemeralExpiration.toString() }, null ] ] 
+                ]
+            ], [WAMetric.group, WAFlag.other], tag)
+        } else {
+            const message = this.prepareMessageFromContent(
+                jid,
+                this.prepareDisappearingMessageSettingContent(ephemeralExpiration),
+                {}
+            )
+            await this.relayWAMessage(message, opts)
+        }
     }
     /** Prepares the message content */
     async prepareMessageContent (message: string | WATextMessage | WALocationMessage | WAContactMessage | WAContactsArrayMessage | WAMediaUpload, type: MessageType, options: MessageOptions) {
