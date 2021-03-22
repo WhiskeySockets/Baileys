@@ -62,7 +62,7 @@ export class WAConnection extends Base {
             await this.setQuery([
                 [
                     'group', 
-                    { id: tag, jid, tyoe: 'prop', author: this.user.jid }, 
+                    { id: tag, jid, type: 'prop', author: this.user.jid }, 
                     [ [ 'ephemeral', { value: ephemeralExpiration.toString() }, null ] ] 
                 ]
             ], [WAMetric.group, WAFlag.other], tag)
