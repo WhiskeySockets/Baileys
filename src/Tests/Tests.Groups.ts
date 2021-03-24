@@ -20,6 +20,11 @@ WAConnectionTest('Groups', (conn) => {
         assert.ok(code)
         assert.strictEqual(typeof code, 'string')
     })
+    it('should joined group via invite code', async () => {
+        const response = await conn.acceptInvite(gid)
+        assert.ok(response.status)
+        assert.strictEqual(response.status, response.gid)
+    })
     it('should retrieve group metadata', async () => {
         const metadata = await conn.groupMetadata(gid)
         assert.strictEqual(metadata.id, gid)

@@ -177,4 +177,9 @@ export class WAConnection extends Base {
         const response = await this.query({json, expect200: true, requiresPhoneConnection: false})
         return response.code as string
     }
+    /** Join group via invite code */
+    async acceptInvite(jid) {
+        const response = await this.query({ json: ['action', 'invite', jid], expect200: true })
+        return response
+    }
 }

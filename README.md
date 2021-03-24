@@ -527,6 +527,12 @@ Of course, replace ``` xyz ``` with an actual ID.
     // Or if you've left the group -- call this
     const metadata2 = await conn.groupMetadataMinimal ("abcd-xyz@g.us") 
     ```
+- To join the group using the invitation code
+    ``` ts
+    const response = await conn.acceptInvite ("xxx")
+    console.log("joined to: " + response.gid)
+    ```
+Of course, replace ``` xxx ``` with invitation code.
 
 ## Broadcast Lists & Stories
 
