@@ -40,9 +40,6 @@ jobs:
 
     - name: Build
       run: yarn run build:all
-
-    - name: Debug Release Creation
-      run: echo "${{ toJson(steps.packageInfo.outputs) }}"
       
     - name: Create Release
       id: releaseCreate
