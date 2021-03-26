@@ -6,7 +6,7 @@
 
  Baileys is type-safe, extensible and simple to use. If you require more functionality than provided, it'll super easy for you to write an extension. More on this [here](#WritingCustomFunctionality).
  
- If you're interested in building a WhatsApp bot, you may wanna check out [WhatsAppInfoBot](https://github.com/adiwajshing/WhatsappInfoBot) and an actual bot built with it, [Messcat](https://github.com/adiwajshing/Messcat).
+ If you're interested in building a WhatsApp bot, you may wanna check out [WhatsAppInfoBot](https://github.com/adiwajshing/WhatsappInfoBot) and an actual bot built with it, [Messcat](https://github.com/ashokatechmin/Messcat).
  
  **Read the docs [here](https://adiwajshing.github.io/Baileys)**
  **Join the Discord [here](https://discord.gg/7FYURJyqng)**
@@ -151,7 +151,7 @@ await conn.connect() // works the same
 ```
 See the browser credentials type in the docs.
 
-**Note**: Upon every successive connection, WA can update part of the stored credentials. Whenever that happens, the `credentials-updated` event is triggered, and you should probably update your saved credentials upon receiving that event. Not doing so *may* lead WA to log you out after a few weeks with a 419 error code.
+**Note**: Upon every successive connection, WA can update part of the stored credentials. Whenever that happens, the credentials are uploaded, and you should probably update your saved credentials upon receiving the `open` event. Not doing so *may* lead WA to log you out after a few weeks with a 419 error code.
 
 ## QR Callback
 
@@ -161,12 +161,6 @@ conn.on('qr', qr => {
     // Now, use the 'qr' string to display in QR UI or send somewhere
 }
 await conn.connect ()
-```
-
-The QR will auto-regenerate and will fire a new `qr` event after 30 seconds, if you don't want to regenerate or want to change the re-gen interval:
-``` ts
-conn.regenerateQRIntervalMs = null // no QR regen
-conn.regenerateQRIntervalMs = 20000 // QR regen every 20 seconds
 ```
 
 ## Handling Events
@@ -532,7 +526,7 @@ Of course, replace ``` xyz ``` with an actual ID.
     const response = await conn.acceptInvite ("xxx")
     console.log("joined to: " + response.gid)
     ```
-Of course, replace ``` xxx ``` with invitation code.
+    Of course, replace ``` xxx ``` with invitation code.
 
 ## Broadcast Lists & Stories
 
@@ -566,7 +560,7 @@ This will enable you to see all sorts of messages WhatsApp sends in the console.
 
     Hence, you can register a callback for an event using the following:
     ``` ts
-    conn.on (["action", null, "battery"], json => {
+    conn.on (`CB:action,,battery`, json => {
         const batteryLevelStr = json[2][0][1].value
         const batterylevel = parseInt (batteryLevelStr)
         console.log ("battery level: " + batterylevel + "%")
