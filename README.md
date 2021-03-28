@@ -527,6 +527,11 @@ Of course, replace ``` xyz ``` with an actual ID.
     console.log("joined to: " + response.gid)
     ```
     Of course, replace ``` xxx ``` with invitation code.
+- To revokes the current invite link of a group
+    ``` ts
+    const response = await conn.revokeInvite ("abcd-xyz@g.us")
+    console.log("new group code: " + response.code)
+    ```
 
 ## Broadcast Lists & Stories
 

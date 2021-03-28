@@ -182,4 +182,9 @@ export class WAConnection extends Base {
         const response = await this.query({ json: ['action', 'invite', jid], expect200: true })
         return response
     }
+    /** Revokes the current invite link for a group chat */
+    async revokeInvite(jid) {
+        const response = await this.query({ json: ['action', 'inviteReset', jid], expect200: true })
+        return response
+    }
 }
