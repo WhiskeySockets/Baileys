@@ -22,8 +22,8 @@ export class WAConnection extends Base {
         if (this.state !== 'open') {
             return this.isOnWhatsAppNoConn(str)
         }
-        const { status, jid } = await this.query({json: ['query', 'exist', str], requiresPhoneConnection: false})
-        if (status === 200) return { exists: true, jid: whatsappID(jid) }
+        const { status, jid, biz } = await this.query({json: ['query', 'exist', str], requiresPhoneConnection: false})
+        if (status === 200) return { exists: true, jid: whatsappID(jid), isBusiness: biz as boolean}
     }
     /** 
      * Query whether a given number is registered on WhatsApp, without needing to open a WS connection
@@ -210,5 +210,31 @@ export class WAConnection extends Base {
         }
 
         return result
+    }
+    /**
+     * Query Business Profile (Useful for VCards)
+     * @param jid Business Jid
+     * @returns profile object or undefined if not business account
+     */
+    async getBusinessProfile(jid: string) {
+        jid = whatsappID(jid)
+        const {
+            profiles: [{
+                profile,
+                wid 
+            }]
+        } = await this.query({
+            json: ["query", "businessProfile", [
+                {
+                    "wid": jid.replace('@s.whatsapp.net', '@c.us')
+                }
+            ], 84],
+            expect200: true,
+            requiresPhoneConnection: false,
+        })
+        return {
+            profile,
+            jid: whatsappID(wid),
+        }
     }
 }
