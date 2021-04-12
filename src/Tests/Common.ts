@@ -39,7 +39,7 @@ export async function sendAndRetrieveMessage(conn: WAConnection, content, type: 
     const chat = conn.chats.get(recipientJid)
 
     assert.ok (chat.messages.get(GET_MESSAGE_ID(message.key)))
-    assert.ok (chat.t >= (unixTimestampSeconds()-5) )
+    assert.ok (chat.t >= (unixTimestampSeconds()-5), `expected: ${chat.t} > ${(unixTimestampSeconds()-5)}`)
     return message
 }
 export const WAConnectionTest = (name: string, func: (conn: WAConnection) => void) => (

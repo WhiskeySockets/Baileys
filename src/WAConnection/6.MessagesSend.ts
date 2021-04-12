@@ -155,7 +155,8 @@ export class WAConnection extends Base {
             bodyPath,
             fileEncSha256,
             fileSha256,
-            fileLength
+            fileLength,
+            didSaveToTmpPath
         } = await encryptedStream(media, mediaType, requiresOriginalForSomeProcessing)
          // url safe Base64 encode the SHA256 hash of the body
         const fileEncSha256B64 = encodeURIComponent( 
@@ -204,6 +205,14 @@ export class WAConnection extends Base {
             }
         }
         if (!mediaUrl) throw new Error('Media upload failed on all hosts')
+        // remove tmp files
+        await Promise.all(
+            [
+                fs.unlink(encBodyPath),
+                didSaveToTmpPath && bodyPath && fs.unlink(bodyPath)
+            ]
+            .filter(Boolean)
+        )
 
         const message = {
             [mediaType]: MessageTypeProto[mediaType].fromObject(

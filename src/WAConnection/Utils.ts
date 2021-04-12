@@ -382,7 +382,8 @@ export const encryptedStream = async(media: WAMediaUpload, mediaType: MessageTyp
         mac,
         fileEncSha256,
         fileSha256,
-        fileLength
+        fileLength,
+        didSaveToTmpPath: type !== 'file'
     }
 }
 /**
