@@ -1,7 +1,7 @@
 import * as QR from 'qrcode-terminal'
 import { WAConnection as Base } from './3.Connect'
-import { WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, PresenceUpdate, BaileysEvent, DisconnectReason, WAOpenResult, Presence, AuthenticationCredentials, WAParticipantAction, WAGroupMetadata, WAUser, WANode, WAPresenceData, WAChatUpdate, BlocklistUpdate, WAContactUpdate, WAMetric, WAFlag } from './Constants'
-import { whatsappID, unixTimestampSeconds, GET_MESSAGE_ID, WA_MESSAGE_ID, waMessageKey, newMessagesDB, shallowChanges, toNumber } from './Utils'
+import { WAMessage, WAContact, WAChat, WAMessageProto, WA_MESSAGE_STUB_TYPE, WA_MESSAGE_STATUS_TYPE, PresenceUpdate, BaileysEvent, DisconnectReason, WAOpenResult, Presence, WAParticipantAction, WAGroupMetadata, WANode, WAPresenceData, WAChatUpdate, BlocklistUpdate, WAContactUpdate, WAMetric, WAFlag } from './Constants'
+import { whatsappID, unixTimestampSeconds, GET_MESSAGE_ID, WA_MESSAGE_ID, newMessagesDB, shallowChanges, toNumber, isGroupID } from './Utils'
 import KeyedDB from '@adiwajshing/keyed-db'
 import { Mutex } from './Mutex'
 
@@ -453,8 +453,8 @@ export class WAConnection extends Base {
             modify_tag: '',
             spam: 'false'
         }
-        if(this.chats.insertIfAbsent (chat).length) {
-            this.emit ('chat-new', chat)
+        if(this.chats.insertIfAbsent(chat).length) {
+            this.emit('chat-new', chat)
             return chat
         }   
     }
@@ -487,7 +487,11 @@ export class WAConnection extends Base {
     }
     /** Adds the given message to the appropriate chat, if the chat doesn't exist, it is created */
     protected async chatAddMessageAppropriate (message: WAMessage) {
-        const jid = whatsappID (message.key.remoteJid)
+        const jid = whatsappID(message.key.remoteJid)
+        if(isGroupID(jid) && !jid.includes('-')) {
+            this.logger.warn({ gid: jid }, 'recieved odd group ID')
+            return
+        }
         const chat = this.chats.get(jid) || await this.chatAdd (jid)
         this.chatAddMessage (message, chat)
     }

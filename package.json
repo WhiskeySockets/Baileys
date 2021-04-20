@@ -24,7 +24,7 @@
     "build:tsc": "tsc",
     "example": "node --inspect -r ts-node/register Example/example.ts",
     "gen-protobuf": "bash src/Binary/GenerateStatics.sh",
-    "browser-decode": "npx ts-node src/BrowserMessageDecoding.ts"
+    "browser-decode": "yarn ts-node src/BrowserMessageDecoding.ts"
   },
   "author": "Adhiraj Singh",
   "license": "MIT",
