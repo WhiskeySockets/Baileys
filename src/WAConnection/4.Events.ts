@@ -63,7 +63,7 @@ export class WAConnection extends Base {
                 chat.count = +chat.count
                 chat.messages = newMessagesDB()
                 // chats data (log json to see what it looks like)
-                chats.insert(chat) 
+                chats.insertIfAbsent(chat) 
             })
             this.logger.info (`received ${json[2].length} chats`)
 
