@@ -92,6 +92,9 @@ export class WAConnection extends Base {
         const chat = this.chats.get(response.gid)
         chat.metadata = metadata
         chat.name = title // in case the chat wasn't inserted
+
+        this.emit('chat-update', { jid: chat.jid, name: chat.name, metadata })
+
         return response
     }
     /**
