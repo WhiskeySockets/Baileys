@@ -446,15 +446,14 @@ export class WAConnection extends Base {
         }
     }
     /** inserts an empty chat into the DB */
-    protected chatAdd (jid: string, name?: string) {        
+    protected chatAdd (jid: string, name?: string, properties: Partial<WAChat> = {}) {        
         const chat: WAChat = {
             jid,
             name,
             t: unixTimestampSeconds(),
             messages: newMessagesDB(),
             count: 0,
-            modify_tag: '',
-            spam: 'false'
+            ...(properties || {})
         }
         if(this.chats.insertIfAbsent(chat).length) {
             this.emit('chat-new', chat)

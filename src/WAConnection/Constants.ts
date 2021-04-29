@@ -222,8 +222,8 @@ export interface WAChat {
     read_only?: 'true' | 'false'
     mute?: string
     pin?: string
-    spam: 'false' | 'true'
-    modify_tag: string
+    spam?: 'false' | 'true'
+    modify_tag?: string
     name?: string
     /** when ephemeral messages were toggled on */
     eph_setting_ts?: string
