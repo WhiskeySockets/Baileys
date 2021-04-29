@@ -377,12 +377,15 @@ export class WAConnection extends Base {
         this.on ('CB:action,,read', async json => {
             const update = json[2][0][1]
             const jid = whatsappID(update.jid)
-            const chat = this.chats.get (jid) || await this.chatAdd (jid)
-
-            if (update.type === 'false') chat.count = -1
-            else chat.count = 0
-
-            this.emit ('chat-update', { jid: chat.jid, count: chat.count })
+            const chat = this.chats.get (jid)
+            if(chat) {
+                if (update.type === 'false') chat.count = -1
+                else chat.count = 0
+    
+                this.emit ('chat-update', { jid: chat.jid, count: chat.count })
+            } else {
+                this.logger.warn('recieved read update for unknown chat ' + jid)
+            }
         })      
         this.on ('qr', qr => QR.generate(qr, { small: true }))
 
