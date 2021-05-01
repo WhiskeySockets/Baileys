@@ -348,7 +348,7 @@ export class WAConnection extends Base {
     generateForwardMessageContent (message: WAMessage, forceForward: boolean=false) {
         let content = message.message
         if (!content) throw new BaileysError ('no content in message', { status: 400 })
-        content = JSON.parse(JSON.stringify(content)) // hacky copy
+        content = WAMessageProto.Message.fromObject(content) // hacky copy
 
         let key = Object.keys(content)[0]
 
