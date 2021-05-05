@@ -123,7 +123,7 @@ import * as fs from 'fs'
 
 const conn = new WAConnection() 
 // this will be called as soon as the credentials are updated
-conn.on ('credentials-updated', () => {
+conn.on ('open', () => {
     // save credentials whenever updated
     console.log (`credentials updated!`)
     const authInfo = conn.base64EncodedAuthInfo() // get all the auth info we need to restore this session
@@ -450,7 +450,7 @@ await conn.toggleDisappearingMessages(jid, 0)
 - To get someone's presence (if they're typing, online)
     ``` ts
     // the presence update is fetched and called here
-    conn.on ('user-presence-update', json => console.log(json.id + " presence is " + json.type))
+    conn.on ('CB:Presence', json => console.log(json.id + " presence is " + json.type))
     await conn.requestPresenceUpdate ("xyz@c.us") // request the update
     ```
 - To search through messages
