@@ -31,6 +31,33 @@ export type WAInitResponse = {
     status: 200
 }
 
+export interface WABusinessProfile {
+    description: string
+    email: string
+    business_hours: WABusinessHours
+    website: string[]
+    categories: WABusinessCategories[]
+    wid?: string
+}
+
+export type WABusinessCategories = {
+    id: string
+    localized_display_name:  string
+}
+
+export type WABusinessHours = {
+    timezone: string
+    config?:  WABusinessHoursConfig[]
+    business_config?: WABusinessHoursConfig[]
+}
+
+export type WABusinessHoursConfig = {
+    day_of_week: string
+    mode: string
+    open_time?: number
+    close_time?: number
+}
+
 export interface WALocationMessage {
     degreesLatitude: number
     degreesLongitude: number

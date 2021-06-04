@@ -80,6 +80,20 @@ export class WAConnection extends Base {
         this.emit ('contact-update', { jid: this.user.jid, status })
         return response
     }
+    /** Updates business profile. */
+    async updateBusinessProfile(profile: WABusinessProfile) {
+        if (profile.business_hours?.config) {
+            profile.business_hours.business_config = profile.business_hours.config
+            delete profile.business_hours.config
+        }
+        const json = ['action', "editBusinessProfile", {...profile, v: 2}]
+        try {
+            const response = await this.query({ json, expect200: true, requiresPhoneConnection: true }).catch(_ => throw new Error(_))
+        } catch (_) {
+            return {status: 400}
+        } 
+        return {status: response.status}
+    }
     async updateProfileName (name: string) {
         const response = (await this.setQuery (
             [
@@ -214,7 +228,7 @@ export class WAConnection extends Base {
     /**
      * Query Business Profile (Useful for VCards)
      * @param jid Business Jid
-     * @returns profile object or undefined if not business account
+     * @returns {WABusinessProfile} profile object or undefined if not business account
      */
     async getBusinessProfile(jid: string) {
         jid = whatsappID(jid)
@@ -233,8 +247,8 @@ export class WAConnection extends Base {
             requiresPhoneConnection: false,
         })
         return {
-            profile,
-            jid: whatsappID(wid),
+            ...profile,
+            wid: whatsappID(wid)
         }
     }
 }
