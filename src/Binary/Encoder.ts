@@ -18,11 +18,6 @@ export default class Encoder {
     }
     pushBytes(bytes: Uint8Array | Buffer | number[]) {
         bytes.forEach (b => this.data.push(b))
-        //this.data.push.apply(this.data, bytes)
-    }
-    pushString(str: string) {
-        const bytes = Buffer.from (str, 'utf-8')
-        this.pushBytes(bytes)
     }
     writeByteLength(length: number) {
         if (length >= 4294967296) throw new Error('string too large to encode: ' + length)
@@ -39,8 +34,9 @@ export default class Encoder {
         }
     }
     writeStringRaw(string: string) {
-        this.writeByteLength(string.length)
-        this.pushString(string)
+        const bytes = Buffer.from (string, 'utf-8')
+        this.writeByteLength(bytes.length)
+        this.pushBytes(bytes)
     }
     writeJid(left: string, right: string) {
         this.pushByte(WA.Tags.JID_PAIR)
