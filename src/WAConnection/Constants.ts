@@ -134,6 +134,8 @@ export type WAConnectOptions = {
      * this keeps pinging the phone to send the chats over
      * */
     queryChatsTillReceived?: boolean
+    /** max time for the phone to respond to a query */
+    maxQueryResponseTime?: number
 }
 /** from: https://stackoverflow.com/questions/3809401/what-is-a-good-regular-expression-to-match-a-url */
 export const URL_REGEX = /[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)?/gi

@@ -46,6 +46,7 @@ export class WAConnection extends EventEmitter {
         maxRetries: 10,
         connectCooldownMs: 4000,
         phoneResponseTime: 15_000,
+        maxQueryResponseTime: 10_000,
         alwaysUseTakeover: true,
         queryChatsTillReceived: true
     }
@@ -280,7 +281,7 @@ export class WAConnection extends EventEmitter {
                 timeout = setTimeout(() => {
                     this.logger.info({ tag }, `cancelling wait for message as a response is no longer expected from the phone`)
                     cancel({ reason: 'Not expecting a response', status: 422 })
-                }, 5_000)
+                }, this.connectOptions.maxQueryResponseTime)
                 this.off('connection-phone-change', listener)
             }
         }
