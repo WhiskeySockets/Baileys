@@ -48,7 +48,8 @@ export class WAConnection extends EventEmitter {
         phoneResponseTime: 15_000,
         maxQueryResponseTime: 10_000,
         alwaysUseTakeover: true,
-        queryChatsTillReceived: true
+        queryChatsTillReceived: true,
+        logQR: true
     }
     /** When to auto-reconnect */
     autoReconnect = ReconnectMode.onConnectionLost 

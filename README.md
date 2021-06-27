@@ -110,6 +110,8 @@ conn.connectOptions = {
     fetchAgent?: Agent = undefined,
     /** always uses takeover for connecting */
     alwaysUseTakeover: true
+	/** log QR to terminal */
+    logQR: true
 } as WAConnectOptions
 ```
 

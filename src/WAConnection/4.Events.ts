@@ -387,7 +387,11 @@ export class WAConnection extends Base {
                 this.logger.warn('recieved read update for unknown chat ' + jid)
             }
         })      
-        this.on ('qr', qr => QR.generate(qr, { small: true }))
+        this.on('qr', qr => {
+			if (this.connectOptions.logQR) {
+			QR.generate(qr, { small: true })
+			}
+		});
 
         // blocklist updates
         this.on('CB:Blocklist', json => {
