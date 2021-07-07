@@ -35,6 +35,34 @@ export class WAConnection extends Base {
         await this.relayWAMessage (waMessage, { waitForAck: options.waitForAck !== false })
         return waMessage
     }
+    /**
+     * Send a list message
+     * @param id the id to send to
+     * @param button the optional button text, title and description button
+     * @param rows the rows of sections list message
+     */
+    async sendListMessage(
+        id: string,
+        button: { buttonText?: string; description?: string; title?: string },
+        rows: any = [],
+    ) {
+        let messageList = WAMessageProto.Message.fromObject({
+            listMessage: WAMessageProto.ListMessage.fromObject({
+                buttonText: button.buttonText,
+                description: button.description,
+                listType: 1,
+                sections: [
+                    {
+                        title: button.title,
+                        rows: [ ...rows ]
+                    }
+                ]
+            })
+        })
+        let waMessageList = await this.prepareMessageFromContent(id, messageList, {})
+        await this.relayWAMessage (waMessageList, { waitForAck: true })
+        return waMessageList
+    }
     /** Prepares a message for sending via sendWAMessage () */
     async prepareMessage(
         id: string,
