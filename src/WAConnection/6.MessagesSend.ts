@@ -10,6 +10,7 @@ import {
     WAContactMessage,
     WAContactsArrayMessage,
     WAGroupInviteMessage,
+    WAListMessage,
     WATextMessage,
     WAMessageContent, WAMetric, WAFlag, WAMessage, BaileysError, WA_MESSAGE_STATUS_TYPE, WAMessageProto, MediaConnInfo, MessageTypeProto, URL_REGEX, WAUrlInfo, WA_DEFAULT_EPHEMERAL, WAMediaUpload
 } from './Constants'
@@ -27,7 +28,7 @@ export class WAConnection extends Base {
      */
     async sendMessage(
         id: string,
-        message: string | WATextMessage | WALocationMessage | WAContactMessage | WAContactsArrayMessage | WAGroupInviteMessage | WAMediaUpload,
+        message: string | WATextMessage | WALocationMessage | WAContactMessage | WAContactsArrayMessage | WAGroupInviteMessage | WAMediaUpload | WAListMessage,
         type: MessageType,
         options: MessageOptions = {},
     ) {
@@ -66,7 +67,7 @@ export class WAConnection extends Base {
     /** Prepares a message for sending via sendWAMessage () */
     async prepareMessage(
         id: string,
-        message: string | WATextMessage | WALocationMessage | WAContactMessage | WAContactsArrayMessage | WAGroupInviteMessage | WAMediaUpload,
+        message: string | WATextMessage | WALocationMessage | WAContactMessage | WAContactsArrayMessage | WAGroupInviteMessage | WAMediaUpload | WAListMessage,
         type: MessageType,
         options: MessageOptions = {},
     ) {
@@ -105,7 +106,7 @@ export class WAConnection extends Base {
         }
     }
     /** Prepares the message content */
-    async prepareMessageContent (message: string | WATextMessage | WALocationMessage | WAContactMessage | WAContactsArrayMessage | WAGroupInviteMessage | WAMediaUpload, type: MessageType, options: MessageOptions) {
+    async prepareMessageContent (message: string | WATextMessage | WALocationMessage | WAContactMessage | WAContactsArrayMessage | WAGroupInviteMessage | WAMediaUpload | WAListMessage, type: MessageType, options: MessageOptions) {
         let m: WAMessageContent = {}
         switch (type) {
             case MessageType.text:
@@ -137,6 +138,9 @@ export class WAConnection extends Base {
                 break
             case MessageType.groupInviteMessage:
                 m.groupInviteMessage = WAMessageProto.GroupInviteMessage.fromObject(message as any)
+                break
+            case MessageType.listMessage:
+                m.listMessage = WAMessageProto.ListMessage.fromObject(message as any)
                 break
             case MessageType.image:
             case MessageType.sticker:

@@ -18,6 +18,7 @@ export type WAMessageContent = proto.IMessage
 export type WAContactMessage = proto.ContactMessage
 export type WAContactsArrayMessage = proto.ContactsArrayMessage
 export type WAGroupInviteMessage = proto.GroupInviteMessage
+export type WAListMessage = proto.ListMessage
 export type WAMessageKey = proto.IMessageKey
 export type WATextMessage = proto.ExtendedTextMessage
 export type WAContextInfo = proto.IContextInfo
@@ -331,6 +332,7 @@ export enum MessageType {
     contact = 'contactMessage',
     contactsArray = 'contactsArrayMessage',
     groupInviteMessage = 'groupInviteMessage',
+    listMessage = 'listMessage',
     location = 'locationMessage',
     liveLocation = 'liveLocationMessage',
 
