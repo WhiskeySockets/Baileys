@@ -1,4 +1,4 @@
-import Boom from "boom"
+import { Boom } from '@hapi/boom'
 import BinaryNode from "../BinaryNode"
 import { aesDecrypt, hmacSign } from "./generics"
 import { DisconnectReason, WATag } from "../Types"

@@ -1,4 +1,4 @@
-import Boom from 'boom'
+import {Boom} from '@hapi/boom'
 import * as Curve from 'curve25519-js'
 import type { Contact } from '../Types/Contact'
 import type { AnyAuthenticationCredentials, AuthenticationCredentials, CurveKeyPair } from "../Types"

@@ -1,10 +1,10 @@
-import Boom from "boom"
+import { Boom } from '@hapi/boom'
 import EventEmitter from "events"
 import * as Curve from 'curve25519-js'
-import { BaileysEventEmitter, BaileysEventMap, SocketConfig, CurveKeyPair, WAInitResponse, ConnectionState } from "../Types"
+import { BaileysEventEmitter, BaileysEventMap, SocketConfig, CurveKeyPair, WAInitResponse, ConnectionState, DisconnectReason } from "../Types"
 import { makeSocket } from "./socket"
 import { generateClientID, promiseTimeout } from "../Utils/generics"
-import { normalizedAuthInfo, computeChallengeResponse, validateNewConnection } from "../Utils/validateConnection"
+import { normalizedAuthInfo, computeChallengeResponse, validateNewConnection } from "../Utils/validate-connection"
 import { randomBytes } from "crypto"
 import { AuthenticationCredentials } from "../Types"
 
@@ -78,7 +78,7 @@ const makeAuthSocket = (config: SocketConfig) => {
         }
 		// will call state update to close connection
         socket?.end(
-			Boom.unauthorized('Logged Out')
+			new Boom('Logged Out', { statusCode: DisconnectReason.credentialsInvalidated })
 		)
 		authInfo = undefined
 	}
@@ -89,7 +89,7 @@ const makeAuthSocket = (config: SocketConfig) => {
         let listener: (item: BaileysEventMap['connection.update']) => void
 		const timeout = waitInfinitely ? undefined : pendingRequestTimeoutMs
         if(timeout < 0) {
-            throw Boom.preconditionRequired('Connection Closed')
+            throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
         }
 
         await (
@@ -99,7 +99,7 @@ const makeAuthSocket = (config: SocketConfig) => {
                     listener = ({ connection, lastDisconnect }) => {
 						if(connection === 'open') resolve()
 						else if(connection == 'close') {
-							reject(lastDisconnect.error || Boom.preconditionRequired('Connection Closed'))
+							reject(lastDisconnect.error || new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed }))
 						}
 					}
                     ev.on('connection.update', listener)
@@ -153,7 +153,7 @@ const makeAuthSocket = (config: SocketConfig) => {
 		}
 		qrLoop(ttl)
 	}
-	socketEvents.once('ws-open', async() => {
+	const onOpen = async() => {
 		const canDoLogin = canLogin()
         const initQuery = (async () => {
             const {ref, ttl} = await socket.query({
@@ -185,7 +185,7 @@ const makeAuthSocket = (config: SocketConfig) => {
                     logger.warn('Received login timeout req when state=open, ignoring...')
                     return
                 }
-                logger.debug('sending login request')
+                logger.info('sending login request')
                 socket.sendMessage({
 					json,
 					tag: loginTag
@@ -220,21 +220,32 @@ const makeAuthSocket = (config: SocketConfig) => {
 			response = await socket.waitForMessage('s2', true)
         }
         // validate the new connection
-        const {user, auth} = validateNewConnection(response[1], authInfo, curveKeys)// validate the connection
+        const {user, auth, phone} = validateNewConnection(response[1], authInfo, curveKeys)// validate the connection
         const isNewLogin = user.jid !== state.user?.jid
 		
 		authInfo = auth
 		// update the keys so we can decrypt traffic
 		socket.updateKeys({ encKey: auth.encKey, macKey: auth.macKey })
 
+		logger.info({ user }, 'logged in')
+
 		updateState({
 			connection: 'open',
 			phoneConnected: true,
 			user,
 			isNewLogin,
+			phoneInfo: phone,
 			connectionTriesLeft: undefined,
 			qr: undefined
 		})
+		ev.emit('credentials.update', auth)
+	}
+	socketEvents.once('ws-open', async() => {
+		try {
+			await onOpen()
+		} catch(error) {
+			socket.end(error)
+		}
 	})
 
 	if(printQRInTerminal) {

@@ -1,4 +1,4 @@
-import Boom from 'boom'
+import { Boom } from '@hapi/boom'
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto'
 import HKDF from 'futoin-hkdf'
 import { platform, release } from 'os'

@@ -9,6 +9,11 @@ export const DEF_CALLBACK_PREFIX = 'CB:'
 export const DEF_TAG_PREFIX = 'TAG:'
 export const PHONE_CONNECTION_CB = 'CB:Pong'
 
+export const WA_DEFAULT_EPHEMERAL = 7*24*60*60
+
+/** from: https://stackoverflow.com/questions/3809401/what-is-a-good-regular-expression-to-match-a-url */
+export const URL_REGEX = /[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)?/gi
+
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	version: [2, 2123, 8],
 	browser: Browsers.baileys('Chrome'),

@@ -1,7 +1,3 @@
-import type KeyedDB from "@adiwajshing/keyed-db";
-import type { proto } from '../../WAMessage/WAMessage'
-import type { GroupMetadata } from "./GroupMetadata";
-
 /** set of statuses visible to other people; see updatePresence() in WhatsAppWeb.Send */
 export enum Presence {
     unavailable = 'unavailable', // "offline"
@@ -37,8 +33,25 @@ export interface Chat {
     ephemeral?: string
     
     // Baileys added properties
-    messages: KeyedDB<proto.IWebMessageInfo, string>
-    imgUrl?: string
     presences?: { [k: string]: PresenceData }
-    metadata?: GroupMetadata
 }
+
+export type ChatModification = 
+    { archive: boolean } |
+    { 
+        /** pin at current timestamp, or provide timestamp of pin to remove */
+        pin: true | { remove: number }
+    } |
+    {
+        /** mute for duration, or provide timestamp of mute to remove*/
+        mute: number | { remove: number }
+    } |
+    {
+        clear: 'all' | { messages: { id: string, fromMe?: boolean }[] }
+    } |
+    {
+        star: { 
+            messages: { id: string, fromMe?: boolean }[],
+            star: boolean
+        }
+    }

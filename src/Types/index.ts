@@ -3,14 +3,20 @@ export * from './GroupMetadata'
 export * from './Chat'
 export * from './Contact'
 export * from './Store'
+export * from './Message'
 
 import type EventEmitter from "events"
 import type { Agent } from "https"
 import type { Logger } from "pino"
 import type { URL } from "url"
 import type BinaryNode from "../BinaryNode"
-import { AnyAuthenticationCredentials } from './Auth'
+import { AnyAuthenticationCredentials, AuthenticationCredentials } from './Auth'
+import { Chat } from './Chat'
+import { Contact } from './Contact'
 import { ConnectionState } from './Store'
+
+import { GroupMetadata, ParticipantAction } from './GroupMetadata'
+import { MessageUpdateType, WAMessage } from './Message'
 
 /** used for binary messages */
 export enum WAMetric {
@@ -117,7 +123,7 @@ export type SocketQueryOptions = SocketSendMessageOptions & {
 }
 
 export enum DisconnectReason {
-	connectionClosedIntentionally = 428,
+	connectionClosed = 428,
     connectionReplaced = 440,
 	connectionLost = 408,
     timedOut = 408,
@@ -131,6 +137,35 @@ export type WAInitResponse = {
     status: 200
 }
 
+export interface WABroadcastListInfo {
+    status: number
+    name: string
+    recipients?: {id: string}[]
+}
+
+
+type WABusinessHoursConfig = {
+    day_of_week: string
+    mode: string
+    open_time?: number
+    close_time?: number
+}
+export type WABusinessProfile = {
+    description: string
+    email: string
+    business_hours:  {
+        timezone: string
+        config?:  WABusinessHoursConfig[]
+        business_config?: WABusinessHoursConfig[]
+    }
+    website: string[]
+    categories: {
+        id: string
+        localized_display_name:  string
+    }[]
+    wid?: string
+}
+
 export type QueryOptions = SocketQueryOptions & {
 	waitForOpen?: boolean
 	maxRetries?: number
@@ -140,6 +175,23 @@ export type CurveKeyPair = { private: Uint8Array; public: Uint8Array }
 
 export type BaileysEventMap = {
 	'connection.update': Partial<ConnectionState>
+    'credentials.update': AuthenticationCredentials
+
+    'chats.upsert': { chats: Chat[], type: 'set' | 'upsert' }
+    'chats.update': Partial<Chat>[]
+    'chats.delete': string[]
+
+    'contacts.upsert': { contacts: Contact[], type: 'set' | 'upsert' }
+    'contacts.update': Partial<Contact>[] 
+    
+    'messages.delete': { jid: string, ids: string[] } | { jid: string, all: true }
+    'messages.update': Partial<WAMessage>[]
+    'messages.upsert': { messages: WAMessage[], type: MessageUpdateType }
+
+    'groups.update': Partial<GroupMetadata>[]
+    'group-participants.update': { jid: string, participants: string[], action: ParticipantAction }
+
+    'blocklist.update': { blocklist: string[], type: 'add' | 'remove' | 'set' }
 }
 export interface BaileysEventEmitter extends EventEmitter {
 	on<T extends keyof BaileysEventMap>(event: T, listener: (arg: BaileysEventMap[T]) => void): this

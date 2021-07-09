@@ -1,6 +1,5 @@
 import fs from 'fs'
-import { decryptWA } from './WAConnection'
-import Decoder from './Binary/Decoder'
+import { decodeWAMessage } from './Utils/decode-wa-message'
 
 interface BrowserMessagesInfo {
     bundle: { encKey: string, macKey: string }
@@ -24,7 +23,7 @@ entries.forEach ((e, i) => {
         wsMessages.push (...e['_webSocketMessages'])
     }
 })
-const decrypt = (buffer, fromMe) => decryptWA (buffer, macKey, encKey, new Decoder(), fromMe)
+const decrypt = (buffer, fromMe) => decodeWAMessage(buffer, { macKey, encKey }, fromMe)
 
 console.log ('parsing ' + wsMessages.length + ' messages')
 const list = wsMessages.map ((item, i) => {

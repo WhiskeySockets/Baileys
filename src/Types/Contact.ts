@@ -12,4 +12,5 @@ export interface Contact {
     short?: string
     // Baileys Added
     imgUrl?: string
+    status?: string
 }

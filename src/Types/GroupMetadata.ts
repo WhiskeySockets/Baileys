@@ -2,6 +2,8 @@ import { Contact } from "./Contact";
 
 export type GroupParticipant = (Contact & { isAdmin: boolean; isSuperAdmin: boolean })
 
+export type ParticipantAction = 'add' | 'remove' | 'promote' | 'demote'
+
 export interface GroupMetadata {
     id: string
     owner: string
@@ -16,4 +18,16 @@ export interface GroupMetadata {
     announce?: 'true' | 'false' 
     // Baileys modified array
     participants: GroupParticipant[]
+}
+
+
+export interface WAGroupCreateResponse {
+    status: number
+    gid?: string
+    participants?: [{ [key: string]: any }]
+}
+
+export interface GroupModificationResponse {
+    status: number
+    participants?: { [key: string]: any }
 }

@@ -1,4 +1,4 @@
-import Boom from "boom"
+import { Boom } from '@hapi/boom'
 import EventEmitter from "events"
 import { STATUS_CODES } from "http"
 import { promisify } from "util"
@@ -6,7 +6,7 @@ import WebSocket from "ws"
 import BinaryNode from "../BinaryNode"
 import { DisconnectReason, SocketConfig, SocketQueryOptions, SocketSendMessageOptions } from "../Types"
 import { aesEncrypt, hmacSign, promiseTimeout, unixTimestampSeconds } from "../Utils/generics"
-import { decodeWAMessage } from "../Utils/decodeWAMessage"
+import { decodeWAMessage } from "../Utils/decode-wa-message"
 import { WAFlag, WAMetric, WATag } from "../Types"
 import { DEFAULT_ORIGIN, DEF_CALLBACK_PREFIX, DEF_TAG_PREFIX, PHONE_CONNECTION_CB } from "../Defaults"
 
@@ -284,7 +284,7 @@ export const makeSocket = ({
     const waitForSocketOpen = async() => {
         if(ws.readyState === ws.OPEN) return
         if(ws.readyState === ws.CLOSED || ws.readyState === ws.CLOSING) {
-            throw Boom.preconditionRequired('Connection Closed')
+            throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
         }
         let onOpen: () => void
         let onClose: (err: Error) => void

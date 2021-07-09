@@ -1,5 +1,8 @@
+import makeConnection from './Connection'
+
 export * from '../WAMessage/WAMessage'
-export * from './Binary/Constants'
-export * from './Binary/Decoder'
-export * from './Binary/Encoder'
-export * from './WAConnection'
+export * from './Utils/messages'
+export * from './Types'
+export * from './Store'
+
+export default makeConnection

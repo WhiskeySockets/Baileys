@@ -17,10 +17,6 @@ const encode = ({ header, attributes, data }: BinaryNode, buffer: number[] = [])
     const pushInt20 = (value: number) => (
 		pushBytes([(value >> 16) & 0x0f, (value >> 8) & 0xff, value & 0xff])
 	)
-    const pushString = (str: string) => {
-        const bytes = Buffer.from (str, 'utf-8')
-        pushBytes(bytes)
-    }
     const writeByteLength = (length: number) => {
         if (length >= 4294967296) throw new Error('string too large to encode: ' + length)
         
@@ -35,9 +31,10 @@ const encode = ({ header, attributes, data }: BinaryNode, buffer: number[] = [])
             pushByte(length)
         }
     }
-    const writeStringRaw = (string: string) => {
-        writeByteLength(string.length)
-        pushString(string)
+    const writeStringRaw = (str: string) => {
+        const bytes = Buffer.from (str, 'utf-8')
+        writeByteLength(bytes.length)
+        pushBytes(bytes)
     }
     const writeToken = (token: number) => {
         if (token < 245) {
