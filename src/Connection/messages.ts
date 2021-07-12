@@ -1,12 +1,10 @@
 import BinaryNode from "../BinaryNode";
 import { Boom } from '@hapi/boom'
 import { EventEmitter } from 'events'
-import { Chat, Presence, SocketConfig, WAMessage, WAMessageKey, ParticipantAction, WAMessageProto, WAMessageStatus, WAMessageStubType, GroupMetadata, AnyMessageContent, MiscMessageGenerationOptions, WAFlag, WAMetric, WAUrlInfo, MediaConnInfo, MessageUpdateType, MessageInfo } from "../Types";
-import { isGroupID, toNumber, whatsappID } from "../Utils/generics";
+import { Chat, Presence, WAMessageCursor, SocketConfig, WAMessage, WAMessageKey, ParticipantAction, WAMessageProto, WAMessageStatus, WAMessageStubType, GroupMetadata, AnyMessageContent, MiscMessageGenerationOptions, WAFlag, WAMetric, WAUrlInfo, MediaConnInfo, MessageUpdateType, MessageInfo } from "../Types";
+import { isGroupID, toNumber, whatsappID, generateWAMessage, decryptMediaMessageBuffer } from "../Utils";
 import makeChatsSocket from "./chats";
 import { WA_DEFAULT_EPHEMERAL } from "../Defaults";
-import { generateWAMessage } from "../Utils/messages";
-import { decryptMediaMessageBuffer } from "../Utils/messages-media";
 
 const STATUS_MAP = {
 	read: WAMessageStatus.READ,
@@ -47,9 +45,12 @@ const makeMessagesSocket = (config: SocketConfig) => {
 	const fetchMessagesFromWA = async(
 		jid: string, 
 		count: number, 
-		indexMessage?: { id?: string; fromMe?: boolean }, 
-		mostRecentFirst: boolean = true
+		cursor?: WAMessageCursor
 	) => {
+		let key: WAMessageKey
+		if(cursor) {
+			key = 'before' in cursor ? cursor.before : cursor.after
+		}
         const { data }:BinaryNode = await query({
 			json: new BinaryNode(
 				'query',
@@ -57,10 +58,10 @@ const makeMessagesSocket = (config: SocketConfig) => {
 					epoch: currentEpoch().toString(),
 					type: 'message',
 					jid: jid,
-					kind: mostRecentFirst ? 'before' : 'after',
+					kind: !cursor || 'before' in cursor ? 'before' : 'after',
 					count: count.toString(),
-					index: indexMessage?.id,
-					owner: indexMessage?.fromMe === false ? 'false' : 'true',
+					index: key?.id,
+					owner: key?.fromMe === false ? 'false' : 'true',
 				}
 			), 
 			binaryTag: [WAMetric.queryMessages, WAFlag.ignore], 
@@ -91,7 +92,7 @@ const makeMessagesSocket = (config: SocketConfig) => {
 		})
 		Object.keys(response[1]).forEach (key => content[key] = response[1][key]) // update message
 
-		ev.emit('messages.upsert', { messages: [message], type: 'append' })
+		ev.emit('messages.update', [{ key: message.key, message: message.message }])
 
 		return response
 	}
@@ -365,6 +366,18 @@ const makeMessagesSocket = (config: SocketConfig) => {
 		},
 		updateMediaMessage,
 		fetchMessagesFromWA,
+		/** Load a single message specified by the ID */
+		loadMessageFromWA: async(jid: string, id: string) => {
+			let message: WAMessage
+	
+			// load the message before the given message
+			let messages = (await fetchMessagesFromWA(jid, 1, { before: {id, fromMe: true} }))
+			if(!messages[0]) messages = (await fetchMessagesFromWA(jid, 1, { before: {id, fromMe: false} }))
+			// the message after the loaded message is the message required
+			const [actual] = await fetchMessagesFromWA(jid, 1, { after: messages[0] && messages[0].key })
+			message = actual
+			return message
+		},
 		searchMessages: async(txt: string, inJid: string | null, count: number, page: number) => {
 			const {data, attributes}: BinaryNode = await query({
 				json: new BinaryNode(
@@ -419,10 +432,6 @@ const makeMessagesSocket = (config: SocketConfig) => {
 					{
 						...options,
 						userJid: userJid,
-						/*ephemeralOptions: chat?.ephemeral ? {
-							expiration: chat.ephemeral,
-							eph_setting_ts: chat.eph_setting_ts
-						} : undefined,*/
 						getUrlInfo: generateUrlInfo,
 						getMediaOptions: refreshMediaConn
 					}

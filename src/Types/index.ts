@@ -195,5 +195,7 @@ export type BaileysEventMap = {
 }
 export interface BaileysEventEmitter extends EventEmitter {
 	on<T extends keyof BaileysEventMap>(event: T, listener: (arg: BaileysEventMap[T]) => void): this
+    off<T extends keyof BaileysEventMap>(event: T, listener: (arg: BaileysEventMap[T]) => void): this
+    removeAllListeners<T extends keyof BaileysEventMap>(event: T): this
 	emit<T extends keyof BaileysEventMap>(event: T, arg: BaileysEventMap[T]): boolean
 }

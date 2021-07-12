@@ -1,39 +1,44 @@
 import KeyedDB from "@adiwajshing/keyed-db"
+import { Comparable } from "@adiwajshing/keyed-db/lib/Types"
 import { Logger } from "pino"
-import makeConnection from "../Connection"
-import { BaileysEventEmitter, Chat, ConnectionState, Contact, WAMessage, WAMessageKey } from "../Types"
+import type { Connection } from "../Connection"
+import type { BaileysEventEmitter, Chat, ConnectionState, Contact, WAMessage, WAMessageCursor } from "../Types"
+import { toNumber } from "../Utils"
+import makeOrderedDictionary from "./ordered-dictionary"
 
 export const waChatKey = (pin: boolean) => ({
     key: (c: Chat) => (pin ? (c.pin ? '1' : '0') : '') + (c.archive === 'true' ? '0' : '1') + c.t.toString(16).padStart(8, '0') + c.jid,
     compare: (k1: string, k2: string) => k2.localeCompare (k1)
 })
 
+export const waMessageID = (m: WAMessage) => m.key.id
+
 export type BaileysInMemoryStoreConfig = {
+	chatKey: Comparable<Chat, string>
 	logger: Logger
 }
 
+const makeMessagesDictionary = () => makeOrderedDictionary(waMessageID)
+
 export default(
-	{ logger }: BaileysInMemoryStoreConfig
+	{ logger, chatKey }: BaileysInMemoryStoreConfig
 ) => {
-	const chats = new KeyedDB<Chat, string>(waChatKey(true), c => c.jid)
-	const messages: { [_: string]: WAMessage[] } = {}
+	
+	const chats = new KeyedDB<Chat, string>(chatKey, c => c.jid)
+	const messages: { [_: string]: ReturnType<typeof makeMessagesDictionary> } = {}
 	const contacts: { [_: string]: Contact } = {}
 	const state: ConnectionState = {
 		connection: 'close',
 		phoneConnected: false
 	}
 
-	const messageIndex = (key: WAMessageKey) => {
-		const messageList = messages[key.remoteJid!]
-		if(messageList) {
-			const idx = messageList.findIndex(m => m.key.id === key.id)
-			if(idx >= 0) {
-				return { messageList, idx }
-			}
-		}
+	const assertMessageList = (jid: string) => {
+		if(!messages[jid]) messages[jid] = makeMessagesDictionary()
+		return messages[jid]
 	}
 
 	const listen = (ev: BaileysEventEmitter) => {
+		
 		ev.on('connection.update', update => {
 			Object.assign(state, update)
 		})
@@ -91,55 +96,54 @@ export default(
 				case 'notify':
 					for(const msg of newMessages) {
 						const jid = msg.key.remoteJid!
-						const result = messageIndex(newMessages[0].key)
-						if(!result) {
-							if(!messages[jid]) {
-								messages[jid] = []
-							}
-							messages[jid].push(msg)
-						} else {
-							result.messageList[result.idx] = msg
+						const list = assertMessageList(jid)
+						list.upsert(msg, 'append')
+
+						if(type === 'notify' && !chats.get(jid)) {
+							ev.emit('chats.upsert', { 
+								chats: [ { jid, t: toNumber(msg.messageTimestamp), count: 1 } ],
+								type: 'upsert'
+							})
 						}
 					}
 				break
 				case 'last':
 					for(const msg of newMessages) {
 						const jid = msg.key.remoteJid!
-						if(!messages[jid]) {
-							messages[jid] = []
-						}
-						const [lastItem] = messages[jid].slice(-1)
+						const list = assertMessageList(jid)
+						const [lastItem] = list.array.slice(-1)
 						// reset message list
 						if(lastItem && lastItem.key.id !== msg.key.id) {
-							messages[jid] = [msg]
+							list.clear()
+							list.upsert(msg, 'append')
 						}
 					}
 				break
 				case 'prepend':
-
+					for(const msg of newMessages) {
+						const jid = msg.key.remoteJid!
+						const list = assertMessageList(jid)
+						list.upsert(msg, 'prepend')
+					}
 				break
 			}
 		})
 		ev.on('messages.update', updates => {
 			for(const update of updates) {
-				const result = messageIndex(update.key!)
-				if(result) {
-					Object.assign(result.messageList[result.idx], update)
-				} else {
+				const list = assertMessageList(update.key.remoteJid)
+				const result = list.updateAssign(update)
+				if(!result) {
 					logger.debug({ update }, `got update for non-existant message`)
 				}
 			}
 		})
 		ev.on('messages.delete', item => {
+			const list = assertMessageList(item.jid)
 			if('all' in item) {
-				messages[item.jid] = []
+				list.clear()
 			} else {
 				const idSet = new Set(item.ids)
-				if(messages[item.jid]) {
-					messages[item.jid] = messages[item.jid].filter(
-						m => !idSet.has(m.key.id)
-					)
-				}
+				list.filter(m => !idSet.has(m.key.id))
 			}
 		})
 	}
@@ -148,14 +152,60 @@ export default(
 		chats,
 		contacts,
 		messages,
+		state,
 		listen,
-		fetchImageUrl: async(jid: string, sock: ReturnType<typeof makeConnection>) => {
+		loadMessages: async(jid: string, count: number, cursor: WAMessageCursor, sock: Connection | undefined) => {
+			const list = assertMessageList(jid)
+			const retrieve = async(count: number, cursor: WAMessageCursor) => {
+				const result = await sock?.fetchMessagesFromWA(jid, count, cursor)
+				return result || []
+			}
+			const mode = !cursor || 'before' in cursor ? 'before' : 'after'
+			const cursorKey = !!cursor ? ('before' in cursor ? cursor.before : cursor.after) : undefined
+			const cursorValue = cursorKey ? list.get(cursorKey.id) : undefined
+			
+			let messages: WAMessage[]
+			if(messages && mode ==='before' && (!cursorKey || cursorValue)) {
+				const msgIdx = messages.findIndex(m => m.key.id === cursorKey.id)
+				messages = list.array.slice(0, msgIdx)
+				
+				const diff = count - messages.length
+				if (diff < 0) {
+					messages = messages.slice(-count) // get the last X messages
+				} else if (diff > 0) {
+					const [fMessage] = messages
+					const extra = await retrieve (diff, { before: fMessage?.key || cursorKey })
+					// add to DB
+					for(let i = extra.length-1; i >= 0;i--) {
+						list.upsert(extra[i], 'prepend')
+					}
+				}
+			} else messages = await retrieve(count, cursor)
+
+			return messages
+		},
+		loadMessage: async(jid: string, id: string, sock: Connection | undefined) => {
+			let message = messages[jid]?.get(id)
+			if(!message) {
+				message = await sock?.loadMessageFromWA(jid, id)
+			}
+			return message
+		},
+		mostRecentMessage: async(jid: string, sock: Connection | undefined) => {
+			let message = messages[jid]?.array.slice(-1)[0]
+			if(!message) {
+				const [result] = await sock?.fetchMessagesFromWA(jid, 1, undefined)
+				message = result
+			}
+			return message
+		},
+		fetchImageUrl: async(jid: string, sock: Connection | undefined) => {
 			const contact = contacts[jid]
 			if(!contact) {
-				return sock.fetchImageUrl(jid)
+				return sock?.fetchImageUrl(jid)
 			}
 			if(!contact.imgUrl) {
-				contact.imgUrl = await sock.fetchImageUrl(jid)
+				contact.imgUrl = await sock?.fetchImageUrl(jid)
 			}
 			return contact.imgUrl
 		}

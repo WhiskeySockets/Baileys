@@ -1,7 +1,7 @@
 import {Boom} from '@hapi/boom'
 import * as Curve from 'curve25519-js'
 import type { Contact } from '../Types/Contact'
-import type { AnyAuthenticationCredentials, AuthenticationCredentials, CurveKeyPair } from "../Types"
+import type { AnyAuthenticationCredentials, AuthenticationCredentials, AuthenticationCredentialsBase64, CurveKeyPair } from "../Types"
 import { aesDecrypt, hkdf, hmacSign, whatsappID } from './generics'
 import { readFileSync } from 'fs'
 
@@ -32,6 +32,16 @@ export const normalizedAuthInfo = (authInfo: AnyAuthenticationCredentials | stri
     }   
     return authInfo as AuthenticationCredentials
 }
+
+export const base64EncodedAuthenticationCredentials = (creds: AnyAuthenticationCredentials) => {
+    const normalized = normalizedAuthInfo(creds)
+    return {
+        ...normalized,
+        encKey: normalized.encKey.toString('base64'),
+        macKey: normalized.macKey.toString('base64')
+    } as AuthenticationCredentialsBase64
+}
+
 /**
 * Once the QR code is scanned and we can validate our connection, or we resolved the challenge when logging back in
 * @private

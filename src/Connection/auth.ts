@@ -3,8 +3,7 @@ import EventEmitter from "events"
 import * as Curve from 'curve25519-js'
 import { BaileysEventEmitter, BaileysEventMap, SocketConfig, CurveKeyPair, WAInitResponse, ConnectionState, DisconnectReason } from "../Types"
 import { makeSocket } from "./socket"
-import { generateClientID, promiseTimeout } from "../Utils/generics"
-import { normalizedAuthInfo, computeChallengeResponse, validateNewConnection } from "../Utils/validate-connection"
+import { generateClientID, promiseTimeout, normalizedAuthInfo, computeChallengeResponse, validateNewConnection } from "../Utils"
 import { randomBytes } from "crypto"
 import { AuthenticationCredentials } from "../Types"
 
@@ -106,7 +105,7 @@ const makeAuthSocket = (config: SocketConfig) => {
                 }
             )
             .finally(() => (
-				ev.off('state.update', listener)
+				ev.off('connection.update', listener)
 			))
         )
     }

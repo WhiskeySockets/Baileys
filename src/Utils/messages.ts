@@ -220,9 +220,6 @@ export const generateWAMessageContent = async(
 	options: MessageContentGenerationOptions
 ) => {
 	let m: WAMessageContent = {}
-	if(typeof message === 'string') {
-		message = { text: message }
-	}
 	if('text' in message) {
 		const extContent = { ...message } as WATextMessage
 		if (!!options.getUrlInfo && message.text.match(URL_REGEX)) {

@@ -54,4 +54,5 @@ export type ChatModification =
             messages: { id: string, fromMe?: boolean }[],
             star: boolean
         }
-    }
+    } | 
+    { delete: true }

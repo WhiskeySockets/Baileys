@@ -78,7 +78,6 @@ export type AnyMediaMessageContent = (
     { mimetype?: string }
 
 export type AnyRegularMessageContent = 
-    string | 
     ({
 	    text: string
     } 
@@ -109,13 +108,14 @@ export type MiscMessageGenerationOptions = {
 	timestamp?: Date
     /** the message you want to quote */
 	quoted?: WAMessage
-}
-export type MessageGenerationOptionsFromContent = MiscMessageGenerationOptions & {
-	userJid: string
+    /** disappearing messages settings */
     ephemeralOptions?: { 
         expiration: number | string
         eph_setting_ts: number | string
     }
+}
+export type MessageGenerationOptionsFromContent = MiscMessageGenerationOptions & {
+	userJid: string
 }
 export type MediaGenerationOptions = {
 	logger?: Logger
@@ -133,3 +133,19 @@ export interface MessageInfo {
     reads: {jid: string, t: string}[]
     deliveries: {jid: string, t: string}[]
 }
+
+
+export interface MessageStatusUpdate {
+    from: string
+    to: string
+    /** Which participant caused the update (only for groups) */
+    participant?: string
+    timestamp: Date
+    /** Message IDs read/delivered */
+    ids: string[]
+    /** Status of the Message IDs */
+    type: WAMessageStatus
+}
+
+
+export type WAMessageCursor = { before: WAMessageKey | undefined } | { after: WAMessageKey | undefined }

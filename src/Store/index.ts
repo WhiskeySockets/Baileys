@@ -1,2 +1,2 @@
-import inMemoryStore from "./in-memory-store";
-export default inMemoryStore
+import makeInMemoryStore from './in-memory-store'
+export { makeInMemoryStore }
