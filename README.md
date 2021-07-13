@@ -502,9 +502,9 @@ Of course, replace ``` xyz ``` with an actual ID.
     // only allow admins to send messages
     await conn.groupSettingChange ("abcd-xyz@g.us", GroupSettingChange.messageSend, true)
     // allow everyone to modify the group's settings -- like display picture etc.
-    await conn.groupSettingChange ("abcd-xyz@g.us", GroupSettingChange.settingChange, false)
+    await conn.groupSettingChange ("abcd-xyz@g.us", GroupSettingChange.settingsChange, false)
     // only allow admins to modify the group's settings
-    await conn.groupSettingChange ("abcd-xyz@g.us", GroupSettingChange.settingChange, true)
+    await conn.groupSettingChange ("abcd-xyz@g.us", GroupSettingChange.settingsChange, true)
     ```
 - To leave a group
     ``` ts
