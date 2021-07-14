@@ -178,6 +178,9 @@ export class WAConnection extends Base {
         if (mediaType === MessageType.sticker && options.caption) {
             throw new Error('cannot send a caption with a sticker')
         }
+        if (!(mediaType === MessageType.image || mediaType === MessageType.video) && options.viewOnce) {
+            throw new Error(`cannot send a ${mediaType} as a viewOnceMessage`)
+        }
         if (!options.mimetype) {
             options.mimetype = MimetypeMap[mediaType]
         }
@@ -267,7 +270,8 @@ export class WAConnection extends Base {
                     fileName: options.filename || 'file',
                     gifPlayback: isGIF || undefined,
                     caption: options.caption,
-                    ptt: options.ptt
+                    ptt: options.ptt,
+                    viewOnce: options.viewOnce
                 }
             )
         }
@@ -277,6 +281,7 @@ export class WAConnection extends Base {
     prepareMessageFromContent(id: string, message: WAMessageContent, options: MessageOptions) {
         if (!options.timestamp) options.timestamp = new Date() // set timestamp to now
         if (typeof options.sendEphemeral === 'undefined') options.sendEphemeral = 'chat'
+        if (options.viewOnce) message = { viewOnceMessage: { message } }
         // prevent an annoying bug (WA doesn't accept sending messages with '@c.us')
         id = whatsappID (id)
 

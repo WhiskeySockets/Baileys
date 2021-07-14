@@ -242,7 +242,8 @@ const sections = [{title: "Section 1", rows: rows}]
 const button = {
  buttonText: 'Click Me!',
  description: "Hello it's list message",
- sections: sections
+ sections: sections,
+ listType: 1
 }
 
 const sendMsg = await conn.sendMessage(id, button, MessageType.listMessage)
