@@ -2,7 +2,7 @@ import KeyedDB from "@adiwajshing/keyed-db"
 import { Comparable } from "@adiwajshing/keyed-db/lib/Types"
 import { Logger } from "pino"
 import type { Connection } from "../Connection"
-import type { BaileysEventEmitter, Chat, ConnectionState, Contact, WAMessage, WAMessageCursor } from "../Types"
+import type { BaileysEventEmitter, Chat, ConnectionState, Contact, GroupMetadata, WAMessage, WAMessageCursor } from "../Types"
 import { toNumber } from "../Utils"
 import makeOrderedDictionary from "./ordered-dictionary"
 
@@ -27,6 +27,7 @@ export default(
 	const chats = new KeyedDB<Chat, string>(chatKey, c => c.jid)
 	const messages: { [_: string]: ReturnType<typeof makeMessagesDictionary> } = {}
 	const contacts: { [_: string]: Contact } = {}
+	const groupMetadata: { [_: string]: GroupMetadata } = {}
 	const state: ConnectionState = {
 		connection: 'close',
 		phoneConnected: false
@@ -146,6 +147,38 @@ export default(
 				list.filter(m => !idSet.has(m.key.id))
 			}
 		})
+
+		ev.on('groups.update', updates => {
+			for(const update of updates) {
+				if(groupMetadata[update.id]) {
+					Object.assign(groupMetadata[update.id!], update)
+				} else {
+					logger.debug({ update }, `got update for non-existant group metadata`)
+				}
+			}
+		})
+
+		ev.on('group-participants.update', ({ jid, participants, action }) => {
+			const metadata = groupMetadata[jid]
+			if(metadata) {
+				switch(action) {
+					case 'add':
+						metadata.participants.push(...participants.map(jid => ({ jid, isAdmin: false, isSuperAdmin: false })))
+						break
+					case 'demote':
+					case 'promote':
+						for(const participant of metadata.participants) {
+							if(participants.includes(participant.jid)) {
+								participant.isAdmin = action === 'promote'
+							}
+						}
+						break
+					case 'remove':
+						metadata.participants = metadata.participants.filter(p => !participants.includes(p.jid))
+						break
+				}
+			}
+		})
 	}
 
 	return {
@@ -208,6 +241,12 @@ export default(
 				contact.imgUrl = await sock?.fetchImageUrl(jid)
 			}
 			return contact.imgUrl
+		},
+		fetchGroupMetadata: async(jid: string, sock: Connection | undefined) => {
+			if(!groupMetadata[jid]) {
+				groupMetadata[jid] = await sock?.groupMetadata(jid, chats.get(jid)?.read_only === 'true')
+			}
+			return groupMetadata[jid]
 		}
 	}
 }
