@@ -30,7 +30,7 @@ const makeChatsSocket = (config: SocketConfig) => {
 	const fetchImageUrl = async(jid: string) => {
 		const response = await query({ 
 			json: ['query', 'ProfilePicThumb', jid], 
-			expect200: true, 
+			expect200: false, 
 			requiresPhoneConnection: false 
 		})
 		return response.eurl as string | undefined

@@ -109,6 +109,7 @@ export default(
 					}
 				break
 				case 'last':
+					logger.info('recv last message on all chats')
 					for(const msg of newMessages) {
 						const jid = msg.key.remoteJid!
 						const list = assertMessageList(jid)
@@ -185,6 +186,7 @@ export default(
 		chats,
 		contacts,
 		messages,
+		groupMetadata,
 		state,
 		listen,
 		loadMessages: async(jid: string, count: number, cursor: WAMessageCursor, sock: Connection | undefined) => {
@@ -237,7 +239,7 @@ export default(
 			if(!contact) {
 				return sock?.fetchImageUrl(jid)
 			}
-			if(!contact.imgUrl) {
+			if(typeof contact.imgUrl === 'undefined') {
 				contact.imgUrl = await sock?.fetchImageUrl(jid)
 			}
 			return contact.imgUrl

@@ -222,8 +222,10 @@ const makeMessagesSocket = (config: SocketConfig) => {
 			{ epoch: currentEpoch().toString(), type: 'relay' },
 			[ new BinaryNode('message', {}, message) ]
 		)
-        const flag = message.key.remoteJid === getState().user?.jid ? WAFlag.acknowledge : WAFlag.ignore // acknowledge when sending message to oneself
+		const isMsgToMe = message.key.remoteJid === getState().user?.jid
+        const flag = isMsgToMe ? WAFlag.acknowledge : WAFlag.ignore // acknowledge when sending message to oneself
         const mID = message.key.id
+		const finalState = isMsgToMe ? WAMessageStatus.READ : WAMessageStatus.SERVER_ACK
 
         message.status = WAMessageStatus.PENDING
         const promise = query({
@@ -236,14 +238,14 @@ const makeMessagesSocket = (config: SocketConfig) => {
 
         if(waitForAck) {
             await promise
-			message.status = WAMessageStatus.SERVER_ACK
+			message.status = finalState
         } else {
             const emitUpdate = (status: WAMessageStatus) => {
                 message.status = status
                 ev.emit('messages.update', [ { key: message.key, status } ])
             }
             promise
-				.then(() => emitUpdate(WAMessageStatus.SERVER_ACK))
+				.then(() => emitUpdate(finalState))
 				.catch(() => emitUpdate(WAMessageStatus.ERROR))
         }
 
