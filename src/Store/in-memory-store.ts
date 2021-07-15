@@ -115,7 +115,7 @@ export default(
 						const list = assertMessageList(jid)
 						const [lastItem] = list.array.slice(-1)
 						// reset message list
-						if(lastItem && lastItem.key.id !== msg.key.id) {
+						if(lastItem?.key.id !== msg.key.id) {
 							list.clear()
 							list.upsert(msg, 'append')
 						}

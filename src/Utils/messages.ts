@@ -267,10 +267,10 @@ export const generateWAMessageContent = async(
 			options
 		)
 	}
-	if('mentions' in message) {
-		const [messageType] = Object.keys(message)
-		message[messageType].contextInfo = message[messageType] || { }
-		message[messageType].contextInfo.mentionedJid = message.mentions
+	if('mentions' in message && message.mentions?.length) {
+		const [messageType] = Object.keys(m)
+		m[messageType].contextInfo = m[messageType] || { }
+		m[messageType].contextInfo.mentionedJid = message.mentions
 	}
 	return WAMessageProto.Message.fromObject(m)
 }
