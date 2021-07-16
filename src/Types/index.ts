@@ -137,13 +137,6 @@ export type WAInitResponse = {
     status: 200
 }
 
-export interface WABroadcastListInfo {
-    status: number
-    name: string
-    recipients?: {id: string}[]
-}
-
-
 type WABusinessHoursConfig = {
     day_of_week: string
     mode: string

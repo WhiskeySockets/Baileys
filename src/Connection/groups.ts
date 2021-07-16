@@ -1,7 +1,7 @@
 import BinaryNode from "../BinaryNode";
 import { EventEmitter } from 'events'
 import { SocketConfig, GroupModificationResponse, ParticipantAction, GroupMetadata, WAFlag, WAMetric, WAGroupCreateResponse, GroupParticipant } from "../Types";
-import { generateMessageID, unixTimestampSeconds } from "../Utils/generics";
+import { generateMessageID, unixTimestampSeconds, whatsappID } from "../Utils/generics";
 import makeMessagesSocket from "./messages";
 
 const makeGroupsSocket = (config: SocketConfig) => {
@@ -47,8 +47,9 @@ const makeGroupsSocket = (config: SocketConfig) => {
 			expect200: true
 		}) 
         metadata.participants = metadata.participants.map(p => (
-            { ...p, id: undefined, jid: p.jid }
+            { ...p, id: undefined, jid: whatsappID(p.id) }
         ))
+		metadata.owner = whatsappID(metadata.owner)
         return metadata as GroupMetadata
     }
     /** Get the metadata (works after you've left the group also) */
@@ -153,7 +154,7 @@ const makeGroupsSocket = (config: SocketConfig) => {
 				],
 				type: 'upsert'
 			})
-			return response
+			return metadata
 		},
 		/**
 		 * Leave a group
@@ -200,8 +201,33 @@ const makeGroupsSocket = (config: SocketConfig) => {
 			const jids = Object.keys(result.participants || {})
 			ev.emit('group-participants.update', { jid, participants: jids, action })
 			return jids
-		}
+		},
+
+		/** Query broadcast list info */
+		getBroadcastListInfo: async(jid: string) => { 
+			interface WABroadcastListInfo {
+				status: number
+				name: string
+				recipients?: {id: string}[]
+			}
 			
+			const result = await query({ 
+				json: ['query', 'contact', jid], 
+				expect200: true, 
+				requiresPhoneConnection: true
+			}) as WABroadcastListInfo
+
+			const metadata: GroupMetadata = {
+				subject: result.name,
+				id: jid,
+				creation: undefined,
+				owner: getState().user?.jid,
+				participants: result.recipients!.map(({id}) => (
+					{ jid: whatsappID(id), isAdmin: false, isSuperAdmin: false }
+				))
+			}
+			return metadata
+		}	
 	}
 
 }

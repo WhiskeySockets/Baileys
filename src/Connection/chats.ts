@@ -1,6 +1,6 @@
 import BinaryNode from "../BinaryNode";
 import { EventEmitter } from 'events'
-import { Chat, Contact, Presence, PresenceData, WABroadcastListInfo, SocketConfig, WAFlag, WAMetric, WABusinessProfile, ChatModification, WAMessageKey, WAMessage } from "../Types";
+import { Chat, Contact, Presence, PresenceData, SocketConfig, WAFlag, WAMetric, WABusinessProfile, ChatModification, WAMessageKey, WAMessage } from "../Types";
 import { debouncedTimeout, unixTimestampSeconds, whatsappID } from "../Utils/generics";
 import makeAuthSocket from "./auth";
 import { Attributes, BinaryNode as BinaryNodeBase } from "../BinaryNode/types";
@@ -412,14 +412,6 @@ const makeChatsSocket = (config: SocketConfig) => {
 				ev.emit('contacts.update', [{ jid: user.jid, name }])
 			}
 			return response
-		},
-		/** Query broadcast list info */
-		getBroadcastListInfo: (jid: string) => { 
-			return query({
-				json: ['query', 'contact', jid], 
-				expect200: true, 
-				requiresPhoneConnection: true
-			}) as Promise<WABroadcastListInfo> 
 		},
 		/**
 		 * Update the profile picture

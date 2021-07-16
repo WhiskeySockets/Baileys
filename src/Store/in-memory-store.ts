@@ -249,6 +249,12 @@ export default(
 				groupMetadata[jid] = await sock?.groupMetadata(jid, chats.get(jid)?.read_only === 'true')
 			}
 			return groupMetadata[jid]
+		},
+		fetchBroadcastListInfo: async(jid: string, sock: Connection | undefined) => {
+			if(!groupMetadata[jid]) {
+				groupMetadata[jid] = await sock?.getBroadcastListInfo(jid)
+			}
+			return groupMetadata[jid]
 		}
 	}
 }
