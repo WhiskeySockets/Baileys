@@ -139,7 +139,7 @@ export const makeSocket = ({
             /* Check if this is a response to a message we are expecting */
             const l0 = json.header || json[0] || ''
             const l1 = json?.attributes || json?.[1] || { }
-            const l2 = ((json.data || json[2] || [])[0] || [])[0] || ''
+            const l2 = json?.data?.[0]?.header || json[2]?.[0] || ''
 
             Object.keys(l1).forEach(key => {
                 anyTriggered = socketEvents.emit(`${DEF_CALLBACK_PREFIX}${l0},${key}:${l1[key]},${l2}`, json) || anyTriggered
@@ -347,7 +347,11 @@ export const makeSocket = ({
         /** Generic function for action, set queries */
         setQuery: async(nodes: BinaryNode[], binaryTag: WATag = [WAMetric.group, WAFlag.ignore], tag?: string) => (
             query({ 
-                json: ['action', { epoch: epoch.toString(), type: 'set' }, nodes], 
+                json: new BinaryNode(
+                    'action', 
+                    { epoch: epoch.toString(), type: 'set' },
+                    nodes
+                ), 
                 binaryTag, 
                 tag, 
                 expect200: true, 

@@ -92,8 +92,10 @@ const encode = ({ header, attributes, data }: BinaryNode, buffer: number[] = [])
 	writeString(header)
 
 	validAttributes.forEach((key) => {
-		writeString(key)
-		writeString(attributes[key])
+        if(typeof attributes[key] === 'string') {
+            writeString(key)
+            writeString(attributes[key])
+        } 
 	})
 
 	if(data instanceof proto.WebMessageInfo && !Buffer.isBuffer(data)) {

@@ -263,14 +263,13 @@ const makeChatsSocket = (config: SocketConfig) => {
 							jid, 
 							count: count.toString(), 
 							index: fromMessage.id, 
-							owner: fromMessage.fromMe ? 'true' : 'false',
-							participant: fromMessage.participant
+							owner: fromMessage.fromMe ? 'true' : 'false'
 						}
 					)
 				], 
 				[ WAMetric.read, WAFlag.ignore ]
 			)
-			ev.emit ('chats.update', [{ jid, count: count }])
+			ev.emit ('chats.update', [{ jid, count: count < 0 ? -1 : 0 }])
 		},
 		/**
 		 * Modify a given chat (archive, pin etc.)

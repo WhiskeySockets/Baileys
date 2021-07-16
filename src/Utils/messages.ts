@@ -49,12 +49,12 @@ const MIMETYPE_MAP: { [T in MediaType]: string } = {
 }
 
 const MessageTypeProto = {
-    'imageMessage': WAMessageProto.ImageMessage,
-    'videoMessage': WAMessageProto.VideoMessage,
-    'audioMessage': WAMessageProto.AudioMessage,
-    'stickerMessage': WAMessageProto.StickerMessage,
-   	'documentMessage': WAMessageProto.DocumentMessage,
-}
+    'image': WAMessageProto.ImageMessage,
+    'video': WAMessageProto.VideoMessage,
+    'audio': WAMessageProto.AudioMessage,
+    'sticker': WAMessageProto.StickerMessage,
+   	'document': WAMessageProto.DocumentMessage,
+} as const
 
 const MEDIA_KEYS = Object.keys(MEDIA_PATH_MAP) as MediaType[]
 
@@ -160,7 +160,7 @@ export const prepareWAMessageMedia = async(
 	)
 	delete uploadData.media
 	const content = {
-		[mediaType]: MessageTypeProto[mediaType].fromObject(
+		[`${mediaType}Message`]: MessageTypeProto[mediaType].fromObject(
 			{
 				url: mediaUrl,
 				mediaKey,
