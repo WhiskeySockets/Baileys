@@ -256,7 +256,7 @@ export const makeSocket = ({
         if(expect200 && Math.floor(responseStatusCode/100) !== 2) {
             const message = STATUS_CODES[responseStatusCode] || 'unknown'
             throw new Boom(
-                `Unexpected status in '${Object.values(json)[0] || 'query'}': ${message}(${responseStatusCode})`, 
+                `Unexpected status in '${Array.isArray(json) ? json[0] : (json?.header || 'query')}': ${message}(${responseStatusCode})`, 
                 { data: { query: json, message }, statusCode: response.status }
             )
         }
@@ -345,19 +345,16 @@ export const makeSocket = ({
         waitForMessage,
         query,
         /** Generic function for action, set queries */
-        setQuery: async(nodes: BinaryNode[], binaryTag: WATag = [WAMetric.group, WAFlag.ignore], tag?: string) => (
-            query({ 
-                json: new BinaryNode(
-                    'action', 
-                    { epoch: epoch.toString(), type: 'set' },
-                    nodes
-                ), 
+        setQuery: async(nodes: BinaryNode[], binaryTag: WATag = [WAMetric.group, WAFlag.ignore], tag?: string) => {
+            const json = new BinaryNode('action', { epoch: epoch.toString(), type: 'set' }, nodes)
+            return query({ 
+                json, 
                 binaryTag, 
                 tag, 
                 expect200: true, 
                 requiresPhoneConnection: true 
             }) as Promise<{ status: number }>
-        ),
+        },
 		currentEpoch: () => epoch,
 		end
 	}

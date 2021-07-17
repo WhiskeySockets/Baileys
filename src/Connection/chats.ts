@@ -79,6 +79,13 @@ const makeChatsSocket = (config: SocketConfig) => {
 				)
 				ev.emit('messages.update', updates)
 				break
+			case 'mute':
+				if(attributes.mute === '0') {
+					ev.emit('chats.update', [{ jid, mute: null }])
+				} else {
+					ev.emit('chats.update', [{ jid, mute: attributes.mute }])
+				}
+				break
 			default:
 				logger.warn({ node }, `received unrecognized chat update`)
 				break
@@ -251,7 +258,7 @@ const makeChatsSocket = (config: SocketConfig) => {
 		...sock,
 		sendChatsQuery,
 		fetchImageUrl,
-		chatRead: async(jid: string, count: number, fromMessage: WAMessageKey) => {
+		chatRead: async(fromMessage: WAMessageKey, count: number) => {
 			if(count < 0) {
 				count = -2
 			}
@@ -260,7 +267,7 @@ const makeChatsSocket = (config: SocketConfig) => {
 					new BinaryNode(
 						'read',
 						{ 
-							jid, 
+							jid: fromMessage.remoteJid, 
 							count: count.toString(), 
 							index: fromMessage.id, 
 							owner: fromMessage.fromMe ? 'true' : 'false'
@@ -269,7 +276,7 @@ const makeChatsSocket = (config: SocketConfig) => {
 				], 
 				[ WAMetric.read, WAFlag.ignore ]
 			)
-			ev.emit ('chats.update', [{ jid, count: count < 0 ? -1 : 0 }])
+			ev.emit ('chats.update', [{ jid: fromMessage.remoteJid, count: count < 0 ? -1 : 0 }])
 		},
 		/**
 		 * Modify a given chat (archive, pin etc.)
