@@ -19,32 +19,8 @@ export class WAConnection extends Base {
      * @returns undefined if the number doesn't exists, otherwise the correctly formatted jid
      */
     isOnWhatsApp = async (str: string) => {
-        if (this.state !== 'open') {
-            return this.isOnWhatsAppNoConn(str)
-        }
         const { status, jid, biz } = await this.query({json: ['query', 'exist', str], requiresPhoneConnection: false})
         if (status === 200) return { exists: true, jid: whatsappID(jid), isBusiness: biz as boolean}
-    }
-    /** 
-     * Query whether a given number is registered on WhatsApp, without needing to open a WS connection
-     * @param str phone number/jid you want to check for
-     * @returns undefined if the number doesn't exists, otherwise the correctly formatted jid
-     */
-    isOnWhatsAppNoConn = async (str: string) => {
-        let phone = str.split('@')[0]
-        const url = `https://wa.me/${phone}`
-        const response = await this.fetchRequest(url, 'GET', undefined, undefined, undefined, false)
-        const loc = response.headers.location as string
-        if (!loc) {
-            this.logger.warn({ url, status: response.statusCode }, 'did not get location from request')
-            return
-        }
-        const locUrl = new URL('', loc)
-        if (!locUrl.pathname.endsWith('send/')) {
-            return
-        }
-        phone = locUrl.searchParams.get('phone')
-        return { exists: true, jid: `${phone}@s.whatsapp.net` } 
     }
     /**
      * Tell someone about your presence -- online, typing, offline etc.

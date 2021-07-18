@@ -306,7 +306,7 @@ await conn.sendMessage(
 ### Notes
 
 - `id` is the WhatsApp ID of the person or group you're sending the message to. 
-    - It must be in the format ```[country code][phone number]@s.whatsapp.net```, for example ```+19999999999@s.whatsapp.net``` for people. For groups, it must be in the format ``` 123456789-123345@g.us ```. 
+    - It must be in the format ```[country code without +][phone number]@s.whatsapp.net```, for example ```19999999999@s.whatsapp.net``` for people. For groups, it must be in the format ``` 123456789-123345@g.us ```. 
     - For broadcast lists it's `[timestamp of creation]@broadcast`.
     - For stories, the ID is `status@broadcast`.
 - For media messages, the thumbnail can be generated automatically for images & stickers. Thumbnails for videos can also be generated automatically, though, you need to have `ffmpeg` installed on your system.
