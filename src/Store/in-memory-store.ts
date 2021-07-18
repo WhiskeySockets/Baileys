@@ -202,8 +202,12 @@ export default(
 			
 			let messages: WAMessage[]
 			if(list && mode === 'before' && (!cursorKey || cursorValue)) {
-				const msgIdx = list.array.findIndex(m => m.key.id === cursorKey.id)
-				messages = list.array.slice(0, msgIdx)
+				if(cursorValue) {
+					const msgIdx = list.array.findIndex(m => m.key.id === cursorKey.id)
+					messages = list.array.slice(0, msgIdx)
+				} else {
+					messages = list.array
+				}
 				
 				const diff = count - messages.length
 				if (diff < 0) {
