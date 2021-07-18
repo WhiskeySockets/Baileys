@@ -1,6 +1,6 @@
-import KeyedDB from "@adiwajshing/keyed-db"
-import { Comparable } from "@adiwajshing/keyed-db/lib/Types"
-import { Logger } from "pino"
+import type KeyedDB from "@adiwajshing/keyed-db"
+import type { Comparable } from "@adiwajshing/keyed-db/lib/Types"
+import type { Logger } from "pino"
 import type { Connection } from "../Connection"
 import type { BaileysEventEmitter, Chat, ConnectionState, Contact, GroupMetadata, WAMessage, WAMessageCursor } from "../Types"
 import { toNumber } from "../Utils"
@@ -23,8 +23,8 @@ const makeMessagesDictionary = () => makeOrderedDictionary(waMessageID)
 export default(
 	{ logger, chatKey }: BaileysInMemoryStoreConfig
 ) => {
-	
-	const chats = new KeyedDB<Chat, string>(chatKey, c => c.jid)
+	const KeyedDBConstructor = require('@adiwajshing/keyed-db').default as new (...args: any[]) => KeyedDB<Chat, string>
+	const chats = new KeyedDBConstructor(chatKey, c => c.jid)
 	const messages: { [_: string]: ReturnType<typeof makeMessagesDictionary> } = {}
 	const contacts: { [_: string]: Contact } = {}
 	const groupMetadata: { [_: string]: GroupMetadata } = {}
@@ -39,11 +39,8 @@ export default(
 	}
 
 	const listen = (ev: BaileysEventEmitter) => {
-		
-		ev.on('connection.update', update => {
-			Object.assign(state, update)
-		})
-		ev.on('contacts.upsert', ({ contacts: newContacts, type }) => {
+
+		const contactsUpsert = (newContacts: Contact[]) => {
 			const oldContacts = new Set(Object.keys(contacts))
 			for(const contact of newContacts) {
 				oldContacts.delete(contact.jid)
@@ -52,12 +49,18 @@ export default(
 					contact
 				)
 			}
-			if(type === 'set') {
-				for(const jid of oldContacts) {
-					delete contacts[jid]
-				}
-				logger.debug({ deletedContacts: oldContacts.size }, 'synced contacts')
+			return oldContacts
+		}
+		
+		ev.on('connection.update', update => {
+			Object.assign(state, update)
+		})
+		ev.on('contacts.set', ({ contacts: newContacts }) => {
+			const oldContacts = contactsUpsert(newContacts)
+			for(const jid of oldContacts) {
+				delete contacts[jid]
 			}
+			logger.debug({ deletedContacts: oldContacts.size }, 'synced contacts')
 		})
 		ev.on('contacts.update', updates => {
 			for(const update of updates) {
@@ -68,13 +71,11 @@ export default(
 				}
 			}
 		})
-		ev.on('chats.upsert', ({ chats: newChats, type }) => {
-			if(type === 'set') {
-				chats.clear()
-			}
-			for(const chat of newChats) {
-				chats.upsert(chat)
-			}
+		ev.on('chats.upsert', newChats => {
+			chats.upsert(...newChats)
+		})
+		ev.on('chats.set', ({ chats: newChats }) => {
+			chats.upsert(...newChats)
 		})
 		ev.on('chats.update', updates => {
 			for(const update of updates) {
@@ -101,10 +102,9 @@ export default(
 						list.upsert(msg, 'append')
 
 						if(type === 'notify' && !chats.get(jid)) {
-							ev.emit('chats.upsert', { 
-								chats: [ { jid, t: toNumber(msg.messageTimestamp), count: 1 } ],
-								type: 'upsert'
-							})
+							ev.emit('chats.upsert', [ 
+								{ jid, t: toNumber(msg.messageTimestamp), count: 1 } 
+							])
 						}
 					}
 				break
@@ -135,9 +135,10 @@ export default(
 				const list = assertMessageList(update.key.remoteJid)
 				const result = list.updateAssign(update)
 				if(!result) {
-					logger.debug({ update }, `got update for non-existant message`)
+					logger.debug({ update }, `got update for non-existent message`)
 				}
 			}
+			
 		})
 		ev.on('messages.delete', item => {
 			const list = assertMessageList(item.jid)

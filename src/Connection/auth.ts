@@ -37,11 +37,11 @@ const makeAuthSocket = (config: SocketConfig) => {
 			}
 		}
 	})
-	const { socketEvents } = socket
+	const { ws } = socket
 	let curveKeys: CurveKeyPair
 	let initTimeout: NodeJS.Timeout
 	// add close listener
-	socketEvents.on('ws-close', (error: Boom | Error) => {
+	ws.on('ws-close', (error: Boom | Error) => {
 		logger.info({ error }, 'Closed connection to WhatsApp')
 		initTimeout && clearTimeout(initTimeout)
 		// if no reconnects occur
@@ -239,7 +239,7 @@ const makeAuthSocket = (config: SocketConfig) => {
 		})
 		ev.emit('credentials.update', auth)
 	}
-	socketEvents.once('ws-open', async() => {
+	ws.once('open', async() => {
 		try {
 			await onOpen()
 		} catch(error) {

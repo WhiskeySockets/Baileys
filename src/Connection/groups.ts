@@ -143,17 +143,14 @@ const makeGroupsSocket = (config: SocketConfig) => {
 				metadata = await groupMetadataFull(gid)
 				logger.warn (`group ID switched from ${gid} to ${response.gid}`)
 			}
-			ev.emit('chats.upsert', {
-				chats: [
-					{
-						jid: response.gid,
-						name: title,
-						t: unixTimestampSeconds(),
-						count: 0
-					}
-				],
-				type: 'upsert'
-			})
+			ev.emit('chats.upsert', [
+				{
+					jid: response.gid,
+					name: title,
+					t: unixTimestampSeconds(),
+					count: 0
+				}
+			])
 			return metadata
 		},
 		/**

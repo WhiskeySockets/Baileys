@@ -50,6 +50,7 @@ const makeOrderedDictionary = function<T>(idGetter: (item: T) => string) {
 			const item = get(idGetter(update as any))
 			if(item) {
 				Object.assign(item, update)
+				return true
 			}
 			return false
 		},

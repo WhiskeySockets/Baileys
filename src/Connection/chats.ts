@@ -156,8 +156,6 @@ const makeChatsSocket = (config: SocketConfig) => {
 			logger.error(`error in sending init queries: ${error}`)
 		}
 	})
-	// this persists through socket connections
-	// as conn & getSocket share the same eventemitter
 	socketEvents.on('CB:response,type:chat', async ({ data }: BinaryNode) => {
 		chatsDebounceTimeout.cancel()
 		if(Array.isArray(data)) {
@@ -171,7 +169,7 @@ const makeChatsSocket = (config: SocketConfig) => {
 			})
 
 			logger.info(`got ${chats.length} chats`)
-			ev.emit('chats.upsert', { chats, type: 'set' })
+			ev.emit('chats.set', { chats })
 		}
 	})
 	// got all contacts from phone
@@ -184,7 +182,7 @@ const makeChatsSocket = (config: SocketConfig) => {
 			})
 
 			logger.info(`got ${contacts.length} contacts`)
-			ev.emit('contacts.upsert', { contacts, type: 'set' })
+			ev.emit('contacts.set', { contacts })
 		}
 	})
 	// status updates
@@ -237,7 +235,7 @@ const makeChatsSocket = (config: SocketConfig) => {
 			const user = node[1] as Contact
 			user.jid = whatsappID(user.jid)
 			
-			ev.emit('contacts.upsert', { contacts: [user], type: 'upsert' })
+			ev.emit('contacts.upsert', [user])
 		}
 	})
 
@@ -251,7 +249,7 @@ const makeChatsSocket = (config: SocketConfig) => {
 	socketEvents.on('CB:Blocklist', json => {
 		json = json[1]
 		const blocklist = json.blocklist
-		ev.emit('blocklist.update', { blocklist, type: 'set' })
+		ev.emit('blocklist.set', { blocklist })
 	})
 
 	return {

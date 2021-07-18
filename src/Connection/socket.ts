@@ -95,6 +95,8 @@ export const makeSocket = ({
 		return tag
 	}
 	const end = (error: Error | undefined) => {
+        logger.debug({ error }, 'connection closed')
+
 		ws.removeAllListeners('close')
         ws.removeAllListeners('error')
         ws.removeAllListeners('open')
@@ -105,9 +107,11 @@ export const makeSocket = ({
         clearPhoneCheckInterval()
 
         if(ws.readyState !== ws.CLOSED && ws.readyState !== ws.CLOSING) {
-            socketEvents.emit('ws-close', error)
             try { ws.close() } catch { }
         }
+        ws.emit('ws-close', error)
+        // so it cannot be re-emitted
+        ws.removeAllListeners('ws-close')
 	}
 	const onMessageRecieved = (message: string | Buffer) => {
         if(message[0] === '!') {
@@ -221,7 +225,8 @@ export const makeSocket = ({
                     onErr = err => reject(err || new Boom('Connection Closed', { statusCode: 429 }))
                     
                     socketEvents.on(`TAG:${tag}`, onRecv)
-                    socketEvents.on('ws-close', onErr) // if the socket closes, you'll never receive the message
+                    ws.on('close', onErr) // if the socket closes, you'll never receive the message
+                    ws.on('error', onErr)
                 },
             )
             return result as any
@@ -230,7 +235,8 @@ export const makeSocket = ({
 			cancelPhoneChecker && cancelPhoneChecker()
 
             socketEvents.off(`TAG:${tag}`, onRecv)
-            socketEvents.off(`ws-close`, onErr)
+            ws.off('close', onErr) // if the socket closes, you'll never receive the message
+            ws.off('error', onErr)
         }
     }
     /**
@@ -290,21 +296,21 @@ export const makeSocket = ({
         await new Promise((resolve, reject) => {
             onOpen = () => resolve(undefined)
             onClose = reject
-            socketEvents.on('ws-open', onOpen)
-            socketEvents.on('ws-close', onClose)
+            ws.on('open', onOpen)
+            ws.on('close', onClose)
+            ws.on('error', onClose)
         })
         .finally(() => {
-            socketEvents.off('ws-open', onOpen)
-            socketEvents.off('ws-close', onClose)
+            socketEvents.off('open', onOpen)
+            socketEvents.off('close', onClose)
+            socketEvents.off('error', onClose)
         })
     }
 
 	ws.on('message', onMessageRecieved)
 	ws.on('open', () => {
 		startKeepAliveRequest()
-
 		logger.info('Opened WS connection to WhatsApp Web')
-		socketEvents.emit('ws-open')
 	})
 	ws.on('error', end)
 	ws.on('close', () => end(new Boom('Connection Terminated', { statusCode: DisconnectReason.connectionLost })))

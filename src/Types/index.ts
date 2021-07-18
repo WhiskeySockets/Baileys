@@ -170,11 +170,13 @@ export type BaileysEventMap = {
 	'connection.update': Partial<ConnectionState>
     'credentials.update': AuthenticationCredentials
 
-    'chats.upsert': { chats: Chat[], type: 'set' | 'upsert' }
+    'chats.set': { chats: Chat[] }
+    'chats.upsert': Chat[]
     'chats.update': Partial<Chat>[]
     'chats.delete': string[]
 
-    'contacts.upsert': { contacts: Contact[], type: 'set' | 'upsert' }
+    'contacts.set': { contacts: Contact[] }
+    'contacts.upsert': Contact[]
     'contacts.update': Partial<Contact>[] 
     
     'messages.delete': { jid: string, ids: string[] } | { jid: string, all: true }
@@ -184,7 +186,8 @@ export type BaileysEventMap = {
     'groups.update': Partial<GroupMetadata>[]
     'group-participants.update': { jid: string, participants: string[], action: ParticipantAction }
 
-    'blocklist.update': { blocklist: string[], type: 'add' | 'remove' | 'set' }
+    'blocklist.set': { blocklist: string[] }
+    'blocklist.update': { blocklist: string[], type: 'add' | 'remove' }
 }
 export interface BaileysEventEmitter extends EventEmitter {
 	on<T extends keyof BaileysEventMap>(event: T, listener: (arg: BaileysEventMap[T]) => void): this
