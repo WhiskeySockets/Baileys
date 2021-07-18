@@ -147,5 +147,6 @@ export interface MessageStatusUpdate {
     type: WAMessageStatus
 }
 
+export type WAMessageUpdate = { update: Partial<WAMessage>, key: proto.IMessageKey }
 
 export type WAMessageCursor = { before: WAMessageKey | undefined } | { after: WAMessageKey | undefined }

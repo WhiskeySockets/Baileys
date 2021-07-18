@@ -92,7 +92,7 @@ const makeMessagesSocket = (config: SocketConfig) => {
 		})
 		Object.keys(response[1]).forEach (key => content[key] = response[1][key]) // update message
 
-		ev.emit('messages.update', [{ key: message.key, message: message.message }])
+		ev.emit('messages.update', [{ key: message.key, update: { message: message.message } }])
 
 		return response
 	}
@@ -130,7 +130,13 @@ const makeMessagesSocket = (config: SocketConfig) => {
                 case WAMessageProto.ProtocolMessage.ProtocolMessageType.REVOKE:
 					const key = protocolMessage.key
 					const messageStubType = WAMessageStubType.REVOKE
-					ev.emit('messages.update', [ { message: null, key, messageStubType } ])
+					ev.emit('messages.update', [ 
+						{ 
+							// the key of the deleted message is updated
+							update: { message: null, key: message.key, messageStubType }, 
+							key 
+						}
+					])
                     return
                 default:
                     break
@@ -192,7 +198,7 @@ const makeMessagesSocket = (config: SocketConfig) => {
 			ev.emit('chats.update', [chatUpdate])
 		}
 		if(type === 'update') {
-			ev.emit('messages.update', [message])
+			ev.emit('messages.update', [ { update: message, key: message.key } ])
 		} else {
 			ev.emit('messages.upsert', { messages: [message], type })
 		} 
@@ -242,7 +248,7 @@ const makeMessagesSocket = (config: SocketConfig) => {
         } else {
             const emitUpdate = (status: WAMessageStatus) => {
                 message.status = status
-                ev.emit('messages.update', [ { key: message.key, status } ])
+                ev.emit('messages.update', [ { key: message.key, update: { status } } ])
             }
             promise
 				.then(() => emitUpdate(finalState))
@@ -295,7 +301,7 @@ const makeMessagesSocket = (config: SocketConfig) => {
 				const status = STATUS_MAP[json.type]
 
 				if(status) {
-					ev.emit('messages.update', [ { key, status } ])
+					ev.emit('messages.update', [ { key, update: { status } } ])
 				} else {
 					logger.warn({ data }, 'got unknown status update for message')
 				}

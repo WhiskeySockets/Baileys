@@ -1,6 +1,6 @@
 import BinaryNode from "../BinaryNode";
 import { EventEmitter } from 'events'
-import { Chat, Contact, Presence, PresenceData, SocketConfig, WAFlag, WAMetric, WABusinessProfile, ChatModification, WAMessageKey, WAMessage } from "../Types";
+import { Chat, Contact, Presence, PresenceData, SocketConfig, WAFlag, WAMetric, WABusinessProfile, ChatModification, WAMessageKey, WAMessage, WAMessageUpdate } from "../Types";
 import { debouncedTimeout, unixTimestampSeconds, whatsappID } from "../Utils/generics";
 import makeAuthSocket from "./auth";
 import { Attributes, BinaryNode as BinaryNodeBase } from "../BinaryNode/types";
@@ -67,14 +67,14 @@ const makeChatsSocket = (config: SocketConfig) => {
 			case 'star':
 			case 'unstar':
 				const starred = updateType === 'star'
-				const updates: Partial<WAMessage>[] = (node.data as BinaryNode[]).map(
+				const updates: WAMessageUpdate[] = (node.data as BinaryNode[]).map(
 					({ attributes }) => ({ 
 						key: {
 							remoteJid: jid, 
 							id: attributes.index, 
 							fromMe: attributes.owner === 'true' 
 						},
-						starred
+						update: { starred }
 					})
 				)
 				ev.emit('messages.update', updates)

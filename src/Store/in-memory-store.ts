@@ -131,9 +131,9 @@ export default(
 			}
 		})
 		ev.on('messages.update', updates => {
-			for(const update of updates) {
-				const list = assertMessageList(update.key.remoteJid)
-				const result = list.updateAssign(update)
+			for(const { update, key } of updates) {
+				const list = assertMessageList(key.remoteJid)
+				const result = list.updateAssign(key.id, update)
 				if(!result) {
 					logger.debug({ update }, `got update for non-existent message`)
 				}
@@ -201,8 +201,8 @@ export default(
 			const cursorValue = cursorKey ? list.get(cursorKey.id) : undefined
 			
 			let messages: WAMessage[]
-			if(messages && mode ==='before' && (!cursorKey || cursorValue)) {
-				const msgIdx = messages.findIndex(m => m.key.id === cursorKey.id)
+			if(list && mode === 'before' && (!cursorKey || cursorValue)) {
+				const msgIdx = list.array.findIndex(m => m.key.id === cursorKey.id)
 				messages = list.array.slice(0, msgIdx)
 				
 				const diff = count - messages.length

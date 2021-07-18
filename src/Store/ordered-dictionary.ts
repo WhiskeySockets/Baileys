@@ -46,10 +46,12 @@ const makeOrderedDictionary = function<T>(idGetter: (item: T) => string) {
 		upsert,
 		update,
 		remove,
-		updateAssign: (update: Partial<T>) => {
-			const item = get(idGetter(update as any))
+		updateAssign: (id: string, update: Partial<T>) => {
+			const item = get(id)
 			if(item) {
 				Object.assign(item, update)
+				delete dict[id]
+				dict[id] = item
 				return true
 			}
 			return false

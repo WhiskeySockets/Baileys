@@ -16,7 +16,7 @@ import { Contact } from './Contact'
 import { ConnectionState } from './Store'
 
 import { GroupMetadata, ParticipantAction } from './GroupMetadata'
-import { MessageUpdateType, WAMessage } from './Message'
+import { MessageUpdateType, WAMessage, WAMessageKey, WAMessageUpdate } from './Message'
 
 /** used for binary messages */
 export enum WAMetric {
@@ -180,7 +180,7 @@ export type BaileysEventMap = {
     'contacts.update': Partial<Contact>[] 
     
     'messages.delete': { jid: string, ids: string[] } | { jid: string, all: true }
-    'messages.update': Partial<WAMessage>[]
+    'messages.update': WAMessageUpdate[]
     'messages.upsert': { messages: WAMessage[], type: MessageUpdateType }
 
     'groups.update': Partial<GroupMetadata>[]
