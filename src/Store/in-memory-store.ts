@@ -208,17 +208,18 @@ export default(
 				} else {
 					messages = list.array
 				}
-				
 				const diff = count - messages.length
 				if (diff < 0) {
 					messages = messages.slice(-count) // get the last X messages
 				} else if (diff > 0) {
 					const [fMessage] = messages
-					const extra = await retrieve (diff, { before: fMessage?.key || cursorKey })
+					const cursor = { before: fMessage?.key || cursorKey }
+					const extra = await retrieve (diff, cursor)
 					// add to DB
 					for(let i = extra.length-1; i >= 0;i--) {
 						list.upsert(extra[i], 'prepend')
 					}
+					messages.splice(0, 0, ...extra)
 				}
 			} else messages = await retrieve(count, cursor)
 
