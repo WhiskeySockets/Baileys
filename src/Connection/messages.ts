@@ -1,10 +1,11 @@
 import BinaryNode from "../BinaryNode";
 import { Boom } from '@hapi/boom'
 import { EventEmitter } from 'events'
-import { Chat, Presence, WAMessageCursor, SocketConfig, WAMessage, WAMessageKey, ParticipantAction, WAMessageProto, WAMessageStatus, WAMessageStubType, GroupMetadata, AnyMessageContent, MiscMessageGenerationOptions, WAFlag, WAMetric, WAUrlInfo, MediaConnInfo, MessageUpdateType, MessageInfo } from "../Types";
+import { Chat, Presence, WAMessageCursor, SocketConfig, WAMessage, WAMessageKey, ParticipantAction, WAMessageProto, WAMessageStatus, WAMessageStubType, GroupMetadata, AnyMessageContent, MiscMessageGenerationOptions, WAFlag, WAMetric, WAUrlInfo, MediaConnInfo, MessageUpdateType, MessageInfo, MessageInfoUpdate } from "../Types";
 import { isGroupID, toNumber, whatsappID, generateWAMessage, decryptMediaMessageBuffer } from "../Utils";
 import makeChatsSocket from "./chats";
 import { WA_DEFAULT_EPHEMERAL } from "../Defaults";
+import { Attributes } from "../BinaryNode/types";
 
 const STATUS_MAP = {
 	read: WAMessageStatus.READ,
@@ -308,8 +309,41 @@ const makeMessagesSocket = (config: SocketConfig) => {
 			}
 		}
 	}
+	const onMessageInfoUpdate = ([,attributes]: [string,{[_: string]: any}]) => {
+		let ids = attributes.id as string[] | string
+		if(typeof ids === 'string') {
+			ids = [ids]
+		}
+		let updateKey: keyof MessageInfoUpdate['update']
+		switch(attributes.ack.toString()) {
+			case '2':
+				updateKey = 'deliveries'
+				break
+			case '3':
+				updateKey = 'reads'
+				break
+			default:
+				logger.warn({ attributes }, `received unknown message info update`)
+				return
+		}
+		const updates = ids.map<MessageInfoUpdate>(id => ({
+			key: { 
+				remoteJid: whatsappID(attributes.to), 
+				id, 
+				fromMe: whatsappID(attributes.from) === getState().user?.jid,
+			},
+			update: {
+				[updateKey]: { [whatsappID(attributes.participant)]: new Date(+attributes.t) }
+			}
+		}))
+		ev.emit('message-info.update', updates)
+	}
+
 	socketEvents.on('CB:action,add:relay,received', onMessageStatusUpdate)
 	socketEvents.on('CB:action,,received', onMessageStatusUpdate)
+
+	socketEvents.on('CB:Msg', onMessageInfoUpdate)
+	socketEvents.on('CB:MsgInfo', onMessageInfoUpdate)
 
 	return {
 		...sock,
@@ -325,15 +359,18 @@ const makeMessagesSocket = (config: SocketConfig) => {
 				expect200: true,
 				requiresPhoneConnection: true
 			})
-			const info: MessageInfo = {reads: [], deliveries: []}
+			const info: MessageInfo = { reads: {}, deliveries: {} }
 			if(Array.isArray(data)) {
-				for(const { header, attributes } of data) {
+				for(const { header, data: innerData } of data) {
+					const [{ attributes }] = (innerData as BinaryNode[])
+					const jid = whatsappID(attributes.jid)
+					const date = new Date(+attributes.t * 1000)
 					switch(header) {
 						case 'read':
-							info.reads.push(attributes as any)
+							info.reads[jid] = date
 							break
 						case 'delivery':
-							info.deliveries.push(attributes as any)
+							info.deliveries[jid] = date
 							break
 					}
 				}

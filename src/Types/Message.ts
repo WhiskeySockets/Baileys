@@ -129,24 +129,14 @@ export type MessageGenerationOptions = MessageContentGenerationOptions & Message
 
 export type MessageUpdateType = 'prepend' | 'append' | 'notify' | 'last'
 
+export type MessageInfoEventMap = { [jid: string]: Date }
 export interface MessageInfo {
-    reads: {jid: string, t: string}[]
-    deliveries: {jid: string, t: string}[]
-}
-
-
-export interface MessageStatusUpdate {
-    from: string
-    to: string
-    /** Which participant caused the update (only for groups) */
-    participant?: string
-    timestamp: Date
-    /** Message IDs read/delivered */
-    ids: string[]
-    /** Status of the Message IDs */
-    type: WAMessageStatus
+    reads: MessageInfoEventMap
+    deliveries: MessageInfoEventMap
 }
 
 export type WAMessageUpdate = { update: Partial<WAMessage>, key: proto.IMessageKey }
 
 export type WAMessageCursor = { before: WAMessageKey | undefined } | { after: WAMessageKey | undefined }
+
+export type MessageInfoUpdate = { key: proto.IMessageKey, update: Partial<MessageInfo> }

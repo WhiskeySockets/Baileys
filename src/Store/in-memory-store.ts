@@ -2,7 +2,7 @@ import type KeyedDB from "@adiwajshing/keyed-db"
 import type { Comparable } from "@adiwajshing/keyed-db/lib/Types"
 import type { Logger } from "pino"
 import type { Connection } from "../Connection"
-import type { BaileysEventEmitter, Chat, ConnectionState, Contact, GroupMetadata, WAMessage, WAMessageCursor } from "../Types"
+import type { BaileysEventEmitter, Chat, ConnectionState, Contact, GroupMetadata, MessageInfo, WAMessage, WAMessageCursor, WAMessageKey } from "../Types"
 import { toNumber } from "../Utils"
 import makeOrderedDictionary from "./ordered-dictionary"
 
@@ -28,6 +28,7 @@ export default(
 	const messages: { [_: string]: ReturnType<typeof makeMessagesDictionary> } = {}
 	const contacts: { [_: string]: Contact } = {}
 	const groupMetadata: { [_: string]: GroupMetadata } = {}
+	const messageInfos: { [id: string]: MessageInfo } = { }
 	const state: ConnectionState = {
 		connection: 'close',
 		phoneConnected: false
@@ -101,10 +102,14 @@ export default(
 						const list = assertMessageList(jid)
 						list.upsert(msg, 'append')
 
-						if(type === 'notify' && !chats.get(jid)) {
-							ev.emit('chats.upsert', [ 
-								{ jid, t: toNumber(msg.messageTimestamp), count: 1 } 
-							])
+						if(type === 'notify') {
+							if(!chats.get(jid)) {
+								ev.emit('chats.upsert', [ 
+									{ jid, t: toNumber(msg.messageTimestamp), count: 1 } 
+								])
+							}
+							// add message infos if required
+							messageInfos[msg.key.id!] = messageInfos[msg.key.id!] || { reads: {}, deliveries: {} }
 						}
 					}
 				break
@@ -181,13 +186,27 @@ export default(
 				}
 			}
 		})
+
+		ev.on('message-info.update', updates => {
+			for(const { key, update } of updates) {
+				const obj = messageInfos[key.id!]
+				if(obj) {
+					// add reads/deliveries
+					for(const key in update) {
+						Object.assign(obj[key], update[key])
+					}
+				}
+			}
+		})
 	}
+
 
 	return {
 		chats,
 		contacts,
 		messages,
 		groupMetadata,
+		messageInfos,
 		state,
 		listen,
 		loadMessages: async(jid: string, count: number, cursor: WAMessageCursor, sock: Connection | undefined) => {
@@ -261,6 +280,12 @@ export default(
 				groupMetadata[jid] = await sock?.getBroadcastListInfo(jid)
 			}
 			return groupMetadata[jid]
+		},
+		fetchMessageInfo: async({remoteJid, id}: WAMessageKey, sock: Connection | undefined) => {
+			if(!messageInfos[id!]) {
+				messageInfos[id!] = await sock?.messageInfo(remoteJid, id)
+			}
+			return messageInfos[id!]
 		}
 	}
 }
