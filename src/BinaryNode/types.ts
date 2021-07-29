@@ -1,4 +1,4 @@
-import { proto } from "../../WAMessage/WAMessage"
+import { proto } from "../../WAMessage"
 
 export type Attributes = { [key: string]: string }
 export type BinaryNodeData = BinaryNode[] | string | Buffer | proto.IWebMessageInfo | undefined

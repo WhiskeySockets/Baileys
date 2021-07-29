@@ -1,4 +1,4 @@
-import { proto } from '../../WAMessage/WAMessage'
+import { proto } from '../../WAMessage'
 import { BinaryNode, DoubleByteTokens, SingleByteTokens, Tags } from './types'
 
 function decode<T extends BinaryNode>(buffer: Buffer, makeNode: () => T, indexRef: { index: number }) {

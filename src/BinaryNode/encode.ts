@@ -1,4 +1,4 @@
-import { proto } from "../../WAMessage/WAMessage";
+import { proto } from "../../WAMessage";
 import { BinaryNode, SingleByteTokens, Tags } from "./types";
 
 const encode = ({ header, attributes, data }: BinaryNode, buffer: number[] = []) => {

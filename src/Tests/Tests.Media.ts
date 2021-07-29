@@ -1,7 +1,7 @@
 import { deepStrictEqual, strictEqual } from 'assert'
 import { createWriteStream } from 'fs'
 import { readFile } from 'fs/promises'
-import { proto } from '../../WAMessage/WAMessage'
+import { proto } from '../../WAMessage'
 import { MessageType } from '../WAConnection'
 import { aesEncrypWithIV, decryptMediaMessageBuffer, encryptedStream, getMediaKeys, getStream, hmacSign, sha256 } from '../WAConnection/Utils'
 import { WAConnectionTest } from './Common'

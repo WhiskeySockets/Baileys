@@ -5,7 +5,6 @@ import { Chat, Presence, WAMessageCursor, SocketConfig, WAMessage, WAMessageKey,
 import { isGroupID, toNumber, whatsappID, generateWAMessage, decryptMediaMessageBuffer } from "../Utils";
 import makeChatsSocket from "./chats";
 import { WA_DEFAULT_EPHEMERAL } from "../Defaults";
-import { Attributes } from "../BinaryNode/types";
 
 const STATUS_MAP = {
 	read: WAMessageStatus.READ,
@@ -19,8 +18,7 @@ const makeMessagesSocket = (config: SocketConfig) => {
 	const { 
 		ev, 
 		socketEvents,
-		query, 
-		sendMessage,
+		query,
 		generateMessageTag,
 		currentEpoch,
 		setQuery,

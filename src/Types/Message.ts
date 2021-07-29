@@ -1,7 +1,7 @@
 import type { Agent } from "https"
 import type { Logger } from "pino"
 import type { URL } from "url"
-import { proto } from '../../WAMessage/WAMessage'
+import { proto } from '../../WAMessage'
 
 // export the WAMessage Prototypes
 export { proto as WAMessageProto }

@@ -23,7 +23,7 @@
     "build:docs": "typedoc",
     "build:tsc": "tsc",
     "example": "node --inspect -r ts-node/register Example/example.ts",
-    "gen-protobuf": "bash src/Binary/GenerateStatics.sh",
+    "gen-protobuf": "bash src/BinaryNode/GenerateStatics.sh",
     "browser-decode": "yarn ts-node src/BrowserMessageDecoding.ts"
   },
   "author": "Adhiraj Singh",

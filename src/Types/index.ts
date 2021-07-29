@@ -17,7 +17,7 @@ import { ConnectionState } from './Store'
 
 import { GroupMetadata, ParticipantAction } from './GroupMetadata'
 import { MessageInfo, MessageInfoUpdate, MessageUpdateType, WAMessage, WAMessageKey, WAMessageUpdate } from './Message'
-import { proto } from '../../WAMessage/WAMessage'
+import { proto } from '../../WAMessage'
 
 /** used for binary messages */
 export enum WAMetric {
