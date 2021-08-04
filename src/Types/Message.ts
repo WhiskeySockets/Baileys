@@ -111,7 +111,7 @@ export type MiscMessageGenerationOptions = {
     /** disappearing messages settings */
     ephemeralOptions?: { 
         expiration: number | string
-        eph_setting_ts: number | string
+        eph_setting_ts?: number | string
     }
 }
 export type MessageGenerationOptionsFromContent = MiscMessageGenerationOptions & {

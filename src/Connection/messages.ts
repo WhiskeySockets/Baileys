@@ -103,6 +103,10 @@ const makeMessagesSocket = (config: SocketConfig) => {
 			jid,
 			t: +toNumber(message.messageTimestamp)
 		}
+
+		const emitGroupUpdate = (update: Partial<GroupMetadata>) => {
+			ev.emit('groups.update', [ { id: jid, ...update } ])
+		}
 		// add to count if the message isn't from me & there exists a message
 		if(!message.key.fromMe && message.message) {
 			chatUpdate.count = 1
@@ -121,6 +125,10 @@ const makeMessagesSocket = (config: SocketConfig) => {
         ) {
             chatUpdate.eph_setting_ts = message.messageTimestamp.toString()
             chatUpdate.ephemeral = ephemeralProtocolMsg.ephemeralExpiration.toString()
+
+			if(isGroupID(jid)) {
+				emitGroupUpdate({ ephemeralDuration: ephemeralProtocolMsg.ephemeralExpiration || null })
+			}
         }
 		const protocolMessage = message.message?.protocolMessage
         // if it's a message to delete another message
@@ -150,14 +158,14 @@ const makeMessagesSocket = (config: SocketConfig) => {
 			const emitParticipantsUpdate = (action: ParticipantAction) => (
 				ev.emit('group-participants.update', { jid, participants, action })
 			)
-			const emitGroupUpdate = (update: Partial<GroupMetadata>) => {
-				ev.emit('groups.update', [ { id: jid, ...update } ])
-			}
-			
+
 			switch (message.messageStubType) {
 				case WAMessageStubType.CHANGE_EPHEMERAL_SETTING:
 					chatUpdate.eph_setting_ts = message.messageTimestamp.toString()
 					chatUpdate.ephemeral = message.messageStubParameters[0]
+					if(isGroupID(jid)) {
+						emitGroupUpdate({ ephemeralDuration: +message.messageStubParameters[0] || null })
+					}
 					break
 				case WAMessageStubType.GROUP_PARTICIPANT_LEAVE:
 				case WAMessageStubType.GROUP_PARTICIPANT_REMOVE:

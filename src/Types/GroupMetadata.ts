@@ -18,6 +18,7 @@ export interface GroupMetadata {
     announce?: 'true' | 'false' 
     // Baileys modified array
     participants: GroupParticipant[]
+    ephemeralDuration?: number
 }
 
 

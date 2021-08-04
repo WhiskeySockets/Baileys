@@ -312,7 +312,7 @@ export const generateWAMessageFromContent = (
 		message[key].contextInfo = {
 			...(message[key].contextInfo || {}),
 			expiration: options.ephemeralOptions.expiration || WA_DEFAULT_EPHEMERAL,
-			ephemeralSettingTimestamp: options.ephemeralOptions.eph_setting_ts.toString()
+			ephemeralSettingTimestamp: options.ephemeralOptions.eph_setting_ts?.toString()
 		}
 		message = {
 			ephemeralMessage: {
