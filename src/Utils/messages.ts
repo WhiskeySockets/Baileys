@@ -1,6 +1,7 @@
 import { Boom } from '@hapi/boom'
 import { createReadStream, promises as fs } from "fs"
 import got from "got"
+import { proto } from '../../WAMessage'
 import { DEFAULT_ORIGIN, URL_REGEX, WA_DEFAULT_EPHEMERAL } from "../Defaults"
 import { 
 	AnyMediaMessageContent, 
@@ -235,7 +236,7 @@ export const generateWAMessageContent = async(
 				
 			} 
 		}
-		m.extendedTextMessage = WAMessageProto.ExtendedTextMessage.fromObject(extContent)
+		m.extendedTextMessage = extContent
 	} else if('contacts' in message) {
 		const contactLen = message.contacts.contacts.length
 		if(!contactLen) {
@@ -266,6 +267,21 @@ export const generateWAMessageContent = async(
 			message,
 			options
 		)
+	}
+	if('buttons' in message && !!message.buttons) {
+		const buttonsMessage: proto.IButtonsMessage = {
+			buttons: message.buttons!,
+			text: ''
+		}
+		if('text' in message) {
+			buttonsMessage.contentText = message.text
+		} else {
+			Object.assign(buttonsMessage, m)
+		}
+		m = { buttonsMessage }
+	}
+	if('viewOnce' in message && !!message.viewOnce) {
+		m = { viewOnceMessage: { message: m } }
 	}
 	if('mentions' in message && message.mentions?.length) {
 		const [messageType] = Object.keys(m)

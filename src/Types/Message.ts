@@ -50,19 +50,26 @@ type Mentionable = {
     /** list of jids that are mentioned in the accompanying text */
     mentions?: string[]
 }
+type ViewOnce = {
+    viewOnce?: boolean
+}
+type Buttonable = {
+    /** add buttons to the message  */
+    buttons?: proto.IButton[]
+}
 export type MediaType = 'image' | 'video' | 'sticker' | 'audio' | 'document'
 export type AnyMediaMessageContent = (
     ({
         image: WAMediaUpload
         caption?: string
         jpegThumbnail?: string
-    } & Mentionable) | 
+    } & Mentionable & Buttonable) | 
     ({
         video: WAMediaUpload
         caption?: string
         gifPlayback?: boolean
         jpegThumbnail?: string
-    } & Mentionable) | {
+    } & Mentionable & Buttonable) | {
         audio: WAMediaUpload
         /** if set to true, will send as a `voice note` */
         pttAudio?: boolean
@@ -70,18 +77,18 @@ export type AnyMediaMessageContent = (
         seconds?: number
     } | {
         sticker: WAMediaUpload
-    } | {
+    } | ({
         document: WAMediaUpload
         mimetype: string
         fileName?: string
-    }) & 
+    } & Buttonable)) & 
     { mimetype?: string }
 
-export type AnyRegularMessageContent = 
+export type AnyRegularMessageContent = (
     ({
 	    text: string
     } 
-    & Mentionable) | 
+    & Mentionable & Buttonable) | 
     AnyMediaMessageContent | 
     {
         contacts: {
@@ -92,6 +99,7 @@ export type AnyRegularMessageContent =
     {  
         location: WALocationMessage
     }
+) & ViewOnce
 
 export type AnyMessageContent = AnyRegularMessageContent | {
 	forward: WAMessage
