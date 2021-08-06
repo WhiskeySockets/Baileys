@@ -1,8 +1,7 @@
 import { Boom } from '@hapi/boom'
 import { createReadStream, promises as fs } from "fs"
-import got from "got"
 import { proto } from '../../WAMessage'
-import { DEFAULT_ORIGIN, URL_REGEX, WA_DEFAULT_EPHEMERAL } from "../Defaults"
+import { MEDIA_KEYS, URL_REGEX, WA_DEFAULT_EPHEMERAL } from "../Defaults"
 import { 
 	AnyMediaMessageContent, 
 	AnyMessageContent, 
@@ -33,14 +32,6 @@ type MediaUploadData = {
 	mimetype?: string
 }
 
-const MEDIA_PATH_MAP: { [T in MediaType]: string } = {
-    image: '/mms/image',
-    video: '/mms/video',
-    document: '/mms/document',
-    audio: '/mms/audio',
-    sticker: '/mms/image',
-} as const
-
 const MIMETYPE_MAP: { [T in MediaType]: string } = {
     image: 'image/jpeg',
     video: 'video/mp4',
@@ -56,8 +47,6 @@ const MessageTypeProto = {
     'sticker': WAMessageProto.StickerMessage,
    	'document': WAMessageProto.DocumentMessage,
 } as const
-
-const MEDIA_KEYS = Object.keys(MEDIA_PATH_MAP) as MediaType[]
 
 export const prepareWAMessageMedia = async(
 	message: AnyMediaMessageContent, 
@@ -110,47 +99,10 @@ export const prepareWAMessageMedia = async(
 	} catch (error) {
 		options.logger?.debug ({ error }, 'failed to obtain audio duration: ' + error.message)
 	}
-	// send a query JSON to obtain the url & auth token to upload our media
-	let uploadInfo = await options.getMediaOptions(false)
-
-	let mediaUrl: string
-	for (let host of uploadInfo.hosts) {
-		const auth = encodeURIComponent(uploadInfo.auth) // the auth token
-		const url = `https://${host.hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
-		
-		try {
-			const {body: responseText} = await got.post(
-				url, 
-				{
-					headers: { 
-						'Content-Type': 'application/octet-stream',
-						'Origin': DEFAULT_ORIGIN
-					},
-					agent: {
-						https: options.agent
-					},
-					body: createReadStream(encBodyPath)
-				}
-			)
-			const result = JSON.parse(responseText)
-			mediaUrl = result?.url
-			
-			if (mediaUrl) break
-			else {
-				uploadInfo = await options.getMediaOptions(true)
-				throw new Error(`upload failed, reason: ${JSON.stringify(result)}`)
-			}
-		} catch (error) {
-			const isLast = host.hostname === uploadInfo.hosts[uploadInfo.hosts.length-1].hostname
-			options.logger?.debug(`Error in uploading to ${host.hostname} (${error}) ${isLast ? '' : ', retrying...'}`)
-		}
-	}
-	if (!mediaUrl) {
-		throw new Boom(
-			'Media upload failed on all hosts',
-			{ statusCode: 500 }
-		)
-	}
+	const {mediaUrl} = await options.upload(
+		createReadStream(encBodyPath),
+		{ fileEncSha256B64, mediaType }
+	)
 	// remove tmp files
 	await Promise.all(
 		[

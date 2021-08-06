@@ -1,10 +1,11 @@
 import BinaryNode from "../BinaryNode";
 import { Boom } from '@hapi/boom'
 import { EventEmitter } from 'events'
-import { Chat, Presence, WAMessageCursor, SocketConfig, WAMessage, WAMessageKey, ParticipantAction, WAMessageProto, WAMessageStatus, WAMessageStubType, GroupMetadata, AnyMessageContent, MiscMessageGenerationOptions, WAFlag, WAMetric, WAUrlInfo, MediaConnInfo, MessageUpdateType, MessageInfo, MessageInfoUpdate } from "../Types";
+import { Chat, Presence, WAMessageCursor, SocketConfig, WAMessage, WAMessageKey, ParticipantAction, WAMessageProto, WAMessageStatus, WAMessageStubType, GroupMetadata, AnyMessageContent, MiscMessageGenerationOptions, WAFlag, WAMetric, WAUrlInfo, MediaConnInfo, MessageUpdateType, MessageInfo, MessageInfoUpdate, WAMediaUploadFunction, MediaType } from "../Types";
 import { isGroupID, toNumber, whatsappID, generateWAMessage, decryptMediaMessageBuffer } from "../Utils";
 import makeChatsSocket from "./chats";
-import { WA_DEFAULT_EPHEMERAL } from "../Defaults";
+import { DEFAULT_ORIGIN, MEDIA_PATH_MAP, WA_DEFAULT_EPHEMERAL } from "../Defaults";
+import got from "got";
 
 const STATUS_MAP = {
 	read: WAMessageStatus.READ,
@@ -209,6 +210,51 @@ const makeMessagesSocket = (config: SocketConfig) => {
 		} else {
 			ev.emit('messages.upsert', { messages: [message], type })
 		} 
+	}
+
+	const waUploadToServer: WAMediaUploadFunction = async(stream, { mediaType, fileEncSha256B64 }) => {
+		// send a query JSON to obtain the url & auth token to upload our media
+		let uploadInfo = await refreshMediaConn(false)
+
+		let mediaUrl: string
+		for (let host of uploadInfo.hosts) {
+			const auth = encodeURIComponent(uploadInfo.auth) // the auth token
+			const url = `https://${host.hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
+			
+			try {
+				const {body: responseText} = await got.post(
+					url, 
+					{
+						headers: { 
+							'Content-Type': 'application/octet-stream',
+							'Origin': DEFAULT_ORIGIN
+						},
+						agent: {
+							https: config.agent
+						},
+						body: stream
+					}
+				)
+				const result = JSON.parse(responseText)
+				mediaUrl = result?.url
+				
+				if (mediaUrl) break
+				else {
+					uploadInfo = await refreshMediaConn(true)
+					throw new Error(`upload failed, reason: ${JSON.stringify(result)}`)
+				}
+			} catch (error) {
+				const isLast = host.hostname === uploadInfo.hosts[uploadInfo.hosts.length-1].hostname
+				logger.debug(`Error in uploading to ${host.hostname} (${error}) ${isLast ? '' : ', retrying...'}`)
+			}
+		}
+		if (!mediaUrl) {
+			throw new Boom(
+				'Media upload failed on all hosts',
+				{ statusCode: 500 }
+			)
+		}
+		return { mediaUrl }
 	}
 
 	/** Query a string to check if it has a url, if it does, return WAUrlInfo */
@@ -484,7 +530,7 @@ const makeMessagesSocket = (config: SocketConfig) => {
 						...options,
 						userJid: userJid,
 						getUrlInfo: generateUrlInfo,
-						getMediaOptions: refreshMediaConn
+						upload: waUploadToServer
 					}
 				)
 				await relayWAMessage(msg, { waitForAck: options.waitForAck })

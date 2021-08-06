@@ -1,5 +1,5 @@
 import P from "pino"
-import type { SocketConfig } from "../Types"
+import type { MediaType, SocketConfig } from "../Types"
 import { Browsers } from "../Utils/generics"
 
 export const UNAUTHORIZED_CODES = [401, 403, 419]
@@ -34,3 +34,14 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	maxQRCodes: Infinity,
 	printQRInTerminal: false,
 }
+
+
+export const MEDIA_PATH_MAP: { [T in MediaType]: string } = {
+    image: '/mms/image',
+    video: '/mms/video',
+    document: '/mms/document',
+    audio: '/mms/audio',
+    sticker: '/mms/image',
+}
+
+export const MEDIA_KEYS = Object.keys(MEDIA_PATH_MAP) as MediaType[]

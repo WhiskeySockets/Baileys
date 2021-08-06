@@ -1,4 +1,4 @@
-import type { Agent } from "https"
+import type { ReadStream } from "fs"
 import type { Logger } from "pino"
 import type { URL } from "url"
 import { proto } from '../../WAMessage'
@@ -125,10 +125,12 @@ export type MiscMessageGenerationOptions = {
 export type MessageGenerationOptionsFromContent = MiscMessageGenerationOptions & {
 	userJid: string
 }
+
+export type WAMediaUploadFunction = (readStream: ReadStream, opts: { fileEncSha256B64: string, mediaType: MediaType }) => Promise<{ mediaUrl: string }>
+
 export type MediaGenerationOptions = {
 	logger?: Logger
-	agent?: Agent
-	getMediaOptions: (refresh: boolean) => Promise<MediaConnInfo>
+    upload: WAMediaUploadFunction
 }
 export type MessageContentGenerationOptions = MediaGenerationOptions & {
 	getUrlInfo?: (text: string) => Promise<WAUrlInfo>
