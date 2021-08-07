@@ -64,8 +64,8 @@ const makeGroupsSocket = (config: SocketConfig) => {
 		})
 		const participants: GroupParticipant[] = []
 		let desc: string | undefined
-		if(Array.isArray(data)) {
-			const nodes = data[0].data as BinaryNode[]
+		if(Array.isArray(data) && Array.isArray(data[0].data)) {
+			const nodes = data[0].data
 			for(const item of nodes) {
 				if(item.header === 'participant') {
 					participants.push({
