@@ -143,7 +143,6 @@ export default(
 					logger.debug({ update }, `got update for non-existent message`)
 				}
 			}
-			
 		})
 		ev.on('messages.delete', item => {
 			const list = assertMessageList(item.jid)

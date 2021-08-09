@@ -18,6 +18,8 @@ import { MediaType } from '../Types'
 import { DEFAULT_ORIGIN } from '../Defaults'
 
 export const hkdfInfoKey = (type: MediaType) => {
+    if(type === 'sticker') type = 'image'
+    
 	let hkdfInfo = type[0].toUpperCase() + type.slice(1)
 	return `WhatsApp ${hkdfInfo} Keys`
 }

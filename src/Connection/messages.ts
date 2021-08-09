@@ -1,7 +1,7 @@
 import BinaryNode from "../BinaryNode";
 import { Boom } from '@hapi/boom'
 import { EventEmitter } from 'events'
-import { Chat, Presence, WAMessageCursor, SocketConfig, WAMessage, WAMessageKey, ParticipantAction, WAMessageProto, WAMessageStatus, WAMessageStubType, GroupMetadata, AnyMessageContent, MiscMessageGenerationOptions, WAFlag, WAMetric, WAUrlInfo, MediaConnInfo, MessageUpdateType, MessageInfo, MessageInfoUpdate, WAMediaUploadFunction, MediaType } from "../Types";
+import { Chat, Presence, WAMessageCursor, SocketConfig, WAMessage, WAMessageKey, ParticipantAction, WAMessageProto, WAMessageStatus, WAMessageStubType, GroupMetadata, AnyMessageContent, MiscMessageGenerationOptions, WAFlag, WAMetric, WAUrlInfo, MediaConnInfo, MessageUpdateType, MessageInfo, MessageInfoUpdate, WAMediaUploadFunction, MediaType, WAMessageUpdate } from "../Types";
 import { isGroupID, toNumber, whatsappID, generateWAMessage, decryptMediaMessageBuffer } from "../Utils";
 import makeChatsSocket from "./chats";
 import { DEFAULT_ORIGIN, MEDIA_PATH_MAP, WA_DEFAULT_EPHEMERAL } from "../Defaults";
@@ -345,6 +345,7 @@ const makeMessagesSocket = (config: SocketConfig) => {
 	// message status updates
 	const onMessageStatusUpdate = ({ data }: BinaryNode) => {
 		if(Array.isArray(data)) {
+			const updates: WAMessageUpdate[] = []
 			for(const { attributes: json } of data) {
 				const key: WAMessageKey = {
 					remoteJid: whatsappID(json.jid),
@@ -354,11 +355,12 @@ const makeMessagesSocket = (config: SocketConfig) => {
 				const status = STATUS_MAP[json.type]
 
 				if(status) {
-					ev.emit('messages.update', [ { key, update: { status } } ])
+					updates.push({ key, update: { status } })
 				} else {
 					logger.warn({ data }, 'got unknown status update for message')
 				}
 			}
+			ev.emit('messages.update', updates)
 		}
 	}
 	const onMessageInfoUpdate = ([,attributes]: [string,{[_: string]: any}]) => {

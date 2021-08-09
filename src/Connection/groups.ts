@@ -199,7 +199,6 @@ const makeGroupsSocket = (config: SocketConfig) => {
 			ev.emit('group-participants.update', { jid, participants: jids, action })
 			return jids
 		},
-
 		/** Query broadcast list info */
 		getBroadcastListInfo: async(jid: string) => { 
 			interface WABroadcastListInfo {
