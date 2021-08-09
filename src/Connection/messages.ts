@@ -432,10 +432,11 @@ const makeMessagesSocket = (config: SocketConfig) => {
 			return info
 		},
 		downloadMediaMessage: async(message: WAMessage, type: 'buffer' | 'stream' = 'buffer') => {
-			let mContent = message.message?.ephemeralMessage?.message || message.message
-			if (!mContent) throw new Boom('No message present', { statusCode: 400, data: message })
-	
+
 			const downloadMediaMessage = async () => {
+				let mContent = message.message?.ephemeralMessage?.message || message.message
+				if (!mContent) throw new Boom('No message present', { statusCode: 400, data: message })
+
 				const stream = await decryptMediaMessageBuffer(mContent)
 				if(type === 'buffer') {
 					let buffer = Buffer.from([])
@@ -451,12 +452,11 @@ const makeMessagesSocket = (config: SocketConfig) => {
 				const result = await downloadMediaMessage()
 				return result
 			} catch (error) {
-				if(error instanceof Boom && error.output?.statusCode === 404) { // media needs to be updated
+				if(error.message.includes('404')) { // media needs to be updated
 					logger.info (`updating media of message: ${message.key.id}`)
 					
 					await updateMediaMessage(message)
 
-					mContent = message.message?.ephemeralMessage?.message || message.message
 					const result = await downloadMediaMessage()
 					return result
 				}
