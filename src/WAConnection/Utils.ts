@@ -14,6 +14,7 @@ import KeyedDB from '@adiwajshing/keyed-db'
 import got, { Options, Response } from 'got'
 import { join } from 'path'
 import { IAudioMetadata } from 'music-metadata'
+import { once } from 'events'
 
 const platformMap = {
     'aix': 'AIX',
@@ -359,7 +360,7 @@ export const encryptedStream = async(media: WAMediaUpload, mediaType: MessageTyp
     for await(const data of stream) {
         fileLength += data.length
         sha256Plain = sha256Plain.update(data)
-        writeStream && writeStream.write(data)
+        if (writeStream && !writeStream.write(data)) await once(writeStream, 'drain') 
         onChunk(aes.update(data))
     }
     onChunk(aes.final())
@@ -371,9 +372,9 @@ export const encryptedStream = async(media: WAMediaUpload, mediaType: MessageTyp
     const fileEncSha256 = sha256Enc.digest()
     
     encWriteStream.write(mac)
-    encWriteStream.close()
+    encWriteStream.end()
 
-    writeStream && writeStream.close()
+    writeStream && writeStream.end()
 
     return {
         mediaKey,
