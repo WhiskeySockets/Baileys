@@ -51,7 +51,7 @@ const makeOrderedDictionary = function<T>(idGetter: (item: T) => string) {
 			if(item) {
 				Object.assign(item, update)
 				delete dict[id]
-				dict[id] = item
+				dict[idGetter(item)] = item
 				return true
 			}
 			return false
