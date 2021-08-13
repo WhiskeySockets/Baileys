@@ -17,7 +17,7 @@ export const WA_DEFAULT_EPHEMERAL = 7*24*60*60
 export const URL_REGEX = /[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)?/gi
 
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
-	version: [2, 2123, 8],
+	version: [2, 2130, 9],
 	browser: Browsers.baileys('Chrome'),
 
 	waWebSocketUrl: 'wss://web.whatsapp.com/ws',

@@ -90,6 +90,9 @@ const makeMessagesSocket = (config: SocketConfig) => {
 			expect200: true, 
 			requiresPhoneConnection: true
 		})
+		if(!response[1]) {
+			throw new Boom('Media not present on phone', { statusCode: 422 })
+		}
 		Object.keys(response[1]).forEach (key => content[key] = response[1][key]) // update message
 
 		ev.emit('messages.update', [{ key: message.key, update: { message: message.message } }])
