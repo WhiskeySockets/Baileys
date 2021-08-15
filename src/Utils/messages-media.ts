@@ -16,6 +16,7 @@ import { generateMessageID, hkdf } from './generics'
 import { Boom } from '@hapi/boom'
 import { MediaType } from '../Types'
 import { DEFAULT_ORIGIN } from '../Defaults'
+import { once } from 'events'
 
 export const hkdfInfoKey = (type: MediaType) => {
     if(type === 'sticker') type = 'image'
@@ -173,6 +174,8 @@ export const encryptedStream = async(media: WAMediaUpload, mediaType: MediaType,
     for await(const data of stream) {
         fileLength += data.length
         sha256Plain = sha256Plain.update(data)
+        if (writeStream && !writeStream.write(data)) await once(writeStream, 'drain')
+        
         writeStream && writeStream.write(data)
         onChunk(aes.update(data))
     }
@@ -185,9 +188,9 @@ export const encryptedStream = async(media: WAMediaUpload, mediaType: MediaType,
     const fileEncSha256 = sha256Enc.digest()
     
     encWriteStream.write(mac)
-    encWriteStream.close()
+    encWriteStream.end()
 
-    writeStream && writeStream.close()
+    writeStream && writeStream.end()
 
     return {
         mediaKey,
