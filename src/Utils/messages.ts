@@ -120,6 +120,7 @@ export const prepareWAMessageMedia = async(
 				fileEncSha256,
 				fileSha256,
 				fileLength,
+				
 				...uploadData
 			}
 		)

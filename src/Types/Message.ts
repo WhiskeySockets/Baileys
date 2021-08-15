@@ -57,27 +57,31 @@ type Buttonable = {
     /** add buttons to the message  */
     buttons?: proto.IButton[]
 }
+type WithDimensions = {
+    width?: number
+    height?: number
+}
 export type MediaType = 'image' | 'video' | 'sticker' | 'audio' | 'document'
 export type AnyMediaMessageContent = (
     ({
         image: WAMediaUpload
         caption?: string
         jpegThumbnail?: string
-    } & Mentionable & Buttonable) | 
+    } & Mentionable & Buttonable & WithDimensions) | 
     ({
         video: WAMediaUpload
         caption?: string
         gifPlayback?: boolean
         jpegThumbnail?: string
-    } & Mentionable & Buttonable) | {
+    } & Mentionable & Buttonable & WithDimensions) | {
         audio: WAMediaUpload
         /** if set to true, will send as a `voice note` */
         pttAudio?: boolean
         /** optionally tell the duration of the audio */
         seconds?: number
-    } | {
-        sticker: WAMediaUpload
     } | ({
+        sticker: WAMediaUpload
+    } & WithDimensions) | ({
         document: WAMediaUpload
         mimetype: string
         fileName?: string
