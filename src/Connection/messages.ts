@@ -81,7 +81,7 @@ const makeMessagesSocket = (config: SocketConfig) => {
 			{ statusCode: 400, data: message }
 		)
 		
-		const response = await query ({
+		const response: BinaryNode = await query ({
 			json: new BinaryNode(
 				'query',
 				{type: 'media', index: message.key.id, owner: message.key.fromMe ? 'true' : 'false', jid: message.key.remoteJid, epoch: currentEpoch().toString()}
@@ -90,10 +90,8 @@ const makeMessagesSocket = (config: SocketConfig) => {
 			expect200: true, 
 			requiresPhoneConnection: true
 		})
-		if(!response[1]) {
-			throw new Boom('Media not present on phone', { statusCode: 422 })
-		}
-		Object.keys(response[1]).forEach (key => content[key] = response[1][key]) // update message
+		const attrs = response.attributes
+		Object.keys(attrs).forEach (key => content[key] = attrs[key]) // update message
 
 		ev.emit('messages.update', [{ key: message.key, update: { message: message.message } }])
 
