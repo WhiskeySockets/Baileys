@@ -110,6 +110,11 @@ const makeAuthSocket = (config: SocketConfig) => {
         )
     }
 
+	const updateEncKeys = () => {
+		// update the keys so we can decrypt traffic
+		socket.updateKeys({ encKey: authInfo!.encKey, macKey: authInfo!.macKey })
+	}
+
 	const generateKeysForAuth = async(ref: string, ttl?: number) => {
 		curveKeys = Curve.generateKeyPair(randomBytes(32))
 		const publicKey = Buffer.from(curveKeys.public).toString('base64')
@@ -168,6 +173,7 @@ const makeAuthSocket = (config: SocketConfig) => {
         })();
         let loginTag: string
         if(canDoLogin) {
+			updateEncKeys()
             // if we have the info to restore a closed session
             const json = [
 				'admin',
@@ -223,8 +229,7 @@ const makeAuthSocket = (config: SocketConfig) => {
         const isNewLogin = user.jid !== state.user?.jid
 		
 		authInfo = auth
-		// update the keys so we can decrypt traffic
-		socket.updateKeys({ encKey: auth.encKey, macKey: auth.macKey })
+		updateEncKeys()
 
 		logger.info({ user }, 'logged in')
 
