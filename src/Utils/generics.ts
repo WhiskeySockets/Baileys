@@ -16,7 +16,7 @@ export const Browsers = {
     /** The appropriate browser based on your OS & release */
     appropriate: browser => [ PLATFORM_MAP[platform()] || 'Ubuntu', browser, release() ] as [string, string, string]
 }
-export const toNumber = (t: Long | number) => (t['low'] || t) as number
+export const toNumber = (t: Long | number) => (typeof t?.['low'] !== 'undefined' ? t['low'] : t) as number
 
 export const whatsappID = (jid: string) => jid?.replace ('@c.us', '@s.whatsapp.net')
 export const isGroupID = (jid: string) => jid?.endsWith ('@g.us')
