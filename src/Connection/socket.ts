@@ -257,7 +257,7 @@ export const makeSocket = ({
         const responseStatusCode = +(response.status ? response.status : 200) // default status
         // read here: http://getstatuscode.com/599
         if(responseStatusCode === 599) { // the connection has gone bad
-            end(new Boom('WA server overloaded', { statusCode: 599 }))
+            end(new Boom('WA server overloaded', { statusCode: 599, data: { query: json, response } }))
         }
         if(expect200 && Math.floor(responseStatusCode/100) !== 2) {
             const message = STATUS_CODES[responseStatusCode] || 'unknown'
