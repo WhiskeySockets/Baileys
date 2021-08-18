@@ -84,7 +84,13 @@ const makeMessagesSocket = (config: SocketConfig) => {
 		const response: BinaryNode = await query ({
 			json: new BinaryNode(
 				'query',
-				{type: 'media', index: message.key.id, owner: message.key.fromMe ? 'true' : 'false', jid: message.key.remoteJid, epoch: currentEpoch().toString()}
+				{
+					type: 'media', 
+					index: message.key.id, 
+					owner: message.key.fromMe ? 'true' : 'false', 
+					jid: message.key.remoteJid, 
+					epoch: currentEpoch().toString()
+				}
 			), 
 			binaryTag: [WAMetric.queryMedia, WAFlag.ignore], 
 			expect200: true, 

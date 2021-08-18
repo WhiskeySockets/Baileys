@@ -280,7 +280,7 @@ const makeChatsSocket = (config: SocketConfig) => {
 		 * Modify a given chat (archive, pin etc.)
 		 * @param jid the ID of the person/group you are modifiying
 		 */
-		modifyChat: async(jid: string, modification: ChatModification) => {	 
+		modifyChat: async(jid: string, modification: ChatModification, index?: WAMessageKey) => {	 
 			let chatAttrs: Attributes = { jid: jid }
 			let data: BinaryNode[] | undefined = undefined
 			const stamp = unixTimestampSeconds()
@@ -322,8 +322,13 @@ const makeChatsSocket = (config: SocketConfig) => {
 				))
 			}
 
+			if(index) {
+				chatAttrs.index = index.id
+				chatAttrs.owner = index.fromMe ? 'true' : 'false'
+			}
+
 			const node = new BinaryNode('chat', chatAttrs, data)
-			const response = await setQuery ([node], [ WAMetric.chat, WAFlag.ignore ])
+			const response = await setQuery([node], [ WAMetric.chat, WAFlag.ignore ])
 			// apply it and emit events
 			executeChatModification(node)
 			return response
