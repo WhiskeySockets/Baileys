@@ -229,10 +229,9 @@ const makeChatsSocket = (config: SocketConfig) => {
 		}
 	})
 
-	socketEvents.on ('CB:action,,user', json => {
-		const node = json[2][0]
-		if (node) {
-			const user = node[1] as Contact
+	socketEvents.on('CB:action,,user', (json: BinaryNode) => {
+		if(Array.isArray(json.data)) {
+			const user = json.data[0].attributes as any as Contact
 			user.jid = whatsappID(user.jid)
 			
 			ev.emit('contacts.upsert', [user])
