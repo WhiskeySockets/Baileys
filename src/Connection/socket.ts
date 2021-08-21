@@ -1,5 +1,4 @@
 import { Boom } from '@hapi/boom'
-import EventEmitter from "events"
 import { STATUS_CODES } from "http"
 import { promisify } from "util"
 import WebSocket from "ws"
@@ -25,8 +24,6 @@ export const makeSocket = ({
     expectResponseTimeout,
     phoneConnectionChanged 
 }: SocketConfig) => {
-	const socketEvents = new EventEmitter()
-    socketEvents.setMaxListeners(0)
 	// for generating tags
 	const referenceDateSeconds = unixTimestampSeconds(new Date())
 	const ws = new WebSocket(waWebSocketUrl, undefined, {
@@ -99,7 +96,7 @@ export const makeSocket = ({
 	const end = (error: Error | undefined) => {
         logger.debug({ error }, 'connection closed')
 
-		ws.removeAllListeners('close')
+        ws.removeAllListeners('close')
         ws.removeAllListeners('error')
         ws.removeAllListeners('open')
         ws.removeAllListeners('message')
@@ -111,8 +108,8 @@ export const makeSocket = ({
         if(ws.readyState !== ws.CLOSED && ws.readyState !== ws.CLOSING) {
             try { ws.close() } catch { }
         }
+
         ws.emit('ws-close', error)
-        // so it cannot be re-emitted
         ws.removeAllListeners('ws-close')
 	}
 	const onMessageRecieved = (message: string | Buffer) => {
@@ -120,7 +117,7 @@ export const makeSocket = ({
             // when the first character in the message is an '!', the server is sending a pong frame
             const timestamp = message.slice(1, message.length).toString ('utf-8')
             lastDateRecv = new Date(parseInt(timestamp))
-            socketEvents.emit('received-pong')
+            ws.emit('received-pong')
         } else {
             let messageTag: string
             let json: any
@@ -141,19 +138,19 @@ export const makeSocket = ({
 
             let anyTriggered = false
             /* Check if this is a response to a message we sent */
-            anyTriggered = socketEvents.emit(`${DEF_TAG_PREFIX}${messageTag}`, json)
+            anyTriggered = ws.emit(`${DEF_TAG_PREFIX}${messageTag}`, json)
             /* Check if this is a response to a message we are expecting */
             const l0 = json.header || json[0] || ''
             const l1 = json?.attributes || json?.[1] || { }
             const l2 = json?.data?.[0]?.header || json[2]?.[0] || ''
 
             Object.keys(l1).forEach(key => {
-                anyTriggered = socketEvents.emit(`${DEF_CALLBACK_PREFIX}${l0},${key}:${l1[key]},${l2}`, json) || anyTriggered
-                anyTriggered = socketEvents.emit(`${DEF_CALLBACK_PREFIX}${l0},${key}:${l1[key]}`, json) || anyTriggered
-                anyTriggered = socketEvents.emit(`${DEF_CALLBACK_PREFIX}${l0},${key}`, json) || anyTriggered
+                anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0},${key}:${l1[key]},${l2}`, json) || anyTriggered
+                anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0},${key}:${l1[key]}`, json) || anyTriggered
+                anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0},${key}`, json) || anyTriggered
             })
-            anyTriggered = socketEvents.emit(`${DEF_CALLBACK_PREFIX}${l0},,${l2}`, json) || anyTriggered
-            anyTriggered = socketEvents.emit(`${DEF_CALLBACK_PREFIX}${l0}`, json) || anyTriggered
+            anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0},,${l2}`, json) || anyTriggered
+            anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0}`, json) || anyTriggered
 
             if (!anyTriggered && logger.level === 'debug') {
                 logger.debug({ unhandled: true, tag: messageTag, fromMe: false, json }, 'communication recv')
@@ -170,12 +167,12 @@ export const makeSocket = ({
                     logger.info({ tag }, `cancelling wait for message as a response is no longer expected from the phone`)
 					cancel(new Boom('Not expecting a response', { statusCode: 422 }))
                 }, expectResponseTimeout)
-                socketEvents.off(PHONE_CONNECTION_CB, listener)
+                ws.off(PHONE_CONNECTION_CB, listener)
             }
         }
-        socketEvents.on(PHONE_CONNECTION_CB, listener)
+        ws.on(PHONE_CONNECTION_CB, listener)
         return () => {
-            socketEvents.off(PHONE_CONNECTION_CB, listener)
+            ws.off(PHONE_CONNECTION_CB, listener)
             timeout && clearTimeout(timeout)
         }
     }
@@ -216,7 +213,7 @@ export const makeSocket = ({
         let onRecv: (json) => void
         let onErr: (err) => void
         let cancelPhoneChecker: () => void
-        if (requiresPhoneConnection) {
+        if(requiresPhoneConnection) {
             startPhoneCheckInterval()
             cancelPhoneChecker = exitQueryIfResponseNotExpected(tag, onErr)
         }
@@ -224,11 +221,12 @@ export const makeSocket = ({
             const result = await promiseTimeout(timeoutMs,
                 (resolve, reject) => {
                     onRecv = resolve
-                    onErr = err => reject(err || new Boom('Connection Closed', { statusCode: 429 }))
+                    onErr = err => {
+                        reject(err || new Boom('Connection Closed', { statusCode: 429 }))
+                    }
                     
-                    socketEvents.on(`TAG:${tag}`, onRecv)
-                    ws.on('close', onErr) // if the socket closes, you'll never receive the message
-                    ws.on('error', onErr)
+                    ws.on(`TAG:${tag}`, onRecv)
+                    ws.on('ws-close', onErr) // if the socket closes, you'll never receive the message
                 },
             )
             return result as any
@@ -236,9 +234,8 @@ export const makeSocket = ({
             requiresPhoneConnection && clearPhoneCheckInterval()
 			cancelPhoneChecker && cancelPhoneChecker()
 
-            socketEvents.off(`TAG:${tag}`, onRecv)
-            ws.off('close', onErr) // if the socket closes, you'll never receive the message
-            ws.off('error', onErr)
+            ws.off(`TAG:${tag}`, onRecv)
+            ws.off('ws-close', onErr) // if the socket closes, you'll never receive the message
         }
     }
     /**
@@ -303,9 +300,9 @@ export const makeSocket = ({
             ws.on('error', onClose)
         })
         .finally(() => {
-            socketEvents.off('open', onOpen)
-            socketEvents.off('close', onClose)
-            socketEvents.off('error', onClose)
+            ws.off('open', onOpen)
+            ws.off('close', onClose)
+            ws.off('error', onClose)
         })
     }
 
@@ -317,7 +314,7 @@ export const makeSocket = ({
 	ws.on('error', end)
 	ws.on('close', () => end(new Boom('Connection Terminated', { statusCode: DisconnectReason.connectionLost })))
 
-    socketEvents.on(PHONE_CONNECTION_CB, json => {
+    ws.on(PHONE_CONNECTION_CB, json => {
         if (!json[1]) {
             end(new Boom('Connection terminated by phone', { statusCode: DisconnectReason.connectionLost }))
             logger.info('Connection terminated by phone, closing...')
@@ -325,7 +322,7 @@ export const makeSocket = ({
             phoneConnectionChanged(true)
         }
     })
-    socketEvents.on('CB:Cmd,type:disconnect', json => {
+    ws.on('CB:Cmd,type:disconnect', json => {
         const {kind} = json[1]
         let reason: DisconnectReason
         switch(kind) {
@@ -343,7 +340,6 @@ export const makeSocket = ({
     })
 
 	return {
-		socketEvents,
         ws,
         updateKeys: (info: { encKey: Buffer, macKey: Buffer }) => authInfo = info,
         waitForSocketOpen,

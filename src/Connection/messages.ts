@@ -18,7 +18,7 @@ const makeMessagesSocket = (config: SocketConfig) => {
 	const sock = makeChatsSocket(config)
 	const { 
 		ev, 
-		socketEvents,
+		ws: socketEvents,
 		query,
 		generateMessageTag,
 		currentEpoch,

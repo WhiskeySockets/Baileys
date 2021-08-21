@@ -1,5 +1,4 @@
 import BinaryNode from "../BinaryNode";
-import { EventEmitter } from 'events'
 import { Chat, Contact, Presence, PresenceData, SocketConfig, WAFlag, WAMetric, WABusinessProfile, ChatModification, WAMessageKey, WAMessage, WAMessageUpdate } from "../Types";
 import { debouncedTimeout, unixTimestampSeconds, whatsappID } from "../Utils/generics";
 import makeAuthSocket from "./auth";
@@ -10,7 +9,7 @@ const makeChatsSocket = (config: SocketConfig) => {
 	const sock = makeAuthSocket(config)
 	const { 
 		ev, 
-		socketEvents,
+		ws: socketEvents,
 		currentEpoch,
 		setQuery,
 		query, 

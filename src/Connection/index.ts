@@ -1,6 +1,5 @@
 import { SocketConfig } from '../Types'
 import { DEFAULT_CONNECTION_CONFIG } from '../Defaults'
-import { EventEmitter } from 'events'
 import _makeConnection from './groups'
 // export the last socket layer
 const makeConnection = (config: Partial<SocketConfig>) => (

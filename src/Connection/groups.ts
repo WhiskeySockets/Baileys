@@ -1,5 +1,4 @@
 import BinaryNode from "../BinaryNode";
-import { EventEmitter } from 'events'
 import { SocketConfig, GroupModificationResponse, ParticipantAction, GroupMetadata, WAFlag, WAMetric, WAGroupCreateResponse, GroupParticipant } from "../Types";
 import { generateMessageID, unixTimestampSeconds, whatsappID } from "../Utils/generics";
 import makeMessagesSocket from "./messages";
@@ -9,7 +8,7 @@ const makeGroupsSocket = (config: SocketConfig) => {
 	const sock = makeMessagesSocket(config)
 	const { 
 		ev, 
-		socketEvents,
+		ws: socketEvents,
 		query,
 		generateMessageTag,
 		currentEpoch,
