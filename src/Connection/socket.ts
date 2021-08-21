@@ -26,6 +26,7 @@ export const makeSocket = ({
     phoneConnectionChanged 
 }: SocketConfig) => {
 	const socketEvents = new EventEmitter()
+    socketEvents.setMaxListeners(0)
 	// for generating tags
 	const referenceDateSeconds = unixTimestampSeconds(new Date())
 	const ws = new WebSocket(waWebSocketUrl, undefined, {
@@ -41,6 +42,7 @@ export const makeSocket = ({
 			'Sec-WebSocket-Extensions': 'permessage-deflate; client_max_window_bits',
 		}
 	})
+    ws.setMaxListeners(0)
 	let lastDateRecv: Date
 	let epoch = 0
 	let authInfo: { encKey: Buffer, macKey: Buffer }
