@@ -48,6 +48,8 @@ const MessageTypeProto = {
    	'document': WAMessageProto.DocumentMessage,
 } as const
 
+const ButtonType = proto.ButtonsMessage.ButtonsMessageHeaderType
+
 export const prepareWAMessageMedia = async(
 	message: AnyMediaMessageContent, 
 	options: MediaGenerationOptions
@@ -237,7 +239,14 @@ export const generateWAMessageContent = async(
 		}
 		if('text' in message) {
 			buttonsMessage.contentText = message.text
+			buttonsMessage.headerType = ButtonType.TEXT
 		} else {
+			if('caption' in message) {
+				buttonsMessage.contentText = message.caption
+			}
+			const type = Object.keys(m)[0].replace('Message', '').toUpperCase()
+			buttonsMessage.headerType = ButtonType[type]
+			
 			Object.assign(buttonsMessage, m)
 		}
 		m = { buttonsMessage }
