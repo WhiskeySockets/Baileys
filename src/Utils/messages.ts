@@ -108,7 +108,7 @@ export const prepareWAMessageMedia = async(
 			uploadData.seconds = await getAudioDuration(bodyPath)
 		}
 	} catch (error) {
-		options.logger?.debug ({ error }, 'failed to obtain audio duration: ' + error.message)
+		options.logger?.info({ trace: error.stack }, 'failed to obtain extra info')
 	}
 	const {mediaUrl} = await options.upload(
 		createReadStream(encBodyPath),

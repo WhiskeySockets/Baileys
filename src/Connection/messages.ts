@@ -537,11 +537,13 @@ const makeMessagesSocket = (config: SocketConfig) => {
 					content,
 					{
 						...options,
+						logger,
 						userJid: userJid,
 						getUrlInfo: generateUrlInfo,
 						upload: waUploadToServer
 					}
 				)
+				
 				await relayWAMessage(msg, { waitForAck: options.waitForAck })
 				return msg
 			}

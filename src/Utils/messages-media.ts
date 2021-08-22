@@ -121,6 +121,7 @@ export async function generateThumbnail(
             options.logger?.debug('could not generate video thumb: ' + err)
         }
     }
+    
     return thumbnail
 }
 export const getGotStream = async(url: string | URL, options: Options & { isStream?: true } = {}) => {
@@ -174,9 +175,9 @@ export const encryptedStream = async(media: WAMediaUpload, mediaType: MediaType,
     for await(const data of stream) {
         fileLength += data.length
         sha256Plain = sha256Plain.update(data)
-        if (writeStream && !writeStream.write(data)) await once(writeStream, 'drain')
-        
-        writeStream && writeStream.write(data)
+        if(writeStream) {
+            if(!writeStream.write(data)) await once(writeStream, 'drain')
+        }
         onChunk(aes.update(data))
     }
     onChunk(aes.final())
