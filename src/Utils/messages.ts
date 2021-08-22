@@ -63,6 +63,15 @@ export const prepareWAMessageMedia = async(
 		[mediaType]: undefined,
 		media: message[mediaType]
 	}
+	// check for cache hit
+	if(typeof uploadData.media === 'object' && 'url' in uploadData.media) {
+		const result = !!options.mediaCache && await options.mediaCache!(uploadData.media.url?.toString())
+		if(result) {
+			return WAMessageProto.Message.fromObject({
+				[`${mediaType}Message`]: result
+			})
+		}
+	}
 	if(mediaType === 'document' && !uploadData.fileName) {
 		uploadData.fileName = 'file'
 	}
@@ -71,7 +80,7 @@ export const prepareWAMessageMedia = async(
 	}
 	const requiresDurationComputation = mediaType === 'audio' && typeof uploadData.seconds === 'undefined'
 	const requiresThumbnailComputation = (mediaType === 'image' || mediaType === 'video') && 
-										!('jpegThumbnail' in uploadData)
+										(typeof uploadData['jpegThumbnail'] === 'undefined')
 	const requiresOriginalForSomeProcessing = requiresDurationComputation || requiresThumbnailComputation
 	const {
 		mediaKey,

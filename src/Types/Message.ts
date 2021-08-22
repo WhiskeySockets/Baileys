@@ -135,6 +135,8 @@ export type WAMediaUploadFunction = (readStream: ReadStream, opts: { fileEncSha2
 export type MediaGenerationOptions = {
 	logger?: Logger
     upload: WAMediaUploadFunction
+    /** cache media so it does not have to be uploaded again */
+    mediaCache?: (url: string) => Promise<WAGenericMediaMessage> | WAGenericMediaMessage
 }
 export type MessageContentGenerationOptions = MediaGenerationOptions & {
 	getUrlInfo?: (text: string) => Promise<WAUrlInfo>
