@@ -97,7 +97,7 @@ export type AnyRegularMessageContent = (
     {
         contacts: {
             displayName?: string
-            contacts: WAContactMessage[]
+            contacts: proto.IContactMessage[]
         }
     } | 
     {  
