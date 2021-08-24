@@ -8,9 +8,8 @@ export enum Presence {
 }
 
 export interface PresenceData {
-    lastKnownPresence?: Presence
+    lastKnownPresence: Presence
     lastSeen?: number
-    name?: string
 }
 
 export interface Chat {
@@ -31,9 +30,6 @@ export interface Chat {
     eph_setting_ts?: string
     /** how long each message lasts for */
     ephemeral?: string
-    
-    // Baileys added properties
-    presences?: { [k: string]: PresenceData }
 }
 
 export type ChatModification = 

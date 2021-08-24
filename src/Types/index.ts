@@ -11,7 +11,7 @@ import type { Logger } from "pino"
 import type { URL } from "url"
 import type BinaryNode from "../BinaryNode"
 import { AnyAuthenticationCredentials, AuthenticationCredentials } from './Auth'
-import { Chat } from './Chat'
+import { Chat, PresenceData } from './Chat'
 import { Contact } from './Contact'
 import { ConnectionState } from './Store'
 
@@ -175,6 +175,8 @@ export type BaileysEventMap = {
     'chats.upsert': Chat[]
     'chats.update': Partial<Chat>[]
     'chats.delete': string[]
+
+    'presence.update': { jid: string, presences: { [participant: string]: PresenceData }  }
 
     'contacts.set': { contacts: Contact[] }
     'contacts.upsert': Contact[]

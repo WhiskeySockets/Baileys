@@ -1,5 +1,5 @@
 import BinaryNode from "../BinaryNode";
-import { Chat, Contact, Presence, PresenceData, SocketConfig, WAFlag, WAMetric, WABusinessProfile, ChatModification, WAMessageKey, WAMessage, WAMessageUpdate } from "../Types";
+import { Chat, Contact, Presence, PresenceData, SocketConfig, WAFlag, WAMetric, WABusinessProfile, ChatModification, WAMessageKey, WAMessage, WAMessageUpdate, BaileysEventMap } from "../Types";
 import { debouncedTimeout, unixTimestampSeconds, whatsappID } from "../Utils/generics";
 import makeAuthSocket from "./auth";
 import { Attributes, BinaryNode as BinaryNodeBase } from "../BinaryNode/types";
@@ -91,26 +91,15 @@ const makeChatsSocket = (config: SocketConfig) => {
 		}     
 	}
 
-	const applyingPresenceUpdate = (update: Attributes, chat: Partial<Chat>) => {
-		chat.jid = whatsappID(update.id)
-        const jid = whatsappID(update.participant || update.id)
+	const applyingPresenceUpdate = (update: Attributes): BaileysEventMap['presence.update'] => {
+		const jid = whatsappID(update.id)
+        const participant = whatsappID(update.participant || update.id)
         
-        if (jid.endsWith('@s.whatsapp.net')) { // if its a single chat
-            chat.presences = chat.presences || {}
-            
-            const presence = { } as PresenceData 
-            
-            if(update.t) {
-				presence.lastSeen = +update.t
-			}
-            presence.lastKnownPresence = update.type as Presence
-            chat.presences[jid] = presence
-
-			chat.presences = {
-				[jid]: presence
-			}
-        }
-		return chat
+        const presence: PresenceData = {
+			lastSeen: update.t ? +update.t : undefined,
+			lastKnownPresence: update.type as Presence
+		}
+		return { jid, presences: { [participant]: presence } }
 	}
 
 	ev.on('connection.update', async({ connection }) => {
@@ -239,8 +228,8 @@ const makeChatsSocket = (config: SocketConfig) => {
 
 	// presence updates
 	socketEvents.on('CB:Presence', json => {
-		const chat = applyingPresenceUpdate(json[1], { })
-		ev.emit('chats.update', [ chat ])
+		const update = applyingPresenceUpdate(json[1])
+		ev.emit('presence.update', update)
 	})
 
 	// blocklist updates

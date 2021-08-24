@@ -2,7 +2,7 @@ import type KeyedDB from "@adiwajshing/keyed-db"
 import type { Comparable } from "@adiwajshing/keyed-db/lib/Types"
 import type { Logger } from "pino"
 import type { Connection } from "../Connection"
-import type { BaileysEventEmitter, Chat, ConnectionState, Contact, GroupMetadata, MessageInfo, WAMessage, WAMessageCursor, WAMessageKey } from "../Types"
+import type { BaileysEventEmitter, Chat, ConnectionState, Contact, GroupMetadata, MessageInfo, PresenceData, WAMessage, WAMessageCursor, WAMessageKey } from "../Types"
 import { toNumber } from "../Utils"
 import makeOrderedDictionary from "./ordered-dictionary"
 
@@ -25,10 +25,11 @@ export default(
 ) => {
 	const KeyedDBConstructor = require('@adiwajshing/keyed-db').default as new (...args: any[]) => KeyedDB<Chat, string>
 	const chats = new KeyedDBConstructor(chatKey, c => c.jid)
-	const messages: { [_: string]: ReturnType<typeof makeMessagesDictionary> } = {}
-	const contacts: { [_: string]: Contact } = {}
-	const groupMetadata: { [_: string]: GroupMetadata } = {}
+	const messages: { [_: string]: ReturnType<typeof makeMessagesDictionary> } = { }
+	const contacts: { [_: string]: Contact } = { }
+	const groupMetadata: { [_: string]: GroupMetadata } = { }
 	const messageInfos: { [id: string]: MessageInfo } = { }
+	const presences: { [id: string]: { [participant: string]: PresenceData } } = { }
 	const state: ConnectionState = {
 		connection: 'close',
 		phoneConnected: false
@@ -87,6 +88,10 @@ export default(
 					logger.debug({ update }, `got update for non-existant chat`)
 				}
 			}
+		})
+		ev.on('presence.update', ({ jid, presences: update }) => {
+			presences[jid] = presences[jid] || {}
+			Object.assign(presences[jid], update)
 		})
 		ev.on('chats.delete', deletions => {
 			for(const item of deletions) {
@@ -207,6 +212,7 @@ export default(
 		groupMetadata,
 		messageInfos,
 		state,
+		presences,
 		listen,
 		loadMessages: async(jid: string, count: number, cursor: WAMessageCursor, sock: Connection | undefined) => {
 			const list = assertMessageList(jid)
