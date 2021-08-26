@@ -222,7 +222,7 @@ export const makeSocket = ({
                 (resolve, reject) => {
                     onRecv = resolve
                     onErr = err => {
-                        reject(err || new Boom('Connection Closed', { statusCode: 429 }))
+                        reject(err || new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed }))
                     }
                     
                     ws.on(`TAG:${tag}`, onRecv)
