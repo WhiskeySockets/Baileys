@@ -337,3 +337,29 @@ export const generateWAMessage = async(
 		options
 	)
 )
+
+/**
+ * Extract the true message content from a message
+ * Eg. extracts the inner message from a disappearing message/view once message
+ */
+export const extractMessageContent = (content: WAMessageContent | undefined | null): WAMessageContent | undefined => {
+	if(content?.buttonsMessage) {
+	  const { buttonsMessage } = content
+	  if(buttonsMessage.imageMessage) {
+		return { imageMessage: buttonsMessage.imageMessage }
+	  } else if(buttonsMessage.documentMessage) {
+		return { documentMessage: buttonsMessage.documentMessage }
+	  } else if(buttonsMessage.videoMessage) {
+		return { videoMessage: buttonsMessage.videoMessage }
+	  } else if(buttonsMessage.locationMessage) {
+		return { locationMessage: buttonsMessage.locationMessage }
+	  } else {
+		return { conversation: buttonsMessage.contentText }
+	  }
+	} else {
+	  return content?.ephemeralMessage?.message || 
+			 content?.viewOnceMessage?.message ||
+			 content || 
+			 undefined
+	}
+  }

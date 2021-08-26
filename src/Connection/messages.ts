@@ -2,7 +2,7 @@ import BinaryNode from "../BinaryNode";
 import { Boom } from '@hapi/boom'
 import { EventEmitter } from 'events'
 import { Chat, Presence, WAMessageCursor, SocketConfig, WAMessage, WAMessageKey, ParticipantAction, WAMessageProto, WAMessageStatus, WAMessageStubType, GroupMetadata, AnyMessageContent, MiscMessageGenerationOptions, WAFlag, WAMetric, WAUrlInfo, MediaConnInfo, MessageUpdateType, MessageInfo, MessageInfoUpdate, WAMediaUploadFunction, MediaType, WAMessageUpdate } from "../Types";
-import { isGroupID, toNumber, whatsappID, generateWAMessage, decryptMediaMessageBuffer } from "../Utils";
+import { isGroupID, toNumber, whatsappID, generateWAMessage, decryptMediaMessageBuffer, extractMessageContent } from "../Utils";
 import makeChatsSocket from "./chats";
 import { DEFAULT_ORIGIN, MEDIA_PATH_MAP, WA_DEFAULT_EPHEMERAL } from "../Defaults";
 import got from "got";
@@ -444,7 +444,7 @@ const makeMessagesSocket = (config: SocketConfig) => {
 		downloadMediaMessage: async(message: WAMessage, type: 'buffer' | 'stream' = 'buffer') => {
 
 			const downloadMediaMessage = async () => {
-				let mContent = message.message?.ephemeralMessage?.message || message.message
+				let mContent = extractMessageContent(message.message)
 				if (!mContent) throw new Boom('No message present', { statusCode: 400, data: message })
 
 				const stream = await decryptMediaMessageBuffer(mContent)
