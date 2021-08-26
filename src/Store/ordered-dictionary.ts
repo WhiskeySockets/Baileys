@@ -61,7 +61,15 @@ const makeOrderedDictionary = function<T>(idGetter: (item: T) => string) {
 			Object.keys(dict).forEach(key => { delete dict[key] })
 		},
 		filter: (contain: (item: T) => boolean) => {
-			//const copy = 
+			let i = 0
+			while(i < array.length) {
+				if(!contain(array[i])) {
+					delete dict[idGetter(array[i])]
+					array.splice(i, 1)
+				} else {
+					i += 1
+				}
+			}
 		}
 	}
 }
