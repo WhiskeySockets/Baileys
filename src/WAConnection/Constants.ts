@@ -419,6 +419,8 @@ export interface MessageOptions {
     sendEphemeral?: 'chat' | boolean
     /** Force message id */
     messageId?: string
+    /** For sticker messages, if set to true, will considered as animated sticker  */
+    isAnimated?: boolean 
 }
 export interface WABroadcastListInfo {
     status: number

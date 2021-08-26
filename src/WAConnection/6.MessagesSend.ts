@@ -271,7 +271,8 @@ export class WAConnection extends Base {
                     gifPlayback: isGIF || undefined,
                     caption: options.caption,
                     ptt: options.ptt,
-                    viewOnce: options.viewOnce
+                    viewOnce: options.viewOnce,
+                    isAnimated: options.isAnimated
                 }
             )
         }
