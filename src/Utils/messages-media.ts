@@ -3,7 +3,6 @@ import type { Logger } from 'pino'
 import type { IAudioMetadata } from 'music-metadata'
 import * as Crypto from 'crypto'
 import { Readable, Transform } from 'stream'
-import Jimp from 'jimp'
 import { createReadStream, createWriteStream, promises as fs, WriteStream } from 'fs'
 import { exec } from 'child_process'
 import { tmpdir } from 'os'
@@ -53,17 +52,19 @@ const extractVideoThumb = async (
     }) as Promise<void>
 
 export const compressImage = async (bufferOrFilePath: Buffer | string) => {
-    const jimp = await Jimp.read(bufferOrFilePath as any)
-    const result = await jimp.resize(48, 48).getBufferAsync(Jimp.MIME_JPEG)
+    const { read, MIME_JPEG } = await import('jimp')
+    const jimp = await read(bufferOrFilePath as any)
+    const result = await jimp.resize(48, 48).getBufferAsync(MIME_JPEG)
     return result
 }
 export const generateProfilePicture = async (buffer: Buffer) => {
-    const jimp = await Jimp.read (buffer)
+    const { read, MIME_JPEG } = await import('jimp')
+    const jimp = await read (buffer)
     const min = Math.min(jimp.getWidth (), jimp.getHeight ())
     const cropped = jimp.crop (0, 0, min, min)
     return {
-        img: await cropped.resize(640, 640).getBufferAsync (Jimp.MIME_JPEG),
-        preview: await cropped.resize(96, 96).getBufferAsync (Jimp.MIME_JPEG)
+        img: await cropped.resize(640, 640).getBufferAsync (MIME_JPEG),
+        preview: await cropped.resize(96, 96).getBufferAsync (MIME_JPEG)
     }
 }
 export const ProxyAgent = (host: string | URL) => HttpsProxyAgent(host) as any as Agent
