@@ -244,9 +244,6 @@ const makeChatsSocket = (config: SocketConfig) => {
 		sendChatsQuery,
 		fetchImageUrl,
 		chatRead: async(fromMessage: WAMessageKey, count: number) => {
-			if(count < 0) {
-				count = -2
-			}
 			await setQuery (
 				[
 					new BinaryNode(
