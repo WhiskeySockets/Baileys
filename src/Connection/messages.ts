@@ -109,11 +109,14 @@ const makeMessagesSocket = (config: SocketConfig) => {
 		// store chat updates in this
 		const chatUpdate: Partial<Chat> = { 
 			jid,
-			t: +toNumber(message.messageTimestamp)
 		}
 
 		const emitGroupUpdate = (update: Partial<GroupMetadata>) => {
 			ev.emit('groups.update', [ { id: jid, ...update } ])
+		}
+		
+		if(message.message) {
+			chatUpdate.t = +toNumber(message.messageTimestamp)
 		}
 		// add to count if the message isn't from me & there exists a message
 		if(!message.key.fromMe && message.message) {
