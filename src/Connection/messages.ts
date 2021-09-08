@@ -117,19 +117,19 @@ const makeMessagesSocket = (config: SocketConfig) => {
 		
 		if(message.message) {
 			chatUpdate.t = +toNumber(message.messageTimestamp)
-		}
-		// add to count if the message isn't from me & there exists a message
-		if(!message.key.fromMe && message.message) {
-			chatUpdate.count = 1
-			const participant = whatsappID(message.participant || jid)
+			// add to count if the message isn't from me & there exists a message
+			if(!message.key.fromMe) {
+				chatUpdate.count = 1
+				const participant = whatsappID(message.participant || jid)
 
-			ev.emit(
-				'presence.update', 
-				{
-					jid,
-					presences: { [participant]: { lastKnownPresence: Presence.available } }
-				}
-			)
+				ev.emit(
+					'presence.update', 
+					{
+						jid,
+						presences: { [participant]: { lastKnownPresence: Presence.available } }
+					}
+				)
+			}
 		}
 
 		const ephemeralProtocolMsg = message.message?.ephemeralMessage?.message?.protocolMessage

@@ -222,7 +222,15 @@ const makeGroupsSocket = (config: SocketConfig) => {
 				))
 			}
 			return metadata
-		}	
+		},
+		inviteCode: async(jid: string) => {
+			const response = await sock.query({
+				json: ['query', 'inviteCode', jid], 
+				expect200: true, 
+				requiresPhoneConnection: false
+			})
+			return response.code as string
+		}
 	}
 
 }
