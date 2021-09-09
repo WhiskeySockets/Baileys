@@ -398,17 +398,29 @@ const makeMessagesSocket = (config: SocketConfig) => {
 				logger.warn({ attributes }, `received unknown message info update`)
 				return
 		}
+		const keyPartial = { 
+			remoteJid: whatsappID(attributes.to),
+			fromMe: whatsappID(attributes.from) === getState().user?.jid,
+		}
 		const updates = ids.map<MessageInfoUpdate>(id => ({
-			key: { 
-				remoteJid: whatsappID(attributes.to), 
-				id, 
-				fromMe: whatsappID(attributes.from) === getState().user?.jid,
-			},
+			key: { ...keyPartial, id },
 			update: {
 				[updateKey]: { [whatsappID(attributes.participant)]: new Date(+attributes.t) }
 			}
 		}))
 		ev.emit('message-info.update', updates)
+		// for individual messages
+		// it means the message is marked read/delivered
+		if(!isGroupID(keyPartial.remoteJid)) {
+			ev.emit('messages.update', ids.map(id => (
+				{
+					key: { ...keyPartial, id },
+					update: {
+						status: updateKey === 'deliveries' ? WAMessageStatus.DELIVERY_ACK : WAMessageStatus.READ
+					}
+				}
+			)))
+		}
 	}
 
 	socketEvents.on('CB:action,add:relay,received', onMessageStatusUpdate)
