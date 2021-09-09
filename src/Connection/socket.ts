@@ -213,16 +213,17 @@ export const makeSocket = ({
         let onRecv: (json) => void
         let onErr: (err) => void
         let cancelPhoneChecker: () => void
-        if(requiresPhoneConnection) {
-            startPhoneCheckInterval()
-            cancelPhoneChecker = exitQueryIfResponseNotExpected(tag, onErr)
-        }
         try {
             const result = await promiseTimeout(timeoutMs,
                 (resolve, reject) => {
                     onRecv = resolve
                     onErr = err => {
                         reject(err || new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed }))
+                    }
+
+                    if(requiresPhoneConnection) {
+                        startPhoneCheckInterval()
+                        cancelPhoneChecker = exitQueryIfResponseNotExpected(tag, onErr)
                     }
                     
                     ws.on(`TAG:${tag}`, onRecv)
