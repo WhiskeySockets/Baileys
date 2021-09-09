@@ -272,19 +272,24 @@ const makeMessagesSocket = (config: SocketConfig) => {
 
 	/** Query a string to check if it has a url, if it does, return WAUrlInfo */
     const generateUrlInfo = async(text: string) => {
-        const response = await query({
+        const response: BinaryNode = await query({
 			json: new BinaryNode(
 				'query',
-				{type: 'url', url: text, epoch: currentEpoch().toString()}
+				{ 
+					type: 'url', 
+					url: text, 
+					epoch: currentEpoch().toString() 
+				}
 			), 
 			binaryTag: [26, WAFlag.ignore], 
 			expect200: true, 
 			requiresPhoneConnection: false
 		})
-        if(response[1]) {
-            response[1].jpegThumbnail = response[2]
+		const urlInfo = { ...response.attributes } as any as WAUrlInfo
+        if(response && response.data) {
+            urlInfo.jpegThumbnail = response.data as Buffer
         }
-        return response[1] as WAUrlInfo
+        return urlInfo
     }
 
 	/** Relay (send) a WAMessage; more advanced functionality to send a built WA Message, you may want to stick with sendMessage() */

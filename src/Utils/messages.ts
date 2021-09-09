@@ -197,7 +197,7 @@ export const generateWAMessageContent = async(
 				extContent.title = data.title
 				extContent.previewType = 0
 			} catch (error) { // ignore if fails
-				
+				options.logger?.warn({ trace: error.stack }, 'url generation failed')
 			} 
 		}
 		m.extendedTextMessage = extContent
