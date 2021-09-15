@@ -1,21 +1,18 @@
-import type { Agent } from 'https'
 import type { Logger } from 'pino'
 import type { IAudioMetadata } from 'music-metadata'
+import { Boom } from '@hapi/boom'
 import * as Crypto from 'crypto'
 import { Readable, Transform } from 'stream'
 import { createReadStream, createWriteStream, promises as fs, WriteStream } from 'fs'
 import { exec } from 'child_process'
 import { tmpdir } from 'os'
-import HttpsProxyAgent from 'https-proxy-agent'
 import { URL } from 'url'
-import { MessageType, WAMessageContent, WAMessageProto, WAGenericMediaMessage, WAMediaUpload } from '../Types'
-import got, { Options, Response } from 'got'
 import { join } from 'path'
-import { generateMessageID, hkdf } from './generics'
-import { Boom } from '@hapi/boom'
-import { MediaType } from '../Types'
-import { DEFAULT_ORIGIN } from '../Defaults'
 import { once } from 'events'
+import got, { Options, Response } from 'got'
+import { MessageType, WAMessageContent, WAProto, WAGenericMediaMessage, WAMediaUpload, MediaType } from '../Types'
+import { generateMessageID, hkdf } from './generics'
+import { DEFAULT_ORIGIN } from '../Defaults'
 
 export const hkdfInfoKey = (type: MediaType) => {
     if(type === 'sticker') type = 'image'
@@ -29,7 +26,7 @@ export function getMediaKeys(buffer, mediaType: MediaType) {
         buffer = Buffer.from(buffer.replace('data:;base64,', ''), 'base64')
     }
     // expand using HKDF to 112 bytes, also pass in the relevant app info
-    const expandedMediaKey = hkdf(buffer, 112, hkdfInfoKey(mediaType))
+    const expandedMediaKey = hkdf(buffer, 112, { info: hkdfInfoKey(mediaType) })
     return {
         iv: expandedMediaKey.slice(0, 16),
         cipherKey: expandedMediaKey.slice(16, 48),
@@ -54,20 +51,18 @@ const extractVideoThumb = async (
 export const compressImage = async (bufferOrFilePath: Buffer | string) => {
     const { read, MIME_JPEG } = await import('jimp')
     const jimp = await read(bufferOrFilePath as any)
-    const result = await jimp.resize(48, 48).getBufferAsync(MIME_JPEG)
+    const result = await jimp.resize(32, 32).getBufferAsync(MIME_JPEG)
     return result
 }
-export const generateProfilePicture = async (buffer: Buffer) => {
+export const generateProfilePicture = async (bufferOrFilePath: Buffer | string) => {
     const { read, MIME_JPEG } = await import('jimp')
-    const jimp = await read (buffer)
+    const jimp = await read(bufferOrFilePath as any)
     const min = Math.min(jimp.getWidth (), jimp.getHeight ())
     const cropped = jimp.crop (0, 0, min, min)
     return {
-        img: await cropped.resize(640, 640).getBufferAsync (MIME_JPEG),
-        preview: await cropped.resize(96, 96).getBufferAsync (MIME_JPEG)
+        img: await cropped.resize(640, 640).getBufferAsync(MIME_JPEG),
     }
 }
-export const ProxyAgent = (host: string | URL) => HttpsProxyAgent(host) as any as Agent
 /** gets the SHA256 of the given media message */
 export const mediaMessageSHA256B64 = (message: WAMessageContent) => {
     const media = Object.values(message)[0] as WAGenericMediaMessage
@@ -113,7 +108,7 @@ export async function generateThumbnail(
     } else if(mediaType === 'video') {
         const imgFilename = join(tmpdir(), generateMessageID() + '.jpg')
         try {
-            await extractVideoThumb(file, imgFilename, '00:00:00', { width: 48, height: 48 })
+            await extractVideoThumb(file, imgFilename, '00:00:00', { width: 32, height: 32 })
             const buff = await fs.readFile(imgFilename)
             thumbnail = buff.toString('base64')
 
@@ -205,6 +200,47 @@ export const encryptedStream = async(media: WAMediaUpload, mediaType: MediaType,
         didSaveToTmpPath
     }
 }
+const DEF_HOST = 'mmg.whatsapp.net'
+export const downloadContentFromMessage = async(
+    { mediaKey, directPath, url }: { mediaKey?: Uint8Array, directPath?: string, url?: string },
+    type: MediaType
+) => {
+    const downloadUrl = url || `https://${DEF_HOST}${directPath}`
+    // download the message
+    const fetched = await getGotStream(downloadUrl, {
+        headers: { Origin: DEFAULT_ORIGIN }
+    })
+    let remainingBytes = Buffer.from([])
+    const { cipherKey, iv } = getMediaKeys(mediaKey, type)
+    const aes = Crypto.createDecipheriv("aes-256-cbc", cipherKey, iv)
+
+    const output = new Transform({
+        transform(chunk, _, callback) {
+            let data = Buffer.concat([remainingBytes, chunk])
+            const decryptLength =
+                Math.floor(data.length / 16) * 16
+            remainingBytes = data.slice(decryptLength)
+            data = data.slice(0, decryptLength)
+
+            try {
+                this.push(aes.update(data))
+                callback()
+            } catch(error) {
+                callback(error)
+            }  
+        },
+        final(callback) {
+            try {
+                this.push(aes.final())
+                callback()
+            } catch(error) {
+                callback(error)
+            }
+        },
+    })
+    return fetched.pipe(output, { end: true })
+}
+
 /**
  * Decode a media message (video, image, document, audio) & return decrypted buffer
  * @param message the media message you want to decode
@@ -237,39 +273,7 @@ export async function decryptMediaMessageBuffer(message: WAMessageContent): Prom
     } else {
         messageContent = message[type]
     }
-    // download the message
-    const fetched = await getGotStream(messageContent.url, {
-        headers: { Origin: DEFAULT_ORIGIN }
-    })
-    let remainingBytes = Buffer.from([])
-    const { cipherKey, iv } = getMediaKeys(messageContent.mediaKey, type.replace('Message', '') as MediaType)
-    const aes = Crypto.createDecipheriv("aes-256-cbc", cipherKey, iv)
-
-    const output = new Transform({
-        transform(chunk, _, callback) {
-            let data = Buffer.concat([remainingBytes, chunk])
-            const decryptLength =
-                Math.floor(data.length / 16) * 16
-            remainingBytes = data.slice(decryptLength)
-            data = data.slice(0, decryptLength)
-
-            try {
-                this.push(aes.update(data))
-                callback()
-            } catch(error) {
-                callback(error)
-            }  
-        },
-        final(callback) {
-            try {
-                this.push(aes.final())
-                callback()
-            } catch(error) {
-                callback(error)
-            }
-        },
-    })
-    return fetched.pipe(output, { end: true })
+    return downloadContentFromMessage(messageContent, type.replace('Message', '') as MediaType)
 }
 export function extensionForMediaMessage(message: WAMessageContent) {
     const getExtension = (mimetype: string) => mimetype.split(';')[0].split('/')[1]
@@ -283,10 +287,10 @@ export function extensionForMediaMessage(message: WAMessageContent) {
         extension = '.jpeg'
     } else {
         const messageContent = message[type] as
-                                | WAMessageProto.VideoMessage
-                                | WAMessageProto.ImageMessage
-                                | WAMessageProto.AudioMessage
-                                | WAMessageProto.DocumentMessage
+                                | WAProto.VideoMessage
+                                | WAProto.ImageMessage
+                                | WAProto.AudioMessage
+                                | WAProto.DocumentMessage
         extension = getExtension (messageContent.mimetype)
     }
     return extension

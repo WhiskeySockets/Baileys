@@ -1,0 +1,253 @@
+import * as libsignal from 'libsignal'
+import { encodeBigEndian, generateCurveKeyPair } from "./generics"
+import { SenderKeyDistributionMessage, GroupSessionBuilder, SenderKeyRecord, SenderKeyName, GroupCipher } from '../../WASignalGroup'
+import { SignalIdentity, SignalKeyStore, SignedKeyPair, KeyPair, AuthenticationState } from "../Types/Auth"
+import { assertNodeErrorFree, BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, getBinaryNodeChildUInt, jidDecode } from "../WABinary"
+import { proto } from "../../WAProto"
+
+export const generateSignalPubKey = (pubKey: Uint8Array | Buffer) => {
+	const newPub = Buffer.alloc(33)
+	newPub.set([5], 0)
+	newPub.set(pubKey, 1)
+	return newPub
+}
+
+const jidToSignalAddress = (jid: string) => jid.split('@')[0]
+
+export const jidToSignalProtocolAddress = (jid: string) => {
+	return new libsignal.ProtocolAddress(jidToSignalAddress(jid), 0)
+}
+
+export const jidToSignalSenderKeyName = (group: string, user: string): string => {
+	return new SenderKeyName(group, jidToSignalProtocolAddress(user)).toString()
+}
+
+export const createSignalIdentity = (
+	wid: string,
+	accountSignatureKey: Uint8Array
+): SignalIdentity => {
+	return { 
+		identifier: { name: wid, deviceId: 0 },
+		identifierKey: generateSignalPubKey(accountSignatureKey)
+	}
+}
+
+export const getPreKeys = async({ getPreKey }: SignalKeyStore, min: number, limit: number) => {
+	const dict: { [id: number]: KeyPair } = { }
+	for(let id = min; id < limit;id++) {
+		const key = await getPreKey(id)
+		if(key) dict[+id] = key
+	}
+	return dict
+}
+
+export const generateOrGetPreKeys = ({ creds }: AuthenticationState, range: number) => {
+	const avaliable = creds.nextPreKeyId - creds.firstUnuploadedPreKeyId
+    const remaining = range - avaliable
+	const lastPreKeyId = creds.nextPreKeyId + remaining - 1
+	const newPreKeys: { [id: number]: KeyPair } = { }
+	if(remaining > 0) {
+		for(let i = creds.nextPreKeyId;i <= lastPreKeyId;i++) {
+			newPreKeys[i] = generateCurveKeyPair()
+		}
+	}
+	return {
+		newPreKeys,
+		lastPreKeyId,
+		preKeysRange: [creds.firstUnuploadedPreKeyId, range] as const,
+	}
+}
+
+
+export const xmppSignedPreKey = (key: SignedKeyPair): BinaryNode => (
+	{
+		tag: 'skey',
+		attrs: { },
+		content: [
+			{ tag: 'id', attrs: { }, content: encodeBigEndian(key.keyId, 3) },
+			{ tag: 'value', attrs: { }, content: key.keyPair.public },
+			{ tag: 'signature', attrs: { }, content: key.signature }
+		]
+	}
+)
+
+export const xmppPreKey = (pair: KeyPair, id: number): BinaryNode => (
+	{
+		tag: 'key',
+		attrs: { },
+		content: [
+			{ tag: 'id', attrs: { }, content: encodeBigEndian(id, 3) },
+			{ tag: 'value', attrs: { }, content: pair.public }
+		]
+	}
+)
+
+export const signalStorage = ({ creds, keys }: AuthenticationState) => ({
+	loadSession: async id => {
+		const sess = await keys.getSession(id)
+		if(sess) {
+			return libsignal.SessionRecord.deserialize(sess)
+		}
+	},
+	storeSession: async(id, session) => {
+		await keys.setSession(id, session.serialize())
+	},
+	isTrustedIdentity: () => {
+		return true
+	},
+	loadPreKey: async(id: number) => {
+		const key = await keys.getPreKey(id)
+		if(key) {
+			return {
+				privKey: Buffer.from(key.private),
+				pubKey: Buffer.from(key.public)
+			}
+		}
+	},
+	removePreKey: (id: number) => keys.setPreKey(id, null),
+	loadSignedPreKey: (keyId: number) => {
+		const key = creds.signedPreKey
+		return {
+			privKey: Buffer.from(key.keyPair.private),
+			pubKey: Buffer.from(key.keyPair.public)
+		}
+	},
+	loadSenderKey: async(keyId) => {
+		const key = await keys.getSenderKey(keyId)
+		if(key) return new SenderKeyRecord(key)
+	},
+	storeSenderKey: async(keyId, key) => {
+		await keys.setSenderKey(keyId, key.serialize())
+	},
+	getOurRegistrationId: () => (
+		creds.registrationId
+	),
+	getOurIdentity: () => {
+		const { signedIdentityKey } = creds
+		return {
+			privKey: Buffer.from(signedIdentityKey.private),
+			pubKey: generateSignalPubKey(signedIdentityKey.public),
+		}
+	}
+})
+
+export const decryptGroupSignalProto = (group: string, user: string, msg: Buffer | Uint8Array, auth: AuthenticationState) => {
+	const senderName = jidToSignalSenderKeyName(group, user)
+	const cipher = new GroupCipher(signalStorage(auth), senderName)
+
+	return cipher.decrypt(Buffer.from(msg))
+}
+
+export const processSenderKeyMessage = async(
+	authorJid: string,
+	item: proto.ISenderKeyDistributionMessage, 
+	auth: AuthenticationState
+) => {
+    const builder = new GroupSessionBuilder(signalStorage(auth))
+	const senderName = jidToSignalSenderKeyName(item.groupId, authorJid)
+
+	const senderMsg = new SenderKeyDistributionMessage(null, null, null, null, item.axolotlSenderKeyDistributionMessage)
+	const senderKey = await auth.keys.getSenderKey(senderName)
+	if(!senderKey) {
+		const record = new SenderKeyRecord()
+		await auth.keys.setSenderKey(senderName, record)
+	}
+	await builder.process(senderName, senderMsg)
+}
+
+export const decryptSignalProto = async(user: string, type: 'pkmsg' | 'msg', msg: Buffer | Uint8Array, auth: AuthenticationState) => {
+	const addr = jidToSignalProtocolAddress(user)
+	const session = new libsignal.SessionCipher(signalStorage(auth), addr)
+	let result: Buffer
+	switch(type) {
+		case 'pkmsg':
+			result = await session.decryptPreKeyWhisperMessage(msg)
+		break
+		case 'msg':
+			result = await session.decryptWhisperMessage(msg)
+		break 
+	}
+	return result
+}
+
+
+export const encryptSignalProto = async(user: string, buffer: Buffer, auth: AuthenticationState) => {
+	const addr = jidToSignalProtocolAddress(user)
+	const cipher = new libsignal.SessionCipher(signalStorage(auth), addr)
+
+	const { type, body } = await cipher.encrypt(buffer)
+	return {
+		type: type === 3 ? 'pkmsg' : 'msg',
+		ciphertext: Buffer.from(body, 'binary')
+	}
+}
+
+export const encryptSenderKeyMsgSignalProto = async(group: string, data: Uint8Array | Buffer, auth: AuthenticationState) => {
+	const storage = signalStorage(auth)
+	const senderName = jidToSignalSenderKeyName(group, auth.creds.me!.id)
+	const builder = new GroupSessionBuilder(storage)
+
+	const senderKey = await auth.keys.getSenderKey(senderName)
+	if(!senderKey) {
+		const record = new SenderKeyRecord()
+		await auth.keys.setSenderKey(senderName, record)
+	}
+
+	const senderKeyDistributionMessage = await builder.create(senderName)
+	const session = new GroupCipher(storage, senderName)
+	return {
+		ciphertext: await session.encrypt(data) as Uint8Array,
+		senderKeyDistributionMessageKey: senderKeyDistributionMessage.serialize() as Buffer,
+	}
+}
+
+export const parseAndInjectE2ESession = async(node: BinaryNode, auth: AuthenticationState) => {
+	const extractKey = (key: BinaryNode) => (
+		key ? ({
+            keyId: getBinaryNodeChildUInt(key, 'id', 3),
+            publicKey: generateSignalPubKey(
+				getBinaryNodeChildBuffer(key, 'value')
+			),
+            signature: getBinaryNodeChildBuffer(key, 'signature'),
+        }) : undefined
+	)
+	node = getBinaryNodeChild(getBinaryNodeChild(node, 'list'), 'user')
+	assertNodeErrorFree(node)
+	
+	const signedKey = getBinaryNodeChild(node, 'skey')
+	const key = getBinaryNodeChild(node, 'key')
+	const identity = getBinaryNodeChildBuffer(node, 'identity')
+	const jid = node.attrs.jid
+	const registrationId = getBinaryNodeChildUInt(node, 'registration', 4)
+
+	const device = {
+		registrationId,
+		identityKey: generateSignalPubKey(identity),
+		signedPreKey: extractKey(signedKey),
+		preKey: extractKey(key)
+	}
+	const cipher = new libsignal.SessionBuilder(signalStorage(auth), jidToSignalProtocolAddress(jid))
+	await cipher.initOutgoing(device)
+}
+
+export const extractDeviceJids = (result: BinaryNode) => {
+	const extracted: { user: string, device?: number, agent?: number }[] = []
+	for(const node of result.content as BinaryNode[]) {
+		const list = getBinaryNodeChild(node, 'list')?.content
+		if(list && Array.isArray(list)) {
+			for(const item of list) {
+				const { user } = jidDecode(item.attrs.jid)
+				const devicesNode = getBinaryNodeChild(item, 'devices')
+				const deviceListNode = getBinaryNodeChild(devicesNode, 'device-list')
+				if(Array.isArray(deviceListNode?.content)) {
+					for(const { tag, attrs } of deviceListNode!.content) {
+						if(tag === 'device') {
+							extracted.push({ user, device: +attrs.id })
+						}
+					}
+				}
+			}
+		}
+	}
+	return extracted
+}

@@ -1,13 +1,84 @@
-import makeConnection from '../src'
-import * as fs from 'fs'
+import { readFileSync, writeFileSync } from "fs"
+import P from "pino"
+import { Boom } from "@hapi/boom"
+import makeWASocket, { WASocket, AuthenticationState, DisconnectReason, AnyMessageContent, BufferJSON, initInMemoryKeyStore, delay } from '../src'
 
-async function example() {
-    const conn = makeConnection({
-        credentials: './auth_info.json'
-    })
-    conn.ev.on('connection.update', state => {
-        console.log(state)
-    })
-}
+(async() => {
+    let sock: WASocket | undefined = undefined
+    // load authentication state from a file
+    const loadState = () => {
+        let state: AuthenticationState | undefined = undefined
+        try {
+            const value = JSON.parse(
+                readFileSync('./auth_info_multi.json', { encoding: 'utf-8' }), 
+                BufferJSON.reviver
+            )
+            state = { 
+                creds: value.creds, 
+                // stores pre-keys, session & other keys in a JSON object
+                // we deserialize it here
+                keys: initInMemoryKeyStore(value.keys) 
+            }
+        } catch{  }
+        return state
+    }
+    // save the authentication state to a file
+    const saveState = (state?: any) => {
+        console.log('saving pre-keys')
+        state = state || sock?.authState
+        writeFileSync(
+            './auth_info_multi.json', 
+            // BufferJSON replacer utility saves buffers nicely
+            JSON.stringify(state, BufferJSON.replacer, 2)
+        )
+    }
+    // start a connection
+    const startSock = () => {
+        const sock = makeWASocket({
+            logger: P({ level: 'trace' }),
+            auth: loadState()
+        })
+        sock.ev.on('messages.upsert', m => {
+            console.log(JSON.stringify(m, undefined, 2))
+            
+            const msg = m.messages[0]
+            if(!msg.key.fromMe && m.type === 'notify') {
+                console.log('replying to', m.messages[0].key.remoteJid)
+                sendMessageWTyping({ text: 'Hello there!' }, m.messages[0].key.remoteJid!)
+            }
+            
+        })
+        sock.ev.on('messages.update', m => console.log(m))
+        sock.ev.on('presence.update', m => console.log(m))
+        sock.ev.on('chats.update', m => console.log(m))
+        return sock
+    }
 
-example().catch((err) => console.log(`encountered error`, err))
+    const sendMessageWTyping = async(msg: AnyMessageContent, jid: string) => {
+
+        await sock.presenceSubscribe(jid)
+        await delay(500)
+
+        await sock.sendPresenceUpdate('composing', jid)
+        await delay(2000)
+
+        await sock.sendPresenceUpdate('paused', jid)
+    }
+
+    sock = startSock()
+    sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect } = update
+        if(connection === 'close') {
+            // reconnect if not logged out
+            if((lastDisconnect.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut) {
+                sock = startSock()
+            } else {
+                console.log('connection closed')
+            }
+        }
+        console.log('connection update', update)
+    })
+    // listen for when the auth state is updated
+    // it is imperative you save this data, it affects the signing keys you need to have conversations
+    sock.ev.on('auth-state.update', () => saveState())
+})()

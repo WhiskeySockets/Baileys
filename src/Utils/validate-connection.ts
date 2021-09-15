@@ -1,116 +1,204 @@
-import {Boom} from '@hapi/boom'
-import * as Curve from 'curve25519-js'
-import type { Contact } from '../Types/Contact'
-import type { AnyAuthenticationCredentials, AuthenticationCredentials, AuthenticationCredentialsBase64, CurveKeyPair } from "../Types"
-import { aesDecrypt, hkdf, hmacSign, whatsappID } from './generics'
-import { readFileSync } from 'fs'
+import { Boom } from '@hapi/boom'
+import { randomBytes } from 'crypto'
+import { proto } from '../../WAProto'
+import type { AuthenticationState, SocketConfig, SignalKeyStore, AuthenticationCreds, KeyPair } from "../Types"
+import { curveSign, hmacSign, curveVerify, encodeInt, generateCurveKeyPair, generateRegistrationId, signedKeyPair } from './generics'
+import { BinaryNode, S_WHATSAPP_NET, jidDecode, Binary } from '../WABinary'
+import { createSignalIdentity } from './signal'
 
-export const normalizedAuthInfo = (authInfo: AnyAuthenticationCredentials | string) => {
-    if (!authInfo) return
-    
-    if (typeof authInfo === 'string') {
-        const file = readFileSync(authInfo, { encoding: 'utf-8' }) // load a closed session back if it exists
-        authInfo = JSON.parse(file) as AnyAuthenticationCredentials
-    }
-    if ('clientID' in authInfo) {
-        authInfo = {
-            clientID: authInfo.clientID,
-            serverToken: authInfo.serverToken,
-            clientToken: authInfo.clientToken,
-            encKey: Buffer.isBuffer(authInfo.encKey) ? authInfo.encKey : Buffer.from(authInfo.encKey, 'base64'),
-            macKey: Buffer.isBuffer(authInfo.macKey) ? authInfo.macKey : Buffer.from(authInfo.macKey, 'base64'), 
-        }
-    } else {
-        const secretBundle: {encKey: string, macKey: string} = typeof authInfo.WASecretBundle === 'string' ? JSON.parse (authInfo.WASecretBundle): authInfo.WASecretBundle
-        authInfo = {
-            clientID: authInfo.WABrowserId.replace(/\"/g, ''),
-            serverToken: authInfo.WAToken2.replace(/\"/g, ''),
-            clientToken: authInfo.WAToken1.replace(/\"/g, ''),
-            encKey: Buffer.from(secretBundle.encKey, 'base64'), // decode from base64
-            macKey: Buffer.from(secretBundle.macKey, 'base64'), // decode from base64
-        }
-    }   
-    return authInfo as AuthenticationCredentials
+const ENCODED_VERSION = 'S9Kdc4pc4EJryo21snc5cg=='
+const getUserAgent = ({ version, browser }: Pick<SocketConfig, 'version' | 'browser'>) => ({
+  appVersion: {
+    primary: version[0],
+    secondary: version[1],
+    tertiary: version[2],
+  },
+  platform: 14,
+  releaseChannel: 0,
+  mcc: "000",
+  mnc: "000",
+  osVersion: browser[2],
+  manufacturer: "",
+  device: browser[1],
+  osBuildNumber: "0.1",
+  localeLanguageIso6391: 'en',
+  localeCountryIso31661Alpha2: 'en',
+})
+
+export const generateLoginNode = (userJid: string, config: Pick<SocketConfig, 'version' | 'browser'>) => {
+  const { user, device } = jidDecode(userJid)
+  const payload = {
+    passive: true,
+    connectType: 1,
+    connectReason: 1,
+    userAgent: getUserAgent(config),
+    webInfo: { webSubPlatform: 0 },
+    username: parseInt(user, 10),
+    device: device,
+  }
+  return proto.ClientPayload.encode(payload).finish()
 }
 
-export const base64EncodedAuthenticationCredentials = (creds: AnyAuthenticationCredentials) => {
-    const normalized = normalizedAuthInfo(creds)
-    return {
-        ...normalized,
-        encKey: normalized.encKey.toString('base64'),
-        macKey: normalized.macKey.toString('base64')
-    } as AuthenticationCredentialsBase64
-}
-
-/**
-* Once the QR code is scanned and we can validate our connection, or we resolved the challenge when logging back in
-* @private
-* @param json
-*/
-export const validateNewConnection = (
-	json: { [_: string]: any }, 
-	auth: AuthenticationCredentials,
-	curveKeys: CurveKeyPair
+export const generateRegistrationNode = (
+  { registrationId, signedPreKey, signedIdentityKey }: Pick<AuthenticationCreds, 'registrationId' | 'signedPreKey' | 'signedIdentityKey'>,
+  config: Pick<SocketConfig, 'version' | 'browser'>
 ) => {
-   // set metadata: one's WhatsApp ID [cc][number]@s.whatsapp.net, name on WhatsApp, info about the phone
-   const onValidationSuccess = () => {
-	   const user: Contact = {
-           jid: whatsappID(json.wid),
-           name: json.pushname
-       }
-	   return { user, auth, phone: json.phone }
-   }
-   if (!json.secret) {
-	   // if we didn't get a secret, we don't need it, we're validated
-	   if (json.clientToken && json.clientToken !== auth.clientToken) {
-			auth = { ...auth, clientToken: json.clientToken }
-	   }
-	   if (json.serverToken && json.serverToken !== auth.serverToken) {
-		   auth = { ...auth, serverToken: json.serverToken }
-	   }
-	   return onValidationSuccess()
-   }
-   const secret = Buffer.from(json.secret, 'base64')
-   if (secret.length !== 144) {
-	   throw new Error ('incorrect secret length received: ' + secret.length)
-   }
+  const appVersionBuf = new Uint8Array(Buffer.from(ENCODED_VERSION, "base64"));
 
-   // generate shared key from our private key & the secret shared by the server
-   const sharedKey = Curve.sharedKey(curveKeys.private, secret.slice(0, 32))
-   // expand the key to 80 bytes using HKDF
-   const expandedKey = hkdf(sharedKey as Buffer, 80)
+  const companion = {
+    os: config.browser[0],
+    version: {
+      primary: 10,
+      secondary: undefined,
+      tertiary: undefined,
+    },
+    platformType: 1,
+    requireFullSync: false,
+  };
 
-   // perform HMAC validation.
-   const hmacValidationKey = expandedKey.slice(32, 64)
-   const hmacValidationMessage = Buffer.concat([secret.slice(0, 32), secret.slice(64, secret.length)])
+  const companionProto = proto.CompanionProps.encode(companion).finish()
 
-   const hmac = hmacSign(hmacValidationMessage, hmacValidationKey)
+  const registerPayload = {
+    connectReason: 1,
+    connectType: 1,
+    passive: false,
+    regData: {
+      buildHash: appVersionBuf,
+      companionProps: companionProto,
+      eRegid: encodeInt(4, registrationId),
+      eKeytype: encodeInt(1, 5),
+      eIdent: signedIdentityKey.public,
+      eSkeyId: encodeInt(3, signedPreKey.keyId),
+      eSkeyVal: signedPreKey.keyPair.public,
+      eSkeySig: signedPreKey.signature,
+    },
+    userAgent: getUserAgent(config),
+    webInfo: {
+      webSubPlatform: 0,
+    },
+  }
 
-   if (!hmac.equals(secret.slice(32, 64))) {
-	   // if the checksums didn't match
-	   throw new Boom('HMAC validation failed', { statusCode: 400 })
-   }
-
-   // computed HMAC should equal secret[32:64]
-   // expandedKey[64:] + secret[64:] are the keys, encrypted using AES, that are used to encrypt/decrypt the messages recieved from WhatsApp
-   // they are encrypted using key: expandedKey[0:32]
-   const encryptedAESKeys = Buffer.concat([
-	   expandedKey.slice(64, expandedKey.length),
-	   secret.slice(64, secret.length),
-   ])
-   const decryptedKeys = aesDecrypt(encryptedAESKeys, expandedKey.slice(0, 32))
-   // set the credentials
-   auth = {
-	   encKey: decryptedKeys.slice(0, 32), // first 32 bytes form the key to encrypt/decrypt messages
-	   macKey: decryptedKeys.slice(32, 64), // last 32 bytes from the key to sign messages
-	   clientToken: json.clientToken,
-	   serverToken: json.serverToken,
-	   clientID: auth.clientID,
-   }
-   return onValidationSuccess()
+  return proto.ClientPayload.encode(registerPayload).finish()
 }
-export const computeChallengeResponse = (challenge: string, auth: AuthenticationCredentials) => {
-	const bytes = Buffer.from(challenge, 'base64') // decode the base64 encoded challenge string
-	const signed = hmacSign(bytes, auth.macKey).toString('base64') // sign the challenge string with our macKey
-	return[ 'admin', 'challenge', signed, auth.serverToken, auth.clientID] // prepare to send this signed string with the serverToken & clientID
+
+export const initInMemoryKeyStore = (
+  { preKeys, sessions, senderKeys }: { 
+    preKeys?: { [k: number]: KeyPair },
+    sessions?: { [k: string]: any },
+    senderKeys?: { [k: string]: any }
+  } = { },
+) => {
+  preKeys = preKeys || { }
+  sessions = sessions || { }
+  senderKeys = senderKeys || { }
+  return {
+    preKeys,
+    sessions,
+    senderKeys,
+    getPreKey: keyId => preKeys[keyId],
+    setPreKey: (keyId, pair) => {
+      if(pair) preKeys[keyId] = pair
+      else delete preKeys[keyId]
+    },
+    getSession: id => sessions[id],
+    setSession: (id, item) => {
+      if(item) sessions[id] = item
+      else delete sessions[id]
+    },
+    getSenderKey: id => {
+      return senderKeys[id]
+    },
+    setSenderKey: (id, item) => {
+      if(item) senderKeys[id] = item
+      else delete senderKeys[id]
+    }
+  } as SignalKeyStore
+}
+
+export const initAuthState = (): AuthenticationState => {
+  const identityKey = generateCurveKeyPair()
+  return {
+    creds: {
+      noiseKey: generateCurveKeyPair(),
+      signedIdentityKey: identityKey,
+      signedPreKey: signedKeyPair(identityKey, 1),
+      registrationId: generateRegistrationId(),
+      advSecretKey: randomBytes(32).toString('base64'),
+
+      nextPreKeyId: 1,
+      firstUnuploadedPreKeyId: 1,
+      serverHasPreKeys: false
+    },
+    keys: initInMemoryKeyStore()
+  }
+}
+
+export const configureSuccessfulPairing = (
+  stanza: BinaryNode,
+  { advSecretKey, signedIdentityKey, signalIdentities }: Pick<AuthenticationCreds, 'advSecretKey' | 'signedIdentityKey' | 'signalIdentities'>
+) => {
+  const pair = stanza.content[0] as BinaryNode
+  const pairContent = Array.isArray(pair.content) ? pair.content : []
+
+  const msgId = stanza.attrs.id
+  const deviceIdentity = pairContent.find(m => m.tag === 'device-identity')?.content
+  const businessName = pairContent.find(m => m.tag === 'biz')?.attrs?.name
+  const verifiedName = businessName || ''
+  const jid = pairContent.find(m => m.tag === 'device')?.attrs?.jid
+
+  const { details, hmac } = proto.ADVSignedDeviceIdentityHMAC.decode(deviceIdentity as Buffer)
+
+  const advSign = hmacSign(details, Buffer.from(advSecretKey, 'base64'))
+
+  if (Buffer.compare(hmac, advSign) !== 0) {
+    throw new Boom('Invalid pairing')
+  }
+
+  const account = proto.ADVSignedDeviceIdentity.decode(details)
+  const { accountSignatureKey, accountSignature } = account
+
+  const accountMsg = Binary.build(new Uint8Array([6, 0]), account.details, signedIdentityKey.public).readByteArray()
+  if (!curveVerify(accountSignatureKey, accountMsg, accountSignature)) {
+    throw new Boom('Failed to verify account signature')
+  }
+
+  const deviceMsg = Binary.build(new Uint8Array([6, 1]), account.details, signedIdentityKey.public, account.accountSignatureKey).readByteArray()
+  account.deviceSignature = curveSign(signedIdentityKey.private, deviceMsg)
+
+  const identity = createSignalIdentity(jid, accountSignatureKey)
+
+  const keyIndex = proto.ADVDeviceIdentity.decode(account.details).keyIndex
+
+  const accountEnc = proto.ADVSignedDeviceIdentity.encode({
+    ...account.toJSON(),
+    accountSignatureKey: undefined
+  }).finish()
+
+  const reply: BinaryNode = {
+    tag: 'iq',
+    attrs: {
+      to: S_WHATSAPP_NET,
+      type: 'result',
+      id: msgId,
+    },
+    content: [
+      { 
+        tag: 'pair-device-sign', 
+        attrs: { },
+        content: [
+          { tag: 'device-identity', attrs: { 'key-index': `${keyIndex}` }, content: accountEnc }
+        ]
+      }
+    ]
+  }
+
+  const authUpdate: Partial<AuthenticationCreds> = {
+    account, 
+    me: { id: jid, verifiedName }, 
+    signalIdentities: [...(signalIdentities || []), identity] 
+  }
+  return {
+    creds: authUpdate,
+    reply
+  }
 }

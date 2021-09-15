@@ -1,6 +1,6 @@
 import { Boom } from '@hapi/boom'
 import { createReadStream, promises as fs } from "fs"
-import { proto } from '../../WAMessage'
+import { proto } from '../../WAProto'
 import { MEDIA_KEYS, URL_REGEX, WA_DEFAULT_EPHEMERAL } from "../Defaults"
 import { 
 	AnyMediaMessageContent, 
@@ -13,7 +13,7 @@ import {
 	WAMediaUpload, 
 	WAMessage, 
 	WAMessageContent, 
-	WAMessageProto, 
+	WAProto, 
 	WATextMessage,
 	MediaType, 
 	WAMessageStatus
@@ -38,14 +38,15 @@ const MIMETYPE_MAP: { [T in MediaType]: string } = {
     document: 'application/pdf',
     audio: 'audio/ogg; codecs=opus',
     sticker: 'image/webp',
+	history: 'application/x-protobuf'
 }
 
 const MessageTypeProto = {
-    'image': WAMessageProto.ImageMessage,
-    'video': WAMessageProto.VideoMessage,
-    'audio': WAMessageProto.AudioMessage,
-    'sticker': WAMessageProto.StickerMessage,
-   	'document': WAMessageProto.DocumentMessage,
+    'image': WAProto.ImageMessage,
+    'video': WAProto.VideoMessage,
+    'audio': WAProto.AudioMessage,
+    'sticker': WAProto.StickerMessage,
+   	'document': WAProto.DocumentMessage,
 } as const
 
 const ButtonType = proto.ButtonsMessage.ButtonsMessageHeaderType
@@ -69,7 +70,7 @@ export const prepareWAMessageMedia = async(
 	if(typeof uploadData.media === 'object' && 'url' in uploadData.media) {
 		const result = !!options.mediaCache && await options.mediaCache!(uploadData.media.url?.toString())
 		if(result) {
-			return WAMessageProto.Message.fromObject({
+			return WAProto.Message.fromObject({
 				[`${mediaType}Message`]: result
 			})
 		}
@@ -136,7 +137,7 @@ export const prepareWAMessageMedia = async(
 			}
 		)
 	}
-	return WAMessageProto.Message.fromObject(content)
+	return WAProto.Message.fromObject(content)
 }
 export const prepareDisappearingMessageSettingContent = (ephemeralExpiration?: number) => {
 	ephemeralExpiration = ephemeralExpiration || 0
@@ -144,13 +145,13 @@ export const prepareDisappearingMessageSettingContent = (ephemeralExpiration?: n
 		ephemeralMessage: {
 			message: {
 				protocolMessage: {
-					type: WAMessageProto.ProtocolMessage.ProtocolMessageType.EPHEMERAL_SETTING,
+					type: WAProto.ProtocolMessage.ProtocolMessageType.EPHEMERAL_SETTING,
 					ephemeralExpiration
 				}
 			}
 		}
 	}
-	return WAMessageProto.Message.fromObject(content)
+	return WAProto.Message.fromObject(content)
 }
 /**
  * Generate forwarded message content like WA does
@@ -207,14 +208,14 @@ export const generateWAMessageContent = async(
 			throw new Boom('require atleast 1 contact', { statusCode: 400 })
 		} 
 		if(contactLen === 1) {
-			m.contactMessage = WAMessageProto.ContactMessage.fromObject(message.contacts.contacts[0])
+			m.contactMessage = WAProto.ContactMessage.fromObject(message.contacts.contacts[0])
 		}
 	} else if('location' in message) {
-		m.locationMessage = WAMessageProto.LocationMessage.fromObject(message.location)
+		m.locationMessage = WAProto.LocationMessage.fromObject(message.location)
 	} else if('delete' in message) {
 		m.protocolMessage = {
 			key: message.delete,
-			type: WAMessageProto.ProtocolMessage.ProtocolMessageType.REVOKE
+			type: WAProto.ProtocolMessage.ProtocolMessageType.REVOKE
 		}
 	} else if('forward' in message) {
 		m = generateForwardMessageContent(
@@ -259,7 +260,7 @@ export const generateWAMessageContent = async(
 		m[messageType].contextInfo = m[messageType] || { }
 		m[messageType].contextInfo.mentionedJid = message.mentions
 	}
-	return WAMessageProto.Message.fromObject(m)
+	return WAProto.Message.fromObject(m)
 }
 export const generateWAMessageFromContent = (
 	jid: string, 
@@ -290,7 +291,7 @@ export const generateWAMessageFromContent = (
 	}
 	if(
 		// if we want to send a disappearing message
-		!!options?.ephemeralOptions &&
+		!!options?.ephemeralExpiration &&
 		// and it's not a protocol message -- delete, toggle disappear message
 		key !== 'protocolMessage' &&
 		// already not converted to disappearing message
@@ -298,8 +299,8 @@ export const generateWAMessageFromContent = (
 	) {
 		message[key].contextInfo = {
 			...(message[key].contextInfo || {}),
-			expiration: options.ephemeralOptions.expiration || WA_DEFAULT_EPHEMERAL,
-			ephemeralSettingTimestamp: options.ephemeralOptions.eph_setting_ts?.toString()
+			expiration: options.ephemeralExpiration || WA_DEFAULT_EPHEMERAL,
+			//ephemeralSettingTimestamp: options.ephemeralOptions.eph_setting_ts?.toString()
 		}
 		message = {
 			ephemeralMessage: {
@@ -307,7 +308,7 @@ export const generateWAMessageFromContent = (
 			}
 		}
 	} 
-	message = WAMessageProto.Message.fromObject (message)
+	message = WAProto.Message.fromObject (message)
 
 	const messageJSON = {
 		key: {
@@ -321,7 +322,7 @@ export const generateWAMessageFromContent = (
 		participant: jid.includes('@g.us') ? userJid : undefined,
 		status: WAMessageStatus.PENDING
 	}
-	return WAMessageProto.WebMessageInfo.fromObject (messageJSON)
+	return WAProto.WebMessageInfo.fromObject (messageJSON)
 }
 export const generateWAMessage = async(
 	jid: string,

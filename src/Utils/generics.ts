@@ -1,7 +1,10 @@
 import { Boom } from '@hapi/boom'
+import CurveCrypto from 'libsignal/src/curve25519_wrapper'
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto'
-import HKDF from 'futoin-hkdf'
 import { platform, release } from 'os'
+import { KeyPair } from '../Types'
+import { proto } from '../../WAProto'
+import { Binary } from '../WABinary'
 
 const PLATFORM_MAP = {
     'aix': 'AIX',
@@ -9,6 +12,7 @@ const PLATFORM_MAP = {
     'win32': 'Windows',
     'android': 'Android'
 }
+
 export const Browsers = {
     ubuntu: browser => ['Ubuntu', browser, '18.04'] as [string, string, string],
     macOS: browser => ['Mac OS', browser, '10.15.3'] as [string, string, string],
@@ -16,6 +20,118 @@ export const Browsers = {
     /** The appropriate browser based on your OS & release */
     appropriate: browser => [ PLATFORM_MAP[platform()] || 'Ubuntu', browser, release() ] as [string, string, string]
 }
+
+export const BufferJSON = {
+    replacer: (k, value: any) => {
+        if(Buffer.isBuffer(value) || value instanceof Uint8Array || value?.type === 'Buffer') {
+            return { type: 'Buffer', data: Buffer.from(value?.data || value).toString('base64') }
+        }
+        return value
+    },
+    reviver: (_, value: any) => {
+        if(typeof value === 'object' && !!value && (value.buffer === true || value.type === 'Buffer')) {
+            const val = value.data || value.value 
+            return typeof val === 'string' ? Buffer.from(val, 'base64') : Buffer.from(val)
+        }
+        return value
+      } 
+}
+
+
+export const writeRandomPadMax16 = function(e: Binary) {
+    function r(e: Binary, t: number) {
+      for (var r = 0; r < t; r++)
+          e.writeUint8(t)
+    }
+  
+    var t = randomBytes(1)
+    r(e, 1 + (15 & t[0]))
+    return e
+}
+
+export const unpadRandomMax16 = (e: Uint8Array | Buffer) => {
+    const t = new Uint8Array(e);
+    if (0 === t.length) {
+        throw new Error('unpadPkcs7 given empty bytes');
+    }
+  
+    var r = t[t.length - 1];
+    if (r > t.length) {
+        throw new Error(`unpad given ${t.length} bytes, but pad is ${r}`);
+    }
+  
+    return new Uint8Array(t.buffer, t.byteOffset, t.length - r);
+}
+
+export const encodeWAMessage = (message: proto.IMessage) => (
+    Buffer.from(
+        writeRandomPadMax16(
+            new Binary(proto.Message.encode(message).finish())
+        ).readByteArray()
+    )
+)
+
+export const generateCurveKeyPair = (): KeyPair => {
+    const { pubKey, privKey } = CurveCrypto.keyPair(randomBytes(32))
+    return {
+        private: Buffer.from(privKey),
+        public: Buffer.from(pubKey)
+    }
+}
+
+export const generateSharedKey = (privateKey: Uint8Array, publicKey: Uint8Array) => {
+    const shared = CurveCrypto.sharedSecret(publicKey, privateKey)
+    return Buffer.from(shared)
+}
+
+export const curveSign = (privateKey: Uint8Array, buf: Uint8Array) => (
+    Buffer.from(CurveCrypto.sign(privateKey, buf))
+)
+
+export const curveVerify = (pubKey: Uint8Array, message: Uint8Array, signature: Uint8Array) => {
+    try {
+        CurveCrypto.verify(pubKey, message, signature)
+        return true
+    } catch(error) {
+        if(error.message.includes('Invalid')) {
+            return false
+        }
+        throw error
+    }
+}
+
+export const signedKeyPair = (keyPair: KeyPair, keyId: number) => {
+    const signKeys = generateCurveKeyPair()
+    const pubKey = new Uint8Array(33)
+    pubKey.set([5], 0)
+    pubKey.set(signKeys.public, 1)
+
+    const signature = curveSign(keyPair.private, pubKey)
+  
+    return { keyPair: signKeys, signature, keyId }
+}
+
+export const generateRegistrationId = () => (
+    Uint16Array.from(randomBytes(2))[0] & 0x3fff
+)
+
+export const encodeInt = (e: number, t: number) => {
+    for (var r = t, a = new Uint8Array(e), i = e - 1; i >= 0; i--) {
+        a[i] = 255 & r
+        r >>>= 8
+    }
+    return a
+}
+export const encodeBigEndian = (e: number, t=4) => {
+    let r = e;
+    let a = new Uint8Array(t);
+    for (let i = t - 1; i >= 0; i--) {
+      a[i] = 255 & r
+      r >>>= 8
+    }
+    return a
+}
+
 export const toNumber = (t: Long | number) => (typeof t?.['low'] !== 'undefined' ? t['low'] : t) as number
 
 export const whatsappID = (jid: string) => jid?.replace ('@c.us', '@s.whatsapp.net')
@@ -48,7 +164,7 @@ export function aesDecryptWithIV(buffer: Buffer, key: Buffer, IV: Buffer) {
     return Buffer.concat([aes.update(buffer), aes.final()])
 }
 // encrypt AES 256 CBC; where a random IV is prefixed to the buffer
-export function aesEncrypt(buffer: Buffer, key: Buffer) {
+export function aesEncrypt(buffer: Buffer | Uint8Array, key: Buffer) {
     const IV = randomBytes(16)
     const aes = createCipheriv('aes-256-cbc', key, IV)
     return Buffer.concat([IV, aes.update(buffer), aes.final()]) // prefix IV to the buffer
@@ -59,20 +175,47 @@ export function aesEncrypWithIV(buffer: Buffer, key: Buffer, IV: Buffer) {
     return Buffer.concat([aes.update(buffer), aes.final()]) // prefix IV to the buffer
 }
 // sign HMAC using SHA 256
-export function hmacSign(buffer: Buffer, key: Buffer) {
-    return createHmac('sha256', key).update(buffer).digest()
+export function hmacSign(buffer: Buffer | Uint8Array, key: Buffer | Uint8Array, variant: 'sha256' | 'sha512' = 'sha256') {
+    return createHmac(variant, key).update(buffer).digest()
 }
 export function sha256(buffer: Buffer) {
     return createHash('sha256').update(buffer).digest()
 }
 // HKDF key expansion
-export function hkdf(buffer: Buffer, expandedLength: number, info = null) {
-    return HKDF(buffer, expandedLength, { salt: Buffer.alloc(32), info: info, hash: 'SHA-256' })
+// from: https://github.com/benadida/node-hkdf
+export function hkdf(buffer: Buffer, expandedLength: number, { info, salt }: { salt?: Buffer, info?: string }) {
+    const hashAlg = 'sha256'
+    const hashLength = 32
+    salt = salt || Buffer.alloc(hashLength)
+    // now we compute the PRK
+    const prk = createHmac(hashAlg, salt).update(buffer).digest()
+
+    let prev = Buffer.from([])
+    const buffers = []
+    const num_blocks = Math.ceil(expandedLength / hashLength)
+    
+    const infoBuff = Buffer.from(info || [])
+
+    for (var i=0; i<num_blocks; i++) {
+      const hmac = createHmac(hashAlg, prk)
+      // XXX is there a more optimal way to build up buffers?
+      const input = Buffer.concat([
+        prev,
+        infoBuff,
+        Buffer.from(String.fromCharCode(i + 1))
+      ]);
+      hmac.update(input)
+
+      prev = hmac.digest()
+      buffers.push(prev)
+    }
+    return Buffer.concat(buffers, expandedLength)
 }
 /** unix timestamp of a date in seconds */
 export const unixTimestampSeconds = (date: Date = new Date()) => Math.floor(date.getTime()/1000)
 
 export type DebouncedTimeout = ReturnType<typeof debouncedTimeout>
+
 export const debouncedTimeout = (intervalMs: number = 1000, task: () => void = undefined) => {
     let timeout: NodeJS.Timeout
     return {
@@ -135,14 +278,5 @@ export async function promiseTimeout<T>(ms: number, promise: (resolve: (v?: T)=>
     .finally (cancel)
     return p as Promise<T>
 }
-// whatsapp requires a message tag for every message, we just use the timestamp as one
-export function generateMessageTag(epoch?: number) {
-    let tag = unixTimestampSeconds().toString()
-    if (epoch) tag += '.--' + epoch // attach epoch if provided
-    return tag
-}
-// generate a random 16 byte client ID
-export const generateClientID = () => randomBytes(16).toString('base64')
 // generate a random ID to attach to a message
-// this is the format used for WA Web 4 byte hex prefixed with 3EB0
-export const generateMessageID = () => '3EB0' + randomBytes(4).toString('hex').toUpperCase()
+export const generateMessageID = () => 'BAE5' + randomBytes(6).toString('hex').toUpperCase()

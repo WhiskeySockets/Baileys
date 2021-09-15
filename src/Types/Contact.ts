@@ -1,15 +1,11 @@
 export interface Contact {
-    verify?: string
-    /** name of the contact, the contact has set on their own on WA */
-    notify?: string
-    jid: string
-    /** I have no idea */
-    vname?: string
+    id: string
     /** name of the contact, you have saved on your WA */
     name?: string
-    index?: string
-    /** short name for the contact */
-    short?: string
+    /** name of the contact, the contact has set on their own on WA */
+    notify?: string
+    /** I have no idea */
+    verifiedName?: string
     // Baileys Added
     imgUrl?: string
     status?: string

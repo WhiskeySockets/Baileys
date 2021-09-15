@@ -1,9 +1,11 @@
-import makeConnection from './Connection'
+import makeWASocket from './Socket'
 
-export * from '../WAMessage'
+export * from '../WAProto'
 export * from './Utils'
 export * from './Types'
-export * from './Store'
+//export * from './Store'
 export * from './Defaults'
 
-export default makeConnection
+export type WASocket = ReturnType<typeof makeWASocket>
+
+export default makeWASocket

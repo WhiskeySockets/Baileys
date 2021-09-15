@@ -1,18 +1,18 @@
 import type { ReadStream } from "fs"
 import type { Logger } from "pino"
 import type { URL } from "url"
-import { proto } from '../../WAMessage'
+import { proto } from '../../WAProto'
 
 // export the WAMessage Prototypes
-export { proto as WAMessageProto }
-export type WAMessage = proto.WebMessageInfo
+export { proto as WAProto }
+export type WAMessage = proto.IWebMessageInfo
 export type WAMessageContent = proto.IMessage
-export type WAContactMessage = proto.ContactMessage
-export type WAContactsArrayMessage = proto.ContactsArrayMessage
+export type WAContactMessage = proto.IContactMessage
+export type WAContactsArrayMessage = proto.IContactsArrayMessage
 export type WAMessageKey = proto.IMessageKey
-export type WATextMessage = proto.ExtendedTextMessage
+export type WATextMessage = proto.IExtendedTextMessage
 export type WAContextInfo = proto.IContextInfo
-export type WALocationMessage = proto.LocationMessage
+export type WALocationMessage = proto.ILocationMessage
 export type WAGenericMediaMessage = proto.IVideoMessage | proto.IImageMessage | proto.IAudioMessage | proto.IDocumentMessage | proto.IStickerMessage
 export import WAMessageStubType = proto.WebMessageInfo.WebMessageInfoStubType
 export import WAMessageStatus = proto.WebMessageInfo.WebMessageInfoStatus
@@ -23,19 +23,9 @@ export type MessageType = keyof proto.Message
 export type MediaConnInfo = {
     auth: string 
     ttl: number
-    hosts: {
-        hostname: string
-    }[]
+    hosts: { hostname: string }[]
     fetchDate: Date
 }
-
-/** Reverse stub type dictionary */
-export const WA_MESSAGE_STUB_TYPES = function () {
-    const types = WAMessageStubType
-    const dict: Record<number, string> = {}
-    Object.keys(types).forEach(element => dict[ types[element] ] = element)
-    return dict
-}()
 
 export interface WAUrlInfo {
     'canonical-url': string
@@ -61,7 +51,7 @@ type WithDimensions = {
     width?: number
     height?: number
 }
-export type MediaType = 'image' | 'video' | 'sticker' | 'audio' | 'document'
+export type MediaType = 'image' | 'video' | 'sticker' | 'audio' | 'document' | 'history'
 export type AnyMediaMessageContent = (
     ({
         image: WAMediaUpload
@@ -121,10 +111,7 @@ export type MiscMessageGenerationOptions = {
     /** the message you want to quote */
 	quoted?: WAMessage
     /** disappearing messages settings */
-    ephemeralOptions?: { 
-        expiration: number | string
-        eph_setting_ts?: number | string
-    }
+    ephemeralExpiration?: number | string
 }
 export type MessageGenerationOptionsFromContent = MiscMessageGenerationOptions & {
 	userJid: string
@@ -143,7 +130,7 @@ export type MessageContentGenerationOptions = MediaGenerationOptions & {
 }
 export type MessageGenerationOptions = MessageContentGenerationOptions & MessageGenerationOptionsFromContent
 
-export type MessageUpdateType = 'prepend' | 'append' | 'notify' | 'last'
+export type MessageUpdateType = 'append' | 'notify'
 
 export type MessageInfoEventMap = { [jid: string]: Date }
 export interface MessageInfo {

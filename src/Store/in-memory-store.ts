@@ -1,13 +1,13 @@
 import type KeyedDB from "@adiwajshing/keyed-db"
 import type { Comparable } from "@adiwajshing/keyed-db/lib/Types"
 import type { Logger } from "pino"
-import type { Connection } from "../Connection"
+import type { Connection } from "../Socket"
 import type { BaileysEventEmitter, Chat, ConnectionState, Contact, GroupMetadata, MessageInfo, PresenceData, WAMessage, WAMessageCursor, WAMessageKey } from "../Types"
 import { toNumber } from "../Utils"
 import makeOrderedDictionary from "./ordered-dictionary"
 
 export const waChatKey = (pin: boolean) => ({
-    key: (c: Chat) => (pin ? (c.pin ? '1' : '0') : '') + (c.archive === 'true' ? '0' : '1') + c.t.toString(16).padStart(8, '0') + c.jid,
+    key: (c: Chat) => (pin ? (c.pin ? '1' : '0') : '') + (c.archive ? '0' : '1') + toNumber(c.conversationTimestamp).toString(16).padStart(8, '0') + c.id,
     compare: (k1: string, k2: string) => k2.localeCompare (k1)
 })
 
@@ -30,10 +30,7 @@ export default(
 	const groupMetadata: { [_: string]: GroupMetadata } = { }
 	const messageInfos: { [id: string]: MessageInfo } = { }
 	const presences: { [id: string]: { [participant: string]: PresenceData } } = { }
-	const state: ConnectionState = {
-		connection: 'close',
-		phoneConnected: false
-	}
+	const state: ConnectionState = { connection: 'close' }
 
 	const assertMessageList = (jid: string) => {
 		if(!messages[jid]) messages[jid] = makeMessagesDictionary()
@@ -214,7 +211,7 @@ export default(
 		state,
 		presences,
 		listen,
-		loadMessages: async(jid: string, count: number, cursor: WAMessageCursor, sock: Connection | undefined) => {
+		/*loadMessages: async(jid: string, count: number, cursor: WAMessageCursor, sock: Connection | undefined) => {
 			const list = assertMessageList(jid)
 			const retrieve = async(count: number, cursor: WAMessageCursor) => {
 				const result = await sock?.fetchMessagesFromWA(jid, count, cursor)
@@ -291,6 +288,6 @@ export default(
 				messageInfos[id!] = await sock?.messageInfo(remoteJid, id)
 			}
 			return messageInfos[id!]
-		}
+		}*/
 	}
 }
