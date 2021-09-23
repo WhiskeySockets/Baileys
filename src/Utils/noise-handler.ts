@@ -1,4 +1,4 @@
-import { sha256, generateSharedKey, hkdf } from "./generics";
+import { sha256, Curve, hkdf } from "./crypto";
 import { Binary } from "../WABinary";
 import { createCipheriv, createDecipheriv } from "crypto";
 import { NOISE_MODE, NOISE_WA_HEADER } from "../Defaults";
@@ -100,10 +100,10 @@ export default ({ public: publicKey, private: privateKey }: KeyPair) => {
 		finishInit,
 		processHandshake: ({ serverHello }: proto.HandshakeMessage, noiseKey: KeyPair) => {
 			authenticate(serverHello!.ephemeral!)
-			mixIntoKey(generateSharedKey(privateKey, serverHello.ephemeral!))
+			mixIntoKey(Curve.sharedKey(privateKey, serverHello.ephemeral!))
 	
 			const decStaticContent = decrypt(serverHello!.static!)
-			mixIntoKey(generateSharedKey(privateKey, decStaticContent))
+			mixIntoKey(Curve.sharedKey(privateKey, decStaticContent))
 	
 			const certDecoded = decrypt(serverHello!.payload!)
 			const { details: certDetails, signature: certSignature } = proto.NoiseCertificate.decode(certDecoded)
@@ -115,7 +115,7 @@ export default ({ public: publicKey, private: privateKey }: KeyPair) => {
 			}
 	
 			const keyEnc = encrypt(noiseKey.public)
-			mixIntoKey(generateSharedKey(noiseKey.private, serverHello!.ephemeral!))
+			mixIntoKey(Curve.sharedKey(noiseKey.private, serverHello!.ephemeral!))
 
 			return keyEnc
 		},

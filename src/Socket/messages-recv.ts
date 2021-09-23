@@ -1,8 +1,8 @@
 
 import { makeGroupsSocket } from "./groups"
 import { SocketConfig, WAMessageStubType, ParticipantAction, Chat, GroupMetadata } from "../Types"
-import { decodeMessageStanza, encodeBigEndian, toNumber, whatsappID } from "../Utils"
-import { BinaryNode, jidDecode, jidEncode, isJidStatusBroadcast, S_WHATSAPP_NET, areJidsSameUser, getBinaryNodeChildren, getBinaryNodeChild } from '../WABinary'
+import { decodeMessageStanza, encodeBigEndian, toNumber } from "../Utils"
+import { BinaryNode, jidDecode, jidEncode, isJidStatusBroadcast, areJidsSameUser, getBinaryNodeChildren } from '../WABinary'
 import { downloadIfHistory } from '../Utils/history'
 import { proto } from "../../WAProto"
 import { generateSignalPubKey, xmppPreKey, xmppSignedPreKey } from "../Utils/signal"
@@ -139,7 +139,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             switch (message.messageStubType) {
                 case WAMessageStubType.GROUP_PARTICIPANT_LEAVE:
                 case WAMessageStubType.GROUP_PARTICIPANT_REMOVE:
-                    participants = message.messageStubParameters.map(whatsappID)
+                    participants = message.messageStubParameters
                     emitParticipantsUpdate('remove')
                     // mark the chat read only if you left the group
                     if (participants.includes(meJid)) {
@@ -149,7 +149,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                 case WAMessageStubType.GROUP_PARTICIPANT_ADD:
                 case WAMessageStubType.GROUP_PARTICIPANT_INVITE:
                 case WAMessageStubType.GROUP_PARTICIPANT_ADD_REQUEST_JOIN:
-                    participants = message.messageStubParameters.map(whatsappID)
+                    participants = message.messageStubParameters
                     if (participants.includes(meJid)) {
                         chatUpdate.readOnly = false
                     }

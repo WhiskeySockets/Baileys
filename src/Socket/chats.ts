@@ -4,7 +4,7 @@ import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidNormalizedUse
 import { makeSocket } from "./socket";
 import { proto } from '../../WAProto'
 import { toNumber } from "../Utils/generics";
-import { compressImage, generateProfilePicture } from "..";
+import { generateProfilePicture } from "../Utils";
 
 export const makeChatsSocket = (config: SocketConfig) => {
 	const { logger } = config

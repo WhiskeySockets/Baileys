@@ -1,5 +1,6 @@
 import * as libsignal from 'libsignal'
-import { encodeBigEndian, generateCurveKeyPair } from "./generics"
+import { encodeBigEndian } from "./generics"
+import { Curve } from "./crypto"
 import { SenderKeyDistributionMessage, GroupSessionBuilder, SenderKeyRecord, SenderKeyName, GroupCipher } from '../../WASignalGroup'
 import { SignalIdentity, SignalKeyStore, SignedKeyPair, KeyPair, AuthenticationState } from "../Types/Auth"
 import { assertNodeErrorFree, BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, getBinaryNodeChildUInt, jidDecode } from "../WABinary"
@@ -48,7 +49,7 @@ export const generateOrGetPreKeys = ({ creds }: AuthenticationState, range: numb
 	const newPreKeys: { [id: number]: KeyPair } = { }
 	if(remaining > 0) {
 		for(let i = creds.nextPreKeyId;i <= lastPreKeyId;i++) {
-			newPreKeys[i] = generateCurveKeyPair()
+			newPreKeys[i] = Curve.generateKeyPair()
 		}
 	}
 	return {

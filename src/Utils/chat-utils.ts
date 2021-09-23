@@ -1,5 +1,5 @@
 import { Boom } from '@hapi/boom'
-import { aesDecrypt, hmacSign, aesEncrypt, hkdf } from "./generics"
+import { aesDecrypt, hmacSign, aesEncrypt, hkdf } from "./crypto"
 import { AuthenticationState, ChatModification } from "../Types"
 import { proto } from '../../WAProto'
 import { LT_HASH_ANTI_TAMPERING } from '../WABinary/LTHash'

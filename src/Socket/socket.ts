@@ -5,7 +5,7 @@ import WebSocket from "ws"
 import { randomBytes } from 'crypto'
 import { proto } from '../../WAProto'
 import { DisconnectReason, SocketConfig, BaileysEventEmitter } from "../Types"
-import { generateCurveKeyPair, initAuthState, generateRegistrationNode, configureSuccessfulPairing, generateLoginNode, encodeBigEndian, promiseTimeout } from "../Utils"
+import { Curve, initAuthState, generateRegistrationNode, configureSuccessfulPairing, generateLoginNode, encodeBigEndian, promiseTimeout } from "../Utils"
 import { DEFAULT_ORIGIN, DEF_TAG_PREFIX, DEF_CALLBACK_PREFIX, KEY_BUNDLE_TYPE } from "../Defaults"
 import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, S_WHATSAPP_NET } from '../WABinary'
 import noiseHandler from '../Utils/noise-handler'
@@ -42,7 +42,7 @@ export const makeSocket = ({
 	})
     ws.setMaxListeners(0)
     /** ephemeral key pair used to encrypt/decrypt communication. Unique for each connection */
-    const ephemeralKeyPair = generateCurveKeyPair()
+    const ephemeralKeyPair = Curve.generateKeyPair()
     /** WA noise protocol wrapper */
     const noise = noiseHandler(ephemeralKeyPair)
     const authState = initialAuthState || initAuthState()

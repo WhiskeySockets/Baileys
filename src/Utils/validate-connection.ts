@@ -2,7 +2,8 @@ import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
 import { proto } from '../../WAProto'
 import type { AuthenticationState, SocketConfig, SignalKeyStore, AuthenticationCreds, KeyPair } from "../Types"
-import { curveSign, hmacSign, curveVerify, encodeInt, generateCurveKeyPair, generateRegistrationId, signedKeyPair } from './generics'
+import { Curve, hmacSign, signedKeyPair } from './crypto'
+import { encodeInt, generateRegistrationId } from './generics'
 import { BinaryNode, S_WHATSAPP_NET, jidDecode, Binary } from '../WABinary'
 import { createSignalIdentity } from './signal'
 
@@ -116,10 +117,10 @@ export const initInMemoryKeyStore = (
 }
 
 export const initAuthState = (): AuthenticationState => {
-  const identityKey = generateCurveKeyPair()
+  const identityKey = Curve.generateKeyPair()
   return {
     creds: {
-      noiseKey: generateCurveKeyPair(),
+      noiseKey: Curve.generateKeyPair(),
       signedIdentityKey: identityKey,
       signedPreKey: signedKeyPair(identityKey, 1),
       registrationId: generateRegistrationId(),
@@ -158,12 +159,12 @@ export const configureSuccessfulPairing = (
   const { accountSignatureKey, accountSignature } = account
 
   const accountMsg = Binary.build(new Uint8Array([6, 0]), account.details, signedIdentityKey.public).readByteArray()
-  if (!curveVerify(accountSignatureKey, accountMsg, accountSignature)) {
+  if (!Curve.verify(accountSignatureKey, accountMsg, accountSignature)) {
     throw new Boom('Failed to verify account signature')
   }
 
   const deviceMsg = Binary.build(new Uint8Array([6, 1]), account.details, signedIdentityKey.public, account.accountSignatureKey).readByteArray()
-  account.deviceSignature = curveSign(signedIdentityKey.private, deviceMsg)
+  account.deviceSignature = Curve.sign(signedIdentityKey.private, deviceMsg)
 
   const identity = createSignalIdentity(jid, accountSignatureKey)
 

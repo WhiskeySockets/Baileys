@@ -11,7 +11,8 @@ import { join } from 'path'
 import { once } from 'events'
 import got, { Options, Response } from 'got'
 import { MessageType, WAMessageContent, WAProto, WAGenericMediaMessage, WAMediaUpload, MediaType } from '../Types'
-import { generateMessageID, hkdf } from './generics'
+import { generateMessageID } from './generics'
+import { hkdf } from './crypto'
 import { DEFAULT_ORIGIN } from '../Defaults'
 
 export const hkdfInfoKey = (type: MediaType) => {

@@ -78,9 +78,10 @@ If the connection is successful, you will see a QR code printed on your terminal
 
 ## Notable Differences Between Baileys Web & MD
 
-1. Baileys no longer maintains an internal state of chats/contacts/messages. You must take this on your own, simply because your state in MD is its own source of truth & there is no one-size-fits-all way to handle the storage for this.
-2. A baileys "socket" is meant to be a temporary & disposable object -- this is done to maintain simplicity & prevent bugs. I felt the entire Baileys object became too bloated as it supported too many configurations. 
-3. Moreover, Baileys does not offer an inbuilt reconnect mechanism anymore (though it's super easy to set one up on your own with your own rules, check the example script)
+1. Baileys has been written from the ground up to have a more "functional" structure. This is done primarily for simplicity & more testability
+2. Baileys no longer maintains an internal state of chats/contacts/messages. You must take this on your own, simply because your state in MD is its own source of truth & there is no one-size-fits-all way to handle the storage for this.
+3. A baileys "socket" is meant to be a temporary & disposable object -- this is done to maintain simplicity & prevent bugs. I felt the entire Baileys object became too bloated as it supported too many configurations. You're encouraged to write your own implementation to handle missing functionality.
+4. Moreover, Baileys does not offer an inbuilt reconnect mechanism anymore (though it's super easy to set one up on your own with your own rules, check the example script)
 
 ## Configuring the Connection
 

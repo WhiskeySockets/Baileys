@@ -18,7 +18,7 @@ import {
 	MediaType, 
 	WAMessageStatus
 } from "../Types"
-import { generateMessageID, unixTimestampSeconds, whatsappID } from "./generics"
+import { generateMessageID, unixTimestampSeconds } from "./generics"
 import { encryptedStream, generateThumbnail, getAudioDuration } from "./messages-media"
 
 type MediaUploadData = {
@@ -268,8 +268,6 @@ export const generateWAMessageFromContent = (
 	options: MessageGenerationOptionsFromContent
 ) => {
 	if (!options.timestamp) options.timestamp = new Date() // set timestamp to now
-	// prevent an annoying bug (WA doesn't accept sending messages with '@c.us')
-	jid = whatsappID(jid)
 
 	const key = Object.keys(message)[0]
 	const timestamp = unixTimestampSeconds(options.timestamp)
