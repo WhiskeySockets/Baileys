@@ -1,7 +1,7 @@
 {
   "name": "@adiwajshing/baileys",
   "version": "4.0.0",
-  "description": "WhatsApp Web API",
+  "description": "WhatsApp Multi-Device API",
   "homepage": "https://github.com/adiwajshing/Baileys",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -13,7 +13,8 @@
     "whatsapp",
     "whatsapp-chat",
     "whatsapp-group",
-    "automation"
+    "automation",
+    "multi-device"
   ],
   "scripts": {
     "test": "mocha --timeout 240000 -r ts-node/register src/Tests/Tests.*.ts",

@@ -1,4 +1,4 @@
-import { hkdf } from "../Utils/generics";
+const { hkdf } = require("../Utils/generics");
 
 const o = 128;
 
@@ -45,4 +45,4 @@ class d {
 		return a
 	}
 }
-export const LT_HASH_ANTI_TAMPERING = new d('WhatsApp Patch Integrity')
+module.exports.LT_HASH_ANTI_TAMPERING = new d('WhatsApp Patch Integrity')

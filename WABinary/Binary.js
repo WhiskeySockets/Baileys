@@ -1,5 +1,5 @@
-import { hexAt, hexLongIsNegative, hexLongToHex, negateHexLong, NUM_HEX_IN_LONG } from "./HexHelper";
-import { inflateSync } from 'zlib'
+const { hexAt, hexLongIsNegative, hexLongToHex, negateHexLong, NUM_HEX_IN_LONG } = require("./HexHelper");
+const { inflateSync } = require("zlib")
 
 var l = "",
   d = 0;
@@ -236,12 +236,12 @@ function H(e, t, r) {
   return 128 == (192 & a) ? a : 0;
 }
 
-export const numUtf8Bytes = u;
-export const longFitsInDouble = c;
-export const parseInt64OrThrow = j;
-export const parseUint64OrThrow = W;
+module.exports.numUtf8Bytes = u;
+module.exports.longFitsInDouble = c;
+module.exports.parseInt64OrThrow = j;
+module.exports.parseUint64OrThrow = W;
 
-export class Binary {
+class Binary {
   /** @type {Uint8Array} */
   buffer;
   readEndIndex;
@@ -583,3 +583,5 @@ export class Binary {
     return this
   }
 }
+
+module.exports.Binary = Binary

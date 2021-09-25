@@ -1,4 +1,4 @@
-import * as Crypto from "crypto";
+const { randomBytes } = require('crypto')
 
 const r = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 65, 66, 67, 68, 69, 70],
   a = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 97, 98, 99, 100, 101, 102];
@@ -36,19 +36,19 @@ const d = (e) => {
   return o((e >= 0 ? e : 4294967296 + e).toString(16), 8);
 };
 
-export const NUM_HEX_IN_LONG = 16;
-export const HEX_LOWER = a;
+module.exports.NUM_HEX_IN_LONG = 16;
+module.exports.HEX_LOWER = a;
 
-export const randomHex = function (e) {
+module.exports.randomHex = function (e) {
   var t = new Uint8Array(e);
-  var bytes = Crypto.randomBytes(t.length);
+  var bytes = randomBytes(t.length);
   t.set(bytes);
   return i(t);
 };
 
-export const toHex = i;
+module.exports.toHex = i;
 
-export const toLowerCaseHex = function (e) {
+module.exports.toLowerCaseHex = function (e) {
   for (var t = [], r = 0; r < e.length; r++) {
     var i = e[r];
     t.push(a[i >> 4], a[15 & i]);
@@ -56,7 +56,7 @@ export const toLowerCaseHex = function (e) {
   return String.fromCharCode.apply(String, t);
 };
 
-export const parseHex = function (e) {
+module.exports.parseHex = function (e) {
   var t = s(e);
   if (t.length % 2 != 0)
     throw new Error(
@@ -71,16 +71,16 @@ export const parseHex = function (e) {
   return r.buffer;
 };
 
-export const hexAt = n;
-export const hexOrThrow = s;
-export const bytesToBuffer = function (e) {
+module.exports.hexAt = n;
+module.exports.hexOrThrow = s;
+module.exports.bytesToBuffer = function (e) {
   var t = e.buffer;
   return 0 === e.byteOffset && e.length === t.byteLength
     ? t
     : t.slice(e.byteOffset, e.byteOffset + e.length);
 };
 
-export const bytesToDebugString = function (e) {
+module.exports.bytesToDebugString = function (e) {
   var t = !0,
     r = e.length;
   for (; t && r; ) {
@@ -90,7 +90,7 @@ export const bytesToDebugString = function (e) {
   return t ? JSON.stringify(String.fromCharCode.apply(String, e)) : i(e);
 };
 
-export const createHexLong = function (e, t = !1) {
+module.exports.createHexLong = function (e, t = !1) {
   var r = s(e);
   return (
     (function (e, t) {
@@ -100,18 +100,18 @@ export const createHexLong = function (e, t = !1) {
   );
 };
 
-export const createHexLongFrom32Bits = function (e, t, r = !1) {
+module.exports.createHexLongFrom32Bits = function (e, t, r = !1) {
   var a = d(e),
     i = d(t);
   return `${r ? "-" : ""}0x${a}${i}`;
 };
 
-export const hexLongToHex = function (e) {
+module.exports.hexLongToHex = function (e) {
   return e.substring(e.indexOf("0x") + 2);
 };
 
-export const hexLongIsNegative = l;
+module.exports.hexLongIsNegative = l;
 
-export const negateHexLong = function (e) {
+module.exports.negateHexLong = function (e) {
   return l(e) ? e.slice(1) : "-" + e;
 };
