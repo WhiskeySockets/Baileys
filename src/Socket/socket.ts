@@ -25,7 +25,8 @@ export const makeSocket = ({
     keepAliveIntervalMs,
     version,
     browser,
-    auth: initialAuthState
+    auth: initialAuthState,
+    printQRInTerminal,
 }: SocketConfig) => {
 	const ws = new WebSocket(waWebSocketUrl, undefined, {
 		origin: DEFAULT_ORIGIN,
@@ -400,10 +401,12 @@ export const makeSocket = ({
     // QR gen
     ws.on('CB:iq,type:set,pair-device', async (stanza: BinaryNode) => {
         const postQR = async() => {
-            const QR = await import('qrcode-terminal').catch(err => {
-                logger.error('add `qrcode-terminal` as a dependency to auto-print QR')
-            })
-            QR?.generate(qr, { small: true })
+            if(printQRInTerminal) {
+                const QR = await import('qrcode-terminal').catch(err => {
+                    logger.error('add `qrcode-terminal` as a dependency to auto-print QR')
+                })
+                QR?.generate(qr, { small: true })
+            }
         }
         
         const refs = ((stanza.content[0] as BinaryNode).content as BinaryNode[]).map(n => n.content as string)
