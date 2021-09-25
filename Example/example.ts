@@ -63,6 +63,8 @@ import makeWASocket, { WASocket, AuthenticationState, DisconnectReason, AnyMessa
         await delay(2000)
 
         await sock.sendPresenceUpdate('paused', jid)
+
+        await sock.sendMessage(jid, msg)
     }
 
     sock = startSock()
