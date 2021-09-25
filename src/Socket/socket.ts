@@ -4,7 +4,7 @@ import { promisify } from "util"
 import WebSocket from "ws"
 import { randomBytes } from 'crypto'
 import { proto } from '../../WAProto'
-import { DisconnectReason, SocketConfig, BaileysEventEmitter } from "../Types"
+import { DisconnectReason, SocketConfig, BaileysEventEmitter, ConnectionState } from "../Types"
 import { Curve, initAuthState, generateRegistrationNode, configureSuccessfulPairing, generateLoginNode, encodeBigEndian, promiseTimeout } from "../Utils"
 import { DEFAULT_ORIGIN, DEF_TAG_PREFIX, DEF_CALLBACK_PREFIX, KEY_BUNDLE_TYPE } from "../Defaults"
 import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, S_WHATSAPP_NET } from '../WABinary'
@@ -366,6 +366,28 @@ export const makeSocket = ({
         })
         end(new Boom('Intentional Logout', { statusCode: DisconnectReason.loggedOut }))
     }
+    /** Waits for the connection to WA to reach a state */
+	const waitForConnectionUpdate = async(check: (u: Partial<ConnectionState>) => boolean, timeoutMs?: number) => {
+        let listener: (item: Partial<ConnectionState>) => void
+        await (
+            promiseTimeout(
+                timeoutMs, 
+                (resolve, reject) => {
+                    listener = (update) => {
+                        if(check(update)) {
+                            resolve()
+                        } else if(update.connection == 'close') {
+							reject(update.lastDisconnect?.error || new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed }))
+						}
+					}
+                    ev.on('connection.update', listener)
+                }
+            )
+            .finally(() => (
+				ev.off('connection.update', listener)
+			))
+        )
+    }
 
 	ws.on('message', onMessageRecieved)
 	ws.on('open', validateConnection)
@@ -463,7 +485,8 @@ export const makeSocket = ({
 		sendRawMessage,
         sendNode,
         logout,
-		end
+        end,
+        waitForConnectionUpdate
 	}
 }
 export type Socket = ReturnType<typeof makeSocket>
