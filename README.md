@@ -31,7 +31,7 @@ yarn add github:adiwajshing/baileys#multi-device
 
 Then import in your code using:
 ``` ts 
-import makeWASocket from '@adiwajshing/baileys'
+import makeWASocket from '@adiwajshing/baileys-md'
 ```
 
 ## Unit Tests
@@ -41,7 +41,7 @@ TODO
 ## Connecting
 
 ``` ts
-import makeWASocket from '@adiwajshing/baileys'
+import makeWASocket from '@adiwajshing/baileys-md'
 
 async function connectToWhatsApp () {
     const conn = makeWASocket({
@@ -119,7 +119,7 @@ You obviously don't want to keep scanning the QR code every time you want to con
 
 So, you can save the credentials to log back in via:
 ``` ts
-import makeWASocket, { BufferJSON } from '@adiwajshing/baileys'
+import makeWASocket, { BufferJSON } from '@adiwajshing/baileys-md'
 import * as fs from 'fs'
 
 // will initialize a default in-memory auth session
@@ -139,7 +139,7 @@ conn.ev.on ('auth-state.update', () => {
 
 Then, to restore a session:
 ``` ts
-import makeWASocket, { BufferJSON, initInMemoryKeyStore } from '@adiwajshing/baileys'
+import makeWASocket, { BufferJSON, initInMemoryKeyStore } from '@adiwajshing/baileys-md'
 import * as fs from 'fs'
 
 const authJSON = JSON.parse(
@@ -248,7 +248,7 @@ sock.ev.on('messages.upsert', ({ messages }) => {
 ### Non-Media Messages
 
 ``` ts
-import { MessageType, MessageOptions, Mimetype } from '@adiwajshing/baileys'
+import { MessageType, MessageOptions, Mimetype } from '@adiwajshing/baileys-md'
 
 const id = 'abcd@s.whatsapp.net' // the WhatsApp ID 
 // send a simple text!
@@ -283,7 +283,7 @@ Sending media (video, stickers, images) is easier & more efficient than ever.
 - When specifying a media url, Baileys never loads the entire buffer into memory, it even encrypts the media as a readable stream.
 
 ``` ts
-import { MessageType, MessageOptions, Mimetype } from '@adiwajshing/baileys'
+import { MessageType, MessageOptions, Mimetype } from '@adiwajshing/baileys-md'
 // Sending gifs
 await conn.sendMessage(
     id, 
@@ -338,7 +338,7 @@ await conn.sendMessage(
                                     Do not enter this field if you want to automatically generate a thumb
                                 */
         mimetype: Mimetype.pdf, /* (for media messages) specify the type of media (optional for all media types except documents),
-                                    import {Mimetype} from '@adiwajshing/baileys'
+                                    import {Mimetype} from '@adiwajshing/baileys-md'
                                 */
         filename: 'somefile.pdf', // (for media messages) file name for the media
         /* will send audio messages as voice notes, if set to true */
@@ -391,7 +391,7 @@ The presence expires after about 10 seconds.
 
 If you want to save the media you received
 ``` ts
-import { MessageType } from '@adiwajshing/baileys'
+import { MessageType } from '@adiwajshing/baileys-md'
 conn.on ('message-new', async m => {
     if (!m.message) return // if there is no text or media message
     const messageType = Object.keys (m.message)[0]// get what type of message it is -- text, image, video
