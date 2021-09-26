@@ -65,13 +65,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
         if(participant) {
             node.attrs.participant = participant
         }
-        messageIds = messageIds.slice(1)
-        if(messageIds.length) {
+        const remainingMessageIds = messageIds.slice(1)
+        if(remainingMessageIds.length) {
             node.content = [
                 {
                     tag: 'list',
                     attrs: { },
-                    content: messageIds.map(id => ({
+                    content: remainingMessageIds.map(id => ({
                         tag: 'item',
                         attrs: { id }
                     }))
@@ -177,6 +177,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
         const { user, server } = jidDecode(jid)
         const isGroup = server === 'g.us'
         msgId = msgId || generateMessageID()
+
         const encodedMsg = encodeWAMessage(message)
         const participants: BinaryNode[] = []
         let stanza: BinaryNode
@@ -381,7 +382,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						upload: waUploadToServer
 					}
 				)
-				await relayMessage(jid, fullMsg.message, options.messageId)
+				await relayMessage(jid, fullMsg.message, fullMsg.key.id!)
                 process.nextTick(() => {
                     ev.emit('messages.upsert', { messages: [fullMsg], type: 'append' })
                 })
