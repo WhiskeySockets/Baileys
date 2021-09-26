@@ -381,7 +381,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						upload: waUploadToServer
 					}
 				)
-				await relayMessage(jid, fullMsg.message)
+				await relayMessage(jid, fullMsg.message, options.messageId)
                 process.nextTick(() => {
                     ev.emit('messages.upsert', { messages: [fullMsg], type: 'append' })
                 })
