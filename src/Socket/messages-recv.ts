@@ -381,7 +381,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
     }
 
     ws.on('CB:receipt,type:read', handleReceipt)
-    ws.on('CB:ack,class:receipt', handleReceipt)
+    ws.on('CB:ack,class:message', handleReceipt)
 
     ws.on('CB:notification', async(node: BinaryNode) => {
         const sendAck = async() => {
