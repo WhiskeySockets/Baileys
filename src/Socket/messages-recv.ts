@@ -373,7 +373,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             key: {
                 remoteJid: attrs.from,
                 id: id,
-                fromMe: areJidsSameUser(sender, authState.creds.me!.id!),
+                fromMe: true,
                 participant: attrs.participant
             },
             update: { status }
