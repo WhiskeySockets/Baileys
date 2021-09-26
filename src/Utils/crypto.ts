@@ -70,7 +70,7 @@ export function sha256(buffer: Buffer) {
 }
 // HKDF key expansion
 // from: https://github.com/benadida/node-hkdf
-export function hkdf(buffer: Buffer, expandedLength: number, { info, salt }: { salt?: Buffer, info?: string }) {
+export function hkdf(buffer: Uint8Array, expandedLength: number, { info, salt }: { salt?: Buffer, info?: string }) {
     const hashAlg = 'sha256'
     const hashLength = 32
     salt = salt || Buffer.alloc(hashLength)

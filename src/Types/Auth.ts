@@ -24,11 +24,10 @@ export type AuthenticationCreds = {
     me?: Contact
     account?: proto.ADVSignedDeviceIdentity
     signalIdentities?: SignalIdentity[]
-    appStateSyncKeys?: proto.IAppStateSyncKey[]
     appStateVersion?: {
         [T in CollectionType]: number
     }
-
+    myAppStateKeyId?: string
     firstUnuploadedPreKeyId: number
     serverHasPreKeys: boolean
     nextPreKeyId: number
@@ -43,6 +42,9 @@ export type SignalKeyStore = {
 
     getSenderKey: (id: string) => Awaitable<any>
     setSenderKey: (id: string, item: any | null) => Awaitable<void>
+
+    getAppStateSyncKey: (id: string) => Awaitable<proto.IAppStateSyncKeyData>
+    setAppStateSyncKey: (id: string, item: proto.IAppStateSyncKeyData | null) => Awaitable<void>
 }
 
 export type AuthenticationState = {

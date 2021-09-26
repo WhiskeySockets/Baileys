@@ -83,19 +83,22 @@ export const generateRegistrationNode = (
 }
 
 export const initInMemoryKeyStore = (
-  { preKeys, sessions, senderKeys }: { 
+  { preKeys, sessions, senderKeys, appStateSyncKeys }: { 
     preKeys?: { [k: number]: KeyPair },
     sessions?: { [k: string]: any },
     senderKeys?: { [k: string]: any }
+    appStateSyncKeys?: { [k: string]: proto.IAppStateSyncKeyData }
   } = { },
 ) => {
   preKeys = preKeys || { }
   sessions = sessions || { }
   senderKeys = senderKeys || { }
+  appStateSyncKeys = appStateSyncKeys || { }
   return {
     preKeys,
     sessions,
     senderKeys,
+    appStateSyncKeys,
     getPreKey: keyId => preKeys[keyId],
     setPreKey: (keyId, pair) => {
       if(pair) preKeys[keyId] = pair
@@ -112,6 +115,16 @@ export const initInMemoryKeyStore = (
     setSenderKey: (id, item) => {
       if(item) senderKeys[id] = item
       else delete senderKeys[id]
+    },
+    getAppStateSyncKey: id => {
+      const obj = appStateSyncKeys[id]
+      if(obj) {
+        return proto.AppStateSyncKeyData.fromObject(obj)
+      }
+    },
+    setAppStateSyncKey: (id, item) => {
+      if(item) appStateSyncKeys[id] = item
+      else delete appStateSyncKeys[id]
     }
   } as SignalKeyStore
 }

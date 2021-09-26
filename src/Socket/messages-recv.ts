@@ -99,16 +99,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         })
     }
 
-    const processMessage = (message: proto.IWebMessageInfo, chatUpdate: Partial<Chat>) => {
+    const processMessage = async(message: proto.IWebMessageInfo, chatUpdate: Partial<Chat>) => {
         const protocolMsg = message.message?.protocolMessage
         if(protocolMsg) {
             switch(protocolMsg.type) {
                 case proto.ProtocolMessage.ProtocolMessageType.APP_STATE_SYNC_KEY_SHARE:
-                    const newKeys = JSON.parse(JSON.stringify(protocolMsg.appStateSyncKeyShare!.keys))
-                    authState.creds.appStateSyncKeys = [
-                        ...(authState.creds.appStateSyncKeys || []),
-                        ...newKeys
-                    ]
+                    for(const { keyData, keyId } of protocolMsg.appStateSyncKeyShare!.keys || []) {
+                        const str = Buffer.from(keyId.keyId!).toString('base64')
+                        await authState.keys.setAppStateSyncKey(str, keyData)
+                    }
                     ev.emit('auth-state.update', authState)
                 break
                 case proto.ProtocolMessage.ProtocolMessageType.REVOKE:
@@ -417,10 +416,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         }
     })
 
-    ev.on('messages.upsert', ({ messages }) => {
+    ev.on('messages.upsert', async({ messages }) => {
         const chat: Partial<Chat> = { id: messages[0].key.remoteJid }
         for(const msg of messages) {
-            processMessage(msg, chat)
+            await processMessage(msg, chat)
             if(!!msg.message && !msg.message!.protocolMessage) {
                 chat.conversationTimestamp = toNumber(msg.messageTimestamp)
                 if(!msg.key.fromMe) {

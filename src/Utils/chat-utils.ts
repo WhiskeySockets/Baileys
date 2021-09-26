@@ -1,13 +1,13 @@
 import { Boom } from '@hapi/boom'
 import { aesDecrypt, hmacSign, aesEncrypt, hkdf } from "./crypto"
-import { AuthenticationState, ChatModification } from "../Types"
+import { AuthenticationState, ChatModification, ChatMutation } from "../Types"
 import { proto } from '../../WAProto'
 import { LT_HASH_ANTI_TAMPERING } from '../WABinary/LTHash'
 
 type SyncdType = 'regular_high' | 'regular_low'
 
-const mutationKeys = (keydata: string) => {
-    const expanded = hkdf(Buffer.from(keydata, 'base64'), 160, { info: 'WhatsApp Mutation Keys' })
+const mutationKeys = (keydata: Uint8Array) => {
+    const expanded = hkdf(keydata, 160, { info: 'WhatsApp Mutation Keys' })
     return {
         indexKey: expanded.slice(0, 32),
         valueEncryptionKey: expanded.slice(32, 64),
@@ -73,7 +73,7 @@ const generatePatchMac = (snapshotMac: Uint8Array, valueMacs: Uint8Array[], vers
     return hmacSign(total, key)
 }
 
-export const encodeSyncdPatch = (action: ChatModification, lastMessageKey: proto.IMessageKey, { creds: { appStateSyncKeys: [key], appStateVersion } }: AuthenticationState) => {
+export const encodeSyncdPatch = async(action: ChatModification, lastMessageKey: proto.IMessageKey, { creds: { appStateVersion, myAppStateKeyId }, keys }: AuthenticationState) => {
     let syncAction: proto.ISyncActionValue = { }
     if('archive' in action) {
         syncAction.archiveChatAction = {
@@ -101,12 +101,18 @@ export const encodeSyncdPatch = (action: ChatModification, lastMessageKey: proto
     }
 
     const encoded = proto.SyncActionValue.encode(syncAction).finish()
+    const key = !!myAppStateKeyId ? await keys.getAppStateSyncKey(myAppStateKeyId) : undefined
+    if(!key) {
+        throw new Boom(`myAppStateKey not present`, { statusCode: 404 })
+    }
+
+    const encKeyId = Buffer.from(myAppStateKeyId, 'base64')
 
     const index = JSON.stringify([Object.keys(action)[0], lastMessageKey.remoteJid])
-    const keyValue = mutationKeys(key.keyData!.keyData! as any)
+    const keyValue = mutationKeys(key!.keyData!)
 
     const encValue = aesEncrypt(encoded, keyValue.valueEncryptionKey)
-    const macValue = generateMac(1, encValue, key.keyId!.keyId, keyValue.valueMacKey)
+    const macValue = generateMac(1, encValue, encKeyId, keyValue.valueMacKey)
     const indexMacValue = hmacSign(Buffer.from(index), keyValue.indexKey)
 
     const type = 'regular_high'
@@ -117,7 +123,7 @@ export const encodeSyncdPatch = (action: ChatModification, lastMessageKey: proto
     const patch: proto.ISyncdPatch = {
         patchMac: generatePatchMac(snapshotMac, [macValue], v, type, keyValue.patchMacKey),
         snapshotMac: snapshotMac,
-        keyId: { id: key.keyId.keyId },
+        keyId: { id: encKeyId },
         mutations: [
             {
                 operation: 1,
@@ -128,7 +134,7 @@ export const encodeSyncdPatch = (action: ChatModification, lastMessageKey: proto
                     value: {
                         blob: Buffer.concat([  encValue, macValue ])
                     },
-                    keyId: { id: key.keyId.keyId }
+                    keyId: { id: encKeyId }
                 }
             }
         ]
@@ -136,27 +142,24 @@ export const encodeSyncdPatch = (action: ChatModification, lastMessageKey: proto
     return patch
 }
 
-export const decodeSyncdPatch = (msg: proto.ISyncdPatch, {creds}: AuthenticationState) => {
+export const decodeSyncdPatch = async(msg: proto.ISyncdPatch, {keys}: AuthenticationState) => {
     const keyCache: { [_: string]: ReturnType<typeof mutationKeys> } = { }
-    const getKey = (keyId: Uint8Array) => {
+    const getKey = async(keyId: Uint8Array) => {
         const base64Key = Buffer.from(keyId!).toString('base64')
-
         let key = keyCache[base64Key]
         if(!key) {
-            const keyEnc = creds.appStateSyncKeys?.find(k => (
-                (k.keyId!.keyId as any) === base64Key
-            ))
+            const keyEnc = await keys.getAppStateSyncKey(base64Key)
             if(!keyEnc) {
                 throw new Boom(`failed to find key "${base64Key}" to decode mutation`, { statusCode: 500, data: msg })
             }
-            const result = mutationKeys(keyEnc.keyData!.keyData as any)
+            const result = mutationKeys(keyEnc.keyData!)
             keyCache[base64Key] = result
             key = result
         }
         return key
     }
 
-    const mutations: { action: proto.ISyncActionValue, index: [string, string] }[] = []
+    const mutations: ChatMutation[] = []
     const failures: Boom[] = []
 
     /*const mainKey = getKey(msg.keyId!.id)
@@ -171,7 +174,7 @@ export const decodeSyncdPatch = (msg: proto.ISyncdPatch, {creds}: Authentication
     // the remaining record.value.blob[0:-32] is the mac, it the HMAC sign of key.keyId + decoded proto data + length of bytes in keyId
     for(const { operation, record } of msg.mutations!) {
         try {
-            const key = getKey(record.keyId!.id!)
+            const key = await getKey(record.keyId!.id!)
             const content = Buffer.from(record.value!.blob!)
             const encContent = content.slice(0, -32)
             const contentHmac = generateMac(operation, encContent, record.keyId!.id!, key.valueMacKey)

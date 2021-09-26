@@ -8,6 +8,8 @@ export interface PresenceData {
     lastSeen?: number
 }
 
+export type ChatMutation = { action: proto.ISyncActionValue, index: [string, string] }
+
 export type Chat = Omit<proto.IConversation, 'messages'> & {
     /** unix timestamp of date when mute ends, if applicable */
     mute?: number | null

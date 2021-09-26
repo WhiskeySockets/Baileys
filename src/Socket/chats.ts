@@ -1,5 +1,5 @@
 import { decodeSyncdPatch, encodeSyncdPatch } from "../Utils/chat-utils";
-import { SocketConfig, WAPresence, PresenceData, Chat, ChatModification, WAMediaUpload } from "../Types";
+import { SocketConfig, WAPresence, PresenceData, Chat, ChatModification, WAMediaUpload, ChatMutation } from "../Types";
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidNormalizedUser, S_WHATSAPP_NET } from "../WABinary";
 import { makeSocket } from "./socket";
 import { proto } from '../../WAProto'
@@ -278,7 +278,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
         }
     }
 
-    const processSyncActions = (actions: { action: proto.ISyncActionValue, index: [string, string] }[]) => {
+    const processSyncActions = (actions: ChatMutation[]) => {
         const updates: Partial<Chat>[] = []
         for(const { action, index: [_, id] } of actions) {
             const update: Partial<Chat> = { id }
@@ -309,7 +309,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
         jid: string,
         modification: ChatModification
     ) => {
-        const patch = encodeSyncdPatch(modification, { remoteJid: jid }, authState)
+        const patch = await encodeSyncdPatch(modification, { remoteJid: jid }, authState)
         const type = 'regular_high'
         const ver = authState.creds.appStateVersion![type] || 0
         const node: BinaryNode = {
@@ -373,24 +373,24 @@ export const makeChatsSocket = (config: SocketConfig) => {
         const patchesNode = getBinaryNodeChild(collectionNode, 'patches')
 
         const patches = getBinaryNodeChildren(patchesNode, 'patch')
-        const successfulMutations = patches.flatMap(({ content }) => {
+        const successfulMutations: ChatMutation[] = []
+        for(const { content } of patches) {
             if(content) {
                 const syncd = proto.SyncdPatch.decode(content! as Uint8Array)
                 const version = toNumber(syncd.version!.version!)
                 if(version) { 
                     authState.creds.appStateVersion[name] = Math.max(version, authState.creds.appStateVersion[name])
                 }
-                const { mutations, failures } = decodeSyncdPatch(syncd, authState)
+                const { mutations, failures } = await decodeSyncdPatch(syncd, authState)
                 if(failures.length) {
                     logger.info(
                         { failures: failures.map(f => ({ trace: f.stack, data: f.data })) }, 
                         'failed to decode'
                     )
                 }
-                return mutations
+                successfulMutations.push(...mutations)
             }
-            return []
-        })
+        }
         processSyncActions(successfulMutations)
         ev.emit('auth-state.update', authState)
     }
