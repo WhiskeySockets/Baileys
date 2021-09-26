@@ -155,9 +155,19 @@ export const makeChatsSocket = (config: SocketConfig) => {
                 xmlns: 'privacy', 
                 to: S_WHATSAPP_NET, 
                 type: 'get'
-            }
+            },
+            content: [
+                { tag: 'privacy', attrs: { } }
+            ]
         })
-        console.log('privacy', result)
+        const nodes = getBinaryNodeChildren(result, 'category')
+        const settings = nodes.reduce(
+            (dict, { attrs }) => {
+                dict[attrs.name] = attrs.value
+                return dict
+            }, { } as { [_: string]: string }
+        )
+        return settings
     }
 
     const updateAccountSyncTimestamp = async() => {
