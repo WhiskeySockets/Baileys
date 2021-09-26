@@ -12,16 +12,16 @@ const extractGroupMetadata = (result: BinaryNode) => {
 		desc = getBinaryNodeChild(descChild, 'body')?.content as string
 		descId = descChild.attrs.id
 	}
-
+	const groupId = group.attrs.id.includes('@') ? group.attrs.id : jidEncode(group.attrs.id, 'g.us')
 	const metadata: GroupMetadata = {
-		id: jidEncode(jidDecode(group.attrs.id).user, 'g.us'),
+		id: groupId,
 		subject: group.attrs.subject,
 		creation: +group.attrs.creation,
 		owner: group.attrs.creator,
 		desc,
 		descId,
-		restrict: !!getBinaryNodeChild(result, 'locked') ? 'true' : 'false',
-		announce: !!getBinaryNodeChild(result, 'announcement') ? 'true' : 'false',
+		restrict: !!getBinaryNodeChild(result, 'locked'),
+		announce: !!getBinaryNodeChild(result, 'announcement'),
 		participants: getBinaryNodeChildren(group, 'participant').map(
 			({ attrs }) => {
 				return {

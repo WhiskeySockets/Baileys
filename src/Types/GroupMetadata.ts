@@ -13,9 +13,9 @@ export interface GroupMetadata {
     descOwner?: string
     descId?: string
     /** is set when the group only allows admins to change group settings */
-    restrict?: 'true' | 'false' 
+    restrict?: boolean
     /** is set when the group only allows admins to write messages */
-    announce?: 'true' | 'false' 
+    announce?: boolean
     // Baileys modified array
     participants: GroupParticipant[]
     ephemeralDuration?: number

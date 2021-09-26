@@ -155,11 +155,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                     emitParticipantsUpdate('add')
                     break
                 case WAMessageStubType.GROUP_CHANGE_ANNOUNCE:
-                    const announce = message.messageStubParameters[0] === 'on' ? 'true' : 'false'
+                    const announce = message.messageStubParameters[0] === 'on'
                     emitGroupUpdate({ announce })
                     break
                 case WAMessageStubType.GROUP_CHANGE_RESTRICT:
-                    const restrict = message.messageStubParameters[0] === 'on' ? 'true' : 'false'
+                    const restrict = message.messageStubParameters[0] === 'on'
                     emitGroupUpdate({ restrict })
                     break
                 case WAMessageStubType.GROUP_CHANGE_SUBJECT:
