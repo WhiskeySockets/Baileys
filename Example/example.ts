@@ -38,13 +38,14 @@ import makeWASocket, { WASocket, AuthenticationState, DisconnectReason, AnyMessa
             logger: P({ level: 'trace' }),
             auth: loadState()
         })
-        sock.ev.on('messages.upsert', m => {
+        sock.ev.on('messages.upsert', async m => {
             console.log(JSON.stringify(m, undefined, 2))
             
             const msg = m.messages[0]
             if(!msg.key.fromMe && m.type === 'notify') {
                 console.log('replying to', m.messages[0].key.remoteJid)
-                sendMessageWTyping({ text: 'Hello there!' }, m.messages[0].key.remoteJid!)
+                await sock!.sendReadReceipt(msg.key.remoteJid, msg.key.participant, [msg.key.id])
+                await sendMessageWTyping({ text: 'Hello there!' }, msg.key.remoteJid)
             }
             
         })
