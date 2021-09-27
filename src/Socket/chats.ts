@@ -215,6 +215,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
     }
 
     const profilePictureUrl = async(jid: string) => {
+        jid = jidNormalizedUser(jid)
         const result = await query({
             tag: 'iq',
             attrs: {
