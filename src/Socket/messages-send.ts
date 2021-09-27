@@ -2,7 +2,7 @@
 import { makeMessagesRecvSocket } from "./messages-recv"
 import { SocketConfig, MediaConnInfo, AnyMessageContent, MiscMessageGenerationOptions, WAMediaUploadFunction } from "../Types"
 import { encodeWAMessage, generateMessageID, generateWAMessage } from "../Utils"
-import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, jidDecode, jidEncode, S_WHATSAPP_NET } from '../WABinary'
+import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, jidDecode, jidEncode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
 import { proto } from "../../WAProto"
 import { encryptSenderKeyMsgSignalProto, encryptSignalProto, extractDeviceJids, jidToSignalProtocolAddress, parseAndInjectE2ESession } from "../Utils/signal"
 import { WA_DEFAULT_EPHEMERAL, DEFAULT_ORIGIN, MEDIA_PATH_MAP } from "../Defaults"
@@ -84,7 +84,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
     }
 
     const getUSyncDevices = async(jids: string[], ignoreZeroDevices: boolean) => {
-        const users = jids.map<BinaryNode>(jid => ({ tag: 'user', attrs: { jid } }))
+        const users = jids.map<BinaryNode>(jid => ({ 
+            tag: 'user', 
+            attrs: { jid: jidNormalizedUser(jid) } 
+        }))
         const iq: BinaryNode = {
             tag: 'iq',
             attrs: {
@@ -123,7 +126,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
         if(ignoreZeroDevices) {
             resultJids = resultJids.filter(item => item.device !== 0)
         }
-
         return resultJids
     }
 
