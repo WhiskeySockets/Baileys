@@ -2,7 +2,7 @@
 import { makeGroupsSocket } from "./groups"
 import { SocketConfig, WAMessageStubType, ParticipantAction, Chat, GroupMetadata } from "../Types"
 import { decodeMessageStanza, encodeBigEndian, toNumber } from "../Utils"
-import { BinaryNode, jidDecode, jidEncode, isJidStatusBroadcast, areJidsSameUser, getBinaryNodeChildren } from '../WABinary'
+import { BinaryNode, jidDecode, jidEncode, isJidStatusBroadcast, areJidsSameUser, getBinaryNodeChildren, jidNormalizedUser } from '../WABinary'
 import { downloadIfHistory } from '../Utils/history'
 import { proto } from "../../WAProto"
 import { generateSignalPubKey, xmppPreKey, xmppSignedPreKey } from "../Utils/signal"
@@ -426,7 +426,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         const contactNameUpdates: { [_: string]: string } = { }
         for(const msg of messages) {
             if(!!msg.pushName) {
-                contactNameUpdates[msg.key.remoteJid!] = msg.pushName
+                const jid = msg.key.fromMe ? jidNormalizedUser(authState.creds.me!.id) : (msg.key.participant || msg.key.remoteJid)
+                contactNameUpdates[jid] = msg.pushName
                 // update our pushname too
                 if(msg.key.fromMe && authState.creds.me?.name !== msg.pushName) {
                     authState.creds.me!.name = msg.pushName
