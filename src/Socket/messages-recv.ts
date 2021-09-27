@@ -120,7 +120,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                 break
                 case proto.ProtocolMessage.ProtocolMessageType.EPHEMERAL_SETTING:
                     chatUpdate.ephemeralSettingTimestamp = toNumber(message.messageTimestamp)
-                    chatUpdate.ephemeralExpiration = protocolMsg.ephemeralExpiration
+                    chatUpdate.ephemeralExpiration = protocolMsg.ephemeralExpiration || null
                 break
             }
         } else if(message.messageStubType) {
