@@ -360,8 +360,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         logger.debug({ attrs: node.attrs }, 'sending receipt for ack')
     })
 
-    const handleReceipt = ({ attrs, content }: BinaryNode) => {
-        const sender = attrs.participant || attrs.from
+    const handleReceipt = ({ tag, attrs, content }: BinaryNode) => {
+        if(tag === 'receipt') {
+            // if not read or no type (no type = delivered, but message sent from other device)
+            if(attrs.type !== 'read' && !!attrs.type) {
+                return
+            }
+        }
         const status = attrs.type === 'read' ? proto.WebMessageInfo.WebMessageInfoStatus.READ : proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK
         const ids = [attrs.id]
         if(Array.isArray(content)) {
@@ -380,7 +385,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         })))
     }
 
-    ws.on('CB:receipt,type:read', handleReceipt)
+    ws.on('CB:receipt', handleReceipt)
     ws.on('CB:ack,class:message', handleReceipt)
 
     ws.on('CB:notification', async(node: BinaryNode) => {
