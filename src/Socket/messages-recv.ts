@@ -423,7 +423,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
     ev.on('messages.upsert', async({ messages }) => {
         const chat: Partial<Chat> = { id: messages[0].key.remoteJid }
+        const contactNameUpdates: { [_: string]: string } = { }
         for(const msg of messages) {
+            if(!!msg.pushName) {
+                contactNameUpdates[msg.key.remoteJid!] = msg.pushName
+                // update our pushname too
+                if(msg.key.fromMe && authState.creds.me?.name !== msg.pushName) {
+                    authState.creds.me!.name = msg.pushName
+                    ev.emit('auth-state.update', authState)
+                }
+            }
+            
             await processMessage(msg, chat)
             if(!!msg.message && !msg.message!.protocolMessage) {
                 chat.conversationTimestamp = toNumber(msg.messageTimestamp)
@@ -434,6 +444,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         }
         if(Object.keys(chat).length > 1) {
             ev.emit('chats.update', [ chat ])
+        }
+        if(Object.keys(contactNameUpdates).length) {
+            ev.emit('contacts.update', Object.keys(contactNameUpdates).map(
+                id => ({ id, notify: contactNameUpdates[id] })
+            ))
         }
     })
 

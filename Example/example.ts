@@ -52,6 +52,7 @@ import makeWASocket, { WASocket, AuthenticationState, DisconnectReason, AnyMessa
         sock.ev.on('messages.update', m => console.log(m))
         sock.ev.on('presence.update', m => console.log(m))
         sock.ev.on('chats.update', m => console.log(m))
+        sock.ev.on('contacts.update', m => console.log(m))
         return sock
     }
 
