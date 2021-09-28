@@ -1,9 +1,8 @@
 import { encodeSyncdPatch, decodePatches, extractSyncdPatches } from "../Utils/chat-utils";
-import { SocketConfig, WAPresence, PresenceData, Chat, ChatModification, WAMediaUpload, ChatMutation, WAPatchName, LTHashState } from "../Types";
+import { SocketConfig, WAPresence, PresenceData, Chat, WAPatchCreate, WAMediaUpload, ChatMutation, WAPatchName, LTHashState } from "../Types";
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidNormalizedUser, S_WHATSAPP_NET } from "../WABinary";
 import { proto } from '../../WAProto'
 import { generateProfilePicture, toNumber } from "../Utils";
-import { randomBytes } from "crypto";
 import { makeMessagesRecvSocket } from "./messages-recv";
 
 export const makeChatsSocket = (config: SocketConfig) => {
@@ -327,18 +326,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
         ev.emit('chats.update', updates)
     }
 
-    const appPatch = async(
-        syncAction: proto.ISyncActionValue,
-        index: [string, string],
-        name: WAPatchName,
-        operation: proto.SyncdMutation.SyncdMutationSyncdOperation.SET,
-    ) => {
+    const appPatch = async(patchCreate: WAPatchCreate) => {
+        const name = patchCreate.type
+
         await resyncState(name, false)
         const { patch, state } = await encodeSyncdPatch(
-            syncAction, 
-            index,
-            name,
-            operation,
+            patchCreate,
             authState,
         )
         const initial = await authState.keys.getAppStateSyncVersion(name)

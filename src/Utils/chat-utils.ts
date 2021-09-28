@@ -1,6 +1,6 @@
 import { Boom } from '@hapi/boom'
 import { aesDecrypt, hmacSign, aesEncrypt, hkdf } from "./crypto"
-import { AuthenticationState, ChatModification, ChatMutation, WAPatchName, LTHashState } from "../Types"
+import { AuthenticationState, WAPatchCreate, ChatMutation, WAPatchName, LTHashState } from "../Types"
 import { proto } from '../../WAProto'
 import { LT_HASH_ANTI_TAMPERING } from '../WABinary/LTHash'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren } from '../WABinary'
@@ -92,10 +92,7 @@ const generatePatchMac = (snapshotMac: Uint8Array, valueMacs: Uint8Array[], vers
 }
 
 export const encodeSyncdPatch = async(
-    syncAction: proto.ISyncActionValue,
-    index: [string, string],
-    type: WAPatchName,
-    operation: proto.SyncdMutation.SyncdMutationSyncdOperation,
+    { type, index, syncAction, apiVersion }: WAPatchCreate,
     { creds: { myAppStateKeyId }, keys }: AuthenticationState
 ) => {
     const key = !!myAppStateKeyId ? await keys.getAppStateSyncKey(myAppStateKeyId) : undefined
@@ -104,6 +101,8 @@ export const encodeSyncdPatch = async(
     }
     const encKeyId = Buffer.from(myAppStateKeyId, 'base64')
 
+    const operation = proto.SyncdMutation.SyncdMutationSyncdOperation.SET
+
     const state = { ...await keys.getAppStateSyncVersion(type) }
 
     const indexBuffer = Buffer.from(JSON.stringify(index))
@@ -111,7 +110,7 @@ export const encodeSyncdPatch = async(
         index: indexBuffer,
         value: syncAction,
         padding: new Uint8Array(0),
-        version: 2
+        version: apiVersion
     }).finish()
 
     const keyValue = mutationKeys(key!.keyData!)

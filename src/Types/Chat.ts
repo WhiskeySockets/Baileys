@@ -12,6 +12,13 @@ export interface PresenceData {
 
 export type ChatMutation = { action: proto.ISyncActionValue, index: [string, string], indexMac: Uint8Array, valueMac: Uint8Array, operation: number }
 
+export type WAPatchCreate = {
+    syncAction: proto.ISyncActionValue
+    index: [string, string]
+    type: WAPatchName
+    apiVersion: number
+}
+
 export type Chat = Omit<proto.IConversation, 'messages'> & {
     /** unix timestamp of date when mute ends, if applicable */
     mute?: number | null
