@@ -3,12 +3,14 @@ import type { proto } from "../../WAProto"
 /** set of statuses visible to other people; see updatePresence() in WhatsAppWeb.Send */
 export type WAPresence = 'unavailable' | 'available' | 'composing' | 'recording' | 'paused'
 
+export type WAPatchName = 'critical_block' | 'critical_unblock_low' | 'regular_low' | 'regular_high' | 'regular'
+
 export interface PresenceData {
     lastKnownPresence: WAPresence
     lastSeen?: number
 }
 
-export type ChatMutation = { action: proto.ISyncActionValue, index: [string, string] }
+export type ChatMutation = { action: proto.ISyncActionValue, index: [string, string], indexMac: Uint8Array, valueMac: Uint8Array, operation: number }
 
 export type Chat = Omit<proto.IConversation, 'messages'> & {
     /** unix timestamp of date when mute ends, if applicable */

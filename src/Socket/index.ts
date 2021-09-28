@@ -1,6 +1,6 @@
 import { SocketConfig } from '../Types'
 import { DEFAULT_CONNECTION_CONFIG } from '../Defaults'
-import { makeMessagesSocket as _makeSocket } from './messages-send'
+import { makeChatsSocket as _makeSocket } from './chats'
 
 // export the last socket layer
 const makeWASocket = (config: Partial<SocketConfig>) => (

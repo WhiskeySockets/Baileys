@@ -1,22 +1,23 @@
 
-import { makeGroupsSocket } from "./groups"
 import { SocketConfig, WAMessageStubType, ParticipantAction, Chat, GroupMetadata } from "../Types"
 import { decodeMessageStanza, encodeBigEndian, toNumber } from "../Utils"
 import { BinaryNode, jidDecode, jidEncode, isJidStatusBroadcast, areJidsSameUser, getBinaryNodeChildren, jidNormalizedUser } from '../WABinary'
-import { downloadIfHistory } from '../Utils/history'
+import { downloadHistory } from '../Utils/history'
 import { proto } from "../../WAProto"
 import { generateSignalPubKey, xmppPreKey, xmppSignedPreKey } from "../Utils/signal"
 import { KEY_BUNDLE_TYPE } from "../Defaults"
+import { makeMessagesSocket } from "./messages-send"
 
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const { logger } = config
-	const sock = makeGroupsSocket(config)
+	const sock = makeMessagesSocket(config)
 	const { 
 		ev,
         authState,
 		ws,
         assertingPreKeys,
 		sendNode,
+        relayMessage,
 	} = sock
 
     const sendMessageAck = async({ attrs }: BinaryNode) => {
@@ -103,11 +104,45 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         const protocolMsg = message.message?.protocolMessage
         if(protocolMsg) {
             switch(protocolMsg.type) {
+                case proto.ProtocolMessage.ProtocolMessageType.HISTORY_SYNC_NOTIFICATION:
+                    const history = await downloadHistory(protocolMsg!.historySyncNotification)
+                    processHistoryMessage(history)
+                    break
+                case proto.ProtocolMessage.ProtocolMessageType.APP_STATE_SYNC_KEY_REQUEST:
+                    const keys = await Promise.all(
+                        protocolMsg.appStateSyncKeyRequest!.keyIds!.map(
+                            async id => {
+                                const keyId = Buffer.from(id.keyId!).toString('base64')
+                                const keyData = await authState.keys.getAppStateSyncKey(keyId)
+                                logger.info({ keyId }, 'received key request')
+                                return {
+                                    keyId: id,
+                                    keyData
+                                }
+                            }
+                        )
+                    )
+                    
+                    const msg: proto.IMessage = {
+                        protocolMessage: {
+                            type: proto.ProtocolMessage.ProtocolMessageType.APP_STATE_SYNC_KEY_SHARE,
+                            appStateSyncKeyShare: {
+                                keys
+                            }
+                        }
+                    }
+                    await relayMessage(message.key.remoteJid!, msg, { })
+                    logger.info({ with: message.key.remoteJid! }, 'shared key')
+                break
                 case proto.ProtocolMessage.ProtocolMessageType.APP_STATE_SYNC_KEY_SHARE:
                     for(const { keyData, keyId } of protocolMsg.appStateSyncKeyShare!.keys || []) {
                         const str = Buffer.from(keyId.keyId!).toString('base64')
+                        logger.info({ str }, 'injecting new app state sync key')
                         await authState.keys.setAppStateSyncKey(str, keyData)
+
+                        authState.creds.myAppStateKeyId = str
                     }
+                    
                     ev.emit('auth-state.update', authState)
                 break
                 case proto.ProtocolMessage.ProtocolMessageType.REVOKE:
@@ -303,14 +338,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
             logger.debug({ msgId: dec.msgId }, 'send message receipt')
 
-            const possibleHistory = downloadIfHistory(msg)
-            if(possibleHistory) {
-                const history = await possibleHistory
-                logger.info({ msgId: dec.msgId, type: history.syncType }, 'recv history')
-
-                processHistoryMessage(history)
-            } else {
-                const message = msg.deviceSentMessage?.message || msg
+            const message = msg.deviceSentMessage?.message || msg
                 fullMessages.push({
                     key: {
                         remoteJid: dec.chatId,
@@ -323,7 +351,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                     messageTimestamp: dec.timestamp,
                     pushName: dec.pushname
                 })
-            }
         }
 
         if(dec.successes.length) {
@@ -434,7 +461,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                     ev.emit('auth-state.update', authState)
                 }
             }
-            
+
             await processMessage(msg, chat)
             if(!!msg.message && !msg.message!.protocolMessage) {
                 chat.conversationTimestamp = toNumber(msg.messageTimestamp)
@@ -453,5 +480,5 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         }
     })
 
-	return sock
+	return { ...sock, processMessage }
 }

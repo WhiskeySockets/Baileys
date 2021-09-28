@@ -1,41 +1,10 @@
 import { generateMessageID } from "../Utils";
 import { SocketConfig, GroupMetadata, ParticipantAction } from "../Types";
-import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidDecode, jidEncode } from "../WABinary";
-import { makeChatsSocket } from "./chats";
-
-const extractGroupMetadata = (result: BinaryNode) => {
-	const group = getBinaryNodeChild(result, 'group')
-	const descChild = getBinaryNodeChild(group, 'description')
-	let desc: string | undefined
-	let descId: string | undefined
-	if(descChild) {
-		desc = getBinaryNodeChild(descChild, 'body')?.content as string
-		descId = descChild.attrs.id
-	}
-	const groupId = group.attrs.id.includes('@') ? group.attrs.id : jidEncode(group.attrs.id, 'g.us')
-	const metadata: GroupMetadata = {
-		id: groupId,
-		subject: group.attrs.subject,
-		creation: +group.attrs.creation,
-		owner: group.attrs.creator,
-		desc,
-		descId,
-		restrict: !!getBinaryNodeChild(result, 'locked'),
-		announce: !!getBinaryNodeChild(result, 'announcement'),
-		participants: getBinaryNodeChildren(group, 'participant').map(
-			({ attrs }) => {
-				return {
-					id: attrs.jid,
-					admin: attrs.type || null as any,
-				}
-			}
-		)
-	}
-	return metadata
-}
+import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidEncode } from "../WABinary";
+import { makeSocket } from "./socket";
 
 export const makeGroupsSocket = (config: SocketConfig) => {
-	const sock = makeChatsSocket(config)
+	const sock = makeSocket(config)
 	const { query } = sock
 
 	const groupQuery = async(jid: string, type: 'get' | 'set', content: BinaryNode[]) => (
@@ -146,4 +115,36 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 			await groupQuery(jid, 'set', [ { tag: setting, attrs: { } } ])
 		}
 	}
+}
+
+
+const extractGroupMetadata = (result: BinaryNode) => {
+	const group = getBinaryNodeChild(result, 'group')
+	const descChild = getBinaryNodeChild(group, 'description')
+	let desc: string | undefined
+	let descId: string | undefined
+	if(descChild) {
+		desc = getBinaryNodeChild(descChild, 'body')?.content as string
+		descId = descChild.attrs.id
+	}
+	const groupId = group.attrs.id.includes('@') ? group.attrs.id : jidEncode(group.attrs.id, 'g.us')
+	const metadata: GroupMetadata = {
+		id: groupId,
+		subject: group.attrs.subject,
+		creation: +group.attrs.creation,
+		owner: group.attrs.creator,
+		desc,
+		descId,
+		restrict: !!getBinaryNodeChild(result, 'locked'),
+		announce: !!getBinaryNodeChild(result, 'announcement'),
+		participants: getBinaryNodeChildren(group, 'participant').map(
+			({ attrs }) => {
+				return {
+					id: attrs.jid,
+					admin: attrs.type || null as any,
+				}
+			}
+		)
+	}
+	return metadata
 }

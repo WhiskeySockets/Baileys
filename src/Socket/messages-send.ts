@@ -1,6 +1,5 @@
 
-import { makeMessagesRecvSocket } from "./messages-recv"
-import { SocketConfig, MediaConnInfo, AnyMessageContent, MiscMessageGenerationOptions, WAMediaUploadFunction } from "../Types"
+import { SocketConfig, MediaConnInfo, AnyMessageContent, MiscMessageGenerationOptions, WAMediaUploadFunction, MessageRelayOptions } from "../Types"
 import { encodeWAMessage, generateMessageID, generateWAMessage } from "../Utils"
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, jidDecode, jidEncode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
 import { proto } from "../../WAProto"
@@ -8,10 +7,11 @@ import { encryptSenderKeyMsgSignalProto, encryptSignalProto, extractDeviceJids, 
 import { WA_DEFAULT_EPHEMERAL, DEFAULT_ORIGIN, MEDIA_PATH_MAP } from "../Defaults"
 import got from "got"
 import { Boom } from "@hapi/boom"
+import { makeGroupsSocket } from "./groups"
 
 export const makeMessagesSocket = (config: SocketConfig) => {
 	const { logger } = config
-	const sock = makeMessagesRecvSocket(config)
+	const sock = makeGroupsSocket(config)
 	const { 
 		ev,
         authState,
@@ -84,10 +84,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
     }
 
     const getUSyncDevices = async(jids: string[], ignoreZeroDevices: boolean) => {
+        jids = Array.from(new Set(jids))
         const users = jids.map<BinaryNode>(jid => ({ 
             tag: 'user', 
             attrs: { jid: jidNormalizedUser(jid) } 
         }))
+
         const iq: BinaryNode = {
             tag: 'iq',
             attrs: {
@@ -175,7 +177,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
         return node
     }
 
-    const relayMessage = async(jid: string, message: proto.IMessage, msgId?: string) => {
+    const relayMessage = async(
+        jid: string, 
+        message: proto.IMessage, 
+        { messageId: msgId, cachedGroupMetadata }: MessageRelayOptions
+    ) => {
         const { user, server } = jidDecode(jid)
         const isGroup = server === 'g.us'
         msgId = msgId || generateMessageID()
@@ -188,7 +194,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
         if(isGroup) {
             const { ciphertext, senderKeyDistributionMessageKey } = await encryptSenderKeyMsgSignalProto(destinationJid, encodedMsg, authState)
-            const groupData = await groupMetadata(jid)
+            
+            let groupData = cachedGroupMetadata ? await cachedGroupMetadata(jid) : undefined 
+            if(!groupData) groupData = await groupMetadata(jid)
+
             const participantsList = groupData.participants.map(p => p.id)
             const devices = await getUSyncDevices(participantsList, false)
 
@@ -384,7 +393,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						upload: waUploadToServer
 					}
 				)
-				await relayMessage(jid, fullMsg.message, fullMsg.key.id!)
+				await relayMessage(jid, fullMsg.message, { messageId: fullMsg.key.id! })
                 process.nextTick(() => {
                     ev.emit('messages.upsert', { messages: [fullMsg], type: 'append' })
                 })

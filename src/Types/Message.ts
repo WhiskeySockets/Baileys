@@ -1,6 +1,7 @@
 import type { ReadStream } from "fs"
 import type { Logger } from "pino"
 import type { URL } from "url"
+import type { GroupMetadata } from "./GroupMetadata"
 import { proto } from '../../WAProto'
 
 // export the WAMessage Prototypes
@@ -103,6 +104,13 @@ export type AnyMessageContent = AnyRegularMessageContent | {
 }  | {
 	disappearingMessagesInChat: boolean | number
 }
+
+export type MessageRelayOptions = {
+    messageId?: string
+    cachedGroupMetadata?: (jid: string) => Promise<GroupMetadata | undefined>
+    //cachedDevices?: (jid: string) => Promise<string[] | undefined>
+}
+
 export type MiscMessageGenerationOptions = {
     /** Force message id */
     messageId?: string

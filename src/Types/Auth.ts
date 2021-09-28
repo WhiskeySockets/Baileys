@@ -1,5 +1,6 @@
 import type { Contact } from "./Contact"
 import type { proto } from "../../WAProto"
+import type { WAPatchName, ChatMutation } from "./Chat"
 
 export type KeyPair = { public: Uint8Array, private: Uint8Array }
 export type SignedKeyPair = { keyPair: KeyPair, signature: Uint8Array, keyId: number }
@@ -13,7 +14,7 @@ export type SignalIdentity = {
 	identifierKey: Uint8Array
 }
 
-export type CollectionType = 'regular_high' | 'regular_low' | 'critical_unblock_low' | 'critical_block'
+export type LTHashState = { version: number, hash: Buffer, mutations: ChatMutation[] }
 
 export type AuthenticationCreds = {
     noiseKey: KeyPair
@@ -24,9 +25,6 @@ export type AuthenticationCreds = {
     me?: Contact
     account?: proto.ADVSignedDeviceIdentity
     signalIdentities?: SignalIdentity[]
-    appStateVersion?: {
-        [T in CollectionType]: number
-    }
     myAppStateKeyId?: string
     firstUnuploadedPreKeyId: number
     serverHasPreKeys: boolean
@@ -45,6 +43,9 @@ export type SignalKeyStore = {
 
     getAppStateSyncKey: (id: string) => Awaitable<proto.IAppStateSyncKeyData>
     setAppStateSyncKey: (id: string, item: proto.IAppStateSyncKeyData | null) => Awaitable<void>
+
+    getAppStateSyncVersion: (name: WAPatchName) => Awaitable<LTHashState>
+    setAppStateSyncVersion: (id: WAPatchName, item: LTHashState) => Awaitable<void>
 }
 
 export type AuthenticationState = {

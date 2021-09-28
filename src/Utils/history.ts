@@ -5,12 +5,6 @@ import { inflate } from "zlib";
 
 const inflatePromise = promisify(inflate)
 
-export const downloadIfHistory = (message: proto.IMessage) => {
-	if(message.protocolMessage?.historySyncNotification) {
-		return downloadHistory(message.protocolMessage!.historySyncNotification)
-	}
-}
-
 export const downloadHistory = async(msg: proto.IHistorySyncNotification) => {
 	const stream = await downloadContentFromMessage(msg, 'history')
 	let buffer = Buffer.from([])

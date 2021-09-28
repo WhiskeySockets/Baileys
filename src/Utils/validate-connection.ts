@@ -1,7 +1,7 @@
 import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
 import { proto } from '../../WAProto'
-import type { AuthenticationState, SocketConfig, SignalKeyStore, AuthenticationCreds, KeyPair } from "../Types"
+import type { AuthenticationState, SocketConfig, SignalKeyStore, AuthenticationCreds, KeyPair, LTHashState } from "../Types"
 import { Curve, hmacSign, signedKeyPair } from './crypto'
 import { encodeInt, generateRegistrationId } from './generics'
 import { BinaryNode, S_WHATSAPP_NET, jidDecode, Binary } from '../WABinary'
@@ -83,22 +83,25 @@ export const generateRegistrationNode = (
 }
 
 export const initInMemoryKeyStore = (
-  { preKeys, sessions, senderKeys, appStateSyncKeys }: { 
+  { preKeys, sessions, senderKeys, appStateSyncKeys, appStateVersions }: { 
     preKeys?: { [k: number]: KeyPair },
     sessions?: { [k: string]: any },
     senderKeys?: { [k: string]: any }
-    appStateSyncKeys?: { [k: string]: proto.IAppStateSyncKeyData }
+    appStateSyncKeys?: { [k: string]: proto.IAppStateSyncKeyData },
+    appStateVersions?: { [k: string]: LTHashState },
   } = { },
 ) => {
   preKeys = preKeys || { }
   sessions = sessions || { }
   senderKeys = senderKeys || { }
   appStateSyncKeys = appStateSyncKeys || { }
+  appStateVersions = appStateVersions || { }
   return {
     preKeys,
     sessions,
     senderKeys,
     appStateSyncKeys,
+    appStateVersions,
     getPreKey: keyId => preKeys[keyId],
     setPreKey: (keyId, pair) => {
       if(pair) preKeys[keyId] = pair
@@ -125,6 +128,16 @@ export const initInMemoryKeyStore = (
     setAppStateSyncKey: (id, item) => {
       if(item) appStateSyncKeys[id] = item
       else delete appStateSyncKeys[id]
+    },
+    getAppStateSyncVersion: id => {
+      const obj = appStateVersions[id]
+      if(obj) {
+        return obj
+      }
+    },
+    setAppStateSyncVersion: (id, item) => {
+      if(item) appStateVersions[id] = item
+      else delete appStateVersions[id]
     }
   } as SignalKeyStore
 }
