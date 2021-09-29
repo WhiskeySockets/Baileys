@@ -10,11 +10,11 @@ export interface PresenceData {
     lastSeen?: number
 }
 
-export type ChatMutation = { action: proto.ISyncActionValue, index: [string, string], indexMac: Uint8Array, valueMac: Uint8Array, operation: number }
+export type ChatMutation = { action: proto.ISyncActionValue, index: string[], indexMac: Uint8Array, valueMac: Uint8Array, operation: number }
 
 export type WAPatchCreate = {
     syncAction: proto.ISyncActionValue
-    index: [string, string]
+    index: string[]
     type: WAPatchName
     apiVersion: number
 }
@@ -38,7 +38,7 @@ export type ChatModification =
         mute: number | null
     } |
     {
-        clear: 'all' | { messages: { id: string, fromMe?: boolean }[] }
+        clear: 'all' | { message: {id: string, fromMe?: boolean} }
     } |
     {
         star: { 

@@ -1,6 +1,6 @@
 import { Boom } from '@hapi/boom'
 import { aesDecrypt, hmacSign, aesEncrypt, hkdf } from "./crypto"
-import { AuthenticationState, WAPatchCreate, ChatMutation, WAPatchName, LTHashState } from "../Types"
+import { AuthenticationState, WAPatchCreate, ChatMutation, WAPatchName, LTHashState, ChatModification } from "../Types"
 import { proto } from '../../WAProto'
 import { LT_HASH_ANTI_TAMPERING } from '../WABinary/LTHash'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren } from '../WABinary'
@@ -313,7 +313,6 @@ export const decodePatches = async(
         }
 
         const decodeResult = await decodeSyncdPatch(syncd, name, auth!, validateMacs)
-        console.log(currentVersion, decodeResult.mutations)
         successfulMutations.push(...decodeResult.mutations)
     }
     return {
@@ -324,4 +323,77 @@ export const decodePatches = async(
             mutations: [...initial.mutations, ...successfulMutations]
         } as LTHashState
     }
+}
+
+export const chatModificationToAppPatch = (
+    mod: ChatModification,
+    jid: string,
+    lastMessages: Pick<proto.IWebMessageInfo, 'key' | 'messageTimestamp'>[]
+) => {
+    const messageRange: proto.ISyncActionMessageRange = {
+        lastMessageTimestamp: lastMessages[lastMessages.length-1].messageTimestamp,
+        messages: lastMessages
+    }
+    const timestamp = Date.now()
+    let patch: WAPatchCreate
+    if('mute' in mod) {
+        patch = {
+            syncAction: {
+                timestamp,
+                muteAction: {
+                    muted: !!mod.mute,
+                    muteEndTimestamp: mod.mute || undefined
+                }
+            },
+            index: ['mute', jid],
+            type: 'regular_high',
+            apiVersion: 2
+        }
+    } else if('archive' in mod) {
+        patch = {
+            syncAction: {
+                timestamp,
+                archiveChatAction: {
+                    archived: !!mod.archive,
+                    messageRange
+                }
+            },
+            index: ['archive', jid],
+            type: 'regular_low',
+            apiVersion: 3
+        }
+    } else if('markRead' in mod) {
+        patch = {
+            syncAction: {
+                timestamp,
+                markChatAsReadAction: {
+                    read: mod.markRead,
+                    messageRange
+                }
+            },
+            index: ['markChatAsRead', jid],
+            type: 'regular_low',
+            apiVersion: 3
+        }
+    } else if('clear' in mod) {
+        if(mod.clear === 'all') {
+            throw new Boom('not supported')
+        } else {
+            const key = mod.clear.message
+            patch = {
+                syncAction: {
+                    timestamp,
+                    deleteMessageForMeAction: {
+                        deleteMedia: false
+                    }
+                },
+                index: ['deleteMessageForMe', jid, key.id, key.fromMe ? '1' : '0', '0'],
+                type: 'regular_high',
+                apiVersion: 3,
+            }
+        }
+    } else {
+        throw new Boom('not supported')
+    }
+    return patch
 }

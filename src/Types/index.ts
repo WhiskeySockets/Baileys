@@ -16,7 +16,7 @@ import { Contact } from './Contact'
 import { ConnectionState } from './State'
 
 import { GroupMetadata, ParticipantAction } from './GroupMetadata'
-import { MessageInfoUpdate, MessageUpdateType, WAMessage, WAMessageUpdate } from './Message'
+import { MessageInfoUpdate, MessageUpdateType, WAMessage, WAMessageUpdate, WAMessageKey } from './Message'
 
 export type WAVersion = [number, number, number]
 export type WABrowserDescription = [string, string, string]
@@ -103,7 +103,7 @@ export type BaileysEventMap = {
     'contacts.upsert': Contact[]
     'contacts.update': Partial<Contact>[] 
     
-    'messages.delete': { jid: string, ids: string[] } | { jid: string, all: true }
+    'messages.delete': { keys: WAMessageKey[] } | { jid: string, all: true }
     'messages.update': WAMessageUpdate[]
     /** 
      * add/update the given messages. If they were received while the connection was online, 

@@ -1,5 +1,5 @@
-import { encodeSyncdPatch, decodePatches, extractSyncdPatches } from "../Utils/chat-utils";
-import { SocketConfig, WAPresence, PresenceData, Chat, WAPatchCreate, WAMediaUpload, ChatMutation, WAPatchName, LTHashState } from "../Types";
+import { encodeSyncdPatch, decodePatches, extractSyncdPatches, chatModificationToAppPatch } from "../Utils/chat-utils";
+import { SocketConfig, WAPresence, PresenceData, Chat, WAPatchCreate, WAMediaUpload, ChatMutation, WAPatchName, LTHashState, ChatModification, Contact } from "../Types";
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidNormalizedUser, S_WHATSAPP_NET } from "../WABinary";
 import { proto } from '../../WAProto'
 import { generateProfilePicture, toNumber } from "../Utils";
@@ -298,8 +298,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
     }
 
     const processSyncActions = (actions: ChatMutation[]) => {
-        const updates: Partial<Chat>[] = []
-        for(const { action, index: [_, id] } of actions) {
+        
+        const updates: { [jid: string]: Partial<Chat> } = {}
+        const contactUpdates: { [jid: string]: Partial<Contact> } = {}
+        const msgDeletes: proto.IMessageKey[] = []
+
+        for(const { action, index: [_, id, msgId, fromMe] } of actions) {
             const update: Partial<Chat> = { id }
             if(action?.muteAction) {
                 update.mute = action.muteAction?.muted ? 
@@ -310,9 +314,17 @@ export const makeChatsSocket = (config: SocketConfig) => {
             } else if(action?.markChatAsReadAction) {
                 update.unreadCount = !!action.markChatAsReadAction?.read ? 0 : -1
             } else if(action?.clearChatAction) {
-                console.log(action.clearChatAction)
+                msgDeletes.push({
+                    remoteJid: id,
+                    id: msgId,
+                    fromMe: fromMe === '1'
+                })
             } else if(action?.contactAction) {
-                ev.emit('contacts.update', [{ id, name: action.contactAction!.fullName }])  
+                contactUpdates[id] = {
+                    ...(contactUpdates[id] || {}),
+                    id,
+                    name: action.contactAction!.fullName
+                }
             } else if(action?.pushNameSetting) {
                 authState.creds.me!.name = action?.pushNameSetting?.name!
                 ev.emit('auth-state.update', authState)
@@ -320,10 +332,22 @@ export const makeChatsSocket = (config: SocketConfig) => {
                 logger.warn({ action, id }, 'unprocessable update')
             }
             if(Object.keys(update).length > 1) {
-                updates.push(update)
+                updates[update.id] = {
+                    ...(updates[update.id] || {}),
+                    ...update
+                }
             }
         }
-        ev.emit('chats.update', updates)
+
+        if(Object.values(updates).length) {
+            ev.emit('chats.update', Object.values(updates))
+        }
+        if(Object.values(contactUpdates).length) {
+            ev.emit('contacts.update', Object.values(contactUpdates))
+        }
+        if(msgDeletes.length) {
+            ev.emit('messages.delete', { keys: msgDeletes })
+        }
     }
 
     const appPatch = async(patchCreate: WAPatchCreate) => {
@@ -336,7 +360,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
         )
         const initial = await authState.keys.getAppStateSyncVersion(name)
         // temp: verify it was encoded correctly
-        const result = await decodePatches({ syncds: [{ ...patch, version: { version: state.version }, }], name }, initial, authState)
+        await decodePatches({ syncds: [{ ...patch, version: { version: state.version }, }], name }, initial, authState)
 
         const node: BinaryNode = {
             tag: 'iq',
@@ -373,6 +397,11 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
         await authState.keys.setAppStateSyncVersion(name, state)
         ev.emit('auth-state.update', authState)
+    }
+
+    const chatModify = (mod: ChatModification, jid: string, lastMessages: Pick<proto.IWebMessageInfo, 'key' | 'messageTimestamp'>[]) => {
+        const patch = chatModificationToAppPatch(mod, jid, lastMessages)
+        return appPatch(patch)
     }
 
     const fetchAppState = async(name: WAPatchName, fromVersion: number) => {
@@ -452,5 +481,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
         updateProfilePicture,
         updateBlockStatus,
         resyncState,
+        chatModify,
 	}
 }
