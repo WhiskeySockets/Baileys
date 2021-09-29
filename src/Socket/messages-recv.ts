@@ -401,11 +401,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             ids.push(...items.map(i => i.attrs.id))
         }
         
+        const remoteJid = attrs.recipient || attrs.from 
+        const fromMe = attrs.recipient ? false : true
         ev.emit('messages.update', ids.map(id => ({
             key: {
-                remoteJid: attrs.from,
+                remoteJid,
                 id: id,
-                fromMe: true,
+                fromMe,
                 participant: attrs.participant
             },
             update: { status }
