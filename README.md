@@ -390,16 +390,24 @@ The presence expires after about 10 seconds.
 
 If you want to save the media you received
 ``` ts
-import { MessageType } from '@adiwajshing/baileys-md'
-conn.on ('message-new', async m => {
+import { writeFile } from 'fs/promises'
+import { downloadContentFromMessage } from '@adiwajshing/baileys-md'
+
+conn.ev.on('messages.upsert', async ({ messages }) => {
+    const m = messages[0]
+
     if (!m.message) return // if there is no text or media message
     const messageType = Object.keys (m.message)[0]// get what type of message it is -- text, image, video
-    // if the message is not a text message
-    if (messageType !== MessageType.text && messageType !== MessageType.extendedText) {
-        const buffer = await conn.downloadMediaMessage(m) // to decrypt & use as a buffer
-        
-        const savedFilename = await conn.downloadAndSaveMediaMessage (m) // to decrypt & save to file
-        console.log(m.key.remoteJid + " sent media, saved at: " + savedFilename)
+    // if the message is an image
+    if (messageType === 'imageMessage') {
+        // download stream
+        const stream = await downloadContentFromMessage(m.message.imageMessage, 'image')
+        let buffer = Buffer.from([])
+        for await(const chunk of stream) {
+            buffer = Buffer.concat([buffer, chunk])
+        }
+        // save to file
+        await writeFile('./my-download.jpeg', buffer)
     }
 }
 ```
