@@ -200,7 +200,7 @@ export type BaileysEventMap = {
     'auth-state.update': AuthenticationState
     /** set chats (history sync), messages are reverse chronologically sorted */
     'chats.set': { chats: Chat[], messages: WAMessage[] }
-    /** update/insert chats */
+    /** upsert chats */
     'chats.upsert': Chat[]
     /** update the given chats */
     'chats.update': Partial<Chat>[]
@@ -212,7 +212,7 @@ export type BaileysEventMap = {
     'contacts.upsert': Contact[]
     'contacts.update': Partial<Contact>[] 
     
-    'messages.delete': { jid: string, ids: string[] } | { jid: string, all: true }
+    'messages.delete': { keys: WAMessageKey[] } | { jid: string, all: true }
     'messages.update': WAMessageUpdate[]
     /** 
      * add/update the given messages. If they were received while the connection was online, 
@@ -353,9 +353,8 @@ await conn.sendMessage(
 ## Forwarding Messages
 
 ``` ts
-const messages = await conn.loadConversation ('1234@s.whatsapp.net', 1)
-const message = messages[0] // get the last message from this conversation
-await conn.forwardMessage ('455@s.whatsapp.net', message) // WA forward the message!
+const msg = getMessageFromStore('455@s.whatsapp.net', 'HSJHJWH7323HSJSJ') // implement this on your end
+await conn.sendMessage('1234@s.whatsapp.net', { forward: msg }) // WA forward the message!
 ```
 
 ## Reading Messages
@@ -415,11 +414,42 @@ const response = await conn.sendMessage(jid, { text: 'hello!' }) // send a messa
 await conn.sendMessage(jid, { delete: response.key })
 ```
 
-Note: deleting for oneself is not supported yet
+Note: deleting for oneself is supported via `chatModify` (next section)
 
 ## Modifying Chats
 
-TODO: haven't figured this bit out yet. Can receive chat modifications tho.
+WA uses an encrypted form of communication to send chat/app updates. This has been implemented mostly and you can send the following updates:
+
+- Archive a chat
+  ``` ts
+  const lastMsgInChat = await getLastMessageInChat('123456@s.whatsapp.net') // implement this on your end
+  await conn.chatModify({ archive: true }, '123456@s.whatsapp.net', [lastMsgInChat])
+  ```
+- Mute/unmute a chat
+  ``` ts
+  // mute for 8 hours
+  await conn.chatModify({ mute: 8*60*60*1000 }, '123456@s.whatsapp.net', [])
+  // unmute
+  await conn.chatModify({ mute: null }, '123456@s.whatsapp.net', [])
+  ```
+- Mark a chat read/unread
+  ``` ts
+  const lastMsgInChat = await getLastMessageInChat('123456@s.whatsapp.net') // implement this on your end
+  // mark it unread
+  await conn.chatModify({ markRead: false }, '123456@s.whatsapp.net', [lastMsgInChat])
+  ```
+
+- Delete message for me
+  ``` ts
+  // mark it unread
+  await conn.chatModify(
+      { clear: { message: { id: 'ATWYHDNNWU81732J', fromMe: true } } }, 
+      '123456@s.whatsapp.net', 
+      []
+  )
+  ```
+
+Note: if you mess up one of your updates, WA can log you out of all your devices and you'll have to login again.
 
 ## Disappearing Messages
 
