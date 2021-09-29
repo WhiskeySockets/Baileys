@@ -13,7 +13,7 @@
 
 ## Multi-Device Support
 
-Baileys now supports the latest multi-device beta. However, as it's a completely different implementation from WA Web, it's on its own branch which will be merged into master once mutli-device hits production. You may find the MD repo [here](https://github.com/adiwajshing/baileys#multi-device).
+Baileys now supports the latest multi-device beta. However, as it's a completely different implementation from WA Web & will break a lot of things, it's on its own branch which will be merged into master once mutli-device hits production. You may find the MD repo [here](https://github.com/adiwajshing/baileys/tree/multi-device).
 
 The master branch only supports WA Web at the moment.
 
