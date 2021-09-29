@@ -11,6 +11,12 @@
  **Read the docs [here](https://adiwajshing.github.io/Baileys)**
  **Join the Discord [here](https://discord.gg/7FYURJyqng)**
 
+## Multi-Device Support
+
+Baileys now supports the latest multi-device beta. However, as it's a completely different implementation from WA Web, it's on its own branch which will be merged into master once mutli-device hits production. You may find the MD repo [here](https://github.com/adiwajshing/baileys#multi-device).
+
+The master branch only supports WA Web at the moment.
+
 ## Example
 Do check out & run [example.ts](Example/example.ts) to see example usage of the library.
 The script covers most common use cases.
