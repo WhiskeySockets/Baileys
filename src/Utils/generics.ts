@@ -90,7 +90,7 @@ export const encodeBigEndian = (e: number, t=4) => {
     return a
 }
 
-export const toNumber = (t: Long | number) => (typeof t?.['low'] !== 'undefined' ? t['low'] : t) as number
+export const toNumber = (t: Long | number) => ((typeof t === 'object' && 'toNumber' in t) ? t.toNumber() : t)
 
 export function shallowChanges <T> (old: T, current: T, {lookForDeletedKeys}: {lookForDeletedKeys: boolean}): Partial<T> {
     let changes: Partial<T> = {}
