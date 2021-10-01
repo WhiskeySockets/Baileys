@@ -4,8 +4,6 @@ import { Browsers } from "../Utils"
 
 export const UNAUTHORIZED_CODES = [401, 403, 419]
 
-export const STORIES_JID = 'status@broadcast'
-
 export const DEFAULT_ORIGIN = 'https://web.whatsapp.com'
 export const DEF_CALLBACK_PREFIX = 'CB:'
 export const DEF_TAG_PREFIX = 'TAG:'
