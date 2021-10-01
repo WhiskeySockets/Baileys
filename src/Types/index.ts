@@ -43,6 +43,8 @@ export type SocketConfig = {
 	fetchAgent?: Agent
     /** should the QR be printed in the terminal */
     printQRInTerminal: boolean
+    /** should events be emitted for actions done by this socket connection */
+    emitOwnEvents: boolean
 }
 
 export enum DisconnectReason {

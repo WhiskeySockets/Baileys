@@ -28,6 +28,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
     keepAliveIntervalMs: 25_000,
     logger: P().child({ class: 'baileys' }),
 	printQRInTerminal: false,
+    emitOwnEvents: true
 }
 
 export const MEDIA_PATH_MAP: { [T in MediaType]: string } = {

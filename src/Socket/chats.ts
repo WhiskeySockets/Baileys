@@ -298,7 +298,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
     }
 
     const processSyncActions = (actions: ChatMutation[]) => {
-        
+
         const updates: { [jid: string]: Partial<Chat> } = {}
         const contactUpdates: { [jid: string]: Partial<Contact> } = {}
         const msgDeletes: proto.IMessageKey[] = []
@@ -360,7 +360,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
         )
         const initial = await authState.keys.getAppStateSyncVersion(name)
         // temp: verify it was encoded correctly
-        await decodePatches({ syncds: [{ ...patch, version: { version: state.version }, }], name }, initial, authState)
+        const result = await decodePatches({ syncds: [{ ...patch, version: { version: state.version }, }], name }, initial, authState)
 
         const node: BinaryNode = {
             tag: 'iq',
@@ -397,6 +397,9 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
         await authState.keys.setAppStateSyncVersion(name, state)
         ev.emit('auth-state.update', authState)
+        if(config.emitOwnEvents) {
+            processSyncActions(result.newMutations)
+        }
     }
 
     const chatModify = (mod: ChatModification, jid: string, lastMessages: Pick<proto.IWebMessageInfo, 'key' | 'messageTimestamp'>[]) => {

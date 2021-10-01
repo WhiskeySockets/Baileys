@@ -394,9 +394,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 				)
 				await relayMessage(jid, fullMsg.message, { messageId: fullMsg.key.id! })
-                process.nextTick(() => {
-                    ev.emit('messages.upsert', { messages: [fullMsg], type: 'append' })
-                })
+                if(config.emitOwnEvents) {
+                    process.nextTick(() => {
+                        ev.emit('messages.upsert', { messages: [fullMsg], type: 'append' })
+                    })
+                }
 				return fullMsg
 			}
         }
