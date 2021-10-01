@@ -113,6 +113,40 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 		},
 		groupSettingUpdate: async(jid: string, setting: 'announcement' | 'not_announcement' | 'locked' | 'unlocked') => {
 			await groupQuery(jid, 'set', [ { tag: setting, attrs: { } } ])
+		},
+		groupFetchAllParticipating: async() => {
+			const result = await query({
+				tag: 'iq',
+				attrs: {
+					to: '@g.us',
+                    xmlns: 'w:g2',
+                    type: 'get',
+				},
+				content: [
+					{
+						tag: 'participating',
+						attrs: { },
+						content: [
+							{ tag: 'participants', attrs: { } },
+							{ tag: 'description', attrs: { } }
+						]
+					}
+				]
+			})
+			const data: { [_: string]: GroupMetadata } = { }
+			const groupsChild = getBinaryNodeChild(result, 'groups')
+			if(groupsChild) {
+				const groups = getBinaryNodeChildren(groupsChild, 'group')
+				for(const groupNode of groups) {
+					const meta = extractGroupMetadata({
+						tag: 'result',
+						attrs: { },
+						content: [groupNode]
+					})
+					data[meta.id] = meta
+				}
+			}
+			return data
 		}
 	}
 }
@@ -128,6 +162,7 @@ const extractGroupMetadata = (result: BinaryNode) => {
 		descId = descChild.attrs.id
 	}
 	const groupId = group.attrs.id.includes('@') ? group.attrs.id : jidEncode(group.attrs.id, 'g.us')
+	const eph = getBinaryNodeChild(group, 'ephemeral')?.attrs.expiration
 	const metadata: GroupMetadata = {
 		id: groupId,
 		subject: group.attrs.subject,
@@ -144,7 +179,8 @@ const extractGroupMetadata = (result: BinaryNode) => {
 					admin: attrs.type || null as any,
 				}
 			}
-		)
+		),
+		ephemeralDuration: eph ? +eph : undefined
 	}
 	return metadata
 }
