@@ -470,7 +470,7 @@ export const makeSocket = ({
         end(new Boom('Logged Out', { statusCode: DisconnectReason.loggedOut }))
     })
     process.nextTick(() => {
-        ev.emit('connection.update', { connection: 'connecting', receivedPendingNotifications: false })
+        ev.emit('connection.update', { connection: 'connecting', receivedPendingNotifications: false, qr: undefined })
     })
 
 	return {
