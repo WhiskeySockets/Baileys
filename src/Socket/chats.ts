@@ -300,7 +300,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
     const processSyncActions = (actions: ChatMutation[]) => {
 
         const updates: { [jid: string]: Partial<Chat> } = {}
-        const contactUpdates: { [jid: string]: Partial<Contact> } = {}
+        const contactUpdates: { [jid: string]: Contact } = {}
         const msgDeletes: proto.IMessageKey[] = []
 
         for(const { action, index: [_, id, msgId, fromMe] } of actions) {
@@ -343,7 +343,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
             ev.emit('chats.update', Object.values(updates))
         }
         if(Object.values(contactUpdates).length) {
-            ev.emit('contacts.update', Object.values(contactUpdates))
+            ev.emit('contacts.upsert', Object.values(contactUpdates))
         }
         if(msgDeletes.length) {
             ev.emit('messages.delete', { keys: msgDeletes })

@@ -349,7 +349,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                     message,
                     status: isMe ? proto.WebMessageInfo.WebMessageInfoStatus.SERVER_ACK : null,
                     messageTimestamp: dec.timestamp,
-                    pushName: dec.pushname
+                    pushName: dec.pushname,
+                    participant: dec.participant
                 })
         }
 
