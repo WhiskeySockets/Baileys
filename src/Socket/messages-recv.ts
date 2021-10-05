@@ -222,6 +222,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                     }
                 )
                 ev.emit('chats.set', { chats, messages })
+                ev.emit('connection.update', { receivedPendingNotifications: true })
             break
             case proto.HistorySync.HistorySyncHistorySyncType.PUSH_NAME:
                 const contacts = item.pushnames.map(

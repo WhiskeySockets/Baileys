@@ -1,7 +1,7 @@
 
 import { SocketConfig, MediaConnInfo, AnyMessageContent, MiscMessageGenerationOptions, WAMediaUploadFunction, MessageRelayOptions } from "../Types"
 import { encodeWAMessage, generateMessageID, generateWAMessage } from "../Utils"
-import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, jidDecode, jidEncode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
+import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, jidDecode, jidEncode, jidNormalizedUser, S_WHATSAPP_NET, BinaryNodeAttributes } from '../WABinary'
 import { proto } from "../../WAProto"
 import { encryptSenderKeyMsgSignalProto, encryptSignalProto, extractDeviceJids, jidToSignalProtocolAddress, parseAndInjectE2ESession } from "../Utils/signal"
 import { WA_DEFAULT_EPHEMERAL, DEFAULT_ORIGIN, MEDIA_PATH_MAP } from "../Defaults"
@@ -180,7 +180,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
     const relayMessage = async(
         jid: string, 
         message: proto.IMessage, 
-        { messageId: msgId, cachedGroupMetadata }: MessageRelayOptions
+        { messageId: msgId, additionalAttributes, cachedGroupMetadata }: MessageRelayOptions
     ) => {
         const { user, server } = jidDecode(jid)
         const isGroup = server === 'g.us'
@@ -281,7 +281,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
                 attrs: {
                     id: msgId,
                     type: 'text',
-                    to: destinationJid
+                    to: destinationJid,
+                    ...(additionalAttributes || {})
                 },
                 content: [
                     {
@@ -393,7 +394,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						upload: waUploadToServer
 					}
 				)
-				await relayMessage(jid, fullMsg.message, { messageId: fullMsg.key.id! })
+                const additionalAttributes: BinaryNodeAttributes = { }
+                // required for delete
+                if('delete' in content) {
+                    additionalAttributes.edit = '7'
+                }
+
+				await relayMessage(jid, fullMsg.message, { messageId: fullMsg.key.id!, additionalAttributes })
                 if(config.emitOwnEvents) {
                     process.nextTick(() => {
                         ev.emit('messages.upsert', { messages: [fullMsg], type: 'append' })
