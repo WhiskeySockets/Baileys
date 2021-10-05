@@ -402,7 +402,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
                 }
 
 				await relayMessage(jid, fullMsg.message, { messageId: fullMsg.key.id!, additionalAttributes })
-                if(config.emitOwnEvents && !isDeleteMsg) {
+                if(config.emitOwnEvents) {
                     process.nextTick(() => {
                         ev.emit('messages.upsert', { messages: [fullMsg], type: 'append' })
                     })
