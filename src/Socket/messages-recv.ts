@@ -149,7 +149,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                     ev.emit('messages.update', [
                         { 
                             key: protocolMsg.key, 
-                            update: { message: null, messageStubType: 1, key: message.key } 
+                            update: { message: null, messageStubType: WAMessageStubType.REVOKE, key: message.key } 
                         }
                     ])
                 break

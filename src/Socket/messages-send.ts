@@ -394,14 +394,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						upload: waUploadToServer
 					}
 				)
+                const isDeleteMsg = 'delete' in content && !!content.delete
                 const additionalAttributes: BinaryNodeAttributes = { }
                 // required for delete
-                if('delete' in content) {
+                if(isDeleteMsg) {
                     additionalAttributes.edit = '7'
                 }
 
 				await relayMessage(jid, fullMsg.message, { messageId: fullMsg.key.id!, additionalAttributes })
-                if(config.emitOwnEvents) {
+                if(config.emitOwnEvents && !isDeleteMsg) {
                     process.nextTick(() => {
                         ev.emit('messages.upsert', { messages: [fullMsg], type: 'append' })
                     })
