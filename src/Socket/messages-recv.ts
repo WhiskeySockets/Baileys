@@ -148,8 +148,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                 case proto.ProtocolMessage.ProtocolMessageType.REVOKE:
                     ev.emit('messages.update', [
                         { 
-                            key: protocolMsg.key, 
-                            update: { message: null, messageStubType: WAMessageStubType.REVOKE, key: message.key } 
+                            key: message.key, 
+                            update: { message: null, messageStubType: WAMessageStubType.REVOKE, key: protocolMsg.key } 
                         }
                     ])
                 break
