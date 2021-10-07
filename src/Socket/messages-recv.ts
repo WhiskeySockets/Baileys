@@ -148,8 +148,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                 case proto.ProtocolMessage.ProtocolMessageType.REVOKE:
                     ev.emit('messages.update', [
                         { 
-                            key: message.key, 
-                            update: { message: null, messageStubType: WAMessageStubType.REVOKE, key: protocolMsg.key } 
+                            key: protocolMsg.key, 
+                            update: { message: null, messageStubType: WAMessageStubType.REVOKE, key: message.key } 
                         }
                     ])
                 break
@@ -306,10 +306,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             const isGroup = !!stanza.attrs.participant
             const sender = (attrs.participant || attrs.from)?.toString()
             const isMe = areJidsSameUser(sender, authState.creds.me!.id)
-    
-            await sendMessageAck(stanza)
-
-            logger.debug({ msgId: dec.msgId, sender }, 'send message ack')
 
             // send delivery receipt
             let recpAttrs: { [_: string]: any }
@@ -327,17 +323,22 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             } else {
                 const isStatus = isJidStatusBroadcast(stanza.attrs.from)
                 recpAttrs = {
-                    //type: 'inactive',
+                    type: 'inactive',
                     id: stanza.attrs.id,
-                    to: dec.chatId,
                 }
                 if(isGroup || isStatus) {
                     recpAttrs.participant = stanza.attrs.participant
+                    recpAttrs.to = dec.chatId
+                } else {
+                    recpAttrs.to = jidEncode(jidDecode(dec.chatId).user, 'c.us')
                 }
             }
+            
             await sendNode({ tag: 'receipt', attrs: recpAttrs })
+            logger.debug({ msgId: dec.msgId }, 'sent message receipt')
 
-            logger.debug({ msgId: dec.msgId }, 'send message receipt')
+            await sendMessageAck(stanza)
+            logger.debug({ msgId: dec.msgId, sender }, 'sent message ack')
 
             const message = msg.deviceSentMessage?.message || msg
                 fullMessages.push({
