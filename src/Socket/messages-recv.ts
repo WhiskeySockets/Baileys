@@ -99,14 +99,27 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             ev.emit('auth-state.update', authState)
         })
     }
-
     const processMessage = async(message: proto.IWebMessageInfo, chatUpdate: Partial<Chat>) => {
         const protocolMsg = message.message?.protocolMessage
         if(protocolMsg) {
             switch(protocolMsg.type) {
                 case proto.ProtocolMessage.ProtocolMessageType.HISTORY_SYNC_NOTIFICATION:
-                    const history = await downloadHistory(protocolMsg!.historySyncNotification)
+                    const histNotification = protocolMsg!.historySyncNotification
+                    
+                    logger.info({ type: histNotification.syncType!, id: message.key.id }, 'got history notification')
+                    const history = await downloadHistory(histNotification)
+                    
                     processHistoryMessage(history)
+
+                    const meJid = authState.creds.me!.id
+                    await sendNode({
+                        tag: 'receipt',
+                        attrs: {
+                            id: message.key.id,
+                            type: 'hist_sync',
+                            to: jidEncode(jidDecode(meJid).user, 'c.us')
+                        }
+                    })
                     break
                 case proto.ProtocolMessage.ProtocolMessageType.APP_STATE_SYNC_KEY_REQUEST:
                     const keys = await Promise.all(
@@ -207,22 +220,30 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
     }
 
     const processHistoryMessage = (item: proto.HistorySync) => {
+        const messages: proto.IWebMessageInfo[] = []
         switch(item.syncType) {
             case proto.HistorySync.HistorySyncHistorySyncType.INITIAL_BOOTSTRAP:
-                const messages: proto.IWebMessageInfo[] = []
                 const chats = item.conversations!.map(
                     c => {
                         const chat: Chat = { ...c }
                         //@ts-expect-error
                         delete chat.messages
-                        for(const item of c.messages || []) {
-                            messages.push(item.message)
+                        if(c.messages?.[0]) {
+                            messages.push(c.messages![0].message!)
                         }
                         return chat
                     }
                 )
                 ev.emit('chats.set', { chats, messages })
-                ev.emit('connection.update', { receivedPendingNotifications: true })
+            break
+            case proto.HistorySync.HistorySyncHistorySyncType.RECENT:
+                // push remaining messages
+                for(const conv of item.conversations) {
+                    for(const m of (conv.messages || []).slice(1)) {
+                        messages.push(m.message!)
+                    }
+                }
+                ev.emit('messages.upsert', { messages, type: 'prepend' })
             break
             case proto.HistorySync.HistorySyncHistorySyncType.PUSH_NAME:
                 const contacts = item.pushnames.map(
