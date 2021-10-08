@@ -352,8 +352,13 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
     const appPatch = async(patchCreate: WAPatchCreate) => {
         const name = patchCreate.type
-
-        await resyncState(name, false)
+        try {
+            await resyncState(name, false)
+        } catch(error) {
+            logger.info({ name, error: error.stack }, 'failed to sync state from version, trying from scratch')
+            await resyncState(name, true)
+        }
+       
         const { patch, state } = await encodeSyncdPatch(
             patchCreate,
             authState,
