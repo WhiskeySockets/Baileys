@@ -239,7 +239,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             case proto.HistorySync.HistorySyncHistorySyncType.RECENT:
                 // push remaining messages
                 for(const conv of item.conversations) {
-                    for(const m of (conv.messages || []).slice(1)) {
+                    for(const m of (conv.messages || [])) {
                         messages.push(m.message!)
                     }
                 }
