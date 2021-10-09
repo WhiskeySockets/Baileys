@@ -124,11 +124,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
             ],
         }
         const result = await query(iq)
-        let resultJids = extractDeviceJids(result)
-        if(ignoreZeroDevices) {
-            resultJids = resultJids.filter(item => item.device !== 0)
-        }
-        return resultJids
+        const { device } = jidDecode(authState.creds.me!.id)
+        return extractDeviceJids(result, device, ignoreZeroDevices)
     }
 
     const assertSession = async(jid: string, force: boolean) => {

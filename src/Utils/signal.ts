@@ -231,7 +231,7 @@ export const parseAndInjectE2ESession = async(node: BinaryNode, auth: Authentica
 	await cipher.initOutgoing(device)
 }
 
-export const extractDeviceJids = (result: BinaryNode) => {
+export const extractDeviceJids = (result: BinaryNode, myDeviceId: number, excludeZeroDevices: boolean) => {
 	const extracted: { user: string, device?: number, agent?: number }[] = []
 	for(const node of result.content as BinaryNode[]) {
 		const list = getBinaryNodeChild(node, 'list')?.content
@@ -242,8 +242,9 @@ export const extractDeviceJids = (result: BinaryNode) => {
 				const deviceListNode = getBinaryNodeChild(devicesNode, 'device-list')
 				if(Array.isArray(deviceListNode?.content)) {
 					for(const { tag, attrs } of deviceListNode!.content) {
-						if(tag === 'device') {
-							extracted.push({ user, device: +attrs.id })
+						const device = +attrs.id
+						if(tag === 'device' && myDeviceId !== device && (!excludeZeroDevices || device !== 0)) {
+							extracted.push({ user, device })
 						}
 					}
 				}
