@@ -228,8 +228,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                         const chat: Chat = { ...c }
                         //@ts-expect-error
                         delete chat.messages
-                        if(c.messages?.[0]) {
-                            messages.push(c.messages![0].message!)
+                        for(const msg of c.messages || []) {
+                            if(msg.message) {
+                                messages.push(msg.message)
+                            }
                         }
                         return chat
                     }
