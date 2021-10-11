@@ -5,12 +5,9 @@ import WebSocket from "ws"
 import { randomBytes } from 'crypto'
 import { proto } from '../../WAProto'
 import { DisconnectReason, SocketConfig, BaileysEventEmitter, ConnectionState } from "../Types"
-import { Curve, initAuthState, generateRegistrationNode, configureSuccessfulPairing, generateLoginNode, encodeBigEndian, promiseTimeout } from "../Utils"
+import { Curve, initAuthState, generateRegistrationNode, configureSuccessfulPairing, generateLoginNode, encodeBigEndian, promiseTimeout, generateOrGetPreKeys, xmppSignedPreKey, xmppPreKey, getPreKeys, makeNoiseHandler } from "../Utils"
 import { DEFAULT_ORIGIN, DEF_TAG_PREFIX, DEF_CALLBACK_PREFIX, KEY_BUNDLE_TYPE } from "../Defaults"
 import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, S_WHATSAPP_NET } from '../WABinary'
-import noiseHandler from '../Utils/noise-handler'
-import { generateOrGetPreKeys, xmppSignedPreKey, xmppPreKey, getPreKeys } from '../Utils/signal'
-
 /**
  * Connects to WA servers and performs:
  * - simple queries (no retry mechanism, wait for connection establishment)
@@ -45,7 +42,7 @@ export const makeSocket = ({
     /** ephemeral key pair used to encrypt/decrypt communication. Unique for each connection */
     const ephemeralKeyPair = Curve.generateKeyPair()
     /** WA noise protocol wrapper */
-    const noise = noiseHandler(ephemeralKeyPair)
+    const noise = makeNoiseHandler(ephemeralKeyPair)
     const authState = initialAuthState || initAuthState()
     const { creds } = authState
     const ev = new EventEmitter() as BaileysEventEmitter

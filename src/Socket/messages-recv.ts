@@ -1,10 +1,8 @@
 
 import { SocketConfig, WAMessageStubType, ParticipantAction, Chat, GroupMetadata } from "../Types"
-import { decodeMessageStanza, encodeBigEndian, toNumber } from "../Utils"
+import { decodeMessageStanza, encodeBigEndian, toNumber, downloadHistory, generateSignalPubKey, xmppPreKey, xmppSignedPreKey } from "../Utils"
 import { BinaryNode, jidDecode, jidEncode, isJidStatusBroadcast, areJidsSameUser, getBinaryNodeChildren, jidNormalizedUser } from '../WABinary'
-import { downloadHistory } from '../Utils/history'
 import { proto } from "../../WAProto"
-import { generateSignalPubKey, xmppPreKey, xmppSignedPreKey } from "../Utils/signal"
 import { KEY_BUNDLE_TYPE } from "../Defaults"
 import { makeMessagesSocket } from "./messages-send"
 

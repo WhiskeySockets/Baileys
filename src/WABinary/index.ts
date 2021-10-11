@@ -1,5 +1,5 @@
 import { DICTIONARIES_MAP, SINGLE_BYTE_TOKEN, SINGLE_BYTE_TOKEN_MAP, DICTIONARIES } from '../../WABinary/Constants';
-import { jidDecode, jidEncode } from './JidUtils';
+import { jidDecode, jidEncode } from './jid-utils';
 import { Binary, numUtf8Bytes } from '../../WABinary/Binary';
 import { Boom } from '@hapi/boom';
 
@@ -301,5 +301,5 @@ export const assertNodeErrorFree = (node: BinaryNode) => {
 	}
 }
 
-export * from './JidUtils'
+export * from './jid-utils'
 export { Binary } from '../../WABinary/Binary'

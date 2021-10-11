@@ -14,7 +14,7 @@ const generateIV = (counter: number) => {
 	return new Uint8Array(iv)
 }
 
-export default ({ public: publicKey, private: privateKey }: KeyPair) => {
+export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: KeyPair) => {
 
 	const authenticate = (data: Uint8Array) => {
 		if(!isFinished) {
