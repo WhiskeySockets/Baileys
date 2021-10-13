@@ -17,7 +17,7 @@
     "multi-device"
   ],
   "scripts": {
-    "test": "mocha --timeout 240000 -r ts-node/register src/Tests/Tests.*.ts",
+    "test": "jest",
     "prepare": "tsc",
     "lint": "eslint '*/*.ts' --quiet --fix",
     "build:all": "tsc && typedoc",
@@ -34,9 +34,10 @@
   },
   "dependencies": {
     "@hapi/boom": "^9.1.3",
+    "curve25519-js": "^0.0.4",
     "got": "^11.8.1",
     "jimp": "^0.16.1",
-    "libsignal": "^2.0.1",
+    "libsignal": "git+https://github.com/adiwajshing/libsignal-node",
     "music-metadata": "^7.4.1",
     "pino": "^6.7.0",
     "protobufjs": "^6.10.1",
@@ -48,8 +49,8 @@
   "files": [
     "lib/*",
     "WAProto/*",
-    "WASignalGroup/*",
-    "WABinary/*"
+    "WASignalGroup/*.js",
+    "WABinary/*.js"
   ],
   "devDependencies": {
     "@types/got": "^9.6.11",

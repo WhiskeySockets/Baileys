@@ -1,32 +1,24 @@
-import CurveCrypto from 'libsignal/src/curve25519_wrapper'
+import * as curveJs from 'curve25519-js'
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto'
 import { KeyPair } from '../Types'
 
 export const Curve = {
 	generateKeyPair: (): KeyPair => {
-		const { pubKey, privKey } = CurveCrypto.keyPair(randomBytes(32))
+		const { public: pubKey, private: privKey } = curveJs.generateKeyPair(randomBytes(32))
 		return {
 			private: Buffer.from(privKey),
 			public: Buffer.from(pubKey)
 		}
 	},
 	sharedKey: (privateKey: Uint8Array, publicKey: Uint8Array) => {
-		const shared = CurveCrypto.sharedSecret(publicKey, privateKey)
+		const shared = curveJs.sharedKey(privateKey, publicKey)
 		return Buffer.from(shared)
 	},
 	sign: (privateKey: Uint8Array, buf: Uint8Array) => (
-		Buffer.from(CurveCrypto.sign(privateKey, buf))
+		Buffer.from(curveJs.sign(privateKey, buf, null))
 	),
 	verify: (pubKey: Uint8Array, message: Uint8Array, signature: Uint8Array) => {
-		try {
-			CurveCrypto.verify(pubKey, message, signature)
-			return true
-		} catch(error) {
-			if(error.message.includes('Invalid')) {
-				return false
-			}
-			throw error
-		}
+		return curveJs.verify(pubKey, message, signature)
 	}
 }
 
