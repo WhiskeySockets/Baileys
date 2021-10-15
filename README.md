@@ -562,7 +562,7 @@ Of course, replace ``` xyz ``` with an actual ID.
     const metadata = await conn.groupMetadata("abcd-xyz@g.us") 
     console.log(json.id + ", title: " + json.subject + ", description: " + json.desc)
     ```
-- To join the group using the invitation code
+- To join the group using the invitation code (not supported yet)
     ``` ts
     const response = await conn.acceptInvite("xxx")
     console.log("joined to: " + response.gid)
@@ -570,6 +570,8 @@ Of course, replace ``` xyz ``` with an actual ID.
     Of course, replace ``` xxx ``` with invitation code.
 
 ## Broadcast Lists & Stories
+
+**Note:** messages cannot be sent to broadcast lists from the MD version right now
 
 - You can send messages to broadcast lists the same way you send messages to groups & individual chats.
 - Unfortunately, WA Web does not support creating broadcast lists right now but you can still delete them.
