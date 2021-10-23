@@ -11,8 +11,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		ev,
 		ws,
 		authState,
-        processMessage,
-        relayMessage,
         generateMessageTag,
 		sendNode,
         query
@@ -221,7 +219,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
         )
     }
 
-    const profilePictureUrl = async(jid: string) => {
+    /**
+     * fetch the profile picture of a user/group
+     * type = "preview" for a low res picture
+     * type = "image for the high res picture"
+     */
+    const profilePictureUrl = async(jid: string, type: 'preview' | 'image' = 'preview') => {
         jid = jidNormalizedUser(jid)
         const result = await query({
             tag: 'iq',
@@ -231,7 +234,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
                 xmlns: 'w:profile:picture'
             },
             content: [
-                { tag: 'picture', attrs: { type: 'preview', query: 'url' } }
+                { tag: 'picture', attrs: { type, query: 'url' } }
             ]
         })
         const child = getBinaryNodeChild(result, 'picture')

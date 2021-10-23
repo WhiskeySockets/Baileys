@@ -496,8 +496,11 @@ await conn.sendMessage(
     ```
 - To get the display picture of some person/group
     ``` ts
+    // for low res picture
     const ppUrl = await conn.profilePictureUrl("xyz@g.us")
     console.log("download profile picture from: " + ppUrl)
+    // for high res picture
+    const ppUrl = await conn.profilePictureUrl("xyz@g.us", 'image')
     ```
 - To change your display picture or a group's
     ``` ts
