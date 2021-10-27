@@ -209,34 +209,46 @@ export const makeSocket = ({
      * @param json query that was sent
      * @param timeoutMs timeout after which the promise will reject
      */
-	 const waitForMessage = async(tag: string, requiresPhoneConnection: boolean, timeoutMs?: number) => {
-        let onRecv: (json) => void
-        let onErr: (err) => void
-        let cancelPhoneChecker: () => void
-        try {
-            const result = await promiseTimeout(timeoutMs,
-                (resolve, reject) => {
-                    onRecv = resolve
-                    onErr = err => {
-                        reject(err || new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed }))
-                    }
+	 const waitForMessage = (tag: string, requiresPhoneConnection: boolean, timeoutMs?: number) => {
+        if(ws.readyState !== ws.OPEN) {
+            throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
+        }
 
-                    if(requiresPhoneConnection) {
-                        startPhoneCheckInterval()
-                        cancelPhoneChecker = exitQueryIfResponseNotExpected(tag, onErr)
-                    }
-                    
-                    ws.on(`TAG:${tag}`, onRecv)
-                    ws.on('ws-close', onErr) // if the socket closes, you'll never receive the message
-                },
-            )
-            return result as any
-        } finally {
-            requiresPhoneConnection && clearPhoneCheckInterval()
-			cancelPhoneChecker && cancelPhoneChecker()
+        let cancelToken = () => { }
 
-            ws.off(`TAG:${tag}`, onRecv)
-            ws.off('ws-close', onErr) // if the socket closes, you'll never receive the message
+        return {
+            promise: (async() => {
+                let onRecv: (json) => void
+                let onErr: (err) => void
+                let cancelPhoneChecker: () => void
+                try {
+                    const result = await promiseTimeout(timeoutMs,
+                        (resolve, reject) => {
+                            onRecv = resolve
+                            onErr = err => {
+                                reject(err || new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed }))
+                            }
+                            cancelToken = () => onErr(new Boom('Cancelled', { statusCode: 500 }))
+        
+                            if(requiresPhoneConnection) {
+                                startPhoneCheckInterval()
+                                cancelPhoneChecker = exitQueryIfResponseNotExpected(tag, onErr)
+                            }
+                            
+                            ws.on(`TAG:${tag}`, onRecv)
+                            ws.on('ws-close', onErr) // if the socket closes, you'll never receive the message
+                        },
+                    )
+                    return result as any
+                } finally {
+                    requiresPhoneConnection && clearPhoneCheckInterval()
+                    cancelPhoneChecker && cancelPhoneChecker()
+        
+                    ws.off(`TAG:${tag}`, onRecv)
+                    ws.off('ws-close', onErr) // if the socket closes, you'll never receive the message
+                }
+            })(),
+            cancelToken: () => { cancelToken() }
         }
     }
     /**
@@ -250,9 +262,17 @@ export const makeSocket = ({
         {json, timeoutMs, expect200, tag, longTag, binaryTag, requiresPhoneConnection}: SocketQueryOptions
     ) => {
 		tag = tag || generateMessageTag(longTag)
-        const promise = waitForMessage(tag, requiresPhoneConnection, timeoutMs)
-       
-        await sendMessage({ json, tag, binaryTag })
+        const { promise, cancelToken } = waitForMessage(tag, requiresPhoneConnection, timeoutMs)
+        try {
+            await sendMessage({ json, tag, binaryTag })
+        } catch(error) {
+            cancelToken()
+            // swallow error
+            await promise.catch(() => { })
+            // throw back the error
+            throw error
+        }
+        
         const response = await promise
         const responseStatusCode = +(response.status ? response.status : 200) // default status
         // read here: http://getstatuscode.com/599

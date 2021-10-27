@@ -204,9 +204,8 @@ const makeAuthSocket = (config: SocketConfig) => {
         // wait for response with tag "s1"
         let response = await Promise.race(
             [ 
-				socket.waitForMessage('s1', false, undefined),
-				...(loginTag ? [socket.waitForMessage(loginTag, false, connectTimeoutMs)] : []) 
-				
+				socket.waitForMessage('s1', false, undefined).promise,
+				...(loginTag ? [socket.waitForMessage(loginTag, false, connectTimeoutMs).promise] : [])
 			]
         )
         initTimeout && clearTimeout(initTimeout)
