@@ -2705,7 +2705,7 @@ levn@~0.3.0:
 
 "libsignal@git+https://github.com/adiwajshing/libsignal-node":
   version "2.0.1"
-  resolved "git+https://github.com/adiwajshing/libsignal-node#11de21293c352a57d0c25d29c66963029873d953"
+  resolved "git+https://github.com/adiwajshing/libsignal-node#4ffc1f3d6147ffdec88f62e70f41e7de2e08cd42"
   dependencies:
     curve25519-js "^0.0.4"
     protobufjs "6.8.8"
