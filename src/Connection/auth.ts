@@ -221,7 +221,7 @@ const makeAuthSocket = (config: SocketConfig) => {
 			
 			await socket.query({ json, expect200: true, timeoutMs: connectTimeoutMs })
             
-			response = await socket.waitForMessage('s2', true)
+			response = await socket.waitForMessage('s2', true).promise
         }
 		if(!response || !response[1]) {
 			throw new Boom('Received unexpected login response', { data: response })
