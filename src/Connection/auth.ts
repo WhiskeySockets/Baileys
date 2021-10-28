@@ -223,6 +223,9 @@ const makeAuthSocket = (config: SocketConfig) => {
             
 			response = await socket.waitForMessage('s2', true)
         }
+		if(!response || !response[1]) {
+			throw new Boom('Received unexpected login response', { data: response })
+		}
         // validate the new connection
         const {user, auth, phone} = validateNewConnection(response[1], authInfo, curveKeys)// validate the connection
         const isNewLogin = user.jid !== state.user?.jid
