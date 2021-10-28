@@ -36,6 +36,7 @@ import makeWASocket, { WASocket, AuthenticationState, DisconnectReason, AnyMessa
     const startSock = () => {
         const sock = makeWASocket({
             logger: P({ level: 'trace' }),
+            printQRInTerminal: true,
             auth: loadState()
         })
         sock.ev.on('messages.upsert', async m => {
