@@ -21,6 +21,32 @@ export const makeMessagesSocket = (config: SocketConfig) => {
         groupToggleEphemeral
 	} = sock
 
+    let privacySettings: { [_: string]: string } | undefined
+
+    const fetchPrivacySettings = async(force: boolean = false) => {
+        if(!privacySettings || force) {
+            const result = await query({
+                tag: 'iq',
+                attrs: {
+                    xmlns: 'privacy', 
+                    to: S_WHATSAPP_NET, 
+                    type: 'get'
+                },
+                content: [
+                    { tag: 'privacy', attrs: { } }
+                ]
+            })
+            const nodes = getBinaryNodeChildren(result, 'category')
+            privacySettings = nodes.reduce(
+                (dict, { attrs }) => {
+                    dict[attrs.name] = attrs.value
+                    return dict
+                }, { } as { [_: string]: string }
+            )
+        }
+        return privacySettings
+    }
+
     let mediaConn: Promise<MediaConnInfo>
     const refreshMediaConn = async(forceGet = false) => {
         let media = await mediaConn
@@ -52,13 +78,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
     }
 
     const sendReadReceipt = async(jid: string, participant: string | undefined, messageIds: string[]) => {
+        const privacySettings = await fetchPrivacySettings()
+        // based on privacy settings, we have to change the read type
+        const readType = privacySettings.readreceipts === 'all' ? 'read' : 'read-self'
         const node: BinaryNode = {
             tag: 'receipt',
             attrs: {
                 id: messageIds[0],
                 t: Date.now().toString(),
                 to: jid,
-                type: 'read'
+                type: readType
             },
         }
         if(participant) {
@@ -360,6 +389,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
         relayMessage,
         sendReadReceipt,
         refreshMediaConn,
+        fetchPrivacySettings,
         sendMessage: async(
 			jid: string,
 			content: AnyMessageContent,

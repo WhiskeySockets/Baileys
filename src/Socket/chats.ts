@@ -13,7 +13,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		authState,
         generateMessageTag,
 		sendNode,
-        query
+        query,
+        fetchPrivacySettings,
 	} = sock
 
     const interactiveQuery = async(userNodes: BinaryNode[], queryNode: BinaryNode) => {
@@ -143,28 +144,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
                 }
             ]
         })
-    }
-
-    const fetchPrivacySettings = async() => {
-        const result = await query({
-            tag: 'iq',
-            attrs: {
-                xmlns: 'privacy', 
-                to: S_WHATSAPP_NET, 
-                type: 'get'
-            },
-            content: [
-                { tag: 'privacy', attrs: { } }
-            ]
-        })
-        const nodes = getBinaryNodeChildren(result, 'category')
-        const settings = nodes.reduce(
-            (dict, { attrs }) => {
-                dict[attrs.name] = attrs.value
-                return dict
-            }, { } as { [_: string]: string }
-        )
-        return settings
     }
 
     const updateAccountSyncTimestamp = async() => {
@@ -486,7 +465,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
         profilePictureUrl,
         onWhatsApp,
         fetchBlocklist,
-        fetchPrivacySettings,
         fetchStatus,
         updateProfilePicture,
         updateBlockStatus,

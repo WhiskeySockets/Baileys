@@ -6,6 +6,8 @@ import { proto } from "../../WAProto"
 import { KEY_BUNDLE_TYPE } from "../Defaults"
 import { makeMessagesSocket } from "./messages-send"
 
+const isReadReceipt = (type: string) => type === 'read' || type === 'read-self'
+
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const { logger } = config
 	const sock = makeMessagesSocket(config)
@@ -412,13 +414,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
     })
 
     const handleReceipt = ({ tag, attrs, content }: BinaryNode) => {
+        const isRead = isReadReceipt(attrs.type)
         if(tag === 'receipt') {
             // if not read or no type (no type = delivered, but message sent from other device)
-            if(attrs.type !== 'read' && !!attrs.type) {
+            if(!isRead && !!attrs.type) {
                 return
             }
         }
-        const status = attrs.type === 'read' ? proto.WebMessageInfo.WebMessageInfoStatus.READ : proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK
+        const status = isRead ? proto.WebMessageInfo.WebMessageInfoStatus.READ : proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK
         const ids = [attrs.id]
         if(Array.isArray(content)) {
             const items = getBinaryNodeChildren(content[0], 'item')
