@@ -1,7 +1,7 @@
 
 import got from "got"
 import { Boom } from "@hapi/boom"
-import { SocketConfig, MediaConnInfo, AnyMessageContent, MiscMessageGenerationOptions, WAMediaUploadFunction, MessageRelayOptions } from "../Types"
+import { SocketConfig, MediaConnInfo, AnyMessageContent, MiscMessageGenerationOptions, WAMediaUploadFunction, MessageRelayOptions, WAMessageKey } from "../Types"
 import { encodeWAMessage, generateMessageID, generateWAMessage, encryptSenderKeyMsgSignalProto, encryptSignalProto, extractDeviceJids, jidToSignalProtocolAddress, parseAndInjectE2ESession } from "../Utils"
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, jidDecode, jidEncode, jidNormalizedUser, S_WHATSAPP_NET, BinaryNodeAttributes } from '../WABinary'
 import { proto } from "../../WAProto"
@@ -77,18 +77,17 @@ export const makeMessagesSocket = (config: SocketConfig) => {
         return mediaConn
     }
 
-    const sendReadReceipt = async(jid: string, participant: string | undefined, messageIds: string[]) => {
-        const privacySettings = await fetchPrivacySettings()
-        // based on privacy settings, we have to change the read type
-        const readType = privacySettings.readreceipts === 'all' ? 'read' : 'read-self'
+    const sendReceipt = async(jid: string, participant: string | undefined, messageIds: string[], type: 'read' | 'read-self' | undefined) => {
         const node: BinaryNode = {
             tag: 'receipt',
             attrs: {
                 id: messageIds[0],
                 t: Date.now().toString(),
                 to: jid,
-                type: readType
             },
+        }
+        if(type) {
+            node.attrs.type = type
         }
         if(participant) {
             node.attrs.participant = participant
@@ -109,6 +108,17 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
         logger.debug({ jid, messageIds }, 'reading messages')
         await sendNode(node)
+    }
+
+    const sendDeliveryReceipt = (jid: string, participant: string | undefined, messageIds: string[]) => {
+        return sendReceipt(jid, participant, messageIds, undefined)
+    }
+
+    const sendReadReceipt = async(jid: string, participant: string | undefined, messageIds: string[]) => {
+        const privacySettings = await fetchPrivacySettings()
+        // based on privacy settings, we have to change the read type
+        const readType = privacySettings.readreceipts === 'all' ? 'read' : 'read-self'
+        return sendReceipt(jid, participant, messageIds, readType)
     }
 
     const getUSyncDevices = async(jids: string[], ignoreZeroDevices: boolean) => {
@@ -387,6 +397,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		...sock,
         assertSession,
         relayMessage,
+        sendDeliveryReceipt,
         sendReadReceipt,
         refreshMediaConn,
         fetchPrivacySettings,

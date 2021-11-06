@@ -18,6 +18,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         assertingPreKeys,
 		sendNode,
         relayMessage,
+        sendDeliveryReceipt,
 	} = sock
 
     const sendMessageAck = async({ attrs }: BinaryNode) => {
@@ -28,7 +29,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             attrs: {
                 class: 'receipt',
                 id: attrs.id,
-                to: isGroup ? attrs.from : authState.creds.me!.id,
+                to: isGroup ? attrs.from : jidEncode(jidDecode(authState.creds.me!.id).user, 'c.us'),
             }
         }
         if(isGroup) {
@@ -353,15 +354,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                     recpAttrs.participant = stanza.attrs.participant
                     recpAttrs.to = dec.chatId
                 } else {
-                    recpAttrs.to = jidEncode(jidDecode(dec.chatId).user, 'c.us')
+                    recpAttrs.to = jidNormalizedUser(dec.chatId)
                 }
             }
-            
+
             await sendNode({ tag: 'receipt', attrs: recpAttrs })
             logger.debug({ msgId: dec.msgId }, 'sent message receipt')
 
             await sendMessageAck(stanza)
             logger.debug({ msgId: dec.msgId, sender }, 'sent message ack')
+
+            await sendDeliveryReceipt(dec.chatId, dec.participant, [dec.msgId])
+            logger.debug({ msgId: dec.msgId }, 'sent delivery receipt')
 
             const message = msg.deviceSentMessage?.message || msg
                 fullMessages.push({
@@ -413,14 +417,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         logger.debug({ attrs: node.attrs }, 'sending receipt for ack')
     })
 
-    const handleReceipt = ({ tag, attrs, content }: BinaryNode) => {
+    const handleReceipt = ({ attrs, content }: BinaryNode) => {
         const isRead = isReadReceipt(attrs.type)
-        if(tag === 'receipt') {
-            // if not read or no type (no type = delivered, but message sent from other device)
-            if(!isRead && !!attrs.type) {
-                return
-            }
-        }
         const status = isRead ? proto.WebMessageInfo.WebMessageInfoStatus.READ : proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK
         const ids = [attrs.id]
         if(Array.isArray(content)) {
@@ -442,7 +440,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
     }
 
     ws.on('CB:receipt', handleReceipt)
-    ws.on('CB:ack,class:message', handleReceipt)
 
     ws.on('CB:notification', async(node: BinaryNode) => {
         const sendAck = async() => {
