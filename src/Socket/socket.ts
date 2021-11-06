@@ -460,6 +460,9 @@ export const makeSocket = ({
             await uploadPreKeys()
         }
         await sendPassiveIq('active')
+
+        logger.info('opened connection to WA')
+
         ev.emit('connection.update', { connection: 'open' })
     })
     // logged out
