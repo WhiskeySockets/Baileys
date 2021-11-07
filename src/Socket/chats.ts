@@ -412,6 +412,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
         const update = getBinaryNodeChild(node, 'collection')
         if(update) {
             resyncState(update.attrs.name as WAPatchName, false)
+                .catch(err => logger.error({ trace: err.stack, node }, `failed to sync state`))
         }
     })
 
