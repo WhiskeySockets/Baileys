@@ -3,10 +3,11 @@ import got from "got"
 import { Boom } from "@hapi/boom"
 import { SocketConfig, MediaConnInfo, AnyMessageContent, MiscMessageGenerationOptions, WAMediaUploadFunction, MessageRelayOptions, WAMessageKey } from "../Types"
 import { encodeWAMessage, generateMessageID, generateWAMessage, encryptSenderKeyMsgSignalProto, encryptSignalProto, extractDeviceJids, jidToSignalProtocolAddress, parseAndInjectE2ESession } from "../Utils"
-import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, jidDecode, jidEncode, jidNormalizedUser, S_WHATSAPP_NET, BinaryNodeAttributes } from '../WABinary'
+import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, jidDecode, jidEncode, jidNormalizedUser, S_WHATSAPP_NET, BinaryNodeAttributes, JidWithDevice } from '../WABinary'
 import { proto } from "../../WAProto"
 import { WA_DEFAULT_EPHEMERAL, DEFAULT_ORIGIN, MEDIA_PATH_MAP } from "../Defaults"
 import { makeGroupsSocket } from "./groups"
+import NodeCache from "node-cache"
 
 export const makeMessagesSocket = (config: SocketConfig) => {
 	const { logger } = config
@@ -21,6 +22,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
         groupToggleEphemeral
 	} = sock
 
+    const userDevicesCache = config.userDevicesCache || new NodeCache({
+        stdTTL: 300, // 5 minutes
+        useClones: false
+    })
     let privacySettings: { [_: string]: string } | undefined
 
     const fetchPrivacySettings = async(force: boolean = false) => {
@@ -122,11 +127,22 @@ export const makeMessagesSocket = (config: SocketConfig) => {
     }
 
     const getUSyncDevices = async(jids: string[], ignoreZeroDevices: boolean) => {
+        const deviceResults: JidWithDevice[] = []
+       
+        const users: BinaryNode[] = []
         jids = Array.from(new Set(jids))
-        const users = jids.map<BinaryNode>(jid => ({ 
-            tag: 'user', 
-            attrs: { jid: jidNormalizedUser(jid) } 
-        }))
+        for(let jid of jids) {
+            const user = jidDecode(jid).user
+            jid = jidNormalizedUser(jid)
+            if(userDevicesCache.has(user)) {
+                const devices: JidWithDevice[] = userDevicesCache.get(user)
+                deviceResults.push(...devices)
+
+                logger.trace({ user }, 'using cache for devices')
+            } else {
+                users.push({ tag: 'user', attrs: { jid } })
+            }
+        }
 
         const iq: BinaryNode = {
             tag: 'iq',
@@ -163,7 +179,22 @@ export const makeMessagesSocket = (config: SocketConfig) => {
         }
         const result = await query(iq)
         const { device } = jidDecode(authState.creds.me!.id)
-        return extractDeviceJids(result, device, ignoreZeroDevices)
+        
+        const extracted = extractDeviceJids(result, device, ignoreZeroDevices)
+        const deviceMap: { [_: string]: JidWithDevice[] } = {}
+
+        for(const item of extracted) {
+            deviceMap[item.user] = deviceMap[item.user] || []
+            deviceMap[item.user].push(item)
+
+            deviceResults.push(item)
+        }
+
+        for(const key in deviceMap) {
+            userDevicesCache.set(key, deviceMap[key])
+        }
+
+        return deviceResults
     }
 
     const assertSession = async(jid: string, force: boolean) => {
@@ -245,8 +276,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
                 }
             })
 
-            for(const {user, device, agent} of devices) {
-                const jid = jidEncode(user, 's.whatsapp.net', device, agent)
+            for(const {user, device} of devices) {
+                const jid = jidEncode(user, 's.whatsapp.net', device)
                 const participant = await createParticipantNode(jid, encSenderKeyMsg)
                 participants.push(participant)
             }
@@ -301,11 +332,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
             logger.debug(`got ${devices.length} additional devices`)
 
-            for(const { user, device, agent } of devices) {
+            for(const { user, device } of devices) {
                 const isMe = user === meUser
                 participants.push(
                     await createParticipantNode(
-                        jidEncode(user, 's.whatsapp.net', device, agent),
+                        jidEncode(user, 's.whatsapp.net', device),
                         isMe ? encodedMeMsg : encodedMsg
                     )
                 )

@@ -9,6 +9,7 @@ import type EventEmitter from "events"
 import type { Agent } from "https"
 import type { Logger } from "pino"
 import type { URL } from "url"
+import type NodeCache from 'node-cache'
 
 import { AuthenticationState } from './Auth'
 import { Chat, PresenceData } from './Chat'
@@ -45,6 +46,8 @@ export type SocketConfig = {
     printQRInTerminal: boolean
     /** should events be emitted for actions done by this socket connection */
     emitOwnEvents: boolean
+    /** provide a cache to store a user's device list */
+    userDevicesCache?: NodeCache
 }
 
 export enum DisconnectReason {

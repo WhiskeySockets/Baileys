@@ -6,6 +6,11 @@ export const STORIES_JID = 'status@broadcast'
 
 export type JidServer = 'c.us' | 'g.us' | 'broadcast' | 's.whatsapp.net' | 'call'
 
+export type JidWithDevice = {
+    user: string
+    device?: number
+}
+
 export const jidEncode = (user: string | number | null, server: JidServer, device?: number, agent?: number) => {
     return `${user || ''}${!!agent ? `_${agent}` : ''}${!!device ? `:${device}` : ''}@${server}`
 }

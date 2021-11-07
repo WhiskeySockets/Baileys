@@ -3,7 +3,7 @@ import { encodeBigEndian } from "./generics"
 import { Curve } from "./crypto"
 import { SenderKeyDistributionMessage, GroupSessionBuilder, SenderKeyRecord, SenderKeyName, GroupCipher } from '../../WASignalGroup'
 import { SignalIdentity, SignalKeyStore, SignedKeyPair, KeyPair, AuthenticationState } from "../Types/Auth"
-import { assertNodeErrorFree, BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, getBinaryNodeChildUInt, jidDecode } from "../WABinary"
+import { assertNodeErrorFree, BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, getBinaryNodeChildUInt, jidDecode, JidWithDevice } from "../WABinary"
 import { proto } from "../../WAProto"
 
 export const generateSignalPubKey = (pubKey: Uint8Array | Buffer) => {
@@ -232,7 +232,7 @@ export const parseAndInjectE2ESession = async(node: BinaryNode, auth: Authentica
 }
 
 export const extractDeviceJids = (result: BinaryNode, myDeviceId: number, excludeZeroDevices: boolean) => {
-	const extracted: { user: string, device?: number, agent?: number }[] = []
+	const extracted: JidWithDevice[] = []
 	for(const node of result.content as BinaryNode[]) {
 		const list = getBinaryNodeChild(node, 'list')?.content
 		if(list && Array.isArray(list)) {

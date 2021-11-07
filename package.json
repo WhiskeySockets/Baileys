@@ -39,6 +39,7 @@
     "jimp": "^0.16.1",
     "libsignal": "git+https://github.com/adiwajshing/libsignal-node",
     "music-metadata": "^7.4.1",
+    "node-cache": "^5.1.2",
     "pino": "^6.7.0",
     "protobufjs": "^6.10.1",
     "ws": "^7.3.1"
