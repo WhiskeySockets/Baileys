@@ -367,10 +367,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             await sendDeliveryReceipt(dec.chatId, dec.participant, [dec.msgId])
             logger.debug({ msgId: dec.msgId }, 'sent delivery receipt')
 
+            const remoteJid = jidNormalizedUser(dec.chatId)
+
             const message = msg.deviceSentMessage?.message || msg
                 fullMessages.push({
                     key: {
-                        remoteJid: dec.chatId,
+                        remoteJid,
                         fromMe: isMe,
                         id: dec.msgId,
                         participant: dec.participant
