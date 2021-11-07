@@ -124,7 +124,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
                 type: 'get'
             }
         })
-        console.log('blocklist', result)
     }
 
     const updateBlockStatus = async(jid: string, action: 'block' | 'unblock') => {
