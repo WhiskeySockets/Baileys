@@ -164,40 +164,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
         })
     }
 
-    const collectionSync = async(collections: { name: WAPatchName, version: number }[]) => {
-        const result = await query({
-            tag: 'iq',
-            attrs: {
-                to: S_WHATSAPP_NET,
-                xmlns: 'w:sync:app:state',
-                type: 'set'
-            },
-            content: [
-                {
-                    tag: 'sync',
-                    attrs: { },
-                    content: collections.map(
-                        ({ name, version }) => ({
-                            tag: 'collection',
-                            attrs:  { name, version: version.toString(), return_snapshot: 'true' }
-                        })
-                    )
-                }
-            ]
-        })
-        const syncNode = getBinaryNodeChild(result, 'sync')
-        const collectionNodes = getBinaryNodeChildren(syncNode, 'collection')
-        return collectionNodes.reduce(
-            (dict, node) => {
-                const snapshotNode = getBinaryNodeChild(node, 'snapshot')
-                if(snapshotNode) {
-                    dict[node.attrs.name] = snapshotNode.content as Uint8Array
-                }
-                return dict
-            }, { } as { [P in WAPatchName]: Uint8Array }
-        )
-    }
-
     /**
      * fetch the profile picture of a user/group
      * type = "preview" for a low res picture
