@@ -58,7 +58,7 @@ const computeLtHash = (initial: Uint8Array, macs: Mac[], getPrevSetValueMac: (in
         const subBuff = getPrevSetValueMac(indexMac, i)
         if(operation === proto.SyncdMutation.SyncdMutationSyncdOperation.REMOVE) {
             if(!subBuff) {
-                throw new Boom('')
+                throw new Boom('tried remove, but no buffer', { statusCode: 500 })
             }
         } else {
             addBuffs.push(new Uint8Array(valueMac).buffer)
