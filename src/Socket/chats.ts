@@ -146,7 +146,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
         })
     }
 
-    const updateAccountSyncTimestamp = async() => {
+    const updateAccountSyncTimestamp = async(fromTimestamp: number | string) => {
+        logger.info({ fromTimestamp }, 'requesting account sync')
         await sendNode({
             tag: 'iq',
             attrs: {
@@ -158,7 +159,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
             content: [
                 {
                     tag: 'clean',
-                    attrs: {  }  
+                    attrs: {
+                        type: 'account_sync',
+                        timestamp: fromTimestamp.toString(),
+                    }  
                 }
             ]
         })
@@ -407,6 +411,19 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
     ws.on('CB:presence', handlePresenceUpdate)
     ws.on('CB:chatstate', handlePresenceUpdate)
+
+    ws.on('CB:ib,,dirty', async(node: BinaryNode) => {
+        const { attrs } = getBinaryNodeChild(node, 'dirty')
+        const type = attrs.type
+        switch(type) {
+            case 'account_sync':
+                await updateAccountSyncTimestamp(attrs.timestamp)
+            break
+            default:
+                logger.info({ node }, `received unknown sync`)
+            break
+        }
+    })
 
     ws.on('CB:notification,type:server_sync', (node: BinaryNode) => {
         const update = getBinaryNodeChild(node, 'collection')
