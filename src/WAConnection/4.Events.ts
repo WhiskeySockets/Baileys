@@ -664,7 +664,7 @@ export class WAConnection extends Base {
     }
     protected emitGroupUpdate = (jid: string, update: Partial<WAGroupMetadata>) => {
         const chat = this.chats.get(jid)
-        if (chat.metadata) Object.assign(chat.metadata, update)
+        if (chat && chat.metadata) Object.assign(chat.metadata, update)
         this.emit ('group-update', { jid, ...update })
     }
     protected chatUpdateTime = (chat, stamp: number) => this.chats.update (chat.jid, c => c.t = stamp)
