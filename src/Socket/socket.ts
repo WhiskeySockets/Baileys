@@ -465,6 +465,12 @@ export const makeSocket = ({
 
         ev.emit('connection.update', { connection: 'open' })
     })
+    ws.on('CB:stream:error', (node: BinaryNode) => {
+        logger.error({ error: node }, `stream errored out`)
+
+        const statusCode = +(node.attrs.code || DisconnectReason.restartRequired)
+        end(new Boom('Stream Errored', { statusCode, data: node }))
+    })
     // logged out
     ws.on('CB:failure,reason:401', () => {
         end(new Boom('Logged Out', { statusCode: DisconnectReason.loggedOut }))
