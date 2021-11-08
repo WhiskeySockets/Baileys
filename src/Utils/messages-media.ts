@@ -16,9 +16,11 @@ import { hkdf } from './crypto'
 import { DEFAULT_ORIGIN } from '../Defaults'
 
 export const hkdfInfoKey = (type: MediaType) => {
-    if(type === 'sticker') type = 'image'
+    let str: string = type
+    if(type === 'sticker') str = 'image'
+    if(type === 'md-app-state') str = 'App State'
     
-	let hkdfInfo = type[0].toUpperCase() + type.slice(1)
+	let hkdfInfo = str[0].toUpperCase() + str.slice(1)
 	return `WhatsApp ${hkdfInfo} Keys`
 }
 /** generates all the keys required to encrypt/decrypt & sign a media message */

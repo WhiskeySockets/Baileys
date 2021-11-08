@@ -38,7 +38,8 @@ const MIMETYPE_MAP: { [T in MediaType]: string } = {
     document: 'application/pdf',
     audio: 'audio/ogg; codecs=opus',
     sticker: 'image/webp',
-	history: 'application/x-protobuf'
+	history: 'application/x-protobuf',
+	"md-app-state": 'application/x-protobuf',
 }
 
 const MessageTypeProto = {

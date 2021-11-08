@@ -35,7 +35,8 @@ export const MEDIA_PATH_MAP: { [T in MediaType]: string } = {
     document: '/mms/document',
     audio: '/mms/audio',
     sticker: '/mms/image',
-    history: ''
+    history: '',
+    'md-app-state': ''
 }
 
 export const MEDIA_KEYS = Object.keys(MEDIA_PATH_MAP) as MediaType[]

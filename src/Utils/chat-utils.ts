@@ -5,6 +5,7 @@ import { proto } from '../../WAProto'
 import { LT_HASH_ANTI_TAMPERING } from './lt-hash'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren } from '../WABinary'
 import { toNumber } from './generics'
+import { downloadContentFromMessage,  } from './messages-media'
 
 export const mutationKeys = (keydata: Uint8Array) => {
     const expanded = hkdf(keydata, 160, { info: 'WhatsApp Mutation Keys' })
@@ -235,26 +236,44 @@ export const decodeSyncdPatch = async(
 
 export const extractSyncdPatches = (result: BinaryNode) => {
     const syncNode = getBinaryNodeChild(result, 'sync')
-    const collectionNode = getBinaryNodeChild(syncNode, 'collection')
-    const patchesNode = getBinaryNodeChild(collectionNode, 'patches')
+    const collectionNodes = getBinaryNodeChildren(syncNode, 'collection')
+    
+    const final = { } as { [T in WAPatchName]: proto.ISyncdPatch[] }
+    for(const collectionNode of collectionNodes) {
+        const patchesNode = getBinaryNodeChild(collectionNode, 'patches')
 
-    const patches = getBinaryNodeChildren(patchesNode || collectionNode, 'patch')
-    const syncds: proto.ISyncdPatch[] = []
-    const name = collectionNode.attrs.name as WAPatchName
-    for(let { content } of patches) {
-        if(content) {
-            const syncd = proto.SyncdPatch.decode(content! as Uint8Array)
-            if(!syncd.version) {
-                syncd.version = { version: +collectionNode.attrs.version+1 }
+        const patches = getBinaryNodeChildren(patchesNode || collectionNode, 'patch')
+        const syncds: proto.ISyncdPatch[] = []
+        const name = collectionNode.attrs.name as WAPatchName
+        for(let { content } of patches) {
+            if(content) {
+                const syncd = proto.SyncdPatch.decode(content! as Uint8Array)
+                if(!syncd.version) {
+                    syncd.version = { version: +collectionNode.attrs.version+1 }
+                }
+                syncds.push(syncd)
             }
-            syncds.push(syncd)
         }
+
+        final[name] = syncds
     }
-    return { syncds, name }
+    
+    return final
+}
+
+export const downloadExternalPatch = async(blob: proto.IExternalBlobReference) => {
+    const stream = await downloadContentFromMessage(blob, 'md-app-state')
+	let buffer = Buffer.from([])
+	for await(const chunk of stream) {
+		buffer = Buffer.concat([buffer, chunk])
+	}
+	const syncData = proto.SyncdMutations.decode(buffer)
+	return syncData
 }
 
 export const decodePatches = async(
-    { syncds, name }: ReturnType<typeof extractSyncdPatches>,
+    name: WAPatchName,
+    syncds: proto.ISyncdPatch[],
     initial: LTHashState,
     auth: AuthenticationState,
     validateMacs: boolean = true
@@ -263,8 +282,13 @@ export const decodePatches = async(
 
     let current = initial.hash
     let currentVersion = initial.version
+
     for(const syncd of syncds) {
-        const { mutations, version, keyId, snapshotMac } = syncd
+        const { mutations, version, keyId, snapshotMac, externalMutations } = syncd
+        if(externalMutations) {
+            const ref = await downloadExternalPatch(externalMutations)
+            mutations.push(...ref.mutations)
+        }
         const macs = mutations.map(
             m => ({
                 operation: m.operation!,
@@ -308,7 +332,7 @@ export const decodePatches = async(
             const result = mutationKeys(keyEnc.keyData!)
             const computedSnapshotMac = generateSnapshotMac(current, currentVersion, name, result.snapshotMacKey)
             if(Buffer.compare(snapshotMac, computedSnapshotMac) !== 0) {
-                throw new Boom(`failed to verify LTHash at ${currentVersion}`, { statusCode: 500 })
+                throw new Boom(`failed to verify LTHash at ${currentVersion} of ${name}`, { statusCode: 500 })
             }
         }
 
