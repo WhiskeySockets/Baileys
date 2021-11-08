@@ -29,7 +29,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             attrs: {
                 class: 'receipt',
                 id: attrs.id,
-                to: isGroup ? attrs.from : jidEncode(jidDecode(authState.creds.me!.id).user, 'c.us'),
+                to: isGroup ? attrs.from : authState.creds.me!.id,
             }
         }
         if(isGroup) {
@@ -347,7 +347,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             } else {
                 const isStatus = isJidStatusBroadcast(stanza.attrs.from)
                 recpAttrs = {
-                    type: 'inactive',
                     id: stanza.attrs.id,
                 }
                 if(isGroup || isStatus) {
@@ -419,7 +418,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         logger.debug({ attrs: node.attrs }, 'sending receipt for ack')
     })
 
-    const handleReceipt = ({ attrs, content }: BinaryNode) => {
+    const handleReceipt = async(node: BinaryNode) => {
+        const { attrs, content } = node
         const isRead = isReadReceipt(attrs.type)
         const status = isRead ? proto.WebMessageInfo.WebMessageInfoStatus.READ : proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK
         const ids = [attrs.id]
@@ -439,6 +439,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             },
             update: { status }
         })))
+
+        await sendMessageAck(node)
     }
 
     ws.on('CB:receipt', handleReceipt)
