@@ -342,6 +342,11 @@ export const generateWAMessage = async(
  * Eg. extracts the inner message from a disappearing message/view once message
  */
 export const extractMessageContent = (content: WAMessageContent | undefined | null): WAMessageContent | undefined => {
+	content = content?.ephemeralMessage?.message || 
+				content?.viewOnceMessage?.message ||
+				content || 
+				undefined
+
 	if(content?.buttonsMessage) {
 	  const { buttonsMessage } = content
 	  if(buttonsMessage.imageMessage) {
@@ -355,10 +360,6 @@ export const extractMessageContent = (content: WAMessageContent | undefined | nu
 	  } else {
 		return { conversation: buttonsMessage.contentText }
 	  }
-	} else {
-	  return content?.ephemeralMessage?.message || 
-			 content?.viewOnceMessage?.message ||
-			 content || 
-			 undefined
 	}
-  }
+	return content
+}
