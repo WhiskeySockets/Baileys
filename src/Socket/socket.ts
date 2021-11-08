@@ -471,9 +471,10 @@ export const makeSocket = ({
         const statusCode = +(node.attrs.code || DisconnectReason.restartRequired)
         end(new Boom('Stream Errored', { statusCode, data: node }))
     })
-    // logged out
-    ws.on('CB:failure,reason:401', () => {
-        end(new Boom('Logged Out', { statusCode: DisconnectReason.loggedOut }))
+    // stream fail, possible logout
+    ws.on('CB:failure', (node: BinaryNode) => {
+        const reason = +(node.attrs.reason || 500)
+        end(new Boom('Connection Failure', { statusCode: reason, data: node.attrs }))
     })
     process.nextTick(() => {
         ev.emit('connection.update', { connection: 'connecting', receivedPendingNotifications: false, qr: undefined })
