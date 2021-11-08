@@ -445,6 +445,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
             fetchBlocklist()
             fetchPrivacySettings()
             resyncAppState([ 'critical_block', 'critical_unblock_low' ])
+                .catch(err => logger.info({ trace: err.stack }, 'failed to sync app state'))
         }
     })
 
