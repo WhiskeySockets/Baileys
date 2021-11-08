@@ -21,7 +21,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         sendDeliveryReceipt,
 	} = sock
 
-    const sendMessageAck = async({ attrs }: BinaryNode) => {
+    const sendMessageAck = async({ attrs }: BinaryNode, includeType: boolean) => {
         const isGroup = !!attrs.participant
         const { user: meUser } = jidDecode(authState.creds.me!.id!)
         const stanza: BinaryNode = {
@@ -32,9 +32,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                 to: isGroup ? attrs.from : authState.creds.me!.id,
             }
         }
+        if(includeType) {
+            stanza.attrs.type = attrs.type
+        }
         if(isGroup) {
             stanza.attrs.participant = jidEncode(meUser, 's.whatsapp.net')
         }
+        logger.debug({ attrs: stanza.attrs }, 'sent message ack')
         await sendNode(stanza)
     }
 
@@ -360,8 +364,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             await sendNode({ tag: 'receipt', attrs: recpAttrs })
             logger.debug({ msgId: dec.msgId }, 'sent message receipt')
 
-            await sendMessageAck(stanza)
-            logger.debug({ msgId: dec.msgId, sender }, 'sent message ack')
+            await sendMessageAck(stanza, false)
 
             await sendDeliveryReceipt(dec.chatId, dec.participant, [dec.msgId])
             logger.debug({ msgId: dec.msgId }, 'sent delivery receipt')
@@ -440,7 +443,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             update: { status }
         })))
 
-        await sendMessageAck(node)
+        await sendMessageAck(node, true)
     }
 
     ws.on('CB:receipt', handleReceipt)
