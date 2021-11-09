@@ -23,20 +23,20 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
     const sendMessageAck = async({ attrs }: BinaryNode, includeType: boolean) => {
         const isGroup = !!attrs.participant
-        const { user: meUser } = jidDecode(authState.creds.me!.id!)
+        const meJid = authState.creds.me!.id!
         const stanza: BinaryNode = {
             tag: 'ack',
             attrs: {
                 class: 'receipt',
                 id: attrs.id,
-                to: isGroup ? attrs.from : authState.creds.me!.id,
+                to: attrs.from,
             }
         }
         if(includeType) {
             stanza.attrs.type = attrs.type
         }
         if(isGroup) {
-            stanza.attrs.participant = jidEncode(meUser, 's.whatsapp.net')
+            stanza.attrs.participant = jidNormalizedUser(meJid)
         }
         logger.debug({ attrs: stanza.attrs }, 'sent message ack')
         await sendNode(stanza)
@@ -513,5 +513,5 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         }
     })
 
-	return { ...sock, processMessage }
+	return { ...sock, processMessage, sendMessageAck }
 }
