@@ -494,10 +494,6 @@ export class WAConnection extends Base {
     /** Adds the given message to the appropriate chat, if the chat doesn't exist, it is created */
     protected async chatAddMessageAppropriate (message: WAMessage) {
         const jid = whatsappID(message.key.remoteJid)
-        if(isGroupID(jid) && !jid.includes('-')) {
-            this.logger.warn({ gid: jid }, 'recieved odd group ID')
-            return
-        }
         const chat = this.chats.get(jid) || await this.chatAdd (jid)
         this.chatAddMessage (message, chat)
     }
