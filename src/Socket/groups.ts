@@ -152,7 +152,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 }
 
 
-const extractGroupMetadata = (result: BinaryNode) => {
+export const extractGroupMetadata = (result: BinaryNode) => {
 	const group = getBinaryNodeChild(result, 'group')
 	const descChild = getBinaryNodeChild(group, 'description')
 	let desc: string | undefined

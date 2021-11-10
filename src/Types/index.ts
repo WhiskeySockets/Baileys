@@ -120,6 +120,7 @@ export type BaileysEventMap = {
 
     'message-info.update': MessageInfoUpdate[]
 
+    'groups.upsert': GroupMetadata[]
     'groups.update': Partial<GroupMetadata>[]
     /** apply an action to participants in a group */
     'group-participants.update': { id: string, participants: string[], action: ParticipantAction }

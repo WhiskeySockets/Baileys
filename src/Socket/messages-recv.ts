@@ -1,10 +1,11 @@
 
 import { SocketConfig, WAMessageStubType, ParticipantAction, Chat, GroupMetadata } from "../Types"
 import { decodeMessageStanza, encodeBigEndian, toNumber, downloadHistory, generateSignalPubKey, xmppPreKey, xmppSignedPreKey } from "../Utils"
-import { BinaryNode, jidDecode, jidEncode, isJidStatusBroadcast, areJidsSameUser, getBinaryNodeChildren, jidNormalizedUser } from '../WABinary'
+import { BinaryNode, jidDecode, jidEncode, isJidStatusBroadcast, areJidsSameUser, getBinaryNodeChildren, jidNormalizedUser, getBinaryNodeChild } from '../WABinary'
 import { proto } from "../../WAProto"
 import { KEY_BUNDLE_TYPE } from "../Defaults"
 import { makeMessagesSocket } from "./messages-send"
+import { extractGroupMetadata } from "./groups"
 
 const isReadReceipt = (type: string) => type === 'read' || type === 'read-self'
 
@@ -216,7 +217,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                     emitGroupUpdate({ restrict })
                     break
                 case WAMessageStubType.GROUP_CHANGE_SUBJECT:
-                case WAMessageStubType.GROUP_CREATE:
                     chatUpdate.name = message.messageStubParameters[0]
                     emitGroupUpdate({ subject: chatUpdate.name })
                     break
@@ -270,6 +270,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
         if(node.attrs.type === 'w:gp2') {
             switch(child?.tag) {
+                case 'create':
+                    const metadata = extractGroupMetadata(child)
+                    result.messageStubType = WAMessageStubType.GROUP_CREATE
+                    result.messageStubParameters = [metadata.subject]
+
+                    ev.emit('chats.upsert', [{
+                        id: metadata.id,
+                        name: metadata.subject,
+                        conversationTimestamp: metadata.creation,
+                    }])
+                    ev.emit('groups.upsert', [metadata])
+                    break
                 case 'ephemeral':
                 case 'not_ephemeral':
                     result.message = {
@@ -450,7 +462,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
     ws.on('CB:notification', async(node: BinaryNode) => {
         const sendAck = async() => {
-            await sendNode({
+            const stanza: BinaryNode = {
                 tag: 'ack',
                 attrs: {
                     class: 'notification',
@@ -458,9 +470,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                     type: node.attrs.type,
                     to: node.attrs.from
                 }
-            })
+            }
+            if(node.attrs.participant) {
+                stanza.attrs.participant = node.attrs.participant
+            }
+            await sendNode(stanza)
             
-            logger.debug({ msgId: node.attrs.id }, 'ack notification')
+            logger.debug({ attrs: stanza.attrs }, 'ack notification')
         }
 
         await sendAck()
