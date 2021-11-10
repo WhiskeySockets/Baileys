@@ -1,6 +1,7 @@
 import type { ReadStream } from "fs"
 import type { Logger } from "pino"
 import type { URL } from "url"
+import type NodeCache from "node-cache"
 import type { GroupMetadata } from "./GroupMetadata"
 import { proto } from '../../WAProto'
 
@@ -121,18 +122,22 @@ export type MiscMessageGenerationOptions = {
 	quoted?: WAMessage
     /** disappearing messages settings */
     ephemeralExpiration?: number | string
+
+    mediaUploadTimeoutMs?: number
 }
 export type MessageGenerationOptionsFromContent = MiscMessageGenerationOptions & {
 	userJid: string
 }
 
-export type WAMediaUploadFunction = (readStream: ReadStream, opts: { fileEncSha256B64: string, mediaType: MediaType }) => Promise<{ mediaUrl: string }>
+export type WAMediaUploadFunction = (readStream: ReadStream, opts: { fileEncSha256B64: string, mediaType: MediaType, timeoutMs?: number }) => Promise<{ mediaUrl: string }>
 
 export type MediaGenerationOptions = {
 	logger?: Logger
     upload: WAMediaUploadFunction
     /** cache media so it does not have to be uploaded again */
-    mediaCache?: (url: string) => Promise<WAGenericMediaMessage> | WAGenericMediaMessage
+    mediaCache?: NodeCache
+
+    mediaUploadTimeoutMs?: number
 }
 export type MessageContentGenerationOptions = MediaGenerationOptions & {
 	getUrlInfo?: (text: string) => Promise<WAUrlInfo>

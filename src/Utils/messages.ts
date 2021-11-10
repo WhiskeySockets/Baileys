@@ -67,13 +67,19 @@ export const prepareWAMessageMedia = async(
 		[mediaType]: undefined,
 		media: message[mediaType]
 	}
+	// check if cacheable + generate cache key
+	const cacheableKey = typeof uploadData.media === 'object' && 
+			('url' in uploadData.media) && 
+			!!uploadData.media.url && 
+			!!options.mediaCache && (
+				// generate the key
+				mediaType + ':' + uploadData.media.url!.toString()
+			)
 	// check for cache hit
-	if(typeof uploadData.media === 'object' && 'url' in uploadData.media) {
-		const result = !!options.mediaCache && await options.mediaCache!(uploadData.media.url?.toString())
-		if(result) {
-			return WAProto.Message.fromObject({
-				[`${mediaType}Message`]: result
-			})
+	if(cacheableKey) {
+		const mediaBuff: Buffer = options.mediaCache!.get(cacheableKey)
+		if(mediaBuff) {
+			return WAProto.Message.decode(mediaBuff)
 		}
 	}
 	if(mediaType === 'document' && !uploadData.fileName) {
@@ -114,7 +120,7 @@ export const prepareWAMessageMedia = async(
 	}
 	const {mediaUrl} = await options.upload(
 		createReadStream(encBodyPath),
-		{ fileEncSha256B64, mediaType }
+		{ fileEncSha256B64, mediaType, timeoutMs: options.mediaUploadTimeoutMs }
 	)
 	// remove tmp files
 	await Promise.all(
@@ -138,7 +144,12 @@ export const prepareWAMessageMedia = async(
 			}
 		)
 	}
-	return WAProto.Message.fromObject(content)
+	const obj = WAProto.Message.fromObject(content)
+	if(cacheableKey) {
+		options.mediaCache!.set(cacheableKey, WAProto.Message.encode(obj))
+	}
+
+	return obj
 }
 export const prepareDisappearingMessageSettingContent = (ephemeralExpiration?: number) => {
 	ephemeralExpiration = ephemeralExpiration || 0

@@ -48,6 +48,8 @@ export type SocketConfig = {
     emitOwnEvents: boolean
     /** provide a cache to store a user's device list */
     userDevicesCache?: NodeCache
+    /** provide a cache to store media, so does not have to be re-uploaded */
+    mediaCache?: NodeCache
 }
 
 export enum DisconnectReason {

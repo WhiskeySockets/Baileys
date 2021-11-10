@@ -379,7 +379,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
         return msgId
     } 
 
-    const waUploadToServer: WAMediaUploadFunction = async(stream, { mediaType, fileEncSha256B64 }) => {
+    const waUploadToServer: WAMediaUploadFunction = async(stream, { mediaType, fileEncSha256B64, timeoutMs }) => {
 		// send a query JSON to obtain the url & auth token to upload our media
 		let uploadInfo = await refreshMediaConn(false)
 
@@ -399,7 +399,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						agent: {
 							https: config.agent
 						},
-						body: stream
+						body: stream,
+                        timeout: timeoutMs
 					}
 				)
 				const result = JSON.parse(responseText)
@@ -456,10 +457,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					{
 						...options,
 						logger,
-						userJid: userJid,
+						userJid,
                         // multi-device does not have this yet
 						//getUrlInfo: generateUrlInfo,
-						upload: waUploadToServer
+						upload: waUploadToServer,
+                        mediaCache: config.mediaCache,
 					}
 				)
                 const isDeleteMsg = 'delete' in content && !!content.delete
