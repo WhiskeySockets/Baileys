@@ -465,25 +465,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
     ws.on('CB:receipt', handleReceipt)
 
     ws.on('CB:notification', async(node: BinaryNode) => {
-        const sendAck = async() => {
-            const stanza: BinaryNode = {
-                tag: 'ack',
-                attrs: {
-                    class: 'notification',
-                    id: node.attrs.id,
-                    type: node.attrs.type,
-                    to: node.attrs.from
-                }
-            }
-            if(node.attrs.participant) {
-                stanza.attrs.participant = node.attrs.participant
-            }
-            await sendNode(stanza)
-            
-            logger.debug({ attrs: stanza.attrs }, 'ack notification')
-        }
-
-        await sendAck()
+        await sendMessageAck(node, { class: 'notification', type: node.attrs.type })
 
         const msg = processNotification(node)
         if(msg) {
