@@ -1,7 +1,7 @@
 
 import { SocketConfig, WAMessageStubType, ParticipantAction, Chat, GroupMetadata } from "../Types"
 import { decodeMessageStanza, encodeBigEndian, toNumber, downloadHistory, generateSignalPubKey, xmppPreKey, xmppSignedPreKey } from "../Utils"
-import { BinaryNode, jidDecode, jidEncode, isJidStatusBroadcast, areJidsSameUser, getBinaryNodeChildren, jidNormalizedUser, getBinaryNodeChild } from '../WABinary'
+import { BinaryNode, jidDecode, jidEncode, isJidStatusBroadcast, areJidsSameUser, getBinaryNodeChildren, jidNormalizedUser, getAllBinaryNodeChildren, BinaryNodeAttributes } from '../WABinary'
 import { proto } from "../../WAProto"
 import { KEY_BUNDLE_TYPE } from "../Defaults"
 import { makeMessagesSocket } from "./messages-send"
@@ -22,24 +22,19 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         sendDeliveryReceipt,
 	} = sock
 
-    const sendMessageAck = async({ attrs }: BinaryNode, includeType: boolean) => {
-        const isGroup = !!attrs.participant
-        const meJid = authState.creds.me!.id!
+    const sendMessageAck = async({ tag, attrs }: BinaryNode, extraAttrs: BinaryNodeAttributes) => {
         const stanza: BinaryNode = {
             tag: 'ack',
             attrs: {
-                class: 'receipt',
                 id: attrs.id,
                 to: attrs.from,
+                ...extraAttrs,
             }
         }
-        if(includeType) {
-            stanza.attrs.type = attrs.type
+        if(!!attrs.participant) {
+            stanza.attrs.participant = jidNormalizedUser(attrs.participant)
         }
-        if(isGroup) {
-            stanza.attrs.participant = jidNormalizedUser(meJid)
-        }
-        logger.debug({ attrs: stanza.attrs }, 'sent message ack')
+        logger.debug({ recv: attrs, sent: stanza.attrs }, `sent "${tag}" ack`)
         await sendNode(stanza)
     }
 
@@ -376,7 +371,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             await sendNode({ tag: 'receipt', attrs: recpAttrs })
             logger.debug({ msgId: dec.msgId }, 'sent message receipt')
 
-            await sendMessageAck(stanza, false)
+            await sendMessageAck(stanza, { class: 'receipt' })
 
             await sendDeliveryReceipt(dec.chatId, dec.participant, [dec.msgId])
             logger.debug({ msgId: dec.msgId }, 'sent delivery receipt')
@@ -455,7 +450,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             update: { status }
         })))
 
-        await sendMessageAck(node, true)
+        await sendMessageAck(node, { class: 'receipt', type: attrs.type })
     }
 
     ws.on('CB:receipt', handleReceipt)
