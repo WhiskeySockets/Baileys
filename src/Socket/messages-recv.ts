@@ -428,6 +428,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         logger.debug({ attrs: node.attrs }, 'sending receipt for ack')
     })
 
+    ws.on('CB:call', async(node: BinaryNode) => {
+        logger.info({ node }, 'recv call')
+
+        const [child] = getAllBinaryNodeChildren(node)
+        if(child.tag === 'terminate' || child.tag === 'relaylatency') {
+            await sendMessageAck(node, { class: 'call', type: child.tag })
+        }
+    })
+
     const handleReceipt = async(node: BinaryNode) => {
         const { attrs, content } = node
         const isRead = isReadReceipt(attrs.type)
