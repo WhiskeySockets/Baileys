@@ -190,7 +190,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                     participants = message.messageStubParameters
                     emitParticipantsUpdate('remove')
                     // mark the chat read only if you left the group
-                    if (participants.includes(meJid)) {
+                    if(participants.includes(meJid)) {
                         chatUpdate.readOnly = true
                     }
                     break
@@ -261,7 +261,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
     const processNotification = (node: BinaryNode): Partial<proto.IWebMessageInfo> => {
         const result: Partial<proto.IWebMessageInfo> = { }
-        const child = (node.content as BinaryNode[])?.[0]
+        const [child] = getAllBinaryNodeChildren(node)
 
         if(node.attrs.type === 'w:gp2') {
             switch(child?.tag) {

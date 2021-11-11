@@ -4,7 +4,7 @@ import { proto } from '../../WAProto'
 import type { AuthenticationState, SocketConfig, SignalKeyStore, AuthenticationCreds, KeyPair, LTHashState } from "../Types"
 import { Curve, hmacSign, signedKeyPair } from './crypto'
 import { encodeInt, generateRegistrationId } from './generics'
-import { BinaryNode, S_WHATSAPP_NET, jidDecode, Binary } from '../WABinary'
+import { BinaryNode, S_WHATSAPP_NET, jidDecode, Binary, getAllBinaryNodeChildren } from '../WABinary'
 import { createSignalIdentity } from './signal'
 
 const ENCODED_VERSION = 'S9Kdc4pc4EJryo21snc5cg=='
@@ -164,7 +164,7 @@ export const configureSuccessfulPairing = (
   stanza: BinaryNode,
   { advSecretKey, signedIdentityKey, signalIdentities }: Pick<AuthenticationCreds, 'advSecretKey' | 'signedIdentityKey' | 'signalIdentities'>
 ) => {
-  const pair = stanza.content[0] as BinaryNode
+  const [pair] = getAllBinaryNodeChildren(stanza)
   const pairContent = Array.isArray(pair.content) ? pair.content : []
 
   const msgId = stanza.attrs.id
