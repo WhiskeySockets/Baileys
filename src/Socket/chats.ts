@@ -417,7 +417,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
     ws.on('CB:presence', handlePresenceUpdate)
     ws.on('CB:chatstate', handlePresenceUpdate)
 
-    ws.on('CB:ib,,dirty', async(node: BinaryNode) => {
+    /*ws.on('CB:ib,,dirty', async(node: BinaryNode) => {
         const { attrs } = getBinaryNodeChild(node, 'dirty')
         const type = attrs.type
         switch(type) {
@@ -428,7 +428,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
                 logger.info({ node }, `received unknown sync`)
             break
         }
-    })
+    })*/
 
     ws.on('CB:notification,type:server_sync', (node: BinaryNode) => {
         const update = getBinaryNodeChild(node, 'collection')
