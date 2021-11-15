@@ -342,14 +342,28 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
     // recv a message
     ws.on('CB:message', async(stanza: BinaryNode) => {
         const dec = await decodeMessageStanza(stanza, authState)
-        const fullMessages: proto.IWebMessageInfo[] = []
-        for(const msg of dec.successes) {
-            const { attrs } = stanza
-            const isGroup = !!stanza.attrs.participant
-            const sender = (attrs.participant || attrs.from)?.toString()
-            const isMe = areJidsSameUser(sender, authState.creds.me!.id)
+        if(dec.successes.length) {
+            ev.emit('auth-state.update', authState)
+        }
 
-            // send delivery receipt
+        const fullMessages: proto.IWebMessageInfo[] = []
+
+        const { attrs } = stanza
+        const isGroup = !!stanza.attrs.participant
+        const sender = (attrs.participant || attrs.from)?.toString()
+        const isMe = areJidsSameUser(sender, authState.creds.me!.id)
+
+        const remoteJid = jidNormalizedUser(dec.chatId)
+        
+        const key: WAMessageKey = {
+            remoteJid,
+            fromMe: isMe,
+            id: dec.msgId,
+            participant: dec.participant
+        }
+
+        for(const msg of dec.successes) {
+            // send message receipt
             let recpAttrs: { [_: string]: any }
             if(isMe) {
                 recpAttrs =  {
@@ -383,35 +397,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             await sendDeliveryReceipt(dec.chatId, dec.participant, [dec.msgId])
             logger.debug({ msgId: dec.msgId }, 'sent delivery receipt')
 
-            const remoteJid = jidNormalizedUser(dec.chatId)
-
             const message = msg.deviceSentMessage?.message || msg
                 fullMessages.push({
-                    key: {
-                        remoteJid,
-                        fromMe: isMe,
-                        id: dec.msgId,
-                        participant: dec.participant
-                    },
+                    key,
                     message,
                     status: isMe ? proto.WebMessageInfo.WebMessageInfoStatus.SERVER_ACK : null,
                     messageTimestamp: dec.timestamp,
                     pushName: dec.pushname,
                     participant: dec.participant
                 })
-        }
-
-        if(dec.successes.length) {
-            ev.emit('auth-state.update', authState)
-            if(fullMessages.length) {
-                ev.emit(
-                    'messages.upsert', 
-                    { 
-                        messages: fullMessages.map(m => proto.WebMessageInfo.fromObject(m)), 
-                        type: stanza.attrs.offline ? 'append' : 'notify' 
-                    }
-                )
-            }
         }
         
 		for(const { error } of dec.failures) {
@@ -420,6 +414,22 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                 'failure in decrypting message'
             )
             await sendRetryRequest(stanza)
+            
+            fullMessages.push({
+                key,
+                messageStubType: WAMessageStubType.CIPHERTEXT,
+                messageStubParameters: [error.message]
+            })
+        }
+
+        if(fullMessages.length) {
+            ev.emit(
+                'messages.upsert', 
+                { 
+                    messages: fullMessages.map(m => proto.WebMessageInfo.fromObject(m)), 
+                    type: stanza.attrs.offline ? 'append' : 'notify' 
+                }
+            )
         }
     })
 
