@@ -50,6 +50,8 @@ export type SocketConfig = {
     userDevicesCache?: NodeCache
     /** provide a cache to store media, so does not have to be re-uploaded */
     mediaCache?: NodeCache
+    /** map to store the retry counts for failed messages */
+    msgRetryCounterMap?: { [msgId: string]: number }
 }
 
 export enum DisconnectReason {
