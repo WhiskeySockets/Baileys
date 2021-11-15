@@ -542,6 +542,10 @@ Of course, replace ``` xyz ``` with an actual ID.
     ``` ts
     await conn.groupUpdateSubject("abcd-xyz@g.us", "New Subject!")
     ```
+- To change the group's description
+    ``` ts
+    await conn.groupUpdateDescription("abcd-xyz@g.us", "New Description!")
+    ```
 - To change group settings
     ``` ts
     // only allow admins to send messages

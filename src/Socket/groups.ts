@@ -100,6 +100,25 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 			const participantsAffected = getBinaryNodeChildren(node!, 'participant')
 			return participantsAffected.map(p => p.attrs.jid)
 		},
+		groupUpdateDescription: async(jid: string, description?: string) => {
+			const metadata = await groupMetadata(jid);
+			const prev = metadata.descId ?? null;
+
+			await groupQuery(
+				jid,
+				'set',
+				[
+					{
+						tag: 'description',
+						attrs: {
+							...( description ? { id: generateMessageID() } : { delete: 'true' } ),
+							...(prev ? { prev } : {})
+						},
+						content: description ? [{tag: 'body', attrs: {}, content: Buffer.from(description, 'utf-8')}] : null
+					}
+				]
+			)
+		},
 		groupInviteCode: async(jid: string) => {
 			const result = await groupQuery(jid, 'get', [{ tag: 'invite', attrs: {} }])
 			const inviteNode = getBinaryNodeChild(result, 'invite')
