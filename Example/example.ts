@@ -32,9 +32,10 @@ import makeWASocket, { WASocket, AuthenticationState, DisconnectReason, AnyMessa
             JSON.stringify(state, BufferJSON.replacer, 2)
         )
     }
+
     // start a connection
     const startSock = () => {
-        const sock = makeWASocket({
+        let sock = makeWASocket({
             logger: P({ level: 'trace' }),
             printQRInTerminal: true,
             auth: loadState()
@@ -50,15 +51,32 @@ import makeWASocket, { WASocket, AuthenticationState, DisconnectReason, AnyMessa
             }
             
         })
+
         sock.ev.on('messages.update', m => console.log(m))
         sock.ev.on('presence.update', m => console.log(m))
         sock.ev.on('chats.update', m => console.log(m))
         sock.ev.on('contacts.update', m => console.log(m))
+
+        sock.ev.on('connection.update', (update) => {
+            const { connection, lastDisconnect } = update
+            if(connection === 'close') {
+                // reconnect if not logged out
+                if((lastDisconnect.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut) {
+                    sock = startSock()
+                } else {
+                    console.log('connection closed')
+                }
+            }
+            console.log('connection update', update)
+        })
+        // listen for when the auth state is updated
+        // it is imperative you save this data, it affects the signing keys you need to have conversations
+        sock.ev.on('auth-state.update', () => saveState())
+
         return sock
     }
 
     const sendMessageWTyping = async(msg: AnyMessageContent, jid: string) => {
-
         await sock.presenceSubscribe(jid)
         await delay(500)
 
@@ -71,19 +89,4 @@ import makeWASocket, { WASocket, AuthenticationState, DisconnectReason, AnyMessa
     }
 
     sock = startSock()
-    sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect } = update
-        if(connection === 'close') {
-            // reconnect if not logged out
-            if((lastDisconnect.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut) {
-                sock = startSock()
-            } else {
-                console.log('connection closed')
-            }
-        }
-        console.log('connection update', update)
-    })
-    // listen for when the auth state is updated
-    // it is imperative you save this data, it affects the signing keys you need to have conversations
-    sock.ev.on('auth-state.update', () => saveState())
 })()

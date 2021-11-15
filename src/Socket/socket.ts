@@ -50,6 +50,7 @@ export const makeSocket = ({
     let lastDateRecv: Date
 	let epoch = 0
 	let keepAliveReq: NodeJS.Timeout
+    let qrTimer: NodeJS.Timeout
 
     const uqTagId = `${randomBytes(1).toString('hex')[0]}.${randomBytes(1).toString('hex')[0]}-`
     const generateMessageTag = () => `${uqTagId}${epoch++}`
@@ -174,10 +175,7 @@ export const makeSocket = ({
     /** get some pre-keys and do something with them */
     const assertingPreKeys = async(range: number, execute: (keys: { [_: number]: any }) => Promise<void>) => {
         const { newPreKeys, lastPreKeyId, preKeysRange } = generateOrGetPreKeys(authState, range)
-        const preKeys = await getPreKeys(authState.keys, preKeysRange[0], preKeysRange[1])
 
-        await execute(preKeys)
-        
         creds.serverHasPreKeys = true
         creds.nextPreKeyId = Math.max(lastPreKeyId+1, creds.nextPreKeyId)
         creds.firstUnuploadedPreKeyId = Math.max(creds.firstUnuploadedPreKeyId, lastPreKeyId+1)
@@ -185,11 +183,14 @@ export const makeSocket = ({
             Object.keys(newPreKeys).map(k => authState.keys.setPreKey(+k, newPreKeys[+k]))
         )
 
+        const preKeys = await getPreKeys(authState.keys, preKeysRange[0], preKeysRange[0] + preKeysRange[1])
+        await execute(preKeys)
+
         ev.emit('auth-state.update', authState)
     }
     /** generates and uploads a set of pre-keys */
     const uploadPreKeys = async() => {
-        await assertingPreKeys(50, async preKeys => {
+        await assertingPreKeys(30, async preKeys => {
             const node: BinaryNode = {
                 tag: 'iq',
                 attrs: {
@@ -397,7 +398,7 @@ export const makeSocket = ({
     })
     // QR gen
     ws.on('CB:iq,type:set,pair-device', async (stanza: BinaryNode) => {
-        const postQR = async() => {
+        const postQR = async(qr: string) => {
             if(printQRInTerminal) {
                 const QR = await import('qrcode-terminal').catch(err => {
                     logger.error('add `qrcode-terminal` as a dependency to auto-print QR')
@@ -405,8 +406,7 @@ export const makeSocket = ({
                 QR?.generate(qr, { small: true })
             }
         }
-        
-        const refs = ((stanza.content[0] as BinaryNode).content as BinaryNode[]).map(n => n.content as string)
+
         const iq: BinaryNode = { 
             tag: 'iq', 
             attrs: {
@@ -415,14 +415,41 @@ export const makeSocket = ({
                 id: stanza.attrs.id,
             }
         }
-        const noiseKeyB64 = Buffer.from(creds.noiseKey.public).toString('base64');
+        await sendNode(iq)
+        const refs = ((stanza.content[0] as BinaryNode).content as BinaryNode[]).map(n => n.content as string)
+        const noiseKeyB64 = Buffer.from(creds.noiseKey.public).toString('base64')
         const identityKeyB64 = Buffer.from(creds.signedIdentityKey.public).toString('base64')
         const advB64 = creds.advSecretKey
-        const qr = [refs[0], noiseKeyB64, identityKeyB64, advB64].join(',');
 
-        ev.emit('connection.update', { qr })
-        await postQR()
-        await sendNode(iq)
+        let firstQR = true
+        const genPairQR = () => {
+            const ms = firstQR ? 60000 : 20000
+            firstQR = false
+
+            const ref = refs.shift()
+            if(!ref) {
+                end(new Boom('QR refs attempts ended', { statusCode: DisconnectReason.restartRequired }))
+                return
+            }
+
+            const qr = [ref, noiseKeyB64, identityKeyB64, advB64].join(',')
+    
+            ev.emit('connection.update', { qr })
+            postQR(qr)
+
+            qrTimer = setTimeout(genPairQR, ms)
+        }
+
+        genPairQR()
+
+        const checkConnection = ({ connection }: ConnectionState) => {
+            if(connection === 'open' || connection === 'close') {
+                clearTimeout(qrTimer)
+                ev.off('connection.update', checkConnection)
+            }
+        }
+
+        ev.on('connection.update', checkConnection)
     })
     // device paired for the first time
     // if device pairs successfully, the server asks to restart the connection

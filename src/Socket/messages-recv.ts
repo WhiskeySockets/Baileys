@@ -38,8 +38,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         await sendNode(stanza)
     }
 
+    const retries = new Map<string, number>()
     const sendRetryRequest = async(node: BinaryNode) => {
-        const retryCount = +(node.attrs.retryCount || 0) + 1
+        if (retries.has(node.attrs.id) && retries.get(node.attrs.id)! >= 5) {
+            retries.delete(node.attrs.id)
+            return
+        }
+        const retryCount = retries.get(node.attrs.id) || 1
+        retries.set(node.attrs.id, retryCount + 1)
+
         const isGroup = !!node.attrs.participant
         const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
         
@@ -81,7 +88,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             if(retryCount > 1) {
                 const exec = generateSignalPubKey(Buffer.from(KEY_BUNDLE_TYPE)).slice(0, 1);
 
-                (node.content! as BinaryNode[]).push({
+                (receipt.content! as BinaryNode[]).push({
                     tag: 'keys',
                     attrs: { },
                     content: [
@@ -93,7 +100,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                     ]
                 })
             }
-            await sendNode(node)
+            await sendNode(receipt)
 
             logger.info({ msgId: node.attrs.id, retryCount }, 'sent retry receipt')
 
