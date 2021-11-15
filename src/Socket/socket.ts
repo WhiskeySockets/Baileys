@@ -416,16 +416,14 @@ export const makeSocket = ({
             }
         }
         await sendNode(iq)
+
         const refs = ((stanza.content[0] as BinaryNode).content as BinaryNode[]).map(n => n.content as string)
         const noiseKeyB64 = Buffer.from(creds.noiseKey.public).toString('base64')
         const identityKeyB64 = Buffer.from(creds.signedIdentityKey.public).toString('base64')
         const advB64 = creds.advSecretKey
 
-        let firstQR = true
+        let qrMs = 60_000 // time to let a QR live
         const genPairQR = () => {
-            const ms = firstQR ? 60000 : 20000
-            firstQR = false
-
             const ref = refs.shift()
             if(!ref) {
                 end(new Boom('QR refs attempts ended', { statusCode: DisconnectReason.restartRequired }))
@@ -437,7 +435,8 @@ export const makeSocket = ({
             ev.emit('connection.update', { qr })
             postQR(qr)
 
-            qrTimer = setTimeout(genPairQR, ms)
+            qrTimer = setTimeout(genPairQR, qrMs)
+            qrMs = 20_000 // shorter subsequent qrs
         }
 
         genPairQR()
