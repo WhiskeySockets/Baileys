@@ -345,10 +345,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
     // recv a message
     ws.on('CB:message', async(stanza: BinaryNode) => {
         const dec = await decodeMessageStanza(stanza, authState)
-        if(dec.successes.length) {
-            ev.emit('auth-state.update', authState)
-        }
-
         const fullMessages: proto.IWebMessageInfo[] = []
 
         const { attrs } = stanza
@@ -364,8 +360,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             id: dec.msgId,
             participant: dec.participant
         }
-
-        for(const msg of dec.successes) {
+        // if there were some successful decryptions
+        if(dec.successes.length) {
+            ev.emit('auth-state.update', authState)
             // send message receipt
             let recpAttrs: { [_: string]: any }
             if(isMe) {
@@ -399,16 +396,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
             await sendDeliveryReceipt(dec.chatId, dec.participant, [dec.msgId])
             logger.debug({ msgId: dec.msgId }, 'sent delivery receipt')
+        }
 
+        for(const msg of dec.successes) {
             const message = msg.deviceSentMessage?.message || msg
-                fullMessages.push({
-                    key,
-                    message,
-                    status: isMe ? proto.WebMessageInfo.WebMessageInfoStatus.SERVER_ACK : null,
-                    messageTimestamp: dec.timestamp,
-                    pushName: dec.pushname,
-                    participant: dec.participant
-                })
+            fullMessages.push({
+                key,
+                message,
+                status: isMe ? proto.WebMessageInfo.WebMessageInfoStatus.SERVER_ACK : null,
+                messageTimestamp: dec.timestamp,
+                pushName: dec.pushname,
+                participant: dec.participant
+            })
         }
         
 		for(const { error } of dec.failures) {
@@ -425,15 +424,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             })
         }
 
-        if(fullMessages.length) {
-            ev.emit(
-                'messages.upsert', 
-                { 
-                    messages: fullMessages.map(m => proto.WebMessageInfo.fromObject(m)), 
-                    type: stanza.attrs.offline ? 'append' : 'notify' 
-                }
-            )
-        }
+        ev.emit(
+            'messages.upsert', 
+            { 
+                messages: fullMessages.map(m => proto.WebMessageInfo.fromObject(m)), 
+                type: stanza.attrs.offline ? 'append' : 'notify' 
+            }
+        )
     })
 
     ws.on('CB:ack,class:message', async(node: BinaryNode) => {
