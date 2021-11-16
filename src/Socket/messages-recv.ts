@@ -34,7 +34,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             }
         }
         if(!!attrs.participant) {
-            stanza.attrs.participant = jidNormalizedUser(attrs.participant)
+            stanza.attrs.participant = attrs.participant
         }
         logger.debug({ recv: attrs, sent: stanza.attrs }, `sent "${tag}" ack`)
         await sendNode(stanza)
