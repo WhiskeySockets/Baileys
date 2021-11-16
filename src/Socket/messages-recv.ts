@@ -253,7 +253,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                         messages.push(m.message!)
                     }
                 }
-                ev.emit('messages.upsert', { messages, type: 'prepend' })
+                if(messages.length) {
+                    ev.emit('messages.upsert', { messages, type: 'prepend' })
+                }
             break
             case proto.HistorySync.HistorySyncHistorySyncType.PUSH_NAME:
                 const contacts = item.pushnames.map(
