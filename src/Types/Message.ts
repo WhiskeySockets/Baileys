@@ -5,14 +5,14 @@ import { proto } from '../../WAMessage'
 
 // export the WAMessage Prototypes
 export { proto as WAMessageProto }
-export type WAMessage = proto.WebMessageInfo
+export type WAMessage = proto.IWebMessageInfo
 export type WAMessageContent = proto.IMessage
-export type WAContactMessage = proto.ContactMessage
-export type WAContactsArrayMessage = proto.ContactsArrayMessage
+export type WAContactMessage = proto.IContactMessage
+export type WAContactsArrayMessage = proto.IContactsArrayMessage
 export type WAMessageKey = proto.IMessageKey
 export type WATextMessage = proto.ExtendedTextMessage
 export type WAContextInfo = proto.IContextInfo
-export type WALocationMessage = proto.LocationMessage
+export type WALocationMessage = proto.ILocationMessage
 export type WAGenericMediaMessage = proto.IVideoMessage | proto.IImageMessage | proto.IAudioMessage | proto.IDocumentMessage | proto.IStickerMessage
 export import WAMessageStubType = proto.WebMessageInfo.WebMessageInfoStubType
 export import WAMessageStatus = proto.WebMessageInfo.WebMessageInfoStatus
