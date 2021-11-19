@@ -302,6 +302,20 @@ export const makeChatsSocket = (config: SocketConfig) => {
         }
     }
 
+    const resyncMainAppState = async() => {
+        
+        logger.debug('resyncing main app state')
+        
+        await (
+            mutationMutex.mutex(
+                () => resyncAppState([ 'critical_block', 'critical_unblock_low' ])
+            )
+            .catch(err => (
+                logger.warn({ trace: err.stack }, 'failed to sync app state')
+            ))
+        )
+    }
+
     const processSyncActions = (actions: ChatMutation[]) => {
         const updates: { [jid: string]: Partial<Chat> } = {}
         const contactUpdates: { [jid: string]: Contact } = {}
@@ -454,14 +468,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
             sendPresenceUpdate('available')
             fetchBlocklist()
             fetchPrivacySettings()
-            mutationMutex.mutex(
-                async() => {
-                    await (
-                        resyncAppState([ 'critical_block', 'critical_unblock_low' ])
-                        .catch(err => logger.info({ trace: err.stack }, 'failed to sync app state'))
-                    )
-                }
-            )
+            resyncMainAppState()
         }
     })
 
@@ -478,5 +485,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
         updateBlockStatus,
         resyncAppState,
         chatModify,
+        resyncMainAppState,
 	}
 }
