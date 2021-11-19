@@ -345,24 +345,28 @@ export const makeSocket = ({
     )
     /** logout & invalidate connection */
     const logout = async() => {
-        await sendNode({
-            tag: 'iq',
-            attrs: {
-                to: S_WHATSAPP_NET,
-                type: 'set',
-                id: generateMessageTag(),
-                xmlns: 'md'
-            },
-            content: [
-                {
-                    tag: 'remove-companion-device',
-                    attrs: {
-                        jid: authState.creds.me!.id,
-                        reason: 'user_initiated'
+        const jid = authState.creds.me?.id
+        if(jid) {
+            await sendNode({
+                tag: 'iq',
+                attrs: {
+                    to: S_WHATSAPP_NET,
+                    type: 'set',
+                    id: generateMessageTag(),
+                    xmlns: 'md'
+                },
+                content: [
+                    {
+                        tag: 'remove-companion-device',
+                        attrs: {
+                            jid: jid,
+                            reason: 'user_initiated'
+                        }
                     }
-                }
-            ]
-        })
+                ]
+            })
+        }
+
         end(new Boom('Intentional Logout', { statusCode: DisconnectReason.loggedOut }))
     }
     /** Waits for the connection to WA to reach a state */
