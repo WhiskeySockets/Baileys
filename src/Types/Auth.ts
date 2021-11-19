@@ -23,13 +23,14 @@ export type AuthenticationCreds = {
     registrationId: number
     advSecretKey: string
     me?: Contact
-    account?: proto.ADVSignedDeviceIdentity
+    account?: proto.IADVSignedDeviceIdentity
     signalIdentities?: SignalIdentity[]
     myAppStateKeyId?: string
     firstUnuploadedPreKeyId: number
     serverHasPreKeys: boolean
     nextPreKeyId: number
 }
+
 type Awaitable<T> = T | Promise<T>
 export type SignalKeyStore = {
     getPreKey: (keyId: number) => Awaitable<KeyPair>
