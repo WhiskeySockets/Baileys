@@ -4,14 +4,14 @@ import { decodeMessageStanza, encodeBigEndian, toNumber, downloadHistory, genera
 import { BinaryNode, jidDecode, jidEncode, isJidStatusBroadcast, areJidsSameUser, getBinaryNodeChildren, jidNormalizedUser, getAllBinaryNodeChildren, BinaryNodeAttributes } from '../WABinary'
 import { proto } from "../../WAProto"
 import { KEY_BUNDLE_TYPE } from "../Defaults"
-import { makeMessagesSocket } from "./messages-send"
+import { makeChatsSocket } from "./chats"
 import { extractGroupMetadata } from "./groups"
 
 const isReadReceipt = (type: string) => type === 'read' || type === 'read-self'
 
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const { logger } = config
-	const sock = makeMessagesSocket(config)
+	const sock = makeChatsSocket(config)
 	const { 
 		ev,
         authState,
@@ -20,6 +20,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		sendNode,
         relayMessage,
         sendDeliveryReceipt,
+        resyncMainAppState,
 	} = sock
 
     const msgRetryMap = config.msgRetryCounterMap || { }
@@ -166,6 +167,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                     }
                     
                     ev.emit('auth-state.update', authState)
+
+                    resyncMainAppState()
                 break
                 case proto.ProtocolMessage.ProtocolMessageType.REVOKE:
                     ev.emit('messages.update', [

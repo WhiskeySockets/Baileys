@@ -2,12 +2,12 @@ import { SocketConfig, WAPresence, PresenceData, Chat, WAPatchCreate, WAMediaUpl
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidNormalizedUser, S_WHATSAPP_NET } from "../WABinary";
 import { proto } from '../../WAProto'
 import { generateProfilePicture, toNumber, encodeSyncdPatch, decodePatches, extractSyncdPatches, chatModificationToAppPatch } from "../Utils";
-import { makeMessagesRecvSocket } from "./messages-recv";
+import { makeMessagesSocket } from "./messages-send";
 import makeMutex from "../Utils/make-mutex";
 
 export const makeChatsSocket = (config: SocketConfig) => {
 	const { logger } = config
-	const sock = makeMessagesRecvSocket(config)
+	const sock = makeMessagesSocket(config)
 	const { 
 		ev,
 		ws,
