@@ -7,7 +7,7 @@ import { proto } from '../../WAProto'
 import { DisconnectReason, SocketConfig, BaileysEventEmitter, ConnectionState } from "../Types"
 import { Curve, initAuthState, generateRegistrationNode, configureSuccessfulPairing, generateLoginNode, encodeBigEndian, promiseTimeout, generateOrGetPreKeys, xmppSignedPreKey, xmppPreKey, getPreKeys, makeNoiseHandler } from "../Utils"
 import { DEFAULT_ORIGIN, DEF_TAG_PREFIX, DEF_CALLBACK_PREFIX, KEY_BUNDLE_TYPE } from "../Defaults"
-import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, S_WHATSAPP_NET } from '../WABinary'
+import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, S_WHATSAPP_NET, getBinaryNodeChild } from '../WABinary'
 /**
  * Connects to WA servers and performs:
  * - simple queries (no retry mechanism, wait for connection establishment)
@@ -488,6 +488,18 @@ export const makeSocket = ({
 
         ev.emit('connection.update', { connection: 'open' })
     })
+    
+    ws.on('CB:ib,,offline', (node: BinaryNode) => {
+        const child = getBinaryNodeChild(node, 'offline')
+        const offlineCount = +child.attrs.count 
+
+        logger.info(`got ${offlineCount} offline messages/notifications`)
+
+        if(!offlineCount) {
+            ev.emit('connection.update', { receivedPendingNotifications: true })
+        }
+    })
+
     ws.on('CB:stream:error', (node: BinaryNode) => {
         logger.error({ error: node }, `stream errored out`)
 
