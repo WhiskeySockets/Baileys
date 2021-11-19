@@ -252,6 +252,7 @@ export const makeSocket = ({
         logger.info({ error }, 'connection closed')
 
         clearInterval(keepAliveReq)
+        clearInterval(qrTimer)
 
         ws.removeAllListeners('close')
         ws.removeAllListeners('error')
@@ -269,7 +270,7 @@ export const makeSocket = ({
                 date: new Date()
             } 
         })
-        ws.removeAllListeners('connection.update')
+        ev.removeAllListeners('connection.update')
 	}
 
     const waitForSocketOpen = async() => {
@@ -444,15 +445,6 @@ export const makeSocket = ({
         }
 
         genPairQR()
-
-        const checkConnection = ({ connection }: ConnectionState) => {
-            if(connection === 'open' || connection === 'close') {
-                clearTimeout(qrTimer)
-                ev.off('connection.update', checkConnection)
-            }
-        }
-
-        ev.on('connection.update', checkConnection)
     })
     // device paired for the first time
     // if device pairs successfully, the server asks to restart the connection
@@ -492,6 +484,7 @@ export const makeSocket = ({
         await sendPassiveIq('active')
 
         logger.info('opened connection to WA')
+        clearTimeout(qrTimer) // will never happen in all likelyhood -- but just in case WA sends success on first try
 
         ev.emit('connection.update', { connection: 'open' })
     })
