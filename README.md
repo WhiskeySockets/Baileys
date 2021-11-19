@@ -600,7 +600,7 @@ Of course, replace ``` xyz ``` with an actual ID.
 - To query the metadata of a group
     ``` ts
     const metadata = await conn.groupMetadata("abcd-xyz@g.us") 
-    console.log(json.id + ", title: " + json.subject + ", description: " + json.desc)
+    console.log(metadata.id + ", title: " + metadata.subject + ", description: " + metadata.desc)
     ```
 - To join the group using the invitation code (not supported yet)
     ``` ts
