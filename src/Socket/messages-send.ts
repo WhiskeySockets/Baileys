@@ -432,6 +432,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
         sendDeliveryReceipt,
         sendReadReceipt,
         refreshMediaConn,
+	waUploadToServer,
         fetchPrivacySettings,
         sendMessage: async(
 			jid: string,
