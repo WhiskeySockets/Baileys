@@ -226,6 +226,9 @@ const makeAuthSocket = (config: SocketConfig) => {
 		if(!response || !response[1]) {
 			throw new Boom('Received unexpected login response', { data: response })
 		}
+		if(response[1].type === 'upgrade_md_prod') {
+			throw new Boom('Require multi-device edition', { statusCode: DisconnectReason.requiresMultiDevice })
+		}
         // validate the new connection
         const {user, auth, phone} = validateNewConnection(response[1], authInfo, curveKeys)// validate the connection
         const isNewLogin = user.jid !== state.user?.jid

@@ -129,7 +129,8 @@ export enum DisconnectReason {
 	connectionLost = 408,
     timedOut = 408,
 	credentialsInvalidated = 401,
-    badSession = 500
+    badSession = 500,
+    requiresMultiDevice = 499
 }
 
 export type WAInitResponse = {
