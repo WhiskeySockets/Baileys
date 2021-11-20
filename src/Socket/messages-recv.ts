@@ -326,12 +326,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             }
         } else {
             switch(child.tag) {
-                case 'count':
-                    if(child.attrs.value === '0') {
-                        logger.info('recv all pending notifications')
-                        ev.emit('connection.update', { receivedPendingNotifications: true })
-                    }
-                break
                 case 'devices':
                     const devices = getBinaryNodeChildren(child, 'device')
                     if(areJidsSameUser(child.attrs.jid, authState.creds!.me!.id)) {

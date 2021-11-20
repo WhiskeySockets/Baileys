@@ -495,9 +495,7 @@ export const makeSocket = ({
 
         logger.info(`got ${offlineCount} offline messages/notifications`)
 
-        if(!offlineCount) {
-            ev.emit('connection.update', { receivedPendingNotifications: true })
-        }
+        ev.emit('connection.update', { receivedPendingNotifications: true })
     })
 
     ws.on('CB:stream:error', (node: BinaryNode) => {
