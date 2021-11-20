@@ -524,6 +524,11 @@ export const makeSocket = ({
         const reason = +(node.attrs.reason || 500)
         end(new Boom('Connection Failure', { statusCode: reason, data: node.attrs }))
     })
+
+    ws.on('CB:ib,,downgrade_webclient', () => {
+        end(new Boom('Multi-device beta not joined', { statusCode: DisconnectReason.notJoinedBeta }))
+    })
+
     process.nextTick(() => {
         ev.emit('connection.update', { connection: 'connecting', receivedPendingNotifications: false, qr: undefined })
     })
