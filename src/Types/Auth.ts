@@ -16,12 +16,16 @@ export type SignalIdentity = {
 
 export type LTHashState = { version: number, hash: Buffer, mutations: ChatMutation[] }
 
-export type AuthenticationCreds = {
-    noiseKey: KeyPair
-    signedIdentityKey: KeyPair
-    signedPreKey: SignedKeyPair
-    registrationId: number
-    advSecretKey: string
+export type SignalCreds = {
+    readonly signedIdentityKey: KeyPair
+    readonly signedPreKey: SignedKeyPair
+    readonly registrationId: number
+}
+
+export type AuthenticationCreds = SignalCreds & {
+    readonly noiseKey: KeyPair
+    readonly advSecretKey: string
+    
     me?: Contact
     account?: proto.IADVSignedDeviceIdentity
     signalIdentities?: SignalIdentity[]
@@ -47,6 +51,11 @@ export type SignalKeyStore = {
 
     getAppStateSyncVersion: (name: WAPatchName) => Awaitable<LTHashState>
     setAppStateSyncVersion: (id: WAPatchName, item: LTHashState) => Awaitable<void>
+}
+
+export type SignalAuthState = {
+    creds: SignalCreds
+    keys: SignalKeyStore
 }
 
 export type AuthenticationState = {

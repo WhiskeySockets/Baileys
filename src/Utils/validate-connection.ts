@@ -1,9 +1,8 @@
 import { Boom } from '@hapi/boom'
-import { randomBytes } from 'crypto'
 import { proto } from '../../WAProto'
-import type { AuthenticationState, SocketConfig, SignalKeyStore, AuthenticationCreds, KeyPair, LTHashState } from "../Types"
-import { Curve, hmacSign, signedKeyPair } from './crypto'
-import { encodeInt, generateRegistrationId } from './generics'
+import type { SocketConfig, AuthenticationCreds, SignalCreds } from "../Types"
+import { Curve, hmacSign } from './crypto'
+import { encodeInt } from './generics'
 import { BinaryNode, S_WHATSAPP_NET, jidDecode, Binary, getAllBinaryNodeChildren } from '../WABinary'
 import { createSignalIdentity } from './signal'
 
@@ -41,7 +40,7 @@ export const generateLoginNode = (userJid: string, config: Pick<SocketConfig, 'v
 }
 
 export const generateRegistrationNode = (
-  { registrationId, signedPreKey, signedIdentityKey }: Pick<AuthenticationCreds, 'registrationId' | 'signedPreKey' | 'signedIdentityKey'>,
+  { registrationId, signedPreKey, signedIdentityKey }: SignalCreds,
   config: Pick<SocketConfig, 'version' | 'browser'>
 ) => {
   const appVersionBuf = new Uint8Array(Buffer.from(ENCODED_VERSION, "base64"));
@@ -80,84 +79,6 @@ export const generateRegistrationNode = (
   }
 
   return proto.ClientPayload.encode(registerPayload).finish()
-}
-
-export const initInMemoryKeyStore = (
-  { preKeys, sessions, senderKeys, appStateSyncKeys, appStateVersions }: { 
-    preKeys?: { [k: number]: KeyPair },
-    sessions?: { [k: string]: any },
-    senderKeys?: { [k: string]: any }
-    appStateSyncKeys?: { [k: string]: proto.IAppStateSyncKeyData },
-    appStateVersions?: { [k: string]: LTHashState },
-  } = { },
-) => {
-  preKeys = preKeys || { }
-  sessions = sessions || { }
-  senderKeys = senderKeys || { }
-  appStateSyncKeys = appStateSyncKeys || { }
-  appStateVersions = appStateVersions || { }
-  return {
-    preKeys,
-    sessions,
-    senderKeys,
-    appStateSyncKeys,
-    appStateVersions,
-    getPreKey: keyId => preKeys[keyId],
-    setPreKey: (keyId, pair) => {
-      if(pair) preKeys[keyId] = pair
-      else delete preKeys[keyId]
-    },
-    getSession: id => sessions[id],
-    setSession: (id, item) => {
-      if(item) sessions[id] = item
-      else delete sessions[id]
-    },
-    getSenderKey: id => {
-      return senderKeys[id]
-    },
-    setSenderKey: (id, item) => {
-      if(item) senderKeys[id] = item
-      else delete senderKeys[id]
-    },
-    getAppStateSyncKey: id => {
-      const obj = appStateSyncKeys[id]
-      if(obj) {
-        return proto.AppStateSyncKeyData.fromObject(obj)
-      }
-    },
-    setAppStateSyncKey: (id, item) => {
-      if(item) appStateSyncKeys[id] = item
-      else delete appStateSyncKeys[id]
-    },
-    getAppStateSyncVersion: id => {
-      const obj = appStateVersions[id]
-      if(obj) {
-        return obj
-      }
-    },
-    setAppStateSyncVersion: (id, item) => {
-      if(item) appStateVersions[id] = item
-      else delete appStateVersions[id]
-    }
-  } as SignalKeyStore
-}
-
-export const initAuthState = (): AuthenticationState => {
-  const identityKey = Curve.generateKeyPair()
-  return {
-    creds: {
-      noiseKey: Curve.generateKeyPair(),
-      signedIdentityKey: identityKey,
-      signedPreKey: signedKeyPair(identityKey, 1),
-      registrationId: generateRegistrationId(),
-      advSecretKey: randomBytes(32).toString('base64'),
-
-      nextPreKeyId: 1,
-      firstUnuploadedPreKeyId: 1,
-      serverHasPreKeys: false
-    },
-    keys: initInMemoryKeyStore()
-  }
 }
 
 export const configureSuccessfulPairing = (

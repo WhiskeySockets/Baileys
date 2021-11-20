@@ -11,7 +11,7 @@ import type { Logger } from "pino"
 import type { URL } from "url"
 import type NodeCache from 'node-cache'
 
-import { AuthenticationState } from './Auth'
+import { AuthenticationState, AuthenticationCreds } from './Auth'
 import { Chat, PresenceData } from './Chat'
 import { Contact } from './Contact'
 import { ConnectionState } from './State'
@@ -96,8 +96,8 @@ export type CurveKeyPair = { private: Uint8Array; public: Uint8Array }
 export type BaileysEventMap = {
     /** connection state has been updated -- WS closed, opened, connecting etc. */
 	'connection.update': Partial<ConnectionState>
-    /** auth state updated -- some pre keys, or identity keys etc. */
-    'auth-state.update': AuthenticationState
+    /** credentials updated -- some metadata, keys or something */
+    'creds.update': Partial<AuthenticationCreds>
     /** set chats (history sync), messages are reverse chronologically sorted */
     'chats.set': { chats: Chat[], messages: WAMessage[] }
     /** upsert chats */

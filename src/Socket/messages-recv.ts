@@ -158,15 +158,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                     logger.info({ with: message.key.remoteJid! }, 'shared key')
                 break
                 case proto.ProtocolMessage.ProtocolMessageType.APP_STATE_SYNC_KEY_SHARE:
+                    let newAppStateSyncKeyId = ''
                     for(const { keyData, keyId } of protocolMsg.appStateSyncKeyShare!.keys || []) {
                         const str = Buffer.from(keyId.keyId!).toString('base64')
                         logger.info({ str }, 'injecting new app state sync key')
                         await authState.keys.setAppStateSyncKey(str, keyData)
 
-                        authState.creds.myAppStateKeyId = str
+                        newAppStateSyncKeyId = str
                     }
                     
-                    ev.emit('auth-state.update', authState)
+                    ev.emit('creds.update', { myAppStateKeyId: newAppStateSyncKeyId })
 
                     resyncMainAppState()
                 break
@@ -359,7 +360,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         }
         // if there were some successful decryptions
         if(dec.successes.length) {
-            ev.emit('auth-state.update', authState)
             // send message receipt
             let recpAttrs: { [_: string]: any }
             if(isMe) {
@@ -506,8 +506,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                 contactNameUpdates[jid] = msg.pushName
                 // update our pushname too
                 if(msg.key.fromMe && authState.creds.me?.name !== msg.pushName) {
-                    authState.creds.me!.name = msg.pushName
-                    ev.emit('auth-state.update', authState)
+                    ev.emit('creds.update', { me: { ...authState.creds.me!, name: msg.pushName! } })
                 }
             }
 

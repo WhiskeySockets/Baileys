@@ -117,49 +117,22 @@ type SocketConfig = {
 
 You obviously don't want to keep scanning the QR code every time you want to connect. 
 
-So, you can save the credentials to log back in via:
+So, you can load the credentials to log back in:
 ``` ts
-import makeWASocket, { BufferJSON } from '@adiwajshing/baileys-md'
+import makeWASocket, { BufferJSON, useSingleFileAuthState } from '@adiwajshing/baileys-md'
 import * as fs from 'fs'
 
-// will initialize a default in-memory auth session
-const conn = makeSocket() 
+// utility function to help save the auth state in a single file
+// it's utility ends at demos -- as re-writing a large file over and over again is very inefficient
+const { state, saveState } = useSingleFileAuthState('./auth_info_multi.json')
+// will use the given state to connect
+// so if valid credentials are available -- it'll connect without QR
+const conn = makeSocket({ auth: state }) 
 // this will be called as soon as the credentials are updated
-conn.ev.on ('auth-state.update', () => {
-    // save credentials whenever updated
-    console.log (`credentials updated!`)
-    const authInfo = conn.authState // get all the auth info we need to restore this session
-    // save this info to a file
-    fs.writeFileSync(
-        './auth_info.json', 
-        JSON.stringify(authInfo, BufferJSON.replacer, 2)
-    ) 
-})
+conn.ev.on ('creds.update', saveState)
 ```
 
-Then, to restore a session:
-``` ts
-import makeWASocket, { BufferJSON, initInMemoryKeyStore } from '@adiwajshing/baileys-md'
-import * as fs from 'fs'
-
-const authJSON = JSON.parse(
-    fs.readFileSync(
-        './auth_info.json',
-        { encoding: 'utf-8' }
-    ),
-    BufferJSON.reviver
-)
-const auth = { 
-    creds: authJSON.creds, 
-    // stores pre-keys, session & other keys in a JSON object
-    // we deserialize it here
-    keys: initInMemoryKeyStore(authJSON.keys) 
-}
-const conn = makeWASocket(auth)
-// yay will connect without scanning QR
-```
-
-**Note**: Upon every successive connection, the auth state can update part of the stored credentials. It will also update when a message is received/sent due to signal sessions needing updating. Whenever that happens, the `auth-state.update` event is fired uploaded, and you must update your saved credentials upon receiving the event. Not doing so will prevent your messages from reaching the recipient & other unexpected consequences.
+**Note**: When a message is received/sent, due to signal sessions needing updating, the auth keys (`authState.keys`) will update. Whenever that happens, you must save the updated keys. Not doing so will prevent your messages from reaching the recipient & other unexpected consequences. The `useSingleFileAuthState` function automatically takes care of that, but for any other serious implementation -- you will need to be very careful with the key state management.
 
 ## Listening to Connection Updates
 
@@ -196,8 +169,8 @@ The events are typed up in a type map, as mentioned here:
 export type BaileysEventMap = {
     /** connection state has been updated -- WS closed, opened, connecting etc. */
 	'connection.update': Partial<ConnectionState>
-    /** auth state updated -- some pre keys, or identity keys etc. */
-    'auth-state.update': AuthenticationState
+    /** auth credentials updated -- some pre key state, device ID etc. */
+    'creds.update': Partial<AuthenticationCreds>
     /** set chats (history sync), messages are reverse chronologically sorted */
     'chats.set': { chats: Chat[], messages: WAMessage[] }
     /** upsert chats */

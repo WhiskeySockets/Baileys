@@ -2,7 +2,7 @@ import * as libsignal from 'libsignal'
 import { encodeBigEndian } from "./generics"
 import { Curve } from "./crypto"
 import { SenderKeyDistributionMessage, GroupSessionBuilder, SenderKeyRecord, SenderKeyName, GroupCipher } from '../../WASignalGroup'
-import { SignalIdentity, SignalKeyStore, SignedKeyPair, KeyPair, AuthenticationState } from "../Types/Auth"
+import { SignalIdentity, SignalKeyStore, SignedKeyPair, KeyPair, SignalAuthState, AuthenticationCreds } from "../Types/Auth"
 import { assertNodeErrorFree, BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, getBinaryNodeChildUInt, jidDecode, JidWithDevice } from "../WABinary"
 import { proto } from "../../WAProto"
 
@@ -42,7 +42,7 @@ export const getPreKeys = async({ getPreKey }: SignalKeyStore, min: number, limi
 	return dict
 }
 
-export const generateOrGetPreKeys = ({ creds }: AuthenticationState, range: number) => {
+export const generateOrGetPreKeys = (creds: AuthenticationCreds, range: number) => {
 	const avaliable = creds.nextPreKeyId - creds.firstUnuploadedPreKeyId
     const remaining = range - avaliable
 	const lastPreKeyId = creds.nextPreKeyId + remaining - 1
@@ -83,7 +83,7 @@ export const xmppPreKey = (pair: KeyPair, id: number): BinaryNode => (
 	}
 )
 
-export const signalStorage = ({ creds, keys }: AuthenticationState) => ({
+export const signalStorage = ({ creds, keys }: SignalAuthState) => ({
 	loadSession: async id => {
 		const sess = await keys.getSession(id)
 		if(sess) {
@@ -132,7 +132,7 @@ export const signalStorage = ({ creds, keys }: AuthenticationState) => ({
 	}
 })
 
-export const decryptGroupSignalProto = (group: string, user: string, msg: Buffer | Uint8Array, auth: AuthenticationState) => {
+export const decryptGroupSignalProto = (group: string, user: string, msg: Buffer | Uint8Array, auth: SignalAuthState) => {
 	const senderName = jidToSignalSenderKeyName(group, user)
 	const cipher = new GroupCipher(signalStorage(auth), senderName)
 
@@ -142,7 +142,7 @@ export const decryptGroupSignalProto = (group: string, user: string, msg: Buffer
 export const processSenderKeyMessage = async(
 	authorJid: string,
 	item: proto.ISenderKeyDistributionMessage, 
-	auth: AuthenticationState
+	auth: SignalAuthState
 ) => {
     const builder = new GroupSessionBuilder(signalStorage(auth))
 	const senderName = jidToSignalSenderKeyName(item.groupId, authorJid)
@@ -156,7 +156,7 @@ export const processSenderKeyMessage = async(
 	await builder.process(senderName, senderMsg)
 }
 
-export const decryptSignalProto = async(user: string, type: 'pkmsg' | 'msg', msg: Buffer | Uint8Array, auth: AuthenticationState) => {
+export const decryptSignalProto = async(user: string, type: 'pkmsg' | 'msg', msg: Buffer | Uint8Array, auth: SignalAuthState) => {
 	const addr = jidToSignalProtocolAddress(user)
 	const session = new libsignal.SessionCipher(signalStorage(auth), addr)
 	let result: Buffer
@@ -172,7 +172,7 @@ export const decryptSignalProto = async(user: string, type: 'pkmsg' | 'msg', msg
 }
 
 
-export const encryptSignalProto = async(user: string, buffer: Buffer, auth: AuthenticationState) => {
+export const encryptSignalProto = async(user: string, buffer: Buffer, auth: SignalAuthState) => {
 	const addr = jidToSignalProtocolAddress(user)
 	const cipher = new libsignal.SessionCipher(signalStorage(auth), addr)
 
@@ -183,9 +183,9 @@ export const encryptSignalProto = async(user: string, buffer: Buffer, auth: Auth
 	}
 }
 
-export const encryptSenderKeyMsgSignalProto = async(group: string, data: Uint8Array | Buffer, auth: AuthenticationState) => {
+export const encryptSenderKeyMsgSignalProto = async(group: string, data: Uint8Array | Buffer, meId: string, auth: SignalAuthState) => {
 	const storage = signalStorage(auth)
-	const senderName = jidToSignalSenderKeyName(group, auth.creds.me!.id)
+	const senderName = jidToSignalSenderKeyName(group, meId)
 	const builder = new GroupSessionBuilder(storage)
 
 	const senderKey = await auth.keys.getSenderKey(senderName)
@@ -202,7 +202,7 @@ export const encryptSenderKeyMsgSignalProto = async(group: string, data: Uint8Ar
 	}
 }
 
-export const parseAndInjectE2ESession = async(node: BinaryNode, auth: AuthenticationState) => {
+export const parseAndInjectE2ESession = async(node: BinaryNode, auth: SignalAuthState) => {
 	const extractKey = (key: BinaryNode) => (
 		key ? ({
             keyId: getBinaryNodeChildUInt(key, 'id', 3),

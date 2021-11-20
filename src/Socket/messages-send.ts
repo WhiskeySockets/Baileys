@@ -259,7 +259,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
         const destinationJid = jidEncode(user, isGroup ? 'g.us' : 's.whatsapp.net')
 
         if(isGroup) {
-            const { ciphertext, senderKeyDistributionMessageKey } = await encryptSenderKeyMsgSignalProto(destinationJid, encodedMsg, authState)
+            const { ciphertext, senderKeyDistributionMessageKey } = await encryptSenderKeyMsgSignalProto(destinationJid, encodedMsg, authState.creds.me!.id, authState)
             
             let groupData = cachedGroupMetadata ? await cachedGroupMetadata(jid) : undefined 
             if(!groupData) groupData = await groupMetadata(jid)
@@ -375,7 +375,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
         await sendNode(stanza)
 
-        ev.emit('auth-state.update', authState)
         return msgId
     } 
 

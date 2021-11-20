@@ -219,7 +219,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
                 processSyncActions(newMutations)
             }
         }
-        ev.emit('auth-state.update', authState)
     }
 
     /**
@@ -245,11 +244,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
     }
 
     const sendPresenceUpdate = async(type: WAPresence, toJid?: string) => {
+        const me = authState.creds.me!
         if(type === 'available' || type === 'unavailable') {
             await sendNode({
                 tag: 'presence',
                 attrs: {
-                    name: authState.creds.me!.name,
+                    name: me!.name,
                     type
                 }
             })
@@ -257,7 +257,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
             await sendNode({
                 tag: 'chatstate',
                 attrs: {
-                    from: authState.creds.me!.id!,
+                    from: me!.id!,
                     to: toJid,
                 },
                 content: [
@@ -344,8 +344,11 @@ export const makeChatsSocket = (config: SocketConfig) => {
                     name: action.contactAction!.fullName
                 }
             } else if(action?.pushNameSetting) {
-                authState.creds.me!.name = action?.pushNameSetting?.name!
-                ev.emit('auth-state.update', authState)
+                const me = {
+                    ...authState.creds.me!,
+                    name:  action?.pushNameSetting?.name!
+                }
+                ev.emit('creds.update', { me })
             } else {
                 logger.warn({ action, id }, 'unprocessable update')
             }
@@ -420,7 +423,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
                 await query(node)
         
                 await authState.keys.setAppStateSyncVersion(name, state)
-                ev.emit('auth-state.update', authState)
                 
                 if(config.emitOwnEvents) {
                     processSyncActions(result.newMutations)
