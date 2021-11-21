@@ -311,7 +311,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                 case 'leave':
                     const stubType = `GROUP_PARTICIPANT_${child.tag!.toUpperCase()}`
                     result.messageStubType = WAMessageStubType[stubType]
-                    result.messageStubParameters = getBinaryNodeChildren(child, 'participant').map(p => p.attrs.jid)
+
+                    const participants = getBinaryNodeChildren(child, 'participant').map(p => p.attrs.jid)
+                    if(
+                        participants.length === 1 && 
+                        // if recv. "remove" message and sender removed themselves
+                        // mark as left
+                        areJidsSameUser(participants[0], node.attrs.participant) &&
+                        child.tag === 'remove'
+                    ) {
+                        result.messageStubType = WAMessageStubType.GROUP_PARTICIPANT_LEAVE
+                    }
+                    result.messageStubParameters = participants
                     break
                 case 'subject':
                     result.messageStubType = WAMessageStubType.GROUP_CHANGE_SUBJECT
