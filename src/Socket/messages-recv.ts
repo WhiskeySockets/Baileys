@@ -281,8 +281,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             switch(child?.tag) {
                 case 'create':
                     const metadata = extractGroupMetadata(child)
+
                     result.messageStubType = WAMessageStubType.GROUP_CREATE
                     result.messageStubParameters = [metadata.subject]
+                    result.key = {
+                        participant: jidNormalizedUser(metadata.owner)
+                    }
 
                     ev.emit('chats.upsert', [{
                         id: metadata.id,
@@ -488,7 +492,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                 remoteJid: node.attrs.from,
                 fromMe,
                 participant: node.attrs.participant,
-                id: node.attrs.id
+                id: node.attrs.id,
+                ...(msg.key || {})
             }
             msg.messageTimestamp = +node.attrs.t
             
