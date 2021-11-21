@@ -425,13 +425,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             })
         }
 
-        ev.emit(
-            'messages.upsert', 
-            { 
-                messages: fullMessages.map(m => proto.WebMessageInfo.fromObject(m)), 
-                type: stanza.attrs.offline ? 'append' : 'notify' 
-            }
-        )
+        if(fullMessages.length) {
+            ev.emit(
+                'messages.upsert', 
+                { 
+                    messages: fullMessages.map(m => proto.WebMessageInfo.fromObject(m)), 
+                    type: stanza.attrs.offline ? 'append' : 'notify' 
+                }
+            )
+        } else {
+            logger.warn({ stanza }, `received node with 0 messages`)
+        }
     })
 
     ws.on('CB:ack,class:message', async(node: BinaryNode) => {
