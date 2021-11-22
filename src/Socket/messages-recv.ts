@@ -375,6 +375,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             id: dec.msgId,
             participant: dec.participant
         }
+        const partialMsg: Partial<proto.IWebMessageInfo> = {
+            messageTimestamp: dec.timestamp,
+            pushName: dec.pushname
+        }
         // if there were some successful decryptions
         if(dec.successes.length) {
             // send message receipt
@@ -418,9 +422,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                 key,
                 message,
                 status: isMe ? proto.WebMessageInfo.WebMessageInfoStatus.SERVER_ACK : null,
-                messageTimestamp: dec.timestamp,
-                pushName: dec.pushname,
-                participant: dec.participant
+                ...partialMsg
             })
         }
         
@@ -434,7 +436,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             fullMessages.push({
                 key,
                 messageStubType: WAMessageStubType.CIPHERTEXT,
-                messageStubParameters: [error.message]
+                messageStubParameters: [error.message],
+                ...partialMsg
             })
         }
 
