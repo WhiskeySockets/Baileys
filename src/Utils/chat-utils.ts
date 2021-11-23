@@ -51,21 +51,23 @@ const to64BitNetworkOrder = function(e) {
 
 type Mac = { indexMac: Uint8Array, valueMac: Uint8Array, operation: proto.SyncdMutation.SyncdMutationSyncdOperation }
 
-const computeLtHash = (initial: Uint8Array, macs: Mac[], getPrevSetValueMac: (index: Uint8Array, internalIndex: number) => Uint8Array) => {
+const computeLtHash = (initial: Uint8Array, macs: Mac[], getPrevSetValueMac: (index: Uint8Array, internalIndex: number) => { valueMac: Uint8Array, operation: number }) => {
     const addBuffs: ArrayBuffer[] = []
     const subBuffs: ArrayBuffer[] = []
     for(let i = 0; i < macs.length;i++) {
         const { indexMac, valueMac, operation } = macs[i]
-        const subBuff = getPrevSetValueMac(indexMac, i)
+        const subOp = getPrevSetValueMac(indexMac, i)
         if(operation === proto.SyncdMutation.SyncdMutationSyncdOperation.REMOVE) {
-            if(!subBuff) {
+            if(!subOp) {
                 throw new Boom('tried remove, but no buffer', { statusCode: 500 })
             }
         } else {
             addBuffs.push(new Uint8Array(valueMac).buffer)
         }
-        if(subBuff) {
-            subBuffs.push(new Uint8Array(subBuff).buffer)
+        if(subOp) {
+            if(subOp.operation === proto.SyncdMutation.SyncdMutationSyncdOperation.SET) {
+                subBuffs.push(new Uint8Array(subOp.valueMac).buffer)
+            }
         }
     }
 
@@ -123,7 +125,7 @@ export const encodeSyncdPatch = async(
     state.hash = computeLtHash(
         state.hash, 
         [ { indexMac, valueMac, operation } ],
-        (index) => [...state.mutations].reverse().find(m => Buffer.compare(m.indexMac, index) === 0)?.valueMac
+        (index) => [...state.mutations].reverse().find(m => Buffer.compare(m.indexMac, index) === 0)
     )
     state.version += 1
 
@@ -300,10 +302,10 @@ export const decodePatches = async(
         currentVersion = toNumber(version.version!)
 
         current = computeLtHash(current, macs, (index, maxIndex) => {
-            let value: Uint8Array
+            let result: { valueMac: Uint8Array, operation: number }
             for(const item of initial.mutations) {
                 if(Buffer.compare(item.indexMac, index) === 0) {
-                    value = item.valueMac
+                    result = item
                 }
             }
             for(const { version, mutations } of syncds) {
@@ -313,14 +315,18 @@ export const decodePatches = async(
                 })
 
                 if(mutationIdx >= 0 && (versionNum < currentVersion || mutationIdx < maxIndex)) {
-                    value = mutations[mutationIdx].record!.value!.blob!.slice(-32)
+                    const mut = mutations[mutationIdx]
+                    result = {
+                        valueMac: mut.record!.value!.blob!.slice(-32),
+                        operation: mut.operation
+                    }
                 }
 
                 if(versionNum >= currentVersion) {
                     break
                 }
             }
-            return value
+            return result
         })
         
         if(validateMacs) {
