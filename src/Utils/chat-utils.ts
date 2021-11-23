@@ -1,6 +1,6 @@
 import { Boom } from '@hapi/boom'
 import { aesDecrypt, hmacSign, aesEncrypt, hkdf } from "./crypto"
-import { AuthenticationState, WAPatchCreate, ChatMutation, WAPatchName, LTHashState, ChatModification } from "../Types"
+import { AuthenticationState, WAPatchCreate, ChatMutation, WAPatchName, LTHashState, ChatModification, SignalKeyStore } from "../Types"
 import { proto } from '../../WAProto'
 import { LT_HASH_ANTI_TAMPERING } from './lt-hash'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren } from '../WABinary'
@@ -165,7 +165,7 @@ export const encodeSyncdPatch = async(
 export const decodeSyncdPatch = async(
     msg: proto.ISyncdPatch, 
     name: WAPatchName,
-    {keys}: AuthenticationState,
+    getAppStateSyncKey: SignalKeyStore['getAppStateSyncKey'],
     validateMacs: boolean = true
 ) => {
     const keyCache: { [_: string]: ReturnType<typeof mutationKeys> } = { }
@@ -173,7 +173,7 @@ export const decodeSyncdPatch = async(
         const base64Key = Buffer.from(keyId!).toString('base64')
         let key = keyCache[base64Key]
         if(!key) {
-            const keyEnc = await keys.getAppStateSyncKey(base64Key)
+            const keyEnc = await getAppStateSyncKey(base64Key)
             if(!keyEnc) {
                 throw new Boom(`failed to find key "${base64Key}" to decode mutation`, { statusCode: 500, data: msg })
             }
@@ -275,7 +275,7 @@ export const decodePatches = async(
     name: WAPatchName,
     syncds: proto.ISyncdPatch[],
     initial: LTHashState,
-    auth: AuthenticationState,
+    getAppStateSyncKey: SignalKeyStore['getAppStateSyncKey'],
     validateMacs: boolean = true
 ) => {
     const successfulMutations: ChatMutation[] = []
@@ -325,7 +325,7 @@ export const decodePatches = async(
         
         if(validateMacs) {
             const base64Key = Buffer.from(keyId!.id!).toString('base64')
-            const keyEnc = await auth.keys.getAppStateSyncKey(base64Key)
+            const keyEnc = await getAppStateSyncKey(base64Key)
             if(!keyEnc) {
                 throw new Boom(`failed to find key "${base64Key}" to decode mutation`, { statusCode: 500 })
             }
@@ -336,7 +336,7 @@ export const decodePatches = async(
             }
         }
 
-        const decodeResult = await decodeSyncdPatch(syncd, name, auth!, validateMacs)
+        const decodeResult = await decodeSyncdPatch(syncd, name, getAppStateSyncKey, validateMacs)
         successfulMutations.push(...decodeResult.mutations)
     }
     return {

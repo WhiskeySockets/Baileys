@@ -211,7 +211,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
             const name = key as WAPatchName
             // only process if there are syncd patches
             if(decoded[name].length) {
-                const { newMutations, state: newState } = await decodePatches(name, decoded[name], states[name], authState, true)
+                const { newMutations, state: newState } = await decodePatches(name, decoded[name], states[name], authState.keys.getAppStateSyncKey, true)
 
                 await authState.keys.setAppStateSyncVersion(name, newState)
     
@@ -387,7 +387,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
                 )
                 const initial = await authState.keys.getAppStateSyncVersion(name)
                 // temp: verify it was encoded correctly
-                const result = await decodePatches(name, [{ ...patch, version: { version: state.version }, }], initial, authState)
+                const result = await decodePatches(name, [{ ...patch, version: { version: state.version }, }], initial, authState.keys.getAppStateSyncKey)
         
                 const node: BinaryNode = {
                     tag: 'iq',
