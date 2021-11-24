@@ -146,7 +146,7 @@ export const prepareWAMessageMedia = async(
 	}
 	const obj = WAProto.Message.fromObject(content)
 	if(cacheableKey) {
-		options.mediaCache!.set(cacheableKey, WAProto.Message.encode(obj))
+		options.mediaCache!.set(cacheableKey, WAProto.Message.encode(obj).finish())
 	}
 
 	return obj
