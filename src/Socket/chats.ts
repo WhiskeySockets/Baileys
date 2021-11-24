@@ -1,7 +1,7 @@
 import { SocketConfig, WAPresence, PresenceData, Chat, WAPatchCreate, WAMediaUpload, ChatMutation, WAPatchName, LTHashState, ChatModification, Contact } from "../Types";
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidNormalizedUser, S_WHATSAPP_NET } from "../WABinary";
 import { proto } from '../../WAProto'
-import { generateProfilePicture, toNumber, encodeSyncdPatch, decodePatches, extractSyncdPatches, chatModificationToAppPatch, decodeSyncdSnapshot } from "../Utils";
+import { generateProfilePicture, toNumber, encodeSyncdPatch, decodePatches, extractSyncdPatches, chatModificationToAppPatch, decodeSyncdSnapshot, newLTHashState } from "../Utils";
 import { makeMessagesSocket } from "./messages-send";
 import makeMutex from "../Utils/make-mutex";
 
@@ -176,7 +176,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
         const states = { } as { [T in WAPatchName]: LTHashState }
         for(const name of collections) {
             let state: LTHashState = fromScratch ? undefined : await authState.keys.getAppStateSyncVersion(name)
-            if(!state) state = { version: 0, hash: Buffer.alloc(128), mutations: [] }
+            if(!state) state = newLTHashState()
 
             states[name] = state
 

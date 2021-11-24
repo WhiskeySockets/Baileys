@@ -95,6 +95,8 @@ const generatePatchMac = (snapshotMac: Uint8Array, valueMacs: Uint8Array[], vers
     return hmacSign(total, key)
 }
 
+export const newLTHashState = (): LTHashState => ({ version: 0, hash: Buffer.alloc(128), indexValueMap: {} })
+
 export const encodeSyncdPatch = async(
     { type, index, syncAction, apiVersion }: WAPatchCreate,
     { creds: { myAppStateKeyId }, keys }: AuthenticationState
