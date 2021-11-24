@@ -308,7 +308,13 @@ export const makeChatsSocket = (config: SocketConfig) => {
         
         await (
             mutationMutex.mutex(
-                () => resyncAppState([ 'critical_block', 'critical_unblock_low' ])
+                () => resyncAppState([ 
+                    'critical_block', 
+                    'critical_unblock_low', 
+                    'regular_high', 
+                    'regular_low', 
+                    'regular' 
+                ])
             )
             .catch(err => (
                 logger.warn({ trace: err.stack }, 'failed to sync app state')
