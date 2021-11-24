@@ -109,7 +109,7 @@ const generatePatchMac = (snapshotMac: Uint8Array, valueMacs: Uint8Array[], vers
 export const newLTHashState = (): LTHashState => ({ version: 0, hash: Buffer.alloc(128), indexValueMap: {} })
 
 export const encodeSyncdPatch = async(
-    { type, index, syncAction, apiVersion }: WAPatchCreate,
+    { type, index, syncAction, apiVersion, operation }: WAPatchCreate,
     { creds: { myAppStateKeyId }, keys }: AuthenticationState
 ) => {
     const key = !!myAppStateKeyId ? await keys.getAppStateSyncKey(myAppStateKeyId) : undefined
@@ -117,8 +117,6 @@ export const encodeSyncdPatch = async(
         throw new Boom(`myAppStateKey not present`, { statusCode: 404 })
     }
     const encKeyId = Buffer.from(myAppStateKeyId, 'base64')
-
-    const operation = proto.SyncdMutation.SyncdMutationSyncdOperation.SET
 
     const state = { ...await keys.getAppStateSyncVersion(type) }
 
@@ -418,6 +416,7 @@ export const chatModificationToAppPatch = (
     jid: string,
     lastMessages: Pick<proto.IWebMessageInfo, 'key' | 'messageTimestamp'>[]
 ) => {
+    const OP = proto.SyncdMutation.SyncdMutationSyncdOperation
     const messageRange: proto.ISyncActionMessageRange = {
         lastMessageTimestamp: lastMessages[lastMessages.length-1].messageTimestamp,
         messages: lastMessages
@@ -435,7 +434,8 @@ export const chatModificationToAppPatch = (
             },
             index: ['mute', jid],
             type: 'regular_high',
-            apiVersion: 2
+            apiVersion: 2,
+            operation: mod.mute ? OP.SET : OP.REMOVE
         }
     } else if('archive' in mod) {
         patch = {
@@ -448,7 +448,8 @@ export const chatModificationToAppPatch = (
             },
             index: ['archive', jid],
             type: 'regular_low',
-            apiVersion: 3
+            apiVersion: 3,
+            operation: mod.archive ? OP.SET : OP.REMOVE
         }
     } else if('markRead' in mod) {
         patch = {
@@ -461,7 +462,8 @@ export const chatModificationToAppPatch = (
             },
             index: ['markChatAsRead', jid],
             type: 'regular_low',
-            apiVersion: 3
+            apiVersion: 3,
+            operation: !mod.markRead ? OP.SET : OP.REMOVE
         }
     } else if('clear' in mod) {
         if(mod.clear === 'all') {
@@ -478,6 +480,7 @@ export const chatModificationToAppPatch = (
                 index: ['deleteMessageForMe', jid, key.id, key.fromMe ? '1' : '0', '0'],
                 type: 'regular_high',
                 apiVersion: 3,
+                operation: OP.SET
             }
         }
     } else {

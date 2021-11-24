@@ -17,6 +17,7 @@ export type WAPatchCreate = {
     index: string[]
     type: WAPatchName
     apiVersion: number
+    operation: proto.SyncdMutation.SyncdMutationSyncdOperation
 }
 
 export type Chat = Omit<proto.IConversation, 'messages'> & {
