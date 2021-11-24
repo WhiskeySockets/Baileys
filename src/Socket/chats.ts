@@ -470,7 +470,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
             sendPresenceUpdate('available')
             fetchBlocklist()
             fetchPrivacySettings()
-            resyncMainAppState()
         }
     })
 
