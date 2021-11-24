@@ -1,6 +1,6 @@
 import type { Contact } from "./Contact"
 import type { proto } from "../../WAProto"
-import type { WAPatchName, ChatMutation } from "./Chat"
+import type { WAPatchName } from "./Chat"
 
 export type KeyPair = { public: Uint8Array, private: Uint8Array }
 export type SignedKeyPair = { keyPair: KeyPair, signature: Uint8Array, keyId: number }
@@ -14,7 +14,13 @@ export type SignalIdentity = {
 	identifierKey: Uint8Array
 }
 
-export type LTHashState = { version: number, hash: Buffer, mutations: ChatMutation[] }
+export type LTHashState = { 
+    version: number
+    hash: Buffer
+    indexValueMap: { 
+        [indexMacBase64: string]: { valueMac: Uint8Array | Buffer }
+    }
+}
 
 export type SignalCreds = {
     readonly signedIdentityKey: KeyPair
