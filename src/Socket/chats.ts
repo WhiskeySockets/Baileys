@@ -208,7 +208,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
         })
         
         const decoded = await extractSyncdPatches(result) // extract from binary node
-
+        const totalMutations: ChatMutation[] = []
         for(const key in decoded) {
             const name = key as WAPatchName
             const { patches, snapshot } = decoded[name]
@@ -226,17 +226,23 @@ export const makeChatsSocket = (config: SocketConfig) => {
     
                 logger.info(`synced ${name} to v${newState.version}`)
                 processSyncActions(newMutations)
+
+                totalMutations.push(...newMutations)
             }
         }
+
+        return totalMutations
     }
 
     const resyncAppState = async(collections: WAPatchName[], returnSnapshot: boolean = false) => {
+        let result: ChatMutation[]
         try {
-            await resyncAppStateInternal(collections, returnSnapshot)
+            result = await resyncAppStateInternal(collections, false, returnSnapshot)
         } catch(error) {
             logger.info({ collections, error: error.stack }, 'failed to sync state from version, trying from scratch')
-            await resyncAppStateInternal(collections, true, true)
+            result = await resyncAppStateInternal(collections, true, true)
         }
+        return result
     }
 
     /**
