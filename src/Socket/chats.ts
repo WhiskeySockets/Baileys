@@ -228,11 +228,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
                 if(newMutations.length) {
                     logger.trace({ newMutations, name }, 'recv new mutations')
                 }
-                processSyncActions(newMutations)
 
                 totalMutations.push(...newMutations)
             }
         }
+
+        processSyncActions(totalMutations)
 
         return totalMutations
     }
@@ -419,9 +420,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
                     initial,
                     authState.keys,
                 )
-                // temp: verify it was encoded correctly
-                const result = await decodePatches(name, [{ ...patch, version: { version: state.version }, }], initial, authState.keys.getAppStateSyncKey)
-        
+
                 const node: BinaryNode = {
                     tag: 'iq',
                     attrs: {
@@ -458,6 +457,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
                 await authState.keys.setAppStateSyncVersion(name, state)
                 
                 if(config.emitOwnEvents) {
+                    const result = await decodePatches(name, [{ ...patch, version: { version: state.version }, }], initial, authState.keys.getAppStateSyncKey)
                     processSyncActions(result.newMutations)
                 }
             }
