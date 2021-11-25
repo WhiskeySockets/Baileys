@@ -131,32 +131,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                         }
                     })
                     break
-                case proto.ProtocolMessage.ProtocolMessageType.APP_STATE_SYNC_KEY_REQUEST:
-                    const keys = await Promise.all(
-                        protocolMsg.appStateSyncKeyRequest!.keyIds!.map(
-                            async id => {
-                                const keyId = Buffer.from(id.keyId!).toString('base64')
-                                const keyData = await authState.keys.getAppStateSyncKey(keyId)
-                                logger.info({ keyId }, 'received key request')
-                                return {
-                                    keyId: id,
-                                    keyData
-                                }
-                            }
-                        )
-                    )
-                    
-                    const msg: proto.IMessage = {
-                        protocolMessage: {
-                            type: proto.ProtocolMessage.ProtocolMessageType.APP_STATE_SYNC_KEY_SHARE,
-                            appStateSyncKeyShare: {
-                                keys
-                            }
-                        }
-                    }
-                    await relayMessage(message.key.remoteJid!, msg, { })
-                    logger.info({ with: message.key.remoteJid! }, 'shared key')
-                break
                 case proto.ProtocolMessage.ProtocolMessageType.APP_STATE_SYNC_KEY_SHARE:
                     let newAppStateSyncKeyId = ''
                     for(const { keyData, keyId } of protocolMsg.appStateSyncKeyShare!.keys || []) {
