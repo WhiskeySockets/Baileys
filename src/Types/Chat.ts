@@ -30,9 +30,8 @@ export type Chat = Omit<proto.IConversation, 'messages'> & {
 
 export type ChatModification = 
     { archive: boolean } |
-    { 
-        /** pin at current timestamp, or provide timestamp of pin to remove */
-        pin: number | null
+    {
+        pin: boolean
     } |
     {
         /** mute for duration, or provide timestamp of mute to remove*/
