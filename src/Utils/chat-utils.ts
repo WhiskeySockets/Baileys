@@ -110,23 +110,26 @@ export const newLTHashState = (): LTHashState => ({ version: 0, hash: Buffer.all
 
 export const encodeSyncdPatch = async(
     { type, index, syncAction, apiVersion, operation }: WAPatchCreate,
-    { creds: { myAppStateKeyId }, keys }: AuthenticationState
+    myAppStateKeyId: string,
+    state: LTHashState,
+    keys: SignalKeyStore
 ) => {
     const key = !!myAppStateKeyId ? await keys.getAppStateSyncKey(myAppStateKeyId) : undefined
     if(!key) {
-        throw new Boom(`myAppStateKey not present`, { statusCode: 404 })
+        throw new Boom(`myAppStateKey ("${myAppStateKeyId}") not present`, { statusCode: 404 })
     }
     const encKeyId = Buffer.from(myAppStateKeyId, 'base64')
 
-    const state = { ...await keys.getAppStateSyncVersion(type) }
+    state = { ...state, indexValueMap: { ...state.indexValueMap } }
 
     const indexBuffer = Buffer.from(JSON.stringify(index))
-    const encoded = proto.SyncActionData.encode({
+    const dataProto = proto.SyncActionData.fromObject({
         index: indexBuffer,
         value: syncAction,
         padding: new Uint8Array(0),
         version: apiVersion
-    }).finish()
+    })
+    const encoded = proto.SyncActionData.encode(dataProto).finish()
 
     const keyValue = mutationKeys(key!.keyData!)
 
@@ -225,12 +228,12 @@ export const decodeSyncdMutations = async(
         }
 
         const indexStr = Buffer.from(syncAction.index).toString()
-        const mutation: ChatMutation = { 
-            action: syncAction.value!, 
+        const mutation: ChatMutation = {
+            syncAction,
             index: JSON.parse(indexStr),
             indexMac: record.index!.blob!,
             valueMac: ogValueMac,
-            operation: operation
+            operation: operation,
         }
         mutations.push(mutation)
 

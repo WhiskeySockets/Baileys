@@ -406,11 +406,13 @@ export const makeChatsSocket = (config: SocketConfig) => {
         await mutationMutex.mutex(
             async() => {
                 await resyncAppState([name])
+                const initial = await authState.keys.getAppStateSyncVersion(name)
                 const { patch, state } = await encodeSyncdPatch(
                     patchCreate,
-                    authState,
+                    authState.creds.myAppStateKeyId!,
+                    initial,
+                    authState.keys,
                 )
-                const initial = await authState.keys.getAppStateSyncVersion(name)
                 // temp: verify it was encoded correctly
                 const result = await decodePatches(name, [{ ...patch, version: { version: state.version }, }], initial, authState.keys.getAppStateSyncKey)
         
