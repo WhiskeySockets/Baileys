@@ -481,6 +481,18 @@ export const chatModificationToAppPatch = (
                 operation: OP.SET
             }
         }
+    } else if('pin' in mod) {
+        patch = {
+            syncAction: {
+                pinAction: {
+                    pinned: !!mod.pin
+                }
+            },
+            index: ['pin_v1', '919646328797@s.whatsapp.net'],
+            type: 'regular_low',
+            apiVersion: 5,
+            operation: mod.pin ? OP.SET : OP.REMOVE
+        }
     } else {
         throw new Boom('not supported')
     }

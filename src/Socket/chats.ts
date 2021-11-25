@@ -382,9 +382,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
                     name:  action?.pushNameSetting?.name!
                 }
                 ev.emit('creds.update', { me })
+            } else if(action?.pinAction) {
+                update.pin = action.pinAction?.pinned ? toNumber(action.timestamp) : undefined
             } else {
                 logger.warn({ action, id }, 'unprocessable update')
             }
+
             if(Object.keys(update).length > 1) {
                 updates[update.id] = {
                     ...(updates[update.id] || {}),
