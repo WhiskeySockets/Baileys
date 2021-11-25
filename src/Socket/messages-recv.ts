@@ -7,8 +7,6 @@ import { KEY_BUNDLE_TYPE } from "../Defaults"
 import { makeChatsSocket } from "./chats"
 import { extractGroupMetadata } from "./groups"
 
-const CALL_TAGS_TO_ACK = ['terminate', 'relaylatency', 'offer']
-
 const isReadReceipt = (type: string) => type === 'read' || type === 'read-self'
 
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
@@ -470,7 +468,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         logger.info({ node }, 'recv call')
 
         const [child] = getAllBinaryNodeChildren(node)
-        if(CALL_TAGS_TO_ACK.includes(child.tag)) {
+        if(!!child?.tag) {
             await sendMessageAck(node, { class: 'call', type: child.tag })
         }
     })
