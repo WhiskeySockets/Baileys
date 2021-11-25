@@ -436,7 +436,7 @@ export const chatModificationToAppPatch = (
             index: ['mute', jid],
             type: 'regular_high',
             apiVersion: 2,
-            operation: mod.mute ? OP.SET : OP.REMOVE
+            operation: OP.SET
         }
     } else if('archive' in mod) {
         patch = {
@@ -449,7 +449,7 @@ export const chatModificationToAppPatch = (
             index: ['archive', jid],
             type: 'regular_low',
             apiVersion: 3,
-            operation: mod.archive ? OP.SET : OP.REMOVE
+            operation: OP.SET
         }
     } else if('markRead' in mod) {
         patch = {
@@ -462,7 +462,7 @@ export const chatModificationToAppPatch = (
             index: ['markChatAsRead', jid],
             type: 'regular_low',
             apiVersion: 3,
-            operation: !mod.markRead ? OP.SET : OP.REMOVE
+            operation: OP.SET
         }
     } else if('clear' in mod) {
         if(mod.clear === 'all') {
@@ -491,7 +491,7 @@ export const chatModificationToAppPatch = (
             index: ['pin_v1', '919646328797@s.whatsapp.net'],
             type: 'regular_low',
             apiVersion: 5,
-            operation: mod.pin ? OP.SET : OP.REMOVE
+            operation: OP.SET
         }
     } else {
         throw new Boom('not supported')
