@@ -225,6 +225,9 @@ export const makeChatsSocket = (config: SocketConfig) => {
                 await authState.keys.setAppStateSyncVersion(name, newState)
     
                 logger.info(`synced ${name} to v${newState.version}`)
+                if(newMutations.length) {
+                    logger.trace({ newMutations, name }, 'recv new mutations')
+                }
                 processSyncActions(newMutations)
 
                 totalMutations.push(...newMutations)
