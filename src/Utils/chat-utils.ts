@@ -421,7 +421,7 @@ export const chatModificationToAppPatch = (
 ) => {
     const OP = proto.SyncdMutation.SyncdMutationSyncdOperation
     const messageRange: proto.ISyncActionMessageRange = {
-        lastMessageTimestamp: lastMessages[lastMessages.length-1].messageTimestamp,
+        lastMessageTimestamp: lastMessages[lastMessages.length-1]?.messageTimestamp,
         messages: lastMessages
     }
     let patch: WAPatchCreate
