@@ -132,18 +132,24 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                     })
                     break
                 case proto.ProtocolMessage.ProtocolMessageType.APP_STATE_SYNC_KEY_SHARE:
-                    let newAppStateSyncKeyId = ''
-                    for(const { keyData, keyId } of protocolMsg.appStateSyncKeyShare!.keys || []) {
-                        const str = Buffer.from(keyId.keyId!).toString('base64')
-                        logger.info({ str }, 'injecting new app state sync key')
-                        await authState.keys.setAppStateSyncKey(str, keyData)
-
-                        newAppStateSyncKeyId = str
-                    }
-                    
-                    ev.emit('creds.update', { myAppStateKeyId: newAppStateSyncKeyId })
-
-                    resyncMainAppState()
+                    const keys = protocolMsg.appStateSyncKeyShare!.keys
+                    if(keys?.length) {
+                        let newAppStateSyncKeyId = ''
+                        for(const { keyData, keyId } of keys) {
+                            const str = Buffer.from(keyId.keyId!).toString('base64')
+                            
+                            logger.info({ str }, 'injecting new app state sync key')
+                            await authState.keys.setAppStateSyncKey(str, keyData)
+    
+                            newAppStateSyncKeyId = str
+                        }
+                        
+                        ev.emit('creds.update', { myAppStateKeyId: newAppStateSyncKeyId })
+    
+                        resyncMainAppState()
+                    } else [
+                        logger.info({ protocolMsg }, 'recv app state sync with 0 keys')
+                    ]
                 break
                 case proto.ProtocolMessage.ProtocolMessageType.REVOKE:
                     ev.emit('messages.update', [
