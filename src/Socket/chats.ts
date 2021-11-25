@@ -472,18 +472,23 @@ export const makeChatsSocket = (config: SocketConfig) => {
     ws.on('CB:presence', handlePresenceUpdate)
     ws.on('CB:chatstate', handlePresenceUpdate)
 
-    /*ws.on('CB:ib,,dirty', async(node: BinaryNode) => {
+    ws.on('CB:ib,,dirty', async(node: BinaryNode) => {
         const { attrs } = getBinaryNodeChild(node, 'dirty')
         const type = attrs.type
         switch(type) {
             case 'account_sync':
-                await updateAccountSyncTimestamp(attrs.timestamp)
+                let { lastAccountSyncTimestamp } = authState.creds
+                if(lastAccountSyncTimestamp) {
+                    await updateAccountSyncTimestamp(lastAccountSyncTimestamp)
+                }
+                lastAccountSyncTimestamp = +attrs.timestamp
+                ev.emit('creds.update', { lastAccountSyncTimestamp })                
             break
             default:
                 logger.info({ node }, `received unknown sync`)
             break
         }
-    })*/
+    })
 
     ws.on('CB:notification,type:server_sync', (node: BinaryNode) => {
         const update = getBinaryNodeChild(node, 'collection')

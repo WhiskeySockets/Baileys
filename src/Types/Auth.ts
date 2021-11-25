@@ -39,6 +39,8 @@ export type AuthenticationCreds = SignalCreds & {
     firstUnuploadedPreKeyId: number
     serverHasPreKeys: boolean
     nextPreKeyId: number
+
+    lastAccountSyncTimestamp?: number
 }
 
 type Awaitable<T> = T | Promise<T>
