@@ -44,7 +44,7 @@ TODO
 import makeWASocket from '@adiwajshing/baileys-md'
 
 async function connectToWhatsApp () {
-    const conn = makeWASocket({
+    const sock = makeWASocket({
         // can provide additional config here
         printQRInTerminal: true
     })
@@ -65,7 +65,7 @@ async function connectToWhatsApp () {
         console.log(JSON.stringify(m, undefined, 2))
 
         console.log('replying to', m.messages[0].key.remoteJid)
-        sendMessageWTyping({ text: 'Hello there!' }, m.messages[0].key.remoteJid!)
+        await sock.sendMessage(m.messages[0].key.remoteJid!, { text: 'Hello there!' })
     })
 }
 // run in main file
@@ -129,7 +129,7 @@ const { state, saveState } = useSingleFileAuthState('./auth_info_multi.json')
 // so if valid credentials are available -- it'll connect without QR
 const conn = makeSocket({ auth: state }) 
 // this will be called as soon as the credentials are updated
-conn.ev.on ('creds.update', saveState)
+sock.ev.on ('creds.update', saveState)
 ```
 
 **Note**: When a message is received/sent, due to signal sessions needing updating, the auth keys (`authState.keys`) will update. Whenever that happens, you must save the updated keys. Not doing so will prevent your messages from reaching the recipient & other unexpected consequences. The `useSingleFileAuthState` function automatically takes care of that, but for any other serious implementation -- you will need to be very careful with the key state management.
@@ -225,9 +225,9 @@ import { MessageType, MessageOptions, Mimetype } from '@adiwajshing/baileys-md'
 
 const id = 'abcd@s.whatsapp.net' // the WhatsApp ID 
 // send a simple text!
-const sentMsg  = await conn.sendMessage(id, { text: 'oh hello there' })
+const sentMsg  = await sock.sendMessage(id, { text: 'oh hello there' })
 // send a location!
-const sentMsg  = await conn.sendMessage(
+const sentMsg  = await sock.sendMessage(
     id, 
     { location: { degreesLatitude: 24.121231, degreesLongitude: 55.1121221 } }
 )
@@ -238,7 +238,7 @@ const vcard = 'BEGIN:VCARD\n' // metadata of the contact card
             + 'ORG:Ashoka Uni;\n' // the organization of the contact
             + 'TEL;type=CELL;type=VOICE;waid=911234567890:+91 12345 67890\n' // WhatsApp ID + phone number
             + 'END:VCARD'
-const sentMsg  = await conn.sendMessage(
+const sentMsg  = await sock.sendMessage(
     id,
     { 
         contacts: { 
@@ -262,7 +262,7 @@ const buttonMessage = {
     headerType: 1
 }
 
-const sendMsg = await conn.sendMessage(id, buttonMessage)
+const sendMsg = await sock.sendMessage(id, buttonMessage)
 ```
 
 ### Media Messages
@@ -274,7 +274,7 @@ Sending media (video, stickers, images) is easier & more efficient than ever.
 ``` ts
 import { MessageType, MessageOptions, Mimetype } from '@adiwajshing/baileys-md'
 // Sending gifs
-await conn.sendMessage(
+await sock.sendMessage(
     id, 
     { 
         video: fs.readFileSync("Media/ma_gif.mp4"), 
@@ -282,7 +282,7 @@ await conn.sendMessage(
         gifPlayback: true
     }
 )
-await conn.sendMessage(
+await sock.sendMessage(
     id, 
     { 
         video: "./Media/ma_gif.mp4", 
@@ -291,7 +291,7 @@ await conn.sendMessage(
     }
 )
 
-await conn.sendMessage(
+await sock.sendMessage(
     id, 
     { 
         video: "./Media/ma_gif.mp4", 
@@ -301,7 +301,7 @@ await conn.sendMessage(
 )
 
 // send an audio file
-await conn.sendMessage(
+await sock.sendMessage(
     id, 
     { audio: { url: "./Media/audio.mp3" }, mimetype: 'audio/mp4' }
     { url: "Media/audio.mp3" }, // can send mp3, mp4, & ogg
@@ -315,14 +315,14 @@ const buttons = [
 ]
 
 const buttonMessage = {
-    image: {url: url},
+    image: {url: 'https://example.com/image.jpeg'},
     caption: "Hi it's button message",
     footerText: 'Hello World',
     buttons: buttons,
     headerType: 4
 }
 
-const sendMsg = await conn.sendMessage(id, buttonMessage)
+const sendMsg = await sock.sendMessage(id, buttonMessage)
 ```
 
 ### Notes
@@ -360,7 +360,7 @@ const sendMsg = await conn.sendMessage(id, buttonMessage)
 
 ``` ts
 const msg = getMessageFromStore('455@s.whatsapp.net', 'HSJHJWH7323HSJSJ') // implement this on your end
-await conn.sendMessage('1234@s.whatsapp.net', { forward: msg }) // WA forward the message!
+await sock.sendMessage('1234@s.whatsapp.net', { forward: msg }) // WA forward the message!
 ```
 
 ## Reading Messages
@@ -374,7 +374,7 @@ const id = '1234-123@g.us'
 const messageID = 'AHASHH123123AHGA' // id of the message you want to read
 const participant = '912121232@s.whatsapp.net' // the ID of the user that sent the message (undefined for individual chats)
 
-await conn.sendReadReceipt(id, participant, [messageID])
+await sock.sendReadReceipt(id, participant, [messageID])
 ```
 
 The message ID is the unique identifier of the message that you are marking as read. On a `WAMessage`, the `messageID` can be accessed using ```messageID = message.key.id```.
@@ -382,7 +382,7 @@ The message ID is the unique identifier of the message that you are marking as r
 ## Update Presence
 
 ``` ts
-await conn.updatePresence(id, 'available') 
+await sock.sendPresenceUpdate('available', id) 
 
 ```
 This lets the person/group with ``` id ``` know whether you're online, offline, typing etc. where ``` presence ``` can be one of the following:
@@ -399,7 +399,7 @@ If you want to save the media you received
 import { writeFile } from 'fs/promises'
 import { downloadContentFromMessage } from '@adiwajshing/baileys-md'
 
-conn.ev.on('messages.upsert', async ({ messages }) => {
+sock.ev.on('messages.upsert', async ({ messages }) => {
     const m = messages[0]
 
     if (!m.message) return // if there is no text or media message
@@ -422,10 +422,10 @@ conn.ev.on('messages.upsert', async ({ messages }) => {
 
 ``` ts
 const jid = '1234@s.whatsapp.net' // can also be a group
-const response = await conn.sendMessage(jid, { text: 'hello!' }) // send a message
+const response = await sock.sendMessage(jid, { text: 'hello!' }) // send a message
 // sends a message to delete the given message
 // this deletes the message for everyone
-await conn.sendMessage(jid, { delete: response.key })
+await sock.sendMessage(jid, { delete: response.key })
 ```
 
 Note: deleting for oneself is supported via `chatModify` (next section)
@@ -437,26 +437,26 @@ WA uses an encrypted form of communication to send chat/app updates. This has be
 - Archive a chat
   ``` ts
   const lastMsgInChat = await getLastMessageInChat('123456@s.whatsapp.net') // implement this on your end
-  await conn.chatModify({ archive: true }, '123456@s.whatsapp.net', [lastMsgInChat])
+  await sock.chatModify({ archive: true }, '123456@s.whatsapp.net', [lastMsgInChat])
   ```
 - Mute/unmute a chat
   ``` ts
   // mute for 8 hours
-  await conn.chatModify({ mute: 8*60*60*1000 }, '123456@s.whatsapp.net', [])
+  await sock.chatModify({ mute: 8*60*60*1000 }, '123456@s.whatsapp.net', [])
   // unmute
-  await conn.chatModify({ mute: null }, '123456@s.whatsapp.net', [])
+  await sock.chatModify({ mute: null }, '123456@s.whatsapp.net', [])
   ```
 - Mark a chat read/unread
   ``` ts
   const lastMsgInChat = await getLastMessageInChat('123456@s.whatsapp.net') // implement this on your end
   // mark it unread
-  await conn.chatModify({ markRead: false }, '123456@s.whatsapp.net', [lastMsgInChat])
+  await sock.chatModify({ markRead: false }, '123456@s.whatsapp.net', [lastMsgInChat])
   ```
 
 - Delete message for me
   ``` ts
   // mark it unread
-  await conn.chatModify(
+  await sock.chatModify(
       { clear: { message: { id: 'ATWYHDNNWU81732J', fromMe: true } } }, 
       '123456@s.whatsapp.net', 
       []
@@ -470,15 +470,15 @@ Note: if you mess up one of your updates, WA can log you out of all your devices
 ``` ts
 const jid = '1234@s.whatsapp.net' // can also be a group
 // turn on disappearing messages
-await conn.sendMessage(
+await sock.sendMessage(
     jid, 
     // this is 1 week in seconds -- how long you want messages to appear for
     { disappearingMessagesInChat: WA_DEFAULT_EPHEMERAL }
 )
 // will send as a disappearing message
-await conn.sendMessage(jid, { text: 'hello' }, { ephemeralExpiration: WA_DEFAULT_EPHEMERAL })
+await sock.sendMessage(jid, { text: 'hello' }, { ephemeralExpiration: WA_DEFAULT_EPHEMERAL })
 // turn off disappearing messages
-await conn.sendMessage(
+await sock.sendMessage(
     jid, 
     { disappearingMessagesInChat: false }
 )
@@ -490,40 +490,40 @@ await conn.sendMessage(
 - To check if a given ID is on WhatsApp
     ``` ts
     const id = '123456'
-    const [result] = await conn.onWhatsApp(id)
+    const [result] = await sock.onWhatsApp(id)
     if (result.exists) console.log (`${id} exists on WhatsApp, as jid: ${result.jid}`)
     ```
 - To query chat history on a group or with someone
     TODO, if possible
 - To get the status of some person
     ``` ts
-    const status = await conn.fetchStatus("xyz@s.whatsapp.net")
+    const status = await sock.fetchStatus("xyz@s.whatsapp.net")
     console.log("status: " + status)
     ```
 - To get the display picture of some person/group
     ``` ts
     // for low res picture
-    const ppUrl = await conn.profilePictureUrl("xyz@g.us")
+    const ppUrl = await sock.profilePictureUrl("xyz@g.us")
     console.log("download profile picture from: " + ppUrl)
     // for high res picture
-    const ppUrl = await conn.profilePictureUrl("xyz@g.us", 'image')
+    const ppUrl = await sock.profilePictureUrl("xyz@g.us", 'image')
     ```
 - To change your display picture or a group's
     ``` ts
     const jid = '111234567890-1594482450@g.us' // can be your own too
-    await conn.updateProfilePicture(jid, { url: './new-profile-picture.jpeg' })
+    await sock.updateProfilePicture(jid, { url: './new-profile-picture.jpeg' })
     ```
 - To get someone's presence (if they're typing, online)
     ``` ts
     // the presence update is fetched and called here
-    conn.ev.on('presence-update', json => console.log(json))
+    sock.ev.on('presence-update', json => console.log(json))
     // request updates for a chat
-    await conn.presenceSubscribe("xyz@s.whatsapp.net") 
+    await sock.presenceSubscribe("xyz@s.whatsapp.net") 
     ```
 - To block or unblock user
     ``` ts
-    await conn.updateBlockStatus("xyz@s.whatsapp.net", "block") // Block user
-    await conn.updateBlockStatus("xyz@s.whatsapp.net", "unblock") // Unblock user
+    await sock.updateBlockStatus("xyz@s.whatsapp.net", "block") // Block user
+    await sock.updateBlockStatus("xyz@s.whatsapp.net", "unblock") // Unblock user
     ```
 Of course, replace ``` xyz ``` with an actual ID. 
 
@@ -531,14 +531,14 @@ Of course, replace ``` xyz ``` with an actual ID.
 - To create a group
     ``` ts
     // title & participants
-    const group = await conn.groupCreate("My Fab Group", ["1234@s.whatsapp.net", "4564@s.whatsapp.net"])
+    const group = await sock.groupCreate("My Fab Group", ["1234@s.whatsapp.net", "4564@s.whatsapp.net"])
     console.log ("created group with id: " + group.gid)
-    conn.sendMessage(group.id, { text: 'hello there' }) // say hello to everyone on the group
+    sock.sendMessage(group.id, { text: 'hello there' }) // say hello to everyone on the group
     ```
 - To add/remove people to a group or demote/promote people
     ``` ts
     // id & people to add to the group (will throw error if it fails)
-    const response = await conn.groupParticipantsUpdate(
+    const response = await sock.groupParticipantsUpdate(
         "abcd-xyz@g.us", 
         ["abcd@s.whatsapp.net", "efgh@s.whatsapp.net"],
         "add" // replace this parameter with "remove", "demote" or "promote"
@@ -546,38 +546,38 @@ Of course, replace ``` xyz ``` with an actual ID.
     ```
 - To change the group's subject
     ``` ts
-    await conn.groupUpdateSubject("abcd-xyz@g.us", "New Subject!")
+    await sock.groupUpdateSubject("abcd-xyz@g.us", "New Subject!")
     ```
 - To change the group's description
     ``` ts
-    await conn.groupUpdateDescription("abcd-xyz@g.us", "New Description!")
+    await sock.groupUpdateDescription("abcd-xyz@g.us", "New Description!")
     ```
 - To change group settings
     ``` ts
     // only allow admins to send messages
-    await conn.groupSettingUpdate("abcd-xyz@g.us", 'announcement')
+    await sock.groupSettingUpdate("abcd-xyz@g.us", 'announcement')
     // allow everyone to modify the group's settings -- like display picture etc.
-    await conn.groupSettingUpdate("abcd-xyz@g.us", 'unlocked')
+    await sock.groupSettingUpdate("abcd-xyz@g.us", 'unlocked')
     // only allow admins to modify the group's settings
-    await conn.groupSettingUpdate("abcd-xyz@g.us", 'locked')
+    await sock.groupSettingUpdate("abcd-xyz@g.us", 'locked')
     ```
 - To leave a group
     ``` ts
-    await conn.groupLeave("abcd-xyz@g.us") // (will throw error if it fails)
+    await sock.groupLeave("abcd-xyz@g.us") // (will throw error if it fails)
     ```
 - To get the invite code for a group
     ``` ts
-    const code = await conn.groupInviteCode("abcd-xyz@g.us")
+    const code = await sock.groupInviteCode("abcd-xyz@g.us")
     console.log("group code: " + code)
     ```
 - To query the metadata of a group
     ``` ts
-    const metadata = await conn.groupMetadata("abcd-xyz@g.us") 
+    const metadata = await sock.groupMetadata("abcd-xyz@g.us") 
     console.log(metadata.id + ", title: " + metadata.subject + ", description: " + metadata.desc)
     ```
 - To join the group using the invitation code (not supported yet)
     ``` ts
-    const response = await conn.acceptInvite("xxx")
+    const response = await sock.acceptInvite("xxx")
     console.log("joined to: " + response.gid)
     ```
     Of course, replace ``` xxx ``` with invitation code.
@@ -591,7 +591,7 @@ Of course, replace ``` xyz ``` with an actual ID.
 - Broadcast IDs are in the format `12345678@broadcast`
 - To query a broadcast list's recipients & name:
     ``` ts
-    const bList = await conn.getBroadcastListInfo("1234@broadcast")
+    const bList = await sock.getBroadcastListInfo("1234@broadcast")
     console.log (`list name: ${bList.name}, recps: ${bList.recipients}`)
     ```
 
@@ -619,11 +619,11 @@ This will enable you to see all sorts of messages WhatsApp sends in the console.
     Hence, you can register a callback for an event using the following:
     ``` ts
     // for any message with tag 'edge_routing'
-    conn.ws.on(`CB:edge_routing`, (node: BinaryNode) => { })
+    sock.ws.on(`CB:edge_routing`, (node: BinaryNode) => { })
     // for any message with tag 'edge_routing' and id attribute = abcd
-    conn.ws.on(`CB:edge_routing,id:abcd`, (node: BinaryNode) => { })
+    sock.ws.on(`CB:edge_routing,id:abcd`, (node: BinaryNode) => { })
     // for any message with tag 'edge_routing', id attribute = abcd & first content node routing_info
-    conn.ws.on(`CB:edge_routing,id:abcd,routing_info`, (node: BinaryNode) => { })
+    sock.ws.on(`CB:edge_routing,id:abcd,routing_info`, (node: BinaryNode) => { })
     ```
 
 ### Note
