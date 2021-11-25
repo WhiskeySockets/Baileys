@@ -424,12 +424,10 @@ export const chatModificationToAppPatch = (
         lastMessageTimestamp: lastMessages[lastMessages.length-1].messageTimestamp,
         messages: lastMessages
     }
-    const timestamp = Date.now()
     let patch: WAPatchCreate
     if('mute' in mod) {
         patch = {
             syncAction: {
-                timestamp,
                 muteAction: {
                     muted: !!mod.mute,
                     muteEndTimestamp: mod.mute || undefined
@@ -443,7 +441,6 @@ export const chatModificationToAppPatch = (
     } else if('archive' in mod) {
         patch = {
             syncAction: {
-                timestamp,
                 archiveChatAction: {
                     archived: !!mod.archive,
                     messageRange
@@ -457,7 +454,6 @@ export const chatModificationToAppPatch = (
     } else if('markRead' in mod) {
         patch = {
             syncAction: {
-                timestamp,
                 markChatAsReadAction: {
                     read: mod.markRead,
                     messageRange
@@ -475,7 +471,6 @@ export const chatModificationToAppPatch = (
             const key = mod.clear.message
             patch = {
                 syncAction: {
-                    timestamp,
                     deleteMessageForMeAction: {
                         deleteMedia: false
                     }
@@ -489,5 +484,8 @@ export const chatModificationToAppPatch = (
     } else {
         throw new Boom('not supported')
     }
+
+    patch.syncAction.timestamp = Date.now()
+
     return patch
 }
