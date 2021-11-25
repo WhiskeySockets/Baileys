@@ -30,6 +30,8 @@ export type SocketConfig = {
     waWebSocketUrl: string | URL 
     /** Fails the connection if the socket times out in this interval */
 	connectTimeoutMs: number
+    /** Default timeout for queries, undefined for no timeout */
+    defaultQueryTimeoutMs: number | undefined
     /** ping-pong interval for WS connection */
     keepAliveIntervalMs: number
     /** proxy agent */

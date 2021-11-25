@@ -25,6 +25,7 @@ export const makeSocket = ({
     browser,
     auth: initialAuthState,
     printQRInTerminal,
+    defaultQueryTimeoutMs
 }: SocketConfig) => {
 	const ws = new WebSocket(waWebSocketUrl, undefined, {
 		origin: DEFAULT_ORIGIN,
@@ -110,7 +111,7 @@ export const makeSocket = ({
      * @param json query that was sent
      * @param timeoutMs timeout after which the promise will reject
      */
-	 const waitForMessage = async(msgId: string, timeoutMs?: number) => {
+	 const waitForMessage = async(msgId: string, timeoutMs = defaultQueryTimeoutMs) => {
         let onRecv: (json) => void
         let onErr: (err) => void
         try {

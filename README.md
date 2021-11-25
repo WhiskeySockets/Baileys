@@ -96,6 +96,8 @@ type SocketConfig = {
     waWebSocketUrl: string | URL 
     /** Fails the connection if the connection times out in this time interval or no data is received */
 	connectTimeoutMs: number
+    /** Default timeout for queries, undefined for no timeout */
+    defaultQueryTimeoutMs: number | undefined
     /** ping-pong interval for WS connection */
     keepAliveIntervalMs: number
     /** proxy agent */
