@@ -354,7 +354,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
         const contactUpdates: { [jid: string]: Contact } = {}
         const msgDeletes: proto.IMessageKey[] = []
 
-        for(const { action, index: [_, id, msgId, fromMe] } of actions) {
+        for(const { syncAction: { value: action }, index: [_, id, msgId, fromMe] } of actions) {
             const update: Partial<Chat> = { id }
             if(action?.muteAction) {
                 update.mute = action.muteAction?.muted ? 

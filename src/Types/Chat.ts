@@ -10,7 +10,7 @@ export interface PresenceData {
     lastSeen?: number
 }
 
-export type ChatMutation = { action: proto.ISyncActionValue, index: string[], indexMac: Uint8Array, valueMac: Uint8Array, operation: number }
+export type ChatMutation = { syncAction: proto.ISyncActionData, index: string[], indexMac: Uint8Array, valueMac: Uint8Array, operation: number }
 
 export type WAPatchCreate = {
     syncAction: proto.ISyncActionValue
