@@ -357,6 +357,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
             messageTimestamp: dec.timestamp,
             pushName: dec.pushname
         }
+
+        if(!dec.failures.length) {
+            await sendMessageAck(stanza, { class: 'receipt' })
+        }
+        
         // if there were some successful decryptions
         if(dec.successes.length) {
             // send message receipt
@@ -387,8 +392,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
             await sendNode({ tag: 'receipt', attrs: recpAttrs })
             logger.debug({ msgId: dec.msgId }, 'sent message receipt')
-
-            await sendMessageAck(stanza, { class: 'receipt' })
 
             await sendDeliveryReceipt(dec.chatId, dec.participant, [dec.msgId])
             logger.debug({ msgId: dec.msgId }, 'sent delivery receipt')
