@@ -7,7 +7,15 @@ import { KEY_BUNDLE_TYPE } from "../Defaults"
 import { makeChatsSocket } from "./chats"
 import { extractGroupMetadata } from "./groups"
 
-const isReadReceipt = (type: string) => type === 'read' || type === 'read-self'
+const getStatusFromReceiptType = (type: string | undefined) => {
+    if(type === 'read' || type === 'read-self') {
+        return proto.WebMessageInfo.WebMessageInfoStatus.READ
+    }
+    if(typeof type === 'undefined') {
+        return proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK
+    }
+    return undefined
+}
 
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const { logger } = config
@@ -458,25 +466,27 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
     const handleReceipt = async(node: BinaryNode) => {
         const { attrs, content } = node
-        const isRead = isReadReceipt(attrs.type)
-        const status = isRead ? proto.WebMessageInfo.WebMessageInfoStatus.READ : proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK
-        const ids = [attrs.id]
-        if(Array.isArray(content)) {
-            const items = getBinaryNodeChildren(content[0], 'item')
-            ids.push(...items.map(i => i.attrs.id))
+        const status = getStatusFromReceiptType(attrs.type)
+
+        if(typeof status !== 'undefined' && !areJidsSameUser(attrs.from, authState.creds.me?.id)) {
+            const ids = [attrs.id]
+            if(Array.isArray(content)) {
+                const items = getBinaryNodeChildren(content[0], 'item')
+                ids.push(...items.map(i => i.attrs.id))
+            }
+            
+            const remoteJid = attrs.recipient || attrs.from 
+            const fromMe = attrs.recipient ? false : true
+            ev.emit('messages.update', ids.map(id => ({
+                key: {
+                    remoteJid,
+                    id: id,
+                    fromMe,
+                    participant: attrs.participant
+                },
+                update: { status }
+            })))
         }
-        
-        const remoteJid = attrs.recipient || attrs.from 
-        const fromMe = attrs.recipient ? false : true
-        ev.emit('messages.update', ids.map(id => ({
-            key: {
-                remoteJid,
-                id: id,
-                fromMe,
-                participant: attrs.participant
-            },
-            update: { status }
-        })))
 
         await sendMessageAck(node, { class: 'receipt', type: attrs.type })
     }
