@@ -51,13 +51,25 @@ const extractVideoThumb = async (
         })
     }) as Promise<void>
 
-export const compressImage = async (bufferOrFilePath: Buffer | string) => {
+export const compressImage = async (bufferOrFilePath: Readable | Buffer | string) => {
+    if(bufferOrFilePath instanceof Readable) {
+        bufferOrFilePath = await toBuffer(bufferOrFilePath)
+    }
     const { read, MIME_JPEG } = await import('jimp')
     const jimp = await read(bufferOrFilePath as any)
     const result = await jimp.resize(32, 32).getBufferAsync(MIME_JPEG)
     return result
 }
-export const generateProfilePicture = async (bufferOrFilePath: Buffer | string) => {
+export const generateProfilePicture = async (mediaUpload: WAMediaUpload) => {
+    let bufferOrFilePath: Buffer | string
+    if(Buffer.isBuffer(mediaUpload)) {
+        bufferOrFilePath = mediaUpload
+    } else if('url' in mediaUpload) {
+        bufferOrFilePath = mediaUpload.url.toString()
+    } else {
+        bufferOrFilePath = await toBuffer(mediaUpload.stream)
+    }
+    
     const { read, MIME_JPEG } = await import('jimp')
     const jimp = await read(bufferOrFilePath as any)
     const min = Math.min(jimp.getWidth (), jimp.getHeight ())
@@ -89,8 +101,16 @@ export const toReadable = (buffer: Buffer) => {
     readable.push(null)
     return readable
 }
+export const toBuffer = async(stream: Readable) => {
+    let buff = Buffer.alloc(0)
+    for await(const chunk of stream) {
+        buff = Buffer.concat([ buff, chunk ])
+    }
+    return buff
+}
 export const getStream = async (item: WAMediaUpload) => {
     if(Buffer.isBuffer(item)) return { stream: toReadable(item), type: 'buffer' }
+    if('stream' in item) return { stream: item.stream, type: 'readable' }
     if(item.url.toString().startsWith('http://') || item.url.toString().startsWith('https://')) {
         return { stream: await getGotStream(item.url), type: 'remote' }
     }

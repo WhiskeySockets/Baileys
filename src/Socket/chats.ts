@@ -100,7 +100,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
     }
 
     const updateProfilePicture = async(jid: string, content: WAMediaUpload) => {
-        const { img } = await generateProfilePicture('url' in content ? content.url.toString() : content)
+        const { img } = await generateProfilePicture(content)
         await query({
             tag: 'iq',
             attrs: {
