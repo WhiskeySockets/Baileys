@@ -488,7 +488,7 @@ export const chatModificationToAppPatch = (
                     pinned: !!mod.pin
                 }
             },
-            index: ['pin_v1', '919646328797@s.whatsapp.net'],
+            index: ['pin_v1', jid],
             type: 'regular_low',
             apiVersion: 5,
             operation: OP.SET
