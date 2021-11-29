@@ -420,9 +420,19 @@ export const chatModificationToAppPatch = (
     lastMessages: Pick<proto.IWebMessageInfo, 'key' | 'messageTimestamp'>[]
 ) => {
     const OP = proto.SyncdMutation.SyncdMutationSyncdOperation
-    const messageRange: proto.ISyncActionMessageRange = {
-        lastMessageTimestamp: lastMessages[lastMessages.length-1]?.messageTimestamp,
-        messages: lastMessages
+    const getMessageRange = () => {
+        if(!lastMessages?.length) {
+            throw new Boom('Expected last message to be not from me', { statusCode: 400 })
+        }
+        const lastMsg = lastMessages[lastMessages.length-1]
+        if(lastMsg.key.fromMe) {
+            throw new Boom('Expected last message in array to be not from me', { statusCode: 400 })
+        }
+        const messageRange: proto.ISyncActionMessageRange = {
+            lastMessageTimestamp: lastMsg?.messageTimestamp,
+            messages: lastMessages
+        }
+        return messageRange
     }
     let patch: WAPatchCreate
     if('mute' in mod) {
@@ -443,7 +453,7 @@ export const chatModificationToAppPatch = (
             syncAction: {
                 archiveChatAction: {
                     archived: !!mod.archive,
-                    messageRange
+                    messageRange: getMessageRange()
                 }
             },
             index: ['archive', jid],
@@ -456,7 +466,7 @@ export const chatModificationToAppPatch = (
             syncAction: {
                 markChatAsReadAction: {
                     read: mod.markRead,
-                    messageRange
+                    messageRange: getMessageRange()
                 }
             },
             index: ['markChatAsRead', jid],
