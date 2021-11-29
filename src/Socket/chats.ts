@@ -412,6 +412,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
         const name = patchCreate.type
         await mutationMutex.mutex(
             async() => {
+                logger.debug({ patch: patchCreate }, 'applying app patch')
+
                 await resyncAppState([name])
                 const initial = await authState.keys.getAppStateSyncVersion(name)
                 const { patch, state } = await encodeSyncdPatch(
@@ -463,7 +465,11 @@ export const makeChatsSocket = (config: SocketConfig) => {
             }
         )
     }
-
+    /**
+     * modify a chat -- mark unread, read etc.
+     * lastMessages must be sorted in reverse chronologically
+     * requires the last messages till the last message received; required for archive & unread
+    */
     const chatModify = (mod: ChatModification, jid: string, lastMessages: Pick<proto.IWebMessageInfo, 'key' | 'messageTimestamp'>[]) => {
         const patch = chatModificationToAppPatch(mod, jid, lastMessages)
         return appPatch(patch)
