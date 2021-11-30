@@ -265,6 +265,21 @@ const buttonMessage = {
 }
 
 const sendMsg = await sock.sendMessage(id, buttonMessage)
+
+//send a template message!
+const templateButtons = [
+  {index: 1, urlButton: {displayText: '⭐ Star Baileys on GitHub!', url: 'https://github.com/adiwajshing/Baileys'}},
+  {index: 2, callButton: {displayText: 'Call me!', phoneNumber: '+1 (234) 5678-901'}},
+  {index: 3, quickReplyButton: {displayText: 'This is a reply, just like normal buttons!', id: 'id-like-buttons-message'}},
+]
+
+const buttonMessage = {
+    text: "Hi it's a template message",
+    footer: 'Hello World',
+    templateButtons: templateButttons
+}
+
+const sendMsg = await sock.sendMessage(id, templateMessage)
 ```
 
 ### Media Messages
@@ -325,6 +340,22 @@ const buttonMessage = {
 }
 
 const sendMsg = await sock.sendMessage(id, buttonMessage)
+
+//send a template message with an image **attached**!
+const templateButtons = [
+  {index: 1, urlButton: {displayText: '⭐ Star Baileys on GitHub!', url: 'https://github.com/adiwajshing/Baileys'}},
+  {index: 2, callButton: {displayText: 'Call me!', phoneNumber: '+1 (234) 5678-901'}},
+  {index: 3, quickReplyButton: {displayText: 'This is a reply, just like normal buttons!', id: 'id-like-buttons-message'}},
+]
+
+const buttonMessage = {
+    text: "Hi it's a template message",
+    footer: 'Hello World',
+    templateButtons: templateButttons,
+    image: {url: 'https://example.com/image.jpeg'}
+}
+
+const sendMsg = await sock.sendMessage(id, templateMessage)
 ```
 
 ### Notes

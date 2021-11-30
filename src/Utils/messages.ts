@@ -262,8 +262,37 @@ export const generateWAMessageContent = async(
 			
 			Object.assign(buttonsMessage, m)
 		}
+
+		if ('footer' in message && !!message.footer) {
+			buttonsMessage.footerText = message.footer
+		}
+
 		m = { buttonsMessage }
+	} else if ('templateButtons' in message && !!message.templateButtons) {
+		const templateMessage: proto.ITemplateMessage = {
+			hydratedTemplate: {
+				hydratedButtons: message.templateButtons
+			}
+		}
+		
+		if ('text' in message) {
+			templateMessage.hydratedTemplate.hydratedContentText = message.text
+		} else {
+
+			if('caption' in message) {
+				templateMessage.hydratedTemplate.hydratedContentText = message.caption
+			}
+			
+			Object.assign(templateMessage.hydratedTemplate, m)
+		}
+
+		if ('footer' in message && !!message.footer) {
+			templateMessage.hydratedTemplate.hydratedFooterText = message.footer
+		}
+
+		m = { templateMessage }
 	}
+
 	if('viewOnce' in message && !!message.viewOnce) {
 		m = { viewOnceMessage: { message: m } }
 	}

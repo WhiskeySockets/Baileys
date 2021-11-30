@@ -50,6 +50,12 @@ type Buttonable = {
     /** add buttons to the message  */
     buttons?: proto.IButton[]
 }
+type Templatable = {
+    /** add buttons to the message (conflicts with normal buttons)*/
+    templateButtons?: proto.IHydratedTemplateButton[]
+
+    footer?: string
+}
 type WithDimensions = {
     width?: number
     height?: number
@@ -60,13 +66,13 @@ export type AnyMediaMessageContent = (
         image: WAMediaUpload
         caption?: string
         jpegThumbnail?: string
-    } & Mentionable & Buttonable & WithDimensions) | 
+    } & Mentionable & Buttonable & Templatable & WithDimensions) | 
     ({
         video: WAMediaUpload
         caption?: string
         gifPlayback?: boolean
         jpegThumbnail?: string
-    } & Mentionable & Buttonable & WithDimensions) | {
+    } & Mentionable & Buttonable & Templatable & WithDimensions) | {
         audio: WAMediaUpload
         /** if set to true, will send as a `voice note` */
         pttAudio?: boolean
@@ -78,14 +84,14 @@ export type AnyMediaMessageContent = (
         document: WAMediaUpload
         mimetype: string
         fileName?: string
-    } & Buttonable)) & 
+    } & Buttonable & Templatable)) & 
     { mimetype?: string }
 
 export type AnyRegularMessageContent = (
     ({
 	    text: string
     } 
-    & Mentionable & Buttonable) | 
+    & Mentionable & Buttonable & Templatable) | 
     AnyMediaMessageContent | 
     {
         contacts: {
