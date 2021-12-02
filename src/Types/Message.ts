@@ -23,6 +23,8 @@ export type WAMediaUpload = Buffer | { url: URL | string } | { stream: Readable 
 /** Set of message types that are supported by the library */
 export type MessageType = keyof proto.Message
 
+export type DownloadableMessage = { mediaKey?: Uint8Array, directPath?: string, url?: string }
+
 export type MediaConnInfo = {
     auth: string 
     ttl: number
