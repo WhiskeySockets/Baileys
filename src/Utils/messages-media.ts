@@ -55,9 +55,12 @@ export const compressImage = async (bufferOrFilePath: Readable | Buffer | string
     if(bufferOrFilePath instanceof Readable) {
         bufferOrFilePath = await toBuffer(bufferOrFilePath)
     }
-    const { read, MIME_JPEG } = await import('jimp')
+    const { read, MIME_JPEG, RESIZE_BILINEAR } = await import('jimp')
     const jimp = await read(bufferOrFilePath as any)
-    const result = await jimp.resize(32, 32).getBufferAsync(MIME_JPEG)
+    const result = await jimp
+        .quality(50)
+        .resize(32, 32, RESIZE_BILINEAR)
+        .getBufferAsync(MIME_JPEG)
     return result
 }
 export const generateProfilePicture = async (mediaUpload: WAMediaUpload) => {
@@ -70,12 +73,15 @@ export const generateProfilePicture = async (mediaUpload: WAMediaUpload) => {
         bufferOrFilePath = await toBuffer(mediaUpload.stream)
     }
     
-    const { read, MIME_JPEG } = await import('jimp')
+    const { read, MIME_JPEG, RESIZE_BILINEAR } = await import('jimp')
     const jimp = await read(bufferOrFilePath as any)
     const min = Math.min(jimp.getWidth (), jimp.getHeight ())
     const cropped = jimp.crop (0, 0, min, min)
     return {
-        img: await cropped.resize(640, 640).getBufferAsync(MIME_JPEG),
+        img: await cropped
+            .quality(50)
+            .resize(640, 640, RESIZE_BILINEAR)
+            .getBufferAsync(MIME_JPEG),
     }
 }
 /** gets the SHA256 of the given media message */
