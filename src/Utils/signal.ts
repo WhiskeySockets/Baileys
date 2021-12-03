@@ -231,7 +231,8 @@ export const parseAndInjectE2ESession = async(node: BinaryNode, auth: SignalAuth
 	await cipher.initOutgoing(device)
 }
 
-export const extractDeviceJids = (result: BinaryNode, myDeviceId: number, excludeZeroDevices: boolean) => {
+export const extractDeviceJids = (result: BinaryNode, myJid: string, excludeZeroDevices: boolean) => {
+	const { user: myUser, device: myDevice } = jidDecode(myJid)
 	const extracted: JidWithDevice[] = []
 	for(const node of result.content as BinaryNode[]) {
 		const list = getBinaryNodeChild(node, 'list')?.content
@@ -243,7 +244,12 @@ export const extractDeviceJids = (result: BinaryNode, myDeviceId: number, exclud
 				if(Array.isArray(deviceListNode?.content)) {
 					for(const { tag, attrs } of deviceListNode!.content) {
 						const device = +attrs.id
-						if(tag === 'device' && myDeviceId !== device && (!excludeZeroDevices || device !== 0)) {
+						if(
+							tag === 'device' && // ensure the "device" tag
+							(!excludeZeroDevices || device !== 0) && // if zero devices are not-excluded, or device is non zero
+							(myUser !== user || myDevice !== device) && // either different user or if me user, not this device
+							(device === 0 || !!attrs['key-index']) // ensure that "key-index" is specified for "non-zero" devices, produces a bad req otherwise
+						) {
 							extracted.push({ user, device })
 						}
 					}
