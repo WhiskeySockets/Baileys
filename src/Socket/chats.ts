@@ -1,5 +1,5 @@
 import { SocketConfig, WAPresence, PresenceData, Chat, WAPatchCreate, WAMediaUpload, ChatMutation, WAPatchName, LTHashState, ChatModification, Contact } from "../Types";
-import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidNormalizedUser, S_WHATSAPP_NET } from "../WABinary";
+import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidNormalizedUser, S_WHATSAPP_NET, reduceBinaryNodeToDictionary } from "../WABinary";
 import { proto } from '../../WAProto'
 import { generateProfilePicture, toNumber, encodeSyncdPatch, decodePatches, extractSyncdPatches, chatModificationToAppPatch, decodeSyncdSnapshot, newLTHashState } from "../Utils";
 import { makeMessagesSocket } from "./messages-send";
@@ -465,6 +465,56 @@ export const makeChatsSocket = (config: SocketConfig) => {
             }
         )
     }
+    /** sending abt props may fix QR scan fail if server expects */
+    const fetchAbt = async() => {
+        const abtNode = await query({
+            tag: 'iq',
+            attrs: {
+                to: S_WHATSAPP_NET,
+                xmlns: 'abt',
+                type: 'get',
+                id: generateMessageTag(),
+            },
+            content: [
+                { tag: 'props', attrs: { protocol: '1' } }
+            ]
+        })
+
+        const propsNode = getBinaryNodeChild(abtNode, 'props')
+        
+        let props: { [_: string]: string } = { }
+        if(propsNode) {
+            props = reduceBinaryNodeToDictionary(propsNode, 'prop')
+        }
+        logger.debug('fetched abt')
+
+        return props
+    }
+    /** sending non-abt props may fix QR scan fail if server expects */
+    const fetchProps = async() => {
+        const resultNode = await query({
+            tag: 'iq',
+            attrs: {
+                to: S_WHATSAPP_NET,
+                xmlns: 'w',
+                type: 'get',
+                id: generateMessageTag(),
+            },
+            content: [
+                { tag: 'props', attrs: { } }
+            ]
+        })
+
+        const propsNode = getBinaryNodeChild(resultNode, 'props')
+        
+        let props: { [_: string]: string } = { }
+        if(propsNode) {
+            props = reduceBinaryNodeToDictionary(propsNode, 'prop')
+        }
+        logger.debug('fetched props')
+
+        return props
+    }
     /**
      * modify a chat -- mark unread, read etc.
      * lastMessages must be sorted in reverse chronologically
@@ -514,6 +564,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
             sendPresenceUpdate('available')
             fetchBlocklist()
             fetchPrivacySettings()
+            fetchAbt()
+            fetchProps()
         }
     })
 

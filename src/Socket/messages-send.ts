@@ -1,9 +1,9 @@
 
 import got from "got"
 import { Boom } from "@hapi/boom"
-import { SocketConfig, MediaConnInfo, AnyMessageContent, MiscMessageGenerationOptions, WAMediaUploadFunction, MessageRelayOptions, WAMessageKey } from "../Types"
+import { SocketConfig, MediaConnInfo, AnyMessageContent, MiscMessageGenerationOptions, WAMediaUploadFunction, MessageRelayOptions } from "../Types"
 import { encodeWAMessage, generateMessageID, generateWAMessage, encryptSenderKeyMsgSignalProto, encryptSignalProto, extractDeviceJids, jidToSignalProtocolAddress, parseAndInjectE2ESession } from "../Utils"
-import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, jidDecode, jidEncode, jidNormalizedUser, S_WHATSAPP_NET, BinaryNodeAttributes, JidWithDevice } from '../WABinary'
+import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, jidDecode, jidEncode, jidNormalizedUser, S_WHATSAPP_NET, BinaryNodeAttributes, JidWithDevice, reduceBinaryNodeToDictionary } from '../WABinary'
 import { proto } from "../../WAProto"
 import { WA_DEFAULT_EPHEMERAL, DEFAULT_ORIGIN, MEDIA_PATH_MAP } from "../Defaults"
 import { makeGroupsSocket } from "./groups"
@@ -41,13 +41,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
                     { tag: 'privacy', attrs: { } }
                 ]
             })
-            const nodes = getBinaryNodeChildren(result, 'category')
-            privacySettings = nodes.reduce(
-                (dict, { attrs }) => {
-                    dict[attrs.name] = attrs.value
-                    return dict
-                }, { } as { [_: string]: string }
-            )
+            privacySettings = reduceBinaryNodeToDictionary(result, 'category')
         }
         return privacySettings
     }
