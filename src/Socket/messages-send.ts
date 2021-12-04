@@ -266,8 +266,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
             if(!participant) {
                 const participantsList = groupData.participants.map(p => p.id)
-                const devices = await getUSyncDevices(participantsList, false)
-                devices.push(...devices)
+                const additionalDevices = await getUSyncDevices(participantsList, false)
+                devices.push(...additionalDevices)
             }
 
             const encSenderKeyMsg = encodeWAMessage({
