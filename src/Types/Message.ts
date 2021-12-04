@@ -117,6 +117,8 @@ export type AnyMessageContent = AnyRegularMessageContent | {
 
 export type MessageRelayOptions = {
     messageId?: string
+    /** only send to a specific participant */
+    participant?: string
     additionalAttributes?: { [_: string]: string }
     cachedGroupMetadata?: (jid: string) => Promise<GroupMetadata | undefined>
     //cachedDevices?: (jid: string) => Promise<string[] | undefined>

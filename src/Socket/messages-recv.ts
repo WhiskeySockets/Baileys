@@ -6,6 +6,7 @@ import { proto } from "../../WAProto"
 import { KEY_BUNDLE_TYPE } from "../Defaults"
 import { makeChatsSocket } from "./chats"
 import { extractGroupMetadata } from "./groups"
+import { Boom } from "@hapi/boom"
 
 const getStatusFromReceiptType = (type: string | undefined) => {
     if(type === 'read' || type === 'read-self') {
@@ -24,6 +25,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		ev,
         authState,
 		ws,
+        assertSession,
         assertingPreKeys,
 		sendNode,
         relayMessage,
@@ -464,28 +466,62 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         }
     })
 
+    const sendMessagesAgain = async(key: proto.IMessageKey, ids: string[]) => {
+        const participant = key.participant || key.remoteJid
+        await assertSession(participant, true)
+
+        logger.debug({ key, ids }, 'recv retry request, forced new session')
+
+        const msgs = await Promise.all(
+            ids.map(id => (
+                config.getMessage({ ...key, id })
+            ))
+        )
+        const missingMsgIdx = msgs.findIndex(m => !m)
+        if(missingMsgIdx >= 0) {
+            throw new Boom(
+                `recv request to retry message, but message "${ids[missingMsgIdx]}" not available`, 
+                { statusCode: 404, data: { key } }
+            )
+        }
+
+        for(let i = 0; i < msgs.length;i++) {
+            await relayMessage(key.remoteJid, msgs[i], {
+                messageId: ids[i],
+                participant
+            })
+        }
+        
+    }
+
     const handleReceipt = async(node: BinaryNode) => {
         const { attrs, content } = node
-        const status = getStatusFromReceiptType(attrs.type)
+        const remoteJid = attrs.recipient || attrs.from 
+        const fromMe = attrs.recipient ? false : true
 
+        const ids = [attrs.id]
+        if(Array.isArray(content)) {
+            const items = getBinaryNodeChildren(content[0], 'item')
+            ids.push(...items.map(i => i.attrs.id))
+        }
+
+        const key: proto.IMessageKey = {
+            remoteJid,
+            id: '',
+            fromMe,
+            participant: attrs.participant
+        }
+
+        const status = getStatusFromReceiptType(attrs.type)
         if(typeof status !== 'undefined' && !areJidsSameUser(attrs.from, authState.creds.me?.id)) {
-            const ids = [attrs.id]
-            if(Array.isArray(content)) {
-                const items = getBinaryNodeChildren(content[0], 'item')
-                ids.push(...items.map(i => i.attrs.id))
-            }
-            
-            const remoteJid = attrs.recipient || attrs.from 
-            const fromMe = attrs.recipient ? false : true
             ev.emit('messages.update', ids.map(id => ({
-                key: {
-                    remoteJid,
-                    id: id,
-                    fromMe,
-                    participant: attrs.participant
-                },
+                key: { ...key, id },
                 update: { status }
             })))
+        }
+
+        if(attrs.type === 'retry') {
+            await sendMessagesAgain(key, ids)
         }
 
         await sendMessageAck(node, { class: 'receipt', type: attrs.type })

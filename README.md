@@ -112,6 +112,11 @@ type SocketConfig = {
 	fetchAgent?: Agent
     /** should the QR be printed in the terminal */
     printQRInTerminal: boolean
+    /** 
+     * fetch a message from your store 
+     * implement this so that messages failed to send (solves the "this message can take a while" issue) can be retried
+     * */
+    getMessage: (key: proto.IMessageKey) => Promise<proto.IMessage | undefined>
 }
 ```
 

@@ -27,7 +27,8 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
     logger: P().child({ class: 'baileys' }),
 	printQRInTerminal: false,
     emitOwnEvents: true,
-    defaultQueryTimeoutMs: 60_000
+    defaultQueryTimeoutMs: 60_000,
+    getMessage: async() => undefined
 }
 
 export const MEDIA_PATH_MAP: { [T in MediaType]: string } = {

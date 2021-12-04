@@ -238,8 +238,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
     const relayMessage = async(
         jid: string, 
         message: proto.IMessage, 
-        { messageId: msgId, additionalAttributes, cachedGroupMetadata }: MessageRelayOptions
+        { messageId: msgId, participant, additionalAttributes, cachedGroupMetadata }: MessageRelayOptions
     ) => {
+        const meId = authState.creds.me!.id
+
         const { user, server } = jidDecode(jid)
         const isGroup = server === 'g.us'
         msgId = msgId || generateMessageID()
@@ -250,16 +252,23 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
         const destinationJid = jidEncode(user, isGroup ? 'g.us' : 's.whatsapp.net')
 
+        const devices: JidWithDevice[] = []
+        if(participant) {
+            const { user, device } = jidDecode(participant)
+            devices.push({ user, device })
+        }
+
         if(isGroup) {
-            const { ciphertext, senderKeyDistributionMessageKey } = await encryptSenderKeyMsgSignalProto(destinationJid, encodedMsg, authState.creds.me!.id, authState)
+            const { ciphertext, senderKeyDistributionMessageKey } = await encryptSenderKeyMsgSignalProto(destinationJid, encodedMsg, meId, authState)
             
             let groupData = cachedGroupMetadata ? await cachedGroupMetadata(jid) : undefined 
             if(!groupData) groupData = await groupMetadata(jid)
 
-            const participantsList = groupData.participants.map(p => p.id)
-            const devices = await getUSyncDevices(participantsList, false)
-
-            logger.debug(`got ${devices.length} additional devices`)
+            if(!participant) {
+                const participantsList = groupData.participants.map(p => p.id)
+                const devices = await getUSyncDevices(participantsList, false)
+                devices.push(...devices)
+            }
 
             const encSenderKeyMsg = encodeWAMessage({
                 senderKeyDistributionMessage: {
@@ -304,7 +313,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
                 content: binaryNodeContent
             }
         } else {
-            const { user: meUser } = jidDecode(authState.creds.me!.id!)
+            const { user: meUser } = jidDecode(meId)
             
             const messageToMyself: proto.IMessage = {
                 deviceSentMessage: {
@@ -314,15 +323,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
             }
             const encodedMeMsg = encodeWAMessage(messageToMyself)
 
-            participants.push(
-                await createParticipantNode(jidEncode(user, 's.whatsapp.net'), encodedMsg)
-            )
-            participants.push(
-                await createParticipantNode(jidEncode(meUser, 's.whatsapp.net'), encodedMeMsg)
-            )
-            const devices = await getUSyncDevices([ authState.creds.me!.id!, jid ], true)
-
-            logger.debug(`got ${devices.length} additional devices`)
+            if(!participant) {
+                devices.push({ user })
+                devices.push({ user: meUser })
+                
+                const additionalDevices = await getUSyncDevices([ meId, jid ], true)
+                devices.push(...additionalDevices)
+            }
 
             for(const { user, device } of devices) {
                 const isMe = user === meUser
@@ -363,7 +370,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
                 content: proto.ADVSignedDeviceIdentity.encode(authState.creds.account).finish()
             })
         }
-        logger.debug({ msgId }, 'sending message')
+
+        logger.debug({ msgId }, `sending message to ${devices.length} devices`)
 
         await sendNode(stanza)
 

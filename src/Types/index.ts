@@ -18,6 +18,7 @@ import { ConnectionState } from './State'
 
 import { GroupMetadata, ParticipantAction } from './GroupMetadata'
 import { MessageInfoUpdate, MessageUpdateType, WAMessage, WAMessageUpdate, WAMessageKey } from './Message'
+import { proto } from '../../WAProto'
 
 export type WAVersion = [number, number, number]
 export type WABrowserDescription = [string, string, string]
@@ -54,6 +55,11 @@ export type SocketConfig = {
     mediaCache?: NodeCache
     /** map to store the retry counts for failed messages */
     msgRetryCounterMap?: { [msgId: string]: number }
+    /** 
+     * fetch a message from your store 
+     * implement this so that messages failed to send (solves the "this message can take a while" issue) can be retried
+     * */
+    getMessage: (key: proto.IMessageKey) => Promise<proto.IMessage | undefined>
 }
 
 export enum DisconnectReason {
