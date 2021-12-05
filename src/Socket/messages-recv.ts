@@ -477,21 +477,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                 config.getMessage({ ...key, id })
             ))
         )
-        const missingMsgIdx = msgs.findIndex(m => !m)
-        if(missingMsgIdx >= 0) {
-            throw new Boom(
-                `recv request to retry message, but message "${ids[missingMsgIdx]}" not available`, 
-                { statusCode: 404, data: { key } }
-            )
-        }
 
         for(let i = 0; i < msgs.length;i++) {
-            await relayMessage(key.remoteJid, msgs[i], {
-                messageId: ids[i],
-                participant
-            })
+            if(msgs[i]) {
+                await relayMessage(key.remoteJid, msgs[i], {
+                    messageId: ids[i],
+                    participant
+                })
+            } else {
+                logger.debug({ jid: key.remoteJid, id: ids[i] }, 'recv retry request, but message not available')
+            }
         }
-        
     }
 
     const handleReceipt = async(node: BinaryNode) => {
