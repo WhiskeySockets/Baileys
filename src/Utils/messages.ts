@@ -404,3 +404,11 @@ export const extractMessageContent = (content: WAMessageContent | undefined | nu
 	}
 	return content
 }
+
+/**
+ * Returns the device predicted by message ID
+ */
+export const getDevice = (id: string) => {
+    const deviceType = id.length > 21 ? 'android' : id.substring(0, 2) == '3A' ? 'ios' : 'web'
+    return deviceType
+}
