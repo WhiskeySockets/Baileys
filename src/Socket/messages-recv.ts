@@ -206,12 +206,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                     emitParticipantsUpdate('add')
                     break
                 case WAMessageStubType.GROUP_CHANGE_ANNOUNCE:
-                    const announce = message.messageStubParameters[0] === 'on'
-                    emitGroupUpdate({ announce })
+                    const announceValue = message.messageStubParameters[0]
+                    emitGroupUpdate({ announce: announceValue === 'true' || announceValue === 'on' })
                     break
                 case WAMessageStubType.GROUP_CHANGE_RESTRICT:
-                    const restrict = message.messageStubParameters[0] === 'on'
-                    emitGroupUpdate({ restrict })
+                    const restrictValue = message.messageStubParameters[0]
+                    emitGroupUpdate({ restrict: restrictValue === 'true' || restrictValue === 'on' })
                     break
                 case WAMessageStubType.GROUP_CHANGE_SUBJECT:
                     chatUpdate.name = message.messageStubParameters[0]
@@ -321,12 +321,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                 case 'announcement':
                 case 'not_announcement':
                     result.messageStubType = WAMessageStubType.GROUP_CHANGE_ANNOUNCE
-                    result.messageStubParameters = [ (child.tag === 'announcement').toString() ]
+                    result.messageStubParameters = [ (child.tag === 'announcement') ? 'on' : 'off' ]
                     break
                 case 'locked':
                 case 'unlocked':
                     result.messageStubType = WAMessageStubType.GROUP_CHANGE_RESTRICT
-                    result.messageStubParameters = [ (child.tag === 'locked').toString() ]
+                    result.messageStubParameters = [ (child.tag === 'locked') ? 'on' : 'off' ]
                     break
                 
             }
