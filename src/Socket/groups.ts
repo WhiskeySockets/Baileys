@@ -1,6 +1,6 @@
 import { generateMessageID } from "../Utils";
 import { SocketConfig, GroupMetadata, ParticipantAction } from "../Types";
-import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidEncode } from "../WABinary";
+import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidEncode, jidNormalizedUser } from "../WABinary";
 import { makeSocket } from "./socket";
 
 export const makeGroupsSocket = (config: SocketConfig) => {
@@ -196,7 +196,7 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 		id: groupId,
 		subject: group.attrs.subject,
 		creation: +group.attrs.creation,
-		owner: group.attrs.creator,
+		owner: group.attrs.creator ? jidNormalizedUser(group.attrs.creator) : undefined,
 		desc,
 		descId,
 		restrict: !!getBinaryNodeChild(result, 'locked'),

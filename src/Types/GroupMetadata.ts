@@ -6,7 +6,7 @@ export type ParticipantAction = 'add' | 'remove' | 'promote' | 'demote'
 
 export interface GroupMetadata {
     id: string
-    owner: string
+    owner: string | undefined
     subject: string
     creation: number
     desc?: string

@@ -274,9 +274,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
                     result.messageStubType = WAMessageStubType.GROUP_CREATE
                     result.messageStubParameters = [metadata.subject]
-                    result.key = {
-                        participant: jidNormalizedUser(metadata.owner)
-                    }
+                    result.key = { participant: metadata.owner }
 
                     ev.emit('chats.upsert', [{
                         id: metadata.id,
