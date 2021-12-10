@@ -324,7 +324,7 @@ export const generateWAMessageFromContent = (
 		
 		// if a participant is quoted, then it must be a group
 		// hence, remoteJid of group must also be entered
-		if (quoted.key.participant) {
+		if (quoted.key.participant || quoted.participant) {
 			message[key].contextInfo.remoteJid = quoted.key.remoteJid
 		}
 	}
