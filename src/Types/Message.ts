@@ -77,7 +77,7 @@ export type AnyMediaMessageContent = (
     } & Mentionable & Buttonable & Templatable & WithDimensions) | {
         audio: WAMediaUpload
         /** if set to true, will send as a `voice note` */
-        pttAudio?: boolean
+        ptt?: boolean
         /** optionally tell the duration of the audio */
         seconds?: number
     } | ({
