@@ -3,6 +3,8 @@ import { downloadContentFromMessage } from '../Utils'
 import { proto } from '../../WAProto'
 import { readFileSync } from 'fs'
 
+jest.setTimeout(20_000)
+
 type TestVector = {
 	type: MediaType
 	message: DownloadableMessage
@@ -19,7 +21,17 @@ const TEST_VECTORS: TestVector[] = [
 			)
 		),
 		plaintext: readFileSync('./Media/cat.jpeg')
-	}
+	},
+	{
+		type: 'image',
+		message: proto.ImageMessage.decode(
+			Buffer.from(
+				'Ck1odHRwczovL21tZy53aGF0c2FwcC5uZXQvZC9mL0Ftb2tnWkphNWF6QWZxa3dVRzc0eUNUdTlGeWpjMmd5akpqcXNmMUFpZEU5LmVuYxIKaW1hZ2UvanBlZyIg8IS5TQzdzcuvcR7F8HMhWnXmlsV+GOo9JE1/t2k+o9Yoz6o6QiA7kDk8j5KOEQC0kDFE1qW7lBBDYhm5z06N3SirfUj3CUog/CjYF8e670D5wUJwWv2B2mKzDEo8IJLStDv76YmtPfs=',
+				'base64'
+			)
+		),
+		plaintext: readFileSync('./Media/icon.png')
+	},
 ]
 
 describe('Media Download Tests', () => {
