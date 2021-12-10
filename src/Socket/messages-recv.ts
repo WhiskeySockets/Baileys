@@ -465,16 +465,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
     })
 
     const sendMessagesAgain = async(key: proto.IMessageKey, ids: string[]) => {
-        const participant = key.participant || key.remoteJid
-        await assertSession(participant, true)
-
-        logger.debug({ key, ids }, 'recv retry request, forced new session')
-
+        
         const msgs = await Promise.all(
             ids.map(id => (
                 config.getMessage({ ...key, id })
             ))
         )
+
+        const participant = key.participant || key.remoteJid
+        await assertSession(participant, true)
+
+        logger.debug({ participant }, 'forced new session for retry recp')
 
         for(let i = 0; i < msgs.length;i++) {
             if(msgs[i]) {
@@ -489,6 +490,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
     }
 
     const handleReceipt = async(node: BinaryNode) => {
+        let shouldAck = true
         const { attrs, content } = node
         const remoteJid = attrs.recipient || attrs.from 
         const fromMe = attrs.recipient ? false : true
@@ -515,10 +517,19 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         }
 
         if(attrs.type === 'retry') {
-            await sendMessagesAgain(key, ids)
+            try {
+                logger.debug({ attrs }, 'recv retry request')
+                await sendMessagesAgain(key, ids)
+            } catch(error) {
+                logger.error({ key, ids, trace: error.stack }, 'error in sending message again')
+                shouldAck = false
+            }
         }
 
-        await sendMessageAck(node, { class: 'receipt', type: attrs.type })
+        if(shouldAck) {
+            await sendMessageAck(node, { class: 'receipt', type: attrs.type })
+        }
+        
     }
 
     ws.on('CB:receipt', handleReceipt)
