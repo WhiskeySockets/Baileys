@@ -114,6 +114,8 @@ export type SocketConfig = {
     /** should the QR be printed in the terminal */
     printQRInTerminal: boolean
 
+    customUploadHosts: string[]
+
     phoneConnectionChanged: (connected: boolean) => void
 }
 

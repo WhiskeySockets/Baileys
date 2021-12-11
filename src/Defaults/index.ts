@@ -33,6 +33,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	reconnectMode: 'on-connection-error',
 	maxQRCodes: Infinity,
 	printQRInTerminal: false,
+    customUploadHosts: []
 }
 
 
