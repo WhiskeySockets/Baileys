@@ -1,7 +1,96 @@
+import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
-import type { AuthenticationCreds, AuthenticationState, SignalDataTypeMap } from "../Types"
+import type { Logger } from 'pino'
+import type { AuthenticationCreds, AuthenticationState, SignalDataTypeMap, SignalDataSet, SignalKeyStore, SignalKeyStoreWithTransaction } from "../Types"
 import { Curve, signedKeyPair } from './crypto'
 import { generateRegistrationId, BufferJSON } from './generics'
+
+const KEY_MAP: { [T in keyof SignalDataTypeMap]: string } = {
+	'pre-key': 'preKeys',
+	'session': 'sessions',
+	'sender-key': 'senderKeys',
+	'app-state-sync-key': 'appStateSyncKeys',
+	'app-state-sync-version': 'appStateVersions',
+	'sender-key-memory': 'senderKeyMemory'
+}
+
+export const addTransactionCapability = (state: SignalKeyStore, logger: Logger): SignalKeyStoreWithTransaction => {
+	let inTransaction = false
+	let transactionCache: SignalDataSet = { }
+	let mutations: SignalDataSet = { }
+
+	const prefetch = async(type: keyof SignalDataTypeMap, ids: string[]) => {
+		if(!inTransaction) {
+			throw new Boom('Cannot prefetch without transaction')
+		}
+
+		const dict = transactionCache[type]
+		const idsRequiringFetch = ids.filter(item => !dict?.[item])
+		const result = await state.get(type, idsRequiringFetch)
+
+		transactionCache[type] = transactionCache[type] || { }
+		Object.assign(transactionCache[type], result)
+	}
+
+	return {
+		get: async(type, ids) => {
+			if(inTransaction) {
+				await prefetch(type, ids)
+				return ids.reduce(
+					(dict, id) => {
+						const value = transactionCache[type]?.[id]
+						if(value) {
+							dict[id] = value
+						}
+						return dict
+					}, { }
+				)
+			} else {
+				return state.get(type, ids)
+			}
+		},
+		set: data => {
+			if(inTransaction) {
+				logger.trace({ types: Object.keys(data) }, `caching in transaction`)
+				for(const key in data) {
+					transactionCache[key] = transactionCache[key] || { }
+					Object.assign(transactionCache[key], data[key])
+
+					mutations[key] = mutations[key] || { }
+					Object.assign(mutations[key], data[key])
+				}
+			} else {
+				return state.set(data)
+			}
+		},
+		isInTransaction: () => inTransaction,
+		prefetch: (type, ids) => {
+			logger.trace({ type, ids }, `prefetching`)
+			return prefetch(type, ids)
+		},
+		transaction: async(work) => {
+			if(inTransaction) {
+				await work()
+			} else {
+				logger.debug('entering transaction')
+				inTransaction = true
+				try {
+					await work()
+					if(Object.keys(mutations).length) {
+						logger.debug('committing transaction')
+						await state.set(mutations)
+					} else {
+						logger.debug('no mutations in transaction')
+					}
+				} finally {
+					inTransaction = false
+					transactionCache = { }
+					mutations = { }
+				}
+			}
+		}
+	}
+}
 
 export const initAuthCreds = (): AuthenticationCreds => {
 	const identityKey = Curve.generateKeyPair()
@@ -16,15 +105,6 @@ export const initAuthCreds = (): AuthenticationCreds => {
 		firstUnuploadedPreKeyId: 1,
 		serverHasPreKeys: false
 	}
-}
-
-const KEY_MAP: { [T in keyof SignalDataTypeMap]: string } = {
-	'pre-key': 'preKeys',
-	'session': 'sessions',
-	'sender-key': 'senderKeys',
-	'app-state-sync-key': 'appStateSyncKeys',
-	'app-state-sync-version': 'appStateVersions',
-	'sender-key-memory': 'senderKeyMemory'
 }
 
 /** stores the full authentication state in a single JSON file */

@@ -52,27 +52,19 @@ export type SignalDataTypeMap = {
     'app-state-sync-version': LTHashState
 }
 
-type SignalDataSet = { [T in keyof SignalDataTypeMap]?: { [id: string]: SignalDataTypeMap[T] | null } }
+export type SignalDataSet = { [T in keyof SignalDataTypeMap]?: { [id: string]: SignalDataTypeMap[T] | null } }
 
 type Awaitable<T> = T | Promise<T>
+
 export type SignalKeyStore = {
     get<T extends keyof SignalDataTypeMap>(type: T, ids: string[]): Awaitable<{ [id: string]: SignalDataTypeMap[T] }>
     set(data: SignalDataSet): Awaitable<void>
+}
 
-    /*getPreKey: (keyId: number) => Awaitable<KeyPair>
-    setPreKey: (keyId: number, pair: KeyPair | null) => Awaitable<void>
-
-    getSession: (sessionId: string) => Awaitable<any>
-    setSession: (sessionId: string, item: any | null) => Awaitable<void>
-
-    getSenderKey: (id: string) => Awaitable<any>
-    setSenderKey: (id: string, item: any | null) => Awaitable<void>
-
-    getAppStateSyncKey: (id: string) => Awaitable<proto.IAppStateSyncKeyData>
-    setAppStateSyncKey: (id: string, item: proto.IAppStateSyncKeyData | null) => Awaitable<void>
-
-    getAppStateSyncVersion: (name: WAPatchName) => Awaitable<LTHashState>
-    setAppStateSyncVersion: (id: WAPatchName, item: LTHashState) => Awaitable<void>*/
+export type SignalKeyStoreWithTransaction = SignalKeyStore & {
+    isInTransaction: () => boolean
+    transaction(exec: () => Promise<void>): Promise<void>
+    prefetch<T extends keyof SignalDataTypeMap>(type: T, ids: string[]): Promise<void>
 }
 
 export type SignalAuthState = {

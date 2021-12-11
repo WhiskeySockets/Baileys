@@ -5,7 +5,7 @@ import WebSocket from "ws"
 import { randomBytes } from 'crypto'
 import { proto } from '../../WAProto'
 import { DisconnectReason, SocketConfig, BaileysEventEmitter, ConnectionState, AuthenticationCreds } from "../Types"
-import { Curve, generateRegistrationNode, configureSuccessfulPairing, generateLoginNode, encodeBigEndian, promiseTimeout, generateOrGetPreKeys, xmppSignedPreKey, xmppPreKey, getPreKeys, makeNoiseHandler, useSingleFileAuthState } from "../Utils"
+import { Curve, generateRegistrationNode, configureSuccessfulPairing, generateLoginNode, encodeBigEndian, promiseTimeout, generateOrGetPreKeys, xmppSignedPreKey, xmppPreKey, getPreKeys, makeNoiseHandler, useSingleFileAuthState, addTransactionCapability } from "../Utils"
 import { DEFAULT_ORIGIN, DEF_TAG_PREFIX, DEF_CALLBACK_PREFIX, KEY_BUNDLE_TYPE } from "../Defaults"
 import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, S_WHATSAPP_NET, getBinaryNodeChild } from '../WABinary'
 
@@ -539,7 +539,11 @@ export const makeSocket = ({
 	return {
         ws,
         ev,
-        authState,
+        authState: {
+            creds,
+            // add capability
+            keys: addTransactionCapability(authState.keys, logger)
+        },
         get user () {
             return authState.creds.me
         },
