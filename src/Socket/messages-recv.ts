@@ -1,12 +1,11 @@
 
 import { SocketConfig, WAMessageStubType, ParticipantAction, Chat, GroupMetadata, WAMessageKey } from "../Types"
 import { decodeMessageStanza, encodeBigEndian, toNumber, downloadHistory, generateSignalPubKey, xmppPreKey, xmppSignedPreKey } from "../Utils"
-import { BinaryNode, jidDecode, jidEncode, isJidStatusBroadcast, areJidsSameUser, getBinaryNodeChildren, jidNormalizedUser, getAllBinaryNodeChildren, BinaryNodeAttributes } from '../WABinary'
+import { BinaryNode, jidDecode, jidEncode, isJidStatusBroadcast, areJidsSameUser, getBinaryNodeChildren, jidNormalizedUser, getAllBinaryNodeChildren, BinaryNodeAttributes, isJidGroup } from '../WABinary'
 import { proto } from "../../WAProto"
 import { KEY_BUNDLE_TYPE } from "../Defaults"
 import { makeChatsSocket } from "./chats"
 import { extractGroupMetadata } from "./groups"
-import { Boom } from "@hapi/boom"
 
 const getStatusFromReceiptType = (type: string | undefined) => {
     if(type === 'read' || type === 'read-self') {
@@ -25,7 +24,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		ev,
         authState,
 		ws,
-        assertSession,
+        assertSessions,
         assertingPreKeys,
 		sendNode,
         relayMessage,
@@ -146,12 +145,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                     if(keys?.length) {
                         let newAppStateSyncKeyId = ''
                         for(const { keyData, keyId } of keys) {
-                            const str = Buffer.from(keyId.keyId!).toString('base64')
+                            const strKeyId = Buffer.from(keyId.keyId!).toString('base64')
                             
-                            logger.info({ str }, 'injecting new app state sync key')
-                            await authState.keys.setAppStateSyncKey(str, keyData)
+                            logger.info({ strKeyId }, 'injecting new app state sync key')
+                            await authState.keys.set({ 'app-state-sync-key': { [strKeyId]: keyData } })
     
-                            newAppStateSyncKeyId = str
+                            newAppStateSyncKeyId = strKeyId
                         }
                         
                         ev.emit('creds.update', { myAppStateKeyId: newAppStateSyncKeyId })
@@ -473,7 +472,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         )
 
         const participant = key.participant || key.remoteJid
-        await assertSession(participant, true)
+        await assertSessions([participant], true)
+
+        if(isJidGroup(key.remoteJid)) {
+            await authState.keys.set({ 'sender-key-memory': { [key.remoteJid]: null } })
+        }
 
         logger.debug({ participant }, 'forced new session for retry recp')
 

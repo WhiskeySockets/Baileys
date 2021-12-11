@@ -20,6 +20,11 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
     const mutationMutex = makeMutex()
 
+    const getAppStateSyncKey = async(keyId: string) => {
+        const { [keyId]: key } = await authState.keys.get('app-state-sync-key', [keyId])
+        return key
+    }
+
     const interactiveQuery = async(userNodes: BinaryNode[], queryNode: BinaryNode) => {
         const result = await query({
             tag: 'iq',
@@ -175,7 +180,11 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
         const states = { } as { [T in WAPatchName]: LTHashState }
         for(const name of collections) {
-            let state: LTHashState = fromScratch ? undefined : await authState.keys.getAppStateSyncVersion(name)
+            let state: LTHashState 
+            if(!fromScratch) {
+                const result = await authState.keys.get('app-state-sync-version', [name])
+                state = result[name]
+            }
             if(!state) state = newLTHashState()
 
             states[name] = state
@@ -213,16 +222,16 @@ export const makeChatsSocket = (config: SocketConfig) => {
             const name = key as WAPatchName
             const { patches, snapshot } = decoded[name]
             if(snapshot) {
-                const newState = await decodeSyncdSnapshot(name, snapshot, authState.keys.getAppStateSyncKey)
+                const newState = await decodeSyncdSnapshot(name, snapshot, getAppStateSyncKey)
                 states[name] = newState
 
                 logger.info(`restored state of ${name} from snapshot to v${newState.version}`)
             }
             // only process if there are syncd patches
             if(patches.length) {
-                const { newMutations, state: newState } = await decodePatches(name, patches, states[name], authState.keys.getAppStateSyncKey, true)
+                const { newMutations, state: newState } = await decodePatches(name, patches, states[name], getAppStateSyncKey, true)
 
-                await authState.keys.setAppStateSyncVersion(name, newState)
+                await authState.keys.set({ 'app-state-sync-version': { [name]: newState } })
     
                 logger.info(`synced ${name} to v${newState.version}`)
                 if(newMutations.length) {
@@ -415,12 +424,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
                 logger.debug({ patch: patchCreate }, 'applying app patch')
 
                 await resyncAppState([name])
-                const initial = await authState.keys.getAppStateSyncVersion(name)
+                const { [name]: initial } = await authState.keys.get('app-state-sync-version', [name])
                 const { patch, state } = await encodeSyncdPatch(
                     patchCreate,
                     authState.creds.myAppStateKeyId!,
                     initial,
-                    authState.keys,
+                    getAppStateSyncKey,
                 )
 
                 const node: BinaryNode = {
@@ -456,10 +465,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
                 }
                 await query(node)
         
-                await authState.keys.setAppStateSyncVersion(name, state)
+                await authState.keys.set({ 'app-state-sync-version': { [name]: state } })
                 
                 if(config.emitOwnEvents) {
-                    const result = await decodePatches(name, [{ ...patch, version: { version: state.version }, }], initial, authState.keys.getAppStateSyncKey)
+                    const result = await decodePatches(name, [{ ...patch, version: { version: state.version }, }], initial, getAppStateSyncKey)
                     processSyncActions(result.newMutations)
                 }
             }

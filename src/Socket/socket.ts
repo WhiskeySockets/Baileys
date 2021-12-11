@@ -196,10 +196,8 @@ export const makeSocket = ({
         if(!creds.serverHasPreKeys) {
             update.serverHasPreKeys = true
         }
-       
-        await Promise.all(
-            Object.keys(newPreKeys).map(k => authState.keys.setPreKey(+k, newPreKeys[+k]))
-        )
+
+        await authState.keys.set({ 'pre-key': newPreKeys })
 
         const preKeys = await getPreKeys(authState.keys, preKeysRange[0], preKeysRange[0] + preKeysRange[1])
         await execute(preKeys)
@@ -449,7 +447,7 @@ export const makeSocket = ({
         const genPairQR = () => {
             const ref = refs.shift()
             if(!ref) {
-                end(new Boom('QR refs attempts ended', { statusCode: DisconnectReason.restartRequired }))
+                end(new Boom('QR refs attempts ended', { statusCode: DisconnectReason.timedOut }))
                 return
             }
 

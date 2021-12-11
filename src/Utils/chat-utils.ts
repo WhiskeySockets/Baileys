@@ -1,11 +1,13 @@
 import { Boom } from '@hapi/boom'
 import { aesDecrypt, hmacSign, aesEncrypt, hkdf } from "./crypto"
-import { AuthenticationState, WAPatchCreate, ChatMutation, WAPatchName, LTHashState, ChatModification, SignalKeyStore } from "../Types"
+import { WAPatchCreate, ChatMutation, WAPatchName, LTHashState, ChatModification, SignalKeyStore } from "../Types"
 import { proto } from '../../WAProto'
 import { LT_HASH_ANTI_TAMPERING } from './lt-hash'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren } from '../WABinary'
 import { toNumber } from './generics'
 import { downloadContentFromMessage,  } from './messages-media'
+
+type FetchAppStateSyncKey = (keyId: string) => Promise<proto.IAppStateSyncKeyData> | proto.IAppStateSyncKeyData
 
 const mutationKeys = (keydata: Uint8Array) => {
     const expanded = hkdf(keydata, 160, { info: 'WhatsApp Mutation Keys' })
@@ -112,9 +114,9 @@ export const encodeSyncdPatch = async(
     { type, index, syncAction, apiVersion, operation }: WAPatchCreate,
     myAppStateKeyId: string,
     state: LTHashState,
-    keys: SignalKeyStore
+    getAppStateSyncKey: FetchAppStateSyncKey
 ) => {
-    const key = !!myAppStateKeyId ? await keys.getAppStateSyncKey(myAppStateKeyId) : undefined
+    const key = !!myAppStateKeyId ? await getAppStateSyncKey(myAppStateKeyId) : undefined
     if(!key) {
         throw new Boom(`myAppStateKey ("${myAppStateKeyId}") not present`, { statusCode: 404 })
     }
@@ -175,7 +177,7 @@ export const encodeSyncdPatch = async(
 export const decodeSyncdMutations = async(
     msgMutations: (proto.ISyncdMutation | proto.ISyncdRecord)[], 
     initialState: LTHashState,
-    getAppStateSyncKey: SignalKeyStore['getAppStateSyncKey'],
+    getAppStateSyncKey: FetchAppStateSyncKey,
     validateMacs: boolean
 ) => {
     const keyCache: { [_: string]: ReturnType<typeof mutationKeys> } = { }
@@ -247,7 +249,7 @@ export const decodeSyncdPatch = async(
     msg: proto.ISyncdPatch, 
     name: WAPatchName,
     initialState: LTHashState,
-    getAppStateSyncKey: SignalKeyStore['getAppStateSyncKey'],
+    getAppStateSyncKey: FetchAppStateSyncKey,
     validateMacs: boolean
 ) => {
     if(validateMacs) {
@@ -334,7 +336,7 @@ export const downloadExternalPatch = async(blob: proto.IExternalBlobReference) =
 export const decodeSyncdSnapshot = async(
     name: WAPatchName,
     snapshot: proto.ISyncdSnapshot,
-    getAppStateSyncKey: SignalKeyStore['getAppStateSyncKey'],
+    getAppStateSyncKey: FetchAppStateSyncKey,
     validateMacs: boolean = true
 ) => {
     const newState = newLTHashState()
@@ -370,7 +372,7 @@ export const decodePatches = async(
     name: WAPatchName,
     syncds: proto.ISyncdPatch[],
     initial: LTHashState,
-    getAppStateSyncKey: SignalKeyStore['getAppStateSyncKey'],
+    getAppStateSyncKey: FetchAppStateSyncKey,
     validateMacs: boolean = true
 ) => {
     const successfulMutations: ChatMutation[] = []

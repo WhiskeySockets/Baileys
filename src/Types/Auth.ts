@@ -43,9 +43,23 @@ export type AuthenticationCreds = SignalCreds & {
     lastAccountSyncTimestamp?: number
 }
 
+export type SignalDataTypeMap = {
+    'pre-key': KeyPair
+    'session': any
+    'sender-key': any
+    'sender-key-memory': { [jid: string]: boolean }
+    'app-state-sync-key': proto.IAppStateSyncKeyData
+    'app-state-sync-version': LTHashState
+}
+
+type SignalDataSet = { [T in keyof SignalDataTypeMap]?: { [id: string]: SignalDataTypeMap[T] | null } }
+
 type Awaitable<T> = T | Promise<T>
 export type SignalKeyStore = {
-    getPreKey: (keyId: number) => Awaitable<KeyPair>
+    get<T extends keyof SignalDataTypeMap>(type: T, ids: string[]): Awaitable<{ [id: string]: SignalDataTypeMap[T] }>
+    set(data: SignalDataSet): Awaitable<void>
+
+    /*getPreKey: (keyId: number) => Awaitable<KeyPair>
     setPreKey: (keyId: number, pair: KeyPair | null) => Awaitable<void>
 
     getSession: (sessionId: string) => Awaitable<any>
@@ -58,7 +72,7 @@ export type SignalKeyStore = {
     setAppStateSyncKey: (id: string, item: proto.IAppStateSyncKeyData | null) => Awaitable<void>
 
     getAppStateSyncVersion: (name: WAPatchName) => Awaitable<LTHashState>
-    setAppStateSyncVersion: (id: WAPatchName, item: LTHashState) => Awaitable<void>
+    setAppStateSyncVersion: (id: WAPatchName, item: LTHashState) => Awaitable<void>*/
 }
 
 export type SignalAuthState = {
