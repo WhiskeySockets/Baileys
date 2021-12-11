@@ -28,6 +28,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	printQRInTerminal: false,
     emitOwnEvents: true,
     defaultQueryTimeoutMs: 60_000,
+    customUploadHosts: [],
     getMessage: async() => undefined
 }
 

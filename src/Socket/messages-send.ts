@@ -383,9 +383,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		let uploadInfo = await refreshMediaConn(false)
 
 		let mediaUrl: string
-		for (let host of uploadInfo.hosts) {
+        const hosts = [ ...config.customUploadHosts, ...uploadInfo.hosts.map(h => h.hostname) ]
+		for (let hostname of hosts) {
 			const auth = encodeURIComponent(uploadInfo.auth) // the auth token
-			const url = `https://${host.hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
+			const url = `https://${hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
 			
 			try {
 				const {body: responseText} = await got.post(
@@ -411,8 +412,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					throw new Error(`upload failed, reason: ${JSON.stringify(result)}`)
 				}
 			} catch (error) {
-				const isLast = host.hostname === uploadInfo.hosts[uploadInfo.hosts.length-1].hostname
-				logger.debug(`Error in uploading to ${host.hostname} (${error}) ${isLast ? '' : ', retrying...'}`)
+				const isLast = hostname === hosts[uploadInfo.hosts.length-1]
+				logger.debug(`Error in uploading to ${hostname} (${error}) ${isLast ? '' : ', retrying...'}`)
 			}
 		}
 		if (!mediaUrl) {
