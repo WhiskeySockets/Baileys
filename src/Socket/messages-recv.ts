@@ -517,12 +517,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         }
 
         if(attrs.type === 'retry') {
-            try {
-                logger.debug({ attrs }, 'recv retry request')
-                await sendMessagesAgain(key, ids)
-            } catch(error) {
-                logger.error({ key, ids, trace: error.stack }, 'error in sending message again')
-                shouldAck = false
+            if(key.fromMe) {
+                try {
+                    logger.debug({ attrs }, 'recv retry request')
+                    await sendMessagesAgain(key, ids)
+                } catch(error) {
+                    logger.error({ key, ids, trace: error.stack }, 'error in sending message again')
+                    shouldAck = false
+                }
+            } else {
+                logger.info({ attrs, key }, 'recv retry for not fromMe message')
             }
         }
 
