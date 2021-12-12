@@ -178,69 +178,74 @@ export const makeChatsSocket = (config: SocketConfig) => {
     const resyncAppStateInternal = async(collections: WAPatchName[], fromScratch: boolean = false, returnSnapshot: boolean = false) => {
         if(fromScratch) returnSnapshot = true
 
-        const states = { } as { [T in WAPatchName]: LTHashState }
-        for(const name of collections) {
-            let state: LTHashState 
-            if(!fromScratch) {
-                const result = await authState.keys.get('app-state-sync-version', [name])
-                state = result[name]
-            }
-            if(!state) state = newLTHashState()
-
-            states[name] = state
-
-            logger.info(`resyncing ${name} from v${state.version}`)
-        }
-        const result = await query({
-            tag: 'iq',
-            attrs: {
-                to: S_WHATSAPP_NET,
-                xmlns: 'w:sync:app:state',
-                type: 'set'
-            },
-            content: [
-                {
-                    tag: 'sync',
-                    attrs: { },
-                    content: collections.map(
-                        (name) => ({
-                            tag: 'collection',
-                            attrs:  { 
-                                name, 
-                                version: states[name].version.toString(), 
-                                return_snapshot: returnSnapshot ? 'true' : 'false'
-                            }
-                        })
-                    )
-                }
-            ]
-        })
-        
-        const decoded = await extractSyncdPatches(result) // extract from binary node
         const totalMutations: ChatMutation[] = []
-        for(const key in decoded) {
-            const name = key as WAPatchName
-            const { patches, snapshot } = decoded[name]
-            if(snapshot) {
-                const newState = await decodeSyncdSnapshot(name, snapshot, getAppStateSyncKey)
-                states[name] = newState
+        
+        await authState.keys.transaction(
+            async() => {
+                const states = { } as { [T in WAPatchName]: LTHashState }
+                for(const name of collections) {
+                    let state: LTHashState 
+                    if(!fromScratch) {
+                        const result = await authState.keys.get('app-state-sync-version', [name])
+                        state = result[name]
+                    }
+                    if(!state) state = newLTHashState()
 
-                logger.info(`restored state of ${name} from snapshot to v${newState.version}`)
-            }
-            // only process if there are syncd patches
-            if(patches.length) {
-                const { newMutations, state: newState } = await decodePatches(name, patches, states[name], getAppStateSyncKey, true)
+                    states[name] = state
 
-                await authState.keys.set({ 'app-state-sync-version': { [name]: newState } })
-    
-                logger.info(`synced ${name} to v${newState.version}`)
-                if(newMutations.length) {
-                    logger.trace({ newMutations, name }, 'recv new mutations')
+                    logger.info(`resyncing ${name} from v${state.version}`)
                 }
+                const result = await query({
+                    tag: 'iq',
+                    attrs: {
+                        to: S_WHATSAPP_NET,
+                        xmlns: 'w:sync:app:state',
+                        type: 'set'
+                    },
+                    content: [
+                        {
+                            tag: 'sync',
+                            attrs: { },
+                            content: collections.map(
+                                (name) => ({
+                                    tag: 'collection',
+                                    attrs:  { 
+                                        name, 
+                                        version: states[name].version.toString(), 
+                                        return_snapshot: returnSnapshot ? 'true' : 'false'
+                                    }
+                                })
+                            )
+                        }
+                    ]
+                })
+                
+                const decoded = await extractSyncdPatches(result) // extract from binary node
+                for(const key in decoded) {
+                    const name = key as WAPatchName
+                    const { patches, snapshot } = decoded[name]
+                    if(snapshot) {
+                        const newState = await decodeSyncdSnapshot(name, snapshot, getAppStateSyncKey)
+                        states[name] = newState
 
-                totalMutations.push(...newMutations)
+                        logger.info(`restored state of ${name} from snapshot to v${newState.version}`)
+                    }
+                    // only process if there are syncd patches
+                    if(patches.length) {
+                        const { newMutations, state: newState } = await decodePatches(name, patches, states[name], getAppStateSyncKey, true)
+
+                        await authState.keys.set({ 'app-state-sync-version': { [name]: newState } })
+            
+                        logger.info(`synced ${name} to v${newState.version}`)
+                        if(newMutations.length) {
+                            logger.trace({ newMutations, name }, 'recv new mutations')
+                        }
+
+                        totalMutations.push(...newMutations)
+                    }
+                }
             }
-        }
+        )
 
         processSyncActions(totalMutations)
 
