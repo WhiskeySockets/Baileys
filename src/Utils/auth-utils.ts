@@ -1,6 +1,7 @@
 import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
 import type { Logger } from 'pino'
+import { proto } from '../../WAProto'
 import type { AuthenticationCreds, AuthenticationState, SignalDataTypeMap, SignalDataSet, SignalKeyStore, SignalKeyStoreWithTransaction } from "../Types"
 import { Curve, signedKeyPair } from './crypto'
 import { generateRegistrationId, BufferJSON } from './generics'
@@ -144,8 +145,11 @@ export const useSingleFileAuthState = (filename: string): { state: Authenticatio
 					const key = KEY_MAP[type]
 					return ids.reduce(
 						(dict, id) => {
-							const value = keys[key]?.[id]
+							let value = keys[key]?.[id]
 							if(value) {
+								if(type === 'app-state-sync-key') {
+									value = proto.AppStateSyncKeyData.fromObject(value)
+								}
 								dict[id] = value
 							}
 							return dict
