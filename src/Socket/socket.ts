@@ -68,9 +68,12 @@ export const makeSocket = ({
 
 	const sendPromise = promisify<void>(ws.send)
 	/** send a raw buffer */
-	const sendRawMessage = (data: Buffer | Uint8Array) => {
+	const sendRawMessage = async(data: Buffer | Uint8Array) => {
+        if(ws.readyState !== ws.OPEN) {
+            throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
+        }
         const bytes = noise.encodeFrame(data)
-        return sendPromise.call(ws, bytes) as Promise<void>
+        await sendPromise.call(ws, bytes) as Promise<void>
     }
     /** send a binary node */
     const sendNode = (node: BinaryNode) => {
