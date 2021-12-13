@@ -424,7 +424,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		// send a query JSON to obtain the url & auth token to upload our media
 		let uploadInfo = await refreshMediaConn(false)
 
-		let mediaUrl: string
+		let urls: { mediaUrl: string, directPath: string }
         const hosts = [ ...config.customUploadHosts, ...uploadInfo.hosts.map(h => h.hostname) ]
 		for (let hostname of hosts) {
 			const auth = encodeURIComponent(uploadInfo.auth) // the auth token
@@ -446,10 +446,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 				)
 				const result = JSON.parse(responseText)
-				mediaUrl = result?.url
 				
-				if (mediaUrl) break
-				else {
+				if(result?.url || result?.directPath) {
+                    urls = {
+                        mediaUrl: result.url,
+                        directPath: result.direct_path
+                    }
+                    break
+                } else {
 					uploadInfo = await refreshMediaConn(true)
 					throw new Error(`upload failed, reason: ${JSON.stringify(result)}`)
 				}
@@ -458,13 +462,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				logger.debug(`Error in uploading to ${hostname} (${error}) ${isLast ? '' : ', retrying...'}`)
 			}
 		}
-		if (!mediaUrl) {
+		if (!urls) {
 			throw new Boom(
 				'Media upload failed on all hosts',
 				{ statusCode: 500 }
 			)
 		}
-		return { mediaUrl }
+		return urls
 	}
 
 	return {

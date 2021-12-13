@@ -118,7 +118,7 @@ export const prepareWAMessageMedia = async(
 	} catch (error) {
 		options.logger?.info({ trace: error.stack }, 'failed to obtain extra info')
 	}
-	const {mediaUrl} = await options.upload(
+	const {mediaUrl, directPath} = await options.upload(
 		createReadStream(encBodyPath),
 		{ fileEncSha256B64, mediaType, timeoutMs: options.mediaUploadTimeoutMs }
 	)
@@ -136,11 +136,12 @@ export const prepareWAMessageMedia = async(
 		[`${mediaType}Message`]: MessageTypeProto[mediaType].fromObject(
 			{
 				url: mediaUrl,
+				directPath,
 				mediaKey,
 				fileEncSha256,
 				fileSha256,
 				fileLength,
-				
+				mediaKeyTimestamp: unixTimestampSeconds(),
 				...uploadData
 			}
 		)

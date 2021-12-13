@@ -140,7 +140,7 @@ export type MessageGenerationOptionsFromContent = MiscMessageGenerationOptions &
 	userJid: string
 }
 
-export type WAMediaUploadFunction = (readStream: ReadStream, opts: { fileEncSha256B64: string, mediaType: MediaType, timeoutMs?: number }) => Promise<{ mediaUrl: string }>
+export type WAMediaUploadFunction = (readStream: ReadStream, opts: { fileEncSha256B64: string, mediaType: MediaType, timeoutMs?: number }) => Promise<{ mediaUrl: string, directPath: string }>
 
 export type MediaGenerationOptions = {
 	logger?: Logger
