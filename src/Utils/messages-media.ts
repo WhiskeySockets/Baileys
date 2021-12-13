@@ -15,6 +15,8 @@ import { generateMessageID } from './generics'
 import { hkdf } from './crypto'
 import { DEFAULT_ORIGIN } from '../Defaults'
 
+const getTmpFilesDirectory = () => tmpdir()
+
 export const hkdfInfoKey = (type: MediaType) => {
     let str: string = type
     if(type === 'sticker') str = 'image'
@@ -135,7 +137,7 @@ export async function generateThumbnail(
         const buff = await compressImage(file)
         thumbnail = buff.toString('base64')
     } else if(mediaType === 'video') {
-        const imgFilename = join(tmpdir(), generateMessageID() + '.jpg')
+        const imgFilename = join(getTmpFilesDirectory(), generateMessageID() + '.jpg')
         try {
             await extractVideoThumb(file, imgFilename, '00:00:00', { width: 32, height: 32 })
             const buff = await fs.readFile(imgFilename)
@@ -173,7 +175,7 @@ export const encryptedStream = async(media: WAMediaUpload, mediaType: MediaType,
     const mediaKey = Crypto.randomBytes(32)
     const {cipherKey, iv, macKey} = getMediaKeys(mediaKey, mediaType)
     // random name
-    const encBodyPath = join(tmpdir(), mediaType + generateMessageID() + '.enc')
+    const encBodyPath = join(getTmpFilesDirectory(), mediaType + generateMessageID() + '.enc')
     const encWriteStream = createWriteStream(encBodyPath)
     let bodyPath: string
     let writeStream: WriteStream
@@ -181,7 +183,7 @@ export const encryptedStream = async(media: WAMediaUpload, mediaType: MediaType,
     if(type === 'file') {
         bodyPath = (media as any).url
     } else if(saveOriginalFileIfRequired) {
-        bodyPath = join(tmpdir(), mediaType + generateMessageID())
+        bodyPath = join(getTmpFilesDirectory(), mediaType + generateMessageID())
         writeStream = createWriteStream(bodyPath)
         didSaveToTmpPath = true
     }
