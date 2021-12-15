@@ -1,5 +1,6 @@
 import type { Logger } from 'pino'
 import type { IAudioMetadata } from 'music-metadata'
+import type { Options, Response } from 'got'
 import { Boom } from '@hapi/boom'
 import * as Crypto from 'crypto'
 import { Readable, Transform } from 'stream'
@@ -9,7 +10,6 @@ import { tmpdir } from 'os'
 import { URL } from 'url'
 import { join } from 'path'
 import { once } from 'events'
-import got, { Options, Response } from 'got'
 import { MessageType, WAMessageContent, WAProto, WAGenericMediaMessage, WAMediaUpload, MediaType, DownloadableMessage } from '../Types'
 import { generateMessageID } from './generics'
 import { hkdf } from './crypto'
@@ -152,7 +152,8 @@ export async function generateThumbnail(
     return thumbnail
 }
 export const getGotStream = async(url: string | URL, options: Options & { isStream?: true } = {}) => {
-    const fetched = got.stream(url, { ...options, isStream: true })
+    const { default: { stream: gotStream }} = await import('got')
+    const fetched = gotStream(url, { ...options, isStream: true })
     await new Promise((resolve, reject) => {
         fetched.once('error', reject)
         fetched.once('response', ({ statusCode }: Response) => {
