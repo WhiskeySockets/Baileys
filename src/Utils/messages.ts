@@ -224,7 +224,7 @@ export const generateWAMessageContent = async(
 		if(contactLen === 1) {
 			m.contactMessage = WAProto.ContactMessage.fromObject(message.contacts.contacts[0])
 		} else {
-			m.contactsArrayMessage = WAProto.ContactsArrayMessage.fromObject(message.contacts)
+			m.contactsArrayMessage = WAProto.ContactsArrayMessage.fromObject({ contacts: message.contacts })
 		}
 	} else if('location' in message) {
 		m.locationMessage = WAProto.LocationMessage.fromObject(message.location)
