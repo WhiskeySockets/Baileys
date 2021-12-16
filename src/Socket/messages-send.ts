@@ -29,7 +29,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
     const fetchPrivacySettings = async(force: boolean = false) => {
         if(!privacySettings || force) {
-            const result = await query({
+            const { content } = await query({
                 tag: 'iq',
                 attrs: {
                     xmlns: 'privacy', 
@@ -40,7 +40,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
                     { tag: 'privacy', attrs: { } }
                 ]
             })
-            privacySettings = reduceBinaryNodeToDictionary(result, 'category')
+            privacySettings = reduceBinaryNodeToDictionary(content[0], 'category')
         }
         return privacySettings
     }
