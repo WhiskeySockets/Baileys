@@ -530,7 +530,7 @@ export const makeSocket = ({
     })
 
     ws.on('CB:ib,,downgrade_webclient', () => {
-        end(new Boom('Multi-device beta not joined', { statusCode: DisconnectReason.notJoinedBeta }))
+        end(new Boom('Multi-device beta not joined', { statusCode: DisconnectReason.multideviceMismatch }))
     })
 
     process.nextTick(() => {

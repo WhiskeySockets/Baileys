@@ -38,7 +38,7 @@ export type ChatModification =
         mute: number | null
     } |
     {
-        clear: 'all' | { message: {id: string, fromMe?: boolean} }
+        clear: 'all' | { messages: {id: string, fromMe?: boolean}[] }
     } |
     {
         star: { 

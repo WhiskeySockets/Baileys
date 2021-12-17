@@ -2,6 +2,8 @@ import { DICTIONARIES_MAP, SINGLE_BYTE_TOKEN, SINGLE_BYTE_TOKEN_MAP, DICTIONARIE
 import { jidDecode, jidEncode } from './jid-utils';
 import { Binary, numUtf8Bytes } from '../../WABinary/Binary';
 import { Boom } from '@hapi/boom';
+import { proto } from '../../WAProto';
+import { BinaryNode } from './types';
 
 const LIST1 = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '.', '�', '�', '�', '�'];
 const LIST2 = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'];
@@ -209,20 +211,6 @@ function bufferToUInt(e: Uint8Array | Buffer, t: number) {
     for (let i = 0; i < t; i++) a = 256 * a + e[i]
     return a
 }
-/** 
- * the binary node WA uses internally for communication 
- * 
- * this is manipulated soley as an object and it does not have any functions. 
- * This is done for easy serialization, to prevent running into issues with prototypes & 
- * to maintain functional code structure
- * */
-export type BinaryNode = {
-    tag: string
-    attrs: { [key: string]: string }
-	content?: BinaryNode[] | string | Uint8Array
-}
-export type BinaryNodeAttributes = BinaryNode['attrs']
-export type BinaryNodeData = BinaryNode['content']
 
 export const decodeBinaryNode = (data: Binary): BinaryNode => {
     //U
@@ -319,5 +307,19 @@ export const reduceBinaryNodeToDictionary = (node: BinaryNode, tag: string) => {
     return dict
 }
 
+export const getBinaryNodeMessages = ({ content }: BinaryNode) => {
+    const msgs: proto.WebMessageInfo[] = []
+    if(Array.isArray(content)) {
+        for(const item of content) {
+            if(item.tag === 'message') {
+                msgs.push(proto.WebMessageInfo.decode(item.content as Buffer))
+            }
+        }
+    }
+    return msgs
+}
+
 export * from './jid-utils'
 export { Binary } from '../../WABinary/Binary'
+export * from './types'
+export * from './Legacy'

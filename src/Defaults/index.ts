@@ -1,5 +1,5 @@
 import P from "pino"
-import type { MediaType, SocketConfig } from "../Types"
+import type { MediaType, SocketConfig, LegacySocketConfig, CommonSocketConfig } from "../Types"
 import { Browsers } from "../Utils"
 
 export const UNAUTHORIZED_CODES = [401, 403, 419]
@@ -17,11 +17,11 @@ export const NOISE_WA_HEADER = new Uint8Array([87, 65, 5, 2]) // last is "DICT_V
 /** from: https://stackoverflow.com/questions/3809401/what-is-a-good-regular-expression-to-match-a-url */
 export const URL_REGEX = /[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)?/gi
 
-export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
-	version: [2, 2146, 9],
+const BASE_CONNECTION_CONFIG: CommonSocketConfig<any> = {
+    version: [2, 2147, 16],
 	browser: Browsers.baileys('Chrome'),
 
-	waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
+    waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
     connectTimeoutMs: 20_000,
     keepAliveIntervalMs: 25_000,
     logger: P().child({ class: 'baileys' }),
@@ -29,7 +29,20 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
     emitOwnEvents: true,
     defaultQueryTimeoutMs: 60_000,
     customUploadHosts: [],
+}
+
+export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
+	...BASE_CONNECTION_CONFIG,
+    waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
     getMessage: async() => undefined
+}
+
+export const DEFAULT_LEGACY_CONNECTION_CONFIG: LegacySocketConfig = {
+	...BASE_CONNECTION_CONFIG,
+    waWebSocketUrl: 'wss://web.whatsapp.com/ws',
+    phoneResponseTimeMs: 20_000,
+    expectResponseTimeout: 60_000,
+    pendingRequestTimeoutMs: 60_000
 }
 
 export const MEDIA_PATH_MAP: { [T in MediaType]: string } = {

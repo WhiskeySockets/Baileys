@@ -4,6 +4,7 @@ import { proto } from '../../WAProto'
 import { generateProfilePicture, toNumber, encodeSyncdPatch, decodePatches, extractSyncdPatches, chatModificationToAppPatch, decodeSyncdSnapshot, newLTHashState } from "../Utils";
 import { makeMessagesSocket } from "./messages-send";
 import makeMutex from "../Utils/make-mutex";
+import { Boom } from "@hapi/boom";
 
 export const makeChatsSocket = (config: SocketConfig) => {
 	const { logger } = config
@@ -425,6 +426,11 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
     const appPatch = async(patchCreate: WAPatchCreate) => {
         const name = patchCreate.type
+        const myAppStateKeyId = authState.creds.myAppStateKeyId
+        if(!myAppStateKeyId) {
+            throw new Boom(`App state key not present!`, { statusCode: 400 })
+        }
+
         await mutationMutex.mutex(
             async() => {
                 logger.debug({ patch: patchCreate }, 'applying app patch')
@@ -433,7 +439,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
                 const { [name]: initial } = await authState.keys.get('app-state-sync-version', [name])
                 const { patch, state } = await encodeSyncdPatch(
                     patchCreate,
-                    authState.creds.myAppStateKeyId!,
+                    myAppStateKeyId,
                     initial,
                     getAppStateSyncKey,
                 )
