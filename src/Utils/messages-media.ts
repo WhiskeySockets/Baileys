@@ -4,13 +4,13 @@ import type { Options, Response } from 'got'
 import { Boom } from '@hapi/boom'
 import * as Crypto from 'crypto'
 import { Readable, Transform } from 'stream'
-import { createReadStream, createWriteStream, promises as fs, ReadStream, WriteStream } from 'fs'
+import { createReadStream, createWriteStream, promises as fs, WriteStream } from 'fs'
 import { exec } from 'child_process'
 import { tmpdir } from 'os'
 import { URL } from 'url'
 import { join } from 'path'
 import { once } from 'events'
-import { MessageType, WAMessageContent, WAProto, WAGenericMediaMessage, WAMediaUpload, MediaType, DownloadableMessage } from '../Types'
+import { MessageType, WAMessageContent, WAProto, WAGenericMediaMessage, WAMediaUpload, MediaType, DownloadableMessage, CommonSocketConfig, WAMediaUploadFunction, MediaConnInfo } from '../Types'
 import { generateMessageID } from './generics'
 import { hkdf } from './crypto'
 import { DEFAULT_ORIGIN, MEDIA_PATH_MAP } from '../Defaults'
@@ -463,49 +463,54 @@ export function extensionForMediaMessage(message: WAMessageContent) {
 
 export const getWAUploadToServer = ({ customUploadHosts, agent, logger }: CommonSocketConfig<any>, refreshMediaConn: (force: boolean) => Promise<MediaConnInfo>): WAMediaUploadFunction => {
     return async(stream, { mediaType, fileEncSha256B64, timeoutMs }) => {
+		const { default: got } = await import('got')
         // send a query JSON to obtain the url & auth token to upload our media
-        let uploadInfo = await refreshMediaConn(false)
-    
-        let mediaUrl: string
+		let uploadInfo = await refreshMediaConn(false)
+
+		let urls: { mediaUrl: string, directPath: string }
         const hosts = [ ...customUploadHosts, ...uploadInfo.hosts.map(h => h.hostname) ]
-        for (let hostname of hosts) {
-            const auth = encodeURIComponent(uploadInfo.auth) // the auth token
-            const url = `https://${hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
-            
-            try {
-                const {body: responseText} = await got.post(
-                    url, 
-                    {
-                        headers: { 
-                            'Content-Type': 'application/octet-stream',
-                            'Origin': DEFAULT_ORIGIN
-                        },
-                        agent: {
-                            https: agent
-                        },
-                        body: stream,
+		for (let hostname of hosts) {
+			const auth = encodeURIComponent(uploadInfo.auth) // the auth token
+			const url = `https://${hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
+			
+			try {
+				const {body: responseText} = await got.post(
+					url, 
+					{
+						headers: { 
+							'Content-Type': 'application/octet-stream',
+							'Origin': DEFAULT_ORIGIN
+						},
+						agent: {
+							https: agent
+						},
+						body: stream,
                         timeout: timeoutMs
+					}
+				)
+				const result = JSON.parse(responseText)
+				
+				if(result?.url || result?.directPath) {
+                    urls = {
+                        mediaUrl: result.url,
+                        directPath: result.direct_path
                     }
-                )
-                const result = JSON.parse(responseText)
-                mediaUrl = result?.url
-                
-                if (mediaUrl) break
-                else {
-                    uploadInfo = await refreshMediaConn(true)
-                    throw new Error(`upload failed, reason: ${JSON.stringify(result)}`)
-                }
-            } catch (error) {
-                const isLast = hostname === hosts[uploadInfo.hosts.length-1]
-                logger.debug(`Error in uploading to ${hostname} (${error}) ${isLast ? '' : ', retrying...'}`)
-            }
-        }
-        if (!mediaUrl) {
-            throw new Boom(
-                'Media upload failed on all hosts',
-                { statusCode: 500 }
-            )
-        }
-        return { mediaUrl }
-    }
+                    break
+                } else {
+					uploadInfo = await refreshMediaConn(true)
+					throw new Error(`upload failed, reason: ${JSON.stringify(result)}`)
+				}
+			} catch (error) {
+				const isLast = hostname === hosts[uploadInfo.hosts.length-1]
+				logger.debug(`Error in uploading to ${hostname} (${error}) ${isLast ? '' : ', retrying...'}`)
+			}
+		}
+		if (!urls) {
+			throw new Boom(
+				'Media upload failed on all hosts',
+				{ statusCode: 500 }
+			)
+		}
+		return urls
+	}
 }
