@@ -40,7 +40,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
                     { tag: 'privacy', attrs: { } }
                 ]
             })
-            privacySettings = reduceBinaryNodeToDictionary(content[0], 'category')
+            privacySettings = reduceBinaryNodeToDictionary(content[0] as BinaryNode, 'category')
         }
         return privacySettings
     }
