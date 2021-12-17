@@ -2,7 +2,7 @@ import { Boom } from '@hapi/boom'
 import { STATUS_CODES } from "http"
 import { promisify } from "util"
 import WebSocket from "ws"
-import { BinaryNode, encodeBinaryNode } from "../WABinary"
+import { BinaryNode, encodeBinaryNodeLegacy } from "../WABinary"
 import { DisconnectReason, LegacySocketConfig, SocketQueryOptions, SocketSendMessageOptions, WAFlag, WAMetric, WATag } from "../Types"
 import { aesEncrypt, hmacSign, promiseTimeout, unixTimestampSeconds, decodeWAMessage } from "../Utils"
 import { DEFAULT_ORIGIN, DEF_CALLBACK_PREFIX, DEF_TAG_PREFIX, PHONE_CONNECTION_CB } from "../Defaults"
@@ -78,7 +78,7 @@ export const makeSocket = ({
 			if(!authInfo) {
 				throw new Boom('No encryption/mac keys to encrypt node with', { statusCode: 400 })
 			}
-			const binary = encodeBinaryNode(json) // encode the JSON to the WhatsApp binary format
+			const binary = encodeBinaryNodeLegacy(json) // encode the JSON to the WhatsApp binary format
 
 			const buff = aesEncrypt(binary, authInfo.encKey) // encrypt it using AES and our encKey
 			const sign = hmacSign(buff, authInfo.macKey) // sign the message using HMAC and our macKey
@@ -115,9 +115,9 @@ export const makeSocket = ({
         ws.removeAllListeners('ws-close')
 	}
 	const onMessageRecieved = (message: string | Buffer) => {
-        if(message[0] === '!') {
+        if(message[0] === '!' || message[0] === '!'.charCodeAt(0)) {
             // when the first character in the message is an '!', the server is sending a pong frame
-            const timestamp = message.slice(1, message.length).toString ('utf-8')
+            const timestamp = message.slice(1, message.length).toString()
             lastDateRecv = new Date(parseInt(timestamp))
             ws.emit('received-pong')
         } else {
@@ -142,9 +142,9 @@ export const makeSocket = ({
             /* Check if this is a response to a message we sent */
             anyTriggered = ws.emit(`${DEF_TAG_PREFIX}${messageTag}`, json)
             /* Check if this is a response to a message we are expecting */
-            const l0 = json.header || json[0] || ''
-            const l1 = json?.attributes || json?.[1] || { }
-            const l2 = json?.data?.[0]?.header || json[2]?.[0] || ''
+            const l0 = json.tag || json[0] || ''
+            const l1 = json?.attrs || json?.[1] || { }
+            const l2 = json?.content?.[0]?.tag || json[2]?.[0] || ''
 
             Object.keys(l1).forEach(key => {
                 anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0},${key}:${l1[key]},${l2}`, json) || anyTriggered

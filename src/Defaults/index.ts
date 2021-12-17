@@ -18,10 +18,10 @@ export const NOISE_WA_HEADER = new Uint8Array([87, 65, 5, 2]) // last is "DICT_V
 export const URL_REGEX = /[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)?/gi
 
 const BASE_CONNECTION_CONFIG: CommonSocketConfig<any> = {
-    version: [2, 2146, 9],
+    version: [2, 2147, 16],
 	browser: Browsers.baileys('Chrome'),
 
-	waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
+    waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
     connectTimeoutMs: 20_000,
     keepAliveIntervalMs: 25_000,
     logger: P().child({ class: 'baileys' }),
@@ -33,21 +33,13 @@ const BASE_CONNECTION_CONFIG: CommonSocketConfig<any> = {
 
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	...BASE_CONNECTION_CONFIG,
+    waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
     getMessage: async() => undefined
 }
 
 export const DEFAULT_LEGACY_CONNECTION_CONFIG: LegacySocketConfig = {
-	version: [2, 2146, 9],
-	browser: Browsers.baileys('Chrome'),
-
-	waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
-    connectTimeoutMs: 20_000,
-    keepAliveIntervalMs: 25_000,
-    logger: P().child({ class: 'baileys' }),
-	printQRInTerminal: false,
-    emitOwnEvents: true,
-    defaultQueryTimeoutMs: 60_000,
-    customUploadHosts: [],
+	...BASE_CONNECTION_CONFIG,
+    waWebSocketUrl: 'wss://web.whatsapp.com/ws',
     phoneResponseTimeMs: 20_000,
     expectResponseTimeout: 60_000,
     pendingRequestTimeoutMs: 60_000

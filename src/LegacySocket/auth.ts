@@ -16,7 +16,7 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 	} = config
 	const ev = new EventEmitter() as LegacyBaileysEventEmitter
 	
-	let authInfo = initialAuthInfo || newLegacyAuthCreds()
+	const authInfo = initialAuthInfo || newLegacyAuthCreds()
 	
 	const state: ConnectionState = {
 		legacy: {
@@ -73,7 +73,6 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
         socket?.end(
 			new Boom('Logged Out', { statusCode: DisconnectReason.loggedOut })
 		)
-		authInfo = undefined
 	}
 	/** Waits for the connection to WA to open up */
 	const waitForConnection = async(waitInfinitely: boolean = false) => {
@@ -221,10 +220,12 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
         const {user, auth} = validateNewConnection(response[1], authInfo, curveKeys)// validate the connection
         const isNewLogin = user.id !== state.legacy!.user?.id
 		
-		authInfo = auth
+		Object.assign(authInfo, auth)
 		updateEncKeys()
 
 		logger.info({ user }, 'logged in')
+
+		ev.emit('creds.update', auth)
 
 		updateState({
 			connection: 'open',
@@ -235,7 +236,6 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 			isNewLogin,
 			qr: undefined
 		})
-		ev.emit('creds.update', auth)
 	}
 	ws.once('open', async() => {
 		try {

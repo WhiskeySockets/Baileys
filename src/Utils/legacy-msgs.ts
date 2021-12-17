@@ -1,7 +1,8 @@
 import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
-import { decodeBinaryNode, jidNormalizedUser } from "../WABinary"
+import { decodeBinaryNodeLegacy, jidNormalizedUser } from "../WABinary"
 import { aesDecrypt, hmacSign, hkdf, Curve } from "./crypto"
+import { BufferJSON } from './generics'
 import { DisconnectReason, WATag, LegacyAuthenticationCreds, CurveKeyPair, Contact } from "../Types"
 
 export const newLegacyAuthCreds = () => ({
@@ -9,11 +10,10 @@ export const newLegacyAuthCreds = () => ({
 }) as LegacyAuthenticationCreds
 
 export const decodeWAMessage = (
-    message: string | Buffer, 
+    message: Buffer | string, 
     auth: { macKey: Buffer, encKey: Buffer }, 
     fromMe: boolean=false
 ) => {
-
     let commaIndex = message.indexOf(',') // all whatsapp messages have a tag and a comma, followed by the actual message
     if (commaIndex < 0) throw new Boom('invalid message', { data: message }) // if there was no comma, then this message must be not be valid
     
@@ -25,10 +25,12 @@ export const decodeWAMessage = (
     const messageTag: string = message.slice(0, commaIndex).toString()
     let json: any
     let tags: WATag
-    if (data.length > 0) {
-        if (typeof data === 'string') {
-            json = JSON.parse(data) // parse the JSON
+    if(data.length) {
+        const possiblyEnc = (data.length > 32 && data.length % 16 === 0)
+        if(typeof data === 'string' || !possiblyEnc) {
+            json = JSON.parse(data.toString()) // parse the JSON
         } else {
+            
             const { macKey, encKey } = auth || {}
             if (!macKey || !encKey) {
                 throw new Boom('recieved encrypted buffer when auth creds unavailable', { data: message, statusCode: DisconnectReason.badSession })
@@ -49,7 +51,7 @@ export const decodeWAMessage = (
             if (checksum.equals(computedChecksum)) {
                 // the checksum the server sent, must match the one we computed for the message to be valid
                 const decrypted = aesDecrypt(data, encKey) // decrypt using AES
-                json = decodeBinaryNode(decrypted) // decode the binary message into a JSON array
+                json = decodeBinaryNodeLegacy(decrypted, { index: 0 }) // decode the binary message into a JSON array
             } else {
                 throw new Boom('Bad checksum', {
                     data: {
@@ -138,5 +140,34 @@ export const validateNewConnection = (
 export const computeChallengeResponse = (challenge: string, auth: LegacyAuthenticationCreds) => {
 	const bytes = Buffer.from(challenge, 'base64') // decode the base64 encoded challenge string
 	const signed = hmacSign(bytes, auth.macKey).toString('base64') // sign the challenge string with our macKey
-	return[ 'admin', 'challenge', signed, auth.serverToken, auth.clientID] // prepare to send this signed string with the serverToken & clientID
+	return['admin', 'challenge', signed, auth.serverToken, auth.clientID] // prepare to send this signed string with the serverToken & clientID
+}
+
+export const useSingleFileLegacyAuthState = (file: string) => {
+    // require fs here so that in case "fs" is not available -- the app does not crash
+	const { readFileSync, writeFileSync, existsSync } = require('fs')
+    let state: LegacyAuthenticationCreds
+
+    if(existsSync(file)) {
+        state = JSON.parse(
+            readFileSync(file, { encoding: 'utf-8' }), 
+            BufferJSON.reviver
+        )
+        if(typeof state.encKey === 'string') {
+            state.encKey = Buffer.from(state.encKey, 'base64')
+        }
+        if(typeof state.macKey === 'string') {
+            state.macKey = Buffer.from(state.macKey, 'base64')
+        }
+    } else {
+        state = newLegacyAuthCreds()
+    }
+
+    return {
+        state,
+        saveState: () => {
+            const str = JSON.stringify(state, BufferJSON.replacer, 2)
+            writeFileSync(file, str)
+        }
+    }
 }

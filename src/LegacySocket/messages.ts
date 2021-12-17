@@ -1,10 +1,9 @@
 import { BinaryNode, getBinaryNodeMessages, isJidGroup, jidNormalizedUser, areJidsSameUser } from "../WABinary";
 import { Boom } from '@hapi/boom'
-import { Chat, WAPresence, WAMessageCursor, WAMessage, LegacySocketConfig, WAMessageKey, ParticipantAction, WAMessageStatus, WAMessageStubType, GroupMetadata, AnyMessageContent, MiscMessageGenerationOptions, WAFlag, WAMetric, WAUrlInfo, MediaConnInfo, MessageUpdateType, MessageInfo, MessageInfoUpdate, WAMediaUploadFunction, MediaType, WAMessageUpdate } from "../Types";
+import { Chat, WAMessageCursor, WAMessage, LegacySocketConfig, WAMessageKey, ParticipantAction, WAMessageStatus, WAMessageStubType, GroupMetadata, AnyMessageContent, MiscMessageGenerationOptions, WAFlag, WAMetric, WAUrlInfo, MediaConnInfo, MessageUpdateType, MessageInfo, MessageInfoUpdate, WAMessageUpdate } from "../Types";
 import { toNumber, generateWAMessage, decryptMediaMessageBuffer, extractMessageContent, getWAUploadToServer } from "../Utils";
 import makeChatsSocket from "./chats";
-import { DEFAULT_ORIGIN, MEDIA_PATH_MAP, WA_DEFAULT_EPHEMERAL } from "../Defaults";
-import got from "got";
+import { WA_DEFAULT_EPHEMERAL } from "../Defaults";
 import { proto } from "../../WAProto";
 
 const STATUS_MAP = {
@@ -288,8 +287,9 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 				.then(() => emitUpdate(finalState))
 				.catch(() => emitUpdate(WAMessageStatus.ERROR))
         }
-
-		onMessage(message, 'append')
+		if(config.emitOwnEvents) {
+			onMessage(message, 'append')
+		}
     }
 
 	// messages received
@@ -362,7 +362,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 		const updates = ids.map<MessageInfoUpdate>(id => ({
 			key: { ...keyPartial, id },
 			update: {
-				[updateKey]: { [jidNormalizedUser(attributes.participant)]: new Date(+attributes.t) }
+				[updateKey]: { [jidNormalizedUser(attributes.participant || attributes.to)]: new Date(+attributes.t) }
 			}
 		}))
 		ev.emit('message-info.update', updates)
@@ -489,7 +489,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 		sendWAMessage: async(
 			jid: string,
 			content: AnyMessageContent,
-			options: MiscMessageGenerationOptions & { waitForAck?: boolean }
+			options: MiscMessageGenerationOptions & { waitForAck?: boolean } = { waitForAck: true }
 		) => {
 			const userJid = getState().legacy.user?.id
 			if(
@@ -521,7 +521,8 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 						logger,
 						userJid: userJid,
 						getUrlInfo: generateUrlInfo,
-						upload: waUploadToServer
+						upload: waUploadToServer,
+						mediaCache: config.mediaCache
 					}
 				)
 				

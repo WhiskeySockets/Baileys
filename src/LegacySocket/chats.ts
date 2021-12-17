@@ -152,7 +152,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 			const chats = data.map(({ attrs }): Chat => {
 				return {
 					id: jidNormalizedUser(attrs.jid),
-					conversationTimestamp: +attrs.t,
+					conversationTimestamp: attrs.t ? +attrs.t : undefined,
 					unreadCount: +attrs.count,
 					archive: attrs.archive === 'true' ? true : undefined,
 					pin: attrs.pin ? +attrs.pin : undefined,
@@ -353,7 +353,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		 * @param jid the ID of the person/group who you are updating
 		 * @param type your presence
 		 */
-		updatePresence: (jid: string | undefined, type: WAPresence) => (
+		sendPresenceUpdate: ( type: WAPresence, jid: string | undefined) => (
 			sendMessage({
 				binaryTag: [WAMetric.presence, WAFlag[type]], // weird stuff WA does
 				json: { 
@@ -372,7 +372,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		 * Request updates on the presence of a user 
 		 * this returns nothing, you'll receive updates in chats.update event
 		 * */
-		requestPresenceUpdate: async (jid: string) => (
+		presenceSubscribe: async (jid: string) => (
 			sendMessage({ json: ['action', 'presence', 'subscribe', jid] })
 		),
 		/** Query the status of the person (see groupMetadata() for groups) */
