@@ -94,7 +94,7 @@ export const prepareWAMessageMedia = async(
 	const requiresOriginalForSomeProcessing = requiresDurationComputation || requiresThumbnailComputation
 	const {
 		mediaKey,
-		encBodyPath,
+		encWriteStream,
 		bodyPath,
 		fileEncSha256,
 		fileSha256,
@@ -108,28 +108,35 @@ export const prepareWAMessageMedia = async(
 		.replace(/\//g, '_')
 		.replace(/\=+$/, '')
 	)
-	try {
-		if(requiresThumbnailComputation) {
-			uploadData.jpegThumbnail = await generateThumbnail(bodyPath, mediaType as any, options)
+
+	const [{ mediaUrl, directPath }] = await Promise.all([
+		(() => {
+			return options.upload(
+				encWriteStream,
+				{ fileEncSha256B64, mediaType, timeoutMs: options.mediaUploadTimeoutMs }
+			)
+		})(),
+		(async() => {
+			try {
+				if(requiresThumbnailComputation) {
+					uploadData.jpegThumbnail = await generateThumbnail(bodyPath, mediaType as any, options)
+				}
+				if (requiresDurationComputation) {
+					uploadData.seconds = await getAudioDuration(bodyPath)
+				}
+			} catch (error) {
+				options.logger?.info({ trace: error.stack }, 'failed to obtain extra info')
+			}
+		})(),
+	])
+	.finally(
+		async() => {
+			encWriteStream.destroy()
+			// remove tmp files
+			didSaveToTmpPath && bodyPath && await fs.unlink(bodyPath)
 		}
-		if (requiresDurationComputation) {
-			uploadData.seconds = await getAudioDuration(bodyPath)
-		}
-	} catch (error) {
-		options.logger?.info({ trace: error.stack }, 'failed to obtain extra info')
-	}
-	const {mediaUrl, directPath} = await options.upload(
-		createReadStream(encBodyPath),
-		{ fileEncSha256B64, mediaType, timeoutMs: options.mediaUploadTimeoutMs }
 	)
-	// remove tmp files
-	await Promise.all(
-		[
-			fs.unlink(encBodyPath),
-			didSaveToTmpPath && bodyPath && fs.unlink(bodyPath)
-		]
-		.filter(Boolean)
-	)
+
 	delete uploadData.media
 
 	const obj = WAProto.Message.fromObject({
