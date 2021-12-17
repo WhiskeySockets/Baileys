@@ -17,6 +17,29 @@ import { DEFAULT_ORIGIN } from '../Defaults'
 
 const getTmpFilesDirectory = () => tmpdir()
 
+const getImageProcessingLibrary = async() => {
+    const [jimp, sharp] = await Promise.all([
+        (async() => {
+            const jimp = await (
+                import('jimp')
+                    .catch(() => { })
+            )
+            return jimp
+        })(),
+        (async() => {
+            const sharp = await (
+                import('sharp')
+                    .catch(() => { })
+            )
+            return sharp
+        })()
+    ])
+    if(sharp) return { sharp }
+    if(jimp) return { jimp }
+
+    throw new Boom('No image processing library available')
+}
+
 export const hkdfInfoKey = (type: MediaType) => {
     let str: string = type
     if(type === 'sticker') str = 'image'
@@ -53,17 +76,27 @@ const extractVideoThumb = async (
         })
     }) as Promise<void>
 
-export const compressImage = async (bufferOrFilePath: Readable | Buffer | string) => {
+export const extractImageThumb = async (bufferOrFilePath: Readable | Buffer | string) => {
     if(bufferOrFilePath instanceof Readable) {
         bufferOrFilePath = await toBuffer(bufferOrFilePath)
     }
-    const { read, MIME_JPEG, RESIZE_BILINEAR } = await import('jimp')
-    const jimp = await read(bufferOrFilePath as any)
-    const result = await jimp
-        .quality(50)
-        .resize(32, 32, RESIZE_BILINEAR)
-        .getBufferAsync(MIME_JPEG)
-    return result
+    const lib = await getImageProcessingLibrary()
+    if('sharp' in lib) {
+        const result = await lib.sharp!.default(bufferOrFilePath)
+            .resize(32, 32)
+            .jpeg({ quality: 50 })
+            .toBuffer()
+        return result
+    } else {
+        const { read, MIME_JPEG, RESIZE_BILINEAR } = lib.jimp
+
+        const jimp = await read(bufferOrFilePath as any)
+        const result = await jimp
+            .quality(50)
+            .resize(32, 32, RESIZE_BILINEAR)
+            .getBufferAsync(MIME_JPEG)
+        return result
+    }
 }
 export const generateProfilePicture = async (mediaUpload: WAMediaUpload) => {
     let bufferOrFilePath: Buffer | string
@@ -74,16 +107,30 @@ export const generateProfilePicture = async (mediaUpload: WAMediaUpload) => {
     } else {
         bufferOrFilePath = await toBuffer(mediaUpload.stream)
     }
-    
-    const { read, MIME_JPEG, RESIZE_BILINEAR } = await import('jimp')
-    const jimp = await read(bufferOrFilePath as any)
-    const min = Math.min(jimp.getWidth (), jimp.getHeight ())
-    const cropped = jimp.crop (0, 0, min, min)
-    return {
-        img: await cropped
+
+    const lib = await getImageProcessingLibrary()
+    let img: Promise<Buffer>
+    if('sharp' in lib) {
+        img = lib.sharp!.default(bufferOrFilePath)
+            .resize(640, 640)
+            .jpeg({
+                quality: 50,
+            })
+            .toBuffer()
+    } else {
+        const { read, MIME_JPEG, RESIZE_BILINEAR } = lib.jimp
+        const jimp = await read(bufferOrFilePath as any)
+        const min = Math.min(jimp.getWidth(), jimp.getHeight())
+        const cropped = jimp.crop(0, 0, min, min)
+
+        img = cropped
             .quality(50)
             .resize(640, 640, RESIZE_BILINEAR)
-            .getBufferAsync(MIME_JPEG),
+            .getBufferAsync(MIME_JPEG)
+    }
+    
+    return {
+        img: await img,
     }
 }
 /** gets the SHA256 of the given media message */
@@ -91,15 +138,17 @@ export const mediaMessageSHA256B64 = (message: WAMessageContent) => {
     const media = Object.values(message)[0] as WAGenericMediaMessage
     return media?.fileSha256 && Buffer.from(media.fileSha256).toString ('base64')
 }
-export async function getAudioDuration (buffer: Buffer | string) {
-    const musicMetadata = await import ('music-metadata')
+export async function getAudioDuration (buffer: Buffer | string | Readable) {
+    const musicMetadata = await import('music-metadata')
     let metadata: IAudioMetadata
     if(Buffer.isBuffer(buffer)) {
         metadata = await musicMetadata.parseBuffer(buffer, null, { duration: true })
-    } else {
+    } else if(typeof buffer === 'string') {
         const rStream = createReadStream(buffer)
         metadata = await musicMetadata.parseStream(rStream, null, { duration: true })
         rStream.close()
+    } else {
+        metadata = await musicMetadata.parseStream(buffer, null, { duration: true })
     }
     return metadata.format.duration;
 }
@@ -134,7 +183,7 @@ export async function generateThumbnail(
 ) {
     let thumbnail: string
     if(mediaType === 'image') {
-        const buff = await compressImage(file)
+        const buff = await extractImageThumb(file)
         thumbnail = buff.toString('base64')
     } else if(mediaType === 'video') {
         const imgFilename = join(getTmpFilesDirectory(), generateMessageID() + '.jpg')

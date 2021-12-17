@@ -304,14 +304,6 @@ await sock.sendMessage(
         gifPlayback: true
     }
 )
-await sock.sendMessage(
-    id, 
-    { 
-        video: "./Media/ma_gif.mp4", 
-        caption: "hello!",
-        gifPlayback: true
-    }
-)
 
 await sock.sendMessage(
     id, 
@@ -369,7 +361,7 @@ const sendMsg = await sock.sendMessage(id, templateMessage)
     - It must be in the format ```[country code][phone number]@s.whatsapp.net```, for example ```+19999999999@s.whatsapp.net``` for people. For groups, it must be in the format ``` 123456789-123345@g.us ```. 
     - For broadcast lists it's `[timestamp of creation]@broadcast`.
     - For stories, the ID is `status@broadcast`.
-- For media messages, the thumbnail can be generated automatically for images & stickers. Thumbnails for videos can also be generated automatically, though, you need to have `ffmpeg` installed on your system.
+- For media messages, the thumbnail can be generated automatically for images & stickers provided you add `jimp` or `sharp` as a dependency in your project using `yarn add jimp` or `yarn add sharp`. Thumbnails for videos can also be generated automatically, though, you need to have `ffmpeg` installed on your system.
 - **MiscGenerationOptions**: some extra info about the message. It can have the following __optional__ values:
     ``` ts
     const info: MessageOptions = {
