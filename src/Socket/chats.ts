@@ -139,6 +139,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
         await query({
             tag: 'iq',
             attrs: {
+		xmlns: 'blocklist',
                 to: S_WHATSAPP_NET,
                 type: 'set'
             },

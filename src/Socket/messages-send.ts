@@ -1,5 +1,4 @@
 
-import got from "got"
 import { Boom } from "@hapi/boom"
 import { SocketConfig, MediaConnInfo, AnyMessageContent, MiscMessageGenerationOptions, WAMediaUploadFunction, MessageRelayOptions } from "../Types"
 import { encodeWAMessage, generateMessageID, generateWAMessage, encryptSenderKeyMsgSignalProto, encryptSignalProto, extractDeviceJids, jidToSignalProtocolAddress, parseAndInjectE2ESessions, getWAUploadToServer } from "../Utils"
@@ -30,7 +29,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
     const fetchPrivacySettings = async(force: boolean = false) => {
         if(!privacySettings || force) {
-            const result = await query({
+            const { content } = await query({
                 tag: 'iq',
                 attrs: {
                     xmlns: 'privacy', 
@@ -41,7 +40,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
                     { tag: 'privacy', attrs: { } }
                 ]
             })
-            privacySettings = reduceBinaryNodeToDictionary(result, 'category')
+            privacySettings = reduceBinaryNodeToDictionary(content[0] as BinaryNode, 'category')
         }
         return privacySettings
     }

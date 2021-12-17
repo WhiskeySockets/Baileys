@@ -1,19 +1,44 @@
 import type { Logger } from 'pino'
 import type { IAudioMetadata } from 'music-metadata'
+import type { Options, Response } from 'got'
 import { Boom } from '@hapi/boom'
 import * as Crypto from 'crypto'
 import { Readable, Transform } from 'stream'
-import { createReadStream, createWriteStream, promises as fs, WriteStream } from 'fs'
+import { createReadStream, createWriteStream, promises as fs, ReadStream, WriteStream } from 'fs'
 import { exec } from 'child_process'
 import { tmpdir } from 'os'
 import { URL } from 'url'
 import { join } from 'path'
 import { once } from 'events'
-import got, { Options, Response } from 'got'
-import { MessageType, WAMessageContent, WAProto, WAGenericMediaMessage, WAMediaUpload, MediaType, DownloadableMessage, WAMediaUploadFunction, MediaConnInfo, CommonSocketConfig } from '../Types'
+import { MessageType, WAMessageContent, WAProto, WAGenericMediaMessage, WAMediaUpload, MediaType, DownloadableMessage } from '../Types'
 import { generateMessageID } from './generics'
 import { hkdf } from './crypto'
 import { DEFAULT_ORIGIN, MEDIA_PATH_MAP } from '../Defaults'
+
+const getTmpFilesDirectory = () => tmpdir()
+
+const getImageProcessingLibrary = async() => {
+    const [jimp, sharp] = await Promise.all([
+        (async() => {
+            const jimp = await (
+                import('jimp')
+                    .catch(() => { })
+            )
+            return jimp
+        })(),
+        (async() => {
+            const sharp = await (
+                import('sharp')
+                    .catch(() => { })
+            )
+            return sharp
+        })()
+    ])
+    if(sharp) return { sharp }
+    if(jimp) return { jimp }
+
+    throw new Boom('No image processing library available')
+}
 
 export const hkdfInfoKey = (type: MediaType) => {
     let str: string = type
@@ -51,17 +76,27 @@ const extractVideoThumb = async (
         })
     }) as Promise<void>
 
-export const compressImage = async (bufferOrFilePath: Readable | Buffer | string) => {
+export const extractImageThumb = async (bufferOrFilePath: Readable | Buffer | string) => {
     if(bufferOrFilePath instanceof Readable) {
         bufferOrFilePath = await toBuffer(bufferOrFilePath)
     }
-    const { read, MIME_JPEG, RESIZE_BILINEAR } = await import('jimp')
-    const jimp = await read(bufferOrFilePath as any)
-    const result = await jimp
-        .quality(50)
-        .resize(32, 32, RESIZE_BILINEAR)
-        .getBufferAsync(MIME_JPEG)
-    return result
+    const lib = await getImageProcessingLibrary()
+    if('sharp' in lib) {
+        const result = await lib.sharp!.default(bufferOrFilePath)
+            .resize(32, 32)
+            .jpeg({ quality: 50 })
+            .toBuffer()
+        return result
+    } else {
+        const { read, MIME_JPEG, RESIZE_BILINEAR } = lib.jimp
+
+        const jimp = await read(bufferOrFilePath as any)
+        const result = await jimp
+            .quality(50)
+            .resize(32, 32, RESIZE_BILINEAR)
+            .getBufferAsync(MIME_JPEG)
+        return result
+    }
 }
 export const generateProfilePicture = async (mediaUpload: WAMediaUpload) => {
     let bufferOrFilePath: Buffer | string
@@ -72,16 +107,30 @@ export const generateProfilePicture = async (mediaUpload: WAMediaUpload) => {
     } else {
         bufferOrFilePath = await toBuffer(mediaUpload.stream)
     }
-    
-    const { read, MIME_JPEG, RESIZE_BILINEAR } = await import('jimp')
-    const jimp = await read(bufferOrFilePath as any)
-    const min = Math.min(jimp.getWidth (), jimp.getHeight ())
-    const cropped = jimp.crop (0, 0, min, min)
-    return {
-        img: await cropped
+
+    const lib = await getImageProcessingLibrary()
+    let img: Promise<Buffer>
+    if('sharp' in lib) {
+        img = lib.sharp!.default(bufferOrFilePath)
+            .resize(640, 640)
+            .jpeg({
+                quality: 50,
+            })
+            .toBuffer()
+    } else {
+        const { read, MIME_JPEG, RESIZE_BILINEAR } = lib.jimp
+        const jimp = await read(bufferOrFilePath as any)
+        const min = Math.min(jimp.getWidth(), jimp.getHeight())
+        const cropped = jimp.crop(0, 0, min, min)
+
+        img = cropped
             .quality(50)
             .resize(640, 640, RESIZE_BILINEAR)
-            .getBufferAsync(MIME_JPEG),
+            .getBufferAsync(MIME_JPEG)
+    }
+    
+    return {
+        img: await img,
     }
 }
 /** gets the SHA256 of the given media message */
@@ -89,15 +138,17 @@ export const mediaMessageSHA256B64 = (message: WAMessageContent) => {
     const media = Object.values(message)[0] as WAGenericMediaMessage
     return media?.fileSha256 && Buffer.from(media.fileSha256).toString ('base64')
 }
-export async function getAudioDuration (buffer: Buffer | string) {
-    const musicMetadata = await import ('music-metadata')
+export async function getAudioDuration (buffer: Buffer | string | Readable) {
+    const musicMetadata = await import('music-metadata')
     let metadata: IAudioMetadata
     if(Buffer.isBuffer(buffer)) {
         metadata = await musicMetadata.parseBuffer(buffer, null, { duration: true })
-    } else {
+    } else if(typeof buffer === 'string') {
         const rStream = createReadStream(buffer)
         metadata = await musicMetadata.parseStream(rStream, null, { duration: true })
         rStream.close()
+    } else {
+        metadata = await musicMetadata.parseStream(buffer, null, { duration: true })
     }
     return metadata.format.duration;
 }
@@ -132,10 +183,10 @@ export async function generateThumbnail(
 ) {
     let thumbnail: string
     if(mediaType === 'image') {
-        const buff = await compressImage(file)
+        const buff = await extractImageThumb(file)
         thumbnail = buff.toString('base64')
     } else if(mediaType === 'video') {
-        const imgFilename = join(tmpdir(), generateMessageID() + '.jpg')
+        const imgFilename = join(getTmpFilesDirectory(), generateMessageID() + '.jpg')
         try {
             await extractVideoThumb(file, imgFilename, '00:00:00', { width: 32, height: 32 })
             const buff = await fs.readFile(imgFilename)
@@ -150,7 +201,8 @@ export async function generateThumbnail(
     return thumbnail
 }
 export const getGotStream = async(url: string | URL, options: Options & { isStream?: true } = {}) => {
-    const fetched = got.stream(url, { ...options, isStream: true })
+    const { default: { stream: gotStream }} = await import('got')
+    const fetched = gotStream(url, { ...options, isStream: true })
     await new Promise((resolve, reject) => {
         fetched.once('error', reject)
         fetched.once('response', ({ statusCode }: Response) => {
@@ -167,21 +219,27 @@ export const getGotStream = async(url: string | URL, options: Options & { isStre
     })
     return fetched
 } 
-export const encryptedStream = async(media: WAMediaUpload, mediaType: MediaType, saveOriginalFileIfRequired = true) => {
+export const encryptedStream = async(
+    media: WAMediaUpload, 
+    mediaType: MediaType,
+    saveOriginalFileIfRequired = true
+) => {
     const { stream, type } = await getStream(media)
 
     const mediaKey = Crypto.randomBytes(32)
     const {cipherKey, iv, macKey} = getMediaKeys(mediaKey, mediaType)
     // random name
-    const encBodyPath = join(tmpdir(), mediaType + generateMessageID() + '.enc')
-    const encWriteStream = createWriteStream(encBodyPath)
+    //const encBodyPath = join(getTmpFilesDirectory(), mediaType + generateMessageID() + '.enc')
+    // const encWriteStream = createWriteStream(encBodyPath)
+    const encWriteStream = new Readable({ read: () => {} })
+
     let bodyPath: string
     let writeStream: WriteStream
     let didSaveToTmpPath = false
     if(type === 'file') {
         bodyPath = (media as any).url
     } else if(saveOriginalFileIfRequired) {
-        bodyPath = join(tmpdir(), mediaType + generateMessageID())
+        bodyPath = join(getTmpFilesDirectory(), mediaType + generateMessageID())
         writeStream = createWriteStream(bodyPath)
         didSaveToTmpPath = true
     }
@@ -195,38 +253,50 @@ export const encryptedStream = async(media: WAMediaUpload, mediaType: MediaType,
     const onChunk = (buff: Buffer) => {
         sha256Enc = sha256Enc.update(buff)
         hmac = hmac.update(buff)
-        encWriteStream.write(buff)
+        encWriteStream.push(buff)
     }
-    for await(const data of stream) {
-        fileLength += data.length
-        sha256Plain = sha256Plain.update(data)
-        if(writeStream) {
-            if(!writeStream.write(data)) await once(writeStream, 'drain')
+    
+    try {
+        for await(const data of stream) {
+            fileLength += data.length
+            sha256Plain = sha256Plain.update(data)
+            if(writeStream) {
+                if(!writeStream.write(data)) await once(writeStream, 'drain')
+            }
+            onChunk(aes.update(data))
         }
-        onChunk(aes.update(data))
-    }
-    onChunk(aes.final())
-
-    const mac = hmac.digest().slice(0, 10)
-    sha256Enc = sha256Enc.update(mac)
+        onChunk(aes.final())
     
-    const fileSha256 = sha256Plain.digest()
-    const fileEncSha256 = sha256Enc.digest()
+        const mac = hmac.digest().slice(0, 10)
+        sha256Enc = sha256Enc.update(mac)
+        
+        const fileSha256 = sha256Plain.digest()
+        const fileEncSha256 = sha256Enc.digest()
+        
+        encWriteStream.push(mac)
+        encWriteStream.push(null)
     
-    encWriteStream.write(mac)
-    encWriteStream.end()
+        writeStream && writeStream.end()
+    
+        return {
+            mediaKey,
+            encWriteStream,
+            bodyPath,
+            mac,
+            fileEncSha256,
+            fileSha256,
+            fileLength,
+            didSaveToTmpPath
+        }
+    } catch(error) {
+        encWriteStream.destroy(error)
+        writeStream.destroy(error)
+        aes.destroy(error)
+        hmac.destroy(error)
+        sha256Plain.destroy(error)
+        sha256Enc.destroy(error)
 
-    writeStream && writeStream.end()
-
-    return {
-        mediaKey,
-        encBodyPath,
-        bodyPath,
-        mac,
-        fileEncSha256,
-        fileSha256,
-        fileLength,
-        didSaveToTmpPath
+        throw error
     }
 }
 

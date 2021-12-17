@@ -494,9 +494,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
     const handleReceipt = async(node: BinaryNode) => {
         let shouldAck = true
+
         const { attrs, content } = node
+        const isNodeFromMe = areJidsSameUser(attrs.from, authState.creds.me?.id)
         const remoteJid = attrs.recipient || attrs.from 
-        const fromMe = attrs.recipient ? false : true
+        const fromMe = isNodeFromMe || (attrs.recipient ? false : true)
 
         const ids = [attrs.id]
         if(Array.isArray(content)) {
@@ -512,7 +514,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         }
 
         const status = getStatusFromReceiptType(attrs.type)
-        if(typeof status !== 'undefined' && !areJidsSameUser(attrs.from, authState.creds.me?.id)) {
+        if(typeof status !== 'undefined' && !isNodeFromMe) {
             ev.emit('messages.update', ids.map(id => ({
                 key: { ...key, id },
                 update: { status }
@@ -520,6 +522,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         }
 
         if(attrs.type === 'retry') {
+            // correctly set who is asking for the retry
+            key.participant = key.participant || attrs.from
             if(key.fromMe) {
                 try {
                     logger.debug({ attrs }, 'recv retry request')
