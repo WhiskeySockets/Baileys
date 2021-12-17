@@ -2,7 +2,7 @@
 import got from "got"
 import { Boom } from "@hapi/boom"
 import { SocketConfig, MediaConnInfo, AnyMessageContent, MiscMessageGenerationOptions, WAMediaUploadFunction, MessageRelayOptions } from "../Types"
-import { encodeWAMessage, generateMessageID, generateWAMessage, encryptSenderKeyMsgSignalProto, encryptSignalProto, extractDeviceJids, jidToSignalProtocolAddress, parseAndInjectE2ESessions } from "../Utils"
+import { encodeWAMessage, generateMessageID, generateWAMessage, encryptSenderKeyMsgSignalProto, encryptSignalProto, extractDeviceJids, jidToSignalProtocolAddress, parseAndInjectE2ESessions, getWAUploadToServer } from "../Utils"
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, jidDecode, jidEncode, jidNormalizedUser, S_WHATSAPP_NET, BinaryNodeAttributes, JidWithDevice, reduceBinaryNodeToDictionary } from '../WABinary'
 import { proto } from "../../WAProto"
 import { WA_DEFAULT_EPHEMERAL, DEFAULT_ORIGIN, MEDIA_PATH_MAP } from "../Defaults"
@@ -420,53 +420,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
         return msgId
     } 
 
-    const waUploadToServer: WAMediaUploadFunction = async(stream, { mediaType, fileEncSha256B64, timeoutMs }) => {
-		// send a query JSON to obtain the url & auth token to upload our media
-		let uploadInfo = await refreshMediaConn(false)
-
-		let mediaUrl: string
-        const hosts = [ ...config.customUploadHosts, ...uploadInfo.hosts.map(h => h.hostname) ]
-		for (let hostname of hosts) {
-			const auth = encodeURIComponent(uploadInfo.auth) // the auth token
-			const url = `https://${hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
-			
-			try {
-				const {body: responseText} = await got.post(
-					url, 
-					{
-						headers: { 
-							'Content-Type': 'application/octet-stream',
-							'Origin': DEFAULT_ORIGIN
-						},
-						agent: {
-							https: config.agent
-						},
-						body: stream,
-                        timeout: timeoutMs
-					}
-				)
-				const result = JSON.parse(responseText)
-				mediaUrl = result?.url
-				
-				if (mediaUrl) break
-				else {
-					uploadInfo = await refreshMediaConn(true)
-					throw new Error(`upload failed, reason: ${JSON.stringify(result)}`)
-				}
-			} catch (error) {
-				const isLast = hostname === hosts[uploadInfo.hosts.length-1]
-				logger.debug(`Error in uploading to ${hostname} (${error}) ${isLast ? '' : ', retrying...'}`)
-			}
-		}
-		if (!mediaUrl) {
-			throw new Boom(
-				'Media upload failed on all hosts',
-				{ statusCode: 500 }
-			)
-		}
-		return { mediaUrl }
-	}
-
+    const waUploadToServer = getWAUploadToServer(config, refreshMediaConn)
+    
 	return {
 		...sock,
         assertSessions,

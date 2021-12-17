@@ -2,6 +2,7 @@ import { DICTIONARIES_MAP, SINGLE_BYTE_TOKEN, SINGLE_BYTE_TOKEN_MAP, DICTIONARIE
 import { jidDecode, jidEncode } from './jid-utils';
 import { Binary, numUtf8Bytes } from '../../WABinary/Binary';
 import { Boom } from '@hapi/boom';
+import { proto } from '../../WAProto';
 
 const LIST1 = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '.', '�', '�', '�', '�'];
 const LIST2 = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'];
@@ -317,6 +318,18 @@ export const reduceBinaryNodeToDictionary = (node: BinaryNode, tag: string) => {
         }, { } as { [_: string]: string }
     )
     return dict
+}
+
+export const getBinaryNodeMessages = ({ content }: BinaryNode) => {
+    const msgs: proto.WebMessageInfo[] = []
+    if(Array.isArray(content)) {
+        for(const item of content) {
+            if(item.tag === 'message') {
+                msgs.push(proto.WebMessageInfo.decode(item.content as Buffer))
+            }
+        }
+    }
+    return msgs
 }
 
 export * from './jid-utils'

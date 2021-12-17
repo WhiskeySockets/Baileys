@@ -480,7 +480,7 @@ export const chatModificationToAppPatch = (
         if(mod.clear === 'all') {
             throw new Boom('not supported')
         } else {
-            const key = mod.clear.message
+            const key = mod.clear.messages[0]
             patch = {
                 syncAction: {
                     deleteMessageForMeAction: {
