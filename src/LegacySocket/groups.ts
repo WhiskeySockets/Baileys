@@ -45,11 +45,23 @@ const makeGroupsSocket = (config: LegacySocketConfig) => {
 			json: ['query', 'GroupMetadata', jid], 
 			expect200: true
 		}) 
-        metadata.participants = metadata.participants.map(p => (
-            { ...p, id: undefined, jid: jidNormalizedUser(p.id) }
-        ))
-		metadata.owner = jidNormalizedUser(metadata.owner)
-        return metadata as GroupMetadata
+
+		const meta: GroupMetadata = {
+			id: metadata.id,
+			subject: metadata.subject,
+			creation: +metadata.creation,
+			owner: jidNormalizedUser(metadata.owner),
+			desc: metadata.desc,
+			descOwner: metadata.descOwner,
+			participants: metadata.participants.map(
+				p => ({
+					id: jidNormalizedUser(p.id),
+					admin: p.isSuperAdmin ? 'super-admin' : p.isAdmin ? 'admin' : undefined
+				})
+			)
+		}
+
+		return meta
     }
     /** Get the metadata (works after you've left the group also) */
     const groupMetadataMinimal = async (jid: string) => {
