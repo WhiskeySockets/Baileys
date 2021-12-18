@@ -42,7 +42,6 @@ export const DEFAULT_LEGACY_CONNECTION_CONFIG: LegacySocketConfig = {
     waWebSocketUrl: 'wss://web.whatsapp.com/ws',
     phoneResponseTimeMs: 20_000,
     expectResponseTimeout: 60_000,
-    pendingRequestTimeoutMs: 60_000
 }
 
 export const MEDIA_PATH_MAP: { [T in MediaType]: string } = {

@@ -76,8 +76,6 @@ export type LegacySocketConfig = CommonSocketConfig<LegacyAuthenticationCreds> &
 	phoneResponseTimeMs: number
 	/** max time for WA server to respond before error with 422 */
     expectResponseTimeout: number
-
-	pendingRequestTimeoutMs: number
 }
 
 export type LegacyBaileysEventEmitter = CommonBaileysEventEmitter<LegacyAuthenticationCreds>

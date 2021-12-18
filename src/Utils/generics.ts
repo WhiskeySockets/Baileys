@@ -1,7 +1,10 @@
 import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
 import { platform, release } from 'os'
+import { Logger } from 'pino'
+import { ConnectionState } from '..'
 import { proto } from '../../WAProto'
+import { CommonBaileysEventEmitter, DisconnectReason } from '../Types'
 import { Binary } from '../WABinary'
 
 const PLATFORM_MAP = {
@@ -177,3 +180,39 @@ export async function promiseTimeout<T>(ms: number, promise: (resolve: (v?: T)=>
 }
 // generate a random ID to attach to a message
 export const generateMessageID = () => 'BAE5' + randomBytes(6).toString('hex').toUpperCase()
+
+export const bindWaitForConnectionUpdate = (ev: CommonBaileysEventEmitter<any>) => (
+    async(check: (u: Partial<ConnectionState>) => boolean, timeoutMs?: number) => {
+        let listener: (item: Partial<ConnectionState>) => void
+        await (
+            promiseTimeout(
+                timeoutMs, 
+                (resolve, reject) => {
+                    listener = (update) => {
+                        if(check(update)) {
+                            resolve()
+                        } else if(update.connection == 'close') {
+							reject(update.lastDisconnect?.error || new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed }))
+						}
+					}
+                    ev.on('connection.update', listener)
+                }
+            )
+            .finally(() => (
+				ev.off('connection.update', listener)
+			))
+        )
+    }
+)
+
+export const printQRIfNecessaryListener = (ev: CommonBaileysEventEmitter<any>, logger: Logger) => {
+    ev.on('connection.update', async({ qr }) => {
+        if(qr) {
+            const QR = await import('qrcode-terminal')
+                .catch(err => {
+                    logger.error('QR code terminal not added as dependency')
+                })
+            QR?.generate(qr, { small: true })
+        }
+    })
+}

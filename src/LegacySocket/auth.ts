@@ -1,7 +1,7 @@
 import { Boom } from '@hapi/boom'
 import EventEmitter from "events"
-import { LegacyBaileysEventEmitter, BaileysEventMap, LegacySocketConfig, CurveKeyPair, WAInitResponse, ConnectionState, DisconnectReason, LegacyAuthenticationCreds } from "../Types"
-import { newLegacyAuthCreds, promiseTimeout, computeChallengeResponse, validateNewConnection, Curve } from "../Utils"
+import { LegacyBaileysEventEmitter, LegacySocketConfig, CurveKeyPair, WAInitResponse, ConnectionState, DisconnectReason } from "../Types"
+import { newLegacyAuthCreds, bindWaitForConnectionUpdate, computeChallengeResponse, validateNewConnection, Curve, printQRIfNecessaryListener } from "../Utils"
 import { makeSocket } from "./socket"
 
 const makeAuthSocket = (config: LegacySocketConfig) => {
@@ -10,7 +10,6 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 		version,
 		browser,
 		connectTimeoutMs,
-		pendingRequestTimeoutMs,
 		printQRInTerminal,
 		auth: initialAuthInfo
 	} = config
@@ -74,34 +73,6 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 			new Boom('Logged Out', { statusCode: DisconnectReason.loggedOut })
 		)
 	}
-	/** Waits for the connection to WA to open up */
-	const waitForConnection = async(waitInfinitely: boolean = false) => {
-        if(state.connection === 'open') return
-
-        let listener: (item: BaileysEventMap<LegacyAuthenticationCreds>['connection.update']) => void
-		const timeout = waitInfinitely ? undefined : pendingRequestTimeoutMs
-        if(timeout < 0) {
-            throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
-        }
-
-        await (
-            promiseTimeout(
-                timeout, 
-                (resolve, reject) => {
-                    listener = ({ connection, lastDisconnect }) => {
-						if(connection === 'open') resolve()
-						else if(connection == 'close') {
-							reject(lastDisconnect.error || new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed }))
-						}
-					}
-                    ev.on('connection.update', listener)
-                }
-            )
-            .finally(() => (
-				ev.off('connection.update', listener)
-			))
-        )
-    }
 
 	const updateEncKeys = () => {
 		// update the keys so we can decrypt traffic
@@ -246,14 +217,7 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 	})
 
 	if(printQRInTerminal) {
-		ev.on('connection.update', async({ qr }) => {
-			if(qr) {
-				const QR = await import('qrcode-terminal').catch(err => {
-					logger.error('QR code terminal not added as dependency')
-				})
-				QR?.generate(qr, { small: true })
-			}
-		})
+		printQRIfNecessaryListener(ev, logger)
 	}
 
 	return {
@@ -261,9 +225,10 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 		state,
 		authInfo,
 		ev,
-		waitForConnection,
 		canLogin,
-		logout
+		logout,
+        /** Waits for the connection to WA to reach a state */
+        waitForConnectionUpdate: bindWaitForConnectionUpdate(ev)
 	}
 }
 export default makeAuthSocket
