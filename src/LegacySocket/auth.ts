@@ -220,6 +220,16 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 		printQRIfNecessaryListener(ev, logger)
 	}
 
+	process.nextTick(() => {
+        ev.emit('connection.update', { 
+			connection: 'connecting', 
+			receivedPendingNotifications: false, 
+			legacy: {
+				phoneConnected: false
+			} 
+		})
+    })
+
 	return {
 		...socket,
 		state,
