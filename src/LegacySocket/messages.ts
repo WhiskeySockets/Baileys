@@ -131,19 +131,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 			}
 		}
 
-		const ephemeralProtocolMsg = message.message?.ephemeralMessage?.message?.protocolMessage
-        if (
-            ephemeralProtocolMsg && 
-            ephemeralProtocolMsg.type === proto.ProtocolMessage.ProtocolMessageType.EPHEMERAL_SETTING
-        ) {
-            chatUpdate.ephemeralSettingTimestamp = message.messageTimestamp
-            chatUpdate.ephemeralExpiration = ephemeralProtocolMsg.ephemeralExpiration
-
-			if(isJidGroup(jid)) {
-				emitGroupUpdate({ ephemeralDuration: ephemeralProtocolMsg.ephemeralExpiration || null })
-			}
-        }
-		const protocolMessage = message.message?.protocolMessage
+		const protocolMessage = message.message?.protocolMessage || message.message?.ephemeralMessage?.message?.protocolMessage
         // if it's a message to delete another message
         if (protocolMessage) {
             switch (protocolMessage.type) {
@@ -158,6 +146,14 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 						}
 					])
                     return
+				case proto.ProtocolMessage.ProtocolMessageType.EPHEMERAL_SETTING:
+					chatUpdate.ephemeralSettingTimestamp = message.messageTimestamp
+            		chatUpdate.ephemeralExpiration = protocolMessage.ephemeralExpiration
+
+					if(isJidGroup(jid)) {
+						emitGroupUpdate({ ephemeralDuration: protocolMessage.ephemeralExpiration || null })
+					}
+					break
                 default:
                     break
             }
