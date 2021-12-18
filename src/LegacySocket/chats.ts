@@ -13,7 +13,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		setQuery,
 		query, 
 		sendNode,
-		getState
+		state
 	} = sock
 
 	const chatsDebounceTimeout = debouncedTimeout(10_000, () => sendChatsQuery(1))
@@ -212,10 +212,10 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 	})
 	// User Profile Name Updates
 	socketEvents.on('CB:Conn,pushname', json => {
-		const { legacy: { user }, connection } = getState()
+		const { legacy: { user }, connection } = state
 		if(connection === 'open' && json[1].pushname !== user.name) {
 			user.name = json[1].pushname
-			ev.emit('connection.update', { legacy: { ...getState().legacy, user } })
+			ev.emit('connection.update', { legacy: { ...state.legacy, user } })
 		}
 	})
 	// read updates
@@ -397,7 +397,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 					}
 				]
 			)
-			ev.emit('contacts.update', [{ id: getState().legacy!.user!.id, status }])
+			ev.emit('contacts.update', [{ id: state.legacy!.user!.id, status }])
 			return response
 		},
 		/** Updates business profile. */
@@ -420,9 +420,9 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 			)) as any as {status: number, pushname: string}
 
 			if(config.emitOwnEvents) {
-				const user = { ...getState().legacy!.user!, name }
+				const user = { ...state.legacy!.user!, name }
 				ev.emit('connection.update', { legacy: {
-					...getState().legacy, user
+					...state.legacy, user
 				} })
 				ev.emit('contacts.update', [{ id: user.id, name }])
 			}
@@ -446,7 +446,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 				]
 			}
 
-			const user = getState().legacy?.user
+			const user = state.legacy?.user
 			const { eurl } = await this.setQuery ([query], [WAMetric.picture, 136], tag) as { eurl: string, status: number }
 			
 			if(config.emitOwnEvents) {
@@ -454,7 +454,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 					user.imgUrl = eurl
 					ev.emit('connection.update', {
 						legacy: {
-							...getState().legacy,
+							...state.legacy,
 							user
 						}
 					})

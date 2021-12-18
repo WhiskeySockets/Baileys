@@ -13,7 +13,7 @@ const makeGroupsSocket = (config: LegacySocketConfig) => {
 		generateMessageTag,
 		currentEpoch,
 		setQuery,
-		getState
+		state
 	} = sock
 
 	/** Generic function for group queries */
@@ -23,7 +23,7 @@ const makeGroupsSocket = (config: LegacySocketConfig) => {
 			{
 				tag: 'group',
 				attrs: {
-					author: getState().legacy?.user?.id,
+					author: state.legacy?.user?.id,
 					id: tag,
 					type: type,
 					jid: jid,
@@ -217,7 +217,7 @@ const makeGroupsSocket = (config: LegacySocketConfig) => {
 				subject: result.name,
 				id: jid,
 				creation: undefined,
-				owner: getState().legacy?.user?.id,
+				owner: state.legacy?.user?.id,
 				participants: result.recipients!.map(({ id }) => (
 					{ id: jidNormalizedUser(id), isAdmin: false, isSuperAdmin: false }
 				))

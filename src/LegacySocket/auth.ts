@@ -258,9 +258,9 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 
 	return {
 		...socket,
+		state,
+		authInfo,
 		ev,
-		getState: () => state,
-		getAuthInfo: () => authInfo,
 		waitForConnection,
 		canLogin,
 		logout

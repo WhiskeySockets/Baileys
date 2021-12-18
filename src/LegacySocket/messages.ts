@@ -22,7 +22,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 		generateMessageTag,
 		currentEpoch,
 		setQuery,
-		getState
+		state
 	} = sock
 
 	let mediaConn: Promise<MediaConnInfo>
@@ -161,7 +161,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 
 		// check if the message is an action 
 		if (message.messageStubType) {
-			const { user } = getState().legacy!
+			const { user } = state.legacy!
 			//let actor = jidNormalizedUser (message.participant)
 			let participants: string[]
 			const emitParticipantsUpdate = (action: ParticipantAction) => (
@@ -257,7 +257,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 				}
 			]
 		}
-		const isMsgToMe = areJidsSameUser(message.key.remoteJid, getState().legacy.user?.id || '')
+		const isMsgToMe = areJidsSameUser(message.key.remoteJid, state.legacy.user?.id || '')
         const flag = isMsgToMe ? WAFlag.acknowledge : WAFlag.ignore // acknowledge when sending message to oneself
         const mID = message.key.id
 		const finalState = isMsgToMe ? WAMessageStatus.READ : WAMessageStatus.SERVER_ACK
@@ -353,7 +353,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 		}
 		const keyPartial = { 
 			remoteJid: jidNormalizedUser(attributes.to),
-			fromMe: areJidsSameUser(attributes.from, getState().legacy?.user?.id || ''),
+			fromMe: areJidsSameUser(attributes.from, state.legacy?.user?.id || ''),
 		}
 		const updates = ids.map<MessageInfoUpdate>(id => ({
 			key: { ...keyPartial, id },
@@ -491,7 +491,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 			content: AnyMessageContent,
 			options: MiscMessageGenerationOptions & { waitForAck?: boolean } = { waitForAck: true }
 		) => {
-			const userJid = getState().legacy.user?.id
+			const userJid = state.legacy.user?.id
 			if(
 				typeof content === 'object' &&
 				'disappearingMessagesInChat' in content &&
