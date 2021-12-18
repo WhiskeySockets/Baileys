@@ -28,7 +28,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		})
 	)
 
-	const fetchImageUrl = async(jid: string) => {
+	const profilePictureUrl = async(jid: string) => {
 		const response = await query({ 
 			json: ['query', 'ProfilePicThumb', jid], 
 			expect200: false, 
@@ -63,7 +63,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 				ev.emit('chats.update', [ { id: jid, archive: false } ])
 				break
 			case 'pin':
-				ev.emit('chats.update', [ { id: jid, pin: +attributes.pin } ])
+				ev.emit('chats.update', [ { id: jid, pin: attributes.pin ? +attributes.pin : null } ])
 				break
 			case 'star':
 			case 'unstar':
@@ -102,6 +102,26 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 			lastKnownPresence: update.type as WAPresence
 		}
 		return { id, presences: { [participant]: presence } }
+	}
+
+	const chatRead = async(fromMessage: WAMessageKey, count: number) => {
+		await setQuery (
+			[
+				{ 
+					tag: 'read',
+					attrs: { 
+						jid: fromMessage.remoteJid, 
+						count: count.toString(), 
+						index: fromMessage.id, 
+						owner: fromMessage.fromMe ? 'true' : 'false'
+					}
+				}
+			], 
+			[ WAMetric.read, WAFlag.ignore ]
+		)
+		if(config.emitOwnEvents) {
+			ev.emit('chats.update', [{ id: fromMessage.remoteJid, unreadCount: count < 0 ? -1 : 0 }])
+		}	
 	}
 
 	ev.on('connection.update', async({ connection }) => {
@@ -216,7 +236,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 	socketEvents.on('CB:Cmd,type:picture', async json => {
 		json = json[1]
 		const id = jidNormalizedUser(json.jid)
-		const imgUrl = await fetchImageUrl(id).catch(() => '')
+		const imgUrl = await profilePictureUrl(id).catch(() => '')
 		
 		ev.emit('contacts.update', [ { id, imgUrl } ])
 	})
@@ -254,25 +274,8 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 	return {
 		...sock,
 		sendChatsQuery,
-		fetchImageUrl,
-		chatRead: async(fromMessage: WAMessageKey, count: number) => {
-			await setQuery (
-				[
-					{ tag: 'read',
-						attrs: { 
-							jid: fromMessage.remoteJid, 
-							count: count.toString(), 
-							index: fromMessage.id, 
-							owner: fromMessage.fromMe ? 'true' : 'false'
-						}
-					}
-				], 
-				[ WAMetric.read, WAFlag.ignore ]
-			)
-			if(config.emitOwnEvents) {
-				ev.emit ('chats.update', [{ id: fromMessage.remoteJid, unreadCount: count < 0 ? -1 : 0 }])
-			}	
-		},
+		profilePictureUrl,
+		chatRead,
 		/**
 		 * Modify a given chat (archive, pin etc.)
 		 * @param jid the ID of the person/group you are modifiying
@@ -300,7 +303,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 				}
 			} else if('clear' in modification) {
 				chatAttrs.type = 'clear'
-				chatAttrs.modify_tag = Math.round(Math.random ()*1000000).toString()
+				chatAttrs.modify_tag = Math.round(Math.random()*1000000).toString()
 				if(modification.clear !== 'all') {
 					data = modification.clear.messages.map(({ id, fromMe }) => (
 						{ 
@@ -317,6 +320,8 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 						attrs: { owner: (!!fromMe).toString(), index: id }
 					}
 				))
+			} else if('markRead' in modification) {
+				return chatRead(index!, modification.markRead ? 0 : -1)
 			}
 
 			if(index) {
@@ -326,8 +331,10 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 
 			const node = { tag: 'chat', attrs: chatAttrs, content: data }
 			const response = await setQuery([node], [ WAMetric.chat, WAFlag.ignore ])
-			// apply it and emit events
-			executeChatModification(node)
+			if(config.emitOwnEvents) {
+				// apply it and emit events
+				executeChatModification(node)
+			}
 			return response
 		},
 		/** 
