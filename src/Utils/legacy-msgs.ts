@@ -30,39 +30,42 @@ export const decodeWAMessage = (
         if(typeof data === 'string' || !possiblyEnc) {
             json = JSON.parse(data.toString()) // parse the JSON
         } else {
-            
-            const { macKey, encKey } = auth || {}
-            if (!macKey || !encKey) {
-                throw new Boom('recieved encrypted buffer when auth creds unavailable', { data: message, statusCode: DisconnectReason.badSession })
-            }
-            /* 
-                If the data recieved was not a JSON, then it must be an encrypted message.
-                Such a message can only be decrypted if we're connected successfully to the servers & have encryption keys
-            */
-            if (fromMe) {
-                tags = [data[0], data[1]]
-                data = data.slice(2, data.length)
-            }
-            
-            const checksum = data.slice(0, 32) // the first 32 bytes of the buffer are the HMAC sign of the message
-            data = data.slice(32, data.length) // the actual message
-            const computedChecksum = hmacSign(data, macKey) // compute the sign of the message we recieved using our macKey
-            
-            if (checksum.equals(computedChecksum)) {
-                // the checksum the server sent, must match the one we computed for the message to be valid
-                const decrypted = aesDecrypt(data, encKey) // decrypt using AES
-                json = decodeBinaryNodeLegacy(decrypted, { index: 0 }) // decode the binary message into a JSON array
-            } else {
-                throw new Boom('Bad checksum', {
-                    data: {
-                        received: checksum.toString('hex'),
-                        computed: computedChecksum.toString('hex'),
-                        data: data.slice(0, 80).toString(),
-                        tag: messageTag,
-                        message: message.slice(0, 80).toString()
-                    },
-                    statusCode: DisconnectReason.badSession
-                })
+            try {
+                json = JSON.parse(data.toString())
+            } catch {
+                const { macKey, encKey } = auth || {}
+                if (!macKey || !encKey) {
+                    throw new Boom('recieved encrypted buffer when auth creds unavailable', { data: message, statusCode: DisconnectReason.badSession })
+                }
+                /* 
+                    If the data recieved was not a JSON, then it must be an encrypted message.
+                    Such a message can only be decrypted if we're connected successfully to the servers & have encryption keys
+                */
+                if (fromMe) {
+                    tags = [data[0], data[1]]
+                    data = data.slice(2, data.length)
+                }
+                
+                const checksum = data.slice(0, 32) // the first 32 bytes of the buffer are the HMAC sign of the message
+                data = data.slice(32, data.length) // the actual message
+                const computedChecksum = hmacSign(data, macKey) // compute the sign of the message we recieved using our macKey
+                
+                if (checksum.equals(computedChecksum)) {
+                    // the checksum the server sent, must match the one we computed for the message to be valid
+                    const decrypted = aesDecrypt(data, encKey) // decrypt using AES
+                    json = decodeBinaryNodeLegacy(decrypted, { index: 0 }) // decode the binary message into a JSON array
+                } else {
+                    throw new Boom('Bad checksum', {
+                        data: {
+                            received: checksum.toString('hex'),
+                            computed: computedChecksum.toString('hex'),
+                            data: data.slice(0, 80).toString(),
+                            tag: messageTag,
+                            message: message.slice(0, 80).toString()
+                        },
+                        statusCode: DisconnectReason.badSession
+                    })
+                }
             }
         }   
     }
