@@ -363,7 +363,7 @@ export const makeSocket = ({
     })
 
 	return {
-        type: 'legacy',
+        type: 'legacy' as 'legacy',
         ws,
         updateKeys: (info: { encKey: Buffer, macKey: Buffer }) => authInfo = info,
         waitForSocketOpen,

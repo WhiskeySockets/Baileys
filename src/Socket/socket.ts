@@ -540,7 +540,7 @@ export const makeSocket = ({
     ev.on('creds.update', update => Object.assign(creds, update))
 
 	return {
-        type: 'md',
+        type: 'md' as 'md',
         ws,
         ev,
         authState: {
