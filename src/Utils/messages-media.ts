@@ -461,7 +461,7 @@ export function extensionForMediaMessage(message: WAMessageContent) {
     return extension
 }
 
-export const getWAUploadToServer = ({ customUploadHosts, agent, logger }: CommonSocketConfig<any>, refreshMediaConn: (force: boolean) => Promise<MediaConnInfo>): WAMediaUploadFunction => {
+export const getWAUploadToServer = ({ customUploadHosts, fetchAgent, logger }: CommonSocketConfig<any>, refreshMediaConn: (force: boolean) => Promise<MediaConnInfo>): WAMediaUploadFunction => {
     return async(stream, { mediaType, fileEncSha256B64, timeoutMs }) => {
 		const { default: got } = await import('got')
         // send a query JSON to obtain the url & auth token to upload our media
@@ -482,7 +482,7 @@ export const getWAUploadToServer = ({ customUploadHosts, agent, logger }: Common
 							'Origin': DEFAULT_ORIGIN
 						},
 						agent: {
-							https: agent
+							https: fetchAgent
 						},
 						body: stream,
                         timeout: timeoutMs
