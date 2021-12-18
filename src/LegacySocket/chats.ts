@@ -252,9 +252,13 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 	socketEvents.on('CB:action,,user', (json: BinaryNode) => {
 		if(Array.isArray(json.content)) {
 			const user = json.content[0].attrs
-			user.id = jidNormalizedUser(user.id)
+			if(user.id) {
+				user.id = jidNormalizedUser(user.id)
 			
-			//ev.emit('contacts.upsert', [user])
+				//ev.emit('contacts.upsert', [user])
+			} else {
+				logger.warn({ json }, 'recv unknown action')
+			}
 		}
 	})
 
