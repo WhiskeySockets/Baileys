@@ -62,7 +62,7 @@ export const makeSocket = ({
 	 * Send a message to the WA servers
 	 * @returns the tag attached in the message
 	 * */
-	const sendMessage = async(
+	const sendNode = async(
 		{ json, binaryTag, tag, longTag }: SocketSendMessageOptions
 	) => {
 		tag = tag || generateMessageTag(longTag)
@@ -204,7 +204,7 @@ export const makeSocket = ({
         }
     }
 	/** checks for phone connection */
-    const sendAdminTest = () => sendMessage({ json: ['admin', 'test'] })
+    const sendAdminTest = () => sendNode({ json: ['admin', 'test'] })
     /**
      * Wait for a message with a certain tag to be received
      * @param tag the message tag to await
@@ -266,7 +266,7 @@ export const makeSocket = ({
 		tag = tag || generateMessageTag(longTag)
         const { promise, cancelToken } = waitForMessage(tag, requiresPhoneConnection, timeoutMs)
         try {
-            await sendMessage({ json, tag, binaryTag })
+            await sendNode({ json, tag, binaryTag })
         } catch(error) {
             cancelToken()
             // swallow error
@@ -366,8 +366,7 @@ export const makeSocket = ({
         ws,
         updateKeys: (info: { encKey: Buffer, macKey: Buffer }) => authInfo = info,
         waitForSocketOpen,
-		sendRawMessage,
-		sendMessage,
+		sendNode,
 		generateMessageTag,
         waitForMessage,
         query,

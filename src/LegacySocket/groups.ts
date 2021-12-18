@@ -224,7 +224,7 @@ const makeGroupsSocket = (config: LegacySocketConfig) => {
 			}
 			return metadata
 		},
-		inviteCode: async(jid: string) => {
+		groupInviteCode: async(jid: string) => {
 			const response = await sock.query({
 				json: ['query', 'inviteCode', jid], 
 				expect200: true, 

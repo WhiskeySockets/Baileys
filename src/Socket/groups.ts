@@ -124,7 +124,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 			const inviteNode = getBinaryNodeChild(result, 'invite')
 			return inviteNode.attrs.code
 		},
-	        groupRevokeInvite: async (jid: string) => {
+		groupRevokeInvite: async (jid: string) => {
 			const result = await groupQuery(jid, 'set', [{ tag: 'invite', attrs: {} }])
 			const inviteNode = getBinaryNodeChild(result, 'invite')
 			return inviteNode.attrs.code

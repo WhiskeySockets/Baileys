@@ -64,7 +64,7 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 	 */
 	const logout = async() => {
         if(state.connection === 'open') {
-            await socket.sendMessage({
+            await socket.sendNode({
 				json: ['admin', 'Conn', 'disconnect'],
 				tag: 'goodbye'
 			})
@@ -178,7 +178,7 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
                     return
                 }
                 logger.info('sending login request')
-                socket.sendMessage({
+                socket.sendNode({
 					json,
 					tag: loginTag
 				})

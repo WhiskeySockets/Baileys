@@ -22,7 +22,7 @@ const startSock = () => {
 
         await sock.sendPresenceUpdate('paused', jid)
 
-        await sock.sendWAMessage(jid, msg)
+        await sock.sendMessage(jid, msg)
     }
     
     sock.ev.on('messages.upsert', async m => {

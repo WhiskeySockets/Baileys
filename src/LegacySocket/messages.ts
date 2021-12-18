@@ -249,7 +249,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
     }
 
 	/** Relay (send) a WAMessage; more advanced functionality to send a built WA Message, you may want to stick with sendMessage() */
-    const relayWAMessage = async(message: WAMessage, { waitForAck } = { waitForAck: true }) => {
+    const relayMessage = async(message: WAMessage, { waitForAck } = { waitForAck: true }) => {
 		const json: BinaryNode = {
 			tag: 'action',
 			attrs: { epoch: currentEpoch().toString(), type: 'relay' },
@@ -388,13 +388,18 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 
 	return {
 		...sock,
-		relayWAMessage,
+		relayMessage,
 		generateUrlInfo,
 		messageInfo: async(jid: string, messageID: string) => {
 			const { content }: BinaryNode = await query({
 				json: {
 					tag: 'query',
-					attrs: {type: 'message_info', index: messageID, jid: jid, epoch: currentEpoch().toString()}
+					attrs: {
+						type: 'message_info', 
+						index: messageID, 
+						jid: jid, 
+						epoch: currentEpoch().toString()
+					}
 				}, 
 				binaryTag: [WAMetric.queryRead, WAFlag.ignore], 
 				expect200: true,
@@ -419,7 +424,6 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 			return info
 		},
 		downloadMediaMessage: async(message: WAMessage, type: 'buffer' | 'stream' = 'buffer') => {
-
 			const downloadMediaMessage = async () => {
 				let mContent = extractMessageContent(message.message)
 				if (!mContent) throw new Boom('No message present', { statusCode: 400, data: message })
@@ -486,7 +490,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 				messages: getBinaryNodeMessages(node)
 			}
 		},
-		sendWAMessage: async(
+		sendMessage: async(
 			jid: string,
 			content: AnyMessageContent,
 			options: MiscMessageGenerationOptions & { waitForAck?: boolean } = { waitForAck: true }
@@ -526,7 +530,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 					}
 				)
 				
-				await relayWAMessage(msg, { waitForAck: options.waitForAck })
+				await relayMessage(msg, { waitForAck: options.waitForAck })
 				return msg
 			}
 		}

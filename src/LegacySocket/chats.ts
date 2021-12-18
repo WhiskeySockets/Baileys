@@ -12,14 +12,14 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		currentEpoch,
 		setQuery,
 		query, 
-		sendMessage,
+		sendNode,
 		getState
 	} = sock
 
 	const chatsDebounceTimeout = debouncedTimeout(10_000, () => sendChatsQuery(1))
 
 	const sendChatsQuery = (epoch: number) => (
-		sendMessage({
+		sendNode({
 			json: {
 				tag: 'query',
 				attrs: {type: 'chat', epoch: epoch.toString()}
@@ -108,27 +108,27 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		if(connection !== 'open') return
 		try {
 			await Promise.all([
-				sendMessage({
+				sendNode({
 					json: { tag: 'query', attrs: {type: 'contacts', epoch: '1'} },
 					binaryTag: [ WAMetric.queryContact, WAFlag.ignore ]
 				}),
-				sendMessage({
+				sendNode({
 					json: { tag: 'query', attrs: {type: 'status', epoch: '1'} },
 					binaryTag: [ WAMetric.queryStatus, WAFlag.ignore ]
 				}),
-				sendMessage({
+				sendNode({
 					json: { tag: 'query', attrs: {type: 'quick_reply', epoch: '1'} }, 
 					binaryTag: [ WAMetric.queryQuickReply, WAFlag.ignore ]
 				}),
-				sendMessage({
+				sendNode({
 					json: { tag: 'query', attrs: {type: 'label', epoch: '1'} },
 					binaryTag: [ WAMetric.queryLabel, WAFlag.ignore ]
 				}),
-				sendMessage({
+				sendNode({
 					json: { tag: 'query', attrs: {type: 'emoji', epoch: '1'} },
 					binaryTag: [ WAMetric.queryEmoji, WAFlag.ignore ] 
 				}),
-				sendMessage({
+				sendNode({
 					json: { 
 						tag: 'action', 
 						attrs: { type: 'set', epoch: '1' },
@@ -206,7 +206,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 			const update: Partial<Chat> = {
 				id: jidNormalizedUser(attrs.jid)
 			}
-			if (attrs.type === 'false') update.unreadCount = -1
+			if(attrs.type === 'false') update.unreadCount = -1
 			else update.unreadCount = 0
 
 			ev.emit('chats.update', [update])
@@ -277,7 +277,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		 * Modify a given chat (archive, pin etc.)
 		 * @param jid the ID of the person/group you are modifiying
 		 */
-		modifyChat: async(jid: string, modification: ChatModification, chatInfo: Pick<Chat, 'mute' | 'pin'>, index?: WAMessageKey) => {	 
+		chatModify: async( modification: ChatModification, jid: string, chatInfo: Pick<Chat, 'mute' | 'pin'>, index?: WAMessageKey) => {	 
 			let chatAttrs: BinaryNode['attrs'] = { jid: jid }
 			let data: BinaryNode[] | undefined = undefined
 			const stamp = unixTimestampSeconds()
@@ -335,12 +335,12 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		 * @param str phone number/jid you want to check for
 		 * @returns undefined if the number doesn't exists, otherwise the correctly formatted jid
 		 */
-		isOnWhatsApp: async (str: string) => {
+		onWhatsApp: async(str: string) => {
 			const { status, jid, biz } = await query({
 				json: ['query', 'exist', str], 
 				requiresPhoneConnection: false
 			})
-			if (status === 200) {
+			if(status === 200) {
 				return { 
 					exists: true, 
 					jid: jidNormalizedUser(jid), 
@@ -354,7 +354,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		 * @param type your presence
 		 */
 		sendPresenceUpdate: ( type: WAPresence, jid: string | undefined) => (
-			sendMessage({
+			sendNode({
 				binaryTag: [WAMetric.presence, WAFlag[type]], // weird stuff WA does
 				json: { 
 					tag: 'action',
@@ -373,7 +373,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		 * this returns nothing, you'll receive updates in chats.update event
 		 * */
 		presenceSubscribe: async (jid: string) => (
-			sendMessage({ json: ['action', 'presence', 'subscribe', jid] })
+			sendNode({ json: ['action', 'presence', 'subscribe', jid] })
 		),
 		/** Query the status of the person (see groupMetadata() for groups) */
 		getStatus: async(jid: string) => {
