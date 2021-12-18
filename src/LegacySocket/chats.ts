@@ -271,6 +271,10 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		ev.emit('blocklist.set', { blocklist })
 	})
 
+	socketEvents.on('ws-close', () => {
+		chatsDebounceTimeout.cancel()
+	})
+
 	return {
 		...sock,
 		sendChatsQuery,
