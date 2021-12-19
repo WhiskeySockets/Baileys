@@ -30,9 +30,7 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 	let initTimeout: NodeJS.Timeout
 
 	ws.on('phone-connection', ({ value: phoneConnected }) => {
-		if(phoneConnected !== state.legacy.phoneConnected) {
-			updateState({ legacy: { ...state.legacy, phoneConnected } })
-		}
+		updateState({ legacy: { ...state.legacy, phoneConnected } })
 	})
 	// add close listener
 	ws.on('ws-close', (error: Boom | Error) => {
@@ -222,11 +220,7 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 
 	process.nextTick(() => {
         ev.emit('connection.update', { 
-			connection: 'connecting', 
-			receivedPendingNotifications: false, 
-			legacy: {
-				phoneConnected: false
-			} 
+			...state
 		})
     })
 

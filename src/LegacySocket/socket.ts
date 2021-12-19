@@ -365,6 +365,7 @@ export const makeSocket = ({
 	return {
         type: 'legacy' as 'legacy',
         ws,
+        sendAdminTest,
         updateKeys: (info: { encKey: Buffer, macKey: Buffer }) => authInfo = info,
         waitForSocketOpen,
 		sendNode,
