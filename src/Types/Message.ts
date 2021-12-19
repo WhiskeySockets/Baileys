@@ -58,6 +58,16 @@ type Templatable = {
 
     footer?: string
 }
+type Listable = {
+    /** Sections of the List */
+    sections?: proto.ISection[]
+
+    /** Title of a List Message only */
+    title?: string
+
+    /** Text of the bnutton on the list (required) */
+    buttonText: string
+}
 type WithDimensions = {
     width?: number
     height?: number
@@ -93,7 +103,7 @@ export type AnyRegularMessageContent = (
     ({
 	    text: string
     } 
-    & Mentionable & Buttonable & Templatable) | 
+    & Mentionable & Buttonable & Templatable & Listable) | 
     AnyMediaMessageContent | 
     {
         contacts: {

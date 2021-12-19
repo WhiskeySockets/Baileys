@@ -264,7 +264,7 @@ const buttons = [
 
 const buttonMessage = {
     text: "Hi it's button message",
-    footerText: 'Hello World',
+    footer: 'Hello World',
     buttons: buttons,
     headerType: 1
 }
@@ -273,18 +273,46 @@ const sendMsg = await sock.sendMessage(id, buttonMessage)
 
 //send a template message!
 const templateButtons = [
-  {index: 1, urlButton: {displayText: '⭐ Star Baileys on GitHub!', url: 'https://github.com/adiwajshing/Baileys'}},
-  {index: 2, callButton: {displayText: 'Call me!', phoneNumber: '+1 (234) 5678-901'}},
-  {index: 3, quickReplyButton: {displayText: 'This is a reply, just like normal buttons!', id: 'id-like-buttons-message'}},
+    {index: 1, urlButton: {displayText: '⭐ Star Baileys on GitHub!', url: 'https://github.com/adiwajshing/Baileys'}},
+    {index: 2, callButton: {displayText: 'Call me!', phoneNumber: '+1 (234) 5678-901'}},
+    {index: 3, quickReplyButton: {displayText: 'This is a reply, just like normal buttons!', id: 'id-like-buttons-message'}},
 ]
 
-const buttonMessage = {
+const templateMessage = {
     text: "Hi it's a template message",
     footer: 'Hello World',
     templateButtons: templateButttons
 }
 
 const sendMsg = await sock.sendMessage(id, templateMessage)
+
+// send a list message!
+const sections = [
+    {
+	title: "Section 1",
+	rows: [
+	    {title: "Option 1", rowId: "option1"},
+	    {title: "Option 2", rowId: "option2", description: "This is a description"}
+	]
+    },
+   {
+	title: "Section 2",
+	rows: [
+	    {title: "Option 3", rowId: "option3"},
+	    {title: "Option 4", rowId: "option4", description: "This is a description V2"}
+	]
+    },
+]
+
+const listMessage = {
+  text: "This is a list",
+  footer: "nice footer, link: https://google.com",
+  title: "Amazing boldfaced list title",
+  buttonText: "Required, text on the button to vie the list",
+  sections
+}
+
+const sendMsg = await sock.sendMessage(id, listMessage)
 ```
 
 ### Media Messages

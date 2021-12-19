@@ -314,6 +314,18 @@ export const generateWAMessageContent = async(
 
 		m = { templateMessage }
 	}
+	
+	if ('sections' in message && !!message.sections) {
+		const listMessage: proto.IListMessage = {
+			sections: message.sections,
+			buttonText: message.buttonText,
+			title: message.title,
+			footerText: message.footer,
+			description: message.text
+		}
+
+		m = { listMessage }
+	}
 
 	if('viewOnce' in message && !!message.viewOnce) {
 		m = { viewOnceMessage: { message: m } }
