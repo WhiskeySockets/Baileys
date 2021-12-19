@@ -35,8 +35,8 @@
   },
   "dependencies": {
     "@hapi/boom": "^9.1.3",
+    "axios": "^0.24.0",
     "curve25519-js": "^0.0.4",
-    "got": "^11.8.1",
     "libsignal": "git+https://github.com/adiwajshing/libsignal-node",
     "music-metadata": "^7.4.1",
     "node-cache": "^5.1.2",
@@ -45,8 +45,8 @@
     "ws": "^8.0.0"
   },
   "optionalDependencies": {
-    "qrcode-terminal": "^0.12.0",
     "jimp": "^0.16.1",
+    "qrcode-terminal": "^0.12.0",
     "sharp": "^0.29.3"
   },
   "files": [

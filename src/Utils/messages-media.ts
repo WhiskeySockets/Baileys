@@ -1,6 +1,5 @@
 import type { Logger } from 'pino'
 import type { IAudioMetadata } from 'music-metadata'
-import type { Options, Response } from 'got'
 import { Boom } from '@hapi/boom'
 import * as Crypto from 'crypto'
 import { Readable, Transform } from 'stream'
@@ -14,6 +13,7 @@ import { MessageType, WAMessageContent, WAProto, WAGenericMediaMessage, WAMediaU
 import { generateMessageID } from './generics'
 import { hkdf } from './crypto'
 import { DEFAULT_ORIGIN, MEDIA_PATH_MAP } from '../Defaults'
+import { AxiosRequestConfig } from 'axios'
 
 const getTmpFilesDirectory = () => tmpdir()
 
@@ -169,7 +169,7 @@ export const getStream = async (item: WAMediaUpload) => {
     if(Buffer.isBuffer(item)) return { stream: toReadable(item), type: 'buffer' }
     if('stream' in item) return { stream: item.stream, type: 'readable' }
     if(item.url.toString().startsWith('http://') || item.url.toString().startsWith('https://')) {
-        return { stream: await getGotStream(item.url), type: 'remote' }
+        return { stream: await getHttpStream(item.url), type: 'remote' }
     }
     return { stream: createReadStream(item.url), type: 'file' }
 }
@@ -200,24 +200,10 @@ export async function generateThumbnail(
     
     return thumbnail
 }
-export const getGotStream = async(url: string | URL, options: Options & { isStream?: true } = {}) => {
-    const { default: { stream: gotStream }} = await import('got')
-    const fetched = gotStream(url, { ...options, isStream: true })
-    await new Promise((resolve, reject) => {
-        fetched.once('error', reject)
-        fetched.once('response', ({ statusCode }: Response) => {
-            if (statusCode >= 400) {
-                reject(
-					new Boom(
-                    'Invalid code (' + statusCode + ') returned', 
-                    { statusCode }
-                ))
-            } else {
-                resolve(undefined)
-            }
-        })
-    })
-    return fetched
+export const getHttpStream = async(url: string | URL, options: AxiosRequestConfig & { isStream?: true } = {}) => {
+    const { default: axios } = await import('axios')
+    const fetched = await axios.get(url.toString(), { ...options, responseType: 'stream' })
+    return fetched.data as Readable
 } 
 export const encryptedStream = async(
     media: WAMediaUpload, 
@@ -280,6 +266,7 @@ export const encryptedStream = async(
         encWriteStream.push(null)
     
         writeStream && writeStream.end()
+        stream.destroy()
 
         logger?.debug('encrypted data successfully')
     
@@ -300,6 +287,7 @@ export const encryptedStream = async(
         hmac.destroy(error)
         sha256Plain.destroy(error)
         sha256Enc.destroy(error)
+        stream.destroy(error)
 
         throw error
     }
@@ -343,7 +331,7 @@ export const downloadContentFromMessage = async(
         if(endChunk) rangeHeader += endChunk
     }
     // download the message
-    const fetched = await getGotStream(downloadUrl, {
+    const fetched = await getHttpStream(downloadUrl, {
         headers: { 
             Origin: DEFAULT_ORIGIN,
             Range: rangeHeader
@@ -468,7 +456,7 @@ export function extensionForMediaMessage(message: WAMessageContent) {
 
 export const getWAUploadToServer = ({ customUploadHosts, fetchAgent, logger }: CommonSocketConfig<any>, refreshMediaConn: (force: boolean) => Promise<MediaConnInfo>): WAMediaUploadFunction => {
     return async(stream, { mediaType, fileEncSha256B64, timeoutMs }) => {
-		const { default: got } = await import('got')
+		const { default: axios } = await import('axios')
         // send a query JSON to obtain the url & auth token to upload our media
 		let uploadInfo = await refreshMediaConn(false)
 
@@ -479,21 +467,19 @@ export const getWAUploadToServer = ({ customUploadHosts, fetchAgent, logger }: C
 			const url = `https://${hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
 			
 			try {
-				const {body: responseText} = await got.post(
-					url, 
-					{
+				const {data: result} = await axios.post(
+                    url,
+                    stream,
+					{   
 						headers: { 
 							'Content-Type': 'application/octet-stream',
 							'Origin': DEFAULT_ORIGIN
 						},
-						agent: {
-							https: fetchAgent
-						},
-						body: stream,
-                        timeout: timeoutMs
+						httpsAgent: fetchAgent,
+                        timeout: timeoutMs,
+                        responseType: 'json'
 					}
 				)
-				const result = JSON.parse(responseText)
 				
 				if(result?.url || result?.directPath) {
                     urls = {
