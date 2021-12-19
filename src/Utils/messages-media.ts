@@ -222,9 +222,12 @@ export const getGotStream = async(url: string | URL, options: Options & { isStre
 export const encryptedStream = async(
     media: WAMediaUpload, 
     mediaType: MediaType,
-    saveOriginalFileIfRequired = true
+    saveOriginalFileIfRequired = true,
+    logger?: Logger
 ) => {
     const { stream, type } = await getStream(media)
+
+    logger?.debug('fetched media stream')
 
     const mediaKey = Crypto.randomBytes(32)
     const {cipherKey, iv, macKey} = getMediaKeys(mediaKey, mediaType)
@@ -277,6 +280,8 @@ export const encryptedStream = async(
         encWriteStream.push(null)
     
         writeStream && writeStream.end()
+
+        logger?.debug('encrypted data successfully')
     
         return {
             mediaKey,

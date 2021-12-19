@@ -451,13 +451,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					jid,
 					content,
 					{
-						...options,
 						logger,
 						userJid,
                         // multi-device does not have this yet
 						//getUrlInfo: generateUrlInfo,
 						upload: waUploadToServer,
                         mediaCache: config.mediaCache,
+						...options,
 					}
 				)
                 const isDeleteMsg = 'delete' in content && !!content.delete

@@ -517,12 +517,12 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 					jid,
 					content,
 					{
-						...options,
 						logger,
 						userJid: userJid,
 						getUrlInfo: generateUrlInfo,
 						upload: waUploadToServer,
-						mediaCache: config.mediaCache
+						mediaCache: config.mediaCache,
+						...options,
 					}
 				)
 				
