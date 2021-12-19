@@ -199,8 +199,8 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 		owner: group.attrs.creator ? jidNormalizedUser(group.attrs.creator) : undefined,
 		desc,
 		descId,
-		restrict: !!getBinaryNodeChild(result, 'locked'),
-		announce: !!getBinaryNodeChild(result, 'announcement'),
+		restrict: !!getBinaryNodeChild(group, 'locked'),
+		announce: !!getBinaryNodeChild(group, 'announcement'),
 		participants: getBinaryNodeChildren(group, 'participant').map(
 			({ attrs }) => {
 				return {
