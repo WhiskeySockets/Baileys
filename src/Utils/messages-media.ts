@@ -324,19 +324,18 @@ export const downloadContentFromMessage = async(
             firstBlockIsIV = true
         }
     }
-    const endChunk = endByte ? toSmallestChunkSize(endByte || 0)+AES_CHUNK_SIZE : undefined
-    let rangeHeader: string | undefined = undefined
-    if(startChunk || endChunk) {
-        rangeHeader = `bytes=${startChunk}-`
-        if(endChunk) rangeHeader += endChunk
+    const endChunk = endByte ? toSmallestChunkSize(endByte || 0)+AES_CHUNK_SIZE : undefined    
+
+    const headers: { [_: string]: string } = {
+        Origin: DEFAULT_ORIGIN,
     }
+    if(startChunk || endChunk) {
+        headers.Range = `bytes=${startChunk}-`
+        if(endChunk) headers.Range += endChunk
+    }
+
     // download the message
-    const fetched = await getHttpStream(downloadUrl, {
-        headers: { 
-            Origin: DEFAULT_ORIGIN,
-            Range: rangeHeader
-        }
-    })
+    const fetched = await getHttpStream(downloadUrl, { headers })
 
     let remainingBytes = Buffer.from([])
     const { cipherKey, iv } = getMediaKeys(mediaKey, type)
