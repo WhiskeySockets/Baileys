@@ -1,5 +1,5 @@
 
-import { SocketConfig, WAMessageStubType, ParticipantAction, Chat, GroupMetadata, WAMessageKey } from "../Types"
+import { SocketConfig, WAMessageStubType, ParticipantAction, Chat, GroupMetadata, WAMessageKey, Contact } from "../Types"
 import { decodeMessageStanza, encodeBigEndian, toNumber, downloadHistory, generateSignalPubKey, xmppPreKey, xmppSignedPreKey } from "../Utils"
 import { BinaryNode, jidDecode, jidEncode, isJidStatusBroadcast, areJidsSameUser, getBinaryNodeChildren, jidNormalizedUser, getAllBinaryNodeChildren, BinaryNodeAttributes, isJidGroup } from '../WABinary'
 import { proto } from "../../WAProto"
@@ -222,11 +222,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
     const processHistoryMessage = (item: proto.HistorySync) => {
         const messages: proto.IWebMessageInfo[] = []
+        const contacts: Contact[] = []
         switch(item.syncType) {
             case proto.HistorySync.HistorySyncHistorySyncType.INITIAL_BOOTSTRAP:
                 const chats = item.conversations!.map(
                     c => {
                         const chat: Chat = { ...c }
+                        if(chat.name) {
+                            contacts.push({
+                                id: chat.id,
+                                name: chat.name
+                            })
+                        }
                         //@ts-expect-error
                         delete chat.messages
                         for(const msg of c.messages || []) {
@@ -237,7 +244,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                         return chat
                     }
                 )
-                ev.emit('chats.set', { chats, messages })
+                ev.emit('chats.set', { chats, messages, contacts })
             break
             case proto.HistorySync.HistorySyncHistorySyncType.RECENT:
                 // push remaining messages
@@ -251,10 +258,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                 }
             break
             case proto.HistorySync.HistorySyncHistorySyncType.PUSH_NAME:
-                const contacts = item.pushnames.map(
-                    p => ({ notify: p.pushname, id: p.id })
+                contacts.push(
+                    ...item.pushnames.map(
+                        p => ({ notify: p.pushname, id: p.id })
+                    )
                 )
-                ev.emit('contacts.upsert', contacts)
+                ev.emit('chats.set', { chats: [], messages: [], contacts })
             break
             case proto.HistorySync.HistorySyncHistorySyncType.INITIAL_STATUS_V3:
                 // TODO

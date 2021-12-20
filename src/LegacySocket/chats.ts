@@ -170,7 +170,12 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 	socketEvents.on('CB:response,type:chat', async ({ content: data }: BinaryNode) => {
 		chatsDebounceTimeout.cancel()
 		if(Array.isArray(data)) {
+			const contacts: Contact[] = []
 			const chats = data.map(({ attrs }): Chat => {
+				const id = jidNormalizedUser(attrs.jid)
+				if(attrs.name) {
+					contacts.push({ id, name: attrs.name })
+				}
 				return {
 					id: jidNormalizedUser(attrs.jid),
 					conversationTimestamp: attrs.t ? +attrs.t : undefined,
@@ -186,8 +191,8 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 				}
 			})
 
-			logger.info(`got ${chats.length} chats`)
-			ev.emit('chats.set', { chats, messages: [] })
+			logger.info(`got ${chats.length} chats, extracted ${contacts.length} contacts with name`)
+			ev.emit('chats.set', { chats, messages: [], contacts })
 		}
 	})
 	// got all contacts from phone
@@ -203,7 +208,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 			})
 
 			logger.info(`got ${contacts.length} contacts`)
-			ev.emit('contacts.upsert', contacts)
+			ev.emit('chats.set', { chats: [], messages: [], contacts })
 		}
 	})
 	// status updates

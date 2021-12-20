@@ -26,7 +26,9 @@ const startSock = () => {
     }
     
     sock.ev.on('messages.upsert', async m => {
-        console.log(JSON.stringify(m, undefined, 2))
+        if(m.type === 'append' || m.type === 'notify') {
+            console.log(JSON.stringify(m, undefined, 2))
+        }
         
         const msg = m.messages[0]
         if(!msg.key.fromMe && m.type === 'notify') {

@@ -14,7 +14,7 @@ export type BaileysEventMap<T> = {
     /** credentials updated -- some metadata, keys or something */
     'creds.update': Partial<T>
     /** set chats (history sync), messages are reverse chronologically sorted */
-    'chats.set': { chats: Chat[], messages: WAMessage[] }
+    'chats.set': { chats: Chat[], messages: WAMessage[], contacts: Contact[] }
     /** upsert chats */
     'chats.upsert': Chat[]
     /** update the given chats */
