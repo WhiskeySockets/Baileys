@@ -28,11 +28,12 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		})
 	)
 
-	const profilePictureUrl = async(jid: string) => {
+	const profilePictureUrl = async(jid: string, timeoutMs?: number) => {
 		const response = await query({ 
 			json: ['query', 'ProfilePicThumb', jid], 
 			expect200: false, 
-			requiresPhoneConnection: false 
+			requiresPhoneConnection: false,
+			timeoutMs
 		})
 		return response.eurl as string | undefined
 	}

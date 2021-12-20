@@ -270,7 +270,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
      * type = "preview" for a low res picture
      * type = "image for the high res picture"
      */
-    const profilePictureUrl = async(jid: string, type: 'preview' | 'image' = 'preview') => {
+    const profilePictureUrl = async(jid: string, type: 'preview' | 'image' = 'preview', timeoutMs?: number) => {
         jid = jidNormalizedUser(jid)
         const result = await query({
             tag: 'iq',
@@ -282,7 +282,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
             content: [
                 { tag: 'picture', attrs: { type, query: 'url' } }
             ]
-        })
+        }, timeoutMs)
         const child = getBinaryNodeChild(result, 'picture')
         return child?.attrs?.url
     }
