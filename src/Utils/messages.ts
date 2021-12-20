@@ -197,7 +197,8 @@ export const generateForwardMessageContent = (
 ) => {
 	let content = message.message
 	if (!content) throw new Boom('no content in message', { statusCode: 400 })
-	content = JSON.parse(JSON.stringify(content)) // hacky copy
+	// hacky copy
+	content = proto.Message.decode(proto.Message.encode(message.message).finish())
 
 	let key = Object.keys(content)[0] as MessageType
 
@@ -342,13 +343,13 @@ export const generateWAMessageFromContent = (
 	message: WAMessageContent, 
 	options: MessageGenerationOptionsFromContent
 ) => {
-	if (!options.timestamp) options.timestamp = new Date() // set timestamp to now
+	if(!options.timestamp) options.timestamp = new Date() // set timestamp to now
 
 	const key = Object.keys(message)[0]
 	const timestamp = unixTimestampSeconds(options.timestamp)
 	const { quoted, userJid } = options
 
-	if (quoted) {
+	if(quoted) {
 		const participant = quoted.key.fromMe ? userJid : (quoted.participant || quoted.key.participant || quoted.key.remoteJid)
 
 		message[key].contextInfo = message[key].contextInfo || { }
@@ -358,7 +359,7 @@ export const generateWAMessageFromContent = (
 		
 		// if a participant is quoted, then it must be a group
 		// hence, remoteJid of group must also be entered
-		if (quoted.key.participant || quoted.participant) {
+		if(quoted.key.participant || quoted.participant) {
 			message[key].contextInfo.remoteJid = quoted.key.remoteJid
 		}
 	}
@@ -380,8 +381,9 @@ export const generateWAMessageFromContent = (
 				message
 			}
 		}
-	} 
-	message = WAProto.Message.fromObject (message)
+	}
+
+	message = WAProto.Message.fromObject(message)
 
 	const messageJSON = {
 		key: {
@@ -395,7 +397,7 @@ export const generateWAMessageFromContent = (
 		participant: jid.includes('@g.us') ? userJid : undefined,
 		status: WAMessageStatus.PENDING
 	}
-	return WAProto.WebMessageInfo.fromObject (messageJSON)
+	return WAProto.WebMessageInfo.fromObject(messageJSON)
 }
 export const generateWAMessage = async(
 	jid: string,
