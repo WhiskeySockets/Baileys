@@ -34,11 +34,11 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 	})
 	// add close listener
 	ws.on('ws-close', (error: Boom | Error) => {
-		logger.info({ error }, 'Closed connection to WhatsApp')
+		logger.info({ error }, 'closed connection to WhatsApp')
 		initTimeout && clearTimeout(initTimeout)
 		// if no reconnects occur
 		// send close event
-		updateState({ 
+		updateState({
 			connection: 'close', 
 			qr: undefined,
 			lastDisconnect: {

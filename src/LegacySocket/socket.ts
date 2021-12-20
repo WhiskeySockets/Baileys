@@ -96,7 +96,7 @@ export const makeSocket = ({
 		return tag
 	}
 	const end = (error: Error | undefined) => {
-        logger.debug({ error }, 'connection closed')
+        logger.info({ error }, 'connection closed')
 
         ws.removeAllListeners('close')
         ws.removeAllListeners('error')
@@ -213,7 +213,7 @@ export const makeSocket = ({
      */
 	 const waitForMessage = (tag: string, requiresPhoneConnection: boolean, timeoutMs?: number) => {
         if(ws.readyState !== ws.OPEN) {
-            throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
+            throw new Boom('Connection not open', { statusCode: DisconnectReason.connectionClosed })
         }
 
         let cancelToken = () => { }
@@ -228,7 +228,7 @@ export const makeSocket = ({
                         (resolve, reject) => {
                             onRecv = resolve
                             onErr = err => {
-                                reject(err || new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed }))
+                                reject(err || new Boom('Intentional Close', { statusCode: DisconnectReason.connectionClosed }))
                             }
                             cancelToken = () => onErr(new Boom('Cancelled', { statusCode: 500 }))
         
@@ -311,7 +311,7 @@ export const makeSocket = ({
     const waitForSocketOpen = async() => {
         if(ws.readyState === ws.OPEN) return
         if(ws.readyState === ws.CLOSED || ws.readyState === ws.CLOSING) {
-            throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
+            throw new Boom('Connection Already Closed', { statusCode: DisconnectReason.connectionClosed })
         }
         let onOpen: () => void
         let onClose: (err: Error) => void
