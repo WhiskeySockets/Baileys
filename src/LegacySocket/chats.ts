@@ -302,11 +302,6 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 
 			if('archive' in modification) {
 				chatAttrs.type = modification.archive ? 'archive' : 'unarchive'
-				const indexKey = modification.lastMessages[modification.lastMessages.length-1].key
-				if(indexKey) {
-					chatAttrs.index = indexKey.id
-					chatAttrs.owner = indexKey.fromMe ? 'true' : 'false'
-				}
 			} else if('pin' in modification) {
 				chatAttrs.type = 'pin'
 				if(modification.pin) {
@@ -343,6 +338,16 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 			} else if('markRead' in modification) {
 				const indexKey = modification.lastMessages[modification.lastMessages.length-1].key
 				return chatRead(indexKey, modification.markRead ? 0 : -1)
+			} else if('delete' in modification) {
+				chatAttrs.type = 'delete'
+			}
+
+			if('lastMessages' in modification) {
+				const indexKey = modification.lastMessages[modification.lastMessages.length-1].key
+				if(indexKey) {
+					chatAttrs.index = indexKey.id
+					chatAttrs.owner = indexKey.fromMe ? 'true' : 'false'
+				}
 			}
 
 			const node = { tag: 'chat', attrs: chatAttrs, content: data }

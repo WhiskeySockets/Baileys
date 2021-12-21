@@ -58,4 +58,4 @@ export type ChatModification =
         markRead: boolean
         lastMessages: LastMessageList
     } |
-    { delete: true }
+    { delete: true, lastMessages: LastMessageList }
