@@ -294,24 +294,30 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		 * Modify a given chat (archive, pin etc.)
 		 * @param jid the ID of the person/group you are modifiying
 		 */
-		chatModify: async( modification: ChatModification, jid: string, chatInfo: Pick<Chat, 'mute' | 'pin'>, index?: WAMessageKey) => {	 
+		chatModify: async(modification: ChatModification, jid: string, chatInfo: Pick<Chat, 'mute' | 'pin'>, timestampNow?: number) => {	 
 			let chatAttrs: BinaryNode['attrs'] = { jid: jid }
 			let data: BinaryNode[] | undefined = undefined
-			const stamp = unixTimestampSeconds()
+
+			timestampNow = timestampNow || unixTimestampSeconds()
 
 			if('archive' in modification) {
 				chatAttrs.type = modification.archive ? 'archive' : 'unarchive'
+				const indexKey = modification.lastMessages[modification.lastMessages.length-1].key
+				if(indexKey) {
+					chatAttrs.index = indexKey.id
+					chatAttrs.owner = indexKey.fromMe ? 'true' : 'false'
+				}
 			} else if('pin' in modification) {
 				chatAttrs.type = 'pin'
 				if(modification.pin) {
-					chatAttrs.pin = stamp.toString()
+					chatAttrs.pin = timestampNow.toString()
 				} else {
 					chatAttrs.previous = chatInfo.pin!.toString()
 				}
 			} else if('mute' in modification) {
 				chatAttrs.type = 'mute'
 				if(modification.mute) {
-					chatAttrs.mute = (stamp + modification.mute).toString()
+					chatAttrs.mute = (timestampNow + modification.mute).toString()
 				} else {
 					chatAttrs.previous = chatInfo.mute!.toString()
 				}
@@ -335,12 +341,8 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 					}
 				))
 			} else if('markRead' in modification) {
-				return chatRead(index!, modification.markRead ? 0 : -1)
-			}
-
-			if(index) {
-				chatAttrs.index = index.id
-				chatAttrs.owner = index.fromMe ? 'true' : 'false'
+				const indexKey = modification.lastMessages[modification.lastMessages.length-1].key
+				return chatRead(indexKey, modification.markRead ? 0 : -1)
 			}
 
 			const node = { tag: 'chat', attrs: chatAttrs, content: data }

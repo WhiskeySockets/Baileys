@@ -27,9 +27,17 @@ export type Chat = Omit<proto.IConversation, 'messages'> & {
     pin?: number | null
     archive?: boolean
 }
+/** 
+ * the last messages in a chat, sorted reverse-chronologically
+ * for MD modifications, the last message in the array must be the last message recv in the chat
+ * */
+export type LastMessageList = Pick<proto.IWebMessageInfo, 'key' | 'messageTimestamp'>[]
 
 export type ChatModification = 
-    { archive: boolean } |
+    { 
+        archive: boolean
+        lastMessages: LastMessageList
+    } |
     {
         pin: boolean
     } |
@@ -48,5 +56,6 @@ export type ChatModification =
     } | 
     {
         markRead: boolean
+        lastMessages: LastMessageList
     } |
     { delete: true }

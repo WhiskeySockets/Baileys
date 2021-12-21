@@ -541,8 +541,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
      * lastMessages must be sorted in reverse chronologically
      * requires the last messages till the last message received; required for archive & unread
     */
-    const chatModify = (mod: ChatModification, jid: string, lastMessages: Pick<proto.IWebMessageInfo, 'key' | 'messageTimestamp'>[]) => {
-        const patch = chatModificationToAppPatch(mod, jid, lastMessages)
+    const chatModify = (mod: ChatModification, jid: string) => {
+        const patch = chatModificationToAppPatch(mod, jid)
         return appPatch(patch)
     }
 

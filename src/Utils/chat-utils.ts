@@ -1,6 +1,6 @@
 import { Boom } from '@hapi/boom'
 import { aesDecrypt, hmacSign, aesEncrypt, hkdf } from "./crypto"
-import { WAPatchCreate, ChatMutation, WAPatchName, LTHashState, ChatModification, SignalKeyStore } from "../Types"
+import { WAPatchCreate, ChatMutation, WAPatchName, LTHashState, ChatModification, LastMessageList } from "../Types"
 import { proto } from '../../WAProto'
 import { LT_HASH_ANTI_TAMPERING } from './lt-hash'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren } from '../WABinary'
@@ -418,11 +418,10 @@ export const decodePatches = async(
 
 export const chatModificationToAppPatch = (
     mod: ChatModification,
-    jid: string,
-    lastMessages: Pick<proto.IWebMessageInfo, 'key' | 'messageTimestamp'>[]
+    jid: string
 ) => {
     const OP = proto.SyncdMutation.SyncdMutationSyncdOperation
-    const getMessageRange = () => {
+    const getMessageRange = (lastMessages: LastMessageList) => {
         if(!lastMessages?.length) {
             throw new Boom('Expected last message to be not from me', { statusCode: 400 })
         }
@@ -455,7 +454,7 @@ export const chatModificationToAppPatch = (
             syncAction: {
                 archiveChatAction: {
                     archived: !!mod.archive,
-                    messageRange: getMessageRange()
+                    messageRange: getMessageRange(mod.lastMessages)
                 }
             },
             index: ['archive', jid],
@@ -468,7 +467,7 @@ export const chatModificationToAppPatch = (
             syncAction: {
                 markChatAsReadAction: {
                     read: mod.markRead,
-                    messageRange: getMessageRange()
+                    messageRange: getMessageRange(mod.lastMessages)
                 }
             },
             index: ['markChatAsRead', jid],

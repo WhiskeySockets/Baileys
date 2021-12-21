@@ -179,7 +179,7 @@ export type BaileysEventMap = {
     /** auth credentials updated -- some pre key state, device ID etc. */
     'creds.update': Partial<AuthenticationCreds>
     /** set chats (history sync), messages are reverse chronologically sorted */
-    'chats.set': { chats: Chat[], messages: WAMessage[] }
+    'chats.set': { chats: Chat[], messages: WAMessage[], contacts: Contact[] }
     /** upsert chats */
     'chats.upsert': Chat[]
     /** update the given chats */
@@ -495,7 +495,7 @@ WA uses an encrypted form of communication to send chat/app updates. This has be
 - Archive a chat
   ``` ts
   const lastMsgInChat = await getLastMessageInChat('123456@s.whatsapp.net') // implement this on your end
-  await sock.chatModify({ archive: true }, '123456@s.whatsapp.net', [lastMsgInChat])
+  await sock.chatModify({ archive: true, lastMessages: [lastMsgInChat] }, '123456@s.whatsapp.net')
   ```
 - Mute/unmute a chat
   ``` ts
@@ -508,7 +508,7 @@ WA uses an encrypted form of communication to send chat/app updates. This has be
   ``` ts
   const lastMsgInChat = await getLastMessageInChat('123456@s.whatsapp.net') // implement this on your end
   // mark it unread
-  await sock.chatModify({ markRead: false }, '123456@s.whatsapp.net', [lastMsgInChat])
+  await sock.chatModify({ markRead: false, lastMessages: [lastMsgInChat] }, '123456@s.whatsapp.net')
   ```
 
 - Delete message for me
