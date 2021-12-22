@@ -135,6 +135,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
                 type: 'get'
             }
         })
+	return result.content[0].content.map(i => i.attrs.jid)
     }
 
     const updateBlockStatus = async(jid: string, action: 'block' | 'unblock') => {
