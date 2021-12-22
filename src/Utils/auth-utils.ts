@@ -26,7 +26,7 @@ export const addTransactionCapability = (state: SignalKeyStore, logger: Logger):
 		}
 
 		const dict = transactionCache[type]
-		const idsRequiringFetch = ids.filter(item => !dict?.[item])
+		const idsRequiringFetch = dict ? ids.filter(item => !(item in dict)) : ids
 		// only fetch if there are any items to fetch
 		if(idsRequiringFetch.length) {
 			const result = await state.get(type, idsRequiringFetch)
