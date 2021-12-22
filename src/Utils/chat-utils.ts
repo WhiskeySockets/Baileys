@@ -272,7 +272,7 @@ export const extractSyncdPatches = async(result: BinaryNode) => {
     const syncNode = getBinaryNodeChild(result, 'sync')
     const collectionNodes = getBinaryNodeChildren(syncNode, 'collection')
     
-    const final = { } as { [T in WAPatchName]: { patches: proto.ISyncdPatch[], snapshot?: proto.ISyncdSnapshot } }
+    const final = { } as { [T in WAPatchName]: { patches: proto.ISyncdPatch[], hasMorePatches: boolean, snapshot?: proto.ISyncdSnapshot } }
     await Promise.all(
         collectionNodes.map(
             async collectionNode => {
@@ -283,6 +283,8 @@ export const extractSyncdPatches = async(result: BinaryNode) => {
 
                 const syncds: proto.ISyncdPatch[] = []
                 const name = collectionNode.attrs.name as WAPatchName
+
+                const hasMorePatches = collectionNode.attrs.has_more_patches == 'true'
         
                 let snapshot: proto.ISyncdSnapshot | undefined = undefined
                 if(snapshotNode && !!snapshotNode.content) {
@@ -309,7 +311,7 @@ export const extractSyncdPatches = async(result: BinaryNode) => {
                     }
                 }
         
-                final[name] = { patches: syncds, snapshot }
+                final[name] = { patches: syncds, hasMorePatches, snapshot }
             }
         )
     )
