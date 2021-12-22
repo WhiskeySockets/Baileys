@@ -1,0 +1,1091 @@
+<!doctype html>
+<html class="default no-js">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<title>@adiwajshing/baileys</title>
+	<meta name="description" content="Documentation for @adiwajshing/baileys">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="assets/css/main.css">
+	<script async src="assets/js/search.js" id="search-script"></script>
+</head>
+<body>
+<header>
+	<div class="tsd-page-toolbar">
+		<div class="container">
+			<div class="table-wrap">
+				<div class="table-cell" id="tsd-search" data-index="assets/js/search.json" data-base=".">
+					<div class="field">
+						<label for="tsd-search-field" class="tsd-widget search no-caption">Search</label>
+						<input id="tsd-search-field" type="text" />
+					</div>
+					<ul class="results">
+						<li class="state loading">Preparing search index...</li>
+						<li class="state failure">The search index is not available</li>
+					</ul>
+					<a href="index.html" class="title">@adiwajshing/baileys</a>
+				</div>
+				<div class="table-cell" id="tsd-widgets">
+					<div id="tsd-filter">
+						<a href="#" class="tsd-widget options no-caption" data-toggle="options">Options</a>
+						<div class="tsd-filter-group">
+							<div class="tsd-select" id="tsd-filter-visibility">
+								<span class="tsd-select-label">All</span>
+								<ul class="tsd-select-list">
+									<li data-value="public">Public</li>
+									<li data-value="protected">Public/Protected</li>
+									<li data-value="private" class="selected">All</li>
+								</ul>
+							</div>
+							<input type="checkbox" id="tsd-filter-inherited" checked />
+							<label class="tsd-widget" for="tsd-filter-inherited">Inherited</label>
+						</div>
+					</div>
+					<a href="#" class="tsd-widget menu no-caption" data-toggle="menu">Menu</a>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="tsd-page-title">
+		<div class="container">
+			<h1>@adiwajshing/baileys</h1>
+		</div>
+	</div>
+</header>
+<div class="container container-main">
+	<div class="row">
+		<div class="col-8 col-content">
+			<div class="tsd-panel tsd-typography">
+				<a href="#baileys---typescriptjavascript-whatsapp-web-api" id="baileys---typescriptjavascript-whatsapp-web-api" style="color: inherit; text-decoration: none;">
+					<h1>Baileys - Typescript/Javascript WhatsApp Web API</h1>
+				</a>
+				<p> Baileys does not require Selenium or any other browser to be interface with WhatsApp Web, it does so directly using a <strong>WebSocket</strong>. Not running Selenium or Chromimum saves you like <strong>half a gig</strong> of ram :/ </p>
+				<p> Thank you to <a href="https://github.com/sigalor/whatsapp-web-reveng">@Sigalor</a> for writing his observations on the workings of WhatsApp Web and thanks to <a href="https://github.com/Rhymen/go-whatsapp/">@Rhymen</a> for the <strong>go</strong> implementation.</p>
+				<p> Baileys is type-safe, extensible and simple to use. If you require more functionality than provided, it&#39;ll super easy for you to write an extension. More on this <a href="#writing-custom-functionality">here</a>.</p>
+				<p> If you&#39;re interested in building a WhatsApp bot, you may wanna check out <a href="https://github.com/adiwajshing/WhatsappInfoBot">WhatsAppInfoBot</a> and an actual bot built with it, <a href="https://github.com/ashokatechmin/Messcat">Messcat</a>.</p>
+				<p> <strong>Read the docs <a href="https://adiwajshing.github.io/Baileys">here</a></strong>
+				<strong>Join the Discord <a href="https://discord.gg/7FYURJyqng">here</a></strong></p>
+				<a href="#multi-device-support" id="multi-device-support" style="color: inherit; text-decoration: none;">
+					<h2>Multi-Device Support</h2>
+				</a>
+				<p>Baileys now supports the latest multi-device beta. However, as it&#39;s a completely different implementation from WA Web &amp; will break a lot of things, it&#39;s on its own branch which will be merged into master once mutli-device hits production. You may find the MD repo <a href="https://github.com/adiwajshing/baileys/tree/multi-device">here</a>.</p>
+				<p>The master branch only supports WA Web at the moment.</p>
+				<a href="#example" id="example" style="color: inherit; text-decoration: none;">
+					<h2>Example</h2>
+				</a>
+				<p>Do check out &amp; run <a href="Example/example.ts">example.ts</a> to see example usage of the library.
+					The script covers most common use cases.
+				To run the example script, download or clone the repo and then type the following in terminal:</p>
+				<ol>
+					<li><code>cd path/to/Baileys</code></li>
+					<li><code>npm install</code></li>
+					<li><code>npm run example</code></li>
+				</ol>
+				<a href="#install" id="install" style="color: inherit; text-decoration: none;">
+					<h2>Install</h2>
+				</a>
+				<p>Create and cd to your NPM project directory and then in terminal, write: </p>
+				<ol>
+					<li>stable: <code>npm install @adiwajshing/baileys</code></li>
+					<li>stabl-ish w quicker fixes &amp; latest features: <code>npm install github:adiwajshing/baileys</code> </li>
+				</ol>
+				<p>Do note, the library will likely vary if you&#39;re using the NPM package, read that <a href="https://www.npmjs.com/package/@adiwajshing/baileys">here</a></p>
+				<p>Then import in your code using:</p>
+				<pre><code class="language-ts"><span style="color: #AF00DB">import</span><span style="color: #000000"> { </span><span style="color: #001080">WAConnection</span><span style="color: #000000"> } </span><span style="color: #AF00DB">from</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;@adiwajshing/baileys&#039;</span>
+</code></pre>
+				<a href="#unit-tests" id="unit-tests" style="color: inherit; text-decoration: none;">
+					<h2>Unit Tests</h2>
+				</a>
+				<p>Baileys also comes with a unit test suite. Simply cd into the Baileys directory &amp; run <code>npm test</code>.</p>
+				<p>You will require a phone with WhatsApp to test, and a second WhatsApp number to send messages to.
+				Set the phone number you can randomly send messages to in a <code>.env</code> file with <code>TEST_JID=1234@s.whatsapp.net</code> </p>
+				<a href="#connecting" id="connecting" style="color: inherit; text-decoration: none;">
+					<h2>Connecting</h2>
+				</a>
+				<pre><code class="language-ts"><span style="color: #AF00DB">import</span><span style="color: #000000"> { </span><span style="color: #001080">WAConnection</span><span style="color: #000000"> } </span><span style="color: #AF00DB">from</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;@adiwajshing/baileys&#039;</span>
+
+<span style="color: #0000FF">async</span><span style="color: #000000"> </span><span style="color: #0000FF">function</span><span style="color: #000000"> </span><span style="color: #795E26">connectToWhatsApp</span><span style="color: #000000"> () {</span>
+<span style="color: #000000">    </span><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">conn</span><span style="color: #000000"> = </span><span style="color: #0000FF">new</span><span style="color: #000000"> </span><span style="color: #795E26">WAConnection</span><span style="color: #000000">() </span>
+<span style="color: #000000">    </span><span style="color: #008000">// called when WA sends chats</span>
+<span style="color: #000000">    </span><span style="color: #008000">// this can take up to a few minutes if you have thousands of chats!</span>
+<span style="color: #000000">    </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">on</span><span style="color: #000000">(</span><span style="color: #A31515">&#039;chats-received&#039;</span><span style="color: #000000">, </span><span style="color: #0000FF">async</span><span style="color: #000000"> ({ </span><span style="color: #001080">hasNewChats</span><span style="color: #000000"> }) </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> {</span>
+<span style="color: #000000">        </span><span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000">(</span><span style="color: #A31515">`you have </span><span style="color: #0000FF">${</span><span style="color: #001080">conn</span><span style="color: #000000FF">.</span><span style="color: #001080">chats</span><span style="color: #000000FF">.</span><span style="color: #001080">length</span><span style="color: #0000FF">}</span><span style="color: #A31515"> chats, new chats available: </span><span style="color: #0000FF">${</span><span style="color: #001080">hasNewChats</span><span style="color: #0000FF">}</span><span style="color: #A31515">`</span><span style="color: #000000">)</span>
+
+<span style="color: #000000">        </span><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">unread</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">loadAllUnreadMessages</span><span style="color: #000000"> ()</span>
+<span style="color: #000000">        </span><span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;you have &quot;</span><span style="color: #000000"> + </span><span style="color: #001080">unread</span><span style="color: #000000">.</span><span style="color: #001080">length</span><span style="color: #000000"> + </span><span style="color: #A31515">&quot; unread messages&quot;</span><span style="color: #000000">)</span>
+<span style="color: #000000">    })</span>
+<span style="color: #000000">    </span><span style="color: #008000">// called when WA sends chats</span>
+<span style="color: #000000">    </span><span style="color: #008000">// this can take up to a few minutes if you have thousands of contacts!</span>
+<span style="color: #000000">    </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">on</span><span style="color: #000000">(</span><span style="color: #A31515">&#039;contacts-received&#039;</span><span style="color: #000000">, () </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> {</span>
+<span style="color: #000000">        </span><span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000">(</span><span style="color: #A31515">&#039;you have &#039;</span><span style="color: #000000"> + </span><span style="color: #267F99">Object</span><span style="color: #000000">.</span><span style="color: #795E26">keys</span><span style="color: #000000">(</span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #001080">contacts</span><span style="color: #000000">).</span><span style="color: #001080">length</span><span style="color: #000000"> + </span><span style="color: #A31515">&#039; contacts&#039;</span><span style="color: #000000">)</span>
+<span style="color: #000000">    })</span>
+
+<span style="color: #000000">    </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">connect</span><span style="color: #000000"> ()</span>
+<span style="color: #000000">    </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">on</span><span style="color: #000000">(</span><span style="color: #A31515">&#039;chat-update&#039;</span><span style="color: #000000">, </span><span style="color: #001080">chatUpdate</span><span style="color: #000000"> </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> {</span>
+<span style="color: #000000">        </span><span style="color: #008000">// `chatUpdate` is a partial object, containing the updated properties of the chat</span>
+<span style="color: #000000">        </span><span style="color: #008000">// received a new message</span>
+<span style="color: #000000">        </span><span style="color: #AF00DB">if</span><span style="color: #000000"> (</span><span style="color: #001080">chatUpdate</span><span style="color: #000000">.</span><span style="color: #001080">messages</span><span style="color: #000000"> &amp;&amp; </span><span style="color: #001080">chatUpdate</span><span style="color: #000000">.</span><span style="color: #001080">count</span><span style="color: #000000">) {</span>
+<span style="color: #000000">            </span><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">message</span><span style="color: #000000"> = </span><span style="color: #001080">chatUpdate</span><span style="color: #000000">.</span><span style="color: #001080">messages</span><span style="color: #000000">.</span><span style="color: #795E26">all</span><span style="color: #000000">()[</span><span style="color: #098658">0</span><span style="color: #000000">]</span>
+<span style="color: #000000">            </span><span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000"> (</span><span style="color: #001080">message</span><span style="color: #000000">)</span>
+<span style="color: #000000">        } </span><span style="color: #AF00DB">else</span><span style="color: #000000"> </span><span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000"> (</span><span style="color: #001080">chatUpdate</span><span style="color: #000000">) </span><span style="color: #008000">// see updates (can be archived, pinned etc.)</span>
+<span style="color: #000000">    })</span>
+<span style="color: #000000">}</span>
+<span style="color: #008000">// run in main file</span>
+<span style="color: #795E26">connectToWhatsApp</span><span style="color: #000000"> ()</span>
+<span style="color: #000000">.</span><span style="color: #795E26">catch</span><span style="color: #000000"> (</span><span style="color: #001080">err</span><span style="color: #000000"> </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> </span><span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000">(</span><span style="color: #A31515">&quot;unexpected error: &quot;</span><span style="color: #000000"> + </span><span style="color: #001080">err</span><span style="color: #000000">) ) </span><span style="color: #008000">// catch any errors</span>
+</code></pre>
+				<p>If the connection is successful, you will see a QR code printed on your terminal screen, scan it with WhatsApp on your phone and you&#39;ll be logged in!</p>
+				<p>Do note, the <code>conn.chats</code> object is a <a href="https://github.com/adiwajshing/keyed-db">KeyedDB</a>. This is done for the following reasons:</p>
+				<ul>
+					<li>Most applications require chats to be ordered in descending order of time. (<code>KeyedDB</code> does this in <code>log(N)</code> time)</li>
+					<li>Most applications require pagination of chats (Use <code>chats.paginated()</code>)</li>
+					<li>Most applications require <strong>O(1)</strong> access to chats via the chat ID. (Use <code>chats.get(jid)</code> with <code>KeyedDB</code>)</li>
+				</ul>
+				<a href="#configuring-the-connection" id="configuring-the-connection" style="color: inherit; text-decoration: none;">
+					<h2>Configuring the Connection</h2>
+				</a>
+				<p>You can configure the connection via the <code>connectOptions</code> property. You can even specify an HTTPS proxy. For example:</p>
+				<pre><code class="language-ts"><span style="color: #AF00DB">import</span><span style="color: #000000"> { </span><span style="color: #001080">WAConnection</span><span style="color: #000000">, </span><span style="color: #001080">ProxyAgent</span><span style="color: #000000"> } </span><span style="color: #AF00DB">from</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;@adiwajshing/baileys&#039;</span>
+
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">conn</span><span style="color: #000000"> = </span><span style="color: #0000FF">new</span><span style="color: #000000"> </span><span style="color: #795E26">WAConnecion</span><span style="color: #000000"> ()</span>
+<span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #001080">connectOptions</span><span style="color: #000000">.</span><span style="color: #001080">agent</span><span style="color: #000000"> = </span><span style="color: #795E26">ProxyAgent</span><span style="color: #000000"> (</span><span style="color: #A31515">&#039;http://some-host:1234&#039;</span><span style="color: #000000">)</span>
+
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">connect</span><span style="color: #000000"> ()</span>
+<span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;oh hello &quot;</span><span style="color: #000000"> + </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #001080">user</span><span style="color: #000000">.</span><span style="color: #001080">name</span><span style="color: #000000"> + </span><span style="color: #A31515">&quot;! You connected via a proxy&quot;</span><span style="color: #000000">)</span>
+</code></pre>
+				<p>The entire <code>WAConnectOptions</code> struct is mentioned here with default values:</p>
+				<pre><code class="language-ts"><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #001080">connectOptions</span><span style="color: #000000"> = {</span>
+<span style="color: #000000">    </span><span style="color: #008000">/** fails the connection if no data is received for X seconds */</span>
+<span style="color: #000000">    maxIdleTimeMs?</span><span style="color: #001080">:</span><span style="color: #000000"> </span><span style="color: #098658">60_000</span><span style="color: #000000">,</span>
+<span style="color: #000000">    </span><span style="color: #008000">/** maximum attempts to connect */</span>
+<span style="color: #000000">    maxRetries?</span><span style="color: #001080">:</span><span style="color: #000000"> </span><span style="color: #098658">10</span><span style="color: #000000">,</span>
+<span style="color: #000000">    </span><span style="color: #008000">/** max time for the phone to respond to a connectivity test */</span>
+<span style="color: #000000">    phoneResponseTime?</span><span style="color: #001080">:</span><span style="color: #000000"> </span><span style="color: #098658">15_000</span><span style="color: #000000">,</span>
+<span style="color: #000000">    </span><span style="color: #008000">/** minimum time between new connections */</span>
+<span style="color: #000000">    connectCooldownMs?</span><span style="color: #001080">:</span><span style="color: #000000"> </span><span style="color: #098658">4000</span><span style="color: #000000">,</span>
+<span style="color: #000000">    </span><span style="color: #008000">/** agent used for WS connections (could be a proxy agent) */</span>
+<span style="color: #000000">    agent?</span><span style="color: #001080">:</span><span style="color: #000000"> </span><span style="color: #001080">Agent</span><span style="color: #000000"> = </span><span style="color: #0000FF">undefined</span><span style="color: #000000">,</span>
+<span style="color: #000000">    </span><span style="color: #008000">/** agent used for fetch requests -- uploading/downloading media */</span>
+<span style="color: #000000">    fetchAgent?</span><span style="color: #001080">:</span><span style="color: #000000"> </span><span style="color: #001080">Agent</span><span style="color: #000000"> = </span><span style="color: #0000FF">undefined</span><span style="color: #000000">,</span>
+<span style="color: #000000">    </span><span style="color: #008000">/** always uses takeover for connecting */</span>
+<span style="color: #000000">    </span><span style="color: #001080">alwaysUseTakeover:</span><span style="color: #000000"> </span><span style="color: #0000FF">true</span>
+<span style="color: #000000">    </span><span style="color: #008000">/** log QR to terminal */</span>
+<span style="color: #000000">    </span><span style="color: #001080">logQR</span><span style="color: #000000">: </span><span style="color: #0000FF">true</span>
+<span style="color: #000000">} </span><span style="color: #AF00DB">as</span><span style="color: #000000"> </span><span style="color: #267F99">WAConnectOptions</span>
+</code></pre>
+				<a href="#saving-amp-restoring-sessions" id="saving-amp-restoring-sessions" style="color: inherit; text-decoration: none;">
+					<h2>Saving &amp; Restoring Sessions</h2>
+				</a>
+				<p>You obviously don&#39;t want to keep scanning the QR code every time you want to connect. </p>
+				<p>So, you can save the credentials to log back in via:</p>
+				<pre><code class="language-ts"><span style="color: #AF00DB">import</span><span style="color: #000000"> </span><span style="color: #0000FF">*</span><span style="color: #000000"> </span><span style="color: #AF00DB">as</span><span style="color: #000000"> </span><span style="color: #001080">fs</span><span style="color: #000000"> </span><span style="color: #AF00DB">from</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;fs&#039;</span>
+
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">conn</span><span style="color: #000000"> = </span><span style="color: #0000FF">new</span><span style="color: #000000"> </span><span style="color: #795E26">WAConnection</span><span style="color: #000000">() </span>
+<span style="color: #008000">// this will be called as soon as the credentials are updated</span>
+<span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">on</span><span style="color: #000000"> (</span><span style="color: #A31515">&#039;open&#039;</span><span style="color: #000000">, () </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> {</span>
+<span style="color: #000000">    </span><span style="color: #008000">// save credentials whenever updated</span>
+<span style="color: #000000">    </span><span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000"> (</span><span style="color: #A31515">`credentials updated!`</span><span style="color: #000000">)</span>
+<span style="color: #000000">    </span><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">authInfo</span><span style="color: #000000"> = </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">base64EncodedAuthInfo</span><span style="color: #000000">() </span><span style="color: #008000">// get all the auth info we need to restore this session</span>
+<span style="color: #000000">    </span><span style="color: #001080">fs</span><span style="color: #000000">.</span><span style="color: #795E26">writeFileSync</span><span style="color: #000000">(</span><span style="color: #A31515">&#039;./auth_info.json&#039;</span><span style="color: #000000">, </span><span style="color: #267F99">JSON</span><span style="color: #000000">.</span><span style="color: #795E26">stringify</span><span style="color: #000000">(</span><span style="color: #001080">authInfo</span><span style="color: #000000">, </span><span style="color: #0000FF">null</span><span style="color: #000000">, </span><span style="color: #A31515">&#039;</span><span style="color: #EE0000">\t</span><span style="color: #A31515">&#039;</span><span style="color: #000000">)) </span><span style="color: #008000">// save this info to a file</span>
+<span style="color: #000000">})</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">connect</span><span style="color: #000000">() </span><span style="color: #008000">// connect</span>
+</code></pre>
+				<p>Then, to restore a session:</p>
+				<pre><code class="language-ts"><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">conn</span><span style="color: #000000"> = </span><span style="color: #0000FF">new</span><span style="color: #000000"> </span><span style="color: #795E26">WAConnection</span><span style="color: #000000">() </span>
+<span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">loadAuthInfo</span><span style="color: #000000"> (</span><span style="color: #A31515">&#039;./auth_info.json&#039;</span><span style="color: #000000">) </span><span style="color: #008000">// will load JSON credentials from file</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">connect</span><span style="color: #000000">() </span>
+<span style="color: #008000">// yay connected without scanning QR</span>
+<span style="color: #008000">/*</span>
+<span style="color: #008000">    Optionally, you can load the credentials yourself from somewhere </span>
+<span style="color: #008000">    &amp; pass in the JSON object to loadAuthInfo () as well.</span>
+<span style="color: #008000">*/</span>
+</code></pre>
+				<p>If you&#39;re considering switching from a Chromium/Puppeteer based library, you can use WhatsApp Web&#39;s Browser credentials to restore sessions too:</p>
+				<pre><code class="language-ts"><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">loadAuthInfo</span><span style="color: #000000"> (</span><span style="color: #A31515">&#039;./auth_info_browser.json&#039;</span><span style="color: #000000">)</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">connect</span><span style="color: #000000">() </span><span style="color: #008000">// works the same</span>
+</code></pre>
+				<p>See the browser credentials type in the docs.</p>
+				<p><strong>Note</strong>: Upon every successive connection, WA can update part of the stored credentials. Whenever that happens, the credentials are uploaded, and you should probably update your saved credentials upon receiving the <code>open</code> event. Not doing so <em>may</em> lead WA to log you out after a few weeks with a 419 error code.</p>
+				<a href="#qr-callback" id="qr-callback" style="color: inherit; text-decoration: none;">
+					<h2>QR Callback</h2>
+				</a>
+				<p>If you want to do some custom processing with the QR code used to authenticate, you can register for the following event:</p>
+				<pre><code class="language-ts"><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">on</span><span style="color: #000000">(</span><span style="color: #A31515">&#039;qr&#039;</span><span style="color: #000000">, </span><span style="color: #001080">qr</span><span style="color: #000000"> </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> {</span>
+<span style="color: #000000">    </span><span style="color: #008000">// Now, use the &#039;qr&#039; string to display in QR UI or send somewhere</span>
+<span style="color: #000000">}</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">connect</span><span style="color: #000000"> ()</span>
+</code></pre>
+				<a href="#handling-events" id="handling-events" style="color: inherit; text-decoration: none;">
+					<h2>Handling Events</h2>
+				</a>
+				<p>Baileys now uses the EventEmitter syntax for events.
+				They&#39;re all nicely typed up, so you shouldn&#39;t have any issues with an Intellisense editor like VS Code.</p>
+				<p>Also, these events are fired regardless of whether they are initiated by the Baileys client or are relayed from your phone.</p>
+				<pre><code class="language-ts"><span style="color: #008000">/** when the connection has opened successfully */</span>
+<span style="color: #795E26">on</span><span style="color: #000000"> (</span><span style="color: #001080">event</span><span style="color: #000000">: </span><span style="color: #A31515">&#039;open&#039;</span><span style="color: #000000">, </span><span style="color: #001080">listener</span><span style="color: #000000">: (</span><span style="color: #001080">result</span><span style="color: #000000">: </span><span style="color: #267F99">WAOpenResult</span><span style="color: #000000">) </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> </span><span style="color: #0000FF">void</span><span style="color: #000000">): </span><span style="color: #0000FF">this</span>
+<span style="color: #008000">/** when the connection is opening */</span>
+<span style="color: #795E26">on</span><span style="color: #000000"> (</span><span style="color: #001080">event</span><span style="color: #000000">: </span><span style="color: #A31515">&#039;connecting&#039;</span><span style="color: #000000">, </span><span style="color: #001080">listener</span><span style="color: #000000">: () </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> </span><span style="color: #0000FF">void</span><span style="color: #000000">): </span><span style="color: #0000FF">this</span>
+<span style="color: #008000">/** when the connection has closed */</span>
+<span style="color: #795E26">on</span><span style="color: #000000"> (</span><span style="color: #001080">event</span><span style="color: #000000">: </span><span style="color: #A31515">&#039;close&#039;</span><span style="color: #000000">, </span><span style="color: #001080">listener</span><span style="color: #000000">: (</span><span style="color: #001080">err</span><span style="color: #000000">: {</span><span style="color: #001080">reason</span><span style="color: #000000">?: </span><span style="color: #267F99">DisconnectReason</span><span style="color: #000000"> | </span><span style="color: #267F99">string</span><span style="color: #000000">, </span><span style="color: #001080">isReconnecting</span><span style="color: #000000">: </span><span style="color: #267F99">boolean</span><span style="color: #000000">}) </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> </span><span style="color: #0000FF">void</span><span style="color: #000000">): </span><span style="color: #0000FF">this</span>
+<span style="color: #008000">/** when the socket is closed */</span>
+<span style="color: #795E26">on</span><span style="color: #000000"> (</span><span style="color: #001080">event</span><span style="color: #000000">: </span><span style="color: #A31515">&#039;ws-close&#039;</span><span style="color: #000000">, </span><span style="color: #001080">listener</span><span style="color: #000000">: (</span><span style="color: #001080">err</span><span style="color: #000000">: {</span><span style="color: #001080">reason</span><span style="color: #000000">?: </span><span style="color: #267F99">DisconnectReason</span><span style="color: #000000"> | </span><span style="color: #267F99">string</span><span style="color: #000000">}) </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> </span><span style="color: #0000FF">void</span><span style="color: #000000">): </span><span style="color: #0000FF">this</span>
+<span style="color: #008000">/** when a new QR is generated, ready for scanning */</span>
+<span style="color: #795E26">on</span><span style="color: #000000"> (</span><span style="color: #001080">event</span><span style="color: #000000">: </span><span style="color: #A31515">&#039;qr&#039;</span><span style="color: #000000">, </span><span style="color: #001080">listener</span><span style="color: #000000">: (</span><span style="color: #001080">qr</span><span style="color: #000000">: </span><span style="color: #267F99">string</span><span style="color: #000000">) </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> </span><span style="color: #0000FF">void</span><span style="color: #000000">): </span><span style="color: #0000FF">this</span>
+<span style="color: #008000">/** when the connection to the phone changes */</span>
+<span style="color: #795E26">on</span><span style="color: #000000"> (</span><span style="color: #001080">event</span><span style="color: #000000">: </span><span style="color: #A31515">&#039;connection-phone-change&#039;</span><span style="color: #000000">, </span><span style="color: #001080">listener</span><span style="color: #000000">: (</span><span style="color: #001080">state</span><span style="color: #000000">: {</span><span style="color: #001080">connected</span><span style="color: #000000">: </span><span style="color: #267F99">boolean</span><span style="color: #000000">}) </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> </span><span style="color: #0000FF">void</span><span style="color: #000000">): </span><span style="color: #0000FF">this</span>
+<span style="color: #008000">/** when a contact is updated */</span>
+<span style="color: #795E26">on</span><span style="color: #000000"> (</span><span style="color: #001080">event</span><span style="color: #000000">: </span><span style="color: #A31515">&#039;contact-update&#039;</span><span style="color: #000000">, </span><span style="color: #001080">listener</span><span style="color: #000000">: (</span><span style="color: #001080">update</span><span style="color: #000000">: </span><span style="color: #267F99">WAContactUpdate</span><span style="color: #000000">) </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> </span><span style="color: #0000FF">void</span><span style="color: #000000">): </span><span style="color: #0000FF">this</span>
+<span style="color: #008000">/** when a new chat is added */</span>
+<span style="color: #795E26">on</span><span style="color: #000000"> (</span><span style="color: #001080">event</span><span style="color: #000000">: </span><span style="color: #A31515">&#039;chat-new&#039;</span><span style="color: #000000">, </span><span style="color: #001080">listener</span><span style="color: #000000">: (</span><span style="color: #001080">chat</span><span style="color: #000000">: </span><span style="color: #267F99">WAChat</span><span style="color: #000000">) </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> </span><span style="color: #0000FF">void</span><span style="color: #000000">): </span><span style="color: #0000FF">this</span>
+<span style="color: #008000">/** when contacts are sent by WA */</span>
+<span style="color: #795E26">on</span><span style="color: #000000"> (</span><span style="color: #001080">event</span><span style="color: #000000">: </span><span style="color: #A31515">&#039;contacts-received&#039;</span><span style="color: #000000">, </span><span style="color: #001080">listener</span><span style="color: #000000">: (</span><span style="color: #001080">u</span><span style="color: #000000">: { </span><span style="color: #001080">updatedContacts</span><span style="color: #000000">: </span><span style="color: #267F99">Partial</span><span style="color: #000000">&lt;</span><span style="color: #267F99">WAContact</span><span style="color: #000000">&gt;[] }) </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> </span><span style="color: #0000FF">void</span><span style="color: #000000">): </span><span style="color: #0000FF">this</span>
+<span style="color: #008000">/** when chats are sent by WA, and when all messages are received */</span>
+<span style="color: #795E26">on</span><span style="color: #000000"> (</span><span style="color: #001080">event</span><span style="color: #000000">: </span><span style="color: #A31515">&#039;chats-received&#039;</span><span style="color: #000000">, </span><span style="color: #001080">listener</span><span style="color: #000000">: (</span><span style="color: #001080">update</span><span style="color: #000000">: {</span><span style="color: #001080">hasNewChats</span><span style="color: #000000">?: </span><span style="color: #267F99">boolean</span><span style="color: #000000">}) </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> </span><span style="color: #0000FF">void</span><span style="color: #000000">): </span><span style="color: #0000FF">this</span>
+<span style="color: #008000">/** when all initial messages are received from WA */</span>
+<span style="color: #795E26">on</span><span style="color: #000000"> (</span><span style="color: #001080">event</span><span style="color: #000000">: </span><span style="color: #A31515">&#039;initial-data-received&#039;</span><span style="color: #000000">, </span><span style="color: #001080">listener</span><span style="color: #000000">: (</span><span style="color: #001080">update</span><span style="color: #000000">: {</span><span style="color: #001080">chatsWithMissingMessages</span><span style="color: #000000">: { </span><span style="color: #001080">jid</span><span style="color: #000000">: </span><span style="color: #267F99">string</span><span style="color: #000000">, </span><span style="color: #001080">count</span><span style="color: #000000">: </span><span style="color: #267F99">number</span><span style="color: #000000"> }[] }) </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> </span><span style="color: #0000FF">void</span><span style="color: #000000">): </span><span style="color: #0000FF">this</span>
+<span style="color: #008000">/** when multiple chats are updated (new message, updated message, deleted, pinned, etc) */</span>
+<span style="color: #795E26">on</span><span style="color: #000000"> (</span><span style="color: #001080">event</span><span style="color: #000000">: </span><span style="color: #A31515">&#039;chats-update&#039;</span><span style="color: #000000">, </span><span style="color: #001080">listener</span><span style="color: #000000">: (</span><span style="color: #001080">chats</span><span style="color: #000000">: </span><span style="color: #267F99">WAChatUpdate</span><span style="color: #000000">[]) </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> </span><span style="color: #0000FF">void</span><span style="color: #000000">): </span><span style="color: #0000FF">this</span>
+<span style="color: #008000">/** when a chat is updated (new message, updated message, read message, deleted, pinned, presence updated etc) */</span>
+<span style="color: #795E26">on</span><span style="color: #000000"> (</span><span style="color: #001080">event</span><span style="color: #000000">: </span><span style="color: #A31515">&#039;chat-update&#039;</span><span style="color: #000000">, </span><span style="color: #001080">listener</span><span style="color: #000000">: (</span><span style="color: #001080">chat</span><span style="color: #000000">: </span><span style="color: #267F99">WAChatUpdate</span><span style="color: #000000">) </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> </span><span style="color: #0000FF">void</span><span style="color: #000000">): </span><span style="color: #0000FF">this</span>
+<span style="color: #008000">/** when participants are added to a group */</span>
+<span style="color: #795E26">on</span><span style="color: #000000"> (</span><span style="color: #001080">event</span><span style="color: #000000">: </span><span style="color: #A31515">&#039;group-participants-update&#039;</span><span style="color: #000000">, </span><span style="color: #001080">listener</span><span style="color: #000000">: (</span><span style="color: #001080">update</span><span style="color: #000000">: {</span><span style="color: #001080">jid</span><span style="color: #000000">: </span><span style="color: #267F99">string</span><span style="color: #000000">, </span><span style="color: #001080">participants</span><span style="color: #000000">: </span><span style="color: #267F99">string</span><span style="color: #000000">[], </span><span style="color: #001080">actor</span><span style="color: #000000">?: </span><span style="color: #267F99">string</span><span style="color: #000000">, </span><span style="color: #001080">action</span><span style="color: #000000">: </span><span style="color: #267F99">WAParticipantAction</span><span style="color: #000000">}) </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> </span><span style="color: #0000FF">void</span><span style="color: #000000">): </span><span style="color: #0000FF">this</span>
+<span style="color: #008000">/** when the group is updated */</span>
+<span style="color: #795E26">on</span><span style="color: #000000"> (</span><span style="color: #001080">event</span><span style="color: #000000">: </span><span style="color: #A31515">&#039;group-update&#039;</span><span style="color: #000000">, </span><span style="color: #001080">listener</span><span style="color: #000000">: (</span><span style="color: #001080">update</span><span style="color: #000000">: </span><span style="color: #267F99">Partial</span><span style="color: #000000">&lt;</span><span style="color: #267F99">WAGroupMetadata</span><span style="color: #000000">&gt; &amp; {</span><span style="color: #001080">jid</span><span style="color: #000000">: </span><span style="color: #267F99">string</span><span style="color: #000000">, </span><span style="color: #001080">actor</span><span style="color: #000000">?: </span><span style="color: #267F99">string</span><span style="color: #000000">}) </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> </span><span style="color: #0000FF">void</span><span style="color: #000000">): </span><span style="color: #0000FF">this</span>
+<span style="color: #008000">/** when WA sends back a pong */</span>
+<span style="color: #795E26">on</span><span style="color: #000000"> (</span><span style="color: #001080">event</span><span style="color: #000000">: </span><span style="color: #A31515">&#039;received-pong&#039;</span><span style="color: #000000">, </span><span style="color: #001080">listener</span><span style="color: #000000">: () </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> </span><span style="color: #0000FF">void</span><span style="color: #000000">): </span><span style="color: #0000FF">this</span>
+<span style="color: #008000">/** when a user is blocked or unblockd */</span>
+<span style="color: #795E26">on</span><span style="color: #000000"> (</span><span style="color: #001080">event</span><span style="color: #000000">: </span><span style="color: #A31515">&#039;blocklist-update&#039;</span><span style="color: #000000">, </span><span style="color: #001080">listener</span><span style="color: #000000">: (</span><span style="color: #001080">update</span><span style="color: #000000">: </span><span style="color: #267F99">BlocklistUpdate</span><span style="color: #000000">) </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> </span><span style="color: #0000FF">void</span><span style="color: #000000">): </span><span style="color: #0000FF">this</span>
+</code></pre>
+				<a href="#sending-messages" id="sending-messages" style="color: inherit; text-decoration: none;">
+					<h2>Sending Messages</h2>
+				</a>
+				<p><strong>Send all types of messages with a single function:</strong></p>
+				<a href="#non-media-messages" id="non-media-messages" style="color: inherit; text-decoration: none;">
+					<h3>Non-Media Messages</h3>
+				</a>
+				<pre><code class="language-ts"><span style="color: #AF00DB">import</span><span style="color: #000000"> { </span><span style="color: #001080">MessageType</span><span style="color: #000000">, </span><span style="color: #001080">MessageOptions</span><span style="color: #000000">, </span><span style="color: #001080">Mimetype</span><span style="color: #000000"> } </span><span style="color: #AF00DB">from</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;@adiwajshing/baileys&#039;</span>
+
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">id</span><span style="color: #000000"> = </span><span style="color: #A31515">&#039;abcd@s.whatsapp.net&#039;</span><span style="color: #000000"> </span><span style="color: #008000">// the WhatsApp ID </span>
+<span style="color: #008000">// send a simple text!</span>
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">sentMsg</span><span style="color: #000000">  = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">sendMessage</span><span style="color: #000000"> (</span><span style="color: #001080">id</span><span style="color: #000000">, </span><span style="color: #A31515">&#039;oh hello there&#039;</span><span style="color: #000000">, </span><span style="color: #001080">MessageType</span><span style="color: #000000">.</span><span style="color: #001080">text</span><span style="color: #000000">)</span>
+<span style="color: #008000">// send a location!</span>
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">sentMsg</span><span style="color: #000000">  = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">sendMessage</span><span style="color: #000000">(</span><span style="color: #001080">id</span><span style="color: #000000">, {</span><span style="color: #001080">degreesLatitude:</span><span style="color: #000000"> </span><span style="color: #098658">24.121231</span><span style="color: #000000">, </span><span style="color: #001080">degreesLongitude:</span><span style="color: #000000"> </span><span style="color: #098658">55.1121221</span><span style="color: #000000">}, </span><span style="color: #001080">MessageType</span><span style="color: #000000">.</span><span style="color: #001080">location</span><span style="color: #000000">)</span>
+<span style="color: #008000">// send a contact!</span>
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">vcard</span><span style="color: #000000"> = </span><span style="color: #A31515">&#039;BEGIN:VCARD</span><span style="color: #EE0000">\n</span><span style="color: #A31515">&#039;</span><span style="color: #000000"> </span><span style="color: #008000">// metadata of the contact card</span>
+<span style="color: #000000">            + </span><span style="color: #A31515">&#039;VERSION:3.0</span><span style="color: #EE0000">\n</span><span style="color: #A31515">&#039;</span><span style="color: #000000"> </span>
+<span style="color: #000000">            + </span><span style="color: #A31515">&#039;FN:Jeff Singh</span><span style="color: #EE0000">\n</span><span style="color: #A31515">&#039;</span><span style="color: #000000"> </span><span style="color: #008000">// full name</span>
+<span style="color: #000000">            + </span><span style="color: #A31515">&#039;ORG:Ashoka Uni;</span><span style="color: #EE0000">\n</span><span style="color: #A31515">&#039;</span><span style="color: #000000"> </span><span style="color: #008000">// the organization of the contact</span>
+<span style="color: #000000">            + </span><span style="color: #A31515">&#039;TEL;type=CELL;type=VOICE;waid=911234567890:+91 12345 67890</span><span style="color: #EE0000">\n</span><span style="color: #A31515">&#039;</span><span style="color: #000000"> </span><span style="color: #008000">// WhatsApp ID + phone number</span>
+<span style="color: #000000">            + </span><span style="color: #A31515">&#039;END:VCARD&#039;</span>
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">sentMsg</span><span style="color: #000000">  = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">sendMessage</span><span style="color: #000000">(</span><span style="color: #001080">id</span><span style="color: #000000">, {</span><span style="color: #001080">displayname:</span><span style="color: #000000"> </span><span style="color: #A31515">&quot;Jeff&quot;</span><span style="color: #000000">, </span><span style="color: #001080">vcard:</span><span style="color: #000000"> </span><span style="color: #001080">vcard</span><span style="color: #000000">}, </span><span style="color: #001080">MessageType</span><span style="color: #000000">.</span><span style="color: #001080">contact</span><span style="color: #000000">)</span>
+<span style="color: #008000">// send a list message!</span>
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">rows</span><span style="color: #000000"> = [</span>
+<span style="color: #000000"> {</span><span style="color: #001080">title:</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;Row 1&#039;</span><span style="color: #000000">, </span><span style="color: #001080">description:</span><span style="color: #000000"> </span><span style="color: #A31515">&quot;Hello it&#039;s description 1&quot;</span><span style="color: #000000">, </span><span style="color: #001080">rowId:</span><span style="color: #A31515">&quot;rowid1&quot;</span><span style="color: #000000">},</span>
+<span style="color: #000000"> {</span><span style="color: #001080">title:</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;Row 2&#039;</span><span style="color: #000000">, </span><span style="color: #001080">description:</span><span style="color: #000000"> </span><span style="color: #A31515">&quot;Hello it&#039;s description 2&quot;</span><span style="color: #000000">, </span><span style="color: #001080">rowId:</span><span style="color: #A31515">&quot;rowid2&quot;</span><span style="color: #000000">}</span>
+<span style="color: #000000">]</span>
+
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">sections</span><span style="color: #000000"> = [{</span><span style="color: #001080">title:</span><span style="color: #000000"> </span><span style="color: #A31515">&quot;Section 1&quot;</span><span style="color: #000000">, </span><span style="color: #001080">rows:</span><span style="color: #000000"> </span><span style="color: #001080">rows</span><span style="color: #000000">}]</span>
+
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">button</span><span style="color: #000000"> = {</span>
+<span style="color: #000000"> </span><span style="color: #001080">buttonText:</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;Click Me!&#039;</span><span style="color: #000000">,</span>
+<span style="color: #000000"> </span><span style="color: #001080">description:</span><span style="color: #000000"> </span><span style="color: #A31515">&quot;Hello it&#039;s list message&quot;</span><span style="color: #000000">,</span>
+<span style="color: #000000"> </span><span style="color: #001080">sections:</span><span style="color: #000000"> </span><span style="color: #001080">sections</span><span style="color: #000000">,</span>
+<span style="color: #000000"> </span><span style="color: #001080">listType:</span><span style="color: #000000"> </span><span style="color: #098658">1</span>
+<span style="color: #000000">}</span>
+
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">sendMsg</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">sendMessage</span><span style="color: #000000">(</span><span style="color: #001080">id</span><span style="color: #000000">, </span><span style="color: #001080">button</span><span style="color: #000000">, </span><span style="color: #001080">MessageType</span><span style="color: #000000">.</span><span style="color: #001080">listMessage</span><span style="color: #000000">)</span>
+
+<span style="color: #008000">// send a buttons message!</span>
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">buttons</span><span style="color: #000000"> = [</span>
+<span style="color: #000000">  {</span><span style="color: #001080">buttonId:</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;id1&#039;</span><span style="color: #000000">, </span><span style="color: #001080">buttonText:</span><span style="color: #000000"> {</span><span style="color: #001080">displayText:</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;Button 1&#039;</span><span style="color: #000000">}, </span><span style="color: #001080">type:</span><span style="color: #000000"> </span><span style="color: #098658">1</span><span style="color: #000000">},</span>
+<span style="color: #000000">  {</span><span style="color: #001080">buttonId:</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;id2&#039;</span><span style="color: #000000">, </span><span style="color: #001080">buttonText:</span><span style="color: #000000"> {</span><span style="color: #001080">displayText:</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;Button 2&#039;</span><span style="color: #000000">}, </span><span style="color: #001080">type:</span><span style="color: #000000"> </span><span style="color: #098658">1</span><span style="color: #000000">}</span>
+<span style="color: #000000">]</span>
+
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">buttonMessage</span><span style="color: #000000"> = {</span>
+<span style="color: #000000">    </span><span style="color: #001080">contentText:</span><span style="color: #000000"> </span><span style="color: #A31515">&quot;Hi it&#039;s button message&quot;</span><span style="color: #000000">,</span>
+<span style="color: #000000">    </span><span style="color: #001080">footerText:</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;Hello World&#039;</span><span style="color: #000000">,</span>
+<span style="color: #000000">    </span><span style="color: #001080">buttons:</span><span style="color: #000000"> </span><span style="color: #001080">buttons</span><span style="color: #000000">,</span>
+<span style="color: #000000">    </span><span style="color: #001080">headerType:</span><span style="color: #000000"> </span><span style="color: #098658">1</span>
+<span style="color: #000000">}</span>
+
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">sendMsg</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">sendMessage</span><span style="color: #000000">(</span><span style="color: #001080">id</span><span style="color: #000000">, </span><span style="color: #001080">buttonMessage</span><span style="color: #000000">, </span><span style="color: #001080">MessageType</span><span style="color: #000000">.</span><span style="color: #001080">buttonsMessage</span><span style="color: #000000">)</span>
+</code></pre>
+				<a href="#media-messages" id="media-messages" style="color: inherit; text-decoration: none;">
+					<h3>Media Messages</h3>
+				</a>
+				<p>Sending media (video, stickers, images) is easier &amp; more efficient than ever. </p>
+				<ul>
+					<li>You can specify a buffer, a local url or even a remote url.</li>
+					<li>When specifying a media url, Baileys never loads the entire buffer into memory, it even encrypts the media as a readable stream.</li>
+				</ul>
+				<pre><code class="language-ts"><span style="color: #AF00DB">import</span><span style="color: #000000"> { </span><span style="color: #001080">MessageType</span><span style="color: #000000">, </span><span style="color: #001080">MessageOptions</span><span style="color: #000000">, </span><span style="color: #001080">Mimetype</span><span style="color: #000000"> } </span><span style="color: #AF00DB">from</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;@adiwajshing/baileys&#039;</span>
+<span style="color: #008000">// Sending gifs</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">sendMessage</span><span style="color: #000000">(</span>
+<span style="color: #000000">    </span><span style="color: #001080">id</span><span style="color: #000000">, </span>
+<span style="color: #000000">    </span><span style="color: #001080">fs</span><span style="color: #000000">.</span><span style="color: #795E26">readFileSync</span><span style="color: #000000">(</span><span style="color: #A31515">&quot;Media/ma_gif.mp4&quot;</span><span style="color: #000000">), </span><span style="color: #008000">// load a gif and send it</span>
+<span style="color: #000000">    </span><span style="color: #001080">MessageType</span><span style="color: #000000">.</span><span style="color: #001080">video</span><span style="color: #000000">, </span>
+<span style="color: #000000">    { </span><span style="color: #001080">mimetype:</span><span style="color: #000000"> </span><span style="color: #001080">Mimetype</span><span style="color: #000000">.</span><span style="color: #001080">gif</span><span style="color: #000000">, </span><span style="color: #001080">caption:</span><span style="color: #000000"> </span><span style="color: #A31515">&quot;hello!&quot;</span><span style="color: #000000"> }</span>
+<span style="color: #000000">)</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">sendMessage</span><span style="color: #000000">(</span>
+<span style="color: #000000">    </span><span style="color: #001080">id</span><span style="color: #000000">, </span>
+<span style="color: #000000">    { </span><span style="color: #001080">url:</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;Media/ma_gif.mp4&#039;</span><span style="color: #000000"> }, </span><span style="color: #008000">// send directly from local file</span>
+<span style="color: #000000">    </span><span style="color: #001080">MessageType</span><span style="color: #000000">.</span><span style="color: #001080">video</span><span style="color: #000000">, </span>
+<span style="color: #000000">    { </span><span style="color: #001080">mimetype:</span><span style="color: #000000"> </span><span style="color: #001080">Mimetype</span><span style="color: #000000">.</span><span style="color: #001080">gif</span><span style="color: #000000">, </span><span style="color: #001080">caption:</span><span style="color: #000000"> </span><span style="color: #A31515">&quot;hello!&quot;</span><span style="color: #000000"> }</span>
+<span style="color: #000000">)</span>
+
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">sendMessage</span><span style="color: #000000">(</span>
+<span style="color: #000000">    </span><span style="color: #001080">id</span><span style="color: #000000">, </span>
+<span style="color: #000000">    { </span><span style="color: #001080">url:</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;https://giphy.com/gifs/11JTxkrmq4bGE0/html5&#039;</span><span style="color: #000000"> }, </span><span style="color: #008000">// send directly from remote url!</span>
+<span style="color: #000000">    </span><span style="color: #001080">MessageType</span><span style="color: #000000">.</span><span style="color: #001080">video</span><span style="color: #000000">, </span>
+<span style="color: #000000">    { </span><span style="color: #001080">mimetype:</span><span style="color: #000000"> </span><span style="color: #001080">Mimetype</span><span style="color: #000000">.</span><span style="color: #001080">gif</span><span style="color: #000000">, </span><span style="color: #001080">caption:</span><span style="color: #000000"> </span><span style="color: #A31515">&quot;hello!&quot;</span><span style="color: #000000"> }</span>
+<span style="color: #000000">)</span>
+
+<span style="color: #008000">// send an audio file</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">sendMessage</span><span style="color: #000000">(</span>
+<span style="color: #000000">    </span><span style="color: #001080">id</span><span style="color: #000000">, </span>
+<span style="color: #000000">    { </span><span style="color: #001080">url:</span><span style="color: #000000"> </span><span style="color: #A31515">&quot;Media/audio.mp3&quot;</span><span style="color: #000000"> }, </span><span style="color: #008000">// can send mp3, mp4, &amp; ogg</span>
+<span style="color: #000000">    </span><span style="color: #001080">MessageType</span><span style="color: #000000">.</span><span style="color: #001080">audio</span><span style="color: #000000">, </span>
+<span style="color: #000000">    { </span><span style="color: #001080">mimetype:</span><span style="color: #000000"> </span><span style="color: #001080">Mimetype</span><span style="color: #000000">.</span><span style="color: #001080">mp4Audio</span><span style="color: #000000"> } </span><span style="color: #008000">// some metadata (can&#039;t have caption in audio)</span>
+<span style="color: #000000">)</span>
+</code></pre>
+				<a href="#notes" id="notes" style="color: inherit; text-decoration: none;">
+					<h3>Notes</h3>
+				</a>
+				<ul>
+					<li><code>id</code> is the WhatsApp ID of the person or group you&#39;re sending the message to. <ul>
+							<li>It must be in the format <code>[country code without +][phone number]@s.whatsapp.net</code>, for example <code>19999999999@s.whatsapp.net</code> for people. For groups, it must be in the format <code>123456789-123345@g.us</code>. </li>
+							<li>For broadcast lists it&#39;s <code>[timestamp of creation]@broadcast</code>.</li>
+							<li>For stories, the ID is <code>status@broadcast</code>.</li>
+						</ul>
+					</li>
+					<li>For media messages, the thumbnail can be generated automatically for images &amp; stickers. Thumbnails for videos can also be generated automatically, though, you need to have <code>ffmpeg</code> installed on your system.</li>
+					<li><strong>MessageOptions</strong>: some extra info about the message. It can have the following <strong>optional</strong> values:<pre><code class="language-ts"><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">info</span><span style="color: #000000">: </span><span style="color: #267F99">MessageOptions</span><span style="color: #000000"> = {</span>
+<span style="color: #000000">    </span><span style="color: #001080">quoted:</span><span style="color: #000000"> </span><span style="color: #001080">quotedMessage</span><span style="color: #000000">, </span><span style="color: #008000">// the message you want to quote</span>
+<span style="color: #000000">    </span><span style="color: #001080">contextInfo:</span><span style="color: #000000"> { </span><span style="color: #001080">forwardingScore:</span><span style="color: #000000"> </span><span style="color: #098658">2</span><span style="color: #000000">, </span><span style="color: #001080">isForwarded:</span><span style="color: #000000"> </span><span style="color: #0000FF">true</span><span style="color: #000000"> }, </span><span style="color: #008000">// some random context info (can show a forwarded message with this too)</span>
+<span style="color: #000000">    </span><span style="color: #001080">timestamp:</span><span style="color: #000000"> </span><span style="color: #267F99">Date</span><span style="color: #000000">(), </span><span style="color: #008000">// optional, if you want to manually set the timestamp of the message</span>
+<span style="color: #000000">    </span><span style="color: #001080">caption:</span><span style="color: #000000"> </span><span style="color: #A31515">&quot;hello there!&quot;</span><span style="color: #000000">, </span><span style="color: #008000">// (for media messages) the caption to send with the media (cannot be sent with stickers though)</span>
+<span style="color: #000000">    </span><span style="color: #001080">thumbnail:</span><span style="color: #000000"> </span><span style="color: #A31515">&quot;23GD#4/==&quot;</span><span style="color: #000000">, </span><span style="color: #008000">/*  (for location &amp; media messages) has to be a base 64 encoded JPEG if you want to send a custom thumb, </span>
+<span style="color: #008000">                                or set to null if you don&#039;t want to send a thumbnail.</span>
+<span style="color: #008000">                                Do not enter this field if you want to automatically generate a thumb</span>
+<span style="color: #008000">                            */</span>
+<span style="color: #000000">    </span><span style="color: #001080">mimetype:</span><span style="color: #000000"> </span><span style="color: #001080">Mimetype</span><span style="color: #000000">.</span><span style="color: #001080">pdf</span><span style="color: #000000">, </span><span style="color: #008000">/* (for media messages) specify the type of media (optional for all media types except documents),</span>
+<span style="color: #008000">                                import {Mimetype} from &#039;@adiwajshing/baileys&#039;</span>
+<span style="color: #008000">                            */</span>
+<span style="color: #000000">    </span><span style="color: #001080">filename:</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;somefile.pdf&#039;</span><span style="color: #000000">, </span><span style="color: #008000">// (for media messages) file name for the media</span>
+<span style="color: #000000">    </span><span style="color: #008000">/* will send audio messages as voice notes, if set to true */</span>
+<span style="color: #000000">    </span><span style="color: #001080">ptt:</span><span style="color: #000000"> </span><span style="color: #0000FF">true</span><span style="color: #000000">,</span>
+<span style="color: #000000">    </span><span style="color: #008000">// will detect links &amp; generate a link preview automatically (default true)</span>
+<span style="color: #000000">    </span><span style="color: #001080">detectLinks:</span><span style="color: #000000"> </span><span style="color: #0000FF">true</span><span style="color: #000000">,</span>
+<span style="color: #000000">    </span><span style="color: #008000">/** Should it send as a disappearing messages. </span>
+<span style="color: #008000">     * By default &#039;chat&#039; -- which follows the setting of the chat */</span>
+<span style="color: #000000">    </span><span style="color: #001080">sendEphemeral:</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;chat&#039;</span>
+<span style="color: #000000">}</span>
+</code></pre>
+						<a href="#forwarding-messages" id="forwarding-messages" style="color: inherit; text-decoration: none;">
+							<h2>Forwarding Messages</h2>
+						</a>
+					</li>
+				</ul>
+				<pre><code class="language-ts"><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">messages</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">loadConversation</span><span style="color: #000000"> (</span><span style="color: #A31515">&#039;1234@s.whatsapp.net&#039;</span><span style="color: #000000">, </span><span style="color: #098658">1</span><span style="color: #000000">)</span>
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">message</span><span style="color: #000000"> = </span><span style="color: #001080">messages</span><span style="color: #000000">[</span><span style="color: #098658">0</span><span style="color: #000000">] </span><span style="color: #008000">// get the last message from this conversation</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">forwardMessage</span><span style="color: #000000"> (</span><span style="color: #A31515">&#039;455@s.whatsapp.net&#039;</span><span style="color: #000000">, </span><span style="color: #001080">message</span><span style="color: #000000">) </span><span style="color: #008000">// WA forward the message!</span>
+</code></pre>
+				<a href="#reading-messages" id="reading-messages" style="color: inherit; text-decoration: none;">
+					<h2>Reading Messages</h2>
+				</a>
+				<pre><code class="language-ts"><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">id</span><span style="color: #000000"> = </span><span style="color: #A31515">&#039;1234-123@g.us&#039;</span>
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">messageID</span><span style="color: #000000"> = </span><span style="color: #A31515">&#039;AHASHH123123AHGA&#039;</span><span style="color: #000000"> </span><span style="color: #008000">// id of the message you want to read</span>
+
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">chatRead</span><span style="color: #000000"> (</span><span style="color: #001080">id</span><span style="color: #000000">) </span><span style="color: #008000">// mark all messages in chat as read (equivalent of opening a chat in WA)</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">chatRead</span><span style="color: #000000"> (</span><span style="color: #001080">id</span><span style="color: #000000">, </span><span style="color: #A31515">&#039;unread&#039;</span><span style="color: #000000">) </span><span style="color: #008000">// mark the chat as unread</span>
+</code></pre>
+				<p>The message ID is the unique identifier of the message that you are marking as read. On a <code>WAMessage</code>, the <code>messageID</code> can be accessed using <code>messageID = message.key.id</code>.</p>
+				<a href="#update-presence" id="update-presence" style="color: inherit; text-decoration: none;">
+					<h2>Update Presence</h2>
+				</a>
+				<pre><code class="language-ts"><span style="color: #AF00DB">import</span><span style="color: #000000"> { </span><span style="color: #001080">Presence</span><span style="color: #000000"> } </span><span style="color: #AF00DB">from</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;@adiwajshing/baileys&#039;</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">updatePresence</span><span style="color: #000000">(</span><span style="color: #001080">id</span><span style="color: #000000">, </span><span style="color: #001080">Presence</span><span style="color: #000000">.</span><span style="color: #001080">available</span><span style="color: #000000">) </span>
+
+</code></pre>
+				<p>This lets the person/group with <code>id</code> know whether you&#39;re online, offline, typing etc. where <code>presence</code> can be one of the following:</p>
+				<pre><code class="language-ts"><span style="color: #AF00DB">export</span><span style="color: #000000"> </span><span style="color: #0000FF">enum</span><span style="color: #000000"> </span><span style="color: #267F99">Presence</span><span style="color: #000000"> {</span>
+<span style="color: #000000">    </span><span style="color: #0070C1">available</span><span style="color: #000000"> = </span><span style="color: #A31515">&#039;available&#039;</span><span style="color: #000000">, </span><span style="color: #008000">// &quot;online&quot;</span>
+<span style="color: #000000">    </span><span style="color: #0070C1">composing</span><span style="color: #000000"> = </span><span style="color: #A31515">&#039;composing&#039;</span><span style="color: #000000">, </span><span style="color: #008000">// &quot;typing...&quot;</span>
+<span style="color: #000000">    </span><span style="color: #0070C1">recording</span><span style="color: #000000"> = </span><span style="color: #A31515">&#039;recording&#039;</span><span style="color: #000000">, </span><span style="color: #008000">// &quot;recording...&quot;</span>
+<span style="color: #000000">    </span><span style="color: #0070C1">paused</span><span style="color: #000000"> = </span><span style="color: #A31515">&#039;paused&#039;</span><span style="color: #000000"> </span><span style="color: #008000">// stopped typing, back to &quot;online&quot;</span>
+<span style="color: #000000">}</span>
+</code></pre>
+				<p>The presence expires after about 10 seconds.</p>
+				<a href="#downloading-media-messages" id="downloading-media-messages" style="color: inherit; text-decoration: none;">
+					<h2>Downloading Media Messages</h2>
+				</a>
+				<p>If you want to save the media you received</p>
+				<pre><code class="language-ts"><span style="color: #AF00DB">import</span><span style="color: #000000"> { </span><span style="color: #001080">MessageType</span><span style="color: #000000"> } </span><span style="color: #AF00DB">from</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;@adiwajshing/baileys&#039;</span>
+<span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">on</span><span style="color: #000000"> (</span><span style="color: #A31515">&#039;message-new&#039;</span><span style="color: #000000">, </span><span style="color: #0000FF">async</span><span style="color: #000000"> </span><span style="color: #001080">m</span><span style="color: #000000"> </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> {</span>
+<span style="color: #000000">    </span><span style="color: #AF00DB">if</span><span style="color: #000000"> (!</span><span style="color: #001080">m</span><span style="color: #000000">.</span><span style="color: #001080">message</span><span style="color: #000000">) </span><span style="color: #AF00DB">return</span><span style="color: #000000"> </span><span style="color: #008000">// if there is no text or media message</span>
+<span style="color: #000000">    </span><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">messageType</span><span style="color: #000000"> = </span><span style="color: #267F99">Object</span><span style="color: #000000">.</span><span style="color: #795E26">keys</span><span style="color: #000000"> (</span><span style="color: #001080">m</span><span style="color: #000000">.</span><span style="color: #001080">message</span><span style="color: #000000">)[</span><span style="color: #098658">0</span><span style="color: #000000">]</span><span style="color: #008000">// get what type of message it is -- text, image, video</span>
+<span style="color: #000000">    </span><span style="color: #008000">// if the message is not a text message</span>
+<span style="color: #000000">    </span><span style="color: #AF00DB">if</span><span style="color: #000000"> (</span><span style="color: #001080">messageType</span><span style="color: #000000"> !== </span><span style="color: #001080">MessageType</span><span style="color: #000000">.</span><span style="color: #001080">text</span><span style="color: #000000"> &amp;&amp; </span><span style="color: #001080">messageType</span><span style="color: #000000"> !== </span><span style="color: #001080">MessageType</span><span style="color: #000000">.</span><span style="color: #001080">extendedText</span><span style="color: #000000">) {</span>
+<span style="color: #000000">        </span><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">buffer</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">downloadMediaMessage</span><span style="color: #000000">(</span><span style="color: #001080">m</span><span style="color: #000000">) </span><span style="color: #008000">// to decrypt &amp; use as a buffer</span>
+<span style="color: #000000">        </span>
+<span style="color: #000000">        </span><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">savedFilename</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">downloadAndSaveMediaMessage</span><span style="color: #000000"> (</span><span style="color: #001080">m</span><span style="color: #000000">) </span><span style="color: #008000">// to decrypt &amp; save to file</span>
+<span style="color: #000000">        </span><span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000">(</span><span style="color: #001080">m</span><span style="color: #000000">.</span><span style="color: #001080">key</span><span style="color: #000000">.</span><span style="color: #001080">remoteJid</span><span style="color: #000000"> + </span><span style="color: #A31515">&quot; sent media, saved at: &quot;</span><span style="color: #000000"> + </span><span style="color: #001080">savedFilename</span><span style="color: #000000">)</span>
+<span style="color: #000000">    }</span>
+<span style="color: #000000">}</span>
+</code></pre>
+				<a href="#deleting-messages" id="deleting-messages" style="color: inherit; text-decoration: none;">
+					<h2>Deleting Messages</h2>
+				</a>
+				<pre><code class="language-ts"><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">jid</span><span style="color: #000000"> = </span><span style="color: #A31515">&#039;1234@s.whatsapp.net&#039;</span><span style="color: #000000"> </span><span style="color: #008000">// can also be a group</span>
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">response</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">sendMessage</span><span style="color: #000000"> (</span><span style="color: #001080">jid</span><span style="color: #000000">, </span><span style="color: #A31515">&#039;hello!&#039;</span><span style="color: #000000">, </span><span style="color: #001080">MessageType</span><span style="color: #000000">.</span><span style="color: #001080">text</span><span style="color: #000000">) </span><span style="color: #008000">// send a message</span>
+
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">deleteMessage</span><span style="color: #000000"> (</span><span style="color: #001080">jid</span><span style="color: #000000">, {</span><span style="color: #001080">id:</span><span style="color: #000000"> </span><span style="color: #001080">response</span><span style="color: #000000">.</span><span style="color: #001080">messageID</span><span style="color: #000000">, </span><span style="color: #001080">remoteJid:</span><span style="color: #000000"> </span><span style="color: #001080">jid</span><span style="color: #000000">, </span><span style="color: #001080">fromMe:</span><span style="color: #000000"> </span><span style="color: #0000FF">true</span><span style="color: #000000">}) </span><span style="color: #008000">// will delete the sent message for everyone!</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">clearMessage</span><span style="color: #000000"> (</span><span style="color: #001080">jid</span><span style="color: #000000">, {</span><span style="color: #001080">id:</span><span style="color: #000000"> </span><span style="color: #001080">response</span><span style="color: #000000">.</span><span style="color: #001080">messageID</span><span style="color: #000000">, </span><span style="color: #001080">remoteJid:</span><span style="color: #000000"> </span><span style="color: #001080">jid</span><span style="color: #000000">, </span><span style="color: #001080">fromMe:</span><span style="color: #000000"> </span><span style="color: #0000FF">true</span><span style="color: #000000">}) </span><span style="color: #008000">// will delete the sent message for only you!</span>
+</code></pre>
+				<a href="#modifying-chats" id="modifying-chats" style="color: inherit; text-decoration: none;">
+					<h2>Modifying Chats</h2>
+				</a>
+				<pre><code class="language-ts"><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">jid</span><span style="color: #000000"> = </span><span style="color: #A31515">&#039;1234@s.whatsapp.net&#039;</span><span style="color: #000000"> </span><span style="color: #008000">// can also be a group</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">modifyChat</span><span style="color: #000000"> (</span><span style="color: #001080">jid</span><span style="color: #000000">, </span><span style="color: #001080">ChatModification</span><span style="color: #000000">.</span><span style="color: #001080">archive</span><span style="color: #000000">) </span><span style="color: #008000">// archive chat</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">modifyChat</span><span style="color: #000000"> (</span><span style="color: #001080">jid</span><span style="color: #000000">, </span><span style="color: #001080">ChatModification</span><span style="color: #000000">.</span><span style="color: #001080">unarchive</span><span style="color: #000000">) </span><span style="color: #008000">// unarchive chat</span>
+
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">response</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">modifyChat</span><span style="color: #000000"> (</span><span style="color: #001080">jid</span><span style="color: #000000">, </span><span style="color: #001080">ChatModification</span><span style="color: #000000">.</span><span style="color: #001080">pin</span><span style="color: #000000">) </span><span style="color: #008000">// pin the chat</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">modifyChat</span><span style="color: #000000"> (</span><span style="color: #001080">jid</span><span style="color: #000000">, </span><span style="color: #001080">ChatModification</span><span style="color: #000000">.</span><span style="color: #001080">unpin</span><span style="color: #000000">) </span><span style="color: #008000">// unpin it</span>
+
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">modifyChat</span><span style="color: #000000"> (</span><span style="color: #001080">jid</span><span style="color: #000000">, </span><span style="color: #001080">ChatModification</span><span style="color: #000000">.</span><span style="color: #001080">mute</span><span style="color: #000000">, </span><span style="color: #098658">8</span><span style="color: #000000">*</span><span style="color: #098658">60</span><span style="color: #000000">*</span><span style="color: #098658">60</span><span style="color: #000000">*</span><span style="color: #098658">1000</span><span style="color: #000000">) </span><span style="color: #008000">// mute for 8 hours</span>
+<span style="color: #795E26">setTimeout</span><span style="color: #000000"> (() </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> {</span>
+<span style="color: #000000">    </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">modifyChat</span><span style="color: #000000"> (</span><span style="color: #001080">jid</span><span style="color: #000000">, </span><span style="color: #001080">ChatModification</span><span style="color: #000000">.</span><span style="color: #001080">unmute</span><span style="color: #000000">)</span>
+<span style="color: #000000">}, </span><span style="color: #098658">5000</span><span style="color: #000000">) </span><span style="color: #008000">// unmute after 5 seconds</span>
+
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">modifyChat</span><span style="color: #000000"> (</span><span style="color: #001080">jid</span><span style="color: #000000">, </span><span style="color: #001080">ChatModification</span><span style="color: #000000">.</span><span style="color: #001080">delete</span><span style="color: #000000">) </span><span style="color: #008000">// will delete the chat (can be a group or broadcast list as well)</span>
+</code></pre>
+				<p><strong>Note:</strong> to unmute or unpin a chat, one must pass the timestamp of the pinning or muting. This is returned by the pin &amp; mute functions. This is also available in the <code>WAChat</code> objects of the respective chats, as a <code>mute</code> or <code>pin</code> property.</p>
+				<a href="#disappearing-messages" id="disappearing-messages" style="color: inherit; text-decoration: none;">
+					<h2>Disappearing Messages</h2>
+				</a>
+				<pre><code class="language-ts"><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">jid</span><span style="color: #000000"> = </span><span style="color: #A31515">&#039;1234@s.whatsapp.net&#039;</span><span style="color: #000000"> </span><span style="color: #008000">// can also be a group</span>
+<span style="color: #008000">// turn on disappearing messages</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">toggleDisappearingMessages</span><span style="color: #000000">(</span>
+<span style="color: #000000">    </span><span style="color: #001080">jid</span><span style="color: #000000">, </span>
+<span style="color: #000000">    </span><span style="color: #0070C1">WA_DEFAULT_EPHEMERAL</span><span style="color: #000000"> </span><span style="color: #008000">// this is 1 week in seconds -- how long you want messages to appear for</span>
+<span style="color: #000000">) </span>
+<span style="color: #008000">// will automatically send as a disappearing message</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">sendMessage</span><span style="color: #000000">(</span><span style="color: #001080">jid</span><span style="color: #000000">, </span><span style="color: #A31515">&#039;Hello poof!&#039;</span><span style="color: #000000">, </span><span style="color: #001080">MessageType</span><span style="color: #000000">.</span><span style="color: #001080">text</span><span style="color: #000000">)</span>
+<span style="color: #008000">// turn off disappearing messages</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">toggleDisappearingMessages</span><span style="color: #000000">(</span><span style="color: #001080">jid</span><span style="color: #000000">, </span><span style="color: #098658">0</span><span style="color: #000000">)</span>
+
+</code></pre>
+				<a href="#misc" id="misc" style="color: inherit; text-decoration: none;">
+					<h2>Misc</h2>
+				</a>
+				<ul>
+					<li><p>To load chats in a paginated manner</p>
+						<pre><code class="language-ts"><span style="color: #0000FF">const</span><span style="color: #000000"> {</span><span style="color: #0070C1">chats</span><span style="color: #000000">, </span><span style="color: #0070C1">cursor</span><span style="color: #000000">} = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">loadChats</span><span style="color: #000000"> (</span><span style="color: #098658">25</span><span style="color: #000000">)</span>
+<span style="color: #AF00DB">if</span><span style="color: #000000"> (</span><span style="color: #001080">cursor</span><span style="color: #000000">) {</span>
+<span style="color: #000000">    </span><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">moreChats</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">loadChats</span><span style="color: #000000"> (</span><span style="color: #098658">25</span><span style="color: #000000">, </span><span style="color: #001080">cursor</span><span style="color: #000000">) </span><span style="color: #008000">// load the next 25 chats</span>
+<span style="color: #000000">}</span>
+</code></pre>
+					</li>
+					<li><p>To check if a given ID is on WhatsApp
+						Note: this method falls back to using <code>https://wa.me</code> to determine whether a number is on WhatsApp in case the WebSocket connection is not open yet.</p>
+						<pre><code class="language-ts"><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">id</span><span style="color: #000000"> = </span><span style="color: #A31515">&#039;123456&#039;</span>
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">exists</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">isOnWhatsApp</span><span style="color: #000000"> (</span><span style="color: #001080">id</span><span style="color: #000000">)</span>
+<span style="color: #AF00DB">if</span><span style="color: #000000"> (</span><span style="color: #001080">exists</span><span style="color: #000000">) </span><span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000"> (</span><span style="color: #A31515">`</span><span style="color: #0000FF">${</span><span style="color: #001080">id</span><span style="color: #0000FF">}</span><span style="color: #A31515"> exists on WhatsApp, as jid: </span><span style="color: #0000FF">${</span><span style="color: #001080">exists</span><span style="color: #000000FF">.</span><span style="color: #001080">jid</span><span style="color: #0000FF">}</span><span style="color: #A31515">`</span><span style="color: #000000">)</span>
+</code></pre>
+					</li>
+					<li><p>To query chat history on a group or with someone</p>
+						<pre><code class="language-ts"><span style="color: #008000">// query the last 25 messages (replace 25 with the number of messages you want to query)</span>
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">messages</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">loadMessages</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;xyz-abc@g.us&quot;</span><span style="color: #000000">, </span><span style="color: #098658">25</span><span style="color: #000000">)</span>
+<span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000">(</span><span style="color: #A31515">&quot;got back &quot;</span><span style="color: #000000"> + </span><span style="color: #001080">messages</span><span style="color: #000000">.</span><span style="color: #001080">length</span><span style="color: #000000"> + </span><span style="color: #A31515">&quot; messages&quot;</span><span style="color: #000000">)</span>
+</code></pre>
+						<p>  You can also load the entire conversation history if you want</p>
+						<pre><code class="language-ts"><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">loadAllMessages</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;xyz@c.us&quot;</span><span style="color: #000000">, </span><span style="color: #001080">message</span><span style="color: #000000"> </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> </span><span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000">(</span><span style="color: #A31515">&quot;Loaded message with ID: &quot;</span><span style="color: #000000"> + </span><span style="color: #001080">message</span><span style="color: #000000">.</span><span style="color: #001080">key</span><span style="color: #000000">.</span><span style="color: #001080">id</span><span style="color: #000000">))</span>
+<span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000">(</span><span style="color: #A31515">&quot;queried all messages&quot;</span><span style="color: #000000">) </span><span style="color: #008000">// promise resolves once all messages are retrieved</span>
+</code></pre>
+					</li>
+					<li><p>To get the status of some person</p>
+						<pre><code class="language-ts"><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">status</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">getStatus</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;xyz@c.us&quot;</span><span style="color: #000000">) </span><span style="color: #008000">// leave empty to get your own status</span>
+<span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000">(</span><span style="color: #A31515">&quot;status: &quot;</span><span style="color: #000000"> + </span><span style="color: #001080">status</span><span style="color: #000000">)</span>
+</code></pre>
+					</li>
+					<li><p>To get the display picture of some person/group</p>
+						<pre><code class="language-ts"><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">ppUrl</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">getProfilePicture</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;xyz@g.us&quot;</span><span style="color: #000000">) </span><span style="color: #008000">// leave empty to get your own</span>
+<span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000">(</span><span style="color: #A31515">&quot;download profile picture from: &quot;</span><span style="color: #000000"> + </span><span style="color: #001080">ppUrl</span><span style="color: #000000">)</span>
+</code></pre>
+					</li>
+					<li><p>To change your display picture or a group&#39;s</p>
+						<pre><code class="language-ts"><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">jid</span><span style="color: #000000"> = </span><span style="color: #A31515">&#039;111234567890-1594482450@g.us&#039;</span><span style="color: #000000"> </span><span style="color: #008000">// can be your own too</span>
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">img</span><span style="color: #000000"> = </span><span style="color: #001080">fs</span><span style="color: #000000">.</span><span style="color: #795E26">readFileSync</span><span style="color: #000000"> (</span><span style="color: #A31515">&#039;new-profile-picture.jpeg&#039;</span><span style="color: #000000">) </span><span style="color: #008000">// can be PNG also</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">updateProfilePicture</span><span style="color: #000000"> (</span><span style="color: #001080">jid</span><span style="color: #000000">, </span><span style="color: #001080">img</span><span style="color: #000000">)</span>
+</code></pre>
+					</li>
+					<li><p>To get someone&#39;s presence (if they&#39;re typing, online)</p>
+						<pre><code class="language-ts"><span style="color: #008000">// the presence update is fetched and called here</span>
+<span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">on</span><span style="color: #000000"> (</span><span style="color: #A31515">&#039;CB:Presence&#039;</span><span style="color: #000000">, </span><span style="color: #001080">json</span><span style="color: #000000"> </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> </span><span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000">(</span><span style="color: #001080">json</span><span style="color: #000000">.</span><span style="color: #001080">id</span><span style="color: #000000"> + </span><span style="color: #A31515">&quot; presence is &quot;</span><span style="color: #000000"> + </span><span style="color: #001080">json</span><span style="color: #000000">.</span><span style="color: #001080">type</span><span style="color: #000000">))</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">requestPresenceUpdate</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;xyz@c.us&quot;</span><span style="color: #000000">) </span><span style="color: #008000">// request the update</span>
+</code></pre>
+					</li>
+					<li><p>To search through messages</p>
+						<pre><code class="language-ts"><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">response</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">searchMessages</span><span style="color: #000000"> (</span><span style="color: #A31515">&#039;so cool&#039;</span><span style="color: #000000">, </span><span style="color: #0000FF">null</span><span style="color: #000000">, </span><span style="color: #098658">25</span><span style="color: #000000">, </span><span style="color: #098658">1</span><span style="color: #000000">) </span><span style="color: #008000">// search in all chats</span>
+<span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000"> (</span><span style="color: #A31515">`got </span><span style="color: #0000FF">${</span><span style="color: #001080">response</span><span style="color: #000000FF">.</span><span style="color: #001080">messages</span><span style="color: #000000FF">.</span><span style="color: #001080">length</span><span style="color: #0000FF">}</span><span style="color: #A31515"> messages in search`</span><span style="color: #000000">)</span>
+
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">response2</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">searchMessages</span><span style="color: #000000"> (</span><span style="color: #A31515">&#039;so cool&#039;</span><span style="color: #000000">, </span><span style="color: #A31515">&#039;1234@c.us&#039;</span><span style="color: #000000">, </span><span style="color: #098658">25</span><span style="color: #000000">, </span><span style="color: #098658">1</span><span style="color: #000000">) </span><span style="color: #008000">// search in given chat</span>
+</code></pre>
+					</li>
+					<li><p>To block or unblock user</p>
+						<pre><code class="language-ts"><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">blockUser</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;xyz@c.us&quot;</span><span style="color: #000000">, </span><span style="color: #A31515">&quot;add&quot;</span><span style="color: #000000">) </span><span style="color: #008000">// Block user</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">blockUser</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;xyz@c.us&quot;</span><span style="color: #000000">, </span><span style="color: #A31515">&quot;remove&quot;</span><span style="color: #000000">) </span><span style="color: #008000">// Unblock user</span>
+</code></pre>
+						<p>Of course, replace <code>xyz</code> with an actual ID. </p>
+					</li>
+				</ul>
+				<a href="#groups" id="groups" style="color: inherit; text-decoration: none;">
+					<h2>Groups</h2>
+				</a>
+				<ul>
+					<li><p>To create a group</p>
+						<pre><code class="language-ts"><span style="color: #008000">// title &amp; participants</span>
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">group</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">groupCreate</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;My Fab Group&quot;</span><span style="color: #000000">, [</span><span style="color: #A31515">&quot;abcd@s.whatsapp.net&quot;</span><span style="color: #000000">, </span><span style="color: #A31515">&quot;efgh@s.whatsapp.net&quot;</span><span style="color: #000000">])</span>
+<span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;created group with id: &quot;</span><span style="color: #000000"> + </span><span style="color: #001080">group</span><span style="color: #000000">.</span><span style="color: #001080">gid</span><span style="color: #000000">)</span>
+<span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">sendMessage</span><span style="color: #000000">(</span><span style="color: #001080">group</span><span style="color: #000000">.</span><span style="color: #001080">gid</span><span style="color: #000000">, </span><span style="color: #A31515">&quot;hello everyone&quot;</span><span style="color: #000000">, </span><span style="color: #001080">MessageType</span><span style="color: #000000">.</span><span style="color: #001080">extendedText</span><span style="color: #000000">) </span><span style="color: #008000">// say hello to everyone on the group</span>
+</code></pre>
+					</li>
+					<li><p>To add people to a group</p>
+						<pre><code class="language-ts"><span style="color: #008000">// id &amp; people to add to the group (will throw error if it fails)</span>
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">response</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">groupAdd</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;abcd-xyz@g.us&quot;</span><span style="color: #000000">, [</span><span style="color: #A31515">&quot;abcd@s.whatsapp.net&quot;</span><span style="color: #000000">, </span><span style="color: #A31515">&quot;efgh@s.whatsapp.net&quot;</span><span style="color: #000000">])</span>
+</code></pre>
+					</li>
+					<li><p>To make/demote admins on a group</p>
+						<pre><code class="language-ts"><span style="color: #008000">// id &amp; people to make admin (will throw error if it fails)</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">groupMakeAdmin</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;abcd-xyz@g.us&quot;</span><span style="color: #000000">, [</span><span style="color: #A31515">&quot;abcd@s.whatsapp.net&quot;</span><span style="color: #000000">, </span><span style="color: #A31515">&quot;efgh@s.whatsapp.net&quot;</span><span style="color: #000000">])</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">groupDemoteAdmin</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;abcd-xyz@g.us&quot;</span><span style="color: #000000">, [</span><span style="color: #A31515">&quot;abcd@s.whatsapp.net&quot;</span><span style="color: #000000">, </span><span style="color: #A31515">&quot;efgh@s.whatsapp.net&quot;</span><span style="color: #000000">]) </span><span style="color: #008000">// demote admins</span>
+</code></pre>
+					</li>
+					<li><p>To change the group&#39;s subject</p>
+						<pre><code class="language-ts"><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">groupUpdateSubject</span><span style="color: #000000">(</span><span style="color: #A31515">&quot;abcd-xyz@g.us&quot;</span><span style="color: #000000">, </span><span style="color: #A31515">&quot;New Subject!&quot;</span><span style="color: #000000">)</span>
+</code></pre>
+					</li>
+					<li><p>To change the group&#39;s description</p>
+						<pre><code class="language-ts"><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">groupUpdateDescription</span><span style="color: #000000">(</span><span style="color: #A31515">&quot;abcd-xyz@g.us&quot;</span><span style="color: #000000">, </span><span style="color: #A31515">&quot;This group has a new description&quot;</span><span style="color: #000000">)</span>
+</code></pre>
+					</li>
+					<li><p>To change group settings</p>
+						<pre><code class="language-ts"><span style="color: #AF00DB">import</span><span style="color: #000000"> { </span><span style="color: #001080">GroupSettingChange</span><span style="color: #000000"> } </span><span style="color: #AF00DB">from</span><span style="color: #000000"> </span><span style="color: #A31515">&#039;@adiwajshing/baileys&#039;</span>
+<span style="color: #008000">// only allow admins to send messages</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">groupSettingChange</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;abcd-xyz@g.us&quot;</span><span style="color: #000000">, </span><span style="color: #001080">GroupSettingChange</span><span style="color: #000000">.</span><span style="color: #001080">messageSend</span><span style="color: #000000">, </span><span style="color: #0000FF">true</span><span style="color: #000000">)</span>
+<span style="color: #008000">// allow everyone to modify the group&#039;s settings -- like display picture etc.</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">groupSettingChange</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;abcd-xyz@g.us&quot;</span><span style="color: #000000">, </span><span style="color: #001080">GroupSettingChange</span><span style="color: #000000">.</span><span style="color: #001080">settingsChange</span><span style="color: #000000">, </span><span style="color: #0000FF">false</span><span style="color: #000000">)</span>
+<span style="color: #008000">// only allow admins to modify the group&#039;s settings</span>
+<span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">groupSettingChange</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;abcd-xyz@g.us&quot;</span><span style="color: #000000">, </span><span style="color: #001080">GroupSettingChange</span><span style="color: #000000">.</span><span style="color: #001080">settingsChange</span><span style="color: #000000">, </span><span style="color: #0000FF">true</span><span style="color: #000000">)</span>
+</code></pre>
+					</li>
+					<li><p>To leave a group</p>
+						<pre><code class="language-ts"><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">groupLeave</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;abcd-xyz@g.us&quot;</span><span style="color: #000000">) </span><span style="color: #008000">// (will throw error if it fails)</span>
+</code></pre>
+					</li>
+					<li><p>To get the invite code for a group</p>
+						<pre><code class="language-ts"><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">code</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">groupInviteCode</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;abcd-xyz@g.us&quot;</span><span style="color: #000000">)</span>
+<span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000">(</span><span style="color: #A31515">&quot;group code: &quot;</span><span style="color: #000000"> + </span><span style="color: #001080">code</span><span style="color: #000000">)</span>
+</code></pre>
+					</li>
+					<li><p>To query the metadata of a group</p>
+						<pre><code class="language-ts"><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">metadata</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">groupMetadata</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;abcd-xyz@g.us&quot;</span><span style="color: #000000">) </span>
+<span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000">(</span><span style="color: #001080">json</span><span style="color: #000000">.</span><span style="color: #001080">id</span><span style="color: #000000"> + </span><span style="color: #A31515">&quot;, title: &quot;</span><span style="color: #000000"> + </span><span style="color: #001080">json</span><span style="color: #000000">.</span><span style="color: #001080">subject</span><span style="color: #000000"> + </span><span style="color: #A31515">&quot;, description: &quot;</span><span style="color: #000000"> + </span><span style="color: #001080">json</span><span style="color: #000000">.</span><span style="color: #001080">desc</span><span style="color: #000000">)</span>
+
+<span style="color: #008000">// Or if you&#039;ve left the group -- call this</span>
+<span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">metadata2</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">groupMetadataMinimal</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;abcd-xyz@g.us&quot;</span><span style="color: #000000">) </span>
+</code></pre>
+					</li>
+					<li><p>To join the group using the invitation code</p>
+						<pre><code class="language-ts"><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">response</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">acceptInvite</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;xxx&quot;</span><span style="color: #000000">)</span>
+<span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000">(</span><span style="color: #A31515">&quot;joined to: &quot;</span><span style="color: #000000"> + </span><span style="color: #001080">response</span><span style="color: #000000">.</span><span style="color: #001080">gid</span><span style="color: #000000">)</span>
+</code></pre>
+						<p>  Of course, replace <code>xxx</code> with invitation code.</p>
+					</li>
+					<li><p>To revokes the current invite link of a group</p>
+						<pre><code class="language-ts"><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">response</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">revokeInvite</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;abcd-xyz@g.us&quot;</span><span style="color: #000000">)</span>
+<span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000">(</span><span style="color: #A31515">&quot;new group code: &quot;</span><span style="color: #000000"> + </span><span style="color: #001080">response</span><span style="color: #000000">.</span><span style="color: #001080">code</span><span style="color: #000000">)</span>
+</code></pre>
+					</li>
+				</ul>
+				<a href="#broadcast-lists-amp-stories" id="broadcast-lists-amp-stories" style="color: inherit; text-decoration: none;">
+					<h2>Broadcast Lists &amp; Stories</h2>
+				</a>
+				<ul>
+					<li>You can send messages to broadcast lists the same way you send messages to groups &amp; individual chats.</li>
+					<li>Unfortunately, WA Web does not support creating broadcast lists right now but you can still delete them.</li>
+					<li>Broadcast IDs are in the format <code>12345678@broadcast</code></li>
+					<li>To query a broadcast list&#39;s recipients &amp; name:<pre><code class="language-ts"><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">bList</span><span style="color: #000000"> = </span><span style="color: #AF00DB">await</span><span style="color: #000000"> </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">getBroadcastListInfo</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;1234@broadcast&quot;</span><span style="color: #000000">)</span>
+<span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000"> (</span><span style="color: #A31515">`list name: </span><span style="color: #0000FF">${</span><span style="color: #001080">bList</span><span style="color: #000000FF">.</span><span style="color: #001080">name</span><span style="color: #0000FF">}</span><span style="color: #A31515">, recps: </span><span style="color: #0000FF">${</span><span style="color: #001080">bList</span><span style="color: #000000FF">.</span><span style="color: #001080">recipients</span><span style="color: #0000FF">}</span><span style="color: #A31515">`</span><span style="color: #000000">)</span>
+</code></pre>
+					</li>
+				</ul>
+				<a href="#writing-custom-functionality" id="writing-custom-functionality" style="color: inherit; text-decoration: none;">
+					<h2>Writing Custom Functionality</h2>
+				</a>
+				<p>Baileys is written, keeping in mind, that you may require other custom functionality. Hence, instead of having to fork the project &amp; re-write the internals, you can simply write extensions in your own code.</p>
+				<p>First, enable the logging of unhandled messages from WhatsApp by setting</p>
+				<pre><code class="language-ts"><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #001080">logger</span><span style="color: #000000">.</span><span style="color: #001080">level</span><span style="color: #000000"> = </span><span style="color: #A31515">&#039;debug&#039;</span>
+</code></pre>
+				<p>This will enable you to see all sorts of messages WhatsApp sends in the console. Some examples:</p>
+				<ol>
+					<li><p>Functionality to track of the battery percentage of your phone.
+							You enable logging and you&#39;ll see a message about your battery pop up in the console:
+						<code>s22, [&quot;action&quot;,null,[[&quot;battery&quot;,{&quot;live&quot;:&quot;false&quot;,&quot;value&quot;:&quot;52&quot;},null]]] </code> </p>
+						<p> You now know what a battery update looks like. It&#39;ll have the following characteristics.</p>
+						<ul>
+							<li>Given <code>const bMessage = [&quot;action&quot;,null,[[&quot;battery&quot;,{&quot;live&quot;:&quot;false&quot;,&quot;value&quot;:&quot;52&quot;},null]]]</code></li>
+							<li><code>bMessage[0]</code> is always <code>&quot;action&quot;</code></li>
+							<li><code>bMessage[1]</code> is always <code>null</code></li>
+							<li><code>bMessage[2][0][0]</code> is always <code>&quot;battery&quot;</code></li>
+						</ul>
+						<p> Hence, you can register a callback for an event using the following:</p>
+						<pre><code class="language-ts"><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">on</span><span style="color: #000000"> (</span><span style="color: #A31515">`CB:action,,battery`</span><span style="color: #000000">, </span><span style="color: #001080">json</span><span style="color: #000000"> </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> {</span>
+<span style="color: #000000">    </span><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">batteryLevelStr</span><span style="color: #000000"> = </span><span style="color: #001080">json</span><span style="color: #000000">[</span><span style="color: #098658">2</span><span style="color: #000000">][</span><span style="color: #098658">0</span><span style="color: #000000">][</span><span style="color: #098658">1</span><span style="color: #000000">].</span><span style="color: #001080">value</span>
+<span style="color: #000000">    </span><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">batterylevel</span><span style="color: #000000"> = </span><span style="color: #795E26">parseInt</span><span style="color: #000000"> (</span><span style="color: #001080">batteryLevelStr</span><span style="color: #000000">)</span>
+<span style="color: #000000">    </span><span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;battery level: &quot;</span><span style="color: #000000"> + </span><span style="color: #001080">batterylevel</span><span style="color: #000000"> + </span><span style="color: #A31515">&quot;%&quot;</span><span style="color: #000000">)</span>
+<span style="color: #000000">})</span>
+</code></pre>
+						<p> This callback will be fired any time a message is received matching the following criteria:
+						<code>message [0] === &quot;action&quot; &amp;&amp; message [1] === null &amp;&amp; message[2][0][0] === &quot;battery&quot;</code></p>
+					</li>
+					<li><p>Functionality to keep track of the pushname changes on your phone.
+							You enable logging and you&#39;ll see an unhandled message about your pushanme pop up like this:
+						<code>s24, [&quot;Conn&quot;,{&quot;pushname&quot;:&quot;adiwajshing&quot;}]</code> </p>
+						<p> You now know what a pushname update looks like. It&#39;ll have the following characteristics.</p>
+						<ul>
+							<li>Given <code>const pMessage = [&quot;Conn&quot;,{&quot;pushname&quot;:&quot;adiwajshing&quot;}] </code></li>
+							<li><code>pMessage[0]</code> is always <code>&quot;Conn&quot;</code></li>
+							<li><code>pMessage[1]</code> always has the key <code>&quot;pushname&quot;</code></li>
+							<li><code>pMessage[2]</code> is always <code>undefined</code></li>
+						</ul>
+						<p> Following this, one can implement the following callback:</p>
+						<pre><code class="language-ts"><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #795E26">on</span><span style="color: #000000"> (</span><span style="color: #A31515">&#039;CB:Conn,pushname&#039;</span><span style="color: #000000">, </span><span style="color: #001080">json</span><span style="color: #000000"> </span><span style="color: #0000FF">=&gt;</span><span style="color: #000000"> {</span>
+<span style="color: #000000">    </span><span style="color: #0000FF">const</span><span style="color: #000000"> </span><span style="color: #0070C1">pushname</span><span style="color: #000000"> = </span><span style="color: #001080">json</span><span style="color: #000000">[</span><span style="color: #098658">1</span><span style="color: #000000">].</span><span style="color: #001080">pushname</span>
+<span style="color: #000000">    </span><span style="color: #001080">conn</span><span style="color: #000000">.</span><span style="color: #001080">user</span><span style="color: #000000">.</span><span style="color: #001080">name</span><span style="color: #000000"> = </span><span style="color: #001080">pushname</span><span style="color: #000000"> </span><span style="color: #008000">// update on client too</span>
+<span style="color: #000000">    </span><span style="color: #001080">console</span><span style="color: #000000">.</span><span style="color: #795E26">log</span><span style="color: #000000"> (</span><span style="color: #A31515">&quot;Name updated: &quot;</span><span style="color: #000000"> + </span><span style="color: #001080">pushname</span><span style="color: #000000">)</span>
+<span style="color: #000000">})</span>
+</code></pre>
+						<p> This callback will be fired any time a message is received matching the following criteria:
+						<code>message [0] === &quot;Conn&quot; &amp;&amp; message [1].pushname</code></p>
+					</li>
+				</ol>
+				<p>A little more testing will reveal that almost all WhatsApp messages are in the format illustrated above.
+				Note: except for the first parameter (in the above cases, <code>&quot;action&quot;</code> or <code>&quot;Conn&quot;</code>), all the other parameters are optional.</p>
+				<a href="#note" id="note" style="color: inherit; text-decoration: none;">
+					<h3>Note</h3>
+				</a>
+				<p> This library was originally a project for <strong>CS-2362 at Ashoka University</strong> and is in no way affiliated with WhatsApp. Use at your own discretion. Do not spam people with this.</p>
+			</div>
+		</div>
+		<div class="col-4 col-menu menu-sticky-wrap menu-highlight">
+			<nav class="tsd-navigation primary">
+				<ul>
+					<li class=" ">
+						<a href="modules.html">Exports</a>
+					</li>
+					<li class=" tsd-kind-namespace">
+						<a href="modules/wa.html">WA</a>
+					</li>
+					<li class=" tsd-kind-namespace">
+						<a href="modules/proto.html">proto</a>
+					</li>
+				</ul>
+			</nav>
+			<nav class="tsd-navigation secondary menu-sticky">
+				<ul class="before-current">
+					<li class=" tsd-kind-reference">
+						<a href="modules.html#wamessageproto" class="tsd-kind-icon">WAMessage<wbr>Proto</a>
+					</li>
+					<li class=" tsd-kind-reference">
+						<a href="modules.html#wa_message_status_type" class="tsd-kind-icon">WA_<wbr>MESSAGE_<wbr>STATUS_<wbr>TYPE</a>
+					</li>
+					<li class=" tsd-kind-reference">
+						<a href="modules.html#wa_message_stub_type" class="tsd-kind-icon">WA_<wbr>MESSAGE_<wbr>STUB_<wbr>TYPE</a>
+					</li>
+					<li class=" tsd-kind-enum">
+						<a href="enums/chatmodification.html" class="tsd-kind-icon">Chat<wbr>Modification</a>
+					</li>
+					<li class=" tsd-kind-enum">
+						<a href="enums/disconnectreason.html" class="tsd-kind-icon">Disconnect<wbr>Reason</a>
+					</li>
+					<li class=" tsd-kind-enum">
+						<a href="enums/groupsettingchange.html" class="tsd-kind-icon">Group<wbr>Setting<wbr>Change</a>
+					</li>
+					<li class=" tsd-kind-enum">
+						<a href="enums/messagetype.html" class="tsd-kind-icon">Message<wbr>Type</a>
+					</li>
+					<li class=" tsd-kind-enum">
+						<a href="enums/mimetype.html" class="tsd-kind-icon">Mimetype</a>
+					</li>
+					<li class=" tsd-kind-enum">
+						<a href="enums/presence.html" class="tsd-kind-icon">Presence</a>
+					</li>
+					<li class=" tsd-kind-enum">
+						<a href="enums/reconnectmode.html" class="tsd-kind-icon">Reconnect<wbr>Mode</a>
+					</li>
+					<li class=" tsd-kind-enum">
+						<a href="enums/waflag.html" class="tsd-kind-icon">WAFlag</a>
+					</li>
+					<li class=" tsd-kind-enum">
+						<a href="enums/wametric.html" class="tsd-kind-icon">WAMetric</a>
+					</li>
+					<li class=" tsd-kind-class">
+						<a href="classes/baileyserror.html" class="tsd-kind-icon">Baileys<wbr>Error</a>
+					</li>
+					<li class=" tsd-kind-class">
+						<a href="classes/waconnection.html" class="tsd-kind-icon">WAConnection</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/authenticationcredentials.html" class="tsd-kind-icon">Authentication<wbr>Credentials</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/authenticationcredentialsbase64.html" class="tsd-kind-icon">Authentication<wbr>Credentials<wbr>Base64</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/authenticationcredentialsbrowser.html" class="tsd-kind-icon">Authentication<wbr>Credentials<wbr>Browser</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/blocklistupdate.html" class="tsd-kind-icon">Blocklist<wbr>Update</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/mediaconninfo.html" class="tsd-kind-icon">Media<wbr>Conn<wbr>Info</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/messageinfo.html" class="tsd-kind-icon">Message<wbr>Info</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/messageoptions.html" class="tsd-kind-icon">Message<wbr>Options</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/presenceupdate.html" class="tsd-kind-icon">Presence<wbr>Update</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/wabroadcastlistinfo.html" class="tsd-kind-icon">WABroadcast<wbr>List<wbr>Info</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/wabusinessprofile.html" class="tsd-kind-icon">WABusiness<wbr>Profile</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/wachat.html" class="tsd-kind-icon">WAChat</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/wacontact.html" class="tsd-kind-icon">WAContact</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/wagroupcreateresponse.html" class="tsd-kind-icon">WAGroup<wbr>Create<wbr>Response</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/wagroupmetadata.html" class="tsd-kind-icon">WAGroup<wbr>Metadata</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/wagroupmodification.html" class="tsd-kind-icon">WAGroup<wbr>Modification</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/walocationmessage.html" class="tsd-kind-icon">WALocation<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/wamessagestatusupdate.html" class="tsd-kind-icon">WAMessage<wbr>Status<wbr>Update</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/waopenresult.html" class="tsd-kind-icon">WAOpen<wbr>Result</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/wapresencedata.html" class="tsd-kind-icon">WAPresence<wbr>Data</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/waprofilepicturechange.html" class="tsd-kind-icon">WAProfile<wbr>Picture<wbr>Change</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/waquery.html" class="tsd-kind-icon">WAQuery</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/waurlinfo.html" class="tsd-kind-icon">WAUrl<wbr>Info</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/wauser.html" class="tsd-kind-icon">WAUser</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#anyauthenticationcredentials" class="tsd-kind-icon">Any<wbr>Authentication<wbr>Credentials</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#baileysevent" class="tsd-kind-icon">Baileys<wbr>Event</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#debouncedtimeout" class="tsd-kind-icon">Debounced<wbr>Timeout</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#wabusinesscategories" class="tsd-kind-icon">WABusiness<wbr>Categories</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#wabusinesshours" class="tsd-kind-icon">WABusiness<wbr>Hours</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#wabusinesshoursconfig" class="tsd-kind-icon">WABusiness<wbr>Hours<wbr>Config</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#wabuttonsmessage" class="tsd-kind-icon">WAButtons<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#wachatindex" class="tsd-kind-icon">WAChat<wbr>Index</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#wachatupdate" class="tsd-kind-icon">WAChat<wbr>Update</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#waconnectoptions" class="tsd-kind-icon">WAConnect<wbr>Options</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#waconnectionstate" class="tsd-kind-icon">WAConnection<wbr>State</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#wacontactmessage" class="tsd-kind-icon">WAContact<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#wacontactupdate" class="tsd-kind-icon">WAContact<wbr>Update</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#wacontactsarraymessage" class="tsd-kind-icon">WAContacts<wbr>Array<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#wacontextinfo" class="tsd-kind-icon">WAContext<wbr>Info</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#wagenericmediamessage" class="tsd-kind-icon">WAGeneric<wbr>Media<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#wagroupinvitemessage" class="tsd-kind-icon">WAGroup<wbr>Invite<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#wagroupparticipant" class="tsd-kind-icon">WAGroup<wbr>Participant</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#wainitresponse" class="tsd-kind-icon">WAInit<wbr>Response</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#walistmessage" class="tsd-kind-icon">WAList<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#waloadchatoptions" class="tsd-kind-icon">WALoad<wbr>Chat<wbr>Options</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#wamediaupload" class="tsd-kind-icon">WAMedia<wbr>Upload</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#wamessage" class="tsd-kind-icon">WAMessage</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#wamessagecontent" class="tsd-kind-icon">WAMessage<wbr>Content</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#wamessagekey" class="tsd-kind-icon">WAMessage<wbr>Key</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#wanode" class="tsd-kind-icon">WANode</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#waparticipantaction" class="tsd-kind-icon">WAParticipant<wbr>Action</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#watag" class="tsd-kind-icon">WATag</a>
+					</li>
+					<li class=" tsd-kind-type-alias">
+						<a href="modules.html#watextmessage" class="tsd-kind-icon">WAText<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="modules.html#browsers" class="tsd-kind-icon">Browsers</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="modules.html#default_origin" class="tsd-kind-icon">DEFAULT_<wbr>ORIGIN</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="modules.html#hkdfinfokeys" class="tsd-kind-icon">HKDFInfo<wbr>Keys</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="modules.html#keep_alive_interval_ms" class="tsd-kind-icon">KEEP_<wbr>ALIVE_<wbr>INTERVAL_<wbr>MS</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="modules.html#mediapathmap" class="tsd-kind-icon">Media<wbr>Path<wbr>Map</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="modules.html#messagetypeproto" class="tsd-kind-icon">Message<wbr>Type<wbr>Proto</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="modules.html#mimetypemap" class="tsd-kind-icon">Mimetype<wbr>Map</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="modules.html#stories_jid" class="tsd-kind-icon">STORIES_<wbr>JID</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="modules.html#unauthorized_codes" class="tsd-kind-icon">UNAUTHORIZED_<wbr>CODES</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="modules.html#url_regex" class="tsd-kind-icon">URL_<wbr>REGEX</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="modules.html#wa_default_ephemeral" class="tsd-kind-icon">WA_<wbr>DEFAULT_<wbr>EPHEMERAL</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="modules.html#wa_message_stub_types" class="tsd-kind-icon">WA_<wbr>MESSAGE_<wbr>STUB_<wbr>TYPES</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="modules.html#ws_url" class="tsd-kind-icon">WS_<wbr>URL</a>
+					</li>
+					<li class=" tsd-kind-variable">
+						<a href="modules.html#wamessagekey" class="tsd-kind-icon">wa<wbr>Message<wbr>Key</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#cancellederror" class="tsd-kind-icon">Cancelled<wbr>Error</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#get_message_id" class="tsd-kind-icon">GET_<wbr>MESSAGE_<wbr>ID</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#mutex" class="tsd-kind-icon">Mutex</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#proxyagent" class="tsd-kind-icon">Proxy<wbr>Agent</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#timedouterror" class="tsd-kind-icon">Timed<wbr>Out<wbr>Error</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#wa_message_id" class="tsd-kind-icon">WA_<wbr>MESSAGE_<wbr>ID</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#aesdecrypt" class="tsd-kind-icon">aes<wbr>Decrypt</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#aesdecryptwithiv" class="tsd-kind-icon">aes<wbr>Decrypt<wbr>WithIV</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#aesencrypwithiv" class="tsd-kind-icon">aes<wbr>Encryp<wbr>WithIV</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#aesencrypt" class="tsd-kind-icon">aes<wbr>Encrypt</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#compressimage" class="tsd-kind-icon">compress<wbr>Image</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#debouncedtimeout" class="tsd-kind-icon">debounced<wbr>Timeout</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#decryptmediamessagebuffer" class="tsd-kind-icon">decrypt<wbr>Media<wbr>Message<wbr>Buffer</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#decryptwa" class="tsd-kind-icon">decryptWA</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#delay" class="tsd-kind-icon">delay</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#delaycancellable" class="tsd-kind-icon">delay<wbr>Cancellable</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#encryptedstream" class="tsd-kind-icon">encrypted<wbr>Stream</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#extensionformediamessage" class="tsd-kind-icon">extension<wbr>For<wbr>Media<wbr>Message</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#generateclientid" class="tsd-kind-icon">generate<wbr>ClientID</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#generatemessageid" class="tsd-kind-icon">generate<wbr>MessageID</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#generatemessagetag" class="tsd-kind-icon">generate<wbr>Message<wbr>Tag</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#generateprofilepicture" class="tsd-kind-icon">generate<wbr>Profile<wbr>Picture</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#generatethumbnail" class="tsd-kind-icon">generate<wbr>Thumbnail</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#getaudioduration" class="tsd-kind-icon">get<wbr>Audio<wbr>Duration</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#getgotstream" class="tsd-kind-icon">get<wbr>Got<wbr>Stream</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#getmediakeys" class="tsd-kind-icon">get<wbr>Media<wbr>Keys</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#getstream" class="tsd-kind-icon">get<wbr>Stream</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#hkdf" class="tsd-kind-icon">hkdf</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#hmacsign" class="tsd-kind-icon">hmac<wbr>Sign</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#isgroupid" class="tsd-kind-icon">is<wbr>GroupID</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#mediamessagesha256b64" class="tsd-kind-icon">media<wbr>MessageSHA256<wbr>B64</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#newmessagesdb" class="tsd-kind-icon">new<wbr>MessagesDB</a>
+					</li>
+					<li class=" tsd-kind-function tsd-has-type-parameter">
+						<a href="modules.html#promisetimeout" class="tsd-kind-icon">promise<wbr>Timeout</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#randombytes" class="tsd-kind-icon">random<wbr>Bytes</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#sha256" class="tsd-kind-icon">sha256</a>
+					</li>
+					<li class=" tsd-kind-function tsd-has-type-parameter">
+						<a href="modules.html#shallowchanges" class="tsd-kind-icon">shallow<wbr>Changes</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#tonumber" class="tsd-kind-icon">to<wbr>Number</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#toreadable" class="tsd-kind-icon">to<wbr>Readable</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#unixtimestampseconds" class="tsd-kind-icon">unix<wbr>Timestamp<wbr>Seconds</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#wachatkey" class="tsd-kind-icon">wa<wbr>Chat<wbr>Key</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="modules.html#whatsappid" class="tsd-kind-icon">whatsappID</a>
+					</li>
+				</ul>
+			</nav>
+		</div>
+	</div>
+</div>
+<footer class="with-border-bottom">
+	<div class="container">
+		<h2>Legend</h2>
+		<div class="tsd-legend-group">
+			<ul class="tsd-legend">
+				<li class="tsd-kind-constructor tsd-parent-kind-class"><span class="tsd-kind-icon">Constructor</span></li>
+				<li class="tsd-kind-property tsd-parent-kind-class"><span class="tsd-kind-icon">Property</span></li>
+				<li class="tsd-kind-method tsd-parent-kind-class"><span class="tsd-kind-icon">Method</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-constructor tsd-parent-kind-class tsd-is-inherited"><span class="tsd-kind-icon">Inherited constructor</span></li>
+				<li class="tsd-kind-property tsd-parent-kind-class tsd-is-inherited"><span class="tsd-kind-icon">Inherited property</span></li>
+				<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited"><span class="tsd-kind-icon">Inherited method</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-property tsd-parent-kind-interface"><span class="tsd-kind-icon">Property</span></li>
+			</ul>
+		</div>
+	</div>
+</footer>
+<div class="container tsd-generator">
+	<p>Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p>
+</div>
+<div class="overlay"></div>
+<script src="assets/js/main.js"></script>
+</body>
+</html>
