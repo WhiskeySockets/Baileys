@@ -165,7 +165,7 @@ export type MessageContentGenerationOptions = MediaGenerationOptions & {
 }
 export type MessageGenerationOptions = MessageContentGenerationOptions & MessageGenerationOptionsFromContent
 
-export type MessageUpdateType = 'append' | 'notify' | 'prepend' | 'last'
+export type MessageUpdateType = 'append' | 'notify' | 'prepend' | 'last' | 'replace'
 
 export type MessageInfoEventMap = { [jid: string]: Date }
 export interface MessageInfo {
