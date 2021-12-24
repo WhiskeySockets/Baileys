@@ -39,7 +39,7 @@ const startSock = () => {
         
     })
 
-    sock.ev.on('messages.update', m => console.log(m))
+    sock.ev.on('messages.update', m => console.log(JSON.stringify(m, undefined, 2)))
     sock.ev.on('presence.update', m => console.log(m))
     sock.ev.on('chats.update', m => console.log(m))
     sock.ev.on('contacts.update', m => console.log(m))
