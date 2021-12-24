@@ -165,7 +165,7 @@ export async function promiseTimeout<T>(ms: number, promise: (resolve: (v?: T)=>
         delay
         .then(() => reject(
             new Boom('Timed Out', {
-                statusCode: 408,
+                statusCode: DisconnectReason.timedOut,
                 data: {
                     stack
                 }

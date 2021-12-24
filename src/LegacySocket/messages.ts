@@ -32,7 +32,8 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 			mediaConn = (async() => {
 				const {media_conn} = await query({
 					json: ['query', 'mediaConn'], 
-					requiresPhoneConnection: false
+					requiresPhoneConnection: false,
+					expect200: true
 				})
 				media_conn.fetchDate = new Date()
 				return media_conn as MediaConnInfo
