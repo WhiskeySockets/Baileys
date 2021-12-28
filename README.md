@@ -513,7 +513,6 @@ WA uses an encrypted form of communication to send chat/app updates. This has be
 
 - Delete message for me
   ``` ts
-  // mark it unread
   await sock.chatModify(
       { clear: { message: { id: 'ATWYHDNNWU81732J', fromMe: true } } }, 
       '123456@s.whatsapp.net', 
@@ -633,10 +632,10 @@ Of course, replace ``` xyz ``` with an actual ID.
     const metadata = await sock.groupMetadata("abcd-xyz@g.us") 
     console.log(metadata.id + ", title: " + metadata.subject + ", description: " + metadata.desc)
     ```
-- To join the group using the invitation code (not supported yet)
+- To join the group using the invitation code
     ``` ts
-    const response = await sock.acceptInvite("xxx")
-    console.log("joined to: " + response.gid)
+    const response = await sock.groupAcceptInvite("xxx")
+    console.log("joined to: " + response)
     ```
     Of course, replace ``` xxx ``` with invitation code.
 
