@@ -281,7 +281,7 @@ const templateButtons = [
 const templateMessage = {
     text: "Hi it's a template message",
     footer: 'Hello World',
-    templateButtons: templateButttons
+    templateButtons: templateButtons
 }
 
 const sendMsg = await sock.sendMessage(id, templateMessage)
