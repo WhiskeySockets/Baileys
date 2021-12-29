@@ -77,14 +77,6 @@ export const prepareWAMessageMedia = async(
 				// generate the key
 				mediaType + ':' + uploadData.media.url!.toString()
 			)
-	// check for cache hit
-	if(cacheableKey) {
-		const mediaBuff: Buffer = options.mediaCache!.get(cacheableKey)
-		if(mediaBuff) {
-			logger?.debug({ cacheableKey }, `got media cache hit`)
-			return WAProto.Message.decode(mediaBuff)
-		}
-	}
 
 	if(mediaType === 'document' && !uploadData.fileName) {
 		uploadData.fileName = 'file'
@@ -92,6 +84,18 @@ export const prepareWAMessageMedia = async(
 	if(!uploadData.mimetype) {
 		uploadData.mimetype = MIMETYPE_MAP[mediaType]
 	}
+
+	// check for cache hit
+	if(cacheableKey) {
+		const mediaBuff: Buffer = options.mediaCache!.get(cacheableKey)
+		if(mediaBuff) {
+			logger?.debug({ cacheableKey }, `got media cache hit`)
+			const obj = WAProto.Message.decode(mediaBuff)
+			const key = `${mediaType}Message`
+			return Object.assign(obj[key], { ...uploadData })
+		}
+	}
+
 	const requiresDurationComputation = mediaType === 'audio' && typeof uploadData.seconds === 'undefined'
 	const requiresThumbnailComputation = (mediaType === 'image' || mediaType === 'video') && 
 										(typeof uploadData['jpegThumbnail'] === 'undefined')
