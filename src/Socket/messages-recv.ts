@@ -7,15 +7,13 @@ import { KEY_BUNDLE_TYPE } from "../Defaults"
 import { makeChatsSocket } from "./chats"
 import { extractGroupMetadata } from "./groups"
 
-const getStatusFromReceiptType = (type: string | undefined) => {
-    if(type === 'read' || type === 'read-self') {
-        return proto.WebMessageInfo.WebMessageInfoStatus.READ
-    }
-    if(typeof type === 'undefined') {
-        return proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK
-    }
-    return undefined
+const STATUS_MAP: { [_: string]: proto.WebMessageInfo.WebMessageInfoStatus } = {
+    'played': proto.WebMessageInfo.WebMessageInfoStatus.PLAYED,
+    'read': proto.WebMessageInfo.WebMessageInfoStatus.READ,
+    'read-self': proto.WebMessageInfo.WebMessageInfoStatus.READ
 }
+
+const getStatusFromReceiptType = (type: string | undefined) => STATUS_MAP[type]
 
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const { logger } = config
