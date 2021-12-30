@@ -66,9 +66,9 @@ export const prepareWAMessageMedia = async(
 	}
 	const uploadData: MediaUploadData = { 
 		...message,
-		[mediaType]: undefined,
 		media: message[mediaType]
 	}
+	delete uploadData[mediaType]
 	// check if cacheable + generate cache key
 	const cacheableKey = typeof uploadData.media === 'object' && 
 			('url' in uploadData.media) && 
@@ -90,9 +90,14 @@ export const prepareWAMessageMedia = async(
 		const mediaBuff: Buffer = options.mediaCache!.get(cacheableKey)
 		if(mediaBuff) {
 			logger?.debug({ cacheableKey }, `got media cache hit`)
+			
 			const obj = WAProto.Message.decode(mediaBuff)
 			const key = `${mediaType}Message`
-			return Object.assign(obj[key], { ...uploadData })
+
+			delete uploadData.media
+			Object.assign(obj[key], { ...uploadData })
+
+			return obj
 		}
 	}
 
