@@ -335,7 +335,14 @@ export const downloadContentFromMessage = async(
     }
 
     // download the message
-    const fetched = await getHttpStream(downloadUrl, { headers })
+    const fetched = await getHttpStream(
+        downloadUrl, 
+        {
+            headers,
+            maxBodyLength: Infinity,
+            maxContentLength: Infinity,
+        }
+    )
 
     let remainingBytes = Buffer.from([])
     const { cipherKey, iv } = getMediaKeys(mediaKey, type)
@@ -476,7 +483,9 @@ export const getWAUploadToServer = ({ customUploadHosts, fetchAgent, logger }: C
 						},
 						httpsAgent: fetchAgent,
                         timeout: timeoutMs,
-                        responseType: 'json'
+                        responseType: 'json',
+                        maxBodyLength: Infinity,
+                        maxContentLength: Infinity,
 					}
 				)
 				
@@ -492,7 +501,7 @@ export const getWAUploadToServer = ({ customUploadHosts, fetchAgent, logger }: C
 				}
 			} catch (error) {
 				const isLast = hostname === hosts[uploadInfo.hosts.length-1]
-				logger.debug(`Error in uploading to ${hostname} (${error}) ${isLast ? '' : ', retrying...'}`)
+				logger.debug({ trace: error.stack }, `Error in uploading to ${hostname} ${isLast ? '' : ', retrying...'}`)
 			}
 		}
 		if (!urls) {
