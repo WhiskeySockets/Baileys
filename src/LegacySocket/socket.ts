@@ -285,7 +285,7 @@ export const makeSocket = ({
             const message = STATUS_CODES[responseStatusCode] || 'unknown'
             throw new Boom(
                 `Unexpected status in '${Array.isArray(json) ? json[0] : (json?.tag || 'query')}': ${message}(${responseStatusCode})`, 
-                { data: { query: json, message }, statusCode: response.status }
+                { data: { query: json, response }, statusCode: response.status }
             )
         }
         return response

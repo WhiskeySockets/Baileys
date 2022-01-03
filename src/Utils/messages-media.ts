@@ -471,9 +471,9 @@ export const getWAUploadToServer = ({ customUploadHosts, fetchAgent, logger }: C
 		for (let hostname of hosts) {
 			const auth = encodeURIComponent(uploadInfo.auth) // the auth token
 			const url = `https://${hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
-			
+			let result: any
 			try {
-				const {data: result} = await axios.post(
+				const body = await axios.post(
                     url,
                     stream,
 					{   
@@ -488,6 +488,7 @@ export const getWAUploadToServer = ({ customUploadHosts, fetchAgent, logger }: C
                         maxContentLength: Infinity,
 					}
 				)
+                result = body.data
 				
 				if(result?.url || result?.directPath) {
                     urls = {
@@ -501,7 +502,7 @@ export const getWAUploadToServer = ({ customUploadHosts, fetchAgent, logger }: C
 				}
 			} catch (error) {
 				const isLast = hostname === hosts[uploadInfo.hosts.length-1]
-				logger.debug({ trace: error.stack }, `Error in uploading to ${hostname} ${isLast ? '' : ', retrying...'}`)
+				logger.debug({ trace: error.stack, uploadResult: result }, `Error in uploading to ${hostname} ${isLast ? '' : ', retrying...'}`)
 			}
 		}
 		if (!urls) {
