@@ -57,7 +57,13 @@ export const makeSocket = ({
         epoch += 1 // increment message count, it makes the 'epoch' field when sending binary messages
         return tag
     }
-	const sendRawMessage = (data: Buffer | string) => sendPromise.call(ws, data) as Promise<void>
+	const sendRawMessage = (data: Buffer | string) => {
+        if(ws.readyState !== ws.OPEN) {
+            throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
+        }
+
+        return sendPromise.call(ws, data) as Promise<void>
+    }
 	/** 
 	 * Send a message to the WA servers
 	 * @returns the tag attached in the message
