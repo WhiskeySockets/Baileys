@@ -19,8 +19,6 @@ export type SocketConfig = CommonSocketConfig<AuthenticationState> & {
     userDevicesCache?: NodeCache
     /** map to store the retry counts for failed messages */
     msgRetryCounterMap?: { [msgId: string]: number }
-    /** custom domains to push media via */
-    customUploadHosts: string[]
     /** 
      * fetch a message from your store 
      * implement this so that messages failed to send (solves the "this message can take a while" issue) can be retried

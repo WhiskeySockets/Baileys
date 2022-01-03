@@ -28,7 +28,7 @@ export type DownloadableMessage = { mediaKey?: Uint8Array, directPath?: string, 
 export type MediaConnInfo = {
     auth: string 
     ttl: number
-    hosts: { hostname: string }[]
+    hosts: { hostname: string, maxContentLengthBytes: number }[]
     fetchDate: Date
 }
 

@@ -3,6 +3,7 @@ import type { Agent } from "https"
 import type { Logger } from "pino"
 import type { URL } from "url"
 import type NodeCache from 'node-cache'
+import { MediaConnInfo } from "./Message"
 
 export type WAVersion = [number, number, number]
 export type WABrowserDescription = [string, string, string]
@@ -35,5 +36,5 @@ export type CommonSocketConfig<T> = {
     /** provide a cache to store media, so does not have to be re-uploaded */
     mediaCache?: NodeCache
 
-    customUploadHosts: string[]
+    customUploadHosts: MediaConnInfo['hosts']
 }
