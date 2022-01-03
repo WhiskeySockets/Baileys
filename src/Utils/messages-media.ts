@@ -468,6 +468,14 @@ export const getWAUploadToServer = ({ customUploadHosts, fetchAgent, logger }: C
 
 		let urls: { mediaUrl: string, directPath: string }
         const hosts = [ ...customUploadHosts, ...uploadInfo.hosts.map(h => h.hostname) ]
+
+        let chunks: Buffer[] = []
+        for await(const chunk of stream) {
+            chunks.push(chunk)
+        }
+
+        let reqBody = Buffer.concat(chunks)
+
 		for (let hostname of hosts) {
 			const auth = encodeURIComponent(uploadInfo.auth) // the auth token
 			const url = `https://${hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
@@ -475,7 +483,7 @@ export const getWAUploadToServer = ({ customUploadHosts, fetchAgent, logger }: C
 			try {
 				const body = await axios.post(
                     url,
-                    stream,
+                    reqBody,
 					{   
 						headers: { 
 							'Content-Type': 'application/octet-stream',
@@ -505,12 +513,16 @@ export const getWAUploadToServer = ({ customUploadHosts, fetchAgent, logger }: C
 				logger.debug({ trace: error.stack, uploadResult: result }, `Error in uploading to ${hostname} ${isLast ? '' : ', retrying...'}`)
 			}
 		}
-		if (!urls) {
+        // clear buffer just to be sure we're releasing the memory
+        reqBody = undefined
+
+		if(!urls) {
 			throw new Boom(
 				'Media upload failed on all hosts',
 				{ statusCode: 500 }
 			)
 		}
+
 		return urls
 	}
 }
