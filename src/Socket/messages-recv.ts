@@ -13,7 +13,13 @@ const STATUS_MAP: { [_: string]: proto.WebMessageInfo.WebMessageInfoStatus } = {
     'read-self': proto.WebMessageInfo.WebMessageInfoStatus.READ
 }
 
-const getStatusFromReceiptType = (type: string | undefined) => STATUS_MAP[type]
+const getStatusFromReceiptType = (type: string | undefined) => {
+    const status = STATUS_MAP[type]
+    if(typeof type === 'undefined') {
+        return proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK
+    } 
+    return status
+}
 
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const { logger } = config
