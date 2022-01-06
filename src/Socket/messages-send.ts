@@ -73,7 +73,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
         }
         return mediaConn
     }
-
+    /**
+     * generic send receipt function 
+     * used for receipts of phone call, read, delivery etc.
+     * */
     const sendReceipt = async(jid: string, participant: string | undefined, messageIds: string[], type: 'read' | 'read-self' | undefined) => {
         const node: BinaryNode = {
             tag: 'receipt',
@@ -105,10 +108,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
         logger.debug({ jid, messageIds }, 'reading messages')
         await sendNode(node)
-    }
-
-    const sendDeliveryReceipt = (jid: string, participant: string | undefined, messageIds: string[]) => {
-        return sendReceipt(jid, participant, messageIds, undefined)
     }
 
     const sendReadReceipt = async(jid: string, participant: string | undefined, messageIds: string[]) => {
@@ -424,7 +423,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		...sock,
         assertSessions,
         relayMessage,
-        sendDeliveryReceipt,
+        sendReceipt,
         sendReadReceipt,
         refreshMediaConn,
 	    waUploadToServer,

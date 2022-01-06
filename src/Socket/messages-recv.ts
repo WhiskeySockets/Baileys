@@ -32,7 +32,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         assertingPreKeys,
 		sendNode,
         relayMessage,
-        sendDeliveryReceipt,
+        sendReceipt,
         resyncMainAppState,
 	} = sock
 
@@ -357,102 +357,23 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
     }
     // recv a message
     ws.on('CB:message', async(stanza: BinaryNode) => {
-        const dec = await decodeMessageStanza(stanza, authState)
-        const fullMessages: proto.IWebMessageInfo[] = []
-
-        const { attrs } = stanza
-        const isGroup = !!stanza.attrs.participant
-        const sender = (attrs.participant || attrs.from)?.toString()
-        const isMe = areJidsSameUser(sender, authState.creds.me!.id)
-
-        const remoteJid = jidNormalizedUser(dec.chatId)
-        
-        const key: WAMessageKey = {
-            remoteJid,
-            fromMe: isMe,
-            id: dec.msgId,
-            participant: dec.participant
-        }
-        const partialMsg: Partial<proto.IWebMessageInfo> = {
-            messageTimestamp: dec.timestamp,
-            pushName: dec.pushname
-        }
-
-        if(!dec.failures.length) {
-            await sendMessageAck(stanza, { class: 'receipt' })
-        }
-        
-        // if there were some successful decryptions
-        if(dec.successes.length) {
-            // send message receipt
-            let recpAttrs: { [_: string]: any }
-            if(isMe) {
-                recpAttrs =  {
-                    type: 'sender',
-                    id: stanza.attrs.id,
-                    to: stanza.attrs.from,
-                }
-                if(isGroup) {
-                    recpAttrs.participant = stanza.attrs.participant
-                } else {
-                    recpAttrs.recipient = stanza.attrs.recipient
-                }
-            } else {
-                const isStatus = isJidStatusBroadcast(stanza.attrs.from)
-                recpAttrs = {
-                    id: stanza.attrs.id,
-                }
-                if(isGroup || isStatus) {
-                    recpAttrs.participant = stanza.attrs.participant
-                    recpAttrs.to = dec.chatId
-                } else {
-                    recpAttrs.to = jidNormalizedUser(dec.chatId)
-                }
-            }
-
-            await sendNode({ tag: 'receipt', attrs: recpAttrs })
-            logger.debug({ msgId: dec.msgId }, 'sent message receipt')
-
-            await sendDeliveryReceipt(dec.chatId, dec.participant, [dec.msgId])
-            logger.debug({ msgId: dec.msgId }, 'sent delivery receipt')
-        }
-
-        for(const msg of dec.successes) {
-            const message = msg.deviceSentMessage?.message || msg
-            fullMessages.push({
-                key,
-                message,
-                status: isMe ? proto.WebMessageInfo.WebMessageInfoStatus.SERVER_ACK : null,
-                ...partialMsg
-            })
-        }
-        
-		for(const { error } of dec.failures) {
+        const msg = await decodeMessageStanza(stanza, authState)
+        // message failed to decrypt
+        if(msg.messageStubType === proto.WebMessageInfo.WebMessageInfoStubType.CIPHERTEXT) {
             logger.error(
-                { msgId: dec.msgId, trace: error.stack, data: error.data }, 
+                { msgId: msg.key.id, params: msg.messageStubParameters }, 
                 'failure in decrypting message'
             )
             await sendRetryRequest(stanza)
-            
-            fullMessages.push({
-                key,
-                messageStubType: WAMessageStubType.CIPHERTEXT,
-                messageStubParameters: [error.message],
-                ...partialMsg
-            })
-        }
-
-        if(fullMessages.length) {
-            ev.emit(
-                'messages.upsert', 
-                { 
-                    messages: fullMessages.map(m => proto.WebMessageInfo.fromObject(m)), 
-                    type: stanza.attrs.offline ? 'append' : 'notify' 
-                }
-            )
         } else {
-            logger.warn({ stanza }, `received node with 0 messages`)
+            await sendMessageAck(stanza, { class: 'receipt' })
+            // no type in the receipt => message delivered
+            await sendReceipt(msg.key.remoteJid!, msg.key.participant, [msg.key.id!], undefined)
+            logger.debug({ msg: msg.key }, 'sent delivery receipt')
         }
+        
+        msg.key.remoteJid = jidNormalizedUser(msg.key.remoteJid!)
+        ev.emit('messages.upsert', { messages: [msg], type: stanza.attrs.offline ? 'append' : 'notify' })
     })
 
     ws.on('CB:ack,class:message', async(node: BinaryNode) => {
@@ -477,7 +398,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
     })
 
     const sendMessagesAgain = async(key: proto.IMessageKey, ids: string[]) => {
-        
         const msgs = await Promise.all(
             ids.map(id => (
                 config.getMessage({ ...key, id })
