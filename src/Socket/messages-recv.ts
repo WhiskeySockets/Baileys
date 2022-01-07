@@ -429,9 +429,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         let shouldAck = true
 
         const { attrs, content } = node
-        const isNodeFromMe = areJidsSameUser(attrs.from, authState.creds.me?.id)
-        const remoteJid = attrs.recipient || attrs.from 
-        const fromMe = isNodeFromMe || (attrs.recipient ? false : true)
+        const isNodeFromMe = areJidsSameUser(attrs.participant || attrs.from, authState.creds.me?.id)
+        const remoteJid = !isNodeFromMe ? attrs.from : attrs.recipient
+        const fromMe = !attrs.recipient
 
         const ids = [attrs.id]
         if(Array.isArray(content)) {
@@ -447,7 +447,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         }
 
         const status = getStatusFromReceiptType(attrs.type)
-        if(typeof status !== 'undefined' && !isNodeFromMe) {
+        if(
+            typeof status !== 'undefined' &&
+            (
+                // basically, we only want to know when a message from us has been delivered to/read by the other person
+                // or another device of ours has read some messages
+                status > proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK ||
+                !isNodeFromMe
+            )
+        ) {
             ev.emit('messages.update', ids.map(id => ({
                 key: { ...key, id },
                 update: { status }
