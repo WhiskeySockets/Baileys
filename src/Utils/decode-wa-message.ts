@@ -69,8 +69,11 @@ export const decodeMessageStanza = async(stanza: BinaryNode, auth: Authenticatio
     const fullMessage: proto.IWebMessageInfo = {
         key,
         messageTimestamp: +stanza.attrs.t,
-        pushName: pushname,
-        status: key.fromMe ? proto.WebMessageInfo.WebMessageInfoStatus.SERVER_ACK : null,
+        pushName: pushname
+    }
+
+    if(key.fromMe) {
+        fullMessage.status = proto.WebMessageInfo.WebMessageInfoStatus.SERVER_ACK
     }
 
     if(Array.isArray(stanza.content)) {
