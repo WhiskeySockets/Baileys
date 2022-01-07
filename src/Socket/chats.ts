@@ -443,8 +443,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
     }
 
     const processSyncActions = (actions: ChatMutation[]) => {
-        console.log(actions)
-
         const updates: { [jid: string]: Partial<Chat> } = {}
         const contactUpdates: { [jid: string]: Contact } = {}
         const msgDeletes: proto.IMessageKey[] = []
