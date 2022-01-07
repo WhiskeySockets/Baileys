@@ -56,7 +56,7 @@ export const decodeMessageStanza = async(stanza: BinaryNode, auth: Authenticatio
 
     const sender = msgType === 'chat' ? author : chatId
 
-    const fromMe = isMe(participant || chatId)
+    const fromMe = isMe(stanza.attrs.participant || stanza.attrs.from)
     const pushname = stanza.attrs.notify
     
     const key: WAMessageKey = {
