@@ -143,7 +143,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
         await query({
             tag: 'iq',
             attrs: {
-		xmlns: 'blocklist',
+                xmlns: 'blocklist',
                 to: S_WHATSAPP_NET,
                 type: 'set'
             },
@@ -225,9 +225,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
         })
     }
 
-    const resyncAppState = async(collections: WAPatchName[], fromScratch: boolean = false) => {
-        const appStateChunk : AppStateChunk = {totalMutations: [], collectionsToHandle: []}
-        
+    const resyncAppState = async(collections: WAPatchName[]) => {
+        const appStateChunk: AppStateChunk = {totalMutations: [], collectionsToHandle: []}
+        // we use this to determine which events to fire
+        // otherwise when we resync from scratch -- all notifications will fire
+        const initialVersionMap: { [T in WAPatchName]?: number } = { }
+
         await authState.keys.transaction(
             async() => {
                 const collectionsToHandle = new Set<string>(collections)
@@ -241,12 +244,16 @@ export const makeChatsSocket = (config: SocketConfig) => {
                     const nodes: BinaryNode[] = []
 
                     for(const name of collectionsToHandle) {
-                        let state: LTHashState 
-                        if(!fromScratch) {
-                            const result = await authState.keys.get('app-state-sync-version', [name])
-                            state = result[name]
+                        const result = await authState.keys.get('app-state-sync-version', [name])
+                        let state = result[name]
+
+                        if(state) {
+                            if(typeof initialVersionMap[name] === 'undefined') {
+                                initialVersionMap[name] = state.version
+                            }
+                        } else {
+                            state = newLTHashState()
                         }
-                        if(!state) state = newLTHashState()
 
                         states[name] = state
 
@@ -285,16 +292,18 @@ export const makeChatsSocket = (config: SocketConfig) => {
                         const { patches, hasMorePatches, snapshot } = decoded[name]
                         try {
                             if(snapshot) {
-                                const newState = await decodeSyncdSnapshot(name, snapshot, getAppStateSyncKey)
+                                const { state: newState, mutations } = await decodeSyncdSnapshot(name, snapshot, getAppStateSyncKey, initialVersionMap[name])
                                 states[name] = newState
     
-                                logger.info(`restored state of ${name} from snapshot to v${newState.version}`)
+                                logger.info(`restored state of ${name} from snapshot to v${newState.version} with ${mutations.length} mutations`)
 
                                 await authState.keys.set({ 'app-state-sync-version': { [name]: newState } })
+
+                                appStateChunk.totalMutations.push(...mutations)
                             }
                             // only process if there are syncd patches
                             if(patches.length) {
-                                const { newMutations, state: newState } = await decodePatches(name, patches, states[name], getAppStateSyncKey, true)
+                                const { newMutations, state: newState } = await decodePatches(name, patches, states[name], getAppStateSyncKey, initialVersionMap[name])
     
                                 await authState.keys.set({ 'app-state-sync-version': { [name]: newState } })
                     
@@ -313,9 +322,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
                         } catch(error) {
                             logger.info({ name, error: error.stack }, 'failed to sync state from version, removing and trying from scratch')
                             await authState.keys.set({ "app-state-sync-version": { [name]: null } })
-
+                            // increment number of retries
                             attemptsMap[name] = (attemptsMap[name] || 0) + 1
-                            if(attemptsMap[name] >= MAX_SYNC_ATTEMPTS) {
+                            // if retry attempts overshoot
+                            // or key not found
+                            if(attemptsMap[name] >= MAX_SYNC_ATTEMPTS || error.output?.statusCode === 404) {
+                                // stop retrying
                                 collectionsToHandle.delete(name)
                             }
                         }
@@ -431,6 +443,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
     }
 
     const processSyncActions = (actions: ChatMutation[]) => {
+        console.log(actions)
+
         const updates: { [jid: string]: Partial<Chat> } = {}
         const contactUpdates: { [jid: string]: Contact } = {}
         const msgDeletes: proto.IMessageKey[] = []
@@ -637,7 +651,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
             const name = update.attrs.name as WAPatchName
             mutationMutex.mutex(
                 async() => {
-                    await resyncAppState([name], false)
+                    await resyncAppState([name])
                         .catch(err => logger.error({ trace: err.stack, node }, `failed to sync state`))
                 }
             )
