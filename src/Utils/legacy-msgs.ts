@@ -3,7 +3,7 @@ import { randomBytes } from 'crypto'
 import { decodeBinaryNodeLegacy, jidNormalizedUser } from "../WABinary"
 import { aesDecrypt, hmacSign, hkdf, Curve } from "./crypto"
 import { BufferJSON } from './generics'
-import { DisconnectReason, WATag, LegacyAuthenticationCreds, CurveKeyPair, Contact } from "../Types"
+import { DisconnectReason, WATag, LegacyAuthenticationCreds, AuthenticationCreds, CurveKeyPair, Contact } from "../Types"
 
 export const newLegacyAuthCreds = () => ({
     clientID: randomBytes(16).toString('base64')
@@ -172,5 +172,14 @@ export const useSingleFileLegacyAuthState = (file: string) => {
             const str = JSON.stringify(state, BufferJSON.replacer, 2)
             writeFileSync(file, str)
         }
+    }
+}
+
+export const getAuthenticationCredsType = (creds: LegacyAuthenticationCreds | AuthenticationCreds) => {
+    if('clientID' in creds && !!creds.clientID) {
+        return 'legacy'
+    }
+    if('noiseKey' in creds && !!creds.noiseKey) {
+        return 'md'
     }
 }
