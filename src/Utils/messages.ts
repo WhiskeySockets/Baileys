@@ -426,6 +426,14 @@ export const generateWAMessage = async(
 	)
 }
 
+/** Get the key to access the true type of content */
+export const getContentType = (content: WAProto.IMessage | undefined) => {
+	if(content) {
+		const keys = Object.keys(content)
+		const key = keys.find(k => (k === 'conversation' || k.endsWith('Message')) && k !== 'senderKeyDistributionMessage')
+		return key as keyof typeof content
+	}
+}
 /**
  * Extract the true message content from a message
  * Eg. extracts the inner message from a disappearing message/view once message
