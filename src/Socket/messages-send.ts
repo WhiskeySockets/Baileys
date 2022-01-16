@@ -106,7 +106,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
             ]
         }
 
-        logger.debug({ jid, messageIds }, 'reading messages')
+        logger.debug({ jid, messageIds, type }, 'sending receipt for messages')
         await sendNode(node)
     }
 
