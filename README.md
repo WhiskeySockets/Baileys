@@ -178,8 +178,12 @@ export type BaileysEventMap = {
 	'connection.update': Partial<ConnectionState>
     /** auth credentials updated -- some pre key state, device ID etc. */
     'creds.update': Partial<AuthenticationCreds>
-    /** set chats (history sync), messages are reverse chronologically sorted */
-    'chats.set': { chats: Chat[], messages: WAMessage[], contacts: Contact[] }
+    /** set chats (history sync), chats are reverse chronologically sorted */
+    'chats.set': { chats: Chat[], isLatest: boolean }
+    /** set messages (history sync), messages are reverse chronologically sorted */
+    'messages.set': { messages: WAMessage[], isLatest: boolean }
+    /** set contacts (history sync) */
+    'contacts.set': { contacts: Contact[] }
     /** upsert chats */
     'chats.upsert': Chat[]
     /** update the given chats */

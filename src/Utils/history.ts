@@ -66,13 +66,11 @@ export const processHistoryMessage = (item: proto.IHistorySync, historyCache: Se
 		break
 	}
 
-	if(chats.length || contacts.length || messages.length) {
-		return {
-			chats,
-			contacts,
-			messages,
-			isLatest,
-		}
+	return {
+		chats,
+		contacts,
+		messages,
+		isLatest,
 	}
 }
 

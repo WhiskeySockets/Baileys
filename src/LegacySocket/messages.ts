@@ -287,15 +287,15 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
     }
 
 	// messages received
-	const messagesUpdate = (node: BinaryNode, type: 'prepend' | 'last') => {
+	const messagesUpdate = (node: BinaryNode, isLatest: boolean) => {
 		const messages = getBinaryNodeMessages(node)
 		messages.reverse()
-		ev.emit('messages.upsert', { messages, type })
+		ev.emit('messages.set', { messages, isLatest })
 	}
 
-	socketEvents.on('CB:action,add:last', json => messagesUpdate(json, 'last'))
-	socketEvents.on('CB:action,add:unread', json => messagesUpdate(json, 'prepend'))
-	socketEvents.on('CB:action,add:before', json => messagesUpdate(json, 'prepend'))
+	socketEvents.on('CB:action,add:last', json => messagesUpdate(json, true))
+	socketEvents.on('CB:action,add:unread', json => messagesUpdate(json, false))
+	socketEvents.on('CB:action,add:before', json => messagesUpdate(json, false))
 	
 	// new messages
 	socketEvents.on('CB:action,add:relay,message', (node: BinaryNode) => {

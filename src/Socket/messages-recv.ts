@@ -133,7 +133,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                     const histNotification = protocolMsg!.historySyncNotification
                     
                     logger.info({ histNotification, id: message.key.id }, 'got history notification')
-                    const info = await downloadAndProcessHistorySyncNotification(histNotification, historyCache)
+                    const { chats, contacts, messages, isLatest } = await downloadAndProcessHistorySyncNotification(histNotification, historyCache)
                     
                     const meJid = authState.creds.me!.id
                     await sendNode({
@@ -145,7 +145,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                         }
                     })
 
-                    info && ev.emit('chats.set', info)
+                    if(chats.length) ev.emit('chats.set', { chats, isLatest })
+                    if(messages.length) ev.emit('messages.set', { messages, isLatest })
+                    if(contacts.length) ev.emit('contacts.set', { contacts })
+
                     break
                 case proto.ProtocolMessage.ProtocolMessageType.APP_STATE_SYNC_KEY_SHARE:
                     const keys = protocolMsg.appStateSyncKeyShare!.keys
