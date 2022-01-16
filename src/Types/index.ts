@@ -10,7 +10,7 @@ export * from './Events'
 
 import type NodeCache from 'node-cache'
 
-import { AuthenticationState, AuthenticationCreds } from './Auth'
+import { AuthenticationState } from './Auth'
 import { proto } from '../../WAProto'
 import { CommonSocketConfig } from './Socket'
 
@@ -49,6 +49,7 @@ export type WABusinessHoursConfig = {
     open_time?: number
     close_time?: number
 }
+
 export type WABusinessProfile = {
     description: string
     email: string
