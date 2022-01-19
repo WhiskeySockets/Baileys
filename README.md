@@ -1,10 +1,10 @@
-# Baileys MD - Typescript/Javascript WhatsApp Web API
+# Baileys - Typescript/Javascript WhatsApp Web API
  
- Early Multi-Device Edition. Breaks completely from master.
-
  Baileys does not require Selenium or any other browser to be interface with WhatsApp Web, it does so directly using a **WebSocket**. Not running Selenium or Chromimum saves you like **half a gig** of ram :/ 
 
- Thank you to [@pokearaujo](https://github.com/pokearaujo/multidevice) for writing his observations on the workings of WhatsApp Multi-Device.
+ Baileys supports interacting with the multi-device & web versions of WhatsApp.
+
+ Thank you to [@pokearaujo](https://github.com/pokearaujo/multidevice) for writing his observations on the workings of WhatsApp Multi-Device. Also, thank you to [@Sigalor](https://github.com/sigalor/whatsapp-web-reveng) for writing his observations on the workings of WhatsApp Web and thanks to [@Rhymen](https://github.com/Rhymen/go-whatsapp/) for the __go__ implementation.
 
  Baileys is type-safe, extensible and simple to use. If you require more functionality than provided, it'll super easy for you to write an extension. More on this [here](#WritingCustomFunctionality).
  
@@ -19,8 +19,10 @@ Do check out & run [example.ts](Example/example.ts) to see example usage of the 
 The script covers most common use cases.
 To run the example script, download or clone the repo and then type the following in terminal:
 1. ``` cd path/to/Baileys ```
-2. ``` yarn```
-3. ``` yarn example ```
+2. ``` yarn ```
+3. 
+    - ``` yarn example ``` for the multi-device edition
+    - ``` yarn example:legacy ``` for the legacy web edition
 
 ## Install
 
@@ -236,7 +238,7 @@ It can be used as follows:
 import makeWASocket, { makeInMemoryStore } from '@adiwajshing/baileys-md'
 // the store maintains the data of the WA connection in memory
 // can be written out to a file & read from it
-const store = makeInMemoryStore({ logger: P().child({ level: 'debug', stream: 'store' }) })
+const store = makeInMemoryStore({ })
 // can be read from a file
 store.readFromFile('./baileys_store.json')
 // saves the state to a file every 10s
@@ -264,6 +266,34 @@ sock.ev.on('contacts.set', () => {
 The store also provides some simple functions such as `loadMessages` that utilize the store to speed up data retrieval.
 
 **Note:** I highly recommend building your own data store especially for MD connections, as storing someone's entire chat history in memory is a terrible waste of RAM.
+
+## Using the Legacy Version
+
+The API for the legacy and MD versions has been made as similar as possible so ya'll can switch between them seamlessly.
+
+Example on using the eg. version:
+``` ts
+import P from "pino"
+import { Boom } from "@hapi/boom"
+import { makeWALegacySocket } from '@adiwajshing/baileys-md'
+
+// store can be used with legacy version as well
+const store = makeInMemoryStore({ logger: P().child({ level: 'debug', stream: 'store' }) })
+
+const sock = makeWALegacySocket({
+    logger: P({ level: 'debug' }),
+    printQRInTerminal: true,
+    auth: state
+})
+// bind to the socket
+store.bind(sock.ev)
+```
+
+If you need a type representing either the legacy or MD version:
+``` ts
+// this type can have any of the socket types underneath
+import { AnyWASocket } from '@adiwajshing/baileys-md'
+```
 
 ## Sending Messages
 
