@@ -1,15 +1,15 @@
-import { BinaryNode, getBinaryNodeMessages, isJidGroup, jidNormalizedUser, areJidsSameUser } from "../WABinary";
 import { Boom } from '@hapi/boom'
-import { Chat, WAMessageCursor, WAMessage, LegacySocketConfig, WAMessageKey, ParticipantAction, WAMessageStatus, WAMessageStubType, GroupMetadata, AnyMessageContent, MiscMessageGenerationOptions, WAFlag, WAMetric, WAUrlInfo, MediaConnInfo, MessageUpdateType, MessageInfo, MessageInfoUpdate, WAMessageUpdate } from "../Types";
-import { toNumber, generateWAMessage, decryptMediaMessageBuffer, extractMessageContent, getWAUploadToServer } from "../Utils";
-import makeChatsSocket from "./chats";
-import { WA_DEFAULT_EPHEMERAL } from "../Defaults";
-import { proto } from "../../WAProto";
+import { proto } from '../../WAProto'
+import { WA_DEFAULT_EPHEMERAL } from '../Defaults'
+import { AnyMessageContent, Chat, GroupMetadata, LegacySocketConfig, MediaConnInfo, MessageInfo, MessageInfoUpdate, MessageUpdateType, MiscMessageGenerationOptions, ParticipantAction, WAFlag, WAMessage, WAMessageCursor, WAMessageKey, WAMessageStatus, WAMessageStubType, WAMessageUpdate, WAMetric, WAUrlInfo } from '../Types'
+import { decryptMediaMessageBuffer, extractMessageContent, generateWAMessage, getWAUploadToServer, toNumber } from '../Utils'
+import { areJidsSameUser, BinaryNode, getBinaryNodeMessages, isJidGroup, jidNormalizedUser } from '../WABinary'
+import makeChatsSocket from './chats'
 
 const STATUS_MAP = {
 	read: WAMessageStatus.READ,
 	message: WAMessageStatus.DELIVERY_ACK,
-    error: WAMessageStatus.ERROR
+	error: WAMessageStatus.ERROR
 } as { [_: string]: WAMessageStatus }
 
 const makeMessagesSocket = (config: LegacySocketConfig) => {
@@ -27,10 +27,10 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 
 	let mediaConn: Promise<MediaConnInfo>
 	const refreshMediaConn = async(forceGet = false) => {
-		let media = await mediaConn
-        if (!media || forceGet || (new Date().getTime()-media.fetchDate.getTime()) > media.ttl*1000) {
+		const media = await mediaConn
+		if(!media || forceGet || (new Date().getTime()-media.fetchDate.getTime()) > media.ttl*1000) {
 			mediaConn = (async() => {
-				const {media_conn} = await query({
+				const { media_conn } = await query({
 					json: ['query', 'mediaConn'], 
 					requiresPhoneConnection: false,
 					expect200: true
@@ -38,9 +38,10 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 				media_conn.fetchDate = new Date()
 				return media_conn as MediaConnInfo
 			})()
-        }
-        return mediaConn 
-    }
+		}
+
+		return mediaConn 
+	}
 
 	const fetchMessagesFromWA = async(
 		jid: string, 
@@ -51,7 +52,8 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 		if(cursor) {
 			key = 'before' in cursor ? cursor.before : cursor.after
 		}
-        const { content }:BinaryNode = await query({
+
+		const { content }:BinaryNode = await query({
 			json: {
 				tag: 'query',
 				attrs: {
@@ -71,15 +73,18 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 		if(Array.isArray(content)) {
 			return content.map(data => proto.WebMessageInfo.decode(data.content as Buffer))
 		}
+
 		return []
-    }
+	}
 
 	const updateMediaMessage = async(message: WAMessage) => {
 		const content = message.message?.audioMessage || message.message?.videoMessage || message.message?.imageMessage || message.message?.stickerMessage || message.message?.documentMessage 
-		if (!content) throw new Boom(
-			`given message ${message.key.id} is not a media message`, 
-			{ statusCode: 400, data: message }
-		)
+		if(!content) {
+			throw new Boom(
+				`given message ${message.key.id} is not a media message`, 
+				{ statusCode: 400, data: message }
+			)
+		}
 		
 		const response: BinaryNode = await query ({
 			json: {
@@ -133,35 +138,36 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 		}
 
 		const protocolMessage = message.message?.protocolMessage || message.message?.ephemeralMessage?.message?.protocolMessage
-        // if it's a message to delete another message
-        if (protocolMessage) {
-            switch (protocolMessage.type) {
-                case proto.ProtocolMessage.ProtocolMessageType.REVOKE:
-					const key = protocolMessage.key
-					const messageStubType = WAMessageStubType.REVOKE
-					ev.emit('messages.update', [ 
-						{ 
-							// the key of the deleted message is updated
-							update: { message: null, key: message.key, messageStubType }, 
-							key 
-						}
-					])
-                    return
-				case proto.ProtocolMessage.ProtocolMessageType.EPHEMERAL_SETTING:
-					chatUpdate.ephemeralSettingTimestamp = message.messageTimestamp
+		// if it's a message to delete another message
+		if(protocolMessage) {
+			switch (protocolMessage.type) {
+			case proto.ProtocolMessage.ProtocolMessageType.REVOKE:
+				const key = protocolMessage.key
+				const messageStubType = WAMessageStubType.REVOKE
+				ev.emit('messages.update', [ 
+					{ 
+						// the key of the deleted message is updated
+						update: { message: null, key: message.key, messageStubType }, 
+						key 
+					}
+				])
+				return
+			case proto.ProtocolMessage.ProtocolMessageType.EPHEMERAL_SETTING:
+				chatUpdate.ephemeralSettingTimestamp = message.messageTimestamp
             		chatUpdate.ephemeralExpiration = protocolMessage.ephemeralExpiration
 
-					if(isJidGroup(jid)) {
-						emitGroupUpdate({ ephemeralDuration: protocolMessage.ephemeralExpiration || null })
-					}
-					break
-                default:
-                    break
-            }
-        }
+				if(isJidGroup(jid)) {
+					emitGroupUpdate({ ephemeralDuration: protocolMessage.ephemeralExpiration || null })
+				}
+
+				break
+			default:
+				break
+			}
+		}
 
 		// check if the message is an action 
-		if (message.messageStubType) {
+		if(message.messageStubType) {
 			const { user } = state.legacy!
 			//let actor = jidNormalizedUser (message.participant)
 			let participants: string[]
@@ -170,44 +176,47 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 			)
 
 			switch (message.messageStubType) {
-				case WAMessageStubType.CHANGE_EPHEMERAL_SETTING:
-					chatUpdate.ephemeralSettingTimestamp = message.messageTimestamp
-					chatUpdate.ephemeralExpiration = +message.messageStubParameters[0]
-					if(isJidGroup(jid)) {
-						emitGroupUpdate({ ephemeralDuration: +message.messageStubParameters[0] || null })
-					}
-					break
-				case WAMessageStubType.GROUP_PARTICIPANT_LEAVE:
-				case WAMessageStubType.GROUP_PARTICIPANT_REMOVE:
-					participants = message.messageStubParameters.map (jidNormalizedUser)
-					emitParticipantsUpdate('remove')
-					// mark the chat read only if you left the group
-					if (participants.includes(user.id)) {
-						chatUpdate.readOnly = true
-					}
-					break
-				case WAMessageStubType.GROUP_PARTICIPANT_ADD:
-				case WAMessageStubType.GROUP_PARTICIPANT_INVITE:
-				case WAMessageStubType.GROUP_PARTICIPANT_ADD_REQUEST_JOIN:
-					participants = message.messageStubParameters.map (jidNormalizedUser)
-					if (participants.includes(user.id)) {
-						chatUpdate.readOnly = null
-					}
-					emitParticipantsUpdate('add')
-					break
-				case WAMessageStubType.GROUP_CHANGE_ANNOUNCE:
-					const announce = message.messageStubParameters[0] === 'on'
-					emitGroupUpdate({ announce })
-					break
-				case WAMessageStubType.GROUP_CHANGE_RESTRICT:
-					const restrict = message.messageStubParameters[0] === 'on'
-					emitGroupUpdate({ restrict })
-					break
-				case WAMessageStubType.GROUP_CHANGE_SUBJECT:
-				case WAMessageStubType.GROUP_CREATE:
-					chatUpdate.name = message.messageStubParameters[0]
-					emitGroupUpdate({ subject: chatUpdate.name })
-					break
+			case WAMessageStubType.CHANGE_EPHEMERAL_SETTING:
+				chatUpdate.ephemeralSettingTimestamp = message.messageTimestamp
+				chatUpdate.ephemeralExpiration = +message.messageStubParameters[0]
+				if(isJidGroup(jid)) {
+					emitGroupUpdate({ ephemeralDuration: +message.messageStubParameters[0] || null })
+				}
+
+				break
+			case WAMessageStubType.GROUP_PARTICIPANT_LEAVE:
+			case WAMessageStubType.GROUP_PARTICIPANT_REMOVE:
+				participants = message.messageStubParameters.map (jidNormalizedUser)
+				emitParticipantsUpdate('remove')
+				// mark the chat read only if you left the group
+				if(participants.includes(user.id)) {
+					chatUpdate.readOnly = true
+				}
+
+				break
+			case WAMessageStubType.GROUP_PARTICIPANT_ADD:
+			case WAMessageStubType.GROUP_PARTICIPANT_INVITE:
+			case WAMessageStubType.GROUP_PARTICIPANT_ADD_REQUEST_JOIN:
+				participants = message.messageStubParameters.map (jidNormalizedUser)
+				if(participants.includes(user.id)) {
+					chatUpdate.readOnly = null
+				}
+
+				emitParticipantsUpdate('add')
+				break
+			case WAMessageStubType.GROUP_CHANGE_ANNOUNCE:
+				const announce = message.messageStubParameters[0] === 'on'
+				emitGroupUpdate({ announce })
+				break
+			case WAMessageStubType.GROUP_CHANGE_RESTRICT:
+				const restrict = message.messageStubParameters[0] === 'on'
+				emitGroupUpdate({ restrict })
+				break
+			case WAMessageStubType.GROUP_CHANGE_SUBJECT:
+			case WAMessageStubType.GROUP_CREATE:
+				chatUpdate.name = message.messageStubParameters[0]
+				emitGroupUpdate({ subject: chatUpdate.name })
+				break
 			}
 		}
 
@@ -221,8 +230,8 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 	const waUploadToServer = getWAUploadToServer(config, refreshMediaConn)
 
 	/** Query a string to check if it has a url, if it does, return WAUrlInfo */
-    const generateUrlInfo = async(text: string) => {
-        const response: BinaryNode = await query({
+	const generateUrlInfo = async(text: string) => {
+		const response: BinaryNode = await query({
 			json: {
 				tag: 'query',
 				attrs: { 
@@ -236,14 +245,15 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 			requiresPhoneConnection: false
 		})
 		const urlInfo = { ...response.attrs } as any as WAUrlInfo
-        if(response && response.content) {
-            urlInfo.jpegThumbnail = response.content as Buffer
-        }
-        return urlInfo
-    }
+		if(response && response.content) {
+			urlInfo.jpegThumbnail = response.content as Buffer
+		}
+
+		return urlInfo
+	}
 
 	/** Relay (send) a WAMessage; more advanced functionality to send a built WA Message, you may want to stick with sendMessage() */
-    const relayMessage = async(message: WAMessage, { waitForAck } = { waitForAck: true }) => {
+	const relayMessage = async(message: WAMessage, { waitForAck } = { waitForAck: true }) => {
 		const json: BinaryNode = {
 			tag: 'action',
 			attrs: { epoch: currentEpoch().toString(), type: 'relay' },
@@ -256,35 +266,37 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 			]
 		}
 		const isMsgToMe = areJidsSameUser(message.key.remoteJid, state.legacy.user?.id || '')
-        const flag = isMsgToMe ? WAFlag.acknowledge : WAFlag.ignore // acknowledge when sending message to oneself
-        const mID = message.key.id
+		const flag = isMsgToMe ? WAFlag.acknowledge : WAFlag.ignore // acknowledge when sending message to oneself
+		const mID = message.key.id
 		const finalState = isMsgToMe ? WAMessageStatus.READ : WAMessageStatus.SERVER_ACK
 
-        message.status = WAMessageStatus.PENDING
-        const promise = query({
-            json, 
-            binaryTag: [WAMetric.message, flag], 
-            tag: mID, 
-            expect200: true,
-            requiresPhoneConnection: true
-        })
+		message.status = WAMessageStatus.PENDING
+		const promise = query({
+			json, 
+			binaryTag: [WAMetric.message, flag], 
+			tag: mID, 
+			expect200: true,
+			requiresPhoneConnection: true
+		})
 
-        if(waitForAck) {
-            await promise
+		if(waitForAck) {
+			await promise
 			message.status = finalState
-        } else {
-            const emitUpdate = (status: WAMessageStatus) => {
-                message.status = status
-                ev.emit('messages.update', [ { key: message.key, update: { status } } ])
-            }
-            promise
+		} else {
+			const emitUpdate = (status: WAMessageStatus) => {
+				message.status = status
+				ev.emit('messages.update', [ { key: message.key, update: { status } } ])
+			}
+
+			promise
 				.then(() => emitUpdate(finalState))
 				.catch(() => emitUpdate(WAMessageStatus.ERROR))
-        }
+		}
+
 		if(config.emitOwnEvents) {
 			onMessage(message, 'append')
 		}
-    }
+	}
 
 	// messages received
 	const messagesUpdate = (node: BinaryNode, isLatest: boolean) => {
@@ -330,26 +342,30 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 					logger.warn({ content, key }, 'got unknown status update for message')
 				}
 			}
+
 			ev.emit('messages.update', updates)
 		}
 	}
-	const onMessageInfoUpdate = ([,attributes]: [string,{[_: string]: any}]) => {
+
+	const onMessageInfoUpdate = ([, attributes]: [string, {[_: string]: any}]) => {
 		let ids = attributes.id as string[] | string
 		if(typeof ids === 'string') {
 			ids = [ids]
 		}
+
 		let updateKey: keyof MessageInfoUpdate['update']
-		switch(attributes.ack.toString()) {
-			case '2':
-				updateKey = 'deliveries'
-				break
-			case '3':
-				updateKey = 'reads'
-				break
-			default:
-				logger.warn({ attributes }, `received unknown message info update`)
-				return
+		switch (attributes.ack.toString()) {
+		case '2':
+			updateKey = 'deliveries'
+			break
+		case '3':
+			updateKey = 'reads'
+			break
+		default:
+			logger.warn({ attributes }, 'received unknown message info update')
+			return
 		}
+
 		const keyPartial = { 
 			remoteJid: jidNormalizedUser(attributes.to),
 			fromMe: areJidsSameUser(attributes.from, state.legacy?.user?.id || ''),
@@ -406,38 +422,43 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 					const [{ attrs }] = (innerData as BinaryNode[])
 					const jid = jidNormalizedUser(attrs.jid)
 					const date = new Date(+attrs.t * 1000)
-					switch(tag) {
-						case 'read':
-							info.reads[jid] = date
-							break
-						case 'delivery':
-							info.deliveries[jid] = date
-							break
+					switch (tag) {
+					case 'read':
+						info.reads[jid] = date
+						break
+					case 'delivery':
+						info.deliveries[jid] = date
+						break
 					}
 				}
 			}
+
 			return info
 		},
 		downloadMediaMessage: async(message: WAMessage, type: 'buffer' | 'stream' = 'buffer') => {
-			const downloadMediaMessage = async () => {
-				let mContent = extractMessageContent(message.message)
-				if (!mContent) throw new Boom('No message present', { statusCode: 400, data: message })
+			const downloadMediaMessage = async() => {
+				const mContent = extractMessageContent(message.message)
+				if(!mContent) {
+					throw new Boom('No message present', { statusCode: 400, data: message })
+				}
 
 				const stream = await decryptMediaMessageBuffer(mContent)
 				if(type === 'buffer') {
 					let buffer = Buffer.from([])
-					for await(const chunk of stream) {
+					for await (const chunk of stream) {
 						buffer = Buffer.concat([buffer, chunk])
 					}
+
 					return buffer
 				}
+
 				return stream
 			}
 			
 			try {
 				const result = await downloadMediaMessage()
 				return result
-			} catch (error) {
+			} catch(error) {
 				if(error.message.includes('404')) { // media needs to be updated
 					logger.info (`updating media of message: ${message.key.id}`)
 					
@@ -446,6 +467,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 					const result = await downloadMediaMessage()
 					return result
 				}
+
 				throw error
 			}
 		},
@@ -453,15 +475,15 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 		fetchMessagesFromWA,
 		/** Load a single message specified by the ID */
 		loadMessageFromWA: async(jid: string, id: string) => {
-			let message: WAMessage
-	
 			// load the message before the given message
-			let messages = (await fetchMessagesFromWA(jid, 1, { before: {id, fromMe: true} }))
-			if(!messages[0]) messages = (await fetchMessagesFromWA(jid, 1, { before: {id, fromMe: false} }))
+			let messages = (await fetchMessagesFromWA(jid, 1, { before: { id, fromMe: true } }))
+			if(!messages[0]) {
+				messages = (await fetchMessagesFromWA(jid, 1, { before: { id, fromMe: false } }))
+			}
+
 			// the message after the loaded message is the message required
 			const [actual] = await fetchMessagesFromWA(jid, 1, { after: messages[0] && messages[0].key })
-			message = actual
-			return message
+			return actual
 		},
 		searchMessages: async(txt: string, inJid: string | null, count: number, page: number) => {
 			const node: BinaryNode = await query({
@@ -499,8 +521,8 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 			) {
 				const { disappearingMessagesInChat } = content
 				const value = typeof disappearingMessagesInChat === 'boolean' ? 
-						(disappearingMessagesInChat ? WA_DEFAULT_EPHEMERAL : 0) :
-						disappearingMessagesInChat
+					(disappearingMessagesInChat ? WA_DEFAULT_EPHEMERAL : 0) :
+					disappearingMessagesInChat
 				const tag = generateMessageTag(true)
 				await setQuery([
 					{

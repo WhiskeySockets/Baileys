@@ -1,12 +1,10 @@
-import type EventEmitter from "events"
-
+import type EventEmitter from 'events'
 import { AuthenticationCreds } from './Auth'
 import { Chat, PresenceData } from './Chat'
 import { Contact } from './Contact'
-import { ConnectionState } from './State'
-
 import { GroupMetadata, ParticipantAction } from './GroupMetadata'
-import { MessageInfoUpdate, MessageUpdateType, WAMessage, WAMessageUpdate, WAMessageKey } from './Message'
+import { MessageInfoUpdate, MessageUpdateType, WAMessage, WAMessageKey, WAMessageUpdate } from './Message'
+import { ConnectionState } from './State'
 
 export type BaileysEventMap<T> = {
     /** connection state has been updated -- WS closed, opened, connecting etc. */

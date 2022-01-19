@@ -1,5 +1,5 @@
-import makeWASocket from './Socket'
 import makeWALegacySocket from './LegacySocket'
+import makeWASocket from './Socket'
 
 export * from '../WAProto'
 export * from './Utils'

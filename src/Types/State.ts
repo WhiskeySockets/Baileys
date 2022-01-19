@@ -1,4 +1,4 @@
-import { Contact } from "./Contact"
+import { Contact } from './Contact'
 
 export type WAConnectionState = 'open' | 'connecting' | 'close'
 

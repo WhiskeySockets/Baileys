@@ -1,10 +1,9 @@
-import type { ReadStream } from "fs"
-import type { Logger } from "pino"
-import type { URL } from "url"
-import type NodeCache from "node-cache"
-import type { GroupMetadata } from "./GroupMetadata"
-import type { Readable } from "stream"
+import type NodeCache from 'node-cache'
+import type { Logger } from 'pino'
+import type { Readable } from 'stream'
+import type { URL } from 'url'
 import { proto } from '../../WAProto'
+import type { GroupMetadata } from './GroupMetadata'
 
 // export the WAMessage Prototypes
 export { proto as WAProto }

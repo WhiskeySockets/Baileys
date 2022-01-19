@@ -1,9 +1,9 @@
 
-import type { Agent } from "https"
-import type { Logger } from "pino"
-import type { URL } from "url"
+import type { Agent } from 'https'
 import type NodeCache from 'node-cache'
-import { MediaConnInfo } from "./Message"
+import type { Logger } from 'pino'
+import type { URL } from 'url'
+import { MediaConnInfo } from './Message'
 
 export type WAVersion = [number, number, number]
 export type WABrowserDescription = [string, string, string]

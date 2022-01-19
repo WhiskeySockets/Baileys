@@ -1,6 +1,6 @@
-import { CommonSocketConfig } from "./Socket"
-import { CommonBaileysEventEmitter } from "./Events"
-import { BinaryNode } from "../WABinary"
+import { BinaryNode } from '../WABinary'
+import { CommonBaileysEventEmitter } from './Events'
+import { CommonSocketConfig } from './Socket'
 
 export interface LegacyAuthenticationCreds {
     clientID: string

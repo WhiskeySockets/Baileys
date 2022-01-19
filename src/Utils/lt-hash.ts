@@ -6,7 +6,7 @@ import { hkdf } from './crypto'
  * if the same series of mutations was made sequentially.
  */
 
-const o = 128;
+const o = 128
 
 class d {
 
@@ -16,41 +16,45 @@ class d {
 		this.salt = e
 	}
 	add(e, t) {
-		var r = this;
+		var r = this
 		for(const item of t) {
 			e = r._addSingle(e, item)
 		}
+
 		return e
 	}
 	subtract(e, t) {
-		var r = this;
+		var r = this
 		for(const item of t) {
 			e = r._subtractSingle(e, item)
 		}
+
 		return e
 	}
 	subtractThenAdd(e, t, r) {
-		var n = this;
+		var n = this
 		return n.add(n.subtract(e, r), t)
 	}
 	_addSingle(e, t) {
-		var r = this;
-		const n = new Uint8Array(hkdf(Buffer.from(t), o, { info: r.salt })).buffer;
-		return r.performPointwiseWithOverflow(e, n, ((e,t)=>e + t))
+		var r = this
+		const n = new Uint8Array(hkdf(Buffer.from(t), o, { info: r.salt })).buffer
+		return r.performPointwiseWithOverflow(e, n, ((e, t) => e + t))
 	}
 	_subtractSingle(e, t) {
-		var r = this;
+		var r = this
 
-		const n = new Uint8Array(hkdf(Buffer.from(t), o, { info: r.salt })).buffer;
-		return r.performPointwiseWithOverflow(e, n, ((e,t)=>e - t))
+		const n = new Uint8Array(hkdf(Buffer.from(t), o, { info: r.salt })).buffer
+		return r.performPointwiseWithOverflow(e, n, ((e, t) => e - t))
 	}
 	performPointwiseWithOverflow(e, t, r) {
 		const n = new DataView(e)
 		  , i = new DataView(t)
 		  , a = new ArrayBuffer(n.byteLength)
-		  , s = new DataView(a);
-		for (let e = 0; e < n.byteLength; e += 2)
-			s.setUint16(e, r(n.getUint16(e, !0), i.getUint16(e, !0)), !0);
+		  , s = new DataView(a)
+		for(let e = 0; e < n.byteLength; e += 2) {
+			s.setUint16(e, r(n.getUint16(e, !0), i.getUint16(e, !0)), !0)
+		}
+
 		return a
 	}
 }

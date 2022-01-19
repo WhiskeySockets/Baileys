@@ -1,7 +1,7 @@
-import { MediaType, DownloadableMessage } from '../Types'
-import { downloadContentFromMessage } from '../Utils'
-import { proto } from '../../WAProto'
 import { readFileSync } from 'fs'
+import { proto } from '../../WAProto'
+import { DownloadableMessage, MediaType } from '../Types'
+import { downloadContentFromMessage } from '../Utils'
 
 jest.setTimeout(20_000)
 
@@ -41,7 +41,7 @@ describe('Media Download Tests', () => {
 			const readPipe = await downloadContentFromMessage(message, type)
 			
 			let buffer = Buffer.alloc(0)
-			for await(const read of readPipe) {
+			for await (const read of readPipe) {
 				buffer = Buffer.concat([ buffer, read ])
 			}
 
@@ -61,7 +61,7 @@ describe('Media Download Tests', () => {
 				const readPipe = await downloadContentFromMessage(message, type, range)
 			
 				let buffer = Buffer.alloc(0)
-				for await(const read of readPipe) {
+				for await (const read of readPipe) {
 					buffer = Buffer.concat([ buffer, read ])
 				}
 

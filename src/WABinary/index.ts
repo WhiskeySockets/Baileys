@@ -319,6 +319,7 @@ export const getBinaryNodeMessages = ({ content }: BinaryNode) => {
     return msgs
 }
 
+export * from './generic-utils'
 export * from './jid-utils'
 export { Binary } from '../../WABinary/Binary'
 export * from './types'

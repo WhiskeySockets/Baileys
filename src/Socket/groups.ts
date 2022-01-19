@@ -1,7 +1,7 @@
-import { generateMessageID } from "../Utils";
-import { SocketConfig, GroupMetadata, ParticipantAction } from "../Types";
-import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidEncode, jidNormalizedUser } from "../WABinary";
-import { makeSocket } from "./socket";
+import { GroupMetadata, ParticipantAction, SocketConfig } from '../Types'
+import { generateMessageID } from '../Utils'
+import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidEncode, jidNormalizedUser } from '../WABinary'
+import { makeSocket } from './socket'
 
 export const makeGroupsSocket = (config: SocketConfig) => {
 	const sock = makeSocket(config)
@@ -9,24 +9,24 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 
 	const groupQuery = async(jid: string, type: 'get' | 'set', content: BinaryNode[]) => (
 		query({
-            tag: 'iq',
-            attrs: {
-                type,
-                xmlns: 'w:g2',
-                to: jid,
-            },
-            content
-        })
+			tag: 'iq',
+			attrs: {
+				type,
+				xmlns: 'w:g2',
+				to: jid,
+			},
+			content
+		})
 	)
 
-    const groupMetadata = async(jid: string) => {
-        const result = await groupQuery(
+	const groupMetadata = async(jid: string) => {
+		const result = await groupQuery(
 			jid, 
 			'get', 
 			[ { tag: 'query', attrs: { request: 'interactive' } } ]
 		)
-        return extractGroupMetadata(result)
-    }
+		return extractGroupMetadata(result)
+	}
 
 	return {
 		...sock, 
@@ -101,8 +101,8 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 			return participantsAffected.map(p => p.attrs.jid)
 		},
 		groupUpdateDescription: async(jid: string, description?: string) => {
-			const metadata = await groupMetadata(jid);
-			const prev = metadata.descId ?? null;
+			const metadata = await groupMetadata(jid)
+			const prev = metadata.descId ?? null
 
 			await groupQuery(
 				jid,
@@ -111,10 +111,10 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 					{
 						tag: 'description',
 						attrs: {
-							...( description ? { id: generateMessageID() } : { delete: 'true' } ),
+							...(description ? { id: generateMessageID() } : { delete: 'true' }),
 							...(prev ? { prev } : {})
 						},
-						content: description ? [{tag: 'body', attrs: {}, content: Buffer.from(description, 'utf-8')}] : null
+						content: description ? [{ tag: 'body', attrs: {}, content: Buffer.from(description, 'utf-8') }] : null
 					}
 				]
 			)
@@ -124,12 +124,12 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 			const inviteNode = getBinaryNodeChild(result, 'invite')
 			return inviteNode.attrs.code
 		},
-		groupRevokeInvite: async (jid: string) => {
+		groupRevokeInvite: async(jid: string) => {
 			const result = await groupQuery(jid, 'set', [{ tag: 'invite', attrs: {} }])
 			const inviteNode = getBinaryNodeChild(result, 'invite')
 			return inviteNode.attrs.code
 		},
-		groupAcceptInvite: async (code: string) => {
+		groupAcceptInvite: async(code: string) => {
 			const results = await groupQuery('@g.us', 'set', [{ tag: 'invite', attrs: { code } }])
 			const result = getBinaryNodeChild(results, 'group')
 			return result.attrs.jid
@@ -148,8 +148,8 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 				tag: 'iq',
 				attrs: {
 					to: '@g.us',
-                    xmlns: 'w:g2',
-                    type: 'get',
+					xmlns: 'w:g2',
+					type: 'get',
 				},
 				content: [
 					{
@@ -175,6 +175,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 					data[meta.id] = meta
 				}
 			}
+
 			return data
 		}
 	}
@@ -190,6 +191,7 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 		desc = getBinaryNodeChild(descChild, 'body')?.content as string
 		descId = descChild.attrs.id
 	}
+
 	const groupId = group.attrs.id.includes('@') ? group.attrs.id : jidEncode(group.attrs.id, 'g.us')
 	const eph = getBinaryNodeChild(group, 'ephemeral')?.attrs.expiration
 	const metadata: GroupMetadata = {

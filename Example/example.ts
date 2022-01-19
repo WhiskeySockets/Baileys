@@ -31,6 +31,10 @@ const startSock = () => {
         await sock.sendMessage(jid, msg)
     }
     
+    sock.ev.on('chats.set', item => console.log(`recv ${item.chats.length} chats (is latest: ${item.isLatest})`))
+    sock.ev.on('messages.set', item => console.log(`recv ${item.messages.length} messages (is latest: ${item.isLatest})`))
+    sock.ev.on('contacts.set', item => console.log(`recv ${item.contacts.length} contacts`))
+
     sock.ev.on('messages.upsert', async m => {
         console.log(JSON.stringify(m, undefined, 2))
         
@@ -46,7 +50,7 @@ const startSock = () => {
     sock.ev.on('messages.update', m => console.log(m))
     sock.ev.on('presence.update', m => console.log(m))
     sock.ev.on('chats.update', m => console.log(m))
-    sock.ev.on('contacts.update', m => console.log(m))
+    sock.ev.on('contacts.upsert', m => console.log(m))
 
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect } = update

@@ -1,8 +1,8 @@
 import { Boom } from '@hapi/boom'
-import EventEmitter from "events"
-import { LegacyBaileysEventEmitter, LegacySocketConfig, CurveKeyPair, WAInitResponse, ConnectionState, DisconnectReason } from "../Types"
-import { newLegacyAuthCreds, bindWaitForConnectionUpdate, computeChallengeResponse, validateNewConnection, Curve, printQRIfNecessaryListener } from "../Utils"
-import { makeSocket } from "./socket"
+import EventEmitter from 'events'
+import { ConnectionState, CurveKeyPair, DisconnectReason, LegacyBaileysEventEmitter, LegacySocketConfig, WAInitResponse } from '../Types'
+import { bindWaitForConnectionUpdate, computeChallengeResponse, Curve, newLegacyAuthCreds, printQRIfNecessaryListener, validateNewConnection } from '../Utils'
+import { makeSocket } from './socket'
 
 const makeAuthSocket = (config: LegacySocketConfig) => {
 	const {
@@ -60,14 +60,15 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 	 * If connected, invalidates the credentials with the server
 	 */
 	const logout = async() => {
-        if(state.connection === 'open') {
-            await socket.sendNode({
+		if(state.connection === 'open') {
+			await socket.sendNode({
 				json: ['admin', 'Conn', 'disconnect'],
 				tag: 'goodbye'
 			})
-        }
+		}
+
 		// will call state update to close connection
-        socket?.end(
+		socket?.end(
 			new Boom('Logged Out', { statusCode: DisconnectReason.loggedOut })
 		)
 	}
@@ -86,13 +87,15 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 			const qr = [ref, publicKey, authInfo.clientID].join(',')
 			updateState({ qr })
 
-			initTimeout = setTimeout(async () => {
-				if(state.connection !== 'connecting') return
+			initTimeout = setTimeout(async() => {
+				if(state.connection !== 'connecting') {
+					return
+				}
 
 				logger.debug('regenerating QR')
 				try {
 					// request new QR
-					const {ref: newRef, ttl: newTTL} = await socket.query({
+					const { ref: newRef, ttl: newTTL } = await socket.query({
 						json: ['admin', 'Conn', 'reref'], 
 						expect200: true,
 						longTag: true,
@@ -100,94 +103,104 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 					})
 					ttl = newTTL
 					ref = newRef
-				} catch (error) {
-					logger.error({ error }, `error in QR gen`)
-					if (error.output?.statusCode === 429) { // too many QR requests
+				} catch(error) {
+					logger.error({ error }, 'error in QR gen')
+					if(error.output?.statusCode === 429) { // too many QR requests
 						socket.end(error)
 						return
 					}
 				}
+
 				qrGens += 1
 				qrLoop(ttl)
 			}, ttl || 20_000) // default is 20s, on the off-chance ttl is not present
 		}
+
 		qrLoop(ttl)
 	}
+
 	const onOpen = async() => {
 		const canDoLogin = canLogin()
-        const initQuery = (async () => {
-            const {ref, ttl} = await socket.query({
-                json: ['admin', 'init', version, browser, authInfo.clientID, true], 
-                expect200: true,
-                longTag: true,
-                requiresPhoneConnection: false
-            }) as WAInitResponse
+		const initQuery = (async() => {
+			const { ref, ttl } = await socket.query({
+				json: ['admin', 'init', version, browser, authInfo.clientID, true], 
+				expect200: true,
+				longTag: true,
+				requiresPhoneConnection: false
+			}) as WAInitResponse
 
-            if (!canDoLogin) {
-                generateKeysForAuth(ref, ttl)
-            }
-        })();
-        let loginTag: string
-        if(canDoLogin) {
+			if(!canDoLogin) {
+				generateKeysForAuth(ref, ttl)
+			}
+		})()
+		let loginTag: string
+		if(canDoLogin) {
 			updateEncKeys()
-            // if we have the info to restore a closed session
-            const json = [
+			// if we have the info to restore a closed session
+			const json = [
 				'admin',
-                'login',
-                authInfo.clientToken,
-                authInfo.serverToken,
-                authInfo.clientID,
+				'login',
+				authInfo.clientToken,
+				authInfo.serverToken,
+				authInfo.clientID,
 				'takeover'
-            ]
-            loginTag = socket.generateMessageTag(true)
-            // send login every 10s
-            const sendLoginReq = () => {
-                if(state.connection === 'open') {
-                    logger.warn('Received login timeout req when state=open, ignoring...')
-                    return
-                }
-                logger.info('sending login request')
-                socket.sendNode({
+			]
+			loginTag = socket.generateMessageTag(true)
+			// send login every 10s
+			const sendLoginReq = () => {
+				if(state.connection === 'open') {
+					logger.warn('Received login timeout req when state=open, ignoring...')
+					return
+				}
+
+				logger.info('sending login request')
+				socket.sendNode({
 					json,
 					tag: loginTag
 				})
-                initTimeout = setTimeout(sendLoginReq, 10_000)
-            }
-            sendLoginReq()
-        }
-        await initQuery
+				initTimeout = setTimeout(sendLoginReq, 10_000)
+			}
 
-        // wait for response with tag "s1"
-        let response = await Promise.race(
-            [ 
+			sendLoginReq()
+		}
+
+		await initQuery
+
+		// wait for response with tag "s1"
+		let response = await Promise.race(
+			[ 
 				socket.waitForMessage('s1', false, undefined).promise,
 				...(loginTag ? [socket.waitForMessage(loginTag, false, connectTimeoutMs).promise] : [])
 			]
-        )
-        initTimeout && clearTimeout(initTimeout)
-        initTimeout = undefined
+		)
+		initTimeout && clearTimeout(initTimeout)
+		initTimeout = undefined
 
-        if(response.status && response.status !== 200) {
-            throw new Boom(`Unexpected error in login`, { data: response, statusCode: response.status })
-        }
-        // if its a challenge request (we get it when logging in)
-        if(response[1]?.challenge) {
+		if(response.status && response.status !== 200) {
+			throw new Boom('Unexpected error in login', { data: response, statusCode: response.status })
+		}
+
+		// if its a challenge request (we get it when logging in)
+		if(response[1]?.challenge) {
 			const json = computeChallengeResponse(response[1].challenge, authInfo)
 			logger.info('resolving login challenge')
 			
 			await socket.query({ json, expect200: true, timeoutMs: connectTimeoutMs })
             
 			response = await socket.waitForMessage('s2', true).promise
-        }
+		}
+
 		if(!response || !response[1]) {
 			throw new Boom('Received unexpected login response', { data: response })
 		}
+
 		if(response[1].type === 'upgrade_md_prod') {
 			throw new Boom('Require multi-device edition', { statusCode: DisconnectReason.multideviceMismatch })
 		}
-        // validate the new connection
-        const {user, auth} = validateNewConnection(response[1], authInfo, curveKeys)// validate the connection
-        const isNewLogin = user.id !== state.legacy!.user?.id
+
+		// validate the new connection
+		const { user, auth } = validateNewConnection(response[1], authInfo, curveKeys)// validate the connection
+		const isNewLogin = user.id !== state.legacy!.user?.id
 		
 		Object.assign(authInfo, auth)
 		updateEncKeys()
@@ -206,6 +219,7 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 			qr: undefined
 		})
 	}
+
 	ws.once('open', async() => {
 		try {
 			await onOpen()
@@ -219,10 +233,10 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 	}
 
 	process.nextTick(() => {
-        ev.emit('connection.update', { 
+		ev.emit('connection.update', { 
 			...state
 		})
-    })
+	})
 
 	return {
 		...socket,
@@ -231,8 +245,9 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 		ev,
 		canLogin,
 		logout,
-        /** Waits for the connection to WA to reach a state */
-        waitForConnectionUpdate: bindWaitForConnectionUpdate(ev)
+		/** Waits for the connection to WA to reach a state */
+		waitForConnectionUpdate: bindWaitForConnectionUpdate(ev)
 	}
 }
+
 export default makeAuthSocket

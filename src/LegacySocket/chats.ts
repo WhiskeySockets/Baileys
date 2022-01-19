@@ -1,7 +1,7 @@
-import { BinaryNode, jidNormalizedUser } from "../WABinary";
-import { Chat, Contact, WAPresence, PresenceData, LegacySocketConfig, WAFlag, WAMetric, WABusinessProfile, ChatModification, WAMessageKey, WAMessageUpdate, BaileysEventMap } from "../Types";
-import { debouncedTimeout, unixTimestampSeconds } from "../Utils/generics";
-import makeAuthSocket from "./auth";
+import { BaileysEventMap, Chat, ChatModification, Contact, LegacySocketConfig, PresenceData, WABusinessProfile, WAFlag, WAMessageKey, WAMessageUpdate, WAMetric, WAPresence } from '../Types'
+import { debouncedTimeout, unixTimestampSeconds } from '../Utils/generics'
+import { BinaryNode, jidNormalizedUser } from '../WABinary'
+import makeAuthSocket from './auth'
 
 const makeChatsSocket = (config: LegacySocketConfig) => {
 	const { logger } = config
@@ -22,7 +22,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		sendNode({
 			json: {
 				tag: 'query',
-				attrs: {type: 'chat', epoch: epoch.toString()}
+				attrs: { type: 'chat', epoch: epoch.toString() }
 			},
 			binaryTag: [ WAMetric.queryChat, WAFlag.ignore ]
 		})
@@ -43,62 +43,64 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		const updateType = attributes.type
 		const jid = jidNormalizedUser(attributes?.jid)
 
-		switch(updateType) {
-			case 'delete':
-				ev.emit('chats.delete', [jid])
-				break
-			case 'clear':
-				if(node.content) {
-					const ids = (node.content as BinaryNode[]).map(
-						({ attrs }) => attrs.index
-					)
-					ev.emit('messages.delete', { keys: ids.map(id => ({ id, remoteJid: jid })) })
-				} else {
-					ev.emit('messages.delete', { jid, all: true })
-				}
-				break
-			case 'archive':
-				ev.emit('chats.update', [ { id: jid, archive: true } ])
-				break
-			case 'unarchive':
-				ev.emit('chats.update', [ { id: jid, archive: false } ])
-				break
-			case 'pin':
-				ev.emit('chats.update', [ { id: jid, pin: attributes.pin ? +attributes.pin : null } ])
-				break
-			case 'star':
-			case 'unstar':
-				const starred = updateType === 'star'
-				const updates: WAMessageUpdate[] = (node.content as BinaryNode[]).map(
-					({ attrs }) => ({ 
-						key: {
-							remoteJid: jid, 
-							id: attrs.index, 
-							fromMe: attrs.owner === 'true' 
-						},
-						update: { starred }
-					})
+		switch (updateType) {
+		case 'delete':
+			ev.emit('chats.delete', [jid])
+			break
+		case 'clear':
+			if(node.content) {
+				const ids = (node.content as BinaryNode[]).map(
+					({ attrs }) => attrs.index
 				)
-				ev.emit('messages.update', updates)
-				break
-			case 'mute':
-				if(attributes.mute === '0') {
-					ev.emit('chats.update', [{ id: jid, mute: null }])
-				} else {
-					ev.emit('chats.update', [{ id: jid, mute: +attributes.mute }])
-				}
-				break
-			default:
-				logger.warn({ node }, `received unrecognized chat update`)
-				break
+				ev.emit('messages.delete', { keys: ids.map(id => ({ id, remoteJid: jid })) })
+			} else {
+				ev.emit('messages.delete', { jid, all: true })
+			}
+
+			break
+		case 'archive':
+			ev.emit('chats.update', [ { id: jid, archive: true } ])
+			break
+		case 'unarchive':
+			ev.emit('chats.update', [ { id: jid, archive: false } ])
+			break
+		case 'pin':
+			ev.emit('chats.update', [ { id: jid, pin: attributes.pin ? +attributes.pin : null } ])
+			break
+		case 'star':
+		case 'unstar':
+			const starred = updateType === 'star'
+			const updates: WAMessageUpdate[] = (node.content as BinaryNode[]).map(
+				({ attrs }) => ({ 
+					key: {
+						remoteJid: jid, 
+						id: attrs.index, 
+						fromMe: attrs.owner === 'true' 
+					},
+					update: { starred }
+				})
+			)
+			ev.emit('messages.update', updates)
+			break
+		case 'mute':
+			if(attributes.mute === '0') {
+				ev.emit('chats.update', [{ id: jid, mute: null }])
+			} else {
+				ev.emit('chats.update', [{ id: jid, mute: +attributes.mute }])
+			}
+
+			break
+		default:
+			logger.warn({ node }, 'received unrecognized chat update')
+			break
 		}     
 	}
 
 	const applyingPresenceUpdate = (update: BinaryNode['attrs']): BaileysEventMap<any>['presence.update'] => {
 		const id = jidNormalizedUser(update.id)
-        const participant = jidNormalizedUser(update.participant || update.id)
+		const participant = jidNormalizedUser(update.participant || update.id)
         
-        const presence: PresenceData = {
+		const presence: PresenceData = {
 			lastSeen: update.t ? +update.t : undefined,
 			lastKnownPresence: update.type as WAPresence
 		}
@@ -126,27 +128,30 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 	}
 
 	ev.on('connection.update', async({ connection }) => {
-		if(connection !== 'open') return
+		if(connection !== 'open') {
+			return
+		}
+
 		try {
 			await Promise.all([
 				sendNode({
-					json: { tag: 'query', attrs: {type: 'contacts', epoch: '1'} },
+					json: { tag: 'query', attrs: { type: 'contacts', epoch: '1' } },
 					binaryTag: [ WAMetric.queryContact, WAFlag.ignore ]
 				}),
 				sendNode({
-					json: { tag: 'query', attrs: {type: 'status', epoch: '1'} },
+					json: { tag: 'query', attrs: { type: 'status', epoch: '1' } },
 					binaryTag: [ WAMetric.queryStatus, WAFlag.ignore ]
 				}),
 				sendNode({
-					json: { tag: 'query', attrs: {type: 'quick_reply', epoch: '1'} }, 
+					json: { tag: 'query', attrs: { type: 'quick_reply', epoch: '1' } }, 
 					binaryTag: [ WAMetric.queryQuickReply, WAFlag.ignore ]
 				}),
 				sendNode({
-					json: { tag: 'query', attrs: {type: 'label', epoch: '1'} },
+					json: { tag: 'query', attrs: { type: 'label', epoch: '1' } },
 					binaryTag: [ WAMetric.queryLabel, WAFlag.ignore ]
 				}),
 				sendNode({
-					json: { tag: 'query', attrs: {type: 'emoji', epoch: '1'} },
+					json: { tag: 'query', attrs: { type: 'emoji', epoch: '1' } },
 					binaryTag: [ WAMetric.queryEmoji, WAFlag.ignore ] 
 				}),
 				sendNode({
@@ -154,7 +159,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 						tag: 'action', 
 						attrs: { type: 'set', epoch: '1' },
 						content: [
-							{ tag: 'presence', attrs: {type: 'available'} }
+							{ tag: 'presence', attrs: { type: 'available' } }
 						]
 					}, 
 					binaryTag: [ WAMetric.presence, WAFlag.available ]
@@ -167,7 +172,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 			logger.error(`error in sending init queries: ${error}`)
 		}
 	})
-	socketEvents.on('CB:response,type:chat', async ({ content: data }: BinaryNode) => {
+	socketEvents.on('CB:response,type:chat', async({ content: data }: BinaryNode) => {
 		chatsDebounceTimeout.cancel()
 		if(Array.isArray(data)) {
 			const contacts: Contact[] = []
@@ -176,6 +181,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 				if(attrs.name) {
 					contacts.push({ id, name: attrs.name })
 				}
+
 				return {
 					id: jidNormalizedUser(attrs.jid),
 					conversationTimestamp: attrs.t ? +attrs.t : undefined,
@@ -196,7 +202,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		}
 	})
 	// got all contacts from phone
-	socketEvents.on('CB:response,type:contacts', async ({ content: data }: BinaryNode) => {
+	socketEvents.on('CB:response,type:contacts', async({ content: data }: BinaryNode) => {
 		if(Array.isArray(data)) {
 			const contacts = data.map(({ attrs }): Contact => {
 				return {
@@ -225,15 +231,18 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		}
 	})
 	// read updates
-	socketEvents.on ('CB:action,,read', async ({ content }: BinaryNode) => {
+	socketEvents.on ('CB:action,,read', async({ content }: BinaryNode) => {
 		if(Array.isArray(content)) {
 			const { attrs } = content[0]
 
 			const update: Partial<Chat> = {
 				id: jidNormalizedUser(attrs.jid)
 			}
-			if(attrs.type === 'false') update.unreadCount = -1
-			else update.unreadCount = 0
+			if(attrs.type === 'false') {
+				update.unreadCount = -1
+			} else {
+				update.unreadCount = 0
+			}
 
 			ev.emit('chats.update', [update])
 		}
@@ -295,7 +304,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		 * @param jid the ID of the person/group you are modifiying
 		 */
 		chatModify: async(modification: ChatModification, jid: string, chatInfo: Pick<Chat, 'mute' | 'pin'>, timestampNow?: number) => {	 
-			let chatAttrs: BinaryNode['attrs'] = { jid: jid }
+			const chatAttrs: BinaryNode['attrs'] = { jid: jid }
 			let data: BinaryNode[] | undefined = undefined
 
 			timestampNow = timestampNow || unixTimestampSeconds()
@@ -356,6 +365,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 				// apply it and emit events
 				executeChatModification(node)
 			}
+
 			return response
 		},
 		/** 
@@ -381,7 +391,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		 * @param jid the ID of the person/group who you are updating
 		 * @param type your presence
 		 */
-		sendPresenceUpdate: ( type: WAPresence, jid: string | undefined) => (
+		sendPresenceUpdate: (type: WAPresence, jid: string | undefined) => (
 			sendNode({
 				binaryTag: [WAMetric.presence, WAFlag[type]], // weird stuff WA does
 				json: { 
@@ -400,7 +410,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		 * Request updates on the presence of a user 
 		 * this returns nothing, you'll receive updates in chats.update event
 		 * */
-		presenceSubscribe: async (jid: string) => (
+		presenceSubscribe: async(jid: string) => (
 			sendNode({ json: ['action', 'presence', 'subscribe', jid] })
 		),
 		/** Query the status of the person (see groupMetadata() for groups) */
@@ -423,11 +433,12 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		},
 		/** Updates business profile. */
 		updateBusinessProfile: async(profile: WABusinessProfile) => {
-			if (profile.business_hours?.config) {
+			if(profile.business_hours?.config) {
 				profile.business_hours.business_config = profile.business_hours.config
 				delete profile.business_hours.config
 			}
-			const json = ['action', "editBusinessProfile", {...profile, v: 2}]
+
+			const json = ['action', 'editBusinessProfile', { ...profile, v: 2 }]
 			await query({ json, expect200: true, requiresPhoneConnection: true })
 		},
 		updateProfileName: async(name: string) => {
@@ -447,6 +458,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 				} })
 				ev.emit('contacts.update', [{ id: user.id, name }])
 			}
+
 			return response
 		},
 		/**
@@ -454,7 +466,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		 * @param jid 
 		 * @param img 
 		 */
-		async updateProfilePicture (jid: string, img: Buffer) {
+		async updateProfilePicture(jid: string, img: Buffer) {
 			jid = jidNormalizedUser (jid)
 			const data = { img: Buffer.from([]), preview: Buffer.from([]) } //await generateProfilePicture(img) TODO
 			const tag = this.generateMessageTag ()
@@ -480,6 +492,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 						}
 					})
 				}
+
 				ev.emit('contacts.update', [ { id: jid, imgUrl: eurl } ])
 			}
 		},
@@ -513,8 +526,8 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 				}]
 			} = await query({
 				json: [
-					"query", "businessProfile", 
-					[ { "wid": jid.replace('@s.whatsapp.net', '@c.us') } ], 
+					'query', 'businessProfile', 
+					[ { 'wid': jid.replace('@s.whatsapp.net', '@c.us') } ], 
 					84
 				],
 				expect200: true,
@@ -528,4 +541,5 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		}
 	}
 }
+
 export default makeChatsSocket

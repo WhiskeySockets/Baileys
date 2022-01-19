@@ -1,4 +1,4 @@
-import type { proto } from "../../WAProto"
+import type { proto } from '../../WAProto'
 
 /** set of statuses visible to other people; see updatePresence() in WhatsAppWeb.Send */
 export type WAPresence = 'unavailable' | 'available' | 'composing' | 'recording' | 'paused'

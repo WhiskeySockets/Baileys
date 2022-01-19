@@ -5,7 +5,7 @@
  * This is done for easy serialization, to prevent running into issues with prototypes & 
  * to maintain functional code structure
  * */
- export type BinaryNode = {
+export type BinaryNode = {
     tag: string
     attrs: { [key: string]: string }
 	content?: BinaryNode[] | string | Uint8Array

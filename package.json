@@ -19,14 +19,15 @@
   "scripts": {
     "test": "jest",
     "prepare": "tsc",
-    "lint": "eslint '*/*.ts' --quiet --fix",
     "build:all": "tsc && typedoc",
     "build:docs": "typedoc",
     "build:tsc": "tsc",
     "example": "node --inspect -r ts-node/register Example/example.ts",
     "example:legacy": "node --inspect -r ts-node/register Example/example-legacy.ts",
     "gen-protobuf": "bash src/BinaryNode/GenerateStatics.sh",
-    "browser-decode": "yarn ts-node src/BrowserMessageDecoding.ts"
+    "browser-decode": "yarn ts-node src/BrowserMessageDecoding.ts",
+    "lint": "eslint ./src --ext .js,.ts,.jsx,.tsx",
+    "lint:fix": "eslint ./src --fix --ext .js,.ts,.jsx,.tsx"
   },
   "author": "Adhiraj Singh",
   "license": "MIT",
@@ -56,12 +57,14 @@
     "WABinary/*.js"
   ],
   "devDependencies": {
+    "@adiwajshing/eslint-config": "git+https://github.com/adiwajshing/eslint-config",
     "@types/got": "^9.6.11",
     "@types/jest": "^26.0.24",
     "@types/node": "^14.6.2",
     "@types/pino": "^6.3.2",
     "@types/sharp": "^0.29.4",
     "@types/ws": "^8.0.0",
+    "eslint": "^7.0.0",
     "jest": "^27.0.6",
     "jimp": "^0.16.1",
     "qrcode-terminal": "^0.12.0",

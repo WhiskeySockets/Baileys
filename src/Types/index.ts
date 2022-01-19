@@ -9,9 +9,8 @@ export * from './Socket'
 export * from './Events'
 
 import type NodeCache from 'node-cache'
-
-import { AuthenticationState } from './Auth'
 import { proto } from '../../WAProto'
+import { AuthenticationState } from './Auth'
 import { CommonSocketConfig } from './Socket'
 
 export type SocketConfig = CommonSocketConfig<AuthenticationState> & {

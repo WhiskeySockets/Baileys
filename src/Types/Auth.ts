@@ -1,5 +1,5 @@
-import type { Contact } from "./Contact"
-import type { proto } from "../../WAProto"
+import type { proto } from '../../WAProto'
+import type { Contact } from './Contact'
 
 export type KeyPair = { public: Uint8Array, private: Uint8Array }
 export type SignedKeyPair = { keyPair: KeyPair, signature: Uint8Array, keyId: number }

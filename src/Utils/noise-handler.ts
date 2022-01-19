@@ -1,15 +1,15 @@
-import { sha256, Curve, hkdf } from "./crypto";
-import { Binary } from "../WABinary";
-import { createCipheriv, createDecipheriv } from "crypto";
-import { NOISE_MODE, NOISE_WA_HEADER } from "../Defaults";
-import { KeyPair } from "../Types";
-import { BinaryNode, decodeBinaryNode } from "../WABinary";
-import { Boom } from "@hapi/boom";
+import { Boom } from '@hapi/boom'
+import { createCipheriv, createDecipheriv } from 'crypto'
 import { proto } from '../../WAProto'
+import { NOISE_MODE, NOISE_WA_HEADER } from '../Defaults'
+import { KeyPair } from '../Types'
+import { Binary } from '../WABinary'
+import { BinaryNode, decodeBinaryNode } from '../WABinary'
+import { Curve, hkdf, sha256 } from './crypto'
 
 const generateIV = (counter: number) => {
-	const iv = new ArrayBuffer(12);
-	new DataView(iv).setUint32(8, counter);
+	const iv = new ArrayBuffer(12)
+	new DataView(iv).setUint32(8, counter)
 
 	return new Uint8Array(iv)
 }
@@ -18,9 +18,10 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 
 	const authenticate = (data: Uint8Array) => {
 		if(!isFinished) {
-			hash = sha256( Buffer.from(Binary.build(hash, data).readByteArray()) )
+			hash = sha256(Buffer.from(Binary.build(hash, data).readByteArray()))
 		}
 	}
+
 	const encrypt = (plaintext: Uint8Array) => {
 		const authTagLength = 128 >> 3
 		const cipher = createCipheriv('aes-256-gcm', encKey, generateIV(writeCounter), { authTagLength })
@@ -33,6 +34,7 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 		authenticate(result)
 		return result
 	}
+
 	const decrypt = (ciphertext: Uint8Array) => {
 		// before the handshake is finished, we use the same counter
 		// after handshake, the counters are different
@@ -48,16 +50,21 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 
 		const result = Buffer.concat([cipher.update(enc), cipher.final()])
 
-		if(isFinished) readCounter += 1
-		else writeCounter += 1
+		if(isFinished) {
+			readCounter += 1
+		} else {
+			writeCounter += 1
+		}
 		
 		authenticate(ciphertext)
 		return result
 	}
+
 	const localHKDF = (data: Uint8Array) => {
 		const key = hkdf(Buffer.from(data), 64, { salt, info: '' })
 		return [key.slice(0, 32), key.slice(32)]
 	}
+
 	const mixIntoKey = (data: Uint8Array) => {
 		const [write, read] = localHKDF(data)
 		salt = write
@@ -66,15 +73,16 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 		readCounter = 0
 		writeCounter = 0
 	}
+
 	const finishInit = () => {
-        const [write, read] = localHKDF(new Uint8Array(0))
-        encKey = write
+		const [write, read] = localHKDF(new Uint8Array(0))
+		encKey = write
 		decKey = read
 		hash = Buffer.from([])
 		readCounter = 0
 		writeCounter = 0
 		isFinished = true
-    }
+	}
 	
 	const data = Binary.build(NOISE_MODE).readBuffer()
 	let hash = Buffer.from(data.byteLength === 32 ? data : sha256(Buffer.from(data)))
@@ -123,11 +131,12 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 			if(isFinished) {
 				data = encrypt(data)
 			}
+
 			const introSize = sentIntro ? 0 : NOISE_WA_HEADER.length
 
 			outBinary.ensureAdditionalCapacity(introSize + 3 + data.byteLength)
 	
-			if (!sentIntro) {
+			if(!sentIntro) {
 				outBinary.writeByteArray(NOISE_WA_HEADER)
 				sentIntro = true
 			}
@@ -146,6 +155,7 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 			const getBytesSize = () => {
 				return (inBinary.readUint8() << 16) | inBinary.readUint16()
 			}
+
 			const peekSize = () => {
 				return !(inBinary.size() < 3) && getBytesSize() <= inBinary.size()
 			}
@@ -159,8 +169,10 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 					const unpacked = new Binary(result).decompressed()
 					frame = decodeBinaryNode(unpacked)
 				}
+
 				onFrame(frame)
 			}
+
 			inBinary.peek(peekSize)
 		}
 	}	

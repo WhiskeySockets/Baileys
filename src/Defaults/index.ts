@@ -1,6 +1,6 @@
-import P from "pino"
-import type { MediaType, SocketConfig, LegacySocketConfig, CommonSocketConfig } from "../Types"
-import { Browsers } from "../Utils"
+import P from 'pino'
+import type { CommonSocketConfig, LegacySocketConfig, MediaType, SocketConfig } from '../Types'
+import { Browsers } from '../Utils'
 
 export const UNAUTHORIZED_CODES = [401, 403, 419]
 
@@ -18,40 +18,40 @@ export const NOISE_WA_HEADER = new Uint8Array([87, 65, 5, 2]) // last is "DICT_V
 export const URL_REGEX = /[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)?/gi
 
 const BASE_CONNECTION_CONFIG: CommonSocketConfig<any> = {
-    version: [2, 2147, 16],
+	version: [2, 2147, 16],
 	browser: Browsers.baileys('Chrome'),
 
-    waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
-    connectTimeoutMs: 20_000,
-    keepAliveIntervalMs: 25_000,
-    logger: P().child({ class: 'baileys' }),
+	waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
+	connectTimeoutMs: 20_000,
+	keepAliveIntervalMs: 25_000,
+	logger: P().child({ class: 'baileys' }),
 	printQRInTerminal: false,
-    emitOwnEvents: true,
-    defaultQueryTimeoutMs: 60_000,
-    customUploadHosts: [],
+	emitOwnEvents: true,
+	defaultQueryTimeoutMs: 60_000,
+	customUploadHosts: [],
 }
 
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	...BASE_CONNECTION_CONFIG,
-    waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
-    getMessage: async() => undefined
+	waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
+	getMessage: async() => undefined
 }
 
 export const DEFAULT_LEGACY_CONNECTION_CONFIG: LegacySocketConfig = {
 	...BASE_CONNECTION_CONFIG,
-    waWebSocketUrl: 'wss://web.whatsapp.com/ws',
-    phoneResponseTimeMs: 20_000,
-    expectResponseTimeout: 60_000,
+	waWebSocketUrl: 'wss://web.whatsapp.com/ws',
+	phoneResponseTimeMs: 20_000,
+	expectResponseTimeout: 60_000,
 }
 
 export const MEDIA_PATH_MAP: { [T in MediaType]: string } = {
-    image: '/mms/image',
-    video: '/mms/video',
-    document: '/mms/document',
-    audio: '/mms/audio',
-    sticker: '/mms/image',
-    history: '',
-    'md-app-state': ''
+	image: '/mms/image',
+	video: '/mms/video',
+	document: '/mms/document',
+	audio: '/mms/audio',
+	sticker: '/mms/image',
+	history: '',
+	'md-app-state': ''
 }
 
 export const MEDIA_KEYS = Object.keys(MEDIA_PATH_MAP) as MediaType[]

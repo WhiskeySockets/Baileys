@@ -2,9 +2,9 @@ import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
 import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
-import type { AuthenticationCreds, AuthenticationState, SignalDataTypeMap, SignalDataSet, SignalKeyStore, SignalKeyStoreWithTransaction } from "../Types"
+import type { AuthenticationCreds, AuthenticationState, SignalDataSet, SignalDataTypeMap, SignalKeyStore, SignalKeyStoreWithTransaction } from '../Types'
 import { Curve, signedKeyPair } from './crypto'
-import { generateRegistrationId, BufferJSON } from './generics'
+import { BufferJSON, generateRegistrationId } from './generics'
 
 const KEY_MAP: { [T in keyof SignalDataTypeMap]: string } = {
 	'pre-key': 'preKeys',
@@ -46,6 +46,7 @@ export const addTransactionCapability = (state: SignalKeyStore, logger: Logger):
 						if(value) {
 							dict[id] = value
 						}
+
 						return dict
 					}, { }
 				)
@@ -55,7 +56,7 @@ export const addTransactionCapability = (state: SignalKeyStore, logger: Logger):
 		},
 		set: data => {
 			if(inTransaction) {
-				logger.trace({ types: Object.keys(data) }, `caching in transaction`)
+				logger.trace({ types: Object.keys(data) }, 'caching in transaction')
 				for(const key in data) {
 					transactionCache[key] = transactionCache[key] || { }
 					Object.assign(transactionCache[key], data[key])
@@ -69,7 +70,7 @@ export const addTransactionCapability = (state: SignalKeyStore, logger: Logger):
 		},
 		isInTransaction: () => inTransaction,
 		prefetch: (type, ids) => {
-			logger.trace({ type, ids }, `prefetching`)
+			logger.trace({ type, ids }, 'prefetching')
 			return prefetch(type, ids)
 		},
 		transaction: async(work) => {
@@ -128,17 +129,17 @@ export const useSingleFileAuthState = (filename: string, logger?: Logger): { sta
 		)
 	}
 	
-    if(existsSync(filename)) {
-        const result = JSON.parse(
-            readFileSync(filename, { encoding: 'utf-8' }), 
-            BufferJSON.reviver
-        )
+	if(existsSync(filename)) {
+		const result = JSON.parse(
+			readFileSync(filename, { encoding: 'utf-8' }), 
+			BufferJSON.reviver
+		)
 		creds = result.creds
 		keys = result.keys
-    } else {
-        creds = initAuthCreds()
-        keys = { }
-    }
+	} else {
+		creds = initAuthCreds()
+		keys = { }
+	}
 
 	return { 
 		state: { 
@@ -153,8 +154,10 @@ export const useSingleFileAuthState = (filename: string, logger?: Logger): { sta
 								if(type === 'app-state-sync-key') {
 									value = proto.AppStateSyncKeyData.fromObject(value)
 								}
+
 								dict[id] = value
 							}
+
 							return dict
 						}, { }
 					)
@@ -165,6 +168,7 @@ export const useSingleFileAuthState = (filename: string, logger?: Logger): { sta
 						keys[key] = keys[key] || { }
 						Object.assign(keys[key], data[_key])
 					}
+
 					saveState()
 				}
 			}
