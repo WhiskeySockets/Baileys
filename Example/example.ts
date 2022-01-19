@@ -5,10 +5,10 @@ import makeWASocket, { DisconnectReason, AnyMessageContent, delay, useSingleFile
 // the store maintains the data of the WA connection in memory
 // can be written out to a file & read from it
 const store = makeInMemoryStore({ logger: P().child({ level: 'debug', stream: 'store' }) })
-store.readFromFile('./baileys_store.json')
+store.readFromFile('./baileys_store_multi.json')
 // save every 10s
 setInterval(() => {
-    store.writeToFile('./baileys_store.json')
+    store.writeToFile('./baileys_store_multi.json')
 }, 10_000)
 
 const { state, saveState } = useSingleFileAuthState('./auth_info_multi.json')
