@@ -1,6 +1,15 @@
 import P from "pino"
 import { Boom } from "@hapi/boom"
-import makeWASocket, { DisconnectReason, AnyMessageContent, delay, useSingleFileAuthState } from '../src'
+import makeWASocket, { DisconnectReason, AnyMessageContent, delay, useSingleFileAuthState, makeInMemoryStore } from '../src'
+
+// the store maintains the data of the WA connection in memory
+// can be written out to a file & read from it
+const store = makeInMemoryStore({ logger: P().child({ level: 'debug', stream: 'store' }) })
+store.readFromFile('./baileys_store.json')
+
+setInterval(() => {
+    store.writeToFile('./baileys_store.json')
+}, 10_000)
 
 const { state, saveState } = useSingleFileAuthState('./auth_info_multi.json')
 
@@ -18,6 +27,8 @@ const startSock = () => {
             }
         }
     })
+
+    store.bind(sock.ev)
 
     const sendMessageWTyping = async(msg: AnyMessageContent, jid: string) => {
         await sock.presenceSubscribe(jid)

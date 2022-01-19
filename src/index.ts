@@ -4,7 +4,7 @@ import makeWASocket from './Socket'
 export * from '../WAProto'
 export * from './Utils'
 export * from './Types'
-//export * from './Store'
+export * from './Store'
 export * from './Defaults'
 export * from './WABinary'
 

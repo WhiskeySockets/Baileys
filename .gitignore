@@ -1,5 +1,6 @@
 node_modules
 auth_info*.json
+baileys_store*.json
 output.csv
 */.DS_Store
 .DS_Store
