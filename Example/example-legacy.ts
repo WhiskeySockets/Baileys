@@ -6,7 +6,7 @@ import { makeWALegacySocket, DisconnectReason, AnyMessageContent, delay, useSing
 // can be written out to a file & read from it
 const store = makeInMemoryStore({ logger: P().child({ level: 'debug', stream: 'store' }) })
 store.readFromFile('./baileys_store.json')
-
+// save every 10s
 setInterval(() => {
     store.writeToFile('./baileys_store.json')
 }, 10_000)

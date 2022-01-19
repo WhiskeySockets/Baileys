@@ -263,6 +263,7 @@ export default (
 		state,
 		presences,
 		bind,
+		/** loads messages from the store, if not found -- uses the legacy connection */
 		loadMessages: async(jid: string, count: number, cursor: WAMessageCursor, sock: LegacyWASocket | undefined) => {
 			const list = assertMessageList(jid)
 			const retrieve = async(count: number, cursor: WAMessageCursor) => {

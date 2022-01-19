@@ -76,12 +76,13 @@ If the connection is successful, you will see a QR code printed on your terminal
 
 **Note:** install `qrcode-terminal` using `yarn add qrcode-terminal` to auto-print the QR to the terminal.
 
-## Notable Differences Between Baileys Web & MD
+## Notable Differences Between Baileys v3 & v4
 
 1. Baileys has been written from the ground up to have a more "functional" structure. This is done primarily for simplicity & more testability
-2. Baileys no longer maintains an internal state of chats/contacts/messages. You must take this on your own, simply because your state in MD is its own source of truth & there is no one-size-fits-all way to handle the storage for this.
-3. A baileys "socket" is meant to be a temporary & disposable object -- this is done to maintain simplicity & prevent bugs. I felt the entire Baileys object became too bloated as it supported too many configurations. You're encouraged to write your own implementation to handle missing functionality.
-4. Moreover, Baileys does not offer an inbuilt reconnect mechanism anymore (though it's super easy to set one up on your own with your own rules, check the example script)
+2. The Baileys event emitter will emit all events and be used to generate a source of truth for the connected user's account. Access the event emitter using (`sock.ev`)
+3. Baileys no longer maintains an internal state of chats/contacts/messages. You should ideally take this on your own, simply because your state in MD is its own source of truth & there is no one-size-fits-all way to handle the storage for this. However, a simple storage extension has been provided. This also serves as a good demonstration of how to use the Baileys event emitter to construct a source of truth.
+4. A baileys "socket" is meant to be a temporary & disposable object -- this is done to maintain simplicity & prevent bugs. I felt the entire Baileys object became too bloated as it supported too many configurations. You're encouraged to write your own implementation to handle missing functionality.
+5. Moreover, Baileys does not offer an inbuilt reconnect mechanism anymore (though it's super easy to set one up on your own with your own rules, check the example script)
 
 ## Configuring the Connection
 
@@ -224,6 +225,45 @@ sock.ev.on('messages.upsert', ({ messages }) => {
 })
 
 ```
+
+## Implementing a Data Store
+
+As mentioned earlier, Baileys does not come with a defacto storage for chats, contacts, messages. However, a simple in-memory implementation has been provided. The store listens for chat updates, new messages, message updates etc. to always have an up to date version of the data.
+
+It can be used as follows:
+
+``` ts
+import makeWASocket, { makeInMemoryStore } from '@adiwajshing/baileys-md'
+// the store maintains the data of the WA connection in memory
+// can be written out to a file & read from it
+const store = makeInMemoryStore({ logger: P().child({ level: 'debug', stream: 'store' }) })
+// can be read from a file
+store.readFromFile('./baileys_store.json')
+// saves the state to a file every 10s
+setInterval(() => {
+    store.writeToFile('./baileys_store.json')
+}, 10_000)
+
+const sock = makeWASocket({ })
+// will listen from this socket
+// the store can listen from a new socket once the current socket outlives its lifetime
+store.bind(sock.ev)
+
+sock.ev.on('chats.set', () => {
+    // can use "store.chats" however you want, even after the socket dies out
+    // "chats" => a KeyedDB instance
+    console.log('got chats', store.chats.all())
+})
+
+sock.ev.on('contacts.set', () => {
+    console.log('got contacts', Object.values(store.contacts))
+})
+
+```
+
+The store also provides some simple functions such as `loadMessages` that utilize the store to speed up data retrieval.
+
+**Note:** I highly recommend building your own data store especially for MD connections, as storing someone's entire chat history in memory is a terrible waste of RAM.
 
 ## Sending Messages
 
