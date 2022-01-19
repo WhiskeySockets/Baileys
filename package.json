@@ -41,7 +41,7 @@
     "libsignal": "git+https://github.com/adiwajshing/libsignal-node",
     "music-metadata": "^7.4.1",
     "node-cache": "^5.1.2",
-    "pino": "^6.7.0",
+    "pino": "^7.0.0",
     "protobufjs": "^6.10.1",
     "ws": "^8.0.0"
   },
@@ -63,7 +63,7 @@
     "@types/got": "^9.6.11",
     "@types/jest": "^26.0.24",
     "@types/node": "^14.6.2",
-    "@types/pino": "^6.3.2",
+    "@types/pino": "^7.0.0",
     "@types/sharp": "^0.29.4",
     "@types/ws": "^8.0.0",
     "eslint": "^7.0.0",
