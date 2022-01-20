@@ -382,7 +382,7 @@ const listMessage = {
   text: "This is a list",
   footer: "nice footer, link: https://google.com",
   title: "Amazing boldfaced list title",
-  buttonText: "Required, text on the button to vie the list",
+  buttonText: "Required, text on the button to view the list",
   sections
 }
 
