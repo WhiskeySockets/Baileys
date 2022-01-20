@@ -117,9 +117,10 @@ export default (
 			chats.upsert(...newChats)
 		})
 		ev.on('chats.update', updates => {
-			for(const update of updates) {
+			for(let update of updates) {
 				const result = chats.update(update.id!, chat => {
 					if(update.unreadCount > 0) {
+						update = { ...update }
 						update.unreadCount = chat.unreadCount + update.unreadCount
 					}
 
