@@ -3,7 +3,7 @@ import { AuthenticationCreds } from './Auth'
 import { Chat, PresenceData } from './Chat'
 import { Contact } from './Contact'
 import { GroupMetadata, ParticipantAction } from './GroupMetadata'
-import { MessageInfoUpdate, MessageUpdateType, WAMessage, WAMessageKey, WAMessageUpdate } from './Message'
+import { MessageUpdateType, MessageUserReceiptUpdate, WAMessage, WAMessageKey, WAMessageUpdate } from './Message'
 import { ConnectionState } from './State'
 
 export type BaileysEventMap<T> = {
@@ -37,7 +37,7 @@ export type BaileysEventMap<T> = {
      *  */
     'messages.upsert': { messages: WAMessage[], type: MessageUpdateType }
 
-    'message-info.update': MessageInfoUpdate[]
+    'message-receipt.update': MessageUserReceiptUpdate[]
 
     'groups.upsert': GroupMetadata[]
     'groups.update': Partial<GroupMetadata>[]

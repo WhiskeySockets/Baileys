@@ -5,7 +5,7 @@ import { proto } from '../../WAProto'
 import { DEFAULT_CONNECTION_CONFIG } from '../Defaults'
 import type makeLegacySocket from '../LegacySocket'
 import type makeMDSocket from '../Socket'
-import type { BaileysEventEmitter, Chat, ConnectionState, Contact, GroupMetadata, MessageInfo, PresenceData, WAMessage, WAMessageCursor, WAMessageKey } from '../Types'
+import type { BaileysEventEmitter, Chat, ConnectionState, Contact, GroupMetadata, PresenceData, WAMessage, WAMessageCursor, WAMessageKey } from '../Types'
 import { toNumber } from '../Utils'
 import { jidNormalizedUser } from '../WABinary'
 import makeOrderedDictionary from './make-ordered-dictionary'
@@ -38,7 +38,6 @@ export default (
 	const messages: { [_: string]: ReturnType<typeof makeMessagesDictionary> } = { }
 	const contacts: { [_: string]: Contact } = { }
 	const groupMetadata: { [_: string]: GroupMetadata } = { }
-	const messageInfos: { [id: string]: MessageInfo } = { }
 	const presences: { [id: string]: { [participant: string]: PresenceData } } = { }
 	const state: ConnectionState = { connection: 'close' }
 
@@ -159,9 +158,6 @@ export default (
 								} 
 							])
 						}
-
-						// add message infos if required
-						messageInfos[msg.key.id!] = messageInfos[msg.key.id!] || { reads: {}, deliveries: {} }
 					}
 				}
 
@@ -224,13 +220,17 @@ export default (
 			}
 		})
 
-		ev.on('message-info.update', updates => {
-			for(const { key, update } of updates) {
-				const obj = messageInfos[key.id!]
-				if(obj) {
-					// add reads/deliveries
-					for(const key in update) {
-						Object.assign(obj[key], update[key])
+		ev.on('message-receipt.update', updates => {
+			for(const { key, receipt } of updates) {
+				const obj = messages[key.remoteJid!]
+				const msg = obj?.get(key.id)
+				if(msg) {
+					msg.userReceipt = msg.userReceipt || []
+					const recp = msg.userReceipt.find(m => m.userJid === receipt.userJid)
+					if(recp) {
+						Object.assign(recp, receipt)
+					} else {
+						msg.userReceipt.push(receipt)
 					}
 				}
 			}
@@ -260,7 +260,6 @@ export default (
 		contacts,
 		messages,
 		groupMetadata,
-		messageInfos,
 		state,
 		presences,
 		bind,
@@ -348,12 +347,18 @@ export default (
 
 			return groupMetadata[jid]
 		},
-		fetchMessageInfo: async({ remoteJid, id }: WAMessageKey, sock: LegacyWASocket | undefined) => {
-			if(!messageInfos[id!]) {
-				messageInfos[id!] = await sock?.messageInfo(remoteJid, id)
+		fetchMessageReceipts: async({ remoteJid, id }: WAMessageKey, sock: LegacyWASocket | undefined) => {
+			const list = messages[remoteJid]
+			const msg = list?.get(id)
+			let receipts = msg.userReceipt
+			if(!receipts) {
+				receipts = await sock?.messageInfo(remoteJid, id)
+				if(msg) {
+					msg.userReceipt = receipts
+				}
 			}
 
-			return messageInfos[id!]
+			return receipts
 		},
 		toJSON,
 		fromJSON,

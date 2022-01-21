@@ -1,7 +1,7 @@
 import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto'
 import { WA_DEFAULT_EPHEMERAL } from '../Defaults'
-import { AnyMessageContent, Chat, GroupMetadata, LegacySocketConfig, MediaConnInfo, MessageInfo, MessageInfoUpdate, MessageUpdateType, MiscMessageGenerationOptions, ParticipantAction, WAFlag, WAMessage, WAMessageCursor, WAMessageKey, WAMessageStatus, WAMessageStubType, WAMessageUpdate, WAMetric, WAUrlInfo } from '../Types'
+import { AnyMessageContent, Chat, GroupMetadata, LegacySocketConfig, MediaConnInfo, MessageUpdateType, MessageUserReceipt, MessageUserReceiptUpdate, MiscMessageGenerationOptions, ParticipantAction, WAFlag, WAMessage, WAMessageCursor, WAMessageKey, WAMessageStatus, WAMessageStubType, WAMessageUpdate, WAMetric, WAUrlInfo } from '../Types'
 import { decryptMediaMessageBuffer, extractMessageContent, generateWAMessage, getWAUploadToServer, toNumber } from '../Utils'
 import { areJidsSameUser, BinaryNode, getBinaryNodeMessages, isJidGroup, jidNormalizedUser } from '../WABinary'
 import makeChatsSocket from './chats'
@@ -353,13 +353,16 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 			ids = [ids]
 		}
 
-		let updateKey: keyof MessageInfoUpdate['update']
+		let updateKey: keyof MessageUserReceipt
 		switch (attributes.ack.toString()) {
 		case '2':
-			updateKey = 'deliveries'
+			updateKey = 'receiptTimestamp'
 			break
 		case '3':
-			updateKey = 'reads'
+			updateKey = 'readTimestamp'
+			break
+		case '4':
+			updateKey = 'playedTimestamp'
 			break
 		default:
 			logger.warn({ attributes }, 'received unknown message info update')
@@ -370,13 +373,17 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 			remoteJid: jidNormalizedUser(attributes.to),
 			fromMe: areJidsSameUser(attributes.from, state.legacy?.user?.id || ''),
 		}
-		const updates = ids.map<MessageInfoUpdate>(id => ({
+
+		const userJid = jidNormalizedUser(attributes.participant || attributes.to)
+
+		const updates = ids.map<MessageUserReceiptUpdate>(id => ({
 			key: { ...keyPartial, id },
-			update: {
-				[updateKey]: { [jidNormalizedUser(attributes.participant || attributes.to)]: new Date(+attributes.t) }
+			receipt: {
+				userJid,
+				[updateKey]: +attributes.t
 			}
 		}))
-		ev.emit('message-info.update', updates)
+		ev.emit('message-receipt.update', updates)
 		// for individual messages
 		// it means the message is marked read/delivered
 		if(!isJidGroup(keyPartial.remoteJid)) {
@@ -384,7 +391,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 				{
 					key: { ...keyPartial, id },
 					update: {
-						status: updateKey === 'deliveries' ? WAMessageStatus.DELIVERY_ACK : WAMessageStatus.READ
+						status: updateKey === 'receiptTimestamp' ? WAMessageStatus.DELIVERY_ACK : WAMessageStatus.READ
 					}
 				}
 			)))
@@ -416,24 +423,28 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 				expect200: true,
 				requiresPhoneConnection: true
 			})
-			const info: MessageInfo = { reads: {}, deliveries: {} }
+			const info: { [jid: string]: MessageUserReceipt } = { }
 			if(Array.isArray(content)) {
 				for(const { tag, content: innerData } of content) {
 					const [{ attrs }] = (innerData as BinaryNode[])
+					
 					const jid = jidNormalizedUser(attrs.jid)
-					const date = new Date(+attrs.t * 1000)
+					const recp = info[jid] || { userJid: jid }
+					const date = +attrs.t
 					switch (tag) {
 					case 'read':
-						info.reads[jid] = date
+						recp.readTimestamp = date
 						break
 					case 'delivery':
-						info.deliveries[jid] = date
+						recp.receiptTimestamp = date
 						break
 					}
+
+					info[jid] = recp
 				}
 			}
 
-			return info
+			return Object.values(info)
 		},
 		downloadMediaMessage: async(message: WAMessage, type: 'buffer' | 'stream' = 'buffer') => {
 			const downloadMediaMessage = async() => {
