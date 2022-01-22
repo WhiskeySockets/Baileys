@@ -1,7 +1,7 @@
 {
   "name": "@adiwajshing/baileys",
-  "version": "3.5.3",
-  "description": "WhatsApp Web API",
+  "version": "4.0.0",
+  "description": "WhatsApp API",
   "homepage": "https://github.com/adiwajshing/Baileys",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -13,18 +13,21 @@
     "whatsapp",
     "whatsapp-chat",
     "whatsapp-group",
-    "automation"
+    "automation",
+    "multi-device"
   ],
   "scripts": {
-    "test": "mocha --timeout 240000 -r ts-node/register src/Tests/Tests.*.ts",
-    "prepack": "tsc",
-    "lint": "eslint '*/*.ts' --quiet --fix",
+    "test": "jest",
+    "prepare": "tsc",
     "build:all": "tsc && typedoc",
     "build:docs": "typedoc",
     "build:tsc": "tsc",
     "example": "node --inspect -r ts-node/register Example/example.ts",
-    "gen-protobuf": "bash src/Binary/GenerateStatics.sh",
-    "browser-decode": "yarn ts-node src/BrowserMessageDecoding.ts"
+    "example:legacy": "node --inspect -r ts-node/register Example/example-legacy.ts",
+    "gen-protobuf": "bash src/BinaryNode/GenerateStatics.sh",
+    "browser-decode": "yarn ts-node src/BrowserMessageDecoding.ts",
+    "lint": "eslint ./src --ext .js,.ts,.jsx,.tsx",
+    "lint:fix": "eslint ./src --fix --ext .js,.ts,.jsx,.tsx"
   },
   "author": "Adhiraj Singh",
   "license": "MIT",
@@ -32,33 +35,44 @@
     "url": "git@github.com:adiwajshing/baileys.git"
   },
   "dependencies": {
-    "@adiwajshing/keyed-db": "^0.2.2",
+    "@hapi/boom": "^9.1.3",
+    "axios": "^0.24.0",
     "curve25519-js": "^0.0.4",
-    "futoin-hkdf": "^1.3.2",
-    "got": "^11.8.1",
-    "https-proxy-agent": "^5.0.0",
-    "jimp": "^0.16.1",
+    "libsignal": "git+https://github.com/adiwajshing/libsignal-node",
     "music-metadata": "^7.4.1",
-    "pino": "^6.7.0",
-    "pino-pretty": "^4.3.0",
+    "node-cache": "^5.1.2",
+    "pino": "^7.0.0",
     "protobufjs": "^6.10.1",
+    "ws": "^8.0.0"
+  },
+  "peerDependencies": {
+    "jimp": "^0.16.1",
     "qrcode-terminal": "^0.12.0",
-    "ws": "^7.3.1"
+    "sharp": "^0.29.3",
+    "@adiwajshing/keyed-db": "^0.2.4"
   },
   "files": [
     "lib/*",
-    "WAMessage/*"
+    "WAProto/*",
+    "WASignalGroup/*.js",
+    "WABinary/*.js"
   ],
   "devDependencies": {
+    "@adiwajshing/eslint-config": "git+https://github.com/adiwajshing/eslint-config",
+    "@adiwajshing/keyed-db": "^0.2.4",
     "@types/got": "^9.6.11",
-    "@types/mocha": "^7.0.2",
+    "@types/jest": "^26.0.24",
     "@types/node": "^14.6.2",
-    "@types/pino": "^6.3.2",
-    "@types/ws": "^7.2.6",
-    "assert": "^2.0.0",
-    "dotenv": "^8.2.0",
-    "mocha": "^8.1.3",
-    "ts-node-dev": "^1.0.0",
+    "@types/pino": "^7.0.0",
+    "@types/sharp": "^0.29.4",
+    "@types/ws": "^8.0.0",
+    "eslint": "^7.0.0",
+    "jest": "^27.0.6",
+    "jimp": "^0.16.1",
+    "qrcode-terminal": "^0.12.0",
+    "sharp": "^0.29.3",
+    "ts-jest": "^27.0.3",
+    "ts-node": "^10.0.0",
     "typedoc": "^0.20.0-beta.27",
     "typescript": "^4.0.0"
   }

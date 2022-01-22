@@ -1,0 +1,42 @@
+package groupproto;
+
+message SenderKeyMessage {
+	optional uint32 id         = 1;
+	optional uint32 iteration  = 2;
+	optional bytes  ciphertext = 3;
+  }
+  
+  message SenderKeyDistributionMessage {
+	optional uint32 id         = 1;
+	optional uint32 iteration  = 2;
+	optional bytes  chainKey   = 3;
+	optional bytes  signingKey = 4;
+  }
+  
+  message SenderChainKey {
+    optional uint32 iteration = 1;
+    optional bytes  seed      = 2;
+}
+
+message SenderMessageKey {
+    optional uint32 iteration = 1;
+    optional bytes  seed      = 2;
+}
+
+message SenderSigningKey {
+    optional bytes public  = 1;
+    optional bytes private = 2;
+}
+
+message SenderKeyStateStructure {
+    
+
+    optional uint32           senderKeyId       = 1;
+    optional SenderChainKey   senderChainKey    = 2;
+    optional SenderSigningKey senderSigningKey  = 3;
+    repeated SenderMessageKey senderMessageKeys = 4;
+}
+
+message SenderKeyRecordStructure {
+    repeated SenderKeyStateStructure senderKeyStates = 1;
+}

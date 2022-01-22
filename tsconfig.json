@@ -3,7 +3,7 @@
     "target": "es2018",
     "module": "commonjs",
     "experimentalDecorators": true,
-    "allowJs": true,
+    "allowJs": false,
     "checkJs": false,
     "outDir": "lib",
     "strict": false,
@@ -12,8 +12,8 @@
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
-    "lib": ["es2020", "esnext.array"]
+    "lib": ["es2020", "esnext.array", "DOM"]
   },
-  "include": ["src/**/*.ts"],
+  "include": ["./src/**/*.ts"],
   "exclude": ["node_modules", "src/Tests/*", "src/Binary/GenerateStatics.ts"]
 }
