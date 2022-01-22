@@ -50,7 +50,7 @@ const makeGroupsSocket = (config: LegacySocketConfig) => {
 			id: metadata.id,
 			subject: metadata.subject,
 			creation: +metadata.creation,
-			owner: jidNormalizedUser(metadata.owner),
+			owner: metadata.owner ? jidNormalizedUser(metadata.owner) : undefined,
 			desc: metadata.desc,
 			descOwner: metadata.descOwner,
 			participants: metadata.participants.map(
