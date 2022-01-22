@@ -1,7 +1,7 @@
 
 import { proto } from '../../WAProto'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
-import { Chat, GroupMetadata, ParticipantAction, SocketConfig, WAMessageStubType } from '../Types'
+import { Chat, GroupMetadata, MessageUserReceipt, ParticipantAction, SocketConfig, WAMessageStubType } from '../Types'
 import { decodeMessageStanza, downloadAndProcessHistorySyncNotification, encodeBigEndian, generateSignalPubKey, toNumber, xmppPreKey, xmppSignedPreKey } from '../Utils'
 import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getAllBinaryNodeChildren, getBinaryNodeChildren, isJidGroup, jidDecode, jidEncode, jidNormalizedUser } from '../WABinary'
 import { makeChatsSocket } from './chats'
@@ -438,10 +438,28 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
                 !isNodeFromMe
             )
 		) {
-			ev.emit('messages.update', ids.map(id => ({
-				key: { ...key, id },
-				update: { status }
-			})))
+			if(isJidGroup(remoteJid)) {
+				const updateKey: keyof MessageUserReceipt = status === proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK ? 'receiptTimestamp' : 'readTimestamp'
+				ev.emit(
+					'message-receipt.update',
+					ids.map(id => ({
+						key: { ...key, id },
+						receipt: {
+							userJid: jidNormalizedUser(attrs.participant),
+							[updateKey]: +attrs.t
+						}
+					}))
+				)
+			} else {
+				ev.emit(
+					'messages.update', 
+					ids.map(id => ({
+						key: { ...key, id },
+						update: { status }
+					}))
+				)
+			}
+
 		}
 
 		if(attrs.type === 'retry') {
