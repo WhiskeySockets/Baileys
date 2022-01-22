@@ -26,14 +26,22 @@ To run the example script, download or clone the repo and then type the followin
 
 ## Install
 
-Right now, the multi-device branch is only available from GitHub, install using:
+Use the stable version:
 ```
-yarn add github:adiwajshing/baileys#multi-device
+yarn add @adiwajshing/baileys
+```
+
+Use the edge version (no guarantee of stability, but latest fixes + features)
+```
+yarn add github:adiwajshing/baileys
 ```
 
 Then import in your code using:
 ``` ts 
+// for multi-device
 import makeWASocket from '@adiwajshing/baileys'
+// for legacy web
+import {makeWALegacySocket} from '@adiwajshing/baileys'
 ```
 
 ## Unit Tests
