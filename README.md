@@ -33,7 +33,7 @@ yarn add github:adiwajshing/baileys#multi-device
 
 Then import in your code using:
 ``` ts 
-import makeWASocket from '@adiwajshing/baileys-md'
+import makeWASocket from '@adiwajshing/baileys'
 ```
 
 ## Unit Tests
@@ -43,7 +43,7 @@ TODO
 ## Connecting
 
 ``` ts
-import makeWASocket from '@adiwajshing/baileys-md'
+import makeWASocket from '@adiwajshing/baileys'
 
 async function connectToWhatsApp () {
     const sock = makeWASocket({
@@ -129,7 +129,7 @@ You obviously don't want to keep scanning the QR code every time you want to con
 
 So, you can load the credentials to log back in:
 ``` ts
-import makeWASocket, { BufferJSON, useSingleFileAuthState } from '@adiwajshing/baileys-md'
+import makeWASocket, { BufferJSON, useSingleFileAuthState } from '@adiwajshing/baileys'
 import * as fs from 'fs'
 
 // utility function to help save the auth state in a single file
@@ -235,7 +235,7 @@ As mentioned earlier, Baileys does not come with a defacto storage for chats, co
 It can be used as follows:
 
 ``` ts
-import makeWASocket, { makeInMemoryStore } from '@adiwajshing/baileys-md'
+import makeWASocket, { makeInMemoryStore } from '@adiwajshing/baileys'
 // the store maintains the data of the WA connection in memory
 // can be written out to a file & read from it
 const store = makeInMemoryStore({ })
@@ -275,7 +275,7 @@ Example on using the eg. version:
 ``` ts
 import P from "pino"
 import { Boom } from "@hapi/boom"
-import { makeWALegacySocket } from '@adiwajshing/baileys-md'
+import { makeWALegacySocket } from '@adiwajshing/baileys'
 
 // store can be used with legacy version as well
 const store = makeInMemoryStore({ logger: P().child({ level: 'debug', stream: 'store' }) })
@@ -292,7 +292,7 @@ store.bind(sock.ev)
 If you need a type representing either the legacy or MD version:
 ``` ts
 // this type can have any of the socket types underneath
-import { AnyWASocket } from '@adiwajshing/baileys-md'
+import { AnyWASocket } from '@adiwajshing/baileys'
 ```
 
 ## Sending Messages
@@ -302,7 +302,7 @@ import { AnyWASocket } from '@adiwajshing/baileys-md'
 ### Non-Media Messages
 
 ``` ts
-import { MessageType, MessageOptions, Mimetype } from '@adiwajshing/baileys-md'
+import { MessageType, MessageOptions, Mimetype } from '@adiwajshing/baileys'
 
 const id = 'abcd@s.whatsapp.net' // the WhatsApp ID 
 // send a simple text!
@@ -396,7 +396,7 @@ Sending media (video, stickers, images) is easier & more efficient than ever.
 - When specifying a media url, Baileys never loads the entire buffer into memory, it even encrypts the media as a readable stream.
 
 ``` ts
-import { MessageType, MessageOptions, Mimetype } from '@adiwajshing/baileys-md'
+import { MessageType, MessageOptions, Mimetype } from '@adiwajshing/baileys'
 // Sending gifs
 await sock.sendMessage(
     id, 
@@ -476,7 +476,7 @@ const sendMsg = await sock.sendMessage(id, templateMessage)
                                     Do not enter this field if you want to automatically generate a thumb
                                 */
         mimetype: Mimetype.pdf, /* (for media messages) specify the type of media (optional for all media types except documents),
-                                    import {Mimetype} from '@adiwajshing/baileys-md'
+                                    import {Mimetype} from '@adiwajshing/baileys'
                                 */
         filename: 'somefile.pdf', // (for media messages) file name for the media
         /* will send audio messages as voice notes, if set to true */
@@ -529,7 +529,7 @@ The presence expires after about 10 seconds.
 If you want to save the media you received
 ``` ts
 import { writeFile } from 'fs/promises'
-import { downloadContentFromMessage } from '@adiwajshing/baileys-md'
+import { downloadContentFromMessage } from '@adiwajshing/baileys'
 
 sock.ev.on('messages.upsert', async ({ messages }) => {
     const m = messages[0]
