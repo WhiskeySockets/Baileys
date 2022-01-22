@@ -39,7 +39,7 @@ jobs:
       run: yarn
 
     - name: Build
-      run: yarn run build:all
+      run: yarn run build:tsc
       
     - name: Create Release
       id: releaseCreate
