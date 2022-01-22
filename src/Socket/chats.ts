@@ -2,7 +2,7 @@ import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto'
 import { AppStateChunk, Chat, ChatModification, ChatMutation, Contact, LTHashState, PresenceData, SocketConfig, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAPatchCreate, WAPatchName, WAPresence } from '../Types'
 import { chatModificationToAppPatch, decodePatches, decodeSyncdSnapshot, encodeSyncdPatch, extractSyncdPatches, generateProfilePicture, newLTHashState, toNumber } from '../Utils'
-import makeMutex from '../Utils/make-mutex'
+import { makeMutex } from '../Utils/make-mutex'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidNormalizedUser, reduceBinaryNodeToDictionary, S_WHATSAPP_NET } from '../WABinary'
 import { makeMessagesSocket } from './messages-send'
 

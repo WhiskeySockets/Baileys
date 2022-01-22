@@ -3,6 +3,7 @@ import { proto } from '../../WAProto'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { Chat, GroupMetadata, MessageUserReceipt, ParticipantAction, SocketConfig, WAMessageStubType } from '../Types'
 import { decodeMessageStanza, downloadAndProcessHistorySyncNotification, encodeBigEndian, generateSignalPubKey, toNumber, xmppPreKey, xmppSignedPreKey } from '../Utils'
+import { makeKeyedMutex } from '../Utils/make-mutex'
 import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getAllBinaryNodeChildren, getBinaryNodeChildren, isJidGroup, jidDecode, jidEncode, jidNormalizedUser } from '../WABinary'
 import { makeChatsSocket } from './chats'
 import { extractGroupMetadata } from './groups'
@@ -36,6 +37,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		sendReceipt,
 		resyncMainAppState,
 	} = sock
+
+	/** the mutex ensures that the notifications (receipts, messages etc.) are processed in order */
+	const processingMutex = makeKeyedMutex()
 
 	const msgRetryMap = config.msgRetryCounterMap || { }
 
@@ -338,24 +342,30 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	// recv a message
-	ws.on('CB:message', async(stanza: BinaryNode) => {
-		const msg = await decodeMessageStanza(stanza, authState)
-		// message failed to decrypt
-		if(msg.messageStubType === proto.WebMessageInfo.WebMessageInfoStubType.CIPHERTEXT) {
-			logger.error(
-				{ msgId: msg.key.id, params: msg.messageStubParameters }, 
-				'failure in decrypting message'
-			)
-			await sendRetryRequest(stanza)
-		} else {
-			await sendMessageAck(stanza, { class: 'receipt' })
-			// no type in the receipt => message delivered
-			await sendReceipt(msg.key.remoteJid!, msg.key.participant, [msg.key.id!], undefined)
-			logger.debug({ msg: msg.key }, 'sent delivery receipt')
-		}
-        
-		msg.key.remoteJid = jidNormalizedUser(msg.key.remoteJid!)
-		ev.emit('messages.upsert', { messages: [msg], type: stanza.attrs.offline ? 'append' : 'notify' })
+	ws.on('CB:message', (stanza: BinaryNode) => {
+		const { fullMessage: msg, decryptionTask } = decodeMessageStanza(stanza, authState)
+		processingMutex.mutex(
+			msg.key.remoteJid!,
+			async() => {
+				await decryptionTask
+				// message failed to decrypt
+				if(msg.messageStubType === proto.WebMessageInfo.WebMessageInfoStubType.CIPHERTEXT) {
+					logger.error(
+						{ msgId: msg.key.id, params: msg.messageStubParameters }, 
+						'failure in decrypting message'
+					)
+					await sendRetryRequest(stanza)
+				} else {
+					await sendMessageAck(stanza, { class: 'receipt' })
+					// no type in the receipt => message delivered
+					await sendReceipt(msg.key.remoteJid!, msg.key.participant, [msg.key.id!], undefined)
+					logger.debug({ msg: msg.key }, 'sent delivery receipt')
+				}
+				
+				msg.key.remoteJid = jidNormalizedUser(msg.key.remoteJid!)
+				ev.emit('messages.upsert', { messages: [msg], type: stanza.attrs.offline ? 'append' : 'notify' })
+			}
+		)
 	})
 
 	ws.on('CB:ack,class:message', async(node: BinaryNode) => {
@@ -428,82 +438,92 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			participant: attrs.participant
 		}
 
-		const status = getStatusFromReceiptType(attrs.type)
-		if(
-			typeof status !== 'undefined' &&
-            (
-			// basically, we only want to know when a message from us has been delivered to/read by the other person
-			// or another device of ours has read some messages
-            	status > proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK ||
-                !isNodeFromMe
-            )
-		) {
-			if(isJidGroup(remoteJid)) {
-				const updateKey: keyof MessageUserReceipt = status === proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK ? 'receiptTimestamp' : 'readTimestamp'
-				ev.emit(
-					'message-receipt.update',
-					ids.map(id => ({
-						key: { ...key, id },
-						receipt: {
-							userJid: jidNormalizedUser(attrs.participant),
-							[updateKey]: +attrs.t
-						}
-					}))
-				)
-			} else {
-				ev.emit(
-					'messages.update', 
-					ids.map(id => ({
-						key: { ...key, id },
-						update: { status }
-					}))
-				)
-			}
+		await processingMutex.mutex(
+			remoteJid,
+			async() => {
+				const status = getStatusFromReceiptType(attrs.type)
+				if(
+					typeof status !== 'undefined' &&
+					(
+					// basically, we only want to know when a message from us has been delivered to/read by the other person
+					// or another device of ours has read some messages
+						status > proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK ||
+						!isNodeFromMe
+					)
+				) {
+					if(isJidGroup(remoteJid)) {
+						const updateKey: keyof MessageUserReceipt = status === proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK ? 'receiptTimestamp' : 'readTimestamp'
+						ev.emit(
+							'message-receipt.update',
+							ids.map(id => ({
+								key: { ...key, id },
+								receipt: {
+									userJid: jidNormalizedUser(attrs.participant),
+									[updateKey]: +attrs.t
+								}
+							}))
+						)
+					} else {
+						ev.emit(
+							'messages.update', 
+							ids.map(id => ({
+								key: { ...key, id },
+								update: { status }
+							}))
+						)
+					}
 
-		}
-
-		if(attrs.type === 'retry') {
-			// correctly set who is asking for the retry
-			key.participant = key.participant || attrs.from
-			if(key.fromMe) {
-				try {
-					logger.debug({ attrs }, 'recv retry request')
-					await sendMessagesAgain(key, ids)
-				} catch(error) {
-					logger.error({ key, ids, trace: error.stack }, 'error in sending message again')
-					shouldAck = false
 				}
-			} else {
-				logger.info({ attrs, key }, 'recv retry for not fromMe message')
-			}
-		}
 
-		if(shouldAck) {
-			await sendMessageAck(node, { class: 'receipt', type: attrs.type })
-		}
-        
+				if(attrs.type === 'retry') {
+					// correctly set who is asking for the retry
+					key.participant = key.participant || attrs.from
+					if(key.fromMe) {
+						try {
+							logger.debug({ attrs }, 'recv retry request')
+							await sendMessagesAgain(key, ids)
+						} catch(error) {
+							logger.error({ key, ids, trace: error.stack }, 'error in sending message again')
+							shouldAck = false
+						}
+					} else {
+						logger.info({ attrs, key }, 'recv retry for not fromMe message')
+					}
+				}
+
+				if(shouldAck) {
+					await sendMessageAck(node, { class: 'receipt', type: attrs.type })
+				}
+			}
+		)
 	}
 
 	ws.on('CB:receipt', handleReceipt)
 
 	ws.on('CB:notification', async(node: BinaryNode) => {
-		await sendMessageAck(node, { class: 'notification', type: node.attrs.type })
-
-		const msg = processNotification(node)
-		if(msg) {
-			const fromMe = areJidsSameUser(node.attrs.participant || node.attrs.from, authState.creds.me!.id)
-			msg.key = {
-				remoteJid: node.attrs.from,
-				fromMe,
-				participant: node.attrs.participant,
-				id: node.attrs.id,
-				...(msg.key || {})
+		const remoteJid = node.attrs.from
+		processingMutex.mutex(
+			remoteJid,
+			() => {
+				const msg = processNotification(node)
+				if(msg) {
+					const fromMe = areJidsSameUser(node.attrs.participant || node.attrs.from, authState.creds.me!.id)
+					msg.key = {
+						remoteJid: node.attrs.from,
+						fromMe,
+						participant: node.attrs.participant,
+						id: node.attrs.id,
+						...(msg.key || {})
+					}
+					msg.messageTimestamp = +node.attrs.t
+					
+					const fullMsg = proto.WebMessageInfo.fromObject(msg)
+					ev.emit('messages.upsert', { messages: [fullMsg], type: 'append' })
+				}
 			}
-			msg.messageTimestamp = +node.attrs.t
-            
-			const fullMsg = proto.WebMessageInfo.fromObject(msg)
-			ev.emit('messages.upsert', { messages: [fullMsg], type: 'append' })
-		}
+		)
+
+		await sendMessageAck(node, { class: 'notification', type: node.attrs.type })
 	})
 
 	ev.on('messages.upsert', async({ messages, type }) => {
@@ -520,7 +540,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 				}
 
-				await processMessage(msg, chat)
+				await processingMutex.mutex(
+					'p-' + chat.id!,
+					() => processMessage(msg, chat)
+				)
+				
 				if(!!msg.message && !msg.message!.protocolMessage) {
 					chat.conversationTimestamp = toNumber(msg.messageTimestamp)
 					if(!msg.key.fromMe) {
