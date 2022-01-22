@@ -6,7 +6,7 @@ import { DEFAULT_CONNECTION_CONFIG } from '../Defaults'
 import type makeLegacySocket from '../LegacySocket'
 import type makeMDSocket from '../Socket'
 import type { BaileysEventEmitter, Chat, ConnectionState, Contact, GroupMetadata, PresenceData, WAMessage, WAMessageCursor, WAMessageKey } from '../Types'
-import { toNumber } from '../Utils'
+import { toNumber, updateMessageWithReceipt } from '../Utils'
 import { jidNormalizedUser } from '../WABinary'
 import makeOrderedDictionary from './make-ordered-dictionary'
 
@@ -225,13 +225,7 @@ export default (
 				const obj = messages[key.remoteJid!]
 				const msg = obj?.get(key.id)
 				if(msg) {
-					msg.userReceipt = msg.userReceipt || []
-					const recp = msg.userReceipt.find(m => m.userJid === receipt.userJid)
-					if(recp) {
-						Object.assign(recp, receipt)
-					} else {
-						msg.userReceipt.push(receipt)
-					}
+					updateMessageWithReceipt(msg, receipt)
 				}
 			}
 		})

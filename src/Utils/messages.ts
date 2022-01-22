@@ -11,12 +11,14 @@ import {
 	MessageGenerationOptions, 
 	MessageGenerationOptionsFromContent,
 	MessageType, 
+	MessageUserReceipt,
 	WAMediaUpload, 
 	WAMessage, 
 	WAMessageContent, 
 	WAMessageStatus,
 	WAProto, 
-	WATextMessage } from '../Types'
+	WATextMessage 
+} from '../Types'
 import { generateMessageID, unixTimestampSeconds } from './generics'
 import { encryptedStream, generateThumbnail, getAudioDuration } from './messages-media'
 
@@ -492,4 +494,14 @@ export const extractMessageContent = (content: WAMessageContent | undefined | nu
 export const getDevice = (id: string) => {
 	const deviceType = id.length > 21 ? 'android' : id.substring(0, 2) === '3A' ? 'ios' : 'web'
 	return deviceType
+}
+
+export const updateMessageWithReceipt = (msg: WAMessage, receipt: MessageUserReceipt) => {
+	msg.userReceipt = msg.userReceipt || []
+	const recp = msg.userReceipt.find(m => m.userJid === receipt.userJid)
+	if(recp) {
+		Object.assign(recp, receipt)
+	} else {
+		msg.userReceipt.push(receipt)
+	}
 }
