@@ -209,7 +209,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 					id: jidNormalizedUser(attrs.jid),
 					name: attrs.name,
 					notify: attrs.notify,
-					verifiedName: attrs.vname
+					verifiedName: attrs.verify === '2' ? attrs.vname : undefined
 				}
 			})
 
