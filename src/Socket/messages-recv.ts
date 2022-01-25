@@ -3,7 +3,7 @@ import { proto } from '../../WAProto'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { Chat, GroupMetadata, MessageUserReceipt, ParticipantAction, SocketConfig, WAMessageStubType } from '../Types'
 import { decodeMessageStanza, downloadAndProcessHistorySyncNotification, encodeBigEndian, generateSignalPubKey, toNumber, xmppPreKey, xmppSignedPreKey } from '../Utils'
-import { makeKeyedMutex } from '../Utils/make-mutex'
+import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
 import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getAllBinaryNodeChildren, getBinaryNodeChildren, isJidGroup, jidDecode, jidEncode, jidNormalizedUser } from '../WABinary'
 import { makeChatsSocket } from './chats'
 import { extractGroupMetadata } from './groups'
@@ -38,8 +38,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		resyncMainAppState,
 	} = sock
 
-	/** the mutex ensures that the notifications (receipts, messages etc.) are processed in order */
+	/** this mutex ensures that the notifications (receipts, messages etc.) are processed in order */
 	const processingMutex = makeKeyedMutex()
+
+	/** this mutex ensures that each retryRequest will wait for the previous one to finish */
+	const retryMutex = makeMutex()
 
 	const msgRetryMap = config.msgRetryCounterMap || { }
 
@@ -354,7 +357,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						{ msgId: msg.key.id, params: msg.messageStubParameters }, 
 						'failure in decrypting message'
 					)
-					await sendRetryRequest(stanza)
+					retryMutex.mutex(
+						async () => await sendRetryRequest(stanza)
+					)
 				} else {
 					await sendMessageAck(stanza, { class: 'receipt' })
 					// no type in the receipt => message delivered
