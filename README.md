@@ -51,7 +51,8 @@ TODO
 ## Connecting
 
 ``` ts
-import makeWASocket from '@adiwajshing/baileys'
+import makeWASocket, { DisconnectReason } from '@adiwajshing/baileys'
+import { Boom } from '@hapi/boom'
 
 async function connectToWhatsApp () {
     const sock = makeWASocket({
@@ -65,7 +66,7 @@ async function connectToWhatsApp () {
             console.log('connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect)
             // reconnect if not logged out
             if(shouldReconnect) {
-                sock = startSock()
+                connectToWhatsApp()
             }
         } else if(connection === 'open') {
             console.log('opened connection')
