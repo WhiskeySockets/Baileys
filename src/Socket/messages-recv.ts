@@ -358,7 +358,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						'failure in decrypting message'
 					)
 					retryMutex.mutex(
-						async () => await sendRetryRequest(stanza)
+						async() => await sendRetryRequest(stanza)
 					)
 				} else {
 					await sendMessageAck(stanza, { class: 'receipt' })
