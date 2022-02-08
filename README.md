@@ -11,7 +11,7 @@
  If you're interested in building a WhatsApp bot, you may wanna check out [WhatsAppInfoBot](https://github.com/adiwajshing/WhatsappInfoBot) and an actual bot built with it, [Messcat](https://github.com/ashokatechmin/Messcat).
  
  **Read the docs [here](https://adiwajshing.github.io/Baileys)**
- **Join the Discord [here](https://discord.gg/7FYURJyqng)**
+ **Join the Discord [here](https://discord.gg/WeJM5FP9GG)**
 
 ## Example
 
