@@ -151,7 +151,6 @@ message ClientPayload {
     repeated int32 shards = 14;
     optional DNSSource dnsSource = 15;
     optional uint32 connectAttemptCount = 16;
-    optional uint32 agent = 17;
     optional uint32 device = 18;
     optional CompanionRegData regData = 19;
     enum ClientPayloadProduct {
@@ -162,7 +161,7 @@ message ClientPayload {
     optional bytes fbCat = 21;
     optional bytes fbUserAgent = 22;
     optional bool oc = 23;
-    optional uint32 lc = 24;
+    optional int32 lc = 24;
     enum ClientPayloadIOSAppExtension {
         SHARE_EXTENSION = 0;
         SERVICE_EXTENSION = 1;
@@ -173,7 +172,8 @@ message ClientPayload {
     optional bytes fbDeviceId = 32;
 }
 
-message Details {
+// Renamed from Details
+message NoiseCertificateDetails {
     optional uint32 serial = 1;
     optional string issuer = 2;
     optional uint64 expires = 3;
@@ -251,6 +251,15 @@ message BizAccountLinkInfo {
 message BizAccountPayload {
     optional VerifiedNameCertificate vnameCert = 1;
     optional bytes bizAcctLinkInfo = 2;
+}
+
+// Renamed from Details
+message VerifiedNameDetails {
+    optional uint64 serial = 1;
+    optional string issuer = 2;
+    optional string verifiedName = 4;
+    repeated LocalizedName localizedNames = 8;
+    optional uint64 issueTime = 10;
 }
 
 message VerifiedNameCertificate {
@@ -685,6 +694,7 @@ message ExternalAdReplyInfo {
     optional string sourceType = 7;
     optional string sourceId = 8;
     optional string sourceUrl = 9;
+    optional bool containsAutoReply = 10;
 }
 
 message ContextInfo {
@@ -1485,7 +1495,8 @@ message DisappearingMode {
     optional DisappearingModeInitiator initiator = 1;
 }
 
-message MediaData {
+// Renamed from MediaData
+message PBMediaData {
     optional bytes mediaKey = 1;
     optional int64 mediaKeyTimestamp = 2;
     optional bytes fileSha256 = 3;
@@ -1502,7 +1513,7 @@ message PaymentBackground {
     optional fixed32 placeholderArgb = 6;
     optional fixed32 textArgb = 7;
     optional fixed32 subtextArgb = 8;
-    optional MediaData mediaData = 9;
+    optional PBMediaData mediaData = 9;
     enum PaymentBackgroundType {
         UNKNOWN = 0;
         DEFAULT = 1;
@@ -1576,6 +1587,15 @@ message Point {
     optional double x = 3;
     optional double y = 4;
 }
+
+// Duplicate type omitted
+//message AppVersion {
+//    optional uint32 primary = 1;
+//    optional uint32 secondary = 2;
+//    optional uint32 tertiary = 3;
+//    optional uint32 quaternary = 4;
+//    optional uint32 quinary = 5;
+//}
 
 message CompanionProps {
     optional string os = 1;
@@ -1653,10 +1673,19 @@ message UserReceipt {
     repeated string deliveredDeviceJid = 6;
 }
 
+message StatusPSA {
+    required string campaignId = 44;
+    optional uint64 campaignExpirationTimestamp = 45;
+}
+
 message PhotoChange {
     optional bytes oldPhoto = 1;
     optional bytes newPhoto = 2;
     optional uint32 newPhotoId = 3;
+}
+
+message MediaData {
+    optional string localPath = 1;
 }
 
 message WebFeatures {
@@ -1948,6 +1977,8 @@ message WebMessageInfo {
         BIZ_PRIVACY_MODE_TO_BSP = 129;
         DISAPPEARING_MODE = 130;
         E2E_DEVICE_FETCH_FAILED = 131;
+        ADMIN_REVOKE = 132;
+        GROUP_INVITE_LINK_GROWTH_LOCKED = 133;
     }
     optional WebMessageInfoStubType messageStubType = 24;
     optional bool clearMedia = 25;
@@ -1975,7 +2006,6 @@ message WebMessageInfo {
     repeated Reaction reactions = 41;
     optional MediaData quotedStickerData = 42;
     optional bytes futureproofData = 43;
-    optional string statusPsaCampaignId = 44;
-    optional uint32 statusPsaCampaignDuration = 45;
-    optional uint64 statusPsaCampaignReadTimestamp = 46;
+    optional StatusPSA statusPsa = 44;
 }
+

@@ -871,9 +871,6 @@ export namespace proto {
         /** ClientPayload connectAttemptCount */
         connectAttemptCount?: (number|null);
 
-        /** ClientPayload agent */
-        agent?: (number|null);
-
         /** ClientPayload device */
         device?: (number|null);
 
@@ -949,9 +946,6 @@ export namespace proto {
 
         /** ClientPayload connectAttemptCount. */
         public connectAttemptCount: number;
-
-        /** ClientPayload agent. */
-        public agent: number;
 
         /** ClientPayload device. */
         public device: number;
@@ -1099,115 +1093,115 @@ export namespace proto {
         }
     }
 
-    /** Properties of a Details. */
-    interface IDetails {
+    /** Properties of a NoiseCertificateDetails. */
+    interface INoiseCertificateDetails {
 
-        /** Details serial */
+        /** NoiseCertificateDetails serial */
         serial?: (number|null);
 
-        /** Details issuer */
+        /** NoiseCertificateDetails issuer */
         issuer?: (string|null);
 
-        /** Details expires */
+        /** NoiseCertificateDetails expires */
         expires?: (number|Long|null);
 
-        /** Details subject */
+        /** NoiseCertificateDetails subject */
         subject?: (string|null);
 
-        /** Details key */
+        /** NoiseCertificateDetails key */
         key?: (Uint8Array|null);
     }
 
-    /** Represents a Details. */
-    class Details implements IDetails {
+    /** Represents a NoiseCertificateDetails. */
+    class NoiseCertificateDetails implements INoiseCertificateDetails {
 
         /**
-         * Constructs a new Details.
+         * Constructs a new NoiseCertificateDetails.
          * @param [properties] Properties to set
          */
-        constructor(properties?: proto.IDetails);
+        constructor(properties?: proto.INoiseCertificateDetails);
 
-        /** Details serial. */
+        /** NoiseCertificateDetails serial. */
         public serial: number;
 
-        /** Details issuer. */
+        /** NoiseCertificateDetails issuer. */
         public issuer: string;
 
-        /** Details expires. */
+        /** NoiseCertificateDetails expires. */
         public expires: (number|Long);
 
-        /** Details subject. */
+        /** NoiseCertificateDetails subject. */
         public subject: string;
 
-        /** Details key. */
+        /** NoiseCertificateDetails key. */
         public key: Uint8Array;
 
         /**
-         * Creates a new Details instance using the specified properties.
+         * Creates a new NoiseCertificateDetails instance using the specified properties.
          * @param [properties] Properties to set
-         * @returns Details instance
+         * @returns NoiseCertificateDetails instance
          */
-        public static create(properties?: proto.IDetails): proto.Details;
+        public static create(properties?: proto.INoiseCertificateDetails): proto.NoiseCertificateDetails;
 
         /**
-         * Encodes the specified Details message. Does not implicitly {@link proto.Details.verify|verify} messages.
-         * @param message Details message or plain object to encode
+         * Encodes the specified NoiseCertificateDetails message. Does not implicitly {@link proto.NoiseCertificateDetails.verify|verify} messages.
+         * @param message NoiseCertificateDetails message or plain object to encode
          * @param [writer] Writer to encode to
          * @returns Writer
          */
-        public static encode(message: proto.IDetails, writer?: $protobuf.Writer): $protobuf.Writer;
+        public static encode(message: proto.INoiseCertificateDetails, writer?: $protobuf.Writer): $protobuf.Writer;
 
         /**
-         * Encodes the specified Details message, length delimited. Does not implicitly {@link proto.Details.verify|verify} messages.
-         * @param message Details message or plain object to encode
+         * Encodes the specified NoiseCertificateDetails message, length delimited. Does not implicitly {@link proto.NoiseCertificateDetails.verify|verify} messages.
+         * @param message NoiseCertificateDetails message or plain object to encode
          * @param [writer] Writer to encode to
          * @returns Writer
          */
-        public static encodeDelimited(message: proto.IDetails, writer?: $protobuf.Writer): $protobuf.Writer;
+        public static encodeDelimited(message: proto.INoiseCertificateDetails, writer?: $protobuf.Writer): $protobuf.Writer;
 
         /**
-         * Decodes a Details message from the specified reader or buffer.
+         * Decodes a NoiseCertificateDetails message from the specified reader or buffer.
          * @param reader Reader or buffer to decode from
          * @param [length] Message length if known beforehand
-         * @returns Details
+         * @returns NoiseCertificateDetails
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Details;
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.NoiseCertificateDetails;
 
         /**
-         * Decodes a Details message from the specified reader or buffer, length delimited.
+         * Decodes a NoiseCertificateDetails message from the specified reader or buffer, length delimited.
          * @param reader Reader or buffer to decode from
-         * @returns Details
+         * @returns NoiseCertificateDetails
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.Details;
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.NoiseCertificateDetails;
 
         /**
-         * Verifies a Details message.
+         * Verifies a NoiseCertificateDetails message.
          * @param message Plain object to verify
          * @returns `null` if valid, otherwise the reason why it is not
          */
         public static verify(message: { [k: string]: any }): (string|null);
 
         /**
-         * Creates a Details message from a plain object. Also converts values to their respective internal types.
+         * Creates a NoiseCertificateDetails message from a plain object. Also converts values to their respective internal types.
          * @param object Plain object
-         * @returns Details
+         * @returns NoiseCertificateDetails
          */
-        public static fromObject(object: { [k: string]: any }): proto.Details;
+        public static fromObject(object: { [k: string]: any }): proto.NoiseCertificateDetails;
 
         /**
-         * Creates a plain object from a Details message. Also converts values to other types if specified.
-         * @param message Details
+         * Creates a plain object from a NoiseCertificateDetails message. Also converts values to other types if specified.
+         * @param message NoiseCertificateDetails
          * @param [options] Conversion options
          * @returns Plain object
          */
-        public static toObject(message: proto.Details, options?: $protobuf.IConversionOptions): { [k: string]: any };
+        public static toObject(message: proto.NoiseCertificateDetails, options?: $protobuf.IConversionOptions): { [k: string]: any };
 
         /**
-         * Converts this Details to JSON.
+         * Converts this NoiseCertificateDetails to JSON.
          * @returns JSON object
          */
         public toJSON(): { [k: string]: any };
@@ -2084,6 +2078,120 @@ export namespace proto {
 
         /**
          * Converts this BizAccountPayload to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+    }
+
+    /** Properties of a VerifiedNameDetails. */
+    interface IVerifiedNameDetails {
+
+        /** VerifiedNameDetails serial */
+        serial?: (number|Long|null);
+
+        /** VerifiedNameDetails issuer */
+        issuer?: (string|null);
+
+        /** VerifiedNameDetails verifiedName */
+        verifiedName?: (string|null);
+
+        /** VerifiedNameDetails localizedNames */
+        localizedNames?: (proto.ILocalizedName[]|null);
+
+        /** VerifiedNameDetails issueTime */
+        issueTime?: (number|Long|null);
+    }
+
+    /** Represents a VerifiedNameDetails. */
+    class VerifiedNameDetails implements IVerifiedNameDetails {
+
+        /**
+         * Constructs a new VerifiedNameDetails.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: proto.IVerifiedNameDetails);
+
+        /** VerifiedNameDetails serial. */
+        public serial: (number|Long);
+
+        /** VerifiedNameDetails issuer. */
+        public issuer: string;
+
+        /** VerifiedNameDetails verifiedName. */
+        public verifiedName: string;
+
+        /** VerifiedNameDetails localizedNames. */
+        public localizedNames: proto.ILocalizedName[];
+
+        /** VerifiedNameDetails issueTime. */
+        public issueTime: (number|Long);
+
+        /**
+         * Creates a new VerifiedNameDetails instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns VerifiedNameDetails instance
+         */
+        public static create(properties?: proto.IVerifiedNameDetails): proto.VerifiedNameDetails;
+
+        /**
+         * Encodes the specified VerifiedNameDetails message. Does not implicitly {@link proto.VerifiedNameDetails.verify|verify} messages.
+         * @param message VerifiedNameDetails message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: proto.IVerifiedNameDetails, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified VerifiedNameDetails message, length delimited. Does not implicitly {@link proto.VerifiedNameDetails.verify|verify} messages.
+         * @param message VerifiedNameDetails message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: proto.IVerifiedNameDetails, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a VerifiedNameDetails message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns VerifiedNameDetails
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.VerifiedNameDetails;
+
+        /**
+         * Decodes a VerifiedNameDetails message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns VerifiedNameDetails
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.VerifiedNameDetails;
+
+        /**
+         * Verifies a VerifiedNameDetails message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a VerifiedNameDetails message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns VerifiedNameDetails
+         */
+        public static fromObject(object: { [k: string]: any }): proto.VerifiedNameDetails;
+
+        /**
+         * Creates a plain object from a VerifiedNameDetails message. Also converts values to other types if specified.
+         * @param message VerifiedNameDetails
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: proto.VerifiedNameDetails, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this VerifiedNameDetails to JSON.
          * @returns JSON object
          */
         public toJSON(): { [k: string]: any };
@@ -8291,6 +8399,9 @@ export namespace proto {
 
         /** ExternalAdReplyInfo sourceUrl */
         sourceUrl?: (string|null);
+
+        /** ExternalAdReplyInfo containsAutoReply */
+        containsAutoReply?: (boolean|null);
     }
 
     /** Represents an ExternalAdReplyInfo. */
@@ -8328,6 +8439,9 @@ export namespace proto {
 
         /** ExternalAdReplyInfo sourceUrl. */
         public sourceUrl: string;
+
+        /** ExternalAdReplyInfo containsAutoReply. */
+        public containsAutoReply: boolean;
 
         /**
          * Creates a new ExternalAdReplyInfo instance using the specified properties.
@@ -17539,115 +17653,115 @@ export namespace proto {
         }
     }
 
-    /** Properties of a MediaData. */
-    interface IMediaData {
+    /** Properties of a PBMediaData. */
+    interface IPBMediaData {
 
-        /** MediaData mediaKey */
+        /** PBMediaData mediaKey */
         mediaKey?: (Uint8Array|null);
 
-        /** MediaData mediaKeyTimestamp */
+        /** PBMediaData mediaKeyTimestamp */
         mediaKeyTimestamp?: (number|Long|null);
 
-        /** MediaData fileSha256 */
+        /** PBMediaData fileSha256 */
         fileSha256?: (Uint8Array|null);
 
-        /** MediaData fileEncSha256 */
+        /** PBMediaData fileEncSha256 */
         fileEncSha256?: (Uint8Array|null);
 
-        /** MediaData directPath */
+        /** PBMediaData directPath */
         directPath?: (string|null);
     }
 
-    /** Represents a MediaData. */
-    class MediaData implements IMediaData {
+    /** Represents a PBMediaData. */
+    class PBMediaData implements IPBMediaData {
 
         /**
-         * Constructs a new MediaData.
+         * Constructs a new PBMediaData.
          * @param [properties] Properties to set
          */
-        constructor(properties?: proto.IMediaData);
+        constructor(properties?: proto.IPBMediaData);
 
-        /** MediaData mediaKey. */
+        /** PBMediaData mediaKey. */
         public mediaKey: Uint8Array;
 
-        /** MediaData mediaKeyTimestamp. */
+        /** PBMediaData mediaKeyTimestamp. */
         public mediaKeyTimestamp: (number|Long);
 
-        /** MediaData fileSha256. */
+        /** PBMediaData fileSha256. */
         public fileSha256: Uint8Array;
 
-        /** MediaData fileEncSha256. */
+        /** PBMediaData fileEncSha256. */
         public fileEncSha256: Uint8Array;
 
-        /** MediaData directPath. */
+        /** PBMediaData directPath. */
         public directPath: string;
 
         /**
-         * Creates a new MediaData instance using the specified properties.
+         * Creates a new PBMediaData instance using the specified properties.
          * @param [properties] Properties to set
-         * @returns MediaData instance
+         * @returns PBMediaData instance
          */
-        public static create(properties?: proto.IMediaData): proto.MediaData;
+        public static create(properties?: proto.IPBMediaData): proto.PBMediaData;
 
         /**
-         * Encodes the specified MediaData message. Does not implicitly {@link proto.MediaData.verify|verify} messages.
-         * @param message MediaData message or plain object to encode
+         * Encodes the specified PBMediaData message. Does not implicitly {@link proto.PBMediaData.verify|verify} messages.
+         * @param message PBMediaData message or plain object to encode
          * @param [writer] Writer to encode to
          * @returns Writer
          */
-        public static encode(message: proto.IMediaData, writer?: $protobuf.Writer): $protobuf.Writer;
+        public static encode(message: proto.IPBMediaData, writer?: $protobuf.Writer): $protobuf.Writer;
 
         /**
-         * Encodes the specified MediaData message, length delimited. Does not implicitly {@link proto.MediaData.verify|verify} messages.
-         * @param message MediaData message or plain object to encode
+         * Encodes the specified PBMediaData message, length delimited. Does not implicitly {@link proto.PBMediaData.verify|verify} messages.
+         * @param message PBMediaData message or plain object to encode
          * @param [writer] Writer to encode to
          * @returns Writer
          */
-        public static encodeDelimited(message: proto.IMediaData, writer?: $protobuf.Writer): $protobuf.Writer;
+        public static encodeDelimited(message: proto.IPBMediaData, writer?: $protobuf.Writer): $protobuf.Writer;
 
         /**
-         * Decodes a MediaData message from the specified reader or buffer.
+         * Decodes a PBMediaData message from the specified reader or buffer.
          * @param reader Reader or buffer to decode from
          * @param [length] Message length if known beforehand
-         * @returns MediaData
+         * @returns PBMediaData
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.MediaData;
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.PBMediaData;
 
         /**
-         * Decodes a MediaData message from the specified reader or buffer, length delimited.
+         * Decodes a PBMediaData message from the specified reader or buffer, length delimited.
          * @param reader Reader or buffer to decode from
-         * @returns MediaData
+         * @returns PBMediaData
          * @throws {Error} If the payload is not a reader or valid buffer
          * @throws {$protobuf.util.ProtocolError} If required fields are missing
          */
-        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.MediaData;
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.PBMediaData;
 
         /**
-         * Verifies a MediaData message.
+         * Verifies a PBMediaData message.
          * @param message Plain object to verify
          * @returns `null` if valid, otherwise the reason why it is not
          */
         public static verify(message: { [k: string]: any }): (string|null);
 
         /**
-         * Creates a MediaData message from a plain object. Also converts values to their respective internal types.
+         * Creates a PBMediaData message from a plain object. Also converts values to their respective internal types.
          * @param object Plain object
-         * @returns MediaData
+         * @returns PBMediaData
          */
-        public static fromObject(object: { [k: string]: any }): proto.MediaData;
+        public static fromObject(object: { [k: string]: any }): proto.PBMediaData;
 
         /**
-         * Creates a plain object from a MediaData message. Also converts values to other types if specified.
-         * @param message MediaData
+         * Creates a plain object from a PBMediaData message. Also converts values to other types if specified.
+         * @param message PBMediaData
          * @param [options] Conversion options
          * @returns Plain object
          */
-        public static toObject(message: proto.MediaData, options?: $protobuf.IConversionOptions): { [k: string]: any };
+        public static toObject(message: proto.PBMediaData, options?: $protobuf.IConversionOptions): { [k: string]: any };
 
         /**
-         * Converts this MediaData to JSON.
+         * Converts this PBMediaData to JSON.
          * @returns JSON object
          */
         public toJSON(): { [k: string]: any };
@@ -17681,7 +17795,7 @@ export namespace proto {
         subtextArgb?: (number|null);
 
         /** PaymentBackground mediaData */
-        mediaData?: (proto.IMediaData|null);
+        mediaData?: (proto.IPBMediaData|null);
 
         /** PaymentBackground type */
         type?: (proto.PaymentBackground.PaymentBackgroundType|null);
@@ -17721,7 +17835,7 @@ export namespace proto {
         public subtextArgb: number;
 
         /** PaymentBackground mediaData. */
-        public mediaData?: (proto.IMediaData|null);
+        public mediaData?: (proto.IPBMediaData|null);
 
         /** PaymentBackground type. */
         public type: proto.PaymentBackground.PaymentBackgroundType;
@@ -19896,6 +20010,102 @@ export namespace proto {
         public toJSON(): { [k: string]: any };
     }
 
+    /** Properties of a StatusPSA. */
+    interface IStatusPSA {
+
+        /** StatusPSA campaignId */
+        campaignId: string;
+
+        /** StatusPSA campaignExpirationTimestamp */
+        campaignExpirationTimestamp?: (number|Long|null);
+    }
+
+    /** Represents a StatusPSA. */
+    class StatusPSA implements IStatusPSA {
+
+        /**
+         * Constructs a new StatusPSA.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: proto.IStatusPSA);
+
+        /** StatusPSA campaignId. */
+        public campaignId: string;
+
+        /** StatusPSA campaignExpirationTimestamp. */
+        public campaignExpirationTimestamp: (number|Long);
+
+        /**
+         * Creates a new StatusPSA instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns StatusPSA instance
+         */
+        public static create(properties?: proto.IStatusPSA): proto.StatusPSA;
+
+        /**
+         * Encodes the specified StatusPSA message. Does not implicitly {@link proto.StatusPSA.verify|verify} messages.
+         * @param message StatusPSA message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: proto.IStatusPSA, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified StatusPSA message, length delimited. Does not implicitly {@link proto.StatusPSA.verify|verify} messages.
+         * @param message StatusPSA message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: proto.IStatusPSA, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a StatusPSA message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns StatusPSA
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.StatusPSA;
+
+        /**
+         * Decodes a StatusPSA message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns StatusPSA
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.StatusPSA;
+
+        /**
+         * Verifies a StatusPSA message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a StatusPSA message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns StatusPSA
+         */
+        public static fromObject(object: { [k: string]: any }): proto.StatusPSA;
+
+        /**
+         * Creates a plain object from a StatusPSA message. Also converts values to other types if specified.
+         * @param message StatusPSA
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: proto.StatusPSA, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this StatusPSA to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+    }
+
     /** Properties of a PhotoChange. */
     interface IPhotoChange {
 
@@ -19993,6 +20203,96 @@ export namespace proto {
 
         /**
          * Converts this PhotoChange to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+    }
+
+    /** Properties of a MediaData. */
+    interface IMediaData {
+
+        /** MediaData localPath */
+        localPath?: (string|null);
+    }
+
+    /** Represents a MediaData. */
+    class MediaData implements IMediaData {
+
+        /**
+         * Constructs a new MediaData.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: proto.IMediaData);
+
+        /** MediaData localPath. */
+        public localPath: string;
+
+        /**
+         * Creates a new MediaData instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns MediaData instance
+         */
+        public static create(properties?: proto.IMediaData): proto.MediaData;
+
+        /**
+         * Encodes the specified MediaData message. Does not implicitly {@link proto.MediaData.verify|verify} messages.
+         * @param message MediaData message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: proto.IMediaData, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified MediaData message, length delimited. Does not implicitly {@link proto.MediaData.verify|verify} messages.
+         * @param message MediaData message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: proto.IMediaData, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a MediaData message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns MediaData
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.MediaData;
+
+        /**
+         * Decodes a MediaData message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns MediaData
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.MediaData;
+
+        /**
+         * Verifies a MediaData message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a MediaData message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns MediaData
+         */
+        public static fromObject(object: { [k: string]: any }): proto.MediaData;
+
+        /**
+         * Creates a plain object from a MediaData message. Also converts values to other types if specified.
+         * @param message MediaData
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: proto.MediaData, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this MediaData to JSON.
          * @returns JSON object
          */
         public toJSON(): { [k: string]: any };
@@ -20904,14 +21204,8 @@ export namespace proto {
         /** WebMessageInfo futureproofData */
         futureproofData?: (Uint8Array|null);
 
-        /** WebMessageInfo statusPsaCampaignId */
-        statusPsaCampaignId?: (string|null);
-
-        /** WebMessageInfo statusPsaCampaignDuration */
-        statusPsaCampaignDuration?: (number|null);
-
-        /** WebMessageInfo statusPsaCampaignReadTimestamp */
-        statusPsaCampaignReadTimestamp?: (number|Long|null);
+        /** WebMessageInfo statusPsa */
+        statusPsa?: (proto.IStatusPSA|null);
     }
 
     /** Represents a WebMessageInfo. */
@@ -21025,14 +21319,8 @@ export namespace proto {
         /** WebMessageInfo futureproofData. */
         public futureproofData: Uint8Array;
 
-        /** WebMessageInfo statusPsaCampaignId. */
-        public statusPsaCampaignId: string;
-
-        /** WebMessageInfo statusPsaCampaignDuration. */
-        public statusPsaCampaignDuration: number;
-
-        /** WebMessageInfo statusPsaCampaignReadTimestamp. */
-        public statusPsaCampaignReadTimestamp: (number|Long);
+        /** WebMessageInfo statusPsa. */
+        public statusPsa?: (proto.IStatusPSA|null);
 
         /**
          * Creates a new WebMessageInfo instance using the specified properties.
@@ -21250,7 +21538,9 @@ export namespace proto {
             BIZ_PRIVACY_MODE_TO_FB = 128,
             BIZ_PRIVACY_MODE_TO_BSP = 129,
             DISAPPEARING_MODE = 130,
-            E2E_DEVICE_FETCH_FAILED = 131
+            E2E_DEVICE_FETCH_FAILED = 131,
+            ADMIN_REVOKE = 132,
+            GROUP_INVITE_LINK_GROWTH_LOCKED = 133
         }
 
         /** WebMessageInfoBizPrivacyStatus enum. */
