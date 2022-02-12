@@ -465,24 +465,39 @@ export const getContentType = (content: WAProto.IMessage | undefined) => {
  * Eg. extracts the inner message from a disappearing message/view once message
  */
 export const extractMessageContent = (content: WAMessageContent | undefined | null): WAMessageContent | undefined => {
+	const extractFromTemplateMessage = (msg: proto.IHydratedFourRowTemplate | proto.IButtonsMessage) => {
+		if(msg.imageMessage) {
+			return { imageMessage: msg.imageMessage }
+		} else if(msg.documentMessage) {
+			return { documentMessage: msg.documentMessage }
+		} else if(msg.videoMessage) {
+			return { videoMessage: msg.videoMessage }
+		} else if(msg.locationMessage) {
+			return { locationMessage: msg.locationMessage }
+		} else {
+			return { conversation: 'contentText' in msg ? msg.contentText : ('hydratedContentText' in msg ? msg.hydratedContentText : '') }
+		}
+	}
+	
 	content = content?.ephemeralMessage?.message || 
 				content?.viewOnceMessage?.message ||
 				content || 
 				undefined
 
 	if(content?.buttonsMessage) {
-	  const { buttonsMessage } = content
-	  if(buttonsMessage.imageMessage) {
-			return { imageMessage: buttonsMessage.imageMessage }
-	  } else if(buttonsMessage.documentMessage) {
-			return { documentMessage: buttonsMessage.documentMessage }
-	  } else if(buttonsMessage.videoMessage) {
-			return { videoMessage: buttonsMessage.videoMessage }
-	  } else if(buttonsMessage.locationMessage) {
-			return { locationMessage: buttonsMessage.locationMessage }
-	  } else {
-			return { conversation: buttonsMessage.contentText }
-	  }
+	  return extractFromTemplateMessage(content.buttonsMessage!)
+	}
+
+	if(content?.templateMessage?.hydratedFourRowTemplate) {
+		return extractFromTemplateMessage(content?.templateMessage?.hydratedFourRowTemplate)
+	}
+
+	if(content?.templateMessage?.hydratedTemplate) {
+		return extractFromTemplateMessage(content?.templateMessage?.hydratedTemplate)
+	}
+
+	if(content?.templateMessage?.fourRowTemplate) {
+		return extractFromTemplateMessage(content?.templateMessage?.fourRowTemplate)
 	}
 
 	return content
