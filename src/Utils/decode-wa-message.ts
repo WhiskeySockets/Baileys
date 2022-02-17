@@ -5,12 +5,11 @@ import { areJidsSameUser, BinaryNode, isJidBroadcast, isJidGroup, isJidStatusBro
 import { unpadRandomMax16 } from './generics'
 import { decryptGroupSignalProto, decryptSignalProto, processSenderKeyMessage } from './signal'
 
+const NO_MESSAGE_FOUND_ERROR_TEXT = 'No message found'
+
 type MessageType = 'chat' | 'peer_broadcast' | 'other_broadcast' | 'group' | 'direct_peer_status' | 'other_status'
 
 export const decodeMessageStanza = (stanza: BinaryNode, auth: AuthenticationState) => {
-	//const deviceIdentity = (stanza.content as BinaryNodeM[])?.find(m => m.tag === 'device-identity')
-	//const deviceIdentityBytes = deviceIdentity ? deviceIdentity.content as Buffer : undefined
-
 	let msgType: MessageType
 	let chatId: string
 	let author: string
@@ -84,6 +83,7 @@ export const decodeMessageStanza = (stanza: BinaryNode, auth: AuthenticationStat
 	return {
 		fullMessage,
 		decryptionTask: (async() => {
+			let decryptables = 0 
 			if(Array.isArray(stanza.content)) {
 				for(const { tag, attrs, content } of stanza.content) {
 					if(tag !== 'enc') {
@@ -93,6 +93,8 @@ export const decodeMessageStanza = (stanza: BinaryNode, auth: AuthenticationStat
 					if(!(content instanceof Uint8Array)) {
 						continue
 					} 
+
+					decryptables += 1
 		
 					let msgBuffer: Buffer
 		
@@ -125,6 +127,12 @@ export const decodeMessageStanza = (stanza: BinaryNode, auth: AuthenticationStat
 						fullMessage.messageStubParameters = [error.message]
 					}
 				}
+			}
+
+			// if nothing was found to decrypt
+			if(!decryptables) {
+				fullMessage.messageStubType = proto.WebMessageInfo.WebMessageInfoStubType.CIPHERTEXT
+				fullMessage.messageStubParameters = [NO_MESSAGE_FOUND_ERROR_TEXT]
 			}
 		})()
 	}
