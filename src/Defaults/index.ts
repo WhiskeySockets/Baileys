@@ -18,7 +18,7 @@ export const NOISE_WA_HEADER = new Uint8Array([87, 65, 5, 2]) // last is "DICT_V
 export const URL_REGEX = /[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)?/gi
 
 const BASE_CONNECTION_CONFIG: CommonSocketConfig<any> = {
-	version: [2, 2202, 12],
+	version: [2, 2204, 13],
 	browser: Browsers.baileys('Chrome'),
 
 	waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
