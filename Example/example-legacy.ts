@@ -1,6 +1,6 @@
 import { Boom } from '@hapi/boom'
 import P from 'pino'
-import { AnyMessageContent, delay, DisconnectReason, makeInMemoryStore, makeWALegacySocket, useSingleFileLegacyAuthState } from '../src'
+import { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, makeInMemoryStore, makeWALegacySocket, useSingleFileLegacyAuthState } from '../src'
 
 // the store maintains the data of the WA connection in memory
 // can be written out to a file & read from it
@@ -14,9 +14,13 @@ setInterval(() => {
 const { state, saveState } = useSingleFileLegacyAuthState('./auth_info.json')
 
 // start a connection
-const startSock = () => {
-    
+const startSock = async() => {
+	// fetch latest version of WA Web
+	const { version, isLatest } = await fetchLatestBaileysVersion()
+	console.log(`using WA v${version.join('.')}, isLatest: ${isLatest}`)
+
 	const sock = makeWALegacySocket({
+		version,
 		logger: P({ level: 'debug' }),
 		printQRInTerminal: true,
 		auth: state

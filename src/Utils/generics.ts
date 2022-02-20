@@ -1,11 +1,12 @@
 import { Boom } from '@hapi/boom'
+import axios from 'axios'
 import { randomBytes } from 'crypto'
 import { platform, release } from 'os'
 import { Logger } from 'pino'
 import { proto } from '../../WAProto'
-import { CommonBaileysEventEmitter, DisconnectReason } from '../Types'
+import { version as baileysVersion } from '../Defaults/baileys-version.json'
+import { CommonBaileysEventEmitter, ConnectionState, DisconnectReason, WAVersion } from '../Types'
 import { Binary } from '../WABinary'
-import { ConnectionState } from '..'
 
 const PLATFORM_MAP = {
 	'aix': 'AIX',
@@ -39,7 +40,6 @@ export const BufferJSON = {
 		return value
 	} 
 }
-
 
 export const writeRandomPadMax16 = (e: Binary) => {
 	function r(e: Binary, t: number) {
@@ -144,6 +144,7 @@ export const debouncedTimeout = (intervalMs: number = 1000, task: () => void = u
 }
 
 export const delay = (ms: number) => delayCancellable (ms).delay
+
 export const delayCancellable = (ms: number) => {
 	const stack = new Error().stack
 	let timeout: NodeJS.Timeout
@@ -231,4 +232,25 @@ export const printQRIfNecessaryListener = (ev: CommonBaileysEventEmitter<any>, l
 			QR?.generate(qr, { small: true })
 		}
 	})
+}
+
+/**
+ * utility that fetches latest baileys version from the master branch.
+ * Use to ensure your WA connection is always on the latest version 
+ */
+export const fetchLatestBaileysVersion = async() => {
+	const URL = 'https://raw.githubusercontent.com/adiwajshing/Baileys/master/src/Defaults/baileys-version.json'
+	try {
+		const result = await axios.get<{ version: WAVersion }>(URL, { responseType: 'json' })
+		return {
+			version: result.data.version,
+			isLatest: true
+		}
+	} catch(error) {
+		return {
+			version: baileysVersion as WAVersion,
+			isLatest: false,
+			error
+		}
+	}
 }
