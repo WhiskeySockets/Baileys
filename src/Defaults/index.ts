@@ -1,6 +1,7 @@
 import P from 'pino'
 import type { CommonSocketConfig, LegacySocketConfig, MediaType, SocketConfig } from '../Types'
 import { Browsers } from '../Utils'
+import { version } from './baileys-version.json'
 
 export const UNAUTHORIZED_CODES = [401, 403, 419]
 
@@ -18,7 +19,7 @@ export const NOISE_WA_HEADER = new Uint8Array([87, 65, 5, 2]) // last is "DICT_V
 export const URL_REGEX = /[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)?/gi
 
 const BASE_CONNECTION_CONFIG: CommonSocketConfig<any> = {
-	version: [2, 2204, 13],
+	version: version as any,
 	browser: Browsers.baileys('Chrome'),
 
 	waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
