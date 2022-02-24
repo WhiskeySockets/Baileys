@@ -51,6 +51,12 @@
     "qrcode-terminal": "^0.12.0",
     "sharp": "^0.29.3"
   },
+  "peerDependenciesMeta": {
+    "@adiwajshing/keyed-db": { "optional": true },
+    "jimp": { "optional": true },
+    "qrcode-terminal": { "optional": true },
+    "sharp": { "optional": true }
+  },
   "files": [
     "lib/*",
     "WAProto/*",
