@@ -1,6 +1,6 @@
 import { DEFAULT_LEGACY_CONNECTION_CONFIG } from '../Defaults'
 import { LegacySocketConfig } from '../Types'
-import _makeLegacySocket from './groups'
+import _makeLegacySocket from './business'
 // export the last socket layer
 const makeLegacySocket = (config: Partial<LegacySocketConfig>) => (
 	_makeLegacySocket({
