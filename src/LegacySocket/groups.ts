@@ -58,7 +58,8 @@ const makeGroupsSocket = (config: LegacySocketConfig) => {
 					id: jidNormalizedUser(p.id),
 					admin: p.isSuperAdmin ? 'super-admin' : p.isAdmin ? 'admin' : undefined
 				})
-			)
+			),
+			ephemeralDuration: metadata.ephemeralDuration
 		}
 
 		return meta
