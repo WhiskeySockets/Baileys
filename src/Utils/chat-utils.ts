@@ -5,7 +5,7 @@ import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren } from '../WABina
 import { aesDecrypt, aesEncrypt, hkdf, hmacSign } from './crypto'
 import { toNumber } from './generics'
 import { LT_HASH_ANTI_TAMPERING } from './lt-hash'
-import { downloadContentFromMessage,  } from './messages-media'
+import { downloadContentFromMessage, } from './messages-media'
 
 type FetchAppStateSyncKey = (keyId: string) => Promise<proto.IAppStateSyncKeyData> | proto.IAppStateSyncKeyData
 
@@ -39,7 +39,7 @@ const generateMac = (operation: proto.SyncdMutation.SyncdMutationSyncdOperation,
 	const keyData = getKeyData()
 
 	const last = Buffer.alloc(8) // 8 bytes
-	last.set([ keyData.length ], last.length-1)
+	last.set([ keyData.length ], last.length - 1)
 
 	const total = Buffer.concat([ keyData, data, last ])
 	const hmac = hmacSign(total, key, 'sha512')
@@ -180,7 +180,7 @@ export const encodeSyncdPatch = async(
 }
 
 export const decodeSyncdMutations = async(
-	msgMutations: (proto.ISyncdMutation | proto.ISyncdRecord)[], 
+	msgMutations: (proto.ISyncdMutation | proto.ISyncdRecord)[],
 	initialState: LTHashState,
 	getAppStateSyncKey: FetchAppStateSyncKey,
 	validateMacs: boolean
@@ -214,7 +214,7 @@ export const decodeSyncdMutations = async(
 		// otherwise, if it's only a record -- it'll be a SET mutation
 		const operation = 'operation' in msgMutation ? msgMutation.operation : proto.SyncdMutation.SyncdMutationSyncdOperation.SET
 		const record = ('record' in msgMutation && !!msgMutation.record) ? msgMutation.record : msgMutation as proto.ISyncdRecord
-        
+
 		const key = await getKey(record.keyId!.id!)
 		const content = Buffer.from(record.value!.blob!)
 		const encContent = content.slice(0, -32)
@@ -236,12 +236,12 @@ export const decodeSyncdMutations = async(
 			}
 		}
 
-		const indexStr = Buffer.from(syncAction.index).toString() 
+		const indexStr = Buffer.from(syncAction.index).toString()
 		mutations.push({
 			syncAction,
 			index: JSON.parse(indexStr),
 		})
-		ltGenerator.mix({ 
+		ltGenerator.mix({
 			indexMac: record.index!.blob!,
 			valueMac: ogValueMac,
 			operation: operation
@@ -252,7 +252,7 @@ export const decodeSyncdMutations = async(
 }
 
 export const decodeSyncdPatch = async(
-	msg: proto.ISyncdPatch, 
+	msg: proto.ISyncdPatch,
 	name: WAPatchName,
 	initialState: LTHashState,
 	getAppStateSyncKey: FetchAppStateSyncKey,
@@ -263,11 +263,11 @@ export const decodeSyncdPatch = async(
 		const mainKeyObj = await getAppStateSyncKey(base64Key)
 		const mainKey = mutationKeys(mainKeyObj.keyData!)
 		const mutationmacs = msg.mutations!.map(mutation => mutation.record!.value!.blob!.slice(-32))
-    
+
 		const patchMac = generatePatchMac(msg.snapshotMac, mutationmacs, toNumber(msg.version!.version), name, mainKey.patchMacKey)
 		if(Buffer.compare(patchMac, msg.patchMac) !== 0) {
 			throw new Boom('Invalid patch mac')
-		} 
+		}
 	}
 
 	const result = await decodeSyncdMutations(msg!.mutations!, initialState, getAppStateSyncKey, validateMacs)
@@ -277,7 +277,7 @@ export const decodeSyncdPatch = async(
 export const extractSyncdPatches = async(result: BinaryNode) => {
 	const syncNode = getBinaryNodeChild(result, 'sync')
 	const collectionNodes = getBinaryNodeChildren(syncNode, 'collection')
-    
+
 	const final = { } as { [T in WAPatchName]: { patches: proto.ISyncdPatch[], hasMorePatches: boolean, snapshot?: proto.ISyncdSnapshot } }
 	await Promise.all(
 		collectionNodes.map(
@@ -291,7 +291,7 @@ export const extractSyncdPatches = async(result: BinaryNode) => {
 				const name = collectionNode.attrs.name as WAPatchName
 
 				const hasMorePatches = collectionNode.attrs.has_more_patches === 'true'
-        
+
 				let snapshot: proto.ISyncdSnapshot | undefined = undefined
 				if(snapshotNode && !!snapshotNode.content) {
 					if(!Buffer.isBuffer(snapshotNode)) {
@@ -313,13 +313,13 @@ export const extractSyncdPatches = async(result: BinaryNode) => {
 
 						const syncd = proto.SyncdPatch.decode(content! as Uint8Array)
 						if(!syncd.version) {
-							syncd.version = { version: +collectionNode.attrs.version+1 }
+							syncd.version = { version: +collectionNode.attrs.version + 1 }
 						}
 
 						syncds.push(syncd)
 					}
 				}
-        
+
 				final[name] = { patches: syncds, hasMorePatches, snapshot }
 			}
 		)
@@ -354,7 +354,7 @@ export const decodeSyncdSnapshot = async(
 ) => {
 	const newState = newLTHashState()
 	newState.version = toNumber(snapshot.version!.version!)
-    
+
 	const { hash, indexValueMap, mutations } = await decodeSyncdMutations(snapshot.records!, newState, getAppStateSyncKey, validateMacs)
 	newState.hash = hash
 	newState.indexValueMap = indexValueMap
@@ -408,7 +408,7 @@ export const decodePatches = async(
 		}
 
 		const patchVersion = toNumber(version.version!)
-        
+
 		newState.version = patchVersion
 
 		const decodeResult = await decodeSyncdPatch(syncd, name, newState, getAppStateSyncKey, validateMacs)
@@ -418,7 +418,7 @@ export const decodePatches = async(
 		if(typeof minimumVersionNumber === 'undefined' || patchVersion > minimumVersionNumber) {
 			successfulMutations.push(...decodeResult.mutations)
 		}
-        
+
 		if(validateMacs) {
 			const base64Key = Buffer.from(keyId!.id!).toString('base64')
 			const keyEnc = await getAppStateSyncKey(base64Key)
@@ -450,7 +450,7 @@ export const chatModificationToAppPatch = (
 			throw new Boom('Expected last message to be not from me', { statusCode: 400 })
 		}
 
-		const lastMsg = lastMessages[lastMessages.length-1]
+		const lastMsg = lastMessages[lastMessages.length - 1]
 		if(lastMsg.key.fromMe) {
 			throw new Boom('Expected last message in array to be not from me', { statusCode: 400 })
 		}

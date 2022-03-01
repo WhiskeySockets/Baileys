@@ -21,5 +21,5 @@ export type ConnectionState = {
 		phoneConnected: boolean
 		user?: Contact
 	}
-	
+
 }

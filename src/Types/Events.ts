@@ -24,15 +24,15 @@ export type BaileysEventMap<T> = {
     /** delete chats with given ID */
     'chats.delete': string[]
     /** presence of contact in a chat updated */
-    'presence.update': { id: string, presences: { [participant: string]: PresenceData }  }
+    'presence.update': { id: string, presences: { [participant: string]: PresenceData } }
 
     'contacts.upsert': Contact[]
-    'contacts.update': Partial<Contact>[] 
-    
+    'contacts.update': Partial<Contact>[]
+
     'messages.delete': { keys: WAMessageKey[] } | { jid: string, all: true }
     'messages.update': WAMessageUpdate[]
-    /** 
-     * add/update the given messages. If they were received while the connection was online, 
+    /**
+     * add/update the given messages. If they were received while the connection was online,
      * the update will have type: "notify"
      *  */
     'messages.upsert': { messages: WAMessage[], type: MessageUpdateType }

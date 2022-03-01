@@ -15,8 +15,8 @@ const STATUS_MAP = {
 const makeMessagesSocket = (config: LegacySocketConfig) => {
 	const { logger } = config
 	const sock = makeChatsSocket(config)
-	const { 
-		ev, 
+	const {
+		ev,
 		ws: socketEvents,
 		query,
 		generateMessageTag,
@@ -28,10 +28,10 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 	let mediaConn: Promise<MediaConnInfo>
 	const refreshMediaConn = async(forceGet = false) => {
 		const media = await mediaConn
-		if(!media || forceGet || (new Date().getTime()-media.fetchDate.getTime()) > media.ttl*1000) {
+		if(!media || forceGet || (new Date().getTime() - media.fetchDate.getTime()) > media.ttl * 1000) {
 			mediaConn = (async() => {
 				const { media_conn } = await query({
-					json: ['query', 'mediaConn'], 
+					json: ['query', 'mediaConn'],
 					requiresPhoneConnection: false,
 					expect200: true
 				})
@@ -40,12 +40,12 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 			})()
 		}
 
-		return mediaConn 
+		return mediaConn
 	}
 
 	const fetchMessagesFromWA = async(
-		jid: string, 
-		count: number, 
+		jid: string,
+		count: number,
 		cursor?: WAMessageCursor
 	) => {
 		let key: WAMessageKey
@@ -66,8 +66,8 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 					owner: key?.fromMe === false ? 'false' : 'true',
 				}
 			},
-			binaryTag: [WAMetric.queryMessages, WAFlag.ignore], 
-			expect200: false, 
+			binaryTag: [WAMetric.queryMessages, WAFlag.ignore],
+			expect200: false,
 			requiresPhoneConnection: true
 		})
 		if(Array.isArray(content)) {
@@ -78,27 +78,27 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 	}
 
 	const updateMediaMessage = async(message: WAMessage) => {
-		const content = message.message?.audioMessage || message.message?.videoMessage || message.message?.imageMessage || message.message?.stickerMessage || message.message?.documentMessage 
+		const content = message.message?.audioMessage || message.message?.videoMessage || message.message?.imageMessage || message.message?.stickerMessage || message.message?.documentMessage
 		if(!content) {
 			throw new Boom(
-				`given message ${message.key.id} is not a media message`, 
+				`given message ${message.key.id} is not a media message`,
 				{ statusCode: 400, data: message }
 			)
 		}
-		
+
 		const response: BinaryNode = await query ({
 			json: {
 				tag: 'query',
 				attrs: {
-					type: 'media', 
-					index: message.key.id, 
-					owner: message.key.fromMe ? 'true' : 'false', 
-					jid: message.key.remoteJid, 
+					type: 'media',
+					index: message.key.id,
+					owner: message.key.fromMe ? 'true' : 'false',
+					jid: message.key.remoteJid,
 					epoch: currentEpoch().toString()
 				}
-			}, 
-			binaryTag: [WAMetric.queryMedia, WAFlag.ignore], 
-			expect200: true, 
+			},
+			binaryTag: [WAMetric.queryMedia, WAFlag.ignore],
+			expect200: true,
 			requiresPhoneConnection: true
 		})
 		const attrs = response.attrs
@@ -112,14 +112,14 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 	const onMessage = (message: WAMessage, type: MessageUpdateType) => {
 		const jid = message.key.remoteJid!
 		// store chat updates in this
-		const chatUpdate: Partial<Chat> = { 
+		const chatUpdate: Partial<Chat> = {
 			id: jid,
 		}
 
 		const emitGroupUpdate = (update: Partial<GroupMetadata>) => {
 			ev.emit('groups.update', [ { id: jid, ...update } ])
 		}
-		
+
 		if(message.message) {
 			chatUpdate.conversationTimestamp = +toNumber(message.messageTimestamp)
 			// add to count if the message isn't from me & there exists a message
@@ -128,7 +128,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 				const participant = jidNormalizedUser(message.participant || jid)
 
 				ev.emit(
-					'presence.update', 
+					'presence.update',
 					{
 						id: jid,
 						presences: { [participant]: { lastKnownPresence: 'available' } }
@@ -144,11 +144,11 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 			case proto.ProtocolMessage.ProtocolMessageType.REVOKE:
 				const key = protocolMessage.key
 				const messageStubType = WAMessageStubType.REVOKE
-				ev.emit('messages.update', [ 
-					{ 
+				ev.emit('messages.update', [
+					{
 						// the key of the deleted message is updated
-						update: { message: null, key: message.key, messageStubType }, 
-						key 
+						update: { message: null, key: message.key, messageStubType },
+						key
 					}
 				])
 				return
@@ -166,7 +166,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 			}
 		}
 
-		// check if the message is an action 
+		// check if the message is an action
 		if(message.messageStubType) {
 			const { user } = state.legacy!
 			//let actor = jidNormalizedUser (message.participant)
@@ -234,14 +234,14 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 		const response: BinaryNode = await query({
 			json: {
 				tag: 'query',
-				attrs: { 
-					type: 'url', 
-					url: text, 
-					epoch: currentEpoch().toString() 
+				attrs: {
+					type: 'url',
+					url: text,
+					epoch: currentEpoch().toString()
 				}
-			}, 
-			binaryTag: [26, WAFlag.ignore], 
-			expect200: true, 
+			},
+			binaryTag: [26, WAFlag.ignore],
+			expect200: true,
 			requiresPhoneConnection: false
 		})
 		const urlInfo = { ...response.attrs } as any as WAUrlInfo
@@ -258,9 +258,9 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 			tag: 'action',
 			attrs: { epoch: currentEpoch().toString(), type: 'relay' },
 			content: [
-				{ 
-					tag: 'message', 
-					attrs: {}, 
+				{
+					tag: 'message',
+					attrs: {},
 					content: proto.WebMessageInfo.encode(message).finish()
 				}
 			]
@@ -272,9 +272,9 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 
 		message.status = WAMessageStatus.PENDING
 		const promise = query({
-			json, 
-			binaryTag: [WAMetric.message, flag], 
-			tag: mID, 
+			json,
+			binaryTag: [WAMetric.message, flag],
+			tag: mID,
 			expect200: true,
 			requiresPhoneConnection: true
 		})
@@ -308,7 +308,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 	socketEvents.on('CB:action,add:last', json => messagesUpdate(json, true))
 	socketEvents.on('CB:action,add:unread', json => messagesUpdate(json, false))
 	socketEvents.on('CB:action,add:before', json => messagesUpdate(json, false))
-	
+
 	// new messages
 	socketEvents.on('CB:action,add:relay,message', (node: BinaryNode) => {
 		const msgs = getBinaryNodeMessages(node)
@@ -316,7 +316,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 			onMessage(msg, 'notify')
 		}
 	})
-	// If a message has been updated 
+	// If a message has been updated
 	// usually called when a video message gets its upload url, or live locations or ciphertext message gets fixed
 	socketEvents.on ('CB:action,add:update,message', (node: BinaryNode) => {
 		const msgs = getBinaryNodeMessages(node)
@@ -369,7 +369,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 			return
 		}
 
-		const keyPartial = { 
+		const keyPartial = {
 			remoteJid: jidNormalizedUser(attributes.to),
 			fromMe: areJidsSameUser(attributes.from, state.legacy?.user?.id || ''),
 		}
@@ -413,13 +413,13 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 				json: {
 					tag: 'query',
 					attrs: {
-						type: 'message_info', 
-						index: messageID, 
-						jid: jid, 
+						type: 'message_info',
+						index: messageID,
+						jid: jid,
 						epoch: currentEpoch().toString()
 					}
-				}, 
-				binaryTag: [WAMetric.queryRead, WAFlag.ignore], 
+				},
+				binaryTag: [WAMetric.queryRead, WAFlag.ignore],
 				expect200: true,
 				requiresPhoneConnection: true
 			})
@@ -427,7 +427,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 			if(Array.isArray(content)) {
 				for(const { tag, content: innerData } of content) {
 					const [{ attrs }] = (innerData as BinaryNode[])
-					
+
 					const jid = jidNormalizedUser(attrs.jid)
 					const recp = info[jid] || { userJid: jid }
 					const date = +attrs.t
@@ -465,14 +465,14 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 
 				return stream
 			}
-			
+
 			try {
 				const result = await downloadMediaMessage()
 				return result
 			} catch(error) {
 				if(error.message.includes('404')) { // media needs to be updated
 					logger.info (`updating media of message: ${message.key.id}`)
-					
+
 					await updateMediaMessage(message)
 
 					const result = await downloadMediaMessage()
@@ -508,13 +508,13 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 						page: page.toString(),
 						jid: inJid
 					}
-				}, 
-				binaryTag: [24, WAFlag.ignore], 
+				},
+				binaryTag: [24, WAFlag.ignore],
 				expect200: true
 			}) // encrypt and send  off
 
-			return { 
-				last: node.attrs?.last === 'true', 
+			return {
+				last: node.attrs?.last === 'true',
 				messages: getBinaryNodeMessages(node)
 			}
 		},
@@ -531,7 +531,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 				isJidGroup(jid)
 			) {
 				const { disappearingMessagesInChat } = content
-				const value = typeof disappearingMessagesInChat === 'boolean' ? 
+				const value = typeof disappearingMessagesInChat === 'boolean' ?
 					(disappearingMessagesInChat ? WA_DEFAULT_EPHEMERAL : 0) :
 					disappearingMessagesInChat
 				const tag = generateMessageTag(true)
@@ -539,8 +539,8 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 					{
 						tag: 'group',
 						attrs: { id: tag, jid, type: 'prop', author: userJid },
-						content: [ 
-							{ tag: 'ephemeral',  attrs: { value: value.toString() } }
+						content: [
+							{ tag: 'ephemeral', attrs: { value: value.toString() } }
 						]
 					}
 				])
@@ -557,7 +557,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 						...options,
 					}
 				)
-				
+
 				await relayMessage(msg, { waitForAck: options.waitForAck })
 				return msg
 			}

@@ -19,8 +19,8 @@ export type SocketConfig = CommonSocketConfig<AuthenticationState> & {
     userDevicesCache?: NodeCache
     /** map to store the retry counts for failed messages */
     msgRetryCounterMap?: { [msgId: string]: number }
-    /** 
-     * fetch a message from your store 
+    /**
+     * fetch a message from your store
      * implement this so that messages failed to send (solves the "this message can take a while" issue) can be retried
      * */
     getMessage: (key: proto.IMessageKey) => Promise<proto.IMessage | undefined>
@@ -53,15 +53,15 @@ export type WABusinessHoursConfig = {
 export type WABusinessProfile = {
     description: string
     email: string
-    business_hours:  {
+    business_hours: {
         timezone?: string
-        config?:  WABusinessHoursConfig[]
+        config?: WABusinessHoursConfig[]
         business_config?: WABusinessHoursConfig[]
     }
     website: string[]
     categories: {
         id: string
-        localized_display_name:  string
+        localized_display_name: string
     }[]
     wid?: string
 }

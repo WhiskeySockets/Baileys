@@ -12,7 +12,7 @@ export type CommonSocketConfig<T> = {
     /** provide an auth state object to maintain the auth state */
     auth?: T
     /** the WS url to connect to WA */
-    waWebSocketUrl: string | URL 
+    waWebSocketUrl: string | URL
     /** Fails the connection if the socket times out in this interval */
 	connectTimeoutMs: number
     /** Default timeout for queries, undefined for no timeout */

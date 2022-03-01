@@ -30,7 +30,7 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 		const result = Buffer.concat([cipher.update(plaintext), cipher.final(), cipher.getAuthTag()])
 
 		writeCounter += 1
-		
+
 		authenticate(result)
 		return result
 	}
@@ -42,8 +42,8 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 		const cipher = createDecipheriv('aes-256-gcm', decKey, iv)
 		// decrypt additional adata
 		const tagLength = 128 >> 3
-		const enc = ciphertext.slice(0, ciphertext.length-tagLength)
-		const tag = ciphertext.slice(ciphertext.length-tagLength)
+		const enc = ciphertext.slice(0, ciphertext.length - tagLength)
+		const tag = ciphertext.slice(ciphertext.length - tagLength)
 		// set additional data
 		cipher.setAAD(hash)
 		cipher.setAuthTag(tag)
@@ -55,7 +55,7 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 		} else {
 			writeCounter += 1
 		}
-		
+
 		authenticate(ciphertext)
 		return result
 	}
@@ -83,7 +83,7 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 		writeCounter = 0
 		isFinished = true
 	}
-	
+
 	const data = Binary.build(NOISE_MODE).readBuffer()
 	let hash = Buffer.from(data.byteLength === 32 ? data : sha256(Buffer.from(data)))
 	let salt = hash
@@ -109,19 +109,19 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 		processHandshake: ({ serverHello }: proto.HandshakeMessage, noiseKey: KeyPair) => {
 			authenticate(serverHello!.ephemeral!)
 			mixIntoKey(Curve.sharedKey(privateKey, serverHello.ephemeral!))
-	
+
 			const decStaticContent = decrypt(serverHello!.static!)
 			mixIntoKey(Curve.sharedKey(privateKey, decStaticContent))
-	
+
 			const certDecoded = decrypt(serverHello!.payload!)
 			const { details: certDetails, signature: certSignature } = proto.NoiseCertificate.decode(certDecoded)
-	
+
 			const { key: certKey } = proto.NoiseCertificateDetails.decode(certDetails)
-	
+
 			if(Buffer.compare(decStaticContent, certKey) !== 0) {
 				throw new Boom('certification match failed', { statusCode: 400 })
 			}
-	
+
 			const keyEnc = encrypt(noiseKey.public)
 			mixIntoKey(Curve.sharedKey(noiseKey.private, serverHello!.ephemeral!))
 
@@ -135,16 +135,16 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 			const introSize = sentIntro ? 0 : NOISE_WA_HEADER.length
 
 			outBinary.ensureAdditionalCapacity(introSize + 3 + data.byteLength)
-	
+
 			if(!sentIntro) {
 				outBinary.writeByteArray(NOISE_WA_HEADER)
 				sentIntro = true
 			}
-	
+
 			outBinary.writeUint8(data.byteLength >> 16)
 			outBinary.writeUint16(65535 & data.byteLength)
 			outBinary.write(data)
-	
+
 			const bytes = outBinary.readByteArray()
 			return bytes as Uint8Array
 		},
@@ -175,5 +175,5 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 
 			inBinary.peek(peekSize)
 		}
-	}	
+	}
 }

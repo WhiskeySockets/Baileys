@@ -16,10 +16,10 @@ import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, getBinaryNodeChild, 
  * - query phone connection
  */
 export const makeSocket = ({
-	waWebSocketUrl, 
-	connectTimeoutMs, 
-	logger, 
-	agent, 
+	waWebSocketUrl,
+	connectTimeoutMs,
+	logger,
+	agent,
 	keepAliveIntervalMs,
 	version,
 	browser,
@@ -58,7 +58,7 @@ export const makeSocket = ({
 	}
 
 	const { creds } = authState
-	
+
 	let lastDateRecv: Date
 	let epoch = 0
 	let keepAliveReq: NodeJS.Timeout
@@ -129,7 +129,7 @@ export const makeSocket = ({
 					onErr = err => {
 						reject(err || new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed }))
 					}
-                    
+
 					ws.on(`TAG:${msgId}`, onRecv)
 					ws.on('close', onErr) // if the socket closes, you'll never receive the message
 					ws.off('error', onErr)
@@ -203,10 +203,10 @@ export const makeSocket = ({
 	/** get some pre-keys and do something with them */
 	const assertingPreKeys = async(range: number, execute: (keys: { [_: number]: any }) => Promise<void>) => {
 		const { newPreKeys, lastPreKeyId, preKeysRange } = generateOrGetPreKeys(authState.creds, range)
-        
+
 		const update: Partial<AuthenticationCreds> = {
-			nextPreKeyId: Math.max(lastPreKeyId+1, creds.nextPreKeyId),
-			firstUnuploadedPreKeyId: Math.max(creds.firstUnuploadedPreKeyId, lastPreKeyId+1)
+			nextPreKeyId: Math.max(lastPreKeyId + 1, creds.nextPreKeyId),
+			firstUnuploadedPreKeyId: Math.max(creds.firstUnuploadedPreKeyId, lastPreKeyId + 1)
 		}
 		if(!creds.serverHasPreKeys) {
 			update.serverHasPreKeys = true
@@ -255,7 +255,7 @@ export const makeSocket = ({
 				if(logger.level === 'trace') {
 					logger.trace({ msgId, fromMe: false, frame }, 'communication')
 				}
-    
+
 				let anyTriggered = false
 				/* Check if this is a response to a message we sent */
 				anyTriggered = ws.emit(`${DEF_TAG_PREFIX}${msgId}`, frame)
@@ -263,7 +263,7 @@ export const makeSocket = ({
 				const l0 = frame.tag
 				const l1 = frame.attrs || { }
 				const l2 = Array.isArray(frame.content) ? frame.content[0]?.tag : ''
-    
+
 				Object.keys(l1).forEach(key => {
 					anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0},${key}:${l1[key]},${l2}`, frame) || anyTriggered
 					anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0},${key}:${l1[key]}`, frame) || anyTriggered
@@ -272,7 +272,7 @@ export const makeSocket = ({
 				anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0},,${l2}`, frame) || anyTriggered
 				anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0}`, frame) || anyTriggered
 				anyTriggered = ws.emit('frame', frame) || anyTriggered
-    
+
 				if(!anyTriggered && logger.level === 'debug') {
 					logger.debug({ unhandled: true, msgId, fromMe: false, frame }, 'communication recv')
 				}
@@ -293,16 +293,16 @@ export const makeSocket = ({
 
 		if(ws.readyState !== ws.CLOSED && ws.readyState !== ws.CLOSING) {
 			try {
-				ws.close() 
+				ws.close()
 			} catch{ }
 		}
 
-		ev.emit('connection.update', { 
-			connection: 'close', 
+		ev.emit('connection.update', {
+			connection: 'close',
 			lastDisconnect: {
 				error,
 				date: new Date()
-			} 
+			}
 		})
 		ev.removeAllListeners('connection.update')
 	}
@@ -343,7 +343,7 @@ export const makeSocket = ({
                 check if it's been a suspicious amount of time since the server responded with our last seen
                 it could be that the network is down
             */
-			if(diff > keepAliveIntervalMs+5000) {
+			if(diff > keepAliveIntervalMs + 5000) {
 				end(new Boom('Connection was lost', { statusCode: DisconnectReason.connectionLost }))
 			} else if(ws.readyState === ws.OPEN) {
 				// if its all good, send a keep alive request
@@ -422,8 +422,8 @@ export const makeSocket = ({
 	})
 	// QR gen
 	ws.on('CB:iq,type:set,pair-device', async(stanza: BinaryNode) => {
-		const iq: BinaryNode = { 
-			tag: 'iq', 
+		const iq: BinaryNode = {
+			tag: 'iq',
 			attrs: {
 				to: S_WHATSAPP_NET,
 				type: 'result',
@@ -446,7 +446,7 @@ export const makeSocket = ({
 			}
 
 			const qr = [ref, noiseKeyB64, identityKeyB64, advB64].join(',')
-    
+
 			ev.emit('connection.update', { qr })
 
 			qrTimer = setTimeout(genPairQR, qrMs)
@@ -498,10 +498,10 @@ export const makeSocket = ({
 
 		ev.emit('connection.update', { connection: 'open' })
 	})
-    
+
 	ws.on('CB:ib,,offline', (node: BinaryNode) => {
 		const child = getBinaryNodeChild(node, 'offline')
-		const offlineCount = +child.attrs.count 
+		const offlineCount = +child.attrs.count
 
 		logger.info(`got ${offlineCount} offline messages/notifications`)
 

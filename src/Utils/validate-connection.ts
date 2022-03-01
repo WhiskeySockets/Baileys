@@ -130,8 +130,8 @@ export const configureSuccessfulPairing = (
 			id: msgId,
 		},
 		content: [
-			{ 
-				tag: 'pair-device-sign', 
+			{
+				tag: 'pair-device-sign',
 				attrs: { },
 				content: [
 					{ tag: 'device-identity', attrs: { 'key-index': `${keyIndex}` }, content: accountEnc }
@@ -141,9 +141,9 @@ export const configureSuccessfulPairing = (
 	}
 
 	const authUpdate: Partial<AuthenticationCreds> = {
-		account, 
-		me: { id: jid, verifiedName }, 
-		signalIdentities: [...(signalIdentities || []), identity] 
+		account,
+		me: { id: jid, verifiedName },
+		signalIdentities: [...(signalIdentities || []), identity]
 	}
 	return {
 		creds: authUpdate,

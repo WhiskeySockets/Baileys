@@ -62,7 +62,7 @@ export const decodeMessageStanza = (stanza: BinaryNode, auth: AuthenticationStat
 
 	const fromMe = isMe(stanza.attrs.participant || stanza.attrs.from)
 	const pushname = stanza.attrs.notify
-    
+
 	const key: WAMessageKey = {
 		remoteJid: chatId,
 		fromMe,
@@ -83,21 +83,21 @@ export const decodeMessageStanza = (stanza: BinaryNode, auth: AuthenticationStat
 	return {
 		fullMessage,
 		decryptionTask: (async() => {
-			let decryptables = 0 
+			let decryptables = 0
 			if(Array.isArray(stanza.content)) {
 				for(const { tag, attrs, content } of stanza.content) {
 					if(tag !== 'enc') {
 						continue
 					}
-		
+
 					if(!(content instanceof Uint8Array)) {
 						continue
-					} 
+					}
 
 					decryptables += 1
-		
+
 					let msgBuffer: Buffer
-		
+
 					try {
 						const e2eType = attrs.type
 						switch (e2eType) {
@@ -110,13 +110,13 @@ export const decodeMessageStanza = (stanza: BinaryNode, auth: AuthenticationStat
 							msgBuffer = await decryptSignalProto(user, e2eType, content as Buffer, auth)
 							break
 						}
-		
+
 						let msg: proto.IMessage = proto.Message.decode(unpadRandomMax16(msgBuffer))
 						msg = msg.deviceSentMessage?.message || msg
 						if(msg.senderKeyDistributionMessage) {
 							await processSenderKeyMessage(author, msg.senderKeyDistributionMessage, auth)
 						}
-		
+
 						if(fullMessage.message) {
 							Object.assign(fullMessage.message, msg)
 						} else {

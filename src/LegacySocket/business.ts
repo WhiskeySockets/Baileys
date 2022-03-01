@@ -49,7 +49,7 @@ const makeBusinessSocket = (config: LegacySocketConfig) => {
 				mapProductCreate(product)
 			]
 		})
-		
+
 		return mapProduct(result.data.product)
 	}
 
@@ -80,7 +80,7 @@ const makeBusinessSocket = (config: LegacySocketConfig) => {
 				{
 					product_id: productId,
 					...mapProductCreate(
-						{ ...update, originCountryCode: undefined }, 
+						{ ...update, originCountryCode: undefined },
 						false
 					)
 				}
@@ -89,7 +89,7 @@ const makeBusinessSocket = (config: LegacySocketConfig) => {
 
 		return mapProduct(result.data.product)
 	}
-	
+
 	// maps product create to send to WA
 	const mapProductCreate = (product: ProductCreate, mapCompliance = true) => {
 		const result: any = {
@@ -107,10 +107,10 @@ const makeBusinessSocket = (config: LegacySocketConfig) => {
 		}
 		if(mapCompliance) {
 			Object.assign(result, {
-				compliance_category: product.originCountryCode 
-					? undefined : 
+				compliance_category: product.originCountryCode
+					? undefined :
 					'COUNTRY_ORIGIN_EXEMPT',
-				compliance_info: product.originCountryCode 
+				compliance_info: product.originCountryCode
 					? { country_code_origin: product.originCountryCode }
 					: undefined
 			})

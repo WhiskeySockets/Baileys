@@ -52,10 +52,18 @@
     "sharp": "^0.29.3"
   },
   "peerDependenciesMeta": {
-    "@adiwajshing/keyed-db": { "optional": true },
-    "jimp": { "optional": true },
-    "qrcode-terminal": { "optional": true },
-    "sharp": { "optional": true }
+    "@adiwajshing/keyed-db": {
+      "optional": true
+    },
+    "jimp": {
+      "optional": true
+    },
+    "qrcode-terminal": {
+      "optional": true
+    },
+    "sharp": {
+      "optional": true
+    }
   },
   "files": [
     "lib/*",

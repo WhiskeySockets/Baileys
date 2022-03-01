@@ -10,21 +10,21 @@ export const newLegacyAuthCreds = () => ({
 }) as LegacyAuthenticationCreds
 
 export const decodeWAMessage = (
-	message: Buffer | string, 
-	auth: { macKey: Buffer, encKey: Buffer }, 
-	fromMe: boolean=false
+	message: Buffer | string,
+	auth: { macKey: Buffer, encKey: Buffer },
+	fromMe: boolean = false
 ) => {
 	let commaIndex = message.indexOf(',') // all whatsapp messages have a tag and a comma, followed by the actual message
 	if(commaIndex < 0) {
 		throw new Boom('invalid message', { data: message })
 	} // if there was no comma, then this message must be not be valid
-    
-	if(message[commaIndex+1] === ',') {
+
+	if(message[commaIndex + 1] === ',') {
 		commaIndex += 1
 	}
 
-	let data = message.slice(commaIndex+1, message.length)
-    
+	let data = message.slice(commaIndex + 1, message.length)
+
 	// get the message tag.
 	// If a query was done, the server will respond with the same message tag we sent the query with
 	const messageTag: string = message.slice(0, commaIndex).toString()
@@ -43,7 +43,7 @@ export const decodeWAMessage = (
 					throw new Boom('recieved encrypted buffer when auth creds unavailable', { data: message, statusCode: DisconnectReason.badSession })
 				}
 
-				/* 
+				/*
                     If the data recieved was not a JSON, then it must be an encrypted message.
                     Such a message can only be decrypted if we're connected successfully to the servers & have encryption keys
                 */
@@ -51,11 +51,11 @@ export const decodeWAMessage = (
 					tags = [data[0], data[1]]
 					data = data.slice(2, data.length)
 				}
-                
+
 				const checksum = data.slice(0, 32) // the first 32 bytes of the buffer are the HMAC sign of the message
 				data = data.slice(32, data.length) // the actual message
 				const computedChecksum = hmacSign(data, macKey) // compute the sign of the message we recieved using our macKey
-                
+
 				if(checksum.equals(computedChecksum)) {
 					// the checksum the server sent, must match the one we computed for the message to be valid
 					const decrypted = aesDecrypt(data, encKey) // decrypt using AES
@@ -73,7 +73,7 @@ export const decodeWAMessage = (
 					})
 				}
 			}
-		}   
+		}
 	}
 
 	return [messageTag, json, tags] as const
@@ -85,7 +85,7 @@ export const decodeWAMessage = (
 * @param json
 */
 export const validateNewConnection = (
-	json: { [_: string]: any }, 
+	json: { [_: string]: any },
 	auth: LegacyAuthenticationCreds,
 	curveKeys: CurveKeyPair
 ) => {
@@ -164,7 +164,7 @@ export const useSingleFileLegacyAuthState = (file: string) => {
 
 	if(existsSync(file)) {
 		state = JSON.parse(
-			readFileSync(file, { encoding: 'utf-8' }), 
+			readFileSync(file, { encoding: 'utf-8' }),
 			BufferJSON.reviver
 		)
 		if(typeof state.encKey === 'string') {

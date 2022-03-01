@@ -2,22 +2,22 @@ import { Boom } from '@hapi/boom'
 import { promises as fs } from 'fs'
 import { proto } from '../../WAProto'
 import { MEDIA_KEYS, URL_REGEX, WA_DEFAULT_EPHEMERAL } from '../Defaults'
-import { 
-	AnyMediaMessageContent, 
-	AnyMessageContent, 
-	MediaGenerationOptions, 
-	MediaType, 
-	MessageContentGenerationOptions, 
-	MessageGenerationOptions, 
+import {
+	AnyMediaMessageContent,
+	AnyMessageContent,
+	MediaGenerationOptions,
+	MediaType,
+	MessageContentGenerationOptions,
+	MessageGenerationOptions,
 	MessageGenerationOptionsFromContent,
-	MessageType, 
+	MessageType,
 	MessageUserReceipt,
-	WAMediaUpload, 
-	WAMessage, 
-	WAMessageContent, 
+	WAMediaUpload,
+	WAMessage,
+	WAMessageContent,
 	WAMessageStatus,
-	WAProto, 
-	WATextMessage 
+	WAProto,
+	WATextMessage
 } from '../Types'
 import { generateMessageID, unixTimestampSeconds } from './generics'
 import { encryptedStream, generateThumbnail, getAudioDuration } from './messages-media'
@@ -54,7 +54,7 @@ const MessageTypeProto = {
 const ButtonType = proto.ButtonsMessage.ButtonsMessageHeaderType
 
 export const prepareWAMessageMedia = async(
-	message: AnyMediaMessageContent, 
+	message: AnyMediaMessageContent,
 	options: MediaGenerationOptions
 ) => {
 	const logger = options.logger
@@ -66,15 +66,15 @@ export const prepareWAMessageMedia = async(
 		}
 	}
 
-	const uploadData: MediaUploadData = { 
+	const uploadData: MediaUploadData = {
 		...message,
 		media: message[mediaType]
 	}
 	delete uploadData[mediaType]
 	// check if cacheable + generate cache key
-	const cacheableKey = typeof uploadData.media === 'object' && 
-			('url' in uploadData.media) && 
-			!!uploadData.media.url && 
+	const cacheableKey = typeof uploadData.media === 'object' &&
+			('url' in uploadData.media) &&
+			!!uploadData.media.url &&
 			!!options.mediaCache && (
 	// generate the key
 		mediaType + ':' + uploadData.media.url!.toString()
@@ -93,7 +93,7 @@ export const prepareWAMessageMedia = async(
 		const mediaBuff: Buffer = options.mediaCache!.get(cacheableKey)
 		if(mediaBuff) {
 			logger?.debug({ cacheableKey }, 'got media cache hit')
-			
+
 			const obj = WAProto.Message.decode(mediaBuff)
 			const key = `${mediaType}Message`
 
@@ -105,7 +105,7 @@ export const prepareWAMessageMedia = async(
 	}
 
 	const requiresDurationComputation = mediaType === 'audio' && typeof uploadData.seconds === 'undefined'
-	const requiresThumbnailComputation = (mediaType === 'image' || mediaType === 'video') && 
+	const requiresThumbnailComputation = (mediaType === 'image' || mediaType === 'video') &&
 										(typeof uploadData['jpegThumbnail'] === 'undefined')
 	const requiresOriginalForSomeProcessing = requiresDurationComputation || requiresThumbnailComputation
 	const {
@@ -118,7 +118,7 @@ export const prepareWAMessageMedia = async(
 		didSaveToTmpPath
 	} = await encryptedStream(uploadData.media, mediaType, requiresOriginalForSomeProcessing)
 	 // url safe Base64 encode the SHA256 hash of the body
-	const fileEncSha256B64 = encodeURIComponent( 
+	const fileEncSha256B64 = encodeURIComponent(
 		fileEncSha256.toString('base64')
 			.replace(/\+/g, '-')
 			.replace(/\//g, '_')
@@ -239,7 +239,7 @@ export const generateForwardMessageContent = (
 }
 
 export const generateWAMessageContent = async(
-	message: AnyMessageContent, 
+	message: AnyMessageContent,
 	options: MessageContentGenerationOptions
 ) => {
 	let m: WAMessageContent = {}
@@ -256,7 +256,7 @@ export const generateWAMessageContent = async(
 				extContent.previewType = 0
 			} catch(error) { // ignore if fails
 				options.logger?.warn({ trace: error.stack }, 'url generation failed')
-			} 
+			}
 		}
 
 		m.extendedTextMessage = extContent
@@ -265,7 +265,7 @@ export const generateWAMessageContent = async(
 		if(!contactLen) {
 			throw new Boom('require atleast 1 contact', { statusCode: 400 })
 		}
- 
+
 		if(contactLen === 1) {
 			m.contactMessage = WAProto.ContactMessage.fromObject(message.contacts.contacts[0])
 		} else {
@@ -284,7 +284,7 @@ export const generateWAMessageContent = async(
 			message.force
 		)
 	} else if('disappearingMessagesInChat' in message) {
-		const exp = typeof message.disappearingMessagesInChat === 'boolean' ? 
+		const exp = typeof message.disappearingMessagesInChat === 'boolean' ?
 			(message.disappearingMessagesInChat ? WA_DEFAULT_EPHEMERAL : 0) :
 			message.disappearingMessagesInChat
 		m = prepareDisappearingMessageSettingContent(exp)
@@ -309,7 +309,7 @@ export const generateWAMessageContent = async(
 
 			const type = Object.keys(m)[0].replace('Message', '').toUpperCase()
 			buttonsMessage.headerType = ButtonType[type]
-			
+
 			Object.assign(buttonsMessage, m)
 		}
 
@@ -324,7 +324,7 @@ export const generateWAMessageContent = async(
 				hydratedButtons: message.templateButtons
 			}
 		}
-		
+
 		if('text' in message) {
 			templateMessage.hydratedTemplate.hydratedContentText = message.text
 		} else {
@@ -332,7 +332,7 @@ export const generateWAMessageContent = async(
 			if('caption' in message) {
 				templateMessage.hydratedTemplate.hydratedContentText = message.caption
 			}
-			
+
 			Object.assign(templateMessage.hydratedTemplate, m)
 		}
 
@@ -342,7 +342,7 @@ export const generateWAMessageContent = async(
 
 		m = { templateMessage }
 	}
-	
+
 	if('sections' in message && !!message.sections) {
 		const listMessage: proto.IListMessage = {
 			sections: message.sections,
@@ -370,8 +370,8 @@ export const generateWAMessageContent = async(
 }
 
 export const generateWAMessageFromContent = (
-	jid: string, 
-	message: WAMessageContent, 
+	jid: string,
+	message: WAMessageContent,
 	options: MessageGenerationOptionsFromContent
 ) => {
 	if(!options.timestamp) {
@@ -389,7 +389,7 @@ export const generateWAMessageFromContent = (
 		message[key].contextInfo.participant = participant
 		message[key].contextInfo.stanzaId = quoted.key.id
 		message[key].contextInfo.quotedMessage = quoted.message
-		
+
 		// if a participant is quoted, then it must be a group
 		// hence, remoteJid of group must also be entered
 		if(quoted.key.participant || quoted.participant) {
@@ -403,7 +403,7 @@ export const generateWAMessageFromContent = (
 		// and it's not a protocol message -- delete, toggle disappear message
 		key !== 'protocolMessage' &&
 		// already not converted to disappearing message
-		key !== 'ephemeralMessage' 
+		key !== 'ephemeralMessage'
 	) {
 		message[key].contextInfo = {
 			...(message[key].contextInfo || {}),
@@ -478,10 +478,10 @@ export const extractMessageContent = (content: WAMessageContent | undefined | nu
 			return { conversation: 'contentText' in msg ? msg.contentText : ('hydratedContentText' in msg ? msg.hydratedContentText : '') }
 		}
 	}
-	
-	content = content?.ephemeralMessage?.message || 
+
+	content = content?.ephemeralMessage?.message ||
 				content?.viewOnceMessage?.message ||
-				content || 
+				content ||
 				undefined
 
 	if(content?.buttonsMessage) {

@@ -25,7 +25,7 @@ export type MessageType = keyof proto.Message
 export type DownloadableMessage = { mediaKey?: Uint8Array, directPath?: string, url?: string }
 
 export type MediaConnInfo = {
-    auth: string 
+    auth: string
     ttl: number
     hosts: { hostname: string, maxContentLengthBytes: number }[]
     fetchDate: Date
@@ -77,7 +77,7 @@ export type AnyMediaMessageContent = (
         image: WAMediaUpload
         caption?: string
         jpegThumbnail?: string
-    } & Mentionable & Buttonable & Templatable & WithDimensions) | 
+    } & Mentionable & Buttonable & Templatable & WithDimensions) |
     ({
         video: WAMediaUpload
         caption?: string
@@ -95,22 +95,22 @@ export type AnyMediaMessageContent = (
         document: WAMediaUpload
         mimetype: string
         fileName?: string
-    } & Buttonable & Templatable)) & 
+    } & Buttonable & Templatable)) &
     { mimetype?: string }
 
 export type AnyRegularMessageContent = (
     ({
 	    text: string
-    } 
-    & Mentionable & Buttonable & Templatable & Listable) | 
-    AnyMediaMessageContent | 
+    }
+    & Mentionable & Buttonable & Templatable & Listable) |
+    AnyMediaMessageContent |
     {
         contacts: {
             displayName?: string
             contacts: proto.IContactMessage[]
         }
-    } | 
-    {  
+    } |
+    {
         location: WALocationMessage
     }
 ) & ViewOnce
@@ -120,7 +120,7 @@ export type AnyMessageContent = AnyRegularMessageContent | {
 	force?: boolean
 } | {
 	delete: WAMessageKey
-}  | {
+} | {
 	disappearingMessagesInChat: boolean | number
 }
 

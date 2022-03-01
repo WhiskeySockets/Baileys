@@ -14,13 +14,13 @@ import { BinaryNode, encodeBinaryNodeLegacy } from '../WABinary'
  * - query phone connection
  */
 export const makeSocket = ({
-	waWebSocketUrl, 
-	connectTimeoutMs, 
-	phoneResponseTimeMs, 
-	logger, 
-	agent, 
+	waWebSocketUrl,
+	connectTimeoutMs,
+	phoneResponseTimeMs,
+	logger,
+	agent,
 	keepAliveIntervalMs,
-	expectResponseTimeout, 
+	expectResponseTimeout,
 }: LegacySocketConfig) => {
 	// for generating tags
 	const referenceDateSeconds = unixTimestampSeconds(new Date())
@@ -53,7 +53,7 @@ export const makeSocket = ({
 	const sendPromise = promisify(ws.send)
 	/** generate message tag and increment epoch */
 	const generateMessageTag = (longTag: boolean = false) => {
-		const tag = `${longTag ? referenceDateSeconds : (referenceDateSeconds%1000)}.--${epoch}`
+		const tag = `${longTag ? referenceDateSeconds : (referenceDateSeconds % 1000)}.--${epoch}`
 		epoch += 1 // increment message count, it makes the 'epoch' field when sending binary messages
 		return tag
 	}
@@ -66,7 +66,7 @@ export const makeSocket = ({
 		return sendPromise.call(ws, data) as Promise<void>
 	}
 
-	/** 
+	/**
 	 * Send a message to the WA servers
 	 * @returns the tag attached in the message
 	 * */
@@ -121,7 +121,7 @@ export const makeSocket = ({
 
 		if(ws.readyState !== ws.CLOSED && ws.readyState !== ws.CLOSING) {
 			try {
-				ws.close() 
+				ws.close()
 			} catch{ }
 		}
 
@@ -150,7 +150,7 @@ export const makeSocket = ({
 				return
 			}
 			//if (this.shouldLogMessages) this.messageLog.push ({ tag: messageTag, json: JSON.stringify(json), fromMe: false })
-            
+
 			if(logger.level === 'trace') {
 				logger.trace({ tag: messageTag, fromMe: false, json }, 'communication')
 			}
@@ -213,7 +213,7 @@ export const makeSocket = ({
 
 				phoneConnectionChanged(false)
 			}, phoneResponseTimeMs)
-		}   
+		}
 	}
 
 	const clearPhoneCheckInterval = () => {
@@ -254,12 +254,12 @@ export const makeSocket = ({
 							}
 
 							cancelToken = () => onErr(new Boom('Cancelled', { statusCode: 500 }))
-        
+
 							if(requiresPhoneConnection) {
 								startPhoneCheckInterval()
 								cancelPhoneChecker = exitQueryIfResponseNotExpected(tag, onErr)
 							}
-                            
+
 							ws.on(`TAG:${tag}`, onRecv)
 							ws.on('ws-close', onErr) // if the socket closes, you'll never receive the message
 						},
@@ -268,13 +268,13 @@ export const makeSocket = ({
 				} finally {
 					requiresPhoneConnection && clearPhoneCheckInterval()
 					cancelPhoneChecker && cancelPhoneChecker()
-        
+
 					ws.off(`TAG:${tag}`, onRecv)
 					ws.off('ws-close', onErr) // if the socket closes, you'll never receive the message
 				}
 			})(),
 			cancelToken: () => {
-				cancelToken() 
+				cancelToken()
 			}
 		}
 	}
@@ -300,7 +300,7 @@ export const makeSocket = ({
 			// throw back the error
 			throw error
 		}
-        
+
 		const response = await promise
 		const responseStatusCode = +(response.status ? response.status : 200) // default status
 		// read here: http://getstatuscode.com/599
@@ -308,10 +308,10 @@ export const makeSocket = ({
 			end(new Boom('WA server overloaded', { statusCode: 599, data: { query: json, response } }))
 		}
 
-		if(expect200 && Math.floor(responseStatusCode/100) !== 2) {
+		if(expect200 && Math.floor(responseStatusCode / 100) !== 2) {
 			const message = STATUS_CODES[responseStatusCode] || 'unknown'
 			throw new Boom(
-				`Unexpected status in '${Array.isArray(json) ? json[0] : (json?.tag || 'query')}': ${message}(${responseStatusCode})`, 
+				`Unexpected status in '${Array.isArray(json) ? json[0] : (json?.tag || 'query')}': ${message}(${responseStatusCode})`,
 				{ data: { query: json, response }, statusCode: response.status }
 			)
 		}
@@ -330,7 +330,7 @@ export const makeSocket = ({
                 check if it's been a suspicious amount of time since the server responded with our last seen
                 it could be that the network is down
             */
-			if(diff > keepAliveIntervalMs+5000) {
+			if(diff > keepAliveIntervalMs + 5000) {
 				end(new Boom('Connection was lost', { statusCode: DisconnectReason.connectionLost }))
 			} else if(ws.readyState === ws.OPEN) {
 				sendRawMessage('?,,') // if its all good, send a keep alive request
@@ -394,7 +394,7 @@ export const makeSocket = ({
 		}
 
 		end(new Boom(
-			`Connection terminated by server: "${kind || 'unknown'}"`, 
+			`Connection terminated by server: "${kind || 'unknown'}"`,
 			{ statusCode: reason }
 		))
 	})
@@ -417,12 +417,12 @@ export const makeSocket = ({
 				content: nodes
 			}
 
-			return query({ 
-				json, 
-				binaryTag, 
-				tag, 
-				expect200: true, 
-				requiresPhoneConnection: true 
+			return query({
+				json,
+				binaryTag,
+				tag,
+				expect200: true,
+				requiresPhoneConnection: true
 			}) as Promise<{ status: number }>
 		},
 		currentEpoch: () => epoch,

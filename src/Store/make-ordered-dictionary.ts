@@ -29,7 +29,7 @@ function makeOrderedDictionary<T>(idGetter: (item: T) => string) {
 			dict[id] = item
 		}
 	}
-	
+
 	const remove = (item: T) => {
 		const id = idGetter(item)
 		const idx = array.findIndex(i => idGetter(i) === id)
@@ -62,7 +62,7 @@ function makeOrderedDictionary<T>(idGetter: (item: T) => string) {
 		clear: () => {
 			array.splice(0, array.length)
 			Object.keys(dict).forEach(key => {
-				delete dict[key] 
+				delete dict[key]
 			})
 		},
 		filter: (contain: (item: T) => boolean) => {

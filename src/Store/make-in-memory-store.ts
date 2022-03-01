@@ -14,7 +14,7 @@ type LegacyWASocket = ReturnType<typeof makeLegacySocket>
 type AnyWASocket = ReturnType<typeof makeMDSocket>
 
 export const waChatKey = (pin: boolean) => ({
-	key: (c: Chat) => (pin ? (c.pin ? '1' : '0') : '') + (c.archive ? '0' : '1') + (c.conversationTimestamp ? c.conversationTimestamp.toString(16).padStart(8, '0') :'') + c.id,
+	key: (c: Chat) => (pin ? (c.pin ? '1' : '0') : '') + (c.archive ? '0' : '1') + (c.conversationTimestamp ? c.conversationTimestamp.toString(16).padStart(8, '0') : '') + c.id,
 	compare: (k1: string, k2: string) => k2.localeCompare (k1)
 })
 
@@ -33,7 +33,7 @@ export default (
 	logger = logger || DEFAULT_CONNECTION_CONFIG.logger.child({ stream: 'in-mem-store' })
 	chatKey = chatKey || waChatKey(true)
 	const KeyedDB = require('@adiwajshing/keyed-db').default as new (...args: any[]) => KeyedDB<Chat, string>
-	
+
 	const chats = new KeyedDB(chatKey, c => c.id)
 	const messages: { [_: string]: ReturnType<typeof makeMessagesDictionary> } = { }
 	const contacts: { [_: string]: Contact } = { }
@@ -54,7 +54,7 @@ export default (
 		for(const contact of newContacts) {
 			oldContacts.delete(contact.id)
 			contacts[contact.id] = Object.assign(
-				contacts[contact.id] || {}, 
+				contacts[contact.id] || {},
 				contact
 			)
 		}
@@ -63,7 +63,7 @@ export default (
 	}
 
 	/**
-	 * binds to a BaileysEventEmitter. 
+	 * binds to a BaileysEventEmitter.
 	 * It listens to all events and constructs a state that you can query accurate data from.
 	 * Eg. can use the store to fetch chats, contacts, messages etc.
 	 * @param ev typically the event emitter from the socket connection
@@ -76,7 +76,7 @@ export default (
 			if(isLatest) {
 				chats.clear()
 			}
-			
+
 			const chatsAdded = chats.insertIfAbsent(...newChats).length
 			logger.debug({ chatsAdded }, 'synced chats')
 		})
@@ -150,12 +150,12 @@ export default (
 
 					if(type === 'notify') {
 						if(!chats.get(jid)) {
-							ev.emit('chats.upsert', [ 
-								{ 
-									id: jid, 
-									conversationTimestamp: toNumber(msg.messageTimestamp), 
-									unreadCount: 1 
-								} 
+							ev.emit('chats.upsert', [
+								{
+									id: jid,
+									conversationTimestamp: toNumber(msg.messageTimestamp),
+									unreadCount: 1
+								}
 							])
 						}
 					}
@@ -268,7 +268,7 @@ export default (
 			const mode = !cursor || 'before' in cursor ? 'before' : 'after'
 			const cursorKey = !!cursor ? ('before' in cursor ? cursor.before : cursor.after) : undefined
 			const cursorValue = cursorKey ? list.get(cursorKey.id) : undefined
-			
+
 			let messages: WAMessage[]
 			if(list && mode === 'before' && (!cursorKey || cursorValue)) {
 				if(cursorValue) {
@@ -286,7 +286,7 @@ export default (
 					const cursor = { before: fMessage?.key || cursorKey }
 					const extra = await retrieve (diff, cursor)
 					// add to DB
-					for(let i = extra.length-1; i >= 0;i--) {
+					for(let i = extra.length - 1; i >= 0;i--) {
 						list.upsert(extra[i], 'prepend')
 					}
 

@@ -54,7 +54,7 @@ export const hkdfInfoKey = (type: MediaType) => {
 	if(type === 'md-app-state') {
 		str = 'App State'
 	}
-    
+
 	const hkdfInfo = str[0].toUpperCase() + str.slice(1)
 	return `WhatsApp ${hkdfInfo} Keys`
 }
@@ -145,7 +145,7 @@ export const generateProfilePicture = async(mediaUpload: WAMediaUpload) => {
 			.resize(640, 640, RESIZE_BILINEAR)
 			.getBufferAsync(MIME_JPEG)
 	}
-    
+
 	return {
 		img: await img,
 	}
@@ -207,8 +207,8 @@ export const getStream = async(item: WAMediaUpload) => {
 
 /** generates a thumbnail for a given media, if required */
 export async function generateThumbnail(
-	file: string, 
-	mediaType: 'video' | 'image', 
+	file: string,
+	mediaType: 'video' | 'image',
 	options: {
         logger?: Logger
     }
@@ -229,7 +229,7 @@ export async function generateThumbnail(
 			options.logger?.debug('could not generate video thumb: ' + err)
 		}
 	}
-    
+
 	return thumbnail
 }
 
@@ -238,9 +238,9 @@ export const getHttpStream = async(url: string | URL, options: AxiosRequestConfi
 	const fetched = await axios.get(url.toString(), { ...options, responseType: 'stream' })
 	return fetched.data as Readable
 }
- 
+
 export const encryptedStream = async(
-	media: WAMediaUpload, 
+	media: WAMediaUpload,
 	mediaType: MediaType,
 	saveOriginalFileIfRequired = true,
 	logger?: Logger
@@ -266,7 +266,7 @@ export const encryptedStream = async(
 		writeStream = createWriteStream(bodyPath)
 		didSaveToTmpPath = true
 	}
-    
+
 	let fileLength = 0
 	const aes = Crypto.createCipheriv('aes-256-cbc', cipherKey, iv)
 	let hmac = Crypto.createHmac('sha256', macKey).update(iv)
@@ -278,7 +278,7 @@ export const encryptedStream = async(
 		hmac = hmac.update(buff)
 		encWriteStream.push(buff)
 	}
-    
+
 	try {
 		for await (const data of stream) {
 			fileLength += data.length
@@ -293,21 +293,21 @@ export const encryptedStream = async(
 		}
 
 		onChunk(aes.final())
-    
+
 		const mac = hmac.digest().slice(0, 10)
 		sha256Enc = sha256Enc.update(mac)
-        
+
 		const fileSha256 = sha256Plain.digest()
 		const fileEncSha256 = sha256Enc.digest()
-        
+
 		encWriteStream.push(mac)
 		encWriteStream.push(null)
-    
+
 		writeStream && writeStream.end()
 		stream.destroy()
 
 		logger?.debug('encrypted data successfully')
-    
+
 		return {
 			mediaKey,
 			encWriteStream,
@@ -356,14 +356,14 @@ export const downloadContentFromMessage = async(
 	if(startByte) {
 		const chunk = toSmallestChunkSize(startByte || 0)
 		if(chunk) {
-			startChunk = chunk-AES_CHUNK_SIZE
+			startChunk = chunk - AES_CHUNK_SIZE
 			bytesFetched = chunk
 
 			firstBlockIsIV = true
 		}
 	}
 
-	const endChunk = endByte ? toSmallestChunkSize(endByte || 0)+AES_CHUNK_SIZE : undefined    
+	const endChunk = endByte ? toSmallestChunkSize(endByte || 0) + AES_CHUNK_SIZE : undefined
 
 	const headers: { [_: string]: string } = {
 		Origin: DEFAULT_ORIGIN,
@@ -377,7 +377,7 @@ export const downloadContentFromMessage = async(
 
 	// download the message
 	const fetched = await getHttpStream(
-		downloadUrl, 
+		downloadUrl,
 		{
 			headers,
 			maxBodyLength: Infinity,
@@ -392,11 +392,11 @@ export const downloadContentFromMessage = async(
 
 	const pushBytes = (bytes: Buffer, push: (bytes: Buffer) => void) => {
 		if(startByte || endByte) {
-			const start = bytesFetched >= startByte ? undefined : Math.max(startByte-bytesFetched, 0)
-			const end = bytesFetched+bytes.length < endByte ? undefined : Math.max(endByte-bytesFetched, 0)
-            
+			const start = bytesFetched >= startByte ? undefined : Math.max(startByte - bytesFetched, 0)
+			const end = bytesFetched + bytes.length < endByte ? undefined : Math.max(endByte - bytesFetched, 0)
+
 			push(bytes.slice(start, end))
-    
+
 			bytesFetched += bytes.length
 		} else {
 			push(bytes)
@@ -406,7 +406,7 @@ export const downloadContentFromMessage = async(
 	const output = new Transform({
 		transform(chunk, _, callback) {
 			let data = Buffer.concat([remainingBytes, chunk])
-            
+
 			const decryptLength = toSmallestChunkSize(data.length)
 			remainingBytes = data.slice(decryptLength)
 			data = data.slice(0, decryptLength)
@@ -424,7 +424,7 @@ export const downloadContentFromMessage = async(
 				if(endByte) {
 					aes.setAutoPadding(false)
 				}
-                
+
 			}
 
 			try {
@@ -432,7 +432,7 @@ export const downloadContentFromMessage = async(
 				callback()
 			} catch(error) {
 				callback(error)
-			}  
+			}
 		},
 		final(callback) {
 			try {
@@ -451,14 +451,14 @@ export const downloadContentFromMessage = async(
  * @param message the media message you want to decode
  */
 export async function decryptMediaMessageBuffer(message: WAMessageContent): Promise<Readable> {
-	/* 
+	/*
         One can infer media type from the key in the message
         it is usually written as [mediaType]Message. Eg. imageMessage, audioMessage etc.
     */
 	const type = Object.keys(message)[0] as MessageType
 	if(
 		!type ||
-		type === 'conversation' || 
+		type === 'conversation' ||
 		type === 'extendedTextMessage'
 	) {
 		throw new Boom(`no media message for "${type}"`, { statusCode: 400 })
@@ -492,8 +492,8 @@ export function extensionForMediaMessage(message: WAMessageContent) {
 	const type = Object.keys(message)[0] as MessageType
 	let extension: string
 	if(
-		type === 'locationMessage' || 
-		type === 'liveLocationMessage' || 
+		type === 'locationMessage' ||
+		type === 'liveLocationMessage' ||
 		type === 'productMessage'
 	) {
 		extension = '.jpeg'
@@ -539,8 +539,8 @@ export const getWAUploadToServer = ({ customUploadHosts, fetchAgent, logger }: C
 				const body = await axios.post(
 					url,
 					reqBody,
-					{   
-						headers: { 
+					{
+						headers: {
 							'Content-Type': 'application/octet-stream',
 							'Origin': DEFAULT_ORIGIN
 						},
@@ -552,7 +552,7 @@ export const getWAUploadToServer = ({ customUploadHosts, fetchAgent, logger }: C
 					}
 				)
 				result = body.data
-				
+
 				if(result?.url || result?.directPath) {
 					urls = {
 						mediaUrl: result.url,
@@ -568,7 +568,7 @@ export const getWAUploadToServer = ({ customUploadHosts, fetchAgent, logger }: C
 					result = error.response?.data
 				}
 
-				const isLast = hostname === hosts[uploadInfo.hosts.length-1]?.hostname
+				const isLast = hostname === hosts[uploadInfo.hosts.length - 1]?.hostname
 				logger.warn({ trace: error.stack, uploadResult: result }, `Error in uploading to ${hostname} ${isLast ? '' : ', retrying...'}`)
 			}
 		}

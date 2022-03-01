@@ -29,7 +29,7 @@ export const signedKeyPair = (keyPair: KeyPair, keyId: number) => {
 	pubKey.set(signKeys.public, 1)
 
 	const signature = Curve.sign(keyPair.private, pubKey)
-  
+
 	return { keyPair: signKeys, signature, keyId }
 }
 
@@ -78,10 +78,10 @@ export function hkdf(buffer: Uint8Array, expandedLength: number, { info, salt }:
 	let prev = Buffer.from([])
 	const buffers = []
 	const num_blocks = Math.ceil(expandedLength / hashLength)
-    
+
 	const infoBuff = Buffer.from(info || [])
 
-	for(var i=0; i<num_blocks; i++) {
+	for(var i = 0; i < num_blocks; i++) {
 		const hmac = createHmac(hashAlg, prk)
 		// XXX is there a more optimal way to build up buffers?
 		const input = Buffer.concat([

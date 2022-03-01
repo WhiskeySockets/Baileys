@@ -10,7 +10,7 @@ export interface PresenceData {
     lastSeen?: number
 }
 
-export type ChatMutation = { 
+export type ChatMutation = {
     syncAction: proto.ISyncActionData
     index: string[]
 }
@@ -32,14 +32,14 @@ export type Chat = Omit<proto.IConversation, 'messages'> & {
     pin?: number | null
     archive?: boolean
 }
-/** 
+/**
  * the last messages in a chat, sorted reverse-chronologically
  * for MD modifications, the last message in the array must be the last message recv in the chat
  * */
 export type LastMessageList = Pick<proto.IWebMessageInfo, 'key' | 'messageTimestamp'>[]
 
-export type ChatModification = 
-    { 
+export type ChatModification =
+    {
         archive: boolean
         lastMessages: LastMessageList
     } |
@@ -54,11 +54,11 @@ export type ChatModification =
         clear: 'all' | { messages: {id: string, fromMe?: boolean}[] }
     } |
     {
-        star: { 
+        star: {
             messages: { id: string, fromMe?: boolean }[],
             star: boolean
         }
-    } | 
+    } |
     {
         markRead: boolean
         lastMessages: LastMessageList

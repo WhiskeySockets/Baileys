@@ -21,15 +21,15 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 
 	const groupMetadata = async(jid: string) => {
 		const result = await groupQuery(
-			jid, 
-			'get', 
+			jid,
+			'get',
 			[ { tag: 'query', attrs: { request: 'interactive' } } ]
 		)
 		return extractGroupMetadata(result)
 	}
 
 	return {
-		...sock, 
+		...sock,
 		groupMetadata,
 		groupCreate: async(subject: string, participants: string[]) => {
 			const key = generateMessageID()
@@ -86,7 +86,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 			action: ParticipantAction
 		) => {
 			const result = await groupQuery(
-				jid, 
+				jid,
 				'set',
 				participants.map(
 					jid => ({
@@ -135,7 +135,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 			return result.attrs.jid
 		},
 		groupToggleEphemeral: async(jid: string, ephemeralExpiration: number) => {
-			const content: BinaryNode = ephemeralExpiration ? 
+			const content: BinaryNode = ephemeralExpiration ?
 				{ tag: 'ephemeral', attrs: { ephemeral: ephemeralExpiration.toString() } } :
 				{ tag: 'not_ephemeral', attrs: { } }
 			await groupQuery(jid, 'set', [content])

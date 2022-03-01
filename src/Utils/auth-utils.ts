@@ -128,10 +128,10 @@ export const useSingleFileAuthState = (filename: string, logger?: Logger): { sta
 			JSON.stringify({ creds, keys }, BufferJSON.replacer, 2)
 		)
 	}
-	
+
 	if(existsSync(filename)) {
 		const result = JSON.parse(
-			readFileSync(filename, { encoding: 'utf-8' }), 
+			readFileSync(filename, { encoding: 'utf-8' }),
 			BufferJSON.reviver
 		)
 		creds = result.creds
@@ -141,8 +141,8 @@ export const useSingleFileAuthState = (filename: string, logger?: Logger): { sta
 		keys = { }
 	}
 
-	return { 
-		state: { 
+	return {
+		state: {
 			creds,
 			keys: {
 				get: (type, ids) => {
@@ -172,7 +172,7 @@ export const useSingleFileAuthState = (filename: string, logger?: Logger): { sta
 					saveState()
 				}
 			}
-		}, 
-		saveState 
+		},
+		saveState
 	}
 }

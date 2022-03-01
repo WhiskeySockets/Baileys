@@ -13,10 +13,10 @@ export type SignalIdentity = {
 	identifierKey: Uint8Array
 }
 
-export type LTHashState = { 
+export type LTHashState = {
     version: number
     hash: Buffer
-    indexValueMap: { 
+    indexValueMap: {
         [indexMacBase64: string]: { valueMac: Uint8Array | Buffer }
     }
 }
@@ -30,7 +30,7 @@ export type SignalCreds = {
 export type AuthenticationCreds = SignalCreds & {
     readonly noiseKey: KeyPair
     readonly advSecretKey: string
-    
+
     me?: Contact
     account?: proto.IADVSignedDeviceIdentity
     signalIdentities?: SignalIdentity[]

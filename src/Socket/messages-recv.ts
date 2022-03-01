@@ -19,14 +19,14 @@ const getStatusFromReceiptType = (type: string | undefined) => {
 	if(typeof type === 'undefined') {
 		return proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK
 	}
- 
+
 	return status
 }
 
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const { logger } = config
 	const sock = makeChatsSocket(config)
-	const { 
+	const {
 		ev,
 		authState,
 		ws,
@@ -74,11 +74,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			return
 		}
 
-		msgRetryMap[msgId] = retryCount+1
+		msgRetryMap[msgId] = retryCount + 1
 
 		const isGroup = !!node.attrs.participant
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
-        
+
 		const deviceIdentity = proto.ADVSignedDeviceIdentity.encode(account).finish()
 		await assertingPreKeys(1, async preKeys => {
 			const [keyId] = Object.keys(preKeys)
@@ -93,14 +93,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					to: isGroup ? node.attrs.from : jidEncode(decFrom!.user, 's.whatsapp.net', decFrom!.device, 0)
 				},
 				content: [
-					{ 
-						tag: 'retry', 
-						attrs: { 
-							count: retryCount.toString(), 
+					{
+						tag: 'retry',
+						attrs: {
+							count: retryCount.toString(),
 							id: node.attrs.id,
 							t: node.attrs.t,
 							v: '1'
-						} 
+						}
 					},
 					{
 						tag: 'registration',
@@ -145,10 +145,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			switch (protocolMsg.type) {
 			case proto.ProtocolMessage.ProtocolMessageType.HISTORY_SYNC_NOTIFICATION:
 				const histNotification = protocolMsg!.historySyncNotification
-                    
+
 				logger.info({ histNotification, id: message.key.id }, 'got history notification')
 				const { chats, contacts, messages, isLatest } = await downloadAndProcessHistorySyncNotification(histNotification, historyCache)
-                    
+
 				const meJid = authState.creds.me!.id
 				await sendNode({
 					tag: 'receipt',
@@ -178,15 +178,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					let newAppStateSyncKeyId = ''
 					for(const { keyData, keyId } of keys) {
 						const strKeyId = Buffer.from(keyId.keyId!).toString('base64')
-                            
+
 						logger.info({ strKeyId }, 'injecting new app state sync key')
 						await authState.keys.set({ 'app-state-sync-key': { [strKeyId]: keyData } })
-    
+
 						newAppStateSyncKeyId = strKeyId
 					}
-                        
+
 					ev.emit('creds.update', { myAppStateKeyId: newAppStateSyncKeyId })
-    
+
 					resyncMainAppState()
 				} else {
 					[
@@ -197,12 +197,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				break
 			case proto.ProtocolMessage.ProtocolMessageType.REVOKE:
 				ev.emit('messages.update', [
-					{ 
+					{
 						key: {
 							...message.key,
 							id: protocolMsg.key!.id
-						}, 
-						update: { message: null, messageStubType: WAMessageStubType.REVOKE, key: message.key } 
+						},
+						update: { message: null, messageStubType: WAMessageStubType.REVOKE, key: message.key }
 					}
 				])
 				break
@@ -299,7 +299,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 				const participants = getBinaryNodeChildren(child, 'participant').map(p => p.attrs.jid)
 				if(
-					participants.length === 1 && 
+					participants.length === 1 &&
                         // if recv. "remove" message and sender removed themselves
                         // mark as left
                         areJidsSameUser(participants[0], node.attrs.participant) &&
@@ -324,7 +324,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				result.messageStubType = WAMessageStubType.GROUP_CHANGE_RESTRICT
 				result.messageStubParameters = [ (child.tag === 'locked') ? 'on' : 'off' ]
 				break
-                
+
 			}
 		} else {
 			switch (child.tag) {
@@ -354,7 +354,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				// message failed to decrypt
 				if(msg.messageStubType === proto.WebMessageInfo.WebMessageInfoStubType.CIPHERTEXT) {
 					logger.error(
-						{ msgId: msg.key.id, params: msg.messageStubParameters }, 
+						{ msgId: msg.key.id, params: msg.messageStubParameters },
 						'failure in decrypting message'
 					)
 					retryMutex.mutex(
@@ -366,7 +366,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					await sendReceipt(msg.key.remoteJid!, msg.key.participant, [msg.key.id!], undefined)
 					logger.debug({ msg: msg.key }, 'sent delivery receipt')
 				}
-				
+
 				msg.key.remoteJid = jidNormalizedUser(msg.key.remoteJid!)
 				ev.emit('messages.upsert', { messages: [msg], type: stanza.attrs.offline ? 'append' : 'notify' })
 			}
@@ -470,7 +470,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						)
 					} else {
 						ev.emit(
-							'messages.update', 
+							'messages.update',
 							ids.map(id => ({
 								key: { ...key, id },
 								update: { status }
@@ -521,7 +521,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						...(msg.key || {})
 					}
 					msg.messageTimestamp = +node.attrs.t
-					
+
 					const fullMsg = proto.WebMessageInfo.fromObject(msg)
 					ev.emit('messages.upsert', { messages: [fullMsg], type: 'append' })
 				}
@@ -549,7 +549,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					'p-' + chat.id!,
 					() => processMessage(msg, chat)
 				)
-				
+
 				if(!!msg.message && !msg.message!.protocolMessage) {
 					chat.conversationTimestamp = toNumber(msg.messageTimestamp)
 					if(!msg.key.fromMe) {

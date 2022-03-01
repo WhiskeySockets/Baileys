@@ -21,7 +21,7 @@ export const jidDecode = (jid: string) => {
 		return undefined
 	}
 
-	const server = jid.slice(sepIdx+1)
+	const server = jid.slice(sepIdx + 1)
 	const userCombined = jid.slice(0, sepIdx)
 
 	const [userAgent, device] = userCombined.split(':')

@@ -27,7 +27,7 @@ export const createSignalIdentity = (
 	wid: string,
 	accountSignatureKey: Uint8Array
 ): SignalIdentity => {
-	return { 
+	return {
 		identifier: { name: wid, deviceId: 0 },
 		identifierKey: generateSignalPubKey(accountSignatureKey)
 	}
@@ -145,7 +145,7 @@ export const decryptGroupSignalProto = (group: string, user: string, msg: Buffer
 
 export const processSenderKeyMessage = async(
 	authorJid: string,
-	item: proto.ISenderKeyDistributionMessage, 
+	item: proto.ISenderKeyDistributionMessage,
 	auth: SignalAuthState
 ) => {
 	const builder = new GroupSessionBuilder(signalStorage(auth))
@@ -171,7 +171,7 @@ export const decryptSignalProto = async(user: string, type: 'pkmsg' | 'msg', msg
 		break
 	case 'msg':
 		result = await session.decryptWhisperMessage(msg)
-		break 
+		break
 	}
 
 	return result
@@ -231,7 +231,7 @@ export const parseAndInjectE2ESessions = async(node: BinaryNode, auth: SignalAut
 				const identity = getBinaryNodeChildBuffer(node, 'identity')
 				const jid = node.attrs.jid
 				const registrationId = getBinaryNodeChildUInt(node, 'registration', 4)
-			
+
 				const device = {
 					registrationId,
 					identityKey: generateSignalPubKey(identity),

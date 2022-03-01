@@ -10,7 +10,7 @@ export const DEF_CALLBACK_PREFIX = 'CB:'
 export const DEF_TAG_PREFIX = 'TAG:'
 export const PHONE_CONNECTION_CB = 'CB:Pong'
 
-export const WA_DEFAULT_EPHEMERAL = 7*24*60*60
+export const WA_DEFAULT_EPHEMERAL = 7 * 24 * 60 * 60
 
 export const NOISE_MODE = 'Noise_XX_25519_AESGCM_SHA256\0\0\0\0'
 export const NOISE_WA_HEADER = new Uint8Array([87, 65, 5, 2]) // last is "DICT_VERSION"

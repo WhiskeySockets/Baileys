@@ -6,8 +6,8 @@ import makeMessagesSocket from './messages'
 const makeGroupsSocket = (config: LegacySocketConfig) => {
 	const { logger } = config
 	const sock = makeMessagesSocket(config)
-	const { 
-		ev, 
+	const {
+		ev,
 		ws: socketEvents,
 		query,
 		generateMessageTag,
@@ -29,10 +29,10 @@ const makeGroupsSocket = (config: LegacySocketConfig) => {
 					jid: jid,
 					subject: subject,
 				},
-				content: participants ? 
+				content: participants ?
 					participants.map(jid => (
 						{ tag: 'participant', attrs: { jid } }
-					)) : 
+					)) :
 					additionalNodes
 			}
 		], [WAMetric.group, 136], tag)
@@ -42,9 +42,9 @@ const makeGroupsSocket = (config: LegacySocketConfig) => {
 	/** Get the metadata of the group from WA */
 	const groupMetadataFull = async(jid: string) => {
 		const metadata = await query({
-			json: ['query', 'GroupMetadata', jid], 
+			json: ['query', 'GroupMetadata', jid],
 			expect200: true
-		}) 
+		})
 
 		const meta: GroupMetadata = {
 			id: metadata.id,
@@ -69,10 +69,10 @@ const makeGroupsSocket = (config: LegacySocketConfig) => {
 	const groupMetadataMinimal = async(jid: string) => {
 		const { attrs, content }:BinaryNode = await query({
 			json: {
-				tag: 'query', 
+				tag: 'query',
 				attrs: { type: 'group', jid: jid, epoch: currentEpoch().toString() }
 			},
-			binaryTag: [WAMetric.group, WAFlag.ignore], 
+			binaryTag: [WAMetric.group, WAFlag.ignore],
 			expect200: true
 		})
 		const participants: GroupParticipant[] = []
@@ -102,7 +102,7 @@ const makeGroupsSocket = (config: LegacySocketConfig) => {
 		}
 		return meta
 	}
-	
+
 	socketEvents.on('CB:Chat,cmd:action', (json: BinaryNode) => {
 		/*const data = json[1].data
 		if (data) {
@@ -138,7 +138,7 @@ const makeGroupsSocket = (config: LegacySocketConfig) => {
 				result = await groupMetadataFull(jid)
 			}
 
-			return result 
+			return result
 		},
 		/**
 		 * Create a group
@@ -219,16 +219,16 @@ const makeGroupsSocket = (config: LegacySocketConfig) => {
 			return jids
 		},
 		/** Query broadcast list info */
-		getBroadcastListInfo: async(jid: string) => { 
+		getBroadcastListInfo: async(jid: string) => {
 			interface WABroadcastListInfo {
 				status: number
 				name: string
 				recipients?: {id: string}[]
 			}
-			
-			const result = await query({ 
-				json: ['query', 'contact', jid], 
-				expect200: true, 
+
+			const result = await query({
+				json: ['query', 'contact', jid],
+				expect200: true,
 				requiresPhoneConnection: true
 			}) as WABroadcastListInfo
 
@@ -245,8 +245,8 @@ const makeGroupsSocket = (config: LegacySocketConfig) => {
 		},
 		groupInviteCode: async(jid: string) => {
 			const response = await sock.query({
-				json: ['query', 'inviteCode', jid], 
-				expect200: true, 
+				json: ['query', 'inviteCode', jid],
+				expect200: true,
 				requiresPhoneConnection: false
 			})
 			return response.code as string

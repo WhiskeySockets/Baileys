@@ -11,7 +11,7 @@ const MAX_SYNC_ATTEMPTS = 5
 export const makeChatsSocket = (config: SocketConfig) => {
 	const { logger } = config
 	const sock = makeMessagesSocket(config)
-	const { 
+	const {
 		ev,
 		ws,
 		authState,
@@ -95,7 +95,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	const fetchStatus = async(jid: string) => {
 		const [result] = await interactiveQuery(
-			[{ tag: 'user', attrs: { jid } }], 
+			[{ tag: 'user', attrs: { jid } }],
 			{ tag: 'status', attrs: { } }
 		)
 		if(result) {
@@ -130,8 +130,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		const result = await query({
 			tag: 'iq',
 			attrs: {
-				xmlns: 'blocklist', 
-				to: S_WHATSAPP_NET, 
+				xmlns: 'blocklist',
+				to: S_WHATSAPP_NET,
 				type: 'get'
 			}
 		})
@@ -223,7 +223,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					attrs: {
 						type: 'account_sync',
 						timestamp: fromTimestamp.toString(),
-					}  
+					}
 				}
 			]
 		})
@@ -238,7 +238,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		await authState.keys.transaction(
 			async() => {
 				const collectionsToHandle = new Set<string>(collections)
-				// in case something goes wrong -- ensure we don't enter a loop that cannot be exited from 
+				// in case something goes wrong -- ensure we don't enter a loop that cannot be exited from
 				const attemptsMap = { } as { [T in WAPatchName]: number | undefined }
 				// keep executing till all collections are done
 				// sometimes a single patch request will not return all the patches (God knows why)
@@ -265,9 +265,9 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 						nodes.push({
 							tag: 'collection',
-							attrs:  { 
-								name, 
-								version: state.version.toString(), 
+							attrs:  {
+								name,
+								version: state.version.toString(),
 								// return snapshot if being synced from scratch
 								return_snapshot: (!state.version).toString()
 							}
@@ -289,7 +289,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 							}
 						]
 					})
-                    
+
 					const decoded = await extractSyncdPatches(result) // extract from binary node
 					for(const key in decoded) {
 						const name = key as WAPatchName
@@ -298,7 +298,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 							if(snapshot) {
 								const { state: newState, mutations } = await decodeSyncdSnapshot(name, snapshot, getAppStateSyncKey, initialVersionMap[name])
 								states[name] = newState
-    
+
 								logger.info(`restored state of ${name} from snapshot to v${newState.version} with ${mutations.length} mutations`)
 
 								await authState.keys.set({ 'app-state-sync-version': { [name]: newState } })
@@ -309,14 +309,14 @@ export const makeChatsSocket = (config: SocketConfig) => {
 							// only process if there are syncd patches
 							if(patches.length) {
 								const { newMutations, state: newState } = await decodePatches(name, patches, states[name], getAppStateSyncKey, initialVersionMap[name])
-    
+
 								await authState.keys.set({ 'app-state-sync-version': { [name]: newState } })
-                    
+
 								logger.info(`synced ${name} to v${newState.version}`)
 								if(newMutations.length) {
 									logger.trace({ newMutations, name }, 'recv new mutations')
 								}
-    
+
 								appStateChunk.totalMutations.push(...newMutations)
 							}
 
@@ -431,17 +431,17 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	const resyncMainAppState = async() => {
-        
+
 		logger.debug('resyncing main app state')
-        
+
 		await (
 			mutationMutex.mutex(
-				() => resyncAppState([ 
-					'critical_block', 
-					'critical_unblock_low', 
-					'regular_high', 
-					'regular_low', 
-					'regular' 
+				() => resyncAppState([
+					'critical_block',
+					'critical_unblock_low',
+					'regular_high',
+					'regular_low',
+					'regular'
 				])
 			)
 				.catch(err => (
@@ -458,7 +458,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		for(const { syncAction: { value: action }, index: [_, id, msgId, fromMe] } of actions) {
 			const update: Partial<Chat> = { id }
 			if(action?.muteAction) {
-				update.mute = action.muteAction?.muted ? 
+				update.mute = action.muteAction?.muted ?
 					toNumber(action.muteAction!.muteEndTimestamp!) :
 					undefined
 			} else if(action?.archiveChatAction) {
@@ -546,7 +546,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 									tag: 'collection',
 									attrs: {
 										name,
-										version: (state.version-1).toString(),
+										version: (state.version - 1).toString(),
 										return_snapshot: 'false'
 									},
 									content: [
@@ -562,9 +562,9 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					]
 				}
 				await query(node)
-        
+
 				await authState.keys.set({ 'app-state-sync-version': { [name]: state } })
-                
+
 				if(config.emitOwnEvents) {
 					const result = await decodePatches(name, [{ ...patch, version: { version: state.version }, }], initial, getAppStateSyncKey)
 					processSyncActions(result.newMutations)
@@ -589,7 +589,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		})
 
 		const propsNode = getBinaryNodeChild(abtNode, 'props')
-        
+
 		let props: { [_: string]: string } = { }
 		if(propsNode) {
 			props = reduceBinaryNodeToDictionary(propsNode, 'prop')
@@ -616,7 +616,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		})
 
 		const propsNode = getBinaryNodeChild(resultNode, 'props')
-        
+
 		let props: { [_: string]: string } = { }
 		if(propsNode) {
 			props = reduceBinaryNodeToDictionary(propsNode, 'prop')
@@ -651,7 +651,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			}
 
 			lastAccountSyncTimestamp = +attrs.timestamp
-			ev.emit('creds.update', { lastAccountSyncTimestamp })                
+			ev.emit('creds.update', { lastAccountSyncTimestamp })
 			break
 		default:
 			logger.info({ node }, 'received unknown sync')
@@ -683,7 +683,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	})
 
 	return {
-		...sock, 
+		...sock,
 		appPatch,
 		sendPresenceUpdate,
 		presenceSubscribe,

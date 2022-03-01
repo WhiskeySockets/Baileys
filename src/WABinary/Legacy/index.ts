@@ -14,7 +14,7 @@ export const isLegacyBinaryNode = (buffer: Buffer) => {
 }
 
 function decode(buffer: Buffer, indexRef: { index: number }): BinaryNode {
-    
+
 	const checkEOS = (length: number) => {
 		if(indexRef.index + length > buffer.length) {
 			throw new Error('end of stream')
@@ -201,7 +201,7 @@ function decode(buffer: Buffer, indexRef: { index: number }): BinaryNode {
 		throw new Error('invalid node')
 	}
 	// read the attributes in
-	
+
 	const attributesLength = (listSize - 1) >> 1
 	for(let i = 0; i < attributesLength; i++) {
 		const key = readString(readByte())
@@ -243,10 +243,10 @@ function decode(buffer: Buffer, indexRef: { index: number }): BinaryNode {
 }
 
 const encode = ({ tag, attrs, content }: BinaryNode, buffer: number[] = []) => {
-	
+
 	const pushByte = (value: number) => buffer.push(value & 0xff)
 
-	const pushInt = (value: number, n: number, littleEndian=false) => {
+	const pushInt = (value: number, n: number, littleEndian = false) => {
 		for(let i = 0; i < n; i++) {
 			const curShift = littleEndian ? i : n - 1 - i
 			buffer.push((value >> (curShift * 8)) & 0xff)
@@ -263,7 +263,7 @@ const encode = ({ tag, attrs, content }: BinaryNode, buffer: number[] = []) => {
 		if(length >= 4294967296) {
 			throw new Error('string too large to encode: ' + length)
 		}
-        
+
 		if(length >= 1 << 20) {
 			pushByte(Tags.BINARY_32)
 			pushInt(length, 4) // 32 bit integer
@@ -294,7 +294,7 @@ const encode = ({ tag, attrs, content }: BinaryNode, buffer: number[] = []) => {
 		if(token === 'c.us') {
 			token = 's.whatsapp.net'
 		}
-        
+
 		const tokenIndex = SingleByteTokens.indexOf(token)
 		if(!i && token === 's.whatsapp.net') {
 			writeToken(tokenIndex)
@@ -341,14 +341,14 @@ const encode = ({ tag, attrs, content }: BinaryNode, buffer: number[] = []) => {
 		typeof attrs[k] !== 'undefined' && attrs[k] !== null
 	))
 
-	writeListStart(2*validAttributes.length + 1 + (typeof content !== 'undefined' && content !== null ? 1 : 0))
+	writeListStart(2 * validAttributes.length + 1 + (typeof content !== 'undefined' && content !== null ? 1 : 0))
 	writeString(tag)
 
 	validAttributes.forEach((key) => {
 		if(typeof attrs[key] === 'string') {
 			writeString(key)
 			writeString(attrs[key])
-		} 
+		}
 	})
 
 	if(typeof content === 'string') {
@@ -364,7 +364,7 @@ const encode = ({ tag, attrs, content }: BinaryNode, buffer: number[] = []) => {
 			}
 		}
 	} else if(typeof content === 'undefined' || content === null) {
-        
+
 	} else {
 		throw new Error(`invalid children for header "${tag}": ${content} (${typeof content})`)
 	}

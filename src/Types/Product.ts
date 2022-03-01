@@ -1,8 +1,8 @@
 
 export type CatalogResult = {
-	data: { 
-		paging: { cursors: { before: string, after: string } }, 
-		data: any[] 
+	data: {
+		paging: { cursors: { before: string, after: string } },
+		data: any[]
 	}
 }
 
