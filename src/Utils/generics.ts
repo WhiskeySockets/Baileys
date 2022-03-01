@@ -33,8 +33,8 @@ export const BufferJSON = {
 	},
 	reviver: (_, value: any) => {
 		if(typeof value === 'object' && !!value && (value.buffer === true || value.type === 'Buffer')) {
-			const val = value.data || value.value 
-			return typeof val === 'string' ? Buffer.from(val, 'base64') : Buffer.from(val)
+			const val = value.data || value.value
+			return typeof val === 'string' ? Buffer.from(val, 'base64') : Buffer.from(val || [])
 		}
 
 		return value
