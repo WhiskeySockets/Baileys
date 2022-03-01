@@ -189,9 +189,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 					resyncMainAppState()
 				} else {
-					[
-						logger.info({ protocolMsg }, 'recv app state sync with 0 keys')
-					]
+					logger.info({ protocolMsg }, 'recv app state sync with 0 keys')
 				}
 
 				break
