@@ -482,7 +482,8 @@ export const extractMessageContent = (content: WAMessageContent | undefined | nu
 		}
 	}
 
-	content = content?.ephemeralMessage?.message ||
+	content = content?.ephemeralMessage?.message?.viewOnceMessage?.message ||
+				content?.ephemeralMessage?.message ||
 				content?.viewOnceMessage?.message ||
 				content ||
 				undefined
