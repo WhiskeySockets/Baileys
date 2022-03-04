@@ -464,6 +464,21 @@ export const getContentType = (content: WAProto.IMessage | undefined) => {
 }
 
 /**
+ * Normalizes ephemeral, view once messages to regular message content
+ * Eg. image messages in ephemeral messages, in view once messages etc.
+ * @param content
+ * @returns
+ */
+export const normalizeMessageContent = (content: WAMessageContent): WAMessageContent => {
+	content = content?.ephemeralMessage?.message?.viewOnceMessage?.message ||
+				content?.ephemeralMessage?.message ||
+				content?.viewOnceMessage?.message ||
+				content ||
+				undefined
+	return content
+}
+
+/**
  * Extract the true message content from a message
  * Eg. extracts the inner message from a disappearing message/view once message
  */
@@ -482,11 +497,7 @@ export const extractMessageContent = (content: WAMessageContent | undefined | nu
 		}
 	}
 
-	content = content?.ephemeralMessage?.message?.viewOnceMessage?.message ||
-				content?.ephemeralMessage?.message ||
-				content?.viewOnceMessage?.message ||
-				content ||
-				undefined
+	content = normalizeMessageContent(content)
 
 	if(content?.buttonsMessage) {
 	  return extractFromTemplateMessage(content.buttonsMessage!)
