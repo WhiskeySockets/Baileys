@@ -2,7 +2,7 @@ import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto'
 import { WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import { AnyMessageContent, Chat, GroupMetadata, LegacySocketConfig, MediaConnInfo, MessageUpdateType, MessageUserReceipt, MessageUserReceiptUpdate, MiscMessageGenerationOptions, ParticipantAction, WAFlag, WAMessage, WAMessageCursor, WAMessageKey, WAMessageStatus, WAMessageStubType, WAMessageUpdate, WAMetric, WAUrlInfo } from '../Types'
-import { decryptMediaMessageBuffer, extractMessageContent, generateWAMessage, getWAUploadToServer, toNumber } from '../Utils'
+import { downloadMediaMessage, generateWAMessage, getWAUploadToServer, MediaDownloadOptions, toNumber } from '../Utils'
 import { areJidsSameUser, BinaryNode, getBinaryNodeMessages, isJidGroup, jidNormalizedUser } from '../WABinary'
 import makeChatsSocket from './chats'
 
@@ -446,28 +446,9 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 
 			return Object.values(info)
 		},
-		downloadMediaMessage: async(message: WAMessage, type: 'buffer' | 'stream' = 'buffer') => {
-			const downloadMediaMessage = async() => {
-				const mContent = extractMessageContent(message.message)
-				if(!mContent) {
-					throw new Boom('No message present', { statusCode: 400, data: message })
-				}
-
-				const stream = await decryptMediaMessageBuffer(mContent)
-				if(type === 'buffer') {
-					let buffer = Buffer.from([])
-					for await (const chunk of stream) {
-						buffer = Buffer.concat([buffer, chunk])
-					}
-
-					return buffer
-				}
-
-				return stream
-			}
-
+		downloadMediaMessage: async(message: WAMessage, type: 'buffer' | 'stream' = 'buffer', options: MediaDownloadOptions = { }) => {
 			try {
-				const result = await downloadMediaMessage()
+				const result = await downloadMediaMessage(message, type, options)
 				return result
 			} catch(error) {
 				if(error.message.includes('404')) { // media needs to be updated
@@ -475,7 +456,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 
 					await updateMediaMessage(message)
 
-					const result = await downloadMediaMessage()
+					const result = await downloadMediaMessage(message, type, options)
 					return result
 				}
 

@@ -21,6 +21,7 @@ import {
 } from '../Types'
 import { generateMessageID, unixTimestampSeconds } from './generics'
 import { encryptedStream, generateThumbnail, getAudioDuration } from './messages-media'
+import { downloadContentFromMessage, MediaDownloadOptions } from '.'
 
 type MediaUploadData = {
 	media: WAMediaUpload
@@ -534,4 +535,33 @@ export const updateMessageWithReceipt = (msg: WAMessage, receipt: MessageUserRec
 	} else {
 		msg.userReceipt.push(receipt)
 	}
+}
+
+/**
+ * Downloads the given message. Throws an error if it's not a media message
+ */
+export const downloadMediaMessage = async(message: WAMessage, type: 'buffer' | 'stream', options: MediaDownloadOptions) => {
+	const mContent = extractMessageContent(message.message)
+	if(!mContent) {
+		throw new Boom('No message present', { statusCode: 400, data: message })
+	}
+
+	const contentType = getContentType(mContent)
+	const mediaType = contentType.replace('Message', '') as MediaType
+	const media = mContent[contentType]
+	if(typeof media !== 'object' || !('url' in media)) {
+		throw new Boom(`"${contentType}" message is not a media message`)
+	}
+
+	const stream = await downloadContentFromMessage(media, mediaType, options)
+	if(type === 'buffer') {
+		let buffer = Buffer.from([])
+		for await (const chunk of stream) {
+			buffer = Buffer.concat([buffer, chunk])
+		}
+
+		return buffer
+	}
+
+	return stream
 }

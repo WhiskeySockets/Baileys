@@ -338,7 +338,7 @@ const toSmallestChunkSize = (num: number) => {
 	return Math.floor(num / AES_CHUNK_SIZE) * AES_CHUNK_SIZE
 }
 
-type MediaDownloadOptions = {
+export type MediaDownloadOptions = {
     startByte?: number
     endByte?: number
 }
@@ -444,47 +444,6 @@ export const downloadContentFromMessage = async(
 		},
 	})
 	return fetched.pipe(output, { end: true })
-}
-
-/**
- * Decode a media message (video, image, document, audio) & return decrypted buffer
- * @param message the media message you want to decode
- */
-export async function decryptMediaMessageBuffer(message: WAMessageContent): Promise<Readable> {
-	/*
-        One can infer media type from the key in the message
-        it is usually written as [mediaType]Message. Eg. imageMessage, audioMessage etc.
-    */
-	const type = Object.keys(message)[0] as MessageType
-	if(
-		!type ||
-		type === 'conversation' ||
-		type === 'extendedTextMessage'
-	) {
-		throw new Boom(`no media message for "${type}"`, { statusCode: 400 })
-	}
-
-	if(type === 'locationMessage' || type === 'liveLocationMessage') {
-		const buffer = Buffer.from(message[type].jpegThumbnail)
-		const readable = new Readable({ read: () => {} })
-		readable.push(buffer)
-		readable.push(null)
-		return readable
-	}
-
-	let messageContent: WAGenericMediaMessage
-	if(message.productMessage) {
-		const product = message.productMessage.product?.productImage
-		if(!product) {
-			throw new Boom('product has no image', { statusCode: 400 })
-		}
-
-		messageContent = product
-	} else {
-		messageContent = message[type]
-	}
-
-	return downloadContentFromMessage(messageContent, type.replace('Message', '') as MediaType)
 }
 
 export function extensionForMediaMessage(message: WAMessageContent) {
