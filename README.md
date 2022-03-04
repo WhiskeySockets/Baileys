@@ -15,7 +15,7 @@
 
 ## Example
 
-Do check out & run [example.ts](Example/example.ts) to see example usage of the library.
+Do check out & run [example.ts](https://github.com/adiwajshing/Baileys/blob/master/Example/example.ts) to see example usage of the library.
 The script covers most common use cases.
 To run the example script, download or clone the repo and then type the following in terminal:
 1. ``` cd path/to/Baileys ```
