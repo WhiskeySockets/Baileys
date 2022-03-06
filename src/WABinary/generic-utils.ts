@@ -33,6 +33,15 @@ export const getBinaryNodeChildBuffer = (node: BinaryNode, childTag: string) => 
 	}
 }
 
+export const getBinaryNodeChildString = (node: BinaryNode, childTag: string) => {
+	const child = getBinaryNodeChild(node, childTag)?.content
+	if(Buffer.isBuffer(child) || child instanceof Uint8Array) {
+		return Buffer.from(child).toString('utf-8')
+	} else if(typeof child === 'string') {
+		return child
+	}
+}
+
 export const getBinaryNodeChildUInt = (node: BinaryNode, childTag: string, length: number) => {
 	const buff = getBinaryNodeChildBuffer(node, childTag)
 	if(buff) {

@@ -10,6 +10,19 @@ export type ProductCreateResult = {
 	data: { product: any }
 }
 
+export type CatalogStatus = {
+	status: string
+	canAppeal: boolean
+}
+
+export type CatalogCollection = {
+	id: string
+	name: string
+	products: Product[]
+
+	status: CatalogStatus
+}
+
 export type ProductAvailability = 'in stock'
 
 export type ProductBase = {
