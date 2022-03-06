@@ -37,3 +37,23 @@ export type Product = ProductBase & {
 	reviewStatus: { [_: string]: string }
 	availability: ProductAvailability
 }
+
+export type OrderPrice = {
+	currency: string
+	total: number
+}
+
+export type OrderProduct = {
+	id: string
+	imageUrl: string
+	name: string
+	quantity: number
+
+	currency: string
+	price: number
+}
+
+export type OrderDetails = {
+	price: OrderPrice
+	products: OrderProduct[]
+}

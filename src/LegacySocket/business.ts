@@ -1,4 +1,4 @@
-import { LegacySocketConfig } from '../Types'
+import { LegacySocketConfig, OrderDetails } from '../Types'
 import { CatalogResult, Product, ProductCreate, ProductCreateResult, ProductUpdate } from '../Types'
 import makeGroupsSocket from './groups'
 
@@ -90,6 +90,43 @@ const makeBusinessSocket = (config: LegacySocketConfig) => {
 		return mapProduct(result.data.product)
 	}
 
+	const getOrderDetails = async(orderId: string, tokenBase64: string) => {
+		const result = await query({
+			expect200: true,
+			json: [
+				'query',
+				'order',
+				{
+					id: generateMessageTag(true),
+					orderId,
+					imageWidth: '80',
+					imageHeight: '80',
+					token: tokenBase64
+				}
+			]
+		})
+
+		const data = result.data
+		const order: OrderDetails = {
+			price: {
+				currency: data.price.currency,
+				total: data.price.total,
+			},
+			products: data.products.map(
+				p => ({
+					id: p.id,
+					imageUrl: p.image?.url,
+					name: p.name,
+					quantity: +p.quantity,
+					currency: p.currency,
+					price: +p.price
+				})
+			)
+		}
+
+		return order
+	}
+
 	// maps product create to send to WA
 	const mapProductCreate = (product: ProductCreate, mapCompliance = true) => {
 		const result: any = {
@@ -121,6 +158,7 @@ const makeBusinessSocket = (config: LegacySocketConfig) => {
 
 	return {
 		...sock,
+		getOrderDetails,
 		getCatalog,
 		productCreate,
 		productDelete,
