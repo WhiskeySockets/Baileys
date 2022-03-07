@@ -157,6 +157,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					ev.emit('contacts.set', { contacts })
 				}
 
+				if(isLatest) {
+					resyncMainAppState()
+				}
+
 				break
 			case proto.ProtocolMessage.ProtocolMessageType.APP_STATE_SYNC_KEY_SHARE:
 				const keys = protocolMsg.appStateSyncKeyShare!.keys
@@ -172,8 +176,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 
 					ev.emit('creds.update', { myAppStateKeyId: newAppStateSyncKeyId })
-
-					resyncMainAppState()
 				} else {
 					logger.info({ protocolMsg }, 'recv app state sync with 0 keys')
 				}
