@@ -2,7 +2,7 @@ import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto'
 import { WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import { AnyMessageContent, Chat, GroupMetadata, LegacySocketConfig, MediaConnInfo, MessageUpdateType, MessageUserReceipt, MessageUserReceiptUpdate, MiscMessageGenerationOptions, ParticipantAction, WAFlag, WAMessage, WAMessageCursor, WAMessageKey, WAMessageStatus, WAMessageStubType, WAMessageUpdate, WAMetric, WAUrlInfo } from '../Types'
-import { downloadMediaMessage, generateWAMessage, getWAUploadToServer, MediaDownloadOptions, toNumber } from '../Utils'
+import { downloadMediaMessage, generateWAMessage, getWAUploadToServer, MediaDownloadOptions, normalizeMessageContent, toNumber } from '../Utils'
 import { areJidsSameUser, BinaryNode, getBinaryNodeMessages, isJidGroup, jidNormalizedUser } from '../WABinary'
 import makeChatsSocket from './chats'
 
@@ -137,7 +137,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 			}
 		}
 
-		const protocolMessage = message.message?.protocolMessage || message.message?.ephemeralMessage?.message?.protocolMessage
+		const protocolMessage = normalizeMessageContent(message.message)?.protocolMessage
 		// if it's a message to delete another message
 		if(protocolMessage) {
 			switch (protocolMessage.type) {

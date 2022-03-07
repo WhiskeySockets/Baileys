@@ -2,7 +2,7 @@
 import { proto } from '../../WAProto'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { Chat, GroupMetadata, MessageUserReceipt, ParticipantAction, SocketConfig, WAMessageStubType } from '../Types'
-import { decodeMessageStanza, downloadAndProcessHistorySyncNotification, encodeBigEndian, generateSignalPubKey, toNumber, xmppPreKey, xmppSignedPreKey } from '../Utils'
+import { decodeMessageStanza, downloadAndProcessHistorySyncNotification, encodeBigEndian, generateSignalPubKey, normalizeMessageContent, toNumber, xmppPreKey, xmppSignedPreKey } from '../Utils'
 import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
 import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getAllBinaryNodeChildren, getBinaryNodeChildren, isJidGroup, jidDecode, jidEncode, jidNormalizedUser } from '../WABinary'
 import { makeChatsSocket } from './chats'
@@ -125,7 +125,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const processMessage = async(message: proto.IWebMessageInfo, chatUpdate: Partial<Chat>) => {
-		const protocolMsg = message.message?.protocolMessage
+		const content = normalizeMessageContent(message.message)
+		const protocolMsg = content?.protocolMessage
 		if(protocolMsg) {
 			switch (protocolMsg.type) {
 			case proto.ProtocolMessage.ProtocolMessageType.HISTORY_SYNC_NOTIFICATION:
