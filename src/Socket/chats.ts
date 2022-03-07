@@ -522,7 +522,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				logger.debug({ patch: patchCreate }, 'applying app patch')
 
 				await resyncAppState([name])
-				const { [name]: initial } = await authState.keys.get('app-state-sync-version', [name])
+
+				let { [name]: initial } = await authState.keys.get('app-state-sync-version', [name])
+				initial = initial || newLTHashState()
+
 				const { patch, state } = await encodeSyncdPatch(
 					patchCreate,
 					myAppStateKeyId,
