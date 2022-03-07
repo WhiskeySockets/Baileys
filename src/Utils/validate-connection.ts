@@ -1,4 +1,5 @@
 import { Boom } from '@hapi/boom'
+import { createHash } from 'crypto'
 import { proto } from '../../WAProto'
 import type { AuthenticationCreds, SignalCreds, SocketConfig } from '../Types'
 import { Binary, BinaryNode, getAllBinaryNodeChildren, jidDecode, S_WHATSAPP_NET } from '../WABinary'
@@ -6,7 +7,6 @@ import { Curve, hmacSign } from './crypto'
 import { encodeInt } from './generics'
 import { createSignalIdentity } from './signal'
 
-const ENCODED_VERSION = 'S9Kdc4pc4EJryo21snc5cg=='
 const getUserAgent = ({ version, browser }: Pick<SocketConfig, 'version' | 'browser'>) => ({
 	appVersion: {
 		primary: version[0],
@@ -20,7 +20,7 @@ const getUserAgent = ({ version, browser }: Pick<SocketConfig, 'version' | 'brow
 	osVersion: browser[2],
 	manufacturer: '',
 	device: browser[1],
-	osBuildNumber: '0.1',
+	osBuildNumber: '0.2',
 	localeLanguageIso6391: 'en',
 	localeCountryIso31661Alpha2: 'en',
 })
@@ -43,24 +43,28 @@ export const generateRegistrationNode = (
 	{ registrationId, signedPreKey, signedIdentityKey }: SignalCreds,
 	config: Pick<SocketConfig, 'version' | 'browser'>
 ) => {
-	const appVersionBuf = new Uint8Array(Buffer.from(ENCODED_VERSION, 'base64'))
+	// the app version needs to be md5 hashed
+	// and passed in
+	const appVersionBuf = createHash('md5')
+		.update(config.version.join('.')) // join as string
+		.digest()
 
-	const companion = {
+	const companion: proto.ICompanionProps = {
 		os: config.browser[0],
 		version: {
 			primary: 10,
 			secondary: undefined,
 			tertiary: undefined,
 		},
-		platformType: 1,
+		platformType: proto.CompanionProps.CompanionPropsPlatformType.CHROME,
 		requireFullSync: false,
 	}
 
 	const companionProto = proto.CompanionProps.encode(companion).finish()
 
-	const registerPayload = {
-		connectReason: 1,
-		connectType: 1,
+	const registerPayload: proto.IClientPayload = {
+		connectReason: proto.ClientPayload.ClientPayloadConnectReason.USER_ACTIVATED,
+		connectType: proto.ClientPayload.ClientPayloadConnectType.WIFI_UNKNOWN,
 		passive: false,
 		regData: {
 			buildHash: appVersionBuf,
@@ -74,7 +78,7 @@ export const generateRegistrationNode = (
 		},
 		userAgent: getUserAgent(config),
 		webInfo: {
-			webSubPlatform: 0,
+			webSubPlatform: proto.WebInfo.WebInfoWebSubPlatform.WEB_BROWSER,
 		},
 	}
 
