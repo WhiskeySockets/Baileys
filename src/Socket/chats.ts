@@ -648,13 +648,16 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		const type = attrs.type
 		switch (type) {
 		case 'account_sync':
-			let { lastAccountSyncTimestamp } = authState.creds
-			if(lastAccountSyncTimestamp) {
-				await updateAccountSyncTimestamp(lastAccountSyncTimestamp)
+			if(attrs.timestamp) {
+				let { lastAccountSyncTimestamp } = authState.creds
+				if(lastAccountSyncTimestamp) {
+					await updateAccountSyncTimestamp(lastAccountSyncTimestamp)
+				}
+
+				lastAccountSyncTimestamp = +attrs.timestamp
+				ev.emit('creds.update', { lastAccountSyncTimestamp })
 			}
 
-			lastAccountSyncTimestamp = +attrs.timestamp
-			ev.emit('creds.update', { lastAccountSyncTimestamp })
 			break
 		default:
 			logger.info({ node }, 'received unknown sync')
