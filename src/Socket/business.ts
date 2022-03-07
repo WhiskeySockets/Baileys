@@ -1,15 +1,15 @@
 import { ProductCreate, ProductUpdate, SocketConfig } from '../Types'
-import { parseCatalogNode, parseCollectionsNode, parseOrderDetailsNode, parseProductNode, toProductNode } from '../Utils/business'
+import { parseCatalogNode, parseCollectionsNode, parseOrderDetailsNode, parseProductNode, toProductNode, uploadingNecessaryImagesOfProduct } from '../Utils/business'
 import { jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
 import { getBinaryNodeChild } from '../WABinary/generic-utils'
 import { makeMessagesRecvSocket } from './messages-recv'
 
 export const makeBusinessSocket = (config: SocketConfig) => {
-	const { logger } = config
 	const sock = makeMessagesRecvSocket(config)
 	const {
 		authState,
-		query
+		query,
+		waUploadToServer
 	} = sock
 
 	const getCatalog = async(jid?: string, limit = 10) => {
@@ -143,6 +143,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 	}
 
 	const productUpdate = async(productId: string, update: ProductUpdate) => {
+		update = await uploadingNecessaryImagesOfProduct(update, waUploadToServer)
 		const editNode = toProductNode(productId, update)
 
 		const result = await query({
@@ -168,6 +169,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 	}
 
 	const productCreate = async(create: ProductCreate) => {
+		create = await uploadingNecessaryImagesOfProduct(create, waUploadToServer)
 		const createNode = toProductNode(undefined, create)
 
 		const result = await query({

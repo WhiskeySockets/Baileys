@@ -407,6 +407,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 	return {
 		...sock,
 		relayMessage,
+		waUploadToServer,
 		generateUrlInfo,
 		messageInfo: async(jid: string, messageID: string) => {
 			const { content }: BinaryNode = await query({

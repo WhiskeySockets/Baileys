@@ -1,5 +1,8 @@
-import { CatalogCollection, CatalogStatus, OrderDetails, OrderProduct, Product, ProductCreate, ProductUpdate } from '../Types'
+import { Boom } from '@hapi/boom'
+import { createHash } from 'crypto'
+import { CatalogCollection, CatalogStatus, OrderDetails, OrderProduct, Product, ProductCreate, ProductUpdate, WAMediaUpload, WAMediaUploadFunction } from '../Types'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, getBinaryNodeChildString } from '../WABinary'
+import { getStream, toReadable } from './messages-media'
 
 export const parseCatalogNode = (node: BinaryNode) => {
 	const catalogNode = getBinaryNodeChild(node, 'product_catalog')
@@ -94,22 +97,28 @@ export const toProductNode = (productId: string | undefined, product: ProductCre
 		})
 	}
 
-	if(product.imageUrls.length) {
+	if(product.images.length) {
 		content.push({
 			tag: 'media',
 			attrs: { },
-			content: product.imageUrls.map(
-				url => ({
-					tag: 'image',
-					attrs: { },
-					content: [
-						{
-							tag: 'url',
-							attrs: { },
-							content: Buffer.from(url)
-						}
-					]
-				})
+			content: product.images.map(
+				img => {
+					if(!('url' in img)) {
+						throw new Boom('Expected img for product to already be uploaded', { statusCode: 400 })
+					}
+
+					return {
+						tag: 'image',
+						attrs: { },
+						content: [
+							{
+								tag: 'url',
+								attrs: { },
+								content: Buffer.from(img.url.toString())
+							}
+						]
+					}
+				}
 			)
 		})
 	}
@@ -185,6 +194,53 @@ export const parseProductNode = (productNode: BinaryNode) => {
 	}
 
 	return product
+}
+
+/**
+ * Uploads images not already uploaded to WA's servers
+ */
+export async function uploadingNecessaryImagesOfProduct<T extends ProductUpdate | ProductCreate>(product: T, waUploadToServer: WAMediaUploadFunction, timeoutMs = 30_000) {
+	product = {
+		...product,
+		images: product.images ? await uploadingNecessaryImages(product.images, waUploadToServer, timeoutMs) : product.images
+	}
+	return product
+}
+
+/**
+ * Uploads images not already uploaded to WA's servers
+ */
+export const uploadingNecessaryImages = async(images: WAMediaUpload[], waUploadToServer: WAMediaUploadFunction, timeoutMs = 30_000) => {
+	const results = await Promise.all(
+		images.map<Promise<{ url: string }>>(
+			async img => {
+
+				if('url' in img) {
+					const url = img.url.toString()
+					if(url.includes('.whatsapp.net')) {
+						return { url }
+					}
+				}
+
+				const { stream } = await getStream(img)
+				const hasher = createHash('sha256')
+				const contentBlocks: Buffer[] = []
+				for await (const block of stream) {
+					hasher.update(block)
+					contentBlocks.push(block)
+				}
+
+				const sha = hasher.digest('base64')
+
+				const { mediaUrl } = await waUploadToServer(
+					toReadable(Buffer.concat(contentBlocks)),
+					{ mediaType: 'image', fileEncSha256B64: sha, timeoutMs }
+				)
+				return { url: mediaUrl }
+			}
+		)
+	)
+	return results
 }
 
 const parseImageUrls = (mediaNode: BinaryNode) => {

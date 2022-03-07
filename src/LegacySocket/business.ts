@@ -1,5 +1,6 @@
 import { LegacySocketConfig, OrderDetails } from '../Types'
 import { CatalogResult, Product, ProductCreate, ProductCreateResult, ProductUpdate } from '../Types'
+import { uploadingNecessaryImages } from '../Utils/business'
 import makeGroupsSocket from './groups'
 
 const makeBusinessSocket = (config: LegacySocketConfig) => {
@@ -7,6 +8,7 @@ const makeBusinessSocket = (config: LegacySocketConfig) => {
 	const {
 		query,
 		generateMessageTag,
+		waUploadToServer,
 		state
 	} = sock
 
@@ -46,7 +48,7 @@ const makeBusinessSocket = (config: LegacySocketConfig) => {
 			json: [
 				'action',
 				'addProduct_reh',
-				mapProductCreate(product)
+				await mapProductCreate(product)
 			]
 		})
 
@@ -72,6 +74,10 @@ const makeBusinessSocket = (config: LegacySocketConfig) => {
 	}
 
 	const productUpdate = async(productId: string, update: ProductUpdate) => {
+		const productCreate = await mapProductCreate(
+			{ ...update, originCountryCode: undefined },
+			false
+		)
 		const result: ProductCreateResult = await query({
 			expect200: true,
 			json: [
@@ -79,10 +85,7 @@ const makeBusinessSocket = (config: LegacySocketConfig) => {
 				'editProduct_reh',
 				{
 					product_id: productId,
-					...mapProductCreate(
-						{ ...update, originCountryCode: undefined },
-						false
-					)
+					...productCreate
 				}
 			]
 		})
@@ -128,13 +131,17 @@ const makeBusinessSocket = (config: LegacySocketConfig) => {
 	}
 
 	// maps product create to send to WA
-	const mapProductCreate = (product: ProductCreate, mapCompliance = true) => {
+	const mapProductCreate = async(product: ProductCreate, mapCompliance = true) => {
+		const imgs = (
+			await uploadingNecessaryImages(product.images, waUploadToServer)
+		).map(img => img.url)
+
 		const result: any = {
 			name: product.name,
 			description: product.description,
-			image_url: product.imageUrls[0],
+			image_url: imgs[0],
 			url: product.url || '',
-			additional_image_urls: product.imageUrls.slice(1),
+			additional_image_urls: imgs.slice(1),
 			retailer_id: product.retailerId || '',
 			width: '100',
 			height: '100',

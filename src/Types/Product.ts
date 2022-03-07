@@ -1,3 +1,4 @@
+import { WAMediaUpload } from './Message'
 
 export type CatalogResult = {
 	data: {
@@ -38,8 +39,8 @@ export type ProductBase = {
 export type ProductCreate = ProductBase & {
 	/** ISO country code for product origin. Set to undefined for no country */
 	originCountryCode: string | undefined
-
-	imageUrls: string[]
+	/** images of the product */
+	images: WAMediaUpload[]
 }
 
 export type ProductUpdate = Omit<ProductCreate, 'originCountryCode'>
