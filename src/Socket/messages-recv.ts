@@ -8,21 +8,6 @@ import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getAllBinaryNodeChil
 import { makeChatsSocket } from './chats'
 import { extractGroupMetadata } from './groups'
 
-const STATUS_MAP: { [_: string]: proto.WebMessageInfo.WebMessageInfoStatus } = {
-	'played': proto.WebMessageInfo.WebMessageInfoStatus.PLAYED,
-	'read': proto.WebMessageInfo.WebMessageInfoStatus.READ,
-	'read-self': proto.WebMessageInfo.WebMessageInfoStatus.READ
-}
-
-const getStatusFromReceiptType = (type: string | undefined) => {
-	const status = STATUS_MAP[type]
-	if(typeof type === 'undefined') {
-		return proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK
-	}
-
-	return status
-}
-
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const { logger } = config
 	const sock = makeChatsSocket(config)
@@ -570,4 +555,19 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	})
 
 	return { ...sock, processMessage, sendMessageAck, sendRetryRequest }
+}
+
+const STATUS_MAP: { [_: string]: proto.WebMessageInfo.WebMessageInfoStatus } = {
+	'played': proto.WebMessageInfo.WebMessageInfoStatus.PLAYED,
+	'read': proto.WebMessageInfo.WebMessageInfoStatus.READ,
+	'read-self': proto.WebMessageInfo.WebMessageInfoStatus.READ
+}
+
+const getStatusFromReceiptType = (type: string | undefined) => {
+	const status = STATUS_MAP[type]
+	if(typeof type === 'undefined') {
+		return proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK
+	}
+
+	return status
 }
