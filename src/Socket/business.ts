@@ -1,6 +1,7 @@
-import { SocketConfig } from '../Types'
-import { parseCatalogNode, parseCollectionsNode, parseOrderDetailsNode } from '../Utils/business'
+import { ProductCreate, ProductUpdate, SocketConfig } from '../Types'
+import { parseCatalogNode, parseCollectionsNode, parseOrderDetailsNode, parseProductNode, toProductNode } from '../Utils/business'
 import { jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
+import { getBinaryNodeChild } from '../WABinary/generic-utils'
 import { makeMessagesRecvSocket } from './messages-recv'
 
 export const makeBusinessSocket = (config: SocketConfig) => {
@@ -141,10 +142,98 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 		return parseOrderDetailsNode(result)
 	}
 
+	const productUpdate = async(productId: string, update: ProductUpdate) => {
+		const editNode = toProductNode(productId, update)
+
+		const result = await query({
+			tag: 'iq',
+			attrs: {
+				to: S_WHATSAPP_NET,
+				type: 'set',
+				xmlns: 'w:biz:catalog'
+			},
+			content: [
+				{
+					tag: 'product_catalog_edit',
+					attrs: { v: '1' },
+					content: [ editNode ]
+				}
+			]
+		})
+
+		const productCatalogEditNode = getBinaryNodeChild(result, 'product_catalog_edit')
+		const productNode = getBinaryNodeChild(productCatalogEditNode, 'product')
+
+		return parseProductNode(productNode)
+	}
+
+	const productCreate = async(create: ProductCreate) => {
+		const createNode = toProductNode(undefined, create)
+
+		const result = await query({
+			tag: 'iq',
+			attrs: {
+				to: S_WHATSAPP_NET,
+				type: 'set',
+				xmlns: 'w:biz:catalog'
+			},
+			content: [
+				{
+					tag: 'product_catalog_add',
+					attrs: { v: '1' },
+					content: [ createNode ]
+				}
+			]
+		})
+
+		const productCatalogAddNode = getBinaryNodeChild(result, 'product_catalog_add')
+		const productNode = getBinaryNodeChild(productCatalogAddNode, 'product')
+
+		return parseProductNode(productNode)
+	}
+
+	const productDelete = async(productIds: string[]) => {
+		const result = await query({
+			tag: 'iq',
+			attrs: {
+				to: S_WHATSAPP_NET,
+				type: 'set',
+				xmlns: 'w:biz:catalog'
+			},
+			content: [
+				{
+					tag: 'product_catalog_delete',
+					attrs: { v: '1' },
+					content: productIds.map(
+						id => ({
+							tag: 'product',
+							attrs: { },
+							content: [
+								{
+									tag: 'id',
+									attrs: { },
+									content: Buffer.from(id)
+								}
+							]
+						})
+					)
+				}
+			]
+		})
+
+		const productCatalogDelNode = getBinaryNodeChild(result, 'product_catalog_delete')
+		return {
+			deleted: +productCatalogDelNode.attrs.deleted_count
+		}
+	}
+
 	return {
 		...sock,
+		getOrderDetails,
 		getCatalog,
 		getCollections,
-		getOrderDetails,
+		productCreate,
+		productDelete,
+		productUpdate
 	}
 }
