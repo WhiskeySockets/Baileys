@@ -31,16 +31,13 @@ export const processHistoryMessage = (item: proto.IHistorySync, historyCache: Se
 		for(const chat of item.conversations) {
 			const contactId = `c:${chat.id}`
 			if(chat.name && !historyCache.has(contactId)) {
-				contacts.push({
-					id: chat.id,
-					name: chat.name
-				})
+				contacts.push({ id: chat.id, name: chat.name })
 				historyCache.add(contactId)
 			}
 
 			for(const { message } of chat.messages || []) {
-				const uqId = `${message?.key.remoteJid}:${message.key.id}`
-				if(message && !historyCache.has(uqId)) {
+				const uqId = `${message.key.remoteJid}:${message.key.id}`
+				if(!historyCache.has(uqId)) {
 					messages.push(message)
 					historyCache.add(uqId)
 				}
@@ -57,7 +54,7 @@ export const processHistoryMessage = (item: proto.IHistorySync, historyCache: Se
 	case proto.HistorySync.HistorySyncHistorySyncType.PUSH_NAME:
 		for(const c of item.pushnames) {
 			const contactId = `c:${c.id}`
-			if(historyCache.has(contactId)) {
+			if(!historyCache.has(contactId)) {
 				contacts.push({ notify: c.pushname, id: c.id })
 				historyCache.add(contactId)
 			}
