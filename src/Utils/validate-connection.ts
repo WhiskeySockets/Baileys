@@ -48,13 +48,14 @@ export const generateRegistrationNode = (
 	const appVersionBuf = createHash('md5')
 		.update(config.version.join('.')) // join as string
 		.digest()
+	const browserVersion = config.browser[2].split('.')
 
 	const companion: proto.ICompanionProps = {
 		os: config.browser[0],
 		version: {
-			primary: 10,
-			secondary: undefined,
-			tertiary: undefined,
+			primary: +(browserVersion[0] || 10),
+			secondary: +(browserVersion[1] || 0),
+			tertiary: +(browserVersion[2] || 0),
 		},
 		platformType: proto.CompanionProps.CompanionPropsPlatformType.CHROME,
 		requireFullSync: false,
