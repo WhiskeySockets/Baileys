@@ -480,6 +480,9 @@ export const makeSocket = ({
 			ev.emit('connection.update', { isNewLogin: true, qr: undefined })
 
 			end(new Boom('Restart Required', { statusCode: DisconnectReason.restartRequired }))
+
+			logger.warn('If your process stalls here, make sure to implement the reconnect logic as shown in ' +
+						'https://github.com/adiwajshing/Baileys/blob/master/Example/example.ts#:~:text=reconnect')
 		} catch(error) {
 			logger.info({ trace: error.stack }, 'error in pairing')
 			end(error)
