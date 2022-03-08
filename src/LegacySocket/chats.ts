@@ -391,7 +391,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		 * @param jid the ID of the person/group who you are updating
 		 * @param type your presence
 		 */
-		sendPresenceUpdate: (type: WAPresence, jid: string | undefined) => (
+		sendPresenceUpdate: (type: WAPresence, toJid?: string) => (
 			sendNode({
 				binaryTag: [WAMetric.presence, WAFlag[type]], // weird stuff WA does
 				json: {
@@ -400,7 +400,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 					content: [
 						{
 							tag: 'presence',
-							attrs: { type: type, to: jid }
+							attrs: { type: type, to: toJid }
 						}
 					]
 				}
