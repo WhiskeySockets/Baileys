@@ -75,7 +75,7 @@ const startSock = async() => {
 			if((lastDisconnect.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut) {
 				startSock()
 			} else {
-				console.log('connection closed')
+				console.log('Connection closed. You are logged out.')
 			}
 		}
         

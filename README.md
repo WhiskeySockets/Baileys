@@ -316,6 +316,10 @@ import { MessageType, MessageOptions, Mimetype } from '@adiwajshing/baileys'
 const id = 'abcd@s.whatsapp.net' // the WhatsApp ID 
 // send a simple text!
 const sentMsg  = await sock.sendMessage(id, { text: 'oh hello there' })
+// send a reply messagge
+const sentMsg  = await sock.sendMessage(id, { text: 'oh hello there' }, { quoted: message })
+// send a mentions message
+const sentMsg  = await sock.sendMessage(id, { text: '@12345678901', mentions: ['12345678901@s.whatsapp.net'] })
 // send a location!
 const sentMsg  = await sock.sendMessage(
     id, 
@@ -480,7 +484,7 @@ const sendMsg = await sock.sendMessage(id, templateMessage)
         contextInfo: { forwardingScore: 2, isForwarded: true }, // some random context info (can show a forwarded message with this too)
         timestamp: Date(), // optional, if you want to manually set the timestamp of the message
         caption: "hello there!", // (for media messages) the caption to send with the media (cannot be sent with stickers though)
-        thumbnail: "23GD#4/==", /*  (for location & media messages) has to be a base 64 encoded JPEG if you want to send a custom thumb, 
+        jpegThumbnail: "23GD#4/==", /*  (for location & media messages) has to be a base 64 encoded JPEG if you want to send a custom thumb, 
                                     or set to null if you don't want to send a thumbnail.
                                     Do not enter this field if you want to automatically generate a thumb
                                 */
@@ -701,6 +705,8 @@ Of course, replace ``` xyz ``` with an actual ID.
     ``` ts
     // only allow admins to send messages
     await sock.groupSettingUpdate("abcd-xyz@g.us", 'announcement')
+    // allow everyone to send messages
+    await sock.groupSettingUpdate("abcd-xyz@g.us", 'not_announcement')
     // allow everyone to modify the group's settings -- like display picture etc.
     await sock.groupSettingUpdate("abcd-xyz@g.us", 'unlocked')
     // only allow admins to modify the group's settings
