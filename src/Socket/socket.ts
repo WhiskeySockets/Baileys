@@ -401,7 +401,7 @@ export const makeSocket = ({
 					{
 						tag: 'remove-companion-device',
 						attrs: {
-							jid: jid,
+							jid,
 							reason: 'user_initiated'
 						}
 					}

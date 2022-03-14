@@ -139,7 +139,11 @@ export const configureSuccessfulPairing = (
 				tag: 'pair-device-sign',
 				attrs: { },
 				content: [
-					{ tag: 'device-identity', attrs: { 'key-index': `${keyIndex}` }, content: accountEnc }
+					{
+						tag: 'device-identity',
+						attrs: { 'key-index': `${keyIndex}` },
+						content: accountEnc
+					}
 				]
 			}
 		]

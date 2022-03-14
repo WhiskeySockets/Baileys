@@ -680,11 +680,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	ev.on('connection.update', ({ connection }) => {
 		if(connection === 'open') {
-			sendPresenceUpdate('available')
-			fetchBlocklist()
-			fetchPrivacySettings()
 			fetchAbt()
 			fetchProps()
+			fetchBlocklist()
+			fetchPrivacySettings()
+
+			sendPresenceUpdate('available')
 		}
 	})
 
