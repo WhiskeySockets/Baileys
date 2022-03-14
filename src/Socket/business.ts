@@ -120,19 +120,19 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 								{
 									tag: 'width',
 									attrs: { },
-									content: Buffer.from([ 49, 48, 48 ])
+									content: Buffer.from('100')
 								},
 								{
 									tag: 'height',
 									attrs: { },
-									content: Buffer.from([ 49, 48, 48 ])
+									content: Buffer.from('100')
 								}
 							]
 						},
 						{
 							tag: 'token',
 							attrs: { },
-							content: Buffer.from(tokenBase64, 'base64')
+							content: Buffer.from(tokenBase64)
 						}
 					]
 				}
