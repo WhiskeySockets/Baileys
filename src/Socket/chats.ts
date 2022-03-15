@@ -19,10 +19,11 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		sendNode,
 		query,
 		fetchPrivacySettings,
+		onUnexpectedError,
 	} = sock
 
 	const mutationMutex = makeMutex()
-
+	/// helper function to fetch an app state sync key
 	const getAppStateSyncKey = async(keyId: string) => {
 		const { [keyId]: key } = await authState.keys.get('app-state-sync-key', [keyId])
 		return key
@@ -176,35 +177,30 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				}]
 			}]
 		})
-		const profiles = getBinaryNodeChild(getBinaryNodeChild(results, 'business_profile'), 'profile')
-		if(!profiles) {
-			// if not bussines
-			if(logger.level === 'trace') {
-				logger.trace({ jid }, 'Not bussines')
-			}
 
-			return
+		const profileNode = getBinaryNodeChild(results, 'business_profile')
+		const profiles = getBinaryNodeChild(profileNode, 'profile')
+		if(profiles) {
+			const address = getBinaryNodeChild(profiles, 'address')
+			const description = getBinaryNodeChild(profiles, 'description')
+			const website = getBinaryNodeChild(profiles, 'website')
+			const email = getBinaryNodeChild(profiles, 'email')
+			const category = getBinaryNodeChild(getBinaryNodeChild(profiles, 'categories'), 'category')
+			const business_hours = getBinaryNodeChild(profiles, 'business_hours')
+			const business_hours_config = business_hours && getBinaryNodeChildren(business_hours, 'business_hours_config')
+			return {
+				wid: profiles.attrs?.jid,
+				address: address?.content.toString(),
+				description: description?.content.toString(),
+				website: [website?.content.toString()],
+				email: email?.content.toString(),
+				category: category?.content.toString(),
+				business_hours: {
+					timezone: business_hours?.attrs?.timezone,
+					business_config: business_hours_config?.map(({ attrs }) => attrs as unknown as WABusinessHoursConfig)
+				}
+			} as unknown as WABusinessProfile
 		}
-
-		const address = getBinaryNodeChild(profiles, 'address')
-		const description = getBinaryNodeChild(profiles, 'description')
-		const website = getBinaryNodeChild(profiles, 'website')
-		const email = getBinaryNodeChild(profiles, 'email')
-		const category = getBinaryNodeChild(getBinaryNodeChild(profiles, 'categories'), 'category')
-		const business_hours = getBinaryNodeChild(profiles, 'business_hours')
-		const business_hours_config = business_hours && getBinaryNodeChildren(business_hours, 'business_hours_config')
-		return {
-			wid: profiles.attrs?.jid,
-			address: address?.content.toString(),
-			description: description?.content.toString(),
-			website: [website?.content.toString()],
-			email: email?.content.toString(),
-			category: category?.content.toString(),
-			business_hours: {
-				timezone: business_hours?.attrs?.timezone,
-				business_config: business_hours_config?.map(({ attrs }) => attrs as unknown as WABusinessHoursConfig)
-			}
-		} as unknown as WABusinessProfile
 	}
 
 	const updateAccountSyncTimestamp = async(fromTimestamp: number | string) => {
@@ -431,7 +427,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	const resyncMainAppState = async() => {
-
 		logger.debug('resyncing main app state')
 
 		await (
@@ -445,7 +440,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				])
 			)
 				.catch(err => (
-					logger.warn({ trace: err.stack }, 'failed to sync app state')
+					onUnexpectedError(err, 'main app sync')
 				))
 		)
 	}
@@ -480,7 +475,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			} else if(action?.pushNameSetting) {
 				const me = {
 					...authState.creds.me!,
-					name:  action?.pushNameSetting?.name!
+					name: action?.pushNameSetting?.name!
 				}
 				ev.emit('creds.update', { me })
 			} else if(action?.pinAction) {
@@ -640,6 +635,20 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		return appPatch(patch)
 	}
 
+	/**
+	 * queries need to be fired on connection open
+	 * help ensure parity with WA Web
+	 * */
+	const fireInitQueries = () => (
+		Promise.all([
+			fetchAbt(),
+			fetchProps(),
+			fetchBlocklist(),
+			fetchPrivacySettings(),
+			sendPresenceUpdate('available')
+		])
+	)
+
 	ws.on('CB:presence', handlePresenceUpdate)
 	ws.on('CB:chatstate', handlePresenceUpdate)
 
@@ -680,12 +689,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	ev.on('connection.update', ({ connection }) => {
 		if(connection === 'open') {
-			fetchAbt()
-			fetchProps()
-			fetchBlocklist()
-			fetchPrivacySettings()
-
-			sendPresenceUpdate('available')
+			fireInitQueries()
+				.catch(
+					error => onUnexpectedError(error, 'connection open requests')
+				)
 		}
 	})
 

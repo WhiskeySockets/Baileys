@@ -1,7 +1,7 @@
 
 import { proto } from '../../WAProto'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
-import { Chat, GroupMetadata, MessageUserReceipt, ParticipantAction, SocketConfig, WAMessageStubType } from '../Types'
+import { BaileysEventMap, Chat, GroupMetadata, MessageUserReceipt, ParticipantAction, SocketConfig, WAMessageStubType } from '../Types'
 import { decodeMessageStanza, downloadAndProcessHistorySyncNotification, encodeBigEndian, generateSignalPubKey, normalizeMessageContent, toNumber, xmppPreKey, xmppSignedPreKey } from '../Utils'
 import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
 import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getAllBinaryNodeChildren, getBinaryNodeChildren, isJidGroup, jidDecode, jidEncode, jidNormalizedUser } from '../WABinary'
@@ -15,6 +15,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		ev,
 		authState,
 		ws,
+		onUnexpectedError,
 		assertSessions,
 		assertingPreKeys,
 		sendNode,
@@ -94,6 +95,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 				]
 			}
+
 			if(node.attrs.recipient) {
 				receipt.attrs.recipient = node.attrs.recipient
 			}
@@ -103,9 +105,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}
 
 			if(retryCount > 1) {
-				const exec = generateSignalPubKey(Buffer.from(KEY_BUNDLE_TYPE)).slice(0, 1);
-
-				(receipt.content! as BinaryNode[]).push({
+				const exec = generateSignalPubKey(Buffer.from(KEY_BUNDLE_TYPE)).slice(0, 1)
+				const content = receipt.content! as BinaryNode[]
+				content.push({
 					tag: 'keys',
 					attrs: { },
 					content: [
@@ -357,10 +359,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				ev.emit('messages.upsert', { messages: [msg], type: stanza.attrs.offline ? 'append' : 'notify' })
 			}
 		)
+			.catch(
+				error => onUnexpectedError(error, 'processing message')
+			)
 	})
 
 	ws.on('CB:ack,class:message', async(node: BinaryNode) => {
-		await sendNode({
+		sendNode({
 			tag: 'ack',
 			attrs: {
 				class: 'receipt',
@@ -368,6 +373,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				from: node.attrs.from
 			}
 		})
+			.catch(err => onUnexpectedError(err, 'ack message receipt'))
 		logger.debug({ attrs: node.attrs }, 'sending receipt for ack')
 	})
 
@@ -376,7 +382,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		const [child] = getAllBinaryNodeChildren(node)
 		if(!!child?.tag) {
-			await sendMessageAck(node, { class: 'call', type: child.tag })
+			sendMessageAck(node, { class: 'call', type: child.tag })
+				.catch(
+					error => onUnexpectedError(error, 'ack call')
+				)
 		}
 	})
 
@@ -489,11 +498,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		)
 	}
 
-	ws.on('CB:receipt', handleReceipt)
-
-	ws.on('CB:notification', async(node: BinaryNode) => {
+	const handleNotification = async(node: BinaryNode) => {
 		const remoteJid = node.attrs.from
-		processingMutex.mutex(
+		await processingMutex.mutex(
 			remoteJid,
 			() => {
 				const msg = processNotification(node)
@@ -516,15 +523,19 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		)
 
 		await sendMessageAck(node, { class: 'notification', type: node.attrs.type })
-	})
+	}
 
-	ev.on('messages.upsert', async({ messages, type }) => {
+	const handleUpsertedMessages = async({ messages, type }: BaileysEventMap<any>['messages.upsert']) => {
 		if(type === 'notify' || type === 'append') {
-			const chat: Partial<Chat> = { id: messages[0].key.remoteJid }
+			const chatId = jidNormalizedUser(messages[0].key.remoteJid)
+			const chat: Partial<Chat> = { id: chatId }
 			const contactNameUpdates: { [_: string]: string } = { }
 			for(const msg of messages) {
+				const normalizedChatId = jidNormalizedUser(msg.key.remoteJid)
 				if(!!msg.pushName) {
-					const jid = msg.key.fromMe ? jidNormalizedUser(authState.creds.me!.id) : (msg.key.participant || msg.key.remoteJid)
+					let jid = msg.key.fromMe ? authState.creds.me!.id : (msg.key.participant || msg.key.remoteJid)
+					jid = jidNormalizedUser(jid)
+
 					contactNameUpdates[jid] = msg.pushName
 					// update our pushname too
 					if(msg.key.fromMe && authState.creds.me?.name !== msg.pushName) {
@@ -533,7 +544,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				}
 
 				await processingMutex.mutex(
-					'p-' + chat.id!,
+					'p-' + normalizedChatId,
 					() => processMessage(msg, chat)
 				)
 
@@ -555,6 +566,29 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				))
 			}
 		}
+	}
+
+	ws.on('CB:receipt', node => {
+		handleReceipt(node)
+			.catch(
+				error => onUnexpectedError(error, 'handling receipt')
+			)
+	})
+
+	ws.on('CB:notification', async(node: BinaryNode) => {
+		handleNotification(node)
+			.catch(
+				error => {
+					onUnexpectedError(error, 'handling notification')
+				}
+			)
+	})
+
+	ev.on('messages.upsert', data => {
+		handleUpsertedMessages(data)
+			.catch(
+				error => onUnexpectedError(error, 'handling upserted messages')
+			)
 	})
 
 	return { ...sock, processMessage, sendMessageAck, sendRetryRequest }

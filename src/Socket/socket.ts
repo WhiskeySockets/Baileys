@@ -84,6 +84,14 @@ export const makeSocket = ({
 		return sendRawMessage(buff)
 	}
 
+	/** log & process any unexpected errors */
+	const onUnexpectedError = (error: Error, msg: string) => {
+		logger.error(
+			{ trace: error.stack, output: (error as any).output },
+			`unexpected error in '${msg}'`
+		)
+	}
+
 	/** await the next incoming message */
 	const awaitNextMessage = async(sendMsg?: Uint8Array) => {
 		if(ws.readyState !== ws.OPEN) {
@@ -200,7 +208,11 @@ export const makeSocket = ({
 		startKeepAliveRequest()
 	}
 
-	/** get some pre-keys and do something with them */
+	/**
+	 * get some pre-keys and do something with them
+	 * @param range how many pre-keys to get
+	 * @param execute what to do with them
+	 */
 	const assertingPreKeys = async(range: number, execute: (keys: { [_: number]: any }) => Promise<void>) => {
 		const { newPreKeys, lastPreKeyId, preKeysRange } = generateOrGetPreKeys(authState.creds, range)
 
@@ -558,6 +570,7 @@ export const makeSocket = ({
 		sendNode,
 		logout,
 		end,
+		onUnexpectedError,
 		/** Waits for the connection to WA to reach a state */
 		waitForConnectionUpdate: bindWaitForConnectionUpdate(ev)
 	}
