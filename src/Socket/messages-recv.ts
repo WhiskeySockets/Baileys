@@ -423,7 +423,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const { attrs, content } = node
 		const isNodeFromMe = areJidsSameUser(attrs.participant || attrs.from, authState.creds.me?.id)
 		const remoteJid = !isNodeFromMe || isJidGroup(attrs.from) ? attrs.from : attrs.recipient
-		const fromMe = !attrs.recipient
+		const fromMe = !attrs.recipient || (attrs.type === 'retry' && isNodeFromMe)
 
 		const ids = [attrs.id]
 		if(Array.isArray(content)) {
@@ -480,7 +480,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					key.participant = key.participant || attrs.from
 					if(key.fromMe) {
 						try {
-							logger.debug({ attrs }, 'recv retry request')
+							logger.debug({ attrs, key }, 'recv retry request')
 							await sendMessagesAgain(key, ids)
 						} catch(error) {
 							logger.error({ key, ids, trace: error.stack }, 'error in sending message again')
