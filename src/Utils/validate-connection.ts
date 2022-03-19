@@ -20,7 +20,7 @@ const getUserAgent = ({ version, browser }: Pick<SocketConfig, 'version' | 'brow
 	osVersion: browser[2],
 	manufacturer: '',
 	device: browser[1],
-	osBuildNumber: '0.2',
+	osBuildNumber: '0.1.0',
 	localeLanguageIso6391: 'en',
 	localeCountryIso31661Alpha2: 'en',
 })
