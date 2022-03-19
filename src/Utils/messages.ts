@@ -20,8 +20,7 @@ import {
 	WATextMessage
 } from '../Types'
 import { generateMessageID, unixTimestampSeconds } from './generics'
-import { encryptedStream, generateThumbnail, getAudioDuration } from './messages-media'
-import { downloadContentFromMessage, MediaDownloadOptions } from '.'
+import { downloadContentFromMessage, encryptedStream, generateThumbnail, getAudioDuration, MediaDownloadOptions } from './messages-media'
 
 type MediaUploadData = {
 	media: WAMediaUpload
