@@ -384,13 +384,12 @@ export const makeSocket = ({
 	)
 	/** i have no idea why this exists. pls enlighten me */
 	const sendPassiveIq = (tag: 'passive' | 'active') => (
-		sendNode({
+		query({
 			tag: 'iq',
 			attrs: {
 				to: S_WHATSAPP_NET,
 				xmlns: 'passive',
 				type: 'set',
-				id: generateMessageTag(),
 			},
 			content: [
 				{ tag, attrs: { } }
