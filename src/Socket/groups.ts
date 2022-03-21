@@ -136,7 +136,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 		},
 		groupToggleEphemeral: async(jid: string, ephemeralExpiration: number) => {
 			const content: BinaryNode = ephemeralExpiration ?
-				{ tag: 'ephemeral', attrs: { ephemeral: ephemeralExpiration.toString() } } :
+				{ tag: 'ephemeral', attrs: { expiration: ephemeralExpiration.toString() } } :
 				{ tag: 'not_ephemeral', attrs: { } }
 			await groupQuery(jid, 'set', [content])
 		},
