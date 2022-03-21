@@ -13,7 +13,7 @@ const STATUS_MAP = {
 } as { [_: string]: WAMessageStatus }
 
 const makeMessagesSocket = (config: LegacySocketConfig) => {
-	const { logger } = config
+	const { logger, treatCiphertextMessagesAsReal } = config
 	const sock = makeChatsSocket(config)
 	const {
 		ev,
@@ -120,7 +120,13 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 			ev.emit('groups.update', [ { id: jid, ...update } ])
 		}
 
-		if(message.message) {
+		if(
+			(
+				!!message.message ||
+				(message.messageStubType === WAMessageStubType.CIPHERTEXT && treatCiphertextMessagesAsReal)
+			)
+			&& !message.message!.protocolMessage
+		) {
 			chatUpdate.conversationTimestamp = +toNumber(message.messageTimestamp)
 			// add to count if the message isn't from me & there exists a message
 			if(!message.key.fromMe) {

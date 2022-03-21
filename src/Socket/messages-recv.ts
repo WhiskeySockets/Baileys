@@ -9,7 +9,7 @@ import { makeChatsSocket } from './chats'
 import { extractGroupMetadata } from './groups'
 
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
-	const { logger } = config
+	const { logger, treatCiphertextMessagesAsReal } = config
 	const sock = makeChatsSocket(config)
 	const {
 		ev,
@@ -548,7 +548,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					() => processMessage(msg, chat)
 				)
 
-				if(!!msg.message && !msg.message!.protocolMessage) {
+				if(
+					(
+						!!msg.message ||
+						(msg.messageStubType === WAMessageStubType.CIPHERTEXT && treatCiphertextMessagesAsReal)
+					)
+					&& !msg.message!.protocolMessage
+				) {
 					chat.conversationTimestamp = toNumber(msg.messageTimestamp)
 					if(!msg.key.fromMe) {
 						chat.unreadCount = (chat.unreadCount || 0) + 1

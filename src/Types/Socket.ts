@@ -35,6 +35,8 @@ export type CommonSocketConfig<T> = {
     emitOwnEvents: boolean
     /** provide a cache to store media, so does not have to be re-uploaded */
     mediaCache?: NodeCache
-
+    /** custom upload hosts to upload media to */
     customUploadHosts: MediaConnInfo['hosts']
+    /** fires a conversationTimestamp & read count update on CIPHERTEXT messages */
+    treatCiphertextMessagesAsReal: boolean
 }
