@@ -168,15 +168,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const keys = protocolMsg.appStateSyncKeyShare!.keys
 				if(keys?.length) {
 					let newAppStateSyncKeyId = ''
-					for(const { keyData, keyId } of keys) {
-						const strKeyId = Buffer.from(keyId.keyId!).toString('base64')
+					await authState.keys.transaction(
+						async() => {
+							for(const { keyData, keyId } of keys) {
+								const strKeyId = Buffer.from(keyId.keyId!).toString('base64')
 
-						logger.info({ strKeyId }, 'injecting new app state sync key')
-						await authState.keys.set({ 'app-state-sync-key': { [strKeyId]: keyData } })
+								logger.info({ strKeyId }, 'injecting new app state sync key')
+								await authState.keys.set({ 'app-state-sync-key': { [strKeyId]: keyData } })
 
-						newAppStateSyncKeyId = strKeyId
-					}
-
+								newAppStateSyncKeyId = strKeyId
+							}
+						}
+					)
 					ev.emit('creds.update', { myAppStateKeyId: newAppStateSyncKeyId })
 				} else {
 					logger.info({ protocolMsg }, 'recv app state sync with 0 keys')
