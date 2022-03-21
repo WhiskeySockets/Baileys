@@ -125,7 +125,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 				!!message.message ||
 				(message.messageStubType === WAMessageStubType.CIPHERTEXT && treatCiphertextMessagesAsReal)
 			)
-			&& !message.message!.protocolMessage
+			&& !message.message?.protocolMessage
 		) {
 			chatUpdate.conversationTimestamp = +toNumber(message.messageTimestamp)
 			// add to count if the message isn't from me & there exists a message

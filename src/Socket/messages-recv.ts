@@ -553,7 +553,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						!!msg.message ||
 						(msg.messageStubType === WAMessageStubType.CIPHERTEXT && treatCiphertextMessagesAsReal)
 					)
-					&& !msg.message!.protocolMessage
+					&& !msg.message?.protocolMessage
 				) {
 					chat.conversationTimestamp = toNumber(msg.messageTimestamp)
 					if(!msg.key.fromMe) {
