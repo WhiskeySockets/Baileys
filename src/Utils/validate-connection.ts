@@ -7,33 +7,37 @@ import { Curve, hmacSign } from './crypto'
 import { encodeInt } from './generics'
 import { createSignalIdentity } from './signal'
 
-const getUserAgent = ({ version, browser }: Pick<SocketConfig, 'version' | 'browser'>) => ({
+const getUserAgent = ({ version }: Pick<SocketConfig, 'version'>): proto.IUserAgent => ({
 	appVersion: {
 		primary: version[0],
 		secondary: version[1],
 		tertiary: version[2],
 	},
-	platform: 14,
-	releaseChannel: 0,
+	platform: proto.UserAgent.UserAgentPlatform.WEB,
+	releaseChannel: proto.UserAgent.UserAgentReleaseChannel.RELEASE,
 	mcc: '000',
 	mnc: '000',
-	osVersion: browser[2],
+	osVersion: '0.1',
 	manufacturer: '',
-	device: browser[1],
+	device: 'Desktop',
 	osBuildNumber: '0.1.0',
 	localeLanguageIso6391: 'en',
 	localeCountryIso31661Alpha2: 'en',
 })
 
+const getWebInfo = (): proto.IWebInfo => ({
+	webSubPlatform: proto.WebInfo.WebInfoWebSubPlatform.WEB_BROWSER
+})
+
 export const generateLoginNode = (userJid: string, config: Pick<SocketConfig, 'version' | 'browser'>) => {
 	const { user, device } = jidDecode(userJid)
-	const payload = {
+	const payload: proto.IClientPayload = {
 		passive: true,
-		connectType: 1,
-		connectReason: 1,
+		connectType: proto.ClientPayload.ClientPayloadConnectType.WIFI_UNKNOWN,
+		connectReason: proto.ClientPayload.ClientPayloadConnectReason.USER_ACTIVATED,
 		userAgent: getUserAgent(config),
-		webInfo: { webSubPlatform: 0 },
-		username: parseInt(user, 10),
+		webInfo: getWebInfo(),
+		username: +user,
 		device: device,
 	}
 	return proto.ClientPayload.encode(payload).finish()
@@ -78,9 +82,7 @@ export const generateRegistrationNode = (
 			eSkeySig: signedPreKey.signature,
 		},
 		userAgent: getUserAgent(config),
-		webInfo: {
-			webSubPlatform: proto.WebInfo.WebInfoWebSubPlatform.WEB_BROWSER,
-		},
+		webInfo: getWebInfo(),
 	}
 
 	return proto.ClientPayload.encode(registerPayload).finish()
