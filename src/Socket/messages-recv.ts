@@ -135,7 +135,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const histNotification = protocolMsg!.historySyncNotification
 
 				logger.info({ histNotification, id: message.key.id }, 'got history notification')
-				const { chats, contacts, messages, isLatest } = await downloadAndProcessHistorySyncNotification(histNotification, historyCache)
 
 				const meJid = authState.creds.me!.id
 				await sendNode({
@@ -146,6 +145,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						to: jidEncode(jidDecode(meJid).user, 'c.us')
 					}
 				})
+
+				const { chats, contacts, messages, isLatest } = await downloadAndProcessHistorySyncNotification(histNotification, historyCache)
 
 				if(chats.length) {
 					ev.emit('chats.set', { chats, isLatest })
