@@ -20,9 +20,9 @@ const getUserAgent = ({ version }: Pick<SocketConfig, 'version'>): proto.IUserAg
 	osVersion: '0.1',
 	manufacturer: '',
 	device: 'Desktop',
-	osBuildNumber: '0.1.0',
+	osBuildNumber: '0.1',
 	localeLanguageIso6391: 'en',
-	localeCountryIso31661Alpha2: 'en',
+	localeCountryIso31661Alpha2: 'US',
 })
 
 const getWebInfo = (): proto.IWebInfo => ({
