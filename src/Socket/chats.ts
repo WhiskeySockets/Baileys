@@ -645,12 +645,13 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * help ensure parity with WA Web
 	 * */
 	const fireInitQueries = async() => {
-		await fetchAbt()
-		await fetchProps()
-		await fetchBlocklist()
-		await fetchPrivacySettings()
-
-		await sendPresenceUpdate('available')
+		await Promise.all([
+			fetchAbt(),
+			fetchProps(),
+			fetchBlocklist(),
+			fetchPrivacySettings(),
+			sendPresenceUpdate('available')
+		])
 	}
 
 	ws.on('CB:presence', handlePresenceUpdate)
