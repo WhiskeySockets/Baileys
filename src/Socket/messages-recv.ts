@@ -203,6 +203,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				chatUpdate.ephemeralExpiration = protocolMsg.ephemeralExpiration || null
 				break
 			}
+		} else if(content.reactionMessage) {
+			const reaction: proto.IReaction = {
+				...content.reactionMessage,
+				key: message.key,
+			}
+			const operation = content.reactionMessage?.text ? 'add' : 'remove'
+			ev.emit(
+				'messages.reaction',
+				{ reaction, key: content.reactionMessage!.key!, operation }
+			)
 		} else if(message.messageStubType) {
 			const meJid = authState.creds.me!.id
 			const jid = message.key!.remoteJid!

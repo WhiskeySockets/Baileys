@@ -143,7 +143,21 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 			}
 		}
 
-		const protocolMessage = normalizeMessageContent(message.message)?.protocolMessage
+		const normalizedContent = normalizeMessageContent(message.message)
+		const protocolMessage = normalizedContent?.protocolMessage
+
+		if(normalizedContent.reactionMessage) {
+			const reaction: proto.IReaction = {
+				...normalizedContent.reactionMessage,
+				key: message.key,
+			}
+			const operation = normalizedContent.reactionMessage?.text ? 'add' : 'remove'
+			ev.emit(
+				'messages.reaction',
+				{ reaction, key: normalizedContent.reactionMessage!.key!, operation }
+			)
+		}
+
 		// if it's a message to delete another message
 		if(protocolMessage) {
 			switch (protocolMessage.type) {

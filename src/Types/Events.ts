@@ -1,4 +1,5 @@
 import type EventEmitter from 'events'
+import { proto } from '../../WAProto'
 import { AuthenticationCreds } from './Auth'
 import { Chat, PresenceData } from './Chat'
 import { Contact } from './Contact'
@@ -36,6 +37,7 @@ export type BaileysEventMap<T> = {
      * the update will have type: "notify"
      *  */
     'messages.upsert': { messages: WAMessage[], type: MessageUpdateType }
+    'messages.reaction': { key: WAMessageKey, reaction: proto.IReaction, operation: 'add' | 'remove' }
 
     'message-receipt.update': MessageUserReceiptUpdate[]
 
