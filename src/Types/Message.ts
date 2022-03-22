@@ -112,6 +112,8 @@ export type AnyRegularMessageContent = (
     } |
     {
         location: WALocationMessage
+    } | {
+        react: proto.IReactionMessage
     }
 ) & ViewOnce
 

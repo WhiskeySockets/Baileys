@@ -276,6 +276,8 @@ export const generateWAMessageContent = async(
 		}
 	} else if('location' in message) {
 		m.locationMessage = WAProto.LocationMessage.fromObject(message.location)
+	} else if('react' in message) {
+		m.reactionMessage = WAProto.ReactionMessage.fromObject(message.react)
 	} else if('delete' in message) {
 		m.protocolMessage = {
 			key: message.delete,

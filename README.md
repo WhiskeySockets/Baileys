@@ -402,6 +402,15 @@ const listMessage = {
 }
 
 const sendMsg = await sock.sendMessage(id, listMessage)
+
+const reactionMessage = {
+    react: {
+        text: "💖",
+        key: message.key
+    }
+}
+
+const sendMsg = await sock.sendMessage(id, reactionMessage)
 ```
 
 ### Media Messages
