@@ -216,9 +216,7 @@ export const generateForwardMessageContent = (
 	}
 
 	// hacky copy
-	content = content?.ephemeralMessage?.message ||
-				content?.viewOnceMessage?.message ||
-				content
+	content = normalizeMessageContent(message.message)
 	content = proto.Message.decode(proto.Message.encode(content).finish())
 
 	let key = Object.keys(content)[0] as MessageType
