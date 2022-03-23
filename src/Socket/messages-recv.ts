@@ -203,7 +203,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				chatUpdate.ephemeralExpiration = protocolMsg.ephemeralExpiration || null
 				break
 			}
-		} else if(content.reactionMessage) {
+		} else if(content?.reactionMessage) {
 			const reaction: proto.IReaction = {
 				...content.reactionMessage,
 				key: message.key,

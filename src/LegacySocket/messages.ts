@@ -146,7 +146,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 		const normalizedContent = normalizeMessageContent(message.message)
 		const protocolMessage = normalizedContent?.protocolMessage
 
-		if(normalizedContent.reactionMessage) {
+		if(normalizedContent?.reactionMessage) {
 			const reaction: proto.IReaction = {
 				...normalizedContent.reactionMessage,
 				key: message.key,
