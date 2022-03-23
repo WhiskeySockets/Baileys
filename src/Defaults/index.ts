@@ -30,7 +30,8 @@ const BASE_CONNECTION_CONFIG: CommonSocketConfig<any> = {
 	emitOwnEvents: true,
 	defaultQueryTimeoutMs: 60_000,
 	customUploadHosts: [],
-	treatCiphertextMessagesAsReal: true
+	treatCiphertextMessagesAsReal: true,
+	retryRequestDelayMs: 250
 }
 
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {

@@ -2,14 +2,18 @@
 import { proto } from '../../WAProto'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { BaileysEventMap, Chat, GroupMetadata, MessageUserReceipt, ParticipantAction, SocketConfig, WAMessageStubType } from '../Types'
-import { decodeMessageStanza, downloadAndProcessHistorySyncNotification, encodeBigEndian, generateSignalPubKey, normalizeMessageContent, toNumber, xmppPreKey, xmppSignedPreKey } from '../Utils'
+import { decodeMessageStanza, delay, downloadAndProcessHistorySyncNotification, encodeBigEndian, generateSignalPubKey, normalizeMessageContent, toNumber, xmppPreKey, xmppSignedPreKey } from '../Utils'
 import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
 import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getAllBinaryNodeChildren, getBinaryNodeChildren, isJidGroup, jidDecode, jidEncode, jidNormalizedUser } from '../WABinary'
 import { makeChatsSocket } from './chats'
 import { extractGroupMetadata } from './groups'
 
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
-	const { logger, treatCiphertextMessagesAsReal } = config
+	const {
+		logger,
+		treatCiphertextMessagesAsReal,
+		retryRequestDelayMs
+	} = config
 	const sock = makeChatsSocket(config)
 	const {
 		ev,
@@ -360,7 +364,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						'failure in decrypting message'
 					)
 					retryMutex.mutex(
-						async() => await sendRetryRequest(stanza)
+						async() => {
+							if(ws.readyState === ws.OPEN) {
+								await sendRetryRequest(stanza)
+								if(retryRequestDelayMs) {
+									await delay(retryRequestDelayMs)
+								}
+							}
+						}
 					)
 				} else {
 					await sendMessageAck(stanza, { class: 'receipt' })

@@ -39,4 +39,6 @@ export type CommonSocketConfig<T> = {
     customUploadHosts: MediaConnInfo['hosts']
     /** fires a conversationTimestamp & read count update on CIPHERTEXT messages */
     treatCiphertextMessagesAsReal: boolean
+    /** time to wait between sending new retry requests */
+    retryRequestDelayMs: number
 }
