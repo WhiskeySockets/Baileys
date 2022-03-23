@@ -562,12 +562,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					() => processMessage(msg, chat)
 				)
 
+				const normalizedContent = msg.message ? normalizeMessageContent(msg.message) : undefined
+
 				if(
 					(
-						!!msg.message ||
+						!!normalizedContent ||
 						(msg.messageStubType === WAMessageStubType.CIPHERTEXT && treatCiphertextMessagesAsReal)
 					)
-					&& !msg.message?.protocolMessage
+					&& !normalizedContent?.protocolMessage
+					&& !normalizedContent?.reactionMessage
 				) {
 					chat.conversationTimestamp = toNumber(msg.messageTimestamp)
 					if(!msg.key.fromMe) {

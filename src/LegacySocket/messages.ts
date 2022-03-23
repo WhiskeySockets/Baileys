@@ -120,12 +120,16 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 			ev.emit('groups.update', [ { id: jid, ...update } ])
 		}
 
+		const normalizedContent = normalizeMessageContent(message.message)
+		const protocolMessage = normalizedContent?.protocolMessage
+
 		if(
 			(
-				!!message.message ||
+				!!normalizedContent ||
 				(message.messageStubType === WAMessageStubType.CIPHERTEXT && treatCiphertextMessagesAsReal)
 			)
-			&& !message.message?.protocolMessage
+			&& !normalizedContent?.protocolMessage
+			&& !normalizedContent?.reactionMessage
 		) {
 			chatUpdate.conversationTimestamp = +toNumber(message.messageTimestamp)
 			// add to count if the message isn't from me & there exists a message
@@ -142,9 +146,6 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 				)
 			}
 		}
-
-		const normalizedContent = normalizeMessageContent(message.message)
-		const protocolMessage = normalizedContent?.protocolMessage
 
 		if(normalizedContent?.reactionMessage) {
 			const reaction: proto.IReaction = {
