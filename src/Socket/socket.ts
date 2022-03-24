@@ -9,6 +9,8 @@ import { AuthenticationCreds, BaileysEventEmitter, DisconnectReason, SocketConfi
 import { addTransactionCapability, bindWaitForConnectionUpdate, configureSuccessfulPairing, Curve, encodeBigEndian, generateLoginNode, generateOrGetPreKeys, generateRegistrationNode, getPreKeys, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout, useSingleFileAuthState, xmppPreKey, xmppSignedPreKey } from '../Utils'
 import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, getBinaryNodeChild, S_WHATSAPP_NET } from '../WABinary'
 
+const INITIAL_PREKEY_COUNT = 30
+
 /**
  * Connects to WA servers and performs:
  * - simple queries (no retry mechanism, wait for connection establishment)
@@ -172,30 +174,34 @@ export const makeSocket = ({
 
 	/** connection handshake */
 	const validateConnection = async() => {
-		logger.info({ browser }, 'connected to WA Web')
-
-		const init = proto.HandshakeMessage.encode({
+		const helloMsg: proto.IHandshakeMessage = {
 			clientHello: { ephemeral: ephemeralKeyPair.public }
-		}).finish()
+		}
+
+		logger.info({ browser, helloMsg }, 'connected to WA Web')
+
+		const init = proto.HandshakeMessage.encode(helloMsg).finish()
 
 		const result = await awaitNextMessage(init)
 		const handshake = proto.HandshakeMessage.decode(result)
 
-		logger.debug('handshake recv from WA Web')
+		logger.trace({ handshake }, 'handshake recv from WA Web')
 
 		const keyEnc = noise.processHandshake(handshake, creds.noiseKey)
 		logger.info('handshake complete')
 
-		let node: Uint8Array
+		let node: proto.IClientPayload
 		if(!creds.me) {
-			logger.info('not logged in, attempting registration...')
 			node = generateRegistrationNode(creds, { version, browser })
+			logger.info({ node }, 'not logged in, attempting registration...')
 		} else {
-			logger.info('logging in...')
 			node = generateLoginNode(creds.me!.id, { version, browser })
+			logger.info({ node }, 'logging in...')
 		}
 
-		const payloadEnc = noise.encrypt(node)
+		const payloadEnc = noise.encrypt(
+			proto.ClientPayload.encode(node).finish()
+		)
 		await sendRawMessage(
 			proto.HandshakeMessage.encode({
 				clientFinish: {
@@ -234,7 +240,7 @@ export const makeSocket = ({
 
 	/** generates and uploads a set of pre-keys */
 	const uploadPreKeys = async() => {
-		await assertingPreKeys(30, async preKeys => {
+		await assertingPreKeys(INITIAL_PREKEY_COUNT, async preKeys => {
 			const node: BinaryNode = {
 				tag: 'iq',
 				attrs: {

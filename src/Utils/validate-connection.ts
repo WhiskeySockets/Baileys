@@ -7,6 +7,8 @@ import { Curve, hmacSign } from './crypto'
 import { encodeInt } from './generics'
 import { createSignalIdentity } from './signal'
 
+type ClientPayloadConfig = Pick<SocketConfig, 'version' | 'browser'>
+
 const getUserAgent = ({ version }: Pick<SocketConfig, 'version'>): proto.IUserAgent => ({
 	appVersion: {
 		primary: version[0],
@@ -29,23 +31,29 @@ const getWebInfo = (): proto.IWebInfo => ({
 	webSubPlatform: proto.WebInfo.WebInfoWebSubPlatform.WEB_BROWSER
 })
 
-export const generateLoginNode = (userJid: string, config: Pick<SocketConfig, 'version' | 'browser'>) => {
-	const { user, device } = jidDecode(userJid)
-	const payload: proto.IClientPayload = {
+const getClientPayload = (config: ClientPayloadConfig): proto.IClientPayload => {
+	return {
 		passive: true,
 		connectType: proto.ClientPayload.ClientPayloadConnectType.WIFI_UNKNOWN,
 		connectReason: proto.ClientPayload.ClientPayloadConnectReason.USER_ACTIVATED,
 		userAgent: getUserAgent(config),
 		webInfo: getWebInfo(),
+	}
+}
+
+export const generateLoginNode = (userJid: string, config: ClientPayloadConfig): proto.IClientPayload => {
+	const { user, device } = jidDecode(userJid)
+	const payload: proto.IClientPayload = {
+		...getClientPayload(config),
 		username: +user,
 		device: device,
 	}
-	return proto.ClientPayload.encode(payload).finish()
+	return payload
 }
 
 export const generateRegistrationNode = (
 	{ registrationId, signedPreKey, signedIdentityKey }: SignalCreds,
-	config: Pick<SocketConfig, 'version' | 'browser'>
+	config: ClientPayloadConfig
 ) => {
 	// the app version needs to be md5 hashed
 	// and passed in
@@ -68,9 +76,7 @@ export const generateRegistrationNode = (
 	const companionProto = proto.CompanionProps.encode(companion).finish()
 
 	const registerPayload: proto.IClientPayload = {
-		connectReason: proto.ClientPayload.ClientPayloadConnectReason.USER_ACTIVATED,
-		connectType: proto.ClientPayload.ClientPayloadConnectType.WIFI_UNKNOWN,
-		passive: false,
+		...getClientPayload(config),
 		regData: {
 			buildHash: appVersionBuf,
 			companionProps: companionProto,
@@ -81,11 +87,9 @@ export const generateRegistrationNode = (
 			eSkeyVal: signedPreKey.keyPair.public,
 			eSkeySig: signedPreKey.signature,
 		},
-		userAgent: getUserAgent(config),
-		webInfo: getWebInfo(),
 	}
 
-	return proto.ClientPayload.encode(registerPayload).finish()
+	return registerPayload
 }
 
 export const configureSuccessfulPairing = (
