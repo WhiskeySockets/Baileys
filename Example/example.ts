@@ -1,10 +1,10 @@
 import { Boom } from '@hapi/boom'
-import P from 'pino'
-import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, makeInMemoryStore, useSingleFileAuthState } from '../src'
+import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, makeInMemoryStore, toNumber, useSingleFileAuthState } from '../src'
+import logger from '../src/Utils/logger'
 
 // the store maintains the data of the WA connection in memory
 // can be written out to a file & read from it
-const store = makeInMemoryStore({ logger: P().child({ level: 'debug', stream: 'store' }) })
+const store = makeInMemoryStore({ logger: logger.child({ level: 'debug', stream: 'store' }) })
 store.readFromFile('./baileys_store_multi.json')
 // save every 10s
 setInterval(() => {
@@ -21,7 +21,7 @@ const startSock = async() => {
 
 	const sock = makeWASocket({
 		version,
-		logger: P({ level: 'trace' }),
+		logger: logger.child({ level: 'trace' }),
 		printQRInTerminal: true,
 		auth: state,
 		// implement to handle retries
