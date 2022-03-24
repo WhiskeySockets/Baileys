@@ -259,6 +259,9 @@ export const makeSocket = ({
 
 	const onMessageRecieved = (data: Buffer) => {
 		noise.decodeFrame(data, frame => {
+			// reset ping timeout
+			lastDateRecv = new Date()
+
 			ws.emit('frame', frame)
 			// if it's a binary node
 			if(!(frame instanceof Uint8Array)) {
@@ -359,7 +362,7 @@ export const makeSocket = ({
 				end(new Boom('Connection was lost', { statusCode: DisconnectReason.connectionLost }))
 			} else if(ws.readyState === ws.OPEN) {
 				// if its all good, send a keep alive request
-				query(
+				sendNode(
 					{
 						tag: 'iq',
 						attrs: {
@@ -369,14 +372,11 @@ export const makeSocket = ({
 							xmlns: 'w:p',
 						},
 						content: [{ tag: 'ping', attrs: { } }]
-					},
-					keepAliveIntervalMs
+					}
 				)
-					.then(() => {
-						lastDateRecv = new Date()
-						logger.trace('recv keep alive')
+					.catch(err => {
+						logger.error({ trace: err.stack }, 'error in sending keep alive')
 					})
-					.catch(err => end(err))
 			} else {
 				logger.warn('keep alive called when WS not open')
 			}
