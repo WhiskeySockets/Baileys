@@ -1,6 +1,6 @@
-import P from 'pino'
 import type { CommonSocketConfig, LegacySocketConfig, MediaType, SocketConfig } from '../Types'
 import { Browsers } from '../Utils'
+import logger from '../Utils/logger'
 import { version } from './baileys-version.json'
 
 export const UNAUTHORIZED_CODES = [401, 403, 419]
@@ -25,7 +25,7 @@ const BASE_CONNECTION_CONFIG: CommonSocketConfig<any> = {
 	waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
 	connectTimeoutMs: 20_000,
 	keepAliveIntervalMs: 25_000,
-	logger: P().child({ class: 'baileys' }),
+	logger: logger.child({ class: 'baileys' }),
 	printQRInTerminal: false,
 	emitOwnEvents: true,
 	defaultQueryTimeoutMs: 60_000,
