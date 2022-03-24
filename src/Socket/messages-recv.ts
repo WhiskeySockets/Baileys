@@ -370,6 +370,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								if(retryRequestDelayMs) {
 									await delay(retryRequestDelayMs)
 								}
+							} else {
+								logger.debug({ stanza }, 'connection closed, ignoring retry req')
 							}
 						}
 					)
