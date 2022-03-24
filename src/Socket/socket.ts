@@ -546,7 +546,19 @@ export const makeSocket = ({
 		ev.emit('connection.update', { connection: 'connecting', receivedPendingNotifications: false, qr: undefined })
 	})
 	// update credentials when required
-	ev.on('creds.update', update => Object.assign(creds, update))
+	ev.on('creds.update', update => {
+		const name = update.me?.name
+		// if name has just been received
+		if(!creds.me?.name && name) {
+			logger.info({ name }, 'received pushName')
+			sendNode({
+				tag: 'presence',
+				attrs: { name }
+			})
+		}
+
+		Object.assign(creds, update)
+	})
 
 	if(printQRInTerminal) {
 		printQRIfNecessaryListener(ev, logger)
