@@ -296,7 +296,7 @@ export const makeSocket = ({
 		logger.info({ error }, 'connection closed')
 
 		clearInterval(keepAliveReq)
-		clearInterval(qrTimer)
+		clearTimeout(qrTimer)
 
 		ws.removeAllListeners('close')
 		ws.removeAllListeners('error')
@@ -450,6 +450,10 @@ export const makeSocket = ({
 
 		let qrMs = 60_000 // time to let a QR live
 		const genPairQR = () => {
+			if(ws.readyState !== ws.OPEN) {
+				return
+			}
+
 			const ref = refs.shift()
 			if(!ref) {
 				end(new Boom('QR refs attempts ended', { statusCode: DisconnectReason.timedOut }))
