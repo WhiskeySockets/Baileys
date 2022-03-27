@@ -421,6 +421,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				type = 'available'
 			}
 
+			if (firstChild.attrs?.media === 'audio'){
+				type = 'recording';
+			}
+
 			presence = { lastKnownPresence: type }
 		} else {
 			logger.error({ tag, attrs, content }, 'recv invalid presence node')
