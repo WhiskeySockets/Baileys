@@ -239,7 +239,7 @@ export default (
 
 	const fromJSON = (json: { chats: Chat[], contacts: { [id: string]: Contact }, messages: { [id: string]: WAMessage[] } }) => {
 		chats.upsert(...json.chats)
-		contactsUpsert(Object.values(contacts))
+		contactsUpsert(Object.values(json.contacts))
 		for(const jid in json.messages) {
 			const list = assertMessageList(jid)
 			for(const msg of json.messages[jid]) {

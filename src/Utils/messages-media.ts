@@ -81,7 +81,7 @@ const extractVideoThumb = async(
 	time: string,
 	size: { width: number; height: number },
 ) => new Promise((resolve, reject) => {
-    	const cmd = `ffmpeg -ss ${time} -i ${path} -y -s ${size.width}x${size.height} -vframes 1 -f image2 ${destPath}`
+    	const cmd = `ffmpeg -ss ${time} -i ${path} -y -vf scale=${size.width}:-1 -vframes 1 -f image2 ${destPath}`
     	exec(cmd, (err) => {
     		if(err) {
 			reject(err)
@@ -99,17 +99,17 @@ export const extractImageThumb = async(bufferOrFilePath: Readable | Buffer | str
 	const lib = await getImageProcessingLibrary()
 	if('sharp' in lib) {
 		const result = await lib.sharp!.default(bufferOrFilePath)
-			.resize(32, 32)
+			.resize(32)
 			.jpeg({ quality: 50 })
 			.toBuffer()
 		return result
 	} else {
-		const { read, MIME_JPEG, RESIZE_BILINEAR } = lib.jimp
+		const { read, MIME_JPEG, RESIZE_BILINEAR, AUTO } = lib.jimp
 
 		const jimp = await read(bufferOrFilePath as any)
 		const result = await jimp
 			.quality(50)
-			.resize(32, 32, RESIZE_BILINEAR)
+			.resize(32, AUTO, RESIZE_BILINEAR)
 			.getBufferAsync(MIME_JPEG)
 		return result
 	}

@@ -749,6 +749,13 @@ Of course, replace ``` xyz ``` with an actual ID.
     ```
     Of course, replace ``` xxx ``` with invitation code.
 
+
+- To join the group using groupInviteMessage
+    ``` ts
+    const response = await sock.groupAcceptInviteV4(groupInviteMessage)
+    console.log("joined to: " + response)
+    ```
+  Of course, replace ``` xxx ``` with invitation code.
 ## Broadcast Lists & Stories
 
 **Note:** messages cannot be sent to broadcast lists from the MD version right now
