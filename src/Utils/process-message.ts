@@ -157,7 +157,7 @@ const processMessage = async(
 		}
 	}
 
-	if(Object.keys(chat).length) {
+	if(Object.keys(chat).length > 1) {
 		map['chats.update'] = [chat]
 	}
 
