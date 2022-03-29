@@ -27,6 +27,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		relayMessage,
 		sendReceipt,
 		resyncMainAppState,
+		emitEventsFromMap,
 	} = sock
 
 	/** this mutex ensures that the notifications (receipts, messages etc.) are processed in order */
@@ -129,12 +130,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 			logger.info({ msgAttrs: node.attrs, retryCount }, 'sent retry receipt')
 		})
-	}
-
-	const emitEventsFromMap = (map: Partial<BaileysEventMap<any>>) => {
-		for(const key in map) {
-			ev.emit(key as any, map[key])
-		}
 	}
 
 	const processMessageLocal = async(message: proto.IWebMessageInfo) => {

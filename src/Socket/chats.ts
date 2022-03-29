@@ -1,7 +1,7 @@
 import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto'
-import { AppStateChunk, Chat, ChatModification, ChatMutation, Contact, LTHashState, PresenceData, SocketConfig, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAPatchCreate, WAPatchName, WAPresence } from '../Types'
-import { chatModificationToAppPatch, decodePatches, decodeSyncdSnapshot, encodeSyncdPatch, extractSyncdPatches, generateProfilePicture, newLTHashState, toNumber } from '../Utils'
+import { AppStateChunk, ChatModification, ChatMutation, LTHashState, PresenceData, SocketConfig, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAPatchCreate, WAPatchName, WAPresence } from '../Types'
+import { chatModificationToAppPatch, decodePatches, decodeSyncdSnapshot, encodeSyncdPatch, extractSyncdPatches, generateProfilePicture, newLTHashState, processSyncActions } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidNormalizedUser, reduceBinaryNodeToDictionary, S_WHATSAPP_NET } from '../WABinary'
 import { makeMessagesSocket } from './messages-send'
@@ -20,6 +20,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		query,
 		fetchPrivacySettings,
 		onUnexpectedError,
+		emitEventsFromMap,
 	} = sock
 
 	const mutationMutex = makeMutex()
@@ -338,7 +339,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			}
 		)
 
-		processSyncActions(appStateChunk.totalMutations)
+		processSyncActionsLocal(appStateChunk.totalMutations)
 
 		return appStateChunk
 	}
@@ -421,8 +422,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				type = 'available'
 			}
 
-			if (firstChild.attrs?.media === 'audio'){
-				type = 'recording';
+			if(firstChild.attrs?.media === 'audio') {
+				type = 'recording'
 			}
 
 			presence = { lastKnownPresence: type }
@@ -454,64 +455,9 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		)
 	}
 
-	const processSyncActions = (actions: ChatMutation[]) => {
-		const updates: { [jid: string]: Partial<Chat> } = {}
-		const contactUpdates: { [jid: string]: Contact } = {}
-		const msgDeletes: proto.IMessageKey[] = []
-
-		for(const { syncAction: { value: action }, index: [_, id, msgId, fromMe] } of actions) {
-			const update: Partial<Chat> = { id }
-			if(action?.muteAction) {
-				update.mute = action.muteAction?.muted ?
-					toNumber(action.muteAction!.muteEndTimestamp!) :
-					undefined
-			} else if(action?.archiveChatAction) {
-				update.archive = !!action.archiveChatAction?.archived
-			} else if(action?.markChatAsReadAction) {
-				update.unreadCount = !!action.markChatAsReadAction?.read ? 0 : -1
-			} else if(action?.clearChatAction) {
-				msgDeletes.push({
-					remoteJid: id,
-					id: msgId,
-					fromMe: fromMe === '1'
-				})
-			} else if(action?.contactAction) {
-				contactUpdates[id] = {
-					...(contactUpdates[id] || {}),
-					id,
-					name: action.contactAction!.fullName
-				}
-			} else if(action?.pushNameSetting) {
-				const me = {
-					...authState.creds.me!,
-					name: action?.pushNameSetting?.name!
-				}
-				ev.emit('creds.update', { me })
-			} else if(action?.pinAction) {
-				update.pin = action.pinAction?.pinned ? toNumber(action.timestamp) : undefined
-			} else {
-				logger.warn({ action, id }, 'unprocessable update')
-			}
-
-			if(Object.keys(update).length > 1) {
-				updates[update.id] = {
-					...(updates[update.id] || {}),
-					...update
-				}
-			}
-		}
-
-		if(Object.values(updates).length) {
-			ev.emit('chats.update', Object.values(updates))
-		}
-
-		if(Object.values(contactUpdates).length) {
-			ev.emit('contacts.upsert', Object.values(contactUpdates))
-		}
-
-		if(msgDeletes.length) {
-			ev.emit('messages.delete', { keys: msgDeletes })
-		}
+	const processSyncActionsLocal = (actions: ChatMutation[]) => {
+		const events = processSyncActions(actions, authState.creds.me!, logger)
+		emitEventsFromMap(events)
 	}
 
 	const appPatch = async(patchCreate: WAPatchCreate) => {
@@ -574,7 +520,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 				if(config.emitOwnEvents) {
 					const result = await decodePatches(name, [{ ...patch, version: { version: state.version }, }], initial, getAppStateSyncKey)
-					processSyncActions(result.newMutations)
+					processSyncActionsLocal(result.newMutations)
 				}
 			}
 		)

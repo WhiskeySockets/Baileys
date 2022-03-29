@@ -1,6 +1,7 @@
 import { Boom } from '@hapi/boom'
+import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
-import { ChatModification, ChatMutation, LastMessageList, LTHashState, WAPatchCreate, WAPatchName } from '../Types'
+import { AuthenticationCreds, BaileysEventMap, Chat, ChatModification, ChatMutation, Contact, LastMessageList, LTHashState, WAPatchCreate, WAPatchName } from '../Types'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren } from '../WABinary'
 import { aesDecrypt, aesEncrypt, hkdf, hmacSign } from './crypto'
 import { toNumber } from './generics'
@@ -538,4 +539,69 @@ export const chatModificationToAppPatch = (
 	patch.syncAction.timestamp = Date.now()
 
 	return patch
+}
+
+export const processSyncActions = (
+	actions: ChatMutation[],
+	me: Contact,
+	logger?: Logger
+) => {
+	const map: Partial<BaileysEventMap<AuthenticationCreds>> = { }
+	const updates: { [jid: string]: Partial<Chat> } = {}
+	const contactUpdates: { [jid: string]: Contact } = {}
+	const msgDeletes: proto.IMessageKey[] = []
+
+	for(const { syncAction: { value: action }, index: [_, id, msgId, fromMe] } of actions) {
+		const update: Partial<Chat> = { id }
+		if(action?.muteAction) {
+			update.mute = action.muteAction?.muted ?
+				toNumber(action.muteAction!.muteEndTimestamp!) :
+				undefined
+		} else if(action?.archiveChatAction) {
+			update.archive = !!action.archiveChatAction?.archived
+		} else if(action?.markChatAsReadAction) {
+			update.unreadCount = !!action.markChatAsReadAction?.read ? 0 : -1
+		} else if(action?.clearChatAction) {
+			msgDeletes.push({
+				remoteJid: id,
+				id: msgId,
+				fromMe: fromMe === '1'
+			})
+		} else if(action?.contactAction) {
+			contactUpdates[id] = {
+				...(contactUpdates[id] || {}),
+				id,
+				name: action.contactAction!.fullName
+			}
+		} else if(action?.pushNameSetting) {
+			map['creds.update'] = {
+				me: { ...me, name: action?.pushNameSetting?.name! }
+			}
+		} else if(action?.pinAction) {
+			update.pin = action.pinAction?.pinned ? toNumber(action.timestamp) : undefined
+		} else {
+			logger.warn({ action, id }, 'unprocessable update')
+		}
+
+		if(Object.keys(update).length > 1) {
+			updates[update.id] = {
+				...(updates[update.id] || {}),
+				...update
+			}
+		}
+	}
+
+	if(Object.values(updates).length) {
+		map['chats.update'] = Object.values(updates)
+	}
+
+	if(Object.values(contactUpdates).length) {
+		map['contacts.upsert'] = Object.values(contactUpdates)
+	}
+
+	if(msgDeletes.length) {
+		map['messages.delete'] = { keys: msgDeletes }
+	}
+
+	return map
 }

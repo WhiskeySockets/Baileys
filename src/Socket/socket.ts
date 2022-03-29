@@ -5,7 +5,7 @@ import { promisify } from 'util'
 import WebSocket from 'ws'
 import { proto } from '../../WAProto'
 import { DEF_CALLBACK_PREFIX, DEF_TAG_PREFIX, DEFAULT_ORIGIN, KEY_BUNDLE_TYPE } from '../Defaults'
-import { AuthenticationCreds, BaileysEventEmitter, DisconnectReason, SocketConfig } from '../Types'
+import { AuthenticationCreds, BaileysEventEmitter, BaileysEventMap, DisconnectReason, SocketConfig } from '../Types'
 import { addTransactionCapability, bindWaitForConnectionUpdate, configureSuccessfulPairing, Curve, encodeBigEndian, generateLoginNode, generateOrGetPreKeys, generateRegistrationNode, getPreKeys, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout, useSingleFileAuthState, xmppPreKey, xmppSignedPreKey } from '../Utils'
 import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, getBinaryNodeChild, S_WHATSAPP_NET } from '../WABinary'
 
@@ -408,6 +408,13 @@ export const makeSocket = ({
 			]
 		})
 	)
+
+	const emitEventsFromMap = (map: Partial<BaileysEventMap<AuthenticationCreds>>) => {
+		for(const key in map) {
+			ev.emit(key as any, map[key])
+		}
+	}
+
 	/** logout & invalidate connection */
 	const logout = async() => {
 		const jid = authState.creds.me?.id
@@ -584,6 +591,7 @@ export const makeSocket = ({
 		get user() {
 			return authState.creds.me
 		},
+		emitEventsFromMap,
 		assertingPreKeys,
 		generateMessageTag,
 		query,
