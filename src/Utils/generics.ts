@@ -254,3 +254,18 @@ export const fetchLatestBaileysVersion = async() => {
 		}
 	}
 }
+
+const STATUS_MAP: { [_: string]: proto.WebMessageInfo.WebMessageInfoStatus } = {
+	'played': proto.WebMessageInfo.WebMessageInfoStatus.PLAYED,
+	'read': proto.WebMessageInfo.WebMessageInfoStatus.READ,
+	'read-self': proto.WebMessageInfo.WebMessageInfoStatus.READ
+}
+
+export const getStatusFromReceiptType = (type: string | undefined) => {
+	const status = STATUS_MAP[type]
+	if(typeof type === 'undefined') {
+		return proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK
+	}
+
+	return status
+}
