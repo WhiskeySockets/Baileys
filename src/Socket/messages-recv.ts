@@ -499,5 +499,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			)
 	})
 
-	return { ...sock, processMessage, sendMessageAck, sendRetryRequest }
+	return {
+		...sock,
+		processMessage: processMessageLocal,
+		sendMessageAck,
+		sendRetryRequest
+	}
 }
