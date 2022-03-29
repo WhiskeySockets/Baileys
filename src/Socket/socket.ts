@@ -60,6 +60,8 @@ export const makeSocket = ({
 	}
 
 	const { creds } = authState
+	// add transaction capability
+	const keys = addTransactionCapability(authState.keys, logger)
 
 	let lastDateRecv: Date
 	let epoch = 0
@@ -230,10 +232,14 @@ export const makeSocket = ({
 			update.serverHasPreKeys = true
 		}
 
-		await authState.keys.set({ 'pre-key': newPreKeys })
+		await keys.transaction(
+			async() => {
+				await keys.set({ 'pre-key': newPreKeys })
 
-		const preKeys = await getPreKeys(authState.keys, preKeysRange[0], preKeysRange[0] + preKeysRange[1])
-		await execute(preKeys)
+				const preKeys = await getPreKeys(keys, preKeysRange[0], preKeysRange[0] + preKeysRange[1])
+				await execute(preKeys)
+			}
+		)
 
 		ev.emit('creds.update', update)
 	}
@@ -574,11 +580,7 @@ export const makeSocket = ({
 		type: 'md' as 'md',
 		ws,
 		ev,
-		authState: {
-			creds,
-			// add capability
-			keys: addTransactionCapability(authState.keys, logger)
-		},
+		authState: { creds, keys },
 		get user() {
 			return authState.creds.me
 		},
