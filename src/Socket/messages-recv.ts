@@ -2,7 +2,7 @@
 import { proto } from '../../WAProto'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { BaileysEventMap, MessageUserReceipt, SocketConfig, WAMessageStubType } from '../Types'
-import { decodeMessageStanza, delay, encodeBigEndian, generateSignalPubKey, getStatusFromReceiptType, normalizeMessageContent, xmppPreKey, xmppSignedPreKey } from '../Utils'
+import { debouncedTimeout, decodeMessageStanza, delay, encodeBigEndian, generateSignalPubKey, getStatusFromReceiptType, normalizeMessageContent, xmppPreKey, xmppSignedPreKey } from '../Utils'
 import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
 import processMessage from '../Utils/process-message'
 import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getAllBinaryNodeChildren, getBinaryNodeChildren, isJidGroup, jidDecode, jidEncode, jidNormalizedUser } from '../WABinary'
@@ -35,6 +35,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	/** this mutex ensures that each retryRequest will wait for the previous one to finish */
 	const retryMutex = makeMutex()
+
+	const appStateSyncTimeout = debouncedTimeout(
+		6_000,
+		() => ws.readyState === ws.OPEN && resyncMainAppState()
+	)
 
 	const msgRetryMap = config.msgRetryCounterMap || { }
 
@@ -153,8 +158,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			{ historyCache, meId, keyStore: authState.keys, logger, treatCiphertextMessagesAsReal }
 		)
 
-		if(newEvents['chats.set']?.isLatest) {
-			resyncMainAppState()
+		if(isAnyHistoryMsg) {
+			logger.debug('restarting app sync timeout')
+			// restart the app state sync timeout
+			appStateSyncTimeout.start()
 		}
 
 		return newEvents
