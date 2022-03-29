@@ -527,6 +527,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const handleNotification = async(node: BinaryNode) => {
 		const remoteJid = node.attrs.from
+		await sendMessageAck(node, { class: 'notification', type: node.attrs.type })
 		await processingMutex.mutex(
 			remoteJid,
 			() => {
@@ -548,8 +549,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				}
 			}
 		)
-
-		await sendMessageAck(node, { class: 'notification', type: node.attrs.type })
 	}
 
 	const handleUpsertedMessages = async({ messages, type }: BaileysEventMap<any>['messages.upsert']) => {
