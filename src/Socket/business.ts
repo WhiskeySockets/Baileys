@@ -32,17 +32,17 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 						{
 							tag: 'limit',
 							attrs: { },
-							content: Buffer.from([ 49, 48 ])
+							content: Buffer.from(limit.toString())
 						},
 						{
 							tag: 'width',
 							attrs: { },
-							content: Buffer.from([ 49, 48, 48 ])
+							content: Buffer.from('100')
 						},
 						{
 							tag: 'height',
 							attrs: { },
-							content: Buffer.from([ 49, 48, 48 ])
+							content: Buffer.from('100')
 						}
 					]
 				}
@@ -71,22 +71,22 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 						{
 							tag: 'collection_limit',
 							attrs: { },
-							content: Buffer.from([ 49, 48 ])
+							content: Buffer.from(limit.toString())
 						},
 						{
 							tag: 'item_limit',
 							attrs: { },
-							content: Buffer.from([ limit ])
+							content: Buffer.from(limit.toString())
 						},
 						{
 							tag: 'width',
 							attrs: { },
-							content: Buffer.from([ 49, 48, 48 ])
+							content: Buffer.from('100')
 						},
 						{
 							tag: 'height',
 							attrs: { },
-							content: Buffer.from([ 49, 48, 48 ])
+							content: Buffer.from('100')
 						}
 					]
 				}
