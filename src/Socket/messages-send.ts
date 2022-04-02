@@ -85,10 +85,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			tag: 'receipt',
 			attrs: {
 				id: messageIds[0],
-				t: Date.now().toString(),
 				to: jid,
 			},
 		}
+		const isProtoReceipt = type === 'hist_sync' || type === 'peer_msg'
+		if(!isProtoReceipt) {
+			node.attrs.t = Date.now().toString()
+		}
+
 		if(type) {
 			node.attrs.type = type
 		}

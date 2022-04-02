@@ -152,7 +152,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const normalizedContent = !!msg.message ? normalizeMessageContent(msg.message) : undefined
 		const isAnyHistoryMsg = !!normalizedContent?.protocolMessage?.historySyncNotification
 		if(isAnyHistoryMsg) {
-			await sendReceipt(msg.key.remoteJid!, undefined, [msg.key.id], 'hist_sync')
+			const jid = jidEncode(jidDecode(msg.key.remoteJid!).user, 'c.us')
+			await sendReceipt(jid, undefined, [msg.key.id], 'hist_sync')
 			// we only want to sync app state once we've all the history
 			// restart the app state sync timeout
 			logger.debug('restarting app sync timeout')
