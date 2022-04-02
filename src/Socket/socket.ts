@@ -176,9 +176,10 @@ export const makeSocket = ({
 
 	/** connection handshake */
 	const validateConnection = async() => {
-		const helloMsg: proto.IHandshakeMessage = {
+		let helloMsg: proto.IHandshakeMessage = {
 			clientHello: { ephemeral: ephemeralKeyPair.public }
 		}
+		helloMsg = proto.HandshakeMessage.fromObject(helloMsg)
 
 		logger.info({ browser, helloMsg }, 'connected to WA Web')
 

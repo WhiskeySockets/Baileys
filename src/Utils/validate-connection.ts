@@ -48,7 +48,7 @@ export const generateLoginNode = (userJid: string, config: ClientPayloadConfig):
 		username: +user,
 		device: device,
 	}
-	return payload
+	return proto.ClientPayload.fromObject(payload)
 }
 
 export const generateRegistrationNode = (
@@ -89,7 +89,7 @@ export const generateRegistrationNode = (
 		},
 	}
 
-	return registerPayload
+	return proto.ClientPayload.fromObject(registerPayload)
 }
 
 export const configureSuccessfulPairing = (
