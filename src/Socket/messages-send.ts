@@ -2,7 +2,7 @@
 import NodeCache from 'node-cache'
 import { proto } from '../../WAProto'
 import { WA_DEFAULT_EPHEMERAL } from '../Defaults'
-import { AnyMessageContent, MediaConnInfo, MessageRelayOptions, MiscMessageGenerationOptions, SocketConfig } from '../Types'
+import { AnyMessageContent, MediaConnInfo, MessageReceiptType, MessageRelayOptions, MiscMessageGenerationOptions, SocketConfig } from '../Types'
 import { encodeWAMessage, encryptSenderKeyMsgSignalProto, encryptSignalProto, extractDeviceJids, generateMessageID, generateWAMessage, getWAUploadToServer, jidToSignalProtocolAddress, parseAndInjectE2ESessions } from '../Utils'
 import { BinaryNode, BinaryNodeAttributes, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, jidDecode, jidEncode, jidNormalizedUser, JidWithDevice, reduceBinaryNodeToDictionary, S_WHATSAPP_NET } from '../WABinary'
 import { makeGroupsSocket } from './groups'
@@ -80,7 +80,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
      * generic send receipt function
      * used for receipts of phone call, read, delivery etc.
      * */
-	const sendReceipt = async(jid: string, participant: string | undefined, messageIds: string[], type: 'read' | 'read-self' | undefined) => {
+	const sendReceipt = async(jid: string, participant: string | undefined, messageIds: string[], type: MessageReceiptType) => {
 		const node: BinaryNode = {
 			tag: 'receipt',
 			attrs: {
