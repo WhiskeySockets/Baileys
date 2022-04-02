@@ -1,10 +1,13 @@
 import { Boom } from '@hapi/boom'
-import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, makeInMemoryStore, toNumber, useSingleFileAuthState } from '../src'
-import logger from '../src/Utils/logger'
+import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, makeInMemoryStore, useSingleFileAuthState } from '../src'
+import MAIN_LOGGER from '../src/Utils/logger'
+
+const logger = MAIN_LOGGER.child({ })
+logger.level = 'trace'
 
 // the store maintains the data of the WA connection in memory
 // can be written out to a file & read from it
-const store = makeInMemoryStore({ logger: logger.child({ level: 'debug', stream: 'store' }) })
+const store = makeInMemoryStore({ logger })
 store.readFromFile('./baileys_store_multi.json')
 // save every 10s
 setInterval(() => {
@@ -21,7 +24,7 @@ const startSock = async() => {
 
 	const sock = makeWASocket({
 		version,
-		logger: logger.child({ level: 'trace' }),
+		logger,
 		printQRInTerminal: true,
 		auth: state,
 		// implement to handle retries
@@ -45,21 +48,21 @@ const startSock = async() => {
 
 		await sock.sendMessage(jid, msg)
 	}
-    
+
 	sock.ev.on('chats.set', item => console.log(`recv ${item.chats.length} chats (is latest: ${item.isLatest})`))
 	sock.ev.on('messages.set', item => console.log(`recv ${item.messages.length} messages (is latest: ${item.isLatest})`))
 	sock.ev.on('contacts.set', item => console.log(`recv ${item.contacts.length} contacts`))
 
 	sock.ev.on('messages.upsert', async m => {
 		console.log(JSON.stringify(m, undefined, 2))
-        
+
 		const msg = m.messages[0]
 		if(!msg.key.fromMe && m.type === 'notify') {
 			console.log('replying to', m.messages[0].key.remoteJid)
 			await sock!.sendReadReceipt(msg.key.remoteJid, msg.key.participant, [msg.key.id])
 			await sendMessageWTyping({ text: 'Hello there!' }, msg.key.remoteJid)
 		}
-        
+
 	})
 
 	sock.ev.on('messages.update', m => console.log(m))
@@ -78,7 +81,7 @@ const startSock = async() => {
 				console.log('Connection closed. You are logged out.')
 			}
 		}
-        
+
 		console.log('connection update', update)
 	})
 	// listen for when the auth credentials is updated

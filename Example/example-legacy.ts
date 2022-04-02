@@ -1,10 +1,12 @@
 import { Boom } from '@hapi/boom'
-import P from 'pino'
 import { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, makeInMemoryStore, makeWALegacySocket, useSingleFileLegacyAuthState } from '../src'
+import MAIN_LOGGER from '../src/Utils/logger'
 
+const logger = MAIN_LOGGER.child({ })
+logger.level = 'debug'
 // the store maintains the data of the WA connection in memory
 // can be written out to a file & read from it
-const store = makeInMemoryStore({ logger: P().child({ level: 'debug', stream: 'store' }) })
+const store = makeInMemoryStore({ logger })
 store.readFromFile('./baileys_store.json')
 // save every 10s
 setInterval(() => {
@@ -21,7 +23,7 @@ const startSock = async() => {
 
 	const sock = makeWALegacySocket({
 		version,
-		logger: P({ level: 'debug' }),
+		logger,
 		printQRInTerminal: true,
 		auth: state
 	})
@@ -38,19 +40,19 @@ const startSock = async() => {
 
 		await sock.sendMessage(jid, msg)
 	}
-    
+
 	sock.ev.on('messages.upsert', async m => {
 		if(m.type === 'append' || m.type === 'notify') {
 			console.log(JSON.stringify(m, undefined, 2))
 		}
-        
+
 		const msg = m.messages[0]
 		if(!msg.key.fromMe && m.type === 'notify') {
 			console.log('replying to', m.messages[0].key.remoteJid)
 			await sock!.chatRead(msg.key, 1)
 			await sendMessageWTyping({ text: 'Hello there!' }, msg.key.remoteJid)
 		}
-        
+
 	})
 
 	sock.ev.on('messages.update', m => console.log(JSON.stringify(m, undefined, 2)))
@@ -68,7 +70,7 @@ const startSock = async() => {
 				console.log('connection closed')
 			}
 		}
-        
+
 		console.log('connection update', update)
 	})
 	// listen for when the auth credentials is updated
