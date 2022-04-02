@@ -140,13 +140,25 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		})
 	}
 
-	const processMessageLocal = async(message: proto.IWebMessageInfo) => {
+	const processMessageLocal = async(msg: proto.IWebMessageInfo) => {
 		const meId = authState.creds.me!.id
 		// process message and emit events
 		const newEvents = await processMessage(
-			message,
+			msg,
 			{ historyCache, meId, keyStore: authState.keys, logger, treatCiphertextMessagesAsReal }
 		)
+
+		// send ack for history message
+		const normalizedContent = !!msg.message ? normalizeMessageContent(msg.message) : undefined
+		const isAnyHistoryMsg = !!normalizedContent?.protocolMessage?.historySyncNotification
+		if(isAnyHistoryMsg) {
+			await sendReceipt(msg.key.remoteJid!, undefined, [msg.key.id], 'hist_sync')
+			// we only want to sync app state once we've all the history
+			// restart the app state sync timeout
+			logger.debug('restarting app sync timeout')
+			appStateSyncTimeout.start()
+		}
+
 		return newEvents
 	}
 
@@ -455,17 +467,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					await sendMessageAck(stanza, { class: 'receipt' })
 					// no type in the receipt => message delivered
 					await sendReceipt(msg.key.remoteJid!, msg.key.participant, [msg.key.id!], undefined)
-
-					// send ack for history message
-					const normalizedContent = !!msg.message ? normalizeMessageContent(msg.message) : undefined
-					const isAnyHistoryMsg = !!normalizedContent?.protocolMessage?.historySyncNotification
-					if(isAnyHistoryMsg) {
-						await sendReceipt(msg.key.remoteJid!, undefined, [msg.key.id], 'hist_sync')
-						// we only want to sync app state once we've all the history
-						// restart the app state sync timeout
-						logger.debug('restarting app sync timeout')
-						appStateSyncTimeout.start()
-					}
 
 					if(category === 'peer') {
 						await sendReceipt(msg.key.remoteJid!, undefined, [msg.key.id], 'peer_msg')
