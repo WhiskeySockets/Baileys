@@ -82,6 +82,7 @@ export const decodeMessageStanza = (stanza: BinaryNode, auth: AuthenticationStat
 
 	return {
 		fullMessage,
+		category: stanza.attrs.category,
 		decryptionTask: (async() => {
 			let decryptables = 0
 			if(Array.isArray(stanza.content)) {
