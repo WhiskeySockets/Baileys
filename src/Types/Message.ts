@@ -24,7 +24,7 @@ export type MessageType = keyof proto.Message
 
 export type DownloadableMessage = { mediaKey?: Uint8Array, directPath?: string, url?: string }
 
-export type MessageReceiptType = 'read' | 'read-self' | 'hist_sync' | 'peer_msg' | undefined
+export type MessageReceiptType = 'read' | 'read-self' | 'hist_sync' | 'peer_msg' | 'sender' | undefined
 
 export type MediaConnInfo = {
     auth: string

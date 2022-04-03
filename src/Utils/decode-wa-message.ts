@@ -14,8 +14,8 @@ export const decodeMessageStanza = (stanza: BinaryNode, auth: AuthenticationStat
 	let chatId: string
 	let author: string
 
-	const msgId: string = stanza.attrs.id
-	const from: string = stanza.attrs.from
+	const msgId = stanza.attrs.id
+	const from = stanza.attrs.from
 	const participant: string | undefined = stanza.attrs.participant
 	const recipient: string | undefined = stanza.attrs.recipient
 
@@ -83,6 +83,7 @@ export const decodeMessageStanza = (stanza: BinaryNode, auth: AuthenticationStat
 	return {
 		fullMessage,
 		category: stanza.attrs.category,
+		author,
 		decryptionTask: (async() => {
 			let decryptables = 0
 			if(Array.isArray(stanza.content)) {

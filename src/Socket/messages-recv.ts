@@ -1,11 +1,11 @@
 
 import { proto } from '../../WAProto'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
-import { BaileysEventMap, MessageUserReceipt, SocketConfig, WAMessageStubType } from '../Types'
+import { BaileysEventMap, MessageReceiptType, MessageUserReceipt, SocketConfig, WAMessageStubType } from '../Types'
 import { debouncedTimeout, decodeMessageStanza, delay, encodeBigEndian, generateSignalPubKey, getStatusFromReceiptType, normalizeMessageContent, xmppPreKey, xmppSignedPreKey } from '../Utils'
 import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
 import processMessage from '../Utils/process-message'
-import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getAllBinaryNodeChildren, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, jidDecode, jidEncode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
+import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getAllBinaryNodeChildren, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, isJidUser, jidDecode, jidEncode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
 import { makeChatsSocket } from './chats'
 import { extractGroupMetadata } from './groups'
 
@@ -441,7 +441,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	// recv a message
 	ws.on('CB:message', (stanza: BinaryNode) => {
-		const { fullMessage: msg, category, decryptionTask } = decodeMessageStanza(stanza, authState)
+		const { fullMessage: msg, category, author, decryptionTask } = decodeMessageStanza(stanza, authState)
 		processingMutex.mutex(
 			msg.key.remoteJid!,
 			async() => {
@@ -467,11 +467,19 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				} else {
 					await sendMessageAck(stanza, { class: 'receipt' })
 					// no type in the receipt => message delivered
-					await sendReceipt(msg.key.remoteJid!, msg.key.participant, [msg.key.id!], undefined)
-
-					if(category === 'peer') {
-						await sendReceipt(msg.key.remoteJid!, undefined, [msg.key.id], 'peer_msg')
+					let type: MessageReceiptType = undefined
+					let participant = msg.key.participant
+					if(category === 'peer') { // special peer message
+						type = 'peer_msg'
+					} else if(msg.key.fromMe) { // message was sent by us from a different device
+						type = 'sender'
+						// need to specially handle this case
+						if(isJidUser(msg.key.remoteJid)) {
+							participant = author
+						}
 					}
+
+					await sendReceipt(msg.key.remoteJid!, participant, [msg.key.id!], type)
 				}
 
 				msg.key.remoteJid = jidNormalizedUser(msg.key.remoteJid!)
