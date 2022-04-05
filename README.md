@@ -474,7 +474,7 @@ const templateButtons = [
 const buttonMessage = {
     text: "Hi it's a template message",
     footer: 'Hello World',
-    templateButtons: templateButttons,
+    templateButtons: templateButtons,
     image: {url: 'https://example.com/image.jpeg'}
 }
 
