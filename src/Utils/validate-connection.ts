@@ -69,7 +69,7 @@ export const generateRegistrationNode = (
 			secondary: +(browserVersion[1] || 0),
 			tertiary: +(browserVersion[2] || 0),
 		},
-		platformType: proto.CompanionProps.CompanionPropsPlatformType.CHROME,
+		platformType: proto.CompanionProps.CompanionPropsPlatformType[config.browser[1].toUpperCase()] || proto.CompanionProps.CompanionPropsPlatformType.CHROME,
 		requireFullSync: false,
 	}
 

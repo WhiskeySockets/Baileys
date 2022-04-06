@@ -43,7 +43,7 @@ export const areJidsSameUser = (jid1: string, jid2: string) => (
 export const isJidUser = (jid: string) => (jid?.endsWith('@s.whatsapp.net'))
 /** is the jid a broadcast */
 export const isJidBroadcast = (jid: string) => (jid?.endsWith('@broadcast'))
-/** is the jid a broadcast */
+/** is the jid a group */
 export const isJidGroup = (jid: string) => (jid?.endsWith('@g.us'))
 /** is the jid the status broadcast */
 export const isJidStatusBroadcast = (jid: string) => jid === 'status@broadcast'
