@@ -24,12 +24,13 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	} = sock
 
 	const mutationMutex = makeMutex()
-	/// helper function to fetch an app state sync key
+	/** helper function to fetch the given app state sync key */
 	const getAppStateSyncKey = async(keyId: string) => {
 		const { [keyId]: key } = await authState.keys.get('app-state-sync-key', [keyId])
 		return key
 	}
 
+	/** helper function to run a generic IQ query */
 	const interactiveQuery = async(userNodes: BinaryNode[], queryNode: BinaryNode) => {
 		const result = await query({
 			tag: 'iq',
@@ -109,6 +110,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 	}
 
+	/** update the profile picture for yourself or a group */
 	const updateProfilePicture = async(jid: string, content: WAMediaUpload) => {
 		const { img } = await generateProfilePicture(content)
 		await query({
@@ -296,7 +298,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 								const { state: newState, mutations } = await decodeSyncdSnapshot(name, snapshot, getAppStateSyncKey, initialVersionMap[name])
 								states[name] = newState
 
-								logger.info(`restored state of ${name} from snapshot to v${newState.version} with ${mutations.length} mutations`)
+								logger.info(
+									{ mutations: logger.level === 'trace' ? mutations : undefined },
+									`restored state of ${name} from snapshot to v${newState.version} with ${mutations.length} mutations`
+								)
 
 								await authState.keys.set({ 'app-state-sync-version': { [name]: newState } })
 
