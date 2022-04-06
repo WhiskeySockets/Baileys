@@ -2,7 +2,7 @@ import { Boom } from '@hapi/boom'
 import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { AuthenticationCreds, BaileysEventMap, Chat, ChatModification, ChatMutation, Contact, LastMessageList, LTHashState, WAPatchCreate, WAPatchName } from '../Types'
-import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren } from '../WABinary'
+import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidNormalizedUser } from '../WABinary'
 import { aesDecrypt, aesEncrypt, hkdf, hmacSign } from './crypto'
 import { toNumber } from './generics'
 import { LT_HASH_ANTI_TAMPERING } from './lt-hash'
@@ -458,7 +458,16 @@ export const chatModificationToAppPatch = (
 
 		const messageRange: proto.ISyncActionMessageRange = {
 			lastMessageTimestamp: lastMsg?.messageTimestamp,
-			messages: lastMessages
+			messages: lastMessages.map(
+				m => {
+					if(m.key.participant) {
+						m.key = { ...m.key }
+						m.key.participant = jidNormalizedUser(m.key.participant)
+					}
+
+					return m
+				}
+			)
 		}
 		return messageRange
 	}
