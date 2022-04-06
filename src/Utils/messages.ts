@@ -526,6 +526,7 @@ export const getDevice = (id: string) => {
 	return deviceType
 }
 
+/** Upserts a receipt in the message */
 export const updateMessageWithReceipt = (msg: WAMessage, receipt: MessageUserReceipt) => {
 	msg.userReceipt = msg.userReceipt || []
 	const recp = msg.userReceipt.find(m => m.userJid === receipt.userJid)
@@ -534,6 +535,27 @@ export const updateMessageWithReceipt = (msg: WAMessage, receipt: MessageUserRec
 	} else {
 		msg.userReceipt.push(receipt)
 	}
+}
+
+/** Given a list of message keys, aggregates them by chat & sender. Useful for sending read receipts in bulk */
+export const aggregateMessageKeysNotFromMe = (keys: proto.IMessageKey[]) => {
+	const keyMap: { [id: string]: { jid: string, participant: string | undefined, messageIds: string[] } } = { }
+	for(const { remoteJid, id, participant, fromMe } of keys) {
+		if(!fromMe) {
+			const uqKey = `${remoteJid}:${participant || ''}`
+			if(!keyMap[uqKey]) {
+				keyMap[uqKey] = {
+					jid: remoteJid,
+					participant,
+					messageIds: []
+				}
+			}
+
+			keyMap[uqKey].messageIds.push(id)
+		}
+	}
+
+	return Object.values(keyMap)
 }
 
 /**
