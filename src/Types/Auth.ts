@@ -27,6 +27,11 @@ export type SignalCreds = {
     readonly registrationId: number
 }
 
+export type AccountSettings = {
+    /** unarchive chats when a new message is received */
+    unarchiveChats: boolean
+}
+
 export type AuthenticationCreds = SignalCreds & {
     readonly noiseKey: KeyPair
     readonly advSecretKey: string
@@ -40,6 +45,7 @@ export type AuthenticationCreds = SignalCreds & {
     nextPreKeyId: number
 
     lastAccountSyncTimestamp?: number
+    accountSettings: AccountSettings
 }
 
 export type SignalDataTypeMap = {

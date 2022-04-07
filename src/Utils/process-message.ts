@@ -1,20 +1,21 @@
 import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
-import { BaileysEventMap, Chat, GroupMetadata, ParticipantAction, SignalKeyStoreWithTransaction, WAMessageStubType } from '../Types'
+import { AccountSettings, BaileysEventMap, Chat, GroupMetadata, ParticipantAction, SignalKeyStoreWithTransaction, WAMessageStubType } from '../Types'
 import { downloadAndProcessHistorySyncNotification, normalizeMessageContent, toNumber } from '../Utils'
 import { areJidsSameUser, jidNormalizedUser } from '../WABinary'
 
 type ProcessMessageContext = {
-	historyCache: Set<string>,
-	meId: string,
-	keyStore: SignalKeyStoreWithTransaction,
+	historyCache: Set<string>
+	meId: string
+	keyStore: SignalKeyStoreWithTransaction
+	accountSettings: AccountSettings
 	logger?: Logger
 	treatCiphertextMessagesAsReal?: boolean
 }
 
 const processMessage = async(
 	message: proto.IWebMessageInfo,
-	{ historyCache, meId, keyStore, logger, treatCiphertextMessagesAsReal }: ProcessMessageContext
+	{ historyCache, meId, keyStore, accountSettings, logger, treatCiphertextMessagesAsReal }: ProcessMessageContext
 ) => {
 	const map: Partial<BaileysEventMap<any>> = { }
 
@@ -30,8 +31,13 @@ const processMessage = async(
 		&& !normalizedContent?.reactionMessage
 	) {
 		chat.conversationTimestamp = toNumber(message.messageTimestamp)
-		if(!message.key.fromMe) {
+		// only increment unread count if not CIPHERTEXT and from another person
+		if(!message.key.fromMe && !!message.messageStubType) {
 			chat.unreadCount = (chat.unreadCount || 0) + 1
+		}
+
+		if(accountSettings?.unarchiveChats) {
+			chat.archive = false
 		}
 	}
 

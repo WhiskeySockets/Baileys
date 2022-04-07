@@ -108,7 +108,10 @@ export const initAuthCreds = (): AuthenticationCreds => {
 
 		nextPreKeyId: 1,
 		firstUnuploadedPreKeyId: 1,
-		serverHasPreKeys: false
+		serverHasPreKeys: false,
+		accountSettings: {
+			unarchiveChats: false
+		}
 	}
 }
 

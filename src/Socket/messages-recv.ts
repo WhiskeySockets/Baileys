@@ -145,7 +145,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		// process message and emit events
 		const newEvents = await processMessage(
 			msg,
-			{ historyCache, meId, keyStore: authState.keys, logger, treatCiphertextMessagesAsReal }
+			{ historyCache, meId, accountSettings: authState.creds.accountSettings, keyStore: authState.keys, logger, treatCiphertextMessagesAsReal }
 		)
 
 		// send ack for history message

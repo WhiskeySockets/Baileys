@@ -583,11 +583,13 @@ export const processSyncActions = (
 				name: action.contactAction!.fullName
 			}
 		} else if(action?.pushNameSetting) {
-			map['creds.update'] = {
-				me: { ...me, name: action?.pushNameSetting?.name! }
-			}
+			map['creds.update'] = map['creds.update'] || { }
+			map['creds.update'].me = { ...me, name: action?.pushNameSetting?.name! }
 		} else if(action?.pinAction) {
 			update.pin = action.pinAction?.pinned ? toNumber(action.timestamp) : undefined
+		} else if(action?.unarchiveChatsSetting) {
+			map['creds.update'] = map['creds.update'] || { }
+			map['creds.update'].accountSettings = { unarchiveChats: !!action.unarchiveChatsSetting.unarchiveChats }
 		} else {
 			logger.warn({ action, id }, 'unprocessable update')
 		}
