@@ -32,7 +32,7 @@ const processMessage = async(
 	) {
 		chat.conversationTimestamp = toNumber(message.messageTimestamp)
 		// only increment unread count if not CIPHERTEXT and from another person
-		if(!message.key.fromMe && !!message.messageStubType) {
+		if(!message.key.fromMe && !message.messageStubType) {
 			chat.unreadCount = (chat.unreadCount || 0) + 1
 		}
 
