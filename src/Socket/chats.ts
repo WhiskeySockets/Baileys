@@ -610,6 +610,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			fetchPrivacySettings(),
 			sendPresenceUpdate('available')
 		])
+		if(!authState.creds.didInitialAppStateSync) {
+			await resyncMainAppState()
+			ev.emit('creds.update', { didInitialAppStateSync: true })
+		}
 	}
 
 	ws.on('CB:presence', handlePresenceUpdate)

@@ -111,7 +111,8 @@ export const initAuthCreds = (): AuthenticationCreds => {
 		serverHasPreKeys: false,
 		accountSettings: {
 			unarchiveChats: false
-		}
+		},
+		didInitialAppStateSync: false
 	}
 }
 

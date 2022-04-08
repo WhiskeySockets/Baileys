@@ -46,6 +46,7 @@ export type AuthenticationCreds = SignalCreds & {
 
     lastAccountSyncTimestamp?: number
     accountSettings: AccountSettings
+    didInitialAppStateSync: boolean
 }
 
 export type SignalDataTypeMap = {
