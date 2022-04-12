@@ -83,8 +83,12 @@ export const makeSocket = ({
 	}
 
 	/** send a binary node */
-	const sendNode = (node: BinaryNode) => {
-		const buff = encodeBinaryNode(node)
+	const sendNode = (frame: BinaryNode) => {
+		if(logger.level === 'trace') {
+			logger.trace({ msgId: frame.attrs.id, fromMe: true, frame }, 'communication')
+		}
+
+		const buff = encodeBinaryNode(frame)
 		return sendRawMessage(buff)
 	}
 
