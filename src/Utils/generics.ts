@@ -76,7 +76,7 @@ export const encodeWAMessage = (message: proto.IMessage) => (
 )
 
 export const generateRegistrationId = () => (
-	Uint16Array.from(randomBytes(2))[0] & 0x3fff
+	Uint16Array.from(randomBytes(2))[0]
 )
 
 export const encodeInt = (e: number, t: number) => {

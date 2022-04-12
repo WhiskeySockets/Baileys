@@ -184,7 +184,7 @@ export const makeSocket = ({
 		}
 		helloMsg = proto.HandshakeMessage.fromObject(helloMsg)
 
-		logger.info({ browser, helloMsg }, 'connected to WA Web')
+		logger.info({ browser, helloMsg, registrationId: creds.registrationId }, 'connected to WA Web')
 
 		const init = proto.HandshakeMessage.encode(helloMsg).finish()
 
