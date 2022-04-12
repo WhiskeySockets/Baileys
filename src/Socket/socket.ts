@@ -1,12 +1,11 @@
 import { Boom } from '@hapi/boom'
-import { randomBytes } from 'crypto'
 import EventEmitter from 'events'
 import { promisify } from 'util'
 import WebSocket from 'ws'
 import { proto } from '../../WAProto'
 import { DEF_CALLBACK_PREFIX, DEF_TAG_PREFIX, DEFAULT_ORIGIN, KEY_BUNDLE_TYPE } from '../Defaults'
 import { AuthenticationCreds, BaileysEventEmitter, BaileysEventMap, DisconnectReason, SocketConfig } from '../Types'
-import { addTransactionCapability, bindWaitForConnectionUpdate, configureSuccessfulPairing, Curve, encodeBigEndian, generateLoginNode, generateOrGetPreKeys, generateRegistrationNode, getPreKeys, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout, useSingleFileAuthState, xmppPreKey, xmppSignedPreKey } from '../Utils'
+import { addTransactionCapability, bindWaitForConnectionUpdate, configureSuccessfulPairing, Curve, encodeBigEndian, generateLoginNode, generateMdTagPrefix, generateOrGetPreKeys, generateRegistrationNode, getPreKeys, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout, useSingleFileAuthState, xmppPreKey, xmppSignedPreKey } from '../Utils'
 import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, getBinaryNodeChild, S_WHATSAPP_NET } from '../WABinary'
 
 const INITIAL_PREKEY_COUNT = 30
@@ -68,7 +67,7 @@ export const makeSocket = ({
 	let keepAliveReq: NodeJS.Timeout
 	let qrTimer: NodeJS.Timeout
 
-	const uqTagId = `${randomBytes(1).toString('hex')[0]}.${randomBytes(1).toString('hex')[0]}-`
+	const uqTagId = generateMdTagPrefix()
 	const generateMessageTag = () => `${uqTagId}${epoch++}`
 
 	const sendPromise = promisify<void>(ws.send)

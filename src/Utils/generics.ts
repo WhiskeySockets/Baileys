@@ -255,6 +255,12 @@ export const fetchLatestBaileysVersion = async() => {
 	}
 }
 
+/** unique message tag prefix for MD clients */
+export const generateMdTagPrefix = () => {
+	const bytes = randomBytes(2)
+	return `${bytes[0]}.${bytes[1]}-`
+}
+
 const STATUS_MAP: { [_: string]: proto.WebMessageInfo.WebMessageInfoStatus } = {
 	'played': proto.WebMessageInfo.WebMessageInfoStatus.PLAYED,
 	'read': proto.WebMessageInfo.WebMessageInfoStatus.READ,
