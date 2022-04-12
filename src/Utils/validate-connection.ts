@@ -66,11 +66,11 @@ export const generateRegistrationNode = (
 	const companion: proto.ICompanionProps = {
 		os: config.browser[0],
 		version: {
-			primary: +(browserVersion[0] || 10),
-			secondary: +(browserVersion[1] || 0),
+			primary: +(browserVersion[0] || 0),
+			secondary: +(browserVersion[1] || 1),
 			tertiary: +(browserVersion[2] || 0),
 		},
-		platformType: proto.CompanionProps.CompanionPropsPlatformType[config.browser[1].toUpperCase()] || proto.CompanionProps.CompanionPropsPlatformType.CHROME,
+		platformType: proto.CompanionProps.CompanionPropsPlatformType[config.browser[1].toUpperCase()] || proto.CompanionProps.CompanionPropsPlatformType.UNKNOWN,
 		requireFullSync: false,
 	}
 
