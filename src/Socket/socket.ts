@@ -194,7 +194,6 @@ export const makeSocket = ({
 		logger.trace({ handshake }, 'handshake recv from WA Web')
 
 		const keyEnc = noise.processHandshake(handshake, creds.noiseKey)
-		logger.info('handshake complete')
 
 		let node: proto.IClientPayload
 		if(!creds.me) {
