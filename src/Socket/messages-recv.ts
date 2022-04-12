@@ -1,6 +1,6 @@
 
 import { proto } from '../../WAProto'
-import { KEY_BUNDLE_TYPE } from '../Defaults'
+import { KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import { BaileysEventMap, MessageReceiptType, MessageUserReceipt, SocketConfig, WAMessageStubType } from '../Types'
 import { debouncedTimeout, decodeMessageStanza, delay, encodeBigEndian, generateSignalPubKey, getStatusFromReceiptType, normalizeMessageContent, xmppPreKey, xmppSignedPreKey } from '../Utils'
 import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
@@ -8,8 +8,6 @@ import processMessage from '../Utils/process-message'
 import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getAllBinaryNodeChildren, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, isJidUser, jidDecode, jidEncode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
 import { makeChatsSocket } from './chats'
 import { extractGroupMetadata } from './groups'
-
-const MIN_PREKEY_COUNT = 5
 
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const {

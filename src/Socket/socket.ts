@@ -3,7 +3,7 @@ import EventEmitter from 'events'
 import { promisify } from 'util'
 import WebSocket from 'ws'
 import { proto } from '../../WAProto'
-import { DEF_CALLBACK_PREFIX, DEF_TAG_PREFIX, DEFAULT_ORIGIN, KEY_BUNDLE_TYPE } from '../Defaults'
+import { DEF_CALLBACK_PREFIX, DEF_TAG_PREFIX, DEFAULT_ORIGIN, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import { AuthenticationCreds, BaileysEventEmitter, BaileysEventMap, DisconnectReason, SocketConfig } from '../Types'
 import { addTransactionCapability, bindWaitForConnectionUpdate, configureSuccessfulPairing, Curve, encodeBigEndian, generateLoginNode, generateMdTagPrefix, generateOrGetPreKeys, generateRegistrationNode, getPreKeys, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout, useSingleFileAuthState, xmppPreKey, xmppSignedPreKey } from '../Utils'
 import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, getBinaryNodeChild, S_WHATSAPP_NET } from '../WABinary'
@@ -63,7 +63,7 @@ export const makeSocket = ({
 	const keys = addTransactionCapability(authState.keys, logger)
 
 	let lastDateRecv: Date
-	let epoch = 0
+	let epoch = 1
 	let keepAliveReq: NodeJS.Timeout
 	let qrTimer: NodeJS.Timeout
 
@@ -232,9 +232,6 @@ export const makeSocket = ({
 			nextPreKeyId: Math.max(lastPreKeyId + 1, creds.nextPreKeyId),
 			firstUnuploadedPreKeyId: Math.max(creds.firstUnuploadedPreKeyId, lastPreKeyId + 1)
 		}
-		if(!creds.serverHasPreKeys) {
-			update.serverHasPreKeys = true
-		}
 
 		await keys.transaction(
 			async() => {
@@ -248,9 +245,28 @@ export const makeSocket = ({
 		ev.emit('creds.update', update)
 	}
 
+	const getAvailablePreKeysOnServer = async() => {
+		const result = await query({
+			tag: 'iq',
+			attrs: {
+				id: generateMessageTag(),
+				xmlns: 'encrypt',
+				type: 'get',
+				to: S_WHATSAPP_NET
+			},
+			content: [
+				{ tag: 'count', attrs: { } }
+			]
+		})
+		const countChild = getBinaryNodeChild(result, 'count')
+		return +countChild.attrs.value
+	}
+
 	/** generates and uploads a set of pre-keys to the server */
 	const uploadPreKeys = async(count = INITIAL_PREKEY_COUNT) => {
 		await assertingPreKeys(count, async preKeys => {
+			logger.info('uploading pre-keys')
+
 			const node: BinaryNode = {
 				tag: 'iq',
 				attrs: {
@@ -271,6 +287,14 @@ export const makeSocket = ({
 
 			logger.info('uploaded pre-keys')
 		})
+	}
+
+	const uploadPreKeysToServerIfRequired = async() => {
+		const preKeyCount = await getAvailablePreKeysOnServer()
+		logger.info(`${preKeyCount} pre-keys found on server`)
+		if(preKeyCount <= MIN_PREKEY_COUNT) {
+			await uploadPreKeys()
+		}
 	}
 
 	const onMessageRecieved = (data: Buffer) => {
@@ -528,10 +552,7 @@ export const makeSocket = ({
 	})
 	// login complete
 	ws.on('CB:success', async() => {
-		if(!creds.serverHasPreKeys) {
-			await uploadPreKeys()
-		}
-
+		await uploadPreKeysToServerIfRequired()
 		await sendPassiveIq('active')
 
 		logger.info('opened connection to WA')

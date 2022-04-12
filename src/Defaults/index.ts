@@ -60,3 +60,5 @@ export const MEDIA_PATH_MAP: { [T in MediaType]: string } = {
 export const MEDIA_KEYS = Object.keys(MEDIA_PATH_MAP) as MediaType[]
 
 export const KEY_BUNDLE_TYPE = Buffer.from([5])
+
+export const MIN_PREKEY_COUNT = 5
