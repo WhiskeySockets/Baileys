@@ -1,10 +1,11 @@
 import { Boom } from '@hapi/boom'
 import { createHash } from 'crypto'
 import { proto } from '../../WAProto'
+import { KEY_BUNDLE_TYPE } from '../Defaults'
 import type { AuthenticationCreds, SignalCreds, SocketConfig } from '../Types'
 import { Binary, BinaryNode, getAllBinaryNodeChildren, jidDecode, S_WHATSAPP_NET } from '../WABinary'
 import { Curve, hmacSign } from './crypto'
-import { encodeInt } from './generics'
+import { encodeBigEndian } from './generics'
 import { createSignalIdentity } from './signal'
 
 type ClientPayloadConfig = Pick<SocketConfig, 'version' | 'browser'>
@@ -80,10 +81,10 @@ export const generateRegistrationNode = (
 		regData: {
 			buildHash: appVersionBuf,
 			companionProps: companionProto,
-			eRegid: encodeInt(4, registrationId),
-			eKeytype: encodeInt(1, 5),
+			eRegid: encodeBigEndian(registrationId),
+			eKeytype: KEY_BUNDLE_TYPE,
 			eIdent: signedIdentityKey.public,
-			eSkeyId: encodeInt(3, signedPreKey.keyId),
+			eSkeyId: encodeBigEndian(signedPreKey.keyId, 3),
 			eSkeyVal: signedPreKey.keyPair.public,
 			eSkeySig: signedPreKey.signature,
 		},

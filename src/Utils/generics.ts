@@ -75,17 +75,9 @@ export const encodeWAMessage = (message: proto.IMessage) => (
 	)
 )
 
-export const generateRegistrationId = () => (
-	Uint16Array.from(randomBytes(2))[0]
-)
-
-export const encodeInt = (e: number, t: number) => {
-	for(var r = t, a = new Uint8Array(e), i = e - 1; i >= 0; i--) {
-		a[i] = 255 & r
-		r >>>= 8
-	}
-
-	return a
+export const generateRegistrationId = () => {
+	const buff = randomBytes(4)
+	return buff.readUInt32BE()
 }
 
 export const encodeBigEndian = (e: number, t = 4) => {
