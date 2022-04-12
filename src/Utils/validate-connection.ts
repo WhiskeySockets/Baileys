@@ -32,9 +32,9 @@ const getWebInfo = (): proto.IWebInfo => ({
 	webSubPlatform: proto.WebInfo.WebInfoWebSubPlatform.WEB_BROWSER
 })
 
-const getClientPayload = (config: ClientPayloadConfig): proto.IClientPayload => {
+const getClientPayload = (config: ClientPayloadConfig, passive: boolean): proto.IClientPayload => {
 	return {
-		passive: true,
+		passive,
 		connectType: proto.ClientPayload.ClientPayloadConnectType.WIFI_UNKNOWN,
 		connectReason: proto.ClientPayload.ClientPayloadConnectReason.USER_ACTIVATED,
 		userAgent: getUserAgent(config),
@@ -45,7 +45,7 @@ const getClientPayload = (config: ClientPayloadConfig): proto.IClientPayload => 
 export const generateLoginNode = (userJid: string, config: ClientPayloadConfig): proto.IClientPayload => {
 	const { user, device } = jidDecode(userJid)
 	const payload: proto.IClientPayload = {
-		...getClientPayload(config),
+		...getClientPayload(config, true),
 		username: +user,
 		device: device,
 	}
@@ -77,7 +77,7 @@ export const generateRegistrationNode = (
 	const companionProto = proto.CompanionProps.encode(companion).finish()
 
 	const registerPayload: proto.IClientPayload = {
-		...getClientPayload(config),
+		...getClientPayload(config, false),
 		regData: {
 			buildHash: appVersionBuf,
 			companionProps: companionProto,
