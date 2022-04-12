@@ -267,7 +267,7 @@ export const makeSocket = ({
 					xmppSignedPreKey(creds.signedPreKey)
 				]
 			}
-			await sendNode(node)
+			await query(node)
 
 			logger.info('uploaded pre-keys')
 		})
