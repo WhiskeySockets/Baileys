@@ -2,7 +2,7 @@
 import { proto } from '../../WAProto'
 import { KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import { BaileysEventMap, MessageReceiptType, MessageUserReceipt, SocketConfig, WAMessageStubType } from '../Types'
-import { debouncedTimeout, decodeMessageStanza, delay, encodeBigEndian, generateSignalPubKey, getStatusFromReceiptType, normalizeMessageContent, xmppPreKey, xmppSignedPreKey } from '../Utils'
+import { debouncedTimeout, decodeMessageStanza, delay, encodeBigEndian, generateSignalPubKey, getNextPreKeys, getStatusFromReceiptType, normalizeMessageContent, xmppPreKey, xmppSignedPreKey } from '../Utils'
 import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
 import processMessage from '../Utils/process-message'
 import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getAllBinaryNodeChildren, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, isJidUser, jidDecode, jidEncode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
@@ -22,7 +22,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		ws,
 		onUnexpectedError,
 		assertSessions,
-		assertingPreKeys,
 		sendNode,
 		relayMessage,
 		sendReceipt,
@@ -78,64 +77,70 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
 
 		const deviceIdentity = proto.ADVSignedDeviceIdentity.encode(account).finish()
-		await assertingPreKeys(1, async preKeys => {
-			const [keyId] = Object.keys(preKeys)
-			const key = preKeys[+keyId]
+		await authState.keys.transaction(
+			async() => {
+				const { update, preKeys } = await getNextPreKeys(authState, 1)
 
-			const decFrom = node.attrs.from ? jidDecode(node.attrs.from) : undefined
-			const receipt: BinaryNode = {
-				tag: 'receipt',
-				attrs: {
-					id: msgId,
-					type: 'retry',
-					to: isGroup ? node.attrs.from : jidEncode(decFrom!.user, 's.whatsapp.net', decFrom!.device, 0)
-				},
-				content: [
-					{
-						tag: 'retry',
-						attrs: {
-							count: retryCount.toString(),
-							id: node.attrs.id,
-							t: node.attrs.t,
-							v: '1'
-						}
+				const [keyId] = Object.keys(preKeys)
+				const key = preKeys[+keyId]
+
+				const decFrom = node.attrs.from ? jidDecode(node.attrs.from) : undefined
+				const receipt: BinaryNode = {
+					tag: 'receipt',
+					attrs: {
+						id: msgId,
+						type: 'retry',
+						to: isGroup ? node.attrs.from : jidEncode(decFrom!.user, 's.whatsapp.net', decFrom!.device, 0)
 					},
-					{
-						tag: 'registration',
-						attrs: { },
-						content: encodeBigEndian(authState.creds.registrationId)
-					}
-				]
-			}
-
-			if(node.attrs.recipient) {
-				receipt.attrs.recipient = node.attrs.recipient
-			}
-
-			if(node.attrs.participant) {
-				receipt.attrs.participant = node.attrs.participant
-			}
-
-			if(retryCount > 1) {
-				const exec = generateSignalPubKey(Buffer.from(KEY_BUNDLE_TYPE)).slice(0, 1)
-				const content = receipt.content! as BinaryNode[]
-				content.push({
-					tag: 'keys',
-					attrs: { },
 					content: [
-						{ tag: 'type', attrs: { }, content: exec },
-						{ tag: 'identity', attrs: { }, content: identityKey.public },
-						xmppPreKey(key, +keyId),
-						xmppSignedPreKey(signedPreKey),
-						{ tag: 'device-identity', attrs: { }, content: deviceIdentity }
+						{
+							tag: 'retry',
+							attrs: {
+								count: retryCount.toString(),
+								id: node.attrs.id,
+								t: node.attrs.t,
+								v: '1'
+							}
+						},
+						{
+							tag: 'registration',
+							attrs: { },
+							content: encodeBigEndian(authState.creds.registrationId)
+						}
 					]
-				})
+				}
+
+				if(node.attrs.recipient) {
+					receipt.attrs.recipient = node.attrs.recipient
+				}
+
+				if(node.attrs.participant) {
+					receipt.attrs.participant = node.attrs.participant
+				}
+
+				if(retryCount > 1) {
+					const exec = generateSignalPubKey(Buffer.from(KEY_BUNDLE_TYPE)).slice(0, 1)
+					const content = receipt.content! as BinaryNode[]
+					content.push({
+						tag: 'keys',
+						attrs: { },
+						content: [
+							{ tag: 'type', attrs: { }, content: exec },
+							{ tag: 'identity', attrs: { }, content: identityKey.public },
+							xmppPreKey(key, +keyId),
+							xmppSignedPreKey(signedPreKey),
+							{ tag: 'device-identity', attrs: { }, content: deviceIdentity }
+						]
+					})
+				}
+
+				await sendNode(receipt)
+
+				logger.info({ msgAttrs: node.attrs, retryCount }, 'sent retry receipt')
+
+				ev.emit('creds.update', update)
 			}
-
-			await sendNode(receipt)
-
-			logger.info({ msgAttrs: node.attrs, retryCount }, 'sent retry receipt')
-		})
+		)
 	}
 
 	const processMessageLocal = async(msg: proto.IWebMessageInfo) => {

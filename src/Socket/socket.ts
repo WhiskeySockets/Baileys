@@ -3,12 +3,10 @@ import EventEmitter from 'events'
 import { promisify } from 'util'
 import WebSocket from 'ws'
 import { proto } from '../../WAProto'
-import { DEF_CALLBACK_PREFIX, DEF_TAG_PREFIX, DEFAULT_ORIGIN, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
+import { DEF_CALLBACK_PREFIX, DEF_TAG_PREFIX, DEFAULT_ORIGIN, INITIAL_PREKEY_COUNT, MIN_PREKEY_COUNT } from '../Defaults'
 import { AuthenticationCreds, BaileysEventEmitter, BaileysEventMap, DisconnectReason, SocketConfig } from '../Types'
-import { addTransactionCapability, bindWaitForConnectionUpdate, configureSuccessfulPairing, Curve, encodeBigEndian, generateLoginNode, generateMdTagPrefix, generateOrGetPreKeys, generateRegistrationNode, getPreKeys, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout, useSingleFileAuthState, xmppPreKey, xmppSignedPreKey } from '../Utils'
+import { addTransactionCapability, bindWaitForConnectionUpdate, BufferJSON, configureSuccessfulPairing, Curve, generateLoginNode, generateMdTagPrefix, generateRegistrationNode, getNextPreKeysNode, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout, useSingleFileAuthState } from '../Utils'
 import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, getBinaryNodeChild, S_WHATSAPP_NET } from '../WABinary'
-
-const INITIAL_PREKEY_COUNT = 30
 
 /**
  * Connects to WA servers and performs:
@@ -219,31 +217,6 @@ export const makeSocket = ({
 		startKeepAliveRequest()
 	}
 
-	/**
-	 * get some pre-keys and do something with them
-	 * @param range how many pre-keys to get
-	 * @param execute what to do with them
-	 */
-	const assertingPreKeys = async(range: number, execute: (keys: { [_: number]: any }) => Promise<void>) => {
-		const { newPreKeys, lastPreKeyId, preKeysRange } = generateOrGetPreKeys(authState.creds, range)
-
-		const update: Partial<AuthenticationCreds> = {
-			nextPreKeyId: Math.max(lastPreKeyId + 1, creds.nextPreKeyId),
-			firstUnuploadedPreKeyId: Math.max(creds.firstUnuploadedPreKeyId, lastPreKeyId + 1)
-		}
-
-		await keys.transaction(
-			async() => {
-				await keys.set({ 'pre-key': newPreKeys })
-
-				const preKeys = await getPreKeys(keys, preKeysRange[0], preKeysRange[0] + preKeysRange[1])
-				await execute(preKeys)
-			}
-		)
-
-		ev.emit('creds.update', update)
-	}
-
 	const getAvailablePreKeysOnServer = async() => {
 		const result = await query({
 			tag: 'iq',
@@ -263,29 +236,19 @@ export const makeSocket = ({
 
 	/** generates and uploads a set of pre-keys to the server */
 	const uploadPreKeys = async(count = INITIAL_PREKEY_COUNT) => {
-		await assertingPreKeys(count, async preKeys => {
-			logger.info('uploading pre-keys')
+		await keys.transaction(
+			async() => {
+				logger.info({ count }, 'uploading pre-keys')
+				const { update, node } = await getNextPreKeysNode({ creds, keys }, count)
 
-			const node: BinaryNode = {
-				tag: 'iq',
-				attrs: {
-					id: generateMessageTag(),
-					xmlns: 'encrypt',
-					type: 'set',
-					to: S_WHATSAPP_NET,
-				},
-				content: [
-					{ tag: 'registration', attrs: { }, content: encodeBigEndian(creds.registrationId) },
-					{ tag: 'type', attrs: { }, content: KEY_BUNDLE_TYPE },
-					{ tag: 'identity', attrs: { }, content: creds.signedIdentityKey.public },
-					{ tag: 'list', attrs: { }, content: Object.keys(preKeys).map(k => xmppPreKey(preKeys[+k], +k)) },
-					xmppSignedPreKey(creds.signedPreKey)
-				]
+				console.log(JSON.stringify(node, BufferJSON.replacer, 2))
+
+				await query(node)
+				ev.emit('creds.update', update)
+
+				logger.info({ count }, 'uploaded pre-keys')
 			}
-			await query(node)
-
-			logger.info('uploaded pre-keys')
-		})
+		)
 	}
 
 	const uploadPreKeysToServerIfRequired = async() => {
@@ -616,7 +579,6 @@ export const makeSocket = ({
 			return authState.creds.me
 		},
 		emitEventsFromMap,
-		assertingPreKeys,
 		generateMessageTag,
 		query,
 		waitForMessage,
