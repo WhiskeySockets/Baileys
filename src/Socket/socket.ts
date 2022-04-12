@@ -29,15 +29,7 @@ export const makeSocket = ({
 	const ws = new WebSocket(waWebSocketUrl, undefined, {
 		origin: DEFAULT_ORIGIN,
 		timeout: connectTimeoutMs,
-		agent,
-		headers: {
-			'Accept-Encoding': 'gzip, deflate, br',
-			'Accept-Language': 'en-US,en;q=0.9',
-			'Cache-Control': 'no-cache',
-			'Host': 'web.whatsapp.com',
-			'Pragma': 'no-cache',
-			'Sec-WebSocket-Extensions': 'permessage-deflate; client_max_window_bits'
-		}
+		agent
 	})
 	ws.setMaxListeners(0)
 	const ev = new EventEmitter() as BaileysEventEmitter
