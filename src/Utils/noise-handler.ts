@@ -18,7 +18,7 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 
 	const authenticate = (data: Uint8Array) => {
 		if(!isFinished) {
-			hash = sha256(Buffer.from(Binary.build(hash, data).readByteArray()))
+			hash = sha256(Buffer.concat([hash, data]))
 		}
 	}
 
@@ -84,7 +84,7 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 		isFinished = true
 	}
 
-	const data = Binary.build(NOISE_MODE).readBuffer()
+	const data = Buffer.from(NOISE_MODE)
 	let hash = Buffer.from(data.byteLength === 32 ? data : sha256(Buffer.from(data)))
 	let salt = hash
 	let encKey = hash
