@@ -5,13 +5,16 @@ import MAIN_LOGGER from '../src/Utils/logger'
 const logger = MAIN_LOGGER.child({ })
 logger.level = 'trace'
 
+const useStore = !process.argv.includes('--no-store')
+const doReplies = !process.argv.includes('--no-reply')
+
 // the store maintains the data of the WA connection in memory
 // can be written out to a file & read from it
-const store = makeInMemoryStore({ logger })
-store.readFromFile('./baileys_store_multi.json')
+const store = useStore ? makeInMemoryStore({ logger }) : undefined
+store?.readFromFile('./baileys_store_multi.json')
 // save every 10s
 setInterval(() => {
-	store.writeToFile('./baileys_store_multi.json')
+	store?.writeToFile('./baileys_store_multi.json')
 }, 10_000)
 
 const { state, saveState } = useSingleFileAuthState('./auth_info_multi.json')
@@ -35,7 +38,7 @@ const startSock = async() => {
 		}
 	})
 
-	store.bind(sock.ev)
+	store?.bind(sock.ev)
 
 	const sendMessageWTyping = async(msg: AnyMessageContent, jid: string) => {
 		await sock.presenceSubscribe(jid)
@@ -57,7 +60,7 @@ const startSock = async() => {
 		console.log(JSON.stringify(m, undefined, 2))
 
 		const msg = m.messages[0]
-		if(!msg.key.fromMe && m.type === 'notify') {
+		if(!msg.key.fromMe && m.type === 'notify' && doReplies) {
 			console.log('replying to', m.messages[0].key.remoteJid)
 			await sock!.sendReadReceipt(msg.key.remoteJid, msg.key.participant, [msg.key.id])
 			await sendMessageWTyping({ text: 'Hello there!' }, msg.key.remoteJid)
