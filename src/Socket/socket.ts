@@ -233,8 +233,6 @@ export const makeSocket = ({
 				logger.info({ count }, 'uploading pre-keys')
 				const { update, node } = await getNextPreKeysNode({ creds, keys }, count)
 
-				console.log(JSON.stringify(node, BufferJSON.replacer, 2))
-
 				await query(node)
 				ev.emit('creds.update', update)
 
