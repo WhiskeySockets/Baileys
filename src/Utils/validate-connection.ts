@@ -3,7 +3,7 @@ import { createHash } from 'crypto'
 import { proto } from '../../WAProto'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import type { AuthenticationCreds, SignalCreds, SocketConfig } from '../Types'
-import { Binary, BinaryNode, getBinaryNodeChild, jidDecode, S_WHATSAPP_NET } from '../WABinary'
+import { BinaryNode, getBinaryNodeChild, jidDecode, S_WHATSAPP_NET } from '../WABinary'
 import { Curve, hmacSign } from './crypto'
 import { encodeBigEndian } from './generics'
 import { createSignalIdentity } from './signal'
@@ -124,18 +124,26 @@ export const configureSuccessfulPairing = (
 	const account = proto.ADVSignedDeviceIdentity.decode(details)
 	const { accountSignatureKey, accountSignature } = account
 
-	const accountMsg = Binary.build(new Uint8Array([6, 0]), account.details, signedIdentityKey.public).readByteArray()
+	const accountMsg = Buffer.concat([
+		Buffer.from([6, 0]),
+		account.details,
+		signedIdentityKey.public
+	])
 	if(!Curve.verify(accountSignatureKey, accountMsg, accountSignature)) {
 		throw new Boom('Failed to verify account signature')
 	}
 
+	const deviceMsg = Buffer.concat([
+		new Uint8Array([6, 1]),
+		account.details,
+		signedIdentityKey.public,
+		account.accountSignatureKey
+	])
+	account.deviceSignature = Curve.sign(signedIdentityKey.private, deviceMsg)
+
 	const identity = createSignalIdentity(jid, accountSignatureKey)
 
 	const deviceIdentity = proto.ADVDeviceIdentity.decode(account.details)
-	const keyIndex = deviceIdentity.keyIndex
-
-	const deviceMsg = Binary.build(new Uint8Array([6, 1]), account.details, signedIdentityKey.public, account.accountSignatureKey).readByteArray()
-	account.deviceSignature = Curve.sign(signedIdentityKey.private, deviceMsg)
 
 	delete account.accountSignatureKey
 	const accountEnc = proto.ADVSignedDeviceIdentity.encode(account).finish()
