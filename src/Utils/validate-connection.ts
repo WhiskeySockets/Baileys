@@ -3,7 +3,7 @@ import { createHash } from 'crypto'
 import { proto } from '../../WAProto'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import type { AuthenticationCreds, SignalCreds, SocketConfig } from '../Types'
-import { Binary, BinaryNode, getAllBinaryNodeChildren, jidDecode, S_WHATSAPP_NET } from '../WABinary'
+import { Binary, BinaryNode, getBinaryNodeChild, jidDecode, S_WHATSAPP_NET } from '../WABinary'
 import { Curve, hmacSign } from './crypto'
 import { encodeBigEndian } from './generics'
 import { createSignalIdentity } from './signal'
@@ -97,21 +97,28 @@ export const configureSuccessfulPairing = (
 	stanza: BinaryNode,
 	{ advSecretKey, signedIdentityKey, signalIdentities }: Pick<AuthenticationCreds, 'advSecretKey' | 'signedIdentityKey' | 'signalIdentities'>
 ) => {
-	const [pair] = getAllBinaryNodeChildren(stanza)
-	const pairContent = Array.isArray(pair.content) ? pair.content : []
-
 	const msgId = stanza.attrs.id
-	const deviceIdentity = pairContent.find(m => m.tag === 'device-identity')?.content
-	const businessName = pairContent.find(m => m.tag === 'biz')?.attrs?.name
-	const verifiedName = businessName || ''
-	const jid = pairContent.find(m => m.tag === 'device')?.attrs?.jid
 
-	const { details, hmac } = proto.ADVSignedDeviceIdentityHMAC.decode(deviceIdentity as Buffer)
+	const pairSuccessNode = getBinaryNodeChild(stanza, 'pair-success')
+
+	const deviceIdentityNode = getBinaryNodeChild(pairSuccessNode, 'device-identity')
+	const platformNode = getBinaryNodeChild(pairSuccessNode, 'platform')
+	const deviceNode = getBinaryNodeChild(pairSuccessNode, 'device')
+	const businessNode = getBinaryNodeChild(pairSuccessNode, 'biz')
+
+	if(!deviceIdentityNode || !deviceNode) {
+		throw new Boom('Missing device-identity or device in pair success node', { data: stanza })
+	}
+
+	const bizName = businessNode?.attrs.name
+	const jid = deviceNode.attrs.jid
+
+	const { details, hmac } = proto.ADVSignedDeviceIdentityHMAC.decode(deviceIdentityNode.content as Buffer)
 
 	const advSign = hmacSign(details, Buffer.from(advSecretKey, 'base64'))
 
 	if(Buffer.compare(hmac, advSign) !== 0) {
-		throw new Boom('Invalid pairing')
+		throw new Boom('Invalid account signature')
 	}
 
 	const account = proto.ADVSignedDeviceIdentity.decode(details)
@@ -122,17 +129,16 @@ export const configureSuccessfulPairing = (
 		throw new Boom('Failed to verify account signature')
 	}
 
+	const identity = createSignalIdentity(jid, accountSignatureKey)
+
+	const deviceIdentity = proto.ADVDeviceIdentity.decode(account.details)
+	const keyIndex = deviceIdentity.keyIndex
+
 	const deviceMsg = Binary.build(new Uint8Array([6, 1]), account.details, signedIdentityKey.public, account.accountSignatureKey).readByteArray()
 	account.deviceSignature = Curve.sign(signedIdentityKey.private, deviceMsg)
 
-	const identity = createSignalIdentity(jid, accountSignatureKey)
-
-	const keyIndex = proto.ADVDeviceIdentity.decode(account.details).keyIndex
-
-	const accountEnc = proto.ADVSignedDeviceIdentity.encode({
-		...account.toJSON(),
-		accountSignatureKey: undefined
-	}).finish()
+	delete account.accountSignatureKey
+	const accountEnc = proto.ADVSignedDeviceIdentity.encode(account).finish()
 
 	const reply: BinaryNode = {
 		tag: 'iq',
@@ -148,7 +154,7 @@ export const configureSuccessfulPairing = (
 				content: [
 					{
 						tag: 'device-identity',
-						attrs: { 'key-index': `${keyIndex}` },
+						attrs: { 'key-index': deviceIdentity.keyIndex.toString() },
 						content: accountEnc
 					}
 				]
@@ -158,9 +164,14 @@ export const configureSuccessfulPairing = (
 
 	const authUpdate: Partial<AuthenticationCreds> = {
 		account,
-		me: { id: jid, verifiedName },
-		signalIdentities: [...(signalIdentities || []), identity]
+		me: { id: jid, name: bizName },
+		signalIdentities: [
+			...(signalIdentities || []),
+			identity
+		],
+		platform: platformNode?.attrs.name
 	}
+
 	return {
 		creds: authUpdate,
 		reply

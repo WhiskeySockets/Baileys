@@ -44,6 +44,7 @@ export type AuthenticationCreds = SignalCreds & {
     nextPreKeyId: number
 
     lastAccountSyncTimestamp?: number
+    platform?: string
     accountSettings: AccountSettings
 }
 

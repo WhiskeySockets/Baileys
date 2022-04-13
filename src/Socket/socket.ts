@@ -490,7 +490,10 @@ export const makeSocket = ({
 				}
 			}
 
-			logger.info({ jid: updatedCreds.me!.id }, 'registered connection, restart server')
+			logger.info(
+				{ me: updatedCreds.me, platform: updatedCreds.platform },
+				'registered connection, restart server'
+			)
 
 			ev.emit('creds.update', updatedCreds)
 			ev.emit('connection.update', { isNewLogin: true, qr: undefined })
