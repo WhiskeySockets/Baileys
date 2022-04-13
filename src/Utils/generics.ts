@@ -6,7 +6,6 @@ import { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { version as baileysVersion } from '../Defaults/baileys-version.json'
 import { CommonBaileysEventEmitter, ConnectionState, DisconnectReason, WAVersion } from '../Types'
-import { Binary } from '../WABinary'
 
 const PLATFORM_MAP = {
 	'aix': 'AIX',
@@ -41,16 +40,14 @@ export const BufferJSON = {
 	}
 }
 
-export const writeRandomPadMax16 = (e: Binary) => {
-	function r(e: Binary, t: number) {
-		for(var r = 0; r < t; r++) {
-			e.writeUint8(t)
-		}
+export const writeRandomPadMax16 = (msg: Uint8Array) => {
+	const pad = randomBytes(1)
+	pad[0] &= 0xf
+	if(!pad[0]) {
+		pad[0] = 0xf
 	}
 
-	var t = randomBytes(1)
-	r(e, 1 + (15 & t[0]))
-	return e
+	return Buffer.concat([msg, Buffer.alloc(pad[0], pad[0])])
 }
 
 export const unpadRandomMax16 = (e: Uint8Array | Buffer) => {
@@ -68,10 +65,8 @@ export const unpadRandomMax16 = (e: Uint8Array | Buffer) => {
 }
 
 export const encodeWAMessage = (message: proto.IMessage) => (
-	Buffer.from(
-		writeRandomPadMax16(
-			new Binary(proto.Message.encode(message).finish())
-		).readByteArray()
+	writeRandomPadMax16(
+		proto.Message.encode(message).finish()
 	)
 )
 

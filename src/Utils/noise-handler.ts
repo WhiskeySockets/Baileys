@@ -3,7 +3,6 @@ import { createCipheriv, createDecipheriv } from 'crypto'
 import { proto } from '../../WAProto'
 import { NOISE_MODE, NOISE_WA_HEADER } from '../Defaults'
 import { KeyPair } from '../Types'
-import { Binary } from '../WABinary'
 import { BinaryNode, decodeBinaryNode } from '../WABinary'
 import { Curve, hkdf, sha256 } from './crypto'
 
@@ -94,8 +93,7 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 	let isFinished = false
 	let sentIntro = false
 
-	const outBinary = new Binary()
-	const inBinary = new Binary()
+	let inBytes = Buffer.alloc(0)
 
 	authenticate(NOISE_WA_HEADER)
 	authenticate(publicKey)
@@ -133,47 +131,43 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 			}
 
 			const introSize = sentIntro ? 0 : NOISE_WA_HEADER.length
-
-			outBinary.ensureAdditionalCapacity(introSize + 3 + data.byteLength)
+			const frame = Buffer.alloc(introSize + 3 + data.byteLength)
 
 			if(!sentIntro) {
-				outBinary.writeByteArray(NOISE_WA_HEADER)
+				frame.set(NOISE_WA_HEADER)
 				sentIntro = true
 			}
 
-			outBinary.writeUint8(data.byteLength >> 16)
-			outBinary.writeUint16(65535 & data.byteLength)
-			outBinary.write(data)
+			frame.writeUInt8(data.byteLength >> 16, introSize)
+			frame.writeUInt16BE(65535 & data.byteLength, introSize + 1)
+			frame.set(data, introSize + 3)
 
-			const bytes = outBinary.readByteArray()
-			return bytes as Uint8Array
+			return frame
 		},
 		decodeFrame: (newData: Buffer | Uint8Array, onFrame: (buff: Uint8Array | BinaryNode) => void) => {
 			// the binary protocol uses its own framing mechanism
 			// on top of the WS frames
 			// so we get this data and separate out the frames
 			const getBytesSize = () => {
-				return (inBinary.readUint8() << 16) | inBinary.readUint16()
+				if(inBytes.length >= 3) {
+					return (inBytes.readUInt8() << 16) | inBytes.readUInt16BE(1)
+				}
 			}
 
-			const peekSize = () => {
-				return !(inBinary.size() < 3) && getBytesSize() <= inBinary.size()
-			}
+			inBytes = Buffer.concat([ inBytes, newData ])
+			let size = getBytesSize()
+			while(size && inBytes.length >= size + 3) {
+				let frame: Uint8Array | BinaryNode = inBytes.slice(3, size + 3)
+				inBytes = inBytes.slice(size + 3)
 
-			inBinary.writeByteArray(newData)
-			while(inBinary.peek(peekSize)) {
-				const bytes = getBytesSize()
-				let frame: Uint8Array | BinaryNode = inBinary.readByteArray(bytes)
 				if(isFinished) {
 					const result = decrypt(frame as Uint8Array)
-					const unpacked = new Binary(result).decompressed()
-					frame = decodeBinaryNode(unpacked)
+					frame = decodeBinaryNode(result)
 				}
 
 				onFrame(frame)
+				size = getBytesSize()
 			}
-
-			inBinary.peek(peekSize)
 		}
 	}
 }

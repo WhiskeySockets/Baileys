@@ -68,8 +68,7 @@
   "files": [
     "lib/*",
     "WAProto/*",
-    "WASignalGroup/*.js",
-    "WABinary/*.js"
+    "WASignalGroup/*.js"
   ],
   "devDependencies": {
     "@adiwajshing/eslint-config": "git+https://github.com/adiwajshing/eslint-config",

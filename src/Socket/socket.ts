@@ -62,7 +62,7 @@ export const makeSocket = ({
 
 	const sendPromise = promisify<void>(ws.send)
 	/** send a raw buffer */
-	const sendRawMessage = async(data: Buffer | Uint8Array) => {
+	const sendRawMessage = async(data: Uint8Array | Buffer) => {
 		if(ws.readyState !== ws.OPEN) {
 			throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
 		}
