@@ -542,7 +542,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				to: S_WHATSAPP_NET,
 				xmlns: 'abt',
 				type: 'get',
-				id: generateMessageTag(),
 			},
 			content: [
 				{ tag: 'props', attrs: { protocol: '1' } }
@@ -569,7 +568,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				to: S_WHATSAPP_NET,
 				xmlns: 'w',
 				type: 'get',
-				id: generateMessageTag(),
 			},
 			content: [
 				{ tag: 'props', attrs: { } }
