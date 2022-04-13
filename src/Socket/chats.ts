@@ -654,14 +654,14 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 	})
 
-	ev.on('connection.update', ({ connection }) => {
+	/*ev.on('connection.update', ({ connection }) => {
 		if(connection === 'open') {
 			fireInitQueries()
 				.catch(
 					error => onUnexpectedError(error, 'connection open requests')
 				)
 		}
-	})
+	})*/
 
 	return {
 		...sock,
