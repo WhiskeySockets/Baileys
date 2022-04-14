@@ -5,8 +5,8 @@ import WebSocket from 'ws'
 import { proto } from '../../WAProto'
 import { DEF_CALLBACK_PREFIX, DEF_TAG_PREFIX, DEFAULT_ORIGIN, INITIAL_PREKEY_COUNT, MIN_PREKEY_COUNT } from '../Defaults'
 import { AuthenticationCreds, BaileysEventEmitter, BaileysEventMap, DisconnectReason, SocketConfig } from '../Types'
-import { addTransactionCapability, bindWaitForConnectionUpdate, BufferJSON, configureSuccessfulPairing, Curve, generateLoginNode, generateMdTagPrefix, generateRegistrationNode, getNextPreKeysNode, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout, useSingleFileAuthState } from '../Utils'
-import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, getBinaryNodeChild, S_WHATSAPP_NET } from '../WABinary'
+import { addTransactionCapability, bindWaitForConnectionUpdate, configureSuccessfulPairing, Curve, generateLoginNode, generateMdTagPrefix, generateRegistrationNode, getNextPreKeysNode, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout, useSingleFileAuthState } from '../Utils'
+import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, getBinaryNodeChild, getBinaryNodeChildren, S_WHATSAPP_NET } from '../WABinary'
 
 /**
  * Connects to WA servers and performs:
@@ -200,8 +200,8 @@ export const makeSocket = ({
 		await sendRawMessage(
 			proto.HandshakeMessage.encode({
 				clientFinish: {
-					static: new Uint8Array(keyEnc),
-					payload: new Uint8Array(payloadEnc),
+					static: keyEnc,
+					payload: payloadEnc,
 				},
 			}).finish()
 		)
@@ -442,7 +442,8 @@ export const makeSocket = ({
 		}
 		await sendNode(iq)
 
-		const refs = ((stanza.content[0] as BinaryNode).content as BinaryNode[]).map(n => n.content as string)
+		const pairDeviceNode = getBinaryNodeChild(stanza, 'pair-device')
+		const refNodes = getBinaryNodeChildren(pairDeviceNode, 'ref')
 		const noiseKeyB64 = Buffer.from(creds.noiseKey.public).toString('base64')
 		const identityKeyB64 = Buffer.from(creds.signedIdentityKey.public).toString('base64')
 		const advB64 = creds.advSecretKey
@@ -453,12 +454,13 @@ export const makeSocket = ({
 				return
 			}
 
-			const ref = refs.shift()
-			if(!ref) {
+			const refNode = refNodes.shift()
+			if(!refNode) {
 				end(new Boom('QR refs attempts ended', { statusCode: DisconnectReason.timedOut }))
 				return
 			}
 
+			const ref = (refNode.content as Buffer).toString('utf-8')
 			const qr = [ref, noiseKeyB64, identityKeyB64, advB64].join(',')
 
 			ev.emit('connection.update', { qr })

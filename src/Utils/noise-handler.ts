@@ -112,7 +112,7 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 			mixIntoKey(Curve.sharedKey(privateKey, decStaticContent))
 
 			const certDecoded = decrypt(serverHello!.payload!)
-			const { details: certDetails, signature: certSignature } = proto.NoiseCertificate.decode(certDecoded)
+			const { details: certDetails } = proto.NoiseCertificate.decode(certDecoded)
 
 			const { key: certKey } = proto.NoiseCertificateDetails.decode(certDetails)
 

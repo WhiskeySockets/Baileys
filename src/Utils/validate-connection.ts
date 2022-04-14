@@ -10,7 +10,7 @@ import { createSignalIdentity } from './signal'
 
 type ClientPayloadConfig = Pick<SocketConfig, 'version' | 'browser'>
 
-const getUserAgent = ({ version }: Pick<SocketConfig, 'version'>): proto.IUserAgent => ({
+const getUserAgent = ({ version, browser }: ClientPayloadConfig): proto.IUserAgent => ({
 	appVersion: {
 		primary: version[0],
 		secondary: version[1],
@@ -20,10 +20,10 @@ const getUserAgent = ({ version }: Pick<SocketConfig, 'version'>): proto.IUserAg
 	releaseChannel: proto.UserAgent.UserAgentReleaseChannel.RELEASE,
 	mcc: '000',
 	mnc: '000',
-	osVersion: '0.1.0',
+	osVersion: browser[2],
 	manufacturer: '',
 	device: 'Desktop',
-	osBuildNumber: '0.1.0',
+	osBuildNumber: browser[2],
 	localeLanguageIso6391: 'en',
 	localeCountryIso31661Alpha2: 'en',
 })
@@ -32,9 +32,8 @@ const getWebInfo = (): proto.IWebInfo => ({
 	webSubPlatform: proto.WebInfo.WebInfoWebSubPlatform.WEB_BROWSER
 })
 
-const getClientPayload = (config: ClientPayloadConfig, passive: boolean): proto.IClientPayload => {
+const getClientPayload = (config: ClientPayloadConfig): proto.IClientPayload => {
 	return {
-		passive,
 		connectType: proto.ClientPayload.ClientPayloadConnectType.WIFI_UNKNOWN,
 		connectReason: proto.ClientPayload.ClientPayloadConnectReason.USER_ACTIVATED,
 		userAgent: getUserAgent(config),
@@ -45,7 +44,8 @@ const getClientPayload = (config: ClientPayloadConfig, passive: boolean): proto.
 export const generateLoginNode = (userJid: string, config: ClientPayloadConfig): proto.IClientPayload => {
 	const { user, device } = jidDecode(userJid)
 	const payload: proto.IClientPayload = {
-		...getClientPayload(config, true),
+		...getClientPayload(config),
+		passive: true,
 		username: +user,
 		device: device,
 	}
@@ -77,7 +77,8 @@ export const generateRegistrationNode = (
 	const companionProto = proto.CompanionProps.encode(companion).finish()
 
 	const registerPayload: proto.IClientPayload = {
-		...getClientPayload(config, false),
+		...getClientPayload(config),
+		passive: false,
 		regData: {
 			buildHash: appVersionBuf,
 			companionProps: companionProto,
@@ -114,39 +115,30 @@ export const configureSuccessfulPairing = (
 	const jid = deviceNode.attrs.jid
 
 	const { details, hmac } = proto.ADVSignedDeviceIdentityHMAC.decode(deviceIdentityNode.content as Buffer)
-
+	// check HMAC matches
 	const advSign = hmacSign(details, Buffer.from(advSecretKey, 'base64'))
-
 	if(Buffer.compare(hmac, advSign) !== 0) {
 		throw new Boom('Invalid account signature')
 	}
 
 	const account = proto.ADVSignedDeviceIdentity.decode(details)
-	const { accountSignatureKey, accountSignature } = account
-
-	const accountMsg = Buffer.concat([
-		Buffer.from([6, 0]),
-		account.details,
-		signedIdentityKey.public
-	])
+	const { accountSignatureKey, accountSignature, details: deviceDetails } = account
+	// verify the device signature matches
+	const accountMsg = Buffer.concat([ Buffer.from([6, 0]), deviceDetails, signedIdentityKey.public ])
 	if(!Curve.verify(accountSignatureKey, accountMsg, accountSignature)) {
 		throw new Boom('Failed to verify account signature')
 	}
 
-	const deviceMsg = Buffer.concat([
-		new Uint8Array([6, 1]),
-		account.details,
-		signedIdentityKey.public,
-		account.accountSignatureKey
-	])
+	// sign the details with our identity key
+	const deviceMsg = Buffer.concat([ Buffer.from([6, 1]), deviceDetails, signedIdentityKey.public, accountSignatureKey ])
 	account.deviceSignature = Curve.sign(signedIdentityKey.private, deviceMsg)
+	// do not provide the "accountSignatureKey" back
+	account.accountSignatureKey = null
 
 	const identity = createSignalIdentity(jid, accountSignatureKey)
+	const accountEnc = proto.ADVSignedDeviceIdentity.encode(account).finish()
 
 	const deviceIdentity = proto.ADVDeviceIdentity.decode(account.details)
-
-	delete account.accountSignatureKey
-	const accountEnc = proto.ADVSignedDeviceIdentity.encode(account).finish()
 
 	const reply: BinaryNode = {
 		tag: 'iq',
