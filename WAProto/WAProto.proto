@@ -56,6 +56,7 @@ message CompanionProps {
         OHANA = 10;
         ALOHA = 11;
         CATALINA = 12;
+        TCL_TV = 13;
     }
     optional CompanionPropsPlatformType platformType = 3;
     optional bool requireFullSync = 4;
@@ -825,6 +826,7 @@ message PollCreationMessage {
     optional string name = 2;
     repeated Option options = 3;
     optional uint32 selectableOptionsCount = 4;
+    optional ContextInfo contextInfo = 5;
 }
 
 message PollUpdateMessage {
@@ -1179,11 +1181,19 @@ message MsgOpaqueData {
     optional bytes futureproofBuffer = 14;
     optional string clientUrl = 15;
     optional string loc = 16;
+    optional string pollName = 17;
+    repeated PollOption pollOptions = 18;
+    optional bytes pollEncKey = 19;
+    optional uint32 pollSelectableOptionsCount = 20;
 }
 
 message MsgRowOpaqueData {
     optional MsgOpaqueData currentMsg = 1;
     optional MsgOpaqueData quotedMsg = 2;
+}
+
+message PollOption {
+    optional string name = 1;
 }
 
 message MediaRetryNotification {
@@ -1282,6 +1292,12 @@ message SyncdValue {
 
 message SyncdVersion {
     optional uint64 version = 1;
+}
+
+message AgentAction {
+    optional string name = 1;
+    optional int32 deviceID = 2;
+    optional bool isDeleted = 3;
 }
 
 message AndroidUnsupportedActions {
@@ -1407,6 +1423,12 @@ message StarAction {
     optional bool starred = 1;
 }
 
+message SubscriptionAction {
+    optional bool isDeactivated = 1;
+    optional bool isAutoRenewing = 2;
+    optional int64 expirationDate = 3;
+}
+
 message SyncActionData {
     optional bytes index = 1;
     optional SyncActionValue value = 2;
@@ -1450,10 +1472,17 @@ message SyncActionValue {
     optional PrimaryFeature primaryFeature = 24;
     optional FavoriteStickerAction favoriteStickerAction = 25;
     optional AndroidUnsupportedActions androidUnsupportedActions = 26;
+    optional AgentAction agentAction = 27;
+    optional SubscriptionAction subscriptionAction = 28;
+    optional UserStatusMuteAction userStatusMuteAction = 29;
 }
 
 message UnarchiveChatsSetting {
     optional bool unarchiveChats = 1;
+}
+
+message UserStatusMuteAction {
+    optional bool muted = 1;
 }
 
 message BizAccountLinkInfo {
@@ -1800,6 +1829,9 @@ message PaymentInfo {
         COLLECT_CANCELED = 26;
         COLLECT_CANCELLING = 27;
         IN_REVIEW = 28;
+        REVERSAL_SUCCESS = 29;
+        REVERSAL_PENDING = 30;
+        REFUND_PENDING = 31;
     }
     optional PaymentInfoTxnStatus txnStatus = 10;
     optional bool useNoviFiatFormat = 11;
@@ -1831,7 +1863,7 @@ message Reaction {
 }
 
 message StatusPSA {
-    required string campaignId = 44;
+    required uint64 campaignId = 44;
     optional uint64 campaignExpirationTimestamp = 45;
 }
 
@@ -2089,6 +2121,7 @@ message WebMessageInfo {
     optional StatusPSA statusPsa = 44;
     repeated PollUpdate pollUpdates = 45;
     optional PollAdditionalMetadata pollAdditionalMetadata = 46;
+    optional string agentId = 47;
 }
 
 message WebNotificationsInfo {
