@@ -46,8 +46,8 @@ export const encodeBinaryNode = ({ tag, attrs, content }: BinaryNode, buffer: nu
 	const writeJid = ({ agent, device, user, server }: ReturnType<typeof jidDecode>) => {
 		if(typeof agent !== 'undefined' || typeof device !== 'undefined') {
 			pushByte(TAGS.AD_JID)
-			pushByte(agent)
-			pushByte(device)
+			pushByte(agent || 0)
+			pushByte(device || 0)
 			writeString(user)
 		} else {
 			pushByte(TAGS.JID_PAIR)
