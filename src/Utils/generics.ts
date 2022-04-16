@@ -70,9 +70,8 @@ export const encodeWAMessage = (message: proto.IMessage) => (
 	)
 )
 
-export const generateRegistrationId = () => {
-	const buff = randomBytes(4)
-	return buff.readUInt32BE()
+export const generateRegistrationId = (): number => {
+	return Uint16Array.from(randomBytes(2))[0] & 16383
 }
 
 export const encodeBigEndian = (e: number, t = 4) => {
