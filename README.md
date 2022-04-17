@@ -148,7 +148,7 @@ import * as fs from 'fs'
 const { state, saveState } = useSingleFileAuthState('./auth_info_multi.json')
 // will use the given state to connect
 // so if valid credentials are available -- it'll connect without QR
-const conn = makeSocket({ auth: state }) 
+const conn = makeWASocket({ auth: state }) 
 // this will be called as soon as the credentials are updated
 sock.ev.on ('creds.update', saveState)
 ```
