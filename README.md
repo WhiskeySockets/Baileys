@@ -150,7 +150,7 @@ const { state, saveState } = useSingleFileAuthState('./auth_info_multi.json')
 // so if valid credentials are available -- it'll connect without QR
 const conn = makeWASocket({ auth: state }) 
 // this will be called as soon as the credentials are updated
-sock.ev.on ('creds.update', saveState)
+conn.ev.on ('creds.update', saveState)
 ```
 
 **Note**: When a message is received/sent, due to signal sessions needing updating, the auth keys (`authState.keys`) will update. Whenever that happens, you must save the updated keys. Not doing so will prevent your messages from reaching the recipient & other unexpected consequences. The `useSingleFileAuthState` function automatically takes care of that, but for any other serious implementation -- you will need to be very careful with the key state management.
