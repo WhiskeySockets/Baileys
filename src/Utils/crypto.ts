@@ -1,5 +1,6 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto'
 import * as curveJs from 'curve25519-js'
+import HKDF from 'futoin-hkdf'
 import { KeyPair } from '../Types'
 
 export const Curve = {
@@ -67,33 +68,6 @@ export function sha256(buffer: Buffer) {
 }
 
 // HKDF key expansion
-// from: https://github.com/benadida/node-hkdf
-export function hkdf(buffer: Uint8Array, expandedLength: number, { info, salt }: { salt?: Buffer, info?: string }) {
-	const hashAlg = 'sha256'
-	const hashLength = 32
-	salt = salt || Buffer.alloc(hashLength)
-	// now we compute the PRK
-	const prk = createHmac(hashAlg, salt).update(buffer).digest()
-
-	let prev = Buffer.from([])
-	const buffers = []
-	const num_blocks = Math.ceil(expandedLength / hashLength)
-
-	const infoBuff = Buffer.from(info || [])
-
-	for(var i = 0; i < num_blocks; i++) {
-		const hmac = createHmac(hashAlg, prk)
-		// XXX is there a more optimal way to build up buffers?
-		const input = Buffer.concat([
-			prev,
-			infoBuff,
-			Buffer.from(String.fromCharCode(i + 1))
-		])
-		hmac.update(input)
-
-		prev = hmac.digest()
-		buffers.push(prev)
-	}
-
-	return Buffer.concat(buffers, expandedLength)
+export function hkdf(buffer: Uint8Array | Buffer, expandedLength: number, info: { salt?: Buffer, info?: string }) {
+	return HKDF(!Buffer.isBuffer(buffer) ? Buffer.from(buffer) : buffer, expandedLength, info)
 }
