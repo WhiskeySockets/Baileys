@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto'
 import * as curveJs from 'curve25519-js'
 import HKDF from 'futoin-hkdf'
+import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { KeyPair } from '../Types'
 
 export const Curve = {
@@ -22,12 +23,14 @@ export const Curve = {
 		return curveJs.verify(pubKey, message, signature)
 	}
 }
+/** prefix version byte to the pub keys, required for some curve crypto functions */
+export const generateSignalPubKey = (pubKey: Uint8Array | Buffer) => (
+	Buffer.concat([ KEY_BUNDLE_TYPE, pubKey ])
+)
 
 export const signedKeyPair = (keyPair: KeyPair, keyId: number) => {
 	const signKeys = Curve.generateKeyPair()
-	const pubKey = new Uint8Array(33)
-	pubKey.set([5], 0)
-	pubKey.set(signKeys.public, 1)
+	const pubKey = generateSignalPubKey(keyPair.public)
 
 	const signature = Curve.sign(keyPair.private, pubKey)
 

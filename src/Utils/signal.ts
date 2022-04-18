@@ -4,15 +4,8 @@ import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage, SenderK
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { AuthenticationCreds, AuthenticationState, KeyPair, SignalAuthState, SignalIdentity, SignalKeyStore, SignedKeyPair } from '../Types/Auth'
 import { assertNodeErrorFree, BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, getBinaryNodeChildren, getBinaryNodeChildUInt, jidDecode, JidWithDevice, S_WHATSAPP_NET } from '../WABinary'
-import { Curve } from './crypto'
+import { Curve, generateSignalPubKey } from './crypto'
 import { encodeBigEndian } from './generics'
-
-export const generateSignalPubKey = (pubKey: Uint8Array | Buffer) => {
-	const newPub = Buffer.alloc(33)
-	newPub.set([5], 0)
-	newPub.set(pubKey, 1)
-	return newPub
-}
 
 const jidToSignalAddress = (jid: string) => jid.split('@')[0]
 
