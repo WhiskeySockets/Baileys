@@ -28,13 +28,13 @@ export const generateSignalPubKey = (pubKey: Uint8Array | Buffer) => (
 	Buffer.concat([ KEY_BUNDLE_TYPE, pubKey ])
 )
 
-export const signedKeyPair = (keyPair: KeyPair, keyId: number) => {
-	const signKeys = Curve.generateKeyPair()
-	const pubKey = generateSignalPubKey(keyPair.public)
+export const signedKeyPair = (identityKeyPair: KeyPair, keyId: number) => {
+	const preKey = Curve.generateKeyPair()
+	const pubKey = generateSignalPubKey(preKey.public)
 
-	const signature = Curve.sign(keyPair.private, pubKey)
+	const signature = Curve.sign(identityKeyPair.private, pubKey)
 
-	return { keyPair: signKeys, signature, keyId }
+	return { keyPair: preKey, signature, keyId }
 }
 
 /** decrypt AES 256 CBC; where the IV is prefixed to the buffer */
