@@ -9,7 +9,7 @@ import { BinaryNode, BinaryNodeAttributes, getBinaryNodeChild, getBinaryNodeChil
 import { makeGroupsSocket } from './groups'
 
 export const makeMessagesSocket = (config: SocketConfig) => {
-	const { logger } = config
+	const { logger, linkPreviewImageThumbnailWidth } = config
 	const sock = makeGroupsSocket(config)
 	const {
 		ev,
@@ -485,7 +485,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						logger,
 						userJid,
 						// multi-device does not have this yet
-						getUrlInfo: getUrlInfo,
+						getUrlInfo: text => getUrlInfo(text, { thumbnailWidth: linkPreviewImageThumbnailWidth }),
 						upload: waUploadToServer,
 						mediaCache: config.mediaCache,
 						...options,
