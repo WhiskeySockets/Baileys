@@ -91,7 +91,7 @@ const extractVideoThumb = async(
     	})
 }) as Promise<void>
 
-export const extractImageThumb = async(bufferOrFilePath: Readable | Buffer | string) => {
+export const extractImageThumb = async(bufferOrFilePath: Readable | Buffer | string, width = 32) => {
 	if(bufferOrFilePath instanceof Readable) {
 		bufferOrFilePath = await toBuffer(bufferOrFilePath)
 	}
@@ -99,7 +99,7 @@ export const extractImageThumb = async(bufferOrFilePath: Readable | Buffer | str
 	const lib = await getImageProcessingLibrary()
 	if('sharp' in lib) {
 		const result = await lib.sharp!.default(bufferOrFilePath)
-			.resize(32)
+			.resize(width)
 			.jpeg({ quality: 50 })
 			.toBuffer()
 		return result
@@ -109,7 +109,7 @@ export const extractImageThumb = async(bufferOrFilePath: Readable | Buffer | str
 		const jimp = await read(bufferOrFilePath as any)
 		const result = await jimp
 			.quality(50)
-			.resize(32, AUTO, RESIZE_BILINEAR)
+			.resize(width, AUTO, RESIZE_BILINEAR)
 			.getBufferAsync(MIME_JPEG)
 		return result
 	}

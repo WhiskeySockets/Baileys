@@ -14,9 +14,9 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 		auth: initialAuthInfo
 	} = config
 	const ev = new EventEmitter() as LegacyBaileysEventEmitter
-	
+
 	const authInfo = initialAuthInfo || newLegacyAuthCreds()
-	
+
 	const state: ConnectionState = {
 		legacy: {
 			phoneConnected: false,
@@ -39,7 +39,7 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 		// if no reconnects occur
 		// send close event
 		updateState({
-			connection: 'close', 
+			connection: 'close',
 			qr: undefined,
 			lastDisconnect: {
 				error,
@@ -49,12 +49,12 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 	})
 	/** Can you login to WA without scanning the QR */
 	const canLogin = () => !!authInfo?.encKey && !!authInfo?.macKey
-	
+
 	const updateState = (update: Partial<ConnectionState>) => {
 		Object.assign(state, update)
 		ev.emit('connection.update', update)
 	}
-	
+
 	/**
 	 * Logs you out from WA
 	 * If connected, invalidates the credentials with the server
@@ -82,7 +82,7 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 		curveKeys = Curve.generateKeyPair()
 		const publicKey = Buffer.from(curveKeys.public).toString('base64')
 		let qrGens = 0
-		
+
 		const qrLoop = ttl => {
 			const qr = [ref, publicKey, authInfo.clientID].join(',')
 			updateState({ qr })
@@ -96,7 +96,7 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 				try {
 					// request new QR
 					const { ref: newRef, ttl: newTTL } = await socket.query({
-						json: ['admin', 'Conn', 'reref'], 
+						json: ['admin', 'Conn', 'reref'],
 						expect200: true,
 						longTag: true,
 						requiresPhoneConnection: false
@@ -123,7 +123,7 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 		const canDoLogin = canLogin()
 		const initQuery = (async() => {
 			const { ref, ttl } = await socket.query({
-				json: ['admin', 'init', version, browser, authInfo.clientID, true], 
+				json: ['admin', 'init', version, browser, authInfo.clientID, true],
 				expect200: true,
 				longTag: true,
 				requiresPhoneConnection: false
@@ -168,7 +168,7 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 
 		// wait for response with tag "s1"
 		let response = await Promise.race(
-			[ 
+			[
 				socket.waitForMessage('s1', false, undefined).promise,
 				...(loginTag ? [socket.waitForMessage(loginTag, false, connectTimeoutMs).promise] : [])
 			]
@@ -184,9 +184,9 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 		if(response[1]?.challenge) {
 			const json = computeChallengeResponse(response[1].challenge, authInfo)
 			logger.info('resolving login challenge')
-			
+
 			await socket.query({ json, expect200: true, timeoutMs: connectTimeoutMs })
-            
+
 			response = await socket.waitForMessage('s2', true).promise
 		}
 
@@ -201,7 +201,7 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 		// validate the new connection
 		const { user, auth } = validateNewConnection(response[1], authInfo, curveKeys)// validate the connection
 		const isNewLogin = user.id !== state.legacy!.user?.id
-		
+
 		Object.assign(authInfo, auth)
 		updateEncKeys()
 
@@ -233,7 +233,7 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 	}
 
 	process.nextTick(() => {
-		ev.emit('connection.update', { 
+		ev.emit('connection.update', {
 			...state
 		})
 	})
