@@ -4,6 +4,7 @@ import { proto } from '../../WAProto'
 import { WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import { AnyMessageContent, MediaConnInfo, MessageReceiptType, MessageRelayOptions, MiscMessageGenerationOptions, SocketConfig, WAMessageKey } from '../Types'
 import { aggregateMessageKeysNotFromMe, encodeWAMessage, encryptSenderKeyMsgSignalProto, encryptSignalProto, extractDeviceJids, generateMessageID, generateWAMessage, getWAUploadToServer, jidToSignalProtocolAddress, parseAndInjectE2ESessions, unixTimestampSeconds } from '../Utils'
+import { getUrlInfo } from '../Utils/link-preview'
 import { BinaryNode, BinaryNodeAttributes, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, isJidUser, jidDecode, jidEncode, jidNormalizedUser, JidWithDevice, reduceBinaryNodeToDictionary, S_WHATSAPP_NET } from '../WABinary'
 import { makeGroupsSocket } from './groups'
 
@@ -484,7 +485,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						logger,
 						userJid,
 						// multi-device does not have this yet
-						//getUrlInfo: generateUrlInfo,
+						getUrlInfo: getUrlInfo,
 						upload: waUploadToServer,
 						mediaCache: config.mediaCache,
 						...options,
