@@ -36,7 +36,6 @@ const BASE_CONNECTION_CONFIG: CommonSocketConfig<any> = {
 
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	...BASE_CONNECTION_CONFIG,
-	waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
 	linkPreviewImageThumbnailWidth: 192,
 	getMessage: async() => undefined
 }
