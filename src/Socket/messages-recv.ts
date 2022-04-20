@@ -366,7 +366,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				}
 
 				if(attrs.type === 'retry') {
-					if(willSendMessageAgain(key.id)) {
+					if(willSendMessageAgain(ids[0])) {
 						// correctly set who is asking for the retry
 						key.participant = key.participant || attrs.from
 						if(key.fromMe) {
