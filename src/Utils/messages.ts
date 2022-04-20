@@ -17,7 +17,7 @@ import {
 	WAMessageContent,
 	WAMessageStatus,
 	WAProto,
-	WATextMessage
+	WATextMessage,
 } from '../Types'
 import { generateMessageID, unixTimestampSeconds } from './generics'
 import { downloadContentFromMessage, encryptedStream, generateThumbnail, getAudioDuration, MediaDownloadOptions } from './messages-media'
@@ -245,19 +245,24 @@ export const generateWAMessageContent = async(
 ) => {
 	let m: WAMessageContent = {}
 	if('text' in message) {
-		const extContent = { ...message } as WATextMessage
+		const extContent = { text: message.text } as WATextMessage
+
+		let urlInfo = message.linkPreview
 		if(!!options.getUrlInfo && message.text.match(URL_REGEX)) {
 			try {
-				const data = await options.getUrlInfo(message.text)
-				extContent.canonicalUrl = data['canonical-url']
-				extContent.matchedText = data['matched-text']
-				extContent.jpegThumbnail = data.jpegThumbnail
-				extContent.description = data.description
-				extContent.title = data.title
-				extContent.previewType = 0
+				urlInfo = await options.getUrlInfo(message.text)
 			} catch(error) { // ignore if fails
 				options.logger?.warn({ trace: error.stack }, 'url generation failed')
 			}
+		}
+
+		if(urlInfo) {
+			extContent.canonicalUrl = urlInfo['canonical-url']
+			extContent.matchedText = urlInfo['matched-text']
+			extContent.jpegThumbnail = urlInfo.jpegThumbnail
+			extContent.description = urlInfo.description
+			extContent.title = urlInfo.title
+			extContent.previewType = 0
 		}
 
 		m.extendedTextMessage = extContent
