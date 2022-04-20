@@ -11,7 +11,7 @@ import type { Logger } from 'pino'
 import { Readable, Transform } from 'stream'
 import { URL } from 'url'
 import { DEFAULT_ORIGIN, MEDIA_PATH_MAP } from '../Defaults'
-import { CommonSocketConfig, DownloadableMessage, MediaConnInfo, MediaType, MessageType, WAGenericMediaMessage, WAMediaUpload, WAMediaUploadFunction, WAMessageContent, WAProto } from '../Types'
+import { CommonSocketConfig, DownloadableMessage, MediaConnInfo, MediaDecryptionKeyInfo, MediaType, MessageType, WAGenericMediaMessage, WAMediaUpload, WAMediaUploadFunction, WAMessageContent, WAProto } from '../Types'
 import { hkdf } from './crypto'
 import { generateMessageID } from './generics'
 
@@ -60,7 +60,7 @@ export const hkdfInfoKey = (type: MediaType) => {
 }
 
 /** generates all the keys required to encrypt/decrypt & sign a media message */
-export function getMediaKeys(buffer, mediaType: MediaType) {
+export function getMediaKeys(buffer: Uint8Array | string, mediaType: MediaType): MediaDecryptionKeyInfo {
 	if(typeof buffer === 'string') {
 		buffer = Buffer.from(buffer.replace('data:;base64,', ''), 'base64')
 	}
@@ -186,6 +186,7 @@ export const toBuffer = async(stream: Readable) => {
 		buff = Buffer.concat([ buff, chunk ])
 	}
 
+	stream.destroy()
 	return buff
 }
 
@@ -343,12 +344,26 @@ export type MediaDownloadOptions = {
     endByte?: number
 }
 
-export const downloadContentFromMessage = async(
+export const downloadContentFromMessage = (
 	{ mediaKey, directPath, url }: DownloadableMessage,
 	type: MediaType,
-	{ startByte, endByte }: MediaDownloadOptions = { }
+	opts: MediaDownloadOptions = { }
 ) => {
 	const downloadUrl = url || `https://${DEF_HOST}${directPath}`
+	const keys = getMediaKeys(mediaKey, type)
+
+	return downloadEncryptedContent(downloadUrl, keys, opts)
+}
+
+/**
+ * Decrypts and downloads an AES256-CBC encrypted file given the keys.
+ * Assumes the SHA256 of the plaintext is appended to the end of the ciphertext
+ * */
+export const downloadEncryptedContent = async(
+	downloadUrl: string,
+	{ cipherKey, iv }: MediaDecryptionKeyInfo,
+	{ startByte, endByte }: MediaDownloadOptions = { }
+) => {
 	let bytesFetched = 0
 	let startChunk = 0
 	let firstBlockIsIV = false
@@ -386,7 +401,6 @@ export const downloadContentFromMessage = async(
 	)
 
 	let remainingBytes = Buffer.from([])
-	const { cipherKey, iv } = getMediaKeys(mediaKey, type)
 
 	let aes: Crypto.Decipher
 

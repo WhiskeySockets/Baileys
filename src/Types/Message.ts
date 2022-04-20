@@ -178,3 +178,9 @@ export type WAMessageUpdate = { update: Partial<WAMessage>, key: proto.IMessageK
 export type WAMessageCursor = { before: WAMessageKey | undefined } | { after: WAMessageKey | undefined }
 
 export type MessageUserReceiptUpdate = { key: proto.IMessageKey, receipt: MessageUserReceipt }
+
+export type MediaDecryptionKeyInfo = {
+    iv: Buffer
+    cipherKey: Buffer
+    macKey?: Buffer
+}
