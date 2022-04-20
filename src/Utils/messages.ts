@@ -248,7 +248,7 @@ export const generateWAMessageContent = async(
 		const extContent = { text: message.text } as WATextMessage
 
 		let urlInfo = message.linkPreview
-		if(!!options.getUrlInfo && message.text.match(URL_REGEX)) {
+		if(!urlInfo && !!options.getUrlInfo && message.text.match(URL_REGEX)) {
 			try {
 				urlInfo = await options.getUrlInfo(message.text)
 			} catch(error) { // ignore if fails
