@@ -4,14 +4,15 @@ import { extractImageThumb, getHttpStream } from './messages-media'
 const THUMBNAIL_WIDTH_PX = 192
 
 /** Fetches an image and generates a thumbnail for it */
-const getCompressedJpegThumbnail = async(url: string, thumbnailWidth: number) => {
-	const stream = await getHttpStream(url)
+const getCompressedJpegThumbnail = async(url: string, { thumbnailWidth, timeoutMs }: URLGenerationOptions) => {
+	const stream = await getHttpStream(url, { timeout: timeoutMs })
 	const result = await extractImageThumb(stream, thumbnailWidth)
 	return result
 }
 
 export type URLGenerationOptions = {
 	thumbnailWidth: number
+	timeoutMs: number
 }
 
 /**
@@ -22,17 +23,17 @@ export type URLGenerationOptions = {
  */
 export const getUrlInfo = async(
 	text: string,
-	opts: URLGenerationOptions = { thumbnailWidth: THUMBNAIL_WIDTH_PX }
+	opts: URLGenerationOptions = { thumbnailWidth: THUMBNAIL_WIDTH_PX, timeoutMs: 3000 }
 ): Promise<WAUrlInfo | undefined> => {
 	try {
 		const { getLinkPreview } = await import('link-preview-js')
 
-		const info = await getLinkPreview(text)
+		const info = await getLinkPreview(text, { timeout: opts.timeoutMs })
 		if(info && 'title' in info) {
 			const [image] = info.images
 
 			const jpegThumbnail = image
-				? await getCompressedJpegThumbnail(image, opts.thumbnailWidth)
+				? await getCompressedJpegThumbnail(image, opts)
 				: undefined
 
 			return {
