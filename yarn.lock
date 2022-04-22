@@ -3500,10 +3500,9 @@ levn@~0.3.0:
     prelude-ls "~1.1.2"
     type-check "~0.3.2"
 
-libsignal@^2.0.1:
+"libsignal@git+https://github.com/adiwajshing/libsignal-node#proto-patch":
   version "2.0.1"
-  resolved "https://registry.yarnpkg.com/libsignal/-/libsignal-2.0.1.tgz#c276025c184ae4ebbd7d75c12c0be9f3b50cc19e"
-  integrity sha512-kqdl/BK5i0WCa4NxhtiBsjSzztB/FtUp3mVVLKBFicWH8rDsq95tEIqNcCaVlflLxOm6T/HRb/zv8IsCe7aopA==
+  resolved "git+https://github.com/adiwajshing/libsignal-node#a623b3dc389cfbcf7b8559598b6c88986843d3dc"
   dependencies:
     protobufjs "6.8.8"
 
