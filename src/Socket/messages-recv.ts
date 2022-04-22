@@ -276,6 +276,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
+	const willSendMessageAgain = (id: string) => {
+		const retryCount = msgRetryMap[id] || 0
+		return retryCount < 5
+	}
+
 	const sendMessagesAgain = async(key: proto.IMessageKey, ids: string[]) => {
 		const msgs = await Promise.all(
 			ids.map(id => (
@@ -294,6 +299,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		for(let i = 0; i < msgs.length;i++) {
 			if(msgs[i]) {
+				msgRetryMap[ids[i]] = (msgRetryMap[ids[i]] || 0) + 1
 				await relayMessage(key.remoteJid, msgs[i], {
 					messageId: ids[i],
 					participant
@@ -363,18 +369,22 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				}
 
 				if(attrs.type === 'retry') {
-					// correctly set who is asking for the retry
-					key.participant = key.participant || attrs.from
-					if(key.fromMe) {
-						try {
-							logger.debug({ attrs, key }, 'recv retry request')
-							await sendMessagesAgain(key, ids)
-						} catch(error) {
-							logger.error({ key, ids, trace: error.stack }, 'error in sending message again')
-							shouldAck = false
+					if(willSendMessageAgain(ids[0])) {
+						// correctly set who is asking for the retry
+						key.participant = key.participant || attrs.from
+						if(key.fromMe) {
+							try {
+								logger.debug({ attrs, key }, 'recv retry request')
+								await sendMessagesAgain(key, ids)
+							} catch(error) {
+								logger.error({ key, ids, trace: error.stack }, 'error in sending message again')
+								shouldAck = false
+							}
+						} else {
+							logger.info({ attrs, key }, 'recv retry for not fromMe message')
 						}
 					} else {
-						logger.info({ attrs, key }, 'recv retry for not fromMe message')
+						logger.info({ attrs, key }, 'will not send message again, as sent too many times')
 					}
 				}
 
