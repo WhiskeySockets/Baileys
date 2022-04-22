@@ -3505,11 +3505,11 @@ levn@~0.3.0:
     prelude-ls "~1.1.2"
     type-check "~0.3.2"
 
-"libsignal@git+https://github.com/adiwajshing/libsignal-node":
+libsignal@^2.0.1:
   version "2.0.1"
-  resolved "git+https://github.com/adiwajshing/libsignal-node#4ffc1f3d6147ffdec88f62e70f41e7de2e08cd42"
+  resolved "https://registry.yarnpkg.com/libsignal/-/libsignal-2.0.1.tgz#c276025c184ae4ebbd7d75c12c0be9f3b50cc19e"
+  integrity sha512-kqdl/BK5i0WCa4NxhtiBsjSzztB/FtUp3mVVLKBFicWH8rDsq95tEIqNcCaVlflLxOm6T/HRb/zv8IsCe7aopA==
   dependencies:
-    curve25519-js "^0.0.4"
     protobufjs "6.8.8"
 
 link-preview-js@^2.1.13:
