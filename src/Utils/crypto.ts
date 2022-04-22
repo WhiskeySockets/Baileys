@@ -1,32 +1,36 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto'
-import * as curveJs from 'curve25519-js'
 import HKDF from 'futoin-hkdf'
+import * as libsignal from 'libsignal'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { KeyPair } from '../Types'
 
+/** prefix version byte to the pub keys, required for some curve crypto functions */
+export const generateSignalPubKey = (pubKey: Uint8Array | Buffer) => (
+	pubKey.length === 33
+		? pubKey
+		: Buffer.concat([ KEY_BUNDLE_TYPE, pubKey ])
+)
+
 export const Curve = {
 	generateKeyPair: (): KeyPair => {
-		const { public: pubKey, private: privKey } = curveJs.generateKeyPair(randomBytes(32))
+		const { pubKey, privKey } = libsignal.curve.generateKeyPair()
 		return {
 			private: Buffer.from(privKey),
-			public: Buffer.from(pubKey)
+			// remove version byte
+			public: Buffer.from((pubKey as Uint8Array).slice(1))
 		}
 	},
 	sharedKey: (privateKey: Uint8Array, publicKey: Uint8Array) => {
-		const shared = curveJs.sharedKey(privateKey, publicKey)
+		const shared = libsignal.curve.calculateAgreement(generateSignalPubKey(publicKey), privateKey)
 		return Buffer.from(shared)
 	},
 	sign: (privateKey: Uint8Array, buf: Uint8Array) => (
-		Buffer.from(curveJs.sign(privateKey, buf, null))
+		libsignal.curve.calculateSignature(privateKey, buf)
 	),
-	verify: (pubKey: Uint8Array, message: Uint8Array, signature: Uint8Array) => {
-		return curveJs.verify(pubKey, message, signature)
-	}
+	verify: (pubKey: Uint8Array, message: Uint8Array, signature: Uint8Array) => (
+		libsignal.curve.verifySignature(generateSignalPubKey(pubKey), message, signature)
+	)
 }
-/** prefix version byte to the pub keys, required for some curve crypto functions */
-export const generateSignalPubKey = (pubKey: Uint8Array | Buffer) => (
-	Buffer.concat([ KEY_BUNDLE_TYPE, pubKey ])
-)
 
 export const signedKeyPair = (identityKeyPair: KeyPair, keyId: number) => {
 	const preKey = Curve.generateKeyPair()
