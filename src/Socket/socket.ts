@@ -353,7 +353,6 @@ export const makeSocket = ({
 			if(diff > keepAliveIntervalMs + 5000) {
 				end(new Boom('Connection was lost', { statusCode: DisconnectReason.connectionLost }))
 			} else if(ws.readyState === ws.OPEN) {
-				ws.ping()
 				// if its all good, send a keep alive request
 				sendNode(
 					{
