@@ -1,10 +1,13 @@
 import { Boom } from '@hapi/boom'
 import { createCipheriv, createDecipheriv } from 'crypto'
+import { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { NOISE_MODE, NOISE_WA_HEADER } from '../Defaults'
 import { KeyPair } from '../Types'
 import { BinaryNode, decodeBinaryNode } from '../WABinary'
 import { Curve, hkdf, sha256 } from './crypto'
+
+const TAG_LENGTH = 128 >> 3
 
 const generateIV = (counter: number) => {
 	const iv = new ArrayBuffer(12)
@@ -13,7 +16,11 @@ const generateIV = (counter: number) => {
 	return new Uint8Array(iv)
 }
 
-export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: KeyPair) => {
+export const makeNoiseHandler = (
+	{ public: publicKey, private: privateKey }: KeyPair,
+	logger: Logger
+) => {
+	logger = logger.child({ class: 'ns' })
 
 	const authenticate = (data: Uint8Array) => {
 		if(!isFinished) {
@@ -22,8 +29,7 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 	}
 
 	const encrypt = (plaintext: Uint8Array) => {
-		const authTagLength = 128 >> 3
-		const cipher = createCipheriv('aes-256-gcm', encKey, generateIV(writeCounter), { authTagLength })
+		const cipher = createCipheriv('aes-256-gcm', encKey, generateIV(writeCounter), { authTagLength: TAG_LENGTH })
 		cipher.setAAD(hash)
 
 		const result = Buffer.concat([cipher.update(plaintext), cipher.final(), cipher.getAuthTag()])
@@ -40,9 +46,8 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 		const iv = generateIV(isFinished ? readCounter : writeCounter)
 		const cipher = createDecipheriv('aes-256-gcm', decKey, iv)
 		// decrypt additional adata
-		const tagLength = 128 >> 3
-		const enc = ciphertext.slice(0, ciphertext.length - tagLength)
-		const tag = ciphertext.slice(ciphertext.length - tagLength)
+		const enc = ciphertext.slice(0, ciphertext.length - TAG_LENGTH)
+		const tag = ciphertext.slice(ciphertext.length - TAG_LENGTH)
 		// set additional data
 		cipher.setAAD(hash)
 		cipher.setAuthTag(tag)
@@ -155,6 +160,9 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 			}
 
 			inBytes = Buffer.concat([ inBytes, newData ])
+
+			logger.trace(`recv ${newData.length} bytes, total recv ${inBytes.length} bytes`)
+
 			let size = getBytesSize()
 			while(size && inBytes.length >= size + 3) {
 				let frame: Uint8Array | BinaryNode = inBytes.slice(3, size + 3)
@@ -164,6 +172,8 @@ export const makeNoiseHandler = ({ public: publicKey, private: privateKey }: Key
 					const result = decrypt(frame as Uint8Array)
 					frame = decodeBinaryNode(result)
 				}
+
+				logger.trace({ msg: (frame as any)?.attrs?.id }, 'recv frame')
 
 				onFrame(frame)
 				size = getBytesSize()

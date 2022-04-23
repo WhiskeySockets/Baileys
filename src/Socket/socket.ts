@@ -36,7 +36,7 @@ export const makeSocket = ({
 	/** ephemeral key pair used to encrypt/decrypt communication. Unique for each connection */
 	const ephemeralKeyPair = Curve.generateKeyPair()
 	/** WA noise protocol wrapper */
-	const noise = makeNoiseHandler(ephemeralKeyPair)
+	const noise = makeNoiseHandler(ephemeralKeyPair, logger)
 	let authState = initialAuthState
 	if(!authState) {
 		authState = useSingleFileAuthState('./auth-info-multi.json').state
