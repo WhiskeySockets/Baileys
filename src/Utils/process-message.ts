@@ -147,6 +147,14 @@ const processMessage = async(
 
 			emitParticipantsUpdate('add')
 			break
+		case WAMessageStubType.GROUP_PARTICIPANT_DEMOTE:
+			participants = message.messageStubParameters
+			emitParticipantsUpdate('demote')
+			break
+		case WAMessageStubType.GROUP_PARTICIPANT_PROMOTE:
+			participants = message.messageStubParameters
+			emitParticipantsUpdate('promote')
+			break
 		case WAMessageStubType.GROUP_CHANGE_ANNOUNCE:
 			const announceValue = message.messageStubParameters[0]
 			emitGroupUpdate({ announce: announceValue === 'true' || announceValue === 'on' })
