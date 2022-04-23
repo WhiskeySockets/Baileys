@@ -27,9 +27,14 @@ export const Curve = {
 	sign: (privateKey: Uint8Array, buf: Uint8Array) => (
 		libsignal.curve.calculateSignature(privateKey, buf)
 	),
-	verify: (pubKey: Uint8Array, message: Uint8Array, signature: Uint8Array) => (
-		libsignal.curve.verifySignature(generateSignalPubKey(pubKey), message, signature)
-	)
+	verify: (pubKey: Uint8Array, message: Uint8Array, signature: Uint8Array) => {
+		try {
+			libsignal.curve.verifySignature(generateSignalPubKey(pubKey), message, signature)
+			return true
+		} catch(error) {
+			return false
+		}
+	}
 }
 
 export const signedKeyPair = (identityKeyPair: KeyPair, keyId: number) => {
