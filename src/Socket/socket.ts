@@ -254,7 +254,9 @@ export const makeSocket = ({
 			// reset ping timeout
 			lastDateRecv = new Date()
 
-			ws.emit('frame', frame)
+			let anyTriggered = false
+
+			anyTriggered = ws.emit('frame', frame)
 			// if it's a binary node
 			if(!(frame instanceof Uint8Array)) {
 				const msgId = frame.attrs.id
@@ -263,9 +265,8 @@ export const makeSocket = ({
 					logger.trace({ msgId, fromMe: false, frame }, 'communication')
 				}
 
-				let anyTriggered = false
 				/* Check if this is a response to a message we sent */
-				anyTriggered = ws.emit(`${DEF_TAG_PREFIX}${msgId}`, frame)
+				anyTriggered = ws.emit(`${DEF_TAG_PREFIX}${msgId}`, frame) || anyTriggered
 				/* Check if this is a response to a message we are expecting */
 				const l0 = frame.tag
 				const l1 = frame.attrs || { }
@@ -278,7 +279,6 @@ export const makeSocket = ({
 				})
 				anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0},,${l2}`, frame) || anyTriggered
 				anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0}`, frame) || anyTriggered
-				anyTriggered = ws.emit('frame', frame) || anyTriggered
 
 				if(!anyTriggered && logger.level === 'debug') {
 					logger.debug({ unhandled: true, msgId, fromMe: false, frame }, 'communication recv')
