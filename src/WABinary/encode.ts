@@ -6,7 +6,7 @@ import type { BinaryNode, BinaryNodeCodingOptions } from './types'
 export const encodeBinaryNode = (
 	{ tag, attrs, content }: BinaryNode,
 	opts: Pick<BinaryNodeCodingOptions, 'TAGS' | 'TOKEN_MAP'> = constants,
-	buffer: number[] = []
+	buffer: number[] = [0]
 ) => {
 	const { TAGS, TOKEN_MAP } = opts
 
