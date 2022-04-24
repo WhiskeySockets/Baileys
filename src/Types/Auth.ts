@@ -41,10 +41,10 @@ export type AuthenticationCreds = SignalCreds & {
     signalIdentities?: SignalIdentity[]
     myAppStateKeyId?: string
     firstUnuploadedPreKeyId: number
-    serverHasPreKeys: boolean
     nextPreKeyId: number
 
     lastAccountSyncTimestamp?: number
+    platform?: string
     accountSettings: AccountSettings
 }
 

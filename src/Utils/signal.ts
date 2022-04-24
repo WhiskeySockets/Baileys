@@ -1,17 +1,11 @@
 import * as libsignal from 'libsignal'
 import { proto } from '../../WAProto'
 import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage, SenderKeyName, SenderKeyRecord } from '../../WASignalGroup'
-import { AuthenticationCreds, KeyPair, SignalAuthState, SignalIdentity, SignalKeyStore, SignedKeyPair } from '../Types/Auth'
-import { assertNodeErrorFree, BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, getBinaryNodeChildren, getBinaryNodeChildUInt, jidDecode, JidWithDevice } from '../WABinary'
-import { Curve } from './crypto'
+import { KEY_BUNDLE_TYPE } from '../Defaults'
+import { AuthenticationCreds, AuthenticationState, KeyPair, SignalAuthState, SignalIdentity, SignalKeyStore, SignedKeyPair } from '../Types/Auth'
+import { assertNodeErrorFree, BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, getBinaryNodeChildren, getBinaryNodeChildUInt, jidDecode, JidWithDevice, S_WHATSAPP_NET } from '../WABinary'
+import { Curve, generateSignalPubKey } from './crypto'
 import { encodeBigEndian } from './generics'
-
-export const generateSignalPubKey = (pubKey: Uint8Array | Buffer) => {
-	const newPub = Buffer.alloc(33)
-	newPub.set([5], 0)
-	newPub.set(pubKey, 1)
-	return newPub
-}
 
 const jidToSignalAddress = (jid: string) => jid.split('@')[0]
 
@@ -59,7 +53,6 @@ export const generateOrGetPreKeys = (creds: AuthenticationCreds, range: number) 
 		preKeysRange: [creds.firstUnuploadedPreKeyId, range] as const,
 	}
 }
-
 
 export const xmppSignedPreKey = (key: SignedKeyPair): BinaryNode => (
 	{
@@ -273,4 +266,46 @@ export const extractDeviceJids = (result: BinaryNode, myJid: string, excludeZero
 	}
 
 	return extracted
+}
+
+/**
+ * get the next N keys for upload or processing
+ * @param count number of pre-keys to get or generate
+ */
+export const getNextPreKeys = async({ creds, keys }: AuthenticationState, count: number) => {
+	const { newPreKeys, lastPreKeyId, preKeysRange } = generateOrGetPreKeys(creds, count)
+
+	const update: Partial<AuthenticationCreds> = {
+		nextPreKeyId: Math.max(lastPreKeyId + 1, creds.nextPreKeyId),
+		firstUnuploadedPreKeyId: Math.max(creds.firstUnuploadedPreKeyId, lastPreKeyId + 1)
+	}
+
+	await keys.set({ 'pre-key': newPreKeys })
+
+	const preKeys = await getPreKeys(keys, preKeysRange[0], preKeysRange[0] + preKeysRange[1])
+
+	return { update, preKeys }
+}
+
+export const getNextPreKeysNode = async(state: AuthenticationState, count: number) => {
+	const { creds } = state
+	const { update, preKeys } = await getNextPreKeys(state, count)
+
+	const node: BinaryNode = {
+		tag: 'iq',
+		attrs: {
+			xmlns: 'encrypt',
+			type: 'set',
+			to: S_WHATSAPP_NET,
+		},
+		content: [
+			{ tag: 'registration', attrs: { }, content: encodeBigEndian(creds.registrationId) },
+			{ tag: 'type', attrs: { }, content: KEY_BUNDLE_TYPE },
+			{ tag: 'identity', attrs: { }, content: creds.signedIdentityKey.public },
+			{ tag: 'list', attrs: { }, content: Object.keys(preKeys).map(k => xmppPreKey(preKeys[+k], +k)) },
+			xmppSignedPreKey(creds.signedPreKey)
+		]
+	}
+
+	return { update, node }
 }

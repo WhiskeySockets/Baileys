@@ -1,12 +1,12 @@
 
-import { BinaryNode } from '../types'
-import { DoubleByteTokens, SingleByteTokens, Tags } from './constants'
+import { DOUBLE_BYTE_TOKENS, SINGLE_BYTE_TOKENS, TAGS } from '../constants'
+import type { BinaryNode } from '../types'
 
 export const isLegacyBinaryNode = (buffer: Buffer) => {
 	switch (buffer[0]) {
-	case Tags.LIST_EMPTY:
-	case Tags.LIST_8:
-	case Tags.LIST_16:
+	case TAGS.LIST_EMPTY:
+	case TAGS.LIST_8:
+	case TAGS.LIST_16:
 		return true
 	default:
 		return false
@@ -89,9 +89,9 @@ function decode(buffer: Buffer, indexRef: { index: number }): BinaryNode {
 	}
 
 	const unpackByte = (tag: number, value: number) => {
-		if(tag === Tags.NIBBLE_8) {
+		if(tag === TAGS.NIBBLE_8) {
 			return unpackNibble(value)
-		} else if(tag === Tags.HEX_8) {
+		} else if(tag === TAGS.HEX_8) {
 			return unpackHex(value)
 		} else {
 			throw new Error('unknown tag: ' + tag)
@@ -116,16 +116,16 @@ function decode(buffer: Buffer, indexRef: { index: number }): BinaryNode {
 	}
 
 	const isListTag = (tag: number) => {
-		return tag === Tags.LIST_EMPTY || tag === Tags.LIST_8 || tag === Tags.LIST_16
+		return tag === TAGS.LIST_EMPTY || tag === TAGS.LIST_8 || tag === TAGS.LIST_16
 	}
 
 	const readListSize = (tag: number) => {
 		switch (tag) {
-		case Tags.LIST_EMPTY:
+		case TAGS.LIST_EMPTY:
 			return 0
-		case Tags.LIST_8:
+		case TAGS.LIST_8:
 			return readByte()
-		case Tags.LIST_16:
+		case TAGS.LIST_16:
 			return readInt(2)
 		default:
 			throw new Error('invalid tag for list size: ' + tag)
@@ -133,11 +133,11 @@ function decode(buffer: Buffer, indexRef: { index: number }): BinaryNode {
 	}
 
 	const getToken = (index: number) => {
-		if(index < 3 || index >= SingleByteTokens.length) {
+		if(index < 3 || index >= SINGLE_BYTE_TOKENS.length) {
 			throw new Error('invalid token index: ' + index)
 		}
 
-		return SingleByteTokens[index]
+		return SINGLE_BYTE_TOKENS[index]
 	}
 
 	const readString = (tag: number) => {
@@ -147,20 +147,20 @@ function decode(buffer: Buffer, indexRef: { index: number }): BinaryNode {
 		}
 
 		switch (tag) {
-		case Tags.DICTIONARY_0:
-		case Tags.DICTIONARY_1:
-		case Tags.DICTIONARY_2:
-		case Tags.DICTIONARY_3:
-			return getTokenDouble(tag - Tags.DICTIONARY_0, readByte())
-		case Tags.LIST_EMPTY:
+		case TAGS.DICTIONARY_0:
+		case TAGS.DICTIONARY_1:
+		case TAGS.DICTIONARY_2:
+		case TAGS.DICTIONARY_3:
+			return getTokenDouble(tag - TAGS.DICTIONARY_0, readByte())
+		case TAGS.LIST_EMPTY:
 			return null
-		case Tags.BINARY_8:
+		case TAGS.BINARY_8:
 			return readStringFromChars(readByte())
-		case Tags.BINARY_20:
+		case TAGS.BINARY_20:
 			return readStringFromChars(readInt20())
-		case Tags.BINARY_32:
+		case TAGS.BINARY_32:
 			return readStringFromChars(readInt(4))
-		case Tags.JID_PAIR:
+		case TAGS.JID_PAIR:
 			const i = readString(readByte())
 			const j = readString(readByte())
 			if(typeof i === 'string' && j) {
@@ -168,8 +168,8 @@ function decode(buffer: Buffer, indexRef: { index: number }): BinaryNode {
 			}
 
 			throw new Error('invalid jid pair: ' + i + ', ' + j)
-		case Tags.HEX_8:
-		case Tags.NIBBLE_8:
+		case TAGS.HEX_8:
+		case TAGS.NIBBLE_8:
 			return readPacked8(tag)
 		default:
 			throw new Error('invalid string with tag: ' + tag)
@@ -181,16 +181,16 @@ function decode(buffer: Buffer, indexRef: { index: number }): BinaryNode {
 	)
 	const getTokenDouble = (index1: number, index2: number) => {
 		const n = 256 * index1 + index2
-		if(n < 0 || n > DoubleByteTokens.length) {
+		if(n < 0 || n > DOUBLE_BYTE_TOKENS.length) {
 			throw new Error('invalid double token index: ' + n)
 		}
 
-		return DoubleByteTokens[n]
+		return DOUBLE_BYTE_TOKENS[n]
 	}
 
 	const listSize = readListSize(readByte())
 	const descrTag = readByte()
-	if(descrTag === Tags.STREAM_END) {
+	if(descrTag === TAGS.STREAM_END) {
 		throw new Error('unexpected stream end')
 	}
 
@@ -217,13 +217,13 @@ function decode(buffer: Buffer, indexRef: { index: number }): BinaryNode {
 		} else {
 			let decoded: Buffer | string
 			switch (tag) {
-			case Tags.BINARY_8:
+			case TAGS.BINARY_8:
 				decoded = readBytes(readByte())
 				break
-			case Tags.BINARY_20:
+			case TAGS.BINARY_20:
 				decoded = readBytes(readInt20())
 				break
-			case Tags.BINARY_32:
+			case TAGS.BINARY_32:
 				decoded = readBytes(readInt(4))
 				break
 			default:
@@ -265,13 +265,13 @@ const encode = ({ tag, attrs, content }: BinaryNode, buffer: number[] = []) => {
 		}
 
 		if(length >= 1 << 20) {
-			pushByte(Tags.BINARY_32)
+			pushByte(TAGS.BINARY_32)
 			pushInt(length, 4) // 32 bit integer
 		} else if(length >= 256) {
-			pushByte(Tags.BINARY_20)
+			pushByte(TAGS.BINARY_20)
 			pushInt20(length)
 		} else {
-			pushByte(Tags.BINARY_8)
+			pushByte(TAGS.BINARY_8)
 			pushByte(length)
 		}
 	}
@@ -295,20 +295,20 @@ const encode = ({ tag, attrs, content }: BinaryNode, buffer: number[] = []) => {
 			token = 's.whatsapp.net'
 		}
 
-		const tokenIndex = SingleByteTokens.indexOf(token)
+		const tokenIndex = SINGLE_BYTE_TOKENS.indexOf(token)
 		if(!i && token === 's.whatsapp.net') {
 			writeToken(tokenIndex)
 		} else if(tokenIndex >= 0) {
-			if(tokenIndex < Tags.SINGLE_BYTE_MAX) {
+			if(tokenIndex < TAGS.SINGLE_BYTE_MAX) {
 				writeToken(tokenIndex)
 			} else {
-				const overflow = tokenIndex - Tags.SINGLE_BYTE_MAX
+				const overflow = tokenIndex - TAGS.SINGLE_BYTE_MAX
 				const dictionaryIndex = overflow >> 8
 				if(dictionaryIndex < 0 || dictionaryIndex > 3) {
 					throw new Error('double byte dict token out of range: ' + token + ', ' + tokenIndex)
 				}
 
-				writeToken(Tags.DICTIONARY_0 + dictionaryIndex)
+				writeToken(TAGS.DICTIONARY_0 + dictionaryIndex)
 				writeToken(overflow % 256)
 			}
 		} else if(token) {
@@ -322,18 +322,18 @@ const encode = ({ tag, attrs, content }: BinaryNode, buffer: number[] = []) => {
 	}
 
 	const writeJid = (left: string, right: string) => {
-		pushByte(Tags.JID_PAIR)
-		left && left.length > 0 ? writeString(left) : writeToken(Tags.LIST_EMPTY)
+		pushByte(TAGS.JID_PAIR)
+		left && left.length > 0 ? writeString(left) : writeToken(TAGS.LIST_EMPTY)
 		writeString(right)
 	}
 
 	const writeListStart = (listSize: number) => {
 		if(listSize === 0) {
-			pushByte(Tags.LIST_EMPTY)
+			pushByte(TAGS.LIST_EMPTY)
 		} else if(listSize < 256) {
-			pushBytes([Tags.LIST_8, listSize])
+			pushBytes([TAGS.LIST_8, listSize])
 		} else {
-			pushBytes([Tags.LIST_16, listSize])
+			pushBytes([TAGS.LIST_16, listSize])
 		}
 	}
 

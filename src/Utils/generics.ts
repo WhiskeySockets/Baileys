@@ -6,7 +6,6 @@ import { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { version as baileysVersion } from '../Defaults/baileys-version.json'
 import { CommonBaileysEventEmitter, ConnectionState, DisconnectReason, WAVersion } from '../Types'
-import { Binary } from '../WABinary'
 
 const PLATFORM_MAP = {
 	'aix': 'AIX',
@@ -41,16 +40,14 @@ export const BufferJSON = {
 	}
 }
 
-export const writeRandomPadMax16 = (e: Binary) => {
-	function r(e: Binary, t: number) {
-		for(var r = 0; r < t; r++) {
-			e.writeUint8(t)
-		}
+export const writeRandomPadMax16 = (msg: Uint8Array) => {
+	const pad = randomBytes(1)
+	pad[0] &= 0xf
+	if(!pad[0]) {
+		pad[0] = 0xf
 	}
 
-	var t = randomBytes(1)
-	r(e, 1 + (15 & t[0]))
-	return e
+	return Buffer.concat([msg, Buffer.alloc(pad[0], pad[0])])
 }
 
 export const unpadRandomMax16 = (e: Uint8Array | Buffer) => {
@@ -68,24 +65,13 @@ export const unpadRandomMax16 = (e: Uint8Array | Buffer) => {
 }
 
 export const encodeWAMessage = (message: proto.IMessage) => (
-	Buffer.from(
-		writeRandomPadMax16(
-			new Binary(proto.Message.encode(message).finish())
-		).readByteArray()
+	writeRandomPadMax16(
+		proto.Message.encode(message).finish()
 	)
 )
 
-export const generateRegistrationId = () => (
-	Uint16Array.from(randomBytes(2))[0] & 0x3fff
-)
-
-export const encodeInt = (e: number, t: number) => {
-	for(var r = t, a = new Uint8Array(e), i = e - 1; i >= 0; i--) {
-		a[i] = 255 & r
-		r >>>= 8
-	}
-
-	return a
+export const generateRegistrationId = (): number => {
+	return Uint16Array.from(randomBytes(2))[0] & 16383
 }
 
 export const encodeBigEndian = (e: number, t = 4) => {
@@ -253,6 +239,12 @@ export const fetchLatestBaileysVersion = async() => {
 			error
 		}
 	}
+}
+
+/** unique message tag prefix for MD clients */
+export const generateMdTagPrefix = () => {
+	const bytes = randomBytes(4)
+	return `${bytes.readUInt16BE()}.${bytes.readUInt16BE(2)}-`
 }
 
 const STATUS_MAP: { [_: string]: proto.WebMessageInfo.WebMessageInfoStatus } = {

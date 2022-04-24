@@ -1845,11 +1845,6 @@ cssstyle@^2.3.0:
   dependencies:
     cssom "~0.3.6"
 
-curve25519-js@^0.0.4:
-  version "0.0.4"
-  resolved "https://registry.yarnpkg.com/curve25519-js/-/curve25519-js-0.0.4.tgz#e6ad967e8cd284590d657bbfc90d8b50e49ba060"
-  integrity sha512-axn2UMEnkhyDUPWOwVKBMVIzSQy2ejH2xRGy1wq81dqRwApXfIzfbE3hIX0ZRFBIihf/KDqK158DLwESu4AK1w==
-
 data-urls@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/data-urls/-/data-urls-2.0.0.tgz#156485a72963a970f5d5821aaf642bef2bf2db9b"
@@ -2472,6 +2467,11 @@ functional-red-black-tree@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/functional-red-black-tree/-/functional-red-black-tree-1.0.1.tgz#1b0ab3bd553b2a0d6399d29c0e3ea0b252078327"
   integrity sha1-GwqzvVU7Kg1jmdKcDj6gslIHgyc=
+
+futoin-hkdf@^1.5.0:
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/futoin-hkdf/-/futoin-hkdf-1.5.0.tgz#f10cc4d32f1e26568ded58d5a6535a97aa3a064c"
+  integrity sha512-4CerDhtTgx4i5PKccQIpEp4T9wqmosPIP9Kep35SdCpYkQeriD3zddUVhrO1Fc4QvGhsAnd2rXyoOr5047mJEg==
 
 gauge@~2.7.3:
   version "2.7.4"
@@ -3500,11 +3500,10 @@ levn@~0.3.0:
     prelude-ls "~1.1.2"
     type-check "~0.3.2"
 
-"libsignal@git+https://github.com/adiwajshing/libsignal-node":
+"libsignal@git+https://github.com/adiwajshing/libsignal-node#proto-patch":
   version "2.0.1"
-  resolved "git+https://github.com/adiwajshing/libsignal-node#4ffc1f3d6147ffdec88f62e70f41e7de2e08cd42"
+  resolved "git+https://github.com/adiwajshing/libsignal-node#a623b3dc389cfbcf7b8559598b6c88986843d3dc"
   dependencies:
-    curve25519-js "^0.0.4"
     protobufjs "6.8.8"
 
 link-preview-js@^2.1.13:

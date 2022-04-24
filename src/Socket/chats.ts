@@ -466,6 +466,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	const processSyncActionsLocal = (actions: ChatMutation[]) => {
 		const events = processSyncActions(actions, authState.creds.me!, logger)
 		emitEventsFromMap(events)
+		// resend available presence to update name on servers
+		if(events['creds.update']?.me?.name) {
+			sendPresenceUpdate('available')
+		}
 	}
 
 	const appPatch = async(patchCreate: WAPatchCreate) => {

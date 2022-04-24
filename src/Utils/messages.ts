@@ -327,28 +327,30 @@ export const generateWAMessageContent = async(
 
 		m = { buttonsMessage }
 	} else if('templateButtons' in message && !!message.templateButtons) {
-		const templateMessage: proto.ITemplateMessage = {
-			hydratedTemplate: {
-				hydratedButtons: message.templateButtons
-			}
+		const msg: proto.IHydratedFourRowTemplate = {
+			hydratedButtons: message.templateButtons
 		}
 
 		if('text' in message) {
-			templateMessage.hydratedTemplate.hydratedContentText = message.text
+			msg.hydratedContentText = message.text
 		} else {
 
 			if('caption' in message) {
-				templateMessage.hydratedTemplate.hydratedContentText = message.caption
+				msg.hydratedContentText = message.caption
 			}
 
-			Object.assign(templateMessage.hydratedTemplate, m)
+			Object.assign(msg, m)
 		}
 
 		if('footer' in message && !!message.footer) {
-			templateMessage.hydratedTemplate.hydratedFooterText = message.footer
+			msg.hydratedFooterText = message.footer
 		}
 
-		m = { templateMessage }
+		m = {
+			templateMessage: {
+				hydratedTemplate: msg
+			}
+		}
 	}
 
 	if('sections' in message && !!message.sections) {

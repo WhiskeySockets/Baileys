@@ -1,36 +1,49 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto'
-import * as curveJs from 'curve25519-js'
+import HKDF from 'futoin-hkdf'
+import * as libsignal from 'libsignal'
+import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { KeyPair } from '../Types'
+
+/** prefix version byte to the pub keys, required for some curve crypto functions */
+export const generateSignalPubKey = (pubKey: Uint8Array | Buffer) => (
+	pubKey.length === 33
+		? pubKey
+		: Buffer.concat([ KEY_BUNDLE_TYPE, pubKey ])
+)
 
 export const Curve = {
 	generateKeyPair: (): KeyPair => {
-		const { public: pubKey, private: privKey } = curveJs.generateKeyPair(randomBytes(32))
+		const { pubKey, privKey } = libsignal.curve.generateKeyPair()
 		return {
 			private: Buffer.from(privKey),
-			public: Buffer.from(pubKey)
+			// remove version byte
+			public: Buffer.from((pubKey as Uint8Array).slice(1))
 		}
 	},
 	sharedKey: (privateKey: Uint8Array, publicKey: Uint8Array) => {
-		const shared = curveJs.sharedKey(privateKey, publicKey)
+		const shared = libsignal.curve.calculateAgreement(generateSignalPubKey(publicKey), privateKey)
 		return Buffer.from(shared)
 	},
 	sign: (privateKey: Uint8Array, buf: Uint8Array) => (
-		Buffer.from(curveJs.sign(privateKey, buf, null))
+		libsignal.curve.calculateSignature(privateKey, buf)
 	),
 	verify: (pubKey: Uint8Array, message: Uint8Array, signature: Uint8Array) => {
-		return curveJs.verify(pubKey, message, signature)
+		try {
+			libsignal.curve.verifySignature(generateSignalPubKey(pubKey), message, signature)
+			return true
+		} catch(error) {
+			return false
+		}
 	}
 }
 
-export const signedKeyPair = (keyPair: KeyPair, keyId: number) => {
-	const signKeys = Curve.generateKeyPair()
-	const pubKey = new Uint8Array(33)
-	pubKey.set([5], 0)
-	pubKey.set(signKeys.public, 1)
+export const signedKeyPair = (identityKeyPair: KeyPair, keyId: number) => {
+	const preKey = Curve.generateKeyPair()
+	const pubKey = generateSignalPubKey(preKey.public)
 
-	const signature = Curve.sign(keyPair.private, pubKey)
+	const signature = Curve.sign(identityKeyPair.private, pubKey)
 
-	return { keyPair: signKeys, signature, keyId }
+	return { keyPair: preKey, signature, keyId }
 }
 
 /** decrypt AES 256 CBC; where the IV is prefixed to the buffer */
@@ -67,33 +80,6 @@ export function sha256(buffer: Buffer) {
 }
 
 // HKDF key expansion
-// from: https://github.com/benadida/node-hkdf
-export function hkdf(buffer: Uint8Array, expandedLength: number, { info, salt }: { salt?: Buffer, info?: string }) {
-	const hashAlg = 'sha256'
-	const hashLength = 32
-	salt = salt || Buffer.alloc(hashLength)
-	// now we compute the PRK
-	const prk = createHmac(hashAlg, salt).update(buffer).digest()
-
-	let prev = Buffer.from([])
-	const buffers = []
-	const num_blocks = Math.ceil(expandedLength / hashLength)
-
-	const infoBuff = Buffer.from(info || [])
-
-	for(var i = 0; i < num_blocks; i++) {
-		const hmac = createHmac(hashAlg, prk)
-		// XXX is there a more optimal way to build up buffers?
-		const input = Buffer.concat([
-			prev,
-			infoBuff,
-			Buffer.from(String.fromCharCode(i + 1))
-		])
-		hmac.update(input)
-
-		prev = hmac.digest()
-		buffers.push(prev)
-	}
-
-	return Buffer.concat(buffers, expandedLength)
+export function hkdf(buffer: Uint8Array | Buffer, expandedLength: number, info: { salt?: Buffer, info?: string }) {
+	return HKDF(!Buffer.isBuffer(buffer) ? Buffer.from(buffer) : buffer, expandedLength, info)
 }

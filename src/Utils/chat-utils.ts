@@ -583,8 +583,10 @@ export const processSyncActions = (
 				name: action.contactAction!.fullName
 			}
 		} else if(action?.pushNameSetting) {
-			map['creds.update'] = map['creds.update'] || { }
-			map['creds.update'].me = { ...me, name: action?.pushNameSetting?.name! }
+			if(me?.name !== action?.pushNameSetting) {
+				map['creds.update'] = map['creds.update'] || { }
+				map['creds.update'].me = { ...me, name: action?.pushNameSetting?.name! }
+			}
 		} else if(action?.pinAction) {
 			update.pin = action.pinAction?.pinned ? toNumber(action.timestamp) : undefined
 		} else if(action?.unarchiveChatsSetting) {
