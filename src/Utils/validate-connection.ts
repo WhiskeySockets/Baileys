@@ -10,23 +10,26 @@ import { createSignalIdentity } from './signal'
 
 type ClientPayloadConfig = Pick<SocketConfig, 'version' | 'browser'>
 
-const getUserAgent = ({ version, browser }: ClientPayloadConfig): proto.IUserAgent => ({
-	appVersion: {
-		primary: version[0],
-		secondary: version[1],
-		tertiary: version[2],
-	},
-	platform: proto.UserAgent.UserAgentPlatform.WEB,
-	releaseChannel: proto.UserAgent.UserAgentReleaseChannel.RELEASE,
-	mcc: '000',
-	mnc: '000',
-	osVersion: browser[2],
-	manufacturer: '',
-	device: 'Desktop',
-	osBuildNumber: browser[2],
-	localeLanguageIso6391: 'en',
-	localeCountryIso31661Alpha2: 'en',
-})
+const getUserAgent = ({ version, browser }: ClientPayloadConfig): proto.IUserAgent => {
+	const osVersion = '0.1'
+	return {
+		appVersion: {
+			primary: version[0],
+			secondary: version[1],
+			tertiary: version[2],
+		},
+		platform: proto.UserAgent.UserAgentPlatform.WEB,
+		releaseChannel: proto.UserAgent.UserAgentReleaseChannel.RELEASE,
+		mcc: '000',
+		mnc: '000',
+		osVersion: osVersion,
+		manufacturer: '',
+		device: 'Desktop',
+		osBuildNumber: osVersion,
+		localeLanguageIso6391: 'en',
+		localeCountryIso31661Alpha2: 'US',
+	}
+}
 
 const getWebInfo = (): proto.IWebInfo => ({
 	webSubPlatform: proto.WebInfo.WebInfoWebSubPlatform.WEB_BROWSER
