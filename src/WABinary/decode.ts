@@ -1,7 +1,7 @@
 import { inflateSync } from 'zlib'
-import { DOUBLE_BYTE_TOKENS, SINGLE_BYTE_TOKENS, TAGS } from './constants'
+import * as constants from './constants'
 import { jidEncode } from './jid-utils'
-import type { BinaryNode } from './types'
+import type { BinaryNode, BinaryNodeCodingOptions } from './types'
 
 export const decompressingIfRequired = (buffer: Buffer) => {
 	if(2 & buffer.readUInt8()) {
@@ -13,7 +13,12 @@ export const decompressingIfRequired = (buffer: Buffer) => {
 	return buffer
 }
 
-export const decodeDecompressedBinaryNode = (buffer: Buffer, indexRef: { index: number } = { index: 0 }): BinaryNode => {
+export const decodeDecompressedBinaryNode = (
+	buffer: Buffer,
+	opts: Pick<BinaryNodeCodingOptions, 'DOUBLE_BYTE_TOKENS' | 'SINGLE_BYTE_TOKENS' | 'TAGS'>,
+	indexRef: { index: number } = { index: 0 }
+): BinaryNode => {
+	const { DOUBLE_BYTE_TOKENS, SINGLE_BYTE_TOKENS, TAGS } = opts
 
 	const checkEOS = (length: number) => {
 		if(indexRef.index + length > buffer.length) {
@@ -181,7 +186,7 @@ export const decodeDecompressedBinaryNode = (buffer: Buffer, indexRef: { index: 
 		const items: BinaryNode[] = []
 		const size = readListSize(tag)
 		for(let i = 0;i < size;i++) {
-			items.push(decodeDecompressedBinaryNode(buffer, indexRef))
+			items.push(decodeDecompressedBinaryNode(buffer, opts, indexRef))
 		}
 
 		return items
@@ -256,5 +261,5 @@ export const decodeDecompressedBinaryNode = (buffer: Buffer, indexRef: { index: 
 
 export const decodeBinaryNode = (buff: Buffer): BinaryNode => {
 	const decompBuff = decompressingIfRequired(buff)
-	return decodeDecompressedBinaryNode(decompBuff)
+	return decodeDecompressedBinaryNode(decompBuff, constants)
 }

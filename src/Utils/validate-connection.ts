@@ -10,7 +10,7 @@ import { createSignalIdentity } from './signal'
 
 type ClientPayloadConfig = Pick<SocketConfig, 'version' | 'browser'>
 
-const getUserAgent = ({ version, browser }: ClientPayloadConfig): proto.IUserAgent => {
+const getUserAgent = ({ version }: ClientPayloadConfig): proto.IUserAgent => {
 	const osVersion = '0.1'
 	return {
 		appVersion: {

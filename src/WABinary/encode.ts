@@ -1,9 +1,14 @@
 
-import { TAGS, TOKEN_MAP } from './constants'
+import * as constants from './constants'
 import { jidDecode } from './jid-utils'
-import type { BinaryNode } from './types'
+import type { BinaryNode, BinaryNodeCodingOptions } from './types'
 
-export const encodeBinaryNode = ({ tag, attrs, content }: BinaryNode, buffer: number[] = [0]) => {
+export const encodeBinaryNode = (
+	{ tag, attrs, content }: BinaryNode,
+	opts: Pick<BinaryNodeCodingOptions, 'TAGS' | 'TOKEN_MAP'> = constants,
+	buffer: number[] = []
+) => {
+	const { TAGS, TOKEN_MAP } = opts
 
 	const pushByte = (value: number) => buffer.push(value & 0xff)
 
@@ -216,7 +221,7 @@ export const encodeBinaryNode = ({ tag, attrs, content }: BinaryNode, buffer: nu
 		writeListStart(content.length)
 		for(const item of content) {
 			if(item) {
-				encodeBinaryNode(item, buffer)
+				encodeBinaryNode(item, opts, buffer)
 			}
 		}
 	} else if(typeof content === 'undefined' || content === null) {
