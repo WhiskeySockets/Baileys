@@ -5,8 +5,8 @@ import WebSocket from 'ws'
 import { proto } from '../../WAProto'
 import { DEF_CALLBACK_PREFIX, DEF_TAG_PREFIX, DEFAULT_ORIGIN, INITIAL_PREKEY_COUNT, MIN_PREKEY_COUNT } from '../Defaults'
 import { AuthenticationCreds, BaileysEventEmitter, BaileysEventMap, DisconnectReason, SocketConfig } from '../Types'
-import { addTransactionCapability, bindWaitForConnectionUpdate, configureSuccessfulPairing, Curve, generateLoginNode, generateMdTagPrefix, generateRegistrationNode, getErrorCodeFromStreamErrorReason, getNextPreKeysNode, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout, useSingleFileAuthState } from '../Utils'
-import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, getAllBinaryNodeChildren, getBinaryNodeChild, getBinaryNodeChildren, S_WHATSAPP_NET } from '../WABinary'
+import { addTransactionCapability, bindWaitForConnectionUpdate, configureSuccessfulPairing, Curve, generateLoginNode, generateMdTagPrefix, generateRegistrationNode, getErrorCodeFromStreamError, getNextPreKeysNode, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout, useSingleFileAuthState } from '../Utils'
+import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, getBinaryNodeChild, getBinaryNodeChildren, S_WHATSAPP_NET } from '../WABinary'
 
 /**
  * Connects to WA servers and performs:
@@ -478,30 +478,15 @@ export const makeSocket = ({
 		try {
 			const { reply, creds: updatedCreds } = configureSuccessfulPairing(stanza, creds)
 
-			logger.debug('pairing configured successfully')
-
-			const waiting = awaitNextMessage()
-			await sendNode(reply)
-
-			const value = (await waiting) as BinaryNode
-			if(value.tag === 'stream:error') {
-				if(value.attrs?.code !== '515') {
-					throw new Boom('Authentication failed', { statusCode: +(value.attrs.code || 500) })
-				}
-			}
-
 			logger.info(
 				{ me: updatedCreds.me, platform: updatedCreds.platform },
-				'registered connection, restart server'
+				'pairing configured successfully, expect to restart the connection...'
 			)
 
 			ev.emit('creds.update', updatedCreds)
 			ev.emit('connection.update', { isNewLogin: true, qr: undefined })
 
-			end(new Boom('Restart Required', { statusCode: DisconnectReason.restartRequired }))
-
-			logger.warn('If your process stalls here, make sure to implement the reconnect logic as shown in ' +
-						'https://github.com/adiwajshing/Baileys/blob/master/Example/example.ts#:~:text=reconnect')
+			await sendNode(reply)
 		} catch(error) {
 			logger.info({ trace: error.stack }, 'error in pairing')
 			end(error)
@@ -530,12 +515,8 @@ export const makeSocket = ({
 	ws.on('CB:stream:error', (node: BinaryNode) => {
 		logger.error({ node }, 'stream errored out')
 
-		const [reasonNode] = getAllBinaryNodeChildren(node)
-		const reason = reasonNode?.tag || 'unknown'
-		const statusCode = +(
-			node.attrs.code
-			|| getErrorCodeFromStreamErrorReason(reason)
-		)
+		const { reason, statusCode } = getErrorCodeFromStreamError(node)
+
 		end(new Boom(`Stream Errored (${reason})`, { statusCode, data: node }))
 	})
 	// stream fail, possible logout

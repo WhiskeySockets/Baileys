@@ -35,7 +35,7 @@ export enum DisconnectReason {
     timedOut = 408,
 	loggedOut = 401,
     badSession = 500,
-    restartRequired = 410,
+    restartRequired = 515,
     multideviceMismatch = 411
 }
 
