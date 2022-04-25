@@ -251,6 +251,7 @@ message ContextInfo {
     optional ActionLink actionLink = 33;
     optional string groupSubject = 34;
     optional string parentGroupJid = 35;
+    optional bytes messageSecret = 36;
 }
 
 message DeclinePaymentRequestMessage {
@@ -340,6 +341,9 @@ message ExtendedTextMessage {
         PARENT = 1;
     }
     optional ExtendedTextMessageInviteLinkGroupType inviteLinkGroupType = 26;
+    optional string inviteLinkParentGroupSubjectV2 = 27;
+    optional bytes inviteLinkParentGroupThumbnailV2 = 28;
+    optional ExtendedTextMessageInviteLinkGroupType inviteLinkGroupTypeV2 = 29;
 }
 
 message ExternalAdReplyInfo {
@@ -829,16 +833,14 @@ message PollCreationMessage {
     optional ContextInfo contextInfo = 5;
 }
 
-message PollUpdateMessage {
-    optional MessageKey pollCreationMessageKey = 1;
-    optional bytes encPayload = 2;
-    optional bytes encIv = 3;
+message PollEncValue {
+    optional bytes encPayload = 1;
+    optional bytes encIv = 2;
 }
 
-message PollUpdateMessageContent {
-    oneof update {
-        PollVoteMessage voteMessage = 1;
-    }
+message PollUpdateMessage {
+    optional MessageKey pollCreationMessageKey = 1;
+    optional PollEncValue vote = 2;
 }
 
 message PollVoteMessage {
@@ -1475,6 +1477,11 @@ message SyncActionValue {
     optional AgentAction agentAction = 27;
     optional SubscriptionAction subscriptionAction = 28;
     optional UserStatusMuteAction userStatusMuteAction = 29;
+    optional TimeFormatAction timeFormatAction = 30;
+}
+
+message TimeFormatAction {
+    optional bool isTwentyFourHourFormatEnabled = 1;
 }
 
 message UnarchiveChatsSetting {
@@ -1559,6 +1566,11 @@ message VerifiedNameDetails {
 //    optional uint32 quinary = 5;
 //}
 
+message CertChain {
+    optional NoiseCertificate leaf = 1;
+    optional NoiseCertificate intermediate = 2;
+}
+
 message ClientFinish {
     optional bytes static = 1;
     optional bytes payload = 2;
@@ -1641,6 +1653,14 @@ message CompanionRegData {
     optional bytes companionProps = 8;
 }
 
+message Details {
+    optional uint32 serial = 1;
+    optional uint32 issuerSerial = 2;
+    optional bytes key = 3;
+    optional uint64 notBefore = 4;
+    optional uint64 notAfter = 5;
+}
+
 message DNSSource {
     enum DNSSourceDNSResolutionMethod {
         SYSTEM = 0;
@@ -1662,15 +1682,6 @@ message HandshakeMessage {
 message NoiseCertificate {
     optional bytes details = 1;
     optional bytes signature = 2;
-}
-
-// Renamed from NoiseCertificate$Details
-message NoiseCertificateDetails {
-    optional uint32 serial = 1;
-    optional string issuer = 2;
-    optional uint64 expires = 3;
-    optional string subject = 4;
-    optional bytes key = 5;
 }
 
 message ServerHello {
@@ -1851,7 +1862,7 @@ message PollAdditionalMetadata {
 
 message PollUpdate {
     optional MessageKey pollUpdateMessageKey = 1;
-    optional PollUpdateMessageContent pollUpdateMessage = 2;
+    optional PollVoteMessage vote = 2;
 }
 
 message Reaction {
@@ -2091,6 +2102,12 @@ message WebMessageInfo {
         COMMUNITY_LINK_PARENT_GROUP = 134;
         COMMUNITY_LINK_SIBLING_GROUP = 135;
         COMMUNITY_LINK_SUB_GROUP = 136;
+        COMMUNITY_UNLINK_PARENT_GROUP = 137;
+        COMMUNITY_UNLINK_SIBLING_GROUP = 138;
+        COMMUNITY_UNLINK_SUB_GROUP = 139;
+        GROUP_PARTICIPANT_ACCEPT = 140;
+        GROUP_PARTICIPANT_LINKED_GROUP_JOIN = 141;
+        COMMUNITY_CREATE = 142;
     }
     optional WebMessageInfoStubType messageStubType = 24;
     optional bool clearMedia = 25;
@@ -2122,6 +2139,8 @@ message WebMessageInfo {
     repeated PollUpdate pollUpdates = 45;
     optional PollAdditionalMetadata pollAdditionalMetadata = 46;
     optional string agentId = 47;
+    optional bool statusAlreadyViewed = 48;
+    optional bytes messageSecret = 49;
 }
 
 message WebNotificationsInfo {
