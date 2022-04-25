@@ -556,11 +556,14 @@ export const makeSocket = ({
 		const name = update.me?.name
 		// if name has just been received
 		if(!creds.me?.name && name) {
-			logger.info({ name }, 'received pushName')
+			logger.info({ name }, 'updated pushName')
 			sendNode({
 				tag: 'presence',
 				attrs: { name }
 			})
+				.catch(err => {
+					logger.warn({ trace: err.stack }, 'error in sending presence update on name change')
+				})
 		}
 
 		Object.assign(creds, update)
