@@ -5,8 +5,8 @@ import WebSocket from 'ws'
 import { proto } from '../../WAProto'
 import { DEF_CALLBACK_PREFIX, DEF_TAG_PREFIX, DEFAULT_ORIGIN, INITIAL_PREKEY_COUNT, MIN_PREKEY_COUNT } from '../Defaults'
 import { AuthenticationCreds, BaileysEventEmitter, BaileysEventMap, DisconnectReason, SocketConfig } from '../Types'
-import { addTransactionCapability, bindWaitForConnectionUpdate, configureSuccessfulPairing, Curve, generateLoginNode, generateMdTagPrefix, generateRegistrationNode, getNextPreKeysNode, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout, useSingleFileAuthState } from '../Utils'
-import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, getBinaryNodeChild, getBinaryNodeChildren, S_WHATSAPP_NET } from '../WABinary'
+import { addTransactionCapability, bindWaitForConnectionUpdate, configureSuccessfulPairing, Curve, generateLoginNode, generateMdTagPrefix, generateRegistrationNode, getErrorCodeFromStreamErrorReason, getNextPreKeysNode, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout, useSingleFileAuthState } from '../Utils'
+import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, getAllBinaryNodeChildren, getBinaryNodeChild, getBinaryNodeChildren, S_WHATSAPP_NET } from '../WABinary'
 
 /**
  * Connects to WA servers and performs:
@@ -528,10 +528,15 @@ export const makeSocket = ({
 	})
 
 	ws.on('CB:stream:error', (node: BinaryNode) => {
-		logger.error({ error: node }, 'stream errored out')
+		logger.error({ node }, 'stream errored out')
 
-		const statusCode = +(node.attrs.code || DisconnectReason.restartRequired)
-		end(new Boom('Stream Errored', { statusCode, data: node }))
+		const [reasonNode] = getAllBinaryNodeChildren(node)
+		const reason = reasonNode?.tag || 'unknown'
+		const statusCode = +(
+			node.attrs.code
+			|| getErrorCodeFromStreamErrorReason(reason)
+		)
+		end(new Boom(`Stream Errored (${reason})`, { statusCode, data: node }))
 	})
 	// stream fail, possible logout
 	ws.on('CB:failure', (node: BinaryNode) => {

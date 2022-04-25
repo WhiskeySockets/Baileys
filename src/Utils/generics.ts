@@ -252,7 +252,10 @@ const STATUS_MAP: { [_: string]: proto.WebMessageInfo.WebMessageInfoStatus } = {
 	'read': proto.WebMessageInfo.WebMessageInfoStatus.READ,
 	'read-self': proto.WebMessageInfo.WebMessageInfoStatus.READ
 }
-
+/**
+ * Given a type of receipt, returns what the new status of the message should be
+ * @param type type from receipt
+ */
 export const getStatusFromReceiptType = (type: string | undefined) => {
 	const status = STATUS_MAP[type]
 	if(typeof type === 'undefined') {
@@ -260,4 +263,16 @@ export const getStatusFromReceiptType = (type: string | undefined) => {
 	}
 
 	return status
+}
+
+const CODE_MAP: { [_: string]: DisconnectReason } = {
+	conflict: DisconnectReason.connectionReplaced
+}
+
+/**
+ * Stream errors generally provide a reason, map that to a baileys DisconnectReason
+ * @param reason the string reason given, eg. "conflict"
+ */
+export const getErrorCodeFromStreamErrorReason = (reason: string) => {
+	return CODE_MAP[reason] || DisconnectReason.badSession
 }
