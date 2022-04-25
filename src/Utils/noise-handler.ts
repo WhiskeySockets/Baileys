@@ -2,7 +2,7 @@ import { Boom } from '@hapi/boom'
 import { createCipheriv, createDecipheriv } from 'crypto'
 import { Logger } from 'pino'
 import { proto } from '../../WAProto'
-import { NOISE_MODE, NOISE_WA_HEADER } from '../Defaults'
+import { NOISE_MODE, NOISE_WA_HEADER, WA_CERT_DETAILS } from '../Defaults'
 import { KeyPair } from '../Types'
 import { BinaryNode, decodeBinaryNode } from '../WABinary'
 import { Curve, hkdf, sha256 } from './crypto'
@@ -117,11 +117,11 @@ export const makeNoiseHandler = (
 			mixIntoKey(Curve.sharedKey(privateKey, decStaticContent))
 
 			const certDecoded = decrypt(serverHello!.payload!)
-			const { details: certDetails } = proto.NoiseCertificate.decode(certDecoded)
+			const { intermediate: certIntermediate } = proto.CertChain.decode(certDecoded)
 
-			const { key: certKey } = proto.NoiseCertificateDetails.decode(certDetails)
+			const { issuerSerial } = proto.Details.decode(certIntermediate!.details!)
 
-			if(Buffer.compare(decStaticContent, certKey) !== 0) {
+			if(issuerSerial !== WA_CERT_DETAILS.SERIAL) {
 				throw new Boom('certification match failed', { statusCode: 400 })
 			}
 
