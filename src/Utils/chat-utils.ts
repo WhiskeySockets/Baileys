@@ -447,18 +447,10 @@ export const chatModificationToAppPatch = (
 ) => {
 	const OP = proto.SyncdMutation.SyncdMutationSyncdOperation
 	const getMessageRange = (lastMessages: LastMessageList) => {
-		if(!lastMessages?.length) {
-			throw new Boom('Expected last message to be not from me', { statusCode: 400 })
-		}
-
 		const lastMsg = lastMessages[lastMessages.length - 1]
-		if(lastMsg.key.fromMe) {
-			throw new Boom('Expected last message in array to be not from me', { statusCode: 400 })
-		}
-
 		const messageRange: proto.ISyncActionMessageRange = {
 			lastMessageTimestamp: lastMsg?.messageTimestamp,
-			messages: lastMessages.map(
+			messages: lastMessages?.length ? lastMessages.map(
 				m => {
 					if(m.key.participant) {
 						m.key = { ...m.key }
@@ -467,7 +459,7 @@ export const chatModificationToAppPatch = (
 
 					return m
 				}
-			)
+			) : undefined
 		}
 		return messageRange
 	}
