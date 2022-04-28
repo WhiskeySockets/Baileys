@@ -447,32 +447,38 @@ export const chatModificationToAppPatch = (
 ) => {
 	const OP = proto.SyncdMutation.SyncdMutationSyncdOperation
 	const getMessageRange = (lastMessages: LastMessageList) => {
-		const lastMsg = lastMessages[lastMessages.length - 1]
-		const messageRange: proto.ISyncActionMessageRange = {
-			lastMessageTimestamp: lastMsg?.messageTimestamp,
-			messages: lastMessages?.length ? lastMessages.map(
-				m => {
-					if(!m.key?.id || !m.key?.remoteJid) {
-						throw new Boom('Incomplete key', { statusCode: 400, data: m })
-					}
+		let messageRange: proto.ISyncActionMessageRange
+		if(Array.isArray(lastMessages)) {
+			const lastMsg = lastMessages[lastMessages.length - 1]
+			messageRange = {
+				lastMessageTimestamp: lastMsg?.messageTimestamp,
+				messages: lastMessages?.length ? lastMessages.map(
+					m => {
+						if(!m.key?.id || !m.key?.remoteJid) {
+							throw new Boom('Incomplete key', { statusCode: 400, data: m })
+						}
 
-					if(isJidGroup(m.key.remoteJid) && !m.key.fromMe && !m.key.participant) {
-						throw new Boom('Expected not from me message to have participant', { statusCode: 400, data: m })
-					}
+						if(isJidGroup(m.key.remoteJid) && !m.key.fromMe && !m.key.participant) {
+							throw new Boom('Expected not from me message to have participant', { statusCode: 400, data: m })
+						}
 
-					if(!m.messageTimestamp || !toNumber(m.messageTimestamp)) {
-						throw new Boom('Missing timestamp in last message list', { statusCode: 400, data: m })
-					}
+						if(!m.messageTimestamp || !toNumber(m.messageTimestamp)) {
+							throw new Boom('Missing timestamp in last message list', { statusCode: 400, data: m })
+						}
 
-					if(m.key.participant) {
-						m.key = { ...m.key }
-						m.key.participant = jidNormalizedUser(m.key.participant)
-					}
+						if(m.key.participant) {
+							m.key = { ...m.key }
+							m.key.participant = jidNormalizedUser(m.key.participant)
+						}
 
-					return m
-				}
-			) : undefined
+						return m
+					}
+				) : undefined
+			}
+		} else {
+			messageRange = lastMessages
 		}
+
 		return messageRange
 	}
 
