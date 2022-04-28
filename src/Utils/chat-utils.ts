@@ -2,7 +2,7 @@ import { Boom } from '@hapi/boom'
 import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { AuthenticationCreds, BaileysEventMap, Chat, ChatModification, ChatMutation, Contact, LastMessageList, LTHashState, WAPatchCreate, WAPatchName } from '../Types'
-import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidNormalizedUser } from '../WABinary'
+import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, jidNormalizedUser } from '../WABinary'
 import { aesDecrypt, aesEncrypt, hkdf, hmacSign } from './crypto'
 import { toNumber } from './generics'
 import { LT_HASH_ANTI_TAMPERING } from './lt-hash'
@@ -452,6 +452,18 @@ export const chatModificationToAppPatch = (
 			lastMessageTimestamp: lastMsg?.messageTimestamp,
 			messages: lastMessages?.length ? lastMessages.map(
 				m => {
+					if(!m.key?.id || !m.key?.remoteJid) {
+						throw new Boom('Incomplete key', { statusCode: 400, data: m })
+					}
+
+					if(isJidGroup(m.key.remoteJid) && !m.key.fromMe && !m.key.participant) {
+						throw new Boom('Expected not from me message to have participant', { statusCode: 400, data: m })
+					}
+
+					if(!m.messageTimestamp || !toNumber(m.messageTimestamp)) {
+						throw new Boom('Missing timestamp in last message list', { statusCode: 400, data: m })
+					}
+
 					if(m.key.participant) {
 						m.key = { ...m.key }
 						m.key.participant = jidNormalizedUser(m.key.participant)
