@@ -598,7 +598,7 @@ export const processSyncActions = (
 				map['creds.update'].me = { ...me, name: action?.pushNameSetting?.name! }
 			}
 		} else if(action?.pinAction) {
-			update.pin = action.pinAction?.pinned ? toNumber(action.timestamp) : undefined
+			update.pin = action.pinAction?.pinned ? toNumber(action.timestamp) : null
 		} else if(action?.unarchiveChatsSetting) {
 			map['creds.update'] = map['creds.update'] || { }
 			map['creds.update'].accountSettings = { unarchiveChats: !!action.unarchiveChatsSetting.unarchiveChats }
