@@ -19,6 +19,7 @@ import {
 	WAProto,
 	WATextMessage,
 } from '../Types'
+import { jidNormalizedUser } from '../WABinary'
 import { generateMessageID, unixTimestampSeconds } from './generics'
 import { downloadContentFromMessage, encryptedStream, generateThumbnail, getAudioDuration, MediaDownloadOptions } from './messages-media'
 
@@ -396,16 +397,28 @@ export const generateWAMessageFromContent = (
 	if(quoted) {
 		const participant = quoted.key.fromMe ? userJid : (quoted.participant || quoted.key.participant || quoted.key.remoteJid)
 
-		message[key].contextInfo = message[key].contextInfo || { }
-		message[key].contextInfo.participant = participant
-		message[key].contextInfo.stanzaId = quoted.key.id
-		message[key].contextInfo.quotedMessage = quoted.message
+		let quotedMsg = normalizeMessageContent(quoted.message)
+		const msgType = getContentType(quotedMsg)
+		// strip any redundant properties
+		quotedMsg = proto.Message.fromObject({ [msgType]: quotedMsg[msgType] })
+
+		const quotedContent = quotedMsg[msgType]
+		if(typeof quotedContent === 'object' && quotedContent && 'contextInfo' in quotedContent) {
+			delete quotedContent.contextInfo
+		}
+
+		const contextInfo: proto.IContextInfo = message[key].contextInfo || { }
+		contextInfo.participant = jidNormalizedUser(participant)
+		contextInfo.stanzaId = quoted.key.id
+		contextInfo.quotedMessage = quotedMsg
 
 		// if a participant is quoted, then it must be a group
 		// hence, remoteJid of group must also be entered
 		if(quoted.key.participant || quoted.participant) {
-			message[key].contextInfo.remoteJid = quoted.key.remoteJid
+			contextInfo.remoteJid = quoted.key.remoteJid
 		}
+
+		message[key].contextInfo = contextInfo
 	}
 
 	if(
