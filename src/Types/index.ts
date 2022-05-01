@@ -14,11 +14,15 @@ import { proto } from '../../WAProto'
 import { AuthenticationState } from './Auth'
 import { CommonSocketConfig } from './Socket'
 
+export type MessageRetryMap = { [msgId: string]: number }
+
 export type SocketConfig = CommonSocketConfig<AuthenticationState> & {
     /** provide a cache to store a user's device list */
     userDevicesCache?: NodeCache
-    /** map to store the retry counts for failed messages */
-    msgRetryCounterMap?: { [msgId: string]: number }
+    /**
+     * map to store the retry counts for failed messages;
+     * used to determine whether to retry a message or not */
+    msgRetryCounterMap?: MessageRetryMap
     /** width for link preview images */
     linkPreviewImageThumbnailWidth: number
     /**

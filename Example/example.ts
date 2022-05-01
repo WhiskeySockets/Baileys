@@ -1,5 +1,5 @@
 import { Boom } from '@hapi/boom'
-import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, makeInMemoryStore, useSingleFileAuthState } from '../src'
+import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, makeInMemoryStore, MessageRetryMap, useSingleFileAuthState } from '../src'
 import MAIN_LOGGER from '../src/Utils/logger'
 
 const logger = MAIN_LOGGER.child({ })
@@ -7,6 +7,10 @@ logger.level = 'trace'
 
 const useStore = !process.argv.includes('--no-store')
 const doReplies = !process.argv.includes('--no-reply')
+
+// external map to store retry counts of messages when decryption/encryption fails
+// keep this out of the socket itself, so as to prevent a message decryption/encryption loop across socket restarts
+const msgRetryCounterMap: MessageRetryMap = { }
 
 // the store maintains the data of the WA connection in memory
 // can be written out to a file & read from it
@@ -30,6 +34,7 @@ const startSock = async() => {
 		logger,
 		printQRInTerminal: true,
 		auth: state,
+		msgRetryCounterMap,
 		// implement to handle retries
 		getMessage: async key => {
 			return {
