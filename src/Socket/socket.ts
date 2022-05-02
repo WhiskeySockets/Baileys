@@ -288,7 +288,10 @@ export const makeSocket = ({
 	}
 
 	const end = (error: Error | undefined) => {
-		logger.info({ error }, 'connection closed')
+		logger.info(
+			{ error, trace: error?.stack },
+			error ? 'connection errored' : 'connection closed'
+		)
 
 		clearInterval(keepAliveReq)
 		clearTimeout(qrTimer)
