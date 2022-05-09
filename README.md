@@ -468,7 +468,7 @@ const buttons = [
 const buttonMessage = {
     image: {url: 'https://example.com/image.jpeg'},
     caption: "Hi it's button message",
-    footerText: 'Hello World',
+    footer: 'Hello World',
     buttons: buttons,
     headerType: 4
 }
