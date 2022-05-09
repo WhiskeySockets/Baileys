@@ -13,6 +13,13 @@ type ProcessMessageContext = {
 	treatCiphertextMessagesAsReal?: boolean
 }
 
+const MSG_MISSED_CALL_TYPES = new Set([
+	WAMessageStubType.CALL_MISSED_GROUP_VIDEO,
+	WAMessageStubType.CALL_MISSED_GROUP_VOICE,
+	WAMessageStubType.CALL_MISSED_VIDEO,
+	WAMessageStubType.CALL_MISSED_VOICE
+])
+
 const processMessage = async(
 	message: proto.IWebMessageInfo,
 	{ historyCache, meId, keyStore, accountSettings, logger, treatCiphertextMessagesAsReal }: ProcessMessageContext
@@ -24,8 +31,9 @@ const processMessage = async(
 	const normalizedContent = !!message.message && normalizeMessageContent(message.message)
 	if(
 		(
-			!!normalizedContent ||
-			(message.messageStubType === WAMessageStubType.CIPHERTEXT && treatCiphertextMessagesAsReal)
+			!!normalizedContent
+			|| MSG_MISSED_CALL_TYPES.has(message.messageStubType)
+			|| (message.messageStubType === WAMessageStubType.CIPHERTEXT && treatCiphertextMessagesAsReal)
 		)
 		&& !normalizedContent?.protocolMessage
 		&& !normalizedContent?.reactionMessage
