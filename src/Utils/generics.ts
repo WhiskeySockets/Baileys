@@ -5,7 +5,7 @@ import { platform, release } from 'os'
 import { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { version as baileysVersion } from '../Defaults/baileys-version.json'
-import { CommonBaileysEventEmitter, ConnectionState, DisconnectReason, WAVersion } from '../Types'
+import { CommonBaileysEventEmitter, ConnectionState, DisconnectReason, WACallUpdateType, WAVersion } from '../Types'
 import { BinaryNode, getAllBinaryNodeChildren } from '../WABinary'
 
 const PLATFORM_MAP = {
@@ -287,4 +287,33 @@ export const getErrorCodeFromStreamError = (node: BinaryNode) => {
 		reason,
 		statusCode
 	}
+}
+
+export const getCallStatusFromNode = ({ tag, attrs }: BinaryNode) => {
+	let status: WACallUpdateType
+	switch (tag) {
+	case 'offer':
+	case 'offer_notice':
+		status = 'offer'
+		break
+	case 'terminate':
+		if(attrs.reason === 'timeout') {
+			status = 'timeout'
+		} else {
+			status = 'reject'
+		}
+
+		break
+	case 'reject':
+		status = 'reject'
+		break
+	case 'accept':
+		status = 'accept'
+		break
+	default:
+		status = 'ringing'
+		break
+	}
+
+	return status
 }

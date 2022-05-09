@@ -57,6 +57,7 @@ const startSock = async() => {
 		await sock.sendMessage(jid, msg)
 	}
 
+	sock.ev.on('call', item => console.log('recv call event', item))
 	sock.ev.on('chats.set', item => console.log(`recv ${item.chats.length} chats (is latest: ${item.isLatest})`))
 	sock.ev.on('messages.set', item => console.log(`recv ${item.messages.length} messages (is latest: ${item.isLatest})`))
 	sock.ev.on('contacts.set', item => console.log(`recv ${item.contacts.length} contacts`))

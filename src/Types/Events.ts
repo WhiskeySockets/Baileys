@@ -1,6 +1,7 @@
 import type EventEmitter from 'events'
 import { proto } from '../../WAProto'
 import { AuthenticationCreds } from './Auth'
+import { WACallEvent } from './Call'
 import { Chat, PresenceData } from './Chat'
 import { Contact } from './Contact'
 import { GroupMetadata, ParticipantAction } from './GroupMetadata'
@@ -48,6 +49,8 @@ export type BaileysEventMap<T> = {
 
     'blocklist.set': { blocklist: string[] }
     'blocklist.update': { blocklist: string[], type: 'add' | 'remove' }
+    /** Receive an update on a call, including when the call was received, rejected, accepted */
+    'call': WACallEvent[]
 }
 
 export interface CommonBaileysEventEmitter<Creds> extends EventEmitter {

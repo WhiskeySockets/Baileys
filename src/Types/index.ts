@@ -8,6 +8,7 @@ export * from './Legacy'
 export * from './Socket'
 export * from './Events'
 export * from './Product'
+export * from './Call'
 
 import type NodeCache from 'node-cache'
 import { proto } from '../../WAProto'
