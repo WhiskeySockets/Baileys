@@ -46,6 +46,7 @@ const processMessage = async(
 
 		if(accountSettings?.unarchiveChats) {
 			chat.archive = false
+			chat.readOnly = false
 		}
 	}
 

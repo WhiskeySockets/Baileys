@@ -2,6 +2,7 @@ import { promisify } from 'util'
 import { inflate } from 'zlib'
 import { proto } from '../../WAProto'
 import { Chat, Contact } from '../Types'
+import { isJidUser } from '../WABinary'
 import { downloadContentFromMessage } from './messages-media'
 
 const inflatePromise = promisify(inflate)
@@ -45,6 +46,10 @@ export const processHistoryMessage = (item: proto.IHistorySync, historyCache: Se
 
 			delete chat.messages
 			if(!historyCache.has(chat.id)) {
+				if(isJidUser(chat.id) && chat.readOnly && chat.archived) {
+					chat.readOnly = false
+				}
+
 				chats.push(chat)
 				historyCache.add(chat.id)
 			}
