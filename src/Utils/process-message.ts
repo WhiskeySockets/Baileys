@@ -121,7 +121,13 @@ const processMessage = async(
 			key: message.key,
 		}
 		const operation = content.reactionMessage?.text ? 'add' : 'remove'
-		map['messages.reaction'] = { reaction, key: content.reactionMessage!.key!, operation }
+		const msgKey = content.reactionMessage!.key!
+		if(!message.key.fromMe) {
+			msgKey.remoteJid = message.key.remoteJid
+			msgKey.fromMe = !msgKey.fromMe
+		}
+
+		map['messages.reaction'] = { reaction, key: msgKey, operation }
 	} else if(message.messageStubType) {
 		const jid = message.key!.remoteJid!
 		//let actor = whatsappID (message.participant)
