@@ -216,7 +216,9 @@ const makeGroupsSocket = (config: LegacySocketConfig) => {
 			const result: GroupModificationResponse = await groupQuery(action, id, null, participants)
 			const jids = Object.keys(result.participants || {})
 			ev.emit('group-participants.update', { id, participants: jids, action })
-			return jids
+			return Object.keys(result.participants || {}).map(
+				jid => ({ jid, status: result.participants?.[jid] })
+			)
 		},
 		/** Query broadcast list info */
 		getBroadcastListInfo: async(jid: string) => {
