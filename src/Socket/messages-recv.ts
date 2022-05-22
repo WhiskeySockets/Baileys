@@ -13,7 +13,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const {
 		logger,
 		treatCiphertextMessagesAsReal,
-		retryRequestDelayMs
+		retryRequestDelayMs,
+		downloadHistory
 	} = config
 	const sock = makeChatsSocket(config)
 	const {
@@ -149,7 +150,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		// process message and emit events
 		const newEvents = await processMessage(
 			msg,
-			{ historyCache, meId, accountSettings: authState.creds.accountSettings, keyStore: authState.keys, logger, treatCiphertextMessagesAsReal }
+			{
+				downloadHistory,
+				historyCache,
+				meId,
+				accountSettings: authState.creds.accountSettings,
+				keyStore: authState.keys,
+				logger,
+				treatCiphertextMessagesAsReal
+			}
 		)
 
 		// send ack for history message

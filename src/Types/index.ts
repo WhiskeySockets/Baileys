@@ -18,6 +18,8 @@ import { CommonSocketConfig } from './Socket'
 export type MessageRetryMap = { [msgId: string]: number }
 
 export type SocketConfig = CommonSocketConfig<AuthenticationState> & {
+    /** By default true, should history messages be downloaded and processed */
+    downloadHistory: boolean
     /** provide a cache to store a user's device list */
     userDevicesCache?: NodeCache
     /**

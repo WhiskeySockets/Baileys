@@ -6,6 +6,7 @@ import { areJidsSameUser, jidNormalizedUser } from '../WABinary'
 
 type ProcessMessageContext = {
 	historyCache: Set<string>
+	downloadHistory: boolean
 	meId: string
 	keyStore: SignalKeyStoreWithTransaction
 	accountSettings: AccountSettings
@@ -22,7 +23,7 @@ const MSG_MISSED_CALL_TYPES = new Set([
 
 const processMessage = async(
 	message: proto.IWebMessageInfo,
-	{ historyCache, meId, keyStore, accountSettings, logger, treatCiphertextMessagesAsReal }: ProcessMessageContext
+	{ downloadHistory, historyCache, meId, keyStore, accountSettings, logger, treatCiphertextMessagesAsReal }: ProcessMessageContext
 ) => {
 	const map: Partial<BaileysEventMap<any>> = { }
 
@@ -59,18 +60,20 @@ const processMessage = async(
 
 			logger?.info({ histNotification, id: message.key.id }, 'got history notification')
 
-			const { chats, contacts, messages, isLatest } = await downloadAndProcessHistorySyncNotification(histNotification, historyCache)
+			if(downloadHistory) {
+				const { chats, contacts, messages, isLatest } = await downloadAndProcessHistorySyncNotification(histNotification, historyCache)
 
-			if(chats.length) {
-				map['chats.set'] = { chats, isLatest }
-			}
+				if(chats.length) {
+					map['chats.set'] = { chats, isLatest }
+				}
 
-			if(messages.length) {
-				map['messages.set'] = { messages, isLatest }
-			}
+				if(messages.length) {
+					map['messages.set'] = { messages, isLatest }
+				}
 
-			if(contacts.length) {
-				map['contacts.set'] = { contacts }
+				if(contacts.length) {
+					map['contacts.set'] = { contacts }
+				}
 			}
 
 			break

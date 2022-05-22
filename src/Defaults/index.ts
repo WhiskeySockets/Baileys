@@ -43,6 +43,7 @@ const BASE_CONNECTION_CONFIG: CommonSocketConfig<any> = {
 
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	...BASE_CONNECTION_CONFIG,
+	downloadHistory: true,
 	linkPreviewImageThumbnailWidth: 192,
 	getMessage: async() => undefined
 }
