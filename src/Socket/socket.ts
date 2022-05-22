@@ -24,7 +24,8 @@ export const makeSocket = ({
 	browser,
 	auth: initialAuthState,
 	printQRInTerminal,
-	defaultQueryTimeoutMs
+	defaultQueryTimeoutMs,
+	transactionOpts
 }: SocketConfig) => {
 	const ws = new WebSocket(waWebSocketUrl, undefined, {
 		origin: DEFAULT_ORIGIN,
@@ -51,7 +52,7 @@ export const makeSocket = ({
 
 	const { creds } = authState
 	// add transaction capability
-	const keys = addTransactionCapability(authState.keys, logger)
+	const keys = addTransactionCapability(authState.keys, logger, transactionOpts)
 
 	let lastDateRecv: Date
 	let epoch = 1

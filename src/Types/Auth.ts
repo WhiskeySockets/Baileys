@@ -72,6 +72,11 @@ export type SignalKeyStoreWithTransaction = SignalKeyStore & {
     prefetch<T extends keyof SignalDataTypeMap>(type: T, ids: string[]): Promise<void>
 }
 
+export type TransactionCapabilityOptions = {
+	maxCommitRetries: number
+	delayBetweenTriesMs: number
+}
+
 export type SignalAuthState = {
     creds: SignalCreds
     keys: SignalKeyStore

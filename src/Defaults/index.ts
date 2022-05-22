@@ -45,6 +45,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	...BASE_CONNECTION_CONFIG,
 	downloadHistory: true,
 	linkPreviewImageThumbnailWidth: 192,
+	transactionOpts: { maxCommitRetries: 10, delayBetweenTriesMs: 3000 },
 	getMessage: async() => undefined
 }
 

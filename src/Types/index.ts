@@ -12,7 +12,7 @@ export * from './Call'
 
 import type NodeCache from 'node-cache'
 import { proto } from '../../WAProto'
-import { AuthenticationState } from './Auth'
+import { AuthenticationState, TransactionCapabilityOptions } from './Auth'
 import { CommonSocketConfig } from './Socket'
 
 export type MessageRetryMap = { [msgId: string]: number }
@@ -20,6 +20,8 @@ export type MessageRetryMap = { [msgId: string]: number }
 export type SocketConfig = CommonSocketConfig<AuthenticationState> & {
     /** By default true, should history messages be downloaded and processed */
     downloadHistory: boolean
+    /** transaction capability options for SignalKeyStore */
+    transactionOpts: TransactionCapabilityOptions
     /** provide a cache to store a user's device list */
     userDevicesCache?: NodeCache
     /**

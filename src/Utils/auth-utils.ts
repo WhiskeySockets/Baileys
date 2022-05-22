@@ -2,18 +2,9 @@ import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
 import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
-import type { AuthenticationCreds, AuthenticationState, SignalDataSet, SignalDataTypeMap, SignalKeyStore, SignalKeyStoreWithTransaction } from '../Types'
+import type { AuthenticationCreds, AuthenticationState, SignalDataSet, SignalDataTypeMap, SignalKeyStore, SignalKeyStoreWithTransaction, TransactionCapabilityOptions } from '../Types'
 import { Curve, signedKeyPair } from './crypto'
-import { BufferJSON, generateRegistrationId } from './generics'
-
-const KEY_MAP: { [T in keyof SignalDataTypeMap]: string } = {
-	'pre-key': 'preKeys',
-	'session': 'sessions',
-	'sender-key': 'senderKeys',
-	'app-state-sync-key': 'appStateSyncKeys',
-	'app-state-sync-version': 'appStateVersions',
-	'sender-key-memory': 'senderKeyMemory'
-}
+import { BufferJSON, delay, generateRegistrationId } from './generics'
 
 /**
  * Adds DB like transaction capability (https://en.wikipedia.org/wiki/Database_transaction) to the SignalKeyStore,
@@ -22,11 +13,15 @@ const KEY_MAP: { [T in keyof SignalDataTypeMap]: string } = {
  * @param logger logger to log events
  * @returns SignalKeyStore with transaction capability
  */
-export const addTransactionCapability = (state: SignalKeyStore, logger: Logger): SignalKeyStoreWithTransaction => {
+export const addTransactionCapability = (state: SignalKeyStore, logger: Logger, { maxCommitRetries, delayBetweenTriesMs }: TransactionCapabilityOptions): SignalKeyStoreWithTransaction => {
 	let inTransaction = false
 	let transactionCache: SignalDataSet = { }
 	let mutations: SignalDataSet = { }
 
+	/**
+	 * prefetches some data and stores in memory,
+	 * useful if these data points will be used together often
+	 * */
 	const prefetch = async(type: keyof SignalDataTypeMap, ids: string[]) => {
 		if(!inTransaction) {
 			throw new Boom('Cannot prefetch without transaction')
@@ -90,7 +85,19 @@ export const addTransactionCapability = (state: SignalKeyStore, logger: Logger):
 					await work()
 					if(Object.keys(mutations).length) {
 						logger.debug('committing transaction')
-						await state.set(mutations)
+						// retry mechanism to ensure we've some recovery
+						// in case a transaction fails in the first attempt
+						let tries = maxCommitRetries
+						while(tries) {
+							tries -= 1
+							try {
+								await state.set(mutations)
+								break
+							} catch(error) {
+								logger.warn(`failed to commit ${Object.keys(mutations).length} mutations, tries left=${tries}`)
+								await delay(delayBetweenTriesMs)
+							}
+						}
 					} else {
 						logger.debug('no mutations in transaction')
 					}
@@ -121,6 +128,16 @@ export const initAuthCreds = (): AuthenticationCreds => {
 	}
 }
 
+// useless key map only there to maintain backwards compatibility
+// do not use in your own systems please
+const KEY_MAP: { [T in keyof SignalDataTypeMap]: string } = {
+	'pre-key': 'preKeys',
+	'session': 'sessions',
+	'sender-key': 'senderKeys',
+	'app-state-sync-key': 'appStateSyncKeys',
+	'app-state-sync-version': 'appStateVersions',
+	'sender-key-memory': 'senderKeyMemory'
+}
 /** stores the full authentication state in a single JSON file */
 export const useSingleFileAuthState = (filename: string, logger?: Logger): { state: AuthenticationState, saveState: () => void } => {
 	// require fs here so that in case "fs" is not available -- the app does not crash
