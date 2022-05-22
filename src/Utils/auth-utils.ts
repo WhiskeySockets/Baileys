@@ -15,6 +15,13 @@ const KEY_MAP: { [T in keyof SignalDataTypeMap]: string } = {
 	'sender-key-memory': 'senderKeyMemory'
 }
 
+/**
+ * Adds DB like transaction capability (https://en.wikipedia.org/wiki/Database_transaction) to the SignalKeyStore,
+ * this allows batch read & write operations & improves the performance of the lib
+ * @param state the key store to apply this capability to
+ * @param logger logger to log events
+ * @returns SignalKeyStore with transaction capability
+ */
 export const addTransactionCapability = (state: SignalKeyStore, logger: Logger): SignalKeyStoreWithTransaction => {
 	let inTransaction = false
 	let transactionCache: SignalDataSet = { }
