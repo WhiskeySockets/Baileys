@@ -21,6 +21,21 @@ const MSG_MISSED_CALL_TYPES = new Set([
 	WAMessageStubType.CALL_MISSED_VOICE
 ])
 
+/** Cleans a received message to further processing */
+export const cleanMessage = (message: proto.IWebMessageInfo) => {
+	// ensure remoteJid doesn't have device or agent in it
+	message.key.remoteJid = jidNormalizedUser(message.key.remoteJid!)
+	const content = normalizeMessageContent(message.message)
+	if(content) {
+		// if the message has a reaction, ensure fromMe & remoteJid are from our perspective
+		const msgKey = content.reactionMessage!.key!
+		if(!message.key.fromMe) {
+			msgKey.remoteJid = message.key.remoteJid
+			msgKey.fromMe = !msgKey.fromMe
+		}
+	}
+}
+
 const processMessage = async(
 	message: proto.IWebMessageInfo,
 	{ downloadHistory, historyCache, meId, keyStore, accountSettings, logger, treatCiphertextMessagesAsReal }: ProcessMessageContext
@@ -124,13 +139,11 @@ const processMessage = async(
 			key: message.key,
 		}
 		const operation = content.reactionMessage?.text ? 'add' : 'remove'
-		const msgKey = content.reactionMessage!.key!
-		if(!message.key.fromMe) {
-			msgKey.remoteJid = message.key.remoteJid
-			msgKey.fromMe = !msgKey.fromMe
+		map['messages.reaction'] = {
+			reaction,
+			key: content.reactionMessage!.key!,
+			operation
 		}
-
-		map['messages.reaction'] = { reaction, key: msgKey, operation }
 	} else if(message.messageStubType) {
 		const jid = message.key!.remoteJid!
 		//let actor = whatsappID (message.participant)

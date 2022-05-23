@@ -490,7 +490,7 @@ export const getContentType = (content: WAProto.IMessage | undefined) => {
  * @param content
  * @returns
  */
-export const normalizeMessageContent = (content: WAMessageContent): WAMessageContent => {
+export const normalizeMessageContent = (content: WAMessageContent | undefined): WAMessageContent => {
 	content = content?.ephemeralMessage?.message?.viewOnceMessage?.message ||
 				content?.ephemeralMessage?.message ||
 				content?.viewOnceMessage?.message ||
