@@ -145,7 +145,7 @@ import * as fs from 'fs'
 
 // utility function to help save the auth state in a single folder
 // this function serves as a good guide to help write auth & key states for SQL/no-SQL databases, which I would recommend in any production grade system
-const { state, saveState } = useMultiFileAuthState('auth_info_baileys')
+const { state, saveCreds } = useMultiFileAuthState('auth_info_baileys')
 // will use the given state to connect
 // so if valid credentials are available -- it'll connect without QR
 const conn = makeWASocket({ auth: state }) 
