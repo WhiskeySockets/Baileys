@@ -129,13 +129,17 @@ export type AnyMessageContent = AnyRegularMessageContent | {
 	disappearingMessagesInChat: boolean | number
 }
 
+export type GroupMetadataParticipants = Pick<GroupMetadata, 'participants'>
+
 export type MessageRelayOptions = {
+    /** override the message ID with a custom provided string */
     messageId?: string
-    /** only send to a specific participant */
+    /** only send to a specific participant; used when a message decryption fails for a single user */
     participant?: string
+    /** additional attributes to add to the WA binary node */
     additionalAttributes?: { [_: string]: string }
-    cachedGroupMetadata?: (jid: string) => Promise<GroupMetadata | undefined>
-    //cachedDevices?: (jid: string) => Promise<string[] | undefined>
+    /** cached group metadata, use to prevent redundant requests to WA & speed up msg sending */
+    cachedGroupMetadata?: (jid: string) => Promise<GroupMetadataParticipants | undefined>
 }
 
 export type MiscMessageGenerationOptions = {
