@@ -505,7 +505,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					await sendReceipt(msg.key.remoteJid!, participant, [msg.key.id!], type)
 				}
 
-				cleanMessage(msg)
+				cleanMessage(msg, authState.creds.me!.id)
 				ev.emit('messages.upsert', { messages: [msg], type: stanza.attrs.offline ? 'append' : 'notify' })
 			}
 		)
