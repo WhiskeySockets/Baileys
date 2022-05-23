@@ -1,6 +1,7 @@
 import { BaileysEventMap, Chat, ChatModification, Contact, LastMessageList, LegacySocketConfig, PresenceData, WABusinessProfile, WAFlag, WAMessageKey, WAMessageUpdate, WAMetric, WAPresence } from '../Types'
 import { debouncedTimeout, unixTimestampSeconds } from '../Utils/generics'
 import { BinaryNode, jidNormalizedUser } from '../WABinary'
+import { generateProfilePicture } from '../Utils'
 import makeAuthSocket from './auth'
 
 const makeChatsSocket = (config: LegacySocketConfig) => {
@@ -474,16 +475,17 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 		 * @param jid
 		 * @param img
 		 */
-		async updateProfilePicture(jid: string, img: Buffer) {
+		async updateProfilePicture(jid: string, imgBuffer: Buffer) {
 			jid = jidNormalizedUser (jid)
-			const data = { img: Buffer.from([]), preview: Buffer.from([]) } //await generateProfilePicture(img) TODO
+
+			const { img } = await generateProfilePicture(imgBuffer)
 			const tag = this.generateMessageTag ()
 			const query: BinaryNode = {
 				tag: 'picture',
 				attrs: { jid: jid, id: tag, type: 'set' },
 				content: [
-					{ tag: 'image', attrs: {}, content: data.img },
-					{ tag: 'preview', attrs: {}, content: data.preview }
+					{ tag: 'image', attrs: {}, content: img },
+					{ tag: 'preview', attrs: {}, content: img }
 				]
 			}
 
