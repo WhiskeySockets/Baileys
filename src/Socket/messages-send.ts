@@ -315,6 +315,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					const [groupData, senderKeyMap] = await Promise.all([
 						(async() => {
 							let groupData = cachedGroupMetadata ? await cachedGroupMetadata(jid) : undefined
+							if(groupData) {
+								logger.trace({ jid, participants: groupData.participants.length }, 'using cached group metadata')
+							}
+
 							if(!groupData) {
 								groupData = await groupMetadata(jid)
 							}
@@ -501,7 +505,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					additionalAttributes.edit = '7'
 				}
 
-				await relayMessage(jid, fullMsg.message, { messageId: fullMsg.key.id!, additionalAttributes })
+				await relayMessage(jid, fullMsg.message, { messageId: fullMsg.key.id!, cachedGroupMetadata: options.cachedGroupMetadata, additionalAttributes })
 				if(config.emitOwnEvents) {
 					process.nextTick(() => {
 						ev.emit('messages.upsert', { messages: [fullMsg], type: 'append' })
