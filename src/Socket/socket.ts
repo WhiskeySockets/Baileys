@@ -5,7 +5,7 @@ import WebSocket from 'ws'
 import { proto } from '../../WAProto'
 import { DEF_CALLBACK_PREFIX, DEF_TAG_PREFIX, DEFAULT_ORIGIN, INITIAL_PREKEY_COUNT, MIN_PREKEY_COUNT } from '../Defaults'
 import { AuthenticationCreds, BaileysEventEmitter, BaileysEventMap, DisconnectReason, SocketConfig } from '../Types'
-import { addTransactionCapability, bindWaitForConnectionUpdate, configureSuccessfulPairing, Curve, generateLoginNode, generateMdTagPrefix, generateRegistrationNode, getErrorCodeFromStreamError, getNextPreKeysNode, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout, useSingleFileAuthState } from '../Utils'
+import { addTransactionCapability, bindWaitForConnectionUpdate, configureSuccessfulPairing, Curve, generateLoginNode, generateMdTagPrefix, generateRegistrationNode, getErrorCodeFromStreamError, getNextPreKeysNode, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout } from '../Utils'
 import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, getBinaryNodeChild, getBinaryNodeChildren, S_WHATSAPP_NET } from '../WABinary'
 
 /**
@@ -22,7 +22,7 @@ export const makeSocket = ({
 	keepAliveIntervalMs,
 	version,
 	browser,
-	auth: initialAuthState,
+	auth: authState,
 	printQRInTerminal,
 	defaultQueryTimeoutMs,
 	transactionOpts
@@ -39,16 +39,6 @@ export const makeSocket = ({
 	const ephemeralKeyPair = Curve.generateKeyPair()
 	/** WA noise protocol wrapper */
 	const noise = makeNoiseHandler(ephemeralKeyPair, logger)
-	let authState = initialAuthState
-	if(!authState) {
-		authState = useSingleFileAuthState('./auth-info-multi.json').state
-
-		logger.warn(`
-            Baileys just created a single file state for your credentials. 
-            This will not be supported soon.
-            Please pass the credentials in the config itself
-        `)
-	}
 
 	const { creds } = authState
 	// add transaction capability

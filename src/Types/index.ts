@@ -37,6 +37,8 @@ export type SocketConfig = CommonSocketConfig<AuthenticationState> & {
     getMessage: (key: proto.IMessageKey) => Promise<proto.IMessage | undefined>
 }
 
+export type UserFacingSocketConfig = Partial<SocketConfig> & { auth: AuthenticationState }
+
 export enum DisconnectReason {
 	connectionClosed = 428,
 	connectionLost = 408,
