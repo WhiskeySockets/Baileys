@@ -80,7 +80,6 @@
     "@types/got": "^9.6.11",
     "@types/jest": "^26.0.24",
     "@types/node": "^14.6.2",
-    "@types/pino": "^7.0.0",
     "@types/sharp": "^0.29.4",
     "@types/ws": "^8.0.0",
     "eslint": "^7.0.0",
