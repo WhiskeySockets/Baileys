@@ -1,4 +1,4 @@
-import { mkdir, readFile, stat, writeFile } from 'fs/promises'
+import { mkdir, readFile, stat, unlink, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { proto } from '../../WAProto'
 import { AuthenticationCreds, AuthenticationState, SignalDataTypeMap } from '../Types'
@@ -24,6 +24,14 @@ export const useMultiFileAuthState = async(folder: string): Promise<{ state: Aut
 			return JSON.parse(data, BufferJSON.reviver)
 		} catch(error) {
 			return null
+		}
+	}
+
+	const removeData = async(file: string) => {
+		try {
+			await unlink(file)
+		} catch{
+
 		}
 	}
 
@@ -63,7 +71,9 @@ export const useMultiFileAuthState = async(folder: string): Promise<{ state: Aut
 					const tasks: Promise<void>[] = []
 					for(const category in data) {
 						for(const id in data[category]) {
-							tasks.push(writeData(data[category][id], `${category}-${id}.json`))
+							const value = data[category][id]
+							const file = `${category}-${id}.json`
+							tasks.push(value ? writeData(value, file) : removeData(file))
 						}
 					}
 
