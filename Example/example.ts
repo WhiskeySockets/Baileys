@@ -77,6 +77,7 @@ const startSock = async() => {
 	sock.ev.on('message-receipt.update', m => console.log(m))
 	sock.ev.on('presence.update', m => console.log(m))
 	sock.ev.on('chats.update', m => console.log(m))
+	sock.ev.on('chats.delete', m => console.log(m))
 	sock.ev.on('contacts.upsert', m => console.log(m))
 
 	sock.ev.on('connection.update', (update) => {

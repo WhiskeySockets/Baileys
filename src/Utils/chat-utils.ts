@@ -1,7 +1,7 @@
 import { Boom } from '@hapi/boom'
 import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
-import { AuthenticationCreds, BaileysEventMap, Chat, ChatModification, ChatMutation, Contact, LastMessageList, LTHashState, WAPatchCreate, WAPatchName } from '../Types'
+import { AuthenticationCreds, BaileysEventMap, Chat, ChatModification, ChatMutation, Contact, LastMessageList, LTHashState, WAMessageUpdate, WAPatchCreate, WAPatchName } from '../Types'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, jidNormalizedUser } from '../WABinary'
 import { aesDecrypt, aesEncrypt, hkdf, hmacSign } from './crypto'
 import { toNumber } from './generics'
@@ -551,6 +551,18 @@ export const chatModificationToAppPatch = (
 			apiVersion: 5,
 			operation: OP.SET
 		}
+	} else if('delete' in mod) {
+		patch = {
+			syncAction: {
+				deleteChatAction: {
+					messageRange: getMessageRange(mod.lastMessages),
+				}
+			},
+			index: ['deleteChat', jid, '1'],
+			type: 'regular_high',
+			apiVersion: 6,
+			operation: OP.SET
+		}
 	} else {
 		throw new Boom('not supported')
 	}
@@ -569,8 +581,10 @@ export const processSyncActions = (
 	const updates: { [jid: string]: Partial<Chat> } = {}
 	const contactUpdates: { [jid: string]: Contact } = {}
 	const msgDeletes: proto.IMessageKey[] = []
+	const msgUpdates: { [_: string]: WAMessageUpdate } = { }
 
-	for(const { syncAction: { value: action }, index: [_, id, msgId, fromMe] } of actions) {
+	for(const syncAction of actions) {
+		const { syncAction: { value: action }, index: [_, id, msgId, fromMe] } = syncAction
 		const update: Partial<Chat> = { id }
 		if(action?.muteAction) {
 			update.mute = action.muteAction?.muted ?
@@ -604,8 +618,21 @@ export const processSyncActions = (
 			map['creds.update'].accountSettings = { unarchiveChats: !!action.unarchiveChatsSetting.unarchiveChats }
 
 			logger.info(`archive setting updated => '${action.unarchiveChatsSetting.unarchiveChats}'`)
+		} else if(action?.starAction) {
+			const uqId = `${id},${msgId}`
+			const update = msgUpdates[uqId] || {
+				key: { remoteJid: id, id: msgId, fromMe: fromMe === '1' },
+				update: { }
+			}
+
+			update.update.starred = !!action.starAction?.starred
+
+			msgUpdates[uqId] = update
+		} else if(action?.deleteChatAction) {
+			map['chats.delete'] = map['chats.delete'] || []
+			map['chats.delete'].push(id)
 		} else {
-			logger.warn({ action, id }, 'unprocessable update')
+			logger.warn({ syncAction, id }, 'unprocessable update')
 		}
 
 		if(Object.keys(update).length > 1) {
@@ -626,6 +653,10 @@ export const processSyncActions = (
 
 	if(msgDeletes.length) {
 		map['messages.delete'] = { keys: msgDeletes }
+	}
+
+	if(Object.keys(msgUpdates).length) {
+		map['messages.update'] = Object.values(msgUpdates)
 	}
 
 	return map
