@@ -54,6 +54,18 @@ const MessageTypeProto = {
 
 const ButtonType = proto.ButtonsMessage.ButtonsMessageHeaderType
 
+export const generateLinkPreviewIfRequired = async(text: string, getUrlInfo: MessageGenerationOptions['getUrlInfo'], logger: MessageGenerationOptions['logger']) => {
+	const matchedUrls = text.match(URL_REGEX)
+	if(!!getUrlInfo && matchedUrls) {
+		try {
+			const urlInfo = await getUrlInfo(matchedUrls[0])
+			return urlInfo
+		} catch(error) { // ignore if fails
+			logger?.warn({ trace: error.stack }, 'url generation failed')
+		}
+	}
+}
+
 export const prepareWAMessageMedia = async(
 	message: AnyMediaMessageContent,
 	options: MediaGenerationOptions
@@ -249,13 +261,8 @@ export const generateWAMessageContent = async(
 		const extContent = { text: message.text } as WATextMessage
 
 		let urlInfo = message.linkPreview
-		const matchedUrls = message.text.match(URL_REGEX)
-		if(!urlInfo && !!options.getUrlInfo && matchedUrls) {
-			try {
-				urlInfo = await options.getUrlInfo(matchedUrls[0])
-			} catch(error) { // ignore if fails
-				options.logger?.warn({ trace: error.stack }, 'url generation failed')
-			}
+		if(!urlInfo) {
+			urlInfo = await generateLinkPreviewIfRequired(message.text, options.getUrlInfo, options.logger)
 		}
 
 		if(urlInfo) {

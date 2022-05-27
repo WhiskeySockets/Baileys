@@ -28,9 +28,10 @@ export const getUrlInfo = async(
 	try {
 		const { getLinkPreview } = await import('link-preview-js')
 		let previewLink = text
-		if (!text.startsWith('https://') && !text.startsWith('http://')) {
+		if(!text.startsWith('https://') && !text.startsWith('http://')) {
 			previewLink = 'https://' + previewLink
 		}
+
 		const info = await getLinkPreview(previewLink, { timeout: opts.timeoutMs })
 		if(info && 'title' in info) {
 			const [image] = info.images
