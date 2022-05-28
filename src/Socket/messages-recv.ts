@@ -47,20 +47,30 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const historyCache = new Set<string>()
 
-	const sendMessageAck = async({ tag, attrs }: BinaryNode, extraAttrs: BinaryNodeAttributes) => {
+	const sendMessageAck = async({ tag, attrs }: BinaryNode, extraAttrs: BinaryNodeAttributes = { }) => {
 		const stanza: BinaryNode = {
 			tag: 'ack',
 			attrs: {
 				id: attrs.id,
 				to: attrs.from,
+				class: tag,
 				...extraAttrs,
 			}
 		}
+
 		if(!!attrs.participant) {
 			stanza.attrs.participant = attrs.participant
 		}
 
-		logger.debug({ recv: attrs, sent: stanza.attrs }, `sent "${tag}" ack`)
+		if(!!attrs.recipient) {
+			stanza.attrs.recipient = attrs.recipient
+		}
+
+		if(tag !== 'message' && attrs.type && !extraAttrs.type) {
+			stanza.attrs.type = attrs.type
+		}
+
+		logger.debug({ recv: { tag, attrs }, sent: stanza.attrs }, 'sent ack')
 		await sendNode(stanza)
 	}
 
@@ -399,7 +409,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				}
 
 				if(shouldAck) {
-					await sendMessageAck(node, { class: 'receipt', type: attrs.type })
+					await sendMessageAck(node)
 				}
 			}
 		)
@@ -407,7 +417,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const handleNotification = async(node: BinaryNode) => {
 		const remoteJid = node.attrs.from
-		await sendMessageAck(node, { class: 'notification', type: node.attrs.type })
+		await sendMessageAck(node)
 		await processingMutex.mutex(
 			remoteJid,
 			async() => {
@@ -468,6 +478,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		processingMutex.mutex(
 			msg.key.remoteJid!,
 			async() => {
+				await sendMessageAck(stanza)
 				await decryptionTask
 				// message failed to decrypt
 				if(msg.messageStubType === proto.WebMessageInfo.WebMessageInfoStubType.CIPHERTEXT) {
@@ -547,7 +558,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		ev.emit('call', [call])
 
-		await sendMessageAck(node, { class: 'call', type: infoChild.tag })
+		await sendMessageAck(node, { type: infoChild.tag })
 			.catch(
 				error => onUnexpectedError(error, 'ack call')
 			)
