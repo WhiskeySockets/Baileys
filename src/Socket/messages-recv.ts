@@ -62,10 +62,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			stanza.attrs.participant = attrs.participant
 		}
 
-		if(!!attrs.recipient) {
-			stanza.attrs.recipient = attrs.recipient
-		}
-
 		if(tag !== 'message' && attrs.type && !extraAttrs.type) {
 			stanza.attrs.type = attrs.type
 		}
