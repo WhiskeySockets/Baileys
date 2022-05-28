@@ -488,7 +488,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						}
 					)
 				} else {
-					await sendMessageAck(stanza, { class: 'receipt' })
 					// no type in the receipt => message delivered
 					let type: MessageReceiptType = undefined
 					let participant = msg.key.participant
@@ -512,19 +511,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			.catch(
 				error => onUnexpectedError(error, 'processing message')
 			)
-	})
-
-	ws.on('CB:ack,class:message', async(node: BinaryNode) => {
-		sendNode({
-			tag: 'ack',
-			attrs: {
-				class: 'receipt',
-				id: node.attrs.id,
-				from: node.attrs.from
-			}
-		})
-			.catch(err => onUnexpectedError(err, 'ack message receipt'))
-		logger.debug({ attrs: node.attrs }, 'sending receipt for ack')
 	})
 
 	ws.on('CB:call', async(node: BinaryNode) => {
