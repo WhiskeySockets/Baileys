@@ -419,12 +419,10 @@ export const makeSocket = ({
 
 	ws.on('message', onMessageRecieved)
 	ws.on('open', validateConnection)
-	ws.on('error', end)
+	ws.on('error', error => end(new Boom(`WebSocket Error (${error.message})`, { statusCode: 500, data: error })))
 	ws.on('close', () => end(new Boom('Connection Terminated', { statusCode: DisconnectReason.connectionClosed })))
 	// the server terminated the connection
-	ws.on('CB:xmlstreamend', () => {
-		end(new Boom('Connection Terminated by Server', { statusCode: DisconnectReason.connectionClosed }))
-	})
+	ws.on('CB:xmlstreamend', () => end(new Boom('Connection Terminated by Server', { statusCode: DisconnectReason.connectionClosed })))
 	// QR gen
 	ws.on('CB:iq,type:set,pair-device', async(stanza: BinaryNode) => {
 		const iq: BinaryNode = {
