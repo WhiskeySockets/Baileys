@@ -1,7 +1,7 @@
 import { BaileysEventMap, Chat, ChatModification, Contact, LastMessageList, LegacySocketConfig, PresenceData, WABusinessProfile, WAFlag, WAMessageKey, WAMessageUpdate, WAMetric, WAPresence } from '../Types'
+import { generateProfilePicture } from '../Utils'
 import { debouncedTimeout, unixTimestampSeconds } from '../Utils/generics'
 import { BinaryNode, jidNormalizedUser } from '../WABinary'
-import { generateProfilePicture } from '../Utils'
 import makeAuthSocket from './auth'
 
 const makeChatsSocket = (config: LegacySocketConfig) => {
