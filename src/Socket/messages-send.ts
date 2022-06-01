@@ -1,4 +1,5 @@
 
+import { Boom } from '@hapi/boom'
 import NodeCache from 'node-cache'
 import { proto } from '../../WAProto'
 import { WA_DEFAULT_EPHEMERAL } from '../Defaults'
@@ -484,8 +485,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							} else {
 								try {
 									const media = decryptMediaRetryData(result.media!, mediaKey, result.key.id)
+									if(media.result !== proto.MediaRetryNotification.MediaRetryNotificationResultType.SUCCESS) {
+										throw new Boom(`Media re-upload failed by device (${media.result})`, { data: media })
+									}
+
 									content.directPath = media.directPath
 									content.url = getUrlFromDirectPath(content.directPath!)
+
+									logger.debug({ directPath: media.directPath, key: result.key }, 'media update successful')
 								} catch(err) {
 									error = err
 								}
