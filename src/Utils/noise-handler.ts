@@ -1,13 +1,10 @@
 import { Boom } from '@hapi/boom'
-import { createCipheriv, createDecipheriv } from 'crypto'
 import { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { NOISE_MODE, NOISE_WA_HEADER, WA_CERT_DETAILS } from '../Defaults'
 import { KeyPair } from '../Types'
 import { BinaryNode, decodeBinaryNode } from '../WABinary'
-import { Curve, hkdf, sha256 } from './crypto'
-
-const TAG_LENGTH = 128 >> 3
+import { aesDecryptGCM, aesEncryptGCM, Curve, hkdf, sha256 } from './crypto'
 
 const generateIV = (counter: number) => {
 	const iv = new ArrayBuffer(12)
@@ -29,10 +26,7 @@ export const makeNoiseHandler = (
 	}
 
 	const encrypt = (plaintext: Uint8Array) => {
-		const cipher = createCipheriv('aes-256-gcm', encKey, generateIV(writeCounter), { authTagLength: TAG_LENGTH })
-		cipher.setAAD(hash)
-
-		const result = Buffer.concat([cipher.update(plaintext), cipher.final(), cipher.getAuthTag()])
+		const result = aesEncryptGCM(plaintext, encKey, generateIV(writeCounter), hash)
 
 		writeCounter += 1
 
@@ -44,15 +38,7 @@ export const makeNoiseHandler = (
 		// before the handshake is finished, we use the same counter
 		// after handshake, the counters are different
 		const iv = generateIV(isFinished ? readCounter : writeCounter)
-		const cipher = createDecipheriv('aes-256-gcm', decKey, iv)
-		// decrypt additional adata
-		const enc = ciphertext.slice(0, ciphertext.length - TAG_LENGTH)
-		const tag = ciphertext.slice(ciphertext.length - TAG_LENGTH)
-		// set additional data
-		cipher.setAAD(hash)
-		cipher.setAuthTag(tag)
-
-		const result = Buffer.concat([cipher.update(enc), cipher.final()])
+		const result = aesDecryptGCM(ciphertext, decKey, iv, hash)
 
 		if(isFinished) {
 			readCounter += 1

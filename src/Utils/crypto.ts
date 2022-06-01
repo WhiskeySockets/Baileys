@@ -46,6 +46,34 @@ export const signedKeyPair = (identityKeyPair: KeyPair, keyId: number) => {
 	return { keyPair: preKey, signature, keyId }
 }
 
+const GCM_TAG_LENGTH = 128 >> 3
+
+/**
+ * encrypt AES 256 GCM;
+ * where the tag tag is suffixed to the ciphertext
+ * */
+export function aesEncryptGCM(plaintext: Uint8Array, key: Uint8Array, iv: Uint8Array, additionalData: Uint8Array) {
+	const cipher = createCipheriv('aes-256-gcm', key, iv)
+	cipher.setAAD(additionalData)
+	return Buffer.concat([cipher.update(plaintext), cipher.final(), cipher.getAuthTag()])
+}
+
+/**
+ * decrypt AES 256 GCM;
+ * where the auth tag is suffixed to the ciphertext
+ * */
+export function aesDecryptGCM(ciphertext: Uint8Array, key: Uint8Array, iv: Uint8Array, additionalData: Uint8Array) {
+	const decipher = createDecipheriv('aes-256-gcm', key, iv)
+	// decrypt additional adata
+	const enc = ciphertext.slice(0, ciphertext.length - GCM_TAG_LENGTH)
+	const tag = ciphertext.slice(ciphertext.length - GCM_TAG_LENGTH)
+	// set additional data
+	decipher.setAAD(additionalData)
+	decipher.setAuthTag(tag)
+
+	return Buffer.concat([ decipher.update(enc), decipher.final() ])
+}
+
 /** decrypt AES 256 CBC; where the IV is prefixed to the buffer */
 export function aesDecrypt(buffer: Buffer, key: Buffer) {
 	return aesDecryptWithIV(buffer.slice(16, buffer.length), key, buffer.slice(0, 16))
