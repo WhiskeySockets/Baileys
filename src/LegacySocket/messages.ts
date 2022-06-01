@@ -98,6 +98,8 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 		Object.assign(content, attrs) // update message
 
 		ev.emit('messages.upsert', { messages: [message], type: 'replace' })
+
+		return message
 	}
 
 	const onMessage = (message: WAMessage, type: MessageUpdateType) => {
