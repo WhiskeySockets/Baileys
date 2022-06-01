@@ -5,7 +5,7 @@ import { platform, release } from 'os'
 import { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { version as baileysVersion } from '../Defaults/baileys-version.json'
-import { CommonBaileysEventEmitter, ConnectionState, DisconnectReason, WACallUpdateType, WAVersion } from '../Types'
+import { BaileysEventMap, CommonBaileysEventEmitter, DisconnectReason, WACallUpdateType, WAVersion } from '../Types'
 import { BinaryNode, getAllBinaryNodeChildren } from '../WABinary'
 
 const PLATFORM_MAP = {
@@ -184,30 +184,42 @@ export async function promiseTimeout<T>(ms: number, promise: (resolve: (v?: T)=>
 // generate a random ID to attach to a message
 export const generateMessageID = () => 'BAE5' + randomBytes(6).toString('hex').toUpperCase()
 
-export const bindWaitForConnectionUpdate = (ev: CommonBaileysEventEmitter<any>) => (
-	async(check: (u: Partial<ConnectionState>) => boolean, timeoutMs?: number) => {
-		let listener: (item: Partial<ConnectionState>) => void
+export function bindWaitForEvent<T extends keyof BaileysEventMap<any>>(ev: CommonBaileysEventEmitter<any>, event: T) {
+	return async(check: (u: BaileysEventMap<any>[T]) => boolean, timeoutMs?: number) => {
+		let listener: (item: BaileysEventMap<any>[T]) => void
+		let closeListener: any
 		await (
 			promiseTimeout(
 				timeoutMs,
 				(resolve, reject) => {
-					listener = (update) => {
-						if(check(update)) {
-							resolve()
-						} else if(update.connection === 'close') {
-							reject(update.lastDisconnect?.error || new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed }))
+					closeListener = ({ connection, lastDisconnect }) => {
+						if(connection === 'close') {
+							reject(
+								lastDisconnect?.error
+								|| new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
+							)
 						}
 					}
 
-					ev.on('connection.update', listener)
+					ev.on('connection.update', closeListener)
+					listener = (update) => {
+						if(check(update)) {
+							resolve()
+						}
+					}
+
+					ev.on(event, listener)
 				}
 			)
-				.finally(() => (
-					ev.off('connection.update', listener)
-				))
+				.finally(() => {
+					ev.off(event, listener)
+					ev.off('connection.update', closeListener)
+				})
 		)
 	}
-)
+}
+
+export const bindWaitForConnectionUpdate = (ev: CommonBaileysEventEmitter<any>) => bindWaitForEvent(ev, 'connection.update')
 
 export const printQRIfNecessaryListener = (ev: CommonBaileysEventEmitter<any>, logger: Logger) => {
 	ev.on('connection.update', async({ qr }) => {
