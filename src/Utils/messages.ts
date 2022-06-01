@@ -614,3 +614,21 @@ export const downloadMediaMessage = async(message: WAMessage, type: 'buffer' | '
 
 	return stream
 }
+
+/** Checks whether the given message is a media message; if it is returns the inner content */
+export const assertMediaContent = (content: proto.IMessage) => {
+	content = normalizeMessageContent(content)
+	const mediaContent = content?.documentMessage
+		|| content?.imageMessage
+		|| content?.videoMessage
+		|| content?.audioMessage
+		|| content?.stickerMessage
+	if(!mediaContent) {
+		throw new Boom(
+			'given message is not a media message',
+			{ statusCode: 400, data: content }
+		)
+	}
+
+	return mediaContent
+}

@@ -1,8 +1,7 @@
-import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto'
 import { WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import { AnyMessageContent, Chat, GroupMetadata, LegacySocketConfig, MediaConnInfo, MessageUpdateType, MessageUserReceipt, MessageUserReceiptUpdate, MiscMessageGenerationOptions, ParticipantAction, WAFlag, WAMessage, WAMessageCursor, WAMessageKey, WAMessageStatus, WAMessageStubType, WAMessageUpdate, WAMetric, WAUrlInfo } from '../Types'
-import { downloadMediaMessage, generateWAMessage, getWAUploadToServer, MediaDownloadOptions, normalizeMessageContent, toNumber } from '../Utils'
+import { assertMediaContent, downloadMediaMessage, generateWAMessage, getWAUploadToServer, MediaDownloadOptions, normalizeMessageContent, toNumber } from '../Utils'
 import { areJidsSameUser, BinaryNode, getBinaryNodeMessages, isJidGroup, jidNormalizedUser } from '../WABinary'
 import makeChatsSocket from './chats'
 
@@ -78,13 +77,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 	}
 
 	const updateMediaMessage = async(message: WAMessage) => {
-		const content = message.message?.audioMessage || message.message?.videoMessage || message.message?.imageMessage || message.message?.stickerMessage || message.message?.documentMessage
-		if(!content) {
-			throw new Boom(
-				`given message ${message.key.id} is not a media message`,
-				{ statusCode: 400, data: message }
-			)
-		}
+		const content = assertMediaContent(message.message)
 
 		const response: BinaryNode = await query ({
 			json: {
@@ -105,8 +98,6 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 		Object.assign(content, attrs) // update message
 
 		ev.emit('messages.upsert', { messages: [message], type: 'replace' })
-
-		return response
 	}
 
 	const onMessage = (message: WAMessage, type: MessageUpdateType) => {
