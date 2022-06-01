@@ -47,6 +47,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const historyCache = new Set<string>()
 
+	let sendActiveReceipts = false
+
 	const sendMessageAck = async({ tag, attrs }: BinaryNode, extraAttrs: BinaryNodeAttributes = { }) => {
 		const stanza: BinaryNode = {
 			tag: 'ack',
@@ -511,6 +513,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						if(isJidUser(msg.key.remoteJid)) {
 							participant = author
 						}
+					} else if(!sendActiveReceipts) {
+						type = 'inactive'
 					}
 
 					await sendReceipt(msg.key.remoteJid!, participant, [msg.key.id!], type)
@@ -614,6 +618,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				'messages.upsert',
 				{ messages: [protoMsg], type: call.offline ? 'append' : 'notify' }
 			)
+		}
+	})
+
+	ev.on('connection.update', ({ isOnline }) => {
+		if(typeof isOnline !== 'undefined') {
+			sendActiveReceipts = isOnline
+			logger.trace(`sendActiveReceipts set to "${sendActiveReceipts}"`)
 		}
 	})
 

@@ -24,6 +24,8 @@ export type SocketConfig = CommonSocketConfig<AuthenticationState> & {
     transactionOpts: TransactionCapabilityOptions
     /** provide a cache to store a user's device list */
     userDevicesCache?: NodeCache
+    /** marks the client as online whenever the socket successfully connects */
+    markOnlineOnConnect: boolean
     /**
      * map to store the retry counts for failed messages;
      * used to determine whether to retry a message or not */

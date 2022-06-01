@@ -9,7 +9,7 @@ import { makeMessagesSocket } from './messages-send'
 const MAX_SYNC_ATTEMPTS = 5
 
 export const makeChatsSocket = (config: SocketConfig) => {
-	const { logger } = config
+	const { logger, markOnlineOnConnect } = config
 	const sock = makeMessagesSocket(config)
 	const {
 		ev,
@@ -379,6 +379,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				return
 			}
 
+			ev.emit('connection.update', { isOnline: type === 'available' })
+
 			await sendNode({
 				tag: 'presence',
 				attrs: {
@@ -467,7 +469,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		const events = processSyncActions(actions, authState.creds.me!, logger)
 		emitEventsFromMap(events)
 		// resend available presence to update name on servers
-		if(events['creds.update']?.me?.name) {
+		if(events['creds.update']?.me?.name && markOnlineOnConnect) {
 			sendPresenceUpdate('available')
 		}
 	}
@@ -610,7 +612,9 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			fetchProps(),
 			fetchBlocklist(),
 			fetchPrivacySettings(),
-			sendPresenceUpdate('available')
+			markOnlineOnConnect
+				? sendPresenceUpdate('available')
+				: undefined
 		])
 	}
 
