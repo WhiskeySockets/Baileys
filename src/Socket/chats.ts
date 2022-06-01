@@ -612,9 +612,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			fetchProps(),
 			fetchBlocklist(),
 			fetchPrivacySettings(),
-			markOnlineOnConnect
-				? sendPresenceUpdate('available')
-				: undefined
+			sendPresenceUpdate(markOnlineOnConnect ? 'available' : 'unavailable')
 		])
 	}
 
