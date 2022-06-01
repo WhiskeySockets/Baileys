@@ -501,6 +501,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				throw error
 			}
 
+			ev.emit('messages.update', [
+				{ key: message.key, update: { message: message.message } }
+			])
+
 			return message
 		},
 		sendMessage: async(
