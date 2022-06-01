@@ -1,5 +1,7 @@
 import { Boom } from '@hapi/boom'
+import axios from 'axios'
 import { promises as fs } from 'fs'
+import { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { MEDIA_KEYS, URL_REGEX, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import {
@@ -586,33 +588,67 @@ export const aggregateMessageKeysNotFromMe = (keys: proto.IMessageKey[]) => {
 	return Object.values(keyMap)
 }
 
+type DownloadMediaMessageContext = {
+	reuploadRequest: (msg: WAMessage) => Promise<WAMessage>
+	logger: Logger
+}
+
+const REUPLOAD_REQUIRED_STATUS = [410, 404]
+
 /**
  * Downloads the given message. Throws an error if it's not a media message
  */
-export const downloadMediaMessage = async(message: WAMessage, type: 'buffer' | 'stream', options: MediaDownloadOptions) => {
-	const mContent = extractMessageContent(message.message)
-	if(!mContent) {
-		throw new Boom('No message present', { statusCode: 400, data: message })
-	}
-
-	const contentType = getContentType(mContent)
-	const mediaType = contentType.replace('Message', '') as MediaType
-	const media = mContent[contentType]
-	if(typeof media !== 'object' || !('url' in media)) {
-		throw new Boom(`"${contentType}" message is not a media message`)
-	}
-
-	const stream = await downloadContentFromMessage(media, mediaType, options)
-	if(type === 'buffer') {
-		let buffer = Buffer.from([])
-		for await (const chunk of stream) {
-			buffer = Buffer.concat([buffer, chunk])
+export const downloadMediaMessage = async(
+	message: WAMessage,
+	type: 'buffer' | 'stream',
+	options: MediaDownloadOptions,
+	ctx?: DownloadMediaMessageContext
+) => {
+	try {
+		const result = await downloadMsg()
+		return result
+	} catch(error) {
+		if(ctx) {
+			if(axios.isAxiosError(error)) {
+				// check if the message requires a reupload
+				if(REUPLOAD_REQUIRED_STATUS.includes(error.response?.status)) {
+					ctx.logger.info({ key: message.key }, 'sending reupload media request...')
+					// request reupload
+					message = await ctx.reuploadRequest(message)
+					const result = await downloadMsg()
+					return result
+				}
+			}
 		}
 
-		return buffer
+		throw error
 	}
 
-	return stream
+	async function downloadMsg() {
+		const mContent = extractMessageContent(message.message)
+		if(!mContent) {
+			throw new Boom('No message present', { statusCode: 400, data: message })
+		}
+
+		const contentType = getContentType(mContent)
+		const mediaType = contentType.replace('Message', '') as MediaType
+		const media = mContent[contentType]
+		if(typeof media !== 'object' || !('url' in media)) {
+			throw new Boom(`"${contentType}" message is not a media message`)
+		}
+
+		const stream = await downloadContentFromMessage(media, mediaType, options)
+		if(type === 'buffer') {
+			let buffer = Buffer.from([])
+			for await (const chunk of stream) {
+				buffer = Buffer.concat([buffer, chunk])
+			}
+
+			return buffer
+		}
+
+		return stream
+	}
 }
 
 /** Checks whether the given message is a media message; if it is returns the inner content */

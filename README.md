@@ -569,7 +569,7 @@ The presence expires after about 10 seconds.
 If you want to save the media you received
 ``` ts
 import { writeFile } from 'fs/promises'
-import { downloadContentFromMessage } from '@adiwajshing/baileys'
+import { downloadMediaMessage } from '@adiwajshing/baileys'
 
 sock.ev.on('messages.upsert', async ({ messages }) => {
     const m = messages[0]
@@ -578,16 +578,27 @@ sock.ev.on('messages.upsert', async ({ messages }) => {
     const messageType = Object.keys (m.message)[0]// get what type of message it is -- text, image, video
     // if the message is an image
     if (messageType === 'imageMessage') {
-        // download stream
-        const stream = await downloadContentFromMessage(m.message.imageMessage, 'image')
-        let buffer = Buffer.from([])
-        for await(const chunk of stream) {
-            buffer = Buffer.concat([buffer, chunk])
-        }
+        // download the message
+        const buffer = await downloadMediaMessage(
+            m,
+            'buffer',
+            { },
+            { 
+                logger,
+                // pass this so that baileys can request a reupload of media
+                // that has been deleted
+                reuploadRequest: sock.updateMediaMessage
+            }
+        )
         // save to file
         await writeFile('./my-download.jpeg', buffer)
     }
 }
+```
+
+**Note:** WhatsApp automatically removes old media from their servers, and so for the device to access said media -- a re-upload is required by another device that has the media. This can be accomplished using: 
+``` ts
+const updatedMediaMsg = await sock.updateMediaMessage(msg)
 ```
 
 ## Deleting Messages
