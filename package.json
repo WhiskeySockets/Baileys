@@ -50,7 +50,7 @@
     "jimp": "^0.16.1",
     "link-preview-js": "^2.1.13",
     "qrcode-terminal": "^0.12.0",
-    "sharp": "^0.29.3"
+    "sharp": "^0.30.5"
   },
   "peerDependenciesMeta": {
     "@adiwajshing/keyed-db": {
@@ -87,7 +87,7 @@
     "jimp": "^0.16.1",
     "link-preview-js": "^2.1.13",
     "qrcode-terminal": "^0.12.0",
-    "sharp": "^0.29.3",
+    "sharp": "^0.30.5",
     "ts-jest": "^27.0.3",
     "ts-node": "^10.8.0",
     "typedoc": "^0.22.0",
