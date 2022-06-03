@@ -39,10 +39,10 @@
     "axios": "^0.24.0",
     "futoin-hkdf": "^1.5.0",
     "libsignal": "git+https://github.com/adiwajshing/libsignal-node",
-    "music-metadata": "^7.4.1",
+    "music-metadata": "^7.12.3",
     "node-cache": "^5.1.2",
     "pino": "^7.0.0",
-    "protobufjs": "^6.10.1",
+    "protobufjs": "^6.11.3",
     "ws": "^8.0.0"
   },
   "peerDependencies": {
@@ -82,7 +82,7 @@
     "@types/node": "^16.0.0",
     "@types/sharp": "^0.29.4",
     "@types/ws": "^8.0.0",
-    "eslint": "^7.0.0",
+    "eslint": "^8.0.0",
     "jest": "^27.0.6",
     "jimp": "^0.16.1",
     "link-preview-js": "^2.1.13",
