@@ -481,63 +481,71 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			throw new Boom('App state key not present!', { statusCode: 400 })
 		}
 
+		let initial: LTHashState
+		let encodeResult: { patch: proto.ISyncdPatch, state: LTHashState }
+
 		await mutationMutex.mutex(
 			async() => {
-				logger.debug({ patch: patchCreate }, 'applying app patch')
+				await authState.keys.transaction(
+					async() => {
+						logger.debug({ patch: patchCreate }, 'applying app patch')
 
-				await resyncAppState([name])
+						await resyncAppState([name])
 
-				let { [name]: initial } = await authState.keys.get('app-state-sync-version', [name])
-				initial = initial || newLTHashState()
+						let { [name]: initial } = await authState.keys.get('app-state-sync-version', [name])
+						initial = initial || newLTHashState()
 
-				const { patch, state } = await encodeSyncdPatch(
-					patchCreate,
-					myAppStateKeyId,
-					initial,
-					getAppStateSyncKey,
-				)
+						encodeResult = await encodeSyncdPatch(
+							patchCreate,
+							myAppStateKeyId,
+							initial,
+							getAppStateSyncKey,
+						)
+						const { patch, state } = encodeResult
 
-				const node: BinaryNode = {
-					tag: 'iq',
-					attrs: {
-						to: S_WHATSAPP_NET,
-						type: 'set',
-						xmlns: 'w:sync:app:state'
-					},
-					content: [
-						{
-							tag: 'sync',
-							attrs: { },
+						const node: BinaryNode = {
+							tag: 'iq',
+							attrs: {
+								to: S_WHATSAPP_NET,
+								type: 'set',
+								xmlns: 'w:sync:app:state'
+							},
 							content: [
 								{
-									tag: 'collection',
-									attrs: {
-										name,
-										version: (state.version - 1).toString(),
-										return_snapshot: 'false'
-									},
+									tag: 'sync',
+									attrs: { },
 									content: [
 										{
-											tag: 'patch',
-											attrs: { },
-											content: proto.SyncdPatch.encode(patch).finish()
+											tag: 'collection',
+											attrs: {
+												name,
+												version: (state.version - 1).toString(),
+												return_snapshot: 'false'
+											},
+											content: [
+												{
+													tag: 'patch',
+													attrs: { },
+													content: proto.SyncdPatch.encode(patch).finish()
+												}
+											]
 										}
 									]
 								}
 							]
 						}
-					]
-				}
-				await query(node)
+						await query(node)
 
-				await authState.keys.set({ 'app-state-sync-version': { [name]: state } })
-
-				if(config.emitOwnEvents) {
-					const result = await decodePatches(name, [{ ...patch, version: { version: state.version }, }], initial, getAppStateSyncKey)
-					processSyncActionsLocal(result.newMutations)
-				}
+						await authState.keys.set({ 'app-state-sync-version': { [name]: state } })
+					}
+				)
 			}
 		)
+
+		if(config.emitOwnEvents) {
+			const result = await decodePatches(name, [{ ...encodeResult.patch, version: { version: encodeResult.state.version }, }], initial, getAppStateSyncKey)
+			processSyncActionsLocal(result.newMutations)
+		}
 	}
 
 	/** sending abt props may fix QR scan fail if server expects */
@@ -645,12 +653,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		const update = getBinaryNodeChild(node, 'collection')
 		if(update) {
 			const name = update.attrs.name as WAPatchName
-			mutationMutex.mutex(
-				async() => {
-					await resyncAppState([name])
-						.catch(err => logger.error({ trace: err.stack, node }, 'failed to sync state'))
-				}
-			)
+			mutationMutex.mutex(() => (
+				resyncAppState([name])
+					.catch(err => logger.error({ trace: err.stack, node }, 'failed to sync state'))
+			))
 		}
 	})
 
