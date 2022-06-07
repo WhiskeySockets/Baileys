@@ -121,7 +121,7 @@ export const initAuthCreds = (): AuthenticationCreds => {
 		signedPreKey: signedKeyPair(identityKey, 1),
 		registrationId: generateRegistrationId(),
 		advSecretKey: randomBytes(32).toString('base64'),
-
+		processedHistoryMessages: [],
 		nextPreKeyId: 1,
 		firstUnuploadedPreKeyId: 1,
 		accountSettings: {

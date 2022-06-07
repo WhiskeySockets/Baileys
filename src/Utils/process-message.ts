@@ -1,15 +1,14 @@
 import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
-import { AccountSettings, BaileysEventMap, Chat, GroupMetadata, ParticipantAction, SignalKeyStoreWithTransaction, WAMessageStubType } from '../Types'
+import { AuthenticationCreds, BaileysEventMap, Chat, GroupMetadata, ParticipantAction, SignalKeyStoreWithTransaction, WAMessageStubType } from '../Types'
 import { downloadAndProcessHistorySyncNotification, normalizeMessageContent, toNumber } from '../Utils'
 import { areJidsSameUser, jidNormalizedUser } from '../WABinary'
 
 type ProcessMessageContext = {
 	historyCache: Set<string>
 	downloadHistory: boolean
-	meId: string
+	creds: AuthenticationCreds
 	keyStore: SignalKeyStoreWithTransaction
-	accountSettings: AccountSettings
 	logger?: Logger
 	treatCiphertextMessagesAsReal?: boolean
 }
@@ -39,8 +38,10 @@ export const cleanMessage = (message: proto.IWebMessageInfo, meId: string) => {
 
 const processMessage = async(
 	message: proto.IWebMessageInfo,
-	{ downloadHistory, historyCache, meId, keyStore, accountSettings, logger, treatCiphertextMessagesAsReal }: ProcessMessageContext
+	{ downloadHistory, historyCache, creds, keyStore, logger, treatCiphertextMessagesAsReal }: ProcessMessageContext
 ) => {
+	const meId = creds.me!.id
+	const { accountSettings } = creds
 	const map: Partial<BaileysEventMap<any>> = { }
 
 	const chat: Partial<Chat> = { id: jidNormalizedUser(message.key.remoteJid) }
@@ -77,7 +78,8 @@ const processMessage = async(
 			logger?.info({ histNotification, id: message.key.id }, 'got history notification')
 
 			if(downloadHistory) {
-				const { chats, contacts, messages, isLatest } = await downloadAndProcessHistorySyncNotification(histNotification, historyCache)
+				const { chats, contacts, messages, didProcess } = await downloadAndProcessHistorySyncNotification(histNotification, historyCache)
+				const isLatest = historyCache.size === 0 && !creds.processedHistoryMessages?.length
 
 				if(chats.length) {
 					map['chats.set'] = { chats, isLatest }
@@ -89,6 +91,16 @@ const processMessage = async(
 
 				if(contacts.length) {
 					map['contacts.set'] = { contacts }
+				}
+
+				if(didProcess) {
+					map['creds.update'] = {
+						...(map['creds.update'] || {}),
+						processedHistoryMessages: [
+							...(creds.processedHistoryMessages || []),
+							{ key: message.key, timestamp: message.messageTimestamp }
+						]
+					}
 				}
 			}
 

@@ -154,15 +154,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const processMessageLocal = async(msg: proto.IWebMessageInfo) => {
-		const meId = authState.creds.me!.id
 		// process message and emit events
 		const newEvents = await processMessage(
 			msg,
 			{
 				downloadHistory,
 				historyCache,
-				meId,
-				accountSettings: authState.creds.accountSettings,
+				creds: authState.creds,
 				keyStore: authState.keys,
 				logger,
 				treatCiphertextMessagesAsReal

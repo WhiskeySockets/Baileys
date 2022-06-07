@@ -1,4 +1,5 @@
 import type { proto } from '../../WAProto'
+import type { MinimalMessage } from './Message'
 
 /** set of statuses visible to other people; see updatePresence() in WhatsAppWeb.Send */
 export type WAPresence = 'unavailable' | 'available' | 'composing' | 'recording' | 'paused'
@@ -32,11 +33,12 @@ export type Chat = Omit<proto.IConversation, 'messages'> & {
     pin?: number | null
     archive?: boolean
 }
+
 /**
  * the last messages in a chat, sorted reverse-chronologically. That is, the latest message should be first in the chat
  * for MD modifications, the last message in the array (i.e. the earlist message) must be the last message recv in the chat
  * */
-export type LastMessageList = Pick<proto.IWebMessageInfo, 'key' | 'messageTimestamp'>[] | proto.ISyncActionMessageRange
+export type LastMessageList = MinimalMessage[] | proto.ISyncActionMessageRange
 
 export type ChatModification =
     {

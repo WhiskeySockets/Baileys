@@ -22,10 +22,10 @@ export const downloadHistory = async(msg: proto.IHistorySyncNotification) => {
 }
 
 export const processHistoryMessage = (item: proto.IHistorySync, historyCache: Set<string>) => {
-	const isLatest = historyCache.size === 0
 	const messages: proto.IWebMessageInfo[] = []
 	const contacts: Contact[] = []
 	const chats: Chat[] = []
+
 	switch (item.syncType) {
 	case proto.HistorySync.HistorySyncHistorySyncType.INITIAL_BOOTSTRAP:
 	case proto.HistorySync.HistorySyncHistorySyncType.RECENT:
@@ -71,11 +71,13 @@ export const processHistoryMessage = (item: proto.IHistorySync, historyCache: Se
 		break
 	}
 
+	const didProcess = !!(chats.length || messages.length || contacts.length)
+
 	return {
 		chats,
 		contacts,
 		messages,
-		isLatest,
+		didProcess,
 	}
 }
 
