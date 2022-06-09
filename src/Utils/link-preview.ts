@@ -36,9 +36,13 @@ export const getUrlInfo = async(
 		if(info && 'title' in info) {
 			const [image] = info.images
 
-			const jpegThumbnail = image
-				? await getCompressedJpegThumbnail(image, opts)
-				: undefined
+			let jpegThumbnail: Buffer | undefined = undefined
+			try {
+				jpegThumbnail = image
+					? await getCompressedJpegThumbnail(image, opts)
+					: undefined
+			} catch(error) {
+			}
 
 			return {
 				'canonical-url': info.url,
