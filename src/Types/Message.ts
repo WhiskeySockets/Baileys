@@ -103,7 +103,7 @@ export type AnyMediaMessageContent = (
 export type AnyRegularMessageContent = (
     ({
 	    text: string
-        linkPreview?: WAUrlInfo
+        linkPreview?: WAUrlInfo | null
     }
     & Mentionable & Buttonable & Templatable & Listable) |
     AnyMediaMessageContent |
