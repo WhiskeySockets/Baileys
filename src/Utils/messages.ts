@@ -146,7 +146,7 @@ export const prepareWAMessageMedia = async(
 				encWriteStream,
 				{ fileEncSha256B64, mediaType, timeoutMs: options.mediaUploadTimeoutMs }
 			)
-			logger?.debug('uploaded media')
+			logger?.debug({ mediaType, cacheableKey }, 'uploaded media')
 			return result
 		})(),
 		(async() => {
