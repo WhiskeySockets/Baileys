@@ -1,10 +1,19 @@
 import type { proto } from '../../WAProto'
+import type { AccountSettings } from './Auth'
 import type { MinimalMessage } from './Message'
 
 /** set of statuses visible to other people; see updatePresence() in WhatsAppWeb.Send */
 export type WAPresence = 'unavailable' | 'available' | 'composing' | 'recording' | 'paused'
 
-export type WAPatchName = 'critical_block' | 'critical_unblock_low' | 'regular_low' | 'regular_high' | 'regular'
+export const ALL_WA_PATCH_NAMES = [
+	'critical_block',
+	'critical_unblock_low',
+	'regular_high',
+	'regular_low',
+	'regular'
+] as const
+
+export type WAPatchName = typeof ALL_WA_PATCH_NAMES[number]
 
 export interface PresenceData {
     lastKnownPresence: WAPresence
@@ -66,3 +75,13 @@ export type ChatModification =
         lastMessages: LastMessageList
     } |
     { delete: true, lastMessages: LastMessageList }
+
+
+export type InitialReceivedChatsState = {
+    [jid: string]: { lastMsgRecvTimestamp: number }
+}
+
+export type InitialAppStateSyncOptions = {
+    recvChats: InitialReceivedChatsState
+    accountSettings: AccountSettings
+}

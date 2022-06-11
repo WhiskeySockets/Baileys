@@ -1,6 +1,6 @@
 import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto'
-import { AppStateChunk, ChatModification, ChatMutation, LTHashState, PresenceData, SocketConfig, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAPatchCreate, WAPatchName, WAPresence } from '../Types'
+import { ALL_WA_PATCH_NAMES, AppStateChunk, ChatModification, ChatMutation, InitialReceivedChatsState, LTHashState, PresenceData, SocketConfig, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAPatchCreate, WAPatchName, WAPresence } from '../Types'
 import { chatModificationToAppPatch, decodePatches, decodeSyncdSnapshot, encodeSyncdPatch, extractSyncdPatches, generateProfilePicture, newLTHashState, processSyncActions } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidNormalizedUser, reduceBinaryNodeToDictionary, S_WHATSAPP_NET } from '../WABinary'
@@ -228,7 +228,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		})
 	}
 
-	const resyncAppState = async(collections: WAPatchName[]) => {
+	const resyncAppState = async(collections: readonly WAPatchName[], ctx: InitialReceivedChatsState | undefined) => {
 		const appStateChunk: AppStateChunk = { totalMutations: [], collectionsToHandle: [] }
 		// we use this to determine which events to fire
 		// otherwise when we resync from scratch -- all notifications will fire
@@ -344,7 +344,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			}
 		)
 
-		processSyncActionsLocal(appStateChunk.totalMutations)
+		processSyncActionsLocal(appStateChunk.totalMutations, ctx)
 
 		return appStateChunk
 	}
@@ -446,18 +446,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const resyncMainAppState = async() => {
+	const resyncMainAppState = async(ctx?: InitialReceivedChatsState) => {
 		logger.debug('resyncing main app state')
 
 		await (
 			mutationMutex.mutex(
-				() => resyncAppState([
-					'critical_block',
-					'critical_unblock_low',
-					'regular_high',
-					'regular_low',
-					'regular'
-				])
+				() => resyncAppState(ALL_WA_PATCH_NAMES, ctx)
 			)
 				.catch(err => (
 					onUnexpectedError(err, 'main app sync')
@@ -465,8 +459,13 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		)
 	}
 
-	const processSyncActionsLocal = (actions: ChatMutation[]) => {
-		const events = processSyncActions(actions, authState.creds.me!, logger)
+	const processSyncActionsLocal = (actions: ChatMutation[], recvChats: InitialReceivedChatsState | undefined) => {
+		const events = processSyncActions(
+			actions,
+			authState.creds.me!,
+			recvChats ? { recvChats, accountSettings: authState.creds.accountSettings } : undefined,
+			logger
+		)
 		emitEventsFromMap(events)
 		// resend available presence to update name on servers
 		if(events['creds.update']?.me?.name && markOnlineOnConnect) {
@@ -490,7 +489,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					async() => {
 						logger.debug({ patch: patchCreate }, 'applying app patch')
 
-						await resyncAppState([name])
+						await resyncAppState([name], undefined)
 
 						const { [name]: currentSyncVersion } = await authState.keys.get('app-state-sync-version', [name])
 						initial = currentSyncVersion || newLTHashState()
@@ -544,7 +543,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 		if(config.emitOwnEvents) {
 			const result = await decodePatches(name, [{ ...encodeResult.patch, version: { version: encodeResult.state.version }, }], initial, getAppStateSyncKey)
-			processSyncActionsLocal(result.newMutations)
+			processSyncActionsLocal(result.newMutations, undefined)
 		}
 	}
 
@@ -654,7 +653,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		if(update) {
 			const name = update.attrs.name as WAPatchName
 			mutationMutex.mutex(() => (
-				resyncAppState([name])
+				resyncAppState([name], undefined)
 					.catch(err => logger.error({ trace: err.stack, node }, 'failed to sync state'))
 			))
 		}

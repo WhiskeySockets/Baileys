@@ -1,7 +1,7 @@
 
 import { proto } from '../../WAProto'
 import { KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
-import { BaileysEventMap, MessageReceiptType, MessageUserReceipt, SocketConfig, WACallEvent, WAMessageStubType } from '../Types'
+import { BaileysEventMap, InitialReceivedChatsState, MessageReceiptType, MessageUserReceipt, SocketConfig, WACallEvent, WAMessageStubType } from '../Types'
 import { debouncedTimeout, decodeMediaRetryNode, decodeMessageStanza, delay, encodeBigEndian, generateSignalPubKey, getCallStatusFromNode, getNextPreKeys, getStatusFromReceiptType, normalizeMessageContent, unixTimestampSeconds, xmppPreKey, xmppSignedPreKey } from '../Utils'
 import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
 import processMessage, { cleanMessage } from '../Utils/process-message'
@@ -37,15 +37,27 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	/** this mutex ensures that each retryRequest will wait for the previous one to finish */
 	const retryMutex = makeMutex()
 
+	const historyCache = new Set<string>()
+	let recvChats: InitialReceivedChatsState = { }
+
 	const appStateSyncTimeout = debouncedTimeout(
 		6_000,
-		() => ws.readyState === ws.OPEN && resyncMainAppState()
+		async() => {
+			logger.info(
+				{ recvChats: Object.keys(recvChats).length },
+				'doing initial app state sync'
+			)
+			if(ws.readyState === ws.OPEN) {
+				await resyncMainAppState(recvChats)
+			}
+
+			historyCache.clear()
+			recvChats = { }
+		}
 	)
 
 	const msgRetryMap = config.msgRetryCounterMap || { }
 	const callOfferData: { [id: string]: WACallEvent } = { }
-
-	const historyCache = new Set<string>()
 
 	let sendActiveReceipts = false
 
@@ -160,6 +172,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			{
 				downloadHistory,
 				historyCache,
+				recvChats,
 				creds: authState.creds,
 				keyStore: authState.keys,
 				logger,

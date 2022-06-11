@@ -1,11 +1,12 @@
 import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
-import { AuthenticationCreds, BaileysEventMap, Chat, GroupMetadata, ParticipantAction, SignalKeyStoreWithTransaction, WAMessageStubType } from '../Types'
+import { AuthenticationCreds, BaileysEventMap, Chat, GroupMetadata, InitialReceivedChatsState, ParticipantAction, SignalKeyStoreWithTransaction, WAMessageStubType } from '../Types'
 import { downloadAndProcessHistorySyncNotification, normalizeMessageContent, toNumber } from '../Utils'
 import { areJidsSameUser, jidNormalizedUser } from '../WABinary'
 
 type ProcessMessageContext = {
 	historyCache: Set<string>
+	recvChats: InitialReceivedChatsState
 	downloadHistory: boolean
 	creds: AuthenticationCreds
 	keyStore: SignalKeyStoreWithTransaction
@@ -38,7 +39,7 @@ export const cleanMessage = (message: proto.IWebMessageInfo, meId: string) => {
 
 const processMessage = async(
 	message: proto.IWebMessageInfo,
-	{ downloadHistory, historyCache, creds, keyStore, logger, treatCiphertextMessagesAsReal }: ProcessMessageContext
+	{ downloadHistory, historyCache, recvChats, creds, keyStore, logger, treatCiphertextMessagesAsReal }: ProcessMessageContext
 ) => {
 	const meId = creds.me!.id
 	const { accountSettings } = creds
@@ -78,7 +79,7 @@ const processMessage = async(
 			logger?.info({ histNotification, id: message.key.id }, 'got history notification')
 
 			if(downloadHistory) {
-				const { chats, contacts, messages, didProcess } = await downloadAndProcessHistorySyncNotification(histNotification, historyCache)
+				const { chats, contacts, messages, didProcess } = await downloadAndProcessHistorySyncNotification(histNotification, historyCache, recvChats)
 				const isLatest = historyCache.size === 0 && !creds.processedHistoryMessages?.length
 
 				if(chats.length) {
