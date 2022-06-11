@@ -44,14 +44,7 @@ export const useMultiFileAuthState = async(folder: string): Promise<{ state: Aut
 		await mkdir(folder, { recursive: true })
 	}
 
-	const fixFileName = (file) =>{
-		if(file){
-			return file.replace(/:/g, '-');
-		}
-		else {
-			return file
-		}
-	}
+	const fixFileName = (file?: string) => file?.replace(/\//g, '__')?.replace(/:/g, '-')
 
 	const creds: AuthenticationCreds = await readData('creds.json') || initAuthCreds()
 
@@ -65,7 +58,7 @@ export const useMultiFileAuthState = async(folder: string): Promise<{ state: Aut
 						ids.map(
 							async id => {
 								let value = await readData(`${type}-${id}.json`)
-								if(type === 'app-state-sync-key') {
+								if(type === 'app-state-sync-key' && value) {
 									value = proto.AppStateSyncKeyData.fromObject(value)
 								}
 
