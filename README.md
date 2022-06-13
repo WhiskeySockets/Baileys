@@ -781,7 +781,7 @@ Of course, replace ``` xyz ``` with an actual ID.
 
 - To join the group using groupInviteMessage
     ``` ts
-    const response = await sock.groupAcceptInviteV4(groupInviteMessage)
+    const response = await sock.groupAcceptInviteV4("abcd@s.whatsapp.net", groupInviteMessage)
     console.log("joined to: " + response)
     ```
   Of course, replace ``` xxx ``` with invitation code.
