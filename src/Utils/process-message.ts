@@ -91,7 +91,7 @@ const processMessage = async(
 				}
 
 				if(contacts.length) {
-					map['contacts.set'] = { contacts }
+					map['contacts.set'] = { contacts, isLatest }
 				}
 
 				if(didProcess) {

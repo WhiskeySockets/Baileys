@@ -19,7 +19,7 @@ export type BaileysEventMap<T> = {
     /** set messages (history sync), messages are reverse chronologically sorted */
     'messages.set': { messages: WAMessage[], isLatest: boolean }
     /** set contacts (history sync) */
-    'contacts.set': { contacts: Contact[] }
+    'contacts.set': { contacts: Contact[], isLatest: boolean }
     /** upsert chats */
     'chats.upsert': Chat[]
     /** update the given chats */
