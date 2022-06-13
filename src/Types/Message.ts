@@ -100,6 +100,12 @@ export type AnyMediaMessageContent = (
     } & Buttonable & Templatable)) &
     { mimetype?: string }
 
+export type ButtonReplyInfo = {
+    displayText: string
+    id: string
+    index: number
+}
+
 export type AnyRegularMessageContent = (
     ({
 	    text: string
@@ -117,6 +123,9 @@ export type AnyRegularMessageContent = (
         location: WALocationMessage
     } | {
         react: proto.IReactionMessage
+    } | {
+        buttonReply: ButtonReplyInfo
+        type: 'template' | 'plain'
     }
 ) & ViewOnce
 
