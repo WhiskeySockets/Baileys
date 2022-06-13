@@ -641,10 +641,10 @@ WA uses an encrypted form of communication to send chat/app updates. This has be
 - Delete message for me
   ``` ts
   await sock.chatModify(
-      { clear: { message: { id: 'ATWYHDNNWU81732J', fromMe: true } } }, 
-      '123456@s.whatsapp.net', 
-      []
-  )
+    { clear: { messages: [{ id: 'ATWYHDNNWU81732J', fromMe: true, timestamp: "1654823909" }] } }, 
+    '123456@s.whatsapp.net', 
+    []
+)
   ```
 
 Note: if you mess up one of your updates, WA can log you out of all your devices and you'll have to login again.

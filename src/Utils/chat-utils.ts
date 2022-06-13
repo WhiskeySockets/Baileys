@@ -557,7 +557,8 @@ export const chatModificationToAppPatch = (
 			patch = {
 				syncAction: {
 					deleteMessageForMeAction: {
-						deleteMedia: false
+						deleteMedia: false,
+						messageTimestamp: key.timestamp
 					}
 				},
 				index: ['deleteMessageForMe', jid, key.id, key.fromMe ? '1' : '0', '0'],
