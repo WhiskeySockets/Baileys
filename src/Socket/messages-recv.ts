@@ -219,7 +219,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const processNotification = async(node: BinaryNode): Promise<Partial<proto.IWebMessageInfo>> => {
+	const processNotification = (node: BinaryNode) => {
 		const result: Partial<proto.IWebMessageInfo> = { }
 		const [child] = getAllBinaryNodeChildren(node)
 		const nodeType = node.attrs.type
@@ -289,19 +289,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		} else if(nodeType === 'mediaretry') {
 			const event = decodeMediaRetryNode(node)
 			ev.emit('messages.media-update', [event])
-		} else {
-			switch (child.tag) {
-			case 'devices':
-				const devices = getBinaryNodeChildren(child, 'device')
-				if(areJidsSameUser(child.attrs.jid, authState.creds!.me!.id)) {
-					const deviceJids = devices.map(d => d.attrs.jid)
-					logger.info({ deviceJids }, 'got my own devices')
-				}
-
-				break
-			case 'encrypt':
-				handleEncryptNotification(node)
-				break
+		} else if(nodeType === 'encrypt') {
+			handleEncryptNotification(node)
+		} else if(nodeType === 'devices') {
+			const devices = getBinaryNodeChildren(child, 'device')
+			if(areJidsSameUser(child.attrs.jid, authState.creds!.me!.id)) {
+				const deviceJids = devices.map(d => d.attrs.jid)
+				logger.info({ deviceJids }, 'got my own devices')
 			}
 		}
 
@@ -432,27 +426,22 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const handleNotification = async(node: BinaryNode) => {
 		const remoteJid = node.attrs.from
 		await sendMessageAck(node)
-		await processingMutex.mutex(
-			remoteJid,
-			async() => {
-				const msg = await processNotification(node)
-				if(msg) {
-					const fromMe = areJidsSameUser(node.attrs.participant || node.attrs.from, authState.creds.me!.id)
-					msg.key = {
-						remoteJid: node.attrs.from,
-						fromMe,
-						participant: node.attrs.participant,
-						id: node.attrs.id,
-						...(msg.key || {})
-					}
-					msg.participant = node.attrs.participant
-					msg.messageTimestamp = +node.attrs.t
-
-					const fullMsg = proto.WebMessageInfo.fromObject(msg)
-					ev.emit('messages.upsert', { messages: [fullMsg], type: 'append' })
-				}
+		const msg = processNotification(node)
+		if(msg) {
+			const fromMe = areJidsSameUser(node.attrs.participant || remoteJid, authState.creds.me!.id)
+			msg.key = {
+				remoteJid,
+				fromMe,
+				participant: node.attrs.participant,
+				id: node.attrs.id,
+				...(msg.key || {})
 			}
-		)
+			msg.participant = node.attrs.participant
+			msg.messageTimestamp = +node.attrs.t
+
+			const fullMsg = proto.WebMessageInfo.fromObject(msg)
+			ev.emit('messages.upsert', { messages: [fullMsg], type: 'append' })
+		}
 	}
 
 	const handleUpsertedMessages = async({ messages, type }: BaileysEventMap<any>['messages.upsert']) => {
