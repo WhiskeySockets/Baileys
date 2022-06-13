@@ -23,8 +23,9 @@ const MSG_MISSED_CALL_TYPES = new Set([
 
 /** Cleans a received message to further processing */
 export const cleanMessage = (message: proto.IWebMessageInfo, meId: string) => {
-	// ensure remoteJid doesn't have device or agent in it
+	// ensure remoteJid and participant doesn't have device or agent in it
 	message.key.remoteJid = jidNormalizedUser(message.key.remoteJid!)
+	message.key.participant = message.key.participant ? jidNormalizedUser(message.key.participant!) : undefined
 	const content = normalizeMessageContent(message.message)
 	// if the message has a reaction, ensure fromMe & remoteJid are from our perspective
 	if(content?.reactionMessage) {
