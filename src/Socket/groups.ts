@@ -137,11 +137,20 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 			const result = getBinaryNodeChild(results, 'group')
 			return result.attrs.jid
 		},
-		groupAcceptInviteV4: async(jid: string, inviteMessage: proto.IGroupInviteMessage) => {
-			const results = await groupQuery(inviteMessage.groupJid, 'set', [{ tag: 'accept', attrs: {
-				code: inviteMessage.inviteCode,
-				expiration: inviteMessage.inviteExpiration.toString(),
-				admin: jid } }])
+		/**
+		 * accept a GroupInviteMessage
+		 * @param senderJid jid of the person that sent the message
+		 * @param inviteMessage the message to accept
+		 */
+		groupAcceptInviteV4: async(senderJid: string, inviteMessage: proto.IGroupInviteMessage) => {
+			const results = await groupQuery(inviteMessage.groupJid, 'set', [{
+				tag: 'accept',
+				attrs: {
+					code: inviteMessage.inviteCode,
+					expiration: inviteMessage.inviteExpiration.toString(),
+					admin: senderJid
+				}
+			}])
 			return results.attrs.from
 		},
 		groupToggleEphemeral: async(jid: string, ephemeralExpiration: number) => {
