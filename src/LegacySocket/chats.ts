@@ -215,7 +215,7 @@ const makeChatsSocket = (config: LegacySocketConfig) => {
 			})
 
 			logger.info(`got ${contacts.length} contacts`)
-			ev.emit('contacts.set', { contacts })
+			ev.emit('contacts.set', { contacts, isLatest: true })
 		}
 	})
 	// status updates
