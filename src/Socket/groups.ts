@@ -153,6 +153,10 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 			}])
 			return results.attrs.from
 		},
+		groupGetInviteInfo: async(code: string) => {
+			const results = await groupQuery('@g.us', 'get', [{ tag: 'invite', attrs: { code } }])
+			return extractGroupMetadata(results)
+		},
 		groupToggleEphemeral: async(jid: string, ephemeralExpiration: number) => {
 			const content: BinaryNode = ephemeralExpiration ?
 				{ tag: 'ephemeral', attrs: { expiration: ephemeralExpiration.toString() } } :
@@ -216,6 +220,9 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 	const metadata: GroupMetadata = {
 		id: groupId,
 		subject: group.attrs.subject,
+		subjectOwner: group.attrs.s_o,
+		subjectTime: +group.attrs.s_t,
+		size: +group.attrs.size,
 		creation: +group.attrs.creation,
 		owner: group.attrs.creator ? jidNormalizedUser(group.attrs.creator) : undefined,
 		desc,

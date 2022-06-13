@@ -8,6 +8,10 @@ export interface GroupMetadata {
     id: string
     owner: string | undefined
     subject: string
+    /** group subject owner */
+    subjectOwner?: string
+    /** group subject modification date */
+    subjectTime?: number
     creation: number
     desc?: string
     descOwner?: string
@@ -16,6 +20,8 @@ export interface GroupMetadata {
     restrict?: boolean
     /** is set when the group only allows admins to write messages */
     announce?: boolean
+    /** number of group participants */
+    size?: number
     // Baileys modified array
     participants: GroupParticipant[]
     ephemeralDuration?: number
