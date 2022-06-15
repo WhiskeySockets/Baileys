@@ -6,7 +6,7 @@ import { WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import { AnyMessageContent, MediaConnInfo, MessageReceiptType, MessageRelayOptions, MiscMessageGenerationOptions, SocketConfig, WAMessageKey } from '../Types'
 import { aggregateMessageKeysNotFromMe, assertMediaContent, bindWaitForEvent, decryptMediaRetryData, encodeWAMessage, encryptMediaRetryRequest, encryptSenderKeyMsgSignalProto, encryptSignalProto, extractDeviceJids, generateMessageID, generateWAMessage, getUrlFromDirectPath, getWAUploadToServer, jidToSignalProtocolAddress, parseAndInjectE2ESessions, unixTimestampSeconds } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
-import { BinaryNode, BinaryNodeAttributes, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, isJidUser, jidDecode, jidEncode, jidNormalizedUser, JidWithDevice, reduceBinaryNodeToDictionary, S_WHATSAPP_NET } from '../WABinary'
+import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, isJidUser, jidDecode, jidEncode, jidNormalizedUser, JidWithDevice, reduceBinaryNodeToDictionary, S_WHATSAPP_NET } from '../WABinary'
 import { makeGroupsSocket } from './groups'
 
 export const makeMessagesSocket = (config: SocketConfig) => {
@@ -327,8 +327,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							return groupData
 						})(),
 						(async() => {
-							const result = await authState.keys.get('sender-key-memory', [jid])
-							return result[jid] || { }
+							if(!participant) {
+								const result = await authState.keys.get('sender-key-memory', [jid])
+								return result[jid] || { }
+							}
+
+							return { }
 						})()
 					])
 
@@ -342,7 +346,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					// ensure a connection is established with every device
 					for(const { user, device } of devices) {
 						const jid = jidEncode(user, 's.whatsapp.net', device)
-						if(!senderKeyMap[jid]) {
+						if(!senderKeyMap[jid] || !!participant) {
 							senderKeyJids.push(jid)
 							// store that this person has had the sender keys sent to them
 							senderKeyMap[jid] = true
@@ -424,10 +428,25 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					attrs: {
 						id: msgId,
 						type: 'text',
-						to: destinationJid,
 						...(additionalAttributes || {})
 					},
 					content: binaryNodeContent
+				}
+				// if the participant to send to is explicitly specified (generally retry recp)
+				// ensure the message is only sent to that person
+				// if a retry receipt is sent to everyone -- it'll fail decryption for everyone else who received the msg
+				if(participant) {
+					if(isJidGroup(destinationJid)) {
+						stanza.attrs.to = destinationJid
+						stanza.attrs.participant = participant
+					} else if(areJidsSameUser(participant, meId)) {
+						stanza.attrs.to = participant
+						stanza.attrs.recipient = destinationJid
+					} else {
+						stanza.attrs.to = participant
+					}
+				} else {
+					stanza.attrs.to = destinationJid
 				}
 
 				const shouldHaveIdentity = !!participants.find(
