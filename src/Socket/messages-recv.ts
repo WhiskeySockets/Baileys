@@ -486,7 +486,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				// message failed to decrypt
 				if(msg.messageStubType === proto.WebMessageInfo.WebMessageInfoStubType.CIPHERTEXT) {
 					logger.error(
-						{ msgId: msg.key.id, params: msg.messageStubParameters },
+						{ key: msg.key, params: msg.messageStubParameters },
 						'failure in decrypting message'
 					)
 					retryMutex.mutex(

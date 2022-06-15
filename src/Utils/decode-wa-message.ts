@@ -5,7 +5,7 @@ import { areJidsSameUser, BinaryNode, isJidBroadcast, isJidGroup, isJidStatusBro
 import { unpadRandomMax16 } from './generics'
 import { decryptGroupSignalProto, decryptSignalProto, processSenderKeyMessage } from './signal'
 
-const NO_MESSAGE_FOUND_ERROR_TEXT = 'No message found'
+const NO_MESSAGE_FOUND_ERROR_TEXT = 'Message absent from node'
 
 type MessageType = 'chat' | 'peer_broadcast' | 'other_broadcast' | 'group' | 'direct_peer_status' | 'other_status'
 
