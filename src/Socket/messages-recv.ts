@@ -304,9 +304,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const willSendMessageAgain = (id: string) => {
-		const retryCount = msgRetryMap[id] || 0
+	const willSendMessageAgain = (id: string, participant: string) => {
+		const key = `${id}:${participant}`
+		const retryCount = msgRetryMap[key] || 0
 		return retryCount < 5
+	}
+
+	const updateSendMessageAgainCount = (id: string, participant: string) => {
+		const key = `${id}:${participant}`
+		msgRetryMap[key] = (msgRetryMap[key] || 0) + 1
 	}
 
 	const sendMessagesAgain = async(key: proto.IMessageKey, ids: string[]) => {
@@ -327,7 +333,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		for(let i = 0; i < msgs.length;i++) {
 			if(msgs[i]) {
-				msgRetryMap[ids[i]] = (msgRetryMap[ids[i]] || 0) + 1
+				updateSendMessageAgainCount(ids[i], participant)
 				await relayMessage(key.remoteJid, msgs[i], {
 					messageId: ids[i],
 					participant
@@ -397,9 +403,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				}
 
 				if(attrs.type === 'retry') {
-					if(willSendMessageAgain(ids[0])) {
-						// correctly set who is asking for the retry
-						key.participant = key.participant || attrs.from
+					// correctly set who is asking for the retry
+					key.participant = key.participant || attrs.from
+					if(willSendMessageAgain(ids[0], key.participant)) {
 						if(key.fromMe) {
 							try {
 								logger.debug({ attrs, key }, 'recv retry request')
