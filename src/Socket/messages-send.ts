@@ -211,6 +211,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	}
 
 	const assertSessions = async(jids: string[], force: boolean) => {
+		let didFetchNewSession = false
 		let jidsRequiringFetch: string[] = []
 		if(force) {
 			jidsRequiringFetch = jids
@@ -248,15 +249,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				]
 			})
 			await parseAndInjectE2ESessions(result, authState)
-			return true
+
+			didFetchNewSession = true
 		}
 
-		return false
-	}
-
-	const createParticipantNodes = async(jids: string[], bytes: Buffer) => {
-		await assertSessions(jids, false)
-
+		// pre-fetch all sessions to improve efficiency
+		// makes a big difference when sending to large groups
+		// or when there are 100s of devices to push to
 		if(authState.keys.isInTransaction()) {
 			await authState.keys.prefetch(
 				'session',
@@ -264,7 +263,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			)
 		}
 
-		const nodes = await Promise.all(
+		return didFetchNewSession
+	}
+
+	const createParticipantNodes = (jids: string[], bytes: Buffer) => (
+		Promise.all(
 			jids.map(
 				async jid => {
 					const { type, ciphertext } = await encryptSignalProto(jid, bytes, authState)
@@ -281,8 +284,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 			)
 		)
-		return nodes
-	}
+	)
 
 	const relayMessage = async(
 		jid: string,
@@ -365,6 +367,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							}
 						})
 
+						await assertSessions(senderKeyJids, false)
+
 						participants.push(
 							...(await createParticipantNodes(senderKeyJids, encSenderKeyMsg))
 						)
@@ -395,6 +399,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						devices.push(...additionalDevices)
 					}
 
+					const allJids: string[] = []
 					const meJids: string[] = []
 					const otherJids: string[] = []
 					for(const { user, device } of devices) {
@@ -405,7 +410,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						} else {
 							otherJids.push(jid)
 						}
+
+						allJids.push(jid)
 					}
+
+					await assertSessions(allJids, false)
 
 					const [meNodes, otherNodes] = await Promise.all([
 						createParticipantNodes(meJids, encodedMeMsg),
