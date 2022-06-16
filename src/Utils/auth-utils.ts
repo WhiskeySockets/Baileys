@@ -14,6 +14,9 @@ import { delay, generateRegistrationId } from './generics'
  */
 export const addTransactionCapability = (state: SignalKeyStore, logger: Logger, { maxCommitRetries, delayBetweenTriesMs }: TransactionCapabilityOptions): SignalKeyStoreWithTransaction => {
 	let inTransaction = false
+	// number of queries made to the DB during the transaction
+	// only there for logging purposes
+	let dbQueriesInTransaction = 0
 	let transactionCache: SignalDataSet = { }
 	let mutations: SignalDataSet = { }
 
@@ -30,6 +33,7 @@ export const addTransactionCapability = (state: SignalKeyStore, logger: Logger, 
 		const idsRequiringFetch = dict ? ids.filter(item => !(item in dict)) : ids
 		// only fetch if there are any items to fetch
 		if(idsRequiringFetch.length) {
+			dbQueriesInTransaction += 1
 			const result = await state.get(type, idsRequiringFetch)
 
 			transactionCache[type] = transactionCache[type] || { }
@@ -93,7 +97,7 @@ export const addTransactionCapability = (state: SignalKeyStore, logger: Logger, 
 							tries -= 1
 							try {
 								await state.set(mutations)
-								logger.trace('committed transaction')
+								logger.trace({ dbQueriesInTransaction }, 'committed transaction')
 								break
 							} catch(error) {
 								logger.warn(`failed to commit ${Object.keys(mutations).length} mutations, tries left=${tries}`)
@@ -107,6 +111,7 @@ export const addTransactionCapability = (state: SignalKeyStore, logger: Logger, 
 					inTransaction = false
 					transactionCache = { }
 					mutations = { }
+					dbQueriesInTransaction = 0
 				}
 			}
 		}
