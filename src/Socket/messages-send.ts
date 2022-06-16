@@ -242,7 +242,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						content: jidsRequiringFetch.map(
 							jid => ({
 								tag: 'user',
-								attrs: { jid, reason: 'identity' },
+								attrs: { jid },
 							})
 						)
 					}
