@@ -253,16 +253,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			didFetchNewSession = true
 		}
 
-		// pre-fetch all sessions to improve efficiency
-		// makes a big difference when sending to large groups
-		// or when there are 100s of devices to push to
-		if(authState.keys.isInTransaction()) {
-			await authState.keys.prefetch(
-				'session',
-				jids.map(jid => jidToSignalProtocolAddress(jid).toString())
-			)
-		}
-
 		return didFetchNewSession
 	}
 
