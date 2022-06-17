@@ -266,11 +266,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return didFetchNewSession
 	}
 
-	const createParticipantNodes = (jids: string[], bytes: Buffer) => (
-		Promise.all(
+	const createParticipantNodes = async(jids: string[], bytes: Buffer) => {
+		let shouldIncludeDeviceIdentity = false
+		const nodes = await Promise.all(
 			jids.map(
 				async jid => {
 					const { type, ciphertext } = await encryptSignalProto(jid, bytes, authState)
+					if(type === 'pkmsg') {
+						shouldIncludeDeviceIdentity = true
+					}
+
 					const node: BinaryNode = {
 						tag: 'to',
 						attrs: { jid },
@@ -284,7 +289,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 			)
 		)
-	)
+		return { nodes, shouldIncludeDeviceIdentity }
+	}
 
 	const relayMessage = async(
 		jid: string,
@@ -292,6 +298,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		{ messageId: msgId, participant, additionalAttributes, cachedGroupMetadata }: MessageRelayOptions
 	) => {
 		const meId = authState.creds.me!.id
+
+		let shouldIncludeDeviceIdentity = false
 
 		const { user, server } = jidDecode(jid)
 		const isGroup = server === 'g.us'
@@ -376,9 +384,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 						await assertSessions(senderKeyJids, false)
 
-						participants.push(
-							...(await createParticipantNodes(senderKeyJids, encSenderKeyMsg))
-						)
+						const result = await createParticipantNodes(senderKeyJids, encSenderKeyMsg)
+						shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || result.shouldIncludeDeviceIdentity
+
+						participants.push(...result.nodes)
 					}
 
 					binaryNodeContent.push({
@@ -423,12 +432,17 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					await assertSessions(allJids, false)
 
-					const [meNodes, otherNodes] = await Promise.all([
+					const [
+						{ nodes: meNodes, shouldIncludeDeviceIdentity: s1 },
+						{ nodes: otherNodes, shouldIncludeDeviceIdentity: s2 }
+					] = await Promise.all([
 						createParticipantNodes(meJids, encodedMeMsg),
 						createParticipantNodes(otherJids, encodedMsg)
 					])
 					participants.push(...meNodes)
 					participants.push(...otherNodes)
+
+					shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || s1 || s2
 				}
 
 				if(participants.length) {
@@ -465,11 +479,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					stanza.attrs.to = destinationJid
 				}
 
-				const shouldHaveIdentity = !!participants.find(
-					participant => (participant.content! as BinaryNode[]).find(n => n.attrs.type === 'pkmsg')
-				)
-
-				if(shouldHaveIdentity) {
+				if(shouldIncludeDeviceIdentity) {
 					(stanza.content as BinaryNode[]).push({
 						tag: 'device-identity',
 						attrs: { },

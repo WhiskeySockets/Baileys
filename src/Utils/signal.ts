@@ -175,11 +175,9 @@ export const encryptSignalProto = async(user: string, buffer: Buffer, auth: Sign
 	const addr = jidToSignalProtocolAddress(user)
 	const cipher = new libsignal.SessionCipher(signalStorage(auth), addr)
 
-	const { type, body } = await cipher.encrypt(buffer)
-	return {
-		type: type === 3 ? 'pkmsg' : 'msg',
-		ciphertext: Buffer.from(body, 'binary')
-	}
+	const { type: sigType, body } = await cipher.encrypt(buffer)
+	const type = sigType === 3 ? 'pkmsg' : 'msg'
+	return { type, ciphertext: Buffer.from(body, 'binary') }
 }
 
 export const encryptSenderKeyMsgSignalProto = async(group: string, data: Uint8Array | Buffer, meId: string, auth: SignalAuthState) => {
