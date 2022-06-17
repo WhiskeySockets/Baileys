@@ -306,6 +306,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		const devices: JidWithDevice[] = []
 		if(participant) {
+			// when the retry request is not for a group
+			// only send to the specific device that asked for a retry
+			// otherwise the message is sent out to every device that should be a recipient
+			if(!isGroup) {
+				additionalAttributes = { ...additionalAttributes, device_fanout: 'false' }
+			}
+
 			const { user, device } = jidDecode(participant)
 			devices.push({ user, device })
 		}
