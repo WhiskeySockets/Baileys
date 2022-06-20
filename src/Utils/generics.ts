@@ -339,6 +339,8 @@ export const getCodeFromWSError = (error: Error) => {
 		if(!Number.isNaN(code) && code >= 400) {
 			statusCode = code
 		}
+	} else if((error as any).code?.startsWith('E')) { // handle ETIMEOUT, ENOTFOUND etc
+		statusCode = 408
 	}
 
 	return statusCode
