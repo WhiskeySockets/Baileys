@@ -22,6 +22,9 @@ export const encodeBinaryNode = (
 	const pushBytes = (bytes: Uint8Array | Buffer | number[]) => (
 		bytes.forEach (b => buffer.push(b))
 	)
+	const pushInt16 = (value: number) => {
+		pushBytes([(value >> 8) & 0xff, value & 0xff])
+	}
 	const pushInt20 = (value: number) => (
 		pushBytes([(value >> 16) & 0x0f, (value >> 8) & 0xff, value & 0xff])
 	)
@@ -194,7 +197,8 @@ export const encodeBinaryNode = (
 		} else if(listSize < 256) {
 			pushBytes([TAGS.LIST_8, listSize])
 		} else {
-			pushBytes([TAGS.LIST_16, listSize])
+			pushByte(TAGS.LIST_16)
+			pushInt16(listSize)
 		}
 	}
 
