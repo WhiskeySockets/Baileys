@@ -670,7 +670,7 @@ export const downloadMediaMessage = async(
 
 /** Checks whether the given message is a media message; if it is returns the inner content */
 export const assertMediaContent = (content: proto.IMessage) => {
-	content = normalizeMessageContent(content)
+	content = extractMessageContent(content)
 	const mediaContent = content?.documentMessage
 		|| content?.imageMessage
 		|| content?.videoMessage
