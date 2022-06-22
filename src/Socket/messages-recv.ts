@@ -383,17 +383,19 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					)
 				) {
 					if(isJidGroup(remoteJid)) {
-						const updateKey: keyof MessageUserReceipt = status === proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK ? 'receiptTimestamp' : 'readTimestamp'
-						ev.emit(
-							'message-receipt.update',
-							ids.map(id => ({
-								key: { ...key, id },
-								receipt: {
-									userJid: jidNormalizedUser(attrs.participant),
-									[updateKey]: +attrs.t
-								}
-							}))
-						)
+						if(attrs.participant) {
+							const updateKey: keyof MessageUserReceipt = status === proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK ? 'receiptTimestamp' : 'readTimestamp'
+							ev.emit(
+								'message-receipt.update',
+								ids.map(id => ({
+									key: { ...key, id },
+									receipt: {
+										userJid: jidNormalizedUser(attrs.participant),
+										[updateKey]: +attrs.t
+									}
+								}))
+							)
+						}
 					} else {
 						ev.emit(
 							'messages.update',
