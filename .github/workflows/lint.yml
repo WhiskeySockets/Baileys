@@ -1,0 +1,22 @@
+name: Check PR health
+
+on: [pull_request]
+
+jobs:
+  check-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install Node
+      uses: actions/setup-node@v1
+      with:
+        node-version: 16.x
+
+    - name: Install packages
+      run: yarn
+    
+    - name: Check linting
+      run: yarn lint
