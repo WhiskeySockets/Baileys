@@ -1,7 +1,7 @@
 
 import { proto } from '../../WAProto'
 import { KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
-import { BaileysEventMap, InitialReceivedChatsState, MessageReceiptType, MessageUserReceipt, SocketConfig, WACallEvent, WAMessageStubType } from '../Types'
+import { BaileysEventMap, InitialReceivedChatsState, MessageReceiptType, MessageRelayOptions, MessageUserReceipt, SocketConfig, WACallEvent, WAMessageKey, WAMessageStubType } from '../Types'
 import { debouncedTimeout, decodeMediaRetryNode, decodeMessageStanza, delay, encodeBigEndian, generateSignalPubKey, getCallStatusFromNode, getNextPreKeys, getStatusFromReceiptType, normalizeMessageContent, unixTimestampSeconds, xmppPreKey, xmppSignedPreKey } from '../Utils'
 import { makeKeyedMutex, makeMutex } from '../Utils/make-mutex'
 import processMessage, { cleanMessage } from '../Utils/process-message'
@@ -14,7 +14,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		logger,
 		treatCiphertextMessagesAsReal,
 		retryRequestDelayMs,
-		downloadHistory
+		downloadHistory,
+		getMessage
 	} = config
 	const sock = makeChatsSocket(config)
 	const {
@@ -316,28 +317,33 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const sendMessagesAgain = async(key: proto.IMessageKey, ids: string[]) => {
-		const msgs = await Promise.all(
-			ids.map(id => (
-				config.getMessage({ ...key, id })
-			))
-		)
+		const msgs = await Promise.all(ids.map(id => getMessage({ ...key, id })))
 
 		const participant = key.participant || key.remoteJid
+		// if it's the primary jid sending the request
+		// just re-send the message to everyone
+		// prevents the first message decryption failure
+		const sendToAll = !jidDecode(participant).device
 		await assertSessions([participant], true)
 
 		if(isJidGroup(key.remoteJid)) {
 			await authState.keys.set({ 'sender-key-memory': { [key.remoteJid]: null } })
 		}
 
-		logger.debug({ participant }, 'forced new session for retry recp')
+		logger.debug({ participant, sendToAll }, 'forced new session for retry recp')
 
 		for(let i = 0; i < msgs.length;i++) {
 			if(msgs[i]) {
 				updateSendMessageAgainCount(ids[i], participant)
-				await relayMessage(key.remoteJid, msgs[i], {
-					messageId: ids[i],
-					participant
-				})
+				const msgRelayOpts: MessageRelayOptions = { messageId: ids[i] }
+
+				if(sendToAll) {
+					msgRelayOpts.useUserDevicesCache = false
+				} else {
+					msgRelayOpts.participant = participant
+				}
+
+				await relayMessage(key.remoteJid, msgs[i], msgRelayOpts)
 			} else {
 				logger.debug({ jid: key.remoteJid, id: ids[i] }, 'recv retry request, but message not available')
 			}
@@ -475,6 +481,22 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
+	const handleBadAck = async({ attrs }: BinaryNode) => {
+		// current hypothesis is that if pash is sent in the ack
+		// it means -- the message hasn't reached all devices yet
+		// we'll retry sending the message here
+		if(attrs.phash) {
+			logger.info({ attrs }, 'received phash in ack, resending message...')
+			const key: WAMessageKey = { remoteJid: attrs.from, fromMe: true, id: attrs.id }
+			const msg = await getMessage(key)
+			if(msg) {
+				await relayMessage(key.remoteJid, msg, { messageId: key.id, useUserDevicesCache: false })
+			} else {
+				logger.warn({ attrs }, 'could not send message again, as it was not found')
+			}
+		}
+	}
+
 	// recv a message
 	ws.on('CB:message', (stanza: BinaryNode) => {
 		const { fullMessage: msg, category, author, decryptionTask } = decodeMessageStanza(stanza, authState)
@@ -583,6 +605,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					onUnexpectedError(error, 'handling notification')
 				}
 			)
+	})
+
+	ws.on('CB:ack,class:message', (node: BinaryNode) => {
+		handleBadAck(node)
+			.catch(error => onUnexpectedError(error, 'handling bad ack'))
 	})
 
 	ev.on('messages.upsert', data => {

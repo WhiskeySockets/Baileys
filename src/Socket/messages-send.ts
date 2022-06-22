@@ -141,15 +141,20 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
  	}
 
-	const getUSyncDevices = async(jids: string[], ignoreZeroDevices: boolean) => {
+	/** Fetch all the devices we've to send a message to */
+	const getUSyncDevices = async(jids: string[], useCache: boolean, ignoreZeroDevices: boolean) => {
 		const deviceResults: JidWithDevice[] = []
+
+		if(!useCache) {
+			logger.debug('not using cache for devices')
+		}
 
 		const users: BinaryNode[] = []
 		jids = Array.from(new Set(jids))
 		for(let jid of jids) {
 			const user = jidDecode(jid).user
 			jid = jidNormalizedUser(jid)
-			if(userDevicesCache.has(user)) {
+			if(userDevicesCache.has(user) && useCache) {
 				const devices: JidWithDevice[] = userDevicesCache.get(user)
 				deviceResults.push(...devices)
 
@@ -285,7 +290,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	const relayMessage = async(
 		jid: string,
 		message: proto.IMessage,
-		{ messageId: msgId, participant, additionalAttributes, cachedGroupMetadata }: MessageRelayOptions
+		{ messageId: msgId, participant, additionalAttributes, useUserDevicesCache, cachedGroupMetadata }: MessageRelayOptions
 	) => {
 		const meId = authState.creds.me!.id
 
@@ -294,6 +299,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const { user, server } = jidDecode(jid)
 		const isGroup = server === 'g.us'
 		msgId = msgId || generateMessageID()
+		useUserDevicesCache = useUserDevicesCache !== false
 
 		const encodedMsg = encodeWAMessage(message)
 		const participants: BinaryNode[] = []
@@ -345,7 +351,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					if(!participant) {
 						const participantsList = groupData.participants.map(p => p.id)
-						const additionalDevices = await getUSyncDevices(participantsList, false)
+						const additionalDevices = await getUSyncDevices(participantsList, useUserDevicesCache, false)
 						devices.push(...additionalDevices)
 					}
 
@@ -401,7 +407,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						devices.push({ user })
 						devices.push({ user: meUser })
 
-						const additionalDevices = await getUSyncDevices([ meId, jid ], true)
+						const additionalDevices = await getUSyncDevices([ meId, jid ], useUserDevicesCache, true)
 						devices.push(...additionalDevices)
 					}
 
