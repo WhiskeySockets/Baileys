@@ -494,12 +494,43 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return msgId
 	}
 
+	const getPrivacyTokens = async(jids: string[]) => {
+		const t = unixTimestampSeconds().toString()
+		const result = await query({
+			tag: 'iq',
+			attrs: {
+				to: S_WHATSAPP_NET,
+				type: 'set',
+				xmlns: 'privacy'
+			},
+			content: [
+				{
+					tag: 'tokens',
+					attrs: { },
+					content: jids.map(
+						jid => ({
+							tag: 'token',
+							attrs: {
+								jid: jidNormalizedUser(jid),
+								t,
+								type: 'trusted_contact'
+							}
+						})
+					)
+				}
+			]
+		})
+
+		return result
+	}
+
 	const waUploadToServer = getWAUploadToServer(config, refreshMediaConn)
 
 	const waitForMsgMediaUpdate = bindWaitForEvent(ev, 'messages.media-update')
 
 	return {
 		...sock,
+		getPrivacyTokens,
 		assertSessions,
 		relayMessage,
 		sendReceipt,
