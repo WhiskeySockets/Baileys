@@ -25,6 +25,7 @@ export const encodeBinaryNode = (
 	const pushInt16 = (value: number) => {
 		pushBytes([(value >> 8) & 0xff, value & 0xff])
 	}
+
 	const pushInt20 = (value: number) => (
 		pushBytes([(value >> 16) & 0x0f, (value >> 8) & 0xff, value & 0xff])
 	)
