@@ -521,7 +521,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 								try {
 									const media = decryptMediaRetryData(result.media!, mediaKey, result.key.id)
 									if(media.result !== proto.MediaRetryNotification.MediaRetryNotificationResultType.SUCCESS) {
-										throw new Boom(`Media re-upload failed by device (${media.result})`, { data: media })
+										const resultStr = proto.MediaRetryNotification.MediaRetryNotificationResultType[media.result]
+										throw new Boom(
+											`Media re-upload failed by device (${resultStr})`,
+											{ data: media, statusCode: MEDIA_RETRY_STATUS_MAP[media.result] }
+										)
 									}
 
 									content.directPath = media.directPath
@@ -601,3 +605,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 	}
 }
+
+const MEDIA_RETRY_STATUS_MAP = {
+	[proto.MediaRetryNotification.MediaRetryNotificationResultType.SUCCESS]: 200,
+	[proto.MediaRetryNotification.MediaRetryNotificationResultType.DECRYPTION_ERROR]: 412,
+	[proto.MediaRetryNotification.MediaRetryNotificationResultType.NOT_FOUND]: 404,
+	[proto.MediaRetryNotification.MediaRetryNotificationResultType.GENERAL_ERROR]: 418,
+} as const
