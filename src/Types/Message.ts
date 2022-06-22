@@ -93,6 +93,7 @@ export type AnyMediaMessageContent = (
         seconds?: number
     } | ({
         sticker: WAMediaUpload
+        isAnimated?: boolean 
     } & WithDimensions) | ({
         document: WAMediaUpload
         mimetype: string
