@@ -66,25 +66,26 @@ export const generateRegistrationNode = (
 		.digest()
 	const browserVersion = config.browser[2].split('.')
 
-	const companion: proto.ICompanionProps = {
+	const companion: proto.IDeviceProps = {
 		os: config.browser[0],
 		version: {
 			primary: +(browserVersion[0] || 0),
 			secondary: +(browserVersion[1] || 1),
 			tertiary: +(browserVersion[2] || 0),
 		},
-		platformType: proto.CompanionProps.CompanionPropsPlatformType[config.browser[1].toUpperCase()] || proto.CompanionProps.CompanionPropsPlatformType.UNKNOWN,
+		platformType: proto.DeviceProps.DevicePropsPlatformType[config.browser[1].toUpperCase()]
+			|| proto.DeviceProps.DevicePropsPlatformType.UNKNOWN,
 		requireFullSync: false,
 	}
 
-	const companionProto = proto.CompanionProps.encode(companion).finish()
+	const companionProto = proto.DeviceProps.encode(companion).finish()
 
 	const registerPayload: proto.IClientPayload = {
 		...getClientPayload(config),
 		passive: false,
-		regData: {
+		devicePairingData: {
 			buildHash: appVersionBuf,
-			companionProps: companionProto,
+			deviceProps: companionProto,
 			eRegid: encodeBigEndian(registrationId),
 			eKeytype: KEY_BUNDLE_TYPE,
 			eIdent: signedIdentityKey.public,
