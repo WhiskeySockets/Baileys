@@ -41,7 +41,8 @@ export const processHistoryMessage = (
 				historyCache.add(contactId)
 			}
 
-			for(const { message } of chat.messages || []) {
+			const msgs = chat.messages || []
+			for(const { message } of msgs) {
 				const uqId = `${message.key.remoteJid}:${message.key.id}`
 				if(!historyCache.has(uqId)) {
 					messages.push(message)
@@ -50,13 +51,14 @@ export const processHistoryMessage = (
 					const timestamp = toNumber(message.messageTimestamp)
 					if(!message.key.fromMe && (!curItem || timestamp > curItem.lastMsgRecvTimestamp)) {
 						recvChats[message.key.remoteJid] = { lastMsgRecvTimestamp: timestamp }
+						// keep only the most recent message in the chat array
+						chat.messages = [{ message }]
 					}
 
 					historyCache.add(uqId)
 				}
 			}
 
-			delete chat.messages
 			if(!historyCache.has(chat.id)) {
 				if(isJidUser(chat.id) && chat.readOnly && chat.archived) {
 					chat.readOnly = false
