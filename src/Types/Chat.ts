@@ -48,7 +48,7 @@ export type WAPatchCreate = {
     operation: proto.SyncdMutation.SyncdMutationSyncdOperation
 }
 
-export type Chat = Omit<proto.IConversation, 'messages'> & {
+export type Chat = proto.IConversation & {
     /** unix timestamp of date when mute ends, if applicable */
     mute?: number | null
     /** timestamp of when pinned */
