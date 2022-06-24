@@ -561,7 +561,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 										const resultStr = proto.MediaRetryNotification.MediaRetryNotificationResultType[media.result]
 										throw new Boom(
 											`Media re-upload failed by device (${resultStr})`,
-											{ data: media, statusCode: MEDIA_RETRY_STATUS_MAP[media.result] }
+											{ data: media, statusCode: MEDIA_RETRY_STATUS_MAP[media.result] || 404 }
 										)
 									}
 
