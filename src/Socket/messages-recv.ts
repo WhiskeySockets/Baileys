@@ -9,6 +9,8 @@ import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getAllBinaryNodeChil
 import { makeChatsSocket } from './chats'
 import { extractGroupMetadata } from './groups'
 
+const APP_STATE_SYNC_TIMEOUT_MS = 10_000
+
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const {
 		logger,
@@ -38,11 +40,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	/** this mutex ensures that each retryRequest will wait for the previous one to finish */
 	const retryMutex = makeMutex()
 
+	/** cache to ensure new history sync events do not have duplicate items */
 	const historyCache = new Set<string>()
 	let recvChats: InitialReceivedChatsState = { }
 
 	const appStateSyncTimeout = debouncedTimeout(
-		6_000,
+		APP_STATE_SYNC_TIMEOUT_MS,
 		async() => {
 			logger.info(
 				{ recvChats: Object.keys(recvChats).length },
