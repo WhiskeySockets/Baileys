@@ -31,8 +31,8 @@ export const cleanMessage = (message: proto.IWebMessageInfo, meId: string) => {
 	if(content?.reactionMessage) {
 		const msgKey = content.reactionMessage.key!
 		if(!message.key.fromMe) {
-			msgKey.fromMe = areJidsSameUser(msgKey.participant || msgKey.remoteJid, meId)
 			msgKey.remoteJid = message.key.remoteJid
+			msgKey.fromMe = areJidsSameUser(msgKey.participant || msgKey.remoteJid, meId)
 			msgKey.participant = msgKey.participant || message.key.participant
 		}
 	}
