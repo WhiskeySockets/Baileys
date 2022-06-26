@@ -88,6 +88,12 @@ export const decodeMessageStanza = (stanza: BinaryNode, auth: AuthenticationStat
 			let decryptables = 0
 			if(Array.isArray(stanza.content)) {
 				for(const { tag, attrs, content } of stanza.content) {
+					if(tag === 'verified_name' && content instanceof Uint8Array) {
+						const cert = proto.VerifiedNameCertificate.decode(content)
+						const details = proto.VerifiedNameDetails.decode(cert.details)
+						fullMessage.verifiedBizName = details.verifiedName
+					}
+
 					if(tag !== 'enc') {
 						continue
 					}
