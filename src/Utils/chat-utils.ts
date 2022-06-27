@@ -608,7 +608,7 @@ export const processSyncAction = (
 					id,
 					mute: action.muteAction?.muted ?
 						toNumber(action.muteAction!.muteEndTimestamp!) :
-						undefined
+						null
 				}
 			]
 		)
