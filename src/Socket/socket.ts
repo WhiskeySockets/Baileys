@@ -92,7 +92,7 @@ export const makeSocket = ({
 		let onOpen: (data: any) => void
 		let onClose: (err: Error) => void
 
-		const result = new Promise<any>((resolve, reject) => {
+		const result = promiseTimeout<any>(connectTimeoutMs, (resolve, reject) => {
 			onOpen = (data: any) => resolve(data)
 			onClose = reject
 			ws.on('frame', onOpen)
