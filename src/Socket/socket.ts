@@ -529,7 +529,7 @@ export const makeSocket = ({
 	ev.on('creds.update', update => {
 		const name = update.me?.name
 		// if name has just been received
-		if(!creds.me?.name && name) {
+		if(creds.me?.name !== name) {
 			logger.info({ name }, 'updated pushName')
 			sendNode({
 				tag: 'presence',

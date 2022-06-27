@@ -23,8 +23,11 @@ type BufferableEvent = typeof BUFFERABLE_EVENT[number]
 const BUFFERABLE_EVENT_SET = new Set<BaileysEvent>(BUFFERABLE_EVENT)
 
 type BaileysBufferableEventEmitter = BaileysEventEmitter & {
-	/** starts buffering events, call flush() to release them */
-	buffer(): void
+	/**
+	 * starts buffering events, call flush() to release them
+	 * @returns true if buffering just started, false if it was already buffering
+	 * */
+	buffer(): boolean
 	/** flushes all buffered events */
 	flush(): Promise<void>
 	/** waits for the task to complete, before releasing the buffer */
@@ -61,8 +64,11 @@ export const makeEventBuffer = (
 			}
 		},
 		buffer() {
-			logger.trace('buffering events')
-			isBuffering = true
+			if(!isBuffering) {
+				logger.trace('buffering events')
+				isBuffering = true
+				return true
+			}
 		},
 		async flush() {
 			if(!isBuffering) {
@@ -349,6 +355,14 @@ function flush(data: BufferedEventData, ev: BaileysEventEmitter) {
 }
 
 function concatChats<C extends Partial<Chat>>(a: C, b: C) {
+	if(b.unreadCount === null) {
+		// neutralize unread counter
+		if(a.unreadCount < 0) {
+			a.unreadCount = undefined
+			b.unreadCount = undefined
+		}
+	}
+
 	if(typeof a.unreadCount !== 'undefined' && typeof b.unreadCount !== 'undefined') {
 		b = { ...b }
 		if(b.unreadCount >= 0) {

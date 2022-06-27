@@ -1,7 +1,7 @@
 import { Boom } from '@hapi/boom'
 import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
-import { AppStateChunk, AuthenticationCreds, BaileysEventMap, Chat, ChatModification, ChatMutation, Contact, InitialAppStateSyncOptions, LastMessageList, LTHashState, SyncActionUpdates, WAPatchCreate, WAPatchName } from '../Types'
+import { BaileysEventEmitter, ChatModification, ChatMutation, Contact, InitialAppStateSyncOptions, LastMessageList, LTHashState, WAPatchCreate, WAPatchName } from '../Types'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, jidNormalizedUser } from '../WABinary'
 import { aesDecrypt, aesEncrypt, hkdf, hmacSign } from './crypto'
 import { toNumber } from './generics'
@@ -114,18 +114,6 @@ const generatePatchMac = (snapshotMac: Uint8Array, valueMacs: Uint8Array[], vers
 }
 
 export const newLTHashState = (): LTHashState => ({ version: 0, hash: Buffer.alloc(128), indexValueMap: {} })
-
-export const newAppStateChunk = (collectionsToHandle: readonly WAPatchName[]): AppStateChunk => ({
-	updates: {
-		chatUpdates: { },
-		credsUpdates: { },
-		chatDeletes: [],
-		contactUpserts: { },
-		msgDeletes: [],
-		msgUpdates: { }
-	},
-	collectionsToHandle: [...collectionsToHandle],
-})
 
 export const encodeSyncdPatch = async(
 	{ type, index, syncAction, apiVersion, operation }: WAPatchCreate,
@@ -602,7 +590,7 @@ export const chatModificationToAppPatch = (
 
 export const processSyncAction = (
 	syncAction: ChatMutation,
-	{ credsUpdates, chatUpdates, chatDeletes, contactUpserts, msgDeletes, msgUpdates }: SyncActionUpdates,
+	ev: BaileysEventEmitter,
 	me: Contact,
 	initialSyncOpts?: InitialAppStateSyncOptions,
 	logger?: Logger,
@@ -612,11 +600,18 @@ export const processSyncAction = (
 	const accountSettings = initialSyncOpts?.accountSettings
 
 	const { syncAction: { value: action }, index: [_, id, msgId, fromMe] } = syncAction
-	const update: Partial<Chat> = { id }
 	if(action?.muteAction) {
-		update.mute = action.muteAction?.muted ?
-			toNumber(action.muteAction!.muteEndTimestamp!) :
-			undefined
+		ev.emit(
+			'chats.update',
+			[
+				{
+					id,
+					mute: action.muteAction?.muted ?
+						toNumber(action.muteAction!.muteEndTimestamp!) :
+						undefined
+				}
+			]
+		)
 	} else if(action?.archiveChatAction) {
 		// okay so we've to do some annoying computation here
 		// when we're initially syncing the app state
@@ -637,9 +632,9 @@ export const processSyncAction = (
 			// basically we don't need to fire an "archive" update if the chat is being marked unarchvied
 			// this only applies for the initial sync
 			if(isInitialSync && !archiveAction.archived) {
-				delete update.archive
+				ev.emit('chats.update', [{ id, archive: false }])
 			} else {
-				update.archive = !!archiveAction?.archived
+				ev.emit('chats.update', [{ id, archive: !!archiveAction?.archived }])
 			}
 		}
 	} else if(action?.markChatAsReadAction) {
@@ -652,60 +647,44 @@ export const processSyncAction = (
 			// because the chat is read by default
 			// this only applies for the initial sync
 			if(isInitialSync && markReadAction.read) {
-				delete update.unreadCount
+				ev.emit('chats.update', [{ id, unreadCount: null }])
 			} else {
-				update.unreadCount = !!markReadAction?.read ? 0 : -1
+				ev.emit('chats.update', [{ id, unreadCount: !!markReadAction?.read ? 0 : -1 }])
 			}
 		}
 	} else if(action?.clearChatAction) {
-		msgDeletes.push({
-			remoteJid: id,
-			id: msgId,
-			fromMe: fromMe === '1'
-		})
+		ev.emit('messages.delete', { keys: [
+			{
+				remoteJid: id,
+				id: msgId,
+				fromMe: fromMe === '1'
+			}
+		] })
 	} else if(action?.contactAction) {
-		contactUpserts[id] = {
-			...(contactUpserts[id] || {}),
-			id,
-			name: action.contactAction!.fullName
-		}
+		ev.emit('contacts.upsert', [{ id, name: action.contactAction!.fullName }])
 	} else if(action?.pushNameSetting) {
 		if(me?.name !== action?.pushNameSetting) {
-			credsUpdates.me = { ...me, name: action?.pushNameSetting?.name! }
+			ev.emit('creds.update', { me: { ...me, name: action?.pushNameSetting?.name! } })
 		}
 	} else if(action?.pinAction) {
-		update.pin = action.pinAction?.pinned ? toNumber(action.timestamp) : null
+		ev.emit('chats.update', [{ id, pin: action.pinAction?.pinned ? toNumber(action.timestamp) : null }])
 	} else if(action?.unarchiveChatsSetting) {
 		const unarchiveChats = !!action.unarchiveChatsSetting.unarchiveChats
-		credsUpdates.accountSettings = { unarchiveChats }
+		ev.emit('creds.update', { accountSettings: { unarchiveChats } })
 
 		logger.info(`archive setting updated => '${action.unarchiveChatsSetting.unarchiveChats}'`)
 		accountSettings.unarchiveChats = unarchiveChats
 	} else if(action?.starAction) {
-		const uqId = `${id},${msgId}`
-		const update = msgUpdates[uqId] || {
-			key: { remoteJid: id, id: msgId, fromMe: fromMe === '1' },
-			update: { }
-		}
-
-		update.update.starred = !!action.starAction?.starred
-
-		msgUpdates[uqId] = update
+		ev.emit('messages.update', [
+			{
+				key: { remoteJid: id, id: msgId, fromMe: fromMe === '1' },
+				update: { starred: !!action.starAction?.starred }
+			}
+		])
 	} else if(action?.deleteChatAction) {
-		chatDeletes.push(id)
+		ev.emit('chats.delete', [id])
 	} else {
 		logger.warn({ syncAction, id }, 'unprocessable update')
-	}
-
-	if(Object.keys(update).length > 1) {
-		chatUpdates[update.id] = {
-			...(chatUpdates[update.id] || {}),
-			...update
-		}
-	} else if(chatUpdates[update.id]) {
-		// remove if the update got cancelled
-		logger?.debug({ id: update.id }, 'cancelling update')
-		delete chatUpdates[update.id]
 	}
 
 	function isValidPatchBasedOnMessageRange(id: string, msgRange: proto.ISyncActionMessageRange) {
@@ -714,35 +693,4 @@ export const processSyncAction = (
 		const chatLastMsgTimestamp = chat?.lastMsgRecvTimestamp || 0
 		return lastMsgTimestamp >= chatLastMsgTimestamp
 	}
-}
-
-export const syncActionUpdatesToEventMap = (
-	{ credsUpdates, chatUpdates, chatDeletes, contactUpserts, msgDeletes, msgUpdates }: SyncActionUpdates,
-) => {
-	const map: Partial<BaileysEventMap<AuthenticationCreds>> = { }
-	if(Object.keys(credsUpdates).length) {
-		map['creds.update'] = credsUpdates
-	}
-
-	if(Object.values(chatUpdates).length) {
-		map['chats.update'] = Object.values(chatUpdates)
-	}
-
-	if(chatDeletes.length) {
-		map['chats.delete'] = chatDeletes
-	}
-
-	if(Object.values(contactUpserts).length) {
-		map['contacts.upsert'] = Object.values(contactUpserts)
-	}
-
-	if(msgDeletes.length) {
-		map['messages.delete'] = { keys: msgDeletes }
-	}
-
-	if(Object.keys(msgUpdates).length) {
-		map['messages.update'] = Object.values(msgUpdates)
-	}
-
-	return map
 }

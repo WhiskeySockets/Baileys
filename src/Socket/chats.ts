@@ -1,7 +1,7 @@
 import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto'
-import { ALL_WA_PATCH_NAMES, ChatModification, ChatMutation, InitialReceivedChatsState, LTHashState, MessageUpsertType, PresenceData, SocketConfig, SyncActionUpdates, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAMessage, WAPatchCreate, WAPatchName, WAPresence } from '../Types'
-import { chatModificationToAppPatch, debouncedTimeout, decodePatches, decodeSyncdSnapshot, encodeSyncdPatch, extractSyncdPatches, generateProfilePicture, isHistoryMsg, newAppStateChunk, newLTHashState, processSyncAction, syncActionUpdatesToEventMap } from '../Utils'
+import { ALL_WA_PATCH_NAMES, ChatModification, ChatMutation, InitialReceivedChatsState, LTHashState, MessageUpsertType, PresenceData, SocketConfig, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAMessage, WAPatchCreate, WAPatchName, WAPresence } from '../Types'
+import { chatModificationToAppPatch, debouncedTimeout, decodePatches, decodeSyncdSnapshot, encodeSyncdPatch, extractSyncdPatches, generateProfilePicture, isHistoryMsg, newLTHashState, processSyncAction } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
 import processMessage from '../Utils/process-message'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidNormalizedUser, reduceBinaryNodeToDictionary, S_WHATSAPP_NET } from '../WABinary'
@@ -273,14 +273,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		})
 	}
 
-	const newAppStateChunkHandler = (collections: readonly WAPatchName[], recvChats: InitialReceivedChatsState | undefined) => {
-		const appStateChunk = newAppStateChunk(collections)
+	const newAppStateChunkHandler = (recvChats: InitialReceivedChatsState | undefined) => {
 		return {
-			appStateChunk,
 			onMutation(mutation: ChatMutation) {
 				processSyncAction(
 					mutation,
-					appStateChunk.updates,
+					ev,
 					authState.creds.me,
 					recvChats ? { recvChats, accountSettings: authState.creds.accountSettings } : undefined,
 					logger
@@ -290,7 +288,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	const resyncAppState = async(collections: readonly WAPatchName[], recvChats: InitialReceivedChatsState | undefined) => {
-		const { appStateChunk, onMutation } = newAppStateChunkHandler(collections, recvChats)
+		const startedBuffer = ev.buffer()
+		const { onMutation } = newAppStateChunkHandler(recvChats)
 		// we use this to determine which events to fire
 		// otherwise when we resync from scratch -- all notifications will fire
 		const initialVersionMap: { [T in WAPatchName]?: number } = { }
@@ -402,9 +401,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			}
 		)
 
-		processSyncActionsLocal(appStateChunk.updates)
-
-		return appStateChunk
+		// flush everything if we started the buffer here
+		if(startedBuffer) {
+			await ev.flush()
+		}
 	}
 
 	/**
@@ -517,14 +517,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		)
 	}
 
-	const processSyncActionsLocal = (actions: SyncActionUpdates) => {
-		emitEventsFromMap(syncActionUpdatesToEventMap(actions))
-		// resend available presence to update name on servers
-		if(actions.credsUpdates.me?.name && markOnlineOnConnect) {
-			sendPresenceUpdate('available')
-		}
-	}
-
 	const appPatch = async(patchCreate: WAPatchCreate) => {
 		const name = patchCreate.type
 		const myAppStateKeyId = authState.creds.myAppStateKeyId
@@ -594,7 +586,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		)
 
 		if(config.emitOwnEvents) {
-			const { appStateChunk, onMutation } = newAppStateChunkHandler([name], undefined)
+			const { onMutation } = newAppStateChunkHandler(undefined)
 			await decodePatches(
 				name,
 				[{ ...encodeResult.patch, version: { version: encodeResult.state.version }, }],
@@ -604,7 +596,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				undefined,
 				logger,
 			)
-			processSyncActionsLocal(appStateChunk.updates)
 		}
 	}
 
