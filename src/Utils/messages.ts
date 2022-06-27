@@ -17,6 +17,7 @@ import {
 	WAMediaUpload,
 	WAMessage,
 	WAMessageContent,
+	WAMessageKey,
 	WAMessageStatus,
 	WAProto,
 	WATextMessage,
@@ -574,7 +575,7 @@ export const getDevice = (id: string) => {
 }
 
 /** Upserts a receipt in the message */
-export const updateMessageWithReceipt = (msg: WAMessage, receipt: MessageUserReceipt) => {
+export const updateMessageWithReceipt = (msg: Pick<WAMessage, 'userReceipt'>, receipt: MessageUserReceipt) => {
 	msg.userReceipt = msg.userReceipt || []
 	const recp = msg.userReceipt.find(m => m.userJid === receipt.userJid)
 	if(recp) {
@@ -582,6 +583,23 @@ export const updateMessageWithReceipt = (msg: WAMessage, receipt: MessageUserRec
 	} else {
 		msg.userReceipt.push(receipt)
 	}
+}
+
+const getKeyAuthor = (key: WAMessageKey | undefined | null) => (
+	(key?.fromMe ? 'me' : key?.participant || key?.remoteJid) || ''
+)
+
+/** Update the message with a new reaction */
+export const updateMessageWithReaction = (msg: Pick<WAMessage, 'reactions'>, reaction: proto.IReaction) => {
+	const authorID = getKeyAuthor(reaction.key)
+
+	const reactions = (msg.reactions || [])
+		.filter(r => getKeyAuthor(r.key) !== authorID)
+	if(reaction.text) {
+		reactions.push(reaction)
+	}
+
+	msg.reactions = reactions
 }
 
 /** Given a list of message keys, aggregates them by chat & sender. Useful for sending read receipts in bulk */

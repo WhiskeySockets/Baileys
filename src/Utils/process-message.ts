@@ -38,6 +38,21 @@ export const cleanMessage = (message: proto.IWebMessageInfo, meId: string) => {
 	}
 }
 
+export const isRealMessage = (message: proto.IWebMessageInfo, treatCiphertextMessagesAsReal: boolean) => {
+	const normalizedContent = normalizeMessageContent(message.message)
+	return (
+		!!normalizedContent
+		|| MSG_MISSED_CALL_TYPES.has(message.messageStubType)
+		|| (message.messageStubType === WAMessageStubType.CIPHERTEXT && treatCiphertextMessagesAsReal)
+	)
+	&& !normalizedContent?.protocolMessage
+	&& !normalizedContent?.reactionMessage
+}
+
+export const shouldIncrementChatUnread = (message: proto.IWebMessageInfo) => (
+	!message.key.fromMe && !message.messageStubType
+)
+
 const processMessage = async(
 	message: proto.IWebMessageInfo,
 	{ downloadHistory, historyCache, recvChats, creds, keyStore, logger, treatCiphertextMessagesAsReal }: ProcessMessageContext
@@ -48,19 +63,10 @@ const processMessage = async(
 
 	const chat: Partial<Chat> = { id: jidNormalizedUser(message.key.remoteJid) }
 
-	const normalizedContent = !!message.message && normalizeMessageContent(message.message)
-	if(
-		(
-			!!normalizedContent
-			|| MSG_MISSED_CALL_TYPES.has(message.messageStubType)
-			|| (message.messageStubType === WAMessageStubType.CIPHERTEXT && treatCiphertextMessagesAsReal)
-		)
-		&& !normalizedContent?.protocolMessage
-		&& !normalizedContent?.reactionMessage
-	) {
+	if(isRealMessage(message, treatCiphertextMessagesAsReal)) {
 		chat.conversationTimestamp = toNumber(message.messageTimestamp)
 		// only increment unread count if not CIPHERTEXT and from another person
-		if(!message.key.fromMe && !message.messageStubType) {
+		if(shouldIncrementChatUnread(message)) {
 			chat.unreadCount = (chat.unreadCount || 0) + 1
 		}
 
@@ -153,12 +159,10 @@ const processMessage = async(
 			...content.reactionMessage,
 			key: message.key,
 		}
-		const operation = content.reactionMessage?.text ? 'add' : 'remove'
-		map['messages.reaction'] = {
+		map['messages.reaction'] = [{
 			reaction,
 			key: content.reactionMessage!.key!,
-			operation
-		}
+		}]
 	} else if(message.messageStubType) {
 		const jid = message.key!.remoteJid!
 		//let actor = whatsappID (message.participant)

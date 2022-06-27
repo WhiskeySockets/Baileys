@@ -1,6 +1,6 @@
 import { proto } from '../../WAProto'
 import { WA_DEFAULT_EPHEMERAL } from '../Defaults'
-import { AnyMessageContent, Chat, GroupMetadata, LegacySocketConfig, MediaConnInfo, MessageUpdateType, MessageUserReceipt, MessageUserReceiptUpdate, MiscMessageGenerationOptions, ParticipantAction, WAFlag, WAMessage, WAMessageCursor, WAMessageKey, WAMessageStatus, WAMessageStubType, WAMessageUpdate, WAMetric, WAUrlInfo } from '../Types'
+import { AnyMessageContent, Chat, GroupMetadata, LegacySocketConfig, MediaConnInfo, MessageUpsertType, MessageUserReceipt, MessageUserReceiptUpdate, MiscMessageGenerationOptions, ParticipantAction, WAFlag, WAMessage, WAMessageCursor, WAMessageKey, WAMessageStatus, WAMessageStubType, WAMessageUpdate, WAMetric, WAUrlInfo } from '../Types'
 import { assertMediaContent, downloadMediaMessage, generateWAMessage, getWAUploadToServer, MediaDownloadOptions, normalizeMessageContent, toNumber } from '../Utils'
 import { areJidsSameUser, BinaryNode, getBinaryNodeMessages, isJidGroup, jidNormalizedUser } from '../WABinary'
 import makeChatsSocket from './chats'
@@ -97,12 +97,12 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 		const attrs = response.attrs
 		Object.assign(content, attrs) // update message
 
-		ev.emit('messages.upsert', { messages: [message], type: 'replace' })
+		ev.emit('messages.update', [{ key: message.key, update: { message: message.message } }])
 
 		return message
 	}
 
-	const onMessage = (message: WAMessage, type: MessageUpdateType) => {
+	const onMessage = (message: WAMessage, type: MessageUpsertType) => {
 		const jid = message.key.remoteJid!
 		// store chat updates in this
 		const chatUpdate: Partial<Chat> = {
@@ -145,10 +145,9 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 				...normalizedContent.reactionMessage,
 				key: message.key,
 			}
-			const operation = normalizedContent.reactionMessage?.text ? 'add' : 'remove'
 			ev.emit(
 				'messages.reaction',
-				{ reaction, key: normalizedContent.reactionMessage!.key!, operation }
+				[{ reaction, key: normalizedContent.reactionMessage!.key! }]
 			)
 		}
 
@@ -335,7 +334,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 	socketEvents.on ('CB:action,add:update,message', (node: BinaryNode) => {
 		const msgs = getBinaryNodeMessages(node)
 		for(const msg of msgs) {
-			onMessage(msg, 'replace')
+			onMessage(msg, 'append')
 		}
 	})
 	// message status updates

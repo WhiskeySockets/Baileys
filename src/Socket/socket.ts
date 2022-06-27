@@ -6,6 +6,7 @@ import { proto } from '../../WAProto'
 import { DEF_CALLBACK_PREFIX, DEF_TAG_PREFIX, DEFAULT_ORIGIN, INITIAL_PREKEY_COUNT, MIN_PREKEY_COUNT } from '../Defaults'
 import { AuthenticationCreds, BaileysEventEmitter, BaileysEventMap, DisconnectReason, SocketConfig } from '../Types'
 import { addTransactionCapability, bindWaitForConnectionUpdate, configureSuccessfulPairing, Curve, generateLoginNode, generateMdTagPrefix, generateRegistrationNode, getCodeFromWSError, getErrorCodeFromStreamError, getNextPreKeysNode, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout } from '../Utils'
+import { makeEventBuffer } from '../Utils/event-buffer'
 import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, getBinaryNodeChild, getBinaryNodeChildren, S_WHATSAPP_NET } from '../WABinary'
 
 /**
@@ -34,7 +35,8 @@ export const makeSocket = ({
 		agent
 	})
 	ws.setMaxListeners(0)
-	const ev = new EventEmitter() as BaileysEventEmitter
+	const _ev = new EventEmitter() as BaileysEventEmitter
+	const ev = makeEventBuffer(_ev, logger)
 	/** ephemeral key pair used to encrypt/decrypt communication. Unique for each connection */
 	const ephemeralKeyPair = Curve.generateKeyPair()
 	/** WA noise protocol wrapper */
@@ -501,15 +503,6 @@ export const makeSocket = ({
 		ev.emit('connection.update', { connection: 'open' })
 	})
 
-	ws.on('CB:ib,,offline', (node: BinaryNode) => {
-		const child = getBinaryNodeChild(node, 'offline')
-		const offlineCount = +child.attrs.count
-
-		logger.info(`got ${offlineCount} offline messages/notifications`)
-
-		ev.emit('connection.update', { receivedPendingNotifications: true })
-	})
-
 	ws.on('CB:stream:error', (node: BinaryNode) => {
 		logger.error({ node }, 'stream errored out')
 
@@ -528,6 +521,8 @@ export const makeSocket = ({
 	})
 
 	process.nextTick(() => {
+		// start buffering important events
+		ev.buffer()
 		ev.emit('connection.update', { connection: 'connecting', receivedPendingNotifications: false, qr: undefined })
 	})
 	// update credentials when required
@@ -572,7 +567,7 @@ export const makeSocket = ({
 		onUnexpectedError,
 		uploadPreKeys,
 		/** Waits for the connection to WA to reach a state */
-		waitForConnectionUpdate: bindWaitForConnectionUpdate(ev)
+		waitForConnectionUpdate: bindWaitForConnectionUpdate(ev),
 	}
 }
 

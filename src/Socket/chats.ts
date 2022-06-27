@@ -1,16 +1,19 @@
 import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto'
-import { ALL_WA_PATCH_NAMES, ChatModification, ChatMutation, InitialReceivedChatsState, LTHashState, PresenceData, SocketConfig, SyncActionUpdates, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAPatchCreate, WAPatchName, WAPresence } from '../Types'
-import { chatModificationToAppPatch, decodePatches, decodeSyncdSnapshot, encodeSyncdPatch, extractSyncdPatches, generateProfilePicture, newAppStateChunk, newLTHashState, processSyncAction, syncActionUpdatesToEventMap } from '../Utils'
+import { ALL_WA_PATCH_NAMES, ChatModification, ChatMutation, InitialReceivedChatsState, LTHashState, MessageUpsertType, PresenceData, SocketConfig, SyncActionUpdates, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAMessage, WAPatchCreate, WAPatchName, WAPresence } from '../Types'
+import { chatModificationToAppPatch, debouncedTimeout, decodePatches, decodeSyncdSnapshot, encodeSyncdPatch, extractSyncdPatches, generateProfilePicture, isHistoryMsg, newAppStateChunk, newLTHashState, processSyncAction, syncActionUpdatesToEventMap } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
+import processMessage from '../Utils/process-message'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidNormalizedUser, reduceBinaryNodeToDictionary, S_WHATSAPP_NET } from '../WABinary'
-import { makeMessagesSocket } from './messages-send'
+import { makeSocket } from './socket'
 
 const MAX_SYNC_ATTEMPTS = 5
 
+const APP_STATE_SYNC_TIMEOUT_MS = 10_000
+
 export const makeChatsSocket = (config: SocketConfig) => {
-	const { logger, markOnlineOnConnect } = config
-	const sock = makeMessagesSocket(config)
+	const { logger, markOnlineOnConnect, treatCiphertextMessagesAsReal, downloadHistory } = config
+	const sock = makeSocket(config)
 	const {
 		ev,
 		ws,
@@ -18,16 +21,58 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		generateMessageTag,
 		sendNode,
 		query,
-		fetchPrivacySettings,
 		onUnexpectedError,
 		emitEventsFromMap,
 	} = sock
 
+	let privacySettings: { [_: string]: string } | undefined
+
 	const mutationMutex = makeMutex()
+	/** this mutex ensures that the notifications (receipts, messages etc.) are processed in order */
+	const processingMutex = makeMutex()
+	/** cache to ensure new history sync events do not have duplicate items */
+	const historyCache = new Set<string>()
+	let recvChats: InitialReceivedChatsState = { }
+
+	const appStateSyncTimeout = debouncedTimeout(
+		APP_STATE_SYNC_TIMEOUT_MS,
+		async() => {
+			logger.info(
+				{ recvChats: Object.keys(recvChats).length },
+				'doing initial app state sync'
+			)
+			if(ws.readyState === ws.OPEN) {
+				await resyncMainAppState(recvChats)
+			}
+
+			historyCache.clear()
+			recvChats = { }
+		}
+	)
+
 	/** helper function to fetch the given app state sync key */
 	const getAppStateSyncKey = async(keyId: string) => {
 		const { [keyId]: key } = await authState.keys.get('app-state-sync-key', [keyId])
 		return key
+	}
+
+	const fetchPrivacySettings = async(force: boolean = false) => {
+		if(!privacySettings || force) {
+			const { content } = await query({
+				tag: 'iq',
+				attrs: {
+					xmlns: 'privacy',
+					to: S_WHATSAPP_NET,
+					type: 'get'
+				},
+				content: [
+					{ tag: 'privacy', attrs: { } }
+				]
+			})
+			privacySettings = reduceBinaryNodeToDictionary(content[0] as BinaryNode, 'category')
+		}
+
+		return privacySettings
 	}
 
 	/** helper function to run a generic IQ query */
@@ -639,6 +684,53 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		])
 	}
 
+	const processMessageLocal = async(msg: proto.IWebMessageInfo) => {
+		// process message and emit events
+		const newEvents = await processMessage(
+			msg,
+			{
+				downloadHistory,
+				historyCache,
+				recvChats,
+				creds: authState.creds,
+				keyStore: authState.keys,
+				logger,
+				treatCiphertextMessagesAsReal
+			}
+		)
+
+		const isAnyHistoryMsg = isHistoryMsg(msg.message)
+		if(isAnyHistoryMsg) {
+			// we only want to sync app state once we've all the history
+			// restart the app state sync timeout
+			logger.debug('restarting app sync timeout')
+			appStateSyncTimeout.start()
+		}
+
+		return newEvents
+	}
+
+	const upsertMessage = async(msg: WAMessage, type: MessageUpsertType) => {
+		ev.emit('messages.upsert', { messages: [msg], type })
+
+		if(!!msg.pushName) {
+			let jid = msg.key.fromMe ? authState.creds.me!.id : (msg.key.participant || msg.key.remoteJid)
+			jid = jidNormalizedUser(jid)
+
+			if(!msg.key.fromMe) {
+				ev.emit('contacts.update', [{ id: jid, notify: msg.pushName, verifiedName: msg.verifiedBizName }])
+			}
+
+			// update our pushname too
+			if(msg.key.fromMe && authState.creds.me?.name !== msg.pushName) {
+				ev.emit('creds.update', { me: { ...authState.creds.me!, name: msg.pushName! } })
+			}
+		}
+
+		const events = await processMessageLocal(msg)
+		emitEventsFromMap(events)
+	}
+
 	ws.on('CB:presence', handlePresenceUpdate)
 	ws.on('CB:chatstate', handlePresenceUpdate)
 
@@ -664,17 +756,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 	})
 
-	ws.on('CB:notification,type:server_sync', (node: BinaryNode) => {
-		const update = getBinaryNodeChild(node, 'collection')
-		if(update) {
-			const name = update.attrs.name as WAPatchName
-			mutationMutex.mutex(() => (
-				resyncAppState([name], undefined)
-					.catch(err => logger.error({ trace: err.stack, node }, 'failed to sync state'))
-			))
-		}
-	})
-
 	ev.on('connection.update', ({ connection }) => {
 		if(connection === 'open') {
 			fireInitQueries()
@@ -686,6 +767,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	return {
 		...sock,
+		mutationMutex,
+		processingMutex,
+		fetchPrivacySettings,
+		upsertMessage,
 		appPatch,
 		sendPresenceUpdate,
 		presenceSubscribe,

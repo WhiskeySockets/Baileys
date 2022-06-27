@@ -187,17 +187,17 @@ The events are typed up in a type map, as mentioned here:
 
 ``` ts
 
-export type BaileysEventMap = {
+export type BaileysEventMap<T> = {
     /** connection state has been updated -- WS closed, opened, connecting etc. */
-    'connection.update': Partial<ConnectionState>
-    /** auth credentials updated -- some pre key state, device ID etc. */
-    'creds.update': Partial<AuthenticationCreds>
+	'connection.update': Partial<ConnectionState>
+    /** credentials updated -- some metadata, keys or something */
+    'creds.update': Partial<T>
     /** set chats (history sync), chats are reverse chronologically sorted */
     'chats.set': { chats: Chat[], isLatest: boolean }
     /** set messages (history sync), messages are reverse chronologically sorted */
     'messages.set': { messages: WAMessage[], isLatest: boolean }
     /** set contacts (history sync) */
-    'contacts.set': { contacts: Contact[] }
+    'contacts.set': { contacts: Contact[], isLatest: boolean }
     /** upsert chats */
     'chats.upsert': Chat[]
     /** update the given chats */
@@ -205,21 +205,25 @@ export type BaileysEventMap = {
     /** delete chats with given ID */
     'chats.delete': string[]
     /** presence of contact in a chat updated */
-    'presence.update': { id: string, presences: { [participant: string]: PresenceData }  }
+    'presence.update': { id: string, presences: { [participant: string]: PresenceData } }
 
     'contacts.upsert': Contact[]
-    'contacts.update': Partial<Contact>[] 
-    
+    'contacts.update': Partial<Contact>[]
+
     'messages.delete': { keys: WAMessageKey[] } | { jid: string, all: true }
     'messages.update': WAMessageUpdate[]
-    /** 
-     * add/update the given messages. If they were received while the connection was online, 
+    'messages.media-update': { key: WAMessageKey, media?: { ciphertext: Uint8Array, iv: Uint8Array }, error?: Boom }[]
+    /**
+     * add/update the given messages. If they were received while the connection was online,
      * the update will have type: "notify"
      *  */
-    'messages.upsert': { messages: WAMessage[], type: MessageUpdateType }
+    'messages.upsert': { messages: WAMessage[], type: MessageUpsertType }
+    /** message was reacted to. If reaction was removed -- then "reaction.text" will be falsey */
+    'messages.reaction': { key: WAMessageKey, reaction: proto.IReaction }[]
 
-    'message-info.update': MessageInfoUpdate[]
+    'message-receipt.update': MessageUserReceiptUpdate[]
 
+    'groups.upsert': GroupMetadata[]
     'groups.update': Partial<GroupMetadata>[]
     /** apply an action to participants in a group */
     'group-participants.update': { id: string, participants: string[], action: ParticipantAction }

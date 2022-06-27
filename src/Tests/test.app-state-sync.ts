@@ -1,8 +1,7 @@
 import { AccountSettings, ChatMutation, Contact, InitialAppStateSyncOptions } from '../Types'
 import { unixTimestampSeconds } from '../Utils'
-import { processSyncActions } from '../Utils/chat-utils'
+import { processSyncAction } from '../Utils/chat-utils'
 import logger from '../Utils/logger'
-import { jidEncode } from '../WABinary'
 
 describe('App State Sync Tests', () => {
 
@@ -59,7 +58,7 @@ describe('App State Sync Tests', () => {
 		]
 
 		for(const mutations of CASES) {
-			const events = processSyncActions(mutations, me, undefined, logger)
+			const events = processSyncAction(mutations, me, undefined, logger)
 			expect(events['chats.update']).toHaveLength(1)
 			const event = events['chats.update']?.[0]
 			expect(event.archive).toEqual(false)
@@ -206,7 +205,3 @@ describe('App State Sync Tests', () => {
 		}
 	})
 })
-
-function randomJid() {
-	return jidEncode(Math.floor(Math.random() * 1000000), Math.random() < 0.5 ? 's.whatsapp.net' : 'g.us')
-}

@@ -6,7 +6,7 @@ import { WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import { AnyMessageContent, MediaConnInfo, MessageReceiptType, MessageRelayOptions, MiscMessageGenerationOptions, SocketConfig, WAMessageKey } from '../Types'
 import { aggregateMessageKeysNotFromMe, assertMediaContent, bindWaitForEvent, decryptMediaRetryData, encodeWAMessage, encryptMediaRetryRequest, encryptSenderKeyMsgSignalProto, encryptSignalProto, extractDeviceJids, generateMessageID, generateWAMessage, getUrlFromDirectPath, getWAUploadToServer, jidToSignalProtocolAddress, parseAndInjectE2ESessions, unixTimestampSeconds } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
-import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, isJidUser, jidDecode, jidEncode, jidNormalizedUser, JidWithDevice, reduceBinaryNodeToDictionary, S_WHATSAPP_NET } from '../WABinary'
+import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, isJidUser, jidDecode, jidEncode, jidNormalizedUser, JidWithDevice, S_WHATSAPP_NET } from '../WABinary'
 import { makeGroupsSocket } from './groups'
 
 export const makeMessagesSocket = (config: SocketConfig) => {
@@ -15,7 +15,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	const {
 		ev,
 		authState,
+		upsertMessage,
 		query,
+		fetchPrivacySettings,
 		generateMessageTag,
 		sendNode,
 		groupMetadata,
@@ -26,26 +28,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		stdTTL: 300, // 5 minutes
 		useClones: false
 	})
-	let privacySettings: { [_: string]: string } | undefined
-
-	const fetchPrivacySettings = async(force: boolean = false) => {
-		if(!privacySettings || force) {
-			const { content } = await query({
-				tag: 'iq',
-				attrs: {
-					xmlns: 'privacy',
-					to: S_WHATSAPP_NET,
-					type: 'get'
-				},
-				content: [
-					{ tag: 'privacy', attrs: { } }
-				]
-			})
-			privacySettings = reduceBinaryNodeToDictionary(content[0] as BinaryNode, 'category')
-		}
-
-		return privacySettings
-	}
 
 	let mediaConn: Promise<MediaConnInfo>
 	const refreshMediaConn = async(forceGet = false) => {
@@ -633,7 +615,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				await relayMessage(jid, fullMsg.message, { messageId: fullMsg.key.id!, cachedGroupMetadata: options.cachedGroupMetadata, additionalAttributes })
 				if(config.emitOwnEvents) {
 					process.nextTick(() => {
-						ev.emit('messages.upsert', { messages: [fullMsg], type: 'append' })
+						upsertMessage(fullMsg, 'append')
 					})
 				}
 

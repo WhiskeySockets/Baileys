@@ -2,11 +2,11 @@ import { proto } from '../../WAProto'
 import { GroupMetadata, ParticipantAction, SocketConfig, WAMessageKey, WAMessageStubType } from '../Types'
 import { generateMessageID, unixTimestampSeconds } from '../Utils'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidEncode, jidNormalizedUser } from '../WABinary'
-import { makeSocket } from './socket'
+import { makeChatsSocket } from './chats'
 
 export const makeGroupsSocket = (config: SocketConfig) => {
-	const sock = makeSocket(config)
-	const { authState, ev, query } = sock
+	const sock = makeChatsSocket(config)
+	const { authState, ev, query, upsertMessage } = sock
 
 	const groupQuery = async(jid: string, type: 'get' | 'set', content: BinaryNode[]) => (
 		query({
@@ -175,25 +175,23 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 			}
 
 			// generate the group add message
-			ev.emit('messages.upsert', {
-				messages: [
-					{
-						key: {
-							remoteJid: inviteMessage.groupJid,
-							id: generateMessageID(),
-							fromMe: false,
-							participant: key.remoteJid,
-						},
-						messageStubType: WAMessageStubType.GROUP_PARTICIPANT_ADD,
-						messageStubParameters: [
-							authState.creds.me!.id
-						],
+			await upsertMessage(
+				{
+					key: {
+						remoteJid: inviteMessage.groupJid,
+						id: generateMessageID(),
+						fromMe: false,
 						participant: key.remoteJid,
-						messageTimestamp: unixTimestampSeconds()
-					}
-				],
-				type: 'notify'
-			})
+					},
+					messageStubType: WAMessageStubType.GROUP_PARTICIPANT_ADD,
+					messageStubParameters: [
+						authState.creds.me!.id
+					],
+					participant: key.remoteJid,
+					messageTimestamp: unixTimestampSeconds()
+				},
+				'notify'
+			)
 
 			return results.attrs.from
 		},

@@ -4,6 +4,7 @@ import { proto } from '../../WAProto'
 import { Chat, Contact, InitialReceivedChatsState } from '../Types'
 import { isJidUser } from '../WABinary'
 import { toNumber } from './generics'
+import { normalizeMessageContent } from './messages'
 import { downloadContentFromMessage } from './messages-media'
 
 const inflatePromise = promisify(inflate)
@@ -102,4 +103,11 @@ export const downloadAndProcessHistorySyncNotification = async(
 ) => {
 	const historyMsg = await downloadHistory(msg)
 	return processHistoryMessage(historyMsg, historyCache, recvChats)
+}
+
+export const isHistoryMsg = (message: proto.IMessage) => {
+	const normalizedContent = !!message ? normalizeMessageContent(message) : undefined
+	const isAnyHistoryMsg = !!normalizedContent?.protocolMessage?.historySyncNotification
+
+	return isAnyHistoryMsg
 }
