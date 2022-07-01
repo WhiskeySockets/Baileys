@@ -688,6 +688,11 @@ await sock.sendMessage(
     const status = await sock.fetchStatus("xyz@s.whatsapp.net")
     console.log("status: " + status)
     ```
+- To change your profile status
+    ``` ts
+    const status = 'Hello World!'
+    await sock.updateProfileStatus(status)
+    ```
 - To get the display picture of some person/group
     ``` ts
     // for low res picture

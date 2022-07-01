@@ -175,6 +175,25 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		})
 	}
 
+	/** update the profile status for yourself */
+	const updateProfileStatus = async(status: string) => {
+		await query({
+			tag: 'iq',
+			attrs: {
+				to: S_WHATSAPP_NET,
+				type: 'set',
+				xmlns: 'status'
+			},
+			content: [
+				{
+					tag: 'status',
+					attrs: { },
+					content: Buffer.from(status, 'utf-8')
+				}
+			]
+		})
+	}
+
 	const fetchBlocklist = async() => {
 		const result = await query({
 			tag: 'iq',
@@ -770,6 +789,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		fetchBlocklist,
 		fetchStatus,
 		updateProfilePicture,
+		updateProfileStatus,
 		updateBlockStatus,
 		getBusinessProfile,
 		resyncAppState,
