@@ -292,6 +292,10 @@ export const generateWAMessageContent = async(
 	} else if('location' in message) {
 		m.locationMessage = WAProto.LocationMessage.fromObject(message.location)
 	} else if('react' in message) {
+		if(!message.react.senderTimestampMs) {
+			message.react.senderTimestampMs = Date.now()
+		}
+
 		m.reactionMessage = WAProto.ReactionMessage.fromObject(message.react)
 	} else if('delete' in message) {
 		m.protocolMessage = {

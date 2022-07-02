@@ -411,7 +411,7 @@ const sendMsg = await sock.sendMessage(id, listMessage)
 
 const reactionMessage = {
     react: {
-        text: "💖",
+        text: "💖", // use an empty string to remove the reaction
         key: message.key
     }
 }
