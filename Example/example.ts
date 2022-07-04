@@ -105,13 +105,17 @@ const startSock = async() => {
 			}
 
 			// received a new message
-			if(events['messages.upsert'] && events['messages.upsert'].type === 'notify') {
-				console.log('recv messages ', JSON.stringify(events['messages.upsert'], undefined, 2))
-				for(const msg of events['messages.upsert'].messages) {
-					if(!msg.key.fromMe && doReplies) {
-						console.log('replying to', msg.key.remoteJid)
-						await sock!.sendReadReceipt(msg.key.remoteJid!, msg.key.participant!, [msg.key.id!])
-						await sendMessageWTyping({ text: 'Hello there!' }, msg.key.remoteJid!)
+			if(events['messages.upsert']) {
+				const upsert = events['messages.upsert']
+				console.log('recv messages ', JSON.stringify(upsert, undefined, 2))
+
+				if(upsert.type === 'notify') {
+					for(const msg of upsert.messages) {
+						if(!msg.key.fromMe && doReplies) {
+							console.log('replying to', msg.key.remoteJid)
+							await sock!.sendReadReceipt(msg.key.remoteJid!, msg.key.participant!, [msg.key.id!])
+							await sendMessageWTyping({ text: 'Hello there!' }, msg.key.remoteJid!)
+						}
 					}
 				}
 			}
