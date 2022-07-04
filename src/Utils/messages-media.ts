@@ -633,7 +633,10 @@ export const decodeMediaRetryNode = (node: BinaryNode) => {
 	const errorNode = getBinaryNodeChild(node, 'error')
 	if(errorNode) {
 		const errorCode = +errorNode.attrs.code
-		event.error = new Boom(`Failed to re-upload media (${errorCode})`, { data: errorNode.attrs })
+		event.error = new Boom(
+			`Failed to re-upload media (${errorCode})`,
+			{ data: errorNode.attrs, statusCode: getStatusCodeForMediaRetry(errorCode) }
+		)
 	} else {
 		const encryptedInfoNode = getBinaryNodeChild(node, 'encrypt')
 		const ciphertext = getBinaryNodeChildBuffer(encryptedInfoNode, 'enc_p')
@@ -657,3 +660,12 @@ export const decryptMediaRetryData = (
 	const plaintext = aesDecryptGCM(ciphertext, retryKey, iv, Buffer.from(msgId))
 	return proto.MediaRetryNotification.decode(plaintext)
 }
+
+export const getStatusCodeForMediaRetry = (code: number) => MEDIA_RETRY_STATUS_MAP[code]
+
+const MEDIA_RETRY_STATUS_MAP = {
+	[proto.MediaRetryNotification.MediaRetryNotificationResultType.SUCCESS]: 200,
+	[proto.MediaRetryNotification.MediaRetryNotificationResultType.DECRYPTION_ERROR]: 412,
+	[proto.MediaRetryNotification.MediaRetryNotificationResultType.NOT_FOUND]: 404,
+	[proto.MediaRetryNotification.MediaRetryNotificationResultType.GENERAL_ERROR]: 418,
+} as const
