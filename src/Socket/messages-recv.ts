@@ -537,13 +537,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	// called when all offline notifs are handled
-	ws.on('CB:ib,,offline', (node: BinaryNode) => {
+	ws.on('CB:ib,,offline', async(node: BinaryNode) => {
 		const child = getBinaryNodeChild(node, 'offline')
 		const offlineNotifs = +child.attrs.count
 
 		logger.info(`handled ${offlineNotifs} offline messages/notifications`)
+		await ev.flush()
 		ev.emit('connection.update', { receivedPendingNotifications: true })
-		ev.flush()
 	})
 
 	// recv a message
