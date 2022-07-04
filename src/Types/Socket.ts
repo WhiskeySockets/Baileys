@@ -37,8 +37,6 @@ export type CommonSocketConfig<T> = {
     mediaCache?: NodeCache
     /** custom upload hosts to upload media to */
     customUploadHosts: MediaConnInfo['hosts']
-    /** fires a conversationTimestamp & read count update on CIPHERTEXT messages */
-    treatCiphertextMessagesAsReal: boolean
     /** time to wait between sending new retry requests */
     retryRequestDelayMs: number
 }

@@ -12,7 +12,7 @@ const STATUS_MAP = {
 } as { [_: string]: WAMessageStatus }
 
 const makeMessagesSocket = (config: LegacySocketConfig) => {
-	const { logger, treatCiphertextMessagesAsReal } = config
+	const { logger } = config
 	const sock = makeChatsSocket(config)
 	const {
 		ev,
@@ -117,10 +117,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 		const protocolMessage = normalizedContent?.protocolMessage
 
 		if(
-			(
-				!!normalizedContent ||
-				(message.messageStubType === WAMessageStubType.CIPHERTEXT && treatCiphertextMessagesAsReal)
-			)
+			!!normalizedContent
 			&& !normalizedContent?.protocolMessage
 			&& !normalizedContent?.reactionMessage
 		) {

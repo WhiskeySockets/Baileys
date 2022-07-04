@@ -12,7 +12,6 @@ type ProcessMessageContext = {
 	keyStore: SignalKeyStoreWithTransaction
 	ev: BaileysEventEmitter
 	logger?: Logger
-	treatCiphertextMessagesAsReal?: boolean
 }
 
 const MSG_MISSED_CALL_TYPES = new Set([
@@ -39,12 +38,11 @@ export const cleanMessage = (message: proto.IWebMessageInfo, meId: string) => {
 	}
 }
 
-export const isRealMessage = (message: proto.IWebMessageInfo, treatCiphertextMessagesAsReal: boolean) => {
+export const isRealMessage = (message: proto.IWebMessageInfo) => {
 	const normalizedContent = normalizeMessageContent(message.message)
 	return (
 		!!normalizedContent
 		|| MSG_MISSED_CALL_TYPES.has(message.messageStubType)
-		|| (message.messageStubType === WAMessageStubType.CIPHERTEXT && treatCiphertextMessagesAsReal)
 	)
 	&& !normalizedContent?.protocolMessage
 	&& !normalizedContent?.reactionMessage
@@ -56,14 +54,14 @@ export const shouldIncrementChatUnread = (message: proto.IWebMessageInfo) => (
 
 const processMessage = async(
 	message: proto.IWebMessageInfo,
-	{ downloadHistory, ev, historyCache, recvChats, creds, keyStore, logger, treatCiphertextMessagesAsReal }: ProcessMessageContext
+	{ downloadHistory, ev, historyCache, recvChats, creds, keyStore, logger }: ProcessMessageContext
 ) => {
 	const meId = creds.me!.id
 	const { accountSettings } = creds
 
 	const chat: Partial<Chat> = { id: jidNormalizedUser(message.key.remoteJid) }
 
-	if(isRealMessage(message, treatCiphertextMessagesAsReal)) {
+	if(isRealMessage(message)) {
 		chat.conversationTimestamp = toNumber(message.messageTimestamp)
 		// only increment unread count if not CIPHERTEXT and from another person
 		if(shouldIncrementChatUnread(message)) {

@@ -12,7 +12,7 @@ const MAX_SYNC_ATTEMPTS = 5
 const APP_STATE_SYNC_TIMEOUT_MS = 10_000
 
 export const makeChatsSocket = (config: SocketConfig) => {
-	const { logger, markOnlineOnConnect, treatCiphertextMessagesAsReal, downloadHistory } = config
+	const { logger, markOnlineOnConnect, downloadHistory } = config
 	const sock = makeSocket(config)
 	const {
 		ev,
@@ -721,7 +721,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				creds: authState.creds,
 				keyStore: authState.keys,
 				logger,
-				treatCiphertextMessagesAsReal
 			}
 		)
 
