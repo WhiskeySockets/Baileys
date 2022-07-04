@@ -20,7 +20,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		ev,
 		authState,
 		ws,
-		mutationMutex,
 		processingMutex,
 		upsertMessage,
 		resyncAppState,
@@ -249,7 +248,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const update = getBinaryNodeChild(node, 'collection')
 			if(update) {
 				const name = update.attrs.name as WAPatchName
-				await mutationMutex.mutex(() => resyncAppState([name], undefined))
+				await resyncAppState([name], undefined)
 			}
 		}
 
@@ -591,10 +590,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}
 
 			const protoMsg = proto.WebMessageInfo.fromObject(msg)
-			ev.emit(
-				'messages.upsert',
-				{ messages: [protoMsg], type: call.offline ? 'append' : 'notify' }
-			)
+			upsertMessage(protoMsg, call.offline ? 'append' : 'notify')
 		}
 	})
 

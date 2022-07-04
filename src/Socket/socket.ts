@@ -1,10 +1,9 @@
 import { Boom } from '@hapi/boom'
-import EventEmitter from 'events'
 import { promisify } from 'util'
 import WebSocket from 'ws'
 import { proto } from '../../WAProto'
 import { DEF_CALLBACK_PREFIX, DEF_TAG_PREFIX, DEFAULT_ORIGIN, INITIAL_PREKEY_COUNT, MIN_PREKEY_COUNT } from '../Defaults'
-import { AuthenticationCreds, BaileysEventEmitter, BaileysEventMap, DisconnectReason, SocketConfig } from '../Types'
+import { DisconnectReason, SocketConfig } from '../Types'
 import { addTransactionCapability, bindWaitForConnectionUpdate, configureSuccessfulPairing, Curve, generateLoginNode, generateMdTagPrefix, generateRegistrationNode, getCodeFromWSError, getErrorCodeFromStreamError, getNextPreKeysNode, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout } from '../Utils'
 import { makeEventBuffer } from '../Utils/event-buffer'
 import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, getBinaryNodeChild, getBinaryNodeChildren, S_WHATSAPP_NET } from '../WABinary'
@@ -35,8 +34,7 @@ export const makeSocket = ({
 		agent
 	})
 	ws.setMaxListeners(0)
-	const _ev = new EventEmitter() as BaileysEventEmitter
-	const ev = makeEventBuffer(_ev, logger)
+	const ev = makeEventBuffer(logger)
 	/** ephemeral key pair used to encrypt/decrypt communication. Unique for each connection */
 	const ephemeralKeyPair = Curve.generateKeyPair()
 	/** WA noise protocol wrapper */
@@ -386,12 +384,6 @@ export const makeSocket = ({
 		})
 	)
 
-	const emitEventsFromMap = (map: Partial<BaileysEventMap<AuthenticationCreds>>) => {
-		for(const key in map) {
-			ev.emit(key as any, map[key])
-		}
-	}
-
 	/** logout & invalidate connection */
 	const logout = async() => {
 		const jid = authState.creds.me?.id
@@ -555,7 +547,6 @@ export const makeSocket = ({
 		get user() {
 			return authState.creds.me
 		},
-		emitEventsFromMap,
 		generateMessageTag,
 		query,
 		waitForMessage,

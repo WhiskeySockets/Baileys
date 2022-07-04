@@ -155,6 +155,8 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 					admin: key.remoteJid!
 				}
 			}])
+
+			const started = ev.buffer()
 			// if we have the full message key
 			// update the invite message to be expired
 			if(key.id) {
@@ -192,6 +194,10 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 				},
 				'notify'
 			)
+
+			if(started) {
+				await ev.flush()
+			}
 
 			return results.attrs.from
 		},

@@ -22,12 +22,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		sendNode,
 		query,
 		onUnexpectedError,
-		emitEventsFromMap,
 	} = sock
 
 	let privacySettings: { [_: string]: string } | undefined
 
-	const mutationMutex = makeMutex()
 	/** this mutex ensures that the notifications (receipts, messages etc.) are processed in order */
 	const processingMutex = makeMutex()
 	/** cache to ensure new history sync events do not have duplicate items */
@@ -527,7 +525,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		logger.debug('resyncing main app state')
 
 		await (
-			mutationMutex.mutex(
+			processingMutex.mutex(
 				() => resyncAppState(ALL_WA_PATCH_NAMES, ctx)
 			)
 				.catch(err => (
@@ -546,7 +544,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		let initial: LTHashState
 		let encodeResult: { patch: proto.ISyncdPatch, state: LTHashState }
 
-		await mutationMutex.mutex(
+		await processingMutex.mutex(
 			async() => {
 				await authState.keys.transaction(
 					async() => {
@@ -694,12 +692,30 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		])
 	}
 
-	const processMessageLocal = async(msg: proto.IWebMessageInfo) => {
+	const upsertMessage = async(msg: WAMessage, type: MessageUpsertType) => {
+		const startedBuffer = ev.buffer()
+		ev.emit('messages.upsert', { messages: [msg], type })
+
+		if(!!msg.pushName) {
+			let jid = msg.key.fromMe ? authState.creds.me!.id : (msg.key.participant || msg.key.remoteJid)
+			jid = jidNormalizedUser(jid)
+
+			if(!msg.key.fromMe) {
+				ev.emit('contacts.update', [{ id: jid, notify: msg.pushName, verifiedName: msg.verifiedBizName }])
+			}
+
+			// update our pushname too
+			if(msg.key.fromMe && authState.creds.me?.name !== msg.pushName) {
+				ev.emit('creds.update', { me: { ...authState.creds.me!, name: msg.pushName! } })
+			}
+		}
+
 		// process message and emit events
-		const newEvents = await processMessage(
+		await processMessage(
 			msg,
 			{
 				downloadHistory,
+				ev,
 				historyCache,
 				recvChats,
 				creds: authState.creds,
@@ -717,28 +733,9 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			appStateSyncTimeout.start()
 		}
 
-		return newEvents
-	}
-
-	const upsertMessage = async(msg: WAMessage, type: MessageUpsertType) => {
-		ev.emit('messages.upsert', { messages: [msg], type })
-
-		if(!!msg.pushName) {
-			let jid = msg.key.fromMe ? authState.creds.me!.id : (msg.key.participant || msg.key.remoteJid)
-			jid = jidNormalizedUser(jid)
-
-			if(!msg.key.fromMe) {
-				ev.emit('contacts.update', [{ id: jid, notify: msg.pushName, verifiedName: msg.verifiedBizName }])
-			}
-
-			// update our pushname too
-			if(msg.key.fromMe && authState.creds.me?.name !== msg.pushName) {
-				ev.emit('creds.update', { me: { ...authState.creds.me!, name: msg.pushName! } })
-			}
+		if(startedBuffer) {
+			await ev.flush()
 		}
-
-		const events = await processMessageLocal(msg)
-		emitEventsFromMap(events)
 	}
 
 	ws.on('CB:presence', handlePresenceUpdate)
@@ -777,7 +774,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	return {
 		...sock,
-		mutationMutex,
 		processingMutex,
 		fetchPrivacySettings,
 		upsertMessage,
