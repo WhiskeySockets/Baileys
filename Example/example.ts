@@ -61,6 +61,8 @@ const startSock = async() => {
 	sock.ev.process(
 		// events is a map for event name => event data
 		async(events) => {
+			// something about the connection changed
+			// maybe it closed, or we received all offline message or connection opened
 			if(events['connection.update']) {
 				const update = events['connection.update']
 				const { connection, lastDisconnect } = update
@@ -76,6 +78,7 @@ const startSock = async() => {
 				console.log('connection update', update)
 			}
 
+			// credentials updated -- save them
 			if(events['creds.update']) {
 				await saveCreds()
 			}
@@ -84,11 +87,13 @@ const startSock = async() => {
 				console.log('recv call event', events.call)
 			}
 
+			// chat history received
 			if(events['chats.set']) {
 				const { chats, isLatest } = events['chats.set']
 				console.log(`recv ${chats.length} chats (is latest: ${isLatest})`)
 			}
 
+			// message history received
 			if(events['messages.set']) {
 				const { messages, isLatest } = events['messages.set']
 				console.log(`recv ${messages.length} messages (is latest: ${isLatest})`)
@@ -99,7 +104,9 @@ const startSock = async() => {
 				console.log(`recv ${contacts.length} contacts (is latest: ${isLatest})`)
 			}
 
+			// received a new message
 			if(events['messages.upsert'] && events['messages.upsert'].type === 'notify') {
+				console.log('recv messages ', JSON.stringify(events['messages.upsert'], undefined, 2))
 				for(const msg of events['messages.upsert'].messages) {
 					if(!msg.key.fromMe && doReplies) {
 						console.log('replying to', msg.key.remoteJid)
@@ -109,6 +116,7 @@ const startSock = async() => {
 				}
 			}
 
+			// messages updated like status delivered, message deleted etc.
 			if(events['messages.update']) {
 				console.log(events['messages.update'])
 			}
