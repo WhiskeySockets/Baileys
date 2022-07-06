@@ -254,6 +254,27 @@ export const fetchLatestBaileysVersion = async() => {
 	}
 }
 
+/**
+ * A utility that fetches the latest web version of whatsapp.
+ * Use to ensure your WA connection is always on the latest version
+ */
+export const fetchLatestWaWebVersion = async() => {
+	try {
+		const result = await axios.get('https://web.whatsapp.com/check-update?version=1&platform=web', { responseType: 'json' })
+		const version = result.data.currentVersion.split('.')
+		return {
+			version: [+version[0], +version[1], +version[2]] as WAVersion,
+			isLatest: true
+		}
+	} catch(error) {
+		return {
+			version: baileysVersion as WAVersion,
+			isLatest: false,
+			error
+		}
+	}
+}
+
 /** unique message tag prefix for MD clients */
 export const generateMdTagPrefix = () => {
 	const bytes = randomBytes(4)
