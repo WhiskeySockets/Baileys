@@ -150,18 +150,27 @@ function append<E extends BufferableEvent>(
 				delete data.chatUpdates[chat.id]
 			}
 
+			if(data.chatDeletes.has(chat.id)) {
+				data.chatDeletes.delete(chat.id)
+			}
+
 			data.chatUpserts[chat.id] = upsert
 		}
 
 		break
 	case 'chats.update':
 		for(const update of eventData as Partial<Chat>[]) {
-			const upsert = data.chatUpserts[update.id!]
+			const chatId = update.id!
+			const upsert = data.chatUpserts[chatId]
 			if(upsert) {
 				concatChats(upsert, update)
 			} else {
-				const chatUpdate = data.chatUpdates[update.id] || { }
-				data.chatUpdates[update.id] = concatChats(chatUpdate, update)
+				const chatUpdate = data.chatUpdates[chatId] || { }
+				data.chatUpdates[chatId] = concatChats(chatUpdate, update)
+			}
+
+			if(data.chatDeletes.has(chatId)) {
+				data.chatDeletes.delete(chatId)
 			}
 		}
 
@@ -315,7 +324,7 @@ function append<E extends BufferableEvent>(
 		if(
 			isRealMessage(message)
 			&& shouldIncrementChatUnread(message)
-			&& typeof chat.unreadCount !== 'undefined'
+			&& typeof chat?.unreadCount !== 'undefined'
 			&& chat.unreadCount > 0
 		) {
 			logger.debug({ chatId: chat.id }, 'decrementing chat counter')

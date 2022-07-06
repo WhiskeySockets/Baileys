@@ -1,22 +1,23 @@
-import EventEmitter from 'events'
 import { proto } from '../../WAProto'
-import { BaileysEventEmitter, Chat, WAMessageKey, WAMessageStatus, WAMessageStubType, WAMessageUpdate } from '../Types'
+import { Chat, WAMessageKey, WAMessageStatus, WAMessageStubType, WAMessageUpdate } from '../Types'
 import { delay, generateMessageID, makeEventBuffer, toNumber, unixTimestampSeconds } from '../Utils'
 import logger from '../Utils/logger'
 import { randomJid } from './utils'
 
 describe('Event Buffer Tests', () => {
 
-	const emitter = new EventEmitter() as BaileysEventEmitter
-	const ev = makeEventBuffer(emitter, logger)
+	let ev: ReturnType<typeof makeEventBuffer>
+	beforeEach(() => {
+		ev = makeEventBuffer(logger)
+	})
 
 	it('should buffer a chat upsert & update event', async() => {
 		const chatId = randomJid()
 
 		const chats: Chat[] = []
 
-		emitter.on('chats.upsert', c => chats.push(...c))
-		emitter.on('chats.update', () => fail('should not emit update event'))
+		ev.on('chats.upsert', c => chats.push(...c))
+		ev.on('chats.update', () => fail('should not emit update event'))
 
 		ev.buffer()
 		ev.processInBuffer((async() => {
@@ -35,6 +36,41 @@ describe('Event Buffer Tests', () => {
 		expect(chats[0].unreadCount).toEqual(2)
 	})
 
+	it('should overwrite a chats.delete event', async() => {
+		const chatId = randomJid()
+		const chats: Partial<Chat>[] = []
+
+		ev.on('chats.update', c => chats.push(...c))
+		ev.on('chats.delete', () => fail('not should have emitted'))
+
+		ev.buffer()
+
+		ev.emit('chats.update', [{ id: chatId, conversationTimestamp: 123, unreadCount: 1 }])
+		ev.emit('chats.delete', [chatId])
+		ev.emit('chats.update', [{ id: chatId, conversationTimestamp: 124, unreadCount: 1 }])
+
+		await ev.flush()
+
+		expect(chats).toHaveLength(1)
+	})
+
+	it('should overwrite a chats.update event', async() => {
+		const chatId = randomJid()
+		const chatsDeleted: string[] = []
+
+		ev.on('chats.delete', c => chatsDeleted.push(...c))
+		ev.on('chats.update', () => fail('not should have emitted'))
+
+		ev.buffer()
+
+		ev.emit('chats.update', [{ id: chatId, conversationTimestamp: 123, unreadCount: 1 }])
+		ev.emit('chats.delete', [chatId])
+
+		await ev.flush()
+
+		expect(chatsDeleted).toHaveLength(1)
+	})
+
 	it('should buffer message upsert events', async() => {
 		const messageTimestamp = unixTimestampSeconds()
 		const msg: proto.IWebMessageInfo = {
@@ -49,7 +85,7 @@ describe('Event Buffer Tests', () => {
 
 		const msgs: proto.IWebMessageInfo[] = []
 
-		emitter.on('messages.upsert', c => {
+		ev.on('messages.upsert', c => {
 			msgs.push(...c.messages)
 			expect(c.type).toEqual('notify')
 		})
@@ -67,7 +103,7 @@ describe('Event Buffer Tests', () => {
 
 		expect(msgs).toHaveLength(1)
 		expect(msgs[0].message).toBeTruthy()
-		expect(toNumber(msgs[0].messageTimestamp)).toEqual(messageTimestamp)
+		expect(toNumber(msgs[0].messageTimestamp!)).toEqual(messageTimestamp)
 		expect(msgs[0].status).toEqual(WAMessageStatus.READ)
 	})
 
@@ -84,8 +120,8 @@ describe('Event Buffer Tests', () => {
 
 		const msgs: proto.IWebMessageInfo[] = []
 
-		emitter.on('messages.upsert', c => msgs.push(...c.messages))
-		emitter.on('message-receipt.update', () => fail('should not emit'))
+		ev.on('messages.upsert', c => msgs.push(...c.messages))
+		ev.on('message-receipt.update', () => fail('should not emit'))
 
 		ev.buffer()
 		ev.emit('messages.upsert', { messages: [proto.WebMessageInfo.fromObject(msg)], type: 'notify' })
@@ -114,7 +150,7 @@ describe('Event Buffer Tests', () => {
 
 		const msgs: WAMessageUpdate[] = []
 
-		emitter.on('messages.update', c => msgs.push(...c))
+		ev.on('messages.update', c => msgs.push(...c))
 
 		ev.buffer()
 		ev.emit('messages.update', [{ key, update: { status: WAMessageStatus.DELIVERY_ACK } }])
@@ -141,11 +177,11 @@ describe('Event Buffer Tests', () => {
 
 		const chats: Partial<Chat>[] = []
 
-		emitter.on('chats.update', c => chats.push(...c))
+		ev.on('chats.update', c => chats.push(...c))
 
 		ev.buffer()
 		ev.emit('messages.upsert', { messages: [proto.WebMessageInfo.fromObject(msg)], type: 'notify' })
-		ev.emit('chats.update', [{ id: msg.key.remoteJid, unreadCount: 1, conversationTimestamp: msg.messageTimestamp }])
+		ev.emit('chats.update', [{ id: msg.key.remoteJid!, unreadCount: 1, conversationTimestamp: msg.messageTimestamp }])
 		ev.emit('messages.update', [{ key: msg.key, update: { status: WAMessageStatus.READ } }])
 
 		await ev.flush()
