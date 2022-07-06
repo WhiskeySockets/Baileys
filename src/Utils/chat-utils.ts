@@ -682,7 +682,12 @@ export const processSyncAction = (
 			}
 		])
 	} else if(action?.deleteChatAction) {
-		ev.emit('chats.delete', [id])
+		if(
+			isValidPatchBasedOnMessageRange(id, action?.deleteChatAction?.messageRange)
+			|| !isInitialSync
+		) {
+			ev.emit('chats.delete', [id])
+		}
 	} else {
 		logger.warn({ syncAction, id }, 'unprocessable update')
 	}
