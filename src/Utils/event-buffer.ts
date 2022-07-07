@@ -106,7 +106,12 @@ export const makeEventBuffer = (logger: Logger): BaileysBufferableEventEmitter =
 			await preBufferTask
 
 			isBuffering = false
-			ev.emit('event', consolidateEvents(data))
+
+			const consolidatedData = consolidateEvents(data)
+			if(Object.keys(consolidatedData).length) {
+				ev.emit('event', consolidatedData)
+			}
+
 			data = makeBufferData()
 
 			logger.trace('released buffered events')
