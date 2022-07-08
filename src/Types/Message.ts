@@ -22,7 +22,7 @@ export type WAMediaUpload = Buffer | { url: URL | string } | { stream: Readable 
 /** Set of message types that are supported by the library */
 export type MessageType = keyof proto.Message
 
-export type DownloadableMessage = { mediaKey?: Uint8Array, directPath?: string, url?: string }
+export type DownloadableMessage = { mediaKey?: Uint8Array | null, directPath?: string | null, url?: string | null }
 
 export type MessageReceiptType = 'read' | 'read-self' | 'hist_sync' | 'peer_msg' | 'sender' | 'inactive' | undefined
 
@@ -37,7 +37,7 @@ export interface WAUrlInfo {
     'canonical-url': string
     'matched-text': string
     title: string
-    description: string
+    description?: string
     jpegThumbnail?: Buffer
 }
 
@@ -182,7 +182,7 @@ export type MediaGenerationOptions = {
     mediaUploadTimeoutMs?: number
 }
 export type MessageContentGenerationOptions = MediaGenerationOptions & {
-	getUrlInfo?: (text: string) => Promise<WAUrlInfo>
+	getUrlInfo?: (text: string) => Promise<WAUrlInfo | undefined>
 }
 export type MessageGenerationOptions = MessageContentGenerationOptions & MessageGenerationOptionsFromContent
 

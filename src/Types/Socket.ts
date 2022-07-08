@@ -8,9 +8,7 @@ import { MediaConnInfo } from './Message'
 export type WAVersion = [number, number, number]
 export type WABrowserDescription = [string, string, string]
 
-export type CommonSocketConfig<T> = {
-    /** provide an auth state object to maintain the auth state */
-    auth?: T
+export type CommonSocketConfig = {
     /** the WS url to connect to WA */
     waWebSocketUrl: string | URL
     /** Fails the connection if the socket times out in this interval */

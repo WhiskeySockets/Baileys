@@ -36,8 +36,7 @@ export const addTransactionCapability = (state: SignalKeyStore, logger: Logger, 
 			dbQueriesInTransaction += 1
 			const result = await state.get(type, idsRequiringFetch)
 
-			transactionCache[type] = transactionCache[type] || { }
-			Object.assign(transactionCache[type], result)
+			transactionCache[type] = Object.assign(transactionCache[type] || { }, result)
 		}
 	}
 

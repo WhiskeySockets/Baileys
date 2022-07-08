@@ -45,7 +45,7 @@ const getClientPayload = (config: ClientPayloadConfig): proto.IClientPayload => 
 }
 
 export const generateLoginNode = (userJid: string, config: ClientPayloadConfig): proto.IClientPayload => {
-	const { user, device } = jidDecode(userJid)
+	const { user, device } = jidDecode(userJid)!
 	const payload: proto.IClientPayload = {
 		...getClientPayload(config),
 		passive: true,
@@ -137,7 +137,7 @@ export const configureSuccessfulPairing = (
 	const deviceMsg = Buffer.concat([ Buffer.from([6, 1]), deviceDetails, signedIdentityKey.public, accountSignatureKey ])
 	account.deviceSignature = Curve.sign(signedIdentityKey.private, deviceMsg)
 	// do not provide the "accountSignatureKey" back
-	account.accountSignatureKey = null
+	account.accountSignatureKey = Buffer.alloc(0)
 
 	const identity = createSignalIdentity(jid, accountSignatureKey)
 	const accountEnc = proto.ADVSignedDeviceIdentity.encode(account).finish()

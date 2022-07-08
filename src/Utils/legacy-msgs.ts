@@ -29,7 +29,7 @@ export const decodeWAMessage = (
 	// If a query was done, the server will respond with the same message tag we sent the query with
 	const messageTag: string = message.slice(0, commaIndex).toString()
 	let json: any
-	let tags: WATag
+	let tags: WATag | undefined
 	if(data.length) {
 		const possiblyEnc = (data.length > 32 && data.length % 16 === 0)
 		if(typeof data === 'string' || !possiblyEnc) {

@@ -201,5 +201,5 @@ export const SINGLE_BYTE_TOKENS = [
 export const TOKEN_MAP: { [token: string]: { dict?: number, index: number } } = { }
 
 for(let i = 0;i < SINGLE_BYTE_TOKENS.length;i++) {
-	TOKEN_MAP[SINGLE_BYTE_TOKENS[i]] = { index: i }
+	TOKEN_MAP[SINGLE_BYTE_TOKENS[i]!] = { index: i }
 }

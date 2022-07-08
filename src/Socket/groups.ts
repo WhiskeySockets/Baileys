@@ -120,7 +120,9 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 							...(description ? { id: generateMessageID() } : { delete: 'true' }),
 							...(prev ? { prev } : {})
 						},
-						content: description ? [{ tag: 'body', attrs: {}, content: Buffer.from(description, 'utf-8') }] : null
+						content: description ? [
+							{ tag: 'body', attrs: {}, content: Buffer.from(description, 'utf-8') }
+						] : undefined
 					}
 				]
 			)
@@ -128,17 +130,17 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 		groupInviteCode: async(jid: string) => {
 			const result = await groupQuery(jid, 'get', [{ tag: 'invite', attrs: {} }])
 			const inviteNode = getBinaryNodeChild(result, 'invite')
-			return inviteNode.attrs.code
+			return inviteNode?.attrs.code
 		},
 		groupRevokeInvite: async(jid: string) => {
 			const result = await groupQuery(jid, 'set', [{ tag: 'invite', attrs: {} }])
 			const inviteNode = getBinaryNodeChild(result, 'invite')
-			return inviteNode.attrs.code
+			return inviteNode?.attrs.code
 		},
 		groupAcceptInvite: async(code: string) => {
 			const results = await groupQuery('@g.us', 'set', [{ tag: 'invite', attrs: { code } }])
 			const result = getBinaryNodeChild(results, 'group')
-			return result.attrs.jid
+			return result?.attrs.jid
 		},
 		/**
 		 * accept a GroupInviteMessage
@@ -147,11 +149,11 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 		 */
 		groupAcceptInviteV4: async(key: string | WAMessageKey, inviteMessage: proto.IGroupInviteMessage) => {
 			key = typeof key === 'string' ? { remoteJid: key } : key
-			const results = await groupQuery(inviteMessage.groupJid, 'set', [{
+			const results = await groupQuery(inviteMessage.groupJid!, 'set', [{
 				tag: 'accept',
 				attrs: {
-					code: inviteMessage.inviteCode,
-					expiration: inviteMessage.inviteExpiration.toString(),
+					code: inviteMessage.inviteCode!,
+					expiration: inviteMessage.inviteExpiration!.toString(),
 					admin: key.remoteJid!
 				}
 			}])
@@ -254,7 +256,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 
 
 export const extractGroupMetadata = (result: BinaryNode) => {
-	const group = getBinaryNodeChild(result, 'group')
+	const group = getBinaryNodeChild(result, 'group')!
 	const descChild = getBinaryNodeChild(group, 'description')
 	let desc: string | undefined
 	let descId: string | undefined

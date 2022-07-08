@@ -220,7 +220,7 @@ export const decodeSyncdMutations = async(
 		const encContent = content.slice(0, -32)
 		const ogValueMac = content.slice(-32)
 		if(validateMacs) {
-			const contentHmac = generateMac(operation, encContent, record.keyId!.id!, key.valueMacKey)
+			const contentHmac = generateMac(operation!, encContent, record.keyId!.id!, key.valueMacKey)
 			if(Buffer.compare(contentHmac, ogValueMac) !== 0) {
 				throw new Boom('HMAC content verification failed')
 			}
@@ -231,7 +231,7 @@ export const decodeSyncdMutations = async(
 
 		if(validateMacs) {
 			const hmac = hmacSign(syncAction.index, key.indexKey)
-			if(Buffer.compare(hmac, record.index!.blob) !== 0) {
+			if(Buffer.compare(hmac, record.index!.blob!) !== 0) {
 				throw new Boom('HMAC index verification failed')
 			}
 		}
@@ -242,7 +242,7 @@ export const decodeSyncdMutations = async(
 		ltGenerator.mix({
 			indexMac: record.index!.blob!,
 			valueMac: ogValueMac,
-			operation: operation
+			operation: operation!
 		})
 	}
 
@@ -258,13 +258,13 @@ export const decodeSyncdPatch = async(
 	validateMacs: boolean
 ) => {
 	if(validateMacs) {
-		const base64Key = Buffer.from(msg.keyId!.id).toString('base64')
+		const base64Key = Buffer.from(msg.keyId!.id!).toString('base64')
 		const mainKeyObj = await getAppStateSyncKey(base64Key)
 		const mainKey = mutationKeys(mainKeyObj.keyData!)
 		const mutationmacs = msg.mutations!.map(mutation => mutation.record!.value!.blob!.slice(-32))
 
-		const patchMac = generatePatchMac(msg.snapshotMac, mutationmacs, toNumber(msg.version!.version), name, mainKey.patchMacKey)
-		if(Buffer.compare(patchMac, msg.patchMac) !== 0) {
+		const patchMac = generatePatchMac(msg.snapshotMac!, mutationmacs, toNumber(msg.version!.version!), name, mainKey.patchMacKey)
+		if(Buffer.compare(patchMac, msg.patchMac!) !== 0) {
 			throw new Boom('Invalid patch mac')
 		}
 	}
@@ -418,10 +418,10 @@ export const decodePatches = async(
 			logger?.trace({ name, version }, 'downloading external patch')
 			const ref = await downloadExternalPatch(syncd.externalMutations)
 			logger?.debug({ name, version, mutations: ref.mutations.length }, 'downloaded external patch')
-			syncd.mutations.push(...ref.mutations)
+			syncd.mutations?.push(...ref.mutations)
 		}
 
-		const patchVersion = toNumber(version.version!)
+		const patchVersion = toNumber(version!.version!)
 
 		newState.version = patchVersion
 		const shouldMutate = typeof minimumVersionNumber === 'undefined' || patchVersion > minimumVersionNumber
@@ -439,7 +439,7 @@ export const decodePatches = async(
 
 			const result = mutationKeys(keyEnc.keyData!)
 			const computedSnapshotMac = generateSnapshotMac(newState.hash, newState.version, name, result.snapshotMacKey)
-			if(Buffer.compare(snapshotMac, computedSnapshotMac) !== 0) {
+			if(Buffer.compare(snapshotMac!, computedSnapshotMac) !== 0) {
 				throw new Boom(`failed to verify LTHash at ${newState.version} of ${name}`)
 			}
 		}
@@ -482,7 +482,6 @@ export const chatModificationToAppPatch = (
 						}
 
 						if(m.key.participant) {
-							m.key = { ...m.key }
 							m.key.participant = jidNormalizedUser(m.key.participant)
 						}
 
@@ -627,7 +626,7 @@ export const processSyncAction = (
 		if(
 			isValidPatchBasedOnMessageRange(id, archiveAction.messageRange)
 			|| !isInitialSync
-			|| !accountSettings.unarchiveChats
+			|| !accountSettings?.unarchiveChats
 		) {
 			// basically we don't need to fire an "archive" update if the chat is being marked unarchvied
 			// this only applies for the initial sync
@@ -661,19 +660,21 @@ export const processSyncAction = (
 			}
 		] })
 	} else if(action?.contactAction) {
-		ev.emit('contacts.upsert', [{ id, name: action.contactAction!.fullName }])
+		ev.emit('contacts.upsert', [{ id, name: action.contactAction!.fullName! }])
 	} else if(action?.pushNameSetting) {
 		if(me?.name !== action?.pushNameSetting) {
 			ev.emit('creds.update', { me: { ...me, name: action?.pushNameSetting?.name! } })
 		}
 	} else if(action?.pinAction) {
-		ev.emit('chats.update', [{ id, pin: action.pinAction?.pinned ? toNumber(action.timestamp) : null }])
+		ev.emit('chats.update', [{ id, pin: action.pinAction?.pinned ? toNumber(action.timestamp!) : null }])
 	} else if(action?.unarchiveChatsSetting) {
 		const unarchiveChats = !!action.unarchiveChatsSetting.unarchiveChats
 		ev.emit('creds.update', { accountSettings: { unarchiveChats } })
 
-		logger.info(`archive setting updated => '${action.unarchiveChatsSetting.unarchiveChats}'`)
-		accountSettings.unarchiveChats = unarchiveChats
+		logger?.info(`archive setting updated => '${action.unarchiveChatsSetting.unarchiveChats}'`)
+		if(accountSettings) {
+			accountSettings.unarchiveChats = unarchiveChats
+		}
 	} else if(action?.starAction) {
 		ev.emit('messages.update', [
 			{
@@ -689,12 +690,12 @@ export const processSyncAction = (
 			ev.emit('chats.delete', [id])
 		}
 	} else {
-		logger.warn({ syncAction, id }, 'unprocessable update')
+		logger?.warn({ syncAction, id }, 'unprocessable update')
 	}
 
-	function isValidPatchBasedOnMessageRange(id: string, msgRange: proto.ISyncActionMessageRange) {
+	function isValidPatchBasedOnMessageRange(id: string, msgRange: proto.ISyncActionMessageRange | null | undefined) {
 		const chat = recvChats?.[id]
-		const lastMsgTimestamp = msgRange.lastMessageTimestamp || msgRange.lastSystemMessageTimestamp || 0
+		const lastMsgTimestamp = msgRange?.lastMessageTimestamp || msgRange?.lastSystemMessageTimestamp || 0
 		const chatLastMsgTimestamp = chat?.lastMsgRecvTimestamp || 0
 		return lastMsgTimestamp >= chatLastMsgTimestamp
 	}

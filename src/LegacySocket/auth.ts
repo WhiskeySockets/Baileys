@@ -27,7 +27,7 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 	const socket = makeSocket(config)
 	const { ws } = socket
 	let curveKeys: CurveKeyPair
-	let initTimeout: NodeJS.Timeout
+	let initTimeout: NodeJS.Timeout | undefined
 
 	ws.on('phone-connection', ({ value: phoneConnected }) => {
 		updateState({ legacy: { ...state.legacy, phoneConnected } })
@@ -133,7 +133,7 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 				generateKeysForAuth(ref, ttl)
 			}
 		})()
-		let loginTag: string
+		let loginTag: string | undefined
 		if(canDoLogin) {
 			updateEncKeys()
 			// if we have the info to restore a closed session

@@ -153,7 +153,7 @@ export const decodeDecompressedBinaryNode = (
 
 	const readString = (tag: number): string => {
 		if(tag >= 1 && tag < SINGLE_BYTE_TOKENS.length) {
-			return SINGLE_BYTE_TOKENS[tag]
+			return SINGLE_BYTE_TOKENS[tag] || ''
 		}
 
 		switch (tag) {
@@ -163,7 +163,7 @@ export const decodeDecompressedBinaryNode = (
 		case TAGS.DICTIONARY_3:
 			return getTokenDouble(tag - TAGS.DICTIONARY_0, readByte())
 		case TAGS.LIST_EMPTY:
-			return null
+			return ''
 		case TAGS.BINARY_8:
 			return readStringFromChars(readByte())
 		case TAGS.BINARY_20:

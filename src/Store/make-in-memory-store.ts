@@ -18,7 +18,7 @@ export const waChatKey = (pin: boolean) => ({
 	compare: (k1: string, k2: string) => k2.localeCompare (k1)
 })
 
-export const waMessageID = (m: WAMessage) => m.key.id
+export const waMessageID = (m: WAMessage) => m.key.id || ''
 
 export type BaileysInMemoryStoreConfig = {
 	chatKey?: Comparable<Chat, string>
@@ -28,9 +28,9 @@ export type BaileysInMemoryStoreConfig = {
 const makeMessagesDictionary = () => makeOrderedDictionary(waMessageID)
 
 export default (
-	{ logger, chatKey }: BaileysInMemoryStoreConfig
+	{ logger: _logger, chatKey }: BaileysInMemoryStoreConfig
 ) => {
-	logger = logger || DEFAULT_CONNECTION_CONFIG.logger.child({ stream: 'in-mem-store' })
+	const logger = _logger || DEFAULT_CONNECTION_CONFIG.logger.child({ stream: 'in-mem-store' })
 	chatKey = chatKey || waChatKey(true)
 	const KeyedDB = require('@adiwajshing/keyed-db').default as new (...args: any[]) => KeyedDB<Chat, string>
 
@@ -118,9 +118,9 @@ export default (
 		ev.on('chats.update', updates => {
 			for(let update of updates) {
 				const result = chats.update(update.id!, chat => {
-					if(update.unreadCount > 0) {
+					if(update.unreadCount! > 0) {
 						update = { ...update }
-						update.unreadCount = chat.unreadCount + update.unreadCount
+						update.unreadCount = (chat.unreadCount || 0) + update.unreadCount!
 					}
 
 					Object.assign(chat, update)
@@ -166,8 +166,8 @@ export default (
 		})
 		ev.on('messages.update', updates => {
 			for(const { update, key } of updates) {
-				const list = assertMessageList(key.remoteJid)
-				const result = list.updateAssign(key.id, update)
+				const list = assertMessageList(key.remoteJid!)
+				const result = list.updateAssign(key.id!, update)
 				if(!result) {
 					logger.debug({ update }, 'got update for non-existent message')
 				}
@@ -178,7 +178,7 @@ export default (
 				const list = messages[item.jid]
 				list?.clear()
 			} else {
-				const jid = item.keys[0].remoteJid
+				const jid = item.keys[0].remoteJid!
 				const list = messages[jid]
 				if(list) {
 					const idSet = new Set(item.keys.map(k => k.id))
@@ -189,8 +189,9 @@ export default (
 
 		ev.on('groups.update', updates => {
 			for(const update of updates) {
-				if(groupMetadata[update.id]) {
-					Object.assign(groupMetadata[update.id!], update)
+				const id = update.id!
+				if(groupMetadata[id]) {
+					Object.assign(groupMetadata[id], update)
 				} else {
 					logger.debug({ update }, 'got update for non-existant group metadata')
 				}
@@ -223,7 +224,7 @@ export default (
 		ev.on('message-receipt.update', updates => {
 			for(const { key, receipt } of updates) {
 				const obj = messages[key.remoteJid!]
-				const msg = obj?.get(key.id)
+				const msg = obj?.get(key.id!)
 				if(msg) {
 					updateMessageWithReceipt(msg, receipt)
 				}
@@ -267,12 +268,12 @@ export default (
 
 			const mode = !cursor || 'before' in cursor ? 'before' : 'after'
 			const cursorKey = !!cursor ? ('before' in cursor ? cursor.before : cursor.after) : undefined
-			const cursorValue = cursorKey ? list.get(cursorKey.id) : undefined
+			const cursorValue = cursorKey ? list.get(cursorKey.id!) : undefined
 
 			let messages: WAMessage[]
 			if(list && mode === 'before' && (!cursorKey || cursorValue)) {
 				if(cursorValue) {
-					const msgIdx = list.array.findIndex(m => m.key.id === cursorKey.id)
+					const msgIdx = list.array.findIndex(m => m.key.id === cursorKey?.id)
 					messages = list.array.slice(0, msgIdx)
 				} else {
 					messages = list.array
@@ -307,10 +308,10 @@ export default (
 			return message
 		},
 		mostRecentMessage: async(jid: string, sock: LegacyWASocket | undefined) => {
-			let message = messages[jid]?.array.slice(-1)[0]
+			let message: WAMessage | undefined = messages[jid]?.array.slice(-1)[0]
 			if(!message) {
-				const [result] = await sock?.fetchMessagesFromWA(jid, 1, undefined)
-				message = result
+				const items = await sock?.fetchMessagesFromWA(jid, 1, undefined)
+				message = items?.[0]
 			}
 
 			return message
@@ -329,24 +330,30 @@ export default (
 		},
 		fetchGroupMetadata: async(jid: string, sock: AnyWASocket | undefined) => {
 			if(!groupMetadata[jid]) {
-				groupMetadata[jid] = await sock?.groupMetadata(jid)
+				const metadata = await sock?.groupMetadata(jid)
+				if(metadata) {
+					groupMetadata[jid] = metadata
+				}
 			}
 
 			return groupMetadata[jid]
 		},
 		fetchBroadcastListInfo: async(jid: string, sock: LegacyWASocket | undefined) => {
 			if(!groupMetadata[jid]) {
-				groupMetadata[jid] = await sock?.getBroadcastListInfo(jid)
+				const metadata = await sock?.getBroadcastListInfo(jid)
+				if(metadata) {
+					groupMetadata[jid] = metadata
+				}
 			}
 
 			return groupMetadata[jid]
 		},
 		fetchMessageReceipts: async({ remoteJid, id }: WAMessageKey, sock: LegacyWASocket | undefined) => {
-			const list = messages[remoteJid]
-			const msg = list?.get(id)
-			let receipts = msg.userReceipt
+			const list = messages[remoteJid!]
+			const msg = list?.get(id!)
+			let receipts = msg?.userReceipt
 			if(!receipts) {
-				receipts = await sock?.messageInfo(remoteJid, id)
+				receipts = await sock?.messageInfo(remoteJid!, id!)
 				if(msg) {
 					msg.userReceipt = receipts
 				}

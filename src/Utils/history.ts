@@ -35,7 +35,7 @@ export const processHistoryMessage = (
 	switch (item.syncType) {
 	case proto.HistorySync.HistorySyncHistorySyncType.INITIAL_BOOTSTRAP:
 	case proto.HistorySync.HistorySyncHistorySyncType.RECENT:
-		for(const chat of item.conversations) {
+		for(const chat of item.conversations!) {
 			const contactId = `c:${chat.id}`
 			if(chat.name && !historyCache.has(contactId)) {
 				contacts.push({ id: chat.id, name: chat.name })
@@ -43,15 +43,16 @@ export const processHistoryMessage = (
 			}
 
 			const msgs = chat.messages || []
-			for(const { message } of msgs) {
+			for(const item of msgs) {
+				const message = item.message!
 				const uqId = `${message.key.remoteJid}:${message.key.id}`
 				if(!historyCache.has(uqId)) {
 					messages.push(message)
 
-					const curItem = recvChats[message.key.remoteJid]
+					const curItem = recvChats[message.key.remoteJid!]
 					const timestamp = toNumber(message.messageTimestamp)
 					if(!message.key.fromMe && (!curItem || timestamp > curItem.lastMsgRecvTimestamp)) {
-						recvChats[message.key.remoteJid] = { lastMsgRecvTimestamp: timestamp }
+						recvChats[message.key.remoteJid!] = { lastMsgRecvTimestamp: timestamp }
 						// keep only the most recent message in the chat array
 						chat.messages = [{ message }]
 					}
@@ -72,10 +73,10 @@ export const processHistoryMessage = (
 
 		break
 	case proto.HistorySync.HistorySyncHistorySyncType.PUSH_NAME:
-		for(const c of item.pushnames) {
+		for(const c of item.pushnames!) {
 			const contactId = `c:${c.id}`
 			if(!historyCache.has(contactId)) {
-				contacts.push({ notify: c.pushname, id: c.id })
+				contacts.push({ notify: c.pushname!, id: c.id! })
 				historyCache.add(contactId)
 			}
 		}

@@ -67,7 +67,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					{ tag: 'privacy', attrs: { } }
 				]
 			})
-			privacySettings = reduceBinaryNodeToDictionary(content[0] as BinaryNode, 'category')
+			privacySettings = reduceBinaryNodeToDictionary(content?.[0] as BinaryNode, 'category')
 		}
 
 		return privacySettings
@@ -135,7 +135,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 		return results.map(user => {
 			const contact = getBinaryNodeChild(user, 'contact')
-			return { exists: contact.attrs.type === 'in', jid: user.attrs.jid }
+			return { exists: contact?.attrs.type === 'in', jid: user.attrs.jid }
 		}).filter(item => item.exists)
 	}
 
@@ -147,8 +147,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		if(result) {
 			const status = getBinaryNodeChild(result, 'status')
 			return {
-				status: status.content!.toString(),
-				setAt: new Date(+status.attrs.t * 1000)
+				status: status?.content!.toString(),
+				setAt: new Date(+(status?.attrs.t || 0) * 1000)
 			}
 		}
 	}
@@ -253,18 +253,19 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			const category = getBinaryNodeChild(getBinaryNodeChild(profiles, 'categories'), 'category')
 			const business_hours = getBinaryNodeChild(profiles, 'business_hours')
 			const business_hours_config = business_hours && getBinaryNodeChildren(business_hours, 'business_hours_config')
+			const websiteStr = website?.content?.toString()
 			return {
 				wid: profiles.attrs?.jid,
-				address: address?.content.toString(),
-				description: description?.content.toString(),
-				website: [website?.content.toString()],
-				email: email?.content.toString(),
-				category: category?.content.toString(),
+				address: address?.content?.toString(),
+				description: description?.content?.toString() || '',
+				website: websiteStr ? [websiteStr] : [],
+				email: email?.content?.toString(),
+				category: category?.content?.toString(),
 				business_hours: {
 					timezone: business_hours?.attrs?.timezone,
 					business_config: business_hours_config?.map(({ attrs }) => attrs as unknown as WABusinessHoursConfig)
 				}
-			} as unknown as WABusinessProfile
+			}
 		}
 	}
 
@@ -296,7 +297,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				processSyncAction(
 					mutation,
 					ev,
-					authState.creds.me,
+					authState.creds.me!,
 					recvChats ? { recvChats, accountSettings: authState.creds.accountSettings } : undefined,
 					logger
 				)
@@ -402,7 +403,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 						} catch(error) {
 							// if retry attempts overshoot
 							// or key not found
-							const isIrrecoverableError = attemptsMap[name] >= MAX_SYNC_ATTEMPTS || error.output?.statusCode === 404
+							const isIrrecoverableError = attemptsMap[name]! >= MAX_SYNC_ATTEMPTS || error.output?.statusCode === 404
 							logger.info({ name, error: error.stack }, `failed to sync state from version${isIrrecoverableError ? '' : ', removing and trying from scratch'}`)
 							await authState.keys.set({ 'app-state-sync-version': { [name]: null } })
 							// increment number of retries
@@ -468,7 +469,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				tag: 'chatstate',
 				attrs: {
 					from: me!.id!,
-					to: toJid,
+					to: toJid!,
 				},
 				content: [
 					{
@@ -492,7 +493,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	)
 
 	const handlePresenceUpdate = ({ tag, attrs, content }: BinaryNode) => {
-		let presence: PresenceData
+		let presence: PresenceData | undefined
 		const jid = attrs.from
 		const participant = attrs.participant || attrs.from
 		if(tag === 'presence') {
@@ -606,8 +607,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			const { onMutation } = newAppStateChunkHandler(undefined)
 			await decodePatches(
 				name,
-				[{ ...encodeResult.patch, version: { version: encodeResult.state.version }, }],
-				initial,
+				[{ ...encodeResult!.patch, version: { version: encodeResult!.state.version }, }],
+				initial!,
 				getAppStateSyncKey,
 				onMutation,
 				undefined,
@@ -698,10 +699,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 		if(!!msg.pushName) {
 			let jid = msg.key.fromMe ? authState.creds.me!.id : (msg.key.participant || msg.key.remoteJid)
-			jid = jidNormalizedUser(jid)
+			jid = jidNormalizedUser(jid!)
 
 			if(!msg.key.fromMe) {
-				ev.emit('contacts.update', [{ id: jid, notify: msg.pushName, verifiedName: msg.verifiedBizName }])
+				ev.emit('contacts.update', [{ id: jid, notify: msg.pushName, verifiedName: msg.verifiedBizName! }])
 			}
 
 			// update our pushname too
@@ -724,7 +725,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			}
 		)
 
-		const isAnyHistoryMsg = isHistoryMsg(msg.message)
+		const isAnyHistoryMsg = isHistoryMsg(msg.message!)
 		if(isAnyHistoryMsg) {
 			// we only want to sync app state once we've all the history
 			// restart the app state sync timeout
@@ -741,7 +742,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	ws.on('CB:chatstate', handlePresenceUpdate)
 
 	ws.on('CB:ib,,dirty', async(node: BinaryNode) => {
-		const { attrs } = getBinaryNodeChild(node, 'dirty')
+		const { attrs } = getBinaryNodeChild(node, 'dirty')!
 		const type = attrs.type
 		switch (type) {
 		case 'account_sync':

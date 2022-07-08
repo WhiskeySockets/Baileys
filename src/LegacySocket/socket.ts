@@ -43,7 +43,7 @@ export const makeSocket = ({
 	let authInfo: { encKey: Buffer, macKey: Buffer }
 	let keepAliveReq: NodeJS.Timeout
 
-	let phoneCheckInterval: NodeJS.Timeout
+	let phoneCheckInterval: NodeJS.Timeout | undefined
 	let phoneCheckListeners = 0
 
 	const phoneConnectionChanged = (value: boolean) => {
@@ -267,10 +267,10 @@ export const makeSocket = ({
 					return result as any
 				} finally {
 					requiresPhoneConnection && clearPhoneCheckInterval()
-					cancelPhoneChecker && cancelPhoneChecker()
+					cancelPhoneChecker! && cancelPhoneChecker!()
 
-					ws.off(`TAG:${tag}`, onRecv)
-					ws.off('ws-close', onErr) // if the socket closes, you'll never receive the message
+					ws.off(`TAG:${tag}`, onRecv!)
+					ws.off('ws-close', onErr!) // if the socket closes, you'll never receive the message
 				}
 			})(),
 			cancelToken: () => {
@@ -290,7 +290,7 @@ export const makeSocket = ({
 		{ json, timeoutMs, expect200, tag, longTag, binaryTag, requiresPhoneConnection }: SocketQueryOptions
 	) => {
 		tag = tag || generateMessageTag(longTag)
-		const { promise, cancelToken } = waitForMessage(tag, requiresPhoneConnection, timeoutMs)
+		const { promise, cancelToken } = waitForMessage(tag, !!requiresPhoneConnection, timeoutMs)
 		try {
 			await sendNode({ json, tag, binaryTag })
 		} catch(error) {

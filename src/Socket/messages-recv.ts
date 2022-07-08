@@ -76,7 +76,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const isGroup = !!node.attrs.participant
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
 
-		const deviceIdentity = proto.ADVSignedDeviceIdentity.encode(account).finish()
+		const deviceIdentity = proto.ADVSignedDeviceIdentity.encode(account!).finish()
 		await authState.keys.transaction(
 			async() => {
 				const { update, preKeys } = await getNextPreKeys(authState, 1)
@@ -147,7 +147,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const from = node.attrs.from
 		if(from === S_WHATSAPP_NET) {
 			const countChild = getBinaryNodeChild(node, 'count')
-			const count = +countChild.attrs.value
+			const count = +countChild!.attrs.value
 			const shouldUploadMorePreKeys = count < MIN_PREKEY_COUNT
 
 			logger.debug({ count, shouldUploadMorePreKeys }, 'recv pre-key count')
@@ -270,22 +270,23 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const sendMessagesAgain = async(key: proto.IMessageKey, ids: string[]) => {
 		const msgs = await Promise.all(ids.map(id => getMessage({ ...key, id })))
-
-		const participant = key.participant || key.remoteJid
+		const remoteJid = key.remoteJid!
+		const participant = key.participant || remoteJid
 		// if it's the primary jid sending the request
 		// just re-send the message to everyone
 		// prevents the first message decryption failure
-		const sendToAll = !jidDecode(participant).device
+		const sendToAll = !jidDecode(participant)?.device
 		await assertSessions([participant], true)
 
-		if(isJidGroup(key.remoteJid)) {
-			await authState.keys.set({ 'sender-key-memory': { [key.remoteJid]: null } })
+		if(isJidGroup(remoteJid)) {
+			await authState.keys.set({ 'sender-key-memory': { [remoteJid]: null } })
 		}
 
 		logger.debug({ participant, sendToAll }, 'forced new session for retry recp')
 
 		for(let i = 0; i < msgs.length;i++) {
-			if(msgs[i]) {
+			const msg = msgs[i]
+			if(msg) {
 				updateSendMessageAgainCount(ids[i], participant)
 				const msgRelayOpts: MessageRelayOptions = { messageId: ids[i] }
 
@@ -295,7 +296,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					msgRelayOpts.participant = participant
 				}
 
-				await relayMessage(key.remoteJid, msgs[i], msgRelayOpts)
+				await relayMessage(key.remoteJid!, msg, msgRelayOpts)
 			} else {
 				logger.debug({ jid: key.remoteJid, id: ids[i] }, 'recv retry request, but message not available')
 			}
@@ -443,21 +444,21 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						} else if(msg.key.fromMe) { // message was sent by us from a different device
 							type = 'sender'
 							// need to specially handle this case
-							if(isJidUser(msg.key.remoteJid)) {
+							if(isJidUser(msg.key.remoteJid!)) {
 								participant = author
 							}
 						} else if(!sendActiveReceipts) {
 							type = 'inactive'
 						}
 
-						await sendReceipt(msg.key.remoteJid!, participant, [msg.key.id!], type)
+						await sendReceipt(msg.key.remoteJid!, participant!, [msg.key.id!], type)
 
 
 						// send ack for history message
-						const isAnyHistoryMsg = isHistoryMsg(msg.message)
+						const isAnyHistoryMsg = isHistoryMsg(msg.message!)
 						if(isAnyHistoryMsg) {
-							const jid = jidEncode(jidDecode(msg.key.remoteJid!).user, 'c.us')
-							await sendReceipt(jid, undefined, [msg.key.id], 'hist_sync')
+							const jid = jidNormalizedUser(msg.key.remoteJid!)
+							await sendReceipt(jid, undefined, [msg.key.id!], 'hist_sync')
 						}
 					}
 
@@ -516,7 +517,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const key: WAMessageKey = { remoteJid: attrs.from, fromMe: true, id: attrs.id }
 			const msg = await getMessage(key)
 			if(msg) {
-				await relayMessage(key.remoteJid, msg, { messageId: key.id, useUserDevicesCache: false })
+				await relayMessage(key.remoteJid!, msg, { messageId: key.id!, useUserDevicesCache: false })
 			} else {
 				logger.warn({ attrs }, 'could not send message again, as it was not found')
 			}
@@ -539,7 +540,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	// called when all offline notifs are handled
 	ws.on('CB:ib,,offline', async(node: BinaryNode) => {
 		const child = getBinaryNodeChild(node, 'offline')
-		const offlineNotifs = +child.attrs.count
+		const offlineNotifs = +(child?.attrs.count || 0)
 
 		logger.info(`handled ${offlineNotifs} offline messages/notifications`)
 		await ev.flush()

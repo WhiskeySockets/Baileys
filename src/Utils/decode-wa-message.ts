@@ -56,6 +56,8 @@ export const decodeMessageStanza = (stanza: BinaryNode, auth: AuthenticationStat
 
 		chatId = from
 		author = participant
+	} else {
+		throw new Boom('Unknown message type', { data: stanza })
 	}
 
 	const sender = msgType === 'chat' ? author : chatId
@@ -117,6 +119,8 @@ export const decodeMessageStanza = (stanza: BinaryNode, auth: AuthenticationStat
 							const user = isJidUser(sender) ? sender : author
 							msgBuffer = await decryptSignalProto(user, e2eType, content as Buffer, auth)
 							break
+						default:
+							throw new Error(`Unknown e2e type: ${e2eType}`)
 						}
 
 						let msg: proto.IMessage = proto.Message.decode(unpadRandomMax16(msgBuffer))

@@ -25,7 +25,7 @@ export const WA_CERT_DETAILS = {
 	SERIAL: 0,
 }
 
-const BASE_CONNECTION_CONFIG: CommonSocketConfig<any> = {
+const BASE_CONNECTION_CONFIG: CommonSocketConfig = {
 	version: version as any,
 	browser: Browsers.baileys('Chrome'),
 
@@ -42,6 +42,7 @@ const BASE_CONNECTION_CONFIG: CommonSocketConfig<any> = {
 
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	...BASE_CONNECTION_CONFIG,
+	auth: undefined as any,
 	downloadHistory: true,
 	markOnlineOnConnect: true,
 	linkPreviewImageThumbnailWidth: 192,

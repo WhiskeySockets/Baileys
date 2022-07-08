@@ -4,9 +4,9 @@ import { BinaryNode } from './types'
 
 // some extra useful utilities
 
-export const getBinaryNodeChildren = ({ content }: BinaryNode, childTag: string) => {
-	if(Array.isArray(content)) {
-		return content.filter(item => item.tag === childTag)
+export const getBinaryNodeChildren = (node: BinaryNode | undefined, childTag: string) => {
+	if(Array.isArray(node?.content)) {
+		return node!.content.filter(item => item.tag === childTag)
 	}
 
 	return []
@@ -20,20 +20,20 @@ export const getAllBinaryNodeChildren = ({ content }: BinaryNode) => {
 	return []
 }
 
-export const getBinaryNodeChild = ({ content }: BinaryNode, childTag: string) => {
-	if(Array.isArray(content)) {
-		return content.find(item => item.tag === childTag)
+export const getBinaryNodeChild = (node: BinaryNode | undefined, childTag: string) => {
+	if(Array.isArray(node?.content)) {
+		return node?.content.find(item => item.tag === childTag)
 	}
 }
 
-export const getBinaryNodeChildBuffer = (node: BinaryNode, childTag: string) => {
+export const getBinaryNodeChildBuffer = (node: BinaryNode | undefined, childTag: string) => {
 	const child = getBinaryNodeChild(node, childTag)?.content
 	if(Buffer.isBuffer(child) || child instanceof Uint8Array) {
 		return child
 	}
 }
 
-export const getBinaryNodeChildString = (node: BinaryNode, childTag: string) => {
+export const getBinaryNodeChildString = (node: BinaryNode | undefined, childTag: string) => {
 	const child = getBinaryNodeChild(node, childTag)?.content
 	if(Buffer.isBuffer(child) || child instanceof Uint8Array) {
 		return Buffer.from(child).toString('utf-8')

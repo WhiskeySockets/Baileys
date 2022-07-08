@@ -2,7 +2,7 @@ function makeOrderedDictionary<T>(idGetter: (item: T) => string) {
 	const array: T[] = []
 	const dict: { [_: string]: T } = { }
 
-	const get = (id: string) => dict[id]
+	const get = (id: string): T | undefined => dict[id]
 
 	const update = (item: T) => {
 		const id = idGetter(item)

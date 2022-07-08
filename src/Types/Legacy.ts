@@ -71,7 +71,8 @@ export type SocketQueryOptions = SocketSendMessageOptions & {
 	requiresPhoneConnection?: boolean
 }
 
-export type LegacySocketConfig = CommonSocketConfig<LegacyAuthenticationCreds> & {
+export type LegacySocketConfig = CommonSocketConfig & {
+    auth?: LegacyAuthenticationCreds
 	/** max time for the phone to respond to a connectivity test */
 	phoneResponseTimeMs: number
 	/** max time for WA server to respond before error with 422 */

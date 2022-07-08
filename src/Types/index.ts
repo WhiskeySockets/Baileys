@@ -17,7 +17,9 @@ import { CommonSocketConfig } from './Socket'
 
 export type MessageRetryMap = { [msgId: string]: number }
 
-export type SocketConfig = CommonSocketConfig<AuthenticationState> & {
+export type SocketConfig = CommonSocketConfig & {
+    /** provide an auth state object to maintain the auth state */
+    auth: AuthenticationState
     /** By default true, should history messages be downloaded and processed */
     downloadHistory: boolean
     /** transaction capability options for SignalKeyStore */
@@ -67,18 +69,16 @@ export type WABusinessHoursConfig = {
 
 export type WABusinessProfile = {
     description: string
-    email: string
+    email: string | undefined
     business_hours: {
         timezone?: string
         config?: WABusinessHoursConfig[]
         business_config?: WABusinessHoursConfig[]
     }
     website: string[]
-    categories: {
-        id: string
-        localized_display_name: string
-    }[]
+    category?: string
     wid?: string
+    address?: string
 }
 
 

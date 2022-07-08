@@ -14,8 +14,8 @@ export const parseCollectionsNode = (node: BinaryNode) => {
 	const collectionsNode = getBinaryNodeChild(node, 'collections')
 	const collections = getBinaryNodeChildren(collectionsNode, 'collection').map<CatalogCollection>(
 		collectionNode => {
-			const id = getBinaryNodeChildString(collectionNode, 'id')
-			const name = getBinaryNodeChildString(collectionNode, 'name')
+			const id = getBinaryNodeChildString(collectionNode, 'id')!
+			const name = getBinaryNodeChildString(collectionNode, 'name')!
 
 			const products = getBinaryNodeChildren(collectionNode, 'product').map(parseProductNode)
 			return {
@@ -36,14 +36,14 @@ export const parseOrderDetailsNode = (node: BinaryNode) => {
 	const orderNode = getBinaryNodeChild(node, 'order')
 	const products = getBinaryNodeChildren(orderNode, 'product').map<OrderProduct>(
 		productNode => {
-			const imageNode = getBinaryNodeChild(productNode, 'image')
+			const imageNode = getBinaryNodeChild(productNode, 'image')!
 			return {
-				id: getBinaryNodeChildString(productNode, 'id'),
-				name: getBinaryNodeChildString(productNode, 'name'),
-				imageUrl: getBinaryNodeChildString(imageNode, 'url'),
-				price: +getBinaryNodeChildString(productNode, 'price'),
-				currency: getBinaryNodeChildString(productNode, 'currency'),
-				quantity: +getBinaryNodeChildString(productNode, 'quantity')
+				id: getBinaryNodeChildString(productNode, 'id')!,
+				name: getBinaryNodeChildString(productNode, 'name')!,
+				imageUrl: getBinaryNodeChildString(imageNode, 'url')!,
+				price: +getBinaryNodeChildString(productNode, 'price')!,
+				currency: getBinaryNodeChildString(productNode, 'currency')!,
+				quantity: +getBinaryNodeChildString(productNode, 'quantity')!
 			}
 		}
 	)
@@ -52,8 +52,8 @@ export const parseOrderDetailsNode = (node: BinaryNode) => {
 
 	const orderDetails: OrderDetails = {
 		price: {
-			total: +getBinaryNodeChildString(priceNode, 'total'),
-			currency: getBinaryNodeChildString(priceNode, 'currency'),
+			total: +getBinaryNodeChildString(priceNode, 'total')!,
+			currency: getBinaryNodeChildString(priceNode, 'currency')!,
 		},
 		products
 	}
@@ -172,24 +172,24 @@ export const toProductNode = (productId: string | undefined, product: ProductCre
 
 export const parseProductNode = (productNode: BinaryNode) => {
 	const isHidden = productNode.attrs.is_hidden === 'true'
-	const id = getBinaryNodeChildString(productNode, 'id')
+	const id = getBinaryNodeChildString(productNode, 'id')!
 
-	const mediaNode = getBinaryNodeChild(productNode, 'media')
-	const statusInfoNode = getBinaryNodeChild(productNode, 'status_info')
+	const mediaNode = getBinaryNodeChild(productNode, 'media')!
+	const statusInfoNode = getBinaryNodeChild(productNode, 'status_info')!
 
 	const product: Product = {
 		id,
 		imageUrls: parseImageUrls(mediaNode),
 		reviewStatus: {
-			whatsapp: getBinaryNodeChildString(statusInfoNode, 'status'),
+			whatsapp: getBinaryNodeChildString(statusInfoNode, 'status')!,
 		},
 		availability: 'in stock',
-		name: getBinaryNodeChildString(productNode, 'name'),
+		name: getBinaryNodeChildString(productNode, 'name')!,
 		retailerId: getBinaryNodeChildString(productNode, 'retailer_id'),
 		url: getBinaryNodeChildString(productNode, 'url'),
-		description: getBinaryNodeChildString(productNode, 'description'),
-		price:  +getBinaryNodeChildString(productNode, 'price'),
-		currency: getBinaryNodeChildString(productNode, 'currency'),
+		description: getBinaryNodeChildString(productNode, 'description')!,
+		price:  +getBinaryNodeChildString(productNode, 'price')!,
+		currency: getBinaryNodeChildString(productNode, 'currency')!,
 		isHidden,
 	}
 
@@ -246,15 +246,15 @@ export const uploadingNecessaryImages = async(images: WAMediaUpload[], waUploadT
 const parseImageUrls = (mediaNode: BinaryNode) => {
 	const imgNode = getBinaryNodeChild(mediaNode, 'image')
 	return {
-		requested: getBinaryNodeChildString(imgNode, 'request_image_url'),
-		original: getBinaryNodeChildString(imgNode, 'original_image_url')
+		requested: getBinaryNodeChildString(imgNode, 'request_image_url')!,
+		original: getBinaryNodeChildString(imgNode, 'original_image_url')!
 	}
 }
 
 const parseStatusInfo = (mediaNode: BinaryNode): CatalogStatus => {
 	const node = getBinaryNodeChild(mediaNode, 'status_info')
 	return {
-		status: getBinaryNodeChildString(node, 'status'),
+		status: getBinaryNodeChildString(node, 'status')!,
 		canAppeal: getBinaryNodeChildString(node, 'can_appeal') === 'true',
 	}
 }

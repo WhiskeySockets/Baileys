@@ -23,11 +23,11 @@ const makeGroupsSocket = (config: LegacySocketConfig) => {
 			{
 				tag: 'group',
 				attrs: {
-					author: state.legacy?.user?.id,
+					author: state.legacy?.user?.id!,
 					id: tag,
 					type: type,
-					jid: jid,
-					subject: subject,
+					jid: jid!,
+					subject: subject!,
 				},
 				content: participants ?
 					participants.map(jid => (
@@ -96,7 +96,7 @@ const makeGroupsSocket = (config: LegacySocketConfig) => {
 			id: jid,
 			owner: attrs?.creator,
 			creation: +attrs?.create,
-			subject: null,
+			subject: '',
 			desc,
 			participants
 		}
@@ -146,8 +146,8 @@ const makeGroupsSocket = (config: LegacySocketConfig) => {
 		 * @param participants people to include in the group
 		 */
 		groupCreate: async(title: string, participants: string[]) => {
-			const response = await groupQuery('create', null, title, participants) as WAGroupCreateResponse
-			const gid = response.gid
+			const response = await groupQuery('create', undefined, title, participants) as WAGroupCreateResponse
+			const gid = response.gid!
 			let metadata: GroupMetadata
 			try {
 				metadata = await groupMetadataFull(gid)
@@ -199,11 +199,11 @@ const makeGroupsSocket = (config: LegacySocketConfig) => {
 			const metadata = await groupMetadataFull(jid)
 			const node: BinaryNode = {
 				tag: 'description',
-				attrs: { id: generateMessageID(), prev: metadata?.descId },
+				attrs: { id: generateMessageID(), prev: metadata?.descId! },
 				content: Buffer.from(description, 'utf-8')
 			}
 
-			const response = await groupQuery ('description', jid, null, null, [node])
+			const response = await groupQuery('description', jid, undefined, undefined, [node])
 			ev.emit('groups.update', [ { id: jid, desc: description } ])
 			return response
 		},
@@ -213,7 +213,7 @@ const makeGroupsSocket = (config: LegacySocketConfig) => {
 		 * @param participants the people to add
 		 */
 		groupParticipantsUpdate: async(id: string, participants: string[], action: ParticipantAction) => {
-			const result: GroupModificationResponse = await groupQuery(action, id, null, participants)
+			const result: GroupModificationResponse = await groupQuery(action, id, undefined, participants)
 			const jids = Object.keys(result.participants || {})
 			ev.emit('group-participants.update', { id, participants: jids, action })
 			return Object.keys(result.participants || {}).map(
@@ -237,7 +237,6 @@ const makeGroupsSocket = (config: LegacySocketConfig) => {
 			const metadata: GroupMetadata = {
 				subject: result.name,
 				id: jid,
-				creation: undefined,
 				owner: state.legacy?.user?.id,
 				participants: result.recipients!.map(({ id }) => (
 					{ id: jidNormalizedUser(id), isAdmin: false, isSuperAdmin: false }

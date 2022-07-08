@@ -97,7 +97,7 @@ export const makeNoiseHandler = (
 		finishInit,
 		processHandshake: ({ serverHello }: proto.HandshakeMessage, noiseKey: KeyPair) => {
 			authenticate(serverHello!.ephemeral!)
-			mixIntoKey(Curve.sharedKey(privateKey, serverHello.ephemeral!))
+			mixIntoKey(Curve.sharedKey(privateKey, serverHello!.ephemeral!))
 
 			const decStaticContent = decrypt(serverHello!.static!)
 			mixIntoKey(Curve.sharedKey(privateKey, decStaticContent))

@@ -1,6 +1,6 @@
 
 import * as constants from './constants'
-import { jidDecode } from './jid-utils'
+import { FullJid, jidDecode } from './jid-utils'
 import type { BinaryNode, BinaryNodeCodingOptions } from './types'
 
 export const encodeBinaryNode = (
@@ -52,7 +52,7 @@ export const encodeBinaryNode = (
 		pushBytes(bytes)
 	}
 
-	const writeJid = ({ agent, device, user, server }: ReturnType<typeof jidDecode>) => {
+	const writeJid = ({ agent, device, user, server }: FullJid) => {
 		if(typeof agent !== 'undefined' || typeof device !== 'undefined') {
 			pushByte(TAGS.AD_JID)
 			pushByte(agent || 0)

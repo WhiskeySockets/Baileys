@@ -48,8 +48,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					hosts: getBinaryNodeChildren(mediaConnNode, 'host').map(
 						item => item.attrs as any
 					),
-					auth: mediaConnNode.attrs.auth,
-					ttl: +mediaConnNode.attrs.ttl,
+					auth: mediaConnNode!.attrs.auth,
+					ttl: +mediaConnNode!.attrs.ttl,
 					fetchDate: new Date()
 				}
 				logger.debug('fetched media conn')
@@ -78,7 +78,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		if(type === 'sender' && isJidUser(jid)) {
 			node.attrs.recipient = jid
-			node.attrs.to = participant
+			node.attrs.to = participant!
 		} else {
 			node.attrs.to = jid
 			if(participant) {
@@ -134,10 +134,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const users: BinaryNode[] = []
 		jids = Array.from(new Set(jids))
 		for(let jid of jids) {
-			const user = jidDecode(jid).user
+			const user = jidDecode(jid)?.user
 			jid = jidNormalizedUser(jid)
-			if(userDevicesCache.has(user) && useCache) {
-				const devices: JidWithDevice[] = userDevicesCache.get(user)
+			if(userDevicesCache.has(user!) && useCache) {
+				const devices = userDevicesCache.get<JidWithDevice[]>(user!)!
 				deviceResults.push(...devices)
 
 				logger.trace({ user }, 'using cache for devices')
@@ -278,7 +278,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		let shouldIncludeDeviceIdentity = false
 
-		const { user, server } = jidDecode(jid)
+		const { user, server } = jidDecode(jid)!
 		const isGroup = server === 'g.us'
 		msgId = msgId || generateMessageID()
 		useUserDevicesCache = useUserDevicesCache !== false
@@ -299,7 +299,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				additionalAttributes = { ...additionalAttributes, device_fanout: 'false' }
 			}
 
-			const { user, device } = jidDecode(participant)
+			const { user, device } = jidDecode(participant)!
 			devices.push({ user, device })
 		}
 
@@ -333,7 +333,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					if(!participant) {
 						const participantsList = groupData.participants.map(p => p.id)
-						const additionalDevices = await getUSyncDevices(participantsList, useUserDevicesCache, false)
+						const additionalDevices = await getUSyncDevices(participantsList, !!useUserDevicesCache, false)
 						devices.push(...additionalDevices)
 					}
 
@@ -376,7 +376,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					await authState.keys.set({ 'sender-key-memory': { [jid]: senderKeyMap } })
 				} else {
-					const { user: meUser } = jidDecode(meId)
+					const { user: meUser } = jidDecode(meId)!
 
 					const encodedMeMsg = encodeWAMessage({
 						deviceSentMessage: {
@@ -389,7 +389,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						devices.push({ user })
 						devices.push({ user: meUser })
 
-						const additionalDevices = await getUSyncDevices([ meId, jid ], useUserDevicesCache, true)
+						const additionalDevices = await getUSyncDevices([ meId, jid ], !!useUserDevicesCache, true)
 						devices.push(...additionalDevices)
 					}
 
@@ -434,7 +434,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const stanza: BinaryNode = {
 					tag: 'message',
 					attrs: {
-						id: msgId,
+						id: msgId!,
 						type: 'text',
 						...(additionalAttributes || {})
 					},
@@ -461,7 +461,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					(stanza.content as BinaryNode[]).push({
 						tag: 'device-identity',
 						attrs: { },
-						content: proto.ADVSignedDeviceIdentity.encode(authState.creds.account).finish()
+						content: proto.ADVSignedDeviceIdentity.encode(authState.creds.account!).finish()
 					})
 
 					logger.debug({ jid }, 'adding device identity')
@@ -538,7 +538,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 								error = result.error
 							} else {
 								try {
-									const media = decryptMediaRetryData(result.media!, mediaKey, result.key.id)
+									const media = decryptMediaRetryData(result.media!, mediaKey, result.key.id!)
 									if(media.result !== proto.MediaRetryNotification.MediaRetryNotificationResultType.SUCCESS) {
 										const resultStr = proto.MediaRetryNotification.MediaRetryNotificationResultType[media.result]
 										throw new Boom(
@@ -612,7 +612,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					additionalAttributes.edit = '7'
 				}
 
-				await relayMessage(jid, fullMsg.message, { messageId: fullMsg.key.id!, cachedGroupMetadata: options.cachedGroupMetadata, additionalAttributes })
+				await relayMessage(jid, fullMsg.message!, { messageId: fullMsg.key.id!, cachedGroupMetadata: options.cachedGroupMetadata, additionalAttributes })
 				if(config.emitOwnEvents) {
 					process.nextTick(() => {
 						upsertMessage(fullMsg, 'append')

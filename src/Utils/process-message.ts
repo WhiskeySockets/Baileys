@@ -42,7 +42,7 @@ export const isRealMessage = (message: proto.IWebMessageInfo) => {
 	const normalizedContent = normalizeMessageContent(message.message)
 	return (
 		!!normalizedContent
-		|| MSG_MISSED_CALL_TYPES.has(message.messageStubType)
+		|| MSG_MISSED_CALL_TYPES.has(message.messageStubType!)
 	)
 	&& !normalizedContent?.protocolMessage
 	&& !normalizedContent?.reactionMessage
@@ -59,7 +59,7 @@ const processMessage = async(
 	const meId = creds.me!.id
 	const { accountSettings } = creds
 
-	const chat: Partial<Chat> = { id: jidNormalizedUser(message.key.remoteJid) }
+	const chat: Partial<Chat> = { id: jidNormalizedUser(message.key.remoteJid!) }
 
 	if(isRealMessage(message)) {
 		chat.conversationTimestamp = toNumber(message.messageTimestamp)
@@ -79,7 +79,7 @@ const processMessage = async(
 	if(protocolMsg) {
 		switch (protocolMsg.type) {
 		case proto.ProtocolMessage.ProtocolMessageType.HISTORY_SYNC_NOTIFICATION:
-			const histNotification = protocolMsg!.historySyncNotification
+			const histNotification = protocolMsg!.historySyncNotification!
 
 			logger?.info({ histNotification, id: message.key.id }, 'got history notification')
 
@@ -117,10 +117,10 @@ const processMessage = async(
 				await keyStore.transaction(
 					async() => {
 						for(const { keyData, keyId } of keys) {
-							const strKeyId = Buffer.from(keyId.keyId!).toString('base64')
+							const strKeyId = Buffer.from(keyId!.keyId!).toString('base64')
 
 							logger?.info({ strKeyId }, 'injecting new app state sync key')
-							await keyStore.set({ 'app-state-sync-key': { [strKeyId]: keyData } })
+							await keyStore.set({ 'app-state-sync-key': { [strKeyId]: keyData! } })
 
 							newAppStateSyncKeyId = strKeyId
 						}
@@ -176,7 +176,7 @@ const processMessage = async(
 		switch (message.messageStubType) {
 		case WAMessageStubType.GROUP_PARTICIPANT_LEAVE:
 		case WAMessageStubType.GROUP_PARTICIPANT_REMOVE:
-			participants = message.messageStubParameters
+			participants = message.messageStubParameters || []
 			emitParticipantsUpdate('remove')
 			// mark the chat read only if you left the group
 			if(participantsIncludesMe()) {
@@ -187,7 +187,7 @@ const processMessage = async(
 		case WAMessageStubType.GROUP_PARTICIPANT_ADD:
 		case WAMessageStubType.GROUP_PARTICIPANT_INVITE:
 		case WAMessageStubType.GROUP_PARTICIPANT_ADD_REQUEST_JOIN:
-			participants = message.messageStubParameters
+			participants = message.messageStubParameters || []
 			if(participantsIncludesMe()) {
 				chat.readOnly = false
 			}
@@ -195,23 +195,23 @@ const processMessage = async(
 			emitParticipantsUpdate('add')
 			break
 		case WAMessageStubType.GROUP_PARTICIPANT_DEMOTE:
-			participants = message.messageStubParameters
+			participants = message.messageStubParameters || []
 			emitParticipantsUpdate('demote')
 			break
 		case WAMessageStubType.GROUP_PARTICIPANT_PROMOTE:
-			participants = message.messageStubParameters
+			participants = message.messageStubParameters || []
 			emitParticipantsUpdate('promote')
 			break
 		case WAMessageStubType.GROUP_CHANGE_ANNOUNCE:
-			const announceValue = message.messageStubParameters[0]
+			const announceValue = message.messageStubParameters?.[0]
 			emitGroupUpdate({ announce: announceValue === 'true' || announceValue === 'on' })
 			break
 		case WAMessageStubType.GROUP_CHANGE_RESTRICT:
-			const restrictValue = message.messageStubParameters[0]
+			const restrictValue = message.messageStubParameters?.[0]
 			emitGroupUpdate({ restrict: restrictValue === 'true' || restrictValue === 'on' })
 			break
 		case WAMessageStubType.GROUP_CHANGE_SUBJECT:
-			const name = message.messageStubParameters[0]
+			const name = message.messageStubParameters?.[0]
 			chat.name = name
 			emitGroupUpdate({ subject: name })
 			break

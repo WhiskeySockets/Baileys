@@ -86,40 +86,21 @@ export const encodeBigEndian = (e: number, t = 4) => {
 	return a
 }
 
-export const toNumber = (t: Long | number): number => ((typeof t === 'object' && t) ? ('toNumber' in t ? t.toNumber() : (t as any).low) : t)
-
-export function shallowChanges <T>(old: T, current: T, { lookForDeletedKeys }: {lookForDeletedKeys: boolean}): Partial<T> {
-	const changes: Partial<T> = {}
-	for(const key in current) {
-		if(old[key] !== current[key]) {
-			changes[key] = current[key] || null
-		}
-	}
-
-	if(lookForDeletedKeys) {
-		for(const key in old) {
-			if(!changes[key] && old[key] !== current[key]) {
-				changes[key] = current[key] || null
-			}
-		}
-	}
-
-	return changes
-}
+export const toNumber = (t: Long | number | null | undefined): number => ((typeof t === 'object' && t) ? ('toNumber' in t ? t.toNumber() : (t as any).low) : t)
 
 /** unix timestamp of a date in seconds */
 export const unixTimestampSeconds = (date: Date = new Date()) => Math.floor(date.getTime() / 1000)
 
 export type DebouncedTimeout = ReturnType<typeof debouncedTimeout>
 
-export const debouncedTimeout = (intervalMs: number = 1000, task: () => void = undefined) => {
-	let timeout: NodeJS.Timeout
+export const debouncedTimeout = (intervalMs: number = 1000, task?: () => void) => {
+	let timeout: NodeJS.Timeout | undefined
 	return {
 		start: (newIntervalMs?: number, newTask?: () => void) => {
 			task = newTask || task
 			intervalMs = newIntervalMs || intervalMs
 			timeout && clearTimeout(timeout)
-			timeout = setTimeout(task, intervalMs)
+			timeout = setTimeout(() => task?.(), intervalMs)
 		},
 		cancel: () => {
 			timeout && clearTimeout(timeout)
@@ -155,7 +136,7 @@ export const delayCancellable = (ms: number) => {
 	return { delay, cancel }
 }
 
-export async function promiseTimeout<T>(ms: number, promise: (resolve: (v?: T)=>void, reject: (error) => void) => void) {
+export async function promiseTimeout<T>(ms: number | undefined, promise: (resolve: (v?: T)=>void, reject: (error) => void) => void) {
 	if(!ms) {
 		return new Promise (promise)
 	}
@@ -185,7 +166,7 @@ export async function promiseTimeout<T>(ms: number, promise: (resolve: (v?: T)=>
 export const generateMessageID = () => 'BAE5' + randomBytes(6).toString('hex').toUpperCase()
 
 export function bindWaitForEvent<T extends keyof BaileysEventMap<any>>(ev: CommonBaileysEventEmitter<any>, event: T) {
-	return async(check: (u: BaileysEventMap<any>[T]) => boolean, timeoutMs?: number) => {
+	return async(check: (u: BaileysEventMap<any>[T]) => boolean | undefined, timeoutMs?: number) => {
 		let listener: (item: BaileysEventMap<any>[T]) => void
 		let closeListener: any
 		await (
@@ -291,7 +272,7 @@ const STATUS_MAP: { [_: string]: proto.WebMessageInfo.WebMessageInfoStatus } = {
  * @param type type from receipt
  */
 export const getStatusFromReceiptType = (type: string | undefined) => {
-	const status = STATUS_MAP[type]
+	const status = STATUS_MAP[type!]
 	if(typeof type === 'undefined') {
 		return proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK
 	}

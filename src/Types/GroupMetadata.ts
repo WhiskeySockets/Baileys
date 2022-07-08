@@ -12,7 +12,7 @@ export interface GroupMetadata {
     subjectOwner?: string
     /** group subject modification date */
     subjectTime?: number
-    creation: number
+    creation?: number
     desc?: string
     descOwner?: string
     descId?: string
