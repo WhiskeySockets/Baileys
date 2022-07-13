@@ -84,8 +84,8 @@ const processMessage = async(
 			logger?.info({ histNotification, id: message.key.id }, 'got history notification')
 
 			if(downloadHistory) {
-				const { chats, contacts, messages, didProcess } = await downloadAndProcessHistorySyncNotification(histNotification, historyCache, recvChats)
 				const isLatest = historyCache.size === 0 && !creds.processedHistoryMessages?.length
+				const { chats, contacts, messages, didProcess } = await downloadAndProcessHistorySyncNotification(histNotification, historyCache, recvChats)
 
 				if(chats.length) {
 					ev.emit('chats.set', { chats, isLatest })
