@@ -243,7 +243,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return didFetchNewSession
 	}
 
-	const createParticipantNodes = async(jids: string[], bytes: Buffer) => {
+	const createParticipantNodes = async(
+		jids: string[],
+		bytes: Buffer,
+		extraAttrs?: BinaryNode['attrs']
+	) => {
 		let shouldIncludeDeviceIdentity = false
 		const nodes = await Promise.all(
 			jids.map(
@@ -258,7 +262,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						attrs: { jid },
 						content: [{
 							tag: 'enc',
-							attrs: { v: '2', type },
+							attrs: {
+								v: '2',
+								type,
+								...extraAttrs || {}
+							},
 							content: ciphertext
 						}]
 					}
@@ -291,6 +299,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const binaryNodeContent: BinaryNode[] = []
 
 		const devices: JidWithDevice[] = []
+		const extraParticipantNodeAttrs: BinaryNode['attrs'] = { }
 		if(participant) {
 			// when the retry request is not for a group
 			// only send to the specific device that asked for a retry
@@ -298,6 +307,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			if(!isGroup) {
 				additionalAttributes = { ...additionalAttributes, device_fanout: 'false' }
 			}
+
+			extraParticipantNodeAttrs.count = participant.count.toString()
 
 			const { user, device } = jidDecode(participant.jid)!
 			devices.push({ user, device })
@@ -362,7 +373,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 						await assertSessions(senderKeyJids, false)
 
-						const result = await createParticipantNodes(senderKeyJids, encSenderKeyMsg)
+						const result = await createParticipantNodes(senderKeyJids, encSenderKeyMsg, extraParticipantNodeAttrs)
 						shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || result.shouldIncludeDeviceIdentity
 
 						participants.push(...result.nodes)
@@ -414,19 +425,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						{ nodes: meNodes, shouldIncludeDeviceIdentity: s1 },
 						{ nodes: otherNodes, shouldIncludeDeviceIdentity: s2 }
 					] = await Promise.all([
-						createParticipantNodes(meJids, encodedMeMsg),
-						createParticipantNodes(otherJids, encodedMsg)
+						createParticipantNodes(meJids, encodedMeMsg, extraParticipantNodeAttrs),
+						createParticipantNodes(otherJids, encodedMsg, extraParticipantNodeAttrs)
 					])
 					participants.push(...meNodes)
 					participants.push(...otherNodes)
 
 					shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || s1 || s2
-				}
-
-				if(participant?.count) {
-					for(const node of participants) {
-						node.attrs.count = participant.count.toString()
-					}
 				}
 
 				if(participants.length) {
