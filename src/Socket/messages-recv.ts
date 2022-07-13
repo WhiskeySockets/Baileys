@@ -64,14 +64,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const sendRetryRequest = async(node: BinaryNode) => {
 		const msgId = node.attrs.id
-		const retryCount = msgRetryMap[msgId] || 1
+
+		let retryCount = msgRetryMap[msgId] || 0
 		if(retryCount >= 5) {
 			logger.debug({ retryCount, msgId }, 'reached retry limit, clearing')
 			delete msgRetryMap[msgId]
 			return
 		}
 
-		msgRetryMap[msgId] = retryCount + 1
+		retryCount += 1
+		msgRetryMap[msgId] = retryCount
 
 		const isGroup = !!node.attrs.participant
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
@@ -79,11 +81,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const deviceIdentity = proto.ADVSignedDeviceIdentity.encode(account!).finish()
 		await authState.keys.transaction(
 			async() => {
-				const { update, preKeys } = await getNextPreKeys(authState, 1)
-
-				const [keyId] = Object.keys(preKeys)
-				const key = preKeys[+keyId]
-
 				const decFrom = node.attrs.from ? jidDecode(node.attrs.from) : undefined
 				const receipt: BinaryNode = {
 					tag: 'receipt',
@@ -119,6 +116,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				}
 
 				if(retryCount > 1) {
+					const { update, preKeys } = await getNextPreKeys(authState, 1)
+
+					const [keyId] = Object.keys(preKeys)
+					const key = preKeys[+keyId]
+
 					const exec = generateSignalPubKey(Buffer.from(KEY_BUNDLE_TYPE)).slice(0, 1)
 					const content = receipt.content! as BinaryNode[]
 					content.push({
@@ -132,13 +134,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							{ tag: 'device-identity', attrs: { }, content: deviceIdentity }
 						]
 					})
+
+					ev.emit('creds.update', update)
 				}
 
 				await sendNode(receipt)
 
 				logger.info({ msgAttrs: node.attrs, retryCount }, 'sent retry receipt')
-
-				ev.emit('creds.update', update)
 			}
 		)
 	}
@@ -268,7 +270,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		msgRetryMap[key] = (msgRetryMap[key] || 0) + 1
 	}
 
-	const sendMessagesAgain = async(key: proto.IMessageKey, ids: string[]) => {
+	const sendMessagesAgain = async(
+		key: proto.IMessageKey,
+		ids: string[],
+		retryNode: BinaryNode
+	) => {
 		const msgs = await Promise.all(ids.map(id => getMessage({ ...key, id })))
 		const remoteJid = key.remoteJid!
 		const participant = key.participant || remoteJid
@@ -293,7 +299,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				if(sendToAll) {
 					msgRelayOpts.useUserDevicesCache = false
 				} else {
-					msgRelayOpts.participant = participant
+					msgRelayOpts.participant = {
+						jid: participant,
+						count: +retryNode.attrs.count
+					}
 				}
 
 				await relayMessage(key.remoteJid!, msg, msgRelayOpts)
@@ -363,11 +372,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					if(attrs.type === 'retry') {
 						// correctly set who is asking for the retry
 						key.participant = key.participant || attrs.from
+						const retryNode = getBinaryNodeChild(node, 'retry')
 						if(willSendMessageAgain(ids[0], key.participant)) {
 							if(key.fromMe) {
 								try {
 									logger.debug({ attrs, key }, 'recv retry request')
-									await sendMessagesAgain(key, ids)
+									await sendMessagesAgain(key, ids, retryNode!)
 								} catch(error) {
 									logger.error({ key, ids, trace: error.stack }, 'error in sending message again')
 								}

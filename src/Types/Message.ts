@@ -150,7 +150,7 @@ type MinimalRelayOptions = {
 
 export type MessageRelayOptions = MinimalRelayOptions & {
     /** only send to a specific participant; used when a message decryption fails for a single user */
-    participant?: string
+    participant?: { jid: string, count: number }
     /** additional attributes to add to the WA binary node */
     additionalAttributes?: { [_: string]: string }
     /** should we use the devices cache, or fetch afresh from the server; default assumed to be "true" */

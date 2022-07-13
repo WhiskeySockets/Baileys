@@ -299,7 +299,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				additionalAttributes = { ...additionalAttributes, device_fanout: 'false' }
 			}
 
-			const { user, device } = jidDecode(participant)!
+			const { user, device } = jidDecode(participant.jid)!
 			devices.push({ user, device })
 		}
 
@@ -423,6 +423,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || s1 || s2
 				}
 
+				if(participant?.count) {
+					for(const node of participants) {
+						node.attrs.count = participant.count.toString()
+					}
+				}
+
 				if(participants.length) {
 					binaryNodeContent.push({
 						tag: 'participants',
@@ -446,12 +452,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				if(participant) {
 					if(isJidGroup(destinationJid)) {
 						stanza.attrs.to = destinationJid
-						stanza.attrs.participant = participant
-					} else if(areJidsSameUser(participant, meId)) {
-						stanza.attrs.to = participant
+						stanza.attrs.participant = participant.jid
+					} else if(areJidsSameUser(participant.jid, meId)) {
+						stanza.attrs.to = participant.jid
 						stanza.attrs.recipient = destinationJid
 					} else {
-						stanza.attrs.to = participant
+						stanza.attrs.to = participant.jid
 					}
 				} else {
 					stanza.attrs.to = destinationJid
