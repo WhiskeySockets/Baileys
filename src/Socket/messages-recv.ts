@@ -118,7 +118,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					receipt.attrs.participant = node.attrs.participant
 				}
 
-				if(retryCount > 1) {
+				if(retryCount >= 1) {
 					const exec = generateSignalPubKey(Buffer.from(KEY_BUNDLE_TYPE)).slice(0, 1)
 					const content = receipt.content! as BinaryNode[]
 					content.push({
