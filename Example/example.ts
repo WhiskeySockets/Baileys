@@ -140,6 +140,10 @@ const startSock = async() => {
 			if(events['chats.update']) {
 				console.log(events['chats.update'])
 			}
+
+			if(events['chats.delete']) {
+				console.log('chats deleted ', events['chats.delete'])
+			}
 		}
 	)
 
