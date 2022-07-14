@@ -598,7 +598,7 @@ export const processSyncAction = (
 	const recvChats = initialSyncOpts?.recvChats
 	const accountSettings = initialSyncOpts?.accountSettings
 
-	const { syncAction: { value: action }, index: [_, id, msgId, fromMe] } = syncAction
+	const { syncAction: { value: action }, index: [type, id, msgId, fromMe] } = syncAction
 	if(action?.muteAction) {
 		ev.emit(
 			'chats.update',
@@ -675,16 +675,24 @@ export const processSyncAction = (
 		if(accountSettings) {
 			accountSettings.unarchiveChats = unarchiveChats
 		}
-	} else if(action?.starAction) {
+	} else if(action?.starAction || type === 'star') {
+		let starred = action?.starAction?.starred
+		if(typeof starred !== 'boolean') {
+			starred = syncAction.index[syncAction.index.length - 1] === '1'
+		}
+
 		ev.emit('messages.update', [
 			{
 				key: { remoteJid: id, id: msgId, fromMe: fromMe === '1' },
-				update: { starred: !!action.starAction?.starred }
+				update: { starred }
 			}
 		])
-	} else if(action?.deleteChatAction) {
+	} else if(action?.deleteChatAction || type === 'deleteChat') {
 		if(
-			isValidPatchBasedOnMessageRange(id, action?.deleteChatAction?.messageRange)
+			(
+				action?.deleteChatAction?.messageRange
+				&& isValidPatchBasedOnMessageRange(id, action?.deleteChatAction?.messageRange)
+			)
 			|| !isInitialSync
 		) {
 			ev.emit('chats.delete', [id])
