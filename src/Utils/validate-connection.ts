@@ -136,11 +136,15 @@ export const configureSuccessfulPairing = (
 	// sign the details with our identity key
 	const deviceMsg = Buffer.concat([ Buffer.from([6, 1]), deviceDetails, signedIdentityKey.public, accountSignatureKey ])
 	account.deviceSignature = Curve.sign(signedIdentityKey.private, deviceMsg)
-	// do not provide the "accountSignatureKey" back
-	account.accountSignatureKey = Buffer.alloc(0)
 
 	const identity = createSignalIdentity(jid, accountSignatureKey)
-	const accountEnc = proto.ADVSignedDeviceIdentity.encode(account).finish()
+	const accountEnc = proto.ADVSignedDeviceIdentity
+		.encode({
+			...account,
+			// do not provide the "accountSignatureKey" back
+			accountSignatureKey: Buffer.alloc(0)
+		})
+		.finish()
 
 	const deviceIdentity = proto.ADVDeviceIdentity.decode(account.details)
 
