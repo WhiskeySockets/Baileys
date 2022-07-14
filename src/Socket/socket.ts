@@ -48,6 +48,7 @@ export const makeSocket = ({
 	let epoch = 1
 	let keepAliveReq: NodeJS.Timeout
 	let qrTimer: NodeJS.Timeout
+	let closed = false
 
 	const uqTagId = generateMdTagPrefix()
 	const generateMessageTag = () => `${uqTagId}${epoch++}`
@@ -280,8 +281,14 @@ export const makeSocket = ({
 	}
 
 	const end = (error: Error | undefined) => {
+		if(closed) {
+			logger.trace({ trace: error?.stack }, 'connection already closed')
+			return
+		}
+
+		closed = true
 		logger.info(
-			{ error, trace: error?.stack },
+			{ trace: error?.stack },
 			error ? 'connection errored' : 'connection closed'
 		)
 
