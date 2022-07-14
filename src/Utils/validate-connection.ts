@@ -142,7 +142,7 @@ export const configureSuccessfulPairing = (
 		.encode({
 			...account,
 			// do not provide the "accountSignatureKey" back
-			accountSignatureKey: Buffer.alloc(0)
+			accountSignatureKey: undefined
 		})
 		.finish()
 
