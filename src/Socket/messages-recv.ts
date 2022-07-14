@@ -2,10 +2,10 @@
 import { proto } from '../../WAProto'
 import { KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import { MessageReceiptType, MessageRelayOptions, MessageUserReceipt, SocketConfig, WACallEvent, WAMessageKey, WAMessageStubType, WAPatchName } from '../Types'
-import { decodeMediaRetryNode, decodeMessageStanza, delay, encodeBigEndian, generateSignalPubKey, getCallStatusFromNode, getNextPreKeys, getStatusFromReceiptType, isHistoryMsg, unixTimestampSeconds, xmppPreKey, xmppSignedPreKey } from '../Utils'
+import { decodeMediaRetryNode, decodeMessageStanza, delay, encodeBigEndian, getCallStatusFromNode, getNextPreKeys, getStatusFromReceiptType, isHistoryMsg, unixTimestampSeconds, xmppPreKey, xmppSignedPreKey } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
 import { cleanMessage } from '../Utils/process-message'
-import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getAllBinaryNodeChildren, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, isJidUser, jidDecode, jidEncode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
+import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getAllBinaryNodeChildren, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, isJidUser, jidDecode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
 import { extractGroupMetadata } from './groups'
 import { makeMessagesSocket } from './messages-send'
 
@@ -62,7 +62,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await sendNode(stanza)
 	}
 
-	const sendRetryRequest = async(node: BinaryNode) => {
+	const sendRetryRequest = async(node: BinaryNode, forceIncludeKeys = false) => {
 		const msgId = node.attrs.id
 
 		let retryCount = msgRetryMap[msgId] || 0
@@ -75,19 +75,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		retryCount += 1
 		msgRetryMap[msgId] = retryCount
 
-		const isGroup = !!node.attrs.participant
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
 
 		const deviceIdentity = proto.ADVSignedDeviceIdentity.encode(account!).finish()
 		await authState.keys.transaction(
 			async() => {
-				const decFrom = node.attrs.from ? jidDecode(node.attrs.from) : undefined
 				const receipt: BinaryNode = {
 					tag: 'receipt',
 					attrs: {
 						id: msgId,
 						type: 'retry',
-						to: isGroup ? node.attrs.from : jidEncode(decFrom!.user, 's.whatsapp.net', decFrom!.device, 0)
+						to: node.attrs.from
 					},
 					content: [
 						{
@@ -115,19 +113,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					receipt.attrs.participant = node.attrs.participant
 				}
 
-				if(retryCount > 1) {
+				if(retryCount > 1 || forceIncludeKeys) {
 					const { update, preKeys } = await getNextPreKeys(authState, 1)
 
 					const [keyId] = Object.keys(preKeys)
 					const key = preKeys[+keyId]
 
-					const exec = generateSignalPubKey(Buffer.from(KEY_BUNDLE_TYPE)).slice(0, 1)
 					const content = receipt.content! as BinaryNode[]
 					content.push({
 						tag: 'keys',
 						attrs: { },
 						content: [
-							{ tag: 'type', attrs: { }, content: exec },
+							{ tag: 'type', attrs: { }, content: Buffer.from(KEY_BUNDLE_TYPE) },
 							{ tag: 'identity', attrs: { }, content: identityKey.public },
 							xmppPreKey(key, +keyId),
 							xmppSignedPreKey(signedPreKey),
@@ -436,7 +433,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						retryMutex.mutex(
 							async() => {
 								if(ws.readyState === ws.OPEN) {
-									await sendRetryRequest(node)
+									const encNode = getBinaryNodeChild(node, 'enc')
+									await sendRetryRequest(node, !encNode)
 									if(retryRequestDelayMs) {
 										await delay(retryRequestDelayMs)
 									}
