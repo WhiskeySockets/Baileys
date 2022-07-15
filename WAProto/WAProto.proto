@@ -357,6 +357,7 @@ message ClientPayload {
     optional uint64 fbAppId = 31;
     optional bytes fbDeviceId = 32;
     optional bool pull = 33;
+    optional bytes paddingBytes = 34;
 }
 
 message CollectionMessage {
@@ -558,6 +559,7 @@ message DocumentMessage {
     optional ContextInfo contextInfo = 17;
     optional uint32 thumbnailHeight = 18;
     optional uint32 thumbnailWidth = 19;
+    optional string caption = 20;
 }
 
 message EphemeralSetting {
@@ -1138,6 +1140,7 @@ message Message {
     optional PollCreationMessage pollCreationMessage = 49;
     optional PollUpdateMessage pollUpdateMessage = 50;
     optional KeepInChatMessage keepInChatMessage = 51;
+    optional FutureProofMessage documentWithCaptionMessage = 52;
 }
 
 message MessageContextInfo {
@@ -1232,6 +1235,10 @@ message NotificationMessageInfo {
     optional Message message = 2;
     optional uint64 messageTimestamp = 3;
     optional string participant = 4;
+}
+
+message NuxAction {
+    optional bool acknowledged = 1;
 }
 
 message Option {
@@ -1782,6 +1789,7 @@ message SyncActionValue {
     optional SubscriptionAction subscriptionAction = 28;
     optional UserStatusMuteAction userStatusMuteAction = 29;
     optional TimeFormatAction timeFormatAction = 30;
+    optional NuxAction nuxAction = 31;
 }
 
 message SyncdIndex {
@@ -1797,7 +1805,6 @@ message SyncdMutation {
     optional SyncdRecord record = 2;
 }
 
-// Unknown entity
 message SyncdMutations {
     repeated SyncdMutation mutations = 1;
 }

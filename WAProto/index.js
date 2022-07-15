@@ -10581,6 +10581,7 @@ $root.proto = (function() {
          * @property {number|Long|null} [fbAppId] ClientPayload fbAppId
          * @property {Uint8Array|null} [fbDeviceId] ClientPayload fbDeviceId
          * @property {boolean|null} [pull] ClientPayload pull
+         * @property {Uint8Array|null} [paddingBytes] ClientPayload paddingBytes
          */
 
         /**
@@ -10784,6 +10785,14 @@ $root.proto = (function() {
         ClientPayload.prototype.pull = false;
 
         /**
+         * ClientPayload paddingBytes.
+         * @member {Uint8Array} paddingBytes
+         * @memberof proto.ClientPayload
+         * @instance
+         */
+        ClientPayload.prototype.paddingBytes = $util.newBuffer([]);
+
+        /**
          * Creates a new ClientPayload instance using the specified properties.
          * @function create
          * @memberof proto.ClientPayload
@@ -10854,6 +10863,8 @@ $root.proto = (function() {
                 writer.uint32(/* id 32, wireType 2 =*/258).bytes(message.fbDeviceId);
             if (message.pull != null && Object.hasOwnProperty.call(message, "pull"))
                 writer.uint32(/* id 33, wireType 0 =*/264).bool(message.pull);
+            if (message.paddingBytes != null && Object.hasOwnProperty.call(message, "paddingBytes"))
+                writer.uint32(/* id 34, wireType 2 =*/274).bytes(message.paddingBytes);
             return writer;
         };
 
@@ -10963,6 +10974,9 @@ $root.proto = (function() {
                     break;
                 case 33:
                     message.pull = reader.bool();
+                    break;
+                case 34:
+                    message.paddingBytes = reader.bytes();
                     break;
                 default:
                     reader.skipType(tag & 7);
@@ -11118,6 +11132,9 @@ $root.proto = (function() {
             if (message.pull != null && message.hasOwnProperty("pull"))
                 if (typeof message.pull !== "boolean")
                     return "pull: boolean expected";
+            if (message.paddingBytes != null && message.hasOwnProperty("paddingBytes"))
+                if (!(message.paddingBytes && typeof message.paddingBytes.length === "number" || $util.isString(message.paddingBytes)))
+                    return "paddingBytes: buffer expected";
             return null;
         };
 
@@ -11323,6 +11340,11 @@ $root.proto = (function() {
                     message.fbDeviceId = object.fbDeviceId;
             if (object.pull != null)
                 message.pull = Boolean(object.pull);
+            if (object.paddingBytes != null)
+                if (typeof object.paddingBytes === "string")
+                    $util.base64.decode(object.paddingBytes, message.paddingBytes = $util.newBuffer($util.base64.length(object.paddingBytes)), 0);
+                else if (object.paddingBytes.length)
+                    message.paddingBytes = object.paddingBytes;
             return message;
         };
 
@@ -11390,6 +11412,13 @@ $root.proto = (function() {
                         object.fbDeviceId = $util.newBuffer(object.fbDeviceId);
                 }
                 object.pull = false;
+                if (options.bytes === String)
+                    object.paddingBytes = "";
+                else {
+                    object.paddingBytes = [];
+                    if (options.bytes !== Array)
+                        object.paddingBytes = $util.newBuffer(object.paddingBytes);
+                }
             }
             if (message.username != null && message.hasOwnProperty("username"))
                 if (typeof message.username === "number")
@@ -11446,6 +11475,8 @@ $root.proto = (function() {
                 object.fbDeviceId = options.bytes === String ? $util.base64.encode(message.fbDeviceId, 0, message.fbDeviceId.length) : options.bytes === Array ? Array.prototype.slice.call(message.fbDeviceId) : message.fbDeviceId;
             if (message.pull != null && message.hasOwnProperty("pull"))
                 object.pull = message.pull;
+            if (message.paddingBytes != null && message.hasOwnProperty("paddingBytes"))
+                object.paddingBytes = options.bytes === String ? $util.base64.encode(message.paddingBytes, 0, message.paddingBytes.length) : options.bytes === Array ? Array.prototype.slice.call(message.paddingBytes) : message.paddingBytes;
             return object;
         };
 
@@ -17032,6 +17063,7 @@ $root.proto = (function() {
          * @property {proto.IContextInfo|null} [contextInfo] DocumentMessage contextInfo
          * @property {number|null} [thumbnailHeight] DocumentMessage thumbnailHeight
          * @property {number|null} [thumbnailWidth] DocumentMessage thumbnailWidth
+         * @property {string|null} [caption] DocumentMessage caption
          */
 
         /**
@@ -17202,6 +17234,14 @@ $root.proto = (function() {
         DocumentMessage.prototype.thumbnailWidth = 0;
 
         /**
+         * DocumentMessage caption.
+         * @member {string} caption
+         * @memberof proto.DocumentMessage
+         * @instance
+         */
+        DocumentMessage.prototype.caption = "";
+
+        /**
          * Creates a new DocumentMessage instance using the specified properties.
          * @function create
          * @memberof proto.DocumentMessage
@@ -17263,6 +17303,8 @@ $root.proto = (function() {
                 writer.uint32(/* id 18, wireType 0 =*/144).uint32(message.thumbnailHeight);
             if (message.thumbnailWidth != null && Object.hasOwnProperty.call(message, "thumbnailWidth"))
                 writer.uint32(/* id 19, wireType 0 =*/152).uint32(message.thumbnailWidth);
+            if (message.caption != null && Object.hasOwnProperty.call(message, "caption"))
+                writer.uint32(/* id 20, wireType 2 =*/162).string(message.caption);
             return writer;
         };
 
@@ -17353,6 +17395,9 @@ $root.proto = (function() {
                     break;
                 case 19:
                     message.thumbnailWidth = reader.uint32();
+                    break;
+                case 20:
+                    message.caption = reader.string();
                     break;
                 default:
                     reader.skipType(tag & 7);
@@ -17448,6 +17493,9 @@ $root.proto = (function() {
             if (message.thumbnailWidth != null && message.hasOwnProperty("thumbnailWidth"))
                 if (!$util.isInteger(message.thumbnailWidth))
                     return "thumbnailWidth: integer expected";
+            if (message.caption != null && message.hasOwnProperty("caption"))
+                if (!$util.isString(message.caption))
+                    return "caption: string expected";
             return null;
         };
 
@@ -17536,6 +17584,8 @@ $root.proto = (function() {
                 message.thumbnailHeight = object.thumbnailHeight >>> 0;
             if (object.thumbnailWidth != null)
                 message.thumbnailWidth = object.thumbnailWidth >>> 0;
+            if (object.caption != null)
+                message.caption = String(object.caption);
             return message;
         };
 
@@ -17616,6 +17666,7 @@ $root.proto = (function() {
                 object.contextInfo = null;
                 object.thumbnailHeight = 0;
                 object.thumbnailWidth = 0;
+                object.caption = "";
             }
             if (message.url != null && message.hasOwnProperty("url"))
                 object.url = message.url;
@@ -17661,6 +17712,8 @@ $root.proto = (function() {
                 object.thumbnailHeight = message.thumbnailHeight;
             if (message.thumbnailWidth != null && message.hasOwnProperty("thumbnailWidth"))
                 object.thumbnailWidth = message.thumbnailWidth;
+            if (message.caption != null && message.hasOwnProperty("caption"))
+                object.caption = message.caption;
             return object;
         };
 
@@ -34389,6 +34442,7 @@ $root.proto = (function() {
          * @property {proto.IPollCreationMessage|null} [pollCreationMessage] Message pollCreationMessage
          * @property {proto.IPollUpdateMessage|null} [pollUpdateMessage] Message pollUpdateMessage
          * @property {proto.IKeepInChatMessage|null} [keepInChatMessage] Message keepInChatMessage
+         * @property {proto.IFutureProofMessage|null} [documentWithCaptionMessage] Message documentWithCaptionMessage
          */
 
         /**
@@ -34751,6 +34805,14 @@ $root.proto = (function() {
         Message.prototype.keepInChatMessage = null;
 
         /**
+         * Message documentWithCaptionMessage.
+         * @member {proto.IFutureProofMessage|null|undefined} documentWithCaptionMessage
+         * @memberof proto.Message
+         * @instance
+         */
+        Message.prototype.documentWithCaptionMessage = null;
+
+        /**
          * Creates a new Message instance using the specified properties.
          * @function create
          * @memberof proto.Message
@@ -34860,6 +34922,8 @@ $root.proto = (function() {
                 $root.proto.PollUpdateMessage.encode(message.pollUpdateMessage, writer.uint32(/* id 50, wireType 2 =*/402).fork()).ldelim();
             if (message.keepInChatMessage != null && Object.hasOwnProperty.call(message, "keepInChatMessage"))
                 $root.proto.KeepInChatMessage.encode(message.keepInChatMessage, writer.uint32(/* id 51, wireType 2 =*/410).fork()).ldelim();
+            if (message.documentWithCaptionMessage != null && Object.hasOwnProperty.call(message, "documentWithCaptionMessage"))
+                $root.proto.FutureProofMessage.encode(message.documentWithCaptionMessage, writer.uint32(/* id 52, wireType 2 =*/418).fork()).ldelim();
             return writer;
         };
 
@@ -35022,6 +35086,9 @@ $root.proto = (function() {
                     break;
                 case 51:
                     message.keepInChatMessage = $root.proto.KeepInChatMessage.decode(reader, reader.uint32());
+                    break;
+                case 52:
+                    message.documentWithCaptionMessage = $root.proto.FutureProofMessage.decode(reader, reader.uint32());
                     break;
                 default:
                     reader.skipType(tag & 7);
@@ -35271,6 +35338,11 @@ $root.proto = (function() {
                 if (error)
                     return "keepInChatMessage." + error;
             }
+            if (message.documentWithCaptionMessage != null && message.hasOwnProperty("documentWithCaptionMessage")) {
+                var error = $root.proto.FutureProofMessage.verify(message.documentWithCaptionMessage);
+                if (error)
+                    return "documentWithCaptionMessage." + error;
+            }
             return null;
         };
 
@@ -35498,6 +35570,11 @@ $root.proto = (function() {
                     throw TypeError(".proto.Message.keepInChatMessage: object expected");
                 message.keepInChatMessage = $root.proto.KeepInChatMessage.fromObject(object.keepInChatMessage);
             }
+            if (object.documentWithCaptionMessage != null) {
+                if (typeof object.documentWithCaptionMessage !== "object")
+                    throw TypeError(".proto.Message.documentWithCaptionMessage: object expected");
+                message.documentWithCaptionMessage = $root.proto.FutureProofMessage.fromObject(object.documentWithCaptionMessage);
+            }
             return message;
         };
 
@@ -35558,6 +35635,7 @@ $root.proto = (function() {
                 object.pollCreationMessage = null;
                 object.pollUpdateMessage = null;
                 object.keepInChatMessage = null;
+                object.documentWithCaptionMessage = null;
             }
             if (message.conversation != null && message.hasOwnProperty("conversation"))
                 object.conversation = message.conversation;
@@ -35645,6 +35723,8 @@ $root.proto = (function() {
                 object.pollUpdateMessage = $root.proto.PollUpdateMessage.toObject(message.pollUpdateMessage, options);
             if (message.keepInChatMessage != null && message.hasOwnProperty("keepInChatMessage"))
                 object.keepInChatMessage = $root.proto.KeepInChatMessage.toObject(message.keepInChatMessage, options);
+            if (message.documentWithCaptionMessage != null && message.hasOwnProperty("documentWithCaptionMessage"))
+                object.documentWithCaptionMessage = $root.proto.FutureProofMessage.toObject(message.documentWithCaptionMessage, options);
             return object;
         };
 
@@ -39194,6 +39274,193 @@ $root.proto = (function() {
         };
 
         return NotificationMessageInfo;
+    })();
+
+    proto.NuxAction = (function() {
+
+        /**
+         * Properties of a NuxAction.
+         * @memberof proto
+         * @interface INuxAction
+         * @property {boolean|null} [acknowledged] NuxAction acknowledged
+         */
+
+        /**
+         * Constructs a new NuxAction.
+         * @memberof proto
+         * @classdesc Represents a NuxAction.
+         * @implements INuxAction
+         * @constructor
+         * @param {proto.INuxAction=} [properties] Properties to set
+         */
+        function NuxAction(properties) {
+            if (properties)
+                for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                    if (properties[keys[i]] != null)
+                        this[keys[i]] = properties[keys[i]];
+        }
+
+        /**
+         * NuxAction acknowledged.
+         * @member {boolean} acknowledged
+         * @memberof proto.NuxAction
+         * @instance
+         */
+        NuxAction.prototype.acknowledged = false;
+
+        /**
+         * Creates a new NuxAction instance using the specified properties.
+         * @function create
+         * @memberof proto.NuxAction
+         * @static
+         * @param {proto.INuxAction=} [properties] Properties to set
+         * @returns {proto.NuxAction} NuxAction instance
+         */
+        NuxAction.create = function create(properties) {
+            return new NuxAction(properties);
+        };
+
+        /**
+         * Encodes the specified NuxAction message. Does not implicitly {@link proto.NuxAction.verify|verify} messages.
+         * @function encode
+         * @memberof proto.NuxAction
+         * @static
+         * @param {proto.INuxAction} message NuxAction message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        NuxAction.encode = function encode(message, writer) {
+            if (!writer)
+                writer = $Writer.create();
+            if (message.acknowledged != null && Object.hasOwnProperty.call(message, "acknowledged"))
+                writer.uint32(/* id 1, wireType 0 =*/8).bool(message.acknowledged);
+            return writer;
+        };
+
+        /**
+         * Encodes the specified NuxAction message, length delimited. Does not implicitly {@link proto.NuxAction.verify|verify} messages.
+         * @function encodeDelimited
+         * @memberof proto.NuxAction
+         * @static
+         * @param {proto.INuxAction} message NuxAction message or plain object to encode
+         * @param {$protobuf.Writer} [writer] Writer to encode to
+         * @returns {$protobuf.Writer} Writer
+         */
+        NuxAction.encodeDelimited = function encodeDelimited(message, writer) {
+            return this.encode(message, writer).ldelim();
+        };
+
+        /**
+         * Decodes a NuxAction message from the specified reader or buffer.
+         * @function decode
+         * @memberof proto.NuxAction
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @param {number} [length] Message length if known beforehand
+         * @returns {proto.NuxAction} NuxAction
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        NuxAction.decode = function decode(reader, length) {
+            if (!(reader instanceof $Reader))
+                reader = $Reader.create(reader);
+            var end = length === undefined ? reader.len : reader.pos + length, message = new $root.proto.NuxAction();
+            while (reader.pos < end) {
+                var tag = reader.uint32();
+                switch (tag >>> 3) {
+                case 1:
+                    message.acknowledged = reader.bool();
+                    break;
+                default:
+                    reader.skipType(tag & 7);
+                    break;
+                }
+            }
+            return message;
+        };
+
+        /**
+         * Decodes a NuxAction message from the specified reader or buffer, length delimited.
+         * @function decodeDelimited
+         * @memberof proto.NuxAction
+         * @static
+         * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+         * @returns {proto.NuxAction} NuxAction
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        NuxAction.decodeDelimited = function decodeDelimited(reader) {
+            if (!(reader instanceof $Reader))
+                reader = new $Reader(reader);
+            return this.decode(reader, reader.uint32());
+        };
+
+        /**
+         * Verifies a NuxAction message.
+         * @function verify
+         * @memberof proto.NuxAction
+         * @static
+         * @param {Object.<string,*>} message Plain object to verify
+         * @returns {string|null} `null` if valid, otherwise the reason why it is not
+         */
+        NuxAction.verify = function verify(message) {
+            if (typeof message !== "object" || message === null)
+                return "object expected";
+            if (message.acknowledged != null && message.hasOwnProperty("acknowledged"))
+                if (typeof message.acknowledged !== "boolean")
+                    return "acknowledged: boolean expected";
+            return null;
+        };
+
+        /**
+         * Creates a NuxAction message from a plain object. Also converts values to their respective internal types.
+         * @function fromObject
+         * @memberof proto.NuxAction
+         * @static
+         * @param {Object.<string,*>} object Plain object
+         * @returns {proto.NuxAction} NuxAction
+         */
+        NuxAction.fromObject = function fromObject(object) {
+            if (object instanceof $root.proto.NuxAction)
+                return object;
+            var message = new $root.proto.NuxAction();
+            if (object.acknowledged != null)
+                message.acknowledged = Boolean(object.acknowledged);
+            return message;
+        };
+
+        /**
+         * Creates a plain object from a NuxAction message. Also converts values to other types if specified.
+         * @function toObject
+         * @memberof proto.NuxAction
+         * @static
+         * @param {proto.NuxAction} message NuxAction
+         * @param {$protobuf.IConversionOptions} [options] Conversion options
+         * @returns {Object.<string,*>} Plain object
+         */
+        NuxAction.toObject = function toObject(message, options) {
+            if (!options)
+                options = {};
+            var object = {};
+            if (options.defaults)
+                object.acknowledged = false;
+            if (message.acknowledged != null && message.hasOwnProperty("acknowledged"))
+                object.acknowledged = message.acknowledged;
+            return object;
+        };
+
+        /**
+         * Converts this NuxAction to JSON.
+         * @function toJSON
+         * @memberof proto.NuxAction
+         * @instance
+         * @returns {Object.<string,*>} JSON object
+         */
+        NuxAction.prototype.toJSON = function toJSON() {
+            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+        };
+
+        return NuxAction;
     })();
 
     proto.Option = (function() {
@@ -57051,6 +57318,7 @@ $root.proto = (function() {
          * @property {proto.ISubscriptionAction|null} [subscriptionAction] SyncActionValue subscriptionAction
          * @property {proto.IUserStatusMuteAction|null} [userStatusMuteAction] SyncActionValue userStatusMuteAction
          * @property {proto.ITimeFormatAction|null} [timeFormatAction] SyncActionValue timeFormatAction
+         * @property {proto.INuxAction|null} [nuxAction] SyncActionValue nuxAction
          */
 
         /**
@@ -57293,6 +57561,14 @@ $root.proto = (function() {
         SyncActionValue.prototype.timeFormatAction = null;
 
         /**
+         * SyncActionValue nuxAction.
+         * @member {proto.INuxAction|null|undefined} nuxAction
+         * @memberof proto.SyncActionValue
+         * @instance
+         */
+        SyncActionValue.prototype.nuxAction = null;
+
+        /**
          * Creates a new SyncActionValue instance using the specified properties.
          * @function create
          * @memberof proto.SyncActionValue
@@ -57372,6 +57648,8 @@ $root.proto = (function() {
                 $root.proto.UserStatusMuteAction.encode(message.userStatusMuteAction, writer.uint32(/* id 29, wireType 2 =*/234).fork()).ldelim();
             if (message.timeFormatAction != null && Object.hasOwnProperty.call(message, "timeFormatAction"))
                 $root.proto.TimeFormatAction.encode(message.timeFormatAction, writer.uint32(/* id 30, wireType 2 =*/242).fork()).ldelim();
+            if (message.nuxAction != null && Object.hasOwnProperty.call(message, "nuxAction"))
+                $root.proto.NuxAction.encode(message.nuxAction, writer.uint32(/* id 31, wireType 2 =*/250).fork()).ldelim();
             return writer;
         };
 
@@ -57489,6 +57767,9 @@ $root.proto = (function() {
                     break;
                 case 30:
                     message.timeFormatAction = $root.proto.TimeFormatAction.decode(reader, reader.uint32());
+                    break;
+                case 31:
+                    message.nuxAction = $root.proto.NuxAction.decode(reader, reader.uint32());
                     break;
                 default:
                     reader.skipType(tag & 7);
@@ -57663,6 +57944,11 @@ $root.proto = (function() {
                 if (error)
                     return "timeFormatAction." + error;
             }
+            if (message.nuxAction != null && message.hasOwnProperty("nuxAction")) {
+                var error = $root.proto.NuxAction.verify(message.nuxAction);
+                if (error)
+                    return "nuxAction." + error;
+            }
             return null;
         };
 
@@ -57822,6 +58108,11 @@ $root.proto = (function() {
                     throw TypeError(".proto.SyncActionValue.timeFormatAction: object expected");
                 message.timeFormatAction = $root.proto.TimeFormatAction.fromObject(object.timeFormatAction);
             }
+            if (object.nuxAction != null) {
+                if (typeof object.nuxAction !== "object")
+                    throw TypeError(".proto.SyncActionValue.nuxAction: object expected");
+                message.nuxAction = $root.proto.NuxAction.fromObject(object.nuxAction);
+            }
             return message;
         };
 
@@ -57871,6 +58162,7 @@ $root.proto = (function() {
                 object.subscriptionAction = null;
                 object.userStatusMuteAction = null;
                 object.timeFormatAction = null;
+                object.nuxAction = null;
             }
             if (message.timestamp != null && message.hasOwnProperty("timestamp"))
                 if (typeof message.timestamp === "number")
@@ -57931,6 +58223,8 @@ $root.proto = (function() {
                 object.userStatusMuteAction = $root.proto.UserStatusMuteAction.toObject(message.userStatusMuteAction, options);
             if (message.timeFormatAction != null && message.hasOwnProperty("timeFormatAction"))
                 object.timeFormatAction = $root.proto.TimeFormatAction.toObject(message.timeFormatAction, options);
+            if (message.nuxAction != null && message.hasOwnProperty("nuxAction"))
+                object.nuxAction = $root.proto.NuxAction.toObject(message.nuxAction, options);
             return object;
         };
 

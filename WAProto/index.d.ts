@@ -4292,6 +4292,9 @@ export namespace proto {
 
         /** ClientPayload pull */
         pull?: (boolean|null);
+
+        /** ClientPayload paddingBytes */
+        paddingBytes?: (Uint8Array|null);
     }
 
     /** Represents a ClientPayload. */
@@ -4371,6 +4374,9 @@ export namespace proto {
 
         /** ClientPayload pull. */
         public pull: boolean;
+
+        /** ClientPayload paddingBytes. */
+        public paddingBytes: Uint8Array;
 
         /**
          * Creates a new ClientPayload instance using the specified properties.
@@ -6471,6 +6477,9 @@ export namespace proto {
 
         /** DocumentMessage thumbnailWidth */
         thumbnailWidth?: (number|null);
+
+        /** DocumentMessage caption */
+        caption?: (string|null);
     }
 
     /** Represents a DocumentMessage. */
@@ -6538,6 +6547,9 @@ export namespace proto {
 
         /** DocumentMessage thumbnailWidth. */
         public thumbnailWidth: number;
+
+        /** DocumentMessage caption. */
+        public caption: string;
 
         /**
          * Creates a new DocumentMessage instance using the specified properties.
@@ -12985,6 +12997,9 @@ export namespace proto {
 
         /** Message keepInChatMessage */
         keepInChatMessage?: (proto.IKeepInChatMessage|null);
+
+        /** Message documentWithCaptionMessage */
+        documentWithCaptionMessage?: (proto.IFutureProofMessage|null);
     }
 
     /** Represents a Message. */
@@ -13124,6 +13139,9 @@ export namespace proto {
 
         /** Message keepInChatMessage. */
         public keepInChatMessage?: (proto.IKeepInChatMessage|null);
+
+        /** Message documentWithCaptionMessage. */
+        public documentWithCaptionMessage?: (proto.IFutureProofMessage|null);
 
         /**
          * Creates a new Message instance using the specified properties.
@@ -14607,6 +14625,96 @@ export namespace proto {
 
         /**
          * Converts this NotificationMessageInfo to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+    }
+
+    /** Properties of a NuxAction. */
+    interface INuxAction {
+
+        /** NuxAction acknowledged */
+        acknowledged?: (boolean|null);
+    }
+
+    /** Represents a NuxAction. */
+    class NuxAction implements INuxAction {
+
+        /**
+         * Constructs a new NuxAction.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: proto.INuxAction);
+
+        /** NuxAction acknowledged. */
+        public acknowledged: boolean;
+
+        /**
+         * Creates a new NuxAction instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns NuxAction instance
+         */
+        public static create(properties?: proto.INuxAction): proto.NuxAction;
+
+        /**
+         * Encodes the specified NuxAction message. Does not implicitly {@link proto.NuxAction.verify|verify} messages.
+         * @param message NuxAction message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: proto.INuxAction, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified NuxAction message, length delimited. Does not implicitly {@link proto.NuxAction.verify|verify} messages.
+         * @param message NuxAction message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: proto.INuxAction, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a NuxAction message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns NuxAction
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.NuxAction;
+
+        /**
+         * Decodes a NuxAction message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns NuxAction
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.NuxAction;
+
+        /**
+         * Verifies a NuxAction message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a NuxAction message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns NuxAction
+         */
+        public static fromObject(object: { [k: string]: any }): proto.NuxAction;
+
+        /**
+         * Creates a plain object from a NuxAction message. Also converts values to other types if specified.
+         * @param message NuxAction
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: proto.NuxAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this NuxAction to JSON.
          * @returns JSON object
          */
         public toJSON(): { [k: string]: any };
@@ -21707,6 +21815,9 @@ export namespace proto {
 
         /** SyncActionValue timeFormatAction */
         timeFormatAction?: (proto.ITimeFormatAction|null);
+
+        /** SyncActionValue nuxAction */
+        nuxAction?: (proto.INuxAction|null);
     }
 
     /** Represents a SyncActionValue. */
@@ -21801,6 +21912,9 @@ export namespace proto {
 
         /** SyncActionValue timeFormatAction. */
         public timeFormatAction?: (proto.ITimeFormatAction|null);
+
+        /** SyncActionValue nuxAction. */
+        public nuxAction?: (proto.INuxAction|null);
 
         /**
          * Creates a new SyncActionValue instance using the specified properties.
