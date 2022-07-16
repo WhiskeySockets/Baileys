@@ -36,6 +36,12 @@ const startSock = async() => {
 		msgRetryCounterMap,
 		// implement to handle retries
 		getMessage: async key => {
+			if(store) {
+				const msg = await store.loadMessage(key.remoteJid!, key.id!, undefined)
+				return msg?.message || undefined
+			}
+
+			// only if store is present
 			return {
 				conversation: 'hello'
 			}
