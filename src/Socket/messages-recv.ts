@@ -77,7 +77,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
 
-		const deviceIdentity = proto.ADVSignedDeviceIdentity.encode(account!).finish()
+		const deviceIdentity = proto.ADVSignedDeviceIdentity.encode({
+			...account,
+			accountSignatureKey: undefined
+		}).finish()
 		await authState.keys.transaction(
 			async() => {
 				const receipt: BinaryNode = {
