@@ -53,6 +53,9 @@ export type ChatModification =
         lastMessages: LastMessageList
     } |
     {
+        pushNameSetting: string
+    } |
+    {
         pin: boolean
     } |
     {

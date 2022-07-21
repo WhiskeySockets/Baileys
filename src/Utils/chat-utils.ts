@@ -578,6 +578,18 @@ export const chatModificationToAppPatch = (
 			apiVersion: 6,
 			operation: OP.SET
 		}
+	} else if('pushNameSetting' in mod) {
+		patch = {
+			syncAction: {
+				pushNameSetting: {
+					name: mod.pushNameSetting
+				}
+			},
+			index: ['setting_pushName'],
+			type: 'critical_block',
+			apiVersion: 1,
+			operation: OP.SET,
+		}
 	} else {
 		throw new Boom('not supported')
 	}

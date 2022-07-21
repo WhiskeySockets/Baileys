@@ -695,6 +695,11 @@ await sock.sendMessage(
     const status = 'Hello World!'
     await sock.updateProfileStatus(status)
     ```
+- To change your profile name
+    ``` ts
+    const name = 'My name'
+    await sock.updateProfileName(name)
+    ```
 - To get the display picture of some person/group
     ``` ts
     // for low res picture
