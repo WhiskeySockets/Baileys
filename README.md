@@ -522,8 +522,6 @@ const sendMsg = await sock.sendMessage(id, templateMessage)
         fileName: 'somefile.pdf', // (for media messages) file name for the media
         /* will send audio messages as voice notes, if set to true */
         ptt: true,
-        // will detect links & generate a link preview automatically (default true)
-        detectLinks: true,
         /** Should it send as a disappearing messages. 
          * By default 'chat' -- which follows the setting of the chat */
         sendEphemeral: 'chat'
