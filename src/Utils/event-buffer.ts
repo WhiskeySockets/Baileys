@@ -168,14 +168,18 @@ function append<E extends BufferableEvent>(
 	case 'chats.update':
 		for(const update of eventData as Partial<Chat>[]) {
 			const chatId = update.id!
+			// if there is an existing upsert, merge the update into it
 			const upsert = data.chatUpserts[chatId]
 			if(upsert) {
 				concatChats(upsert, update)
 			} else {
+				// merge the update into the existing update
 				const chatUpdate = data.chatUpdates[chatId] || { }
 				data.chatUpdates[chatId] = concatChats(chatUpdate, update)
 			}
 
+			// if the chat has been updated
+			// ignore any existing chat delete
 			if(data.chatDeletes.has(chatId)) {
 				data.chatDeletes.delete(chatId)
 			}
@@ -185,6 +189,7 @@ function append<E extends BufferableEvent>(
 	case 'chats.delete':
 		for(const chatId of eventData as string[]) {
 			data.chatDeletes.add(chatId)
+			// remove any prior updates & upserts
 			if(data.chatUpdates[chatId]) {
 				delete data.chatUpdates[chatId]
 			}
@@ -212,10 +217,12 @@ function append<E extends BufferableEvent>(
 		const contactUpdates = eventData as BaileysEventMap<any>['contacts.update']
 		for(const update of contactUpdates) {
 			const id = update.id!
+			// merge into prior upsert
 			const upsert = data.contactUpserts[update.id!]
 			if(upsert) {
 				Object.assign(upsert, update)
 			} else {
+				// merge into prior update
 				const contactUpdate = data.contactUpdates[id] || { }
 				data.contactUpdates[id] = Object.assign(contactUpdate, update)
 			}
@@ -229,6 +236,12 @@ function append<E extends BufferableEvent>(
 			const existing = data.messageUpserts[key]
 			if(existing) {
 				message.messageTimestamp = existing.message.messageTimestamp
+			}
+
+			if(data.messageUpdates[key]) {
+				logger.debug('absorbed prior message update in message upsert')
+				Object.assign(message, data.messageUpdates[key].update)
+				delete data.messageUpdates[key]
 			}
 
 			data.messageUpserts[key] = {
