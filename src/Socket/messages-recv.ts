@@ -474,12 +474,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 
 					cleanMessage(msg, authState.creds.me!.id)
+
+					await upsertMessage(msg, node.attrs.offline ? 'append' : 'notify')
 				}
 			),
 			sendMessageAck(node)
 		])
-
-		await upsertMessage(msg, node.attrs.offline ? 'append' : 'notify')
 	}
 
 	const handleCall = async(node: BinaryNode) => {
