@@ -35,12 +35,14 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	const appStateSyncTimeout = debouncedTimeout(
 		APP_STATE_SYNC_TIMEOUT_MS,
 		async() => {
-			logger.info(
-				{ recvChats: Object.keys(recvChats).length },
-				'doing initial app state sync'
-			)
 			if(ws.readyState === ws.OPEN) {
+				logger.info(
+					{ recvChats: Object.keys(recvChats).length },
+					'doing initial app state sync'
+				)
 				await resyncMainAppState(recvChats)
+			} else {
+				logger.warn('connection closed before app state sync')
 			}
 
 			historyCache.clear()
