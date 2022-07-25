@@ -6,7 +6,7 @@ import { DEFAULT_CONNECTION_CONFIG } from '../Defaults'
 import type makeLegacySocket from '../LegacySocket'
 import type makeMDSocket from '../Socket'
 import type { BaileysEventEmitter, Chat, ConnectionState, Contact, GroupMetadata, PresenceData, WAMessage, WAMessageCursor, WAMessageKey } from '../Types'
-import { toNumber, updateMessageWithReceipt } from '../Utils'
+import { toNumber, updateMessageWithReaction, updateMessageWithReceipt } from '../Utils'
 import { jidNormalizedUser } from '../WABinary'
 import makeOrderedDictionary from './make-ordered-dictionary'
 
@@ -227,6 +227,16 @@ export default (
 				const msg = obj?.get(key.id!)
 				if(msg) {
 					updateMessageWithReceipt(msg, receipt)
+				}
+			}
+		})
+
+		ev.on('messages.reaction', (reactions) => {
+			for(const { key, reaction } of reactions) {
+				const obj = messages[key.remoteJid!]
+				const msg = obj?.get(key.id!)
+				if(msg) {
+					updateMessageWithReaction(msg, reaction)
 				}
 			}
 		})
