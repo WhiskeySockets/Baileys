@@ -52,7 +52,7 @@ export const processHistoryMessage = (
 					const curItem = recvChats[message.key.remoteJid!]
 					const timestamp = toNumber(message.messageTimestamp)
 					if(!message.key.fromMe && (!curItem || timestamp > curItem.lastMsgRecvTimestamp)) {
-						recvChats[message.key.remoteJid!] = { lastMsgRecvTimestamp: timestamp }
+						recvChats[chat.id] = { lastMsgRecvTimestamp: timestamp }
 						// keep only the most recent message in the chat array
 						chat.messages = [{ message }]
 					}

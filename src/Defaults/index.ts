@@ -45,6 +45,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	auth: undefined as any,
 	downloadHistory: true,
 	markOnlineOnConnect: true,
+	syncFullHistory: false,
 	linkPreviewImageThumbnailWidth: 192,
 	transactionOpts: { maxCommitRetries: 10, delayBetweenTriesMs: 3000 },
 	getMessage: async() => undefined

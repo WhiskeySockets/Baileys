@@ -8,7 +8,7 @@ import { Curve, hmacSign } from './crypto'
 import { encodeBigEndian } from './generics'
 import { createSignalIdentity } from './signal'
 
-type ClientPayloadConfig = Pick<SocketConfig, 'version' | 'browser'>
+type ClientPayloadConfig = Pick<SocketConfig, 'version' | 'browser' | 'syncFullHistory'>
 
 const getUserAgent = ({ version }: ClientPayloadConfig): proto.IUserAgent => {
 	const osVersion = '0.1'
@@ -31,16 +31,26 @@ const getUserAgent = ({ version }: ClientPayloadConfig): proto.IUserAgent => {
 	}
 }
 
-const getWebInfo = (): proto.IWebInfo => ({
-	webSubPlatform: proto.WebInfo.WebInfoWebSubPlatform.WEB_BROWSER
-})
+const PLATFORM_MAP = {
+	'Mac OS': proto.WebInfo.WebInfoWebSubPlatform.DARWIN,
+	'Windows': proto.WebInfo.WebInfoWebSubPlatform.WIN32
+}
+
+const getWebInfo = (config: ClientPayloadConfig): proto.IWebInfo => {
+	let webSubPlatform = proto.WebInfo.WebInfoWebSubPlatform.WEB_BROWSER
+	if(config.syncFullHistory && PLATFORM_MAP[config.browser[0]]) {
+		webSubPlatform = PLATFORM_MAP[config.browser[0]]
+	}
+
+	return { webSubPlatform }
+}
 
 const getClientPayload = (config: ClientPayloadConfig): proto.IClientPayload => {
 	return {
 		connectType: proto.ClientPayload.ClientPayloadConnectType.WIFI_UNKNOWN,
 		connectReason: proto.ClientPayload.ClientPayloadConnectReason.USER_ACTIVATED,
 		userAgent: getUserAgent(config),
-		webInfo: getWebInfo(),
+		webInfo: getWebInfo(config),
 	}
 }
 
@@ -75,7 +85,7 @@ export const generateRegistrationNode = (
 		},
 		platformType: proto.DeviceProps.DevicePropsPlatformType[config.browser[1].toUpperCase()]
 			|| proto.DeviceProps.DevicePropsPlatformType.UNKNOWN,
-		requireFullSync: false,
+		requireFullSync: config.syncFullHistory,
 	}
 
 	const companionProto = proto.DeviceProps.encode(companion).finish()
