@@ -347,3 +347,11 @@ export const getCodeFromWSError = (error: Error) => {
 
 	return statusCode
 }
+
+/**
+ * Is the given platform WA business
+ * @param platform AuthenticationCreds.platform
+ */
+export const isWABusinessPlatform = (platform: string) => {
+	return platform === 'smbi' || platform === 'smba'
+}
