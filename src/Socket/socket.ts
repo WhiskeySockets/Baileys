@@ -26,7 +26,8 @@ export const makeSocket = ({
 	printQRInTerminal,
 	defaultQueryTimeoutMs,
 	syncFullHistory,
-	transactionOpts
+	transactionOpts,
+	qrTimeout
 }: SocketConfig) => {
 	const ws = new WebSocket(waWebSocketUrl, undefined, {
 		origin: DEFAULT_ORIGIN,
@@ -450,7 +451,7 @@ export const makeSocket = ({
 		const identityKeyB64 = Buffer.from(creds.signedIdentityKey.public).toString('base64')
 		const advB64 = creds.advSecretKey
 
-		let qrMs = 60_000 // time to let a QR live
+		let qrMs = qrTimeout || 60_000 // time to let a QR live
 		const genPairQR = () => {
 			if(ws.readyState !== ws.OPEN) {
 				return
@@ -468,7 +469,7 @@ export const makeSocket = ({
 			ev.emit('connection.update', { qr })
 
 			qrTimer = setTimeout(genPairQR, qrMs)
-			qrMs = 20_000 // shorter subsequent qrs
+			qrMs = qrTimeout || 20_000 // shorter subsequent qrs
 		}
 
 		genPairQR()
