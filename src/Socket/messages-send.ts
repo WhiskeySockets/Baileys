@@ -620,7 +620,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const additionalAttributes: BinaryNodeAttributes = { }
 				// required for delete
 				if(isDeleteMsg) {
-					additionalAttributes.edit = '7'
+					// if the chat is a group, and I am not the author, then delete the message as an admin
+					if (content.delete.remoteJid.endsWith('@g.us') && !content.fromMe) {
+						additionalAttributes.edit = '8'
+					} else {
+						additionalAttributes.edit = '7'
+					}
 				}
 
 				await relayMessage(jid, fullMsg.message!, { messageId: fullMsg.key.id!, cachedGroupMetadata: options.cachedGroupMetadata, additionalAttributes })

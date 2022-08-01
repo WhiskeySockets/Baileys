@@ -134,6 +134,7 @@ export type AnyMessageContent = AnyRegularMessageContent | {
 	forward: WAMessage
 	force?: boolean
 } | {
+    /** Delete your message or anyone's message in a group (admin required) */
 	delete: WAMessageKey
 } | {
 	disappearingMessagesInChat: boolean | number
