@@ -621,7 +621,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				// required for delete
 				if(isDeleteMsg) {
 					// if the chat is a group, and I am not the author, then delete the message as an admin
-					if (content.delete?.remoteJid?.endsWith('@g.us') && !content.delete?.fromMe) {
+					if(content.delete?.remoteJid?.endsWith('@g.us') && !content.delete?.fromMe) {
 						additionalAttributes.edit = '8'
 					} else {
 						additionalAttributes.edit = '7'
