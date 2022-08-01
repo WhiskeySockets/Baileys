@@ -10,7 +10,7 @@ import { createSignalIdentity } from './signal'
 
 type ClientPayloadConfig = Pick<SocketConfig, 'version' | 'browser' | 'syncFullHistory'>
 
-const getUserAgent = ({ version }: ClientPayloadConfig): proto.IUserAgent => {
+const getUserAgent = ({ version }: ClientPayloadConfig): proto.ClientPayload.IUserAgent => {
 	const osVersion = '0.1'
 	return {
 		appVersion: {
@@ -18,8 +18,8 @@ const getUserAgent = ({ version }: ClientPayloadConfig): proto.IUserAgent => {
 			secondary: version[1],
 			tertiary: version[2],
 		},
-		platform: proto.UserAgent.UserAgentPlatform.WEB,
-		releaseChannel: proto.UserAgent.UserAgentReleaseChannel.RELEASE,
+		platform: proto.ClientPayload.UserAgent.Platform.WEB,
+		releaseChannel: proto.ClientPayload.UserAgent.ReleaseChannel.RELEASE,
 		mcc: '000',
 		mnc: '000',
 		osVersion: osVersion,
@@ -32,12 +32,12 @@ const getUserAgent = ({ version }: ClientPayloadConfig): proto.IUserAgent => {
 }
 
 const PLATFORM_MAP = {
-	'Mac OS': proto.WebInfo.WebInfoWebSubPlatform.DARWIN,
-	'Windows': proto.WebInfo.WebInfoWebSubPlatform.WIN32
+	'Mac OS': proto.ClientPayload.WebInfo.WebSubPlatform.DARWIN,
+	'Windows': proto.ClientPayload.WebInfo.WebSubPlatform.WIN32
 }
 
-const getWebInfo = (config: ClientPayloadConfig): proto.IWebInfo => {
-	let webSubPlatform = proto.WebInfo.WebInfoWebSubPlatform.WEB_BROWSER
+const getWebInfo = (config: ClientPayloadConfig): proto.ClientPayload.IWebInfo => {
+	let webSubPlatform = proto.ClientPayload.WebInfo.WebSubPlatform.WEB_BROWSER
 	if(config.syncFullHistory && PLATFORM_MAP[config.browser[0]]) {
 		webSubPlatform = PLATFORM_MAP[config.browser[0]]
 	}
@@ -47,8 +47,8 @@ const getWebInfo = (config: ClientPayloadConfig): proto.IWebInfo => {
 
 const getClientPayload = (config: ClientPayloadConfig): proto.IClientPayload => {
 	return {
-		connectType: proto.ClientPayload.ClientPayloadConnectType.WIFI_UNKNOWN,
-		connectReason: proto.ClientPayload.ClientPayloadConnectReason.USER_ACTIVATED,
+		connectType: proto.ClientPayload.ConnectType.WIFI_UNKNOWN,
+		connectReason: proto.ClientPayload.ConnectReason.USER_ACTIVATED,
 		userAgent: getUserAgent(config),
 		webInfo: getWebInfo(config),
 	}
@@ -83,8 +83,8 @@ export const generateRegistrationNode = (
 			secondary: +(browserVersion[1] || 1),
 			tertiary: +(browserVersion[2] || 0),
 		},
-		platformType: proto.DeviceProps.DevicePropsPlatformType[config.browser[1].toUpperCase()]
-			|| proto.DeviceProps.DevicePropsPlatformType.UNKNOWN,
+		platformType: proto.DeviceProps.PlatformType[config.browser[1].toUpperCase()]
+			|| proto.DeviceProps.PlatformType.UNKNOWN,
 		requireFullSync: config.syncFullHistory,
 	}
 

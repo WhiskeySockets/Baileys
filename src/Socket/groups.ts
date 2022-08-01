@@ -147,7 +147,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 		 * @param key the key of the invite message, or optionally only provide the jid of the person who sent the invite
 		 * @param inviteMessage the message to accept
 		 */
-		groupAcceptInviteV4: async(key: string | WAMessageKey, inviteMessage: proto.IGroupInviteMessage) => {
+		groupAcceptInviteV4: async(key: string | WAMessageKey, inviteMessage: proto.Message.IGroupInviteMessage) => {
 			key = typeof key === 'string' ? { remoteJid: key } : key
 			const results = await groupQuery(inviteMessage.groupJid!, 'set', [{
 				tag: 'accept',
@@ -163,7 +163,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 			// update the invite message to be expired
 			if(key.id) {
 				// create new invite message that is expired
-				inviteMessage = proto.GroupInviteMessage.fromObject(inviteMessage)
+				inviteMessage = proto.Message.GroupInviteMessage.fromObject(inviteMessage)
 				inviteMessage.inviteExpiration = 0
 				inviteMessage.inviteCode = ''
 				ev.emit('messages.update', [

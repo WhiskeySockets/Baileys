@@ -9,15 +9,15 @@ import type { GroupMetadata } from './GroupMetadata'
 export { proto as WAProto }
 export type WAMessage = proto.IWebMessageInfo
 export type WAMessageContent = proto.IMessage
-export type WAContactMessage = proto.IContactMessage
-export type WAContactsArrayMessage = proto.IContactsArrayMessage
+export type WAContactMessage = proto.Message.IContactMessage
+export type WAContactsArrayMessage = proto.Message.IContactsArrayMessage
 export type WAMessageKey = proto.IMessageKey
-export type WATextMessage = proto.IExtendedTextMessage
+export type WATextMessage = proto.Message.IExtendedTextMessage
 export type WAContextInfo = proto.IContextInfo
-export type WALocationMessage = proto.ILocationMessage
-export type WAGenericMediaMessage = proto.IVideoMessage | proto.IImageMessage | proto.IAudioMessage | proto.IDocumentMessage | proto.IStickerMessage
-export import WAMessageStubType = proto.WebMessageInfo.WebMessageInfoStubType
-export import WAMessageStatus = proto.WebMessageInfo.WebMessageInfoStatus
+export type WALocationMessage = proto.Message.ILocationMessage
+export type WAGenericMediaMessage = proto.Message.IVideoMessage | proto.Message.IImageMessage | proto.Message.IAudioMessage | proto.Message.IDocumentMessage | proto.Message.IStickerMessage
+export import WAMessageStubType = proto.WebMessageInfo.StubType
+export import WAMessageStatus = proto.WebMessageInfo.Status
 export type WAMediaUpload = Buffer | { url: URL | string } | { stream: Readable }
 /** Set of message types that are supported by the library */
 export type MessageType = keyof proto.Message
@@ -51,7 +51,7 @@ type ViewOnce = {
 }
 type Buttonable = {
     /** add buttons to the message  */
-    buttons?: proto.IButton[]
+    buttons?: proto.Message.ButtonsMessage.IButton[]
 }
 type Templatable = {
     /** add buttons to the message (conflicts with normal buttons)*/
@@ -61,7 +61,7 @@ type Templatable = {
 }
 type Listable = {
     /** Sections of the List */
-    sections?: proto.ISection[]
+    sections?: proto.Message.ListMessage.ISection[]
 
     /** Title of a List Message only */
     title?: string
@@ -117,13 +117,13 @@ export type AnyRegularMessageContent = (
     {
         contacts: {
             displayName?: string
-            contacts: proto.IContactMessage[]
+            contacts: proto.Message.IContactMessage[]
         }
     } |
     {
         location: WALocationMessage
     } | {
-        react: proto.IReactionMessage
+        react: proto.Message.IReactionMessage
     } | {
         buttonReply: ButtonReplyInfo
         type: 'template' | 'plain'

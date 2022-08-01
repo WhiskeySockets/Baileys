@@ -59,7 +59,7 @@ export const useMultiFileAuthState = async(folder: string): Promise<{ state: Aut
 							async id => {
 								let value = await readData(`${type}-${id}.json`)
 								if(type === 'app-state-sync-key' && value) {
-									value = proto.AppStateSyncKeyData.fromObject(value)
+									value = proto.Message.AppStateSyncKeyData.fromObject(value)
 								}
 
 								data[id] = value

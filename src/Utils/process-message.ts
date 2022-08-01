@@ -88,7 +88,7 @@ const processMessage = async(
 	const protocolMsg = content?.protocolMessage
 	if(protocolMsg) {
 		switch (protocolMsg.type) {
-		case proto.ProtocolMessage.ProtocolMessageType.HISTORY_SYNC_NOTIFICATION:
+		case proto.Message.ProtocolMessage.Type.HISTORY_SYNC_NOTIFICATION:
 			const histNotification = protocolMsg!.historySyncNotification!
 
 			logger?.info({ histNotification, id: message.key.id }, 'got history notification')
@@ -120,7 +120,7 @@ const processMessage = async(
 			}
 
 			break
-		case proto.ProtocolMessage.ProtocolMessageType.APP_STATE_SYNC_KEY_SHARE:
+		case proto.Message.ProtocolMessage.Type.APP_STATE_SYNC_KEY_SHARE:
 			const keys = protocolMsg.appStateSyncKeyShare!.keys
 			if(keys?.length) {
 				let newAppStateSyncKeyId = ''
@@ -143,7 +143,7 @@ const processMessage = async(
 			}
 
 			break
-		case proto.ProtocolMessage.ProtocolMessageType.REVOKE:
+		case proto.Message.ProtocolMessage.Type.REVOKE:
 			ev.emit('messages.update', [
 				{
 					key: {
@@ -154,7 +154,7 @@ const processMessage = async(
 				}
 			])
 			break
-		case proto.ProtocolMessage.ProtocolMessageType.EPHEMERAL_SETTING:
+		case proto.Message.ProtocolMessage.Type.EPHEMERAL_SETTING:
 			Object.assign(chat, {
 				ephemeralSettingTimestamp: toNumber(message.messageTimestamp),
 				ephemeralExpiration: protocolMsg.ephemeralExpiration || null

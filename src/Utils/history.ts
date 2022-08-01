@@ -9,7 +9,7 @@ import { downloadContentFromMessage } from './messages-media'
 
 const inflatePromise = promisify(inflate)
 
-export const downloadHistory = async(msg: proto.IHistorySyncNotification) => {
+export const downloadHistory = async(msg: proto.Message.IHistorySyncNotification) => {
 	const stream = await downloadContentFromMessage(msg, 'history')
 	let buffer = Buffer.from([])
 	for await (const chunk of stream) {
@@ -33,8 +33,8 @@ export const processHistoryMessage = (
 	const chats: Chat[] = []
 
 	switch (item.syncType) {
-	case proto.HistorySync.HistorySyncHistorySyncType.INITIAL_BOOTSTRAP:
-	case proto.HistorySync.HistorySyncHistorySyncType.RECENT:
+	case proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP:
+	case proto.HistorySync.HistorySyncType.RECENT:
 		for(const chat of item.conversations!) {
 			const contactId = `c:${chat.id}`
 			if(chat.name && !historyCache.has(contactId)) {
@@ -72,7 +72,7 @@ export const processHistoryMessage = (
 		}
 
 		break
-	case proto.HistorySync.HistorySyncHistorySyncType.PUSH_NAME:
+	case proto.HistorySync.HistorySyncType.PUSH_NAME:
 		for(const c of item.pushnames!) {
 			const contactId = `c:${c.id}`
 			if(!historyCache.has(contactId)) {
@@ -82,7 +82,7 @@ export const processHistoryMessage = (
 		}
 
 		break
-	case proto.HistorySync.HistorySyncHistorySyncType.INITIAL_STATUS_V3:
+	case proto.HistorySync.HistorySyncType.INITIAL_STATUS_V3:
 		// TODO
 		break
 	}
@@ -98,7 +98,7 @@ export const processHistoryMessage = (
 }
 
 export const downloadAndProcessHistorySyncNotification = async(
-	msg: proto.IHistorySyncNotification,
+	msg: proto.Message.IHistorySyncNotification,
 	historyCache: Set<string>,
 	recvChats: InitialReceivedChatsState
 ) => {

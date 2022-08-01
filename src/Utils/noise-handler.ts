@@ -105,7 +105,7 @@ export const makeNoiseHandler = (
 			const certDecoded = decrypt(serverHello!.payload!)
 			const { intermediate: certIntermediate } = proto.CertChain.decode(certDecoded)
 
-			const { issuerSerial } = proto.CertChainNoiseCertificateDetails.decode(certIntermediate!.details!)
+			const { issuerSerial } = proto.CertChain.NoiseCertificate.Details.decode(certIntermediate!.details!)
 
 			if(issuerSerial !== WA_CERT_DETAILS.SERIAL) {
 				throw new Boom('certification match failed', { statusCode: 400 })

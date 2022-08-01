@@ -12,7 +12,7 @@ import { Readable, Transform } from 'stream'
 import { URL } from 'url'
 import { proto } from '../../WAProto'
 import { DEFAULT_ORIGIN, MEDIA_PATH_MAP } from '../Defaults'
-import { BaileysEventMap, CommonSocketConfig, DownloadableMessage, MediaConnInfo, MediaDecryptionKeyInfo, MediaType, MessageType, WAGenericMediaMessage, WAMediaUpload, WAMediaUploadFunction, WAMessageContent, WAProto } from '../Types'
+import { BaileysEventMap, CommonSocketConfig, DownloadableMessage, MediaConnInfo, MediaDecryptionKeyInfo, MediaType, MessageType, WAGenericMediaMessage, WAMediaUpload, WAMediaUploadFunction, WAMessageContent } from '../Types'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, jidNormalizedUser } from '../WABinary'
 import { aesDecryptGCM, aesEncryptGCM, hkdf } from './crypto'
 import { generateMessageID } from './generics'
@@ -479,12 +479,8 @@ export function extensionForMediaMessage(message: WAMessageContent) {
 	) {
 		extension = '.jpeg'
 	} else {
-		const messageContent = message[type] as
-                                | WAProto.VideoMessage
-                                | WAProto.ImageMessage
-                                | WAProto.AudioMessage
-                                | WAProto.DocumentMessage
-		extension = getExtension (messageContent.mimetype)
+		const messageContent = message[type] as WAGenericMediaMessage
+		extension = getExtension(messageContent.mimetype!)
 	}
 
 	return extension
@@ -666,8 +662,8 @@ export const decryptMediaRetryData = (
 export const getStatusCodeForMediaRetry = (code: number) => MEDIA_RETRY_STATUS_MAP[code]
 
 const MEDIA_RETRY_STATUS_MAP = {
-	[proto.MediaRetryNotification.MediaRetryNotificationResultType.SUCCESS]: 200,
-	[proto.MediaRetryNotification.MediaRetryNotificationResultType.DECRYPTION_ERROR]: 412,
-	[proto.MediaRetryNotification.MediaRetryNotificationResultType.NOT_FOUND]: 404,
-	[proto.MediaRetryNotification.MediaRetryNotificationResultType.GENERAL_ERROR]: 418,
+	[proto.MediaRetryNotification.ResultType.SUCCESS]: 200,
+	[proto.MediaRetryNotification.ResultType.DECRYPTION_ERROR]: 412,
+	[proto.MediaRetryNotification.ResultType.NOT_FOUND]: 404,
+	[proto.MediaRetryNotification.ResultType.GENERAL_ERROR]: 418,
 } as const

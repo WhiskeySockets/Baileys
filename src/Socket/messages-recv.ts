@@ -193,7 +193,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			case 'not_ephemeral':
 				result.message = {
 					protocolMessage: {
-						type: proto.ProtocolMessage.ProtocolMessageType.EPHEMERAL_SETTING,
+						type: proto.Message.ProtocolMessage.Type.EPHEMERAL_SETTING,
 						ephemeralExpiration: +(child.attrs.expiration || 0)
 					}
 				}
@@ -340,13 +340,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						(
 							// basically, we only want to know when a message from us has been delivered to/read by the other person
 							// or another device of ours has read some messages
-							status > proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK ||
+							status > proto.WebMessageInfo.Status.DELIVERY_ACK ||
 							!isNodeFromMe
 						)
 					) {
 						if(isJidGroup(remoteJid)) {
 							if(attrs.participant) {
-								const updateKey: keyof MessageUserReceipt = status === proto.WebMessageInfo.WebMessageInfoStatus.DELIVERY_ACK ? 'receiptTimestamp' : 'readTimestamp'
+								const updateKey: keyof MessageUserReceipt = status === proto.WebMessageInfo.Status.DELIVERY_ACK ? 'receiptTimestamp' : 'readTimestamp'
 								ev.emit(
 									'message-receipt.update',
 									ids.map(id => ({
@@ -428,7 +428,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				async() => {
 					await decryptionTask
 					// message failed to decrypt
-					if(msg.messageStubType === proto.WebMessageInfo.WebMessageInfoStubType.CIPHERTEXT) {
+					if(msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT) {
 						logger.error(
 							{ key: msg.key, params: msg.messageStubParameters },
 							'failure in decrypting message'

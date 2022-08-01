@@ -36,91 +36,6 @@ message ActionLink {
     optional string buttonTitle = 2;
 }
 
-message AdReplyInfo {
-    optional string advertiserName = 1;
-    enum AdReplyInfoMediaType {
-        NONE = 0;
-        IMAGE = 1;
-        VIDEO = 2;
-    }
-    optional AdReplyInfoMediaType mediaType = 2;
-    optional bytes jpegThumbnail = 16;
-    optional string caption = 17;
-}
-
-message AgentAction {
-    optional string name = 1;
-    optional int32 deviceID = 2;
-    optional bool isDeleted = 3;
-}
-
-message AndroidUnsupportedActions {
-    optional bool allowed = 1;
-}
-
-message AppStateFatalExceptionNotification {
-    repeated string collectionNames = 1;
-    optional int64 timestamp = 2;
-}
-
-message AppStateSyncKey {
-    optional AppStateSyncKeyId keyId = 1;
-    optional AppStateSyncKeyData keyData = 2;
-}
-
-message AppStateSyncKeyData {
-    optional bytes keyData = 1;
-    optional AppStateSyncKeyFingerprint fingerprint = 2;
-    optional int64 timestamp = 3;
-}
-
-message AppStateSyncKeyFingerprint {
-    optional uint32 rawId = 1;
-    optional uint32 currentIndex = 2;
-    repeated uint32 deviceIndexes = 3 [packed=true];
-}
-
-message AppStateSyncKeyId {
-    optional bytes keyId = 1;
-}
-
-message AppStateSyncKeyRequest {
-    repeated AppStateSyncKeyId keyIds = 1;
-}
-
-message AppStateSyncKeyShare {
-    repeated AppStateSyncKey keys = 1;
-}
-
-message AppVersion {
-    optional uint32 primary = 1;
-    optional uint32 secondary = 2;
-    optional uint32 tertiary = 3;
-    optional uint32 quaternary = 4;
-    optional uint32 quinary = 5;
-}
-
-message ArchiveChatAction {
-    optional bool archived = 1;
-    optional SyncActionMessageRange messageRange = 2;
-}
-
-message AudioMessage {
-    optional string url = 1;
-    optional string mimetype = 2;
-    optional bytes fileSha256 = 3;
-    optional uint64 fileLength = 4;
-    optional uint32 seconds = 5;
-    optional bool ptt = 6;
-    optional bytes mediaKey = 7;
-    optional bytes fileEncSha256 = 8;
-    optional string directPath = 9;
-    optional int64 mediaKeyTimestamp = 10;
-    optional ContextInfo contextInfo = 17;
-    optional bytes streamingSidecar = 18;
-    optional bytes waveform = 19;
-}
-
 message AutoDownloadSettings {
     optional bool downloadImages = 1;
     optional bool downloadAudio = 2;
@@ -132,15 +47,15 @@ message BizAccountLinkInfo {
     optional uint64 whatsappBizAcctFbid = 1;
     optional string whatsappAcctNumber = 2;
     optional uint64 issueTime = 3;
-    enum BizAccountLinkInfoHostStorageType {
+    optional HostStorageType hostStorage = 4;
+    optional AccountType accountType = 5;
+    enum AccountType {
+        ENTERPRISE = 0;
+    }
+    enum HostStorageType {
         ON_PREMISE = 0;
         FACEBOOK = 1;
     }
-    optional BizAccountLinkInfoHostStorageType hostStorage = 4;
-    enum BizAccountLinkInfoAccountType {
-        ENTERPRISE = 0;
-    }
-    optional BizAccountLinkInfoAccountType accountType = 5;
 }
 
 message BizAccountPayload {
@@ -149,122 +64,45 @@ message BizAccountPayload {
 }
 
 message BizIdentityInfo {
-    enum BizIdentityInfoVerifiedLevelValue {
+    optional VerifiedLevelValue vlevel = 1;
+    optional VerifiedNameCertificate vnameCert = 2;
+    optional bool signed = 3;
+    optional bool revoked = 4;
+    optional HostStorageType hostStorage = 5;
+    optional ActualActorsType actualActors = 6;
+    optional uint64 privacyModeTs = 7;
+    optional uint64 featureControls = 8;
+    enum ActualActorsType {
+        SELF = 0;
+        BSP = 1;
+    }
+    enum HostStorageType {
+        ON_PREMISE = 0;
+        FACEBOOK = 1;
+    }
+    enum VerifiedLevelValue {
         UNKNOWN = 0;
         LOW = 1;
         HIGH = 2;
     }
-    optional BizIdentityInfoVerifiedLevelValue vlevel = 1;
-    optional VerifiedNameCertificate vnameCert = 2;
-    optional bool signed = 3;
-    optional bool revoked = 4;
-    enum BizIdentityInfoHostStorageType {
-        ON_PREMISE = 0;
-        FACEBOOK = 1;
-    }
-    optional BizIdentityInfoHostStorageType hostStorage = 5;
-    enum BizIdentityInfoActualActorsType {
-        SELF = 0;
-        BSP = 1;
-    }
-    optional BizIdentityInfoActualActorsType actualActors = 6;
-    optional uint64 privacyModeTs = 7;
-    optional uint64 featureControls = 8;
-}
-
-message Button {
-    optional string buttonId = 1;
-    optional ButtonText buttonText = 2;
-    enum ButtonType {
-        UNKNOWN = 0;
-        RESPONSE = 1;
-        NATIVE_FLOW = 2;
-    }
-    optional ButtonType type = 3;
-    optional NativeFlowInfo nativeFlowInfo = 4;
-}
-
-message ButtonText {
-    optional string displayText = 1;
-}
-
-message ButtonsMessage {
-    optional string contentText = 6;
-    optional string footerText = 7;
-    optional ContextInfo contextInfo = 8;
-    repeated Button buttons = 9;
-    enum ButtonsMessageHeaderType {
-        UNKNOWN = 0;
-        EMPTY = 1;
-        TEXT = 2;
-        DOCUMENT = 3;
-        IMAGE = 4;
-        VIDEO = 5;
-        LOCATION = 6;
-    }
-    optional ButtonsMessageHeaderType headerType = 10;
-    oneof header {
-        string text = 1;
-        DocumentMessage documentMessage = 2;
-        ImageMessage imageMessage = 3;
-        VideoMessage videoMessage = 4;
-        LocationMessage locationMessage = 5;
-    }
-}
-
-message ButtonsResponseMessage {
-    optional string selectedButtonId = 1;
-    optional ContextInfo contextInfo = 3;
-    enum ButtonsResponseMessageType {
-        UNKNOWN = 0;
-        DISPLAY_TEXT = 1;
-    }
-    optional ButtonsResponseMessageType type = 4;
-    oneof response {
-        string selectedDisplayText = 2;
-    }
-}
-
-message Call {
-    optional bytes callKey = 1;
-    optional string conversionSource = 2;
-    optional bytes conversionData = 3;
-    optional uint32 conversionDelaySeconds = 4;
-}
-
-message CallButton {
-    optional HighlyStructuredMessage displayText = 1;
-    optional HighlyStructuredMessage phoneNumber = 2;
-}
-
-message CancelPaymentRequestMessage {
-    optional MessageKey key = 1;
-}
-
-message CatalogSnapshot {
-    optional ImageMessage catalogImage = 1;
-    optional string title = 2;
-    optional string description = 3;
 }
 
 message CertChain {
-    optional CertChainNoiseCertificate leaf = 1;
-    optional CertChainNoiseCertificate intermediate = 2;
-}
-
-// Renamed from CertChain$NoiseCertificate
-message CertChainNoiseCertificate {
-    optional bytes details = 1;
-    optional bytes signature = 2;
-}
-
-// Renamed from CertChain$NoiseCertificate$Details
-message CertChainNoiseCertificateDetails {
-    optional uint32 serial = 1;
-    optional uint32 issuerSerial = 2;
-    optional bytes key = 3;
-    optional uint64 notBefore = 4;
-    optional uint64 notAfter = 5;
+    optional NoiseCertificate leaf = 1;
+    optional NoiseCertificate intermediate = 2;
+    message NoiseCertificate {
+        optional bytes details = 1;
+        optional bytes signature = 2;
+        message Details {
+            optional uint32 serial = 1;
+            optional uint32 issuerSerial = 2;
+            optional bytes key = 3;
+            optional uint64 notBefore = 4;
+            optional uint64 notAfter = 5;
+        }
+        
+    }
+    
 }
 
 message Chain {
@@ -279,26 +117,6 @@ message ChainKey {
     optional bytes key = 2;
 }
 
-message Chat {
-    optional string displayName = 1;
-    optional string id = 2;
-}
-
-message ClearChatAction {
-    optional SyncActionMessageRange messageRange = 1;
-}
-
-message ClientFinish {
-    optional bytes static = 1;
-    optional bytes payload = 2;
-}
-
-message ClientHello {
-    optional bytes ephemeral = 1;
-    optional bytes static = 2;
-    optional bytes payload = 3;
-}
-
 message ClientPayload {
     optional uint64 username = 1;
     optional bool passive = 3;
@@ -307,7 +125,32 @@ message ClientPayload {
     optional string pushName = 7;
     optional sfixed32 sessionId = 9;
     optional bool shortConnect = 10;
-    enum ClientPayloadConnectType {
+    optional ConnectType connectType = 12;
+    optional ConnectReason connectReason = 13;
+    repeated int32 shards = 14;
+    optional DNSSource dnsSource = 15;
+    optional uint32 connectAttemptCount = 16;
+    optional uint32 device = 18;
+    optional DevicePairingRegistrationData devicePairingData = 19;
+    optional Product product = 20;
+    optional bytes fbCat = 21;
+    optional bytes fbUserAgent = 22;
+    optional bool oc = 23;
+    optional int32 lc = 24;
+    optional IOSAppExtension iosAppExtension = 30;
+    optional uint64 fbAppId = 31;
+    optional bytes fbDeviceId = 32;
+    optional bool pull = 33;
+    optional bytes paddingBytes = 34;
+    enum ConnectReason {
+        PUSH = 0;
+        USER_ACTIVATED = 1;
+        SCHEDULED = 2;
+        ERROR_RECONNECT = 3;
+        NETWORK_SWITCH = 4;
+        PING_RECONNECT = 5;
+    }
+    enum ConnectType {
         CELLULAR_UNKNOWN = 0;
         WIFI_UNKNOWN = 1;
         CELLULAR_EDGE = 100;
@@ -324,63 +167,127 @@ message ClientPayload {
         CELLULAR_LTE = 111;
         CELLULAR_HSPAP = 112;
     }
-    optional ClientPayloadConnectType connectType = 12;
-    enum ClientPayloadConnectReason {
-        PUSH = 0;
-        USER_ACTIVATED = 1;
-        SCHEDULED = 2;
-        ERROR_RECONNECT = 3;
-        NETWORK_SWITCH = 4;
-        PING_RECONNECT = 5;
+    message DNSSource {
+        optional DNSResolutionMethod dnsMethod = 15;
+        optional bool appCached = 16;
+        enum DNSResolutionMethod {
+            SYSTEM = 0;
+            GOOGLE = 1;
+            HARDCODED = 2;
+            OVERRIDE = 3;
+            FALLBACK = 4;
+        }
     }
-    optional ClientPayloadConnectReason connectReason = 13;
-    repeated int32 shards = 14;
-    optional DNSSource dnsSource = 15;
-    optional uint32 connectAttemptCount = 16;
-    optional uint32 device = 18;
-    optional DevicePairingRegistrationData devicePairingData = 19;
-    enum ClientPayloadProduct {
-        WHATSAPP = 0;
-        MESSENGER = 1;
+    
+    message DevicePairingRegistrationData {
+        optional bytes eRegid = 1;
+        optional bytes eKeytype = 2;
+        optional bytes eIdent = 3;
+        optional bytes eSkeyId = 4;
+        optional bytes eSkeyVal = 5;
+        optional bytes eSkeySig = 6;
+        optional bytes buildHash = 7;
+        optional bytes deviceProps = 8;
     }
-    optional ClientPayloadProduct product = 20;
-    optional bytes fbCat = 21;
-    optional bytes fbUserAgent = 22;
-    optional bool oc = 23;
-    optional int32 lc = 24;
-    enum ClientPayloadIOSAppExtension {
+    
+    enum IOSAppExtension {
         SHARE_EXTENSION = 0;
         SERVICE_EXTENSION = 1;
         INTENTS_EXTENSION = 2;
     }
-    optional ClientPayloadIOSAppExtension iosAppExtension = 30;
-    optional uint64 fbAppId = 31;
-    optional bytes fbDeviceId = 32;
-    optional bool pull = 33;
-    optional bytes paddingBytes = 34;
-}
-
-message CollectionMessage {
-    optional string bizJid = 1;
-    optional string id = 2;
-    optional int32 messageVersion = 3;
-}
-
-message ContactAction {
-    optional string fullName = 1;
-    optional string firstName = 2;
-}
-
-message ContactMessage {
-    optional string displayName = 1;
-    optional string vcard = 16;
-    optional ContextInfo contextInfo = 17;
-}
-
-message ContactsArrayMessage {
-    optional string displayName = 1;
-    repeated ContactMessage contacts = 2;
-    optional ContextInfo contextInfo = 17;
+    enum Product {
+        WHATSAPP = 0;
+        MESSENGER = 1;
+    }
+    message UserAgent {
+        optional Platform platform = 1;
+        optional AppVersion appVersion = 2;
+        optional string mcc = 3;
+        optional string mnc = 4;
+        optional string osVersion = 5;
+        optional string manufacturer = 6;
+        optional string device = 7;
+        optional string osBuildNumber = 8;
+        optional string phoneId = 9;
+        optional ReleaseChannel releaseChannel = 10;
+        optional string localeLanguageIso6391 = 11;
+        optional string localeCountryIso31661Alpha2 = 12;
+        optional string deviceBoard = 13;
+        message AppVersion {
+            optional uint32 primary = 1;
+            optional uint32 secondary = 2;
+            optional uint32 tertiary = 3;
+            optional uint32 quaternary = 4;
+            optional uint32 quinary = 5;
+        }
+        
+        enum Platform {
+            ANDROID = 0;
+            IOS = 1;
+            WINDOWS_PHONE = 2;
+            BLACKBERRY = 3;
+            BLACKBERRYX = 4;
+            S40 = 5;
+            S60 = 6;
+            PYTHON_CLIENT = 7;
+            TIZEN = 8;
+            ENTERPRISE = 9;
+            SMB_ANDROID = 10;
+            KAIOS = 11;
+            SMB_IOS = 12;
+            WINDOWS = 13;
+            WEB = 14;
+            PORTAL = 15;
+            GREEN_ANDROID = 16;
+            GREEN_IPHONE = 17;
+            BLUE_ANDROID = 18;
+            BLUE_IPHONE = 19;
+            FBLITE_ANDROID = 20;
+            MLITE_ANDROID = 21;
+            IGLITE_ANDROID = 22;
+            PAGE = 23;
+            MACOS = 24;
+            OCULUS_MSG = 25;
+            OCULUS_CALL = 26;
+            MILAN = 27;
+            CAPI = 28;
+        }
+        enum ReleaseChannel {
+            RELEASE = 0;
+            BETA = 1;
+            ALPHA = 2;
+            DEBUG = 3;
+        }
+    }
+    
+    message WebInfo {
+        optional string refToken = 1;
+        optional string version = 2;
+        optional WebdPayload webdPayload = 3;
+        optional WebSubPlatform webSubPlatform = 4;
+        enum WebSubPlatform {
+            WEB_BROWSER = 0;
+            APP_STORE = 1;
+            WIN_STORE = 2;
+            DARWIN = 3;
+            WIN32 = 4;
+        }
+        message WebdPayload {
+            optional bool usesParticipantInKey = 1;
+            optional bool supportsStarredMessages = 2;
+            optional bool supportsDocumentMessages = 3;
+            optional bool supportsUrlMessages = 4;
+            optional bool supportsMediaRetry = 5;
+            optional bool supportsE2EImage = 6;
+            optional bool supportsE2EVideo = 7;
+            optional bool supportsE2EAudio = 8;
+            optional bool supportsE2EDocument = 9;
+            optional string documentTypes = 10;
+            optional bytes features = 11;
+        }
+        
+    }
+    
 }
 
 message ContextInfo {
@@ -407,6 +314,38 @@ message ContextInfo {
     optional ActionLink actionLink = 33;
     optional string groupSubject = 34;
     optional string parentGroupJid = 35;
+    message AdReplyInfo {
+        optional string advertiserName = 1;
+        optional MediaType mediaType = 2;
+        optional bytes jpegThumbnail = 16;
+        optional string caption = 17;
+        enum MediaType {
+            NONE = 0;
+            IMAGE = 1;
+            VIDEO = 2;
+        }
+    }
+    
+    message ExternalAdReplyInfo {
+        optional string title = 1;
+        optional string body = 2;
+        optional MediaType mediaType = 3;
+        optional string thumbnailUrl = 4;
+        optional string mediaUrl = 5;
+        optional bytes thumbnail = 6;
+        optional string sourceType = 7;
+        optional string sourceId = 8;
+        optional string sourceUrl = 9;
+        optional bool containsAutoReply = 10;
+        optional bool renderLargerThumbnail = 11;
+        optional bool showAdAttribution = 12;
+        enum MediaType {
+            NONE = 0;
+            IMAGE = 1;
+            VIDEO = 2;
+        }
+    }
+    
 }
 
 message Conversation {
@@ -420,11 +359,7 @@ message Conversation {
     optional bool endOfHistoryTransfer = 8;
     optional uint32 ephemeralExpiration = 9;
     optional int64 ephemeralSettingTimestamp = 10;
-    enum ConversationEndOfHistoryTransferType {
-        COMPLETE_BUT_MORE_MESSAGES_REMAIN_ON_PRIMARY = 0;
-        COMPLETE_AND_NO_MORE_MESSAGE_REMAIN_ON_PRIMARY = 1;
-    }
-    optional ConversationEndOfHistoryTransferType endOfHistoryTransferType = 11;
+    optional EndOfHistoryTransferType endOfHistoryTransferType = 11;
     optional uint64 conversationTimestamp = 12;
     optional string name = 13;
     optional string pHash = 14;
@@ -453,32 +388,11 @@ message Conversation {
     optional string parentGroupId = 37;
     optional string displayName = 38;
     optional string pnJid = 39;
-    optional bool selfMasked = 40;
-}
-
-message DNSSource {
-    enum DNSSourceDNSResolutionMethod {
-        SYSTEM = 0;
-        GOOGLE = 1;
-        HARDCODED = 2;
-        OVERRIDE = 3;
-        FALLBACK = 4;
+    optional bool selfPnExposed = 40;
+    enum EndOfHistoryTransferType {
+        COMPLETE_BUT_MORE_MESSAGES_REMAIN_ON_PRIMARY = 0;
+        COMPLETE_AND_NO_MORE_MESSAGE_REMAIN_ON_PRIMARY = 1;
     }
-    optional DNSSourceDNSResolutionMethod dnsMethod = 15;
-    optional bool appCached = 16;
-}
-
-message DeclinePaymentRequestMessage {
-    optional MessageKey key = 1;
-}
-
-message DeleteChatAction {
-    optional SyncActionMessageRange messageRange = 1;
-}
-
-message DeleteMessageForMeAction {
-    optional bool deleteMedia = 1;
-    optional int64 messageTimestamp = 2;
 }
 
 message DeviceListMetadata {
@@ -490,21 +404,20 @@ message DeviceListMetadata {
     repeated uint32 recipientKeyIndexes = 10 [packed=true];
 }
 
-message DevicePairingRegistrationData {
-    optional bytes eRegid = 1;
-    optional bytes eKeytype = 2;
-    optional bytes eIdent = 3;
-    optional bytes eSkeyId = 4;
-    optional bytes eSkeyVal = 5;
-    optional bytes eSkeySig = 6;
-    optional bytes buildHash = 7;
-    optional bytes deviceProps = 8;
-}
-
 message DeviceProps {
     optional string os = 1;
     optional AppVersion version = 2;
-    enum DevicePropsPlatformType {
+    optional PlatformType platformType = 3;
+    optional bool requireFullSync = 4;
+    message AppVersion {
+        optional uint32 primary = 1;
+        optional uint32 secondary = 2;
+        optional uint32 tertiary = 3;
+        optional uint32 quaternary = 4;
+        optional uint32 quinary = 5;
+    }
+    
+    enum PlatformType {
         UNKNOWN = 0;
         CHROME = 1;
         FIREFOX = 2;
@@ -520,46 +433,15 @@ message DeviceProps {
         CATALINA = 12;
         TCL_TV = 13;
     }
-    optional DevicePropsPlatformType platformType = 3;
-    optional bool requireFullSync = 4;
-}
-
-message DeviceSentMessage {
-    optional string destinationJid = 1;
-    optional Message message = 2;
-    optional string phash = 3;
 }
 
 message DisappearingMode {
-    enum DisappearingModeInitiator {
+    optional Initiator initiator = 1;
+    enum Initiator {
         CHANGED_IN_CHAT = 0;
         INITIATED_BY_ME = 1;
         INITIATED_BY_OTHER = 2;
     }
-    optional DisappearingModeInitiator initiator = 1;
-}
-
-message DocumentMessage {
-    optional string url = 1;
-    optional string mimetype = 2;
-    optional string title = 3;
-    optional bytes fileSha256 = 4;
-    optional uint64 fileLength = 5;
-    optional uint32 pageCount = 6;
-    optional bytes mediaKey = 7;
-    optional string fileName = 8;
-    optional bytes fileEncSha256 = 9;
-    optional string directPath = 10;
-    optional int64 mediaKeyTimestamp = 11;
-    optional bool contactVcard = 12;
-    optional string thumbnailDirectPath = 13;
-    optional bytes thumbnailSha256 = 14;
-    optional bytes thumbnailEncSha256 = 15;
-    optional bytes jpegThumbnail = 16;
-    optional ContextInfo contextInfo = 17;
-    optional uint32 thumbnailHeight = 18;
-    optional uint32 thumbnailWidth = 19;
-    optional string caption = 20;
 }
 
 message EphemeralSetting {
@@ -572,68 +454,6 @@ message ExitCode {
     optional string text = 2;
 }
 
-message ExtendedTextMessage {
-    optional string text = 1;
-    optional string matchedText = 2;
-    optional string canonicalUrl = 4;
-    optional string description = 5;
-    optional string title = 6;
-    optional fixed32 textArgb = 7;
-    optional fixed32 backgroundArgb = 8;
-    enum ExtendedTextMessageFontType {
-        SANS_SERIF = 0;
-        SERIF = 1;
-        NORICAN_REGULAR = 2;
-        BRYNDAN_WRITE = 3;
-        BEBASNEUE_REGULAR = 4;
-        OSWALD_HEAVY = 5;
-    }
-    optional ExtendedTextMessageFontType font = 9;
-    enum ExtendedTextMessagePreviewType {
-        NONE = 0;
-        VIDEO = 1;
-    }
-    optional ExtendedTextMessagePreviewType previewType = 10;
-    optional bytes jpegThumbnail = 16;
-    optional ContextInfo contextInfo = 17;
-    optional bool doNotPlayInline = 18;
-    optional string thumbnailDirectPath = 19;
-    optional bytes thumbnailSha256 = 20;
-    optional bytes thumbnailEncSha256 = 21;
-    optional bytes mediaKey = 22;
-    optional int64 mediaKeyTimestamp = 23;
-    optional uint32 thumbnailHeight = 24;
-    optional uint32 thumbnailWidth = 25;
-    enum ExtendedTextMessageInviteLinkGroupType {
-        DEFAULT = 0;
-        PARENT = 1;
-    }
-    optional ExtendedTextMessageInviteLinkGroupType inviteLinkGroupType = 26;
-    optional string inviteLinkParentGroupSubjectV2 = 27;
-    optional bytes inviteLinkParentGroupThumbnailV2 = 28;
-    optional ExtendedTextMessageInviteLinkGroupType inviteLinkGroupTypeV2 = 29;
-}
-
-message ExternalAdReplyInfo {
-    optional string title = 1;
-    optional string body = 2;
-    enum ExternalAdReplyInfoMediaType {
-        NONE = 0;
-        IMAGE = 1;
-        VIDEO = 2;
-    }
-    optional ExternalAdReplyInfoMediaType mediaType = 3;
-    optional string thumbnailUrl = 4;
-    optional string mediaUrl = 5;
-    optional bytes thumbnail = 6;
-    optional string sourceType = 7;
-    optional string sourceId = 8;
-    optional string sourceUrl = 9;
-    optional bool containsAutoReply = 10;
-    optional bool renderLargerThumbnail = 11;
-    optional bool showAdAttribution = 12;
-}
-
 message ExternalBlobReference {
     optional bytes mediaKey = 1;
     optional string directPath = 2;
@@ -641,38 +461,6 @@ message ExternalBlobReference {
     optional uint64 fileSizeBytes = 4;
     optional bytes fileSha256 = 5;
     optional bytes fileEncSha256 = 6;
-}
-
-message FavoriteStickerAction {
-    optional string directPath = 1;
-    optional string lastUploadTimestamp = 2;
-    optional string handle = 3;
-    optional string encFilehash = 4;
-    optional string stickerHashWithoutMeta = 5;
-    optional string mediaKey = 6;
-    optional int64 mediaKeyTimestamp = 7;
-    optional bool isFavorite = 8;
-}
-
-message Footer {
-    optional string text = 1;
-}
-
-message FourRowTemplate {
-    optional HighlyStructuredMessage content = 6;
-    optional HighlyStructuredMessage footer = 7;
-    repeated TemplateButton buttons = 8;
-    oneof title {
-        DocumentMessage documentMessage = 1;
-        HighlyStructuredMessage highlyStructuredMessage = 2;
-        ImageMessage imageMessage = 3;
-        VideoMessage videoMessage = 4;
-        LocationMessage locationMessage = 5;
-    }
-}
-
-message FutureProofMessage {
-    optional Message message = 1;
 }
 
 message GlobalSettings {
@@ -688,75 +476,13 @@ message GlobalSettings {
     optional int64 disappearingModeTimestamp = 10;
 }
 
-message GroupInviteMessage {
-    optional string groupJid = 1;
-    optional string inviteCode = 2;
-    optional int64 inviteExpiration = 3;
-    optional string groupName = 4;
-    optional bytes jpegThumbnail = 5;
-    optional string caption = 6;
-    optional ContextInfo contextInfo = 7;
-    enum GroupInviteMessageGroupType {
-        DEFAULT = 0;
-        PARENT = 1;
-    }
-    optional GroupInviteMessageGroupType groupType = 8;
-}
-
 message GroupParticipant {
     required string userJid = 1;
-    enum GroupParticipantRank {
+    optional Rank rank = 2;
+    enum Rank {
         REGULAR = 0;
         ADMIN = 1;
         SUPERADMIN = 2;
-    }
-    optional GroupParticipantRank rank = 2;
-}
-
-message HSMCurrency {
-    optional string currencyCode = 1;
-    optional int64 amount1000 = 2;
-}
-
-message HSMDateTime {
-    oneof datetimeOneof {
-        HSMDateTimeComponent component = 1;
-        HSMDateTimeUnixEpoch unixEpoch = 2;
-    }
-}
-
-message HSMDateTimeComponent {
-    enum HSMDateTimeComponentDayOfWeekType {
-        MONDAY = 1;
-        TUESDAY = 2;
-        WEDNESDAY = 3;
-        THURSDAY = 4;
-        FRIDAY = 5;
-        SATURDAY = 6;
-        SUNDAY = 7;
-    }
-    optional HSMDateTimeComponentDayOfWeekType dayOfWeek = 1;
-    optional uint32 year = 2;
-    optional uint32 month = 3;
-    optional uint32 dayOfMonth = 4;
-    optional uint32 hour = 5;
-    optional uint32 minute = 6;
-    enum HSMDateTimeComponentCalendarType {
-        GREGORIAN = 1;
-        SOLAR_HIJRI = 2;
-    }
-    optional HSMDateTimeComponentCalendarType calendar = 7;
-}
-
-message HSMDateTimeUnixEpoch {
-    optional int64 timestamp = 1;
-}
-
-message HSMLocalizableParameter {
-    optional string default = 1;
-    oneof paramOneof {
-        HSMCurrency currency = 2;
-        HSMDateTime dateTime = 3;
     }
 }
 
@@ -764,41 +490,27 @@ message HandshakeMessage {
     optional ClientHello clientHello = 2;
     optional ServerHello serverHello = 3;
     optional ClientFinish clientFinish = 4;
-}
-
-message Header {
-    optional string title = 1;
-    optional string subtitle = 2;
-    optional bool hasMediaAttachment = 5;
-    oneof media {
-        DocumentMessage documentMessage = 3;
-        ImageMessage imageMessage = 4;
-        bytes jpegThumbnail = 6;
-        VideoMessage videoMessage = 7;
+    message ClientFinish {
+        optional bytes static = 1;
+        optional bytes payload = 2;
     }
-}
-
-message HighlyStructuredMessage {
-    optional string namespace = 1;
-    optional string elementName = 2;
-    repeated string params = 3;
-    optional string fallbackLg = 4;
-    optional string fallbackLc = 5;
-    repeated HSMLocalizableParameter localizableParams = 6;
-    optional string deterministicLg = 7;
-    optional string deterministicLc = 8;
-    optional TemplateMessage hydratedHsm = 9;
+    
+    message ClientHello {
+        optional bytes ephemeral = 1;
+        optional bytes static = 2;
+        optional bytes payload = 3;
+    }
+    
+    message ServerHello {
+        optional bytes ephemeral = 1;
+        optional bytes static = 2;
+        optional bytes payload = 3;
+    }
+    
 }
 
 message HistorySync {
-    enum HistorySyncHistorySyncType {
-        INITIAL_BOOTSTRAP = 0;
-        INITIAL_STATUS_V3 = 1;
-        FULL = 2;
-        RECENT = 3;
-        PUSH_NAME = 4;
-    }
-    required HistorySyncHistorySyncType syncType = 1;
+    required HistorySyncType syncType = 1;
     repeated Conversation conversations = 2;
     repeated WebMessageInfo statusV3Messages = 3;
     optional uint32 chunkOrder = 5;
@@ -807,6 +519,16 @@ message HistorySync {
     optional GlobalSettings globalSettings = 8;
     optional bytes threadIdUserSecret = 9;
     optional uint32 threadDsTimeframeOffset = 10;
+    repeated StickerMetadata recentStickers = 11;
+    repeated PastParticipants pastParticipants = 12;
+    enum HistorySyncType {
+        INITIAL_BOOTSTRAP = 0;
+        INITIAL_STATUS_V3 = 1;
+        FULL = 2;
+        RECENT = 3;
+        PUSH_NAME = 4;
+        UNBLOCKING_DATA = 5;
+    }
 }
 
 message HistorySyncMsg {
@@ -814,98 +536,33 @@ message HistorySyncMsg {
     optional uint64 msgOrderId = 2;
 }
 
-message HistorySyncNotification {
-    optional bytes fileSha256 = 1;
-    optional uint64 fileLength = 2;
-    optional bytes mediaKey = 3;
-    optional bytes fileEncSha256 = 4;
-    optional string directPath = 5;
-    enum HistorySyncNotificationHistorySyncType {
-        INITIAL_BOOTSTRAP = 0;
-        INITIAL_STATUS_V3 = 1;
-        FULL = 2;
-        RECENT = 3;
-        PUSH_NAME = 4;
-    }
-    optional HistorySyncNotificationHistorySyncType syncType = 6;
-    optional uint32 chunkOrder = 7;
-    optional string originalMessageId = 8;
-}
-
-message HydratedCallButton {
-    optional string displayText = 1;
-    optional string phoneNumber = 2;
-}
-
-message HydratedFourRowTemplate {
-    optional string hydratedContentText = 6;
-    optional string hydratedFooterText = 7;
-    repeated HydratedTemplateButton hydratedButtons = 8;
-    optional string templateId = 9;
-    oneof title {
-        DocumentMessage documentMessage = 1;
-        string hydratedTitleText = 2;
-        ImageMessage imageMessage = 3;
-        VideoMessage videoMessage = 4;
-        LocationMessage locationMessage = 5;
-    }
-}
-
-message HydratedQuickReplyButton {
-    optional string displayText = 1;
-    optional string id = 2;
-}
-
 message HydratedTemplateButton {
     optional uint32 index = 4;
     oneof hydratedButton {
-        HydratedQuickReplyButton quickReplyButton = 1;
-        HydratedURLButton urlButton = 2;
-        HydratedCallButton callButton = 3;
+        HydratedTemplateButton.HydratedQuickReplyButton quickReplyButton = 1;
+        HydratedTemplateButton.HydratedURLButton urlButton = 2;
+        HydratedTemplateButton.HydratedCallButton callButton = 3;
     }
-}
-
-message HydratedURLButton {
-    optional string displayText = 1;
-    optional string url = 2;
+    message HydratedCallButton {
+        optional string displayText = 1;
+        optional string phoneNumber = 2;
+    }
+    
+    message HydratedQuickReplyButton {
+        optional string displayText = 1;
+        optional string id = 2;
+    }
+    
+    message HydratedURLButton {
+        optional string displayText = 1;
+        optional string url = 2;
+    }
+    
 }
 
 message IdentityKeyPairStructure {
     optional bytes publicKey = 1;
     optional bytes privateKey = 2;
-}
-
-message ImageMessage {
-    optional string url = 1;
-    optional string mimetype = 2;
-    optional string caption = 3;
-    optional bytes fileSha256 = 4;
-    optional uint64 fileLength = 5;
-    optional uint32 height = 6;
-    optional uint32 width = 7;
-    optional bytes mediaKey = 8;
-    optional bytes fileEncSha256 = 9;
-    repeated InteractiveAnnotation interactiveAnnotations = 10;
-    optional string directPath = 11;
-    optional int64 mediaKeyTimestamp = 12;
-    optional bytes jpegThumbnail = 16;
-    optional ContextInfo contextInfo = 17;
-    optional bytes firstScanSidecar = 18;
-    optional uint32 firstScanLength = 19;
-    optional uint32 experimentGroupId = 20;
-    optional bytes scansSidecar = 21;
-    repeated uint32 scanLengths = 22;
-    optional bytes midQualityFileSha256 = 23;
-    optional bytes midQualityFileEncSha256 = 24;
-    optional bool viewOnce = 25;
-    optional string thumbnailDirectPath = 26;
-    optional bytes thumbnailSha256 = 27;
-    optional bytes thumbnailEncSha256 = 28;
-    optional string staticUrl = 29;
-}
-
-message InitialSecurityNotificationSettingSync {
-    optional bool securityNotificationEnabled = 1;
 }
 
 message InteractiveAnnotation {
@@ -915,63 +572,11 @@ message InteractiveAnnotation {
     }
 }
 
-message InteractiveMessage {
-    optional Header header = 1;
-    optional InteractiveMessageBody body = 2;
-    optional Footer footer = 3;
-    optional ContextInfo contextInfo = 15;
-    oneof interactiveMessage {
-        ShopMessage shopStorefrontMessage = 4;
-        CollectionMessage collectionMessage = 5;
-        NativeFlowMessage nativeFlowMessage = 6;
-    }
-}
-
-// Renamed from Message$InteractiveMessage$Body
-message InteractiveMessageBody {
-    optional string text = 1;
-}
-
-message InteractiveResponseMessage {
-    optional InteractiveResponseMessageBody body = 1;
-    optional ContextInfo contextInfo = 15;
-    oneof interactiveResponseMessage {
-        NativeFlowResponseMessage nativeFlowResponseMessage = 2;
-    }
-}
-
-// Renamed from Message$InteractiveResponseMessage$Body
-message InteractiveResponseMessageBody {
-    optional string text = 1;
-}
-
-message InvoiceMessage {
-    optional string note = 1;
-    optional string token = 2;
-    enum InvoiceMessageAttachmentType {
-        IMAGE = 0;
-        PDF = 1;
-    }
-    optional InvoiceMessageAttachmentType attachmentType = 3;
-    optional string attachmentMimetype = 4;
-    optional bytes attachmentMediaKey = 5;
-    optional int64 attachmentMediaKeyTimestamp = 6;
-    optional bytes attachmentFileSha256 = 7;
-    optional bytes attachmentFileEncSha256 = 8;
-    optional string attachmentDirectPath = 9;
-    optional bytes attachmentJpegThumbnail = 10;
-}
-
 message KeepInChat {
     optional KeepType keepType = 1;
     optional int64 serverTimestamp = 2;
-    optional string deviceJid = 3;
-}
-
-message KeepInChatMessage {
-    optional MessageKey key = 1;
-    optional KeepType keepType = 2;
-    optional int64 timestampMs = 3;
+    optional MessageKey key = 3;
+    optional string deviceJid = 4;
 }
 
 enum KeepType {
@@ -979,68 +584,8 @@ enum KeepType {
     KEEP_FOR_ALL = 1;
     UNDO_KEEP_FOR_ALL = 2;
 }
-message KeyExpiration {
-    optional int32 expiredKeyEpoch = 1;
-}
-
 message KeyId {
     optional bytes id = 1;
-}
-
-message LabelAssociationAction {
-    optional bool labeled = 1;
-}
-
-message LabelEditAction {
-    optional string name = 1;
-    optional int32 color = 2;
-    optional int32 predefinedId = 3;
-    optional bool deleted = 4;
-}
-
-message ListMessage {
-    optional string title = 1;
-    optional string description = 2;
-    optional string buttonText = 3;
-    enum ListMessageListType {
-        UNKNOWN = 0;
-        SINGLE_SELECT = 1;
-        PRODUCT_LIST = 2;
-    }
-    optional ListMessageListType listType = 4;
-    repeated Section sections = 5;
-    optional ProductListInfo productListInfo = 6;
-    optional string footerText = 7;
-    optional ContextInfo contextInfo = 8;
-}
-
-message ListResponseMessage {
-    optional string title = 1;
-    enum ListResponseMessageListType {
-        UNKNOWN = 0;
-        SINGLE_SELECT = 1;
-    }
-    optional ListResponseMessageListType listType = 2;
-    optional SingleSelectReply singleSelectReply = 3;
-    optional ContextInfo contextInfo = 4;
-    optional string description = 5;
-}
-
-message LiveLocationMessage {
-    optional double degreesLatitude = 1;
-    optional double degreesLongitude = 2;
-    optional uint32 accuracyInMeters = 3;
-    optional float speedInMps = 4;
-    optional uint32 degreesClockwiseFromMagneticNorth = 5;
-    optional string caption = 6;
-    optional int64 sequenceNumber = 7;
-    optional uint32 timeOffset = 8;
-    optional bytes jpegThumbnail = 16;
-    optional ContextInfo contextInfo = 17;
-}
-
-message LocaleSetting {
-    optional string locale = 1;
 }
 
 message LocalizedName {
@@ -1055,26 +600,6 @@ message Location {
     optional string name = 3;
 }
 
-message LocationMessage {
-    optional double degreesLatitude = 1;
-    optional double degreesLongitude = 2;
-    optional string name = 3;
-    optional string address = 4;
-    optional string url = 5;
-    optional bool isLive = 6;
-    optional uint32 accuracyInMeters = 7;
-    optional float speedInMps = 8;
-    optional uint32 degreesClockwiseFromMagneticNorth = 9;
-    optional string comment = 11;
-    optional bytes jpegThumbnail = 16;
-    optional ContextInfo contextInfo = 17;
-}
-
-message MarkChatAsReadAction {
-    optional bool read = 1;
-    optional SyncActionMessageRange messageRange = 2;
-}
-
 message MediaData {
     optional string localPath = 1;
 }
@@ -1082,13 +607,13 @@ message MediaData {
 message MediaRetryNotification {
     optional string stanzaId = 1;
     optional string directPath = 2;
-    enum MediaRetryNotificationResultType {
+    optional ResultType result = 3;
+    enum ResultType {
         GENERAL_ERROR = 0;
         SUCCESS = 1;
         NOT_FOUND = 2;
         DECRYPTION_ERROR = 3;
     }
-    optional MediaRetryNotificationResultType result = 3;
 }
 
 enum MediaVisibility {
@@ -1140,7 +665,817 @@ message Message {
     optional PollCreationMessage pollCreationMessage = 49;
     optional PollUpdateMessage pollUpdateMessage = 50;
     optional KeepInChatMessage keepInChatMessage = 51;
-    optional FutureProofMessage documentWithCaptionMessage = 52;
+    optional FutureProofMessage documentWithCaptionMessage = 53;
+    optional RequestPhoneNumberMessage requestPhoneNumberMessage = 54;
+    optional FutureProofMessage viewOnceMessageV2 = 55;
+    message AppStateFatalExceptionNotification {
+        repeated string collectionNames = 1;
+        optional int64 timestamp = 2;
+    }
+    
+    message AppStateSyncKeyData {
+        optional bytes keyData = 1;
+        optional Message.AppStateSyncKeyFingerprint fingerprint = 2;
+        optional int64 timestamp = 3;
+    }
+    
+    message AppStateSyncKeyFingerprint {
+        optional uint32 rawId = 1;
+        optional uint32 currentIndex = 2;
+        repeated uint32 deviceIndexes = 3 [packed=true];
+    }
+    
+    message AppStateSyncKeyId {
+        optional bytes keyId = 1;
+    }
+    
+    message AppStateSyncKeyRequest {
+        repeated Message.AppStateSyncKeyId keyIds = 1;
+    }
+    
+    message AppStateSyncKeyShare {
+        repeated Message.AppStateSyncKey keys = 1;
+    }
+    
+    message AppStateSyncKey {
+        optional Message.AppStateSyncKeyId keyId = 1;
+        optional Message.AppStateSyncKeyData keyData = 2;
+    }
+    
+    message AudioMessage {
+        optional string url = 1;
+        optional string mimetype = 2;
+        optional bytes fileSha256 = 3;
+        optional uint64 fileLength = 4;
+        optional uint32 seconds = 5;
+        optional bool ptt = 6;
+        optional bytes mediaKey = 7;
+        optional bytes fileEncSha256 = 8;
+        optional string directPath = 9;
+        optional int64 mediaKeyTimestamp = 10;
+        optional ContextInfo contextInfo = 17;
+        optional bytes streamingSidecar = 18;
+        optional bytes waveform = 19;
+    }
+    
+    message ButtonsMessage {
+        optional string contentText = 6;
+        optional string footerText = 7;
+        optional ContextInfo contextInfo = 8;
+        repeated Button buttons = 9;
+        optional HeaderType headerType = 10;
+        oneof header {
+            string text = 1;
+            Message.DocumentMessage documentMessage = 2;
+            Message.ImageMessage imageMessage = 3;
+            Message.VideoMessage videoMessage = 4;
+            Message.LocationMessage locationMessage = 5;
+        }
+        message Button {
+            optional string buttonId = 1;
+            optional ButtonText buttonText = 2;
+            optional Type type = 3;
+            optional NativeFlowInfo nativeFlowInfo = 4;
+            message ButtonText {
+                optional string displayText = 1;
+            }
+            
+            message NativeFlowInfo {
+                optional string name = 1;
+                optional string paramsJson = 2;
+            }
+            
+            enum Type {
+                UNKNOWN = 0;
+                RESPONSE = 1;
+                NATIVE_FLOW = 2;
+            }
+        }
+        
+        enum HeaderType {
+            UNKNOWN = 0;
+            EMPTY = 1;
+            TEXT = 2;
+            DOCUMENT = 3;
+            IMAGE = 4;
+            VIDEO = 5;
+            LOCATION = 6;
+        }
+    }
+    
+    message ButtonsResponseMessage {
+        optional string selectedButtonId = 1;
+        optional ContextInfo contextInfo = 3;
+        optional Type type = 4;
+        oneof response {
+            string selectedDisplayText = 2;
+        }
+        enum Type {
+            UNKNOWN = 0;
+            DISPLAY_TEXT = 1;
+        }
+    }
+    
+    message Call {
+        optional bytes callKey = 1;
+        optional string conversionSource = 2;
+        optional bytes conversionData = 3;
+        optional uint32 conversionDelaySeconds = 4;
+    }
+    
+    message CancelPaymentRequestMessage {
+        optional MessageKey key = 1;
+    }
+    
+    message Chat {
+        optional string displayName = 1;
+        optional string id = 2;
+    }
+    
+    message ContactMessage {
+        optional string displayName = 1;
+        optional string vcard = 16;
+        optional ContextInfo contextInfo = 17;
+    }
+    
+    message ContactsArrayMessage {
+        optional string displayName = 1;
+        repeated Message.ContactMessage contacts = 2;
+        optional ContextInfo contextInfo = 17;
+    }
+    
+    message DeclinePaymentRequestMessage {
+        optional MessageKey key = 1;
+    }
+    
+    message DeviceSentMessage {
+        optional string destinationJid = 1;
+        optional Message message = 2;
+        optional string phash = 3;
+    }
+    
+    message DocumentMessage {
+        optional string url = 1;
+        optional string mimetype = 2;
+        optional string title = 3;
+        optional bytes fileSha256 = 4;
+        optional uint64 fileLength = 5;
+        optional uint32 pageCount = 6;
+        optional bytes mediaKey = 7;
+        optional string fileName = 8;
+        optional bytes fileEncSha256 = 9;
+        optional string directPath = 10;
+        optional int64 mediaKeyTimestamp = 11;
+        optional bool contactVcard = 12;
+        optional string thumbnailDirectPath = 13;
+        optional bytes thumbnailSha256 = 14;
+        optional bytes thumbnailEncSha256 = 15;
+        optional bytes jpegThumbnail = 16;
+        optional ContextInfo contextInfo = 17;
+        optional uint32 thumbnailHeight = 18;
+        optional uint32 thumbnailWidth = 19;
+        optional string caption = 20;
+    }
+    
+    message ExtendedTextMessage {
+        optional string text = 1;
+        optional string matchedText = 2;
+        optional string canonicalUrl = 4;
+        optional string description = 5;
+        optional string title = 6;
+        optional fixed32 textArgb = 7;
+        optional fixed32 backgroundArgb = 8;
+        optional FontType font = 9;
+        optional PreviewType previewType = 10;
+        optional bytes jpegThumbnail = 16;
+        optional ContextInfo contextInfo = 17;
+        optional bool doNotPlayInline = 18;
+        optional string thumbnailDirectPath = 19;
+        optional bytes thumbnailSha256 = 20;
+        optional bytes thumbnailEncSha256 = 21;
+        optional bytes mediaKey = 22;
+        optional int64 mediaKeyTimestamp = 23;
+        optional uint32 thumbnailHeight = 24;
+        optional uint32 thumbnailWidth = 25;
+        optional InviteLinkGroupType inviteLinkGroupType = 26;
+        optional string inviteLinkParentGroupSubjectV2 = 27;
+        optional bytes inviteLinkParentGroupThumbnailV2 = 28;
+        optional InviteLinkGroupType inviteLinkGroupTypeV2 = 29;
+        enum FontType {
+            SANS_SERIF = 0;
+            SERIF = 1;
+            NORICAN_REGULAR = 2;
+            BRYNDAN_WRITE = 3;
+            BEBASNEUE_REGULAR = 4;
+            OSWALD_HEAVY = 5;
+        }
+        enum InviteLinkGroupType {
+            DEFAULT = 0;
+            PARENT = 1;
+            SUB = 2;
+            DEFAULT_SUB = 3;
+        }
+        enum PreviewType {
+            NONE = 0;
+            VIDEO = 1;
+        }
+    }
+    
+    message FutureProofMessage {
+        optional Message message = 1;
+    }
+    
+    message GroupInviteMessage {
+        optional string groupJid = 1;
+        optional string inviteCode = 2;
+        optional int64 inviteExpiration = 3;
+        optional string groupName = 4;
+        optional bytes jpegThumbnail = 5;
+        optional string caption = 6;
+        optional ContextInfo contextInfo = 7;
+        optional GroupType groupType = 8;
+        enum GroupType {
+            DEFAULT = 0;
+            PARENT = 1;
+        }
+    }
+    
+    message HighlyStructuredMessage {
+        optional string namespace = 1;
+        optional string elementName = 2;
+        repeated string params = 3;
+        optional string fallbackLg = 4;
+        optional string fallbackLc = 5;
+        repeated HSMLocalizableParameter localizableParams = 6;
+        optional string deterministicLg = 7;
+        optional string deterministicLc = 8;
+        optional Message.TemplateMessage hydratedHsm = 9;
+        message HSMLocalizableParameter {
+            optional string default = 1;
+            oneof paramOneof {
+                Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMCurrency currency = 2;
+                Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime dateTime = 3;
+            }
+            message HSMCurrency {
+                optional string currencyCode = 1;
+                optional int64 amount1000 = 2;
+            }
+            
+            message HSMDateTime {
+                oneof datetimeOneof {
+                    Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.HSMDateTimeComponent component = 1;
+                    Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.HSMDateTimeUnixEpoch unixEpoch = 2;
+                }
+                message HSMDateTimeComponent {
+                    optional DayOfWeekType dayOfWeek = 1;
+                    optional uint32 year = 2;
+                    optional uint32 month = 3;
+                    optional uint32 dayOfMonth = 4;
+                    optional uint32 hour = 5;
+                    optional uint32 minute = 6;
+                    optional CalendarType calendar = 7;
+                    enum CalendarType {
+                        GREGORIAN = 1;
+                        SOLAR_HIJRI = 2;
+                    }
+                    enum DayOfWeekType {
+                        MONDAY = 1;
+                        TUESDAY = 2;
+                        WEDNESDAY = 3;
+                        THURSDAY = 4;
+                        FRIDAY = 5;
+                        SATURDAY = 6;
+                        SUNDAY = 7;
+                    }
+                }
+                
+                message HSMDateTimeUnixEpoch {
+                    optional int64 timestamp = 1;
+                }
+                
+            }
+            
+        }
+        
+    }
+    
+    message HistorySyncNotification {
+        optional bytes fileSha256 = 1;
+        optional uint64 fileLength = 2;
+        optional bytes mediaKey = 3;
+        optional bytes fileEncSha256 = 4;
+        optional string directPath = 5;
+        optional HistorySyncType syncType = 6;
+        optional uint32 chunkOrder = 7;
+        optional string originalMessageId = 8;
+        optional uint32 progress = 9;
+        enum HistorySyncType {
+            INITIAL_BOOTSTRAP = 0;
+            INITIAL_STATUS_V3 = 1;
+            FULL = 2;
+            RECENT = 3;
+            PUSH_NAME = 4;
+        }
+    }
+    
+    message ImageMessage {
+        optional string url = 1;
+        optional string mimetype = 2;
+        optional string caption = 3;
+        optional bytes fileSha256 = 4;
+        optional uint64 fileLength = 5;
+        optional uint32 height = 6;
+        optional uint32 width = 7;
+        optional bytes mediaKey = 8;
+        optional bytes fileEncSha256 = 9;
+        repeated InteractiveAnnotation interactiveAnnotations = 10;
+        optional string directPath = 11;
+        optional int64 mediaKeyTimestamp = 12;
+        optional bytes jpegThumbnail = 16;
+        optional ContextInfo contextInfo = 17;
+        optional bytes firstScanSidecar = 18;
+        optional uint32 firstScanLength = 19;
+        optional uint32 experimentGroupId = 20;
+        optional bytes scansSidecar = 21;
+        repeated uint32 scanLengths = 22;
+        optional bytes midQualityFileSha256 = 23;
+        optional bytes midQualityFileEncSha256 = 24;
+        optional bool viewOnce = 25;
+        optional string thumbnailDirectPath = 26;
+        optional bytes thumbnailSha256 = 27;
+        optional bytes thumbnailEncSha256 = 28;
+        optional string staticUrl = 29;
+    }
+    
+    message InitialSecurityNotificationSettingSync {
+        optional bool securityNotificationEnabled = 1;
+    }
+    
+    message InteractiveMessage {
+        optional Header header = 1;
+        optional Body body = 2;
+        optional Footer footer = 3;
+        optional ContextInfo contextInfo = 15;
+        oneof interactiveMessage {
+            Message.InteractiveMessage.ShopMessage shopStorefrontMessage = 4;
+            Message.InteractiveMessage.CollectionMessage collectionMessage = 5;
+            Message.InteractiveMessage.NativeFlowMessage nativeFlowMessage = 6;
+        }
+        message Body {
+            optional string text = 1;
+        }
+        
+        message CollectionMessage {
+            optional string bizJid = 1;
+            optional string id = 2;
+            optional int32 messageVersion = 3;
+        }
+        
+        message Footer {
+            optional string text = 1;
+        }
+        
+        message Header {
+            optional string title = 1;
+            optional string subtitle = 2;
+            optional bool hasMediaAttachment = 5;
+            oneof media {
+                Message.DocumentMessage documentMessage = 3;
+                Message.ImageMessage imageMessage = 4;
+                bytes jpegThumbnail = 6;
+                Message.VideoMessage videoMessage = 7;
+            }
+        }
+        
+        message NativeFlowMessage {
+            repeated NativeFlowButton buttons = 1;
+            optional string messageParamsJson = 2;
+            optional int32 messageVersion = 3;
+            message NativeFlowButton {
+                optional string name = 1;
+                optional string buttonParamsJson = 2;
+            }
+            
+        }
+        
+        message ShopMessage {
+            optional string id = 1;
+            optional Surface surface = 2;
+            optional int32 messageVersion = 3;
+            enum Surface {
+                UNKNOWN_SURFACE = 0;
+                FB = 1;
+                IG = 2;
+                WA = 3;
+            }
+        }
+        
+    }
+    
+    message InteractiveResponseMessage {
+        optional Body body = 1;
+        optional ContextInfo contextInfo = 15;
+        oneof interactiveResponseMessage {
+            Message.InteractiveResponseMessage.NativeFlowResponseMessage nativeFlowResponseMessage = 2;
+        }
+        message Body {
+            optional string text = 1;
+        }
+        
+        message NativeFlowResponseMessage {
+            optional string name = 1;
+            optional string paramsJson = 2;
+            optional int32 version = 3;
+        }
+        
+    }
+    
+    message InvoiceMessage {
+        optional string note = 1;
+        optional string token = 2;
+        optional AttachmentType attachmentType = 3;
+        optional string attachmentMimetype = 4;
+        optional bytes attachmentMediaKey = 5;
+        optional int64 attachmentMediaKeyTimestamp = 6;
+        optional bytes attachmentFileSha256 = 7;
+        optional bytes attachmentFileEncSha256 = 8;
+        optional string attachmentDirectPath = 9;
+        optional bytes attachmentJpegThumbnail = 10;
+        enum AttachmentType {
+            IMAGE = 0;
+            PDF = 1;
+        }
+    }
+    
+    message KeepInChatMessage {
+        optional MessageKey key = 1;
+        optional KeepType keepType = 2;
+        optional int64 timestampMs = 3;
+    }
+    
+    message ListMessage {
+        optional string title = 1;
+        optional string description = 2;
+        optional string buttonText = 3;
+        optional ListType listType = 4;
+        repeated Section sections = 5;
+        optional ProductListInfo productListInfo = 6;
+        optional string footerText = 7;
+        optional ContextInfo contextInfo = 8;
+        enum ListType {
+            UNKNOWN = 0;
+            SINGLE_SELECT = 1;
+            PRODUCT_LIST = 2;
+        }
+        message ProductListHeaderImage {
+            optional string productId = 1;
+            optional bytes jpegThumbnail = 2;
+        }
+        
+        message ProductListInfo {
+            repeated Message.ListMessage.ProductSection productSections = 1;
+            optional Message.ListMessage.ProductListHeaderImage headerImage = 2;
+            optional string businessOwnerJid = 3;
+        }
+        
+        message ProductSection {
+            optional string title = 1;
+            repeated Message.ListMessage.Product products = 2;
+        }
+        
+        message Product {
+            optional string productId = 1;
+        }
+        
+        message Row {
+            optional string title = 1;
+            optional string description = 2;
+            optional string rowId = 3;
+        }
+        
+        message Section {
+            optional string title = 1;
+            repeated Message.ListMessage.Row rows = 2;
+        }
+        
+    }
+    
+    message ListResponseMessage {
+        optional string title = 1;
+        optional ListType listType = 2;
+        optional SingleSelectReply singleSelectReply = 3;
+        optional ContextInfo contextInfo = 4;
+        optional string description = 5;
+        enum ListType {
+            UNKNOWN = 0;
+            SINGLE_SELECT = 1;
+        }
+        message SingleSelectReply {
+            optional string selectedRowId = 1;
+        }
+        
+    }
+    
+    message LiveLocationMessage {
+        optional double degreesLatitude = 1;
+        optional double degreesLongitude = 2;
+        optional uint32 accuracyInMeters = 3;
+        optional float speedInMps = 4;
+        optional uint32 degreesClockwiseFromMagneticNorth = 5;
+        optional string caption = 6;
+        optional int64 sequenceNumber = 7;
+        optional uint32 timeOffset = 8;
+        optional bytes jpegThumbnail = 16;
+        optional ContextInfo contextInfo = 17;
+    }
+    
+    message LocationMessage {
+        optional double degreesLatitude = 1;
+        optional double degreesLongitude = 2;
+        optional string name = 3;
+        optional string address = 4;
+        optional string url = 5;
+        optional bool isLive = 6;
+        optional uint32 accuracyInMeters = 7;
+        optional float speedInMps = 8;
+        optional uint32 degreesClockwiseFromMagneticNorth = 9;
+        optional string comment = 11;
+        optional bytes jpegThumbnail = 16;
+        optional ContextInfo contextInfo = 17;
+    }
+    
+    message OrderMessage {
+        optional string orderId = 1;
+        optional bytes thumbnail = 2;
+        optional int32 itemCount = 3;
+        optional OrderStatus status = 4;
+        optional OrderSurface surface = 5;
+        optional string message = 6;
+        optional string orderTitle = 7;
+        optional string sellerJid = 8;
+        optional string token = 9;
+        optional int64 totalAmount1000 = 10;
+        optional string totalCurrencyCode = 11;
+        optional ContextInfo contextInfo = 17;
+        enum OrderStatus {
+            INQUIRY = 1;
+        }
+        enum OrderSurface {
+            CATALOG = 1;
+        }
+    }
+    
+    message PaymentInviteMessage {
+        optional ServiceType serviceType = 1;
+        optional int64 expiryTimestamp = 2;
+        enum ServiceType {
+            UNKNOWN = 0;
+            FBPAY = 1;
+            NOVI = 2;
+            UPI = 3;
+        }
+    }
+    
+    message PollCreationMessage {
+        optional bytes encKey = 1;
+        optional string name = 2;
+        repeated Option options = 3;
+        optional uint32 selectableOptionsCount = 4;
+        optional ContextInfo contextInfo = 5;
+        message Option {
+            optional string optionName = 1;
+        }
+        
+    }
+    
+    message PollEncValue {
+        optional bytes encPayload = 1;
+        optional bytes encIv = 2;
+    }
+    
+    message PollUpdateMessageMetadata {
+    }
+    
+    message PollUpdateMessage {
+        optional MessageKey pollCreationMessageKey = 1;
+        optional Message.PollEncValue vote = 2;
+        optional Message.PollUpdateMessageMetadata metadata = 3;
+        optional int64 senderTimestampMs = 4;
+    }
+    
+    message PollVoteMessage {
+        repeated bytes selectedOptions = 1;
+    }
+    
+    message ProductMessage {
+        optional ProductSnapshot product = 1;
+        optional string businessOwnerJid = 2;
+        optional CatalogSnapshot catalog = 4;
+        optional string body = 5;
+        optional string footer = 6;
+        optional ContextInfo contextInfo = 17;
+        message CatalogSnapshot {
+            optional Message.ImageMessage catalogImage = 1;
+            optional string title = 2;
+            optional string description = 3;
+        }
+        
+        message ProductSnapshot {
+            optional Message.ImageMessage productImage = 1;
+            optional string productId = 2;
+            optional string title = 3;
+            optional string description = 4;
+            optional string currencyCode = 5;
+            optional int64 priceAmount1000 = 6;
+            optional string retailerId = 7;
+            optional string url = 8;
+            optional uint32 productImageCount = 9;
+            optional string firstImageId = 11;
+            optional int64 salePriceAmount1000 = 12;
+        }
+        
+    }
+    
+    message ProtocolMessage {
+        optional MessageKey key = 1;
+        optional Type type = 2;
+        optional uint32 ephemeralExpiration = 4;
+        optional int64 ephemeralSettingTimestamp = 5;
+        optional Message.HistorySyncNotification historySyncNotification = 6;
+        optional Message.AppStateSyncKeyShare appStateSyncKeyShare = 7;
+        optional Message.AppStateSyncKeyRequest appStateSyncKeyRequest = 8;
+        optional Message.InitialSecurityNotificationSettingSync initialSecurityNotificationSettingSync = 9;
+        optional Message.AppStateFatalExceptionNotification appStateFatalExceptionNotification = 10;
+        optional DisappearingMode disappearingMode = 11;
+        optional Message.RequestMediaUploadMessage requestMediaUploadMessage = 12;
+        optional Message.RequestMediaUploadResponseMessage requestMediaUploadResponseMessage = 13;
+        enum Type {
+            REVOKE = 0;
+            EPHEMERAL_SETTING = 3;
+            EPHEMERAL_SYNC_RESPONSE = 4;
+            HISTORY_SYNC_NOTIFICATION = 5;
+            APP_STATE_SYNC_KEY_SHARE = 6;
+            APP_STATE_SYNC_KEY_REQUEST = 7;
+            MSG_FANOUT_BACKFILL_REQUEST = 8;
+            INITIAL_SECURITY_NOTIFICATION_SETTING_SYNC = 9;
+            APP_STATE_FATAL_EXCEPTION_NOTIFICATION = 10;
+            SHARE_PHONE_NUMBER = 11;
+            REQUEST_MEDIA_UPLOAD_MESSAGE = 12;
+            REQUEST_MEDIA_UPLOAD_RESPONSE_MESSAGE = 13;
+        }
+    }
+    
+    message ReactionMessage {
+        optional MessageKey key = 1;
+        optional string text = 2;
+        optional string groupingKey = 3;
+        optional int64 senderTimestampMs = 4;
+    }
+    
+    message RequestMediaUploadMessage {
+        repeated string fileSha256 = 1;
+        optional Message.RmrSource rmrSource = 2;
+    }
+    
+    message RequestMediaUploadResponseMessage {
+        optional Message.RmrSource rmrSource = 1;
+        optional string stanzaId = 2;
+        repeated RequestMediaUploadResult reuploadResult = 3;
+        message RequestMediaUploadResult {
+            optional string fileSha256 = 1;
+            optional MediaRetryNotification.ResultType mediaUploadResult = 2;
+            optional Message.StickerMessage stickerMessage = 3;
+        }
+        
+    }
+    
+    message RequestPaymentMessage {
+        optional Message noteMessage = 4;
+        optional string currencyCodeIso4217 = 1;
+        optional uint64 amount1000 = 2;
+        optional string requestFrom = 3;
+        optional int64 expiryTimestamp = 5;
+        optional Money amount = 6;
+        optional PaymentBackground background = 7;
+    }
+    
+    message RequestPhoneNumberMessage {
+        optional ContextInfo contextInfo = 1;
+    }
+    
+    enum RmrSource {
+        FAVORITE_STICKER = 0;
+        RECENT_STICKER = 1;
+    }
+    message SendPaymentMessage {
+        optional Message noteMessage = 2;
+        optional MessageKey requestMessageKey = 3;
+        optional PaymentBackground background = 4;
+    }
+    
+    message SenderKeyDistributionMessage {
+        optional string groupId = 1;
+        optional bytes axolotlSenderKeyDistributionMessage = 2;
+    }
+    
+    message StickerMessage {
+        optional string url = 1;
+        optional bytes fileSha256 = 2;
+        optional bytes fileEncSha256 = 3;
+        optional bytes mediaKey = 4;
+        optional string mimetype = 5;
+        optional uint32 height = 6;
+        optional uint32 width = 7;
+        optional string directPath = 8;
+        optional uint64 fileLength = 9;
+        optional int64 mediaKeyTimestamp = 10;
+        optional uint32 firstFrameLength = 11;
+        optional bytes firstFrameSidecar = 12;
+        optional bool isAnimated = 13;
+        optional bytes pngThumbnail = 16;
+        optional ContextInfo contextInfo = 17;
+    }
+    
+    message StickerSyncRMRMessage {
+        repeated string filehash = 1;
+        optional string rmrSource = 2;
+        optional int64 requestTimestamp = 3;
+    }
+    
+    message TemplateButtonReplyMessage {
+        optional string selectedId = 1;
+        optional string selectedDisplayText = 2;
+        optional ContextInfo contextInfo = 3;
+        optional uint32 selectedIndex = 4;
+    }
+    
+    message TemplateMessage {
+        optional ContextInfo contextInfo = 3;
+        optional HydratedFourRowTemplate hydratedTemplate = 4;
+        oneof format {
+            Message.TemplateMessage.FourRowTemplate fourRowTemplate = 1;
+            Message.TemplateMessage.HydratedFourRowTemplate hydratedFourRowTemplate = 2;
+        }
+        message FourRowTemplate {
+            optional Message.HighlyStructuredMessage content = 6;
+            optional Message.HighlyStructuredMessage footer = 7;
+            repeated TemplateButton buttons = 8;
+            oneof title {
+                Message.DocumentMessage documentMessage = 1;
+                Message.HighlyStructuredMessage highlyStructuredMessage = 2;
+                Message.ImageMessage imageMessage = 3;
+                Message.VideoMessage videoMessage = 4;
+                Message.LocationMessage locationMessage = 5;
+            }
+        }
+        
+        message HydratedFourRowTemplate {
+            optional string hydratedContentText = 6;
+            optional string hydratedFooterText = 7;
+            repeated HydratedTemplateButton hydratedButtons = 8;
+            optional string templateId = 9;
+            oneof title {
+                Message.DocumentMessage documentMessage = 1;
+                string hydratedTitleText = 2;
+                Message.ImageMessage imageMessage = 3;
+                Message.VideoMessage videoMessage = 4;
+                Message.LocationMessage locationMessage = 5;
+            }
+        }
+        
+    }
+    
+    message VideoMessage {
+        optional string url = 1;
+        optional string mimetype = 2;
+        optional bytes fileSha256 = 3;
+        optional uint64 fileLength = 4;
+        optional uint32 seconds = 5;
+        optional bytes mediaKey = 6;
+        optional string caption = 7;
+        optional bool gifPlayback = 8;
+        optional uint32 height = 9;
+        optional uint32 width = 10;
+        optional bytes fileEncSha256 = 11;
+        repeated InteractiveAnnotation interactiveAnnotations = 12;
+        optional string directPath = 13;
+        optional int64 mediaKeyTimestamp = 14;
+        optional bytes jpegThumbnail = 16;
+        optional ContextInfo contextInfo = 17;
+        optional bytes streamingSidecar = 18;
+        optional Attribution gifAttribution = 19;
+        optional bool viewOnce = 20;
+        optional string thumbnailDirectPath = 21;
+        optional bytes thumbnailSha256 = 22;
+        optional bytes thumbnailEncSha256 = 23;
+        optional string staticUrl = 24;
+        enum Attribution {
+            NONE = 0;
+            GIPHY = 1;
+            TENOR = 2;
+        }
+    }
+    
 }
 
 message MessageContextInfo {
@@ -1182,6 +1517,13 @@ message MsgOpaqueData {
     repeated PollOption pollOptions = 18;
     optional uint32 pollSelectableOptionsCount = 20;
     optional bytes messageSecret = 21;
+    optional int64 senderTimestampMs = 22;
+    optional string pollUpdateParentKey = 23;
+    optional PollEncValue encPollVote = 24;
+    message PollOption {
+        optional string name = 1;
+    }
+    
 }
 
 message MsgRowOpaqueData {
@@ -1189,45 +1531,17 @@ message MsgRowOpaqueData {
     optional MsgOpaqueData quotedMsg = 2;
 }
 
-message MuteAction {
-    optional bool muted = 1;
-    optional int64 muteEndTimestamp = 2;
-}
-
-message NativeFlowButton {
-    optional string name = 1;
-    optional string buttonParamsJson = 2;
-}
-
-message NativeFlowInfo {
-    optional string name = 1;
-    optional string paramsJson = 2;
-}
-
-message NativeFlowMessage {
-    repeated NativeFlowButton buttons = 1;
-    optional string messageParamsJson = 2;
-    optional int32 messageVersion = 3;
-}
-
-message NativeFlowResponseMessage {
-    optional string name = 1;
-    optional string paramsJson = 2;
-    optional int32 version = 3;
-}
-
 message NoiseCertificate {
     optional bytes details = 1;
     optional bytes signature = 2;
-}
-
-// Renamed from NoiseCertificate$Details
-message NoiseCertificateDetails {
-    optional uint32 serial = 1;
-    optional string issuer = 2;
-    optional uint64 expires = 3;
-    optional string subject = 4;
-    optional bytes key = 5;
+    message Details {
+        optional uint32 serial = 1;
+        optional string issuer = 2;
+        optional uint64 expires = 3;
+        optional string subject = 4;
+        optional bytes key = 5;
+    }
+    
 }
 
 message NotificationMessageInfo {
@@ -1237,42 +1551,19 @@ message NotificationMessageInfo {
     optional string participant = 4;
 }
 
-message NuxAction {
-    optional bool acknowledged = 1;
-}
-
-message Option {
-    optional string optionName = 1;
-}
-
-message OrderMessage {
-    optional string orderId = 1;
-    optional bytes thumbnail = 2;
-    optional int32 itemCount = 3;
-    enum OrderMessageOrderStatus {
-        INQUIRY = 1;
+message PastParticipant {
+    required string userJid = 1;
+    required LeaveReason leaveReason = 2;
+    required uint64 leaveTs = 3;
+    enum LeaveReason {
+        LEFT = 0;
+        REMOVED = 1;
     }
-    optional OrderMessageOrderStatus status = 4;
-    enum OrderMessageOrderSurface {
-        CATALOG = 1;
-    }
-    optional OrderMessageOrderSurface surface = 5;
-    optional string message = 6;
-    optional string orderTitle = 7;
-    optional string sellerJid = 8;
-    optional string token = 9;
-    optional int64 totalAmount1000 = 10;
-    optional string totalCurrencyCode = 11;
-    optional ContextInfo contextInfo = 17;
 }
 
-// Renamed from PaymentBackground$MediaData
-message PBMediaData {
-    optional bytes mediaKey = 1;
-    optional int64 mediaKeyTimestamp = 2;
-    optional bytes fileSha256 = 3;
-    optional bytes fileEncSha256 = 4;
-    optional string directPath = 5;
+message PastParticipants {
+    required string groupJid = 1;
+    repeated PastParticipant pastParticipants = 2;
 }
 
 message PaymentBackground {
@@ -1284,23 +1575,41 @@ message PaymentBackground {
     optional fixed32 placeholderArgb = 6;
     optional fixed32 textArgb = 7;
     optional fixed32 subtextArgb = 8;
-    optional PBMediaData mediaData = 9;
-    enum PaymentBackgroundType {
+    optional MediaData mediaData = 9;
+    optional Type type = 10;
+    message MediaData {
+        optional bytes mediaKey = 1;
+        optional int64 mediaKeyTimestamp = 2;
+        optional bytes fileSha256 = 3;
+        optional bytes fileEncSha256 = 4;
+        optional string directPath = 5;
+    }
+    
+    enum Type {
         UNKNOWN = 0;
         DEFAULT = 1;
     }
-    optional PaymentBackgroundType type = 10;
 }
 
 message PaymentInfo {
-    enum PaymentInfoCurrency {
+    optional Currency currencyDeprecated = 1;
+    optional uint64 amount1000 = 2;
+    optional string receiverJid = 3;
+    optional Status status = 4;
+    optional uint64 transactionTimestamp = 5;
+    optional MessageKey requestMessageKey = 6;
+    optional uint64 expiryTimestamp = 7;
+    optional bool futureproofed = 8;
+    optional string currency = 9;
+    optional TxnStatus txnStatus = 10;
+    optional bool useNoviFiatFormat = 11;
+    optional Money primaryAmount = 12;
+    optional Money exchangeAmount = 13;
+    enum Currency {
         UNKNOWN_CURRENCY = 0;
         INR = 1;
     }
-    optional PaymentInfoCurrency currencyDeprecated = 1;
-    optional uint64 amount1000 = 2;
-    optional string receiverJid = 3;
-    enum PaymentInfoStatus {
+    enum Status {
         UNKNOWN_STATUS = 0;
         PROCESSING = 1;
         SENT = 2;
@@ -1314,13 +1623,7 @@ message PaymentInfo {
         WAITING_FOR_PAYER = 10;
         WAITING = 11;
     }
-    optional PaymentInfoStatus status = 4;
-    optional uint64 transactionTimestamp = 5;
-    optional MessageKey requestMessageKey = 6;
-    optional uint64 expiryTimestamp = 7;
-    optional bool futureproofed = 8;
-    optional string currency = 9;
-    enum PaymentInfoTxnStatus {
+    enum TxnStatus {
         UNKNOWN = 0;
         PENDING_SETUP = 1;
         PENDING_RECEIVER_SETUP = 2;
@@ -1354,21 +1657,6 @@ message PaymentInfo {
         REVERSAL_PENDING = 30;
         REFUND_PENDING = 31;
     }
-    optional PaymentInfoTxnStatus txnStatus = 10;
-    optional bool useNoviFiatFormat = 11;
-    optional Money primaryAmount = 12;
-    optional Money exchangeAmount = 13;
-}
-
-message PaymentInviteMessage {
-    enum PaymentInviteMessageServiceType {
-        UNKNOWN = 0;
-        FBPAY = 1;
-        NOVI = 2;
-        UPI = 3;
-    }
-    optional PaymentInviteMessageServiceType serviceType = 1;
-    optional int64 expiryTimestamp = 2;
 }
 
 message PendingKeyExchange {
@@ -1393,10 +1681,6 @@ message PhotoChange {
     optional uint32 newPhotoId = 3;
 }
 
-message PinAction {
-    optional bool pinned = 1;
-}
-
 message Point {
     optional int32 xDeprecated = 1;
     optional int32 yDeprecated = 2;
@@ -1408,40 +1692,15 @@ message PollAdditionalMetadata {
     optional bool pollInvalidated = 1;
 }
 
-message PollCreationMessage {
-    optional bytes encKey = 1;
-    optional string name = 2;
-    repeated Option options = 3;
-    optional uint32 selectableOptionsCount = 4;
-    optional ContextInfo contextInfo = 5;
-}
-
 message PollEncValue {
     optional bytes encPayload = 1;
     optional bytes encIv = 2;
 }
 
-message PollOption {
-    optional string name = 1;
-}
-
 message PollUpdate {
     optional MessageKey pollUpdateMessageKey = 1;
-    optional PollVoteMessage vote = 2;
-}
-
-message PollUpdateMessage {
-    optional MessageKey pollCreationMessageKey = 1;
-    optional PollEncValue vote = 2;
-    optional PollUpdateMessageMetadata metadata = 3;
-}
-
-message PollUpdateMessageMetadata {
-}
-
-message PollVoteMessage {
-    repeated bytes selectedOptions = 1;
-    optional int64 senderTimestampMs = 2;
+    optional Message.PollVoteMessage vote = 2;
+    optional int64 senderTimestampMs = 3;
 }
 
 message PreKeyRecordStructure {
@@ -1450,97 +1709,9 @@ message PreKeyRecordStructure {
     optional bytes privateKey = 3;
 }
 
-message PrimaryFeature {
-    repeated string flags = 1;
-}
-
-message Product {
-    optional string productId = 1;
-}
-
-message ProductListHeaderImage {
-    optional string productId = 1;
-    optional bytes jpegThumbnail = 2;
-}
-
-message ProductListInfo {
-    repeated ProductSection productSections = 1;
-    optional ProductListHeaderImage headerImage = 2;
-    optional string businessOwnerJid = 3;
-}
-
-message ProductMessage {
-    optional ProductSnapshot product = 1;
-    optional string businessOwnerJid = 2;
-    optional CatalogSnapshot catalog = 4;
-    optional string body = 5;
-    optional string footer = 6;
-    optional ContextInfo contextInfo = 17;
-}
-
-message ProductSection {
-    optional string title = 1;
-    repeated Product products = 2;
-}
-
-message ProductSnapshot {
-    optional ImageMessage productImage = 1;
-    optional string productId = 2;
-    optional string title = 3;
-    optional string description = 4;
-    optional string currencyCode = 5;
-    optional int64 priceAmount1000 = 6;
-    optional string retailerId = 7;
-    optional string url = 8;
-    optional uint32 productImageCount = 9;
-    optional string firstImageId = 11;
-    optional int64 salePriceAmount1000 = 12;
-}
-
-message ProtocolMessage {
-    optional MessageKey key = 1;
-    enum ProtocolMessageType {
-        REVOKE = 0;
-        EPHEMERAL_SETTING = 3;
-        EPHEMERAL_SYNC_RESPONSE = 4;
-        HISTORY_SYNC_NOTIFICATION = 5;
-        APP_STATE_SYNC_KEY_SHARE = 6;
-        APP_STATE_SYNC_KEY_REQUEST = 7;
-        MSG_FANOUT_BACKFILL_REQUEST = 8;
-        INITIAL_SECURITY_NOTIFICATION_SETTING_SYNC = 9;
-        APP_STATE_FATAL_EXCEPTION_NOTIFICATION = 10;
-    }
-    optional ProtocolMessageType type = 2;
-    optional uint32 ephemeralExpiration = 4;
-    optional int64 ephemeralSettingTimestamp = 5;
-    optional HistorySyncNotification historySyncNotification = 6;
-    optional AppStateSyncKeyShare appStateSyncKeyShare = 7;
-    optional AppStateSyncKeyRequest appStateSyncKeyRequest = 8;
-    optional InitialSecurityNotificationSettingSync initialSecurityNotificationSettingSync = 9;
-    optional AppStateFatalExceptionNotification appStateFatalExceptionNotification = 10;
-    optional DisappearingMode disappearingMode = 11;
-}
-
-message PushNameSetting {
-    optional string name = 1;
-}
-
 message Pushname {
     optional string id = 1;
     optional string pushname = 2;
-}
-
-message QuickReplyAction {
-    optional string shortcut = 1;
-    optional string message = 2;
-    repeated string keywords = 3;
-    optional int32 count = 4;
-    optional bool deleted = 5;
-}
-
-message QuickReplyButton {
-    optional HighlyStructuredMessage displayText = 1;
-    optional string id = 2;
 }
 
 message Reaction {
@@ -1551,39 +1722,9 @@ message Reaction {
     optional bool unread = 5;
 }
 
-message ReactionMessage {
-    optional MessageKey key = 1;
-    optional string text = 2;
-    optional string groupingKey = 3;
-    optional int64 senderTimestampMs = 4;
-}
-
 message RecentEmojiWeight {
     optional string emoji = 1;
     optional float weight = 2;
-}
-
-message RecentEmojiWeightsAction {
-    repeated RecentEmojiWeight weights = 1;
-}
-
-message RecentStickerMetadata {
-    optional string directPath = 1;
-    optional string encFilehash = 2;
-    optional string mediaKey = 3;
-    optional string stanzaId = 4;
-    optional string chatJid = 5;
-    optional string participant = 6;
-    optional bool isSentByMe = 7;
-}
-
-message RecentStickerWeight {
-    optional string filehash = 1;
-    optional float weight = 2;
-}
-
-message RecentStickerWeightsAction {
-    repeated RecentStickerWeight weights = 1;
 }
 
 message RecordStructure {
@@ -1591,45 +1732,9 @@ message RecordStructure {
     repeated SessionStructure previousSessions = 2;
 }
 
-message RequestPaymentMessage {
-    optional Message noteMessage = 4;
-    optional string currencyCodeIso4217 = 1;
-    optional uint64 amount1000 = 2;
-    optional string requestFrom = 3;
-    optional int64 expiryTimestamp = 5;
-    optional Money amount = 6;
-    optional PaymentBackground background = 7;
-}
-
-message Row {
-    optional string title = 1;
-    optional string description = 2;
-    optional string rowId = 3;
-}
-
-message Section {
-    optional string title = 1;
-    repeated Row rows = 2;
-}
-
-message SecurityNotificationSetting {
-    optional bool showNotification = 1;
-}
-
-message SendPaymentMessage {
-    optional Message noteMessage = 2;
-    optional MessageKey requestMessageKey = 3;
-    optional PaymentBackground background = 4;
-}
-
 message SenderChainKey {
     optional uint32 iteration = 1;
     optional bytes seed = 2;
-}
-
-message SenderKeyDistributionMessage {
-    optional string groupId = 1;
-    optional bytes axolotlSenderKeyDistributionMessage = 2;
 }
 
 message SenderKeyRecordStructure {
@@ -1657,12 +1762,6 @@ message ServerErrorReceipt {
     optional string stanzaId = 1;
 }
 
-message ServerHello {
-    optional bytes ephemeral = 1;
-    optional bytes static = 2;
-    optional bytes payload = 3;
-}
-
 message SessionStructure {
     optional uint32 sessionVersion = 1;
     optional bytes localIdentityPublic = 2;
@@ -1679,18 +1778,6 @@ message SessionStructure {
     optional bytes aliceBaseKey = 13;
 }
 
-message ShopMessage {
-    optional string id = 1;
-    enum ShopMessageSurface {
-        UNKNOWN_SURFACE = 0;
-        FB = 1;
-        IG = 2;
-        WA = 3;
-    }
-    optional ShopMessageSurface surface = 2;
-    optional int32 messageVersion = 3;
-}
-
 message SignedPreKeyRecordStructure {
     optional uint32 id = 1;
     optional bytes publicKey = 2;
@@ -1699,20 +1786,12 @@ message SignedPreKeyRecordStructure {
     optional fixed64 timestamp = 5;
 }
 
-message SingleSelectReply {
-    optional string selectedRowId = 1;
-}
-
-message StarAction {
-    optional bool starred = 1;
-}
-
 message StatusPSA {
     required uint64 campaignId = 44;
     optional uint64 campaignExpirationTimestamp = 45;
 }
 
-message StickerMessage {
+message StickerMetadata {
     optional string url = 1;
     optional bytes fileSha256 = 2;
     optional bytes fileEncSha256 = 3;
@@ -1722,24 +1801,7 @@ message StickerMessage {
     optional uint32 width = 7;
     optional string directPath = 8;
     optional uint64 fileLength = 9;
-    optional int64 mediaKeyTimestamp = 10;
-    optional uint32 firstFrameLength = 11;
-    optional bytes firstFrameSidecar = 12;
-    optional bool isAnimated = 13;
-    optional bytes pngThumbnail = 16;
-    optional ContextInfo contextInfo = 17;
-}
-
-message StickerSyncRMRMessage {
-    repeated string filehash = 1;
-    optional string rmrSource = 2;
-    optional int64 requestTimestamp = 3;
-}
-
-message SubscriptionAction {
-    optional bool isDeactivated = 1;
-    optional bool isAutoRenewing = 2;
-    optional int64 expirationDate = 3;
+    optional float weight = 10;
 }
 
 message SyncActionData {
@@ -1747,17 +1809,6 @@ message SyncActionData {
     optional SyncActionValue value = 2;
     optional bytes padding = 3;
     optional int32 version = 4;
-}
-
-message SyncActionMessage {
-    optional MessageKey key = 1;
-    optional int64 timestamp = 2;
-}
-
-message SyncActionMessageRange {
-    optional int64 lastMessageTimestamp = 1;
-    optional int64 lastSystemMessageTimestamp = 2;
-    repeated SyncActionMessage messages = 3;
 }
 
 message SyncActionValue {
@@ -1769,8 +1820,6 @@ message SyncActionValue {
     optional SecurityNotificationSetting securityNotificationSetting = 6;
     optional PushNameSetting pushNameSetting = 7;
     optional QuickReplyAction quickReplyAction = 8;
-    optional RecentStickerWeightsAction recentStickerWeightsAction = 9;
-    optional RecentStickerMetadata recentStickerMetadata = 10;
     optional RecentEmojiWeightsAction recentEmojiWeightsAction = 11;
     optional LabelEditAction labelEditAction = 14;
     optional LabelAssociationAction labelAssociationAction = 15;
@@ -1783,13 +1832,158 @@ message SyncActionValue {
     optional DeleteChatAction deleteChatAction = 22;
     optional UnarchiveChatsSetting unarchiveChatsSetting = 23;
     optional PrimaryFeature primaryFeature = 24;
-    optional FavoriteStickerAction favoriteStickerAction = 25;
     optional AndroidUnsupportedActions androidUnsupportedActions = 26;
     optional AgentAction agentAction = 27;
     optional SubscriptionAction subscriptionAction = 28;
     optional UserStatusMuteAction userStatusMuteAction = 29;
     optional TimeFormatAction timeFormatAction = 30;
     optional NuxAction nuxAction = 31;
+    optional PrimaryVersionAction primaryVersionAction = 32;
+    optional StickerAction stickerAction = 33;
+    message AgentAction {
+        optional string name = 1;
+        optional int32 deviceID = 2;
+        optional bool isDeleted = 3;
+    }
+    
+    message AndroidUnsupportedActions {
+        optional bool allowed = 1;
+    }
+    
+    message ArchiveChatAction {
+        optional bool archived = 1;
+        optional SyncActionValue.SyncActionMessageRange messageRange = 2;
+    }
+    
+    message ClearChatAction {
+        optional SyncActionValue.SyncActionMessageRange messageRange = 1;
+    }
+    
+    message ContactAction {
+        optional string fullName = 1;
+        optional string firstName = 2;
+    }
+    
+    message DeleteChatAction {
+        optional SyncActionValue.SyncActionMessageRange messageRange = 1;
+    }
+    
+    message DeleteMessageForMeAction {
+        optional bool deleteMedia = 1;
+        optional int64 messageTimestamp = 2;
+    }
+    
+    message KeyExpiration {
+        optional int32 expiredKeyEpoch = 1;
+    }
+    
+    message LabelAssociationAction {
+        optional bool labeled = 1;
+    }
+    
+    message LabelEditAction {
+        optional string name = 1;
+        optional int32 color = 2;
+        optional int32 predefinedId = 3;
+        optional bool deleted = 4;
+    }
+    
+    message LocaleSetting {
+        optional string locale = 1;
+    }
+    
+    message MarkChatAsReadAction {
+        optional bool read = 1;
+        optional SyncActionValue.SyncActionMessageRange messageRange = 2;
+    }
+    
+    message MuteAction {
+        optional bool muted = 1;
+        optional int64 muteEndTimestamp = 2;
+    }
+    
+    message NuxAction {
+        optional bool acknowledged = 1;
+    }
+    
+    message PinAction {
+        optional bool pinned = 1;
+    }
+    
+    message PrimaryFeature {
+        repeated string flags = 1;
+    }
+    
+    message PrimaryVersionAction {
+        optional string version = 1;
+    }
+    
+    message PushNameSetting {
+        optional string name = 1;
+    }
+    
+    message QuickReplyAction {
+        optional string shortcut = 1;
+        optional string message = 2;
+        repeated string keywords = 3;
+        optional int32 count = 4;
+        optional bool deleted = 5;
+    }
+    
+    message RecentEmojiWeightsAction {
+        repeated RecentEmojiWeight weights = 1;
+    }
+    
+    message SecurityNotificationSetting {
+        optional bool showNotification = 1;
+    }
+    
+    message StarAction {
+        optional bool starred = 1;
+    }
+    
+    message StickerAction {
+        optional string url = 1;
+        optional bytes fileEncSha256 = 2;
+        optional bytes mediaKey = 3;
+        optional string mimetype = 4;
+        optional uint32 height = 5;
+        optional uint32 width = 6;
+        optional string directPath = 7;
+        optional uint64 fileLength = 8;
+        optional bool isFavorite = 9;
+        optional uint32 deviceIdHint = 10;
+    }
+    
+    message SubscriptionAction {
+        optional bool isDeactivated = 1;
+        optional bool isAutoRenewing = 2;
+        optional int64 expirationDate = 3;
+    }
+    
+    message SyncActionMessageRange {
+        optional int64 lastMessageTimestamp = 1;
+        optional int64 lastSystemMessageTimestamp = 2;
+        repeated SyncActionValue.SyncActionMessage messages = 3;
+    }
+    
+    message SyncActionMessage {
+        optional MessageKey key = 1;
+        optional int64 timestamp = 2;
+    }
+    
+    message TimeFormatAction {
+        optional bool isTwentyFourHourFormatEnabled = 1;
+    }
+    
+    message UnarchiveChatsSetting {
+        optional bool unarchiveChats = 1;
+    }
+    
+    message UserStatusMuteAction {
+        optional bool muted = 1;
+    }
+    
 }
 
 message SyncdIndex {
@@ -1797,12 +1991,12 @@ message SyncdIndex {
 }
 
 message SyncdMutation {
-    enum SyncdMutationSyncdOperation {
+    optional SyncdOperation operation = 1;
+    optional SyncdRecord record = 2;
+    enum SyncdOperation {
         SET = 0;
         REMOVE = 1;
     }
-    optional SyncdMutationSyncdOperation operation = 1;
-    optional SyncdRecord record = 2;
 }
 
 message SyncdMutations {
@@ -1844,92 +2038,25 @@ message SyncdVersion {
 message TemplateButton {
     optional uint32 index = 4;
     oneof button {
-        QuickReplyButton quickReplyButton = 1;
-        URLButton urlButton = 2;
-        CallButton callButton = 3;
+        TemplateButton.QuickReplyButton quickReplyButton = 1;
+        TemplateButton.URLButton urlButton = 2;
+        TemplateButton.CallButton callButton = 3;
     }
-}
-
-message TemplateButtonReplyMessage {
-    optional string selectedId = 1;
-    optional string selectedDisplayText = 2;
-    optional ContextInfo contextInfo = 3;
-    optional uint32 selectedIndex = 4;
-}
-
-message TemplateMessage {
-    optional ContextInfo contextInfo = 3;
-    optional HydratedFourRowTemplate hydratedTemplate = 4;
-    oneof format {
-        FourRowTemplate fourRowTemplate = 1;
-        HydratedFourRowTemplate hydratedFourRowTemplate = 2;
+    message CallButton {
+        optional Message.HighlyStructuredMessage displayText = 1;
+        optional Message.HighlyStructuredMessage phoneNumber = 2;
     }
-}
-
-message TimeFormatAction {
-    optional bool isTwentyFourHourFormatEnabled = 1;
-}
-
-message URLButton {
-    optional HighlyStructuredMessage displayText = 1;
-    optional HighlyStructuredMessage url = 2;
-}
-
-message UnarchiveChatsSetting {
-    optional bool unarchiveChats = 1;
-}
-
-message UserAgent {
-    enum UserAgentPlatform {
-        ANDROID = 0;
-        IOS = 1;
-        WINDOWS_PHONE = 2;
-        BLACKBERRY = 3;
-        BLACKBERRYX = 4;
-        S40 = 5;
-        S60 = 6;
-        PYTHON_CLIENT = 7;
-        TIZEN = 8;
-        ENTERPRISE = 9;
-        SMB_ANDROID = 10;
-        KAIOS = 11;
-        SMB_IOS = 12;
-        WINDOWS = 13;
-        WEB = 14;
-        PORTAL = 15;
-        GREEN_ANDROID = 16;
-        GREEN_IPHONE = 17;
-        BLUE_ANDROID = 18;
-        BLUE_IPHONE = 19;
-        FBLITE_ANDROID = 20;
-        MLITE_ANDROID = 21;
-        IGLITE_ANDROID = 22;
-        PAGE = 23;
-        MACOS = 24;
-        OCULUS_MSG = 25;
-        OCULUS_CALL = 26;
-        MILAN = 27;
-        CAPI = 28;
+    
+    message QuickReplyButton {
+        optional Message.HighlyStructuredMessage displayText = 1;
+        optional string id = 2;
     }
-    optional UserAgentPlatform platform = 1;
-    optional AppVersion appVersion = 2;
-    optional string mcc = 3;
-    optional string mnc = 4;
-    optional string osVersion = 5;
-    optional string manufacturer = 6;
-    optional string device = 7;
-    optional string osBuildNumber = 8;
-    optional string phoneId = 9;
-    enum UserAgentReleaseChannel {
-        RELEASE = 0;
-        BETA = 1;
-        ALPHA = 2;
-        DEBUG = 3;
+    
+    message URLButton {
+        optional Message.HighlyStructuredMessage displayText = 1;
+        optional Message.HighlyStructuredMessage url = 2;
     }
-    optional UserAgentReleaseChannel releaseChannel = 10;
-    optional string localeLanguageIso6391 = 11;
-    optional string localeCountryIso31661Alpha2 = 12;
-    optional string deviceBoard = 13;
+    
 }
 
 message UserReceipt {
@@ -1941,54 +2068,18 @@ message UserReceipt {
     repeated string deliveredDeviceJid = 6;
 }
 
-message UserStatusMuteAction {
-    optional bool muted = 1;
-}
-
 message VerifiedNameCertificate {
     optional bytes details = 1;
     optional bytes signature = 2;
     optional bytes serverSignature = 3;
-}
-
-// Renamed from VerifiedNameCertificate$Details
-message VerifiedNameDetails {
-    optional uint64 serial = 1;
-    optional string issuer = 2;
-    optional string verifiedName = 4;
-    repeated LocalizedName localizedNames = 8;
-    optional uint64 issueTime = 10;
-}
-
-message VideoMessage {
-    optional string url = 1;
-    optional string mimetype = 2;
-    optional bytes fileSha256 = 3;
-    optional uint64 fileLength = 4;
-    optional uint32 seconds = 5;
-    optional bytes mediaKey = 6;
-    optional string caption = 7;
-    optional bool gifPlayback = 8;
-    optional uint32 height = 9;
-    optional uint32 width = 10;
-    optional bytes fileEncSha256 = 11;
-    repeated InteractiveAnnotation interactiveAnnotations = 12;
-    optional string directPath = 13;
-    optional int64 mediaKeyTimestamp = 14;
-    optional bytes jpegThumbnail = 16;
-    optional ContextInfo contextInfo = 17;
-    optional bytes streamingSidecar = 18;
-    enum VideoMessageAttribution {
-        NONE = 0;
-        GIPHY = 1;
-        TENOR = 2;
+    message Details {
+        optional uint64 serial = 1;
+        optional string issuer = 2;
+        optional string verifiedName = 4;
+        repeated LocalizedName localizedNames = 8;
+        optional uint64 issueTime = 10;
     }
-    optional VideoMessageAttribution gifAttribution = 19;
-    optional bool viewOnce = 20;
-    optional string thumbnailDirectPath = 21;
-    optional bytes thumbnailSha256 = 22;
-    optional bytes thumbnailEncSha256 = 23;
-    optional string staticUrl = 24;
+    
 }
 
 message WallpaperSettings {
@@ -1997,86 +2088,64 @@ message WallpaperSettings {
 }
 
 message WebFeatures {
-    enum WebFeaturesFlag {
+    optional Flag labelsDisplay = 1;
+    optional Flag voipIndividualOutgoing = 2;
+    optional Flag groupsV3 = 3;
+    optional Flag groupsV3Create = 4;
+    optional Flag changeNumberV2 = 5;
+    optional Flag queryStatusV3Thumbnail = 6;
+    optional Flag liveLocations = 7;
+    optional Flag queryVname = 8;
+    optional Flag voipIndividualIncoming = 9;
+    optional Flag quickRepliesQuery = 10;
+    optional Flag payments = 11;
+    optional Flag stickerPackQuery = 12;
+    optional Flag liveLocationsFinal = 13;
+    optional Flag labelsEdit = 14;
+    optional Flag mediaUpload = 15;
+    optional Flag mediaUploadRichQuickReplies = 18;
+    optional Flag vnameV2 = 19;
+    optional Flag videoPlaybackUrl = 20;
+    optional Flag statusRanking = 21;
+    optional Flag voipIndividualVideo = 22;
+    optional Flag thirdPartyStickers = 23;
+    optional Flag frequentlyForwardedSetting = 24;
+    optional Flag groupsV4JoinPermission = 25;
+    optional Flag recentStickers = 26;
+    optional Flag catalog = 27;
+    optional Flag starredStickers = 28;
+    optional Flag voipGroupCall = 29;
+    optional Flag templateMessage = 30;
+    optional Flag templateMessageInteractivity = 31;
+    optional Flag ephemeralMessages = 32;
+    optional Flag e2ENotificationSync = 33;
+    optional Flag recentStickersV2 = 34;
+    optional Flag recentStickersV3 = 36;
+    optional Flag userNotice = 37;
+    optional Flag support = 39;
+    optional Flag groupUiiCleanup = 40;
+    optional Flag groupDogfoodingInternalOnly = 41;
+    optional Flag settingsSync = 42;
+    optional Flag archiveV2 = 43;
+    optional Flag ephemeralAllowGroupMembers = 44;
+    optional Flag ephemeral24HDuration = 45;
+    optional Flag mdForceUpgrade = 46;
+    optional Flag disappearingMode = 47;
+    optional Flag externalMdOptInAvailable = 48;
+    optional Flag noDeleteMessageTimeLimit = 49;
+    enum Flag {
         NOT_STARTED = 0;
         FORCE_UPGRADE = 1;
         DEVELOPMENT = 2;
         PRODUCTION = 3;
     }
-    optional WebFeaturesFlag labelsDisplay = 1;
-    optional WebFeaturesFlag voipIndividualOutgoing = 2;
-    optional WebFeaturesFlag groupsV3 = 3;
-    optional WebFeaturesFlag groupsV3Create = 4;
-    optional WebFeaturesFlag changeNumberV2 = 5;
-    optional WebFeaturesFlag queryStatusV3Thumbnail = 6;
-    optional WebFeaturesFlag liveLocations = 7;
-    optional WebFeaturesFlag queryVname = 8;
-    optional WebFeaturesFlag voipIndividualIncoming = 9;
-    optional WebFeaturesFlag quickRepliesQuery = 10;
-    optional WebFeaturesFlag payments = 11;
-    optional WebFeaturesFlag stickerPackQuery = 12;
-    optional WebFeaturesFlag liveLocationsFinal = 13;
-    optional WebFeaturesFlag labelsEdit = 14;
-    optional WebFeaturesFlag mediaUpload = 15;
-    optional WebFeaturesFlag mediaUploadRichQuickReplies = 18;
-    optional WebFeaturesFlag vnameV2 = 19;
-    optional WebFeaturesFlag videoPlaybackUrl = 20;
-    optional WebFeaturesFlag statusRanking = 21;
-    optional WebFeaturesFlag voipIndividualVideo = 22;
-    optional WebFeaturesFlag thirdPartyStickers = 23;
-    optional WebFeaturesFlag frequentlyForwardedSetting = 24;
-    optional WebFeaturesFlag groupsV4JoinPermission = 25;
-    optional WebFeaturesFlag recentStickers = 26;
-    optional WebFeaturesFlag catalog = 27;
-    optional WebFeaturesFlag starredStickers = 28;
-    optional WebFeaturesFlag voipGroupCall = 29;
-    optional WebFeaturesFlag templateMessage = 30;
-    optional WebFeaturesFlag templateMessageInteractivity = 31;
-    optional WebFeaturesFlag ephemeralMessages = 32;
-    optional WebFeaturesFlag e2ENotificationSync = 33;
-    optional WebFeaturesFlag recentStickersV2 = 34;
-    optional WebFeaturesFlag recentStickersV3 = 36;
-    optional WebFeaturesFlag userNotice = 37;
-    optional WebFeaturesFlag support = 39;
-    optional WebFeaturesFlag groupUiiCleanup = 40;
-    optional WebFeaturesFlag groupDogfoodingInternalOnly = 41;
-    optional WebFeaturesFlag settingsSync = 42;
-    optional WebFeaturesFlag archiveV2 = 43;
-    optional WebFeaturesFlag ephemeralAllowGroupMembers = 44;
-    optional WebFeaturesFlag ephemeral24HDuration = 45;
-    optional WebFeaturesFlag mdForceUpgrade = 46;
-    optional WebFeaturesFlag disappearingMode = 47;
-    optional WebFeaturesFlag externalMdOptInAvailable = 48;
-    optional WebFeaturesFlag noDeleteMessageTimeLimit = 49;
-}
-
-message WebInfo {
-    optional string refToken = 1;
-    optional string version = 2;
-    optional WebdPayload webdPayload = 3;
-    enum WebInfoWebSubPlatform {
-        WEB_BROWSER = 0;
-        APP_STORE = 1;
-        WIN_STORE = 2;
-        DARWIN = 3;
-        WIN32 = 4;
-    }
-    optional WebInfoWebSubPlatform webSubPlatform = 4;
 }
 
 message WebMessageInfo {
     required MessageKey key = 1;
     optional Message message = 2;
     optional uint64 messageTimestamp = 3;
-    enum WebMessageInfoStatus {
-        ERROR = 0;
-        PENDING = 1;
-        SERVER_ACK = 2;
-        DELIVERY_ACK = 3;
-        READ = 4;
-        PLAYED = 5;
-    }
-    optional WebMessageInfoStatus status = 4;
+    optional Status status = 4;
     optional string participant = 5;
     optional uint64 messageC2STimestamp = 6;
     optional bool ignore = 16;
@@ -2087,7 +2156,50 @@ message WebMessageInfo {
     optional bool multicast = 21;
     optional bool urlText = 22;
     optional bool urlNumber = 23;
-    enum WebMessageInfoStubType {
+    optional StubType messageStubType = 24;
+    optional bool clearMedia = 25;
+    repeated string messageStubParameters = 26;
+    optional uint32 duration = 27;
+    repeated string labels = 28;
+    optional PaymentInfo paymentInfo = 29;
+    optional Message.LiveLocationMessage finalLiveLocation = 30;
+    optional PaymentInfo quotedPaymentInfo = 31;
+    optional uint64 ephemeralStartTimestamp = 32;
+    optional uint32 ephemeralDuration = 33;
+    optional bool ephemeralOffToOn = 34;
+    optional bool ephemeralOutOfSync = 35;
+    optional BizPrivacyStatus bizPrivacyStatus = 36;
+    optional string verifiedBizName = 37;
+    optional MediaData mediaData = 38;
+    optional PhotoChange photoChange = 39;
+    repeated UserReceipt userReceipt = 40;
+    repeated Reaction reactions = 41;
+    optional MediaData quotedStickerData = 42;
+    optional bytes futureproofData = 43;
+    optional StatusPSA statusPsa = 44;
+    repeated PollUpdate pollUpdates = 45;
+    optional PollAdditionalMetadata pollAdditionalMetadata = 46;
+    optional string agentId = 47;
+    optional bool statusAlreadyViewed = 48;
+    optional bytes messageSecret = 49;
+    optional KeepInChat keepInChat = 50;
+    optional string originalSelfAuthorUserJidString = 51;
+    optional uint64 revokeMessageTimestamp = 52;
+    enum BizPrivacyStatus {
+        E2EE = 0;
+        FB = 2;
+        BSP = 1;
+        BSP_AND_FB = 3;
+    }
+    enum Status {
+        ERROR = 0;
+        PENDING = 1;
+        SERVER_ACK = 2;
+        DELIVERY_ACK = 3;
+        READ = 4;
+        PLAYED = 5;
+    }
+    enum StubType {
         UNKNOWN = 0;
         REVOKE = 1;
         CIPHERTEXT = 2;
@@ -2232,40 +2344,13 @@ message WebMessageInfo {
         GROUP_PARTICIPANT_LINKED_GROUP_JOIN = 141;
         COMMUNITY_CREATE = 142;
         EPHEMERAL_KEEP_IN_CHAT = 143;
+        GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST = 144;
+        GROUP_MEMBERSHIP_JOIN_APPROVAL_MODE = 145;
+        INTEGRITY_UNLINK_PARENT_GROUP = 146;
+        COMMUNITY_PARTICIPANT_PROMOTE = 147;
+        COMMUNITY_PARTICIPANT_DEMOTE = 148;
+        COMMUNITY_PARENT_GROUP_DELETED = 149;
     }
-    optional WebMessageInfoStubType messageStubType = 24;
-    optional bool clearMedia = 25;
-    repeated string messageStubParameters = 26;
-    optional uint32 duration = 27;
-    repeated string labels = 28;
-    optional PaymentInfo paymentInfo = 29;
-    optional LiveLocationMessage finalLiveLocation = 30;
-    optional PaymentInfo quotedPaymentInfo = 31;
-    optional uint64 ephemeralStartTimestamp = 32;
-    optional uint32 ephemeralDuration = 33;
-    optional bool ephemeralOffToOn = 34;
-    optional bool ephemeralOutOfSync = 35;
-    enum WebMessageInfoBizPrivacyStatus {
-        E2EE = 0;
-        FB = 2;
-        BSP = 1;
-        BSP_AND_FB = 3;
-    }
-    optional WebMessageInfoBizPrivacyStatus bizPrivacyStatus = 36;
-    optional string verifiedBizName = 37;
-    optional MediaData mediaData = 38;
-    optional PhotoChange photoChange = 39;
-    repeated UserReceipt userReceipt = 40;
-    repeated Reaction reactions = 41;
-    optional MediaData quotedStickerData = 42;
-    optional bytes futureproofData = 43;
-    optional StatusPSA statusPsa = 44;
-    repeated PollUpdate pollUpdates = 45;
-    optional PollAdditionalMetadata pollAdditionalMetadata = 46;
-    optional string agentId = 47;
-    optional bool statusAlreadyViewed = 48;
-    optional bytes messageSecret = 49;
-    optional KeepInChat keepInChat = 50;
 }
 
 message WebNotificationsInfo {
@@ -2273,18 +2358,4 @@ message WebNotificationsInfo {
     optional uint32 unreadChats = 3;
     optional uint32 notifyMessageCount = 4;
     repeated WebMessageInfo notifyMessages = 5;
-}
-
-message WebdPayload {
-    optional bool usesParticipantInKey = 1;
-    optional bool supportsStarredMessages = 2;
-    optional bool supportsDocumentMessages = 3;
-    optional bool supportsUrlMessages = 4;
-    optional bool supportsMediaRetry = 5;
-    optional bool supportsE2EImage = 6;
-    optional bool supportsE2EVideo = 7;
-    optional bool supportsE2EAudio = 8;
-    optional bool supportsE2EDocument = 9;
-    optional string documentTypes = 10;
-    optional bytes features = 11;
 }

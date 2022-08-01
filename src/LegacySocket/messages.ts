@@ -151,7 +151,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 		// if it's a message to delete another message
 		if(protocolMessage) {
 			switch (protocolMessage.type) {
-			case proto.ProtocolMessage.ProtocolMessageType.REVOKE:
+			case proto.Message.ProtocolMessage.Type.REVOKE:
 				const key = protocolMessage.key
 				const messageStubType = WAMessageStubType.REVOKE
 				ev.emit('messages.update', [
@@ -162,7 +162,7 @@ const makeMessagesSocket = (config: LegacySocketConfig) => {
 					}
 				])
 				return
-			case proto.ProtocolMessage.ProtocolMessageType.EPHEMERAL_SETTING:
+			case proto.Message.ProtocolMessage.Type.EPHEMERAL_SETTING:
 				chatUpdate.ephemeralSettingTimestamp = message.messageTimestamp
             		chatUpdate.ephemeralExpiration = protocolMessage.ephemeralExpiration
 
