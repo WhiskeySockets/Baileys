@@ -3,7 +3,7 @@ import axios from 'axios'
 import { promises as fs } from 'fs'
 import { Logger } from 'pino'
 import { proto } from '../../WAProto'
-import { MEDIA_KEYS, URL_REGEX, WA_DEFAULT_EPHEMERAL } from '../Defaults'
+import { MEDIA_KEYS, URL_EXCLUDE_REGEX, URL_REGEX, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import {
 	AnyMediaMessageContent,
 	AnyMessageContent,
@@ -57,11 +57,20 @@ const MessageTypeProto = {
 
 const ButtonType = proto.Message.ButtonsMessage.HeaderType
 
+/**
+ * Uses a regex to test whether the string contains a URL, and returns the URL if it does.
+ * @param text eg. hello https://google.com
+ * @returns the URL, eg. https://google.com
+ */
+export const extractUrlFromText = (text: string) => (
+	!URL_EXCLUDE_REGEX.test(text) ? text.match(URL_REGEX)?.[0] : undefined
+)
+
 export const generateLinkPreviewIfRequired = async(text: string, getUrlInfo: MessageGenerationOptions['getUrlInfo'], logger: MessageGenerationOptions['logger']) => {
-	const matchedUrls = text.match(URL_REGEX)
-	if(!!getUrlInfo && matchedUrls) {
+	const url = extractUrlFromText(text)
+	if(!!getUrlInfo && url) {
 		try {
-			const urlInfo = await getUrlInfo(matchedUrls[0])
+			const urlInfo = await getUrlInfo(url)
 			return urlInfo
 		} catch(error) { // ignore if fails
 			logger?.warn({ trace: error.stack }, 'url generation failed')

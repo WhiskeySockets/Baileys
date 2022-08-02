@@ -20,6 +20,7 @@ export const NOISE_WA_HEADER = Buffer.from(
 ) // last is "DICT_VERSION"
 /** from: https://stackoverflow.com/questions/3809401/what-is-a-good-regular-expression-to-match-a-url */
 export const URL_REGEX = /[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)?/gi
+export const URL_EXCLUDE_REGEX = /.*@.*/
 
 export const WA_CERT_DETAILS = {
 	SERIAL: 0,
