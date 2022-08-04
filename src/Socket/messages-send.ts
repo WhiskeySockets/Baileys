@@ -108,19 +108,20 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		await sendNode(node)
 	}
 
-	const sendReadReceipt = async(jid: string, participant: string | undefined, messageIds: string[]) => {
-		const privacySettings = await fetchPrivacySettings()
-		// based on privacy settings, we have to change the read type
-		const readType = privacySettings.readreceipts === 'all' ? 'read' : 'read-self'
-		return sendReceipt(jid, participant, messageIds, readType)
+	/** Correctly bulk send receipts to multiple chats, participants */
+	const sendReceipts = async(keys: WAMessageKey[], type: MessageReceiptType) => {
+		const recps = aggregateMessageKeysNotFromMe(keys)
+		for(const { jid, participant, messageIds } of recps) {
+			await sendReceipt(jid, participant, messageIds, type)
+		}
 	}
 
 	/** Bulk read messages. Keys can be from different chats & participants */
 	const readMessages = async(keys: WAMessageKey[]) => {
-		const recps = aggregateMessageKeysNotFromMe(keys)
-		for(const { jid, participant, messageIds } of recps) {
-			await sendReadReceipt(jid, participant, messageIds)
-		}
+		const privacySettings = await fetchPrivacySettings()
+		// based on privacy settings, we have to change the read type
+		const readType = privacySettings.readreceipts === 'all' ? 'read' : 'read-self'
+		await sendReceipts(keys, readType)
  	}
 
 	/** Fetch all the devices we've to send a message to */
@@ -527,7 +528,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		assertSessions,
 		relayMessage,
 		sendReceipt,
-		sendReadReceipt,
+		sendReceipts,
 		readMessages,
 		refreshMediaConn,
 	    waUploadToServer,
