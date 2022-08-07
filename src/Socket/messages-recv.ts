@@ -2,7 +2,7 @@
 import { proto } from '../../WAProto'
 import { KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import { MessageReceiptType, MessageRelayOptions, MessageUserReceipt, SocketConfig, WACallEvent, WAMessageKey, WAMessageStubType, WAPatchName } from '../Types'
-import { decodeMediaRetryNode, decodeMessageStanza, delay, encodeBigEndian, getCallStatusFromNode, getNextPreKeys, getStatusFromReceiptType, isHistoryMsg, unixTimestampSeconds, xmppPreKey, xmppSignedPreKey } from '../Utils'
+import { decodeMediaRetryNode, decodeMessageStanza, delay, encodeBigEndian, encodeSignedDeviceIdentity, getCallStatusFromNode, getNextPreKeys, getStatusFromReceiptType, isHistoryMsg, unixTimestampSeconds, xmppPreKey, xmppSignedPreKey } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
 import { cleanMessage } from '../Utils/process-message'
 import { areJidsSameUser, BinaryNode, getAllBinaryNodeChildren, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, isJidUser, jidDecode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
@@ -80,10 +80,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
 
-		const deviceIdentity = proto.ADVSignedDeviceIdentity.encode({
-			...account,
-			accountSignatureKey: undefined
-		}).finish()
+		const deviceIdentity = encodeSignedDeviceIdentity(account!, true)
 		await authState.keys.transaction(
 			async() => {
 				const receipt: BinaryNode = {

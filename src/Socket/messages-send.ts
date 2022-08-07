@@ -4,7 +4,7 @@ import NodeCache from 'node-cache'
 import { proto } from '../../WAProto'
 import { WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import { AnyMessageContent, MediaConnInfo, MessageReceiptType, MessageRelayOptions, MiscMessageGenerationOptions, SocketConfig, WAMessageKey } from '../Types'
-import { aggregateMessageKeysNotFromMe, assertMediaContent, bindWaitForEvent, decryptMediaRetryData, encodeWAMessage, encryptMediaRetryRequest, encryptSenderKeyMsgSignalProto, encryptSignalProto, extractDeviceJids, generateMessageID, generateWAMessage, getStatusCodeForMediaRetry, getUrlFromDirectPath, getWAUploadToServer, jidToSignalProtocolAddress, parseAndInjectE2ESessions, patchMessageForMdIfRequired, unixTimestampSeconds } from '../Utils'
+import { aggregateMessageKeysNotFromMe, assertMediaContent, bindWaitForEvent, decryptMediaRetryData, encodeSignedDeviceIdentity, encodeWAMessage, encryptMediaRetryRequest, encryptSenderKeyMsgSignalProto, encryptSignalProto, extractDeviceJids, generateMessageID, generateWAMessage, getStatusCodeForMediaRetry, getUrlFromDirectPath, getWAUploadToServer, jidToSignalProtocolAddress, parseAndInjectE2ESessions, patchMessageForMdIfRequired, unixTimestampSeconds } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
 import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, isJidUser, jidDecode, jidEncode, jidNormalizedUser, JidWithDevice, S_WHATSAPP_NET } from '../WABinary'
 import { makeGroupsSocket } from './groups'
@@ -266,7 +266,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							attrs: {
 								v: '2',
 								type,
-								...extraAttrs || {}
+								// do not send extra params
+								// causes retries to fail for some reason now
+								// ...extraAttrs || {}
 							},
 							content: ciphertext
 						}]
@@ -473,7 +475,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					(stanza.content as BinaryNode[]).push({
 						tag: 'device-identity',
 						attrs: { },
-						content: proto.ADVSignedDeviceIdentity.encode(authState.creds.account!).finish()
+						content: encodeSignedDeviceIdentity(authState.creds.account!, true)
 					})
 
 					logger.debug({ jid }, 'adding device identity')

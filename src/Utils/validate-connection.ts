@@ -148,13 +148,7 @@ export const configureSuccessfulPairing = (
 	account.deviceSignature = Curve.sign(signedIdentityKey.private, deviceMsg)
 
 	const identity = createSignalIdentity(jid, accountSignatureKey)
-	const accountEnc = proto.ADVSignedDeviceIdentity
-		.encode({
-			...account,
-			// do not provide the "accountSignatureKey" back
-			accountSignatureKey: undefined
-		})
-		.finish()
+	const accountEnc = encodeSignedDeviceIdentity(account, false)
 
 	const deviceIdentity = proto.ADVDeviceIdentity.decode(account.details)
 
@@ -194,4 +188,21 @@ export const configureSuccessfulPairing = (
 		creds: authUpdate,
 		reply
 	}
+}
+
+export const encodeSignedDeviceIdentity = (
+	account: proto.IADVSignedDeviceIdentity,
+	includeSignatureKey: boolean
+) => {
+	account = { ...account }
+	// set to null if we are not to include the signature key
+	// or if we are including the signature key but it is empty
+	if(!includeSignatureKey || !account.accountSignatureKey?.length) {
+		account.accountSignatureKey = null
+	}
+
+	const accountEnc = proto.ADVSignedDeviceIdentity
+		.encode(account)
+		.finish()
+	return accountEnc
 }
