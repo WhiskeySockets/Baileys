@@ -5,7 +5,7 @@ import { MessageReceiptType, MessageRelayOptions, MessageUserReceipt, SocketConf
 import { decodeMediaRetryNode, decodeMessageStanza, delay, encodeBigEndian, getCallStatusFromNode, getNextPreKeys, getStatusFromReceiptType, isHistoryMsg, unixTimestampSeconds, xmppPreKey, xmppSignedPreKey } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
 import { cleanMessage } from '../Utils/process-message'
-import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getAllBinaryNodeChildren, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, isJidUser, jidDecode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
+import { areJidsSameUser, BinaryNode, getAllBinaryNodeChildren, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, isJidUser, jidDecode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
 import { extractGroupMetadata } from './groups'
 import { makeMessagesSocket } from './messages-send'
 
@@ -39,14 +39,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	let sendActiveReceipts = false
 
-	const sendMessageAck = async({ tag, attrs }: BinaryNode, extraAttrs: BinaryNodeAttributes = { }) => {
+	const sendMessageAck = async({ tag, attrs }: BinaryNode) => {
 		const stanza: BinaryNode = {
 			tag: 'ack',
 			attrs: {
 				id: attrs.id,
 				to: attrs.from,
 				class: tag,
-				...extraAttrs,
 			}
 		}
 
@@ -54,7 +53,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			stanza.attrs.participant = attrs.participant
 		}
 
-		if(tag !== 'message' && attrs.type && !extraAttrs.type) {
+		if(!!attrs.recipient) {
+			stanza.attrs.recipient = attrs.recipient
+		}
+
+		if(tag !== 'message' && attrs.type) {
 			stanza.attrs.type = attrs.type
 		}
 
@@ -516,7 +519,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		ev.emit('call', [call])
 
-		await sendMessageAck(node, { type: infoChild.tag })
+		await sendMessageAck(node)
 	}
 
 	const handleBadAck = async({ attrs }: BinaryNode) => {
