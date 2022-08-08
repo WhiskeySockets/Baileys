@@ -101,7 +101,7 @@ export type AnyMediaMessageContent = (
         mimetype: string
         fileName?: string
     } & Buttonable & Templatable))
-    | { mimetype?: string }
+    & { mimetype?: string }
 
 export type ButtonReplyInfo = {
     displayText: string
