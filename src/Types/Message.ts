@@ -79,27 +79,29 @@ export type AnyMediaMessageContent = (
         image: WAMediaUpload
         caption?: string
         jpegThumbnail?: string
-    } & Mentionable & Buttonable & Templatable & WithDimensions) |
-    ({
+    } & Mentionable & Buttonable & Templatable & WithDimensions)
+    | ({
         video: WAMediaUpload
         caption?: string
         gifPlayback?: boolean
         jpegThumbnail?: string
-    } & Mentionable & Buttonable & Templatable & WithDimensions) | {
+    } & Mentionable & Buttonable & Templatable & WithDimensions)
+    | {
         audio: WAMediaUpload
         /** if set to true, will send as a `voice note` */
         ptt?: boolean
         /** optionally tell the duration of the audio */
         seconds?: number
-    } | ({
+    }
+    | ({
         sticker: WAMediaUpload
         isAnimated?: boolean
     } & WithDimensions) | ({
         document: WAMediaUpload
         mimetype: string
         fileName?: string
-    } & Buttonable & Templatable)) &
-    { mimetype?: string }
+    } & Buttonable & Templatable))
+    | { mimetype?: string }
 
 export type ButtonReplyInfo = {
     displayText: string
@@ -107,26 +109,36 @@ export type ButtonReplyInfo = {
     index: number
 }
 
+export type WASendableProduct = Omit<proto.Message.ProductMessage.IProductSnapshot, 'productImage'> & {
+    productImage: WAMediaUpload
+}
+
 export type AnyRegularMessageContent = (
     ({
 	    text: string
         linkPreview?: WAUrlInfo | null
     }
-    & Mentionable & Buttonable & Templatable & Listable) |
-    AnyMediaMessageContent |
-    {
+    & Mentionable & Buttonable & Templatable & Listable)
+    | AnyMediaMessageContent
+    | {
         contacts: {
             displayName?: string
             contacts: proto.Message.IContactMessage[]
         }
-    } |
-    {
+    }
+    | {
         location: WALocationMessage
-    } | {
-        react: proto.Message.IReactionMessage
-    } | {
+    }
+    | { react: proto.Message.IReactionMessage }
+    | {
         buttonReply: ButtonReplyInfo
         type: 'template' | 'plain'
+    }
+    | {
+        product: WASendableProduct,
+        businessOwnerJid?: string
+        body?: string
+        footer?: string
     }
 ) & ViewOnce
 

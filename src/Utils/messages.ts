@@ -340,6 +340,18 @@ export const generateWAMessageContent = async(
 			}
 			break
 		}
+	} else if('product' in message) {
+		const { imageMessage } = await prepareWAMessageMedia(
+			{ image: message.product.productImage },
+			options
+		)
+		m.productMessage = WAProto.Message.ProductMessage.fromObject({
+			...message,
+			product: {
+				...message.product,
+				productImage: imageMessage,
+			}
+		})
 	} else {
 		m = await prepareWAMessageMedia(
 			message,
