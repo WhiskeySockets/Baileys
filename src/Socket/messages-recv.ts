@@ -64,6 +64,29 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		logger.debug({ recv: { tag, attrs }, sent: stanza.attrs }, 'sent ack')
 		await sendNode(stanza)
 	}
+	
+	const rejectCall = async(call_id) => {
+		const stanza: BinaryNode = {
+			tag: 'call',
+			attrs: {
+				from: authState.creds.me.id,
+				to: callOfferData[call_id].from,
+				id: (new Date().getTime() / 1000).toString().replace('.', '-'),
+			},
+			content: [{
+			    tag: 'reject',
+			    attrs: {
+				'call-id': call_id,
+				'call-creator': callOfferData[call_id].from,
+				count: '0',
+			    },
+			    content: undefined,
+			}],
+		}
+
+		logger.debug({ call_id, caller: callOfferData[call_id].from, me: authState.creds.me.id, }, 'rejecting call')
+		await sendNode(stanza)
+	}
 
 	const sendRetryRequest = async(node: BinaryNode, forceIncludeKeys = false) => {
 		const msgId = node.attrs.id
@@ -616,6 +639,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	return {
 		...sock,
 		sendMessageAck,
-		sendRetryRequest
+		sendRetryRequest,
+		rejectCall
 	}
 }
