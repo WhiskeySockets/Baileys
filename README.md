@@ -662,6 +662,24 @@ WA uses an encrypted form of communication to send chat/app updates. This has be
 
   ```
 
+- Delete a chat
+  ``` ts
+  const lastMsgInChat = await getLastMessageInChat('123456@s.whatsapp.net') // implement this on your end
+  await sock.chatModify({
+    delete: true,
+    lastMessages: [{ key: lastMsgInChat.key, messageTimestamp: lastMsgInChat.messageTimestamp }] }
+  },
+  '123456@s.whatsapp.net')
+  ```
+
+- Pin/unpin a chat
+  ``` ts
+  await sock.chatModify({
+    pin: true // or `false` to unpin
+  },
+  '123456@s.whatsapp.net')
+  ```
+
 **Note:** if you mess up one of your updates, WA can log you out of all your devices and you'll have to log in again.
 
 ## Disappearing Messages
