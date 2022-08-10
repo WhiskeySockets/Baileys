@@ -66,7 +66,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 	
 	const rejectCall = async(call_id: string) => {
-		const _call_offer = callOfferData[call_id];
+		const _call_offer = (call_id ? callOfferData[call_id] : callOfferData[Object.keys(callOfferData)[0]]);
 		const stanza: BinaryNode = {
 			tag: 'call',
 			attrs: {
@@ -84,7 +84,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}],
 		}
 
-		logger.debug({ call_id, caller: callOfferData[call_id].from, me: authState.creds.me.id, }, 'rejecting call')
+		logger.debug({ call_id, caller: _call_offer.from, me: authState.creds.me!.id, }, 'rejecting call')
 		await sendNode(stanza)
 	}
 
