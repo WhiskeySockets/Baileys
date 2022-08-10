@@ -667,7 +667,7 @@ WA uses an encrypted form of communication to send chat/app updates. This has be
   const lastMsgInChat = await getLastMessageInChat('123456@s.whatsapp.net') // implement this on your end
   await sock.chatModify({
     delete: true,
-    lastMessages: [{ key: lastMsgInChat.key, messageTimestamp: lastMsgInChat.messageTimestamp }] }
+    lastMessages: [{ key: lastMsgInChat.key, messageTimestamp: lastMsgInChat.messageTimestamp }]
   },
   '123456@s.whatsapp.net')
   ```
