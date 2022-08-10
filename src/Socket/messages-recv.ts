@@ -72,6 +72,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			attrs: {
 				from: authState.creds.me!.id,
 				to: _call_offer.from,
+				id: (new Date().getTime() / 1000).toString().replace('.', '-'),
 			},
 			content: [{
 			    tag: 'reject',
