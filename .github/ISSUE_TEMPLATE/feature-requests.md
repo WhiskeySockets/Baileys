@@ -1,6 +1,6 @@
 ---
-name: Feature Requests/Questions
-about: Template for general issues/feature requests/questions
+name: Feature Requests
+about: Template for general issues/feature requests
 title: ''
 labels: ''
 assignees: ''
@@ -12,4 +12,4 @@ assignees: ''
 2. Read through the readme at least once
 3. Search the docs for the feature you're looking for
 
-**Just describe the feature/question**
+**Just describe the feature**
