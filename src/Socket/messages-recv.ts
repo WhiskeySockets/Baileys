@@ -65,19 +65,19 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await sendNode(stanza)
 	}
 	
-	const rejectCall = async(call_id) => {
+	const rejectCall = async(call_id: string) => {
+		const _call_offer = callOfferData[call_id];
 		const stanza: BinaryNode = {
 			tag: 'call',
 			attrs: {
 				from: authState.creds.me!.id,
-				to: callOfferData[call_id].from,
-				id: (new Date().getTime() / 1000).toString().replace('.', '-'),
+				to: _call_offer.from,
 			},
 			content: [{
 			    tag: 'reject',
 			    attrs: {
 				'call-id': call_id,
-				'call-creator': callOfferData[call_id].from,
+				'call-creator': _call_offer.from,
 				count: '0',
 			    },
 			    content: undefined,
