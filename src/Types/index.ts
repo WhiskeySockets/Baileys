@@ -36,6 +36,8 @@ export type SocketConfig = CommonSocketConfig & {
     linkPreviewImageThumbnailWidth: number
     /** Should Baileys ask the phone for full history, will be received async */
     syncFullHistory: boolean
+    /** Should baileys fire init queries automatically, default true */
+    fireInitQueries: boolean
     /**
      * fetch a message from your store
      * implement this so that messages failed to send (solves the "this message can take a while" issue) can be retried

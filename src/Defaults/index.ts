@@ -43,6 +43,7 @@ const BASE_CONNECTION_CONFIG: CommonSocketConfig = {
 
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	...BASE_CONNECTION_CONFIG,
+	fireInitQueries: true,
 	auth: undefined as any,
 	downloadHistory: true,
 	markOnlineOnConnect: true,
