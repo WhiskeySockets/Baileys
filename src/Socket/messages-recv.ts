@@ -66,20 +66,19 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await sendNode(stanza)
 	}
 	
-	const rejectCall = async(callId: string) => {
-		const callOffer = callOfferData[callId]: WACallEvent;
+	const rejectCall = async(callId: string, callFrom: string) => {
 		const stanza: BinaryNode = ({
 			tag: 'call',
 			attrs: {
 				from: authState.creds.me!.id,
-				to: callOffer.from,
+				to: callFrom,
 				id: (new Date().getTime() / 1000).toString().replace('.', '-'),
 			},
 			content: [{
 			    tag: 'reject',
 			    attrs: {
 				'call-id': callId,
-				'call-creator': callOffer.from,
+				'call-creator': callFrom,
 				count: '0',
 			    },
 			    content: undefined,
