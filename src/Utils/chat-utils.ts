@@ -610,7 +610,10 @@ export const processSyncAction = (
 	const recvChats = initialSyncOpts?.recvChats
 	const accountSettings = initialSyncOpts?.accountSettings
 
-	const { syncAction: { value: action }, index: [type, id, msgId, fromMe] } = syncAction
+	const {
+		syncAction: { value: action },
+		index: [type, id, msgId, fromMe]
+	} = syncAction
 	if(action?.muteAction) {
 		ev.emit(
 			'chats.update',
@@ -663,7 +666,7 @@ export const processSyncAction = (
 				ev.emit('chats.update', [{ id, unreadCount: !!markReadAction?.read ? 0 : -1 }])
 			}
 		}
-	} else if(action?.clearChatAction) {
+	} else if(action?.deleteMessageForMeAction || type === 'deleteMessageForMe') {
 		ev.emit('messages.delete', { keys: [
 			{
 				remoteJid: id,
