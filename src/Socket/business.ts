@@ -171,6 +171,8 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 	}
 
 	const productCreate = async(create: ProductCreate) => {
+		// ensure isHidden is defined
+		create.isHidden = !!create.isHidden
 		create = await uploadingNecessaryImagesOfProduct(create, waUploadToServer)
 		const createNode = toProductNode(undefined, create)
 
@@ -185,7 +187,19 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 				{
 					tag: 'product_catalog_add',
 					attrs: { v: '1' },
-					content: [ createNode ]
+					content: [
+						createNode,
+						{
+							tag: 'width',
+							attrs: { },
+							content: '100'
+						},
+						{
+							tag: 'height',
+							attrs: { },
+							content: '100'
+						}
+					]
 				}
 			]
 		})
