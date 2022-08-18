@@ -159,7 +159,19 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 				{
 					tag: 'product_catalog_edit',
 					attrs: { v: '1' },
-					content: [ editNode ]
+					content: [
+						editNode,
+						{
+							tag: 'width',
+							attrs: { },
+							content: '100'
+						},
+						{
+							tag: 'height',
+							attrs: { },
+							content: '100'
+						}
+					]
 				}
 			]
 		})
