@@ -313,8 +313,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const resyncAppState = async(collections: readonly WAPatchName[], recvChats: InitialReceivedChatsState | undefined) => {
-		const startedBuffer = ev.buffer()
+	const resyncAppState = ev.createBufferedFunction(async(collections: readonly WAPatchName[], recvChats: InitialReceivedChatsState | undefined) => {
 		const { onMutation } = newAppStateChunkHandler(recvChats)
 		// we use this to determine which events to fire
 		// otherwise when we resync from scratch -- all notifications will fire
@@ -426,12 +425,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				}
 			}
 		)
-
-		// flush everything if we started the buffer here
-		if(startedBuffer) {
-			await ev.flush()
-		}
-	}
+	})
 
 	/**
      * fetch the profile picture of a user/group
@@ -700,8 +694,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		])
 	}
 
-	const upsertMessage = async(msg: WAMessage, type: MessageUpsertType) => {
-		const startedBuffer = ev.buffer()
+	const upsertMessage = ev.createBufferedFunction(async(msg: WAMessage, type: MessageUpsertType) => {
 		ev.emit('messages.upsert', { messages: [msg], type })
 
 		if(!!msg.pushName) {
@@ -739,11 +732,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			logger.debug('restarting app sync timeout')
 			appStateSyncTimeout.start()
 		}
-
-		if(startedBuffer) {
-			await ev.flush()
-		}
-	}
+	})
 
 	ws.on('CB:presence', handlePresenceUpdate)
 	ws.on('CB:chatstate', handlePresenceUpdate)
