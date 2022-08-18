@@ -81,7 +81,6 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 	const generateKeysForAuth = async(ref: string, ttl?: number) => {
 		curveKeys = Curve.generateKeyPair()
 		const publicKey = Buffer.from(curveKeys.public).toString('base64')
-		let qrGens = 0
 
 		const qrLoop = ttl => {
 			const qr = [ref, publicKey, authInfo.clientID].join(',')
@@ -111,7 +110,6 @@ const makeAuthSocket = (config: LegacySocketConfig) => {
 					}
 				}
 
-				qrGens += 1
 				qrLoop(ttl)
 			}, ttl || 20_000) // default is 20s, on the off-chance ttl is not present
 		}
