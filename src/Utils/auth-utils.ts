@@ -128,6 +128,7 @@ export const initAuthCreds = (): AuthenticationCreds => {
 		processedHistoryMessages: [],
 		nextPreKeyId: 1,
 		firstUnuploadedPreKeyId: 1,
+		accountSyncCounter: 0,
 		accountSettings: {
 			unarchiveChats: false
 		}

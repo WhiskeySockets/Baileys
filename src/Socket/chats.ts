@@ -41,6 +41,9 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					'doing initial app state sync'
 				)
 				await resyncMainAppState(recvChats)
+
+				const accountSyncCounter = (authState.creds.accountSyncCounter || 0) + 1
+				ev.emit('creds.update', { accountSyncCounter })
 			} else {
 				logger.warn('connection closed before app state sync')
 			}
