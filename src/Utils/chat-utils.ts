@@ -330,12 +330,12 @@ export const extractSyncdPatches = async(result: BinaryNode) => {
 
 export const downloadExternalBlob = async(blob: proto.IExternalBlobReference) => {
 	const stream = await downloadContentFromMessage(blob, 'md-app-state')
-	let buffer = Buffer.from([])
+	const bufferArray: Buffer[] = []
 	for await (const chunk of stream) {
-		buffer = Buffer.concat([buffer, chunk])
+		bufferArray.push(chunk)
 	}
 
-	return buffer
+	return Buffer.concat(bufferArray)
 }
 
 export const downloadExternalPatch = async(blob: proto.IExternalBlobReference) => {

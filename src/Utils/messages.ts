@@ -702,12 +702,12 @@ export const downloadMediaMessage = async(
 
 		const stream = await downloadContentFromMessage(media, mediaType, options)
 		if(type === 'buffer') {
-			let buffer = Buffer.from([])
+			const bufferArray: Buffer[] = []
 			for await (const chunk of stream) {
-				buffer = Buffer.concat([buffer, chunk])
+				bufferArray.push(chunk)
 			}
 
-			return buffer
+			return Buffer.concat(bufferArray)
 		}
 
 		return stream

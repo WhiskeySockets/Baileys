@@ -11,10 +11,12 @@ const inflatePromise = promisify(inflate)
 
 export const downloadHistory = async(msg: proto.Message.IHistorySyncNotification) => {
 	const stream = await downloadContentFromMessage(msg, 'history')
-	let buffer = Buffer.from([])
+	const bufferArray: Buffer[] = []
 	for await (const chunk of stream) {
-		buffer = Buffer.concat([buffer, chunk])
+		bufferArray.push(chunk)
 	}
+
+	let buffer = Buffer.concat(bufferArray)
 
 	// decompress buffer
 	buffer = await inflatePromise(buffer)
