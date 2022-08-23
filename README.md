@@ -533,7 +533,7 @@ const sendMsg = await sock.sendMessage(id, templateMessage)
         ptt: true,
         /** Should it send as a disappearing messages. 
          * By default 'chat' -- which follows the setting of the chat */
-        sendEphemeral: 'chat'
+        ephemeralExpiration: WA_DEFAULT_EPHEMERAL
     }
     ```
 ## Forwarding Messages
