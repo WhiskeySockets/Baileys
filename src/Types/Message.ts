@@ -75,7 +75,7 @@ type WithDimensions = {
     width?: number
     height?: number
 }
-export type MediaType = 'image' | 'video' | 'sticker' | 'audio' | 'document' | 'history' | 'md-app-state'
+export type MediaType = 'image' | 'video' | 'sticker' | 'audio' | 'document' | 'history' | 'md-app-state' | 'product-image'
 export type AnyMediaMessageContent = (
     ({
         image: WAMediaUpload

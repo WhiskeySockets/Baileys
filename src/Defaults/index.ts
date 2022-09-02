@@ -67,6 +67,7 @@ export const MEDIA_PATH_MAP: { [T in MediaType]: string } = {
 	audio: '/mms/audio',
 	sticker: '/mms/image',
 	history: '',
+	'product-image': '/product/image',
 	'md-app-state': ''
 }
 

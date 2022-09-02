@@ -210,7 +210,11 @@ export async function uploadingNecessaryImagesOfProduct<T extends ProductUpdate 
 /**
  * Uploads images not already uploaded to WA's servers
  */
-export const uploadingNecessaryImages = async(images: WAMediaUpload[], waUploadToServer: WAMediaUploadFunction, timeoutMs = 30_000) => {
+export const uploadingNecessaryImages = async(
+	images: WAMediaUpload[],
+	waUploadToServer: WAMediaUploadFunction,
+	timeoutMs = 30_000
+) => {
 	const results = await Promise.all(
 		images.map<Promise<{ url: string }>>(
 			async img => {
@@ -234,7 +238,11 @@ export const uploadingNecessaryImages = async(images: WAMediaUpload[], waUploadT
 
 				const { mediaUrl } = await waUploadToServer(
 					toReadable(Buffer.concat(contentBlocks)),
-					{ mediaType: 'image', fileEncSha256B64: sha, timeoutMs }
+					{
+						mediaType: 'product-image',
+						fileEncSha256B64: sha,
+						timeoutMs
+					}
 				)
 				return { url: mediaUrl }
 			}

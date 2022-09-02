@@ -44,6 +44,7 @@ const MIMETYPE_MAP: { [T in MediaType]: string } = {
 	audio: 'audio/ogg; codecs=opus',
 	sticker: 'image/webp',
 	history: 'application/x-protobuf',
+	'product-image': 'image/jpeg',
 	'md-app-state': 'application/x-protobuf',
 }
 
@@ -146,13 +147,7 @@ export const prepareWAMessageMedia = async(
 		didSaveToTmpPath
 	} = await encryptedStream(uploadData.media, mediaType, requiresOriginalForSomeProcessing)
 	 // url safe Base64 encode the SHA256 hash of the body
-	const fileEncSha256B64 = encodeURIComponent(
-		fileEncSha256.toString('base64')
-			.replace(/\+/g, '-')
-			.replace(/\//g, '_')
-			.replace(/\=+$/, '')
-	)
-
+	const fileEncSha256B64 = fileEncSha256.toString('base64')
 	const [{ mediaUrl, directPath }] = await Promise.all([
 		(async() => {
 			const result = await options.upload(
