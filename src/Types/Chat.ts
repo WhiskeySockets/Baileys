@@ -74,7 +74,12 @@ export type ChatModification =
     | { delete: true, lastMessages: LastMessageList }
 
 export type InitialReceivedChatsState = {
-    [jid: string]: { lastMsgRecvTimestamp: number }
+    [jid: string]: {
+        /** the last message received from the other party */
+        lastMsgRecvTimestamp?: number
+        /** the absolute last message in the chat */
+        lastMsgTimestamp: number
+    }
 }
 
 export type InitialAppStateSyncOptions = {
