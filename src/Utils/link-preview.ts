@@ -1,3 +1,4 @@
+import { Logger } from 'pino'
 import { WAUrlInfo } from '../Types'
 import { extractImageThumb, getHttpStream } from './messages-media'
 
@@ -23,7 +24,8 @@ export type URLGenerationOptions = {
  */
 export const getUrlInfo = async(
 	text: string,
-	opts: URLGenerationOptions = { thumbnailWidth: THUMBNAIL_WIDTH_PX, timeoutMs: 3000 }
+	opts: URLGenerationOptions = { thumbnailWidth: THUMBNAIL_WIDTH_PX, timeoutMs: 3000 },
+	logger?: Logger
 ): Promise<WAUrlInfo | undefined> => {
 	try {
 		const { getLinkPreview } = await import('link-preview-js')
@@ -42,6 +44,10 @@ export const getUrlInfo = async(
 					? await getCompressedJpegThumbnail(image, opts)
 					: undefined
 			} catch(error) {
+				logger?.debug(
+					{ err: error.stack, url: previewLink },
+					'error in generating thumbnail'
+				)
 			}
 
 			return {
