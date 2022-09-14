@@ -20,7 +20,7 @@ import { generateMessageID } from './generics'
 const getTmpFilesDirectory = () => tmpdir()
 
 const getImageProcessingLibrary = async() => {
-	const [jimp, sharp] = await Promise.all([
+	const [_jimp, _sharp] = await Promise.all([
 		(async() => {
 			const jimp = await (
 				import('jimp')
@@ -36,11 +36,11 @@ const getImageProcessingLibrary = async() => {
 			return sharp
 		})()
 	])
-	const sharp = sharp?.default ?? sharp
+	const sharp = _sharp?.default ?? _sharp
 	if(sharp) {
 		return { sharp }
 	}
-	const jimp = jimp?.default ?? jimp
+	const jimp = _jimp?.default ?? _jimp
 	if(jimp) {
 		return { jimp }
 	}
