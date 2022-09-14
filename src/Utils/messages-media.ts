@@ -36,11 +36,12 @@ const getImageProcessingLibrary = async() => {
 			return sharp
 		})()
 	])
-	if(sharp?.default) {
+	const sharp = sharp?.default ?? sharp
+	if(sharp) {
 		return { sharp }
 	}
-
-	if(jimp?.read) {
+	const jimp = jimp?.default ?? jimp
+	if(jimp) {
 		return { jimp }
 	}
 
