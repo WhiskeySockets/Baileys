@@ -115,16 +115,17 @@ export const extractImageThumb = async(bufferOrFilePath: Readable | Buffer | str
 		const { read, MIME_JPEG, RESIZE_BILINEAR, AUTO } = lib.jimp
 
 		const jimp = await read(bufferOrFilePath as any)
+		const dimensions = {
+			width: jimp.getWidth(),
+			height: jimp.getHeight()
+		}
 		const buffer = await jimp
 			.quality(50)
 			.resize(width, AUTO, RESIZE_BILINEAR)
 			.getBufferAsync(MIME_JPEG)
 		return {
 			buffer,
-			original: {
-				width: jimp.getWidth(),
-				height: jimp.getHeight()
-			}
+			original: dimensions
 		}
 	}
 }
