@@ -41,7 +41,7 @@ export const getUrlInfo = async(
 			let jpegThumbnail: Buffer | undefined = undefined
 			try {
 				jpegThumbnail = image
-					? await getCompressedJpegThumbnail(image, opts)
+					? (await getCompressedJpegThumbnail(image, opts)).buffer
 					: undefined
 			} catch(error) {
 				logger?.debug(

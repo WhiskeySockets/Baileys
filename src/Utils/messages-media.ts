@@ -97,20 +97,35 @@ export const extractImageThumb = async(bufferOrFilePath: Readable | Buffer | str
 
 	const lib = await getImageProcessingLibrary()
 	if('sharp' in lib) {
-		const result = await lib.sharp!.default(bufferOrFilePath)
+		const img = lib.sharp!.default(bufferOrFilePath)
+		const dimensions = await img.metadata()
+
+		const buffer = await img
 			.resize(width)
 			.jpeg({ quality: 50 })
 			.toBuffer()
-		return result
+		return {
+			buffer,
+			original: {
+				width: dimensions.width,
+				height: dimensions.height,
+			},
+		}
 	} else {
 		const { read, MIME_JPEG, RESIZE_BILINEAR, AUTO } = lib.jimp
 
 		const jimp = await read(bufferOrFilePath as any)
-		const result = await jimp
+		const buffer = await jimp
 			.quality(50)
 			.resize(width, AUTO, RESIZE_BILINEAR)
 			.getBufferAsync(MIME_JPEG)
-		return result
+		return {
+			buffer,
+			original: {
+				width: jimp.getWidth(),
+				height: jimp.getHeight()
+			}
+		}
 	}
 }
 
@@ -224,8 +239,8 @@ export async function generateThumbnail(
 ) {
 	let thumbnail: string | undefined
 	if(mediaType === 'image') {
-		const buff = await extractImageThumb(file)
-		thumbnail = buff.toString('base64')
+		const { buffer } = await extractImageThumb(file)
+		thumbnail = buffer.toString('base64')
 	} else if(mediaType === 'video') {
 		const imgFilename = join(getTmpFilesDirectory(), generateMessageID() + '.jpg')
 		try {
