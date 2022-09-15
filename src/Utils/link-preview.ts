@@ -56,7 +56,6 @@ export const getUrlInfo = async(
 					? Buffer.from(imageMessage.jpegThumbnail)
 					: undefined
 				urlInfo.highQualityThumbnail = imageMessage || undefined
-				console.log(urlInfo)
 			} else {
 				try {
 					urlInfo.jpegThumbnail = image
