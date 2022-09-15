@@ -43,6 +43,7 @@ export interface WAUrlInfo {
     description?: string
     jpegThumbnail?: Buffer
     highQualityThumbnail?: proto.Message.IImageMessage
+    originalThumbnailUrl?: string
 }
 
 // types to generate WA messages

@@ -45,6 +45,7 @@ export const getUrlInfo = async(
 				'matched-text': text,
 				title: info.title,
 				description: info.description,
+				originalThumbnailUrl: image
 			}
 
 			if(opts.uploadImage) {
