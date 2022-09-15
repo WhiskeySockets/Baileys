@@ -7,6 +7,7 @@ import { MEDIA_KEYS, URL_EXCLUDE_REGEX, URL_REGEX, WA_DEFAULT_EPHEMERAL } from '
 import {
 	AnyMediaMessageContent,
 	AnyMessageContent,
+	DownloadableMessage,
 	MediaGenerationOptions,
 	MediaType,
 	MessageContentGenerationOptions,
@@ -687,13 +688,25 @@ export const downloadMediaMessage = async(
 		}
 
 		const contentType = getContentType(mContent)
-		const mediaType = contentType?.replace('Message', '') as MediaType
+		let mediaType = contentType?.replace('Message', '') as MediaType
 		const media = mContent[contentType!]
-		if(!media || typeof media !== 'object' || !('url' in media)) {
+
+		if(!media || typeof media !== 'object' || (!('url' in media) && !('thumbnailDirectPath' in media))) {
 			throw new Boom(`"${contentType}" message is not a media message`)
 		}
 
-		const stream = await downloadContentFromMessage(media, mediaType, options)
+		let download: DownloadableMessage
+		if('thumbnailDirectPath' in media && !('url' in media)) {
+			download = {
+				directPath: media.thumbnailDirectPath,
+				mediaKey: media.mediaKey
+			}
+			mediaType = 'thumbnail-link'
+		} else {
+			download = media
+		}
+
+		const stream = await downloadContentFromMessage(download, mediaType, options)
 		if(type === 'buffer') {
 			const bufferArray: Buffer[] = []
 			for await (const chunk of stream) {
