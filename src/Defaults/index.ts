@@ -50,6 +50,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	syncFullHistory: false,
 	linkPreviewImageThumbnailWidth: 192,
 	transactionOpts: { maxCommitRetries: 10, delayBetweenTriesMs: 3000 },
+	generateHighQualityLinkPreview: false,
 	getMessage: async() => undefined
 }
 

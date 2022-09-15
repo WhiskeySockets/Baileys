@@ -39,6 +39,11 @@ export type SocketConfig = CommonSocketConfig & {
     /** Should baileys fire init queries automatically, default true */
     fireInitQueries: boolean
     /**
+     * generate a high quality link preview,
+     * entails uploading the jpegThumbnail to WA
+     * */
+    generateHighQualityLinkPreview: boolean
+    /**
      * fetch a message from your store
      * implement this so that messages failed to send (solves the "this message can take a while" issue) can be retried
      * */

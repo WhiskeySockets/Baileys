@@ -118,6 +118,11 @@ type SocketConfig = {
     msgRetryCounterMap?: MessageRetryMap
     /** width for link preview images */
     linkPreviewImageThumbnailWidth: number
+    /**
+     * generate a high quality link preview,
+     * entails uploading the jpegThumbnail to WA
+     * */
+    generateHighQualityLinkPreview: boolean
     /** Should Baileys ask the phone for full history, will be received async */
     syncFullHistory: boolean
     /**

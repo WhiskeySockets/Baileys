@@ -238,9 +238,16 @@ export async function generateThumbnail(
     }
 ) {
 	let thumbnail: string | undefined
+	let originalImageDimensions: { width: number; height: number } | undefined
 	if(mediaType === 'image') {
-		const { buffer } = await extractImageThumb(file)
+		const { buffer, original } = await extractImageThumb(file)
 		thumbnail = buffer.toString('base64')
+		if(original.width && original.height) {
+			originalImageDimensions = {
+				width: original.width,
+				height: original.height,
+			}
+		}
 	} else if(mediaType === 'video') {
 		const imgFilename = join(getTmpFilesDirectory(), generateMessageID() + '.jpg')
 		try {
@@ -254,7 +261,10 @@ export async function generateThumbnail(
 		}
 	}
 
-	return thumbnail
+	return {
+		thumbnail,
+		originalImageDimensions
+	}
 }
 
 export const getHttpStream = async(url: string | URL, options: AxiosRequestConfig & { isStream?: true } = {}) => {

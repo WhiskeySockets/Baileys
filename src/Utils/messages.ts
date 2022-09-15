@@ -36,6 +36,8 @@ type MediaUploadData = {
 	fileName?: string
 	jpegThumbnail?: string
 	mimetype?: string
+	width?: number
+	height?: number
 }
 
 const MIMETYPE_MAP: { [T in MediaType]?: string } = {
@@ -144,7 +146,11 @@ export const prepareWAMessageMedia = async(
 		fileSha256,
 		fileLength,
 		didSaveToTmpPath
-	} = await encryptedStream(uploadData.media, mediaType, requiresOriginalForSomeProcessing)
+	} = await encryptedStream(
+		uploadData.media,
+		options.mediaTypeOverride || mediaType,
+		requiresOriginalForSomeProcessing
+	)
 	 // url safe Base64 encode the SHA256 hash of the body
 	const fileEncSha256B64 = fileEncSha256.toString('base64')
 	const [{ mediaUrl, directPath }] = await Promise.all([
@@ -159,7 +165,17 @@ export const prepareWAMessageMedia = async(
 		(async() => {
 			try {
 				if(requiresThumbnailComputation) {
-					uploadData.jpegThumbnail = await generateThumbnail(bodyPath!, mediaType as any, options)
+					const {
+						thumbnail,
+						originalImageDimensions
+					} = await generateThumbnail(bodyPath!, mediaType as any, options)
+					uploadData.jpegThumbnail = thumbnail
+					if(!uploadData.width && originalImageDimensions) {
+						uploadData.width = originalImageDimensions.width
+						uploadData.height = originalImageDimensions.height
+						logger?.debug('set dimensions')
+					}
+
 					logger?.debug('generated thumbnail')
 				}
 
@@ -280,6 +296,17 @@ export const generateWAMessageContent = async(
 			extContent.description = urlInfo.description
 			extContent.title = urlInfo.title
 			extContent.previewType = 0
+
+			const img = urlInfo.highQualityThumbnail
+			if(img) {
+				extContent.thumbnailDirectPath = img.directPath
+				extContent.mediaKey = img.mediaKey
+				extContent.mediaKeyTimestamp = img.mediaKeyTimestamp
+				extContent.thumbnailWidth = img.width
+				extContent.thumbnailHeight = img.height
+				extContent.thumbnailSha256 = img.fileSha256
+				extContent.thumbnailEncSha256 = img.fileEncSha256
+			}
 		}
 
 		m.extendedTextMessage = extContent
