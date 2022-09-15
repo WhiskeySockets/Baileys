@@ -3,6 +3,7 @@ import type { Logger } from 'pino'
 import type { Readable } from 'stream'
 import type { URL } from 'url'
 import { proto } from '../../WAProto'
+import { MEDIA_HKDF_KEY_MAPPING } from '../Defaults'
 import type { GroupMetadata } from './GroupMetadata'
 
 // export the WAMessage Prototypes
@@ -75,7 +76,8 @@ type WithDimensions = {
     width?: number
     height?: number
 }
-export type MediaType = 'image' | 'video' | 'sticker' | 'audio' | 'document' | 'history' | 'md-app-state' | 'product-image'
+
+export type MediaType = keyof typeof MEDIA_HKDF_KEY_MAPPING
 export type AnyMediaMessageContent = (
     ({
         image: WAMediaUpload

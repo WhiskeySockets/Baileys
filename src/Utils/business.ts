@@ -239,7 +239,7 @@ export const uploadingNecessaryImages = async(
 				const { directPath } = await waUploadToServer(
 					toReadable(Buffer.concat(contentBlocks)),
 					{
-						mediaType: 'product-image',
+						mediaType: 'product-catalog-image',
 						fileEncSha256B64: sha,
 						timeoutMs
 					}

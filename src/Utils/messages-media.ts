@@ -11,7 +11,7 @@ import type { Logger } from 'pino'
 import { Readable, Transform } from 'stream'
 import { URL } from 'url'
 import { proto } from '../../WAProto'
-import { DEFAULT_ORIGIN, MEDIA_PATH_MAP } from '../Defaults'
+import { DEFAULT_ORIGIN, MEDIA_HKDF_KEY_MAPPING, MEDIA_PATH_MAP } from '../Defaults'
 import { BaileysEventMap, CommonSocketConfig, DownloadableMessage, MediaConnInfo, MediaDecryptionKeyInfo, MediaType, MessageType, WAGenericMediaMessage, WAMediaUpload, WAMediaUploadFunction, WAMessageContent } from '../Types'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, jidNormalizedUser } from '../WABinary'
 import { aesDecryptGCM, aesEncryptGCM, hkdf } from './crypto'
@@ -50,16 +50,7 @@ const getImageProcessingLibrary = async() => {
 }
 
 export const hkdfInfoKey = (type: MediaType) => {
-	let str: string = type
-	if(type === 'sticker') {
-		str = 'image'
-	}
-
-	if(type === 'md-app-state') {
-		str = 'App State'
-	}
-
-	const hkdfInfo = str[0].toUpperCase() + str.slice(1)
+	const hkdfInfo = MEDIA_HKDF_KEY_MAPPING[type]
 	return `WhatsApp ${hkdfInfo} Keys`
 }
 

@@ -60,15 +60,35 @@ export const DEFAULT_LEGACY_CONNECTION_CONFIG: LegacySocketConfig = {
 	expectResponseTimeout: 60_000,
 }
 
-export const MEDIA_PATH_MAP: { [T in MediaType]: string } = {
+export const MEDIA_PATH_MAP: { [T in MediaType]?: string } = {
 	image: '/mms/image',
 	video: '/mms/video',
 	document: '/mms/document',
 	audio: '/mms/audio',
 	sticker: '/mms/image',
-	history: '',
-	'product-image': '/product/image',
+	'thumbnail-link': '/mms/image',
+	'product-catalog-image': '/product/image',
 	'md-app-state': ''
+}
+
+export const MEDIA_HKDF_KEY_MAPPING = {
+	'audio': 'Audio',
+	'document': 'Document',
+	'gif': 'Video',
+	'image': 'Image',
+	'ppic': '',
+	'product': 'Image',
+	'ptt': 'Audio',
+	'sticker': 'Image',
+	'video': 'Video',
+	'thumbnail-document': 'Document Thumbnail',
+	'thumbnail-image': 'Image Thumbnail',
+	'thumbnail-video': 'Video Thumbnail',
+	'thumbnail-link': 'Link Thumbnail',
+	'md-msg-hist': 'History',
+	'md-app-state': 'App State',
+	'product-catalog-image': '',
+	'payment-bg-image': 'Payment Background',
 }
 
 export const MEDIA_KEYS = Object.keys(MEDIA_PATH_MAP) as MediaType[]

@@ -37,15 +37,13 @@ type MediaUploadData = {
 	mimetype?: string
 }
 
-const MIMETYPE_MAP: { [T in MediaType]: string } = {
+const MIMETYPE_MAP: { [T in MediaType]?: string } = {
 	image: 'image/jpeg',
 	video: 'video/mp4',
 	document: 'application/pdf',
 	audio: 'audio/ogg; codecs=opus',
 	sticker: 'image/webp',
-	history: 'application/x-protobuf',
-	'product-image': 'image/jpeg',
-	'md-app-state': 'application/x-protobuf',
+	'product-catalog-image': 'image/jpeg',
 }
 
 const MessageTypeProto = {
