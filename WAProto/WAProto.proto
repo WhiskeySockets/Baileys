@@ -142,6 +142,12 @@ message ClientPayload {
     optional bytes fbDeviceId = 32;
     optional bool pull = 33;
     optional bytes paddingBytes = 34;
+    optional BizMarketSegment bizMarketSegment = 35;
+    enum BizMarketSegment {
+        DEFAULT = 0;
+        DEVX = 1;
+        INBOX = 2;
+    }
     enum ConnectReason {
         PUSH = 0;
         USER_ACTIVATED = 1;
@@ -388,7 +394,7 @@ message Conversation {
     optional string parentGroupId = 37;
     optional string displayName = 38;
     optional string pnJid = 39;
-    optional bool selfPnExposed = 40;
+    optional bool shareOwnPn = 40;
     enum EndOfHistoryTransferType {
         COMPLETE_BUT_MORE_MESSAGES_REMAIN_ON_PRIMARY = 0;
         COMPLETE_AND_NO_MORE_MESSAGE_REMAIN_ON_PRIMARY = 1;
@@ -527,7 +533,7 @@ message HistorySync {
         FULL = 2;
         RECENT = 3;
         PUSH_NAME = 4;
-        UNBLOCKING_DATA = 5;
+        NON_BLOCKING_DATA = 5;
     }
 }
 
@@ -577,6 +583,8 @@ message KeepInChat {
     optional int64 serverTimestamp = 2;
     optional MessageKey key = 3;
     optional string deviceJid = 4;
+    optional int64 clientTimestampMs = 5;
+    optional int64 serverTimestampMs = 6;
 }
 
 enum KeepType {
@@ -668,9 +676,15 @@ message Message {
     optional FutureProofMessage documentWithCaptionMessage = 53;
     optional RequestPhoneNumberMessage requestPhoneNumberMessage = 54;
     optional FutureProofMessage viewOnceMessageV2 = 55;
+    optional EncReactionMessage encReactionMessage = 56;
     message AppStateFatalExceptionNotification {
         repeated string collectionNames = 1;
         optional int64 timestamp = 2;
+    }
+    
+    message AppStateSyncKey {
+        optional Message.AppStateSyncKeyId keyId = 1;
+        optional Message.AppStateSyncKeyData keyData = 2;
     }
     
     message AppStateSyncKeyData {
@@ -695,11 +709,6 @@ message Message {
     
     message AppStateSyncKeyShare {
         repeated Message.AppStateSyncKey keys = 1;
-    }
-    
-    message AppStateSyncKey {
-        optional Message.AppStateSyncKeyId keyId = 1;
-        optional Message.AppStateSyncKeyData keyData = 2;
     }
     
     message AudioMessage {
@@ -835,6 +844,12 @@ message Message {
         optional uint32 thumbnailHeight = 18;
         optional uint32 thumbnailWidth = 19;
         optional string caption = 20;
+    }
+    
+    message EncReactionMessage {
+        optional MessageKey targetMessageKey = 1;
+        optional bytes encPayload = 2;
+        optional bytes encIv = 3;
     }
     
     message ExtendedTextMessage {
@@ -975,6 +990,7 @@ message Message {
             FULL = 2;
             RECENT = 3;
             PUSH_NAME = 4;
+            NON_BLOCKING_DATA = 5;
         }
     }
     
@@ -1127,6 +1143,10 @@ message Message {
             SINGLE_SELECT = 1;
             PRODUCT_LIST = 2;
         }
+        message Product {
+            optional string productId = 1;
+        }
+        
         message ProductListHeaderImage {
             optional string productId = 1;
             optional bytes jpegThumbnail = 2;
@@ -1141,10 +1161,6 @@ message Message {
         message ProductSection {
             optional string title = 1;
             repeated Message.ListMessage.Product products = 2;
-        }
-        
-        message Product {
-            optional string productId = 1;
         }
         
         message Row {
@@ -1253,14 +1269,14 @@ message Message {
         optional bytes encIv = 2;
     }
     
-    message PollUpdateMessageMetadata {
-    }
-    
     message PollUpdateMessage {
         optional MessageKey pollCreationMessageKey = 1;
         optional Message.PollEncValue vote = 2;
         optional Message.PollUpdateMessageMetadata metadata = 3;
         optional int64 senderTimestampMs = 4;
+    }
+    
+    message PollUpdateMessageMetadata {
     }
     
     message PollVoteMessage {
@@ -1366,6 +1382,7 @@ message Message {
     enum RmrSource {
         FAVORITE_STICKER = 0;
         RECENT_STICKER = 1;
+        RECENT_STICKER_INIT = 2;
     }
     message SendPaymentMessage {
         optional Message noteMessage = 2;
@@ -1394,6 +1411,7 @@ message Message {
         optional bool isAnimated = 13;
         optional bytes pngThumbnail = 16;
         optional ContextInfo contextInfo = 17;
+        optional int64 stickerSentTs = 18;
     }
     
     message StickerSyncRMRMessage {
@@ -1517,6 +1535,7 @@ message MsgOpaqueData {
     repeated PollOption pollOptions = 18;
     optional uint32 pollSelectableOptionsCount = 20;
     optional bytes messageSecret = 21;
+    optional string originalSelfAuthor = 51;
     optional int64 senderTimestampMs = 22;
     optional string pollUpdateParentKey = 23;
     optional PollEncValue encPollVote = 24;
@@ -1552,9 +1571,9 @@ message NotificationMessageInfo {
 }
 
 message PastParticipant {
-    required string userJid = 1;
-    required LeaveReason leaveReason = 2;
-    required uint64 leaveTs = 3;
+    optional string userJid = 1;
+    optional LeaveReason leaveReason = 2;
+    optional uint64 leaveTs = 3;
     enum LeaveReason {
         LEFT = 0;
         REMOVED = 1;
@@ -1562,7 +1581,7 @@ message PastParticipant {
 }
 
 message PastParticipants {
-    required string groupJid = 1;
+    optional string groupJid = 1;
     repeated PastParticipant pastParticipants = 2;
 }
 
@@ -1802,6 +1821,7 @@ message StickerMetadata {
     optional string directPath = 8;
     optional uint64 fileLength = 9;
     optional float weight = 10;
+    optional int64 lastStickerSentTs = 11;
 }
 
 message SyncActionData {
@@ -1840,6 +1860,9 @@ message SyncActionValue {
     optional NuxAction nuxAction = 31;
     optional PrimaryVersionAction primaryVersionAction = 32;
     optional StickerAction stickerAction = 33;
+    optional RemoveRecentStickerAction removeRecentStickerAction = 34;
+    optional ChatAssignmentAction chatAssignment = 35;
+    optional ChatAssignmentOpenedStatusAction chatAssignmentOpenedStatus = 36;
     message AgentAction {
         optional string name = 1;
         optional int32 deviceID = 2;
@@ -1853,6 +1876,14 @@ message SyncActionValue {
     message ArchiveChatAction {
         optional bool archived = 1;
         optional SyncActionValue.SyncActionMessageRange messageRange = 2;
+    }
+    
+    message ChatAssignmentAction {
+        optional string deviceAgentID = 1;
+    }
+    
+    message ChatAssignmentOpenedStatusAction {
+        optional bool chatOpened = 1;
     }
     
     message ClearChatAction {
@@ -1934,6 +1965,10 @@ message SyncActionValue {
         repeated RecentEmojiWeight weights = 1;
     }
     
+    message RemoveRecentStickerAction {
+        optional int64 lastStickerSentTs = 1;
+    }
+    
     message SecurityNotificationSetting {
         optional bool showNotification = 1;
     }
@@ -1961,15 +1996,15 @@ message SyncActionValue {
         optional int64 expirationDate = 3;
     }
     
+    message SyncActionMessage {
+        optional MessageKey key = 1;
+        optional int64 timestamp = 2;
+    }
+    
     message SyncActionMessageRange {
         optional int64 lastMessageTimestamp = 1;
         optional int64 lastSystemMessageTimestamp = 2;
         repeated SyncActionValue.SyncActionMessage messages = 3;
-    }
-    
-    message SyncActionMessage {
-        optional MessageKey key = 1;
-        optional int64 timestamp = 2;
     }
     
     message TimeFormatAction {
@@ -2350,6 +2385,13 @@ message WebMessageInfo {
         COMMUNITY_PARTICIPANT_PROMOTE = 147;
         COMMUNITY_PARTICIPANT_DEMOTE = 148;
         COMMUNITY_PARENT_GROUP_DELETED = 149;
+        COMMUNITY_LINK_PARENT_GROUP_MEMBERSHIP_APPROVAL = 150;
+        GROUP_PARTICIPANT_JOINED_GROUP_AND_PARENT_GROUP = 151;
+        MASKED_THREAD_CREATED = 152;
+        MASKED_THREAD_UNMASKED = 153;
+        BIZ_CHAT_ASSIGNMENT = 154;
+        CHAT_PSA = 155;
+        CHAT_POLL_CREATION_MESSAGE = 156;
     }
 }
 
