@@ -3,15 +3,13 @@ import type { Comparable } from '@adiwajshing/keyed-db/lib/Types'
 import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { DEFAULT_CONNECTION_CONFIG } from '../Defaults'
-import type makeLegacySocket from '../LegacySocket'
 import type makeMDSocket from '../Socket'
 import type { BaileysEventEmitter, Chat, ConnectionState, Contact, GroupMetadata, PresenceData, WAMessage, WAMessageCursor, WAMessageKey } from '../Types'
 import { toNumber, updateMessageWithReaction, updateMessageWithReceipt } from '../Utils'
 import { jidNormalizedUser } from '../WABinary'
 import makeOrderedDictionary from './make-ordered-dictionary'
 
-type LegacyWASocket = ReturnType<typeof makeLegacySocket>
-type AnyWASocket = ReturnType<typeof makeMDSocket>
+type WASocket = ReturnType<typeof makeMDSocket>
 
 export const waChatKey = (pin: boolean) => ({
 	key: (c: Chat) => (pin ? (c.pin ? '1' : '0') : '') + (c.archive ? '0' : '1') + (c.conversationTimestamp ? c.conversationTimestamp.toString(16).padStart(8, '0') : '') + c.id,
@@ -269,13 +267,8 @@ export default (
 		presences,
 		bind,
 		/** loads messages from the store, if not found -- uses the legacy connection */
-		loadMessages: async(jid: string, count: number, cursor: WAMessageCursor, sock: LegacyWASocket | undefined) => {
+		loadMessages: async(jid: string, count: number, cursor: WAMessageCursor) => {
 			const list = assertMessageList(jid)
-			const retrieve = async(count: number, cursor: WAMessageCursor) => {
-				const result = await sock?.fetchMessagesFromWA(jid, count, cursor)
-				return result || []
-			}
-
 			const mode = !cursor || 'before' in cursor ? 'before' : 'after'
 			const cursorKey = !!cursor ? ('before' in cursor ? cursor.before : cursor.after) : undefined
 			const cursorValue = cursorKey ? list.get(cursorKey.id!) : undefined
@@ -292,41 +285,19 @@ export default (
 				const diff = count - messages.length
 				if(diff < 0) {
 					messages = messages.slice(-count) // get the last X messages
-				} else if(diff > 0) {
-					const [fMessage] = messages
-					const cursor = { before: fMessage?.key || cursorKey }
-					const extra = await retrieve (diff, cursor)
-					// add to DB
-					for(let i = extra.length - 1; i >= 0;i--) {
-						list.upsert(extra[i], 'prepend')
-					}
-
-					messages.splice(0, 0, ...extra)
 				}
 			} else {
-				messages = await retrieve(count, cursor)
+				messages = []
 			}
 
 			return messages
 		},
-		loadMessage: async(jid: string, id: string, sock: LegacyWASocket | undefined) => {
-			let message = messages[jid]?.get(id)
-			if(!message) {
-				message = await sock?.loadMessageFromWA(jid, id)
-			}
-
+		loadMessage: async(jid: string, id: string) => messages[jid]?.get(id),
+		mostRecentMessage: async(jid: string) => {
+			const message: WAMessage | undefined = messages[jid]?.array.slice(-1)[0]
 			return message
 		},
-		mostRecentMessage: async(jid: string, sock: LegacyWASocket | undefined) => {
-			let message: WAMessage | undefined = messages[jid]?.array.slice(-1)[0]
-			if(!message) {
-				const items = await sock?.fetchMessagesFromWA(jid, 1, undefined)
-				message = items?.[0]
-			}
-
-			return message
-		},
-		fetchImageUrl: async(jid: string, sock: AnyWASocket | undefined) => {
+		fetchImageUrl: async(jid: string, sock: WASocket | undefined) => {
 			const contact = contacts[jid]
 			if(!contact) {
 				return sock?.profilePictureUrl(jid)
@@ -338,7 +309,7 @@ export default (
 
 			return contact.imgUrl
 		},
-		fetchGroupMetadata: async(jid: string, sock: AnyWASocket | undefined) => {
+		fetchGroupMetadata: async(jid: string, sock: WASocket | undefined) => {
 			if(!groupMetadata[jid]) {
 				const metadata = await sock?.groupMetadata(jid)
 				if(metadata) {
@@ -348,28 +319,20 @@ export default (
 
 			return groupMetadata[jid]
 		},
-		fetchBroadcastListInfo: async(jid: string, sock: LegacyWASocket | undefined) => {
-			if(!groupMetadata[jid]) {
-				const metadata = await sock?.getBroadcastListInfo(jid)
-				if(metadata) {
-					groupMetadata[jid] = metadata
-				}
-			}
+		// fetchBroadcastListInfo: async(jid: string, sock: WASocket | undefined) => {
+		// 	if(!groupMetadata[jid]) {
+		// 		const metadata = await sock?.getBroadcastListInfo(jid)
+		// 		if(metadata) {
+		// 			groupMetadata[jid] = metadata
+		// 		}
+		// 	}
 
-			return groupMetadata[jid]
-		},
-		fetchMessageReceipts: async({ remoteJid, id }: WAMessageKey, sock: LegacyWASocket | undefined) => {
+		// 	return groupMetadata[jid]
+		// },
+		fetchMessageReceipts: async({ remoteJid, id }: WAMessageKey) => {
 			const list = messages[remoteJid!]
 			const msg = list?.get(id!)
-			let receipts = msg?.userReceipt
-			if(!receipts) {
-				receipts = await sock?.messageInfo(remoteJid!, id!)
-				if(msg) {
-					msg.userReceipt = receipts
-				}
-			}
-
-			return receipts
+			return msg?.userReceipt
 		},
 		toJSON,
 		fromJSON,

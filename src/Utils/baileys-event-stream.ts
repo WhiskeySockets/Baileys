@@ -2,7 +2,7 @@ import EventEmitter from 'events'
 import { createReadStream } from 'fs'
 import { writeFile } from 'fs/promises'
 import { createInterface } from 'readline'
-import type { CommonBaileysEventEmitter } from '../Types'
+import type { BaileysEventEmitter } from '../Types'
 import { delay } from './generics'
 import { makeMutex } from './make-mutex'
 
@@ -11,7 +11,7 @@ import { makeMutex } from './make-mutex'
  * @param ev The event emitter to read events from
  * @param filename File to save to
  */
-export const captureEventStream = (ev: CommonBaileysEventEmitter<any>, filename: string) => {
+export const captureEventStream = (ev: BaileysEventEmitter, filename: string) => {
 	const oldEmit = ev.emit
 	// write mutex so data is appended in order
 	const writeMutex = makeMutex()
@@ -36,7 +36,7 @@ export const captureEventStream = (ev: CommonBaileysEventEmitter<any>, filename:
  * @param delayIntervalMs delay between each event emit
  */
 export const readAndEmitEventStream = (filename: string, delayIntervalMs: number = 0) => {
-	const ev = new EventEmitter() as CommonBaileysEventEmitter<any>
+	const ev = new EventEmitter() as BaileysEventEmitter
 
 	const fireEvents = async() => {
 		// from: https://stackoverflow.com/questions/6156501/read-a-file-one-line-at-a-time-in-node-js

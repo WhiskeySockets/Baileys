@@ -3,12 +3,16 @@ import type { Agent } from 'https'
 import type NodeCache from 'node-cache'
 import type { Logger } from 'pino'
 import type { URL } from 'url'
+import { proto } from '../../WAProto'
+import { AuthenticationState, TransactionCapabilityOptions } from './Auth'
 import { MediaConnInfo } from './Message'
 
 export type WAVersion = [number, number, number]
 export type WABrowserDescription = [string, string, string]
 
-export type CommonSocketConfig = {
+export type MessageRetryMap = { [msgId: string]: number }
+
+export type SocketConfig = {
     /** the WS url to connect to WA */
     waWebSocketUrl: string | URL
     /** Fails the connection if the socket times out in this interval */
@@ -39,4 +43,34 @@ export type CommonSocketConfig = {
     retryRequestDelayMs: number
     /** time to wait for the generation of the next QR in ms */
     qrTimeout?: number;
+    /** provide an auth state object to maintain the auth state */
+    auth: AuthenticationState
+    /** By default true, should history messages be downloaded and processed */
+    downloadHistory: boolean
+    /** transaction capability options for SignalKeyStore */
+    transactionOpts: TransactionCapabilityOptions
+    /** provide a cache to store a user's device list */
+    userDevicesCache?: NodeCache
+    /** marks the client as online whenever the socket successfully connects */
+    markOnlineOnConnect: boolean
+    /**
+     * map to store the retry counts for failed messages;
+     * used to determine whether to retry a message or not */
+    msgRetryCounterMap?: MessageRetryMap
+    /** width for link preview images */
+    linkPreviewImageThumbnailWidth: number
+    /** Should Baileys ask the phone for full history, will be received async */
+    syncFullHistory: boolean
+    /** Should baileys fire init queries automatically, default true */
+    fireInitQueries: boolean
+    /**
+     * generate a high quality link preview,
+     * entails uploading the jpegThumbnail to WA
+     * */
+    generateHighQualityLinkPreview: boolean
+    /**
+     * fetch a message from your store
+     * implement this so that messages failed to send (solves the "this message can take a while" issue) can be retried
+     * */
+    getMessage: (key: proto.IMessageKey) => Promise<proto.IMessage | undefined>
 }

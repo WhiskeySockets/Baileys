@@ -1,7 +1,7 @@
 import EventEmitter from 'events'
 import { Logger } from 'pino'
 import { proto } from '../../WAProto'
-import { AuthenticationCreds, BaileysEvent, BaileysEventEmitter, BaileysEventMap, BufferedEventData, Chat, Contact, WAMessage, WAMessageStatus } from '../Types'
+import { BaileysEvent, BaileysEventEmitter, BaileysEventMap, BufferedEventData, Chat, Contact, WAMessage, WAMessageStatus } from '../Types'
 import { updateMessageWithReaction, updateMessageWithReceipt } from './messages'
 import { isRealMessage, shouldIncrementChatUnread } from './process-message'
 
@@ -28,7 +28,7 @@ type BufferableEvent = typeof BUFFERABLE_EVENT[number]
  * this can make processing events extremely efficient -- since everything
  * can be done in a single transaction
  */
-type BaileysEventData = Partial<BaileysEventMap<AuthenticationCreds>>
+type BaileysEventData = Partial<BaileysEventMap>
 
 const BUFFERABLE_EVENT_SET = new Set<BaileysEvent>(BUFFERABLE_EVENT)
 
@@ -109,7 +109,7 @@ export const makeEventBuffer = (logger: Logger): BaileysBufferableEventEmitter =
 				ev.off('event', listener)
 			}
 		},
-		emit<T extends BaileysEvent>(event: BaileysEvent, evData: BaileysEventMap<AuthenticationCreds>[T]) {
+		emit<T extends BaileysEvent>(event: BaileysEvent, evData: BaileysEventMap[T]) {
 			if(isBuffering && BUFFERABLE_EVENT_SET.has(event)) {
 				append(data, event as any, evData, logger)
 				return true
@@ -233,7 +233,7 @@ function append<E extends BufferableEvent>(
 
 		break
 	case 'contacts.update':
-		const contactUpdates = eventData as BaileysEventMap<any>['contacts.update']
+		const contactUpdates = eventData as BaileysEventMap['contacts.update']
 		for(const update of contactUpdates) {
 			const id = update.id!
 			// merge into prior upsert
@@ -249,7 +249,7 @@ function append<E extends BufferableEvent>(
 
 		break
 	case 'messages.upsert':
-		const { messages, type } = eventData as BaileysEventMap<any>['messages.upsert']
+		const { messages, type } = eventData as BaileysEventMap['messages.upsert']
 		for(const message of messages) {
 			const key = stringifyMessageKey(message.key)
 			const existing = data.messageUpserts[key]
@@ -273,7 +273,7 @@ function append<E extends BufferableEvent>(
 
 		break
 	case 'messages.update':
-		const msgUpdates = eventData as BaileysEventMap<any>['messages.update']
+		const msgUpdates = eventData as BaileysEventMap['messages.update']
 		for(const { key, update } of msgUpdates) {
 			const keyStr = stringifyMessageKey(key)
 			const existing = data.messageUpserts[keyStr]
@@ -294,7 +294,7 @@ function append<E extends BufferableEvent>(
 
 		break
 	case 'messages.delete':
-		const deleteData = eventData as BaileysEventMap<any>['messages.delete']
+		const deleteData = eventData as BaileysEventMap['messages.delete']
 		if('keys' in deleteData) {
 			const { keys } = deleteData
 			for(const key of keys) {
@@ -315,7 +315,7 @@ function append<E extends BufferableEvent>(
 
 		break
 	case 'messages.reaction':
-		const reactions = eventData as BaileysEventMap<any>['messages.reaction']
+		const reactions = eventData as BaileysEventMap['messages.reaction']
 		for(const { key, reaction } of reactions) {
 			const keyStr = stringifyMessageKey(key)
 			const existing = data.messageUpserts[keyStr]
@@ -330,7 +330,7 @@ function append<E extends BufferableEvent>(
 
 		break
 	case 'message-receipt.update':
-		const receipts = eventData as BaileysEventMap<any>['message-receipt.update']
+		const receipts = eventData as BaileysEventMap['message-receipt.update']
 		for(const { key, receipt } of receipts) {
 			const keyStr = stringifyMessageKey(key)
 			const existing = data.messageUpserts[keyStr]
@@ -345,7 +345,7 @@ function append<E extends BufferableEvent>(
 
 		break
 	case 'groups.update':
-		const groupUpdates = eventData as BaileysEventMap<any>['groups.update']
+		const groupUpdates = eventData as BaileysEventMap['groups.update']
 		for(const update of groupUpdates) {
 			const id = update.id!
 			const groupUpdate = data.groupUpdates[id] || { }

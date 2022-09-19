@@ -12,7 +12,7 @@ import { Readable, Transform } from 'stream'
 import { URL } from 'url'
 import { proto } from '../../WAProto'
 import { DEFAULT_ORIGIN, MEDIA_HKDF_KEY_MAPPING, MEDIA_PATH_MAP } from '../Defaults'
-import { BaileysEventMap, CommonSocketConfig, DownloadableMessage, MediaConnInfo, MediaDecryptionKeyInfo, MediaType, MessageType, WAGenericMediaMessage, WAMediaUpload, WAMediaUploadFunction, WAMessageContent } from '../Types'
+import { BaileysEventMap, DownloadableMessage, MediaConnInfo, MediaDecryptionKeyInfo, MediaType, MessageType, SocketConfig, WAGenericMediaMessage, WAMediaUpload, WAMediaUploadFunction, WAMessageContent } from '../Types'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, jidNormalizedUser } from '../WABinary'
 import { aesDecryptGCM, aesEncryptGCM, hkdf } from './crypto'
 import { generateMessageID } from './generics'
@@ -514,7 +514,7 @@ export function extensionForMediaMessage(message: WAMessageContent) {
 	return extension
 }
 
-export const getWAUploadToServer = ({ customUploadHosts, fetchAgent, logger }: CommonSocketConfig, refreshMediaConn: (force: boolean) => Promise<MediaConnInfo>): WAMediaUploadFunction => {
+export const getWAUploadToServer = ({ customUploadHosts, fetchAgent, logger }: SocketConfig, refreshMediaConn: (force: boolean) => Promise<MediaConnInfo>): WAMediaUploadFunction => {
 	return async(stream, { mediaType, fileEncSha256B64, timeoutMs }) => {
 		const { default: axios } = await import('axios')
 		// send a query JSON to obtain the url & auth token to upload our media
@@ -646,7 +646,7 @@ export const encryptMediaRetryRequest = (
 export const decodeMediaRetryNode = (node: BinaryNode) => {
 	const rmrNode = getBinaryNodeChild(node, 'rmr')!
 
-	const event: BaileysEventMap<any>['messages.media-update'][number] = {
+	const event: BaileysEventMap['messages.media-update'][number] = {
 		key: {
 			id: node.attrs.id,
 			remoteJid: rmrNode.attrs.jid,

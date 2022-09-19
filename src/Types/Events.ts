@@ -8,11 +8,11 @@ import { GroupMetadata, ParticipantAction } from './GroupMetadata'
 import { MessageUpsertType, MessageUserReceiptUpdate, WAMessage, WAMessageKey, WAMessageUpdate } from './Message'
 import { ConnectionState } from './State'
 
-export type BaileysEventMap<T> = {
+export type BaileysEventMap = {
     /** connection state has been updated -- WS closed, opened, connecting etc. */
 	'connection.update': Partial<ConnectionState>
     /** credentials updated -- some metadata, keys or something */
-    'creds.update': Partial<T>
+    'creds.update': Partial<AuthenticationCreds>
     /** set chats (history sync), chats are reverse chronologically sorted */
     'chats.set': { chats: Chat[], isLatest: boolean }
     /** set messages (history sync), messages are reverse chronologically sorted */
@@ -69,13 +69,11 @@ export type BufferedEventData = {
     groupUpdates: { [jid: string]: Partial<GroupMetadata> }
 }
 
-export type BaileysEvent = keyof BaileysEventMap<any>
+export type BaileysEvent = keyof BaileysEventMap
 
-export interface CommonBaileysEventEmitter<Creds> {
-	on<T extends keyof BaileysEventMap<Creds>>(event: T, listener: (arg: BaileysEventMap<Creds>[T]) => void): void
-    off<T extends keyof BaileysEventMap<Creds>>(event: T, listener: (arg: BaileysEventMap<Creds>[T]) => void): void
-    removeAllListeners<T extends keyof BaileysEventMap<Creds>>(event: T): void
-	emit<T extends keyof BaileysEventMap<Creds>>(event: T, arg: BaileysEventMap<Creds>[T]): boolean
+export interface BaileysEventEmitter {
+	on<T extends keyof BaileysEventMap>(event: T, listener: (arg: BaileysEventMap[T]) => void): void
+    off<T extends keyof BaileysEventMap>(event: T, listener: (arg: BaileysEventMap[T]) => void): void
+    removeAllListeners<T extends keyof BaileysEventMap>(event: T): void
+	emit<T extends keyof BaileysEventMap>(event: T, arg: BaileysEventMap[T]): boolean
 }
-
-export type BaileysEventEmitter = CommonBaileysEventEmitter<AuthenticationCreds>

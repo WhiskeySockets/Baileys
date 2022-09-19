@@ -5,7 +5,7 @@ import { platform, release } from 'os'
 import { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { version as baileysVersion } from '../Defaults/baileys-version.json'
-import { BaileysEventMap, CommonBaileysEventEmitter, DisconnectReason, WACallUpdateType, WAVersion } from '../Types'
+import { BaileysEventEmitter, BaileysEventMap, DisconnectReason, WACallUpdateType, WAVersion } from '../Types'
 import { BinaryNode, getAllBinaryNodeChildren } from '../WABinary'
 
 const PLATFORM_MAP = {
@@ -165,9 +165,9 @@ export async function promiseTimeout<T>(ms: number | undefined, promise: (resolv
 // generate a random ID to attach to a message
 export const generateMessageID = () => 'BAE5' + randomBytes(6).toString('hex').toUpperCase()
 
-export function bindWaitForEvent<T extends keyof BaileysEventMap<any>>(ev: CommonBaileysEventEmitter<any>, event: T) {
-	return async(check: (u: BaileysEventMap<any>[T]) => boolean | undefined, timeoutMs?: number) => {
-		let listener: (item: BaileysEventMap<any>[T]) => void
+export function bindWaitForEvent<T extends keyof BaileysEventMap>(ev: BaileysEventEmitter, event: T) {
+	return async(check: (u: BaileysEventMap[T]) => boolean | undefined, timeoutMs?: number) => {
+		let listener: (item: BaileysEventMap[T]) => void
 		let closeListener: any
 		await (
 			promiseTimeout(
@@ -200,9 +200,9 @@ export function bindWaitForEvent<T extends keyof BaileysEventMap<any>>(ev: Commo
 	}
 }
 
-export const bindWaitForConnectionUpdate = (ev: CommonBaileysEventEmitter<any>) => bindWaitForEvent(ev, 'connection.update')
+export const bindWaitForConnectionUpdate = (ev: BaileysEventEmitter) => bindWaitForEvent(ev, 'connection.update')
 
-export const printQRIfNecessaryListener = (ev: CommonBaileysEventEmitter<any>, logger: Logger) => {
+export const printQRIfNecessaryListener = (ev: BaileysEventEmitter, logger: Logger) => {
 	ev.on('connection.update', async({ qr }) => {
 		if(qr) {
 			const QR = await import('qrcode-terminal')

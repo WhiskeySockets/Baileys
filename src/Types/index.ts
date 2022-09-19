@@ -4,51 +4,13 @@ export * from './Chat'
 export * from './Contact'
 export * from './State'
 export * from './Message'
-export * from './Legacy'
 export * from './Socket'
 export * from './Events'
 export * from './Product'
 export * from './Call'
 
-import type NodeCache from 'node-cache'
-import { proto } from '../../WAProto'
-import { AuthenticationState, TransactionCapabilityOptions } from './Auth'
-import { CommonSocketConfig } from './Socket'
-
-export type MessageRetryMap = { [msgId: string]: number }
-
-export type SocketConfig = CommonSocketConfig & {
-    /** provide an auth state object to maintain the auth state */
-    auth: AuthenticationState
-    /** By default true, should history messages be downloaded and processed */
-    downloadHistory: boolean
-    /** transaction capability options for SignalKeyStore */
-    transactionOpts: TransactionCapabilityOptions
-    /** provide a cache to store a user's device list */
-    userDevicesCache?: NodeCache
-    /** marks the client as online whenever the socket successfully connects */
-    markOnlineOnConnect: boolean
-    /**
-     * map to store the retry counts for failed messages;
-     * used to determine whether to retry a message or not */
-    msgRetryCounterMap?: MessageRetryMap
-    /** width for link preview images */
-    linkPreviewImageThumbnailWidth: number
-    /** Should Baileys ask the phone for full history, will be received async */
-    syncFullHistory: boolean
-    /** Should baileys fire init queries automatically, default true */
-    fireInitQueries: boolean
-    /**
-     * generate a high quality link preview,
-     * entails uploading the jpegThumbnail to WA
-     * */
-    generateHighQualityLinkPreview: boolean
-    /**
-     * fetch a message from your store
-     * implement this so that messages failed to send (solves the "this message can take a while" issue) can be retried
-     * */
-    getMessage: (key: proto.IMessageKey) => Promise<proto.IMessage | undefined>
-}
+import { AuthenticationState } from './Auth'
+import { SocketConfig } from './Socket'
 
 export type UserFacingSocketConfig = Partial<SocketConfig> & { auth: AuthenticationState }
 
