@@ -1,5 +1,5 @@
 import { Boom } from '@hapi/boom'
-import axios from 'axios'
+import axios, { AxiosRequestConfig } from 'axios'
 import { randomBytes } from 'crypto'
 import { platform, release } from 'os'
 import { Logger } from 'pino'
@@ -218,10 +218,16 @@ export const printQRIfNecessaryListener = (ev: BaileysEventEmitter, logger: Logg
  * utility that fetches latest baileys version from the master branch.
  * Use to ensure your WA connection is always on the latest version
  */
-export const fetchLatestBaileysVersion = async() => {
+export const fetchLatestBaileysVersion = async(options: AxiosRequestConfig<any>) => {
 	const URL = 'https://raw.githubusercontent.com/adiwajshing/Baileys/master/src/Defaults/baileys-version.json'
 	try {
-		const result = await axios.get<{ version: WAVersion }>(URL, { responseType: 'json' })
+		const result = await axios.get<{ version: WAVersion }>(
+			URL,
+			{
+				...options,
+				responseType: 'json'
+			}
+		)
 		return {
 			version: result.data.version,
 			isLatest: true
@@ -239,9 +245,15 @@ export const fetchLatestBaileysVersion = async() => {
  * A utility that fetches the latest web version of whatsapp.
  * Use to ensure your WA connection is always on the latest version
  */
-export const fetchLatestWaWebVersion = async() => {
+export const fetchLatestWaWebVersion = async(options: AxiosRequestConfig<any>) => {
 	try {
-		const result = await axios.get('https://web.whatsapp.com/check-update?version=1&platform=web', { responseType: 'json' })
+		const result = await axios.get(
+			'https://web.whatsapp.com/check-update?version=1&platform=web',
+			{
+				...options,
+				responseType: 'json'
+			}
+		)
 		const version = result.data.currentVersion.split('.')
 		return {
 			version: [+version[0], +version[1], +version[2]] as WAVersion,

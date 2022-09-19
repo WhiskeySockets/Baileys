@@ -1,4 +1,5 @@
 
+import { AxiosRequestConfig } from 'axios'
 import type { Agent } from 'https'
 import type NodeCache from 'node-cache'
 import type { Logger } from 'pino'
@@ -68,6 +69,9 @@ export type SocketConfig = {
      * entails uploading the jpegThumbnail to WA
      * */
     generateHighQualityLinkPreview: boolean
+
+    /** options for axios */
+    options: AxiosRequestConfig<any>
     /**
      * fetch a message from your store
      * implement this so that messages failed to send (solves the "this message can take a while" issue) can be retried
