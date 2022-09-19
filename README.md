@@ -9,7 +9,7 @@
  Baileys is type-safe, extensible and simple to use. If you require more functionality than provided, it's super easy to write an extension. More on this [here](#WritingCustomFunctionality).
  
  If you're interested in building a WhatsApp bot, you may wanna check out [WhatsAppInfoBot](https://github.com/adiwajshing/WhatsappInfoBot) and an actual bot built with it, [Messcat](https://github.com/ashokatechmin/Messcat).
- 
+
  **Read the docs [here](https://adiwajshing.github.io/Baileys)**
  **Join the Discord [here](https://discord.gg/WeJM5FP9GG)**
 
@@ -20,9 +20,7 @@ The script covers most common use cases.
 To run the example script, download or clone the repo and then type the following in a terminal:
 1. ``` cd path/to/Baileys ```
 2. ``` yarn ```
-3. 
-    - ``` yarn example ``` for the multi-device edition
-    - ``` yarn example:legacy ``` for the legacy web edition
+3. ``` yarn example ```
 
 ## Install
 
@@ -38,10 +36,7 @@ yarn add github:adiwajshing/baileys
 
 Then import your code using:
 ``` ts 
-// for multi-device
 import makeWASocket from '@adiwajshing/baileys'
-// for legacy web
-import {makeWALegacySocket} from '@adiwajshing/baileys'
 ```
 
 ## Unit Tests
@@ -87,13 +82,7 @@ If the connection is successful, you will see a QR code printed on your terminal
 
 **Note:** install `qrcode-terminal` using `yarn add qrcode-terminal` to auto-print the QR to the terminal.
 
-## Notable Differences Between Baileys v3 & v4
-
-1. Baileys has been written from the ground up to have a more "functional" structure. This is done primarily for simplicity & more testability
-2. The Baileys event emitter will emit all events and be used to generate a source of truth for the connected user's account. Access the event emitter using (`sock.ev`)
-3. Baileys no longer maintains an internal state of chats/contacts/messages. You should ideally take this on your own, simply because your state in MD is its own source of truth & there is no one-size-fits-all way to handle the storage for this. However, a simple storage extension has been provided. This also serves as a good demonstration of how to use the Baileys event emitter to construct a source of truth.
-4. A baileys "socket" is meant to be a temporary & disposable object -- this is done to maintain simplicity & prevent bugs. I felt the entire Baileys object became too bloated as it supported too many configurations. You're encouraged to write your own implementation to handle missing functionality.
-5. Baileys does not offer an inbuilt reconnect mechanism anymore (though it's super easy to set one up with your own rules, check the example script)
+**Note:** the code to support the legacy version of WA Web (pre multi-device) has been removed in v5. Only the standard multi-device connection is now supported. This is done as WA seems to have completely dropped support for the legacy version.
 
 ## Configuring the Connection
 
@@ -295,34 +284,6 @@ sock.ev.on('contacts.set', () => {
 The store also provides some simple functions such as `loadMessages` that utilize the store to speed up data retrieval.
 
 **Note:** I highly recommend building your own data store especially for MD connections, as storing someone's entire chat history in memory is a terrible waste of RAM.
-
-## Using the Legacy Version
-
-The API for the legacy and MD versions has been made as similar as possible so you can switch between them seamlessly.
-
-Example on using the eg. version:
-``` ts
-import P from "pino"
-import { Boom } from "@hapi/boom"
-import { makeWALegacySocket } from '@adiwajshing/baileys'
-
-// store can be used with legacy version as well
-const store = makeInMemoryStore({ logger: P().child({ level: 'debug', stream: 'store' }) })
-
-const sock = makeWALegacySocket({
-    logger: P({ level: 'debug' }),
-    printQRInTerminal: true,
-    auth: state
-})
-// bind to the socket
-store.bind(sock.ev)
-```
-
-If you need a type representing either the legacy or MD version:
-``` ts
-// this type can have any of the socket types underneath
-import { AnyWASocket } from '@adiwajshing/baileys'
-```
 
 ## Sending Messages
 
