@@ -14,7 +14,7 @@ type TestVector = {
 const TEST_VECTORS: TestVector[] = [
 	{
 		type: 'image',
-		message: proto.ImageMessage.decode(
+		message: proto.Message.ImageMessage.decode(
 			Buffer.from(
 				'Ck1odHRwczovL21tZy53aGF0c2FwcC5uZXQvZC9mL0FwaHR4WG9fWXZZcDZlUVNSa0tjOHE5d2ozVUpleWdoY3poM3ExX3I0ektnLmVuYxIKaW1hZ2UvanBlZyIgKTuVFyxDc6mTm4GXPlO3Z911Wd8RBeTrPLSWAEdqW8MomcUBQiB7wH5a4nXMKyLOT0A2nFgnnM/DUH8YjQf8QtkCIekaSkogTB+BXKCWDFrmNzozY0DCPn0L4VKd7yG1ZbZwbgRhzVc=',
 				'base64'
@@ -24,7 +24,7 @@ const TEST_VECTORS: TestVector[] = [
 	},
 	{
 		type: 'image',
-		message: proto.ImageMessage.decode(
+		message: proto.Message.ImageMessage.decode(
 			Buffer.from(
 				'Ck1odHRwczovL21tZy53aGF0c2FwcC5uZXQvZC9mL0Ftb2tnWkphNWF6QWZxa3dVRzc0eUNUdTlGeWpjMmd5akpqcXNmMUFpZEU5LmVuYxIKaW1hZ2UvanBlZyIg8IS5TQzdzcuvcR7F8HMhWnXmlsV+GOo9JE1/t2k+o9Yoz6o6QiA7kDk8j5KOEQC0kDFE1qW7lBBDYhm5z06N3SirfUj3CUog/CjYF8e670D5wUJwWv2B2mKzDEo8IJLStDv76YmtPfs=',
 				'base64'

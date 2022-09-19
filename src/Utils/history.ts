@@ -1,3 +1,4 @@
+import { AxiosRequestConfig } from 'axios'
 import { promisify } from 'util'
 import { inflate } from 'zlib'
 import { proto } from '../../WAProto'
@@ -9,8 +10,11 @@ import { downloadContentFromMessage } from './messages-media'
 
 const inflatePromise = promisify(inflate)
 
-export const downloadHistory = async(msg: proto.Message.IHistorySyncNotification) => {
-	const stream = await downloadContentFromMessage(msg, 'md-msg-hist')
+export const downloadHistory = async(
+	msg: proto.Message.IHistorySyncNotification,
+	options: AxiosRequestConfig<any>
+) => {
+	const stream = await downloadContentFromMessage(msg, 'md-msg-hist', { options })
 	const bufferArray: Buffer[] = []
 	for await (const chunk of stream) {
 		bufferArray.push(chunk)
@@ -112,9 +116,10 @@ export const processHistoryMessage = (
 export const downloadAndProcessHistorySyncNotification = async(
 	msg: proto.Message.IHistorySyncNotification,
 	historyCache: Set<string>,
-	recvChats: InitialReceivedChatsState
+	recvChats: InitialReceivedChatsState,
+	options: AxiosRequestConfig<any>
 ) => {
-	const historyMsg = await downloadHistory(msg)
+	const historyMsg = await downloadHistory(msg, options)
 	return processHistoryMessage(historyMsg, historyCache, recvChats)
 }
 

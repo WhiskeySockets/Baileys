@@ -385,7 +385,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 						]
 					})
 
-					const decoded = await extractSyncdPatches(result) // extract from binary node
+					const decoded = await extractSyncdPatches(result, config?.options) // extract from binary node
 					for(const key in decoded) {
 						const name = key as WAPatchName
 						const { patches, hasMorePatches, snapshot } = decoded[name]
@@ -403,7 +403,15 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 							// only process if there are syncd patches
 							if(patches.length) {
-								const { newMutations, state: newState } = await decodePatches(name, patches, states[name], getAppStateSyncKey, onMutation, initialVersionMap[name])
+								const { newMutations, state: newState } = await decodePatches(
+									name,
+									patches,
+									states[name],
+									getAppStateSyncKey,
+									onMutation,
+									config.options,
+									initialVersionMap[name]
+								)
 
 								await authState.keys.set({ 'app-state-sync-version': { [name]: newState } })
 
@@ -624,6 +632,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				initial!,
 				getAppStateSyncKey,
 				onMutation,
+				config.options,
 				undefined,
 				logger,
 			)
@@ -733,6 +742,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				creds: authState.creds,
 				keyStore: authState.keys,
 				logger,
+				options: config.options,
 			}
 		)
 
