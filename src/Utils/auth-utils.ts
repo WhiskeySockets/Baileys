@@ -1,9 +1,77 @@
 import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
+import NodeCache from 'node-cache'
 import type { Logger } from 'pino'
 import type { AuthenticationCreds, SignalDataSet, SignalDataTypeMap, SignalKeyStore, SignalKeyStoreWithTransaction, TransactionCapabilityOptions } from '../Types'
 import { Curve, signedKeyPair } from './crypto'
 import { delay, generateRegistrationId } from './generics'
+
+/**
+ * Adds caching capability to a SignalKeyStore
+ * @param store the store to add caching to
+ * @param logger to log trace events
+ * @param opts NodeCache options
+ */
+export function makeCacheableSignalKeyStore(
+	store: SignalKeyStore,
+	logger: Logger,
+	opts?: NodeCache.Options
+): SignalKeyStore {
+	const cache = new NodeCache({
+		...opts || { },
+		useClones: false,
+	})
+
+	function getUniqueId(type: string, id: string) {
+		return `${type}.${id}`
+	}
+
+	return {
+		async get(type, ids) {
+			const data: { [_: string]: SignalDataTypeMap[typeof type] } = { }
+			const idsToFetch: string[] = []
+			for(const id of ids) {
+				const item = cache.get<SignalDataTypeMap[typeof type]>(getUniqueId(type, id))
+				if(typeof item !== 'undefined') {
+					data[id] = item
+				} else {
+					idsToFetch.push(id)
+				}
+			}
+
+			if(idsToFetch.length) {
+				logger.trace({ items: idsToFetch.length }, 'loading from store')
+				const fetched = await store.get(type, idsToFetch)
+				for(const id of idsToFetch) {
+					const item = fetched[id]
+					if(item) {
+						data[id] = item
+						cache.set(getUniqueId(type, id), item)
+					}
+				}
+			}
+
+			return data
+		},
+		async set(data) {
+			let keys = 0
+			for(const type in data) {
+				for(const id in data[type]) {
+					cache.set(getUniqueId(type, id), data[type][id])
+					keys += 1
+				}
+			}
+
+			logger.trace({ keys }, 'updated cache')
+
+			await store.set(data)
+		},
+		async clear() {
+			cache.flushAll()
+			await store.clear?.()
+		}
+	}
+}
 
 /**
  * Adds DB like transaction capability (https://en.wikipedia.org/wiki/Database_transaction) to the SignalKeyStore,
@@ -12,7 +80,11 @@ import { delay, generateRegistrationId } from './generics'
  * @param logger logger to log events
  * @returns SignalKeyStore with transaction capability
  */
-export const addTransactionCapability = (state: SignalKeyStore, logger: Logger, { maxCommitRetries, delayBetweenTriesMs }: TransactionCapabilityOptions): SignalKeyStoreWithTransaction => {
+export const addTransactionCapability = (
+	state: SignalKeyStore,
+	logger: Logger,
+	{ maxCommitRetries, delayBetweenTriesMs }: TransactionCapabilityOptions
+): SignalKeyStoreWithTransaction => {
 	let inTransaction = false
 	// number of queries made to the DB during the transaction
 	// only there for logging purposes
