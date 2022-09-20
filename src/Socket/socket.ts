@@ -27,10 +27,12 @@ export const makeSocket = ({
 	defaultQueryTimeoutMs,
 	syncFullHistory,
 	transactionOpts,
-	qrTimeout
+	qrTimeout,
+	options,
 }: SocketConfig) => {
 	const ws = new WebSocket(waWebSocketUrl, undefined, {
 		origin: DEFAULT_ORIGIN,
+		headers: options.headers,
 		handshakeTimeout: connectTimeoutMs,
 		timeout: connectTimeoutMs,
 		agent
