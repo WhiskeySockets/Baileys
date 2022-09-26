@@ -194,7 +194,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const [child] = getAllBinaryNodeChildren(node)
 		const nodeType = node.attrs.type
 
-		if(nodeType === 'w:gp2') {
+		switch (nodeType) {
+		case 'w:gp2':
 			switch (child?.tag) {
 			case 'create':
 				const metadata = extractGroupMetadata(child)
@@ -256,23 +257,40 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				break
 
 			}
-		} else if(nodeType === 'mediaretry') {
+
+			break
+		case 'mediaretry':
 			const event = decodeMediaRetryNode(node)
 			ev.emit('messages.media-update', [event])
-		} else if(nodeType === 'encrypt') {
+			break
+		case 'encrypt':
 			await handleEncryptNotification(node)
-		} else if(nodeType === 'devices') {
+			break
+		case 'devices':
 			const devices = getBinaryNodeChildren(child, 'device')
 			if(areJidsSameUser(child.attrs.jid, authState.creds!.me!.id)) {
 				const deviceJids = devices.map(d => d.attrs.jid)
 				logger.info({ deviceJids }, 'got my own devices')
 			}
-		} else if(nodeType === 'server_sync') {
+
+			break
+		case 'server_sync':
 			const update = getBinaryNodeChild(node, 'collection')
 			if(update) {
 				const name = update.attrs.name as WAPatchName
 				await resyncAppState([name], undefined)
 			}
+
+			break
+		case 'picture':
+			const setPicture = getBinaryNodeChild(node, 'set')
+			if(setPicture) {
+				result.messageStubType = WAMessageStubType.GROUP_CHANGE_ICON
+				result.messageStubParameters = [ setPicture.attrs.id ]
+				result.participant = setPicture.attrs.author
+			}
+
+			break
 		}
 
 		if(Object.keys(result).length) {
@@ -430,7 +448,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							id: node.attrs.id,
 							...(msg.key || {})
 						}
-						msg.participant = node.attrs.participant
+						msg.participant ??= node.attrs.participant
 						msg.messageTimestamp = +node.attrs.t
 
 						const fullMsg = proto.WebMessageInfo.fromObject(msg)
