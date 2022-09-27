@@ -261,6 +261,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const result: Partial<proto.IWebMessageInfo> = { }
 		const [child] = getAllBinaryNodeChildren(node)
 		const nodeType = node.attrs.type
+		const from = jidNormalizedUser(node.attrs.from)
 
 		switch (nodeType) {
 		case 'w:gp2':
@@ -291,10 +292,26 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			break
 		case 'picture':
 			const setPicture = getBinaryNodeChild(node, 'set')
-			if(setPicture) {
+			const delPicture = getBinaryNodeChild(node, 'delete')
+
+			ev.emit('contacts.update', [{
+				id: from,
+				imgUrl: setPicture ? 'changed' : null
+			}])
+
+			if(isJidGroup(from)) {
+				const node = setPicture || delPicture
 				result.messageStubType = WAMessageStubType.GROUP_CHANGE_ICON
-				result.messageStubParameters = [ setPicture.attrs.id ]
-				result.participant = setPicture.attrs.author
+
+				if(setPicture) {
+					result.messageStubParameters = [ setPicture.attrs.id ]
+				}
+
+				result.participant = node?.attrs.author
+				result.key = {
+					...result.key || {},
+					participant: setPicture?.attrs.author
+				}
 			}
 
 			break

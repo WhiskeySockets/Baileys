@@ -152,6 +152,17 @@ const startSock = async() => {
 				console.log(events['chats.update'])
 			}
 
+			if(events['contacts.update']) {
+				for(const contact of events['contacts.update']) {
+					if(typeof contact.imgUrl !== 'undefined') {
+						const newUrl = contact.imgUrl === null ? null : await sock!.profilePictureUrl(contact.id!)
+						console.log(
+							`contact ${contact.id} has a new profile pic: ${newUrl}`,
+						)
+					}
+				}
+			}
+
 			if(events['chats.delete']) {
 				console.log('chats deleted ', events['chats.delete'])
 			}
