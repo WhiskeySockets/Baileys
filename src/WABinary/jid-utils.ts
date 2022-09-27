@@ -53,7 +53,12 @@ export const isJidGroup = (jid: string | undefined) => (jid?.endsWith('@g.us'))
 /** is the jid the status broadcast */
 export const isJidStatusBroadcast = (jid: string) => jid === 'status@broadcast'
 
-export const jidNormalizedUser = (jid: string) => {
-	const { user, server } = jidDecode(jid)!
+export const jidNormalizedUser = (jid: string | undefined) => {
+	const result = jidDecode(jid)
+	if(!result) {
+		return ''
+	}
+
+	const { user, server } = result
 	return jidEncode(user, server === 'c.us' ? 's.whatsapp.net' : server as JidServer)
 }
