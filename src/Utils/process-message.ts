@@ -133,14 +133,20 @@ const processMessage = async(
 				let newAppStateSyncKeyId = ''
 				await keyStore.transaction(
 					async() => {
+						const newKeys: string[] = []
 						for(const { keyData, keyId } of keys) {
 							const strKeyId = Buffer.from(keyId!.keyId!).toString('base64')
+							newKeys.push(strKeyId)
 
-							logger?.info({ strKeyId }, 'injecting new app state sync key')
 							await keyStore.set({ 'app-state-sync-key': { [strKeyId]: keyData! } })
 
 							newAppStateSyncKeyId = strKeyId
 						}
+
+						logger?.info(
+							{ newAppStateSyncKeyId, newKeys },
+							'injecting new app state sync keys'
+						)
 					}
 				)
 
