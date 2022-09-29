@@ -33,13 +33,7 @@ export type WAPatchCreate = {
     operation: proto.SyncdMutation.SyncdOperation
 }
 
-export type Chat = proto.IConversation & {
-    /** unix timestamp of date when mute ends, if applicable */
-    mute?: number | null
-    /** timestamp of when pinned */
-    pin?: number | null
-    archive?: boolean
-}
+export type Chat = proto.IConversation
 
 /**
  * the last messages in a chat, sorted reverse-chronologically. That is, the latest message should be first in the chat

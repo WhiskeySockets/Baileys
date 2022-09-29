@@ -631,7 +631,7 @@ export const processSyncAction = (
 			[
 				{
 					id,
-					mute: action.muteAction?.muted ?
+					muteEndTime: action.muteAction?.muted ?
 						toNumber(action.muteAction!.muteEndTimestamp!) :
 						null
 				}
@@ -657,9 +657,9 @@ export const processSyncAction = (
 			// basically we don't need to fire an "archive" update if the chat is being marked unarchvied
 			// this only applies for the initial sync
 			if(isInitialSync && !archiveAction.archived) {
-				ev.emit('chats.update', [{ id, archive: false }])
+				ev.emit('chats.update', [{ id, archived: false }])
 			} else {
-				ev.emit('chats.update', [{ id, archive: !!archiveAction?.archived }])
+				ev.emit('chats.update', [{ id, archived: !!archiveAction?.archived }])
 			}
 		}
 	} else if(action?.markChatAsReadAction) {
@@ -692,7 +692,7 @@ export const processSyncAction = (
 			ev.emit('creds.update', { me: { ...me, name: action?.pushNameSetting?.name! } })
 		}
 	} else if(action?.pinAction) {
-		ev.emit('chats.update', [{ id, pin: action.pinAction?.pinned ? toNumber(action.timestamp!) : null }])
+		ev.emit('chats.update', [{ id, pinned: action.pinAction?.pinned ? toNumber(action.timestamp!) : null }])
 	} else if(action?.unarchiveChatsSetting) {
 		const unarchiveChats = !!action.unarchiveChatsSetting.unarchiveChats
 		ev.emit('creds.update', { accountSettings: { unarchiveChats } })
