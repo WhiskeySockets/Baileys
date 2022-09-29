@@ -2,7 +2,7 @@ import { AxiosRequestConfig } from 'axios'
 import { promisify } from 'util'
 import { inflate } from 'zlib'
 import { proto } from '../../WAProto'
-import { Chat, Contact, InitialReceivedChatsState } from '../Types'
+import { Chat, Contact, WAMessageStubType } from '../Types'
 import { isJidUser } from '../WABinary'
 import { toNumber } from './generics'
 import { normalizeMessageContent } from './messages'
@@ -29,11 +29,7 @@ export const downloadHistory = async(
 	return syncData
 }
 
-export const processHistoryMessage = (
-	item: proto.IHistorySync,
-	historyCache: Set<string>,
-	recvChats: InitialReceivedChatsState
-) => {
+export const processHistoryMessage = (item: proto.IHistorySync) => {
 	const messages: proto.IWebMessageInfo[] = []
 	const contacts: Contact[] = []
 	const chats: Chat[] = []
@@ -41,91 +37,75 @@ export const processHistoryMessage = (
 	switch (item.syncType) {
 	case proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP:
 	case proto.HistorySync.HistorySyncType.RECENT:
-		for(const chat of item.conversations!) {
-			const contactId = `c:${chat.id}`
-			if(chat.name && !historyCache.has(contactId)) {
-				contacts.push({ id: chat.id, name: chat.name })
-				historyCache.add(contactId)
-			}
+	case proto.HistorySync.HistorySyncType.FULL:
+		for(const chat of item.conversations! as Chat[]) {
+			contacts.push({ id: chat.id, name: chat.name || undefined })
 
 			const msgs = chat.messages || []
 			delete chat.messages
+			delete chat.archived
+			delete chat.muteEndTime
+			delete chat.pinned
 
 			for(const item of msgs) {
 				const message = item.message!
-				const uqId = `${message.key.remoteJid}:${message.key.id}`
-				if(!historyCache.has(uqId)) {
-					messages.push(message)
+				messages.push(message)
 
-					let curItem = recvChats[message.key.remoteJid!]
-					const timestamp = toNumber(message.messageTimestamp)
-					if(!curItem || timestamp > curItem.lastMsgTimestamp) {
-						curItem = { lastMsgTimestamp: timestamp }
-						recvChats[chat.id] = curItem
-						// keep only the most recent message in the chat array
-						chat.messages = [{ message }]
-					}
+				if(!chat.messages) {
+					// keep only the most recent message in the chat array
+					chat.messages = [{ message }]
+				}
 
-					if(
-						!message.key.fromMe
-						&& (!curItem?.lastMsgRecvTimestamp || timestamp > curItem.lastMsgRecvTimestamp)
-					) {
-						curItem.lastMsgRecvTimestamp = timestamp
-					}
+				if(!message.key.fromMe && !chat.lastMessageRecvTimestamp) {
+					chat.lastMessageRecvTimestamp = toNumber(message.messageTimestamp)
+				}
 
-					historyCache.add(uqId)
+				if(
+					!message.key.fromMe
+					&& message.messageStubType === WAMessageStubType.BIZ_PRIVACY_MODE_TO_BSP
+					&& message.messageStubParameters?.[0]
+				) {
+					contacts.push({
+						id: message.key.participant || message.key.remoteJid!,
+						verifiedName: message.messageStubParameters?.[0],
+					})
 				}
 			}
 
-			if(!historyCache.has(chat.id)) {
-				if(isJidUser(chat.id) && chat.readOnly && chat.archived) {
-					chat.readOnly = false
-				}
-
-				chats.push(chat)
-				historyCache.add(chat.id)
+			if(isJidUser(chat.id) && chat.readOnly && chat.archived) {
+				delete chat.readOnly
 			}
+
+			chats.push({ ...chat })
 		}
 
 		break
 	case proto.HistorySync.HistorySyncType.PUSH_NAME:
 		for(const c of item.pushnames!) {
-			const contactId = `c:${c.id}`
-			if(!historyCache.has(contactId)) {
-				contacts.push({ notify: c.pushname!, id: c.id! })
-				historyCache.add(contactId)
-			}
+			contacts.push({ notify: c.pushname!, id: c.id! })
 		}
 
 		break
-	case proto.HistorySync.HistorySyncType.INITIAL_STATUS_V3:
-		// TODO
-		break
 	}
-
-	const didProcess = !!(chats.length || messages.length || contacts.length)
 
 	return {
 		chats,
 		contacts,
 		messages,
-		didProcess,
 	}
 }
 
 export const downloadAndProcessHistorySyncNotification = async(
 	msg: proto.Message.IHistorySyncNotification,
-	historyCache: Set<string>,
-	recvChats: InitialReceivedChatsState,
 	options: AxiosRequestConfig<any>
 ) => {
 	const historyMsg = await downloadHistory(msg, options)
-	return processHistoryMessage(historyMsg, historyCache, recvChats)
+	return processHistoryMessage(historyMsg)
 }
 
-export const isHistoryMsg = (message: proto.IMessage) => {
+export const getHistoryMsg = (message: proto.IMessage) => {
 	const normalizedContent = !!message ? normalizeMessageContent(message) : undefined
-	const isAnyHistoryMsg = !!normalizedContent?.protocolMessage?.historySyncNotification
+	const anyHistoryMsg = normalizedContent?.protocolMessage?.historySyncNotification
 
-	return isAnyHistoryMsg
+	return anyHistoryMsg
 }

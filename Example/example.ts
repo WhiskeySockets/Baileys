@@ -98,21 +98,10 @@ const startSock = async() => {
 				console.log('recv call event', events.call)
 			}
 
-			// chat history received
-			if(events['chats.set']) {
-				const { chats, isLatest } = events['chats.set']
-				console.log(`recv ${chats.length} chats (is latest: ${isLatest})`)
-			}
-
-			// message history received
-			if(events['messages.set']) {
-				const { messages, isLatest } = events['messages.set']
-				console.log(`recv ${messages.length} messages (is latest: ${isLatest})`)
-			}
-
-			if(events['contacts.set']) {
-				const { contacts, isLatest } = events['contacts.set']
-				console.log(`recv ${contacts.length} contacts (is latest: ${isLatest})`)
+			// history received
+			if(events['messaging-history.set']) {
+				const { chats, contacts, messages, isLatest } = events['messaging-history.set']
+				console.log(`recv ${chats.length} chats, ${contacts.length} contacts, ${messages.length} msgs (is latest: ${isLatest})`)
 			}
 
 			// received a new message

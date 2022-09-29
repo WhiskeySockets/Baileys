@@ -367,3 +367,13 @@ export const getCodeFromWSError = (error: Error) => {
 export const isWABusinessPlatform = (platform: string) => {
 	return platform === 'smbi' || platform === 'smba'
 }
+
+export function trimUndefineds(obj: any) {
+	for(const key in obj) {
+		if(typeof obj[key] === 'undefined') {
+			delete obj[key]
+		}
+	}
+
+	return obj
+}

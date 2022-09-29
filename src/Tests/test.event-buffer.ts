@@ -8,7 +8,9 @@ describe('Event Buffer Tests', () => {
 
 	let ev: ReturnType<typeof makeEventBuffer>
 	beforeEach(() => {
-		ev = makeEventBuffer(logger)
+		const _logger = logger.child({ })
+		_logger.level = 'trace'
+		ev = makeEventBuffer(_logger)
 	})
 
 	it('should buffer a chat upsert & update event', async() => {
@@ -69,6 +71,123 @@ describe('Event Buffer Tests', () => {
 		await ev.flush()
 
 		expect(chatsDeleted).toHaveLength(1)
+	})
+
+	it('should release a conditional update at the right time', async() => {
+		const chatId = randomJid()
+		const chatId2 = randomJid()
+		const chatsUpserted: Chat[] = []
+		const chatsSynced: Chat[] = []
+
+		ev.on('chats.upsert', c => chatsUpserted.push(...c))
+		ev.on('messaging-history.set', c => chatsSynced.push(...c.chats))
+		ev.on('chats.update', () => fail('not should have emitted'))
+
+		ev.buffer()
+		ev.emit('chats.update', [{
+			id: chatId,
+			archived: true,
+			conditional(buff) {
+				if(buff.chatUpserts[chatId]) {
+					return true
+				}
+			}
+		}])
+		ev.emit('chats.update', [{
+			id: chatId2,
+			archived: true,
+			conditional(buff) {
+				if(buff.historySets.chats[chatId2]) {
+					return true
+				}
+			}
+		}])
+
+		await ev.flush()
+
+		ev.buffer()
+		ev.emit('chats.upsert', [{
+			id: chatId,
+			conversationTimestamp: 123,
+			unreadCount: 1,
+			muteEndTime: 123
+		}])
+		ev.emit('messaging-history.set', {
+			chats: [{
+				id: chatId2,
+				conversationTimestamp: 123,
+				unreadCount: 1,
+				muteEndTime: 123
+			}],
+			contacts: [],
+			messages: [],
+			isLatest: false
+		})
+		await ev.flush()
+
+		expect(chatsUpserted).toHaveLength(1)
+		expect(chatsUpserted[0].id).toEqual(chatId)
+		expect(chatsUpserted[0].archived).toEqual(true)
+		expect(chatsUpserted[0].muteEndTime).toEqual(123)
+
+		expect(chatsSynced).toHaveLength(1)
+		expect(chatsSynced[0].id).toEqual(chatId2)
+		expect(chatsSynced[0].archived).toEqual(true)
+	})
+
+	it('should discard a conditional update', async() => {
+		const chatId = randomJid()
+		const chatsUpserted: Chat[] = []
+
+		ev.on('chats.upsert', c => chatsUpserted.push(...c))
+		ev.on('chats.update', () => fail('not should have emitted'))
+
+		ev.buffer()
+		ev.emit('chats.update', [{
+			id: chatId,
+			archived: true,
+			conditional(buff) {
+				if(buff.chatUpserts[chatId]) {
+					return false
+				}
+			}
+		}])
+		ev.emit('chats.upsert', [{
+			id: chatId,
+			conversationTimestamp: 123,
+			unreadCount: 1,
+			muteEndTime: 123
+		}])
+
+		await ev.flush()
+
+		expect(chatsUpserted).toHaveLength(1)
+		expect(chatsUpserted[0].archived).toBeUndefined()
+	})
+
+	it('should overwrite a chats.update event with a history event', async() => {
+		const chatId = randomJid()
+		let chatRecv: Chat | undefined
+
+		ev.on('messaging-history.set', ({ chats }) => {
+			chatRecv = chats[0]
+		})
+		ev.on('chats.update', () => fail('not should have emitted'))
+
+		ev.buffer()
+
+		ev.emit('messaging-history.set', {
+			chats: [{ id: chatId, conversationTimestamp: 123, unreadCount: 1 }],
+			messages: [],
+			contacts: [],
+			isLatest: true
+		})
+		ev.emit('chats.update', [{ id: chatId, archived: true }])
+
+		await ev.flush()
+
+		expect(chatRecv).toBeDefined()
+		expect(chatRecv?.archived).toBeTruthy()
 	})
 
 	it('should buffer message upsert events', async() => {

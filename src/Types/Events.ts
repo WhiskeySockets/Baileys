@@ -2,7 +2,7 @@ import type { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto'
 import { AuthenticationCreds } from './Auth'
 import { WACallEvent } from './Call'
-import { Chat, PresenceData } from './Chat'
+import { Chat, ChatUpdate, PresenceData } from './Chat'
 import { Contact } from './Contact'
 import { GroupMetadata, ParticipantAction } from './GroupMetadata'
 import { MessageUpsertType, MessageUserReceiptUpdate, WAMessage, WAMessageKey, WAMessageUpdate } from './Message'
@@ -13,16 +13,17 @@ export type BaileysEventMap = {
 	'connection.update': Partial<ConnectionState>
     /** credentials updated -- some metadata, keys or something */
     'creds.update': Partial<AuthenticationCreds>
-    /** set chats (history sync), chats are reverse chronologically sorted */
-    'chats.set': { chats: Chat[], isLatest: boolean }
-    /** set messages (history sync), messages are reverse chronologically sorted */
-    'messages.set': { messages: WAMessage[], isLatest: boolean }
-    /** set contacts (history sync) */
-    'contacts.set': { contacts: Contact[], isLatest: boolean }
+    /** set chats (history sync), everything is reverse chronologically sorted */
+    'messaging-history.set': {
+        chats: Chat[]
+        contacts: Contact[]
+        messages: WAMessage[]
+        isLatest: boolean
+    }
     /** upsert chats */
     'chats.upsert': Chat[]
     /** update the given chats */
-    'chats.update': Partial<Chat>[]
+    'chats.update': ChatUpdate[]
     /** delete chats with given ID */
     'chats.delete': string[]
     /** presence of contact in a chat updated */
@@ -56,8 +57,15 @@ export type BaileysEventMap = {
 }
 
 export type BufferedEventData = {
+    historySets: {
+        chats: { [jid: string]: Chat }
+        contacts: { [jid: string]: Contact }
+        messages: { [uqId: string]: WAMessage }
+        empty: boolean
+        isLatest: boolean
+    }
     chatUpserts: { [jid: string]: Chat }
-    chatUpdates: { [jid: string]: Partial<Chat> }
+    chatUpdates: { [jid: string]: ChatUpdate }
     chatDeletes: Set<string>
     contactUpserts: { [jid: string]: Contact }
     contactUpdates: { [jid: string]: Partial<Contact> }

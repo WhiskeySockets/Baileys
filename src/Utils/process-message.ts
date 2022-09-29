@@ -1,14 +1,12 @@
 import { AxiosRequestConfig } from 'axios'
 import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
-import { AuthenticationCreds, BaileysEventEmitter, Chat, GroupMetadata, InitialReceivedChatsState, ParticipantAction, SignalKeyStoreWithTransaction, WAMessageStubType } from '../Types'
+import { AuthenticationCreds, BaileysEventEmitter, Chat, GroupMetadata, ParticipantAction, SignalKeyStoreWithTransaction, WAMessageStubType } from '../Types'
 import { downloadAndProcessHistorySyncNotification, normalizeMessageContent, toNumber } from '../Utils'
 import { areJidsSameUser, jidNormalizedUser } from '../WABinary'
 
 type ProcessMessageContext = {
-	historyCache: Set<string>
-	recvChats: InitialReceivedChatsState
-	downloadHistory: boolean
+	shouldProcessHistoryMsg: boolean
 	creds: AuthenticationCreds
 	keyStore: SignalKeyStoreWithTransaction
 	ev: BaileysEventEmitter
@@ -66,7 +64,14 @@ export const shouldIncrementChatUnread = (message: proto.IWebMessageInfo) => (
 
 const processMessage = async(
 	message: proto.IWebMessageInfo,
-	{ downloadHistory, ev, historyCache, recvChats, creds, keyStore, logger, options }: ProcessMessageContext
+	{
+		shouldProcessHistoryMsg,
+		ev,
+		creds,
+		keyStore,
+		logger,
+		options
+	}: ProcessMessageContext
 ) => {
 	const meId = creds.me!.id
 	const { accountSettings } = creds
@@ -92,38 +97,30 @@ const processMessage = async(
 		switch (protocolMsg.type) {
 		case proto.Message.ProtocolMessage.Type.HISTORY_SYNC_NOTIFICATION:
 			const histNotification = protocolMsg!.historySyncNotification!
+			const process = shouldProcessHistoryMsg
+			const isLatest = !creds.processedHistoryMessages?.length
 
-			logger?.info({ histNotification, id: message.key.id }, 'got history notification')
+			logger?.info({
+				histNotification,
+				process,
+				id: message.key.id,
+				isLatest,
+			}, 'got history notification')
 
-			if(downloadHistory) {
-				const isLatest = !creds.processedHistoryMessages?.length
-				const { chats, contacts, messages, didProcess } = await downloadAndProcessHistorySyncNotification(
+			if(process) {
+				const data = await downloadAndProcessHistorySyncNotification(
 					histNotification,
-					historyCache,
-					recvChats,
 					options
 				)
 
-				if(chats.length) {
-					ev.emit('chats.set', { chats, isLatest })
-				}
+				ev.emit('messaging-history.set', { ...data, isLatest })
 
-				if(messages.length) {
-					ev.emit('messages.set', { messages, isLatest })
-				}
-
-				if(contacts.length) {
-					ev.emit('contacts.set', { contacts, isLatest })
-				}
-
-				if(didProcess) {
-					ev.emit('creds.update', {
-						processedHistoryMessages: [
-							...(creds.processedHistoryMessages || []),
-							{ key: message.key, messageTimestamp: message.messageTimestamp }
-						]
-					})
-				}
+				ev.emit('creds.update', {
+					processedHistoryMessages: [
+						...(creds.processedHistoryMessages || []),
+						{ key: message.key, messageTimestamp: message.messageTimestamp }
+					]
+				})
 			}
 
 			break

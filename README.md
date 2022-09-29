@@ -91,10 +91,40 @@ You can configure the connection by passing a `SocketConfig` object.
 The entire `SocketConfig` structure is mentioned here with default values:
 ``` ts
 type SocketConfig = {
+    /** the WS url to connect to WA */
+    waWebSocketUrl: string | URL
+    /** Fails the connection if the socket times out in this interval */
+	connectTimeoutMs: number
+    /** Default timeout for queries, undefined for no timeout */
+    defaultQueryTimeoutMs: number | undefined
+    /** ping-pong interval for WS connection */
+    keepAliveIntervalMs: number
+    /** proxy agent */
+	agent?: Agent
+    /** pino logger */
+	logger: Logger
+    /** version to connect with */
+    version: WAVersion
+    /** override browser config */
+	browser: WABrowserDescription
+	/** agent used for fetch requests -- uploading/downloading media */
+	fetchAgent?: Agent
+    /** should the QR be printed in the terminal */
+    printQRInTerminal: boolean
+    /** should events be emitted for actions done by this socket connection */
+    emitOwnEvents: boolean
+    /** provide a cache to store media, so does not have to be re-uploaded */
+    mediaCache?: NodeCache
+    /** custom upload hosts to upload media to */
+    customUploadHosts: MediaConnInfo['hosts']
+    /** time to wait between sending new retry requests */
+    retryRequestDelayMs: number
+    /** time to wait for the generation of the next QR in ms */
+    qrTimeout?: number;
     /** provide an auth state object to maintain the auth state */
     auth: AuthenticationState
-    /** By default true, should history messages be downloaded and processed */
-    downloadHistory: boolean
+    /** manage history processing with this control; by default will sync up everything */
+    shouldSyncHistoryMessage: (msg: proto.Message.IHistorySyncNotification) => boolean
     /** transaction capability options for SignalKeyStore */
     transactionOpts: TransactionCapabilityOptions
     /** provide a cache to store a user's device list */
@@ -107,13 +137,18 @@ type SocketConfig = {
     msgRetryCounterMap?: MessageRetryMap
     /** width for link preview images */
     linkPreviewImageThumbnailWidth: number
+    /** Should Baileys ask the phone for full history, will be received async */
+    syncFullHistory: boolean
+    /** Should baileys fire init queries automatically, default true */
+    fireInitQueries: boolean
     /**
      * generate a high quality link preview,
      * entails uploading the jpegThumbnail to WA
      * */
     generateHighQualityLinkPreview: boolean
-    /** Should Baileys ask the phone for full history, will be received async */
-    syncFullHistory: boolean
+
+    /** options for axios */
+    options: AxiosRequestConfig<any>
     /**
      * fetch a message from your store
      * implement this so that messages failed to send (solves the "this message can take a while" issue) can be retried
@@ -184,21 +219,22 @@ type ConnectionState = {
 Baileys uses the EventEmitter syntax for events. 
 They're all nicely typed up, so you shouldn't have any issues with an Intellisense editor like VS Code.
 
-The events are typed up in a type map, as mentioned here:
+The events are typed as mentioned here:
 
 ``` ts
 
-export type BaileysEventMap<T> = {
+export type BaileysEventMap = {
     /** connection state has been updated -- WS closed, opened, connecting etc. */
 	'connection.update': Partial<ConnectionState>
     /** credentials updated -- some metadata, keys or something */
-    'creds.update': Partial<T>
-    /** set chats (history sync), chats are reverse chronologically sorted */
-    'chats.set': { chats: Chat[], isLatest: boolean }
-    /** set messages (history sync), messages are reverse chronologically sorted */
-    'messages.set': { messages: WAMessage[], isLatest: boolean }
-    /** set contacts (history sync) */
-    'contacts.set': { contacts: Contact[], isLatest: boolean }
+    'creds.update': Partial<AuthenticationCreds>
+    /** history sync, everything is reverse chronologically sorted */
+    'messaging-history.set': {
+        chats: Chat[]
+        contacts: Contact[]
+        messages: WAMessage[]
+        isLatest: boolean
+    }
     /** upsert chats */
     'chats.upsert': Chat[]
     /** update the given chats */

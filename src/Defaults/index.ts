@@ -1,3 +1,4 @@
+import { proto } from '../../WAProto'
 import type { MediaType, SocketConfig } from '../Types'
 import { Browsers } from '../Utils'
 import logger from '../Utils/logger'
@@ -26,6 +27,13 @@ export const WA_CERT_DETAILS = {
 	SERIAL: 0,
 }
 
+export const PROCESSABLE_HISTORY_TYPES = [
+	proto.Message.HistorySyncNotification.HistorySyncType.INITIAL_BOOTSTRAP,
+	proto.Message.HistorySyncNotification.HistorySyncType.PUSH_NAME,
+	proto.Message.HistorySyncNotification.HistorySyncType.RECENT,
+	proto.Message.HistorySyncNotification.HistorySyncType.FULL
+]
+
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	version: version as any,
 	browser: Browsers.baileys('Chrome'),
@@ -40,9 +48,9 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	retryRequestDelayMs: 250,
 	fireInitQueries: true,
 	auth: undefined as any,
-	downloadHistory: true,
 	markOnlineOnConnect: true,
 	syncFullHistory: false,
+	shouldSyncHistoryMessage: () => true,
 	linkPreviewImageThumbnailWidth: 192,
 	transactionOpts: { maxCommitRetries: 10, delayBetweenTriesMs: 3000 },
 	generateHighQualityLinkPreview: false,

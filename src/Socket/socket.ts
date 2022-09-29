@@ -535,7 +535,7 @@ export const makeSocket = ({
 		const name = update.me?.name
 		// if name has just been received
 		if(creds.me?.name !== name) {
-			logger.info({ name }, 'updated pushName')
+			logger.debug({ name }, 'updated pushName')
 			sendNode({
 				tag: 'presence',
 				attrs: { name: name! }

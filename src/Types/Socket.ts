@@ -46,8 +46,8 @@ export type SocketConfig = {
     qrTimeout?: number;
     /** provide an auth state object to maintain the auth state */
     auth: AuthenticationState
-    /** By default true, should history messages be downloaded and processed */
-    downloadHistory: boolean
+    /** manage history processing with this control; by default will sync up everything */
+    shouldSyncHistoryMessage: (msg: proto.Message.IHistorySyncNotification) => boolean
     /** transaction capability options for SignalKeyStore */
     transactionOpts: TransactionCapabilityOptions
     /** provide a cache to store a user's device list */
