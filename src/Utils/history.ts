@@ -61,8 +61,9 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 				}
 
 				if(
-					!message.key.fromMe
-					&& message.messageStubType === WAMessageStubType.BIZ_PRIVACY_MODE_TO_BSP
+					(message.messageStubType === WAMessageStubType.BIZ_PRIVACY_MODE_TO_BSP
+					|| message.messageStubType === WAMessageStubType.BIZ_PRIVACY_MODE_TO_FB
+					)
 					&& message.messageStubParameters?.[0]
 				) {
 					contacts.push({
@@ -82,7 +83,7 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 		break
 	case proto.HistorySync.HistorySyncType.PUSH_NAME:
 		for(const c of item.pushnames!) {
-			contacts.push({ notify: c.pushname!, id: c.id! })
+			contacts.push({ id: c.id!, notify: c.pushname! })
 		}
 
 		break
