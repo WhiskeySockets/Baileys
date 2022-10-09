@@ -76,7 +76,6 @@ export type SignalKeyStore = {
 export type SignalKeyStoreWithTransaction = SignalKeyStore & {
     isInTransaction: () => boolean
     transaction(exec: () => Promise<void>): Promise<void>
-    prefetch<T extends keyof SignalDataTypeMap>(type: T, ids: string[]): Promise<void>
 }
 
 export type TransactionCapabilityOptions = {

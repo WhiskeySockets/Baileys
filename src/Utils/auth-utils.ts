@@ -1,4 +1,3 @@
-import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
 import NodeCache from 'node-cache'
 import type { Logger } from 'pino'
@@ -97,10 +96,6 @@ export const addTransactionCapability = (
 	 * useful if these data points will be used together often
 	 * */
 	const prefetch = async(type: keyof SignalDataTypeMap, ids: string[]) => {
-		if(!inTransaction) {
-			throw new Boom('Cannot prefetch without transaction')
-		}
-
 		const dict = transactionCache[type]
 		const idsRequiringFetch = dict ? ids.filter(item => !(item in dict)) : ids
 		// only fetch if there are any items to fetch
@@ -145,10 +140,6 @@ export const addTransactionCapability = (
 			}
 		},
 		isInTransaction: () => inTransaction,
-		prefetch: (type, ids) => {
-			logger.trace({ type, ids }, 'prefetching')
-			return prefetch(type, ids)
-		},
 		transaction: async(work) => {
 			// if we're already in a transaction,
 			// just execute what needs to be executed -- no commit required
