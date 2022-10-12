@@ -31,6 +31,8 @@ export type SignalCreds = {
 export type AccountSettings = {
     /** unarchive chats when a new message is received */
     unarchiveChats: boolean
+    /** the default mode to start new conversations with */
+    defaultDisappearingMode?: Pick<proto.IConversation, 'ephemeralExpiration' | 'ephemeralSettingTimestamp'>
 }
 
 export type AuthenticationCreds = SignalCreds & {
