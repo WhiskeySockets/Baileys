@@ -143,6 +143,8 @@ message ClientPayload {
     optional bool pull = 33;
     optional bytes paddingBytes = 34;
     optional BizMarketSegment bizMarketSegment = 35;
+    optional int32 yearClass = 36;
+    optional int32 memClass = 37;
     enum BizMarketSegment {
         DEFAULT = 0;
         DEVX = 1;
@@ -415,12 +417,18 @@ message DeviceProps {
     optional AppVersion version = 2;
     optional PlatformType platformType = 3;
     optional bool requireFullSync = 4;
+    optional HistorySyncConfig historySyncConfig = 5;
     message AppVersion {
         optional uint32 primary = 1;
         optional uint32 secondary = 2;
         optional uint32 tertiary = 3;
         optional uint32 quaternary = 4;
         optional uint32 quinary = 5;
+    }
+    
+    message HistorySyncConfig {
+        optional uint32 fullSyncDaysLimit = 1;
+        optional uint32 fullSyncSizeMbLimit = 2;
     }
     
     enum PlatformType {
@@ -677,6 +685,7 @@ message Message {
     optional RequestPhoneNumberMessage requestPhoneNumberMessage = 54;
     optional FutureProofMessage viewOnceMessageV2 = 55;
     optional EncReactionMessage encReactionMessage = 56;
+    optional FutureProofMessage editedMessage = 57;
     message AppStateFatalExceptionNotification {
         repeated string collectionNames = 1;
         optional int64 timestamp = 2;
@@ -1252,6 +1261,47 @@ message Message {
         }
     }
     
+    message PeerDataOperationRequestMessage {
+        optional Message.PeerDataOperationRequestType peerDataOperationRequestType = 1;
+        repeated RequestStickerReupload requestStickerReupload = 2;
+        repeated RequestUrlPreview requestUrlPreview = 3;
+        message RequestStickerReupload {
+            optional string fileSha256 = 1;
+        }
+        
+        message RequestUrlPreview {
+            optional string url = 1;
+        }
+        
+    }
+    
+    message PeerDataOperationRequestResponseMessage {
+        optional Message.PeerDataOperationRequestType peerDataOperationRequestType = 1;
+        optional string stanzaId = 2;
+        repeated PeerDataOperationResult peerDataOperationResult = 3;
+        message PeerDataOperationResult {
+            optional MediaRetryNotification.ResultType mediaUploadResult = 1;
+            optional Message.StickerMessage stickerMessage = 2;
+            optional LinkPreviewResponse linkPreviewResponse = 3;
+            message LinkPreviewResponse {
+                optional string url = 1;
+                optional string title = 2;
+                optional string description = 3;
+                optional bytes thumbData = 4;
+                optional string canonicalUrl = 5;
+                optional string matchText = 6;
+                optional string previewType = 7;
+            }
+            
+        }
+        
+    }
+    
+    enum PeerDataOperationRequestType {
+        UPLOAD_STICKER = 0;
+        SEND_RECENT_STICKER_BOOTSTRAP = 1;
+        GENERATE_LINK_PREVIEW = 2;
+    }
     message PollCreationMessage {
         optional bytes encKey = 1;
         optional string name = 2;
@@ -1323,8 +1373,10 @@ message Message {
         optional Message.InitialSecurityNotificationSettingSync initialSecurityNotificationSettingSync = 9;
         optional Message.AppStateFatalExceptionNotification appStateFatalExceptionNotification = 10;
         optional DisappearingMode disappearingMode = 11;
-        optional Message.RequestMediaUploadMessage requestMediaUploadMessage = 12;
-        optional Message.RequestMediaUploadResponseMessage requestMediaUploadResponseMessage = 13;
+        optional Message editedMessage = 14;
+        optional int64 timestampMs = 15;
+        optional Message.PeerDataOperationRequestMessage peerDataOperationRequestMessage = 16;
+        optional Message.PeerDataOperationRequestResponseMessage peerDataOperationRequestResponseMessage = 17;
         enum Type {
             REVOKE = 0;
             EPHEMERAL_SETTING = 3;
@@ -1336,8 +1388,9 @@ message Message {
             INITIAL_SECURITY_NOTIFICATION_SETTING_SYNC = 9;
             APP_STATE_FATAL_EXCEPTION_NOTIFICATION = 10;
             SHARE_PHONE_NUMBER = 11;
-            REQUEST_MEDIA_UPLOAD_MESSAGE = 12;
-            REQUEST_MEDIA_UPLOAD_RESPONSE_MESSAGE = 13;
+            MESSAGE_EDIT = 14;
+            PEER_DATA_OPERATION_REQUEST_MESSAGE = 16;
+            PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE = 17;
         }
     }
     
@@ -1346,23 +1399,6 @@ message Message {
         optional string text = 2;
         optional string groupingKey = 3;
         optional int64 senderTimestampMs = 4;
-    }
-    
-    message RequestMediaUploadMessage {
-        repeated string fileSha256 = 1;
-        optional Message.RmrSource rmrSource = 2;
-    }
-    
-    message RequestMediaUploadResponseMessage {
-        optional Message.RmrSource rmrSource = 1;
-        optional string stanzaId = 2;
-        repeated RequestMediaUploadResult reuploadResult = 3;
-        message RequestMediaUploadResult {
-            optional string fileSha256 = 1;
-            optional MediaRetryNotification.ResultType mediaUploadResult = 2;
-            optional Message.StickerMessage stickerMessage = 3;
-        }
-        
     }
     
     message RequestPaymentMessage {
@@ -1379,11 +1415,6 @@ message Message {
         optional ContextInfo contextInfo = 1;
     }
     
-    enum RmrSource {
-        FAVORITE_STICKER = 0;
-        RECENT_STICKER = 1;
-        RECENT_STICKER_INIT = 2;
-    }
     message SendPaymentMessage {
         optional Message noteMessage = 2;
         optional MessageKey requestMessageKey = 3;

@@ -4115,6 +4115,8 @@ $root.proto = (function() {
          * @property {boolean|null} [pull] ClientPayload pull
          * @property {Uint8Array|null} [paddingBytes] ClientPayload paddingBytes
          * @property {proto.ClientPayload.BizMarketSegment|null} [bizMarketSegment] ClientPayload bizMarketSegment
+         * @property {number|null} [yearClass] ClientPayload yearClass
+         * @property {number|null} [memClass] ClientPayload memClass
          */
 
         /**
@@ -4334,6 +4336,22 @@ $root.proto = (function() {
         ClientPayload.prototype.bizMarketSegment = 0;
 
         /**
+         * ClientPayload yearClass.
+         * @member {number} yearClass
+         * @memberof proto.ClientPayload
+         * @instance
+         */
+        ClientPayload.prototype.yearClass = 0;
+
+        /**
+         * ClientPayload memClass.
+         * @member {number} memClass
+         * @memberof proto.ClientPayload
+         * @instance
+         */
+        ClientPayload.prototype.memClass = 0;
+
+        /**
          * Creates a new ClientPayload instance using the specified properties.
          * @function create
          * @memberof proto.ClientPayload
@@ -4408,6 +4426,10 @@ $root.proto = (function() {
                 writer.uint32(/* id 34, wireType 2 =*/274).bytes(message.paddingBytes);
             if (message.bizMarketSegment != null && Object.hasOwnProperty.call(message, "bizMarketSegment"))
                 writer.uint32(/* id 35, wireType 0 =*/280).int32(message.bizMarketSegment);
+            if (message.yearClass != null && Object.hasOwnProperty.call(message, "yearClass"))
+                writer.uint32(/* id 36, wireType 0 =*/288).int32(message.yearClass);
+            if (message.memClass != null && Object.hasOwnProperty.call(message, "memClass"))
+                writer.uint32(/* id 37, wireType 0 =*/296).int32(message.memClass);
             return writer;
         };
 
@@ -4523,6 +4545,12 @@ $root.proto = (function() {
                     break;
                 case 35:
                     message.bizMarketSegment = reader.int32();
+                    break;
+                case 36:
+                    message.yearClass = reader.int32();
+                    break;
+                case 37:
+                    message.memClass = reader.int32();
                     break;
                 default:
                     reader.skipType(tag & 7);
@@ -4690,6 +4718,12 @@ $root.proto = (function() {
                 case 2:
                     break;
                 }
+            if (message.yearClass != null && message.hasOwnProperty("yearClass"))
+                if (!$util.isInteger(message.yearClass))
+                    return "yearClass: integer expected";
+            if (message.memClass != null && message.hasOwnProperty("memClass"))
+                if (!$util.isInteger(message.memClass))
+                    return "memClass: integer expected";
             return null;
         };
 
@@ -4914,6 +4948,10 @@ $root.proto = (function() {
                 message.bizMarketSegment = 2;
                 break;
             }
+            if (object.yearClass != null)
+                message.yearClass = object.yearClass | 0;
+            if (object.memClass != null)
+                message.memClass = object.memClass | 0;
             return message;
         };
 
@@ -4989,6 +5027,8 @@ $root.proto = (function() {
                         object.paddingBytes = $util.newBuffer(object.paddingBytes);
                 }
                 object.bizMarketSegment = options.enums === String ? "DEFAULT" : 0;
+                object.yearClass = 0;
+                object.memClass = 0;
             }
             if (message.username != null && message.hasOwnProperty("username"))
                 if (typeof message.username === "number")
@@ -5049,6 +5089,10 @@ $root.proto = (function() {
                 object.paddingBytes = options.bytes === String ? $util.base64.encode(message.paddingBytes, 0, message.paddingBytes.length) : options.bytes === Array ? Array.prototype.slice.call(message.paddingBytes) : message.paddingBytes;
             if (message.bizMarketSegment != null && message.hasOwnProperty("bizMarketSegment"))
                 object.bizMarketSegment = options.enums === String ? $root.proto.ClientPayload.BizMarketSegment[message.bizMarketSegment] : message.bizMarketSegment;
+            if (message.yearClass != null && message.hasOwnProperty("yearClass"))
+                object.yearClass = message.yearClass;
+            if (message.memClass != null && message.hasOwnProperty("memClass"))
+                object.memClass = message.memClass;
             return object;
         };
 
@@ -10746,6 +10790,7 @@ $root.proto = (function() {
          * @property {proto.DeviceProps.IAppVersion|null} [version] DeviceProps version
          * @property {proto.DeviceProps.PlatformType|null} [platformType] DeviceProps platformType
          * @property {boolean|null} [requireFullSync] DeviceProps requireFullSync
+         * @property {proto.DeviceProps.IHistorySyncConfig|null} [historySyncConfig] DeviceProps historySyncConfig
          */
 
         /**
@@ -10796,6 +10841,14 @@ $root.proto = (function() {
         DeviceProps.prototype.requireFullSync = false;
 
         /**
+         * DeviceProps historySyncConfig.
+         * @member {proto.DeviceProps.IHistorySyncConfig|null|undefined} historySyncConfig
+         * @memberof proto.DeviceProps
+         * @instance
+         */
+        DeviceProps.prototype.historySyncConfig = null;
+
+        /**
          * Creates a new DeviceProps instance using the specified properties.
          * @function create
          * @memberof proto.DeviceProps
@@ -10827,6 +10880,8 @@ $root.proto = (function() {
                 writer.uint32(/* id 3, wireType 0 =*/24).int32(message.platformType);
             if (message.requireFullSync != null && Object.hasOwnProperty.call(message, "requireFullSync"))
                 writer.uint32(/* id 4, wireType 0 =*/32).bool(message.requireFullSync);
+            if (message.historySyncConfig != null && Object.hasOwnProperty.call(message, "historySyncConfig"))
+                $root.proto.DeviceProps.HistorySyncConfig.encode(message.historySyncConfig, writer.uint32(/* id 5, wireType 2 =*/42).fork()).ldelim();
             return writer;
         };
 
@@ -10872,6 +10927,9 @@ $root.proto = (function() {
                     break;
                 case 4:
                     message.requireFullSync = reader.bool();
+                    break;
+                case 5:
+                    message.historySyncConfig = $root.proto.DeviceProps.HistorySyncConfig.decode(reader, reader.uint32());
                     break;
                 default:
                     reader.skipType(tag & 7);
@@ -10939,6 +10997,11 @@ $root.proto = (function() {
             if (message.requireFullSync != null && message.hasOwnProperty("requireFullSync"))
                 if (typeof message.requireFullSync !== "boolean")
                     return "requireFullSync: boolean expected";
+            if (message.historySyncConfig != null && message.hasOwnProperty("historySyncConfig")) {
+                var error = $root.proto.DeviceProps.HistorySyncConfig.verify(message.historySyncConfig);
+                if (error)
+                    return "historySyncConfig." + error;
+            }
             return null;
         };
 
@@ -11021,6 +11084,11 @@ $root.proto = (function() {
             }
             if (object.requireFullSync != null)
                 message.requireFullSync = Boolean(object.requireFullSync);
+            if (object.historySyncConfig != null) {
+                if (typeof object.historySyncConfig !== "object")
+                    throw TypeError(".proto.DeviceProps.historySyncConfig: object expected");
+                message.historySyncConfig = $root.proto.DeviceProps.HistorySyncConfig.fromObject(object.historySyncConfig);
+            }
             return message;
         };
 
@@ -11042,6 +11110,7 @@ $root.proto = (function() {
                 object.version = null;
                 object.platformType = options.enums === String ? "UNKNOWN" : 0;
                 object.requireFullSync = false;
+                object.historySyncConfig = null;
             }
             if (message.os != null && message.hasOwnProperty("os"))
                 object.os = message.os;
@@ -11051,6 +11120,8 @@ $root.proto = (function() {
                 object.platformType = options.enums === String ? $root.proto.DeviceProps.PlatformType[message.platformType] : message.platformType;
             if (message.requireFullSync != null && message.hasOwnProperty("requireFullSync"))
                 object.requireFullSync = message.requireFullSync;
+            if (message.historySyncConfig != null && message.hasOwnProperty("historySyncConfig"))
+                object.historySyncConfig = $root.proto.DeviceProps.HistorySyncConfig.toObject(message.historySyncConfig, options);
             return object;
         };
 
@@ -11339,6 +11410,216 @@ $root.proto = (function() {
             };
 
             return AppVersion;
+        })();
+
+        DeviceProps.HistorySyncConfig = (function() {
+
+            /**
+             * Properties of a HistorySyncConfig.
+             * @memberof proto.DeviceProps
+             * @interface IHistorySyncConfig
+             * @property {number|null} [fullSyncDaysLimit] HistorySyncConfig fullSyncDaysLimit
+             * @property {number|null} [fullSyncSizeMbLimit] HistorySyncConfig fullSyncSizeMbLimit
+             */
+
+            /**
+             * Constructs a new HistorySyncConfig.
+             * @memberof proto.DeviceProps
+             * @classdesc Represents a HistorySyncConfig.
+             * @implements IHistorySyncConfig
+             * @constructor
+             * @param {proto.DeviceProps.IHistorySyncConfig=} [properties] Properties to set
+             */
+            function HistorySyncConfig(properties) {
+                if (properties)
+                    for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                        if (properties[keys[i]] != null)
+                            this[keys[i]] = properties[keys[i]];
+            }
+
+            /**
+             * HistorySyncConfig fullSyncDaysLimit.
+             * @member {number} fullSyncDaysLimit
+             * @memberof proto.DeviceProps.HistorySyncConfig
+             * @instance
+             */
+            HistorySyncConfig.prototype.fullSyncDaysLimit = 0;
+
+            /**
+             * HistorySyncConfig fullSyncSizeMbLimit.
+             * @member {number} fullSyncSizeMbLimit
+             * @memberof proto.DeviceProps.HistorySyncConfig
+             * @instance
+             */
+            HistorySyncConfig.prototype.fullSyncSizeMbLimit = 0;
+
+            /**
+             * Creates a new HistorySyncConfig instance using the specified properties.
+             * @function create
+             * @memberof proto.DeviceProps.HistorySyncConfig
+             * @static
+             * @param {proto.DeviceProps.IHistorySyncConfig=} [properties] Properties to set
+             * @returns {proto.DeviceProps.HistorySyncConfig} HistorySyncConfig instance
+             */
+            HistorySyncConfig.create = function create(properties) {
+                return new HistorySyncConfig(properties);
+            };
+
+            /**
+             * Encodes the specified HistorySyncConfig message. Does not implicitly {@link proto.DeviceProps.HistorySyncConfig.verify|verify} messages.
+             * @function encode
+             * @memberof proto.DeviceProps.HistorySyncConfig
+             * @static
+             * @param {proto.DeviceProps.IHistorySyncConfig} message HistorySyncConfig message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            HistorySyncConfig.encode = function encode(message, writer) {
+                if (!writer)
+                    writer = $Writer.create();
+                if (message.fullSyncDaysLimit != null && Object.hasOwnProperty.call(message, "fullSyncDaysLimit"))
+                    writer.uint32(/* id 1, wireType 0 =*/8).uint32(message.fullSyncDaysLimit);
+                if (message.fullSyncSizeMbLimit != null && Object.hasOwnProperty.call(message, "fullSyncSizeMbLimit"))
+                    writer.uint32(/* id 2, wireType 0 =*/16).uint32(message.fullSyncSizeMbLimit);
+                return writer;
+            };
+
+            /**
+             * Encodes the specified HistorySyncConfig message, length delimited. Does not implicitly {@link proto.DeviceProps.HistorySyncConfig.verify|verify} messages.
+             * @function encodeDelimited
+             * @memberof proto.DeviceProps.HistorySyncConfig
+             * @static
+             * @param {proto.DeviceProps.IHistorySyncConfig} message HistorySyncConfig message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            HistorySyncConfig.encodeDelimited = function encodeDelimited(message, writer) {
+                return this.encode(message, writer).ldelim();
+            };
+
+            /**
+             * Decodes a HistorySyncConfig message from the specified reader or buffer.
+             * @function decode
+             * @memberof proto.DeviceProps.HistorySyncConfig
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @param {number} [length] Message length if known beforehand
+             * @returns {proto.DeviceProps.HistorySyncConfig} HistorySyncConfig
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            HistorySyncConfig.decode = function decode(reader, length) {
+                if (!(reader instanceof $Reader))
+                    reader = $Reader.create(reader);
+                var end = length === undefined ? reader.len : reader.pos + length, message = new $root.proto.DeviceProps.HistorySyncConfig();
+                while (reader.pos < end) {
+                    var tag = reader.uint32();
+                    switch (tag >>> 3) {
+                    case 1:
+                        message.fullSyncDaysLimit = reader.uint32();
+                        break;
+                    case 2:
+                        message.fullSyncSizeMbLimit = reader.uint32();
+                        break;
+                    default:
+                        reader.skipType(tag & 7);
+                        break;
+                    }
+                }
+                return message;
+            };
+
+            /**
+             * Decodes a HistorySyncConfig message from the specified reader or buffer, length delimited.
+             * @function decodeDelimited
+             * @memberof proto.DeviceProps.HistorySyncConfig
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @returns {proto.DeviceProps.HistorySyncConfig} HistorySyncConfig
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            HistorySyncConfig.decodeDelimited = function decodeDelimited(reader) {
+                if (!(reader instanceof $Reader))
+                    reader = new $Reader(reader);
+                return this.decode(reader, reader.uint32());
+            };
+
+            /**
+             * Verifies a HistorySyncConfig message.
+             * @function verify
+             * @memberof proto.DeviceProps.HistorySyncConfig
+             * @static
+             * @param {Object.<string,*>} message Plain object to verify
+             * @returns {string|null} `null` if valid, otherwise the reason why it is not
+             */
+            HistorySyncConfig.verify = function verify(message) {
+                if (typeof message !== "object" || message === null)
+                    return "object expected";
+                if (message.fullSyncDaysLimit != null && message.hasOwnProperty("fullSyncDaysLimit"))
+                    if (!$util.isInteger(message.fullSyncDaysLimit))
+                        return "fullSyncDaysLimit: integer expected";
+                if (message.fullSyncSizeMbLimit != null && message.hasOwnProperty("fullSyncSizeMbLimit"))
+                    if (!$util.isInteger(message.fullSyncSizeMbLimit))
+                        return "fullSyncSizeMbLimit: integer expected";
+                return null;
+            };
+
+            /**
+             * Creates a HistorySyncConfig message from a plain object. Also converts values to their respective internal types.
+             * @function fromObject
+             * @memberof proto.DeviceProps.HistorySyncConfig
+             * @static
+             * @param {Object.<string,*>} object Plain object
+             * @returns {proto.DeviceProps.HistorySyncConfig} HistorySyncConfig
+             */
+            HistorySyncConfig.fromObject = function fromObject(object) {
+                if (object instanceof $root.proto.DeviceProps.HistorySyncConfig)
+                    return object;
+                var message = new $root.proto.DeviceProps.HistorySyncConfig();
+                if (object.fullSyncDaysLimit != null)
+                    message.fullSyncDaysLimit = object.fullSyncDaysLimit >>> 0;
+                if (object.fullSyncSizeMbLimit != null)
+                    message.fullSyncSizeMbLimit = object.fullSyncSizeMbLimit >>> 0;
+                return message;
+            };
+
+            /**
+             * Creates a plain object from a HistorySyncConfig message. Also converts values to other types if specified.
+             * @function toObject
+             * @memberof proto.DeviceProps.HistorySyncConfig
+             * @static
+             * @param {proto.DeviceProps.HistorySyncConfig} message HistorySyncConfig
+             * @param {$protobuf.IConversionOptions} [options] Conversion options
+             * @returns {Object.<string,*>} Plain object
+             */
+            HistorySyncConfig.toObject = function toObject(message, options) {
+                if (!options)
+                    options = {};
+                var object = {};
+                if (options.defaults) {
+                    object.fullSyncDaysLimit = 0;
+                    object.fullSyncSizeMbLimit = 0;
+                }
+                if (message.fullSyncDaysLimit != null && message.hasOwnProperty("fullSyncDaysLimit"))
+                    object.fullSyncDaysLimit = message.fullSyncDaysLimit;
+                if (message.fullSyncSizeMbLimit != null && message.hasOwnProperty("fullSyncSizeMbLimit"))
+                    object.fullSyncSizeMbLimit = message.fullSyncSizeMbLimit;
+                return object;
+            };
+
+            /**
+             * Converts this HistorySyncConfig to JSON.
+             * @function toJSON
+             * @memberof proto.DeviceProps.HistorySyncConfig
+             * @instance
+             * @returns {Object.<string,*>} JSON object
+             */
+            HistorySyncConfig.prototype.toJSON = function toJSON() {
+                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            return HistorySyncConfig;
         })();
 
         /**
@@ -17866,6 +18147,7 @@ $root.proto = (function() {
          * @property {proto.Message.IRequestPhoneNumberMessage|null} [requestPhoneNumberMessage] Message requestPhoneNumberMessage
          * @property {proto.Message.IFutureProofMessage|null} [viewOnceMessageV2] Message viewOnceMessageV2
          * @property {proto.Message.IEncReactionMessage|null} [encReactionMessage] Message encReactionMessage
+         * @property {proto.Message.IFutureProofMessage|null} [editedMessage] Message editedMessage
          */
 
         /**
@@ -18260,6 +18542,14 @@ $root.proto = (function() {
         Message.prototype.encReactionMessage = null;
 
         /**
+         * Message editedMessage.
+         * @member {proto.Message.IFutureProofMessage|null|undefined} editedMessage
+         * @memberof proto.Message
+         * @instance
+         */
+        Message.prototype.editedMessage = null;
+
+        /**
          * Creates a new Message instance using the specified properties.
          * @function create
          * @memberof proto.Message
@@ -18377,6 +18667,8 @@ $root.proto = (function() {
                 $root.proto.Message.FutureProofMessage.encode(message.viewOnceMessageV2, writer.uint32(/* id 55, wireType 2 =*/442).fork()).ldelim();
             if (message.encReactionMessage != null && Object.hasOwnProperty.call(message, "encReactionMessage"))
                 $root.proto.Message.EncReactionMessage.encode(message.encReactionMessage, writer.uint32(/* id 56, wireType 2 =*/450).fork()).ldelim();
+            if (message.editedMessage != null && Object.hasOwnProperty.call(message, "editedMessage"))
+                $root.proto.Message.FutureProofMessage.encode(message.editedMessage, writer.uint32(/* id 57, wireType 2 =*/458).fork()).ldelim();
             return writer;
         };
 
@@ -18551,6 +18843,9 @@ $root.proto = (function() {
                     break;
                 case 56:
                     message.encReactionMessage = $root.proto.Message.EncReactionMessage.decode(reader, reader.uint32());
+                    break;
+                case 57:
+                    message.editedMessage = $root.proto.Message.FutureProofMessage.decode(reader, reader.uint32());
                     break;
                 default:
                     reader.skipType(tag & 7);
@@ -18820,6 +19115,11 @@ $root.proto = (function() {
                 if (error)
                     return "encReactionMessage." + error;
             }
+            if (message.editedMessage != null && message.hasOwnProperty("editedMessage")) {
+                var error = $root.proto.Message.FutureProofMessage.verify(message.editedMessage);
+                if (error)
+                    return "editedMessage." + error;
+            }
             return null;
         };
 
@@ -19067,6 +19367,11 @@ $root.proto = (function() {
                     throw TypeError(".proto.Message.encReactionMessage: object expected");
                 message.encReactionMessage = $root.proto.Message.EncReactionMessage.fromObject(object.encReactionMessage);
             }
+            if (object.editedMessage != null) {
+                if (typeof object.editedMessage !== "object")
+                    throw TypeError(".proto.Message.editedMessage: object expected");
+                message.editedMessage = $root.proto.Message.FutureProofMessage.fromObject(object.editedMessage);
+            }
             return message;
         };
 
@@ -19131,6 +19436,7 @@ $root.proto = (function() {
                 object.requestPhoneNumberMessage = null;
                 object.viewOnceMessageV2 = null;
                 object.encReactionMessage = null;
+                object.editedMessage = null;
             }
             if (message.conversation != null && message.hasOwnProperty("conversation"))
                 object.conversation = message.conversation;
@@ -19226,6 +19532,8 @@ $root.proto = (function() {
                 object.viewOnceMessageV2 = $root.proto.Message.FutureProofMessage.toObject(message.viewOnceMessageV2, options);
             if (message.encReactionMessage != null && message.hasOwnProperty("encReactionMessage"))
                 object.encReactionMessage = $root.proto.Message.EncReactionMessage.toObject(message.encReactionMessage, options);
+            if (message.editedMessage != null && message.hasOwnProperty("editedMessage"))
+                object.editedMessage = $root.proto.Message.FutureProofMessage.toObject(message.editedMessage, options);
             return object;
         };
 
@@ -37642,6 +37950,1555 @@ $root.proto = (function() {
             return PaymentInviteMessage;
         })();
 
+        Message.PeerDataOperationRequestMessage = (function() {
+
+            /**
+             * Properties of a PeerDataOperationRequestMessage.
+             * @memberof proto.Message
+             * @interface IPeerDataOperationRequestMessage
+             * @property {proto.Message.PeerDataOperationRequestType|null} [peerDataOperationRequestType] PeerDataOperationRequestMessage peerDataOperationRequestType
+             * @property {Array.<proto.Message.PeerDataOperationRequestMessage.IRequestStickerReupload>|null} [requestStickerReupload] PeerDataOperationRequestMessage requestStickerReupload
+             * @property {Array.<proto.Message.PeerDataOperationRequestMessage.IRequestUrlPreview>|null} [requestUrlPreview] PeerDataOperationRequestMessage requestUrlPreview
+             */
+
+            /**
+             * Constructs a new PeerDataOperationRequestMessage.
+             * @memberof proto.Message
+             * @classdesc Represents a PeerDataOperationRequestMessage.
+             * @implements IPeerDataOperationRequestMessage
+             * @constructor
+             * @param {proto.Message.IPeerDataOperationRequestMessage=} [properties] Properties to set
+             */
+            function PeerDataOperationRequestMessage(properties) {
+                this.requestStickerReupload = [];
+                this.requestUrlPreview = [];
+                if (properties)
+                    for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                        if (properties[keys[i]] != null)
+                            this[keys[i]] = properties[keys[i]];
+            }
+
+            /**
+             * PeerDataOperationRequestMessage peerDataOperationRequestType.
+             * @member {proto.Message.PeerDataOperationRequestType} peerDataOperationRequestType
+             * @memberof proto.Message.PeerDataOperationRequestMessage
+             * @instance
+             */
+            PeerDataOperationRequestMessage.prototype.peerDataOperationRequestType = 0;
+
+            /**
+             * PeerDataOperationRequestMessage requestStickerReupload.
+             * @member {Array.<proto.Message.PeerDataOperationRequestMessage.IRequestStickerReupload>} requestStickerReupload
+             * @memberof proto.Message.PeerDataOperationRequestMessage
+             * @instance
+             */
+            PeerDataOperationRequestMessage.prototype.requestStickerReupload = $util.emptyArray;
+
+            /**
+             * PeerDataOperationRequestMessage requestUrlPreview.
+             * @member {Array.<proto.Message.PeerDataOperationRequestMessage.IRequestUrlPreview>} requestUrlPreview
+             * @memberof proto.Message.PeerDataOperationRequestMessage
+             * @instance
+             */
+            PeerDataOperationRequestMessage.prototype.requestUrlPreview = $util.emptyArray;
+
+            /**
+             * Creates a new PeerDataOperationRequestMessage instance using the specified properties.
+             * @function create
+             * @memberof proto.Message.PeerDataOperationRequestMessage
+             * @static
+             * @param {proto.Message.IPeerDataOperationRequestMessage=} [properties] Properties to set
+             * @returns {proto.Message.PeerDataOperationRequestMessage} PeerDataOperationRequestMessage instance
+             */
+            PeerDataOperationRequestMessage.create = function create(properties) {
+                return new PeerDataOperationRequestMessage(properties);
+            };
+
+            /**
+             * Encodes the specified PeerDataOperationRequestMessage message. Does not implicitly {@link proto.Message.PeerDataOperationRequestMessage.verify|verify} messages.
+             * @function encode
+             * @memberof proto.Message.PeerDataOperationRequestMessage
+             * @static
+             * @param {proto.Message.IPeerDataOperationRequestMessage} message PeerDataOperationRequestMessage message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            PeerDataOperationRequestMessage.encode = function encode(message, writer) {
+                if (!writer)
+                    writer = $Writer.create();
+                if (message.peerDataOperationRequestType != null && Object.hasOwnProperty.call(message, "peerDataOperationRequestType"))
+                    writer.uint32(/* id 1, wireType 0 =*/8).int32(message.peerDataOperationRequestType);
+                if (message.requestStickerReupload != null && message.requestStickerReupload.length)
+                    for (var i = 0; i < message.requestStickerReupload.length; ++i)
+                        $root.proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload.encode(message.requestStickerReupload[i], writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim();
+                if (message.requestUrlPreview != null && message.requestUrlPreview.length)
+                    for (var i = 0; i < message.requestUrlPreview.length; ++i)
+                        $root.proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview.encode(message.requestUrlPreview[i], writer.uint32(/* id 3, wireType 2 =*/26).fork()).ldelim();
+                return writer;
+            };
+
+            /**
+             * Encodes the specified PeerDataOperationRequestMessage message, length delimited. Does not implicitly {@link proto.Message.PeerDataOperationRequestMessage.verify|verify} messages.
+             * @function encodeDelimited
+             * @memberof proto.Message.PeerDataOperationRequestMessage
+             * @static
+             * @param {proto.Message.IPeerDataOperationRequestMessage} message PeerDataOperationRequestMessage message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            PeerDataOperationRequestMessage.encodeDelimited = function encodeDelimited(message, writer) {
+                return this.encode(message, writer).ldelim();
+            };
+
+            /**
+             * Decodes a PeerDataOperationRequestMessage message from the specified reader or buffer.
+             * @function decode
+             * @memberof proto.Message.PeerDataOperationRequestMessage
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @param {number} [length] Message length if known beforehand
+             * @returns {proto.Message.PeerDataOperationRequestMessage} PeerDataOperationRequestMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            PeerDataOperationRequestMessage.decode = function decode(reader, length) {
+                if (!(reader instanceof $Reader))
+                    reader = $Reader.create(reader);
+                var end = length === undefined ? reader.len : reader.pos + length, message = new $root.proto.Message.PeerDataOperationRequestMessage();
+                while (reader.pos < end) {
+                    var tag = reader.uint32();
+                    switch (tag >>> 3) {
+                    case 1:
+                        message.peerDataOperationRequestType = reader.int32();
+                        break;
+                    case 2:
+                        if (!(message.requestStickerReupload && message.requestStickerReupload.length))
+                            message.requestStickerReupload = [];
+                        message.requestStickerReupload.push($root.proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload.decode(reader, reader.uint32()));
+                        break;
+                    case 3:
+                        if (!(message.requestUrlPreview && message.requestUrlPreview.length))
+                            message.requestUrlPreview = [];
+                        message.requestUrlPreview.push($root.proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview.decode(reader, reader.uint32()));
+                        break;
+                    default:
+                        reader.skipType(tag & 7);
+                        break;
+                    }
+                }
+                return message;
+            };
+
+            /**
+             * Decodes a PeerDataOperationRequestMessage message from the specified reader or buffer, length delimited.
+             * @function decodeDelimited
+             * @memberof proto.Message.PeerDataOperationRequestMessage
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @returns {proto.Message.PeerDataOperationRequestMessage} PeerDataOperationRequestMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            PeerDataOperationRequestMessage.decodeDelimited = function decodeDelimited(reader) {
+                if (!(reader instanceof $Reader))
+                    reader = new $Reader(reader);
+                return this.decode(reader, reader.uint32());
+            };
+
+            /**
+             * Verifies a PeerDataOperationRequestMessage message.
+             * @function verify
+             * @memberof proto.Message.PeerDataOperationRequestMessage
+             * @static
+             * @param {Object.<string,*>} message Plain object to verify
+             * @returns {string|null} `null` if valid, otherwise the reason why it is not
+             */
+            PeerDataOperationRequestMessage.verify = function verify(message) {
+                if (typeof message !== "object" || message === null)
+                    return "object expected";
+                if (message.peerDataOperationRequestType != null && message.hasOwnProperty("peerDataOperationRequestType"))
+                    switch (message.peerDataOperationRequestType) {
+                    default:
+                        return "peerDataOperationRequestType: enum value expected";
+                    case 0:
+                    case 1:
+                    case 2:
+                        break;
+                    }
+                if (message.requestStickerReupload != null && message.hasOwnProperty("requestStickerReupload")) {
+                    if (!Array.isArray(message.requestStickerReupload))
+                        return "requestStickerReupload: array expected";
+                    for (var i = 0; i < message.requestStickerReupload.length; ++i) {
+                        var error = $root.proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload.verify(message.requestStickerReupload[i]);
+                        if (error)
+                            return "requestStickerReupload." + error;
+                    }
+                }
+                if (message.requestUrlPreview != null && message.hasOwnProperty("requestUrlPreview")) {
+                    if (!Array.isArray(message.requestUrlPreview))
+                        return "requestUrlPreview: array expected";
+                    for (var i = 0; i < message.requestUrlPreview.length; ++i) {
+                        var error = $root.proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview.verify(message.requestUrlPreview[i]);
+                        if (error)
+                            return "requestUrlPreview." + error;
+                    }
+                }
+                return null;
+            };
+
+            /**
+             * Creates a PeerDataOperationRequestMessage message from a plain object. Also converts values to their respective internal types.
+             * @function fromObject
+             * @memberof proto.Message.PeerDataOperationRequestMessage
+             * @static
+             * @param {Object.<string,*>} object Plain object
+             * @returns {proto.Message.PeerDataOperationRequestMessage} PeerDataOperationRequestMessage
+             */
+            PeerDataOperationRequestMessage.fromObject = function fromObject(object) {
+                if (object instanceof $root.proto.Message.PeerDataOperationRequestMessage)
+                    return object;
+                var message = new $root.proto.Message.PeerDataOperationRequestMessage();
+                switch (object.peerDataOperationRequestType) {
+                case "UPLOAD_STICKER":
+                case 0:
+                    message.peerDataOperationRequestType = 0;
+                    break;
+                case "SEND_RECENT_STICKER_BOOTSTRAP":
+                case 1:
+                    message.peerDataOperationRequestType = 1;
+                    break;
+                case "GENERATE_LINK_PREVIEW":
+                case 2:
+                    message.peerDataOperationRequestType = 2;
+                    break;
+                }
+                if (object.requestStickerReupload) {
+                    if (!Array.isArray(object.requestStickerReupload))
+                        throw TypeError(".proto.Message.PeerDataOperationRequestMessage.requestStickerReupload: array expected");
+                    message.requestStickerReupload = [];
+                    for (var i = 0; i < object.requestStickerReupload.length; ++i) {
+                        if (typeof object.requestStickerReupload[i] !== "object")
+                            throw TypeError(".proto.Message.PeerDataOperationRequestMessage.requestStickerReupload: object expected");
+                        message.requestStickerReupload[i] = $root.proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload.fromObject(object.requestStickerReupload[i]);
+                    }
+                }
+                if (object.requestUrlPreview) {
+                    if (!Array.isArray(object.requestUrlPreview))
+                        throw TypeError(".proto.Message.PeerDataOperationRequestMessage.requestUrlPreview: array expected");
+                    message.requestUrlPreview = [];
+                    for (var i = 0; i < object.requestUrlPreview.length; ++i) {
+                        if (typeof object.requestUrlPreview[i] !== "object")
+                            throw TypeError(".proto.Message.PeerDataOperationRequestMessage.requestUrlPreview: object expected");
+                        message.requestUrlPreview[i] = $root.proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview.fromObject(object.requestUrlPreview[i]);
+                    }
+                }
+                return message;
+            };
+
+            /**
+             * Creates a plain object from a PeerDataOperationRequestMessage message. Also converts values to other types if specified.
+             * @function toObject
+             * @memberof proto.Message.PeerDataOperationRequestMessage
+             * @static
+             * @param {proto.Message.PeerDataOperationRequestMessage} message PeerDataOperationRequestMessage
+             * @param {$protobuf.IConversionOptions} [options] Conversion options
+             * @returns {Object.<string,*>} Plain object
+             */
+            PeerDataOperationRequestMessage.toObject = function toObject(message, options) {
+                if (!options)
+                    options = {};
+                var object = {};
+                if (options.arrays || options.defaults) {
+                    object.requestStickerReupload = [];
+                    object.requestUrlPreview = [];
+                }
+                if (options.defaults)
+                    object.peerDataOperationRequestType = options.enums === String ? "UPLOAD_STICKER" : 0;
+                if (message.peerDataOperationRequestType != null && message.hasOwnProperty("peerDataOperationRequestType"))
+                    object.peerDataOperationRequestType = options.enums === String ? $root.proto.Message.PeerDataOperationRequestType[message.peerDataOperationRequestType] : message.peerDataOperationRequestType;
+                if (message.requestStickerReupload && message.requestStickerReupload.length) {
+                    object.requestStickerReupload = [];
+                    for (var j = 0; j < message.requestStickerReupload.length; ++j)
+                        object.requestStickerReupload[j] = $root.proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload.toObject(message.requestStickerReupload[j], options);
+                }
+                if (message.requestUrlPreview && message.requestUrlPreview.length) {
+                    object.requestUrlPreview = [];
+                    for (var j = 0; j < message.requestUrlPreview.length; ++j)
+                        object.requestUrlPreview[j] = $root.proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview.toObject(message.requestUrlPreview[j], options);
+                }
+                return object;
+            };
+
+            /**
+             * Converts this PeerDataOperationRequestMessage to JSON.
+             * @function toJSON
+             * @memberof proto.Message.PeerDataOperationRequestMessage
+             * @instance
+             * @returns {Object.<string,*>} JSON object
+             */
+            PeerDataOperationRequestMessage.prototype.toJSON = function toJSON() {
+                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            PeerDataOperationRequestMessage.RequestStickerReupload = (function() {
+
+                /**
+                 * Properties of a RequestStickerReupload.
+                 * @memberof proto.Message.PeerDataOperationRequestMessage
+                 * @interface IRequestStickerReupload
+                 * @property {string|null} [fileSha256] RequestStickerReupload fileSha256
+                 */
+
+                /**
+                 * Constructs a new RequestStickerReupload.
+                 * @memberof proto.Message.PeerDataOperationRequestMessage
+                 * @classdesc Represents a RequestStickerReupload.
+                 * @implements IRequestStickerReupload
+                 * @constructor
+                 * @param {proto.Message.PeerDataOperationRequestMessage.IRequestStickerReupload=} [properties] Properties to set
+                 */
+                function RequestStickerReupload(properties) {
+                    if (properties)
+                        for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                            if (properties[keys[i]] != null)
+                                this[keys[i]] = properties[keys[i]];
+                }
+
+                /**
+                 * RequestStickerReupload fileSha256.
+                 * @member {string} fileSha256
+                 * @memberof proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload
+                 * @instance
+                 */
+                RequestStickerReupload.prototype.fileSha256 = "";
+
+                /**
+                 * Creates a new RequestStickerReupload instance using the specified properties.
+                 * @function create
+                 * @memberof proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload
+                 * @static
+                 * @param {proto.Message.PeerDataOperationRequestMessage.IRequestStickerReupload=} [properties] Properties to set
+                 * @returns {proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload} RequestStickerReupload instance
+                 */
+                RequestStickerReupload.create = function create(properties) {
+                    return new RequestStickerReupload(properties);
+                };
+
+                /**
+                 * Encodes the specified RequestStickerReupload message. Does not implicitly {@link proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload.verify|verify} messages.
+                 * @function encode
+                 * @memberof proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload
+                 * @static
+                 * @param {proto.Message.PeerDataOperationRequestMessage.IRequestStickerReupload} message RequestStickerReupload message or plain object to encode
+                 * @param {$protobuf.Writer} [writer] Writer to encode to
+                 * @returns {$protobuf.Writer} Writer
+                 */
+                RequestStickerReupload.encode = function encode(message, writer) {
+                    if (!writer)
+                        writer = $Writer.create();
+                    if (message.fileSha256 != null && Object.hasOwnProperty.call(message, "fileSha256"))
+                        writer.uint32(/* id 1, wireType 2 =*/10).string(message.fileSha256);
+                    return writer;
+                };
+
+                /**
+                 * Encodes the specified RequestStickerReupload message, length delimited. Does not implicitly {@link proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload.verify|verify} messages.
+                 * @function encodeDelimited
+                 * @memberof proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload
+                 * @static
+                 * @param {proto.Message.PeerDataOperationRequestMessage.IRequestStickerReupload} message RequestStickerReupload message or plain object to encode
+                 * @param {$protobuf.Writer} [writer] Writer to encode to
+                 * @returns {$protobuf.Writer} Writer
+                 */
+                RequestStickerReupload.encodeDelimited = function encodeDelimited(message, writer) {
+                    return this.encode(message, writer).ldelim();
+                };
+
+                /**
+                 * Decodes a RequestStickerReupload message from the specified reader or buffer.
+                 * @function decode
+                 * @memberof proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload
+                 * @static
+                 * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+                 * @param {number} [length] Message length if known beforehand
+                 * @returns {proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload} RequestStickerReupload
+                 * @throws {Error} If the payload is not a reader or valid buffer
+                 * @throws {$protobuf.util.ProtocolError} If required fields are missing
+                 */
+                RequestStickerReupload.decode = function decode(reader, length) {
+                    if (!(reader instanceof $Reader))
+                        reader = $Reader.create(reader);
+                    var end = length === undefined ? reader.len : reader.pos + length, message = new $root.proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload();
+                    while (reader.pos < end) {
+                        var tag = reader.uint32();
+                        switch (tag >>> 3) {
+                        case 1:
+                            message.fileSha256 = reader.string();
+                            break;
+                        default:
+                            reader.skipType(tag & 7);
+                            break;
+                        }
+                    }
+                    return message;
+                };
+
+                /**
+                 * Decodes a RequestStickerReupload message from the specified reader or buffer, length delimited.
+                 * @function decodeDelimited
+                 * @memberof proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload
+                 * @static
+                 * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+                 * @returns {proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload} RequestStickerReupload
+                 * @throws {Error} If the payload is not a reader or valid buffer
+                 * @throws {$protobuf.util.ProtocolError} If required fields are missing
+                 */
+                RequestStickerReupload.decodeDelimited = function decodeDelimited(reader) {
+                    if (!(reader instanceof $Reader))
+                        reader = new $Reader(reader);
+                    return this.decode(reader, reader.uint32());
+                };
+
+                /**
+                 * Verifies a RequestStickerReupload message.
+                 * @function verify
+                 * @memberof proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload
+                 * @static
+                 * @param {Object.<string,*>} message Plain object to verify
+                 * @returns {string|null} `null` if valid, otherwise the reason why it is not
+                 */
+                RequestStickerReupload.verify = function verify(message) {
+                    if (typeof message !== "object" || message === null)
+                        return "object expected";
+                    if (message.fileSha256 != null && message.hasOwnProperty("fileSha256"))
+                        if (!$util.isString(message.fileSha256))
+                            return "fileSha256: string expected";
+                    return null;
+                };
+
+                /**
+                 * Creates a RequestStickerReupload message from a plain object. Also converts values to their respective internal types.
+                 * @function fromObject
+                 * @memberof proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload
+                 * @static
+                 * @param {Object.<string,*>} object Plain object
+                 * @returns {proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload} RequestStickerReupload
+                 */
+                RequestStickerReupload.fromObject = function fromObject(object) {
+                    if (object instanceof $root.proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload)
+                        return object;
+                    var message = new $root.proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload();
+                    if (object.fileSha256 != null)
+                        message.fileSha256 = String(object.fileSha256);
+                    return message;
+                };
+
+                /**
+                 * Creates a plain object from a RequestStickerReupload message. Also converts values to other types if specified.
+                 * @function toObject
+                 * @memberof proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload
+                 * @static
+                 * @param {proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload} message RequestStickerReupload
+                 * @param {$protobuf.IConversionOptions} [options] Conversion options
+                 * @returns {Object.<string,*>} Plain object
+                 */
+                RequestStickerReupload.toObject = function toObject(message, options) {
+                    if (!options)
+                        options = {};
+                    var object = {};
+                    if (options.defaults)
+                        object.fileSha256 = "";
+                    if (message.fileSha256 != null && message.hasOwnProperty("fileSha256"))
+                        object.fileSha256 = message.fileSha256;
+                    return object;
+                };
+
+                /**
+                 * Converts this RequestStickerReupload to JSON.
+                 * @function toJSON
+                 * @memberof proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload
+                 * @instance
+                 * @returns {Object.<string,*>} JSON object
+                 */
+                RequestStickerReupload.prototype.toJSON = function toJSON() {
+                    return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+                };
+
+                return RequestStickerReupload;
+            })();
+
+            PeerDataOperationRequestMessage.RequestUrlPreview = (function() {
+
+                /**
+                 * Properties of a RequestUrlPreview.
+                 * @memberof proto.Message.PeerDataOperationRequestMessage
+                 * @interface IRequestUrlPreview
+                 * @property {string|null} [url] RequestUrlPreview url
+                 */
+
+                /**
+                 * Constructs a new RequestUrlPreview.
+                 * @memberof proto.Message.PeerDataOperationRequestMessage
+                 * @classdesc Represents a RequestUrlPreview.
+                 * @implements IRequestUrlPreview
+                 * @constructor
+                 * @param {proto.Message.PeerDataOperationRequestMessage.IRequestUrlPreview=} [properties] Properties to set
+                 */
+                function RequestUrlPreview(properties) {
+                    if (properties)
+                        for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                            if (properties[keys[i]] != null)
+                                this[keys[i]] = properties[keys[i]];
+                }
+
+                /**
+                 * RequestUrlPreview url.
+                 * @member {string} url
+                 * @memberof proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview
+                 * @instance
+                 */
+                RequestUrlPreview.prototype.url = "";
+
+                /**
+                 * Creates a new RequestUrlPreview instance using the specified properties.
+                 * @function create
+                 * @memberof proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview
+                 * @static
+                 * @param {proto.Message.PeerDataOperationRequestMessage.IRequestUrlPreview=} [properties] Properties to set
+                 * @returns {proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview} RequestUrlPreview instance
+                 */
+                RequestUrlPreview.create = function create(properties) {
+                    return new RequestUrlPreview(properties);
+                };
+
+                /**
+                 * Encodes the specified RequestUrlPreview message. Does not implicitly {@link proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview.verify|verify} messages.
+                 * @function encode
+                 * @memberof proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview
+                 * @static
+                 * @param {proto.Message.PeerDataOperationRequestMessage.IRequestUrlPreview} message RequestUrlPreview message or plain object to encode
+                 * @param {$protobuf.Writer} [writer] Writer to encode to
+                 * @returns {$protobuf.Writer} Writer
+                 */
+                RequestUrlPreview.encode = function encode(message, writer) {
+                    if (!writer)
+                        writer = $Writer.create();
+                    if (message.url != null && Object.hasOwnProperty.call(message, "url"))
+                        writer.uint32(/* id 1, wireType 2 =*/10).string(message.url);
+                    return writer;
+                };
+
+                /**
+                 * Encodes the specified RequestUrlPreview message, length delimited. Does not implicitly {@link proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview.verify|verify} messages.
+                 * @function encodeDelimited
+                 * @memberof proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview
+                 * @static
+                 * @param {proto.Message.PeerDataOperationRequestMessage.IRequestUrlPreview} message RequestUrlPreview message or plain object to encode
+                 * @param {$protobuf.Writer} [writer] Writer to encode to
+                 * @returns {$protobuf.Writer} Writer
+                 */
+                RequestUrlPreview.encodeDelimited = function encodeDelimited(message, writer) {
+                    return this.encode(message, writer).ldelim();
+                };
+
+                /**
+                 * Decodes a RequestUrlPreview message from the specified reader or buffer.
+                 * @function decode
+                 * @memberof proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview
+                 * @static
+                 * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+                 * @param {number} [length] Message length if known beforehand
+                 * @returns {proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview} RequestUrlPreview
+                 * @throws {Error} If the payload is not a reader or valid buffer
+                 * @throws {$protobuf.util.ProtocolError} If required fields are missing
+                 */
+                RequestUrlPreview.decode = function decode(reader, length) {
+                    if (!(reader instanceof $Reader))
+                        reader = $Reader.create(reader);
+                    var end = length === undefined ? reader.len : reader.pos + length, message = new $root.proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview();
+                    while (reader.pos < end) {
+                        var tag = reader.uint32();
+                        switch (tag >>> 3) {
+                        case 1:
+                            message.url = reader.string();
+                            break;
+                        default:
+                            reader.skipType(tag & 7);
+                            break;
+                        }
+                    }
+                    return message;
+                };
+
+                /**
+                 * Decodes a RequestUrlPreview message from the specified reader or buffer, length delimited.
+                 * @function decodeDelimited
+                 * @memberof proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview
+                 * @static
+                 * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+                 * @returns {proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview} RequestUrlPreview
+                 * @throws {Error} If the payload is not a reader or valid buffer
+                 * @throws {$protobuf.util.ProtocolError} If required fields are missing
+                 */
+                RequestUrlPreview.decodeDelimited = function decodeDelimited(reader) {
+                    if (!(reader instanceof $Reader))
+                        reader = new $Reader(reader);
+                    return this.decode(reader, reader.uint32());
+                };
+
+                /**
+                 * Verifies a RequestUrlPreview message.
+                 * @function verify
+                 * @memberof proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview
+                 * @static
+                 * @param {Object.<string,*>} message Plain object to verify
+                 * @returns {string|null} `null` if valid, otherwise the reason why it is not
+                 */
+                RequestUrlPreview.verify = function verify(message) {
+                    if (typeof message !== "object" || message === null)
+                        return "object expected";
+                    if (message.url != null && message.hasOwnProperty("url"))
+                        if (!$util.isString(message.url))
+                            return "url: string expected";
+                    return null;
+                };
+
+                /**
+                 * Creates a RequestUrlPreview message from a plain object. Also converts values to their respective internal types.
+                 * @function fromObject
+                 * @memberof proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview
+                 * @static
+                 * @param {Object.<string,*>} object Plain object
+                 * @returns {proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview} RequestUrlPreview
+                 */
+                RequestUrlPreview.fromObject = function fromObject(object) {
+                    if (object instanceof $root.proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview)
+                        return object;
+                    var message = new $root.proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview();
+                    if (object.url != null)
+                        message.url = String(object.url);
+                    return message;
+                };
+
+                /**
+                 * Creates a plain object from a RequestUrlPreview message. Also converts values to other types if specified.
+                 * @function toObject
+                 * @memberof proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview
+                 * @static
+                 * @param {proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview} message RequestUrlPreview
+                 * @param {$protobuf.IConversionOptions} [options] Conversion options
+                 * @returns {Object.<string,*>} Plain object
+                 */
+                RequestUrlPreview.toObject = function toObject(message, options) {
+                    if (!options)
+                        options = {};
+                    var object = {};
+                    if (options.defaults)
+                        object.url = "";
+                    if (message.url != null && message.hasOwnProperty("url"))
+                        object.url = message.url;
+                    return object;
+                };
+
+                /**
+                 * Converts this RequestUrlPreview to JSON.
+                 * @function toJSON
+                 * @memberof proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview
+                 * @instance
+                 * @returns {Object.<string,*>} JSON object
+                 */
+                RequestUrlPreview.prototype.toJSON = function toJSON() {
+                    return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+                };
+
+                return RequestUrlPreview;
+            })();
+
+            return PeerDataOperationRequestMessage;
+        })();
+
+        Message.PeerDataOperationRequestResponseMessage = (function() {
+
+            /**
+             * Properties of a PeerDataOperationRequestResponseMessage.
+             * @memberof proto.Message
+             * @interface IPeerDataOperationRequestResponseMessage
+             * @property {proto.Message.PeerDataOperationRequestType|null} [peerDataOperationRequestType] PeerDataOperationRequestResponseMessage peerDataOperationRequestType
+             * @property {string|null} [stanzaId] PeerDataOperationRequestResponseMessage stanzaId
+             * @property {Array.<proto.Message.PeerDataOperationRequestResponseMessage.IPeerDataOperationResult>|null} [peerDataOperationResult] PeerDataOperationRequestResponseMessage peerDataOperationResult
+             */
+
+            /**
+             * Constructs a new PeerDataOperationRequestResponseMessage.
+             * @memberof proto.Message
+             * @classdesc Represents a PeerDataOperationRequestResponseMessage.
+             * @implements IPeerDataOperationRequestResponseMessage
+             * @constructor
+             * @param {proto.Message.IPeerDataOperationRequestResponseMessage=} [properties] Properties to set
+             */
+            function PeerDataOperationRequestResponseMessage(properties) {
+                this.peerDataOperationResult = [];
+                if (properties)
+                    for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                        if (properties[keys[i]] != null)
+                            this[keys[i]] = properties[keys[i]];
+            }
+
+            /**
+             * PeerDataOperationRequestResponseMessage peerDataOperationRequestType.
+             * @member {proto.Message.PeerDataOperationRequestType} peerDataOperationRequestType
+             * @memberof proto.Message.PeerDataOperationRequestResponseMessage
+             * @instance
+             */
+            PeerDataOperationRequestResponseMessage.prototype.peerDataOperationRequestType = 0;
+
+            /**
+             * PeerDataOperationRequestResponseMessage stanzaId.
+             * @member {string} stanzaId
+             * @memberof proto.Message.PeerDataOperationRequestResponseMessage
+             * @instance
+             */
+            PeerDataOperationRequestResponseMessage.prototype.stanzaId = "";
+
+            /**
+             * PeerDataOperationRequestResponseMessage peerDataOperationResult.
+             * @member {Array.<proto.Message.PeerDataOperationRequestResponseMessage.IPeerDataOperationResult>} peerDataOperationResult
+             * @memberof proto.Message.PeerDataOperationRequestResponseMessage
+             * @instance
+             */
+            PeerDataOperationRequestResponseMessage.prototype.peerDataOperationResult = $util.emptyArray;
+
+            /**
+             * Creates a new PeerDataOperationRequestResponseMessage instance using the specified properties.
+             * @function create
+             * @memberof proto.Message.PeerDataOperationRequestResponseMessage
+             * @static
+             * @param {proto.Message.IPeerDataOperationRequestResponseMessage=} [properties] Properties to set
+             * @returns {proto.Message.PeerDataOperationRequestResponseMessage} PeerDataOperationRequestResponseMessage instance
+             */
+            PeerDataOperationRequestResponseMessage.create = function create(properties) {
+                return new PeerDataOperationRequestResponseMessage(properties);
+            };
+
+            /**
+             * Encodes the specified PeerDataOperationRequestResponseMessage message. Does not implicitly {@link proto.Message.PeerDataOperationRequestResponseMessage.verify|verify} messages.
+             * @function encode
+             * @memberof proto.Message.PeerDataOperationRequestResponseMessage
+             * @static
+             * @param {proto.Message.IPeerDataOperationRequestResponseMessage} message PeerDataOperationRequestResponseMessage message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            PeerDataOperationRequestResponseMessage.encode = function encode(message, writer) {
+                if (!writer)
+                    writer = $Writer.create();
+                if (message.peerDataOperationRequestType != null && Object.hasOwnProperty.call(message, "peerDataOperationRequestType"))
+                    writer.uint32(/* id 1, wireType 0 =*/8).int32(message.peerDataOperationRequestType);
+                if (message.stanzaId != null && Object.hasOwnProperty.call(message, "stanzaId"))
+                    writer.uint32(/* id 2, wireType 2 =*/18).string(message.stanzaId);
+                if (message.peerDataOperationResult != null && message.peerDataOperationResult.length)
+                    for (var i = 0; i < message.peerDataOperationResult.length; ++i)
+                        $root.proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.encode(message.peerDataOperationResult[i], writer.uint32(/* id 3, wireType 2 =*/26).fork()).ldelim();
+                return writer;
+            };
+
+            /**
+             * Encodes the specified PeerDataOperationRequestResponseMessage message, length delimited. Does not implicitly {@link proto.Message.PeerDataOperationRequestResponseMessage.verify|verify} messages.
+             * @function encodeDelimited
+             * @memberof proto.Message.PeerDataOperationRequestResponseMessage
+             * @static
+             * @param {proto.Message.IPeerDataOperationRequestResponseMessage} message PeerDataOperationRequestResponseMessage message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            PeerDataOperationRequestResponseMessage.encodeDelimited = function encodeDelimited(message, writer) {
+                return this.encode(message, writer).ldelim();
+            };
+
+            /**
+             * Decodes a PeerDataOperationRequestResponseMessage message from the specified reader or buffer.
+             * @function decode
+             * @memberof proto.Message.PeerDataOperationRequestResponseMessage
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @param {number} [length] Message length if known beforehand
+             * @returns {proto.Message.PeerDataOperationRequestResponseMessage} PeerDataOperationRequestResponseMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            PeerDataOperationRequestResponseMessage.decode = function decode(reader, length) {
+                if (!(reader instanceof $Reader))
+                    reader = $Reader.create(reader);
+                var end = length === undefined ? reader.len : reader.pos + length, message = new $root.proto.Message.PeerDataOperationRequestResponseMessage();
+                while (reader.pos < end) {
+                    var tag = reader.uint32();
+                    switch (tag >>> 3) {
+                    case 1:
+                        message.peerDataOperationRequestType = reader.int32();
+                        break;
+                    case 2:
+                        message.stanzaId = reader.string();
+                        break;
+                    case 3:
+                        if (!(message.peerDataOperationResult && message.peerDataOperationResult.length))
+                            message.peerDataOperationResult = [];
+                        message.peerDataOperationResult.push($root.proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.decode(reader, reader.uint32()));
+                        break;
+                    default:
+                        reader.skipType(tag & 7);
+                        break;
+                    }
+                }
+                return message;
+            };
+
+            /**
+             * Decodes a PeerDataOperationRequestResponseMessage message from the specified reader or buffer, length delimited.
+             * @function decodeDelimited
+             * @memberof proto.Message.PeerDataOperationRequestResponseMessage
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @returns {proto.Message.PeerDataOperationRequestResponseMessage} PeerDataOperationRequestResponseMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            PeerDataOperationRequestResponseMessage.decodeDelimited = function decodeDelimited(reader) {
+                if (!(reader instanceof $Reader))
+                    reader = new $Reader(reader);
+                return this.decode(reader, reader.uint32());
+            };
+
+            /**
+             * Verifies a PeerDataOperationRequestResponseMessage message.
+             * @function verify
+             * @memberof proto.Message.PeerDataOperationRequestResponseMessage
+             * @static
+             * @param {Object.<string,*>} message Plain object to verify
+             * @returns {string|null} `null` if valid, otherwise the reason why it is not
+             */
+            PeerDataOperationRequestResponseMessage.verify = function verify(message) {
+                if (typeof message !== "object" || message === null)
+                    return "object expected";
+                if (message.peerDataOperationRequestType != null && message.hasOwnProperty("peerDataOperationRequestType"))
+                    switch (message.peerDataOperationRequestType) {
+                    default:
+                        return "peerDataOperationRequestType: enum value expected";
+                    case 0:
+                    case 1:
+                    case 2:
+                        break;
+                    }
+                if (message.stanzaId != null && message.hasOwnProperty("stanzaId"))
+                    if (!$util.isString(message.stanzaId))
+                        return "stanzaId: string expected";
+                if (message.peerDataOperationResult != null && message.hasOwnProperty("peerDataOperationResult")) {
+                    if (!Array.isArray(message.peerDataOperationResult))
+                        return "peerDataOperationResult: array expected";
+                    for (var i = 0; i < message.peerDataOperationResult.length; ++i) {
+                        var error = $root.proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.verify(message.peerDataOperationResult[i]);
+                        if (error)
+                            return "peerDataOperationResult." + error;
+                    }
+                }
+                return null;
+            };
+
+            /**
+             * Creates a PeerDataOperationRequestResponseMessage message from a plain object. Also converts values to their respective internal types.
+             * @function fromObject
+             * @memberof proto.Message.PeerDataOperationRequestResponseMessage
+             * @static
+             * @param {Object.<string,*>} object Plain object
+             * @returns {proto.Message.PeerDataOperationRequestResponseMessage} PeerDataOperationRequestResponseMessage
+             */
+            PeerDataOperationRequestResponseMessage.fromObject = function fromObject(object) {
+                if (object instanceof $root.proto.Message.PeerDataOperationRequestResponseMessage)
+                    return object;
+                var message = new $root.proto.Message.PeerDataOperationRequestResponseMessage();
+                switch (object.peerDataOperationRequestType) {
+                case "UPLOAD_STICKER":
+                case 0:
+                    message.peerDataOperationRequestType = 0;
+                    break;
+                case "SEND_RECENT_STICKER_BOOTSTRAP":
+                case 1:
+                    message.peerDataOperationRequestType = 1;
+                    break;
+                case "GENERATE_LINK_PREVIEW":
+                case 2:
+                    message.peerDataOperationRequestType = 2;
+                    break;
+                }
+                if (object.stanzaId != null)
+                    message.stanzaId = String(object.stanzaId);
+                if (object.peerDataOperationResult) {
+                    if (!Array.isArray(object.peerDataOperationResult))
+                        throw TypeError(".proto.Message.PeerDataOperationRequestResponseMessage.peerDataOperationResult: array expected");
+                    message.peerDataOperationResult = [];
+                    for (var i = 0; i < object.peerDataOperationResult.length; ++i) {
+                        if (typeof object.peerDataOperationResult[i] !== "object")
+                            throw TypeError(".proto.Message.PeerDataOperationRequestResponseMessage.peerDataOperationResult: object expected");
+                        message.peerDataOperationResult[i] = $root.proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.fromObject(object.peerDataOperationResult[i]);
+                    }
+                }
+                return message;
+            };
+
+            /**
+             * Creates a plain object from a PeerDataOperationRequestResponseMessage message. Also converts values to other types if specified.
+             * @function toObject
+             * @memberof proto.Message.PeerDataOperationRequestResponseMessage
+             * @static
+             * @param {proto.Message.PeerDataOperationRequestResponseMessage} message PeerDataOperationRequestResponseMessage
+             * @param {$protobuf.IConversionOptions} [options] Conversion options
+             * @returns {Object.<string,*>} Plain object
+             */
+            PeerDataOperationRequestResponseMessage.toObject = function toObject(message, options) {
+                if (!options)
+                    options = {};
+                var object = {};
+                if (options.arrays || options.defaults)
+                    object.peerDataOperationResult = [];
+                if (options.defaults) {
+                    object.peerDataOperationRequestType = options.enums === String ? "UPLOAD_STICKER" : 0;
+                    object.stanzaId = "";
+                }
+                if (message.peerDataOperationRequestType != null && message.hasOwnProperty("peerDataOperationRequestType"))
+                    object.peerDataOperationRequestType = options.enums === String ? $root.proto.Message.PeerDataOperationRequestType[message.peerDataOperationRequestType] : message.peerDataOperationRequestType;
+                if (message.stanzaId != null && message.hasOwnProperty("stanzaId"))
+                    object.stanzaId = message.stanzaId;
+                if (message.peerDataOperationResult && message.peerDataOperationResult.length) {
+                    object.peerDataOperationResult = [];
+                    for (var j = 0; j < message.peerDataOperationResult.length; ++j)
+                        object.peerDataOperationResult[j] = $root.proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.toObject(message.peerDataOperationResult[j], options);
+                }
+                return object;
+            };
+
+            /**
+             * Converts this PeerDataOperationRequestResponseMessage to JSON.
+             * @function toJSON
+             * @memberof proto.Message.PeerDataOperationRequestResponseMessage
+             * @instance
+             * @returns {Object.<string,*>} JSON object
+             */
+            PeerDataOperationRequestResponseMessage.prototype.toJSON = function toJSON() {
+                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            PeerDataOperationRequestResponseMessage.PeerDataOperationResult = (function() {
+
+                /**
+                 * Properties of a PeerDataOperationResult.
+                 * @memberof proto.Message.PeerDataOperationRequestResponseMessage
+                 * @interface IPeerDataOperationResult
+                 * @property {proto.MediaRetryNotification.ResultType|null} [mediaUploadResult] PeerDataOperationResult mediaUploadResult
+                 * @property {proto.Message.IStickerMessage|null} [stickerMessage] PeerDataOperationResult stickerMessage
+                 * @property {proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ILinkPreviewResponse|null} [linkPreviewResponse] PeerDataOperationResult linkPreviewResponse
+                 */
+
+                /**
+                 * Constructs a new PeerDataOperationResult.
+                 * @memberof proto.Message.PeerDataOperationRequestResponseMessage
+                 * @classdesc Represents a PeerDataOperationResult.
+                 * @implements IPeerDataOperationResult
+                 * @constructor
+                 * @param {proto.Message.PeerDataOperationRequestResponseMessage.IPeerDataOperationResult=} [properties] Properties to set
+                 */
+                function PeerDataOperationResult(properties) {
+                    if (properties)
+                        for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                            if (properties[keys[i]] != null)
+                                this[keys[i]] = properties[keys[i]];
+                }
+
+                /**
+                 * PeerDataOperationResult mediaUploadResult.
+                 * @member {proto.MediaRetryNotification.ResultType} mediaUploadResult
+                 * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult
+                 * @instance
+                 */
+                PeerDataOperationResult.prototype.mediaUploadResult = 0;
+
+                /**
+                 * PeerDataOperationResult stickerMessage.
+                 * @member {proto.Message.IStickerMessage|null|undefined} stickerMessage
+                 * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult
+                 * @instance
+                 */
+                PeerDataOperationResult.prototype.stickerMessage = null;
+
+                /**
+                 * PeerDataOperationResult linkPreviewResponse.
+                 * @member {proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ILinkPreviewResponse|null|undefined} linkPreviewResponse
+                 * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult
+                 * @instance
+                 */
+                PeerDataOperationResult.prototype.linkPreviewResponse = null;
+
+                /**
+                 * Creates a new PeerDataOperationResult instance using the specified properties.
+                 * @function create
+                 * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult
+                 * @static
+                 * @param {proto.Message.PeerDataOperationRequestResponseMessage.IPeerDataOperationResult=} [properties] Properties to set
+                 * @returns {proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult} PeerDataOperationResult instance
+                 */
+                PeerDataOperationResult.create = function create(properties) {
+                    return new PeerDataOperationResult(properties);
+                };
+
+                /**
+                 * Encodes the specified PeerDataOperationResult message. Does not implicitly {@link proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.verify|verify} messages.
+                 * @function encode
+                 * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult
+                 * @static
+                 * @param {proto.Message.PeerDataOperationRequestResponseMessage.IPeerDataOperationResult} message PeerDataOperationResult message or plain object to encode
+                 * @param {$protobuf.Writer} [writer] Writer to encode to
+                 * @returns {$protobuf.Writer} Writer
+                 */
+                PeerDataOperationResult.encode = function encode(message, writer) {
+                    if (!writer)
+                        writer = $Writer.create();
+                    if (message.mediaUploadResult != null && Object.hasOwnProperty.call(message, "mediaUploadResult"))
+                        writer.uint32(/* id 1, wireType 0 =*/8).int32(message.mediaUploadResult);
+                    if (message.stickerMessage != null && Object.hasOwnProperty.call(message, "stickerMessage"))
+                        $root.proto.Message.StickerMessage.encode(message.stickerMessage, writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim();
+                    if (message.linkPreviewResponse != null && Object.hasOwnProperty.call(message, "linkPreviewResponse"))
+                        $root.proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse.encode(message.linkPreviewResponse, writer.uint32(/* id 3, wireType 2 =*/26).fork()).ldelim();
+                    return writer;
+                };
+
+                /**
+                 * Encodes the specified PeerDataOperationResult message, length delimited. Does not implicitly {@link proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.verify|verify} messages.
+                 * @function encodeDelimited
+                 * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult
+                 * @static
+                 * @param {proto.Message.PeerDataOperationRequestResponseMessage.IPeerDataOperationResult} message PeerDataOperationResult message or plain object to encode
+                 * @param {$protobuf.Writer} [writer] Writer to encode to
+                 * @returns {$protobuf.Writer} Writer
+                 */
+                PeerDataOperationResult.encodeDelimited = function encodeDelimited(message, writer) {
+                    return this.encode(message, writer).ldelim();
+                };
+
+                /**
+                 * Decodes a PeerDataOperationResult message from the specified reader or buffer.
+                 * @function decode
+                 * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult
+                 * @static
+                 * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+                 * @param {number} [length] Message length if known beforehand
+                 * @returns {proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult} PeerDataOperationResult
+                 * @throws {Error} If the payload is not a reader or valid buffer
+                 * @throws {$protobuf.util.ProtocolError} If required fields are missing
+                 */
+                PeerDataOperationResult.decode = function decode(reader, length) {
+                    if (!(reader instanceof $Reader))
+                        reader = $Reader.create(reader);
+                    var end = length === undefined ? reader.len : reader.pos + length, message = new $root.proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult();
+                    while (reader.pos < end) {
+                        var tag = reader.uint32();
+                        switch (tag >>> 3) {
+                        case 1:
+                            message.mediaUploadResult = reader.int32();
+                            break;
+                        case 2:
+                            message.stickerMessage = $root.proto.Message.StickerMessage.decode(reader, reader.uint32());
+                            break;
+                        case 3:
+                            message.linkPreviewResponse = $root.proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse.decode(reader, reader.uint32());
+                            break;
+                        default:
+                            reader.skipType(tag & 7);
+                            break;
+                        }
+                    }
+                    return message;
+                };
+
+                /**
+                 * Decodes a PeerDataOperationResult message from the specified reader or buffer, length delimited.
+                 * @function decodeDelimited
+                 * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult
+                 * @static
+                 * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+                 * @returns {proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult} PeerDataOperationResult
+                 * @throws {Error} If the payload is not a reader or valid buffer
+                 * @throws {$protobuf.util.ProtocolError} If required fields are missing
+                 */
+                PeerDataOperationResult.decodeDelimited = function decodeDelimited(reader) {
+                    if (!(reader instanceof $Reader))
+                        reader = new $Reader(reader);
+                    return this.decode(reader, reader.uint32());
+                };
+
+                /**
+                 * Verifies a PeerDataOperationResult message.
+                 * @function verify
+                 * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult
+                 * @static
+                 * @param {Object.<string,*>} message Plain object to verify
+                 * @returns {string|null} `null` if valid, otherwise the reason why it is not
+                 */
+                PeerDataOperationResult.verify = function verify(message) {
+                    if (typeof message !== "object" || message === null)
+                        return "object expected";
+                    if (message.mediaUploadResult != null && message.hasOwnProperty("mediaUploadResult"))
+                        switch (message.mediaUploadResult) {
+                        default:
+                            return "mediaUploadResult: enum value expected";
+                        case 0:
+                        case 1:
+                        case 2:
+                        case 3:
+                            break;
+                        }
+                    if (message.stickerMessage != null && message.hasOwnProperty("stickerMessage")) {
+                        var error = $root.proto.Message.StickerMessage.verify(message.stickerMessage);
+                        if (error)
+                            return "stickerMessage." + error;
+                    }
+                    if (message.linkPreviewResponse != null && message.hasOwnProperty("linkPreviewResponse")) {
+                        var error = $root.proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse.verify(message.linkPreviewResponse);
+                        if (error)
+                            return "linkPreviewResponse." + error;
+                    }
+                    return null;
+                };
+
+                /**
+                 * Creates a PeerDataOperationResult message from a plain object. Also converts values to their respective internal types.
+                 * @function fromObject
+                 * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult
+                 * @static
+                 * @param {Object.<string,*>} object Plain object
+                 * @returns {proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult} PeerDataOperationResult
+                 */
+                PeerDataOperationResult.fromObject = function fromObject(object) {
+                    if (object instanceof $root.proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult)
+                        return object;
+                    var message = new $root.proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult();
+                    switch (object.mediaUploadResult) {
+                    case "GENERAL_ERROR":
+                    case 0:
+                        message.mediaUploadResult = 0;
+                        break;
+                    case "SUCCESS":
+                    case 1:
+                        message.mediaUploadResult = 1;
+                        break;
+                    case "NOT_FOUND":
+                    case 2:
+                        message.mediaUploadResult = 2;
+                        break;
+                    case "DECRYPTION_ERROR":
+                    case 3:
+                        message.mediaUploadResult = 3;
+                        break;
+                    }
+                    if (object.stickerMessage != null) {
+                        if (typeof object.stickerMessage !== "object")
+                            throw TypeError(".proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.stickerMessage: object expected");
+                        message.stickerMessage = $root.proto.Message.StickerMessage.fromObject(object.stickerMessage);
+                    }
+                    if (object.linkPreviewResponse != null) {
+                        if (typeof object.linkPreviewResponse !== "object")
+                            throw TypeError(".proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.linkPreviewResponse: object expected");
+                        message.linkPreviewResponse = $root.proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse.fromObject(object.linkPreviewResponse);
+                    }
+                    return message;
+                };
+
+                /**
+                 * Creates a plain object from a PeerDataOperationResult message. Also converts values to other types if specified.
+                 * @function toObject
+                 * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult
+                 * @static
+                 * @param {proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult} message PeerDataOperationResult
+                 * @param {$protobuf.IConversionOptions} [options] Conversion options
+                 * @returns {Object.<string,*>} Plain object
+                 */
+                PeerDataOperationResult.toObject = function toObject(message, options) {
+                    if (!options)
+                        options = {};
+                    var object = {};
+                    if (options.defaults) {
+                        object.mediaUploadResult = options.enums === String ? "GENERAL_ERROR" : 0;
+                        object.stickerMessage = null;
+                        object.linkPreviewResponse = null;
+                    }
+                    if (message.mediaUploadResult != null && message.hasOwnProperty("mediaUploadResult"))
+                        object.mediaUploadResult = options.enums === String ? $root.proto.MediaRetryNotification.ResultType[message.mediaUploadResult] : message.mediaUploadResult;
+                    if (message.stickerMessage != null && message.hasOwnProperty("stickerMessage"))
+                        object.stickerMessage = $root.proto.Message.StickerMessage.toObject(message.stickerMessage, options);
+                    if (message.linkPreviewResponse != null && message.hasOwnProperty("linkPreviewResponse"))
+                        object.linkPreviewResponse = $root.proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse.toObject(message.linkPreviewResponse, options);
+                    return object;
+                };
+
+                /**
+                 * Converts this PeerDataOperationResult to JSON.
+                 * @function toJSON
+                 * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult
+                 * @instance
+                 * @returns {Object.<string,*>} JSON object
+                 */
+                PeerDataOperationResult.prototype.toJSON = function toJSON() {
+                    return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+                };
+
+                PeerDataOperationResult.LinkPreviewResponse = (function() {
+
+                    /**
+                     * Properties of a LinkPreviewResponse.
+                     * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult
+                     * @interface ILinkPreviewResponse
+                     * @property {string|null} [url] LinkPreviewResponse url
+                     * @property {string|null} [title] LinkPreviewResponse title
+                     * @property {string|null} [description] LinkPreviewResponse description
+                     * @property {Uint8Array|null} [thumbData] LinkPreviewResponse thumbData
+                     * @property {string|null} [canonicalUrl] LinkPreviewResponse canonicalUrl
+                     * @property {string|null} [matchText] LinkPreviewResponse matchText
+                     * @property {string|null} [previewType] LinkPreviewResponse previewType
+                     */
+
+                    /**
+                     * Constructs a new LinkPreviewResponse.
+                     * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult
+                     * @classdesc Represents a LinkPreviewResponse.
+                     * @implements ILinkPreviewResponse
+                     * @constructor
+                     * @param {proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ILinkPreviewResponse=} [properties] Properties to set
+                     */
+                    function LinkPreviewResponse(properties) {
+                        if (properties)
+                            for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                                if (properties[keys[i]] != null)
+                                    this[keys[i]] = properties[keys[i]];
+                    }
+
+                    /**
+                     * LinkPreviewResponse url.
+                     * @member {string} url
+                     * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse
+                     * @instance
+                     */
+                    LinkPreviewResponse.prototype.url = "";
+
+                    /**
+                     * LinkPreviewResponse title.
+                     * @member {string} title
+                     * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse
+                     * @instance
+                     */
+                    LinkPreviewResponse.prototype.title = "";
+
+                    /**
+                     * LinkPreviewResponse description.
+                     * @member {string} description
+                     * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse
+                     * @instance
+                     */
+                    LinkPreviewResponse.prototype.description = "";
+
+                    /**
+                     * LinkPreviewResponse thumbData.
+                     * @member {Uint8Array} thumbData
+                     * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse
+                     * @instance
+                     */
+                    LinkPreviewResponse.prototype.thumbData = $util.newBuffer([]);
+
+                    /**
+                     * LinkPreviewResponse canonicalUrl.
+                     * @member {string} canonicalUrl
+                     * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse
+                     * @instance
+                     */
+                    LinkPreviewResponse.prototype.canonicalUrl = "";
+
+                    /**
+                     * LinkPreviewResponse matchText.
+                     * @member {string} matchText
+                     * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse
+                     * @instance
+                     */
+                    LinkPreviewResponse.prototype.matchText = "";
+
+                    /**
+                     * LinkPreviewResponse previewType.
+                     * @member {string} previewType
+                     * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse
+                     * @instance
+                     */
+                    LinkPreviewResponse.prototype.previewType = "";
+
+                    /**
+                     * Creates a new LinkPreviewResponse instance using the specified properties.
+                     * @function create
+                     * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse
+                     * @static
+                     * @param {proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ILinkPreviewResponse=} [properties] Properties to set
+                     * @returns {proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse} LinkPreviewResponse instance
+                     */
+                    LinkPreviewResponse.create = function create(properties) {
+                        return new LinkPreviewResponse(properties);
+                    };
+
+                    /**
+                     * Encodes the specified LinkPreviewResponse message. Does not implicitly {@link proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse.verify|verify} messages.
+                     * @function encode
+                     * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse
+                     * @static
+                     * @param {proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ILinkPreviewResponse} message LinkPreviewResponse message or plain object to encode
+                     * @param {$protobuf.Writer} [writer] Writer to encode to
+                     * @returns {$protobuf.Writer} Writer
+                     */
+                    LinkPreviewResponse.encode = function encode(message, writer) {
+                        if (!writer)
+                            writer = $Writer.create();
+                        if (message.url != null && Object.hasOwnProperty.call(message, "url"))
+                            writer.uint32(/* id 1, wireType 2 =*/10).string(message.url);
+                        if (message.title != null && Object.hasOwnProperty.call(message, "title"))
+                            writer.uint32(/* id 2, wireType 2 =*/18).string(message.title);
+                        if (message.description != null && Object.hasOwnProperty.call(message, "description"))
+                            writer.uint32(/* id 3, wireType 2 =*/26).string(message.description);
+                        if (message.thumbData != null && Object.hasOwnProperty.call(message, "thumbData"))
+                            writer.uint32(/* id 4, wireType 2 =*/34).bytes(message.thumbData);
+                        if (message.canonicalUrl != null && Object.hasOwnProperty.call(message, "canonicalUrl"))
+                            writer.uint32(/* id 5, wireType 2 =*/42).string(message.canonicalUrl);
+                        if (message.matchText != null && Object.hasOwnProperty.call(message, "matchText"))
+                            writer.uint32(/* id 6, wireType 2 =*/50).string(message.matchText);
+                        if (message.previewType != null && Object.hasOwnProperty.call(message, "previewType"))
+                            writer.uint32(/* id 7, wireType 2 =*/58).string(message.previewType);
+                        return writer;
+                    };
+
+                    /**
+                     * Encodes the specified LinkPreviewResponse message, length delimited. Does not implicitly {@link proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse.verify|verify} messages.
+                     * @function encodeDelimited
+                     * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse
+                     * @static
+                     * @param {proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ILinkPreviewResponse} message LinkPreviewResponse message or plain object to encode
+                     * @param {$protobuf.Writer} [writer] Writer to encode to
+                     * @returns {$protobuf.Writer} Writer
+                     */
+                    LinkPreviewResponse.encodeDelimited = function encodeDelimited(message, writer) {
+                        return this.encode(message, writer).ldelim();
+                    };
+
+                    /**
+                     * Decodes a LinkPreviewResponse message from the specified reader or buffer.
+                     * @function decode
+                     * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse
+                     * @static
+                     * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+                     * @param {number} [length] Message length if known beforehand
+                     * @returns {proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse} LinkPreviewResponse
+                     * @throws {Error} If the payload is not a reader or valid buffer
+                     * @throws {$protobuf.util.ProtocolError} If required fields are missing
+                     */
+                    LinkPreviewResponse.decode = function decode(reader, length) {
+                        if (!(reader instanceof $Reader))
+                            reader = $Reader.create(reader);
+                        var end = length === undefined ? reader.len : reader.pos + length, message = new $root.proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse();
+                        while (reader.pos < end) {
+                            var tag = reader.uint32();
+                            switch (tag >>> 3) {
+                            case 1:
+                                message.url = reader.string();
+                                break;
+                            case 2:
+                                message.title = reader.string();
+                                break;
+                            case 3:
+                                message.description = reader.string();
+                                break;
+                            case 4:
+                                message.thumbData = reader.bytes();
+                                break;
+                            case 5:
+                                message.canonicalUrl = reader.string();
+                                break;
+                            case 6:
+                                message.matchText = reader.string();
+                                break;
+                            case 7:
+                                message.previewType = reader.string();
+                                break;
+                            default:
+                                reader.skipType(tag & 7);
+                                break;
+                            }
+                        }
+                        return message;
+                    };
+
+                    /**
+                     * Decodes a LinkPreviewResponse message from the specified reader or buffer, length delimited.
+                     * @function decodeDelimited
+                     * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse
+                     * @static
+                     * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+                     * @returns {proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse} LinkPreviewResponse
+                     * @throws {Error} If the payload is not a reader or valid buffer
+                     * @throws {$protobuf.util.ProtocolError} If required fields are missing
+                     */
+                    LinkPreviewResponse.decodeDelimited = function decodeDelimited(reader) {
+                        if (!(reader instanceof $Reader))
+                            reader = new $Reader(reader);
+                        return this.decode(reader, reader.uint32());
+                    };
+
+                    /**
+                     * Verifies a LinkPreviewResponse message.
+                     * @function verify
+                     * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse
+                     * @static
+                     * @param {Object.<string,*>} message Plain object to verify
+                     * @returns {string|null} `null` if valid, otherwise the reason why it is not
+                     */
+                    LinkPreviewResponse.verify = function verify(message) {
+                        if (typeof message !== "object" || message === null)
+                            return "object expected";
+                        if (message.url != null && message.hasOwnProperty("url"))
+                            if (!$util.isString(message.url))
+                                return "url: string expected";
+                        if (message.title != null && message.hasOwnProperty("title"))
+                            if (!$util.isString(message.title))
+                                return "title: string expected";
+                        if (message.description != null && message.hasOwnProperty("description"))
+                            if (!$util.isString(message.description))
+                                return "description: string expected";
+                        if (message.thumbData != null && message.hasOwnProperty("thumbData"))
+                            if (!(message.thumbData && typeof message.thumbData.length === "number" || $util.isString(message.thumbData)))
+                                return "thumbData: buffer expected";
+                        if (message.canonicalUrl != null && message.hasOwnProperty("canonicalUrl"))
+                            if (!$util.isString(message.canonicalUrl))
+                                return "canonicalUrl: string expected";
+                        if (message.matchText != null && message.hasOwnProperty("matchText"))
+                            if (!$util.isString(message.matchText))
+                                return "matchText: string expected";
+                        if (message.previewType != null && message.hasOwnProperty("previewType"))
+                            if (!$util.isString(message.previewType))
+                                return "previewType: string expected";
+                        return null;
+                    };
+
+                    /**
+                     * Creates a LinkPreviewResponse message from a plain object. Also converts values to their respective internal types.
+                     * @function fromObject
+                     * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse
+                     * @static
+                     * @param {Object.<string,*>} object Plain object
+                     * @returns {proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse} LinkPreviewResponse
+                     */
+                    LinkPreviewResponse.fromObject = function fromObject(object) {
+                        if (object instanceof $root.proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse)
+                            return object;
+                        var message = new $root.proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse();
+                        if (object.url != null)
+                            message.url = String(object.url);
+                        if (object.title != null)
+                            message.title = String(object.title);
+                        if (object.description != null)
+                            message.description = String(object.description);
+                        if (object.thumbData != null)
+                            if (typeof object.thumbData === "string")
+                                $util.base64.decode(object.thumbData, message.thumbData = $util.newBuffer($util.base64.length(object.thumbData)), 0);
+                            else if (object.thumbData.length)
+                                message.thumbData = object.thumbData;
+                        if (object.canonicalUrl != null)
+                            message.canonicalUrl = String(object.canonicalUrl);
+                        if (object.matchText != null)
+                            message.matchText = String(object.matchText);
+                        if (object.previewType != null)
+                            message.previewType = String(object.previewType);
+                        return message;
+                    };
+
+                    /**
+                     * Creates a plain object from a LinkPreviewResponse message. Also converts values to other types if specified.
+                     * @function toObject
+                     * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse
+                     * @static
+                     * @param {proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse} message LinkPreviewResponse
+                     * @param {$protobuf.IConversionOptions} [options] Conversion options
+                     * @returns {Object.<string,*>} Plain object
+                     */
+                    LinkPreviewResponse.toObject = function toObject(message, options) {
+                        if (!options)
+                            options = {};
+                        var object = {};
+                        if (options.defaults) {
+                            object.url = "";
+                            object.title = "";
+                            object.description = "";
+                            if (options.bytes === String)
+                                object.thumbData = "";
+                            else {
+                                object.thumbData = [];
+                                if (options.bytes !== Array)
+                                    object.thumbData = $util.newBuffer(object.thumbData);
+                            }
+                            object.canonicalUrl = "";
+                            object.matchText = "";
+                            object.previewType = "";
+                        }
+                        if (message.url != null && message.hasOwnProperty("url"))
+                            object.url = message.url;
+                        if (message.title != null && message.hasOwnProperty("title"))
+                            object.title = message.title;
+                        if (message.description != null && message.hasOwnProperty("description"))
+                            object.description = message.description;
+                        if (message.thumbData != null && message.hasOwnProperty("thumbData"))
+                            object.thumbData = options.bytes === String ? $util.base64.encode(message.thumbData, 0, message.thumbData.length) : options.bytes === Array ? Array.prototype.slice.call(message.thumbData) : message.thumbData;
+                        if (message.canonicalUrl != null && message.hasOwnProperty("canonicalUrl"))
+                            object.canonicalUrl = message.canonicalUrl;
+                        if (message.matchText != null && message.hasOwnProperty("matchText"))
+                            object.matchText = message.matchText;
+                        if (message.previewType != null && message.hasOwnProperty("previewType"))
+                            object.previewType = message.previewType;
+                        return object;
+                    };
+
+                    /**
+                     * Converts this LinkPreviewResponse to JSON.
+                     * @function toJSON
+                     * @memberof proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse
+                     * @instance
+                     * @returns {Object.<string,*>} JSON object
+                     */
+                    LinkPreviewResponse.prototype.toJSON = function toJSON() {
+                        return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+                    };
+
+                    return LinkPreviewResponse;
+                })();
+
+                return PeerDataOperationResult;
+            })();
+
+            return PeerDataOperationRequestResponseMessage;
+        })();
+
+        /**
+         * PeerDataOperationRequestType enum.
+         * @name proto.Message.PeerDataOperationRequestType
+         * @enum {number}
+         * @property {number} UPLOAD_STICKER=0 UPLOAD_STICKER value
+         * @property {number} SEND_RECENT_STICKER_BOOTSTRAP=1 SEND_RECENT_STICKER_BOOTSTRAP value
+         * @property {number} GENERATE_LINK_PREVIEW=2 GENERATE_LINK_PREVIEW value
+         */
+        Message.PeerDataOperationRequestType = (function() {
+            var valuesById = {}, values = Object.create(valuesById);
+            values[valuesById[0] = "UPLOAD_STICKER"] = 0;
+            values[valuesById[1] = "SEND_RECENT_STICKER_BOOTSTRAP"] = 1;
+            values[valuesById[2] = "GENERATE_LINK_PREVIEW"] = 2;
+            return values;
+        })();
+
         Message.PollCreationMessage = (function() {
 
             /**
@@ -40025,8 +41882,10 @@ $root.proto = (function() {
              * @property {proto.Message.IInitialSecurityNotificationSettingSync|null} [initialSecurityNotificationSettingSync] ProtocolMessage initialSecurityNotificationSettingSync
              * @property {proto.Message.IAppStateFatalExceptionNotification|null} [appStateFatalExceptionNotification] ProtocolMessage appStateFatalExceptionNotification
              * @property {proto.IDisappearingMode|null} [disappearingMode] ProtocolMessage disappearingMode
-             * @property {proto.Message.IRequestMediaUploadMessage|null} [requestMediaUploadMessage] ProtocolMessage requestMediaUploadMessage
-             * @property {proto.Message.IRequestMediaUploadResponseMessage|null} [requestMediaUploadResponseMessage] ProtocolMessage requestMediaUploadResponseMessage
+             * @property {proto.IMessage|null} [editedMessage] ProtocolMessage editedMessage
+             * @property {number|Long|null} [timestampMs] ProtocolMessage timestampMs
+             * @property {proto.Message.IPeerDataOperationRequestMessage|null} [peerDataOperationRequestMessage] ProtocolMessage peerDataOperationRequestMessage
+             * @property {proto.Message.IPeerDataOperationRequestResponseMessage|null} [peerDataOperationRequestResponseMessage] ProtocolMessage peerDataOperationRequestResponseMessage
              */
 
             /**
@@ -40125,20 +41984,36 @@ $root.proto = (function() {
             ProtocolMessage.prototype.disappearingMode = null;
 
             /**
-             * ProtocolMessage requestMediaUploadMessage.
-             * @member {proto.Message.IRequestMediaUploadMessage|null|undefined} requestMediaUploadMessage
+             * ProtocolMessage editedMessage.
+             * @member {proto.IMessage|null|undefined} editedMessage
              * @memberof proto.Message.ProtocolMessage
              * @instance
              */
-            ProtocolMessage.prototype.requestMediaUploadMessage = null;
+            ProtocolMessage.prototype.editedMessage = null;
 
             /**
-             * ProtocolMessage requestMediaUploadResponseMessage.
-             * @member {proto.Message.IRequestMediaUploadResponseMessage|null|undefined} requestMediaUploadResponseMessage
+             * ProtocolMessage timestampMs.
+             * @member {number|Long} timestampMs
              * @memberof proto.Message.ProtocolMessage
              * @instance
              */
-            ProtocolMessage.prototype.requestMediaUploadResponseMessage = null;
+            ProtocolMessage.prototype.timestampMs = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+
+            /**
+             * ProtocolMessage peerDataOperationRequestMessage.
+             * @member {proto.Message.IPeerDataOperationRequestMessage|null|undefined} peerDataOperationRequestMessage
+             * @memberof proto.Message.ProtocolMessage
+             * @instance
+             */
+            ProtocolMessage.prototype.peerDataOperationRequestMessage = null;
+
+            /**
+             * ProtocolMessage peerDataOperationRequestResponseMessage.
+             * @member {proto.Message.IPeerDataOperationRequestResponseMessage|null|undefined} peerDataOperationRequestResponseMessage
+             * @memberof proto.Message.ProtocolMessage
+             * @instance
+             */
+            ProtocolMessage.prototype.peerDataOperationRequestResponseMessage = null;
 
             /**
              * Creates a new ProtocolMessage instance using the specified properties.
@@ -40184,10 +42059,14 @@ $root.proto = (function() {
                     $root.proto.Message.AppStateFatalExceptionNotification.encode(message.appStateFatalExceptionNotification, writer.uint32(/* id 10, wireType 2 =*/82).fork()).ldelim();
                 if (message.disappearingMode != null && Object.hasOwnProperty.call(message, "disappearingMode"))
                     $root.proto.DisappearingMode.encode(message.disappearingMode, writer.uint32(/* id 11, wireType 2 =*/90).fork()).ldelim();
-                if (message.requestMediaUploadMessage != null && Object.hasOwnProperty.call(message, "requestMediaUploadMessage"))
-                    $root.proto.Message.RequestMediaUploadMessage.encode(message.requestMediaUploadMessage, writer.uint32(/* id 12, wireType 2 =*/98).fork()).ldelim();
-                if (message.requestMediaUploadResponseMessage != null && Object.hasOwnProperty.call(message, "requestMediaUploadResponseMessage"))
-                    $root.proto.Message.RequestMediaUploadResponseMessage.encode(message.requestMediaUploadResponseMessage, writer.uint32(/* id 13, wireType 2 =*/106).fork()).ldelim();
+                if (message.editedMessage != null && Object.hasOwnProperty.call(message, "editedMessage"))
+                    $root.proto.Message.encode(message.editedMessage, writer.uint32(/* id 14, wireType 2 =*/114).fork()).ldelim();
+                if (message.timestampMs != null && Object.hasOwnProperty.call(message, "timestampMs"))
+                    writer.uint32(/* id 15, wireType 0 =*/120).int64(message.timestampMs);
+                if (message.peerDataOperationRequestMessage != null && Object.hasOwnProperty.call(message, "peerDataOperationRequestMessage"))
+                    $root.proto.Message.PeerDataOperationRequestMessage.encode(message.peerDataOperationRequestMessage, writer.uint32(/* id 16, wireType 2 =*/130).fork()).ldelim();
+                if (message.peerDataOperationRequestResponseMessage != null && Object.hasOwnProperty.call(message, "peerDataOperationRequestResponseMessage"))
+                    $root.proto.Message.PeerDataOperationRequestResponseMessage.encode(message.peerDataOperationRequestResponseMessage, writer.uint32(/* id 17, wireType 2 =*/138).fork()).ldelim();
                 return writer;
             };
 
@@ -40252,11 +42131,17 @@ $root.proto = (function() {
                     case 11:
                         message.disappearingMode = $root.proto.DisappearingMode.decode(reader, reader.uint32());
                         break;
-                    case 12:
-                        message.requestMediaUploadMessage = $root.proto.Message.RequestMediaUploadMessage.decode(reader, reader.uint32());
+                    case 14:
+                        message.editedMessage = $root.proto.Message.decode(reader, reader.uint32());
                         break;
-                    case 13:
-                        message.requestMediaUploadResponseMessage = $root.proto.Message.RequestMediaUploadResponseMessage.decode(reader, reader.uint32());
+                    case 15:
+                        message.timestampMs = reader.int64();
+                        break;
+                    case 16:
+                        message.peerDataOperationRequestMessage = $root.proto.Message.PeerDataOperationRequestMessage.decode(reader, reader.uint32());
+                        break;
+                    case 17:
+                        message.peerDataOperationRequestResponseMessage = $root.proto.Message.PeerDataOperationRequestResponseMessage.decode(reader, reader.uint32());
                         break;
                     default:
                         reader.skipType(tag & 7);
@@ -40312,8 +42197,9 @@ $root.proto = (function() {
                     case 9:
                     case 10:
                     case 11:
-                    case 12:
-                    case 13:
+                    case 14:
+                    case 16:
+                    case 17:
                         break;
                     }
                 if (message.ephemeralExpiration != null && message.hasOwnProperty("ephemeralExpiration"))
@@ -40352,15 +42238,23 @@ $root.proto = (function() {
                     if (error)
                         return "disappearingMode." + error;
                 }
-                if (message.requestMediaUploadMessage != null && message.hasOwnProperty("requestMediaUploadMessage")) {
-                    var error = $root.proto.Message.RequestMediaUploadMessage.verify(message.requestMediaUploadMessage);
+                if (message.editedMessage != null && message.hasOwnProperty("editedMessage")) {
+                    var error = $root.proto.Message.verify(message.editedMessage);
                     if (error)
-                        return "requestMediaUploadMessage." + error;
+                        return "editedMessage." + error;
                 }
-                if (message.requestMediaUploadResponseMessage != null && message.hasOwnProperty("requestMediaUploadResponseMessage")) {
-                    var error = $root.proto.Message.RequestMediaUploadResponseMessage.verify(message.requestMediaUploadResponseMessage);
+                if (message.timestampMs != null && message.hasOwnProperty("timestampMs"))
+                    if (!$util.isInteger(message.timestampMs) && !(message.timestampMs && $util.isInteger(message.timestampMs.low) && $util.isInteger(message.timestampMs.high)))
+                        return "timestampMs: integer|Long expected";
+                if (message.peerDataOperationRequestMessage != null && message.hasOwnProperty("peerDataOperationRequestMessage")) {
+                    var error = $root.proto.Message.PeerDataOperationRequestMessage.verify(message.peerDataOperationRequestMessage);
                     if (error)
-                        return "requestMediaUploadResponseMessage." + error;
+                        return "peerDataOperationRequestMessage." + error;
+                }
+                if (message.peerDataOperationRequestResponseMessage != null && message.hasOwnProperty("peerDataOperationRequestResponseMessage")) {
+                    var error = $root.proto.Message.PeerDataOperationRequestResponseMessage.verify(message.peerDataOperationRequestResponseMessage);
+                    if (error)
+                        return "peerDataOperationRequestResponseMessage." + error;
                 }
                 return null;
             };
@@ -40423,13 +42317,17 @@ $root.proto = (function() {
                 case 11:
                     message.type = 11;
                     break;
-                case "REQUEST_MEDIA_UPLOAD_MESSAGE":
-                case 12:
-                    message.type = 12;
+                case "MESSAGE_EDIT":
+                case 14:
+                    message.type = 14;
                     break;
-                case "REQUEST_MEDIA_UPLOAD_RESPONSE_MESSAGE":
-                case 13:
-                    message.type = 13;
+                case "PEER_DATA_OPERATION_REQUEST_MESSAGE":
+                case 16:
+                    message.type = 16;
+                    break;
+                case "PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE":
+                case 17:
+                    message.type = 17;
                     break;
                 }
                 if (object.ephemeralExpiration != null)
@@ -40473,15 +42371,29 @@ $root.proto = (function() {
                         throw TypeError(".proto.Message.ProtocolMessage.disappearingMode: object expected");
                     message.disappearingMode = $root.proto.DisappearingMode.fromObject(object.disappearingMode);
                 }
-                if (object.requestMediaUploadMessage != null) {
-                    if (typeof object.requestMediaUploadMessage !== "object")
-                        throw TypeError(".proto.Message.ProtocolMessage.requestMediaUploadMessage: object expected");
-                    message.requestMediaUploadMessage = $root.proto.Message.RequestMediaUploadMessage.fromObject(object.requestMediaUploadMessage);
+                if (object.editedMessage != null) {
+                    if (typeof object.editedMessage !== "object")
+                        throw TypeError(".proto.Message.ProtocolMessage.editedMessage: object expected");
+                    message.editedMessage = $root.proto.Message.fromObject(object.editedMessage);
                 }
-                if (object.requestMediaUploadResponseMessage != null) {
-                    if (typeof object.requestMediaUploadResponseMessage !== "object")
-                        throw TypeError(".proto.Message.ProtocolMessage.requestMediaUploadResponseMessage: object expected");
-                    message.requestMediaUploadResponseMessage = $root.proto.Message.RequestMediaUploadResponseMessage.fromObject(object.requestMediaUploadResponseMessage);
+                if (object.timestampMs != null)
+                    if ($util.Long)
+                        (message.timestampMs = $util.Long.fromValue(object.timestampMs)).unsigned = false;
+                    else if (typeof object.timestampMs === "string")
+                        message.timestampMs = parseInt(object.timestampMs, 10);
+                    else if (typeof object.timestampMs === "number")
+                        message.timestampMs = object.timestampMs;
+                    else if (typeof object.timestampMs === "object")
+                        message.timestampMs = new $util.LongBits(object.timestampMs.low >>> 0, object.timestampMs.high >>> 0).toNumber();
+                if (object.peerDataOperationRequestMessage != null) {
+                    if (typeof object.peerDataOperationRequestMessage !== "object")
+                        throw TypeError(".proto.Message.ProtocolMessage.peerDataOperationRequestMessage: object expected");
+                    message.peerDataOperationRequestMessage = $root.proto.Message.PeerDataOperationRequestMessage.fromObject(object.peerDataOperationRequestMessage);
+                }
+                if (object.peerDataOperationRequestResponseMessage != null) {
+                    if (typeof object.peerDataOperationRequestResponseMessage !== "object")
+                        throw TypeError(".proto.Message.ProtocolMessage.peerDataOperationRequestResponseMessage: object expected");
+                    message.peerDataOperationRequestResponseMessage = $root.proto.Message.PeerDataOperationRequestResponseMessage.fromObject(object.peerDataOperationRequestResponseMessage);
                 }
                 return message;
             };
@@ -40514,8 +42426,14 @@ $root.proto = (function() {
                     object.initialSecurityNotificationSettingSync = null;
                     object.appStateFatalExceptionNotification = null;
                     object.disappearingMode = null;
-                    object.requestMediaUploadMessage = null;
-                    object.requestMediaUploadResponseMessage = null;
+                    object.editedMessage = null;
+                    if ($util.Long) {
+                        var long = new $util.Long(0, 0, false);
+                        object.timestampMs = options.longs === String ? long.toString() : options.longs === Number ? long.toNumber() : long;
+                    } else
+                        object.timestampMs = options.longs === String ? "0" : 0;
+                    object.peerDataOperationRequestMessage = null;
+                    object.peerDataOperationRequestResponseMessage = null;
                 }
                 if (message.key != null && message.hasOwnProperty("key"))
                     object.key = $root.proto.MessageKey.toObject(message.key, options);
@@ -40540,10 +42458,17 @@ $root.proto = (function() {
                     object.appStateFatalExceptionNotification = $root.proto.Message.AppStateFatalExceptionNotification.toObject(message.appStateFatalExceptionNotification, options);
                 if (message.disappearingMode != null && message.hasOwnProperty("disappearingMode"))
                     object.disappearingMode = $root.proto.DisappearingMode.toObject(message.disappearingMode, options);
-                if (message.requestMediaUploadMessage != null && message.hasOwnProperty("requestMediaUploadMessage"))
-                    object.requestMediaUploadMessage = $root.proto.Message.RequestMediaUploadMessage.toObject(message.requestMediaUploadMessage, options);
-                if (message.requestMediaUploadResponseMessage != null && message.hasOwnProperty("requestMediaUploadResponseMessage"))
-                    object.requestMediaUploadResponseMessage = $root.proto.Message.RequestMediaUploadResponseMessage.toObject(message.requestMediaUploadResponseMessage, options);
+                if (message.editedMessage != null && message.hasOwnProperty("editedMessage"))
+                    object.editedMessage = $root.proto.Message.toObject(message.editedMessage, options);
+                if (message.timestampMs != null && message.hasOwnProperty("timestampMs"))
+                    if (typeof message.timestampMs === "number")
+                        object.timestampMs = options.longs === String ? String(message.timestampMs) : message.timestampMs;
+                    else
+                        object.timestampMs = options.longs === String ? $util.Long.prototype.toString.call(message.timestampMs) : options.longs === Number ? new $util.LongBits(message.timestampMs.low >>> 0, message.timestampMs.high >>> 0).toNumber() : message.timestampMs;
+                if (message.peerDataOperationRequestMessage != null && message.hasOwnProperty("peerDataOperationRequestMessage"))
+                    object.peerDataOperationRequestMessage = $root.proto.Message.PeerDataOperationRequestMessage.toObject(message.peerDataOperationRequestMessage, options);
+                if (message.peerDataOperationRequestResponseMessage != null && message.hasOwnProperty("peerDataOperationRequestResponseMessage"))
+                    object.peerDataOperationRequestResponseMessage = $root.proto.Message.PeerDataOperationRequestResponseMessage.toObject(message.peerDataOperationRequestResponseMessage, options);
                 return object;
             };
 
@@ -40572,8 +42497,9 @@ $root.proto = (function() {
              * @property {number} INITIAL_SECURITY_NOTIFICATION_SETTING_SYNC=9 INITIAL_SECURITY_NOTIFICATION_SETTING_SYNC value
              * @property {number} APP_STATE_FATAL_EXCEPTION_NOTIFICATION=10 APP_STATE_FATAL_EXCEPTION_NOTIFICATION value
              * @property {number} SHARE_PHONE_NUMBER=11 SHARE_PHONE_NUMBER value
-             * @property {number} REQUEST_MEDIA_UPLOAD_MESSAGE=12 REQUEST_MEDIA_UPLOAD_MESSAGE value
-             * @property {number} REQUEST_MEDIA_UPLOAD_RESPONSE_MESSAGE=13 REQUEST_MEDIA_UPLOAD_RESPONSE_MESSAGE value
+             * @property {number} MESSAGE_EDIT=14 MESSAGE_EDIT value
+             * @property {number} PEER_DATA_OPERATION_REQUEST_MESSAGE=16 PEER_DATA_OPERATION_REQUEST_MESSAGE value
+             * @property {number} PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE=17 PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE value
              */
             ProtocolMessage.Type = (function() {
                 var valuesById = {}, values = Object.create(valuesById);
@@ -40587,8 +42513,9 @@ $root.proto = (function() {
                 values[valuesById[9] = "INITIAL_SECURITY_NOTIFICATION_SETTING_SYNC"] = 9;
                 values[valuesById[10] = "APP_STATE_FATAL_EXCEPTION_NOTIFICATION"] = 10;
                 values[valuesById[11] = "SHARE_PHONE_NUMBER"] = 11;
-                values[valuesById[12] = "REQUEST_MEDIA_UPLOAD_MESSAGE"] = 12;
-                values[valuesById[13] = "REQUEST_MEDIA_UPLOAD_RESPONSE_MESSAGE"] = 13;
+                values[valuesById[14] = "MESSAGE_EDIT"] = 14;
+                values[valuesById[16] = "PEER_DATA_OPERATION_REQUEST_MESSAGE"] = 16;
+                values[valuesById[17] = "PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE"] = 17;
                 return values;
             })();
 
@@ -40866,782 +42793,6 @@ $root.proto = (function() {
             };
 
             return ReactionMessage;
-        })();
-
-        Message.RequestMediaUploadMessage = (function() {
-
-            /**
-             * Properties of a RequestMediaUploadMessage.
-             * @memberof proto.Message
-             * @interface IRequestMediaUploadMessage
-             * @property {Array.<string>|null} [fileSha256] RequestMediaUploadMessage fileSha256
-             * @property {proto.Message.RmrSource|null} [rmrSource] RequestMediaUploadMessage rmrSource
-             */
-
-            /**
-             * Constructs a new RequestMediaUploadMessage.
-             * @memberof proto.Message
-             * @classdesc Represents a RequestMediaUploadMessage.
-             * @implements IRequestMediaUploadMessage
-             * @constructor
-             * @param {proto.Message.IRequestMediaUploadMessage=} [properties] Properties to set
-             */
-            function RequestMediaUploadMessage(properties) {
-                this.fileSha256 = [];
-                if (properties)
-                    for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
-                        if (properties[keys[i]] != null)
-                            this[keys[i]] = properties[keys[i]];
-            }
-
-            /**
-             * RequestMediaUploadMessage fileSha256.
-             * @member {Array.<string>} fileSha256
-             * @memberof proto.Message.RequestMediaUploadMessage
-             * @instance
-             */
-            RequestMediaUploadMessage.prototype.fileSha256 = $util.emptyArray;
-
-            /**
-             * RequestMediaUploadMessage rmrSource.
-             * @member {proto.Message.RmrSource} rmrSource
-             * @memberof proto.Message.RequestMediaUploadMessage
-             * @instance
-             */
-            RequestMediaUploadMessage.prototype.rmrSource = 0;
-
-            /**
-             * Creates a new RequestMediaUploadMessage instance using the specified properties.
-             * @function create
-             * @memberof proto.Message.RequestMediaUploadMessage
-             * @static
-             * @param {proto.Message.IRequestMediaUploadMessage=} [properties] Properties to set
-             * @returns {proto.Message.RequestMediaUploadMessage} RequestMediaUploadMessage instance
-             */
-            RequestMediaUploadMessage.create = function create(properties) {
-                return new RequestMediaUploadMessage(properties);
-            };
-
-            /**
-             * Encodes the specified RequestMediaUploadMessage message. Does not implicitly {@link proto.Message.RequestMediaUploadMessage.verify|verify} messages.
-             * @function encode
-             * @memberof proto.Message.RequestMediaUploadMessage
-             * @static
-             * @param {proto.Message.IRequestMediaUploadMessage} message RequestMediaUploadMessage message or plain object to encode
-             * @param {$protobuf.Writer} [writer] Writer to encode to
-             * @returns {$protobuf.Writer} Writer
-             */
-            RequestMediaUploadMessage.encode = function encode(message, writer) {
-                if (!writer)
-                    writer = $Writer.create();
-                if (message.fileSha256 != null && message.fileSha256.length)
-                    for (var i = 0; i < message.fileSha256.length; ++i)
-                        writer.uint32(/* id 1, wireType 2 =*/10).string(message.fileSha256[i]);
-                if (message.rmrSource != null && Object.hasOwnProperty.call(message, "rmrSource"))
-                    writer.uint32(/* id 2, wireType 0 =*/16).int32(message.rmrSource);
-                return writer;
-            };
-
-            /**
-             * Encodes the specified RequestMediaUploadMessage message, length delimited. Does not implicitly {@link proto.Message.RequestMediaUploadMessage.verify|verify} messages.
-             * @function encodeDelimited
-             * @memberof proto.Message.RequestMediaUploadMessage
-             * @static
-             * @param {proto.Message.IRequestMediaUploadMessage} message RequestMediaUploadMessage message or plain object to encode
-             * @param {$protobuf.Writer} [writer] Writer to encode to
-             * @returns {$protobuf.Writer} Writer
-             */
-            RequestMediaUploadMessage.encodeDelimited = function encodeDelimited(message, writer) {
-                return this.encode(message, writer).ldelim();
-            };
-
-            /**
-             * Decodes a RequestMediaUploadMessage message from the specified reader or buffer.
-             * @function decode
-             * @memberof proto.Message.RequestMediaUploadMessage
-             * @static
-             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-             * @param {number} [length] Message length if known beforehand
-             * @returns {proto.Message.RequestMediaUploadMessage} RequestMediaUploadMessage
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            RequestMediaUploadMessage.decode = function decode(reader, length) {
-                if (!(reader instanceof $Reader))
-                    reader = $Reader.create(reader);
-                var end = length === undefined ? reader.len : reader.pos + length, message = new $root.proto.Message.RequestMediaUploadMessage();
-                while (reader.pos < end) {
-                    var tag = reader.uint32();
-                    switch (tag >>> 3) {
-                    case 1:
-                        if (!(message.fileSha256 && message.fileSha256.length))
-                            message.fileSha256 = [];
-                        message.fileSha256.push(reader.string());
-                        break;
-                    case 2:
-                        message.rmrSource = reader.int32();
-                        break;
-                    default:
-                        reader.skipType(tag & 7);
-                        break;
-                    }
-                }
-                return message;
-            };
-
-            /**
-             * Decodes a RequestMediaUploadMessage message from the specified reader or buffer, length delimited.
-             * @function decodeDelimited
-             * @memberof proto.Message.RequestMediaUploadMessage
-             * @static
-             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-             * @returns {proto.Message.RequestMediaUploadMessage} RequestMediaUploadMessage
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            RequestMediaUploadMessage.decodeDelimited = function decodeDelimited(reader) {
-                if (!(reader instanceof $Reader))
-                    reader = new $Reader(reader);
-                return this.decode(reader, reader.uint32());
-            };
-
-            /**
-             * Verifies a RequestMediaUploadMessage message.
-             * @function verify
-             * @memberof proto.Message.RequestMediaUploadMessage
-             * @static
-             * @param {Object.<string,*>} message Plain object to verify
-             * @returns {string|null} `null` if valid, otherwise the reason why it is not
-             */
-            RequestMediaUploadMessage.verify = function verify(message) {
-                if (typeof message !== "object" || message === null)
-                    return "object expected";
-                if (message.fileSha256 != null && message.hasOwnProperty("fileSha256")) {
-                    if (!Array.isArray(message.fileSha256))
-                        return "fileSha256: array expected";
-                    for (var i = 0; i < message.fileSha256.length; ++i)
-                        if (!$util.isString(message.fileSha256[i]))
-                            return "fileSha256: string[] expected";
-                }
-                if (message.rmrSource != null && message.hasOwnProperty("rmrSource"))
-                    switch (message.rmrSource) {
-                    default:
-                        return "rmrSource: enum value expected";
-                    case 0:
-                    case 1:
-                    case 2:
-                        break;
-                    }
-                return null;
-            };
-
-            /**
-             * Creates a RequestMediaUploadMessage message from a plain object. Also converts values to their respective internal types.
-             * @function fromObject
-             * @memberof proto.Message.RequestMediaUploadMessage
-             * @static
-             * @param {Object.<string,*>} object Plain object
-             * @returns {proto.Message.RequestMediaUploadMessage} RequestMediaUploadMessage
-             */
-            RequestMediaUploadMessage.fromObject = function fromObject(object) {
-                if (object instanceof $root.proto.Message.RequestMediaUploadMessage)
-                    return object;
-                var message = new $root.proto.Message.RequestMediaUploadMessage();
-                if (object.fileSha256) {
-                    if (!Array.isArray(object.fileSha256))
-                        throw TypeError(".proto.Message.RequestMediaUploadMessage.fileSha256: array expected");
-                    message.fileSha256 = [];
-                    for (var i = 0; i < object.fileSha256.length; ++i)
-                        message.fileSha256[i] = String(object.fileSha256[i]);
-                }
-                switch (object.rmrSource) {
-                case "FAVORITE_STICKER":
-                case 0:
-                    message.rmrSource = 0;
-                    break;
-                case "RECENT_STICKER":
-                case 1:
-                    message.rmrSource = 1;
-                    break;
-                case "RECENT_STICKER_INIT":
-                case 2:
-                    message.rmrSource = 2;
-                    break;
-                }
-                return message;
-            };
-
-            /**
-             * Creates a plain object from a RequestMediaUploadMessage message. Also converts values to other types if specified.
-             * @function toObject
-             * @memberof proto.Message.RequestMediaUploadMessage
-             * @static
-             * @param {proto.Message.RequestMediaUploadMessage} message RequestMediaUploadMessage
-             * @param {$protobuf.IConversionOptions} [options] Conversion options
-             * @returns {Object.<string,*>} Plain object
-             */
-            RequestMediaUploadMessage.toObject = function toObject(message, options) {
-                if (!options)
-                    options = {};
-                var object = {};
-                if (options.arrays || options.defaults)
-                    object.fileSha256 = [];
-                if (options.defaults)
-                    object.rmrSource = options.enums === String ? "FAVORITE_STICKER" : 0;
-                if (message.fileSha256 && message.fileSha256.length) {
-                    object.fileSha256 = [];
-                    for (var j = 0; j < message.fileSha256.length; ++j)
-                        object.fileSha256[j] = message.fileSha256[j];
-                }
-                if (message.rmrSource != null && message.hasOwnProperty("rmrSource"))
-                    object.rmrSource = options.enums === String ? $root.proto.Message.RmrSource[message.rmrSource] : message.rmrSource;
-                return object;
-            };
-
-            /**
-             * Converts this RequestMediaUploadMessage to JSON.
-             * @function toJSON
-             * @memberof proto.Message.RequestMediaUploadMessage
-             * @instance
-             * @returns {Object.<string,*>} JSON object
-             */
-            RequestMediaUploadMessage.prototype.toJSON = function toJSON() {
-                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
-            };
-
-            return RequestMediaUploadMessage;
-        })();
-
-        Message.RequestMediaUploadResponseMessage = (function() {
-
-            /**
-             * Properties of a RequestMediaUploadResponseMessage.
-             * @memberof proto.Message
-             * @interface IRequestMediaUploadResponseMessage
-             * @property {proto.Message.RmrSource|null} [rmrSource] RequestMediaUploadResponseMessage rmrSource
-             * @property {string|null} [stanzaId] RequestMediaUploadResponseMessage stanzaId
-             * @property {Array.<proto.Message.RequestMediaUploadResponseMessage.IRequestMediaUploadResult>|null} [reuploadResult] RequestMediaUploadResponseMessage reuploadResult
-             */
-
-            /**
-             * Constructs a new RequestMediaUploadResponseMessage.
-             * @memberof proto.Message
-             * @classdesc Represents a RequestMediaUploadResponseMessage.
-             * @implements IRequestMediaUploadResponseMessage
-             * @constructor
-             * @param {proto.Message.IRequestMediaUploadResponseMessage=} [properties] Properties to set
-             */
-            function RequestMediaUploadResponseMessage(properties) {
-                this.reuploadResult = [];
-                if (properties)
-                    for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
-                        if (properties[keys[i]] != null)
-                            this[keys[i]] = properties[keys[i]];
-            }
-
-            /**
-             * RequestMediaUploadResponseMessage rmrSource.
-             * @member {proto.Message.RmrSource} rmrSource
-             * @memberof proto.Message.RequestMediaUploadResponseMessage
-             * @instance
-             */
-            RequestMediaUploadResponseMessage.prototype.rmrSource = 0;
-
-            /**
-             * RequestMediaUploadResponseMessage stanzaId.
-             * @member {string} stanzaId
-             * @memberof proto.Message.RequestMediaUploadResponseMessage
-             * @instance
-             */
-            RequestMediaUploadResponseMessage.prototype.stanzaId = "";
-
-            /**
-             * RequestMediaUploadResponseMessage reuploadResult.
-             * @member {Array.<proto.Message.RequestMediaUploadResponseMessage.IRequestMediaUploadResult>} reuploadResult
-             * @memberof proto.Message.RequestMediaUploadResponseMessage
-             * @instance
-             */
-            RequestMediaUploadResponseMessage.prototype.reuploadResult = $util.emptyArray;
-
-            /**
-             * Creates a new RequestMediaUploadResponseMessage instance using the specified properties.
-             * @function create
-             * @memberof proto.Message.RequestMediaUploadResponseMessage
-             * @static
-             * @param {proto.Message.IRequestMediaUploadResponseMessage=} [properties] Properties to set
-             * @returns {proto.Message.RequestMediaUploadResponseMessage} RequestMediaUploadResponseMessage instance
-             */
-            RequestMediaUploadResponseMessage.create = function create(properties) {
-                return new RequestMediaUploadResponseMessage(properties);
-            };
-
-            /**
-             * Encodes the specified RequestMediaUploadResponseMessage message. Does not implicitly {@link proto.Message.RequestMediaUploadResponseMessage.verify|verify} messages.
-             * @function encode
-             * @memberof proto.Message.RequestMediaUploadResponseMessage
-             * @static
-             * @param {proto.Message.IRequestMediaUploadResponseMessage} message RequestMediaUploadResponseMessage message or plain object to encode
-             * @param {$protobuf.Writer} [writer] Writer to encode to
-             * @returns {$protobuf.Writer} Writer
-             */
-            RequestMediaUploadResponseMessage.encode = function encode(message, writer) {
-                if (!writer)
-                    writer = $Writer.create();
-                if (message.rmrSource != null && Object.hasOwnProperty.call(message, "rmrSource"))
-                    writer.uint32(/* id 1, wireType 0 =*/8).int32(message.rmrSource);
-                if (message.stanzaId != null && Object.hasOwnProperty.call(message, "stanzaId"))
-                    writer.uint32(/* id 2, wireType 2 =*/18).string(message.stanzaId);
-                if (message.reuploadResult != null && message.reuploadResult.length)
-                    for (var i = 0; i < message.reuploadResult.length; ++i)
-                        $root.proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult.encode(message.reuploadResult[i], writer.uint32(/* id 3, wireType 2 =*/26).fork()).ldelim();
-                return writer;
-            };
-
-            /**
-             * Encodes the specified RequestMediaUploadResponseMessage message, length delimited. Does not implicitly {@link proto.Message.RequestMediaUploadResponseMessage.verify|verify} messages.
-             * @function encodeDelimited
-             * @memberof proto.Message.RequestMediaUploadResponseMessage
-             * @static
-             * @param {proto.Message.IRequestMediaUploadResponseMessage} message RequestMediaUploadResponseMessage message or plain object to encode
-             * @param {$protobuf.Writer} [writer] Writer to encode to
-             * @returns {$protobuf.Writer} Writer
-             */
-            RequestMediaUploadResponseMessage.encodeDelimited = function encodeDelimited(message, writer) {
-                return this.encode(message, writer).ldelim();
-            };
-
-            /**
-             * Decodes a RequestMediaUploadResponseMessage message from the specified reader or buffer.
-             * @function decode
-             * @memberof proto.Message.RequestMediaUploadResponseMessage
-             * @static
-             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-             * @param {number} [length] Message length if known beforehand
-             * @returns {proto.Message.RequestMediaUploadResponseMessage} RequestMediaUploadResponseMessage
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            RequestMediaUploadResponseMessage.decode = function decode(reader, length) {
-                if (!(reader instanceof $Reader))
-                    reader = $Reader.create(reader);
-                var end = length === undefined ? reader.len : reader.pos + length, message = new $root.proto.Message.RequestMediaUploadResponseMessage();
-                while (reader.pos < end) {
-                    var tag = reader.uint32();
-                    switch (tag >>> 3) {
-                    case 1:
-                        message.rmrSource = reader.int32();
-                        break;
-                    case 2:
-                        message.stanzaId = reader.string();
-                        break;
-                    case 3:
-                        if (!(message.reuploadResult && message.reuploadResult.length))
-                            message.reuploadResult = [];
-                        message.reuploadResult.push($root.proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult.decode(reader, reader.uint32()));
-                        break;
-                    default:
-                        reader.skipType(tag & 7);
-                        break;
-                    }
-                }
-                return message;
-            };
-
-            /**
-             * Decodes a RequestMediaUploadResponseMessage message from the specified reader or buffer, length delimited.
-             * @function decodeDelimited
-             * @memberof proto.Message.RequestMediaUploadResponseMessage
-             * @static
-             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-             * @returns {proto.Message.RequestMediaUploadResponseMessage} RequestMediaUploadResponseMessage
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            RequestMediaUploadResponseMessage.decodeDelimited = function decodeDelimited(reader) {
-                if (!(reader instanceof $Reader))
-                    reader = new $Reader(reader);
-                return this.decode(reader, reader.uint32());
-            };
-
-            /**
-             * Verifies a RequestMediaUploadResponseMessage message.
-             * @function verify
-             * @memberof proto.Message.RequestMediaUploadResponseMessage
-             * @static
-             * @param {Object.<string,*>} message Plain object to verify
-             * @returns {string|null} `null` if valid, otherwise the reason why it is not
-             */
-            RequestMediaUploadResponseMessage.verify = function verify(message) {
-                if (typeof message !== "object" || message === null)
-                    return "object expected";
-                if (message.rmrSource != null && message.hasOwnProperty("rmrSource"))
-                    switch (message.rmrSource) {
-                    default:
-                        return "rmrSource: enum value expected";
-                    case 0:
-                    case 1:
-                    case 2:
-                        break;
-                    }
-                if (message.stanzaId != null && message.hasOwnProperty("stanzaId"))
-                    if (!$util.isString(message.stanzaId))
-                        return "stanzaId: string expected";
-                if (message.reuploadResult != null && message.hasOwnProperty("reuploadResult")) {
-                    if (!Array.isArray(message.reuploadResult))
-                        return "reuploadResult: array expected";
-                    for (var i = 0; i < message.reuploadResult.length; ++i) {
-                        var error = $root.proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult.verify(message.reuploadResult[i]);
-                        if (error)
-                            return "reuploadResult." + error;
-                    }
-                }
-                return null;
-            };
-
-            /**
-             * Creates a RequestMediaUploadResponseMessage message from a plain object. Also converts values to their respective internal types.
-             * @function fromObject
-             * @memberof proto.Message.RequestMediaUploadResponseMessage
-             * @static
-             * @param {Object.<string,*>} object Plain object
-             * @returns {proto.Message.RequestMediaUploadResponseMessage} RequestMediaUploadResponseMessage
-             */
-            RequestMediaUploadResponseMessage.fromObject = function fromObject(object) {
-                if (object instanceof $root.proto.Message.RequestMediaUploadResponseMessage)
-                    return object;
-                var message = new $root.proto.Message.RequestMediaUploadResponseMessage();
-                switch (object.rmrSource) {
-                case "FAVORITE_STICKER":
-                case 0:
-                    message.rmrSource = 0;
-                    break;
-                case "RECENT_STICKER":
-                case 1:
-                    message.rmrSource = 1;
-                    break;
-                case "RECENT_STICKER_INIT":
-                case 2:
-                    message.rmrSource = 2;
-                    break;
-                }
-                if (object.stanzaId != null)
-                    message.stanzaId = String(object.stanzaId);
-                if (object.reuploadResult) {
-                    if (!Array.isArray(object.reuploadResult))
-                        throw TypeError(".proto.Message.RequestMediaUploadResponseMessage.reuploadResult: array expected");
-                    message.reuploadResult = [];
-                    for (var i = 0; i < object.reuploadResult.length; ++i) {
-                        if (typeof object.reuploadResult[i] !== "object")
-                            throw TypeError(".proto.Message.RequestMediaUploadResponseMessage.reuploadResult: object expected");
-                        message.reuploadResult[i] = $root.proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult.fromObject(object.reuploadResult[i]);
-                    }
-                }
-                return message;
-            };
-
-            /**
-             * Creates a plain object from a RequestMediaUploadResponseMessage message. Also converts values to other types if specified.
-             * @function toObject
-             * @memberof proto.Message.RequestMediaUploadResponseMessage
-             * @static
-             * @param {proto.Message.RequestMediaUploadResponseMessage} message RequestMediaUploadResponseMessage
-             * @param {$protobuf.IConversionOptions} [options] Conversion options
-             * @returns {Object.<string,*>} Plain object
-             */
-            RequestMediaUploadResponseMessage.toObject = function toObject(message, options) {
-                if (!options)
-                    options = {};
-                var object = {};
-                if (options.arrays || options.defaults)
-                    object.reuploadResult = [];
-                if (options.defaults) {
-                    object.rmrSource = options.enums === String ? "FAVORITE_STICKER" : 0;
-                    object.stanzaId = "";
-                }
-                if (message.rmrSource != null && message.hasOwnProperty("rmrSource"))
-                    object.rmrSource = options.enums === String ? $root.proto.Message.RmrSource[message.rmrSource] : message.rmrSource;
-                if (message.stanzaId != null && message.hasOwnProperty("stanzaId"))
-                    object.stanzaId = message.stanzaId;
-                if (message.reuploadResult && message.reuploadResult.length) {
-                    object.reuploadResult = [];
-                    for (var j = 0; j < message.reuploadResult.length; ++j)
-                        object.reuploadResult[j] = $root.proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult.toObject(message.reuploadResult[j], options);
-                }
-                return object;
-            };
-
-            /**
-             * Converts this RequestMediaUploadResponseMessage to JSON.
-             * @function toJSON
-             * @memberof proto.Message.RequestMediaUploadResponseMessage
-             * @instance
-             * @returns {Object.<string,*>} JSON object
-             */
-            RequestMediaUploadResponseMessage.prototype.toJSON = function toJSON() {
-                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
-            };
-
-            RequestMediaUploadResponseMessage.RequestMediaUploadResult = (function() {
-
-                /**
-                 * Properties of a RequestMediaUploadResult.
-                 * @memberof proto.Message.RequestMediaUploadResponseMessage
-                 * @interface IRequestMediaUploadResult
-                 * @property {string|null} [fileSha256] RequestMediaUploadResult fileSha256
-                 * @property {proto.MediaRetryNotification.ResultType|null} [mediaUploadResult] RequestMediaUploadResult mediaUploadResult
-                 * @property {proto.Message.IStickerMessage|null} [stickerMessage] RequestMediaUploadResult stickerMessage
-                 */
-
-                /**
-                 * Constructs a new RequestMediaUploadResult.
-                 * @memberof proto.Message.RequestMediaUploadResponseMessage
-                 * @classdesc Represents a RequestMediaUploadResult.
-                 * @implements IRequestMediaUploadResult
-                 * @constructor
-                 * @param {proto.Message.RequestMediaUploadResponseMessage.IRequestMediaUploadResult=} [properties] Properties to set
-                 */
-                function RequestMediaUploadResult(properties) {
-                    if (properties)
-                        for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
-                            if (properties[keys[i]] != null)
-                                this[keys[i]] = properties[keys[i]];
-                }
-
-                /**
-                 * RequestMediaUploadResult fileSha256.
-                 * @member {string} fileSha256
-                 * @memberof proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult
-                 * @instance
-                 */
-                RequestMediaUploadResult.prototype.fileSha256 = "";
-
-                /**
-                 * RequestMediaUploadResult mediaUploadResult.
-                 * @member {proto.MediaRetryNotification.ResultType} mediaUploadResult
-                 * @memberof proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult
-                 * @instance
-                 */
-                RequestMediaUploadResult.prototype.mediaUploadResult = 0;
-
-                /**
-                 * RequestMediaUploadResult stickerMessage.
-                 * @member {proto.Message.IStickerMessage|null|undefined} stickerMessage
-                 * @memberof proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult
-                 * @instance
-                 */
-                RequestMediaUploadResult.prototype.stickerMessage = null;
-
-                /**
-                 * Creates a new RequestMediaUploadResult instance using the specified properties.
-                 * @function create
-                 * @memberof proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult
-                 * @static
-                 * @param {proto.Message.RequestMediaUploadResponseMessage.IRequestMediaUploadResult=} [properties] Properties to set
-                 * @returns {proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult} RequestMediaUploadResult instance
-                 */
-                RequestMediaUploadResult.create = function create(properties) {
-                    return new RequestMediaUploadResult(properties);
-                };
-
-                /**
-                 * Encodes the specified RequestMediaUploadResult message. Does not implicitly {@link proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult.verify|verify} messages.
-                 * @function encode
-                 * @memberof proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult
-                 * @static
-                 * @param {proto.Message.RequestMediaUploadResponseMessage.IRequestMediaUploadResult} message RequestMediaUploadResult message or plain object to encode
-                 * @param {$protobuf.Writer} [writer] Writer to encode to
-                 * @returns {$protobuf.Writer} Writer
-                 */
-                RequestMediaUploadResult.encode = function encode(message, writer) {
-                    if (!writer)
-                        writer = $Writer.create();
-                    if (message.fileSha256 != null && Object.hasOwnProperty.call(message, "fileSha256"))
-                        writer.uint32(/* id 1, wireType 2 =*/10).string(message.fileSha256);
-                    if (message.mediaUploadResult != null && Object.hasOwnProperty.call(message, "mediaUploadResult"))
-                        writer.uint32(/* id 2, wireType 0 =*/16).int32(message.mediaUploadResult);
-                    if (message.stickerMessage != null && Object.hasOwnProperty.call(message, "stickerMessage"))
-                        $root.proto.Message.StickerMessage.encode(message.stickerMessage, writer.uint32(/* id 3, wireType 2 =*/26).fork()).ldelim();
-                    return writer;
-                };
-
-                /**
-                 * Encodes the specified RequestMediaUploadResult message, length delimited. Does not implicitly {@link proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult.verify|verify} messages.
-                 * @function encodeDelimited
-                 * @memberof proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult
-                 * @static
-                 * @param {proto.Message.RequestMediaUploadResponseMessage.IRequestMediaUploadResult} message RequestMediaUploadResult message or plain object to encode
-                 * @param {$protobuf.Writer} [writer] Writer to encode to
-                 * @returns {$protobuf.Writer} Writer
-                 */
-                RequestMediaUploadResult.encodeDelimited = function encodeDelimited(message, writer) {
-                    return this.encode(message, writer).ldelim();
-                };
-
-                /**
-                 * Decodes a RequestMediaUploadResult message from the specified reader or buffer.
-                 * @function decode
-                 * @memberof proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult
-                 * @static
-                 * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-                 * @param {number} [length] Message length if known beforehand
-                 * @returns {proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult} RequestMediaUploadResult
-                 * @throws {Error} If the payload is not a reader or valid buffer
-                 * @throws {$protobuf.util.ProtocolError} If required fields are missing
-                 */
-                RequestMediaUploadResult.decode = function decode(reader, length) {
-                    if (!(reader instanceof $Reader))
-                        reader = $Reader.create(reader);
-                    var end = length === undefined ? reader.len : reader.pos + length, message = new $root.proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult();
-                    while (reader.pos < end) {
-                        var tag = reader.uint32();
-                        switch (tag >>> 3) {
-                        case 1:
-                            message.fileSha256 = reader.string();
-                            break;
-                        case 2:
-                            message.mediaUploadResult = reader.int32();
-                            break;
-                        case 3:
-                            message.stickerMessage = $root.proto.Message.StickerMessage.decode(reader, reader.uint32());
-                            break;
-                        default:
-                            reader.skipType(tag & 7);
-                            break;
-                        }
-                    }
-                    return message;
-                };
-
-                /**
-                 * Decodes a RequestMediaUploadResult message from the specified reader or buffer, length delimited.
-                 * @function decodeDelimited
-                 * @memberof proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult
-                 * @static
-                 * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-                 * @returns {proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult} RequestMediaUploadResult
-                 * @throws {Error} If the payload is not a reader or valid buffer
-                 * @throws {$protobuf.util.ProtocolError} If required fields are missing
-                 */
-                RequestMediaUploadResult.decodeDelimited = function decodeDelimited(reader) {
-                    if (!(reader instanceof $Reader))
-                        reader = new $Reader(reader);
-                    return this.decode(reader, reader.uint32());
-                };
-
-                /**
-                 * Verifies a RequestMediaUploadResult message.
-                 * @function verify
-                 * @memberof proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult
-                 * @static
-                 * @param {Object.<string,*>} message Plain object to verify
-                 * @returns {string|null} `null` if valid, otherwise the reason why it is not
-                 */
-                RequestMediaUploadResult.verify = function verify(message) {
-                    if (typeof message !== "object" || message === null)
-                        return "object expected";
-                    if (message.fileSha256 != null && message.hasOwnProperty("fileSha256"))
-                        if (!$util.isString(message.fileSha256))
-                            return "fileSha256: string expected";
-                    if (message.mediaUploadResult != null && message.hasOwnProperty("mediaUploadResult"))
-                        switch (message.mediaUploadResult) {
-                        default:
-                            return "mediaUploadResult: enum value expected";
-                        case 0:
-                        case 1:
-                        case 2:
-                        case 3:
-                            break;
-                        }
-                    if (message.stickerMessage != null && message.hasOwnProperty("stickerMessage")) {
-                        var error = $root.proto.Message.StickerMessage.verify(message.stickerMessage);
-                        if (error)
-                            return "stickerMessage." + error;
-                    }
-                    return null;
-                };
-
-                /**
-                 * Creates a RequestMediaUploadResult message from a plain object. Also converts values to their respective internal types.
-                 * @function fromObject
-                 * @memberof proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult
-                 * @static
-                 * @param {Object.<string,*>} object Plain object
-                 * @returns {proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult} RequestMediaUploadResult
-                 */
-                RequestMediaUploadResult.fromObject = function fromObject(object) {
-                    if (object instanceof $root.proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult)
-                        return object;
-                    var message = new $root.proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult();
-                    if (object.fileSha256 != null)
-                        message.fileSha256 = String(object.fileSha256);
-                    switch (object.mediaUploadResult) {
-                    case "GENERAL_ERROR":
-                    case 0:
-                        message.mediaUploadResult = 0;
-                        break;
-                    case "SUCCESS":
-                    case 1:
-                        message.mediaUploadResult = 1;
-                        break;
-                    case "NOT_FOUND":
-                    case 2:
-                        message.mediaUploadResult = 2;
-                        break;
-                    case "DECRYPTION_ERROR":
-                    case 3:
-                        message.mediaUploadResult = 3;
-                        break;
-                    }
-                    if (object.stickerMessage != null) {
-                        if (typeof object.stickerMessage !== "object")
-                            throw TypeError(".proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult.stickerMessage: object expected");
-                        message.stickerMessage = $root.proto.Message.StickerMessage.fromObject(object.stickerMessage);
-                    }
-                    return message;
-                };
-
-                /**
-                 * Creates a plain object from a RequestMediaUploadResult message. Also converts values to other types if specified.
-                 * @function toObject
-                 * @memberof proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult
-                 * @static
-                 * @param {proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult} message RequestMediaUploadResult
-                 * @param {$protobuf.IConversionOptions} [options] Conversion options
-                 * @returns {Object.<string,*>} Plain object
-                 */
-                RequestMediaUploadResult.toObject = function toObject(message, options) {
-                    if (!options)
-                        options = {};
-                    var object = {};
-                    if (options.defaults) {
-                        object.fileSha256 = "";
-                        object.mediaUploadResult = options.enums === String ? "GENERAL_ERROR" : 0;
-                        object.stickerMessage = null;
-                    }
-                    if (message.fileSha256 != null && message.hasOwnProperty("fileSha256"))
-                        object.fileSha256 = message.fileSha256;
-                    if (message.mediaUploadResult != null && message.hasOwnProperty("mediaUploadResult"))
-                        object.mediaUploadResult = options.enums === String ? $root.proto.MediaRetryNotification.ResultType[message.mediaUploadResult] : message.mediaUploadResult;
-                    if (message.stickerMessage != null && message.hasOwnProperty("stickerMessage"))
-                        object.stickerMessage = $root.proto.Message.StickerMessage.toObject(message.stickerMessage, options);
-                    return object;
-                };
-
-                /**
-                 * Converts this RequestMediaUploadResult to JSON.
-                 * @function toJSON
-                 * @memberof proto.Message.RequestMediaUploadResponseMessage.RequestMediaUploadResult
-                 * @instance
-                 * @returns {Object.<string,*>} JSON object
-                 */
-                RequestMediaUploadResult.prototype.toJSON = function toJSON() {
-                    return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
-                };
-
-                return RequestMediaUploadResult;
-            })();
-
-            return RequestMediaUploadResponseMessage;
         })();
 
         Message.RequestPaymentMessage = (function() {
@@ -42197,22 +43348,6 @@ $root.proto = (function() {
             };
 
             return RequestPhoneNumberMessage;
-        })();
-
-        /**
-         * RmrSource enum.
-         * @name proto.Message.RmrSource
-         * @enum {number}
-         * @property {number} FAVORITE_STICKER=0 FAVORITE_STICKER value
-         * @property {number} RECENT_STICKER=1 RECENT_STICKER value
-         * @property {number} RECENT_STICKER_INIT=2 RECENT_STICKER_INIT value
-         */
-        Message.RmrSource = (function() {
-            var valuesById = {}, values = Object.create(valuesById);
-            values[valuesById[0] = "FAVORITE_STICKER"] = 0;
-            values[valuesById[1] = "RECENT_STICKER"] = 1;
-            values[valuesById[2] = "RECENT_STICKER_INIT"] = 2;
-            return values;
         })();
 
         Message.SendPaymentMessage = (function() {
