@@ -24,8 +24,7 @@
     "build:tsc": "tsc",
     "example": "node --inspect -r ts-node/register Example/example.ts",
     "example:legacy": "node --inspect -r ts-node/register Example/example-legacy.ts",
-    "gen-protobuf": "sh WAProto/GenerateStatics.sh",
-    "browser-decode": "yarn ts-node src/BrowserMessageDecoding.ts",
+    "gen:protobuf": "sh WAProto/GenerateStatics.sh",
     "lint": "eslint ./src --ext .js,.ts,.jsx,.tsx",
     "lint:fix": "eslint ./src --fix --ext .js,.ts,.jsx,.tsx"
   },
