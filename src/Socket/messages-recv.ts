@@ -319,6 +319,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			if(child.tag === 'disappearing_mode') {
 				const newDuration = +child.attrs.duration
 				const timestamp = +child.attrs.t
+
+				logger.info({ newDuration }, 'updated account disappearing mode')
+
 				ev.emit('creds.update', {
 					accountSettings: {
 						...authState.creds.accountSettings,
