@@ -425,7 +425,14 @@ export const makeSocket = ({
 	}
 
 	ws.on('message', onMessageRecieved)
-	ws.on('open', validateConnection)
+	ws.on('open', async() => {
+		try {
+			await validateConnection()
+		} catch(err) {
+			logger.error({ err }, 'error in validating connection')
+			end(err)
+		}
+	})
 	ws.on('error', error => end(
 		new Boom(
 			`WebSocket Error (${error.message})`,
