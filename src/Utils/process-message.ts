@@ -77,21 +77,28 @@ const processMessage = async(
 	const { accountSettings } = creds
 
 	const chat: Partial<Chat> = { id: jidNormalizedUser(message.key.remoteJid!) }
+	const isRealMsg = isRealMessage(message)
 
-	if(isRealMessage(message)) {
+	if(isRealMsg) {
 		chat.conversationTimestamp = toNumber(message.messageTimestamp)
 		// only increment unread count if not CIPHERTEXT and from another person
 		if(shouldIncrementChatUnread(message)) {
 			chat.unreadCount = (chat.unreadCount || 0) + 1
 		}
-
-		if(accountSettings?.unarchiveChats) {
-			chat.archived = false
-			chat.readOnly = false
-		}
 	}
 
 	const content = normalizeMessageContent(message.message)
+
+	// unarchive chat if it's a real message, or someone reacted to our message
+	// and we've the unarchive chats setting on
+	if(
+		(isRealMsg || content?.reactionMessage?.key?.fromMe)
+		&& accountSettings?.unarchiveChats
+	) {
+		chat.archived = false
+		chat.readOnly = false
+	}
+
 	const protocolMsg = content?.protocolMessage
 	if(protocolMsg) {
 		switch (protocolMsg.type) {
