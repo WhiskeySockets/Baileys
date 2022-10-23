@@ -14,11 +14,15 @@ type ProcessMessageContext = {
 	options: AxiosRequestConfig<any>
 }
 
-const MSG_MISSED_CALL_TYPES = new Set([
+const REAL_MSG_STUB_TYPES = new Set([
 	WAMessageStubType.CALL_MISSED_GROUP_VIDEO,
 	WAMessageStubType.CALL_MISSED_GROUP_VOICE,
 	WAMessageStubType.CALL_MISSED_VIDEO,
 	WAMessageStubType.CALL_MISSED_VOICE
+])
+
+const REAL_MSG_REQ_ME_STUB_TYPES = new Set([
+	WAMessageStubType.GROUP_PARTICIPANT_ADD
 ])
 
 /** Cleans a received message to further processing */
@@ -48,11 +52,15 @@ export const cleanMessage = (message: proto.IWebMessageInfo, meId: string) => {
 	}
 }
 
-export const isRealMessage = (message: proto.IWebMessageInfo) => {
+export const isRealMessage = (message: proto.IWebMessageInfo, meId: string) => {
 	const normalizedContent = normalizeMessageContent(message.message)
 	return (
 		!!normalizedContent
-		|| MSG_MISSED_CALL_TYPES.has(message.messageStubType!)
+		|| REAL_MSG_STUB_TYPES.has(message.messageStubType!)
+		|| (
+			REAL_MSG_REQ_ME_STUB_TYPES.has(message.messageStubType!)
+			&& message.messageStubParameters?.some(p => areJidsSameUser(meId, p))
+		)
 	)
 	&& !normalizedContent?.protocolMessage
 	&& !normalizedContent?.reactionMessage
@@ -77,7 +85,7 @@ const processMessage = async(
 	const { accountSettings } = creds
 
 	const chat: Partial<Chat> = { id: jidNormalizedUser(message.key.remoteJid!) }
-	const isRealMsg = isRealMessage(message)
+	const isRealMsg = isRealMessage(message, meId)
 
 	if(isRealMsg) {
 		chat.conversationTimestamp = toNumber(message.messageTimestamp)
