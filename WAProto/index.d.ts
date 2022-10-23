@@ -2455,7 +2455,10 @@ export namespace proto {
                 OCULUS_MSG = 25,
                 OCULUS_CALL = 26,
                 MILAN = 27,
-                CAPI = 28
+                CAPI = 28,
+                WEAROS = 29,
+                ARDEVICE = 30,
+                VRDEVICE = 31
             }
 
             /** ReleaseChannel enum. */
@@ -2809,6 +2812,12 @@ export namespace proto {
 
         /** ContextInfo parentGroupJid */
         parentGroupJid?: (string|null);
+
+        /** ContextInfo trustBannerType */
+        trustBannerType?: (string|null);
+
+        /** ContextInfo trustBannerAction */
+        trustBannerAction?: (number|null);
     }
 
     /** Represents a ContextInfo. */
@@ -2888,6 +2897,12 @@ export namespace proto {
 
         /** ContextInfo parentGroupJid. */
         public parentGroupJid: string;
+
+        /** ContextInfo trustBannerType. */
+        public trustBannerType: string;
+
+        /** ContextInfo trustBannerAction. */
+        public trustBannerAction: number;
 
         /**
          * Creates a new ContextInfo instance using the specified properties.
@@ -3369,6 +3384,9 @@ export namespace proto {
 
         /** Conversation shareOwnPn */
         shareOwnPn?: (boolean|null);
+
+        /** Conversation pnhDuplicateLidThread */
+        pnhDuplicateLidThread?: (boolean|null);
     }
 
     /** Represents a Conversation. */
@@ -3499,6 +3517,9 @@ export namespace proto {
 
         /** Conversation shareOwnPn. */
         public shareOwnPn: boolean;
+
+        /** Conversation pnhDuplicateLidThread. */
+        public pnhDuplicateLidThread: boolean;
 
         /**
          * Creates a new Conversation instance using the specified properties.
@@ -7680,6 +7701,9 @@ export namespace proto {
 
             /** AudioMessage waveform */
             waveform?: (Uint8Array|null);
+
+            /** AudioMessage backgroundArgb */
+            backgroundArgb?: (number|null);
         }
 
         /** Represents an AudioMessage. */
@@ -7729,6 +7753,9 @@ export namespace proto {
 
             /** AudioMessage waveform. */
             public waveform: Uint8Array;
+
+            /** AudioMessage backgroundArgb. */
+            public backgroundArgb: number;
 
             /**
              * Creates a new AudioMessage instance using the specified properties.
@@ -16299,6 +16326,9 @@ export namespace proto {
 
             /** StickerMessage stickerSentTs */
             stickerSentTs?: (number|Long|null);
+
+            /** StickerMessage isAvatar */
+            isAvatar?: (boolean|null);
         }
 
         /** Represents a StickerMessage. */
@@ -16357,6 +16387,9 @@ export namespace proto {
 
             /** StickerMessage stickerSentTs. */
             public stickerSentTs: (number|Long);
+
+            /** StickerMessage isAvatar. */
+            public isAvatar: boolean;
 
             /**
              * Creates a new StickerMessage instance using the specified properties.
@@ -27289,7 +27322,8 @@ export namespace proto {
             MASKED_THREAD_UNMASKED = 153,
             BIZ_CHAT_ASSIGNMENT = 154,
             CHAT_PSA = 155,
-            CHAT_POLL_CREATION_MESSAGE = 156
+            CHAT_POLL_CREATION_MESSAGE = 156,
+            CAG_MASKED_THREAD_CREATED = 157
         }
     }
 

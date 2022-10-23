@@ -6218,6 +6218,9 @@ $root.proto = (function() {
                     case 26:
                     case 27:
                     case 28:
+                    case 29:
+                    case 30:
+                    case 31:
                         break;
                     }
                 if (message.appVersion != null && message.hasOwnProperty("appVersion")) {
@@ -6396,6 +6399,18 @@ $root.proto = (function() {
                 case "CAPI":
                 case 28:
                     message.platform = 28;
+                    break;
+                case "WEAROS":
+                case 29:
+                    message.platform = 29;
+                    break;
+                case "ARDEVICE":
+                case 30:
+                    message.platform = 30;
+                    break;
+                case "VRDEVICE":
+                case 31:
+                    message.platform = 31;
                     break;
                 }
                 if (object.appVersion != null) {
@@ -6821,6 +6836,9 @@ $root.proto = (function() {
              * @property {number} OCULUS_CALL=26 OCULUS_CALL value
              * @property {number} MILAN=27 MILAN value
              * @property {number} CAPI=28 CAPI value
+             * @property {number} WEAROS=29 WEAROS value
+             * @property {number} ARDEVICE=30 ARDEVICE value
+             * @property {number} VRDEVICE=31 VRDEVICE value
              */
             UserAgent.Platform = (function() {
                 var valuesById = {}, values = Object.create(valuesById);
@@ -6853,6 +6871,9 @@ $root.proto = (function() {
                 values[valuesById[26] = "OCULUS_CALL"] = 26;
                 values[valuesById[27] = "MILAN"] = 27;
                 values[valuesById[28] = "CAPI"] = 28;
+                values[valuesById[29] = "WEAROS"] = 29;
+                values[valuesById[30] = "ARDEVICE"] = 30;
+                values[valuesById[31] = "VRDEVICE"] = 31;
                 return values;
             })();
 
@@ -7633,6 +7654,8 @@ $root.proto = (function() {
          * @property {proto.IActionLink|null} [actionLink] ContextInfo actionLink
          * @property {string|null} [groupSubject] ContextInfo groupSubject
          * @property {string|null} [parentGroupJid] ContextInfo parentGroupJid
+         * @property {string|null} [trustBannerType] ContextInfo trustBannerType
+         * @property {number|null} [trustBannerAction] ContextInfo trustBannerAction
          */
 
         /**
@@ -7836,6 +7859,22 @@ $root.proto = (function() {
         ContextInfo.prototype.parentGroupJid = "";
 
         /**
+         * ContextInfo trustBannerType.
+         * @member {string} trustBannerType
+         * @memberof proto.ContextInfo
+         * @instance
+         */
+        ContextInfo.prototype.trustBannerType = "";
+
+        /**
+         * ContextInfo trustBannerAction.
+         * @member {number} trustBannerAction
+         * @memberof proto.ContextInfo
+         * @instance
+         */
+        ContextInfo.prototype.trustBannerAction = 0;
+
+        /**
          * Creates a new ContextInfo instance using the specified properties.
          * @function create
          * @memberof proto.ContextInfo
@@ -7906,6 +7945,10 @@ $root.proto = (function() {
                 writer.uint32(/* id 34, wireType 2 =*/274).string(message.groupSubject);
             if (message.parentGroupJid != null && Object.hasOwnProperty.call(message, "parentGroupJid"))
                 writer.uint32(/* id 35, wireType 2 =*/282).string(message.parentGroupJid);
+            if (message.trustBannerType != null && Object.hasOwnProperty.call(message, "trustBannerType"))
+                writer.uint32(/* id 37, wireType 2 =*/298).string(message.trustBannerType);
+            if (message.trustBannerAction != null && Object.hasOwnProperty.call(message, "trustBannerAction"))
+                writer.uint32(/* id 38, wireType 0 =*/304).uint32(message.trustBannerAction);
             return writer;
         };
 
@@ -8010,6 +8053,12 @@ $root.proto = (function() {
                     break;
                 case 35:
                     message.parentGroupJid = reader.string();
+                    break;
+                case 37:
+                    message.trustBannerType = reader.string();
+                    break;
+                case 38:
+                    message.trustBannerAction = reader.uint32();
                     break;
                 default:
                     reader.skipType(tag & 7);
@@ -8131,6 +8180,12 @@ $root.proto = (function() {
             if (message.parentGroupJid != null && message.hasOwnProperty("parentGroupJid"))
                 if (!$util.isString(message.parentGroupJid))
                     return "parentGroupJid: string expected";
+            if (message.trustBannerType != null && message.hasOwnProperty("trustBannerType"))
+                if (!$util.isString(message.trustBannerType))
+                    return "trustBannerType: string expected";
+            if (message.trustBannerAction != null && message.hasOwnProperty("trustBannerAction"))
+                if (!$util.isInteger(message.trustBannerAction))
+                    return "trustBannerAction: integer expected";
             return null;
         };
 
@@ -8228,6 +8283,10 @@ $root.proto = (function() {
                 message.groupSubject = String(object.groupSubject);
             if (object.parentGroupJid != null)
                 message.parentGroupJid = String(object.parentGroupJid);
+            if (object.trustBannerType != null)
+                message.trustBannerType = String(object.trustBannerType);
+            if (object.trustBannerAction != null)
+                message.trustBannerAction = object.trustBannerAction >>> 0;
             return message;
         };
 
@@ -8285,6 +8344,8 @@ $root.proto = (function() {
                 object.actionLink = null;
                 object.groupSubject = "";
                 object.parentGroupJid = "";
+                object.trustBannerType = "";
+                object.trustBannerAction = 0;
             }
             if (message.stanzaId != null && message.hasOwnProperty("stanzaId"))
                 object.stanzaId = message.stanzaId;
@@ -8338,6 +8399,10 @@ $root.proto = (function() {
                 object.groupSubject = message.groupSubject;
             if (message.parentGroupJid != null && message.hasOwnProperty("parentGroupJid"))
                 object.parentGroupJid = message.parentGroupJid;
+            if (message.trustBannerType != null && message.hasOwnProperty("trustBannerType"))
+                object.trustBannerType = message.trustBannerType;
+            if (message.trustBannerAction != null && message.hasOwnProperty("trustBannerAction"))
+                object.trustBannerAction = message.trustBannerAction;
             return object;
         };
 
@@ -9171,6 +9236,7 @@ $root.proto = (function() {
          * @property {string|null} [displayName] Conversation displayName
          * @property {string|null} [pnJid] Conversation pnJid
          * @property {boolean|null} [shareOwnPn] Conversation shareOwnPn
+         * @property {boolean|null} [pnhDuplicateLidThread] Conversation pnhDuplicateLidThread
          */
 
         /**
@@ -9511,6 +9577,14 @@ $root.proto = (function() {
         Conversation.prototype.shareOwnPn = false;
 
         /**
+         * Conversation pnhDuplicateLidThread.
+         * @member {boolean} pnhDuplicateLidThread
+         * @memberof proto.Conversation
+         * @instance
+         */
+        Conversation.prototype.pnhDuplicateLidThread = false;
+
+        /**
          * Creates a new Conversation instance using the specified properties.
          * @function create
          * @memberof proto.Conversation
@@ -9615,6 +9689,8 @@ $root.proto = (function() {
                 writer.uint32(/* id 39, wireType 2 =*/314).string(message.pnJid);
             if (message.shareOwnPn != null && Object.hasOwnProperty.call(message, "shareOwnPn"))
                 writer.uint32(/* id 40, wireType 0 =*/320).bool(message.shareOwnPn);
+            if (message.pnhDuplicateLidThread != null && Object.hasOwnProperty.call(message, "pnhDuplicateLidThread"))
+                writer.uint32(/* id 41, wireType 0 =*/328).bool(message.pnhDuplicateLidThread);
             return writer;
         };
 
@@ -9772,6 +9848,9 @@ $root.proto = (function() {
                     break;
                 case 40:
                     message.shareOwnPn = reader.bool();
+                    break;
+                case 41:
+                    message.pnhDuplicateLidThread = reader.bool();
                     break;
                 default:
                     reader.skipType(tag & 7);
@@ -9956,6 +10035,9 @@ $root.proto = (function() {
             if (message.shareOwnPn != null && message.hasOwnProperty("shareOwnPn"))
                 if (typeof message.shareOwnPn !== "boolean")
                     return "shareOwnPn: boolean expected";
+            if (message.pnhDuplicateLidThread != null && message.hasOwnProperty("pnhDuplicateLidThread"))
+                if (typeof message.pnhDuplicateLidThread !== "boolean")
+                    return "pnhDuplicateLidThread: boolean expected";
             return null;
         };
 
@@ -10148,6 +10230,8 @@ $root.proto = (function() {
                 message.pnJid = String(object.pnJid);
             if (object.shareOwnPn != null)
                 message.shareOwnPn = Boolean(object.shareOwnPn);
+            if (object.pnhDuplicateLidThread != null)
+                message.pnhDuplicateLidThread = Boolean(object.pnhDuplicateLidThread);
             return message;
         };
 
@@ -10247,6 +10331,7 @@ $root.proto = (function() {
                 object.displayName = "";
                 object.pnJid = "";
                 object.shareOwnPn = false;
+                object.pnhDuplicateLidThread = false;
             }
             if (message.id != null && message.hasOwnProperty("id"))
                 object.id = message.id;
@@ -10355,6 +10440,8 @@ $root.proto = (function() {
                 object.pnJid = message.pnJid;
             if (message.shareOwnPn != null && message.hasOwnProperty("shareOwnPn"))
                 object.shareOwnPn = message.shareOwnPn;
+            if (message.pnhDuplicateLidThread != null && message.hasOwnProperty("pnhDuplicateLidThread"))
+                object.pnhDuplicateLidThread = message.pnhDuplicateLidThread;
             return object;
         };
 
@@ -18668,7 +18755,7 @@ $root.proto = (function() {
             if (message.encReactionMessage != null && Object.hasOwnProperty.call(message, "encReactionMessage"))
                 $root.proto.Message.EncReactionMessage.encode(message.encReactionMessage, writer.uint32(/* id 56, wireType 2 =*/450).fork()).ldelim();
             if (message.editedMessage != null && Object.hasOwnProperty.call(message, "editedMessage"))
-                $root.proto.Message.FutureProofMessage.encode(message.editedMessage, writer.uint32(/* id 57, wireType 2 =*/458).fork()).ldelim();
+                $root.proto.Message.FutureProofMessage.encode(message.editedMessage, writer.uint32(/* id 58, wireType 2 =*/466).fork()).ldelim();
             return writer;
         };
 
@@ -18844,7 +18931,7 @@ $root.proto = (function() {
                 case 56:
                     message.encReactionMessage = $root.proto.Message.EncReactionMessage.decode(reader, reader.uint32());
                     break;
-                case 57:
+                case 58:
                     message.editedMessage = $root.proto.Message.FutureProofMessage.decode(reader, reader.uint32());
                     break;
                 default:
@@ -21156,6 +21243,7 @@ $root.proto = (function() {
              * @property {proto.IContextInfo|null} [contextInfo] AudioMessage contextInfo
              * @property {Uint8Array|null} [streamingSidecar] AudioMessage streamingSidecar
              * @property {Uint8Array|null} [waveform] AudioMessage waveform
+             * @property {number|null} [backgroundArgb] AudioMessage backgroundArgb
              */
 
             /**
@@ -21278,6 +21366,14 @@ $root.proto = (function() {
             AudioMessage.prototype.waveform = $util.newBuffer([]);
 
             /**
+             * AudioMessage backgroundArgb.
+             * @member {number} backgroundArgb
+             * @memberof proto.Message.AudioMessage
+             * @instance
+             */
+            AudioMessage.prototype.backgroundArgb = 0;
+
+            /**
              * Creates a new AudioMessage instance using the specified properties.
              * @function create
              * @memberof proto.Message.AudioMessage
@@ -21327,6 +21423,8 @@ $root.proto = (function() {
                     writer.uint32(/* id 18, wireType 2 =*/146).bytes(message.streamingSidecar);
                 if (message.waveform != null && Object.hasOwnProperty.call(message, "waveform"))
                     writer.uint32(/* id 19, wireType 2 =*/154).bytes(message.waveform);
+                if (message.backgroundArgb != null && Object.hasOwnProperty.call(message, "backgroundArgb"))
+                    writer.uint32(/* id 20, wireType 5 =*/165).fixed32(message.backgroundArgb);
                 return writer;
             };
 
@@ -21399,6 +21497,9 @@ $root.proto = (function() {
                         break;
                     case 19:
                         message.waveform = reader.bytes();
+                        break;
+                    case 20:
+                        message.backgroundArgb = reader.fixed32();
                         break;
                     default:
                         reader.skipType(tag & 7);
@@ -21476,6 +21577,9 @@ $root.proto = (function() {
                 if (message.waveform != null && message.hasOwnProperty("waveform"))
                     if (!(message.waveform && typeof message.waveform.length === "number" || $util.isString(message.waveform)))
                         return "waveform: buffer expected";
+                if (message.backgroundArgb != null && message.hasOwnProperty("backgroundArgb"))
+                    if (!$util.isInteger(message.backgroundArgb))
+                        return "backgroundArgb: integer expected";
                 return null;
             };
 
@@ -21549,6 +21653,8 @@ $root.proto = (function() {
                         $util.base64.decode(object.waveform, message.waveform = $util.newBuffer($util.base64.length(object.waveform)), 0);
                     else if (object.waveform.length)
                         message.waveform = object.waveform;
+                if (object.backgroundArgb != null)
+                    message.backgroundArgb = object.backgroundArgb >>> 0;
                 return message;
             };
 
@@ -21617,6 +21723,7 @@ $root.proto = (function() {
                         if (options.bytes !== Array)
                             object.waveform = $util.newBuffer(object.waveform);
                     }
+                    object.backgroundArgb = 0;
                 }
                 if (message.url != null && message.hasOwnProperty("url"))
                     object.url = message.url;
@@ -21650,6 +21757,8 @@ $root.proto = (function() {
                     object.streamingSidecar = options.bytes === String ? $util.base64.encode(message.streamingSidecar, 0, message.streamingSidecar.length) : options.bytes === Array ? Array.prototype.slice.call(message.streamingSidecar) : message.streamingSidecar;
                 if (message.waveform != null && message.hasOwnProperty("waveform"))
                     object.waveform = options.bytes === String ? $util.base64.encode(message.waveform, 0, message.waveform.length) : options.bytes === Array ? Array.prototype.slice.call(message.waveform) : message.waveform;
+                if (message.backgroundArgb != null && message.hasOwnProperty("backgroundArgb"))
+                    object.backgroundArgb = message.backgroundArgb;
                 return object;
             };
 
@@ -43838,6 +43947,7 @@ $root.proto = (function() {
              * @property {Uint8Array|null} [pngThumbnail] StickerMessage pngThumbnail
              * @property {proto.IContextInfo|null} [contextInfo] StickerMessage contextInfo
              * @property {number|Long|null} [stickerSentTs] StickerMessage stickerSentTs
+             * @property {boolean|null} [isAvatar] StickerMessage isAvatar
              */
 
             /**
@@ -43984,6 +44094,14 @@ $root.proto = (function() {
             StickerMessage.prototype.stickerSentTs = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
 
             /**
+             * StickerMessage isAvatar.
+             * @member {boolean} isAvatar
+             * @memberof proto.Message.StickerMessage
+             * @instance
+             */
+            StickerMessage.prototype.isAvatar = false;
+
+            /**
              * Creates a new StickerMessage instance using the specified properties.
              * @function create
              * @memberof proto.Message.StickerMessage
@@ -44039,6 +44157,8 @@ $root.proto = (function() {
                     $root.proto.ContextInfo.encode(message.contextInfo, writer.uint32(/* id 17, wireType 2 =*/138).fork()).ldelim();
                 if (message.stickerSentTs != null && Object.hasOwnProperty.call(message, "stickerSentTs"))
                     writer.uint32(/* id 18, wireType 0 =*/144).int64(message.stickerSentTs);
+                if (message.isAvatar != null && Object.hasOwnProperty.call(message, "isAvatar"))
+                    writer.uint32(/* id 19, wireType 0 =*/152).bool(message.isAvatar);
                 return writer;
             };
 
@@ -44120,6 +44240,9 @@ $root.proto = (function() {
                         break;
                     case 18:
                         message.stickerSentTs = reader.int64();
+                        break;
+                    case 19:
+                        message.isAvatar = reader.bool();
                         break;
                     default:
                         reader.skipType(tag & 7);
@@ -44206,6 +44329,9 @@ $root.proto = (function() {
                 if (message.stickerSentTs != null && message.hasOwnProperty("stickerSentTs"))
                     if (!$util.isInteger(message.stickerSentTs) && !(message.stickerSentTs && $util.isInteger(message.stickerSentTs.low) && $util.isInteger(message.stickerSentTs.high)))
                         return "stickerSentTs: integer|Long expected";
+                if (message.isAvatar != null && message.hasOwnProperty("isAvatar"))
+                    if (typeof message.isAvatar !== "boolean")
+                        return "isAvatar: boolean expected";
                 return null;
             };
 
@@ -44292,6 +44418,8 @@ $root.proto = (function() {
                         message.stickerSentTs = object.stickerSentTs;
                     else if (typeof object.stickerSentTs === "object")
                         message.stickerSentTs = new $util.LongBits(object.stickerSentTs.low >>> 0, object.stickerSentTs.high >>> 0).toNumber();
+                if (object.isAvatar != null)
+                    message.isAvatar = Boolean(object.isAvatar);
                 return message;
             };
 
@@ -44367,6 +44495,7 @@ $root.proto = (function() {
                         object.stickerSentTs = options.longs === String ? long.toString() : options.longs === Number ? long.toNumber() : long;
                     } else
                         object.stickerSentTs = options.longs === String ? "0" : 0;
+                    object.isAvatar = false;
                 }
                 if (message.url != null && message.hasOwnProperty("url"))
                     object.url = message.url;
@@ -44409,6 +44538,8 @@ $root.proto = (function() {
                         object.stickerSentTs = options.longs === String ? String(message.stickerSentTs) : message.stickerSentTs;
                     else
                         object.stickerSentTs = options.longs === String ? $util.Long.prototype.toString.call(message.stickerSentTs) : options.longs === Number ? new $util.LongBits(message.stickerSentTs.low >>> 0, message.stickerSentTs.high >>> 0).toNumber() : message.stickerSentTs;
+                if (message.isAvatar != null && message.hasOwnProperty("isAvatar"))
+                    object.isAvatar = message.isAvatar;
                 return object;
             };
 
@@ -73087,6 +73218,7 @@ $root.proto = (function() {
                 case 154:
                 case 155:
                 case 156:
+                case 157:
                     break;
                 }
             if (message.clearMedia != null && message.hasOwnProperty("clearMedia"))
@@ -73943,6 +74075,10 @@ $root.proto = (function() {
             case 156:
                 message.messageStubType = 156;
                 break;
+            case "CAG_MASKED_THREAD_CREATED":
+            case 157:
+                message.messageStubType = 157;
+                break;
             }
             if (object.clearMedia != null)
                 message.clearMedia = Boolean(object.clearMedia);
@@ -74522,6 +74658,7 @@ $root.proto = (function() {
          * @property {number} BIZ_CHAT_ASSIGNMENT=154 BIZ_CHAT_ASSIGNMENT value
          * @property {number} CHAT_PSA=155 CHAT_PSA value
          * @property {number} CHAT_POLL_CREATION_MESSAGE=156 CHAT_POLL_CREATION_MESSAGE value
+         * @property {number} CAG_MASKED_THREAD_CREATED=157 CAG_MASKED_THREAD_CREATED value
          */
         WebMessageInfo.StubType = (function() {
             var valuesById = {}, values = Object.create(valuesById);
@@ -74682,6 +74819,7 @@ $root.proto = (function() {
             values[valuesById[154] = "BIZ_CHAT_ASSIGNMENT"] = 154;
             values[valuesById[155] = "CHAT_PSA"] = 155;
             values[valuesById[156] = "CHAT_POLL_CREATION_MESSAGE"] = 156;
+            values[valuesById[157] = "CAG_MASKED_THREAD_CREATED"] = 157;
             return values;
         })();
 

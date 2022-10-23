@@ -259,6 +259,9 @@ message ClientPayload {
             OCULUS_CALL = 26;
             MILAN = 27;
             CAPI = 28;
+            WEAROS = 29;
+            ARDEVICE = 30;
+            VRDEVICE = 31;
         }
         enum ReleaseChannel {
             RELEASE = 0;
@@ -322,6 +325,8 @@ message ContextInfo {
     optional ActionLink actionLink = 33;
     optional string groupSubject = 34;
     optional string parentGroupJid = 35;
+    optional string trustBannerType = 37;
+    optional uint32 trustBannerAction = 38;
     message AdReplyInfo {
         optional string advertiserName = 1;
         optional MediaType mediaType = 2;
@@ -397,6 +402,7 @@ message Conversation {
     optional string displayName = 38;
     optional string pnJid = 39;
     optional bool shareOwnPn = 40;
+    optional bool pnhDuplicateLidThread = 41;
     enum EndOfHistoryTransferType {
         COMPLETE_BUT_MORE_MESSAGES_REMAIN_ON_PRIMARY = 0;
         COMPLETE_AND_NO_MORE_MESSAGE_REMAIN_ON_PRIMARY = 1;
@@ -685,7 +691,7 @@ message Message {
     optional RequestPhoneNumberMessage requestPhoneNumberMessage = 54;
     optional FutureProofMessage viewOnceMessageV2 = 55;
     optional EncReactionMessage encReactionMessage = 56;
-    optional FutureProofMessage editedMessage = 57;
+    optional FutureProofMessage editedMessage = 58;
     message AppStateFatalExceptionNotification {
         repeated string collectionNames = 1;
         optional int64 timestamp = 2;
@@ -734,6 +740,7 @@ message Message {
         optional ContextInfo contextInfo = 17;
         optional bytes streamingSidecar = 18;
         optional bytes waveform = 19;
+        optional fixed32 backgroundArgb = 20;
     }
     
     message ButtonsMessage {
@@ -1443,6 +1450,7 @@ message Message {
         optional bytes pngThumbnail = 16;
         optional ContextInfo contextInfo = 17;
         optional int64 stickerSentTs = 18;
+        optional bool isAvatar = 19;
     }
     
     message StickerSyncRMRMessage {
@@ -2423,6 +2431,7 @@ message WebMessageInfo {
         BIZ_CHAT_ASSIGNMENT = 154;
         CHAT_PSA = 155;
         CHAT_POLL_CREATION_MESSAGE = 156;
+        CAG_MASKED_THREAD_CREATED = 157;
     }
 }
 
