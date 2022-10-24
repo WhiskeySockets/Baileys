@@ -499,7 +499,7 @@ function append<E extends BufferableEvent>(
 		const chatId = message.key.remoteJid!
 		const chat = data.chatUpdates[chatId] || data.chatUpserts[chatId]
 		if(
-			isRealMessage(message)
+			isRealMessage(message, '')
 			&& shouldIncrementChatUnread(message)
 			&& typeof chat?.unreadCount === 'number'
 			&& chat.unreadCount > 0
