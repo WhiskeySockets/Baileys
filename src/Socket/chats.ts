@@ -370,7 +370,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 							// only process if there are syncd patches
 							if(patches.length) {
-								const { newMutations, state: newState } = await decodePatches(
+								const { state: newState } = await decodePatches(
 									name,
 									patches,
 									states[name],
@@ -383,9 +383,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 								await authState.keys.set({ 'app-state-sync-version': { [name]: newState } })
 
 								logger.info(`synced ${name} to v${newState.version}`)
-								if(newMutations.length) {
-									logger.trace({ newMutations, name }, 'recv new mutations')
-								}
 							}
 
 							if(hasMorePatches) {

@@ -415,7 +415,6 @@ export const decodePatches = async(
 	validateMacs: boolean = true
 ) => {
 	syncds = [...syncds]
-	const successfulMutations: ChatMutation[] = []
 
 	const newState: LTHashState = {
 		...initial,
@@ -461,10 +460,7 @@ export const decodePatches = async(
 		syncds.splice(0, 1)
 	}
 
-	return {
-		newMutations: successfulMutations,
-		state: newState
-	}
+	return { state: newState }
 }
 
 export const chatModificationToAppPatch = (
@@ -620,10 +616,13 @@ export const processSyncAction = (
 	const isInitialSync = !!initialSyncOpts
 	const accountSettings = initialSyncOpts?.accountSettings
 
+	logger?.trace({ syncAction, initialSync: !!initialSyncOpts }, 'processing sync action')
+
 	const {
 		syncAction: { value: action },
 		index: [type, id, msgId, fromMe]
 	} = syncAction
+
 	if(action?.muteAction) {
 		ev.emit(
 			'chats.update',
