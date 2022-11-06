@@ -150,6 +150,8 @@ const processMessage = async(
 							const strKeyId = Buffer.from(keyId!.keyId!).toString('base64')
 							newKeys.push(strKeyId)
 
+							logger?.trace({ strKeyId }, 'got app state sync key')
+
 							await keyStore.set({ 'app-state-sync-key': { [strKeyId]: keyData! } })
 
 							newAppStateSyncKeyId = strKeyId
