@@ -43,6 +43,11 @@ message AutoDownloadSettings {
     optional bool downloadDocuments = 4;
 }
 
+message AvatarUserSettings {
+    optional string fbid = 1;
+    optional string password = 2;
+}
+
 message BizAccountLinkInfo {
     optional uint64 whatsappBizAcctFbid = 1;
     optional string whatsappAcctNumber = 2;
@@ -403,6 +408,7 @@ message Conversation {
     optional string pnJid = 39;
     optional bool shareOwnPn = 40;
     optional bool pnhDuplicateLidThread = 41;
+    optional string lidJid = 42;
     enum EndOfHistoryTransferType {
         COMPLETE_BUT_MORE_MESSAGES_REMAIN_ON_PRIMARY = 0;
         COMPLETE_AND_NO_MORE_MESSAGE_REMAIN_ON_PRIMARY = 1;
@@ -435,6 +441,7 @@ message DeviceProps {
     message HistorySyncConfig {
         optional uint32 fullSyncDaysLimit = 1;
         optional uint32 fullSyncSizeMbLimit = 2;
+        optional uint32 storageQuotaMb = 3;
     }
     
     enum PlatformType {
@@ -494,6 +501,7 @@ message GlobalSettings {
     optional bool showGroupNotificationsPreview = 8;
     optional int32 disappearingModeDuration = 9;
     optional int64 disappearingModeTimestamp = 10;
+    optional AvatarUserSettings avatarUserSettings = 11;
 }
 
 message GroupParticipant {
@@ -1000,6 +1008,7 @@ message Message {
         optional uint32 chunkOrder = 7;
         optional string originalMessageId = 8;
         optional uint32 progress = 9;
+        optional int64 oldestMsgInChunkTimestampSec = 10;
         enum HistorySyncType {
             INITIAL_BOOTSTRAP = 0;
             INITIAL_STATUS_V3 = 1;
@@ -1469,9 +1478,11 @@ message Message {
     message TemplateMessage {
         optional ContextInfo contextInfo = 3;
         optional HydratedFourRowTemplate hydratedTemplate = 4;
+        optional string templateId = 9;
         oneof format {
             Message.TemplateMessage.FourRowTemplate fourRowTemplate = 1;
             Message.TemplateMessage.HydratedFourRowTemplate hydratedFourRowTemplate = 2;
+            Message.InteractiveMessage interactiveMessageTemplate = 5;
         }
         message FourRowTemplate {
             optional Message.HighlyStructuredMessage content = 6;
@@ -1932,6 +1943,7 @@ message SyncActionValue {
     message ContactAction {
         optional string fullName = 1;
         optional string firstName = 2;
+        optional string lidJid = 3;
     }
     
     message DeleteChatAction {
@@ -1970,6 +1982,7 @@ message SyncActionValue {
     message MuteAction {
         optional bool muted = 1;
         optional int64 muteEndTimestamp = 2;
+        optional bool autoMuted = 3;
     }
     
     message NuxAction {
@@ -2432,6 +2445,10 @@ message WebMessageInfo {
         CHAT_PSA = 155;
         CHAT_POLL_CREATION_MESSAGE = 156;
         CAG_MASKED_THREAD_CREATED = 157;
+        COMMUNITY_PARENT_GROUP_SUBJECT_CHANGED = 158;
+        CAG_INVITE_AUTO_ADD = 159;
+        BIZ_CHAT_ASSIGNMENT_UNASSIGN = 160;
+        CAG_INVITE_AUTO_JOINED = 161;
     }
 }
 
