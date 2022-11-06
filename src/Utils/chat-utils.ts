@@ -9,7 +9,7 @@ import { toNumber } from './generics'
 import { LT_HASH_ANTI_TAMPERING } from './lt-hash'
 import { downloadContentFromMessage, } from './messages-media'
 
-type FetchAppStateSyncKey = (keyId: string) => Promise<proto.Message.IAppStateSyncKeyData> | proto.Message.IAppStateSyncKeyData
+type FetchAppStateSyncKey = (keyId: string) => Promise<proto.Message.IAppStateSyncKeyData | null | undefined>
 
 const mutationKeys = (keydata: Uint8Array) => {
 	const expanded = hkdf(keydata, 160, { info: 'WhatsApp Mutation Keys' })
@@ -261,6 +261,10 @@ export const decodeSyncdPatch = async(
 	if(validateMacs) {
 		const base64Key = Buffer.from(msg.keyId!.id!).toString('base64')
 		const mainKeyObj = await getAppStateSyncKey(base64Key)
+		if(!mainKeyObj) {
+			throw new Boom(`failed to find key "${base64Key}" to decode patch`, { statusCode: 404, data: { msg } })
+		}
+
 		const mainKey = mutationKeys(mainKeyObj.keyData!)
 		const mutationmacs = msg.mutations!.map(mutation => mutation.record!.value!.blob!.slice(-32))
 
