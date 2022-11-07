@@ -125,19 +125,19 @@ const processMessage = async(
 			}, 'got history notification')
 
 			if(process) {
-				const data = await downloadAndProcessHistorySyncNotification(
-					histNotification,
-					options
-				)
-
-				ev.emit('messaging-history.set', { ...data, isLatest })
-
 				ev.emit('creds.update', {
 					processedHistoryMessages: [
 						...(creds.processedHistoryMessages || []),
 						{ key: message.key, messageTimestamp: message.messageTimestamp }
 					]
 				})
+
+				const data = await downloadAndProcessHistorySyncNotification(
+					histNotification,
+					options
+				)
+
+				ev.emit('messaging-history.set', { ...data, isLatest })
 			}
 
 			break
@@ -151,8 +151,6 @@ const processMessage = async(
 						for(const { keyData, keyId } of keys) {
 							const strKeyId = Buffer.from(keyId!.keyId!).toString('base64')
 							newKeys.push(strKeyId)
-
-							logger?.trace({ strKeyId }, 'got app state sync key')
 
 							await keyStore.set({ 'app-state-sync-key': { [strKeyId]: keyData! } })
 
