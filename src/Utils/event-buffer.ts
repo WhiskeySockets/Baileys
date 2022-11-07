@@ -48,6 +48,8 @@ type BaileysBufferableEventEmitter = BaileysEventEmitter & {
 	flush(): Promise<void>
 	/** waits for the task to complete, before releasing the buffer */
 	processInBuffer(task: Promise<any>)
+	/** is there an ongoing buffer */
+	isBuffering(): boolean
 }
 
 /**
@@ -138,6 +140,9 @@ export const makeEventBuffer = (logger: Logger): BaileysBufferableEventEmitter =
 			if(isBuffering) {
 				preBufferTask = Promise.allSettled([ preBufferTask, task ])
 			}
+		},
+		isBuffering() {
+			return isBuffering
 		},
 		buffer,
 		flush,
