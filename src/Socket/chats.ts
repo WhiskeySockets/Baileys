@@ -21,10 +21,11 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		sendNode,
 		query,
 		onUnexpectedError,
-		logout
 	} = sock
 
 	let privacySettings: { [_: string]: string } | undefined
+	let needToFlushWithAppStateSync = false
+	let pendingAppStateSync = false
 	/** this mutex ensures that the notifications (receipts, messages etc.) are processed in order */
 	const processingMutex = makeMutex()
 
@@ -691,23 +692,20 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				&& PROCESSABLE_HISTORY_TYPES.includes(historyMsg.syncType!)
 			)
 			: false
-		// we should have app state keys before we process any history
-		if(shouldProcessHistoryMsg) {
-			if(!authState.creds.myAppStateKeyId) {
-				logger.warn('myAppStateKeyId not synced, bad link')
-				await logout('Incomplete app state key sync')
-				return
-			}
+
+		if(shouldProcessHistoryMsg && !authState.creds.myAppStateKeyId) {
+			logger.warn('skipping app state sync, as myAppStateKeyId is not set')
+			pendingAppStateSync = true
 		}
 
 		await Promise.all([
 			(async() => {
-				if(shouldProcessHistoryMsg && !authState.creds.accountSyncCounter) {
-					logger.info('doing initial app state sync')
-					await resyncAppState(ALL_WA_PATCH_NAMES, true)
-
-					const accountSyncCounter = (authState.creds.accountSyncCounter || 0) + 1
-					ev.emit('creds.update', { accountSyncCounter })
+				if(
+					shouldProcessHistoryMsg
+					&& authState.creds.myAppStateKeyId
+				) {
+					pendingAppStateSync = false
+					await doAppStateSync()
 				}
 			})(),
 			processMessage(
@@ -722,6 +720,29 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				}
 			)
 		])
+
+		if(
+			msg.message?.protocolMessage?.appStateSyncKeyShare
+			&& pendingAppStateSync
+		) {
+			await doAppStateSync()
+			pendingAppStateSync = false
+		}
+
+		async function doAppStateSync() {
+			if(!authState.creds.accountSyncCounter) {
+				logger.info('doing initial app state sync')
+				await resyncAppState(ALL_WA_PATCH_NAMES, true)
+
+				const accountSyncCounter = (authState.creds.accountSyncCounter || 0) + 1
+				ev.emit('creds.update', { accountSyncCounter })
+
+				if(needToFlushWithAppStateSync) {
+					logger.debug('flushing with app state sync')
+					ev.flush()
+				}
+			}
+		}
 	})
 
 	ws.on('CB:presence', handlePresenceUpdate)
@@ -749,7 +770,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 	})
 
-	ev.on('connection.update', ({ connection }) => {
+	ev.on('connection.update', ({ connection, receivedPendingNotifications }) => {
 		if(connection === 'open') {
 			if(fireInitQueries) {
 				executeInitQueries()
@@ -762,6 +783,15 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				.catch(
 					error => onUnexpectedError(error, 'presence update requests')
 				)
+		}
+
+		if(receivedPendingNotifications) {
+			// if we don't have the app state key
+			// we keep buffering events until we finally have
+			// the key and can sync the messages
+			if(!authState.creds?.myAppStateKeyId) {
+				needToFlushWithAppStateSync = ev.buffer()
+			}
 		}
 	})
 
