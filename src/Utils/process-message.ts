@@ -2,7 +2,7 @@ import { AxiosRequestConfig } from 'axios'
 import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { AuthenticationCreds, BaileysEventEmitter, Chat, GroupMetadata, ParticipantAction, SignalKeyStoreWithTransaction, WAMessageStubType } from '../Types'
-import { downloadAndProcessHistorySyncNotification, normalizeMessageContent, toNumber } from '../Utils'
+import { downloadAndProcessHistorySyncNotification, getContentType, normalizeMessageContent, toNumber } from '../Utils'
 import { areJidsSameUser, jidNormalizedUser } from '../WABinary'
 
 type ProcessMessageContext = {
@@ -54,6 +54,7 @@ export const cleanMessage = (message: proto.IWebMessageInfo, meId: string) => {
 
 export const isRealMessage = (message: proto.IWebMessageInfo, meId: string) => {
 	const normalizedContent = normalizeMessageContent(message.message)
+	const hasSomeContent = !!getContentType(normalizedContent)
 	return (
 		!!normalizedContent
 		|| REAL_MSG_STUB_TYPES.has(message.messageStubType!)
@@ -62,6 +63,7 @@ export const isRealMessage = (message: proto.IWebMessageInfo, meId: string) => {
 			&& message.messageStubParameters?.some(p => areJidsSameUser(meId, p))
 		)
 	)
+	&& hasSomeContent
 	&& !normalizedContent?.protocolMessage
 	&& !normalizedContent?.reactionMessage
 }
