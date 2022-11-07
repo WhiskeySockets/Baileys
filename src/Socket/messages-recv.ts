@@ -546,7 +546,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 						await sendReceipt(msg.key.remoteJid!, participant!, [msg.key.id!], type)
 
-
 						// send ack for history message
 						const isAnyHistoryMsg = getHistoryMsg(msg.message!)
 						if(isAnyHistoryMsg) {
@@ -619,14 +618,26 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	/// processes a node with the given function
 	/// and adds the task to the existing buffer if we're buffering events
-	const processNodeWithBuffer = (
+	const processNodeWithBuffer = async(
 		node: BinaryNode,
 		identifier: string,
 		exec: (node: BinaryNode) => Promise<any>
 	) => {
-		const task = exec(node)
-			.catch(err => onUnexpectedError(err, identifier))
-		ev.processInBuffer(task)
+		const started = ev.buffer()
+		if(started) {
+			await execTask()
+			if(started) {
+				await ev.flush()
+			}
+		} else {
+			const task = execTask()
+			ev.processInBuffer(task)
+		}
+
+		function execTask() {
+			return exec(node)
+				.catch(err => onUnexpectedError(err, identifier))
+		}
 	}
 
 	// called when all offline notifs are handled
