@@ -70,6 +70,12 @@ export type SocketConfig = {
      * */
     generateHighQualityLinkPreview: boolean
 
+    /** verify app state MACs */
+    appStateMacVerification: {
+        patch: boolean
+        snapshot: boolean
+    }
+
     /** options for axios */
     options: AxiosRequestConfig<any>
     /**

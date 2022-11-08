@@ -55,6 +55,10 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	transactionOpts: { maxCommitRetries: 10, delayBetweenTriesMs: 3000 },
 	generateHighQualityLinkPreview: false,
 	options: { },
+	appStateMacVerification: {
+		patch: false,
+		snapshot: false,
+	},
 	getMessage: async() => undefined
 }
 

@@ -445,7 +445,7 @@ export const decodePatches = async(
 					mutationMap[index!] = mutation
 				}
 				: (() => { }),
-			validateMacs
+			true
 		)
 
 		newState.hash = decodeResult.hash

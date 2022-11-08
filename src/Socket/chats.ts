@@ -11,7 +11,13 @@ import { makeSocket } from './socket'
 const MAX_SYNC_ATTEMPTS = 2
 
 export const makeChatsSocket = (config: SocketConfig) => {
-	const { logger, markOnlineOnConnect, shouldSyncHistoryMessage, fireInitQueries } = config
+	const {
+		logger,
+		markOnlineOnConnect,
+		shouldSyncHistoryMessage,
+		fireInitQueries,
+		appStateMacVerification,
+	} = config
 	const sock = makeSocket(config)
 	const {
 		ev,
@@ -360,7 +366,13 @@ export const makeChatsSocket = (config: SocketConfig) => {
 						const { patches, hasMorePatches, snapshot } = decoded[name]
 						try {
 							if(snapshot) {
-								const { state: newState, mutationMap } = await decodeSyncdSnapshot(name, snapshot, getAppStateSyncKey, initialVersionMap[name])
+								const { state: newState, mutationMap } = await decodeSyncdSnapshot(
+									name,
+									snapshot,
+									getAppStateSyncKey,
+									initialVersionMap[name],
+									appStateMacVerification.snapshot
+								)
 								states[name] = newState
 								Object.assign(globalMutationMap, mutationMap)
 
@@ -377,7 +389,9 @@ export const makeChatsSocket = (config: SocketConfig) => {
 									states[name],
 									getAppStateSyncKey,
 									config.options,
-									initialVersionMap[name]
+									initialVersionMap[name],
+									logger,
+									appStateMacVerification.patch
 								)
 
 								await authState.keys.set({ 'app-state-sync-version': { [name]: newState } })
