@@ -11,6 +11,8 @@ import { downloadContentFromMessage, } from './messages-media'
 
 type FetchAppStateSyncKey = (keyId: string) => Promise<proto.Message.IAppStateSyncKeyData | null | undefined>
 
+export type ChatMutationMap = { [index: string]: ChatMutation }
+
 const mutationKeys = (keydata: Uint8Array) => {
 	const expanded = hkdf(keydata, 160, { info: 'WhatsApp Mutation Keys' })
 	return {
@@ -50,9 +52,9 @@ const generateMac = (operation: proto.SyncdMutation.SyncdOperation, data: Buffer
 }
 
 const to64BitNetworkOrder = (e: number) => {
-	const t = new ArrayBuffer(8)
-	new DataView(t).setUint32(4, e, !1)
-	return Buffer.from(t)
+	const buff = Buffer.alloc(8)
+	buff.writeUint32BE(e, 4)
+	return buff
 }
 
 type Mac = { indexMac: Uint8Array, valueMac: Uint8Array, operation: proto.SyncdMutation.SyncdOperation }
@@ -84,7 +86,8 @@ const makeLtHashGenerator = ({ indexValueMap, hash }: Pick<LTHashState, 'hash' |
 			}
 		},
 		finish: () => {
-			const result = LT_HASH_ANTI_TAMPERING.subtractThenAdd(new Uint8Array(hash).buffer, addBuffs, subBuffs)
+			const hashArrayBuffer = new Uint8Array(hash).buffer
+			const result = LT_HASH_ANTI_TAMPERING.subtractThenAdd(hashArrayBuffer, addBuffs, subBuffs)
 			const buffer = Buffer.from(result)
 
 			return {
@@ -188,24 +191,6 @@ export const decodeSyncdMutations = async(
 	onMutation: (mutation: ChatMutation) => void,
 	validateMacs: boolean
 ) => {
-	const keyCache: { [_: string]: ReturnType<typeof mutationKeys> } = { }
-	const getKey = async(keyId: Uint8Array) => {
-		const base64Key = Buffer.from(keyId!).toString('base64')
-		let key = keyCache[base64Key]
-		if(!key) {
-			const keyEnc = await getAppStateSyncKey(base64Key)
-			if(!keyEnc) {
-				throw new Boom(`failed to find key "${base64Key}" to decode mutation`, { statusCode: 404, data: { msgMutations } })
-			}
-
-			const result = mutationKeys(keyEnc.keyData!)
-			keyCache[base64Key] = result
-			key = result
-		}
-
-		return key
-	}
-
 	const ltGenerator = makeLtHashGenerator(initialState)
 	// indexKey used to HMAC sign record.index.blob
 	// valueEncryptionKey used to AES-256-CBC encrypt record.value.blob[0:-32]
@@ -248,6 +233,16 @@ export const decodeSyncdMutations = async(
 	}
 
 	return ltGenerator.finish()
+
+	async function getKey(keyId: Uint8Array) {
+		const base64Key = Buffer.from(keyId!).toString('base64')
+		const keyEnc = await getAppStateSyncKey(base64Key)
+		if(!keyEnc) {
+			throw new Boom(`failed to find key "${base64Key}" to decode mutation`, { statusCode: 404, data: { msgMutations } })
+		}
+
+		return mutationKeys(keyEnc.keyData!)
+	}
 }
 
 export const decodeSyncdPatch = async(
@@ -363,26 +358,25 @@ export const decodeSyncdSnapshot = async(
 	snapshot: proto.ISyncdSnapshot,
 	getAppStateSyncKey: FetchAppStateSyncKey,
 	minimumVersionNumber: number | undefined,
-	onMutation?: (mutation: ChatMutation) => void,
 	validateMacs: boolean = true
 ) => {
 	const newState = newLTHashState()
 	newState.version = toNumber(snapshot.version!.version!)
 
-	onMutation = onMutation || (() => { })
+	const mutationMap: ChatMutationMap = {}
+	const areMutationsRequired = typeof minimumVersionNumber === 'undefined'
+		|| newState.version > minimumVersionNumber
 
 	const { hash, indexValueMap } = await decodeSyncdMutations(
 		snapshot.records!,
 		newState,
 		getAppStateSyncKey,
-		mutation => {
-			if(onMutation) {
-				const areMutationsRequired = typeof minimumVersionNumber === 'undefined' || newState.version > minimumVersionNumber
-				if(areMutationsRequired) {
-					onMutation(mutation)
-				}
+		areMutationsRequired
+			? (mutation) => {
+				const index = mutation.syncAction.index?.toString()
+				mutationMap[index!] = mutation
 			}
-		},
+			: () => { },
 		validateMacs
 	)
 	newState.hash = hash
@@ -392,18 +386,19 @@ export const decodeSyncdSnapshot = async(
 		const base64Key = Buffer.from(snapshot.keyId!.id!).toString('base64')
 		const keyEnc = await getAppStateSyncKey(base64Key)
 		if(!keyEnc) {
-			throw new Boom(`failed to find key "${base64Key}" to decode mutation`, { statusCode: 500 })
+			throw new Boom(`failed to find key "${base64Key}" to decode mutation`)
 		}
 
 		const result = mutationKeys(keyEnc.keyData!)
 		const computedSnapshotMac = generateSnapshotMac(newState.hash, newState.version, name, result.snapshotMacKey)
 		if(Buffer.compare(snapshot.mac!, computedSnapshotMac) !== 0) {
-			throw new Boom(`failed to verify LTHash at ${newState.version} of ${name} from snapshot`, { statusCode: 500 })
+			throw new Boom(`failed to verify LTHash at ${newState.version} of ${name} from snapshot`)
 		}
 	}
 
 	return {
 		state: newState,
+		mutationMap
 	}
 }
 
@@ -412,21 +407,20 @@ export const decodePatches = async(
 	syncds: proto.ISyncdPatch[],
 	initial: LTHashState,
 	getAppStateSyncKey: FetchAppStateSyncKey,
-	onMutation: (mut: ChatMutation) => void,
 	options: AxiosRequestConfig<any>,
 	minimumVersionNumber?: number,
 	logger?: Logger,
 	validateMacs: boolean = true
 ) => {
-	syncds = [...syncds]
-
 	const newState: LTHashState = {
 		...initial,
 		indexValueMap: { ...initial.indexValueMap }
 	}
 
-	while(syncds.length) {
-		const syncd = syncds[0]
+	const mutationMap: ChatMutationMap = { }
+
+	for(let i = 0;i < syncds.length;i++) {
+		const syncd = syncds[i]
 		const { version, keyId, snapshotMac } = syncd
 		if(syncd.externalMutations) {
 			logger?.trace({ name, version }, 'downloading external patch')
@@ -439,7 +433,20 @@ export const decodePatches = async(
 
 		newState.version = patchVersion
 		const shouldMutate = typeof minimumVersionNumber === 'undefined' || patchVersion > minimumVersionNumber
-		const decodeResult = await decodeSyncdPatch(syncd, name, newState, getAppStateSyncKey, shouldMutate ? onMutation : (() => { }), validateMacs)
+
+		const decodeResult = await decodeSyncdPatch(
+			syncd,
+			name,
+			newState,
+			getAppStateSyncKey,
+			shouldMutate
+				? mutation => {
+					const index = mutation.syncAction.index?.toString()
+					mutationMap[index!] = mutation
+				}
+				: (() => { }),
+			validateMacs
+		)
 
 		newState.hash = decodeResult.hash
 		newState.indexValueMap = decodeResult.indexValueMap
@@ -460,11 +467,9 @@ export const decodePatches = async(
 
 		// clear memory used up by the mutations
 		syncd.mutations = []
-		// pop first element
-		syncds.splice(0, 1)
 	}
 
-	return { state: newState }
+	return { state: newState, mutationMap }
 }
 
 export const chatModificationToAppPatch = (

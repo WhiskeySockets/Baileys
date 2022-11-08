@@ -2,13 +2,13 @@ import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto'
 import { PROCESSABLE_HISTORY_TYPES } from '../Defaults'
 import { ALL_WA_PATCH_NAMES, ChatModification, ChatMutation, LTHashState, MessageUpsertType, PresenceData, SocketConfig, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAMessage, WAPatchCreate, WAPatchName, WAPresence } from '../Types'
-import { chatModificationToAppPatch, decodePatches, decodeSyncdSnapshot, encodeSyncdPatch, extractSyncdPatches, generateProfilePicture, getHistoryMsg, newLTHashState, processSyncAction } from '../Utils'
+import { chatModificationToAppPatch, ChatMutationMap, decodePatches, decodeSyncdSnapshot, encodeSyncdPatch, extractSyncdPatches, generateProfilePicture, getHistoryMsg, newLTHashState, processSyncAction } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
 import processMessage from '../Utils/process-message'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidNormalizedUser, reduceBinaryNodeToDictionary, S_WHATSAPP_NET } from '../WABinary'
 import { makeSocket } from './socket'
 
-const MAX_SYNC_ATTEMPTS = 5
+const MAX_SYNC_ATTEMPTS = 2
 
 export const makeChatsSocket = (config: SocketConfig) => {
 	const { logger, markOnlineOnConnect, shouldSyncHistoryMessage, fireInitQueries } = config
@@ -293,16 +293,16 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	const resyncAppState = ev.createBufferedFunction(async(collections: readonly WAPatchName[], isInitialSync: boolean) => {
-		const { onMutation } = newAppStateChunkHandler(isInitialSync)
 		// we use this to determine which events to fire
 		// otherwise when we resync from scratch -- all notifications will fire
 		const initialVersionMap: { [T in WAPatchName]?: number } = { }
+		const globalMutationMap: ChatMutationMap = { }
 
 		await authState.keys.transaction(
 			async() => {
 				const collectionsToHandle = new Set<string>(collections)
 				// in case something goes wrong -- ensure we don't enter a loop that cannot be exited from
-				const attemptsMap = { } as { [T in WAPatchName]: number | undefined }
+				const attemptsMap: { [T in WAPatchName]?: number } = { }
 				// keep executing till all collections are done
 				// sometimes a single patch request will not return all the patches (God knows why)
 				// so we fetch till they're all done (this is determined by the "has_more_patches" flag)
@@ -353,30 +353,29 @@ export const makeChatsSocket = (config: SocketConfig) => {
 						]
 					})
 
-					const decoded = await extractSyncdPatches(result, config?.options) // extract from binary node
+					// extract from binary node
+					const decoded = await extractSyncdPatches(result, config?.options)
 					for(const key in decoded) {
 						const name = key as WAPatchName
 						const { patches, hasMorePatches, snapshot } = decoded[name]
 						try {
 							if(snapshot) {
-								const { state: newState } = await decodeSyncdSnapshot(name, snapshot, getAppStateSyncKey, initialVersionMap[name], onMutation)
+								const { state: newState, mutationMap } = await decodeSyncdSnapshot(name, snapshot, getAppStateSyncKey, initialVersionMap[name])
 								states[name] = newState
+								Object.assign(globalMutationMap, mutationMap)
 
-								logger.info(
-									`restored state of ${name} from snapshot to v${newState.version} with mutations`
-								)
+								logger.info(`restored state of ${name} from snapshot to v${newState.version} with mutations`)
 
 								await authState.keys.set({ 'app-state-sync-version': { [name]: newState } })
 							}
 
 							// only process if there are syncd patches
 							if(patches.length) {
-								const { state: newState } = await decodePatches(
+								const { state: newState, mutationMap } = await decodePatches(
 									name,
 									patches,
 									states[name],
 									getAppStateSyncKey,
-									onMutation,
 									config.options,
 									initialVersionMap[name]
 								)
@@ -384,6 +383,9 @@ export const makeChatsSocket = (config: SocketConfig) => {
 								await authState.keys.set({ 'app-state-sync-version': { [name]: newState } })
 
 								logger.info(`synced ${name} to v${newState.version}`)
+								initialVersionMap[name] = newState.version
+
+								Object.assign(globalMutationMap, mutationMap)
 							}
 
 							if(hasMorePatches) {
@@ -396,8 +398,11 @@ export const makeChatsSocket = (config: SocketConfig) => {
 							// or key not found
 							const isIrrecoverableError = attemptsMap[name]! >= MAX_SYNC_ATTEMPTS
 								|| error.output?.statusCode === 404
-								|| error.message.includes('TypeError')
-							logger.info({ name, error: error.stack }, `failed to sync state from version${isIrrecoverableError ? '' : ', removing and trying from scratch'}`)
+								|| error.name === 'TypeError'
+							logger.info(
+								{ name, error: error.stack },
+								`failed to sync state from version${isIrrecoverableError ? '' : ', removing and trying from scratch'}`
+							)
 							await authState.keys.set({ 'app-state-sync-version': { [name]: null } })
 							// increment number of retries
 							attemptsMap[name] = (attemptsMap[name] || 0) + 1
@@ -411,6 +416,11 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				}
 			}
 		)
+
+		const { onMutation } = newAppStateChunkHandler(isInitialSync)
+		for(const key in globalMutationMap) {
+			onMutation(globalMutationMap[key])
+		}
 	})
 
 	/**
@@ -580,16 +590,18 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 		if(config.emitOwnEvents) {
 			const { onMutation } = newAppStateChunkHandler(false)
-			await decodePatches(
+			const { mutationMap } = await decodePatches(
 				name,
 				[{ ...encodeResult!.patch, version: { version: encodeResult!.state.version }, }],
 				initial!,
 				getAppStateSyncKey,
-				onMutation,
 				config.options,
 				undefined,
 				logger,
 			)
+			for(const key in mutationMap) {
+				onMutation(mutationMap[key])
+			}
 		}
 	}
 
