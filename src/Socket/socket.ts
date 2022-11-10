@@ -577,6 +577,7 @@ export const makeSocket = ({
 		end,
 		onUnexpectedError,
 		uploadPreKeys,
+		uploadPreKeysToServerIfRequired,
 		/** Waits for the connection to WA to reach a state */
 		waitForConnectionUpdate: bindWaitForConnectionUpdate(ev),
 	}
