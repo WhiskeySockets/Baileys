@@ -14,9 +14,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	const {
 		logger,
 		markOnlineOnConnect,
-		shouldSyncHistoryMessage,
 		fireInitQueries,
 		appStateMacVerification,
+		shouldIgnoreJid,
+		shouldSyncHistoryMessage,
 	} = config
 	const sock = makeSocket(config)
 	const {
@@ -508,6 +509,11 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		let presence: PresenceData | undefined
 		const jid = attrs.from
 		const participant = attrs.participant || attrs.from
+
+		if(shouldIgnoreJid(jid)) {
+			return
+		}
+
 		if(tag === 'presence') {
 			presence = {
 				lastKnownPresence: attrs.type === 'unavailable' ? 'unavailable' : 'available',
