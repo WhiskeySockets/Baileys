@@ -13,7 +13,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const {
 		logger,
 		retryRequestDelayMs,
-		getMessage
+		getMessage,
+		shouldIgnoreJid
 	} = config
 	const sock = makeMessagesSocket(config)
 	const {
@@ -400,17 +401,23 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const remoteJid = !isNodeFromMe || isJidGroup(attrs.from) ? attrs.from : attrs.recipient
 		const fromMe = !attrs.recipient || (attrs.type === 'retry' && isNodeFromMe)
 
-		const ids = [attrs.id]
-		if(Array.isArray(content)) {
-			const items = getBinaryNodeChildren(content[0], 'item')
-			ids.push(...items.map(i => i.attrs.id))
-		}
-
 		const key: proto.IMessageKey = {
 			remoteJid,
 			id: '',
 			fromMe,
 			participant: attrs.participant
+		}
+
+		if(shouldIgnoreJid(remoteJid)) {
+			logger.debug({ remoteJid }, 'ignoring receipt from jid')
+			await sendMessageAck(node)
+			return
+		}
+
+		const ids = [attrs.id]
+		if(Array.isArray(content)) {
+			const items = getBinaryNodeChildren(content[0], 'item')
+			ids.push(...items.map(i => i.attrs.id))
 		}
 
 		await Promise.all([
@@ -478,6 +485,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const handleNotification = async(node: BinaryNode) => {
 		const remoteJid = node.attrs.from
+		if(shouldIgnoreJid(remoteJid)) {
+			logger.debug({ remoteJid, id: node.attrs.id }, 'ignored notification')
+			await sendMessageAck(node)
+			return
+		}
+
 		await Promise.all([
 			processingMutex.mutex(
 				async() => {
@@ -504,7 +517,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleMessage = async(node: BinaryNode) => {
-		const { fullMessage: msg, category, author, decryptionTask } = decodeMessageStanza(node, authState)
+		const { fullMessage: msg, category, author, decrypt } = decodeMessageStanza(node, authState)
+		if(shouldIgnoreJid(msg.key.remoteJid!)) {
+			logger.debug({ key: msg.key }, 'ignored message')
+			await sendMessageAck(node)
+			return
+		}
+
+		const decryptionTask = decrypt()
 		await Promise.all([
 			processingMutex.mutex(
 				async() => {

@@ -1,5 +1,5 @@
 import { Boom } from '@hapi/boom'
-import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, makeCacheableSignalKeyStore, makeInMemoryStore, MessageRetryMap, useMultiFileAuthState } from '../src'
+import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, isJidBroadcast, jidNormalizedUser, makeCacheableSignalKeyStore, makeInMemoryStore, MessageRetryMap, useMultiFileAuthState } from '../src'
 import MAIN_LOGGER from '../src/Utils/logger'
 
 const logger = MAIN_LOGGER.child({ })
@@ -39,6 +39,9 @@ const startSock = async() => {
 		},
 		msgRetryCounterMap,
 		generateHighQualityLinkPreview: true,
+		// ignore all broadcast messages -- to receive the same
+		// comment the line below out
+		shouldIgnoreJid: jid => isJidBroadcast(jid),
 		// implement to handle retries
 		getMessage: async key => {
 			if(store) {

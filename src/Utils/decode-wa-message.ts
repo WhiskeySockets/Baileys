@@ -86,7 +86,7 @@ export const decodeMessageStanza = (stanza: BinaryNode, auth: AuthenticationStat
 		fullMessage,
 		category: stanza.attrs.category,
 		author,
-		decryptionTask: (async() => {
+		async decrypt() {
 			let decryptables = 0
 			if(Array.isArray(stanza.content)) {
 				for(const { tag, attrs, content } of stanza.content) {
@@ -146,6 +146,6 @@ export const decodeMessageStanza = (stanza: BinaryNode, auth: AuthenticationStat
 				fullMessage.messageStubType = proto.WebMessageInfo.StubType.CIPHERTEXT
 				fullMessage.messageStubParameters = [NO_MESSAGE_FOUND_ERROR_TEXT]
 			}
-		})()
+		}
 	}
 }
