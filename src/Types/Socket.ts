@@ -77,6 +77,14 @@ export type SocketConfig = {
      * */
     shouldIgnoreJid: (jid: string) => boolean | undefined
 
+    /**
+     * Optionally patch the message before sending out
+     * */
+    patchMessageBeforeSending: (
+        msg: proto.IMessage,
+        recipientJids: string[],
+    ) => Promise<proto.IMessage> | proto.IMessage
+
     /** verify app state MACs */
     appStateMacVerification: {
         patch: boolean
