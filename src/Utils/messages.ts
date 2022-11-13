@@ -373,6 +373,8 @@ export const generateWAMessageContent = async(
 				productImage: imageMessage,
 			}
 		})
+	} else if('listReply' in message) {
+		m.listResponseMessage = { ...message.listReply }
 	} else {
 		m = await prepareWAMessageMedia(
 			message,

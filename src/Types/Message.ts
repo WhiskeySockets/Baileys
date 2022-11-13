@@ -141,6 +141,9 @@ export type AnyRegularMessageContent = (
         type: 'template' | 'plain'
     }
     | {
+        listReply: Omit<proto.Message.IListResponseMessage, 'contextInfo'>
+    }
+    | {
         product: WASendableProduct,
         businessOwnerJid?: string
         body?: string
