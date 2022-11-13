@@ -3229,6 +3229,9 @@ export namespace proto {
 
             /** ExternalAdReplyInfo showAdAttribution */
             showAdAttribution?: (boolean|null);
+
+            /** ExternalAdReplyInfo ctwaClid */
+            ctwaClid?: (string|null);
         }
 
         /** Represents an ExternalAdReplyInfo. */
@@ -3275,6 +3278,9 @@ export namespace proto {
 
             /** ExternalAdReplyInfo showAdAttribution. */
             public showAdAttribution: boolean;
+
+            /** ExternalAdReplyInfo ctwaClid. */
+            public ctwaClid: string;
 
             /**
              * Creates a new ExternalAdReplyInfo instance using the specified properties.
@@ -6880,6 +6886,9 @@ export namespace proto {
 
         /** Message editedMessage */
         editedMessage?: (proto.Message.IFutureProofMessage|null);
+
+        /** Message viewOnceMessageV2Extension */
+        viewOnceMessageV2Extension?: (proto.Message.IFutureProofMessage|null);
     }
 
     /** Represents a Message. */
@@ -7034,6 +7043,9 @@ export namespace proto {
 
         /** Message editedMessage. */
         public editedMessage?: (proto.Message.IFutureProofMessage|null);
+
+        /** Message viewOnceMessageV2Extension. */
+        public viewOnceMessageV2Extension?: (proto.Message.IFutureProofMessage|null);
 
         /**
          * Creates a new Message instance using the specified properties.
@@ -9594,6 +9606,9 @@ export namespace proto {
 
             /** ExtendedTextMessage inviteLinkGroupTypeV2 */
             inviteLinkGroupTypeV2?: (proto.Message.ExtendedTextMessage.InviteLinkGroupType|null);
+
+            /** ExtendedTextMessage viewOnce */
+            viewOnce?: (boolean|null);
         }
 
         /** Represents an ExtendedTextMessage. */
@@ -9673,6 +9688,9 @@ export namespace proto {
 
             /** ExtendedTextMessage inviteLinkGroupTypeV2. */
             public inviteLinkGroupTypeV2: proto.Message.ExtendedTextMessage.InviteLinkGroupType;
+
+            /** ExtendedTextMessage viewOnce. */
+            public viewOnce: boolean;
 
             /**
              * Creates a new ExtendedTextMessage instance using the specified properties.

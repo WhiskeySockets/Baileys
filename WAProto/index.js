@@ -8942,6 +8942,7 @@ $root.proto = (function() {
              * @property {boolean|null} [containsAutoReply] ExternalAdReplyInfo containsAutoReply
              * @property {boolean|null} [renderLargerThumbnail] ExternalAdReplyInfo renderLargerThumbnail
              * @property {boolean|null} [showAdAttribution] ExternalAdReplyInfo showAdAttribution
+             * @property {string|null} [ctwaClid] ExternalAdReplyInfo ctwaClid
              */
 
             /**
@@ -9056,6 +9057,14 @@ $root.proto = (function() {
             ExternalAdReplyInfo.prototype.showAdAttribution = false;
 
             /**
+             * ExternalAdReplyInfo ctwaClid.
+             * @member {string} ctwaClid
+             * @memberof proto.ContextInfo.ExternalAdReplyInfo
+             * @instance
+             */
+            ExternalAdReplyInfo.prototype.ctwaClid = "";
+
+            /**
              * Creates a new ExternalAdReplyInfo instance using the specified properties.
              * @function create
              * @memberof proto.ContextInfo.ExternalAdReplyInfo
@@ -9103,6 +9112,8 @@ $root.proto = (function() {
                     writer.uint32(/* id 11, wireType 0 =*/88).bool(message.renderLargerThumbnail);
                 if (message.showAdAttribution != null && Object.hasOwnProperty.call(message, "showAdAttribution"))
                     writer.uint32(/* id 12, wireType 0 =*/96).bool(message.showAdAttribution);
+                if (message.ctwaClid != null && Object.hasOwnProperty.call(message, "ctwaClid"))
+                    writer.uint32(/* id 13, wireType 2 =*/106).string(message.ctwaClid);
                 return writer;
             };
 
@@ -9172,6 +9183,9 @@ $root.proto = (function() {
                         break;
                     case 12:
                         message.showAdAttribution = reader.bool();
+                        break;
+                    case 13:
+                        message.ctwaClid = reader.string();
                         break;
                     default:
                         reader.skipType(tag & 7);
@@ -9250,6 +9264,9 @@ $root.proto = (function() {
                 if (message.showAdAttribution != null && message.hasOwnProperty("showAdAttribution"))
                     if (typeof message.showAdAttribution !== "boolean")
                         return "showAdAttribution: boolean expected";
+                if (message.ctwaClid != null && message.hasOwnProperty("ctwaClid"))
+                    if (!$util.isString(message.ctwaClid))
+                        return "ctwaClid: string expected";
                 return null;
             };
 
@@ -9304,6 +9321,8 @@ $root.proto = (function() {
                     message.renderLargerThumbnail = Boolean(object.renderLargerThumbnail);
                 if (object.showAdAttribution != null)
                     message.showAdAttribution = Boolean(object.showAdAttribution);
+                if (object.ctwaClid != null)
+                    message.ctwaClid = String(object.ctwaClid);
                 return message;
             };
 
@@ -9339,6 +9358,7 @@ $root.proto = (function() {
                     object.containsAutoReply = false;
                     object.renderLargerThumbnail = false;
                     object.showAdAttribution = false;
+                    object.ctwaClid = "";
                 }
                 if (message.title != null && message.hasOwnProperty("title"))
                     object.title = message.title;
@@ -9364,6 +9384,8 @@ $root.proto = (function() {
                     object.renderLargerThumbnail = message.renderLargerThumbnail;
                 if (message.showAdAttribution != null && message.hasOwnProperty("showAdAttribution"))
                     object.showAdAttribution = message.showAdAttribution;
+                if (message.ctwaClid != null && message.hasOwnProperty("ctwaClid"))
+                    object.ctwaClid = message.ctwaClid;
                 return object;
             };
 
@@ -18516,6 +18538,7 @@ $root.proto = (function() {
          * @property {proto.Message.IFutureProofMessage|null} [viewOnceMessageV2] Message viewOnceMessageV2
          * @property {proto.Message.IEncReactionMessage|null} [encReactionMessage] Message encReactionMessage
          * @property {proto.Message.IFutureProofMessage|null} [editedMessage] Message editedMessage
+         * @property {proto.Message.IFutureProofMessage|null} [viewOnceMessageV2Extension] Message viewOnceMessageV2Extension
          */
 
         /**
@@ -18918,6 +18941,14 @@ $root.proto = (function() {
         Message.prototype.editedMessage = null;
 
         /**
+         * Message viewOnceMessageV2Extension.
+         * @member {proto.Message.IFutureProofMessage|null|undefined} viewOnceMessageV2Extension
+         * @memberof proto.Message
+         * @instance
+         */
+        Message.prototype.viewOnceMessageV2Extension = null;
+
+        /**
          * Creates a new Message instance using the specified properties.
          * @function create
          * @memberof proto.Message
@@ -19037,6 +19068,8 @@ $root.proto = (function() {
                 $root.proto.Message.EncReactionMessage.encode(message.encReactionMessage, writer.uint32(/* id 56, wireType 2 =*/450).fork()).ldelim();
             if (message.editedMessage != null && Object.hasOwnProperty.call(message, "editedMessage"))
                 $root.proto.Message.FutureProofMessage.encode(message.editedMessage, writer.uint32(/* id 58, wireType 2 =*/466).fork()).ldelim();
+            if (message.viewOnceMessageV2Extension != null && Object.hasOwnProperty.call(message, "viewOnceMessageV2Extension"))
+                $root.proto.Message.FutureProofMessage.encode(message.viewOnceMessageV2Extension, writer.uint32(/* id 59, wireType 2 =*/474).fork()).ldelim();
             return writer;
         };
 
@@ -19214,6 +19247,9 @@ $root.proto = (function() {
                     break;
                 case 58:
                     message.editedMessage = $root.proto.Message.FutureProofMessage.decode(reader, reader.uint32());
+                    break;
+                case 59:
+                    message.viewOnceMessageV2Extension = $root.proto.Message.FutureProofMessage.decode(reader, reader.uint32());
                     break;
                 default:
                     reader.skipType(tag & 7);
@@ -19488,6 +19524,11 @@ $root.proto = (function() {
                 if (error)
                     return "editedMessage." + error;
             }
+            if (message.viewOnceMessageV2Extension != null && message.hasOwnProperty("viewOnceMessageV2Extension")) {
+                var error = $root.proto.Message.FutureProofMessage.verify(message.viewOnceMessageV2Extension);
+                if (error)
+                    return "viewOnceMessageV2Extension." + error;
+            }
             return null;
         };
 
@@ -19740,6 +19781,11 @@ $root.proto = (function() {
                     throw TypeError(".proto.Message.editedMessage: object expected");
                 message.editedMessage = $root.proto.Message.FutureProofMessage.fromObject(object.editedMessage);
             }
+            if (object.viewOnceMessageV2Extension != null) {
+                if (typeof object.viewOnceMessageV2Extension !== "object")
+                    throw TypeError(".proto.Message.viewOnceMessageV2Extension: object expected");
+                message.viewOnceMessageV2Extension = $root.proto.Message.FutureProofMessage.fromObject(object.viewOnceMessageV2Extension);
+            }
             return message;
         };
 
@@ -19805,6 +19851,7 @@ $root.proto = (function() {
                 object.viewOnceMessageV2 = null;
                 object.encReactionMessage = null;
                 object.editedMessage = null;
+                object.viewOnceMessageV2Extension = null;
             }
             if (message.conversation != null && message.hasOwnProperty("conversation"))
                 object.conversation = message.conversation;
@@ -19902,6 +19949,8 @@ $root.proto = (function() {
                 object.encReactionMessage = $root.proto.Message.EncReactionMessage.toObject(message.encReactionMessage, options);
             if (message.editedMessage != null && message.hasOwnProperty("editedMessage"))
                 object.editedMessage = $root.proto.Message.FutureProofMessage.toObject(message.editedMessage, options);
+            if (message.viewOnceMessageV2Extension != null && message.hasOwnProperty("viewOnceMessageV2Extension"))
+                object.viewOnceMessageV2Extension = $root.proto.Message.FutureProofMessage.toObject(message.viewOnceMessageV2Extension, options);
             return object;
         };
 
@@ -26175,6 +26224,7 @@ $root.proto = (function() {
              * @property {string|null} [inviteLinkParentGroupSubjectV2] ExtendedTextMessage inviteLinkParentGroupSubjectV2
              * @property {Uint8Array|null} [inviteLinkParentGroupThumbnailV2] ExtendedTextMessage inviteLinkParentGroupThumbnailV2
              * @property {proto.Message.ExtendedTextMessage.InviteLinkGroupType|null} [inviteLinkGroupTypeV2] ExtendedTextMessage inviteLinkGroupTypeV2
+             * @property {boolean|null} [viewOnce] ExtendedTextMessage viewOnce
              */
 
             /**
@@ -26377,6 +26427,14 @@ $root.proto = (function() {
             ExtendedTextMessage.prototype.inviteLinkGroupTypeV2 = 0;
 
             /**
+             * ExtendedTextMessage viewOnce.
+             * @member {boolean} viewOnce
+             * @memberof proto.Message.ExtendedTextMessage
+             * @instance
+             */
+            ExtendedTextMessage.prototype.viewOnce = false;
+
+            /**
              * Creates a new ExtendedTextMessage instance using the specified properties.
              * @function create
              * @memberof proto.Message.ExtendedTextMessage
@@ -26446,6 +26504,8 @@ $root.proto = (function() {
                     writer.uint32(/* id 28, wireType 2 =*/226).bytes(message.inviteLinkParentGroupThumbnailV2);
                 if (message.inviteLinkGroupTypeV2 != null && Object.hasOwnProperty.call(message, "inviteLinkGroupTypeV2"))
                     writer.uint32(/* id 29, wireType 0 =*/232).int32(message.inviteLinkGroupTypeV2);
+                if (message.viewOnce != null && Object.hasOwnProperty.call(message, "viewOnce"))
+                    writer.uint32(/* id 30, wireType 0 =*/240).bool(message.viewOnce);
                 return writer;
             };
 
@@ -26548,6 +26608,9 @@ $root.proto = (function() {
                         break;
                     case 29:
                         message.inviteLinkGroupTypeV2 = reader.int32();
+                        break;
+                    case 30:
+                        message.viewOnce = reader.bool();
                         break;
                     default:
                         reader.skipType(tag & 7);
@@ -26683,6 +26746,9 @@ $root.proto = (function() {
                     case 3:
                         break;
                     }
+                if (message.viewOnce != null && message.hasOwnProperty("viewOnce"))
+                    if (typeof message.viewOnce !== "boolean")
+                        return "viewOnce: boolean expected";
                 return null;
             };
 
@@ -26833,6 +26899,8 @@ $root.proto = (function() {
                     message.inviteLinkGroupTypeV2 = 3;
                     break;
                 }
+                if (object.viewOnce != null)
+                    message.viewOnce = Boolean(object.viewOnce);
                 return message;
             };
 
@@ -26907,6 +26975,7 @@ $root.proto = (function() {
                             object.inviteLinkParentGroupThumbnailV2 = $util.newBuffer(object.inviteLinkParentGroupThumbnailV2);
                     }
                     object.inviteLinkGroupTypeV2 = options.enums === String ? "DEFAULT" : 0;
+                    object.viewOnce = false;
                 }
                 if (message.text != null && message.hasOwnProperty("text"))
                     object.text = message.text;
@@ -26957,6 +27026,8 @@ $root.proto = (function() {
                     object.inviteLinkParentGroupThumbnailV2 = options.bytes === String ? $util.base64.encode(message.inviteLinkParentGroupThumbnailV2, 0, message.inviteLinkParentGroupThumbnailV2.length) : options.bytes === Array ? Array.prototype.slice.call(message.inviteLinkParentGroupThumbnailV2) : message.inviteLinkParentGroupThumbnailV2;
                 if (message.inviteLinkGroupTypeV2 != null && message.hasOwnProperty("inviteLinkGroupTypeV2"))
                     object.inviteLinkGroupTypeV2 = options.enums === String ? $root.proto.Message.ExtendedTextMessage.InviteLinkGroupType[message.inviteLinkGroupTypeV2] : message.inviteLinkGroupTypeV2;
+                if (message.viewOnce != null && message.hasOwnProperty("viewOnce"))
+                    object.viewOnce = message.viewOnce;
                 return object;
             };
 

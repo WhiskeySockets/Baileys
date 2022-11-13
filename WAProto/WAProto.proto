@@ -357,6 +357,7 @@ message ContextInfo {
         optional bool containsAutoReply = 10;
         optional bool renderLargerThumbnail = 11;
         optional bool showAdAttribution = 12;
+        optional string ctwaClid = 13;
         enum MediaType {
             NONE = 0;
             IMAGE = 1;
@@ -700,6 +701,7 @@ message Message {
     optional FutureProofMessage viewOnceMessageV2 = 55;
     optional EncReactionMessage encReactionMessage = 56;
     optional FutureProofMessage editedMessage = 58;
+    optional FutureProofMessage viewOnceMessageV2Extension = 59;
     message AppStateFatalExceptionNotification {
         repeated string collectionNames = 1;
         optional int64 timestamp = 2;
@@ -900,6 +902,7 @@ message Message {
         optional string inviteLinkParentGroupSubjectV2 = 27;
         optional bytes inviteLinkParentGroupThumbnailV2 = 28;
         optional InviteLinkGroupType inviteLinkGroupTypeV2 = 29;
+        optional bool viewOnce = 30;
         enum FontType {
             SANS_SERIF = 0;
             SERIF = 1;
