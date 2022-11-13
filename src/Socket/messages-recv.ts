@@ -524,11 +524,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			return
 		}
 
-		const decryptionTask = decrypt()
 		await Promise.all([
 			processingMutex.mutex(
 				async() => {
-					await decryptionTask
+					await decrypt()
 					// message failed to decrypt
 					if(msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT) {
 						logger.error(
