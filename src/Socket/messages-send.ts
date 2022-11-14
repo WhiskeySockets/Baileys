@@ -20,6 +20,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	const {
 		ev,
 		authState,
+		processingMutex,
 		upsertMessage,
 		query,
 		fetchPrivacySettings,
@@ -649,7 +650,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				await relayMessage(jid, fullMsg.message!, { messageId: fullMsg.key.id!, cachedGroupMetadata: options.cachedGroupMetadata, additionalAttributes })
 				if(config.emitOwnEvents) {
 					process.nextTick(() => {
-						upsertMessage(fullMsg, 'append')
+						processingMutex.mutex(() => (
+							upsertMessage(fullMsg, 'append')
+						))
 					})
 				}
 
