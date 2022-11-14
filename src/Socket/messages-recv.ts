@@ -254,7 +254,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			msg.messageStubType = WAMessageStubType.GROUP_CHANGE_RESTRICT
 			msg.messageStubParameters = [ (child.tag === 'locked') ? 'on' : 'off' ]
 			break
-
+		case 'invite':
+			msg.messageStubType = WAMessageStubType.GROUP_CHANGE_INVITE_LINK
+			msg.messageStubParameters = [ child.attrs.code ]
+			break
 		}
 	}
 
