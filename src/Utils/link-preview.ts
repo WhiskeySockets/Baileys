@@ -48,7 +48,7 @@ export const getUrlInfo = async(
 		}
 
 		const info = await getLinkPreview(previewLink, opts.fetchOpts)
-		if(info && 'title' in info) {
+		if(info && 'title' in info && info.title) {
 			const [image] = info.images
 
 			const urlInfo: WAUrlInfo = {
