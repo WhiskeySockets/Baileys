@@ -162,6 +162,12 @@ export const makeEventBuffer = (logger: Logger): BaileysBufferableEventEmitter =
 		},
 		processInBuffer(task) {
 			if(isBuffering) {
+				// if flushing right now,
+				// adding this won't make a difference
+				if(waitingForPreBufferEnd) {
+					return
+				}
+
 				preBufferTask = Promise.allSettled([ preBufferTask, task ])
 				preBufferTraces.push(new Error('').stack!)
 			}
