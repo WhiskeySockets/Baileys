@@ -21,6 +21,8 @@ const BUFFERABLE_EVENT = [
 	'groups.update',
 ] as const
 
+const BUFFER_TIMEOUT_MS = 30_000
+
 type BufferableEvent = typeof BUFFERABLE_EVENT[number]
 
 /**
@@ -64,7 +66,12 @@ export const makeEventBuffer = (logger: Logger): BaileysBufferableEventEmitter =
 	let data = makeBufferData()
 	let isBuffering = false
 	let preBufferTask: Promise<any> = Promise.resolve()
+
+	// debugging utils
 	let preBufferTraces: string[] = []
+	let bufferStartTrace: string | undefined
+	let bufferTimeout: NodeJS.Timeout | undefined
+	let waitingForPreBufferEnd = false
 
 	// take the generic event and fire it as a baileys event
 	ev.on('event', (map: BaileysEventData) => {
@@ -73,10 +80,21 @@ export const makeEventBuffer = (logger: Logger): BaileysBufferableEventEmitter =
 		}
 	})
 
+	function startTimeout() {
+		bufferTimeout = setTimeout(() => {
+			logger.warn(
+				{ preBufferTraces, bufferStartTrace, waitingForPreBufferEnd },
+				'event buffer taking a while'
+			)
+		}, BUFFER_TIMEOUT_MS)
+	}
+
 	function buffer() {
 		if(!isBuffering) {
 			logger.trace('buffering events')
 			isBuffering = true
+			startTimeout()
+			bufferStartTrace = new Error('buffer start').stack
 			return true
 		}
 
@@ -89,7 +107,9 @@ export const makeEventBuffer = (logger: Logger): BaileysBufferableEventEmitter =
 		}
 
 		logger.trace({ preBufferTraces }, 'releasing buffered events...')
+		waitingForPreBufferEnd = true
 		await preBufferTask
+		waitingForPreBufferEnd = false
 
 		preBufferTraces = []
 		isBuffering = false
@@ -112,6 +132,8 @@ export const makeEventBuffer = (logger: Logger): BaileysBufferableEventEmitter =
 		}
 
 		data = newData
+
+		clearTimeout(bufferTimeout)
 
 		logger.trace(
 			{ conditionalChatUpdatesLeft },
