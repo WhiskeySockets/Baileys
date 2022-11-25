@@ -533,8 +533,12 @@ export const makeSocket = ({
 	})
 
 	process.nextTick(() => {
-		// start buffering important events
-		ev.buffer()
+		if(creds.me?.id) {
+			// start buffering important events
+			// if we're logged in
+			ev.buffer()
+		}
+
 		ev.emit('connection.update', { connection: 'connecting', receivedPendingNotifications: false, qr: undefined })
 	})
 	// update credentials when required
