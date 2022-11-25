@@ -307,4 +307,35 @@ describe('Event Buffer Tests', () => {
 
 		expect(chats[0].unreadCount).toBeUndefined()
 	})
+
+	it('should not deadlock', async() => {
+		const bufferedCode = ev.createBufferedFunction(
+			async() => {
+
+			}
+		)
+		ev.buffer()
+
+		let resolve: (() => void) | undefined
+		const initPromise = new Promise<void>(r => {
+			resolve = r
+		})
+		ev.processInBuffer(initPromise)
+		const flushPromise = ev.flush()
+
+		ev.processInBuffer(
+			(async() => {
+				await initPromise
+				await delay(100)
+				await bufferedCode()
+			})()
+		)
+
+		resolve!()
+
+		await flushPromise
+
+		// should resolve
+		await ev.flush()
+	})
 })
