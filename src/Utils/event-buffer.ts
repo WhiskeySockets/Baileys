@@ -21,7 +21,7 @@ const BUFFERABLE_EVENT = [
 	'groups.update',
 ] as const
 
-const BUFFER_TIMEOUT_MS = 30_000
+const BUFFER_TIMEOUT_MS = 60_000
 
 type BufferableEvent = typeof BUFFERABLE_EVENT[number]
 
