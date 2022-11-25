@@ -1,5 +1,5 @@
 import { Boom } from '@hapi/boom'
-import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, isJidBroadcast, jidNormalizedUser, makeCacheableSignalKeyStore, makeInMemoryStore, MessageRetryMap, useMultiFileAuthState } from '../src'
+import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, isJidBroadcast, makeCacheableSignalKeyStore, makeInMemoryStore, MessageRetryMap, useMultiFileAuthState } from '../src'
 import MAIN_LOGGER from '../src/Utils/logger'
 
 const logger = MAIN_LOGGER.child({ })
@@ -147,7 +147,9 @@ const startSock = async() => {
 			if(events['contacts.update']) {
 				for(const contact of events['contacts.update']) {
 					if(typeof contact.imgUrl !== 'undefined') {
-						const newUrl = contact.imgUrl === null ? null : await sock!.profilePictureUrl(contact.id!)
+						const newUrl = contact.imgUrl === null
+							? null
+							: await sock!.profilePictureUrl(contact.id!).catch(() => null)
 						console.log(
 							`contact ${contact.id} has a new profile pic: ${newUrl}`,
 						)
