@@ -22,16 +22,25 @@ describe('Event Buffer Tests', () => {
 		ev.on('chats.update', () => fail('should not emit update event'))
 
 		ev.buffer()
-		ev.processInBuffer((async() => {
-			await delay(100)
-			ev.emit('chats.upsert', [{ id: chatId, conversationTimestamp: 123, unreadCount: 1 }])
-		})())
-		ev.processInBuffer((async() => {
-			await delay(200)
-			ev.emit('chats.update', [{ id: chatId, conversationTimestamp: 124, unreadCount: 1 }])
-		})())
+		await Promise.all([
+			(async() => {
+				ev.buffer()
+				await delay(100)
+				ev.emit('chats.upsert', [{ id: chatId, conversationTimestamp: 123, unreadCount: 1 }])
+				const flushed = ev.flush()
+				expect(flushed).toBeFalsy()
+			})(),
+			(async() => {
+				ev.buffer()
+				await delay(200)
+				ev.emit('chats.update', [{ id: chatId, conversationTimestamp: 124, unreadCount: 1 }])
+				const flushed = ev.flush()
+				expect(flushed).toBeFalsy()
+			})()
+		])
 
-		await ev.flush()
+		const flushed = ev.flush()
+		expect(flushed).toBeTruthy()
 
 		expect(chats).toHaveLength(1)
 		expect(chats[0].conversationTimestamp).toEqual(124)
@@ -51,7 +60,7 @@ describe('Event Buffer Tests', () => {
 		ev.emit('chats.delete', [chatId])
 		ev.emit('chats.update', [{ id: chatId, conversationTimestamp: 124, unreadCount: 1 }])
 
-		await ev.flush()
+		ev.flush()
 
 		expect(chats).toHaveLength(1)
 	})
@@ -68,7 +77,7 @@ describe('Event Buffer Tests', () => {
 		ev.emit('chats.update', [{ id: chatId, conversationTimestamp: 123, unreadCount: 1 }])
 		ev.emit('chats.delete', [chatId])
 
-		await ev.flush()
+		ev.flush()
 
 		expect(chatsDeleted).toHaveLength(1)
 	})
@@ -103,7 +112,7 @@ describe('Event Buffer Tests', () => {
 			}
 		}])
 
-		await ev.flush()
+		ev.flush()
 
 		ev.buffer()
 		ev.emit('chats.upsert', [{
@@ -123,7 +132,7 @@ describe('Event Buffer Tests', () => {
 			messages: [],
 			isLatest: false
 		})
-		await ev.flush()
+		ev.flush()
 
 		expect(chatsUpserted).toHaveLength(1)
 		expect(chatsUpserted[0].id).toEqual(chatId)
@@ -159,7 +168,7 @@ describe('Event Buffer Tests', () => {
 			muteEndTime: 123
 		}])
 
-		await ev.flush()
+		ev.flush()
 
 		expect(chatsUpserted).toHaveLength(1)
 		expect(chatsUpserted[0].archived).toBeUndefined()
@@ -184,7 +193,7 @@ describe('Event Buffer Tests', () => {
 		})
 		ev.emit('chats.update', [{ id: chatId, archived: true }])
 
-		await ev.flush()
+		ev.flush()
 
 		expect(chatRecv).toBeDefined()
 		expect(chatRecv?.archived).toBeTruthy()
@@ -218,7 +227,7 @@ describe('Event Buffer Tests', () => {
 		ev.emit('messages.upsert', { messages: [proto.WebMessageInfo.fromObject(msg)], type: 'notify' })
 		ev.emit('messages.update', [{ key: msg.key, update: { status: WAMessageStatus.READ } }])
 
-		await ev.flush()
+		ev.flush()
 
 		expect(msgs).toHaveLength(1)
 		expect(msgs[0].message).toBeTruthy()
@@ -254,7 +263,7 @@ describe('Event Buffer Tests', () => {
 			}
 		])
 
-		await ev.flush()
+		ev.flush()
 
 		expect(msgs).toHaveLength(1)
 		expect(msgs[0].userReceipt).toHaveLength(1)
@@ -275,7 +284,7 @@ describe('Event Buffer Tests', () => {
 		ev.emit('messages.update', [{ key, update: { status: WAMessageStatus.DELIVERY_ACK } }])
 		ev.emit('messages.update', [{ key, update: { status: WAMessageStatus.READ } }])
 
-		await ev.flush()
+		ev.flush()
 
 		expect(msgs).toHaveLength(1)
 		expect(msgs[0].update.status).toEqual(WAMessageStatus.READ)
@@ -303,39 +312,8 @@ describe('Event Buffer Tests', () => {
 		ev.emit('chats.update', [{ id: msg.key.remoteJid!, unreadCount: 1, conversationTimestamp: msg.messageTimestamp }])
 		ev.emit('messages.update', [{ key: msg.key, update: { status: WAMessageStatus.READ } }])
 
-		await ev.flush()
+		ev.flush()
 
 		expect(chats[0].unreadCount).toBeUndefined()
-	})
-
-	it('should not deadlock', async() => {
-		const bufferedCode = ev.createBufferedFunction(
-			async() => {
-
-			}
-		)
-		ev.buffer()
-
-		let resolve: (() => void) | undefined
-		const initPromise = new Promise<void>(r => {
-			resolve = r
-		})
-		ev.processInBuffer(initPromise)
-		const flushPromise = ev.flush()
-
-		ev.processInBuffer(
-			(async() => {
-				await initPromise
-				await delay(100)
-				await bufferedCode()
-			})()
-		)
-
-		resolve!()
-
-		await flushPromise
-
-		// should resolve
-		await ev.flush()
 	})
 })

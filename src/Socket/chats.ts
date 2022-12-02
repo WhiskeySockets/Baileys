@@ -822,7 +822,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			// we keep buffering events until we finally have
 			// the key and can sync the messages
 			if(!authState.creds?.myAppStateKeyId) {
-				needToFlushWithAppStateSync = ev.buffer()
+				ev.buffer()
+				needToFlushWithAppStateSync = true
 			}
 		}
 	})
