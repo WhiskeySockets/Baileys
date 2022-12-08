@@ -73,3 +73,12 @@ export type OrderDetails = {
 }
 
 export type CatalogCursor = string
+
+export type GetCatalogOptions = {
+	/** cursor to start from */
+	cursor?: CatalogCursor
+	/** number of products to fetch */
+	limit?: number
+
+	jid?: string
+}

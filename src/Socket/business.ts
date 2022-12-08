@@ -1,4 +1,4 @@
-import { CatalogCursor, ProductCreate, ProductUpdate, SocketConfig } from '../Types'
+import { GetCatalogOptions, ProductCreate, ProductUpdate, SocketConfig } from '../Types'
 import { parseCatalogNode, parseCollectionsNode, parseOrderDetailsNode, parseProductNode, toProductNode, uploadingNecessaryImagesOfProduct } from '../Utils/business'
 import { BinaryNode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
 import { getBinaryNodeChild } from '../WABinary/generic-utils'
@@ -12,11 +12,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 		waUploadToServer
 	} = sock
 
-	const getCatalog = async(
-		jid?: string,
-		limit = 10,
-		cursor?: CatalogCursor
-	) => {
+	const getCatalog = async({ jid, limit, cursor }: GetCatalogOptions) => {
 		jid = jid || authState.creds.me?.id
 		jid = jidNormalizedUser(jid!)
 
@@ -24,7 +20,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 			{
 				tag: 'limit',
 				attrs: { },
-				content: Buffer.from(limit.toString())
+				content: Buffer.from((limit || 10).toString())
 			},
 			{
 				tag: 'width',
