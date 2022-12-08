@@ -71,3 +71,5 @@ export type OrderDetails = {
 	price: OrderPrice
 	products: OrderProduct[]
 }
+
+export type CatalogCursor = string
