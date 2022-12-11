@@ -494,14 +494,27 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const presenceSubscribe = (toJid: string) => (
+	/**
+	 * @param toJid the jid to subscribe to
+	 * @param tcToken token for subscription, use if present
+	 */
+	const presenceSubscribe = (toJid: string, tcToken?: Buffer) => (
 		sendNode({
 			tag: 'presence',
 			attrs: {
 				to: toJid,
 				id: generateMessageTag(),
 				type: 'subscribe'
-			}
+			},
+			content: tcToken
+				? [
+					{
+						tag: 'tctoken',
+						attrs: { },
+						content: tcToken
+					}
+				]
+				: undefined
 		})
 	)
 
