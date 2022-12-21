@@ -576,7 +576,7 @@ export const normalizeMessageContent = (content: WAMessageContent | null | undef
 	for(;;) {
 		const [key] = Object.keys(content!)
 		const inner = content![key].message
-		if(!inner) {
+		if(inner) {
 			content = inner
 		} else {
 			break
