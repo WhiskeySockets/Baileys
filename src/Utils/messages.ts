@@ -574,8 +574,9 @@ export const normalizeMessageContent = (content: WAMessageContent | null | undef
 	}
 
 	for(;;) {
-		const [key] = Object.keys(content!)
-		const inner = content![key].message
+		const inner = content?.ephemeralMessage?.message ||
+			content?.viewOnceMessage?.message ||
+			content?.documentWithCaptionMessage?.message
 		if(inner) {
 			content = inner
 		} else {
