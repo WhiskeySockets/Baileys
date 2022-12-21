@@ -569,13 +569,21 @@ export const getContentType = (content: WAProto.IMessage | undefined) => {
  * @returns
  */
 export const normalizeMessageContent = (content: WAMessageContent | null | undefined): WAMessageContent | undefined => {
-	content = content?.ephemeralMessage?.message?.viewOnceMessage?.message ||
-				content?.ephemeralMessage?.message ||
-				content?.viewOnceMessage?.message ||
-				content?.documentWithCaptionMessage?.message ||
-				content ||
-				undefined
-	return content
+	if(!content) {
+		return undefined
+	}
+
+	for(;;) {
+		const [key] = Object.keys(content!)
+		const inner = content![key].message
+		if(!inner) {
+			content = inner
+		} else {
+			break
+		}
+	}
+
+	return content!
 }
 
 /**
@@ -725,6 +733,7 @@ export const downloadMediaMessage = async(
 		const contentType = getContentType(mContent)
 		let mediaType = contentType?.replace('Message', '') as MediaType
 		const media = mContent[contentType!]
+		console.log({ mContent, contentType, media })
 
 		if(!media || typeof media !== 'object' || (!('url' in media) && !('thumbnailDirectPath' in media))) {
 			throw new Boom(`"${contentType}" message is not a media message`)
