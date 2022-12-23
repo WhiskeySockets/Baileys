@@ -573,19 +573,27 @@ export const normalizeMessageContent = (content: WAMessageContent | null | undef
 		return undefined
 	}
 
-	for(;;) {
-		const inner = content?.ephemeralMessage?.message ||
-			content?.viewOnceMessage?.message ||
-			content?.viewOnceMessageV2?.message ||
-			content?.documentWithCaptionMessage?.message
-		if(inner) {
-			content = inner
-		} else {
+	// set max iterations to prevent an infinite loop
+	for(let i = 0;i < 5;i++) {
+		const inner = getFutureProofMessage(content)
+		if(!inner) {
 			break
 		}
+
+		content = inner.message
 	}
 
 	return content!
+
+	function getFutureProofMessage(message: typeof content) {
+		return (
+			message?.ephemeralMessage
+			|| message?.viewOnceMessage
+			|| message?.documentWithCaptionMessage
+			|| message?.viewOnceMessageV2
+			|| message?.editedMessage
+		)
+	}
 }
 
 /**
