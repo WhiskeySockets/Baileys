@@ -79,6 +79,12 @@ type WithDimensions = {
     height?: number
 }
 
+export type PollMessageOptions = {
+    name: string
+    selectableCount?: number
+    values: Array<string>
+}
+
 export type MediaType = keyof typeof MEDIA_HKDF_KEY_MAPPING
 export type AnyMediaMessageContent = (
     ({
@@ -127,6 +133,9 @@ export type AnyRegularMessageContent = (
     }
     & Mentionable & Buttonable & Templatable & Listable)
     | AnyMediaMessageContent
+    | ({
+        poll: PollMessageOptions
+    } & Mentionable & Buttonable & Templatable)
     | {
         contacts: {
             displayName?: string

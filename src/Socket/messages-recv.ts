@@ -268,21 +268,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const from = jidNormalizedUser(node.attrs.from)
 
 		switch (nodeType) {
-		case 'privacy_token':
-			const tokenList = getBinaryNodeChildren(child, 'token')
-			for(const { attrs, content } of tokenList) {
-				const jid = attrs.jid
-				ev.emit('chats.update', [
-					{
-						id: jid,
-						tcToken: content as Buffer
-					}
-				])
-
-				logger.debug({ jid }, 'got privacy token update')
-			}
-
-			break
 		case 'w:gp2':
 			handleGroupNotification(node.attrs.participant, child, result)
 			break
@@ -660,15 +645,33 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		identifier: string,
 		exec: (node: BinaryNode) => Promise<any>
 	) => {
-		ev.buffer()
-		await execTask()
-		ev.flush()
+		const started = ev.buffer()
+		if(started) {
+			await execTask()
+			if(started) {
+				await ev.flush()
+			}
+		} else {
+			const task = execTask()
+			ev.processInBuffer(task)
+		}
 
 		function execTask() {
 			return exec(node)
 				.catch(err => onUnexpectedError(err, identifier))
 		}
 	}
+
+	// called when all offline notifs are handled
+	ws.on('CB:ib,,offline', async(node: BinaryNode) => {
+		const child = getBinaryNodeChild(node, 'offline')
+		const offlineNotifs = +(child?.attrs.count || 0)
+
+		logger.info(`handled ${offlineNotifs} offline messages/notifications`)
+		await ev.flush()
+
+		ev.emit('connection.update', { receivedPendingNotifications: true })
+	})
 
 	// recv a message
 	ws.on('CB:message', (node: BinaryNode) => {

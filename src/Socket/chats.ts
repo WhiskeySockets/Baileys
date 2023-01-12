@@ -494,27 +494,14 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 	}
 
-	/**
-	 * @param toJid the jid to subscribe to
-	 * @param tcToken token for subscription, use if present
-	 */
-	const presenceSubscribe = (toJid: string, tcToken?: Buffer) => (
+	const presenceSubscribe = (toJid: string) => (
 		sendNode({
 			tag: 'presence',
 			attrs: {
 				to: toJid,
 				id: generateMessageTag(),
 				type: 'subscribe'
-			},
-			content: tcToken
-				? [
-					{
-						tag: 'tctoken',
-						attrs: { },
-						content: tcToken
-					}
-				]
-				: undefined
+			}
 		})
 	)
 
@@ -738,7 +725,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			)
 			: false
 
-		if(historyMsg && !authState.creds.myAppStateKeyId) {
+		if(shouldProcessHistoryMsg && !authState.creds.myAppStateKeyId) {
 			logger.warn('skipping app state sync, as myAppStateKeyId is not set')
 			pendingAppStateSync = true
 		}
@@ -746,7 +733,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		await Promise.all([
 			(async() => {
 				if(
-					historyMsg
+					shouldProcessHistoryMsg
 					&& authState.creds.myAppStateKeyId
 				) {
 					pendingAppStateSync = false
@@ -835,8 +822,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			// we keep buffering events until we finally have
 			// the key and can sync the messages
 			if(!authState.creds?.myAppStateKeyId) {
-				ev.buffer()
-				needToFlushWithAppStateSync = true
+				needToFlushWithAppStateSync = ev.buffer()
 			}
 		}
 	})

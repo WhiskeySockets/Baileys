@@ -45,6 +45,7 @@
   },
   "peerDependencies": {
     "@adiwajshing/keyed-db": "^0.2.4",
+    "@peculiar/webcrypto": "^1.4.1",
     "jimp": "^0.16.1",
     "link-preview-js": "^3.0.0",
     "qrcode-terminal": "^0.12.0",
