@@ -9,8 +9,13 @@ export const makeMutex = () => {
 					await task
 				} catch{ }
 
-				// execute the current task
-				return code()
+				try {
+					// execute the current task
+					const result = await code()
+					return result
+				} finally {
+					clearTimeout(taskTimeout)
+				}
 			})()
 			// we replace the existing task, appending the new piece of execution to it
 			// so the next task will have to wait for this one to finish
