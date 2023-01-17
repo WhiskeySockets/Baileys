@@ -602,14 +602,32 @@ export const getContentType = (content: WAProto.IMessage | undefined) => {
  * @returns
  */
 export const normalizeMessageContent = (content: WAMessageContent | null | undefined): WAMessageContent | undefined => {
-	content = content?.ephemeralMessage?.message?.viewOnceMessage?.message ||
-				content?.ephemeralMessage?.message ||
-				content?.viewOnceMessage?.message ||
-				content?.documentWithCaptionMessage?.message ||
-				content ||
-				undefined
-	return content
-}
+	 if(!content) {
+		 return undefined
+	 }
+
+	 // set max iterations to prevent an infinite loop
+	 for(let i = 0;i < 5;i++) {
+		 const inner = getFutureProofMessage(content)
+		 if(!inner) {
+			 break
+		 }
+
+		 content = inner.message
+	 }
+
+	 return content!
+
+	 function getFutureProofMessage(message: typeof content) {
+		 return (
+			 message?.ephemeralMessage
+			 || message?.viewOnceMessage
+			 || message?.documentWithCaptionMessage
+			 || message?.viewOnceMessageV2
+			 || message?.editedMessage
+		 )
+	 }
+ }
 
 /**
  * Extract the true message content from a message
