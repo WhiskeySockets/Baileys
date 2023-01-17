@@ -353,7 +353,10 @@ export const getCodeFromWSError = (error: Error) => {
 		if(!Number.isNaN(code) && code >= 400) {
 			statusCode = code
 		}
-	} else if((error as any).code?.startsWith('E')) { // handle ETIMEOUT, ENOTFOUND etc
+	} else if(
+		(error as any).code?.startsWith('E')
+		|| error?.message?.includes('timed out')
+	) { // handle ETIMEOUT, ENOTFOUND etc
 		statusCode = 408
 	}
 

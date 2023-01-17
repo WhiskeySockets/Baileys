@@ -97,7 +97,7 @@ export const makeSocket = ({
 
 		const result = promiseTimeout<any>(connectTimeoutMs, (resolve, reject) => {
 			onOpen = (data: any) => resolve(data)
-			onClose = reject
+			onClose = mapWebSocketError(reject)
 			ws.on('frame', onOpen)
 			ws.on('close', onClose)
 			ws.on('error', onClose)
@@ -335,7 +335,7 @@ export const makeSocket = ({
 		let onClose: (err: Error) => void
 		await new Promise((resolve, reject) => {
 			onOpen = () => resolve(undefined)
-			onClose = reject
+			onClose = mapWebSocketError(reject)
 			ws.on('open', onOpen)
 			ws.on('close', onClose)
 			ws.on('error', onClose)
@@ -433,12 +433,7 @@ export const makeSocket = ({
 			end(err)
 		}
 	})
-	ws.on('error', error => end(
-		new Boom(
-			`WebSocket Error (${error.message})`,
-			{ statusCode: getCodeFromWSError(error), data: error }
-		)
-	))
+	ws.on('error', mapWebSocketError(end))
 	ws.on('close', () => end(new Boom('Connection Terminated', { statusCode: DisconnectReason.connectionClosed })))
 	// the server terminated the connection
 	ws.on('CB:xmlstreamend', () => end(new Boom('Connection Terminated by Server', { statusCode: DisconnectReason.connectionClosed })))
@@ -601,6 +596,21 @@ export const makeSocket = ({
 		uploadPreKeysToServerIfRequired,
 		/** Waits for the connection to WA to reach a state */
 		waitForConnectionUpdate: bindWaitForConnectionUpdate(ev),
+	}
+}
+
+/**
+ * map the websocket error to the right type
+ * so it can be retried by the caller
+ * */
+function mapWebSocketError(handler: (err: Error) => void) {
+	return (error: Error) => {
+		handler(
+			new Boom(
+				`WebSocket Error (${error.message})`,
+				{ statusCode: getCodeFromWSError(error), data: error }
+			)
+		)
 	}
 }
 
