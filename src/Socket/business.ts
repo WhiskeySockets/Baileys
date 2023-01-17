@@ -1,6 +1,6 @@
-import { ProductCreate, ProductUpdate, SocketConfig } from '../Types'
+import { GetCatalogOptions, ProductCreate, ProductUpdate, SocketConfig } from '../Types'
 import { parseCatalogNode, parseCollectionsNode, parseOrderDetailsNode, parseProductNode, toProductNode, uploadingNecessaryImagesOfProduct } from '../Utils/business'
-import { jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
+import { BinaryNode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
 import { getBinaryNodeChild } from '../WABinary/generic-utils'
 import { makeMessagesRecvSocket } from './messages-recv'
 
@@ -12,9 +12,36 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 		waUploadToServer
 	} = sock
 
-	const getCatalog = async(jid?: string, limit = 10) => {
+	const getCatalog = async({ jid, limit, cursor }: GetCatalogOptions) => {
 		jid = jid || authState.creds.me?.id
 		jid = jidNormalizedUser(jid!)
+
+		const queryParamNodes: BinaryNode[] = [
+			{
+				tag: 'limit',
+				attrs: { },
+				content: Buffer.from((limit || 10).toString())
+			},
+			{
+				tag: 'width',
+				attrs: { },
+				content: Buffer.from('100')
+			},
+			{
+				tag: 'height',
+				attrs: { },
+				content: Buffer.from('100')
+			},
+		]
+
+		if(cursor) {
+			queryParamNodes.push({
+				tag: 'after',
+				attrs: { },
+				content: cursor
+			})
+		}
+
 		const result = await query({
 			tag: 'iq',
 			attrs: {
@@ -29,23 +56,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 						jid,
 						allow_shop_source: 'true'
 					},
-					content: [
-						{
-							tag: 'limit',
-							attrs: { },
-							content: Buffer.from(limit.toString())
-						},
-						{
-							tag: 'width',
-							attrs: { },
-							content: Buffer.from('100')
-						},
-						{
-							tag: 'height',
-							attrs: { },
-							content: Buffer.from('100')
-						}
-					]
+					content: queryParamNodes
 				}
 			]
 		})

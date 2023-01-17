@@ -7,7 +7,14 @@ import { getStream, getUrlFromDirectPath, toReadable } from './messages-media'
 export const parseCatalogNode = (node: BinaryNode) => {
 	const catalogNode = getBinaryNodeChild(node, 'product_catalog')
 	const products = getBinaryNodeChildren(catalogNode, 'product').map(parseProductNode)
-	return { products }
+	const paging = getBinaryNodeChild(catalogNode, 'paging')
+
+	return {
+		products,
+		nextPageCursor: paging
+			? getBinaryNodeChildString(paging, 'after')
+			: undefined
+	}
 }
 
 export const parseCollectionsNode = (node: BinaryNode) => {

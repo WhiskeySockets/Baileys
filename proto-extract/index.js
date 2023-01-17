@@ -285,7 +285,7 @@ async function findAppModules() {
 				const indentation = moduleIndentationMap[info.type]?.indentation
 				let typeName = unnestName(info.type)
 				if(indentation !== parentName && indentation) {
-					typeName = `${indentation.replace(/\$/g, '.')}.${typeName}`
+					typeName = `${indentation.replaceAll('$', '.')}.${typeName}`
 				}
 
 				// if(info.enumValues) {

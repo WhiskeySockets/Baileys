@@ -39,15 +39,16 @@ type BaileysBufferableEventEmitter = BaileysEventEmitter & {
 	process(handler: (events: BaileysEventData) => void | Promise<void>): (() => void)
 	/**
 	 * starts buffering events, call flush() to release them
-	 * @returns true if buffering just started, false if it was already buffering
 	 * */
-	buffer(): boolean
+	buffer(): void
 	/** buffers all events till the promise completes */
 	createBufferedFunction<A extends any[], T>(work: (...args: A) => Promise<T>): ((...args: A) => Promise<T>)
-	/** flushes all buffered events */
-	flush(): Promise<void>
-	/** waits for the task to complete, before releasing the buffer */
-	processInBuffer(task: Promise<any>)
+	/**
+	 * flushes all buffered events
+	 * @param force if true, will flush all data regardless of any pending buffers
+	 * @returns returns true if the flush actually happened, otherwise false
+	 */
+	flush(force?: boolean): boolean
 	/** is there an ongoing buffer */
 	isBuffering(): boolean
 }
@@ -62,9 +63,7 @@ export const makeEventBuffer = (logger: Logger): BaileysBufferableEventEmitter =
 	const historyCache = new Set<string>()
 
 	let data = makeBufferData()
-	let isBuffering = false
-	let preBufferTask: Promise<any> = Promise.resolve()
-	let preBufferTraces: string[] = []
+	let buffersInProgress = 0
 
 	// take the generic event and fire it as a baileys event
 	ev.on('event', (map: BaileysEventData) => {
@@ -74,25 +73,24 @@ export const makeEventBuffer = (logger: Logger): BaileysBufferableEventEmitter =
 	})
 
 	function buffer() {
-		if(!isBuffering) {
-			logger.trace('buffering events')
-			isBuffering = true
-			return true
-		}
-
-		return false
+		buffersInProgress += 1
 	}
 
-	async function flush() {
-		if(!isBuffering) {
-			return
+	function flush(force = false) {
+		// no buffer going on
+		if(!buffersInProgress) {
+			return false
 		}
 
-		logger.trace({ preBufferTraces }, 'releasing buffered events...')
-		await preBufferTask
-
-		preBufferTraces = []
-		isBuffering = false
+		if(!force) {
+			// reduce the number of buffers in progress
+			buffersInProgress -= 1
+			// if there are still some buffers going on
+			// then we don't flush now
+			if(buffersInProgress) {
+				return false
+			}
+		}
 
 		const newData = makeBufferData()
 		const chatUpdates = Object.values(data.chatUpdates)
@@ -117,6 +115,8 @@ export const makeEventBuffer = (logger: Logger): BaileysBufferableEventEmitter =
 			{ conditionalChatUpdatesLeft },
 			'released buffered events'
 		)
+
+		return true
 	}
 
 	return {
@@ -131,34 +131,26 @@ export const makeEventBuffer = (logger: Logger): BaileysBufferableEventEmitter =
 			}
 		},
 		emit<T extends BaileysEvent>(event: BaileysEvent, evData: BaileysEventMap[T]) {
-			if(isBuffering && BUFFERABLE_EVENT_SET.has(event)) {
+			if(buffersInProgress && BUFFERABLE_EVENT_SET.has(event)) {
 				append(data, historyCache, event as any, evData, logger)
 				return true
 			}
 
 			return ev.emit('event', { [event]: evData })
 		},
-		processInBuffer(task) {
-			if(isBuffering) {
-				preBufferTask = Promise.allSettled([ preBufferTask, task ])
-				preBufferTraces.push(new Error('').stack!)
-			}
-		},
 		isBuffering() {
-			return isBuffering
+			return buffersInProgress > 0
 		},
 		buffer,
 		flush,
 		createBufferedFunction(work) {
 			return async(...args) => {
-				const started = buffer()
+				buffer()
 				try {
 					const result = await work(...args)
 					return result
 				} finally {
-					if(started) {
-						await flush()
-					}
+					flush()
 				}
 			}
 		},
