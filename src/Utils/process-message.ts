@@ -76,8 +76,12 @@ export const shouldIncrementChatUnread = (message: proto.IWebMessageInfo) => (
  * Get the ID of the chat from the given key.
  * Typically -- that'll be the remoteJid, but for broadcasts, it'll be the participant
  */
-export const getChatId = ({ remoteJid, participant }: proto.IMessageKey) => {
-	if(isJidBroadcast(remoteJid!) && !isJidStatusBroadcast(remoteJid!)) {
+export const getChatId = ({ remoteJid, participant, fromMe }: proto.IMessageKey) => {
+	if(
+		isJidBroadcast(remoteJid!)
+		&& !isJidStatusBroadcast(remoteJid!)
+		&& !fromMe
+	) {
 		return participant!
 	}
 
