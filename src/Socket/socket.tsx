@@ -33,7 +33,156 @@ export class Socket {
 			agent: config.agent,
 		})
 		this.ws.setMaxListeners(0)
-		this.init()
+
+		this.ws.on('message', this.onMessageRecieved)
+		this.ws.on('open', async() => {
+			try {
+				await this.validateConnection()
+			} catch(err) {
+				logger.error({ err }, 'error in validating connection')
+				this.end(err)
+			}
+		})
+		this.ws.on('error', mapWebSocketError(this.end))
+		this.ws.on('close', () => this.end(new Boom('Connection Terminated', { statusCode: DisconnectReason.connectionClosed })))
+		// the server terminated the connection
+		this.ws.on('CB:xmlstreamend', () => this.end(new Boom('Connection Terminated by Server', { statusCode: DisconnectReason.connectionClosed })))
+		// QR gen
+		this.ws.on('CB:iq,type:set,pair-device', async(stanza: BinaryNode) => {
+			const iq: BinaryNode = {
+				tag: 'iq',
+				attrs: {
+					to: S_WHATSAPP_NET,
+					type: 'result',
+					id: stanza.attrs.id,
+				}
+			}
+			await this.sendNode(iq)
+
+			const pairDeviceNode = getBinaryNodeChild(stanza, 'pair-device')
+			const refNodes = getBinaryNodeChildren(pairDeviceNode, 'ref')
+			const noiseKeyB64 = Buffer.from(this.authState.creds.noiseKey.public).toString('base64')
+			const identityKeyB64 = Buffer.from(this.authState.creds.signedIdentityKey.public).toString('base64')
+			const advB64 = this.authState.creds.advSecretKey
+
+			let qrMs = this.config.qrTimeout || 60_000 // time to let a QR live
+			const genPairQR = () => {
+				if(this.ws.readyState !== this.ws.OPEN) {
+					return
+				}
+
+				const refNode = refNodes.shift()
+				if(!refNode) {
+					this.end(new Boom('QR refs attempts ended', { statusCode: DisconnectReason.timedOut }))
+					return
+				}
+
+				const ref = (refNode.content as Buffer).toString('utf-8')
+				const qr = [ref, noiseKeyB64, identityKeyB64, advB64].join(',')
+
+				this.ev.emit('connection.update', { qr })
+
+				this.qrTimer = setTimeout(genPairQR, qrMs)
+				qrMs = this.config.qrTimeout || 20_000 // shorter subsequent qrs
+			}
+
+			genPairQR()
+		})
+		// device paired for the first time
+		// if device pairs successfully, the server asks to restart the connection
+		this.ws.on('CB:iq,,pair-success', async(stanza: BinaryNode) => {
+			logger.debug('pair success recv')
+			try {
+				const { reply, creds: updatedCreds } = configureSuccessfulPairing(stanza, this.authState.creds)
+
+				logger.info(
+					{ me: updatedCreds.me, platform: updatedCreds.platform },
+					'pairing configured successfully, expect to restart the connection...'
+				)
+
+				this.ev.emit('creds.update', updatedCreds)
+				this.ev.emit('connection.update', { isNewLogin: true, qr: undefined })
+
+				await this.sendNode(reply)
+			} catch(error) {
+				logger.info({ trace: error.stack }, 'error in pairing')
+				this.end(error)
+			}
+		})
+		// login complete
+		this.ws.on('CB:success', async() => {
+			await this.uploadPreKeysToServerIfRequired()
+			await this.sendPassiveIq('active')
+
+			logger.info('opened connection to WA')
+			clearTimeout(this.qrTimer) // will never happen in all likelyhood -- but just in case WA sends success on first try
+
+			this.ev.emit('connection.update', { connection: 'open' })
+		})
+
+		this.ws.on('CB:stream:error', (node: BinaryNode) => {
+			logger.error({ node }, 'stream errored out')
+			const { reason, statusCode } = getErrorCodeFromStreamError(node)
+
+			this.end(new Boom(`Stream Errored (${reason})`, { statusCode, data: node }))
+		})
+		// stream fail, possible logout
+		this.ws.on('CB:failure', (node: BinaryNode) => {
+			const reason = +(node.attrs.reason || 500)
+			this.end(new Boom('Connection Failure', { statusCode: reason, data: node.attrs }))
+		})
+
+		this.ws.on('CB:ib,,downgrade_webclient', () => {
+			this.end(new Boom('Multi-device beta not joined', { statusCode: DisconnectReason.multideviceMismatch }))
+		})
+
+		let didStartBuffer = false
+		process.nextTick(() => {
+			if(this.authState.creds.me?.id) {
+				// start buffering important events
+				// if we're logged in
+				this.ev.buffer()
+				didStartBuffer = true
+			}
+
+			this.ev.emit('connection.update', { connection: 'connecting', receivedPendingNotifications: false, qr: undefined })
+		})
+
+		// called when all offline notifs are handled
+		this.ws.on('CB:ib,,offline', (node: BinaryNode) => {
+			const child = getBinaryNodeChild(node, 'offline')
+			const offlineNotifs = +(child?.attrs.count || 0)
+
+			logger.info(`handled ${offlineNotifs} offline messages/notifications`)
+			if(didStartBuffer) {
+				this.ev.flush()
+				logger.trace('flushed events for initial buffer')
+			}
+
+			this.ev.emit('connection.update', { receivedPendingNotifications: true })
+		})
+
+		// update credentials when required
+		this.ev.on('creds.update', update => {
+			const name = update.me?.name
+			// if name has just been received
+			if(this.authState.creds.me?.name !== name) {
+				logger.debug({ name }, 'updated pushName')
+				this.sendNode({
+					tag: 'presence',
+					attrs: { name: name! }
+				})
+					.catch(err => {
+						logger.warn({ trace: err.stack }, 'error in sending presence update on name change')
+					})
+			}
+
+			Object.assign(this.authState.creds, update)
+		})
+
+		if(this.config.printQRInTerminal) {
+			printQRIfNecessaryListener(this.ev, logger)
+		}
 	}
 
 	generateMessageTag = () => `${this.uqTagId}${this.epoch++}`
@@ -401,158 +550,6 @@ export class Socket {
 		}
 
 		this.end(new Boom(msg || 'Intentional Logout', { statusCode: DisconnectReason.loggedOut }))
-	}
-
-	init() {
-		this.ws.on('message', this.onMessageRecieved)
-		this.ws.on('open', async() => {
-			try {
-				await this.validateConnection()
-			} catch(err) {
-				logger.error({ err }, 'error in validating connection')
-				this.end(err)
-			}
-		})
-		this.ws.on('error', mapWebSocketError(this.end))
-		this.ws.on('close', () => this.end(new Boom('Connection Terminated', { statusCode: DisconnectReason.connectionClosed })))
-		// the server terminated the connection
-		this.ws.on('CB:xmlstreamend', () => this.end(new Boom('Connection Terminated by Server', { statusCode: DisconnectReason.connectionClosed })))
-		// QR gen
-		this.ws.on('CB:iq,type:set,pair-device', async(stanza: BinaryNode) => {
-			const iq: BinaryNode = {
-				tag: 'iq',
-				attrs: {
-					to: S_WHATSAPP_NET,
-					type: 'result',
-					id: stanza.attrs.id,
-				}
-			}
-			await this.sendNode(iq)
-
-			const pairDeviceNode = getBinaryNodeChild(stanza, 'pair-device')
-			const refNodes = getBinaryNodeChildren(pairDeviceNode, 'ref')
-			const noiseKeyB64 = Buffer.from(this.authState.creds.noiseKey.public).toString('base64')
-			const identityKeyB64 = Buffer.from(this.authState.creds.signedIdentityKey.public).toString('base64')
-			const advB64 = this.authState.creds.advSecretKey
-
-			let qrMs = this.config.qrTimeout || 60_000 // time to let a QR live
-			const genPairQR = () => {
-				if(this.ws.readyState !== this.ws.OPEN) {
-					return
-				}
-
-				const refNode = refNodes.shift()
-				if(!refNode) {
-					this.end(new Boom('QR refs attempts ended', { statusCode: DisconnectReason.timedOut }))
-					return
-				}
-
-				const ref = (refNode.content as Buffer).toString('utf-8')
-				const qr = [ref, noiseKeyB64, identityKeyB64, advB64].join(',')
-
-				this.ev.emit('connection.update', { qr })
-
-				this.qrTimer = setTimeout(genPairQR, qrMs)
-				qrMs = this.config.qrTimeout || 20_000 // shorter subsequent qrs
-			}
-
-			genPairQR()
-		})
-		// device paired for the first time
-		// if device pairs successfully, the server asks to restart the connection
-		this.ws.on('CB:iq,,pair-success', async(stanza: BinaryNode) => {
-			logger.debug('pair success recv')
-			try {
-				const { reply, creds: updatedCreds } = configureSuccessfulPairing(stanza, this.authState.creds)
-
-				logger.info(
-					{ me: updatedCreds.me, platform: updatedCreds.platform },
-					'pairing configured successfully, expect to restart the connection...'
-				)
-
-				this.ev.emit('creds.update', updatedCreds)
-				this.ev.emit('connection.update', { isNewLogin: true, qr: undefined })
-
-				await this.sendNode(reply)
-			} catch(error) {
-				logger.info({ trace: error.stack }, 'error in pairing')
-				this.end(error)
-			}
-		})
-		// login complete
-		this.ws.on('CB:success', async() => {
-			await this.uploadPreKeysToServerIfRequired()
-			await this.sendPassiveIq('active')
-
-			logger.info('opened connection to WA')
-			clearTimeout(this.qrTimer) // will never happen in all likelyhood -- but just in case WA sends success on first try
-
-			this.ev.emit('connection.update', { connection: 'open' })
-		})
-
-		this.ws.on('CB:stream:error', (node: BinaryNode) => {
-			logger.error({ node }, 'stream errored out')
-			const { reason, statusCode } = getErrorCodeFromStreamError(node)
-
-			this.end(new Boom(`Stream Errored (${reason})`, { statusCode, data: node }))
-		})
-		// stream fail, possible logout
-		this.ws.on('CB:failure', (node: BinaryNode) => {
-			const reason = +(node.attrs.reason || 500)
-			this.end(new Boom('Connection Failure', { statusCode: reason, data: node.attrs }))
-		})
-
-		this.ws.on('CB:ib,,downgrade_webclient', () => {
-			this.end(new Boom('Multi-device beta not joined', { statusCode: DisconnectReason.multideviceMismatch }))
-		})
-
-		let didStartBuffer = false
-		process.nextTick(() => {
-			if(this.authState.creds.me?.id) {
-				// start buffering important events
-				// if we're logged in
-				this.ev.buffer()
-				didStartBuffer = true
-			}
-
-			this.ev.emit('connection.update', { connection: 'connecting', receivedPendingNotifications: false, qr: undefined })
-		})
-
-		// called when all offline notifs are handled
-		this.ws.on('CB:ib,,offline', (node: BinaryNode) => {
-			const child = getBinaryNodeChild(node, 'offline')
-			const offlineNotifs = +(child?.attrs.count || 0)
-
-			logger.info(`handled ${offlineNotifs} offline messages/notifications`)
-			if(didStartBuffer) {
-				this.ev.flush()
-				logger.trace('flushed events for initial buffer')
-			}
-
-			this.ev.emit('connection.update', { receivedPendingNotifications: true })
-		})
-
-		// update credentials when required
-		this.ev.on('creds.update', update => {
-			const name = update.me?.name
-			// if name has just been received
-			if(this.authState.creds.me?.name !== name) {
-				logger.debug({ name }, 'updated pushName')
-				this.sendNode({
-					tag: 'presence',
-					attrs: { name: name! }
-				})
-					.catch(err => {
-						logger.warn({ trace: err.stack }, 'error in sending presence update on name change')
-					})
-			}
-
-			Object.assign(this.authState.creds, update)
-		})
-
-		if(this.config.printQRInTerminal) {
-			printQRIfNecessaryListener(this.ev, logger)
-		}
 	}
 
 	waitForConnectionUpdate = bindWaitForConnectionUpdate(this.ev)
