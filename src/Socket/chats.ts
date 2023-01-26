@@ -20,6 +20,57 @@ export class Chats extends Socket {
 
 	constructor(config: SocketConfig) {
 		super(config)
+
+		this.ws.on('CB:presence', this.handlePresenceUpdate)
+		this.ws.on('CB:chatstate', this.handlePresenceUpdate)
+
+		this.ws.on('CB:ib,,dirty', async(node: BinaryNode) => {
+			const { attrs } = getBinaryNodeChild(node, 'dirty')!
+			const type = attrs.type
+			switch (type) {
+			case 'account_sync':
+				if(attrs.timestamp) {
+					let { lastAccountSyncTimestamp } = this.authState.creds
+					if(lastAccountSyncTimestamp) {
+						await this.updateAccountSyncTimestamp(lastAccountSyncTimestamp)
+					}
+
+					lastAccountSyncTimestamp = +attrs.timestamp
+					this.ev.emit('creds.update', { lastAccountSyncTimestamp })
+				}
+
+				break
+			default:
+				logger.info({ node }, 'received unknown sync')
+				break
+			}
+		})
+
+		this.ev.on('connection.update', ({ connection, receivedPendingNotifications }) => {
+			if(connection === 'open') {
+				if(this.config.fireInitQueries) {
+					this.executeInitQueries()
+						.catch(
+							error => this.onUnexpectedError(error, 'init queries')
+						)
+				}
+
+				this.sendPresenceUpdate(this.config.markOnlineOnConnect ? 'available' : 'unavailable')
+					.catch(
+						error => this.onUnexpectedError(error, 'presence update requests')
+					)
+			}
+
+			if(receivedPendingNotifications) {
+				// if we don't have the app state key
+				// we keep buffering events until we finally have
+				// the key and can sync the messages
+				if(!this.authState.creds?.myAppStateKeyId) {
+					this.ev.buffer()
+					this.needToFlushWithAppStateSync = true
+				}
+			}
+		})
 	}
 
 	/** helper function to fetch the given app state sync key */
@@ -775,59 +826,4 @@ export class Chats extends Socket {
 			}
 		}
 	}
-
-	override init() {
-		super.init()
-		this.ws.on('CB:presence', this.handlePresenceUpdate)
-		this.ws.on('CB:chatstate', this.handlePresenceUpdate)
-
-		this.ws.on('CB:ib,,dirty', async(node: BinaryNode) => {
-			const { attrs } = getBinaryNodeChild(node, 'dirty')!
-			const type = attrs.type
-			switch (type) {
-			case 'account_sync':
-				if(attrs.timestamp) {
-					let { lastAccountSyncTimestamp } = this.authState.creds
-					if(lastAccountSyncTimestamp) {
-						await this.updateAccountSyncTimestamp(lastAccountSyncTimestamp)
-					}
-
-					lastAccountSyncTimestamp = +attrs.timestamp
-					this.ev.emit('creds.update', { lastAccountSyncTimestamp })
-				}
-
-				break
-			default:
-				logger.info({ node }, 'received unknown sync')
-				break
-			}
-		})
-
-		this.ev.on('connection.update', ({ connection, receivedPendingNotifications }) => {
-			if(connection === 'open') {
-				if(this.config.fireInitQueries) {
-					this.executeInitQueries()
-						.catch(
-							error => this.onUnexpectedError(error, 'init queries')
-						)
-				}
-
-				this.sendPresenceUpdate(this.config.markOnlineOnConnect ? 'available' : 'unavailable')
-					.catch(
-						error => this.onUnexpectedError(error, 'presence update requests')
-					)
-			}
-
-			if(receivedPendingNotifications) {
-				// if we don't have the app state key
-				// we keep buffering events until we finally have
-				// the key and can sync the messages
-				if(!this.authState.creds?.myAppStateKeyId) {
-					this.ev.buffer()
-					this.needToFlushWithAppStateSync = true
-				}
-			}
-		})
-	}
-
 }

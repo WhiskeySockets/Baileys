@@ -20,6 +20,61 @@ export class MessagesReceive extends MessagesSend {
 
 	constructor(config: SocketConfig) {
 		super(config)
+
+		this.ws.on('CB:message', (node: BinaryNode) => {
+			this.processNodeWithBuffer(node, 'processing message', this.handleMessage)
+		})
+
+		this.ws.on('CB:call', async(node: BinaryNode) => {
+			this.processNodeWithBuffer(node, 'handling call', this.handleCall)
+		})
+
+		this.ws.on('CB:receipt', node => {
+			this.processNodeWithBuffer(node, 'handling receipt', this.handleReceipt)
+		})
+
+		this.ws.on('CB:notification', async(node: BinaryNode) => {
+			this.processNodeWithBuffer(node, 'handling notification', this.handleNotification)
+		})
+
+		this.ws.on('CB:ack,class:message', (node: BinaryNode) => {
+			const self = this
+			this.handleBadAck(node)
+				.catch(error => self.onUnexpectedError(error, 'handling bad ack'))
+		})
+
+		this.ev.on('call', ([ call ]) => {
+			// missed call + group call notification message generation
+			if(call.status === 'timeout' || (call.status === 'offer' && call.isGroup)) {
+				const msg: proto.IWebMessageInfo = {
+					key: {
+						remoteJid: call.chatId,
+						id: call.id,
+						fromMe: false
+					},
+					messageTimestamp: unixTimestampSeconds(call.date),
+				}
+				if(call.status === 'timeout') {
+					if(call.isGroup) {
+						msg.messageStubType = call.isVideo ? WAMessageStubType.CALL_MISSED_GROUP_VIDEO : WAMessageStubType.CALL_MISSED_GROUP_VOICE
+					} else {
+						msg.messageStubType = call.isVideo ? WAMessageStubType.CALL_MISSED_VIDEO : WAMessageStubType.CALL_MISSED_VOICE
+					}
+				} else {
+					msg.message = { call: { callKey: Buffer.from(call.id) } }
+				}
+
+				const protoMsg = proto.WebMessageInfo.fromObject(msg)
+				this.upsertMessage(protoMsg, call.offline ? 'append' : 'notify')
+			}
+		})
+
+		this.ev.on('connection.update', ({ isOnline }) => {
+			if(typeof isOnline !== 'undefined') {
+				this.sendActiveReceipts = isOnline
+				logger.trace(`sendActiveReceipts set to "${this.sendActiveReceipts}"`)
+			}
+		})
 	}
 
 	sendMessageAck = async({ tag, attrs }: BinaryNode) => {
@@ -649,64 +704,5 @@ export class MessagesReceive extends MessagesSend {
 			return exec(node)
 				.catch(err => self.onUnexpectedError(err, identifier))
 		}
-	}
-
-	override init = () => {
-		super.init()
-
-		this.ws.on('CB:message', (node: BinaryNode) => {
-			this.processNodeWithBuffer(node, 'processing message', this.handleMessage)
-		})
-
-		this.ws.on('CB:call', async(node: BinaryNode) => {
-			this.processNodeWithBuffer(node, 'handling call', this.handleCall)
-		})
-
-		this.ws.on('CB:receipt', node => {
-			this.processNodeWithBuffer(node, 'handling receipt', this.handleReceipt)
-		})
-
-		this.ws.on('CB:notification', async(node: BinaryNode) => {
-			this.processNodeWithBuffer(node, 'handling notification', this.handleNotification)
-		})
-
-		this.ws.on('CB:ack,class:message', (node: BinaryNode) => {
-			const self = this
-			this.handleBadAck(node)
-				.catch(error => self.onUnexpectedError(error, 'handling bad ack'))
-		})
-
-		this.ev.on('call', ([ call ]) => {
-			// missed call + group call notification message generation
-			if(call.status === 'timeout' || (call.status === 'offer' && call.isGroup)) {
-				const msg: proto.IWebMessageInfo = {
-					key: {
-						remoteJid: call.chatId,
-						id: call.id,
-						fromMe: false
-					},
-					messageTimestamp: unixTimestampSeconds(call.date),
-				}
-				if(call.status === 'timeout') {
-					if(call.isGroup) {
-						msg.messageStubType = call.isVideo ? WAMessageStubType.CALL_MISSED_GROUP_VIDEO : WAMessageStubType.CALL_MISSED_GROUP_VOICE
-					} else {
-						msg.messageStubType = call.isVideo ? WAMessageStubType.CALL_MISSED_VIDEO : WAMessageStubType.CALL_MISSED_VOICE
-					}
-				} else {
-					msg.message = { call: { callKey: Buffer.from(call.id) } }
-				}
-
-				const protoMsg = proto.WebMessageInfo.fromObject(msg)
-				this.upsertMessage(protoMsg, call.offline ? 'append' : 'notify')
-			}
-		})
-
-		this.ev.on('connection.update', ({ isOnline }) => {
-			if(typeof isOnline !== 'undefined') {
-				this.sendActiveReceipts = isOnline
-				logger.trace(`sendActiveReceipts set to "${this.sendActiveReceipts}"`)
-			}
-		})
 	}
 }
