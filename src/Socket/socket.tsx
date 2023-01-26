@@ -350,20 +350,12 @@ export class Socket {
 			} else if(this.ws.readyState === this.ws.OPEN) {
 				// if its all good, send a keep alive request
 				this.query(
-					{
-						tag: 'iq',
-						attrs: {
-							id: this.generateMessageTag(),
-							to: S_WHATSAPP_NET,
-							type: 'get',
-							xmlns: 'w:p',
-						},
-						content: [{ tag: 'ping', attrs: { } }]
-					}
-				)
-					.catch(err => {
-						logger.error({ trace: err.stack }, 'error in sending keep alive')
-					})
+					<iq to={S_WHATSAPP_NET} type="get" xmlns='w:p'>
+						<ping />
+					</iq>
+				).catch(err => {
+					logger.error({ trace: err.stack }, 'error in sending keep alive')
+				})
 			} else {
 				logger.warn('keep alive called when WS not open')
 			}

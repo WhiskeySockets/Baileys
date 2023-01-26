@@ -1,3 +1,6 @@
 {
-    "extends": "@adiwajshing"
+    "extends": "@adiwajshing",
+	"rules": {
+		"react/jsx-max-props-per-line": [true, { "maximum": 10, "when": "always" }]
+	}
 }
