@@ -1,19 +1,12 @@
-import { GetCatalogOptions, ProductCreate, ProductUpdate, SocketConfig } from '../Types'
+import { GetCatalogOptions, ProductCreate, ProductUpdate } from '../Types'
 import { parseCatalogNode, parseCollectionsNode, parseOrderDetailsNode, parseProductNode, toProductNode, uploadingNecessaryImagesOfProduct } from '../Utils/business'
 import { BinaryNode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
 import { getBinaryNodeChild } from '../WABinary/generic-utils'
-import { makeMessagesRecvSocket } from './messages-recv'
+import { MessagesReceive } from './messages-recv'
 
-export const makeBusinessSocket = (config: SocketConfig) => {
-	const sock = makeMessagesRecvSocket(config)
-	const {
-		authState,
-		query,
-		waUploadToServer
-	} = sock
-
-	const getCatalog = async({ jid, limit, cursor }: GetCatalogOptions) => {
-		jid = jid || authState.creds.me?.id
+export class Business extends MessagesReceive {
+	getCatalog = async({ jid, limit, cursor }: GetCatalogOptions) => {
+		jid = jid || this.authState.creds.me?.id
 		jid = jidNormalizedUser(jid!)
 
 		const queryParamNodes: BinaryNode[] = [
@@ -42,7 +35,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 			})
 		}
 
-		const result = await query({
+		const result = await this.query({
 			tag: 'iq',
 			attrs: {
 				to: S_WHATSAPP_NET,
@@ -63,10 +56,10 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 		return parseCatalogNode(result)
 	}
 
-	const getCollections = async(jid?: string, limit = 51) => {
-		jid = jid || authState.creds.me?.id
+	getCollections = async(jid?: string, limit = 51) => {
+		jid = jid || this.authState.creds.me?.id
 		jid = jidNormalizedUser(jid!)
-		const result = await query({
+		const result = await this.query({
 			tag: 'iq',
 			attrs: {
 				to: S_WHATSAPP_NET,
@@ -109,8 +102,8 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 		return parseCollectionsNode(result)
 	}
 
-	const getOrderDetails = async(orderId: string, tokenBase64: string) => {
-		const result = await query({
+	getOrderDetails = async(orderId: string, tokenBase64: string) => {
+		const result = await this.query({
 			tag: 'iq',
 			attrs: {
 				to: S_WHATSAPP_NET,
@@ -155,11 +148,11 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 		return parseOrderDetailsNode(result)
 	}
 
-	const productUpdate = async(productId: string, update: ProductUpdate) => {
-		update = await uploadingNecessaryImagesOfProduct(update, waUploadToServer)
+	productUpdate = async(productId: string, update: ProductUpdate) => {
+		update = await uploadingNecessaryImagesOfProduct(update, this.waUploadToServer)
 		const editNode = toProductNode(productId, update)
 
-		const result = await query({
+		const result = await this.query({
 			tag: 'iq',
 			attrs: {
 				to: S_WHATSAPP_NET,
@@ -193,13 +186,13 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 		return parseProductNode(productNode!)
 	}
 
-	const productCreate = async(create: ProductCreate) => {
+	productCreate = async(create: ProductCreate) => {
 		// ensure isHidden is defined
 		create.isHidden = !!create.isHidden
-		create = await uploadingNecessaryImagesOfProduct(create, waUploadToServer)
+		create = await uploadingNecessaryImagesOfProduct(create, this.waUploadToServer)
 		const createNode = toProductNode(undefined, create)
 
-		const result = await query({
+		const result = await this.query({
 			tag: 'iq',
 			attrs: {
 				to: S_WHATSAPP_NET,
@@ -233,8 +226,8 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 		return parseProductNode(productNode!)
 	}
 
-	const productDelete = async(productIds: string[]) => {
-		const result = await query({
+	productDelete = async(productIds: string[]) => {
+		const result = await this.query({
 			tag: 'iq',
 			attrs: {
 				to: S_WHATSAPP_NET,
@@ -266,15 +259,5 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 		return {
 			deleted: +(productCatalogDelNode?.attrs.deleted_count || 0)
 		}
-	}
-
-	return {
-		...sock,
-		getOrderDetails,
-		getCatalog,
-		getCollections,
-		productCreate,
-		productDelete,
-		productUpdate
 	}
 }
