@@ -73,94 +73,56 @@ export const toProductNode = (productId: string | undefined, product: ProductCre
 	const content: BinaryNode[] = [ ]
 
 	if(typeof productId !== 'undefined') {
-		content.push({
-			tag: 'id',
-			attrs: { },
-			content: Buffer.from(productId)
-		})
+		content.push(<id>{Buffer.from(productId)}</id>)
 	}
 
 	if(typeof product.name !== 'undefined') {
-		content.push({
-			tag: 'name',
-			attrs: { },
-			content: Buffer.from(product.name)
-		})
+		content.push(<name>{Buffer.from(product.name)}</name>)
 	}
 
 	if(typeof product.description !== 'undefined') {
-		content.push({
-			tag: 'description',
-			attrs: { },
-			content: Buffer.from(product.description)
-		})
+		content.push(<description>{Buffer.from(product.description)}</description>)
 	}
 
 	if(typeof product.retailerId !== 'undefined') {
-		content.push({
-			tag: 'retailer_id',
-			attrs: { },
-			content: Buffer.from(product.retailerId)
-		})
+		content.push(<retailer_id>{Buffer.from(product.retailerId)}</retailer_id>)
 	}
 
 	if(product.images.length) {
-		content.push({
-			tag: 'media',
-			attrs: { },
-			content: product.images.map(
-				img => {
+		content.push(
+			<media>
+				{product.images.map(img => {
 					if(!('url' in img)) {
 						throw new Boom('Expected img for product to already be uploaded', { statusCode: 400 })
 					}
-
-					return {
-						tag: 'image',
-						attrs: { },
-						content: [
-							{
-								tag: 'url',
-								attrs: { },
-								content: Buffer.from(img.url.toString())
-							}
-						]
-					}
-				}
-			)
-		})
+					
+					return (
+						<image>
+							<url>{Buffer.from(img.url.toString())}</url>
+						</image>
+					)
+				})}
+			</media>
+		)
 	}
 
 	if(typeof product.price !== 'undefined') {
-		content.push({
-			tag: 'price',
-			attrs: { },
-			content: Buffer.from(product.price.toString())
-		})
+		content.push(<price>{Buffer.from(product.price.toString())}</price>)
 	}
 
 	if(typeof product.currency !== 'undefined') {
-		content.push({
-			tag: 'currency',
-			attrs: { },
-			content: Buffer.from(product.currency)
-		})
+		content.push(<currency>{Buffer.from(product.currency)}</currency>)
 	}
 
 	if('originCountryCode' in product) {
 		if(typeof product.originCountryCode === 'undefined') {
 			attrs.compliance_category = 'COUNTRY_ORIGIN_EXEMPT'
 		} else {
-			content.push({
-				tag: 'compliance_info',
-				attrs: { },
-				content: [
-					{
-						tag: 'country_code_origin',
-						attrs: { },
-						content: Buffer.from(product.originCountryCode)
-					}
-				]
-			})
+			content.push(
+				<compliance_info>
+					<country_code_origin>{Buffer.from(product.originCountryCode)}</country_code_origin>
+				</compliance_info>
+			)
 		}
 	}
 

@@ -81,17 +81,11 @@ export class Chats extends Socket {
 
 	fetchPrivacySettings = async(force: boolean = false) => {
 		if(!this.privacySettings || force) {
-			const { content } = await this.query({
-				tag: 'iq',
-				attrs: {
-					xmlns: 'privacy',
-					to: S_WHATSAPP_NET,
-					type: 'get'
-				},
-				content: [
-					{ tag: 'privacy', attrs: { } }
-				]
-			})
+			const { content } = await this.query(
+				<iq to={S_WHATSAPP_NET} type="get" xmlns="privacy">
+					<privacy />
+				</iq>
+			)
 			this.privacySettings = reduceBinaryNodeToDictionary(content?.[0] as BinaryNode, 'category')
 		}
 
@@ -100,38 +94,14 @@ export class Chats extends Socket {
 
 	/** helper function to run a generic IQ query */
 	interactiveQuery = async(userNodes: BinaryNode[], queryNode: BinaryNode) => {
-		const result = await this.query({
-			tag: 'iq',
-			attrs: {
-				to: S_WHATSAPP_NET,
-				type: 'get',
-				xmlns: 'usync',
-			},
-			content: [
-				{
-					tag: 'usync',
-					attrs: {
-						sid: this.generateMessageTag(),
-						mode: 'query',
-						last: 'true',
-						index: '0',
-						context: 'interactive',
-					},
-					content: [
-						{
-							tag: 'query',
-							attrs: { },
-							content: [ queryNode ]
-						},
-						{
-							tag: 'list',
-							attrs: { },
-							content: userNodes
-						}
-					]
-				}
-			],
-		})
+		const result = await this.query(
+			<iq to={S_WHATSAPP_NET} type="get" xmlns="usync">
+				<usync sid={this.generateMessageTag()} mode="query" last="true" index="0" context="interactive">
+					<query>{queryNode}</query>
+					<list>{userNodes}</list>
+				</usync>
+			</iq>
+		)
 
 		const usyncNode = getBinaryNodeChild(result, 'usync')
 		const listNode = getBinaryNodeChild(usyncNode, 'list')
@@ -143,19 +113,11 @@ export class Chats extends Socket {
 	onWhatsApp = async(...jids: string[]) => {
 		const results = await this.interactiveQuery(
 			[
-				{
-					tag: 'user',
-					attrs: { },
-					content: jids.map(
-						jid => ({
-							tag: 'contact',
-							attrs: { },
-							content: `+${jid}`
-						})
-					)
-				}
+				<user>
+					{ jids.map(jid => <contact>{`+${jid}`}</contact>) }
+				</user>
 			],
-			{ tag: 'contact', attrs: { } }
+			<contact />
 		)
 
 		return results.map(user => {
@@ -166,8 +128,8 @@ export class Chats extends Socket {
 
 	fetchStatus = async(jid: string) => {
 		const [result] = await this.interactiveQuery(
-			[{ tag: 'user', attrs: { jid } }],
-			{ tag: 'status', attrs: { } }
+			[<user jid={jid} />],
+			<status />
 		)
 		if(result) {
 			const status = getBinaryNodeChild(result, 'status')
@@ -181,40 +143,20 @@ export class Chats extends Socket {
 	/** update the profile picture for yourself or a group */
 	updateProfilePicture = async(jid: string, content: WAMediaUpload) => {
 		const { img } = await generateProfilePicture(content)
-		await this.query({
-			tag: 'iq',
-			attrs: {
-				to: jidNormalizedUser(jid),
-				type: 'set',
-				xmlns: 'w:profile:picture'
-			},
-			content: [
-				{
-					tag: 'picture',
-					attrs: { type: 'image' },
-					content: img
-				}
-			]
-		})
+		await this.query(
+			<iq to={jidNormalizedUser(jid)} type="set" xmlns="w:profile:picture">
+				<picture type="image">{img}</picture>
+			</iq>
+		)
 	}
 
 	/** update the profile status for yourself */
 	updateProfileStatus = async(status: string) => {
-		await this.query({
-			tag: 'iq',
-			attrs: {
-				to: S_WHATSAPP_NET,
-				type: 'set',
-				xmlns: 'status'
-			},
-			content: [
-				{
-					tag: 'status',
-					attrs: { },
-					content: Buffer.from(status, 'utf-8')
-				}
-			]
-		})
+		await this.query(
+			<iq to={S_WHATSAPP_NET} type="set" xmlns="status">
+				<status>{Buffer.from(status, 'utf-8')}</status>
+			</iq>
+		)
 	}
 
 	updateProfileName = async(name: string) => {
@@ -222,14 +164,11 @@ export class Chats extends Socket {
 	}
 
 	fetchBlocklist = async() => {
-		const result = await this.query({
-			tag: 'iq',
-			attrs: {
-				xmlns: 'blocklist',
-				to: S_WHATSAPP_NET,
-				type: 'get'
-			}
-		})
+		const result = await this.query(
+			<iq to={S_WHATSAPP_NET} type="get" xmlns="blocklist">
+				<blocklist />
+			</iq>
+		)
 
 		const listNode = getBinaryNodeChild(result, 'list')
 		return getBinaryNodeChildren(listNode, 'item')
@@ -237,42 +176,21 @@ export class Chats extends Socket {
 	}
 
 	updateBlockStatus = async(jid: string, action: 'block' | 'unblock') => {
-		await this.query({
-			tag: 'iq',
-			attrs: {
-				xmlns: 'blocklist',
-				to: S_WHATSAPP_NET,
-				type: 'set'
-			},
-			content: [
-				{
-					tag: 'item',
-					attrs: {
-						action,
-						jid
-					}
-				}
-			]
-		})
+		await this.query(
+			<iq to={S_WHATSAPP_NET} type="set" xmlns="blocklist">
+				<item action={action} jid={jid} />
+			</iq>
+		)
 	}
 
 	getBusinessProfile = async(jid: string): Promise<WABusinessProfile | void> => {
-		const results = await this.query({
-			tag: 'iq',
-			attrs: {
-				to: 's.whatsapp.net',
-				xmlns: 'w:biz',
-				type: 'get'
-			},
-			content: [{
-				tag: 'business_profile',
-				attrs: { v: '244' },
-				content: [{
-					tag: 'profile',
-					attrs: { jid }
-				}]
-			}]
-		})
+		const results = await this.query(
+			<iq to={S_WHATSAPP_NET} type="get" xmlns="w:biz">
+				<business_profile v="244">
+					<profile jid={jid} />
+				</business_profile>
+			</iq>
+		)
 
 		const profileNode = getBinaryNodeChild(results, 'business_profile')
 		const profiles = getBinaryNodeChild(profileNode, 'profile')
@@ -302,24 +220,12 @@ export class Chats extends Socket {
 
 	updateAccountSyncTimestamp = async(fromTimestamp: number | string) => {
 		logger.info({ fromTimestamp }, 'requesting account sync')
-		await this.sendNode({
-			tag: 'iq',
-			attrs: {
-				to: S_WHATSAPP_NET,
-				type: 'set',
-				xmlns: 'urn:xmpp:whatsapp:dirty',
-				id: this.generateMessageTag(),
-			},
-			content: [
-				{
-					tag: 'clean',
-					attrs: {
-						type: 'account_sync',
-						timestamp: fromTimestamp.toString(),
-					}
-				}
-			]
-		})
+		
+		await this.sendNode(
+			<iq id={this.generateMessageTag()} to={S_WHATSAPP_NET} type="set" xmlns="urn:xmpp:whatsapp:dirty">
+				<clean type="account_sync" timestamp={fromTimestamp.toString()} />
+			</iq>
+		)
 	}
 
 	newAppStateChunkHandler = (isInitialSync: boolean) => {
@@ -370,32 +276,17 @@ export class Chats extends Socket {
 
 						logger.info(`resyncing ${name} from v${state.version}`)
 
-						nodes.push({
-							tag: 'collection',
-							attrs:  {
-								name,
-								version: state.version.toString(),
-								// return snapshot if being synced from scratch
-								return_snapshot: (!state.version).toString()
-							}
-						})
+						// return snapshot if being synced from scratch
+						nodes.push(<collection name={name} version={state.version.toString()} return_snapshot={(!state.version).toString()} />)
 					}
 
-					const result = await this.query({
-						tag: 'iq',
-						attrs: {
-							to: S_WHATSAPP_NET,
-							xmlns: 'w:sync:app:state',
-							type: 'set'
-						},
-						content: [
-							{
-								tag: 'sync',
-								attrs: { },
-								content: nodes
-							}
-						]
-					})
+					const result = await this.query(
+						<iq to={S_WHATSAPP_NET} xmlns='w:sync:app:state' type='set'>
+							<sync>
+								{nodes}
+							</sync>
+						</iq>
+					)
 
 					// extract from binary node
 					const decoded = await extractSyncdPatches(result, this.config?.options)
@@ -482,17 +373,11 @@ export class Chats extends Socket {
      */
 	profilePictureUrl = async(jid: string, type: 'preview' | 'image' = 'preview', timeoutMs?: number) => {
 		jid = jidNormalizedUser(jid)
-		const result = await this.query({
-			tag: 'iq',
-			attrs: {
-				to: jid,
-				type: 'get',
-				xmlns: 'w:profile:picture'
-			},
-			content: [
-				{ tag: 'picture', attrs: { type, query: 'url' } }
-			]
-		}, timeoutMs)
+		const result = await this.query(
+			<iq to={jid} type="get" xmlns="w:profile:picture">
+				<picture type={type} query="url" />
+			</iq>
+		, timeoutMs)
 		const child = getBinaryNodeChild(result, 'picture')
 		return child?.attrs?.url
 	}
@@ -507,27 +392,15 @@ export class Chats extends Socket {
 
 			this.ev.emit('connection.update', { isOnline: type === 'available' })
 
-			await this.sendNode({
-				tag: 'presence',
-				attrs: {
-					name: me!.name,
-					type
-				}
-			})
+			await this.sendNode(
+				<presence name={me!.name} type={type} />
+			)
 		} else {
-			await this.sendNode({
-				tag: 'chatstate',
-				attrs: {
-					from: me!.id!,
-					to: toJid!,
-				},
-				content: [
-					{
-						tag: type === 'recording' ? 'composing' : type,
-						attrs: type === 'recording' ? { media : 'audio' } : {}
-					}
-				]
-			})
+			await this.sendNode(
+				<chatstate from={me!.id!} to={toJid!}>
+					{JSX.createElement(type === 'recording' ? 'composing' : type,type === 'recording' ? { media : 'audio' } : {})}
+				</chatstate>
+			)
 		}
 	}
 
@@ -536,23 +409,11 @@ export class Chats extends Socket {
 	 * @param tcToken token for subscription, use if present
 	 */
 	presenceSubscribe = (toJid: string, tcToken?: Buffer) => (
-		this.sendNode({
-			tag: 'presence',
-			attrs: {
-				to: toJid,
-				id: this.generateMessageTag(),
-				type: 'subscribe'
-			},
-			content: tcToken
-				? [
-					{
-						tag: 'tctoken',
-						attrs: { },
-						content: tcToken
-					}
-				]
-				: undefined
-		})
+		this.sendNode(
+			<presence to={toJid} id={this.generateMessageTag()} type="subscribe">
+				{tcToken ? <tctoken>{tcToken}</tctoken> : undefined}
+			</presence>
+		)
 	)
 
 	handlePresenceUpdate = ({ tag, attrs, content }: BinaryNode) => {
@@ -619,38 +480,15 @@ export class Chats extends Socket {
 						)
 						const { patch, state } = encodeResult
 
-						const node: BinaryNode = {
-							tag: 'iq',
-							attrs: {
-								to: S_WHATSAPP_NET,
-								type: 'set',
-								xmlns: 'w:sync:app:state'
-							},
-							content: [
-								{
-									tag: 'sync',
-									attrs: { },
-									content: [
-										{
-											tag: 'collection',
-											attrs: {
-												name,
-												version: (state.version - 1).toString(),
-												return_snapshot: 'false'
-											},
-											content: [
-												{
-													tag: 'patch',
-													attrs: { },
-													content: proto.SyncdPatch.encode(patch).finish()
-												}
-											]
-										}
-									]
-								}
-							]
-						}
-						await this.query(node)
+						await this.query(
+							<iq type="set" xmlns="w:sync:app:state">
+								<sync>
+									<collection name={name} version={(state.version - 1).toString()} return_snapshot="false">
+										<patch>{proto.SyncdPatch.encode(patch).finish()}</patch>
+									</collection>
+								</sync>
+							</iq>
+						)
 
 						await this.authState.keys.set({ 'app-state-sync-version': { [name]: state } })
 					}
@@ -677,17 +515,11 @@ export class Chats extends Socket {
 
 	/** sending abt props may fix QR scan fail if server expects */
 	fetchAbt = async() => {
-		const abtNode = await this.query({
-			tag: 'iq',
-			attrs: {
-				to: S_WHATSAPP_NET,
-				xmlns: 'abt',
-				type: 'get',
-			},
-			content: [
-				{ tag: 'props', attrs: { protocol: '1' } }
-			]
-		})
+		const abtNode = await this.query(
+			<iq to={S_WHATSAPP_NET} xmlns="abt" type="get">
+				<props protocol="1"/>
+			</iq>
+		)
 
 		const propsNode = getBinaryNodeChild(abtNode, 'props')
 
@@ -703,17 +535,11 @@ export class Chats extends Socket {
 
 	/** sending non-abt props may fix QR scan fail if server expects */
 	fetchProps = async() => {
-		const resultNode = await this.query({
-			tag: 'iq',
-			attrs: {
-				to: S_WHATSAPP_NET,
-				xmlns: 'w',
-				type: 'get',
-			},
-			content: [
-				{ tag: 'props', attrs: { } }
-			]
-		})
+		const resultNode = await this.query(
+			<iq to={S_WHATSAPP_NET} xmlns="w" type="get">
+				<props/>
+			</iq>
+		)
 
 		const propsNode = getBinaryNodeChild(resultNode, 'props')
 

@@ -152,27 +152,15 @@ export const configureSuccessfulPairing = (
 
 	const deviceIdentity = proto.ADVDeviceIdentity.decode(account.details)
 
-	const reply: BinaryNode = {
-		tag: 'iq',
-		attrs: {
-			to: S_WHATSAPP_NET,
-			type: 'result',
-			id: msgId,
-		},
-		content: [
-			{
-				tag: 'pair-device-sign',
-				attrs: { },
-				content: [
-					{
-						tag: 'device-identity',
-						attrs: { 'key-index': deviceIdentity.keyIndex.toString() },
-						content: accountEnc
-					}
-				]
-			}
-		]
-	}
+	const reply: BinaryNode = (
+		<iq to={S_WHATSAPP_NET} type="result" id={msgId}>
+			<pair-device-sign>
+				<device-identity key-index={deviceIdentity.keyIndex.toString()}>
+					{accountEnc}
+				</device-identity>
+			</pair-device-sign>
+		</iq>
+	)
 
 	const authUpdate: Partial<AuthenticationCreds> = {
 		account,

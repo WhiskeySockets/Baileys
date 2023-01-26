@@ -22,15 +22,12 @@ export class MessagesSend extends Groups {
 		const media = await this.mediaConn
 		if(!media || forceGet || (new Date().getTime() - media.fetchDate.getTime()) > media.ttl * 1000) {
 			this.mediaConn = (async() => {
-				const result = await this.query({
-					tag: 'iq',
-					attrs: {
-						type: 'set',
-						xmlns: 'w:m',
-						to: S_WHATSAPP_NET,
-					},
-					content: [ { tag: 'media_conn', attrs: { } } ]
-				})
+				const result = await this.query(
+					<iq type="set" xmlns="w:m" to={S_WHATSAPP_NET}>
+						<media_conn/>
+					</iq>
+				)
+				
 				const mediaConnNode = getBinaryNodeChild(result, 'media_conn')
 				const node: MediaConnInfo = {
 					hosts: getBinaryNodeChildren(mediaConnNode, 'host').map(
@@ -53,12 +50,7 @@ export class MessagesSend extends Groups {
      * used for receipts of phone call, read, delivery etc.
      * */
 	sendReceipt = async(jid: string, participant: string | undefined, messageIds: string[], type: MessageReceiptType) => {
-		const node: BinaryNode = {
-			tag: 'receipt',
-			attrs: {
-				id: messageIds[0],
-			},
-		}
+		const node: BinaryNode = <receipt id={messageIds[0]} />
 		const isReadReceipt = type === 'read' || type === 'read-self'
 		if(isReadReceipt) {
 			node.attrs.t = unixTimestampSeconds().toString()
@@ -81,14 +73,7 @@ export class MessagesSend extends Groups {
 		const remainingMessageIds = messageIds.slice(1)
 		if(remainingMessageIds.length) {
 			node.content = [
-				{
-					tag: 'list',
-					attrs: { },
-					content: remainingMessageIds.map(id => ({
-						tag: 'item',
-						attrs: { id }
-					}))
-				}
+				<list>{remainingMessageIds.map(id => <item id={id} />)}</list>
 			]
 		}
 
@@ -131,44 +116,20 @@ export class MessagesSend extends Groups {
 
 				logger.trace({ user }, 'using cache for devices')
 			} else {
-				users.push({ tag: 'user', attrs: { jid } })
+				users.push(<user jid={jid} />)
 			}
 		}
 
-		const iq: BinaryNode = {
-			tag: 'iq',
-			attrs: {
-				to: S_WHATSAPP_NET,
-				type: 'get',
-				xmlns: 'usync',
-			},
-			content: [
-				{
-					tag: 'usync',
-					attrs: {
-						sid: this.generateMessageTag(),
-						mode: 'query',
-						last: 'true',
-						index: '0',
-						context: 'message',
-					},
-					content: [
-						{
-							tag: 'query',
-							attrs: { },
-							content: [
-								{
-									tag: 'devices',
-									attrs: { version: '2' }
-								}
-							]
-						},
-						{ tag: 'list', attrs: { }, content: users }
-					]
-				},
-			],
-		}
-		const result = await this.query(iq)
+		const result = await this.query(
+			<iq to={S_WHATSAPP_NET} type="get" xmlns="usync">
+				<usync sid={this.generateMessageTag()} mode="query" last="true" index="0" context="message">
+					<query>
+						<devices version="2" />
+					</query>
+					<list>{users}</list>
+				</usync>
+			</iq>
+		)
 		const extracted = extractDeviceJids(result, this.authState.creds.me!.id, ignoreZeroDevices)
 		const deviceMap: { [_: string]: JidWithDevice[] } = {}
 
@@ -204,26 +165,13 @@ export class MessagesSend extends Groups {
 
 		if(jidsRequiringFetch.length) {
 			logger.debug({ jidsRequiringFetch }, 'fetching sessions')
-			const result = await this.query({
-				tag: 'iq',
-				attrs: {
-					xmlns: 'encrypt',
-					type: 'get',
-					to: S_WHATSAPP_NET,
-				},
-				content: [
-					{
-						tag: 'key',
-						attrs: { },
-						content: jidsRequiringFetch.map(
-							jid => ({
-								tag: 'user',
-								attrs: { jid },
-							})
-						)
-					}
-				]
-			})
+			const result = await this.query(
+				<iq to={S_WHATSAPP_NET} type="get" xmlns="encrypt">
+					<key>
+						{jidsRequiringFetch.map(jid => <user jid={jid} />)}
+					</key>
+				</iq>
+			)
 			await parseAndInjectE2ESessions(result, this.authState)
 
 			didFetchNewSession = true
@@ -249,19 +197,14 @@ export class MessagesSend extends Groups {
 						shouldIncludeDeviceIdentity = true
 					}
 
-					const node: BinaryNode = {
-						tag: 'to',
-						attrs: { jid },
-						content: [{
-							tag: 'enc',
-							attrs: {
-								v: '2',
-								type,
-								...extraAttrs || {}
-							},
-							content: ciphertext
-						}]
-					}
+					const node: BinaryNode = (
+						<to jid={jid}>
+							<enc v="2" type={type} {...extraAttrs || {}}>
+								{ciphertext}
+							</enc>
+						</to>
+					)
+
 					return node
 				}
 			)
@@ -380,11 +323,7 @@ export class MessagesSend extends Groups {
 						participants.push(...result.nodes)
 					}
 
-					binaryNodeContent.push({
-						tag: 'enc',
-						attrs: { v: '2', type: 'skmsg' },
-						content: ciphertext
-					})
+					binaryNodeContent.push(<enc v="2" type="skmsg">{ciphertext}</enc>)
 
 					await this.authState.keys.set({ 'sender-key-memory': { [jid]: senderKeyMap } })
 				} else {
@@ -429,22 +368,14 @@ export class MessagesSend extends Groups {
 				}
 
 				if(participants.length) {
-					binaryNodeContent.push({
-						tag: 'participants',
-						attrs: { },
-						content: participants
-					})
+					binaryNodeContent.push(<participants>{participants}</participants>)
 				}
 
-				const stanza: BinaryNode = {
-					tag: 'message',
-					attrs: {
-						id: msgId!,
-						type: 'text',
-						...(additionalAttributes || {})
-					},
-					content: binaryNodeContent
-				}
+				const stanza: BinaryNode = (
+					<message id={msgId!} type="text" {...additionalAttributes}>
+						{binaryNodeContent}
+					</message>
+				)
 				// if the participant to send to is explicitly specified (generally retry recp)
 				// ensure the message is only sent to that person
 				// if a retry receipt is sent to everyone -- it'll fail decryption for everyone else who received the msg
@@ -463,11 +394,13 @@ export class MessagesSend extends Groups {
 				}
 
 				if(shouldIncludeDeviceIdentity) {
-					(stanza.content as BinaryNode[]).push({
-						tag: 'device-identity',
-						attrs: { },
-						content: encodeSignedDeviceIdentity(this.authState.creds.account!, true)
-					})
+					if (!Array.isArray(stanza.content)) stanza.content = [] as BinaryNode[]
+
+					stanza.content.push(
+						<device-identity>
+							{encodeSignedDeviceIdentity(this.authState.creds.account!, true)}
+						</device-identity>
+					)
 
 					logger.debug({ jid }, 'adding device identity')
 				}
@@ -483,32 +416,14 @@ export class MessagesSend extends Groups {
 
 	getPrivacyTokens = async(jids: string[]) => {
 		const t = unixTimestampSeconds().toString()
-		const result = await this.query({
-			tag: 'iq',
-			attrs: {
-				to: S_WHATSAPP_NET,
-				type: 'set',
-				xmlns: 'privacy'
-			},
-			content: [
-				{
-					tag: 'tokens',
-					attrs: { },
-					content: jids.map(
-						jid => ({
-							tag: 'token',
-							attrs: {
-								jid: jidNormalizedUser(jid),
-								t,
-								type: 'trusted_contact'
-							}
-						})
-					)
-				}
-			]
-		})
 
-		return result
+		return this.query(
+			<iq to={S_WHATSAPP_NET} type='get' xmlns='privacy'>
+				<tokens>
+					{jids.map(jid => <token jid={jidNormalizedUser(jid)} t={t} type='trusted_contact' />)}
+				</tokens>
+			</iq>
+		)
 	}
 
 	waUploadToServer = getWAUploadToServer(this.config, this.refreshMediaConn)

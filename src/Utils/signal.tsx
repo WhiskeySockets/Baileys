@@ -55,26 +55,18 @@ export const generateOrGetPreKeys = (creds: AuthenticationCreds, range: number) 
 }
 
 export const xmppSignedPreKey = (key: SignedKeyPair): BinaryNode => (
-	{
-		tag: 'skey',
-		attrs: { },
-		content: [
-			{ tag: 'id', attrs: { }, content: encodeBigEndian(key.keyId, 3) },
-			{ tag: 'value', attrs: { }, content: key.keyPair.public },
-			{ tag: 'signature', attrs: { }, content: key.signature }
-		]
-	}
+	<skey>
+		<id>{encodeBigEndian(key.keyId, 3)}</id>
+		<value>{key.keyPair.public}</value>
+		<signature>{key.signature}</signature>
+	</skey>
 )
 
 export const xmppPreKey = (pair: KeyPair, id: number): BinaryNode => (
-	{
-		tag: 'key',
-		attrs: { },
-		content: [
-			{ tag: 'id', attrs: { }, content: encodeBigEndian(id, 3) },
-			{ tag: 'value', attrs: { }, content: pair.public }
-		]
-	}
+	<key>
+		<id>{encodeBigEndian(id, 3)}</id>
+		<value>{pair.public}</value>
+	</key>
 )
 
 export const signalStorage = ({ creds, keys }: SignalAuthState) => ({
@@ -287,21 +279,15 @@ export const getNextPreKeysNode = async(state: AuthenticationState, count: numbe
 	const { creds } = state
 	const { update, preKeys } = await getNextPreKeys(state, count)
 
-	const node: BinaryNode = {
-		tag: 'iq',
-		attrs: {
-			xmlns: 'encrypt',
-			type: 'set',
-			to: S_WHATSAPP_NET,
-		},
-		content: [
-			{ tag: 'registration', attrs: { }, content: encodeBigEndian(creds.registrationId) },
-			{ tag: 'type', attrs: { }, content: KEY_BUNDLE_TYPE },
-			{ tag: 'identity', attrs: { }, content: creds.signedIdentityKey.public },
-			{ tag: 'list', attrs: { }, content: Object.keys(preKeys).map(k => xmppPreKey(preKeys[+k], +k)) },
-			xmppSignedPreKey(creds.signedPreKey)
-		]
-	}
+	const node: BinaryNode = (
+		<iq xmlns='encrypt' type='set' to={S_WHATSAPP_NET}>
+			<registration>{encodeBigEndian(creds.registrationId)}</registration>
+			<type>{KEY_BUNDLE_TYPE}</type>
+			<identity>{creds.signedIdentityKey.public}</identity>
+			<list>{Object.keys(preKeys).map(k => xmppPreKey(preKeys[+k], +k))}</list>
+			{xmppSignedPreKey(creds.signedPreKey)}
+		</iq>
+	)
 
 	return { update, node }
 }

@@ -7,22 +7,18 @@ import { Chats } from './chats'
 export class Groups extends Chats {
 
 	groupQuery = async(jid: string, type: 'get' | 'set', content: BinaryNode[]) => (
-		this.query({
-			tag: 'iq',
-			attrs: {
-				type,
-				xmlns: 'w:g2',
-				to: jid,
-			},
-			content
-		})
+		this.query(
+			<iq to={jid} type={type} xmlns="w:g2">
+				{content}
+			</iq>
+		)
 	)
 
 	groupMetadata = async(jid: string) => {
 		const result = await this.groupQuery(
 			jid,
 			'get',
-			[ { tag: 'query', attrs: { request: 'interactive' } } ]
+			[ <query request="interactive" /> ]
 		)
 		return extractGroupMetadata(result)
 	}
@@ -33,17 +29,9 @@ export class Groups extends Chats {
 			'@g.us',
 			'set',
 			[
-				{
-					tag: 'create',
-					attrs: {
-						subject,
-						key
-					},
-					content: participants.map(jid => ({
-						tag: 'participant',
-						attrs: { jid }
-					}))
-				}
+				<create subject={subject} key={key}>
+					{participants.map(jid => <participant jid={jid} />)}
+				</create>
 			]
 		)
 		return extractGroupMetadata(result)
@@ -53,13 +41,9 @@ export class Groups extends Chats {
 			'@g.us',
 			'set',
 			[
-				{
-					tag: 'leave',
-					attrs: { },
-					content: [
-						{ tag: 'group', attrs: { id } }
-					]
-				}
+				<leave>
+					<group id={id} />
+				</leave>
 			]
 		)
 	}
@@ -68,11 +52,7 @@ export class Groups extends Chats {
 			jid,
 			'set',
 			[
-				{
-					tag: 'subject',
-					attrs: { },
-					content: Buffer.from(subject, 'utf-8')
-				}
+				<subject>{Buffer.from(subject, 'utf-8')}</subject>
 			]
 		)
 	}
@@ -88,11 +68,8 @@ export class Groups extends Chats {
 				{
 					tag: action,
 					attrs: { },
-					content: participants.map(jid => ({
-						tag: 'participant',
-						attrs: { jid }
-					}))
-				}
+					content: participants.map(jid => <participant jid={jid} />)
+				},
 			]
 		)
 		const node = getBinaryNodeChild(result, action)
@@ -109,31 +86,24 @@ export class Groups extends Chats {
 			jid,
 			'set',
 			[
-				{
-					tag: 'description',
-					attrs: {
-						...(description ? { id: generateMessageID() } : { delete: 'true' }),
-						...(prev ? { prev } : {})
-					},
-					content: description ? [
-						{ tag: 'body', attrs: {}, content: Buffer.from(description, 'utf-8') }
-					] : undefined
-				}
+				<description {...(prev ? { prev } : {})} {...(description ? { id: generateMessageID() } : { delete: 'true' })}>
+					{description ? <body>{Buffer.from(description, 'utf-8')}</body> : undefined}
+				</description>
 			]
 		)
 	}
 	groupInviteCode = async(jid: string) => {
-		const result = await this.groupQuery(jid, 'get', [{ tag: 'invite', attrs: {} }])
+		const result = await this.groupQuery(jid, 'get', [<invite />])
 		const inviteNode = getBinaryNodeChild(result, 'invite')
 		return inviteNode?.attrs.code
 	}
 	groupRevokeInvite = async(jid: string) => {
-		const result = await this.groupQuery(jid, 'set', [{ tag: 'invite', attrs: {} }])
+		const result = await this.groupQuery(jid, 'set', [<invite />])
 		const inviteNode = getBinaryNodeChild(result, 'invite')
 		return inviteNode?.attrs.code
 	}
 	groupAcceptInvite = async(code: string) => {
-		const results = await this.groupQuery('@g.us', 'set', [{ tag: 'invite', attrs: { code } }])
+		const results = await this.groupQuery('@g.us', 'set', [<invite code={code} />])
 		const result = getBinaryNodeChild(results, 'group')
 		return result?.attrs.jid
 	}
@@ -144,14 +114,9 @@ export class Groups extends Chats {
 	 */
 	groupAcceptInviteV4 = this.ev.createBufferedFunction(async(key: string | WAMessageKey, inviteMessage: proto.Message.IGroupInviteMessage) => {
 		key = typeof key === 'string' ? { remoteJid: key } : key
-		const results = await this.groupQuery(inviteMessage.groupJid!, 'set', [{
-			tag: 'accept',
-			attrs: {
-				code: inviteMessage.inviteCode!,
-				expiration: inviteMessage.inviteExpiration!.toString(),
-				admin: key.remoteJid!
-			}
-		}])
+		const results = await this.groupQuery(inviteMessage.groupJid!, 'set', [
+			<accept code={inviteMessage.inviteCode!} expiration={inviteMessage.inviteExpiration!.toString()} admin={key.remoteJid!} />
+		])
 
 		// if we have the full message key
 		// update the invite message to be expired
@@ -194,47 +159,34 @@ export class Groups extends Chats {
 		return results.attrs.from
 	})
 	groupGetInviteInfo = async(code: string) => {
-		const results = await this.groupQuery('@g.us', 'get', [{ tag: 'invite', attrs: { code } }])
+		const results = await this.groupQuery('@g.us', 'get', [<invite code={code} />])
 		return extractGroupMetadata(results)
 	}
 	groupToggleEphemeral = async(jid: string, ephemeralExpiration: number) => {
 		const content: BinaryNode = ephemeralExpiration ?
-			{ tag: 'ephemeral', attrs: { expiration: ephemeralExpiration.toString() } } :
-			{ tag: 'not_ephemeral', attrs: { } }
+			<ephemeral expiration={ephemeralExpiration.toString()} /> :
+			<not_ephemeral />
+		
 		await this.groupQuery(jid, 'set', [content])
 	}
 	groupSettingUpdate = async(jid: string, setting: 'announcement' | 'not_announcement' | 'locked' | 'unlocked') => {
 		await this.groupQuery(jid, 'set', [ { tag: setting, attrs: { } } ])
 	}
 	groupFetchAllParticipating = async() => {
-		const result = await this.query({
-			tag: 'iq',
-			attrs: {
-				to: '@g.us',
-				xmlns: 'w:g2',
-				type: 'get',
-			},
-			content: [
-				{
-					tag: 'participating',
-					attrs: { },
-					content: [
-						{ tag: 'participants', attrs: { } },
-						{ tag: 'description', attrs: { } }
-					]
-				}
-			]
-		})
+		const result = await this.query(
+			<iq to="@g.us" xmlns="w:g2" type="get">
+				<participating>
+					<participants />
+					<description />
+				</participating>
+			</iq>
+		)
 		const data: { [_: string]: GroupMetadata } = { }
 		const groupsChild = getBinaryNodeChild(result, 'groups')
 		if(groupsChild) {
 			const groups = getBinaryNodeChildren(groupsChild, 'group')
 			for(const groupNode of groups) {
-				const meta = extractGroupMetadata({
-					tag: 'result',
-					attrs: { },
-					content: [groupNode]
-				})
+				const meta = extractGroupMetadata(<result>{groupNode}</result>)
 				data[meta.id] = meta
 			}
 		}

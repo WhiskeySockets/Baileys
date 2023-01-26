@@ -78,14 +78,7 @@ export class MessagesReceive extends MessagesSend {
 	}
 
 	sendMessageAck = async({ tag, attrs }: BinaryNode) => {
-		const stanza: BinaryNode = {
-			tag: 'ack',
-			attrs: {
-				id: attrs.id,
-				to: attrs.from,
-				class: tag,
-			}
-		}
+		const stanza: BinaryNode = <ack id={attrs.id} to={attrs.from} class={tag}/>
 
 		if(!!attrs.participant) {
 			stanza.attrs.participant = attrs.participant
@@ -104,23 +97,11 @@ export class MessagesReceive extends MessagesSend {
 	}
 
 	rejectCall = async(callId: string, callFrom: string) => {
-		const stanza: BinaryNode = ({
-			tag: 'call',
-			attrs: {
-				from: this.authState.creds.me!.id,
-				to: callFrom,
-			},
-			content: [{
-			    tag: 'reject',
-			    attrs: {
-					'call-id': callId,
-					'call-creator': callFrom,
-					count: '0',
-			    },
-			    content: undefined,
-			}],
-		})
-		await this.query(stanza)
+		await this.query(
+			<call from={this.authState.creds.me!.id} to={callFrom}>
+				<reject call-id={callId} call-creator={callFrom} count="0"/>
+			</call>
+		)
 	}
 
 	sendRetryRequest = async(node: BinaryNode, forceIncludeKeys = false) => {
@@ -141,30 +122,12 @@ export class MessagesReceive extends MessagesSend {
 		const deviceIdentity = encodeSignedDeviceIdentity(account!, true)
 		await this.keys.transaction(
 			async() => {
-				const receipt: BinaryNode = {
-					tag: 'receipt',
-					attrs: {
-						id: msgId,
-						type: 'retry',
-						to: node.attrs.from
-					},
-					content: [
-						{
-							tag: 'retry',
-							attrs: {
-								count: retryCount.toString(),
-								id: node.attrs.id,
-								t: node.attrs.t,
-								v: '1'
-							}
-						},
-						{
-							tag: 'registration',
-							attrs: { },
-							content: encodeBigEndian(this.authState.creds.registrationId)
-						}
-					]
-				}
+				const receipt: BinaryNode = (
+					<receipt id={msgId} type="retry" to={node.attrs.from}>
+						<retry count={retryCount.toString()} id={node.attrs.id} t={node.attrs.t} v="1"/>
+						<registration>{encodeBigEndian(this.authState.creds.registrationId)}</registration>
+					</receipt>
+				)
 
 				if(node.attrs.recipient) {
 					receipt.attrs.recipient = node.attrs.recipient
@@ -181,17 +144,15 @@ export class MessagesReceive extends MessagesSend {
 					const key = preKeys[+keyId]
 
 					const content = receipt.content! as BinaryNode[]
-					content.push({
-						tag: 'keys',
-						attrs: { },
-						content: [
-							{ tag: 'type', attrs: { }, content: Buffer.from(KEY_BUNDLE_TYPE) },
-							{ tag: 'identity', attrs: { }, content: identityKey.public },
-							xmppPreKey(key, +keyId),
-							xmppSignedPreKey(signedPreKey),
-							{ tag: 'device-identity', attrs: { }, content: deviceIdentity }
-						]
-					})
+					content.push(
+						<keys>
+							<type>{Buffer.from(KEY_BUNDLE_TYPE)}</type>
+							<identity>{identityKey.public}</identity>
+							{xmppPreKey(key, +keyId)}
+							{xmppSignedPreKey(signedPreKey)}
+							<device-identity>{deviceIdentity}</device-identity>
+						</keys>
+					)
 
 					this.ev.emit('creds.update', update)
 				}

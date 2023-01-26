@@ -49,14 +49,7 @@ export class Socket {
 		this.ws.on('CB:xmlstreamend', () => this.end(new Boom('Connection Terminated by Server', { statusCode: DisconnectReason.connectionClosed })))
 		// QR gen
 		this.ws.on('CB:iq,type:set,pair-device', async(stanza: BinaryNode) => {
-			const iq: BinaryNode = {
-				tag: 'iq',
-				attrs: {
-					to: S_WHATSAPP_NET,
-					type: 'result',
-					id: stanza.attrs.id,
-				}
-			}
+			const iq: BinaryNode = <iq to={S_WHATSAPP_NET} type="result" id={stanza.attrs.id} />
 			await this.sendNode(iq)
 
 			const pairDeviceNode = getBinaryNodeChild(stanza, 'pair-device')
@@ -168,10 +161,7 @@ export class Socket {
 			// if name has just been received
 			if(this.authState.creds.me?.name !== name) {
 				logger.debug({ name }, 'updated pushName')
-				this.sendNode({
-					tag: 'presence',
-					attrs: { name: name! }
-				})
+				this.sendNode(<presence name={name} />)
 					.catch(err => {
 						logger.warn({ trace: err.stack }, 'error in sending presence update on name change')
 					})
@@ -345,18 +335,11 @@ export class Socket {
 	}
 
 	getAvailablePreKeysOnServer = async() => {
-		const result = await this.query({
-			tag: 'iq',
-			attrs: {
-				id: this.generateMessageTag(),
-				xmlns: 'encrypt',
-				type: 'get',
-				to: S_WHATSAPP_NET
-			},
-			content: [
-				{ tag: 'count', attrs: { } }
-			]
-		})
+		const result = await this.query(
+			<iq xmlns='encrypt' type='get' to={S_WHATSAPP_NET}>
+				<count />
+			</iq>
+		)
 		const countChild = getBinaryNodeChild(result, 'count')
 		return +countChild!.attrs.value
 	}
@@ -512,41 +495,22 @@ export class Socket {
 	)
 	/** i have no idea why this exists. pls enlighten me */
 	sendPassiveIq = (tag: 'passive' | 'active') => (
-		this.query({
-			tag: 'iq',
-			attrs: {
-				to: S_WHATSAPP_NET,
-				xmlns: 'passive',
-				type: 'set',
-			},
-			content: [
-				{ tag, attrs: { } }
-			]
-		})
+		this.query(
+			<iq to={S_WHATSAPP_NET} xmlns='passive' type='set' >
+				{JSX.createElement(tag, { })}
+			</iq>
+		)
 	)
 
 	/** logout & invalidate connection */
 	logout = async(msg?: string) => {
 		const jid = this.authState.creds.me?.id
 		if(jid) {
-			await this.sendNode({
-				tag: 'iq',
-				attrs: {
-					to: S_WHATSAPP_NET,
-					type: 'set',
-					id: this.generateMessageTag(),
-					xmlns: 'md'
-				},
-				content: [
-					{
-						tag: 'remove-companion-device',
-						attrs: {
-							jid,
-							reason: 'user_initiated'
-						}
-					}
-				]
-			})
+			await this.sendNode(
+				<iq to={S_WHATSAPP_NET} type='set' xmlns='md' id={this.generateMessageTag()}>
+					<remove-companion-device jid={jid} reason='user_initiated' />
+				</iq>
+			)
 		}
 
 		this.end(new Boom(msg || 'Intentional Logout', { statusCode: DisconnectReason.loggedOut }))

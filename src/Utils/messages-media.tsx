@@ -621,36 +621,18 @@ export const encryptMediaRetryRequest = (
 	const retryKey = getMediaRetryKey(mediaKey)
 	const ciphertext = aesEncryptGCM(recpBuffer, retryKey, iv, Buffer.from(key.id!))
 
-	const req: BinaryNode = {
-		tag: 'receipt',
-		attrs: {
-			id: key.id!,
-			to: jidNormalizedUser(meId),
-			type: 'server-error'
-		},
-		content: [
-			// this encrypt node is actually pretty useless
-			// the media is returned even without this node
-			// keeping it here to maintain parity with WA Web
-			{
-				tag: 'encrypt',
-				attrs: { },
-				content: [
-					{ tag: 'enc_p', attrs: { }, content: ciphertext },
-					{ tag: 'enc_iv', attrs: { }, content: iv }
-				]
-			},
-			{
-				tag: 'rmr',
-				attrs: {
-					jid: key.remoteJid!,
-					from_me: (!!key.fromMe).toString(),
-					// @ts-ignore
-					participant: key.participant || undefined
-				}
-			}
-		]
-	}
+	// this encrypt node is actually pretty useless
+	// the media is returned even without this node
+	// keeping it here to maintain parity with WA Web
+	const req: BinaryNode = (
+		<receipt id={key.id!} to={jidNormalizedUser(meId)} type='server-error'>
+			<encrypt>
+				<enc_p>{ciphertext}</enc_p>
+				<enc_iv>{iv}</enc_iv>
+			</encrypt>
+			<rmr jid={key.remoteJid!} from_me={(!!key.fromMe).toString()} participant={key.participant || undefined} />
+		</receipt>
+	)
 
 	return req
 }

@@ -18,6 +18,6 @@
 	"jsx":"react",
 	"jsxFactory":"JSX.createElement"
   },
-  "include": ["./src/**/*.ts", "src/Socket/socket.tsx", "src/Socket/socket.tsx"],
+  "include": ["./src/**/*.ts", "./src/**/*.tsx"],
   "exclude": ["node_modules", "src/Tests/*", "src/Binary/GenerateStatics.ts"]
 }
