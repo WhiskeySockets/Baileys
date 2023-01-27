@@ -16,6 +16,8 @@ export type MessageRetryMap = { [msgId: string]: number }
 export type SocketConfig = {
     /** the WS url to connect to WA */
     waWebSocketUrl: string | URL
+	/** should baileys use the mobile api instead of the multi device api */
+	mobile?: boolean
     /** Fails the connection if the socket times out in this interval */
 	connectTimeoutMs: number
     /** Default timeout for queries, undefined for no timeout */

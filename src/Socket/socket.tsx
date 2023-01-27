@@ -1,22 +1,23 @@
 import { Boom } from '@hapi/boom'
-import WebSocket from 'ws'
 import { proto } from '../../WAProto'
-import { DEF_CALLBACK_PREFIX, DEF_TAG_PREFIX, DEFAULT_ORIGIN, INITIAL_PREKEY_COUNT, MIN_PREKEY_COUNT } from '../Defaults'
+import { DEF_CALLBACK_PREFIX, DEF_TAG_PREFIX, INITIAL_PREKEY_COUNT, MIN_PREKEY_COUNT, MOBILE_NOISE_HEADER, NOISE_WA_HEADER } from '../Defaults'
 import { DisconnectReason, SocketConfig } from '../Types'
 import { addTransactionCapability, bindWaitForConnectionUpdate, configureSuccessfulPairing, Curve, generateLoginNode, generateMdTagPrefix, generateRegistrationNode, getCodeFromWSError, getErrorCodeFromStreamError, getNextPreKeysNode, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout } from '../Utils'
 import { makeEventBuffer } from '../Utils/event-buffer'
 import logger from '../Utils/logger'
 import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, getBinaryNodeChild, getBinaryNodeChildren, S_WHATSAPP_NET } from '../WABinary'
+import { MobileSocket } from './Mobile'
+import { WebSocket } from './WebSocket'
 
 export class Socket {
 	ev = makeEventBuffer(logger)
 	uqTagId = generateMdTagPrefix()
 	epoch = 1
-	ws: WebSocket
+	ws: WebSocket | MobileSocket
 	/** ephemeral key pair used to encrypt/decrypt communication. Unique for each connection */
 	ephemeralKeyPair = Curve.generateKeyPair()
 	/** WA noise protocol wrapper */
-	noise = makeNoiseHandler(this.ephemeralKeyPair, logger)
+	noise: ReturnType<typeof makeNoiseHandler>
 	authState = this.config.auth
 	keys = addTransactionCapability(this.authState.keys, logger, this.config.transactionOpts)
 	lastDateRecv: Date
@@ -25,13 +26,9 @@ export class Socket {
 	closed = false
 
 	constructor(public config: SocketConfig) {
-		this.ws = new WebSocket(config.waWebSocketUrl, undefined, {
-			origin: DEFAULT_ORIGIN,
-			headers: config.options.headers,
-			handshakeTimeout: config.connectTimeoutMs,
-			timeout: config.connectTimeoutMs,
-			agent: config.agent,
-		})
+		this.noise = makeNoiseHandler({ keyPair: this.ephemeralKeyPair, NOISE_HEADER: config.mobile ? MOBILE_NOISE_HEADER : NOISE_WA_HEADER }, logger)
+		this.ws = config.mobile ? new MobileSocket(config) : new WebSocket(config)
+
 		this.ws.setMaxListeners(0)
 
 		this.ws.on('message', this.onMessageRecieved)
@@ -49,8 +46,9 @@ export class Socket {
 		this.ws.on('CB:xmlstreamend', () => this.end(new Boom('Connection Terminated by Server', { statusCode: DisconnectReason.connectionClosed })))
 		// QR gen
 		this.ws.on('CB:iq,type:set,pair-device', async(stanza: BinaryNode) => {
-			const iq: BinaryNode = <iq to={S_WHATSAPP_NET} type="result" id={stanza.attrs.id} />
-			await this.sendNode(iq)
+			await this.sendNode(
+				<iq to={S_WHATSAPP_NET} type="result" id={stanza.attrs.id} />
+			)
 
 			const pairDeviceNode = getBinaryNodeChild(stanza, 'pair-device')
 			const refNodes = getBinaryNodeChildren(pairDeviceNode, 'ref')
@@ -60,7 +58,7 @@ export class Socket {
 
 			let qrMs = this.config.qrTimeout || 60_000 // time to let a QR live
 			const genPairQR = () => {
-				if(this.ws.readyState !== this.ws.OPEN) {
+				if(!this.ws.isOpen) {
 					return
 				}
 
@@ -184,7 +182,7 @@ export class Socket {
 	}
 
 	sendRawMessage = async(data: Uint8Array | Buffer) => {
-		if(this.ws.readyState !== this.ws.OPEN) {
+		if(!this.ws.isOpen) {
 			throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
 		}
 
@@ -204,7 +202,7 @@ export class Socket {
 
 	/** await the next incoming message */
 	awaitNextMessage = async(sendMsg?: Uint8Array) => {
-		if(this.ws.readyState !== this.ws.OPEN) {
+		if(!this.ws.isOpen) {
 			throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
 		}
 
@@ -297,7 +295,11 @@ export class Socket {
 		}
 		helloMsg = proto.HandshakeMessage.fromObject(helloMsg)
 
-		logger.info({ browser: this.config.browser, helloMsg }, 'connected to WA Web')
+		if(this.config.mobile) {
+			logger.info({ helloMsg }, 'connected to WA Mobile')
+		} else {
+			logger.info({ browser: this.config.browser, helloMsg }, 'connected to WA Web')
+		}
 
 		const init = proto.HandshakeMessage.encode(helloMsg).finish()
 
@@ -425,7 +427,7 @@ export class Socket {
 		this.ws.removeAllListeners('open')
 		this.ws.removeAllListeners('message')
 
-		if(this.ws.readyState !== this.ws.CLOSED && this.ws.readyState !== this.ws.CLOSING) {
+		if(!this.ws.isClosed && !this.ws.isClosing) {
 			try {
 				this.ws.close()
 			} catch{ }
@@ -442,11 +444,11 @@ export class Socket {
 	}
 
 	waitForSocketOpen = async() => {
-		if(this.ws.readyState === this.ws.OPEN) {
+		if(this.ws.isOpen) {
 			return
 		}
 
-		if(this.ws.readyState === this.ws.CLOSED || this.ws.readyState === this.ws.CLOSING) {
+		if(this.ws.isClosed || this.ws.isClosing) {
 			throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
 		}
 
@@ -479,7 +481,7 @@ export class Socket {
             */
 			if(diff > this.config.keepAliveIntervalMs + 5000) {
 				this.end(new Boom('Connection was lost', { statusCode: DisconnectReason.connectionLost }))
-			} else if(this.ws.readyState === this.ws.OPEN) {
+			} else if(this.ws.isOpen) {
 				// if its all good, send a keep alive request
 				this.query(
 					<iq to={S_WHATSAPP_NET} type="get" xmlns='w:p'>

@@ -551,7 +551,7 @@ export class MessagesReceive extends MessagesSend {
 						)
 						this.retryMutex.mutex(
 							async() => {
-								if(this.ws.readyState === this.ws.OPEN) {
+								if(this.ws.isOpen) {
 									const encNode = getBinaryNodeChild(node, 'enc')
 									await this.sendRetryRequest(node, !encNode)
 									if(this.config.retryRequestDelayMs) {

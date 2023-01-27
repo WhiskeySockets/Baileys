@@ -1,7 +1,7 @@
 import { Boom } from '@hapi/boom'
 import { Logger } from 'pino'
 import { proto } from '../../WAProto'
-import { NOISE_MODE, NOISE_WA_HEADER, WA_CERT_DETAILS } from '../Defaults'
+import { NOISE_MODE, WA_CERT_DETAILS } from '../Defaults'
 import { KeyPair } from '../Types'
 import { BinaryNode, decodeBinaryNode } from '../WABinary'
 import { aesDecryptGCM, aesEncryptGCM, Curve, hkdf, sha256 } from './crypto'
@@ -14,7 +14,7 @@ const generateIV = (counter: number) => {
 }
 
 export const makeNoiseHandler = (
-	{ public: publicKey, private: privateKey }: KeyPair,
+	{ keyPair: { private: privateKey, public: publicKey }, NOISE_HEADER }: {keyPair: KeyPair, NOISE_HEADER: Uint8Array},
 	logger: Logger
 ) => {
 	logger = logger.child({ class: 'ns' })
@@ -86,7 +86,7 @@ export const makeNoiseHandler = (
 
 	let inBytes = Buffer.alloc(0)
 
-	authenticate(NOISE_WA_HEADER)
+	authenticate(NOISE_HEADER)
 	authenticate(publicKey)
 
 	return {
@@ -121,11 +121,11 @@ export const makeNoiseHandler = (
 				data = encrypt(data)
 			}
 
-			const introSize = sentIntro ? 0 : NOISE_WA_HEADER.length
+			const introSize = sentIntro ? 0 : NOISE_HEADER.length
 			const frame = Buffer.alloc(introSize + 3 + data.byteLength)
 
 			if(!sentIntro) {
-				frame.set(NOISE_WA_HEADER)
+				frame.set(NOISE_HEADER)
 				sentIntro = true
 			}
 

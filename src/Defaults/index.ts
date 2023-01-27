@@ -7,6 +7,8 @@ import { version } from './baileys-version.json'
 export const UNAUTHORIZED_CODES = [401, 403, 419]
 
 export const DEFAULT_ORIGIN = 'https://web.whatsapp.com'
+export const MOBILE_ENDPOINT = 'g.whatsapp.net'
+export const MOBILE_PORT = 443
 export const DEF_CALLBACK_PREFIX = 'CB:'
 export const DEF_TAG_PREFIX = 'TAG:'
 export const PHONE_CONNECTION_CB = 'CB:Pong'
@@ -19,6 +21,8 @@ export const KEY_BUNDLE_TYPE = Buffer.from([5])
 export const NOISE_WA_HEADER = Buffer.from(
 	[ 87, 65, 6, DICT_VERSION ]
 ) // last is "DICT_VERSION"
+export const PROTOCOL_VERSION = [4, 0]
+export const MOBILE_NOISE_HEADER = Buffer.concat([Buffer.from('WA'), Buffer.from(PROTOCOL_VERSION)])
 /** from: https://stackoverflow.com/questions/3809401/what-is-a-good-regular-expression-to-match-a-url */
 export const URL_REGEX = /(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/
 export const URL_EXCLUDE_REGEX = /.*@.*/
