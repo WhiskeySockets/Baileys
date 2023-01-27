@@ -24,10 +24,10 @@ export class MessagesSend extends Groups {
 			this.mediaConn = (async() => {
 				const result = await this.query(
 					<iq type="set" xmlns="w:m" to={S_WHATSAPP_NET}>
-						<media_conn/>
+						<media_conn />
 					</iq>
 				)
-				
+
 				const mediaConnNode = getBinaryNodeChild(result, 'media_conn')
 				const node: MediaConnInfo = {
 					hosts: getBinaryNodeChildren(mediaConnNode, 'host').map(
@@ -394,7 +394,9 @@ export class MessagesSend extends Groups {
 				}
 
 				if(shouldIncludeDeviceIdentity) {
-					if (!Array.isArray(stanza.content)) stanza.content = [] as BinaryNode[]
+					if(!Array.isArray(stanza.content)) {
+						stanza.content = [] as BinaryNode[]
+					}
 
 					stanza.content.push(
 						<device-identity>

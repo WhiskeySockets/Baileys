@@ -1,6 +1,10 @@
 {
     "extends": "@adiwajshing",
 	"rules": {
-		"react/jsx-max-props-per-line": [true, { "maximum": 10, "when": "always" }]
+		"react/jsx-max-props-per-line": [0, { "maximum": 10, "when": "always" }],
+		"react/jsx-one-expression-per-line": [0, { "allow": "single-child" }],
+		"react/jsx-key": [0, { "checkFragmentShorthand": true }],
+		"react/jsx-curly-newline": [0, { "multiline": "consistent", "singleline": "consistent" }],
+		"react/no-unknown-property": [1, { "ignore": ["class"] }]
 	}
 }

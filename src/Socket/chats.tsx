@@ -220,7 +220,7 @@ export class Chats extends Socket {
 
 	updateAccountSyncTimestamp = async(fromTimestamp: number | string) => {
 		logger.info({ fromTimestamp }, 'requesting account sync')
-		
+
 		await this.sendNode(
 			<iq id={this.generateMessageTag()} to={S_WHATSAPP_NET} type="set" xmlns="urn:xmpp:whatsapp:dirty">
 				<clean type="account_sync" timestamp={fromTimestamp.toString()} />
@@ -376,8 +376,7 @@ export class Chats extends Socket {
 		const result = await this.query(
 			<iq to={jid} type="get" xmlns="w:profile:picture">
 				<picture type={type} query="url" />
-			</iq>
-		, timeoutMs)
+			</iq>, timeoutMs)
 		const child = getBinaryNodeChild(result, 'picture')
 		return child?.attrs?.url
 	}
@@ -398,7 +397,7 @@ export class Chats extends Socket {
 		} else {
 			await this.sendNode(
 				<chatstate from={me!.id!} to={toJid!}>
-					{JSX.createElement(type === 'recording' ? 'composing' : type,type === 'recording' ? { media : 'audio' } : {})}
+					{JSX.createElement(type === 'recording' ? 'composing' : type, type === 'recording' ? { media : 'audio' } : {})}
 				</chatstate>
 			)
 		}
@@ -517,7 +516,7 @@ export class Chats extends Socket {
 	fetchAbt = async() => {
 		const abtNode = await this.query(
 			<iq to={S_WHATSAPP_NET} xmlns="abt" type="get">
-				<props protocol="1"/>
+				<props protocol="1" />
 			</iq>
 		)
 
@@ -537,7 +536,7 @@ export class Chats extends Socket {
 	fetchProps = async() => {
 		const resultNode = await this.query(
 			<iq to={S_WHATSAPP_NET} xmlns="w" type="get">
-				<props/>
+				<props />
 			</iq>
 		)
 

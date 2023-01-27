@@ -74,7 +74,7 @@ export class Business extends MessagesReceive {
 					<height>100</height>
 				</product_catalog_edit>
 			</iq>
-		);
+		)
 		const productCatalogEditNode = getBinaryNodeChild(result, 'product_catalog_edit')
 		const productNode = getBinaryNodeChild(productCatalogEditNode, 'product')
 

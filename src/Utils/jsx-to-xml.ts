@@ -1,24 +1,24 @@
 namespace JSX {
 	export type Timestamp = string; // unix timestamp in seconds since epoch: 1653237707
 	export type JID = 's.whatsapp.net' | 'g.us' | `${string}@s.whatsapp.net` | `${string}@g.us`| string;
-	export type XMLNS = | 'w:stats' 
-		| 'urn:xmpp:whatsapp:push' 
-		| 'urn:xmpp:whatsapp:account' 
-		| 'urn:xmpp:whatsapp:mms' 
-		| 'w:profile:picture' 
-		| 'w:p' 
-		| 'usync' 
-		| 'w:g2' 
-		| 'passive' 
-		| 'urn:xmpp:whatsapp:dirty' 
-		| 'encrypt' 
-		| 'w:m' 
-		| 'w:biz:catalog' 
-		| 'fb:thrift_iq' 
-		| 'privacy' 
-		| 'status' 
-		| 'blocklist' 
-		| 'w:biz' 
+	export type XMLNS = | 'w:stats'
+		| 'urn:xmpp:whatsapp:push'
+		| 'urn:xmpp:whatsapp:account'
+		| 'urn:xmpp:whatsapp:mms'
+		| 'w:profile:picture'
+		| 'w:p'
+		| 'usync'
+		| 'w:g2'
+		| 'passive'
+		| 'urn:xmpp:whatsapp:dirty'
+		| 'encrypt'
+		| 'w:m'
+		| 'w:biz:catalog'
+		| 'fb:thrift_iq'
+		| 'privacy'
+		| 'status'
+		| 'blocklist'
+		| 'w:biz'
 		| 'w:sync:app:state'
 		| 'abt'
 		| 'w'
@@ -30,6 +30,7 @@ namespace JSX {
 		if(attrs == null) {
 			attrs = {}
 		}
+
 		if(typeof tag === 'function') {
 			return tag(attrs, content)
 		}
@@ -107,12 +108,12 @@ namespace JSX {
 			to: JID
 		}
 		reject: {
-			"call-id": string
-			"call-creator": JID
+			'call-id': string
+			'call-creator': JID
 			count: string
 		}
 		order: {
-			op: "get"
+			op: 'get'
 			id: string
 		}
 		image_dimensions: {}
@@ -145,8 +146,8 @@ namespace JSX {
 		}
 		tctoken: {}
 		result: {}
-		"device-identity": {}
-		"remove-companion-device": {
+		'device-identity': {}
+		'remove-companion-device': {
 			jid: JID
 			reason: string
 		}
@@ -262,7 +263,7 @@ namespace JSX {
 		};
 		encrypt: {}
 		enc_p: {}
-		"pair-device-sign": {}
+		'pair-device-sign': {}
 		enc_iv: {}
 		skey: {}
 		value: {}

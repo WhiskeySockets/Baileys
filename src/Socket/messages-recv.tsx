@@ -78,7 +78,7 @@ export class MessagesReceive extends MessagesSend {
 	}
 
 	sendMessageAck = async({ tag, attrs }: BinaryNode) => {
-		const stanza: BinaryNode = <ack id={attrs.id} to={attrs.from} class={tag}/>
+		const stanza: BinaryNode = <ack id={attrs.id} to={attrs.from} class={tag} />
 
 		if(!!attrs.participant) {
 			stanza.attrs.participant = attrs.participant
@@ -99,7 +99,7 @@ export class MessagesReceive extends MessagesSend {
 	rejectCall = async(callId: string, callFrom: string) => {
 		await this.query(
 			<call from={this.authState.creds.me!.id} to={callFrom}>
-				<reject call-id={callId} call-creator={callFrom} count="0"/>
+				<reject call-id={callId} call-creator={callFrom} count="0" />
 			</call>
 		)
 	}
@@ -124,7 +124,7 @@ export class MessagesReceive extends MessagesSend {
 			async() => {
 				const receipt: BinaryNode = (
 					<receipt id={msgId} type="retry" to={node.attrs.from}>
-						<retry count={retryCount.toString()} id={node.attrs.id} t={node.attrs.t} v="1"/>
+						<retry count={retryCount.toString()} id={node.attrs.id} t={node.attrs.t} v="1" />
 						<registration>{encodeBigEndian(this.authState.creds.registrationId)}</registration>
 					</receipt>
 				)

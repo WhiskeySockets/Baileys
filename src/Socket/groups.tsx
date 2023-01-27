@@ -166,7 +166,7 @@ export class Groups extends Chats {
 		const content: BinaryNode = ephemeralExpiration ?
 			<ephemeral expiration={ephemeralExpiration.toString()} /> :
 			<not_ephemeral />
-		
+
 		await this.groupQuery(jid, 'set', [content])
 	}
 	groupSettingUpdate = async(jid: string, setting: 'announcement' | 'not_announcement' | 'locked' | 'unlocked') => {
