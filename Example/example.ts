@@ -41,7 +41,7 @@ const startSock = async() => {
 		generateHighQualityLinkPreview: true,
 		// ignore all broadcast messages -- to receive the same
 		// comment the line below out
-		shouldIgnoreJid: jid => isJidBroadcast(jid),
+		// shouldIgnoreJid: jid => isJidBroadcast(jid),
 		// implement to handle retries
 		getMessage: async key => {
 			if(store) {

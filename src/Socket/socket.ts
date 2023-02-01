@@ -38,6 +38,7 @@ export const makeSocket = ({
 		agent
 	})
 	ws.setMaxListeners(0)
+
 	const ev = makeEventBuffer(logger)
 	/** ephemeral key pair used to encrypt/decrypt communication. Unique for each connection */
 	const ephemeralKeyPair = Curve.generateKeyPair()
@@ -65,7 +66,17 @@ export const makeSocket = ({
 		}
 
 		const bytes = noise.encodeFrame(data)
-        await sendPromise.call(ws, bytes) as Promise<void>
+		await promiseTimeout<void>(
+			connectTimeoutMs,
+			async(resolve, reject) => {
+				try {
+					await sendPromise.call(ws, bytes)
+					resolve()
+				} catch(error) {
+					reject(error)
+				}
+			}
+		)
 	}
 
 	/** send a binary node */

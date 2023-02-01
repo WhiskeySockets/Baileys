@@ -138,13 +138,13 @@ export const delayCancellable = (ms: number) => {
 
 export async function promiseTimeout<T>(ms: number | undefined, promise: (resolve: (v?: T)=>void, reject: (error) => void) => void) {
 	if(!ms) {
-		return new Promise (promise)
+		return new Promise(promise)
 	}
 
 	const stack = new Error().stack
 	// Create a promise that rejects in <ms> milliseconds
 	const { delay, cancel } = delayCancellable (ms)
-	const p = new Promise ((resolve, reject) => {
+	const p = new Promise((resolve, reject) => {
 		delay
 			.then(() => reject(
 				new Boom('Timed Out', {
