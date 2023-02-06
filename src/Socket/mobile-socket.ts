@@ -6,7 +6,13 @@ export class MobileSocket extends Socket {
 	constructor(public config: SocketConfig) {
 		super()
 
-		this.connect(MOBILE_PORT, MOBILE_ENDPOINT, () => {
+		if(config.auth.creds.registered) {
+			this.connect()
+		}
+	}
+
+	override connect() {
+		return super.connect(MOBILE_PORT, MOBILE_ENDPOINT, () => {
 			this.emit('open')
 		})
 	}
