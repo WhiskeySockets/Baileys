@@ -10,12 +10,17 @@ function urlencode(str: string) {
 export const makeRegistrationSocket = (config: SocketConfig) => {
 	const sock = makeBusinessSocket(config)
 
-	const register = (code: string) => {
+	const register = async(code: string) => {
 		if(!config.registration) {
 			throw new Error('please specify the registration options')
 		}
 
-		return mobileRegister({ ...config.auth.creds, ...config.registration, code })
+		const result = await mobileRegister({ ...config.auth.creds, ...config.registration, code })
+
+		config.auth.creds.registered = true
+		sock.ev.emit('creds.update', config.auth.creds)
+
+		return result
 	}
 
 	const requestRegistrationCode = () => {
@@ -32,23 +37,29 @@ export const makeRegistrationSocket = (config: SocketConfig) => {
 
 			console.log('Your mobile phone number is not registered.')
 
-			function askForOTP() {
-				rl.question('How would you like to receive the one time code for registration? sms or voice\n', (code: string) => {
-					code = code.trim().toLowerCase()
+			function enterCode() {
+				rl.question('Please enter the one time code:\n', async(code: string) => {
+					register(code.replace(/["']/g, '').trim().toLowerCase()).then(() => {
+						console.log('Successfully registered your phone number.')
+						rl.close()
+					}).catch((e) => {
+						console.error('Failed to register your phone number. Please try again.\n', e)
+						askForOTP()
+					})
+				})
+			}
 
-					if(code === 'sms' || code === 'voice') {
+			function askForOTP() {
+				rl.question('How would you like to receive the one time code for registration? "sms" or "voice"\nIf you do not want to request another one time registration code enter "code"\n', (code: string) => {
+					code = code.replace(/["']/g, '').trim().toLowerCase()
+
+					if(code === 'code') {
+						enterCode()
+					} else if(code === 'sms' || code === 'voice') {
 						config.registration!.method = code
 
 						requestRegistrationCode().then(() => {
-							rl.question('Please enter the one time code:\n', async(code: string) => {
-								register(code.trim()).then(() => {
-									console.log('Successfully registered your phone number.')
-									rl.close()
-								}).catch((e) => {
-									console.error('Failed to register your phone number. Please try again.\n', e)
-									askForOTP()
-								})
-							})
+							enterCode()
 						}).catch((e) => {
 							console.error('Failed to request registration code. Please try again.\n', e)
 							askForOTP()
@@ -230,7 +241,7 @@ export async function mobileRegisterFetch(path: string, opts: { params?: Record<
 		throw json
 	}
 
-	if(json.status && json.status !== 'ok') {
+	if(json.status && !['ok', 'sent'].includes(json.status)) {
 		throw json
 	}
 

@@ -15,9 +15,9 @@ export const PHONE_CONNECTION_CB = 'CB:Pong'
 
 export const WA_DEFAULT_EPHEMERAL = 7 * 24 * 60 * 60
 
-export const MOBILE_TOKEN = Buffer.from('0a1mLfGUIBVrMKF1RdvLI5lkRBvof6vn0fD2QRSM45e25b6ddecace8d01828dd00bd4ff64')
+export const MOBILE_TOKEN = Buffer.from('0a1mLfGUIBVrMKF1RdvLI5lkRBvof6vn0fD2QRSM785a343e772d0c64ec999e7505ffdeaf')
 export const MOBILE_REGISTRATION_ENDPOINT = 'https://v.whatsapp.net/v2'
-export const MOBILE_USERAGENT = 'WhatsApp/2.22.5.71 iOS/15.3.1 Device/Apple-iPhone_7'
+export const MOBILE_USERAGENT = 'WhatsApp/2.22.16.77 iOS/15.3.1 Device/Apple-iPhone_7'
 export const REGISTRATION_PUBLIC_KEY = Buffer.from([
 	5, 142, 140, 15, 116, 195, 235, 197, 215, 166, 134, 92, 108, 60, 132, 56, 86, 176, 97, 33, 204, 232, 234, 119, 77,
 	34, 251, 111, 18, 37, 18, 48, 45,
