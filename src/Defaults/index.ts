@@ -19,7 +19,7 @@ export const MOBILE_TOKEN = Buffer.from('0a1mLfGUIBVrMKF1RdvLI5lkRBvof6vn0fD2QRS
 export const MOBILE_REGISTRATION_ENDPOINT = 'https://v.whatsapp.net/v2'
 export const MOBILE_USERAGENT = 'WhatsApp/2.22.5.71 iOS/15.3.1 Device/Apple-iPhone_7'
 export const REGISTRATION_PUBLIC_KEY = Buffer.from([
-	142, 140, 15, 116, 195, 235, 197, 215, 166, 134, 92, 108, 60, 132, 56, 86, 176, 97, 33, 204, 232, 234, 119, 77,
+	5, 142, 140, 15, 116, 195, 235, 197, 215, 166, 134, 92, 108, 60, 132, 56, 86, 176, 97, 33, 204, 232, 234, 119, 77,
 	34, 251, 111, 18, 37, 18, 48, 45,
 ])
 export const NOISE_MODE = 'Noise_XX_25519_AESGCM_SHA256\0\0\0\0'

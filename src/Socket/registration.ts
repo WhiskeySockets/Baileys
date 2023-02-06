@@ -143,7 +143,7 @@ export function registrationParams(params: RegistrationParams) {
 		pid: '' + Math.floor(Math.random() * 9000 + 100),
 		rc: '0',
 		id,
-		token: md5(Buffer.concat([MOBILE_TOKEN, Buffer.from(params.phoneNumberNationalNumber)])).toString(),
+		token: md5(Buffer.concat([MOBILE_TOKEN, Buffer.from(params.phoneNumberNationalNumber)])).toString('hex'),
 	}
 }
 
@@ -185,7 +185,7 @@ export async function mobileRegister(params: RegistrationParams & { code: string
  */
 export function mobileRegisterEncrypt(data: string) {
 	const keypair = Curve.generateKeyPair()
-	const key = Curve.sharedKey(REGISTRATION_PUBLIC_KEY, keypair.private)
+	const key = Curve.sharedKey(keypair.private, REGISTRATION_PUBLIC_KEY)
 
 	const buffer = aesEncryptGCM(Buffer.from(data), new Uint8Array(key), Buffer.alloc(12), Buffer.alloc(0))
 
@@ -209,7 +209,11 @@ export async function mobileRegisterFetch(path: string, opts: { params?: Record<
 		parameter.push(param + '=' + urlencode(opts.params[param]))
 	}
 
+	console.log(parameter, opts.params)
+
 	const params = urlencode(mobileRegisterEncrypt(parameter.join('&')))
+	console.log(mobileRegisterEncrypt(parameter.join('&')))
+	console.log(params)
 	const url = `${MOBILE_REGISTRATION_ENDPOINT}${path}?ENC=${params}`
 
 	const response = await fetch(url, opts)
