@@ -26,10 +26,10 @@ const startSock = async() => {
 	const sock = makeWASocket({
 		registration: {
 			automaticRegistration: true,
-			phoneNumberCountryCode: '49',
-			phoneNumberNationalNumber: '16098401683',
-			phoneNumberMobileCountryCode: '262',
-			phoneNumberMobileNetworkCode: '01',
+			phoneNumberCountryCode: '1',
+			phoneNumberNationalNumber: '12345678',
+			phoneNumberMobileCountryCode: '000',
+			phoneNumberMobileNetworkCode: '00',
 		},
 		version,
 		logger,

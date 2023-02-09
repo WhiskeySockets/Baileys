@@ -8,26 +8,29 @@ import { Curve, hmacSign } from './crypto'
 import { encodeBigEndian } from './generics'
 import { createSignalIdentity } from './signal'
 
-type ClientPayloadConfig = Pick<SocketConfig, 'version' | 'browser' | 'syncFullHistory'>
-
-const getUserAgent = ({ version }: ClientPayloadConfig): proto.ClientPayload.IUserAgent => {
-	const osVersion = '0.1'
+const getUserAgent = (config: SocketConfig): proto.ClientPayload.IUserAgent => {
+	const osVersion = '15.3.1'
+	config
 	return {
 		appVersion: {
-			primary: version[0],
-			secondary: version[1],
-			tertiary: version[2],
+			primary: 2,
+			secondary: 22,
+			tertiary: 24,
+			quaternary: 81
+
+			// 2.22.24.81
 		},
-		platform: proto.ClientPayload.UserAgent.Platform.WEB,
+		platform: proto.ClientPayload.UserAgent.Platform.IOS,
 		releaseChannel: proto.ClientPayload.UserAgent.ReleaseChannel.RELEASE,
 		mcc: '000',
 		mnc: '000',
 		osVersion: osVersion,
-		manufacturer: '',
-		device: 'Desktop',
+		manufacturer: 'Apple',
+		device: 'iPhone_7',
 		osBuildNumber: osVersion,
 		localeLanguageIso6391: 'en',
 		localeCountryIso31661Alpha2: 'US',
+		phoneId: config.auth.creds.phoneId,
 	}
 }
 
@@ -36,7 +39,7 @@ const PLATFORM_MAP = {
 	'Windows': proto.ClientPayload.WebInfo.WebSubPlatform.WIN32
 }
 
-const getWebInfo = (config: ClientPayloadConfig): proto.ClientPayload.IWebInfo => {
+const getWebInfo = (config: SocketConfig): proto.ClientPayload.IWebInfo => {
 	let webSubPlatform = proto.ClientPayload.WebInfo.WebSubPlatform.WEB_BROWSER
 	if(config.syncFullHistory && PLATFORM_MAP[config.browser[0]]) {
 		webSubPlatform = PLATFORM_MAP[config.browser[0]]
@@ -45,16 +48,43 @@ const getWebInfo = (config: ClientPayloadConfig): proto.ClientPayload.IWebInfo =
 	return { webSubPlatform }
 }
 
-const getClientPayload = (config: ClientPayloadConfig): proto.IClientPayload => {
-	return {
+const getClientPayload = (config: SocketConfig) => {
+	const payload: proto.IClientPayload = {
 		connectType: proto.ClientPayload.ConnectType.WIFI_UNKNOWN,
 		connectReason: proto.ClientPayload.ConnectReason.USER_ACTIVATED,
 		userAgent: getUserAgent(config),
-		webInfo: getWebInfo(config),
 	}
+
+	if(config.mobile) {
+		payload.webInfo = getWebInfo(config)
+	}
+
+	return payload
 }
 
-export const generateLoginNode = (userJid: string, config: ClientPayloadConfig): proto.IClientPayload => {
+export const generateAuthenticationNode = (config: SocketConfig): proto.IClientPayload => {
+	if(!config.registration) {
+		throw new Boom('No registration data found', { data: config })
+	}
+
+	const payload: proto.IClientPayload = {
+		...getClientPayload(config),
+		sessionId: Math.floor(Math.random() * 999999999 + 1),
+		shortConnect: true,
+		connectAttemptCount: 0,
+		device: 0,
+		dnsSource: {
+			appCached: false,
+			dnsMethod: proto.ClientPayload.DNSSource.DNSResolutionMethod.SYSTEM,
+		},
+		passive: false, // XMPP heartbeat setting (false: server actively pings) (true: client actively pings)
+		pushName: '',
+		username: Number(`${config.registration?.phoneNumberCountryCode}${config.registration?.phoneNumberNationalNumber}`),
+	}
+	return proto.ClientPayload.fromObject(payload)
+}
+
+export const generateLoginNode = (userJid: string, config: SocketConfig): proto.IClientPayload => {
 	const { user, device } = jidDecode(userJid)!
 	const payload: proto.IClientPayload = {
 		...getClientPayload(config),
@@ -67,7 +97,7 @@ export const generateLoginNode = (userJid: string, config: ClientPayloadConfig):
 
 export const generateRegistrationNode = (
 	{ registrationId, signedPreKey, signedIdentityKey }: SignalCreds,
-	config: ClientPayloadConfig
+	config: SocketConfig
 ) => {
 	// the app version needs to be md5 hashed
 	// and passed in
