@@ -9,6 +9,10 @@ export class MobileSocket extends Socket {
 		if(config.auth.creds.registered) {
 			this.connect()
 		}
+
+		this.on('data', (d) => {
+			this.emit('message', d)
+		})
 	}
 
 	override connect() {
@@ -38,6 +42,6 @@ export class MobileSocket extends Socket {
 	}
 
 	send(data: any, cb?: ((err?: Error | undefined) => void) | undefined) {
-		super.write(data as Uint8Array | string, cb as ((err?: Error | undefined) => void))
+		return super.write(data as Uint8Array | string, cb as ((err?: Error | undefined) => void))
 	}
 }
