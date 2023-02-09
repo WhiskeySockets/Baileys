@@ -23,10 +23,13 @@ export const makeRegistrationSocket = (config: SocketConfig) => {
 		return result
 	}
 
-	const requestRegistrationCode = () => {
+	const requestRegistrationCode = async() => {
 		if(!config.registration) {
 			throw new Error('please specify the registration options')
 		}
+
+		// const exists = await mobileRegisterExists({ ...config.auth.creds, ...config.registration })
+		// console.log('exists', exists)
 
 		return mobileRegisterCode({ ...config.auth.creds, ...config.registration })
 	}
@@ -39,8 +42,9 @@ export const makeRegistrationSocket = (config: SocketConfig) => {
 
 			function enterCode() {
 				rl.question('Please enter the one time code:\n', async(code: string) => {
-					register(code.replace(/["']/g, '').trim().toLowerCase()).then(() => {
+					register(code.replace(/["']/g, '').trim().toLowerCase()).then((x) => {
 						console.log('Successfully registered your phone number.')
+						console.log(x)
 						rl.close()
 					}).catch((e) => {
 						console.error('Failed to register your phone number. Please try again.\n', e)
@@ -50,7 +54,7 @@ export const makeRegistrationSocket = (config: SocketConfig) => {
 			}
 
 			function askForOTP() {
-				rl.question('How would you like to receive the one time code for registration? "sms" or "voice"\nIf you do not want to request another one time registration code enter "code"\n', (code: string) => {
+				rl.question('How would you like to receive the one time code for registration? "sms" or "voice"\nIf you already have a one time registration code enter "code"\n', (code: string) => {
 					code = code.replace(/["']/g, '').trim().toLowerCase()
 
 					if(code === 'code') {
@@ -88,9 +92,10 @@ export interface RegistrationData {
 	signedPreKey: SignedKeyPair
 	noiseKey: KeyPair
 	signedIdentityKey: KeyPair
-	identityId: string
+	identityId: Buffer
 	phoneId: string
 	deviceId: string
+	backupToken: Buffer
 }
 
 export interface RegistrationOptions {
@@ -116,19 +121,23 @@ export interface RegistrationOptions {
 
 export type RegistrationParams = RegistrationData & RegistrationOptions
 
+function convertBufferToUrlHex(buffer: Buffer) {
+	var id = ''
+
+	buffer.forEach((x) => {
+		// encode random identity_id buffer as percentage url encoding
+		id += `%${x.toString(16).padStart(2, '0').toLowerCase()}`
+	})
+
+	return id
+}
+
 export function registrationParams(params: RegistrationParams) {
 	const e_regid = Buffer.alloc(4)
 	e_regid.writeInt32BE(params.registrationId)
 
 	const e_skey_id = Buffer.alloc(3)
-	e_skey_id.writeInt16BE(0)
-
-	var id = ''
-
-	Buffer.from(params.identityId, 'hex').forEach((x) => {
-		// encode random identity_id buffer as percentage url encoding
-		id += `%${x.toString(16).padStart(2, '0').toLowerCase()}`
-	})
+	e_skey_id.writeInt16BE(params.signedPreKey.keyId)
 
 	params.phoneNumberCountryCode = params.phoneNumberCountryCode.replace('+', '').trim()
 	params.phoneNumberNationalNumber = params.phoneNumberNationalNumber.replace(/[/-\s)(]/g, '').trim()
@@ -136,9 +145,9 @@ export function registrationParams(params: RegistrationParams) {
 	return {
 		cc: params.phoneNumberCountryCode,
 		in: params.phoneNumberNationalNumber,
+		Rc: '0',
 		lg: 'en',
 		lc: 'GB',
-		mistyped: '6',
 		authkey: Buffer.from(params.noiseKey.public).toString('base64url'),
 		e_regid: e_regid.toString('base64url'),
 		e_keytype: 'BQ',
@@ -148,12 +157,8 @@ export function registrationParams(params: RegistrationParams) {
 		e_skey_sig: Buffer.from(params.signedPreKey.signature).toString('base64url'),
 		fdid: params.phoneId,
 		expid: params.deviceId,
-		network_radio_type: '1',
-		simnum: '1',
-		hasinrc: '1',
-		pid: '' + Math.floor(Math.random() * 9000 + 100),
-		rc: '0',
-		id,
+		id: convertBufferToUrlHex(params.identityId),
+		backup_token: convertBufferToUrlHex(params.backupToken),
 		token: md5(Buffer.concat([MOBILE_TOKEN, Buffer.from(params.phoneNumberNationalNumber)])).toString('hex'),
 	}
 }
@@ -170,8 +175,6 @@ export function mobileRegisterCode(params: RegistrationParams) {
 			sim_mcc: '000',
 			sim_mnc: '000',
 			method: params?.method || 'sms',
-			reason: '',
-			hasav: '1',
 		},
 	})
 }
@@ -186,6 +189,10 @@ export function mobileRegisterExists(params: RegistrationParams) {
  * Registers the phone number on whatsapp with the received OTP code.
  */
 export async function mobileRegister(params: RegistrationParams & { code: string }) {
+	const result = await mobileRegisterFetch(`/reg_onboard_abprop?cc=${params.phoneNumberCountryCode}&in=${params.phoneNumberNationalNumber}&rc=0`)
+
+	console.log('reg_onboard_abprop', result)
+
 	return mobileRegisterFetch('/register', {
 		params: { ...registrationParams(params), code: params.code.replace('-', '') },
 	})
@@ -204,8 +211,19 @@ export function mobileRegisterEncrypt(data: string) {
 }
 
 export async function mobileRegisterFetch(path: string, opts: { params?: Record<string, string>, headers?: Record<string, string> } = {}) {
-	if(!opts.params) {
-		opts.params = {}
+	let url = `${MOBILE_REGISTRATION_ENDPOINT}${path}`
+
+	if(opts.params) {
+		const parameter = [] as string[]
+
+		for(const param in opts.params) {
+			parameter.push(param + '=' + urlencode(opts.params[param]))
+		}
+
+		console.log('parameter', opts.params, parameter)
+
+		const params = urlencode(mobileRegisterEncrypt(parameter.join('&')))
+		url += `?ENC=${params}`
 	}
 
 	if(!opts.headers) {
@@ -213,19 +231,6 @@ export async function mobileRegisterFetch(path: string, opts: { params?: Record<
 	}
 
 	opts.headers['User-Agent'] = MOBILE_USERAGENT
-
-	const parameter = [] as string[]
-
-	for(const param in opts.params) {
-		parameter.push(param + '=' + urlencode(opts.params[param]))
-	}
-
-	console.log(parameter, opts.params)
-
-	const params = urlencode(mobileRegisterEncrypt(parameter.join('&')))
-	console.log(mobileRegisterEncrypt(parameter.join('&')))
-	console.log(params)
-	const url = `${MOBILE_REGISTRATION_ENDPOINT}${path}?ENC=${params}`
 
 	const response = await fetch(url, opts)
 
@@ -258,4 +263,7 @@ export interface ExistsResponse {
 	reason?: 'incorrect' | 'missing_param'
 	login?: string
 	flash_type?: number
+	ab_hash?: string,
+    ab_key?: string,
+    exp_cfg?: string,
 }

@@ -57,8 +57,9 @@ export type AuthenticationCreds = SignalCreds & {
 	// mobile creds
 	deviceId: string
 	phoneId: string
-	identityId: string
+	identityId: Buffer
 	registered: boolean
+	backupToken: Buffer
 }
 
 export type SignalDataTypeMap = {
