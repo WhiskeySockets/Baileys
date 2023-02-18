@@ -320,6 +320,20 @@ export const encryptedStream = async(
 	try {
 		for await (const data of stream) {
 			fileLength += data.length
+
+			if(
+				type === 'remote'
+				&& opts?.maxContentLength
+				&& fileLength + data.length > opts.maxContentLength
+			) {
+				throw new Boom(
+					`content length exceeded when encrypting "${type}"`,
+					{
+						data: { media, type }
+					}
+				)
+			}
+
 			sha256Plain = sha256Plain.update(data)
 			if(writeStream) {
 				if(!writeStream.write(data)) {
