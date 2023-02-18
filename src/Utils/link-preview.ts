@@ -66,7 +66,11 @@ export const getUrlInfo = async(
 			if(opts.uploadImage) {
 				const { imageMessage } = await prepareWAMessageMedia(
 					{ image: { url: image } },
-					{ upload: opts.uploadImage, mediaTypeOverride: 'thumbnail-link' }
+					{
+						upload: opts.uploadImage,
+						mediaTypeOverride: 'thumbnail-link',
+						options: opts.fetchOpts
+					}
 				)
 				urlInfo.jpegThumbnail = imageMessage?.jpegThumbnail
 					? Buffer.from(imageMessage.jpegThumbnail)

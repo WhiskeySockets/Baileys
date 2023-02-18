@@ -1,3 +1,4 @@
+import { AxiosRequestConfig } from 'axios'
 import type NodeCache from 'node-cache'
 import type { Logger } from 'pino'
 import type { Readable } from 'stream'
@@ -204,6 +205,8 @@ export type MediaGenerationOptions = {
     mediaCache?: NodeCache
 
     mediaUploadTimeoutMs?: number
+
+    options?: AxiosRequestConfig
 }
 export type MessageContentGenerationOptions = MediaGenerationOptions & {
 	getUrlInfo?: (text: string) => Promise<WAUrlInfo | undefined>

@@ -149,7 +149,11 @@ export const prepareWAMessageMedia = async(
 	} = await encryptedStream(
 		uploadData.media,
 		options.mediaTypeOverride || mediaType,
-		requiresOriginalForSomeProcessing
+		{
+			logger,
+			saveOriginalFileIfRequired: requiresOriginalForSomeProcessing,
+			opts: options.options
+		}
 	)
 	 // url safe Base64 encode the SHA256 hash of the body
 	const fileEncSha256B64 = fileEncSha256.toString('base64')

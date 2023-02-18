@@ -221,7 +221,7 @@ export const toBuffer = async(stream: Readable) => {
 	return Buffer.concat(chunks)
 }
 
-export const getStream = async(item: WAMediaUpload) => {
+export const getStream = async(item: WAMediaUpload, opts?: AxiosRequestConfig) => {
 	if(Buffer.isBuffer(item)) {
 		return { stream: toReadable(item), type: 'buffer' } as const
 	}
@@ -231,7 +231,7 @@ export const getStream = async(item: WAMediaUpload) => {
 	}
 
 	if(item.url.toString().startsWith('http://') || item.url.toString().startsWith('https://')) {
-		return { stream: await getHttpStream(item.url), type: 'remote' } as const
+		return { stream: await getHttpStream(item.url, opts), type: 'remote' } as const
 	}
 
 	return { stream: createReadStream(item.url), type: 'file' } as const
@@ -281,13 +281,18 @@ export const getHttpStream = async(url: string | URL, options: AxiosRequestConfi
 	return fetched.data as Readable
 }
 
+type EncryptedStreamOptions = {
+	saveOriginalFileIfRequired?: boolean
+	logger?: Logger
+	opts?: AxiosRequestConfig
+}
+
 export const encryptedStream = async(
 	media: WAMediaUpload,
 	mediaType: MediaType,
-	saveOriginalFileIfRequired = true,
-	logger?: Logger
+	{ logger, saveOriginalFileIfRequired, opts }: EncryptedStreamOptions = {}
 ) => {
-	const { stream, type } = await getStream(media)
+	const { stream, type } = await getStream(media, opts)
 
 	logger?.debug('fetched media stream')
 
