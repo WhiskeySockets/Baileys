@@ -32,7 +32,7 @@ export const makeSocket = ({
 }: SocketConfig) => {
 	const ws = new WebSocket(waWebSocketUrl, undefined, {
 		origin: DEFAULT_ORIGIN,
-		headers: options.headers,
+		headers: options.headers as {},
 		handshakeTimeout: connectTimeoutMs,
 		timeout: connectTimeoutMs,
 		agent

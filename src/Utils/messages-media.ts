@@ -8,7 +8,7 @@ import type { IAudioMetadata } from 'music-metadata'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import type { Logger } from 'pino'
-import { Readable, Transform } from 'stream'
+import { PassThrough, Readable, Transform } from 'stream'
 import { URL } from 'url'
 import { proto } from '../../WAProto'
 import { DEFAULT_ORIGIN, MEDIA_HKDF_KEY_MAPPING, MEDIA_PATH_MAP } from '../Defaults'
@@ -192,8 +192,11 @@ export async function getAudioDuration(buffer: Buffer | string | Readable) {
 		metadata = await musicMetadata.parseBuffer(buffer, undefined, { duration: true })
 	} else if(typeof buffer === 'string') {
 		const rStream = createReadStream(buffer)
-		metadata = await musicMetadata.parseStream(rStream, undefined, { duration: true })
-		rStream.close()
+		try {
+			metadata = await musicMetadata.parseStream(rStream, undefined, { duration: true })
+		} finally {
+			rStream.destroy()
+		}
 	} else {
 		metadata = await musicMetadata.parseStream(buffer, undefined, { duration: true })
 	}
@@ -209,29 +212,29 @@ export const toReadable = (buffer: Buffer) => {
 }
 
 export const toBuffer = async(stream: Readable) => {
-	let buff = Buffer.alloc(0)
+	const chunks: Buffer[] = []
 	for await (const chunk of stream) {
-		buff = Buffer.concat([ buff, chunk ])
+		chunks.push(chunk)
 	}
 
 	stream.destroy()
-	return buff
+	return Buffer.concat(chunks)
 }
 
 export const getStream = async(item: WAMediaUpload) => {
 	if(Buffer.isBuffer(item)) {
-		return { stream: toReadable(item), type: 'buffer' }
+		return { stream: toReadable(item), type: 'buffer' } as const
 	}
 
 	if('stream' in item) {
-		return { stream: item.stream, type: 'readable' }
+		return { stream: item.stream, type: 'readable' } as const
 	}
 
 	if(item.url.toString().startsWith('http://') || item.url.toString().startsWith('https://')) {
-		return { stream: await getHttpStream(item.url), type: 'remote' }
+		return { stream: await getHttpStream(item.url), type: 'remote' } as const
 	}
 
-	return { stream: createReadStream(item.url), type: 'file' }
+	return { stream: createReadStream(item.url), type: 'file' } as const
 }
 
 /** generates a thumbnail for a given media, if required */
@@ -243,7 +246,7 @@ export async function generateThumbnail(
     }
 ) {
 	let thumbnail: string | undefined
-	let originalImageDimensions: { width: number; height: number } | undefined
+	let originalImageDimensions: { width: number, height: number } | undefined
 	if(mediaType === 'image') {
 		const { buffer, original } = await extractImageThumb(file)
 		thumbnail = buffer.toString('base64')
@@ -290,9 +293,6 @@ export const encryptedStream = async(
 
 	const mediaKey = Crypto.randomBytes(32)
 	const { cipherKey, iv, macKey } = getMediaKeys(mediaKey, mediaType)
-	// random name
-	//const encBodyPath = join(getTmpFilesDirectory(), mediaType + generateMessageID() + '.enc')
-	// const encWriteStream = createWriteStream(encBodyPath)
 	const encWriteStream = new Readable({ read: () => {} })
 
 	let bodyPath: string | undefined
@@ -311,12 +311,6 @@ export const encryptedStream = async(
 	let hmac = Crypto.createHmac('sha256', macKey!).update(iv)
 	let sha256Plain = Crypto.createHash('sha256')
 	let sha256Enc = Crypto.createHash('sha256')
-
-	const onChunk = (buff: Buffer) => {
-		sha256Enc = sha256Enc.update(buff)
-		hmac = hmac.update(buff)
-		encWriteStream.push(buff)
-	}
 
 	try {
 		for await (const data of stream) {
@@ -342,7 +336,7 @@ export const encryptedStream = async(
 		encWriteStream.push(mac)
 		encWriteStream.push(null)
 
-		writeStream && writeStream.end()
+		writeStream?.end()
 		stream.destroy()
 
 		logger?.debug('encrypted data successfully')
@@ -367,6 +361,12 @@ export const encryptedStream = async(
 		stream.destroy(error)
 
 		throw error
+	}
+
+	function onChunk(buff: Buffer) {
+		sha256Enc = sha256Enc.update(buff)
+		hmac = hmac.update(buff)
+		encWriteStream.push(buff)
 	}
 }
 
@@ -421,14 +421,14 @@ export const downloadEncryptedContent = async(
 
 	const endChunk = endByte ? toSmallestChunkSize(endByte || 0) + AES_CHUNK_SIZE : undefined
 
-	const headers: { [_: string]: string } = {
+	const headers: AxiosRequestConfig['headers'] = {
 		...options?.headers || { },
 		Origin: DEFAULT_ORIGIN,
 	}
 	if(startChunk || endChunk) {
-		headers.Range = `bytes=${startChunk}-`
+		headers!.Range = `bytes=${startChunk}-`
 		if(endChunk) {
-			headers.Range += endChunk
+			headers!.Range += endChunk
 		}
 	}
 
