@@ -8,7 +8,7 @@ import type { IAudioMetadata } from 'music-metadata'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import type { Logger } from 'pino'
-import { PassThrough, Readable, Transform } from 'stream'
+import { Readable, Transform } from 'stream'
 import { URL } from 'url'
 import { proto } from '../../WAProto'
 import { DEFAULT_ORIGIN, MEDIA_HKDF_KEY_MAPPING, MEDIA_PATH_MAP } from '../Defaults'
@@ -78,7 +78,7 @@ const extractVideoThumb = async(
 	path: string,
 	destPath: string,
 	time: string,
-	size: { width: number; height: number },
+	size: { width: number, height: number },
 ) => new Promise((resolve, reject) => {
     	const cmd = `ffmpeg -ss ${time} -i ${path} -y -vf scale=${size.width}:-1 -vframes 1 -f image2 ${destPath}`
     	exec(cmd, (err) => {
@@ -379,6 +379,14 @@ export const encryptedStream = async(
 		sha256Enc.destroy(error)
 		stream.destroy(error)
 
+		if(didSaveToTmpPath) {
+			try {
+				await fs.unlink(bodyPath!)
+			} catch(err) {
+				logger?.error({ err }, 'failed to save to tmp path')
+			}
+		}
+
 		throw error
 	}
 
@@ -663,7 +671,7 @@ export const encryptMediaRetryRequest = (
 				tag: 'rmr',
 				attrs: {
 					jid: key.remoteJid!,
-					from_me: (!!key.fromMe).toString(),
+					'from_me': (!!key.fromMe).toString(),
 					// @ts-ignore
 					participant: key.participant || undefined
 				}
