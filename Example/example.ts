@@ -1,5 +1,6 @@
 import { Boom } from '@hapi/boom'
-import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, isJidBroadcast, makeCacheableSignalKeyStore, makeInMemoryStore, MessageRetryMap, useMultiFileAuthState } from '../src'
+import NodeCache from 'node-cache'
+import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, makeCacheableSignalKeyStore, makeInMemoryStore, useMultiFileAuthState } from '../src'
 import MAIN_LOGGER from '../src/Utils/logger'
 
 const logger = MAIN_LOGGER.child({ })
@@ -10,7 +11,7 @@ const doReplies = !process.argv.includes('--no-reply')
 
 // external map to store retry counts of messages when decryption/encryption fails
 // keep this out of the socket itself, so as to prevent a message decryption/encryption loop across socket restarts
-const msgRetryCounterMap: MessageRetryMap = { }
+const msgRetryCounterCache = new NodeCache()
 
 // the store maintains the data of the WA connection in memory
 // can be written out to a file & read from it
@@ -37,7 +38,7 @@ const startSock = async() => {
 			/** caching makes the store faster to send/recv messages */
 			keys: makeCacheableSignalKeyStore(state.keys, logger),
 		},
-		msgRetryCounterMap,
+		msgRetryCounterCache,
 		generateHighQualityLinkPreview: true,
 		// ignore all broadcast messages -- to receive the same
 		// comment the line below out
