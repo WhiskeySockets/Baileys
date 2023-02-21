@@ -1,6 +1,7 @@
 import { randomBytes } from 'crypto'
 import NodeCache from 'node-cache'
 import type { Logger } from 'pino'
+import { DEFAULT_CACHE_TTLS } from '../Defaults'
 import type { AuthenticationCreds, SignalDataSet, SignalDataTypeMap, SignalKeyStore, SignalKeyStoreWithTransaction, TransactionCapabilityOptions } from '../Types'
 import { Curve, signedKeyPair } from './crypto'
 import { delay, generateRegistrationId } from './generics'
@@ -9,15 +10,15 @@ import { delay, generateRegistrationId } from './generics'
  * Adds caching capability to a SignalKeyStore
  * @param store the store to add caching to
  * @param logger to log trace events
- * @param opts NodeCache options
+ * @param _cache NodeCache to use
  */
 export function makeCacheableSignalKeyStore(
 	store: SignalKeyStore,
 	logger: Logger,
-	opts?: NodeCache.Options
+	_cache?: NodeCache
 ): SignalKeyStore {
-	const cache = new NodeCache({
-		...opts || { },
+	const cache = _cache || new NodeCache({
+		stdTTL: DEFAULT_CACHE_TTLS.SIGNAL_STORE, // 5 minutes
 		useClones: false,
 	})
 
