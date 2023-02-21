@@ -11,8 +11,6 @@ import { MediaConnInfo } from './Message'
 export type WAVersion = [number, number, number]
 export type WABrowserDescription = [string, string, string]
 
-export type MessageRetryMap = { [msgId: string]: number }
-
 export type SocketConfig = {
     /** the WS url to connect to WA */
     waWebSocketUrl: string | URL
@@ -43,21 +41,23 @@ export type SocketConfig = {
     /** time to wait between sending new retry requests */
     retryRequestDelayMs: number
     /** time to wait for the generation of the next QR in ms */
-    qrTimeout?: number;
+    qrTimeout?: number
     /** provide an auth state object to maintain the auth state */
     auth: AuthenticationState
     /** manage history processing with this control; by default will sync up everything */
     shouldSyncHistoryMessage: (msg: proto.Message.IHistorySyncNotification) => boolean
     /** transaction capability options for SignalKeyStore */
     transactionOpts: TransactionCapabilityOptions
-    /** provide a cache to store a user's device list */
-    userDevicesCache?: NodeCache
     /** marks the client as online whenever the socket successfully connects */
     markOnlineOnConnect: boolean
     /**
      * map to store the retry counts for failed messages;
      * used to determine whether to retry a message or not */
-    msgRetryCounterMap?: MessageRetryMap
+    msgRetryCounterCache?: NodeCache
+    /** provide a cache to store a user's device list */
+    userDevicesCache?: NodeCache
+    /** cache to store call offers */
+    callOfferCache?: NodeCache
     /** width for link preview images */
     linkPreviewImageThumbnailWidth: number
     /** Should Baileys ask the phone for full history, will be received async */
@@ -92,7 +92,7 @@ export type SocketConfig = {
     }
 
     /** options for axios */
-    options: AxiosRequestConfig<any>
+    options: AxiosRequestConfig<{}>
     /**
      * fetch a message from your store
      * implement this so that messages failed to send (solves the "this message can take a while" issue) can be retried
