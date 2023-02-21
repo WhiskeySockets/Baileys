@@ -5,3 +5,4 @@ coverage
 .eslintrc.json
 src/WABinary/index.ts
 WAProto
+WASignalGroup

@@ -73,7 +73,7 @@ export type BufferedEventData = {
     messageUpdates: { [key: string]: WAMessageUpdate }
     messageDeletes: { [key: string]: WAMessageKey }
     messageReactions: { [key: string]: { key: WAMessageKey, reactions: proto.IReaction[] } }
-    messageReceipts: { [key: string]: { key: WAMessageKey, userReceipt: proto.IUserReceipt[] } },
+    messageReceipts: { [key: string]: { key: WAMessageKey, userReceipt: proto.IUserReceipt[] } }
     groupUpdates: { [jid: string]: Partial<GroupMetadata> }
 }
 

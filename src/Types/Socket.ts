@@ -15,21 +15,21 @@ export type SocketConfig = {
     /** the WS url to connect to WA */
     waWebSocketUrl: string | URL
     /** Fails the connection if the socket times out in this interval */
-	connectTimeoutMs: number
+    connectTimeoutMs: number
     /** Default timeout for queries, undefined for no timeout */
     defaultQueryTimeoutMs: number | undefined
     /** ping-pong interval for WS connection */
     keepAliveIntervalMs: number
     /** proxy agent */
-	agent?: Agent
+    agent?: Agent
     /** pino logger */
-	logger: Logger
+    logger: Logger
     /** version to connect with */
     version: WAVersion
     /** override browser config */
-	browser: WABrowserDescription
-	/** agent used for fetch requests -- uploading/downloading media */
-	fetchAgent?: Agent
+    browser: WABrowserDescription
+    /** agent used for fetch requests -- uploading/downloading media */
+    fetchAgent?: Agent
     /** should the QR be printed in the terminal */
     printQRInTerminal: boolean
     /** should events be emitted for actions done by this socket connection */
