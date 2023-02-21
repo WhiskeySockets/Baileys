@@ -1,7 +1,6 @@
 
 import { AxiosRequestConfig } from 'axios'
 import type { Agent } from 'https'
-import type NodeCache from 'node-cache'
 import type { Logger } from 'pino'
 import type { URL } from 'url'
 import { proto } from '../../WAProto'
@@ -10,6 +9,17 @@ import { MediaConnInfo } from './Message'
 
 export type WAVersion = [number, number, number]
 export type WABrowserDescription = [string, string, string]
+
+export type CacheStore = {
+    /** get a cached key and change the stats */
+    get<T>(key: string): T | undefined
+    /** set a key in the cache */
+    set<T>(key: string, value: T): void
+    /** delete a key from the cache */
+    del(key: string): void
+    /** flush all data */
+    flushAll(): void
+}
 
 export type SocketConfig = {
     /** the WS url to connect to WA */
@@ -34,8 +44,6 @@ export type SocketConfig = {
     printQRInTerminal: boolean
     /** should events be emitted for actions done by this socket connection */
     emitOwnEvents: boolean
-    /** provide a cache to store media, so does not have to be re-uploaded */
-    mediaCache?: NodeCache
     /** custom upload hosts to upload media to */
     customUploadHosts: MediaConnInfo['hosts']
     /** time to wait between sending new retry requests */
@@ -50,14 +58,17 @@ export type SocketConfig = {
     transactionOpts: TransactionCapabilityOptions
     /** marks the client as online whenever the socket successfully connects */
     markOnlineOnConnect: boolean
+
+    /** provide a cache to store media, so does not have to be re-uploaded */
+    mediaCache?: CacheStore
     /**
      * map to store the retry counts for failed messages;
      * used to determine whether to retry a message or not */
-    msgRetryCounterCache?: NodeCache
+    msgRetryCounterCache?: CacheStore
     /** provide a cache to store a user's device list */
-    userDevicesCache?: NodeCache
+    userDevicesCache?: CacheStore
     /** cache to store call offers */
-    callOfferCache?: NodeCache
+    callOfferCache?: CacheStore
     /** width for link preview images */
     linkPreviewImageThumbnailWidth: number
     /** Should Baileys ask the phone for full history, will be received async */
