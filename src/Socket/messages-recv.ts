@@ -1,7 +1,7 @@
 
 import NodeCache from 'node-cache'
 import { proto } from '../../WAProto'
-import { KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
+import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import { MessageReceiptType, MessageRelayOptions, MessageUserReceipt, SocketConfig, WACallEvent, WAMessageKey, WAMessageStubType, WAPatchName } from '../Types'
 import { decodeMediaRetryNode, decryptMessageNode, delay, encodeBigEndian, encodeSignedDeviceIdentity, getCallStatusFromNode, getHistoryMsg, getNextPreKeys, getStatusFromReceiptType, unixTimestampSeconds, xmppPreKey, xmppSignedPreKey } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
@@ -38,11 +38,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const retryMutex = makeMutex()
 
 	const msgRetryCache = config.msgRetryCounterCache || new NodeCache({
-		stdTTL: 60 * 60, // 1 hour
+		stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
 		useClones: false
 	})
 	const callOfferCache = config.callOfferCache || new NodeCache({
-		stdTTL: 5 * 60, // 5 mins
+		stdTTL: DEFAULT_CACHE_TTLS.CALL_OFFER, // 5 mins
 		useClones: false
 	})
 
