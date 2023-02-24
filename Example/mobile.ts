@@ -24,6 +24,7 @@ const startSock = async() => {
 	console.log(`using WA v${version.join('.')}, isLatest: ${isLatest}`)
 
 	const sock = makeWASocket({
+		mobile: true,
 		registration: {
 			automaticRegistration: true,
 			phoneNumberCountryCode: '1',
@@ -33,7 +34,6 @@ const startSock = async() => {
 		},
 		version,
 		logger,
-		mobile: true,
 		auth: {
 			creds: state.creds,
 			/** caching makes the store faster to send/recv messages */

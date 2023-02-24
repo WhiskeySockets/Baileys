@@ -18,20 +18,15 @@ import { WebSocket } from './web-socket'
 
 export const makeSocket = (config: SocketConfig) => {
 	const {
-    waWebSocketUrl,
-    connectTimeoutMs,
-    logger,
-    agent,
-    keepAliveIntervalMs,
-    version,
-    browser,
-    auth: authState,
-    printQRInTerminal,
-    defaultQueryTimeoutMs,
-    syncFullHistory,
-    transactionOpts,
-    qrTimeout,
-    options,
+		connectTimeoutMs,
+		logger,
+		keepAliveIntervalMs,
+		browser,
+		auth: authState,
+		printQRInTerminal,
+		defaultQueryTimeoutMs,
+		transactionOpts,
+		qrTimeout,
 	} = config
 
 	const ws = config.mobile ? new MobileSocket(config) : new WebSocket(config)

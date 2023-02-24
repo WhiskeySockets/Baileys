@@ -10,20 +10,17 @@ import { createSignalIdentity } from './signal'
 
 const getUserAgent = (config: SocketConfig): proto.ClientPayload.IUserAgent => {
 	const osVersion = '15.3.1'
-	config
 	return {
 		appVersion: {
 			primary: 2,
 			secondary: 22,
 			tertiary: 24,
 			quaternary: 81
-
-			// 2.22.24.81
 		},
 		platform: proto.ClientPayload.UserAgent.Platform.IOS,
 		releaseChannel: proto.ClientPayload.UserAgent.ReleaseChannel.RELEASE,
-		mcc: '000',
-		mnc: '000',
+		mcc: config.registration?.phoneNumberMobileCountryCode || '000',
+		mnc: config.registration?.phoneNumberMobileNetworkCode || '000',
 		osVersion: osVersion,
 		manufacturer: 'Apple',
 		device: 'iPhone_7',
@@ -55,7 +52,7 @@ const getClientPayload = (config: SocketConfig) => {
 		userAgent: getUserAgent(config),
 	}
 
-	if(config.mobile) {
+	if(!config.mobile) {
 		payload.webInfo = getWebInfo(config)
 	}
 
@@ -78,7 +75,7 @@ export const generateAuthenticationNode = (config: SocketConfig): proto.IClientP
 			dnsMethod: proto.ClientPayload.DNSSource.DNSResolutionMethod.SYSTEM,
 		},
 		passive: false, // XMPP heartbeat setting (false: server actively pings) (true: client actively pings)
-		pushName: '',
+		pushName: 'test',
 		username: Number(`${config.registration?.phoneNumberCountryCode}${config.registration?.phoneNumberNationalNumber}`),
 	}
 	return proto.ClientPayload.fromObject(payload)

@@ -105,6 +105,8 @@ export const makeNoiseHandler = (
 			const certDecoded = decrypt(serverHello!.payload!)
 
 			if(mobile) {
+				const cert = proto.CertChain.NoiseCertificate.decode(certDecoded)
+				console.log(cert)
 			} else {
 				const { intermediate: certIntermediate } = proto.CertChain.decode(certDecoded)
 
