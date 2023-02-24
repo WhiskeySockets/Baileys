@@ -1,3 +1,4 @@
+import { AxiosRequestConfig } from 'axios'
 import type NodeCache from 'node-cache'
 import type { Logger } from 'pino'
 import type { Readable } from 'stream'
@@ -5,6 +6,7 @@ import type { URL } from 'url'
 import { proto } from '../../WAProto'
 import { MEDIA_HKDF_KEY_MAPPING } from '../Defaults'
 import type { GroupMetadata } from './GroupMetadata'
+import { CacheStore } from './Socket'
 
 // export the WAMessage Prototypes
 export { proto as WAProto }
@@ -145,7 +147,7 @@ export type AnyRegularMessageContent = (
         listReply: Omit<proto.Message.IListResponseMessage, 'contextInfo'>
     }
     | {
-        product: WASendableProduct,
+        product: WASendableProduct
         businessOwnerJid?: string
         body?: string
         footer?: string
@@ -201,9 +203,11 @@ export type MediaGenerationOptions = {
     mediaTypeOverride?: MediaType
     upload: WAMediaUploadFunction
     /** cache media so it does not have to be uploaded again */
-    mediaCache?: NodeCache
+    mediaCache?: CacheStore
 
     mediaUploadTimeoutMs?: number
+
+    options?: AxiosRequestConfig
 }
 export type MessageContentGenerationOptions = MediaGenerationOptions & {
 	getUrlInfo?: (text: string) => Promise<WAUrlInfo | undefined>

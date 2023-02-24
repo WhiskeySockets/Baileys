@@ -15,21 +15,28 @@ import { WebSocket } from './web-socket'
  * - listen to messages and emit events
  * - query phone connection
  */
+
 export const makeSocket = (config: SocketConfig) => {
 	const {
-		connectTimeoutMs,
-		logger,
-		keepAliveIntervalMs,
-		browser,
-		auth: authState,
-		printQRInTerminal,
-		defaultQueryTimeoutMs,
-		transactionOpts,
-		qrTimeout,
+    waWebSocketUrl,
+    connectTimeoutMs,
+    logger,
+    agent,
+    keepAliveIntervalMs,
+    version,
+    browser,
+    auth: authState,
+    printQRInTerminal,
+    defaultQueryTimeoutMs,
+    syncFullHistory,
+    transactionOpts,
+    qrTimeout,
+    options,
 	} = config
 
 	const ws = config.mobile ? new MobileSocket(config) : new WebSocket(config)
 	ws.setMaxListeners(0)
+
 	const ev = makeEventBuffer(logger)
 	/** ephemeral key pair used to encrypt/decrypt communication. Unique for each connection */
 	const ephemeralKeyPair = Curve.generateKeyPair()
@@ -61,7 +68,17 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 
 		const bytes = noise.encodeFrame(data)
-        await sendPromise.call(ws, bytes) as Promise<void>
+		await promiseTimeout<void>(
+			connectTimeoutMs,
+			async(resolve, reject) => {
+				try {
+					await sendPromise.call(ws, bytes)
+					resolve()
+				} catch(error) {
+					reject(error)
+				}
+			}
+		)
 	}
 
 	/** send a binary node */

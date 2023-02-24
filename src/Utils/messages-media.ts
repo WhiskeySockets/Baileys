@@ -78,7 +78,7 @@ const extractVideoThumb = async(
 	path: string,
 	destPath: string,
 	time: string,
-	size: { width: number; height: number },
+	size: { width: number, height: number },
 ) => new Promise((resolve, reject) => {
     	const cmd = `ffmpeg -ss ${time} -i ${path} -y -vf scale=${size.width}:-1 -vframes 1 -f image2 ${destPath}`
     	exec(cmd, (err) => {
@@ -192,8 +192,11 @@ export async function getAudioDuration(buffer: Buffer | string | Readable) {
 		metadata = await musicMetadata.parseBuffer(buffer, undefined, { duration: true })
 	} else if(typeof buffer === 'string') {
 		const rStream = createReadStream(buffer)
-		metadata = await musicMetadata.parseStream(rStream, undefined, { duration: true })
-		rStream.close()
+		try {
+			metadata = await musicMetadata.parseStream(rStream, undefined, { duration: true })
+		} finally {
+			rStream.destroy()
+		}
 	} else {
 		metadata = await musicMetadata.parseStream(buffer, undefined, { duration: true })
 	}
@@ -209,29 +212,29 @@ export const toReadable = (buffer: Buffer) => {
 }
 
 export const toBuffer = async(stream: Readable) => {
-	let buff = Buffer.alloc(0)
+	const chunks: Buffer[] = []
 	for await (const chunk of stream) {
-		buff = Buffer.concat([ buff, chunk ])
+		chunks.push(chunk)
 	}
 
 	stream.destroy()
-	return buff
+	return Buffer.concat(chunks)
 }
 
-export const getStream = async(item: WAMediaUpload) => {
+export const getStream = async(item: WAMediaUpload, opts?: AxiosRequestConfig) => {
 	if(Buffer.isBuffer(item)) {
-		return { stream: toReadable(item), type: 'buffer' }
+		return { stream: toReadable(item), type: 'buffer' } as const
 	}
 
 	if('stream' in item) {
-		return { stream: item.stream, type: 'readable' }
+		return { stream: item.stream, type: 'readable' } as const
 	}
 
 	if(item.url.toString().startsWith('http://') || item.url.toString().startsWith('https://')) {
-		return { stream: await getHttpStream(item.url), type: 'remote' }
+		return { stream: await getHttpStream(item.url, opts), type: 'remote' } as const
 	}
 
-	return { stream: createReadStream(item.url), type: 'file' }
+	return { stream: createReadStream(item.url), type: 'file' } as const
 }
 
 /** generates a thumbnail for a given media, if required */
@@ -243,7 +246,7 @@ export async function generateThumbnail(
     }
 ) {
 	let thumbnail: string | undefined
-	let originalImageDimensions: { width: number; height: number } | undefined
+	let originalImageDimensions: { width: number, height: number } | undefined
 	if(mediaType === 'image') {
 		const { buffer, original } = await extractImageThumb(file)
 		thumbnail = buffer.toString('base64')
@@ -278,21 +281,23 @@ export const getHttpStream = async(url: string | URL, options: AxiosRequestConfi
 	return fetched.data as Readable
 }
 
+type EncryptedStreamOptions = {
+	saveOriginalFileIfRequired?: boolean
+	logger?: Logger
+	opts?: AxiosRequestConfig
+}
+
 export const encryptedStream = async(
 	media: WAMediaUpload,
 	mediaType: MediaType,
-	saveOriginalFileIfRequired = true,
-	logger?: Logger
+	{ logger, saveOriginalFileIfRequired, opts }: EncryptedStreamOptions = {}
 ) => {
-	const { stream, type } = await getStream(media)
+	const { stream, type } = await getStream(media, opts)
 
 	logger?.debug('fetched media stream')
 
 	const mediaKey = Crypto.randomBytes(32)
 	const { cipherKey, iv, macKey } = getMediaKeys(mediaKey, mediaType)
-	// random name
-	//const encBodyPath = join(getTmpFilesDirectory(), mediaType + generateMessageID() + '.enc')
-	// const encWriteStream = createWriteStream(encBodyPath)
 	const encWriteStream = new Readable({ read: () => {} })
 
 	let bodyPath: string | undefined
@@ -312,15 +317,23 @@ export const encryptedStream = async(
 	let sha256Plain = Crypto.createHash('sha256')
 	let sha256Enc = Crypto.createHash('sha256')
 
-	const onChunk = (buff: Buffer) => {
-		sha256Enc = sha256Enc.update(buff)
-		hmac = hmac.update(buff)
-		encWriteStream.push(buff)
-	}
-
 	try {
 		for await (const data of stream) {
 			fileLength += data.length
+
+			if(
+				type === 'remote'
+				&& opts?.maxContentLength
+				&& fileLength + data.length > opts.maxContentLength
+			) {
+				throw new Boom(
+					`content length exceeded when encrypting "${type}"`,
+					{
+						data: { media, type }
+					}
+				)
+			}
+
 			sha256Plain = sha256Plain.update(data)
 			if(writeStream) {
 				if(!writeStream.write(data)) {
@@ -342,7 +355,7 @@ export const encryptedStream = async(
 		encWriteStream.push(mac)
 		encWriteStream.push(null)
 
-		writeStream && writeStream.end()
+		writeStream?.end()
 		stream.destroy()
 
 		logger?.debug('encrypted data successfully')
@@ -366,7 +379,21 @@ export const encryptedStream = async(
 		sha256Enc.destroy(error)
 		stream.destroy(error)
 
+		if(didSaveToTmpPath) {
+			try {
+				await fs.unlink(bodyPath!)
+			} catch(err) {
+				logger?.error({ err }, 'failed to save to tmp path')
+			}
+		}
+
 		throw error
+	}
+
+	function onChunk(buff: Buffer) {
+		sha256Enc = sha256Enc.update(buff)
+		hmac = hmac.update(buff)
+		encWriteStream.push(buff)
 	}
 }
 
@@ -421,14 +448,14 @@ export const downloadEncryptedContent = async(
 
 	const endChunk = endByte ? toSmallestChunkSize(endByte || 0) + AES_CHUNK_SIZE : undefined
 
-	const headers: { [_: string]: string } = {
+	const headers: AxiosRequestConfig['headers'] = {
 		...options?.headers || { },
 		Origin: DEFAULT_ORIGIN,
 	}
 	if(startChunk || endChunk) {
-		headers.Range = `bytes=${startChunk}-`
+		headers!.Range = `bytes=${startChunk}-`
 		if(endChunk) {
-			headers.Range += endChunk
+			headers!.Range += endChunk
 		}
 	}
 
@@ -644,7 +671,7 @@ export const encryptMediaRetryRequest = (
 				tag: 'rmr',
 				attrs: {
 					jid: key.remoteJid!,
-					from_me: (!!key.fromMe).toString(),
+					'from_me': (!!key.fromMe).toString(),
 					// @ts-ignore
 					participant: key.participant || undefined
 				}

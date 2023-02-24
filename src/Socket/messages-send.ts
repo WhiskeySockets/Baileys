@@ -2,7 +2,7 @@
 import { Boom } from '@hapi/boom'
 import NodeCache from 'node-cache'
 import { proto } from '../../WAProto'
-import { WA_DEFAULT_EPHEMERAL } from '../Defaults'
+import { DEFAULT_CACHE_TTLS, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import { AnyMessageContent, MediaConnInfo, MessageReceiptType, MessageRelayOptions, MiscMessageGenerationOptions, SocketConfig, WAMessageKey } from '../Types'
 import { aggregateMessageKeysNotFromMe, assertMediaContent, bindWaitForEvent, decryptMediaRetryData, encodeSignedDeviceIdentity, encodeWAMessage, encryptMediaRetryRequest, encryptSenderKeyMsgSignalProto, encryptSignalProto, extractDeviceJids, generateMessageID, generateWAMessage, getStatusCodeForMediaRetry, getUrlFromDirectPath, getWAUploadToServer, jidToSignalProtocolAddress, parseAndInjectE2ESessions, unixTimestampSeconds } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
@@ -32,7 +32,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	} = sock
 
 	const userDevicesCache = config.userDevicesCache || new NodeCache({
-		stdTTL: 300, // 5 minutes
+		stdTTL: DEFAULT_CACHE_TTLS.USER_DEVICES, // 5 minutes
 		useClones: false
 	})
 
@@ -53,7 +53,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const mediaConnNode = getBinaryNodeChild(result, 'media_conn')
 				const node: MediaConnInfo = {
 					hosts: getBinaryNodeChildren(mediaConnNode, 'host').map(
-						item => item.attrs as any
+						({ attrs }) => ({
+							hostname: attrs.hostname,
+							maxContentLengthBytes: +attrs.maxContentLengthBytes,
+						})
 					),
 					auth: mediaConnNode!.attrs.auth,
 					ttl: +mediaConnNode!.attrs.ttl,
@@ -144,8 +147,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		for(let jid of jids) {
 			const user = jidDecode(jid)?.user
 			jid = jidNormalizedUser(jid)
-			if(userDevicesCache.has(user!) && useCache) {
-				const devices = userDevicesCache.get<JidWithDevice[]>(user!)!
+
+			const devices = userDevicesCache.get<JidWithDevice[]>(user!)
+			if(devices && useCache) {
 				deviceResults.push(...devices)
 
 				logger.trace({ user }, 'using cache for devices')
@@ -319,7 +323,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			// only send to the specific device that asked for a retry
 			// otherwise the message is sent out to every device that should be a recipient
 			if(!isGroup) {
-				additionalAttributes = { ...additionalAttributes, device_fanout: 'false' }
+				additionalAttributes = { ...additionalAttributes, 'device_fanout': 'false' }
 			}
 
 			const { user, device } = jidDecode(participant.jid)!
@@ -636,6 +640,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						),
 						upload: waUploadToServer,
 						mediaCache: config.mediaCache,
+						options: config.options,
 						...options,
 					}
 				)
