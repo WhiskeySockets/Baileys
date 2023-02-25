@@ -1,3 +1,4 @@
+/* eslint-disable camelcase */
 import { MOBILE_REGISTRATION_ENDPOINT, MOBILE_TOKEN, MOBILE_USERAGENT, REGISTRATION_PUBLIC_KEY } from '../Defaults'
 import { KeyPair, SignedKeyPair, SocketConfig } from '../Types'
 import { aesEncryptGCM, Curve, md5 } from '../Utils/crypto'
@@ -9,8 +10,7 @@ function urlencode(str: string) {
 	return str.replace(/-/g, '%2d').replace(/_/g, '%5f').replace(/~/g, '%7e')
 }
 
-const validRegistrationOptions = (config: RegistrationOptions) => !config ||
-	!config.phoneNumberCountryCode ||
+const validRegistrationOptions = (config: RegistrationOptions) => !config?.phoneNumberCountryCode ||
 	!config.phoneNumberNationalNumber ||
 	!config.phoneNumberMobileCountryCode ||
 	!config.phoneNumberMobileNetworkCode
@@ -18,8 +18,8 @@ const validRegistrationOptions = (config: RegistrationOptions) => !config ||
 export const makeRegistrationSocket = (config: SocketConfig) => {
 	const sock = makeBusinessSocket(config)
 
-	const register = async (code: string) => {
-		if (!validRegistrationOptions(config.auth.creds.registration)) {
+	const register = async(code: string) => {
+		if(!validRegistrationOptions(config.auth.creds.registration)) {
 			throw new Error('please specify the registration options')
 		}
 
@@ -28,20 +28,20 @@ export const makeRegistrationSocket = (config: SocketConfig) => {
 		sock.authState.creds.me = {
 			id: jidEncode(result.login!, 's.whatsapp.net'),
 			name: '~'
-		};
+		}
 
 		sock.authState.creds.registered = true
 		sock.ev.emit('creds.update', sock.authState.creds)
 
-		if (sock.ws instanceof MobileSocket) {
+		if(sock.ws instanceof MobileSocket) {
 			sock.ws.connect()
 		}
 
 		return result
 	}
 
-	const requestRegistrationCode = async (registrationOptions: RegistrationOptions) => {
-		if (!validRegistrationOptions(registrationOptions)) {
+	const requestRegistrationCode = async(registrationOptions: RegistrationOptions) => {
+		if(!validRegistrationOptions(registrationOptions)) {
 			throw new Error('Invalid registration options')
 		}
 
@@ -52,7 +52,7 @@ export const makeRegistrationSocket = (config: SocketConfig) => {
 			phoneNumberMobileNetworkCode: registrationOptions.phoneNumberMobileNetworkCode
 		}
 
-		sock.ev.emit('creds.update', sock.authState.creds);
+		sock.ev.emit('creds.update', sock.authState.creds)
 
 		return mobileRegisterCode({ ...config.auth.creds, ...registrationOptions })
 	}
@@ -198,10 +198,10 @@ export function mobileRegisterEncrypt(data: string) {
 export async function mobileRegisterFetch(path: string, opts: { params?: Record<string, string>, headers?: Record<string, string> } = {}) {
 	let url = `${MOBILE_REGISTRATION_ENDPOINT}${path}`
 
-	if (opts.params) {
+	if(opts.params) {
 		const parameter = [] as string[]
 
-		for (const param in opts.params) {
+		for(const param in opts.params) {
 			parameter.push(param + '=' + urlencode(opts.params[param]))
 		}
 
@@ -211,7 +211,7 @@ export async function mobileRegisterFetch(path: string, opts: { params?: Record<
 		url += `?ENC=${params}`
 	}
 
-	if (!opts.headers) {
+	if(!opts.headers) {
 		opts.headers = {}
 	}
 
@@ -223,15 +223,15 @@ export async function mobileRegisterFetch(path: string, opts: { params?: Record<
 
 	try {
 		var json = JSON.parse(text)
-	} catch (error) {
+	} catch(error) {
 		throw text
 	}
 
-	if (!response.ok || json.reason) {
+	if(!response.ok || json.reason) {
 		throw json
 	}
 
-	if (json.status && !['ok', 'sent'].includes(json.status)) {
+	if(json.status && !['ok', 'sent'].includes(json.status)) {
 		throw json
 	}
 

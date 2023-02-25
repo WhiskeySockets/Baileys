@@ -2,7 +2,7 @@ import { Boom } from '@hapi/boom'
 import parsePhoneNumber from 'libphonenumber-js'
 import NodeCache from 'node-cache'
 import P from 'pino'
-import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, makeCacheableSignalKeyStore, makeInMemoryStore, useMultiFileAuthState, PHONENUMBER_MCC } from '../src'
+import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, makeCacheableSignalKeyStore, makeInMemoryStore, PHONENUMBER_MCC, useMultiFileAuthState } from '../src'
 
 const logger = P({
 	transport: {
@@ -62,7 +62,7 @@ const startSock = async() => {
 				conversation: 'hello'
 			}
 		}
-	});
+	})
 
 	store?.bind(sock.ev)
 
@@ -72,7 +72,7 @@ const startSock = async() => {
 			const question = (text: string) => new Promise<string>((resolve) => rl.question(text, resolve))
 
 			const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
-			const { registration } = sock.authState.creds || {registration: {}};
+			const { registration } = sock.authState.creds || { registration: {} }
 
 			if(!registration.phoneNumber) {
 				registration.phoneNumber = await question('Please enter your mobile phone number:\n')
@@ -81,14 +81,14 @@ const startSock = async() => {
 			}
 
 			const phoneNumber = parsePhoneNumber(registration!.phoneNumber)
-			if(!phoneNumber || !phoneNumber.isValid()) {
+			if(!phoneNumber?.isValid()) {
 				throw new Error('Invalid phone number: ' + registration!.phoneNumber)
 			}
 
 			registration.phoneNumber = phoneNumber.format('E.164')
 			registration.phoneNumberCountryCode = phoneNumber.countryCallingCode
 			registration.phoneNumberNationalNumber = phoneNumber.nationalNumber
-			const mcc = PHONENUMBER_MCC[phoneNumber.countryCallingCode];
+			const mcc = PHONENUMBER_MCC[phoneNumber.countryCallingCode]
 			if(!mcc) {
 				throw new Error('Could not find MCC for phone number: ' + registration!.phoneNumber + '\nPlease specify the MCC manually.')
 			}
@@ -145,7 +145,7 @@ const startSock = async() => {
 		await sock.sendMessage(jid, msg)
 	}
 
-	// the process function –lets you process all events that just occurred
+	// the process function lets you process all events that just occurred
 	// efficiently in a batch
 	sock.ev.process(
 		// events is a map for event name => event data
