@@ -3,8 +3,11 @@ import type { MediaType, SocketConfig } from '../Types'
 import { Browsers } from '../Utils'
 import logger from '../Utils/logger'
 import { version } from './baileys-version.json'
+import phoneNumberMCC from './phonenumber-mcc.json';
 
 export const UNAUTHORIZED_CODES = [401, 403, 419]
+
+export const PHONENUMBER_MCC = phoneNumberMCC;
 
 export const DEFAULT_ORIGIN = 'https://web.whatsapp.com'
 export const MOBILE_ENDPOINT = 'g.whatsapp.net'
