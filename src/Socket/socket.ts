@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Boom } from '@hapi/boom'
 import { promisify } from 'util'
 import { proto } from '../../WAProto'
@@ -5,7 +6,7 @@ import { DEF_CALLBACK_PREFIX, DEF_TAG_PREFIX, INITIAL_PREKEY_COUNT, MIN_PREKEY_C
 import { DisconnectReason, SocketConfig } from '../Types'
 import { addTransactionCapability, bindWaitForConnectionUpdate, configureSuccessfulPairing, Curve, generateAuthenticationNode, generateLoginNode, generateMdTagPrefix, generateRegistrationNode, getCodeFromWSError, getErrorCodeFromStreamError, getNextPreKeysNode, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout } from '../Utils'
 import { makeEventBuffer } from '../Utils/event-buffer'
-import { assertNodeErrorFree, BinaryNode, encodeBinaryNode, getBinaryNodeChild, getBinaryNodeChildren, S_WHATSAPP_NET } from '../WABinary'
+import { assertNodeErrorFree, BinaryNode, binaryNodeToString, encodeBinaryNode, getBinaryNodeChild, getBinaryNodeChildren, S_WHATSAPP_NET } from '../WABinary'
 import { MobileSocket } from './mobile-socket'
 import { WebSocket } from './web-socket'
 
@@ -29,6 +30,7 @@ export const makeSocket = (config: SocketConfig) => {
 		qrTimeout,
 	} = config
 
+	config.mobile = config.mobile || config.auth.creds.registered
 	const ws = config.mobile ? new MobileSocket(config) : new WebSocket(config)
 	ws.setMaxListeners(0)
 
@@ -79,7 +81,7 @@ export const makeSocket = (config: SocketConfig) => {
 	/** send a binary node */
 	const sendNode = (frame: BinaryNode) => {
 		if(logger.level === 'trace') {
-			logger.trace({ msgId: frame.attrs.id, fromMe: true, frame }, 'communication')
+			logger.trace(binaryNodeToString(frame), 'xml send')
 		}
 
 		const buff = encodeBinaryNode(frame)
@@ -269,7 +271,7 @@ export const makeSocket = (config: SocketConfig) => {
 				const msgId = frame.attrs.id
 
 				if(logger.level === 'trace') {
-					logger.trace({ msgId, fromMe: false, frame }, 'communication')
+					logger.trace(binaryNodeToString(frame), 'recv xml')
 				}
 
 				/* Check if this is a response to a message we sent */
