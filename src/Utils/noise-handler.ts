@@ -13,10 +13,17 @@ const generateIV = (counter: number) => {
 	return new Uint8Array(iv)
 }
 
-export const makeNoiseHandler = (
-	{ keyPair: { private: privateKey, public: publicKey }, NOISE_HEADER, mobile }: {keyPair: KeyPair, NOISE_HEADER: Uint8Array, mobile: boolean},
+export const makeNoiseHandler = ({
+	keyPair: { private: privateKey, public: publicKey },
+	NOISE_HEADER,
+	mobile,
+	logger,
+}: {
+	keyPair: KeyPair
+	NOISE_HEADER: Uint8Array
+	mobile: boolean
 	logger: Logger
-) => {
+}) => {
 	logger = logger.child({ class: 'ns' })
 
 	const authenticate = (data: Uint8Array) => {

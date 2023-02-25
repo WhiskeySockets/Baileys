@@ -4,7 +4,7 @@ import { promisify } from 'util'
 import { proto } from '../../WAProto'
 import { DEF_CALLBACK_PREFIX, DEF_TAG_PREFIX, INITIAL_PREKEY_COUNT, MIN_PREKEY_COUNT, MOBILE_NOISE_HEADER, NOISE_WA_HEADER } from '../Defaults'
 import { DisconnectReason, SocketConfig } from '../Types'
-import { addTransactionCapability, bindWaitForConnectionUpdate, configureSuccessfulPairing, Curve, generateAuthenticationNode, generateLoginNode, generateMdTagPrefix, generateRegistrationNode, getCodeFromWSError, getErrorCodeFromStreamError, getNextPreKeysNode, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout } from '../Utils'
+import { addTransactionCapability, bindWaitForConnectionUpdate, configureSuccessfulPairing, Curve, generateMobileNode, generateLoginNode, generateMdTagPrefix, generateRegistrationNode, getCodeFromWSError, getErrorCodeFromStreamError, getNextPreKeysNode, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout } from '../Utils'
 import { makeEventBuffer } from '../Utils/event-buffer'
 import { assertNodeErrorFree, BinaryNode, binaryNodeToString, encodeBinaryNode, getBinaryNodeChild, getBinaryNodeChildren, S_WHATSAPP_NET } from '../WABinary'
 import { MobileSocket } from './mobile-socket'
@@ -41,8 +41,9 @@ export const makeSocket = (config: SocketConfig) => {
 	const noise = makeNoiseHandler({
 		keyPair: ephemeralKeyPair,
 		NOISE_HEADER: config.mobile ? MOBILE_NOISE_HEADER : NOISE_WA_HEADER,
-		mobile: true
-	}, logger)
+		mobile: config.mobile,
+		logger
+	})
 
 	const { creds } = authState
 	// add transaction capability
@@ -194,7 +195,7 @@ export const makeSocket = (config: SocketConfig) => {
 
 		let node: proto.IClientPayload
 		if(config.mobile) {
-			node = generateAuthenticationNode(config)
+			node = generateMobileNode(config)
 		} else if(!creds.me) {
 			node = generateRegistrationNode(creds, config)
 			logger.info({ node }, 'not logged in, attempting registration...')

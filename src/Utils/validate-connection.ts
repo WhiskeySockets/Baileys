@@ -9,21 +9,25 @@ import { encodeBigEndian } from './generics'
 import { createSignalIdentity } from './signal'
 
 const getUserAgent = (config: SocketConfig): proto.ClientPayload.IUserAgent => {
-	const osVersion = '15.3.1'
+	const osVersion = config.mobile ? '15.3.1' : '0.1'
+	const version = config.mobile ? config.version : [2, 22, 24]
+	const device = config.mobile ? 'iPhone_7' : 'Desktop'
+	const manufacturer = config.mobile ? 'Apple' : ''
+	const platform = config.mobile ? proto.ClientPayload.UserAgent.Platform.IOS : proto.ClientPayload.UserAgent.Platform.WEB
+
 	return {
 		appVersion: {
-			primary: 2,
-			secondary: 22,
-			tertiary: 24,
-			quaternary: 81
+			primary: version[0],
+			secondary: version[1],
+			tertiary: version[2],
 		},
-		platform: proto.ClientPayload.UserAgent.Platform.IOS,
+		platform,
 		releaseChannel: proto.ClientPayload.UserAgent.ReleaseChannel.RELEASE,
 		mcc: config.auth.creds.registration?.phoneNumberMobileCountryCode || '000',
 		mnc: config.auth.creds.registration?.phoneNumberMobileNetworkCode || '001',
 		osVersion: osVersion,
-		manufacturer: 'Apple',
-		device: 'iPhone_7',
+		manufacturer,
+		device,
 		osBuildNumber: osVersion,
 		localeLanguageIso6391: 'en',
 		localeCountryIso31661Alpha2: 'US',
@@ -59,7 +63,7 @@ const getClientPayload = (config: SocketConfig) => {
 	return payload
 }
 
-export const generateAuthenticationNode = (config: SocketConfig): proto.IClientPayload => {
+export const generateMobileNode = (config: SocketConfig): proto.IClientPayload => {
 	if(!config.auth.creds) {
 		throw new Boom('No registration data found', { data: config })
 	}
