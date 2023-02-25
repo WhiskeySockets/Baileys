@@ -1,7 +1,8 @@
 import { Boom } from '@hapi/boom'
+import parsePhoneNumber from 'libphonenumber-js'
 import NodeCache from 'node-cache'
 import P from 'pino'
-import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, makeCacheableSignalKeyStore, makeInMemoryStore, useMultiFileAuthState } from '../src'
+import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, makeCacheableSignalKeyStore, makeInMemoryStore, useMultiFileAuthState, PHONENUMBER_MCC } from '../src'
 
 const logger = P({
 	transport: {
@@ -61,9 +62,76 @@ const startSock = async() => {
 				conversation: 'hello'
 			}
 		}
-	})
+	});
 
 	store?.bind(sock.ev)
+
+	// If mobile was chosen, ask for the code
+	if(useMobile && !sock.authState.creds.registered) {
+		import('readline').then(async(readline) => {
+			const question = (text: string) => new Promise<string>((resolve) => rl.question(text, resolve))
+
+			const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+			const { registration } = sock.authState.creds || {registration: {}};
+
+			if(!registration.phoneNumber) {
+				registration.phoneNumber = await question('Please enter your mobile phone number:\n')
+			} else {
+				console.log('Your mobile phone number is not registered.')
+			}
+
+			const phoneNumber = parsePhoneNumber(registration!.phoneNumber)
+			if(!phoneNumber || !phoneNumber.isValid()) {
+				throw new Error('Invalid phone number: ' + registration!.phoneNumber)
+			}
+
+			registration.phoneNumber = phoneNumber.format('E.164')
+			registration.phoneNumberCountryCode = phoneNumber.countryCallingCode
+			registration.phoneNumberNationalNumber = phoneNumber.nationalNumber
+			const mcc = PHONENUMBER_MCC[phoneNumber.countryCallingCode];
+			if(!mcc) {
+				throw new Error('Could not find MCC for phone number: ' + registration!.phoneNumber + '\nPlease specify the MCC manually.')
+			}
+
+			registration.phoneNumberMobileCountryCode = mcc
+
+			async function enterCode() {
+				try {
+					const code = await question('Please enter the one time code:\n')
+					const response = await sock.register(code.replace(/["']/g, '').trim().toLowerCase())
+					console.log('Successfully registered your phone number.')
+					console.log(response)
+					rl.close()
+				} catch(error) {
+					console.error('Failed to register your phone number. Please try again.\n', error)
+					await askForOTP()
+				}
+			}
+
+			async function askForOTP() {
+				let code = await question('How would you like to receive the one time code for registration? "sms" or "voice"\nIf you already have a one time registration code enter "code"\n')
+				code = code.replace(/["']/g, '').trim().toLowerCase()
+
+				if(code === 'code') {
+					await enterCode()
+				} else if(code === 'sms' || code === 'voice') {
+					registration.method = code
+
+					try {
+						await sock.requestRegistrationCode(registration)
+						await enterCode()
+					} catch(error) {
+						console.error('Failed to request registration code. Please try again.\n', error)
+						await askForOTP()
+					}
+				} else {
+					await askForOTP()
+				}
+			}
+
+			await askForOTP()
+		}).catch(() => console.error('Not running in a node environment. Please install the readline module to use the automatic registration option.'))
+	}
 
 	const sendMessageWTyping = async(msg: AnyMessageContent, jid: string) => {
 		await sock.presenceSubscribe(jid)

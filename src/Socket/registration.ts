@@ -1,7 +1,4 @@
-/* eslint-disable camelcase */
-import parsePhoneNumber from 'libphonenumber-js'
 import { MOBILE_REGISTRATION_ENDPOINT, MOBILE_TOKEN, MOBILE_USERAGENT, REGISTRATION_PUBLIC_KEY } from '../Defaults'
-import phoneNumberMCC from '../Defaults/phonenumber-mcc.json'
 import { KeyPair, SignedKeyPair, SocketConfig } from '../Types'
 import { aesEncryptGCM, Curve, md5 } from '../Utils/crypto'
 import { jidEncode } from '../WABinary'
@@ -21,102 +18,43 @@ const validRegistrationOptions = (config: RegistrationOptions) => !config ||
 export const makeRegistrationSocket = (config: SocketConfig) => {
 	const sock = makeBusinessSocket(config)
 
-	const register = async(code: string) => {
-		if(!validRegistrationOptions(config.auth.creds.registration)) {
+	const register = async (code: string) => {
+		if (!validRegistrationOptions(config.auth.creds.registration)) {
 			throw new Error('please specify the registration options')
 		}
 
-		const result = await mobileRegister({ ...config.auth.creds, ...config.auth.creds.registration as RegistrationOptions, code })
+		const result = await mobileRegister({ ...sock.authState.creds, ...sock.authState.creds.registration as RegistrationOptions, code })
 
-		config.auth.creds.me = {
+		sock.authState.creds.me = {
 			id: jidEncode(result.login!, 's.whatsapp.net'),
 			name: '~'
-		}
-		config.auth.creds.registered = true
-		sock.ev.emit('creds.update', config.auth.creds)
+		};
 
-		if(sock.ws instanceof MobileSocket) {
+		sock.authState.creds.registered = true
+		sock.ev.emit('creds.update', sock.authState.creds)
+
+		if (sock.ws instanceof MobileSocket) {
 			sock.ws.connect()
 		}
 
 		return result
 	}
 
-	const requestRegistrationCode = async() => {
-		if(!validRegistrationOptions(config.auth.creds.registration)) {
-			throw new Error('please specify the registration options')
+	const requestRegistrationCode = async (registrationOptions: RegistrationOptions) => {
+		if (!validRegistrationOptions(registrationOptions)) {
+			throw new Error('Invalid registration options')
 		}
 
-		// const exists = await mobileRegisterExists({ ...config.auth.creds, ...config.registration })
-		// console.log('exists', exists)
+		sock.authState.creds.registration = {
+			phoneNumberCountryCode: registrationOptions.phoneNumberCountryCode,
+			phoneNumberMobileCountryCode: registrationOptions.phoneNumberMobileCountryCode,
+			phoneNumberNationalNumber: registrationOptions.phoneNumberNationalNumber,
+			phoneNumberMobileNetworkCode: registrationOptions.phoneNumberMobileNetworkCode
+		}
 
-		return mobileRegisterCode({ ...config.auth.creds, ...config.auth.creds.registration as RegistrationOptions })
-	}
+		sock.ev.emit('creds.update', sock.authState.creds);
 
-	if(config.mobile && !config.auth.creds.registered) {
-		import('readline').then(async(readline) => {
-			const question = (text: string) => new Promise<string>((resolve) => rl.question(text, resolve))
-
-			const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
-			const { registration } = config.auth.creds
-
-			if(!registration!.phoneNumber) {
-				registration!.phoneNumber = await question('Please enter your mobile phone number:\n')
-			} else {
-				console.log('Your mobile phone number is not registered.')
-			}
-
-			const phoneNumber = parsePhoneNumber(registration!.phoneNumber)
-			if(!phoneNumber || !phoneNumber.isValid()) {
-				throw new Error('Invalid phone number: ' + registration!.phoneNumber)
-			}
-
-			registration!.phoneNumber = phoneNumber.format('E.164')
-			registration!.phoneNumberCountryCode = phoneNumber.countryCallingCode
-			registration!.phoneNumberNationalNumber = phoneNumber.nationalNumber
-			const mcc = phoneNumberMCC[phoneNumber.countryCallingCode]
-			if(!mcc) {
-				throw new Error('Could not find MCC for phone number: ' + registration!.phoneNumber + '\nPlease specify the MCC manually.')
-			}
-
-			registration!.phoneNumberMobileCountryCode = mcc
-
-			async function enterCode() {
-				try {
-					const code = await question('Please enter the one time code:\n')
-					const response = await register(code.replace(/["']/g, '').trim().toLowerCase())
-					console.log('Successfully registered your phone number.')
-					console.log(response)
-					rl.close()
-				} catch(error) {
-					console.error('Failed to register your phone number. Please try again.\n', error)
-					await askForOTP()
-				}
-			}
-
-			async function askForOTP() {
-				let code = await question('How would you like to receive the one time code for registration? "sms" or "voice"\nIf you already have a one time registration code enter "code"\n')
-				code = code.replace(/["']/g, '').trim().toLowerCase()
-
-				if(code === 'code') {
-					await enterCode()
-				} else if(code === 'sms' || code === 'voice') {
-					registration!.method = code
-
-					try {
-						await requestRegistrationCode()
-						await enterCode()
-					} catch(error) {
-						console.error('Failed to request registration code. Please try again.\n', error)
-						await askForOTP()
-					}
-				} else {
-					await askForOTP()
-				}
-			}
-
-			await askForOTP()
-		}).catch(() => console.error('Not running in a node environment. Please install the readline module to use the automatic registration option.'))
+		return mobileRegisterCode({ ...config.auth.creds, ...registrationOptions })
 	}
 
 	return {
@@ -238,9 +176,7 @@ export function mobileRegisterExists(params: RegistrationParams) {
  * Registers the phone number on whatsapp with the received OTP code.
  */
 export async function mobileRegister(params: RegistrationParams & { code: string }) {
-	const result = await mobileRegisterFetch(`/reg_onboard_abprop?cc=${params.phoneNumberCountryCode}&in=${params.phoneNumberNationalNumber}&rc=0`)
-
-	console.log('reg_onboard_abprop', result)
+	//const result = await mobileRegisterFetch(`/reg_onboard_abprop?cc=${params.phoneNumberCountryCode}&in=${params.phoneNumberNationalNumber}&rc=0`)
 
 	return mobileRegisterFetch('/register', {
 		params: { ...registrationParams(params), code: params.code.replace('-', '') },
@@ -262,10 +198,10 @@ export function mobileRegisterEncrypt(data: string) {
 export async function mobileRegisterFetch(path: string, opts: { params?: Record<string, string>, headers?: Record<string, string> } = {}) {
 	let url = `${MOBILE_REGISTRATION_ENDPOINT}${path}`
 
-	if(opts.params) {
+	if (opts.params) {
 		const parameter = [] as string[]
 
-		for(const param in opts.params) {
+		for (const param in opts.params) {
 			parameter.push(param + '=' + urlencode(opts.params[param]))
 		}
 
@@ -275,7 +211,7 @@ export async function mobileRegisterFetch(path: string, opts: { params?: Record<
 		url += `?ENC=${params}`
 	}
 
-	if(!opts.headers) {
+	if (!opts.headers) {
 		opts.headers = {}
 	}
 
@@ -287,15 +223,15 @@ export async function mobileRegisterFetch(path: string, opts: { params?: Record<
 
 	try {
 		var json = JSON.parse(text)
-	} catch(error) {
+	} catch (error) {
 		throw text
 	}
 
-	if(!response.ok || json.reason) {
+	if (!response.ok || json.reason) {
 		throw json
 	}
 
-	if(json.status && !['ok', 'sent'].includes(json.status)) {
+	if (json.status && !['ok', 'sent'].includes(json.status)) {
 		throw json
 	}
 
@@ -313,7 +249,7 @@ export interface ExistsResponse {
 	login?: string
 	flash_type?: number
 	ab_hash?: string
-    ab_key?: string
-    exp_cfg?: string
+	ab_key?: string
+	exp_cfg?: string
 	lid?: string
 }
