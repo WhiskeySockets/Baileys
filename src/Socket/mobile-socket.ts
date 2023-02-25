@@ -41,7 +41,7 @@ export class MobileSocket extends Socket {
 		this.end()
 	}
 
-	send(data: any, cb?: ((err?: Error | undefined) => void) | undefined) {
+	send(data: unknown, cb?: ((err?: Error | undefined) => void) | undefined) {
 		return super.write(data as Uint8Array | string, cb as ((err?: Error | undefined) => void))
 	}
 }

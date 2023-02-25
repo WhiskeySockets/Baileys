@@ -19,8 +19,8 @@ const getUserAgent = (config: SocketConfig): proto.ClientPayload.IUserAgent => {
 		},
 		platform: proto.ClientPayload.UserAgent.Platform.IOS,
 		releaseChannel: proto.ClientPayload.UserAgent.ReleaseChannel.RELEASE,
-		mcc: config.registration?.phoneNumberMobileCountryCode || '000',
-		mnc: config.registration?.phoneNumberMobileNetworkCode || '000',
+		mcc: config.auth.creds.registration?.phoneNumberMobileCountryCode || '000',
+		mnc: config.auth.creds.registration?.phoneNumberMobileNetworkCode || '001',
 		osVersion: osVersion,
 		manufacturer: 'Apple',
 		device: 'iPhone_7',
@@ -60,7 +60,7 @@ const getClientPayload = (config: SocketConfig) => {
 }
 
 export const generateAuthenticationNode = (config: SocketConfig): proto.IClientPayload => {
-	if(!config.registration) {
+	if(!config.auth.creds) {
 		throw new Boom('No registration data found', { data: config })
 	}
 
@@ -76,7 +76,7 @@ export const generateAuthenticationNode = (config: SocketConfig): proto.IClientP
 		},
 		passive: false, // XMPP heartbeat setting (false: server actively pings) (true: client actively pings)
 		pushName: 'test',
-		username: Number(`${config.registration?.phoneNumberCountryCode}${config.registration?.phoneNumberNationalNumber}`),
+		username: Number(`${config.auth.creds.registration.phoneNumberCountryCode}${config.auth.creds.registration.phoneNumberNationalNumber}`),
 	}
 	return proto.ClientPayload.fromObject(payload)
 }

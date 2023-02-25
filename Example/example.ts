@@ -1,13 +1,18 @@
 import { Boom } from '@hapi/boom'
 import NodeCache from 'node-cache'
+import P from 'pino'
 import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, makeCacheableSignalKeyStore, makeInMemoryStore, useMultiFileAuthState } from '../src'
-import MAIN_LOGGER from '../src/Utils/logger'
 
-const logger = MAIN_LOGGER.child({ })
-logger.level = 'trace'
+const logger = P({
+	transport: {
+   		target: 'pino-pretty'
+	},
+	level: 'trace'
+})
 
 const useStore = !process.argv.includes('--no-store')
 const doReplies = !process.argv.includes('--no-reply')
+const useMobile = process.argv.includes('--mobile')
 
 // external map to store retry counts of messages when decryption/encryption fails
 // keep this out of the socket itself, so as to prevent a message decryption/encryption loop across socket restarts
@@ -33,6 +38,7 @@ const startSock = async() => {
 		version,
 		logger,
 		printQRInTerminal: true,
+		mobile: useMobile,
 		auth: {
 			creds: state.creds,
 			/** caching makes the store faster to send/recv messages */

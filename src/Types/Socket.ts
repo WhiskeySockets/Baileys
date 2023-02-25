@@ -4,7 +4,6 @@ import type { Agent } from 'https'
 import type { Logger } from 'pino'
 import type { URL } from 'url'
 import { proto } from '../../WAProto'
-import { RegistrationOptions } from '../Socket/registration'
 import { AuthenticationState, TransactionCapabilityOptions } from './Auth'
 import { MediaConnInfo } from './Message'
 
@@ -112,6 +111,4 @@ export type SocketConfig = {
      * implement this so that messages failed to send (solves the "this message can take a while" issue) can be retried
      * */
     getMessage: (key: proto.IMessageKey) => Promise<proto.IMessage | undefined>
-	/** mobile registration options */
-	registration?: RegistrationOptions
 }

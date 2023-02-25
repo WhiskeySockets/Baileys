@@ -1,4 +1,5 @@
 import type { proto } from '../../WAProto'
+import { RegistrationOptions } from '../Socket/registration'
 import type { Contact } from './Contact'
 import type { MinimalMessage } from './Message'
 
@@ -60,6 +61,7 @@ export type AuthenticationCreds = SignalCreds & {
 	identityId: Buffer
 	registered: boolean
 	backupToken: Buffer
+	registration: RegistrationOptions
 }
 
 export type SignalDataTypeMap = {

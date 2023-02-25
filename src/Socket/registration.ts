@@ -1,81 +1,121 @@
+/* eslint-disable camelcase */
+import parsePhoneNumber from 'libphonenumber-js'
 import { MOBILE_REGISTRATION_ENDPOINT, MOBILE_TOKEN, MOBILE_USERAGENT, REGISTRATION_PUBLIC_KEY } from '../Defaults'
+import phoneNumberMCC from '../Defaults/phonenumber-mcc.json'
 import { KeyPair, SignedKeyPair, SocketConfig } from '../Types'
 import { aesEncryptGCM, Curve, md5 } from '../Utils/crypto'
+import { jidEncode } from '../WABinary'
 import { makeBusinessSocket } from './business'
+import { MobileSocket } from './mobile-socket'
 
 function urlencode(str: string) {
 	return str.replace(/-/g, '%2d').replace(/_/g, '%5f').replace(/~/g, '%7e')
 }
 
+const validRegistrationOptions = (config: RegistrationOptions) => !config ||
+	!config.phoneNumberCountryCode ||
+	!config.phoneNumberNationalNumber ||
+	!config.phoneNumberMobileCountryCode ||
+	!config.phoneNumberMobileNetworkCode
+
 export const makeRegistrationSocket = (config: SocketConfig) => {
 	const sock = makeBusinessSocket(config)
 
 	const register = async(code: string) => {
-		if(!config.registration) {
+		if(!validRegistrationOptions(config.auth.creds.registration)) {
 			throw new Error('please specify the registration options')
 		}
 
-		const result = await mobileRegister({ ...config.auth.creds, ...config.registration, code })
+		const result = await mobileRegister({ ...config.auth.creds, ...config.auth.creds.registration as RegistrationOptions, code })
 
+		config.auth.creds.me = {
+			id: jidEncode(result.login!, 's.whatsapp.net'),
+		}
 		config.auth.creds.registered = true
 		sock.ev.emit('creds.update', config.auth.creds)
+
+		if(sock.ws instanceof MobileSocket) {
+			sock.ws.connect()
+		}
 
 		return result
 	}
 
 	const requestRegistrationCode = async() => {
-		if(!config.registration) {
+		if(!validRegistrationOptions(config.auth.creds.registration)) {
 			throw new Error('please specify the registration options')
 		}
 
 		// const exists = await mobileRegisterExists({ ...config.auth.creds, ...config.registration })
 		// console.log('exists', exists)
 
-		return mobileRegisterCode({ ...config.auth.creds, ...config.registration })
+		return mobileRegisterCode({ ...config.auth.creds, ...config.auth.creds.registration as RegistrationOptions })
 	}
 
-	if(config.registration && config.registration.automaticRegistration && !config.auth.creds.registered) {
+	if(config.mobile && !config.auth.creds.registered) {
 		import('readline').then(async(readline) => {
+			const question = (text: string) => new Promise<string>((resolve) => rl.question(text, resolve))
+
 			const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+			const { registration } = config.auth.creds
 
-			console.log('Your mobile phone number is not registered.')
-
-			function enterCode() {
-				rl.question('Please enter the one time code:\n', async(code: string) => {
-					register(code.replace(/["']/g, '').trim().toLowerCase()).then((x) => {
-						console.log('Successfully registered your phone number.')
-						console.log(x)
-						rl.close()
-					}).catch((e) => {
-						console.error('Failed to register your phone number. Please try again.\n', e)
-						askForOTP()
-					})
-				})
+			if(!registration!.phoneNumber) {
+				registration!.phoneNumber = await question('Please enter your mobile phone number:\n')
+			} else {
+				console.log('Your mobile phone number is not registered.')
 			}
 
-			function askForOTP() {
-				rl.question('How would you like to receive the one time code for registration? "sms" or "voice"\nIf you already have a one time registration code enter "code"\n', (code: string) => {
-					code = code.replace(/["']/g, '').trim().toLowerCase()
+			const phoneNumber = parsePhoneNumber(registration!.phoneNumber)
+			if(!phoneNumber || !phoneNumber.isValid()) {
+				throw new Error('Invalid phone number: ' + registration!.phoneNumber)
+			}
 
-					if(code === 'code') {
-						enterCode()
-					} else if(code === 'sms' || code === 'voice') {
-						config.registration!.method = code
+			registration!.phoneNumber = phoneNumber.format('E.164')
+			registration!.phoneNumberCountryCode = phoneNumber.countryCallingCode
+			registration!.phoneNumberNationalNumber = phoneNumber.nationalNumber
+			const mcc = phoneNumberMCC[phoneNumber.countryCallingCode]
+			if(!mcc) {
+				throw new Error('Could not find MCC for phone number: ' + registration!.phoneNumber + '\nPlease specify the MCC manually.')
+			}
 
-						requestRegistrationCode().then(() => {
-							enterCode()
-						}).catch((e) => {
-							console.error('Failed to request registration code. Please try again.\n', e)
-							askForOTP()
-						})
-					} else {
-						askForOTP()
+			registration!.phoneNumberMobileCountryCode = mcc
+
+			async function enterCode() {
+				try {
+					const code = await question('Please enter the one time code:\n')
+					const response = await register(code.replace(/["']/g, '').trim().toLowerCase())
+					console.log('Successfully registered your phone number.')
+					console.log(response)
+					rl.close()
+				} catch(error) {
+					console.error('Failed to register your phone number. Please try again.\n', error)
+					await askForOTP()
+				}
+			}
+
+			async function askForOTP() {
+				let code = await question('How would you like to receive the one time code for registration? "sms" or "voice"\nIf you already have a one time registration code enter "code"\n')
+				code = code.replace(/["']/g, '').trim().toLowerCase()
+
+				if(code === 'code') {
+					await enterCode()
+				} else if(code === 'sms' || code === 'voice') {
+					registration!.method = code
+
+					try {
+						await requestRegistrationCode()
+						await enterCode()
+					} catch(error) {
+						console.error('Failed to request registration code. Please try again.\n', error)
+						await askForOTP()
 					}
-				})
+				} else {
+					await askForOTP()
+				}
 			}
 
-			askForOTP()
-		}).catch(() => console.error('Not running in a node environment. Please install the readline module to use the askForOTP option.'))
+			await askForOTP()
+		}).catch(() => console.error('Not running in a node environment. Please install the readline module to use the automatic registration option.'))
 	}
 
 	return {
@@ -99,8 +139,8 @@ export interface RegistrationData {
 }
 
 export interface RegistrationOptions {
-	/** whether to automatically register the phone number when not logged in */
-	automaticRegistration?: boolean
+	/** your phone number */
+	phoneNumber?: string
 	/** the country code of your phone number */
 	phoneNumberCountryCode: string
 	/** your phone number without country code */
@@ -177,7 +217,7 @@ export function mobileRegisterCode(params: RegistrationParams) {
 		params: {
 			...registrationParams(params),
 			mcc: `${params.phoneNumberMobileCountryCode}`.padStart(3, '0'),
-			mnc: `${params.phoneNumberMobileNetworkCode}`.padStart(3, '0'),
+			mnc: `${params.phoneNumberMobileNetworkCode || '001'}`.padStart(3, '0'),
 			sim_mcc: '000',
 			sim_mnc: '000',
 			method: params?.method || 'sms',
@@ -271,7 +311,8 @@ export interface ExistsResponse {
 	reason?: 'incorrect' | 'missing_param'
 	login?: string
 	flash_type?: number
-	ab_hash?: string,
-    ab_key?: string,
-    exp_cfg?: string,
+	ab_hash?: string
+    ab_key?: string
+    exp_cfg?: string
+	lid?: string
 }

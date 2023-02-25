@@ -6,7 +6,7 @@ export class WebSocket extends WS {
 	constructor(public config: SocketConfig) {
 		super(config.waWebSocketUrl, undefined, {
 			origin: DEFAULT_ORIGIN,
-			headers: config.options.headers,
+			headers: config.options.headers as Record<string, string>,
 			handshakeTimeout: config.connectTimeoutMs,
 			timeout: config.connectTimeoutMs,
 			agent: config.agent,
