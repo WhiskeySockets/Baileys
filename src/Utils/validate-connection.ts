@@ -10,10 +10,11 @@ import { createSignalIdentity } from './signal'
 
 const getUserAgent = (config: SocketConfig): proto.ClientPayload.IUserAgent => {
 	const osVersion = config.mobile ? '15.3.1' : '0.1'
-	const version = config.mobile ? config.version : [2, 22, 24]
+	const version = config.mobile ? [2, 22, 24] : config.version
 	const device = config.mobile ? 'iPhone_7' : 'Desktop'
 	const manufacturer = config.mobile ? 'Apple' : ''
 	const platform = config.mobile ? proto.ClientPayload.UserAgent.Platform.IOS : proto.ClientPayload.UserAgent.Platform.WEB
+	const phoneId = config.mobile ? { phoneId: config.auth.creds.phoneId } : {}
 
 	return {
 		appVersion: {
@@ -24,14 +25,14 @@ const getUserAgent = (config: SocketConfig): proto.ClientPayload.IUserAgent => {
 		platform,
 		releaseChannel: proto.ClientPayload.UserAgent.ReleaseChannel.RELEASE,
 		mcc: config.auth.creds.registration?.phoneNumberMobileCountryCode || '000',
-		mnc: config.auth.creds.registration?.phoneNumberMobileNetworkCode || '001',
+		mnc: config.auth.creds.registration?.phoneNumberMobileNetworkCode || '000',
 		osVersion: osVersion,
 		manufacturer,
 		device,
 		osBuildNumber: osVersion,
 		localeLanguageIso6391: 'en',
 		localeCountryIso31661Alpha2: 'US',
-		phoneId: config.auth.creds.phoneId,
+		...phoneId
 	}
 }
 

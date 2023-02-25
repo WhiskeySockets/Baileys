@@ -77,10 +77,6 @@ const startSock = async() => {
 		await sock.sendMessage(jid, msg)
 	}
 
-	sock.ev.on('messages.upsert', ({ messages, type }) => {
-		console.log('messages.upsert', messages, type)
-	})
-
 	// the process function –lets you process all events that just occurred
 	// efficiently in a batch
 	sock.ev.process(
@@ -121,7 +117,7 @@ const startSock = async() => {
 			// received a new message
 			if(events['messages.upsert']) {
 				const upsert = events['messages.upsert']
-				logger.trace('recv messages ', JSON.stringify(upsert, undefined, 2))
+				console.log('recv messages ', JSON.stringify(upsert, undefined, 2))
 
 				if(upsert.type === 'notify') {
 					for(const msg of upsert.messages) {
