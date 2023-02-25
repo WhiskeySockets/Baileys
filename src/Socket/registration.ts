@@ -30,6 +30,7 @@ export const makeRegistrationSocket = (config: SocketConfig) => {
 
 		config.auth.creds.me = {
 			id: jidEncode(result.login!, 's.whatsapp.net'),
+			name: '~'
 		}
 		config.auth.creds.registered = true
 		sock.ev.emit('creds.update', config.auth.creds)
