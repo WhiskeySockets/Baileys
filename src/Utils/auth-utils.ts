@@ -20,6 +20,7 @@ export function makeCacheableSignalKeyStore(
 	const cache = _cache || new NodeCache({
 		stdTTL: DEFAULT_CACHE_TTLS.SIGNAL_STORE, // 5 minutes
 		useClones: false,
+		deleteOnExpire: true,
 	})
 
 	function getUniqueId(type: string, id: string) {
