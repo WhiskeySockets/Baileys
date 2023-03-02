@@ -19,15 +19,13 @@ import {
 	WAMediaUpload,
 	WAMessage,
 	WAMessageContent,
-	WAMessageKey,
 	WAMessageStatus,
 	WAProto,
 	WATextMessage,
 } from '../Types'
 import { isJidGroup, jidNormalizedUser } from '../WABinary'
-import { generateMessageID, unixTimestampSeconds } from './generics'
+import { generateMessageID, getKeyAuthor, unixTimestampSeconds } from './generics'
 import { downloadContentFromMessage, encryptedStream, generateThumbnail, getAudioDuration, MediaDownloadOptions } from './messages-media'
-import { comparePollMessage, decryptPollMessageRaw } from './messages-poll'
 
 type MediaUploadData = {
 	media: WAMediaUpload
@@ -174,7 +172,7 @@ export const prepareWAMessageMedia = async(
 					const {
 						thumbnail,
 						originalImageDimensions
-					} = await generateThumbnail(bodyPath!, mediaType as any, options)
+					} = await generateThumbnail(bodyPath!, mediaType as 'image' | 'video', options)
 					uploadData.jpegThumbnail = thumbnail
 					if(!uploadData.width && originalImageDimensions) {
 						uploadData.width = originalImageDimensions.width
@@ -382,36 +380,32 @@ export const generateWAMessageContent = async(
 	} else if('listReply' in message) {
 		m.listResponseMessage = { ...message.listReply }
 	} else if('poll' in message) {
-		if(typeof message.poll.selectableCount !== 'number') {
-			message.poll.selectableCount = 0
-		}
+		message.poll.selectableCount ||= 0
 
 		if(!Array.isArray(message.poll.values)) {
 			throw new Boom('Invalid poll values', { statusCode: 400 })
 		}
 
-		if(message.poll.selectableCount < 0 || message.poll.selectableCount > message.poll.values.length) {
+		if(
+			message.poll.selectableCount < 0
+			|| message.poll.selectableCount > message.poll.values.length
+		) {
 			throw new Boom(
-				`poll.selectableCount in poll should be between 0 and ${
-					message.poll.values.length
-				} or equal to the items length`, { statusCode: 400 }
+				`poll.selectableCount in poll should be >= 0 and <= ${message.poll.values.length}`,
+				{ statusCode: 400 }
 			)
 		}
 
-		// link: https://github.com/adiwajshing/Baileys/pull/2290#issuecomment-1304413425
 		m.messageContextInfo = {
-			messageSecret: randomBytes(32), // encKey
+			// encKey
+			messageSecret: message.poll.messageSecret || randomBytes(32),
 		}
 
-		m.pollCreationMessage = WAProto.Message.PollCreationMessage.fromObject({
+		m.pollCreationMessage = {
 			name: message.poll.name,
 			selectableOptionsCount: message.poll.selectableCount,
-			options: message.poll.values.map(
-				value => WAProto.Message.PollCreationMessage.Option.fromObject({
-					optionName: value,
-				}),
-			),
-		})
+			options: message.poll.values.map(optionName => ({ optionName })),
+		}
 	} else {
 		m = await prepareWAMessageMedia(
 			message,
@@ -501,9 +495,11 @@ export const generateWAMessageFromContent = (
 	message: WAMessageContent,
 	options: MessageGenerationOptionsFromContent
 ) => {
+	// set timestamp to now
+	// if not specified
 	if(!options.timestamp) {
 		options.timestamp = new Date()
-	} // set timestamp to now
+	}
 
 	const key = Object.keys(message)[0]
 	const timestamp = unixTimestampSeconds(options.timestamp)
@@ -697,10 +693,6 @@ export const updateMessageWithReceipt = (msg: Pick<WAMessage, 'userReceipt'>, re
 	}
 }
 
-const getKeyAuthor = (key: WAMessageKey | undefined | null) => (
-	(key?.fromMe ? 'me' : key?.participant || key?.remoteJid) || ''
-)
-
 /** Update the message with a new reaction */
 export const updateMessageWithReaction = (msg: Pick<WAMessage, 'reactions'>, reaction: proto.IReaction) => {
 	const authorID = getKeyAuthor(reaction.key)
@@ -826,50 +818,4 @@ export const assertMediaContent = (content: proto.IMessage | null | undefined) =
 	}
 
 	return mediaContent
-}
-
-/**
- * Decrypt/Get Poll Update Message Values
- * @param msg Full message info contains PollUpdateMessage, you can use `msg`
- * @param pollCreationData An object contains `encKey` (used to decrypt the poll message), `sender` (used to create decryption key), and `options` (you should fill it with poll options, e.g. Apple, Orange, etc...)
- * @param withSelectedOptions Get user's selected options condition, set it to true if you want get the results.
- * @return {Promise<{ hash: string[] } | { hash: string[], selectedOptions: string[] }>} Property `hash` is an array which contains selected options hash, you can use `comparePollMessage` to compare it with original values. Property `selectedOptions` is an array, and the results is from `comparePollMessage` function.
- */
-export const getPollUpdateMessage = async(
-	msg: WAProto.IWebMessageInfo,
-	pollCreationData: { encKey: Uint8Array, sender: string, options: string[] },
-	withSelectedOptions: boolean = false,
-): Promise<{ hash: string[] } | { hash: string[], selectedOptions: string[] }> => {
-	if(!msg.message?.pollUpdateMessage || !pollCreationData?.encKey) {
-		throw new Boom('Missing pollUpdateMessage, or encKey', { statusCode: 400 })
-	}
-
-	pollCreationData.sender = msg.message?.pollUpdateMessage?.pollCreationMessageKey?.participant || pollCreationData.sender
-	if(!pollCreationData.sender?.length) {
-		throw new Boom('Missing sender', { statusCode: 400 })
-	}
-
-	let hash = await decryptPollMessageRaw(
-		pollCreationData.encKey, // encKey
-		msg.message?.pollUpdateMessage?.vote?.encPayload!, // enc payload
-		msg.message?.pollUpdateMessage?.vote?.encIv!, // enc iv
-		jidNormalizedUser(pollCreationData.sender), // sender
-		msg.message?.pollUpdateMessage?.pollCreationMessageKey?.id!, // poll id
-		jidNormalizedUser(
-			msg.key.remoteJid?.endsWith('@g.us') ?
-				(msg.key.participant || msg.participant)! : msg.key.remoteJid!
-		), // voter
-	)
-
-	if(hash.length === 1 && !hash[0].length) {
-		hash = []
-	}
-
-	return withSelectedOptions ? {
-		hash,
-		selectedOptions: await comparePollMessage(
-			pollCreationData.options || [],
-			hash,
-		)
-	} : { hash }
 }

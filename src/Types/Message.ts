@@ -84,7 +84,9 @@ type WithDimensions = {
 export type PollMessageOptions = {
     name: string
     selectableCount?: number
-    values: Array<string>
+    values: string[]
+    /** 32 byte message secret to encrypt poll selections */
+    messageSecret?: Uint8Array
 }
 
 export type MediaType = keyof typeof MEDIA_HKDF_KEY_MAPPING

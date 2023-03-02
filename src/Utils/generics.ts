@@ -41,6 +41,10 @@ export const BufferJSON = {
 	}
 }
 
+export const getKeyAuthor = (key: proto.IMessageKey | undefined | null) => (
+	(key?.fromMe ? 'me' : key?.participant || key?.remoteJid) || ''
+)
+
 export const writeRandomPadMax16 = (msg: Uint8Array) => {
 	const pad = randomBytes(1)
 	pad[0] &= 0xf
