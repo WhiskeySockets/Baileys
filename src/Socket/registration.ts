@@ -207,8 +207,9 @@ export async function mobileRegisterFetch(path: string, opts: { params?: Record<
 
 		console.log('parameter', opts.params, parameter)
 
-		const params = urlencode(mobileRegisterEncrypt(parameter.join('&')))
-		url += `?ENC=${params}`
+		// const params = urlencode(mobileRegisterEncrypt(parameter.join('&')))
+		// url += `?ENC=${params}`
+		url += `?${parameter.join('&')}`
 	}
 
 	if(!opts.headers) {
