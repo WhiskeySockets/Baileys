@@ -2,8 +2,11 @@ import { AxiosRequestConfig } from 'axios'
 import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { AuthenticationCreds, BaileysEventEmitter, Chat, GroupMetadata, ParticipantAction, SignalKeyStoreWithTransaction, WAMessageStubType } from '../Types'
-import { downloadAndProcessHistorySyncNotification, getContentType, normalizeMessageContent, toNumber } from '../Utils'
+import { getContentType, normalizeMessageContent } from '../Utils/messages'
 import { areJidsSameUser, isJidBroadcast, isJidStatusBroadcast, jidNormalizedUser } from '../WABinary'
+import { aesDecryptGCM, hmacSign } from './crypto'
+import { getKeyAuthor, toNumber } from './generics'
+import { downloadAndProcessHistorySyncNotification } from './history'
 
 type ProcessMessageContext = {
 	shouldProcessHistoryMsg: boolean
@@ -88,6 +91,51 @@ export const getChatId = ({ remoteJid, participant, fromMe }: proto.IMessageKey)
 	return remoteJid!
 }
 
+type PollContext = {
+	/** normalised jid of the person that created the poll */
+	pollCreatorJid: string
+	/** ID of the poll creation message */
+	pollMsgId: string
+	/** poll creation message enc key */
+	pollEncKey: Uint8Array
+	/** jid of the person that voted */
+	voterJid: string
+}
+
+/**
+ * Decrypt a poll vote
+ * @param vote encrypted vote
+ * @param ctx additional info about the poll required for decryption
+ * @returns list of SHA256 options
+ */
+export function decryptPollVote(
+	{ encPayload, encIv }: proto.Message.IPollEncValue,
+	{
+		pollCreatorJid,
+		pollMsgId,
+		pollEncKey,
+		voterJid,
+	}: PollContext
+) {
+	const sign = Buffer.concat(
+		[
+			toBinary(pollMsgId),
+			toBinary(pollCreatorJid),
+			toBinary(voterJid),
+			toBinary('Poll Vote'),
+			new Uint8Array([1])
+		]
+	)
+
+	const key0 = hmacSign(pollEncKey, new Uint8Array(32), 'sha256')
+	const decKey = hmacSign(sign, key0, 'sha256')
+	const aad = toBinary(`${pollMsgId}\u0000${voterJid}`)
+
+	const decrypted = aesDecryptGCM(encPayload!, decKey, encIv!, aad)
+	return proto.Message.PollVoteMessage.decode(decrypted)
+
+	function toBinary(txt: string) {
+		return Buffer.from(txt)
 const processMessage = async(
 	message: proto.IWebMessageInfo,
 	{
