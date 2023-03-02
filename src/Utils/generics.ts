@@ -136,7 +136,7 @@ export const delayCancellable = (ms: number) => {
 	return { delay, cancel }
 }
 
-export async function promiseTimeout<T>(ms: number | undefined, promise: (resolve: (v?: T)=>void, reject: (error) => void) => void) {
+export async function promiseTimeout<T>(ms: number | undefined, promise: (resolve: (v?: T) => void, reject: (error) => void) => void) {
 	if(!ms) {
 		return new Promise (promise)
 	}

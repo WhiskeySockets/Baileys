@@ -627,7 +627,7 @@ export const normalizeMessageContent = (content: WAMessageContent | null | undef
 			 || message?.editedMessage
 		 )
 	 }
- }
+}
 
 /**
  * Extract the true message content from a message
@@ -833,9 +833,9 @@ export const assertMediaContent = (content: proto.IMessage | null | undefined) =
  */
 export const getPollUpdateMessage = async(
 	msg: WAProto.IWebMessageInfo,
-	pollCreationData: { encKey: Uint8Array; sender: string; options: string[]; },
+	pollCreationData: { encKey: Uint8Array, sender: string, options: string[] },
 	withSelectedOptions: boolean = false,
-): Promise<{ hash: string[] } | { hash: string[]; selectedOptions: string[] }> => {
+): Promise<{ hash: string[] } | { hash: string[], selectedOptions: string[] }> => {
 	if(!msg.message?.pollUpdateMessage || !pollCreationData?.encKey) {
 		throw new Boom('Missing pollUpdateMessage, or encKey', { statusCode: 400 })
 	}

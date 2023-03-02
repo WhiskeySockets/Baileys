@@ -43,7 +43,7 @@ export type SocketConfig = {
     /** time to wait between sending new retry requests */
     retryRequestDelayMs: number
     /** time to wait for the generation of the next QR in ms */
-    qrTimeout?: number;
+    qrTimeout?: number
     /** provide an auth state object to maintain the auth state */
     auth: AuthenticationState
     /** manage history processing with this control; by default will sync up everything */

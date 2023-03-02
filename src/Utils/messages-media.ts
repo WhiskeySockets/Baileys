@@ -78,7 +78,7 @@ const extractVideoThumb = async(
 	path: string,
 	destPath: string,
 	time: string,
-	size: { width: number; height: number },
+	size: { width: number, height: number },
 ) => new Promise((resolve, reject) => {
     	const cmd = `ffmpeg -ss ${time} -i ${path} -y -vf scale=${size.width}:-1 -vframes 1 -f image2 ${destPath}`
     	exec(cmd, (err) => {
@@ -243,7 +243,7 @@ export async function generateThumbnail(
     }
 ) {
 	let thumbnail: string | undefined
-	let originalImageDimensions: { width: number; height: number } | undefined
+	let originalImageDimensions: { width: number, height: number } | undefined
 	if(mediaType === 'image') {
 		const { buffer, original } = await extractImageThumb(file)
 		thumbnail = buffer.toString('base64')

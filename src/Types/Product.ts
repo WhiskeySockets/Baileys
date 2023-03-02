@@ -2,7 +2,7 @@ import { WAMediaUpload } from './Message'
 
 export type CatalogResult = {
 	data: {
-		paging: { cursors: { before: string, after: string } },
+		paging: { cursors: { before: string, after: string } }
 		data: any[]
 	}
 }
