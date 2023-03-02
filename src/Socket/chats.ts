@@ -245,8 +245,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			const website = getBinaryNodeChild(profiles, 'website')
 			const email = getBinaryNodeChild(profiles, 'email')
 			const category = getBinaryNodeChild(getBinaryNodeChild(profiles, 'categories'), 'category')
-			const business_hours = getBinaryNodeChild(profiles, 'business_hours')
-			const business_hours_config = business_hours && getBinaryNodeChildren(business_hours, 'business_hours_config')
+			const businessHours = getBinaryNodeChild(profiles, 'business_hours')
+			const businessHoursConfig = businessHours
+				? getBinaryNodeChildren(businessHours, 'business_hours_config')
+				: undefined
 			const websiteStr = website?.content?.toString()
 			return {
 				wid: profiles.attrs?.jid,
@@ -255,9 +257,9 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				website: websiteStr ? [websiteStr] : [],
 				email: email?.content?.toString(),
 				category: category?.content?.toString(),
-				business_hours: {
-					timezone: business_hours?.attrs?.timezone,
-					business_config: business_hours_config?.map(({ attrs }) => attrs as unknown as WABusinessHoursConfig)
+				'business_hours': {
+					timezone: businessHours?.attrs?.timezone,
+					'business_config': businessHoursConfig?.map(({ attrs }) => attrs as unknown as WABusinessHoursConfig)
 				}
 			}
 		}
@@ -599,7 +601,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 											attrs: {
 												name,
 												version: (state.version - 1).toString(),
-												return_snapshot: 'false'
+												'return_snapshot': 'false'
 											},
 											content: [
 												{
@@ -762,6 +764,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					keyStore: authState.keys,
 					logger,
 					options: config.options,
+					getMessage: config.getMessage,
 				}
 			)
 		])

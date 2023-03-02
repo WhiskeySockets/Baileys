@@ -1,17 +1,21 @@
 import { AxiosRequestConfig } from 'axios'
 import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
-import { AuthenticationCreds, BaileysEventEmitter, Chat, GroupMetadata, ParticipantAction, SignalKeyStoreWithTransaction, WAMessageStubType } from '../Types'
-import { downloadAndProcessHistorySyncNotification, getContentType, normalizeMessageContent, toNumber } from '../Utils'
+import { AuthenticationCreds, BaileysEventEmitter, Chat, GroupMetadata, ParticipantAction, SignalKeyStoreWithTransaction, SocketConfig, WAMessageStubType } from '../Types'
+import { getContentType, normalizeMessageContent } from '../Utils/messages'
 import { areJidsSameUser, isJidBroadcast, isJidStatusBroadcast, jidNormalizedUser } from '../WABinary'
+import { aesDecryptGCM, hmacSign } from './crypto'
+import { getKeyAuthor, toNumber } from './generics'
+import { downloadAndProcessHistorySyncNotification } from './history'
 
 type ProcessMessageContext = {
 	shouldProcessHistoryMsg: boolean
 	creds: AuthenticationCreds
 	keyStore: SignalKeyStoreWithTransaction
 	ev: BaileysEventEmitter
+	getMessage: SocketConfig['getMessage']
 	logger?: Logger
-	options: AxiosRequestConfig<any>
+	options: AxiosRequestConfig<{}>
 }
 
 const REAL_MSG_STUB_TYPES = new Set([
@@ -33,7 +37,14 @@ export const cleanMessage = (message: proto.IWebMessageInfo, meId: string) => {
 	const content = normalizeMessageContent(message.message)
 	// if the message has a reaction, ensure fromMe & remoteJid are from our perspective
 	if(content?.reactionMessage) {
-		const msgKey = content.reactionMessage.key!
+		normaliseKey(content.reactionMessage.key!)
+	}
+
+	if(content?.pollUpdateMessage) {
+		normaliseKey(content.pollUpdateMessage.pollCreationMessageKey!)
+	}
+
+	function normaliseKey(msgKey: proto.IMessageKey) {
 		// if the reaction is from another user
 		// we've to correctly map the key to this user's perspective
 		if(!message.key.fromMe) {
@@ -66,6 +77,7 @@ export const isRealMessage = (message: proto.IWebMessageInfo, meId: string) => {
 	&& hasSomeContent
 	&& !normalizedContent?.protocolMessage
 	&& !normalizedContent?.reactionMessage
+	&& !normalizedContent?.pollUpdateMessage
 }
 
 export const shouldIncrementChatUnread = (message: proto.IWebMessageInfo) => (
@@ -88,6 +100,54 @@ export const getChatId = ({ remoteJid, participant, fromMe }: proto.IMessageKey)
 	return remoteJid!
 }
 
+type PollContext = {
+	/** normalised jid of the person that created the poll */
+	pollCreatorJid: string
+	/** ID of the poll creation message */
+	pollMsgId: string
+	/** poll creation message enc key */
+	pollEncKey: Uint8Array
+	/** jid of the person that voted */
+	voterJid: string
+}
+
+/**
+ * Decrypt a poll vote
+ * @param vote encrypted vote
+ * @param ctx additional info about the poll required for decryption
+ * @returns list of SHA256 options
+ */
+export function decryptPollVote(
+	{ encPayload, encIv }: proto.Message.IPollEncValue,
+	{
+		pollCreatorJid,
+		pollMsgId,
+		pollEncKey,
+		voterJid,
+	}: PollContext
+) {
+	const sign = Buffer.concat(
+		[
+			toBinary(pollMsgId),
+			toBinary(pollCreatorJid),
+			toBinary(voterJid),
+			toBinary('Poll Vote'),
+			new Uint8Array([1])
+		]
+	)
+
+	const key0 = hmacSign(pollEncKey, new Uint8Array(32), 'sha256')
+	const decKey = hmacSign(sign, key0, 'sha256')
+	const aad = toBinary(`${pollMsgId}\u0000${voterJid}`)
+
+	const decrypted = aesDecryptGCM(encPayload!, decKey, encIv!, aad)
+	return proto.Message.PollVoteMessage.decode(decrypted)
+
+	function toBinary(txt: string) {
+		return Buffer.from(txt)
+	}
+}
+
 const processMessage = async(
 	message: proto.IWebMessageInfo,
 	{
@@ -96,7 +156,8 @@ const processMessage = async(
 		creds,
 		keyStore,
 		logger,
-		options
+		options,
+		getMessage
 	}: ProcessMessageContext
 ) => {
 	const meId = creds.me!.id
@@ -272,6 +333,52 @@ const processMessage = async(
 			const code = message.messageStubParameters?.[0]
 			emitGroupUpdate({ inviteCode: code })
 			break
+		}
+	} else if(content?.pollUpdateMessage) {
+		const creationMsgKey = content.pollUpdateMessage.pollCreationMessageKey!
+		// we need to fetch the poll creation message to get the poll enc key
+		const pollMsg = await getMessage(creationMsgKey)
+		if(pollMsg) {
+			const meIdNormalised = jidNormalizedUser(meId)
+			const pollCreatorJid = getKeyAuthor(creationMsgKey, meIdNormalised)
+			const voterJid = getKeyAuthor(message.key!, meIdNormalised)
+			const pollEncKey = pollMsg.messageContextInfo?.messageSecret!
+
+			try {
+				const voteMsg = decryptPollVote(
+					content.pollUpdateMessage.vote!,
+					{
+						pollEncKey,
+						pollCreatorJid,
+						pollMsgId: creationMsgKey.id!,
+						voterJid,
+					}
+				)
+				ev.emit('messages.update', [
+					{
+						key: creationMsgKey,
+						update: {
+							pollUpdates: [
+								{
+									pollUpdateMessageKey: message.key,
+									vote: voteMsg,
+									senderTimestampMs: message.messageTimestamp,
+								}
+							]
+						}
+					}
+				])
+			} catch(err) {
+				logger?.warn(
+					{ err, creationMsgKey },
+					'failed to decrypt poll vote'
+				)
+			}
+		} else {
+			logger?.warn(
+				{ creationMsgKey },
+				'poll creation message not found, cannot decrypt update'
+			)
 		}
 	}
 
