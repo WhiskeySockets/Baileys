@@ -1,8 +1,9 @@
 
+import NodeCache from 'node-cache'
 import { proto } from '../../WAProto'
-import { KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
+import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import { MessageReceiptType, MessageRelayOptions, MessageUserReceipt, SocketConfig, WACallEvent, WAMessageKey, WAMessageStubType, WAPatchName } from '../Types'
-import { decodeMediaRetryNode, decodeMessageStanza, delay, encodeBigEndian, encodeSignedDeviceIdentity, getCallStatusFromNode, getHistoryMsg, getNextPreKeys, getStatusFromReceiptType, unixTimestampSeconds, xmppPreKey, xmppSignedPreKey } from '../Utils'
+import { decodeMediaRetryNode, decryptMessageNode, delay, encodeBigEndian, encodeSignedDeviceIdentity, getCallStatusFromNode, getHistoryMsg, getNextPreKeys, getStatusFromReceiptType, unixTimestampSeconds, xmppPreKey, xmppSignedPreKey } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
 import { cleanMessage } from '../Utils/process-message'
 import { areJidsSameUser, BinaryNode, getAllBinaryNodeChildren, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, isJidUser, jidDecode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
@@ -36,8 +37,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	/** this mutex ensures that each retryRequest will wait for the previous one to finish */
 	const retryMutex = makeMutex()
 
-	const msgRetryMap = config.msgRetryCounterMap || { }
-	const callOfferData: { [id: string]: WACallEvent } = { }
+	const msgRetryCache = config.msgRetryCounterCache || new NodeCache({
+		stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
+		useClones: false
+	})
+	const callOfferCache = config.callOfferCache || new NodeCache({
+		stdTTL: DEFAULT_CACHE_TTLS.CALL_OFFER, // 5 mins
+		useClones: false
+	})
 
 	let sendActiveReceipts = false
 
@@ -90,15 +97,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const sendRetryRequest = async(node: BinaryNode, forceIncludeKeys = false) => {
 		const msgId = node.attrs.id
 
-		let retryCount = msgRetryMap[msgId] || 0
+		let retryCount = msgRetryCache.get<number>(msgId) || 0
 		if(retryCount >= 5) {
 			logger.debug({ retryCount, msgId }, 'reached retry limit, clearing')
-			delete msgRetryMap[msgId]
+			msgRetryCache.del(msgId)
 			return
 		}
 
 		retryCount += 1
-		msgRetryMap[msgId] = retryCount
+		msgRetryCache.set(msgId, retryCount)
 
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
 
@@ -362,13 +369,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const willSendMessageAgain = (id: string, participant: string) => {
 		const key = `${id}:${participant}`
-		const retryCount = msgRetryMap[key] || 0
+		const retryCount = msgRetryCache.get<number>(key) || 0
 		return retryCount < 5
 	}
 
 	const updateSendMessageAgainCount = (id: string, participant: string) => {
 		const key = `${id}:${participant}`
-		msgRetryMap[key] = (msgRetryMap[key] || 0) + 1
+		const newValue = (msgRetryCache.get<number>(key) || 0) + 1
+		msgRetryCache.set(key, newValue)
 	}
 
 	const sendMessagesAgain = async(
@@ -535,7 +543,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleMessage = async(node: BinaryNode) => {
-		const { fullMessage: msg, category, author, decrypt } = decodeMessageStanza(node, authState)
+		const { fullMessage: msg, category, author, decrypt } = decryptMessageNode(node, authState)
 		if(shouldIgnoreJid(msg.key.remoteJid!)) {
 			logger.debug({ key: msg.key }, 'ignored message')
 			await sendMessageAck(node)
@@ -618,18 +626,20 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		if(status === 'offer') {
 			call.isVideo = !!getBinaryNodeChild(infoChild, 'video')
 			call.isGroup = infoChild.attrs.type === 'group'
-			callOfferData[call.id] = call
+			callOfferCache.set(call.id, call)
 		}
 
+		const existingCall = callOfferCache.get<WACallEvent>(call.id)
+
 		// use existing call info to populate this event
-		if(callOfferData[call.id]) {
-			call.isVideo = callOfferData[call.id].isVideo
-			call.isGroup = callOfferData[call.id].isGroup
+		if(existingCall) {
+			call.isVideo = existingCall.isVideo
+			call.isGroup = existingCall.isGroup
 		}
 
 		// delete data once call has ended
 		if(status === 'reject' || status === 'accept' || status === 'timeout') {
-			delete callOfferData[call.id]
+			callOfferCache.del(call.id)
 		}
 
 		ev.emit('call', [call])

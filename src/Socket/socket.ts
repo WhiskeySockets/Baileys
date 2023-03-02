@@ -32,12 +32,13 @@ export const makeSocket = ({
 }: SocketConfig) => {
 	const ws = new WebSocket(waWebSocketUrl, undefined, {
 		origin: DEFAULT_ORIGIN,
-		headers: options.headers,
+		headers: options.headers as {},
 		handshakeTimeout: connectTimeoutMs,
 		timeout: connectTimeoutMs,
 		agent
 	})
 	ws.setMaxListeners(0)
+
 	const ev = makeEventBuffer(logger)
 	/** ephemeral key pair used to encrypt/decrypt communication. Unique for each connection */
 	const ephemeralKeyPair = Curve.generateKeyPair()
@@ -65,7 +66,17 @@ export const makeSocket = ({
 		}
 
 		const bytes = noise.encodeFrame(data)
-        await sendPromise.call(ws, bytes) as Promise<void>
+		await promiseTimeout<void>(
+			connectTimeoutMs,
+			async(resolve, reject) => {
+				try {
+					await sendPromise.call(ws, bytes)
+					resolve()
+				} catch(error) {
+					reject(error)
+				}
+			}
+		)
 	}
 
 	/** send a binary node */
@@ -97,7 +108,7 @@ export const makeSocket = ({
 
 		const result = promiseTimeout<any>(connectTimeoutMs, (resolve, reject) => {
 			onOpen = (data: any) => resolve(data)
-			onClose = reject
+			onClose = mapWebSocketError(reject)
 			ws.on('frame', onOpen)
 			ws.on('close', onClose)
 			ws.on('error', onClose)
@@ -335,7 +346,7 @@ export const makeSocket = ({
 		let onClose: (err: Error) => void
 		await new Promise((resolve, reject) => {
 			onOpen = () => resolve(undefined)
-			onClose = reject
+			onClose = mapWebSocketError(reject)
 			ws.on('open', onOpen)
 			ws.on('close', onClose)
 			ws.on('error', onClose)
@@ -433,12 +444,7 @@ export const makeSocket = ({
 			end(err)
 		}
 	})
-	ws.on('error', error => end(
-		new Boom(
-			`WebSocket Error (${error.message})`,
-			{ statusCode: getCodeFromWSError(error), data: error }
-		)
-	))
+	ws.on('error', mapWebSocketError(end))
 	ws.on('close', () => end(new Boom('Connection Terminated', { statusCode: DisconnectReason.connectionClosed })))
 	// the server terminated the connection
 	ws.on('CB:xmlstreamend', () => end(new Boom('Connection Terminated by Server', { statusCode: DisconnectReason.connectionClosed })))
@@ -601,6 +607,21 @@ export const makeSocket = ({
 		uploadPreKeysToServerIfRequired,
 		/** Waits for the connection to WA to reach a state */
 		waitForConnectionUpdate: bindWaitForConnectionUpdate(ev),
+	}
+}
+
+/**
+ * map the websocket error to the right type
+ * so it can be retried by the caller
+ * */
+function mapWebSocketError(handler: (err: Error) => void) {
+	return (error: Error) => {
+		handler(
+			new Boom(
+				`WebSocket Error (${error.message})`,
+				{ statusCode: getCodeFromWSError(error), data: error }
+			)
+		)
 	}
 }
 

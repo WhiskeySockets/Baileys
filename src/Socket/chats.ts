@@ -339,7 +339,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 								name,
 								version: state.version.toString(),
 								// return snapshot if being synced from scratch
-								return_snapshot: (!state.version).toString()
+								'return_snapshot': (!state.version).toString()
 							}
 						})
 					}

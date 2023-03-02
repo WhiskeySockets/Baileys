@@ -3,7 +3,7 @@ import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { AuthenticationCreds, BaileysEventEmitter, Chat, GroupMetadata, ParticipantAction, SignalKeyStoreWithTransaction, WAMessageStubType } from '../Types'
 import { downloadAndProcessHistorySyncNotification, getContentType, normalizeMessageContent, toNumber } from '../Utils'
-import { areJidsSameUser, jidNormalizedUser } from '../WABinary'
+import { areJidsSameUser, isJidBroadcast, isJidStatusBroadcast, jidNormalizedUser } from '../WABinary'
 
 type ProcessMessageContext = {
 	shouldProcessHistoryMsg: boolean
@@ -72,6 +72,22 @@ export const shouldIncrementChatUnread = (message: proto.IWebMessageInfo) => (
 	!message.key.fromMe && !message.messageStubType
 )
 
+/**
+ * Get the ID of the chat from the given key.
+ * Typically -- that'll be the remoteJid, but for broadcasts, it'll be the participant
+ */
+export const getChatId = ({ remoteJid, participant, fromMe }: proto.IMessageKey) => {
+	if(
+		isJidBroadcast(remoteJid!)
+		&& !isJidStatusBroadcast(remoteJid!)
+		&& !fromMe
+	) {
+		return participant!
+	}
+
+	return remoteJid!
+}
+
 const processMessage = async(
 	message: proto.IWebMessageInfo,
 	{
@@ -86,7 +102,7 @@ const processMessage = async(
 	const meId = creds.me!.id
 	const { accountSettings } = creds
 
-	const chat: Partial<Chat> = { id: jidNormalizedUser(message.key.remoteJid!) }
+	const chat: Partial<Chat> = { id: jidNormalizedUser(getChatId(message.key)) }
 	const isRealMsg = isRealMessage(message, meId)
 
 	if(isRealMsg) {

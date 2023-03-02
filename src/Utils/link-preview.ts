@@ -1,3 +1,4 @@
+import { AxiosRequestConfig } from 'axios'
 import { Logger } from 'pino'
 import { WAMediaUploadFunction, WAUrlInfo } from '../Types'
 import { prepareWAMessageMedia } from './messages'
@@ -21,7 +22,7 @@ export type URLGenerationOptions = {
 		/** Timeout in ms */
 		timeout: number
 		proxyUrl?: string
-		headers?: { [key: string]: string }
+		headers?: AxiosRequestConfig<{}>['headers']
 	}
 	uploadImage?: WAMediaUploadFunction
 	logger?: Logger
@@ -47,7 +48,10 @@ export const getUrlInfo = async(
 			previewLink = 'https://' + previewLink
 		}
 
-		const info = await getLinkPreview(previewLink, opts.fetchOpts)
+		const info = await getLinkPreview(previewLink, {
+			...opts.fetchOpts,
+			headers: opts.fetchOpts as {}
+		})
 		if(info && 'title' in info && info.title) {
 			const [image] = info.images
 
@@ -62,7 +66,11 @@ export const getUrlInfo = async(
 			if(opts.uploadImage) {
 				const { imageMessage } = await prepareWAMessageMedia(
 					{ image: { url: image } },
-					{ upload: opts.uploadImage, mediaTypeOverride: 'thumbnail-link' }
+					{
+						upload: opts.uploadImage,
+						mediaTypeOverride: 'thumbnail-link',
+						options: opts.fetchOpts
+					}
 				)
 				urlInfo.jpegThumbnail = imageMessage?.jpegThumbnail
 					? Buffer.from(imageMessage.jpegThumbnail)
