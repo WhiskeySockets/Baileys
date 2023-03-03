@@ -371,18 +371,14 @@ export const encryptedStream = async(
 			didSaveToTmpPath
 		}
 	} catch(error) {
-		try {
-			// destroy all streams with error
-			encWriteStream.destroy(error)
-			writeStream?.destroy(error)
-			aes.destroy(error)
-			hmac.destroy(error)
-			sha256Plain.destroy(error)
-			sha256Enc.destroy(error)
-			stream.destroy(error)
-		} catch{
-			// swallow error
-		}
+		// destroy all streams with error
+		encWriteStream.destroy()
+		writeStream?.destroy()
+		aes.destroy()
+		hmac.destroy()
+		sha256Plain.destroy()
+		sha256Enc.destroy()
+		stream.destroy()
 
 		if(didSaveToTmpPath) {
 			try {
