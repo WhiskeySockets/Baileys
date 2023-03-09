@@ -110,18 +110,6 @@ message CertChain {
     
 }
 
-message Chain {
-    optional bytes senderRatchetKey = 1;
-    optional bytes senderRatchetKeyPrivate = 2;
-    optional ChainKey chainKey = 3;
-    repeated MessageKey messageKeys = 4;
-}
-
-message ChainKey {
-    optional uint32 index = 1;
-    optional bytes key = 2;
-}
-
 message ClientPayload {
     optional uint64 username = 1;
     optional bool passive = 3;
@@ -147,14 +135,8 @@ message ClientPayload {
     optional bytes fbDeviceId = 32;
     optional bool pull = 33;
     optional bytes paddingBytes = 34;
-    optional BizMarketSegment bizMarketSegment = 35;
     optional int32 yearClass = 36;
     optional int32 memClass = 37;
-    enum BizMarketSegment {
-        DEFAULT = 0;
-        DEVX = 1;
-        INBOX = 2;
-    }
     enum ConnectReason {
         PUSH = 0;
         USER_ACTIVATED = 1;
@@ -267,6 +249,7 @@ message ClientPayload {
             WEAROS = 29;
             ARDEVICE = 30;
             VRDEVICE = 31;
+            BLUE_WEB = 32;
         }
         enum ReleaseChannel {
             RELEASE = 0;
@@ -332,6 +315,9 @@ message ContextInfo {
     optional string parentGroupJid = 35;
     optional string trustBannerType = 37;
     optional uint32 trustBannerAction = 38;
+    optional bool isSampled = 39;
+    repeated GroupMention groupMentions = 40;
+    optional UTMInfo utm = 41;
     message AdReplyInfo {
         optional string advertiserName = 1;
         optional MediaType mediaType = 2;
@@ -363,6 +349,11 @@ message ContextInfo {
             IMAGE = 1;
             VIDEO = 2;
         }
+    }
+    
+    message UTMInfo {
+        optional string utmSource = 1;
+        optional string utmCampaign = 2;
     }
     
 }
@@ -403,8 +394,8 @@ message Conversation {
     optional string description = 33;
     optional bool support = 34;
     optional bool isParentGroup = 35;
-    optional bool isDefaultSubgroup = 36;
     optional string parentGroupId = 37;
+    optional bool isDefaultSubgroup = 36;
     optional string displayName = 38;
     optional string pnJid = 39;
     optional bool shareOwnPn = 40;
@@ -460,6 +451,10 @@ message DeviceProps {
         ALOHA = 11;
         CATALINA = 12;
         TCL_TV = 13;
+        IOS_PHONE = 14;
+        IOS_CATALYST = 15;
+        ANDROID_PHONE = 16;
+        ANDROID_AMBIGUOUS = 17;
     }
 }
 
@@ -503,6 +498,11 @@ message GlobalSettings {
     optional int32 disappearingModeDuration = 9;
     optional int64 disappearingModeTimestamp = 10;
     optional AvatarUserSettings avatarUserSettings = 11;
+}
+
+message GroupMention {
+    optional string groupJid = 1;
+    optional string groupSubject = 2;
 }
 
 message GroupParticipant {
@@ -557,6 +557,7 @@ message HistorySync {
         RECENT = 3;
         PUSH_NAME = 4;
         NON_BLOCKING_DATA = 5;
+        ON_DEMAND = 6;
     }
 }
 
@@ -702,6 +703,13 @@ message Message {
     optional EncReactionMessage encReactionMessage = 56;
     optional FutureProofMessage editedMessage = 58;
     optional FutureProofMessage viewOnceMessageV2Extension = 59;
+    optional PollCreationMessage pollCreationMessageV2 = 60;
+    optional ScheduledCallCreationMessage scheduledCallCreationMessage = 61;
+    optional FutureProofMessage groupMentionedMessage = 62;
+    optional PinMessage pinMessage = 63;
+    optional PollCreationMessage pollCreationMessageV3 = 64;
+    optional ScheduledCallEditMessage scheduledCallEditMessage = 65;
+    optional VideoMessage ptvMessage = 66;
     message AppStateFatalExceptionNotification {
         repeated string collectionNames = 1;
         optional int64 timestamp = 2;
@@ -751,6 +759,7 @@ message Message {
         optional bytes streamingSidecar = 18;
         optional bytes waveform = 19;
         optional fixed32 backgroundArgb = 20;
+        optional bool viewOnce = 21;
     }
     
     message ButtonsMessage {
@@ -910,6 +919,11 @@ message Message {
             BRYNDAN_WRITE = 3;
             BEBASNEUE_REGULAR = 4;
             OSWALD_HEAVY = 5;
+            DAMION_REGULAR = 6;
+            MORNINGBREEZE_REGULAR = 7;
+            CALISTOGA_REGULAR = 8;
+            EXO2_EXTRABOLD = 9;
+            COURIERPRIME_BOLD = 10;
         }
         enum InviteLinkGroupType {
             DEFAULT = 0;
@@ -1019,6 +1033,7 @@ message Message {
             RECENT = 3;
             PUSH_NAME = 4;
             NON_BLOCKING_DATA = 5;
+            ON_DEMAND = 6;
         }
     }
     
@@ -1284,6 +1299,15 @@ message Message {
         optional Message.PeerDataOperationRequestType peerDataOperationRequestType = 1;
         repeated RequestStickerReupload requestStickerReupload = 2;
         repeated RequestUrlPreview requestUrlPreview = 3;
+        optional HistorySyncOnDemandRequest historySyncOnDemandRequest = 4;
+        message HistorySyncOnDemandRequest {
+            optional string chatJid = 1;
+            optional string oldestMsgId = 2;
+            optional bool oldestMsgFromMe = 3;
+            optional int32 onDemandMsgCount = 4;
+            optional int64 oldestMsgTimestampMs = 5;
+        }
+        
         message RequestStickerReupload {
             optional string fileSha256 = 1;
         }
@@ -1320,7 +1344,19 @@ message Message {
         UPLOAD_STICKER = 0;
         SEND_RECENT_STICKER_BOOTSTRAP = 1;
         GENERATE_LINK_PREVIEW = 2;
+        HISTORY_SYNC_ON_DEMAND = 3;
     }
+    message PinMessage {
+        optional MessageKey key = 1;
+        optional PinMessageType pinMessageType = 2;
+        optional int64 senderTimestampMs = 3;
+        enum PinMessageType {
+            UNKNOWN_PIN_MESSAGE_TYPE = 0;
+            PIN_FOR_ALL = 1;
+            UNPIN_FOR_ALL = 2;
+        }
+    }
+    
     message PollCreationMessage {
         optional bytes encKey = 1;
         optional string name = 2;
@@ -1432,6 +1468,26 @@ message Message {
     
     message RequestPhoneNumberMessage {
         optional ContextInfo contextInfo = 1;
+    }
+    
+    message ScheduledCallCreationMessage {
+        optional int64 scheduledTimestampMs = 1;
+        optional CallType callType = 2;
+        optional string title = 3;
+        enum CallType {
+            UNKNOWN = 0;
+            VOICE = 1;
+            VIDEO = 2;
+        }
+    }
+    
+    message ScheduledCallEditMessage {
+        optional MessageKey key = 1;
+        optional EditType editType = 2;
+        enum EditType {
+            UNKNOWN = 0;
+            CANCEL = 1;
+        }
     }
     
     message SendPaymentMessage {
@@ -1592,6 +1648,10 @@ message MsgOpaqueData {
     optional int64 senderTimestampMs = 22;
     optional string pollUpdateParentKey = 23;
     optional PollEncValue encPollVote = 24;
+    optional bool isSentCagPollCreation = 28;
+    optional string encReactionTargetMessageKey = 25;
+    optional bytes encReactionEncPayload = 26;
+    optional bytes encReactionEncIv = 27;
     message PollOption {
         optional string name = 1;
     }
@@ -1731,22 +1791,6 @@ message PaymentInfo {
     }
 }
 
-message PendingKeyExchange {
-    optional uint32 sequence = 1;
-    optional bytes localBaseKey = 2;
-    optional bytes localBaseKeyPrivate = 3;
-    optional bytes localRatchetKey = 4;
-    optional bytes localRatchetKeyPrivate = 5;
-    optional bytes localIdentityKey = 7;
-    optional bytes localIdentityKeyPrivate = 8;
-}
-
-message PendingPreKey {
-    optional uint32 preKeyId = 1;
-    optional int32 signedPreKeyId = 3;
-    optional bytes baseKey = 2;
-}
-
 message PhotoChange {
     optional bytes oldPhoto = 1;
     optional bytes newPhoto = 2;
@@ -1773,6 +1817,8 @@ message PollUpdate {
     optional MessageKey pollUpdateMessageKey = 1;
     optional Message.PollVoteMessage vote = 2;
     optional int64 senderTimestampMs = 3;
+    optional int64 serverTimestampMs = 4;
+    optional bool unread = 5;
 }
 
 message PreKeyRecordStructure {
@@ -1804,11 +1850,6 @@ message RecordStructure {
     repeated SessionStructure previousSessions = 2;
 }
 
-message SenderChainKey {
-    optional uint32 iteration = 1;
-    optional bytes seed = 2;
-}
-
 message SenderKeyRecordStructure {
     repeated SenderKeyStateStructure senderKeyStates = 1;
 }
@@ -1818,16 +1859,21 @@ message SenderKeyStateStructure {
     optional SenderChainKey senderChainKey = 2;
     optional SenderSigningKey senderSigningKey = 3;
     repeated SenderMessageKey senderMessageKeys = 4;
-}
-
-message SenderMessageKey {
-    optional uint32 iteration = 1;
-    optional bytes seed = 2;
-}
-
-message SenderSigningKey {
-    optional bytes public = 1;
-    optional bytes private = 2;
+    message SenderChainKey {
+        optional uint32 iteration = 1;
+        optional bytes seed = 2;
+    }
+    
+    message SenderMessageKey {
+        optional uint32 iteration = 1;
+        optional bytes seed = 2;
+    }
+    
+    message SenderSigningKey {
+        optional bytes public = 1;
+        optional bytes private = 2;
+    }
+    
 }
 
 message ServerErrorReceipt {
@@ -1848,6 +1894,41 @@ message SessionStructure {
     optional uint32 localRegistrationId = 11;
     optional bool needsRefresh = 12;
     optional bytes aliceBaseKey = 13;
+    message Chain {
+        optional bytes senderRatchetKey = 1;
+        optional bytes senderRatchetKeyPrivate = 2;
+        optional ChainKey chainKey = 3;
+        repeated MessageKey messageKeys = 4;
+        message ChainKey {
+            optional uint32 index = 1;
+            optional bytes key = 2;
+        }
+        
+        message MessageKey {
+            optional uint32 index = 1;
+            optional bytes cipherKey = 2;
+            optional bytes macKey = 3;
+            optional bytes iv = 4;
+        }
+        
+    }
+    
+    message PendingKeyExchange {
+        optional uint32 sequence = 1;
+        optional bytes localBaseKey = 2;
+        optional bytes localBaseKeyPrivate = 3;
+        optional bytes localRatchetKey = 4;
+        optional bytes localRatchetKeyPrivate = 5;
+        optional bytes localIdentityKey = 7;
+        optional bytes localIdentityKeyPrivate = 8;
+    }
+    
+    message PendingPreKey {
+        optional uint32 preKeyId = 1;
+        optional int32 signedPreKeyId = 3;
+        optional bytes baseKey = 2;
+    }
+    
 }
 
 message SignedPreKeyRecordStructure {
@@ -1916,6 +1997,7 @@ message SyncActionValue {
     optional RemoveRecentStickerAction removeRecentStickerAction = 34;
     optional ChatAssignmentAction chatAssignment = 35;
     optional ChatAssignmentOpenedStatusAction chatAssignmentOpenedStatus = 36;
+    optional PnForLidChatAction pnForLidChatAction = 37;
     message AgentAction {
         optional string name = 1;
         optional int32 deviceID = 2;
@@ -1994,6 +2076,10 @@ message SyncActionValue {
     
     message PinAction {
         optional bool pinned = 1;
+    }
+    
+    message PnForLidChatAction {
+        optional string pnJid = 1;
     }
     
     message PrimaryFeature {

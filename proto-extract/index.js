@@ -35,10 +35,10 @@ async function findAppModules() {
 	}
 	const baseURL = 'https://web.whatsapp.com'
 	const index = await request.get(baseURL, ua)
-	const bootstrapQRID = index.match(/src="\/bootstrap_qr.([0-9a-z]{10,}).js"/)[1]
-	const bootstrapQRURL = baseURL + '/bootstrap_qr.' + bootstrapQRID + '.js'
+	const bootstrapQRID = index.match(/src="\/app.([0-9a-z]{10,}).js"/)[1]
+	const bootstrapQRURL = baseURL + '/app.' + bootstrapQRID + '.js'
 
-	console.error('Found bootstrap_qr.js URL:', bootstrapQRURL)
+	console.error('Found source JS URL:', bootstrapQRURL)
 
 	const qrData = await request.get(bootstrapQRURL, ua)
 	const waVersion = qrData.match(/appVersion:"(\d\.\d+\.\d+)"/)[1]
