@@ -2,7 +2,7 @@
 import NodeCache from 'node-cache'
 import { proto } from '../../WAProto'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
-import { MessageReceiptType, MessageRelayOptions, MessageUserReceipt, SocketConfig, WACallEvent, WAMessageKey, WAMessageStubType, WAPatchName } from '../Types'
+import { MessageReceiptType, MessageRelayOptions, MessageUserReceipt, SocketConfig, WACallEvent, WAMessageKey, WAMessageStatus, WAMessageStubType, WAPatchName } from '../Types'
 import { decodeMediaRetryNode, decryptMessageNode, delay, encodeBigEndian, encodeSignedDeviceIdentity, getCallStatusFromNode, getHistoryMsg, getNextPreKeys, getStatusFromReceiptType, unixTimestampSeconds, xmppPreKey, xmppSignedPreKey } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
 import { cleanMessage } from '../Utils/process-message'
@@ -648,12 +648,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleBadAck = async({ attrs }: BinaryNode) => {
+		const key: WAMessageKey = { remoteJid: attrs.from, fromMe: true, id: attrs.id }
 		// current hypothesis is that if pash is sent in the ack
 		// it means -- the message hasn't reached all devices yet
 		// we'll retry sending the message here
 		if(attrs.phash) {
 			logger.info({ attrs }, 'received phash in ack, resending message...')
-			const key: WAMessageKey = { remoteJid: attrs.from, fromMe: true, id: attrs.id }
 			const msg = await getMessage(key)
 			if(msg) {
 				await relayMessage(key.remoteJid!, msg, { messageId: key.id!, useUserDevicesCache: false })
@@ -661,14 +661,34 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				logger.warn({ attrs }, 'could not send message again, as it was not found')
 			}
 		}
+
+		// error in acknowledgement,
+		// device could not display the message
+		if(attrs.error) {
+			logger.warn({ attrs }, 'received error in ack')
+			ev.emit(
+				'messages.update',
+				[
+					{
+						key,
+						update: {
+							status: WAMessageStatus.ERROR,
+							messageStubParameters: [
+								attrs.error
+							]
+						}
+					}
+				]
+			)
+		}
 	}
 
 	/// processes a node with the given function
 	/// and adds the task to the existing buffer if we're buffering events
-	const processNodeWithBuffer = async(
+	const processNodeWithBuffer = async<T>(
 		node: BinaryNode,
 		identifier: string,
-		exec: (node: BinaryNode) => Promise<any>
+		exec: (node: BinaryNode) => Promise<T>
 	) => {
 		ev.buffer()
 		await execTask()
