@@ -582,15 +582,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 									}))
 								)
 							}
-						} else {
-							ev.emit(
-								'messages.update',
-								ids.map(id => ({
-									key: { ...key, id },
-									update: { status }
-								}))
-							)
 						}
+
+						ev.emit(
+							'messages.update',
+							ids.map(id => ({
+								key: { ...key, id },
+								update: { status }
+							}))
+						)
 					}
 
 					if(attrs.type === 'retry') {
