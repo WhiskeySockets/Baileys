@@ -455,7 +455,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						(
 							// basically, we only want to know when a message from us has been delivered to/read by the other person
 							// or another device of ours has read some messages
-							status > proto.WebMessageInfo.Status.DELIVERY_ACK ||
+							status > proto.WebMessageInfo.Status.PENDING ||
 							!isNodeFromMe
 						)
 					) {
@@ -718,6 +718,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	})
 
 	ws.on('CB:ack,class:message', (node: BinaryNode) => {
+		processNodeWithBuffer(node, 'handling receipt', handleReceipt)
 		handleBadAck(node)
 			.catch(error => onUnexpectedError(error, 'handling bad ack'))
 	})
