@@ -292,10 +292,15 @@ const STATUS_MAP: { [_: string]: proto.WebMessageInfo.Status } = {
  * Given a type of receipt, returns what the new status of the message should be
  * @param type type from receipt
  */
-export const getStatusFromReceiptType = (type: string | undefined) => {
+export const getStatusFromReceiptType = (tag: string | undefined, type: string | undefined) => {
 	const status = STATUS_MAP[type!]
-	if(typeof type === 'undefined') {
+
+	if(typeof type === 'undefined' && tag === 'ack') {
 		return proto.WebMessageInfo.Status.SERVER_ACK
+	}
+
+	if(typeof type === 'undefined') {
+		return proto.WebMessageInfo.Status.DELIVERY_ACK
 	}
 
 	return status

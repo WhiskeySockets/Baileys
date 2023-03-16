@@ -531,7 +531,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleReceipt = async(node: BinaryNode) => {
-		const { attrs, content } = node
+		const { tag, attrs, content } = node
 		const isNodeFromMe = areJidsSameUser(attrs.participant || attrs.from, authState.creds.me?.id)
 		const remoteJid = !isNodeFromMe || isJidGroup(attrs.from) ? attrs.from : attrs.recipient
 		const fromMe = !attrs.recipient || (attrs.type === 'retry' && isNodeFromMe)
@@ -558,7 +558,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await Promise.all([
 			processingMutex.mutex(
 				async() => {
-					const status = getStatusFromReceiptType(attrs.type)
+					const status = getStatusFromReceiptType(tag, attrs.type)
 					if(
 						typeof status !== 'undefined' &&
 						(
