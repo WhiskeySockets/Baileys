@@ -23,6 +23,27 @@ describe('Signal Tests', () => {
 		expect(dec).toEqual(msg)
 	})
 
+	it('should correctly override a session', async() => {
+		const user1 = makeUser()
+		const user2 = makeUser()
+
+		const msg = Buffer.from('hello there!')
+
+		for(let preKeyId = 2; preKeyId <= 3;preKeyId++) {
+			await prepareForSendingMessage(user1, user2, preKeyId)
+
+			const result = await user1.repository.encryptMessage(
+				{ jid: user2.jid, data: msg }
+			)
+
+			const dec = await user2.repository.decryptMessage(
+				{ jid: user1.jid, ...result }
+			)
+
+			expect(dec).toEqual(msg)
+		}
+	})
+
 	it('should correctly encrypt/decrypt multiple messages', async() => {
 		const user1 = makeUser()
 		const user2 = makeUser()
@@ -98,8 +119,8 @@ function makeUser() {
 async function prepareForSendingMessage(
 	sender: User,
 	receiver: User,
+	preKeyId = 2
 ) {
-	const preKeyId = 2
 	const preKey = Curve.generateKeyPair()
 	await sender.repository.injectE2ESession(
 		{
