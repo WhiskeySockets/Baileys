@@ -1,4 +1,5 @@
 import { Boom } from '@hapi/boom'
+import { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { SignalRepository, WAMessageKey } from '../Types'
 import { areJidsSameUser, BinaryNode, isJidBroadcast, isJidGroup, isJidStatusBroadcast, isJidUser } from '../WABinary'
@@ -97,7 +98,8 @@ export function decodeMessageNode(
 export const decryptMessageNode = (
 	stanza: BinaryNode,
 	meId: string,
-	repository: SignalRepository
+	repository: SignalRepository,
+	logger: Logger
 ) => {
 	const { fullMessage, author, sender } = decodeMessageNode(stanza, meId)
 	return {
@@ -163,9 +165,13 @@ export const decryptMessageNode = (
 						} else {
 							fullMessage.message = msg
 						}
-					} catch(error) {
+					} catch(err) {
+						logger.error(
+							{ key: fullMessage.key, err },
+							'failed to decrypt message'
+						)
 						fullMessage.messageStubType = proto.WebMessageInfo.StubType.CIPHERTEXT
-						fullMessage.messageStubParameters = [error.message]
+						fullMessage.messageStubParameters = [err.message]
 					}
 				}
 			}
