@@ -54,7 +54,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 					tag: 'product_catalog',
 					attrs: {
 						jid,
-						allow_shop_source: 'true'
+						'allow_shop_source': 'true'
 					},
 					content: queryParamNodes
 				}
@@ -72,13 +72,13 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 				to: S_WHATSAPP_NET,
 				type: 'get',
 				xmlns: 'w:biz:catalog',
-				smax_id: '35'
+				'smax_id': '35'
 			},
 			content: [
 				{
 					tag: 'collections',
 					attrs: {
-						biz_jid: jid,
+						'biz_jid': jid,
 					},
 					content: [
 						{
@@ -116,7 +116,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 				to: S_WHATSAPP_NET,
 				type: 'get',
 				xmlns: 'fb:thrift_iq',
-				smax_id: '5'
+				'smax_id': '5'
 			},
 			content: [
 				{
