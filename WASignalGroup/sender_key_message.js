@@ -17,8 +17,8 @@ class SenderKeyMessage extends CiphertextMessage {
       const version = serialized[0];
       const message = serialized.slice(1, serialized.length - this.SIGNATURE_LENGTH);
       const signature = serialized.slice(-1 * this.SIGNATURE_LENGTH);
-      const senderKeyMessage = protobufs.SenderKeyMessage.decode(message).toJSON();
-      senderKeyMessage.ciphertext = Buffer.from(senderKeyMessage.ciphertext, 'base64');
+      const senderKeyMessage = protobufs.SenderKeyMessage.decode(message);
+      senderKeyMessage.ciphertext = senderKeyMessage.ciphertext;
 
       this.serialized = serialized;
       this.messageVersion = (version & 0xff) >> 4;
@@ -64,7 +64,7 @@ class SenderKeyMessage extends CiphertextMessage {
   }
 
   verifySignature(signatureKey) {
-    const part1 = this.serialized.slice(0, this.serialized.length - this.SIGNATURE_LENGTH + 1);
+    const part1 = this.serialized.slice(0, this.serialized.length - this.SIGNATURE_LENGTH);
     const part2 = this.serialized.slice(-1 * this.SIGNATURE_LENGTH);
     const res = curve.verifySignature(signatureKey, part1, part2);
     if (!res) throw new Error('Invalid signature!');

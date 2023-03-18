@@ -41,7 +41,7 @@ class GroupCipher {
     const senderKeyMessage = new SenderKeyMessage(null, null, null, null, senderKeyMessageBytes);
 
     const senderKeyState = record.getSenderKeyState(senderKeyMessage.getKeyId());
-    //senderKeyMessage.verifySignature(senderKeyState.getSigningKeyPublic());
+    senderKeyMessage.verifySignature(senderKeyState.getSigningKeyPublic());
     const senderKey = this.getSenderKey(senderKeyState, senderKeyMessage.getIteration());
     // senderKeyState.senderKeyStateStructure.senderSigningKey.private =
 
