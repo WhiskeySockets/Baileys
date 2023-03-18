@@ -17,8 +17,8 @@ class SenderKeyMessage extends CiphertextMessage {
       const version = serialized[0];
       const message = serialized.slice(1, serialized.length - this.SIGNATURE_LENGTH);
       const signature = serialized.slice(-1 * this.SIGNATURE_LENGTH);
-      const senderKeyMessage = protobufs.SenderKeyMessage.decode(message);
-      senderKeyMessage.ciphertext = senderKeyMessage.ciphertext;
+      const senderKeyMessage = protobufs.SenderKeyMessage.decode(message).toJSON();
+      senderKeyMessage.ciphertext = Buffer.from(senderKeyMessage.ciphertext, 'base64');
 
       this.serialized = serialized;
       this.messageVersion = (version & 0xff) >> 4;

@@ -17,7 +17,7 @@ class SenderKeyDistributionMessage extends CiphertextMessage {
 
         const distributionMessage = protobufs.SenderKeyDistributionMessage.decode(
           message
-        );
+        ).toJSON();
         this.serialized = serialized;
         this.id = distributionMessage.id;
         this.iteration = distributionMessage.iteration;
