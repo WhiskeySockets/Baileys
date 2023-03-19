@@ -8,4 +8,7 @@ module.exports = {
 	'transform': {
 		'^.+\\.(ts|tsx)$': 'ts-jest'
 	},
+	moduleNameMapper: {
+		'^axios$': require.resolve('axios'),
+	},
 }

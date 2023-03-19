@@ -143,7 +143,7 @@ export const delayCancellable = (ms: number) => {
 	return { delay, cancel }
 }
 
-export async function promiseTimeout<T>(ms: number | undefined, promise: (resolve: (v?: T) => void, reject: (error) => void) => void) {
+export async function promiseTimeout<T>(ms: number | undefined, promise: (resolve: (v: T) => void, reject: (error) => void) => void) {
 	if(!ms) {
 		return new Promise(promise)
 	}
@@ -177,7 +177,7 @@ export function bindWaitForEvent<T extends keyof BaileysEventMap>(ev: BaileysEve
 		let listener: (item: BaileysEventMap[T]) => void
 		let closeListener: any
 		await (
-			promiseTimeout(
+			promiseTimeout<void>(
 				timeoutMs,
 				(resolve, reject) => {
 					closeListener = ({ connection, lastDisconnect }) => {

@@ -22,8 +22,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		ev,
 		authState,
 		ws,
-		query,
 		processingMutex,
+		signalRepository,
+		query,
 		upsertMessage,
 		resyncAppState,
 		onUnexpectedError,
@@ -543,7 +544,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleMessage = async(node: BinaryNode) => {
-		const { fullMessage: msg, category, author, decrypt } = decryptMessageNode(node, authState)
+		const { fullMessage: msg, category, author, decrypt } = decryptMessageNode(
+			node,
+			authState.creds.me!.id,
+			signalRepository,
+			logger,
+		)
 		if(shouldIgnoreJid(msg.key.remoteJid!)) {
 			logger.debug({ key: msg.key }, 'ignored message')
 			await sendMessageAck(node)
@@ -556,10 +562,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					await decrypt()
 					// message failed to decrypt
 					if(msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT) {
-						logger.error(
-							{ key: msg.key, params: msg.messageStubParameters },
-							'failure in decrypting message'
-						)
 						retryMutex.mutex(
 							async() => {
 								if(ws.readyState === ws.OPEN) {

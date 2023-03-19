@@ -32,10 +32,10 @@ export interface GroupMetadata {
 export interface WAGroupCreateResponse {
     status: number
     gid?: string
-    participants?: [{ [key: string]: any }]
+    participants?: [{ [key: string]: {} }]
 }
 
 export interface GroupModificationResponse {
     status: number
-    participants?: { [key: string]: any }
+    participants?: { [key: string]: {} }
 }
