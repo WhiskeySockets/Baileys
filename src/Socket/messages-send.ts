@@ -8,6 +8,7 @@ import { aggregateMessageKeysNotFromMe, assertMediaContent, bindWaitForEvent, de
 import { getUrlInfo } from '../Utils/link-preview'
 import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, isJidUser, jidDecode, jidEncode, jidNormalizedUser, JidWithDevice, S_WHATSAPP_NET } from '../WABinary'
 import { makeGroupsSocket } from './groups'
+import ListType = proto.Message.ListMessage.ListType;
 
 export const makeMessagesSocket = (config: SocketConfig) => {
 	const {
@@ -338,6 +339,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		await authState.keys.transaction(
 			async() => {
+				const mediaType = getMediaType(message)
 				if(isGroup) {
 					const [groupData, senderKeyMap] = await Promise.all([
 						(async() => {
@@ -404,7 +406,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 						await assertSessions(senderKeyJids, false)
 
-						const result = await createParticipantNodes(senderKeyJids, senderKeyMsg)
+						const result = await createParticipantNodes(senderKeyJids, senderKeyMsg, mediaType ? { mediatype: mediaType } : undefined)
 						shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || result.shouldIncludeDeviceIdentity
 
 						participants.push(...result.nodes)
@@ -449,8 +451,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						{ nodes: meNodes, shouldIncludeDeviceIdentity: s1 },
 						{ nodes: otherNodes, shouldIncludeDeviceIdentity: s2 }
 					] = await Promise.all([
-						createParticipantNodes(meJids, meMsg),
-						createParticipantNodes(otherJids, message)
+						createParticipantNodes(meJids, meMsg, mediaType ? { mediatype: mediaType } : undefined),
+						createParticipantNodes(otherJids, message, mediaType ? { mediatype: mediaType } : undefined)
 					])
 					participants.push(...meNodes)
 					participants.push(...otherNodes)
@@ -502,6 +504,22 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					logger.debug({ jid }, 'adding device identity')
 				}
 
+				const buttonType = getButtonType(message)
+				if(buttonType){
+					(stanza.content as BinaryNode[]).push({
+						tag: 'biz',
+						attrs: { },
+						content: [
+							{
+								tag: buttonType,
+								attrs: getButtonArgs(message),
+							}
+						]
+					})
+
+					logger.debug({ jid }, 'adding business node')
+				}
+
 				logger.debug({ msgId }, `sending message to ${participants.length} devices`)
 
 				await sendNode(stanza)
@@ -509,6 +527,67 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		)
 
 		return msgId
+	}
+
+	const getMediaType = (message: proto.IMessage) => {
+		if(message.imageMessage) {
+			return 'image'
+		} else if(message.videoMessage) {
+			return message.videoMessage.gifPlayback ? 'gif' : 'video'
+		} else if(message.audioMessage) {
+			return message.audioMessage.ptt ? 'ptt' : 'audio'
+		} else if(message.contactMessage) {
+			return 'vcard'
+		} else if(message.documentMessage) {
+			return 'document'
+		} else if(message.contactsArrayMessage) {
+			return 'contact_array'
+		} else if(message.liveLocationMessage) {
+			return 'livelocation'
+		} else if(message.stickerMessage) {
+			return 'sticker'
+		} else if(message.listMessage) {
+			return 'list'
+		} else if(message.listResponseMessage) {
+			return 'list_response'
+		} else if(message.buttonsResponseMessage) {
+			return 'buttons_response'
+		} else if(message.orderMessage) {
+			return 'order'
+		} else if(message.productMessage) {
+			return 'product'
+		} else if(message.interactiveResponseMessage) {
+			return 'native_flow_response'
+		}
+	}
+
+	const getButtonType = (message: proto.IMessage) => {
+		if(message.buttonsMessage) {
+			return 'buttons'
+		} else if(message.buttonsResponseMessage) {
+			return 'buttons_response'
+		} else if(message.interactiveResponseMessage) {
+			return 'interactive_response'
+		} else if(message.listMessage) {
+			return 'list'
+		} else if(message.listResponseMessage) {
+			return 'list_response'
+		}
+	}
+
+	const getButtonArgs = (message: proto.IMessage): BinaryNode['attrs'] => {
+		if(message.templateMessage){
+			// TODO: Add attributes
+			return {}
+		} else if(message.listMessage) {
+			const type = message.listMessage.listType
+			if(!type){
+				throw new Boom("Expected list type inside message")
+			}
+			return {v: '2', type: ListType[type].toLowerCase()};
+		} else {
+			return {};
+		}
 	}
 
 	const getPrivacyTokens = async(jids: string[]) => {
