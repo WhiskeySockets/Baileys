@@ -7,7 +7,7 @@ Thank you to [@pokearaujo](https://github.com/pokearaujo/multidevice) for writin
  
 ## Please Read
 
-The original repository had to be removed by the original author - we now continue development in this repository here
+The original repository had to be removed by the original author - we now continue development in this repository here.
 This is the only official repository and is maintained by the community.
  **Join the Discord [here](https://discord.gg/WeJM5FP9GG)**
  
