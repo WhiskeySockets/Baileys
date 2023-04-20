@@ -90,7 +90,7 @@ export type SignalKeyStore = {
 
 export type SignalKeyStoreWithTransaction = SignalKeyStore & {
     isInTransaction: () => boolean
-    transaction(exec: () => Promise<void>): Promise<void>
+    transaction<T>(exec: () => Promise<T>): Promise<T>
 }
 
 export type TransactionCapabilityOptions = {
@@ -100,7 +100,7 @@ export type TransactionCapabilityOptions = {
 
 export type SignalAuthState = {
     creds: SignalCreds
-    keys: SignalKeyStore
+    keys: SignalKeyStore | SignalKeyStoreWithTransaction
 }
 
 export type AuthenticationState = {
