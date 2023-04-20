@@ -60,7 +60,7 @@ export const makeSocket = ({
 	const uqTagId = generateMdTagPrefix()
 	const generateMessageTag = () => `${uqTagId}${epoch++}`
 
-	const sendPromise = promisify<void>(ws.send)
+	const sendPromise = promisify<ArrayBufferLike>(ws.send)
 	/** send a raw buffer */
 	const sendRawMessage = async(data: Uint8Array | Buffer) => {
 		if(ws.readyState !== ws.OPEN) {
