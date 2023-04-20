@@ -7,10 +7,9 @@ Thank you to [@pokearaujo](https://github.com/pokearaujo/multidevice) for writin
  
 ## Please Read
 
-Baileys was recently taken down from Gitub as a result of a cease and desist from Whatsapp.
-This request has no legal value(it's not the same thing as a DMCA strike), yet the project has been removed by its original author, Adhiraj Singh, and moved here.
-This is the only official repository and is mantained by the community.
- **Join the Discord [here](https://discord.gg/Hv29aeewvF)**
+The original repository had to be removed by the original author - we now continue development in this repository here
+This is the only official repository and is maintained by the community.
+ **Join the Discord [here](https://discord.gg/WeJM5FP9GG)**
  
 ## Example
 
