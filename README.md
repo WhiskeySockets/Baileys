@@ -742,6 +742,11 @@ await sock.sendMessage(
     const jid = '111234567890-1594482450@g.us' // can be your own too
     await sock.updateProfilePicture(jid, { url: './new-profile-picture.jpeg' })
     ```
+- To remove your display picture or a group's
+    ``` ts
+    const jid = '111234567890-1594482450@g.us' // can be your own too
+    await sock.removeProfilePicture(jid)
+    ```
 - To get someone's presence (if they're typing or online)
     ``` ts
     // the presence update is fetched and called here
@@ -833,7 +838,48 @@ Of course, replace ``` xyz ``` with an actual ID.
     console.log("joined to: " + response)
     ```
   Of course, replace ``` xxx ``` with invitation code.
-  
+
+## Privacy
+- To get the privacy settings
+    ``` ts
+    const privacySettings = await sock.fetchPrivacySettings(true)
+    console.log("privacy settings: " + privacySettings)
+    ```
+- To update the LastSeen privacy
+    ``` ts
+    const value = 'all' // 'contacts' | 'contact_blacklist' | 'none'
+    await sock.updateLastSeenPrivacy(value)
+    ```
+- To update the Online privacy
+    ``` ts
+    const value = 'all' // 'match_last_seen'
+    await sock.updateOnlinePrivacy(value)
+    ```
+- To update the Profile Picture privacy
+    ``` ts
+    const value = 'all' // 'contacts' | 'contact_blacklist' | 'none'
+    await sock.updateProfilePicturePrivacy(value)
+    ```
+- To update the Status privacy
+    ``` ts
+    const value = 'all' // 'contacts' | 'contact_blacklist' | 'none'
+    await sock.updateStatusPrivacy(value)
+    ```
+- To update the Read Receipts privacy
+    ``` ts
+    const value = 'all' // 'none'
+    await sock.updateReadReceiptsPrivacy(value)
+    ```
+- To update the Groups Add privacy
+    ``` ts
+    const value = 'all' // 'contacts' | 'contact_blacklist' | 'none'
+    await sock.updateGroupsAddPrivacy(value)
+    ```
+- To update the Default Disappearing Mode
+    ``` ts
+    const duration = 86400 // 604800 | 7776000 | 0 
+    await sock.updateDefaultDisappearingMode(duration)
+    ```
 ## Broadcast Lists & Stories
 
 **Note:** messages currently cannot be sent to broadcast lists from the MD version.
