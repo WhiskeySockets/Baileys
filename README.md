@@ -25,12 +25,12 @@ To run the example script, download or clone the repo and then type the followin
 
 Use the stable version:
 ```
-yarn add @adiwajshing/baileys
+temporarily unavailable
 ```
 
 Use the edge version (no guarantee of stability, but latest fixes + features)
 ```
-yarn add github:adiwajshing/baileys
+yarn add github:WhiskeySockets/Baileys
 ```
 
 Then import your code using:
