@@ -3,7 +3,12 @@ import type { Contact } from './Contact'
 import type { MinimalMessage } from './Message'
 
 export type KeyPair = { public: Uint8Array, private: Uint8Array }
-export type SignedKeyPair = { keyPair: KeyPair, signature: Uint8Array, keyId: number }
+export type SignedKeyPair = {
+    keyPair: KeyPair
+    signature: Uint8Array
+    keyId: number
+    timestampS?: number
+}
 
 export type ProtocolAddress = {
 	name: string // jid
@@ -57,8 +62,8 @@ export type AuthenticationCreds = SignalCreds & {
 
 export type SignalDataTypeMap = {
     'pre-key': KeyPair
-    'session': any
-    'sender-key': any
+    'session': Uint8Array
+    'sender-key': Uint8Array
     'sender-key-memory': { [jid: string]: boolean }
     'app-state-sync-key': proto.Message.IAppStateSyncKeyData
     'app-state-sync-version': LTHashState

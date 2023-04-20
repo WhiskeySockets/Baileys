@@ -8,6 +8,7 @@ export * from './Socket'
 export * from './Events'
 export * from './Product'
 export * from './Call'
+export * from './Signal'
 
 import { AuthenticationState } from './Auth'
 import { SocketConfig } from './Socket'
