@@ -88,3 +88,34 @@ function bufferToUInt(e: Uint8Array | Buffer, t: number) {
 
 	return a
 }
+
+const tabs = (n: number) => '\t'.repeat(n)
+
+export function binaryNodeToString(node: BinaryNode | BinaryNode['content'], i = 0) {
+	if(!node) {
+		return node
+	}
+
+	if(typeof node === 'string') {
+		return tabs(i) + node
+	}
+
+	if(node instanceof Uint8Array) {
+		return tabs(i) + Buffer.from(node).toString('hex')
+	}
+
+	if(Array.isArray(node)) {
+		return node.map((x) => tabs(i + 1) + binaryNodeToString(x, i + 1)).join('\n')
+	}
+
+	const children = binaryNodeToString(node.content, i + 1)
+
+	const tag = `<${node.tag} ${Object.entries(node.attrs || {})
+		.filter(([, v]) => v !== undefined)
+		.map(([k, v]) => `${k}='${v}'`)
+		.join(' ')}`
+
+	const content: string = children ? `>\n${children}\n${tabs(i)}</${node.tag}>` : '/>'
+
+	return tag + content
+}

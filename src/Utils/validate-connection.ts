@@ -8,26 +8,31 @@ import { Curve, hmacSign } from './crypto'
 import { encodeBigEndian } from './generics'
 import { createSignalIdentity } from './signal'
 
-type ClientPayloadConfig = Pick<SocketConfig, 'version' | 'browser' | 'syncFullHistory'>
+const getUserAgent = (config: SocketConfig): proto.ClientPayload.IUserAgent => {
+	const osVersion = config.mobile ? '15.3.1' : '0.1'
+	const version = config.mobile ? [2, 22, 24] : config.version
+	const device = config.mobile ? 'iPhone_7' : 'Desktop'
+	const manufacturer = config.mobile ? 'Apple' : ''
+	const platform = config.mobile ? proto.ClientPayload.UserAgent.Platform.IOS : proto.ClientPayload.UserAgent.Platform.WEB
+	const phoneId = config.mobile ? { phoneId: config.auth.creds.phoneId } : {}
 
-const getUserAgent = ({ version }: ClientPayloadConfig): proto.ClientPayload.IUserAgent => {
-	const osVersion = '0.1'
 	return {
 		appVersion: {
 			primary: version[0],
 			secondary: version[1],
 			tertiary: version[2],
 		},
-		platform: proto.ClientPayload.UserAgent.Platform.WEB,
+		platform,
 		releaseChannel: proto.ClientPayload.UserAgent.ReleaseChannel.RELEASE,
-		mcc: '000',
-		mnc: '000',
+		mcc: config.auth.creds.registration?.phoneNumberMobileCountryCode || '000',
+		mnc: config.auth.creds.registration?.phoneNumberMobileNetworkCode || '000',
 		osVersion: osVersion,
-		manufacturer: '',
-		device: 'Desktop',
+		manufacturer,
+		device,
 		osBuildNumber: osVersion,
 		localeLanguageIso6391: 'en',
 		localeCountryIso31661Alpha2: 'US',
+		...phoneId
 	}
 }
 
@@ -36,7 +41,7 @@ const PLATFORM_MAP = {
 	'Windows': proto.ClientPayload.WebInfo.WebSubPlatform.WIN32
 }
 
-const getWebInfo = (config: ClientPayloadConfig): proto.ClientPayload.IWebInfo => {
+const getWebInfo = (config: SocketConfig): proto.ClientPayload.IWebInfo => {
 	let webSubPlatform = proto.ClientPayload.WebInfo.WebSubPlatform.WEB_BROWSER
 	if(config.syncFullHistory && PLATFORM_MAP[config.browser[0]]) {
 		webSubPlatform = PLATFORM_MAP[config.browser[0]]
@@ -45,16 +50,43 @@ const getWebInfo = (config: ClientPayloadConfig): proto.ClientPayload.IWebInfo =
 	return { webSubPlatform }
 }
 
-const getClientPayload = (config: ClientPayloadConfig): proto.IClientPayload => {
-	return {
+const getClientPayload = (config: SocketConfig) => {
+	const payload: proto.IClientPayload = {
 		connectType: proto.ClientPayload.ConnectType.WIFI_UNKNOWN,
 		connectReason: proto.ClientPayload.ConnectReason.USER_ACTIVATED,
 		userAgent: getUserAgent(config),
-		webInfo: getWebInfo(config),
 	}
+
+	if(!config.mobile) {
+		payload.webInfo = getWebInfo(config)
+	}
+
+	return payload
 }
 
-export const generateLoginNode = (userJid: string, config: ClientPayloadConfig): proto.IClientPayload => {
+export const generateMobileNode = (config: SocketConfig): proto.IClientPayload => {
+	if(!config.auth.creds) {
+		throw new Boom('No registration data found', { data: config })
+	}
+
+	const payload: proto.IClientPayload = {
+		...getClientPayload(config),
+		sessionId: Math.floor(Math.random() * 999999999 + 1),
+		shortConnect: true,
+		connectAttemptCount: 0,
+		device: 0,
+		dnsSource: {
+			appCached: false,
+			dnsMethod: proto.ClientPayload.DNSSource.DNSResolutionMethod.SYSTEM,
+		},
+		passive: false, // XMPP heartbeat setting (false: server actively pings) (true: client actively pings)
+		pushName: 'test',
+		username: Number(`${config.auth.creds.registration.phoneNumberCountryCode}${config.auth.creds.registration.phoneNumberNationalNumber}`),
+	}
+	return proto.ClientPayload.fromObject(payload)
+}
+
+export const generateLoginNode = (userJid: string, config: SocketConfig): proto.IClientPayload => {
 	const { user, device } = jidDecode(userJid)!
 	const payload: proto.IClientPayload = {
 		...getClientPayload(config),
@@ -67,7 +99,7 @@ export const generateLoginNode = (userJid: string, config: ClientPayloadConfig):
 
 export const generateRegistrationNode = (
 	{ registrationId, signedPreKey, signedIdentityKey }: SignalCreds,
-	config: ClientPayloadConfig
+	config: SocketConfig
 ) => {
 	// the app version needs to be md5 hashed
 	// and passed in
