@@ -505,7 +505,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 
 				const buttonType = getButtonType(message)
-				if(buttonType){
+				if(buttonType) {
 					(stanza.content as BinaryNode[]).push({
 						tag: 'biz',
 						attrs: { },
@@ -576,17 +576,18 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	}
 
 	const getButtonArgs = (message: proto.IMessage): BinaryNode['attrs'] => {
-		if(message.templateMessage){
+		if(message.templateMessage) {
 			// TODO: Add attributes
 			return {}
 		} else if(message.listMessage) {
 			const type = message.listMessage.listType
-			if(!type){
-				throw new Boom("Expected list type inside message")
+			if(!type) {
+				throw new Boom('Expected list type inside message')
 			}
-			return {v: '2', type: ListType[type].toLowerCase()};
+
+			return { v: '2', type: ListType[type].toLowerCase() }
 		} else {
-			return {};
+			return {}
 		}
 	}
 
