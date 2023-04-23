@@ -35,7 +35,7 @@ yarn add github:WhiskeySockets/Baileys
 
 Then import your code using:
 ``` ts 
-import makeWASocket from '@adiwajshing/baileys'
+import makeWASocket from '@whiskeysockets/baileys'
 ```
 
 ## Unit Tests
@@ -45,7 +45,7 @@ TODO
 ## Connecting
 
 ``` ts
-import makeWASocket, { DisconnectReason } from '@adiwajshing/baileys'
+import makeWASocket, { DisconnectReason } from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
 
 async function connectToWhatsApp () {
