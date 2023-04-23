@@ -1,3 +1,18 @@
 {
-    "extends": "@adiwajshing"
+    "extends": "@adiwajshing",
+    "rules": {
+        "@typescript-eslint/no-explicit-any": [
+            "warn",
+            {
+                "ignoreRestArgs": true
+            }
+        ],
+        "no-restricted-syntax": [
+            "warn",
+            {
+                "selector": "TSEnumDeclaration",
+                "message": "Don't declare enums, use literals instead"
+            }
+        ]
+    }
 }
