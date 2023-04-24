@@ -225,7 +225,7 @@ export const printQRIfNecessaryListener = (ev: BaileysEventEmitter, logger: Logg
  * utility that fetches latest baileys version from the master branch.
  * Use to ensure your WA connection is always on the latest version
  */
-export const fetchLatestBaileysVersion = async(options: AxiosRequestConfig<any> = { }) => {
+export const fetchLatestBaileysVersion = async(options: AxiosRequestConfig<any> = { }, lastVersion: WAVersion = [0, 0, 0]) => {
 	const URL = 'https://raw.githubusercontent.com/WhiskeySockets/Baileys/master/src/Defaults/baileys-version.json'
 	try {
 		const result = await axios.get<{ version: WAVersion }>(
@@ -237,7 +237,35 @@ export const fetchLatestBaileysVersion = async(options: AxiosRequestConfig<any> 
 		)
 		return {
 			version: result.data.version,
-			isLatest: true
+			isLatest: isLatest(lastVersion, result.data.version)
+		}
+	} catch(error) {
+		return {
+			version: baileysVersion as WAVersion,
+			isLatest: false,
+			error
+		}
+	}
+}
+  
+/**
+ * A utility that fetches the latest web version of whatsapp.
+ * Use to ensure your WA connection is always on the latest version
+ */
+export const fetchLatestWaWebVersion = async(options: AxiosRequestConfig<any> = { }, lastVersion: WAVersion = [0, 0, 0]) => {
+	try {
+		const result = await axios.get(
+			'https://web.whatsapp.com/check-update?version=1&platform=web',
+			{
+				...options,
+				responseType: 'json'
+			}
+		)
+		const versionData = result.data.currentVersion.split('.')
+		const version = [+versionData[0], +versionData[1], +versionData[2]] as WAVersion
+		return {
+			version: version,
+			isLatest:  isLatest(lastVersion, version)
 		}
 	} catch(error) {
 		return {
@@ -248,32 +276,18 @@ export const fetchLatestBaileysVersion = async(options: AxiosRequestConfig<any> 
 	}
 }
 
-/**
- * A utility that fetches the latest web version of whatsapp.
- * Use to ensure your WA connection is always on the latest version
- */
-export const fetchLatestWaWebVersion = async(options: AxiosRequestConfig<any>) => {
-	try {
-		const result = await axios.get(
-			'https://web.whatsapp.com/check-update?version=1&platform=web',
-			{
-				...options,
-				responseType: 'json'
-			}
-		)
-		const version = result.data.currentVersion.split('.')
-		return {
-			version: [+version[0], +version[1], +version[2]] as WAVersion,
-			isLatest: true
-		}
-	} catch(error) {
-		return {
-			version: baileysVersion as WAVersion,
-			isLatest: false,
-			error
-		}
+function isLatest(lastversion: number[], current: number[]): boolean {
+
+	for (let i = 0; i < current.length; i++) {
+	  if (current[i] > lastversion[i]) {
+		return true; // current is newer
+	  } else if (lastversion[i] > current[i]) {
+		return false; // lastversion is newer
+	  }
 	}
-}
+  
+	return false; // versions are equal
+  }
 
 /** unique message tag prefix for MD clients */
 export const generateMdTagPrefix = () => {
