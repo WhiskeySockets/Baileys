@@ -247,7 +247,7 @@ export const fetchLatestBaileysVersion = async(options: AxiosRequestConfig<any> 
 		}
 	}
 }
-  
+
 /**
  * A utility that fetches the latest web version of whatsapp.
  * Use to ensure your WA connection is always on the latest version
@@ -278,16 +278,16 @@ export const fetchLatestWaWebVersion = async(options: AxiosRequestConfig<any> = 
 
 function isLatest(lastversion: number[], current: number[]): boolean {
 
-	for (let i = 0; i < current.length; i++) {
-	  if (current[i] > lastversion[i]) {
-		return true; // current is newer
-	  } else if (lastversion[i] > current[i]) {
-		return false; // lastversion is newer
+	for(let i = 0; i < current.length; i++) {
+	  if(current[i] > lastversion[i]) {
+			return true // current is newer
+	  } else if(lastversion[i] > current[i]) {
+			return false // lastversion is newer
 	  }
 	}
-  
-	return false; // versions are equal
-  }
+
+	return false // versions are equal
+}
 
 /** unique message tag prefix for MD clients */
 export const generateMdTagPrefix = () => {
