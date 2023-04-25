@@ -1,5 +1,8 @@
 name: Update Docs
 
+permissions:
+  contents: write
+
 on:
   push:
     branches:
@@ -31,11 +34,10 @@ jobs:
 
     - name: Build
       run: yarn run build:all
-      
+
     - name: Publish to Pages
-      uses: crazy-max/ghaction-github-pages@v2
+      uses: peaceiris/actions-gh-pages@v3
       with:
-        target_branch: gh-pages     
-        build_dir: docs
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        publish_branch: gh-pages
+        publish_dir: ./docs
+        github_token: ${{ secrets.GITHUB_TOKEN }}
