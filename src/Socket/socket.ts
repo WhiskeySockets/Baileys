@@ -34,11 +34,8 @@ export const makeSocket = (config: SocketConfig) => {
 	const ws = new MobileSocket(config)
 	ws.setMaxListeners(0)
 
-	if(!config.mobile) {
-		// if not mobile -> auto connect
-		ws.connect()
-	} else if(config.auth.creds.registered) {
-		// if mobile and registered -> auto connect
+	// if not mobile or already registered -> auto connect
+	if(!config.mobile || config.auth.creds.registered) {
 		ws.connect()
 	}
 
