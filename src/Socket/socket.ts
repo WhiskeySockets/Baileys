@@ -8,7 +8,6 @@ import { addTransactionCapability, bindWaitForConnectionUpdate, configureSuccess
 import { makeEventBuffer } from '../Utils/event-buffer'
 import { assertNodeErrorFree, BinaryNode, binaryNodeToString, encodeBinaryNode, getBinaryNodeChild, getBinaryNodeChildren, S_WHATSAPP_NET } from '../WABinary'
 import { MobileSocket } from './mobile-socket'
-import { WebSocket } from './web-socket'
 
 /**
  * Connects to WA servers and performs:
@@ -32,8 +31,16 @@ export const makeSocket = (config: SocketConfig) => {
 	} = config
 
 	config.mobile = config.mobile || config.auth.creds.registered
-	const ws = config.mobile ? new MobileSocket(config) : new WebSocket(config)
+	const ws = new MobileSocket(config)
 	ws.setMaxListeners(0)
+
+	if(!config.mobile) {
+		// if not mobile -> auto connect
+		ws.connect()
+	} else if(config.auth.creds.registered) {
+		// if mobile and registered -> auto connect
+		ws.connect()
+	}
 
 	const ev = makeEventBuffer(logger)
 	/** ephemeral key pair used to encrypt/decrypt communication. Unique for each connection */

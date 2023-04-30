@@ -213,6 +213,6 @@ export const initAuthCreds = (): AuthenticationCreds => {
 		identityId: randomBytes(20),
 		registered: false,
 		backupToken: randomBytes(20),
-		registration: {} as RegistrationOptions
+		registration: {} as never
 	}
 }

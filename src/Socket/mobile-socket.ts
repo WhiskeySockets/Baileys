@@ -6,10 +6,6 @@ export class MobileSocket extends Socket {
 	constructor(public config: SocketConfig) {
 		super()
 
-		if(config.auth.creds.registered) {
-			this.connect()
-		}
-
 		this.on('data', (d) => {
 			this.emit('message', d)
 		})
