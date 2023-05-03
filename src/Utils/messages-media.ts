@@ -41,7 +41,7 @@ const getImageProcessingLibrary = async() => {
 		return { sharp }
 	}
 
-	const jimp = _jimp?.default || _jimp
+	const jimp = (_jimp && _jimp?.default) ? _jimp?.default : _jimp
 	if(jimp) {
 		return { jimp }
 	}
