@@ -4,5 +4,6 @@
     "excludeProtected": true,
     "excludeExternals": true,
     "includeVersion": false,
+    "declaration": false,
     "out": "docs"
 }
