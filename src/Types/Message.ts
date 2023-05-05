@@ -67,7 +67,7 @@ type Templatable = {
     footer?: string
 }
 type Editable = {
-  edited?: WAMessageKey
+  edit?: WAMessageKey
 }
 type Listable = {
     /** Sections of the List */
