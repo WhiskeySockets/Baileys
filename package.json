@@ -1,8 +1,8 @@
 {
-  "name": "@adiwajshing/baileys",
-  "version": "5.0.0",
+  "name": "@whiskeysockets/baileys",
+  "version": "0.0.1",
   "description": "WhatsApp API",
-  "homepage": "https://github.com/adiwajshing/Baileys",
+  "homepage": "https://github.com/WhiskeySockets/Baileys",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "keywords": [
@@ -30,7 +30,7 @@
   "author": "Adhiraj Singh",
   "license": "MIT",
   "repository": {
-    "url": "git@github.com:adiwajshing/baileys.git"
+    "url": "git@github.com:WhiskeySockets/Baileys.git"
   },
   "dependencies": {
     "@hapi/boom": "^9.1.3",
