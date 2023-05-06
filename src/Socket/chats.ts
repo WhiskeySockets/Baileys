@@ -1,7 +1,7 @@
 import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto'
 import { PROCESSABLE_HISTORY_TYPES } from '../Defaults'
-import { ALL_WA_PATCH_NAMES, ChatModification, ChatMutation, LTHashState, MessageUpsertType, PresenceData, SocketConfig, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAMessage, WAPatchCreate, WAPatchName, WAPresence } from '../Types'
+import { ALL_WA_PATCH_NAMES, ChatModification, ChatMutation, LTHashState, MessageUpsertType, PresenceData, SocketConfig, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAMessage, WAPatchCreate, WAPatchName, WAPresence, WAPrivacyOnlineValue, WAPrivacyValue, WAReadReceiptsValue } from '../Types'
 import { chatModificationToAppPatch, ChatMutationMap, decodePatches, decodeSyncdSnapshot, encodeSyncdPatch, extractSyncdPatches, generateProfilePicture, getHistoryMsg, newLTHashState, processSyncAction } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
 import processMessage from '../Utils/process-message'
@@ -59,6 +59,69 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 
 		return privacySettings
+	}
+
+	/** helper function to run a privacy IQ query */
+	const privacyQuery = async(name: string, value: string) => {
+		await query({
+			tag: 'iq',
+			attrs: {
+				xmlns: 'privacy',
+				to: S_WHATSAPP_NET,
+				type: 'set'
+			},
+			content: [{
+				tag: 'privacy',
+				attrs: {},
+				content: [
+					{
+						tag: 'category',
+						attrs: { name, value }
+					}
+				]
+			}]
+		})
+	}
+
+	const updateLastSeenPrivacy = async(value: WAPrivacyValue) => {
+		await privacyQuery('last', value)
+	}
+
+	const updateOnlinePrivacy = async(value: WAPrivacyOnlineValue) => {
+		await privacyQuery('online', value)
+	}
+
+	const updateProfilePicturePrivacy = async(value: WAPrivacyValue) => {
+		await privacyQuery('profile', value)
+	}
+
+	const updateStatusPrivacy = async(value: WAPrivacyValue) => {
+		await privacyQuery('status', value)
+	}
+
+	const updateReadReceiptsPrivacy = async(value: WAReadReceiptsValue) => {
+		await privacyQuery('readreceipts', value)
+	}
+
+	const updateGroupsAddPrivacy = async(value: WAPrivacyValue) => {
+		await privacyQuery('groupadd', value)
+	}
+
+	const updateDefaultDisappearingMode = async(duration: number) => {
+		await query({
+			tag: 'iq',
+			attrs: {
+				xmlns: 'disappearing_mode',
+				to: S_WHATSAPP_NET,
+				type: 'set'
+			},
+			content: [{
+				tag: 'disappearing_mode',
+				attrs: {
+					duration : duration.toString()
+				}
+			}]
+		})
 	}
 
 	/** helper function to run a generic IQ query */
@@ -158,6 +221,18 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					content: img
 				}
 			]
+		})
+	}
+
+	/** remove the profile picture for yourself or a group */
+	const removeProfilePicture = async(jid: string) => {
+		await query({
+			tag: 'iq',
+			attrs: {
+				to: jidNormalizedUser(jid),
+				type: 'set',
+				xmlns: 'w:profile:picture'
+			}
 		})
 	}
 
@@ -857,9 +932,17 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		fetchBlocklist,
 		fetchStatus,
 		updateProfilePicture,
+		removeProfilePicture,
 		updateProfileStatus,
 		updateProfileName,
 		updateBlockStatus,
+		updateLastSeenPrivacy,
+		updateOnlinePrivacy,
+		updateProfilePicturePrivacy,
+		updateStatusPrivacy,
+		updateReadReceiptsPrivacy,
+		updateGroupsAddPrivacy,
+		updateDefaultDisappearingMode,
 		getBusinessProfile,
 		resyncAppState,
 		chatModify
