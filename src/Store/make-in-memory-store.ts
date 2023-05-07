@@ -167,7 +167,7 @@ export default (
 		})
 		ev.on('messages.update', updates => {
 			for(const { update, key } of updates) {
-				const list = assertMessageList(key.remoteJid!)
+				const list = assertMessageList( jidNormalizedUser(key.remoteJid!) )
 				const result = list.updateAssign(key.id!, update)
 				if(!result) {
 					logger.debug({ update }, 'got update for non-existent message')
