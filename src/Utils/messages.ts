@@ -497,7 +497,7 @@ export const generateWAMessageContent = async(
 			}
 		}
 	}
-		
+
 	return WAProto.Message.fromObject(m)
 }
 
