@@ -25,7 +25,7 @@ To run the example script, download or clone the repo and then type the followin
 
 Use the stable version:
 ```
-temporarily unavailable
+yarn add @whiskeysockets/baileys
 ```
 
 Use the edge version (no guarantee of stability, but latest fixes + features)
