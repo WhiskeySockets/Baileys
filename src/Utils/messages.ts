@@ -488,6 +488,16 @@ export const generateWAMessageContent = async(
 		m[messageType].contextInfo.mentionedJid = message.mentions
 	}
 
+	if('edit' in message) {
+		m = {
+			protocolMessage: {
+				key: message.edit,
+				editedMessage: m,
+				type: WAProto.Message.ProtocolMessage.Type.MESSAGE_EDIT
+			}
+		}
+	}
+
 	return WAProto.Message.fromObject(m)
 }
 

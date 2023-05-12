@@ -55,6 +55,7 @@ type Mentionable = {
 type ViewOnce = {
     viewOnce?: boolean
 }
+
 type Buttonable = {
     /** add buttons to the message  */
     buttons?: proto.Message.ButtonsMessage.IButton[]
@@ -64,6 +65,9 @@ type Templatable = {
     templateButtons?: proto.IHydratedTemplateButton[]
 
     footer?: string
+}
+type Editable = {
+  edit?: WAMessageKey
 }
 type Listable = {
     /** Sections of the List */
@@ -117,7 +121,7 @@ export type AnyMediaMessageContent = (
         fileName?: string
         caption?: string
     } & Buttonable & Templatable))
-    & { mimetype?: string }
+    & { mimetype?: string } & Editable
 
 export type ButtonReplyInfo = {
     displayText: string
@@ -134,11 +138,11 @@ export type AnyRegularMessageContent = (
 	    text: string
         linkPreview?: WAUrlInfo | null
     }
-    & Mentionable & Buttonable & Templatable & Listable)
+    & Mentionable & Buttonable & Templatable & Listable & Editable)
     | AnyMediaMessageContent
     | ({
         poll: PollMessageOptions
-    } & Mentionable & Buttonable & Templatable)
+    } & Mentionable & Buttonable & Templatable & Editable)
     | {
         contacts: {
             displayName?: string

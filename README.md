@@ -25,7 +25,7 @@ To run the example script, download or clone the repo and then type the followin
 
 Use the stable version:
 ```
-temporarily unavailable
+yarn add @whiskeysockets/baileys
 ```
 
 Use the edge version (no guarantee of stability, but latest fixes + features)
@@ -35,7 +35,7 @@ yarn add github:WhiskeySockets/Baileys
 
 Then import your code using:
 ``` ts 
-import makeWASocket from '@adiwajshing/baileys'
+import makeWASocket from '@whiskeysockets/baileys'
 ```
 
 ## Unit Tests
@@ -45,7 +45,7 @@ TODO
 ## Connecting
 
 ``` ts
-import makeWASocket, { DisconnectReason } from '@adiwajshing/baileys'
+import makeWASocket, { DisconnectReason } from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
 
 async function connectToWhatsApp () {
@@ -175,7 +175,7 @@ You obviously don't want to keep scanning the QR code every time you want to con
 
 So, you can load the credentials to log back in:
 ``` ts
-import makeWASocket, { BufferJSON, useMultiFileAuthState } from '@adiwajshing/baileys'
+import makeWASocket, { BufferJSON, useMultiFileAuthState } from '@whiskeysockets/baileys'
 import * as fs from 'fs'
 
 // utility function to help save the auth state in a single folder
@@ -288,7 +288,7 @@ Baileys does not come with a defacto storage for chats, contacts, or messages. H
 It can be used as follows:
 
 ``` ts
-import makeWASocket, { makeInMemoryStore } from '@adiwajshing/baileys'
+import makeWASocket, { makeInMemoryStore } from '@whiskeysockets/baileys'
 // the store maintains the data of the WA connection in memory
 // can be written out to a file & read from it
 const store = makeInMemoryStore({ })
@@ -327,7 +327,7 @@ The store also provides some simple functions such as `loadMessages` that utiliz
 ### Non-Media Messages
 
 ``` ts
-import { MessageType, MessageOptions, Mimetype } from '@adiwajshing/baileys'
+import { MessageType, MessageOptions, Mimetype } from '@whiskeysockets/baileys'
 
 const id = 'abcd@s.whatsapp.net' // the WhatsApp ID 
 // send a simple text!
@@ -445,7 +445,7 @@ Sending media (video, stickers, images) is easier & more efficient than ever.
 - When specifying a media url, Baileys never loads the entire buffer into memory; it even encrypts the media as a readable stream.
 
 ``` ts
-import { MessageType, MessageOptions, Mimetype } from '@adiwajshing/baileys'
+import { MessageType, MessageOptions, Mimetype } from '@whiskeysockets/baileys'
 // Sending gifs
 await sock.sendMessage(
     id, 
@@ -527,7 +527,7 @@ const sendMsg = await sock.sendMessage(id, templateMessage)
                                     Do not enter this field if you want to automatically generate a thumb
                                 */
         mimetype: Mimetype.pdf, /* (for media messages) specify the type of media (optional for all media types except documents),
-                                    import {Mimetype} from '@adiwajshing/baileys'
+                                    import {Mimetype} from '@whiskeysockets/baileys'
                                 */
         fileName: 'somefile.pdf', // (for media messages) file name for the media
         /* will send audio messages as voice notes, if set to true */
@@ -586,7 +586,7 @@ The presence expires after about 10 seconds.
 If you want to save the media you received
 ``` ts
 import { writeFile } from 'fs/promises'
-import { downloadMediaMessage } from '@adiwajshing/baileys'
+import { downloadMediaMessage } from '@whiskeysockets/baileys'
 
 sock.ev.on('messages.upsert', async ({ messages }) => {
     const m = messages[0]
@@ -741,6 +741,11 @@ await sock.sendMessage(
     const jid = '111234567890-1594482450@g.us' // can be your own too
     await sock.updateProfilePicture(jid, { url: './new-profile-picture.jpeg' })
     ```
+- To remove your display picture or a group's
+    ``` ts
+    const jid = '111234567890-1594482450@g.us' // can be your own too
+    await sock.removeProfilePicture(jid)
+    ```
 - To get someone's presence (if they're typing or online)
     ``` ts
     // the presence update is fetched and called here
@@ -832,7 +837,48 @@ Of course, replace ``` xyz ``` with an actual ID.
     console.log("joined to: " + response)
     ```
   Of course, replace ``` xxx ``` with invitation code.
-  
+
+## Privacy
+- To get the privacy settings
+    ``` ts
+    const privacySettings = await sock.fetchPrivacySettings(true)
+    console.log("privacy settings: " + privacySettings)
+    ```
+- To update the LastSeen privacy
+    ``` ts
+    const value = 'all' // 'contacts' | 'contact_blacklist' | 'none'
+    await sock.updateLastSeenPrivacy(value)
+    ```
+- To update the Online privacy
+    ``` ts
+    const value = 'all' // 'match_last_seen'
+    await sock.updateOnlinePrivacy(value)
+    ```
+- To update the Profile Picture privacy
+    ``` ts
+    const value = 'all' // 'contacts' | 'contact_blacklist' | 'none'
+    await sock.updateProfilePicturePrivacy(value)
+    ```
+- To update the Status privacy
+    ``` ts
+    const value = 'all' // 'contacts' | 'contact_blacklist' | 'none'
+    await sock.updateStatusPrivacy(value)
+    ```
+- To update the Read Receipts privacy
+    ``` ts
+    const value = 'all' // 'none'
+    await sock.updateReadReceiptsPrivacy(value)
+    ```
+- To update the Groups Add privacy
+    ``` ts
+    const value = 'all' // 'contacts' | 'contact_blacklist' | 'none'
+    await sock.updateGroupsAddPrivacy(value)
+    ```
+- To update the Default Disappearing Mode
+    ``` ts
+    const duration = 86400 // 604800 | 7776000 | 0 
+    await sock.updateDefaultDisappearingMode(duration)
+    ```
 ## Broadcast Lists & Stories
 
 **Note:** messages currently cannot be sent to broadcast lists from the MD version.

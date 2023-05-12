@@ -1,36 +1,44 @@
 {
-  "name": "@adiwajshing/baileys",
-  "version": "5.0.0",
+  "name": "@whiskeysockets/baileys",
+  "version": "6.0.0",
   "description": "WhatsApp API",
-  "homepage": "https://github.com/adiwajshing/Baileys",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
   "keywords": [
     "whatsapp",
     "js-whatsapp",
     "whatsapp-api",
     "whatsapp-web",
-    "whatsapp",
     "whatsapp-chat",
     "whatsapp-group",
     "automation",
     "multi-device"
   ],
+  "homepage": "https://github.com/WhiskeySockets/Baileys",
+  "repository": {
+    "url": "git@github.com:WhiskeySockets/Baileys.git"
+  },
+  "license": "MIT",
+  "author": "Adhiraj Singh",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "lib/*",
+    "WAProto/*",
+    "WASignalGroup/*.js"
+  ],
   "scripts": {
-    "test": "jest",
-    "prepare": "tsc",
     "build:all": "tsc && typedoc",
     "build:docs": "typedoc",
     "build:tsc": "tsc",
+    "changelog:last": "conventional-changelog -p angular -r 2",
+    "changelog:preview": "conventional-changelog -p angular -u",
+    "changelog:update": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",
     "example": "node --inspect -r ts-node/register Example/example.ts",
     "gen:protobuf": "sh WAProto/GenerateStatics.sh",
     "lint": "eslint . --ext .js,.ts,.jsx,.tsx",
-    "lint:fix": "eslint . --fix --ext .js,.ts,.jsx,.tsx"
-  },
-  "author": "Adhiraj Singh",
-  "license": "MIT",
-  "repository": {
-    "url": "git@github.com:adiwajshing/baileys.git"
+    "lint:fix": "eslint . --fix --ext .js,.ts,.jsx,.tsx",
+    "prepare": "tsc",
+    "release": "release-it",
+    "test": "jest"
   },
   "dependencies": {
     "@hapi/boom": "^9.1.3",
@@ -44,6 +52,27 @@
     "protobufjs": "^6.11.3",
     "uuid": "^9.0.0",
     "ws": "^8.0.0"
+  },
+  "devDependencies": {
+    "@adiwajshing/eslint-config": "https://github.com/adiwajshing/eslint-config.git",
+    "@adiwajshing/keyed-db": "^0.2.4",
+    "@types/got": "^9.6.11",
+    "@types/jest": "^27.5.1",
+    "@types/node": "^16.0.0",
+    "@types/sharp": "^0.29.4",
+    "@types/ws": "^8.0.0",
+    "conventional-changelog-cli": "^2.2.2",
+    "eslint": "^8.0.0",
+    "jest": "^27.0.6",
+    "jimp": "^0.16.1",
+    "link-preview-js": "^3.0.0",
+    "qrcode-terminal": "^0.12.0",
+    "release-it": "^15.10.3",
+    "sharp": "^0.30.5",
+    "ts-jest": "^27.0.3",
+    "ts-node": "^10.8.1",
+    "typedoc": "^0.22.0",
+    "typescript": "^4.0.0"
   },
   "peerDependencies": {
     "@adiwajshing/keyed-db": "^0.2.4",
@@ -59,40 +88,15 @@
     "jimp": {
       "optional": true
     },
+    "link-preview-js": {
+      "optional": true
+    },
     "qrcode-terminal": {
       "optional": true
     },
     "sharp": {
       "optional": true
-    },
-    "link-preview-js": {
-      "optional": true
     }
   },
-  "files": [
-    "lib/*",
-    "WAProto/*",
-    "WASignalGroup/*.js"
-  ],
-  "devDependencies": {
-    "@adiwajshing/eslint-config": "https://github.com/adiwajshing/eslint-config.git",
-    "@adiwajshing/keyed-db": "^0.2.4",
-    "@types/got": "^9.6.11",
-    "@types/jest": "^27.5.1",
-    "@types/node": "^16.0.0",
-    "@types/sharp": "^0.29.4",
-    "@types/uuid": "^9.0.0",
-    "@types/ws": "^8.0.0",
-    "eslint": "^8.0.0",
-    "jest": "^27.0.6",
-    "jimp": "^0.16.1",
-    "link-preview-js": "^3.0.0",
-    "pino-pretty": "^9.4.0",
-    "qrcode-terminal": "^0.12.0",
-    "sharp": "^0.30.5",
-    "ts-jest": "^27.0.3",
-    "ts-node": "^10.8.1",
-    "typedoc": "^0.22.0",
-    "typescript": "^4.0.0"
-  }
+  "packageManager": "yarn@1.22.19"
 }

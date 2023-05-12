@@ -1,83 +1,81 @@
 name: Publish Release
 
-on: "workflow_dispatch"
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions: write-all
 
 jobs:
-
-#  Test:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Checkout Commit
-#        uses: actions/checkout@v2
-#        
-#      - name: Setup Node.js environment
-#        uses: actions/setup-node@v2.1.1
-#        
-#      - name: Install Dependencies
-#        run: npm install
-#        
-#      - name: Run Tests
-#        run: npm run test
-  Build:
+  publish-release:
     runs-on: ubuntu-latest
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-    - name: Checkout Commit
-      uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-    - name: Parsing Package Info
-      id: packageInfo
-      run: |
-        echo "::set-output name=package-name::$(jq -r .name package.json)"
-        echo "::set-output name=package-version::$(jq -r .version package.json)"
-        echo "::set-output name=commit-msg::$(git log -1 --pretty=%B)"
-        
-    - name: Setup Node.js environment
-      uses: actions/setup-node@v2.1.1
+      - name: Fetching tags
+        run: git fetch --tags -f || true
 
-    - name: Install Dependencies
-      run: yarn
+      - name: Setup Node
+        uses: actions/setup-node@v3.6.0
+        with:
+          node-version: 18.x
+          registry-url: "https://registry.npmjs.org"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-    - name: Build
-      run: yarn run build:tsc
-      
-    - name: Create Release
-      id: releaseCreate
-      uses: actions/create-release@v1
-      env:
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache@v3
+        id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Install Dependencies
+        run: yarn
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish in NPM
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Generate Changelog
+        id: generate_changelog
+        run: |
+          changelog=$(npm run changelog:last --silent)
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "${changelog}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Make Package
+        run: npm pack
+
+      - name: Rename Pack
+        run: mv *.tgz baileys.tgz
+
+      - name: Create Release
+        uses: meeDamian/github-release@2.0
+        env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        # The name of the tag. This should come from the webhook payload, `github.GITHUB_REF` when a user pushes a new tag
-        tag_name: v${{ steps.packageInfo.outputs.package-version }}
-        # The name of the release. For example, `Release v1.0.1`
-        release_name: v${{ steps.packageInfo.outputs.package-version }}
-        # Text describing the contents of the tag.
-        body: ${{steps.packageInfo.outputs.commit-msg}}
-        # `true` to create a draft (unpublished) release, `false` to create a published one. Default: `false`
-        draft: false
-        # `true` to identify the release as a prerelease. `false` to identify the release as a full release. Default: `false`
-        prerelease: false
-        
-    - name: Make Package
-      run: npm pack
-      
-    - name: Rename Pack
-      run: mv *.tgz npmPackage.tgz
-      
-    - name: Git Release
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        # The URL for uploading assets to the release
-        upload_url: ${{steps.releaseCreate.outputs.upload_url}}
-        # The path to the asset you want to upload
-        asset_path: npmPackage.tgz
-        asset_name: npmPackage.tgz
-        # The content-type of the asset you want to upload. See the supported Media Types here: https://www.iana.org/assignments/media-types/media-types.xhtml for more information
-        asset_content_type: application/x-compressed-tar
-    
-    - name: NPM Publish
-      uses: JS-DevTools/npm-publish@v1
-      with:
-        token: ${{ secrets.NPM_TOKEN }}
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref }}
+          commitish: ${{ github.sha }}
+          name: ${{ github.ref_name }}
+          body: ${{ steps.generate_changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
+          files: >
+            baileys.tgz
+          gzip: folders
+          allow_override: true
