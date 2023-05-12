@@ -355,13 +355,13 @@ const UNEXPECTED_SERVER_CODE_TEXT = 'Unexpected server response: '
 
 export const getCodeFromWSError = (error: Error) => {
 	let statusCode = 500
-	if(error.message.includes(UNEXPECTED_SERVER_CODE_TEXT)) {
-		const code = +error.message.slice(UNEXPECTED_SERVER_CODE_TEXT.length)
+	if(error?.message?.includes(UNEXPECTED_SERVER_CODE_TEXT)) {
+		const code = +error?.message.slice(UNEXPECTED_SERVER_CODE_TEXT.length)
 		if(!Number.isNaN(code) && code >= 400) {
 			statusCode = code
 		}
 	} else if(
-		(error as any).code?.startsWith('E')
+		(error as any)?.code?.startsWith('E')
 		|| error?.message?.includes('timed out')
 	) { // handle ETIMEOUT, ENOTFOUND etc
 		statusCode = 408

@@ -88,17 +88,10 @@ export const generateRegistrationNode = (
 	const appVersionBuf = createHash('md5')
 		.update(config.version.join('.')) // join as string
 		.digest()
-	const browserVersion = config.browser[2].split('.')
 
 	const companion: proto.IDeviceProps = {
 		os: config.browser[0],
-		version: {
-			primary: +(browserVersion[0] || 0),
-			secondary: +(browserVersion[1] || 1),
-			tertiary: +(browserVersion[2] || 0),
-		},
-		platformType: proto.DeviceProps.PlatformType[config.browser[1].toUpperCase()]
-			|| proto.DeviceProps.PlatformType.UNKNOWN,
+		platformType: proto.DeviceProps.PlatformType.DESKTOP,
 		requireFullSync: config.syncFullHistory,
 	}
 

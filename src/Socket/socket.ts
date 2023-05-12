@@ -32,7 +32,7 @@ export const makeSocket = (config: SocketConfig) => {
 
 	config.mobile = config.mobile || config.auth.creds.registered
 	const ws = new MobileSocket(config)
-	ws.setMaxListeners(0)
+	ws.setMaxListeners?.(0)
 
 	// if not mobile or already registered -> auto connect
 	if(!config.mobile || config.auth.creds.registered) {
@@ -188,6 +188,9 @@ export const makeSocket = (config: SocketConfig) => {
 		let helloMsg: proto.IHandshakeMessage = {
 			clientHello: { ephemeral: ephemeralKeyPair.public }
 		}
+		console.log(helloMsg)
+		console.log(Buffer.from(ephemeralKeyPair.public).toString('base64'))
+		console.log(ephemeralKeyPair.public.length)
 		helloMsg = proto.HandshakeMessage.fromObject(helloMsg)
 
 		logger.info({ browser, helloMsg }, 'connected to WA')
@@ -627,7 +630,7 @@ function mapWebSocketError(handler: (err: Error) => void) {
 	return (error: Error) => {
 		handler(
 			new Boom(
-				`WebSocket Error (${error.message})`,
+				`WebSocket Error (${error?.message})`,
 				{ statusCode: getCodeFromWSError(error), data: error }
 			)
 		)

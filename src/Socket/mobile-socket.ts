@@ -12,7 +12,10 @@ export class MobileSocket extends Socket {
 	}
 
 	override connect() {
-		return super.connect(MOBILE_PORT, MOBILE_ENDPOINT, () => {
+		return super.connect({
+			host: MOBILE_ENDPOINT,
+			port: MOBILE_PORT,
+		}, () => {
 			this.emit('open')
 		})
 	}
@@ -38,6 +41,6 @@ export class MobileSocket extends Socket {
 	}
 
 	send(data: unknown, cb?: ((err?: Error | undefined) => void) | undefined) {
-		return super.write(data as Uint8Array | string, cb as ((err?: Error | undefined) => void))
+		return super.write(data as Uint8Array | string, undefined, cb as ((err?: Error | undefined) => void))
 	}
 }
