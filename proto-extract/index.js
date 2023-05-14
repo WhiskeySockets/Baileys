@@ -34,9 +34,23 @@ async function findAppModules() {
 		}
 	}
 	const baseURL = 'https://web.whatsapp.com'
-	const index = await request.get(baseURL, ua)
-	const bootstrapQRID = index.match(/src="\/app.([0-9a-z]{10,}).js"/)[1]
-	const bootstrapQRURL = baseURL + '/app.' + bootstrapQRID + '.js'
+	const serviceworker = await request.get(`${baseURL}/serviceworker.js`, ua)
+
+	const versions = [...serviceworker.matchAll(/assets-manifest-([\d\.]+).json/g)].map(r => r[1])
+	const version = versions[0]
+
+	let bootstrapQRURL = ''
+	if(version) {
+		const asset = await request.get(`${baseURL}/assets-manifest-${version}.json`, ua)
+		const hashFiles = JSON.parse(asset)
+		const files = Object.keys(hashFiles)
+		const app = files.find(f => /^app\./.test(f))
+		bootstrapQRURL = `${baseURL}/${app}`
+	} else {
+		const index = await request.get(baseURL, ua)
+		const bootstrapQRID = index.match(/src="\/app.([0-9a-z]{10,}).js"/)[1]
+		bootstrapQRURL = baseURL + '/app.' + bootstrapQRID + '.js'
+	}
 
 	console.error('Found source JS URL:', bootstrapQRURL)
 
