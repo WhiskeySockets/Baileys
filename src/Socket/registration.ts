@@ -5,6 +5,7 @@ import { aesEncryptGCM, Curve, md5 } from '../Utils/crypto'
 import { jidEncode } from '../WABinary'
 import { makeBusinessSocket } from './business'
 import { MobileSocket } from './mobile-socket'
+import { fetch } from 'node-fetch';
 
 function urlencode(str: string) {
 	return str.replace(/-/g, '%2d').replace(/_/g, '%5f').replace(/~/g, '%7e')
