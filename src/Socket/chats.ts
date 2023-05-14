@@ -340,8 +340,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const updateAccountSyncTimestamp = async(fromTimestamp: number | string) => {
-		logger.info({ fromTimestamp }, 'requesting account sync')
+	const cleanDirtyBits = async(type: 'account_sync' | 'groups', fromTimestamp?: number | string) => {
+		logger.info({ fromTimestamp }, 'clean dirty bits ' + type)
 		await sendNode({
 			tag: 'iq',
 			attrs: {
@@ -354,8 +354,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				{
 					tag: 'clean',
 					attrs: {
-						type: 'account_sync',
-						timestamp: fromTimestamp.toString(),
+						type,
+						...(fromTimestamp ? { timestamp: fromTimestamp.toString() } : null),
 					}
 				}
 			]
@@ -879,13 +879,16 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			if(attrs.timestamp) {
 				let { lastAccountSyncTimestamp } = authState.creds
 				if(lastAccountSyncTimestamp) {
-					await updateAccountSyncTimestamp(lastAccountSyncTimestamp)
+					await cleanDirtyBits('account_sync', lastAccountSyncTimestamp)
 				}
 
 				lastAccountSyncTimestamp = +attrs.timestamp
 				ev.emit('creds.update', { lastAccountSyncTimestamp })
 			}
 
+			break
+		case 'groups':
+			// handled in groups.ts
 			break
 		default:
 			logger.info({ node }, 'received unknown sync')
@@ -945,6 +948,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		updateDefaultDisappearingMode,
 		getBusinessProfile,
 		resyncAppState,
-		chatModify
+		chatModify,
+		cleanDirtyBits
 	}
 }
