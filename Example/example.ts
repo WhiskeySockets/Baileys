@@ -62,7 +62,7 @@ const startSock = async() => {
 		const question = (text: string) => new Promise<string>((resolve) => rl.question(text, resolve))
 
 		const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
-		const { registration } = sock.authState.creds || { registration: {} }
+		const registration = sock.authState.creds.registration || { registration: {} }
 
 		if(!registration.phoneNumber) {
 			registration.phoneNumber = await question('Please enter your mobile phone number:\n')
