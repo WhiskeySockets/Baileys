@@ -91,7 +91,7 @@ export default (
 	const labelAssociations = new KeyedDB<LabelAssociation, string>(labelAssociationKey, labelAssociationKey.key)
 
 	const assertMessageList = (jid: string) => {
-		if (!messages[jid]) {
+		if(!messages[jid]) {
 			messages[jid] = makeMessagesDictionary()
 		}
 
@@ -100,7 +100,7 @@ export default (
 
 	const contactsUpsert = (newContacts: Contact[]) => {
 		const oldContacts = new Set(Object.keys(contacts))
-		for (const contact of newContacts) {
+		for(const contact of newContacts) {
 			oldContacts.delete(contact.id)
 			contacts[contact.id] = Object.assign(
 				contacts[contact.id] || {},
@@ -112,7 +112,7 @@ export default (
 	}
 
 	const labelsUpsert = (newLabels: Label[]) => {
-		for (const label of newLabels) {
+		for(const label of newLabels) {
 			labels.upsertById(label.id, label)
 		}
 	}
@@ -134,10 +134,10 @@ export default (
 			messages: newMessages,
 			isLatest
 		}) => {
-			if (isLatest) {
+			if(isLatest) {
 				chats.clear()
 
-				for (const id in messages) {
+				for(const id in messages) {
 					delete messages[id]
 				}
 			}
@@ -146,13 +146,13 @@ export default (
 			logger.debug({ chatsAdded }, 'synced chats')
 
 			const oldContacts = contactsUpsert(newContacts)
-			for (const jid of oldContacts) {
+			for(const jid of oldContacts) {
 				delete contacts[jid]
 			}
 
 			logger.debug({ deletedContacts: oldContacts.size, newContacts }, 'synced contacts')
 
-			for (const msg of newMessages) {
+			for(const msg of newMessages) {
 				const jid = msg.key.remoteJid!
 				const list = assertMessageList(jid)
 				list.upsert(msg, 'prepend')
@@ -162,8 +162,8 @@ export default (
 		})
 
 		ev.on('contacts.update', updates => {
-			for (const update of updates) {
-				if (contacts[update.id!]) {
+			for(const update of updates) {
+				if(contacts[update.id!]) {
 					Object.assign(contacts[update.id!], update)
 				} else {
 					logger.debug({ update }, 'got update for non-existant contact')
@@ -174,28 +174,28 @@ export default (
 			chats.upsert(...newChats)
 		})
 		ev.on('chats.update', updates => {
-			for (let update of updates) {
+			for(let update of updates) {
 				const result = chats.update(update.id!, chat => {
-					if (update.unreadCount! > 0) {
+					if(update.unreadCount! > 0) {
 						update = { ...update }
 						update.unreadCount = (chat.unreadCount || 0) + update.unreadCount!
 					}
 
 					Object.assign(chat, update)
 				})
-				if (!result) {
+				if(!result) {
 					logger.debug({ update }, 'got update for non-existant chat')
 				}
 			}
 		})
 
 		ev.on('labels.edit', (label: Label) => {
-			if (label.deleted) {
+			if(label.deleted) {
 				return labels.deleteById(label.id)
 			}
 
 			// WhatsApp can store only up to 20 labels
-			if (labels.count() < 20) {
+			if(labels.count() < 20) {
 				return labels.upsertById(label.id, label)
 			}
 
@@ -204,14 +204,14 @@ export default (
 
 		ev.on('labels.association', ({ type, association }) => {
 			switch (type) {
-				case 'add':
-					labelAssociations.upsert(association)
-					break
-				case 'remove':
-					labelAssociations.delete(association)
-					break
-				default:
-					console.error(`unknown operation type [${type}]`)
+			case 'add':
+				labelAssociations.upsert(association)
+				break
+			case 'remove':
+				labelAssociations.delete(association)
+				break
+			default:
+				console.error(`unknown operation type [${type}]`)
 			}
 		})
 
@@ -220,52 +220,52 @@ export default (
 			Object.assign(presences[id], update)
 		})
 		ev.on('chats.delete', deletions => {
-			for (const item of deletions) {
+			for(const item of deletions) {
 				chats.deleteById(item)
 			}
 		})
 		ev.on('messages.upsert', ({ messages: newMessages, type }) => {
 			switch (type) {
-				case 'append':
-				case 'notify':
-					for (const msg of newMessages) {
-						const jid = jidNormalizedUser(msg.key.remoteJid!)
-						const list = assertMessageList(jid)
-						list.upsert(msg, 'append')
+			case 'append':
+			case 'notify':
+				for(const msg of newMessages) {
+					const jid = jidNormalizedUser(msg.key.remoteJid!)
+					const list = assertMessageList(jid)
+					list.upsert(msg, 'append')
 
-						if (type === 'notify') {
-							if (!chats.get(jid)) {
-								ev.emit('chats.upsert', [
-									{
-										id: jid,
-										conversationTimestamp: toNumber(msg.messageTimestamp),
-										unreadCount: 1
-									}
-								])
-							}
+					if(type === 'notify') {
+						if(!chats.get(jid)) {
+							ev.emit('chats.upsert', [
+								{
+									id: jid,
+									conversationTimestamp: toNumber(msg.messageTimestamp),
+									unreadCount: 1
+								}
+							])
 						}
 					}
+				}
 
-					break
+				break
 			}
 		})
 		ev.on('messages.update', updates => {
-			for (const { update, key } of updates) {
+			for(const { update, key } of updates) {
 				const list = assertMessageList(key.remoteJid!)
 				const result = list.updateAssign(key.id!, update)
-				if (!result) {
+				if(!result) {
 					logger.debug({ update }, 'got update for non-existent message')
 				}
 			}
 		})
 		ev.on('messages.delete', item => {
-			if ('all' in item) {
+			if('all' in item) {
 				const list = messages[item.jid]
 				list?.clear()
 			} else {
 				const jid = item.keys[0].remoteJid!
 				const list = messages[jid]
-				if (list) {
+				if(list) {
 					const idSet = new Set(item.keys.map(k => k.id))
 					list.filter(m => !idSet.has(m.key.id))
 				}
@@ -273,9 +273,9 @@ export default (
 		})
 
 		ev.on('groups.update', updates => {
-			for (const update of updates) {
+			for(const update of updates) {
 				const id = update.id!
-				if (groupMetadata[id]) {
+				if(groupMetadata[id]) {
 					Object.assign(groupMetadata[id], update)
 				} else {
 					logger.debug({ update }, 'got update for non-existant group metadata')
@@ -285,42 +285,42 @@ export default (
 
 		ev.on('group-participants.update', ({ id, participants, action }) => {
 			const metadata = groupMetadata[id]
-			if (metadata) {
+			if(metadata) {
 				switch (action) {
-					case 'add':
-						metadata.participants.push(...participants.map(id => ({ id, isAdmin: false, isSuperAdmin: false })))
-						break
-					case 'demote':
-					case 'promote':
-						for (const participant of metadata.participants) {
-							if (participants.includes(participant.id)) {
-								participant.isAdmin = action === 'promote'
-							}
+				case 'add':
+					metadata.participants.push(...participants.map(id => ({ id, isAdmin: false, isSuperAdmin: false })))
+					break
+				case 'demote':
+				case 'promote':
+					for(const participant of metadata.participants) {
+						if(participants.includes(participant.id)) {
+							participant.isAdmin = action === 'promote'
 						}
+					}
 
-						break
-					case 'remove':
-						metadata.participants = metadata.participants.filter(p => !participants.includes(p.id))
-						break
+					break
+				case 'remove':
+					metadata.participants = metadata.participants.filter(p => !participants.includes(p.id))
+					break
 				}
 			}
 		})
 
 		ev.on('message-receipt.update', updates => {
-			for (const { key, receipt } of updates) {
+			for(const { key, receipt } of updates) {
 				const obj = messages[key.remoteJid!]
 				const msg = obj?.get(key.id!)
-				if (msg) {
+				if(msg) {
 					updateMessageWithReceipt(msg, receipt)
 				}
 			}
 		})
 
 		ev.on('messages.reaction', (reactions) => {
-			for (const { key, reaction } of reactions) {
+			for(const { key, reaction } of reactions) {
 				const obj = messages[key.remoteJid!]
 				const msg = obj?.get(key.id!)
-				if (msg) {
+				if(msg) {
 					updateMessageWithReaction(msg, reaction)
 				}
 			}
@@ -335,20 +335,14 @@ export default (
 		labelAssociations
 	})
 
-	const fromJSON = (json: {
-		chats: Chat[],
-		contacts: { [id: string]: Contact },
-		messages: { [id: string]: WAMessage[] },
-		labels: { [labelId: string]: Label },
-		labelAssociations: LabelAssociation[]
-	}) => {
+	const fromJSON = (json: {chats: Chat[], contacts: { [id: string]: Contact }, messages: { [id: string]: WAMessage[] }, labels: { [labelId: string]: Label }, labelAssociations: LabelAssociation[]}) => {
 		chats.upsert(...json.chats)
 		labelAssociations.upsert(...json.labelAssociations || [])
 		contactsUpsert(Object.values(json.contacts))
 		labelsUpsert(Object.values(json.labels || {}))
-		for (const jid in json.messages) {
+		for(const jid in json.messages) {
 			const list = assertMessageList(jid)
-			for (const msg of json.messages[jid]) {
+			for(const msg of json.messages[jid]) {
 				list.upsert(proto.WebMessageInfo.fromObject(msg), 'append')
 			}
 		}
@@ -366,15 +360,15 @@ export default (
 		labelAssociations,
 		bind,
 		/** loads messages from the store, if not found -- uses the legacy connection */
-		loadMessages: async (jid: string, count: number, cursor: WAMessageCursor) => {
+		loadMessages: async(jid: string, count: number, cursor: WAMessageCursor) => {
 			const list = assertMessageList(jid)
 			const mode = !cursor || 'before' in cursor ? 'before' : 'after'
 			const cursorKey = !!cursor ? ('before' in cursor ? cursor.before : cursor.after) : undefined
 			const cursorValue = cursorKey ? list.get(cursorKey.id!) : undefined
 
 			let messages: WAMessage[]
-			if (list && mode === 'before' && (!cursorKey || cursorValue)) {
-				if (cursorValue) {
+			if(list && mode === 'before' && (!cursorKey || cursorValue)) {
+				if(cursorValue) {
 					const msgIdx = list.array.findIndex(m => m.key.id === cursorKey?.id)
 					messages = list.array.slice(0, msgIdx)
 				} else {
@@ -382,7 +376,7 @@ export default (
 				}
 
 				const diff = count - messages.length
-				if (diff < 0) {
+				if(diff < 0) {
 					messages = messages.slice(-count) // get the last X messages
 				}
 			} else {
@@ -423,27 +417,27 @@ export default (
 			return associations.map(({ labelId }) => labelId)
 
 		},
-		loadMessage: async (jid: string, id: string) => messages[jid]?.get(id),
-		mostRecentMessage: async (jid: string) => {
+		loadMessage: async(jid: string, id: string) => messages[jid]?.get(id),
+		mostRecentMessage: async(jid: string) => {
 			const message: WAMessage | undefined = messages[jid]?.array.slice(-1)[0]
 			return message
 		},
-		fetchImageUrl: async (jid: string, sock: WASocket | undefined) => {
+		fetchImageUrl: async(jid: string, sock: WASocket | undefined) => {
 			const contact = contacts[jid]
-			if (!contact) {
+			if(!contact) {
 				return sock?.profilePictureUrl(jid)
 			}
 
-			if (typeof contact.imgUrl === 'undefined') {
+			if(typeof contact.imgUrl === 'undefined') {
 				contact.imgUrl = await sock?.profilePictureUrl(jid)
 			}
 
 			return contact.imgUrl
 		},
-		fetchGroupMetadata: async (jid: string, sock: WASocket | undefined) => {
-			if (!groupMetadata[jid]) {
+		fetchGroupMetadata: async(jid: string, sock: WASocket | undefined) => {
+			if(!groupMetadata[jid]) {
 				const metadata = await sock?.groupMetadata(jid)
-				if (metadata) {
+				if(metadata) {
 					groupMetadata[jid] = metadata
 				}
 			}
@@ -460,7 +454,7 @@ export default (
 
 		// 	return groupMetadata[jid]
 		// },
-		fetchMessageReceipts: async ({ remoteJid, id }: WAMessageKey) => {
+		fetchMessageReceipts: async({ remoteJid, id }: WAMessageKey) => {
 			const list = messages[remoteJid!]
 			const msg = list?.get(id!)
 			return msg?.userReceipt
@@ -475,7 +469,7 @@ export default (
 		readFromFile: (path: string) => {
 			// require fs here so that in case "fs" is not available -- the app does not crash
 			const { readFileSync, existsSync } = require('fs')
-			if (existsSync(path)) {
+			if(existsSync(path)) {
 				logger.debug({ path }, 'reading from file')
 				const jsonStr = readFileSync(path, { encoding: 'utf-8' })
 				const json = JSON.parse(jsonStr)
