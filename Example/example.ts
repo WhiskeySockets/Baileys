@@ -3,7 +3,7 @@ import NodeCache from 'node-cache'
 import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, getAggregateVotesInPollMessage, makeCacheableSignalKeyStore, makeInMemoryStore, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
 import MAIN_LOGGER from '../src/Utils/logger'
 
-const logger = MAIN_LOGGER.child({ })
+const logger = MAIN_LOGGER.child({})
 logger.level = 'trace'
 
 const useStore = !process.argv.includes('--no-store')
@@ -86,6 +86,15 @@ const startSock = async() => {
 			// credentials updated -- save them
 			if(events['creds.update']) {
 				await saveCreds()
+			}
+
+			if(events['labels.association']) {
+				console.log(events['labels.association'])
+			}
+
+
+			if(events['labels.edit']) {
+				console.log(events['labels.edit'])
 			}
 
 			if(events.call) {

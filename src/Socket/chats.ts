@@ -52,7 +52,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					type: 'get'
 				},
 				content: [
-					{ tag: 'privacy', attrs: { } }
+					{ tag: 'privacy', attrs: {} }
 				]
 			})
 			privacySettings = reduceBinaryNodeToDictionary(content?.[0] as BinaryNode, 'category')
@@ -118,7 +118,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			content: [{
 				tag: 'disappearing_mode',
 				attrs: {
-					duration : duration.toString()
+					duration: duration.toString()
 				}
 			}]
 		})
@@ -146,12 +146,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					content: [
 						{
 							tag: 'query',
-							attrs: { },
-							content: [ queryNode ]
+							attrs: {},
+							content: [queryNode]
 						},
 						{
 							tag: 'list',
-							attrs: { },
+							attrs: {},
 							content: userNodes
 						}
 					]
@@ -171,17 +171,17 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			[
 				{
 					tag: 'user',
-					attrs: { },
+					attrs: {},
 					content: jids.map(
 						jid => ({
 							tag: 'contact',
-							attrs: { },
+							attrs: {},
 							content: `+${jid}`
 						})
 					)
 				}
 			],
-			{ tag: 'contact', attrs: { } }
+			{ tag: 'contact', attrs: {} }
 		)
 
 		return results.map(user => {
@@ -193,7 +193,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	const fetchStatus = async(jid: string) => {
 		const [result] = await interactiveQuery(
 			[{ tag: 'user', attrs: { jid } }],
-			{ tag: 'status', attrs: { } }
+			{ tag: 'status', attrs: {} }
 		)
 		if(result) {
 			const status = getBinaryNodeChild(result, 'status')
@@ -248,7 +248,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			content: [
 				{
 					tag: 'status',
-					attrs: { },
+					attrs: {},
 					content: Buffer.from(status, 'utf-8')
 				}
 			]
@@ -379,19 +379,19 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	const resyncAppState = ev.createBufferedFunction(async(collections: readonly WAPatchName[], isInitialSync: boolean) => {
 		// we use this to determine which events to fire
 		// otherwise when we resync from scratch -- all notifications will fire
-		const initialVersionMap: { [T in WAPatchName]?: number } = { }
-		const globalMutationMap: ChatMutationMap = { }
+		const initialVersionMap: { [T in WAPatchName]?: number } = {}
+		const globalMutationMap: ChatMutationMap = {}
 
 		await authState.keys.transaction(
 			async() => {
 				const collectionsToHandle = new Set<string>(collections)
 				// in case something goes wrong -- ensure we don't enter a loop that cannot be exited from
-				const attemptsMap: { [T in WAPatchName]?: number } = { }
+				const attemptsMap: { [T in WAPatchName]?: number } = {}
 				// keep executing till all collections are done
 				// sometimes a single patch request will not return all the patches (God knows why)
 				// so we fetch till they're all done (this is determined by the "has_more_patches" flag)
 				while(collectionsToHandle.size) {
-					const states = { } as { [T in WAPatchName]: LTHashState }
+					const states = {} as { [T in WAPatchName]: LTHashState }
 					const nodes: BinaryNode[] = []
 
 					for(const name of collectionsToHandle) {
@@ -412,7 +412,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 						nodes.push({
 							tag: 'collection',
-							attrs:  {
+							attrs: {
 								name,
 								version: state.version.toString(),
 								// return snapshot if being synced from scratch
@@ -431,7 +431,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 						content: [
 							{
 								tag: 'sync',
-								attrs: { },
+								attrs: {},
 								content: nodes
 							}
 						]
@@ -516,10 +516,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	})
 
 	/**
-     * fetch the profile picture of a user/group
-     * type = "preview" for a low res picture
-     * type = "image for the high res picture"
-     */
+	 * fetch the profile picture of a user/group
+	 * type = "preview" for a low res picture
+	 * type = "image for the high res picture"
+	 */
 	const profilePictureUrl = async(jid: string, type: 'preview' | 'image' = 'preview', timeoutMs?: number) => {
 		jid = jidNormalizedUser(jid)
 		const result = await query({
@@ -564,7 +564,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				content: [
 					{
 						tag: type === 'recording' ? 'composing' : type,
-						attrs: type === 'recording' ? { media : 'audio' } : {}
+						attrs: type === 'recording' ? { media: 'audio' } : {}
 					}
 				]
 			})
@@ -587,7 +587,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				? [
 					{
 						tag: 'tctoken',
-						attrs: { },
+						attrs: {},
 						content: tcToken
 					}
 				]
@@ -669,7 +669,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 							content: [
 								{
 									tag: 'sync',
-									attrs: { },
+									attrs: {},
 									content: [
 										{
 											tag: 'collection',
@@ -681,7 +681,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 											content: [
 												{
 													tag: 'patch',
-													attrs: { },
+													attrs: {},
 													content: proto.SyncdPatch.encode(patch).finish()
 												}
 											]
@@ -731,7 +731,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 		const propsNode = getBinaryNodeChild(abtNode, 'props')
 
-		let props: { [_: string]: string } = { }
+		let props: { [_: string]: string } = {}
 		if(propsNode) {
 			props = reduceBinaryNodeToDictionary(propsNode, 'prop')
 		}
@@ -751,13 +751,13 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				type: 'get',
 			},
 			content: [
-				{ tag: 'props', attrs: { } }
+				{ tag: 'props', attrs: {} }
 			]
 		})
 
 		const propsNode = getBinaryNodeChild(resultNode, 'props')
 
-		let props: { [_: string]: string } = { }
+		let props: { [_: string]: string } = {}
 		if(propsNode) {
 			props = reduceBinaryNodeToDictionary(propsNode, 'prop')
 		}
@@ -768,13 +768,59 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	/**
-     * modify a chat -- mark unread, read etc.
-     * lastMessages must be sorted in reverse chronologically
-     * requires the last messages till the last message received; required for archive & unread
-    */
+	 * modify a chat -- mark unread, read etc.
+	 * lastMessages must be sorted in reverse chronologically
+	 * requires the last messages till the last message received; required for archive & unread
+	*/
 	const chatModify = (mod: ChatModification, jid: string) => {
 		const patch = chatModificationToAppPatch(mod, jid)
 		return appPatch(patch)
+	}
+
+	/**
+	 * Adds label for the chats
+	 */
+	const addChatLabel = (jid: string, labelId: string) => {
+		return chatModify({
+			addChatLabel: {
+				labelId
+			}
+		}, jid)
+	}
+
+	/**
+	 * Removes label for the chat
+	 */
+	const removeChatLabel = (jid: string, labelId: string) => {
+		return chatModify({
+			removeChatLabel: {
+				labelId
+			}
+		}, jid)
+	}
+
+	/**
+	 * Adds label for the message
+	 */
+	const addMessageLabel = (jid: string, messageId: string, labelId: string) => {
+		return chatModify({
+			addMessageLabel: {
+				messageId,
+				labelId
+			}
+		}, jid)
+	}
+
+	/**
+	 * Removes label for the message
+	 */
+	const removeMessageLabel = (jid: string, messageId: string, labelId: string) => {
+		return chatModify({
+			removeMessageLabel: {
+				messageId,
+				labelId
+			}
+		}, jid)
 	}
 
 	/**
@@ -945,6 +991,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		updateDefaultDisappearingMode,
 		getBusinessProfile,
 		resyncAppState,
-		chatModify
+		chatModify,
+		addChatLabel,
+		removeChatLabel,
+		addMessageLabel,
+		removeMessageLabel
 	}
 }
