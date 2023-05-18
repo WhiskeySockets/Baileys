@@ -515,6 +515,52 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 	})
 
+	const getTwoFactor = async() => {
+		const result = await query({
+			tag: 'iq',
+			attrs: {
+				to: S_WHATSAPP_NET,
+				type: 'get',
+				xmlns: 'urn:xmpp:whatsapp:account',
+				id: generateMessageTag(),
+			},
+			content: [
+				{ tag: '2fa', attrs: {} }
+			]
+		})
+		return getBinaryNodeChild(result, '2fa')?.content
+	}
+
+	/**
+	 * @param opts.pin - 2fa pin (6 digits) or undefined to disable
+	 * @param opts.email - email for 2fa backup
+	 */
+	const setTwoFactor = async() => {
+		return query({
+			tag: 'iq',
+			attrs: {
+				to: S_WHATSAPP_NET,
+				type: 'set',
+				xmlns: 'urn:xmpp:whatsapp:account',
+				id: generateMessageTag(),
+			},
+			content: [
+				{
+					tag: '2fa',
+					attrs: {},
+					content: [
+						{
+							tag: 'code',
+							attrs: {},
+							content: Buffer.alloc(0)
+						},
+						// ...(opts.email ? [{ tag: 'email', attrs: {}, content: opts.email }] : []),
+					]
+				}
+			]
+		})
+	}
+
 	/**
 	 * fetch the profile picture of a user/group
 	 * type = "preview" for a low res picture
