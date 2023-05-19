@@ -1,9 +1,9 @@
 import { Boom } from '@hapi/boom'
 import parsePhoneNumber from 'libphonenumber-js'
 import NodeCache from 'node-cache'
-import P from 'pino'
 import readline from 'readline'
 import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, getAggregateVotesInPollMessage, makeCacheableSignalKeyStore, makeInMemoryStore, PHONENUMBER_MCC, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
+import MAIN_LOGGER from '../src/Utils/logger'
 
 const logger = MAIN_LOGGER.child({})
 logger.level = 'trace'
