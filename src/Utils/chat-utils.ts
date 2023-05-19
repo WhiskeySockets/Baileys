@@ -3,6 +3,7 @@ import { AxiosRequestConfig } from 'axios'
 import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { BaileysEventEmitter, Chat, ChatModification, ChatMutation, ChatUpdate, Contact, InitialAppStateSyncOptions, LastMessageList, LTHashState, WAPatchCreate, WAPatchName } from '../Types'
+import { ChatLabelAssociation, LabelAssociationType, MessageLabelAssociation } from '../Types/LabelAssociation'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, jidNormalizedUser } from '../WABinary'
 import { aesDecrypt, aesEncrypt, hkdf, hmacSign } from './crypto'
 import { toNumber } from './generics'
@@ -37,15 +38,15 @@ const generateMac = (operation: proto.SyncdMutation.SyncdOperation, data: Buffer
 		}
 
 		const buff = Buffer.from([r])
-		return Buffer.concat([ buff, Buffer.from(keyId as any, 'base64') ])
+		return Buffer.concat([buff, Buffer.from(keyId as any, 'base64')])
 	}
 
 	const keyData = getKeyData()
 
 	const last = Buffer.alloc(8) // 8 bytes
-	last.set([ keyData.length ], last.length - 1)
+	last.set([keyData.length], last.length - 1)
 
-	const total = Buffer.concat([ keyData, data, last ])
+	const total = Buffer.concat([keyData, data, last])
 	const hmac = hmacSign(total, key, 'sha512')
 
 	return hmac.slice(0, 32)
@@ -170,7 +171,7 @@ export const encodeSyncdPatch = async(
 						blob: indexMac
 					},
 					value: {
-						blob: Buffer.concat([ encValue, valueMac ])
+						blob: Buffer.concat([encValue, valueMac])
 					},
 					keyId: { id: encKeyId }
 				}
@@ -280,7 +281,7 @@ export const extractSyncdPatches = async(
 	const syncNode = getBinaryNodeChild(result, 'sync')
 	const collectionNodes = getBinaryNodeChildren(syncNode, 'collection')
 
-	const final = { } as { [T in WAPatchName]: { patches: proto.ISyncdPatch[], hasMorePatches: boolean, snapshot?: proto.ISyncdSnapshot } }
+	const final = {} as { [T in WAPatchName]: { patches: proto.ISyncdPatch[], hasMorePatches: boolean, snapshot?: proto.ISyncdSnapshot } }
 	await Promise.all(
 		collectionNodes.map(
 			async collectionNode => {
@@ -301,7 +302,7 @@ export const extractSyncdPatches = async(
 					}
 
 					const blobRef = proto.ExternalBlobReference.decode(
-                        snapshotNode.content! as Buffer
+						snapshotNode.content! as Buffer
 					)
 					const data = await downloadExternalBlob(blobRef, options)
 					snapshot = proto.SyncdSnapshot.decode(data)
@@ -417,9 +418,9 @@ export const decodePatches = async(
 		indexValueMap: { ...initial.indexValueMap }
 	}
 
-	const mutationMap: ChatMutationMap = { }
+	const mutationMap: ChatMutationMap = {}
 
-	for(let i = 0;i < syncds.length;i++) {
+	for(let i = 0; i < syncds.length; i++) {
 		const syncd = syncds[i]
 		const { version, keyId, snapshotMac } = syncd
 		if(syncd.externalMutations) {
@@ -606,6 +607,68 @@ export const chatModificationToAppPatch = (
 			apiVersion: 1,
 			operation: OP.SET,
 		}
+	} else if('addChatLabel' in mod) {
+		patch = {
+			syncAction: {
+				labelAssociationAction: {
+					labeled: true,
+				}
+			},
+			index: [LabelAssociationType.Chat, mod.addChatLabel.labelId, jid],
+			type: 'regular',
+			apiVersion: 3,
+			operation: OP.SET,
+		}
+	} else if('removeChatLabel' in mod) {
+		patch = {
+			syncAction: {
+				labelAssociationAction: {
+					labeled: false,
+				}
+			},
+			index: [LabelAssociationType.Chat, mod.removeChatLabel.labelId, jid],
+			type: 'regular',
+			apiVersion: 3,
+			operation: OP.SET,
+		}
+	} else if('addMessageLabel' in mod) {
+		patch = {
+			syncAction: {
+				labelAssociationAction: {
+					labeled: true,
+				}
+			},
+			index: [
+				LabelAssociationType.Message,
+				mod.addMessageLabel.labelId,
+				jid,
+				mod.addMessageLabel.messageId,
+				'0',
+				'0'
+			],
+			type: 'regular',
+			apiVersion: 3,
+			operation: OP.SET,
+		}
+	} else if('removeMessageLabel' in mod) {
+		patch = {
+			syncAction: {
+				labelAssociationAction: {
+					labeled: false,
+				}
+			},
+			index: [
+				LabelAssociationType.Message,
+				mod.removeMessageLabel.labelId,
+				jid,
+				mod.removeMessageLabel.messageId,
+				'0',
+				'0'
+			],
+			type: 'regular',
+			apiVersion: 3,
+			operation: OP.SET,
+		}
 	} else {
 		throw new Boom('not supported')
 	}
@@ -659,7 +722,7 @@ export const processSyncAction = (
 		const archiveAction = action?.archiveChatAction
 		const isArchived = archiveAction
 			? archiveAction.archived
-		 	: type === 'archive'
+			: type === 'archive'
 		// // basically we don't need to fire an "archive" update if the chat is being marked unarchvied
 		// // this only applies for the initial sync
 		// if(isInitialSync && !isArchived) {
@@ -687,13 +750,15 @@ export const processSyncAction = (
 			conditional: getChatUpdateConditional(id, markReadAction?.messageRange)
 		}])
 	} else if(action?.deleteMessageForMeAction || type === 'deleteMessageForMe') {
-		ev.emit('messages.delete', { keys: [
-			{
-				remoteJid: id,
-				id: msgId,
-				fromMe: fromMe === '1'
-			}
-		] })
+		ev.emit('messages.delete', {
+			keys: [
+				{
+					remoteJid: id,
+					id: msgId,
+					fromMe: fromMe === '1'
+				}
+			]
+		})
 	} else if(action?.contactAction) {
 		ev.emit('contacts.upsert', [{ id, name: action.contactAction!.fullName! }])
 	} else if(action?.pushNameSetting) {
@@ -731,6 +796,34 @@ export const processSyncAction = (
 		if(!isInitialSync) {
 			ev.emit('chats.delete', [id])
 		}
+	} else if(action?.labelEditAction) {
+		const { name, color, deleted, predefinedId } = action.labelEditAction!
+
+		ev.emit('labels.edit', {
+			id,
+			name: name!,
+			color: color!,
+			deleted: deleted!,
+			predefinedId: predefinedId ? String(predefinedId) : undefined
+		})
+	} else if(action?.labelAssociationAction) {
+		ev.emit('labels.association', {
+			type: action.labelAssociationAction.labeled
+				? 'add'
+				: 'remove',
+			association: type === LabelAssociationType.Chat
+				? {
+					type: LabelAssociationType.Chat,
+					chatId: syncAction.index[2],
+					labelId: syncAction.index[1]
+				} as ChatLabelAssociation
+				: {
+					type: LabelAssociationType.Message,
+					chatId: syncAction.index[2],
+					messageId: syncAction.index[3],
+					labelId: syncAction.index[1]
+				} as MessageLabelAssociation
+		})
 	} else {
 		logger?.debug({ syncAction, id }, 'unprocessable update')
 	}

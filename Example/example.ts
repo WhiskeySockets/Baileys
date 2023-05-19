@@ -5,12 +5,8 @@ import P from 'pino'
 import readline from 'readline'
 import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, getAggregateVotesInPollMessage, makeCacheableSignalKeyStore, makeInMemoryStore, PHONENUMBER_MCC, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
 
-const logger = P({
-	transport: {
-   		target: 'pino-pretty'
-	},
-	level: 'trace'
-})
+const logger = MAIN_LOGGER.child({})
+logger.level = 'trace'
 
 const useStore = !process.argv.includes('--no-store')
 const doReplies = !process.argv.includes('--no-reply')
@@ -157,6 +153,15 @@ const startSock = async() => {
 			// credentials updated -- save them
 			if(events['creds.update']) {
 				await saveCreds()
+			}
+
+			if(events['labels.association']) {
+				console.log(events['labels.association'])
+			}
+
+
+			if(events['labels.edit']) {
+				console.log(events['labels.edit'])
 			}
 
 			if(events.call) {
