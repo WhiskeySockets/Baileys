@@ -188,9 +188,6 @@ export const makeSocket = (config: SocketConfig) => {
 		let helloMsg: proto.IHandshakeMessage = {
 			clientHello: { ephemeral: ephemeralKeyPair.public }
 		}
-		console.log(helloMsg)
-		console.log(Buffer.from(ephemeralKeyPair.public).toString('base64'))
-		console.log(ephemeralKeyPair.public.length)
 		helloMsg = proto.HandshakeMessage.fromObject(helloMsg)
 
 		logger.info({ browser, helloMsg }, 'connected to WA')
