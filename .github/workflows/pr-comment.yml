@@ -21,6 +21,7 @@ jobs:
 
       - uses: mshick/add-pr-comment@v2
         with:
+          repo-token: ${{ secrets.GITHUB_TOKEN}}
           message-id: pr-test
           message: |
             Thanks for your contribution.
