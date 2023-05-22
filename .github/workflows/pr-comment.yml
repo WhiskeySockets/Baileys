@@ -1,7 +1,7 @@
 name: PR Comment
 
 on:
-  pull_request:
+  pull_request_target:
     types:
       - opened
       - synchronize
@@ -18,7 +18,7 @@ jobs:
 
       - uses: mshick/add-pr-comment@v2
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN}}
+          repo-token: ${{ secrets.PERSONAL_TOKEN}}
           message-id: pr-test
           message: |
             Thanks for your contribution.
