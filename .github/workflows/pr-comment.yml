@@ -8,13 +8,14 @@ on:
       - reopened
       - unlocked
 
-permissions:
-  pull-requests: write
-
 jobs:
   pr-comment:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write    
     steps:
       - uses: actions/checkout@v3
 
