@@ -12,10 +12,7 @@ jobs:
   pr-comment:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    permissions:
-      contents: read
-      issues: write
-      pull-requests: write    
+    permissions: write-all
     steps:
       - uses: actions/checkout@v3
 
