@@ -1,4 +1,5 @@
 /* eslint-disable camelcase */
+import axios, { AxiosRequestConfig } from 'axios'
 import { MOBILE_REGISTRATION_ENDPOINT, MOBILE_TOKEN, MOBILE_USERAGENT, REGISTRATION_PUBLIC_KEY } from '../Defaults'
 import { KeyPair, SignedKeyPair, SocketConfig } from '../Types'
 import { aesEncryptGCM, Curve, md5 } from '../Utils/crypto'
@@ -22,7 +23,7 @@ export const makeRegistrationSocket = (config: SocketConfig) => {
 			throw new Error('please specify the registration options')
 		}
 
-		const result = await mobileRegister({ ...sock.authState.creds, ...sock.authState.creds.registration as RegistrationOptions, code })
+		const result = await mobileRegister({ ...sock.authState.creds, ...sock.authState.creds.registration as RegistrationOptions, code }, config.options)
 
 		sock.authState.creds.me = {
 			id: jidEncode(result.login!, 's.whatsapp.net'),
@@ -49,7 +50,7 @@ export const makeRegistrationSocket = (config: SocketConfig) => {
 
 		sock.ev.emit('creds.update', sock.authState.creds)
 
-		return mobileRegisterCode({ ...config.auth.creds, ...registrationOptions })
+		return mobileRegisterCode({ ...config.auth.creds, ...registrationOptions }, config.options)
 	}
 
 	return {
@@ -146,7 +147,7 @@ export function registrationParams(params: RegistrationParams) {
 /**
  * Requests a registration code for the given phone number.
  */
-export function mobileRegisterCode(params: RegistrationParams) {
+export function mobileRegisterCode(params: RegistrationParams, fetchOptions?: AxiosRequestConfig) {
 	return mobileRegisterFetch('/code', {
 		params: {
 			...registrationParams(params),
@@ -158,23 +159,26 @@ export function mobileRegisterCode(params: RegistrationParams) {
 			reason: '',
 			hasav: '1'
 		},
+		...fetchOptions,
 	})
 }
 
-export function mobileRegisterExists(params: RegistrationParams) {
+export function mobileRegisterExists(params: RegistrationParams, fetchOptions?: AxiosRequestConfig) {
 	return mobileRegisterFetch('/exist', {
-		params: registrationParams(params)
+		params: registrationParams(params),
+		...fetchOptions
 	})
 }
 
 /**
  * Registers the phone number on whatsapp with the received OTP code.
  */
-export async function mobileRegister(params: RegistrationParams & { code: string }) {
+export async function mobileRegister(params: RegistrationParams & { code: string }, fetchOptions?: AxiosRequestConfig) {
 	//const result = await mobileRegisterFetch(`/reg_onboard_abprop?cc=${params.phoneNumberCountryCode}&in=${params.phoneNumberNationalNumber}&rc=0`)
 
 	return mobileRegisterFetch('/register', {
 		params: { ...registrationParams(params), code: params.code.replace('-', '') },
+		...fetchOptions,
 	})
 }
 
@@ -190,7 +194,7 @@ export function mobileRegisterEncrypt(data: string) {
 	return Buffer.concat([Buffer.from(keypair.public), buffer]).toString('base64url')
 }
 
-export async function mobileRegisterFetch(path: string, opts: { params?: Record<string, string>, headers?: Record<string, string> } = {}) {
+export async function mobileRegisterFetch(path: string, opts: AxiosRequestConfig = {}) {
 	let url = `${MOBILE_REGISTRATION_ENDPOINT}${path}`
 
 	if(opts.params) {
@@ -205,6 +209,7 @@ export async function mobileRegisterFetch(path: string, opts: { params?: Record<
 		// const params = urlencode(mobileRegisterEncrypt(parameter.join('&')))
 		// url += `?ENC=${params}`
 		url += `?${parameter.join('&')}`
+		delete opts.params
 	}
 
 	if(!opts.headers) {
@@ -213,17 +218,11 @@ export async function mobileRegisterFetch(path: string, opts: { params?: Record<
 
 	opts.headers['User-Agent'] = MOBILE_USERAGENT
 
-	const response = await fetch(url, opts)
+	const response = await axios(url, opts)
 
-	const text = await response.text()
+	var json = response.data
 
-	try {
-		var json = JSON.parse(text)
-	} catch(error) {
-		throw text
-	}
-
-	if(!response.ok || json.reason) {
+	if(response.status > 300 || json.reason) {
 		throw json
 	}
 

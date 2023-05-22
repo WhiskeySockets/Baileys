@@ -62,8 +62,6 @@ const startSock = async() => {
 
 		if(!registration.phoneNumber) {
 			registration.phoneNumber = await question('Please enter your mobile phone number:\n')
-		} else {
-			console.log('Your mobile phone number is not registered.')
 		}
 
 		const phoneNumber = parsePhoneNumber(registration!.phoneNumber)
