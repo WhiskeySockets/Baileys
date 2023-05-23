@@ -167,7 +167,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	const onWhatsApp = async(...jids: string[]) => {
-		const query = { tag: 'contact', attrs: {} };
+		const query = { tag: 'contact', attrs: {} }
 		const list = jids.map((jid) => ({
 			tag: 'user',
 			attrs: {},
@@ -176,8 +176,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				attrs: {},
 				content: jid,
 			}],
-		}));
-		const results = await interactiveQuery(list, query);
+		}))
+		const results = await interactiveQuery(list, query)
 
 		return results.map(user => {
 			const contact = getBinaryNodeChild(user, 'contact')
