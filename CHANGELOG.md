@@ -1,9 +1,9 @@
-## 6.0.1 (2023-05-18)
+# 6.1.0 (2023-05-26)
 
 
 ### Bug Fixes
 
-* In memory store: normalize user when asserting message list to update messages ([#49](https://github.com/WhiskeySockets/Baileys/issues/49)) ([7b4abcd](https://github.com/WhiskeySockets/Baileys/commit/7b4abcdb231434c08c14dbb5879cd1fd4939fc41))
+* onWhatsApp query for multiple jids ([#85](https://github.com/WhiskeySockets/Baileys/issues/85)) ([bb25723](https://github.com/WhiskeySockets/Baileys/commit/bb25723b6ac019ec790c22b95738cc14a725f32a))
 
 
 
