@@ -1,4 +1,4 @@
-<!DOCTYPE html><html class="default" lang="en"><head><meta charSet="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>PinMessage | @whiskeysockets/baileys</title><meta name="description" content="Documentation for @whiskeysockets/baileys"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/search.js" id="tsd-search-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os"</script><header class="tsd-page-toolbar">
+<!DOCTYPE html><html class="default" lang="en"><head><meta charSet="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>KeyExchangeMessage | @whiskeysockets/baileys</title><meta name="description" content="Documentation for @whiskeysockets/baileys"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/search.js" id="tsd-search-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os"</script><header class="tsd-page-toolbar">
 <div class="tsd-toolbar-contents container">
 <div class="table-cell" id="tsd-search" data-base="..">
 <div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M15.7824 13.833L12.6666 10.7177C12.5259 10.5771 12.3353 10.499 12.1353 10.499H11.6259C12.4884 9.39596 13.001 8.00859 13.001 6.49937C13.001 2.90909 10.0914 0 6.50048 0C2.90959 0 0 2.90909 0 6.49937C0 10.0896 2.90959 12.9987 6.50048 12.9987C8.00996 12.9987 9.39756 12.4863 10.5008 11.6239V12.1332C10.5008 12.3332 10.5789 12.5238 10.7195 12.6644L13.8354 15.7797C14.1292 16.0734 14.6042 16.0734 14.8948 15.7797L15.7793 14.8954C16.0731 14.6017 16.0731 14.1267 15.7824 13.833ZM6.50048 10.499C4.29094 10.499 2.50018 8.71165 2.50018 6.49937C2.50018 4.29021 4.28781 2.49976 6.50048 2.49976C8.71001 2.49976 10.5008 4.28708 10.5008 6.49937C10.5008 8.70852 8.71314 10.499 6.50048 10.499Z" fill="var(--color-text)"></path></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div>
@@ -14,23 +14,21 @@
 <ul class="tsd-breadcrumb">
 <li><a href="../modules.html">@whiskeysockets/baileys</a></li>
 <li><a href="../modules/proto.html">proto</a></li>
-<li><a href="../modules/proto.Message.html">Message</a></li>
-<li><a href="proto.Message.PinMessage-1.html">PinMessage</a></li></ul>
-<h1>Class PinMessage</h1></div>
+<li><a href="proto.KeyExchangeMessage.html">KeyExchangeMessage</a></li></ul>
+<h1>Class KeyExchangeMessage</h1></div>
 <section class="tsd-panel tsd-comment">
-<div class="tsd-comment tsd-typography"><p>Represents a PinMessage.</p>
+<div class="tsd-comment tsd-typography"><p>Represents a KeyExchangeMessage.</p>
 </div></section>
 <section class="tsd-panel tsd-hierarchy">
 <h4>Hierarchy</h4>
 <ul class="tsd-hierarchy">
-<li><span class="target">PinMessage</span></li></ul></section>
+<li><span class="target">KeyExchangeMessage</span></li></ul></section>
 <section class="tsd-panel">
 <h4>Implements</h4>
 <ul class="tsd-hierarchy">
-<li><a href="../interfaces/proto.Message.IPinMessage.html" class="tsd-signature-type tsd-kind-interface">IPinMessage</a></li></ul></section><aside class="tsd-sources">
+<li><a href="../interfaces/proto.IKeyExchangeMessage.html" class="tsd-signature-type tsd-kind-interface">IKeyExchangeMessage</a></li></ul></section><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/45ce344/WAProto/index.d.ts#L14935">WAProto/index.d.ts:14935</a></li>
-<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/45ce344/WAProto/index.d.ts#L15023">WAProto/index.d.ts:15023</a></li></ul></aside>
+<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/3ef279c/WAProto/index.d.ts#L6559">WAProto/index.d.ts:6559</a></li></ul></aside>
 <section class="tsd-panel-group tsd-index-group">
 <section class="tsd-panel tsd-index-panel">
 <details class="tsd-index-content tsd-index-accordion" open><summary class="tsd-accordion-summary tsd-index-summary">
@@ -38,71 +36,89 @@
 <div class="tsd-accordion-details">
 <section class="tsd-index-section">
 <h3 class="tsd-index-heading">Constructors</h3>
-<div class="tsd-index-list"><a href="proto.Message.PinMessage-1.html#constructor" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><rect fill="var(--color-icon-background)" stroke="#4D7FFF" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="12" id="icon-512-path"></rect><path d="M11.898 16.1201C11.098 16.1201 10.466 15.8961 10.002 15.4481C9.53803 15.0001 9.30603 14.3841 9.30603 13.6001V9.64012C9.30603 8.85612 9.53803 8.24012 10.002 7.79212C10.466 7.34412 11.098 7.12012 11.898 7.12012C12.682 7.12012 13.306 7.34812 13.77 7.80412C14.234 8.25212 14.466 8.86412 14.466 9.64012H13.386C13.386 9.14412 13.254 8.76412 12.99 8.50012C12.734 8.22812 12.37 8.09212 11.898 8.09212C11.426 8.09212 11.054 8.22412 10.782 8.48812C10.518 8.75212 10.386 9.13212 10.386 9.62812V13.6001C10.386 14.0961 10.518 14.4801 10.782 14.7521C11.054 15.0161 11.426 15.1481 11.898 15.1481C12.37 15.1481 12.734 15.0161 12.99 14.7521C13.254 14.4801 13.386 14.0961 13.386 13.6001H14.466C14.466 14.3761 14.234 14.9921 13.77 15.4481C13.306 15.8961 12.682 16.1201 11.898 16.1201Z" fill="var(--color-text)" id="icon-512-text"></path></svg><span>constructor</span></a>
+<div class="tsd-index-list"><a href="proto.KeyExchangeMessage.html#constructor" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><rect fill="var(--color-icon-background)" stroke="#4D7FFF" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="12" id="icon-512-path"></rect><path d="M11.898 16.1201C11.098 16.1201 10.466 15.8961 10.002 15.4481C9.53803 15.0001 9.30603 14.3841 9.30603 13.6001V9.64012C9.30603 8.85612 9.53803 8.24012 10.002 7.79212C10.466 7.34412 11.098 7.12012 11.898 7.12012C12.682 7.12012 13.306 7.34812 13.77 7.80412C14.234 8.25212 14.466 8.86412 14.466 9.64012H13.386C13.386 9.14412 13.254 8.76412 12.99 8.50012C12.734 8.22812 12.37 8.09212 11.898 8.09212C11.426 8.09212 11.054 8.22412 10.782 8.48812C10.518 8.75212 10.386 9.13212 10.386 9.62812V13.6001C10.386 14.0961 10.518 14.4801 10.782 14.7521C11.054 15.0161 11.426 15.1481 11.898 15.1481C12.37 15.1481 12.734 15.0161 12.99 14.7521C13.254 14.4801 13.386 14.0961 13.386 13.6001H14.466C14.466 14.3761 14.234 14.9921 13.77 15.4481C13.306 15.8961 12.682 16.1201 11.898 16.1201Z" fill="var(--color-text)" id="icon-512-text"></path></svg><span>constructor</span></a>
 </div></section>
 <section class="tsd-index-section">
 <h3 class="tsd-index-heading">Properties</h3>
-<div class="tsd-index-list"><a href="proto.Message.PinMessage-1.html#key" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><rect fill="var(--color-icon-background)" stroke="#FF984D" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="12" id="icon-1024-path"></rect><path d="M9.354 16V7.24H12.174C12.99 7.24 13.638 7.476 14.118 7.948C14.606 8.412 14.85 9.036 14.85 9.82C14.85 10.604 14.606 11.232 14.118 11.704C13.638 12.168 12.99 12.4 12.174 12.4H10.434V16H9.354ZM10.434 11.428H12.174C12.646 11.428 13.022 11.284 13.302 10.996C13.59 10.7 13.734 10.308 13.734 9.82C13.734 9.324 13.59 8.932 13.302 8.644C13.022 8.356 12.646 8.212 12.174 8.212H10.434V11.428Z" fill="var(--color-text)" id="icon-1024-text"></path></svg><span>key?</span></a>
-<a href="proto.Message.PinMessage-1.html#pinMessageType" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-1024-path"></use><use href="#icon-1024-text"></use></svg><span>pin<wbr/>Message<wbr/>Type</span></a>
-<a href="proto.Message.PinMessage-1.html#senderTimestampMs" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-1024-path"></use><use href="#icon-1024-text"></use></svg><span>sender<wbr/>Timestamp<wbr/>Ms</span></a>
+<div class="tsd-index-list"><a href="proto.KeyExchangeMessage.html#baseKey" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><rect fill="var(--color-icon-background)" stroke="#FF984D" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="12" id="icon-1024-path"></rect><path d="M9.354 16V7.24H12.174C12.99 7.24 13.638 7.476 14.118 7.948C14.606 8.412 14.85 9.036 14.85 9.82C14.85 10.604 14.606 11.232 14.118 11.704C13.638 12.168 12.99 12.4 12.174 12.4H10.434V16H9.354ZM10.434 11.428H12.174C12.646 11.428 13.022 11.284 13.302 10.996C13.59 10.7 13.734 10.308 13.734 9.82C13.734 9.324 13.59 8.932 13.302 8.644C13.022 8.356 12.646 8.212 12.174 8.212H10.434V11.428Z" fill="var(--color-text)" id="icon-1024-text"></path></svg><span>base<wbr/>Key</span></a>
+<a href="proto.KeyExchangeMessage.html#baseKeySignature" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-1024-path"></use><use href="#icon-1024-text"></use></svg><span>base<wbr/>Key<wbr/>Signature</span></a>
+<a href="proto.KeyExchangeMessage.html#id" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-1024-path"></use><use href="#icon-1024-text"></use></svg><span>id</span></a>
+<a href="proto.KeyExchangeMessage.html#identityKey" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-1024-path"></use><use href="#icon-1024-text"></use></svg><span>identity<wbr/>Key</span></a>
+<a href="proto.KeyExchangeMessage.html#ratchetKey" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-1024-path"></use><use href="#icon-1024-text"></use></svg><span>ratchet<wbr/>Key</span></a>
 </div></section>
 <section class="tsd-index-section">
 <h3 class="tsd-index-heading">Methods</h3>
-<div class="tsd-index-list"><a href="proto.Message.PinMessage-1.html#toJSON" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><rect fill="var(--color-icon-background)" stroke="#FF4DB8" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="12" id="icon-2048-path"></rect><path d="M9.162 16V7.24H10.578L11.514 10.072C11.602 10.328 11.674 10.584 11.73 10.84C11.794 11.088 11.842 11.28 11.874 11.416C11.906 11.28 11.954 11.088 12.018 10.84C12.082 10.584 12.154 10.324 12.234 10.06L13.122 7.24H14.538V16H13.482V12.82C13.482 12.468 13.49 12.068 13.506 11.62C13.53 11.172 13.558 10.716 13.59 10.252C13.622 9.78 13.654 9.332 13.686 8.908C13.726 8.476 13.762 8.1 13.794 7.78L12.366 12.16H11.334L9.894 7.78C9.934 8.092 9.97 8.456 10.002 8.872C10.042 9.28 10.078 9.716 10.11 10.18C10.142 10.636 10.166 11.092 10.182 11.548C10.206 12.004 10.218 12.428 10.218 12.82V16H9.162Z" fill="var(--color-text)" id="icon-2048-text"></path></svg><span>toJSON</span></a>
-<a href="proto.Message.PinMessage-1.html#create" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-2048-path"></use><use href="#icon-2048-text"></use></svg><span>create</span></a>
-<a href="proto.Message.PinMessage-1.html#decode" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-2048-path"></use><use href="#icon-2048-text"></use></svg><span>decode</span></a>
-<a href="proto.Message.PinMessage-1.html#decodeDelimited" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-2048-path"></use><use href="#icon-2048-text"></use></svg><span>decode<wbr/>Delimited</span></a>
-<a href="proto.Message.PinMessage-1.html#encode" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-2048-path"></use><use href="#icon-2048-text"></use></svg><span>encode</span></a>
-<a href="proto.Message.PinMessage-1.html#encodeDelimited" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-2048-path"></use><use href="#icon-2048-text"></use></svg><span>encode<wbr/>Delimited</span></a>
-<a href="proto.Message.PinMessage-1.html#fromObject" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-2048-path"></use><use href="#icon-2048-text"></use></svg><span>from<wbr/>Object</span></a>
-<a href="proto.Message.PinMessage-1.html#toObject" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-2048-path"></use><use href="#icon-2048-text"></use></svg><span>to<wbr/>Object</span></a>
-<a href="proto.Message.PinMessage-1.html#verify" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-2048-path"></use><use href="#icon-2048-text"></use></svg><span>verify</span></a>
+<div class="tsd-index-list"><a href="proto.KeyExchangeMessage.html#toJSON" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><rect fill="var(--color-icon-background)" stroke="#FF4DB8" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="12" id="icon-2048-path"></rect><path d="M9.162 16V7.24H10.578L11.514 10.072C11.602 10.328 11.674 10.584 11.73 10.84C11.794 11.088 11.842 11.28 11.874 11.416C11.906 11.28 11.954 11.088 12.018 10.84C12.082 10.584 12.154 10.324 12.234 10.06L13.122 7.24H14.538V16H13.482V12.82C13.482 12.468 13.49 12.068 13.506 11.62C13.53 11.172 13.558 10.716 13.59 10.252C13.622 9.78 13.654 9.332 13.686 8.908C13.726 8.476 13.762 8.1 13.794 7.78L12.366 12.16H11.334L9.894 7.78C9.934 8.092 9.97 8.456 10.002 8.872C10.042 9.28 10.078 9.716 10.11 10.18C10.142 10.636 10.166 11.092 10.182 11.548C10.206 12.004 10.218 12.428 10.218 12.82V16H9.162Z" fill="var(--color-text)" id="icon-2048-text"></path></svg><span>toJSON</span></a>
+<a href="proto.KeyExchangeMessage.html#create" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-2048-path"></use><use href="#icon-2048-text"></use></svg><span>create</span></a>
+<a href="proto.KeyExchangeMessage.html#decode" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-2048-path"></use><use href="#icon-2048-text"></use></svg><span>decode</span></a>
+<a href="proto.KeyExchangeMessage.html#decodeDelimited" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-2048-path"></use><use href="#icon-2048-text"></use></svg><span>decode<wbr/>Delimited</span></a>
+<a href="proto.KeyExchangeMessage.html#encode" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-2048-path"></use><use href="#icon-2048-text"></use></svg><span>encode</span></a>
+<a href="proto.KeyExchangeMessage.html#encodeDelimited" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-2048-path"></use><use href="#icon-2048-text"></use></svg><span>encode<wbr/>Delimited</span></a>
+<a href="proto.KeyExchangeMessage.html#fromObject" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-2048-path"></use><use href="#icon-2048-text"></use></svg><span>from<wbr/>Object</span></a>
+<a href="proto.KeyExchangeMessage.html#toObject" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-2048-path"></use><use href="#icon-2048-text"></use></svg><span>to<wbr/>Object</span></a>
+<a href="proto.KeyExchangeMessage.html#verify" class="tsd-index-link"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-2048-path"></use><use href="#icon-2048-text"></use></svg><span>verify</span></a>
 </div></section></div></details></section></section>
 <section class="tsd-panel-group tsd-member-group">
 <h2>Constructors</h2>
 <section class="tsd-panel tsd-member"><a id="constructor" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><span>constructor</span><a href="#constructor" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" id="icon-anchor-a"></path><path d="M10 14a3.5 3.5 0 0 0 5 0l4 -4a3.5 3.5 0 0 0 -5 -5l-.5 .5" id="icon-anchor-b"></path><path d="M14 10a3.5 3.5 0 0 0 -5 0l-4 4a3.5 3.5 0 0 0 5 5l.5 -.5" id="icon-anchor-c"></path></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="constructor.new_PinMessage"><span class="tsd-kind-constructor-signature">new <wbr/>Pin<wbr/>Message</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">properties</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="proto.Message.PinMessage-1.html" class="tsd-signature-type tsd-kind-class">PinMessage</a><a href="#constructor.new_PinMessage" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="constructor.new_KeyExchangeMessage"><span class="tsd-kind-constructor-signature">new <wbr/>Key<wbr/>Exchange<wbr/>Message</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">properties</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="proto.KeyExchangeMessage.html" class="tsd-signature-type tsd-kind-class">KeyExchangeMessage</a><a href="#constructor.new_KeyExchangeMessage" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Constructs a new PinMessage.</p>
+<div class="tsd-comment tsd-typography"><p>Constructs a new KeyExchangeMessage.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">properties</span>: <a href="../interfaces/proto.Message.IPinMessage.html" class="tsd-signature-type tsd-kind-interface">IPinMessage</a></h5>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">properties</span>: <a href="../interfaces/proto.IKeyExchangeMessage.html" class="tsd-signature-type tsd-kind-interface">IKeyExchangeMessage</a></h5>
 <div class="tsd-comment tsd-typography"><p>Properties to set</p>
 </div></li></ul></div>
-<h4 class="tsd-returns-title">Returns <a href="proto.Message.PinMessage-1.html" class="tsd-signature-type tsd-kind-class">PinMessage</a></h4><aside class="tsd-sources">
+<h4 class="tsd-returns-title">Returns <a href="proto.KeyExchangeMessage.html" class="tsd-signature-type tsd-kind-class">KeyExchangeMessage</a></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/45ce344/WAProto/index.d.ts#L14941">WAProto/index.d.ts:14941</a></li></ul></aside></li></ul></section></section>
+<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/3ef279c/WAProto/index.d.ts#L6565">WAProto/index.d.ts:6565</a></li></ul></aside></li></ul></section></section>
 <section class="tsd-panel-group tsd-member-group">
 <h2>Properties</h2>
-<section class="tsd-panel tsd-member"><a id="key" class="tsd-anchor"></a>
-<h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagOptional">Optional</code> <span>key</span><a href="#key" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">key</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">null</span><span class="tsd-signature-symbol"> | </span><a href="../modules/proto.html" class="tsd-signature-type tsd-kind-namespace">proto</a><span class="tsd-signature-symbol">.</span><a href="../interfaces/proto.IMessageKey.html" class="tsd-signature-type tsd-kind-interface">IMessageKey</a></div>
-<div class="tsd-comment tsd-typography"><p>PinMessage key.</p>
+<section class="tsd-panel tsd-member"><a id="baseKey" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>base<wbr/>Key</span><a href="#baseKey" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">base<wbr/>Key</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">Uint8Array</span></div>
+<div class="tsd-comment tsd-typography"><p>KeyExchangeMessage baseKey.</p>
 </div><aside class="tsd-sources">
-<p>Implementation of <a href="../interfaces/proto.Message.IPinMessage.html">IPinMessage</a>.<a href="../interfaces/proto.Message.IPinMessage.html#key">key</a></p>
+<p>Implementation of <a href="../interfaces/proto.IKeyExchangeMessage.html">IKeyExchangeMessage</a>.<a href="../interfaces/proto.IKeyExchangeMessage.html#baseKey">baseKey</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/45ce344/WAProto/index.d.ts#L14944">WAProto/index.d.ts:14944</a></li></ul></aside></section>
-<section class="tsd-panel tsd-member"><a id="pinMessageType" class="tsd-anchor"></a>
-<h3 class="tsd-anchor-link"><span>pin<wbr/>Message<wbr/>Type</span><a href="#pinMessageType" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">pin<wbr/>Message<wbr/>Type</span><span class="tsd-signature-symbol">:</span> <a href="../enums/proto.Message.PinMessage.PinMessageType.html" class="tsd-signature-type tsd-kind-enum">PinMessageType</a></div>
-<div class="tsd-comment tsd-typography"><p>PinMessage pinMessageType.</p>
+<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/3ef279c/WAProto/index.d.ts#L6571">WAProto/index.d.ts:6571</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="baseKeySignature" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>base<wbr/>Key<wbr/>Signature</span><a href="#baseKeySignature" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">base<wbr/>Key<wbr/>Signature</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">Uint8Array</span></div>
+<div class="tsd-comment tsd-typography"><p>KeyExchangeMessage baseKeySignature.</p>
 </div><aside class="tsd-sources">
-<p>Implementation of <a href="../interfaces/proto.Message.IPinMessage.html">IPinMessage</a>.<a href="../interfaces/proto.Message.IPinMessage.html#pinMessageType">pinMessageType</a></p>
+<p>Implementation of <a href="../interfaces/proto.IKeyExchangeMessage.html">IKeyExchangeMessage</a>.<a href="../interfaces/proto.IKeyExchangeMessage.html#baseKeySignature">baseKeySignature</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/45ce344/WAProto/index.d.ts#L14947">WAProto/index.d.ts:14947</a></li></ul></aside></section>
-<section class="tsd-panel tsd-member"><a id="senderTimestampMs" class="tsd-anchor"></a>
-<h3 class="tsd-anchor-link"><span>sender<wbr/>Timestamp<wbr/>Ms</span><a href="#senderTimestampMs" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></h3>
-<div class="tsd-signature"><span class="tsd-kind-property">sender<wbr/>Timestamp<wbr/>Ms</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Long</span></div>
-<div class="tsd-comment tsd-typography"><p>PinMessage senderTimestampMs.</p>
+<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/3ef279c/WAProto/index.d.ts#L6580">WAProto/index.d.ts:6580</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="id" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>id</span><a href="#id" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">id</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
+<div class="tsd-comment tsd-typography"><p>KeyExchangeMessage id.</p>
 </div><aside class="tsd-sources">
-<p>Implementation of <a href="../interfaces/proto.Message.IPinMessage.html">IPinMessage</a>.<a href="../interfaces/proto.Message.IPinMessage.html#senderTimestampMs">senderTimestampMs</a></p>
+<p>Implementation of <a href="../interfaces/proto.IKeyExchangeMessage.html">IKeyExchangeMessage</a>.<a href="../interfaces/proto.IKeyExchangeMessage.html#id">id</a></p>
 <ul>
-<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/45ce344/WAProto/index.d.ts#L14950">WAProto/index.d.ts:14950</a></li></ul></aside></section></section>
+<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/3ef279c/WAProto/index.d.ts#L6568">WAProto/index.d.ts:6568</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="identityKey" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>identity<wbr/>Key</span><a href="#identityKey" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">identity<wbr/>Key</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">Uint8Array</span></div>
+<div class="tsd-comment tsd-typography"><p>KeyExchangeMessage identityKey.</p>
+</div><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/proto.IKeyExchangeMessage.html">IKeyExchangeMessage</a>.<a href="../interfaces/proto.IKeyExchangeMessage.html#identityKey">identityKey</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/3ef279c/WAProto/index.d.ts#L6577">WAProto/index.d.ts:6577</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member"><a id="ratchetKey" class="tsd-anchor"></a>
+<h3 class="tsd-anchor-link"><span>ratchet<wbr/>Key</span><a href="#ratchetKey" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">ratchet<wbr/>Key</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type ">Uint8Array</span></div>
+<div class="tsd-comment tsd-typography"><p>KeyExchangeMessage ratchetKey.</p>
+</div><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/proto.IKeyExchangeMessage.html">IKeyExchangeMessage</a>.<a href="../interfaces/proto.IKeyExchangeMessage.html#ratchetKey">ratchetKey</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/3ef279c/WAProto/index.d.ts#L6574">WAProto/index.d.ts:6574</a></li></ul></aside></section></section>
 <section class="tsd-panel-group tsd-member-group">
 <h2>Methods</h2>
 <section class="tsd-panel tsd-member"><a id="toJSON" class="tsd-anchor"></a>
@@ -110,7 +126,7 @@
 <ul class="tsd-signatures">
 <li class="tsd-signature tsd-anchor-link" id="toJSON.toJSON-1"><span class="tsd-kind-call-signature">toJSON</span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-symbol">{ </span><br/><span>    </span>[<span class="tsd-kind-index-signature">k</span>: <span class="tsd-signature-type">string</span>]<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span><a href="#toJSON.toJSON-1" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Converts this PinMessage to JSON.</p>
+<div class="tsd-comment tsd-typography"><p>Converts this KeyExchangeMessage to JSON.</p>
 </div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-symbol">{ </span><br/><span>    </span>[<span class="tsd-kind-index-signature">k</span>: <span class="tsd-signature-type">string</span>]<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span></h4><p>JSON object</p>
 
@@ -118,31 +134,31 @@
 <li class="tsd-parameter-index-signature">
 <h5><span class="tsd-signature-symbol">[</span><span class="tsd-kind-parameter">k</span>: <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">]: </span><span class="tsd-signature-type">any</span></h5></li></ul><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/45ce344/WAProto/index.d.ts#L15020">WAProto/index.d.ts:15020</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/3ef279c/WAProto/index.d.ts#L6650">WAProto/index.d.ts:6650</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="create" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagStatic">Static</code> <span>create</span><a href="#create" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="create.create-1"><span class="tsd-kind-call-signature">create</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">properties</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="proto.Message.PinMessage-1.html" class="tsd-signature-type tsd-kind-class">PinMessage</a><a href="#create.create-1" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="create.create-1"><span class="tsd-kind-call-signature">create</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">properties</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="proto.KeyExchangeMessage.html" class="tsd-signature-type tsd-kind-class">KeyExchangeMessage</a><a href="#create.create-1" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Creates a new PinMessage instance using the specified properties.</p>
+<div class="tsd-comment tsd-typography"><p>Creates a new KeyExchangeMessage instance using the specified properties.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">properties</span>: <a href="../interfaces/proto.Message.IPinMessage.html" class="tsd-signature-type tsd-kind-interface">IPinMessage</a></h5>
+<h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">properties</span>: <a href="../interfaces/proto.IKeyExchangeMessage.html" class="tsd-signature-type tsd-kind-interface">IKeyExchangeMessage</a></h5>
 <div class="tsd-comment tsd-typography"><p>Properties to set</p>
 </div></li></ul></div>
-<h4 class="tsd-returns-title">Returns <a href="proto.Message.PinMessage-1.html" class="tsd-signature-type tsd-kind-class">PinMessage</a></h4><p>PinMessage instance</p>
+<h4 class="tsd-returns-title">Returns <a href="proto.KeyExchangeMessage.html" class="tsd-signature-type tsd-kind-class">KeyExchangeMessage</a></h4><p>KeyExchangeMessage instance</p>
 <aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/45ce344/WAProto/index.d.ts#L14957">WAProto/index.d.ts:14957</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/3ef279c/WAProto/index.d.ts#L6587">WAProto/index.d.ts:6587</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="decode" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagStatic">Static</code> <span>decode</span><a href="#decode" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="decode.decode-1"><span class="tsd-kind-call-signature">decode</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">reader</span>, <span class="tsd-kind-parameter">length</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="proto.Message.PinMessage-1.html" class="tsd-signature-type tsd-kind-class">PinMessage</a><a href="#decode.decode-1" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="decode.decode-1"><span class="tsd-kind-call-signature">decode</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">reader</span>, <span class="tsd-kind-parameter">length</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="proto.KeyExchangeMessage.html" class="tsd-signature-type tsd-kind-class">KeyExchangeMessage</a><a href="#decode.decode-1" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Decodes a PinMessage message from the specified reader or buffer.</p>
+<div class="tsd-comment tsd-typography"><p>Decodes a KeyExchangeMessage message from the specified reader or buffer.</p>
 
 <h3>Throws</h3><p>If the payload is not a reader or valid buffer</p>
 
@@ -159,16 +175,16 @@
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">length</span>: <span class="tsd-signature-type">number</span></h5>
 <div class="tsd-comment tsd-typography"><p>Message length if known beforehand</p>
 </div></li></ul></div>
-<h4 class="tsd-returns-title">Returns <a href="proto.Message.PinMessage-1.html" class="tsd-signature-type tsd-kind-class">PinMessage</a></h4><p>PinMessage</p>
+<h4 class="tsd-returns-title">Returns <a href="proto.KeyExchangeMessage.html" class="tsd-signature-type tsd-kind-class">KeyExchangeMessage</a></h4><p>KeyExchangeMessage</p>
 <aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/45ce344/WAProto/index.d.ts#L14983">WAProto/index.d.ts:14983</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/3ef279c/WAProto/index.d.ts#L6613">WAProto/index.d.ts:6613</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="decodeDelimited" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagStatic">Static</code> <span>decode<wbr/>Delimited</span><a href="#decodeDelimited" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="decodeDelimited.decodeDelimited-1"><span class="tsd-kind-call-signature">decode<wbr/>Delimited</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">reader</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="proto.Message.PinMessage-1.html" class="tsd-signature-type tsd-kind-class">PinMessage</a><a href="#decodeDelimited.decodeDelimited-1" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="decodeDelimited.decodeDelimited-1"><span class="tsd-kind-call-signature">decode<wbr/>Delimited</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">reader</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="proto.KeyExchangeMessage.html" class="tsd-signature-type tsd-kind-class">KeyExchangeMessage</a><a href="#decodeDelimited.decodeDelimited-1" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Decodes a PinMessage message from the specified reader or buffer, length delimited.</p>
+<div class="tsd-comment tsd-typography"><p>Decodes a KeyExchangeMessage message from the specified reader or buffer, length delimited.</p>
 
 <h3>Throws</h3><p>If the payload is not a reader or valid buffer</p>
 
@@ -181,23 +197,23 @@
 <h5><span class="tsd-kind-parameter">reader</span>: <span class="tsd-signature-type ">Reader</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Uint8Array</span></h5>
 <div class="tsd-comment tsd-typography"><p>Reader or buffer to decode from</p>
 </div></li></ul></div>
-<h4 class="tsd-returns-title">Returns <a href="proto.Message.PinMessage-1.html" class="tsd-signature-type tsd-kind-class">PinMessage</a></h4><p>PinMessage</p>
+<h4 class="tsd-returns-title">Returns <a href="proto.KeyExchangeMessage.html" class="tsd-signature-type tsd-kind-class">KeyExchangeMessage</a></h4><p>KeyExchangeMessage</p>
 <aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/45ce344/WAProto/index.d.ts#L14992">WAProto/index.d.ts:14992</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/3ef279c/WAProto/index.d.ts#L6622">WAProto/index.d.ts:6622</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="encode" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagStatic">Static</code> <span>encode</span><a href="#encode" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></h3>
 <ul class="tsd-signatures">
 <li class="tsd-signature tsd-anchor-link" id="encode.encode-1"><span class="tsd-kind-call-signature">encode</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">message</span>, <span class="tsd-kind-parameter">writer</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Writer</span><a href="#encode.encode-1" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Encodes the specified PinMessage message. Does not implicitly <a href="proto.Message.PinMessage-1.html#verify" class="tsd-kind-method">verify</a> messages.</p>
+<div class="tsd-comment tsd-typography"><p>Encodes the specified KeyExchangeMessage message. Does not implicitly <a href="proto.KeyExchangeMessage.html#verify" class="tsd-kind-method">verify</a> messages.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5><span class="tsd-kind-parameter">message</span>: <a href="../interfaces/proto.Message.IPinMessage.html" class="tsd-signature-type tsd-kind-interface">IPinMessage</a></h5>
-<div class="tsd-comment tsd-typography"><p>PinMessage message or plain object to encode</p>
+<h5><span class="tsd-kind-parameter">message</span>: <a href="../interfaces/proto.IKeyExchangeMessage.html" class="tsd-signature-type tsd-kind-interface">IKeyExchangeMessage</a></h5>
+<div class="tsd-comment tsd-typography"><p>KeyExchangeMessage message or plain object to encode</p>
 </div></li>
 <li>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">writer</span>: <span class="tsd-signature-type ">Writer</span></h5>
@@ -206,20 +222,20 @@
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Writer</span></h4><p>Writer</p>
 <aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/45ce344/WAProto/index.d.ts#L14965">WAProto/index.d.ts:14965</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/3ef279c/WAProto/index.d.ts#L6595">WAProto/index.d.ts:6595</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="encodeDelimited" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagStatic">Static</code> <span>encode<wbr/>Delimited</span><a href="#encodeDelimited" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></h3>
 <ul class="tsd-signatures">
 <li class="tsd-signature tsd-anchor-link" id="encodeDelimited.encodeDelimited-1"><span class="tsd-kind-call-signature">encode<wbr/>Delimited</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">message</span>, <span class="tsd-kind-parameter">writer</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Writer</span><a href="#encodeDelimited.encodeDelimited-1" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Encodes the specified PinMessage message, length delimited. Does not implicitly <a href="proto.Message.PinMessage-1.html#verify" class="tsd-kind-method">verify</a> messages.</p>
+<div class="tsd-comment tsd-typography"><p>Encodes the specified KeyExchangeMessage message, length delimited. Does not implicitly <a href="proto.KeyExchangeMessage.html#verify" class="tsd-kind-method">verify</a> messages.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5><span class="tsd-kind-parameter">message</span>: <a href="../interfaces/proto.Message.IPinMessage.html" class="tsd-signature-type tsd-kind-interface">IPinMessage</a></h5>
-<div class="tsd-comment tsd-typography"><p>PinMessage message or plain object to encode</p>
+<h5><span class="tsd-kind-parameter">message</span>: <a href="../interfaces/proto.IKeyExchangeMessage.html" class="tsd-signature-type tsd-kind-interface">IKeyExchangeMessage</a></h5>
+<div class="tsd-comment tsd-typography"><p>KeyExchangeMessage message or plain object to encode</p>
 </div></li>
 <li>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">writer</span>: <span class="tsd-signature-type ">Writer</span></h5>
@@ -228,13 +244,13 @@
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Writer</span></h4><p>Writer</p>
 <aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/45ce344/WAProto/index.d.ts#L14973">WAProto/index.d.ts:14973</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/3ef279c/WAProto/index.d.ts#L6603">WAProto/index.d.ts:6603</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="fromObject" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagStatic">Static</code> <span>from<wbr/>Object</span><a href="#fromObject" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></h3>
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="fromObject.fromObject-1"><span class="tsd-kind-call-signature">from<wbr/>Object</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">object</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="proto.Message.PinMessage-1.html" class="tsd-signature-type tsd-kind-class">PinMessage</a><a href="#fromObject.fromObject-1" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="fromObject.fromObject-1"><span class="tsd-kind-call-signature">from<wbr/>Object</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">object</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="proto.KeyExchangeMessage.html" class="tsd-signature-type tsd-kind-class">KeyExchangeMessage</a><a href="#fromObject.fromObject-1" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Creates a PinMessage message from a plain object. Also converts values to their respective internal types.</p>
+<div class="tsd-comment tsd-typography"><p>Creates a KeyExchangeMessage message from a plain object. Also converts values to their respective internal types.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -246,23 +262,23 @@
 <ul class="tsd-parameters">
 <li class="tsd-parameter-index-signature">
 <h5><span class="tsd-signature-symbol">[</span><span class="tsd-kind-parameter">k</span>: <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">]: </span><span class="tsd-signature-type">any</span></h5></li></ul></li></ul></div>
-<h4 class="tsd-returns-title">Returns <a href="proto.Message.PinMessage-1.html" class="tsd-signature-type tsd-kind-class">PinMessage</a></h4><p>PinMessage</p>
+<h4 class="tsd-returns-title">Returns <a href="proto.KeyExchangeMessage.html" class="tsd-signature-type tsd-kind-class">KeyExchangeMessage</a></h4><p>KeyExchangeMessage</p>
 <aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/45ce344/WAProto/index.d.ts#L15006">WAProto/index.d.ts:15006</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/3ef279c/WAProto/index.d.ts#L6636">WAProto/index.d.ts:6636</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="toObject" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagStatic">Static</code> <span>to<wbr/>Object</span><a href="#toObject" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></h3>
 <ul class="tsd-signatures">
 <li class="tsd-signature tsd-anchor-link" id="toObject.toObject-1"><span class="tsd-kind-call-signature">to<wbr/>Object</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">message</span>, <span class="tsd-kind-parameter">options</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-symbol">{ </span><br/><span>    </span>[<span class="tsd-kind-index-signature">k</span>: <span class="tsd-signature-type">string</span>]<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">; </span><br/><span class="tsd-signature-symbol">}</span><a href="#toObject.toObject-1" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Creates a plain object from a PinMessage message. Also converts values to other types if specified.</p>
+<div class="tsd-comment tsd-typography"><p>Creates a plain object from a KeyExchangeMessage message. Also converts values to other types if specified.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
-<h5><span class="tsd-kind-parameter">message</span>: <a href="proto.Message.PinMessage-1.html" class="tsd-signature-type tsd-kind-class">PinMessage</a></h5>
-<div class="tsd-comment tsd-typography"><p>PinMessage</p>
+<h5><span class="tsd-kind-parameter">message</span>: <a href="proto.KeyExchangeMessage.html" class="tsd-signature-type tsd-kind-class">KeyExchangeMessage</a></h5>
+<div class="tsd-comment tsd-typography"><p>KeyExchangeMessage</p>
 </div></li>
 <li>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">options</span>: <span class="tsd-signature-type ">IConversionOptions</span></h5>
@@ -274,13 +290,13 @@
 <li class="tsd-parameter-index-signature">
 <h5><span class="tsd-signature-symbol">[</span><span class="tsd-kind-parameter">k</span>: <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">]: </span><span class="tsd-signature-type">any</span></h5></li></ul><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/45ce344/WAProto/index.d.ts#L15014">WAProto/index.d.ts:15014</a></li></ul></aside></li></ul></section>
+<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/3ef279c/WAProto/index.d.ts#L6644">WAProto/index.d.ts:6644</a></li></ul></aside></li></ul></section>
 <section class="tsd-panel tsd-member"><a id="verify" class="tsd-anchor"></a>
 <h3 class="tsd-anchor-link"><code class="tsd-tag ts-flagStatic">Static</code> <span>verify</span><a href="#verify" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></h3>
 <ul class="tsd-signatures">
 <li class="tsd-signature tsd-anchor-link" id="verify.verify-1"><span class="tsd-kind-call-signature">verify</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">message</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">null</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span><a href="#verify.verify-1" aria-label="Permalink" class="tsd-anchor-icon"><svg class="icon icon-tabler icon-tabler-link" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-anchor-a"></use><use href="#icon-anchor-b"></use><use href="#icon-anchor-c"></use></svg></a></li>
 <li class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Verifies a PinMessage message.</p>
+<div class="tsd-comment tsd-typography"><p>Verifies a KeyExchangeMessage message.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
@@ -295,7 +311,7 @@
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">null</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span></h4><p><code>null</code> if valid, otherwise the reason why it is not</p>
 <aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/45ce344/WAProto/index.d.ts#L14999">WAProto/index.d.ts:14999</a></li></ul></aside></li></ul></section></section></div>
+<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/3ef279c/WAProto/index.d.ts#L6629">WAProto/index.d.ts:6629</a></li></ul></aside></li></ul></section></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
@@ -313,9 +329,11 @@
 <div class="tsd-accordion-details">
 <ul>
 <li><a href="#constructor" class=""><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-512-path"></use><use href="#icon-512-text"></use></svg><span>constructor</span></a></li>
-<li><a href="#key" class=""><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-1024-path"></use><use href="#icon-1024-text"></use></svg><span>key</span></a></li>
-<li><a href="#pinMessageType" class=""><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-1024-path"></use><use href="#icon-1024-text"></use></svg><span>pin<wbr/>Message<wbr/>Type</span></a></li>
-<li><a href="#senderTimestampMs" class=""><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-1024-path"></use><use href="#icon-1024-text"></use></svg><span>sender<wbr/>Timestamp<wbr/>Ms</span></a></li>
+<li><a href="#baseKey" class=""><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-1024-path"></use><use href="#icon-1024-text"></use></svg><span>base<wbr/>Key</span></a></li>
+<li><a href="#baseKeySignature" class=""><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-1024-path"></use><use href="#icon-1024-text"></use></svg><span>base<wbr/>Key<wbr/>Signature</span></a></li>
+<li><a href="#id" class=""><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-1024-path"></use><use href="#icon-1024-text"></use></svg><span>id</span></a></li>
+<li><a href="#identityKey" class=""><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-1024-path"></use><use href="#icon-1024-text"></use></svg><span>identity<wbr/>Key</span></a></li>
+<li><a href="#ratchetKey" class=""><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-1024-path"></use><use href="#icon-1024-text"></use></svg><span>ratchet<wbr/>Key</span></a></li>
 <li><a href="#toJSON" class=""><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-2048-path"></use><use href="#icon-2048-text"></use></svg><span>toJSON</span></a></li>
 <li><a href="#create" class=""><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-2048-path"></use><use href="#icon-2048-text"></use></svg><span>create</span></a></li>
 <li><a href="#decode" class=""><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-2048-path"></use><use href="#icon-2048-text"></use></svg><span>decode</span></a></li>
@@ -390,10 +408,12 @@
 <li><a href="../enums/proto.ClientPayload.Product.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-8-path"></use><use href="#icon-8-text"></use></svg><span>Product</span></a></li>
 <li><a href="proto.ClientPayload.DNSSource-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>DNSSource</span></a></li>
 <li><a href="proto.ClientPayload.DevicePairingRegistrationData.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Device<wbr/>Pairing<wbr/>Registration<wbr/>Data</span></a></li>
+<li><a href="proto.ClientPayload.InteropData.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Interop<wbr/>Data</span></a></li>
 <li><a href="proto.ClientPayload.UserAgent-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>User<wbr/>Agent</span></a></li>
 <li><a href="proto.ClientPayload.WebInfo-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Web<wbr/>Info</span></a></li>
 <li><a href="../interfaces/proto.ClientPayload.IDNSSource.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IDNSSource</span></a></li>
 <li><a href="../interfaces/proto.ClientPayload.IDevicePairingRegistrationData.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IDevice<wbr/>Pairing<wbr/>Registration<wbr/>Data</span></a></li>
+<li><a href="../interfaces/proto.ClientPayload.IInteropData.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IInterop<wbr/>Data</span></a></li>
 <li><a href="../interfaces/proto.ClientPayload.IUserAgent.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IUser<wbr/>Agent</span></a></li>
 <li><a href="../interfaces/proto.ClientPayload.IWebInfo.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IWeb<wbr/>Info</span></a></li></ul></div></details></li>
 <li>
@@ -471,7 +491,7 @@
 <ul class="tsd-nested-navigation">
 <li><a href="../enums/proto.MediaRetryNotification.ResultType.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-8-path"></use><use href="#icon-8-text"></use></svg><span>Result<wbr/>Type</span></a></li></ul></div></details></li>
 <li>
-<details class="tsd-index-accordion" open data-key="proto.Message"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4.93896 8.531L12 15.591L19.061 8.531L16.939 6.409L12 11.349L7.06098 6.409L4.93896 8.531Z" fill="var(--color-text)"></path></svg><a href="../modules/proto.Message.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-4-path"></use><use href="#icon-4-text"></use></svg><span>Message</span></a></summary>
+<details class="tsd-index-accordion" data-key="proto.Message"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4.93896 8.531L12 15.591L19.061 8.531L16.939 6.409L12 11.349L7.06098 6.409L4.93896 8.531Z" fill="var(--color-text)"></path></svg><a href="../modules/proto.Message.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-4-path"></use><use href="#icon-4-text"></use></svg><span>Message</span></a></summary>
 <div class="tsd-accordion-details">
 <ul class="tsd-nested-navigation">
 <li>
@@ -571,7 +591,12 @@
 <details class="tsd-index-accordion" data-key="proto.Message.InteractiveResponseMessage"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4.93896 8.531L12 15.591L19.061 8.531L16.939 6.409L12 11.349L7.06098 6.409L4.93896 8.531Z" fill="var(--color-text)"></path></svg><a href="../modules/proto.Message.InteractiveResponseMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-4-path"></use><use href="#icon-4-text"></use></svg><span>Interactive<wbr/>Response<wbr/>Message</span></a></summary>
 <div class="tsd-accordion-details">
 <ul class="tsd-nested-navigation">
-<li><a href="proto.Message.InteractiveResponseMessage.Body.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Body</span></a></li>
+<li>
+<details class="tsd-index-accordion" data-key="proto.Message.InteractiveResponseMessage.Body"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4.93896 8.531L12 15.591L19.061 8.531L16.939 6.409L12 11.349L7.06098 6.409L4.93896 8.531Z" fill="var(--color-text)"></path></svg><a href="../modules/proto.Message.InteractiveResponseMessage.Body.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-4-path"></use><use href="#icon-4-text"></use></svg><span>Body</span></a></summary>
+<div class="tsd-accordion-details">
+<ul class="tsd-nested-navigation">
+<li><a href="../enums/proto.Message.InteractiveResponseMessage.Body.Format.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-8-path"></use><use href="#icon-8-text"></use></svg><span>Format</span></a></li></ul></div></details></li>
+<li><a href="proto.Message.InteractiveResponseMessage.Body-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Body</span></a></li>
 <li><a href="proto.Message.InteractiveResponseMessage.NativeFlowResponseMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Native<wbr/>Flow<wbr/>Response<wbr/>Message</span></a></li>
 <li><a href="../interfaces/proto.Message.InteractiveResponseMessage.IBody.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IBody</span></a></li>
 <li><a href="../interfaces/proto.Message.InteractiveResponseMessage.INativeFlowResponseMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>INative<wbr/>Flow<wbr/>Response<wbr/>Message</span></a></li></ul></div></details></li>
@@ -620,9 +645,11 @@
 <div class="tsd-accordion-details">
 <ul class="tsd-nested-navigation">
 <li><a href="proto.Message.PeerDataOperationRequestMessage.HistorySyncOnDemandRequest.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>History<wbr/>Sync<wbr/>On<wbr/>Demand<wbr/>Request</span></a></li>
+<li><a href="proto.Message.PeerDataOperationRequestMessage.PlaceholderMessageResendRequest.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Placeholder<wbr/>Message<wbr/>Resend<wbr/>Request</span></a></li>
 <li><a href="proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Request<wbr/>Sticker<wbr/>Reupload</span></a></li>
 <li><a href="proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Request<wbr/>Url<wbr/>Preview</span></a></li>
 <li><a href="../interfaces/proto.Message.PeerDataOperationRequestMessage.IHistorySyncOnDemandRequest.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IHistory<wbr/>Sync<wbr/>On<wbr/>Demand<wbr/>Request</span></a></li>
+<li><a href="../interfaces/proto.Message.PeerDataOperationRequestMessage.IPlaceholderMessageResendRequest.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPlaceholder<wbr/>Message<wbr/>Resend<wbr/>Request</span></a></li>
 <li><a href="../interfaces/proto.Message.PeerDataOperationRequestMessage.IRequestStickerReupload.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IRequest<wbr/>Sticker<wbr/>Reupload</span></a></li>
 <li><a href="../interfaces/proto.Message.PeerDataOperationRequestMessage.IRequestUrlPreview.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IRequest<wbr/>Url<wbr/>Preview</span></a></li></ul></div></details></li>
 <li>
@@ -633,15 +660,23 @@
 <details class="tsd-index-accordion" data-key="proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4.93896 8.531L12 15.591L19.061 8.531L16.939 6.409L12 11.349L7.06098 6.409L4.93896 8.531Z" fill="var(--color-text)"></path></svg><a href="../modules/proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-4-path"></use><use href="#icon-4-text"></use></svg><span>Peer<wbr/>Data<wbr/>Operation<wbr/>Result</span></a></summary>
 <div class="tsd-accordion-details">
 <ul class="tsd-nested-navigation">
-<li><a href="proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Link<wbr/>Preview<wbr/>Response</span></a></li>
-<li><a href="../interfaces/proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ILinkPreviewResponse.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>ILink<wbr/>Preview<wbr/>Response</span></a></li></ul></div></details></li>
+<li>
+<details class="tsd-index-accordion" data-key="proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4.93896 8.531L12 15.591L19.061 8.531L16.939 6.409L12 11.349L7.06098 6.409L4.93896 8.531Z" fill="var(--color-text)"></path></svg><a href="../modules/proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-4-path"></use><use href="#icon-4-text"></use></svg><span>Link<wbr/>Preview<wbr/>Response</span></a></summary>
+<div class="tsd-accordion-details">
+<ul class="tsd-nested-navigation">
+<li><a href="proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse.LinkPreviewHighQualityThumbnail.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Link<wbr/>Preview<wbr/>High<wbr/>Quality<wbr/>Thumbnail</span></a></li>
+<li><a href="../interfaces/proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse.ILinkPreviewHighQualityThumbnail.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>ILink<wbr/>Preview<wbr/>High<wbr/>Quality<wbr/>Thumbnail</span></a></li></ul></div></details></li>
+<li><a href="proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Link<wbr/>Preview<wbr/>Response</span></a></li>
+<li><a href="proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.PlaceholderMessageResendResponse.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Placeholder<wbr/>Message<wbr/>Resend<wbr/>Response</span></a></li>
+<li><a href="../interfaces/proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ILinkPreviewResponse.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>ILink<wbr/>Preview<wbr/>Response</span></a></li>
+<li><a href="../interfaces/proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.IPlaceholderMessageResendResponse.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPlaceholder<wbr/>Message<wbr/>Resend<wbr/>Response</span></a></li></ul></div></details></li>
 <li><a href="proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Peer<wbr/>Data<wbr/>Operation<wbr/>Result</span></a></li>
 <li><a href="../interfaces/proto.Message.PeerDataOperationRequestResponseMessage.IPeerDataOperationResult.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPeer<wbr/>Data<wbr/>Operation<wbr/>Result</span></a></li></ul></div></details></li>
 <li>
-<details class="tsd-index-accordion" data-key="proto.Message.PinMessage"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4.93896 8.531L12 15.591L19.061 8.531L16.939 6.409L12 11.349L7.06098 6.409L4.93896 8.531Z" fill="var(--color-text)"></path></svg><a href="../modules/proto.Message.PinMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-4-path"></use><use href="#icon-4-text"></use></svg><span>Pin<wbr/>Message</span></a></summary>
+<details class="tsd-index-accordion" data-key="proto.Message.PinInChatMessage"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4.93896 8.531L12 15.591L19.061 8.531L16.939 6.409L12 11.349L7.06098 6.409L4.93896 8.531Z" fill="var(--color-text)"></path></svg><a href="../modules/proto.Message.PinInChatMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-4-path"></use><use href="#icon-4-text"></use></svg><span>Pin<wbr/>In<wbr/>Chat<wbr/>Message</span></a></summary>
 <div class="tsd-accordion-details">
 <ul class="tsd-nested-navigation">
-<li><a href="../enums/proto.Message.PinMessage.PinMessageType.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-8-path"></use><use href="#icon-8-text"></use></svg><span>Pin<wbr/>Message<wbr/>Type</span></a></li></ul></div></details></li>
+<li><a href="../enums/proto.Message.PinInChatMessage.Type.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-8-path"></use><use href="#icon-8-text"></use></svg><span>Type</span></a></li></ul></div></details></li>
 <li>
 <details class="tsd-index-accordion" data-key="proto.Message.PollCreationMessage"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4.93896 8.531L12 15.591L19.061 8.531L16.939 6.409L12 11.349L7.06098 6.409L4.93896 8.531Z" fill="var(--color-text)"></path></svg><a href="../modules/proto.Message.PollCreationMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-4-path"></use><use href="#icon-4-text"></use></svg><span>Poll<wbr/>Creation<wbr/>Message</span></a></summary>
 <div class="tsd-accordion-details">
@@ -723,7 +758,7 @@
 <li><a href="proto.Message.PaymentInviteMessage-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Payment<wbr/>Invite<wbr/>Message</span></a></li>
 <li><a href="proto.Message.PeerDataOperationRequestMessage-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Peer<wbr/>Data<wbr/>Operation<wbr/>Request<wbr/>Message</span></a></li>
 <li><a href="proto.Message.PeerDataOperationRequestResponseMessage-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Peer<wbr/>Data<wbr/>Operation<wbr/>Request<wbr/>Response<wbr/>Message</span></a></li>
-<li><a href="proto.Message.PinMessage-1.html" class="current"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Pin<wbr/>Message</span></a></li>
+<li><a href="proto.Message.PinInChatMessage-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Pin<wbr/>In<wbr/>Chat<wbr/>Message</span></a></li>
 <li><a href="proto.Message.PollCreationMessage-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Poll<wbr/>Creation<wbr/>Message</span></a></li>
 <li><a href="proto.Message.PollEncValue.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Poll<wbr/>Enc<wbr/>Value</span></a></li>
 <li><a href="proto.Message.PollUpdateMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Poll<wbr/>Update<wbr/>Message</span></a></li>
@@ -781,7 +816,7 @@
 <li><a href="../interfaces/proto.Message.IPaymentInviteMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPayment<wbr/>Invite<wbr/>Message</span></a></li>
 <li><a href="../interfaces/proto.Message.IPeerDataOperationRequestMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPeer<wbr/>Data<wbr/>Operation<wbr/>Request<wbr/>Message</span></a></li>
 <li><a href="../interfaces/proto.Message.IPeerDataOperationRequestResponseMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPeer<wbr/>Data<wbr/>Operation<wbr/>Request<wbr/>Response<wbr/>Message</span></a></li>
-<li><a href="../interfaces/proto.Message.IPinMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPin<wbr/>Message</span></a></li>
+<li><a href="../interfaces/proto.Message.IPinInChatMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPin<wbr/>In<wbr/>Chat<wbr/>Message</span></a></li>
 <li><a href="../interfaces/proto.Message.IPollCreationMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPoll<wbr/>Creation<wbr/>Message</span></a></li>
 <li><a href="../interfaces/proto.Message.IPollEncValue.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPoll<wbr/>Enc<wbr/>Value</span></a></li>
 <li><a href="../interfaces/proto.Message.IPollUpdateMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPoll<wbr/>Update<wbr/>Message</span></a></li>
@@ -833,6 +868,11 @@
 <li><a href="../enums/proto.PaymentInfo.Status.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-8-path"></use><use href="#icon-8-text"></use></svg><span>Status</span></a></li>
 <li><a href="../enums/proto.PaymentInfo.TxnStatus.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-8-path"></use><use href="#icon-8-text"></use></svg><span>Txn<wbr/>Status</span></a></li></ul></div></details></li>
 <li>
+<details class="tsd-index-accordion" data-key="proto.PinInChat"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4.93896 8.531L12 15.591L19.061 8.531L16.939 6.409L12 11.349L7.06098 6.409L4.93896 8.531Z" fill="var(--color-text)"></path></svg><a href="../modules/proto.PinInChat.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-4-path"></use><use href="#icon-4-text"></use></svg><span>Pin<wbr/>In<wbr/>Chat</span></a></summary>
+<div class="tsd-accordion-details">
+<ul class="tsd-nested-navigation">
+<li><a href="../enums/proto.PinInChat.Type.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-8-path"></use><use href="#icon-8-text"></use></svg><span>Type</span></a></li></ul></div></details></li>
+<li>
 <details class="tsd-index-accordion" data-key="proto.SenderKeyStateStructure"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4.93896 8.531L12 15.591L19.061 8.531L16.939 6.409L12 11.349L7.06098 6.409L4.93896 8.531Z" fill="var(--color-text)"></path></svg><a href="../modules/proto.SenderKeyStateStructure.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-4-path"></use><use href="#icon-4-text"></use></svg><span>Sender<wbr/>Key<wbr/>State<wbr/>Structure</span></a></summary>
 <div class="tsd-accordion-details">
 <ul class="tsd-nested-navigation">
@@ -864,6 +904,11 @@
 <details class="tsd-index-accordion" data-key="proto.SyncActionValue"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4.93896 8.531L12 15.591L19.061 8.531L16.939 6.409L12 11.349L7.06098 6.409L4.93896 8.531Z" fill="var(--color-text)"></path></svg><a href="../modules/proto.SyncActionValue.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-4-path"></use><use href="#icon-4-text"></use></svg><span>Sync<wbr/>Action<wbr/>Value</span></a></summary>
 <div class="tsd-accordion-details">
 <ul class="tsd-nested-navigation">
+<li>
+<details class="tsd-index-accordion" data-key="proto.SyncActionValue.MarketingMessageAction"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4.93896 8.531L12 15.591L19.061 8.531L16.939 6.409L12 11.349L7.06098 6.409L4.93896 8.531Z" fill="var(--color-text)"></path></svg><a href="../modules/proto.SyncActionValue.MarketingMessageAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-4-path"></use><use href="#icon-4-text"></use></svg><span>Marketing<wbr/>Message<wbr/>Action</span></a></summary>
+<div class="tsd-accordion-details">
+<ul class="tsd-nested-navigation">
+<li><a href="../enums/proto.SyncActionValue.MarketingMessageAction.MarketingMessagePrototypeType.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-8-path"></use><use href="#icon-8-text"></use></svg><span>Marketing<wbr/>Message<wbr/>Prototype<wbr/>Type</span></a></li></ul></div></details></li>
 <li><a href="proto.SyncActionValue.AgentAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Agent<wbr/>Action</span></a></li>
 <li><a href="proto.SyncActionValue.AndroidUnsupportedActions.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Android<wbr/>Unsupported<wbr/>Actions</span></a></li>
 <li><a href="proto.SyncActionValue.ArchiveChatAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Archive<wbr/>Chat<wbr/>Action</span></a></li>
@@ -873,17 +918,21 @@
 <li><a href="proto.SyncActionValue.ContactAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Contact<wbr/>Action</span></a></li>
 <li><a href="proto.SyncActionValue.DeleteChatAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Delete<wbr/>Chat<wbr/>Action</span></a></li>
 <li><a href="proto.SyncActionValue.DeleteMessageForMeAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Delete<wbr/>Message<wbr/>For<wbr/>Me<wbr/>Action</span></a></li>
+<li><a href="proto.SyncActionValue.ExternalWebBetaAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>External<wbr/>Web<wbr/>Beta<wbr/>Action</span></a></li>
 <li><a href="proto.SyncActionValue.KeyExpiration.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Key<wbr/>Expiration</span></a></li>
 <li><a href="proto.SyncActionValue.LabelAssociationAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Label<wbr/>Association<wbr/>Action</span></a></li>
 <li><a href="proto.SyncActionValue.LabelEditAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Label<wbr/>Edit<wbr/>Action</span></a></li>
 <li><a href="proto.SyncActionValue.LocaleSetting.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Locale<wbr/>Setting</span></a></li>
 <li><a href="proto.SyncActionValue.MarkChatAsReadAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Mark<wbr/>Chat<wbr/>As<wbr/>Read<wbr/>Action</span></a></li>
+<li><a href="proto.SyncActionValue.MarketingMessageAction-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Marketing<wbr/>Message<wbr/>Action</span></a></li>
+<li><a href="proto.SyncActionValue.MarketingMessageBroadcastAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Marketing<wbr/>Message<wbr/>Broadcast<wbr/>Action</span></a></li>
 <li><a href="proto.SyncActionValue.MuteAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Mute<wbr/>Action</span></a></li>
 <li><a href="proto.SyncActionValue.NuxAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Nux<wbr/>Action</span></a></li>
 <li><a href="proto.SyncActionValue.PinAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Pin<wbr/>Action</span></a></li>
 <li><a href="proto.SyncActionValue.PnForLidChatAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Pn<wbr/>For<wbr/>Lid<wbr/>Chat<wbr/>Action</span></a></li>
 <li><a href="proto.SyncActionValue.PrimaryFeature.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Primary<wbr/>Feature</span></a></li>
 <li><a href="proto.SyncActionValue.PrimaryVersionAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Primary<wbr/>Version<wbr/>Action</span></a></li>
+<li><a href="proto.SyncActionValue.PrivacySettingRelayAllCalls.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Privacy<wbr/>Setting<wbr/>Relay<wbr/>All<wbr/>Calls</span></a></li>
 <li><a href="proto.SyncActionValue.PushNameSetting.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Push<wbr/>Name<wbr/>Setting</span></a></li>
 <li><a href="proto.SyncActionValue.QuickReplyAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Quick<wbr/>Reply<wbr/>Action</span></a></li>
 <li><a href="proto.SyncActionValue.RecentEmojiWeightsAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Recent<wbr/>Emoji<wbr/>Weights<wbr/>Action</span></a></li>
@@ -906,17 +955,21 @@
 <li><a href="../interfaces/proto.SyncActionValue.IContactAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IContact<wbr/>Action</span></a></li>
 <li><a href="../interfaces/proto.SyncActionValue.IDeleteChatAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IDelete<wbr/>Chat<wbr/>Action</span></a></li>
 <li><a href="../interfaces/proto.SyncActionValue.IDeleteMessageForMeAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IDelete<wbr/>Message<wbr/>For<wbr/>Me<wbr/>Action</span></a></li>
+<li><a href="../interfaces/proto.SyncActionValue.IExternalWebBetaAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IExternal<wbr/>Web<wbr/>Beta<wbr/>Action</span></a></li>
 <li><a href="../interfaces/proto.SyncActionValue.IKeyExpiration.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IKey<wbr/>Expiration</span></a></li>
 <li><a href="../interfaces/proto.SyncActionValue.ILabelAssociationAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>ILabel<wbr/>Association<wbr/>Action</span></a></li>
 <li><a href="../interfaces/proto.SyncActionValue.ILabelEditAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>ILabel<wbr/>Edit<wbr/>Action</span></a></li>
 <li><a href="../interfaces/proto.SyncActionValue.ILocaleSetting.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>ILocale<wbr/>Setting</span></a></li>
 <li><a href="../interfaces/proto.SyncActionValue.IMarkChatAsReadAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IMark<wbr/>Chat<wbr/>As<wbr/>Read<wbr/>Action</span></a></li>
+<li><a href="../interfaces/proto.SyncActionValue.IMarketingMessageAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IMarketing<wbr/>Message<wbr/>Action</span></a></li>
+<li><a href="../interfaces/proto.SyncActionValue.IMarketingMessageBroadcastAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IMarketing<wbr/>Message<wbr/>Broadcast<wbr/>Action</span></a></li>
 <li><a href="../interfaces/proto.SyncActionValue.IMuteAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IMute<wbr/>Action</span></a></li>
 <li><a href="../interfaces/proto.SyncActionValue.INuxAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>INux<wbr/>Action</span></a></li>
 <li><a href="../interfaces/proto.SyncActionValue.IPinAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPin<wbr/>Action</span></a></li>
 <li><a href="../interfaces/proto.SyncActionValue.IPnForLidChatAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPn<wbr/>For<wbr/>Lid<wbr/>Chat<wbr/>Action</span></a></li>
 <li><a href="../interfaces/proto.SyncActionValue.IPrimaryFeature.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPrimary<wbr/>Feature</span></a></li>
 <li><a href="../interfaces/proto.SyncActionValue.IPrimaryVersionAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPrimary<wbr/>Version<wbr/>Action</span></a></li>
+<li><a href="../interfaces/proto.SyncActionValue.IPrivacySettingRelayAllCalls.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPrivacy<wbr/>Setting<wbr/>Relay<wbr/>All<wbr/>Calls</span></a></li>
 <li><a href="../interfaces/proto.SyncActionValue.IPushNameSetting.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPush<wbr/>Name<wbr/>Setting</span></a></li>
 <li><a href="../interfaces/proto.SyncActionValue.IQuickReplyAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IQuick<wbr/>Reply<wbr/>Action</span></a></li>
 <li><a href="../interfaces/proto.SyncActionValue.IRecentEmojiWeightsAction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IRecent<wbr/>Emoji<wbr/>Weights<wbr/>Action</span></a></li>
@@ -963,6 +1016,7 @@
 <li><a href="../enums/proto.WebMessageInfo.BizPrivacyStatus.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-8-path"></use><use href="#icon-8-text"></use></svg><span>Biz<wbr/>Privacy<wbr/>Status</span></a></li>
 <li><a href="../enums/proto.WebMessageInfo.Status.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-8-path"></use><use href="#icon-8-text"></use></svg><span>Status</span></a></li>
 <li><a href="../enums/proto.WebMessageInfo.StubType.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-8-path"></use><use href="#icon-8-text"></use></svg><span>Stub<wbr/>Type</span></a></li></ul></div></details></li>
+<li><a href="../enums/proto.ADVEncryptionType.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-8-path"></use><use href="#icon-8-text"></use></svg><span>ADVEncryption<wbr/>Type</span></a></li>
 <li><a href="../enums/proto.KeepType.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-8-path"></use><use href="#icon-8-text"></use></svg><span>Keep<wbr/>Type</span></a></li>
 <li><a href="../enums/proto.MediaVisibility.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-8-path"></use><use href="#icon-8-text"></use></svg><span>Media<wbr/>Visibility</span></a></li>
 <li><a href="proto.ADVDeviceIdentity.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>ADVDevice<wbr/>Identity</span></a></li>
@@ -980,6 +1034,7 @@
 <li><a href="proto.ClientPayload-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Client<wbr/>Payload</span></a></li>
 <li><a href="proto.ContextInfo-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Context<wbr/>Info</span></a></li>
 <li><a href="proto.Conversation-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Conversation</span></a></li>
+<li><a href="proto.DeviceConsistencyCodeMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Device<wbr/>Consistency<wbr/>Code<wbr/>Message</span></a></li>
 <li><a href="proto.DeviceListMetadata.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Device<wbr/>List<wbr/>Metadata</span></a></li>
 <li><a href="proto.DeviceProps-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Device<wbr/>Props</span></a></li>
 <li><a href="proto.DisappearingMode-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Disappearing<wbr/>Mode</span></a></li>
@@ -996,12 +1051,14 @@
 <li><a href="proto.IdentityKeyPairStructure.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Identity<wbr/>Key<wbr/>Pair<wbr/>Structure</span></a></li>
 <li><a href="proto.InteractiveAnnotation.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Interactive<wbr/>Annotation</span></a></li>
 <li><a href="proto.KeepInChat.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Keep<wbr/>In<wbr/>Chat</span></a></li>
+<li><a href="proto.KeyExchangeMessage.html" class="current"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Key<wbr/>Exchange<wbr/>Message</span></a></li>
 <li><a href="proto.KeyId.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Key<wbr/>Id</span></a></li>
 <li><a href="proto.LocalizedName.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Localized<wbr/>Name</span></a></li>
 <li><a href="proto.Location.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Location</span></a></li>
 <li><a href="proto.MediaData.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Media<wbr/>Data</span></a></li>
 <li><a href="proto.MediaRetryNotification-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Media<wbr/>Retry<wbr/>Notification</span></a></li>
 <li><a href="proto.Message-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Message</span></a></li>
+<li><a href="proto.MessageAddOnContextInfo.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Message<wbr/>Add<wbr/>On<wbr/>Context<wbr/>Info</span></a></li>
 <li><a href="proto.MessageContextInfo.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Message<wbr/>Context<wbr/>Info</span></a></li>
 <li><a href="proto.MessageKey.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Message<wbr/>Key</span></a></li>
 <li><a href="proto.Money.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Money</span></a></li>
@@ -1009,24 +1066,30 @@
 <li><a href="proto.MsgRowOpaqueData.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Msg<wbr/>Row<wbr/>Opaque<wbr/>Data</span></a></li>
 <li><a href="proto.NoiseCertificate-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Noise<wbr/>Certificate</span></a></li>
 <li><a href="proto.NotificationMessageInfo.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Notification<wbr/>Message<wbr/>Info</span></a></li>
+<li><a href="proto.NotificationSettings.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Notification<wbr/>Settings</span></a></li>
 <li><a href="proto.PastParticipant-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Past<wbr/>Participant</span></a></li>
 <li><a href="proto.PastParticipants.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Past<wbr/>Participants</span></a></li>
 <li><a href="proto.PaymentBackground-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Payment<wbr/>Background</span></a></li>
 <li><a href="proto.PaymentInfo-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Payment<wbr/>Info</span></a></li>
 <li><a href="proto.PhotoChange.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Photo<wbr/>Change</span></a></li>
+<li><a href="proto.PinInChat-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Pin<wbr/>In<wbr/>Chat</span></a></li>
 <li><a href="proto.Point.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Point</span></a></li>
 <li><a href="proto.PollAdditionalMetadata.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Poll<wbr/>Additional<wbr/>Metadata</span></a></li>
 <li><a href="proto.PollEncValue.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Poll<wbr/>Enc<wbr/>Value</span></a></li>
 <li><a href="proto.PollUpdate.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Poll<wbr/>Update</span></a></li>
 <li><a href="proto.PreKeyRecordStructure.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Pre<wbr/>Key<wbr/>Record<wbr/>Structure</span></a></li>
+<li><a href="proto.PreKeySignalMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Pre<wbr/>Key<wbr/>Signal<wbr/>Message</span></a></li>
 <li><a href="proto.Pushname.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Pushname</span></a></li>
 <li><a href="proto.Reaction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Reaction</span></a></li>
 <li><a href="proto.RecentEmojiWeight.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Recent<wbr/>Emoji<wbr/>Weight</span></a></li>
 <li><a href="proto.RecordStructure.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Record<wbr/>Structure</span></a></li>
+<li><a href="proto.SenderKeyDistributionMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Sender<wbr/>Key<wbr/>Distribution<wbr/>Message</span></a></li>
+<li><a href="proto.SenderKeyMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Sender<wbr/>Key<wbr/>Message</span></a></li>
 <li><a href="proto.SenderKeyRecordStructure.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Sender<wbr/>Key<wbr/>Record<wbr/>Structure</span></a></li>
 <li><a href="proto.SenderKeyStateStructure-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Sender<wbr/>Key<wbr/>State<wbr/>Structure</span></a></li>
 <li><a href="proto.ServerErrorReceipt.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Server<wbr/>Error<wbr/>Receipt</span></a></li>
 <li><a href="proto.SessionStructure-1.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Session<wbr/>Structure</span></a></li>
+<li><a href="proto.SignalMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Signal<wbr/>Message</span></a></li>
 <li><a href="proto.SignedPreKeyRecordStructure.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Signed<wbr/>Pre<wbr/>Key<wbr/>Record<wbr/>Structure</span></a></li>
 <li><a href="proto.StatusPSA.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>StatusPSA</span></a></li>
 <li><a href="proto.StickerMetadata.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-128-path"></use><use href="#icon-128-text"></use></svg><span>Sticker<wbr/>Metadata</span></a></li>
@@ -1062,6 +1125,7 @@
 <li><a href="../interfaces/proto.IClientPayload.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IClient<wbr/>Payload</span></a></li>
 <li><a href="../interfaces/proto.IContextInfo.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IContext<wbr/>Info</span></a></li>
 <li><a href="../interfaces/proto.IConversation.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IConversation</span></a></li>
+<li><a href="../interfaces/proto.IDeviceConsistencyCodeMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IDevice<wbr/>Consistency<wbr/>Code<wbr/>Message</span></a></li>
 <li><a href="../interfaces/proto.IDeviceListMetadata.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IDevice<wbr/>List<wbr/>Metadata</span></a></li>
 <li><a href="../interfaces/proto.IDeviceProps.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IDevice<wbr/>Props</span></a></li>
 <li><a href="../interfaces/proto.IDisappearingMode.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IDisappearing<wbr/>Mode</span></a></li>
@@ -1078,12 +1142,14 @@
 <li><a href="../interfaces/proto.IIdentityKeyPairStructure.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IIdentity<wbr/>Key<wbr/>Pair<wbr/>Structure</span></a></li>
 <li><a href="../interfaces/proto.IInteractiveAnnotation.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IInteractive<wbr/>Annotation</span></a></li>
 <li><a href="../interfaces/proto.IKeepInChat.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IKeep<wbr/>In<wbr/>Chat</span></a></li>
+<li><a href="../interfaces/proto.IKeyExchangeMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IKey<wbr/>Exchange<wbr/>Message</span></a></li>
 <li><a href="../interfaces/proto.IKeyId.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IKey<wbr/>Id</span></a></li>
 <li><a href="../interfaces/proto.ILocalizedName.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>ILocalized<wbr/>Name</span></a></li>
 <li><a href="../interfaces/proto.ILocation.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>ILocation</span></a></li>
 <li><a href="../interfaces/proto.IMediaData.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IMedia<wbr/>Data</span></a></li>
 <li><a href="../interfaces/proto.IMediaRetryNotification.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IMedia<wbr/>Retry<wbr/>Notification</span></a></li>
 <li><a href="../interfaces/proto.IMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IMessage</span></a></li>
+<li><a href="../interfaces/proto.IMessageAddOnContextInfo.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IMessage<wbr/>Add<wbr/>On<wbr/>Context<wbr/>Info</span></a></li>
 <li><a href="../interfaces/proto.IMessageContextInfo.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IMessage<wbr/>Context<wbr/>Info</span></a></li>
 <li><a href="../interfaces/proto.IMessageKey.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IMessage<wbr/>Key</span></a></li>
 <li><a href="../interfaces/proto.IMoney.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IMoney</span></a></li>
@@ -1091,24 +1157,30 @@
 <li><a href="../interfaces/proto.IMsgRowOpaqueData.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IMsg<wbr/>Row<wbr/>Opaque<wbr/>Data</span></a></li>
 <li><a href="../interfaces/proto.INoiseCertificate.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>INoise<wbr/>Certificate</span></a></li>
 <li><a href="../interfaces/proto.INotificationMessageInfo.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>INotification<wbr/>Message<wbr/>Info</span></a></li>
+<li><a href="../interfaces/proto.INotificationSettings.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>INotification<wbr/>Settings</span></a></li>
 <li><a href="../interfaces/proto.IPastParticipant.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPast<wbr/>Participant</span></a></li>
 <li><a href="../interfaces/proto.IPastParticipants.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPast<wbr/>Participants</span></a></li>
 <li><a href="../interfaces/proto.IPaymentBackground.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPayment<wbr/>Background</span></a></li>
 <li><a href="../interfaces/proto.IPaymentInfo.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPayment<wbr/>Info</span></a></li>
 <li><a href="../interfaces/proto.IPhotoChange.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPhoto<wbr/>Change</span></a></li>
+<li><a href="../interfaces/proto.IPinInChat.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPin<wbr/>In<wbr/>Chat</span></a></li>
 <li><a href="../interfaces/proto.IPoint.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPoint</span></a></li>
 <li><a href="../interfaces/proto.IPollAdditionalMetadata.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPoll<wbr/>Additional<wbr/>Metadata</span></a></li>
 <li><a href="../interfaces/proto.IPollEncValue.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPoll<wbr/>Enc<wbr/>Value</span></a></li>
 <li><a href="../interfaces/proto.IPollUpdate.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPoll<wbr/>Update</span></a></li>
 <li><a href="../interfaces/proto.IPreKeyRecordStructure.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPre<wbr/>Key<wbr/>Record<wbr/>Structure</span></a></li>
+<li><a href="../interfaces/proto.IPreKeySignalMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPre<wbr/>Key<wbr/>Signal<wbr/>Message</span></a></li>
 <li><a href="../interfaces/proto.IPushname.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IPushname</span></a></li>
 <li><a href="../interfaces/proto.IReaction.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IReaction</span></a></li>
 <li><a href="../interfaces/proto.IRecentEmojiWeight.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IRecent<wbr/>Emoji<wbr/>Weight</span></a></li>
 <li><a href="../interfaces/proto.IRecordStructure.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IRecord<wbr/>Structure</span></a></li>
+<li><a href="../interfaces/proto.ISenderKeyDistributionMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>ISender<wbr/>Key<wbr/>Distribution<wbr/>Message</span></a></li>
+<li><a href="../interfaces/proto.ISenderKeyMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>ISender<wbr/>Key<wbr/>Message</span></a></li>
 <li><a href="../interfaces/proto.ISenderKeyRecordStructure.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>ISender<wbr/>Key<wbr/>Record<wbr/>Structure</span></a></li>
 <li><a href="../interfaces/proto.ISenderKeyStateStructure.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>ISender<wbr/>Key<wbr/>State<wbr/>Structure</span></a></li>
 <li><a href="../interfaces/proto.IServerErrorReceipt.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IServer<wbr/>Error<wbr/>Receipt</span></a></li>
 <li><a href="../interfaces/proto.ISessionStructure.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>ISession<wbr/>Structure</span></a></li>
+<li><a href="../interfaces/proto.ISignalMessage.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>ISignal<wbr/>Message</span></a></li>
 <li><a href="../interfaces/proto.ISignedPreKeyRecordStructure.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>ISigned<wbr/>Pre<wbr/>Key<wbr/>Record<wbr/>Structure</span></a></li>
 <li><a href="../interfaces/proto.IStatusPSA.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>IStatusPSA</span></a></li>
 <li><a href="../interfaces/proto.IStickerMetadata.html"><svg class="tsd-kind-icon" width="24" height="24" viewBox="0 0 24 24"><use href="#icon-256-path"></use><use href="#icon-256-text"></use></svg><span>ISticker<wbr/>Metadata</span></a></li>
