@@ -863,7 +863,11 @@ export const downloadMediaMessage = async(
 			}
 			mediaType = 'thumbnail-link'
 		} else {
-			download = media
+			download = {
+				mediaKey: media.mediaKey,
+				directPath: media.directPath,
+				url: 'https://mmg.whatsapp.net'+media.directPath
+		    	};
 		}
 
 		const stream = await downloadContentFromMessage(download, mediaType, options)
