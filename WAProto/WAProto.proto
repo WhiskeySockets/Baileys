@@ -5,13 +5,20 @@ message ADVDeviceIdentity {
     optional uint32 rawId = 1;
     optional uint64 timestamp = 2;
     optional uint32 keyIndex = 3;
+    optional ADVEncryptionType accountType = 4;
+    optional ADVEncryptionType deviceType = 5;
 }
 
+enum ADVEncryptionType {
+    E2EE = 0;
+    HOSTED = 1;
+}
 message ADVKeyIndexList {
     optional uint32 rawId = 1;
     optional uint64 timestamp = 2;
     optional uint32 currentIndex = 3;
     repeated uint32 validIndexes = 4 [packed=true];
+    optional ADVEncryptionType accountType = 5;
 }
 
 message ADVSignedDeviceIdentity {
@@ -137,6 +144,7 @@ message ClientPayload {
     optional bytes paddingBytes = 34;
     optional int32 yearClass = 36;
     optional int32 memClass = 37;
+    optional InteropData interopData = 38;
     enum ConnectReason {
         PUSH = 0;
         USER_ACTIVATED = 1;
@@ -144,6 +152,7 @@ message ClientPayload {
         ERROR_RECONNECT = 3;
         NETWORK_SWITCH = 4;
         PING_RECONNECT = 5;
+        UNKNOWN = 6;
     }
     enum ConnectType {
         CELLULAR_UNKNOWN = 0;
@@ -190,9 +199,16 @@ message ClientPayload {
         SERVICE_EXTENSION = 1;
         INTENTS_EXTENSION = 2;
     }
+    message InteropData {
+        optional uint64 accountId = 1;
+        optional uint32 integratorId = 2;
+        optional bytes token = 3;
+    }
+    
     enum Product {
         WHATSAPP = 0;
         MESSENGER = 1;
+        INTEROP = 2;
     }
     message UserAgent {
         optional Platform platform = 1;
@@ -208,6 +224,7 @@ message ClientPayload {
         optional string localeLanguageIso6391 = 11;
         optional string localeCountryIso31661Alpha2 = 12;
         optional string deviceBoard = 13;
+        optional string deviceExpId = 14;
         message AppVersion {
             optional uint32 primary = 1;
             optional uint32 secondary = 2;
@@ -250,6 +267,7 @@ message ClientPayload {
             ARDEVICE = 30;
             VRDEVICE = 31;
             BLUE_WEB = 32;
+            IPAD = 33;
         }
         enum ReleaseChannel {
             RELEASE = 0;
@@ -344,6 +362,7 @@ message ContextInfo {
         optional bool renderLargerThumbnail = 11;
         optional bool showAdAttribution = 12;
         optional string ctwaClid = 13;
+        optional string ref = 14;
         enum MediaType {
             NONE = 0;
             IMAGE = 1;
@@ -404,7 +423,13 @@ message Conversation {
     enum EndOfHistoryTransferType {
         COMPLETE_BUT_MORE_MESSAGES_REMAIN_ON_PRIMARY = 0;
         COMPLETE_AND_NO_MORE_MESSAGE_REMAIN_ON_PRIMARY = 1;
+        COMPLETE_ON_DEMAND_SYNC_BUT_MORE_MSG_REMAIN_ON_PRIMARY = 2;
     }
+}
+
+message DeviceConsistencyCodeMessage {
+    optional uint32 generation = 1;
+    optional bytes signature = 2;
 }
 
 message DeviceListMetadata {
@@ -434,6 +459,8 @@ message DeviceProps {
         optional uint32 fullSyncDaysLimit = 1;
         optional uint32 fullSyncSizeMbLimit = 2;
         optional uint32 storageQuotaMb = 3;
+        optional bool inlineInitialPayloadInE2EeMsg = 4;
+        optional uint32 recentSyncDaysLimit = 5;
     }
     
     enum PlatformType {
@@ -455,6 +482,9 @@ message DeviceProps {
         IOS_CATALYST = 15;
         ANDROID_PHONE = 16;
         ANDROID_AMBIGUOUS = 17;
+        WEAR_OS = 18;
+        AR_WRIST = 19;
+        AR_DEVICE = 20;
     }
 }
 
@@ -498,6 +528,13 @@ message GlobalSettings {
     optional int32 disappearingModeDuration = 9;
     optional int64 disappearingModeTimestamp = 10;
     optional AvatarUserSettings avatarUserSettings = 11;
+    optional int32 fontSize = 12;
+    optional bool securityNotifications = 13;
+    optional bool autoUnarchiveChats = 14;
+    optional int32 videoQualityMode = 15;
+    optional int32 photoQualityMode = 16;
+    optional NotificationSettings individualNotificationSettings = 17;
+    optional NotificationSettings groupNotificationSettings = 18;
 }
 
 message GroupMention {
@@ -616,6 +653,14 @@ enum KeepType {
     KEEP_FOR_ALL = 1;
     UNDO_KEEP_FOR_ALL = 2;
 }
+message KeyExchangeMessage {
+    optional uint32 id = 1;
+    optional bytes baseKey = 2;
+    optional bytes ratchetKey = 3;
+    optional bytes identityKey = 4;
+    optional bytes baseKeySignature = 5;
+}
+
 message KeyId {
     optional bytes id = 1;
 }
@@ -706,7 +751,7 @@ message Message {
     optional PollCreationMessage pollCreationMessageV2 = 60;
     optional ScheduledCallCreationMessage scheduledCallCreationMessage = 61;
     optional FutureProofMessage groupMentionedMessage = 62;
-    optional PinMessage pinMessage = 63;
+    optional PinInChatMessage pinInChatMessage = 63;
     optional PollCreationMessage pollCreationMessageV3 = 64;
     optional ScheduledCallEditMessage scheduledCallEditMessage = 65;
     optional VideoMessage ptvMessage = 66;
@@ -919,7 +964,7 @@ message Message {
             BRYNDAN_WRITE = 3;
             BEBASNEUE_REGULAR = 4;
             OSWALD_HEAVY = 5;
-            DAMION_REGULAR = 6;
+            SYSTEM_BOLD = 6;
             MORNINGBREEZE_REGULAR = 7;
             CALISTOGA_REGULAR = 8;
             EXO2_EXTRABOLD = 9;
@@ -1026,6 +1071,8 @@ message Message {
         optional string originalMessageId = 8;
         optional uint32 progress = 9;
         optional int64 oldestMsgInChunkTimestampSec = 10;
+        optional bytes initialHistBootstrapInlinePayload = 11;
+        optional string peerDataRequestSessionId = 12;
         enum HistorySyncType {
             INITIAL_BOOTSTRAP = 0;
             INITIAL_STATUS_V3 = 1;
@@ -1103,6 +1150,7 @@ message Message {
                 Message.ImageMessage imageMessage = 4;
                 bytes jpegThumbnail = 6;
                 Message.VideoMessage videoMessage = 7;
+                Message.LocationMessage locationMessage = 8;
             }
         }
         
@@ -1139,6 +1187,11 @@ message Message {
         }
         message Body {
             optional string text = 1;
+            optional Format format = 2;
+            enum Format {
+                DEFAULT = 0;
+                EXTENSIONS_1 = 1;
+            }
         }
         
         message NativeFlowResponseMessage {
@@ -1300,6 +1353,7 @@ message Message {
         repeated RequestStickerReupload requestStickerReupload = 2;
         repeated RequestUrlPreview requestUrlPreview = 3;
         optional HistorySyncOnDemandRequest historySyncOnDemandRequest = 4;
+        repeated PlaceholderMessageResendRequest placeholderMessageResendRequest = 5;
         message HistorySyncOnDemandRequest {
             optional string chatJid = 1;
             optional string oldestMsgId = 2;
@@ -1308,12 +1362,17 @@ message Message {
             optional int64 oldestMsgTimestampMs = 5;
         }
         
+        message PlaceholderMessageResendRequest {
+            optional MessageKey messageKey = 1;
+        }
+        
         message RequestStickerReupload {
             optional string fileSha256 = 1;
         }
         
         message RequestUrlPreview {
             optional string url = 1;
+            optional bool includeHqThumbnail = 2;
         }
         
     }
@@ -1326,6 +1385,7 @@ message Message {
             optional MediaRetryNotification.ResultType mediaUploadResult = 1;
             optional Message.StickerMessage stickerMessage = 2;
             optional LinkPreviewResponse linkPreviewResponse = 3;
+            optional PlaceholderMessageResendResponse placeholderMessageResendResponse = 4;
             message LinkPreviewResponse {
                 optional string url = 1;
                 optional string title = 2;
@@ -1334,6 +1394,21 @@ message Message {
                 optional string canonicalUrl = 5;
                 optional string matchText = 6;
                 optional string previewType = 7;
+                optional LinkPreviewHighQualityThumbnail hqThumbnail = 8;
+                message LinkPreviewHighQualityThumbnail {
+                    optional string directPath = 1;
+                    optional string thumbHash = 2;
+                    optional string encThumbHash = 3;
+                    optional bytes mediaKey = 4;
+                    optional int64 mediaKeyTimestampMs = 5;
+                    optional int32 thumbWidth = 6;
+                    optional int32 thumbHeight = 7;
+                }
+                
+            }
+            
+            message PlaceholderMessageResendResponse {
+                optional bytes webMessageInfoBytes = 1;
             }
             
         }
@@ -1345,13 +1420,14 @@ message Message {
         SEND_RECENT_STICKER_BOOTSTRAP = 1;
         GENERATE_LINK_PREVIEW = 2;
         HISTORY_SYNC_ON_DEMAND = 3;
+        PLACEHOLDER_MESSAGE_RESEND = 4;
     }
-    message PinMessage {
+    message PinInChatMessage {
         optional MessageKey key = 1;
-        optional PinMessageType pinMessageType = 2;
+        optional Type type = 2;
         optional int64 senderTimestampMs = 3;
-        enum PinMessageType {
-            UNKNOWN_PIN_MESSAGE_TYPE = 0;
+        enum Type {
+            UNKNOWN_TYPE = 0;
             PIN_FOR_ALL = 1;
             UNPIN_FOR_ALL = 2;
         }
@@ -1605,11 +1681,16 @@ message Message {
     
 }
 
+message MessageAddOnContextInfo {
+    optional uint32 messageAddOnDurationInSecs = 1;
+}
+
 message MessageContextInfo {
     optional DeviceListMetadata deviceListMetadata = 1;
     optional int32 deviceListMetadataVersion = 2;
     optional bytes messageSecret = 3;
     optional bytes paddingBytes = 4;
+    optional uint32 messageAddOnDurationInSecs = 5;
 }
 
 message MessageKey {
@@ -1681,6 +1762,15 @@ message NotificationMessageInfo {
     optional Message message = 2;
     optional uint64 messageTimestamp = 3;
     optional string participant = 4;
+}
+
+message NotificationSettings {
+    optional string messageVibrate = 1;
+    optional string messagePopup = 2;
+    optional string messageLight = 3;
+    optional bool lowPriorityNotifications = 4;
+    optional bool reactionsMuted = 5;
+    optional string callVibrate = 6;
 }
 
 message PastParticipant {
@@ -1797,6 +1887,19 @@ message PhotoChange {
     optional uint32 newPhotoId = 3;
 }
 
+message PinInChat {
+    optional Type type = 1;
+    optional MessageKey key = 2;
+    optional int64 senderTimestampMs = 3;
+    optional int64 serverTimestampMs = 4;
+    optional MessageAddOnContextInfo messageAddOnContextInfo = 5;
+    enum Type {
+        UNKNOWN_TYPE = 0;
+        PIN_FOR_ALL = 1;
+        UNPIN_FOR_ALL = 2;
+    }
+}
+
 message Point {
     optional int32 xDeprecated = 1;
     optional int32 yDeprecated = 2;
@@ -1827,6 +1930,15 @@ message PreKeyRecordStructure {
     optional bytes privateKey = 3;
 }
 
+message PreKeySignalMessage {
+    optional uint32 registrationId = 5;
+    optional uint32 preKeyId = 1;
+    optional uint32 signedPreKeyId = 6;
+    optional bytes baseKey = 2;
+    optional bytes identityKey = 3;
+    optional bytes message = 4;
+}
+
 message Pushname {
     optional string id = 1;
     optional string pushname = 2;
@@ -1848,6 +1960,19 @@ message RecentEmojiWeight {
 message RecordStructure {
     optional SessionStructure currentSession = 1;
     repeated SessionStructure previousSessions = 2;
+}
+
+message SenderKeyDistributionMessage {
+    optional uint32 id = 1;
+    optional uint32 iteration = 2;
+    optional bytes chainKey = 3;
+    optional bytes signingKey = 4;
+}
+
+message SenderKeyMessage {
+    optional uint32 id = 1;
+    optional uint32 iteration = 2;
+    optional bytes ciphertext = 3;
 }
 
 message SenderKeyRecordStructure {
@@ -1931,6 +2056,13 @@ message SessionStructure {
     
 }
 
+message SignalMessage {
+    optional bytes ratchetKey = 1;
+    optional uint32 counter = 2;
+    optional uint32 previousCounter = 3;
+    optional bytes ciphertext = 4;
+}
+
 message SignedPreKeyRecordStructure {
     optional uint32 id = 1;
     optional bytes publicKey = 2;
@@ -1998,6 +2130,10 @@ message SyncActionValue {
     optional ChatAssignmentAction chatAssignment = 35;
     optional ChatAssignmentOpenedStatusAction chatAssignmentOpenedStatus = 36;
     optional PnForLidChatAction pnForLidChatAction = 37;
+    optional MarketingMessageAction marketingMessageAction = 38;
+    optional MarketingMessageBroadcastAction marketingMessageBroadcastAction = 39;
+    optional ExternalWebBetaAction externalWebBetaAction = 40;
+    optional PrivacySettingRelayAllCalls privacySettingRelayAllCalls = 41;
     message AgentAction {
         optional string name = 1;
         optional int32 deviceID = 2;
@@ -2040,6 +2176,10 @@ message SyncActionValue {
         optional int64 messageTimestamp = 2;
     }
     
+    message ExternalWebBetaAction {
+        optional bool isOptIn = 1;
+    }
+    
     message KeyExpiration {
         optional int32 expiredKeyEpoch = 1;
     }
@@ -2062,6 +2202,23 @@ message SyncActionValue {
     message MarkChatAsReadAction {
         optional bool read = 1;
         optional SyncActionValue.SyncActionMessageRange messageRange = 2;
+    }
+    
+    message MarketingMessageAction {
+        optional string name = 1;
+        optional string message = 2;
+        optional MarketingMessagePrototypeType type = 3;
+        optional int64 createdAt = 4;
+        optional int64 lastSentAt = 5;
+        optional bool isDeleted = 6;
+        optional string mediaId = 7;
+        enum MarketingMessagePrototypeType {
+            PERSONALIZED = 0;
+        }
+    }
+    
+    message MarketingMessageBroadcastAction {
+        optional int32 repliedCount = 1;
     }
     
     message MuteAction {
@@ -2088,6 +2245,10 @@ message SyncActionValue {
     
     message PrimaryVersionAction {
         optional string version = 1;
+    }
+    
+    message PrivacySettingRelayAllCalls {
+        optional bool isEnabled = 1;
     }
     
     message PushNameSetting {
@@ -2361,6 +2522,7 @@ message WebMessageInfo {
     optional KeepInChat keepInChat = 50;
     optional string originalSelfAuthorUserJidString = 51;
     optional uint64 revokeMessageTimestamp = 52;
+    optional PinInChat pinInChat = 54;
     enum BizPrivacyStatus {
         E2EE = 0;
         FB = 2;
@@ -2538,6 +2700,27 @@ message WebMessageInfo {
         CAG_INVITE_AUTO_ADD = 159;
         BIZ_CHAT_ASSIGNMENT_UNASSIGN = 160;
         CAG_INVITE_AUTO_JOINED = 161;
+        SCHEDULED_CALL_START_MESSAGE = 162;
+        COMMUNITY_INVITE_RICH = 163;
+        COMMUNITY_INVITE_AUTO_ADD_RICH = 164;
+        SUB_GROUP_INVITE_RICH = 165;
+        SUB_GROUP_PARTICIPANT_ADD_RICH = 166;
+        COMMUNITY_LINK_PARENT_GROUP_RICH = 167;
+        COMMUNITY_PARTICIPANT_ADD_RICH = 168;
+        SILENCED_UNKNOWN_CALLER_AUDIO = 169;
+        SILENCED_UNKNOWN_CALLER_VIDEO = 170;
+        GROUP_MEMBER_ADD_MODE = 171;
+        GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST_NON_ADMIN_ADD = 172;
+        COMMUNITY_CHANGE_DESCRIPTION = 173;
+        SENDER_INVITE = 174;
+        RECEIVER_INVITE = 175;
+        COMMUNITY_ALLOW_MEMBER_ADDED_GROUPS = 176;
+        PINNED_MESSAGE_IN_CHAT = 177;
+        PAYMENT_INVITE_SETUP_INVITER = 178;
+        PAYMENT_INVITE_SETUP_INVITEE_RECEIVE_ONLY = 179;
+        PAYMENT_INVITE_SETUP_INVITEE_SEND_AND_RECEIVE = 180;
+        LINKED_GROUP_CALL_START = 181;
+        REPORT_TO_ADMIN_ENABLED_STATUS = 182;
     }
 }
 
