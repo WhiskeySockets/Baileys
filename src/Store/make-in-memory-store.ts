@@ -1,5 +1,5 @@
-import KeyedDB from '@adiwajshing/keyed-db'
-import type { Comparable } from '@adiwajshing/keyed-db/lib/Types'
+import KeyedDB from '@whiskeysockets/keyed-db'
+import type { Comparable } from '@whiskeysockets/keyed-db/lib/Types'
 import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { DEFAULT_CONNECTION_CONFIG } from '../Defaults'
