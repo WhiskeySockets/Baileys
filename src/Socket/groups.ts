@@ -29,6 +29,55 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 		return extractGroupMetadata(result)
 	}
 
+
+	const groupFetchAllParticipating = async() => {
+		const result = await query({
+			tag: 'iq',
+			attrs: {
+				to: '@g.us',
+				xmlns: 'w:g2',
+				type: 'get',
+			},
+			content: [
+				{
+					tag: 'participating',
+					attrs: { },
+					content: [
+						{ tag: 'participants', attrs: { } },
+						{ tag: 'description', attrs: { } }
+					]
+				}
+			]
+		})
+		const data: { [_: string]: GroupMetadata } = { }
+		const groupsChild = getBinaryNodeChild(result, 'groups')
+		if(groupsChild) {
+			const groups = getBinaryNodeChildren(groupsChild, 'group')
+			for(const groupNode of groups) {
+				const meta = extractGroupMetadata({
+					tag: 'result',
+					attrs: { },
+					content: [groupNode]
+				})
+				data[meta.id] = meta
+			}
+		}
+
+		sock.ev.emit('groups.update', Object.values(data))
+
+		return data
+	}
+
+	sock.ws.on('CB:ib,,dirty', async(node: BinaryNode) => {
+		const { attrs } = getBinaryNodeChild(node, 'dirty')!
+		if(attrs.type !== 'groups') {
+			return
+		}
+
+		await groupFetchAllParticipating()
+		await sock.cleanDirtyBits('groups')
+	})
+
 	return {
 		...sock,
 		groupMetadata,
@@ -211,41 +260,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 		groupSettingUpdate: async(jid: string, setting: 'announcement' | 'not_announcement' | 'locked' | 'unlocked') => {
 			await groupQuery(jid, 'set', [ { tag: setting, attrs: { } } ])
 		},
-		groupFetchAllParticipating: async() => {
-			const result = await query({
-				tag: 'iq',
-				attrs: {
-					to: '@g.us',
-					xmlns: 'w:g2',
-					type: 'get',
-				},
-				content: [
-					{
-						tag: 'participating',
-						attrs: { },
-						content: [
-							{ tag: 'participants', attrs: { } },
-							{ tag: 'description', attrs: { } }
-						]
-					}
-				]
-			})
-			const data: { [_: string]: GroupMetadata } = { }
-			const groupsChild = getBinaryNodeChild(result, 'groups')
-			if(groupsChild) {
-				const groups = getBinaryNodeChildren(groupsChild, 'group')
-				for(const groupNode of groups) {
-					const meta = extractGroupMetadata({
-						tag: 'result',
-						attrs: { },
-						content: [groupNode]
-					})
-					data[meta.id] = meta
-				}
-			}
-
-			return data
-		}
+		groupFetchAllParticipating
 	}
 }
 

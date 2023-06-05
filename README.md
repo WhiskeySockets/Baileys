@@ -41,7 +41,9 @@ import makeWASocket from '@whiskeysockets/baileys'
 
 TODO
 
-## Connecting
+## Connecting multi device (recommended)
+
+WhatsApp provides a multi-device API that allows Baileys to be authenticated as a second WhatsApp client by scanning a QR code with WhatsApp on your phone.
 
 ``` ts
 import makeWASocket, { DisconnectReason } from '@whiskeysockets/baileys'
@@ -81,6 +83,12 @@ If the connection is successful, you will see a QR code printed on your terminal
 **Note:** install `qrcode-terminal` using `yarn add qrcode-terminal` to auto-print the QR to the terminal.
 
 **Note:** the code to support the legacy version of WA Web (pre multi-device) has been removed in v5. Only the standard multi-device connection is now supported. This is done as WA seems to have completely dropped support for the legacy version.
+
+## Connecting native mobile api
+
+Baileys also supports the native mobile API, which allows users to authenticate as a standalone WhatsApp client using their phone number.
+
+Run the [example](Example/example.ts) file with ``--mobile`` cli flag to use the native mobile API.
 
 ## Configuring the Connection
 

@@ -1298,6 +1298,11 @@
   resolved "https://registry.npmjs.org/@types/tough-cookie/-/tough-cookie-4.0.2.tgz"
   integrity sha512-Q5vtl1W5ue16D+nIaW8JWebSSraJVlK+EthKn7e7UcD4KWsaSJ8BqGPXNaPghgtcn/fhvrN17Tv8ksUsQpiplw==
 
+"@types/uuid@^9.0.0":
+  version "9.0.1"
+  resolved "https://registry.yarnpkg.com/@types/uuid/-/uuid-9.0.1.tgz#98586dc36aee8dacc98cc396dbca8d0429647aa6"
+  integrity sha512-rFT3ak0/2trgvp4yYZo5iKFEPsET7vKydKF+VRCxlQ9bpheehyAJH89dAkaLEq/j/RZXJIqcgsmPJKUP1Z28HA==
+
 "@types/ws@^8.0.0":
   version "8.5.3"
   resolved "https://registry.npmjs.org/@types/ws/-/ws-8.5.3.tgz"
@@ -2141,6 +2146,11 @@ color@^4.2.3:
   dependencies:
     color-convert "^2.0.1"
     color-string "^1.9.0"
+
+colorette@^2.0.7:
+  version "2.0.20"
+  resolved "https://registry.yarnpkg.com/colorette/-/colorette-2.0.20.tgz#9eb793e6833067f7235902fcd3b09917a000a95a"
+  integrity sha512-IfEDxwoWIjkeXL1eXcDiow4UbKjhLdq6/EuSVR9GMN7KVH3r9gQ83e73hsz1Nd1T3ijd5xv1wcWRYO+D6kCI2w==
 
 combined-stream@^1.0.6, combined-stream@^1.0.8:
   version "1.0.8"
@@ -3120,6 +3130,11 @@ fast-redact@^3.0.0:
   version "3.1.1"
   resolved "https://registry.npmjs.org/fast-redact/-/fast-redact-3.1.1.tgz"
   integrity sha512-odVmjC8x8jNeMZ3C+rPMESzXVSEU8tSWSHv9HFxP2mm89G/1WwqhrerJDQm9Zus8X6aoRgQDThKqptdNA6bt+A==
+
+fast-safe-stringify@^2.1.1:
+  version "2.1.1"
+  resolved "https://registry.yarnpkg.com/fast-safe-stringify/-/fast-safe-stringify-2.1.1.tgz#c406a83b6e70d9e35ce3b30a81141df30aeba884"
+  integrity sha512-W+KJc2dmILlPplD/H4K9l9LcAHAfPtP6BY84uVLXQ6Evcz9Lcg33Y2z1IVblT6xdY54PXYVHEv+0Wpq8Io6zkA==
 
 fastq@^1.6.0:
   version "1.15.0"
@@ -4654,6 +4669,11 @@ jimp@^0.16.1:
     "@jimp/types" "^0.16.1"
     regenerator-runtime "^0.13.3"
 
+joycon@^3.1.1:
+  version "3.1.1"
+  resolved "https://registry.yarnpkg.com/joycon/-/joycon-3.1.1.tgz#bce8596d6ae808f8b68168f5fc69280996894f03"
+  integrity sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==
+
 jpeg-js@0.4.2:
   version "0.4.2"
   resolved "https://registry.npmjs.org/jpeg-js/-/jpeg-js-0.4.2.tgz"
@@ -4821,6 +4841,11 @@ levn@~0.3.0:
   dependencies:
     prelude-ls "~1.1.2"
     type-check "~0.3.2"
+
+libphonenumber-js@^1.10.20:
+  version "1.10.28"
+  resolved "https://registry.yarnpkg.com/libphonenumber-js/-/libphonenumber-js-1.10.28.tgz#cae7e929cad96cee5ecc9449027192ecba39ee72"
+  integrity sha512-1eAgjLrZA0+2Wgw4hs+4Q/kEBycxQo8ZLYnmOvZ3AlM8ImAVAJgDPlZtISLEzD1vunc2q8s2Pn7XwB7I8U3Kzw==
 
 "libsignal@https://github.com/adiwajshing/libsignal-node.git":
   version "2.0.1"
@@ -5403,6 +5428,11 @@ on-exit-leak-free@^0.2.0:
   resolved "https://registry.npmjs.org/on-exit-leak-free/-/on-exit-leak-free-0.2.0.tgz"
   integrity sha512-dqaz3u44QbRXQooZLTUKU41ZrzYrcvLISVgbrzbyCMxpmSLJvZ3ZamIJIZ29P6OhZIkNIQKosdeM6t1LYbA9hg==
 
+on-exit-leak-free@^2.1.0:
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/on-exit-leak-free/-/on-exit-leak-free-2.1.0.tgz#5c703c968f7e7f851885f6459bf8a8a57edc9cc4"
+  integrity sha512-VuCaZZAjReZ3vUwgOB8LxAosIurDiAW0s13rI1YwmaP++jvcxP77AWoQvenZebpCA2m8WC1/EosPYPMjnRAp/w==
+
 once@^1.3.0, once@^1.3.1, once@^1.4.0:
   version "1.4.0"
   resolved "https://registry.npmjs.org/once/-/once-1.4.0.tgz"
@@ -5729,6 +5759,26 @@ pino-abstract-transport@v0.5.0:
   dependencies:
     duplexify "^4.1.2"
     split2 "^4.0.0"
+
+pino-pretty@^9.4.0:
+  version "9.4.0"
+  resolved "https://registry.yarnpkg.com/pino-pretty/-/pino-pretty-9.4.0.tgz#fc4026e83c87272cbdfb7afed121770e6000940c"
+  integrity sha512-NIudkNLxnl7MGj1XkvsqVyRgo6meFP82ECXF2PlOI+9ghmbGuBUUqKJ7IZPIxpJw4vhhSva0IuiDSAuGh6TV9g==
+  dependencies:
+    colorette "^2.0.7"
+    dateformat "^4.6.3"
+    fast-copy "^3.0.0"
+    fast-safe-stringify "^2.1.1"
+    help-me "^4.0.1"
+    joycon "^3.1.1"
+    minimist "^1.2.6"
+    on-exit-leak-free "^2.1.0"
+    pino-abstract-transport "^1.0.0"
+    pump "^3.0.0"
+    readable-stream "^4.0.0"
+    secure-json-parse "^2.4.0"
+    sonic-boom "^3.0.0"
+    strip-json-comments "^3.1.1"
 
 pino-std-serializers@^4.0.0:
   version "4.0.0"
@@ -6523,6 +6573,13 @@ sonic-boom@^2.2.1:
   version "2.8.0"
   resolved "https://registry.npmjs.org/sonic-boom/-/sonic-boom-2.8.0.tgz"
   integrity sha512-kuonw1YOYYNOve5iHdSahXPOK49GqwA+LZhI6Wz/l0rP57iKyXXIHaRagOBHAPmGwJC6od2Z9zgvZ5loSgMlVg==
+  dependencies:
+    atomic-sleep "^1.0.0"
+
+sonic-boom@^3.0.0:
+  version "3.3.0"
+  resolved "https://registry.yarnpkg.com/sonic-boom/-/sonic-boom-3.3.0.tgz#cffab6dafee3b2bcb88d08d589394198bee1838c"
+  integrity sha512-LYxp34KlZ1a2Jb8ZQgFCK3niIHzibdwtwNUWKg0qQRzsDoJ3Gfgkf8KdBTFU3SkejDEIlWwnSnpVdOZIhFMl/g==
   dependencies:
     atomic-sleep "^1.0.0"
 
