@@ -55,10 +55,11 @@ const makeRedisAuthState = async(sessionKey: string) => {
 	const creds: AuthenticationCreds = (await readData('creds')) || initAuthCreds()
 
 	return {
+		init,
+		clearState,
+		saveCreds: () => writeData('creds', creds),
 		state: {
-			init,
 			creds,
-			clearState,
 			keys: {
 				get: async(type: string, ids: string[]) => {
 					const data = {}
@@ -89,8 +90,7 @@ const makeRedisAuthState = async(sessionKey: string) => {
 
 					await Promise.all(tasks)
 				},
-			},
-			saveCreds: () => writeData('creds', creds),
+			}
 		}
 	}
 }
