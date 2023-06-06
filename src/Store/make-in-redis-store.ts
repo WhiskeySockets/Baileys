@@ -1,31 +1,15 @@
-import { Cache, caching } from 'cache-manager'
-import { RedisStore, redisStore } from 'cache-manager-ioredis-yet'
+import { caching } from 'cache-manager'
 import { proto } from '../../WAProto'
 import { AuthenticationCreds } from '../Types'
 import { BufferJSON, initAuthCreds } from '../Utils'
 import logger from '../Utils/logger'
 
-const makeRedisAuthState = async(sessionKey: string) => {
+const makeRedisAuthState = async(store: any, sessionKey: string) => {
 	const defaultKey = (file: string): string => `${sessionKey}:${file}`
 
-	let redisConn: null | Cache<RedisStore> = null
+	const redisConn = await caching(store)
 
-	const init = async(redisProps: {}) => {
-		if(!redisProps) {
-			throw new Error('Redis connection string missing')
-		}
-
-		const redis = await redisStore(redisProps)
-		redisConn = await caching(redis)
-	}
-
-	const writeData = async(file: string, data: object) => {
-		const setData = await redisConn?.set(defaultKey(file), JSON.stringify(data, BufferJSON.replacer))
-
-		if(!setData) {
-			throw new Error('Unable to set credentials, check your Redis connection')
-		}
-	}
+	const writeData = async(file: string, data: object) => await redisConn.set(defaultKey(file), JSON.stringify(data, BufferJSON.replacer))
 
 	const readData = async(file: string): Promise<AuthenticationCreds | null> => {
 		try {
@@ -55,7 +39,6 @@ const makeRedisAuthState = async(sessionKey: string) => {
 	const creds: AuthenticationCreds = (await readData('creds')) || initAuthCreds()
 
 	return {
-		init,
 		clearState,
 		saveCreds: () => writeData('creds', creds),
 		state: {
