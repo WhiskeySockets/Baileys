@@ -5,7 +5,7 @@ import { AuthenticationCreds } from '../Types'
 import { BufferJSON, initAuthCreds } from '../Utils'
 import logger from '../Utils/logger'
 
-export const useRedisAuthState = async(sessionKey: string) => {
+const makeRedisAuthState = async(sessionKey: string) => {
 	const defaultKey = (file: string): string => `${sessionKey}:${file}`
 
 	let redisConn: null | Cache<RedisStore> = null
@@ -94,3 +94,5 @@ export const useRedisAuthState = async(sessionKey: string) => {
 		}
 	}
 }
+
+export default makeRedisAuthState

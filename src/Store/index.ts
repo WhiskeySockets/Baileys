@@ -1,2 +1,3 @@
 import makeInMemoryStore from './make-in-memory-store'
-export { makeInMemoryStore }
+import makeRedisAuthState from './make-in-redis-store'
+export { makeInMemoryStore, makeRedisAuthState }
