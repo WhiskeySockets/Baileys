@@ -4,16 +4,16 @@ import { AuthenticationCreds } from '../Types'
 import { BufferJSON, initAuthCreds } from '../Utils'
 import logger from '../Utils/logger'
 
-const makeRedisAuthState = async(store: any, sessionKey: string) => {
+const makeDatabaseAuthState = async(store: any, sessionKey: string) => {
 	const defaultKey = (file: string): string => `${sessionKey}:${file}`
 
-	const redisConn = await caching(store)
+	const databaseConn = await caching(store)
 
-	const writeData = async(file: string, data: object) => await redisConn.set(defaultKey(file), JSON.stringify(data, BufferJSON.replacer))
+	const writeData = async(file: string, data: object) => await databaseConn.set(defaultKey(file), JSON.stringify(data, BufferJSON.replacer))
 
 	const readData = async(file: string): Promise<AuthenticationCreds | null> => {
 		try {
-			const data = await redisConn?.get(defaultKey(file))
+			const data = await databaseConn.get(defaultKey(file))
 
 			if(data) {
 				return JSON.parse(data as string, BufferJSON.reviver)
@@ -28,13 +28,17 @@ const makeRedisAuthState = async(store: any, sessionKey: string) => {
 
 	const removeData = async(file: string) => {
 		try {
-			return await redisConn?.del(defaultKey(file))
+			return await databaseConn.del(defaultKey(file))
 		} catch{
 			logger.error(`Error removing ${file} from session ${sessionKey}`)
 		}
 	}
 
-	const clearState = async() => await redisConn?.del(sessionKey)
+	const clearState = async() => {
+		const result = await databaseConn.get(sessionKey)
+		console.log(result)
+		//await databaseConn.del(`${sessionKey}*`)
+	}
 
 	const creds: AuthenticationCreds = (await readData('creds')) || initAuthCreds()
 
@@ -78,4 +82,4 @@ const makeRedisAuthState = async(store: any, sessionKey: string) => {
 	}
 }
 
-export default makeRedisAuthState
+export default makeDatabaseAuthState
