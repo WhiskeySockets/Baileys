@@ -752,7 +752,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	ev.on('connection.update', ({ isOnline }) => {
 		if(typeof isOnline !== 'undefined') {
-			sendActiveReceipts = config.updatePresenceOnMessageReceipt ? isOnline : false;
+			sendActiveReceipts = config.updatePresenceOnMessageReceipt ? isOnline : false
 			logger.trace(`sendActiveReceipts set to "${sendActiveReceipts}"`)
 		}
 	})
