@@ -1,10 +1,12 @@
 import { caching } from 'cache-manager'
+import { RedisStore as IORedisStore } from 'cache-manager-ioredis-yet'
+import { RedisStore } from 'cache-manager-redis-yet'
 import { proto } from '../../WAProto'
 import { AuthenticationCreds } from '../Types'
 import { BufferJSON, initAuthCreds } from '../Utils'
 import logger from '../Utils/logger'
 
-const makeDatabaseAuthState = async(store: any, sessionKey: string) => {
+const makeRedisAuthState = async(store: IORedisStore | RedisStore, sessionKey: string) => {
 	const defaultKey = (file: string): string => `${sessionKey}:${file}`
 
 	const databaseConn = await caching(store)
@@ -35,9 +37,13 @@ const makeDatabaseAuthState = async(store: any, sessionKey: string) => {
 	}
 
 	const clearState = async() => {
-		const result = await databaseConn.get(sessionKey)
-		console.log(result)
-		//await databaseConn.del(`${sessionKey}*`)
+		try {
+			const result = await databaseConn.store.keys(`${sessionKey}*`)
+			await Promise.all(
+				result.map(async(key) => await databaseConn.del(key))
+			)
+		} catch(err) {
+		}
 	}
 
 	const creds: AuthenticationCreds = (await readData('creds')) || initAuthCreds()
@@ -82,4 +88,4 @@ const makeDatabaseAuthState = async(store: any, sessionKey: string) => {
 	}
 }
 
-export default makeDatabaseAuthState
+export default makeRedisAuthState

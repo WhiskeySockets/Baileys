@@ -1,3 +1,3 @@
-import makeDatabaseAuthState from './make-in-database-store'
 import makeInMemoryStore from './make-in-memory-store'
-export { makeInMemoryStore, makeDatabaseAuthState }
+import makeRedisAuthState from './make-in-redis-store'
+export { makeInMemoryStore, makeRedisAuthState }
