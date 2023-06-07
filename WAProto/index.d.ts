@@ -1526,6 +1526,490 @@ export namespace proto {
         }
     }
 
+    /** Properties of a ChatRowOpaqueData. */
+    interface IChatRowOpaqueData {
+
+        /** ChatRowOpaqueData draftMessage */
+        draftMessage?: (proto.ChatRowOpaqueData.IDraftMessage|null);
+    }
+
+    /** Represents a ChatRowOpaqueData. */
+    class ChatRowOpaqueData implements IChatRowOpaqueData {
+
+        /**
+         * Constructs a new ChatRowOpaqueData.
+         * @param [properties] Properties to set
+         */
+        constructor(properties?: proto.IChatRowOpaqueData);
+
+        /** ChatRowOpaqueData draftMessage. */
+        public draftMessage?: (proto.ChatRowOpaqueData.IDraftMessage|null);
+
+        /**
+         * Creates a new ChatRowOpaqueData instance using the specified properties.
+         * @param [properties] Properties to set
+         * @returns ChatRowOpaqueData instance
+         */
+        public static create(properties?: proto.IChatRowOpaqueData): proto.ChatRowOpaqueData;
+
+        /**
+         * Encodes the specified ChatRowOpaqueData message. Does not implicitly {@link proto.ChatRowOpaqueData.verify|verify} messages.
+         * @param message ChatRowOpaqueData message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encode(message: proto.IChatRowOpaqueData, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Encodes the specified ChatRowOpaqueData message, length delimited. Does not implicitly {@link proto.ChatRowOpaqueData.verify|verify} messages.
+         * @param message ChatRowOpaqueData message or plain object to encode
+         * @param [writer] Writer to encode to
+         * @returns Writer
+         */
+        public static encodeDelimited(message: proto.IChatRowOpaqueData, writer?: $protobuf.Writer): $protobuf.Writer;
+
+        /**
+         * Decodes a ChatRowOpaqueData message from the specified reader or buffer.
+         * @param reader Reader or buffer to decode from
+         * @param [length] Message length if known beforehand
+         * @returns ChatRowOpaqueData
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ChatRowOpaqueData;
+
+        /**
+         * Decodes a ChatRowOpaqueData message from the specified reader or buffer, length delimited.
+         * @param reader Reader or buffer to decode from
+         * @returns ChatRowOpaqueData
+         * @throws {Error} If the payload is not a reader or valid buffer
+         * @throws {$protobuf.util.ProtocolError} If required fields are missing
+         */
+        public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.ChatRowOpaqueData;
+
+        /**
+         * Verifies a ChatRowOpaqueData message.
+         * @param message Plain object to verify
+         * @returns `null` if valid, otherwise the reason why it is not
+         */
+        public static verify(message: { [k: string]: any }): (string|null);
+
+        /**
+         * Creates a ChatRowOpaqueData message from a plain object. Also converts values to their respective internal types.
+         * @param object Plain object
+         * @returns ChatRowOpaqueData
+         */
+        public static fromObject(object: { [k: string]: any }): proto.ChatRowOpaqueData;
+
+        /**
+         * Creates a plain object from a ChatRowOpaqueData message. Also converts values to other types if specified.
+         * @param message ChatRowOpaqueData
+         * @param [options] Conversion options
+         * @returns Plain object
+         */
+        public static toObject(message: proto.ChatRowOpaqueData, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+        /**
+         * Converts this ChatRowOpaqueData to JSON.
+         * @returns JSON object
+         */
+        public toJSON(): { [k: string]: any };
+    }
+
+    namespace ChatRowOpaqueData {
+
+        /** Properties of a DraftMessage. */
+        interface IDraftMessage {
+
+            /** DraftMessage text */
+            text?: (string|null);
+
+            /** DraftMessage omittedUrl */
+            omittedUrl?: (string|null);
+
+            /** DraftMessage ctwaContextLinkData */
+            ctwaContextLinkData?: (proto.ChatRowOpaqueData.DraftMessage.ICtwaContextLinkData|null);
+
+            /** DraftMessage ctwaContext */
+            ctwaContext?: (proto.ChatRowOpaqueData.DraftMessage.ICtwaContextData|null);
+
+            /** DraftMessage timestamp */
+            timestamp?: (number|Long|null);
+        }
+
+        /** Represents a DraftMessage. */
+        class DraftMessage implements IDraftMessage {
+
+            /**
+             * Constructs a new DraftMessage.
+             * @param [properties] Properties to set
+             */
+            constructor(properties?: proto.ChatRowOpaqueData.IDraftMessage);
+
+            /** DraftMessage text. */
+            public text: string;
+
+            /** DraftMessage omittedUrl. */
+            public omittedUrl: string;
+
+            /** DraftMessage ctwaContextLinkData. */
+            public ctwaContextLinkData?: (proto.ChatRowOpaqueData.DraftMessage.ICtwaContextLinkData|null);
+
+            /** DraftMessage ctwaContext. */
+            public ctwaContext?: (proto.ChatRowOpaqueData.DraftMessage.ICtwaContextData|null);
+
+            /** DraftMessage timestamp. */
+            public timestamp: (number|Long);
+
+            /**
+             * Creates a new DraftMessage instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns DraftMessage instance
+             */
+            public static create(properties?: proto.ChatRowOpaqueData.IDraftMessage): proto.ChatRowOpaqueData.DraftMessage;
+
+            /**
+             * Encodes the specified DraftMessage message. Does not implicitly {@link proto.ChatRowOpaqueData.DraftMessage.verify|verify} messages.
+             * @param message DraftMessage message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encode(message: proto.ChatRowOpaqueData.IDraftMessage, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified DraftMessage message, length delimited. Does not implicitly {@link proto.ChatRowOpaqueData.DraftMessage.verify|verify} messages.
+             * @param message DraftMessage message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encodeDelimited(message: proto.ChatRowOpaqueData.IDraftMessage, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a DraftMessage message from the specified reader or buffer.
+             * @param reader Reader or buffer to decode from
+             * @param [length] Message length if known beforehand
+             * @returns DraftMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ChatRowOpaqueData.DraftMessage;
+
+            /**
+             * Decodes a DraftMessage message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns DraftMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.ChatRowOpaqueData.DraftMessage;
+
+            /**
+             * Verifies a DraftMessage message.
+             * @param message Plain object to verify
+             * @returns `null` if valid, otherwise the reason why it is not
+             */
+            public static verify(message: { [k: string]: any }): (string|null);
+
+            /**
+             * Creates a DraftMessage message from a plain object. Also converts values to their respective internal types.
+             * @param object Plain object
+             * @returns DraftMessage
+             */
+            public static fromObject(object: { [k: string]: any }): proto.ChatRowOpaqueData.DraftMessage;
+
+            /**
+             * Creates a plain object from a DraftMessage message. Also converts values to other types if specified.
+             * @param message DraftMessage
+             * @param [options] Conversion options
+             * @returns Plain object
+             */
+            public static toObject(message: proto.ChatRowOpaqueData.DraftMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+            /**
+             * Converts this DraftMessage to JSON.
+             * @returns JSON object
+             */
+            public toJSON(): { [k: string]: any };
+        }
+
+        namespace DraftMessage {
+
+            /** Properties of a CtwaContextData. */
+            interface ICtwaContextData {
+
+                /** CtwaContextData conversionSource */
+                conversionSource?: (string|null);
+
+                /** CtwaContextData conversionData */
+                conversionData?: (Uint8Array|null);
+
+                /** CtwaContextData sourceUrl */
+                sourceUrl?: (string|null);
+
+                /** CtwaContextData sourceId */
+                sourceId?: (string|null);
+
+                /** CtwaContextData sourceType */
+                sourceType?: (string|null);
+
+                /** CtwaContextData title */
+                title?: (string|null);
+
+                /** CtwaContextData description */
+                description?: (string|null);
+
+                /** CtwaContextData thumbnail */
+                thumbnail?: (string|null);
+
+                /** CtwaContextData thumbnailUrl */
+                thumbnailUrl?: (string|null);
+
+                /** CtwaContextData mediaType */
+                mediaType?: (proto.ChatRowOpaqueData.DraftMessage.CtwaContextData.ContextInfoExternalAdReplyInfoMediaType|null);
+
+                /** CtwaContextData mediaUrl */
+                mediaUrl?: (string|null);
+
+                /** CtwaContextData isSuspiciousLink */
+                isSuspiciousLink?: (boolean|null);
+            }
+
+            /** Represents a CtwaContextData. */
+            class CtwaContextData implements ICtwaContextData {
+
+                /**
+                 * Constructs a new CtwaContextData.
+                 * @param [properties] Properties to set
+                 */
+                constructor(properties?: proto.ChatRowOpaqueData.DraftMessage.ICtwaContextData);
+
+                /** CtwaContextData conversionSource. */
+                public conversionSource: string;
+
+                /** CtwaContextData conversionData. */
+                public conversionData: Uint8Array;
+
+                /** CtwaContextData sourceUrl. */
+                public sourceUrl: string;
+
+                /** CtwaContextData sourceId. */
+                public sourceId: string;
+
+                /** CtwaContextData sourceType. */
+                public sourceType: string;
+
+                /** CtwaContextData title. */
+                public title: string;
+
+                /** CtwaContextData description. */
+                public description: string;
+
+                /** CtwaContextData thumbnail. */
+                public thumbnail: string;
+
+                /** CtwaContextData thumbnailUrl. */
+                public thumbnailUrl: string;
+
+                /** CtwaContextData mediaType. */
+                public mediaType: proto.ChatRowOpaqueData.DraftMessage.CtwaContextData.ContextInfoExternalAdReplyInfoMediaType;
+
+                /** CtwaContextData mediaUrl. */
+                public mediaUrl: string;
+
+                /** CtwaContextData isSuspiciousLink. */
+                public isSuspiciousLink: boolean;
+
+                /**
+                 * Creates a new CtwaContextData instance using the specified properties.
+                 * @param [properties] Properties to set
+                 * @returns CtwaContextData instance
+                 */
+                public static create(properties?: proto.ChatRowOpaqueData.DraftMessage.ICtwaContextData): proto.ChatRowOpaqueData.DraftMessage.CtwaContextData;
+
+                /**
+                 * Encodes the specified CtwaContextData message. Does not implicitly {@link proto.ChatRowOpaqueData.DraftMessage.CtwaContextData.verify|verify} messages.
+                 * @param message CtwaContextData message or plain object to encode
+                 * @param [writer] Writer to encode to
+                 * @returns Writer
+                 */
+                public static encode(message: proto.ChatRowOpaqueData.DraftMessage.ICtwaContextData, writer?: $protobuf.Writer): $protobuf.Writer;
+
+                /**
+                 * Encodes the specified CtwaContextData message, length delimited. Does not implicitly {@link proto.ChatRowOpaqueData.DraftMessage.CtwaContextData.verify|verify} messages.
+                 * @param message CtwaContextData message or plain object to encode
+                 * @param [writer] Writer to encode to
+                 * @returns Writer
+                 */
+                public static encodeDelimited(message: proto.ChatRowOpaqueData.DraftMessage.ICtwaContextData, writer?: $protobuf.Writer): $protobuf.Writer;
+
+                /**
+                 * Decodes a CtwaContextData message from the specified reader or buffer.
+                 * @param reader Reader or buffer to decode from
+                 * @param [length] Message length if known beforehand
+                 * @returns CtwaContextData
+                 * @throws {Error} If the payload is not a reader or valid buffer
+                 * @throws {$protobuf.util.ProtocolError} If required fields are missing
+                 */
+                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ChatRowOpaqueData.DraftMessage.CtwaContextData;
+
+                /**
+                 * Decodes a CtwaContextData message from the specified reader or buffer, length delimited.
+                 * @param reader Reader or buffer to decode from
+                 * @returns CtwaContextData
+                 * @throws {Error} If the payload is not a reader or valid buffer
+                 * @throws {$protobuf.util.ProtocolError} If required fields are missing
+                 */
+                public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.ChatRowOpaqueData.DraftMessage.CtwaContextData;
+
+                /**
+                 * Verifies a CtwaContextData message.
+                 * @param message Plain object to verify
+                 * @returns `null` if valid, otherwise the reason why it is not
+                 */
+                public static verify(message: { [k: string]: any }): (string|null);
+
+                /**
+                 * Creates a CtwaContextData message from a plain object. Also converts values to their respective internal types.
+                 * @param object Plain object
+                 * @returns CtwaContextData
+                 */
+                public static fromObject(object: { [k: string]: any }): proto.ChatRowOpaqueData.DraftMessage.CtwaContextData;
+
+                /**
+                 * Creates a plain object from a CtwaContextData message. Also converts values to other types if specified.
+                 * @param message CtwaContextData
+                 * @param [options] Conversion options
+                 * @returns Plain object
+                 */
+                public static toObject(message: proto.ChatRowOpaqueData.DraftMessage.CtwaContextData, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+                /**
+                 * Converts this CtwaContextData to JSON.
+                 * @returns JSON object
+                 */
+                public toJSON(): { [k: string]: any };
+            }
+
+            namespace CtwaContextData {
+
+                /** ContextInfoExternalAdReplyInfoMediaType enum. */
+                enum ContextInfoExternalAdReplyInfoMediaType {
+                    NONE = 0,
+                    IMAGE = 1,
+                    VIDEO = 2
+                }
+            }
+
+            /** Properties of a CtwaContextLinkData. */
+            interface ICtwaContextLinkData {
+
+                /** CtwaContextLinkData context */
+                context?: (string|null);
+
+                /** CtwaContextLinkData sourceUrl */
+                sourceUrl?: (string|null);
+
+                /** CtwaContextLinkData icebreaker */
+                icebreaker?: (string|null);
+
+                /** CtwaContextLinkData phone */
+                phone?: (string|null);
+            }
+
+            /** Represents a CtwaContextLinkData. */
+            class CtwaContextLinkData implements ICtwaContextLinkData {
+
+                /**
+                 * Constructs a new CtwaContextLinkData.
+                 * @param [properties] Properties to set
+                 */
+                constructor(properties?: proto.ChatRowOpaqueData.DraftMessage.ICtwaContextLinkData);
+
+                /** CtwaContextLinkData context. */
+                public context: string;
+
+                /** CtwaContextLinkData sourceUrl. */
+                public sourceUrl: string;
+
+                /** CtwaContextLinkData icebreaker. */
+                public icebreaker: string;
+
+                /** CtwaContextLinkData phone. */
+                public phone: string;
+
+                /**
+                 * Creates a new CtwaContextLinkData instance using the specified properties.
+                 * @param [properties] Properties to set
+                 * @returns CtwaContextLinkData instance
+                 */
+                public static create(properties?: proto.ChatRowOpaqueData.DraftMessage.ICtwaContextLinkData): proto.ChatRowOpaqueData.DraftMessage.CtwaContextLinkData;
+
+                /**
+                 * Encodes the specified CtwaContextLinkData message. Does not implicitly {@link proto.ChatRowOpaqueData.DraftMessage.CtwaContextLinkData.verify|verify} messages.
+                 * @param message CtwaContextLinkData message or plain object to encode
+                 * @param [writer] Writer to encode to
+                 * @returns Writer
+                 */
+                public static encode(message: proto.ChatRowOpaqueData.DraftMessage.ICtwaContextLinkData, writer?: $protobuf.Writer): $protobuf.Writer;
+
+                /**
+                 * Encodes the specified CtwaContextLinkData message, length delimited. Does not implicitly {@link proto.ChatRowOpaqueData.DraftMessage.CtwaContextLinkData.verify|verify} messages.
+                 * @param message CtwaContextLinkData message or plain object to encode
+                 * @param [writer] Writer to encode to
+                 * @returns Writer
+                 */
+                public static encodeDelimited(message: proto.ChatRowOpaqueData.DraftMessage.ICtwaContextLinkData, writer?: $protobuf.Writer): $protobuf.Writer;
+
+                /**
+                 * Decodes a CtwaContextLinkData message from the specified reader or buffer.
+                 * @param reader Reader or buffer to decode from
+                 * @param [length] Message length if known beforehand
+                 * @returns CtwaContextLinkData
+                 * @throws {Error} If the payload is not a reader or valid buffer
+                 * @throws {$protobuf.util.ProtocolError} If required fields are missing
+                 */
+                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ChatRowOpaqueData.DraftMessage.CtwaContextLinkData;
+
+                /**
+                 * Decodes a CtwaContextLinkData message from the specified reader or buffer, length delimited.
+                 * @param reader Reader or buffer to decode from
+                 * @returns CtwaContextLinkData
+                 * @throws {Error} If the payload is not a reader or valid buffer
+                 * @throws {$protobuf.util.ProtocolError} If required fields are missing
+                 */
+                public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.ChatRowOpaqueData.DraftMessage.CtwaContextLinkData;
+
+                /**
+                 * Verifies a CtwaContextLinkData message.
+                 * @param message Plain object to verify
+                 * @returns `null` if valid, otherwise the reason why it is not
+                 */
+                public static verify(message: { [k: string]: any }): (string|null);
+
+                /**
+                 * Creates a CtwaContextLinkData message from a plain object. Also converts values to their respective internal types.
+                 * @param object Plain object
+                 * @returns CtwaContextLinkData
+                 */
+                public static fromObject(object: { [k: string]: any }): proto.ChatRowOpaqueData.DraftMessage.CtwaContextLinkData;
+
+                /**
+                 * Creates a plain object from a CtwaContextLinkData message. Also converts values to other types if specified.
+                 * @param message CtwaContextLinkData
+                 * @param [options] Conversion options
+                 * @returns Plain object
+                 */
+                public static toObject(message: proto.ChatRowOpaqueData.DraftMessage.CtwaContextLinkData, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+                /**
+                 * Converts this CtwaContextLinkData to JSON.
+                 * @returns JSON object
+                 */
+                public toJSON(): { [k: string]: any };
+            }
+        }
+    }
+
     /** Properties of a ClientPayload. */
     interface IClientPayload {
 
