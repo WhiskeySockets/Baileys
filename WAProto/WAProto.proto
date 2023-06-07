@@ -117,6 +117,45 @@ message CertChain {
     
 }
 
+message ChatRowOpaqueData {
+    optional DraftMessage draftMessage = 1;
+    message DraftMessage {
+        optional string text = 1;
+        optional string omittedUrl = 2;
+        optional CtwaContextLinkData ctwaContextLinkData = 3;
+        optional CtwaContextData ctwaContext = 4;
+        optional int64 timestamp = 5;
+        message CtwaContextData {
+            optional string conversionSource = 1;
+            optional bytes conversionData = 2;
+            optional string sourceUrl = 3;
+            optional string sourceId = 4;
+            optional string sourceType = 5;
+            optional string title = 6;
+            optional string description = 7;
+            optional string thumbnail = 8;
+            optional string thumbnailUrl = 9;
+            optional ContextInfoExternalAdReplyInfoMediaType mediaType = 10;
+            optional string mediaUrl = 11;
+            optional bool isSuspiciousLink = 12;
+            enum ContextInfoExternalAdReplyInfoMediaType {
+                NONE = 0;
+                IMAGE = 1;
+                VIDEO = 2;
+            }
+        }
+        
+        message CtwaContextLinkData {
+            optional string context = 1;
+            optional string sourceUrl = 2;
+            optional string icebreaker = 3;
+            optional string phone = 4;
+        }
+        
+    }
+    
+}
+
 message ClientPayload {
     optional uint64 username = 1;
     optional bool passive = 3;
