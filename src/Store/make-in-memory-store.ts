@@ -1,43 +1,94 @@
-import type KeyedDB from '@adiwajshing/keyed-db'
+import KeyedDB from '@adiwajshing/keyed-db'
 import type { Comparable } from '@adiwajshing/keyed-db/lib/Types'
 import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { DEFAULT_CONNECTION_CONFIG } from '../Defaults'
 import type makeMDSocket from '../Socket'
 import type { BaileysEventEmitter, Chat, ConnectionState, Contact, GroupMetadata, PresenceData, WAMessage, WAMessageCursor, WAMessageKey } from '../Types'
+import { Label } from '../Types/Label'
+import { LabelAssociation, LabelAssociationType, MessageLabelAssociation } from '../Types/LabelAssociation'
 import { toNumber, updateMessageWithReaction, updateMessageWithReceipt } from '../Utils'
 import { jidNormalizedUser } from '../WABinary'
 import makeOrderedDictionary from './make-ordered-dictionary'
+import { ObjectRepository } from './object-repository'
 
 type WASocket = ReturnType<typeof makeMDSocket>
 
 export const waChatKey = (pin: boolean) => ({
 	key: (c: Chat) => (pin ? (c.pinned ? '1' : '0') : '') + (c.archived ? '0' : '1') + (c.conversationTimestamp ? c.conversationTimestamp.toString(16).padStart(8, '0') : '') + c.id,
-	compare: (k1: string, k2: string) => k2.localeCompare (k1)
+	compare: (k1: string, k2: string) => k2.localeCompare(k1)
 })
 
 export const waMessageID = (m: WAMessage) => m.key.id || ''
 
+export const waLabelAssociationKey: Comparable<LabelAssociation, string> = {
+	key: (la: LabelAssociation) => (la.type === LabelAssociationType.Chat ? la.chatId + la.labelId : la.chatId + la.messageId + la.labelId),
+	compare: (k1: string, k2: string) => k2.localeCompare(k1)
+}
+
 export type BaileysInMemoryStoreConfig = {
 	chatKey?: Comparable<Chat, string>
+	labelAssociationKey?: Comparable<LabelAssociation, string>
 	logger?: Logger
 }
 
 const makeMessagesDictionary = () => makeOrderedDictionary(waMessageID)
 
-export default (
-	{ logger: _logger, chatKey }: BaileysInMemoryStoreConfig
-) => {
-	const logger = _logger || DEFAULT_CONNECTION_CONFIG.logger.child({ stream: 'in-mem-store' })
-	chatKey = chatKey || waChatKey(true)
-	const KeyedDB = require('@adiwajshing/keyed-db').default as new (...args: any[]) => KeyedDB<Chat, string>
+const predefinedLabels = Object.freeze<Record<string, Label>>({
+	'0': {
+		id: '0',
+		name: 'New customer',
+		predefinedId: '0',
+		color: 0,
+		deleted: false
+	},
+	'1': {
+		id: '1',
+		name: 'New order',
+		predefinedId: '1',
+		color: 1,
+		deleted: false
+	},
+	'2': {
+		id: '2',
+		name: 'Pending payment',
+		predefinedId: '2',
+		color: 2,
+		deleted: false
+	},
+	'3': {
+		id: '3',
+		name: 'Paid',
+		predefinedId: '3',
+		color: 3,
+		deleted: false
+	},
+	'4': {
+		id: '4',
+		name: 'Order completed',
+		predefinedId: '4',
+		color: 4,
+		deleted: false
+	}
+})
 
-	const chats = new KeyedDB(chatKey, c => c.id)
-	const messages: { [_: string]: ReturnType<typeof makeMessagesDictionary> } = { }
-	const contacts: { [_: string]: Contact } = { }
-	const groupMetadata: { [_: string]: GroupMetadata } = { }
-	const presences: { [id: string]: { [participant: string]: PresenceData } } = { }
+export default (
+	{ logger: _logger, chatKey, labelAssociationKey }: BaileysInMemoryStoreConfig
+) => {
+	// const logger = _logger || DEFAULT_CONNECTION_CONFIG.logger.child({ stream: 'in-mem-store' })
+	chatKey = chatKey || waChatKey(true)
+	labelAssociationKey = labelAssociationKey || waLabelAssociationKey
+	const logger = _logger || DEFAULT_CONNECTION_CONFIG.logger.child({ stream: 'in-mem-store' })
+	// const KeyedDB = require('@adiwajshing/keyed-db').default as new (...args: any[]) => KeyedDB<Chat, string>
+
+	const chats = new KeyedDB<Chat, string>(chatKey, c => c.id)
+	const messages: { [_: string]: ReturnType<typeof makeMessagesDictionary> } = {}
+	const contacts: { [_: string]: Contact } = {}
+	const groupMetadata: { [_: string]: GroupMetadata } = {}
+	const presences: { [id: string]: { [participant: string]: PresenceData } } = {}
 	const state: ConnectionState = { connection: 'close' }
+	const labels = new ObjectRepository<Label>(predefinedLabels)
+	const labelAssociations = new KeyedDB<LabelAssociation, string>(labelAssociationKey, labelAssociationKey.key)
 
 	const assertMessageList = (jid: string) => {
 		if(!messages[jid]) {
@@ -58,6 +109,12 @@ export default (
 		}
 
 		return oldContacts
+	}
+
+	const labelsUpsert = (newLabels: Label[]) => {
+		for(const label of newLabels) {
+			labels.upsertById(label.id, label)
+		}
 	}
 
 	/**
@@ -131,6 +188,33 @@ export default (
 				}
 			}
 		})
+
+		ev.on('labels.edit', (label: Label) => {
+			if(label.deleted) {
+				return labels.deleteById(label.id)
+			}
+
+			// WhatsApp can store only up to 20 labels
+			if(labels.count() < 20) {
+				return labels.upsertById(label.id, label)
+			}
+
+			logger.error('Labels count exceed')
+		})
+
+		ev.on('labels.association', ({ type, association }) => {
+			switch (type) {
+			case 'add':
+				labelAssociations.upsert(association)
+				break
+			case 'remove':
+				labelAssociations.delete(association)
+				break
+			default:
+				console.error(`unknown operation type [${type}]`)
+			}
+		})
+
 		ev.on('presence.update', ({ id, presences: update }) => {
 			presences[id] = presences[id] || {}
 			Object.assign(presences[id], update)
@@ -167,7 +251,16 @@ export default (
 		})
 		ev.on('messages.update', updates => {
 			for(const { update, key } of updates) {
-				const list = assertMessageList(key.remoteJid!)
+				const list = assertMessageList(jidNormalizedUser(key.remoteJid!))
+				if(update?.status) {
+					const listStatus = list.get(key.id!)?.status
+					if(listStatus && update?.status <= listStatus) {
+						logger.debug({ update, storedStatus: listStatus }, 'status stored newer then update')
+						delete update.status
+						logger.debug({ update }, 'new update object')
+					}
+				}
+
 				const result = list.updateAssign(key.id!, update)
 				if(!result) {
 					logger.debug({ update }, 'got update for non-existent message')
@@ -246,12 +339,16 @@ export default (
 	const toJSON = () => ({
 		chats,
 		contacts,
-		messages
+		messages,
+		labels,
+		labelAssociations
 	})
 
-	const fromJSON = (json: { chats: Chat[], contacts: { [id: string]: Contact }, messages: { [id: string]: WAMessage[] } }) => {
+	const fromJSON = (json: {chats: Chat[], contacts: { [id: string]: Contact }, messages: { [id: string]: WAMessage[] }, labels: { [labelId: string]: Label }, labelAssociations: LabelAssociation[]}) => {
 		chats.upsert(...json.chats)
+		labelAssociations.upsert(...json.labelAssociations || [])
 		contactsUpsert(Object.values(json.contacts))
+		labelsUpsert(Object.values(json.labels || {}))
 		for(const jid in json.messages) {
 			const list = assertMessageList(jid)
 			for(const msg of json.messages[jid]) {
@@ -268,6 +365,8 @@ export default (
 		groupMetadata,
 		state,
 		presences,
+		labels,
+		labelAssociations,
 		bind,
 		/** loads messages from the store, if not found -- uses the legacy connection */
 		loadMessages: async(jid: string, count: number, cursor: WAMessageCursor) => {
@@ -294,6 +393,38 @@ export default (
 			}
 
 			return messages
+		},
+		/**
+		 * Get all available labels for profile
+		 *
+		 * Keep in mind that the list is formed from predefined tags and tags
+		 * that were "caught" during their editing.
+		 */
+		getLabels: () => {
+			return labels
+		},
+
+		/**
+		 * Get labels for chat
+		 *
+		 * @returns Label IDs
+		 **/
+		getChatLabels: (chatId: string) => {
+			return labelAssociations.filter((la) => la.chatId === chatId).all()
+		},
+
+		/**
+		 * Get labels for message
+		 *
+		 * @returns Label IDs
+		 **/
+		getMessageLabels: (messageId: string) => {
+			const associations = labelAssociations
+				.filter((la: MessageLabelAssociation) => la.messageId === messageId)
+				.all()
+
+			return associations.map(({ labelId }) => labelId)
+
 		},
 		loadMessage: async(jid: string, id: string) => messages[jid]?.get(id),
 		mostRecentMessage: async(jid: string) => {

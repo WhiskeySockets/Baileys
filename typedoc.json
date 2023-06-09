@@ -4,5 +4,6 @@
     "excludeProtected": true,
     "excludeExternals": true,
     "includeVersion": false,
-    "out": "docs"
+    "out": "docs",
+    "gaID": "G-WBY63HR4VS"
 }

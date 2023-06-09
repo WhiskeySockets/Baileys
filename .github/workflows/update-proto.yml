@@ -1,0 +1,59 @@
+name: Update WAProto
+
+on:
+  schedule:
+    - cron: "10 1 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-proto:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+
+      - name: Install packages
+        run: |
+          yarn
+          yarn --pure-lockfile --cwd proto-extract
+
+      - name: Update WAProto.proto
+        id: wa_proto_info
+        run: |
+          yarn --cwd proto-extract start > wa-logs.txt
+          WA_VERSION=$(cat wa-logs.txt | perl -n -e'/Current version\: (.+)/ && print $1')
+          WA_JS_URL=$(cat wa-logs.txt | perl -n -e'/Found source JS URL\: (.+)/ && print $1')
+          echo "wa_version=$WA_VERSION" >> $GITHUB_OUTPUT
+          echo "wa_js_url=$WA_JS_URL" >> $GITHUB_OUTPUT
+
+      - name: GenerateStatics
+        run: yarn gen:protobuf
+
+      - name: Update baileys-version.json
+        run: |
+          WA_VERSION="${{steps.wa_proto_info.outputs.wa_version}}"
+          WA_NUMBERS=$(echo $WA_VERSION | sed "s/\./, /g")
+          echo -e "{\n\t\"version\": [$WA_NUMBERS]\n}" > src/Defaults/baileys-version.json
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          commit-message: "chore: updated proto/version to v${{steps.wa_proto_info.outputs.wa_version}}"
+          title: "Whatsapp v${{steps.wa_proto_info.outputs.wa_version}} proto/version change"
+          branch: "update-proto/stable"
+          delete-branch: true
+          labels: "update-proto"
+          body: "Automated changes\nFound source JS URL: ${{steps.wa_proto_info.outputs.wa_js_url}}\nCurrent version: v${{steps.wa_proto_info.outputs.wa_version}}"
+          add-paths: |
+            WAProto/*
+            src/Defaults/baileys-version.json
