@@ -146,6 +146,14 @@ export const toProductNode = (productId: string | undefined, product: ProductCre
 		})
 	}
 
+	if(typeof product.url !== 'undefined') {
+		content.push({
+			tag: 'url',
+			attrs: { },
+			content: Buffer.from(product.url)
+		})
+	}
+
 	if('originCountryCode' in product) {
 		if(typeof product.originCountryCode === 'undefined') {
 			attrs['compliance_category'] = 'COUNTRY_ORIGIN_EXEMPT'
@@ -181,12 +189,14 @@ export const parseProductNode = (productNode: BinaryNode) => {
 	const isHidden = productNode.attrs.is_hidden === 'true'
 	const id = getBinaryNodeChildString(productNode, 'id')!
 
-	const mediaNode = getBinaryNodeChild(productNode, 'media')!
+	const mediaNodes = getBinaryNodeChildren(productNode, 'media')!
+	const imagesNodes = mediaNodes[0].content;
+
 	const statusInfoNode = getBinaryNodeChild(productNode, 'status_info')!
 
 	const product: Product = {
 		id,
-		imageUrls: parseImageUrls(mediaNode),
+		imagesUrls: Array.isArray(imagesNodes) ? imagesNodes.map(parseImageUrls) : [],
 		reviewStatus: {
 			whatsapp: getBinaryNodeChildString(statusInfoNode, 'status')!,
 		},
@@ -258,8 +268,7 @@ export const uploadingNecessaryImages = async(
 	return results
 }
 
-const parseImageUrls = (mediaNode: BinaryNode) => {
-	const imgNode = getBinaryNodeChild(mediaNode, 'image')
+const parseImageUrls = (imgNode: BinaryNode) => {
 	return {
 		requested: getBinaryNodeChildString(imgNode, 'request_image_url')!,
 		original: getBinaryNodeChildString(imgNode, 'original_image_url')!
