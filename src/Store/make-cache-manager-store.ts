@@ -10,9 +10,9 @@ const makeCacheManagerAuthState = async(store: Store, sessionKey: string) => {
 	const databaseConn = await caching(store)
 
 	const writeData = async(file: string, data: object) => {
-		let ttl: number | undefined = 86400 // 24 hours
+		let ttl: number | undefined = undefined
 		if(file === 'creds') {
-			ttl = undefined
+			ttl = 63115200 // 2 years
 		}
 
 		await databaseConn.set(
