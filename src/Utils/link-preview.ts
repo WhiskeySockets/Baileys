@@ -42,21 +42,18 @@ export const getUrlInfo = async(
 	},
 ): Promise<WAUrlInfo | undefined> => {
 	try {
-		const { getLinkPreview } = await import('link-preview-js')
+		const linkPreviewGenerator = (await import('link-preview-generator')).default
 		let previewLink = text
 		if(!text.startsWith('https://') && !text.startsWith('http://')) {
 			previewLink = 'https://' + previewLink
 		}
 
-		const info = await getLinkPreview(previewLink, {
-			...opts.fetchOpts,
-			headers: opts.fetchOpts as {}
-		})
+		const info = await linkPreviewGenerator(previewLink)
 		if(info && 'title' in info && info.title) {
-			const [image] = info.images
+			const image = info.img
 
 			const urlInfo: WAUrlInfo = {
-				'canonical-url': info.url,
+				'canonical-url': previewLink,
 				'matched-text': text,
 				title: info.title,
 				description: info.description,
