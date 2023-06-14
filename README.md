@@ -758,7 +758,7 @@ await sock.sendMessage(
 - To get someone's presence (if they're typing or online)
     ``` ts
     // the presence update is fetched and called here
-    sock.ev.on('presence-update', json => console.log(json))
+    sock.ev.on('presence.update', json => console.log(json))
     // request updates for a chat
     await sock.presenceSubscribe("xyz@s.whatsapp.net") 
     ```
