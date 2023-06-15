@@ -161,6 +161,10 @@ export default (
 			logger.debug({ messages: newMessages.length }, 'synced messages')
 		})
 
+		ev.on('contacts.upsert', contacts => {
+			contactsUpsert(contacts)
+		})
+		
 		ev.on('contacts.update', updates => {
 			for(const update of updates) {
 				if(contacts[update.id!]) {
