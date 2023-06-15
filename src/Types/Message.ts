@@ -52,6 +52,10 @@ type Mentionable = {
     /** list of jids that are mentioned in the accompanying text */
     mentions?: string[]
 }
+type Contextable = {
+    /** add contextInfo to the message */
+    contextInfo?: proto.IContextInfo
+}
 type ViewOnce = {
     viewOnce?: boolean
 }
@@ -98,13 +102,13 @@ export type AnyMediaMessageContent = (
         image: WAMediaUpload
         caption?: string
         jpegThumbnail?: string
-    } & Mentionable & Buttonable & Templatable & WithDimensions)
+    } & Mentionable & Contextable & Buttonable & Templatable & WithDimensions)
     | ({
         video: WAMediaUpload
         caption?: string
         gifPlayback?: boolean
         jpegThumbnail?: string
-    } & Mentionable & Buttonable & Templatable & WithDimensions)
+    } & Mentionable & Contextable & Buttonable & Templatable & WithDimensions)
     | {
         audio: WAMediaUpload
         /** if set to true, will send as a `voice note` */
@@ -120,7 +124,7 @@ export type AnyMediaMessageContent = (
         mimetype: string
         fileName?: string
         caption?: string
-    } & Buttonable & Templatable))
+    } & Contextable & Buttonable & Templatable))
     & { mimetype?: string } & Editable
 
 export type ButtonReplyInfo = {
@@ -138,11 +142,11 @@ export type AnyRegularMessageContent = (
 	    text: string
         linkPreview?: WAUrlInfo | null
     }
-    & Mentionable & Buttonable & Templatable & Listable & Editable)
+    & Mentionable & Contextable & Buttonable & Templatable & Listable & Editable)
     | AnyMediaMessageContent
     | ({
         poll: PollMessageOptions
-    } & Mentionable & Buttonable & Templatable & Editable)
+    } & Mentionable & Contextable & Buttonable & Templatable & Editable)
     | {
         contacts: {
             displayName?: string
