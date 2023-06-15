@@ -146,7 +146,7 @@ export default (
 			logger.debug({ chatsAdded }, 'synced chats')
 
 			const oldContacts = contactsUpsert(newContacts)
-			if(isLatest){
+			if(isLatest) {
 				for(const jid of oldContacts) {
 					delete contacts[jid]
 				}
@@ -166,7 +166,7 @@ export default (
 		ev.on('contacts.upsert', contacts => {
 			contactsUpsert(contacts)
 		})
-		
+
 		ev.on('contacts.update', updates => {
 			for(const update of updates) {
 				if(contacts[update.id!]) {
