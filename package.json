@@ -53,7 +53,7 @@
     "pino": "^7.0.0",
     "protobufjs": "^6.11.3",
     "uuid": "^9.0.0",
-    "ws": "^8.0.0"
+    "ws": "^8.13.0"
   },
   "devDependencies": {
     "@adiwajshing/eslint-config": "https://github.com/adiwajshing/eslint-config.git",
