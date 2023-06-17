@@ -99,6 +99,28 @@ message BizIdentityInfo {
     }
 }
 
+message BotAvatarMetadata {
+    optional uint32 sentiment = 1;
+    repeated PlaybackMetadata dynamicVideoList = 2;
+    message PlaybackMetadata {
+        optional string sdProgressiveUrl = 1;
+        optional string hdProgressiveUrl = 2;
+        optional string dashManifest = 3;
+        optional uint32 sentiment = 4;
+        optional uint32 durationMs = 5;
+        optional int64 videoID = 6;
+    }
+    
+}
+
+message BotData {
+    required MessageKey targetMessageKey = 1;
+}
+
+message BotMetadata {
+    optional BotAvatarMetadata avatarMetadata = 1;
+}
+
 message CertChain {
     optional NoiseCertificate leaf = 1;
     optional NoiseCertificate intermediate = 2;
@@ -264,6 +286,7 @@ message ClientPayload {
         optional string localeCountryIso31661Alpha2 = 12;
         optional string deviceBoard = 13;
         optional string deviceExpId = 14;
+        optional DeviceType deviceType = 15;
         message AppVersion {
             optional uint32 primary = 1;
             optional uint32 secondary = 2;
@@ -272,6 +295,13 @@ message ClientPayload {
             optional uint32 quinary = 5;
         }
         
+        enum DeviceType {
+            PHONE = 0;
+            TABLET = 1;
+            DESKTOP = 2;
+            WEARABLE = 3;
+            VR = 4;
+        }
         enum Platform {
             ANDROID = 0;
             IOS = 1;
@@ -524,6 +554,7 @@ message DeviceProps {
         WEAR_OS = 18;
         AR_WRIST = 19;
         AR_DEVICE = 20;
+        UWP = 21;
     }
 }
 
@@ -553,6 +584,15 @@ message ExternalBlobReference {
     optional uint64 fileSizeBytes = 4;
     optional bytes fileSha256 = 5;
     optional bytes fileEncSha256 = 6;
+}
+
+message FutureMessageData {
+    optional BotData botData = 1;
+}
+
+message FutureproofMessageSecretMessage {
+    required MessageSecretMessage messageSecretMessage = 1;
+    required FutureMessageData futureMessageData = 2;
 }
 
 message GlobalSettings {
@@ -794,6 +834,7 @@ message Message {
     optional PollCreationMessage pollCreationMessageV3 = 64;
     optional ScheduledCallEditMessage scheduledCallEditMessage = 65;
     optional VideoMessage ptvMessage = 66;
+    optional FutureProofMessage botInvokeMessage = 67;
     message AppStateFatalExceptionNotification {
         repeated string collectionNames = 1;
         optional int64 timestamp = 2;
@@ -844,6 +885,21 @@ message Message {
         optional bytes waveform = 19;
         optional fixed32 backgroundArgb = 20;
         optional bool viewOnce = 21;
+    }
+    
+    message BotFeedbackMessage {
+        optional MessageKey messageKey = 1;
+        optional BotFeedbackKind kind = 2;
+        optional string text = 3;
+        enum BotFeedbackKind {
+            BOT_FEEDBACK_POSITIVE = 0;
+            BOT_FEEDBACK_NEGATIVE_GENERIC = 1;
+            BOT_FEEDBACK_NEGATIVE_HELPFUL = 2;
+            BOT_FEEDBACK_NEGATIVE_INTERESTING = 3;
+            BOT_FEEDBACK_NEGATIVE_ACCURATE = 4;
+            BOT_FEEDBACK_NEGATIVE_SAFE = 5;
+            BOT_FEEDBACK_NEGATIVE_OTHER = 6;
+        }
     }
     
     message ButtonsMessage {
@@ -1165,9 +1221,14 @@ message Message {
             Message.InteractiveMessage.ShopMessage shopStorefrontMessage = 4;
             Message.InteractiveMessage.CollectionMessage collectionMessage = 5;
             Message.InteractiveMessage.NativeFlowMessage nativeFlowMessage = 6;
+            Message.InteractiveMessage.CarouselMessage carouselMessage = 7;
         }
         message Body {
             optional string text = 1;
+        }
+        
+        message CarouselMessage {
+            repeated Message.InteractiveMessage cards = 1;
         }
         
         message CollectionMessage {
@@ -1547,6 +1608,7 @@ message Message {
         optional int64 timestampMs = 15;
         optional Message.PeerDataOperationRequestMessage peerDataOperationRequestMessage = 16;
         optional Message.PeerDataOperationRequestResponseMessage peerDataOperationRequestResponseMessage = 17;
+        optional Message.BotFeedbackMessage botFeedbackMessage = 18;
         enum Type {
             REVOKE = 0;
             EPHEMERAL_SETTING = 3;
@@ -1561,6 +1623,8 @@ message Message {
             MESSAGE_EDIT = 14;
             PEER_DATA_OPERATION_REQUEST_MESSAGE = 16;
             PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE = 17;
+            REQUEST_WELCOME_MESSAGE = 18;
+            BOT_FEEDBACK_MESSAGE = 19;
         }
     }
     
@@ -1730,6 +1794,8 @@ message MessageContextInfo {
     optional bytes messageSecret = 3;
     optional bytes paddingBytes = 4;
     optional uint32 messageAddOnDurationInSecs = 5;
+    optional bytes botMessageSecret = 6;
+    optional BotMetadata botMetadata = 7;
 }
 
 message MessageKey {
@@ -1737,6 +1803,12 @@ message MessageKey {
     optional bool fromMe = 2;
     optional string id = 3;
     optional string participant = 4;
+}
+
+message MessageSecretMessage {
+    optional sfixed32 version = 1;
+    optional bytes encIv = 2;
+    optional bytes encPayload = 3;
 }
 
 message Money {
@@ -2562,6 +2634,7 @@ message WebMessageInfo {
     optional string originalSelfAuthorUserJidString = 51;
     optional uint64 revokeMessageTimestamp = 52;
     optional PinInChat pinInChat = 54;
+    optional FutureproofMessageSecretMessage futureproofMessageSecretMessage = 55;
     enum BizPrivacyStatus {
         E2EE = 0;
         FB = 2;
@@ -2760,6 +2833,7 @@ message WebMessageInfo {
         PAYMENT_INVITE_SETUP_INVITEE_SEND_AND_RECEIVE = 180;
         LINKED_GROUP_CALL_START = 181;
         REPORT_TO_ADMIN_ENABLED_STATUS = 182;
+        EMPTY_SUBGROUP_CREATE = 183;
     }
 }
 
