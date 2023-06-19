@@ -63,8 +63,6 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 			}
 		}
 
-		sock.ev.emit('groups.update', Object.values(data))
-
 		return data
 	}
 
