@@ -216,6 +216,7 @@ export async function getAudioWaveform(buffer: Buffer | string | Readable, logge
 		} else {
 			audioData = await toBuffer(buffer)
 		}
+
 		const audioContext = new AudioContext()
 		const audioBuffer = await audioContext.decodeAudioData(audioData)
 
@@ -229,17 +230,18 @@ export async function getAudioWaveform(buffer: Buffer | string | Readable, logge
 		  	for(let j = 0; j < blockSize; j++) {
 				sum = sum + Math.abs(rawData[blockStart + j]) // find the sum of all the samples in the block
 			}
+
 			filteredData.push(sum / blockSize) // divide the sum by the block size to get the average
 		}
-	
+
 		// This guarantees that the largest data point will be set to 1, and the rest of the data will scale proportionally.
 		const multiplier = Math.pow(Math.max(...filteredData), -1)
 		const normalizedData = filteredData.map((n) => n * multiplier)
 	
 		// Generate waveform like WhatsApp
 		const waveform = new Uint8Array(
-		  normalizedData.map((n) => Math.floor(100 * n))
-		);
+			normalizedData.map((n) => Math.floor(100 * n))
+		)
 	
 		return waveform
 	} catch(e) {
