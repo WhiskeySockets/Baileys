@@ -204,6 +204,9 @@ export async function getAudioDuration(buffer: Buffer | string | Readable) {
 	return metadata.format.duration
 }
 
+/**
+  referenced from and modifying https://github.com/wppconnect-team/wa-js/blob/main/src/chat/functions/prepareAudioWaveform.ts
+ */
 export async function getAudioWaveform(buffer: Buffer | string | Readable, logger?: Logger) {
 	const AudioContext = require('web-audio-api').AudioContext
 	try {
