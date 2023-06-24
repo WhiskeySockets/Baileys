@@ -139,7 +139,7 @@ export const prepareWAMessageMedia = async(
 	const requiresDurationComputation = mediaType === 'audio' && typeof uploadData.seconds === 'undefined'
 	const requiresThumbnailComputation = (mediaType === 'image' || mediaType === 'video') &&
 										(typeof uploadData['jpegThumbnail'] === 'undefined')
-	const requiresWaveformProcessing = mediaType === 'ptt';
+	const requiresWaveformProcessing = mediaType === 'audio' && uploadData.ptt === true;
 	const requiresOriginalForSomeProcessing = requiresDurationComputation || requiresThumbnailComputation
 	const {
 		mediaKey,
@@ -192,8 +192,8 @@ export const prepareWAMessageMedia = async(
 				}
 
 				if (requiresWaveformProcessing) {
-					uploadData.waveform = await getAudioWaveform(bodyPath!);
-					logger.debug('processed waveform')
+					uploadData.waveform = await getAudioWaveform(bodyPath!, logger);
+					logger?.debug('processed waveform')
 				}
 			} catch(error) {
 				logger?.warn({ trace: error.stack }, 'failed to obtain extra info')
