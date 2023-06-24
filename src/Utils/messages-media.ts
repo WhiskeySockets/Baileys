@@ -222,7 +222,7 @@ export async function getAudioWaveform(buffer: Buffer | string | Readable, logge
 		const rawData = audioBuffer.getChannelData(0); // We only need to work with one channel of data
 		const samples = 64; // Number of samples we want to have in our final data set
 		const blockSize = Math.floor(rawData.length / samples); // the number of samples in each subdivision
-		const filteredData = [];
+		const filteredData: number[] = [];
 		for (let i = 0; i < samples; i++) {
 		  const blockStart = blockSize * i; // the location of the first sample in the block
 		  let sum = 0;
