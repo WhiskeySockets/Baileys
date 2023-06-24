@@ -39,7 +39,7 @@ type MediaUploadData = {
 	mimetype?: string
 	width?: number
 	height?: number
-	waveform: number[]
+	waveform?: Uint8Array
 }
 
 const MIMETYPE_MAP: { [T in MediaType]?: string } = {
