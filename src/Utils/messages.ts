@@ -39,6 +39,7 @@ type MediaUploadData = {
 	mimetype?: string
 	width?: number
 	height?: number
+	waveform: number[]
 }
 
 const MIMETYPE_MAP: { [T in MediaType]?: string } = {
@@ -138,7 +139,7 @@ export const prepareWAMessageMedia = async(
 	const requiresDurationComputation = mediaType === 'audio' && typeof uploadData.seconds === 'undefined'
 	const requiresThumbnailComputation = (mediaType === 'image' || mediaType === 'video') &&
 										(typeof uploadData['jpegThumbnail'] === 'undefined')
-	const requiresWaveformProcessing = mediaType === 'voice';
+	const requiresWaveformProcessing = mediaType === 'ptt';
 	const requiresOriginalForSomeProcessing = requiresDurationComputation || requiresThumbnailComputation
 	const {
 		mediaKey,
