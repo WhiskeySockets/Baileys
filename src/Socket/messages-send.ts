@@ -731,7 +731,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						...options,
 					}
 				)
+
 				const isDeleteMsg = 'delete' in content && !!content.delete
+				const isEditMsg = 'edit' in content && !!content.edit
 				const additionalAttributes: BinaryNodeAttributes = { }
 				// required for delete
 				if(isDeleteMsg) {
@@ -741,6 +743,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					} else {
 						additionalAttributes.edit = '7'
 					}
+				} else if (isEditMsg) {
+					additionalAttributes.edit = '1'
 				}
 
 				await relayMessage(jid, fullMsg.message!, { messageId: fullMsg.key.id!, cachedGroupMetadata: options.cachedGroupMetadata, additionalAttributes })
