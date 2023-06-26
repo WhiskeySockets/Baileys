@@ -731,7 +731,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						...options,
 					}
 				)
-
 				const isDeleteMsg = 'delete' in content && !!content.delete
 				const isEditMsg = 'edit' in content && !!content.edit
 				const additionalAttributes: BinaryNodeAttributes = { }
@@ -743,7 +742,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					} else {
 						additionalAttributes.edit = '7'
 					}
-				} else if (isEditMsg) {
+				} else if(isEditMsg) {
 					additionalAttributes.edit = '1'
 				}
 
