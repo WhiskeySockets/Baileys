@@ -34,7 +34,7 @@ class SenderKeyRecord {
     addSenderKeyState(id, iteration, chainKey, signatureKey) {
       this.senderKeyStates.push(new SenderKeyState(id, iteration, chainKey, null, signatureKey));
       if (this.senderKeyStates.length > 5) {
-        this.senderKeyStates = this.senderKeyStates.slice(1)
+        this.senderKeyStates.shift()
       }
     }
   
