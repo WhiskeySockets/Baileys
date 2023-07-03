@@ -23,10 +23,10 @@ import {
 	WAProto,
 	WATextMessage,
 } from '../Types'
-import { isJidGroup, jidNormalizedUser } from '../WABinary'
+import { isJidGroup, isJidStatusBroadcast, jidNormalizedUser } from '../WABinary'
 import { sha256 } from './crypto'
 import { generateMessageID, getKeyAuthor, unixTimestampSeconds } from './generics'
-import { downloadContentFromMessage, encryptedStream, generateThumbnail, getAudioDuration, MediaDownloadOptions } from './messages-media'
+import { downloadContentFromMessage, encryptedStream, generateThumbnail, getAudioDuration, getAudioWaveform, MediaDownloadOptions } from './messages-media'
 
 type MediaUploadData = {
 	media: WAMediaUpload
@@ -39,6 +39,8 @@ type MediaUploadData = {
 	mimetype?: string
 	width?: number
 	height?: number
+	waveform?: Uint8Array
+	backgroundArgb?: number
 }
 
 const MIMETYPE_MAP: { [T in MediaType]?: string } = {
@@ -79,6 +81,23 @@ export const generateLinkPreviewIfRequired = async(text: string, getUrlInfo: Mes
 			logger?.warn({ trace: error.stack }, 'url generation failed')
 		}
 	}
+}
+
+/**
+  function copied from wa-js https://github.com/wppconnect-team/wa-js/blob/a297f360a599aefbfe398d7fa9bef2f7f1c6ea56/src/assert/assertColor.ts#L35
+ */
+const assertColor = async (color) => {
+    let assertedColor;
+    if (typeof color === 'number') {
+        assertedColor = color > 0 ? color : 0xffffffff + Number(color) + 1;
+    } else { 
+        let hex = color.trim().replace('#', '');
+        if (hex.length <= 6) {
+            hex = 'FF' + hex.padStart(6, '0');
+        }
+        assertedColor = parseInt(hex, 16);
+        return assertedColor;
+    }
 }
 
 export const prepareWAMessageMedia = async(
@@ -136,6 +155,8 @@ export const prepareWAMessageMedia = async(
 	}
 
 	const requiresDurationComputation = mediaType === 'audio' && typeof uploadData.seconds === 'undefined'
+	const requiresWaveformProcessing = mediaType === 'audio' && uploadData.ptt === true
+	const requiresAudioBackground = options.backgroundColor && mediaType === 'audio' && uploadData.ptt === true;
 	const requiresThumbnailComputation = (mediaType === 'image' || mediaType === 'video') &&
 										(typeof uploadData['jpegThumbnail'] === 'undefined')
 	const requiresOriginalForSomeProcessing = requiresDurationComputation || requiresThumbnailComputation
@@ -188,6 +209,14 @@ export const prepareWAMessageMedia = async(
 					uploadData.seconds = await getAudioDuration(bodyPath!)
 					logger?.debug('computed audio duration')
 				}
+				if(requiresWaveformProcessing) {
+					uploadData.waveform = await getAudioWaveform(bodyPath!, logger)
+					logger?.debug('processed waveform')
+				}
+				if (requiresAudioBackground){
+                    uploadData.backgroundArgb = await assertColor(options.backgroundColor);
+					logger?.debug('computed backgroundColor audio status');
+                }
 			} catch(error) {
 				logger?.warn({ trace: error.stack }, 'failed to obtain extra info')
 			}
@@ -314,6 +343,13 @@ export const generateWAMessageContent = async(
 			}
 		}
 
+        if (options.backgroundColor) {
+            extContent.backgroundArgb = await assertColor(options.backgroundColor);
+        }
+
+        if (options.font) {
+            extContent.font = options.font;
+        }
 		m.extendedTextMessage = extContent
 	} else if('contacts' in message) {
 		const contactLen = message.contacts.contacts.length
@@ -493,6 +529,7 @@ export const generateWAMessageContent = async(
 			protocolMessage: {
 				key: message.edit,
 				editedMessage: m,
+				timestampMs: Date.now(),
 				type: WAProto.Message.ProtocolMessage.Type.MESSAGE_EDIT
 			}
 		}
@@ -580,7 +617,7 @@ export const generateWAMessageFromContent = (
 		message: message,
 		messageTimestamp: timestamp,
 		messageStubParameters: [],
-		participant: isJidGroup(jid) ? userJid : undefined,
+		participant: isJidGroup(jid) || isJidStatusBroadcast(jid) ? userJid : undefined,
 		status: WAMessageStatus.PENDING
 	}
 	return WAProto.WebMessageInfo.fromObject(messageJSON)
