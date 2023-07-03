@@ -211,6 +211,53 @@ export const toReadable = (buffer: Buffer) => {
 	return readable
 }
 
+/**
+  referenced from and modifying https://github.com/wppconnect-team/wa-js/blob/main/src/chat/functions/prepareAudioWaveform.ts
+ */
+  export async function getAudioWaveform(buffer: Buffer | string | Readable, logger?: Logger) {
+	const audioDecode = require('audio-decode')
+	try {
+		let audioData: Buffer
+		if(Buffer.isBuffer(buffer)) {
+			audioData = buffer
+		} else if(typeof buffer === 'string') {
+			const rStream = createReadStream(buffer)
+			audioData = await toBuffer(rStream)
+		} else {
+			audioData = await toBuffer(buffer)
+		}
+
+		const audioBuffer = await audioDecode(audioData)
+
+		const rawData = audioBuffer.getChannelData(0) // We only need to work with one channel of data
+		const samples = 64 // Number of samples we want to have in our final data set
+		const blockSize = Math.floor(rawData.length / samples) // the number of samples in each subdivision
+		const filteredData: number[] = []
+		for(let i = 0; i < samples; i++) {
+		  	const blockStart = blockSize * i // the location of the first sample in the block
+		  	let sum = 0
+		  	for(let j = 0; j < blockSize; j++) {
+				sum = sum + Math.abs(rawData[blockStart + j]) // find the sum of all the samples in the block
+			}
+
+			filteredData.push(sum / blockSize) // divide the sum by the block size to get the average
+		}
+
+		// This guarantees that the largest data point will be set to 1, and the rest of the data will scale proportionally.
+		const multiplier = Math.pow(Math.max(...filteredData), -1)
+		const normalizedData = filteredData.map((n) => n * multiplier)
+
+		// Generate waveform like WhatsApp
+		const waveform = new Uint8Array(
+			normalizedData.map((n) => Math.floor(100 * n))
+		)
+
+		return waveform
+	} catch(e) {
+		logger?.debug('Failed to generate waveform: ' + e)
+	}
+}
+
 export const toBuffer = async(stream: Readable) => {
 	const chunks: Buffer[] = []
 	for await (const chunk of stream) {
