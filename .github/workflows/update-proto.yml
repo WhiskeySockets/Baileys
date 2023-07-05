@@ -20,7 +20,7 @@ jobs:
       - name: Install Node
         uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
 
       - name: Install packages
         run: |
@@ -39,14 +39,21 @@ jobs:
       - name: GenerateStatics
         run: yarn gen:protobuf
 
+      - name: Update baileys-version.json
+        run: |
+          WA_VERSION="${{steps.wa_proto_info.outputs.wa_version}}"
+          WA_NUMBERS=$(echo $WA_VERSION | sed "s/\./, /g")
+          echo -e "{\n\t\"version\": [$WA_NUMBERS]\n}" > src/Defaults/baileys-version.json
+
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
-          commit-message: "chore: updated proto to v${{steps.wa_proto_info.outputs.wa_version}}"
-          title: "Whatsapp v${{steps.wa_proto_info.outputs.wa_version}} proto change"
+          commit-message: "chore: updated proto/version to v${{steps.wa_proto_info.outputs.wa_version}}"
+          title: "Whatsapp v${{steps.wa_proto_info.outputs.wa_version}} proto/version change"
           branch: "update-proto/stable"
           delete-branch: true
           labels: "update-proto"
           body: "Automated changes\nFound source JS URL: ${{steps.wa_proto_info.outputs.wa_js_url}}\nCurrent version: v${{steps.wa_proto_info.outputs.wa_version}}"
           add-paths: |
             WAProto/*
+            src/Defaults/baileys-version.json

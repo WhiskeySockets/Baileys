@@ -5,7 +5,6 @@ import { KeyPair, SignedKeyPair, SocketConfig } from '../Types'
 import { aesEncryptGCM, Curve, md5 } from '../Utils/crypto'
 import { jidEncode } from '../WABinary'
 import { makeBusinessSocket } from './business'
-import { MobileSocket } from './mobile-socket'
 
 function urlencode(str: string) {
 	return str.replace(/-/g, '%2d').replace(/_/g, '%5f').replace(/~/g, '%7e')
@@ -32,10 +31,6 @@ export const makeRegistrationSocket = (config: SocketConfig) => {
 
 		sock.authState.creds.registered = true
 		sock.ev.emit('creds.update', sock.authState.creds)
-
-		if(sock.ws instanceof MobileSocket) {
-			sock.ws.connect()
-		}
 
 		return result
 	}

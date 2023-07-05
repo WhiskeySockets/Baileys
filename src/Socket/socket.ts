@@ -1,13 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Boom } from '@hapi/boom'
+import { URL } from 'url'
 import { promisify } from 'util'
 import { proto } from '../../WAProto'
-import { DEF_CALLBACK_PREFIX, DEF_TAG_PREFIX, INITIAL_PREKEY_COUNT, MIN_PREKEY_COUNT, MOBILE_NOISE_HEADER, NOISE_WA_HEADER } from '../Defaults'
+import { DEF_CALLBACK_PREFIX, DEF_TAG_PREFIX, INITIAL_PREKEY_COUNT, MIN_PREKEY_COUNT, MOBILE_ENDPOINT, MOBILE_NOISE_HEADER, MOBILE_PORT, NOISE_WA_HEADER } from '../Defaults'
 import { DisconnectReason, SocketConfig } from '../Types'
 import { addTransactionCapability, bindWaitForConnectionUpdate, configureSuccessfulPairing, Curve, generateLoginNode, generateMdTagPrefix, generateMobileNode, generateRegistrationNode, getCodeFromWSError, getErrorCodeFromStreamError, getNextPreKeysNode, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout } from '../Utils'
 import { makeEventBuffer } from '../Utils/event-buffer'
 import { assertNodeErrorFree, BinaryNode, binaryNodeToString, encodeBinaryNode, getBinaryNodeChild, getBinaryNodeChildren, S_WHATSAPP_NET } from '../WABinary'
-import { MobileSocket } from './mobile-socket'
+import { MobileSocketClient, WebSocketClient } from './Client'
 
 /**
  * Connects to WA servers and performs:
@@ -18,6 +19,7 @@ import { MobileSocket } from './mobile-socket'
 
 export const makeSocket = (config: SocketConfig) => {
 	const {
+		waWebSocketUrl,
 		connectTimeoutMs,
 		logger,
 		keepAliveIntervalMs,
@@ -30,14 +32,17 @@ export const makeSocket = (config: SocketConfig) => {
 		makeSignalRepository,
 	} = config
 
-	config.mobile = config.mobile || config.auth.creds.registered
-	const ws = new MobileSocket(config)
-	ws.setMaxListeners?.(0)
+	let url = typeof waWebSocketUrl === 'string' ? new URL(waWebSocketUrl) : waWebSocketUrl
 
-	// if not mobile or already registered -> auto connect
-	if(!config.mobile || config.auth.creds.registered) {
-		ws.connect()
+	config.mobile = config.mobile || config.auth?.creds?.registered || url.protocol === 'tcp:'
+
+	if(config.mobile && url.protocol !== 'tcp:') {
+		url = new URL(`tcp://${MOBILE_ENDPOINT}:${MOBILE_PORT}`)
 	}
+
+	const ws = config.mobile ? new MobileSocketClient(url, config) : new WebSocketClient(url, config)
+
+	ws.connect()
 
 	const ev = makeEventBuffer(logger)
 	/** ephemeral key pair used to encrypt/decrypt communication. Unique for each connection */
@@ -64,7 +69,7 @@ export const makeSocket = (config: SocketConfig) => {
 	const uqTagId = generateMdTagPrefix()
 	const generateMessageTag = () => `${uqTagId}${epoch++}`
 
-	const sendPromise = promisify<void>(ws.send)
+	const sendPromise = promisify(ws.send)
 	/** send a raw buffer */
 	const sendRawMessage = async(data: Uint8Array | Buffer) => {
 		if(!ws.isOpen) {
@@ -135,12 +140,12 @@ export const makeSocket = (config: SocketConfig) => {
 	}
 
 	/**
-     * Wait for a message with a certain tag to be received
-     * @param tag the message tag to await
-     * @param json query that was sent
-     * @param timeoutMs timeout after which the promise will reject
-     */
-	 const waitForMessage = async<T>(msgId: string, timeoutMs = defaultQueryTimeoutMs) => {
+	 * Wait for a message with a certain tag to be received
+	 * @param tag the message tag to await
+	 * @param json query that was sent
+	 * @param timeoutMs timeout after which the promise will reject
+	 */
+	const waitForMessage = async<T>(msgId: string, timeoutMs = defaultQueryTimeoutMs) => {
 		let onRecv: (json) => void
 		let onErr: (err) => void
 		try {
@@ -237,7 +242,7 @@ export const makeSocket = (config: SocketConfig) => {
 				to: S_WHATSAPP_NET
 			},
 			content: [
-				{ tag: 'count', attrs: { } }
+				{ tag: 'count', attrs: {} }
 			]
 		})
 		const countChild = getBinaryNodeChild(result, 'count')
@@ -287,7 +292,7 @@ export const makeSocket = (config: SocketConfig) => {
 				anyTriggered = ws.emit(`${DEF_TAG_PREFIX}${msgId}`, frame) || anyTriggered
 				/* Check if this is a response to a message we are expecting */
 				const l0 = frame.tag
-				const l1 = frame.attrs || { }
+				const l1 = frame.attrs || {}
 				const l2 = Array.isArray(frame.content) ? frame.content[0]?.tag : ''
 
 				Object.keys(l1).forEach(key => {
@@ -374,9 +379,9 @@ export const makeSocket = (config: SocketConfig) => {
 
 			const diff = Date.now() - lastDateRecv.getTime()
 			/*
-                check if it's been a suspicious amount of time since the server responded with our last seen
-                it could be that the network is down
-            */
+				check if it's been a suspicious amount of time since the server responded with our last seen
+				it could be that the network is down
+			*/
 			if(diff > keepAliveIntervalMs + 5000) {
 				end(new Boom('Connection was lost', { statusCode: DisconnectReason.connectionLost }))
 			} else if(ws.isOpen) {
@@ -390,7 +395,7 @@ export const makeSocket = (config: SocketConfig) => {
 							type: 'get',
 							xmlns: 'w:p',
 						},
-						content: [{ tag: 'ping', attrs: { } }]
+						content: [{ tag: 'ping', attrs: {} }]
 					}
 				)
 					.catch(err => {
@@ -411,7 +416,7 @@ export const makeSocket = (config: SocketConfig) => {
 				type: 'set',
 			},
 			content: [
-				{ tag, attrs: { } }
+				{ tag, attrs: {} }
 			]
 		})
 	)

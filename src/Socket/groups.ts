@@ -130,6 +130,47 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 				]
 			)
 		},
+		groupRequestParticipantsList: async(jid: string) => {
+			const result = await groupQuery(
+				jid,
+				'get',
+				[
+					{
+						tag: 'membership_approval_requests',
+						attrs: {}
+					}
+				]
+			)
+			const node = getBinaryNodeChild(result, 'membership_approval_requests')
+			const participants = getBinaryNodeChildren(node, 'membership_approval_request')
+			return participants.map(v => v.attrs)
+		},
+		groupRequestParticipantsUpdate: async(jid: string, participants: string[], action: 'approve' | 'reject') => {
+			const result = await groupQuery(
+				jid,
+				'set',
+				[{
+					tag: 'membership_requests_action',
+					attrs: {},
+					content: 				[
+						{
+							tag: action,
+							attrs: { },
+							content: participants.map(jid => ({
+								tag: 'participant',
+								attrs: { jid }
+							}))
+						}
+					]
+				}]
+			)
+			const node = getBinaryNodeChild(result, 'membership_requests_action')
+			const nodeAction = getBinaryNodeChild(node!, action)
+			const participantsAffected = getBinaryNodeChildren(nodeAction!, 'participant')
+			return participantsAffected.map(p => {
+				return { status: p.attrs.error || '200', jid: p.attrs.jid }
+			})
+		},
 		groupParticipantsUpdate: async(
 			jid: string,
 			participants: string[],

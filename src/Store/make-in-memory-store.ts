@@ -1,4 +1,4 @@
-import KeyedDB from '@adiwajshing/keyed-db'
+import type KeyedDB from '@adiwajshing/keyed-db'
 import type { Comparable } from '@adiwajshing/keyed-db/lib/Types'
 import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
@@ -79,16 +79,16 @@ export default (
 	chatKey = chatKey || waChatKey(true)
 	labelAssociationKey = labelAssociationKey || waLabelAssociationKey
 	const logger = _logger || DEFAULT_CONNECTION_CONFIG.logger.child({ stream: 'in-mem-store' })
-	// const KeyedDB = require('@adiwajshing/keyed-db').default as new (...args: any[]) => KeyedDB<Chat, string>
+	const KeyedDB = require('@adiwajshing/keyed-db').default
 
-	const chats = new KeyedDB<Chat, string>(chatKey, c => c.id)
+	const chats = new KeyedDB(chatKey, c => c.id) as KeyedDB<Chat, string>
 	const messages: { [_: string]: ReturnType<typeof makeMessagesDictionary> } = {}
 	const contacts: { [_: string]: Contact } = {}
 	const groupMetadata: { [_: string]: GroupMetadata } = {}
 	const presences: { [id: string]: { [participant: string]: PresenceData } } = {}
 	const state: ConnectionState = { connection: 'close' }
 	const labels = new ObjectRepository<Label>(predefinedLabels)
-	const labelAssociations = new KeyedDB<LabelAssociation, string>(labelAssociationKey, labelAssociationKey.key)
+	const labelAssociations = new KeyedDB(labelAssociationKey, labelAssociationKey.key) as KeyedDB<LabelAssociation, string>
 
 	const assertMessageList = (jid: string) => {
 		if(!messages[jid]) {
@@ -146,11 +146,13 @@ export default (
 			logger.debug({ chatsAdded }, 'synced chats')
 
 			const oldContacts = contactsUpsert(newContacts)
-			for(const jid of oldContacts) {
-				delete contacts[jid]
+			if(isLatest) {
+				for(const jid of oldContacts) {
+					delete contacts[jid]
+				}
 			}
 
-			logger.debug({ deletedContacts: oldContacts.size, newContacts }, 'synced contacts')
+			logger.debug({ deletedContacts: isLatest ? oldContacts.size : 0, newContacts }, 'synced contacts')
 
 			for(const msg of newMessages) {
 				const jid = msg.key.remoteJid!
@@ -159,6 +161,10 @@ export default (
 			}
 
 			logger.debug({ messages: newMessages.length }, 'synced messages')
+		})
+
+		ev.on('contacts.upsert', contacts => {
+			contactsUpsert(contacts)
 		})
 
 		ev.on('contacts.update', updates => {

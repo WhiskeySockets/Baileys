@@ -1,5 +1,11 @@
 # Baileys - Typescript/Javascript WhatsApp Web API
 
+### Important Note
+
+This library was originally a project for **CS-2362 at Ashoka University** and is in no way affiliated with or endorsed by WhatsApp. Use at your own discretion. Do not spam people with this.
+We hold no liability for your use of this tool, in fact, depending on how you use this library, you'll be in violation of WhatsApp's Terms of Service. We discourage any stalkerware, bulk or automated messaging usage. 
+
+
 Baileys does not require Selenium or any other browser to be interface with WhatsApp Web, it does so directly using a **WebSocket**. 
 Not running Selenium or Chromimum saves you like **half a gig** of ram :/ 
 Baileys supports interacting with the multi-device & web versions of WhatsApp.
@@ -758,7 +764,7 @@ await sock.sendMessage(
 - To get someone's presence (if they're typing or online)
     ``` ts
     // the presence update is fetched and called here
-    sock.ev.on('presence-update', json => console.log(json))
+    sock.ev.on('presence.update', json => console.log(json))
     // request updates for a chat
     await sock.presenceSubscribe("xyz@s.whatsapp.net") 
     ```
@@ -847,6 +853,21 @@ Of course, replace ``` xyz ``` with an actual ID.
     ```
   Of course, replace ``` xxx ``` with invitation code.
 
+- To get list request join
+    ``` ts
+    const response = await sock.groupRequestParticipantsList("abcd-xyz@g.us")
+    console.log(response)
+    ```
+- To approve/reject request join
+    ``` ts
+    const response = await sock.groupRequestParticipantsUpdate(
+        "abcd-xyz@g.us", // id group,
+        ["abcd@s.whatsapp.net", "efgh@s.whatsapp.net"],
+        "approve" // replace this parameter with "reject" 
+    )
+    console.log(response)
+    ```
+
 ## Privacy
 - To get the privacy settings
     ``` ts
@@ -933,9 +954,4 @@ Some examples:
     // for any message with tag 'edge_routing', id attribute = abcd & first content node routing_info
     sock.ws.on(`CB:edge_routing,id:abcd,routing_info`, (node: BinaryNode) => { })
     ```
-
-### Note
-
- This library was originally a project for **CS-2362 at Ashoka University** and is in no way affiliated with WhatsApp. Use at your own discretion. Do not spam people with this.
-
  Also, this repo is now licenced under GPL 3 since it uses [libsignal-node](https://git.questbook.io/backend/service-coderunner/-/merge_requests/1)
