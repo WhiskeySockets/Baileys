@@ -197,7 +197,11 @@ export default (
 
 		ev.on('labels.edit', (label: Label) => {
 			if(label.deleted) {
-				return labels.deleteById(label.id)
+				try {
+					return labels.deleteById(label.id)
+				} catch{
+					logger.error(`Error removing ${label.id} from store`)
+				}
 			}
 
 			// WhatsApp can store only up to 20 labels
