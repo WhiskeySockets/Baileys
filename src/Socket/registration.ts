@@ -91,7 +91,11 @@ export interface RegistrationOptions {
 	/**
 	 * How to send the one time code
 	 */
-	method?: 'sms' | 'voice'
+	method?: 'sms' | 'voice' | 'captcha'
+	/**
+	 * The captcha code if it was requested
+	 */
+	captcha?: string
 }
 
 export type RegistrationParams = RegistrationData & RegistrationOptions
@@ -141,6 +145,7 @@ export function registrationParams(params: RegistrationParams) {
 		id: convertBufferToUrlHex(params.identityId),
 		backup_token: convertBufferToUrlHex(params.backupToken),
 		token: md5(Buffer.concat([MOBILE_TOKEN, Buffer.from(params.phoneNumberNationalNumber)])).toString('hex'),
+		fraud_checkpoint_code: params.captcha,
 	}
 }
 
@@ -201,13 +206,10 @@ export async function mobileRegisterFetch(path: string, opts: AxiosRequestConfig
 		const parameter = [] as string[]
 
 		for(const param in opts.params) {
+			if (opts.params[param] == null) continue;
 			parameter.push(param + '=' + urlencode(opts.params[param]))
 		}
 
-		console.log('parameter', opts.params, parameter)
-
-		// const params = urlencode(mobileRegisterEncrypt(parameter.join('&')))
-		// url += `?ENC=${params}`
 		url += `?${parameter.join('&')}`
 		delete opts.params
 	}
@@ -235,16 +237,18 @@ export async function mobileRegisterFetch(path: string, opts: AxiosRequestConfig
 
 
 export interface ExistsResponse {
-	status: 'fail'
+	status: 'fail' | 'sent'
 	voice_length?: number
 	voice_wait?: number
 	sms_length?: number
 	sms_wait?: number
-	reason?: 'incorrect' | 'missing_param'
+	reason?: 'incorrect' | 'missing_param' | 'code_checkpoint'
 	login?: string
 	flash_type?: number
 	ab_hash?: string
 	ab_key?: string
 	exp_cfg?: string
 	lid?: string
+	image_blob?: string
+	audio_blob?: string
 }
