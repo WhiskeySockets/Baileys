@@ -215,8 +215,9 @@ export const toReadable = (buffer: Buffer) => {
   referenced from and modifying https://github.com/wppconnect-team/wa-js/blob/main/src/chat/functions/prepareAudioWaveform.ts
  */
   export async function getAudioWaveform(buffer: Buffer | string | Readable, logger?: Logger) {
-	const audioDecode = require('audio-decode')
-	try {
+	  try {
+		const audioDecode = (...args) => Promise.resolve().then(() => __importStar(require('audio-decode'))).then(({ default: audioDecode }) => audioDecode(...args));
+		
 		let audioData: Buffer
 		if(Buffer.isBuffer(buffer)) {
 			audioData = buffer
