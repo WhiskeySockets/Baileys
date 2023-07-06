@@ -155,8 +155,8 @@ export const prepareWAMessageMedia = async(
 	}
 
 	const requiresDurationComputation = mediaType === 'audio' && typeof uploadData.seconds === 'undefined'
-	const requiresWaveformProcessing = mediaType === 'audio' && uploadData.ptt === true
-	const requiresAudioBackground = options.backgroundColor && mediaType === 'audio' && uploadData.ptt === true;
+	const requiresWaveformProcessing = mediaType === 'audio' && uploadData.ptt === 'true' || true
+	const requiresAudioBackground = options.backgroundColor && mediaType === 'audio' && uploadData.ptt === 'true' || true
 	const requiresThumbnailComputation = (mediaType === 'image' || mediaType === 'video') &&
 										(typeof uploadData['jpegThumbnail'] === 'undefined')
 	const requiresOriginalForSomeProcessing = requiresDurationComputation || requiresThumbnailComputation
