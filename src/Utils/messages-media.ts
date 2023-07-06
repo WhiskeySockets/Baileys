@@ -216,7 +216,7 @@ export const toReadable = (buffer: Buffer) => {
  */
   export async function getAudioWaveform(buffer: Buffer | string | Readable, logger?: Logger) {
 	  try {
-		const audioDecode = (...args) => Promise.resolve().then(() => __importStar(require('audio-decode'))).then(({ default: audioDecode }) => audioDecode(...args));
+		const audioDecode = (...args) => import('audio-decode').then(({ default: audioDecode }) => audioDecode(...args))
 		
 		let audioData: Buffer
 		if(Buffer.isBuffer(buffer)) {
