@@ -31,7 +31,7 @@ import { downloadContentFromMessage, encryptedStream, generateThumbnail, getAudi
 type MediaUploadData = {
 	media: WAMediaUpload
 	caption?: string
-	ptt?: boolean
+	ptt?: boolean | string
 	seconds?: number
 	gifPlayback?: boolean
 	fileName?: string
