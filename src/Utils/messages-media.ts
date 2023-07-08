@@ -1,6 +1,6 @@
 import { Boom } from '@hapi/boom'
-import { AxiosRequestConfig } from 'axios'
 import audioDecode from 'audio-decode'
+import { AxiosRequestConfig } from 'axios'
 import { exec } from 'child_process'
 import * as Crypto from 'crypto'
 import { once } from 'events'
