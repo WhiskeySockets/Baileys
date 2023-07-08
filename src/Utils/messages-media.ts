@@ -1,5 +1,4 @@
 import { Boom } from '@hapi/boom'
-import audioDecode from 'audio-decode'
 import { AxiosRequestConfig } from 'axios'
 import { exec } from 'child_process'
 import * as Crypto from 'crypto'
@@ -210,7 +209,7 @@ export async function getAudioDuration(buffer: Buffer | string | Readable) {
  */
 export async function getAudioWaveform(bodyPath: string, logger?: Logger) {
 	try {
-
+		const audioDecode = await import('audio-decode');
 		const fileBuffer = await fs.readFile(bodyPath)
 		const audioBuffer = await audioDecode(fileBuffer)
 
