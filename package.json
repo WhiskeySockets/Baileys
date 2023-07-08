@@ -49,7 +49,7 @@
     "cache-manager": "^5.2.2",
     "futoin-hkdf": "^1.5.1",
     "libphonenumber-js": "^1.10.20",
-    "libsignal": "github:adiwajshing/libsignal-node",
+    "libsignal": "https://github.com/adiwajshing/libsignal-node.git",
     "music-metadata": "^7.12.3",
     "node-cache": "^5.1.2",
     "pino": "^7.0.0",
@@ -58,7 +58,7 @@
     "ws": "^8.13.0"
   },
   "devDependencies": {
-    "@adiwajshing/eslint-config": "github:adiwajshing/eslint-config",
+    "@adiwajshing/eslint-config": "https://github.com/adiwajshing/eslint-config.git",
     "@types/got": "^9.6.11",
     "@types/jest": "^27.5.1",
     "@types/node": "^16.0.0",
