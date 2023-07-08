@@ -1,5 +1,6 @@
 import { Boom } from '@hapi/boom'
 import { AxiosRequestConfig } from 'axios'
+import audioDecode from 'audio-decode'
 import { exec } from 'child_process'
 import * as Crypto from 'crypto'
 import { once } from 'events'
@@ -16,7 +17,6 @@ import { BaileysEventMap, DownloadableMessage, MediaConnInfo, MediaDecryptionKey
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, jidNormalizedUser } from '../WABinary'
 import { aesDecryptGCM, aesEncryptGCM, hkdf } from './crypto'
 import { generateMessageID } from './generics'
-import audioDecode from 'audio-decode'
 
 const getTmpFilesDirectory = () => tmpdir()
 
@@ -209,11 +209,10 @@ export async function getAudioDuration(buffer: Buffer | string | Readable) {
   referenced from and modifying https://github.com/wppconnect-team/wa-js/blob/main/src/chat/functions/prepareAudioWaveform.ts
  */
 export async function getAudioWaveform(bodyPath: string, logger?: Logger) {
-	
 	try {
 
-		const fileBuffer = await fs.readFile(bodyPath);
-		const audioBuffer = await audioDecode(fileBuffer);
+		const fileBuffer = await fs.readFile(bodyPath)
+		const audioBuffer = await audioDecode(fileBuffer)
 
 		const rawData = audioBuffer.getChannelData(0) // We only need to work with one channel of data
 		const samples = 64 // Number of samples we want to have in our final data set
