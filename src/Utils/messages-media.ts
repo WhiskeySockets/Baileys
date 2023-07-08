@@ -209,7 +209,7 @@ export async function getAudioDuration(buffer: Buffer | string | Readable) {
  */
 export async function getAudioWaveform(bodyPath: string, logger?: Logger) {
 	try {
-		const audioDecode = (await import('audio-decode')).default;
+		const audioDecode = await import('audio-decode');
 		const fileBuffer = await fs.readFile(bodyPath)
 		const audioBuffer = await audioDecode(fileBuffer)
 
