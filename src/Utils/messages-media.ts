@@ -211,7 +211,7 @@ export async function getAudioWaveform(bodyPath: string, logger?: Logger) {
 	try {
 		const audioDecode = await import('audio-decode');
 		const fileBuffer = await fs.readFile(bodyPath)
-		const audioBuffer = await audioDecode(fileBuffer)
+		const audioBuffer = await audioDecode.default(fileBuffer)
 
 		const rawData = audioBuffer.getChannelData(0) // We only need to work with one channel of data
 		const samples = 64 // Number of samples we want to have in our final data set
