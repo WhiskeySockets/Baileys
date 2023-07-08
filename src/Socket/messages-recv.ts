@@ -219,7 +219,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			ev.emit('groups.upsert', [{
 				...metadata,
 				author: participant
-			}]);
+			}])
 			break
 		case 'ephemeral':
 		case 'not_ephemeral':
