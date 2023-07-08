@@ -245,7 +245,7 @@ export async function getAudioWaveform(bodyPath: string, logger?: Logger) {
 	}
 }
 
-export const toAAC = (bodyPath: string) => new Promise((resolve, reject) => { 
+export const toAAC = (bodyPath: string): Promise<string> => new Promise((resolve, reject) => { 
 		const cmd = `ffmpeg -i ${bodyPath} -codec:a aac ${bodyPath + '.m4a'}`
     	exec(cmd, (err) => {
     		if(err) {
