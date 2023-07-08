@@ -16,6 +16,7 @@ import { BaileysEventMap, DownloadableMessage, MediaConnInfo, MediaDecryptionKey
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, jidNormalizedUser } from '../WABinary'
 import { aesDecryptGCM, aesEncryptGCM, hkdf } from './crypto'
 import { generateMessageID } from './generics'
+import audioDecode from 'audio-decode'
 
 const getTmpFilesDirectory = () => tmpdir()
 
@@ -210,11 +211,9 @@ export async function getAudioDuration(buffer: Buffer | string | Readable) {
 export async function getAudioWaveform(bodyPath: string, logger?: Logger) {
 	
 	try {
-		const AudioContext = require('web-audio-api').AudioContext
-		const aacAudio = await fs.readFile(await toAAC(bodyPath));
 
-		const audioContext = new AudioContext()
-		const audioBuffer = await audioContext.decodeAudioData(aacAudio)
+		const fileBuffer = await fs.readFile(bodyPath);
+		const audioBuffer = await audioDecode(fileBuffer);
 
 		const rawData = audioBuffer.getChannelData(0) // We only need to work with one channel of data
 		const samples = 64 // Number of samples we want to have in our final data set
@@ -245,16 +244,6 @@ export async function getAudioWaveform(bodyPath: string, logger?: Logger) {
 	}
 }
 
-export const toAAC = (bodyPath: string): Promise<string> => new Promise((resolve, reject) => { 
-		const cmd = `ffmpeg -i ${bodyPath} -codec:a aac ${bodyPath + '.m4a'}`
-    	exec(cmd, (err) => {
-    		if(err) {
-				reject(err)
-			} else {
-				resolve(bodyPath + '.m4a')
-			}
-    	})
-	})
 
 export const toReadable = (buffer: Buffer) => {
 	const readable = new Readable({ read: () => {} })
