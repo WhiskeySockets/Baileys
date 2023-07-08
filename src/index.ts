@@ -8,5 +8,5 @@ export * from './Defaults'
 export * from './WABinary'
 
 export type WASocket = ReturnType<typeof makeWASocket>
-
+export { makeWASocket }
 export default makeWASocket
