@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "es2018",
     "module": "CommonJS",
-    "moduleResolution": "node12",
+    "moduleResolution": "NodeNext",
     "experimentalDecorators": true,
     "allowJs": false,
     "checkJs": false,
