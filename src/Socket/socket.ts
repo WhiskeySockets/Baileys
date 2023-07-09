@@ -22,7 +22,7 @@ export const makeSocket = (config: SocketConfig) => {
 		waWebSocketUrl,
 		connectTimeoutMs,
 		logger,
-		keepAliveIntervalMs,
+		keepAliveIntervalMs=300000,
 		browser,
 		auth: authState,
 		printQRInTerminal,
