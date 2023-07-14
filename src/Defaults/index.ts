@@ -54,7 +54,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	browser: Browsers.baileys('Chrome'),
 	waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
 	connectTimeoutMs: 20_000,
-	keepAliveIntervalMs: 15_000,
+	keepAliveIntervalMs: 30_000,
 	logger: logger.child({ class: 'baileys' }),
 	printQRInTerminal: false,
 	emitOwnEvents: true,
