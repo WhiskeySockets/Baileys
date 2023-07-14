@@ -101,20 +101,7 @@ message BizIdentityInfo {
 
 message BotAvatarMetadata {
     optional uint32 sentiment = 1;
-    repeated PlaybackMetadata dynamicVideoList = 2;
-    message PlaybackMetadata {
-        optional string sdProgressiveUrl = 1;
-        optional string hdProgressiveUrl = 2;
-        optional string dashManifest = 3;
-        optional uint32 sentiment = 4;
-        optional uint32 durationMs = 5;
-        optional int64 videoID = 6;
-    }
-    
-}
-
-message BotData {
-    required MessageKey targetMessageKey = 1;
+    optional string behaviorGraph = 2;
 }
 
 message BotMetadata {
@@ -405,6 +392,8 @@ message ContextInfo {
     optional bool isSampled = 39;
     repeated GroupMention groupMentions = 40;
     optional UTMInfo utm = 41;
+    optional ForwardedNewsletterMessageInfo forwardedNewsletterMessageInfo = 43;
+    optional BusinessMessageForwardInfo businessMessageForwardInfo = 44;
     message AdReplyInfo {
         optional string advertiserName = 1;
         optional MediaType mediaType = 2;
@@ -415,6 +404,10 @@ message ContextInfo {
             IMAGE = 1;
             VIDEO = 2;
         }
+    }
+    
+    message BusinessMessageForwardInfo {
+        optional string businessOwnerJid = 1;
     }
     
     message ExternalAdReplyInfo {
@@ -437,6 +430,11 @@ message ContextInfo {
             IMAGE = 1;
             VIDEO = 2;
         }
+    }
+    
+    message ForwardedNewsletterMessageInfo {
+        optional string newsletterJid = 1;
+        optional int32 serverMessageId = 2;
     }
     
     message UTMInfo {
@@ -555,15 +553,24 @@ message DeviceProps {
         AR_WRIST = 19;
         AR_DEVICE = 20;
         UWP = 21;
+        VR = 22;
     }
 }
 
 message DisappearingMode {
     optional Initiator initiator = 1;
+    optional Trigger trigger = 2;
+    optional string initiatorDeviceJid = 3;
     enum Initiator {
         CHANGED_IN_CHAT = 0;
         INITIATED_BY_ME = 1;
         INITIATED_BY_OTHER = 2;
+    }
+    enum Trigger {
+        UNKNOWN = 0;
+        CHAT_SETTING = 1;
+        ACCOUNT_SETTING = 2;
+        BULK_CHANGE = 3;
     }
 }
 
@@ -584,15 +591,6 @@ message ExternalBlobReference {
     optional uint64 fileSizeBytes = 4;
     optional bytes fileSha256 = 5;
     optional bytes fileEncSha256 = 6;
-}
-
-message FutureMessageData {
-    optional BotData botData = 1;
-}
-
-message FutureproofMessageSecretMessage {
-    required MessageSecretMessage messageSecretMessage = 1;
-    required FutureMessageData futureMessageData = 2;
 }
 
 message GlobalSettings {
@@ -1229,6 +1227,7 @@ message Message {
         
         message CarouselMessage {
             repeated Message.InteractiveMessage cards = 1;
+            optional int32 messageVersion = 2;
         }
         
         message CollectionMessage {
@@ -1844,6 +1843,7 @@ message MsgOpaqueData {
     optional string encReactionTargetMessageKey = 25;
     optional bytes encReactionEncPayload = 26;
     optional bytes encReactionEncIv = 27;
+    optional bytes botMessageSecret = 29;
     message PollOption {
         optional string name = 1;
     }
@@ -2053,6 +2053,41 @@ message PreKeySignalMessage {
 message Pushname {
     optional string id = 1;
     optional string pushname = 2;
+}
+
+message QP {
+    enum ClauseType {
+        AND = 1;
+        OR = 2;
+        NOR = 3;
+    }
+    message Filter {
+        required string filterName = 1;
+        repeated QP.FilterParameters parameters = 2;
+        optional QP.FilterResult filterResult = 3;
+        required QP.FilterClientNotSupportedConfig clientNotSupportedConfig = 4;
+    }
+    
+    message FilterClause {
+        required QP.ClauseType clauseType = 1;
+        repeated QP.FilterClause clauses = 2;
+        repeated QP.Filter filters = 3;
+    }
+    
+    enum FilterClientNotSupportedConfig {
+        PASS_BY_DEFAULT = 1;
+        FAIL_BY_DEFAULT = 2;
+    }
+    message FilterParameters {
+        optional string key = 1;
+        optional string value = 2;
+    }
+    
+    enum FilterResult {
+        TRUE = 1;
+        FALSE = 2;
+        UNKNOWN = 3;
+    }
 }
 
 message Reaction {
@@ -2634,7 +2669,6 @@ message WebMessageInfo {
     optional string originalSelfAuthorUserJidString = 51;
     optional uint64 revokeMessageTimestamp = 52;
     optional PinInChat pinInChat = 54;
-    optional FutureproofMessageSecretMessage futureproofMessageSecretMessage = 55;
     enum BizPrivacyStatus {
         E2EE = 0;
         FB = 2;
