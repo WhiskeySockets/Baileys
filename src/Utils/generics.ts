@@ -213,6 +213,7 @@ export const printQRIfNecessaryListener = (ev: BaileysEventEmitter, logger: Logg
 	ev.on('connection.update', async({ qr }) => {
 		if(qr) {
 			const QR = await import('qrcode-terminal')
+				.then(m => m.default || m)
 				.catch(() => {
 					logger.error('QR code terminal not added as dependency')
 				})
