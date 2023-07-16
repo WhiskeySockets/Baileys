@@ -2,16 +2,17 @@
 import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
 import NodeCache from 'node-cache'
-import { getBinaryNodeChildBuffer } from '../../lib'
 import { proto } from '../../WAProto'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import { MessageReceiptType, MessageRelayOptions, MessageUserReceipt, SocketConfig, WACallEvent, WAMessageKey, WAMessageStatus, WAMessageStubType, WAPatchName } from '../Types'
 import {
+	aesDecryptCTR,
 	aesEncryptGCM,
 	Curve,
 	decodeMediaRetryNode,
 	decryptMessageNode,
-	delay, derivePairingKey,
+	delay,
+	derivePairingCodeKey,
 	encodeBigEndian,
 	encodeSignedDeviceIdentity,
 	getCallStatusFromNode,
@@ -24,7 +25,19 @@ import {
 } from '../Utils'
 import { cleanMessage } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
-import { areJidsSameUser, BinaryNode, getAllBinaryNodeChildren, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, isJidUser, jidDecode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
+import {
+	areJidsSameUser,
+	BinaryNode,
+	getAllBinaryNodeChildren,
+	getBinaryNodeChild,
+	getBinaryNodeChildBuffer,
+	getBinaryNodeChildren,
+	isJidGroup,
+	isJidUser,
+	jidDecode,
+	jidNormalizedUser,
+	S_WHATSAPP_NET
+} from '../WABinary'
 import { extractGroupMetadata } from './groups'
 import { makeMessagesSocket } from './messages-send'
 
@@ -387,22 +400,21 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const ref = toRequiredBuffer(getBinaryNodeChildBuffer(linkCodeCompanionReg, 'link_code_pairing_ref'))
 			const primaryIdentityPublicKey = toRequiredBuffer(getBinaryNodeChildBuffer(linkCodeCompanionReg, 'primary_identity_pub'))
 			const primaryEphemeralPublicKeyWrapped = toRequiredBuffer(getBinaryNodeChildBuffer(linkCodeCompanionReg, 'link_code_pairing_wrapped_primary_ephemeral_pub'))
-			const codePairingPublicKey = await decipherLinkPublicKey(primaryEphemeralPublicKeyWrapped)
-			const companionSharedKey = Curve.sharedKey(codePairingPublicKey, authState.creds.advKeyPair.private)
+			const codePairingPublicKey = decipherLinkPublicKey(primaryEphemeralPublicKeyWrapped)
+			const companionSharedKey = Curve.sharedKey(authState.creds.pairingEphemeralKeyPair.private, codePairingPublicKey)
 			const random = randomBytes(32)
 			const linkCodeSalt = randomBytes(32)
 			const linkCodePairingExpanded = hkdf(companionSharedKey, 32, {
 				salt: linkCodeSalt,
 				info: 'link_code_pairing_key_bundle_encryption_key'
 			})
-			const encryptPayload = Buffer.concat([Buffer.from(authState.creds.signedIdentityKey.public), Buffer.from(primaryIdentityPublicKey), random])
+			const encryptPayload = Buffer.concat([Buffer.from(authState.creds.signedIdentityKey.public), primaryIdentityPublicKey, random])
 			const encryptIv = randomBytes(12)
 			const encrypted = aesEncryptGCM(encryptPayload, linkCodePairingExpanded, encryptIv, Buffer.alloc(0))
 			const encryptedPayload = Buffer.concat([linkCodeSalt, encryptIv, encrypted])
-			const identitySharedKey = Curve.sharedKey(primaryIdentityPublicKey, authState.creds.signedIdentityKey.private)
+			const identitySharedKey = Curve.sharedKey(authState.creds.signedIdentityKey.private, primaryIdentityPublicKey)
 			const identityPayload = Buffer.concat([companionSharedKey, identitySharedKey, random])
-			authState.creds.advKeyPair.public = hkdf(identityPayload, 32, { info: 'adv_secret' })
-			authState.creds.advKeyPair.private = Buffer.alloc(0)
+			authState.creds.advSecretKey = hkdf(identityPayload, 32, { info: 'adv_secret' }).toString('base64')
 			await sendNode({
 				tag: 'iq',
 				attrs: {
@@ -446,18 +458,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
-	async function decipherLinkPublicKey(data: Uint8Array | Buffer) {
+	function decipherLinkPublicKey(data: Uint8Array | Buffer) {
 		const buffer = toRequiredBuffer(data)
 		const salt = buffer.slice(0, 32)
-		const secretKey = await derivePairingKey(authState.creds.pairingCode!, salt)
+		const secretKey = derivePairingCodeKey(authState.creds.pairingCode!, salt)
 		const iv = buffer.slice(32, 48)
 		const payload = buffer.slice(48, 80)
-		const result = await crypto.subtle.decrypt({
-			name: 'AES-CTR',
-			length: 64,
-			counter: iv
-		}, secretKey, payload)
-		return Buffer.from(result)
+		return aesDecryptCTR(payload, secretKey, iv)
 	}
 
 	function toRequiredBuffer(data: Uint8Array | Buffer | undefined) {

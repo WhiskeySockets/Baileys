@@ -196,10 +196,11 @@ export const initAuthCreds = (): AuthenticationCreds => {
 	const identityKey = Curve.generateKeyPair()
 	return {
 		noiseKey: Curve.generateKeyPair(),
+		pairingEphemeralKeyPair: Curve.generateKeyPair(),
 		signedIdentityKey: identityKey,
 		signedPreKey: signedKeyPair(identityKey, 1),
 		registrationId: generateRegistrationId(),
-		advKeyPair: Curve.generateKeyPair(),
+		advSecretKey: randomBytes(32).toString('base64'),
 		processedHistoryMessages: [],
 		nextPreKeyId: 1,
 		firstUnuploadedPreKeyId: 1,
@@ -214,6 +215,6 @@ export const initAuthCreds = (): AuthenticationCreds => {
 		registered: false,
 		backupToken: randomBytes(20),
 		registration: {} as never,
-		pairingCode: undefined
+		pairingCode: undefined,
 	}
 }

@@ -117,7 +117,7 @@ export const generateRegistrationNode = (
 
 export const configureSuccessfulPairing = (
 	stanza: BinaryNode,
-	{ advKeyPair, signedIdentityKey, signalIdentities }: Pick<AuthenticationCreds, 'advKeyPair' | 'signedIdentityKey' | 'signalIdentities'>
+	{ advSecretKey, signedIdentityKey, signalIdentities }: Pick<AuthenticationCreds, 'advSecretKey' | 'signedIdentityKey' | 'signalIdentities'>
 ) => {
 	const msgId = stanza.attrs.id
 
@@ -137,7 +137,7 @@ export const configureSuccessfulPairing = (
 
 	const { details, hmac } = proto.ADVSignedDeviceIdentityHMAC.decode(deviceIdentityNode.content as Buffer)
 	// check HMAC matches
-	const advSign = hmacSign(details, advKeyPair.public)
+	const advSign = hmacSign(details, Buffer.from(advSecretKey, 'base64'))
 	if(Buffer.compare(hmac, advSign) !== 0) {
 		throw new Boom('Invalid account signature')
 	}
@@ -208,8 +208,7 @@ export const encodeSignedDeviceIdentity = (
 		account.accountSignatureKey = null
 	}
 
-	const accountEnc = proto.ADVSignedDeviceIdentity
+	return proto.ADVSignedDeviceIdentity
 		.encode(account)
 		.finish()
-	return accountEnc
 }

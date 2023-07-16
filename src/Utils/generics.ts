@@ -412,30 +412,3 @@ export function bytesToCrockford(buffer: Buffer): string {
 
 	return crockford.join('')
 }
-
-export async function derivePairingKey(pairingCode: string, salt: Buffer) {
-	const encoded = new TextEncoder().encode(pairingCode)
-	const cryptoKey = await crypto.subtle.importKey(
-		'raw',
-		encoded,
-		{
-			name: 'PBKDF2'
-		},
-		!1,
-		[
-			'deriveKey'
-		]
-	)
-	return await crypto.subtle.deriveKey({
-		name: 'PBKDF2',
-		hash: 'SHA-256',
-		salt: salt,
-		iterations: 2 << 16
-	}, cryptoKey, {
-		name: 'AES-CTR',
-		length: 256
-	}, false, [
-		'encrypt',
-		'decrypt'
-	])
-}

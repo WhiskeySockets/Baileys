@@ -2,7 +2,6 @@ import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
 import { URL } from 'url'
 import { promisify } from 'util'
-import { getBinaryNodeChildBuffer } from '../../lib'
 import { proto } from '../../WAProto'
 import {
 	DEF_CALLBACK_PREFIX,
@@ -16,18 +15,20 @@ import {
 } from '../Defaults'
 import { DisconnectReason, SocketConfig } from '../Types'
 import {
-	addTransactionCapability, aesEncryptGCM,
+	addTransactionCapability,
+	aesEncryptCTR,
 	bindWaitForConnectionUpdate,
 	bytesToCrockford,
 	configureSuccessfulPairing,
-	Curve, derivePairingKey,
+	Curve,
+	derivePairingCodeKey,
 	generateLoginNode,
 	generateMdTagPrefix,
 	generateMobileNode,
 	generateRegistrationNode,
 	getCodeFromWSError,
 	getErrorCodeFromStreamError,
-	getNextPreKeysNode, hkdf,
+	getNextPreKeysNode,
 	makeEventBuffer,
 	makeNoiseHandler,
 	printQRIfNecessaryListener,
@@ -481,7 +482,8 @@ export const makeSocket = (config: SocketConfig) => {
 		end(new Boom(msg || 'Intentional Logout', { statusCode: DisconnectReason.loggedOut }))
 	}
 
-	const requestPairingCode = async(phoneNumber: string) => {
+	const requestPairingCode = async(phoneNumber: string): Promise<string> => {
+		authState.creds.pairingCode = bytesToCrockford(randomBytes(5))
 		authState.creds.me = {
 			id: jidEncode(phoneNumber, 's.whatsapp.net'),
 			name: '~'
@@ -507,7 +509,7 @@ export const makeSocket = (config: SocketConfig) => {
 						{
 							tag: 'link_code_pairing_wrapped_companion_ephemeral_pub',
 							attrs: {},
-							content: await generatePairingKey(randomBytes(32))
+							content: await generatePairingKey()
 						},
 						{
 							tag: 'companion_server_auth_key_pub',
@@ -533,18 +535,15 @@ export const makeSocket = (config: SocketConfig) => {
 				}
 			]
 		})
+		return authState.creds.pairingCode
 	}
 
-	async function generatePairingKey(salt: Buffer) {
-		authState.creds.pairingCode = bytesToCrockford(randomBytes(5))
-		const key = await derivePairingKey(authState.creds.pairingCode, salt)
+	async function generatePairingKey() {
+		const salt = randomBytes(32)
 		const randomIv = randomBytes(16)
-		const ciphered = await crypto.subtle.encrypt({
-			name: 'AES-CTR',
-			length: 64,
-			counter: randomIv
-		}, key, authState.creds.advKeyPair.public)
-		return Buffer.concat([salt, randomIv, Buffer.from(ciphered)])
+		const key = derivePairingCodeKey(authState.creds.pairingCode!, salt)
+		const ciphered = aesEncryptCTR(authState.creds.pairingEphemeralKeyPair.public, key, randomIv)
+		return Buffer.concat([salt, randomIv, ciphered])
 	}
 
 	ws.on('message', onMessageRecieved)
@@ -576,7 +575,7 @@ export const makeSocket = (config: SocketConfig) => {
 		const refNodes = getBinaryNodeChildren(pairDeviceNode, 'ref')
 		const noiseKeyB64 = Buffer.from(creds.noiseKey.public).toString('base64')
 		const identityKeyB64 = Buffer.from(creds.signedIdentityKey.public).toString('base64')
-		const advB64 = Buffer.from(creds.advKeyPair.public).toString('base64')
+		const advB64 = creds.advSecretKey
 
 		let qrMs = qrTimeout || 60_000 // time to let a QR live
 		const genPairQR = () => {

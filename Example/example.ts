@@ -1,5 +1,4 @@
 import { Boom } from '@hapi/boom'
-import parsePhoneNumber from 'libphonenumber-js'
 import NodeCache from 'node-cache'
 import readline from 'readline'
 import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, getAggregateVotesInPollMessage, makeCacheableSignalKeyStore, makeInMemoryStore, PHONENUMBER_MCC, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
@@ -65,7 +64,8 @@ const startSock = async() => {
 		}
 
 		const phoneNumber = await question('Please enter your mobile phone number:\n')
-		await sock.requestPairingCode(phoneNumber)
+		const code = await sock.requestPairingCode(phoneNumber)
+		console.log(`Pairing code: ${code}`)
 	}
 
 	// If mobile was chosen, ask for the code
@@ -76,7 +76,8 @@ const startSock = async() => {
 			registration.phoneNumber = await question('Please enter your mobile phone number:\n')
 		}
 
-		const phoneNumber = parsePhoneNumber(registration!.phoneNumber)
+		const libPhonenumber = await import("libphonenumber-js")
+		const phoneNumber = libPhonenumber.parsePhoneNumber(registration!.phoneNumber)
 		if(!phoneNumber?.isValid()) {
 			throw new Error('Invalid phone number: ' + registration!.phoneNumber)
 		}
