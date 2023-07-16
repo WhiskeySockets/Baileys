@@ -199,7 +199,7 @@ export const initAuthCreds = (): AuthenticationCreds => {
 		signedIdentityKey: identityKey,
 		signedPreKey: signedKeyPair(identityKey, 1),
 		registrationId: generateRegistrationId(),
-		advSecretKey: randomBytes(32).toString('base64'),
+		advKeyPair: Curve.generateKeyPair(),
 		processedHistoryMessages: [],
 		nextPreKeyId: 1,
 		firstUnuploadedPreKeyId: 1,
@@ -213,6 +213,7 @@ export const initAuthCreds = (): AuthenticationCreds => {
 		identityId: randomBytes(20),
 		registered: false,
 		backupToken: randomBytes(20),
-		registration: {} as never
+		registration: {} as never,
+		pairingCode: undefined
 	}
 }

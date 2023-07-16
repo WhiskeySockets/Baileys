@@ -43,7 +43,7 @@ export type AccountSettings = {
 
 export type AuthenticationCreds = SignalCreds & {
     readonly noiseKey: KeyPair
-    readonly advSecretKey: string
+    advKeyPair: KeyPair
 
     me?: Contact
     account?: proto.IADVSignedDeviceIdentity
@@ -66,6 +66,8 @@ export type AuthenticationCreds = SignalCreds & {
 	registered: boolean
 	backupToken: Buffer
 	registration: RegistrationOptions
+
+    pairingCode: string | undefined
 }
 
 export type SignalDataTypeMap = {

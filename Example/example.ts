@@ -10,11 +10,16 @@ logger.level = 'trace'
 
 const useStore = !process.argv.includes('--no-store')
 const doReplies = !process.argv.includes('--no-reply')
+const usePairingCode = process.argv.includes('--use-pairing-code')
 const useMobile = process.argv.includes('--mobile')
 
 // external map to store retry counts of messages when decryption/encryption fails
 // keep this out of the socket itself, so as to prevent a message decryption/encryption loop across socket restarts
 const msgRetryCounterCache = new NodeCache()
+
+// Read line interface
+const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+const question = (text: string) => new Promise<string>((resolve) => rl.question(text, resolve))
 
 // the store maintains the data of the WA connection in memory
 // can be written out to a file & read from it
@@ -35,7 +40,7 @@ const startSock = async() => {
 	const sock = makeWASocket({
 		version,
 		logger,
-		printQRInTerminal: true,
+		printQRInTerminal: !usePairingCode,
 		mobile: useMobile,
 		auth: {
 			creds: state.creds,
@@ -53,11 +58,18 @@ const startSock = async() => {
 
 	store?.bind(sock.ev)
 
+	// Pairing code for Web clients
+	if(usePairingCode && !sock.authState.creds.registered) {
+		if(useMobile) {
+			throw new Error('Cannot use pairing code with mobile api')
+		}
+
+		const phoneNumber = await question('Please enter your mobile phone number:\n')
+		await sock.requestPairingCode(phoneNumber)
+	}
+
 	// If mobile was chosen, ask for the code
 	if(useMobile && !sock.authState.creds.registered) {
-		const question = (text: string) => new Promise<string>((resolve) => rl.question(text, resolve))
-
-		const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
 		const { registration } = sock.authState.creds || { registration: {} }
 
 		if(!registration.phoneNumber) {

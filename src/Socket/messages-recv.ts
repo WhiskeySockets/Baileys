@@ -1,11 +1,29 @@
 
+import { Boom } from '@hapi/boom'
+import { randomBytes } from 'crypto'
 import NodeCache from 'node-cache'
+import { getBinaryNodeChildBuffer } from '../../lib'
 import { proto } from '../../WAProto'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import { MessageReceiptType, MessageRelayOptions, MessageUserReceipt, SocketConfig, WACallEvent, WAMessageKey, WAMessageStatus, WAMessageStubType, WAPatchName } from '../Types'
-import { decodeMediaRetryNode, decryptMessageNode, delay, encodeBigEndian, encodeSignedDeviceIdentity, getCallStatusFromNode, getHistoryMsg, getNextPreKeys, getStatusFromReceiptType, unixTimestampSeconds, xmppPreKey, xmppSignedPreKey } from '../Utils'
+import {
+	aesEncryptGCM,
+	Curve,
+	decodeMediaRetryNode,
+	decryptMessageNode,
+	delay, derivePairingKey,
+	encodeBigEndian,
+	encodeSignedDeviceIdentity,
+	getCallStatusFromNode,
+	getHistoryMsg,
+	getNextPreKeys,
+	getStatusFromReceiptType, hkdf,
+	unixTimestampSeconds,
+	xmppPreKey,
+	xmppSignedPreKey
+} from '../Utils'
+import { cleanMessage } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
-import { cleanMessage } from '../Utils/process-message'
 import { areJidsSameUser, BinaryNode, getAllBinaryNodeChildren, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, isJidUser, jidDecode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
 import { extractGroupMetadata } from './groups'
 import { makeMessagesSocket } from './messages-send'
@@ -235,7 +253,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		case 'remove':
 		case 'add':
 		case 'leave':
-			const stubType = `GROUP_PARTICIPANT_${child.tag!.toUpperCase()}`
+			const stubType = `GROUP_PARTICIPANT_${child.tag.toUpperCase()}`
 			msg.messageStubType = WAMessageStubType[stubType]
 
 			const participants = getBinaryNodeChildren(child, 'participant').map(p => p.attrs.jid)
@@ -306,7 +324,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			break
 		case 'devices':
 			const devices = getBinaryNodeChildren(child, 'device')
-			if(areJidsSameUser(child.attrs.jid, authState.creds!.me!.id)) {
+			if(areJidsSameUser(child.attrs.jid, authState.creds.me!.id)) {
 				const deviceJids = devices.map(d => d.attrs.jid)
 				logger.info({ deviceJids }, 'got my own devices')
 			}
@@ -334,7 +352,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				result.messageStubType = WAMessageStubType.GROUP_CHANGE_ICON
 
 				if(setPicture) {
-					result.messageStubParameters = [ setPicture.attrs.id ]
+					result.messageStubParameters = [setPicture.attrs.id]
 				}
 
 				result.participant = node?.attrs.author
@@ -364,11 +382,90 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}
 
 			break
+		case 'link_code_companion_reg':
+			const linkCodeCompanionReg = getBinaryNodeChild(node, 'link_code_companion_reg')
+			const ref = toRequiredBuffer(getBinaryNodeChildBuffer(linkCodeCompanionReg, 'link_code_pairing_ref'))
+			const primaryIdentityPublicKey = toRequiredBuffer(getBinaryNodeChildBuffer(linkCodeCompanionReg, 'primary_identity_pub'))
+			const primaryEphemeralPublicKeyWrapped = toRequiredBuffer(getBinaryNodeChildBuffer(linkCodeCompanionReg, 'link_code_pairing_wrapped_primary_ephemeral_pub'))
+			const codePairingPublicKey = await decipherLinkPublicKey(primaryEphemeralPublicKeyWrapped)
+			const companionSharedKey = Curve.sharedKey(codePairingPublicKey, authState.creds.advKeyPair.private)
+			const random = randomBytes(32)
+			const linkCodeSalt = randomBytes(32)
+			const linkCodePairingExpanded = hkdf(companionSharedKey, 32, {
+				salt: linkCodeSalt,
+				info: 'link_code_pairing_key_bundle_encryption_key'
+			})
+			const encryptPayload = Buffer.concat([Buffer.from(authState.creds.signedIdentityKey.public), Buffer.from(primaryIdentityPublicKey), random])
+			const encryptIv = randomBytes(12)
+			const encrypted = aesEncryptGCM(encryptPayload, linkCodePairingExpanded, encryptIv, Buffer.alloc(0))
+			const encryptedPayload = Buffer.concat([linkCodeSalt, encryptIv, encrypted])
+			const identitySharedKey = Curve.sharedKey(primaryIdentityPublicKey, authState.creds.signedIdentityKey.private)
+			const identityPayload = Buffer.concat([companionSharedKey, identitySharedKey, random])
+			authState.creds.advKeyPair.public = hkdf(identityPayload, 32, { info: 'adv_secret' })
+			authState.creds.advKeyPair.private = Buffer.alloc(0)
+			await sendNode({
+				tag: 'iq',
+				attrs: {
+					to: S_WHATSAPP_NET,
+					type: 'set',
+					id: sock.generateMessageTag(),
+					xmlns: 'md'
+				},
+				content: [
+					{
+						tag: 'link_code_companion_reg',
+						attrs: {
+							jid: authState.creds.me!.id,
+							stage: 'companion_finish',
+						},
+						content: [
+							{
+								tag: 'link_code_pairing_wrapped_key_bundle',
+								attrs: {},
+								content: encryptedPayload
+							},
+							{
+								tag: 'companion_identity_public',
+								attrs: {},
+								content: authState.creds.signedIdentityKey.public
+							},
+							{
+								tag: 'link_code_pairing_ref',
+								attrs: {},
+								content: ref
+							}
+						]
+					}
+				]
+			})
+			authState.creds.registered = true
 		}
 
 		if(Object.keys(result).length) {
 			return result
 		}
+	}
+
+	async function decipherLinkPublicKey(data: Uint8Array | Buffer) {
+		const buffer = toRequiredBuffer(data)
+		const salt = buffer.slice(0, 32)
+		const secretKey = await derivePairingKey(authState.creds.pairingCode!, salt)
+		const iv = buffer.slice(32, 48)
+		const payload = buffer.slice(48, 80)
+		const result = await crypto.subtle.decrypt({
+			name: 'AES-CTR',
+			length: 64,
+			counter: iv
+		}, secretKey, payload)
+		return Buffer.from(result)
+	}
+
+	function toRequiredBuffer(data: Uint8Array | Buffer | undefined) {
+		if(data === undefined) {
+			throw new Boom('Invalid buffer', { statusCode: 400 })
+		}
+
+		return data instanceof Buffer ? data : Buffer.from(data)
 	}
 
 	const willSendMessageAgain = (id: string, participant: string) => {
