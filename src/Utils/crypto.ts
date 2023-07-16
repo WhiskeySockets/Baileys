@@ -1,8 +1,8 @@
-import {createCipheriv, createDecipheriv, createHash, createHmac, pbkdf2Sync, randomBytes} from 'crypto'
+import { createCipheriv, createDecipheriv, createHash, createHmac, pbkdf2Sync, randomBytes } from 'crypto'
 import HKDF from 'futoin-hkdf'
 import * as libsignal from 'libsignal'
-import {KEY_BUNDLE_TYPE} from '../Defaults'
-import {KeyPair} from '../Types'
+import { KEY_BUNDLE_TYPE } from '../Defaults'
+import { KeyPair } from '../Types'
 
 /** prefix version byte to the pub keys, required for some curve crypto functions */
 export const generateSignalPubKey = (pubKey: Uint8Array | Buffer) => (
