@@ -70,7 +70,7 @@ export const makeSocket = (config: SocketConfig) => {
 
 	let url = typeof waWebSocketUrl === 'string' ? new URL(waWebSocketUrl) : waWebSocketUrl
 
-	config.mobile = config.mobile || config.auth?.creds?.registered || url.protocol === 'tcp:'
+	config.mobile = config.mobile || url.protocol === 'tcp:'
 
 	if(config.mobile && url.protocol !== 'tcp:') {
 		url = new URL(`tcp://${MOBILE_ENDPOINT}:${MOBILE_PORT}`)
@@ -488,6 +488,7 @@ export const makeSocket = (config: SocketConfig) => {
 			id: jidEncode(phoneNumber, 's.whatsapp.net'),
 			name: '~'
 		}
+		ev.emit('creds.update', authState.creds)
 		await sendNode({
 			tag: 'iq',
 			attrs: {

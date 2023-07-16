@@ -415,7 +415,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const identitySharedKey = Curve.sharedKey(authState.creds.signedIdentityKey.private, primaryIdentityPublicKey)
 			const identityPayload = Buffer.concat([companionSharedKey, identitySharedKey, random])
 			authState.creds.advSecretKey = hkdf(identityPayload, 32, { info: 'adv_secret' }).toString('base64')
-			await sendNode({
+			await query({
 				tag: 'iq',
 				attrs: {
 					to: S_WHATSAPP_NET,
@@ -451,6 +451,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				]
 			})
 			authState.creds.registered = true
+			ev.emit('creds.update', authState.creds)
 		}
 
 		if(Object.keys(result).length) {
