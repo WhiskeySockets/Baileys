@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto'
+import { createCipheriv, createDecipheriv, createHash, createHmac, pbkdf2Sync, randomBytes } from 'crypto'
 import HKDF from 'futoin-hkdf'
 import * as libsignal from 'libsignal'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
@@ -74,6 +74,16 @@ export function aesDecryptGCM(ciphertext: Uint8Array, key: Uint8Array, iv: Uint8
 	return Buffer.concat([ decipher.update(enc), decipher.final() ])
 }
 
+export function aesEncryptCTR(plaintext: Uint8Array, key: Uint8Array, iv: Uint8Array) {
+	const cipher = createCipheriv('aes-256-ctr', key, iv)
+	return Buffer.concat([cipher.update(plaintext), cipher.final()])
+}
+
+export function aesDecryptCTR(ciphertext: Uint8Array, key: Uint8Array, iv: Uint8Array) {
+	const decipher = createDecipheriv('aes-256-ctr', key, iv)
+	return Buffer.concat([decipher.update(ciphertext), decipher.final()])
+}
+
 /** decrypt AES 256 CBC; where the IV is prefixed to the buffer */
 export function aesDecrypt(buffer: Buffer, key: Buffer) {
 	return aesDecryptWithIV(buffer.slice(16, buffer.length), key, buffer.slice(0, 16))
@@ -114,4 +124,8 @@ export function md5(buffer: Buffer) {
 // HKDF key expansion
 export function hkdf(buffer: Uint8Array | Buffer, expandedLength: number, info: { salt?: Buffer, info?: string }) {
 	return HKDF(!Buffer.isBuffer(buffer) ? Buffer.from(buffer) : buffer, expandedLength, info)
+}
+
+export function derivePairingCodeKey(pairingCode: string, salt: Buffer) {
+	return pbkdf2Sync(pairingCode, salt, 2 << 16, 32, 'sha256')
 }
