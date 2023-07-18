@@ -207,11 +207,20 @@ export async function getAudioDuration(buffer: Buffer | string | Readable) {
 /**
   referenced from and modifying https://github.com/wppconnect-team/wa-js/blob/main/src/chat/functions/prepareAudioWaveform.ts
  */
-export async function getAudioWaveform(bodyPath: string, logger?: Logger) {
+export async function getAudioWaveform(buffer: Buffer | string | Readable, logger?: Logger) {
 	try {
-		const { default: audioDecode } = await import('audio-decode')
-		const fileBuffer = await fs.readFile(bodyPath)
-		const audioBuffer = await audioDecode.default(fileBuffer)
+		const audioDecode = (...args) => import('audio-decode').then(({ default: audioDecode }) => audioDecode(...args))
+		let audioData: Buffer
+		if(Buffer.isBuffer(buffer)) {
+			audioData = buffer
+		} else if(typeof buffer === 'string') {
+			const rStream = createReadStream(buffer)
+			audioData = await toBuffer(rStream)
+		} else {
+			audioData = await toBuffer(buffer)
+		}
+
+		const audioBuffer = await audioDecode(audioData)
 
 		const rawData = audioBuffer.getChannelData(0) // We only need to work with one channel of data
 		const samples = 64 // Number of samples we want to have in our final data set
@@ -773,3 +782,8 @@ const MEDIA_RETRY_STATUS_MAP = {
 	[proto.MediaRetryNotification.ResultType.NOT_FOUND]: 404,
 	[proto.MediaRetryNotification.ResultType.GENERAL_ERROR]: 418,
 } as const
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function __importStar(arg0: any): any {
+	throw new Error('Function not implemented.')
+}
