@@ -1,9 +1,9 @@
-## 6.3.1 (2023-07-08)
+# 6.4.0 (2023-07-18)
 
 
-### Bug Fixes
+### Features
 
-* Added jid of people who added to the group ([#223](https://github.com/WhiskeySockets/Baileys/issues/223)) ([c2d88fd](https://github.com/WhiskeySockets/Baileys/commit/c2d88fddc605f07f4d6990e0d705e3e65140d439))
+* Whatsapp v2.2329.9 proto/version change ([#169](https://github.com/WhiskeySockets/Baileys/issues/169)) ([a84f75e](https://github.com/WhiskeySockets/Baileys/commit/a84f75ef2a3af231454efca28bdf3d590a751812))
 
 
 

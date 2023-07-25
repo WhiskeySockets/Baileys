@@ -1,13 +1,49 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Boom } from '@hapi/boom'
+import { randomBytes } from 'crypto'
 import { URL } from 'url'
 import { promisify } from 'util'
 import { proto } from '../../WAProto'
-import { DEF_CALLBACK_PREFIX, DEF_TAG_PREFIX, INITIAL_PREKEY_COUNT, MIN_PREKEY_COUNT, MOBILE_ENDPOINT, MOBILE_NOISE_HEADER, MOBILE_PORT, NOISE_WA_HEADER } from '../Defaults'
+import {
+	DEF_CALLBACK_PREFIX,
+	DEF_TAG_PREFIX,
+	INITIAL_PREKEY_COUNT,
+	MIN_PREKEY_COUNT,
+	MOBILE_ENDPOINT,
+	MOBILE_NOISE_HEADER,
+	MOBILE_PORT,
+	NOISE_WA_HEADER
+} from '../Defaults'
 import { DisconnectReason, SocketConfig } from '../Types'
-import { addTransactionCapability, bindWaitForConnectionUpdate, configureSuccessfulPairing, Curve, generateLoginNode, generateMdTagPrefix, generateMobileNode, generateRegistrationNode, getCodeFromWSError, getErrorCodeFromStreamError, getNextPreKeysNode, makeNoiseHandler, printQRIfNecessaryListener, promiseTimeout } from '../Utils'
-import { makeEventBuffer } from '../Utils/event-buffer'
-import { assertNodeErrorFree, BinaryNode, binaryNodeToString, encodeBinaryNode, getBinaryNodeChild, getBinaryNodeChildren, S_WHATSAPP_NET } from '../WABinary'
+import {
+	addTransactionCapability,
+	aesEncryptCTR,
+	bindWaitForConnectionUpdate,
+	bytesToCrockford,
+	configureSuccessfulPairing,
+	Curve,
+	derivePairingCodeKey,
+	generateLoginNode,
+	generateMdTagPrefix,
+	generateMobileNode,
+	generateRegistrationNode,
+	getCodeFromWSError,
+	getErrorCodeFromStreamError,
+	getNextPreKeysNode,
+	makeEventBuffer,
+	makeNoiseHandler,
+	printQRIfNecessaryListener,
+	promiseTimeout
+} from '../Utils'
+import {
+	assertNodeErrorFree,
+	BinaryNode,
+	binaryNodeToString,
+	encodeBinaryNode,
+	getBinaryNodeChild,
+	getBinaryNodeChildren,
+	jidEncode,
+	S_WHATSAPP_NET
+} from '../WABinary'
 import { MobileSocketClient, WebSocketClient } from './Client'
 
 /**
@@ -34,7 +70,7 @@ export const makeSocket = (config: SocketConfig) => {
 
 	let url = typeof waWebSocketUrl === 'string' ? new URL(waWebSocketUrl) : waWebSocketUrl
 
-	config.mobile = config.mobile || config.auth?.creds?.registered || url.protocol === 'tcp:'
+	config.mobile = config.mobile || url.protocol === 'tcp:'
 
 	if(config.mobile && url.protocol !== 'tcp:') {
 		url = new URL(`tcp://${MOBILE_ENDPOINT}:${MOBILE_PORT}`)
@@ -141,15 +177,14 @@ export const makeSocket = (config: SocketConfig) => {
 
 	/**
 	 * Wait for a message with a certain tag to be received
-	 * @param tag the message tag to await
-	 * @param json query that was sent
+	 * @param msgId the message tag to await
 	 * @param timeoutMs timeout after which the promise will reject
 	 */
 	const waitForMessage = async<T>(msgId: string, timeoutMs = defaultQueryTimeoutMs) => {
 		let onRecv: (json) => void
 		let onErr: (err) => void
 		try {
-			const result = await promiseTimeout<T>(timeoutMs,
+			return await promiseTimeout<T>(timeoutMs,
 				(resolve, reject) => {
 					onRecv = resolve
 					onErr = err => {
@@ -161,7 +196,6 @@ export const makeSocket = (config: SocketConfig) => {
 					ws.off('error', onErr)
 				},
 			)
-			return result
 		} finally {
 			ws.off(`TAG:${msgId}`, onRecv!)
 			ws.off('close', onErr!) // if the socket closes, you'll never receive the message
@@ -213,7 +247,7 @@ export const makeSocket = (config: SocketConfig) => {
 			node = generateRegistrationNode(creds, config)
 			logger.info({ node }, 'not logged in, attempting registration...')
 		} else {
-			node = generateLoginNode(creds.me!.id, config)
+			node = generateLoginNode(creds.me.id, config)
 			logger.info({ node }, 'logging in...')
 		}
 
@@ -448,6 +482,71 @@ export const makeSocket = (config: SocketConfig) => {
 		end(new Boom(msg || 'Intentional Logout', { statusCode: DisconnectReason.loggedOut }))
 	}
 
+	const requestPairingCode = async(phoneNumber: string): Promise<string> => {
+		authState.creds.pairingCode = bytesToCrockford(randomBytes(5))
+		authState.creds.me = {
+			id: jidEncode(phoneNumber, 's.whatsapp.net'),
+			name: '~'
+		}
+		ev.emit('creds.update', authState.creds)
+		await sendNode({
+			tag: 'iq',
+			attrs: {
+				to: S_WHATSAPP_NET,
+				type: 'set',
+				id: generateMessageTag(),
+				xmlns: 'md'
+			},
+			content: [
+				{
+					tag: 'link_code_companion_reg',
+					attrs: {
+						jid: authState.creds.me.id,
+						stage: 'companion_hello',
+						// eslint-disable-next-line camelcase
+						should_show_push_notification: 'true'
+					},
+					content: [
+						{
+							tag: 'link_code_pairing_wrapped_companion_ephemeral_pub',
+							attrs: {},
+							content: await generatePairingKey()
+						},
+						{
+							tag: 'companion_server_auth_key_pub',
+							attrs: {},
+							content: authState.creds.noiseKey.public
+						},
+						{
+							tag: 'companion_platform_id',
+							attrs: {},
+							content: '49' // Chrome
+						},
+						{
+							tag: 'companion_platform_display',
+							attrs: {},
+							content: config.browser[0]
+						},
+						{
+							tag: 'link_code_pairing_nonce',
+							attrs: {},
+							content: '0'
+						}
+					]
+				}
+			]
+		})
+		return authState.creds.pairingCode
+	}
+
+	async function generatePairingKey() {
+		const salt = randomBytes(32)
+		const randomIv = randomBytes(16)
+		const key = derivePairingCodeKey(authState.creds.pairingCode!, salt)
+		const ciphered = aesEncryptCTR(authState.creds.pairingEphemeralKeyPair.public, key, randomIv)
+		return Buffer.concat([salt, randomIv, ciphered])
+	}
+
 	ws.on('message', onMessageRecieved)
 	ws.on('open', async() => {
 		try {
@@ -619,6 +718,7 @@ export const makeSocket = (config: SocketConfig) => {
 		onUnexpectedError,
 		uploadPreKeys,
 		uploadPreKeysToServerIfRequired,
+		requestPairingCode,
 		/** Waits for the connection to WA to reach a state */
 		waitForConnectionUpdate: bindWaitForConnectionUpdate(ev),
 	}

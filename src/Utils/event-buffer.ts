@@ -2,7 +2,7 @@ import EventEmitter from 'events'
 import { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { BaileysEvent, BaileysEventEmitter, BaileysEventMap, BufferedEventData, Chat, ChatUpdate, Contact, WAMessage, WAMessageStatus } from '../Types'
-import { trimUndefineds } from './generics'
+import { trimUndefined } from './generics'
 import { updateMessageWithReaction, updateMessageWithReceipt } from './messages'
 import { isRealMessage, shouldIncrementChatUnread } from './process-message'
 
@@ -209,7 +209,7 @@ function append<E extends BufferableEvent>(
 		for(const contact of eventData.contacts as Contact[]) {
 			const existingContact = data.historySets.contacts[contact.id]
 			if(existingContact) {
-				Object.assign(existingContact, trimUndefineds(contact))
+				Object.assign(existingContact, trimUndefined(contact))
 			} else {
 				const historyContactId = `c:${contact.id}`
 				const hasAnyName = contact.notify || contact.name || contact.verifiedName
@@ -321,14 +321,14 @@ function append<E extends BufferableEvent>(
 			}
 
 			if(upsert) {
-				upsert = Object.assign(upsert, trimUndefineds(contact))
+				upsert = Object.assign(upsert, trimUndefined(contact))
 			} else {
 				upsert = contact
 				data.contactUpserts[contact.id] = upsert
 			}
 
 			if(data.contactUpdates[contact.id]) {
-				upsert = Object.assign(data.contactUpdates[contact.id], trimUndefineds(contact))
+				upsert = Object.assign(data.contactUpdates[contact.id], trimUndefined(contact))
 				delete data.contactUpdates[contact.id]
 			}
 		}
