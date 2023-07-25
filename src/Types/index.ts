@@ -16,14 +16,15 @@ import { SocketConfig } from './Socket'
 export type UserFacingSocketConfig = Partial<SocketConfig> & { auth: AuthenticationState }
 
 export enum DisconnectReason {
-	connectionClosed = 428,
-	connectionLost = 408,
+    connectionClosed = 428,
+    connectionLost = 408,
     connectionReplaced = 440,
     timedOut = 408,
-	loggedOut = 401,
+    loggedOut = 401,
     badSession = 500,
     restartRequired = 515,
-    multideviceMismatch = 411
+    multideviceMismatch = 411,
+    blocked = 403
 }
 
 export type WAInitResponse = {
