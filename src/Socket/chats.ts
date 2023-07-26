@@ -168,7 +168,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	const onWhatsApp = async(...jids: string[]) => {
 		const query = { tag: 'contact', attrs: {} }
-		const list = jids.map((jid) => (
+		const list = jids.map((jid) => {
 			const content = (!jid.startsWith('+')) ? `+${jid}` : jid;
 			
 			return {
@@ -180,7 +180,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					content,
 				}],
 			}
-		))
+		})
 		const results = await interactiveQuery(list, query)
 
 		return results.map(user => {
