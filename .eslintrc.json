@@ -1,11 +1,25 @@
 {
     "extends": "@adiwajshing",
+    "parserOptions": {
+        "sourceType": "module",
+        "project": "./tsconfig.json"
+    },
+    "ignorePatterns": ["src/Tests/*"],
     "rules": {
         "@typescript-eslint/no-explicit-any": [
             "warn",
             {
                 "ignoreRestArgs": true
             }
+        ],
+        "@typescript-eslint/no-inferrable-types": [
+            "warn"
+        ],
+        "@typescript-eslint/no-redundant-type-constituents": [
+            "warn"
+        ],
+        "@typescript-eslint/no-unnecessary-type-assertion": [
+            "warn"
         ],
         "no-restricted-syntax": [
             "warn",

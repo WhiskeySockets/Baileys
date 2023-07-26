@@ -208,8 +208,7 @@ export const encodeSignedDeviceIdentity = (
 		account.accountSignatureKey = null
 	}
 
-	const accountEnc = proto.ADVSignedDeviceIdentity
+	return proto.ADVSignedDeviceIdentity
 		.encode(account)
 		.finish()
-	return accountEnc
 }

@@ -1,6 +1,6 @@
 {
   "name": "@whiskeysockets/baileys",
-  "version": "6.3.0",
+  "version": "6.4.0",
   "description": "WhatsApp API",
   "keywords": [
     "whatsapp",
@@ -34,8 +34,8 @@
     "changelog:update": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",
     "example": "node --inspect -r ts-node/register Example/example.ts",
     "gen:protobuf": "sh WAProto/GenerateStatics.sh",
-    "lint": "eslint . --ext .js,.ts,.jsx,.tsx",
-    "lint:fix": "eslint . --fix --ext .js,.ts,.jsx,.tsx",
+    "lint": "eslint src --ext .js,.ts,.jsx,.tsx",
+    "lint:fix": "eslint src --fix --ext .js,.ts,.jsx,.tsx",
     "prepack": "tsc",
     "prepare": "tsc",
     "release": "release-it",
@@ -44,11 +44,12 @@
   "dependencies": {
     "@adiwajshing/keyed-db": "^0.2.4",
     "@hapi/boom": "^9.1.3",
+    "audio-decode": "^2.1.3",
     "axios": "^1.3.3",
     "cache-manager": "^5.2.2",
     "futoin-hkdf": "^1.5.1",
     "libphonenumber-js": "^1.10.20",
-    "libsignal": "https://github.com/adiwajshing/libsignal-node.git",
+    "libsignal": "github:adiwajshing/libsignal-node",
     "music-metadata": "^7.12.3",
     "node-cache": "^5.1.2",
     "pino": "^7.0.0",
@@ -57,7 +58,7 @@
     "ws": "^8.13.0"
   },
   "devDependencies": {
-    "@adiwajshing/eslint-config": "https://github.com/adiwajshing/eslint-config.git",
+    "@adiwajshing/eslint-config": "github:adiwajshing/eslint-config",
     "@types/got": "^9.6.11",
     "@types/jest": "^27.5.1",
     "@types/node": "^16.0.0",
@@ -74,7 +75,7 @@
     "ts-jest": "^27.0.3",
     "ts-node": "^10.8.1",
     "typedoc": "^0.24.7",
-    "typescript": "^4.0.0"
+    "typescript": "^4.6.4"
   },
   "peerDependencies": {
     "jimp": "^0.16.1",
