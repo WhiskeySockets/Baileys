@@ -1,3 +1,4 @@
+const queue_job = require('./queue_job');
 const SenderKeyMessage = require('./sender_key_message');
 const crypto = require('libsignal/src/crypto');
 
@@ -7,11 +8,22 @@ class GroupCipher {
     this.senderKeyName = senderKeyName;
   }
 
+  queueJob(awaitable) {
+    return queue_job(this.senderKeyName.toString(), awaitable)
+  }
+
   async encrypt(paddedPlaintext) {
-    try {
+    return await this.queueJob(async () => {
       const record = await this.senderKeyStore.loadSenderKey(this.senderKeyName);
+      if (!record) {
+        throw new Error("No SenderKeyRecord found for encryption")
+      }
       const senderKeyState = record.getSenderKeyState();
-      const senderKey = senderKeyState.getSenderChainKey().getSenderMessageKey();
+      if (!senderKeyState) {
+        throw new Error("No session to encrypt message");
+      }
+      const iteration = senderKeyState.getSenderChainKey().getIteration()
+      const senderKey = this.getSenderKey(senderKeyState, iteration === 0 ? 0 : iteration + 1)
 
       const ciphertext = await this.getCipherText(
         senderKey.getIv(),
@@ -25,35 +37,37 @@ class GroupCipher {
         ciphertext,
         senderKeyState.getSigningKeyPrivate()
       );
-      senderKeyState.setSenderChainKey(senderKeyState.getSenderChainKey().getNext());
       await this.senderKeyStore.storeSenderKey(this.senderKeyName, record);
-      return senderKeyMessage.serialize();
-    } catch (e) {
-      //console.log(e.stack);
-      throw new Error('NoSessionException');
-    }
+      return senderKeyMessage.serialize()
+    })
   }
 
   async decrypt(senderKeyMessageBytes) {
-    const record = await this.senderKeyStore.loadSenderKey(this.senderKeyName);
-    if (!record) throw new Error(`No sender key for: ${this.senderKeyName}`);
+    return await this.queueJob(async () => {
+      const record = await this.senderKeyStore.loadSenderKey(this.senderKeyName);
+      if (!record) {
+        throw new Error("No SenderKeyRecord found for decryption")
+      }
+      const senderKeyMessage = new SenderKeyMessage(null, null, null, null, senderKeyMessageBytes);
+      const senderKeyState = record.getSenderKeyState(senderKeyMessage.getKeyId());
+      if (!senderKeyState) {
+        throw new Error("No session found to decrypt message")
+      }
 
-    const senderKeyMessage = new SenderKeyMessage(null, null, null, null, senderKeyMessageBytes);
+      senderKeyMessage.verifySignature(senderKeyState.getSigningKeyPublic());
+      const senderKey = this.getSenderKey(senderKeyState, senderKeyMessage.getIteration());
+      // senderKeyState.senderKeyStateStructure.senderSigningKey.private =
 
-    const senderKeyState = record.getSenderKeyState(senderKeyMessage.getKeyId());
-    senderKeyMessage.verifySignature(senderKeyState.getSigningKeyPublic());
-    const senderKey = this.getSenderKey(senderKeyState, senderKeyMessage.getIteration());
-    // senderKeyState.senderKeyStateStructure.senderSigningKey.private =
+      const plaintext = await this.getPlainText(
+        senderKey.getIv(),
+        senderKey.getCipherKey(),
+        senderKeyMessage.getCipherText()
+      );
 
-    const plaintext = await this.getPlainText(
-      senderKey.getIv(),
-      senderKey.getCipherKey(),
-      senderKeyMessage.getCipherText()
-    );
+      await this.senderKeyStore.storeSenderKey(this.senderKeyName, record);
 
-    await this.senderKeyStore.storeSenderKey(this.senderKeyName, record);
-
-    return plaintext;
+      return plaintext;
+    })
   }
 
   getSenderKey(senderKeyState, iteration) {
@@ -67,7 +81,7 @@ class GroupCipher {
       );
     }
 
-    if (senderChainKey.getIteration() - iteration > 2000) {
+    if (iteration - senderChainKey.getIteration() > 2000) {
       throw new Error('Over 2000 messages into the future!');
     }
 

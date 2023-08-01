@@ -196,6 +196,7 @@ export const initAuthCreds = (): AuthenticationCreds => {
 	const identityKey = Curve.generateKeyPair()
 	return {
 		noiseKey: Curve.generateKeyPair(),
+		pairingEphemeralKeyPair: Curve.generateKeyPair(),
 		signedIdentityKey: identityKey,
 		signedPreKey: signedKeyPair(identityKey, 1),
 		registrationId: generateRegistrationId(),
@@ -213,6 +214,7 @@ export const initAuthCreds = (): AuthenticationCreds => {
 		identityId: randomBytes(20),
 		registered: false,
 		backupToken: randomBytes(20),
-		registration: {} as never
+		registration: {} as never,
+		pairingCode: undefined,
 	}
 }
