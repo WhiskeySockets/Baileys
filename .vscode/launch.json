@@ -1,0 +1,26 @@
+
+{
+
+    "version": "0.2.0",
+  
+    "configurations": [
+  
+        {
+  
+            "command": "npm run example",
+  
+            "name": "Run debugger",
+  
+            "request": "launch",
+  
+            "type": "node-terminal",
+
+            "env": {"argv": "--mobile"},
+  
+        }
+  
+    ]
+  
+  }
+  
+  

@@ -58,6 +58,8 @@ export type BaileysEventMap = {
     'call': WACallEvent[]
     'labels.edit': Label
     'labels.association': { association: LabelAssociation, type: 'add' | 'remove' }
+    // SDKWA-FIX
+    'deviceAgent.update': proto.SyncActionValue.IAgentAction
 }
 
 export type BufferedEventData = {
