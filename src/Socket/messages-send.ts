@@ -432,7 +432,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					if(!participant) {
 						devices.push({ user })
 						// do not send message to self if the device is 0 (mobile)
-						if (meDevice != undefined && meDevice !== 0) devices.push({ user: meUser })
+						if(meDevice !== undefined && meDevice !== 0) {
+							devices.push({ user: meUser })
+						}
 
 						const additionalDevices = await getUSyncDevices([ meId, jid ], !!useUserDevicesCache, true)
 						devices.push(...additionalDevices)
