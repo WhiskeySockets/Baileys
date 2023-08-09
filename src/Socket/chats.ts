@@ -169,9 +169,9 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	const onWhatsApp = async(...jids: string[]) => {
 		const query = { tag: 'contact', attrs: {} }
 		const list = jids.map((jid) => {
-                        // insures only 1 + is there
+			// insures only 1 + is there
 			const content = `+${jid.replace('+', '')}`
-			
+
 			return {
 				tag: 'user',
 				attrs: {},
