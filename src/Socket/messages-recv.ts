@@ -357,7 +357,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 			ev.emit('contacts.update', [{
 				id: jidNormalizedUser(node?.attrs?.jid) || ((setPicture || delPicture)?.attrs?.hash) || '',
-				imgUrl: setPicture ? 'changed' : "removed"
+				imgUrl: setPicture ? 'changed' : 'removed'
 			}])
 
 			if(isJidGroup(from)) {

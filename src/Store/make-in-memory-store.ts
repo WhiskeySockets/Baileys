@@ -170,13 +170,13 @@ export default (
 
 		ev.on('contacts.update', async updates => {
 			for(const update of updates) {
-				let contact: Contact;
+				let contact: Contact
 				if(contacts[update.id!]) {
 					contact = contacts[update.id!]
 				} else {
 					const contactHashes = await Promise.all(Object.keys(contacts).map(async a => {
-						return (await md5(Buffer.from(a + 'WA_ADD_NOTIF', 'utf8'))).toString('base64').slice(0,3)
-					}));
+						return (await md5(Buffer.from(a + 'WA_ADD_NOTIF', 'utf8'))).toString('base64').slice(0, 3)
+					}))
 					contact = contacts[contactHashes.find(a => a === update.id) || '']
 				}
 
