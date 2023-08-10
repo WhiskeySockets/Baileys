@@ -201,8 +201,9 @@ export async function mobileRegisterFetch(path: string, opts: AxiosRequestConfig
 		const parameter = [] as string[]
 
 		for(const param in opts.params) {
-			if (opts.params[param] == null) continue;
-			parameter.push(param + '=' + urlencode(opts.params[param]))
+			if(opts.params[param] !== null && opts.params[param] !== undefined) {
+				parameter.push(param + '=' + urlencode(opts.params[param]))
+			}
 		}
 
 		url += `?${parameter.join('&')}`
