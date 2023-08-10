@@ -4,7 +4,7 @@ import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { DEFAULT_CONNECTION_CONFIG } from '../Defaults'
 import type makeMDSocket from '../Socket'
-import type { BaileysEventEmitter, Chat, ConnectionState, Contact, GroupMetadata, PresenceData, WAMessage, WAMessageCursor, WAMessageKey } from '../Types'
+import type { BaileysEventEmitter, Chat, ConnectionState, Contact, GroupMetadata, PresenceData, WAMessage, WAMessageCursor, WAMessageKey, WASocket } from '../Types'
 import { Label } from '../Types/Label'
 import { LabelAssociation, LabelAssociationType, MessageLabelAssociation } from '../Types/LabelAssociation'
 import { toNumber, updateMessageWithReaction, updateMessageWithReceipt, md5 } from '../Utils'
@@ -30,6 +30,7 @@ export type BaileysInMemoryStoreConfig = {
 	chatKey?: Comparable<Chat, string>
 	labelAssociationKey?: Comparable<LabelAssociation, string>
 	logger?: Logger
+	socket?: WASocket
 }
 
 const makeMessagesDictionary = () => makeOrderedDictionary(waMessageID)
@@ -73,7 +74,7 @@ const predefinedLabels = Object.freeze<Record<string, Label>>({
 })
 
 export default (
-	{ logger: _logger, chatKey, labelAssociationKey }: BaileysInMemoryStoreConfig
+	{ logger: _logger, chatKey, labelAssociationKey, socket }: BaileysInMemoryStoreConfig
 ) => {
 	// const logger = _logger || DEFAULT_CONNECTION_CONFIG.logger.child({ stream: 'in-mem-store' })
 	chatKey = chatKey || waChatKey(true)
@@ -181,7 +182,7 @@ export default (
 				if(update.imgUrl === "changed" || update.imgUrl === "removed") {
 					if(contact) {
 						if(update.imgUrl === "changed") {
-							contact.imgUrl = await sock?.profilePictureUrl(contact.id);
+							contact.imgUrl = socket ? await socket?.profilePictureUrl(contact.id) : undefined;
 						} else {
 							delete contact.imgUrl;
 						}
