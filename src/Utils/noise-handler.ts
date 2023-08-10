@@ -1,8 +1,7 @@
 import { Boom } from '@hapi/boom'
-import { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { NOISE_MODE, WA_CERT_DETAILS } from '../Defaults'
-import { KeyPair } from '../Types'
+import { Logger, KeyPair } from '../Types'
 import { BinaryNode, decodeBinaryNode } from '../WABinary'
 import { aesDecryptGCM, aesEncryptGCM, Curve, hkdf, sha256 } from './crypto'
 

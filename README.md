@@ -113,7 +113,7 @@ type SocketConfig = {
     keepAliveIntervalMs: number
     /** proxy agent */
 	agent?: Agent
-    /** pino logger */
+    /** logger (e.g. pino) */
 	logger: Logger
     /** version to connect with */
     version: WAVersion

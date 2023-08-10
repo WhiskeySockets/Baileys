@@ -1,7 +1,6 @@
 import { Boom } from '@hapi/boom'
-import { Logger } from 'pino'
 import { proto } from '../../WAProto'
-import { SignalRepository, WAMessageKey } from '../Types'
+import { Logger, SignalRepository, WAMessageKey } from '../Types'
 import { areJidsSameUser, BinaryNode, isJidBroadcast, isJidGroup, isJidStatusBroadcast, isJidUser } from '../WABinary'
 import { unpadRandomMax16 } from './generics'
 

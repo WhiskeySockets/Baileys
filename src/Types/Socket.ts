@@ -1,7 +1,7 @@
 
 import { AxiosRequestConfig } from 'axios'
 import type { Agent } from 'https'
-import type { Logger } from 'pino'
+import type { Logger } from './Logger'
 import type { URL } from 'url'
 import { proto } from '../../WAProto'
 import { AuthenticationState, SignalAuthState, TransactionCapabilityOptions } from './Auth'
@@ -35,7 +35,7 @@ export type SocketConfig = {
 	mobile?: boolean
     /** proxy agent */
     agent?: Agent
-    /** pino logger */
+    /** logger (e.g. pino) */
     logger: Logger
     /** version to connect with */
     version: WAVersion

@@ -2,10 +2,10 @@ import { Boom } from '@hapi/boom'
 import axios from 'axios'
 import { randomBytes } from 'crypto'
 import { promises as fs } from 'fs'
-import { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { MEDIA_KEYS, URL_EXCLUDE_REGEX, URL_REGEX, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import {
+  Logger,
 	AnyMediaMessageContent,
 	AnyMessageContent,
 	DownloadableMessage,

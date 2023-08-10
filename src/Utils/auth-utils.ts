@@ -1,9 +1,8 @@
 import { randomBytes } from 'crypto'
 import NodeCache from 'node-cache'
-import type { Logger } from 'pino'
 import { v4 as uuidv4 } from 'uuid'
 import { DEFAULT_CACHE_TTLS } from '../Defaults'
-import type { AuthenticationCreds, CacheStore, SignalDataSet, SignalDataTypeMap, SignalKeyStore, SignalKeyStoreWithTransaction, TransactionCapabilityOptions } from '../Types'
+import type { Logger, AuthenticationCreds, CacheStore, SignalDataSet, SignalDataTypeMap, SignalKeyStore, SignalKeyStoreWithTransaction, TransactionCapabilityOptions } from '../Types'
 import { Curve, signedKeyPair } from './crypto'
 import { delay, generateRegistrationId } from './generics'
 

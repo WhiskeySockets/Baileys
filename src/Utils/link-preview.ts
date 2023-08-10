@@ -1,6 +1,5 @@
 import { AxiosRequestConfig } from 'axios'
-import { Logger } from 'pino'
-import { WAMediaUploadFunction, WAUrlInfo } from '../Types'
+import { Logger, WAMediaUploadFunction, WAUrlInfo } from '../Types'
 import { prepareWAMessageMedia } from './messages'
 import { extractImageThumb, getHttpStream } from './messages-media'
 

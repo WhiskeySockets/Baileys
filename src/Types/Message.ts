@@ -1,5 +1,5 @@
 import { AxiosRequestConfig } from 'axios'
-import type { Logger } from 'pino'
+import type { Logger } from './Logger'
 import type { Readable } from 'stream'
 import type { URL } from 'url'
 import { proto } from '../../WAProto'

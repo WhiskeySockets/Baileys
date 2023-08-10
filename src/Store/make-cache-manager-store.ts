@@ -1,10 +1,10 @@
 import { caching, Store } from 'cache-manager'
 import { proto } from '../../WAProto'
-import { AuthenticationCreds } from '../Types'
+import { AuthenticationCreds, Logger } from '../Types'
 import { BufferJSON, initAuthCreds } from '../Utils'
-import logger from '../Utils/logger'
+import defaultLogger from '../Utils/logger'
 
-const makeCacheManagerAuthState = async(store: Store, sessionKey: string) => {
+const makeCacheManagerAuthState = async(store: Store, sessionKey: string, logger: Logger = defaultLogger) => {
 	const defaultKey = (file: string): string => `${sessionKey}:${file}`
 
 	const databaseConn = await caching(store)
