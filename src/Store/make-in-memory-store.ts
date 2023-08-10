@@ -4,7 +4,7 @@ import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { DEFAULT_CONNECTION_CONFIG } from '../Defaults'
 import type makeMDSocket from '../Socket'
-import type { BaileysEventEmitter, Chat, ConnectionState, Contact, GroupMetadata, PresenceData, WAMessage, WAMessageCursor, WAMessageKey, WASocket } from '../Types'
+import type { BaileysEventEmitter, Chat, ConnectionState, Contact, GroupMetadata, PresenceData, WAMessage, WAMessageCursor, WAMessageKey } from '../Types'
 import { Label } from '../Types/Label'
 import { LabelAssociation, LabelAssociationType, MessageLabelAssociation } from '../Types/LabelAssociation'
 import { toNumber, updateMessageWithReaction, updateMessageWithReceipt, md5 } from '../Utils'
@@ -177,7 +177,7 @@ export default (
 					const contactHashes = await Promise.all(Object.keys(contacts).map(async a => {
 						return (await md5(Buffer.from(a + "WA_ADD_NOTIF", "utf8"))).toString("base64").slice(0,3)
 					}));
-					contact = contactHashes.find(a => a === update.id);				
+					contact = contacts[contactHashes.find(a => a === update.id)];				
 				}
 				if(update.imgUrl === "changed" || update.imgUrl === "removed") {
 					if(contact) {
