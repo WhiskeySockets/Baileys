@@ -177,7 +177,7 @@ export default (
 					const contactHashes = await Promise.all(Object.keys(contacts).map(async a => {
 						return (await md5(Buffer.from(a + "WA_ADD_NOTIF", "utf8"))).toString("base64").slice(0,3)
 					}));
-					contact = contacts[contactHashes.find(a => a === update.id)];				
+					contact = contacts[contactHashes.find(a => a === update.id) || ""];				
 				}
 				if(update.imgUrl === "changed" || update.imgUrl === "removed") {
 					if(contact) {
