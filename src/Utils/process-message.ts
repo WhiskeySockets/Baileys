@@ -362,7 +362,7 @@ const processMessage = async(
 								{
 									pollUpdateMessageKey: message.key,
 									vote: voteMsg,
-									senderTimestampMs: message.messageTimestamp,
+									senderTimestampMs: content.pollUpdateMessage.senderTimestampMs,
 								}
 							]
 						}
