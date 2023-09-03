@@ -287,6 +287,8 @@ const STATUS_MAP: { [_: string]: proto.WebMessageInfo.Status } = {
 	'read': proto.WebMessageInfo.Status.READ,
 	'read-self': proto.WebMessageInfo.Status.READ,
 	'sender': proto.WebMessageInfo.Status.DELIVERY_ACK
+	'read-self': proto.WebMessageInfo.Status.READ,
+	'sender': proto.WebMessageInfo.Status.DELIVERY_ACK
 }
 /**
  * Given a type of receipt, returns what the new status of the message should be
