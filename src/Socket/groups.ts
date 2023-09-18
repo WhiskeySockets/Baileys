@@ -63,6 +63,29 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 			}
 		}
 
+		const groups = getBinaryNodeChildren(groupsChild, 'group')
+
+		for (const metadata in data) {
+				const group = data[metadata];
+
+				if (group.isCommunity) {
+						group.communityGroups = [];
+						for (const _group of groups) {
+								const linkedParent = getBinaryNodeChild(_group, 'linked_parent');
+								if (linkedParent && linkedParent.attrs.jid === group.id ) {
+										const linkedGroupId = _group.attrs.id.includes('@') ? _group.attrs.id : jidEncode(_group.attrs.id, 'g.us');
+										group.communityGroups?.push({
+												name: _group.attrs.subject,
+												jid: linkedGroupId,
+												isAnnouncement: !!getBinaryNodeChild(_group, 'default_sub_group'),
+										});
+								}
+						}
+				}
+
+				data[metadata] = group;
+		}
+
 		sock.ev.emit('groups.update', Object.values(data))
 
 		return data
@@ -318,12 +341,16 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 
 	const groupId = group.attrs.id.includes('@') ? group.attrs.id : jidEncode(group.attrs.id, 'g.us')
 	const eph = getBinaryNodeChild(group, 'ephemeral')?.attrs.expiration
+
+	const isCommunity = !!getBinaryNodeChild(group, 'parent');
+
 	const metadata: GroupMetadata = {
 		id: groupId,
 		subject: group.attrs.subject,
 		subjectOwner: group.attrs.s_o,
 		subjectTime: +group.attrs.s_t,
 		size: +group.attrs.size,
+		isCommunity,
 		creation: +group.attrs.creation,
 		owner: group.attrs.creator ? jidNormalizedUser(group.attrs.creator) : undefined,
 		desc,

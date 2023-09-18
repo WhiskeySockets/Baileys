@@ -16,6 +16,15 @@ export interface GroupMetadata {
     desc?: string
     descOwner?: string
     descId?: string
+    /** whether the group is a community or not */
+    isCommunity?: boolean
+    /** list of community groups */
+    communityGroups?: {
+        name: string
+        jid: string
+        /** is set when the group is the community's default group */
+        isAnnouncement: boolean
+    }[]
     /** is set when the group only allows admins to change group settings */
     restrict?: boolean
     /** is set when the group only allows admins to write messages */
