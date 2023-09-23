@@ -1,5 +1,6 @@
 import { mkdir, readFile, stat, unlink, writeFile } from 'fs/promises'
 import { join } from 'path'
+import { rmSync } from 'fs'
 import { proto } from '../../WAProto'
 import { AuthenticationCreds, AuthenticationState, SignalDataTypeMap } from '../Types'
 import { initAuthCreds } from './auth-utils'
@@ -85,6 +86,9 @@ export const useMultiFileAuthState = async(folder: string): Promise<{ state: Aut
 		},
 		saveCreds: () => {
 			return writeData(creds, 'creds.json')
-		}
+		},
+	        clearCreds: async () => {
+                        await rmSync(folder, { recursive: true, force: true });
+	        }
 	}
 }
