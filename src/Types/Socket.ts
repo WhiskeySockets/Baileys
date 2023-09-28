@@ -116,5 +116,6 @@ export type SocketConfig = {
 
     makeSignalRepository: (auth: SignalAuthState) => SignalRepository
 
-    socket: any
+    /** Socket passthrough */
+    socket?: any
 }
