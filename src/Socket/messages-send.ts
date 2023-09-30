@@ -312,7 +312,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const statusJid = 'status@broadcast'
 		const isGroup = server === 'g.us'
 		const isStatus = jid === statusJid
-		const isLid = server === "lid"
+		const isLid = server === 'lid'
 
 		msgId = msgId || generateMessageID()
 		useUserDevicesCache = useUserDevicesCache !== false
