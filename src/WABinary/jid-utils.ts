@@ -4,7 +4,7 @@ export const SERVER_JID = 'server@c.us'
 export const PSA_WID = '0@c.us'
 export const STORIES_JID = 'status@broadcast'
 
-export type JidServer = 'c.us' | 'g.us' | 'broadcast' | 's.whatsapp.net' | 'call'
+export type JidServer = 'c.us' | 'g.us' | 'broadcast' | 's.whatsapp.net' | 'call' | 'lid'
 
 export type JidWithDevice = {
     user: string
