@@ -2,7 +2,7 @@ import { Boom } from '@hapi/boom'
 import { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { SignalRepository, WAMessageKey } from '../Types'
-import { areJidsSameUser, BinaryNode, isJidBroadcast, isJidGroup, isJidStatusBroadcast, isJidUser } from '../WABinary'
+import { areJidsSameUser, BinaryNode, isJidBroadcast, isJidGroup, isJidStatusBroadcast, isJidUser, isLidUser } from '../WABinary'
 import { unpadRandomMax16 } from './generics'
 
 const NO_MESSAGE_FOUND_ERROR_TEXT = 'Message absent from node'
@@ -29,6 +29,19 @@ export function decodeMessageNode(
 	const isMe = (jid: string) => areJidsSameUser(jid, meId)
 
 	if(isJidUser(from)) {
+		if(recipient) {
+			if(!isMe(from)) {
+				throw new Boom('receipient present, but msg not from me', { data: stanza })
+			}
+
+			chatId = recipient
+		} else {
+			chatId = from
+		}
+
+		msgType = 'chat'
+		author = from
+	} else if (isLidUser(from)) {
 		if(recipient) {
 			if(!isMe(from)) {
 				throw new Boom('receipient present, but msg not from me', { data: stanza })
