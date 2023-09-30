@@ -41,7 +41,7 @@ export function decodeMessageNode(
 
 		msgType = 'chat'
 		author = from
-	} else if (isLidUser(from)) {
+	} else if(isLidUser(from)) {
 		if(recipient) {
 			if(!isMe(from)) {
 				throw new Boom('receipient present, but msg not from me', { data: stanza })
