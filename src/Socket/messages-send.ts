@@ -304,8 +304,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		message: proto.IMessage,
 		{ messageId: msgId, participant, additionalAttributes, useUserDevicesCache, cachedGroupMetadata, statusJidList }: MessageRelayOptions
 	) => {
-		const meId = authState.creds.me!.id
-
 		let shouldIncludeDeviceIdentity = false
 
 		const { user, server } = jidDecode(jid)!
@@ -313,6 +311,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const isGroup = server === 'g.us'
 		const isStatus = jid === statusJid
 		const isLid = server === 'lid'
+		const meId = authState.creds.me![isLid ? 'lid' : 'id']!
 
 		msgId = msgId || generateMessageID()
 		useUserDevicesCache = useUserDevicesCache !== false
@@ -378,7 +377,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						devices.push(...additionalDevices)
 					}
 
-					const patched = await patchMessageBeforeSending(message, devices.map(d => jidEncode(d.user, sock.user?.id?.includes?.(d.user) ? 'lid' : 's.whatsapp.net', d.device)))
+					const patched = await patchMessageBeforeSending(message, devices.map(d => jidEncode(d.user, isLid ? 'lid' : 's.whatsapp.net', d.device)))
 					const bytes = encodeWAMessage(patched)
 
 					const { ciphertext, senderKeyDistributionMessage } = await signalRepository.encryptGroupMessage(
