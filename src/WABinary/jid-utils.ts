@@ -30,12 +30,12 @@ export const jidDecode = (jid: string | undefined): FullJid | undefined => {
 	const userCombined = jid!.slice(0, sepIdx)
 
 	const [userAgent, device] = userCombined.split(':')
-	const [user, agent] = userAgent.split('_')
+	const user = userAgent.split('_')[0]
 
 	return {
 		server,
 		user,
-		agent: agent ? +agent : undefined,
+		domainType: server == "lid" ? 1 : 0,
 		device: device ? +device : undefined
 	}
 }
