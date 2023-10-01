@@ -623,7 +623,8 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 	})
 	// login complete
-	ws.on('CB:success', async() => {
+	ws.on('CB:success', async (node) => {
+		console.log(node.attrs) // temporary log, don't merge before removing
 		await uploadPreKeysToServerIfRequired()
 		await sendPassiveIq('active')
 
