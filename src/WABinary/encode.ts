@@ -53,7 +53,7 @@ export const encodeBinaryNode = (
 	}
 
 	const writeJid = ({ domainType, device, user, server }: FullJid) => {
-		if(typeof agent !== 'undefined' || typeof device !== 'undefined') {
+		if(typeof domainType !== 'undefined' || typeof device !== 'undefined') {
 			pushByte(TAGS.AD_JID)
 			pushByte(domainType || 0)
 			pushByte(device || 0)
