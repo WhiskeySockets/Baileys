@@ -304,6 +304,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		message: proto.IMessage,
 		{ messageId: msgId, participant, additionalAttributes, useUserDevicesCache, cachedGroupMetadata, statusJidList }: MessageRelayOptions
 	) => {
+		const meId = authState.creds.me!.id
+
 		let shouldIncludeDeviceIdentity = false
 
 		const { user, server } = jidDecode(jid)!
@@ -311,7 +313,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const isGroup = server === 'g.us'
 		const isStatus = jid === statusJid
 		const isLid = server === 'lid'
-		const meId = authState.creds.me!.id
 
 		msgId = msgId || generateMessageID()
 		useUserDevicesCache = useUserDevicesCache !== false

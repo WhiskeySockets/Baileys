@@ -660,6 +660,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			signalRepository,
 			logger,
 		)
+
+		if(msg.message?.protocolMessage?.type === proto.Message.ProtocolMessage.Type.SHARE_PHONE_NUMBER) {
+			if(node.attrs.sender_pn) {
+				ev.emit('chats.phoneNumberShare', { lid: node.attrs.from, jid: node.attrs.sender_pn })
+			}
+		}
+
 		if(shouldIgnoreJid(msg.key.remoteJid!)) {
 			logger.debug({ key: msg.key }, 'ignored message')
 			await sendMessageAck(node)
