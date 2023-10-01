@@ -311,7 +311,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const isGroup = server === 'g.us'
 		const isStatus = jid === statusJid
 		const isLid = server === 'lid'
-		const meId = authState.creds.me![isLid ? 'lid' : 'id']!
+		const meId = authState.creds.me!.id
 
 		msgId = msgId || generateMessageID()
 		useUserDevicesCache = useUserDevicesCache !== false
