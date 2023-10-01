@@ -391,8 +391,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					const senderKeyJids: string[] = []
 					// ensure a connection is established with every device
-					for(const { user, device,domainType } of devices) {
-						const jid = jidEncode(user, domainType == 0 ? 's.whatsapp.net' : 'lid', device)
+					for(const { user, device } of devices) {
+						const jid = jidEncode(user, isLid ? 'lid' : 's.whatsapp.net', device)
 						if(!senderKeyMap[jid] || !!participant) {
 							senderKeyJids.push(jid)
 							// store that this person has had the sender keys sent to them
@@ -445,7 +445,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					const meJids: string[] = []
 					const otherJids: string[] = []
 					for(const { user, device,domainType } of devices) {
-						const jid = jidEncode(user, domainType == 0 ?'s.whatsapp.net' : 'lid', device)
+						const jid = jidEncode(user, isLid ? 'lid' : 's.whatsapp.net', device)
 						const isMe = user === meUser
 						if(isMe) {
 							meJids.push(jid)
