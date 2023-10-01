@@ -378,7 +378,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						devices.push(...additionalDevices)
 					}
 
-					const patched = await patchMessageBeforeSending(message, devices.map(d => jidEncode(d.user, 's.whatsapp.net', d.device)))
+					const patched = await patchMessageBeforeSending(message, devices.map(d => jidEncode(d.user, d.domainType == 0 ? 's.whatsapp.net' : 'lid', d.device)))
 					const bytes = encodeWAMessage(patched)
 
 					const { ciphertext, senderKeyDistributionMessage } = await signalRepository.encryptGroupMessage(
@@ -391,8 +391,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					const senderKeyJids: string[] = []
 					// ensure a connection is established with every device
-					for(const { user, device } of devices) {
-						const jid = jidEncode(user, 's.whatsapp.net', device)
+					for(const { user, device,domainType } of devices) {
+						const jid = jidEncode(user, domainType == 0 ? 's.whatsapp.net' : 'lid', device)
 						if(!senderKeyMap[jid] || !!participant) {
 							senderKeyJids.push(jid)
 							// store that this person has had the sender keys sent to them
@@ -444,8 +444,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					const allJids: string[] = []
 					const meJids: string[] = []
 					const otherJids: string[] = []
-					for(const { user, device } of devices) {
-						const jid = jidEncode(user, 's.whatsapp.net', device)
+					for(const { user, device,domainType } of devices) {
+						const jid = jidEncode(user, domainType == 0 ?'s.whatsapp.net' : 'lid', device)
 						const isMe = user === meUser
 						if(isMe) {
 							meJids.push(jid)
