@@ -35,7 +35,7 @@ export const jidDecode = (jid: string | undefined): FullJid | undefined => {
 	return {
 		server,
 		user,
-		domainType: server == "lid" ? 1 : 0,
+		domainType: server === 'lid' ? 1 : 0,
 		device: device ? +device : undefined
 	}
 }
