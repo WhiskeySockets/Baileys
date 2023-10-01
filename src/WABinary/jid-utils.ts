@@ -13,7 +13,7 @@ export type JidWithDevice = {
 
 export type FullJid = JidWithDevice & {
 	server: JidServer | string
-	agent?: number
+	domainType?: number
 }
 
 export const jidEncode = (user: string | number | null, server: JidServer, device?: number, agent?: number) => {
