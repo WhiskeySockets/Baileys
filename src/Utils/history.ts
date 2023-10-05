@@ -52,8 +52,8 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 				messages.push(message)
 
 				if(!chat.messages?.length) {
-					// keep only the most recent message in the chat array
-					chat.messages = [{ message }]
+					//Keep only the last message in the chat.
+					chat.messages = { message }
 				}
 
 				if(!message.key.fromMe && !chat.lastMessageRecvTimestamp) {
