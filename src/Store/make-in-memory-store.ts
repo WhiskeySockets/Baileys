@@ -35,39 +35,39 @@ export type BaileysInMemoryStoreConfig = {
 const makeMessagesDictionary = () => makeOrderedDictionary(waMessageID)
 
 const predefinedLabels = Object.freeze<Record<string, Label>>({
-	'0': {
-		id: '0',
-		name: 'New customer',
-		predefinedId: '0',
-		color: 0,
-		deleted: false
-	},
 	'1': {
 		id: '1',
-		name: 'New order',
+		name: 'New customer',
 		predefinedId: '1',
 		color: 1,
 		deleted: false
 	},
 	'2': {
 		id: '2',
-		name: 'Pending payment',
+		name: 'New order',
 		predefinedId: '2',
 		color: 2,
 		deleted: false
 	},
 	'3': {
 		id: '3',
-		name: 'Paid',
+		name: 'Pending payment',
 		predefinedId: '3',
 		color: 3,
 		deleted: false
 	},
 	'4': {
 		id: '4',
-		name: 'Order completed',
+		name: 'Paid',
 		predefinedId: '4',
 		color: 4,
+		deleted: false
+	},
+	'5': {
+		id: '5',
+		name: 'Order completed',
+		predefinedId: '5',
+		color: 5,
 		deleted: false
 	}
 })
