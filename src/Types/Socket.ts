@@ -85,8 +85,8 @@ export type SocketConfig = {
     generateHighQualityLinkPreview: boolean
 
     /** cached group metadata, use to prevent redundant requests to WA & speed up msg sending */
-    useCachedGroupMetadata: boolean
-    cachedGroupMetadata: CacheStore
+    useCachedGroupMetadata?: boolean
+    cachedGroupMetadata?: CacheStore
 
     /**
      * Returns if a jid should be ignored,
