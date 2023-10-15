@@ -72,6 +72,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	linkPreviewImageThumbnailWidth: 192,
 	transactionOpts: { maxCommitRetries: 10, delayBetweenTriesMs: 3000 },
 	generateHighQualityLinkPreview: false,
+	useCachedGroupMetadata: true,
 	options: { },
 	appStateMacVerification: {
 		patch: false,
