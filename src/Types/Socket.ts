@@ -1,4 +1,3 @@
-
 import { AxiosRequestConfig } from 'axios'
 import type { Agent } from 'https'
 import type { Logger } from 'pino'
@@ -6,10 +5,15 @@ import type { URL } from 'url'
 import { proto } from '../../WAProto'
 import { AuthenticationState, SignalAuthState, TransactionCapabilityOptions } from './Auth'
 import { MediaConnInfo } from './Message'
-import { SignalRepository } from './Signal'
+import { MediaConnInfo } from './Message'
+import { GroupParticipant } from './GroupMetadata'
 
 export type WAVersion = [number, number, number]
 export type WABrowserDescription = [string, string, string]
+export type cachedGroupMetadata = {
+	/** get a cached participants */
+	participants: GroupParticipant[]
+}
 
 export type CacheStore = {
     /** get a cached key and change the stats */
@@ -86,7 +90,7 @@ export type SocketConfig = {
 
     /** cached group metadata, use to prevent redundant requests to WA & speed up msg sending */
     useCachedGroupMetadata?: boolean
-    cachedGroupMetadata?: CacheStore
+    cachedGroupMetadata?: cachedGroupMetadata
 
     /**
      * Returns if a jid should be ignored,
