@@ -38,6 +38,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		useClones: false
 	})
 
+	const cachedGroupMetadata = config.cachedGroupMetadata || config.useCachedGroupMetadata ? new NodeCache({
+		stdTTL: 0, // infinite
+		useClones: false
+	}) : undefined
+
 	let mediaConn: Promise<MediaConnInfo>
 	const refreshMediaConn = async(forceGet = false) => {
 		const media = await mediaConn
@@ -302,7 +307,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	const relayMessage = async(
 		jid: string,
 		message: proto.IMessage,
-		{ messageId: msgId, participant, additionalAttributes, useUserDevicesCache, cachedGroupMetadata, statusJidList }: MessageRelayOptions
+		{ messageId: msgId, participant, additionalAttributes, useUserDevicesCache, statusJidList }: MessageRelayOptions
 	) => {
 		const meId = authState.creds.me!.id
 
@@ -346,7 +351,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				if(isGroup || isStatus) {
 					const [groupData, senderKeyMap] = await Promise.all([
 						(async() => {
-							let groupData = cachedGroupMetadata ? await cachedGroupMetadata(jid) : undefined
+							let groupData = cachedGroupMetadata ? cachedGroupMetadata.get(jid) : undefined
 							if(groupData) {
 								logger.trace({ jid, participants: groupData.participants.length }, 'using cached group metadata')
 							}
@@ -756,7 +761,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					additionalAttributes.edit = '1'
 				}
 
-				await relayMessage(jid, fullMsg.message!, { messageId: fullMsg.key.id!, cachedGroupMetadata: options.cachedGroupMetadata, additionalAttributes, statusJidList: options.statusJidList })
+				await relayMessage(jid, fullMsg.message!, { messageId: fullMsg.key.id!, additionalAttributes, statusJidList: options.statusJidList })
 				if(config.emitOwnEvents) {
 					process.nextTick(() => {
 						processingMutex.mutex(() => (
