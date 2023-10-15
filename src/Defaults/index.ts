@@ -73,6 +73,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	transactionOpts: { maxCommitRetries: 10, delayBetweenTriesMs: 3000 },
 	generateHighQualityLinkPreview: false,
 	useCachedGroupMetadata: true,
+	cachedGroupMetadata: cachedGroupMetadata as SocketConfig,
 	options: { },
 	appStateMacVerification: {
 		patch: false,
