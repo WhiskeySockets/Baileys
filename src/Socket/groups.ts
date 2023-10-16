@@ -331,7 +331,7 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 		descId,
 		restrict: !!getBinaryNodeChild(group, 'locked'),
 		announce: !!getBinaryNodeChild(group, 'announcement'),
-		isCommunity: !!getBinaryNodeChild(group, 'parent'),
+		isCommunity: !!getBinaryNodeChild(group, 'linked_parent'),
 		isCommunityAnnounce: !!getBinaryNodeChild(group, 'default_sub_group'),
 		memberAddMode,
 		participants: getBinaryNodeChildren(group, 'participant').map(
