@@ -101,7 +101,7 @@ Run the [example](Example/example.ts) file with ``--mobile`` cli flag to use the
 
 Here is another example of a connection with pairing code
 
-Run the [simplified-example](Example/pairingCodeConnectionExample.js) with the ``--use-pairing-code flag``
+Run the [simplified-example](Example/pairingCodeConnectionExample.js) with the ``--use-pairing-code` flag
 
 
 ## Configuring the Connection
