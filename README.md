@@ -99,6 +99,11 @@ Baileys also supports the native mobile API, which allows users to authenticate 
 
 Run the [example](Example/example.ts) file with ``--mobile`` cli flag to use the native mobile API.
 
+Here is another example of a connection with pairing code
+
+Run the [simplified-example](Example/pairingCodeConnectionExample.js) with the ``--use-pairing-code flag``
+
+
 ## Configuring the Connection
 
 You can configure the connection by passing a `SocketConfig` object.
