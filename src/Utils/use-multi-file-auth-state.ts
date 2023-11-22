@@ -1,4 +1,5 @@
-import { mkdir, readFile, stat, unlink, writeFile } from 'fs/promises'
+import { mkdir, stat, unlink } from 'fs/promises'
+import {createReadStream, createWriteStream} from 'fs'
 import { join } from 'path'
 import { proto } from '../../WAProto'
 import { AuthenticationCreds, AuthenticationState, SignalDataTypeMap } from '../Types'
@@ -14,18 +15,41 @@ import { BufferJSON } from './generics'
  * */
 export const useMultiFileAuthState = async(folder: string): Promise<{ state: AuthenticationState, saveCreds: () => Promise<void> }> => {
 
-	const writeData = (data: any, file: string) => {
-		return writeFile(join(folder, fixFileName(file)!), JSON.stringify(data, BufferJSON.replacer))
-	}
-
-	const readData = async(file: string) => {
+	
+	const writeData = async (data: any, file: string) => {
+		const filePath = join(folder, fixFileName(file)!);
+		return new Promise<void>((resolve, reject) => {
+		  const writeStream = createWriteStream(filePath);
+		  writeStream.on('error', reject);
+		  writeStream.on('finish', resolve);
+		  writeStream.write(JSON.stringify(data, BufferJSON.replacer));
+		  writeStream.end();
+		});
+	  };
+	  
+	
+	  const readData = async (file: string) => {
 		try {
-			const data = await readFile(join(folder, fixFileName(file)!), { encoding: 'utf-8' })
-			return JSON.parse(data, BufferJSON.reviver)
-		} catch(error) {
-			return null
+		  const filePath = join(folder, fixFileName(file)!);
+		  const fileExists = await stat(filePath).catch(() => null);
+		  if(!fileExists) return null
+		  return new Promise<any>((resolve, reject) => {
+			const readStream = createReadStream(filePath, { encoding: 'utf-8' });
+			let data = '';
+			readStream.on('data', (chunk) => {
+			  data += chunk;
+			});
+			readStream.on('end', () => {
+			  resolve(JSON.parse(data, BufferJSON.reviver));
+			});
+			readStream.on('error', (error) => {
+			  reject(error);
+			});
+		  });
+		} catch (error) {
+		  return null;
 		}
-	}
+	  };
 
 	const removeData = async(file: string) => {
 		try {
