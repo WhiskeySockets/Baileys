@@ -1,7 +1,7 @@
 import { Boom } from '@hapi/boom'
 import NodeCache from 'node-cache'
 import readline from 'readline'
-import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, getAggregateVotesInPollMessage, makeCacheableSignalKeyStore, makeInMemoryStore, PHONENUMBER_MCC, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
+import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, getAggregateVotesInPollMessage, makeCacheableSignalKeyStore, makeInMemoryStore, PHONENUMBER_MCC, proto, useMultiFileAuthState, useMongoDBAuthState, WAMessageContent, WAMessageKey } from '../src'
 import MAIN_LOGGER from '../src/Utils/logger'
 import open from 'open'
 import fs from 'fs'
@@ -33,7 +33,25 @@ setInterval(() => {
 
 // start a connection
 const startSock = async() => {
-	const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info')
+
+	/**
+	 * @mongodb
+	 * if you want to store the authentication data in mongodb
+	 */
+	const { state, saveCreds } = await useMongoDBAuthState({
+		mongodbUri:'mongodb://admin:admin@localhost:27017/',
+		databaseName:'wappi',
+		collectionName:'creds',
+		sessionId: 'client-01'
+	})
+	
+	/**
+	 * @json
+	 * if you want to store the authentication data in a json file
+	 * 
+	 * const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info')
+	 */
+	
 	// fetch latest version of WA Web
 	const { version, isLatest } = await fetchLatestBaileysVersion()
 	console.log(`using WA v${version.join('.')}, isLatest: ${isLatest}`)
