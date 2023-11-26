@@ -109,3 +109,11 @@ export type AuthenticationState = {
     creds: AuthenticationCreds
     keys: SignalKeyStore
 }
+
+export type MySQLConfig = {
+    session?: string
+    host?: string
+    user?: string
+    password?: string
+    database?: string
+}
