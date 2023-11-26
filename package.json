@@ -55,6 +55,7 @@
     "pino": "^7.0.0",
     "protobufjs": "^6.11.3",
     "uuid": "^9.0.0",
+    "mysql2": "^3.3.5",
     "ws": "^8.13.0"
   },
   "devDependencies": {
