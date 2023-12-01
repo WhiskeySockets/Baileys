@@ -392,14 +392,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						},
 					}
 				})
-			} else if (child.tag === 'blocklist') {
+			} else if(child.tag === 'blocklist') {
 				const blocklists = getBinaryNodeChildren(child, 'item')
 
 				for(const { attrs } of blocklists) {
-						const blocklist = [attrs.jid]
-						const type = (attrs.action === 'block') ? 'add' : 'remove'
-
-						ev.emit('blocklist.update', { blocklist, type })
+					const blocklist = [attrs.jid]
+					const type = (attrs.action === 'block') ? 'add' : 'remove'
+					ev.emit('blocklist.update', { blocklist, type })
 				}
 		}
 
