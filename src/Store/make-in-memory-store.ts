@@ -11,6 +11,7 @@ import { toNumber, updateMessageWithReaction, updateMessageWithReceipt } from '.
 import { jidNormalizedUser } from '../WABinary'
 import makeOrderedDictionary from './make-ordered-dictionary'
 import { ObjectRepository } from './object-repository'
+import { createReadStream, createWriteStream, existsSync } from 'fs'
 
 type WASocket = ReturnType<typeof makeMDSocket>
 
@@ -479,19 +480,32 @@ export default (
 		toJSON,
 		fromJSON,
 		writeToFile: (path: string) => {
-			// require fs here so that in case "fs" is not available -- the app does not crash
-			const { writeFileSync } = require('fs')
-			writeFileSync(path, JSON.stringify(toJSON()))
+			return new Promise<void>((resolve, reject) => {
+				const writeStream = createWriteStream(path);
+				writeStream.on('error', reject);
+				writeStream.on('finish', resolve);
+				writeStream.write(JSON.stringify(toJSON()));
+				writeStream.end();
+			  });
 		},
 		readFromFile: (path: string) => {
-			// require fs here so that in case "fs" is not available -- the app does not crash
-			const { readFileSync, existsSync } = require('fs')
-			if(existsSync(path)) {
-				logger.debug({ path }, 'reading from file')
-				const jsonStr = readFileSync(path, { encoding: 'utf-8' })
-				const json = JSON.parse(jsonStr)
-				fromJSON(json)
-			}
+			return new Promise<any>((resolve, reject) => {
+				if(existsSync(path)){
+					logger.debug({ path }, 'reading from file')
+					const jsonStr = createReadStream(path, { encoding: 'utf-8' });
+					let data = '';
+					jsonStr.on('data', (chunk) => {
+					  data += chunk;
+					});
+					jsonStr.on('end', () => {
+						const json = JSON.parse(data);
+						resolve( fromJSON(json))
+					});
+					jsonStr.on('error', (error) => {
+					  reject(error);
+					});
+				}
+			  });
 		}
 	}
 }
