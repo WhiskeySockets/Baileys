@@ -400,7 +400,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					const type = (attrs.action === 'block') ? 'add' : 'remove'
 					ev.emit('blocklist.update', { blocklist, type })
 				}
-		}
+			}
 
 			break
 		case 'link_code_companion_reg':
