@@ -160,6 +160,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 		}
 
+		if (users.length === 0) return deviceResults
+
 		const iq: BinaryNode = {
 			tag: 'iq',
 			attrs: {

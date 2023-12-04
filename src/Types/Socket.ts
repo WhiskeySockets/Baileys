@@ -13,13 +13,13 @@ export type WABrowserDescription = [string, string, string]
 
 export type CacheStore = {
     /** get a cached key and change the stats */
-    get<T>(key: string): T | undefined
+    get<T>(key: string): T | Promise<T> | undefined
     /** set a key in the cache */
-    set<T>(key: string, value: T): void
+    set<T>(key: string, value: T): void | Promise<void>
     /** delete a key from the cache */
-    del(key: string): void
+    del(key: string): void | Promise<void>
     /** flush all data */
-    flushAll(): void
+    flushAll(): void | Promise<void>
 }
 
 export type SocketConfig = {
