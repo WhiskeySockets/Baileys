@@ -339,7 +339,7 @@ const processMessage = async(
 			break
 		case WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_MODE:
 			const approvalMode = message.messageStubParameters?.[0]
-			emitGroupUpdate({ joinApproval: approvalMode === 'on' ? true : false })
+			emitGroupUpdate({ joinApprovalMode: approvalMode === 'on' ? true : false })
 			break
 		}
 	} else if(content?.pollUpdateMessage) {
