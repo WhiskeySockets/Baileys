@@ -301,6 +301,12 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 		groupSettingUpdate: async(jid: string, setting: 'announcement' | 'not_announcement' | 'locked' | 'unlocked') => {
 			await groupQuery(jid, 'set', [ { tag: setting, attrs: { } } ])
 		},
+		groupMemberAddMode: async(jid: string, mode: 'admin_add' | 'all_member_add') => {
+			await groupQuery(jid, 'set', [ { tag: 'member_add_mode', attrs: { }, content: mode } ])
+		},
+		groupJoinApprovalMode: async(jid: string, mode: 'on' | 'off') => {
+			await groupQuery(jid, 'set', [ { tag: 'membership_approval_mode', attrs: { }, content: [ { tag: 'group_join', attrs: { state: mode } } ] } ])
+		},
 		groupFetchAllParticipating
 	}
 }
