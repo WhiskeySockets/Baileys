@@ -320,7 +320,6 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 	const eph = getBinaryNodeChild(group, 'ephemeral')?.attrs.expiration
 	const memberAddMode = getBinaryNodeChildString(group, 'member_add_mode') == "all_member_add"
 	const membership_approval_mode = getBinaryNodeChild(group, 'membership_approval_mode')
-	const group_join = getBinaryNodeChild(membership_approval_mode, 'group_join')
 	const metadata: GroupMetadata = {
 		id: groupId,
 		subject: group.attrs.subject,
@@ -335,7 +334,7 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 		announce: !!getBinaryNodeChild(group, 'announcement'),
 		isCommunity: !!getBinaryNodeChild(group, 'parent'),
 		isCommunityAnnounce: !!getBinaryNodeChild(group, 'default_sub_group'),
-		joinApprovalMode: group_join?.attrs ? group_join.attrs.state === 'on' : null,
+		joinApprovalMode: !!getBinaryNodeChild(membership_approval_mode, 'group_join')
 		memberAddMode,
 		participants: getBinaryNodeChildren(group, 'participant').map(
 			({ attrs }) => {
