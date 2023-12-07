@@ -588,7 +588,7 @@ export const chatModificationToAppPatch = (
 		patch = {
 			syncAction: {
 				starAction: {
-					starred: !!mod.star
+					starred: !!mod.star.star
 				}
 			},
 			index: ['star', jid, key.id, key.fromMe ? '1' : '0', '0'],
