@@ -778,6 +778,18 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	/**
+	 * Star or Unstar a message
+	 */
+	const star = (jid, message, star) => {
+	    return chatModify({
+	        star: {
+	            message,
+	            star
+	        }
+	    }, jid);
+	};
+	
+	/**
 	 * Adds label for the chats
 	 */
 	const addChatLabel = (jid: string, labelId: string) => {
