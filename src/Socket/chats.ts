@@ -781,13 +781,13 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * Star or Unstar a message
 	 */
 	const star = (jid: string, messages: { id: string; fromMe?: boolean }[], star: boolean) => {
-	    return chatModify({
-	        star: {
-	            messages,
-	            star
-	        }
-	    }, jid);
-	};
+		return chatModify({
+			star: {
+				messages,
+				star
+			}
+		}, jid)
+	}
 	
 	/**
 	 * Adds label for the chats
