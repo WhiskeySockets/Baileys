@@ -783,7 +783,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	const star = (jid: string, messages: { id: string; fromMe?: boolean }[], star: boolean) => {
 	    return chatModify({
 	        star: {
-	            message,
+	            messages,
 	            star
 	        }
 	    }, jid);
