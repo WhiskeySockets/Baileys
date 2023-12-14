@@ -376,6 +376,16 @@ export const generateWAMessageContent = async(
 		}
 
 		m.reactionMessage = WAProto.Message.ReactionMessage.fromObject(message.react)
+	} else if('pinMessage' in message) {
+		m.messageContextInfo = {
+			messageAddOnDurationInSecs: message.pinMessage.duration
+	    	}
+
+        	if(!message.pinMessage.pinInChatMessage.senderTimestampMs) {
+			message.pinMessage.pinInChatMessage.senderTimestampMs = Date.now()
+		}
+		
+		m.pinInChatMessage = WAProto.Message.PinInChatMessage.fromObject(message.pinMessage.pinInChatMessage)
 	} else if('delete' in message) {
 		m.protocolMessage = {
 			key: message.delete,
