@@ -380,7 +380,7 @@ export const generateWAMessageContent = async(
 		m.messageContextInfo = {
 			messageAddOnDurationInSecs: message.pinMessage.duration
 	    	}
-
+		
         	if(!message.pinMessage.pinInChatMessage.senderTimestampMs) {
 			message.pinMessage.pinInChatMessage.senderTimestampMs = Date.now()
 		}
