@@ -392,7 +392,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						},
 					}
 				})
-			} else if (child.tag === 'blocklist') {
+			} else if(child.tag === 'blocklist') {
 				const blocklists = getBinaryNodeChildren(child, 'item')
 
 				for(const { attrs } of blocklists) {
