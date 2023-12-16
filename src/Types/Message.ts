@@ -160,7 +160,7 @@ export type AnyRegularMessageContent = (
     | { pinMessage: {
             pinInChatMessage: proto.Message.IPinInChatMessage
             duration: number
-        } 
+        }
     }
     | {
         buttonReply: ButtonReplyInfo
