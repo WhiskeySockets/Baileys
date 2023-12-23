@@ -15,7 +15,8 @@ type MessageType = 'chat' | 'peer_broadcast' | 'other_broadcast' | 'group' | 'di
  */
 export function decodeMessageNode(
 	stanza: BinaryNode,
-	meId: string
+	meId: string,
+	meLid: string
 ) {
 	let msgType: MessageType
 	let chatId: string
@@ -27,10 +28,24 @@ export function decodeMessageNode(
 	const recipient: string | undefined = stanza.attrs.recipient
 
 	const isMe = (jid: string) => areJidsSameUser(jid, meId)
+	const isMeLid = (jid: string) => areJidsSameUser(jid, meLid)
 
 	if(isJidUser(from)) {
 		if(recipient) {
 			if(!isMe(from)) {
+				throw new Boom('receipient present, but msg not from me', { data: stanza })
+			}
+
+			chatId = recipient
+		} else {
+			chatId = from
+		}
+
+		msgType = 'chat'
+		author = from
+	} else if(isLidUser(from)) {
+		if(recipient) {
+			if(!isMeLid(from)) {
 				throw new Boom('receipient present, but msg not from me', { data: stanza })
 			}
 
@@ -67,7 +82,7 @@ export function decodeMessageNode(
 		throw new Boom('Unknown message type', { data: stanza })
 	}
 
-	const fromMe = isMe(stanza.attrs.participant || stanza.attrs.from)
+	const fromMe = (isLidUser(from) ? isMeLid : isMe)(stanza.attrs.participant || stanza.attrs.from)
 	const pushname = stanza.attrs.notify
 
 	const key: WAMessageKey = {
@@ -98,10 +113,11 @@ export function decodeMessageNode(
 export const decryptMessageNode = (
 	stanza: BinaryNode,
 	meId: string,
+	meLid: string,
 	repository: SignalRepository,
 	logger: Logger
 ) => {
-	const { fullMessage, author, sender } = decodeMessageNode(stanza, meId)
+	const { fullMessage, author, sender } = decodeMessageNode(stanza, meId, meLid)
 	return {
 		fullMessage,
 		category: stanza.attrs.category,
