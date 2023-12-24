@@ -318,7 +318,7 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 
 	const groupId = group.attrs.id.includes('@') ? group.attrs.id : jidEncode(group.attrs.id, 'g.us')
 	const eph = getBinaryNodeChild(group, 'ephemeral')?.attrs.expiration
-	const memberAddMode = getBinaryNodeChildString(group, 'member_add_mode') == "all_member_add"
+	const memberAddMode = getBinaryNodeChildString(group, 'member_add_mode') === 'all_member_add'
 	const membership_approval_mode = getBinaryNodeChild(group, 'membership_approval_mode')
 	const metadata: GroupMetadata = {
 		id: groupId,
