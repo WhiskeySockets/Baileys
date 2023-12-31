@@ -26,6 +26,7 @@ export type BaileysEventMap = {
     'chats.upsert': Chat[]
     /** update the given chats */
     'chats.update': ChatUpdate[]
+    'chats.phoneNumberShare': {lid: string, jid: string}
     /** delete chats with given ID */
     'chats.delete': string[]
     /** presence of contact in a chat updated */
@@ -54,6 +55,7 @@ export type BaileysEventMap = {
 
     'blocklist.set': { blocklist: string[] }
     'blocklist.update': { blocklist: string[], type: 'add' | 'remove' }
+
     /** Receive an update on a call, including when the call was received, rejected, accepted */
     'call': WACallEvent[]
     'labels.edit': Label
