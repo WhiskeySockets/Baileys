@@ -168,15 +168,20 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	const onWhatsApp = async(...jids: string[]) => {
 		const query = { tag: 'contact', attrs: {} }
-		const list = jids.map((jid) => ({
-			tag: 'user',
-			attrs: {},
-			content: [{
-				tag: 'contact',
+		const list = jids.map((jid) => {
+			// insures only 1 + is there
+			const content = `+${jid.replace('+', '')}`
+
+			return {
+				tag: 'user',
 				attrs: {},
-				content: jid,
-			}],
-		}))
+				content: [{
+					tag: 'contact',
+					attrs: {},
+					content,
+				}],
+			}
+		})
 		const results = await interactiveQuery(list, query)
 
 		return results.map(user => {
@@ -773,6 +778,18 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	/**
+	 * Star or Unstar a message
+	 */
+	const star = (jid: string, messages: { id: string, fromMe?: boolean }[], star: boolean) => {
+		return chatModify({
+			star: {
+				messages,
+				star
+			}
+		}, jid)
+	}
+
+	/**
 	 * Adds label for the chats
 	 */
 	const addChatLabel = (jid: string, labelId: string) => {
@@ -994,6 +1011,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		addChatLabel,
 		removeChatLabel,
 		addMessageLabel,
-		removeMessageLabel
+		removeMessageLabel,
+		star
 	}
 }

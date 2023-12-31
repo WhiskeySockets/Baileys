@@ -3,6 +3,8 @@ import NodeCache from 'node-cache'
 import readline from 'readline'
 import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, getAggregateVotesInPollMessage, makeCacheableSignalKeyStore, makeInMemoryStore, PHONENUMBER_MCC, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
 import MAIN_LOGGER from '../src/Utils/logger'
+import open from 'open'
+import fs from 'fs'
 
 const logger = MAIN_LOGGER.child({})
 logger.level = 'trace'
@@ -105,21 +107,38 @@ const startSock = async() => {
 			}
 		}
 
+		async function enterCaptcha() {
+			const response = await sock.requestRegistrationCode({ ...registration, method: 'captcha' })
+			const path = __dirname + '/captcha.png'
+			fs.writeFileSync(path, Buffer.from(response.image_blob!, 'base64'))
+
+			open(path)
+			const code = await question('Please enter the captcha code:\n')
+			fs.unlinkSync(path)
+			registration.captcha = code.replace(/["']/g, '').trim().toLowerCase()
+		}
+
 		async function askForOTP() {
-			let code = await question('How would you like to receive the one time code for registration? "sms" or "voice"\n')
-			code = code.replace(/["']/g, '').trim().toLowerCase()
+			if (!registration.method) {
+				let code = await question('How would you like to receive the one time code for registration? "sms" or "voice"\n')
+				code = code.replace(/["']/g, '').trim().toLowerCase()
+				if(code !== 'sms' && code !== 'voice') {
+					return await askForOTP()
+				}
 
-			if(code !== 'sms' && code !== 'voice') {
-				return await askForOTP()
+				registration.method = code
 			}
-
-			registration.method = code
 
 			try {
 				await sock.requestRegistrationCode(registration)
 				await enterCode()
 			} catch(error) {
 				console.error('Failed to request registration code. Please try again.\n', error)
+
+				if(error?.reason === 'code_checkpoint') {
+					await enterCaptcha()
+				}
+
 				await askForOTP()
 			}
 		}

@@ -55,7 +55,7 @@ async function findAppModules() {
 	console.error('Found source JS URL:', bootstrapQRURL)
 
 	const qrData = await request.get(bootstrapQRURL, ua)
-	const waVersion = qrData.match(/appVersion:"(\d\.\d+\.\d+)"/)[1]
+	const waVersion = qrData.match(/(?:appVersion:|VERSION_STR=)"(\d\.\d+\.\d+)"/)[1]
 	console.log('Current version:', waVersion)
 	// This one list of types is so long that it's split into two JavaScript declarations.
 	// The module finder below can't handle it, so just patch it manually here.
