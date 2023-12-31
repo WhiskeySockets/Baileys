@@ -398,7 +398,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				for(const { attrs } of blocklists) {
 					const blocklist = [attrs.jid]
 					const type = (attrs.action === 'block') ? 'add' : 'remove'
-
 					ev.emit('blocklist.update', { blocklist, type })
 				}
 			}

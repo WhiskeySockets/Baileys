@@ -606,6 +606,15 @@ WA uses an encrypted form of communication to send chat/app updates. This has be
   },
   '123456@s.whatsapp.net')
   ```
+  
+- Star/unstar a message
+  ``` ts
+  await sock.chatModify({
+  star: {
+  	messages: [{ id: 'messageID', fromMe: true // or `false` }],
+      	star: true // - true: Star Message; false: Unstar Message
+  }},'123456@s.whatsapp.net');
+  ```
 
 **Note:** if you mess up one of your updates, WA can log you out of all your devices and you'll have to log in again.
 
