@@ -449,6 +449,12 @@ export const generateWAMessageContent = async(
 			selectableOptionsCount: message.poll.selectableCount,
 			options: message.poll.values.map(optionName => ({ optionName })),
 		}
+	} else if('sharePhoneNumber' in message) {
+		m.protocolMessage = {
+			type: proto.Message.ProtocolMessage.Type.SHARE_PHONE_NUMBER
+		}
+	} else if('requestPhoneNumber' in message) {
+		m.requestPhoneNumberMessage = {}
 	} else {
 		m = await prepareWAMessageMedia(
 			message,
