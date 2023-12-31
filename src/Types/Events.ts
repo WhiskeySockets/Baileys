@@ -51,7 +51,7 @@ export type BaileysEventMap = {
     'groups.upsert': GroupMetadata[]
     'groups.update': Partial<GroupMetadata>[]
     /** apply an action to participants in a group */
-    'group-participants.update': { id: string, participants: string[], action: ParticipantAction }
+    'group-participants.update': { id: string, author: string, participants: string[], action: ParticipantAction }
 
     'blocklist.set': { blocklist: string[] }
     'blocklist.update': { blocklist: string[], type: 'add' | 'remove' }
