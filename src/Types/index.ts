@@ -24,7 +24,7 @@ export enum DisconnectReason {
     badSession = 500,
     restartRequired = 515,
     multideviceMismatch = 411,
-    blockedNumber = 403,
+    forbidden = 403,
     unavailableService = 503
 }
 
