@@ -3,6 +3,7 @@ import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage, SenderK
 import { SignalAuthState } from '../Types'
 import { SignalRepository } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
+import { jidDecode } from '../WABinary'
 
 export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository {
 	const storage = signalStorage(auth)
@@ -76,10 +77,9 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 	}
 }
 
-const jidToSignalAddress = (jid: string) => jid.split('@')[0]
-
 const jidToSignalProtocolAddress = (jid: string) => {
-	return new libsignal.ProtocolAddress(jidToSignalAddress(jid), 0)
+	const { user, device } = jidDecode(jid)!
+	return new libsignal.ProtocolAddress(user, device || 0)
 }
 
 const jidToSignalSenderKeyName = (group: string, user: string): string => {
