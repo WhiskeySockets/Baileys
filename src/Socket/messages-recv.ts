@@ -301,12 +301,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			msg.messageStubParameters = [ child.attrs.code ]
 			break
 		case 'member_add_mode':
-                	msg.messageStubType = WAMessageStubType.GROUP_MEMBER_ADD_MODE
-                	msg.messageStubParameters = [ child.content.toString() ]
+			const addMode = child.content
+			if (addMode){
+	                	msg.messageStubType = WAMessageStubType.GROUP_MEMBER_ADD_MODE
+        	        	msg.messageStubParameters = [ addMode.toString() ]
+			}
 			break
 		case 'membership_approval_mode':
-                	msg.messageStubType = WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_MODE
-                	msg.messageStubParameters = [ child.content[0].attrs.state ]
+			const approvalMode = child.content
+			if (approvalMode?.length){
+	                	msg.messageStubType = WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_MODE
+        	        	msg.messageStubParameters = [ approvalMode[0].attrs.state ]
+			}
                 	break
 		}
 	}
