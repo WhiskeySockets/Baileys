@@ -752,7 +752,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		if(status === 'offer') {
 			call.isVideo = !!getBinaryNodeChild(infoChild, 'video')
-			call.isGroup = infoChild.attrs.type === 'group'
+			call.isGroup = infoChild.attrs.type === 'group' || !!infoChild.attrs['group-jid']
+			call.groupJid = infoChild.attrs['group-jid']
 			callOfferCache.set(call.id, call)
 		}
 
