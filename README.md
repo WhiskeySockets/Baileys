@@ -556,6 +556,17 @@ await sock.sendMessage(jid, { delete: response.key })
 
 **Note:** deleting for oneself is supported via `chatModify` (next section)
 
+## Updating Messages
+
+``` ts
+const jid = '1234@s.whatsapp.net'
+
+await sock.sendMessage(jid, {
+      text: 'updated text goes here',
+      edit: response.key,
+    });
+```
+
 ## Modifying Chats
 
 WA uses an encrypted form of communication to send chat/app updates. This has been implemented mostly and you can send the following updates:
