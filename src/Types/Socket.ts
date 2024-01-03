@@ -51,6 +51,8 @@ export type SocketConfig = {
     customUploadHosts: MediaConnInfo['hosts']
     /** time to wait between sending new retry requests */
     retryRequestDelayMs: number
+    /** max retry count */
+    maxMsgRetryCount: number
     /** time to wait for the generation of the next QR in ms */
     qrTimeout?: number
     /** provide an auth state object to maintain the auth state */
