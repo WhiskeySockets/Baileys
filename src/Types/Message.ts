@@ -80,8 +80,11 @@ type Listable = {
     /** Title of a List Message only */
     title?: string
 
-    /** Text of the bnutton on the list (required) */
+    /** Text of the button on the list (required) */
     buttonText?: string
+
+    /** ListType of the List */
+    listType?: proto.Message.ListMessage.ListType
 }
 type WithDimensions = {
     width?: number
