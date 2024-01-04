@@ -264,6 +264,22 @@ const processMessage = async(
 				ephemeralExpiration: protocolMsg.ephemeralExpiration || null
 			})
 			break
+		case proto.Message.ProtocolMessage.Type.PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE:
+			const response = protocolMsg.peerDataOperationRequestResponseMessage!
+			if(response) {
+				const { peerDataOperationResult } = response
+				for(const result of peerDataOperationResult!) {
+					const { placeholderMessageResendResponse: retryResponse } = result
+					if(retryResponse) {
+						const webMessageInfo = proto.WebMessageInfo.decode(retryResponse.webMessageInfoBytes!)
+						ev.emit('messages.update', [
+							{ key: webMessageInfo.key, update: { message: webMessageInfo.message } }
+						])
+					}
+				}
+			}
+
+			break
 		}
 	} else if(content?.reactionMessage) {
 		const reaction: proto.IReaction = {
@@ -279,7 +295,7 @@ const processMessage = async(
 		//let actor = whatsappID (message.participant)
 		let participants: string[]
 		const emitParticipantsUpdate = (action: ParticipantAction) => (
-			ev.emit('group-participants.update', { id: jid, participants, action })
+			ev.emit('group-participants.update', { id: jid, author: message.participant!, participants, action })
 		)
 		const emitGroupUpdate = (update: Partial<GroupMetadata>) => {
 			ev.emit('groups.update', [{ id: jid, ...update }])
