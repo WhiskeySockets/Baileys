@@ -306,6 +306,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				msg.messageStubType = WAMessageStubType.GROUP_MEMBER_ADD_MODE
 				msg.messageStubParameters = [ addMode.toString() ]
 			}
+
 			break
 		case 'membership_approval_mode':
 			const approvalMode: any = getBinaryNodeChild(child, 'group_join')
@@ -313,6 +314,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				msg.messageStubType = WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_MODE
 				msg.messageStubParameters = [ approvalMode.attrs.state ]
 			}
+
 			break
 		}
 	}
