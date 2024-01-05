@@ -334,7 +334,7 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 		announce: !!getBinaryNodeChild(group, 'announcement'),
 		isCommunity: !!getBinaryNodeChild(group, 'parent'),
 		isCommunityAnnounce: !!getBinaryNodeChild(group, 'default_sub_group'),
-		joinApprovalMode: !!getBinaryNodeChild(membership_approval_mode, 'group_join')
+		joinApprovalMode: !!getBinaryNodeChild(membership_approval_mode, 'group_join'),
 		memberAddMode,
 		participants: getBinaryNodeChildren(group, 'participant').map(
 			({ attrs }) => {
