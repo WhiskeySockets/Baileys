@@ -376,65 +376,6 @@ const sentMsg  = await sock.sendMessage(
     }
 )
 
-// send a buttons message!
-const buttons = [
-  {buttonId: 'id1', buttonText: {displayText: 'Button 1'}, type: 1},
-  {buttonId: 'id2', buttonText: {displayText: 'Button 2'}, type: 1},
-  {buttonId: 'id3', buttonText: {displayText: 'Button 3'}, type: 1}
-]
-
-const buttonMessage = {
-    text: "Hi it's button message",
-    footer: 'Hello World',
-    buttons: buttons,
-    headerType: 1
-}
-
-const sendMsg = await sock.sendMessage(id, buttonMessage)
-
-//send a template message!
-const templateButtons = [
-    {index: 1, urlButton: {displayText: '⭐ Star Baileys on GitHub!', url: 'https://github.com/adiwajshing/Baileys'}},
-    {index: 2, callButton: {displayText: 'Call me!', phoneNumber: '+1 (234) 5678-901'}},
-    {index: 3, quickReplyButton: {displayText: 'This is a reply, just like normal buttons!', id: 'id-like-buttons-message'}},
-]
-
-const templateMessage = {
-    text: "Hi it's a template message",
-    footer: 'Hello World',
-    templateButtons: templateButtons
-}
-
-const sendMsg = await sock.sendMessage(id, templateMessage)
-
-// send a list message!
-const sections = [
-    {
-	title: "Section 1",
-	rows: [
-	    {title: "Option 1", rowId: "option1"},
-	    {title: "Option 2", rowId: "option2", description: "This is a description"}
-	]
-    },
-   {
-	title: "Section 2",
-	rows: [
-	    {title: "Option 3", rowId: "option3"},
-	    {title: "Option 4", rowId: "option4", description: "This is a description V2"}
-	]
-    },
-]
-
-const listMessage = {
-  text: "This is a list",
-  footer: "nice footer, link: https://google.com",
-  title: "Amazing boldfaced list title",
-  buttonText: "Required, text on the button to view the list",
-  sections
-}
-
-const sendMsg = await sock.sendMessage(id, listMessage)
-
 const reactionMessage = {
     react: {
         text: "💖", // use an empty string to remove the reaction
@@ -489,39 +430,6 @@ await sock.sendMessage(
     { audio: { url: "./Media/audio.mp3" }, mimetype: 'audio/mp4' }
     { url: "Media/audio.mp3" }, // can send mp3, mp4, & ogg
 )
-
-// send a buttons message with image header!
-const buttons = [
-  {buttonId: 'id1', buttonText: {displayText: 'Button 1'}, type: 1},
-  {buttonId: 'id2', buttonText: {displayText: 'Button 2'}, type: 1},
-  {buttonId: 'id3', buttonText: {displayText: 'Button 3'}, type: 1}
-]
-
-const buttonMessage = {
-    image: {url: 'https://example.com/image.jpeg'},
-    caption: "Hi it's button message",
-    footer: 'Hello World',
-    buttons: buttons,
-    headerType: 4
-}
-
-const sendMsg = await sock.sendMessage(id, buttonMessage)
-
-//send a template message with an image **attached**!
-const templateButtons = [
-  {index: 1, urlButton: {displayText: '⭐ Star Baileys on GitHub!', url: 'https://github.com/adiwajshing/Baileys'}},
-  {index: 2, callButton: {displayText: 'Call me!', phoneNumber: '+1 (234) 5678-901'}},
-  {index: 3, quickReplyButton: {displayText: 'This is a reply, just like normal buttons!', id: 'id-like-buttons-message'}},
-]
-
-const buttonMessage = {
-    text: "Hi it's a template message",
-    footer: 'Hello World',
-    templateButtons: templateButtons,
-    image: {url: 'https://example.com/image.jpeg'}
-}
-
-const sendMsg = await sock.sendMessage(id, templateMessage)
 ```
 
 ### Notes
@@ -648,6 +556,17 @@ await sock.sendMessage(jid, { delete: response.key })
 
 **Note:** deleting for oneself is supported via `chatModify` (next section)
 
+## Updating Messages
+
+``` ts
+const jid = '1234@s.whatsapp.net'
+
+await sock.sendMessage(jid, {
+      text: 'updated text goes here',
+      edit: response.key,
+    });
+```
+
 ## Modifying Chats
 
 WA uses an encrypted form of communication to send chat/app updates. This has been implemented mostly and you can send the following updates:
@@ -697,6 +616,15 @@ WA uses an encrypted form of communication to send chat/app updates. This has be
     pin: true // or `false` to unpin
   },
   '123456@s.whatsapp.net')
+  ```
+  
+- Star/unstar a message
+  ``` ts
+  await sock.chatModify({
+  star: {
+  	messages: [{ id: 'messageID', fromMe: true // or `false` }],
+      	star: true // - true: Star Message; false: Unstar Message
+  }},'123456@s.whatsapp.net');
   ```
 
 **Note:** if you mess up one of your updates, WA can log you out of all your devices and you'll have to log in again.

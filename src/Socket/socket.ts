@@ -525,7 +525,7 @@ export const makeSocket = (config: SocketConfig) => {
 						{
 							tag: 'companion_platform_display',
 							attrs: {},
-							content: config.browser[0]
+							content: `${browser[1]} (${browser[0]})`
 						},
 						{
 							tag: 'link_code_pairing_nonce',
@@ -623,12 +623,14 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 	})
 	// login complete
-	ws.on('CB:success', async() => {
+	ws.on('CB:success', async(node: BinaryNode) => {
 		await uploadPreKeysToServerIfRequired()
 		await sendPassiveIq('active')
 
 		logger.info('opened connection to WA')
 		clearTimeout(qrTimer) // will never happen in all likelyhood -- but just in case WA sends success on first try
+
+		ev.emit('creds.update', { me: { ...authState.creds.me!, lid: node.attrs.lid } })
 
 		ev.emit('connection.update', { connection: 'open' })
 	})
