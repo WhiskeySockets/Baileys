@@ -1,3 +1,4 @@
+import { createHash } from 'crypto'
 import { proto } from '../../WAProto'
 import { makeLibSignalRepository } from '../Signal/libsignal'
 import type { AuthenticationState, MediaType, SocketConfig, WAVersion } from '../Types'
@@ -5,7 +6,6 @@ import { Browsers } from '../Utils'
 import logger from '../Utils/logger'
 import { version } from './baileys-version.json'
 import phoneNumberMCC from './phonenumber-mcc.json'
-import * as crypto from 'crypto'
 
 export const UNAUTHORIZED_CODES = [401, 403, 419]
 
@@ -22,7 +22,7 @@ export const WA_DEFAULT_EPHEMERAL = 7 * 24 * 60 * 60
 
 const WA_VERSION = '2.23.14.82'
 
-const WA_VERSION_HASH = crypto.createHash('md5').update(WA_VERSION).digest('hex')
+const WA_VERSION_HASH = createHash('md5').update(WA_VERSION).digest('hex')
 export const MOBILE_TOKEN = Buffer.from('0a1mLfGUIBVrMKF1RdvLI5lkRBvof6vn0fD2QRSM' + WA_VERSION_HASH)
 export const MOBILE_REGISTRATION_ENDPOINT = 'https://v.whatsapp.net/v2'
 export const MOBILE_USERAGENT = `WhatsApp/${WA_VERSION} iOS/15.3.1 Device/Apple-iPhone_7`
