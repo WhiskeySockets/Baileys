@@ -392,6 +392,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						},
 					}
 				})
+			} else if(child.tag === 'blocklist') {
+				const blocklists = getBinaryNodeChildren(child, 'item')
+
+				for(const { attrs } of blocklists) {
+					const blocklist = [attrs.jid]
+					const type = (attrs.action === 'block') ? 'add' : 'remove'
+					ev.emit('blocklist.update', { blocklist, type })
+				}
 			}
 
 			break
@@ -532,7 +540,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const handleReceipt = async(node: BinaryNode) => {
 		const { tag, attrs, content } = node
-		const isNodeFromMe = areJidsSameUser(attrs.participant || attrs.from, authState.creds.me?.id)
+		const isLid = attrs.from.includes('lid')
+		const isNodeFromMe = areJidsSameUser(attrs.participant || attrs.from, isLid ? authState.creds.me?.lid : authState.creds.me?.id)
 		const remoteJid = !isNodeFromMe || isJidGroup(attrs.from) ? attrs.from : attrs.recipient
 		const fromMe = !attrs.recipient || (attrs.type === 'retry' && isNodeFromMe)
 
@@ -655,9 +664,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const { fullMessage: msg, category, author, decrypt } = decryptMessageNode(
 			node,
 			authState.creds.me!.id,
+			authState.creds.me!.lid || '',
 			signalRepository,
 			logger,
 		)
+
+		if(msg.message?.protocolMessage?.type === proto.Message.ProtocolMessage.Type.SHARE_PHONE_NUMBER) {
+			if(node.attrs.sender_pn) {
+				ev.emit('chats.phoneNumberShare', { lid: node.attrs.from, jid: node.attrs.sender_pn })
+			}
+		}
+
 		if(shouldIgnoreJid(msg.key.remoteJid!)) {
 			logger.debug({ key: msg.key }, 'ignored message')
 			await sendMessageAck(node)
@@ -735,7 +752,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		if(status === 'offer') {
 			call.isVideo = !!getBinaryNodeChild(infoChild, 'video')
-			call.isGroup = infoChild.attrs.type === 'group'
+			call.isGroup = infoChild.attrs.type === 'group' || !!infoChild.attrs['group-jid']
+			call.groupJid = infoChild.attrs['group-jid']
 			callOfferCache.set(call.id, call)
 		}
 
