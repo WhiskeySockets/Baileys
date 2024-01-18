@@ -299,12 +299,12 @@ export const getStatusFromReceiptType = (tag: string | undefined, type: string |
 		return proto.WebMessageInfo.Status.SERVER_ACK
 	}
 
-	if(typeof type === 'undefined') {
-		return proto.WebMessageInfo.Status.SERVER_ACK
+	if(typeof type === 'undefined' && tag === 'receipt') {
+		return proto.WebMessageInfo.Status.DELIVERY_ACK
 	}
 
 	if(typeof type === 'undefined') {
-		return proto.WebMessageInfo.Status.DELIVERY_ACK
+		return proto.WebMessageInfo.Status.SERVER_ACK
 	}
 
 	return status
