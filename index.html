@@ -298,12 +298,27 @@ Of course, replace <code>xyz</code> with an actual ID.</li>
 </code><button>Copy</button></pre>
 </li>
 </ul>
-<a id="md:broadcast-lists-amp-stories" class="tsd-anchor"></a><h2><a href="#md:broadcast-lists-amp-stories">Broadcast Lists &amp; Stories</a></h2><p><strong>Note:</strong> messages currently cannot be sent to broadcast lists from the MD version.</p>
+<a id="md:broadcast-lists-amp-stories" class="tsd-anchor"></a><h2><a href="#md:broadcast-lists-amp-stories">Broadcast Lists &amp; Stories</a></h2><p>Messages can be sent to broadcasts &amp; stories. 
+you need to add the following message options in sendMessage, like this:</p>
+<pre><code class="language-ts"><span class="hl-0">sock</span><span class="hl-1">.</span><span class="hl-6">sendMessage</span><span class="hl-1">(</span><span class="hl-0">jid</span><span class="hl-1">, {</span><span class="hl-0">image:</span><span class="hl-1"> {</span><span class="hl-0">url:</span><span class="hl-1"> </span><span class="hl-0">url</span><span class="hl-1">}, </span><span class="hl-0">caption:</span><span class="hl-1"> </span><span class="hl-0">caption</span><span class="hl-1">}, {</span><span class="hl-0">backgroundColor :</span><span class="hl-1"> </span><span class="hl-0">backgroundColor</span><span class="hl-1">, </span><span class="hl-0">font :</span><span class="hl-1"> </span><span class="hl-0">font</span><span class="hl-1">, </span><span class="hl-0">statusJidList:</span><span class="hl-1"> </span><span class="hl-0">statusJidList</span><span class="hl-1">, </span><span class="hl-0">broadcast :</span><span class="hl-1"> </span><span class="hl-5">true</span><span class="hl-1">})</span>
+</code><button>Copy</button></pre>
 <ul>
-<li>You can send messages to broadcast lists the same way you send messages to groups &amp; individual chats.</li>
-<li>Right now, WA Web does not support creating broadcast lists, but you can still delete them.</li>
-<li>Broadcast IDs are in the format <code>12345678@broadcast</code></li>
-<li>To query a broadcast list&#39;s recipients &amp; name:<pre><code class="language-ts"><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-7">bList</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sock</span><span class="hl-1">.</span><span class="hl-6">getBroadcastListInfo</span><span class="hl-1">(</span><span class="hl-4">&quot;1234@broadcast&quot;</span><span class="hl-1">)</span><br/><span class="hl-0">console</span><span class="hl-1">.</span><span class="hl-6">log</span><span class="hl-1"> (</span><span class="hl-4">`list name: </span><span class="hl-5">${</span><span class="hl-0">bList</span><span class="hl-12">.</span><span class="hl-0">name</span><span class="hl-5">}</span><span class="hl-4">, recps: </span><span class="hl-5">${</span><span class="hl-0">bList</span><span class="hl-12">.</span><span class="hl-0">recipients</span><span class="hl-5">}</span><span class="hl-4">`</span><span class="hl-1">)</span>
+<li><p>the message body can be a extendedTextMessage or imageMessage or videoMessage or voiceMessage</p>
+</li>
+<li><p>You can add backgroundColor and other options in the message options</p>
+</li>
+<li><p>broadcast: true enables broadcast mode</p>
+</li>
+<li><p>statusJidList: a list of people that you can get which you need to provide, which are the people who will get this status message.</p>
+</li>
+<li><p>You can send messages to broadcast lists the same way you send messages to groups &amp; individual chats.</p>
+</li>
+<li><p>Right now, WA Web does not support creating broadcast lists, but you can still delete them.</p>
+</li>
+<li><p>Broadcast IDs are in the format <code>12345678@broadcast</code></p>
+</li>
+<li><p>To query a broadcast list&#39;s recipients &amp; name:</p>
+<pre><code class="language-ts"><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-7">bList</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sock</span><span class="hl-1">.</span><span class="hl-6">getBroadcastListInfo</span><span class="hl-1">(</span><span class="hl-4">&quot;1234@broadcast&quot;</span><span class="hl-1">)</span><br/><span class="hl-0">console</span><span class="hl-1">.</span><span class="hl-6">log</span><span class="hl-1"> (</span><span class="hl-4">`list name: </span><span class="hl-5">${</span><span class="hl-0">bList</span><span class="hl-12">.</span><span class="hl-0">name</span><span class="hl-5">}</span><span class="hl-4">, recps: </span><span class="hl-5">${</span><span class="hl-0">bList</span><span class="hl-12">.</span><span class="hl-0">recipients</span><span class="hl-5">}</span><span class="hl-4">`</span><span class="hl-1">)</span>
 </code><button>Copy</button></pre>
 </li>
 </ul>
