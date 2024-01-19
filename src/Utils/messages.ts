@@ -685,6 +685,7 @@ export const normalizeMessageContent = (content: WAMessageContent | null | undef
 			 || message?.viewOnceMessage
 			 || message?.documentWithCaptionMessage
 			 || message?.viewOnceMessageV2
+			 || message?.viewOnceMessageV2Extension
 			 || message?.editedMessage
 		 )
 	 }
