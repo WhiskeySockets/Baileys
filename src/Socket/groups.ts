@@ -330,7 +330,7 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 		subject: group.attrs.subject,
 		subjectOwner: group.attrs.s_o,
 		subjectTime: +group.attrs.s_t,
-		size: +group.attrs.size,
+		size: getBinaryNodeChildren(group, 'participant').length,
 		creation: +group.attrs.creation,
 		owner: group.attrs.creator ? jidNormalizedUser(group.attrs.creator) : undefined,
 		desc,
