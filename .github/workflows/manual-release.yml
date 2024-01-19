@@ -42,8 +42,8 @@ jobs:
       - name: Install Dependencies
         run: yarn
 
-      - name: DEBUG: Show git status
-        run: "git status"
+      - name: "DEBUG - Show git status"
+        run: git status
 
       - name: Release
         run: "npx release-it --increment ${{ github.event.inputs.increment }}"
