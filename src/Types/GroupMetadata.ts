@@ -34,6 +34,8 @@ export interface GroupMetadata {
     inviteCode?: string
     /** the person who added you */
     author?: string
+    /** if approval is needed to join the group */
+    joinApprovalMode?: boolean
 }
 
 
