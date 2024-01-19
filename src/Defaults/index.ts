@@ -1,3 +1,4 @@
+import { createHash } from 'crypto'
 import { proto } from '../../WAProto'
 import { makeLibSignalRepository } from '../Signal/libsignal'
 import type { AuthenticationState, MediaType, SocketConfig, WAVersion } from '../Types'
@@ -19,10 +20,12 @@ export const PHONE_CONNECTION_CB = 'CB:Pong'
 
 export const WA_DEFAULT_EPHEMERAL = 7 * 24 * 60 * 60
 
+const WA_VERSION = '2.23.14.82'
 
-export const MOBILE_TOKEN = Buffer.from('0a1mLfGUIBVrMKF1RdvLI5lkRBvof6vn0fD2QRSM3d3683e76445591c0591bc3c034c3bca')
+const WA_VERSION_HASH = createHash('md5').update(WA_VERSION).digest('hex')
+export const MOBILE_TOKEN = Buffer.from('0a1mLfGUIBVrMKF1RdvLI5lkRBvof6vn0fD2QRSM' + WA_VERSION_HASH)
 export const MOBILE_REGISTRATION_ENDPOINT = 'https://v.whatsapp.net/v2'
-export const MOBILE_USERAGENT = 'WhatsApp/2.23.13.82 iOS/15.3.1 Device/Apple-iPhone_7'
+export const MOBILE_USERAGENT = `WhatsApp/${WA_VERSION} iOS/15.3.1 Device/Apple-iPhone_7`
 export const REGISTRATION_PUBLIC_KEY = Buffer.from([
 	5, 142, 140, 15, 116, 195, 235, 197, 215, 166, 134, 92, 108, 60, 132, 56, 86, 176, 97, 33, 204, 232, 234, 119, 77,
 	34, 251, 111, 18, 37, 18, 48, 45,
