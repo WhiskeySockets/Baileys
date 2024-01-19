@@ -42,5 +42,8 @@ jobs:
       - name: Install Dependencies
         run: yarn
 
+      - name: Refresh git working dir
+        run: "git update-index -q --refresh"
+
       - name: Release
         run: "npx release-it --increment ${{ github.event.inputs.increment }}"
