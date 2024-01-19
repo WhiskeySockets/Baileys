@@ -22,6 +22,8 @@ export interface GroupMetadata {
     announce?: boolean
     /** is set when the group also allows members to add participants */
     memberAddMode?: boolean
+    /** Request approval to join the group */
+    joinApprovalMode?: boolean
     /** is this a community */
     isCommunity?: boolean
     /** is this the announce of a community */
