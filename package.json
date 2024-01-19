@@ -38,7 +38,7 @@
     "lint:fix": "eslint src --fix --ext .js,.ts,.jsx,.tsx",
     "prepack": "tsc",
     "prepare": "tsc",
-    "release": ["git update-index -q --refresh", "release-it"],
+    "release": "release-it",
     "test": "jest"
   },
   "dependencies": {
