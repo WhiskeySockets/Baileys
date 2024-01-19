@@ -1731,6 +1731,11 @@ async-retry@1.3.3:
   dependencies:
     retry "0.13.1"
 
+async@3.2.3:
+  version "3.2.3"
+  resolved "https://registry.yarnpkg.com/async/-/async-3.2.3.tgz#ac53dafd3f4720ee9e8a160628f18ea91df196c9"
+  integrity sha512-spZRyzKL5l5BZQrr/6m/SqFdBN0q3OCI0f9rjfBzCMBIP4p75P620rR3gTmaksNOhmzgdxcaxdNfMy6anrbM0g==
+
 asynciterator.prototype@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/asynciterator.prototype/-/asynciterator.prototype-1.0.0.tgz#8c5df0514936cdd133604dfcc9d3fb93f09b2b62"
@@ -2005,13 +2010,14 @@ bundle-name@^3.0.0:
   dependencies:
     run-applescript "^5.0.0"
 
-cache-manager@^5.2.2:
-  version "5.2.3"
-  resolved "https://registry.yarnpkg.com/cache-manager/-/cache-manager-5.2.3.tgz#b6a8b4469c57fdfdae1deed7f81ea9e057c7eade"
-  integrity sha512-9OErI8fksFkxAMJ8Mco0aiZSdphyd90HcKiOMJQncSlU1yq/9lHHxrT8PDayxrmr9IIIZPOAEfXuGSD7g29uog==
+cache-manager@4.0.1:
+  version "4.0.1"
+  resolved "https://registry.yarnpkg.com/cache-manager/-/cache-manager-4.0.1.tgz#185b1d1aa1385fbb4fb0ec88fda7676f566a15b8"
+  integrity sha512-JWdtjdX8e0e6eMehAZsdJvBMvHn/pVQGYUjgzc1ILFH0vtcffb9R7XIEAqfYgEeaVJVCOSP4+dxCius+ciW0RA==
   dependencies:
+    async "3.2.3"
     lodash.clonedeep "^4.5.0"
-    lru-cache "^9.1.2"
+    lru-cache "^7.10.1"
 
 cacheable-lookup@^7.0.0:
   version "7.0.0"
@@ -5132,15 +5138,10 @@ lru-cache@^6.0.0:
   dependencies:
     yallist "^4.0.0"
 
-lru-cache@^7.14.1:
+lru-cache@^7.10.1, lru-cache@^7.14.1:
   version "7.18.3"
   resolved "https://registry.yarnpkg.com/lru-cache/-/lru-cache-7.18.3.tgz#f793896e0fd0e954a59dfdd82f0773808df6aa89"
   integrity sha512-jumlc0BIUrS3qJGgIkWZsyfAM7NCWiBcCDhnd+3NNM5KbBmLTgHVfWBcg6W+rLUsIpzpERPsvwUP7CckAQSOoA==
-
-lru-cache@^9.1.2:
-  version "9.1.2"
-  resolved "https://registry.yarnpkg.com/lru-cache/-/lru-cache-9.1.2.tgz#255fdbc14b75589d6d0e73644ca167a8db506835"
-  integrity sha512-ERJq3FOzJTxBbFjZ7iDs+NiK4VI9Wz+RdrrAB8dio1oV+YvdPzUEE4QNiT2VD51DkIbCYRUUzCRkssXCHqSnKQ==
 
 lunr@^2.3.9:
   version "2.3.9"
@@ -7806,7 +7807,6 @@ yn@3.1.1:
   version "3.1.1"
   resolved "https://registry.npmjs.org/yn/-/yn-3.1.1.tgz"
   integrity sha512-Ux4ygGWsu2c7isFWe8Yu1YluJmqVhxqK2cLXNQA5AcC3QfbGNpM7fu0Y8b/z16pXLnFxZYvWhd3fhBY9DLmC6Q==
-
 
 yocto-queue@^0.1.0:
   version "0.1.0"
