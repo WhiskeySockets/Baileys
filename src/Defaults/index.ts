@@ -65,6 +65,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	defaultQueryTimeoutMs: 60_000,
 	customUploadHosts: [],
 	retryRequestDelayMs: 250,
+	maxMsgRetryCount: 5,
 	fireInitQueries: true,
 	auth: undefined as unknown as AuthenticationState,
 	markOnlineOnConnect: true,
