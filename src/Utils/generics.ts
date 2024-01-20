@@ -19,6 +19,7 @@ export const Browsers = {
 	ubuntu: browser => ['Ubuntu', browser, '20.0.04'] as [string, string, string],
 	macOS: browser => ['Mac OS', browser, '10.15.7'] as [string, string, string],
 	baileys: browser => ['Baileys', browser, '4.0.0'] as [string, string, string],
+	windows: browser => ['Windows', browser, '10.0.22621'] as [string, string, string],
 	/** The appropriate browser based on your OS & release */
 	appropriate: browser => [ PLATFORM_MAP[platform()] || 'Ubuntu', browser, release() ] as [string, string, string]
 }
