@@ -632,7 +632,7 @@ export const makeSocket = (config: SocketConfig) => {
 			clearTimeout(qrTimer) // will never happen in all likelyhood -- but just in case WA sends success on first try
 
 			ev.emit('creds.update', { me: { ...authState.creds.me!, lid: node.attrs.lid } })
-	
+
 			ev.emit('connection.update', { connection: 'open' })
 		} catch(error) {
 			logger.info({ trace: error.stack }, 'error opening connection')
