@@ -634,7 +634,7 @@ export const makeSocket = (config: SocketConfig) => {
 			ev.emit('creds.update', { me: { ...authState.creds.me!, lid: node.attrs.lid } })
 			
 			ev.emit('connection.update', { connection: 'open' })
-		} catch (error) {
+		} catch(error) {
 			logger.info({ trace: error.stack }, 'error opening connection')
 			end(error)
 		}
