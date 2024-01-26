@@ -18,3 +18,5 @@ Proxy
 test.ts
 TestData
 wa-logs.txt
+yarn.lock
+package-lock.json
