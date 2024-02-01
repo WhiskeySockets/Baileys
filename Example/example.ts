@@ -55,6 +55,9 @@ const startSock = async() => {
 		// shouldIgnoreJid: jid => isJidBroadcast(jid),
 		// implement to handle retries & poll updates
 		getMessage,
+
+		// Use if your server has multiple IPs and you want to specify the local IP
+		// localAddress: "xxx.xxx.xxx.xxx",
 	})
 
 	store?.bind(sock.ev)
