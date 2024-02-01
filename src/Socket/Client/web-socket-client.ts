@@ -30,6 +30,7 @@ export class WebSocketClient extends AbstractSocketClient {
 			handshakeTimeout: this.config.connectTimeoutMs,
 			timeout: this.config.connectTimeoutMs,
 			agent: this.config.agent,
+			localAddress: this.config.localAddress
 		})
 
 		this.socket.setMaxListeners(0)
