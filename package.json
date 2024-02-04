@@ -1,7 +1,7 @@
 {
-  "name": "@whiskeysockets/baileys",
-  "version": "6.6.0",
-  "description": "WhatsApp API",
+  "name": "whatsapp-chatify",
+  "version": "1.0.0",
+  "description": "A Unofficial Whatsapp Chat Api Developed By Faris Ali",
   "keywords": [
     "whatsapp",
     "js-whatsapp",
@@ -12,12 +12,12 @@
     "automation",
     "multi-device"
   ],
-  "homepage": "https://github.com/WhiskeySockets/Baileys",
+  "homepage": "",
   "repository": {
-    "url": "git@github.com:WhiskeySockets/Baileys.git"
+    "url": ""
   },
   "license": "MIT",
-  "author": "Adhiraj Singh",
+  "author": "Faris Ali",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "files": [
