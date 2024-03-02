@@ -54,37 +54,73 @@ TODO
 
 WhatsApp provides a multi-device API that allows Baileys to be authenticated as a second WhatsApp client by scanning a QR code with WhatsApp on your phone.
 
+``` sh 
+# First, install ts-node and pino
+yarn add ts-node pino
+# Then, run the file
+npx ts-node index.ts
+```
+
 ``` ts
-import makeWASocket, { DisconnectReason } from '@whiskeysockets/baileys'
-import { Boom } from '@hapi/boom'
+import makeWASocket, {
+  DisconnectReason,
+  makeCacheableSignalKeyStore,
+  useMultiFileAuthState,
+} from '@whiskeysockets/baileys';
+import P from 'pino';
 
-async function connectToWhatsApp () {
-    const sock = makeWASocket({
-        // can provide additional config here
-        printQRInTerminal: true
-    })
-    sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect } = update
-        if(connection === 'close') {
-            const shouldReconnect = (lastDisconnect.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut
-            console.log('connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect)
-            // reconnect if not logged out
-            if(shouldReconnect) {
-                connectToWhatsApp()
-            }
-        } else if(connection === 'open') {
-            console.log('opened connection')
-        }
-    })
-    sock.ev.on('messages.upsert', m => {
-        console.log(JSON.stringify(m, undefined, 2))
+const logger: any = P({
+  timestamp: () => `,"time":"${new Date().toJSON()}"`,
+}).child({});
 
-        console.log('replying to', m.messages[0].key.remoteJid)
-        await sock.sendMessage(m.messages[0].key.remoteJid!, { text: 'Hello there!' })
-    })
-}
-// run in main file
-connectToWhatsApp()
+logger.level = 'trace';
+
+const connectToWhatsApp = async () => {
+  // TODO: Use `useMultiFileAuthState` only development mode, not recommended for production
+  const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info');
+
+  const sock = makeWASocket({
+    auth: {
+      creds: state.creds,
+      keys: makeCacheableSignalKeyStore(state.keys, logger),
+    },
+    printQRInTerminal: true,
+  });
+
+  sock.ev.on('connection.update', async (update) => {
+    const { connection, lastDisconnect } = update;
+
+    if (connection === 'open') {
+      console.log('opened connection');
+
+      return;
+    }
+
+    const shouldReconnect =
+      (lastDisconnect?.error as any)?.output?.statusCode !==
+      DisconnectReason.loggedOut;
+
+    if (connection === 'close' && shouldReconnect) {
+      connectToWhatsApp().catch((e) =>
+        console.error('error reconnecting', e.message),
+      );
+    }
+  });
+
+  sock.ev.on('creds.update', async () => {
+    await saveCreds();
+  });
+
+  sock.ev.on('messages.upsert', async (m) => {
+    if (m.type === 'notify') {
+      await sock.sendMessage(m.messages[0].key.remoteJid, {
+        text: 'Hello World!!!',
+      });
+    }
+  });
+};
+
+connectToWhatsApp();
 ``` 
 
 If the connection is successful, you will see a QR code printed on your terminal screen, scan it with WhatsApp on your phone and you'll be logged in!
