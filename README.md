@@ -55,8 +55,8 @@ TODO
 WhatsApp provides a multi-device API that allows Baileys to be authenticated as a second WhatsApp client by scanning a QR code with WhatsApp on your phone.
 
 ``` sh 
-# First, install ts-node and pino
-yarn add ts-node pino
+# First, install ts-node and pino and qrcode-terminal
+yarn add ts-node pino qrcode-terminal
 # Then, run the file
 npx ts-node index.ts
 ```
