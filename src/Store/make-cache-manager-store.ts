@@ -7,7 +7,7 @@ import logger from '../Utils/logger'
 const makeCacheManagerAuthState = async(store: Store, sessionKey: string) => {
 	const defaultKey = (file: string): string => `${sessionKey}:${file}`
 
-	const databaseConn = await caching(store)
+	const databaseConn = caching({ store })
 
 	const writeData = async(file: string, data: object) => {
 		let ttl: number | undefined = undefined
@@ -18,7 +18,7 @@ const makeCacheManagerAuthState = async(store: Store, sessionKey: string) => {
 		await databaseConn.set(
 			defaultKey(file),
 			JSON.stringify(data, BufferJSON.replacer),
-			ttl
+			{ ttl }
 		)
 	}
 
@@ -47,10 +47,12 @@ const makeCacheManagerAuthState = async(store: Store, sessionKey: string) => {
 
 	const clearState = async() => {
 		try {
-			const result = await databaseConn.store.keys(`${sessionKey}*`)
-			await Promise.all(
-				result.map(async(key) => await databaseConn.del(key))
-			)
+			if(databaseConn?.store?.keys) {
+				const result = await databaseConn.store.keys(`${sessionKey}*`)
+				await Promise.all(
+					result.map(async(key: string) => await databaseConn.del(key))
+				)
+			}
 		} catch(err) {
 		}
 	}
