@@ -81,7 +81,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	let sendActiveReceipts = false
 
-	const sendMessageAck = async({ tag, attrs }: BinaryNode) => {
+	const sendMessageAck = async({ tag, attrs, content }: BinaryNode) => {
 		const stanza: BinaryNode = {
 			tag: 'ack',
 			attrs: {
