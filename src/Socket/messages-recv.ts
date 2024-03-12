@@ -99,13 +99,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			stanza.attrs.recipient = attrs.recipient
 		}
 
-		if(!!attrs.type) {
-			stanza.attrs.type = attrs.type
-		}
 
-		if(tag === 'message') {
-			stanza.attrs.from = authState.creds.me!.id
-		}
+    		if (!!attrs.type && (tag !== "message" || getBinaryNodeChild({ tag, attrs, content }, "unavailable"))) {
+      			stanza.attrs.type = attrs.type;
+    		}
+
+    		if(tag === "message" && getBinaryNodeChild({ tag, attrs, content }, "unavailable")) {
+      			stanza.attrs.from = authState.creds.me!.id;
+    		}
 
 		logger.debug({ recv: { tag, attrs }, sent: stanza.attrs }, 'sent ack')
 		await sendNode(stanza)
