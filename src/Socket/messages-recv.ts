@@ -45,6 +45,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const {
 		logger,
 		retryRequestDelayMs,
+		maxMsgRetryCount,
 		getMessage,
 		shouldIgnoreJid
 	} = config
@@ -130,7 +131,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const msgId = node.attrs.id
 
 		let retryCount = msgRetryCache.get<number>(msgId) || 0
-		if(retryCount >= 5) {
+		if(retryCount >= maxMsgRetryCount) {
 			logger.debug({ retryCount, msgId }, 'reached retry limit, clearing')
 			msgRetryCache.del(msgId)
 			return
@@ -155,9 +156,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						{
 							tag: 'retry',
 							attrs: {
-								count: retryCount,
-								id: node.attrs.id.toString(),
-								t: node.attrs.t.toString(),
+								count: retryCount.toString(),
+								id: node.attrs.id,
+								t: node.attrs.t,
 								v: '1'
 							}
 						},
@@ -299,6 +300,22 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		case 'invite':
 			msg.messageStubType = WAMessageStubType.GROUP_CHANGE_INVITE_LINK
 			msg.messageStubParameters = [ child.attrs.code ]
+			break
+		case 'member_add_mode':
+			const addMode = child.content
+			if(addMode) {
+				msg.messageStubType = WAMessageStubType.GROUP_MEMBER_ADD_MODE
+				msg.messageStubParameters = [ addMode.toString() ]
+			}
+
+			break
+		case 'membership_approval_mode':
+			const approvalMode: any = getBinaryNodeChild(child, 'group_join')
+			if(approvalMode) {
+				msg.messageStubType = WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_MODE
+				msg.messageStubParameters = [ approvalMode.attrs.state ]
+			}
+
 			break
 		}
 	}
@@ -487,7 +504,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const willSendMessageAgain = (id: string, participant: string) => {
 		const key = `${id}:${participant}`
 		const retryCount = msgRetryCache.get<number>(key) || 0
-		return retryCount < 5
+		return retryCount < maxMsgRetryCount
 	}
 
 	const updateSendMessageAgainCount = (id: string, participant: string) => {
@@ -661,6 +678,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleMessage = async(node: BinaryNode) => {
+		if(getBinaryNodeChild(node, "unavailable") && !getBinaryNodeChild(node, "enc")) {
+			// missing message from node
+			logger.debug(node, 'missing body; sending ack then ignoring.')
+			await sendMessageAck(node)
+			return
+		}
 		const { fullMessage: msg, category, author, decrypt } = decryptMessageNode(
 			node,
 			authState.creds.me!.id,
