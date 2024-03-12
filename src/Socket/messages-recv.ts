@@ -156,9 +156,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						{
 							tag: 'retry',
 							attrs: {
-								count: retryCount.toString(),
-								id: node.attrs.id,
-								t: node.attrs.t,
+								count: retryCount,
+								id: node.attrs.id.toString(),
+								t: node.attrs.t.toString(),
 								v: '1'
 							}
 						},
@@ -678,6 +678,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleMessage = async(node: BinaryNode) => {
+		if(getBinaryNodeChild(node, 'unavailable') && !getBinaryNodeChild(node, 'enc')) {
+			// "missing message from node" fix
+			logger.debug(node, 'missing body; sending ack then ignoring.')
+			await sendMessageAck(node)
+			return
+		}
+		
 		const { fullMessage: msg, category, author, decrypt } = decryptMessageNode(
 			node,
 			authState.creds.me!.id,
