@@ -115,7 +115,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const stanza: BinaryNode = ({
 			tag: 'call',
 			attrs: {
-				from: authState.creds.me!,
+				from: authState.creds.me!.id,
 				to: callFrom,
 			},
 			content: [{
@@ -160,7 +160,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						{
 							tag: 'retry',
 							attrs: {
-								count: retryCount,
+								count: retryCount as any,
 								id: node.attrs.id.toString(),
 								t: node.attrs.t.toString(),
 								v: '1'
