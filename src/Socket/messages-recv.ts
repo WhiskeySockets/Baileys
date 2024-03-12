@@ -99,8 +99,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			stanza.attrs.recipient = attrs.recipient
 		}
 
-		if(tag !== 'message' && attrs.type) {
+		if(!!attrs.type) {
 			stanza.attrs.type = attrs.type
+		}
+
+		if(tag === "message") {
+			stanza.attrs.from = authState.creds.me!.id
 		}
 
 		logger.debug({ recv: { tag, attrs }, sent: stanza.attrs }, 'sent ack')
@@ -111,7 +115,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const stanza: BinaryNode = ({
 			tag: 'call',
 			attrs: {
-				from: authState.creds.me!.id,
+				from: authState.creds.me!,
 				to: callFrom,
 			},
 			content: [{
