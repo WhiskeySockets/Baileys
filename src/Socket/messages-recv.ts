@@ -103,7 +103,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			stanza.attrs.type = attrs.type
 		}
 
-		if(tag === "message") {
+		if(tag === 'message') {
 			stanza.attrs.from = authState.creds.me!.id
 		}
 
@@ -688,7 +688,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			await sendMessageAck(node)
 			return
 		}
-		
+
 		const { fullMessage: msg, category, author, decrypt } = decryptMessageNode(
 			node,
 			authState.creds.me!.id,
