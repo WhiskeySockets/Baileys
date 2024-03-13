@@ -100,12 +100,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 
-    		if (!!attrs.type && (tag !== "message" || getBinaryNodeChild({ tag, attrs, content }, "unavailable"))) {
-      			stanza.attrs.type = attrs.type;
+    		if(!!attrs.type && (tag !== 'message' || getBinaryNodeChild({ tag, attrs, content }, 'unavailable'))) {
+      			stanza.attrs.type = attrs.type
     		}
 
-    		if(tag === "message" && getBinaryNodeChild({ tag, attrs, content }, "unavailable")) {
-      			stanza.attrs.from = authState.creds.me!.id;
+    		if(tag === 'message' && getBinaryNodeChild({ tag, attrs, content }, 'unavailable')) {
+      			stanza.attrs.from = authState.creds.me!.id
     		}
 
 		logger.debug({ recv: { tag, attrs }, sent: stanza.attrs }, 'sent ack')
