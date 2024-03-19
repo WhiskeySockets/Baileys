@@ -129,7 +129,7 @@ export const makeSocket = (config: SocketConfig) => {
 	/** send a binary node */
 	const sendNode = (frame: BinaryNode) => {
 		if(logger.level === 'trace') {
-			logger.trace(binaryNodeToString(frame), 'xml send')
+			logger.trace({ xml: binaryNodeToString(frame), msg: 'xml send' })
 		}
 
 		const buff = encodeBinaryNode(frame)
@@ -319,7 +319,7 @@ export const makeSocket = (config: SocketConfig) => {
 				const msgId = frame.attrs.id
 
 				if(logger.level === 'trace') {
-					logger.trace(binaryNodeToString(frame), 'recv xml')
+					logger.trace({ xml: binaryNodeToString(frame), msg: 'recv xml' })
 				}
 
 				/* Check if this is a response to a message we sent */
