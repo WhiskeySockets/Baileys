@@ -120,6 +120,7 @@ const startSock = async() => {
 
 		async function askForOTP() {
 			if (!registration.method) {
+				await delay(2000)
 				let code = await question('How would you like to receive the one time code for registration? "sms" or "voice"\n')
 				code = code.replace(/["']/g, '').trim().toLowerCase()
 				if(code !== 'sms' && code !== 'voice') {
