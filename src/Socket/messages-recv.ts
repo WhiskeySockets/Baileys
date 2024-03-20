@@ -378,8 +378,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const delPicture = getBinaryNodeChild(node, 'delete')
 
 			ev.emit('contacts.update', [{
-				id: from,
-				imgUrl: setPicture ? 'changed' : null
+				id: jidNormalizedUser(node?.attrs?.jid) || ((setPicture || delPicture)?.attrs?.hash) || '',
+				imgUrl: setPicture ? 'changed' : 'removed'
 			}])
 
 			if(isJidGroup(from)) {
