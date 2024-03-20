@@ -170,10 +170,14 @@ export const decryptMessageNode = (
 						let msg: proto.IMessage = proto.Message.decode(unpadRandomMax16(msgBuffer))
 						msg = msg.deviceSentMessage?.message || msg
 						if(msg.senderKeyDistributionMessage) {
-							await repository.processSenderKeyDistributionMessage({
-								authorJid: author,
-								item: msg.senderKeyDistributionMessage
-							})
+						    try {
+								await repository.processSenderKeyDistributionMessage({
+									authorJid: author,
+									item: msg.senderKeyDistributionMessage
+								})
+							} catch (err) {
+								logger.error({ key: fullMessage.key, err }, 'failed to decrypt message');
+						        }
 						}
 
 						if(fullMessage.message) {
