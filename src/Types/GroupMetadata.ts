@@ -36,6 +36,8 @@ export interface GroupMetadata {
     inviteCode?: string
     /** the person who added you */
     author?: string
+    /** the person who change settings in group */
+    updated_by?: string
 }
 
 
