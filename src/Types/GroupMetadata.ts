@@ -34,10 +34,8 @@ export interface GroupMetadata {
     participants: GroupParticipant[]
     ephemeralDuration?: number
     inviteCode?: string
-    /** the person who added you */
+    /** the person who added you to group or changed some setting in group */
     author?: string
-    /** the person who change settings in group */
-    updated_by?: string
 }
 
 
