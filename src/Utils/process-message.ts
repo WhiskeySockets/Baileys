@@ -298,7 +298,7 @@ const processMessage = async(
 			ev.emit('group-participants.update', { id: jid, author: message.participant!, participants, action })
 		)
 		const emitGroupUpdate = (update: Partial<GroupMetadata>) => {
-			ev.emit('groups.update', [{ id: jid, ...update }])
+			ev.emit('groups.update', [{ id: jid, ...update, author: message.participant ?? undefined }])
 		}
 
 		const participantsIncludesMe = () => participants.find(jid => areJidsSameUser(meId, jid))
