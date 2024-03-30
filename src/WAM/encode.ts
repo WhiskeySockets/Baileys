@@ -38,7 +38,7 @@ function encodeWAMHeader(binaryInfo: BinaryInfo) {
 
 function encodeGlobalAttributes(binaryInfo: BinaryInfo, globals: {[key: string]: Value}) {
 	for(const [key, _value] of Object.entries(globals)) {
-		const id = WEB_GLOBALS[key].id
+		const id = WEB_GLOBALS.find(a => a?.name === key)!.id
 		let value = _value
 		if(typeof value === 'boolean') {
 			value = value ? 1 : 0
