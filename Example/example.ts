@@ -193,7 +193,7 @@ const startSock = async() => {
 							eventSequenceNumber,
 						},
 						events,
-					} = JSON.parse(await fs.promises.readFile("./file.json", "utf-8"))
+					} = JSON.parse(await fs.promises.readFile("./boot_analytics_test.json", "utf-8"))
 
 					const binaryInfo = new BinaryInfo({
 						protocolVersion: wamVersion,
