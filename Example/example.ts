@@ -7,7 +7,7 @@ import open from 'open'
 import fs from 'fs'
 
 const logger = MAIN_LOGGER.child({})
-logger.level = 'trace'
+logger.level = 'error'
 
 const useStore = !process.argv.includes('--no-store')
 const doReplies = !process.argv.includes('--no-reply')
