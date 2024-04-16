@@ -16,6 +16,8 @@ export interface GroupMetadata {
     desc?: string
     descOwner?: string
     descId?: string
+    /** if this group is part of a community, it returns the jid of the community to which it belongs */
+    linkedParent?: string
     /** is set when the group only allows admins to change group settings */
     restrict?: boolean
     /** is set when the group only allows admins to write messages */
