@@ -32,6 +32,7 @@ type MediaUploadData = {
 	media: WAMediaUpload
 	caption?: string
 	ptt?: boolean
+	ptv?: boolean
 	seconds?: number
 	gifPlayback?: boolean
 	fileName?: string
@@ -253,6 +254,11 @@ export const prepareWAMessageMedia = async(
 			}
 		)
 	})
+
+	if (uploadData.ptv) {
+		obj.ptvMessage = obj.videoMessage
+		delete obj.videoMessage
+	}
 
 	if(cacheableKey) {
 		logger?.debug({ cacheableKey }, 'set cache')
