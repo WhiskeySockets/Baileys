@@ -57,10 +57,17 @@ WhatsApp provides a multi-device API that allows Baileys to be authenticated as 
 ``` ts
 import makeWASocket, { DisconnectReason } from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
+import Logger from '@whiskeysockets/baileys/lib/Utils/logger';
 
 async function connectToWhatsApp () {
+	const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info');
+
     const sock = makeWASocket({
         // can provide additional config here
+        auth: {
+            creds: state.creds,
+			keys: makeCacheableSignalKeyStore(state.keys, Logger),
+        },
         printQRInTerminal: true
     })
     sock.ev.on('connection.update', (update) => {
@@ -76,12 +83,20 @@ async function connectToWhatsApp () {
             console.log('opened connection')
         }
     })
+
+    sock.ev.on('creds.update', async () => {
+        await saveCreds()
+    });
+
+    // this will instantly send a message to yourself as soon as you log in
     sock.ev.on('messages.upsert', m => {
         console.log(JSON.stringify(m, undefined, 2))
 
         console.log('replying to', m.messages[0].key.remoteJid)
-        await sock.sendMessage(m.messages[0].key.remoteJid!, { text: 'Hello there!' })
+        setTimeout(() => sock.sendMessage(m.messages[0].key.remoteJid!, { text: 'Hello there!' }), 5000);
     })
+
+    // setTimeout(() => sock.sendMessage('556185560820@s.whatsapp.net', { text: 'mensagem automatizada, iphone é coisa de chupa rola' }), 5000)
 }
 // run in main file
 connectToWhatsApp()
