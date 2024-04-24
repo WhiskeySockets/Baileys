@@ -60,13 +60,13 @@ import { Boom } from '@hapi/boom'
 import Logger from '@whiskeysockets/baileys/lib/Utils/logger';
 
 async function connectToWhatsApp () {
-	const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info');
+    const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info');
 
     const sock = makeWASocket({
         // can provide additional config here
         auth: {
             creds: state.creds,
-			keys: makeCacheableSignalKeyStore(state.keys, Logger),
+            keys: makeCacheableSignalKeyStore(state.keys, Logger),
         },
         printQRInTerminal: true
     })
@@ -96,9 +96,8 @@ async function connectToWhatsApp () {
         console.log('replying to', m.messages[0].key.remoteJid)
         setTimeout(() => sock.sendMessage(m.messages[0].key.remoteJid!, { text: 'Hello there!' }), 5000);
     })
-
-    // setTimeout(() => sock.sendMessage('556185560820@s.whatsapp.net', { text: 'mensagem automatizada, iphone é coisa de chupa rola' }), 5000)
 }
+
 // run in main file
 connectToWhatsApp()
 ``` 
