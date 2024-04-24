@@ -84,11 +84,12 @@ async function connectToWhatsApp () {
         }
     })
 
+    // you need to save your credentials for when it restart the connection.
     sock.ev.on('creds.update', async () => {
         await saveCreds()
     });
 
-    // this will instantly send a message to yourself as soon as you log in
+    // this will send a message to yourself 5 seconds after you log in.
     sock.ev.on('messages.upsert', m => {
         console.log(JSON.stringify(m, undefined, 2))
 
