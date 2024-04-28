@@ -44,7 +44,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish in NPM
+      - name: Publish in NPM (as `baileys`)
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -79,3 +79,11 @@ jobs:
             baileys.tgz
           gzip: folders
           allow_override: true
+      
+      - name: Publish in NPM (whiskeysockets scope)
+        run: |
+          json -I -f package.json -e "this.name='@whiskeysockets/baileys'"
+          npm publish --access public
+          json -I -f package.json -e "this.name='baileys'"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
