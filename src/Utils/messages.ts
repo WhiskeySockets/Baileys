@@ -573,7 +573,8 @@ export const generateWAMessageFromContent = (
 		options.timestamp = new Date()
 	}
 
-	const key = Object.keys(message)[0]
+	const innerMessage = normalizeMessageContent(message)!
+	const key: string = getContentType(innerMessage)!
 	const timestamp = unixTimestampSeconds(options.timestamp)
 	const { quoted, userJid } = options
 
@@ -590,7 +591,7 @@ export const generateWAMessageFromContent = (
 			delete quotedContent.contextInfo
 		}
 
-		const contextInfo: proto.IContextInfo = message[key].contextInfo || { }
+		const contextInfo: proto.IContextInfo = innerMessage[key].contextInfo || { }
 		contextInfo.participant = jidNormalizedUser(participant!)
 		contextInfo.stanzaId = quoted.key.id
 		contextInfo.quotedMessage = quotedMsg
@@ -601,7 +602,7 @@ export const generateWAMessageFromContent = (
 			contextInfo.remoteJid = quoted.key.remoteJid
 		}
 
-		message[key].contextInfo = contextInfo
+		innerMessage[key].contextInfo = contextInfo
 	}
 
 	if(
@@ -612,8 +613,8 @@ export const generateWAMessageFromContent = (
 		// already not converted to disappearing message
 		key !== 'ephemeralMessage'
 	) {
-		message[key].contextInfo = {
-			...(message[key].contextInfo || {}),
+		innerMessage[key].contextInfo = {
+			...(innerMessage[key].contextInfo || {}),
 			expiration: options.ephemeralExpiration || WA_DEFAULT_EPHEMERAL,
 			//ephemeralSettingTimestamp: options.ephemeralOptions.eph_setting_ts?.toString()
 		}
