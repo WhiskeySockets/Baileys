@@ -129,7 +129,7 @@ export const makeSocket = (config: SocketConfig) => {
 	/** send a binary node */
 	const sendNode = (frame: BinaryNode) => {
 		if(logger.level === 'trace') {
-			logger.trace(binaryNodeToString(frame), 'xml send')
+			logger.trace({ xml: binaryNodeToString(frame), msg: 'xml send' })
 		}
 
 		const buff = encodeBinaryNode(frame)
@@ -319,7 +319,7 @@ export const makeSocket = (config: SocketConfig) => {
 				const msgId = frame.attrs.id
 
 				if(logger.level === 'trace') {
-					logger.trace(binaryNodeToString(frame), 'recv xml')
+					logger.trace({ xml: binaryNodeToString(frame), msg: 'recv xml' })
 				}
 
 				/* Check if this is a response to a message we sent */
@@ -547,7 +547,26 @@ export const makeSocket = (config: SocketConfig) => {
 		return Buffer.concat([salt, randomIv, ciphered])
 	}
 
+	const sendWAMBuffer = (wamBuffer: Buffer) => {
+		return query({
+			tag: 'iq',
+			attrs: {
+				to: S_WHATSAPP_NET,
+				id: generateMessageTag(),
+				xmlns: 'w:stats'
+			},
+			content: [
+				{
+					tag: 'add',
+					attrs: {},
+					content: wamBuffer
+				}
+			]
+		})
+	}
+
 	ws.on('message', onMessageReceived)
+
 	ws.on('open', async() => {
 		try {
 			await validateConnection()
@@ -723,6 +742,7 @@ export const makeSocket = (config: SocketConfig) => {
 		requestPairingCode,
 		/** Waits for the connection to WA to reach a state */
 		waitForConnectionUpdate: bindWaitForConnectionUpdate(ev),
+		sendWAMBuffer,
 	}
 }
 
