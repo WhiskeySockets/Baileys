@@ -1,5 +1,5 @@
 {
-  "name": "@whiskeysockets/baileys",
+  "name": "baileys",
   "version": "6.6.0",
   "description": "WhatsApp API",
   "keywords": [
@@ -77,7 +77,8 @@
     "ts-jest": "^27.0.3",
     "ts-node": "^10.8.1",
     "typedoc": "^0.24.7",
-    "typescript": "^4.6.4"
+    "typescript": "^4.6.4",
+    "json": "^11.0.0"
   },
   "peerDependencies": {
     "jimp": "^0.16.1",
