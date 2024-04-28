@@ -547,6 +547,24 @@ export const makeSocket = (config: SocketConfig) => {
 		return Buffer.concat([salt, randomIv, ciphered])
 	}
 
+	const sendWAMBuffer = (wamBuffer: Buffer) => {
+		return query({
+			tag: 'iq',
+			attrs: {
+				to: S_WHATSAPP_NET,
+				id: generateMessageTag(),
+				xmlns: 'w:stats'
+			},
+			content: [
+				{
+					tag: 'add',
+					attrs: {},
+					content: wamBuffer
+				}
+			]
+		})
+	}
+
 	ws.on('message', onMessageRecieved)
 	ws.on('open', async() => {
 		try {
@@ -723,6 +741,7 @@ export const makeSocket = (config: SocketConfig) => {
 		requestPairingCode,
 		/** Waits for the connection to WA to reach a state */
 		waitForConnectionUpdate: bindWaitForConnectionUpdate(ev),
+		sendWAMBuffer,
 	}
 }
 
