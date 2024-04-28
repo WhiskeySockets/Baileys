@@ -378,8 +378,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const delPicture = getBinaryNodeChild(node, 'delete')
 
 			ev.emit('contacts.update', [{
-				id: from,
-				imgUrl: setPicture ? 'changed' : null
+				id: jidNormalizedUser(node?.attrs?.jid) || ((setPicture || delPicture)?.attrs?.hash) || '',
+				imgUrl: setPicture ? 'changed' : 'removed'
 			}])
 
 			if(isJidGroup(from)) {
@@ -683,13 +683,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleMessage = async(node: BinaryNode) => {
-		if(getBinaryNodeChild(node, 'unavailable') && !getBinaryNodeChild(node, 'enc')) {
-			// "missing message from node" fix
-			logger.debug(node, 'missing body; sending ack then ignoring.')
-			await sendMessageAck(node)
-			return
-		}
-
 		const { fullMessage: msg, category, author, decrypt } = decryptMessageNode(
 			node,
 			authState.creds.me!.id,
