@@ -306,7 +306,7 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const onMessageRecieved = (data: Buffer) => {
+	const onMessageReceived = (data: Buffer) => {
 		noise.decodeFrame(data, frame => {
 			// reset ping timeout
 			lastDateRecv = new Date()
@@ -565,7 +565,8 @@ export const makeSocket = (config: SocketConfig) => {
 		})
 	}
 
-	ws.on('message', onMessageRecieved)
+	ws.on('message', onMessageReceived)
+
 	ws.on('open', async() => {
 		try {
 			await validateConnection()
