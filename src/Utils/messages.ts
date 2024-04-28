@@ -32,6 +32,7 @@ type MediaUploadData = {
 	media: WAMediaUpload
 	caption?: string
 	ptt?: boolean
+	ptv?: boolean
 	seconds?: number
 	gifPlayback?: boolean
 	fileName?: string
@@ -68,7 +69,7 @@ const ButtonType = proto.Message.ButtonsMessage.HeaderType
  * @returns the URL, eg. https://google.com
  */
 export const extractUrlFromText = (text: string) => (
-	!URL_EXCLUDE_REGEX.test(text) ? text.match(URL_REGEX)?.[0] : undefined
+	text.split(' ').find(word => URL_REGEX.test(word) && !URL_EXCLUDE_REGEX.test(word)) || undefined
 )
 
 export const generateLinkPreviewIfRequired = async(text: string, getUrlInfo: MessageGenerationOptions['getUrlInfo'], logger: MessageGenerationOptions['logger']) => {
@@ -253,6 +254,11 @@ export const prepareWAMessageMedia = async(
 			}
 		)
 	})
+
+	if(uploadData.ptv) {
+		obj.ptvMessage = obj.videoMessage
+		delete obj.videoMessage
+	}
 
 	if(cacheableKey) {
 		logger?.debug({ cacheableKey }, 'set cache')
