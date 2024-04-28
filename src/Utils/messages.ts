@@ -69,7 +69,7 @@ const ButtonType = proto.Message.ButtonsMessage.HeaderType
  * @returns the URL, eg. https://google.com
  */
 export const extractUrlFromText = (text: string) => (
-	text.split(' ').find(word => URL_REGEX.test(word) && !URL_EXCLUDE_REGEX.test(word)) || undefined
+	!URL_EXCLUDE_REGEX.test(text) ? text.match(URL_REGEX)?.[0] : undefined
 )
 
 export const generateLinkPreviewIfRequired = async(text: string, getUrlInfo: MessageGenerationOptions['getUrlInfo'], logger: MessageGenerationOptions['logger']) => {
