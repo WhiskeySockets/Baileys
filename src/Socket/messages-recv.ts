@@ -135,15 +135,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const sendRetryRequest = async(node: BinaryNode, forceIncludeKeys = false) => {
 		const msgId = node.attrs.id
 
-		let retryCount = msgRetryCache.get<number>(msgId) || 0
+		let retryCount = await msgRetryCache.get<number>(msgId) || 0
 		if(retryCount >= maxMsgRetryCount) {
 			logger.debug({ retryCount, msgId }, 'reached retry limit, clearing')
-			msgRetryCache.del(msgId)
+			await msgRetryCache.del(msgId)
 			return
 		}
 
 		retryCount += 1
-		msgRetryCache.set(msgId, retryCount)
+		await msgRetryCache.set(msgId, retryCount)
 
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
 
@@ -506,16 +506,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		return data instanceof Buffer ? data : Buffer.from(data)
 	}
 
-	const willSendMessageAgain = (id: string, participant: string) => {
+	const willSendMessageAgain = async (id: string, participant: string) => {
 		const key = `${id}:${participant}`
-		const retryCount = msgRetryCache.get<number>(key) || 0
+		const retryCount = await msgRetryCache.get<number>(key) || 0
 		return retryCount < maxMsgRetryCount
 	}
 
-	const updateSendMessageAgainCount = (id: string, participant: string) => {
+	const updateSendMessageAgainCount = async (id: string, participant: string) => {
 		const key = `${id}:${participant}`
-		const newValue = (msgRetryCache.get<number>(key) || 0) + 1
-		msgRetryCache.set(key, newValue)
+		const newValue = (await msgRetryCache.get<number>(key) || 0) + 1
+		await msgRetryCache.set(key, newValue)
 	}
 
 	const sendMessagesAgain = async(
@@ -628,7 +628,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						// correctly set who is asking for the retry
 						key.participant = key.participant || attrs.from
 						const retryNode = getBinaryNodeChild(node, 'retry')
-						if(willSendMessageAgain(ids[0], key.participant)) {
+						if(await willSendMessageAgain(ids[0], key.participant)) {
 							if(key.fromMe) {
 								try {
 									logger.debug({ attrs, key }, 'recv retry request')
