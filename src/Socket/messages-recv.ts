@@ -783,10 +783,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			call.isVideo = !!getBinaryNodeChild(infoChild, 'video')
 			call.isGroup = infoChild.attrs.type === 'group' || !!infoChild.attrs['group-jid']
 			call.groupJid = infoChild.attrs['group-jid']
-			callOfferCache.set(call.id, call)
+			await callOfferCache.set(call.id, call)
 		}
 
-		const existingCall = callOfferCache.get<WACallEvent>(call.id)
+		const existingCall = await callOfferCache.get<WACallEvent>(call.id)
 
 		// use existing call info to populate this event
 		if(existingCall) {
@@ -796,7 +796,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		// delete data once call has ended
 		if(status === 'reject' || status === 'accept' || status === 'timeout') {
-			callOfferCache.del(call.id)
+			await callOfferCache.del(call.id)
 		}
 
 		ev.emit('call', [call])
