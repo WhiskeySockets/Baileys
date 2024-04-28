@@ -255,7 +255,7 @@ export const prepareWAMessageMedia = async(
 		)
 	})
 
-	if (uploadData.ptv) {
+	if(uploadData.ptv) {
 		obj.ptvMessage = obj.videoMessage
 		delete obj.videoMessage
 	}
