@@ -192,7 +192,9 @@ export default (
 					}
 				}
 
-				Object.assign(contacts[update.id!], contact)
+                if(contacts[update.id!]) {
+				    Object.assign(contacts[update.id!], contact)
+				}
 			}
 		})
 		ev.on('chats.upsert', newChats => {
