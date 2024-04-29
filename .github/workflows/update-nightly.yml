@@ -44,7 +44,7 @@ jobs:
         run: yarn version --prerelease --preid=alpha --no-git --no-git-tag-version
 
       - name: Build NPM package
-        run: yarn pack && mv whiskeysockets-baileys-*.tgz whiskeysockets-baileys-nightly.tgz
+        run: yarn pack && mv baileys-*.tgz baileys-nightly.tgz
 
       - name: Generate Changelog
         id: generate_changelog
@@ -74,6 +74,6 @@ jobs:
           draft: false
           prerelease: true
           files: >
-            whiskeysockets-baileys-nightly.tgz
+            baileys-nightly.tgz
           gzip: folders
           allow_override: true
