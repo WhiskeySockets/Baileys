@@ -40,7 +40,6 @@ export const PROTOCOL_VERSION = [5, 2]
 export const MOBILE_NOISE_HEADER = Buffer.concat([Buffer.from('WA'), Buffer.from(PROTOCOL_VERSION)])
 /** from: https://stackoverflow.com/questions/3809401/what-is-a-good-regular-expression-to-match-a-url */
 export const URL_REGEX = /(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/
-export const URL_EXCLUDE_REGEX = /[\w-\.]+@([\w-]+\.)+[\w-]{2,4}/
 
 export const WA_CERT_DETAILS = {
 	SERIAL: 0,
