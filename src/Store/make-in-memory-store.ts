@@ -146,12 +146,12 @@ export default (
 			const chatsAdded = chats.insertIfAbsent(...newChats).length
 			logger.debug({ chatsAdded }, 'synced chats')
 
+			const oldContacts = contactsUpsert(newContacts)
 			if(isLatest) {
 				for(const jid of oldContacts) {
 					delete contacts[jid]
 				}
 			}
-			const oldContacts = contactsUpsert(newContacts)
 
 			logger.debug({ deletedContacts: isLatest ? oldContacts.size : 0, newContacts }, 'synced contacts')
 
@@ -175,7 +175,7 @@ export default (
 					contact = contacts[update.id!]
 				} else {
 					const contactHashes = await Promise.all(Object.keys(contacts).map(async contactId => {
-						const {user} = jidDecode(contactId)
+						const {user} = jidDecode(contactId)!
 						return [contactId, (await md5(Buffer.from(user + 'WA_ADD_NOTIF', 'utf8'))).toString('base64').slice(0, 3)]
 					}))
 					contact = contacts[contactHashes.find(([a, b]) => b === update.id)![0] || ''] // find contact by attrs.hash
