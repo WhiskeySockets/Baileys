@@ -175,10 +175,10 @@ export default (
 					contact = contacts[update.id!]
 				} else {
 					const contactHashes = await Promise.all(Object.keys(contacts).map(async contactId => {
-						const {user} = jidDecode(contactId)!
+						const { user } = jidDecode(contactId)!
 						return [contactId, (await md5(Buffer.from(user + 'WA_ADD_NOTIF', 'utf8'))).toString('base64').slice(0, 3)]
 					}))
-					contact = contacts[contactHashes.find(([a, b]) => b === update.id)![0] || ''] // find contact by attrs.hash
+					contact = contacts[contactHashes.find(([_, b]) => b === update.id)![0] || ''] // find contact by attrs.hash
 				}
 
 				if(update.imgUrl === 'changed' || update.imgUrl === 'removed') {
@@ -193,7 +193,9 @@ export default (
 					}
 				}
 
-				if(contact?.id) Object.assign(contacts[contact.id!], contact)
+				if(contact?.id) {
+					Object.assign(contacts[contact.id!], contact)
+				}
 			}
 		})
 		ev.on('chats.upsert', newChats => {
