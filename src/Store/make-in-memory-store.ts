@@ -8,7 +8,7 @@ import type { BaileysEventEmitter, Chat, ConnectionState, Contact, GroupMetadata
 import { Label } from '../Types/Label'
 import { LabelAssociation, LabelAssociationType, MessageLabelAssociation } from '../Types/LabelAssociation'
 import { md5, toNumber, updateMessageWithReaction, updateMessageWithReceipt } from '../Utils'
-import { jidNormalizedUser } from '../WABinary'
+import { jidDecode, jidNormalizedUser } from '../WABinary'
 import makeOrderedDictionary from './make-ordered-dictionary'
 import { ObjectRepository } from './object-repository'
 
@@ -146,12 +146,12 @@ export default (
 			const chatsAdded = chats.insertIfAbsent(...newChats).length
 			logger.debug({ chatsAdded }, 'synced chats')
 
-			const oldContacts = contactsUpsert(newContacts)
 			if(isLatest) {
 				for(const jid of oldContacts) {
 					delete contacts[jid]
 				}
 			}
+			const oldContacts = contactsUpsert(newContacts)
 
 			logger.debug({ deletedContacts: isLatest ? oldContacts.size : 0, newContacts }, 'synced contacts')
 
@@ -174,10 +174,11 @@ export default (
 				if(contacts[update.id!]) {
 					contact = contacts[update.id!]
 				} else {
-					const contactHashes = await Promise.all(Object.keys(contacts).map(async a => {
-						return (await md5(Buffer.from(a + 'WA_ADD_NOTIF', 'utf8'))).toString('base64').slice(0, 3)
+					const contactHashes = await Promise.all(Object.keys(contacts).map(async contactId => {
+						const {user} = jidDecode(contactId)
+						return [contactId, (await md5(Buffer.from(user + 'WA_ADD_NOTIF', 'utf8'))).toString('base64').slice(0, 3)]
 					}))
-					contact = contacts[contactHashes.find(a => a === update.id) || '']
+					contact = contacts[contactHashes.find(([a, b]) => b === update.id)![0] || ''] // find contact by attrs.hash
 				}
 
 				if(update.imgUrl === 'changed' || update.imgUrl === 'removed') {
@@ -192,7 +193,7 @@ export default (
 					}
 				}
 
-				Object.assign(contacts[update.id!], contact)
+				if(contact?.id) Object.assign(contacts[contact.id!], contact)
 			}
 		})
 		ev.on('chats.upsert', newChats => {
