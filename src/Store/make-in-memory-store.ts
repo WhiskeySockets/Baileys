@@ -74,12 +74,12 @@ const predefinedLabels = Object.freeze<Record<string, Label>>({
 })
 
 export default (
-	{ logger: _logger, chatKey, labelAssociationKey, socket }: BaileysInMemoryStoreConfig
+	{ logger, chatKey, labelAssociationKey, socket }: BaileysInMemoryStoreConfig
 ) => {
 	// const logger = _logger || DEFAULT_CONNECTION_CONFIG.logger.child({ stream: 'in-mem-store' })
 	chatKey = chatKey || waChatKey(true)
 	labelAssociationKey = labelAssociationKey || waLabelAssociationKey
-	const logger = _logger || DEFAULT_CONNECTION_CONFIG.logger.child({ stream: 'in-mem-store' })
+	logger = logger || DEFAULT_CONNECTION_CONFIG.logger.child({ stream: 'in-mem-store' })
 	const KeyedDB = require('@adiwajshing/keyed-db').default
 
 	const chats = new KeyedDB(chatKey, c => c.id) as KeyedDB<Chat, string>
