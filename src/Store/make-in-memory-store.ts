@@ -179,8 +179,8 @@ export default (
 					contact = contacts[contactHashes.find(a => a === update.id) || '']
 				}
 
-				if(update.imgUrl === 'changed' || update.imgUrl === 'removed') {
-					if(contact) {
+				if(contact) {
+					if(update.imgUrl === 'changed' || update.imgUrl === 'removed') {
 						if(update.imgUrl === 'changed') {
 							contact.imgUrl = socket ? await socket?.profilePictureUrl(contact.id) : undefined
 						} else {
@@ -189,9 +189,9 @@ export default (
 					} else {
 						return logger.debug({ update }, 'got update for non-existant contact')
 					}
-				}
 
-				Object.assign(contacts[update.id!], contact)
+					Object.assign(contacts[update.id!], contact)
+				}
 			}
 		})
 		ev.on('chats.upsert', newChats => {
