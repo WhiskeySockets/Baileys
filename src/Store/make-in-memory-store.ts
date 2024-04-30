@@ -29,7 +29,7 @@ export const waLabelAssociationKey: Comparable<LabelAssociation, string> = {
 export type BaileysInMemoryStoreConfig = {
 	chatKey?: Comparable<Chat, string>
 	labelAssociationKey?: Comparable<LabelAssociation, string>
-	logger?: Logger
+	logger: Logger
 	socket?: WASocket
 }
 
