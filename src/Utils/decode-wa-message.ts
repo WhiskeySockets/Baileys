@@ -175,7 +175,7 @@ export const decryptMessageNode = (
 									authorJid: author,
 									item: msg.senderKeyDistributionMessage
 								})
-							}catch (err) {
+							} catch(err) {
 								logger.error({ key: fullMessage.key, err }, 'failed to decrypt message')
 						        }
 						}
