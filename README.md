@@ -42,7 +42,7 @@ yarn add github:WhiskeySockets/Baileys
 ```
 
 Then import your code using:
-``` ts 
+```ts 
 import makeWASocket from '@whiskeysockets/baileys'
 ```
 
@@ -54,7 +54,7 @@ TODO
 
 WhatsApp provides a multi-device API that allows Baileys to be authenticated as a second WhatsApp client by scanning a QR code with WhatsApp on your phone.
 
-``` ts
+```ts
 import makeWASocket, { DisconnectReason } from '@whiskeysockets/baileys'
 import { Boom } from '@hapi/boom'
 
@@ -63,19 +63,21 @@ async function connectToWhatsApp () {
         // can provide additional config here
         printQRInTerminal: true
     })
+
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect } = update
-        if(connection === 'close') {
+        if (connection === 'close') {
             const shouldReconnect = (lastDisconnect.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut
             console.log('connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect)
             // reconnect if not logged out
             if(shouldReconnect) {
                 connectToWhatsApp()
             }
-        } else if(connection === 'open') {
+        } else if (connection === 'open') {
             console.log('opened connection')
         }
     })
+
     sock.ev.on('messages.upsert', m => {
         console.log(JSON.stringify(m, undefined, 2))
 
@@ -83,6 +85,7 @@ async function connectToWhatsApp () {
         await sock.sendMessage(m.messages[0].key.remoteJid!, { text: 'Hello there!' })
     })
 }
+
 // run in main file
 connectToWhatsApp()
 ``` 
@@ -104,7 +107,7 @@ Run the [example](Example/example.ts) file with ``--mobile`` cli flag to use the
 You can configure the connection by passing a `SocketConfig` object.
 
 The entire `SocketConfig` structure is mentioned here with default values:
-``` ts
+```ts
 type SocketConfig = {
     /** the WS url to connect to WA */
     waWebSocketUrl: string | URL
@@ -115,15 +118,15 @@ type SocketConfig = {
     /** ping-pong interval for WS connection */
     keepAliveIntervalMs: number
     /** proxy agent */
-	agent?: Agent
+    agent?: Agent
     /** pino logger */
-	logger: Logger
+    logger: Logger
     /** version to connect with */
     version: WAVersion
     /** override browser config */
-	browser: WABrowserDescription
+    browser: WABrowserDescription
 	/** agent used for fetch requests -- uploading/downloading media */
-	fetchAgent?: Agent
+    fetchAgent?: Agent
     /** should the QR be printed in the terminal */
     printQRInTerminal: boolean
     /** should events be emitted for actions done by this socket connection */
@@ -150,7 +153,8 @@ type SocketConfig = {
     markOnlineOnConnect: boolean
     /**
      * map to store the retry counts for failed messages;
-     * used to determine whether to retry a message or not */
+     * used to determine whether to retry a message or not 
+     * */
     msgRetryCounterMap?: MessageRetryMap
     /** width for link preview images */
     linkPreviewImageThumbnailWidth: number
@@ -178,7 +182,7 @@ type SocketConfig = {
 
 1. Baileys, by default, emulates a chrome web session
 2. If you'd like to emulate a desktop connection (and receive more message history), add this to your Socket config:
-    ``` ts
+    ```ts
     const conn = makeWASocket({
         ...otherOpts,
         // can use Windows, Ubuntu here too
@@ -192,7 +196,7 @@ type SocketConfig = {
 You obviously don't want to keep scanning the QR code every time you want to connect. 
 
 So, you can load the credentials to log back in:
-``` ts
+```ts
 import makeWASocket, { BufferJSON, useMultiFileAuthState } from '@whiskeysockets/baileys'
 import * as fs from 'fs'
 
@@ -211,7 +215,7 @@ conn.ev.on ('creds.update', saveCreds)
 ## Listening to Connection Updates
 
 Baileys now fires the `connection.update` event to let you know something has updated in the connection. This data has the following structure:
-``` ts
+```ts
 type ConnectionState = {
 	/** connection is now open, connecting or closed */
 	connection: WAConnectionState
@@ -238,8 +242,7 @@ They're all nicely typed up, so you shouldn't have any issues with an Intellisen
 
 The events are typed as mentioned here:
 
-``` ts
-
+```ts
 export type BaileysEventMap = {
     /** connection state has been updated -- WS closed, opened, connecting etc. */
 	'connection.update': Partial<ConnectionState>
@@ -292,13 +295,11 @@ export type BaileysEventMap = {
 ```
 
 You can listen to these events like this:
-``` ts
-
+```ts
 const sock = makeWASocket()
 sock.ev.on('messages.upsert', ({ messages }) => {
     console.log('got messages', messages)
 })
-
 ```
 
 ## Implementing a Data Store
@@ -307,7 +308,7 @@ Baileys does not come with a defacto storage for chats, contacts, or messages. H
 
 It can be used as follows:
 
-``` ts
+```ts
 import makeWASocket, { makeInMemoryStore } from '@whiskeysockets/baileys'
 // the store maintains the data of the WA connection in memory
 // can be written out to a file & read from it
@@ -333,7 +334,6 @@ sock.ev.on('chats.set', () => {
 sock.ev.on('contacts.set', () => {
     console.log('got contacts', Object.values(store.contacts))
 })
-
 ```
 
 The store also provides some simple functions such as `loadMessages` that utilize the store to speed up data retrieval.
@@ -346,7 +346,7 @@ The store also provides some simple functions such as `loadMessages` that utiliz
 
 ### Non-Media Messages
 
-``` ts
+```ts
 import { MessageType, MessageOptions, Mimetype } from '@whiskeysockets/baileys'
 
 const id = 'abcd@s.whatsapp.net' // the WhatsApp ID 
@@ -363,7 +363,7 @@ const sentMsg  = await sock.sendMessage(
 )
 // send a contact!
 const vcard = 'BEGIN:VCARD\n' // metadata of the contact card
-            + 'VERSION:3.0\n' 
+            + 'VERSION:3.0\n'  // vcard version
             + 'FN:Jeff Singh\n' // full name
             + 'ORG:Ashoka Uni;\n' // the organization of the contact
             + 'TEL;type=CELL;type=VOICE;waid=911234567890:+91 12345 67890\n' // WhatsApp ID + phone number
@@ -394,7 +394,7 @@ const sendMsg = await sock.sendMessage(id, reactionMessage)
 2. Baileys has a function to generate the content for these link previews
 3. To enable this function's usage, add `link-preview-js` as a dependency to your project with `yarn add link-preview-js`
 4. Send a link:
-``` ts
+```ts
 // send a link
 const sentMsg  = await sock.sendMessage(id, { text: 'Hi, this was sent using https://github.com/adiwajshing/baileys' })
 ```
@@ -405,7 +405,7 @@ Sending media (video, stickers, images) is easier & more efficient than ever.
 - You can specify a buffer, a local url or even a remote url.
 - When specifying a media url, Baileys never loads the entire buffer into memory; it even encrypts the media as a readable stream.
 
-``` ts
+```ts
 import { MessageType, MessageOptions, Mimetype } from '@whiskeysockets/baileys'
 // Sending gifs
 await sock.sendMessage(
@@ -444,7 +444,7 @@ await sock.sendMessage(
     - For stories, the ID is `status@broadcast`.
 - For media messages, the thumbnail can be generated automatically for images & stickers provided you add `jimp` or `sharp` as a dependency in your project using `yarn add jimp` or `yarn add sharp`. Thumbnails for videos can also be generated automatically, though, you need to have `ffmpeg` installed on your system.
 - **MiscGenerationOptions**: some extra info about the message. It can have the following __optional__ values:
-    ``` ts
+    ```ts
     const info: MessageOptions = {
         quoted: quotedMessage, // the message you want to quote
         contextInfo: { forwardingScore: 2, isForwarded: true }, // some random context info (can show a forwarded message with this too)
@@ -467,7 +467,7 @@ await sock.sendMessage(
     ```
 ## Forwarding Messages
 
-``` ts
+```ts
 const msg = getMessageFromStore('455@s.whatsapp.net', 'HSJHJWH7323HSJSJ') // implement this on your end
 await sock.sendMessage('1234@s.whatsapp.net', { forward: msg }) // WA forward the message!
 ```
@@ -478,7 +478,7 @@ A set of message keys must be explicitly marked read now.
 In multi-device, you cannot mark an entire "chat" read as it were with Baileys Web.
 This means you have to keep track of unread messages.
 
-``` ts
+```ts
 const key = {
     remoteJid: '1234-123@g.us',
     id: 'AHASHH123123AHGA', // id of the message you want to read
@@ -494,14 +494,14 @@ On a `WAMessage`, the `messageID` can be accessed using ```messageID = message.k
 
 ## Update Presence
 
-``` ts
+```ts
 await sock.sendPresenceUpdate('available', id) 
 
 ```
 This lets the person/group with ``` id ``` know whether you're online, offline, typing etc. 
 
 ``` presence ``` can be one of the following:
-``` ts
+```ts
 type WAPresence = 'unavailable' | 'available' | 'composing' | 'recording' | 'paused'
 ```
 
@@ -512,7 +512,7 @@ The presence expires after about 10 seconds.
 ## Downloading Media Messages
 
 If you want to save the media you received
-``` ts
+```ts
 import { writeFile } from 'fs/promises'
 import { downloadMediaMessage } from '@whiskeysockets/baileys'
 
@@ -520,7 +520,7 @@ sock.ev.on('messages.upsert', async ({ messages }) => {
     const m = messages[0]
 
     if (!m.message) return // if there is no text or media message
-    const messageType = Object.keys (m.message)[0]// get what type of message it is -- text, image, video
+    const messageType = Object.keys(m.message)[0]// get what type of message it is -- text, image, video
     // if the message is an image
     if (messageType === 'imageMessage') {
         // download the message
@@ -542,13 +542,13 @@ sock.ev.on('messages.upsert', async ({ messages }) => {
 ```
 
 **Note:** WhatsApp automatically removes old media from their servers. For the device to access said media -- a re-upload is required by another device that has it. This can be accomplished using: 
-``` ts
+```ts
 const updatedMediaMsg = await sock.updateMediaMessage(msg)
 ```
 
 ## Deleting Messages
 
-``` ts
+```ts
 const jid = '1234@s.whatsapp.net' // can also be a group
 const response = await sock.sendMessage(jid, { text: 'hello!' }) // send a message
 // sends a message to delete the given message
@@ -560,13 +560,13 @@ await sock.sendMessage(jid, { delete: response.key })
 
 ## Updating Messages
 
-``` ts
+```ts
 const jid = '1234@s.whatsapp.net'
 
 await sock.sendMessage(jid, {
-      text: 'updated text goes here',
-      edit: response.key,
-    });
+    text: 'updated text goes here',
+    edit: response.key,
+});
 ```
 
 ## Modifying Chats
@@ -574,36 +574,36 @@ await sock.sendMessage(jid, {
 WA uses an encrypted form of communication to send chat/app updates. This has been implemented mostly and you can send the following updates:
 
 - Archive a chat
-  ``` ts
+  ```ts
   const lastMsgInChat = await getLastMessageInChat('123456@s.whatsapp.net') // implement this on your end
   await sock.chatModify({ archive: true, lastMessages: [lastMsgInChat] }, '123456@s.whatsapp.net')
   ```
 - Mute/unmute a chat
-  ``` ts
+  ```ts
   // mute for 8 hours
   await sock.chatModify({ mute: 8*60*60*1000 }, '123456@s.whatsapp.net', [])
   // unmute
   await sock.chatModify({ mute: null }, '123456@s.whatsapp.net', [])
   ```
 - Mark a chat read/unread
-  ``` ts
+  ```ts
   const lastMsgInChat = await getLastMessageInChat('123456@s.whatsapp.net') // implement this on your end
   // mark it unread
   await sock.chatModify({ markRead: false, lastMessages: [lastMsgInChat] }, '123456@s.whatsapp.net')
   ```
 
 - Delete a message for me
-  ``` ts
+  ```ts
   await sock.chatModify(
     { clear: { messages: [{ id: 'ATWYHDNNWU81732J', fromMe: true, timestamp: "1654823909" }] } }, 
     '123456@s.whatsapp.net', 
     []
-    )
+  )
 
   ```
 
 - Delete a chat
-  ``` ts
+  ```ts
   const lastMsgInChat = await getLastMessageInChat('123456@s.whatsapp.net') // implement this on your end
   await sock.chatModify({
     delete: true,
@@ -613,7 +613,7 @@ WA uses an encrypted form of communication to send chat/app updates. This has be
   ```
 
 - Pin/unpin a chat
-  ``` ts
+  ```ts
   await sock.chatModify({
     pin: true // or `false` to unpin
   },
@@ -621,7 +621,7 @@ WA uses an encrypted form of communication to send chat/app updates. This has be
   ```
   
 - Star/unstar a message
-  ``` ts
+  ```ts
   await sock.chatModify({
   star: {
   	messages: [{ id: 'messageID', fromMe: true // or `false` }],
@@ -633,7 +633,7 @@ WA uses an encrypted form of communication to send chat/app updates. This has be
 
 ## Disappearing Messages
 
-``` ts
+```ts
 const jid = '1234@s.whatsapp.net' // can also be a group
 // turn on disappearing messages
 await sock.sendMessage(
@@ -654,30 +654,30 @@ await sock.sendMessage(
 ## Misc
 
 - To check if a given ID is on WhatsApp
-    ``` ts
+    ```ts
     const id = '123456'
     const [result] = await sock.onWhatsApp(id)
-    if (result.exists) console.log (`${id} exists on WhatsApp, as jid: ${result.jid}`)
+    if (result.exists) console.log(`${id} exists on WhatsApp, as jid: ${result.jid}`)
     ```
 - To query chat history on a group or with someone
     TODO, if possible
 - To get the status of some person
-    ``` ts
+    ```ts
     const status = await sock.fetchStatus("xyz@s.whatsapp.net")
     console.log("status: " + status)
     ```
 - To change your profile status
-    ``` ts
+    ```ts
     const status = 'Hello World!'
     await sock.updateProfileStatus(status)
     ```
 - To change your profile name
-    ``` ts
+    ```ts
     const name = 'My name'
     await sock.updateProfileName(name)
     ```
 - To get the display picture of some person/group
-    ``` ts
+    ```ts
     // for low res picture
     const ppUrl = await sock.profilePictureUrl("xyz@g.us")
     console.log("download profile picture from: " + ppUrl)
@@ -685,24 +685,24 @@ await sock.sendMessage(
     const ppUrl = await sock.profilePictureUrl("xyz@g.us", 'image')
     ```
 - To change your display picture or a group's
-    ``` ts
+    ```ts
     const jid = '111234567890-1594482450@g.us' // can be your own too
     await sock.updateProfilePicture(jid, { url: './new-profile-picture.jpeg' })
     ```
 - To remove your display picture or a group's
-    ``` ts
+    ```ts
     const jid = '111234567890-1594482450@g.us' // can be your own too
     await sock.removeProfilePicture(jid)
     ```
 - To get someone's presence (if they're typing or online)
-    ``` ts
+    ```ts
     // the presence update is fetched and called here
     sock.ev.on('presence.update', json => console.log(json))
     // request updates for a chat
     await sock.presenceSubscribe("xyz@s.whatsapp.net") 
     ```
 - To block or unblock user
-    ``` ts
+    ```ts
     await sock.updateBlockStatus("xyz@s.whatsapp.net", "block") // Block user
     await sock.updateBlockStatus("xyz@s.whatsapp.net", "unblock") // Unblock user
     ```
@@ -715,14 +715,14 @@ Of course, replace ``` xyz ``` with an actual ID.
 
 ## Groups
 - To create a group
-    ``` ts
+    ```ts
     // title & participants
     const group = await sock.groupCreate("My Fab Group", ["1234@s.whatsapp.net", "4564@s.whatsapp.net"])
-    console.log ("created group with id: " + group.gid)
+    console.log("created group with id: " + group.gid)
     sock.sendMessage(group.id, { text: 'hello there' }) // say hello to everyone on the group
     ```
 - To add/remove people to a group or demote/promote people
-    ``` ts
+    ```ts
     // id & people to add to the group (will throw error if it fails)
     const response = await sock.groupParticipantsUpdate(
         "abcd-xyz@g.us", 
@@ -731,15 +731,15 @@ Of course, replace ``` xyz ``` with an actual ID.
     )
     ```
 - To change the group's subject
-    ``` ts
+    ```ts
     await sock.groupUpdateSubject("abcd-xyz@g.us", "New Subject!")
     ```
 - To change the group's description
-    ``` ts
+    ```ts
     await sock.groupUpdateDescription("abcd-xyz@g.us", "New Description!")
     ```
 - To change group settings
-    ``` ts
+    ```ts
     // only allow admins to send messages
     await sock.groupSettingUpdate("abcd-xyz@g.us", 'announcement')
     // allow everyone to send messages
@@ -750,11 +750,11 @@ Of course, replace ``` xyz ``` with an actual ID.
     await sock.groupSettingUpdate("abcd-xyz@g.us", 'locked')
     ```
 - To leave a group
-    ``` ts
+    ```ts
     await sock.groupLeave("abcd-xyz@g.us") // (will throw error if it fails)
     ```
 - To get the invite code for a group
-    ``` ts
+    ```ts
     const code = await sock.groupInviteCode("abcd-xyz@g.us")
     console.log("group code: " + code)
     ```
@@ -764,12 +764,12 @@ Of course, replace ``` xyz ``` with an actual ID.
     console.log("New group code: " + code)
     ```
 - To query the metadata of a group
-    ``` ts
+    ```ts
     const metadata = await sock.groupMetadata("abcd-xyz@g.us") 
     console.log(metadata.id + ", title: " + metadata.subject + ", description: " + metadata.desc)
     ```
 - To join the group using the invitation code
-    ``` ts
+    ```ts
     const response = await sock.groupAcceptInvite("xxx")
     console.log("joined to: " + response)
     ```
@@ -780,19 +780,19 @@ Of course, replace ``` xyz ``` with an actual ID.
     console.log("group information: " + response)
     ```
 - To join the group using groupInviteMessage
-    ``` ts
+    ```ts
     const response = await sock.groupAcceptInviteV4("abcd@s.whatsapp.net", groupInviteMessage)
     console.log("joined to: " + response)
     ```
   Of course, replace ``` xxx ``` with invitation code.
 
 - To get list request join
-    ``` ts
+    ```ts
     const response = await sock.groupRequestParticipantsList("abcd-xyz@g.us")
     console.log(response)
     ```
 - To approve/reject request join
-    ``` ts
+    ```ts
     const response = await sock.groupRequestParticipantsUpdate(
         "abcd-xyz@g.us", // id group,
         ["abcd@s.whatsapp.net", "efgh@s.whatsapp.net"],
@@ -803,42 +803,42 @@ Of course, replace ``` xyz ``` with an actual ID.
 
 ## Privacy
 - To get the privacy settings
-    ``` ts
+    ```ts
     const privacySettings = await sock.fetchPrivacySettings(true)
     console.log("privacy settings: " + privacySettings)
     ```
 - To update the LastSeen privacy
-    ``` ts
+    ```ts
     const value = 'all' // 'contacts' | 'contact_blacklist' | 'none'
     await sock.updateLastSeenPrivacy(value)
     ```
 - To update the Online privacy
-    ``` ts
+    ```ts
     const value = 'all' // 'match_last_seen'
     await sock.updateOnlinePrivacy(value)
     ```
 - To update the Profile Picture privacy
-    ``` ts
+    ```ts
     const value = 'all' // 'contacts' | 'contact_blacklist' | 'none'
     await sock.updateProfilePicturePrivacy(value)
     ```
 - To update the Status privacy
-    ``` ts
+    ```ts
     const value = 'all' // 'contacts' | 'contact_blacklist' | 'none'
     await sock.updateStatusPrivacy(value)
     ```
 - To update the Read Receipts privacy
-    ``` ts
+    ```ts
     const value = 'all' // 'none'
     await sock.updateReadReceiptsPrivacy(value)
     ```
 - To update the Groups Add privacy
-    ``` ts
+    ```ts
     const value = 'all' // 'contacts' | 'contact_blacklist' | 'none'
     await sock.updateGroupsAddPrivacy(value)
     ```
 - To update the Default Disappearing Mode
-    ``` ts
+    ```ts
     const duration = 86400 // 604800 | 7776000 | 0 
     await sock.updateDefaultDisappearingMode(duration)
     ```
@@ -858,7 +858,7 @@ sock.sendMessage(jid, {image: {url: url}, caption: caption}, {backgroundColor : 
 - Right now, WA Web does not support creating broadcast lists, but you can still delete them.
 - Broadcast IDs are in the format `12345678@broadcast`
 - To query a broadcast list's recipients & name:
-    ``` ts
+    ```ts
     const bList = await sock.getBroadcastListInfo("1234@broadcast")
     console.log (`list name: ${bList.name}, recps: ${bList.recipients}`)
     ```
@@ -867,7 +867,7 @@ sock.sendMessage(jid, {image: {url: url}, caption: caption}, {backgroundColor : 
 Baileys is written with custom functionality in mind. Instead of forking the project & re-writing the internals, you can simply write your own extensions.
 
 First, enable the logging of unhandled messages from WhatsApp by setting:
-``` ts
+```ts
 const sock = makeWASocket({
     logger: P({ level: 'debug' }),
 })
@@ -887,7 +887,7 @@ Some examples:
    - read more about this format [here](/src/WABinary/readme.md)
 
     You can register a callback for an event using the following:
-    ``` ts
+    ```ts
     // for any message with tag 'edge_routing'
     sock.ws.on(`CB:edge_routing`, (node: BinaryNode) => { })
     // for any message with tag 'edge_routing' and id attribute = abcd
