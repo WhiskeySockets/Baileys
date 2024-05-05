@@ -179,9 +179,6 @@ export default (
 						return [contactId, (await md5(Buffer.from(user + 'WA_ADD_NOTIF', 'utf8'))).toString('base64').slice(0, 3)]
 					}))
 					contact = contacts[contactHashes.find(([, b]) => b === update.id)?.[0] || ''] // find contact by attrs.hash
-					if(!contact) {
-						return logger.debug({ update }, 'got update for non-existant contact')
-					}
 				}
 
 				if(update.imgUrl === 'changed' || update.imgUrl === 'removed') {
@@ -196,9 +193,7 @@ export default (
 					}
 				}
 
-				if(contact?.id) {
-					Object.assign(contacts[contact.id!], contact)
-				}
+				Object.assign(contacts[contact.id], contact)
 			}
 		})
 		ev.on('chats.upsert', newChats => {
