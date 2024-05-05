@@ -104,7 +104,7 @@ export default (
 		for(const contact of newContacts) {
 			oldContacts.delete(contact.id)
 			contacts[contact.id] = Object.assign(
-				contacts[contact.id] || {},
+				contacts[contact.id]!=undefined && contacts[contact.id]!=null?contacts[contact.id]: {},
 				contact
 			)
 		}
