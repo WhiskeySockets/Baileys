@@ -4,7 +4,7 @@ import { randomBytes } from 'crypto'
 import { promises as fs } from 'fs'
 import { Logger } from 'pino'
 import { proto } from '../../WAProto'
-import { MEDIA_KEYS, URL_EXCLUDE_REGEX, URL_REGEX, WA_DEFAULT_EPHEMERAL } from '../Defaults'
+import { MEDIA_KEYS, URL_REGEX, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import {
 	AnyMediaMessageContent,
 	AnyMessageContent,
@@ -32,6 +32,7 @@ type MediaUploadData = {
 	media: WAMediaUpload
 	caption?: string
 	ptt?: boolean
+	ptv?: boolean
 	seconds?: number
 	gifPlayback?: boolean
 	fileName?: string
@@ -67,9 +68,7 @@ const ButtonType = proto.Message.ButtonsMessage.HeaderType
  * @param text eg. hello https://google.com
  * @returns the URL, eg. https://google.com
  */
-export const extractUrlFromText = (text: string) => (
-	!URL_EXCLUDE_REGEX.test(text) ? text.match(URL_REGEX)?.[0] : undefined
-)
+export const extractUrlFromText = (text: string) => text.match(URL_REGEX)?.[0]
 
 export const generateLinkPreviewIfRequired = async(text: string, getUrlInfo: MessageGenerationOptions['getUrlInfo'], logger: MessageGenerationOptions['logger']) => {
 	const url = extractUrlFromText(text)
@@ -253,6 +252,11 @@ export const prepareWAMessageMedia = async(
 			}
 		)
 	})
+
+	if(uploadData.ptv) {
+		obj.ptvMessage = obj.videoMessage
+		delete obj.videoMessage
+	}
 
 	if(cacheableKey) {
 		logger?.debug({ cacheableKey }, 'set cache')
@@ -567,7 +571,8 @@ export const generateWAMessageFromContent = (
 		options.timestamp = new Date()
 	}
 
-	const key = Object.keys(message)[0]
+	const innerMessage = normalizeMessageContent(message)!
+	const key: string = getContentType(innerMessage)!
 	const timestamp = unixTimestampSeconds(options.timestamp)
 	const { quoted, userJid } = options
 
@@ -584,7 +589,7 @@ export const generateWAMessageFromContent = (
 			delete quotedContent.contextInfo
 		}
 
-		const contextInfo: proto.IContextInfo = message[key].contextInfo || { }
+		const contextInfo: proto.IContextInfo = innerMessage[key].contextInfo || { }
 		contextInfo.participant = jidNormalizedUser(participant!)
 		contextInfo.stanzaId = quoted.key.id
 		contextInfo.quotedMessage = quotedMsg
@@ -595,7 +600,7 @@ export const generateWAMessageFromContent = (
 			contextInfo.remoteJid = quoted.key.remoteJid
 		}
 
-		message[key].contextInfo = contextInfo
+		innerMessage[key].contextInfo = contextInfo
 	}
 
 	if(
@@ -606,8 +611,8 @@ export const generateWAMessageFromContent = (
 		// already not converted to disappearing message
 		key !== 'ephemeralMessage'
 	) {
-		message[key].contextInfo = {
-			...(message[key].contextInfo || {}),
+		innerMessage[key].contextInfo = {
+			...(innerMessage[key].contextInfo || {}),
 			expiration: options.ephemeralExpiration || WA_DEFAULT_EPHEMERAL,
 			//ephemeralSettingTimestamp: options.ephemeralOptions.eph_setting_ts?.toString()
 		}

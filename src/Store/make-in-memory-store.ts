@@ -7,8 +7,8 @@ import type makeMDSocket from '../Socket'
 import type { BaileysEventEmitter, Chat, ConnectionState, Contact, GroupMetadata, PresenceData, WAMessage, WAMessageCursor, WAMessageKey } from '../Types'
 import { Label } from '../Types/Label'
 import { LabelAssociation, LabelAssociationType, MessageLabelAssociation } from '../Types/LabelAssociation'
-import { toNumber, updateMessageWithReaction, updateMessageWithReceipt } from '../Utils'
-import { jidNormalizedUser } from '../WABinary'
+import { md5, toNumber, updateMessageWithReaction, updateMessageWithReceipt } from '../Utils'
+import { jidDecode, jidNormalizedUser } from '../WABinary'
 import makeOrderedDictionary from './make-ordered-dictionary'
 import { ObjectRepository } from './object-repository'
 
@@ -29,7 +29,8 @@ export const waLabelAssociationKey: Comparable<LabelAssociation, string> = {
 export type BaileysInMemoryStoreConfig = {
 	chatKey?: Comparable<Chat, string>
 	labelAssociationKey?: Comparable<LabelAssociation, string>
-	logger?: Logger
+	logger: Logger
+	socket?: WASocket
 }
 
 const makeMessagesDictionary = () => makeOrderedDictionary(waMessageID)
@@ -73,12 +74,12 @@ const predefinedLabels = Object.freeze<Record<string, Label>>({
 })
 
 export default (
-	{ logger: _logger, chatKey, labelAssociationKey }: BaileysInMemoryStoreConfig
+	{ logger, chatKey, labelAssociationKey, socket }: BaileysInMemoryStoreConfig
 ) => {
 	// const logger = _logger || DEFAULT_CONNECTION_CONFIG.logger.child({ stream: 'in-mem-store' })
 	chatKey = chatKey || waChatKey(true)
 	labelAssociationKey = labelAssociationKey || waLabelAssociationKey
-	const logger = _logger || DEFAULT_CONNECTION_CONFIG.logger.child({ stream: 'in-mem-store' })
+	logger = logger || DEFAULT_CONNECTION_CONFIG.logger.child({ stream: 'in-mem-store' })
 	const KeyedDB = require('@adiwajshing/keyed-db').default
 
 	const chats = new KeyedDB(chatKey, c => c.id) as KeyedDB<Chat, string>
@@ -167,13 +168,30 @@ export default (
 			contactsUpsert(contacts)
 		})
 
-		ev.on('contacts.update', updates => {
+		ev.on('contacts.update', async updates => {
 			for(const update of updates) {
+				let contact: Contact
 				if(contacts[update.id!]) {
-					Object.assign(contacts[update.id!], update)
+					contact = contacts[update.id!]
 				} else {
-					logger.debug({ update }, 'got update for non-existant contact')
+					const contactHashes = await Promise.all(Object.keys(contacts).map(async contactId => {
+						const { user } = jidDecode(contactId)!
+						return [contactId, (await md5(Buffer.from(user + 'WA_ADD_NOTIF', 'utf8'))).toString('base64').slice(0, 3)]
+					}))
+					contact = contacts[contactHashes.find(([, b]) => b === update.id)?.[0] || ''] // find contact by attrs.hash, when user is not saved as a contact
 				}
+
+				if(contact) {
+					if(update.imgUrl === 'changed') {
+						contact.imgUrl = socket ? await socket?.profilePictureUrl(contact.id) : undefined
+					} else if(update.imgUrl === 'removed') {
+						delete contact.imgUrl
+					}
+				} else {
+					return logger.debug({ update }, 'got update for non-existant contact')
+				}
+
+				Object.assign(contacts[contact.id], contact)
 			}
 		})
 		ev.on('chats.upsert', newChats => {
