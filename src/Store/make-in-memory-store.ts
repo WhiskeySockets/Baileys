@@ -184,7 +184,7 @@ export default (
 				if(contact) {
 					if(update.imgUrl === 'changed') {
 						contact.imgUrl = socket ? await socket?.profilePictureUrl(contact.id) : undefined
-					} else if (update.imgUrl === 'removed') {
+					} else if(update.imgUrl === 'removed') {
 						delete contact.imgUrl
 					}
 				} else {
