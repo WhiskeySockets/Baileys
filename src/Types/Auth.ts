@@ -69,6 +69,7 @@ export type AuthenticationCreds = SignalCreds & {
 	registration: RegistrationOptions
     pairingCode: string | undefined
     lastPropHash: string | undefined
+    routingInfo: Buffer | undefined
 }
 
 export type SignalDataTypeMap = {
