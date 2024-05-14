@@ -50,6 +50,8 @@ export const isJidUser = (jid: string | undefined) => (jid?.endsWith('@s.whatsap
 export const isLidUser = (jid: string | undefined) => (jid?.endsWith('@lid'))
 /** is the jid a broadcast */
 export const isJidBroadcast = (jid: string | undefined) => (jid?.endsWith('@broadcast'))
+/** is the jid a newsletter */
+export const isJidNewsletter = (jid: string | undefined) => (jid?.endsWith('@newsletter'))
 /** is the jid a group */
 export const isJidGroup = (jid: string | undefined) => (jid?.endsWith('@g.us'))
 /** is the jid the status broadcast */
