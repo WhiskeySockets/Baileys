@@ -27,6 +27,9 @@
                 "selector": "TSEnumDeclaration",
                 "message": "Don't declare enums, use literals instead"
             }
+        ],
+        "keyword-spacing": [
+            "warn"
         ]
     }
 }
