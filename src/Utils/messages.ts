@@ -400,7 +400,7 @@ export const generateWAMessageContent = async(
 		m.messageContextInfo = {}
 
 		m.pinInChatMessage.key = message.pin
-		m.pinInChatMessage.type = 1
+		m.pinInChatMessage.type = proto.Message.PinInChatMessage.Type.PIN_FOR_ALL
 		m.pinInChatMessage.senderTimestampMs = Date.now()
 
 		m.messageContextInfo.messageAddOnDurationInSecs = message.time || 86400
@@ -409,7 +409,7 @@ export const generateWAMessageContent = async(
 		m.messageContextInfo = {}
 		
 		m.pinInChatMessage.key = message.unpin
-		m.pinInChatMessage.type = 2
+		m.pinInChatMessage.type = proto.Message.PinInChatMessage.Type.UNPIN_FOR_ALL
 		m.pinInChatMessage.senderTimestampMs = Date.now()
 
 		m.messageContextInfo.messageAddOnDurationInSecs = 0
