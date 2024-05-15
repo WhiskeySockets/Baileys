@@ -17,25 +17,30 @@
 <h1>Function downloadMediaMessage</h1></div>
 <section class="tsd-panel">
 <ul class="tsd-signatures">
-<li class="tsd-signature tsd-anchor-link" id="downloadMediaMessage"><span class="tsd-kind-call-signature">download<wbr/>Media<wbr/>Message</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">message</span>, <span class="tsd-kind-parameter">type</span>, <span class="tsd-kind-parameter">options</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Transform</span><span class="tsd-signature-symbol">&gt;</span><a href="#downloadMediaMessage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><g stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" id="icon-anchor"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M10 14a3.5 3.5 0 0 0 5 0l4 -4a3.5 3.5 0 0 0 -5 -5l-.5 .5"></path><path d="M14 10a3.5 3.5 0 0 0 -5 0l-4 4a3.5 3.5 0 0 0 5 5l.5 -.5"></path></g></svg></a></li>
+<li class="tsd-signature tsd-anchor-link" id="downloadMediaMessage"><span class="tsd-kind-call-signature">download<wbr/>Media<wbr/>Message</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type tsd-kind-type-parameter">Type</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">message</span>, <span class="tsd-kind-parameter">type</span>, <span class="tsd-kind-parameter">options</span>, <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">?</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type tsd-kind-type-parameter">Type</span><span class="tsd-signature-symbol"> extends </span><span class="tsd-signature-type">&quot;buffer&quot;</span><br/><span>    </span><span class="tsd-signature-symbol">? </span><span class="tsd-signature-type ">Buffer</span><br/><span>    </span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Transform</span><span class="tsd-signature-symbol">&gt;</span><a href="#downloadMediaMessage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24"><g stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" id="icon-anchor"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M10 14a3.5 3.5 0 0 0 5 0l4 -4a3.5 3.5 0 0 0 -5 -5l-.5 .5"></path><path d="M14 10a3.5 3.5 0 0 0 -5 0l-4 4a3.5 3.5 0 0 0 5 5l.5 -.5"></path></g></svg></a></li>
 <li class="tsd-description">
 <div class="tsd-comment tsd-typography"><p>Downloads the given message. Throws an error if it&#39;s not a media message</p>
 </div>
+<section class="tsd-panel">
+<h4>Type Parameters</h4>
+<ul class="tsd-type-parameter-list">
+<li>
+<h4><span class="tsd-kind-type-parameter">Type</span><span class="tsd-signature-symbol"> extends </span><span class="tsd-signature-type">&quot;stream&quot;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">&quot;buffer&quot;</span></h4></li></ul></section>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
 <li>
 <h5><span class="tsd-kind-parameter">message</span>: <a href="../interfaces/proto.IWebMessageInfo.html" class="tsd-signature-type tsd-kind-interface">IWebMessageInfo</a></h5></li>
 <li>
-<h5><span class="tsd-kind-parameter">type</span>: <span class="tsd-signature-type">&quot;stream&quot;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">&quot;buffer&quot;</span></h5></li>
+<h5><span class="tsd-kind-parameter">type</span>: <span class="tsd-signature-type tsd-kind-type-parameter">Type</span></h5></li>
 <li>
 <h5><span class="tsd-kind-parameter">options</span>: <a href="../types/MediaDownloadOptions.html" class="tsd-signature-type tsd-kind-type-alias">MediaDownloadOptions</a></h5></li>
 <li>
 <h5><code class="tsd-tag ts-flagOptional">Optional</code> <span class="tsd-kind-parameter">ctx</span>: <span class="tsd-signature-type ">DownloadMediaMessageContext</span></h5></li></ul></div>
-<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type ">Buffer</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type ">Transform</span><span class="tsd-signature-symbol">&gt;</span></h4>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type ">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type tsd-kind-type-parameter">Type</span><span class="tsd-signature-symbol"> extends </span><span class="tsd-signature-type">&quot;buffer&quot;</span><br/><span>    </span><span class="tsd-signature-symbol">? </span><span class="tsd-signature-type ">Buffer</span><br/><span>    </span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type ">Transform</span><span class="tsd-signature-symbol">&gt;</span></h4>
 <div class="tsd-comment tsd-typography"></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/17ce9df/src/Utils/messages.ts#L871">src/Utils/messages.ts:871</a></li></ul></aside></li></ul></section></div>
+<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/2ae664c/src/Utils/messages.ts#L872">src/Utils/messages.ts:872</a></li></ul></aside></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
