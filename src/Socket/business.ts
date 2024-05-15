@@ -14,7 +14,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 
 	const getCatalog = async({ jid, limit, cursor }: GetCatalogOptions) => {
 		jid = jid || authState.creds.me?.id
-		jid = jidNormalizedUser(jid!)
+		jid = jidNormalizedUser(jid)
 
 		const queryParamNodes: BinaryNode[] = [
 			{
@@ -65,7 +65,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 
 	const getCollections = async(jid?: string, limit = 51) => {
 		jid = jid || authState.creds.me?.id
-		jid = jidNormalizedUser(jid!)
+		jid = jidNormalizedUser(jid)
 		const result = await query({
 			tag: 'iq',
 			attrs: {
@@ -270,6 +270,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 
 	return {
 		...sock,
+		logger: config.logger,
 		getOrderDetails,
 		getCatalog,
 		getCollections,
