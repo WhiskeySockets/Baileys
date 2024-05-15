@@ -35,46 +35,7 @@ export type BaileysInMemoryStoreConfig = {
 
 const makeMessagesDictionary = () => makeOrderedDictionary(waMessageID)
 
-const predefinedLabels = Object.freeze<Record<string, Label>>({
-	'1': {
-		id: '1',
-		name: 'New customer',
-		predefinedId: '1',
-		color: 1,
-		deleted: false
-	},
-	'2': {
-		id: '2',
-		name: 'New order',
-		predefinedId: '2',
-		color: 2,
-		deleted: false
-	},
-	'3': {
-		id: '3',
-		name: 'Pending payment',
-		predefinedId: '3',
-		color: 3,
-		deleted: false
-	},
-	'4': {
-		id: '4',
-		name: 'Paid',
-		predefinedId: '4',
-		color: 4,
-		deleted: false
-	},
-	'5': {
-		id: '5',
-		name: 'Order completed',
-		predefinedId: '5',
-		color: 5,
-		deleted: false
-	}
-})
-
 export default (config: BaileysInMemoryStoreConfig) => {
-	// const logger = _logger || DEFAULT_CONNECTION_CONFIG.logger.child({ stream: 'in-mem-store' })
 	const socket = config.socket
 	const chatKey = config.chatKey || waChatKey(true)
 	const labelAssociationKey = config.labelAssociationKey || waLabelAssociationKey
@@ -87,7 +48,7 @@ export default (config: BaileysInMemoryStoreConfig) => {
 	const groupMetadata: { [_: string]: GroupMetadata } = {}
 	const presences: { [id: string]: { [participant: string]: PresenceData } } = {}
 	const state: ConnectionState = { connection: 'close' }
-	const labels = new ObjectRepository<Label>(predefinedLabels)
+	const labels = new ObjectRepository<Label>()
 	const labelAssociations = new KeyedDB(labelAssociationKey, labelAssociationKey.key) as KeyedDB<LabelAssociation, string>
 
 	const assertMessageList = (jid: string) => {
