@@ -174,6 +174,14 @@ export type AnyRegularMessageContent = (
     | {
         listReply: Omit<proto.Message.IListResponseMessage, 'contextInfo'>
     }
+    | { 
+        pin: WAMessageKey,
+        time: 86400 | 604800 | 2592000
+    }
+    |
+    { 
+        unpin: WAMessageKey
+    }
     | {
         product: WASendableProduct
         businessOwnerJid?: string

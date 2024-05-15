@@ -395,6 +395,24 @@ export const generateWAMessageContent = async(
 			(message.disappearingMessagesInChat ? WA_DEFAULT_EPHEMERAL : 0) :
 			message.disappearingMessagesInChat
 		m = prepareDisappearingMessageSettingContent(exp)
+	} else if('pin' in message){
+		m.pinInChatMessage = {}
+		m.messageContextInfo = {}
+
+		m.pinInChatMessage.key = message.pin
+		m.pinInChatMessage.type = 1
+		m.pinInChatMessage.senderTimestampMs = Date.now()
+
+		m.messageContextInfo.messageAddOnDurationInSecs = message.time || 86400
+	} else if('unpin' in message){
+		m.pinInChatMessage = {}
+		m.messageContextInfo = {}
+		
+		m.pinInChatMessage.key = message.unpin
+		m.pinInChatMessage.type = 2
+		m.pinInChatMessage.senderTimestampMs = Date.now()
+
+		m.messageContextInfo.messageAddOnDurationInSecs = 0
 	} else if('buttonReply' in message) {
 		switch (message.type) {
 		case 'template':
