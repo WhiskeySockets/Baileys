@@ -47,7 +47,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		retryRequestDelayMs,
 		maxMsgRetryCount,
 		getMessage,
-		shouldIgnoreJid
+		shouldIgnoreJid,
+		personalBot
 	} = config
 	const sock = makeMessagesSocket(config)
 	const {
@@ -695,6 +696,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			if(node.attrs.sender_pn) {
 				ev.emit('chats.phoneNumberShare', { lid: node.attrs.from, jid: node.attrs.sender_pn })
 			}
+		}
+
+		if (personalBot && !(msg.key.fromMe)) {
+			logger.debug( {key: msg.key}, 'not-self message')
+			await sendMessageAck(node);
+			return
 		}
 
 		if(shouldIgnoreJid(msg.key.remoteJid!)) {

@@ -94,6 +94,12 @@ export type SocketConfig = {
     shouldIgnoreJid: (jid: string) => boolean | undefined
 
     /**
+     * This will make the bot only decrypt own-messages.
+     * This is the way to go, to create a personal bot.
+     */
+    personalBot: boolean
+    
+    /**
      * Optionally patch the message before sending out
      * */
     patchMessageBeforeSending: (
