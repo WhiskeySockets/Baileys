@@ -61,6 +61,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	logger: logger.child({ class: 'baileys' }),
 	printQRInTerminal: false,
 	emitOwnEvents: true,
+	personalBot: false,
 	defaultQueryTimeoutMs: 60_000,
 	customUploadHosts: [],
 	retryRequestDelayMs: 250,
