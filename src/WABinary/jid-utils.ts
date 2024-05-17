@@ -4,7 +4,7 @@ export const SERVER_JID = 'server@c.us'
 export const PSA_WID = '0@c.us'
 export const STORIES_JID = 'status@broadcast'
 
-export type JidServer = 'c.us' | 'g.us' | 'broadcast' | 's.whatsapp.net' | 'call' | 'lid'
+export type JidServer = 'c.us' | 'g.us' | 'broadcast' | 's.whatsapp.net' | 'call' | 'lid' | 'newsletter'
 
 export type JidWithDevice = {
     user: string
@@ -52,6 +52,8 @@ export const isLidUser = (jid: string | undefined) => (jid?.endsWith('@lid'))
 export const isJidBroadcast = (jid: string | undefined) => (jid?.endsWith('@broadcast'))
 /** is the jid a group */
 export const isJidGroup = (jid: string | undefined) => (jid?.endsWith('@g.us'))
+/** is the jid a newsletter */
+export const isJidNewsletter = (jid: string | undefined) => (jid?.endsWith('@newsletter'))
 /** is the jid the status broadcast */
 export const isJidStatusBroadcast = (jid: string) => jid === 'status@broadcast'
 
