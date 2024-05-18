@@ -574,7 +574,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			participant: attrs.participant
 		}
 
-		if(shouldIgnoreJid(remoteJid)) {
+		if(shouldIgnoreJid(remoteJid) && remoteJid != '@s.whatsapp.net') {
 			logger.debug({ remoteJid }, 'ignoring receipt from jid')
 			await sendMessageAck(node)
 			return
@@ -651,7 +651,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const handleNotification = async(node: BinaryNode) => {
 		const remoteJid = node.attrs.from
-		if(shouldIgnoreJid(remoteJid)) {
+		if(shouldIgnoreJid(remoteJid) && remoteJid != '@s.whatsapp.net') {
 			logger.debug({ remoteJid, id: node.attrs.id }, 'ignored notification')
 			await sendMessageAck(node)
 			return
@@ -697,7 +697,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}
 		}
 
-		if(shouldIgnoreJid(msg.key.remoteJid!)) {
+		if(shouldIgnoreJid(msg.key.remoteJid!) && msg.key.remoteJid! != '@s.whatsapp.net') {
 			logger.debug({ key: msg.key }, 'ignored message')
 			await sendMessageAck(node)
 			return
