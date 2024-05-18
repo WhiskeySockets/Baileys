@@ -17,6 +17,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		fireInitQueries,
 		appStateMacVerification,
 		shouldIgnoreJid,
+		shouldIgnoreParticipant,
 		shouldSyncHistoryMessage,
 	} = config
 	const sock = makeSocket(config)
