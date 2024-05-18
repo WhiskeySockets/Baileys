@@ -200,7 +200,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			const status = getBinaryNodeChild(item, 'status')
 			return {
 				user: item.attrs.jid,
-				status: status?.content!.toString(),
+				status: status && status.content ? status.content.toString() : null,
 				setAt: new Date(+(status?.attrs.t || 0) * 1000)
 			}
 		})
