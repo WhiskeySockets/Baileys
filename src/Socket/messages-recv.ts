@@ -581,7 +581,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			return
 		}
 
-		if(isJidGroup(attrs.from)) && shouldIgnoreParticipant(attrs.participant)){
+		if(isJidGroup(attrs.from) && shouldIgnoreParticipant(attrs.participant)){
 			logger.debug({ remoteJid }, 'ignoring receipt from participant')
 			await sendMessageAck(node)
 			return
@@ -664,7 +664,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			return
 		}
 
-		if(isJidGroup(remoteJid)) && shouldIgnoreParticipant(node.attrs.participant)){
+		if(isJidGroup(remoteJid) && shouldIgnoreParticipant(node.attrs.participant)){
 			logger.debug({ remoteJid, id: node.attrs.id }, 'ignored notification')
 			await sendMessageAck(node)
 			return
@@ -696,7 +696,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleMessage = async(node: BinaryNode) => {
-		if(isJidGroup(node.attrs.from)) && shouldIgnoreParticipant(node.attrs.participant)){
+		if(isJidGroup(node.attrs.from) && shouldIgnoreParticipant(node.attrs.participant)){
 			logger.debug({ key: msg.key }, 'ignored message')
 			await sendMessageAck(node)
 			return
