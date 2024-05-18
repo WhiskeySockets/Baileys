@@ -52,7 +52,7 @@ export type BaileysEventMap = {
     'groups.update': Partial<GroupMetadata>[]
     /** apply an action to participants in a group */
     'group-participants.update': { id: string, author: string, participants: string[], action: ParticipantAction }
-    'group-join-request': { id: string, author: string, action: RequestJoinAction, method: string}
+    'group-join-request': { id: string, author: string, action: RequestJoinAction, method: string }
 
     'blocklist.set': { blocklist: string[] }
     'blocklist.update': { blocklist: string[], type: 'add' | 'remove' }
