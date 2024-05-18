@@ -604,6 +604,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			return
 		}
 
+		if(jid.endWith('@g.us') && shouldIgnoreParticipant(participant)){
+			return
+		}
+
 		if(tag === 'presence') {
 			presence = {
 				lastKnownPresence: attrs.type === 'unavailable' ? 'unavailable' : 'available',
