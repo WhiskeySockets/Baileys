@@ -86,14 +86,15 @@ export function decodeMessageNode(
 		throw new Boom('Unknown message type', { data: stanza })
 	}
 
-	const fromMe = (isLidUser(from) ? isMeLid : isMe)(stanza.attrs.participant || stanza.attrs.from)
+	const fromMe = isJidNewsletter(from) ? !!stanza.attrs?.is_sender || false : (isLidUser(from) ? isMeLid : isMe)(stanza.attrs.participant || stanza.attrs.from)
 	const pushname = stanza?.attrs?.notify
 
 	const key: WAMessageKey = {
 		remoteJid: chatId,
 		fromMe,
 		id: msgId,
-		participant
+		participant,
+		server_id: stanza.attrs?.server_id
 	}
 
 	const fullMessage: proto.IWebMessageInfo = {
@@ -136,11 +137,11 @@ export const decryptMessageNode = (
 						fullMessage.verifiedBizName = details.verifiedName
 					}
 
-					if(tag !== 'enc' && tag !== 'plaintext') {
+					if(tag !== 'enc' && tag !== 'plaintext' && tag !== 'reaction') {
 						continue
 					}
 
-					if(!(content instanceof Uint8Array)) {
+					if(!(content instanceof Uint8Array) && tag !== 'reaction') {
 						continue
 					}
 
@@ -148,7 +149,6 @@ export const decryptMessageNode = (
 
 					let msg: proto.IMessage
 					let msgBuffer: Uint8Array | undefined
-					let newsletterReaction: string | undefined
 
 					try {
 						const e2eType = attrs.type
@@ -157,7 +157,7 @@ export const decryptMessageNode = (
 							msgBuffer = await repository.decryptGroupMessage({
 								group: sender,
 								authorJid: author,
-								msg: content
+								msg: content as any
 							})
 							break
 						case 'pkmsg':
@@ -166,42 +166,38 @@ export const decryptMessageNode = (
 							msgBuffer = await repository.decryptMessage({
 								jid: user,
 								type: e2eType,
-								ciphertext: content
+								ciphertext: content as any
 							})
 							break
-						case 'reaction':
-							newsletterReaction = attrs.code
-							break
 						case undefined:
-							msgBuffer = content
+							msgBuffer = content as any
 							break
 						default:
 							throw new Error(`Unknown e2e type: ${e2eType}`)
 						}
 
-						if(newsletterReaction || msgBuffer){
-							if(!msgBuffer){
-								msg = {reactionMessage: {text: newsletterReaction}}
-							}else{
-								msg = proto.Message.decode(tag === 'plaintext' ? msgBuffer : unpadRandomMax16(msgBuffer))
-								msg = msg.deviceSentMessage?.message || msg
-								if(msg.senderKeyDistributionMessage) {
-									try {
-										await repository.processSenderKeyDistributionMessage({
-											authorJid: author,
-											item: msg.senderKeyDistributionMessage
-										})
-									} catch(err) {
-										logger.error({ key: fullMessage.key, err }, 'failed to decrypt message')
-										}
-								}
-							}
+						if(msgBuffer) {
+							msg = proto.Message.decode(tag === 'plaintext' ? msgBuffer : unpadRandomMax16(msgBuffer))
+							msg = msg?.deviceSentMessage?.message || msg
+						} else {
+							msg = attrs?.code ? proto.Message.create({reactionMessage: {text: attrs.code}}) : {}
+						}
 
-							if(fullMessage.message) {
-								Object.assign(fullMessage.message, msg)
-							} else {
-								fullMessage.message = msg
-							}
+						if(msg?.senderKeyDistributionMessage) {
+							try {
+								await repository.processSenderKeyDistributionMessage({
+									authorJid: author,
+									item: msg.senderKeyDistributionMessage
+								})
+							} catch(err) {
+								logger.error({ key: fullMessage.key, err }, 'failed to decrypt message')
+								}
+						}
+
+						if(fullMessage.message) {
+							Object.assign(fullMessage.message, msg)
+						} else {
+							fullMessage.message = msg
 						}
 					} catch(err) {
 						logger.error(
