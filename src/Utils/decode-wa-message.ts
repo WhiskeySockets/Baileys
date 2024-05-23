@@ -137,18 +137,18 @@ export const decryptMessageNode = (
 						fullMessage.verifiedBizName = details.verifiedName
 					}
 
-					if(tag !== 'enc' && tag !== 'plaintext' && tag !== 'reaction') {
+					if(tag !== 'enc' && tag !== 'plaintext') {
 						continue
 					}
 
-					if(!(content instanceof Uint8Array) && tag !== 'reaction') {
+					if(!(content instanceof Uint8Array)) {
 						continue
 					}
 
 					decryptables += 1
 
 					let msg: proto.IMessage
-					let msgBuffer: Uint8Array | undefined
+					let msgBuffer: Uint8Array
 
 					try {
 						const e2eType = attrs.type
@@ -157,7 +157,7 @@ export const decryptMessageNode = (
 							msgBuffer = await repository.decryptGroupMessage({
 								group: sender,
 								authorJid: author,
-								msg: content as any
+								msg: content
 							})
 							break
 						case 'pkmsg':
@@ -166,24 +166,20 @@ export const decryptMessageNode = (
 							msgBuffer = await repository.decryptMessage({
 								jid: user,
 								type: e2eType,
-								ciphertext: content as any
+								ciphertext: content
 							})
 							break
 						case undefined:
-							msgBuffer = content as any
+							msgBuffer = content
 							break
 						default:
 							throw new Error(`Unknown e2e type: ${e2eType}`)
 						}
 
-						if(msgBuffer) {
-							msg = proto.Message.decode(tag === 'plaintext' ? msgBuffer : unpadRandomMax16(msgBuffer))
-							msg = msg?.deviceSentMessage?.message || msg
-						} else {
-							msg = attrs?.code ? proto.Message.create({reactionMessage: {text: attrs.code}}) : {}
-						}
+						msg = proto.Message.decode(tag === 'plaintext' ? msgBuffer : unpadRandomMax16(msgBuffer))
+						msg = msg?.deviceSentMessage?.message || msg
 
-						if(msg?.senderKeyDistributionMessage) {
+						if(msg.senderKeyDistributionMessage) {
 							try {
 								await repository.processSenderKeyDistributionMessage({
 									authorJid: author,
