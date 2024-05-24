@@ -1,5 +1,4 @@
-import { SocketConfig, WAMediaUpload } from '../Types'
-import { NewsletterMetadata, ReactionMode, ViewRole } from '../Types/Newsletter'
+import { SocketConfig, WAMediaUpload, NewsletterMetadata, ReactionMode, ViewRole } from '../Types'
 import { generateProfilePicture } from '../Utils'
 import { BinaryNode, getBinaryNodeChild, S_WHATSAPP_NET } from '../WABinary'
 import { makeGroupsSocket } from './groups'
@@ -53,7 +52,7 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 		})
     )
 
-    const enableNewsletterUpdates = async(jid: string) => {
+    const subscribeNewsletterUpdates = async(jid: string) => {
         return newsletterQuery(jid, 'set', [{tag: 'live_updates', attrs: {}, content: []}])
             .then(() => true)
     }
@@ -139,7 +138,7 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 
     return {
 		...sock,
-        enableNewsletterUpdates,
+        subscribeNewsletterUpdates,
         newsletterReactionMode,
         newsletterCreate,
         newsletterFollow,
@@ -170,7 +169,7 @@ export const extractNewsletterMetadata = (node: BinaryNode, isCreate?: boolean) 
         descriptionTime: metadataPath.thread_metadata.description.update_time,
         invite: metadataPath.thread_metadata.invite,
         handle: metadataPath.thread_metadata.handle,
-        picture: metadataPath.thread_metadata.picture.direct_path || null,
+        picture: metadataPath.thread_metadata.picture.direct_path || undefined,
         preview: metadataPath.thread_metadata.preview.direct_path || null,
         reaction_codes: metadataPath.thread_metadata.settings.reaction_codes.value,
         subscribers: +metadataPath.thread_metadata.subscribers_count,

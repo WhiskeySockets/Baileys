@@ -4,7 +4,7 @@ import { randomBytes } from 'crypto'
 import NodeCache from 'node-cache'
 import { proto } from '../../WAProto'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
-import { MessageReceiptType, MessageRelayOptions, MessageUserReceipt, SocketConfig, WACallEvent, WAMessageKey, WAMessageStatus, WAMessageStubType, WAPatchName } from '../Types'
+import { MessageReceiptType, MessageRelayOptions, MessageUserReceipt, MexOperations, SocketConfig, WACallEvent, WAMessageKey, WAMessageStatus, WAMessageStubType, WAPatchName } from '../Types'
 import {
 	aesDecryptCTR,
 	aesEncryptGCM,
@@ -325,7 +325,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const handleNewsletterNotification = async(from: string, node: BinaryNode) => {
+	const handleNewsletterNotification = (id: string, node: BinaryNode) => {
         let messages = getBinaryNodeChild(node, 'messages')
         let message = getBinaryNodeChild(messages, 'message')!
 
@@ -337,15 +337,36 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         if(reactionsList){
 			let reactions = getBinaryNodeChildren(reactionsList, 'reaction')
 			reactions.forEach(item => {
-				ev.emit('newsletter.reaction', {id: from, server_id, reaction: {code: item.attrs.code, count: +item.attrs.count}})
+				let removed = !!item.attrs?.code && !!item.attrs?.count
+				ev.emit('newsletter.reaction', {id, server_id, reaction: {code: item.attrs?.code, count: +item.attrs?.count, removed }})
 			})
         }
 
         if(viewsList.length){
 			viewsList.forEach(item => {
-            	ev.emit('newsletter.view', {id: from, server_id, count: +item.attrs.count})
+            	ev.emit('newsletter.view', {id, server_id, count: +item.attrs.count})
 			})
         }
+	}
+
+	const handleMexNewsletterNotification = (id, node) => {
+		let update = getBinaryNodeChild(node, 'update')
+		let operation = update?.attrs.op_name
+		let content = JSON.parse(update?.content?.toString()!)
+
+		let action
+		let contentPath
+		if(operation === MexOperations.PROMOTE){
+			action = 'promote'
+			contentPath = content.data.xwa2_notify_newsletter_admin_promote
+		}
+
+		if(operation === MexOperations.DEMOTE){
+			action = 'demote'
+			contentPath = content.data.xwa2_notify_newsletter_admin_demote
+		}
+
+		ev.emit('newsletter-participants.update', {id, author: contentPath.actor.pn, user: contentPath.user.pn, new_role: contentPath.user_new_role, action})		
 	}
 
 	const processNotification = async(node: BinaryNode) => {
@@ -373,6 +394,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		case 'newsletter':
 			handleNewsletterNotification(node.attrs.from, child)
 		break
+		case 'mex':
+			handleMexNewsletterNotification(node.attrs.from, child)
+			break
 		case 'w:gp2':
 			handleGroupNotification(node.attrs.participant, child, result)
 			break

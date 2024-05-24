@@ -33,9 +33,9 @@ export type NewsletterMetadata = {
     /**i dont know */
     handle: null,
     /**direct path of picture */
-    picture?: string,
+    picture: string | null,
     /**direct path of picture preview (lower quality) */
-    preview?: string,
+    preview: string | null,
     /**reaction mode of newsletter */
     reaction_codes: ReactionMode,
     /**subscribers count of newsletter */
@@ -45,3 +45,10 @@ export type NewsletterMetadata = {
     /**viewer metadata */
     viewer_metadata: ViewerMetadata
 }
+
+export enum MexOperations{
+    PROMOTE = "NotificationNewsletterAdminPromote",
+    DEMOTE = "NotificationNewsletterAdminDemote"
+}
+
+export type SubscriberAction = 'promote' | 'demote'

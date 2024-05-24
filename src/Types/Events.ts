@@ -9,6 +9,7 @@ import { Label } from './Label'
 import { LabelAssociation } from './LabelAssociation'
 import { MessageUpsertType, MessageUserReceiptUpdate, WAMessage, WAMessageKey, WAMessageUpdate } from './Message'
 import { ConnectionState } from './State'
+import { SubscriberAction, ViewRole } from './Newsletter'
 
 export type BaileysEventMap = {
     /** connection state has been updated -- WS closed, opened, connecting etc. */
@@ -53,9 +54,10 @@ export type BaileysEventMap = {
     /** apply an action to participants in a group */
     'group-participants.update': { id: string, author: string, participants: string[], action: ParticipantAction }
 
-    'newsletter.reaction': { id: string, server_id: string, reaction: {code: string, count: number}}
+    'newsletter.reaction': { id: string, server_id: string, reaction: {code: string, count: number, removed: boolean}}
     'newsletter.view': { id: string, server_id: string, count: number}
-
+    /**don't handles subscribe/unsubscribe actions */
+    'newsletter-participants.update': { id: string, author: string, user: string, new_role: ViewRole, action: SubscriberAction}
 
     'blocklist.set': { blocklist: string[] }
     'blocklist.update': { blocklist: string[], type: 'add' | 'remove' }
