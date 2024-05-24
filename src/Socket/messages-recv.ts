@@ -29,6 +29,7 @@ import {
 	areJidsSameUser,
 	BinaryNode,
 	getAllBinaryNodeChildren,
+	getAllBinaryNodeChildrenTag,
 	getBinaryNodeChild,
 	getBinaryNodeChildBuffer,
 	getBinaryNodeChildren,
@@ -325,8 +326,26 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const handleNewsletterNotification = async(node: BinaryNode, msg: Partial<proto.IWebMessageInfo>) => {
+	const handleNewsletterNotification = async(from: string, node: BinaryNode) => {
+        let messages = getBinaryNodeChild(node, 'messages')
+        let message = getBinaryNodeChild(messages, 'message')!
 
+        let server_id = message.attrs.server_id
+
+        let reactions = getAllBinaryNodeChildrenTag(message, 'reactions')
+		let views = getAllBinaryNodeChildrenTag(message, 'views_count')
+
+        if(reactions.length){
+			reactions.forEach(item => {
+				ev.emit('newsletter.reaction', {id: from, server_id, reaction: {code: item.attrs.code, count: +item.attrs.count}})
+			})
+        }
+
+        if(views.length){
+			views.forEach(item => {
+            	ev.emit('newsletter.view', {id: from, server_id, count: +item.attrs.count})
+			})
+        }
 	}
 
 	const processNotification = async(node: BinaryNode) => {
@@ -352,7 +371,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 			break
 		case 'newsletter':
-			handleNewsletterNotification(child, result)
+			handleNewsletterNotification(node.attrs.from, child)
 		break
 		case 'w:gp2':
 			handleGroupNotification(node.attrs.participant, child, result)

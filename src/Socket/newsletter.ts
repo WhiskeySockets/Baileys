@@ -1,7 +1,7 @@
 import { proto } from '../../WAProto'
 import { GroupMetadata, GroupParticipant, ParticipantAction, SocketConfig, WAMediaUpload, WAMessageKey, WAMessageStubType } from '../Types'
 import { generateMessageID, generateProfilePicture, unixTimestampSeconds } from '../Utils'
-import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, getBinaryNodeChildString, jidEncode, jidNormalizedUser } from '../WABinary'
+import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, getBinaryNodeChildString, jidEncode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
 import { makeGroupsSocket } from './groups'
 
 enum QueryIds {
@@ -11,12 +11,15 @@ enum QueryIds {
     FOLLOW = "7871414976211147",
     UNMUTE = "7337137176362961",
     MUTE = "25151904754424642",
-    CREATE = "6996806640408138"
+    CREATE = "6996806640408138",
+    ADMIN_COUNT = "7130823597031706"
 }
 
 export const makeNewsletterSocket = (config: SocketConfig) => {
 	const sock = makeGroupsSocket(config)
 	const { authState, ev, query, upsertMessage, generateMessageTag } = sock
+
+    const encoder = new TextEncoder()
 
 	const newsletterQuery = async(jid: string, type: 'get' | 'set', content: BinaryNode[]) => (
 		query({
@@ -38,13 +41,13 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
                 id: generateMessageTag(),
 				type: 'get',
 				xmlns: 'w:mex',
-				to: jid,
+				to: S_WHATSAPP_NET,
 			},
 			content: [
                 {
                     tag: 'query',
                     attrs: {query_id},
-                    content: JSON.stringify({"variables":{"newsletter_id": jid, ...content}})
+                    content: encoder.encode(JSON.stringify({"variables":{"newsletter_id": jid, ...content}}))
                 }
             ]
 		})
@@ -114,7 +117,9 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
         })
     }
 
-
+    const newsletterAdminCount = async(jid: string) => {
+        await newsletterWMexQuery(jid, QueryIds.ADMIN_COUNT)
+    }
 
     return {
 		...sock,
@@ -132,6 +137,7 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 }
 
 
-export const extractNewsletterMetadata = () => {
-
+export const extractNewsletterMetadata = (node) => {
+    let result = getBinaryNodeChild(node, 'result')?.content?.toString()
+    
 }

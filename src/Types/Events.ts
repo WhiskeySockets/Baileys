@@ -53,6 +53,10 @@ export type BaileysEventMap = {
     /** apply an action to participants in a group */
     'group-participants.update': { id: string, author: string, participants: string[], action: ParticipantAction }
 
+    'newsletter.reaction': { id: string, server_id: string, reaction: {code: string, count: number}}
+    'newsletter.view': { id: string, server_id: string, count: number}
+
+
     'blocklist.set': { blocklist: string[] }
     'blocklist.update': { blocklist: string[], type: 'add' | 'remove' }
 
