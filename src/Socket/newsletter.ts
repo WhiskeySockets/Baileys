@@ -1,7 +1,7 @@
-import { proto } from '../../WAProto'
-import { GroupMetadata, GroupParticipant, ParticipantAction, SocketConfig, WAMediaUpload, WAMessageKey, WAMessageStubType } from '../Types'
-import { generateMessageID, generateProfilePicture, unixTimestampSeconds } from '../Utils'
-import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, getBinaryNodeChildString, jidEncode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
+import { SocketConfig, WAMediaUpload } from '../Types'
+import { NewsletterMetadata, ReactionMode, ViewRole } from '../Types/Newsletter'
+import { generateProfilePicture } from '../Utils'
+import { BinaryNode, getBinaryNodeChild, S_WHATSAPP_NET } from '../WABinary'
 import { makeGroupsSocket } from './groups'
 
 enum QueryIds {
@@ -17,7 +17,7 @@ enum QueryIds {
 
 export const makeNewsletterSocket = (config: SocketConfig) => {
 	const sock = makeGroupsSocket(config)
-	const { authState, ev, query, upsertMessage, generateMessageTag } = sock
+	const { query, generateMessageTag } = sock
 
     const encoder = new TextEncoder()
 
@@ -34,7 +34,7 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 		})
 	)
 
-    const newsletterWMexQuery = async(jid: string, query_id: QueryIds, content?: object) => (
+    const newsletterWMexQuery = async(jid: string | undefined, query_id: QueryIds, content?: object) => (
         query({
 			tag: 'iq',
 			attrs: {
@@ -58,15 +58,15 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
             .then(() => true)
     }
 
-    const newsletterReactionMode = async(jid: string, mode: 'all' | 'basic' | 'none') => {
+    const newsletterReactionMode = async(jid: string, mode: ReactionMode) => {
         await newsletterWMexQuery(jid, QueryIds.JOB_MUTATION, {
-            updates: {settings: {reaction_codes: {value: mode.toUpperCase()}}}
+            updates: {settings: {reaction_codes: {value: mode}}}
         })
     }
 
     const newsletterUpdateDescription = async(jid: string, description?: string) => {
         await newsletterWMexQuery(jid, QueryIds.JOB_MUTATION, {
-            updates: {description: description ? description : "", settings: null}
+            updates: {description: description || "", settings: null}
         })
     }
 
@@ -98,18 +98,28 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
         await newsletterWMexQuery(jid, QueryIds.FOLLOW)
     }
 
-    const newsletterCreate = async(jid: string, name: string, description: string) => {
-        await newsletterWMexQuery(jid, QueryIds.CREATE, {
-            input: {name, description}
-        })
+    const newsletterUnmute = async(jid: string) => {
+        await newsletterWMexQuery(jid, QueryIds.UNMUTE)
     }
 
-    const newsletterMetadata = async(jid: string, isOwner: boolean) => {
+    const newsletterMute = async(jid: string) => {
+        await newsletterWMexQuery(jid, QueryIds.MUTE)
+    }
+
+    const newsletterCreate = async(name: string, description: string) => {
+        let result = await newsletterWMexQuery(undefined, QueryIds.CREATE, {
+            input: {name, description}
+        })
+
+        return extractNewsletterMetadata(result, true)
+    }
+
+    const newsletterMetadata = async(jid: string, role: ViewRole) => {
         let result = await newsletterWMexQuery(jid, QueryIds.METADATA, {
             input: {
                 key: jid,
                 type: "JID",
-                view_role: isOwner ? "OWNER" : "SUBSCRIBER"
+                view_role: role
             },
             fetch_viewer_metadata: true,
             fetch_full_image: true,
@@ -120,7 +130,11 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
     }
 
     const newsletterAdminCount = async(jid: string) => {
-        await newsletterWMexQuery(jid, QueryIds.ADMIN_COUNT)
+        let result = await newsletterWMexQuery(jid, QueryIds.ADMIN_COUNT)
+
+        let buff = getBinaryNodeChild(result, 'result')?.content?.toString()
+        
+        return JSON.parse(buff!).data.xwa2_newsletter_admin.admin_count as number
     }
 
     return {
@@ -130,6 +144,8 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
         newsletterCreate,
         newsletterFollow,
         newsletterUnfollow,
+        newsletterUnmute,
+        newsletterMute,
         newsletterUpdatePicture,
         newsletterRemovePicture,
         newsletterUpdateName,
@@ -140,25 +156,27 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 }
 
 
-export const extractNewsletterMetadata = (node) => {
+export const extractNewsletterMetadata = (node: BinaryNode, isCreate?: boolean) => {
     let result = getBinaryNodeChild(node, 'result')?.content?.toString()
-    let metadata = JSON.parse(result!).data.xwa2_newsletter
+    let metadataPath = JSON.parse(result!).data[isCreate ? 'xwa2_newsletter_create' : 'xwa2_newsletter']
 
-    return {
-        id: metadata.id,
-        state: metadata.state.type,
-        creation_time: metadata.thread_metadata.creation_time,
-        description: metadata.thread_metadata.description.text,
-        descriptionId: metadata.thread_metadata.description.id,
-        descriptionTime: metadata.thread_metadata.description.update_time,
-        invite: metadata.thread_metadata.invite,
-        handle: metadata.thread_metadata.handle,
-        picture: metadata.thread_metadata.picture.direct_path || null,
-        preview: metadata.thread_metadata.preview.direct_path || null,
-        reaction_codes: metadata.thread_metadata.settings.reaction_codes.value,
-        subscribers: metadata.thread_metadata.subscribers_count,
-        verification: metadata.thread_metadata.verification,
-        viewer_metadata: metadata.viewer_metadata
+    let metadata: NewsletterMetadata = {
+        id: metadataPath.id,
+        state: metadataPath.state.type,
+        creation_time: metadataPath.thread_metadata.creation_time,
+        name: metadataPath.thread_metadata.name.text,
+        nameTime: metadataPath.thread_metadata.name.update_time,
+        description: metadataPath.thread_metadata.description.text,
+        descriptionTime: metadataPath.thread_metadata.description.update_time,
+        invite: metadataPath.thread_metadata.invite,
+        handle: metadataPath.thread_metadata.handle,
+        picture: metadataPath.thread_metadata.picture.direct_path || null,
+        preview: metadataPath.thread_metadata.preview.direct_path || null,
+        reaction_codes: metadataPath.thread_metadata.settings.reaction_codes.value,
+        subscribers: +metadataPath.thread_metadata.subscribers_count,
+        verification: metadataPath.thread_metadata.verification,
+        viewer_metadata: metadataPath.viewer_metadata
     }
 
+    return metadata
 }
