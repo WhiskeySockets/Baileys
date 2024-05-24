@@ -105,7 +105,7 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
     }
 
     const newsletterMetadata = async(jid: string, isOwner: boolean) => {
-        await newsletterWMexQuery(jid, QueryIds.METADATA, {
+        let result = await newsletterWMexQuery(jid, QueryIds.METADATA, {
             input: {
                 key: jid,
                 type: "JID",
@@ -115,6 +115,8 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
             fetch_full_image: true,
             fetch_creation_time: true
         })
+
+        return extractNewsletterMetadata(result)
     }
 
     const newsletterAdminCount = async(jid: string) => {
@@ -132,12 +134,31 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
         newsletterRemovePicture,
         newsletterUpdateName,
         newsletterUpdateDescription,
-        newsletterMetadata
+        newsletterMetadata,
+        newsletterAdminCount
     }
 }
 
 
 export const extractNewsletterMetadata = (node) => {
     let result = getBinaryNodeChild(node, 'result')?.content?.toString()
-    
+    let metadata = JSON.parse(result!).data.xwa2_newsletter
+
+    return {
+        id: metadata.id,
+        state: metadata.state.type,
+        creation_time: metadata.thread_metadata.creation_time,
+        description: metadata.thread_metadata.description.text,
+        descriptionId: metadata.thread_metadata.description.id,
+        descriptionTime: metadata.thread_metadata.description.update_time,
+        invite: metadata.thread_metadata.invite,
+        handle: metadata.thread_metadata.handle,
+        picture: metadata.thread_metadata.picture.direct_path || null,
+        preview: metadata.thread_metadata.preview.direct_path || null,
+        reaction_codes: metadata.thread_metadata.settings.reaction_codes.value,
+        subscribers: metadata.thread_metadata.subscribers_count,
+        verification: metadata.thread_metadata.verification,
+        viewer_metadata: metadata.viewer_metadata
+    }
+
 }

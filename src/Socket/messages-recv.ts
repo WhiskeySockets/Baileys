@@ -29,7 +29,6 @@ import {
 	areJidsSameUser,
 	BinaryNode,
 	getAllBinaryNodeChildren,
-	getAllBinaryNodeChildrenTag,
 	getBinaryNodeChild,
 	getBinaryNodeChildBuffer,
 	getBinaryNodeChildren,
@@ -333,10 +332,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
         let server_id = message.attrs.server_id
 
         let reactionsList = getBinaryNodeChild(message, 'reactions')
-		let viewsList = getAllBinaryNodeChildrenTag(message, 'views_count')
+		let viewsList = getBinaryNodeChildren(message, 'views_count')
 
         if(reactionsList){
-			let reactions = getAllBinaryNodeChildrenTag(reactionsList, 'reaction')
+			let reactions = getBinaryNodeChildren(reactionsList, 'reaction')
 			reactions.forEach(item => {
 				ev.emit('newsletter.reaction', {id: from, server_id, reaction: {code: item.attrs.code, count: +item.attrs.count}})
 			})

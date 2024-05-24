@@ -20,14 +20,6 @@ export const getAllBinaryNodeChildren = ({ content }: BinaryNode) => {
 	return []
 }
 
-export const getAllBinaryNodeChildrenTag = ({ content }: BinaryNode, childTag: string) => {
-	if(Array.isArray(content)) {
-		return content.filter(item => item.tag === childTag)
-	}
-
-	return []
-}
-
 export const getBinaryNodeChild = (node: BinaryNode | undefined, childTag: string) => {
 	if(Array.isArray(node?.content)) {
 		return node?.content.find(item => item.tag === childTag)

@@ -147,7 +147,6 @@ export const decryptMessageNode = (
 
 					decryptables += 1
 
-					let msg: proto.IMessage
 					let msgBuffer: Uint8Array
 
 					try {
@@ -176,7 +175,7 @@ export const decryptMessageNode = (
 							throw new Error(`Unknown e2e type: ${e2eType}`)
 						}
 
-						msg = proto.Message.decode(tag === 'plaintext' ? msgBuffer : unpadRandomMax16(msgBuffer))
+						let msg: proto.IMessage = proto.Message.decode(tag === 'plaintext' ? msgBuffer : unpadRandomMax16(msgBuffer))
 						msg = msg?.deviceSentMessage?.message || msg
 
 						if(msg.senderKeyDistributionMessage) {
