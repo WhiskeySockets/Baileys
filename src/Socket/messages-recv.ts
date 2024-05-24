@@ -332,17 +332,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
         let server_id = message.attrs.server_id
 
-        let reactions = getAllBinaryNodeChildrenTag(message, 'reactions')
-		let views = getAllBinaryNodeChildrenTag(message, 'views_count')
+        let reactionsList = getBinaryNodeChild(message, 'reactions')
+		let viewsList = getAllBinaryNodeChildrenTag(message, 'views_count')
 
-        if(reactions.length){
+        if(reactionsList){
+			let reactions = getAllBinaryNodeChildrenTag(reactionsList, 'reaction')
 			reactions.forEach(item => {
 				ev.emit('newsletter.reaction', {id: from, server_id, reaction: {code: item.attrs.code, count: +item.attrs.count}})
 			})
         }
 
-        if(views.length){
-			views.forEach(item => {
+        if(viewsList.length){
+			viewsList.forEach(item => {
             	ev.emit('newsletter.view', {id: from, server_id, count: +item.attrs.count})
 			})
         }
