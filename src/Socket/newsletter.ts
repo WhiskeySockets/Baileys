@@ -1,4 +1,4 @@
-import { SocketConfig, WAMediaUpload, NewsletterMetadata, ReactionMode, ViewRole } from '../Types'
+import { SocketConfig, WAMediaUpload, NewsletterMetadata, ReactionMode, ViewRole, XWAPaths } from '../Types'
 import { generateProfilePicture } from '../Utils'
 import { BinaryNode, getBinaryNodeChild, S_WHATSAPP_NET } from '../WABinary'
 import { makeGroupsSocket } from './groups'
@@ -133,7 +133,7 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 
         let buff = getBinaryNodeChild(result, 'result')?.content?.toString()
         
-        return JSON.parse(buff!).data.xwa2_newsletter_admin.admin_count as number
+        return JSON.parse(buff!).data[XWAPaths.ADMIN_COUNT].admin_count as number
     }
 
     return {
@@ -157,7 +157,7 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 
 export const extractNewsletterMetadata = (node: BinaryNode, isCreate?: boolean) => {
     let result = getBinaryNodeChild(node, 'result')?.content?.toString()
-    let metadataPath = JSON.parse(result!).data[isCreate ? 'xwa2_newsletter_create' : 'xwa2_newsletter']
+    let metadataPath = JSON.parse(result!).data[isCreate ? XWAPaths.CREATE : XWAPaths.NEWSLETTER]
 
     let metadata: NewsletterMetadata = {
         id: metadataPath.id,

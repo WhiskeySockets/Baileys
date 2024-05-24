@@ -4,7 +4,7 @@ import { randomBytes } from 'crypto'
 import NodeCache from 'node-cache'
 import { proto } from '../../WAProto'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
-import { MessageReceiptType, MessageRelayOptions, MessageUserReceipt, MexOperations, SocketConfig, WACallEvent, WAMessageKey, WAMessageStatus, WAMessageStubType, WAPatchName } from '../Types'
+import { MessageReceiptType, MessageRelayOptions, MessageUserReceipt, MexOperations, SocketConfig, WACallEvent, WAMessageKey, WAMessageStatus, WAMessageStubType, WAPatchName, XWAPaths } from '../Types'
 import {
 	aesDecryptCTR,
 	aesEncryptGCM,
@@ -358,12 +358,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		let contentPath
 		if(operation === MexOperations.PROMOTE){
 			action = 'promote'
-			contentPath = content.data.xwa2_notify_newsletter_admin_promote
+			contentPath = content.data[XWAPaths.PROMOTE]
 		}
 
 		if(operation === MexOperations.DEMOTE){
 			action = 'demote'
-			contentPath = content.data.xwa2_notify_newsletter_admin_demote
+			contentPath = content.data[XWAPaths.DEMOTE]
 		}
 
 		ev.emit('newsletter-participants.update', {id, author: contentPath.actor.pn, user: contentPath.user.pn, new_role: contentPath.user_new_role, action})		

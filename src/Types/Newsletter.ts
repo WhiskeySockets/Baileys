@@ -46,9 +46,18 @@ export type NewsletterMetadata = {
     viewer_metadata: ViewerMetadata
 }
 
+export type SubscriberAction = 'promote' | 'demote'
+
+
 export enum MexOperations{
     PROMOTE = "NotificationNewsletterAdminPromote",
     DEMOTE = "NotificationNewsletterAdminDemote"
 }
 
-export type SubscriberAction = 'promote' | 'demote'
+export enum XWAPaths{
+    PROMOTE = "xwa2_notify_newsletter_admin_promote",
+    DEMOTE = "xwa2_notify_newsletter_admin_demote",
+    ADMIN_COUNT = "xwa2_newsletter_admin",
+    CREATE = "xwa2_newsletter_create",
+    NEWSLETTER = "xwa2_newsletter"
+}
