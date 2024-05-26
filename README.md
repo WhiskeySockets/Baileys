@@ -801,6 +801,39 @@ Of course, replace ``` xyz ``` with an actual ID.
     console.log(response)
     ```
 
+## Channel
+- To get newsletter info from code
+    ```ts
+    // https://whatsapp.com/channel/key
+    const key = '123wedss972279'
+    const result = await sock.getNewsletterInfo(key)
+    console.log(result)
+    ```
+- To create newsletter
+    ```ts
+    const result = await sock.createNewsLetter('Name newsletter', 'Description news letter', { url: 'url profile pictur' })
+    console.log(result)
+    ```
+- To get subscribed newsletters
+    ```ts
+    const result = await sock.getSubscribedNewsletters()
+    console.log(result)
+    ```
+- To toggle mute newsletters
+    ```ts
+    const result = await sock.toggleMuteNewsletter(jid, true) // true to mute, false to unmute
+    console.log(result)
+    ```
+- To follow newsletter
+    ```ts
+    const result = await sock.followNewsletter(jid)
+    console.log(result)
+    ```
+- To unfollow newsletter
+    ```ts
+    const result = await sock.unFollowNewsletter(jid)
+    console.log(result)
+    ```
 ## Privacy
 - To get the privacy settings
     ``` ts
