@@ -1,6 +1,6 @@
-import { SocketConfig, WAMediaUpload, NewsletterMetadata, ReactionMode, ViewRole, XWAPaths } from '../Types'
-import { generateMessageID, generateProfilePicture } from '../Utils'
-import { BinaryNode, getBinaryNodeChild, S_WHATSAPP_NET } from '../WABinary'
+import { SocketConfig, WAMediaUpload, NewsletterMetadata, NewsletterReactionMode, NewsletterViewRole, XWAPaths } from '../Types'
+import { decryptMessageNode, generateMessageID, generateProfilePicture } from '../Utils'
+import { BinaryNode, getAllBinaryNodeChildren, getBinaryNodeChild, getBinaryNodeChildren, S_WHATSAPP_NET } from '../WABinary'
 import { makeGroupsSocket } from './groups'
 
 enum QueryIds {
@@ -19,7 +19,7 @@ enum QueryIds {
 
 export const makeNewsletterSocket = (config: SocketConfig) => {
 	const sock = makeGroupsSocket(config)
-	const { query, generateMessageTag } = sock
+	const { authState, signalRepository, query, generateMessageTag } = sock
 
     const encoder = new TextEncoder()
 
@@ -55,12 +55,32 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 		})
     )
 
-    const subscribeNewsletterUpdates = async(jid: string) => {
-        return newsletterQuery(jid, 'set', [{tag: 'live_updates', attrs: {}, content: []}])
-            .then(() => true)
+    const parseFetchedUpdates = async(node: BinaryNode) => {
+        let child = getBinaryNodeChild(node, 'messages')
+
+        return await Promise.all(getAllBinaryNodeChildren(child!).map(async messageNode => {
+            let views = getBinaryNodeChild(messageNode, 'views_count')?.attrs?.count
+            let reactions = getBinaryNodeChildren(messageNode, 'reactions').map(reaction => reaction.attrs)
+
+            let message = await decryptMessageNode(
+                messageNode,
+                authState.creds.me!.id,
+                authState.creds.me!.lid || '',
+                signalRepository,
+                config.logger
+            )
+
+            return {server_id: messageNode.attrs.server_id, views, reactions, message}
+        }))
     }
 
-    const newsletterReactionMode = async(jid: string, mode: ReactionMode) => {
+    const subscribeNewsletterUpdates = async(jid: string) => {
+        let result = await newsletterQuery(jid, 'set', [{tag: 'live_updates', attrs: {}, content: []}])
+
+        return getBinaryNodeChild(result, 'live_updates')?.attrs as {duration: string}
+    }
+
+    const newsletterReactionMode = async(jid: string, mode: NewsletterReactionMode) => {
         await newsletterWMexQuery(jid, QueryIds.JOB_MUTATION, {
             updates: {settings: {reaction_codes: {value: mode}}}
         })
@@ -116,7 +136,7 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
         return extractNewsletterMetadata(result, true)
     }
 
-    const newsletterMetadata = async(jid: string, role: ViewRole) => {
+    const newsletterMetadata = async(jid: string, role: NewsletterViewRole) => {
         let result = await newsletterWMexQuery(jid, QueryIds.METADATA, {
             input: {
                 key: jid,
@@ -155,28 +175,31 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
         await newsletterWMexQuery(jid, QueryIds.DELETE)
     }
 
-    const newsletterReactMessage = async(jid: string, server_id: string, code: string) => {
+    /**if code wasn't passed, the reaction will be removed (if is reacted) */
+    const newsletterReactMessage = async(jid: string, server_id: string, code?: string) => {
         await query({
             tag: 'message',
             attrs: {to: jid, type: 'reaction', server_id, id: generateMessageID()},
             content: [{
                 tag: 'reaction',
-                attrs: {code}
+                attrs: code ? {code} : {}
             }]
         })
     }
 
-    const newsletterfetchMessages = async(jid: string, count: number, after: number) => {
-        await newsletterQuery(S_WHATSAPP_NET, 'get', [
+    const newsletterfetchMessages = async(type: 'invite' | 'jid', key: string, count: number, after: number) => {
+        let result = await newsletterQuery(S_WHATSAPP_NET, 'get', [
             {
                 tag: 'messages',
-                attrs: {type: 'jid', jid, count: count.toString(), after: after.toString()}
+                attrs: {type, ...(type === 'invite' ? {key} : {jid: key}), count: count.toString(), after: after.toString()}
             }
         ])
+
+        return await parseFetchedUpdates(result)
     }
 
     const newsletterfetchMessagesUpdates = async(jid: string, count: number, after: number, since: number) => {
-        await newsletterQuery(S_WHATSAPP_NET, 'get', [
+        await newsletterQuery(jid, 'get', [
             {
                 tag: 'messages_updates',
                 attrs: {count: count.toString(), after: after.toString(), since: since.toString()}
@@ -208,7 +231,6 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
     }
 }
 
-
 export const extractNewsletterMetadata = (node: BinaryNode, isCreate?: boolean) => {
     let result = getBinaryNodeChild(node, 'result')?.content?.toString()
     let metadataPath = JSON.parse(result!).data[isCreate ? XWAPaths.CREATE : XWAPaths.NEWSLETTER]
@@ -223,7 +245,7 @@ export const extractNewsletterMetadata = (node: BinaryNode, isCreate?: boolean) 
         descriptionTime: +metadataPath.thread_metadata.description.update_time,
         invite: metadataPath.thread_metadata.invite,
         handle: metadataPath.thread_metadata.handle,
-        picture: metadataPath.thread_metadata.picture.direct_path || undefined,
+        picture: metadataPath.thread_metadata.picture.direct_path || null,
         preview: metadataPath.thread_metadata.preview.direct_path || null,
         reaction_codes: metadataPath.thread_metadata.settings.reaction_codes.value,
         subscribers: +metadataPath.thread_metadata.subscribers_count,

@@ -1,23 +1,23 @@
-export type ReactionMode = 'ALL' | 'BASIC' | 'NONE'
+export type NewsletterReactionMode = 'ALL' | 'BASIC' | 'NONE'
 
-export type State = 'ACTIVE' | 'GEOSUSPENDED' | 'SUSPENDED'
+export type NewsletterState = 'ACTIVE' | 'GEOSUSPENDED' | 'SUSPENDED'
 
-export type Verification = 'VERIFIED' | 'UNVERIFIED'
+export type NewsletterVerification = 'VERIFIED' | 'UNVERIFIED'
 
-export type Mute = 'ON' | 'OFF' | 'UNDEFINED'
+export type NewsletterMute = 'ON' | 'OFF' | 'UNDEFINED'
 
-export type ViewRole = 'ADMIN' | 'GUEST' | 'OWNER' | 'SUBSCRIBER'
+export type NewsletterViewRole = 'ADMIN' | 'GUEST' | 'OWNER' | 'SUBSCRIBER'
 
-export type ViewerMetadata = {
-    mute: Mute,
-    view_role: ViewRole
+export type NewsletterViewerMetadata = {
+    mute: NewsletterMute,
+    view_role: NewsletterViewRole
 }
 
 export type NewsletterMetadata = {
     /**jid of newsletter */
     id: string,
     /**state of newsletter */
-    state: State,
+    state: NewsletterState,
     /**creation timestamp of newsletter */
     creation_time: number,
     /**name of newsletter */
@@ -37,21 +37,26 @@ export type NewsletterMetadata = {
     /**direct path of picture preview (lower quality) */
     preview: string | null,
     /**reaction mode of newsletter */
-    reaction_codes: ReactionMode,
+    reaction_codes: NewsletterReactionMode,
     /**subscribers count of newsletter */
     subscribers: number,
     /**verification state of newsletter */
-    verification: Verification,
+    verification: NewsletterVerification,
     /**viewer metadata */
-    viewer_metadata: ViewerMetadata
+    viewer_metadata: NewsletterViewerMetadata
 }
 
 export type SubscriberAction = 'promote' | 'demote'
 
+export type ReactionModeUpdate = {reaction_codes: {blocked_codes: null, enabled_ts_sec: null, value: NewsletterReactionMode}}
+
+/**only exists reaction mode update */
+export type NewsletterSettingsUpdate = ReactionModeUpdate
 
 export enum MexOperations{
     PROMOTE = "NotificationNewsletterAdminPromote",
-    DEMOTE = "NotificationNewsletterAdminDemote"
+    DEMOTE = "NotificationNewsletterAdminDemote",
+    UPDATE = "NotificationNewsletterUpdate"
 }
 
 export enum XWAPaths{
@@ -59,5 +64,6 @@ export enum XWAPaths{
     DEMOTE = "xwa2_notify_newsletter_admin_demote",
     ADMIN_COUNT = "xwa2_newsletter_admin",
     CREATE = "xwa2_newsletter_create",
-    NEWSLETTER = "xwa2_newsletter"
+    NEWSLETTER = "xwa2_newsletter",
+    METADATA_UPDATE = "xwa2_notify_newsletter_on_metadata_update"
 }
