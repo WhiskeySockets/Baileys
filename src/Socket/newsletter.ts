@@ -63,12 +63,12 @@ export const makeNewsLetterSocket = (config: SocketConfig) => {
 
 	const createNewsLetter = async(name: string, desc?: string, picture?: WAMediaUpload): Promise<NewsLetterMetadata> => {
 		const result = await newsletterQuery({
-			'newsletter_input': {
+			'input': {
 				name,
 				description: desc ?? null,
-				picture: picture ? (await generateProfilePicture(picture)).img : null
+				picture: picture ? (await generateProfilePicture(picture)).img.toString('base64') : null
 			}
-		}, '6234210096708695')
+		}, '6996806640408138')
 
 		const node = getBinaryNodeChildString(result, 'result')
 		const json = JSON.parse(node!)
@@ -81,9 +81,9 @@ export const makeNewsLetterSocket = (config: SocketConfig) => {
 
 
 	const toggleMuteNewsletter = async(jid: string, mute: boolean) => {
-		let queryId = '6068417879924485'
+		let queryId = '7337137176362961'
 		if(mute) {
-			queryId = '6274038279359549'
+			queryId = '25151904754424642'
 		}
 
 		const result = await newsletterQuery({
@@ -97,7 +97,7 @@ export const makeNewsLetterSocket = (config: SocketConfig) => {
 	const followNewsletter = async(jid: string) => {
 		const result = await newsletterQuery({
 			'newsletter_id': jid
-		}, '9926858900719341')
+		}, '7871414976211147')
 		const node = getBinaryNodeChildString(result, 'result')
 		const json = JSON.parse(node!)
 		return json
@@ -106,7 +106,7 @@ export const makeNewsLetterSocket = (config: SocketConfig) => {
 	const unFollowNewsletter = async(jid: string) => {
 		const result = await newsletterQuery({
 			'newsletter_id': jid
-		}, '6392786840836363')
+		}, '7238632346214362')
 		const node = getBinaryNodeChildString(result, 'result')
 		const json = JSON.parse(node!)
 		return json
