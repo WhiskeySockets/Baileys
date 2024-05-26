@@ -4,7 +4,7 @@ export type GroupParticipant = (Contact & { isAdmin?: boolean, isSuperAdmin?: bo
 
 export type ParticipantAction = 'add' | 'remove' | 'promote' | 'demote'
 
-export type RequestJoinAction = 'created' | 'revoked' | 'reject' | 'approve'
+export type RequestJoinAction = 'created' | 'revoked' | 'reject'
 
 export type RequestJoinMethod = 'invite_link' | 'linked_group_join' | 'non_admin_add' | undefined
 
