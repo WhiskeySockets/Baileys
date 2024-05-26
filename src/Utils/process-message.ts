@@ -301,7 +301,7 @@ const processMessage = async(
 			ev.emit('groups.update', [{ id: jid, ...update, author: message.participant ?? undefined }])
 		}
 
-		const emitGroupRequestJoin = (participant: string | undefined, action: RequestJoinAction, method: RequestJoinMethod) => {
+		const emitGroupRequestJoin = (participant: string, action: RequestJoinAction, method: RequestJoinMethod) => {
 			ev.emit('group.join-request', { id: jid, author: message.participant!, participant, action, method: method! })
 		}
 
@@ -362,7 +362,7 @@ const processMessage = async(
 			emitGroupUpdate({ joinApprovalMode: approvalMode === 'on' })
 			break
 		case WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST_NON_ADMIN_ADD:
-			const participant = message.messageStubParameters?.[0] as string | undefined
+			const participant = message.messageStubParameters?.[0] as string
 			const action = message.messageStubParameters?.[1] as RequestJoinAction
 			const method = message.messageStubParameters?.[2] as RequestJoinMethod
 			emitGroupRequestJoin(participant, action, method)
