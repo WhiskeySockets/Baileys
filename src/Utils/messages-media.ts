@@ -340,9 +340,8 @@ export const prepareStream = async(
 	mediaType: MediaType,
 	{ logger, saveOriginalFileIfRequired, opts }: EncryptedStreamOptions = {}
 ) => {
-	
 	const { stream, type } = await getStream(media, opts)
-	
+
 	logger?.debug('fetched media stream')
 
 	let bodyPath: string | undefined
@@ -356,8 +355,10 @@ export const prepareStream = async(
 			writeFileSync(bodyPath, buffer)
 			didSaveToTmpPath = true
 		}
+
 		const fileLength = buffer.length
 		const fileSha256 = Crypto.createHash('sha256').update(buffer).digest()
+
 		stream?.destroy()
 		logger?.debug('prepare stream data successfully')
 
@@ -666,10 +667,13 @@ export const getWAUploadToServer = (
 				chunks.push(chunk)
 			}
 		}
+
 		const reqBody = Buffer.isBuffer(stream) ? stream : Buffer.concat(chunks)
 		fileEncSha256B64 = encodeBase64EncodedStringForUpload(fileEncSha256B64)
 		let media = MEDIA_PATH_MAP[mediaType]
-		if (newsletter) media = media?.replace('/mms/', '/newsletter/newsletter-')
+		if (newsletter) {
+			media = media?.replace('/mms/', '/newsletter/newsletter-')
+		}
 
 		for(const { hostname, maxContentLengthBytes } of hosts) {
 			logger.debug(`uploading to "${hostname}"`)

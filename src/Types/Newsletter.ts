@@ -11,7 +11,7 @@ export interface NewsLetterMetadata {
     preview?: string
     settings: {
         reaction: 'ALL' | 'BASIC' | 'NONE' | 'BLOCKLlST'
-    },
+    }
     mute?: 'ON' | 'OFF'
     role?: 'SUBSCRIBER' | 'GUEST' | 'ADMIN' | 'OWNER'
 }

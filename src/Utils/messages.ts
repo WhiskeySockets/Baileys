@@ -232,6 +232,7 @@ export const prepareWAMessageMedia = async(
 				if (!Buffer.isBuffer(encWriteStream)) {
 					encWriteStream.destroy()
 				}
+
 				// remove tmp files
 				if(didSaveToTmpPath && bodyPath) {
 					await fs.unlink(bodyPath)

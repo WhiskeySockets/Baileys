@@ -148,8 +148,8 @@ export const decryptMessageNode = (
 
 			if (isJidNewsLetter(fullMessage.key.remoteJid!)) {
 				const node = getBinaryNodeChild(stanza, 'plaintext')
-				const msg = proto.Message.decode(node?.content as Uint8Array) 
-				
+				const msg = proto.Message.decode(node?.content as Uint8Array)
+
 				await processSenderKeyDistribution(msg)
 
 				fullMessage.message = msg

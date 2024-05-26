@@ -320,7 +320,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		useUserDevicesCache = useUserDevicesCache !== false
 
 		const participants: BinaryNode[] = []
-		const destinationJid = (!isStatus) ? jidEncode(user, isLid ? 'lid' : isGroup ? 'g.us'  : isNewsletter ? 'newsletter' : 's.whatsapp.net') : statusJid
+		const destinationJid = (!isStatus) ? jidEncode(user, isLid ? 'lid' : isGroup ? 'g.us' : isNewsletter ? 'newsletter' : 's.whatsapp.net') : statusJid
 		const binaryNodeContent: BinaryNode[] = []
 		const devices: JidWithDevice[] = []
 
@@ -809,7 +809,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 
 				if (mediaHandle) {
-					additionalAttributes.media_id = mediaHandle
+					additionalAttributes['media_id'] = mediaHandle
 				}
 
 				await relayMessage(jid, fullMsg.message!, { messageId: fullMsg.key.id!, cachedGroupMetadata: options.cachedGroupMetadata, additionalAttributes, statusJidList: options.statusJidList })
