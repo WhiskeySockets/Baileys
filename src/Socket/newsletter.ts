@@ -1,4 +1,4 @@
-import { SocketConfig, WAMediaUpload, NewsletterMetadata, NewsletterReactionMode, NewsletterViewRole, XWAPaths, NewsletterFetchedMessage, NewsletterReaction, NewsletterFetchedUpdate } from '../Types'
+import { SocketConfig, WAMediaUpload, NewsletterMetadata, NewsletterReactionMode, NewsletterViewRole, XWAPaths, NewsletterReaction, NewsletterFetchedUpdate } from '../Types'
 import { decryptMessageNode, generateMessageID, generateProfilePicture } from '../Utils'
 import { BinaryNode, getAllBinaryNodeChildren, getBinaryNodeChild, getBinaryNodeChildren, S_WHATSAPP_NET } from '../WABinary'
 import { makeGroupsSocket } from './groups'
@@ -56,7 +56,13 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
     )
 
     const parseFetchedUpdates = async(node: BinaryNode, type: 'messages' | 'updates') => {
-        let child = getBinaryNodeChild(node, 'messages')
+        let child 
+        
+        if(type === 'messages') child = getBinaryNodeChild(node, 'messages')
+        else{
+            const parent = getBinaryNodeChild(node, 'message_updates')
+            child = getBinaryNodeChild(parent, 'messages')
+        }
 
         return await Promise.all(getAllBinaryNodeChildren(child!).map(async messageNode => {
             messageNode.attrs.from = child?.attrs.jid as string
@@ -66,6 +72,7 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
             let reactions = getBinaryNodeChildren(reactionNode, 'reaction')
                 .map(({ attrs }) => ({count: +attrs.count, code: attrs.code} as NewsletterReaction))
 
+            let data: NewsletterFetchedUpdate
             if(type === 'messages'){
                 let { fullMessage: message, decrypt } = await decryptMessageNode(
                     messageNode,
@@ -77,7 +84,7 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
     
                 await decrypt()
     
-                let data: NewsletterFetchedMessage = {
+                data = {
                     server_id: messageNode.attrs.server_id,
                     views: views ? +views : undefined,
                     reactions,
@@ -86,7 +93,7 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
     
                 return data
             }else{
-                let data: NewsletterFetchedUpdate = {
+                data = {
                     server_id: messageNode.attrs.server_id,
                     views: views ? +views : undefined,
                     reactions
@@ -213,22 +220,22 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
         })
     }
 
-    const newsletterfetchMessages = async(type: 'invite' | 'jid', key: string, count: number, after: number) => {
+    const newsletterfetchMessages = async(type: 'invite' | 'jid', key: string, count: number, after?: number) => {
         let result = await newsletterQuery(S_WHATSAPP_NET, 'get', [
             {
                 tag: 'messages',
-                attrs: {type, ...(type === 'invite' ? {key} : {jid: key}), count: count.toString(), after: after.toString()}
+                attrs: {type, ...(type === 'invite' ? {key} : {jid: key}), count: count.toString(), after: after?.toString() || '100'}
             }
         ])
 
         return await parseFetchedUpdates(result, 'messages')
     }
 
-    const newsletterfetchMessagesUpdates = async(jid: string, count: number, after: number, since: number) => {
+    const newsletterfetchUpdates = async(jid: string, count: number, after?: number, since?: number) => {
         let result = await newsletterQuery(jid, 'get', [
             {
-                tag: 'messages_updates',
-                attrs: {count: count.toString(), after: after.toString(), since: since.toString()}
+                tag: 'message_updates',
+                attrs: {count: count.toString(), after: after?.toString() || '100', since: since?.toString() || '0'}
             }
         ])
 
@@ -255,7 +262,7 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
         newsletterDelete,
         newsletterReactMessage,
         newsletterfetchMessages,
-        newsletterfetchMessagesUpdates
+        newsletterfetchUpdates
     }
 }
 

@@ -336,9 +336,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
         if(reactionsList){
 			let reactions = getBinaryNodeChildren(reactionsList, 'reaction')
+			if(reactions.length === 0){
+				ev.emit('newsletter.reaction', {id, server_id, reaction: { removed: true }})
+			}
 			reactions.forEach(item => {
-				let removed = !(!!item.attrs?.code && !!item.attrs?.count)
-				ev.emit('newsletter.reaction', {id, server_id, reaction: {code: item.attrs?.code, count: +item.attrs?.count, removed }})
+				ev.emit('newsletter.reaction', {id, server_id, reaction: { code: item.attrs?.code, count: +item.attrs?.count }})
 			})
         }
 
