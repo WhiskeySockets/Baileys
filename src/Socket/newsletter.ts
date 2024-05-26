@@ -1,5 +1,5 @@
 import { SocketConfig, WAMediaUpload, NewsletterMetadata, ReactionMode, ViewRole, XWAPaths } from '../Types'
-import { generateProfilePicture } from '../Utils'
+import { generateMessageID, generateProfilePicture } from '../Utils'
 import { BinaryNode, getBinaryNodeChild, S_WHATSAPP_NET } from '../WABinary'
 import { makeGroupsSocket } from './groups'
 
@@ -11,7 +11,10 @@ enum QueryIds {
     UNMUTE = "7337137176362961",
     MUTE = "25151904754424642",
     CREATE = "6996806640408138",
-    ADMIN_COUNT = "7130823597031706"
+    ADMIN_COUNT = "7130823597031706",
+    CHANGE_OWNER = "7341777602580933",
+    DELETE = "8316537688363079",
+    DEMOTE = "6551828931592903"
 }
 
 export const makeNewsletterSocket = (config: SocketConfig) => {
@@ -136,6 +139,51 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
         return JSON.parse(buff!).data[XWAPaths.ADMIN_COUNT].admin_count as number
     }
 
+    const newsletterChangeOwner = async(jid: string, user: string) => {
+        await newsletterWMexQuery(jid, QueryIds.CHANGE_OWNER, {
+            user_id: user
+        })
+    }
+
+    const newsletterDemote = async(jid: string, user: string) => {
+        await newsletterWMexQuery(jid, QueryIds.DEMOTE, {
+            user_id: user
+        })
+    }
+
+    const newsletterDelete = async(jid: string) => {
+        await newsletterWMexQuery(jid, QueryIds.DELETE)
+    }
+
+    const newsletterReactMessage = async(jid: string, server_id: string, code: string) => {
+        await query({
+            tag: 'message',
+            attrs: {to: jid, type: 'reaction', server_id, id: generateMessageID()},
+            content: [{
+                tag: 'reaction',
+                attrs: {code}
+            }]
+        })
+    }
+
+    const newsletterfetchMessages = async(jid: string, count: number, after: number) => {
+        await newsletterQuery(S_WHATSAPP_NET, 'get', [
+            {
+                tag: 'messages',
+                attrs: {type: 'jid', jid, count: count.toString(), after: after.toString()}
+            }
+        ])
+    }
+
+    const newsletterfetchMessagesUpdates = async(jid: string, count: number, after: number, since: number) => {
+        await newsletterQuery(S_WHATSAPP_NET, 'get', [
+            {
+                tag: 'messages_updates',
+                attrs: {count: count.toString(), after: after.toString(), since: since.toString()}
+            }
+        ])
+    }
+
     return {
 		...sock,
         subscribeNewsletterUpdates,
@@ -150,7 +198,13 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
         newsletterUpdateName,
         newsletterUpdateDescription,
         newsletterMetadata,
-        newsletterAdminCount
+        newsletterAdminCount,
+        newsletterChangeOwner,
+        newsletterDemote,
+        newsletterDelete,
+        newsletterReactMessage,
+        newsletterfetchMessages,
+        newsletterfetchMessagesUpdates
     }
 }
 
@@ -162,11 +216,11 @@ export const extractNewsletterMetadata = (node: BinaryNode, isCreate?: boolean) 
     let metadata: NewsletterMetadata = {
         id: metadataPath.id,
         state: metadataPath.state.type,
-        creation_time: metadataPath.thread_metadata.creation_time,
+        creation_time: +metadataPath.thread_metadata.creation_time,
         name: metadataPath.thread_metadata.name.text,
-        nameTime: metadataPath.thread_metadata.name.update_time,
+        nameTime: +metadataPath.thread_metadata.name.update_time,
         description: metadataPath.thread_metadata.description.text,
-        descriptionTime: metadataPath.thread_metadata.description.update_time,
+        descriptionTime: +metadataPath.thread_metadata.description.update_time,
         invite: metadataPath.thread_metadata.invite,
         handle: metadataPath.thread_metadata.handle,
         picture: metadataPath.thread_metadata.picture.direct_path || undefined,

@@ -19,15 +19,15 @@ export type NewsletterMetadata = {
     /**state of newsletter */
     state: State,
     /**creation timestamp of newsletter */
-    creation_time: string,
+    creation_time: number,
     /**name of newsletter */
     name: string,
     /**timestamp of last name modification of newsletter */
-    nameTime: string,
+    nameTime: number,
     /**description of newsletter */
     description: string,
     /**timestamp of last description modification of newsletter */
-    descriptionTime: string,
+    descriptionTime: number,
     /**invite code of newsletter */
     invite: string,
     /**i dont know */
