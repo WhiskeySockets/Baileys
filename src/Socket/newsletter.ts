@@ -183,7 +183,7 @@ export const makeNewsLetterSocket = (config: SocketConfig) => {
 		return extractNewsletterMetadata(json.data?.xwa2_newsletter_update)
 	}
 
-	const removeNewsletterPicture = async(jid: string, picture: WAMediaUpload) => {
+	const removeNewsletterPicture = async(jid: string) => {
 		const result = await newsletterQuery({
 			'newsletter_id': jid,
 			updates: {
