@@ -1,4 +1,4 @@
-import { SocketConfig, WAMediaUpload, NewsletterMetadata, NewsletterReactionMode, NewsletterViewRole, XWAPaths } from '../Types'
+import { SocketConfig, WAMediaUpload, NewsletterMetadata, NewsletterReactionMode, NewsletterViewRole, XWAPaths, NewsletterFetchedMessage, NewsletterReaction, NewsletterFetchedUpdate } from '../Types'
 import { decryptMessageNode, generateMessageID, generateProfilePicture } from '../Utils'
 import { BinaryNode, getAllBinaryNodeChildren, getBinaryNodeChild, getBinaryNodeChildren, S_WHATSAPP_NET } from '../WABinary'
 import { makeGroupsSocket } from './groups'
@@ -55,22 +55,46 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 		})
     )
 
-    const parseFetchedUpdates = async(node: BinaryNode) => {
+    const parseFetchedUpdates = async(node: BinaryNode, type: 'messages' | 'updates') => {
         let child = getBinaryNodeChild(node, 'messages')
 
         return await Promise.all(getAllBinaryNodeChildren(child!).map(async messageNode => {
+            messageNode.attrs.from = child?.attrs.jid as string
+
             let views = getBinaryNodeChild(messageNode, 'views_count')?.attrs?.count
-            let reactions = getBinaryNodeChildren(messageNode, 'reactions').map(reaction => reaction.attrs)
+            let reactionNode = getBinaryNodeChild(messageNode, 'reactions')
+            let reactions = getBinaryNodeChildren(reactionNode, 'reaction')
+                .map(({ attrs }) => ({count: +attrs.count, code: attrs.code} as NewsletterReaction))
 
-            let message = await decryptMessageNode(
-                messageNode,
-                authState.creds.me!.id,
-                authState.creds.me!.lid || '',
-                signalRepository,
-                config.logger
-            )
+            if(type === 'messages'){
+                let { fullMessage: message, decrypt } = await decryptMessageNode(
+                    messageNode,
+                    authState.creds.me!.id,
+                    authState.creds.me!.lid || '',
+                    signalRepository,
+                    config.logger
+                )
+    
+                await decrypt()
+    
+                let data: NewsletterFetchedMessage = {
+                    server_id: messageNode.attrs.server_id,
+                    views: views ? +views : undefined,
+                    reactions,
+                    message
+                }
+    
+                return data
+            }else{
+                let data: NewsletterFetchedUpdate = {
+                    server_id: messageNode.attrs.server_id,
+                    views: views ? +views : undefined,
+                    reactions
+                }
 
-            return {server_id: messageNode.attrs.server_id, views, reactions, message}
+                return data
+            }
+
         }))
     }
 
@@ -159,12 +183,14 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
         return JSON.parse(buff!).data[XWAPaths.ADMIN_COUNT].admin_count as number
     }
 
+    /**user is Lid, not Jid */
     const newsletterChangeOwner = async(jid: string, user: string) => {
         await newsletterWMexQuery(jid, QueryIds.CHANGE_OWNER, {
             user_id: user
         })
     }
 
+    /**user is Lid, not Jid */
     const newsletterDemote = async(jid: string, user: string) => {
         await newsletterWMexQuery(jid, QueryIds.DEMOTE, {
             user_id: user
@@ -179,7 +205,7 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
     const newsletterReactMessage = async(jid: string, server_id: string, code?: string) => {
         await query({
             tag: 'message',
-            attrs: {to: jid, type: 'reaction', server_id, id: generateMessageID()},
+            attrs: {to: jid, ...(!code ? {edit: '7'} : {}), type: 'reaction', server_id, id: generateMessageID()},
             content: [{
                 tag: 'reaction',
                 attrs: code ? {code} : {}
@@ -195,16 +221,18 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
             }
         ])
 
-        return await parseFetchedUpdates(result)
+        return await parseFetchedUpdates(result, 'messages')
     }
 
     const newsletterfetchMessagesUpdates = async(jid: string, count: number, after: number, since: number) => {
-        await newsletterQuery(jid, 'get', [
+        let result = await newsletterQuery(jid, 'get', [
             {
                 tag: 'messages_updates',
                 attrs: {count: count.toString(), after: after.toString(), since: since.toString()}
             }
         ])
+
+        return await parseFetchedUpdates(result, 'updates')
     }
 
     return {

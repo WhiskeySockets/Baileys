@@ -1,3 +1,5 @@
+import { proto } from "../../WAProto"
+
 export type NewsletterReactionMode = 'ALL' | 'BASIC' | 'NONE'
 
 export type NewsletterState = 'ACTIVE' | 'GEOSUSPENDED' | 'SUSPENDED'
@@ -52,6 +54,21 @@ export type ReactionModeUpdate = {reaction_codes: {blocked_codes: null, enabled_
 
 /**only exists reaction mode update */
 export type NewsletterSettingsUpdate = ReactionModeUpdate
+
+export type NewsletterReaction = {count: number, code: string}
+
+export type NewsletterFetchedMessage = {
+    /**id of message in newsletter, starts from 100 */
+    server_id: string,
+    /**count of views in this message */
+    views?: number,
+    /**reactions in this message */
+    reactions: NewsletterReaction[],
+    /**the message */
+    message: proto.IWebMessageInfo
+}
+
+export type NewsletterFetchedUpdate = Omit<NewsletterFetchedMessage, 'message'>
 
 export enum MexOperations{
     PROMOTE = "NotificationNewsletterAdminPromote",
