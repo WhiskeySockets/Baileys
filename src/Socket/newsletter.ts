@@ -4,17 +4,17 @@ import { BinaryNode, getAllBinaryNodeChildren, getBinaryNodeChild, getBinaryNode
 import { makeGroupsSocket } from './groups'
 
 enum QueryIds {
-    JOB_MUTATION = "7150902998257522",
-    METADATA = "6620195908089573",
-    UNFOLLOW = "7238632346214362",
-    FOLLOW = "7871414976211147",
-    UNMUTE = "7337137176362961",
-    MUTE = "25151904754424642",
-    CREATE = "6996806640408138",
-    ADMIN_COUNT = "7130823597031706",
-    CHANGE_OWNER = "7341777602580933",
-    DELETE = "8316537688363079",
-    DEMOTE = "6551828931592903"
+    JOB_MUTATION = '7150902998257522',
+    METADATA = '6620195908089573',
+    UNFOLLOW = '7238632346214362',
+    FOLLOW = '7871414976211147',
+    UNMUTE = '7337137176362961',
+    MUTE = '25151904754424642',
+    CREATE = '6996806640408138',
+    ADMIN_COUNT = '7130823597031706',
+    CHANGE_OWNER = '7341777602580933',
+    DELETE = '8316537688363079',
+    DEMOTE = '6551828931592903'
 }
 
 export const makeNewsletterSocket = (config: SocketConfig) => {
@@ -49,7 +49,7 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
                 {
                     tag: 'query',
                     attrs: {query_id},
-                    content: encoder.encode(JSON.stringify({"variables":{"newsletter_id": jid, ...content}}))
+                    content: encoder.encode(JSON.stringify({ variables: { newsletter_id: jid, ...content } }))
                 }
             ]
 		})
@@ -67,14 +67,14 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
         return await Promise.all(getAllBinaryNodeChildren(child!).map(async messageNode => {
             messageNode.attrs.from = child?.attrs.jid as string
 
-            let views = getBinaryNodeChild(messageNode, 'views_count')?.attrs?.count
-            let reactionNode = getBinaryNodeChild(messageNode, 'reactions')
-            let reactions = getBinaryNodeChildren(reactionNode, 'reaction')
+            const views = getBinaryNodeChild(messageNode, 'views_count')?.attrs?.count
+            const reactionNode = getBinaryNodeChild(messageNode, 'reactions')
+            const reactions = getBinaryNodeChildren(reactionNode, 'reaction')
                 .map(({ attrs }) => ({count: +attrs.count, code: attrs.code} as NewsletterReaction))
 
             let data: NewsletterFetchedUpdate
             if(type === 'messages'){
-                let { fullMessage: message, decrypt } = await decryptMessageNode(
+                const { fullMessage: message, decrypt } = await decryptMessageNode(
                     messageNode,
                     authState.creds.me!.id,
                     authState.creds.me!.lid || '',
@@ -106,7 +106,7 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
     }
 
     const subscribeNewsletterUpdates = async(jid: string) => {
-        let result = await newsletterQuery(jid, 'set', [{tag: 'live_updates', attrs: {}, content: []}])
+        const result = await newsletterQuery(jid, 'set', [{tag: 'live_updates', attrs: {}, content: []}])
 
         return getBinaryNodeChild(result, 'live_updates')?.attrs as {duration: string}
     }
@@ -119,7 +119,7 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 
     const newsletterUpdateDescription = async(jid: string, description?: string) => {
         await newsletterWMexQuery(jid, QueryIds.JOB_MUTATION, {
-            updates: {description: description || "", settings: null}
+            updates: {description: description || '', settings: null}
         })
     }
 
@@ -139,7 +139,7 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 
     const newsletterRemovePicture = async(jid: string) => {
         await newsletterWMexQuery(jid, QueryIds.JOB_MUTATION, {
-            updates: {picture: "", settings: null}
+            updates: {picture: '', settings: null}
         })
     }
 
@@ -160,19 +160,19 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
     }
 
     const newsletterCreate = async(name: string, description: string) => {
-        let result = await newsletterWMexQuery(undefined, QueryIds.CREATE, {
+        const result = await newsletterWMexQuery(undefined, QueryIds.CREATE, {
             input: {name, description}
         })
 
         return extractNewsletterMetadata(result, true)
     }
 
-    const newsletterMetadata = async(jid: string, role: NewsletterViewRole) => {
-        let result = await newsletterWMexQuery(jid, QueryIds.METADATA, {
+    const newsletterMetadata = async(type: 'invite' | 'jid', key: string, role?: NewsletterViewRole) => {
+        const result = await newsletterWMexQuery(undefined, QueryIds.METADATA, {
             input: {
-                key: jid,
-                type: "JID",
-                view_role: role
+                key,
+                type: type.toUpperCase(),
+                view_role: role || 'GUEST'
             },
             fetch_viewer_metadata: true,
             fetch_full_image: true,
@@ -183,9 +183,9 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
     }
 
     const newsletterAdminCount = async(jid: string) => {
-        let result = await newsletterWMexQuery(jid, QueryIds.ADMIN_COUNT)
+        const result = await newsletterWMexQuery(jid, QueryIds.ADMIN_COUNT)
 
-        let buff = getBinaryNodeChild(result, 'result')?.content?.toString()
+        const buff = getBinaryNodeChild(result, 'result')?.content?.toString()
         
         return JSON.parse(buff!).data[XWAPaths.ADMIN_COUNT].admin_count as number
     }
@@ -221,7 +221,7 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
     }
 
     const newsletterfetchMessages = async(type: 'invite' | 'jid', key: string, count: number, after?: number) => {
-        let result = await newsletterQuery(S_WHATSAPP_NET, 'get', [
+        const result = await newsletterQuery(S_WHATSAPP_NET, 'get', [
             {
                 tag: 'messages',
                 attrs: {type, ...(type === 'invite' ? {key} : {jid: key}), count: count.toString(), after: after?.toString() || '100'}
@@ -232,7 +232,7 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
     }
 
     const newsletterfetchUpdates = async(jid: string, count: number, after?: number, since?: number) => {
-        let result = await newsletterQuery(jid, 'get', [
+        const result = await newsletterQuery(jid, 'get', [
             {
                 tag: 'message_updates',
                 attrs: {count: count.toString(), after: after?.toString() || '100', since: since?.toString() || '0'}
@@ -267,10 +267,10 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 }
 
 export const extractNewsletterMetadata = (node: BinaryNode, isCreate?: boolean) => {
-    let result = getBinaryNodeChild(node, 'result')?.content?.toString()
-    let metadataPath = JSON.parse(result!).data[isCreate ? XWAPaths.CREATE : XWAPaths.NEWSLETTER]
+    const result = getBinaryNodeChild(node, 'result')?.content?.toString()
+    const metadataPath = JSON.parse(result!).data[isCreate ? XWAPaths.CREATE : XWAPaths.NEWSLETTER]
 
-    let metadata: NewsletterMetadata = {
+    const metadata: NewsletterMetadata = {
         id: metadataPath.id,
         state: metadataPath.state.type,
         creation_time: +metadataPath.thread_metadata.creation_time,

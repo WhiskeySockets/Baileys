@@ -326,16 +326,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleNewsletterNotification = (id: string, node: BinaryNode) => {
-        let messages = getBinaryNodeChild(node, 'messages')
-        let message = getBinaryNodeChild(messages, 'message')!
+        const messages = getBinaryNodeChild(node, 'messages')
+        const message = getBinaryNodeChild(messages, 'message')!
 
-        let server_id = message.attrs.server_id
+        const server_id = message.attrs.server_id
 
-        let reactionsList = getBinaryNodeChild(message, 'reactions')
-		let viewsList = getBinaryNodeChildren(message, 'views_count')
+        const reactionsList = getBinaryNodeChild(message, 'reactions')
+		const viewsList = getBinaryNodeChildren(message, 'views_count')
 
         if(reactionsList){
-			let reactions = getBinaryNodeChildren(reactionsList, 'reaction')
+			const reactions = getBinaryNodeChildren(reactionsList, 'reaction')
 			if(reactions.length === 0){
 				ev.emit('newsletter.reaction', {id, server_id, reaction: { removed: true }})
 			}
@@ -352,8 +352,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleMexNewsletterNotification = (id: string, node: BinaryNode) => {
-		let operation = node?.attrs.op_name
-		let content = JSON.parse(node?.content?.toString()!)
+		const operation = node?.attrs.op_name
+		const content = JSON.parse(node?.content?.toString()!)
 
 		let contentPath
 

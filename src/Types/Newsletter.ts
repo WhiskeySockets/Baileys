@@ -1,4 +1,4 @@
-import { proto } from "../../WAProto"
+import { proto } from '../../WAProto'
 
 export type NewsletterReactionMode = 'ALL' | 'BASIC' | 'NONE'
 
@@ -69,16 +69,16 @@ export type NewsletterFetchedUpdate = {
 }
 
 export enum MexOperations{
-    PROMOTE = "NotificationNewsletterAdminPromote",
-    DEMOTE = "NotificationNewsletterAdminDemote",
-    UPDATE = "NotificationNewsletterUpdate"
+    PROMOTE = 'NotificationNewsletterAdminPromote',
+    DEMOTE = 'NotificationNewsletterAdminDemote',
+    UPDATE = 'NotificationNewsletterUpdate'
 }
 
 export enum XWAPaths{
-    PROMOTE = "xwa2_notify_newsletter_admin_promote",
-    DEMOTE = "xwa2_notify_newsletter_admin_demote",
-    ADMIN_COUNT = "xwa2_newsletter_admin",
-    CREATE = "xwa2_newsletter_create",
-    NEWSLETTER = "xwa2_newsletter",
-    METADATA_UPDATE = "xwa2_notify_newsletter_on_metadata_update"
+    PROMOTE = 'xwa2_notify_newsletter_admin_promote',
+    DEMOTE = 'xwa2_notify_newsletter_admin_demote',
+    ADMIN_COUNT = 'xwa2_newsletter_admin',
+    CREATE = 'xwa2_newsletter_create',
+    NEWSLETTER = 'xwa2_newsletter',
+    METADATA_UPDATE = 'xwa2_notify_newsletter_on_metadata_update'
 }
