@@ -1,7 +1,18 @@
-import { NewsLetterMetadata, SocketConfig, WAMediaUpload } from '../Types'
+import { NewsLetterMetadata, RectionSettingsNewsletter, SocketConfig, WAMediaUpload } from '../Types'
 import { generateProfilePicture } from '../Utils'
 import { getBinaryNodeChildString, S_WHATSAPP_NET } from '../WABinary'
 import { makeGroupsSocket } from './groups'
+
+enum QueryId {
+	METADATA = '6620195908089573',
+	GETSUBSCRIBED = '6388546374527196',
+	CREATE = '6996806640408138',
+	UNMUTE = '7337137176362961',
+	MUTE = '25151904754424642',
+	FOLLOW = '7871414976211147',
+	UNFOLLOW = '7238632346214362',
+	UPDATE = '7150902998257522'
+}
 
 export const makeNewsLetterSocket = (config: SocketConfig) => {
 	const sock = makeGroupsSocket(config)
@@ -38,7 +49,7 @@ export const makeNewsLetterSocket = (config: SocketConfig) => {
 			'fetch_viewer_metadata': false,
 			'fetch_full_image': true,
 			'fetch_creation_time': true,
-		}, '6620195908089573')
+		}, QueryId.METADATA)
 
 		const node = getBinaryNodeChildString(result, 'result')
 		const json = JSON.parse(node!)
@@ -50,7 +61,7 @@ export const makeNewsLetterSocket = (config: SocketConfig) => {
 	}
 
 	const getSubscribedNewsletters = async(): Promise<NewsLetterMetadata[]> => {
-		const result = await newsletterQuery(undefined, '6388546374527196')
+		const result = await newsletterQuery(undefined, QueryId.GETSUBSCRIBED)
 
 		const node = getBinaryNodeChildString(result, 'result')
 		const json = JSON.parse(node!)
@@ -63,12 +74,12 @@ export const makeNewsLetterSocket = (config: SocketConfig) => {
 
 	const createNewsLetter = async(name: string, desc?: string, picture?: WAMediaUpload): Promise<NewsLetterMetadata> => {
 		const result = await newsletterQuery({
-			'input': {
+			input: {
 				name,
 				description: desc ?? null,
 				picture: picture ? (await generateProfilePicture(picture)).img.toString('base64') : null
 			}
-		}, '6996806640408138')
+		}, QueryId.CREATE)
 
 		const node = getBinaryNodeChildString(result, 'result')
 		const json = JSON.parse(node!)
@@ -81,9 +92,9 @@ export const makeNewsLetterSocket = (config: SocketConfig) => {
 
 
 	const toggleMuteNewsletter = async(jid: string, mute: boolean) => {
-		let queryId = '7337137176362961'
+		let queryId = QueryId.UNMUTE
 		if(mute) {
-			queryId = '25151904754424642'
+			queryId = QueryId.MUTE
 		}
 
 		const result = await newsletterQuery({
@@ -97,7 +108,7 @@ export const makeNewsLetterSocket = (config: SocketConfig) => {
 	const followNewsletter = async(jid: string) => {
 		const result = await newsletterQuery({
 			'newsletter_id': jid
-		}, '7871414976211147')
+		}, QueryId.FOLLOW)
 		const node = getBinaryNodeChildString(result, 'result')
 		const json = JSON.parse(node!)
 		return json
@@ -106,12 +117,113 @@ export const makeNewsLetterSocket = (config: SocketConfig) => {
 	const unFollowNewsletter = async(jid: string) => {
 		const result = await newsletterQuery({
 			'newsletter_id': jid
-		}, '7238632346214362')
+		}, QueryId.UNFOLLOW)
 		const node = getBinaryNodeChildString(result, 'result')
 		const json = JSON.parse(node!)
 		return json
 	}
 
+	const updateNewsletterName = async(jid: string, name: string) => {
+		const result = await newsletterQuery({
+			'newsletter_id': jid,
+			updates: {
+				name,
+				description: undefined,
+				picture: undefined,
+				settings: null
+			}
+		}, QueryId.UPDATE)
+
+		const node = getBinaryNodeChildString(result, 'result')
+		const json = JSON.parse(node!)
+		if(!json.data) {
+			throw new Error('Error while update newsletter ' + json)
+		}
+
+		return extractNewsletterMetadata(json.data?.xwa2_newsletter_update)
+	}
+
+	const updateNewsletterDesc = async(jid: string, description: string) => {
+		const result = await newsletterQuery({
+			'newsletter_id': jid,
+			updates: {
+				name: undefined,
+				description,
+				picture: undefined,
+				settings: null
+			}
+		}, QueryId.UPDATE)
+
+		const node = getBinaryNodeChildString(result, 'result')
+		const json = JSON.parse(node!)
+		if(!json.data) {
+			throw new Error('Error while update newsletter ' + json)
+		}
+
+		return extractNewsletterMetadata(json.data?.xwa2_newsletter_update)
+	}
+
+	const updateNewsletterPicture = async(jid: string, picture: WAMediaUpload) => {
+		const result = await newsletterQuery({
+			'newsletter_id': jid,
+			updates: {
+				name: undefined,
+				description: undefined,
+				picture: (await generateProfilePicture(picture)).img.toString('base64'),
+				settings: null
+			}
+		}, QueryId.UPDATE)
+
+		const node = getBinaryNodeChildString(result, 'result')
+		const json = JSON.parse(node!)
+		if(!json.data) {
+			throw new Error('Error while update newsletter ' + json)
+		}
+
+		return extractNewsletterMetadata(json.data?.xwa2_newsletter_update)
+	}
+
+	const removeNewsletterPicture = async(jid: string, picture: WAMediaUpload) => {
+		const result = await newsletterQuery({
+			'newsletter_id': jid,
+			updates: {
+				name: undefined,
+				description: undefined,
+				picture: '',
+				settings: null
+			}
+		}, QueryId.UPDATE)
+
+		const node = getBinaryNodeChildString(result, 'result')
+		const json = JSON.parse(node!)
+		if(!json.data) {
+			throw new Error('Error while update newsletter ' + json)
+		}
+
+		return extractNewsletterMetadata(json.data?.xwa2_newsletter_update)
+	}
+
+	const updateNewsletterReactionSetting = async(jid: string, value: RectionSettingsNewsletter) => {
+		const result = await newsletterQuery({
+			'newsletter_id': jid,
+			updates: {
+				name: undefined,
+				description: undefined,
+				picture: undefined,
+				settings: {
+					'reaction_codes': { value }
+				}
+			}
+		}, QueryId.UPDATE)
+
+		const node = getBinaryNodeChildString(result, 'result')
+		const json = JSON.parse(node!)
+		if(!json.data) {
+			throw new Error('Error while update newsletter ' + json)
+		}
+
+		return extractNewsletterMetadata(json.data?.xwa2_newsletter_update)
+	}
 
 	return {
 		...sock,
@@ -120,7 +232,12 @@ export const makeNewsLetterSocket = (config: SocketConfig) => {
 		getSubscribedNewsletters,
 		toggleMuteNewsletter,
 		followNewsletter,
-		unFollowNewsletter
+		unFollowNewsletter,
+		updateNewsletterName,
+		updateNewsletterDesc,
+		updateNewsletterPicture,
+		updateNewsletterReactionSetting,
+		removeNewsletterPicture
 	}
 }
 

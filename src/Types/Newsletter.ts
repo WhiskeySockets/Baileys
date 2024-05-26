@@ -1,3 +1,7 @@
+export type RoleNewsLetter = 'SUBSCRIBER' | 'GUEST' | 'ADMIN' | 'OWNER'
+
+export type RectionSettingsNewsletter = 'ALL' | 'BASIC' | 'NONE' | 'BLOCKLIST'
+
 export interface NewsLetterMetadata {
     id: string
     state: 'ACTIVE' | 'SUSPENDED' | 'GEOSUSPENDED'
@@ -10,8 +14,8 @@ export interface NewsLetterMetadata {
     picture?: string
     preview?: string
     settings: {
-        reaction: 'ALL' | 'BASIC' | 'NONE' | 'BLOCKLlST'
+        reaction: RectionSettingsNewsletter
     }
     mute?: 'ON' | 'OFF'
-    role?: 'SUBSCRIBER' | 'GUEST' | 'ADMIN' | 'OWNER'
+    role?: RoleNewsLetter
 }
