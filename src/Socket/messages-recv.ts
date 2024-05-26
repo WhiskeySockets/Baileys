@@ -240,6 +240,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		child: BinaryNode,
 		msg: Partial<proto.IWebMessageInfo>
 	) => {
+		const participantJid = getBinaryNodeChild(child, 'participant')?.attrs?.jid
 		switch (child?.tag) {
 		case 'create':
 			const metadata = extractGroupMetadata(child)
@@ -324,12 +325,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			break
 		case 'created_membership_requests':
 			msg.messageStubType = WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST_NON_ADMIN_ADD
-			msg.messageStubParameters = [ 'created', child.attrs.request_method ]
+			msg.messageStubParameters = [ participantJid as string, 'created', child.attrs.request_method ]
 			break
 		case 'revoked_membership_requests':
 			msg.messageStubType = WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST_NON_ADMIN_ADD
-			msg.messageStubParameters = [ 'revoked' ]
+			msg.messageStubParameters = [ participantJid as string, 'revoked' ]
 			break
+		case 'membership_requests_action':
+			msg.messageStubType = WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST_NON_ADMIN_ADD
+			msg.messageStubParameters = [ participantJid as string, getAllBinaryNodeChildren(child)[0].attrs.tag ]
 		}
 	}
 
