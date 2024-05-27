@@ -45,6 +45,7 @@
   "dependencies": {
     "@adiwajshing/keyed-db": "^0.2.4",
     "@hapi/boom": "^9.1.3",
+    "async-lock": "^1.4.1",
     "audio-decode": "^2.1.3",
     "axios": "^1.3.3",
     "cache-manager": "4.0.1",
@@ -69,6 +70,7 @@
     "eslint": "^8.0.0",
     "jest": "^27.0.6",
     "jimp": "^0.16.1",
+    "json": "^11.0.0",
     "link-preview-js": "^3.0.0",
     "open": "^8.4.2",
     "qrcode-terminal": "^0.12.0",
@@ -77,8 +79,7 @@
     "ts-jest": "^27.0.3",
     "ts-node": "^10.8.1",
     "typedoc": "^0.24.7",
-    "typescript": "^4.6.4",
-    "json": "^11.0.0"
+    "typescript": "^4.6.4"
   },
   "peerDependencies": {
     "jimp": "^0.16.1",
