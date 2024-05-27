@@ -63,7 +63,7 @@ async function connectToWhatsApp () {
         // can provide additional config here
         printQRInTerminal: true
     })
-    sock.ev.on('connection.update', (update) => {
+    sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update
         if(connection === 'close') {
             const shouldReconnect = (lastDisconnect.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut
