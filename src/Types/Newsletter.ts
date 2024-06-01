@@ -39,7 +39,7 @@ export type NewsletterMetadata = {
     /**direct path of picture preview (lower quality) */
     preview: string | null,
     /**reaction mode of newsletter */
-    reaction_codes: NewsletterReactionMode,
+    reaction_codes?: NewsletterReactionMode,
     /**subscribers count of newsletter */
     subscribers: number,
     /**verification state of newsletter */
