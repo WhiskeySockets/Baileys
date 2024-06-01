@@ -366,7 +366,7 @@ const processMessage = async(
 			const action = message.messageStubParameters?.[1] as RequestJoinAction
 			const method = message.messageStubParameters?.[2] as RequestJoinMethod
 			emitGroupRequestJoin(participant, action, method)
-		break
+			break
 		}
 
 	} else if(content?.pollUpdateMessage) {
