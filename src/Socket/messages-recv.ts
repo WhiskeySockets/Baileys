@@ -330,7 +330,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		case 'revoked_membership_requests':
 			const isDenied = areJidsSameUser(participantJid, participant)
 			msg.messageStubType = WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST_NON_ADMIN_ADD
-			msg.messageStubParameters = [ participantJid, isDenied ? 'revoked' : 'reject' ]
+			msg.messageStubParameters = [ participantJid, isDenied ? 'revoked' : 'rejected' ]
 			break
 		}
 	}
