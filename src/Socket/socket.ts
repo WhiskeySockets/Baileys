@@ -681,6 +681,7 @@ export const makeSocket = (config: SocketConfig) => {
 		const routingInfo = getBinaryNodeChild(edgeRoutingNode, 'routing_info')
 		if(routingInfo?.content) {
 			authState.creds.routingInfo = Buffer.from(routingInfo?.content as Uint8Array)
+			ev.emit('creds.update', authState.creds)
 		}
 	})
 
