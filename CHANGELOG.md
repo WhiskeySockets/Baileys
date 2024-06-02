@@ -1,9 +1,9 @@
-## 6.7.3 (2024-06-02)
+## 6.7.4 (2024-06-02)
 
 
-### Features
+### Bug Fixes
 
-* add event that handles join approval requests ([#802](https://github.com/WhiskeySockets/Baileys/issues/802)) ([ffec4af](https://github.com/WhiskeySockets/Baileys/commit/ffec4af454b7eaef5af0f9cde03faa3664969b78))
+* **fix-routing-info:** initial commit ([#837](https://github.com/WhiskeySockets/Baileys/issues/837)) ([d7037cf](https://github.com/WhiskeySockets/Baileys/commit/d7037cf6fab71d86128c6f3eb4aeaeb3e7eccec3))
 
 
 
