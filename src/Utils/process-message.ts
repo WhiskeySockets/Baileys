@@ -1,7 +1,7 @@
 import { AxiosRequestConfig } from 'axios'
 import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
-import { AuthenticationCreds, BaileysEventEmitter, Chat, GroupMetadata, ParticipantAction, SignalKeyStoreWithTransaction, SocketConfig, WAMessageStubType } from '../Types'
+import { AuthenticationCreds, BaileysEventEmitter, Chat, GroupMetadata, ParticipantAction, RequestJoinAction, RequestJoinMethod, SignalKeyStoreWithTransaction, SocketConfig, WAMessageStubType } from '../Types'
 import { getContentType, normalizeMessageContent } from '../Utils/messages'
 import { areJidsSameUser, isJidBroadcast, isJidStatusBroadcast, jidNormalizedUser } from '../WABinary'
 import { aesDecryptGCM, hmacSign } from './crypto'
@@ -301,6 +301,10 @@ const processMessage = async(
 			ev.emit('groups.update', [{ id: jid, ...update, author: message.participant ?? undefined }])
 		}
 
+		const emitGroupRequestJoin = (participant: string, action: RequestJoinAction, method: RequestJoinMethod) => {
+			ev.emit('group.join-request', { id: jid, author: message.participant!, participant, action, method: method! })
+		}
+
 		const participantsIncludesMe = () => participants.find(jid => areJidsSameUser(meId, jid))
 
 		switch (message.messageStubType) {
@@ -357,7 +361,14 @@ const processMessage = async(
 			const approvalMode = message.messageStubParameters?.[0]
 			emitGroupUpdate({ joinApprovalMode: approvalMode === 'on' })
 			break
+		case WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST_NON_ADMIN_ADD:
+			const participant = message.messageStubParameters?.[0] as string
+			const action = message.messageStubParameters?.[1] as RequestJoinAction
+			const method = message.messageStubParameters?.[2] as RequestJoinMethod
+			emitGroupRequestJoin(participant, action, method)
+			break
 		}
+
 	} else if(content?.pollUpdateMessage) {
 		const creationMsgKey = content.pollUpdateMessage.pollCreationMessageKey!
 		// we need to fetch the poll creation message to get the poll enc key
