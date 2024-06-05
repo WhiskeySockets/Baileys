@@ -413,7 +413,7 @@ export const generateWAMessageContent = async(
 			}
 			break
 		}
-	} else if('product' in message) {
+	} else if('ptv' in message) {
 		const { videoMessage } = await prepareWAMessageMedia(
 			{ video: message.video },
 			options
