@@ -30,7 +30,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		generateMessageTag,
 		sendNode,
 		groupMetadata,
-		groupToggleEphemeral
+		groupToggleEphemeral,
+		cachedGroupMetadata
 	} = sock
 
 	const userDevicesCache = config.userDevicesCache || new NodeCache({
@@ -302,7 +303,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	const relayMessage = async(
 		jid: string,
 		message: proto.IMessage,
-		{ messageId: msgId, participant, additionalAttributes, useUserDevicesCache, cachedGroupMetadata, statusJidList }: MessageRelayOptions
+		{ messageId: msgId, participant, additionalAttributes, useUserDevicesCache, useCachedGroupMetadata, statusJidList }: MessageRelayOptions
 	) => {
 		const meId = authState.creds.me!.id
 
@@ -316,6 +317,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		msgId = msgId || generateMessageID()
 		useUserDevicesCache = useUserDevicesCache !== false
+		useCachedGroupMetadata = useCachedGroupMetadata !== false
 
 		const participants: BinaryNode[] = []
 		const destinationJid = (!isStatus) ? jidEncode(user, isLid ? 'lid' : isGroup ? 'g.us' : 's.whatsapp.net') : statusJid
@@ -347,12 +349,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				if(isGroup || isStatus) {
 					const [groupData, senderKeyMap] = await Promise.all([
 						(async() => {
-							let groupData = cachedGroupMetadata ? await cachedGroupMetadata(jid) : undefined
-							if(groupData) {
+							let groupData = cachedGroupMetadata && useCachedGroupMetadata ? await cachedGroupMetadata(jid) : undefined
+							if(Array.isArray(groupData?.participants) && !isStatus) {
 								logger.trace({ jid, participants: groupData.participants.length }, 'using cached group metadata')
-							}
-
-							if(!groupData && !isStatus) {
 								groupData = await groupMetadata(jid)
 							}
 
