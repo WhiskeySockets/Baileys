@@ -17,6 +17,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		generateHighQualityLinkPreview,
 		options: axiosOptions,
 		patchMessageBeforeSending,
+		cachedGroupMetadata,
 	} = config
 	const sock = makeGroupsSocket(config)
 	const {
@@ -31,7 +32,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		sendNode,
 		groupMetadata,
 		groupToggleEphemeral,
-		cachedGroupMetadata
 	} = sock
 
 	const userDevicesCache = config.userDevicesCache || new NodeCache({
@@ -353,7 +353,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							if(Array.isArray(groupData?.participants)) {
 								logger.trace({ jid, participants: groupData.participants.length }, 'using cached group metadata')
 							} else {
-								groupdata = await groupMetadata(jid)
+								groupData = await groupMetadata(jid)
 							}
 
 							return groupData
@@ -758,7 +758,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					additionalAttributes.edit = '1'
 				}
 
-				await relayMessage(jid, fullMsg.message!, { messageId: fullMsg.key.id!, cachedGroupMetadata: options.cachedGroupMetadata, additionalAttributes, statusJidList: options.statusJidList })
+				await relayMessage(jid, fullMsg.message!, { messageId: fullMsg.key.id!, useCachedGroupMetadata: options.useCachedGroupMetadata, additionalAttributes, statusJidList: options.statusJidList })
 				if(config.emitOwnEvents) {
 					process.nextTick(() => {
 						processingMutex.mutex(() => (
