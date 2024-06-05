@@ -349,7 +349,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				if(isGroup || isStatus) {
 					const [groupData, senderKeyMap] = await Promise.all([
 						(async() => {
-							let groupData = cachedGroupMetadata && useCachedGroupMetadata ? await cachedGroupMetadata(jid) : undefined
+							let groupData = useCachedGroupMetadata && cachedGroupMetadata ? await cachedGroupMetadata(jid) : undefined
 							if(Array.isArray(groupData?.participants) && !isStatus) {
 								logger.trace({ jid, participants: groupData.participants.length }, 'using cached group metadata')
 								groupData = await groupMetadata(jid)
