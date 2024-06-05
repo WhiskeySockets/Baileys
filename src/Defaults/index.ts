@@ -81,6 +81,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 		snapshot: false,
 	},
 	getMessage: async() => undefined,
+	cachedGroupMetadata: async() => undefined,
 	makeSignalRepository: makeLibSignalRepository
 }
 
