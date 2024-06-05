@@ -197,6 +197,8 @@ export type GroupMetadataParticipants = Pick<GroupMetadata, 'participants'>
 type MinimalRelayOptions = {
     /** override the message ID with a custom provided string */
     messageId?: string
+    /** should we use group metadata cache, or fetch afresh from the server; default assumed to be "true" */
+    useCachedGroupMetadata?: boolean
 }
 
 export type MessageRelayOptions = MinimalRelayOptions & {
@@ -206,8 +208,6 @@ export type MessageRelayOptions = MinimalRelayOptions & {
     additionalAttributes?: { [_: string]: string }
     /** should we use the devices cache, or fetch afresh from the server; default assumed to be "true" */
     useUserDevicesCache?: boolean
-    /** should we use group metadata cache, or fetch afresh from the server; default assumed to be "true" */
-    useCachedGroupMetadata?: boolean
     /** jid list of participants for status@broadcast */
     statusJidList?: string[]
 }
