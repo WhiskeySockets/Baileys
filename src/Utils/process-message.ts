@@ -258,6 +258,17 @@ const processMessage = async(
 				}
 			])
 			break
+		case proto.Message.ProtocolMessage.Type.MESSAGE_EDIT:
+			ev.emit('messages.update', [
+				{
+					key: {
+						...message.key,
+						id: protocolMsg.key!.id
+					},
+					update: { message: protocolMsg.editedMessage }
+				}
+			])
+			break
 		case proto.Message.ProtocolMessage.Type.EPHEMERAL_SETTING:
 			Object.assign(chat, {
 				ephemeralSettingTimestamp: toNumber(message.messageTimestamp),
