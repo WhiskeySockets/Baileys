@@ -1,9 +1,9 @@
-## 6.7.4 (2024-06-02)
+## 6.7.5 (2024-06-12)
 
 
 ### Bug Fixes
 
-* **fix-routing-info:** initial commit ([#837](https://github.com/WhiskeySockets/Baileys/issues/837)) ([d7037cf](https://github.com/WhiskeySockets/Baileys/commit/d7037cf6fab71d86128c6f3eb4aeaeb3e7eccec3))
+* **master:** fix lockfile (after [#847](https://github.com/WhiskeySockets/Baileys/issues/847)) ([c964615](https://github.com/WhiskeySockets/Baileys/commit/c964615cf9b2eaaa6f72e2bd5fa660eb2ae9ab9b))
 
 
 
