@@ -160,7 +160,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 		}
 		
-		if (!users.length){
+		if(!users.length) {
 			return deviceResults
 		}
 
