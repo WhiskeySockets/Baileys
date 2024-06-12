@@ -159,7 +159,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				users.push({ tag: 'user', attrs: { jid } })
 			}
 		}
-		
+
 		if(!users.length) {
 			return deviceResults
 		}
