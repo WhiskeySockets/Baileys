@@ -193,7 +193,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				},
 			],
 		}
-		const result = users.length ? await query(iq) : []
+		const result = users.length ? await query(iq) : { tag: '', attrs: {}, content: [] }
 		const extracted = users.length ? extractDeviceJids(result, authState.creds.me!.id, ignoreZeroDevices) : []
 		const deviceMap: { [_: string]: JidWithDevice[] } = {}
 
