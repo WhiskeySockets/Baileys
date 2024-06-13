@@ -642,7 +642,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							if(key.fromMe) {
 								try {
 									logger.debug({ attrs, key }, 'recv retry request')
-									await sendMessagesAgain(key, ids, retryNode!)
+									//await sendMessagesAgain(key, ids, retryNode!)
+									///This function slows down sending messages to groups and increases memory consumption.
 								} catch(error) {
 									logger.error({ key, ids, trace: error.stack }, 'error in sending message again')
 								}
