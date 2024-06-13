@@ -649,20 +649,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						}
 					}
 
-					if(attrs.type === 'retry') {
-						// correctly set who is asking for the retry
-						key.participant = key.participant || attrs.from
-						const retryNode = getBinaryNodeChild(node, 'retry')
-						if(willSendMessageAgain(ids[0], key.participant)) {
-							if(key.fromMe) {
-								try {
-									logger.debug({ attrs, key }, 'recv retry request')
-									await sendMessagesAgain(key, ids, retryNode!)
-								} catch(error) {
-									logger.error({ key, ids, trace: error.stack }, 'error in sending message again')
-								}
+					key.participant = key.participant || attrs.from
+
+					if(attrs.type === 'retry' && key.fromMe) {
+						if (willSendMessageAgain(ids[0], key.participant)){
+							const retryUser: number = msgRetryCache.get(key.participant) || 0
+							if (retryUser < 3){
+								logger.debug({ attrs, key }, 'recv retry request')
+								const retryNode = getBinaryNodeChild(node, 'retry')
+								await sendMessagesAgain(key, ids, retryNode!)
+								msgRetryCache.set(key.participant, retryUser + 1)
 							} else {
-								logger.info({ attrs, key }, 'recv retry for not fromMe message')
+								logger.info({ attrs, key }, 'will not send message again, reached retry limit for user')
 							}
 						} else {
 							logger.info({ attrs, key }, 'will not send message again, as sent too many times')

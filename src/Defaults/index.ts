@@ -20,7 +20,7 @@ export const PHONE_CONNECTION_CB = 'CB:Pong'
 
 export const WA_DEFAULT_EPHEMERAL = 7 * 24 * 60 * 60
 
-const WA_VERSION = '2.24.6.77'
+const WA_VERSION = '2.24.12.74'
 
 const WA_VERSION_HASH = createHash('md5').update(WA_VERSION).digest('hex')
 export const MOBILE_TOKEN = Buffer.from('0a1mLfGUIBVrMKF1RdvLI5lkRBvof6vn0fD2QRSM' + WA_VERSION_HASH)
@@ -53,46 +53,50 @@ export const PROCESSABLE_HISTORY_TYPES = [
 ]
 
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
+	auth: undefined as unknown as AuthenticationState,
 	version: version as WAVersion,
 	browser: Browsers.ubuntu('Chrome'),
 	waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
+	logger: logger.child({ class: 'baileys' }),
+	defaultQueryTimeoutMs: undefined,
+	markOnlineOnConnect: true,
+	fireInitQueries: true,
+	printQRInTerminal: false,
+	emitOwnEvents: false,
+	ignoreOfflineMessages: false,
+	syncFullHistory: false,
+	generateHighQualityLinkPreview: false,
 	connectTimeoutMs: 20_000,
 	keepAliveIntervalMs: 30_000,
-	logger: logger.child({ class: 'baileys' }),
-	printQRInTerminal: false,
-	emitOwnEvents: true,
-	defaultQueryTimeoutMs: 60_000,
-	customUploadHosts: [],
-	retryRequestDelayMs: 250,
 	maxMsgRetryCount: 5,
-	fireInitQueries: true,
-	ignoreOfflineMessages: false,
-	auth: undefined as unknown as AuthenticationState,
-	markOnlineOnConnect: true,
-	syncFullHistory: false,
-	patchMessageBeforeSending: msg => msg,
-	shouldSyncHistoryMessage: () => true,
-	shouldIgnoreJid: () => false,
-	shouldIgnoreParticipant: () => false,
+	retryRequestDelayMs: 300,
 	linkPreviewImageThumbnailWidth: 192,
-	transactionOpts: { maxCommitRetries: 10, delayBetweenTriesMs: 3000 },
-	generateHighQualityLinkPreview: false,
-	options: { },
+	customUploadHosts: [],
+	blacklistLinkPreview: [],
+	transactionOpts: {
+		maxCommitRetries: 20,
+		delayBetweenTriesMs: 500
+	},
 	appStateMacVerification: {
 		patch: false,
 		snapshot: false,
 	},
+	options: { },
+	patchMessageBeforeSending: (msg) => msg,
+	shouldSyncHistoryMessage: () => true,
+	shouldIgnoreJid: () => false,
+	shouldIgnoreParticipant: () => false,
 	getMessage: async() => undefined,
 	cachedGroupMetadata: async() => undefined,
 	makeSignalRepository: makeLibSignalRepository
 }
 
 export const MEDIA_PATH_MAP: { [T in MediaType]?: string } = {
-	image: '/mms/image',
-	video: '/mms/video',
-	document: '/mms/document',
-	audio: '/mms/audio',
-	sticker: '/mms/image',
+	'image': '/mms/image',
+	'video': '/mms/video',
+	'document': '/mms/document',
+	'audio': '/mms/audio',
+	'sticker': '/mms/image',
 	'thumbnail-link': '/mms/image',
 	'product-catalog-image': '/product/image',
 	'md-app-state': '',
@@ -127,8 +131,8 @@ export const MIN_PREKEY_COUNT = 5
 export const INITIAL_PREKEY_COUNT = 30
 
 export const DEFAULT_CACHE_TTLS = {
-	SIGNAL_STORE: 5 * 60, // 5 minutes
+	SIGNAL_STORE: 10 * 60, // 10 minutes
 	MSG_RETRY: 60 * 60, // 1 hour
-	CALL_OFFER: 5 * 60, // 5 minutes
-	USER_DEVICES: 5 * 60, // 5 minutes
+	CALL_OFFER: 2 * 60, // 2 minutes
+	USER_DEVICES: 60 * 60, // 30 minutes
 }

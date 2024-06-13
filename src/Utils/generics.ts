@@ -5,39 +5,42 @@ import { platform, release } from 'os'
 import { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { version as baileysVersion } from '../Defaults/baileys-version.json'
-import { BaileysEventEmitter, BaileysEventMap, DisconnectReason, WACallUpdateType, WAVersion } from '../Types'
+import { BaileysEventEmitter, BaileysEventMap, DisconnectReason, WACallUpdateType, WAVersion, BrowsersMap, valueReplacer, valueReviver } from '../Types'
 import { BinaryNode, getAllBinaryNodeChildren } from '../WABinary'
 
 const PLATFORM_MAP = {
 	'aix': 'AIX',
 	'darwin': 'Mac OS',
 	'win32': 'Windows',
-	'android': 'Android'
+	'android': 'Android',
+	'freebsd': 'FreeBSD',
+	'openbsd': 'OpenBSD',
+	'sunos': 'Solaris'
 }
 
-export const Browsers = {
-	ubuntu: browser => ['Ubuntu', browser, '20.0.04'] as [string, string, string],
-	macOS: browser => ['Mac OS', browser, '10.15.7'] as [string, string, string],
-	baileys: browser => ['Baileys', browser, '4.0.0'] as [string, string, string],
-	windows: browser => ['Windows', browser, '10.0.22621'] as [string, string, string],
+export const Browsers: BrowsersMap = {
+	ubuntu: (browser) => ['Ubuntu', browser, '22.04.4'] as [string, string, string],
+	macOS: (browser) => ['Mac OS', browser, '14.4.1'] as [string, string, string],
+	baileys: (browser) => ['Baileys', browser, '6.5.0'] as [string, string, string],
+	windows: (browser) => ['Windows', browser, '10.0.22631'] as [string, string, string],
 	/** The appropriate browser based on your OS & release */
-	appropriate: browser => [ PLATFORM_MAP[platform()] || 'Ubuntu', browser, release() ] as [string, string, string]
+	appropriate: (browser) => [ PLATFORM_MAP[platform()] || 'Ubuntu', browser, release() ] as [string, string, string]
 }
 
 export const BufferJSON = {
-	replacer: (k, value: any) => {
-		if(Buffer.isBuffer(value) || value instanceof Uint8Array || value?.type === 'Buffer') {
-			return { type: 'Buffer', data: Buffer.from(value?.data || value).toString('base64') }
+	replacer: (_: string, value: valueReplacer) => {
+		if(value?.type === 'Buffer' && Array.isArray(value?.data)) {
+			return {
+				type: 'Buffer',
+				data: Buffer.from(value?.data).toString('base64')
+			}
 		}
-
 		return value
 	},
-	reviver: (_, value: any) => {
-		if(typeof value === 'object' && !!value && (value.buffer === true || value.type === 'Buffer')) {
-			const val = value.data || value.value
-			return typeof val === 'string' ? Buffer.from(val, 'base64') : Buffer.from(val || [])
+	reviver: (_: string, value: valueReviver) => {
+		if(value?.type === 'Buffer') {
+			return Buffer.from(value?.data, 'base64')
 		}
-
 		return value
 	}
 }

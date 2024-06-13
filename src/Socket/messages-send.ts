@@ -16,6 +16,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		linkPreviewImageThumbnailWidth,
 		generateHighQualityLinkPreview,
 		options: axiosOptions,
+		blacklistLinkPreview,
 		patchMessageBeforeSending,
 		cachedGroupMetadata,
 	} = config
@@ -35,7 +36,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	} = sock
 
 	const userDevicesCache = config.userDevicesCache || new NodeCache({
-		stdTTL: DEFAULT_CACHE_TTLS.USER_DEVICES, // 5 minutes
+		stdTTL: DEFAULT_CACHE_TTLS.USER_DEVICES, // 30 minutes
 		useClones: false
 	})
 
@@ -189,11 +190,17 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							content: [
 								{
 									tag: 'devices',
-									attrs: { version: '2' }
+									attrs: {
+										version: '2'
+									}
 								}
 							]
 						},
-						{ tag: 'list', attrs: { }, content: users }
+						{
+							tag: 'list',
+							attrs: { },
+							content: users
+						}
 					]
 				},
 			],
@@ -732,9 +739,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							{
 								thumbnailWidth: linkPreviewImageThumbnailWidth,
 								fetchOpts: {
-									timeout: 3_000,
+									timeout: 4_000,
 									...axiosOptions || { }
 								},
+								blacklistLinkPreview,
 								logger,
 								uploadImage: generateHighQualityLinkPreview
 									? waUploadToServer
