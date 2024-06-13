@@ -96,6 +96,8 @@ export type SocketConfig = {
      * */
     shouldIgnoreJid: (jid: string) => boolean | undefined
 
+    shouldIgnoreParticipant: (jid: string) => boolean | undefined
+
     /**
      * Optionally patch the message before sending out
      * */
