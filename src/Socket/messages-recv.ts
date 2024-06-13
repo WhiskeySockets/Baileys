@@ -714,15 +714,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleMessage = async(node: BinaryNode) => {
-    if(ignoreOfflineMessages && node.attrs.offline) {
+    		if(ignoreOfflineMessages && node.attrs.offline) {
 			logger.debug({ key: node.attrs.key }, 'ignored offline message')
 			await sendMessageAck(node)
 			return
 		}
 
 		if(isJidGroup(node.attrs.from) && shouldIgnoreParticipant(node.attrs.participant)){
-			logger.debug({ key: msg.key }, 'ignored participant message')
-      await sendMessageAck(node)
+			logger.debug({ key: node.attrs.key }, 'ignored participant message')
+      			await sendMessageAck(node)
 			return
 		}
 
