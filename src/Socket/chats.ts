@@ -605,7 +605,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			return
 		}
 
-		if(jid.endWith('@g.us') && shouldIgnoreParticipant(participant)){
+		if(jid.endsWith('@g.us') && shouldIgnoreParticipant(participant)){
 			return
 		}
 
