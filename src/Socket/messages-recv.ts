@@ -48,8 +48,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		retryRequestDelayMs,
 		maxMsgRetryCount,
 		getMessage,
+		shouldIgnoreJid,
+		shouldIgnoreParticipant,
 		ignoreOfflineMessages,
-		shouldIgnoreJid
 	} = config
 	const sock = makeMessagesSocket(config)
 	const {
@@ -598,6 +599,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			return
 		}
 
+		if(isJidGroup(attrs.from) && shouldIgnoreParticipant(attrs.participant)){
+			logger.debug({ remoteJid }, 'ignoring receipt from participant')
+			await sendMessageAck(node)
+			return
+		}
+
 		const ids = [attrs.id]
 		if(Array.isArray(content)) {
 			const items = getBinaryNodeChildren(content[0], 'item')
@@ -675,6 +682,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			return
 		}
 
+		if(isJidGroup(remoteJid) && shouldIgnoreParticipant(node.attrs.participant)){
+			logger.debug({ remoteJid, id: node.attrs.id }, 'ignored notification')
+			await sendMessageAck(node)
+			return
+		}
+
 		await Promise.all([
 			processingMutex.mutex(
 				async() => {
@@ -701,9 +714,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleMessage = async(node: BinaryNode) => {
-		if(ignoreOfflineMessages && node.attrs.offline) {
+    if(ignoreOfflineMessages && node.attrs.offline) {
 			logger.debug({ key: node.attrs.key }, 'ignored offline message')
 			await sendMessageAck(node)
+			return
+		}
+
+		if(isJidGroup(node.attrs.from) && shouldIgnoreParticipant(node.attrs.participant)){
+			logger.debug({ key: msg.key }, 'ignored participant message')
+      await sendMessageAck(node)
 			return
 		}
 

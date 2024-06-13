@@ -17,6 +17,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		fireInitQueries,
 		appStateMacVerification,
 		shouldIgnoreJid,
+		shouldIgnoreParticipant,
 		shouldSyncHistoryMessage,
 	} = config
 	const sock = makeSocket(config)
@@ -601,6 +602,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		const participant = attrs.participant || attrs.from
 
 		if(shouldIgnoreJid(jid) && jid !== '@s.whatsapp.net') {
+			return
+		}
+
+		if(jid.endWith('@g.us') && shouldIgnoreParticipant(participant)){
 			return
 		}
 
