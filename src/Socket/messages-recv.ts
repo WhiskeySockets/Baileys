@@ -33,6 +33,7 @@ import {
 	getBinaryNodeChildBuffer,
 	getBinaryNodeChildren,
 	isJidGroup,
+	isJidStatusBroadcast,
 	isJidUser,
 	jidDecode,
 	jidNormalizedUser,
@@ -48,7 +49,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		maxMsgRetryCount,
 		getMessage,
 		shouldIgnoreJid,
-		shouldIgnoreParticipant
+		shouldIgnoreParticipant,
+		ignoreOfflineMessages,
 	} = config
 	const sock = makeMessagesSocket(config)
 	const {
@@ -134,17 +136,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const sendRetryRequest = async(node: BinaryNode, forceIncludeKeys = false) => {
-		const msgId = node.attrs.id
+		const { id: msgId, participant } = node.attrs
 
-		let retryCount = msgRetryCache.get<number>(msgId) || 0
+		const key = `${msgId}:${participant}`
+		let retryCount = msgRetryCache.get<number>(key) || 0
 		if(retryCount >= maxMsgRetryCount) {
 			logger.debug({ retryCount, msgId }, 'reached retry limit, clearing')
-			msgRetryCache.del(msgId)
+			msgRetryCache.del(key)
 			return
 		}
 
 		retryCount += 1
-		msgRetryCache.set(msgId, retryCount)
+		msgRetryCache.set(key, retryCount)
 
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
 
@@ -241,6 +244,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		child: BinaryNode,
 		msg: Partial<proto.IWebMessageInfo>
 	) => {
+		const participantJid = getBinaryNodeChild(child, 'participant')?.attrs?.jid || participant
 		switch (child?.tag) {
 		case 'create':
 			const metadata = extractGroupMetadata(child)
@@ -267,6 +271,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					ephemeralExpiration: +(child.attrs.expiration || 0)
 				}
 			}
+			break
+		case 'modify':
+			const oldNumber = getBinaryNodeChildren(child, 'participant').map(p => p.attrs.jid)
+			msg.messageStubParameters = oldNumber || []
+			msg.messageStubType = WAMessageStubType.GROUP_PARTICIPANT_CHANGE_NUMBER
 			break
 		case 'promote':
 		case 'demote':
@@ -322,6 +331,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				msg.messageStubParameters = [ approvalMode.attrs.state ]
 			}
 
+			break
+		case 'created_membership_requests':
+			msg.messageStubType = WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST_NON_ADMIN_ADD
+			msg.messageStubParameters = [ participantJid, 'created', child.attrs.request_method ]
+			break
+		case 'revoked_membership_requests':
+			const isDenied = areJidsSameUser(participantJid, participant)
+			msg.messageStubType = WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST_NON_ADMIN_ADD
+			msg.messageStubParameters = [ participantJid, isDenied ? 'revoked' : 'rejected' ]
 			break
 		}
 	}
@@ -575,7 +593,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			participant: attrs.participant
 		}
 
-		if(shouldIgnoreJid(remoteJid)) {
+		if(shouldIgnoreJid(remoteJid) && remoteJid !== '@s.whatsapp.net') {
 			logger.debug({ remoteJid }, 'ignoring receipt from jid')
 			await sendMessageAck(node)
 			return
@@ -606,7 +624,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							!isNodeFromMe
 						)
 					) {
-						if(isJidGroup(remoteJid)) {
+						if(isJidGroup(remoteJid) || isJidStatusBroadcast(remoteJid)) {
 							if(attrs.participant) {
 								const updateKey: keyof MessageUserReceipt = status === proto.WebMessageInfo.Status.DELIVERY_ACK ? 'receiptTimestamp' : 'readTimestamp'
 								ev.emit(
@@ -658,7 +676,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const handleNotification = async(node: BinaryNode) => {
 		const remoteJid = node.attrs.from
-		if(shouldIgnoreJid(remoteJid)) {
+		if(shouldIgnoreJid(remoteJid) && remoteJid !== '@s.whatsapp.net') {
 			logger.debug({ remoteJid, id: node.attrs.id }, 'ignored notification')
 			await sendMessageAck(node)
 			return
@@ -696,8 +714,20 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleMessage = async(node: BinaryNode) => {
+    if(ignoreOfflineMessages && node.attrs.offline) {
+			logger.debug({ key: node.attrs.key }, 'ignored offline message')
+			await sendMessageAck(node)
+			return
+		}
+
 		if(isJidGroup(node.attrs.from) && shouldIgnoreParticipant(node.attrs.participant)){
-			logger.debug({ key: msg.key }, 'ignored message')
+			logger.debug({ key: msg.key }, 'ignored participant message')
+      await sendMessageAck(node)
+			return
+		}
+
+		if(shouldIgnoreJid(node.attrs.from!) && node.attrs.from! !== '@s.whatsapp.net' && !areJidsSameUser(node.attrs.from!, authState.creds.me!.id)) {
+			logger.debug({ key: node.attrs.key }, 'ignored message')
 			await sendMessageAck(node)
 			return
 		}
@@ -714,12 +744,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			if(node.attrs.sender_pn) {
 				ev.emit('chats.phoneNumberShare', { lid: node.attrs.from, jid: node.attrs.sender_pn })
 			}
-		}
-
-		if(shouldIgnoreJid(msg.key.remoteJid!)) {
-			logger.debug({ key: msg.key }, 'ignored message')
-			await sendMessageAck(node)
-			return
 		}
 
 		await Promise.all([
