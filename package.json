@@ -85,7 +85,7 @@
     "jimp": "^0.16.1",
     "link-preview-js": "^3.0.0",
     "qrcode-terminal": "^0.12.0",
-    "sharp": "^0.32.2"
+    "sharp": "^0.32.6"
   },
   "peerDependenciesMeta": {
     "jimp": {
