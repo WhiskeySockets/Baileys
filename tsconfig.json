@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "es2018",
-    "module": "CommonJS",
+    "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "experimentalDecorators": true,
     "allowJs": false,
