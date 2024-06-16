@@ -9,10 +9,10 @@ import { BaileysEventEmitter, BaileysEventMap, BrowsersMap, DisconnectReason, WA
 import { BinaryNode, getAllBinaryNodeChildren, jidDecode } from '../WABinary'
 
 const COMPANION_PLATFORM_MAP = {
-	'Chrome': 49,
-	'Edge': 50,
-	'Firefox': 51,
-	'Opera': 53
+	'Chrome': '49',
+	'Edge': '50',
+	'Firefox': '51',
+	'Opera': '53'
 }
 
 const PLATFORM_MAP = {
@@ -35,7 +35,7 @@ export const Browsers: BrowsersMap = {
 }
 
 export const getPlatformId = (browser: string) => {
-	return COMPANION_PLATFORM_MAP[browser] || 49
+	return COMPANION_PLATFORM_MAP[browser] || '49'
 }
 
 export const BufferJSON = {
