@@ -134,10 +134,11 @@ export default (config: BaileysInMemoryStoreConfig) => {
 				if(contacts[update.id!]) {
 					contact = contacts[update.id!]
 				} else {
-					const contactHashes = await Promise.all(Object.keys(contacts).map(async contactId => {
+					const allContacts = Object.keys(contacts).filter((c) => !!c)
+					const contactHashes = allContacts.map((contactId) => {
 						const { user } = jidDecode(contactId)!
 						return [contactId, (md5(Buffer.from(user + 'WA_ADD_NOTIF', 'utf8'))).toString('base64').slice(0, 3)]
-					}))
+					})
 					contact = contacts[contactHashes.find(([, b]) => b === update.id)?.[0] || ''] // find contact by attrs.hash, when user is not saved as a contact
 				}
 
