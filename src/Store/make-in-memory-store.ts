@@ -149,7 +149,7 @@ export default (config: BaileysInMemoryStoreConfig) => {
 					}
 					Object.assign(contacts[contact.id], contact)
 				} else {
-					return logger.debug({ update }, 'got update for non-existant contact')
+					logger.debug({ update }, 'got update for non-existant contact')
 				}
 			}
 		})
