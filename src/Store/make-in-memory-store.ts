@@ -79,11 +79,12 @@ export default (config: BaileysInMemoryStoreConfig) => {
 	}
 
 	const getValidContacts = () => {
-		for (const contact of Object.keys(contacts)){
-			if (contact.indexOf('@') < 0){
+		for(const contact of Object.keys(contacts)) {
+			if(contact.indexOf('@') < 0) {
 				delete contacts[contact]
 			}
 		}
+
 		return Object.keys(contacts)
 	}
 
