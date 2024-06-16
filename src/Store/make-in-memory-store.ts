@@ -147,11 +147,10 @@ export default (config: BaileysInMemoryStoreConfig) => {
 					} else if(update.imgUrl === 'removed') {
 						delete contact.imgUrl
 					}
+					Object.assign(contacts[contact.id], contact)
 				} else {
 					return logger.debug({ update }, 'got update for non-existant contact')
 				}
-
-				Object.assign(contacts[contact.id], contact)
 			}
 		})
 		ev.on('chats.upsert', newChats => {
