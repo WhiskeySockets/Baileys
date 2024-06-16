@@ -12,7 +12,8 @@ const COMPANION_PLATFORM_MAP = {
 	'Chrome': '49',
 	'Edge': '50',
 	'Firefox': '51',
-	'Opera': '53'
+	'Opera': '53',
+	'Safari': '54'
 }
 
 const PLATFORM_MAP = {
