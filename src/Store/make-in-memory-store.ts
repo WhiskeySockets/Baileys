@@ -78,6 +78,15 @@ export default (config: BaileysInMemoryStoreConfig) => {
 		}
 	}
 
+	const getValidContacts = () => {
+		for (const contact of Object.keys(contacts)){
+			if (contact.indexOf('@') < 0){
+				delete contacts[contact]
+			}
+		}
+		return Object.keys(contacts)
+	}
+
 	/**
 	 * binds to a BaileysEventEmitter.
 	 * It listens to all events and constructs a state that you can query accurate data from.
@@ -134,8 +143,8 @@ export default (config: BaileysInMemoryStoreConfig) => {
 				if(contacts[update.id!]) {
 					contact = contacts[update.id!]
 				} else {
-					const allContacts = Object.keys(contacts).filter((c) => !!c)
-					const contactHashes = allContacts.map((contactId) => {
+					const validContacts = getValidContacts()
+					const contactHashes = validContacts.map((contactId) => {
 						const { user } = jidDecode(contactId)!
 						return [contactId, (md5(Buffer.from(user + 'WA_ADD_NOTIF', 'utf8'))).toString('base64').slice(0, 3)]
 					})
