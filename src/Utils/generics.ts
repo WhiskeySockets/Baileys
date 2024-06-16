@@ -8,6 +8,13 @@ import { version as baileysVersion } from '../Defaults/baileys-version.json'
 import { BaileysEventEmitter, BaileysEventMap, BrowsersMap, DisconnectReason, WACallUpdateType, WAVersion } from '../Types'
 import { BinaryNode, getAllBinaryNodeChildren, jidDecode } from '../WABinary'
 
+const COMPANION_PLATFORM_MAP = {
+	'Chrome': 49,
+	'Edge': 50,
+	'Firefox': 51,
+	'Opera': 53
+}
+
 const PLATFORM_MAP = {
 	'aix': 'AIX',
 	'darwin': 'Mac OS',
@@ -16,13 +23,6 @@ const PLATFORM_MAP = {
 	'freebsd': 'FreeBSD',
 	'openbsd': 'OpenBSD',
 	'sunos': 'Solaris'
-}
-
-const COMPANION_PLATFORM_MAP = {
-	'Chrome': 49,
-	'Edge': 50,
-	'Firefox': 51,
-	'Opera': 53
 }
 
 export const Browsers: BrowsersMap = {
