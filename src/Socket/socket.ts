@@ -29,10 +29,11 @@ import {
 	getCodeFromWSError,
 	getErrorCodeFromStreamError,
 	getNextPreKeysNode,
+	getPlatformId,
 	makeEventBuffer,
 	makeNoiseHandler,
 	printQRIfNecessaryListener,
-	promiseTimeout
+	promiseTimeout,
 } from '../Utils'
 import {
 	assertNodeErrorFree,
@@ -525,7 +526,7 @@ export const makeSocket = (config: SocketConfig) => {
 						{
 							tag: 'companion_platform_id',
 							attrs: {},
-							content: '49' // Chrome
+							content: getPlatformId(browser[1])
 						},
 						{
 							tag: 'companion_platform_display',
