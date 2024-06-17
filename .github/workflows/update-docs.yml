@@ -40,4 +40,5 @@ jobs:
       with:
         publish_branch: gh-pages
         publish_dir: ./docs
+        cname: baileys.whiskeysockets.io
         github_token: ${{ secrets.GITHUB_TOKEN }}
