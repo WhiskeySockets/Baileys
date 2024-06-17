@@ -1,6 +1,6 @@
 {
   "name": "baileys",
-  "version": "6.7.4",
+  "version": "6.7.5",
   "description": "WhatsApp API",
   "keywords": [
     "whatsapp",
@@ -47,16 +47,16 @@
     "@hapi/boom": "^9.1.3",
     "async-lock": "^1.4.1",
     "audio-decode": "^2.1.3",
-    "axios": "^1.3.3",
+    "axios": "^1.6.0",
     "cache-manager": "4.0.1",
     "futoin-hkdf": "^1.5.1",
     "libphonenumber-js": "^1.10.20",
-    "libsignal": "github:adiwajshing/libsignal-node",
+    "libsignal": "github:WhiskeySockets/libsignal-node",
     "music-metadata": "^7.12.3",
     "node-cache": "^5.1.2",
     "pino": "^7.0.0",
     "protobufjs": "^7.2.4",
-    "uuid": "^9.0.0",
+    "uuid": "^10.0.0",
     "ws": "^8.13.0"
   },
   "devDependencies": {
@@ -75,7 +75,7 @@
     "open": "^8.4.2",
     "qrcode-terminal": "^0.12.0",
     "release-it": "^15.10.3",
-    "sharp": "^0.30.5",
+    "sharp": "^0.32.6",
     "ts-jest": "^27.0.3",
     "ts-node": "^10.8.1",
     "typedoc": "^0.24.7",
@@ -85,7 +85,7 @@
     "jimp": "^0.16.1",
     "link-preview-js": "^3.0.0",
     "qrcode-terminal": "^0.12.0",
-    "sharp": "^0.32.2"
+    "sharp": "^0.32.6"
   },
   "peerDependenciesMeta": {
     "jimp": {

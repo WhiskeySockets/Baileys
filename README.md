@@ -422,7 +422,8 @@ await sock.sendMessage(
     { 
         video: "./Media/ma_gif.mp4", 
         caption: "hello!",
-        gifPlayback: true
+        gifPlayback: true,
+	ptv: false // if set to true, will send as a `video note`
     }
 )
 
