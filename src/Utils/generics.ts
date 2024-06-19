@@ -8,14 +8,6 @@ import { version as baileysVersion } from '../Defaults/baileys-version.json'
 import { BaileysEventEmitter, BaileysEventMap, BrowsersMap, DisconnectReason, WACallUpdateType, WAVersion } from '../Types'
 import { BinaryNode, getAllBinaryNodeChildren, jidDecode } from '../WABinary'
 
-const COMPANION_PLATFORM_MAP = {
-	'Chrome': '49',
-	'Edge': '50',
-	'Firefox': '51',
-	'Opera': '53',
-	'Safari': '54'
-}
-
 const PLATFORM_MAP = {
 	'aix': 'AIX',
 	'darwin': 'Mac OS',
@@ -36,7 +28,8 @@ export const Browsers: BrowsersMap = {
 }
 
 export const getPlatformId = (browser: string) => {
-	return COMPANION_PLATFORM_MAP[browser] || '49'
+	const platformType = proto.DeviceProps.PlatformType[browser.toUpperCase()]
+	return platformType ? platformType.charCodeAt(0) : '49' //chrome
 }
 
 export const BufferJSON = {
