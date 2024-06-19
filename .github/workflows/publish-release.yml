@@ -44,10 +44,18 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish in NPM
+      - name: Publish in NPM (as `baileys`)
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      
+      - name: Publish in NPM (whiskeysockets scope)
+        run: |
+          npx json -I -f package.json -e "this.name='@whiskeysockets/baileys'"
+          npm publish --access public --//registry.npmjs.org/:_authToken=$NPM_TOKEN
+          npx json -I -f package.json -e "this.name='baileys'"
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Generate Changelog
         id: generate_changelog

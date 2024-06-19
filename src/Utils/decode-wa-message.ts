@@ -3,7 +3,7 @@ import { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { SignalRepository, WAMessageKey } from '../Types'
 import { areJidsSameUser, BinaryNode, isJidBroadcast, isJidGroup, isJidStatusBroadcast, isJidUser, isLidUser, jidDecode } from '../WABinary'
-import { unpadRandomMax16 } from './generics'
+import { BufferJSON, unpadRandomMax16 } from './generics'
 
 const NO_MESSAGE_FOUND_ERROR_TEXT = 'Message absent from node'
 
@@ -170,10 +170,14 @@ export const decryptMessageNode = (
 						let msg: proto.IMessage = proto.Message.decode(unpadRandomMax16(msgBuffer))
 						msg = msg.deviceSentMessage?.message || msg
 						if(msg.senderKeyDistributionMessage) {
-							await repository.processSenderKeyDistributionMessage({
-								authorJid: author,
-								item: msg.senderKeyDistributionMessage
-							})
+						    try {
+								await repository.processSenderKeyDistributionMessage({
+									authorJid: author,
+									item: msg.senderKeyDistributionMessage
+								})
+							} catch(err) {
+								logger.error({ key: fullMessage.key, err }, 'failed to decrypt message')
+						        }
 						}
 
 						if(fullMessage.message) {
@@ -194,12 +198,13 @@ export const decryptMessageNode = (
 
 			// SDKWA-FIX
 			(fullMessage as any).fullJid = jidDecode(stanza.attrs.from);
+			(fullMessage as any).fullJid = jidDecode(stanza.attrs.from);
 			// SDKWA-FIX
 			(fullMessage as any).type = stanza.attrs.type
 			// if nothing was found to decrypt
 			if(!decryptables) {
 				fullMessage.messageStubType = proto.WebMessageInfo.StubType.CIPHERTEXT
-				fullMessage.messageStubParameters = [NO_MESSAGE_FOUND_ERROR_TEXT]
+				fullMessage.messageStubParameters = [NO_MESSAGE_FOUND_ERROR_TEXT, JSON.stringify(stanza, BufferJSON.replacer)]
 			}
 		}
 	}

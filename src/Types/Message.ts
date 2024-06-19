@@ -116,6 +116,8 @@ export type AnyMediaMessageContent = (
         caption?: string
         gifPlayback?: boolean
         jpegThumbnail?: string
+        /** if set to true, will send as a `video note` */
+        ptv?: boolean
     } & Mentionable & Contextable & Buttonable & Templatable & WithDimensions)
     | {
         audio: WAMediaUpload
@@ -225,6 +227,8 @@ export type MiscMessageGenerationOptions = MinimalRelayOptions & {
     backgroundColor?: string
     /** font type for status */
     font?: number
+    /** if it is broadcast */
+    broadcast?: boolean
 }
 export type MessageGenerationOptionsFromContent = MiscMessageGenerationOptions & {
 	userJid: string

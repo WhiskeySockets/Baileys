@@ -1,7 +1,7 @@
 import { Boom } from '@hapi/boom'
 import NodeCache from 'node-cache'
 import readline from 'readline'
-import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, getAggregateVotesInPollMessage, makeCacheableSignalKeyStore, makeInMemoryStore, PHONENUMBER_MCC, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
+import makeWASocket, { AnyMessageContent, BinaryInfo, delay, DisconnectReason, encodeWAM, fetchLatestBaileysVersion, getAggregateVotesInPollMessage, makeCacheableSignalKeyStore, makeInMemoryStore, PHONENUMBER_MCC, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
 import MAIN_LOGGER from '../src/Utils/logger'
 import open from 'open'
 import fs from 'fs'
@@ -120,6 +120,7 @@ const startSock = async() => {
 
 		async function askForOTP() {
 			if (!registration.method) {
+				await delay(2000)
 				let code = await question('How would you like to receive the one time code for registration? "sms" or "voice"\n')
 				code = code.replace(/["']/g, '').trim().toLowerCase()
 				if(code !== 'sms' && code !== 'voice') {
@@ -175,6 +176,36 @@ const startSock = async() => {
 					} else {
 						console.log('Connection closed. You are logged out.')
 					}
+				}
+				
+				// WARNING: THIS WILL SEND A WAM EXAMPLE AND THIS IS A ****CAPTURED MESSAGE.****
+				// DO NOT ACTUALLY ENABLE THIS UNLESS YOU MODIFIED THE FILE.JSON!!!!!
+				// THE ANALYTICS IN THE FILE ARE OLD. DO NOT USE THEM.
+				// YOUR APP SHOULD HAVE GLOBALS AND ANALYTICS ACCURATE TO TIME, DATE AND THE SESSION
+				// THIS FILE.JSON APPROACH IS JUST AN APPROACH I USED, BE FREE TO DO THIS IN ANOTHER WAY.
+				// THE FIRST EVENT CONTAINS THE CONSTANT GLOBALS, EXCEPT THE seqenceNumber(in the event) and commitTime
+				// THIS INCLUDES STUFF LIKE ocVersion WHICH IS CRUCIAL FOR THE PREVENTION OF THE WARNING
+				const sendWAMExample = false;
+				if(connection === 'open' && sendWAMExample) {
+					/// sending WAM EXAMPLE
+					const {
+						header: {
+							wamVersion,
+							eventSequenceNumber,
+						},
+						events,
+					} = JSON.parse(await fs.promises.readFile("./boot_analytics_test.json", "utf-8"))
+
+					const binaryInfo = new BinaryInfo({
+						protocolVersion: wamVersion,
+						sequence: eventSequenceNumber,
+						events: events
+					})
+
+					const buffer = encodeWAM(binaryInfo);
+					
+					const result = await sock.sendWAMBuffer(buffer)
+					console.log(result)
 				}
 
 				console.log('connection update', update)
