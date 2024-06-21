@@ -7,7 +7,7 @@ export const encodeBinaryNode = (
 	{ tag, attrs, content }: BinaryNode,
 	opts: Pick<BinaryNodeCodingOptions, 'TAGS' | 'TOKEN_MAP'> = constants,
 	buffer: number[] = [0]
-) => {
+): number[] => {
 	const { TAGS, TOKEN_MAP } = opts
 
 	const pushByte = (value: number) => buffer.push(value & 0xff)
@@ -232,5 +232,5 @@ export const encodeBinaryNode = (
 		throw new Error(`invalid children for header "${tag}": ${content} (${typeof content})`)
 	}
 
-	return Buffer.from(buffer)
+	return buffer
 }
