@@ -1,0 +1,71 @@
+syntax = "proto2";
+package WAServerSync;
+
+message SyncdMutation {
+	enum SyncdOperation {
+		SET = 0;
+		REMOVE = 1;
+	}
+
+	optional SyncdOperation operation = 1;
+	optional SyncdRecord record = 2;
+}
+
+message SyncdVersion {
+	optional uint64 version = 1;
+}
+
+message ExitCode {
+	optional uint64 code = 1;
+	optional string text = 2;
+}
+
+message SyncdIndex {
+	optional bytes blob = 1;
+}
+
+message SyncdValue {
+	optional bytes blob = 1;
+}
+
+message KeyId {
+	optional bytes ID = 1;
+}
+
+message SyncdRecord {
+	optional SyncdIndex index = 1;
+	optional SyncdValue value = 2;
+	optional KeyId keyID = 3;
+}
+
+message ExternalBlobReference {
+	optional bytes mediaKey = 1;
+	optional string directPath = 2;
+	optional string handle = 3;
+	optional uint64 fileSizeBytes = 4;
+	optional bytes fileSHA256 = 5;
+	optional bytes fileEncSHA256 = 6;
+}
+
+message SyncdSnapshot {
+	optional SyncdVersion version = 1;
+	repeated SyncdRecord records = 2;
+	optional bytes mac = 3;
+	optional KeyId keyID = 4;
+}
+
+message SyncdMutations {
+	repeated SyncdMutation mutations = 1;
+}
+
+message SyncdPatch {
+	optional SyncdVersion version = 1;
+	repeated SyncdMutation mutations = 2;
+	optional ExternalBlobReference externalMutations = 3;
+	optional bytes snapshotMAC = 4;
+	optional bytes patchMAC = 5;
+	optional KeyId keyID = 6;
+	optional ExitCode exitCode = 7;
+	optional uint32 deviceIndex = 8;
+	optional bytes clientDebugData = 9;
+}

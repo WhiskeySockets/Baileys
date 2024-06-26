@@ -1,0 +1,42 @@
+syntax = "proto2";
+package WAAdv;
+
+enum ADVEncryptionType {
+	E2EE = 0;
+	HOSTED = 1;
+}
+
+message ADVKeyIndexList {
+	optional uint32 rawID = 1;
+	optional uint64 timestamp = 2;
+	optional uint32 currentIndex = 3;
+	repeated uint32 validIndexes = 4 [packed=true];
+	optional ADVEncryptionType accountType = 5;
+}
+
+message ADVSignedKeyIndexList {
+	optional bytes details = 1;
+	optional bytes accountSignature = 2;
+	optional bytes accountSignatureKey = 3;
+}
+
+message ADVDeviceIdentity {
+	optional uint32 rawID = 1;
+	optional uint64 timestamp = 2;
+	optional uint32 keyIndex = 3;
+	optional ADVEncryptionType accountType = 4;
+	optional ADVEncryptionType deviceType = 5;
+}
+
+message ADVSignedDeviceIdentity {
+	optional bytes details = 1;
+	optional bytes accountSignatureKey = 2;
+	optional bytes accountSignature = 3;
+	optional bytes deviceSignature = 4;
+}
+
+message ADVSignedDeviceIdentityHMAC {
+	optional bytes details = 1;
+	optional bytes HMAC = 2;
+	optional ADVEncryptionType accountType = 3;
+}

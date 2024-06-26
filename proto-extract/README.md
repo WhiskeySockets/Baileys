@@ -1,8 +1,20 @@
+
 # Proto Extract
 
-Derived initially from `whatseow`'s proto extract, this version generates a predictable diff friendly protobuf. It also does not rely on a hardcoded set of modules to look for but finds all proto modules on its own and extracts the proto from there.
+  
+
+Modified proto-extract from tulir's [whatsmeow](https://github.com/tulir/whatsmeow) method, this version generates protos with extracted javascript modules from whatsapp web, no need to install third-party modules, only `protobufjs-cli`
+
+  
 
 ## Usage
-1. Install dependencies with `yarn` (or `npm install`)
-2. `yarn start`
-3. The script will update `../WAProto/WAProto.proto` (except if something is broken)
+
+1. Download WhatsApp Web javascript modules to `proto.js` file in `proto-extract`folder
+
+2. Install `protobufjs-cli` with yarn or npm
+
+3.  Open terminal shell in proto-extract folder
+
+4. Run `generate.sh` file
+
+5. This script will generate all protos and all statics `.js and .ts`

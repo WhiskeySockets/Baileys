@@ -1,0 +1,19 @@
+syntax = "proto2";
+package WAMmsRetry;
+
+message MediaRetryNotification {
+	enum ResultType {
+		GENERAL_ERROR = 0;
+		SUCCESS = 1;
+		NOT_FOUND = 2;
+		DECRYPTION_ERROR = 3;
+	}
+
+	optional string stanzaID = 1;
+	optional string directPath = 2;
+	optional ResultType result = 3;
+}
+
+message ServerErrorReceipt {
+	optional string stanzaID = 1;
+}

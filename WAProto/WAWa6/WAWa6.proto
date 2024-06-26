@@ -1,0 +1,236 @@
+syntax = "proto2";
+package WAWa6;
+
+message ClientPayload {
+	enum Product {
+		WHATSAPP = 0;
+		MESSENGER = 1;
+		INTEROP = 2;
+		INTEROP_MSGR = 3;
+	}
+
+	enum ConnectType {
+		CELLULAR_UNKNOWN = 0;
+		WIFI_UNKNOWN = 1;
+		CELLULAR_EDGE = 100;
+		CELLULAR_IDEN = 101;
+		CELLULAR_UMTS = 102;
+		CELLULAR_EVDO = 103;
+		CELLULAR_GPRS = 104;
+		CELLULAR_HSDPA = 105;
+		CELLULAR_HSUPA = 106;
+		CELLULAR_HSPA = 107;
+		CELLULAR_CDMA = 108;
+		CELLULAR_1XRTT = 109;
+		CELLULAR_EHRPD = 110;
+		CELLULAR_LTE = 111;
+		CELLULAR_HSPAP = 112;
+	}
+
+	enum ConnectReason {
+		PUSH = 0;
+		USER_ACTIVATED = 1;
+		SCHEDULED = 2;
+		ERROR_RECONNECT = 3;
+		NETWORK_SWITCH = 4;
+		PING_RECONNECT = 5;
+		UNKNOWN = 6;
+	}
+
+	enum IOSAppExtension {
+		SHARE_EXTENSION = 0;
+		SERVICE_EXTENSION = 1;
+		INTENTS_EXTENSION = 2;
+	}
+
+	message DNSSource {
+		enum DNSResolutionMethod {
+			SYSTEM = 0;
+			GOOGLE = 1;
+			HARDCODED = 2;
+			OVERRIDE = 3;
+			FALLBACK = 4;
+		}
+
+		optional DNSResolutionMethod dnsMethod = 15;
+		optional bool appCached = 16;
+	}
+
+	message WebInfo {
+		enum WebSubPlatform {
+			WEB_BROWSER = 0;
+			APP_STORE = 1;
+			WIN_STORE = 2;
+			DARWIN = 3;
+			WIN32 = 4;
+		}
+
+		message WebdPayload {
+			optional bool usesParticipantInKey = 1;
+			optional bool supportsStarredMessages = 2;
+			optional bool supportsDocumentMessages = 3;
+			optional bool supportsURLMessages = 4;
+			optional bool supportsMediaRetry = 5;
+			optional bool supportsE2EImage = 6;
+			optional bool supportsE2EVideo = 7;
+			optional bool supportsE2EAudio = 8;
+			optional bool supportsE2EDocument = 9;
+			optional string documentTypes = 10;
+			optional bytes features = 11;
+		}
+
+		optional string refToken = 1;
+		optional string version = 2;
+		optional WebdPayload webdPayload = 3;
+		optional WebSubPlatform webSubPlatform = 4;
+	}
+
+	message UserAgent {
+		enum DeviceType {
+			PHONE = 0;
+			TABLET = 1;
+			DESKTOP = 2;
+			WEARABLE = 3;
+			VR = 4;
+		}
+
+		enum ReleaseChannel {
+			RELEASE = 0;
+			BETA = 1;
+			ALPHA = 2;
+			DEBUG = 3;
+		}
+
+		enum Platform {
+			ANDROID = 0;
+			IOS = 1;
+			WINDOWS_PHONE = 2;
+			BLACKBERRY = 3;
+			BLACKBERRYX = 4;
+			S40 = 5;
+			S60 = 6;
+			PYTHON_CLIENT = 7;
+			TIZEN = 8;
+			ENTERPRISE = 9;
+			SMB_ANDROID = 10;
+			KAIOS = 11;
+			SMB_IOS = 12;
+			WINDOWS = 13;
+			WEB = 14;
+			PORTAL = 15;
+			GREEN_ANDROID = 16;
+			GREEN_IPHONE = 17;
+			BLUE_ANDROID = 18;
+			BLUE_IPHONE = 19;
+			FBLITE_ANDROID = 20;
+			MLITE_ANDROID = 21;
+			IGLITE_ANDROID = 22;
+			PAGE = 23;
+			MACOS = 24;
+			OCULUS_MSG = 25;
+			OCULUS_CALL = 26;
+			MILAN = 27;
+			CAPI = 28;
+			WEAROS = 29;
+			ARDEVICE = 30;
+			VRDEVICE = 31;
+			BLUE_WEB = 32;
+			IPAD = 33;
+			TEST = 34;
+			SMART_GLASSES = 35;
+		}
+
+		message AppVersion {
+			optional uint32 primary = 1;
+			optional uint32 secondary = 2;
+			optional uint32 tertiary = 3;
+			optional uint32 quaternary = 4;
+			optional uint32 quinary = 5;
+		}
+
+		optional Platform platform = 1;
+		optional AppVersion appVersion = 2;
+		optional string mcc = 3;
+		optional string mnc = 4;
+		optional string osVersion = 5;
+		optional string manufacturer = 6;
+		optional string device = 7;
+		optional string osBuildNumber = 8;
+		optional string phoneID = 9;
+		optional ReleaseChannel releaseChannel = 10;
+		optional string localeLanguageIso6391 = 11;
+		optional string localeCountryIso31661Alpha2 = 12;
+		optional string deviceBoard = 13;
+		optional string deviceExpID = 14;
+		optional DeviceType deviceType = 15;
+		optional string deviceModelType = 16;
+	}
+
+	message InteropData {
+		optional uint64 accountID = 1;
+		optional bytes token = 2;
+	}
+
+	message DevicePairingRegistrationData {
+		optional bytes eRegid = 1;
+		optional bytes eKeytype = 2;
+		optional bytes eIdent = 3;
+		optional bytes eSkeyID = 4;
+		optional bytes eSkeyVal = 5;
+		optional bytes eSkeySig = 6;
+		optional bytes buildHash = 7;
+		optional bytes deviceProps = 8;
+	}
+
+	optional uint64 username = 1;
+	optional bool passive = 3;
+	optional UserAgent userAgent = 5;
+	optional WebInfo webInfo = 6;
+	optional string pushName = 7;
+	optional sfixed32 sessionID = 9;
+	optional bool shortConnect = 10;
+	optional ConnectType connectType = 12;
+	optional ConnectReason connectReason = 13;
+	repeated int32 shards = 14;
+	optional DNSSource dnsSource = 15;
+	optional uint32 connectAttemptCount = 16;
+	optional uint32 device = 18;
+	optional DevicePairingRegistrationData devicePairingData = 19;
+	optional Product product = 20;
+	optional bytes fbCat = 21;
+	optional bytes fbUserAgent = 22;
+	optional bool oc = 23;
+	optional int32 lc = 24;
+	optional IOSAppExtension iosAppExtension = 30;
+	optional uint64 fbAppID = 31;
+	optional bytes fbDeviceID = 32;
+	optional bool pull = 33;
+	optional bytes paddingBytes = 34;
+	optional int32 yearClass = 36;
+	optional int32 memClass = 37;
+	optional InteropData interopData = 38;
+	optional bool isPcr = 39;
+}
+
+message HandshakeMessage {
+	message ClientFinish {
+		optional bytes static = 1;
+		optional bytes payload = 2;
+	}
+
+	message ServerHello {
+		optional bytes ephemeral = 1;
+		optional bytes static = 2;
+		optional bytes payload = 3;
+	}
+
+	message ClientHello {
+		optional bytes ephemeral = 1;
+		optional bytes static = 2;
+		optional bytes payload = 3;
+	}
+
+	optional ClientHello clientHello = 2;
+	optional ServerHello serverHello = 3;
+	optional ClientFinish clientFinish = 4;
+}
