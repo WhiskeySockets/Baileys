@@ -1,5 +1,14 @@
 # Baileys - Typescript/Javascript WhatsApp Web API
 
+### Important Note
+
+This library was originally a project for **CS-2362 at Ashoka University** and is in no way affiliated with or endorsed by WhatsApp. Use at your own discretion. Do not spam people with this. We discourage any stalkerware, bulk or automated messaging usage. 
+
+#### Liability and License Notice
+Baileys and its maintainers cannot be held liable for misuse of this application, as stated in the [MIT license](https://github.com/WhiskeySockets/Baileys/blob/master/LICENSE).
+The maintainers of Baileys do not in any way condone the use of this application in practices that violate the Terms of Service of WhatsApp. The maintainers of this application call upon the personal responsibility of its users to use this application in a fair way, as it is intended to be used.
+##
+
 Baileys does not require Selenium or any other browser to be interface with WhatsApp Web, it does so directly using a **WebSocket**. 
 Not running Selenium or Chromimum saves you like **half a gig** of ram :/ 
 Baileys supports interacting with the multi-device & web versions of WhatsApp.
@@ -125,6 +134,8 @@ type SocketConfig = {
     customUploadHosts: MediaConnInfo['hosts']
     /** time to wait between sending new retry requests */
     retryRequestDelayMs: number
+    /** max msg retry count */
+    maxMsgRetryCount: number
     /** time to wait for the generation of the next QR in ms */
     qrTimeout?: number;
     /** provide an auth state object to maintain the auth state */
@@ -367,65 +378,6 @@ const sentMsg  = await sock.sendMessage(
     }
 )
 
-// send a buttons message!
-const buttons = [
-  {buttonId: 'id1', buttonText: {displayText: 'Button 1'}, type: 1},
-  {buttonId: 'id2', buttonText: {displayText: 'Button 2'}, type: 1},
-  {buttonId: 'id3', buttonText: {displayText: 'Button 3'}, type: 1}
-]
-
-const buttonMessage = {
-    text: "Hi it's button message",
-    footer: 'Hello World',
-    buttons: buttons,
-    headerType: 1
-}
-
-const sendMsg = await sock.sendMessage(id, buttonMessage)
-
-//send a template message!
-const templateButtons = [
-    {index: 1, urlButton: {displayText: '⭐ Star Baileys on GitHub!', url: 'https://github.com/adiwajshing/Baileys'}},
-    {index: 2, callButton: {displayText: 'Call me!', phoneNumber: '+1 (234) 5678-901'}},
-    {index: 3, quickReplyButton: {displayText: 'This is a reply, just like normal buttons!', id: 'id-like-buttons-message'}},
-]
-
-const templateMessage = {
-    text: "Hi it's a template message",
-    footer: 'Hello World',
-    templateButtons: templateButtons
-}
-
-const sendMsg = await sock.sendMessage(id, templateMessage)
-
-// send a list message!
-const sections = [
-    {
-	title: "Section 1",
-	rows: [
-	    {title: "Option 1", rowId: "option1"},
-	    {title: "Option 2", rowId: "option2", description: "This is a description"}
-	]
-    },
-   {
-	title: "Section 2",
-	rows: [
-	    {title: "Option 3", rowId: "option3"},
-	    {title: "Option 4", rowId: "option4", description: "This is a description V2"}
-	]
-    },
-]
-
-const listMessage = {
-  text: "This is a list",
-  footer: "nice footer, link: https://google.com",
-  title: "Amazing boldfaced list title",
-  buttonText: "Required, text on the button to view the list",
-  sections
-}
-
-const sendMsg = await sock.sendMessage(id, listMessage)
-
 const reactionMessage = {
     react: {
         text: "💖", // use an empty string to remove the reaction
@@ -470,7 +422,8 @@ await sock.sendMessage(
     { 
         video: "./Media/ma_gif.mp4", 
         caption: "hello!",
-        gifPlayback: true
+        gifPlayback: true,
+	ptv: false // if set to true, will send as a `video note`
     }
 )
 
@@ -480,39 +433,6 @@ await sock.sendMessage(
     { audio: { url: "./Media/audio.mp3" }, mimetype: 'audio/mp4' }
     { url: "Media/audio.mp3" }, // can send mp3, mp4, & ogg
 )
-
-// send a buttons message with image header!
-const buttons = [
-  {buttonId: 'id1', buttonText: {displayText: 'Button 1'}, type: 1},
-  {buttonId: 'id2', buttonText: {displayText: 'Button 2'}, type: 1},
-  {buttonId: 'id3', buttonText: {displayText: 'Button 3'}, type: 1}
-]
-
-const buttonMessage = {
-    image: {url: 'https://example.com/image.jpeg'},
-    caption: "Hi it's button message",
-    footer: 'Hello World',
-    buttons: buttons,
-    headerType: 4
-}
-
-const sendMsg = await sock.sendMessage(id, buttonMessage)
-
-//send a template message with an image **attached**!
-const templateButtons = [
-  {index: 1, urlButton: {displayText: '⭐ Star Baileys on GitHub!', url: 'https://github.com/adiwajshing/Baileys'}},
-  {index: 2, callButton: {displayText: 'Call me!', phoneNumber: '+1 (234) 5678-901'}},
-  {index: 3, quickReplyButton: {displayText: 'This is a reply, just like normal buttons!', id: 'id-like-buttons-message'}},
-]
-
-const buttonMessage = {
-    text: "Hi it's a template message",
-    footer: 'Hello World',
-    templateButtons: templateButtons,
-    image: {url: 'https://example.com/image.jpeg'}
-}
-
-const sendMsg = await sock.sendMessage(id, templateMessage)
 ```
 
 ### Notes
@@ -639,6 +559,17 @@ await sock.sendMessage(jid, { delete: response.key })
 
 **Note:** deleting for oneself is supported via `chatModify` (next section)
 
+## Updating Messages
+
+``` ts
+const jid = '1234@s.whatsapp.net'
+
+await sock.sendMessage(jid, {
+      text: 'updated text goes here',
+      edit: response.key,
+    });
+```
+
 ## Modifying Chats
 
 WA uses an encrypted form of communication to send chat/app updates. This has been implemented mostly and you can send the following updates:
@@ -688,6 +619,15 @@ WA uses an encrypted form of communication to send chat/app updates. This has be
     pin: true // or `false` to unpin
   },
   '123456@s.whatsapp.net')
+  ```
+  
+- Star/unstar a message
+  ``` ts
+  await sock.chatModify({
+  star: {
+  	messages: [{ id: 'messageID', fromMe: true // or `false` }],
+      	star: true // - true: Star Message; false: Unstar Message
+  }},'123456@s.whatsapp.net');
   ```
 
 **Note:** if you mess up one of your updates, WA can log you out of all your devices and you'll have to log in again.
@@ -758,7 +698,7 @@ await sock.sendMessage(
 - To get someone's presence (if they're typing or online)
     ``` ts
     // the presence update is fetched and called here
-    sock.ev.on('presence-update', json => console.log(json))
+    sock.ev.on('presence.update', json => console.log(json))
     // request updates for a chat
     await sock.presenceSubscribe("xyz@s.whatsapp.net") 
     ```
@@ -847,6 +787,21 @@ Of course, replace ``` xyz ``` with an actual ID.
     ```
   Of course, replace ``` xxx ``` with invitation code.
 
+- To get list request join
+    ``` ts
+    const response = await sock.groupRequestParticipantsList("abcd-xyz@g.us")
+    console.log(response)
+    ```
+- To approve/reject request join
+    ``` ts
+    const response = await sock.groupRequestParticipantsUpdate(
+        "abcd-xyz@g.us", // id group,
+        ["abcd@s.whatsapp.net", "efgh@s.whatsapp.net"],
+        "approve" // replace this parameter with "reject" 
+    )
+    console.log(response)
+    ```
+
 ## Privacy
 - To get the privacy settings
     ``` ts
@@ -890,7 +845,15 @@ Of course, replace ``` xyz ``` with an actual ID.
     ```
 ## Broadcast Lists & Stories
 
-**Note:** messages currently cannot be sent to broadcast lists from the MD version.
+Messages can be sent to broadcasts & stories. 
+you need to add the following message options in sendMessage, like this:
+```ts
+sock.sendMessage(jid, {image: {url: url}, caption: caption}, {backgroundColor : backgroundColor, font : font, statusJidList: statusJidList, broadcast : true})
+```
+- the message body can be a extendedTextMessage or imageMessage or videoMessage or voiceMessage
+- You can add backgroundColor and other options in the message options
+- broadcast: true enables broadcast mode
+- statusJidList: a list of people that you can get which you need to provide, which are the people who will get this status message.
 
 - You can send messages to broadcast lists the same way you send messages to groups & individual chats.
 - Right now, WA Web does not support creating broadcast lists, but you can still delete them.
@@ -933,9 +896,4 @@ Some examples:
     // for any message with tag 'edge_routing', id attribute = abcd & first content node routing_info
     sock.ws.on(`CB:edge_routing,id:abcd,routing_info`, (node: BinaryNode) => { })
     ```
-
-### Note
-
- This library was originally a project for **CS-2362 at Ashoka University** and is in no way affiliated with WhatsApp. Use at your own discretion. Do not spam people with this.
-
  Also, this repo is now licenced under GPL 3 since it uses [libsignal-node](https://git.questbook.io/backend/service-coderunner/-/merge_requests/1)

@@ -3,8 +3,9 @@ import axios from 'axios'
 import { randomBytes } from 'crypto'
 import { promises as fs } from 'fs'
 import { Logger } from 'pino'
+import { type Transform } from 'stream'
 import { proto } from '../../WAProto'
-import { MEDIA_KEYS, URL_EXCLUDE_REGEX, URL_REGEX, WA_DEFAULT_EPHEMERAL } from '../Defaults'
+import { MEDIA_KEYS, URL_REGEX, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import {
 	AnyMediaMessageContent,
 	AnyMessageContent,
@@ -23,15 +24,16 @@ import {
 	WAProto,
 	WATextMessage,
 } from '../Types'
-import { isJidGroup, jidNormalizedUser } from '../WABinary'
+import { isJidGroup, isJidStatusBroadcast, jidNormalizedUser } from '../WABinary'
 import { sha256 } from './crypto'
 import { generateMessageID, getKeyAuthor, unixTimestampSeconds } from './generics'
-import { downloadContentFromMessage, encryptedStream, generateThumbnail, getAudioDuration, MediaDownloadOptions } from './messages-media'
+import { downloadContentFromMessage, encryptedStream, generateThumbnail, getAudioDuration, getAudioWaveform, MediaDownloadOptions } from './messages-media'
 
 type MediaUploadData = {
 	media: WAMediaUpload
 	caption?: string
 	ptt?: boolean
+	ptv?: boolean
 	seconds?: number
 	gifPlayback?: boolean
 	fileName?: string
@@ -39,6 +41,8 @@ type MediaUploadData = {
 	mimetype?: string
 	width?: number
 	height?: number
+	waveform?: Uint8Array
+	backgroundArgb?: number
 }
 
 const MIMETYPE_MAP: { [T in MediaType]?: string } = {
@@ -65,9 +69,7 @@ const ButtonType = proto.Message.ButtonsMessage.HeaderType
  * @param text eg. hello https://google.com
  * @returns the URL, eg. https://google.com
  */
-export const extractUrlFromText = (text: string) => (
-	!URL_EXCLUDE_REGEX.test(text) ? text.match(URL_REGEX)?.[0] : undefined
-)
+export const extractUrlFromText = (text: string) => text.match(URL_REGEX)?.[0]
 
 export const generateLinkPreviewIfRequired = async(text: string, getUrlInfo: MessageGenerationOptions['getUrlInfo'], logger: MessageGenerationOptions['logger']) => {
 	const url = extractUrlFromText(text)
@@ -78,6 +80,21 @@ export const generateLinkPreviewIfRequired = async(text: string, getUrlInfo: Mes
 		} catch(error) { // ignore if fails
 			logger?.warn({ trace: error.stack }, 'url generation failed')
 		}
+	}
+}
+
+const assertColor = async(color) => {
+	let assertedColor
+	if(typeof color === 'number') {
+		assertedColor = color > 0 ? color : 0xffffffff + Number(color) + 1
+	} else {
+		let hex = color.trim().replace('#', '')
+		if(hex.length <= 6) {
+			hex = 'FF' + hex.padStart(6, '0')
+		}
+
+		assertedColor = parseInt(hex, 16)
+		return assertedColor
 	}
 }
 
@@ -138,6 +155,8 @@ export const prepareWAMessageMedia = async(
 	const requiresDurationComputation = mediaType === 'audio' && typeof uploadData.seconds === 'undefined'
 	const requiresThumbnailComputation = (mediaType === 'image' || mediaType === 'video') &&
 										(typeof uploadData['jpegThumbnail'] === 'undefined')
+	const requiresWaveformProcessing = mediaType === 'audio' && uploadData.ptt === true
+	const requiresAudioBackground = options.backgroundColor && mediaType === 'audio' && uploadData.ptt === true
 	const requiresOriginalForSomeProcessing = requiresDurationComputation || requiresThumbnailComputation
 	const {
 		mediaKey,
@@ -188,6 +207,21 @@ export const prepareWAMessageMedia = async(
 					uploadData.seconds = await getAudioDuration(bodyPath!)
 					logger?.debug('computed audio duration')
 				}
+
+				if(requiresWaveformProcessing) {
+					uploadData.waveform = await getAudioWaveform(bodyPath!, logger)
+					logger?.debug('processed waveform')
+				}
+
+				if(requiresWaveformProcessing) {
+					uploadData.waveform = await getAudioWaveform(bodyPath!, logger)
+					logger?.debug('processed waveform')
+				}
+
+				if(requiresAudioBackground) {
+					uploadData.backgroundArgb = await assertColor(options.backgroundColor)
+					logger?.debug('computed backgroundColor audio status')
+				}
 			} catch(error) {
 				logger?.warn({ trace: error.stack }, 'failed to obtain extra info')
 			}
@@ -219,6 +253,11 @@ export const prepareWAMessageMedia = async(
 			}
 		)
 	})
+
+	if(uploadData.ptv) {
+		obj.ptvMessage = obj.videoMessage
+		delete obj.videoMessage
+	}
 
 	if(cacheableKey) {
 		logger?.debug({ cacheableKey }, 'set cache')
@@ -314,6 +353,14 @@ export const generateWAMessageContent = async(
 			}
 		}
 
+		if(options.backgroundColor) {
+			extContent.backgroundArgb = await assertColor(options.backgroundColor)
+		}
+
+		if(options.font) {
+			extContent.font = options.font
+		}
+
 		m.extendedTextMessage = extContent
 	} else if('contacts' in message) {
 		const contactLen = message.contacts.contacts.length
@@ -366,6 +413,12 @@ export const generateWAMessageContent = async(
 			}
 			break
 		}
+	} else if('ptv' in message && message.ptv) {
+		const { videoMessage } = await prepareWAMessageMedia(
+			{ video: message.video },
+			options
+		)
+		m.ptvMessage = videoMessage
 	} else if('product' in message) {
 		const { imageMessage } = await prepareWAMessageMedia(
 			{ image: message.product.productImage },
@@ -407,6 +460,12 @@ export const generateWAMessageContent = async(
 			selectableOptionsCount: message.poll.selectableCount,
 			options: message.poll.values.map(optionName => ({ optionName })),
 		}
+	} else if('sharePhoneNumber' in message) {
+		m.protocolMessage = {
+			type: proto.Message.ProtocolMessage.Type.SHARE_PHONE_NUMBER
+		}
+	} else if('requestPhoneNumber' in message) {
+		m.requestPhoneNumberMessage = {}
 	} else {
 		m = await prepareWAMessageMedia(
 			message,
@@ -493,9 +552,16 @@ export const generateWAMessageContent = async(
 			protocolMessage: {
 				key: message.edit,
 				editedMessage: m,
+				timestampMs: Date.now(),
 				type: WAProto.Message.ProtocolMessage.Type.MESSAGE_EDIT
 			}
 		}
+	}
+
+	if('contextInfo' in message && !!message.contextInfo) {
+		const [messageType] = Object.keys(m)
+		m[messageType] = m[messageType] || {}
+		m[messageType].contextInfo = message.contextInfo
 	}
 
 	return WAProto.Message.fromObject(m)
@@ -512,7 +578,8 @@ export const generateWAMessageFromContent = (
 		options.timestamp = new Date()
 	}
 
-	const key = Object.keys(message)[0]
+	const innerMessage = normalizeMessageContent(message)!
+	const key: string = getContentType(innerMessage)!
 	const timestamp = unixTimestampSeconds(options.timestamp)
 	const { quoted, userJid } = options
 
@@ -529,18 +596,18 @@ export const generateWAMessageFromContent = (
 			delete quotedContent.contextInfo
 		}
 
-		const contextInfo: proto.IContextInfo = message[key].contextInfo || { }
+		const contextInfo: proto.IContextInfo = innerMessage[key].contextInfo || { }
 		contextInfo.participant = jidNormalizedUser(participant!)
 		contextInfo.stanzaId = quoted.key.id
 		contextInfo.quotedMessage = quotedMsg
 
 		// if a participant is quoted, then it must be a group
 		// hence, remoteJid of group must also be entered
-		if(quoted.key.participant || quoted.participant) {
+		if(jid !== quoted.key.remoteJid) {
 			contextInfo.remoteJid = quoted.key.remoteJid
 		}
 
-		message[key].contextInfo = contextInfo
+		innerMessage[key].contextInfo = contextInfo
 	}
 
 	if(
@@ -551,15 +618,10 @@ export const generateWAMessageFromContent = (
 		// already not converted to disappearing message
 		key !== 'ephemeralMessage'
 	) {
-		message[key].contextInfo = {
-			...(message[key].contextInfo || {}),
+		innerMessage[key].contextInfo = {
+			...(innerMessage[key].contextInfo || {}),
 			expiration: options.ephemeralExpiration || WA_DEFAULT_EPHEMERAL,
 			//ephemeralSettingTimestamp: options.ephemeralOptions.eph_setting_ts?.toString()
-		}
-		message = {
-			ephemeralMessage: {
-				message
-			}
 		}
 	}
 
@@ -574,7 +636,7 @@ export const generateWAMessageFromContent = (
 		message: message,
 		messageTimestamp: timestamp,
 		messageStubParameters: [],
-		participant: isJidGroup(jid) ? userJid : undefined,
+		participant: isJidGroup(jid) || isJidStatusBroadcast(jid) ? userJid : undefined,
 		status: WAMessageStatus.PENDING
 	}
 	return WAProto.WebMessageInfo.fromObject(messageJSON)
@@ -601,7 +663,7 @@ export const generateWAMessage = async(
 export const getContentType = (content: WAProto.IMessage | undefined) => {
 	if(content) {
 		const keys = Object.keys(content)
-		const key = keys.find(k => (k === 'conversation' || k.endsWith('Message')) && k !== 'senderKeyDistributionMessage')
+		const key = keys.find(k => (k === 'conversation' || k.includes('Message')) && k !== 'senderKeyDistributionMessage')
 		return key as keyof typeof content
 	}
 }
@@ -635,6 +697,7 @@ export const normalizeMessageContent = (content: WAMessageContent | null | undef
 			 || message?.viewOnceMessage
 			 || message?.documentWithCaptionMessage
 			 || message?.viewOnceMessageV2
+			 || message?.viewOnceMessageV2Extension
 			 || message?.editedMessage
 		 )
 	 }
@@ -688,10 +751,7 @@ export const extractMessageContent = (content: WAMessageContent | undefined | nu
 /**
  * Returns the device predicted by message ID
  */
-export const getDevice = (id: string) => {
-	const deviceType = id.length > 21 ? 'android' : id.substring(0, 2) === '3A' ? 'ios' : 'web'
-	return deviceType
-}
+export const getDevice = (id: string) => /^3A.{18}$/.test(id) ? 'ios' : /^3E.{20}$/.test(id) ? 'web' : /^(.{21}|.{32})$/.test(id) ? 'android' : /^.{18}$/.test(id) ? 'desktop' : 'unknown'
 
 /** Upserts a receipt in the message */
 export const updateMessageWithReceipt = (msg: Pick<WAMessage, 'userReceipt'>, receipt: MessageUserReceipt) => {
@@ -815,31 +875,31 @@ const REUPLOAD_REQUIRED_STATUS = [410, 404]
 /**
  * Downloads the given message. Throws an error if it's not a media message
  */
-export const downloadMediaMessage = async(
+export const downloadMediaMessage = async<Type extends 'buffer' | 'stream'>(
 	message: WAMessage,
-	type: 'buffer' | 'stream',
+	type: Type,
 	options: MediaDownloadOptions,
 	ctx?: DownloadMediaMessageContext
 ) => {
-	try {
-		const result = await downloadMsg()
-		return result
-	} catch(error) {
-		if(ctx) {
-			if(axios.isAxiosError(error)) {
-				// check if the message requires a reupload
-				if(REUPLOAD_REQUIRED_STATUS.includes(error.response?.status!)) {
-					ctx.logger.info({ key: message.key }, 'sending reupload media request...')
-					// request reupload
-					message = await ctx.reuploadRequest(message)
-					const result = await downloadMsg()
-					return result
+	const result = await downloadMsg()
+		.catch(async(error) => {
+			if(ctx) {
+				if(axios.isAxiosError(error)) {
+					// check if the message requires a reupload
+					if(REUPLOAD_REQUIRED_STATUS.includes(error.response?.status!)) {
+						ctx.logger.info({ key: message.key }, 'sending reupload media request...')
+						// request reupload
+						message = await ctx.reuploadRequest(message)
+						const result = await downloadMsg()
+						return result
+					}
 				}
 			}
-		}
 
-		throw error
-	}
+			throw error
+		})
+
+	return result as Type extends 'buffer' ? Buffer : Transform
 
 	async function downloadMsg() {
 		const mContent = extractMessageContent(message.message)

@@ -10,10 +10,10 @@ import { createSignalIdentity } from './signal'
 
 const getUserAgent = (config: SocketConfig): proto.ClientPayload.IUserAgent => {
 	const osVersion = config.mobile ? '15.3.1' : '0.1'
-	const version = config.mobile ? [2, 22, 24] : config.version
+	const version = config.mobile ? [2, 24, 6] : config.version
 	const device = config.mobile ? 'iPhone_7' : 'Desktop'
 	const manufacturer = config.mobile ? 'Apple' : ''
-	const platform = config.mobile ? proto.ClientPayload.UserAgent.Platform.IOS : proto.ClientPayload.UserAgent.Platform.MACOS
+	const platform = config.mobile ? proto.ClientPayload.UserAgent.Platform.IOS : proto.ClientPayload.UserAgent.Platform.WEB
 	const phoneId = config.mobile ? { phoneId: config.auth.creds.phoneId } : {}
 
 	return {
@@ -36,11 +36,30 @@ const getUserAgent = (config: SocketConfig): proto.ClientPayload.IUserAgent => {
 	}
 }
 
+const PLATFORM_MAP = {
+	'Mac OS': proto.ClientPayload.WebInfo.WebSubPlatform.DARWIN,
+	'Windows': proto.ClientPayload.WebInfo.WebSubPlatform.WIN32
+}
+
+const getWebInfo = (config: SocketConfig): proto.ClientPayload.IWebInfo => {
+	let webSubPlatform = proto.ClientPayload.WebInfo.WebSubPlatform.WEB_BROWSER
+	if(config.syncFullHistory && PLATFORM_MAP[config.browser[0]]) {
+		webSubPlatform = PLATFORM_MAP[config.browser[0]]
+	}
+
+	return { webSubPlatform }
+}
+
+
 const getClientPayload = (config: SocketConfig) => {
 	const payload: proto.IClientPayload = {
 		connectType: proto.ClientPayload.ConnectType.WIFI_UNKNOWN,
 		connectReason: proto.ClientPayload.ConnectReason.USER_ACTIVATED,
 		userAgent: getUserAgent(config),
+	}
+
+	if(!config.mobile) {
+		payload.webInfo = getWebInfo(config)
 	}
 
 	return payload
@@ -79,6 +98,11 @@ export const generateLoginNode = (userJid: string, config: SocketConfig): proto.
 	return proto.ClientPayload.fromObject(payload)
 }
 
+const getPlatformType = (platform: string): proto.DeviceProps.PlatformType => {
+	const platformType = platform.toUpperCase()
+	return proto.DeviceProps.PlatformType[platformType] || proto.DeviceProps.PlatformType.DESKTOP
+}
+
 export const generateRegistrationNode = (
 	{ registrationId, signedPreKey, signedIdentityKey }: SignalCreds,
 	config: SocketConfig
@@ -91,7 +115,7 @@ export const generateRegistrationNode = (
 
 	const companion: proto.IDeviceProps = {
 		os: config.browser[0],
-		platformType: proto.DeviceProps.PlatformType.DESKTOP,
+		platformType: getPlatformType(config.browser[1]),
 		requireFullSync: config.syncFullHistory,
 	}
 
@@ -208,8 +232,7 @@ export const encodeSignedDeviceIdentity = (
 		account.accountSignatureKey = null
 	}
 
-	const accountEnc = proto.ADVSignedDeviceIdentity
+	return proto.ADVSignedDeviceIdentity
 		.encode(account)
 		.finish()
-	return accountEnc
 }

@@ -1,7 +1,4 @@
 contact_links:
-  - name: Discussion
-    about: Discuss your problem here
-    url: https://github.com/adiwajshing/Baileys/discussions/new
-  - name: Discord
-    about: Join our discord to discuss together
+  - name: Have a question?
+    about: Join our discord and send a post in the `#baileys-help` channel
     url: https://discord.gg/WeJM5FP9GG

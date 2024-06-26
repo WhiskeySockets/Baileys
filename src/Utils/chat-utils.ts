@@ -583,6 +583,19 @@ export const chatModificationToAppPatch = (
 			apiVersion: 5,
 			operation: OP.SET
 		}
+	} else if('star' in mod) {
+		const key = mod.star.messages[0]
+		patch = {
+			syncAction: {
+				starAction: {
+					starred: !!mod.star.star
+				}
+			},
+			index: ['star', jid, key.id, key.fromMe ? '1' : '0', '0'],
+			type: 'regular_low',
+			apiVersion: 2,
+			operation: OP.SET
+		}
 	} else if('delete' in mod) {
 		patch = {
 			syncAction: {
@@ -840,8 +853,8 @@ export const processSyncAction = (
 	}
 
 	function isValidPatchBasedOnMessageRange(chat: Chat, msgRange: proto.SyncActionValue.ISyncActionMessageRange | null | undefined) {
-		const lastMsgTimestamp = msgRange?.lastMessageTimestamp || msgRange?.lastSystemMessageTimestamp || 0
-		const chatLastMsgTimestamp = chat?.lastMessageRecvTimestamp || 0
-		return lastMsgTimestamp >= chatLastMsgTimestamp
+		  const lastMsgTimestamp = Number(msgRange?.lastMessageTimestamp || msgRange?.lastSystemMessageTimestamp || 0)
+		  const chatLastMsgTimestamp = Number(chat?.lastMessageRecvTimestamp || 0)
+		  return lastMsgTimestamp >= chatLastMsgTimestamp
 	}
 }
