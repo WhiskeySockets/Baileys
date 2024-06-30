@@ -1,8 +1,11 @@
-import { createCipheriv, createDecipheriv, createHash, createHmac, pbkdf2Sync, randomBytes } from 'crypto'
+import { createCipheriv, createDecipheriv, createHash, createHmac, pbkdf2, randomBytes } from 'crypto'
 import HKDF from 'futoin-hkdf'
 import * as libsignal from 'libsignal'
+import { promisify } from 'util'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { KeyPair } from '../Types'
+
+const pbkdf2Promise = promisify(pbkdf2)
 
 /** prefix version byte to the pub keys, required for some curve crypto functions */
 export const generateSignalPubKey = (pubKey: Uint8Array | Buffer) => (
@@ -126,6 +129,6 @@ export function hkdf(buffer: Uint8Array | Buffer, expandedLength: number, info: 
 	return HKDF(!Buffer.isBuffer(buffer) ? Buffer.from(buffer) : buffer, expandedLength, info)
 }
 
-export function derivePairingCodeKey(pairingCode: string, salt: Buffer) {
-	return pbkdf2Sync(pairingCode, salt, 2 << 16, 32, 'sha256')
+export async function derivePairingCodeKey(pairingCode: string, salt: Buffer) {
+	return await pbkdf2Promise(pairingCode, salt, 2 << 16, 32, 'sha256')
 }
