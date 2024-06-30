@@ -138,7 +138,8 @@ export const makeSocket = (config: SocketConfig) => {
 			logger.trace({ xml: binaryNodeToString(frame), msg: 'xml send' })
 		}
 
-		const buff = encodeBinaryNode(frame)
+		const node = encodeBinaryNode(frame)
+		const buff = Buffer.from(node)
 		return sendRawMessage(buff)
 	}
 
