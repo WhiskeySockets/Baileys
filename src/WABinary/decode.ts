@@ -262,7 +262,7 @@ export const decodeDecompressedBinaryNode = (
 	}
 }
 
-export const decodeBinaryNode = async (buff: Buffer): Promise<BinaryNode> => {
+export const decodeBinaryNode = async(buff: Buffer): Promise<BinaryNode> => {
 	const decompBuff = await decompressingIfRequired(buff)
 	return decodeDecompressedBinaryNode(decompBuff, constants)
 }
