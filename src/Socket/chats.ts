@@ -190,18 +190,20 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}).filter(item => item.exists)
 	}
 
-	const fetchStatus = async(jid: string) => {
-		const [result] = await interactiveQuery(
-			[{ tag: 'user', attrs: { jid } }],
+	const fetchStatus = async(...jids: string[]) => {
+		const list = jids.map((jid) => ({ tag: 'user', attrs: { jid } }))
+		const results = await interactiveQuery(
+			list,
 			{ tag: 'status', attrs: {} }
 		)
-		if(result) {
-			const status = getBinaryNodeChild(result, 'status')
+		return results.map(item => {
+			const status = getBinaryNodeChild(item, 'status')
 			return {
-				status: status?.content!.toString(),
+				user: item.attrs.jid,
+				status: status && status.content ? status.content.toString() : null,
 				setAt: new Date(+(status?.attrs.t || 0) * 1000)
 			}
-		}
+		})
 	}
 
 	/** update the profile picture for yourself or a group */
