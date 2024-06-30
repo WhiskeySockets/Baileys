@@ -1,0 +1,71 @@
+syntax = "proto2";
+package WAVnameCert;
+
+message BizAccountLinkInfo {
+	enum AccountType {
+		ENTERPRISE = 0;
+	}
+
+	enum HostStorageType {
+		ON_PREMISE = 0;
+		FACEBOOK = 1;
+	}
+
+	optional uint64 whatsappBizAcctFbid = 1;
+	optional string whatsappAcctNumber = 2;
+	optional uint64 issueTime = 3;
+	optional HostStorageType hostStorage = 4;
+	optional AccountType accountType = 5;
+}
+
+message BizIdentityInfo {
+	enum ActualActorsType {
+		SELF = 0;
+		BSP = 1;
+	}
+
+	enum HostStorageType {
+		ON_PREMISE = 0;
+		FACEBOOK = 1;
+	}
+
+	enum VerifiedLevelValue {
+		UNKNOWN = 0;
+		LOW = 1;
+		HIGH = 2;
+	}
+
+	optional VerifiedLevelValue vlevel = 1;
+	optional VerifiedNameCertificate vnameCert = 2;
+	optional bool signed = 3;
+	optional bool revoked = 4;
+	optional HostStorageType hostStorage = 5;
+	optional ActualActorsType actualActors = 6;
+	optional uint64 privacyModeTS = 7;
+	optional uint64 featureControls = 8;
+}
+
+message LocalizedName {
+	optional string lg = 1;
+	optional string lc = 2;
+	optional string verifiedName = 3;
+}
+
+message VerifiedNameCertificate {
+	message Details {
+		optional uint64 serial = 1;
+		optional string issuer = 2;
+		optional string verifiedName = 4;
+		repeated LocalizedName localizedNames = 8;
+		optional uint64 issueTime = 10;
+	}
+
+	optional bytes details = 1;
+	optional bytes signature = 2;
+	optional bytes serverSignature = 3;
+}
+
+message BizAccountPayload {
+	optional VerifiedNameCertificate vnameCert = 1;
+	optional bytes bizAcctLinkInfo = 2;
+}

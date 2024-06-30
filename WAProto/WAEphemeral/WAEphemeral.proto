@@ -1,0 +1,7 @@
+syntax = "proto2";
+package WAEphemeral;
+
+message EphemeralSetting {
+	optional sfixed32 duration = 1;
+	optional sfixed64 timestamp = 2;
+}

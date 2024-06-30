@@ -1,0 +1,12 @@
+syntax = "proto2";
+package WADeviceCapabilities;
+
+message DeviceCapabilities {
+	enum ChatLockSupportLevel {
+		NONE = 0;
+		MINIMAL = 1;
+		FULL = 2;
+	}
+
+	optional ChatLockSupportLevel chatLockSupportLevel = 1;
+}

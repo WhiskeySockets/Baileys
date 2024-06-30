@@ -1,0 +1,212 @@
+syntax = "proto2";
+package WAHistorySync;
+
+import "../WAWebProtobufSyncAction/WAWebProtobufSyncAction.proto";
+import "../WAChatLockSettings/WAChatLockSettings.proto";
+import "../WAE2E/WAE2E.proto";
+import "../WAWeb/WAWeb.proto";
+
+enum MediaVisibility {
+	DEFAULT = 0;
+	OFF = 1;
+	ON = 2;
+}
+
+enum PrivacySystemMessage {
+	E2EE_MSG = 1;
+	NE2EE_SELF = 2;
+	NE2EE_OTHER = 3;
+}
+
+message HistorySync {
+	enum BotAIWaitListState {
+		IN_WAITLIST = 0;
+		AI_AVAILABLE = 1;
+	}
+
+	enum HistorySyncType {
+		INITIAL_BOOTSTRAP = 0;
+		INITIAL_STATUS_V3 = 1;
+		FULL = 2;
+		RECENT = 3;
+		PUSH_NAME = 4;
+		NON_BLOCKING_DATA = 5;
+		ON_DEMAND = 6;
+	}
+
+	required HistorySyncType syncType = 1;
+	repeated Conversation conversations = 2;
+	repeated WAWeb.WebMessageInfo statusV3Messages = 3;
+	optional uint32 chunkOrder = 5;
+	optional uint32 progress = 6;
+	repeated Pushname pushnames = 7;
+	optional GlobalSettings globalSettings = 8;
+	optional bytes threadIDUserSecret = 9;
+	optional uint32 threadDsTimeframeOffset = 10;
+	repeated StickerMetadata recentStickers = 11;
+	repeated PastParticipants pastParticipants = 12;
+	repeated WAWebProtobufSyncAction.CallLogRecord callLogRecords = 13;
+	optional BotAIWaitListState aiWaitListState = 14;
+	repeated PhoneNumberToLIDMapping phoneNumberToLidMappings = 15;
+}
+
+message Conversation {
+	enum EndOfHistoryTransferType {
+		COMPLETE_BUT_MORE_MESSAGES_REMAIN_ON_PRIMARY = 0;
+		COMPLETE_AND_NO_MORE_MESSAGE_REMAIN_ON_PRIMARY = 1;
+		COMPLETE_ON_DEMAND_SYNC_BUT_MORE_MSG_REMAIN_ON_PRIMARY = 2;
+	}
+
+	required string ID = 1;
+	repeated HistorySyncMsg messages = 2;
+	optional string newJID = 3;
+	optional string oldJID = 4;
+	optional uint64 lastMsgTimestamp = 5;
+	optional uint32 unreadCount = 6;
+	optional bool readOnly = 7;
+	optional bool endOfHistoryTransfer = 8;
+	optional uint32 ephemeralExpiration = 9;
+	optional int64 ephemeralSettingTimestamp = 10;
+	optional EndOfHistoryTransferType endOfHistoryTransferType = 11;
+	optional uint64 conversationTimestamp = 12;
+	optional string name = 13;
+	optional string pHash = 14;
+	optional bool notSpam = 15;
+	optional bool archived = 16;
+	optional WAE2E.DisappearingMode disappearingMode = 17;
+	optional uint32 unreadMentionCount = 18;
+	optional bool markedAsUnread = 19;
+	repeated GroupParticipant participant = 20;
+	optional bytes tcToken = 21;
+	optional uint64 tcTokenTimestamp = 22;
+	optional bytes contactPrimaryIdentityKey = 23;
+	optional uint32 pinned = 24;
+	optional uint64 muteEndTime = 25;
+	optional WallpaperSettings wallpaper = 26;
+	optional MediaVisibility mediaVisibility = 27;
+	optional uint64 tcTokenSenderTimestamp = 28;
+	optional bool suspended = 29;
+	optional bool terminated = 30;
+	optional uint64 createdAt = 31;
+	optional string createdBy = 32;
+	optional string description = 33;
+	optional bool support = 34;
+	optional bool isParentGroup = 35;
+	optional string parentGroupID = 37;
+	optional bool isDefaultSubgroup = 36;
+	optional string displayName = 38;
+	optional string pnJID = 39;
+	optional bool shareOwnPn = 40;
+	optional bool pnhDuplicateLidThread = 41;
+	optional string lidJID = 42;
+	optional string username = 43;
+	optional string lidOriginType = 44;
+	optional uint32 commentsCount = 45;
+	optional bool locked = 46;
+	optional PrivacySystemMessage systemMessageToInsert = 47;
+}
+
+message GroupParticipant {
+	enum Rank {
+		REGULAR = 0;
+		ADMIN = 1;
+		SUPERADMIN = 2;
+	}
+
+	required string userJID = 1;
+	optional Rank rank = 2;
+}
+
+message PastParticipant {
+	enum LeaveReason {
+		LEFT = 0;
+		REMOVED = 1;
+	}
+
+	optional string userJID = 1;
+	optional LeaveReason leaveReason = 2;
+	optional uint64 leaveTS = 3;
+}
+
+message PhoneNumberToLIDMapping {
+	optional string pnJID = 1;
+	optional string lidJID = 2;
+}
+
+message HistorySyncMsg {
+	optional WAWeb.WebMessageInfo message = 1;
+	optional uint64 msgOrderID = 2;
+}
+
+message Pushname {
+	optional string ID = 1;
+	optional string pushname = 2;
+}
+
+message WallpaperSettings {
+	optional string filename = 1;
+	optional uint32 opacity = 2;
+}
+
+message GlobalSettings {
+	optional WallpaperSettings lightThemeWallpaper = 1;
+	optional MediaVisibility mediaVisibility = 2;
+	optional WallpaperSettings darkThemeWallpaper = 3;
+	optional AutoDownloadSettings autoDownloadWiFi = 4;
+	optional AutoDownloadSettings autoDownloadCellular = 5;
+	optional AutoDownloadSettings autoDownloadRoaming = 6;
+	optional bool showIndividualNotificationsPreview = 7;
+	optional bool showGroupNotificationsPreview = 8;
+	optional int32 disappearingModeDuration = 9;
+	optional int64 disappearingModeTimestamp = 10;
+	optional AvatarUserSettings avatarUserSettings = 11;
+	optional int32 fontSize = 12;
+	optional bool securityNotifications = 13;
+	optional bool autoUnarchiveChats = 14;
+	optional int32 videoQualityMode = 15;
+	optional int32 photoQualityMode = 16;
+	optional NotificationSettings individualNotificationSettings = 17;
+	optional NotificationSettings groupNotificationSettings = 18;
+	optional WAChatLockSettings.ChatLockSettings chatLockSettings = 19;
+}
+
+message AutoDownloadSettings {
+	optional bool downloadImages = 1;
+	optional bool downloadAudio = 2;
+	optional bool downloadVideo = 3;
+	optional bool downloadDocuments = 4;
+}
+
+message StickerMetadata {
+	optional string URL = 1;
+	optional bytes fileSHA256 = 2;
+	optional bytes fileEncSHA256 = 3;
+	optional bytes mediaKey = 4;
+	optional string mimetype = 5;
+	optional uint32 height = 6;
+	optional uint32 width = 7;
+	optional string directPath = 8;
+	optional uint64 fileLength = 9;
+	optional float weight = 10;
+	optional int64 lastStickerSentTS = 11;
+	optional bool isLottie = 12;
+}
+
+message PastParticipants {
+	optional string groupJID = 1;
+	repeated PastParticipant pastParticipants = 2;
+}
+
+message AvatarUserSettings {
+	optional string FBID = 1;
+	optional string password = 2;
+}
+
+message NotificationSettings {
+	optional string messageVibrate = 1;
+	optional string messagePopup = 2;
+	optional string messageLight = 3;
+	optional bool lowPriorityNotifications = 4;
+	optional bool reactionsMuted = 5;
+	optional string callVibrate = 6;
+}
