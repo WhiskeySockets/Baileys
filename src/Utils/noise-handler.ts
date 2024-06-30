@@ -163,7 +163,7 @@ export const makeNoiseHandler = ({
 
 			return frame
 		},
-		decodeFrame: async (newData: Buffer | Uint8Array, onFrame: (buff: Uint8Array | BinaryNode) => void) => {
+		decodeFrame: async(newData: Buffer | Uint8Array, onFrame: (buff: Uint8Array | BinaryNode) => void) => {
 			// the binary protocol uses its own framing mechanism
 			// on top of the WS frames
 			// so we get this data and separate out the frames
