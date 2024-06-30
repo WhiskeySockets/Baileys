@@ -39,6 +39,8 @@ export type SocketConfig = {
     logger: Logger
     /** version to connect with */
     version: WAVersion
+    /** Force the use of prekeys in groups */
+    forceGroupsPrekeys:	boolean
     /** override browser config */
     browser: WABrowserDescription
     /** agent used for fetch requests -- uploading/downloading media */
