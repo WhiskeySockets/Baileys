@@ -269,6 +269,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				}
 			}
 			break
+		case 'modify':
+			const oldNumber = getBinaryNodeChildren(child, 'participant').map(p => p.attrs.jid)
+			msg.messageStubParameters = oldNumber || []
+			msg.messageStubType = WAMessageStubType.GROUP_PARTICIPANT_CHANGE_NUMBER
+			break
 		case 'promote':
 		case 'demote':
 		case 'remove':
