@@ -133,17 +133,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const sendRetryRequest = async(node: BinaryNode, forceIncludeKeys = false) => {
-		const msgId = node.attrs.id
+		const { id: msgId, participant } = node.attrs
 
-		let retryCount = msgRetryCache.get<number>(msgId) || 0
+		const key = `${msgId}:${participant}`
+		let retryCount = msgRetryCache.get<number>(key) || 0
 		if(retryCount >= maxMsgRetryCount) {
 			logger.debug({ retryCount, msgId }, 'reached retry limit, clearing')
-			msgRetryCache.del(msgId)
+			msgRetryCache.del(key)
 			return
 		}
 
 		retryCount += 1
-		msgRetryCache.set(msgId, retryCount)
+		msgRetryCache.set(key, retryCount)
 
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
 
