@@ -556,11 +556,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 				if(sendToAll) {
 					msgRelayOpts.useUserDevicesCache = false
-				} else {
-					msgRelayOpts.participant = {
+				}
+				msgRelayOpts.participant = {
 						jid: participant,
 						count: +retryNode.attrs.count
-					}
 				}
 
 				await relayMessage(key.remoteJid!, msg, msgRelayOpts)
