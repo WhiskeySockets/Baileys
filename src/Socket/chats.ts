@@ -524,22 +524,24 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * type = "preview" for a low res picture
 	 * type = "image for the high res picture"
 	 */
-	const profilePictureUrl = async(jid: string, type: 'preview' | 'image' = 'preview', timeoutMs?: number) => {
-		jid = jidNormalizedUser(jid)
-		const result = await query({
-			tag: 'iq',
-			attrs: {
-				to: jid,
-				type: 'get',
-				xmlns: 'w:profile:picture'
-			},
-			content: [
-				{ tag: 'picture', attrs: { type, query: 'url' } }
-			]
-		}, timeoutMs)
-		const child = getBinaryNodeChild(result, 'picture')
-		return child?.attrs?.url
-	}
+	const profilePictureUrl = async (jid, type = 'preview', timeoutMs) => {
+            var _a;
+            jid = (0, WABinary_1.jidNormalizedUser)(jid);
+            const result = await query({
+                tag: 'iq',
+                attrs: {
+                    target: jid,
+                    to: WABinary_1.S_WHATSAPP_NET,
+                    type: 'get',
+                    xmlns: 'w:profile:picture'
+                },
+                content: [
+                    { tag: 'picture', attrs: { type, query: 'url' } }
+                ]
+            }, timeoutMs);
+                const child = (0, WABinary_1.getBinaryNodeChild)(result, 'picture');
+                return (_a = child === null || child === void 0 ? void 0 : child.attrs) === null || _a === void 0 ? void 0 : _a.url;
+        };
 
 	const sendPresenceUpdate = async(type: WAPresence, toJid?: string) => {
 		const me = authState.creds.me!
