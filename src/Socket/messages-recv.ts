@@ -65,6 +65,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		relayMessage,
 		sendReceipt,
 		uploadPreKeys,
+		sendPeerDataOperationMessage,
 	} = sock
 
 	/** this mutex ensures that each retryRequest will wait for the previous one to finish */
@@ -772,6 +773,49 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			sendMessageAck(node)
 		])
 	}
+
+
+  const fetchMessageHistory = async (
+    count: number,
+    oldestMsgKey: WAMessageKey,
+    oldestMsgTimestamp: number | Long
+  ): Promise<string> => {
+    if (!authState.creds.me?.id) {
+		throw new Boom("Not authenticated")
+    }
+
+    const pdoMessage = {
+      historySyncOnDemandRequest: {
+        chatJid: oldestMsgKey.remoteJid,
+        oldestMsgFromMe: oldestMsgKey.fromMe,
+        oldestMsgId: oldestMsgKey.id,
+        oldestMsgTimestampMs: oldestMsgTimestamp,
+        onDemandMsgCount: count
+      },
+      peerDataOperationRequestType:
+        proto.Message.PeerDataOperationRequestType.HISTORY_SYNC_ON_DEMAND
+    }
+
+    return sendPeerDataOperationMessage(pdoMessage)
+  }
+
+  const requestPlaceholderResend = async (
+    messageKeys: WAMessageKey[]
+  ): Promise<string> => {
+    if (!authState.creds.me?.id) {
+		throw new Boom("Not authenticated")
+    }
+
+    const pdoMessage = {
+      placeholderMessageResendRequest: messageKeys.map(a => ({
+        messageKey: a
+      })),
+      peerDataOperationRequestType:
+        proto.Message.PeerDataOperationRequestType.PLACEHOLDER_MESSAGE_RESEND
+    }
+
+    return sendPeerDataOperationMessage(pdoMessage)
+  }
 
 	const handleCall = async(node: BinaryNode) => {
 		const { attrs } = node

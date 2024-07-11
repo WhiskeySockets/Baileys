@@ -261,6 +261,61 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return didFetchNewSession
 	}
 
+	const sendPeerDataOperationMessage = async (
+		pdoMessage: proto.Message.IPeerDataOperationRequestMessage
+	): Promise<string> => {
+		if (!authState.creds.me?.id) {
+			throw new Boom("Not authenticated")
+		}
+
+		const protocolMessage: proto.IMessage = {
+			protocolMessage: {
+				peerDataOperationRequestMessage: pdoMessage,
+				type: proto.Message.ProtocolMessage.Type
+				.PEER_DATA_OPERATION_REQUEST_MESSAGE
+			}
+		}
+		const data = encodeWAMessage(protocolMessage)
+
+		const meJid = jidNormalizedUser(authState.creds.me.id)!
+
+		const { type, ciphertext } = await signalRepository.encryptMessage({
+			jid: meJid,
+			data
+		}).catch(err => {
+			throw new Boom('Could not encrypt PDO request message. Please check to see if you are properly saving sessions!', err)
+		})
+		
+		if (type !== 'msg' || !ciphertext) {
+			throw new Boom('Could not encrypt PDO request message. Please check to see if you are properly saving sessions!')
+		}
+
+		const message: BinaryNode = {
+			tag: 'message',
+			attrs: {
+				to: meJid,
+				category: 'peer',
+				push_priority: 'high_force',
+				id: generateMessageIDV2(sock.user?.id),
+				type: 'text'
+			},
+			content: [
+				{
+				tag: 'enc',
+				attrs: {
+					type,
+					v: '2'
+				},
+				content: ciphertext
+				}
+			]
+		}
+
+		await sendNode(message)
+		
+		return message.attrs.id
+	}
+
 	const createParticipantNodes = async(
 		jids: string[],
 		message: proto.IMessage,
@@ -646,8 +701,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		getButtonArgs,
 		readMessages,
 		refreshMediaConn,
-	    	waUploadToServer,
+		waUploadToServer,
 		fetchPrivacySettings,
+		sendPeerDataOperationMessage,
 		updateMediaMessage: async(message: proto.IWebMessageInfo) => {
 			const content = assertMediaContent(message.message)
 			const mediaKey = content.mediaKey!
