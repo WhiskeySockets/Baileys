@@ -524,6 +524,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * type = "preview" for a low res picture
 	 * type = "image for the high res picture"
 	 */
+  
 const profilePictureUrl = async (jid, type = 'preview', timeoutMs) => {
 var _a;
 jid = (0, WABinary_1.jidNormalizedUser)(jid);
