@@ -437,7 +437,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							devices.push({ user: meUser })
 						}
 
-						const additionalDevices = await getUSyncDevices([ meId, jid ], !!useUserDevicesCache, true)
+						const additionalDevices = await getUSyncDevices([ meId, jid ], !!useUserDevicesCache, false)
 						devices.push(...additionalDevices)
 					}
 
