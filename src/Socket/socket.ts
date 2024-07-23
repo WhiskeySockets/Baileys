@@ -497,7 +497,7 @@ export const makeSocket = (config: SocketConfig) => {
 		if(delayMs) {
 			await delay(delayMs)
 		}
-		
+
 		authState.creds.pairingCode = bytesToCrockford(randomBytes(5))
 		authState.creds.me = {
 			id: jidEncode(phoneNumber, 's.whatsapp.net'),
