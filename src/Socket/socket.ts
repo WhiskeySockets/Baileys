@@ -6,13 +6,13 @@ import { proto } from '../../WAProto'
 import {
 	DEF_CALLBACK_PREFIX,
 	DEF_TAG_PREFIX,
+	DEFAULT_DELAY_PAIRINGCODE,
 	INITIAL_PREKEY_COUNT,
 	MIN_PREKEY_COUNT,
 	MOBILE_ENDPOINT,
 	MOBILE_NOISE_HEADER,
 	MOBILE_PORT,
-	NOISE_WA_HEADER,
-	DEFAULT_DELAY_PAIRINGCODE
+	NOISE_WA_HEADER
 } from '../Defaults'
 import { DisconnectReason, SocketConfig } from '../Types'
 import {
@@ -497,6 +497,7 @@ export const makeSocket = (config: SocketConfig) => {
 		if(delayMs) {
 			await delay(delayMs)
 		}
+		
 		authState.creds.pairingCode = bytesToCrockford(randomBytes(5))
 		authState.creds.me = {
 			id: jidEncode(phoneNumber, 's.whatsapp.net'),
