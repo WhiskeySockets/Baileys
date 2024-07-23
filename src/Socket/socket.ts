@@ -11,7 +11,8 @@ import {
 	MOBILE_ENDPOINT,
 	MOBILE_NOISE_HEADER,
 	MOBILE_PORT,
-	NOISE_WA_HEADER
+	NOISE_WA_HEADER,
+	DEFAULT_DELAY_PAIRINGCODE
 } from '../Defaults'
 import { DisconnectReason, SocketConfig } from '../Types'
 import {
@@ -21,6 +22,7 @@ import {
 	bytesToCrockford,
 	configureSuccessfulPairing,
 	Curve,
+	delay,
 	derivePairingCodeKey,
 	generateLoginNode,
 	generateMdTagPrefix,
@@ -488,7 +490,13 @@ export const makeSocket = (config: SocketConfig) => {
 		end(new Boom(msg || 'Intentional Logout', { statusCode: DisconnectReason.loggedOut }))
 	}
 
-	const requestPairingCode = async(phoneNumber: string): Promise<string> => {
+	const requestPairingCode = async(
+		phoneNumber: string,
+		delayMs: number | null = DEFAULT_DELAY_PAIRINGCODE
+	): Promise<string> => {
+		if(delayMs) {
+			await delay(delayMs)
+		}
 		authState.creds.pairingCode = bytesToCrockford(randomBytes(5))
 		authState.creds.me = {
 			id: jidEncode(phoneNumber, 's.whatsapp.net'),

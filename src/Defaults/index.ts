@@ -129,3 +129,5 @@ export const DEFAULT_CACHE_TTLS = {
 	CALL_OFFER: 5 * 60, // 5 minutes
 	USER_DEVICES: 5 * 60, // 5 minutes
 }
+
+export const DEFAULT_DELAY_PAIRINGCODE = 2000 // 2 seconds
