@@ -166,7 +166,7 @@ export const decryptMessageNode = (
 								type: e2eType,
 								ciphertext: content
 							})
-								break
+							break
 						case 'plaintext':
 							msgBuffer = content
 							break
@@ -174,7 +174,7 @@ export const decryptMessageNode = (
 							throw new Error(`Unknown e2e type: ${e2eType}`)
 						}
 
-						let msg: proto.IMessage = proto.Message.decode(e2eType !== 'plaintext' ? unpadRandomMax16(msgBuffer): msgBuffer)
+						let msg: proto.IMessage = proto.Message.decode(e2eType !== 'plaintext' ? unpadRandomMax16(msgBuffer) : msgBuffer)
 						msg = msg.deviceSentMessage?.message || msg
 						if(msg.senderKeyDistributionMessage) {
 						    try {
