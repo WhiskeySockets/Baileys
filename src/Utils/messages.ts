@@ -126,7 +126,7 @@ export const prepareWAMessageMedia = async(
 			!!uploadData.media.url &&
 			!!options.mediaCache && (
 	// generate the key
-		mediaType + ':' + uploadData.media.url!.toString()
+		mediaType + ':' + uploadData.media.url.toString()
 	)
 
 	if(mediaType === 'document' && !uploadData.fileName) {
@@ -396,6 +396,25 @@ export const generateWAMessageContent = async(
 			(message.disappearingMessagesInChat ? WA_DEFAULT_EPHEMERAL : 0) :
 			message.disappearingMessagesInChat
 		m = prepareDisappearingMessageSettingContent(exp)
+	} else if('groupInvite' in message) {
+		m.groupInviteMessage = {}
+		m.groupInviteMessage.inviteCode = message.groupInvite.inviteCode
+		m.groupInviteMessage.inviteExpiration = message.groupInvite.inviteExpiration
+		m.groupInviteMessage.caption = message.groupInvite.text
+
+		m.groupInviteMessage.groupJid = message.groupInvite.jid
+		m.groupInviteMessage.groupName = message.groupInvite.subject
+		//TODO: use built-in interface and get disappearing mode info etc.
+		//TODO: cache / use store!?
+		if(options.getProfilePicUrl) {
+			const pfpUrl = await options.getProfilePicUrl(message.groupInvite.jid, 'preview')
+			if(pfpUrl) {
+				const resp = await axios.get(pfpUrl, { responseType: 'arraybuffer' })
+				if(resp.status === 200) {
+					m.groupInviteMessage.jpegThumbnail = resp.data
+				}
+			}
+		}
 	} else if('buttonReply' in message) {
 		switch (message.type) {
 		case 'template':
@@ -475,7 +494,7 @@ export const generateWAMessageContent = async(
 
 	if('buttons' in message && !!message.buttons) {
 		const buttonsMessage: proto.Message.IButtonsMessage = {
-			buttons: message.buttons!.map(b => ({ ...b, type: proto.Message.ButtonsMessage.Button.Type.RESPONSE }))
+			buttons: message.buttons.map(b => ({ ...b, type: proto.Message.ButtonsMessage.Button.Type.RESPONSE }))
 		}
 		if('text' in message) {
 			buttonsMessage.contentText = message.text
@@ -730,7 +749,7 @@ export const extractMessageContent = (content: WAMessageContent | undefined | nu
 	content = normalizeMessageContent(content)
 
 	if(content?.buttonsMessage) {
-	  return extractFromTemplateMessage(content.buttonsMessage!)
+	  return extractFromTemplateMessage(content.buttonsMessage)
 	}
 
 	if(content?.templateMessage?.hydratedFourRowTemplate) {
