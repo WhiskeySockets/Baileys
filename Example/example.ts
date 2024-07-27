@@ -11,7 +11,7 @@ const logger = P({ timestamp: () => `,"time":"${new Date().toJSON()}"` }, P.dest
 logger.level = 'trace'
 
 const useStore = !process.argv.includes('--no-store')
-const doReplies = !process.argv.includes('--no-reply')
+const doReplies = process.argv.includes('--do-reply')
 const usePairingCode = process.argv.includes('--use-pairing-code')
 const useMobile = process.argv.includes('--mobile')
 
