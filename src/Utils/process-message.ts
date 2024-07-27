@@ -273,6 +273,9 @@ const processMessage = async(
 					const { placeholderMessageResendResponse: retryResponse } = result
 					if(retryResponse) {
 						const webMessageInfo = proto.WebMessageInfo.decode(retryResponse.webMessageInfoBytes!)
+						// maybe messages.upsert is not ideal here - though it's upsert so people should handle already existing messages
+						// the message might come before requesting to the phone and that could be an issue here.
+						// in that case we get 2 events for the same message - or almost same, since the phone can omit or add info
 						ev.emit('messages.upsert', {
 							messages: [
 								webMessageInfo

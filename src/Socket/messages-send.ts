@@ -264,6 +264,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	const sendPeerDataOperationMessage = async(
 		pdoMessage: proto.Message.IPeerDataOperationRequestMessage
 	): Promise<string> => {
+		//TODO: for later, abstract the logic to send a Peer Message instead of just PDO - useful for App State Key Resync with phone
 		if(!authState.creds.me?.id) {
 			throw new Boom('Not authenticated')
 		}

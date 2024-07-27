@@ -1,12 +1,13 @@
 import { Boom } from '@hapi/boom'
 import NodeCache from 'node-cache'
 import readline from 'readline'
-import makeWASocket, { AnyMessageContent, BinaryInfo, delay, DisconnectReason, downloadAndProcessHistorySyncNotification, encodeWAM, fetchLatestBaileysVersion, getAggregateVotesInPollMessage, getHistoryMsg, makeCacheableSignalKeyStore, makeInMemoryStore, PHONENUMBER_MCC, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
-import MAIN_LOGGER from '../src/Utils/logger'
+import makeWASocket, { AnyMessageContent, BinaryInfo, delay, DisconnectReason, downloadAndProcessHistorySyncNotification, encodeWAM, fetchLatestBaileysVersion, getAggregateVotesInPollMessage, getHistoryMsg, isJidNewsletter, makeCacheableSignalKeyStore, makeInMemoryStore, PHONENUMBER_MCC, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
+//import MAIN_LOGGER from '../src/Utils/logger'
 import open from 'open'
 import fs from 'fs'
+import P from 'pino'
 
-const logger = MAIN_LOGGER.child({})
+const logger = P({ timestamp: () => `,"time":"${new Date().toJSON()}"` }, P.destination('./wa-logs.txt'))
 logger.level = 'trace'
 
 const useStore = !process.argv.includes('--no-store')
@@ -285,7 +286,7 @@ const startSock = async() => {
 						  } */
 
 
-						if(!msg.key.fromMe && doReplies) {
+						if(!msg.key.fromMe && doReplies && !isJidNewsletter(msg.key?.remoteJid!)) {
 							console.log('replying to', msg.key.remoteJid)
 							await sock!.readMessages([msg.key])
 							await sendMessageWTyping({ text: 'Hello there!' }, msg.key.remoteJid!)
