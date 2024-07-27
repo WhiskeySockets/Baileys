@@ -266,7 +266,7 @@ const processMessage = async(
 			break
 		case proto.Message.ProtocolMessage.Type.PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE:
 			const response = protocolMsg.peerDataOperationRequestResponseMessage!
-				if (response) {
+			if (response) {
 				// TODO: IMPLEMENT HISTORY SYNC ETC (sticker uploads etc.).
 				const { peerDataOperationResult } = response
 				for(const result of peerDataOperationResult!) {
@@ -277,7 +277,7 @@ const processMessage = async(
 							messages: [
 								webMessageInfo
 							],
-							type: "notify" // TODO: DECIDE IF THIS SHOULD BE APPEND OR NOTIFY
+							type: 'notify' // TODO: DECIDE IF THIS SHOULD BE APPEND OR NOTIFY
 						})
 					}
 				}

@@ -787,42 +787,42 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		oldestMsgKey: WAMessageKey,
 		oldestMsgTimestamp: number | Long
 	): Promise<string> => {
-    if(!authState.creds.me?.id) {
-		throw new Boom("Not authenticated")
-    }
+		if(!authState.creds.me?.id) {
+			throw new Boom('Not authenticated')
+		}
 
-    const pdoMessage = {
-      historySyncOnDemandRequest: {
-        chatJid: oldestMsgKey.remoteJid,
-        oldestMsgFromMe: oldestMsgKey.fromMe,
-        oldestMsgId: oldestMsgKey.id,
-        oldestMsgTimestampMs: oldestMsgTimestamp,
-        onDemandMsgCount: count
-      },
-      peerDataOperationRequestType:
-        proto.Message.PeerDataOperationRequestType.HISTORY_SYNC_ON_DEMAND
-    }
+		const pdoMessage = {
+			historySyncOnDemandRequest: {
+				chatJid: oldestMsgKey.remoteJid,
+				oldestMsgFromMe: oldestMsgKey.fromMe,
+				oldestMsgId: oldestMsgKey.id,
+				oldestMsgTimestampMs: oldestMsgTimestamp,
+				onDemandMsgCount: count
+			},
+			peerDataOperationRequestType: proto.Message.PeerDataOperationRequestType.HISTORY_SYNC_ON_DEMAND
+		}
 
-    return sendPeerDataOperationMessage(pdoMessage)
-  }
+		return sendPeerDataOperationMessage(pdoMessage)
+	}
 
-  const requestPlaceholderResend = async (
-    messageKeys: WAMessageKey[]
-  ): Promise<string> => {
-    if(!authState.creds.me?.id) {
-		throw new Boom("Not authenticated")
-    }
+	const requestPlaceholderResend = async(
+		messageKeys: WAMessageKey[]
+	): Promise<string> => {
+		// TODO: implement locking / cache to prevent multiple requests
+		// TODO: implement 5 second delay
+		if(!authState.creds.me?.id) {
+			throw new Boom('Not authenticated')
+		}
 
-    const pdoMessage = {
-      placeholderMessageResendRequest: messageKeys.map(a => ({
-        messageKey: a
-      })),
-      peerDataOperationRequestType:
-        proto.Message.PeerDataOperationRequestType.PLACEHOLDER_MESSAGE_RESEND
-    }
+		const pdoMessage = {
+			placeholderMessageResendRequest: messageKeys.map(a => ({
+				messageKey: a
+			})),
+			peerDataOperationRequestType: proto.Message.PeerDataOperationRequestType.PLACEHOLDER_MESSAGE_RESEND
+		}
 
-    return sendPeerDataOperationMessage(pdoMessage)
-  }
+		return sendPeerDataOperationMessage(pdoMessage)
+	}
 
 	const handleCall = async(node: BinaryNode) => {
 		const { attrs } = node

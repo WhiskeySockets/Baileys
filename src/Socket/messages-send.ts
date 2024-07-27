@@ -261,30 +261,30 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return didFetchNewSession
 	}
 
-	const sendPeerDataOperationMessage = async (
+	const sendPeerDataOperationMessage = async(
 		pdoMessage: proto.Message.IPeerDataOperationRequestMessage
 	): Promise<string> => {
 		if(!authState.creds.me?.id) {
-			throw new Boom("Not authenticated")
+			throw new Boom('Not authenticated')
 		}
 
 		const protocolMessage: proto.IMessage = {
 			protocolMessage: {
 				peerDataOperationRequestMessage: pdoMessage,
-				type: proto.Message.ProtocolMessage.Type
-				.PEER_DATA_OPERATION_REQUEST_MESSAGE
+				type: proto.Message.ProtocolMessage.Type.PEER_DATA_OPERATION_REQUEST_MESSAGE
 			}
 		}
-		
+
 		const meJid = jidNormalizedUser(authState.creds.me.id)!
-		
+
 		const msgId = await relayMessage(meJid, protocolMessage, {
-			additionalAttributes: { 
+			additionalAttributes: {
 				category: 'peer',
+				// eslint-disable-next-line camelcase
 				push_priority: 'high_force',
 			},
 		})
-		
+
 		return msgId
 	}
 
@@ -464,7 +464,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							devices.push({ user: meUser })
 						}
 
-						if(!(additionalAttributes?.["category"] === "peer" && user === meUser)) {
+						if(!(additionalAttributes?.['category'] === 'peer' && user === meUser)) {
 							const additionalDevices = await getUSyncDevices([ meId, jid ], !!useUserDevicesCache, true)
 							devices.push(...additionalDevices)
 						}
