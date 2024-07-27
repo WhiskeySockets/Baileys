@@ -1,0 +1,22 @@
+syntax = "proto3";
+package WAReporting;
+
+message Reportable {
+	uint32 minVersion = 1;
+	uint32 maxVersion = 2;
+	uint32 notReportableMinVersion = 3;
+	bool never = 4;
+}
+
+message Config {
+	map<uint32, Field> field = 1;
+	uint32 version = 2;
+}
+
+message Field {
+	uint32 minVersion = 1;
+	uint32 maxVersion = 2;
+	uint32 notReportableMinVersion = 3;
+	bool isMessage = 4;
+	map<uint32, Field> subfield = 5;
+}
