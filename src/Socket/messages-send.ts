@@ -264,7 +264,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	const sendPeerDataOperationMessage = async (
 		pdoMessage: proto.Message.IPeerDataOperationRequestMessage
 	): Promise<string> => {
-		if (!authState.creds.me?.id) {
+		if(!authState.creds.me?.id) {
 			throw new Boom("Not authenticated")
 		}
 
@@ -464,7 +464,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							devices.push({ user: meUser })
 						}
 
-						if (!(additionalAttributes?.["category"] === "peer" && user === meUser)) {
+						if(!(additionalAttributes?.["category"] === "peer" && user === meUser)) {
 							const additionalDevices = await getUSyncDevices([ meId, jid ], !!useUserDevicesCache, true)
 							devices.push(...additionalDevices)
 						}

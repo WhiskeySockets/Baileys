@@ -41,7 +41,6 @@ import {
 } from '../WABinary'
 import { extractGroupMetadata } from './groups'
 import { makeMessagesSocket } from './messages-send'
-import { request } from 'axios'
 
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const {
@@ -136,7 +135,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const sendRetryRequest = async(node: BinaryNode, forceIncludeKeys = false) => {
 		const { fullMessage } = decodeMessageNode(node, authState.creds.me!.id, authState.creds.me!.lid || '')
-		const { key: msgKey } = fullMessage; 
+		const { key: msgKey } = fullMessage
 		const msgId = msgKey.id!
 
 		const key = `${msgId}:${msgKey?.participant}`
@@ -152,10 +151,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
 
-		if (retryCount == 1) {
+		if(retryCount === 1) {
 			//request a resend via phone
-			const msgId = await requestPlaceholderResend([msgKey]);
-			logger.debug(`requested placeholder resend for message ${msgId}`);
+			const msgId = await requestPlaceholderResend([msgKey])
+			logger.debug(`requested placeholder resend for message ${msgId}`)
 		}
 
 		const deviceIdentity = encodeSignedDeviceIdentity(account!, true)
@@ -783,13 +782,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		])
 	}
 
-
-  const fetchMessageHistory = async (
-    count: number,
-    oldestMsgKey: WAMessageKey,
-    oldestMsgTimestamp: number | Long
-  ): Promise<string> => {
-    if (!authState.creds.me?.id) {
+	const fetchMessageHistory = async(
+		count: number,
+		oldestMsgKey: WAMessageKey,
+		oldestMsgTimestamp: number | Long
+	): Promise<string> => {
+    if(!authState.creds.me?.id) {
 		throw new Boom("Not authenticated")
     }
 
@@ -811,7 +809,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
   const requestPlaceholderResend = async (
     messageKeys: WAMessageKey[]
   ): Promise<string> => {
-    if (!authState.creds.me?.id) {
+    if(!authState.creds.me?.id) {
 		throw new Boom("Not authenticated")
     }
 
