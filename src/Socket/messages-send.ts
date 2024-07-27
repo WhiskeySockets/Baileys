@@ -275,45 +275,17 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				.PEER_DATA_OPERATION_REQUEST_MESSAGE
 			}
 		}
-		const data = encodeWAMessage(protocolMessage)
-
-		const meJid = jidNormalizedUser(authState.creds.me.id)!
-
-		const { type, ciphertext } = await signalRepository.encryptMessage({
-			jid: meJid,
-			data
-		}).catch(err => {
-			throw new Boom('Could not encrypt PDO request message. Please check to see if you are properly saving sessions!', err)
-		})
 		
-		if (type !== 'msg' || !ciphertext) {
-			throw new Boom('Could not encrypt PDO request message. Please check to see if you are properly saving sessions!')
-		}
-
-		const message: BinaryNode = {
-			tag: 'message',
-			attrs: {
-				to: meJid,
+		const meJid = jidNormalizedUser(authState.creds.me.id)!
+		
+		const msgId = await relayMessage(meJid, protocolMessage, {
+			additionalAttributes: { 
 				category: 'peer',
 				push_priority: 'high_force',
-				id: generateMessageIDV2(sock.user?.id),
-				type: 'text'
 			},
-			content: [
-				{
-				tag: 'enc',
-				attrs: {
-					type,
-					v: '2'
-				},
-				content: ciphertext
-				}
-			]
-		}
-
-		await sendNode(message)
+		})
 		
-		return message.attrs.id
+		return msgId
 	}
 
 	const createParticipantNodes = async(
@@ -492,8 +464,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							devices.push({ user: meUser })
 						}
 
-						const additionalDevices = await getUSyncDevices([ meId, jid ], !!useUserDevicesCache, true)
-						devices.push(...additionalDevices)
+						if (!(additionalAttributes?.["category"] === "peer" && user === meUser)) {
+							const additionalDevices = await getUSyncDevices([ meId, jid ], !!useUserDevicesCache, true)
+							devices.push(...additionalDevices)
+						}
 					}
 
 					const allJids: string[] = []

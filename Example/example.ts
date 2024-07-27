@@ -243,8 +243,9 @@ const startSock = async() => {
 				console.log('recv messages ', JSON.stringify(upsert, undefined, 2))
 
 				if(upsert.type === 'notify') {
-					for(const msg of upsert.messages) {
-						if (
+					for (const msg of upsert.messages) {
+						//TODO: More built-in implementation of this
+						/* if (
 							msg.message?.protocolMessage?.type ===
 							proto.Message.ProtocolMessage.Type.HISTORY_SYNC_NOTIFICATION
 						  ) {
@@ -280,9 +281,8 @@ const startSock = async() => {
 									oldestMessageTimestamp
 								)
 								onDemandMap.set(messageId, chatId)
-							  */
 							}
-						  }
+						  } */
 
 
 						if(!msg.key.fromMe && doReplies) {
