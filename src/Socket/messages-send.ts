@@ -9,6 +9,7 @@ import { getUrlInfo } from '../Utils/link-preview'
 import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, isJidUser, jidDecode, jidEncode, jidNormalizedUser, JidWithDevice, S_WHATSAPP_NET } from '../WABinary'
 import { makeGroupsSocket } from './groups'
 import ListType = proto.Message.ListMessage.ListType;
+import { USyncQuery, USyncUser } from '../WAUSync'
 
 export const makeMessagesSocket = (config: SocketConfig) => {
 	const {
@@ -27,7 +28,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		upsertMessage,
 		query,
 		fetchPrivacySettings,
-		generateMessageTag,
 		sendNode,
 		groupMetadata,
 		groupToggleEphemeral
@@ -144,72 +144,54 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			logger.debug('not using cache for devices')
 		}
 
-		const users: BinaryNode[] = []
+		const toFetch: string[] = []
 		jids = Array.from(new Set(jids))
+
 		for(let jid of jids) {
 			const user = jidDecode(jid)?.user
 			jid = jidNormalizedUser(jid)
+			if(useCache) {
+				const devices = userDevicesCache.get<JidWithDevice[]>(user!)
+				if(devices) {
+					deviceResults.push(...devices)
 
-			const devices = userDevicesCache.get<JidWithDevice[]>(user!)
-			if(devices && useCache) {
-				deviceResults.push(...devices)
-
-				logger.trace({ user }, 'using cache for devices')
+					logger.trace({ user }, 'using cache for devices')
+				} else {
+					toFetch.push(jid)
+				}
 			} else {
-				users.push({ tag: 'user', attrs: { jid } })
+				toFetch.push(jid)
 			}
 		}
 
-		if(!users.length) {
+		if(!toFetch.length) {
 			return deviceResults
 		}
 
-		const iq: BinaryNode = {
-			tag: 'iq',
-			attrs: {
-				to: S_WHATSAPP_NET,
-				type: 'get',
-				xmlns: 'usync',
-			},
-			content: [
-				{
-					tag: 'usync',
-					attrs: {
-						sid: generateMessageTag(),
-						mode: 'query',
-						last: 'true',
-						index: '0',
-						context: 'message',
-					},
-					content: [
-						{
-							tag: 'query',
-							attrs: { },
-							content: [
-								{
-									tag: 'devices',
-									attrs: { version: '2' }
-								}
-							]
-						},
-						{ tag: 'list', attrs: { }, content: users }
-					]
-				},
-			],
-		}
-		const result = await query(iq)
-		const extracted = extractDeviceJids(result, authState.creds.me!.id, ignoreZeroDevices)
-		const deviceMap: { [_: string]: JidWithDevice[] } = {}
+		const query = new USyncQuery()
+			.withContext('message')
+			.withDeviceProtocol()
 
-		for(const item of extracted) {
-			deviceMap[item.user] = deviceMap[item.user] || []
-			deviceMap[item.user].push(item)
-
-			deviceResults.push(item)
+		for(const jid of toFetch) {
+			query.withUser(new USyncUser().withId(jid))
 		}
 
-		for(const key in deviceMap) {
-			userDevicesCache.set(key, deviceMap[key])
+		const result = await sock.executeUSyncQuery(query)
+
+		if(result) {
+			const extracted = extractDeviceJids(result?.list, authState.creds.me!.id, ignoreZeroDevices)
+			const deviceMap: { [_: string]: JidWithDevice[] } = {}
+
+			for(const item of extracted) {
+				deviceMap[item.user] = deviceMap[item.user] || []
+				deviceMap[item.user].push(item)
+
+				deviceResults.push(item)
+			}
+
+			for(const key in deviceMap) {
+				userDevicesCache.set(key, deviceMap[key])
+			}
 		}
 
 		return deviceResults
@@ -679,7 +661,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 									}
 
 									content.directPath = media.directPath
-									content.url = getUrlFromDirectPath(content.directPath!)
+									content.url = getUrlFromDirectPath(content.directPath)
 
 									logger.debug({ directPath: media.directPath, key: result.key }, 'media update successful')
 								} catch(err) {
