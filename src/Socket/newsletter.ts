@@ -1,21 +1,7 @@
-import { NewsletterFetchedUpdate, NewsletterMetadata, NewsletterReaction, NewsletterReactionMode, NewsletterViewRole, SocketConfig, WAMediaUpload, XWAPaths } from '../Types'
+import { NewsletterFetchedUpdate, NewsletterMetadata, NewsletterReaction, NewsletterReactionMode, NewsletterViewRole, QueryIds, SocketConfig, WAMediaUpload, XWAPaths } from '../Types'
 import { decryptMessageNode, generateMessageID, generateProfilePicture } from '../Utils'
 import { BinaryNode, getAllBinaryNodeChildren, getBinaryNodeChild, getBinaryNodeChildren, S_WHATSAPP_NET } from '../WABinary'
 import { makeGroupsSocket } from './groups'
-
-enum QueryIds {
-    JOB_MUTATION = '7150902998257522',
-    METADATA = '6620195908089573',
-    UNFOLLOW = '7238632346214362',
-    FOLLOW = '7871414976211147',
-    UNMUTE = '7337137176362961',
-    MUTE = '25151904754424642',
-    CREATE = '6996806640408138',
-    ADMIN_COUNT = '7130823597031706',
-    CHANGE_OWNER = '7341777602580933',
-    DELETE = '8316537688363079',
-    DEMOTE = '6551828931592903'
-}
 
 export const makeNewsletterSocket = (config: SocketConfig) => {
 	const sock = makeGroupsSocket(config)
@@ -49,7 +35,14 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 				{
 					tag: 'query',
 					attrs: { 'query_id': queryId },
-					content: encoder.encode(JSON.stringify({ variables: { 'newsletter_id': jid, ...content } }))
+					content: encoder.encode(
+						JSON.stringify({
+							variables: {
+								'newsletter_id': jid,
+								...content
+							}
+						})
+					)
 				}
 			]
 		})
@@ -68,12 +61,17 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 		return await Promise.all(getAllBinaryNodeChildren(child).map(async messageNode => {
 			messageNode.attrs.from = child?.attrs.jid as string
 
-			const views = getBinaryNodeChild(messageNode, 'views_count')?.attrs?.count
+			const views = parseInt(getBinaryNodeChild(messageNode, 'views_count')?.attrs?.count || '0')
 			const reactionNode = getBinaryNodeChild(messageNode, 'reactions')
 			const reactions = getBinaryNodeChildren(reactionNode, 'reaction')
 				.map(({ attrs }) => ({ count: +attrs.count, code: attrs.code } as NewsletterReaction))
 
-			let data: NewsletterFetchedUpdate
+			const data: NewsletterFetchedUpdate = {
+				'server_id': messageNode.attrs.server_id,
+				views,
+				reactions
+			}
+
 			if(type === 'messages') {
 				const { fullMessage: message, decrypt } = await decryptMessageNode(
 					messageNode,
@@ -85,24 +83,10 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 
 				await decrypt()
 
-				data = {
-					'server_id': messageNode.attrs.server_id,
-					views: views ? +views : undefined,
-					reactions,
-					message
-				}
-
-				return data
-			} else {
-				data = {
-					'server_id': messageNode.attrs.server_id,
-					views: views ? +views : undefined,
-					reactions
-				}
-
-				return data
+				data.message = message
 			}
 
+			return data
 		}))
 	}
 
@@ -146,23 +130,12 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 			})
 		},
 
-		newsletterUnfollow: async(jid: string) => {
-			await newsletterWMexQuery(jid, QueryIds.UNFOLLOW)
-		},
-
-		newsletterFollow: async(jid: string) => {
-			await newsletterWMexQuery(jid, QueryIds.FOLLOW)
-		},
-
-		newsletterUnmute: async(jid: string) => {
-			await newsletterWMexQuery(jid, QueryIds.UNMUTE)
-		},
-
-		newsletterMute: async(jid: string) => {
-			await newsletterWMexQuery(jid, QueryIds.MUTE)
+		newsletterAction: async(jid: string, type: 'follow' | 'unfollow' | 'mute' | 'unmute') => {
+			await newsletterWMexQuery(jid, type.toUpperCase() as QueryIds)
 		},
 
 		newsletterCreate: async(name: string, description: string) => {
+			//TODO: Implement TOS system wide for Meta AI, communities, and here etc.
 			/**tos query */
 			await query({
 				tag: 'iq',

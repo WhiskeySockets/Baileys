@@ -4,7 +4,7 @@ import { randomBytes } from 'crypto'
 import NodeCache from 'node-cache'
 import { proto } from '../../WAProto'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
-import { MessageReceiptType, MessageRelayOptions, MessageUserReceipt, MexOperations, NewsletterSettingsUpdate, SocketConfig, WACallEvent, WAMessageKey, WAMessageStatus, WAMessageStubType, WAPatchName, XWAPaths } from '../Types'
+import { MessageReceiptType, MessageRelayOptions, MessageUserReceipt, MexOperations, NewsletterSettingsUpdate, SocketConfig, SubscriberAction, WACallEvent, WAMessageKey, WAMessageStatus, WAMessageStubType, WAPatchName, XWAPaths } from '../Types'
 import {
 	aesDecryptCTR,
 	aesEncryptGCM,
@@ -374,24 +374,21 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		let contentPath
 
-		if(operation === MexOperations.PROMOTE || operation === MexOperations.DEMOTE) {
-			let action
+		if(operation === MexOperations.UPDATE) {
+			contentPath = content.data[XWAPaths.METADATA_UPDATE]
+			ev.emit('newsletter-settings.update', { id, update: contentPath.thread_metadata.settings as NewsletterSettingsUpdate })
+		} else {
+			let action: SubscriberAction
+
 			if(operation === MexOperations.PROMOTE) {
 				action = 'promote'
 				contentPath = content.data[XWAPaths.PROMOTE]
-			}
-
-			if(operation === MexOperations.DEMOTE) {
+			} else {
 				action = 'demote'
 				contentPath = content.data[XWAPaths.DEMOTE]
 			}
 
 			ev.emit('newsletter-participants.update', { id, author: contentPath.actor.pn, user: contentPath.user.pn, 'new_role': contentPath.user_new_role, action })
-		}
-
-		if(operation === MexOperations.UPDATE) {
-			contentPath = content.data[XWAPaths.METADATA_UPDATE]
-			ev.emit('newsletter-settings.update', { id, update: contentPath.thread_metadata.settings as NewsletterSettingsUpdate })
 		}
 	}
 
