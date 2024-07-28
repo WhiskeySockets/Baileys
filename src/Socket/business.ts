@@ -270,6 +270,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 
 	return {
 		...sock,
+		logger: config.logger,
 		getOrderDetails,
 		getCatalog,
 		getCollections,

@@ -18,11 +18,13 @@ export const makeNoiseHandler = ({
 	NOISE_HEADER,
 	mobile,
 	logger,
+	routingInfo
 }: {
 	keyPair: KeyPair
 	NOISE_HEADER: Uint8Array
 	mobile: boolean
 	logger: Logger
+	routingInfo?: Buffer | undefined
 }) => {
 	logger = logger.child({ class: 'ns' })
 
@@ -133,11 +135,25 @@ export const makeNoiseHandler = ({
 				data = encrypt(data)
 			}
 
-			const introSize = sentIntro ? 0 : NOISE_HEADER.length
+			let header: Buffer
+
+			if(routingInfo) {
+				header = Buffer.alloc(7)
+				header.write('ED', 0, 'utf8')
+				header.writeUint8(0, 2)
+				header.writeUint8(1, 3)
+				header.writeUint8(routingInfo.byteLength >> 16, 4)
+				header.writeUint16BE(routingInfo.byteLength & 65535, 5)
+				header = Buffer.concat([header, routingInfo, NOISE_HEADER])
+			} else {
+				header = Buffer.from(NOISE_HEADER)
+			}
+
+			const introSize = sentIntro ? 0 : header.length
 			const frame = Buffer.alloc(introSize + 3 + data.byteLength)
 
 			if(!sentIntro) {
-				frame.set(NOISE_HEADER)
+				frame.set(header)
 				sentIntro = true
 			}
 
@@ -147,7 +163,7 @@ export const makeNoiseHandler = ({
 
 			return frame
 		},
-		decodeFrame: (newData: Buffer | Uint8Array, onFrame: (buff: Uint8Array | BinaryNode) => void) => {
+		decodeFrame: async(newData: Buffer | Uint8Array, onFrame: (buff: Uint8Array | BinaryNode) => void) => {
 			// the binary protocol uses its own framing mechanism
 			// on top of the WS frames
 			// so we get this data and separate out the frames
@@ -168,7 +184,7 @@ export const makeNoiseHandler = ({
 
 				if(isFinished) {
 					const result = decrypt(frame as Uint8Array)
-					frame = decodeBinaryNode(result)
+					frame = await decodeBinaryNode(result)
 				}
 
 				logger.trace({ msg: (frame as any)?.attrs?.id }, 'recv frame')

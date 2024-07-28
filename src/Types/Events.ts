@@ -4,7 +4,7 @@ import { AuthenticationCreds } from './Auth'
 import { WACallEvent } from './Call'
 import { Chat, ChatUpdate, PresenceData } from './Chat'
 import { Contact } from './Contact'
-import { GroupMetadata, ParticipantAction } from './GroupMetadata'
+import { GroupMetadata, ParticipantAction, RequestJoinAction, RequestJoinMethod } from './GroupMetadata'
 import { Label } from './Label'
 import { LabelAssociation } from './LabelAssociation'
 import { MessageUpsertType, MessageUserReceiptUpdate, WAMessage, WAMessageKey, WAMessageUpdate } from './Message'
@@ -53,6 +53,7 @@ export type BaileysEventMap = {
     'groups.update': Partial<GroupMetadata>[]
     /** apply an action to participants in a group */
     'group-participants.update': { id: string, author: string, participants: string[], action: ParticipantAction }
+    'group.join-request': { id: string, author: string, participant: string, action: RequestJoinAction, method: RequestJoinMethod }
 
     'newsletter.reaction': { id: string, server_id: string, reaction: {code?: string, count?: number, removed?: boolean}}
     'newsletter.view': { id: string, server_id: string, count: number}
