@@ -322,7 +322,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 			break
 		case 'membership_approval_mode':
-			const approvalMode: any = getBinaryNodeChild(child, 'group_join')
+			const approvalMode = getBinaryNodeChild(child, 'group_join')
 			if(approvalMode) {
 				msg.messageStubType = WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_MODE
 				msg.messageStubParameters = [ approvalMode.attrs.state ]
@@ -342,29 +342,30 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleNewsletterNotification = (id: string, node: BinaryNode) => {
-        const messages = getBinaryNodeChild(node, 'messages')
-        const message = getBinaryNodeChild(messages, 'message')!
+		const messages = getBinaryNodeChild(node, 'messages')
+		const message = getBinaryNodeChild(messages, 'message')!
 
-        const server_id = message.attrs.server_id
+		const serverId = message.attrs.server_id
 
-        const reactionsList = getBinaryNodeChild(message, 'reactions')
+		const reactionsList = getBinaryNodeChild(message, 'reactions')
 		const viewsList = getBinaryNodeChildren(message, 'views_count')
 
-        if(reactionsList){
+		if(reactionsList) {
 			const reactions = getBinaryNodeChildren(reactionsList, 'reaction')
-			if(reactions.length === 0){
-				ev.emit('newsletter.reaction', {id, server_id, reaction: { removed: true }})
+			if(reactions.length === 0) {
+				ev.emit('newsletter.reaction', { id, 'server_id': serverId, reaction: { removed: true } })
 			}
-			reactions.forEach(item => {
-				ev.emit('newsletter.reaction', {id, server_id, reaction: { code: item.attrs?.code, count: +item.attrs?.count }})
-			})
-        }
 
-        if(viewsList.length){
-			viewsList.forEach(item => {
-            	ev.emit('newsletter.view', {id, server_id, count: +item.attrs.count})
+			reactions.forEach(item => {
+				ev.emit('newsletter.reaction', { id, 'server_id': serverId, reaction: { code: item.attrs?.code, count: +item.attrs?.count } })
 			})
-        }
+		}
+
+		if(viewsList.length) {
+			viewsList.forEach(item => {
+            	ev.emit('newsletter.view', { id, 'server_id': serverId, count: +item.attrs.count })
+			})
+		}
 	}
 
 	const handleMexNewsletterNotification = (id: string, node: BinaryNode) => {
@@ -373,24 +374,24 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		let contentPath
 
-		if(operation === MexOperations.PROMOTE || operation === MexOperations.DEMOTE){
+		if(operation === MexOperations.PROMOTE || operation === MexOperations.DEMOTE) {
 			let action
-			if(operation === MexOperations.PROMOTE){
+			if(operation === MexOperations.PROMOTE) {
 				action = 'promote'
 				contentPath = content.data[XWAPaths.PROMOTE]
 			}
-	
-			if(operation === MexOperations.DEMOTE){
+
+			if(operation === MexOperations.DEMOTE) {
 				action = 'demote'
 				contentPath = content.data[XWAPaths.DEMOTE]
 			}
 
-			ev.emit('newsletter-participants.update', {id, author: contentPath.actor.pn, user: contentPath.user.pn, new_role: contentPath.user_new_role, action})
+			ev.emit('newsletter-participants.update', { id, author: contentPath.actor.pn, user: contentPath.user.pn, 'new_role': contentPath.user_new_role, action })
 		}
 
-		if(operation === MexOperations.UPDATE){
+		if(operation === MexOperations.UPDATE) {
 			contentPath = content.data[XWAPaths.METADATA_UPDATE]
-			ev.emit('newsletter-settings.update', {id, update: contentPath.thread_metadata.settings as NewsletterSettingsUpdate})
+			ev.emit('newsletter-settings.update', { id, update: contentPath.thread_metadata.settings as NewsletterSettingsUpdate })
 		}
 	}
 
@@ -418,7 +419,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			break
 		case 'newsletter':
 			handleNewsletterNotification(node.attrs.from, child)
-		break
+			break
 		case 'mex':
 			handleMexNewsletterNotification(node.attrs.from, child)
 			break
@@ -758,7 +759,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleMessage = async(node: BinaryNode) => {
-		if(shouldIgnoreJid(node.attrs.from!) && node.attrs.from! !== '@s.whatsapp.net') {
+		if(shouldIgnoreJid(node.attrs.from) && node.attrs.from !== '@s.whatsapp.net') {
 			logger.debug({ key: node.attrs.key }, 'ignored message')
 			await sendMessageAck(node)
 			return
@@ -873,7 +874,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleBadAck = async({ attrs }: BinaryNode) => {
-		const key: WAMessageKey = { remoteJid: attrs.from, fromMe: true, id: attrs.id, server_id: attrs?.server_id }
+		const key: WAMessageKey = { remoteJid: attrs.from, fromMe: true, id: attrs.id, 'server_id': attrs?.server_id }
 		// current hypothesis is that if pash is sent in the ack
 		// it means -- the message hasn't reached all devices yet
 		// we'll retry sending the message here

@@ -8,8 +8,8 @@ import { GroupMetadata, ParticipantAction, RequestJoinAction, RequestJoinMethod 
 import { Label } from './Label'
 import { LabelAssociation } from './LabelAssociation'
 import { MessageUpsertType, MessageUserReceiptUpdate, WAMessage, WAMessageKey, WAMessageUpdate } from './Message'
+import { NewsletterSettingsUpdate, NewsletterViewRole, SubscriberAction } from './Newsletter'
 import { ConnectionState } from './State'
-import { NewsletterSettingsUpdate, SubscriberAction, NewsletterViewRole } from './Newsletter'
 
 export type BaileysEventMap = {
     /** connection state has been updated -- WS closed, opened, connecting etc. */

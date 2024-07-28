@@ -64,7 +64,7 @@ export function decodeMessageNode(
 		msgType = 'group'
 		author = participant
 		chatId = from
-	} else if(isJidNewsletter(from)){
+	} else if(isJidNewsletter(from)) {
 		msgType = 'newsletter'
 		author = from
 		chatId = from
@@ -82,6 +82,10 @@ export function decodeMessageNode(
 
 		chatId = from
 		author = participant
+	} else if(isJidNewsletter(from)) {
+		msgType = 'newsletter'
+		chatId = from
+		author = from
 	} else {
 		throw new Boom('Unknown message type', { data: stanza })
 	}
@@ -94,7 +98,7 @@ export function decodeMessageNode(
 		fromMe,
 		id: msgId,
 		participant,
-		server_id: stanza.attrs?.server_id
+		'server_id': stanza.attrs?.server_id
 	}
 
 	const fullMessage: proto.IWebMessageInfo = {
@@ -150,7 +154,7 @@ export const decryptMessageNode = (
 					let msgBuffer: Uint8Array
 
 					try {
-						const e2eType = attrs.type
+						const e2eType = tag === 'plaintext' ? 'plaintext' : attrs.type
 						switch (e2eType) {
 						case 'skmsg':
 							msgBuffer = await repository.decryptGroupMessage({
@@ -168,16 +172,15 @@ export const decryptMessageNode = (
 								ciphertext: content
 							})
 							break
-						case undefined:
+						case 'plaintext':
 							msgBuffer = content
 							break
 						default:
 							throw new Error(`Unknown e2e type: ${e2eType}`)
 						}
 
-						let msg: proto.IMessage = proto.Message.decode(tag === 'plaintext' ? msgBuffer : unpadRandomMax16(msgBuffer))
-						msg = msg?.deviceSentMessage?.message || msg
-
+						let msg: proto.IMessage = proto.Message.decode(e2eType !== 'plaintext' ? unpadRandomMax16(msgBuffer) : msgBuffer)
+						msg = msg.deviceSentMessage?.message || msg
 						if(msg.senderKeyDistributionMessage) {
 							try {
 								await repository.processSenderKeyDistributionMessage({
@@ -186,7 +189,7 @@ export const decryptMessageNode = (
 								})
 							} catch(err) {
 								logger.error({ key: fullMessage.key, err }, 'failed to decrypt message')
-								}
+							}
 						}
 
 						if(fullMessage.message) {
