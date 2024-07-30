@@ -708,7 +708,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleMessage = async(node: BinaryNode) => {
-		if(shouldIgnoreJid(node.attrs.from!) && node.attrs.from! !== '@s.whatsapp.net') {
+		if(getBinaryNodeChild(node, 'unavailable') && !getBinaryNodeChild(node, 'enc')) {
+			await sendMessageAck(node)
+			const { key } = decodeMessageNode(node, authState.creds.me!.id, authState.creds.me!.lid || '').fullMessage
+			await requestPlaceholderResend([key])
+			logger.debug('received unavailable message, requested resend')
+		}
+
+		if(shouldIgnoreJid(node.attrs.from) && node.attrs.from !== '@s.whatsapp.net') {
 			logger.debug({ key: node.attrs.key }, 'ignored message')
 			await sendMessageAck(node)
 			return
@@ -737,6 +744,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						retryMutex.mutex(
 							async() => {
 								if(ws.isOpen) {
+									if(getBinaryNodeChild(node, 'unavailable')) {
+										return
+									}
+
 									const encNode = getBinaryNodeChild(node, 'enc')
 									await sendRetryRequest(node, !encNode)
 									if(retryRequestDelayMs) {
