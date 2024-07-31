@@ -353,6 +353,11 @@ const processMessage = async(
 			chat.name = name
 			emitGroupUpdate({ subject: name })
 			break
+		case WAMessageStubType.GROUP_CHANGE_DESCRIPTION:
+			const description = message.messageStubParameters?.[0]
+			chat.description = description
+			emitGroupUpdate({ desc: description })
+			break
 		case WAMessageStubType.GROUP_CHANGE_INVITE_LINK:
 			const code = message.messageStubParameters?.[0]
 			emitGroupUpdate({ inviteCode: code })
