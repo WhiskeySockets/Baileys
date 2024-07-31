@@ -299,6 +299,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			msg.messageStubType = WAMessageStubType.GROUP_CHANGE_SUBJECT
 			msg.messageStubParameters = [ child.attrs.subject ]
 			break
+		case 'description':
+			const description = getBinaryNodeChild(child, 'body')?.content?.toString()
+			msg.messageStubType = WAMessageStubType.GROUP_CHANGE_DESCRIPTION
+			msg.messageStubParameters = description ? [ description ] : undefined
+			break
 		case 'announcement':
 		case 'not_announcement':
 			msg.messageStubType = WAMessageStubType.GROUP_CHANGE_ANNOUNCE
