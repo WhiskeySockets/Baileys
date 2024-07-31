@@ -835,7 +835,7 @@ Of course, replace ``` xyz ``` with an actual ID.
     ```
 - To update the Groups Add privacy
     ``` ts
-    const value = 'all' // 'contacts' | 'contact_blacklist' | 'none'
+    const value = 'all' // 'contacts' | 'contact_blacklist'
     await sock.updateGroupsAddPrivacy(value)
     ```
 - To update the Default Disappearing Mode
