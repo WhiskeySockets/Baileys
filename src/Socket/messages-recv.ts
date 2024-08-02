@@ -722,7 +722,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		if(getBinaryNodeChild(node, 'unavailable') && !getBinaryNodeChild(node, 'enc')) {
 			await sendMessageAck(node)
 			const { key } = decodeMessageNode(node, authState.creds.me!.id, authState.creds.me!.lid || '').fullMessage
-			await requestPlaceholderResend(key)
+			const response = await requestPlaceholderResend(key)
+			if(response === 'RESOLVED') {
+				return
+			}
+
 			logger.debug('received unavailable message, acked and requested resend from phone')
 		} else {
 			if(placeholderResendCache.get(node.attrs.id)) {
@@ -826,7 +830,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		return sendPeerDataOperationMessage(pdoMessage)
 	}
 
-	const requestPlaceholderResend = async(messageKey: WAMessageKey): Promise<string | undefined> => {
+	const requestPlaceholderResend = async(messageKey: WAMessageKey): Promise<'RESOLVED'| string | undefined> => {
 		if(!authState.creds.me?.id) {
 			throw new Boom('Not authenticated')
 		}
@@ -842,7 +846,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		if(!placeholderResendCache.get(messageKey?.id!)) {
 			logger.debug('message received while resend requested', { messageKey })
-			return
+			return 'RESOLVED'
 		}
 
 		const pdoMessage = {
