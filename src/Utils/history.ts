@@ -94,6 +94,8 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 		chats,
 		contacts,
 		messages,
+		syncType: item.syncType,
+		progress: item.progress,
 	}
 }
 

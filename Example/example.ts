@@ -234,8 +234,11 @@ const startSock = async() => {
 
 			// history received
 			if(events['messaging-history.set']) {
-				const { chats, contacts, messages, isLatest } = events['messaging-history.set']
-				console.log(`recv ${chats.length} chats, ${contacts.length} contacts, ${messages.length} msgs (is latest: ${isLatest})`)
+				const { chats, contacts, messages, isLatest, progress, syncType } = events['messaging-history.set']
+				if (syncType === proto.HistorySync.HistorySyncType.ON_DEMAND) {
+					console.log('received on-demand history sync, messages=', messages)
+				}
+				console.log(`recv ${chats.length} chats, ${contacts.length} contacts, ${messages.length} msgs (is latest: ${isLatest}, progress: ${progress}%), type: ${syncType}`)
 			}
 
 			// received a new message
@@ -285,8 +288,24 @@ const startSock = async() => {
 							}
 						  } */
 
+						if (msg.message?.conversation || msg.message?.extendedTextMessage?.text) {
+							const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text
+							if (text == "requestPlaceholder" && !upsert.requestId) {
+								const messageId = await sock.requestPlaceholderResend(msg.key) 
+								console.log('requested placeholder resync, id=', messageId)
+							} else if (upsert.requestId) {
+								console.log('Message received from phone, id=', upsert.requestId, msg)
+							}
+
+							// go to an old chat and send this
+							if (text == "onDemandHistSync") {
+								const messageId = await sock.fetchMessageHistory(50, msg.key, msg.messageTimestamp!) 
+								console.log('requested on-demand sync, id=', messageId)
+							}
+						}
 
 						if(!msg.key.fromMe && doReplies && !isJidNewsletter(msg.key?.remoteJid!)) {
+
 							console.log('replying to', msg.key.remoteJid)
 							await sock!.readMessages([msg.key])
 							await sendMessageWTyping({ text: 'Hello there!' }, msg.key.remoteJid!)
