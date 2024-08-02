@@ -20,6 +20,7 @@ import {
 	getHistoryMsg,
 	getNextPreKeys,
 	getStatusFromReceiptType, hkdf,
+	NO_MESSAGE_FOUND_ERROR_TEXT,
 	unixTimestampSeconds,
 	xmppPreKey,
 	xmppSignedPreKey
@@ -719,10 +720,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			return
 		}
 
+		let response: string | undefined
+
 		if(getBinaryNodeChild(node, 'unavailable') && !getBinaryNodeChild(node, 'enc')) {
 			await sendMessageAck(node)
 			const { key } = decodeMessageNode(node, authState.creds.me!.id, authState.creds.me!.lid || '').fullMessage
-			const response = await requestPlaceholderResend(key)
+			response = await requestPlaceholderResend(key)
 			if(response === 'RESOLVED') {
 				return
 			}
@@ -742,6 +745,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			signalRepository,
 			logger,
 		)
+
+		if(response && msg?.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT) {
+			msg.messageStubParameters = [NO_MESSAGE_FOUND_ERROR_TEXT, response]
+		}
 
 		if(msg.message?.protocolMessage?.type === proto.Message.ProtocolMessage.Type.SHARE_PHONE_NUMBER) {
 			if(node.attrs.sender_pn) {
