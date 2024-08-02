@@ -1,22 +1,25 @@
 import { Boom } from '@hapi/boom'
 import NodeCache from 'node-cache'
 import readline from 'readline'
-import makeWASocket, { AnyMessageContent, BinaryInfo, delay, DisconnectReason, encodeWAM, fetchLatestBaileysVersion, getAggregateVotesInPollMessage, makeCacheableSignalKeyStore, makeInMemoryStore, PHONENUMBER_MCC, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
-import MAIN_LOGGER from '../src/Utils/logger'
+import makeWASocket, { AnyMessageContent, BinaryInfo, delay, DisconnectReason, downloadAndProcessHistorySyncNotification, encodeWAM, fetchLatestBaileysVersion, getAggregateVotesInPollMessage, getHistoryMsg, isJidNewsletter, makeCacheableSignalKeyStore, makeInMemoryStore, PHONENUMBER_MCC, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
+//import MAIN_LOGGER from '../src/Utils/logger'
 import open from 'open'
 import fs from 'fs'
+import P from 'pino'
 
-const logger = MAIN_LOGGER.child({})
+const logger = P({ timestamp: () => `,"time":"${new Date().toJSON()}"` }, P.destination('./wa-logs.txt'))
 logger.level = 'trace'
 
 const useStore = !process.argv.includes('--no-store')
-const doReplies = !process.argv.includes('--no-reply')
+const doReplies = process.argv.includes('--do-reply')
 const usePairingCode = process.argv.includes('--use-pairing-code')
 const useMobile = process.argv.includes('--mobile')
 
 // external map to store retry counts of messages when decryption/encryption fails
 // keep this out of the socket itself, so as to prevent a message decryption/encryption loop across socket restarts
 const msgRetryCounterCache = new NodeCache()
+
+const onDemandMap = new Map<string, string>()
 
 // Read line interface
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
@@ -231,8 +234,11 @@ const startSock = async() => {
 
 			// history received
 			if(events['messaging-history.set']) {
-				const { chats, contacts, messages, isLatest } = events['messaging-history.set']
-				console.log(`recv ${chats.length} chats, ${contacts.length} contacts, ${messages.length} msgs (is latest: ${isLatest})`)
+				const { chats, contacts, messages, isLatest, progress, syncType } = events['messaging-history.set']
+				if (syncType === proto.HistorySync.HistorySyncType.ON_DEMAND) {
+					console.log('received on-demand history sync, messages=', messages)
+				}
+				console.log(`recv ${chats.length} chats, ${contacts.length} contacts, ${messages.length} msgs (is latest: ${isLatest}, progress: ${progress}%), type: ${syncType}`)
 			}
 
 			// received a new message
@@ -241,8 +247,65 @@ const startSock = async() => {
 				console.log('recv messages ', JSON.stringify(upsert, undefined, 2))
 
 				if(upsert.type === 'notify') {
-					for(const msg of upsert.messages) {
-						if(!msg.key.fromMe && doReplies) {
+					for (const msg of upsert.messages) {
+						//TODO: More built-in implementation of this
+						/* if (
+							msg.message?.protocolMessage?.type ===
+							proto.Message.ProtocolMessage.Type.HISTORY_SYNC_NOTIFICATION
+						  ) {
+							const historySyncNotification = getHistoryMsg(msg.message)
+							if (
+							  historySyncNotification?.syncType ==
+							  proto.HistorySync.HistorySyncType.ON_DEMAND
+							) {
+							  const { messages } =
+								await downloadAndProcessHistorySyncNotification(
+								  historySyncNotification,
+								  {}
+								)
+
+								
+								const chatId = onDemandMap.get(
+									historySyncNotification!.peerDataRequestSessionId!
+								)
+								
+								console.log(messages)
+
+							  onDemandMap.delete(
+								historySyncNotification!.peerDataRequestSessionId!
+							  )
+
+							  /*
+								// 50 messages is the limit imposed by whatsapp
+								//TODO: Add ratelimit of 7200 seconds
+								//TODO: Max retries 10
+								const messageId = await sock.fetchMessageHistory(
+									50,
+									oldestMessageKey,
+									oldestMessageTimestamp
+								)
+								onDemandMap.set(messageId, chatId)
+							}
+						  } */
+
+						if (msg.message?.conversation || msg.message?.extendedTextMessage?.text) {
+							const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text
+							if (text == "requestPlaceholder" && !upsert.requestId) {
+								const messageId = await sock.requestPlaceholderResend(msg.key) 
+								console.log('requested placeholder resync, id=', messageId)
+							} else if (upsert.requestId) {
+								console.log('Message received from phone, id=', upsert.requestId, msg)
+							}
+
+							// go to an old chat and send this
+							if (text == "onDemandHistSync") {
+								const messageId = await sock.fetchMessageHistory(50, msg.key, msg.messageTimestamp!) 
+								console.log('requested on-demand sync, id=', messageId)
+							}
+						}
+
+						if(!msg.key.fromMe && doReplies && !isJidNewsletter(msg.key?.remoteJid!)) {
+
 							console.log('replying to', msg.key.remoteJid)
 							await sock!.readMessages([msg.key])
 							await sendMessageWTyping({ text: 'Hello there!' }, msg.key.remoteJid!)
