@@ -21,8 +21,8 @@ export type BaileysEventMap = {
         contacts: Contact[]
         messages: WAMessage[]
         isLatest?: boolean
-        progress: number
-        syncType: proto.HistorySync.HistorySyncType
+        progress?: number | null
+        syncType?: proto.HistorySync.HistorySyncType
     }
     /** upsert chats */
     'chats.upsert': Chat[]

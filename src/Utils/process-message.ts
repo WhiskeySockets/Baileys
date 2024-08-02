@@ -5,7 +5,7 @@ import { AuthenticationCreds, BaileysEventEmitter, CacheStore, Chat, GroupMetada
 import { getContentType, normalizeMessageContent } from '../Utils/messages'
 import { areJidsSameUser, isJidBroadcast, isJidStatusBroadcast, jidNormalizedUser } from '../WABinary'
 import { aesDecryptGCM, hmacSign } from './crypto'
-import { delay, getKeyAuthor, toNumber } from './generics'
+import { getKeyAuthor, toNumber } from './generics'
 import { downloadAndProcessHistorySyncNotification } from './history'
 
 type ProcessMessageContext = {
@@ -34,7 +34,7 @@ const REAL_MSG_REQ_ME_STUB_TYPES = new Set([
 export const cleanMessage = (message: proto.IWebMessageInfo, meId: string) => {
 	// ensure remoteJid and participant doesn't have device or agent in it
 	message.key.remoteJid = jidNormalizedUser(message.key.remoteJid!)
-	message.key.participant = message.key.participant ? jidNormalizedUser(message.key.participant!) : undefined
+	message.key.participant = message.key.participant ? jidNormalizedUser(message.key.participant) : undefined
 	const content = normalizeMessageContent(message.message)
 	// if the message has a reaction, ensure fromMe & remoteJid are from our perspective
 	if(content?.reactionMessage) {
