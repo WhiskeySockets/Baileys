@@ -324,13 +324,13 @@ const sock = makeWASocket({ })
 // the store can listen from a new socket once the current socket outlives its lifetime
 store.bind(sock.ev)
 
-sock.ev.on('chats.set', () => {
+sock.ev.on('chats.upsert', () => {
     // can use "store.chats" however you want, even after the socket dies out
     // "chats" => a KeyedDB instance
     console.log('got chats', store.chats.all())
 })
 
-sock.ev.on('contacts.set', () => {
+sock.ev.on('contacts.upsert', () => {
     console.log('got contacts', Object.values(store.contacts))
 })
 

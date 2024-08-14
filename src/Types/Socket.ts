@@ -75,6 +75,8 @@ export type SocketConfig = {
     userDevicesCache?: CacheStore
     /** cache to store call offers */
     callOfferCache?: CacheStore
+    /** cache to track placeholder resends */
+    placeholderResendCache?: CacheStore
     /** width for link preview images */
     linkPreviewImageThumbnailWidth: number
     /** Should Baileys ask the phone for full history, will be received async */
