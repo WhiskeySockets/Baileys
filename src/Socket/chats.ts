@@ -1,6 +1,7 @@
 import { Boom } from '@hapi/boom'
+import NodeCache from 'node-cache'
 import { proto } from '../../WAProto'
-import { PROCESSABLE_HISTORY_TYPES } from '../Defaults'
+import { DEFAULT_CACHE_TTLS, PROCESSABLE_HISTORY_TYPES } from '../Defaults'
 import { ALL_WA_PATCH_NAMES, ChatModification, ChatMutation, LTHashState, MessageUpsertType, PresenceData, SocketConfig, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAMessage, WAPatchCreate, WAPatchName, WAPresence, WAPrivacyCallValue, WAPrivacyOnlineValue, WAPrivacyValue, WAReadReceiptsValue } from '../Types'
 import { chatModificationToAppPatch, ChatMutationMap, decodePatches, decodeSyncdSnapshot, encodeSyncdPatch, extractSyncdPatches, generateProfilePicture, getHistoryMsg, newLTHashState, processSyncAction } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
@@ -35,6 +36,15 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	let pendingAppStateSync = false
 	/** this mutex ensures that the notifications (receipts, messages etc.) are processed in order */
 	const processingMutex = makeMutex()
+
+	const placeholderResendCache = config.placeholderResendCache || new NodeCache({
+		stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
+		useClones: false
+	})
+
+	if(!config.placeholderResendCache) {
+		config.placeholderResendCache = placeholderResendCache
+	}
 
 	/** helper function to fetch the given app state sync key */
 	const getAppStateSyncKey = async(keyId: string) => {
@@ -876,6 +886,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				msg,
 				{
 					shouldProcessHistoryMsg,
+					placeholderResendCache,
 					ev,
 					creds: authState.creds,
 					keyStore: authState.keys,
