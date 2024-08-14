@@ -435,6 +435,7 @@ export const generateWAMessageContent = async(
 		m.listResponseMessage = { ...message.listReply }
 	} else if('poll' in message) {
 		message.poll.selectableCount ||= 0
+		message.poll.toAnnouncementGroup ||= false
 
 		if(!Array.isArray(message.poll.values)) {
 			throw new Boom('Invalid poll values', { statusCode: 400 })
@@ -455,10 +456,23 @@ export const generateWAMessageContent = async(
 			messageSecret: message.poll.messageSecret || randomBytes(32),
 		}
 
-		m.pollCreationMessage = {
+		const pollCreationMessage = {
 			name: message.poll.name,
 			selectableOptionsCount: message.poll.selectableCount,
 			options: message.poll.values.map(optionName => ({ optionName })),
+		}
+
+		if (message.poll.toAnnouncementGroup) {
+			// poll v2 is for community announcement groups (single select and multiple)
+			m.pollCreationMessageV2 = pollCreationMessage
+		} else {
+			if(message.poll.selectableCount > 0) {
+				//poll v3 is for single select polls
+				m.pollCreationMessageV3 = pollCreationMessage
+			} else {
+				// poll v3 for multiple choice polls
+				m.pollCreationMessage = pollCreationMessage
+			}
 		}
 	} else if('sharePhoneNumber' in message) {
 		m.protocolMessage = {
