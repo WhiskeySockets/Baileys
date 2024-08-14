@@ -49,7 +49,8 @@ export const PROCESSABLE_HISTORY_TYPES = [
 	proto.Message.HistorySyncNotification.HistorySyncType.INITIAL_BOOTSTRAP,
 	proto.Message.HistorySyncNotification.HistorySyncType.PUSH_NAME,
 	proto.Message.HistorySyncNotification.HistorySyncType.RECENT,
-	proto.Message.HistorySyncNotification.HistorySyncType.FULL
+	proto.Message.HistorySyncNotification.HistorySyncType.FULL,
+	proto.Message.HistorySyncNotification.HistorySyncType.ON_DEMAND,
 ]
 
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
@@ -81,6 +82,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 		snapshot: false,
 	},
 	getMessage: async() => undefined,
+	cachedGroupMetadata: async() => undefined,
 	makeSignalRepository: makeLibSignalRepository
 }
 
