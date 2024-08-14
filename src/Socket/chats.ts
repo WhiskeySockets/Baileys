@@ -1,7 +1,8 @@
 import { Boom } from '@hapi/boom'
+import NodeCache from 'node-cache'
 import { proto } from '../../WAProto'
-import { PROCESSABLE_HISTORY_TYPES } from '../Defaults'
-import { ALL_WA_PATCH_NAMES, ChatModification, ChatMutation, LTHashState, MessageUpsertType, PresenceData, SocketConfig, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAMessage, WAPatchCreate, WAPatchName, WAPresence, WAPrivacyOnlineValue, WAPrivacyValue, WAReadReceiptsValue } from '../Types'
+import { DEFAULT_CACHE_TTLS, PROCESSABLE_HISTORY_TYPES } from '../Defaults'
+import { ALL_WA_PATCH_NAMES, ChatModification, ChatMutation, LTHashState, MessageUpsertType, PresenceData, SocketConfig, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAMessage, WAPatchCreate, WAPatchName, WAPresence, WAPrivacyCallValue, WAPrivacyGroupAddValue, WAPrivacyOnlineValue, WAPrivacyValue, WAReadReceiptsValue } from '../Types'
 import { chatModificationToAppPatch, ChatMutationMap, decodePatches, decodeSyncdSnapshot, encodeSyncdPatch, extractSyncdPatches, generateProfilePicture, getHistoryMsg, newLTHashState, processSyncAction } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
 import processMessage from '../Utils/process-message'
@@ -36,13 +37,22 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	/** this mutex ensures that the notifications (receipts, messages etc.) are processed in order */
 	const processingMutex = makeMutex()
 
+	const placeholderResendCache = config.placeholderResendCache || new NodeCache({
+		stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
+		useClones: false
+	})
+
+	if(!config.placeholderResendCache) {
+		config.placeholderResendCache = placeholderResendCache
+	}
+
 	/** helper function to fetch the given app state sync key */
 	const getAppStateSyncKey = async(keyId: string) => {
 		const { [keyId]: key } = await authState.keys.get('app-state-sync-key', [keyId])
 		return key
 	}
 
-	const fetchPrivacySettings = async(force: boolean = false) => {
+	const fetchPrivacySettings = async(force = false) => {
 		if(!privacySettings || force) {
 			const { content } = await query({
 				tag: 'iq',
@@ -83,6 +93,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		})
 	}
 
+	const updateCallPrivacy = async(value: WAPrivacyCallValue) => {
+		await privacyQuery('calladd', value)
+	}
+
 	const updateLastSeenPrivacy = async(value: WAPrivacyValue) => {
 		await privacyQuery('last', value)
 	}
@@ -103,7 +117,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		await privacyQuery('readreceipts', value)
 	}
 
-	const updateGroupsAddPrivacy = async(value: WAPrivacyValue) => {
+	const updateGroupsAddPrivacy = async(value: WAPrivacyGroupAddValue) => {
 		await privacyQuery('groupadd', value)
 	}
 
@@ -525,7 +539,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		const result = await query({
 			tag: 'iq',
 			attrs: {
-				to: jid,
+				target: jid,
+				to: S_WHATSAPP_NET,
 				type: 'get',
 				xmlns: 'w:profile:picture'
 			},
@@ -540,7 +555,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	const sendPresenceUpdate = async(type: WAPresence, toJid?: string) => {
 		const me = authState.creds.me!
 		if(type === 'available' || type === 'unavailable') {
-			if(!me!.name) {
+			if(!me.name) {
 				logger.warn('no name present, ignoring presence update request...')
 				return
 			}
@@ -550,7 +565,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			await sendNode({
 				tag: 'presence',
 				attrs: {
-					name: me!.name,
+					name: me.name,
 					type
 				}
 			})
@@ -558,7 +573,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			await sendNode({
 				tag: 'chatstate',
 				attrs: {
-					from: me!.id!,
+					from: me.id,
 					to: toJid!,
 				},
 				content: [
@@ -600,7 +615,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		const jid = attrs.from
 		const participant = attrs.participant || attrs.from
 
-		if(shouldIgnoreJid(jid)) {
+		if(shouldIgnoreJid(jid) && jid !== '@s.whatsapp.net') {
 			return
 		}
 
@@ -715,32 +730,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 	}
 
-	/** sending abt props may fix QR scan fail if server expects */
-	const fetchAbt = async() => {
-		const abtNode = await query({
-			tag: 'iq',
-			attrs: {
-				to: S_WHATSAPP_NET,
-				xmlns: 'abt',
-				type: 'get',
-			},
-			content: [
-				{ tag: 'props', attrs: { protocol: '1' } }
-			]
-		})
-
-		const propsNode = getBinaryNodeChild(abtNode, 'props')
-
-		let props: { [_: string]: string } = {}
-		if(propsNode) {
-			props = reduceBinaryNodeToDictionary(propsNode, 'prop')
-		}
-
-		logger.debug('fetched abt')
-
-		return props
-	}
-
 	/** sending non-abt props may fix QR scan fail if server expects */
 	const fetchProps = async() => {
 		const resultNode = await query({
@@ -751,14 +740,20 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				type: 'get',
 			},
 			content: [
-				{ tag: 'props', attrs: {} }
+				{ tag: 'props', attrs: {
+					protocol: '2',
+					hash: authState?.creds?.lastPropHash || ''
+				} }
 			]
 		})
 
 		const propsNode = getBinaryNodeChild(resultNode, 'props')
 
+
 		let props: { [_: string]: string } = {}
 		if(propsNode) {
+			authState.creds.lastPropHash = propsNode?.attrs?.hash
+			ev.emit('creds.update', authState.creds)
 			props = reduceBinaryNodeToDictionary(propsNode, 'prop')
 		}
 
@@ -841,7 +836,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * */
 	const executeInitQueries = async() => {
 		await Promise.all([
-			fetchAbt(),
 			fetchProps(),
 			fetchBlocklist(),
 			fetchPrivacySettings(),
@@ -861,7 +855,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 			// update our pushname too
 			if(msg.key.fromMe && msg.pushName && authState.creds.me?.name !== msg.pushName) {
-				ev.emit('creds.update', { me: { ...authState.creds.me!, name: msg.pushName! } })
+				ev.emit('creds.update', { me: { ...authState.creds.me!, name: msg.pushName } })
 			}
 		}
 
@@ -892,6 +886,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				msg,
 				{
 					shouldProcessHistoryMsg,
+					placeholderResendCache,
 					ev,
 					creds: authState.creds,
 					keyStore: authState.keys,
@@ -997,6 +992,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		updateProfileStatus,
 		updateProfileName,
 		updateBlockStatus,
+		updateCallPrivacy,
 		updateLastSeenPrivacy,
 		updateOnlinePrivacy,
 		updateProfilePicturePrivacy,

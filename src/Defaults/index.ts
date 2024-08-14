@@ -20,7 +20,7 @@ export const PHONE_CONNECTION_CB = 'CB:Pong'
 
 export const WA_DEFAULT_EPHEMERAL = 7 * 24 * 60 * 60
 
-const WA_VERSION = '2.23.14.82'
+const WA_VERSION = '2.24.6.77'
 
 const WA_VERSION_HASH = createHash('md5').update(WA_VERSION).digest('hex')
 export const MOBILE_TOKEN = Buffer.from('0a1mLfGUIBVrMKF1RdvLI5lkRBvof6vn0fD2QRSM' + WA_VERSION_HASH)
@@ -40,7 +40,6 @@ export const PROTOCOL_VERSION = [5, 2]
 export const MOBILE_NOISE_HEADER = Buffer.concat([Buffer.from('WA'), Buffer.from(PROTOCOL_VERSION)])
 /** from: https://stackoverflow.com/questions/3809401/what-is-a-good-regular-expression-to-match-a-url */
 export const URL_REGEX = /(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/
-export const URL_EXCLUDE_REGEX = /.*@.*/
 
 export const WA_CERT_DETAILS = {
 	SERIAL: 0,
@@ -50,12 +49,13 @@ export const PROCESSABLE_HISTORY_TYPES = [
 	proto.Message.HistorySyncNotification.HistorySyncType.INITIAL_BOOTSTRAP,
 	proto.Message.HistorySyncNotification.HistorySyncType.PUSH_NAME,
 	proto.Message.HistorySyncNotification.HistorySyncType.RECENT,
-	proto.Message.HistorySyncNotification.HistorySyncType.FULL
+	proto.Message.HistorySyncNotification.HistorySyncType.FULL,
+	proto.Message.HistorySyncNotification.HistorySyncType.ON_DEMAND,
 ]
 
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	version: version as WAVersion,
-	browser: Browsers.baileys('Chrome'),
+	browser: Browsers.ubuntu('Chrome'),
 	waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
 	connectTimeoutMs: 20_000,
 	keepAliveIntervalMs: 30_000,
@@ -82,6 +82,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 		snapshot: false,
 	},
 	getMessage: async() => undefined,
+	cachedGroupMetadata: async() => undefined,
 	makeSignalRepository: makeLibSignalRepository
 }
 

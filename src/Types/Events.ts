@@ -4,7 +4,7 @@ import { AuthenticationCreds } from './Auth'
 import { WACallEvent } from './Call'
 import { Chat, ChatUpdate, PresenceData } from './Chat'
 import { Contact } from './Contact'
-import { GroupMetadata, ParticipantAction } from './GroupMetadata'
+import { GroupMetadata, ParticipantAction, RequestJoinAction, RequestJoinMethod } from './GroupMetadata'
 import { Label } from './Label'
 import { LabelAssociation } from './LabelAssociation'
 import { MessageUpsertType, MessageUserReceiptUpdate, WAMessage, WAMessageKey, WAMessageUpdate } from './Message'
@@ -20,7 +20,9 @@ export type BaileysEventMap = {
         chats: Chat[]
         contacts: Contact[]
         messages: WAMessage[]
-        isLatest: boolean
+        isLatest?: boolean
+        progress?: number | null
+        syncType?: proto.HistorySync.HistorySyncType
     }
     /** upsert chats */
     'chats.upsert': Chat[]
@@ -41,8 +43,9 @@ export type BaileysEventMap = {
     /**
      * add/update the given messages. If they were received while the connection was online,
      * the update will have type: "notify"
+     * if requestId is provided, then the messages was received from the phone due to it being unavailable
      *  */
-    'messages.upsert': { messages: WAMessage[], type: MessageUpsertType }
+    'messages.upsert': { messages: WAMessage[], type: MessageUpsertType, requestId?: string }
     /** message was reacted to. If reaction was removed -- then "reaction.text" will be falsey */
     'messages.reaction': { key: WAMessageKey, reaction: proto.IReaction }[]
 
@@ -52,6 +55,7 @@ export type BaileysEventMap = {
     'groups.update': Partial<GroupMetadata>[]
     /** apply an action to participants in a group */
     'group-participants.update': { id: string, author: string, participants: string[], action: ParticipantAction }
+    'group.join-request': { id: string, author: string, participant: string, action: RequestJoinAction, method: RequestJoinMethod }
 
     'blocklist.set': { blocklist: string[] }
     'blocklist.update': { blocklist: string[], type: 'add' | 'remove' }
