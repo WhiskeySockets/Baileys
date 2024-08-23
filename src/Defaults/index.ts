@@ -20,7 +20,7 @@ export const PHONE_CONNECTION_CB = 'CB:Pong'
 
 export const WA_DEFAULT_EPHEMERAL = 7 * 24 * 60 * 60
 
-const WA_VERSION = '2.24.6.77'
+const WA_VERSION = '2.24.16.78'
 
 const WA_VERSION_HASH = createHash('md5').update(WA_VERSION).digest('hex')
 export const MOBILE_TOKEN = Buffer.from('0a1mLfGUIBVrMKF1RdvLI5lkRBvof6vn0fD2QRSM' + WA_VERSION_HASH)
