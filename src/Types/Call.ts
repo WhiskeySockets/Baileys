@@ -1,5 +1,5 @@
 
-export type WACallUpdateType = 'offer' | 'ringing' | 'timeout' | 'reject' | 'accept'
+export type WACallUpdateType = 'offer' | 'ringing' | 'timeout' | 'reject' | 'accept' | 'terminate'
 
 export type WACallEvent = {
 	chatId: string
@@ -8,6 +8,7 @@ export type WACallEvent = {
 	groupJid?: string
 	id: string
 	date: Date
+	startedAt?: Date
 	isVideo?: boolean
 	status: WACallUpdateType
 	offline: boolean

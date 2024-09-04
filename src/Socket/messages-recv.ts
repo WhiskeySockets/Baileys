@@ -908,8 +908,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			call.isGroup = existingCall.isGroup
 		}
 
+		if(status === 'accept') {
+			call.startedAt = new Date(+attrs.t * 1000)
+			callOfferCache.set(call.id, call)
+		}
+		
 		// delete data once call has ended
-		if(status === 'reject' || status === 'accept' || status === 'timeout') {
+		if(status === 'reject' || status === 'timeout' || status == 'terminate') {
 			callOfferCache.del(call.id)
 		}
 
