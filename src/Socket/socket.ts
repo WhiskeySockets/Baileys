@@ -623,6 +623,9 @@ export const makeSocket = (config: SocketConfig) => {
 
 		if (!ws.isClosed && !ws.isClosing) {
 			try {
+				ws.on('error', err => {
+					logger.error({ err: err })
+				})
 				ws.close()
 			} catch {}
 		}
