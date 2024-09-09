@@ -354,7 +354,7 @@ export const getErrorCodeFromStreamError = (node: BinaryNode) => {
 }
 
 export const getCallStatusFromNode = ({ tag, attrs }: BinaryNode) => {
-	let status: WACallUpdateType | undefined
+	let status: WACallUpdateType
 	switch (tag) {
 	case 'offer':
 	case 'offer_notice':
