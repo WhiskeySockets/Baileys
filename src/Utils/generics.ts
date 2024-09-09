@@ -367,6 +367,7 @@ export const getCallStatusFromNode = ({ tag, attrs }: BinaryNode) => {
 			//fired when accepted/rejected/timeout/caller hangs up
 			status = 'terminate'
 		}
+
 		break
 	case 'reject':
 		status = 'reject'
