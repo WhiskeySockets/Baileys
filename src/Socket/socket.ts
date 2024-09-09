@@ -12,7 +12,8 @@ import {
 	MOBILE_PORT,
 	NOISE_WA_HEADER
 } from '../Defaults'
-import { DisconnectReason, SocketConfig, WAProto } from '../Types'
+import * as proto from '../Proto'
+import { DisconnectReason, SocketConfig } from '../Types'
 import {
 	addTransactionCapability,
 	aesEncryptCTR,
@@ -230,22 +231,22 @@ export const makeSocket = (config: SocketConfig) => {
 
 	/** connection handshake */
 	const validateConnection = async() => {
-		const helloMsg: WAProto.HandshakeMessage = {
+		const helloMsg: proto.HandshakeMessage = {
 			clientHello: { ephemeral: ephemeralKeyPair.public }
 		}
 
 		logger.info({ browser, helloMsg }, 'connected to WA')
 
-		const init = writeBinaryNode(WAProto.writeHandshakeMessage, helloMsg)
+		const init = writeBinaryNode(proto.writeHandshakeMessage, helloMsg)
 
 		const result = await awaitNextMessage<Uint8Array>(init)
-		const handshake = readBinaryNode(WAProto.readHandshakeMessage, result)
+		const handshake = readBinaryNode(proto.readHandshakeMessage, result)
 
 		logger.trace({ handshake }, 'handshake recv from WA')
 
 		const keyEnc = noise.processHandshake(handshake, creds.noiseKey)
 
-		let node: WAProto.ClientPayload
+		let node: proto.ClientPayload
 		if(config.mobile) {
 			node = generateMobileNode(config)
 		} else if(!creds.me) {
@@ -256,10 +257,10 @@ export const makeSocket = (config: SocketConfig) => {
 			logger.info({ node }, 'logging in...')
 		}
 
-		const payload = writeBinaryNode(WAProto.writeClientPayload, node)
+		const payload = writeBinaryNode(proto.writeClientPayload, node)
 		const payloadEnc = noise.encrypt(payload)
 
-		await sendRawMessage(writeBinaryNode(WAProto.writeHandshakeMessage, {
+		await sendRawMessage(writeBinaryNode(proto.writeHandshakeMessage, {
 			clientFinish: {
 				static: keyEnc,
 				payload: payloadEnc,

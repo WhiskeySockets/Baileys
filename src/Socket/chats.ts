@@ -1,7 +1,8 @@
 import { Boom } from '@hapi/boom'
 import NodeCache from 'node-cache'
 import { DEFAULT_CACHE_TTLS, PROCESSABLE_HISTORY_TYPES } from '../Defaults'
-import { ALL_WA_PATCH_NAMES, ChatModification, ChatMutation, LTHashState, MessageUpsertType, PresenceData, SocketConfig, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAMessage, WAPatchCreate, WAPatchName, WAPresence, WAPrivacyCallValue, WAPrivacyGroupAddValue, WAPrivacyOnlineValue, WAPrivacyValue, WAProto, WAReadReceiptsValue } from '../Types'
+import * as proto from '../Proto'
+import { ALL_WA_PATCH_NAMES, ChatModification, ChatMutation, LTHashState, MessageUpsertType, PresenceData, SocketConfig, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAMessage, WAPatchCreate, WAPatchName, WAPresence, WAPrivacyCallValue, WAPrivacyGroupAddValue, WAPrivacyOnlineValue, WAPrivacyValue, WAReadReceiptsValue } from '../Types'
 import { chatModificationToAppPatch, ChatMutationMap, decodePatches, decodeSyncdSnapshot, encodeSyncdPatch, extractSyncdPatches, generateProfilePicture, getHistoryMsg, newLTHashState, processSyncAction } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
 import processMessage from '../Utils/process-message'
@@ -653,7 +654,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 
 		let initial: LTHashState
-		let encodeResult: { patch: WAProto.SyncdPatch, state: LTHashState }
+		let encodeResult: { patch: proto.SyncdPatch, state: LTHashState }
 
 		await processingMutex.mutex(
 			async() => {
@@ -697,7 +698,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 												{
 													tag: 'patch',
 													attrs: {},
-													content: writeBinaryNode(WAProto.writeSyncdPatch, patch)
+													content: writeBinaryNode(proto.writeSyncdPatch, patch)
 												}
 											]
 										}

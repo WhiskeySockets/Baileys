@@ -1,6 +1,6 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, pbkdf2, randomBytes } from 'crypto'
 import HKDF from 'futoin-hkdf'
-import * as libsignal from 'libsignal'
+import { curve } from 'libsignal'
 import { promisify } from 'util'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { KeyPair } from '../Types'
@@ -16,7 +16,7 @@ export const generateSignalPubKey = (pubKey: Uint8Array | Buffer) => (
 
 export const Curve = {
 	generateKeyPair: (): KeyPair => {
-		const { pubKey, privKey } = libsignal.curve.generateKeyPair()
+		const { pubKey, privKey } = curve.generateKeyPair()
 		return {
 			private: Buffer.from(privKey),
 			// remove version byte
@@ -24,15 +24,15 @@ export const Curve = {
 		}
 	},
 	sharedKey: (privateKey: Uint8Array, publicKey: Uint8Array) => {
-		const shared = libsignal.curve.calculateAgreement(generateSignalPubKey(publicKey), privateKey)
+		const shared = curve.calculateAgreement(generateSignalPubKey(publicKey), privateKey)
 		return Buffer.from(shared)
 	},
 	sign: (privateKey: Uint8Array, buf: Uint8Array) => (
-		libsignal.curve.calculateSignature(privateKey, buf)
+		curve.calculateSignature(privateKey, buf)
 	),
 	verify: (pubKey: Uint8Array, message: Uint8Array, signature: Uint8Array) => {
 		try {
-			libsignal.curve.verifySignature(generateSignalPubKey(pubKey), message, signature)
+			curve.verifySignature(generateSignalPubKey(pubKey), message, signature)
 			return true
 		} catch(error) {
 			return false

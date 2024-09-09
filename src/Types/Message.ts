@@ -2,15 +2,13 @@ import { AxiosRequestConfig } from 'axios'
 import type { Logger } from 'pino'
 import type { Readable } from 'stream'
 import type { URL } from 'url'
-import * as proto from '../../WAProto/WAProto'
 import { MEDIA_HKDF_KEY_MAPPING } from '../Defaults'
+import * as proto from '../Proto'
 import { BinaryNode } from '../WABinary'
 import type { GroupMetadata } from './GroupMetadata'
 import { CacheStore } from './Socket'
 
-
 // export the WAMessage Prototypes
-export { proto as WAProto }
 export type WAMessage = proto.WebMessageInfo
 export type WAMessageContent = proto.Message
 export type WAContactMessage = proto.MessageContactMessage

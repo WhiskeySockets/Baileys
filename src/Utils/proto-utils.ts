@@ -1,4 +1,3 @@
-// @ts-ignore
 import Pbf from 'pbf'
 
 type WriteFunction<T extends object> = (obj: T, pbf: Pbf) => void;

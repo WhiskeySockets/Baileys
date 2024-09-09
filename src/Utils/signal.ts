@@ -125,8 +125,10 @@ export const extractDeviceJids = (result: BinaryNode, myJid: string, excludeZero
 				const devicesNode = getBinaryNodeChild(item, 'devices')
 				const deviceListNode = getBinaryNodeChild(devicesNode, 'device-list')
 				if(Array.isArray(deviceListNode?.content)) {
+					// eslint-disable-next-line max-depth
 					for(const { tag, attrs } of deviceListNode!.content) {
 						const device = +attrs.id
+						// eslint-disable-next-line max-depth
 						if(
 							tag === 'device' && // ensure the "device" tag
 							(!excludeZeroDevices || device !== 0) && // if zero devices are not-excluded, or device is non zero

@@ -1,6 +1,7 @@
 import { Boom } from '@hapi/boom'
 import { Logger } from 'pino'
-import { SignalRepository, WAMessageKey, WAProto } from '../Types'
+import * as proto from '../Proto'
+import { SignalRepository, WAMessageKey } from '../Types'
 import { areJidsSameUser, BinaryNode, isJidBroadcast, isJidGroup, isJidNewsletter, isJidStatusBroadcast, isJidUser, isLidUser } from '../WABinary'
 import { unpadRandomMax16 } from './generics'
 import { readBinaryNode } from './proto-utils'
@@ -96,7 +97,7 @@ export function decodeMessageNode(
 		participant
 	}
 
-	const fullMessage: WAProto.WebMessageInfo = {
+	const fullMessage: proto.WebMessageInfo = {
 		key,
 		messageTimestamp: +stanza.attrs.t,
 		pushName: pushname,
@@ -104,7 +105,7 @@ export function decodeMessageNode(
 	}
 
 	if(key.fromMe) {
-		fullMessage.status = WAProto.WebMessageInfoStatus.SERVER_ACK
+		fullMessage.status = proto.WebMessageInfoStatus.SERVER_ACK
 	}
 
 	return {
@@ -131,8 +132,8 @@ export const decryptMessageNode = (
 			if(Array.isArray(stanza.content)) {
 				for(const { tag, attrs, content } of stanza.content) {
 					if(tag === 'verified_name' && content instanceof Uint8Array) {
-						const cert = readBinaryNode(WAProto.readVerifiedNameCertificate, content)
-						const details = readBinaryNode(WAProto.readVerifiedNameCertificateDetails, cert.details!)
+						const cert = readBinaryNode(proto.readVerifiedNameCertificate, content)
+						const details = readBinaryNode(proto.readVerifiedNameCertificateDetails, cert.details!)
 						fullMessage.verifiedBizName = details.verifiedName
 					}
 
@@ -174,7 +175,7 @@ export const decryptMessageNode = (
 							throw new Error(`Unknown e2e type: ${e2eType}`)
 						}
 
-						let msg: WAProto.Message = readBinaryNode(WAProto.readMessage, e2eType !== 'plaintext' ? unpadRandomMax16(msgBuffer) : msgBuffer)
+						let msg: proto.Message = readBinaryNode(proto.readMessage, e2eType !== 'plaintext' ? unpadRandomMax16(msgBuffer) : msgBuffer)
 						msg = msg.deviceSentMessage?.message || msg
 						if(msg.senderKeyDistributionMessage) {
 						    // eslint-disable-next-line max-depth
@@ -198,7 +199,7 @@ export const decryptMessageNode = (
 							{ key: fullMessage.key, err },
 							'failed to decrypt message'
 						)
-						fullMessage.messageStubType = WAProto.WebMessageInfoStubType.CIPHERTEXT
+						fullMessage.messageStubType = proto.WebMessageInfoStubType.CIPHERTEXT
 						fullMessage.messageStubParameters = [err.message]
 					}
 				}
@@ -206,7 +207,7 @@ export const decryptMessageNode = (
 
 			// if nothing was found to decrypt
 			if(!decryptables) {
-				fullMessage.messageStubType = WAProto.WebMessageInfoStubType.CIPHERTEXT
+				fullMessage.messageStubType = proto.WebMessageInfoStubType.CIPHERTEXT
 				fullMessage.messageStubParameters = [NO_MESSAGE_FOUND_ERROR_TEXT]
 			}
 		}

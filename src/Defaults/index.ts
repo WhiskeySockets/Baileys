@@ -1,5 +1,5 @@
 import { createHash } from 'crypto'
-import * as proto from '../../WAProto/WAProto'
+import * as proto from '../Proto'
 import { makeLibSignalRepository } from '../Signal/libsignal'
 import type { AuthenticationState, MediaType, SocketConfig, WAVersion } from '../Types'
 import { Browsers } from '../Utils'

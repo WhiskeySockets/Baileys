@@ -1,19 +1,20 @@
 import { Boom } from '@hapi/boom'
 import { createHash } from 'crypto'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
-import { AuthenticationCreds, SignalCreds, SocketConfig, WAProto } from '../Types'
+import * as proto from '../Proto'
+import { AuthenticationCreds, SignalCreds, SocketConfig } from '../Types'
 import { BinaryNode, getBinaryNodeChild, jidDecode, S_WHATSAPP_NET } from '../WABinary'
 import { Curve, hmacSign } from './crypto'
 import { encodeBigEndian } from './generics'
 import { readBinaryNode, writeBinaryNode } from './proto-utils'
 import { createSignalIdentity } from './signal'
 
-const getUserAgent = (config: SocketConfig): WAProto.ClientPayloadUserAgent => {
+const getUserAgent = (config: SocketConfig): proto.ClientPayloadUserAgent => {
 	const osVersion = config.mobile ? '15.3.1' : '0.1'
 	const version = config.mobile ? [2, 24, 6] : config.version
 	const device = config.mobile ? 'iPhone_7' : 'Desktop'
 	const manufacturer = config.mobile ? 'Apple' : ''
-	const platform = config.mobile ? WAProto.ClientPayloadUserAgentPlatform.IOS : WAProto.ClientPayloadUserAgentPlatform.WEB
+	const platform = config.mobile ? proto.ClientPayloadUserAgentPlatform.IOS : proto.ClientPayloadUserAgentPlatform.WEB
 	const phoneId = config.mobile ? { phoneId: config.auth.creds.phoneId } : {}
 
 	return {
@@ -23,7 +24,7 @@ const getUserAgent = (config: SocketConfig): WAProto.ClientPayloadUserAgent => {
 			tertiary: version[2],
 		},
 		platform,
-		releaseChannel: WAProto.ClientPayloadUserAgentReleaseChannel.RELEASE,
+		releaseChannel: proto.ClientPayloadUserAgentReleaseChannel.RELEASE,
 		mcc: config.auth.creds.registration?.phoneNumberMobileCountryCode || '000',
 		mnc: config.auth.creds.registration?.phoneNumberMobileNetworkCode || '000',
 		osVersion: osVersion,
@@ -37,12 +38,12 @@ const getUserAgent = (config: SocketConfig): WAProto.ClientPayloadUserAgent => {
 }
 
 const PLATFORM_MAP = {
-	'Mac OS': WAProto.ClientPayloadWebInfoWebSubPlatform.DARWIN,
-	'Windows': WAProto.ClientPayloadWebInfoWebSubPlatform.WIN32
+	'Mac OS': proto.ClientPayloadWebInfoWebSubPlatform.DARWIN,
+	'Windows': proto.ClientPayloadWebInfoWebSubPlatform.WIN32
 }
 
-const getWebInfo = (config: SocketConfig): WAProto.ClientPayloadWebInfo => {
-	let webSubPlatform = WAProto.ClientPayloadWebInfoWebSubPlatform.WEB_BROWSER
+const getWebInfo = (config: SocketConfig): proto.ClientPayloadWebInfo => {
+	let webSubPlatform = proto.ClientPayloadWebInfoWebSubPlatform.WEB_BROWSER
 	if(config.syncFullHistory && PLATFORM_MAP[config.browser[0]]) {
 		webSubPlatform = PLATFORM_MAP[config.browser[0]]
 	}
@@ -52,9 +53,9 @@ const getWebInfo = (config: SocketConfig): WAProto.ClientPayloadWebInfo => {
 
 
 const getClientPayload = (config: SocketConfig) => {
-	const payload: WAProto.ClientPayload = {
-		connectType: WAProto.ClientPayloadConnectType.WIFI_UNKNOWN,
-		connectReason: WAProto.ClientPayloadConnectReason.USER_ACTIVATED,
+	const payload: proto.ClientPayload = {
+		connectType: proto.ClientPayloadConnectType.WIFI_UNKNOWN,
+		connectReason: proto.ClientPayloadConnectReason.USER_ACTIVATED,
 		userAgent: getUserAgent(config),
 	}
 
@@ -65,12 +66,12 @@ const getClientPayload = (config: SocketConfig) => {
 	return payload
 }
 
-export const generateMobileNode = (config: SocketConfig): WAProto.ClientPayload => {
+export const generateMobileNode = (config: SocketConfig): proto.ClientPayload => {
 	if(!config.auth.creds) {
 		throw new Boom('No registration data found', { data: config })
 	}
 
-	const payload: WAProto.ClientPayload = {
+	const payload: proto.ClientPayload = {
 		...getClientPayload(config),
 		sessionId: Math.floor(Math.random() * 999999999 + 1),
 		shortConnect: true,
@@ -78,7 +79,7 @@ export const generateMobileNode = (config: SocketConfig): WAProto.ClientPayload 
 		device: 0,
 		dnsSource: {
 			appCached: false,
-			dnsMethod: WAProto.ClientPayloadDNSSourceDNSResolutionMethod.SYSTEM,
+			dnsMethod: proto.ClientPayloadDNSSourceDNSResolutionMethod.SYSTEM,
 		},
 		passive: false, // XMPP heartbeat setting (false: server actively pings) (true: client actively pings)
 		pushName: 'test',
@@ -87,9 +88,9 @@ export const generateMobileNode = (config: SocketConfig): WAProto.ClientPayload 
 	return payload
 }
 
-export const generateLoginNode = (userJid: string, config: SocketConfig): WAProto.ClientPayload => {
+export const generateLoginNode = (userJid: string, config: SocketConfig): proto.ClientPayload => {
 	const { user, device } = jidDecode(userJid)!
-	const payload: WAProto.ClientPayload = {
+	const payload: proto.ClientPayload = {
 		...getClientPayload(config),
 		passive: true,
 		username: +user,
@@ -98,9 +99,9 @@ export const generateLoginNode = (userJid: string, config: SocketConfig): WAProt
 	return payload
 }
 
-const getPlatformType = (platform: string): WAProto.DevicePropsPlatformType => {
+const getPlatformType = (platform: string): proto.DevicePropsPlatformType => {
 	const platformType = platform.toUpperCase()
-	return WAProto.DevicePropsPlatformType[platformType] || WAProto.DevicePropsPlatformType.DESKTOP
+	return proto.DevicePropsPlatformType[platformType] || proto.DevicePropsPlatformType.DESKTOP
 }
 
 export const generateRegistrationNode = (
@@ -113,15 +114,15 @@ export const generateRegistrationNode = (
 		.update(config.version.join('.')) // join as string
 		.digest()
 
-	const companion: WAProto.DeviceProps = {
+	const companion: proto.DeviceProps = {
 		os: config.browser[0],
 		platformType: getPlatformType(config.browser[1]),
 		requireFullSync: config.syncFullHistory,
 	}
 
-	const companionProto = writeBinaryNode(WAProto.writeDeviceProps, companion)
+	const companionProto = writeBinaryNode(proto.writeDeviceProps, companion)
 
-	const registerPayload: WAProto.ClientPayload = {
+	const registerPayload: proto.ClientPayload = {
 		...getClientPayload(config),
 		passive: false,
 		devicePairingData: {
@@ -159,7 +160,7 @@ export const configureSuccessfulPairing = (
 	const bizName = businessNode?.attrs.name
 	const jid = deviceNode.attrs.jid
 
-	const { details, hmac } = readBinaryNode(WAProto.readADVSignedDeviceIdentityHMAC, deviceIdentityNode.content as Buffer)
+	const { details, hmac } = readBinaryNode(proto.readADVSignedDeviceIdentityHMAC, deviceIdentityNode.content as Buffer)
 
 	if(!details || !hmac) {
 		throw new Boom('Missing details or hmac in device identity', { data: stanza })
@@ -171,7 +172,7 @@ export const configureSuccessfulPairing = (
 		throw new Boom('Invalid account signature')
 	}
 
-	const account = readBinaryNode(WAProto.readADVSignedDeviceIdentity, details)
+	const account = readBinaryNode(proto.readADVSignedDeviceIdentity, details)
 	const { accountSignatureKey, accountSignature, details: deviceDetails } = account
 
 	if(!accountSignatureKey || !accountSignature || !deviceDetails) {
@@ -191,7 +192,7 @@ export const configureSuccessfulPairing = (
 	const identity = createSignalIdentity(jid, accountSignatureKey)
 	const accountEnc = encodeSignedDeviceIdentity(account, false)
 
-	const deviceIdentity = readBinaryNode(WAProto.readADVDeviceIdentity, account.details!)
+	const deviceIdentity = readBinaryNode(proto.readADVDeviceIdentity, account.details!)
 
 	if(!deviceIdentity.keyIndex) {
 		throw new Boom('Missing keyIndex in device identity', { data: stanza })
@@ -236,7 +237,7 @@ export const configureSuccessfulPairing = (
 }
 
 export const encodeSignedDeviceIdentity = (
-	account: WAProto.ADVSignedDeviceIdentity,
+	account: proto.ADVSignedDeviceIdentity,
 	includeSignatureKey: boolean
 ) => {
 	account = { ...account }
@@ -246,5 +247,5 @@ export const encodeSignedDeviceIdentity = (
 		account.accountSignatureKey = undefined
 	}
 
-	return writeBinaryNode(WAProto.writeADVSignedDeviceIdentity, account)
+	return writeBinaryNode(proto.writeADVSignedDeviceIdentity, account)
 }
