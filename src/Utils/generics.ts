@@ -354,7 +354,7 @@ export const getErrorCodeFromStreamError = (node: BinaryNode) => {
 }
 
 export const getCallStatusFromNode = ({ tag, attrs }: BinaryNode) => {
-	let status: WACallUpdateType
+	let status: WACallUpdateType | undefined
 	switch (tag) {
 	case 'offer':
 	case 'offer_notice':
@@ -364,9 +364,9 @@ export const getCallStatusFromNode = ({ tag, attrs }: BinaryNode) => {
 		if(attrs.reason === 'timeout') {
 			status = 'timeout'
 		} else {
+			//fired when accepted/rejected/timeout/caller hangs up
 			status = 'terminate'
 		}
-
 		break
 	case 'reject':
 		status = 'reject'

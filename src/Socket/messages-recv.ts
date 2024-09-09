@@ -907,14 +907,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			call.isVideo = existingCall.isVideo
 			call.isGroup = existingCall.isGroup
 		}
-
-		if(status === 'accept') {
-			call.startedAt = new Date(+attrs.t * 1000)
-			callOfferCache.set(call.id, call)
-		}
 		
 		// delete data once call has ended
-		if(status === 'reject' || status === 'timeout' || status == 'terminate') {
+		if(status === 'reject' || status === 'timeout' || status === 'terminate' || status === 'accept') {
 			callOfferCache.del(call.id)
 		}
 
