@@ -1,7 +1,7 @@
 import type KeyedDB from '@adiwajshing/keyed-db'
 import type { Comparable } from '@adiwajshing/keyed-db/lib/Types'
 import type { Logger } from 'pino'
-import { proto } from '../../WAProto'
+import * as proto from '../../WAProto/WAProto'
 import { DEFAULT_CONNECTION_CONFIG } from '../Defaults'
 import type makeMDSocket from '../Socket'
 import type { BaileysEventEmitter, Chat, ConnectionState, Contact, GroupMetadata, PresenceData, WAMessage, WAMessageCursor, WAMessageKey } from '../Types'
@@ -96,7 +96,7 @@ export default (config: BaileysInMemoryStoreConfig) => {
 			isLatest,
 			syncType
 		}) => {
-			if(syncType === proto.HistorySync.HistorySyncType.ON_DEMAND) {
+			if(syncType === proto.HistorySyncHistorySyncType.ON_DEMAND) {
 				return // FOR NOW,
 				//TODO: HANDLE
 			}
@@ -140,10 +140,10 @@ export default (config: BaileysInMemoryStoreConfig) => {
 				if(contacts[update.id!]) {
 					contact = contacts[update.id!]
 				} else {
-					const contactHashes = await Promise.all(Object.keys(contacts).map(async contactId => {
+					const contactHashes = Object.keys(contacts).map(contactId => {
 						const { user } = jidDecode(contactId)!
-						return [contactId, (await md5(Buffer.from(user + 'WA_ADD_NOTIF', 'utf8'))).toString('base64').slice(0, 3)]
-					}))
+						return [contactId, (md5(Buffer.from(user + 'WA_ADD_NOTIF', 'utf8'))).toString('base64').slice(0, 3)]
+					})
 					contact = contacts[contactHashes.find(([, b]) => b === update.id)?.[0] || ''] // find contact by attrs.hash, when user is not saved as a contact
 				}
 
@@ -221,20 +221,18 @@ export default (config: BaileysInMemoryStoreConfig) => {
 			case 'append':
 			case 'notify':
 				for(const msg of newMessages) {
-					const jid = jidNormalizedUser(msg.key.remoteJid!)
+					const jid = jidNormalizedUser(msg.key.remoteJid)
 					const list = assertMessageList(jid)
 					list.upsert(msg, 'append')
 
-					if(type === 'notify') {
-						if(!chats.get(jid)) {
-							ev.emit('chats.upsert', [
-								{
-									id: jid,
-									conversationTimestamp: toNumber(msg.messageTimestamp),
-									unreadCount: 1
-								}
-							])
-						}
+					if(type === 'notify' && !chats.get(jid)) {
+						ev.emit('chats.upsert', [
+							{
+								id: jid,
+								conversationTimestamp: toNumber(msg.messageTimestamp),
+								unreadCount: 1
+							}
+						])
 					}
 				}
 
@@ -243,7 +241,7 @@ export default (config: BaileysInMemoryStoreConfig) => {
 		})
 		ev.on('messages.update', updates => {
 			for(const { update, key } of updates) {
-				const list = assertMessageList(jidNormalizedUser(key.remoteJid!))
+				const list = assertMessageList(jidNormalizedUser(key.remoteJid))
 				if(update?.status) {
 					const listStatus = list.get(key.id!)?.status
 					if(listStatus && update?.status <= listStatus) {
@@ -344,7 +342,7 @@ export default (config: BaileysInMemoryStoreConfig) => {
 		for(const jid in json.messages) {
 			const list = assertMessageList(jid)
 			for(const msg of json.messages[jid]) {
-				list.upsert(proto.WebMessageInfo.fromObject(msg), 'append')
+				list.upsert(msg, 'append')
 			}
 		}
 	}

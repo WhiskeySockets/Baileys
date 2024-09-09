@@ -2,27 +2,28 @@ import { AxiosRequestConfig } from 'axios'
 import type { Logger } from 'pino'
 import type { Readable } from 'stream'
 import type { URL } from 'url'
-import { proto } from '../../WAProto'
+import * as proto from '../../WAProto/WAProto'
 import { MEDIA_HKDF_KEY_MAPPING } from '../Defaults'
 import { BinaryNode } from '../WABinary'
 import type { GroupMetadata } from './GroupMetadata'
 import { CacheStore } from './Socket'
 
+
 // export the WAMessage Prototypes
 export { proto as WAProto }
-export type WAMessage = proto.IWebMessageInfo
-export type WAMessageContent = proto.IMessage
-export type WAContactMessage = proto.Message.IContactMessage
-export type WAContactsArrayMessage = proto.Message.IContactsArrayMessage
-export type WAMessageKey = proto.IMessageKey
-export type WATextMessage = proto.Message.IExtendedTextMessage
-export type WAContextInfo = proto.IContextInfo
-export type WALocationMessage = proto.Message.ILocationMessage
-export type WAGenericMediaMessage = proto.Message.IVideoMessage | proto.Message.IImageMessage | proto.Message.IAudioMessage | proto.Message.IDocumentMessage | proto.Message.IStickerMessage
+export type WAMessage = proto.WebMessageInfo
+export type WAMessageContent = proto.Message
+export type WAContactMessage = proto.MessageContactMessage
+export type WAContactsArrayMessage = proto.MessageContactsArrayMessage
+export type WAMessageKey = proto.MessageKey
+export type WATextMessage = proto.MessageExtendedTextMessage
+export type WAContextInfo = proto.ContextInfo
+export type WALocationMessage = proto.MessageLocationMessage
+export type WAGenericMediaMessage = proto.MessageVideoMessage | proto.MessageImageMessage | proto.MessageAudioMessage | proto.MessageDocumentMessage | proto.MessageStickerMessage
 // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
-export import WAMessageStubType = proto.WebMessageInfo.StubType
+export import WAMessageStubType = proto.WebMessageInfoStubType
 // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
-export import WAMessageStatus = proto.WebMessageInfo.Status
+export import WAMessageStatus = proto.WebMessageInfoStatus
 export type WAMediaUpload = Buffer | { url: URL | string } | { stream: Readable }
 /** Set of message types that are supported by the library */
 export type MessageType = keyof proto.Message
@@ -44,7 +45,7 @@ export interface WAUrlInfo {
     title: string
     description?: string
     jpegThumbnail?: Buffer
-    highQualityThumbnail?: proto.Message.IImageMessage
+    highQualityThumbnail?: proto.MessageImageMessage
     originalThumbnailUrl?: string
 }
 
@@ -55,7 +56,7 @@ type Mentionable = {
 }
 type Contextable = {
     /** add contextInfo to the message */
-    contextInfo?: proto.IContextInfo
+    contextInfo?: proto.ContextInfo
 }
 type ViewOnce = {
     viewOnce?: boolean
@@ -133,7 +134,7 @@ export type GroupInviteInfo = {
     subject: string
 }
 
-export type WASendableProduct = Omit<proto.Message.ProductMessage.IProductSnapshot, 'productImage'> & {
+export type WASendableProduct = Omit<proto.MessageProductMessageProductSnapshot, 'productImage'> & {
     productImage: WAMediaUpload
 }
 
@@ -150,13 +151,13 @@ export type AnyRegularMessageContent = (
     | {
         contacts: {
             displayName?: string
-            contacts: proto.Message.IContactMessage[]
+            contacts: proto.MessageContactMessage[]
         }
     }
     | {
         location: WALocationMessage
     }
-    | { react: proto.Message.IReactionMessage }
+    | { react: proto.MessageReactionMessage }
     | {
         buttonReply: ButtonReplyInfo
         type: 'template' | 'plain'
@@ -165,11 +166,11 @@ export type AnyRegularMessageContent = (
         groupInvite: GroupInviteInfo
     }
     | {
-        listReply: Omit<proto.Message.IListResponseMessage, 'contextInfo'>
+        listReply: Omit<proto.MessageListResponseMessage, 'contextInfo'>
     }
     | {
         pin: WAMessageKey
-        type: proto.PinInChat.Type
+        type: proto.MessagePinInChatMessageType
         /**
          * 24 hours, 7 days, 30 days
          */
@@ -266,13 +267,13 @@ export type MessageGenerationOptions = MessageContentGenerationOptions & Message
  */
 export type MessageUpsertType = 'append' | 'notify'
 
-export type MessageUserReceipt = proto.IUserReceipt
+export type MessageUserReceipt = proto.UserReceipt
 
-export type WAMessageUpdate = { update: Partial<WAMessage>, key: proto.IMessageKey }
+export type WAMessageUpdate = { update: Partial<WAMessage>, key: proto.MessageKey }
 
 export type WAMessageCursor = { before: WAMessageKey | undefined } | { after: WAMessageKey | undefined }
 
-export type MessageUserReceiptUpdate = { key: proto.IMessageKey, receipt: MessageUserReceipt }
+export type MessageUserReceiptUpdate = { key: proto.MessageKey, receipt: MessageUserReceipt }
 
 export type MediaDecryptionKeyInfo = {
     iv: Buffer
@@ -280,4 +281,4 @@ export type MediaDecryptionKeyInfo = {
     macKey?: Buffer
 }
 
-export type MinimalMessage = Pick<proto.IWebMessageInfo, 'key' | 'messageTimestamp'>
+export type MinimalMessage = Pick<proto.WebMessageInfo, 'key' | 'messageTimestamp'>

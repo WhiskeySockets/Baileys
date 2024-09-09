@@ -2,7 +2,6 @@ import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
 import { URL } from 'url'
 import { promisify } from 'util'
-import { proto } from '../../WAProto'
 import {
 	DEF_CALLBACK_PREFIX,
 	DEF_TAG_PREFIX,
@@ -13,7 +12,7 @@ import {
 	MOBILE_PORT,
 	NOISE_WA_HEADER
 } from '../Defaults'
-import { DisconnectReason, SocketConfig } from '../Types'
+import { DisconnectReason, SocketConfig, WAProto } from '../Types'
 import {
 	addTransactionCapability,
 	aesEncryptCTR,
@@ -35,6 +34,7 @@ import {
 	printQRIfNecessaryListener,
 	promiseTimeout,
 } from '../Utils'
+import { readBinaryNode, writeBinaryNode } from '../Utils/proto-utils'
 import {
 	assertNodeErrorFree,
 	BinaryNode,
@@ -230,23 +230,22 @@ export const makeSocket = (config: SocketConfig) => {
 
 	/** connection handshake */
 	const validateConnection = async() => {
-		let helloMsg: proto.IHandshakeMessage = {
+		const helloMsg: WAProto.HandshakeMessage = {
 			clientHello: { ephemeral: ephemeralKeyPair.public }
 		}
-		helloMsg = proto.HandshakeMessage.fromObject(helloMsg)
 
 		logger.info({ browser, helloMsg }, 'connected to WA')
 
-		const init = proto.HandshakeMessage.encode(helloMsg).finish()
+		const init = writeBinaryNode(WAProto.writeHandshakeMessage, helloMsg)
 
 		const result = await awaitNextMessage<Uint8Array>(init)
-		const handshake = proto.HandshakeMessage.decode(result)
+		const handshake = readBinaryNode(WAProto.readHandshakeMessage, result)
 
 		logger.trace({ handshake }, 'handshake recv from WA')
 
 		const keyEnc = noise.processHandshake(handshake, creds.noiseKey)
 
-		let node: proto.IClientPayload
+		let node: WAProto.ClientPayload
 		if(config.mobile) {
 			node = generateMobileNode(config)
 		} else if(!creds.me) {
@@ -257,17 +256,16 @@ export const makeSocket = (config: SocketConfig) => {
 			logger.info({ node }, 'logging in...')
 		}
 
-		const payloadEnc = noise.encrypt(
-			proto.ClientPayload.encode(node).finish()
-		)
-		await sendRawMessage(
-			proto.HandshakeMessage.encode({
-				clientFinish: {
-					static: keyEnc,
-					payload: payloadEnc,
-				},
-			}).finish()
-		)
+		const payload = writeBinaryNode(WAProto.writeClientPayload, node)
+		const payloadEnc = noise.encrypt(payload)
+
+		await sendRawMessage(writeBinaryNode(WAProto.writeHandshakeMessage, {
+			clientFinish: {
+				static: keyEnc,
+				payload: payloadEnc,
+			}
+		}))
+
 		noise.finishInit()
 		startKeepAliveRequest()
 	}
@@ -335,11 +333,12 @@ export const makeSocket = (config: SocketConfig) => {
 				const l1 = frame.attrs || {}
 				const l2 = Array.isArray(frame.content) ? frame.content[0]?.tag : ''
 
-				Object.keys(l1).forEach(key => {
+				for(const key of Object.keys(l1)) {
 					anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0},${key}:${l1[key]},${l2}`, frame) || anyTriggered
 					anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0},${key}:${l1[key]}`, frame) || anyTriggered
 					anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0},${key}`, frame) || anyTriggered
-				})
+				}
+
 				anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0},,${l2}`, frame) || anyTriggered
 				anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0}`, frame) || anyTriggered
 

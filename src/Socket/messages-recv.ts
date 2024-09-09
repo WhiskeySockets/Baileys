@@ -2,7 +2,7 @@
 import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
 import NodeCache from 'node-cache'
-import { proto } from '../../WAProto'
+import * as proto from '../../WAProto/WAProto'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import { MessageReceiptType, MessageRelayOptions, MessageUserReceipt, SocketConfig, WACallEvent, WAMessageKey, WAMessageStatus, WAMessageStubType, WAPatchName } from '../Types'
 import {
@@ -254,7 +254,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const handleGroupNotification = (
 		participant: string,
 		child: BinaryNode,
-		msg: Partial<proto.IWebMessageInfo>
+		msg: Partial<proto.WebMessageInfo>
 	) => {
 		const participantJid = getBinaryNodeChild(child, 'participant')?.attrs?.jid || participant
 		switch (child?.tag) {
@@ -279,7 +279,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		case 'not_ephemeral':
 			msg.message = {
 				protocolMessage: {
-					type: proto.Message.ProtocolMessage.Type.EPHEMERAL_SETTING,
+					type: proto.MessageProtocolMessageType.EPHEMERAL_SETTING,
 					ephemeralExpiration: +(child.attrs.expiration || 0)
 				}
 			}
@@ -342,7 +342,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 			break
 		case 'membership_approval_mode':
-			const approvalMode: any = getBinaryNodeChild(child, 'group_join')
+			const approvalMode = getBinaryNodeChild(child, 'group_join')
 			if(approvalMode) {
 				msg.messageStubType = WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_MODE
 				msg.messageStubParameters = [ approvalMode.attrs.state ]
@@ -362,7 +362,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const processNotification = async(node: BinaryNode) => {
-		const result: Partial<proto.IWebMessageInfo> = { }
+		const result: Partial<proto.WebMessageInfo> = { }
 		const [child] = getAllBinaryNodeChildren(node)
 		const nodeType = node.attrs.type
 		const from = jidNormalizedUser(node.attrs.from)
@@ -534,6 +534,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		return aesDecryptCTR(payload, secretKey, iv)
 	}
 
+	// eslint-disable-next-line unicorn/consistent-function-scoping
 	function toRequiredBuffer(data: Uint8Array | Buffer | undefined) {
 		if(data === undefined) {
 			throw new Boom('Invalid buffer', { statusCode: 400 })
@@ -555,7 +556,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const sendMessagesAgain = async(
-		key: proto.IMessageKey,
+		key: proto.MessageKey,
 		ids: string[],
 		retryNode: BinaryNode
 	) => {
@@ -574,8 +575,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		logger.debug({ participant, sendToAll }, 'forced new session for retry recp')
 
-		for(let i = 0; i < msgs.length;i++) {
-			const msg = msgs[i]
+		for(const [i, msg] of msgs.entries()) {
 			if(msg) {
 				updateSendMessageAgainCount(ids[i], participant)
 				const msgRelayOpts: MessageRelayOptions = { messageId: ids[i] }
@@ -603,7 +603,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const remoteJid = !isNodeFromMe || isJidGroup(attrs.from) ? attrs.from : attrs.recipient
 		const fromMe = !attrs.recipient || (attrs.type === 'retry' && isNodeFromMe)
 
-		const key: proto.IMessageKey = {
+		const key: proto.MessageKey = {
 			remoteJid,
 			id: '',
 			fromMe,
@@ -631,13 +631,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						(
 							// basically, we only want to know when a message from us has been delivered to/read by the other person
 							// or another device of ours has read some messages
-							status > proto.WebMessageInfo.Status.DELIVERY_ACK ||
+							status > proto.WebMessageInfoStatus.DELIVERY_ACK ||
 							!isNodeFromMe
 						)
 					) {
 						if(isJidGroup(remoteJid) || isJidStatusBroadcast(remoteJid)) {
 							if(attrs.participant) {
-								const updateKey: keyof MessageUserReceipt = status === proto.WebMessageInfo.Status.DELIVERY_ACK ? 'receiptTimestamp' : 'readTimestamp'
+								const updateKey: keyof MessageUserReceipt = status === proto.WebMessageInfoStatus.DELIVERY_ACK ? 'receiptTimestamp' : 'readTimestamp'
 								ev.emit(
 									'message-receipt.update',
 									ids.map(id => ({
@@ -709,7 +709,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						msg.participant ??= node.attrs.participant
 						msg.messageTimestamp = +node.attrs.t
 
-						const fullMsg = proto.WebMessageInfo.fromObject(msg)
+						const fullMsg: proto.WebMessageInfo = {
+							key: msg.key,
+							...msg,
+						}
+
 						await upsertMessage(fullMsg, 'append')
 					}
 				}
@@ -755,10 +759,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			msg.messageStubParameters = [NO_MESSAGE_FOUND_ERROR_TEXT, response]
 		}
 
-		if(msg.message?.protocolMessage?.type === proto.Message.ProtocolMessage.Type.SHARE_PHONE_NUMBER) {
-			if(node.attrs.sender_pn) {
-				ev.emit('chats.phoneNumberShare', { lid: node.attrs.from, jid: node.attrs.sender_pn })
-			}
+		if(msg.message?.protocolMessage?.type === proto.MessageProtocolMessageType.SHARE_PHONE_NUMBER && node.attrs.sender_pn) {
+			ev.emit('chats.phoneNumberShare', { lid: node.attrs.from, jid: node.attrs.sender_pn })
 		}
 
 		await Promise.all([
@@ -766,7 +768,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				async() => {
 					await decrypt()
 					// message failed to decrypt
-					if(msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT) {
+					if(msg.messageStubType === proto.WebMessageInfoStubType.CIPHERTEXT) {
 						retryMutex.mutex(
 							async() => {
 								if(ws.isOpen) {
@@ -793,19 +795,19 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						} else if(msg.key.fromMe) { // message was sent by us from a different device
 							type = 'sender'
 							// need to specially handle this case
-							if(isJidUser(msg.key.remoteJid!)) {
+							if(isJidUser(msg.key.remoteJid)) {
 								participant = author
 							}
 						} else if(!sendActiveReceipts) {
 							type = 'inactive'
 						}
 
-						await sendReceipt(msg.key.remoteJid!, participant!, [msg.key.id!], type)
+						await sendReceipt(msg.key.remoteJid!, participant, [msg.key.id!], type)
 
 						// send ack for history message
 						const isAnyHistoryMsg = getHistoryMsg(msg.message!)
 						if(isAnyHistoryMsg) {
-							const jid = jidNormalizedUser(msg.key.remoteJid!)
+							const jid = jidNormalizedUser(msg.key.remoteJid)
 							await sendReceipt(jid, undefined, [msg.key.id!], 'hist_sync')
 						}
 					}
@@ -822,13 +824,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const fetchMessageHistory = async(
 		count: number,
 		oldestMsgKey: WAMessageKey,
-		oldestMsgTimestamp: number | Long
+		oldestMsgTimestamp: number
 	): Promise<string> => {
 		if(!authState.creds.me?.id) {
 			throw new Boom('Not authenticated')
 		}
 
-		const pdoMessage = {
+		const pdoMessage: proto.MessagePeerDataOperationRequestMessage = {
 			historySyncOnDemandRequest: {
 				chatJid: oldestMsgKey.remoteJid,
 				oldestMsgFromMe: oldestMsgKey.fromMe,
@@ -836,7 +838,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				oldestMsgTimestampMs: oldestMsgTimestamp,
 				onDemandMsgCount: count
 			},
-			peerDataOperationRequestType: proto.Message.PeerDataOperationRequestType.HISTORY_SYNC_ON_DEMAND
+			peerDataOperationRequestType: proto.MessagePeerDataOperationRequestType.HISTORY_SYNC_ON_DEMAND
 		}
 
 		return sendPeerDataOperationMessage(pdoMessage)
@@ -865,7 +867,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			placeholderMessageResendRequest: [{
 				messageKey
 			}],
-			peerDataOperationRequestType: proto.Message.PeerDataOperationRequestType.PLACEHOLDER_MESSAGE_RESEND
+			peerDataOperationRequestType: proto.MessagePeerDataOperationRequestType.PLACEHOLDER_MESSAGE_RESEND
 		}
 
 		setTimeout(() => {
@@ -996,7 +998,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	ev.on('call', ([ call ]) => {
 		// missed call + group call notification message generation
 		if(call.status === 'timeout' || (call.status === 'offer' && call.isGroup)) {
-			const msg: proto.IWebMessageInfo = {
+			const msg: proto.WebMessageInfo = {
 				key: {
 					remoteJid: call.chatId,
 					id: call.id,
@@ -1014,8 +1016,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				msg.message = { call: { callKey: Buffer.from(call.id) } }
 			}
 
-			const protoMsg = proto.WebMessageInfo.fromObject(msg)
-			upsertMessage(protoMsg, call.offline ? 'append' : 'notify')
+			upsertMessage(msg, call.offline ? 'append' : 'notify')
 		}
 	})
 

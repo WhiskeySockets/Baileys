@@ -1,5 +1,5 @@
 import type { Boom } from '@hapi/boom'
-import { proto } from '../../WAProto'
+import * as proto from '../../WAProto/WAProto'
 import { AuthenticationCreds } from './Auth'
 import { WACallEvent } from './Call'
 import { Chat, ChatUpdate, PresenceData } from './Chat'
@@ -22,7 +22,7 @@ export type BaileysEventMap = {
         messages: WAMessage[]
         isLatest?: boolean
         progress?: number | null
-        syncType?: proto.HistorySync.HistorySyncType
+        syncType?: proto.HistorySyncHistorySyncType
     }
     /** upsert chats */
     'chats.upsert': Chat[]
@@ -47,7 +47,7 @@ export type BaileysEventMap = {
      *  */
     'messages.upsert': { messages: WAMessage[], type: MessageUpsertType, requestId?: string }
     /** message was reacted to. If reaction was removed -- then "reaction.text" will be falsey */
-    'messages.reaction': { key: WAMessageKey, reaction: proto.IReaction }[]
+    'messages.reaction': { key: WAMessageKey, reaction: proto.Reaction }[]
 
     'message-receipt.update': MessageUserReceiptUpdate[]
 
@@ -82,8 +82,8 @@ export type BufferedEventData = {
     messageUpserts: { [key: string]: { type: MessageUpsertType, message: WAMessage } }
     messageUpdates: { [key: string]: WAMessageUpdate }
     messageDeletes: { [key: string]: WAMessageKey }
-    messageReactions: { [key: string]: { key: WAMessageKey, reactions: proto.IReaction[] } }
-    messageReceipts: { [key: string]: { key: WAMessageKey, userReceipt: proto.IUserReceipt[] } }
+    messageReactions: { [key: string]: { key: WAMessageKey, reactions: proto.Reaction[] } }
+    messageReceipts: { [key: string]: { key: WAMessageKey, userReceipt: proto.UserReceipt[] } }
     groupUpdates: { [jid: string]: Partial<GroupMetadata> }
 }
 

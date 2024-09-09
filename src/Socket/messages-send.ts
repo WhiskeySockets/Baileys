@@ -1,7 +1,7 @@
 
 import { Boom } from '@hapi/boom'
 import NodeCache from 'node-cache'
-import { proto } from '../../WAProto'
+import * as proto from '../../WAProto/WAProto'
 import { DEFAULT_CACHE_TTLS, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import { AnyMessageContent, MediaConnInfo, MessageReceiptType, MessageRelayOptions, MiscMessageGenerationOptions, SocketConfig, WAMessageKey } from '../Types'
 import { aggregateMessageKeysNotFromMe, assertMediaContent, bindWaitForEvent, decryptMediaRetryData, encodeSignedDeviceIdentity, encodeWAMessage, encryptMediaRetryRequest, extractDeviceJids, generateMessageIDV2, generateWAMessage, getStatusCodeForMediaRetry, getUrlFromDirectPath, getWAUploadToServer, normalizeMessageContent, parseAndInjectE2ESessions, unixTimestampSeconds } from '../Utils'
@@ -266,21 +266,21 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	}
 
 	const sendPeerDataOperationMessage = async(
-		pdoMessage: proto.Message.IPeerDataOperationRequestMessage
+		pdoMessage: proto.MessagePeerDataOperationRequestMessage
 	): Promise<string> => {
 		//TODO: for later, abstract the logic to send a Peer Message instead of just PDO - useful for App State Key Resync with phone
 		if(!authState.creds.me?.id) {
 			throw new Boom('Not authenticated')
 		}
 
-		const protocolMessage: proto.IMessage = {
+		const protocolMessage: proto.Message = {
 			protocolMessage: {
 				peerDataOperationRequestMessage: pdoMessage,
-				type: proto.Message.ProtocolMessage.Type.PEER_DATA_OPERATION_REQUEST_MESSAGE
+				type: proto.MessageProtocolMessageType.PEER_DATA_OPERATION_REQUEST_MESSAGE
 			}
 		}
 
-		const meJid = jidNormalizedUser(authState.creds.me.id)!
+		const meJid = jidNormalizedUser(authState.creds.me.id)
 
 		const msgId = await relayMessage(meJid, protocolMessage, {
 			additionalAttributes: {
@@ -295,7 +295,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	const createParticipantNodes = async(
 		jids: string[],
-		message: proto.IMessage,
+		message: proto.Message,
 		extraAttrs?: BinaryNode['attrs']
 	) => {
 		const patched = await patchMessageBeforeSending(message, jids)
@@ -333,7 +333,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	const relayMessage = async(
 		jid: string,
-		message: proto.IMessage,
+		message: proto.Message,
 		{ messageId: msgId, participant, additionalAttributes, additionalNodes, useUserDevicesCache, useCachedGroupMetadata, statusJidList }: MessageRelayOptions
 	) => {
 		const meId = authState.creds.me!.id
@@ -355,7 +355,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const binaryNodeContent: BinaryNode[] = []
 		const devices: JidWithDevice[] = []
 
-		const meMsg: proto.IMessage = {
+		const meMsg: proto.Message = {
 			deviceSentMessage: {
 				destinationJid,
 				message
@@ -446,7 +446,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					if(senderKeyJids.length) {
 						logger.debug({ senderKeyJids }, 'sending new sender key')
 
-						const senderKeyMsg: proto.IMessage = {
+						const senderKeyMsg: proto.Message = {
 							senderKeyDistributionMessage: {
 								axolotlSenderKeyDistributionMessage: senderKeyDistributionMessage,
 								groupId: destinationJid
@@ -579,7 +579,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return msgId
 	}
 
-	const getMediaType = (message: proto.IMessage) => {
+	const getMediaType = (message: proto.Message) => {
 		if(message.imageMessage) {
 			return 'image'
 		} else if(message.videoMessage) {
@@ -661,7 +661,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		sendPeerDataOperationMessage,
 		createParticipantNodes,
 		getUSyncDevices,
-		updateMediaMessage: async(message: proto.IWebMessageInfo) => {
+		updateMediaMessage: async(message: proto.WebMessageInfo) => {
 			const content = assertMediaContent(message.message)
 			const mediaKey = content.mediaKey!
 			const meId = authState.creds.me!.id
@@ -679,16 +679,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							} else {
 								try {
 									const media = decryptMediaRetryData(result.media!, mediaKey, result.key.id!)
-									if(media.result !== proto.MediaRetryNotification.ResultType.SUCCESS) {
-										const resultStr = proto.MediaRetryNotification.ResultType[media.result]
+									if(media.result !== proto.MediaRetryNotificationResultType.SUCCESS) {
+										const resultStr = proto.MediaRetryNotificationResultType[media.result!]
 										throw new Boom(
 											`Media re-upload failed by device (${resultStr})`,
-											{ data: media, statusCode: getStatusCodeForMediaRetry(media.result) || 404 }
+											{ data: media, statusCode: getStatusCodeForMediaRetry(media.result!) || 404 }
 										)
 									}
 
 									content.directPath = media.directPath
-									content.url = getUrlFromDirectPath(content.directPath)
+									content.url = getUrlFromDirectPath(content.directPath!)
 
 									logger.debug({ directPath: media.directPath, key: result.key }, 'media update successful')
 								} catch(err) {
@@ -781,7 +781,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					console.warn('cachedGroupMetadata in sendMessage are deprecated, now cachedGroupMetadata is part of the socket config.')
 				}
 
-				await relayMessage(jid, fullMsg.message!, { messageId: fullMsg.key.id!, useCachedGroupMetadata: options.useCachedGroupMetadata, additionalAttributes, statusJidList: options.statusJidList })
+				await relayMessage(jid, fullMsg.message, { messageId: fullMsg.key.id, useCachedGroupMetadata: options.useCachedGroupMetadata, additionalAttributes, statusJidList: options.statusJidList })
 				if(config.emitOwnEvents) {
 					process.nextTick(() => {
 						processingMutex.mutex(() => (

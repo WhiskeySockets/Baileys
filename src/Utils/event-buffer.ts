@@ -1,7 +1,6 @@
 import EventEmitter from 'events'
 import { Logger } from 'pino'
-import { proto } from '../../WAProto'
-import { BaileysEvent, BaileysEventEmitter, BaileysEventMap, BufferedEventData, Chat, ChatUpdate, Contact, WAMessage, WAMessageStatus } from '../Types'
+import { BaileysEvent, BaileysEventEmitter, BaileysEventMap, BufferedEventData, Chat, ChatUpdate, Contact, WAMessage, WAMessageStatus, WAProto } from '../Types'
 import { trimUndefined } from './generics'
 import { updateMessageWithReaction, updateMessageWithReceipt } from './messages'
 import { isRealMessage, shouldIncrementChatUnread } from './process-message'
@@ -592,12 +591,10 @@ function consolidateEvents(data: BufferedEventData) {
 }
 
 function concatChats<C extends Partial<Chat>>(a: C, b: Partial<Chat>) {
-	if(b.unreadCount === null) {
-		// neutralize unread counter
-		if(a.unreadCount! < 0) {
-			a.unreadCount = undefined
-			b.unreadCount = undefined
-		}
+	if(b.unreadCount === null && // neutralize unread counter
+		a.unreadCount! < 0) {
+		a.unreadCount = undefined
+		b.unreadCount = undefined
 	}
 
 	if(typeof a.unreadCount === 'number' && typeof b.unreadCount === 'number') {
@@ -610,4 +607,4 @@ function concatChats<C extends Partial<Chat>>(a: C, b: Partial<Chat>) {
 	return Object.assign(a, b)
 }
 
-const stringifyMessageKey = (key: proto.IMessageKey) => `${key.remoteJid},${key.id},${key.fromMe ? '1' : '0'}`
+const stringifyMessageKey = (key: WAProto.MessageKey) => `${key.remoteJid},${key.id},${key.fromMe ? '1' : '0'}`

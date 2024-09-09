@@ -1,11 +1,11 @@
 import { Boom } from '@hapi/boom'
 import NodeCache from 'node-cache'
-import { proto } from '../../WAProto'
 import { DEFAULT_CACHE_TTLS, PROCESSABLE_HISTORY_TYPES } from '../Defaults'
-import { ALL_WA_PATCH_NAMES, ChatModification, ChatMutation, LTHashState, MessageUpsertType, PresenceData, SocketConfig, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAMessage, WAPatchCreate, WAPatchName, WAPresence, WAPrivacyCallValue, WAPrivacyGroupAddValue, WAPrivacyOnlineValue, WAPrivacyValue, WAReadReceiptsValue } from '../Types'
+import { ALL_WA_PATCH_NAMES, ChatModification, ChatMutation, LTHashState, MessageUpsertType, PresenceData, SocketConfig, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAMessage, WAPatchCreate, WAPatchName, WAPresence, WAPrivacyCallValue, WAPrivacyGroupAddValue, WAPrivacyOnlineValue, WAPrivacyValue, WAProto, WAReadReceiptsValue } from '../Types'
 import { chatModificationToAppPatch, ChatMutationMap, decodePatches, decodeSyncdSnapshot, encodeSyncdPatch, extractSyncdPatches, generateProfilePicture, getHistoryMsg, newLTHashState, processSyncAction } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
 import processMessage from '../Utils/process-message'
+import { writeBinaryNode } from '../Utils/proto-utils'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidNormalizedUser, reduceBinaryNodeToDictionary, S_WHATSAPP_NET } from '../WABinary'
 import { makeSocket } from './socket'
 
@@ -653,7 +653,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 
 		let initial: LTHashState
-		let encodeResult: { patch: proto.ISyncdPatch, state: LTHashState }
+		let encodeResult: { patch: WAProto.SyncdPatch, state: LTHashState }
 
 		await processingMutex.mutex(
 			async() => {
@@ -697,7 +697,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 												{
 													tag: 'patch',
 													attrs: {},
-													content: proto.SyncdPatch.encode(patch).finish()
+													content: writeBinaryNode(WAProto.writeSyncdPatch, patch)
 												}
 											]
 										}
@@ -847,7 +847,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 		if(!!msg.pushName) {
 			let jid = msg.key.fromMe ? authState.creds.me!.id : (msg.key.participant || msg.key.remoteJid)
-			jid = jidNormalizedUser(jid!)
+			jid = jidNormalizedUser(jid)
 
 			if(!msg.key.fromMe) {
 				ev.emit('contacts.update', [{ id: jid, notify: msg.pushName, verifiedName: msg.verifiedBizName! }])
@@ -964,14 +964,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				)
 		}
 
-		if(receivedPendingNotifications) {
-			// if we don't have the app state key
+		if(receivedPendingNotifications && // if we don't have the app state key
 			// we keep buffering events until we finally have
 			// the key and can sync the messages
-			if(!authState.creds?.myAppStateKeyId && !config.mobile) {
-				ev.buffer()
-				needToFlushWithAppStateSync = true
-			}
+			!authState.creds?.myAppStateKeyId && !config.mobile) {
+			ev.buffer()
+			needToFlushWithAppStateSync = true
 		}
 	})
 
