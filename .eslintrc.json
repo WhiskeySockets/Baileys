@@ -30,7 +30,6 @@
         ],
         "keyword-spacing": [
             "warn"
-        ],
-        "linebreak-style": "off"
+        ]
     }
 }
