@@ -344,38 +344,6 @@ function fieldTypeName(typeID, typeRef, parentModule, parentPath) {
 	}
 }
 
-const staticRenames = {
-	id: "ID",
-	jid: "JID",
-	encIv: "encIV",
-	iv: "IV",
-	ptt: "PTT",
-	hmac: "HMAC",
-	url: "URL",
-	fbid: "FBID",
-	jpegThumbnail: "JPEGThumbnail",
-	dsm: "DSM",
-}
-
-function fixFieldName(name) {
-	if (name === "id") {
-		return "ID"
-	} else if (name === "encIv") {
-		return "encIV"
-	}
-	return staticRenames[name] ?? name
-		.replace(/Id([A-Zs]|$)/, "ID$1")
-		.replace("Jid", "JID")
-		.replace(/Ms([A-Z]|$)/, "MS$1")
-		.replace(/Ts([A-Z]|$)/, "TS$1")
-		.replace(/Mac([A-Z]|$)/, "MAC$1")
-		.replace("Url", "URL")
-		.replace("Cdn", "CDN")
-		.replace("Json", "JSON")
-		.replace("Jpeg", "JPEG")
-		.replace("Sha256", "SHA256")
-}
-
 function protoifyField(name, [index, flags, typeRef], parentModule, parentPath, isOneOf, proto3) {
 	const preflags = []
 	const postflags = [""]
@@ -395,7 +363,7 @@ function protoifyField(name, [index, flags, typeRef], parentModule, parentPath, 
 	if ((flags & FLAGS.PACKED) !== 0) {
 		postflags.push(`[packed=true]`)
 	}
-	return `${preflags.join(" ")} ${fixFieldName(name)} = ${index}${postflags.join(" ")};`
+	return `${preflags.join(" ")} ${name} = ${index}${postflags.join(" ")};`
 }
 
 function protoifyFields(fields, parentModule, parentPath, isOneOf, proto3) {

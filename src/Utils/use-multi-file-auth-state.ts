@@ -1,7 +1,7 @@
 import AsyncLock from 'async-lock'
 import { mkdir, readFile, stat, unlink, writeFile } from 'fs/promises'
 import { join } from 'path'
-import { proto } from '../../WAProto'
+import proto from '../../WAProto'
 import { AuthenticationCreds, AuthenticationState, SignalDataTypeMap } from '../Types'
 import { initAuthCreds } from './auth-utils'
 import { BufferJSON } from './generics'
@@ -79,7 +79,7 @@ export const useMultiFileAuthState = async(folder: string): Promise<{ state: Aut
 							async id => {
 								let value = await readData(`${type}-${id}.json`)
 								if(type === 'app-state-sync-key' && value) {
-									value = proto.Message.AppStateSyncKeyData.fromObject(value)
+									value = proto.WAE2E.Message.AppStateSyncKeyData.fromObject(value)
 								}
 
 								data[id] = value

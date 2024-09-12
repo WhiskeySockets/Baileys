@@ -34,7 +34,7 @@ message CallLogRecord {
 	}
 
 	message ParticipantInfo {
-		optional string userJID = 1;
+		optional string userJid = 1;
 		optional CallResult callResult = 2;
 	}
 
@@ -47,10 +47,10 @@ message CallLogRecord {
 	optional bool isVideo = 7;
 	optional bool isCallLink = 8;
 	optional string callLinkToken = 9;
-	optional string scheduledCallID = 10;
-	optional string callID = 11;
-	optional string callCreatorJID = 12;
-	optional string groupJID = 13;
+	optional string scheduledCallId = 10;
+	optional string callId = 11;
+	optional string callCreatorJid = 12;
+	optional string groupJid = 13;
 	repeated ParticipantInfo participants = 14;
 	optional CallType callType = 15;
 }
@@ -73,7 +73,7 @@ message SyncActionValue {
 		required Status status = 1;
 		required string country = 2;
 		optional string gatewayName = 3;
-		optional string credentialID = 4;
+		optional string credentialId = 4;
 	}
 
 	message NoteEditAction {
@@ -83,7 +83,7 @@ message SyncActionValue {
 		}
 
 		optional NoteType type = 1;
-		optional string chatJID = 2;
+		optional string chatJid = 2;
 		optional int64 createdAt = 3;
 		optional bool deleted = 4;
 		optional string unstructuredContent = 5;
@@ -97,7 +97,7 @@ message SyncActionValue {
 		}
 
 		optional StatusDistributionMode mode = 1;
-		repeated string userJID = 2;
+		repeated string userJid = 2;
 	}
 
 	message MarketingMessageAction {
@@ -111,12 +111,21 @@ message SyncActionValue {
 		optional int64 createdAt = 4;
 		optional int64 lastSentAt = 5;
 		optional bool isDeleted = 6;
-		optional string mediaID = 7;
+		optional string mediaId = 7;
+	}
+
+	message UsernameChatStartModeAction {
+		enum ChatStartMode {
+			LID = 1;
+			PN = 2;
+		}
+
+		optional ChatStartMode chatStartMode = 1;
 	}
 
 	message FavoritesAction {
 		message Favorite {
-			optional string ID = 1;
+			optional string id = 1;
 		}
 
 		repeated Favorite favorites = 1;
@@ -139,7 +148,7 @@ message SyncActionValue {
 	}
 
 	message CustomPaymentMethod {
-		required string credentialID = 1;
+		required string credentialId = 1;
 		required string country = 2;
 		required string type = 3;
 		repeated CustomPaymentMethodMetadata metadata = 4;
@@ -155,11 +164,11 @@ message SyncActionValue {
 	}
 
 	message LabelReorderingAction {
-		repeated int32 sortedLabelIDs = 1;
+		repeated int32 sortedLabelIds = 1;
 	}
 
 	message DeleteIndividualCallLogAction {
-		optional string peerJID = 1;
+		optional string peerJid = 1;
 		optional bool isIncoming = 2;
 	}
 
@@ -184,7 +193,7 @@ message SyncActionValue {
 	}
 
 	message PnForLidChatAction {
-		optional string pnJID = 1;
+		optional string pnJid = 1;
 	}
 
 	message ChatAssignmentOpenedStatusAction {
@@ -196,8 +205,8 @@ message SyncActionValue {
 	}
 
 	message StickerAction {
-		optional string URL = 1;
-		optional bytes fileEncSHA256 = 2;
+		optional string url = 1;
+		optional bytes fileEncSha256 = 2;
 		optional bytes mediaKey = 3;
 		optional string mimetype = 4;
 		optional uint32 height = 5;
@@ -205,12 +214,12 @@ message SyncActionValue {
 		optional string directPath = 7;
 		optional uint64 fileLength = 8;
 		optional bool isFavorite = 9;
-		optional uint32 deviceIDHint = 10;
+		optional uint32 deviceIdHint = 10;
 		optional bool isLottie = 11;
 	}
 
 	message RemoveRecentStickerAction {
-		optional int64 lastStickerSentTS = 1;
+		optional int64 lastStickerSentTs = 1;
 	}
 
 	message PrimaryVersionAction {
@@ -298,7 +307,7 @@ message SyncActionValue {
 	message LabelEditAction {
 		optional string name = 1;
 		optional int32 color = 2;
-		optional int32 predefinedID = 3;
+		optional int32 predefinedId = 3;
 		optional bool deleted = 4;
 		optional int32 orderIndex = 5;
 	}
@@ -340,7 +349,7 @@ message SyncActionValue {
 	message ContactAction {
 		optional string fullName = 1;
 		optional string firstName = 2;
-		optional string lidJID = 3;
+		optional string lidJid = 3;
 		optional bool saveOnPrimaryAddressbook = 4;
 	}
 
@@ -400,6 +409,7 @@ message SyncActionValue {
 	optional FavoritesAction favoritesAction = 56;
 	optional MerchantPaymentPartnerAction merchantPaymentPartnerAction = 57;
 	optional WaffleAccountLinkStateAction waffleAccountLinkStateAction = 58;
+	optional UsernameChatStartModeAction usernameChatStartMode = 59;
 }
 
 message PatchDebugData {
@@ -417,7 +427,7 @@ message PatchDebugData {
 	optional bytes newLthash = 2;
 	optional bytes patchVersion = 3;
 	optional bytes collectionName = 4;
-	optional bytes firstFourBytesFromAHashOfSnapshotMACKey = 5;
+	optional bytes firstFourBytesFromAHashOfSnapshotMacKey = 5;
 	optional bytes newLthashSubtract = 6;
 	optional int32 numberAdd = 7;
 	optional int32 numberRemove = 8;

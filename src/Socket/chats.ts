@@ -1,5 +1,5 @@
 import { Boom } from '@hapi/boom'
-import { proto } from '../../WAProto'
+import proto from '../../WAProto'
 import { PROCESSABLE_HISTORY_TYPES } from '../Defaults'
 import { ALL_WA_PATCH_NAMES, ChatModification, ChatMutation, LTHashState, MessageUpsertType, PresenceData, SocketConfig, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAMessage, WAPatchCreate, WAPatchName, WAPresence, WAPrivacyOnlineValue, WAPrivacyValue, WAReadReceiptsValue } from '../Types'
 import { chatModificationToAppPatch, ChatMutationMap, decodePatches, decodeSyncdSnapshot, encodeSyncdPatch, extractSyncdPatches, generateProfilePicture, getHistoryMsg, newLTHashState, processSyncAction } from '../Utils'
@@ -638,7 +638,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 
 		let initial: LTHashState
-		let encodeResult: { patch: proto.ISyncdPatch, state: LTHashState }
+		let encodeResult: { patch: proto.WAServerSync.ISyncdPatch, state: LTHashState }
 
 		await processingMutex.mutex(
 			async() => {
@@ -682,7 +682,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 												{
 													tag: 'patch',
 													attrs: {},
-													content: proto.SyncdPatch.encode(patch).finish()
+													content: proto.WAServerSync.SyncdPatch.encode(patch).finish()
 												}
 											]
 										}

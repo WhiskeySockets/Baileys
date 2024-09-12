@@ -29,13 +29,13 @@ message SyncdValue {
 }
 
 message KeyId {
-	optional bytes ID = 1;
+	optional bytes id = 1;
 }
 
 message SyncdRecord {
 	optional SyncdIndex index = 1;
 	optional SyncdValue value = 2;
-	optional KeyId keyID = 3;
+	optional KeyId keyId = 3;
 }
 
 message ExternalBlobReference {
@@ -43,15 +43,15 @@ message ExternalBlobReference {
 	optional string directPath = 2;
 	optional string handle = 3;
 	optional uint64 fileSizeBytes = 4;
-	optional bytes fileSHA256 = 5;
-	optional bytes fileEncSHA256 = 6;
+	optional bytes fileSha256 = 5;
+	optional bytes fileEncSha256 = 6;
 }
 
 message SyncdSnapshot {
 	optional SyncdVersion version = 1;
 	repeated SyncdRecord records = 2;
 	optional bytes mac = 3;
-	optional KeyId keyID = 4;
+	optional KeyId keyId = 4;
 }
 
 message SyncdMutations {
@@ -62,9 +62,9 @@ message SyncdPatch {
 	optional SyncdVersion version = 1;
 	repeated SyncdMutation mutations = 2;
 	optional ExternalBlobReference externalMutations = 3;
-	optional bytes snapshotMAC = 4;
-	optional bytes patchMAC = 5;
-	optional KeyId keyID = 6;
+	optional bytes snapshotMac = 4;
+	optional bytes patchMac = 5;
+	optional KeyId keyId = 6;
 	optional ExitCode exitCode = 7;
 	optional uint32 deviceIndex = 8;
 	optional bytes clientDebugData = 9;

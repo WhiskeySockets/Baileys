@@ -222,6 +222,8 @@ message WebMessageInfo {
 		EVENT_CANCELED = 206;
 		COMMUNITY_OWNER_UPDATED = 207;
 		COMMUNITY_SUB_GROUP_VISIBILITY_HIDDEN = 208;
+		CAPI_GROUP_NE2EE_SYSTEM_MESSAGE = 209;
+		STATUS_MENTION = 210;
 	}
 
 	enum Status {
@@ -243,7 +245,7 @@ message WebMessageInfo {
 	optional bool starred = 17;
 	optional bool broadcast = 18;
 	optional string pushName = 19;
-	optional bytes mediaCiphertextSHA256 = 20;
+	optional bytes mediaCiphertextSha256 = 20;
 	optional bool multicast = 21;
 	optional bool urlText = 22;
 	optional bool urlNumber = 23;
@@ -270,26 +272,27 @@ message WebMessageInfo {
 	optional StatusPSA statusPsa = 44;
 	repeated PollUpdate pollUpdates = 45;
 	optional PollAdditionalMetadata pollAdditionalMetadata = 46;
-	optional string agentID = 47;
+	optional string agentId = 47;
 	optional bool statusAlreadyViewed = 48;
 	optional bytes messageSecret = 49;
 	optional KeepInChat keepInChat = 50;
-	optional string originalSelfAuthorUserJIDString = 51;
+	optional string originalSelfAuthorUserJidString = 51;
 	optional uint64 revokeMessageTimestamp = 52;
 	optional PinInChat pinInChat = 54;
 	optional PremiumMessageInfo premiumMessageInfo = 55;
 	optional bool is1PBizBotMessage = 56;
 	optional bool isGroupHistoryMessage = 57;
-	optional string botMessageInvokerJID = 58;
+	optional string botMessageInvokerJid = 58;
 	optional CommentMetadata commentMetadata = 59;
 	repeated EventResponse eventResponses = 61;
 	optional ReportingTokenInfo reportingTokenInfo = 62;
-	optional uint64 newsletterServerID = 63;
+	optional uint64 newsletterServerId = 63;
 	optional EventAdditionalMetadata eventAdditionalMetadata = 64;
 	optional bool isMentionedInStatus = 65;
 	repeated string statusMentions = 66;
-	optional WAProtocol.MessageKey targetMessageID = 67;
+	optional WAProtocol.MessageKey targetMessageId = 67;
 	repeated MessageAddOn messageAddOns = 68;
+	optional StatusMentionMessage statusMentionMessageInfo = 69;
 }
 
 message PaymentInfo {
@@ -350,7 +353,7 @@ message PaymentInfo {
 
 	optional Currency currencyDeprecated = 1;
 	optional uint64 amount1000 = 2;
-	optional string receiverJID = 3;
+	optional string receiverJid = 3;
 	optional Status status = 4;
 	optional uint64 transactionTimestamp = 5;
 	optional WAProtocol.MessageKey requestMessageKey = 6;
@@ -388,7 +391,7 @@ message WebFeatures {
 	optional Flag mediaUpload = 15;
 	optional Flag mediaUploadRichQuickReplies = 18;
 	optional Flag vnameV2 = 19;
-	optional Flag videoPlaybackURL = 20;
+	optional Flag videoPlaybackUrl = 20;
 	optional Flag statusRanking = 21;
 	optional Flag voipIndividualVideo = 22;
 	optional Flag thirdPartyStickers = 23;
@@ -427,8 +430,8 @@ message PinInChat {
 
 	optional Type type = 1;
 	optional WAProtocol.MessageKey key = 2;
-	optional int64 senderTimestampMS = 3;
-	optional int64 serverTimestampMS = 4;
+	optional int64 senderTimestampMs = 3;
+	optional int64 serverTimestampMs = 4;
 	optional MessageAddOnContextInfo messageAddOnContextInfo = 5;
 }
 
@@ -443,11 +446,12 @@ message MessageAddOn {
 
 	optional MessageAddOnType messageAddOnType = 1;
 	optional WAE2E.Message messageAddOn = 2;
-	optional int64 senderTimestampMS = 3;
-	optional int64 serverTimestampMS = 4;
+	optional int64 senderTimestampMs = 3;
+	optional int64 serverTimestampMs = 4;
 	optional WebMessageInfo.Status status = 5;
 	optional MessageAddOnContextInfo addOnContextInfo = 6;
 	optional WAProtocol.MessageKey messageAddOnKey = 7;
+	optional LegacyMessage legacyMessage = 8;
 }
 
 message CommentMetadata {
@@ -480,36 +484,36 @@ message MediaData {
 message PhotoChange {
 	optional bytes oldPhoto = 1;
 	optional bytes newPhoto = 2;
-	optional uint32 newPhotoID = 3;
+	optional uint32 newPhotoId = 3;
 }
 
 message StatusPSA {
-	required uint64 campaignID = 44;
+	required uint64 campaignId = 44;
 	optional uint64 campaignExpirationTimestamp = 45;
 }
 
 message UserReceipt {
-	required string userJID = 1;
+	required string userJid = 1;
 	optional int64 receiptTimestamp = 2;
 	optional int64 readTimestamp = 3;
 	optional int64 playedTimestamp = 4;
-	repeated string pendingDeviceJID = 5;
-	repeated string deliveredDeviceJID = 6;
+	repeated string pendingDeviceJid = 5;
+	repeated string deliveredDeviceJid = 6;
 }
 
 message Reaction {
 	optional WAProtocol.MessageKey key = 1;
 	optional string text = 2;
 	optional string groupingKey = 3;
-	optional int64 senderTimestampMS = 4;
+	optional int64 senderTimestampMs = 4;
 	optional bool unread = 5;
 }
 
 message PollUpdate {
 	optional WAProtocol.MessageKey pollUpdateMessageKey = 1;
 	optional WAE2E.Message.PollVoteMessage vote = 2;
-	optional int64 senderTimestampMS = 3;
-	optional int64 serverTimestampMS = 4;
+	optional int64 senderTimestampMs = 3;
+	optional int64 serverTimestampMs = 4;
 	optional bool unread = 5;
 }
 
@@ -525,9 +529,9 @@ message KeepInChat {
 	optional WAE2E.KeepType keepType = 1;
 	optional int64 serverTimestamp = 2;
 	optional WAProtocol.MessageKey key = 3;
-	optional string deviceJID = 4;
-	optional int64 clientTimestampMS = 5;
-	optional int64 serverTimestampMS = 6;
+	optional string deviceJid = 4;
+	optional int64 clientTimestampMs = 5;
+	optional int64 serverTimestampMs = 6;
 }
 
 message MessageAddOnContextInfo {
@@ -536,12 +540,21 @@ message MessageAddOnContextInfo {
 }
 
 message PremiumMessageInfo {
-	optional string serverCampaignID = 1;
+	optional string serverCampaignId = 1;
 }
 
 message EventResponse {
 	optional WAProtocol.MessageKey eventResponseMessageKey = 1;
-	optional int64 timestampMS = 2;
+	optional int64 timestampMs = 2;
 	optional WAE2E.Message.EventResponseMessage eventResponseMessage = 3;
 	optional bool unread = 4;
+}
+
+message LegacyMessage {
+	optional WAE2E.Message.EventResponseMessage eventResponseMessage = 1;
+	optional WAE2E.Message.PollVoteMessage pollVote = 2;
+}
+
+message StatusMentionMessage {
+	optional WAE2E.Message quotedStatus = 1;
 }

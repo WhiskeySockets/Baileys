@@ -141,7 +141,7 @@ type SocketConfig = {
     /** provide an auth state object to maintain the auth state */
     auth: AuthenticationState
     /** manage history processing with this control; by default will sync up everything */
-    shouldSyncHistoryMessage: (msg: proto.Message.IHistorySyncNotification) => boolean
+    shouldSyncHistoryMessage: (msg: proto.WAE2E.Message.IHistorySyncNotification) => boolean
     /** transaction capability options for SignalKeyStore */
     transactionOpts: TransactionCapabilityOptions
     /** provide a cache to store a user's device list */
@@ -170,7 +170,7 @@ type SocketConfig = {
      * fetch a message from your store
      * implement this so that messages failed to send (solves the "this message can take a while" issue) can be retried
      * */
-    getMessage: (key: proto.IMessageKey) => Promise<proto.IMessage | undefined>
+    getMessage: (key: proto.WAProtocol.IMessageKey) => Promise<proto.WAE2E.IMessage | undefined>
 }
 ```
 

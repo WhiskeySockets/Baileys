@@ -1,4 +1,4 @@
-import type { proto } from '../../WAProto'
+import type proto from '../../WAProto'
 import { RegistrationOptions } from '../Socket/registration'
 import type { Contact } from './Contact'
 import type { MinimalMessage } from './Message'
@@ -38,7 +38,7 @@ export type AccountSettings = {
     /** unarchive chats when a new message is received */
     unarchiveChats: boolean
     /** the default mode to start new conversations with */
-    defaultDisappearingMode?: Pick<proto.IConversation, 'ephemeralExpiration' | 'ephemeralSettingTimestamp'>
+    defaultDisappearingMode?: Pick<proto.WAHistorySync.IConversation, 'ephemeralExpiration' | 'ephemeralSettingTimestamp'>
 }
 
 export type AuthenticationCreds = SignalCreds & {
@@ -47,7 +47,7 @@ export type AuthenticationCreds = SignalCreds & {
     advSecretKey: string
 
     me?: Contact
-    account?: proto.IADVSignedDeviceIdentity
+    account?: proto.WAAdv.IADVSignedDeviceIdentity
     signalIdentities?: SignalIdentity[]
     myAppStateKeyId?: string
     firstUnuploadedPreKeyId: number
@@ -77,7 +77,7 @@ export type SignalDataTypeMap = {
     'session': Uint8Array
     'sender-key': Uint8Array
     'sender-key-memory': { [jid: string]: boolean }
-    'app-state-sync-key': proto.Message.IAppStateSyncKeyData
+    'app-state-sync-key': proto.WAE2E.Message.IAppStateSyncKeyData
     'app-state-sync-version': LTHashState
 }
 

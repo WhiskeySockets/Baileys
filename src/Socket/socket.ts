@@ -2,7 +2,7 @@ import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
 import { URL } from 'url'
 import { promisify } from 'util'
-import { proto } from '../../WAProto'
+import proto from '../../WAProto'
 import {
 	DEF_CALLBACK_PREFIX,
 	DEF_TAG_PREFIX,
@@ -229,23 +229,23 @@ export const makeSocket = (config: SocketConfig) => {
 
 	/** connection handshake */
 	const validateConnection = async() => {
-		let helloMsg: proto.IHandshakeMessage = {
+		let helloMsg: proto.WAWa6.IHandshakeMessage = {
 			clientHello: { ephemeral: ephemeralKeyPair.public }
 		}
-		helloMsg = proto.HandshakeMessage.fromObject(helloMsg)
+		helloMsg = proto.WAWa6.HandshakeMessage.fromObject(helloMsg)
 
 		logger.info({ browser, helloMsg }, 'connected to WA')
 
-		const init = proto.HandshakeMessage.encode(helloMsg).finish()
+		const init = proto.WAWa6.HandshakeMessage.encode(helloMsg).finish()
 
 		const result = await awaitNextMessage<Uint8Array>(init)
-		const handshake = proto.HandshakeMessage.decode(result)
+		const handshake = proto.WAWa6.HandshakeMessage.decode(result)
 
 		logger.trace({ handshake }, 'handshake recv from WA')
 
 		const keyEnc = noise.processHandshake(handshake, creds.noiseKey)
 
-		let node: proto.IClientPayload
+		let node: proto.WAWa6.IClientPayload
 		if(config.mobile) {
 			node = generateMobileNode(config)
 		} else if(!creds.me) {
@@ -257,10 +257,10 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 
 		const payloadEnc = noise.encrypt(
-			proto.ClientPayload.encode(node).finish()
+			proto.WAWa6.ClientPayload.encode(node).finish()
 		)
 		await sendRawMessage(
-			proto.HandshakeMessage.encode({
+			proto.WAWa6.HandshakeMessage.encode({
 				clientFinish: {
 					static: keyEnc,
 					payload: payloadEnc,

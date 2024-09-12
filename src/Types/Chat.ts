@@ -1,4 +1,4 @@
-import type { proto } from '../../WAProto'
+import type proto from '../../WAProto'
 import type { AccountSettings } from './Auth'
 import type { BufferedEventData } from './Events'
 import type { ChatLabelAssociationActionBody } from './LabelAssociation'
@@ -25,19 +25,19 @@ export interface PresenceData {
 }
 
 export type ChatMutation = {
-    syncAction: proto.ISyncActionData
+    syncAction: proto.WASyncAction.ISyncActionData
     index: string[]
 }
 
 export type WAPatchCreate = {
-    syncAction: proto.ISyncActionValue
+    syncAction: proto.WASyncAction.ISyncActionValue
     index: string[]
     type: WAPatchName
     apiVersion: number
-    operation: proto.SyncdMutation.SyncdOperation
+    operation: proto.WAServerSync.SyncdMutation.SyncdOperation
 }
 
-export type Chat = proto.IConversation & {
+export type Chat = proto.WAHistorySync.IConversation & {
     /** unix timestamp of when the last message was received in the chat */
     lastMessageRecvTimestamp?: number
 }
@@ -59,7 +59,7 @@ export type ChatUpdate = Partial<Chat & {
  * the last messages in a chat, sorted reverse-chronologically. That is, the latest message should be first in the chat
  * for MD modifications, the last message in the array (i.e. the earlist message) must be the last message recv in the chat
  * */
-export type LastMessageList = MinimalMessage[] | proto.SyncActionValue.ISyncActionMessageRange
+export type LastMessageList = MinimalMessage[] | proto.WASyncAction.ISyncActionMessageRange
 
 export type ChatModification =
     {

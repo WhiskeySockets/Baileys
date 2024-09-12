@@ -2,8 +2,8 @@ syntax = "proto2";
 package WAProtocol;
 
 message MessageKey {
-	optional string remoteJID = 1;
+	optional string remoteJid = 1;
 	optional bool fromMe = 2;
-	optional string ID = 3;
+	optional string id = 3;
 	optional string participant = 4;
 }

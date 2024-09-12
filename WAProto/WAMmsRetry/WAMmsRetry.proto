@@ -9,11 +9,11 @@ message MediaRetryNotification {
 		DECRYPTION_ERROR = 3;
 	}
 
-	optional string stanzaID = 1;
+	optional string stanzaId = 1;
 	optional string directPath = 2;
 	optional ResultType result = 3;
 }
 
 message ServerErrorReceipt {
-	optional string stanzaID = 1;
+	optional string stanzaId = 1;
 }

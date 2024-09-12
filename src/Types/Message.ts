@@ -2,29 +2,29 @@ import { AxiosRequestConfig } from 'axios'
 import type { Logger } from 'pino'
 import type { Readable } from 'stream'
 import type { URL } from 'url'
-import { proto } from '../../WAProto'
+import proto from '../../WAProto'
 import { MEDIA_HKDF_KEY_MAPPING } from '../Defaults'
 import type { GroupMetadata } from './GroupMetadata'
 import { CacheStore } from './Socket'
 
 // export the WAMessage Prototypes
 export { proto as WAProto }
-export type WAMessage = proto.IWebMessageInfo
-export type WAMessageContent = proto.IMessage
-export type WAContactMessage = proto.Message.IContactMessage
-export type WAContactsArrayMessage = proto.Message.IContactsArrayMessage
-export type WAMessageKey = proto.IMessageKey
-export type WATextMessage = proto.Message.IExtendedTextMessage
-export type WAContextInfo = proto.IContextInfo
-export type WALocationMessage = proto.Message.ILocationMessage
-export type WAGenericMediaMessage = proto.Message.IVideoMessage | proto.Message.IImageMessage | proto.Message.IAudioMessage | proto.Message.IDocumentMessage | proto.Message.IStickerMessage
+export type WAMessage = proto.WAWeb.IWebMessageInfo
+export type WAMessageContent = proto.WAE2E.IMessage
+export type WAContactMessage = proto.WAE2E.Message.IContactMessage
+export type WAContactsArrayMessage = proto.WAE2E.Message.IContactsArrayMessage
+export type WAMessageKey = proto.WAProtocol.IMessageKey
+export type WATextMessage = proto.WAE2E.Message.IExtendedTextMessage
+export type WAContextInfo = proto.WAE2E.IContextInfo
+export type WALocationMessage = proto.WAE2E.Message.ILocationMessage
+export type WAGenericMediaMessage = proto.WAE2E.Message.IVideoMessage | proto.WAE2E.Message.IImageMessage | proto.WAE2E.Message.IAudioMessage | proto.WAE2E.Message.IDocumentMessage | proto.WAE2E.Message.IStickerMessage
 // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
-export import WAMessageStubType = proto.WebMessageInfo.StubType
+export import WAMessageStubType = proto.WAWeb.WebMessageInfo.StubType
 // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
-export import WAMessageStatus = proto.WebMessageInfo.Status
+export import WAMessageStatus = proto.WAWeb.WebMessageInfo.Status
 export type WAMediaUpload = Buffer | { url: URL | string } | { stream: Readable }
 /** Set of message types that are supported by the library */
-export type MessageType = keyof proto.Message
+export type MessageType = keyof proto.WAE2E.Message
 
 export type DownloadableMessage = { mediaKey?: Uint8Array | null, directPath?: string | null, url?: string | null }
 
@@ -43,7 +43,7 @@ export interface WAUrlInfo {
     title: string
     description?: string
     jpegThumbnail?: Buffer
-    highQualityThumbnail?: proto.Message.IImageMessage
+    highQualityThumbnail?: proto.WAE2E.Message.IImageMessage
     originalThumbnailUrl?: string
 }
 
@@ -54,7 +54,7 @@ type Mentionable = {
 }
 type Contextable = {
     /** add contextInfo to the message */
-    contextInfo?: proto.IContextInfo
+    contextInfo?: proto.WAE2E.IContextInfo
 }
 type ViewOnce = {
     viewOnce?: boolean
@@ -62,11 +62,11 @@ type ViewOnce = {
 
 type Buttonable = {
     /** add buttons to the message  */
-    buttons?: proto.Message.ButtonsMessage.IButton[]
+    buttons?: proto.WAE2E.Message.ButtonsMessage.IButton[]
 }
 type Templatable = {
     /** add buttons to the message (conflicts with normal buttons)*/
-    templateButtons?: proto.IHydratedTemplateButton[]
+    templateButtons?: proto.WAE2E.IHydratedTemplateButton[]
 
     footer?: string
 }
@@ -75,7 +75,7 @@ type Editable = {
 }
 type Listable = {
     /** Sections of the List */
-    sections?: proto.Message.ListMessage.ISection[]
+    sections?: proto.WAE2E.Message.ListMessage.ISection[]
 
     /** Title of a List Message only */
     title?: string
@@ -143,7 +143,7 @@ export type ButtonReplyInfo = {
     index: number
 }
 
-export type WASendableProduct = Omit<proto.Message.ProductMessage.IProductSnapshot, 'productImage'> & {
+export type WASendableProduct = Omit<proto.WAE2E.Message.ProductMessage.IProductSnapshot, 'productImage'> & {
     productImage: WAMediaUpload
 }
 
@@ -160,19 +160,19 @@ export type AnyRegularMessageContent = (
     | {
         contacts: {
             displayName?: string
-            contacts: proto.Message.IContactMessage[]
+            contacts: proto.WAE2E.Message.IContactMessage[]
         }
     }
     | {
         location: WALocationMessage
     }
-    | { react: proto.Message.IReactionMessage }
+    | { react: proto.WAE2E.Message.IReactionMessage }
     | {
         buttonReply: ButtonReplyInfo
         type: 'template' | 'plain'
     }
     | {
-        listReply: Omit<proto.Message.IListResponseMessage, 'contextInfo'>
+        listReply: Omit<proto.WAE2E.Message.IListResponseMessage, 'contextInfo'>
     }
     | {
         product: WASendableProduct
@@ -263,13 +263,13 @@ export type MessageGenerationOptions = MessageContentGenerationOptions & Message
  */
 export type MessageUpsertType = 'append' | 'notify'
 
-export type MessageUserReceipt = proto.IUserReceipt
+export type MessageUserReceipt = proto.WAWeb.IUserReceipt
 
-export type WAMessageUpdate = { update: Partial<WAMessage>, key: proto.IMessageKey }
+export type WAMessageUpdate = { update: Partial<WAMessage>, key: proto.WAProtocol.IMessageKey }
 
 export type WAMessageCursor = { before: WAMessageKey | undefined } | { after: WAMessageKey | undefined }
 
-export type MessageUserReceiptUpdate = { key: proto.IMessageKey, receipt: MessageUserReceipt }
+export type MessageUserReceiptUpdate = { key: proto.WAProtocol.IMessageKey, receipt: MessageUserReceipt }
 
 export type MediaDecryptionKeyInfo = {
     iv: Buffer
@@ -277,4 +277,4 @@ export type MediaDecryptionKeyInfo = {
     macKey?: Buffer
 }
 
-export type MinimalMessage = Pick<proto.IWebMessageInfo, 'key' | 'messageTimestamp'>
+export type MinimalMessage = Pick<proto.WAWeb.IWebMessageInfo, 'key' | 'messageTimestamp'>

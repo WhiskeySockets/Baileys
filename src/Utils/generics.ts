@@ -3,7 +3,7 @@ import axios, { AxiosRequestConfig } from 'axios'
 import { createHash, randomBytes } from 'crypto'
 import { platform, release } from 'os'
 import { Logger } from 'pino'
-import { proto } from '../../WAProto'
+import proto from '../../WAProto'
 import { version as baileysVersion } from '../Defaults/baileys-version.json'
 import { BaileysEventEmitter, BaileysEventMap, DisconnectReason, WACallUpdateType, WAVersion } from '../Types'
 import { BinaryNode, getAllBinaryNodeChildren, jidDecode } from '../WABinary'
@@ -43,7 +43,7 @@ export const BufferJSON = {
 }
 
 export const getKeyAuthor = (
-	key: proto.IMessageKey | undefined | null,
+	key: proto.WAProtocol.IMessageKey | undefined | null,
 	meId: string = 'me'
 ) => (
 	(key?.fromMe ? meId : key?.participant || key?.remoteJid) || ''
@@ -73,9 +73,9 @@ export const unpadRandomMax16 = (e: Uint8Array | Buffer) => {
 	return new Uint8Array(t.buffer, t.byteOffset, t.length - r)
 }
 
-export const encodeWAMessage = (message: proto.IMessage) => (
+export const encodeWAMessage = (message: proto.WAE2E.IMessage) => (
 	writeRandomPadMax16(
-		proto.Message.encode(message).finish()
+		proto.WAE2E.Message.encode(message).finish()
 	)
 )
 
@@ -304,10 +304,10 @@ export const generateMdTagPrefix = () => {
 	return `${bytes.readUInt16BE()}.${bytes.readUInt16BE(2)}-`
 }
 
-const STATUS_MAP: { [_: string]: proto.WebMessageInfo.Status } = {
-	'played': proto.WebMessageInfo.Status.PLAYED,
-	'read': proto.WebMessageInfo.Status.READ,
-	'read-self': proto.WebMessageInfo.Status.READ
+const STATUS_MAP: { [_: string]: proto.WAWeb.WebMessageInfo.Status } = {
+	'played': proto.WAWeb.WebMessageInfo.Status.PLAYED,
+	'read': proto.WAWeb.WebMessageInfo.Status.READ,
+	'read-self': proto.WAWeb.WebMessageInfo.Status.READ
 }
 /**
  * Given a type of receipt, returns what the new status of the message should be
@@ -316,7 +316,7 @@ const STATUS_MAP: { [_: string]: proto.WebMessageInfo.Status } = {
 export const getStatusFromReceiptType = (type: string | undefined) => {
 	const status = STATUS_MAP[type!]
 	if(typeof type === 'undefined') {
-		return proto.WebMessageInfo.Status.DELIVERY_ACK
+		return proto.WAWeb.WebMessageInfo.Status.DELIVERY_ACK
 	}
 
 	return status

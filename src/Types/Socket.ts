@@ -3,7 +3,7 @@ import { AxiosRequestConfig } from 'axios'
 import type { Agent } from 'https'
 import type { Logger } from 'pino'
 import type { URL } from 'url'
-import { proto } from '../../WAProto'
+import proto from '../../WAProto'
 import { AuthenticationState, SignalAuthState, TransactionCapabilityOptions } from './Auth'
 import { MediaConnInfo } from './Message'
 import { SignalRepository } from './Signal'
@@ -58,7 +58,7 @@ export type SocketConfig = {
     /** provide an auth state object to maintain the auth state */
     auth: AuthenticationState
     /** manage history processing with this control; by default will sync up everything */
-    shouldSyncHistoryMessage: (msg: proto.Message.IHistorySyncNotification) => boolean
+    shouldSyncHistoryMessage: (msg: proto.WAE2E.Message.IHistorySyncNotification) => boolean
     /** transaction capability options for SignalKeyStore */
     transactionOpts: TransactionCapabilityOptions
     /** marks the client as online whenever the socket successfully connects */
@@ -97,9 +97,9 @@ export type SocketConfig = {
      * Optionally patch the message before sending out
      * */
     patchMessageBeforeSending: (
-        msg: proto.IMessage,
+        msg: proto.WAE2E.IMessage,
         recipientJids: string[],
-    ) => Promise<proto.IMessage> | proto.IMessage
+    ) => Promise<proto.WAE2E.IMessage> | proto.WAE2E.IMessage
 
     /** verify app state MACs */
     appStateMacVerification: {
@@ -114,7 +114,7 @@ export type SocketConfig = {
      * implement this so that messages failed to send
      * (solves the "this message can take a while" issue) can be retried
      * */
-    getMessage: (key: proto.IMessageKey) => Promise<proto.IMessage | undefined>
+    getMessage: (key: proto.WAProtocol.IMessageKey) => Promise<proto.WAE2E.IMessage | undefined>
 
     makeSignalRepository: (auth: SignalAuthState) => SignalRepository
 

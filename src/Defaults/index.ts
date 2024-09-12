@@ -1,5 +1,5 @@
 import { createHash } from 'crypto'
-import { proto } from '../../WAProto'
+import proto from '../../WAProto'
 import { makeLibSignalRepository } from '../Signal/libsignal'
 import type { AuthenticationState, MediaType, SocketConfig, WAVersion } from '../Types'
 import { Browsers } from '../Utils'
@@ -46,10 +46,10 @@ export const WA_CERT_DETAILS = {
 }
 
 export const PROCESSABLE_HISTORY_TYPES = [
-	proto.Message.HistorySyncNotification.HistorySyncType.INITIAL_BOOTSTRAP,
-	proto.Message.HistorySyncNotification.HistorySyncType.PUSH_NAME,
-	proto.Message.HistorySyncNotification.HistorySyncType.RECENT,
-	proto.Message.HistorySyncNotification.HistorySyncType.FULL
+	proto.WAE2E.Message.HistorySyncNotification.HistorySyncType.INITIAL_BOOTSTRAP,
+	proto.WAE2E.Message.HistorySyncNotification.HistorySyncType.PUSH_NAME,
+	proto.WAE2E.Message.HistorySyncNotification.HistorySyncType.RECENT,
+	proto.WAE2E.Message.HistorySyncNotification.HistorySyncType.FULL
 ]
 
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {

@@ -1,14 +1,14 @@
 
 import { Boom } from '@hapi/boom'
 import NodeCache from 'node-cache'
-import { proto } from '../../WAProto'
+import proto from '../../WAProto'
 import { DEFAULT_CACHE_TTLS, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import { AnyMessageContent, MediaConnInfo, MessageReceiptType, MessageRelayOptions, MiscMessageGenerationOptions, SocketConfig, WAMessageKey } from '../Types'
 import { aggregateMessageKeysNotFromMe, assertMediaContent, bindWaitForEvent, decryptMediaRetryData, encodeSignedDeviceIdentity, encodeWAMessage, encryptMediaRetryRequest, extractDeviceJids, generateMessageIDV2, generateWAMessage, getStatusCodeForMediaRetry, getUrlFromDirectPath, getWAUploadToServer, parseAndInjectE2ESessions, unixTimestampSeconds } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
 import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, isJidUser, jidDecode, jidEncode, jidNormalizedUser, JidWithDevice, S_WHATSAPP_NET } from '../WABinary'
 import { makeGroupsSocket } from './groups'
-import ListType = proto.Message.ListMessage.ListType;
+import ListType = proto.WAE2E.Message.ListMessage.ListType;
 
 export const makeMessagesSocket = (config: SocketConfig) => {
 	const {
@@ -263,7 +263,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	const createParticipantNodes = async(
 		jids: string[],
-		message: proto.IMessage,
+		message: proto.WAE2E.IMessage,
 		extraAttrs?: BinaryNode['attrs']
 	) => {
 		const patched = await patchMessageBeforeSending(message, jids)
@@ -301,7 +301,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	const relayMessage = async(
 		jid: string,
-		message: proto.IMessage,
+		message: proto.WAE2E.IMessage,
 		{ messageId: msgId, participant, additionalAttributes, useUserDevicesCache, cachedGroupMetadata, statusJidList }: MessageRelayOptions
 	) => {
 		const meId = authState.creds.me!.id
@@ -322,7 +322,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const binaryNodeContent: BinaryNode[] = []
 		const devices: JidWithDevice[] = []
 
-		const meMsg: proto.IMessage = {
+		const meMsg: proto.WAE2E.IMessage = {
 			deviceSentMessage: {
 				destinationJid,
 				message
@@ -405,7 +405,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					if(senderKeyJids.length) {
 						logger.debug({ senderKeyJids }, 'sending new sender key')
 
-						const senderKeyMsg: proto.IMessage = {
+						const senderKeyMsg: proto.WAE2E.IMessage = {
 							senderKeyDistributionMessage: {
 								axolotlSenderKeyDistributionMessage: senderKeyDistributionMessage,
 								groupId: destinationJid
@@ -540,7 +540,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return msgId
 	}
 
-	const getMediaType = (message: proto.IMessage) => {
+	const getMediaType = (message: proto.WAE2E.IMessage) => {
 		if(message.imageMessage) {
 			return 'image'
 		} else if(message.videoMessage) {
@@ -572,7 +572,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const getButtonType = (message: proto.IMessage) => {
+	const getButtonType = (message: proto.WAE2E.IMessage) => {
 		if(message.buttonsMessage) {
 			return 'buttons'
 		} else if(message.buttonsResponseMessage) {
@@ -586,7 +586,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const getButtonArgs = (message: proto.IMessage): BinaryNode['attrs'] => {
+	const getButtonArgs = (message: proto.WAE2E.IMessage): BinaryNode['attrs'] => {
 		if(message.templateMessage) {
 			// TODO: Add attributes
 			return {}
@@ -648,7 +648,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		refreshMediaConn,
 	    	waUploadToServer,
 		fetchPrivacySettings,
-		updateMediaMessage: async(message: proto.IWebMessageInfo) => {
+		updateMediaMessage: async(message: proto.WAWeb.IWebMessageInfo) => {
 			const content = assertMediaContent(message.message)
 			const mediaKey = content.mediaKey!
 			const meId = authState.creds.me!.id
@@ -666,8 +666,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							} else {
 								try {
 									const media = decryptMediaRetryData(result.media!, mediaKey, result.key.id!)
-									if(media.result !== proto.MediaRetryNotification.ResultType.SUCCESS) {
-										const resultStr = proto.MediaRetryNotification.ResultType[media.result]
+									if(media.result !== proto.WAMmsRetry.MediaRetryNotification.ResultType.SUCCESS) {
+										const resultStr = proto.WAMmsRetry.MediaRetryNotification.ResultType[media.result]
 										throw new Boom(
 											`Media re-upload failed by device (${resultStr})`,
 											{ data: media, statusCode: getStatusCodeForMediaRetry(media.result) || 404 }

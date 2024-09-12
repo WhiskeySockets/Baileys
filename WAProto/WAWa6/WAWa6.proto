@@ -69,7 +69,7 @@ message ClientPayload {
 			optional bool usesParticipantInKey = 1;
 			optional bool supportsStarredMessages = 2;
 			optional bool supportsDocumentMessages = 3;
-			optional bool supportsURLMessages = 4;
+			optional bool supportsUrlMessages = 4;
 			optional bool supportsMediaRetry = 5;
 			optional bool supportsE2EImage = 6;
 			optional bool supportsE2EVideo = 7;
@@ -156,26 +156,27 @@ message ClientPayload {
 		optional string manufacturer = 6;
 		optional string device = 7;
 		optional string osBuildNumber = 8;
-		optional string phoneID = 9;
+		optional string phoneId = 9;
 		optional ReleaseChannel releaseChannel = 10;
 		optional string localeLanguageIso6391 = 11;
 		optional string localeCountryIso31661Alpha2 = 12;
 		optional string deviceBoard = 13;
-		optional string deviceExpID = 14;
+		optional string deviceExpId = 14;
 		optional DeviceType deviceType = 15;
 		optional string deviceModelType = 16;
 	}
 
 	message InteropData {
-		optional uint64 accountID = 1;
+		optional uint64 accountId = 1;
 		optional bytes token = 2;
+		optional bool enableReadReceipts = 3;
 	}
 
 	message DevicePairingRegistrationData {
 		optional bytes eRegid = 1;
 		optional bytes eKeytype = 2;
 		optional bytes eIdent = 3;
-		optional bytes eSkeyID = 4;
+		optional bytes eSkeyId = 4;
 		optional bytes eSkeyVal = 5;
 		optional bytes eSkeySig = 6;
 		optional bytes buildHash = 7;
@@ -187,7 +188,7 @@ message ClientPayload {
 	optional UserAgent userAgent = 5;
 	optional WebInfo webInfo = 6;
 	optional string pushName = 7;
-	optional sfixed32 sessionID = 9;
+	optional sfixed32 sessionId = 9;
 	optional bool shortConnect = 10;
 	optional ConnectType connectType = 12;
 	optional ConnectReason connectReason = 13;
@@ -202,8 +203,8 @@ message ClientPayload {
 	optional bool oc = 23;
 	optional int32 lc = 24;
 	optional IOSAppExtension iosAppExtension = 30;
-	optional uint64 fbAppID = 31;
-	optional bytes fbDeviceID = 32;
+	optional uint64 fbAppId = 31;
+	optional bytes fbDeviceId = 32;
 	optional bool pull = 33;
 	optional bytes paddingBytes = 34;
 	optional int32 yearClass = 36;

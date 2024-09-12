@@ -1,4 +1,4 @@
-import { proto } from '../../WAProto'
+import proto from '../../WAProto'
 import { GroupMetadata, GroupParticipant, ParticipantAction, SocketConfig, WAMessageKey, WAMessageStubType } from '../Types'
 import { generateMessageID, generateMessageIDV2, unixTimestampSeconds } from '../Utils'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, getBinaryNodeChildString, jidEncode, jidNormalizedUser } from '../WABinary'
@@ -191,7 +191,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 				]
 			)
 			const node = getBinaryNodeChild(result, action)
-			const participantsAffected = getBinaryNodeChildren(node!, 'participant')
+			const participantsAffected = getBinaryNodeChildren(node, 'participant')
 			return participantsAffected.map(p => {
 				return { status: p.attrs.error || '200', jid: p.attrs.jid, content: p }
 			})
@@ -237,7 +237,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 		 * @param key the key of the invite message, or optionally only provide the jid of the person who sent the invite
 		 * @param inviteMessage the message to accept
 		 */
-		groupAcceptInviteV4: ev.createBufferedFunction(async(key: string | WAMessageKey, inviteMessage: proto.Message.IGroupInviteMessage) => {
+		groupAcceptInviteV4: ev.createBufferedFunction(async(key: string | WAMessageKey, inviteMessage: proto.WAE2E.Message.IGroupInviteMessage) => {
 			key = typeof key === 'string' ? { remoteJid: key } : key
 			const results = await groupQuery(inviteMessage.groupJid!, 'set', [{
 				tag: 'accept',
@@ -252,7 +252,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 			// update the invite message to be expired
 			if(key.id) {
 				// create new invite message that is expired
-				inviteMessage = proto.Message.GroupInviteMessage.fromObject(inviteMessage)
+				inviteMessage = proto.WAE2E.Message.GroupInviteMessage.fromObject(inviteMessage)
 				inviteMessage.inviteExpiration = 0
 				inviteMessage.inviteCode = ''
 				ev.emit('messages.update', [

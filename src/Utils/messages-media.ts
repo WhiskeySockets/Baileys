@@ -10,7 +10,7 @@ import { join } from 'path'
 import type { Logger } from 'pino'
 import { Readable, Transform } from 'stream'
 import { URL } from 'url'
-import { proto } from '../../WAProto'
+import proto from '../../WAProto'
 import { DEFAULT_ORIGIN, MEDIA_HKDF_KEY_MAPPING, MEDIA_PATH_MAP } from '../Defaults'
 import { BaileysEventMap, DownloadableMessage, MediaConnInfo, MediaDecryptionKeyInfo, MediaType, MessageType, SocketConfig, WAGenericMediaMessage, WAMediaUpload, WAMediaUploadFunction, WAMessageContent } from '../Types'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, jidNormalizedUser } from '../WABinary'
@@ -684,12 +684,12 @@ const getMediaRetryKey = (mediaKey: Buffer | Uint8Array) => {
  * Generate a binary node that will request the phone to re-upload the media & return the newly uploaded URL
  */
 export const encryptMediaRetryRequest = (
-	key: proto.IMessageKey,
+	key: proto.WAProtocol.IMessageKey,
 	mediaKey: Buffer | Uint8Array,
 	meId: string
 ) => {
-	const recp: proto.IServerErrorReceipt = { stanzaId: key.id }
-	const recpBuffer = proto.ServerErrorReceipt.encode(recp).finish()
+	const recp: proto.WAMmsRetry.IServerErrorReceipt = { stanzaId: key.id }
+	const recpBuffer = proto.WAMmsRetry.ServerErrorReceipt.encode(recp).finish()
 
 	const iv = Crypto.randomBytes(12)
 	const retryKey = getMediaRetryKey(mediaKey)
@@ -769,16 +769,16 @@ export const decryptMediaRetryData = (
 ) => {
 	const retryKey = getMediaRetryKey(mediaKey)
 	const plaintext = aesDecryptGCM(ciphertext, retryKey, iv, Buffer.from(msgId))
-	return proto.MediaRetryNotification.decode(plaintext)
+	return proto.WAMmsRetry.MediaRetryNotification.decode(plaintext)
 }
 
 export const getStatusCodeForMediaRetry = (code: number) => MEDIA_RETRY_STATUS_MAP[code]
 
 const MEDIA_RETRY_STATUS_MAP = {
-	[proto.MediaRetryNotification.ResultType.SUCCESS]: 200,
-	[proto.MediaRetryNotification.ResultType.DECRYPTION_ERROR]: 412,
-	[proto.MediaRetryNotification.ResultType.NOT_FOUND]: 404,
-	[proto.MediaRetryNotification.ResultType.GENERAL_ERROR]: 418,
+	[proto.WAMmsRetry.MediaRetryNotification.ResultType.SUCCESS]: 200,
+	[proto.WAMmsRetry.MediaRetryNotification.ResultType.DECRYPTION_ERROR]: 412,
+	[proto.WAMmsRetry.MediaRetryNotification.ResultType.NOT_FOUND]: 404,
+	[proto.WAMmsRetry.MediaRetryNotification.ResultType.GENERAL_ERROR]: 418,
 } as const
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

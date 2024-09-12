@@ -1,6 +1,6 @@
 import { AxiosRequestConfig } from 'axios'
 import type { Logger } from 'pino'
-import { proto } from '../../WAProto'
+import proto from '../../WAProto'
 import { AuthenticationCreds, BaileysEventEmitter, Chat, GroupMetadata, ParticipantAction, RequestJoinAction, RequestJoinMethod, SignalKeyStoreWithTransaction, SocketConfig, WAMessageStubType } from '../Types'
 import { getContentType, normalizeMessageContent } from '../Utils/messages'
 import { areJidsSameUser, isJidBroadcast, isJidStatusBroadcast, jidNormalizedUser } from '../WABinary'
@@ -30,7 +30,7 @@ const REAL_MSG_REQ_ME_STUB_TYPES = new Set([
 ])
 
 /** Cleans a received message to further processing */
-export const cleanMessage = (message: proto.IWebMessageInfo, meId: string) => {
+export const cleanMessage = (message: proto.WAWeb.IWebMessageInfo, meId: string) => {
 	// ensure remoteJid and participant doesn't have device or agent in it
 	message.key.remoteJid = jidNormalizedUser(message.key.remoteJid!)
 	message.key.participant = message.key.participant ? jidNormalizedUser(message.key.participant!) : undefined
@@ -44,7 +44,7 @@ export const cleanMessage = (message: proto.IWebMessageInfo, meId: string) => {
 		normaliseKey(content.pollUpdateMessage.pollCreationMessageKey!)
 	}
 
-	function normaliseKey(msgKey: proto.IMessageKey) {
+	function normaliseKey(msgKey: proto.WAProtocol.IMessageKey) {
 		// if the reaction is from another user
 		// we've to correctly map the key to this user's perspective
 		if(!message.key.fromMe) {
@@ -63,7 +63,7 @@ export const cleanMessage = (message: proto.IWebMessageInfo, meId: string) => {
 	}
 }
 
-export const isRealMessage = (message: proto.IWebMessageInfo, meId: string) => {
+export const isRealMessage = (message: proto.WAWeb.IWebMessageInfo, meId: string) => {
 	const normalizedContent = normalizeMessageContent(message.message)
 	const hasSomeContent = !!getContentType(normalizedContent)
 	return (
@@ -80,7 +80,7 @@ export const isRealMessage = (message: proto.IWebMessageInfo, meId: string) => {
 	&& !normalizedContent?.pollUpdateMessage
 }
 
-export const shouldIncrementChatUnread = (message: proto.IWebMessageInfo) => (
+export const shouldIncrementChatUnread = (message: proto.WAWeb.IWebMessageInfo) => (
 	!message.key.fromMe && !message.messageStubType
 )
 
@@ -88,7 +88,7 @@ export const shouldIncrementChatUnread = (message: proto.IWebMessageInfo) => (
  * Get the ID of the chat from the given key.
  * Typically -- that'll be the remoteJid, but for broadcasts, it'll be the participant
  */
-export const getChatId = ({ remoteJid, participant, fromMe }: proto.IMessageKey) => {
+export const getChatId = ({ remoteJid, participant, fromMe }: proto.WAProtocol.IMessageKey) => {
 	if(
 		isJidBroadcast(remoteJid!)
 		&& !isJidStatusBroadcast(remoteJid!)
@@ -118,7 +118,7 @@ type PollContext = {
  * @returns list of SHA256 options
  */
 export function decryptPollVote(
-	{ encPayload, encIv }: proto.Message.IPollEncValue,
+	{ encPayload, encIv }: proto.WAE2E.Message.IPollEncValue,
 	{
 		pollCreatorJid,
 		pollMsgId,
@@ -141,7 +141,7 @@ export function decryptPollVote(
 	const aad = toBinary(`${pollMsgId}\u0000${voterJid}`)
 
 	const decrypted = aesDecryptGCM(encPayload!, decKey, encIv!, aad)
-	return proto.Message.PollVoteMessage.decode(decrypted)
+	return proto.WAE2E.Message.PollVoteMessage.decode(decrypted)
 
 	function toBinary(txt: string) {
 		return Buffer.from(txt)
@@ -149,7 +149,7 @@ export function decryptPollVote(
 }
 
 const processMessage = async(
-	message: proto.IWebMessageInfo,
+	message: proto.WAWeb.IWebMessageInfo,
 	{
 		shouldProcessHistoryMsg,
 		ev,
@@ -189,7 +189,7 @@ const processMessage = async(
 	const protocolMsg = content?.protocolMessage
 	if(protocolMsg) {
 		switch (protocolMsg.type) {
-		case proto.Message.ProtocolMessage.Type.HISTORY_SYNC_NOTIFICATION:
+		case proto.WAE2E.Message.ProtocolMessage.Type.HISTORY_SYNC_NOTIFICATION:
 			const histNotification = protocolMsg!.historySyncNotification!
 			const process = shouldProcessHistoryMsg
 			const isLatest = !creds.processedHistoryMessages?.length
@@ -218,7 +218,7 @@ const processMessage = async(
 			}
 
 			break
-		case proto.Message.ProtocolMessage.Type.APP_STATE_SYNC_KEY_SHARE:
+		case proto.WAE2E.Message.ProtocolMessage.Type.APP_STATE_SYNC_KEY_SHARE:
 			const keys = protocolMsg.appStateSyncKeyShare!.keys
 			if(keys?.length) {
 				let newAppStateSyncKeyId = ''
@@ -247,7 +247,7 @@ const processMessage = async(
 			}
 
 			break
-		case proto.Message.ProtocolMessage.Type.REVOKE:
+		case proto.WAE2E.Message.ProtocolMessage.Type.REVOKE:
 			ev.emit('messages.update', [
 				{
 					key: {
@@ -258,20 +258,20 @@ const processMessage = async(
 				}
 			])
 			break
-		case proto.Message.ProtocolMessage.Type.EPHEMERAL_SETTING:
+		case proto.WAE2E.Message.ProtocolMessage.Type.EPHEMERAL_SETTING:
 			Object.assign(chat, {
 				ephemeralSettingTimestamp: toNumber(message.messageTimestamp),
 				ephemeralExpiration: protocolMsg.ephemeralExpiration || null
 			})
 			break
-		case proto.Message.ProtocolMessage.Type.PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE:
+		case proto.WAE2E.Message.ProtocolMessage.Type.PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE:
 			const response = protocolMsg.peerDataOperationRequestResponseMessage!
 			if(response) {
 				const { peerDataOperationResult } = response
 				for(const result of peerDataOperationResult!) {
 					const { placeholderMessageResendResponse: retryResponse } = result
 					if(retryResponse) {
-						const webMessageInfo = proto.WebMessageInfo.decode(retryResponse.webMessageInfoBytes!)
+						const webMessageInfo = proto.WAWeb.WebMessageInfo.decode(retryResponse.webMessageInfoBytes!)
 						ev.emit('messages.update', [
 							{ key: webMessageInfo.key, update: { message: webMessageInfo.message } }
 						])
@@ -282,7 +282,7 @@ const processMessage = async(
 			break
 		}
 	} else if(content?.reactionMessage) {
-		const reaction: proto.IReaction = {
+		const reaction: proto.WAWeb.IReaction = {
 			...content.reactionMessage,
 			key: message.key,
 		}

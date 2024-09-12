@@ -41,7 +41,7 @@ message BizIdentityInfo {
 	optional bool revoked = 4;
 	optional HostStorageType hostStorage = 5;
 	optional ActualActorsType actualActors = 6;
-	optional uint64 privacyModeTS = 7;
+	optional uint64 privacyModeTs = 7;
 	optional uint64 featureControls = 8;
 }
 

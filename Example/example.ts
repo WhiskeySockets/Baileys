@@ -317,7 +317,7 @@ const startSock = async() => {
 		}
 
 		// only if store is present
-		return proto.Message.fromObject({})
+		return proto.WAE2E.Message.fromObject({})
 	}
 }
 

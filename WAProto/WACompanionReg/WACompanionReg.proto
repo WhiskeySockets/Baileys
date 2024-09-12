@@ -1,0 +1,80 @@
+syntax = "proto2";
+package WACompanionReg;
+
+message DeviceProps {
+	enum PlatformType {
+		UNKNOWN = 0;
+		CHROME = 1;
+		FIREFOX = 2;
+		IE = 3;
+		OPERA = 4;
+		SAFARI = 5;
+		EDGE = 6;
+		DESKTOP = 7;
+		IPAD = 8;
+		ANDROID_TABLET = 9;
+		OHANA = 10;
+		ALOHA = 11;
+		CATALINA = 12;
+		TCL_TV = 13;
+		IOS_PHONE = 14;
+		IOS_CATALYST = 15;
+		ANDROID_PHONE = 16;
+		ANDROID_AMBIGUOUS = 17;
+		WEAR_OS = 18;
+		AR_WRIST = 19;
+		AR_DEVICE = 20;
+		UWP = 21;
+		VR = 22;
+		CLOUD_API = 23;
+	}
+
+	message HistorySyncConfig {
+		optional uint32 fullSyncDaysLimit = 1;
+		optional uint32 fullSyncSizeMbLimit = 2;
+		optional uint32 storageQuotaMb = 3;
+		optional bool inlineInitialPayloadInE2EeMsg = 4;
+		optional uint32 recentSyncDaysLimit = 5;
+		optional bool supportCallLogHistory = 6;
+		optional bool supportBotUserAgentChatHistory = 7;
+		optional bool supportCagReactionsAndPolls = 8;
+		optional bool supportBizHostedMsg = 9;
+		optional bool supportRecentSyncChunkMessageCountTuning = 10;
+		optional bool supportHostedGroupMsg = 11;
+		optional bool supportFbidBotChatHistory = 12;
+		optional bool supportAddOnHistorySyncMigration = 13;
+	}
+
+	message AppVersion {
+		optional uint32 primary = 1;
+		optional uint32 secondary = 2;
+		optional uint32 tertiary = 3;
+		optional uint32 quaternary = 4;
+		optional uint32 quinary = 5;
+	}
+
+	optional string os = 1;
+	optional AppVersion version = 2;
+	optional PlatformType platformType = 3;
+	optional bool requireFullSync = 4;
+	optional HistorySyncConfig historySyncConfig = 5;
+}
+
+message CompanionEphemeralIdentity {
+	optional bytes publicKey = 1;
+	optional DeviceProps.PlatformType deviceType = 2;
+	optional string ref = 3;
+}
+
+message PrimaryEphemeralIdentity {
+	optional bytes publicKey = 1;
+}
+
+message EncryptedPairingRequest {
+	optional bytes encryptedPayload = 1;
+	optional bytes iv = 2;
+}
+
+message ClientPairingProps {
+	optional bool isChatDbLidMigrated = 1;
+}

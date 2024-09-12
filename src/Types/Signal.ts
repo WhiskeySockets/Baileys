@@ -1,4 +1,4 @@
-import { proto } from '../../WAProto'
+import proto from '../../WAProto'
 
 type DecryptGroupSignalOpts = {
 	group: string
@@ -7,7 +7,7 @@ type DecryptGroupSignalOpts = {
 }
 
 type ProcessSenderKeyDistributionMessageOpts = {
-	item: proto.Message.ISenderKeyDistributionMessage
+	item: proto.WAE2E.Message.ISenderKeyDistributionMessage
 	authorJid: string
 }
 

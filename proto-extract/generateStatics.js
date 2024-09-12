@@ -3,13 +3,12 @@ const fs = require('fs')
 const path = require('path')
 
 const PROTOSPATH = '../WAProto/'
-const JSCOMMAND = `pbjs -t static-module -w commonjs -o `
-const TSCOMMAND = `pbts -o `
+const JSCOMMAND = ['pbjs -t static-module -w commonjs --keep-case']
+const TSCOMMAND = 'pbts -o'
 
+const outputJSPath = path.join(PROTOSPATH, 'index.js')
+const outputTSPath = path.join(PROTOSPATH, 'index.d.ts')
 const protoDirs = fs.readdirSync(PROTOSPATH)
-
-const exportArr = []
-let exportStr = ''
 
 console.log(`Generating statics for ${protoDirs.length} protos`)
 //iterate in every folder
@@ -19,13 +18,6 @@ protoDirs.forEach(dir => {
 
   //set full dir
   const pathDir = PROTOSPATH + dir
-  //get name from file XXX.js = XXX
-  const name = dir.split('.')[0]
-
-  //add import statement to string
-  exportStr += `import { ${name} } from '${pathDir}'\n`
-  //add proto name to exportArr to add in export statement
-  exportArr.push(name)
 
   //read all protos in dir
   const protoFiles = fs.readdirSync(pathDir)
@@ -37,34 +29,20 @@ protoDirs.forEach(dir => {
 
     //generate paths
     const protoPath = path.join(pathDir, protoFile)
-    const outputJSPath = path.join(pathDir, 'index.js')
-    const outputTSPath = path.join(pathDir, 'index.d.ts')
 
-    try {
-      //run commands
-      execSync(JSCOMMAND + outputJSPath + ' ' + protoPath)
-      execSync(TSCOMMAND + outputTSPath + ' ' + outputJSPath)
-      console.log(`Generated statics from ${protoPath}`)
-    } catch (error) {
-      console.error(`Error generating statics from ${protoPath}:`, error)
-    }
+    //push path to pbjs command
+    JSCOMMAND.push(protoPath)
   })
 })
 
-console.log(`Generating index.ts`)
+//push out dir
+JSCOMMAND.push('-o ' + outputJSPath)
 
-//It will be generate a index.ts exporting all protos
-//All properties in every proto will be expanded to proto var 
-fs.writeFileSync(
-  PROTOSPATH + 'index.ts',
-  exportStr +
-  `
-const proto = { 
-${exportArr.map(v => '  ...' + v).join(',\n')}
+try {
+  //run commands
+  execSync(JSCOMMAND.join(' '))
+  execSync(TSCOMMAND + outputTSPath + ' ' + outputJSPath)
+  console.log(`Generated statics`)
+} catch (error) {
+  console.error(`Error generating statics`, error)
 }
-  
-export { proto }`
-  
-)
-
-console.log(`Generated statics`)

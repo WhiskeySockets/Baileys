@@ -41,13 +41,15 @@ message HistorySync {
 	optional uint32 progress = 6;
 	repeated Pushname pushnames = 7;
 	optional GlobalSettings globalSettings = 8;
-	optional bytes threadIDUserSecret = 9;
+	optional bytes threadIdUserSecret = 9;
 	optional uint32 threadDsTimeframeOffset = 10;
 	repeated StickerMetadata recentStickers = 11;
 	repeated PastParticipants pastParticipants = 12;
 	repeated WAWebProtobufSyncAction.CallLogRecord callLogRecords = 13;
 	optional BotAIWaitListState aiWaitListState = 14;
 	repeated PhoneNumberToLIDMapping phoneNumberToLidMappings = 15;
+	optional string companionMetaNonce = 16;
+	optional bytes shareableChatIdentifierEncryptionKey = 17;
 }
 
 message Conversation {
@@ -57,10 +59,10 @@ message Conversation {
 		COMPLETE_ON_DEMAND_SYNC_BUT_MORE_MSG_REMAIN_ON_PRIMARY = 2;
 	}
 
-	required string ID = 1;
+	required string id = 1;
 	repeated HistorySyncMsg messages = 2;
-	optional string newJID = 3;
-	optional string oldJID = 4;
+	optional string newJid = 3;
+	optional string oldJid = 4;
 	optional uint64 lastMsgTimestamp = 5;
 	optional uint32 unreadCount = 6;
 	optional bool readOnly = 7;
@@ -92,18 +94,19 @@ message Conversation {
 	optional string description = 33;
 	optional bool support = 34;
 	optional bool isParentGroup = 35;
-	optional string parentGroupID = 37;
+	optional string parentGroupId = 37;
 	optional bool isDefaultSubgroup = 36;
 	optional string displayName = 38;
-	optional string pnJID = 39;
+	optional string pnJid = 39;
 	optional bool shareOwnPn = 40;
 	optional bool pnhDuplicateLidThread = 41;
-	optional string lidJID = 42;
+	optional string lidJid = 42;
 	optional string username = 43;
 	optional string lidOriginType = 44;
 	optional uint32 commentsCount = 45;
 	optional bool locked = 46;
 	optional PrivacySystemMessage systemMessageToInsert = 47;
+	optional bool capiCreatedGroup = 48;
 }
 
 message GroupParticipant {
@@ -113,7 +116,7 @@ message GroupParticipant {
 		SUPERADMIN = 2;
 	}
 
-	required string userJID = 1;
+	required string userJid = 1;
 	optional Rank rank = 2;
 }
 
@@ -123,23 +126,23 @@ message PastParticipant {
 		REMOVED = 1;
 	}
 
-	optional string userJID = 1;
+	optional string userJid = 1;
 	optional LeaveReason leaveReason = 2;
-	optional uint64 leaveTS = 3;
+	optional uint64 leaveTs = 3;
 }
 
 message PhoneNumberToLIDMapping {
-	optional string pnJID = 1;
-	optional string lidJID = 2;
+	optional string pnJid = 1;
+	optional string lidJid = 2;
 }
 
 message HistorySyncMsg {
 	optional WAWeb.WebMessageInfo message = 1;
-	optional uint64 msgOrderID = 2;
+	optional uint64 msgOrderId = 2;
 }
 
 message Pushname {
-	optional string ID = 1;
+	optional string id = 1;
 	optional string pushname = 2;
 }
 
@@ -178,9 +181,9 @@ message AutoDownloadSettings {
 }
 
 message StickerMetadata {
-	optional string URL = 1;
-	optional bytes fileSHA256 = 2;
-	optional bytes fileEncSHA256 = 3;
+	optional string url = 1;
+	optional bytes fileSha256 = 2;
+	optional bytes fileEncSha256 = 3;
 	optional bytes mediaKey = 4;
 	optional string mimetype = 5;
 	optional uint32 height = 6;
@@ -188,17 +191,17 @@ message StickerMetadata {
 	optional string directPath = 8;
 	optional uint64 fileLength = 9;
 	optional float weight = 10;
-	optional int64 lastStickerSentTS = 11;
+	optional int64 lastStickerSentTs = 11;
 	optional bool isLottie = 12;
 }
 
 message PastParticipants {
-	optional string groupJID = 1;
+	optional string groupJid = 1;
 	repeated PastParticipant pastParticipants = 2;
 }
 
 message AvatarUserSettings {
-	optional string FBID = 1;
+	optional string fbid = 1;
 	optional string password = 2;
 }
 
