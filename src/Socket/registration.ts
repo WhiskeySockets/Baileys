@@ -22,7 +22,7 @@ export const makeRegistrationSocket = (config: SocketConfig) => {
 			throw new Error('please specify the registration options')
 		}
 
-		const result = await mobileRegister({ ...sock.authState.creds, ...sock.authState.creds.registration as RegistrationOptions, code }, config.options)
+		const result = await mobileRegister({ ...sock.authState.creds, ...sock.authState.creds.registration, code }, config.options)
 
 		sock.authState.creds.me = {
 			id: jidEncode(result.login!, 's.whatsapp.net'),
@@ -98,10 +98,10 @@ export type RegistrationParams = RegistrationData & RegistrationOptions
 function convertBufferToUrlHex(buffer: Buffer) {
 	var id = ''
 
-	buffer.forEach((x) => {
+	for(const x of buffer) {
 		// encode random identity_id buffer as percentage url encoding
 		id += `%${x.toString(16).padStart(2, '0').toLowerCase()}`
-	})
+	}
 
 	return id
 }

@@ -16,10 +16,11 @@
   "repository": {
     "url": "git@github.com:WhiskeySockets/Baileys.git"
   },
+  "type": "module",
   "license": "MIT",
   "author": "Adhiraj Singh",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
+  "main": "lib/src/index.js",
+  "types": "lib/src/index.d.ts",
   "files": [
     "lib/*",
     "WAProto/*",
@@ -59,6 +60,7 @@
     "@adiwajshing/eslint-config": "github:adiwajshing/eslint-config",
     "@types/bun": "^1.1.8",
     "@types/jest": "^27.5.1",
+    "@types/jimp": "^0.2.28",
     "@types/node": "^16.0.0",
     "@types/sharp": "^0.29.4",
     "@types/ws": "^8.0.0",
@@ -73,7 +75,7 @@
     "ts-jest": "^29.2.5",
     "tsx": "^4.19.0",
     "typedoc": "^0.26.7",
-    "typescript": "^5.5.4"
+    "typescript": "^5.6.2"
   },
   "peerDependencies": {
     "audio-decode": "^2.1.3",
