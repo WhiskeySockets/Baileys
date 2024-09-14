@@ -37,7 +37,7 @@ async function _asyncQueueExecutor(queue, cleanup) {
     cleanup();
 }
 
-module.exports = function (bucket, awaitable) {
+export default function queue_job(bucket, awaitable) {
     /* Run the async awaitable only when all other async calls registered
      * here have completed (or thrown).  The bucket argument is a hashable
      * key representing the task queue to use. */

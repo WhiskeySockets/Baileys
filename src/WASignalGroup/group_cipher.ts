@@ -1,8 +1,15 @@
-const queue_job = require('./queue_job');
-const SenderKeyMessage = require('./sender_key_message');
-const crypto = require('libsignal/src/crypto');
+// const queue_job = require('./queue_job');
+// const SenderKeyMessage = require('./sender_key_message');
+// const crypto = require('libsignal/src/crypto');
+import { SenderKeyMessage } from './sender_key_message'
+import queue_job from './queue_job'
+import { crypto } from 'libsignal'
 
-class GroupCipher {
+
+export class GroupCipher {
+  senderKeyStore;
+  senderKeyName;
+
   constructor(senderKeyStore, senderKeyName) {
     this.senderKeyStore = senderKeyStore;
     this.senderKeyName = senderKeyName;
@@ -39,16 +46,16 @@ class GroupCipher {
       );
       await this.senderKeyStore.storeSenderKey(this.senderKeyName, record);
       return senderKeyMessage.serialize()
-    })
+    }) as Promise<Uint8Array>
   }
 
-  async decrypt(senderKeyMessageBytes) {
+  async decrypt(senderKeyMessageBytes: Uint8Array) {
     return await this.queueJob(async () => {
       const record = await this.senderKeyStore.loadSenderKey(this.senderKeyName);
       if (!record) {
         throw new Error("No SenderKeyRecord found for decryption")
       }
-      const senderKeyMessage = new SenderKeyMessage(null, null, null, null, senderKeyMessageBytes);
+      const senderKeyMessage = new SenderKeyMessage(undefined, undefined, undefined, undefined, senderKeyMessageBytes);
       const senderKeyState = record.getSenderKeyState(senderKeyMessage.getKeyId());
       if (!senderKeyState) {
         throw new Error("No session found to decrypt message")
@@ -67,7 +74,7 @@ class GroupCipher {
       await this.senderKeyStore.storeSenderKey(this.senderKeyName, record);
 
       return plaintext;
-    })
+    }) as Promise<Uint8Array>
   }
 
   getSenderKey(senderKeyState, iteration) {
@@ -116,5 +123,3 @@ class GroupCipher {
     }
   }
 }
-
-module.exports = GroupCipher;

@@ -1,5 +1,6 @@
-const { deriveSecrets } = require('libsignal/src/crypto');
-class SenderMessageKey {
+import { deriveSecrets } from 'libsignal/src/crypto';
+
+export class SenderMessageKey {
     iteration = 0;
 
     iv = Buffer.alloc(0);
@@ -36,4 +37,3 @@ class SenderMessageKey {
         return this.seed;
     }
 }
-module.exports = SenderMessageKey;

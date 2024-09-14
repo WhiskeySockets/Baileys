@@ -1,9 +1,9 @@
 import { ProtocolAddress, SessionBuilder, SessionCipher, SessionRecord } from 'libsignal'
-import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage, SenderKeyName, SenderKeyRecord } from '../../WASignalGroup'
 import { SignalAuthState } from '../Types'
 import { SignalRepository } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import { jidDecode } from '../WABinary'
+import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage, SenderKeyName, SenderKeyRecord } from '../WASignalGroup'
 
 export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository {
 	const storage = signalStorage(auth)
@@ -18,7 +18,7 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 			const builder = new GroupSessionBuilder(storage)
 			const senderName = jidToSignalSenderKeyName(item.groupId!, authorJid)
 
-			const senderMsg = new SenderKeyDistributionMessage(null, null, null, null, item.axolotlSenderKeyDistributionMessage)
+			const senderMsg = new SenderKeyDistributionMessage(undefined, undefined, undefined, undefined, item.axolotlSenderKeyDistributionMessage)
 			const { [senderName]: senderKey } = await auth.keys.get('sender-key', [senderName])
 			if(!senderKey) {
 				await storage.storeSenderKey(senderName, new SenderKeyRecord())

@@ -1,9 +1,12 @@
-const SenderKeyState = require('./sender_key_state');
 
-class SenderKeyRecord {
+import { SenderKeyState } from './sender_key_state'
+import * as proto from '../Proto'
+
+export class SenderKeyRecord {
     MAX_STATES = 5;
+    senderKeyStates: SenderKeyState[];
   
-    constructor(serialized) {
+    constructor(serialized?: any) {
       this.senderKeyStates = [];
   
       if (serialized) {
@@ -11,7 +14,7 @@ class SenderKeyRecord {
         for (let i = 0; i < list.length; i++) {
           const structure = list[i];
           this.senderKeyStates.push(
-            new SenderKeyState(null, null, null, null, null, null, structure)
+            new SenderKeyState(undefined, undefined, undefined, undefined, undefined, undefined, structure)
           );
         }
       }
@@ -32,7 +35,7 @@ class SenderKeyRecord {
     }
   
     addSenderKeyState(id, iteration, chainKey, signatureKey) {
-      this.senderKeyStates.push(new SenderKeyState(id, iteration, chainKey, null, signatureKey));
+      this.senderKeyStates.push(new SenderKeyState(id, iteration, chainKey, undefined, signatureKey));
       if (this.senderKeyStates.length > 5) {
         this.senderKeyStates.shift()
       }
@@ -44,7 +47,7 @@ class SenderKeyRecord {
     }
   
     serialize() {
-      const recordStructure = [];
+      const recordStructure: proto.SenderKeyStateStructure[] = [];
       for (let i = 0; i < this.senderKeyStates.length; i++) {
         const senderKeyState = this.senderKeyStates[i];
         recordStructure.push(senderKeyState.getStructure());
@@ -52,5 +55,3 @@ class SenderKeyRecord {
       return recordStructure;
     }
   }
-  
-  module.exports = SenderKeyRecord;

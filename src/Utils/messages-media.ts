@@ -24,6 +24,7 @@ const getImageProcessingLibrary = async() => {
 	const [_jimp, sharp] = await Promise.all([
 		(async() => {
 			const jimp = await (
+				// @ts-ignore
 				import('jimp')
 					.catch(() => { })
 			)

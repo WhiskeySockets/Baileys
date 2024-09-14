@@ -1,8 +1,11 @@
-const SenderMessageKey = require('./sender_message_key');
+// const SenderMessageKey = require('./sender_message_key');
 //const HKDF = require('./hkdf');
-const crypto = require('libsignal/src/crypto');
+// const crypto = require('libsignal/src/crypto');
 
-class SenderChainKey {
+import { SenderMessageKey } from './sender_message_key'
+import { crypto } from 'libsignal'
+
+export class SenderChainKey {
   MESSAGE_KEY_SEED = Buffer.from([0x01]);
 
   CHAIN_KEY_SEED = Buffer.from([0x02]);
@@ -46,5 +49,3 @@ class SenderChainKey {
     return hash;
   }
 }
-
-module.exports = SenderChainKey;

@@ -1,4 +1,4 @@
-class CiphertextMessage {
+export class CipherTextMessage {
     UNSUPPORTED_VERSION = 1;
 
     CURRENT_VERSION = 3;
@@ -13,4 +13,3 @@ class CiphertextMessage {
 
     ENCRYPTED_MESSAGE_OVERHEAD = 53;
 }
-module.exports = CiphertextMessage;

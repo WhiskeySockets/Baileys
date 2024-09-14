@@ -1,13 +1,15 @@
-const CiphertextMessage = require('./ciphertext_message');
-const protobufs = require('./protobufs');
+import { readBinaryNode, writeBinaryNode } from '../Utils/proto-utils';
+import { CipherTextMessage } from './ciphertext_message';
+import * as proto from '../Proto';
 
-class SenderKeyDistributionMessage extends CiphertextMessage {
+
+export class SenderKeyDistributionMessage extends CipherTextMessage {
   constructor(
-    id = null,
-    iteration = null,
-    chainKey = null,
-    signatureKey = null,
-    serialized = null
+    private id?: number,
+    private iteration?: number,
+    private chainKey?: Uint8Array,
+    private signatureKey?: Uint8Array,
+    private serialized?: Uint8Array
   ) {
     super();
     if (serialized) {
@@ -15,9 +17,8 @@ class SenderKeyDistributionMessage extends CiphertextMessage {
         const version = serialized[0];
         const message = serialized.slice(1);
 
-        const distributionMessage = protobufs.SenderKeyDistributionMessage.decode(
-          message
-        ).toJSON();
+        const distributionMessage = readBinaryNode(proto.readSenderKeyDistributionMessage, message);
+
         this.serialized = serialized;
         this.id = distributionMessage.id;
         this.iteration = distributionMessage.iteration;
@@ -32,14 +33,14 @@ class SenderKeyDistributionMessage extends CiphertextMessage {
       this.iteration = iteration;
       this.chainKey = chainKey;
       this.signatureKey = signatureKey;
-      const message = protobufs.SenderKeyDistributionMessage.encode(
-        protobufs.SenderKeyDistributionMessage.create({
-          id,
-          iteration,
-          chainKey,
-          signingKey: this.signatureKey,
-        })
-      ).finish();
+
+      const message = writeBinaryNode(proto.writeSenderKeyDistributionMessage, {
+        id: this.id,
+        iteration: this.iteration,
+        chainKey: this.chainKey,
+        signingKey: this.signatureKey,
+      });
+
       this.serialized = Buffer.concat([Buffer.from([version]), message]);
     }
   }
@@ -49,6 +50,10 @@ class SenderKeyDistributionMessage extends CiphertextMessage {
   }
 
   serialize() {
+    if(!this.serialized) {
+      throw new Error('No serialized data')
+    }
+
     return this.serialized;
   }
 
@@ -74,5 +79,3 @@ class SenderKeyDistributionMessage extends CiphertextMessage {
     return this.id;
   }
 }
-
-module.exports = SenderKeyDistributionMessage;

@@ -1,8 +1,9 @@
-//const utils = require('../../common/utils');
-const SenderKeyDistributionMessage = require('./sender_key_distribution_message');
+import { SenderKeyDistributionMessage } from './sender_key_distribution_message'
+import * as keyhelper from './keyhelper'
 
-const keyhelper = require("./keyhelper");
-class GroupSessionBuilder {
+export class GroupSessionBuilder {
+  senderKeyStore;
+
   constructor(senderKeyStore) {
     this.senderKeyStore = senderKeyStore;
   }
@@ -43,4 +44,3 @@ class GroupSessionBuilder {
     );
   }
 }
-module.exports = GroupSessionBuilder;

@@ -1,19 +1,18 @@
-const SenderChainKey = require('./sender_chain_key');
-const SenderMessageKey = require('./sender_message_key');
+import { SenderChainKey } from './sender_chain_key'
+import { SenderKeyMessage } from './sender_key_message'
+import * as proto from '../Proto'
 
-const protobufs = require('./protobufs');
-
-class SenderKeyState {
+export class SenderKeyState {
     MAX_MESSAGE_KEYS = 2000;
 
     constructor(
-        id = null,
-        iteration = null,
-        chainKey = null,
-        signatureKeyPair = null,
-        signatureKeyPublic = null,
-        signatureKeyPrivate = null,
-        senderKeyStateStructure = null
+        private id?: number,
+        private iteration?: number,
+        private chainKey?: Uint8Array,
+        private signatureKeyPair?: proto.SenderKeyStateStructureSenderSigningKey,
+        private signatureKeyPublic?: Uint8Array,
+        private signatureKeyPrivate?: Uint8Array,
+        private senderKeyStateStructure: proto.SenderKeyStateStructure = {}
     ) {
         if (senderKeyStateStructure) {
             this.senderKeyStateStructure = senderKeyStateStructure;
@@ -24,25 +23,29 @@ class SenderKeyState {
             }
 
             chainKey = typeof chainKey === 'string' ? Buffer.from(chainKey, 'base64') : chainKey;
-            this.senderKeyStateStructure = protobufs.SenderKeyStateStructure.create();
-            const senderChainKeyStructure = protobufs.SenderChainKey.create();
+
+
+            const senderChainKeyStructure: proto.SenderKeyStateStructureSenderChainKey = {}
             senderChainKeyStructure.iteration = iteration;
             senderChainKeyStructure.seed = chainKey;
             this.senderKeyStateStructure.senderChainKey = senderChainKeyStructure;
 
-            const signingKeyStructure = protobufs.SenderSigningKey.create();
+            const signingKeyStructure: proto.SenderKeyStateStructureSenderSigningKey = {}
+
+
             signingKeyStructure.public =
                 typeof signatureKeyPublic === 'string' ?
                 Buffer.from(signatureKeyPublic, 'base64') :
-                signatureKeyPublic;
+                signatureKeyPublic!;
             if (signatureKeyPrivate) {
                 signingKeyStructure.private =
                     typeof signatureKeyPrivate === 'string' ?
                     Buffer.from(signatureKeyPrivate, 'base64') :
                     signatureKeyPrivate;
             }
-            this.senderKeyStateStructure.senderKeyId = id;
-            this.senderChainKey = senderChainKeyStructure;
+            // @TODO FIX THIS
+            // this.senderKeyStateStructure.senderChainKey = id;
+            // this.senderChainKey = senderChainKeyStructure;
             this.senderKeyStateStructure.senderSigningKey = signingKeyStructure;
         }
         this.senderKeyStateStructure.senderMessageKeys =
@@ -58,6 +61,10 @@ class SenderKeyState {
     }
 
     getSenderChainKey() {
+        if(!this.senderKeyStateStructure.senderChainKey) {
+            throw new Error('No sender chain key')
+        }
+
         return new SenderChainKey(
             this.senderKeyStateStructure.senderChainKey.iteration,
             this.senderKeyStateStructure.senderChainKey.seed
@@ -65,27 +72,31 @@ class SenderKeyState {
     }
 
     setSenderChainKey(chainKey) {
-        const senderChainKeyStructure = protobufs.SenderChainKey.create({
+        this.senderKeyStateStructure.senderChainKey = {
             iteration: chainKey.getIteration(),
-            seed: chainKey.getSeed(),
-        });
-        this.senderKeyStateStructure.senderChainKey = senderChainKeyStructure;
+            seed: chainKey.getSeed()
+        };
     }
 
     getSigningKeyPublic() {
-        return typeof this.senderKeyStateStructure.senderSigningKey.public === 'string' ?
+        return typeof this.senderKeyStateStructure.senderSigningKey?.public === 'string' ?
             Buffer.from(this.senderKeyStateStructure.senderSigningKey.public, 'base64') :
-            this.senderKeyStateStructure.senderSigningKey.public;
+            this.senderKeyStateStructure.senderSigningKey?.public;
     }
 
     getSigningKeyPrivate() {
-        return typeof this.senderKeyStateStructure.senderSigningKey.private === 'string' ?
+        return typeof this.senderKeyStateStructure.senderSigningKey?.private === 'string' ?
             Buffer.from(this.senderKeyStateStructure.senderSigningKey.private, 'base64') :
-            this.senderKeyStateStructure.senderSigningKey.private;
+            this.senderKeyStateStructure.senderSigningKey?.private;
     }
 
     hasSenderMessageKey(iteration) {
         const list = this.senderKeyStateStructure.senderMessageKeys;
+
+        if(!list) {
+            return false
+        }
+
         for (let o = 0; o < list.length; o++) {
             const senderMessageKey = list[o];
             if (senderMessageKey.iteration === iteration) return true;
@@ -94,29 +105,36 @@ class SenderKeyState {
     }
 
     addSenderMessageKey(senderMessageKey) {
-        const senderMessageKeyStructure = protobufs.SenderKeyStateStructure.create({
+        // const senderMessageKeyStructure = protobufs.SenderKeyStateStructure.create({
+        //     iteration: senderMessageKey.getIteration(),
+        //     seed: senderMessageKey.getSeed(),
+        // });
+
+        this.senderKeyStateStructure.senderMessageKeys?.push({
             iteration: senderMessageKey.getIteration(),
             seed: senderMessageKey.getSeed(),
         });
-        this.senderKeyStateStructure.senderMessageKeys.push(senderMessageKeyStructure);
 
-        if (this.senderKeyStateStructure.senderMessageKeys.length > this.MAX_MESSAGE_KEYS) {
+
+        if (this.senderKeyStateStructure.senderMessageKeys &&this.senderKeyStateStructure.senderMessageKeys.length > this.MAX_MESSAGE_KEYS) {
             this.senderKeyStateStructure.senderMessageKeys.shift();
         }
     }
 
-    removeSenderMessageKey(iteration) {
-        let result = null;
+    removeSenderMessageKey(iteration?: number) {
+        let result: proto.SenderKeyStateStructureSenderMessageKey | undefined;
 
-        this.senderKeyStateStructure.senderMessageKeys = this.senderKeyStateStructure.senderMessageKeys.filter(
+        this.senderKeyStateStructure.senderMessageKeys = this.senderKeyStateStructure.senderMessageKeys?.filter(
             senderMessageKey => {
                 if (senderMessageKey.iteration === iteration) result = senderMessageKey;
                 return senderMessageKey.iteration !== iteration;
             }
         );
 
-        if (result != null) {
-            return new SenderMessageKey(result.iteration, result.seed);
+        if (result) {
+            // @TODO FIX THIS
+            // @ts-ignore
+            return new SenderKeyMessage(result.iteration, result.seed);
         }
         return null;
     }
@@ -125,5 +143,3 @@ class SenderKeyState {
         return this.senderKeyStateStructure;
     }
 }
-
-module.exports = SenderKeyState;

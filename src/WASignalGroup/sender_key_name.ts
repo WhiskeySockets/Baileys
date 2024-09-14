@@ -34,7 +34,9 @@ function hashCode(strKey) {
  * @return intValue
  */
 
-class SenderKeyName {
+export class SenderKeyName {
+  groupId: any;
+  sender: any;
   constructor(groupId, sender) {
     this.groupId = groupId;
     this.sender = sender;
@@ -66,5 +68,3 @@ class SenderKeyName {
     return hashCode(this.groupId) ^ hashCode(this.sender.toString());
   }
 }
-
-module.exports = SenderKeyName;
