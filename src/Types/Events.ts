@@ -23,7 +23,7 @@ export type BaileysEventMap = {
         isLatest?: boolean
         progress?: number | null
         syncType?: proto.HistorySync.HistorySyncType
-        peerDataRequestSessionId?: string
+        peerDataRequestSessionId?: string | null
     }
     /** upsert chats */
     'chats.upsert': Chat[]
