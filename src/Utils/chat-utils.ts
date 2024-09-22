@@ -620,6 +620,21 @@ export const chatModificationToAppPatch = (
 			apiVersion: 1,
 			operation: OP.SET,
 		}
+	} else if('addLabel' in mod) {
+		patch = {
+			syncAction: {
+				labelEditAction: {
+					name: mod.addLabel.name,
+					color: mod.addLabel.color,
+					predefinedId : mod.addLabel.predefinedId,
+					deleted: mod.addLabel.deleted
+				}
+			},
+			index: ['label_edit', mod.addLabel.id],
+			type: 'regular',
+			apiVersion: 3,
+			operation: OP.SET,
+		}
 	} else if('addChatLabel' in mod) {
 		patch = {
 			syncAction: {

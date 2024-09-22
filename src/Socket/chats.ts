@@ -8,6 +8,7 @@ import { makeMutex } from '../Utils/make-mutex'
 import processMessage from '../Utils/process-message'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidNormalizedUser, reduceBinaryNodeToDictionary, S_WHATSAPP_NET } from '../WABinary'
 import { makeSocket } from './socket'
+import { Label, LabelActionBody } from '../Types/Label'
 
 const MAX_SYNC_ATTEMPTS = 2
 
@@ -805,6 +806,17 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	/**
+	 * Adds label
+	 */
+	const addLabel = (jid: string, labels: LabelActionBody) => {
+		return chatModify({
+			addLabel: {
+				...labels
+			}
+		}, jid)
+	}
+
+	/**
 	 * Adds label for the chats
 	 */
 	const addChatLabel = (jid: string, labelId: string) => {
@@ -1024,6 +1036,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		resyncAppState,
 		chatModify,
 		cleanDirtyBits,
+		addLabel,
 		addChatLabel,
 		removeChatLabel,
 		addMessageLabel,
