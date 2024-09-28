@@ -221,13 +221,13 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	/** update the profile picture for yourself or a group */
 	const updateProfilePicture = async(jid: string, content: WAMediaUpload) => {
-		let targetJid = ''
+		let targetJid;
 		if(!jid) {
 			throw new Boom('Illegal no-jid profile update. Please specify either your ID or the ID of the chat you wish to update')
 		}
 
 		if(jidNormalizedUser(jid) !== jidNormalizedUser(authState.creds.me!.id)) {
-			targetJid = jid // in case it is someone other than us
+			targetJid = jidNormalizedUser(jid) // in case it is someone other than us
 		}
 
 		const { img } = await generateProfilePicture(content)
@@ -251,13 +251,13 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	/** remove the profile picture for yourself or a group */
 	const removeProfilePicture = async(jid: string) => {
-		let targetJid = ''
+		let targetJid;
 		if(!jid) {
 			throw new Boom('Illegal no-jid profile update. Please specify either your ID or the ID of the chat you wish to update')
 		}
 
 		if(jidNormalizedUser(jid) !== jidNormalizedUser(authState.creds.me!.id)) {
-			targetJid = jid // in case it is someone other than us
+			targetJid = jidNormalizedUser(jid) // in case it is someone other than us
 		}
 
 		await query({
