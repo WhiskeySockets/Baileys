@@ -3,12 +3,12 @@ import NodeCache from 'node-cache'
 import { proto } from '../../WAProto'
 import { DEFAULT_CACHE_TTLS, PROCESSABLE_HISTORY_TYPES } from '../Defaults'
 import { ALL_WA_PATCH_NAMES, ChatModification, ChatMutation, LTHashState, MessageUpsertType, PresenceData, SocketConfig, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAMessage, WAPatchCreate, WAPatchName, WAPresence, WAPrivacyCallValue, WAPrivacyGroupAddValue, WAPrivacyMessagesValue, WAPrivacyOnlineValue, WAPrivacyValue, WAReadReceiptsValue } from '../Types'
+import { LabelActionBody } from '../Types/Label'
 import { chatModificationToAppPatch, ChatMutationMap, decodePatches, decodeSyncdSnapshot, encodeSyncdPatch, extractSyncdPatches, generateProfilePicture, getHistoryMsg, newLTHashState, processSyncAction } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
 import processMessage from '../Utils/process-message'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidNormalizedUser, reduceBinaryNodeToDictionary, S_WHATSAPP_NET } from '../WABinary'
 import { makeSocket } from './socket'
-import { Label, LabelActionBody } from '../Types/Label'
 
 const MAX_SYNC_ATTEMPTS = 2
 
@@ -1029,6 +1029,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		updateProfileName,
 		updateBlockStatus,
 		updateCallPrivacy,
+		updateMessagesPrivacy,
 		updateLastSeenPrivacy,
 		updateOnlinePrivacy,
 		updateProfilePicturePrivacy,
