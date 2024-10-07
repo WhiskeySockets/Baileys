@@ -1,5 +1,5 @@
 import { randomBytes } from 'crypto'
-import NodeCache from 'node-cache'
+import NodeCache from '@cacheable/node-cache'
 import type { Logger } from 'pino'
 import { v4 as uuidv4 } from 'uuid'
 import { DEFAULT_CACHE_TTLS } from '../Defaults'
