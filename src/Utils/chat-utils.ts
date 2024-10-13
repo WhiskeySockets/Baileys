@@ -553,23 +553,29 @@ export const chatModificationToAppPatch = (
 			apiVersion: 3,
 			operation: OP.SET
 		}
+	} else if('deleteForMe' in mod) {
+		const { timestamp, key, deleteMedia } = mod.deleteForMe
+		patch = {
+			syncAction: {
+				deleteMessageForMeAction: {
+					deleteMedia,
+					messageTimestamp: timestamp
+				}
+			},
+			index: ['deleteMessageForMe', jid, key.id!, key.fromMe ? '1' : '0', '0'],
+			type: 'regular_high',
+			apiVersion: 3,
+			operation: OP.SET
+		}
 	} else if('clear' in mod) {
-		if(mod.clear === 'all') {
-			throw new Boom('not supported')
-		} else {
-			const key = mod.clear.messages[0]
-			patch = {
-				syncAction: {
-					deleteMessageForMeAction: {
-						deleteMedia: false,
-						messageTimestamp: key.timestamp
-					}
-				},
-				index: ['deleteMessageForMe', jid, key.id, key.fromMe ? '1' : '0', '0'],
-				type: 'regular_high',
-				apiVersion: 3,
-				operation: OP.SET
-			}
+		patch = {
+			syncAction: {
+				clearChatAction: {} // add message range later
+			},
+			index: ['clearChat', jid, '1' /*the option here is 0 when keep starred messages is enabled*/, '0'],
+			type: 'regular_high',
+			apiVersion: 6,
+			operation: OP.SET
 		}
 	} else if('pin' in mod) {
 		patch = {
