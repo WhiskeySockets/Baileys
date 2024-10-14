@@ -21,7 +21,7 @@ const fileLock = new AsyncLock({ maxPending: Infinity })
  * Would recommend writing an auth state for use with a proper SQL or No-SQL DB
  * */
 export const useMultiFileAuthState = async(folder: string): Promise<{ state: AuthenticationState, saveCreds: () => Promise<void> }> => {
-
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const writeData = (data: any, file: string) => {
 		const filePath = join(folder, fixFileName(file)!)
 		return fileLock.acquire(

@@ -283,6 +283,7 @@ const processMessage = async(
 				const { peerDataOperationResult } = response
 				for(const result of peerDataOperationResult!) {
 					const { placeholderMessageResendResponse: retryResponse } = result
+					//eslint-disable-next-line max-depth
 					if(retryResponse) {
 						const webMessageInfo = proto.WebMessageInfo.decode(retryResponse.webMessageInfoBytes!)
 						// wait till another upsert event is available, don't want it to be part of the PDO response message
