@@ -33,7 +33,7 @@
 <li class="tsd-parameter">
 <h5><span class="tsd-kind-property">values</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></h5></li></ul></div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/647f8d7/src/Types/Message.ts#L72">src/Types/Message.ts:72</a></li></ul></aside></div>
+<li>Defined in <a href="https://github.com/WhiskeySockets/Baileys/blob/18ac07d/src/Types/Message.ts#L74">src/Types/Message.ts:74</a></li></ul></aside></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
@@ -150,6 +150,7 @@
 <li><a href="TransactionCapabilityOptions.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Transaction<wbr/>Capability<wbr/>Options</span></a></li>
 <li><a href="URLGenerationOptions.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>URLGeneration<wbr/>Options</span></a></li>
 <li><a href="UserFacingSocketConfig.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>User<wbr/>Facing<wbr/>Socket<wbr/>Config</span></a></li>
+<li><a href="Value.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>Value</span></a></li>
 <li><a href="WABrowserDescription.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>WABrowser<wbr/>Description</span></a></li>
 <li><a href="WABusinessHoursConfig.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>WABusiness<wbr/>Hours<wbr/>Config</span></a></li>
 <li><a href="WABusinessProfile.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>WABusiness<wbr/>Profile</span></a></li>
@@ -162,6 +163,8 @@
 <li><a href="WAGenericMediaMessage.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>WAGeneric<wbr/>Media<wbr/>Message</span></a></li>
 <li><a href="WAInitResponse.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>WAInit<wbr/>Response</span></a></li>
 <li><a href="WALocationMessage.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>WALocation<wbr/>Message</span></a></li>
+<li><a href="WAMediaPayloadStream.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>WAMedia<wbr/>Payload<wbr/>Stream</span></a></li>
+<li><a href="WAMediaPayloadURL.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>WAMedia<wbr/>PayloadURL</span></a></li>
 <li><a href="WAMediaUpload.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>WAMedia<wbr/>Upload</span></a></li>
 <li><a href="WAMediaUploadFunction.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>WAMedia<wbr/>Upload<wbr/>Function</span></a></li>
 <li><a href="WAMessage.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-4194304"></use></svg><span>WAMessage</span></a></li>
@@ -203,22 +206,13 @@
 <li><a href="../variables/MEDIA_KEYS.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>MEDIA_<wbr/>KEYS</span></a></li>
 <li><a href="../variables/MEDIA_PATH_MAP.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>MEDIA_<wbr/>PATH_<wbr/>MAP</span></a></li>
 <li><a href="../variables/MIN_PREKEY_COUNT.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>MIN_<wbr/>PREKEY_<wbr/>COUNT</span></a></li>
-<li><a href="../variables/MOBILE_ENDPOINT.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>MOBILE_<wbr/>ENDPOINT</span></a></li>
-<li><a href="../variables/MOBILE_NOISE_HEADER.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>MOBILE_<wbr/>NOISE_<wbr/>HEADER</span></a></li>
-<li><a href="../variables/MOBILE_PORT.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>MOBILE_<wbr/>PORT</span></a></li>
-<li><a href="../variables/MOBILE_REGISTRATION_ENDPOINT.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>MOBILE_<wbr/>REGISTRATION_<wbr/>ENDPOINT</span></a></li>
-<li><a href="../variables/MOBILE_TOKEN.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>MOBILE_<wbr/>TOKEN</span></a></li>
-<li><a href="../variables/MOBILE_USERAGENT.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>MOBILE_<wbr/>USERAGENT</span></a></li>
 <li><a href="../variables/NOISE_MODE.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>NOISE_<wbr/>MODE</span></a></li>
 <li><a href="../variables/NOISE_WA_HEADER.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>NOISE_<wbr/>WA_<wbr/>HEADER</span></a></li>
 <li><a href="../variables/NO_MESSAGE_FOUND_ERROR_TEXT.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>NO_<wbr/>MESSAGE_<wbr/>FOUND_<wbr/>ERROR_<wbr/>TEXT</span></a></li>
 <li><a href="../variables/OFFICIAL_BIZ_JID.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>OFFICIAL_<wbr/>BIZ_<wbr/>JID</span></a></li>
-<li><a href="../variables/PHONENUMBER_MCC.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>PHONENUMBER_<wbr/>MCC</span></a></li>
 <li><a href="../variables/PHONE_CONNECTION_CB.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>PHONE_<wbr/>CONNECTION_<wbr/>CB</span></a></li>
 <li><a href="../variables/PROCESSABLE_HISTORY_TYPES.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>PROCESSABLE_<wbr/>HISTORY_<wbr/>TYPES</span></a></li>
-<li><a href="../variables/PROTOCOL_VERSION.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>PROTOCOL_<wbr/>VERSION</span></a></li>
 <li><a href="../variables/PSA_WID.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>PSA_<wbr/>WID</span></a></li>
-<li><a href="../variables/REGISTRATION_PUBLIC_KEY.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>REGISTRATION_<wbr/>PUBLIC_<wbr/>KEY</span></a></li>
 <li><a href="../variables/SERVER_JID.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>SERVER_<wbr/>JID</span></a></li>
 <li><a href="../variables/STORIES_JID.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>STORIES_<wbr/>JID</span></a></li>
 <li><a href="../variables/S_WHATSAPP_NET.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-32"></use></svg><span>S_<wbr/>WHATSAPP_<wbr/>NET</span></a></li>
@@ -296,7 +290,6 @@
 <li><a href="../functions/generateMdTagPrefix.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>generate<wbr/>Md<wbr/>Tag<wbr/>Prefix</span></a></li>
 <li><a href="../functions/generateMessageID.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>generate<wbr/>MessageID</span></a></li>
 <li><a href="../functions/generateMessageIDV2.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>generate<wbr/>MessageIDV2</span></a></li>
-<li><a href="../functions/generateMobileNode.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>generate<wbr/>Mobile<wbr/>Node</span></a></li>
 <li><a href="../functions/generateOrGetPreKeys.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>generate<wbr/>Or<wbr/>Get<wbr/>Pre<wbr/>Keys</span></a></li>
 <li><a href="../functions/generateProfilePicture.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>generate<wbr/>Profile<wbr/>Picture</span></a></li>
 <li><a href="../functions/generateRegistrationId.html"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><use href="#icon-64"></use></svg><span>generate<wbr/>Registration<wbr/>Id</span></a></li>
