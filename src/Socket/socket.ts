@@ -76,7 +76,7 @@ export const makeSocket = (config: SocketConfig) => {
 		url.searchParams.append('ED', authState.creds.routingInfo.toString('base64url'))
 	}
 
-	const ws = config.socket ? config.socket : new WebSocketClient(url, config)
+	const ws = new WebSocketClient(url, config)
 
 	ws.connect()
 
@@ -327,11 +327,12 @@ export const makeSocket = (config: SocketConfig) => {
 				const l1 = frame.attrs || {}
 				const l2 = Array.isArray(frame.content) ? frame.content[0]?.tag : ''
 
-				Object.keys(l1).forEach(key => {
+				for(const key of Object.keys(l1)) {
 					anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0},${key}:${l1[key]},${l2}`, frame) || anyTriggered
 					anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0},${key}:${l1[key]}`, frame) || anyTriggered
 					anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0},${key}`, frame) || anyTriggered
-				})
+				}
+
 				anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0},,${l2}`, frame) || anyTriggered
 				anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0}`, frame) || anyTriggered
 

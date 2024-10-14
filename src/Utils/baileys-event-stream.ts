@@ -35,7 +35,7 @@ export const captureEventStream = (ev: BaileysEventEmitter, filename: string) =>
  * @param filename filename containing event data
  * @param delayIntervalMs delay between each event emit
  */
-export const readAndEmitEventStream = (filename: string, delayIntervalMs: number = 0) => {
+export const readAndEmitEventStream = (filename: string, delayIntervalMs = 0) => {
 	const ev = new EventEmitter() as BaileysEventEmitter
 
 	const fireEvents = async() => {

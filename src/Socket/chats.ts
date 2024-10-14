@@ -999,15 +999,13 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				)
 		}
 
-		if(receivedPendingNotifications) {
-			// if we don't have the app state key
+		if(receivedPendingNotifications && // if we don't have the app state key
 			// we keep buffering events until we finally have
 			// the key and can sync the messages
 			// todo scrutinize
-			if(!authState.creds?.myAppStateKeyId) {
-				ev.buffer()
-				needToFlushWithAppStateSync = true
-			}
+			!authState.creds?.myAppStateKeyId) {
+			ev.buffer()
+			needToFlushWithAppStateSync = true
 		}
 	})
 

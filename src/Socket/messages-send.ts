@@ -280,7 +280,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 		}
 
-		const meJid = jidNormalizedUser(authState.creds.me.id)!
+		const meJid = jidNormalizedUser(authState.creds.me.id)
 
 		const msgId = await relayMessage(meJid, protocolMessage, {
 			additionalAttributes: {
