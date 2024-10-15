@@ -620,6 +620,21 @@ export const chatModificationToAppPatch = (
 			apiVersion: 1,
 			operation: OP.SET,
 		}
+	}  else if('updateContact' in mod) {
+		patch = {
+			syncAction: {
+				contactAction: {
+					fullName: mod.updateContact.fullName,
+					firstName: mod.updateContact.firstName,
+					lidJid: mod.updateContact.lidJid,
+					saveOnPrimaryAddressbook: true
+				}
+			},
+			index: ['contact', mod.updateContact.id],
+			type: 'regular',
+			apiVersion: 2,
+			operation: OP.SET,
+		}
 	} else if('addLabel' in mod) {
 		patch = {
 			syncAction: {
@@ -635,7 +650,7 @@ export const chatModificationToAppPatch = (
 			apiVersion: 3,
 			operation: OP.SET,
 		}
-	}else if('removeLabel' in mod) {
+	} else if('removeLabel' in mod) {
 		patch = {
 			syncAction: {
 				labelEditAction: {
@@ -804,6 +819,7 @@ export const processSyncAction = (
 		})
 	} else if(action?.contactAction) {
 		ev.emit('contacts.upsert', [{ id, name: action.contactAction!.fullName! }])
+
 	} else if(action?.pushNameSetting) {
 		const name = action?.pushNameSetting?.name
 		if(name && me?.name !== name) {

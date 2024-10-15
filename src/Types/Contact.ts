@@ -18,3 +18,11 @@ export interface Contact {
     imgUrl?: string | null | 'changed'
     status?: string
 }
+
+export interface ContactActionBody {
+    id: string
+    lidJid?: string
+    fullName?: string
+    firstName?: string
+    saveOnPrimaryAddressbook: boolean
+}

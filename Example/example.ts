@@ -7,7 +7,7 @@ import open from 'open'
 import fs from 'fs'
 import P from 'pino'
 
-const logger = P({ timestamp: () => `,"time":"${new Date().toJSON()}"` }, P.destination('./wa-logs.txt'))
+const logger = P({ timestamp: () => `,"time":"${new Date().toJSON()}"` })
 logger.level = 'trace'
 
 const useStore = !process.argv.includes('--no-store')
@@ -220,6 +220,7 @@ const startSock = async() => {
 			}
 
 			if(events['labels.association']) {
+				console.log("labels.association")
 				console.log(events['labels.association'])
 			}
 
