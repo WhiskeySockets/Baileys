@@ -1,9 +1,7 @@
 import { BinaryInfo } from './BinaryInfo'
-import { FLAG_BYTE, FLAG_EVENT, FLAG_EXTENDED, FLAG_FIELD, FLAG_GLOBAL, WEB_EVENTS, WEB_GLOBALS } from './constants'
+import { FLAG_BYTE, FLAG_EVENT, FLAG_EXTENDED, FLAG_FIELD, FLAG_GLOBAL, Value, WEB_EVENTS, WEB_GLOBALS } from './constants'
 
 const getHeaderBitLength = (key: number) => (key < 256 ? 2 : 3)
-type Value = number | null | string
-
 
 export const encodeWAM = (binaryInfo: BinaryInfo) => {
 	binaryInfo.buffer = []
@@ -17,10 +15,10 @@ export const encodeWAM = (binaryInfo: BinaryInfo) => {
 		.reduce((a, b) => a + b)
 	const buffer = Buffer.alloc(totalSize)
 	let offset = 0
-	binaryInfo.buffer.forEach((buffer_) => {
+	for(const buffer_ of binaryInfo.buffer) {
 		buffer_.copy(buffer, offset)
 		offset += buffer_.length
-	})
+	}
 
 	return buffer
 }
@@ -77,7 +75,7 @@ function encodeEvents(binaryInfo: BinaryInfo) {
 			}
 
 			const fieldFlag = extended ? FLAG_EVENT : FLAG_FIELD | FLAG_EXTENDED
-			binaryInfo.buffer.push(serializeData(id, value as Value, fieldFlag))
+			binaryInfo.buffer.push(serializeData(id, value, fieldFlag))
 		}
 	}
 }

@@ -225,16 +225,14 @@ export default (config: BaileysInMemoryStoreConfig) => {
 					const list = assertMessageList(jid)
 					list.upsert(msg, 'append')
 
-					if(type === 'notify') {
-						if(!chats.get(jid)) {
-							ev.emit('chats.upsert', [
-								{
-									id: jid,
-									conversationTimestamp: toNumber(msg.messageTimestamp),
-									unreadCount: 1
-								}
-							])
-						}
+					if(type === 'notify' && !chats.get(jid)) {
+						ev.emit('chats.upsert', [
+							{
+								id: jid,
+								conversationTimestamp: toNumber(msg.messageTimestamp),
+								unreadCount: 1
+							}
+						])
 					}
 				}
 

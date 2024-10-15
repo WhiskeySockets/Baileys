@@ -32,7 +32,9 @@ export type SocketConfig = {
     defaultQueryTimeoutMs: number | undefined
     /** ping-pong interval for WS connection */
     keepAliveIntervalMs: number
-	/** should baileys use the mobile api instead of the multi device api */
+	/** should baileys use the mobile api instead of the multi device api
+     * @deprecated This feature has been removed
+    */
 	mobile?: boolean
     /** proxy agent */
     agent?: Agent
@@ -123,7 +125,4 @@ export type SocketConfig = {
     cachedGroupMetadata: (jid: string) => Promise<GroupMetadata | undefined>
 
     makeSignalRepository: (auth: SignalAuthState) => SignalRepository
-
-    /** Socket passthrough */
-    socket?: any
 }
