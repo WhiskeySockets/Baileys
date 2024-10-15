@@ -1,4 +1,5 @@
 export const makeMutex = () => {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let task = Promise.resolve() as Promise<any>
 
 	let taskTimeout: NodeJS.Timeout | undefined

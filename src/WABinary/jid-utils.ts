@@ -4,7 +4,7 @@ export const SERVER_JID = 'server@c.us'
 export const PSA_WID = '0@c.us'
 export const STORIES_JID = 'status@broadcast'
 
-export type JidServer = 'c.us' | 'g.us' | 'broadcast' | 's.whatsapp.net' | 'call' | 'lid'
+export type JidServer = 'c.us' | 'g.us' | 'broadcast' | 's.whatsapp.net' | 'call' | 'lid' | 'newsletter'
 
 export type JidWithDevice = {
     user: string
@@ -12,7 +12,7 @@ export type JidWithDevice = {
 }
 
 export type FullJid = JidWithDevice & {
-	server: JidServer | string
+	server: JidServer
 	domainType?: number
 }
 
@@ -33,7 +33,7 @@ export const jidDecode = (jid: string | undefined): FullJid | undefined => {
 	const user = userAgent.split('_')[0]
 
 	return {
-		server,
+		server: server as JidServer,
 		user,
 		domainType: server === 'lid' ? 1 : 0,
 		device: device ? +device : undefined
