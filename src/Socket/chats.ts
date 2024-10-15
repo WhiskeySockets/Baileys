@@ -809,6 +809,17 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	/**
+     * update user contact name
+     */
+	const updateContact = (jid, Contacts) => {
+        return chatModify({
+            updateContact: {
+                ...Contacts
+            }
+        }, jid);
+    };
+
+	/**
 	 * Adds label
 	 */
 	const addLabel = (jid: string, labels: LabelActionBody) => {
@@ -1049,6 +1060,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		resyncAppState,
 		chatModify,
 		cleanDirtyBits,
+		updateContact,
 		addLabel,
 		removeLabel,
 		addChatLabel,
