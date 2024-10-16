@@ -423,7 +423,7 @@ The store also provides some simple functions such as `loadMessages` that utiliz
     - For broadcast lists, it's `[timestamp of creation]@broadcast`.
     - For stories, the ID is `status@broadcast`.
 
-# Utility Functions
+## Utility Functions
 
 - `getContentType`, returns the content type for any message
 - `getDevice`, returns the device from message
