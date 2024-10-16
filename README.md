@@ -106,6 +106,7 @@ import makeWASocket from '@whiskeysockets/baileys'
     - [Thumbnail in Media Messages](#thumbnail-in-media-messages)
     - [Downloading Media Messages](#downloading-media-messages)
     - [Re-upload Media Message to Whatsapp](#re-upload-media-message-to-whatsapp)
+- [Reject Call](#reject-call)
 - [Send States in Chat](#send-states-in-chat)
     - [Reading Messages](#reading-messages)
     - [Update Presence](#update-presence)
@@ -141,13 +142,16 @@ import makeWASocket from '@whiskeysockets/baileys'
     - [Join Using Invitation Code](#join-using-invitation-code)
     - [Get Group Info by Invite Code](#get-group-info-by-invite-code)
     - [Query Metadata (participants, name, description...)](#query-metadata-participants-name-description)
-    - [Query Metadata (participants, name, description...)](#query-metadata-participants-name-description)
     - [Join using groupInviteMessage](#join-using-groupinvitemessage)
     - [Get Request Join List](#get-request-join-list)
     - [Approve/Reject Request Join](#approvereject-request-join)
+    - [Get All Participating Groups Metadata](#get-all-participating-groups-metadata)
+    - [Toggle Ephemeral](#toggle-ephemeral)
+    - [Change Add Mode](#change-add-mode)
 - [Privacy](#privacy)
     - [Block/Unblock User](#blockunblock-user)
     - [Get Privacy Settings](#get-privacy-settings)
+    - [Get BlockList](#get-blocklist)
     - [Update LastSeen Privacy](#update-lastseen-privacy)
     - [Update Online Privacy](#update-online-privacy)
     - [Update Profile Picture Privacy](#update-profile-picture-privacy)
@@ -734,6 +738,14 @@ sock.ev.on('messages.upsert', async ({ [m] }) => {
 await sock.updateMediaMessage(msg)
 ```
 
+## Reject Call
+
+- You can obtain `callId` and `callFrom` from `call` event
+
+```ts
+await sock.rejectCall(callId, callFrom)
+```
+
 ## Send States in Chat
 
 ### Reading Messages
@@ -776,6 +788,15 @@ const lastMsgInChat = await getLastMessageInChat(jid) // implement this on your 
 await sock.chatModify({ archive: true, lastMessages: [lastMsgInChat] }, jid)
 ```
 ### Mute/Unmute a Chat
+
+- Supported times:
+
+| Time  | Miliseconds     |
+|-------|-----------------|
+| Remove | null           |
+| 8h     | 86.400.000     |
+| 7d     | 604.800.000    |
+
 ```ts
 // mute for 8 hours
 await sock.chatModify({ mute: 8 * 60 * 60 * 1000 }, jid)
@@ -1045,6 +1066,33 @@ const response = await sock.groupRequestParticipantsUpdate(
 )
 console.log(response)
 ```
+### Get All Participating Groups Metadata
+```ts
+const response = await sock.groupFetchAllParticipating()
+console.log(response)
+```
+### Toggle Ephemeral
+
+- Ephemeral can be:
+
+| Time  | Seconds        |
+|-------|----------------|
+| Remove | 0          |
+| 24h    | 86.400     |
+| 7d     | 604.800    |
+| 90d    | 7.776.000  |
+
+```ts
+await sock.groupToggleEphemeral(jid, 86400)
+```
+
+### Change Add Mode
+```ts
+await sock.groupMemberAddMode(
+    jid,
+    'all_member_add' // or 'admin_add'
+)
+```
 
 ## Privacy
 
@@ -1057,6 +1105,11 @@ await sock.updateBlockStatus(jid, 'unblock') // Unblock user
 ```ts
 const privacySettings = await sock.fetchPrivacySettings(true)
 console.log('privacy settings: ' + privacySettings)
+```
+### Get BlockList
+```ts
+const response = await sock.fetchBlocklist()
+console.log(response)
 ```
 ### Update LastSeen Privacy
 ```ts
