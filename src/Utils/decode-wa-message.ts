@@ -177,6 +177,7 @@ export const decryptMessageNode = (
 						let msg: proto.IMessage = proto.Message.decode(e2eType !== 'plaintext' ? unpadRandomMax16(msgBuffer) : msgBuffer)
 						msg = msg.deviceSentMessage?.message || msg
 						if(msg.senderKeyDistributionMessage) {
+							//eslint-disable-next-line max-depth
 						    try {
 								await repository.processSenderKeyDistributionMessage({
 									authorJid: author,

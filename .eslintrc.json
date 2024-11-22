@@ -1,5 +1,5 @@
 {
-    "extends": "@adiwajshing",
+    "extends": "@whiskeysockets",
     "parserOptions": {
         "sourceType": "module",
         "project": "./tsconfig.json"
@@ -21,13 +21,7 @@
         "@typescript-eslint/no-unnecessary-type-assertion": [
             "warn"
         ],
-        "no-restricted-syntax": [
-            "warn",
-            {
-                "selector": "TSEnumDeclaration",
-                "message": "Don't declare enums, use literals instead"
-            }
-        ],
+        "no-restricted-syntax": "off",
         "keyword-spacing": [
             "warn"
         ]
