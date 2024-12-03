@@ -1,8 +1,8 @@
 import { AxiosRequestConfig } from 'axios'
-import { Logger } from 'pino'
 import { WAMediaUploadFunction, WAUrlInfo } from '../Types'
 import { prepareWAMessageMedia } from './messages'
 import { extractImageThumb, getHttpStream } from './messages-media'
+import { ILogger } from './logger'
 
 const THUMBNAIL_WIDTH_PX = 192
 
@@ -25,7 +25,7 @@ export type URLGenerationOptions = {
 		headers?: AxiosRequestConfig<{}>['headers']
 	}
 	uploadImage?: WAMediaUploadFunction
-	logger?: Logger
+	logger?: ILogger
 }
 
 /**

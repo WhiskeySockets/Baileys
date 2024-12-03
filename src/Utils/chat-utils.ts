@@ -1,6 +1,5 @@
 import { Boom } from '@hapi/boom'
 import { AxiosRequestConfig } from 'axios'
-import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { BaileysEventEmitter, Chat, ChatModification, ChatMutation, ChatUpdate, Contact, InitialAppStateSyncOptions, LastMessageList, LTHashState, WAPatchCreate, WAPatchName } from '../Types'
 import { ChatLabelAssociation, LabelAssociationType, MessageLabelAssociation } from '../Types/LabelAssociation'
@@ -9,6 +8,7 @@ import { aesDecrypt, aesEncrypt, hkdf, hmacSign } from './crypto'
 import { toNumber } from './generics'
 import { LT_HASH_ANTI_TAMPERING } from './lt-hash'
 import { downloadContentFromMessage, } from './messages-media'
+import { ILogger } from './logger'
 
 type FetchAppStateSyncKey = (keyId: string) => Promise<proto.Message.IAppStateSyncKeyData | null | undefined>
 
@@ -410,7 +410,7 @@ export const decodePatches = async(
 	getAppStateSyncKey: FetchAppStateSyncKey,
 	options: AxiosRequestConfig<{}>,
 	minimumVersionNumber?: number,
-	logger?: Logger,
+	logger?: ILogger,
 	validateMacs = true
 ) => {
 	const newState: LTHashState = {
@@ -716,7 +716,7 @@ export const processSyncAction = (
 	ev: BaileysEventEmitter,
 	me: Contact,
 	initialSyncOpts?: InitialAppStateSyncOptions,
-	logger?: Logger,
+	logger?: ILogger,
 ) => {
 	const isInitialSync = !!initialSyncOpts
 	const accountSettings = initialSyncOpts?.accountSettings

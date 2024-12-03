@@ -42,6 +42,7 @@ import {
 	S_WHATSAPP_NET
 } from '../WABinary'
 import { WebSocketClient } from './Client'
+import { Level } from '../Utils/logger'
 
 /**
  * Connects to WA servers and performs:
@@ -128,7 +129,7 @@ export const makeSocket = (config: SocketConfig) => {
 
 	/** send a binary node */
 	const sendNode = (frame: BinaryNode) => {
-		if(logger.level === 'trace') {
+		if(logger.getLevel() === Level.trace) {
 			logger.trace({ xml: binaryNodeToString(frame), msg: 'xml send' })
 		}
 
@@ -316,7 +317,7 @@ export const makeSocket = (config: SocketConfig) => {
 			if(!(frame instanceof Uint8Array)) {
 				const msgId = frame.attrs.id
 
-				if(logger.level === 'trace') {
+				if(logger.getLevel() === Level.trace) {
 					logger.trace({ xml: binaryNodeToString(frame), msg: 'recv xml' })
 				}
 
@@ -336,7 +337,7 @@ export const makeSocket = (config: SocketConfig) => {
 				anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0},,${l2}`, frame) || anyTriggered
 				anyTriggered = ws.emit(`${DEF_CALLBACK_PREFIX}${l0}`, frame) || anyTriggered
 
-				if(!anyTriggered && logger.level === 'debug') {
+				if(!anyTriggered && logger.getLevel() === Level.debug) {
 					logger.debug({ unhandled: true, msgId, fromMe: false, frame }, 'communication recv')
 				}
 			}

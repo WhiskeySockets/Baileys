@@ -6,9 +6,12 @@ import makeWASocket, { AnyMessageContent, BinaryInfo, delay, DisconnectReason, d
 import open from 'open'
 import fs from 'fs'
 import P from 'pino'
+import { Level, PinoLoggerAdapter } from '../src/Utils/logger'
 
-const logger = P({ timestamp: () => `,"time":"${new Date().toJSON()}"` }, P.destination('./wa-logs.txt'))
-logger.level = 'trace'
+const pinoLogger = P({ timestamp: () => `,"time":"${new Date().toJSON()}"` }, P.destination('./wa-logs.txt'))
+
+const logger = new PinoLoggerAdapter(pinoLogger)
+logger.setLevel(Level.trace)
 
 const useStore = !process.argv.includes('--no-store')
 const doReplies = process.argv.includes('--do-reply')
