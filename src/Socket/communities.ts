@@ -2,10 +2,10 @@ import { proto } from '../../WAProto'
 import { GroupMetadata, GroupParticipant, ParticipantAction, SocketConfig, WAMessageKey, WAMessageStubType } from '../Types'
 import { generateMessageID, generateMessageIDV2, unixTimestampSeconds } from '../Utils'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, getBinaryNodeChildString, jidEncode, jidNormalizedUser } from '../WABinary'
-import { makeChatsSocket } from './chats'
+import { makeBusinessSocket } from './business'
 
 export const makeCommunitiesSocket = (config: SocketConfig) => {
-	const sock = makeChatsSocket(config)
+	const sock = makeBusinessSocket(config)
 	const { authState, ev, query, upsertMessage } = sock
 
 	const communityQuery = async(jid: string, type: 'get' | 'set', content: BinaryNode[]) => (
