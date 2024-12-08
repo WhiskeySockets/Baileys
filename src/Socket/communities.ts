@@ -1,6 +1,7 @@
 import { proto } from '../../WAProto'
 import { GroupMetadata, GroupParticipant, ParticipantAction, SocketConfig, WAMessageKey, WAMessageStubType } from '../Types'
 import { generateMessageID, generateMessageIDV2, unixTimestampSeconds } from '../Utils'
+import logger from '../Utils/logger'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, getBinaryNodeChildString, jidEncode, jidNormalizedUser } from '../WABinary'
 import { makeBusinessSocket } from './business'
 
@@ -68,6 +69,28 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 		return data
 	}
 
+	async function parseGroupResult(node) {
+		logger.info({ node }, 'parseGroupResult')
+		const groupNode = getBinaryNodeChild(node, 'group')
+		if(groupNode) {
+			try {
+				logger.info({ groupNode }, 'groupNode')
+				const metadata = await sock.groupMetadata(`${groupNode.attrs.id}@g.us`)
+				return metadata ? metadata : Optional.empty()
+			} catch(error) {
+				console.error('Error parsing group metadata:', error)
+				return Optional.empty()
+			}
+		}
+
+		return Optional.empty()
+	}
+
+	const Optional = {
+		empty: () => null,
+		of: (value) => value !== null ? { value } : null
+	}
+
 	sock.ws.on('CB:ib,,dirty', async(node: BinaryNode) => {
 		const { attrs } = getBinaryNodeChild(node, 'dirty')!
 		if(attrs.type !== 'communities') {
@@ -97,7 +120,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 								attrs: { id: descriptionId },
 								content: [{
 									tag: 'body',
-									attrs: {}, // Adding missing 'attrs' property
+									attrs: {},
 									content: Buffer.from(body || '', 'utf-8')
 								}]
 							},
@@ -118,7 +141,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 				]
 			)
 
-			return extractCommunityMetadata(result)
+			return await parseGroupResult(result)
 		},
 		communityLeave: async(id: string) => {
 			await communityQuery(
