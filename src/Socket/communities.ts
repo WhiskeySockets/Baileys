@@ -81,8 +81,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 	return {
 		...sock,
 		communityMetadata,
-		communityCreate: async(subject: string, body: string) => {
-			const key = generateMessageID()
+		communityCreate: async(subject, body) => {
 			const descriptionId = generateMessageID().substring(0, 12) // Simulando um "HexFormat.of().formatHex(Bytes.random(12))"
 
 			const result = await communityQuery(
@@ -91,14 +90,14 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 				[
 					{
 						tag: 'create',
-						attrs: { subject, key },
+						attrs: { subject },
 						content: [
 							{
 								tag: 'description',
 								attrs: { id: descriptionId },
 								content: [{
 									tag: 'body',
-									attrs: { }, // Adding an empty 'attrs' object to fix the error
+									attrs: {}, // Adding missing 'attrs' property
 									content: Buffer.from(body || '', 'utf-8')
 								}]
 							},
@@ -108,12 +107,12 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 							},
 							{
 								tag: 'allow_non_admin_sub_group_creation',
-								attrs: { }
+								attrs: {}
 							},
 							{
 								tag: 'create_general_chat',
-								attrs: { }
-							},
+								attrs: {}
+							}
 						]
 					}
 				]
