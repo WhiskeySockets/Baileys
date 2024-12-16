@@ -472,8 +472,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				})
 			} else {
 				// Fallback to immediate request
-				const msgId = await requestPlaceholderResend(msgKey)
-				logger.debug(`sendRetryRequest: requested placeholder resend for message ${msgId}`)
+				const msgResentId = await requestPlaceholderResend(msgKey)
+				logger.debug(`sendRetryRequest: requested placeholder resend for message ${msgId} - ${msgResentId}`)
 			}
 		}
 
