@@ -132,10 +132,10 @@ export const extractDeviceJids = (result: USyncQueryResultList[], myJid: string,
 					(myUser !== user || myDevice !== device) && // either different user or if me user, not this device
 					(device === 0 || !!keyIndex) // ensure that "key-index" is specified for "non-zero" devices, produces a bad req otherwise
 				) {
-					extracted.push({ user, device })		
-				}	
-			}		
-		}		
+					extracted.push({ user, device })
+				}
+			}
+		}
 	}
 
 	return extracted
