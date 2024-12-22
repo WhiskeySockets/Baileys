@@ -3,6 +3,7 @@ import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { SignalRepository } from '../Types'
 import { AuthenticationCreds, AuthenticationState, KeyPair, SignalIdentity, SignalKeyStore, SignedKeyPair } from '../Types/Auth'
 import { assertNodeErrorFree, BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, getBinaryNodeChildren, getBinaryNodeChildUInt, jidDecode, JidWithDevice, S_WHATSAPP_NET } from '../WABinary'
+import { DeviceListData, ParsedDeviceInfo, USyncQueryResultList } from '../WAUSync'
 import { Curve, generateSignalPubKey } from './crypto'
 import { encodeBigEndian } from './generics'
 
@@ -114,30 +115,24 @@ export const parseAndInjectE2ESessions = async(
 	}
 }
 
-export const extractDeviceJids = (result: BinaryNode, myJid: string, excludeZeroDevices: boolean) => {
+export const extractDeviceJids = (result: USyncQueryResultList[], myJid: string, excludeZeroDevices: boolean) => {
 	const { user: myUser, device: myDevice } = jidDecode(myJid)!
+
 	const extracted: JidWithDevice[] = []
-	for(const node of result.content as BinaryNode[]) {
-		const list = getBinaryNodeChild(node, 'list')?.content
-		if(list && Array.isArray(list)) {
-			for(const item of list) {
-				const { user } = jidDecode(item.attrs.jid)!
-				const devicesNode = getBinaryNodeChild(item, 'devices')
-				const deviceListNode = getBinaryNodeChild(devicesNode, 'device-list')
-				if(Array.isArray(deviceListNode?.content)) {
-					//eslint-disable-next-line max-depth
-					for(const { tag, attrs } of deviceListNode!.content) {
-						const device = +attrs.id
-						//eslint-disable-next-line max-depth
-						if(
-							tag === 'device' && // ensure the "device" tag
-							(!excludeZeroDevices || device !== 0) && // if zero devices are not-excluded, or device is non zero
-							(myUser !== user || myDevice !== device) && // either different user or if me user, not this device
-							(device === 0 || !!attrs['key-index']) // ensure that "key-index" is specified for "non-zero" devices, produces a bad req otherwise
-						) {
-							extracted.push({ user, device })
-						}
-					}
+
+
+	for(const userResult of result) {
+		const { devices, id } = userResult as { devices: ParsedDeviceInfo, id: string }
+		const { user } = jidDecode(id)!
+		const deviceList = devices?.deviceList as DeviceListData[]
+		if(Array.isArray(deviceList)) {
+			for(const { id: device, keyIndex } of deviceList) {
+				if(
+					(!excludeZeroDevices || device !== 0) && // if zero devices are not-excluded, or device is non zero
+					(myUser !== user || myDevice !== device) && // either different user or if me user, not this device
+					(device === 0 || !!keyIndex) // ensure that "key-index" is specified for "non-zero" devices, produces a bad req otherwise
+				) {
+					extracted.push({ user, device })
 				}
 			}
 		}
