@@ -31,12 +31,12 @@ export const SINGLE_BYTE_TOKENS: (string | null)[] = [
 
 export const TOKEN_MAP: { [token: string]: { dict?: number, index: number } } = { }
 
-for(let i = 0;i < SINGLE_BYTE_TOKENS.length;i++) {
-	TOKEN_MAP[SINGLE_BYTE_TOKENS[i]!] = { index: i }
+for(const [i, SINGLE_BYTE_TOKEN] of SINGLE_BYTE_TOKENS.entries()) {
+	TOKEN_MAP[SINGLE_BYTE_TOKEN!] = { index: i }
 }
 
-for(let i = 0;i < DOUBLE_BYTE_TOKENS.length;i++) {
-	for(let j = 0;j < DOUBLE_BYTE_TOKENS[i].length;j++) {
-		TOKEN_MAP[DOUBLE_BYTE_TOKENS[i][j]] = { dict: i, index: j }
+for(const [i, DOUBLE_BYTE_TOKEN] of DOUBLE_BYTE_TOKENS.entries()) {
+	for(const [j, element] of DOUBLE_BYTE_TOKEN.entries()) {
+		TOKEN_MAP[element] = { dict: i, index: j }
 	}
 }
