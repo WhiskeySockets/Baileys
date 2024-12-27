@@ -19,10 +19,11 @@ const PLATFORM_MAP = {
 }
 
 export const Browsers: BrowsersMap = {
-	ubuntu: (browser) => ['Ubuntu', browser, '22.04.4'],
+	ubuntu: (browser) => ['Ubuntu', browser, '24.04.1'],
 	macOS: (browser) => ['Mac OS', browser, '14.4.1'],
-	baileys: (browser) => ['Baileys', browser, '6.5.0'],
+	baileys: (browser) => ['Baileys', browser, '6.7.9'],
 	windows: (browser) => ['Windows', browser, '10.0.22631'],
+	mobileSafari: (browser) => ['iOS', browser, '18.1'],
 	/** The appropriate browser based on your OS & release */
 	appropriate: (browser) => [ PLATFORM_MAP[platform()] || 'Ubuntu', browser, release() ]
 }
