@@ -7,10 +7,10 @@ import type { BaileysEventEmitter, Chat, ConnectionState, Contact, GroupMetadata
 import { Label } from '../Types/Label'
 import { LabelAssociation, LabelAssociationType, MessageLabelAssociation } from '../Types/LabelAssociation'
 import { md5, toNumber, updateMessageWithReaction, updateMessageWithReceipt } from '../Utils'
+import { ILogger } from '../Utils/logger'
 import { jidDecode, jidNormalizedUser } from '../WABinary'
 import makeOrderedDictionary from './make-ordered-dictionary'
 import { ObjectRepository } from './object-repository'
-import { ILogger } from '../Utils/logger'
 
 type WASocket = ReturnType<typeof makeMDSocket>
 

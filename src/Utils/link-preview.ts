@@ -1,8 +1,8 @@
 import { AxiosRequestConfig } from 'axios'
 import { WAMediaUploadFunction, WAUrlInfo } from '../Types'
+import { ILogger } from './logger'
 import { prepareWAMessageMedia } from './messages'
 import { extractImageThumb, getHttpStream } from './messages-media'
-import { ILogger } from './logger'
 
 const THUMBNAIL_WIDTH_PX = 192
 

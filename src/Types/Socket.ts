@@ -3,11 +3,11 @@ import { AxiosRequestConfig } from 'axios'
 import type { Agent } from 'https'
 import type { URL } from 'url'
 import { proto } from '../../WAProto'
+import { ILogger } from '../Utils/logger'
 import { AuthenticationState, SignalAuthState, TransactionCapabilityOptions } from './Auth'
 import { GroupMetadata } from './GroupMetadata'
 import { MediaConnInfo } from './Message'
 import { SignalRepository } from './Signal'
-import { ILogger } from '../Utils/logger'
 
 export type WAVersion = [number, number, number]
 export type WABrowserDescription = [string, string, string]

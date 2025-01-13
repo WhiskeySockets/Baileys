@@ -6,9 +6,9 @@ import { ChatLabelAssociation, LabelAssociationType, MessageLabelAssociation } f
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, jidNormalizedUser } from '../WABinary'
 import { aesDecrypt, aesEncrypt, hkdf, hmacSign } from './crypto'
 import { toNumber } from './generics'
+import { ILogger } from './logger'
 import { LT_HASH_ANTI_TAMPERING } from './lt-hash'
 import { downloadContentFromMessage, } from './messages-media'
-import { ILogger } from './logger'
 
 type FetchAppStateSyncKey = (keyId: string) => Promise<proto.Message.IAppStateSyncKeyData | null | undefined>
 
