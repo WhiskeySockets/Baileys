@@ -179,6 +179,7 @@ export const configureSuccessfulPairing = (
 			...(signalIdentities || []),
 			identity
 		],
+		registered: true,
 		platform: platformNode?.attrs.name
 	}
 
