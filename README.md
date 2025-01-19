@@ -916,20 +916,6 @@ await sock.sendMessage(
 const [result] = await sock.onWhatsApp(jid)
 if (result.exists) console.log (`${jid} exists on WhatsApp, as jid: ${result.jid}`)
 ```
-
-### Query Chat History (groups too)
-
-- You need to have oldest message in chat
-```ts
-const msg = await getOldestMessageInChat(jid)
-await sock.fetchMessageHistory(
-    50, //quantity (max: 50 per query)
-    msg.key,
-    msg.messageTimestamp
-)
-```
-- Messages will be received in `messaging.history-set` event
-
 ### Fetch Status
 ```ts
 const status = await sock.fetchStatus(jid)
