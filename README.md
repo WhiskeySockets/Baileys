@@ -120,7 +120,6 @@ import makeWASocket from '@whiskeysockets/baileys'
     - [Disappearing Messages](#disappearing-messages)
 - [User Querys](#user-querys)
     - [Check If ID Exists in Whatsapp](#check-if-id-exists-in-whatsapp)
-    - [Query Chat History (groups too)](#query-chat-history-groups-too)
     - [Fetch Status](#fetch-status)
     - [Fetch Profile Picture (groups too)](#fetch-profile-picture-groups-too)
     - [Fetch Bussines Profile (such as description or category)](#fetch-bussines-profile-such-as-description-or-category)
