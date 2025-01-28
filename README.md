@@ -432,7 +432,7 @@ The store also provides some simple functions such as `loadMessages` that utiliz
 
 - `id` is the WhatsApp ID, called `jid` too, of the person or group you're sending the message to. 
     - It must be in the format ```[country code][phone number]@s.whatsapp.net```
-	    - Example for people: ```+19999999999@s.whatsapp.net```. 
+	    - Example for people: ```19999999999@s.whatsapp.net```. 
 	    - For groups, it must be in the format ``` 123456789-123345@g.us ```. 
     - For broadcast lists, it's `[timestamp of creation]@broadcast`.
     - For stories, the ID is `status@broadcast`.
