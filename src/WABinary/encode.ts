@@ -189,8 +189,6 @@ const encodeBinaryNodeInner = (
 			pushByte(tokenIndex.index)
 		} else if(isNibble(str)) {
 			writePackedBytes(str, 'nibble')
-		} else if(isHex(str)) {
-			writePackedBytes(str, 'hex')
 		} else if(str) {
 			const decodedJid = jidDecode(str)
 			if(decodedJid) {
