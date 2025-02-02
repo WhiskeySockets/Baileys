@@ -220,16 +220,25 @@ export const prepareWAMessageMedia = async(
 			}
 		})(),
 	])
-		.finally(
-			async() => {
+	.finally(
+		async() => {
+			await new Promise((resolve) => {
+				encWriteStream.on('close', resolve)
 				encWriteStream.destroy()
-				// remove tmp files
-				if(didSaveToTmpPath && bodyPath) {
-					await fs.unlink(bodyPath)
-					logger?.debug('removed tmp files')
+			})
+	
+			if(didSaveToTmpPath && bodyPath) {
+				try {
+					if (await fs.stat(bodyPath).then(() => true).catch(() => false)) {
+						await fs.unlink(bodyPath);
+						logger?.debug('removed tmp file');
+					}
+				} catch (err) {
+					logger?.warn('failed to remove tmp file', err);
 				}
 			}
-		)
+		}
+	)
 
 	const obj = WAProto.Message.fromObject({
 		[`${mediaType}Message`]: MessageTypeProto[mediaType].fromObject(
