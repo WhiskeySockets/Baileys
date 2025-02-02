@@ -334,6 +334,7 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 		descId = descChild.attrs.id
 	}
 
+	const groupSize = group.attrs.size ? Number(group.attrs.size) : undefined
 	const groupId = group.attrs.id.includes('@') ? group.attrs.id : jidEncode(group.attrs.id, 'g.us')
 	const eph = getBinaryNodeChild(group, 'ephemeral')?.attrs.expiration
 	const memberAddMode = getBinaryNodeChildString(group, 'member_add_mode') === 'all_member_add'
@@ -342,7 +343,7 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 		subject: group.attrs.subject,
 		subjectOwner: group.attrs.s_o,
 		subjectTime: +group.attrs.s_t,
-		size: getBinaryNodeChildren(group, 'participant').length,
+		size: groupSize || getBinaryNodeChildren(group, 'participant').length,
 		creation: +group.attrs.creation,
 		owner: group.attrs.creator ? jidNormalizedUser(group.attrs.creator) : undefined,
 		desc,
