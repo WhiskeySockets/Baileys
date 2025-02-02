@@ -222,19 +222,12 @@ export const prepareWAMessageMedia = async(
 	])
 		.finally(
 			async() => {
-				await new Promise((resolve) => {
-					encWriteStream.on('close', resolve)
-					encWriteStream.destroy()
-				})
-
+				encWriteStream.destroy()
+        		// remove tmp files
 				if(didSaveToTmpPath && bodyPath) {
-					try {
-						if(await fs.stat(bodyPath).then(() => true).catch(() => false)) {
-							await fs.unlink(bodyPath)
-							logger?.debug('removed tmp file')
-						}
-					} catch(err) {
-						logger?.warn('failed to remove tmp file', err)
+					if(await fs.access(bodyPath)) {
+						await fs.unlink(bodyPath)
+						logger?.debug('removed tmp file')
 					}
 				}
 			}
