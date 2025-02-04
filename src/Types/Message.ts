@@ -23,6 +23,7 @@ export type WAGenericMediaMessage = proto.Message.IVideoMessage | proto.Message.
 export import WAMessageStubType = proto.WebMessageInfo.StubType
 // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
 export import WAMessageStatus = proto.WebMessageInfo.Status
+import { type } from 'os'
 export type WAMediaPayloadURL = { url: URL | string }
 export type WAMediaPayloadStream = { stream: Readable }
 export type WAMediaUpload = Buffer | WAMediaPayloadStream | WAMediaPayloadURL
@@ -216,7 +217,14 @@ export type MessageRelayOptions = MinimalRelayOptions & {
     statusJidList?: string[]
 }
 
+type customId = {
+    id?: string
+    length?: number
+}
+
 export type MiscMessageGenerationOptions = MinimalRelayOptions & {
+    /** optional, if you want to custom id for identify messages, you can use this options without relaymessages */
+    customId?: customId
     /** optional, if you want to manually set the timestamp of the message */
 	timestamp?: Date
     /** the message you want to quote */
