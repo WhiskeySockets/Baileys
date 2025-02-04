@@ -23,7 +23,6 @@ export type WAGenericMediaMessage = proto.Message.IVideoMessage | proto.Message.
 export import WAMessageStubType = proto.WebMessageInfo.StubType
 // eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
 export import WAMessageStatus = proto.WebMessageInfo.Status
-import { type } from 'os'
 export type WAMediaPayloadURL = { url: URL | string }
 export type WAMediaPayloadStream = { stream: Readable }
 export type WAMediaUpload = Buffer | WAMediaPayloadStream | WAMediaPayloadURL
