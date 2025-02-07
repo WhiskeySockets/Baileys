@@ -44,7 +44,7 @@ To run the example script, download or clone the repo and then type the followin
 
 Use the stable version:
 ```
-yarn add @whiskeysockets/baileys
+yarn add baileys
 ```
 
 Use the edge version (no guarantee of stability, but latest fixes + features)
@@ -54,7 +54,7 @@ yarn add github:WhiskeySockets/Baileys
 
 Then import your code using:
 ```ts 
-import makeWASocket from '@whiskeysockets/baileys'
+import makeWASocket from 'baileys'
 ```
 
 # Links
