@@ -9,30 +9,21 @@ import { encodeBigEndian } from './generics'
 import { createSignalIdentity } from './signal'
 
 const getUserAgent = (config: SocketConfig): proto.ClientPayload.IUserAgent => {
-	const osVersion = config.mobile ? '15.3.1' : '0.1'
-	const version = config.mobile ? [2, 24, 6] : config.version
-	const device = config.mobile ? 'iPhone_7' : 'Desktop'
-	const manufacturer = config.mobile ? 'Apple' : ''
-	const platform = config.mobile ? proto.ClientPayload.UserAgent.Platform.IOS : proto.ClientPayload.UserAgent.Platform.WEB
-	const phoneId = config.mobile ? { phoneId: config.auth.creds.phoneId } : {}
-
 	return {
 		appVersion: {
-			primary: version[0],
-			secondary: version[1],
-			tertiary: version[2],
+			primary: config.version[0],
+			secondary: config.version[1],
+			tertiary: config.version[2],
 		},
-		platform,
+		platform: proto.ClientPayload.UserAgent.Platform.WEB,
 		releaseChannel: proto.ClientPayload.UserAgent.ReleaseChannel.RELEASE,
-		mcc: config.auth.creds.registration?.phoneNumberMobileCountryCode || '000',
-		mnc: config.auth.creds.registration?.phoneNumberMobileNetworkCode || '000',
-		osVersion: osVersion,
-		manufacturer,
-		device,
-		osBuildNumber: osVersion,
+		osVersion: '0.1',
+		device: 'Desktop',
+		osBuildNumber: '0.1',
 		localeLanguageIso6391: 'en',
-		localeCountryIso31661Alpha2: 'US',
-		...phoneId
+		mnc: '000',
+		mcc: '000',
+		localeCountryIso31661Alpha2: config.countryCode,
 	}
 }
 
@@ -58,40 +49,18 @@ const getClientPayload = (config: SocketConfig) => {
 		userAgent: getUserAgent(config),
 	}
 
-	if(!config.mobile) {
-		payload.webInfo = getWebInfo(config)
-	}
+	payload.webInfo = getWebInfo(config)
 
 	return payload
 }
 
-export const generateMobileNode = (config: SocketConfig): proto.IClientPayload => {
-	if(!config.auth.creds) {
-		throw new Boom('No registration data found', { data: config })
-	}
-
-	const payload: proto.IClientPayload = {
-		...getClientPayload(config),
-		sessionId: Math.floor(Math.random() * 999999999 + 1),
-		shortConnect: true,
-		connectAttemptCount: 0,
-		device: 0,
-		dnsSource: {
-			appCached: false,
-			dnsMethod: proto.ClientPayload.DNSSource.DNSResolutionMethod.SYSTEM,
-		},
-		passive: false, // XMPP heartbeat setting (false: server actively pings) (true: client actively pings)
-		pushName: 'test',
-		username: Number(`${config.auth.creds.registration.phoneNumberCountryCode}${config.auth.creds.registration.phoneNumberNationalNumber}`),
-	}
-	return proto.ClientPayload.fromObject(payload)
-}
 
 export const generateLoginNode = (userJid: string, config: SocketConfig): proto.IClientPayload => {
 	const { user, device } = jidDecode(userJid)!
 	const payload: proto.IClientPayload = {
 		...getClientPayload(config),
-		passive: true,
+		passive: false,
+		pull: true,
 		username: +user,
 		device: device,
 	}
@@ -124,6 +93,7 @@ export const generateRegistrationNode = (
 	const registerPayload: proto.IClientPayload = {
 		...getClientPayload(config),
 		passive: false,
+		pull: false,
 		devicePairingData: {
 			buildHash: appVersionBuf,
 			deviceProps: companionProto,

@@ -211,11 +211,6 @@ export const prepareWAMessageMedia = async(
 					logger?.debug('processed waveform')
 				}
 
-				if(requiresWaveformProcessing) {
-					uploadData.waveform = await getAudioWaveform(bodyPath!, logger)
-					logger?.debug('processed waveform')
-				}
-
 				if(requiresAudioBackground) {
 					uploadData.backgroundArgb = await assertColor(options.backgroundColor)
 					logger?.debug('computed backgroundColor audio status')
@@ -488,7 +483,7 @@ export const generateWAMessageContent = async(
 			options: message.poll.values.map(optionName => ({ optionName })),
 		}
 
-		if (message.poll.toAnnouncementGroup) {
+		if(message.poll.toAnnouncementGroup) {
 			// poll v2 is for community announcement groups (single select and multiple)
 			m.pollCreationMessageV2 = pollCreationMessage
 		} else {
@@ -859,17 +854,13 @@ export const downloadMediaMessage = async<Type extends 'buffer' | 'stream'>(
 ) => {
 	const result = await downloadMsg()
 		.catch(async(error) => {
-			if(ctx) {
-				if(axios.isAxiosError(error)) {
-					// check if the message requires a reupload
-					if(REUPLOAD_REQUIRED_STATUS.includes(error.response?.status!)) {
-						ctx.logger.info({ key: message.key }, 'sending reupload media request...')
-						// request reupload
-						message = await ctx.reuploadRequest(message)
-						const result = await downloadMsg()
-						return result
-					}
-				}
+			if(ctx && axios.isAxiosError(error) && // check if the message requires a reupload
+					REUPLOAD_REQUIRED_STATUS.includes(error.response?.status!)) {
+				ctx.logger.info({ key: message.key }, 'sending reupload media request...')
+				// request reupload
+				message = await ctx.reuploadRequest(message)
+				const result = await downloadMsg()
+				return result
 			}
 
 			throw error

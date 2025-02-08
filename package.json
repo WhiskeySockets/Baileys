@@ -1,6 +1,6 @@
 {
   "name": "@yard-team/baileys",
-  "version": "6.7.9",
+  "version": "6.7.13",
   "description": "WhatsApp API",
   "keywords": [
     "whatsapp",
@@ -33,10 +33,9 @@
     "changelog:preview": "conventional-changelog -p angular -u",
     "changelog:update": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",
     "example": "node --inspect -r ts-node/register Example/example.ts",
-    "example:mobile": "node --inspect -r ts-node/register Example/example.ts --mobile",
     "gen:protobuf": "sh WAProto/GenerateStatics.sh",
-    "lint": "eslint src --ext .js,.ts,.jsx,.tsx",
-    "lint:fix": "eslint src --fix --ext .js,.ts,.jsx,.tsx",
+    "lint": "eslint src --ext .js,.ts",
+    "lint:fix": "yarn lint --fix",
     "prepack": "tsc",
     "prepare": "tsc",
     "release": "release-it",
@@ -45,6 +44,7 @@
   "dependencies": {
     "@adiwajshing/keyed-db": "^0.2.4",
     "@hapi/boom": "^9.1.3",
+    "@whiskeysockets/eslint-config": "github:whiskeysockets/eslint-config",
     "async-lock": "^1.4.1",
     "audio-decode": "^2.1.3",
     "axios": "^1.6.0",
@@ -61,7 +61,6 @@
     "ws": "^8.13.0"
   },
   "devDependencies": {
-    "@adiwajshing/eslint-config": "github:adiwajshing/eslint-config",
     "@types/got": "^9.6.11",
     "@types/jest": "^27.5.1",
     "@types/node": "^16.0.0",
