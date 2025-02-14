@@ -441,7 +441,7 @@ The store also provides some simple functions such as `loadMessages` that utiliz
 
 - `getContentType`, returns the content type for any message
 - `getDevice`, returns the device from message
-- `makeCacheableSignalKeyStore`, make auth store more fast
+- `makeCacheableSignalKeyStore`, make auth store faster
 - `downloadContentFromMessage`, download content from any message
 
 ## Sending Messages
