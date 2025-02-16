@@ -462,12 +462,12 @@ export default (config: BaileysInMemoryStoreConfig) => {
 		fromJSON,
 		writeToFile: (path: string) => {
 			// require fs here so that in case "fs" is not available -- the app does not crash
-			const { writeFileSync } = require('fs')
+			const { writeFileSync } = require('fs') // BROWSER
 			writeFileSync(path, JSON.stringify(toJSON()))
 		},
 		readFromFile: (path: string) => {
 			// require fs here so that in case "fs" is not available -- the app does not crash
-			const { readFileSync, existsSync } = require('fs')
+			const { readFileSync, existsSync } = require('fs') // BROWSER
 			if(existsSync(path)) {
 				logger.debug({ path }, 'reading from file')
 				const jsonStr = readFileSync(path, { encoding: 'utf-8' })

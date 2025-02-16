@@ -1,6 +1,6 @@
 import AsyncLock from 'async-lock'
-import { mkdir, readFile, stat, unlink, writeFile } from 'fs/promises'
-import { join } from 'path'
+import { mkdir, readFile, stat, unlink, writeFile } from 'fs/promises'// BROWSER
+import { join } from 'path'// BROWSER
 import { proto } from '../../WAProto'
 import { AuthenticationCreds, AuthenticationState, SignalDataTypeMap } from '../Types'
 import { initAuthCreds } from './auth-utils'

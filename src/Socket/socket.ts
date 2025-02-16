@@ -1,7 +1,7 @@
 import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
-import { URL } from 'url'
-import { promisify } from 'util'
+import { URL } from 'url' // BROWSER
+import { promisify } from 'util' //BROWSER
 import { proto } from '../../WAProto'
 import {
 	DEF_CALLBACK_PREFIX,

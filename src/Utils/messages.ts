@@ -1,7 +1,7 @@
 import { Boom } from '@hapi/boom'
 import axios from 'axios'
-import { randomBytes } from 'crypto'
-import { promises as fs } from 'fs'
+import { randomBytes } from 'crypto'// BROWSER
+import { promises as fs } from 'fs'// BROWSER
 import { Logger } from 'pino'
 import { type Transform } from 'stream'
 import { proto } from '../../WAProto'

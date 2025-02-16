@@ -1,4 +1,4 @@
-import WebSocket from 'ws'
+import WebSocket from 'ws' // BROWSER
 import { DEFAULT_ORIGIN } from '../../Defaults'
 import { AbstractSocketClient } from './types'
 
