@@ -303,7 +303,8 @@ const processMessage = async(
 				'messages.update',
 				[
 					{
-						key: protocolMsg.key!,
+					  // flip the sender / fromMe properties because they're in the perspective of the sender
+						key: { ...message.key, id: protocolMsg.key?.id },
 						update: {
 							message: {
 								editedMessage: {
