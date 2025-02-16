@@ -5,6 +5,7 @@ import NodeCache from 'node-cache'
 import { proto } from '../../WAProto'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import { MessageReceiptType, MessageRelayOptions, MessageUserReceipt, SocketConfig, WACallEvent, WAMessageKey, WAMessageStatus, WAMessageStubType, WAPatchName } from '../Types'
+import { getBotJid } from '../WABinary'
 import {
 	aesDecryptCTR,
 	aesEncryptGCM,
@@ -198,7 +199,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				}
 
 				if(node.attrs.recipient) {
-					receipt.attrs.recipient = node.attrs.recipient
+					//Fixes problem with retry that is never done when it is @bot
+					receipt.attrs.recipient = getBotJid(node.attrs.recipient);
 				}
 
 				if(node.attrs.participant) {
@@ -753,13 +755,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}
 		}
 
-
 		const { fullMessage: msg, category, author, decrypt } = decryptMessageNode(
 			node,
 			authState.creds.me!.id,
 			authState.creds.me!.lid || '',
 			signalRepository,
 			logger,
+			getMessage
 		)
 
 		if(response && msg?.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT) {

@@ -360,6 +360,11 @@ export const generateWAMessageContent = async(
 		}
 
 		m.extendedTextMessage = extContent
+
+		//WhatsApp always sends secretMessage along with the text message
+		m.messageContextInfo = {
+			messageSecret: randomBytes(32)
+		} 
 	} else if('contacts' in message) {
 		const contactLen = message.contacts.contacts.length
 		if(!contactLen) {
