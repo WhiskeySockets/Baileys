@@ -284,7 +284,9 @@ export const prepareWAMessageMedia = async (
 			}
 		})()
 	]).finally(async () => {
-		try {
+		// wait N seconds to give a chance processing finish it's job in case of errors
+                    setTimeout(
+                        async () => {try {
 			await fs.unlink(encFilePath)
 			if (originalFilePath) {
 				await fs.unlink(originalFilePath)
@@ -293,7 +295,7 @@ export const prepareWAMessageMedia = async (
 			logger?.debug('removed tmp files')
 		} catch (error) {
 			logger?.warn('failed to remove tmp file')
-		}
+		}}, 5000)
 	})
 
 	const obj = WAProto.Message.fromObject({
