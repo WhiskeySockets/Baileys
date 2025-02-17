@@ -55,7 +55,7 @@
     "lodash": "^4.17.21",
     "music-metadata": "^7.12.3",
     "node-cache": "^5.1.2",
-    "pino": "^7.0.0",
+    "pino": "^9.6",
     "protobufjs": "^7.2.4",
     "uuid": "^10.0.0",
     "ws": "^8.13.0"
