@@ -459,6 +459,10 @@ export const encryptedStream = async (
 
 		encFileWriteStream.end()
 		originalFileStream?.end?.()
+		if (encFileWriteStream) {
+			// Wait for the 'finish' event, which signifies that all data has been flushed to the underlying system.
+			await once(encFileWriteStream!, 'finish')
+		}
 		stream.destroy()
 
 		// Wait for write streams to fully flush to disk
