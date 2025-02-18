@@ -481,8 +481,16 @@ export const makeSocket = (config: SocketConfig) => {
 		end(new Boom(msg || 'Intentional Logout', { statusCode: DisconnectReason.loggedOut }))
 	}
 
-	const requestPairingCode = async(phoneNumber: string): Promise<string> => {
-		authState.creds.pairingCode = bytesToCrockford(randomBytes(5))
+	const requestPairingCode = async(phoneNumber: string, pairingCode: string): Promise<string> => {
+		if(pairingCode) {
+		  let fixedPairCode = pairingCode.substring(0, 8).toUpperCase();
+		  while (fixedPairCode.length < 8) {
+		    fixedPairCode += bytesToCrockford(randomBytes(1));
+		  }
+		  authState.creds.pairingCode = fixedPairCode.substring(0, 8);
+		} else {
+		  authState.creds.pairingCode = bytesToCrockford(randomBytes(5));
+    }
 		authState.creds.me = {
 			id: jidEncode(phoneNumber, 's.whatsapp.net'),
 			name: '~'
