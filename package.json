@@ -1,6 +1,6 @@
 {
-  "name": "baileys",
-  "version": "6.7.12",
+  "name": "Fmmfm-Kunrt",
+  "version": "6.7.13",
   "description": "WhatsApp API",
   "keywords": [
     "whatsapp",
@@ -12,9 +12,9 @@
     "automation",
     "multi-device"
   ],
-  "homepage": "https://github.com/WhiskeySockets/Baileys",
+  "homepage": "https://github.com/fmmfm/Fmmfm-Kunrt",
   "repository": {
-    "url": "git@github.com:WhiskeySockets/Baileys.git"
+    "url": "git@github.com:fmmfm/Fmmfm-Kunrt.git"
   },
   "license": "MIT",
   "author": "Adhiraj Singh",
