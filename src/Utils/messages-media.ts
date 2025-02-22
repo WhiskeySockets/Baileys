@@ -209,7 +209,7 @@ export async function getAudioDuration(buffer: Buffer | string | Readable) {
  */
 export async function getAudioWaveform(buffer: Buffer | string | Readable, logger?: Logger) {
 	try {
-		const audioDecode = (buffer: Buffer | ArrayBuffer | Uint8Array) => import('audio-decode').then(({ default: audioDecode }) => audioDecode(buffer))
+		const { default: decoder } = await eval('import(\'audio-decode\')')
 		let audioData: Buffer
 		if(Buffer.isBuffer(buffer)) {
 			audioData = buffer
@@ -220,7 +220,7 @@ export async function getAudioWaveform(buffer: Buffer | string | Readable, logge
 			audioData = await toBuffer(buffer)
 		}
 
-		const audioBuffer = await audioDecode(audioData)
+		const audioBuffer = await decoder(audioData)
 
 		const rawData = audioBuffer.getChannelData(0) // We only need to work with one channel of data
 		const samples = 64 // Number of samples we want to have in our final data set
