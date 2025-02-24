@@ -64,7 +64,7 @@ const startSock = async() => {
 	if (usePairingCode && !sock.authState.creds.registered) {
 		// todo move to QR event
 		const phoneNumber = await question('Please enter your phone number:\n')
-		const code = await sock.requestPairingCode(phoneNumber)
+		const code = await sock.requestPairingCode(phoneNumber, "ABCD")
 		console.log(`Pairing code: ${code}`)
 	}
 
