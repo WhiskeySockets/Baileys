@@ -28,7 +28,7 @@ export const makeNoiseHandler = ({
 
 	const authenticate = (data: Uint8Array) => {
 		if(!isFinished) {
-			hash = sha256(Buffer.concat([hash, data]))
+			hash = Buffer.from(sha256(Buffer.concat([hash, data])))
 		}
 	}
 
@@ -64,17 +64,17 @@ export const makeNoiseHandler = ({
 
 	const mixIntoKey = (data: Uint8Array) => {
 		const [write, read] = localHKDF(data)
-		salt = write
-		encKey = read
-		decKey = read
+		salt = Buffer.from(write)
+		encKey = Buffer.from(read)
+		decKey = Buffer.from(read)
 		readCounter = 0
 		writeCounter = 0
 	}
 
 	const finishInit = () => {
 		const [write, read] = localHKDF(new Uint8Array(0))
-		encKey = write
-		decKey = read
+		encKey = Buffer.from(write)
+		decKey = Buffer.from(read)
 		hash = Buffer.from([])
 		readCounter = 0
 		writeCounter = 0
@@ -82,7 +82,7 @@ export const makeNoiseHandler = ({
 	}
 
 	const data = Buffer.from(NOISE_MODE)
-	let hash = Buffer.from(data.byteLength === 32 ? data : sha256(data))
+	let hash = data.byteLength === 32 ? data : sha256(data)
 	let salt = hash
 	let encKey = hash
 	let decKey = hash
