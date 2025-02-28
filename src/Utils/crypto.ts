@@ -1,5 +1,4 @@
-import { createCipheriv, createDecipheriv, createHash, createHmac, pbkdf2, randomBytes } from 'crypto'
-import HKDF from 'futoin-hkdf'
+import { createCipheriv, createDecipheriv, createHash, createHmac, hkdfSync, pbkdf2, randomBytes } from 'crypto'
 import * as libsignal from 'libsignal'
 import { promisify } from 'util'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
@@ -124,11 +123,19 @@ export function md5(buffer: Buffer) {
 	return createHash('md5').update(buffer).digest()
 }
 
-// HKDF key expansion
-export function hkdf(buffer: Uint8Array | Buffer, expandedLength: number, info: { salt?: Buffer, info?: string }) {
-	return HKDF(!Buffer.isBuffer(buffer) ? Buffer.from(buffer) : buffer, expandedLength, info)
-}
-
 export async function derivePairingCodeKey(pairingCode: string, salt: Buffer) {
 	return await pbkdf2Promise(pairingCode, salt, 2 << 16, 32, 'sha256')
+}
+
+export function hkdf(
+	ikm: Uint8Array | Buffer,
+	length: number,
+	options: { salt?: Buffer, info?: string, hash?: string } = {}
+): Buffer {
+	const hash = options.hash || 'sha256'
+	const salt = options.salt || Buffer.alloc(0)
+	const info = options.info ? Buffer.from(options.info) : Buffer.alloc(0)
+	const inputKeyMaterial = !Buffer.isBuffer(ikm) ? Buffer.from(ikm) : ikm
+
+	return Buffer.from(hkdfSync(hash, inputKeyMaterial, salt, info, length))
 }
