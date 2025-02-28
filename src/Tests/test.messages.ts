@@ -1,9 +1,11 @@
+import { test } from 'node:test';
+import assert from 'node:assert';
 import { WAMessageContent } from '../Types'
 import { normalizeMessageContent } from '../Utils'
 
-describe('Messages Tests', () => {
+test('Messages Tests', async (t) => {
 
-	it('should correctly unwrap messages', () => {
+	await t.test('should correctly unwrap messages', () => {
 		const CONTENT = { imageMessage: { } }
 		expectRightContent(CONTENT)
 		expectRightContent({
@@ -29,9 +31,9 @@ describe('Messages Tests', () => {
 		})
 
 		function expectRightContent(content: WAMessageContent) {
-			expect(
-				normalizeMessageContent(content)
-			).toHaveProperty('imageMessage')
+			assert.ok(
+				normalizeMessageContent(content)?.imageMessage
+			)
 		}
 	})
 })

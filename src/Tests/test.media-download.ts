@@ -1,9 +1,9 @@
+import { test } from 'node:test';
+import assert from 'node:assert';
 import { readFileSync } from 'fs'
 import { proto } from '../../WAProto'
 import { DownloadableMessage, MediaType } from '../Types'
 import { downloadContentFromMessage } from '../Utils'
-
-jest.setTimeout(20_000)
 
 type TestVector = {
 	type: MediaType
@@ -34,9 +34,8 @@ const TEST_VECTORS: TestVector[] = [
 	},
 ]
 
-describe('Media Download Tests', () => {
-
-	it('should download a full encrypted media correctly', async() => {
+test('Media Download Tests', async (t) => {
+	await t.test('should download a full encrypted media correctly', async() => {
 		for(const { type, message, plaintext } of TEST_VECTORS) {
 			const readPipe = await downloadContentFromMessage(message, type)
 
@@ -45,11 +44,11 @@ describe('Media Download Tests', () => {
 				buffer = Buffer.concat([ buffer, read ])
 			}
 
-			expect(buffer).toEqual(plaintext)
+			assert.deepStrictEqual(buffer, plaintext)
 		}
 	})
 
-	it('should download an encrypted media correctly piece', async() => {
+	await t.test('should download an encrypted media correctly piece', async() => {
 		for(const { type, message, plaintext } of TEST_VECTORS) {
 			// check all edge cases
 			const ranges = [
@@ -67,7 +66,7 @@ describe('Media Download Tests', () => {
 
 				const hex = buffer.toString('hex')
 				const expectedHex = plaintext.slice(range.startByte || 0, range.endByte || undefined).toString('hex')
-				expect(hex).toBe(expectedHex)
+				assert.deepStrictEqual(hex, expectedHex)
 
 				console.log('success on ', range)
 			}

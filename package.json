@@ -39,7 +39,7 @@
     "prepack": "tsc",
     "prepare": "tsc",
     "release": "release-it",
-    "test": "jest"
+    "test": "node --test --test-timeout 20000 --require ts-node/register src/Tests/**/*.ts"
   },
   "dependencies": {
     "@adiwajshing/keyed-db": "^0.2.4",
@@ -62,13 +62,11 @@
   },
   "devDependencies": {
     "@types/got": "^9.6.11",
-    "@types/jest": "^27.5.1",
-    "@types/node": "^16.0.0",
+    "@types/node": "^20.0.0",
     "@types/sharp": "^0.29.4",
     "@types/ws": "^8.0.0",
     "conventional-changelog-cli": "^2.2.2",
     "eslint": "^8.0.0",
-    "jest": "^27.0.6",
     "jimp": "^0.16.1",
     "json": "^11.0.0",
     "link-preview-js": "^3.0.0",
@@ -76,7 +74,6 @@
     "qrcode-terminal": "^0.12.0",
     "release-it": "^15.10.3",
     "sharp": "^0.32.6",
-    "ts-jest": "^27.0.3",
     "ts-node": "^10.8.1",
     "typedoc": "^0.24.7",
     "typescript": "^4.6.4"

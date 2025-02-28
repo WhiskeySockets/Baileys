@@ -1,10 +1,17 @@
+import { test, beforeEach } from 'node:test';
+import assert from 'node:assert';
 import { proto } from '../../WAProto'
 import { Chat, WAMessageKey, WAMessageStatus, WAMessageStubType, WAMessageUpdate } from '../Types'
 import { delay, generateMessageID, makeEventBuffer, toNumber, unixTimestampSeconds } from '../Utils'
 import logger from '../Utils/logger'
 import { randomJid } from './utils'
 
-describe('Event Buffer Tests', () => {
+test('Event Buffer Tests', async (t) => {
+	const fail = (err: Error) => {
+		if(err) {
+			throw err
+		}
+	}
 
 	let ev: ReturnType<typeof makeEventBuffer>
 	beforeEach(() => {
@@ -13,13 +20,13 @@ describe('Event Buffer Tests', () => {
 		ev = makeEventBuffer(_logger)
 	})
 
-	it('should buffer a chat upsert & update event', async() => {
+	await t.test('should buffer a chat upsert & update event', async() => {
 		const chatId = randomJid()
 
 		const chats: Chat[] = []
 
 		ev.on('chats.upsert', c => chats.push(...c))
-		ev.on('chats.update', () => fail('should not emit update event'))
+		ev.on('chats.update', () => fail(new Error('should not emit update event')))
 
 		ev.buffer()
 		await Promise.all([
@@ -28,31 +35,31 @@ describe('Event Buffer Tests', () => {
 				await delay(100)
 				ev.emit('chats.upsert', [{ id: chatId, conversationTimestamp: 123, unreadCount: 1 }])
 				const flushed = ev.flush()
-				expect(flushed).toBeFalsy()
+				assert.strictEqual(flushed, false)
 			})(),
 			(async() => {
 				ev.buffer()
 				await delay(200)
 				ev.emit('chats.update', [{ id: chatId, conversationTimestamp: 124, unreadCount: 1 }])
 				const flushed = ev.flush()
-				expect(flushed).toBeFalsy()
+				assert.strictEqual(flushed, false)
 			})()
 		])
 
 		const flushed = ev.flush()
-		expect(flushed).toBeTruthy()
+		assert.ok(flushed)
 
-		expect(chats).toHaveLength(1)
-		expect(chats[0].conversationTimestamp).toEqual(124)
-		expect(chats[0].unreadCount).toEqual(2)
+		assert.strictEqual(chats.length, 1)
+		assert.strictEqual(chats[0].conversationTimestamp, 124)
+		assert.strictEqual(chats[0].unreadCount, 2)
 	})
 
-	it('should overwrite a chats.delete event', async() => {
+	await t.test('should overwrite a chats.delete event', async() => {
 		const chatId = randomJid()
 		const chats: Partial<Chat>[] = []
 
 		ev.on('chats.update', c => chats.push(...c))
-		ev.on('chats.delete', () => fail('not should have emitted'))
+		ev.on('chats.delete', () => fail(new Error('not should have emitted')))
 
 		ev.buffer()
 
@@ -62,15 +69,15 @@ describe('Event Buffer Tests', () => {
 
 		ev.flush()
 
-		expect(chats).toHaveLength(1)
+		assert.strictEqual(chats.length, 1)
 	})
 
-	it('should overwrite a chats.update event', async() => {
+	await t.test('should overwrite a chats.update event', async() => {
 		const chatId = randomJid()
 		const chatsDeleted: string[] = []
 
 		ev.on('chats.delete', c => chatsDeleted.push(...c))
-		ev.on('chats.update', () => fail('not should have emitted'))
+		ev.on('chats.update', () => fail(new Error('should not emit update event')))
 
 		ev.buffer()
 
@@ -79,10 +86,10 @@ describe('Event Buffer Tests', () => {
 
 		ev.flush()
 
-		expect(chatsDeleted).toHaveLength(1)
+		assert.strictEqual(chatsDeleted.length, 1)
 	})
 
-	it('should release a conditional update at the right time', async() => {
+	await t.test('should release a conditional update at the right time', async() => {
 		const chatId = randomJid()
 		const chatId2 = randomJid()
 		const chatsUpserted: Chat[] = []
@@ -90,7 +97,7 @@ describe('Event Buffer Tests', () => {
 
 		ev.on('chats.upsert', c => chatsUpserted.push(...c))
 		ev.on('messaging-history.set', c => chatsSynced.push(...c.chats))
-		ev.on('chats.update', () => fail('not should have emitted'))
+		ev.on('chats.update', () => fail(new Error('not should have emitted')))
 
 		ev.buffer()
 		ev.emit('chats.update', [{
@@ -134,22 +141,22 @@ describe('Event Buffer Tests', () => {
 		})
 		ev.flush()
 
-		expect(chatsUpserted).toHaveLength(1)
-		expect(chatsUpserted[0].id).toEqual(chatId)
-		expect(chatsUpserted[0].archived).toEqual(true)
-		expect(chatsUpserted[0].muteEndTime).toEqual(123)
+		assert.strictEqual(chatsUpserted.length, 1)
+		assert.strictEqual(chatsUpserted[0].id, chatId)
+		assert.strictEqual(chatsUpserted[0].archived, true)
+		assert.strictEqual(chatsUpserted[0].muteEndTime, 123)
 
-		expect(chatsSynced).toHaveLength(1)
-		expect(chatsSynced[0].id).toEqual(chatId2)
-		expect(chatsSynced[0].archived).toEqual(true)
+		assert.strictEqual(chatsSynced.length, 1)
+		assert.strictEqual(chatsSynced[0].id, chatId2)
+		assert.strictEqual(chatsSynced[0].archived, true)
 	})
 
-	it('should discard a conditional update', async() => {
+	await t.test('should discard a conditional update', async() => {
 		const chatId = randomJid()
 		const chatsUpserted: Chat[] = []
 
 		ev.on('chats.upsert', c => chatsUpserted.push(...c))
-		ev.on('chats.update', () => fail('not should have emitted'))
+		ev.on('chats.update', () => fail(new Error('not should have emitted')))
 
 		ev.buffer()
 		ev.emit('chats.update', [{
@@ -170,18 +177,18 @@ describe('Event Buffer Tests', () => {
 
 		ev.flush()
 
-		expect(chatsUpserted).toHaveLength(1)
-		expect(chatsUpserted[0].archived).toBeUndefined()
+		assert.strictEqual(chatsUpserted.length, 1)
+		assert.strictEqual(chatsUpserted[0].archived, undefined)
 	})
 
-	it('should overwrite a chats.update event with a history event', async() => {
+	await t.test('should overwrite a chats.update event with a history event', async() => {
 		const chatId = randomJid()
 		let chatRecv: Chat | undefined
 
 		ev.on('messaging-history.set', ({ chats }) => {
 			chatRecv = chats[0]
 		})
-		ev.on('chats.update', () => fail('not should have emitted'))
+		ev.on('chats.update', () => fail(new Error('not should have emitted')))
 
 		ev.buffer()
 
@@ -195,11 +202,11 @@ describe('Event Buffer Tests', () => {
 
 		ev.flush()
 
-		expect(chatRecv).toBeDefined()
-		expect(chatRecv?.archived).toBeTruthy()
+		assert.strictEqual(chatRecv?.archived, true)
+		assert.strictEqual(chatRecv?.id, chatId)
 	})
 
-	it('should buffer message upsert events', async() => {
+	await t.test('should buffer message upsert events', async() => {
 		const messageTimestamp = unixTimestampSeconds()
 		const msg: proto.IWebMessageInfo = {
 			key: {
@@ -215,7 +222,7 @@ describe('Event Buffer Tests', () => {
 
 		ev.on('messages.upsert', c => {
 			msgs.push(...c.messages)
-			expect(c.type).toEqual('notify')
+			assert.strictEqual(c.type, 'notify')
 		})
 
 		ev.buffer()
@@ -229,13 +236,13 @@ describe('Event Buffer Tests', () => {
 
 		ev.flush()
 
-		expect(msgs).toHaveLength(1)
-		expect(msgs[0].message).toBeTruthy()
-		expect(toNumber(msgs[0].messageTimestamp!)).toEqual(messageTimestamp)
-		expect(msgs[0].status).toEqual(WAMessageStatus.READ)
+		assert.strictEqual(msgs.length, 1)
+		assert.ok(msgs[0].message)
+		assert.strictEqual(toNumber(msgs[0].messageTimestamp!), messageTimestamp)
+		assert.strictEqual(msgs[0].status, WAMessageStatus.READ)
 	})
 
-	it('should buffer a message receipt update', async() => {
+	await t.test('should buffer a message receipt update', async() => {
 		const msg: proto.IWebMessageInfo = {
 			key: {
 				remoteJid: randomJid(),
@@ -249,7 +256,7 @@ describe('Event Buffer Tests', () => {
 		const msgs: proto.IWebMessageInfo[] = []
 
 		ev.on('messages.upsert', c => msgs.push(...c.messages))
-		ev.on('message-receipt.update', () => fail('should not emit'))
+		ev.on('message-receipt.update', () => fail(new Error('should not emit')))
 
 		ev.buffer()
 		ev.emit('messages.upsert', { messages: [proto.WebMessageInfo.fromObject(msg)], type: 'notify' })
@@ -265,11 +272,11 @@ describe('Event Buffer Tests', () => {
 
 		ev.flush()
 
-		expect(msgs).toHaveLength(1)
-		expect(msgs[0].userReceipt).toHaveLength(1)
+		assert.strictEqual(msgs.length, 1)
+		assert.strictEqual(msgs[0].userReceipt?.length, 1)
 	})
 
-	it('should buffer multiple status updates', async() => {
+	await t.test('should buffer multiple status updates', async() => {
 		const key: WAMessageKey = {
 			remoteJid: randomJid(),
 			id: generateMessageID(),
@@ -286,11 +293,11 @@ describe('Event Buffer Tests', () => {
 
 		ev.flush()
 
-		expect(msgs).toHaveLength(1)
-		expect(msgs[0].update.status).toEqual(WAMessageStatus.READ)
+		assert.strictEqual(msgs.length, 1)
+		assert.strictEqual(msgs[0].update.status, WAMessageStatus.READ)
 	})
 
-	it('should remove chat unread counter', async() => {
+	await t.test('should remove chat unread counter', async() => {
 		const msg: proto.IWebMessageInfo = {
 			key: {
 				remoteJid: '12345@s.whatsapp.net',
@@ -314,6 +321,6 @@ describe('Event Buffer Tests', () => {
 
 		ev.flush()
 
-		expect(chats[0].unreadCount).toBeUndefined()
+		assert.strictEqual(chats[0].unreadCount, undefined)
 	})
 })
