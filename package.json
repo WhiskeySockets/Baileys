@@ -21,12 +21,11 @@
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "files": [
-    "lib/*",
-    "WAProto/*",
-    "WASignalGroup/*.js"
+    "lib/*"
   ],
   "scripts": {
-    "build:all": "tsc && typedoc",
+    "build": "tsup src/index.ts --minify --dts -d lib",
+    "build:all": "tsc && yarn build && typedoc",
     "build:docs": "typedoc",
     "build:tsc": "tsc",
     "changelog:last": "conventional-changelog -p angular -r 2",
@@ -78,6 +77,7 @@
     "sharp": "^0.32.6",
     "ts-jest": "^27.0.3",
     "ts-node": "^10.8.1",
+    "tsup": "^8.4.0",
     "typedoc": "^0.24.7",
     "typescript": "^4.6.4"
   },
