@@ -1,10 +1,10 @@
 import { Boom } from '@hapi/boom'
-import { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { NOISE_MODE, WA_CERT_DETAILS } from '../Defaults'
 import { KeyPair } from '../Types'
 import { BinaryNode, decodeBinaryNode } from '../WABinary'
 import { aesDecryptGCM, aesEncryptGCM, Curve, hkdf, sha256 } from './crypto'
+import { ILogger } from './logger'
 
 const generateIV = (counter: number) => {
 	const iv = new ArrayBuffer(12)
@@ -21,7 +21,7 @@ export const makeNoiseHandler = ({
 }: {
 	keyPair: KeyPair
 	NOISE_HEADER: Uint8Array
-	logger: Logger
+	logger: ILogger
 	routingInfo?: Buffer | undefined
 }) => {
 	logger = logger.child({ class: 'ns' })
@@ -57,13 +57,13 @@ export const makeNoiseHandler = ({
 		return result
 	}
 
-	const localHKDF = (data: Uint8Array) => {
-		const key = hkdf(Buffer.from(data), 64, { salt, info: '' })
+	const localHKDF = async(data: Uint8Array) => {
+		const key = await hkdf(Buffer.from(data), 64, { salt, info: '' })
 		return [key.slice(0, 32), key.slice(32)]
 	}
 
-	const mixIntoKey = (data: Uint8Array) => {
-		const [write, read] = localHKDF(data)
+	const mixIntoKey = async(data: Uint8Array) => {
+		const [write, read] = await localHKDF(data)
 		salt = write
 		encKey = read
 		decKey = read
@@ -71,8 +71,8 @@ export const makeNoiseHandler = ({
 		writeCounter = 0
 	}
 
-	const finishInit = () => {
-		const [write, read] = localHKDF(new Uint8Array(0))
+	const finishInit = async() => {
+		const [write, read] = await localHKDF(new Uint8Array(0))
 		encKey = write
 		decKey = read
 		hash = Buffer.from([])
@@ -82,7 +82,7 @@ export const makeNoiseHandler = ({
 	}
 
 	const data = Buffer.from(NOISE_MODE)
-	let hash = Buffer.from(data.byteLength === 32 ? data : sha256(data))
+	let hash = data.byteLength === 32 ? data : sha256(data)
 	let salt = hash
 	let encKey = hash
 	let decKey = hash
@@ -102,12 +102,12 @@ export const makeNoiseHandler = ({
 		authenticate,
 		mixIntoKey,
 		finishInit,
-		processHandshake: ({ serverHello }: proto.HandshakeMessage, noiseKey: KeyPair) => {
+		processHandshake: async({ serverHello }: proto.HandshakeMessage, noiseKey: KeyPair) => {
 			authenticate(serverHello!.ephemeral!)
-			mixIntoKey(Curve.sharedKey(privateKey, serverHello!.ephemeral!))
+			await mixIntoKey(Curve.sharedKey(privateKey, serverHello!.ephemeral!))
 
 			const decStaticContent = decrypt(serverHello!.static!)
-			mixIntoKey(Curve.sharedKey(privateKey, decStaticContent))
+			await mixIntoKey(Curve.sharedKey(privateKey, decStaticContent))
 
 			const certDecoded = decrypt(serverHello!.payload!)
 
@@ -120,7 +120,7 @@ export const makeNoiseHandler = ({
 			}
 
 			const keyEnc = encrypt(noiseKey.public)
-			mixIntoKey(Curve.sharedKey(noiseKey.private, serverHello!.ephemeral!))
+			await mixIntoKey(Curve.sharedKey(noiseKey.private, serverHello!.ephemeral!))
 
 			return keyEnc
 		},
