@@ -1,5 +1,5 @@
 import * as libsignal from 'libsignal'
-import { createCipheriv, createDecipheriv, createHash, createHmac } from 'node:crypto'
+import { createCipheriv, createDecipheriv, createHash } from 'node:crypto'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { KeyPair } from '../Types'
 
@@ -214,9 +214,36 @@ export function aesEncrypWithIV(buffer: Buffer, key: Buffer, IV: Buffer) {
 	return Buffer.concat([aes.update(buffer), aes.final()]) // prefix IV to the buffer
 }
 
-// sign HMAC using SHA 256
-export function hmacSign(buffer: Buffer | Uint8Array, key: Buffer | Uint8Array, variant: 'sha256' | 'sha512' = 'sha256') {
-	return createHmac(variant, key).update(buffer).digest()
+// sign HMAC using SHA 256 or SHA 512
+export async function hmacSign(
+	buffer: Buffer | Uint8Array,
+	key: Buffer | Uint8Array,
+	variant: 'sha256' | 'sha512' = 'sha256'
+): Promise<Buffer> {
+	// Convert inputs to Uint8Array if they're Buffers
+	const data = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer)
+	const keyArray = key instanceof Uint8Array ? key : new Uint8Array(key)
+
+	// Import the key for HMAC
+	const cryptoKey = await crypto.subtle.importKey(
+		'raw',
+		keyArray,
+		{
+			name: 'HMAC',
+			hash: { name: variant === 'sha256' ? 'SHA-256' : 'SHA-512' }
+		},
+		false,
+		['sign']
+	)
+
+	// Generate the HMAC signature
+	const signature = await crypto.subtle.sign(
+		'HMAC',
+		cryptoKey,
+		data
+	)
+
+	return Buffer.from(signature)
 }
 
 export async function sha256(buffer: Buffer | Uint8Array) {

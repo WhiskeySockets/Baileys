@@ -118,7 +118,7 @@ type PollContext = {
  * @param ctx additional info about the poll required for decryption
  * @returns list of SHA256 options
  */
-export function decryptPollVote(
+export async function decryptPollVote(
 	{ encPayload, encIv }: proto.Message.IPollEncValue,
 	{
 		pollCreatorJid,
@@ -137,8 +137,8 @@ export function decryptPollVote(
 		]
 	)
 
-	const key0 = hmacSign(pollEncKey, new Uint8Array(32), 'sha256')
-	const decKey = hmacSign(sign, key0, 'sha256')
+	const key0 = await hmacSign(pollEncKey, new Uint8Array(32), 'sha256')
+	const decKey = await hmacSign(sign, key0, 'sha256')
 	const aad = toBinary(`${pollMsgId}\u0000${voterJid}`)
 
 	const decrypted = aesDecryptGCM(encPayload!, decKey, encIv!, aad)
@@ -429,7 +429,7 @@ const processMessage = async(
 			const pollEncKey = pollMsg.messageContextInfo?.messageSecret!
 
 			try {
-				const voteMsg = decryptPollVote(
+				const voteMsg = await decryptPollVote(
 					content.pollUpdateMessage.vote!,
 					{
 						pollEncKey,
