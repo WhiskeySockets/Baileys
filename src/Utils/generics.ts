@@ -288,16 +288,31 @@ export const fetchLatestBaileysVersion = async(options: AxiosRequestConfig<{}> =
  */
 export const fetchLatestWaWebVersion = async(options: AxiosRequestConfig<{}>) => {
 	try {
-		const result = await axios.get(
-			'https://web.whatsapp.com/check-update?version=1&platform=web',
+		const { data } = await axios.get(
+			'https://web.whatsapp.com/sw.js',
 			{
 				...options,
 				responseType: 'json'
 			}
 		)
-		const version = result.data.currentVersion.split('.')
+
+		const regex = /\\?"client_revision\\?":\s*(\d+)/
+		const match = data.match(regex)
+
+		if(!match?.[1]) {
+			return {
+				version: baileysVersion as WAVersion,
+				isLatest: false,
+				error: {
+					message: 'Could not find client revision in the fetched content'
+				}
+			}
+		}
+
+		const clientRevision = match[1]
+
 		return {
-			version: [+version[0], +version[1], +version[2]] as WAVersion,
+			version: [2, 3000, +clientRevision] as WAVersion,
 			isLatest: true
 		}
 	} catch(error) {
@@ -316,6 +331,7 @@ export const generateMdTagPrefix = () => {
 }
 
 const STATUS_MAP: { [_: string]: proto.WebMessageInfo.Status } = {
+	'sender': proto.WebMessageInfo.Status.SERVER_ACK,
 	'played': proto.WebMessageInfo.Status.PLAYED,
 	'read': proto.WebMessageInfo.Status.READ,
 	'read-self': proto.WebMessageInfo.Status.READ

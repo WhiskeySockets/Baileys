@@ -1,6 +1,6 @@
 
+import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
-import NodeCache from 'node-cache'
 import { proto } from '../../WAProto'
 import { DEFAULT_CACHE_TTLS, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import { AnyMessageContent, MediaConnInfo, MessageReceiptType, MessageRelayOptions, MiscMessageGenerationOptions, SocketConfig, WAMessageKey } from '../Types'

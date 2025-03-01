@@ -1,13 +1,14 @@
 
+import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
-import NodeCache from 'node-cache'
 import { proto } from '../../WAProto'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import { MessageReceiptType, MessageRelayOptions, MessageUserReceipt, SocketConfig, WACallEvent, WAMessageKey, WAMessageStatus, WAMessageStubType, WAPatchName } from '../Types'
 import {
 	aesDecryptCTR,
 	aesEncryptGCM,
+	cleanMessage,
 	Curve,
 	decodeMediaRetryNode,
 	decodeMessageNode,
@@ -27,7 +28,6 @@ import {
 	xmppPreKey,
 	xmppSignedPreKey
 } from '../Utils'
-import { cleanMessage } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
 import {
 	areJidsSameUser,
@@ -637,7 +637,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							(
 								// basically, we only want to know when a message from us has been delivered to/read by the other person
 								// or another device of ours has read some messages
-								status > proto.WebMessageInfo.Status.DELIVERY_ACK ||
+								status >= proto.WebMessageInfo.Status.SERVER_ACK ||
 								!isNodeFromMe
 							)
 						) {
