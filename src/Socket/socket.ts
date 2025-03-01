@@ -671,7 +671,7 @@ export const makeSocket = (config: SocketConfig) => {
 	})
 
 	ws.on('CB:ib,,offline_preview', (node: BinaryNode) => {
-	  logger.info('offline preview received', node)
+	  logger.info('offline preview received', JSON.stringify(node))
 		sendNode({
 			tag: 'ib',
 			attrs: {},
