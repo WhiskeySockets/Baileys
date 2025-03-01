@@ -1,5 +1,5 @@
-import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto'
 import * as libsignal from 'libsignal'
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'node:crypto'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { KeyPair } from '../Types'
 
@@ -112,8 +112,10 @@ export function hmacSign(buffer: Buffer | Uint8Array, key: Buffer | Uint8Array, 
 	return createHmac(variant, key).update(buffer).digest()
 }
 
-export function sha256(buffer: Buffer) {
-	return createHash('sha256').update(buffer).digest()
+export async function sha256(buffer: Buffer | Uint8Array) {
+	const data = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer)
+	const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+	return Buffer.from(hashBuffer)
 }
 
 export function md5(buffer: Buffer) {

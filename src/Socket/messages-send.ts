@@ -10,7 +10,7 @@ import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getBinaryNodeChild, 
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeGroupsSocket } from './groups'
 
-export const makeMessagesSocket = (config: SocketConfig) => {
+export const makeMessagesSocket = async(config: SocketConfig) => {
 	const {
 		logger,
 		linkPreviewImageThumbnailWidth,
@@ -19,7 +19,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		patchMessageBeforeSending,
 		cachedGroupMetadata,
 	} = config
-	const sock = makeGroupsSocket(config)
+	const sock = await makeGroupsSocket(config)
 	const {
 		ev,
 		authState,

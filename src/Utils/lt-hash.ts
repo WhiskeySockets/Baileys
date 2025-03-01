@@ -15,23 +15,23 @@ class d {
 	constructor(e: string) {
 		this.salt = e
 	}
-	add(e, t) {
+	async add(e, t) {
 		var r = this
 		for(const item of t) {
-			e = r._addSingle(e, item)
+			e = await r._addSingle(e, item)
 		}
 
 		return e
 	}
-	subtract(e, t) {
+	async subtract(e, t) {
 		var r = this
 		for(const item of t) {
-			e = r._subtractSingle(e, item)
+			e = await r._subtractSingle(e, item)
 		}
 
 		return e
 	}
-	subtractThenAdd(e, t, r) {
+	async subtractThenAdd(e, t, r) {
 		var n = this
 		return n.add(n.subtract(e, r), t)
 	}

@@ -773,10 +773,6 @@ export const updateMessageWithPollUpdate = (
 	msg.pollUpdates = reactions
 }
 
-type VoteAggregation = {
-	name: string
-	voters: string[]
-}
 
 /**
  * Aggregates all poll updates in a poll.
@@ -784,19 +780,24 @@ type VoteAggregation = {
  * @param meId your jid
  * @returns A list of options & their voters
  */
-export function getAggregateVotesInPollMessage(
+export async function getAggregateVotesInPollMessage(
 	{ message, pollUpdates }: Pick<WAMessage, 'pollUpdates' | 'message'>,
 	meId?: string
 ) {
 	const opts = message?.pollCreationMessage?.options || message?.pollCreationMessageV2?.options || message?.pollCreationMessageV3?.options || []
-	const voteHashMap = opts.reduce((acc, opt) => {
-		const hash = sha256(Buffer.from(opt.optionName || '')).toString()
-		acc[hash] = {
-			name: opt.optionName || '',
-			voters: []
-		}
-		return acc
-	}, {} as { [_: string]: VoteAggregation })
+	const hashPromises = opts.map(async(opt) => {
+		const hash = (await sha256(Buffer.from(opt.optionName || ''))).toString()
+		return [hash, opt.optionName || '']
+	})
+
+	const hashEntries = await Promise.all(hashPromises)
+
+	const voteHashMap = Object.fromEntries(
+		hashEntries.map(([hash, name]) => [
+			hash,
+			{ name, voters: [] as string[] }
+		])
+	)
 
 	for(const update of pollUpdates || []) {
 		const { vote } = update

@@ -13,7 +13,7 @@ import { makeUSyncSocket } from './usync'
 
 const MAX_SYNC_ATTEMPTS = 2
 
-export const makeChatsSocket = (config: SocketConfig) => {
+export const makeChatsSocket = async(config: SocketConfig) => {
 	const {
 		logger,
 		markOnlineOnConnect,
@@ -22,7 +22,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		shouldIgnoreJid,
 		shouldSyncHistoryMessage,
 	} = config
-	const sock = makeUSyncSocket(config)
+	const sock = await makeUSyncSocket(config)
 	const {
 		ev,
 		ws,

@@ -4,8 +4,8 @@ import { generateMessageID, generateMessageIDV2, unixTimestampSeconds } from '..
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, getBinaryNodeChildString, jidEncode, jidNormalizedUser } from '../WABinary'
 import { makeChatsSocket } from './chats'
 
-export const makeGroupsSocket = (config: SocketConfig) => {
-	const sock = makeChatsSocket(config)
+export const makeGroupsSocket = async(config: SocketConfig) => {
+	const sock = await makeChatsSocket(config)
 	const { authState, ev, query, upsertMessage } = sock
 
 	const groupQuery = async(jid: string, type: 'get' | 'set', content: BinaryNode[]) => (
