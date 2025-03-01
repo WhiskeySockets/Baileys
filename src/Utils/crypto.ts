@@ -1,11 +1,8 @@
-import { createCipheriv, createDecipheriv, createHash, createHmac, pbkdf2, randomBytes } from 'crypto'
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto'
 import HKDF from 'futoin-hkdf'
 import * as libsignal from 'libsignal'
-import { promisify } from 'util'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { KeyPair } from '../Types'
-
-const pbkdf2Promise = promisify(pbkdf2)
 
 /** prefix version byte to the pub keys, required for some curve crypto functions */
 export const generateSignalPubKey = (pubKey: Uint8Array | Buffer) => (
@@ -129,6 +126,33 @@ export function hkdf(buffer: Uint8Array | Buffer, expandedLength: number, info: 
 	return HKDF(!Buffer.isBuffer(buffer) ? Buffer.from(buffer) : buffer, expandedLength, info)
 }
 
-export async function derivePairingCodeKey(pairingCode: string, salt: Buffer) {
-	return await pbkdf2Promise(pairingCode, salt, 2 << 16, 32, 'sha256')
+export async function derivePairingCodeKey(pairingCode: string, salt: Buffer): Promise<Buffer> {
+	// Convert inputs to formats Web Crypto API can work with
+	const encoder = new TextEncoder()
+	const pairingCodeBuffer = encoder.encode(pairingCode)
+	const saltBuffer = salt instanceof Uint8Array ? salt : new Uint8Array(salt)
+
+	// Import the pairing code as key material
+	const keyMaterial = await crypto.subtle.importKey(
+		'raw',
+		pairingCodeBuffer,
+		{ name: 'PBKDF2' },
+		false,
+		['deriveBits']
+	)
+
+	// Derive bits using PBKDF2 with the same parameters
+	// 2 << 16 = 131,072 iterations
+	const derivedBits = await crypto.subtle.deriveBits(
+		{
+			name: 'PBKDF2',
+			salt: saltBuffer,
+			iterations: 2 << 16,
+			hash: 'SHA-256'
+		},
+		keyMaterial,
+		32 * 8 // 32 bytes * 8 = 256 bits
+	)
+
+	return Buffer.from(derivedBits)
 }
