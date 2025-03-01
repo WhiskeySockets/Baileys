@@ -14,8 +14,8 @@ type FetchAppStateSyncKey = (keyId: string) => Promise<proto.Message.IAppStateSy
 
 export type ChatMutationMap = { [index: string]: ChatMutation }
 
-const mutationKeys = (keydata: Uint8Array) => {
-	const expanded = hkdf(keydata, 160, { info: 'WhatsApp Mutation Keys' })
+const mutationKeys = async(keydata: Uint8Array) => {
+	const expanded = await hkdf(keydata, 160, { info: 'WhatsApp Mutation Keys' })
 	return {
 		indexKey: expanded.slice(0, 32),
 		valueEncryptionKey: expanded.slice(32, 64),
@@ -144,7 +144,7 @@ export const encodeSyncdPatch = async(
 	})
 	const encoded = proto.SyncActionData.encode(dataProto).finish()
 
-	const keyValue = mutationKeys(key.keyData!)
+	const keyValue = await mutationKeys(key.keyData!)
 
 	const encValue = aesEncrypt(encoded, keyValue.valueEncryptionKey)
 	const valueMac = generateMac(operation, encValue, encKeyId, keyValue.valueMacKey)
@@ -261,7 +261,7 @@ export const decodeSyncdPatch = async(
 			throw new Boom(`failed to find key "${base64Key}" to decode patch`, { statusCode: 404, data: { msg } })
 		}
 
-		const mainKey = mutationKeys(mainKeyObj.keyData!)
+		const mainKey = await mutationKeys(mainKeyObj.keyData!)
 		const mutationmacs = msg.mutations!.map(mutation => mutation.record!.value!.blob!.slice(-32))
 
 		const patchMac = generatePatchMac(msg.snapshotMac!, mutationmacs, toNumber(msg.version!.version), name, mainKey.patchMacKey)
@@ -390,7 +390,7 @@ export const decodeSyncdSnapshot = async(
 			throw new Boom(`failed to find key "${base64Key}" to decode mutation`)
 		}
 
-		const result = mutationKeys(keyEnc.keyData!)
+		const result = await mutationKeys(keyEnc.keyData!)
 		const computedSnapshotMac = generateSnapshotMac(newState.hash, newState.version, name, result.snapshotMacKey)
 		if(Buffer.compare(snapshot.mac!, computedSnapshotMac) !== 0) {
 			throw new Boom(`failed to verify LTHash at ${newState.version} of ${name} from snapshot`)
@@ -458,7 +458,7 @@ export const decodePatches = async(
 				throw new Boom(`failed to find key "${base64Key}" to decode mutation`)
 			}
 
-			const result = mutationKeys(keyEnc.keyData!)
+			const result = await mutationKeys(keyEnc.keyData!)
 			const computedSnapshotMac = generateSnapshotMac(newState.hash, newState.version, name, result.snapshotMacKey)
 			if(Buffer.compare(snapshotMac!, computedSnapshotMac) !== 0) {
 				throw new Boom(`failed to verify LTHash at ${newState.version} of ${name}`)

@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, createHash, createHmac, hkdfSync, pbkdf2, randomBytes } from 'crypto'
+import { createCipheriv, createDecipheriv, createHash, createHmac, pbkdf2, randomBytes } from 'crypto'
 import * as libsignal from 'libsignal'
 import { promisify } from 'util'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
@@ -123,19 +123,47 @@ export function md5(buffer: Buffer) {
 	return createHash('md5').update(buffer).digest()
 }
 
-export async function derivePairingCodeKey(pairingCode: string, salt: Buffer) {
-	return await pbkdf2Promise(pairingCode, salt, 2 << 16, 32, 'sha256')
+// HKDF key expansion
+export async function hkdf(
+	buffer: Uint8Array | Buffer,
+	expandedLength: number,
+	info: { salt?: Buffer, info?: string }
+): Promise<Buffer> {
+	// Ensure we have a Uint8Array for the key material
+	const inputKeyMaterial = buffer instanceof Uint8Array
+		? buffer
+		: new Uint8Array(buffer)
+
+	// Set default values if not provided
+	const salt = info.salt ? new Uint8Array(info.salt) : new Uint8Array(0)
+	const infoBytes = info.info
+		? new TextEncoder().encode(info.info)
+		: new Uint8Array(0)
+
+	// Import the input key material
+	const importedKey = await crypto.subtle.importKey(
+		'raw',
+		inputKeyMaterial,
+		{ name: 'HKDF' },
+		false,
+		['deriveBits']
+	)
+
+	// Derive bits using HKDF
+	const derivedBits = await crypto.subtle.deriveBits(
+		{
+			name: 'HKDF',
+			hash: 'SHA-256',
+			salt: salt,
+			info: infoBytes
+		},
+		importedKey,
+		expandedLength * 8 // Convert bytes to bits
+	)
+
+	return Buffer.from(derivedBits)
 }
 
-export function hkdf(
-	ikm: Uint8Array | Buffer,
-	length: number,
-	options: { salt?: Buffer, info?: string, hash?: string } = {}
-): Buffer {
-	const hash = options.hash || 'sha256'
-	const salt = options.salt || Buffer.alloc(0)
-	const info = options.info ? Buffer.from(options.info) : Buffer.alloc(0)
-	const inputKeyMaterial = !Buffer.isBuffer(ikm) ? Buffer.from(ikm) : ikm
-
-	return Buffer.from(hkdfSync(hash, inputKeyMaterial, salt, info, length))
+export async function derivePairingCodeKey(pairingCode: string, salt: Buffer) {
+	return await pbkdf2Promise(pairingCode, salt, 2 << 16, 32, 'sha256')
 }
