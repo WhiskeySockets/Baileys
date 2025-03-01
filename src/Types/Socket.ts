@@ -66,7 +66,8 @@ export type SocketConfig = {
     transactionOpts: TransactionCapabilityOptions
     /** marks the client as online whenever the socket successfully connects */
     markOnlineOnConnect: boolean
-
+    /** alphanumeric country code (USA -> US) for the number used */
+    countryCode: string
     /** provide a cache to store media, so does not have to be re-uploaded */
     mediaCache?: CacheStore
     /**
