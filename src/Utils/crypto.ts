@@ -73,14 +73,62 @@ export function aesDecryptGCM(ciphertext: Uint8Array, key: Uint8Array, iv: Uint8
 	return Buffer.concat([ decipher.update(enc), decipher.final() ])
 }
 
-export function aesEncryptCTR(plaintext: Uint8Array, key: Uint8Array, iv: Uint8Array) {
-	const cipher = createCipheriv('aes-256-ctr', key, iv)
-	return Buffer.concat([cipher.update(plaintext), cipher.final()])
+export async function aesEncryptCTR(plaintext: Uint8Array | Buffer, key: Uint8Array | Buffer, iv: Uint8Array | Buffer): Promise<Buffer> {
+	// Convert inputs to Uint8Array if they're Buffers
+	const plaintextArray = plaintext instanceof Uint8Array ? plaintext : new Uint8Array(plaintext)
+	const keyArray = key instanceof Uint8Array ? key : new Uint8Array(key)
+	const ivArray = iv instanceof Uint8Array ? iv : new Uint8Array(iv)
+
+	// Import the key
+	const cryptoKey = await crypto.subtle.importKey(
+		'raw',
+		keyArray,
+		{ name: 'AES-CTR', length: 256 },
+		false,
+		['encrypt']
+	)
+
+	// Encrypt the data
+	const ciphertext = await crypto.subtle.encrypt(
+		{
+			name: 'AES-CTR',
+			counter: ivArray,
+			length: 128 // Standard CTR counter length in bits
+		},
+		cryptoKey,
+		plaintextArray
+	)
+
+	return Buffer.from(ciphertext)
 }
 
-export function aesDecryptCTR(ciphertext: Uint8Array, key: Uint8Array, iv: Uint8Array) {
-	const decipher = createDecipheriv('aes-256-ctr', key, iv)
-	return Buffer.concat([decipher.update(ciphertext), decipher.final()])
+export async function aesDecryptCTR(ciphertext: Uint8Array | Buffer, key: Uint8Array | Buffer, iv: Uint8Array | Buffer): Promise<Buffer> {
+	// Convert inputs to Uint8Array if they're Buffers
+	const ciphertextArray = ciphertext instanceof Uint8Array ? ciphertext : new Uint8Array(ciphertext)
+	const keyArray = key instanceof Uint8Array ? key : new Uint8Array(key)
+	const ivArray = iv instanceof Uint8Array ? iv : new Uint8Array(iv)
+
+	// Import the key
+	const cryptoKey = await crypto.subtle.importKey(
+		'raw',
+		keyArray,
+		{ name: 'AES-CTR', length: 256 },
+		false,
+		['decrypt']
+	)
+
+	// Decrypt the data
+	const result = await crypto.subtle.decrypt(
+		{
+			name: 'AES-CTR',
+			counter: ivArray,
+			length: 128 // Standard CTR counter length in bits
+		},
+		cryptoKey,
+		ciphertextArray
+	)
+
+	return Buffer.from(result)
 }
 
 /** decrypt AES 256 CBC; where the IV is prefixed to the buffer */

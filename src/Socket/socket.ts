@@ -542,7 +542,7 @@ export const makeSocket = async(config: SocketConfig) => {
 		const salt = randomBytes(32)
 		const randomIv = randomBytes(16)
 		const key = await derivePairingCodeKey(authState.creds.pairingCode!, salt)
-		const ciphered = aesEncryptCTR(authState.creds.pairingEphemeralKeyPair.public, key, randomIv)
+		const ciphered = await aesEncryptCTR(authState.creds.pairingEphemeralKeyPair.public, key, randomIv)
 		return Buffer.concat([salt, randomIv, ciphered])
 	}
 
