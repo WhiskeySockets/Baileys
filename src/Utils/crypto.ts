@@ -84,14 +84,41 @@ export function aesDecryptCTR(ciphertext: Uint8Array, key: Uint8Array, iv: Uint8
 }
 
 /** decrypt AES 256 CBC; where the IV is prefixed to the buffer */
-export function aesDecrypt(buffer: Buffer, key: Buffer) {
+export async function aesDecrypt(buffer: Buffer, key: Buffer) {
 	return aesDecryptWithIV(buffer.slice(16, buffer.length), key, buffer.slice(0, 16))
 }
 
 /** decrypt AES 256 CBC */
-export function aesDecryptWithIV(buffer: Buffer, key: Buffer, IV: Buffer) {
-	const aes = createDecipheriv('aes-256-cbc', key, IV)
-	return Buffer.concat([aes.update(buffer), aes.final()])
+export async function aesDecryptWithIV(
+	buffer: Buffer | Uint8Array,
+	key: Buffer | Uint8Array,
+	IV: Buffer | Uint8Array
+): Promise<Buffer> {
+	// Convert inputs to Uint8Array if they're Buffers
+	const ciphertext = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer)
+	const keyArray = key instanceof Uint8Array ? key : new Uint8Array(key)
+	const iv = IV instanceof Uint8Array ? IV : new Uint8Array(IV)
+
+	// Import the key
+	const cryptoKey = await crypto.subtle.importKey(
+		'raw',
+		keyArray,
+		{ name: 'AES-CBC', length: 256 },
+		false,
+		['decrypt']
+	)
+
+	// Decrypt the data
+	const result = await crypto.subtle.decrypt(
+		{
+			name: 'AES-CBC',
+			iv: iv
+		},
+		cryptoKey,
+		ciphertext
+	)
+
+	return Buffer.from(result)
 }
 
 // encrypt AES 256 CBC; where a random IV is prefixed to the buffer

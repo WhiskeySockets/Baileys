@@ -213,7 +213,7 @@ export const decodeSyncdMutations = async(
 			}
 		}
 
-		const result = aesDecrypt(encContent, key.valueEncryptionKey)
+		const result = await aesDecrypt(encContent, key.valueEncryptionKey)
 		const syncAction = proto.SyncActionData.decode(result)
 
 		if(validateMacs) {
