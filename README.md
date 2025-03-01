@@ -386,7 +386,7 @@ sock.ev.on('messages.update', event => {
 ### Summary of Events on First Connection
 
 1. When you connect first time, `connection.update` will be fired requesting you to restart sock
-2. Then, history messages will be received in `messaging.history-set`
+2. Then, history messages will be received in `messaging-history.set`
 
 ## Implementing a Data Store
 
@@ -928,7 +928,7 @@ await sock.fetchMessageHistory(
     msg.messageTimestamp
 )
 ```
-- Messages will be received in `messaging.history-set` event
+- Messages will be received in `messaging-history.set` event
 
 ### Fetch Status
 ```ts
