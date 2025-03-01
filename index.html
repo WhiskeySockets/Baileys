@@ -306,7 +306,7 @@ In <code>messages.upsert</code> it&#39;s recommended to use a loop like <code>fo
 </ul>
 <a id="md:summary-of-events-on-first-connection" class="tsd-anchor"></a><h3><a href="#md:summary-of-events-on-first-connection">Summary of Events on First Connection</a></h3><ol>
 <li>When you connect first time, <code>connection.update</code> will be fired requesting you to restart sock</li>
-<li>Then, history messages will be received in <code>messaging.history-set</code></li>
+<li>Then, history messages will be received in <code>messaging-history.set</code></li>
 </ol>
 <a id="md:implementing-a-data-store" class="tsd-anchor"></a><h2><a href="#md:implementing-a-data-store">Implementing a Data Store</a></h2><ul>
 <li>Baileys does not come with a defacto storage for chats, contacts, or messages. However, a simple in-memory implementation has been provided. The store listens for chat updates, new messages, message updates, etc., to always have an up-to-date version of the data.</li>
