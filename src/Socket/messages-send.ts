@@ -654,20 +654,20 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			const content = assertMediaContent(message.message)
 			const mediaKey = content.mediaKey!
 			const meId = authState.creds.me!.id
-			const node = encryptMediaRetryRequest(message.key, mediaKey, meId)
+			const node = await encryptMediaRetryRequest(message.key, mediaKey, meId)
 
 			let error: Error | undefined = undefined
 			await Promise.all(
 				[
 					sendNode(node),
-					waitForMsgMediaUpdate(update => {
+					waitForMsgMediaUpdate(async(update) => {
 						const result = update.find(c => c.key.id === message.key.id)
 						if(result) {
 							if(result.error) {
 								error = result.error
 							} else {
 								try {
-									const media = decryptMediaRetryData(result.media!, mediaKey, result.key.id!)
+									const media = await decryptMediaRetryData(result.media!, mediaKey, result.key.id!)
 									if(media.result !== proto.MediaRetryNotification.ResultType.SUCCESS) {
 										const resultStr = proto.MediaRetryNotification.ResultType[media.result]
 										throw new Boom(

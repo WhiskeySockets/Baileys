@@ -206,7 +206,7 @@ export const generateMessageIDV2 = (userId?: string): string => {
 export const generateMessageID = () => '3EB0' + randomBytes(18).toString('hex').toUpperCase()
 
 export function bindWaitForEvent<T extends keyof BaileysEventMap>(ev: BaileysEventEmitter, event: T) {
-	return async(check: (u: BaileysEventMap[T]) => boolean | undefined, timeoutMs?: number) => {
+	return async(check: (u: BaileysEventMap[T]) => Promise<boolean | undefined>, timeoutMs?: number) => {
 		let listener: (item: BaileysEventMap[T]) => void
 		let closeListener: (state: Partial<ConnectionState>) => void
 		await (
@@ -223,8 +223,8 @@ export function bindWaitForEvent<T extends keyof BaileysEventMap>(ev: BaileysEve
 					}
 
 					ev.on('connection.update', closeListener)
-					listener = (update) => {
-						if(check(update)) {
+					listener = async(update) => {
+						if(await check(update)) {
 							resolve()
 						}
 					}

@@ -1,5 +1,4 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto'
-import HKDF from 'futoin-hkdf'
 import * as libsignal from 'libsignal'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { KeyPair } from '../Types'
@@ -122,9 +121,46 @@ export function md5(buffer: Buffer) {
 }
 
 // HKDF key expansion
-export function hkdf(buffer: Uint8Array | Buffer, expandedLength: number, info: { salt?: Buffer, info?: string }) {
-	return HKDF(!Buffer.isBuffer(buffer) ? Buffer.from(buffer) : buffer, expandedLength, info)
+export async function hkdf(
+	buffer: Uint8Array | Buffer,
+	expandedLength: number,
+	info: { salt?: Buffer, info?: string }
+): Promise<Buffer> {
+	// Ensure we have a Uint8Array for the key material
+	const inputKeyMaterial = buffer instanceof Uint8Array
+		? buffer
+		: new Uint8Array(buffer)
+
+	// Set default values if not provided
+	const salt = info.salt ? new Uint8Array(info.salt) : new Uint8Array(0)
+	const infoBytes = info.info
+		? new TextEncoder().encode(info.info)
+		: new Uint8Array(0)
+
+	// Import the input key material
+	const importedKey = await crypto.subtle.importKey(
+		'raw',
+		inputKeyMaterial,
+		{ name: 'HKDF' },
+		false,
+		['deriveBits']
+	)
+
+	// Derive bits using HKDF
+	const derivedBits = await crypto.subtle.deriveBits(
+		{
+			name: 'HKDF',
+			hash: 'SHA-256',
+			salt: salt,
+			info: infoBytes
+		},
+		importedKey,
+		expandedLength * 8 // Convert bytes to bits
+	)
+
+	return Buffer.from(derivedBits)
 }
+
 
 export async function derivePairingCodeKey(pairingCode: string, salt: Buffer): Promise<Buffer> {
 	// Convert inputs to formats Web Crypto API can work with
