@@ -1,5 +1,5 @@
 import * as libsignal from 'libsignal'
-import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'node:crypto'
+import { createCipheriv, createDecipheriv, createHash, createHmac } from 'node:crypto'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { KeyPair } from '../Types'
 
@@ -95,10 +95,42 @@ export function aesDecryptWithIV(buffer: Buffer, key: Buffer, IV: Buffer) {
 }
 
 // encrypt AES 256 CBC; where a random IV is prefixed to the buffer
-export function aesEncrypt(buffer: Buffer | Uint8Array, key: Buffer) {
-	const IV = randomBytes(16)
-	const aes = createCipheriv('aes-256-cbc', key, IV)
-	return Buffer.concat([IV, aes.update(buffer), aes.final()]) // prefix IV to the buffer
+export async function aesEncrypt(
+	buffer: Buffer | Uint8Array,
+	key: Buffer | Uint8Array
+): Promise<Buffer> {
+	// Generate random IV (16 bytes for AES-CBC)
+	const iv = crypto.getRandomValues(new Uint8Array(16))
+
+	// Convert input to Uint8Array if it's a Buffer
+	const plaintext = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer)
+	const keyArray = key instanceof Uint8Array ? key : new Uint8Array(key)
+
+	// Import the key
+	const cryptoKey = await crypto.subtle.importKey(
+		'raw',
+		keyArray,
+		{ name: 'AES-CBC', length: 256 },
+		false,
+		['encrypt']
+	)
+
+	// Encrypt the data
+	const ciphertext = await crypto.subtle.encrypt(
+		{
+			name: 'AES-CBC',
+			iv: iv
+		},
+		cryptoKey,
+		plaintext
+	)
+
+	// Combine IV and ciphertext (prefix IV to the ciphertext)
+	const result = new Uint8Array(iv.length + ciphertext.byteLength)
+	result.set(iv, 0)
+	result.set(new Uint8Array(ciphertext), iv.length)
+
+	return Buffer.from(result.buffer)
 }
 
 // encrypt AES 256 CBC with a given IV

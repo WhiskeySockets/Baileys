@@ -146,7 +146,7 @@ export const encodeSyncdPatch = async(
 
 	const keyValue = await mutationKeys(key.keyData!)
 
-	const encValue = aesEncrypt(encoded, keyValue.valueEncryptionKey)
+	const encValue = await aesEncrypt(encoded, keyValue.valueEncryptionKey)
 	const valueMac = generateMac(operation, encValue, encKeyId, keyValue.valueMacKey)
 	const indexMac = hmacSign(indexBuffer, keyValue.indexKey)
 
