@@ -824,15 +824,7 @@ await sock.chatModify({ markRead: false, lastMessages: [lastMsgInChat] }, jid)
 ```ts
 await sock.chatModify(
     {
-        clear: {
-            messages: [
-                {
-                    id: 'ATWYHDNNWU81732J',
-                    fromMe: true, 
-                    timestamp: '1654823909'
-                }
-            ]
-        }
+        clear: true
     }, 
     jid
 )
