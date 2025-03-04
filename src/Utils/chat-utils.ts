@@ -86,9 +86,9 @@ const makeLtHashGenerator = ({ indexValueMap, hash }: Pick<LTHashState, 'hash' |
 				subBuffs.push(new Uint8Array(prevOp.valueMac).buffer)
 			}
 		},
-		finish: () => {
+		finish: async() => {
 			const hashArrayBuffer = new Uint8Array(hash).buffer
-			const result = LT_HASH_ANTI_TAMPERING.subtractThenAdd(hashArrayBuffer, addBuffs, subBuffs)
+			const result = await LT_HASH_ANTI_TAMPERING.subtractThenAdd(hashArrayBuffer, addBuffs, subBuffs)
 			const buffer = Buffer.from(result)
 
 			return {
@@ -153,7 +153,7 @@ export const encodeSyncdPatch = async(
 	// update LT hash
 	const generator = makeLtHashGenerator(state)
 	generator.mix({ indexMac, valueMac, operation })
-	Object.assign(state, generator.finish())
+	Object.assign(state, await generator.finish())
 
 	state.version += 1
 
@@ -233,7 +233,7 @@ export const decodeSyncdMutations = async(
 		})
 	}
 
-	return ltGenerator.finish()
+	return await ltGenerator.finish()
 
 	async function getKey(keyId: Uint8Array) {
 		const base64Key = Buffer.from(keyId).toString('base64')
