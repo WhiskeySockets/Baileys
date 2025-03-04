@@ -7,7 +7,6 @@ import { createReadStream, createWriteStream, promises as fs, WriteStream } from
 import type { IAudioMetadata } from 'music-metadata'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import type { Logger } from 'pino'
 import { Readable, Transform } from 'stream'
 import { URL } from 'url'
 import { proto } from '../../WAProto'
@@ -16,6 +15,7 @@ import { BaileysEventMap, DownloadableMessage, MediaConnInfo, MediaDecryptionKey
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, jidNormalizedUser } from '../WABinary'
 import { aesDecryptGCM, aesEncryptGCM, hkdf } from './crypto'
 import { generateMessageID } from './generics'
+import { ILogger } from './logger'
 
 const getTmpFilesDirectory = () => tmpdir()
 
@@ -55,7 +55,7 @@ export const hkdfInfoKey = (type: MediaType) => {
 }
 
 /** generates all the keys required to encrypt/decrypt & sign a media message */
-export function getMediaKeys(buffer: Uint8Array | string | null | undefined, mediaType: MediaType): MediaDecryptionKeyInfo {
+export async function getMediaKeys(buffer: Uint8Array | string | null | undefined, mediaType: MediaType): Promise<MediaDecryptionKeyInfo> {
 	if(!buffer) {
 		throw new Boom('Cannot derive from empty media key')
 	}
@@ -65,7 +65,7 @@ export function getMediaKeys(buffer: Uint8Array | string | null | undefined, med
 	}
 
 	// expand using HKDF to 112 bytes, also pass in the relevant app info
-	const expandedMediaKey = hkdf(buffer, 112, { info: hkdfInfoKey(mediaType) })
+	const expandedMediaKey = await hkdf(buffer, 112, { info: hkdfInfoKey(mediaType) })
 	return {
 		iv: expandedMediaKey.slice(0, 16),
 		cipherKey: expandedMediaKey.slice(16, 48),
@@ -207,9 +207,9 @@ export async function getAudioDuration(buffer: Buffer | string | Readable) {
 /**
   referenced from and modifying https://github.com/wppconnect-team/wa-js/blob/main/src/chat/functions/prepareAudioWaveform.ts
  */
-export async function getAudioWaveform(buffer: Buffer | string | Readable, logger?: Logger) {
+export async function getAudioWaveform(buffer: Buffer | string | Readable, logger?: ILogger) {
 	try {
-		const audioDecode = (buffer: Buffer | ArrayBuffer | Uint8Array) => import('audio-decode').then(({ default: audioDecode }) => audioDecode(buffer))
+		const { default: decoder } = await eval('import(\'audio-decode\')')
 		let audioData: Buffer
 		if(Buffer.isBuffer(buffer)) {
 			audioData = buffer
@@ -220,7 +220,7 @@ export async function getAudioWaveform(buffer: Buffer | string | Readable, logge
 			audioData = await toBuffer(buffer)
 		}
 
-		const audioBuffer = await audioDecode(audioData)
+		const audioBuffer = await decoder(audioData)
 
 		const rawData = audioBuffer.getChannelData(0) // We only need to work with one channel of data
 		const samples = 64 // Number of samples we want to have in our final data set
@@ -290,7 +290,7 @@ export async function generateThumbnail(
 	file: string,
 	mediaType: 'video' | 'image',
 	options: {
-        logger?: Logger
+        logger?: ILogger
     }
 ) {
 	let thumbnail: string | undefined
@@ -330,7 +330,7 @@ export const getHttpStream = async(url: string | URL, options: AxiosRequestConfi
 
 type EncryptedStreamOptions = {
 	saveOriginalFileIfRequired?: boolean
-	logger?: Logger
+	logger?: ILogger
 	opts?: AxiosRequestConfig
 }
 
@@ -344,7 +344,7 @@ export const encryptedStream = async(
 	logger?.debug('fetched media stream')
 
 	const mediaKey = Crypto.randomBytes(32)
-	const { cipherKey, iv, macKey } = getMediaKeys(mediaKey, mediaType)
+	const { cipherKey, iv, macKey } = await getMediaKeys(mediaKey, mediaType)
 	const encWriteStream = new Readable({ read: () => {} })
 
 	let bodyPath: string | undefined
@@ -458,13 +458,13 @@ export type MediaDownloadOptions = {
 
 export const getUrlFromDirectPath = (directPath: string) => `https://${DEF_HOST}${directPath}`
 
-export const downloadContentFromMessage = (
+export const downloadContentFromMessage = async(
 	{ mediaKey, directPath, url }: DownloadableMessage,
 	type: MediaType,
 	opts: MediaDownloadOptions = { }
 ) => {
 	const downloadUrl = url || getUrlFromDirectPath(directPath!)
-	const keys = getMediaKeys(mediaKey, type)
+	const keys = await getMediaKeys(mediaKey, type)
 
 	return downloadEncryptedContent(downloadUrl, keys, opts)
 }
@@ -673,7 +673,7 @@ const getMediaRetryKey = (mediaKey: Buffer | Uint8Array) => {
 /**
  * Generate a binary node that will request the phone to re-upload the media & return the newly uploaded URL
  */
-export const encryptMediaRetryRequest = (
+export const encryptMediaRetryRequest = async(
 	key: proto.IMessageKey,
 	mediaKey: Buffer | Uint8Array,
 	meId: string
@@ -682,7 +682,7 @@ export const encryptMediaRetryRequest = (
 	const recpBuffer = proto.ServerErrorReceipt.encode(recp).finish()
 
 	const iv = Crypto.randomBytes(12)
-	const retryKey = getMediaRetryKey(mediaKey)
+	const retryKey = await getMediaRetryKey(mediaKey)
 	const ciphertext = aesEncryptGCM(recpBuffer, retryKey, iv, Buffer.from(key.id!))
 
 	const req: BinaryNode = {
@@ -752,12 +752,12 @@ export const decodeMediaRetryNode = (node: BinaryNode) => {
 	return event
 }
 
-export const decryptMediaRetryData = (
+export const decryptMediaRetryData = async(
 	{ ciphertext, iv }: { ciphertext: Uint8Array, iv: Uint8Array },
 	mediaKey: Uint8Array,
 	msgId: string
 ) => {
-	const retryKey = getMediaRetryKey(mediaKey)
+	const retryKey = await getMediaRetryKey(mediaKey)
 	const plaintext = aesDecryptGCM(ciphertext, retryKey, iv, Buffer.from(msgId))
 	return proto.MediaRetryNotification.decode(plaintext)
 }

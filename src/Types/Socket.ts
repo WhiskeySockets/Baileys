@@ -1,9 +1,9 @@
 
 import { AxiosRequestConfig } from 'axios'
 import type { Agent } from 'https'
-import type { Logger } from 'pino'
 import type { URL } from 'url'
 import { proto } from '../../WAProto'
+import { ILogger } from '../Utils/logger'
 import { AuthenticationState, SignalAuthState, TransactionCapabilityOptions } from './Auth'
 import { GroupMetadata } from './GroupMetadata'
 import { MediaConnInfo } from './Message'
@@ -38,8 +38,8 @@ export type SocketConfig = {
 	mobile?: boolean
     /** proxy agent */
     agent?: Agent
-    /** pino logger */
-    logger: Logger
+    /** logger */
+    logger: ILogger
     /** version to connect with */
     version: WAVersion
     /** override browser config */
@@ -66,7 +66,8 @@ export type SocketConfig = {
     transactionOpts: TransactionCapabilityOptions
     /** marks the client as online whenever the socket successfully connects */
     markOnlineOnConnect: boolean
-
+    /** alphanumeric country code (USA -> US) for the number used */
+    countryCode: string
     /** provide a cache to store media, so does not have to be re-uploaded */
     mediaCache?: CacheStore
     /**

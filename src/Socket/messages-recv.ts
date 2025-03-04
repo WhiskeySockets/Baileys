@@ -1,13 +1,14 @@
 
+import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
-import NodeCache from 'node-cache'
 import { proto } from '../../WAProto'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import { MessageReceiptType, MessageRelayOptions, MessageUserReceipt, SocketConfig, WACallEvent, WAMessageKey, WAMessageStatus, WAMessageStubType, WAPatchName } from '../Types'
 import {
 	aesDecryptCTR,
 	aesEncryptGCM,
+	cleanMessage,
 	Curve,
 	decodeMediaRetryNode,
 	decodeMessageNode,
@@ -20,12 +21,13 @@ import {
 	getHistoryMsg,
 	getNextPreKeys,
 	getStatusFromReceiptType, hkdf,
+	MISSING_KEYS_ERROR_TEXT,
+	NACK_REASONS,
 	NO_MESSAGE_FOUND_ERROR_TEXT,
 	unixTimestampSeconds,
 	xmppPreKey,
 	xmppSignedPreKey
 } from '../Utils'
-import { cleanMessage } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
 import {
 	areJidsSameUser,
@@ -89,14 +91,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	let sendActiveReceipts = false
 
-	const sendMessageAck = async({ tag, attrs, content }: BinaryNode) => {
+	const sendMessageAck = async({ tag, attrs, content }: BinaryNode, errorCode?: number) => {
 		const stanza: BinaryNode = {
 			tag: 'ack',
 			attrs: {
 				id: attrs.id,
 				to: attrs.from,
-				class: tag,
+				class: tag
 			}
+		}
+
+		if(!!errorCode) {
+		  stanza.attrs.error = errorCode.toString()
 		}
 
 		if(!!attrs.participant) {
@@ -107,7 +113,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			stanza.attrs.recipient = attrs.recipient
 		}
 
-		if(!!attrs.type && (tag !== 'message' || getBinaryNodeChild({ tag, attrs, content }, 'unavailable'))) {
+		if(!!attrs.type && (tag !== 'message' || getBinaryNodeChild({ tag, attrs, content }, 'unavailable') || errorCode !== 0)) {
 			stanza.attrs.type = attrs.type
 		}
 
@@ -470,7 +476,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const companionSharedKey = Curve.sharedKey(authState.creds.pairingEphemeralKeyPair.private, codePairingPublicKey)
 			const random = randomBytes(32)
 			const linkCodeSalt = randomBytes(32)
-			const linkCodePairingExpanded = hkdf(companionSharedKey, 32, {
+			const linkCodePairingExpanded = await hkdf(companionSharedKey, 32, {
 				salt: linkCodeSalt,
 				info: 'link_code_pairing_key_bundle_encryption_key'
 			})
@@ -480,7 +486,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const encryptedPayload = Buffer.concat([linkCodeSalt, encryptIv, encrypted])
 			const identitySharedKey = Curve.sharedKey(authState.creds.signedIdentityKey.private, primaryIdentityPublicKey)
 			const identityPayload = Buffer.concat([companionSharedKey, identitySharedKey, random])
-			authState.creds.advSecretKey = hkdf(identityPayload, 32, { info: 'adv_secret' }).toString('base64')
+			authState.creds.advSecretKey = (await hkdf(identityPayload, 32, { info: 'adv_secret' })).toString('base64')
 			await query({
 				tag: 'iq',
 				attrs: {
@@ -631,7 +637,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							(
 								// basically, we only want to know when a message from us has been delivered to/read by the other person
 								// or another device of ours has read some messages
-								status > proto.WebMessageInfo.Status.DELIVERY_ACK ||
+								status >= proto.WebMessageInfo.Status.SERVER_ACK ||
 								!isNodeFromMe
 							)
 						) {
@@ -771,6 +777,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						await decrypt()
 						// message failed to decrypt
 						if(msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT) {
+						  if(msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
+								return sendMessageAck(node, NACK_REASONS.ParsingError)
+							}
+
 							retryMutex.mutex(
 								async() => {
 									if(ws.isOpen) {
@@ -816,12 +826,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 						cleanMessage(msg, authState.creds.me!.id)
 
+						await sendMessageAck(node)
+
 						await upsertMessage(msg, node.attrs.offline ? 'append' : 'notify')
 					}
 				)
 			])
-		} finally {
-			await sendMessageAck(node)
+		} catch(error) {
+			logger.error({ error, node }, 'error in handling message')
 		}
 	}
 
@@ -854,7 +866,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		if(placeholderResendCache.get(messageKey?.id!)) {
-			logger.debug('already requested resend', { messageKey })
+			logger.debug({ messageKey }, 'already requested resend')
 			return
 		} else {
 			placeholderResendCache.set(messageKey?.id!, true)
@@ -863,7 +875,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await delay(5000)
 
 		if(!placeholderResendCache.get(messageKey?.id!)) {
-			logger.debug('message received while resend requested', { messageKey })
+			logger.debug({ messageKey }, 'message received while resend requested')
 			return 'RESOLVED'
 		}
 
@@ -876,7 +888,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		setTimeout(() => {
 			if(placeholderResendCache.get(messageKey?.id!)) {
-				logger.debug('PDO message without response after 15 seconds. Phone possibly offline', { messageKey })
+				logger.debug({ messageKey }, 'PDO message without response after 15 seconds. Phone possibly offline')
 				placeholderResendCache.del(messageKey?.id!)
 			}
 		}, 15_000)
@@ -926,18 +938,20 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const handleBadAck = async({ attrs }: BinaryNode) => {
 		const key: WAMessageKey = { remoteJid: attrs.from, fromMe: true, id: attrs.id }
-		// current hypothesis is that if pash is sent in the ack
-		// it means -- the message hasn't reached all devices yet
-		// we'll retry sending the message here
-		if(attrs.phash) {
-			logger.info({ attrs }, 'received phash in ack, resending message...')
-			const msg = await getMessage(key)
-			if(msg) {
-				await relayMessage(key.remoteJid!, msg, { messageId: key.id!, useUserDevicesCache: false })
-			} else {
-				logger.warn({ attrs }, 'could not send message again, as it was not found')
-			}
-		}
+
+		// WARNING: REFRAIN FROM ENABLING THIS FOR NOW. IT WILL CAUSE A LOOP
+		// // current hypothesis is that if pash is sent in the ack
+		// // it means -- the message hasn't reached all devices yet
+		// // we'll retry sending the message here
+		// if(attrs.phash) {
+		// 	logger.info({ attrs }, 'received phash in ack, resending message...')
+		// 	const msg = await getMessage(key)
+		// 	if(msg) {
+		// 		await relayMessage(key.remoteJid!, msg, { messageId: key.id!, useUserDevicesCache: false })
+		// 	} else {
+		// 		logger.warn({ attrs }, 'could not send message again, as it was not found')
+		// 	}
+		// }
 
 		// error in acknowledgement,
 		// device could not display the message
@@ -965,35 +979,98 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const processNodeWithBuffer = async<T>(
 		node: BinaryNode,
 		identifier: string,
-		exec: (node: BinaryNode) => Promise<T>
+		exec: (node: BinaryNode, offline: boolean) => Promise<T>
 	) => {
 		ev.buffer()
 		await execTask()
 		ev.flush()
 
 		function execTask() {
-			return exec(node)
+			return exec(node, false)
 				.catch(err => onUnexpectedError(err, identifier))
+		}
+	}
+
+	type MessageType = 'message' | 'call' | 'receipt' | 'notification'
+
+	type OfflineNode = {
+		type: MessageType
+		node: BinaryNode
+	}
+
+	const makeOfflineNodeProcessor = () => {
+		const nodeProcessorMap: Map<MessageType, (node: BinaryNode) => Promise<void>> = new Map([
+			['message', handleMessage],
+			['call', handleCall],
+			['receipt', handleReceipt],
+			['notification', handleNotification]
+		])
+		const nodes: OfflineNode[] = []
+		let isProcessing = false
+
+		const enqueue = (type: MessageType, node: BinaryNode) => {
+			nodes.push({ type, node })
+
+			if(isProcessing) {
+				return
+			}
+
+			isProcessing = true
+
+			const promise = async() => {
+				while(nodes.length && ws.isOpen) {
+					const { type, node } = nodes.shift()!
+
+					const nodeProcessor = nodeProcessorMap.get(type)
+
+					if(!nodeProcessor) {
+						onUnexpectedError(
+							new Error(`unknown offline node type: ${type}`),
+							'processing offline node'
+						)
+						continue
+					}
+
+					await nodeProcessor(node)
+				}
+
+				isProcessing = false
+			}
+
+			promise().catch(error => onUnexpectedError(error, 'processing offline nodes'))
+		}
+
+		return { enqueue }
+	}
+
+	const offlineNodeProcessor = makeOfflineNodeProcessor()
+
+	const processNode = (type: MessageType, node: BinaryNode, identifier: string, exec: (node: BinaryNode) => Promise<void>) => {
+		const isOffline = !!node.attrs.offline
+
+		if(isOffline) {
+			offlineNodeProcessor.enqueue(type, node)
+		} else {
+			processNodeWithBuffer(node, identifier, exec)
 		}
 	}
 
 	// recv a message
 	ws.on('CB:message', (node: BinaryNode) => {
-		processNodeWithBuffer(node, 'processing message', handleMessage)
+		processNode('message', node, 'processing message', handleMessage)
 	})
 
 	ws.on('CB:call', async(node: BinaryNode) => {
-		processNodeWithBuffer(node, 'handling call', handleCall)
+		processNode('call', node, 'handling call', handleCall)
 	})
 
 	ws.on('CB:receipt', node => {
-		processNodeWithBuffer(node, 'handling receipt', handleReceipt)
+		processNode('receipt', node, 'handling receipt', handleReceipt)
 	})
 
 	ws.on('CB:notification', async(node: BinaryNode) => {
-		processNodeWithBuffer(node, 'handling notification', handleNotification)
+		processNode('notification', node, 'handling notification', handleNotification)
 	})
-
 	ws.on('CB:ack,class:message', (node: BinaryNode) => {
 		handleBadAck(node)
 			.catch(error => onUnexpectedError(error, 'handling bad ack'))
