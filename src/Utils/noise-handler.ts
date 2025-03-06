@@ -4,6 +4,7 @@ import { NOISE_MODE, WA_CERT_DETAILS } from '../Defaults'
 import { KeyPair } from '../Types'
 import { BinaryNode, decodeBinaryNode } from '../WABinary'
 import { aesDecryptGCM, aesEncryptGCM, Curve, hkdf, sha256 } from './crypto'
+import { Lock } from './lock'
 import { ILogger } from './logger'
 
 const generateIV = (counter: number) => {
@@ -32,12 +33,16 @@ export const makeNoiseHandler = async({
 		}
 	}
 
+	// running without lock causes a race condition and the authentication fails
+	const lock = new Lock()
+
 	const encrypt = async(plaintext: Uint8Array) => {
-		const result = aesEncryptGCM(plaintext, encKey, generateIV(writeCounter), hash)
+		await lock.acquire()
+		const result = await aesEncryptGCM(plaintext, encKey, generateIV(writeCounter), hash)
 
 		writeCounter += 1
-
 		await authenticate(result)
+		lock.release()
 		return result
 	}
 

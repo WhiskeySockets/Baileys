@@ -683,7 +683,7 @@ export const encryptMediaRetryRequest = async(
 
 	const iv = Crypto.randomBytes(12)
 	const retryKey = await getMediaRetryKey(mediaKey)
-	const ciphertext = aesEncryptGCM(recpBuffer, retryKey, iv, Buffer.from(key.id!))
+	const ciphertext = await aesEncryptGCM(recpBuffer, retryKey, iv, Buffer.from(key.id!))
 
 	const req: BinaryNode = {
 		tag: 'receipt',

@@ -51,10 +51,29 @@ const GCM_TAG_LENGTH = 128 >> 3
  * encrypt AES 256 GCM;
  * where the tag tag is suffixed to the ciphertext
  * */
-export function aesEncryptGCM(plaintext: Uint8Array, key: Uint8Array, iv: Uint8Array, additionalData: Uint8Array) {
-	const cipher = createCipheriv('aes-256-gcm', key, iv)
-	cipher.setAAD(additionalData)
-	return Buffer.concat([cipher.update(plaintext), cipher.final(), cipher.getAuthTag()])
+export async function aesEncryptGCM(plaintext: Uint8Array, key: Uint8Array, iv: Uint8Array, additionalData: Uint8Array): Promise<Buffer> {
+	// Import the 256-bit key as a CryptoKey for AES-GCM encryption
+	const cryptoKey = await crypto.subtle.importKey(
+		'raw', // Key format is raw binary
+		key, // The key as a Uint8Array
+		{ name: 'AES-GCM' }, // Algorithm specification
+		false, // Key is not extractable
+		['encrypt'] // Key usage
+	)
+
+	// Define the AES-GCM parameters
+	const algorithm = {
+		name: 'AES-GCM', // Algorithm name
+		iv: iv, // Initialization vector
+		additionalData: additionalData, // Additional authenticated data
+		tagLength: 128 // Authentication tag length in bits (16 bytes)
+	}
+
+	// Encrypt the plaintext; returns an ArrayBuffer with ciphertext + tag
+	const encrypted = await crypto.subtle.encrypt(algorithm, cryptoKey, plaintext)
+
+	// Convert the ArrayBuffer to a Uint8Array and return it
+	return Buffer.from(encrypted)
 }
 
 /**
