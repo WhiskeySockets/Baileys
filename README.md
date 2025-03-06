@@ -1,13 +1,16 @@
-<h1><img src="https://raw.githubusercontent.com/WhiskeySockets/Baileys/master/Media/logo.png" width="24" height="24" title="WhiskeySockets colorful logo"/> Baileys</h1>
+<h1><img alt="Baileys logo" src="https://raw.githubusercontent.com/WhiskeySockets/Baileys/refs/heads/master/Media/logo.png" height="75"/></h1>
 
 ![NPM Downloads](https://img.shields.io/npm/dw/%40whiskeysockets%2Fbaileys?label=npm&color=%23CB3837)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/whiskeysockets/baileys)
 ![Discord](https://img.shields.io/discord/725839806084546610?label=discord&color=%235865F2)
 
-A Websockets-based TypeScript library for interacting with the WhatsApp Web API.
+Baileys is a WebSockets-based TypeScript library for interacting with the WhatsApp Web API.
 
-## Usage
-All major documentation is hosted at the guide https://guide.whiskeysockets.io, TypeDoc available at https://baileys.whiskeysockets.io
+# Usage
+All major documentation is hosted at the [guide](https://guide.whiskeysockets.io), with API documentation at https://baileys.whiskeysockets.io
+
+# Sponsor
+If you'd like to financially support this project, you can do so by supporting the current maintainer [here](https://purpshell.dev/sponsor).
 
 # Disclaimer
 This project is not affiliated, associated, authorized, endorsed by, or in any way officially connected with WhatsApp or any of its subsidiaries or its affiliates.
