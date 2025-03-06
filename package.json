@@ -1,17 +1,17 @@
 {
-  "name": "baileys",
+  "name": "whatsapp-cloudflare-workers",
   "version": "6.7.16",
-  "description": "A WebSockets library for interacting with WhatsApp Web",
+  "description": "A version of baileys that works on cloudflare workers",
   "keywords": [
     "whatsapp",
     "automation"
   ],
-  "homepage": "https://github.com/WhiskeySockets/Baileys",
+  "homepage": "https://github.com/rafaelsg-01/whatsapp-cloudflare-workers",
   "repository": {
-    "url": "git@github.com:WhiskeySockets/Baileys.git"
+    "url": "git@github.com:rafaelsg-01/whatsapp-cloudflare-workers.git"
   },
   "license": "MIT",
-  "author": "Rajeh Taher",
+  "author": "Rafael Silva",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "files": [
