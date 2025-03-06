@@ -1,9 +1,8 @@
-<div align='center'><img src="https://raw.githubusercontent.com/WhiskeySockets/Baileys/master/Media/logo.png" width="32" height="32" title="WhiskeySockets colorful logo"/><h1>Baileys</h1></div>
-<div align='center'>
+<h1><img src="https://raw.githubusercontent.com/WhiskeySockets/Baileys/master/Media/logo.png" width="24" height="24" title="WhiskeySockets colorful logo"/> Baileys</h1>
+
 ![NPM Downloads](https://img.shields.io/npm/dw/%40whiskeysockets%2Fbaileys?label=npm&color=%23CB3837)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/whiskeysockets/baileys)
 ![Discord](https://img.shields.io/discord/725839806084546610?label=discord&color=%235865F2)
-</div>
 
 A Websockets-based TypeScript library for interacting with the WhatsApp Web API.
 

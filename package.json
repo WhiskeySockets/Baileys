@@ -6,7 +6,7 @@
     "whatsapp",
     "automation"
   ],
-  "homepage": "https://baileys.wiki/",
+  "homepage": "https://github.com/WhiskeySockets/Baileys/",
   "repository": {
     "url": "git@github.com:WhiskeySockets/Baileys.git"
   },
@@ -17,7 +17,8 @@
   "files": [
     "lib/*",
     "WAProto/*",
-    "WASignalGroup/*.js"
+    "WASignalGroup/*.js",
+    "engine-requirements.js"
   ],
   "scripts": {
     "build:all": "tsc && typedoc",
