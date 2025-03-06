@@ -217,13 +217,13 @@ export const decodeSyncdMutations = async(
 		const syncAction = proto.SyncActionData.decode(result)
 
 		if(validateMacs) {
-			const hmac = hmacSign(syncAction.index, key.indexKey)
+			const hmac = hmacSign(syncAction.index!, key.indexKey)
 			if(Buffer.compare(hmac, record.index!.blob!) !== 0) {
 				throw new Boom('HMAC index verification failed')
 			}
 		}
 
-		const indexStr = Buffer.from(syncAction.index).toString()
+		const indexStr = Buffer.from(syncAction.index!).toString()
 		onMutation({ syncAction, index: JSON.parse(indexStr) })
 
 		ltGenerator.mix({

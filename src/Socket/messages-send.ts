@@ -669,15 +669,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 								try {
 									const media = await decryptMediaRetryData(result.media!, mediaKey, result.key.id!)
 									if(media.result !== proto.MediaRetryNotification.ResultType.SUCCESS) {
-										const resultStr = proto.MediaRetryNotification.ResultType[media.result]
+										const resultStr = proto.MediaRetryNotification.ResultType[media.result!]
 										throw new Boom(
 											`Media re-upload failed by device (${resultStr})`,
-											{ data: media, statusCode: getStatusCodeForMediaRetry(media.result) || 404 }
+											{ data: media, statusCode: getStatusCodeForMediaRetry(media.result!) || 404 }
 										)
 									}
 
 									content.directPath = media.directPath
-									content.url = getUrlFromDirectPath(content.directPath)
+									content.url = getUrlFromDirectPath(content.directPath!)
 
 									logger.debug({ directPath: media.directPath, key: result.key }, 'media update successful')
 								} catch(err) {
