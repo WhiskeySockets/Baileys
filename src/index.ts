@@ -12,3 +12,5 @@ export * from './WAUSync'
 export type WASocket = ReturnType<typeof makeWASocket>
 export { makeWASocket }
 export default makeWASocket
+
+console.log('start, test 01')
