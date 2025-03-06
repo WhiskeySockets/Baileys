@@ -12,348 +12,37 @@
 <div class="col-content">
 <div class="tsd-page-title">
 <h2>baileys</h2></div>
-<div class="tsd-panel tsd-typography"><a id="md:baileys---typescriptjavascript-whatsapp-web-api" class="tsd-anchor"></a><h1><a href="#md:baileys---typescriptjavascript-whatsapp-web-api"><div align='center'>Baileys - Typescript/Javascript WhatsApp Web API</div></a></h1><div align='center'>
-
-<p><img src="https://img.shields.io/github/downloads/whiskeysockets/baileys/total" alt="GitHub Downloads (all assets, all releases)">
-<img src="https://img.shields.io/npm/dw/%40whiskeysockets%2Fbaileys?label=npm&color=%23CB3837" alt="NPM Downloads">
-<img src="https://img.shields.io/github/languages/code-size/whiskeysockets/baileys" alt="GitHub code size in bytes">
-<img src="https://img.shields.io/github/license/whiskeysockets/baileys" alt="GitHub License">
-<img src="https://img.shields.io/discord/725839806084546610?label=discord&color=%235865F2" alt="Discord">
-<img src="https://img.shields.io/github/stars/whiskeysockets/baileys" alt="GitHub Repo stars">
-<img src="https://img.shields.io/github/forks/whiskeysockets/baileys" alt="GitHub forks"></p>
+<div class="tsd-panel tsd-typography"><div align='center'><img src="https://raw.githubusercontent.com/WhiskeySockets/Baileys/master/Media/logo.png" width="32" height="32" title="WhiskeySockets colorful logo"/><h1>Baileys</h1></div>
+<div align='center'>
+![NPM Downloads](https://img.shields.io/npm/dw/%40whiskeysockets%2Fbaileys?label=npm&color=%23CB3837)
+![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/whiskeysockets/baileys)
+![Discord](https://img.shields.io/discord/725839806084546610?label=discord&color=%235865F2)
 </div>
 
-<a id="md:important-note" class="tsd-anchor"></a><h3><a href="#md:important-note">Important Note</a></h3><p>This library was originally a project for <strong>CS-2362 at Ashoka University</strong> and is in no way affiliated with or endorsed by WhatsApp. Use at your own discretion. Do not spam people with this. We discourage any stalkerware, bulk or automated messaging usage. </p>
-<a id="md:liability-and-license-notice" class="tsd-anchor"></a><h4><a href="#md:liability-and-license-notice">Liability and License Notice</a></h4><p>Baileys and its maintainers cannot be held liable for misuse of this application, as stated in the <a href="https://github.com/WhiskeySockets/Baileys/blob/master/LICENSE">MIT license</a>.
-The maintainers of Baileys do not in any way condone the use of this application in practices that violate the Terms of Service of WhatsApp. The maintainers of this application call upon the personal responsibility of its users to use this application in a fair way, as it is intended to be used.
-##</p>
-<ul>
-<li>Baileys does not require Selenium or any other browser to be interface with WhatsApp Web, it does so directly using a <strong>WebSocket</strong>. </li>
-<li>Not running Selenium or Chromimum saves you like <strong>half a gig</strong> of ram :/ </li>
-<li>Baileys supports interacting with the multi-device &amp; web versions of WhatsApp.</li>
-<li>Thank you to <a href="https://github.com/pokearaujo/multidevice">@pokearaujo</a> for writing his observations on the workings of WhatsApp Multi-Device. Also, thank you to <a href="https://github.com/sigalor/whatsapp-web-reveng">@Sigalor</a> for writing his observations on the workings of WhatsApp Web and thanks to <a href="https://github.com/Rhymen/go-whatsapp/">@Rhymen</a> for the <strong>go</strong> implementation.</li>
-</ul>
-<blockquote>
-<p>[!IMPORTANT]
-The original repository had to be removed by the original author - we now continue development in this repository here.
-This is the only official repository and is maintained by the community.
-<strong>Join the Discord <a href="https://discord.gg/WeJM5FP9GG">here</a></strong></p>
-</blockquote>
-<a id="md:example" class="tsd-anchor"></a><h2><a href="#md:example">Example</a></h2><p>Do check out &amp; run <a href="Example/example.ts">example.ts</a> to see an example usage of the library.
-The script covers most common use cases.
-To run the example script, download or clone the repo and then type the following in a terminal:</p>
-<ol>
-<li><code>cd path/to/Baileys</code></li>
-<li><code>yarn</code></li>
-<li><code>yarn example</code></li>
-</ol>
-<a id="md:install" class="tsd-anchor"></a><h2><a href="#md:install">Install</a></h2><p>Use the stable version:</p>
-<pre><code><span class="hl-0">yarn</span><span class="hl-1"> </span><span class="hl-0">add</span><span class="hl-1"> </span><span class="hl-0">baileys</span>
-</code><button>Copy</button></pre>
-<p>Use the edge version (no guarantee of stability, but latest fixes + features)</p>
-<pre><code><span class="hl-0">yarn</span><span class="hl-1"> </span><span class="hl-0">add</span><span class="hl-1"> </span><span class="hl-2">github</span><span class="hl-1">:</span><span class="hl-0">WhiskeySockets</span><span class="hl-1">/</span><span class="hl-0">Baileys</span>
-</code><button>Copy</button></pre>
-<p>Then import the default function in your code:</p>
-<pre><code class="language-ts"><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-0">makeWASocket</span><span class="hl-1"> </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-4">&#39;baileys&#39;</span>
-</code><button>Copy</button></pre>
-<a id="md:links" class="tsd-anchor"></a><h1><a href="#md:links">Links</a></h1><ul>
-<li><a href="https://discord.gg/WeJM5FP9GG">Discord</a></li>
-<li><a href="https://guide.whiskeysockets.io/">Docs</a></li>
-</ul>
-<a id="md:index" class="tsd-anchor"></a><h1><a href="#md:index">Index</a></h1><ul>
-<li><p><a href="#connecting-account">Connecting Account</a></p>
-<ul>
-<li><a href="#starting-socket-with-qr-code">Connect with QR-CODE</a></li>
-<li><a href="#starting-socket-with-pairing-code">Connect with Pairing Code</a></li>
-<li><a href="#receive-full-history">Receive Full History</a></li>
-</ul>
-</li>
-<li><p><a href="#important-notes-about-socket-config">Important Notes About Socket Config</a></p>
-<ul>
-<li><a href="#caching-group-metadata-recommended">Caching Group Metadata (Recommended)</a></li>
-<li><a href="#improve-retry-system--decrypt-poll-votes">Improve Retry System &amp; Decrypt Poll Votes</a></li>
-<li><a href="#receive-notifications-in-whatsapp-app">Receive Notifications in Whatsapp App</a></li>
-</ul>
-</li>
-<li><p><a href="#saving--restoring-sessions">Save Auth Info</a></p>
-</li>
-<li><p><a href="#handling-events">Handling Events</a></p>
-<ul>
-<li><a href="#example-to-start">Example to Start</a></li>
-<li><a href="#decrypt-poll-votes">Decrypt Poll Votes</a></li>
-<li><a href="#summary-of-events-on-first-connection">Summary of Events on First Connection</a></li>
-</ul>
-</li>
-<li><p><a href="#implementing-a-data-store">Implementing a Data Store</a></p>
-</li>
-<li><p><a href="#whatsapp-ids-explain">Whatsapp IDs Explain</a></p>
-</li>
-<li><p><a href="#utility-functions">Utility Functions</a></p>
-</li>
-<li><p><a href="#sending-messages">Sending Messages</a></p>
-<ul>
-<li><a href="#non-media-messages">Non-Media Messages</a><ul>
-<li><a href="#text-message">Text Message</a></li>
-<li><a href="#quote-message-works-with-all-types">Quote Message</a></li>
-<li><a href="#mention-user-works-with-most-types">Mention User</a></li>
-<li><a href="#forward-messages">Forward Messages</a></li>
-<li><a href="#location-message">Location Message</a></li>
-<li><a href="#contact-message">Contact Message</a></li>
-<li><a href="#reaction-message">Reaction Message</a></li>
-<li><a href="#pin-message">Pin Message</a></li>
-<li><a href="#poll-message">Poll Message</a></li>
-</ul>
-</li>
-<li><a href="#sending-messages-with-link-previews">Sending with Link Preview</a></li>
-<li><a href="#media-messages">Media Messages</a><ul>
-<li><a href="#gif-message">Gif Message</a></li>
-<li><a href="#video-message">Video Message</a></li>
-<li><a href="#audio-message">Audio Message</a></li>
-<li><a href="#image-message">Image Message</a></li>
-<li><a href="#view-once-message">ViewOnce Message</a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li><p><a href="#modify-messages">Modify Messages</a></p>
-<ul>
-<li><a href="#deleting-messages-for-everyone">Delete Messages (for everyone)</a></li>
-<li><a href="#editing-messages">Edit Messages</a></li>
-</ul>
-</li>
-<li><p><a href="#manipulating-media-messages">Manipulating Media Messages</a></p>
-<ul>
-<li><a href="#thumbnail-in-media-messages">Thumbnail in Media Messages</a></li>
-<li><a href="#downloading-media-messages">Downloading Media Messages</a></li>
-<li><a href="#re-upload-media-message-to-whatsapp">Re-upload Media Message to Whatsapp</a></li>
-</ul>
-</li>
-<li><p><a href="#reject-call">Reject Call</a></p>
-</li>
-<li><p><a href="#send-states-in-chat">Send States in Chat</a></p>
-<ul>
-<li><a href="#reading-messages">Reading Messages</a></li>
-<li><a href="#update-presence">Update Presence</a></li>
-</ul>
-</li>
-<li><p><a href="#modifying-chats">Modifying Chats</a></p>
-<ul>
-<li><a href="#archive-a-chat">Archive a Chat</a></li>
-<li><a href="#muteunmute-a-chat">Mute/Unmute a Chat</a></li>
-<li><a href="#mark-a-chat-readunread">Mark a Chat Read/Unread</a></li>
-<li><a href="#delete-a-message-for-me">Delete a Message for Me</a></li>
-<li><a href="#delete-a-chat">Delete a Chat</a></li>
-<li><a href="#starunstar-a-message">Star/Unstar a Message</a></li>
-<li><a href="#disappearing-messages">Disappearing Messages</a></li>
-</ul>
-</li>
-<li><p><a href="#user-querys">User Querys</a></p>
-<ul>
-<li><a href="#check-if-id-exists-in-whatsapp">Check If ID Exists in Whatsapp</a></li>
-<li><a href="#query-chat-history-groups-too">Query Chat History (groups too)</a></li>
-<li><a href="#fetch-status">Fetch Status</a></li>
-<li><a href="#fetch-profile-picture-groups-too">Fetch Profile Picture (groups too)</a></li>
-<li><a href="#fetch-bussines-profile-such-as-description-or-category">Fetch Bussines Profile (such as description or category)</a></li>
-<li><a href="#fetch-someones-presence-if-theyre-typing-or-online">Fetch Someone&#39;s Presence (if they&#39;re typing or online)</a></li>
-</ul>
-</li>
-<li><p><a href="#change-profile">Change Profile</a></p>
-<ul>
-<li><a href="#change-profile-status">Change Profile Status</a></li>
-<li><a href="#change-profile-name">Change Profile Name</a></li>
-<li><a href="#change-display-picture-groups-too">Change Display Picture (groups too)</a></li>
-<li><a href="#remove-display-picture-groups-too">Remove display picture (groups too)</a></li>
-</ul>
-</li>
-<li><p><a href="#groups">Groups</a></p>
-<ul>
-<li><a href="#create-a-group">Create a Group</a></li>
-<li><a href="#addremove-or-demotepromote">Add/Remove or Demote/Promote</a></li>
-<li><a href="#change-subject-name">Change Subject (name)</a></li>
-<li><a href="#change-description">Change Description</a></li>
-<li><a href="#change-settings">Change Settings</a></li>
-<li><a href="#leave-a-group">Leave a Group</a></li>
-<li><a href="#get-invite-code">Get Invite Code</a></li>
-<li><a href="#revoke-invite-code">Revoke Invite Code</a></li>
-<li><a href="#join-using-invitation-code">Join Using Invitation Code</a></li>
-<li><a href="#get-group-info-by-invite-code">Get Group Info by Invite Code</a></li>
-<li><a href="#query-metadata-participants-name-description">Query Metadata (participants, name, description...)</a></li>
-<li><a href="#join-using-groupinvitemessage">Join using groupInviteMessage</a></li>
-<li><a href="#get-request-join-list">Get Request Join List</a></li>
-<li><a href="#approvereject-request-join">Approve/Reject Request Join</a></li>
-<li><a href="#get-all-participating-groups-metadata">Get All Participating Groups Metadata</a></li>
-<li><a href="#toggle-ephemeral">Toggle Ephemeral</a></li>
-<li><a href="#change-add-mode">Change Add Mode</a></li>
-</ul>
-</li>
-<li><p><a href="#privacy">Privacy</a></p>
-<ul>
-<li><a href="#blockunblock-user">Block/Unblock User</a></li>
-<li><a href="#get-privacy-settings">Get Privacy Settings</a></li>
-<li><a href="#get-blocklist">Get BlockList</a></li>
-<li><a href="#update-lastseen-privacy">Update LastSeen Privacy</a></li>
-<li><a href="#update-online-privacy">Update Online Privacy</a></li>
-<li><a href="#update-profile-picture-privacy">Update Profile Picture Privacy</a></li>
-<li><a href="#update-status-privacy">Update Status Privacy</a></li>
-<li><a href="#update-read-receipts-privacy">Update Read Receipts Privacy</a></li>
-<li><a href="#update-groups-add-privacy">Update Groups Add Privacy</a></li>
-<li><a href="#update-default-disappearing-mode">Update Default Disappearing Mode</a></li>
-</ul>
-</li>
-<li><p><a href="#broadcast-lists--stories">Broadcast Lists &amp; Stories</a></p>
-<ul>
-<li><a href="#send-broadcast--stories">Send Broadcast &amp; Stories</a></li>
-<li><a href="#query-a-broadcast-lists-recipients--name">Query a Broadcast List&#39;s Recipients &amp; Name</a></li>
-</ul>
-</li>
-<li><p><a href="#writing-custom-functionality">Writing Custom Functionality</a></p>
-<ul>
-<li><a href="#enabling-debug-level-in-baileys-logs">Enabling Debug Level in Baileys Logs</a></li>
-<li><a href="#how-whatsapp-communicate-with-us">How Whatsapp Communicate With Us</a></li>
-<li><a href="#register-a-callback-for-websocket-events">Register a Callback for Websocket Events</a></li>
-</ul>
-</li>
-</ul>
-<a id="md:connecting-account" class="tsd-anchor"></a><h2><a href="#md:connecting-account">Connecting Account</a></h2><p>WhatsApp provides a multi-device API that allows Baileys to be authenticated as a second WhatsApp client by scanning a <strong>QR code</strong> or <strong>Pairing Code</strong> with WhatsApp on your phone.</p>
-<blockquote>
-<p>[!NOTE]
-<strong><a href="#example-to-start">Here</a> is a simple example of event handling</strong></p>
-</blockquote>
-<blockquote>
-<p>[!TIP]
-<strong>You can see all supported socket configs <a href="https://baileys.whiskeysockets.io/types/SocketConfig.html">here</a> (Recommended)</strong></p>
-</blockquote>
-<a id="md:starting-socket-with-qr-code" class="tsd-anchor"></a><h3><a href="#md:starting-socket-with-qr-code">Starting socket with <strong>QR-CODE</strong></a></h3><blockquote>
-<p>[!TIP]
-You can customize browser name if you connect with <strong>QR-CODE</strong>, with <code>Browser</code> constant, we have some browsers config, <strong>see <a href="https://baileys.whiskeysockets.io/types/BrowsersMap.html">here</a></strong></p>
-</blockquote>
-<pre><code class="language-ts"><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-0">makeWASocket</span><span class="hl-1"> </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-4">&#39;baileys&#39;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">sock</span><span class="hl-1"> = </span><span class="hl-7">makeWASocket</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-8">// can provide additional config here</span><br/><span class="hl-1">    </span><span class="hl-0">browser:</span><span class="hl-1"> </span><span class="hl-0">Browsers</span><span class="hl-1">.</span><span class="hl-7">ubuntu</span><span class="hl-1">(</span><span class="hl-4">&#39;My App&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-0">printQRInTerminal:</span><span class="hl-1"> </span><span class="hl-5">true</span><br/><span class="hl-1">})</span>
-</code><button>Copy</button></pre>
-<p>If the connection is successful, you will see a QR code printed on your terminal screen, scan it with WhatsApp on your phone and you&#39;ll be logged in!</p>
-<a id="md:starting-socket-with-pairing-code" class="tsd-anchor"></a><h3><a href="#md:starting-socket-with-pairing-code">Starting socket with <strong>Pairing Code</strong></a></h3><blockquote>
-<p>[!IMPORTANT]
-Pairing Code isn&#39;t Mobile API, it&#39;s a method to connect Whatsapp Web without QR-CODE, you can connect only with one device, see <a href="https://faq.whatsapp.com/1324084875126592/?cms_platform=web">here</a></p>
-</blockquote>
-<p>The phone number can&#39;t have <code>+</code> or <code>()</code> or <code>-</code>, only numbers, you must provide country code</p>
-<pre><code class="language-ts"><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-0">makeWASocket</span><span class="hl-1"> </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-4">&#39;baileys&#39;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">sock</span><span class="hl-1"> = </span><span class="hl-7">makeWASocket</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-8">// can provide additional config here</span><br/><span class="hl-1">    </span><span class="hl-0">printQRInTerminal:</span><span class="hl-1"> </span><span class="hl-5">false</span><span class="hl-1"> </span><span class="hl-8">//need to be false</span><br/><span class="hl-1">})</span><br/><span class="hl-8">// NOTE: WAIT TILL QR EVENT BEFORE REQUESTING THE PAIRING CODE</span><br/><span class="hl-3">if</span><span class="hl-1"> (!</span><span class="hl-0">sock</span><span class="hl-1">.</span><span class="hl-0">authState</span><span class="hl-1">.</span><span class="hl-0">creds</span><span class="hl-1">.</span><span class="hl-0">registered</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">number</span><span class="hl-1"> = </span><span class="hl-4">&#39;XXXXXXXXXXX&#39;</span><br/><span class="hl-1">    </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">code</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sock</span><span class="hl-1">.</span><span class="hl-7">requestPairingCode</span><span class="hl-1">(</span><span class="hl-0">number</span><span class="hl-1">)</span><br/><span class="hl-1">    </span><span class="hl-0">console</span><span class="hl-1">.</span><span class="hl-7">log</span><span class="hl-1">(</span><span class="hl-0">code</span><span class="hl-1">)</span><br/><span class="hl-1">}</span>
-</code><button>Copy</button></pre>
-<a id="md:receive-full-history" class="tsd-anchor"></a><h3><a href="#md:receive-full-history">Receive Full History</a></h3><ol>
-<li>Set <code>syncFullHistory</code> as <code>true</code></li>
-<li>Baileys, by default, use chrome browser config<ul>
-<li>If you&#39;d like to emulate a desktop connection (and receive more message history), this browser setting to your Socket config:</li>
-</ul>
-</li>
-</ol>
-<pre><code class="language-ts"><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">sock</span><span class="hl-1"> = </span><span class="hl-7">makeWASocket</span><span class="hl-1">({</span><br/><span class="hl-1">    ...</span><span class="hl-0">otherOpts</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-8">// can use Windows, Ubuntu here too</span><br/><span class="hl-1">    </span><span class="hl-0">browser:</span><span class="hl-1"> </span><span class="hl-0">Browsers</span><span class="hl-1">.</span><span class="hl-7">macOS</span><span class="hl-1">(</span><span class="hl-4">&#39;Desktop&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-0">syncFullHistory:</span><span class="hl-1"> </span><span class="hl-5">true</span><br/><span class="hl-1">})</span>
-</code><button>Copy</button></pre>
-<a id="md:important-notes-about-socket-config" class="tsd-anchor"></a><h2><a href="#md:important-notes-about-socket-config">Important Notes About Socket Config</a></h2><a id="md:caching-group-metadata-recommended" class="tsd-anchor"></a><h3><a href="#md:caching-group-metadata-recommended">Caching Group Metadata (Recommended)</a></h3><ul>
-<li><p>If you use baileys for groups, we recommend you to set <code>cachedGroupMetadata</code> in socket config, you need to implement a cache like this:</p>
-<pre><code class="language-ts"><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">groupCache</span><span class="hl-1"> = </span><span class="hl-5">new</span><span class="hl-1"> </span><span class="hl-7">NodeCache</span><span class="hl-1">({</span><span class="hl-0">stdTTL:</span><span class="hl-1"> </span><span class="hl-9">5</span><span class="hl-1"> * </span><span class="hl-9">60</span><span class="hl-1">, </span><span class="hl-0">useClones:</span><span class="hl-1"> </span><span class="hl-5">false</span><span class="hl-1">})</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">sock</span><span class="hl-1"> = </span><span class="hl-7">makeWASocket</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-7">cachedGroupMetadata</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-5">async</span><span class="hl-1"> (</span><span class="hl-0">jid</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> </span><span class="hl-0">groupCache</span><span class="hl-1">.</span><span class="hl-7">get</span><span class="hl-1">(</span><span class="hl-0">jid</span><span class="hl-1">)</span><br/><span class="hl-1">})</span><br/><br/><span class="hl-0">sock</span><span class="hl-1">.</span><span class="hl-0">ev</span><span class="hl-1">.</span><span class="hl-7">on</span><span class="hl-1">(</span><span class="hl-4">&#39;groups.update&#39;</span><span class="hl-1">, </span><span class="hl-5">async</span><span class="hl-1"> ([</span><span class="hl-0">event</span><span class="hl-1">]) </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">metadata</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sock</span><span class="hl-1">.</span><span class="hl-7">groupMetadata</span><span class="hl-1">(</span><span class="hl-0">event</span><span class="hl-1">.</span><span class="hl-0">id</span><span class="hl-1">)</span><br/><span class="hl-1">    </span><span class="hl-0">groupCache</span><span class="hl-1">.</span><span class="hl-7">set</span><span class="hl-1">(</span><span class="hl-0">event</span><span class="hl-1">.</span><span class="hl-0">id</span><span class="hl-1">, </span><span class="hl-0">metadata</span><span class="hl-1">)</span><br/><span class="hl-1">})</span><br/><br/><span class="hl-0">sock</span><span class="hl-1">.</span><span class="hl-0">ev</span><span class="hl-1">.</span><span class="hl-7">on</span><span class="hl-1">(</span><span class="hl-4">&#39;group-participants.update&#39;</span><span class="hl-1">, </span><span class="hl-5">async</span><span class="hl-1"> (</span><span class="hl-0">event</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">metadata</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sock</span><span class="hl-1">.</span><span class="hl-7">groupMetadata</span><span class="hl-1">(</span><span class="hl-0">event</span><span class="hl-1">.</span><span class="hl-0">id</span><span class="hl-1">)</span><br/><span class="hl-1">    </span><span class="hl-0">groupCache</span><span class="hl-1">.</span><span class="hl-7">set</span><span class="hl-1">(</span><span class="hl-0">event</span><span class="hl-1">.</span><span class="hl-0">id</span><span class="hl-1">, </span><span class="hl-0">metadata</span><span class="hl-1">)</span><br/><span class="hl-1">})</span>
-</code><button>Copy</button></pre>
-</li>
-</ul>
-<a id="md:improve-retry-system-amp-decrypt-poll-votes" class="tsd-anchor"></a><h3><a href="#md:improve-retry-system-amp-decrypt-poll-votes">Improve Retry System &amp; Decrypt Poll Votes</a></h3><ul>
-<li>If you want to improve sending message, retrying when error occurs and decrypt poll votes, you need to have a store and set <code>getMessage</code> config in socket like this:<pre><code class="language-ts"><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">sock</span><span class="hl-1"> = </span><span class="hl-7">makeWASocket</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-7">getMessage</span><span class="hl-0">:</span><span class="hl-1"> </span><span class="hl-5">async</span><span class="hl-1"> (</span><span class="hl-0">key</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">getMessageFromStore</span><span class="hl-1">(</span><span class="hl-0">key</span><span class="hl-1">)</span><br/><span class="hl-1">})</span>
-</code><button>Copy</button></pre>
-</li>
-</ul>
-<a id="md:receive-notifications-in-whatsapp-app" class="tsd-anchor"></a><h3><a href="#md:receive-notifications-in-whatsapp-app">Receive Notifications in Whatsapp App</a></h3><ul>
-<li>If you want to receive notifications in whatsapp app, set <code>markOnlineOnConnect</code> to <code>false</code><pre><code class="language-ts"><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">sock</span><span class="hl-1"> = </span><span class="hl-7">makeWASocket</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-0">markOnlineOnConnect:</span><span class="hl-1"> </span><span class="hl-5">false</span><br/><span class="hl-1">})</span>
-</code><button>Copy</button></pre>
-</li>
-</ul>
-<a id="md:saving-amp-restoring-sessions" class="tsd-anchor"></a><h2><a href="#md:saving-amp-restoring-sessions">Saving &amp; Restoring Sessions</a></h2><p>You obviously don&#39;t want to keep scanning the QR code every time you want to connect. </p>
-<p>So, you can load the credentials to log back in:</p>
-<pre><code class="language-ts"><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-0">makeWASocket</span><span class="hl-1">, { </span><span class="hl-0">useMultiFileAuthState</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-4">&#39;baileys&#39;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> { </span><span class="hl-6">state</span><span class="hl-1">, </span><span class="hl-6">saveCreds</span><span class="hl-1"> } = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">useMultiFileAuthState</span><span class="hl-1">(</span><span class="hl-4">&#39;auth_info_baileys&#39;</span><span class="hl-1">)</span><br/><br/><span class="hl-8">// will use the given state to connect</span><br/><span class="hl-8">// so if valid credentials are available -- it&#39;ll connect without QR</span><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">sock</span><span class="hl-1"> = </span><span class="hl-7">makeWASocket</span><span class="hl-1">({ </span><span class="hl-0">auth:</span><span class="hl-1"> </span><span class="hl-0">state</span><span class="hl-1"> })</span><br/><br/><span class="hl-8">// this will be called as soon as the credentials are updated</span><br/><span class="hl-0">sock</span><span class="hl-1">.</span><span class="hl-0">ev</span><span class="hl-1">.</span><span class="hl-7">on</span><span class="hl-1">(</span><span class="hl-4">&#39;creds.update&#39;</span><span class="hl-1">, </span><span class="hl-0">saveCreds</span><span class="hl-1">)</span>
-</code><button>Copy</button></pre>
-<blockquote>
-<p>[!IMPORTANT]
-<code>useMultiFileAuthState</code> is a utility function to help save the auth state in a single folder, this function serves as a good guide to help write auth &amp; key states for SQL/no-SQL databases, which I would recommend in any production grade system.</p>
-</blockquote>
-<blockquote>
-<p>[!NOTE]
-When a message is received/sent, due to signal sessions needing updating, the auth keys (<code>authState.keys</code>) will update. Whenever that happens, you must save the updated keys (<code>authState.keys.set()</code> is called). Not doing so will prevent your messages from reaching the recipient &amp; cause other unexpected consequences. The <code>useMultiFileAuthState</code> function automatically takes care of that, but for any other serious implementation -- you will need to be very careful with the key state management.</p>
-</blockquote>
-<a id="md:handling-events" class="tsd-anchor"></a><h2><a href="#md:handling-events">Handling Events</a></h2><ul>
-<li>Baileys uses the EventEmitter syntax for events. 
-They&#39;re all nicely typed up, so you shouldn&#39;t have any issues with an Intellisense editor like VS Code.</li>
-</ul>
-<blockquote>
-<p>[!IMPORTANT]
-<strong>The events are <a href="https://baileys.whiskeysockets.io/types/BaileysEventMap.html">these</a></strong>, it&#39;s important you see all events</p>
-</blockquote>
-<p>You can listen to these events like this:</p>
-<pre><code class="language-ts"><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">sock</span><span class="hl-1"> = </span><span class="hl-7">makeWASocket</span><span class="hl-1">()</span><br/><span class="hl-0">sock</span><span class="hl-1">.</span><span class="hl-0">ev</span><span class="hl-1">.</span><span class="hl-7">on</span><span class="hl-1">(</span><span class="hl-4">&#39;messages.upsert&#39;</span><span class="hl-1">, ({ </span><span class="hl-0">messages</span><span class="hl-1"> }) </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">console</span><span class="hl-1">.</span><span class="hl-7">log</span><span class="hl-1">(</span><span class="hl-4">&#39;got messages&#39;</span><span class="hl-1">, </span><span class="hl-0">messages</span><span class="hl-1">)</span><br/><span class="hl-1">})</span>
-</code><button>Copy</button></pre>
-<a id="md:example-to-start" class="tsd-anchor"></a><h3><a href="#md:example-to-start">Example to Start</a></h3><blockquote>
-<p>[!NOTE]
-This example includes basic auth storage too</p>
-</blockquote>
-<pre><code class="language-ts"><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-0">makeWASocket</span><span class="hl-1">, { </span><span class="hl-0">DisconnectReason</span><span class="hl-1">, </span><span class="hl-0">useMultiFileAuthState</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-4">&#39;baileys&#39;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-0">Boom</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-4">&#39;@hapi/boom&#39;</span><br/><br/><span class="hl-5">async</span><span class="hl-1"> </span><span class="hl-5">function</span><span class="hl-1"> </span><span class="hl-7">connectToWhatsApp</span><span class="hl-1"> () {</span><br/><span class="hl-1">    </span><span class="hl-5">const</span><span class="hl-1"> { </span><span class="hl-6">state</span><span class="hl-1">, </span><span class="hl-6">saveCreds</span><span class="hl-1"> } = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">useMultiFileAuthState</span><span class="hl-1">(</span><span class="hl-4">&#39;auth_info_baileys&#39;</span><span class="hl-1">)</span><br/><span class="hl-1">    </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">sock</span><span class="hl-1"> = </span><span class="hl-7">makeWASocket</span><span class="hl-1">({</span><br/><span class="hl-1">        </span><span class="hl-8">// can provide additional config here</span><br/><span class="hl-1">        </span><span class="hl-0">auth:</span><span class="hl-1"> </span><span class="hl-0">state</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-0">printQRInTerminal:</span><span class="hl-1"> </span><span class="hl-5">true</span><br/><span class="hl-1">    })</span><br/><span class="hl-1">    </span><span class="hl-0">sock</span><span class="hl-1">.</span><span class="hl-0">ev</span><span class="hl-1">.</span><span class="hl-7">on</span><span class="hl-1">(</span><span class="hl-4">&#39;connection.update&#39;</span><span class="hl-1">, (</span><span class="hl-0">update</span><span class="hl-1">) </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-5">const</span><span class="hl-1"> { </span><span class="hl-6">connection</span><span class="hl-1">, </span><span class="hl-6">lastDisconnect</span><span class="hl-1"> } = </span><span class="hl-0">update</span><br/><span class="hl-1">        </span><span class="hl-3">if</span><span class="hl-1">(</span><span class="hl-0">connection</span><span class="hl-1"> === </span><span class="hl-4">&#39;close&#39;</span><span class="hl-1">) {</span><br/><span class="hl-1">            </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">shouldReconnect</span><span class="hl-1"> = (</span><span class="hl-0">lastDisconnect</span><span class="hl-1">.</span><span class="hl-0">error</span><span class="hl-1"> </span><span class="hl-3">as</span><span class="hl-1"> </span><span class="hl-10">Boom</span><span class="hl-1">)?.</span><span class="hl-0">output</span><span class="hl-1">?.</span><span class="hl-0">statusCode</span><span class="hl-1"> !== </span><span class="hl-0">DisconnectReason</span><span class="hl-1">.</span><span class="hl-0">loggedOut</span><br/><span class="hl-1">            </span><span class="hl-0">console</span><span class="hl-1">.</span><span class="hl-7">log</span><span class="hl-1">(</span><span class="hl-4">&#39;connection closed due to &#39;</span><span class="hl-1">, </span><span class="hl-0">lastDisconnect</span><span class="hl-1">.</span><span class="hl-0">error</span><span class="hl-1">, </span><span class="hl-4">&#39;, reconnecting &#39;</span><span class="hl-1">, </span><span class="hl-0">shouldReconnect</span><span class="hl-1">)</span><br/><span class="hl-1">            </span><span class="hl-8">// reconnect if not logged out</span><br/><span class="hl-1">            </span><span class="hl-3">if</span><span class="hl-1">(</span><span class="hl-0">shouldReconnect</span><span class="hl-1">) {</span><br/><span class="hl-1">                </span><span class="hl-7">connectToWhatsApp</span><span class="hl-1">()</span><br/><span class="hl-1">            }</span><br/><span class="hl-1">        } </span><span class="hl-3">else</span><span class="hl-1"> </span><span class="hl-3">if</span><span class="hl-1">(</span><span class="hl-0">connection</span><span class="hl-1"> === </span><span class="hl-4">&#39;open&#39;</span><span class="hl-1">) {</span><br/><span class="hl-1">            </span><span class="hl-0">console</span><span class="hl-1">.</span><span class="hl-7">log</span><span class="hl-1">(</span><span class="hl-4">&#39;opened connection&#39;</span><span class="hl-1">)</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">    })</span><br/><span class="hl-1">    </span><span class="hl-0">sock</span><span class="hl-1">.</span><span class="hl-0">ev</span><span class="hl-1">.</span><span class="hl-7">on</span><span class="hl-1">(</span><span class="hl-4">&#39;messages.upsert&#39;</span><span class="hl-1">, </span><span class="hl-0">event</span><span class="hl-1"> </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">m</span><span class="hl-1"> </span><span class="hl-5">of</span><span class="hl-1"> </span><span class="hl-0">event</span><span class="hl-1">.</span><span class="hl-0">messages</span><span class="hl-1">) {</span><br/><span class="hl-1">            </span><span class="hl-0">console</span><span class="hl-1">.</span><span class="hl-7">log</span><span class="hl-1">(</span><span class="hl-6">JSON</span><span class="hl-1">.</span><span class="hl-7">stringify</span><span class="hl-1">(</span><span class="hl-0">m</span><span class="hl-1">, </span><span class="hl-5">undefined</span><span class="hl-1">, </span><span class="hl-9">2</span><span class="hl-1">))</span><br/><br/><span class="hl-1">            </span><span class="hl-0">console</span><span class="hl-1">.</span><span class="hl-7">log</span><span class="hl-1">(</span><span class="hl-4">&#39;replying to&#39;</span><span class="hl-1">, </span><span class="hl-0">m</span><span class="hl-1">.</span><span class="hl-0">key</span><span class="hl-1">.</span><span class="hl-0">remoteJid</span><span class="hl-1">)</span><br/><span class="hl-1">            </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sock</span><span class="hl-1">.</span><span class="hl-7">sendMessage</span><span class="hl-1">(</span><span class="hl-0">m</span><span class="hl-1">.</span><span class="hl-0">key</span><span class="hl-1">.</span><span class="hl-0">remoteJid</span><span class="hl-1">!, { </span><span class="hl-0">text:</span><span class="hl-1"> </span><span class="hl-4">&#39;Hello Word&#39;</span><span class="hl-1"> })</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">    })</span><br/><br/><span class="hl-1">    </span><span class="hl-8">// to storage creds (session info) when it updates</span><br/><span class="hl-1">    </span><span class="hl-0">sock</span><span class="hl-1">.</span><span class="hl-0">ev</span><span class="hl-1">.</span><span class="hl-7">on</span><span class="hl-1">(</span><span class="hl-4">&#39;creds.update&#39;</span><span class="hl-1">, </span><span class="hl-0">saveCreds</span><span class="hl-1">)</span><br/><span class="hl-1">}</span><br/><span class="hl-8">// run in main file</span><br/><span class="hl-7">connectToWhatsApp</span><span class="hl-1">()</span>
-</code><button>Copy</button></pre>
-<blockquote>
-<p>[!IMPORTANT]
-In <code>messages.upsert</code> it&#39;s recommended to use a loop like <code>for (const message of event.messages)</code> to handle all messages in array</p>
-</blockquote>
-<a id="md:decrypt-poll-votes" class="tsd-anchor"></a><h3><a href="#md:decrypt-poll-votes">Decrypt Poll Votes</a></h3><ul>
-<li>By default poll votes are encrypted and handled in <code>messages.update</code></li>
-<li>That&#39;s a simple example</li>
-</ul>
-<pre><code class="language-ts"><span class="hl-0">sock</span><span class="hl-1">.</span><span class="hl-0">ev</span><span class="hl-1">.</span><span class="hl-7">on</span><span class="hl-1">(</span><span class="hl-4">&#39;messages.update&#39;</span><span class="hl-1">, </span><span class="hl-0">event</span><span class="hl-1"> </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-3">for</span><span class="hl-1">(</span><span class="hl-5">const</span><span class="hl-1"> { </span><span class="hl-6">key</span><span class="hl-1">, </span><span class="hl-6">update</span><span class="hl-1"> } </span><span class="hl-5">of</span><span class="hl-1"> </span><span class="hl-0">event</span><span class="hl-1">) {</span><br/><span class="hl-1">        </span><span class="hl-3">if</span><span class="hl-1">(</span><span class="hl-0">update</span><span class="hl-1">.</span><span class="hl-0">pollUpdates</span><span class="hl-1">) {</span><br/><span class="hl-1">            </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">pollCreation</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">getMessage</span><span class="hl-1">(</span><span class="hl-0">key</span><span class="hl-1">)</span><br/><span class="hl-1">            </span><span class="hl-3">if</span><span class="hl-1">(</span><span class="hl-0">pollCreation</span><span class="hl-1">) {</span><br/><span class="hl-1">                </span><span class="hl-0">console</span><span class="hl-1">.</span><span class="hl-7">log</span><span class="hl-1">(</span><br/><span class="hl-1">                    </span><span class="hl-4">&#39;got poll update, aggregation: &#39;</span><span class="hl-1">,</span><br/><span class="hl-1">                    </span><span class="hl-7">getAggregateVotesInPollMessage</span><span class="hl-1">({</span><br/><span class="hl-1">                        </span><span class="hl-0">message:</span><span class="hl-1"> </span><span class="hl-0">pollCreation</span><span class="hl-1">,</span><br/><span class="hl-1">                        </span><span class="hl-0">pollUpdates:</span><span class="hl-1"> </span><span class="hl-0">update</span><span class="hl-1">.</span><span class="hl-0">pollUpdates</span><span class="hl-1">,</span><br/><span class="hl-1">                    })</span><br/><span class="hl-1">                )</span><br/><span class="hl-1">            }</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">})</span>
-</code><button>Copy</button></pre>
-<ul>
-<li><code>getMessage</code> is a <a href="#implementing-a-data-store">store</a> implementation (in your end)</li>
-</ul>
-<a id="md:summary-of-events-on-first-connection" class="tsd-anchor"></a><h3><a href="#md:summary-of-events-on-first-connection">Summary of Events on First Connection</a></h3><ol>
-<li>When you connect first time, <code>connection.update</code> will be fired requesting you to restart sock</li>
-<li>Then, history messages will be received in <code>messaging-history.set</code></li>
-</ol>
-<a id="md:implementing-a-data-store" class="tsd-anchor"></a><h2><a href="#md:implementing-a-data-store">Implementing a Data Store</a></h2><ul>
-<li>Baileys does not come with a defacto storage for chats, contacts, or messages. However, a simple in-memory implementation has been provided. The store listens for chat updates, new messages, message updates, etc., to always have an up-to-date version of the data.</li>
-</ul>
-<blockquote>
-<p>[!IMPORTANT]
-I highly recommend building your own data store, as storing someone&#39;s entire chat history in memory is a terrible waste of RAM.</p>
-</blockquote>
-<p>It can be used as follows:</p>
-<pre><code class="language-ts"><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-0">makeWASocket</span><span class="hl-1">, { </span><span class="hl-0">makeInMemoryStore</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-4">&#39;baileys&#39;</span><br/><span class="hl-8">// the store maintains the data of the WA connection in memory</span><br/><span class="hl-8">// can be written out to a file &amp; read from it</span><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">store</span><span class="hl-1"> = </span><span class="hl-7">makeInMemoryStore</span><span class="hl-1">({ })</span><br/><span class="hl-8">// can be read from a file</span><br/><span class="hl-0">store</span><span class="hl-1">.</span><span class="hl-7">readFromFile</span><span class="hl-1">(</span><span class="hl-4">&#39;./baileys_store.json&#39;</span><span class="hl-1">)</span><br/><span class="hl-8">// saves the state to a file every 10s</span><br/><span class="hl-7">setInterval</span><span class="hl-1">(() </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">store</span><span class="hl-1">.</span><span class="hl-7">writeToFile</span><span class="hl-1">(</span><span class="hl-4">&#39;./baileys_store.json&#39;</span><span class="hl-1">)</span><br/><span class="hl-1">}, </span><span class="hl-9">10_000</span><span class="hl-1">)</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">sock</span><span class="hl-1"> = </span><span class="hl-7">makeWASocket</span><span class="hl-1">({ })</span><br/><span class="hl-8">// will listen from this socket</span><br/><span class="hl-8">// the store can listen from a new socket once the current socket outlives its lifetime</span><br/><span class="hl-0">store</span><span class="hl-1">.</span><span class="hl-7">bind</span><span class="hl-1">(</span><span class="hl-0">sock</span><span class="hl-1">.</span><span class="hl-0">ev</span><span class="hl-1">)</span><br/><br/><span class="hl-0">sock</span><span class="hl-1">.</span><span class="hl-0">ev</span><span class="hl-1">.</span><span class="hl-7">on</span><span class="hl-1">(</span><span class="hl-4">&#39;chats.upsert&#39;</span><span class="hl-1">, () </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-8">// can use &#39;store.chats&#39; however you want, even after the socket dies out</span><br/><span class="hl-1">    </span><span class="hl-8">// &#39;chats&#39; =&gt; a KeyedDB instance</span><br/><span class="hl-1">    </span><span class="hl-0">console</span><span class="hl-1">.</span><span class="hl-7">log</span><span class="hl-1">(</span><span class="hl-4">&#39;got chats&#39;</span><span class="hl-1">, </span><span class="hl-0">store</span><span class="hl-1">.</span><span class="hl-0">chats</span><span class="hl-1">.</span><span class="hl-7">all</span><span class="hl-1">())</span><br/><span class="hl-1">})</span><br/><br/><span class="hl-0">sock</span><span class="hl-1">.</span><span class="hl-0">ev</span><span class="hl-1">.</span><span class="hl-7">on</span><span class="hl-1">(</span><span class="hl-4">&#39;contacts.upsert&#39;</span><span class="hl-1">, () </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">console</span><span class="hl-1">.</span><span class="hl-7">log</span><span class="hl-1">(</span><span class="hl-4">&#39;got contacts&#39;</span><span class="hl-1">, </span><span class="hl-0">Object</span><span class="hl-1">.</span><span class="hl-7">values</span><span class="hl-1">(</span><span class="hl-0">store</span><span class="hl-1">.</span><span class="hl-0">contacts</span><span class="hl-1">))</span><br/><span class="hl-1">})</span><br/>
-</code><button>Copy</button></pre>
-<p>The store also provides some simple functions such as <code>loadMessages</code> that utilize the store to speed up data retrieval.</p>
-<a id="md:whatsapp-ids-explain" class="tsd-anchor"></a><h2><a href="#md:whatsapp-ids-explain">Whatsapp IDs Explain</a></h2><ul>
-<li><code>id</code> is the WhatsApp ID, called <code>jid</code> too, of the person or group you&#39;re sending the message to. <ul>
-<li>It must be in the format <code>[country code][phone number]@s.whatsapp.net</code><ul>
-<li>Example for people: <code>+19999999999@s.whatsapp.net</code>. </li>
-<li>For groups, it must be in the format <code>123456789-123345@g.us</code>.</li>
-</ul>
-</li>
-<li>For broadcast lists, it&#39;s <code>[timestamp of creation]@broadcast</code>.</li>
-<li>For stories, the ID is <code>status@broadcast</code>.</li>
-</ul>
-</li>
-</ul>
-<a id="md:utility-functions" class="tsd-anchor"></a><h2><a href="#md:utility-functions">Utility Functions</a></h2><ul>
-<li><code>getContentType</code>, returns the content type for any message</li>
-<li><code>getDevice</code>, returns the device from message</li>
-<li><code>makeCacheableSignalKeyStore</code>, make auth store more fast</li>
-<li><code>downloadContentFromMessage</code>, download content from any message</li>
-</ul>
-<a id="md:sending-messages" class="tsd-anchor"></a><h2><a href="#md:sending-messages">Sending Messages</a></h2><ul>
-<li><p>Send all types of messages with a single function</p>
-<ul>
-<li><strong><a href="https://baileys.whiskeysockets.io/types/AnyMessageContent.html">Here</a> you can see all message contents supported, like text message</strong></li>
-<li><strong><a href="https://baileys.whiskeysockets.io/types/MiscMessageGenerationOptions.html">Here</a> you can see all options supported, like quote message</strong></li>
-</ul>
-<pre><code class="language-ts"><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">jid</span><span class="hl-1">: </span><span class="hl-10">string</span><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">content</span><span class="hl-1">: </span><span class="hl-10">AnyMessageContent</span><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">options</span><span class="hl-1">: </span><span class="hl-10">MiscMessageGenerationOptions</span><br/><br/><span class="hl-0">sock</span><span class="hl-1">.</span><span class="hl-7">sendMessage</span><span class="hl-1">(</span><span class="hl-0">jid</span><span class="hl-1">, </span><span class="hl-0">content</span><span class="hl-1">, </span><span class="hl-0">options</span><span class="hl-1">)</span>
-</code><button>Copy</button></pre>
-</li>
-</ul>
-<a id="md:non-media-messages" class="tsd-anchor"></a><h3><a href="#md:non-media-messages">Non-Media Messages</a></h3><a id="md:text-message" class="tsd-anchor"></a><h4><a href="#md:text-message">Text Message</a></h4><pre><code class="language-ts"><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sock</span><span class="hl-1">.</span><span class="hl-7">sendMessage</span><span class="hl-1">(</span><span class="hl-0">jid</span><span class="hl-1">, { </span><span class="hl-0">text:</span><span class="hl-1"> </span><span class="hl-4">&#39;hello word&#39;</span><span class="hl-1"> })</span>
-</code><button>Copy</button></pre>
-<a id="md:quote-message-works-with-all-types" class="tsd-anchor"></a><h4><a href="#md:quote-message-works-with-all-types">Quote Message (works with all types)</a></h4><pre><code class="language-ts"><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sock</span><span class="hl-1">.</span><span class="hl-7">sendMessage</span><span class="hl-1">(</span><span class="hl-0">jid</span><span class="hl-1">, { </span><span class="hl-0">text:</span><span class="hl-1"> </span><span class="hl-4">&#39;hello word&#39;</span><span class="hl-1"> }, { </span><span class="hl-0">quoted:</span><span class="hl-1"> </span><span class="hl-0">message</span><span class="hl-1"> })</span>
-</code><button>Copy</button></pre>
-<a id="md:mention-user-works-with-most-types" class="tsd-anchor"></a><h4><a href="#md:mention-user-works-with-most-types">Mention User (works with most types)</a></h4><ul>
-<li></li>
-</ul>
+<p>A Websockets-based TypeScript library for interacting with the WhatsApp Web API.</p>
+<a id="md:usage" class="tsd-anchor"></a><h2><a href="#md:usage">Usage</a></h2><p>All major documentation is hosted at the guide <a href="https://guide.whiskeysockets.io">https://guide.whiskeysockets.io</a>, TypeDoc available at <a href="https://baileys.whiskeysockets.io">https://baileys.whiskeysockets.io</a></p>
+<a id="md:disclaimer" class="tsd-anchor"></a><h1><a href="#md:disclaimer">Disclaimer</a></h1><p>This project is not affiliated, associated, authorized, endorsed by, or in any way officially connected with WhatsApp or any of its subsidiaries or its affiliates.
+The official WhatsApp website can be found at whatsapp.com. &quot;WhatsApp&quot; as well as related names, marks, emblems and images are registered trademarks of their respective owners.</p>
+<p>The maintainers of Baileys do not in any way condone the use of this application in practices that violate the Terms of Service of WhatsApp. The maintainers of this application call upon the personal responsibility of its users to use this application in a fair way, as it is intended to be used.
+Use at your own discretion. Do not spam people with this. We discourage any stalkerware, bulk or automated messaging usage.</p>
+<a id="md:license" class="tsd-anchor"></a><h1><a href="#md:license">License</a></h1><p>Copyright (c) 2023 Rajeh Taher/WhiskeySockets</p>
+<p>Licensed under the MIT License:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the &quot;Software&quot;), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:</p>
+<p>The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.</p>
+<p>THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</p>
+<p>Thus, the maintainers of the project can&#39;t be held liable for any potential misuse of this project.</p>
 </div></div>
 <div class="col-sidebar">
 <div class="page-menu">
@@ -373,50 +62,9 @@ I highly recommend building your own data store, as storing someone&#39;s entire
 <ul>
 <li>
 <ul>
-<li><a href="#md:baileys---typescriptjavascript-whatsapp-web-api"><span>Baileys -<wbr/> <wbr/>Typescript/<wbr/>Javascript <wbr/>Whats<wbr/>App <wbr/>Web API</span></a></li>
-<li>
-<ul>
-<li><a href="#md:important-note"><span>Important <wbr/>Note</span></a></li>
-<li>
-<ul>
-<li><a href="#md:liability-and-license-notice"><span>Liability and <wbr/>License <wbr/>Notice</span></a></li></ul></li>
-<li><a href="#md:example"><span>Example</span></a></li>
-<li><a href="#md:install"><span>Install</span></a></li></ul></li>
-<li><a href="#md:links"><span>Links</span></a></li>
-<li><a href="#md:index"><span>Index</span></a></li>
-<li>
-<ul>
-<li><a href="#md:connecting-account"><span>Connecting <wbr/>Account</span></a></li>
-<li>
-<ul>
-<li><a href="#md:starting-socket-with-qr-code"><span>Starting socket with QR-<wbr/>CODE</span></a></li>
-<li><a href="#md:starting-socket-with-pairing-code"><span>Starting socket with <wbr/>Pairing <wbr/>Code</span></a></li>
-<li><a href="#md:receive-full-history"><span>Receive <wbr/>Full <wbr/>History</span></a></li></ul></li>
-<li><a href="#md:important-notes-about-socket-config"><span>Important <wbr/>Notes <wbr/>About <wbr/>Socket <wbr/>Config</span></a></li>
-<li>
-<ul>
-<li><a href="#md:caching-group-metadata-recommended"><span>Caching <wbr/>Group <wbr/>Metadata (<wbr/>Recommended)</span></a></li>
-<li><a href="#md:improve-retry-system-amp-decrypt-poll-votes"><span>Improve <wbr/>Retry <wbr/>System &amp; <wbr/>Decrypt <wbr/>Poll <wbr/>Votes</span></a></li>
-<li><a href="#md:receive-notifications-in-whatsapp-app"><span>Receive <wbr/>Notifications in <wbr/>Whatsapp <wbr/>App</span></a></li></ul></li>
-<li><a href="#md:saving-amp-restoring-sessions"><span>Saving &amp; <wbr/>Restoring <wbr/>Sessions</span></a></li>
-<li><a href="#md:handling-events"><span>Handling <wbr/>Events</span></a></li>
-<li>
-<ul>
-<li><a href="#md:example-to-start"><span>Example to <wbr/>Start</span></a></li>
-<li><a href="#md:decrypt-poll-votes"><span>Decrypt <wbr/>Poll <wbr/>Votes</span></a></li>
-<li><a href="#md:summary-of-events-on-first-connection"><span>Summary of <wbr/>Events on <wbr/>First <wbr/>Connection</span></a></li></ul></li>
-<li><a href="#md:implementing-a-data-store"><span>Implementing a <wbr/>Data <wbr/>Store</span></a></li>
-<li><a href="#md:whatsapp-ids-explain"><span>Whatsapp IDs <wbr/>Explain</span></a></li>
-<li><a href="#md:utility-functions"><span>Utility <wbr/>Functions</span></a></li>
-<li><a href="#md:sending-messages"><span>Sending <wbr/>Messages</span></a></li>
-<li>
-<ul>
-<li><a href="#md:non-media-messages"><span>Non-<wbr/>Media <wbr/>Messages</span></a></li>
-<li>
-<ul>
-<li><a href="#md:text-message"><span>Text <wbr/>Message</span></a></li>
-<li><a href="#md:quote-message-works-with-all-types"><span>Quote <wbr/>Message (works with all types)</span></a></li>
-<li><a href="#md:mention-user-works-with-most-types"><span>Mention <wbr/>User (works with most types)</span></a></li></ul></li></ul></li></ul></li></ul></li></ul></div></details></div>
+<li><a href="#md:usage"><span>Usage</span></a></li>
+<li><a href="#md:disclaimer"><span>Disclaimer</span></a></li>
+<li><a href="#md:license"><span>License</span></a></li></ul></li></ul></div></details></div>
 <div class="site-menu">
 <nav class="tsd-navigation"><a href="modules.html" class="current"><svg class="tsd-kind-icon" viewBox="0 0 24 24"><g id="icon-4"><rect fill="var(--color-icon-background)" stroke="var(--color-ts-namespace)" stroke-width="1.5" x="1" y="1" width="22" height="22" rx="6"></rect><path d="M9.33 16V7.24H10.77L13.446 14.74C13.43 14.54 13.41 14.296 13.386 14.008C13.37 13.712 13.354 13.404 13.338 13.084C13.33 12.756 13.326 12.448 13.326 12.16V7.24H14.37V16H12.93L10.266 8.5C10.282 8.692 10.298 8.936 10.314 9.232C10.33 9.52 10.342 9.828 10.35 10.156C10.366 10.476 10.374 10.784 10.374 11.08V16H9.33Z" fill="var(--color-text)"></path></g></svg><span>baileys</span></a>
 <ul class="tsd-small-nested-navigation">
