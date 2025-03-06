@@ -1,10 +1,11 @@
+import { test } from 'node:test';
+import assert from 'node:assert';
 import { makeLibSignalRepository } from '../Signal/libsignal'
 import { SignalAuthState, SignalDataTypeMap } from '../Types'
 import { Curve, generateRegistrationId, generateSignalPubKey, signedKeyPair } from '../Utils'
 
-describe('Signal Tests', () => {
-
-	it('should correctly encrypt/decrypt 1 message', async() => {
+test('Signal Tests', async (t) => {
+	await t.test('should correctly encrypt/decrypt 1 message', async() => {
 		const user1 = makeUser()
 		const user2 = makeUser()
 
@@ -20,10 +21,10 @@ describe('Signal Tests', () => {
 			{ jid: user1.jid, ...result }
 		)
 
-		expect(dec).toEqual(msg)
+		assert.deepStrictEqual(dec, msg)
 	})
 
-	it('should correctly override a session', async() => {
+	await t.test('should correctly override a session', async() => {
 		const user1 = makeUser()
 		const user2 = makeUser()
 
@@ -40,11 +41,11 @@ describe('Signal Tests', () => {
 				{ jid: user1.jid, ...result }
 			)
 
-			expect(dec).toEqual(msg)
+			assert.deepStrictEqual(dec, msg)
 		}
 	})
 
-	it('should correctly encrypt/decrypt multiple messages', async() => {
+	await t.test('should correctly encrypt/decrypt multiple messages', async() => {
 		const user1 = makeUser()
 		const user2 = makeUser()
 
@@ -61,11 +62,11 @@ describe('Signal Tests', () => {
 				{ jid: user1.jid, ...result }
 			)
 
-			expect(dec).toEqual(msg)
+			assert.deepStrictEqual(dec, msg)
 		}
 	})
 
-	it('should encrypt/decrypt messages from group', async() => {
+	await t.test('should encrypt/decrypt messages from group', async() => {
 		const groupId = '123456@g.us'
 		const participants = [...Array(5)].map(makeUser)
 
@@ -102,7 +103,7 @@ describe('Signal Tests', () => {
 					msg: enc.ciphertext
 				}
 			)
-			expect(dec).toEqual(msg)
+			assert.deepStrictEqual(dec, msg)
 		}
 	})
 })

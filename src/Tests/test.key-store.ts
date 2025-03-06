@@ -1,10 +1,12 @@
+import { test } from 'node:test';
+import assert from 'node:assert';
 import { addTransactionCapability, delay } from '../Utils'
 import logger from '../Utils/logger'
 import { makeMockSignalKeyStore } from './utils'
 
 logger.level = 'trace'
 
-describe('Key Store w Transaction Tests', () => {
+test('Key Store w Transaction Tests', async (t) => {
 
 	const rawStore = makeMockSignalKeyStore()
 	const store = addTransactionCapability(
@@ -16,7 +18,7 @@ describe('Key Store w Transaction Tests', () => {
 		}
 	)
 
-	it('should use transaction cache when mutated', async() => {
+	await t.test('should use transaction cache when mutated', async() => {
 		const key = '123'
 		const value = new Uint8Array(1)
 		const ogGet = rawStore.get
@@ -29,31 +31,33 @@ describe('Key Store w Transaction Tests', () => {
 				}
 
 				const { [key]: stored } = await store.get('session', [key])
-				expect(stored).toEqual(new Uint8Array(1))
+				assert.deepStrictEqual(stored, new Uint8Array(1))
 			}
 		)
 
 		rawStore.get = ogGet
 	})
 
-	it('should not commit a failed transaction', async() => {
+	await t.test('should not commit a failed transaction', async() => {
 		const key = 'abcd'
-		await expect(
+
+		await assert.rejects(
 			store.transaction(
 				async() => {
 					await store.set({ 'session': { [key]: new Uint8Array(1) } })
 					throw new Error('fail')
 				}
-			)
-		).rejects.toThrowError(
-			'fail'
+			),
+			{
+				message: 'fail'
+			}
 		)
 
 		const { [key]: stored } = await store.get('session', [key])
-		expect(stored).toBeUndefined()
+		assert.equal(stored, undefined)
 	})
 
-	it('should handle overlapping transactions', async() => {
+	await t.test('should handle overlapping transactions', async() => {
 		// promise to let transaction 2
 		// know that transaction 1 has started
 		let promiseResolve: () => void
@@ -80,13 +84,13 @@ describe('Key Store w Transaction Tests', () => {
 				await promise
 				await delay(5)
 
-				expect(store.isInTransaction()).toBe(true)
+				assert.deepStrictEqual(store.isInTransaction(), true)
 			}
 		)
 
-		expect(store.isInTransaction()).toBe(false)
+		assert.deepStrictEqual(store.isInTransaction(), false)
 		// ensure that the transaction were committed
 		const { ['1']: stored } = await store.get('session', ['1'])
-		expect(stored).toEqual(new Uint8Array(1))
+		assert.deepStrictEqual(stored, new Uint8Array(1))
 	})
 })
