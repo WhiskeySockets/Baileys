@@ -18,7 +18,7 @@ The maintainers of Baileys do not in any way condone the use of this application
 Use at your own discretion. Do not spam people with this. We discourage any stalkerware, bulk or automated messaging usage.
 
 # License
-Copyright (c) 2023 Rajeh Taher/WhiskeySockets
+Copyright (c) 2025 Rajeh Taher/WhiskeySockets
 
 Licensed under the MIT License:
 Permission is hereby granted, free of charge, to any person obtaining a copy
