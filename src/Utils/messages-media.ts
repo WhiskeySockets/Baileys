@@ -3,7 +3,7 @@ import axios, { AxiosRequestConfig } from 'axios'
 import { exec } from 'child_process'
 import * as Crypto from 'crypto'
 import { once } from 'events'
-import { createReadStream, createWriteStream, promises as fs, WriteStream } from 'fs'
+import { existsSync, mkdirSync, createReadStream, createWriteStream, promises as fs, WriteStream } from 'fs'
 import type { IAudioMetadata } from 'music-metadata'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -17,7 +17,16 @@ import { aesDecryptGCM, aesEncryptGCM, hkdf } from './crypto'
 import { generateMessageID } from './generics'
 import { ILogger } from './logger'
 
-const getTmpFilesDirectory = () => tmpdir()
+const getTmpFilesDirectory = () => './temp/'
+const folderTemp = './temp'
+
+try {
+        if(!existsSync(folderTemp)) {
+                mkdirSync(folderTemp)
+        }
+} catch (err) {
+        console.error(err)
+}
 
 const getImageProcessingLibrary = async() => {
 	const [_jimp, sharp] = await Promise.all([
