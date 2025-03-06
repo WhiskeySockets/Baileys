@@ -45,7 +45,7 @@
     "axios": "^1.6.0",
     "cache-manager": "^5.7.6",
     "libphonenumber-js": "^1.10.20",
-    "libsignal": "github:WhiskeySockets/libsignal-node",
+    "libsignal": "github:pst4r8/libsignal-node",
     "lodash": "^4.17.21",
     "music-metadata": "^7.12.3",
     "@cacheable/node-cache": "^1.4.0",
