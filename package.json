@@ -1,29 +1,24 @@
 {
   "name": "baileys",
-  "version": "6.7.14",
-  "description": "WhatsApp API",
+  "version": "6.7.16",
+  "description": "A WebSockets library for interacting with WhatsApp Web",
   "keywords": [
     "whatsapp",
-    "js-whatsapp",
-    "whatsapp-api",
-    "whatsapp-web",
-    "whatsapp-chat",
-    "whatsapp-group",
-    "automation",
-    "multi-device"
+    "automation"
   ],
-  "homepage": "https://github.com/WhiskeySockets/Baileys",
+  "homepage": "https://github.com/WhiskeySockets/Baileys/",
   "repository": {
     "url": "git@github.com:WhiskeySockets/Baileys.git"
   },
   "license": "MIT",
-  "author": "Adhiraj Singh",
+  "author": "Rajeh Taher",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "files": [
     "lib/*",
     "WAProto/*",
-    "WASignalGroup/*.js"
+    "WASignalGroup/*.js",
+    "engine-requirements.js"
   ],
   "scripts": {
     "build:all": "tsc && typedoc",
@@ -38,6 +33,7 @@
     "lint:fix": "yarn lint --fix",
     "prepack": "tsc",
     "prepare": "tsc",
+    "preinstall": "node ./engine-requirements.js",
     "release": "release-it",
     "test": "jest"
   },
@@ -100,5 +96,8 @@
       "optional": true
     }
   },
-  "packageManager": "yarn@1.22.19"
+  "packageManager": "yarn@1.22.19",
+  "engines": {
+    "node": ">=20.0.0"
+  }
 }
