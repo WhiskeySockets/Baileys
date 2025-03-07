@@ -1,4 +1,4 @@
-import * as libsignal from 'libsignal'
+import * as libsignal from '../../node_modules_custom/libsignal_custom'
 import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage, SenderKeyName, SenderKeyRecord } from '../../WASignalGroup'
 import { SignalAuthState } from '../Types'
 import { SignalRepository } from '../Types/Signal'
@@ -110,7 +110,7 @@ function signalStorage({ creds, keys }: SignalAuthState) {
 				}
 			}
 		},
-		removePreKey: (id: number) => keys.set({ 'pre-key': { [id]: null } }),
+		removePreKey: async(id: number) => await keys.set({ 'pre-key': { [id]: null } }), //CF
 		loadSignedPreKey: () => {
 			const key = creds.signedPreKey
 			return {

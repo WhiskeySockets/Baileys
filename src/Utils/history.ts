@@ -1,6 +1,8 @@
-import { AxiosRequestConfig } from 'axios'
-import { promisify } from 'util'
-import { inflate } from 'zlib'
+/*CF import { AxiosRequestConfig } from 'axios' */
+import type { AxiosRequestConfig } from 'axios' //CF
+/*CF import { promisify } from 'util' */
+/*CF import { inflate } from 'zlib' */
+import { inflate } from 'pako' //CF
 import { proto } from '../../WAProto'
 import { Chat, Contact, WAMessageStubType } from '../Types'
 import { isJidUser } from '../WABinary'
@@ -8,7 +10,7 @@ import { toNumber } from './generics'
 import { normalizeMessageContent } from './messages'
 import { downloadContentFromMessage } from './messages-media'
 
-const inflatePromise = promisify(inflate)
+/*CF const inflatePromise = promisify(inflate) */
 
 export const downloadHistory = async(
 	msg: proto.Message.IHistorySyncNotification,
@@ -23,7 +25,7 @@ export const downloadHistory = async(
 	let buffer = Buffer.concat(bufferArray)
 
 	// decompress buffer
-	buffer = await inflatePromise(buffer)
+	buffer = inflate(buffer) //CF
 
 	const syncData = proto.HistorySync.decode(buffer)
 	return syncData

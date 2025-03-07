@@ -1,4 +1,4 @@
-import WebSocket from 'ws'
+//CF import WebSocket from 'ws'
 import { DEFAULT_ORIGIN } from '../../Defaults'
 import { AbstractSocketClient } from './types'
 
@@ -24,7 +24,7 @@ export class WebSocketClient extends AbstractSocketClient {
 			return
 		}
 
-		this.socket = new WebSocket(this.url, {
+		/*CF this.socket = new WebSocket(this.url, {
 			origin: DEFAULT_ORIGIN,
 			headers: this.config.options?.headers as {},
 			handshakeTimeout: this.config.connectTimeoutMs,
@@ -38,7 +38,40 @@ export class WebSocketClient extends AbstractSocketClient {
 
 		for(const event of events) {
 			this.socket?.on(event, (...args: any[]) => this.emit(event, ...args))
+		} */
+
+		//CF \/
+		const Const_response = await fetch(this.url.href.replace('wss://', 'https://'), {
+			headers: {
+				'origin': DEFAULT_ORIGIN,
+				'Upgrade': 'websocket'
+			}
+		}) as Response & { webSocket: WebSocket }
+
+		this.socket = Const_response?.webSocket
+		if (!this.socket) {
+			console.log("ERRO [!this.socket] Error connecting to WhatsApp websocket")
 		}
+
+		this.socket.addEventListener('open', (event) => this.emit('open', event))
+		this.socket.addEventListener('message', (event) => {
+			let Let_eventData = event.data
+			if (Let_eventData instanceof ArrayBuffer) {
+				Let_eventData = Buffer.from(Let_eventData)
+			}
+			this.emit('message', Let_eventData)
+		})
+		this.socket.addEventListener('error', (event) => this.emit('error', event))
+		this.socket.addEventListener('close', (event) => this.emit('close', event))
+
+		if (this.socket.readyState === WebSocket.OPEN) {
+			(this.socket as WebSocket & {accept(): void}).accept()
+			this.emit('open')
+		}
+		else {
+			this.emit('error', new Error('WebSocket connection failed'))
+		}
+		//CF /\
 	}
 
 	async close(): Promise<void> {
@@ -49,8 +82,8 @@ export class WebSocketClient extends AbstractSocketClient {
 		this.socket.close()
 		this.socket = null
 	}
-	send(str: string | Uint8Array, cb?: (err?: Error) => void): boolean {
-		this.socket?.send(str, cb)
+	send(str: string | Uint8Array/*CF , cb?: (err?: Error) => void */): boolean {
+		this.socket?.send(str/*CF , cb */)
 
 		return Boolean(this.socket)
 	}

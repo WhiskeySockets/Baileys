@@ -1,19 +1,30 @@
-import { promisify } from 'util'
-import { inflate } from 'zlib'
+//CF import { promisify } from 'util'
+//CF import { inflate } from 'zlib'
+import { inflate } from 'pako' //CF
 import * as constants from './constants'
 import { jidEncode } from './jid-utils'
 import type { BinaryNode, BinaryNodeCodingOptions } from './types'
 
-const inflatePromise = promisify(inflate)
+/*CF const inflatePromise = promisify(inflate) */
 
 export const decompressingIfRequired = async(buffer: Buffer) => {
-	if(2 & buffer.readUInt8()) {
+	/*CF if(2 & buffer.readUInt8()) {
 		buffer = await inflatePromise(buffer.slice(1))
 	} else { // nodes with no compression have a 0x00 prefix, we remove that
 		buffer = buffer.slice(1)
 	}
 
+	return buffer */
+
+	//CF \/
+	if (2 & buffer.readUInt8()) {
+		buffer = Buffer.from(inflate(buffer.slice(1)))
+	} else {
+		buffer = buffer.slice(1)
+	}
+
 	return buffer
+	//CF /\
 }
 
 export const decodeDecompressedBinaryNode = (

@@ -1,6 +1,6 @@
 import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
-import { URL } from 'url'
+//CF import { URL } from 'url'
 import { promisify } from 'util'
 import { proto } from '../../WAProto'
 import {
@@ -112,12 +112,13 @@ export const makeSocket = (config: SocketConfig) => {
 			throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
 		}
 
-		const bytes = noise.encodeFrame(data)
+		const bytes = await noise.encodeFrame(data) //CF
 		await promiseTimeout<void>(
 			connectTimeoutMs,
 			async(resolve, reject) => {
 				try {
-					await sendPromise.call(ws, bytes)
+					/*CF await sendPromise.call(ws, bytes) */
+					ws.send(bytes) //CF
 					resolve()
 				} catch(error) {
 					reject(error)
@@ -249,7 +250,7 @@ export const makeSocket = (config: SocketConfig) => {
 			logger.info({ node }, 'logging in...')
 		}
 
-		const payloadEnc = noise.encrypt(
+		const payloadEnc = await noise.encrypt( //CF
 			proto.ClientPayload.encode(node).finish()
 		)
 		await sendRawMessage(
@@ -542,7 +543,7 @@ export const makeSocket = (config: SocketConfig) => {
 		const salt = randomBytes(32)
 		const randomIv = randomBytes(16)
 		const key = await derivePairingCodeKey(authState.creds.pairingCode!, salt)
-		const ciphered = aesEncryptCTR(authState.creds.pairingEphemeralKeyPair.public, key, randomIv)
+		const ciphered = await aesEncryptCTR(authState.creds.pairingEphemeralKeyPair.public, key, randomIv) //CF
 		return Buffer.concat([salt, randomIv, ciphered])
 	}
 

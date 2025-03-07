@@ -1,7 +1,7 @@
 import { Boom } from '@hapi/boom'
-import axios from 'axios'
+/*CF import axios from 'axios' */
 import { randomBytes } from 'crypto'
-import { promises as fs } from 'fs'
+/*CF import { promises as fs } from 'fs' */
 import { type Transform } from 'stream'
 import { proto } from '../../WAProto'
 import { MEDIA_KEYS, URL_REGEX, WA_DEFAULT_EPHEMERAL } from '../Defaults'
@@ -226,8 +226,10 @@ export const prepareWAMessageMedia = async(
 				// remove tmp files
 				if(didSaveToTmpPath && bodyPath) {
 					try {
-						await fs.access(bodyPath)
-						await fs.unlink(bodyPath)
+						console.log('WARNING [fs.access(bodyPath)] not compatible', '[bodyPath]:', bodyPath) //CF
+						console.log('WARNING [fs.unlink(bodyPath)] not compatible', '[bodyPathncWriteStream.destroy()]:', bodyPath) //CF
+						/*CF await fs.access(bodyPath)
+						await fs.unlink(bodyPath) */
 						logger?.debug('removed tmp file')
 					} catch(error) {
 						logger?.warn('failed to remove tmp file')
@@ -406,9 +408,11 @@ export const generateWAMessageContent = async(
 		if(options.getProfilePicUrl) {
 			const pfpUrl = await options.getProfilePicUrl(message.groupInvite.jid, 'preview')
 			if(pfpUrl) {
-				const resp = await axios.get(pfpUrl, { responseType: 'arraybuffer' })
+				/*CF const resp = await axios.get(pfpUrl, { responseType: 'arraybuffer' }) */
+				const resp = await fetch(pfpUrl) //CF
 				if(resp.status === 200) {
-					m.groupInviteMessage.jpegThumbnail = resp.data
+					/*CF m.groupInviteMessage.jpegThumbnail = resp.data */
+					m.groupInviteMessage.jpegThumbnail = await resp.arrayBuffer() as any //CF
 				}
 			}
 		}
@@ -862,7 +866,7 @@ export const downloadMediaMessage = async<Type extends 'buffer' | 'stream'>(
 ) => {
 	const result = await downloadMsg()
 		.catch(async(error) => {
-			if(ctx && axios.isAxiosError(error) && // check if the message requires a reupload
+			if(ctx && true/*CF axios.isAxiosError(error) */ && // check if the message requires a reupload
 					REUPLOAD_REQUIRED_STATUS.includes(error.response?.status!)) {
 				ctx.logger.info({ key: message.key }, 'sending reupload media request...')
 				// request reupload

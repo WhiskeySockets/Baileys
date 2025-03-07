@@ -1,7 +1,8 @@
-import { AxiosRequestConfig } from 'axios'
+/*CF import { AxiosRequestConfig } from 'axios' */
+import type { AxiosRequestConfig } from 'axios' //CF
 import { proto } from '../../WAProto'
 import { AuthenticationCreds, BaileysEventEmitter, CacheStore, Chat, GroupMetadata, ParticipantAction, RequestJoinAction, RequestJoinMethod, SignalKeyStoreWithTransaction, SocketConfig, WAMessageStubType } from '../Types'
-import { getContentType, normalizeMessageContent } from '../Utils/messages'
+import { getContentType, normalizeMessageContent } from './messages'
 import { areJidsSameUser, isJidBroadcast, isJidStatusBroadcast, jidNormalizedUser } from '../WABinary'
 import { aesDecryptGCM, hmacSign } from './crypto'
 import { getKeyAuthor, toNumber } from './generics'
@@ -118,7 +119,7 @@ type PollContext = {
  * @param ctx additional info about the poll required for decryption
  * @returns list of SHA256 options
  */
-export function decryptPollVote(
+export async function decryptPollVote( //CF
 	{ encPayload, encIv }: proto.Message.IPollEncValue,
 	{
 		pollCreatorJid,
@@ -141,7 +142,7 @@ export function decryptPollVote(
 	const decKey = hmacSign(sign, key0, 'sha256')
 	const aad = toBinary(`${pollMsgId}\u0000${voterJid}`)
 
-	const decrypted = aesDecryptGCM(encPayload!, decKey, encIv!, aad)
+	const decrypted = await aesDecryptGCM(encPayload!, decKey, encIv!, aad) //CF
 	return proto.Message.PollVoteMessage.decode(decrypted)
 
 	function toBinary(txt: string) {
@@ -429,7 +430,7 @@ const processMessage = async(
 			const pollEncKey = pollMsg.messageContextInfo?.messageSecret!
 
 			try {
-				const voteMsg = decryptPollVote(
+				const voteMsg = await decryptPollVote( //CF
 					content.pollUpdateMessage.vote!,
 					{
 						pollEncKey,

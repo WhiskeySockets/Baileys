@@ -1,14 +1,17 @@
 import { Boom } from '@hapi/boom'
-import axios, { AxiosRequestConfig } from 'axios'
-import { exec } from 'child_process'
-import * as Crypto from 'crypto'
+//CF import axios, { AxiosRequestConfig } from 'axios'
+import type { AxiosRequestConfig } from 'axios' //CF
+/*CF import { exec } from 'child_process' */
+/*CF import * as Crypto from 'crypto' */
+import { createCipheriv, createHash, createHmac, Decipher, randomBytes } from 'crypto' //CF
 import { once } from 'events'
-import { createReadStream, createWriteStream, promises as fs, WriteStream } from 'fs'
-import type { IAudioMetadata } from 'music-metadata'
+/*CF import { createReadStream, createWriteStream, promises as fs, WriteStream } from 'fs' */
+import type { WriteStream } from 'fs' //CF
+/*CF import type { IAudioMetadata } from 'music-metadata' */
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { Readable, Transform } from 'stream'
-import { URL } from 'url'
+/*CF import { URL } from 'url' */
 import { proto } from '../../WAProto'
 import { DEFAULT_ORIGIN, MEDIA_HKDF_KEY_MAPPING, MEDIA_PATH_MAP } from '../Defaults'
 import { BaileysEventMap, DownloadableMessage, MediaConnInfo, MediaDecryptionKeyInfo, MediaType, MessageType, SocketConfig, WAGenericMediaMessage, WAMediaPayloadURL, WAMediaUpload, WAMediaUploadFunction, WAMessageContent } from '../Types'
@@ -20,18 +23,22 @@ import { ILogger } from './logger'
 const getTmpFilesDirectory = () => tmpdir()
 
 const getImageProcessingLibrary = async() => {
+	console.log('WARNING [import("jimp")] not compatible') //CF
+	console.log('WARNING [import("sharp")] not compatible') //CF
 	const [_jimp, sharp] = await Promise.all([
 		(async() => {
 			const jimp = await (
-				import('jimp')
-					.catch(() => { })
+				/*CF import('jimp')
+					.catch(() => { }) */
+				{ } as any //CF
 			)
 			return jimp
 		})(),
 		(async() => {
 			const sharp = await (
-				import('sharp')
-					.catch(() => { })
+				/*CF import('sharp')
+					.catch(() => { }) */
+				{ } as any //CF
 			)
 			return sharp
 		})()
@@ -81,7 +88,9 @@ const extractVideoThumb = async(
 	size: { width: number, height: number },
 ) => new Promise<void>((resolve, reject) => {
     	const cmd = `ffmpeg -ss ${time} -i ${path} -y -vf scale=${size.width}:-1 -vframes 1 -f image2 ${destPath}`
-    	exec(cmd, (err) => {
+		const exec = {} as any //CF
+		console.log('WARNING [exec?.(cmd, (err) => {] not compatible', '[cmd]:', cmd) //CF
+    	exec?.(cmd, (err) => { //CF
     		if(err) {
 			reject(err)
 		} else {
@@ -186,7 +195,8 @@ export const mediaMessageSHA256B64 = (message: WAMessageContent) => {
 }
 
 export async function getAudioDuration(buffer: Buffer | string | Readable) {
-	const musicMetadata = await import('music-metadata')
+	console.log('WARNING [await import("music-metadata")] not compatible') //CF
+	/*CF const musicMetadata = await import('music-metadata')
 	let metadata: IAudioMetadata
 	if(Buffer.isBuffer(buffer)) {
 		metadata = await musicMetadata.parseBuffer(buffer, undefined, { duration: true })
@@ -201,7 +211,8 @@ export async function getAudioDuration(buffer: Buffer | string | Readable) {
 		metadata = await musicMetadata.parseStream(buffer, undefined, { duration: true })
 	}
 
-	return metadata.format.duration
+	return metadata.format.duration */
+	return 1 //CF
 }
 
 /**
@@ -209,7 +220,7 @@ export async function getAudioDuration(buffer: Buffer | string | Readable) {
  */
 export async function getAudioWaveform(buffer: Buffer | string | Readable, logger?: ILogger) {
 	try {
-		const { default: decoder } = await eval('import(\'audio-decode\')')
+		/*CF const { default: decoder } = await eval('import(\'audio-decode\')')
 		let audioData: Buffer
 		if(Buffer.isBuffer(buffer)) {
 			audioData = buffer
@@ -243,9 +254,11 @@ export async function getAudioWaveform(buffer: Buffer | string | Readable, logge
 		// Generate waveform like WhatsApp
 		const waveform = new Uint8Array(
 			normalizedData.map((n) => Math.floor(100 * n))
-		)
+		) */
+		console.log('WARNING [await import("audio-decode")] not compatible') //CF
+		console.log('WARNING [createReadStream(buffer)] not compatible') //CF
 
-		return waveform
+		return new Uint8Array(1) //CF
 	} catch(e) {
 		logger?.debug('Failed to generate waveform: ' + e)
 	}
@@ -279,10 +292,12 @@ export const getStream = async(item: WAMediaUpload, opts?: AxiosRequestConfig) =
 	}
 
 	if(item.url.toString().startsWith('http://') || item.url.toString().startsWith('https://')) {
-		return { stream: await getHttpStream(item.url, opts), type: 'remote' } as const
+		return { stream: await getHttpStream(item.url as string | URL, opts), type: 'remote' } as const //CF
 	}
 
-	return { stream: createReadStream(item.url), type: 'file' } as const
+	console.log('WARNING [createReadStream(item.url)] not compatible', '[item.url]', item.url) //CF
+	/*CF return { stream: {} as Readable createReadStream(item.url), type: 'file' } as const */
+	return { stream: {} as Readable, type: 'file' } as const //CF
 }
 
 /** generates a thumbnail for a given media, if required */
@@ -307,11 +322,13 @@ export async function generateThumbnail(
 	} else if(mediaType === 'video') {
 		const imgFilename = join(getTmpFilesDirectory(), generateMessageID() + '.jpg')
 		try {
-			await extractVideoThumb(file, imgFilename, '00:00:00', { width: 32, height: 32 })
+			/*CF await extractVideoThumb(file, imgFilename, '00:00:00', { width: 32, height: 32 })
 			const buff = await fs.readFile(imgFilename)
 			thumbnail = buff.toString('base64')
 
-			await fs.unlink(imgFilename)
+			await fs.unlink(imgFilename) */
+
+			console.log('WARNING [fs.readFile(imgFilename)] not compatible') //CF
 		} catch(err) {
 			options.logger?.debug('could not generate video thumb: ' + err)
 		}
@@ -324,8 +341,13 @@ export async function generateThumbnail(
 }
 
 export const getHttpStream = async(url: string | URL, options: AxiosRequestConfig & { isStream?: true } = {}) => {
-	const fetched = await axios.get(url.toString(), { ...options, responseType: 'stream' })
-	return fetched.data as Readable
+	/*CF const fetched = await axios.get(url.toString(), { ...options, responseType: 'stream' }) */
+
+	//CF \/
+	const result = await (await fetch(url.toString()))?.arrayBuffer() as any as Readable
+	//CF /\
+
+	return result as Readable //CF
 }
 
 type EncryptedStreamOptions = {
@@ -343,7 +365,7 @@ export const encryptedStream = async(
 
 	logger?.debug('fetched media stream')
 
-	const mediaKey = Crypto.randomBytes(32)
+	const mediaKey = randomBytes(32) //CF
 	const { cipherKey, iv, macKey } = await getMediaKeys(mediaKey, mediaType)
 	const encWriteStream = new Readable({ read: () => {} })
 
@@ -354,15 +376,16 @@ export const encryptedStream = async(
 		bodyPath = (media as WAMediaPayloadURL).url.toString()
 	} else if(saveOriginalFileIfRequired) {
 		bodyPath = join(getTmpFilesDirectory(), mediaType + generateMessageID())
-		writeStream = createWriteStream(bodyPath)
+		console.log('WARNING [createWriteStream(bodyPath)] not compatible', '[bodyPath]', bodyPath) //CF
+		writeStream = {} as WriteStream /*CF createWriteStream(bodyPath) */
 		didSaveToTmpPath = true
 	}
 
 	let fileLength = 0
-	const aes = Crypto.createCipheriv('aes-256-cbc', cipherKey, iv)
-	let hmac = Crypto.createHmac('sha256', macKey!).update(iv)
-	let sha256Plain = Crypto.createHash('sha256')
-	let sha256Enc = Crypto.createHash('sha256')
+	const aes = createCipheriv('aes-256-cbc', cipherKey, iv) //CF
+	let hmac = createHmac('sha256', macKey!).update(iv) //CF
+	let sha256Plain = createHash('sha256') //CF
+	let sha256Enc = createHash('sha256') //CF
 
 	try {
 		for await (const data of stream) {
@@ -427,7 +450,8 @@ export const encryptedStream = async(
 
 		if(didSaveToTmpPath) {
 			try {
-				await fs.unlink(bodyPath!)
+				console.log('WARNING [fs.unlink(bodyPath!)] not compatible', '[bodyPath]', bodyPath) //CF
+				/*CF await fs.unlink(bodyPath!) */
 			} catch(err) {
 				logger?.error({ err }, 'failed to save to tmp path')
 			}
@@ -518,7 +542,7 @@ export const downloadEncryptedContent = async(
 
 	let remainingBytes = Buffer.from([])
 
-	let aes: Crypto.Decipher
+	let aes: Decipher //CF
 
 	const pushBytes = (bytes: Buffer, push: (bytes: Buffer) => void) => {
 		if(startByte || endByte) {
@@ -548,7 +572,9 @@ export const downloadEncryptedContent = async(
 					data = data.slice(AES_CHUNK_SIZE)
 				}
 
-				aes = Crypto.createDecipheriv('aes-256-cbc', cipherKey, ivValue)
+				/*CF aes = createDecipheriv('aes-256-cbc', cipherKey, ivValue) */
+				console.log('WARNING [createDecipheriv("aes-256-cbc", cipherKey, ivValue)] not compatible', '[cipherKey]', cipherKey, '[ivValue]', ivValue) //CF
+				aes = {} as Decipher //CF
 				// if an end byte that is not EOF is specified
 				// stop auto padding (PKCS7) -- otherwise throws an error for decryption
 				if(endByte) {
@@ -616,7 +642,7 @@ export const getWAUploadToServer = (
 			let result: any
 			try {
 
-				const body = await axios.post(
+				/*CF const body = await axios.post(
 					url,
 					stream,
 					{
@@ -633,7 +659,18 @@ export const getWAUploadToServer = (
 						maxContentLength: Infinity,
 					}
 				)
-				result = body.data
+				result = body.data */
+
+				//CF \/
+				const result = await(await fetch(url, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/octet-stream',
+						'Origin': DEFAULT_ORIGIN
+					},
+					body: await toBuffer(stream)
+				}))?.json() as any
+				//CF /\
 
 				if(result?.url || result?.directPath) {
 					urls = {
@@ -646,9 +683,9 @@ export const getWAUploadToServer = (
 					throw new Error(`upload failed, reason: ${JSON.stringify(result)}`)
 				}
 			} catch(error) {
-				if(axios.isAxiosError(error)) {
+				/*CF if(axios.isAxiosError(error)) {
 					result = error.response?.data
-				}
+				} */
 
 				const isLast = hostname === hosts[uploadInfo.hosts.length - 1]?.hostname
 				logger.warn({ trace: error.stack, uploadResult: result }, `Error in uploading to ${hostname} ${isLast ? '' : ', retrying...'}`)
@@ -681,9 +718,9 @@ export const encryptMediaRetryRequest = async(
 	const recp: proto.IServerErrorReceipt = { stanzaId: key.id }
 	const recpBuffer = proto.ServerErrorReceipt.encode(recp).finish()
 
-	const iv = Crypto.randomBytes(12)
+	const iv = randomBytes(12) //CF
 	const retryKey = await getMediaRetryKey(mediaKey)
-	const ciphertext = aesEncryptGCM(recpBuffer, retryKey, iv, Buffer.from(key.id!))
+	const ciphertext = await aesEncryptGCM(recpBuffer, retryKey, iv, Buffer.from(key.id!)) //CF
 
 	const req: BinaryNode = {
 		tag: 'receipt',
@@ -758,7 +795,7 @@ export const decryptMediaRetryData = async(
 	msgId: string
 ) => {
 	const retryKey = await getMediaRetryKey(mediaKey)
-	const plaintext = aesDecryptGCM(ciphertext, retryKey, iv, Buffer.from(msgId))
+	const plaintext = await aesDecryptGCM(ciphertext, retryKey, iv, Buffer.from(msgId)) //CF
 	return proto.MediaRetryNotification.decode(plaintext)
 }
 

@@ -1,5 +1,6 @@
 import { Boom } from '@hapi/boom'
-import { AxiosRequestConfig } from 'axios'
+/*CF import { AxiosRequestConfig } from 'axios' */
+import type { AxiosRequestConfig } from 'axios' //CF
 import { proto } from '../../WAProto'
 import { BaileysEventEmitter, Chat, ChatModification, ChatMutation, ChatUpdate, Contact, InitialAppStateSyncOptions, LastMessageList, LTHashState, WAPatchCreate, WAPatchName } from '../Types'
 import { ChatLabelAssociation, LabelAssociationType, MessageLabelAssociation } from '../Types/LabelAssociation'
@@ -146,7 +147,7 @@ export const encodeSyncdPatch = async(
 
 	const keyValue = await mutationKeys(key.keyData!)
 
-	const encValue = aesEncrypt(encoded, keyValue.valueEncryptionKey)
+	const encValue = await aesEncrypt(encoded, keyValue.valueEncryptionKey)
 	const valueMac = generateMac(operation, encValue, encKeyId, keyValue.valueMacKey)
 	const indexMac = hmacSign(indexBuffer, keyValue.indexKey)
 
@@ -213,7 +214,7 @@ export const decodeSyncdMutations = async(
 			}
 		}
 
-		const result = aesDecrypt(encContent, key.valueEncryptionKey)
+		const result = await aesDecrypt(encContent, key.valueEncryptionKey)
 		const syncAction = proto.SyncActionData.decode(result)
 
 		if(validateMacs) {

@@ -1,5 +1,6 @@
 import { Boom } from '@hapi/boom'
-import axios, { AxiosRequestConfig } from 'axios'
+/*CF import axios, { AxiosRequestConfig } from 'axios' */
+import type { AxiosRequestConfig } from 'axios' //CF
 import { createHash, randomBytes } from 'crypto'
 import { platform, release } from 'os'
 import { proto } from '../../WAProto'
@@ -262,15 +263,20 @@ export const printQRIfNecessaryListener = (ev: BaileysEventEmitter, logger: ILog
 export const fetchLatestBaileysVersion = async(options: AxiosRequestConfig<{}> = { }) => {
 	const URL = 'https://raw.githubusercontent.com/WhiskeySockets/Baileys/master/src/Defaults/baileys-version.json'
 	try {
-		const result = await axios.get<{ version: WAVersion }>(
+		/*CF const result = await axios.get<{ version: WAVersion }>(
 			URL,
 			{
 				...options,
 				responseType: 'json'
 			}
-		)
+		) */
+
+		//CF \/
+		const result = await (await fetch(URL))?.json() as { version: WAVersion }
+		//CF /\
+
 		return {
-			version: result.data.version,
+			version: result.version, //CF
 			isLatest: true
 		}
 	} catch(error) {
@@ -288,13 +294,17 @@ export const fetchLatestBaileysVersion = async(options: AxiosRequestConfig<{}> =
  */
 export const fetchLatestWaWebVersion = async(options: AxiosRequestConfig<{}>) => {
 	try {
-		const { data } = await axios.get(
+		/*CF const { data } = await axios.get(
 			'https://web.whatsapp.com/sw.js',
 			{
 				...options,
 				responseType: 'json'
 			}
-		)
+		) */
+
+		//CF \/
+		const data = await (await fetch('https://web.whatsapp.com/sw.js'))?.json() as any
+		//CF /\
 
 		const regex = /\\?"client_revision\\?":\s*(\d+)/
 		const match = data.match(regex)

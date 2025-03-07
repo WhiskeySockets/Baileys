@@ -1,5 +1,5 @@
-import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto'
-import * as libsignal from 'libsignal'
+import { /*CF createCipheriv, createDecipheriv,  */createHash, createHmac, randomBytes } from 'crypto'
+import * as libsignal from '../../node_modules_custom/libsignal_custom'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { KeyPair } from '../Types'
 
@@ -51,17 +51,17 @@ const GCM_TAG_LENGTH = 128 >> 3
  * encrypt AES 256 GCM;
  * where the tag tag is suffixed to the ciphertext
  * */
-export function aesEncryptGCM(plaintext: Uint8Array, key: Uint8Array, iv: Uint8Array, additionalData: Uint8Array) {
+/*CF export function aesEncryptGCM(plaintext: Uint8Array, key: Uint8Array, iv: Uint8Array, additionalData: Uint8Array) {
 	const cipher = createCipheriv('aes-256-gcm', key, iv)
 	cipher.setAAD(additionalData)
 	return Buffer.concat([cipher.update(plaintext), cipher.final(), cipher.getAuthTag()])
-}
+} */
 
 /**
  * decrypt AES 256 GCM;
  * where the auth tag is suffixed to the ciphertext
  * */
-export function aesDecryptGCM(ciphertext: Uint8Array, key: Uint8Array, iv: Uint8Array, additionalData: Uint8Array) {
+/*CF export function aesDecryptGCM(ciphertext: Uint8Array, key: Uint8Array, iv: Uint8Array, additionalData: Uint8Array) {
 	const decipher = createDecipheriv('aes-256-gcm', key, iv)
 	// decrypt additional adata
 	const enc = ciphertext.slice(0, ciphertext.length - GCM_TAG_LENGTH)
@@ -71,41 +71,41 @@ export function aesDecryptGCM(ciphertext: Uint8Array, key: Uint8Array, iv: Uint8
 	decipher.setAuthTag(tag)
 
 	return Buffer.concat([ decipher.update(enc), decipher.final() ])
-}
+} */
 
-export function aesEncryptCTR(plaintext: Uint8Array, key: Uint8Array, iv: Uint8Array) {
+/*CF export function aesEncryptCTR(plaintext: Uint8Array, key: Uint8Array, iv: Uint8Array) {
 	const cipher = createCipheriv('aes-256-ctr', key, iv)
 	return Buffer.concat([cipher.update(plaintext), cipher.final()])
-}
+} */
 
-export function aesDecryptCTR(ciphertext: Uint8Array, key: Uint8Array, iv: Uint8Array) {
+/*CF export function aesDecryptCTR(ciphertext: Uint8Array, key: Uint8Array, iv: Uint8Array) {
 	const decipher = createDecipheriv('aes-256-ctr', key, iv)
 	return Buffer.concat([decipher.update(ciphertext), decipher.final()])
-}
+} */
 
 /** decrypt AES 256 CBC; where the IV is prefixed to the buffer */
-export function aesDecrypt(buffer: Buffer, key: Buffer) {
+/*CF export function aesDecrypt(buffer: Buffer, key: Buffer) {
 	return aesDecryptWithIV(buffer.slice(16, buffer.length), key, buffer.slice(0, 16))
-}
+} */
 
 /** decrypt AES 256 CBC */
-export function aesDecryptWithIV(buffer: Buffer, key: Buffer, IV: Buffer) {
+/*CF export function aesDecryptWithIV(buffer: Buffer, key: Buffer, IV: Buffer) {
 	const aes = createDecipheriv('aes-256-cbc', key, IV)
 	return Buffer.concat([aes.update(buffer), aes.final()])
-}
+} */
 
 // encrypt AES 256 CBC; where a random IV is prefixed to the buffer
-export function aesEncrypt(buffer: Buffer | Uint8Array, key: Buffer) {
+/*CF export function aesEncrypt(buffer: Buffer | Uint8Array, key: Buffer) {
 	const IV = randomBytes(16)
 	const aes = createCipheriv('aes-256-cbc', key, IV)
 	return Buffer.concat([IV, aes.update(buffer), aes.final()]) // prefix IV to the buffer
-}
+} */
 
 // encrypt AES 256 CBC with a given IV
-export function aesEncrypWithIV(buffer: Buffer, key: Buffer, IV: Buffer) {
+/*CF export function aesEncrypWithIV(buffer: Buffer, key: Buffer, IV: Buffer) {
 	const aes = createCipheriv('aes-256-cbc', key, IV)
 	return Buffer.concat([aes.update(buffer), aes.final()]) // prefix IV to the buffer
-}
+} */
 
 // sign HMAC using SHA 256
 export function hmacSign(buffer: Buffer | Uint8Array, key: Buffer | Uint8Array, variant: 'sha256' | 'sha512' = 'sha256') {
@@ -191,4 +191,198 @@ export async function derivePairingCodeKey(pairingCode: string, salt: Buffer): P
 	)
 
 	return Buffer.from(derivedBits)
+}
+
+export async function aesEncryptGCM(plaintext: Uint8Array, key: Uint8Array, iv: Uint8Array, additionalData: Uint8Array) {
+	const secretKey = await crypto.subtle.importKey(
+		'raw',
+		key,
+		{
+			name: 'AES-GCM',
+			length: 256
+		},
+		false,
+		['encrypt']
+	)
+
+	const additionalDataBuffer = additionalData.buffer.slice(additionalData.byteOffset, additionalData.byteOffset + additionalData.byteLength) as ArrayBuffer
+	const ivBuffer = iv.buffer.slice(iv.byteOffset, iv.byteOffset + iv.byteLength) as ArrayBuffer
+
+	const ciphertext = await crypto.subtle.encrypt(
+		{
+			name: 'AES-GCM',
+			iv: ivBuffer,
+			additionalData: additionalDataBuffer
+		},
+		secretKey,
+		plaintext
+	)
+
+	return Buffer.from(ciphertext)
+}
+
+export async function aesDecryptGCM(ciphertext: Uint8Array, key: Uint8Array, iv: Uint8Array, additionalData: Uint8Array) {
+	const secretKey = await crypto.subtle.importKey(
+		'raw',
+		key,
+		{
+			name: 'AES-GCM',
+			length: 256
+		},
+		false,
+		['decrypt']
+	)
+
+	const additionalDataBuffer = additionalData.buffer.slice(additionalData.byteOffset, additionalData.byteOffset + additionalData.byteLength) as ArrayBuffer
+	const ivBuffer = iv.buffer.slice(iv.byteOffset, iv.byteOffset + iv.byteLength) as ArrayBuffer
+
+	const decrypted = await crypto.subtle.decrypt(
+		{
+			name: 'AES-GCM',
+			iv: ivBuffer,
+			additionalData: additionalDataBuffer
+		},
+		secretKey,
+		ciphertext
+	)
+
+	return Buffer.from(decrypted)
+}
+
+export async function aesEncryptCTR(plaintext: Uint8Array, key: Uint8Array, iv: Uint8Array) {
+	const secretKey = await crypto.subtle.importKey(
+		'raw',
+		key,
+		{
+			name: 'AES-CTR',
+			length: 256
+		},
+		false,
+		['encrypt']
+	)
+
+	const ivBuffer = iv.buffer.slice(iv.byteOffset, iv.byteOffset + iv.byteLength) as ArrayBuffer
+
+	const ciphertext = await crypto.subtle.encrypt(
+		{
+			name: 'AES-CTR',
+			counter: ivBuffer,
+			length: 64
+		},
+		secretKey,
+		plaintext
+	)
+
+	return Buffer.from(ciphertext)
+}
+
+export async function aesDecryptCTR(ciphertext: Uint8Array, key: Uint8Array, iv: Uint8Array) {
+	const secretKey = await crypto.subtle.importKey(
+		'raw',
+		key,
+		{
+			name: 'AES-CTR',
+			length: 256
+		},
+		false,
+		['decrypt']
+	)
+
+	const ivBuffer = iv.buffer.slice(iv.byteOffset, iv.byteOffset + iv.byteLength) as ArrayBuffer
+
+	const decrypted = await crypto.subtle.decrypt(
+		{
+			name: 'AES-CTR',
+			counter: ivBuffer,
+			length: 64
+		},
+		secretKey,
+		ciphertext
+	)
+
+	return Buffer.from(decrypted)
+}
+
+export async function aesDecrypt(buffer: Buffer, key: Buffer) {
+	return await aesDecryptWithIV(buffer.slice(16, buffer.length), key, buffer.slice(0, 16))
+}
+
+export async function aesDecryptWithIV(ciphertext: Buffer, key: Buffer, iv: Buffer) {
+	const secretKey = await crypto.subtle.importKey(
+		'raw',
+		key,
+		{
+			name: 'AES-CBC',
+			length: 256
+		},
+		false,
+		['decrypt']
+	)
+
+	const ivBuffer = iv.buffer.slice(iv.byteOffset, iv.byteOffset + iv.byteLength) as ArrayBuffer
+
+	const decrypted = await crypto.subtle.decrypt(
+		{
+			name: 'AES-CBC',
+			iv: ivBuffer
+		},
+		secretKey,
+		ciphertext
+	)
+
+	return Buffer.from(decrypted)
+}
+
+export async function aesEncrypt(plaintext: Buffer | Uint8Array, key: Buffer) {
+	const iv = randomBytes(16)
+
+	const secretKey = await crypto.subtle.importKey(
+		'raw',
+		key,
+		{
+			name: 'AES-CBC',
+			length: 256
+		},
+		false,
+		['encrypt']
+	)
+
+	const ivBuffer = iv.buffer.slice(iv.byteOffset, iv.byteOffset + iv.byteLength) as ArrayBuffer
+
+	const ciphertext = await crypto.subtle.encrypt(
+		{
+			name: 'AES-CBC',
+			iv: ivBuffer
+		},
+		secretKey,
+		plaintext
+	)
+
+	return Buffer.concat([Buffer.from(iv), Buffer.from(ciphertext)]) // prefix IV to the buffer
+}
+
+export async function aesEncrypWithIV(plaintext: Buffer, key: Buffer, iv: Buffer) {
+	const secretKey = await crypto.subtle.importKey(
+		'raw',
+		key,
+		{
+			name: 'AES-CBC',
+			length: 256
+		},
+		false,
+		['encrypt']
+	)
+
+	const ivBuffer = iv.buffer.slice(iv.byteOffset, iv.byteOffset + iv.byteLength) as ArrayBuffer
+
+	const ciphertext = await crypto.subtle.encrypt(
+		{
+			name: 'AES-CBC',
+			iv: ivBuffer
+		},
+		secretKey,
+		plaintext
+	)
+
+	return Buffer.from(ciphertext) // prefix IV to the buffer
 }

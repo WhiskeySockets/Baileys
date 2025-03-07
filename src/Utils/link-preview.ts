@@ -1,4 +1,5 @@
-import { AxiosRequestConfig } from 'axios'
+/*CF import { AxiosRequestConfig } from 'axios' */
+import type { AxiosRequestConfig } from 'axios' //CF
 import { WAMediaUploadFunction, WAUrlInfo } from '../Types'
 import { ILogger } from './logger'
 import { prepareWAMessageMedia } from './messages'

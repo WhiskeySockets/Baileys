@@ -32,8 +32,8 @@ export const makeNoiseHandler = ({
 		}
 	}
 
-	const encrypt = (plaintext: Uint8Array) => {
-		const result = aesEncryptGCM(plaintext, encKey, generateIV(writeCounter), hash)
+	const encrypt = async (plaintext: Uint8Array) => { //CF
+		const result = await aesEncryptGCM(plaintext, encKey, generateIV(writeCounter), hash) //CF
 
 		writeCounter += 1
 
@@ -41,11 +41,11 @@ export const makeNoiseHandler = ({
 		return result
 	}
 
-	const decrypt = (ciphertext: Uint8Array) => {
+	const decrypt = async (ciphertext: Uint8Array) => { //CF
 		// before the handshake is finished, we use the same counter
 		// after handshake, the counters are different
 		const iv = generateIV(isFinished ? readCounter : writeCounter)
-		const result = aesDecryptGCM(ciphertext, decKey, iv, hash)
+		const result = await aesDecryptGCM(ciphertext, decKey, iv, hash) //CF
 
 		if(isFinished) {
 			readCounter += 1
@@ -90,6 +90,7 @@ export const makeNoiseHandler = ({
 	let writeCounter = 0
 	let isFinished = false
 	let sentIntro = false
+	let writeCounterIsZero = true //CF
 
 	let inBytes = Buffer.alloc(0)
 
@@ -106,10 +107,10 @@ export const makeNoiseHandler = ({
 			authenticate(serverHello!.ephemeral!)
 			await mixIntoKey(Curve.sharedKey(privateKey, serverHello!.ephemeral!))
 
-			const decStaticContent = decrypt(serverHello!.static!)
+			const decStaticContent = await decrypt(serverHello!.static!) //CF
 			await mixIntoKey(Curve.sharedKey(privateKey, decStaticContent))
 
-			const certDecoded = decrypt(serverHello!.payload!)
+			const certDecoded = await decrypt(serverHello!.payload!) //CF
 
 			const { intermediate: certIntermediate } = proto.CertChain.decode(certDecoded)
 
@@ -119,15 +120,34 @@ export const makeNoiseHandler = ({
 				throw new Boom('certification match failed', { statusCode: 400 })
 			}
 
-			const keyEnc = encrypt(noiseKey.public)
+			const keyEnc = await encrypt(noiseKey.public) //CF
 			await mixIntoKey(Curve.sharedKey(noiseKey.private, serverHello!.ephemeral!))
 
 			return keyEnc
 		},
-		encodeFrame: (data: Buffer | Uint8Array) => {
-			if(isFinished) {
+		encodeFrame: async(data: Buffer | Uint8Array) => { //CF
+			/*CF if(isFinished) {
 				data = encrypt(data)
+			} */
+
+			//CF \/
+			/*
+				The "iv" parameter in the "aesEncryptGCM" function was constantly repeating, causing an execution error.
+				Adding "writeCounter += 1" before calling "aesEncryptGCM" fixed this issue.
+			*/
+			if(isFinished) {
+				const encryptForEncodeFrame = async (plaintext: Uint8Array) => {
+					if ( writeCounterIsZero ) { writeCounterIsZero = false } else { writeCounter += 1 }
+
+					const result = await aesEncryptGCM(plaintext, encKey, generateIV(writeCounter), hash)
+
+					authenticate(result)
+					return result
+				}
+
+				data = await encryptForEncodeFrame(data)
 			}
+			//CF /\
 
 			let header: Buffer
 
@@ -176,14 +196,42 @@ export const makeNoiseHandler = ({
 				let frame: Uint8Array | BinaryNode = inBytes.slice(3, size + 3)
 				inBytes = inBytes.slice(size + 3)
 
+				//CF \/
 				if(isFinished) {
-					const result = decrypt(frame)
-					frame = await decodeBinaryNode(result)
+					/*CF const result = decrypt(frame)
+					frame = await decodeBinaryNode(result) */
+
+					const iv = generateIV(isFinished ? readCounter : writeCounter)
+
+					const decryptForDecodeFrame = async (momentCiphertext: Uint8Array, momentDecKey: Buffer, momentIv: Uint8Array, momentHash: Buffer, momentOnFrame: (buff: Uint8Array | BinaryNode) => void) => {
+						const result = await aesDecryptGCM(momentCiphertext, momentDecKey, momentIv, momentHash)
+
+						var momentFrame = await decodeBinaryNode(result)
+						
+						logger.trace({ msg: (momentFrame as any)?.attrs?.id }, 'recv frame')
+						momentOnFrame(momentFrame)
+					}
+					decryptForDecodeFrame(frame, decKey, iv, hash, onFrame)
+
+					if (isFinished) {
+						readCounter += 1
+					}
+					else {
+						writeCounter += 1
+					}
+
+					authenticate(frame)
 				}
 
-				logger.trace({ msg: (frame as BinaryNode)?.attrs?.id }, 'recv frame')
+				else {
+					logger.trace({ msg: (frame as any)?.attrs?.id }, 'recv frame')
+					onFrame(frame)
+				}
+				//CF /\
 
-				onFrame(frame)
+				/*CF logger.trace({ msg: (frame as BinaryNode)?.attrs?.id }, 'recv frame')
+
+				onFrame(frame) */
 				size = getBytesSize()
 			}
 		}

@@ -462,15 +462,21 @@ export default (config: BaileysInMemoryStoreConfig) => {
 		fromJSON,
 		writeToFile: (path: string) => {
 			// require fs here so that in case "fs" is not available -- the app does not crash
-			const { writeFileSync } = require('fs')
-			writeFileSync(path, JSON.stringify(toJSON()))
+			/*CF const { writeFileSync } = require('fs') */
+			const writeFileSync = {} as any //CF
+			console.log('WARNING [writeFileSync?.(path, JSON.stringify(toJSON()))] not compatible', '[path]:', path, '[JSON.stringify(toJSON())]', JSON.stringify(toJSON())) //CF
+			writeFileSync?.(path, JSON.stringify(toJSON())) //CF
 		},
 		readFromFile: (path: string) => {
 			// require fs here so that in case "fs" is not available -- the app does not crash
-			const { readFileSync, existsSync } = require('fs')
-			if(existsSync(path)) {
+			/*CF const { readFileSync, existsSync } = require('fs') */
+			const readFileSync = {} as any //CF
+			const existsSync = {} as any //CF
+			console.log('WARNING [existsSync?.(path)] not compatible', '[path]:', path) //CF
+			console.log('WARNING [readFileSync?.(path, { encoding: "utf-8" })] not compatible', '[path]:', path, '[{ encoding: "utf-8" }]', { encoding: 'utf-8' }) //CF
+			if(existsSync?.(path)) { //CF
 				logger.debug({ path }, 'reading from file')
-				const jsonStr = readFileSync(path, { encoding: 'utf-8' })
+				const jsonStr = readFileSync?.(path, { encoding: 'utf-8' }) //CF
 				const json = JSON.parse(jsonStr)
 				fromJSON(json)
 			}

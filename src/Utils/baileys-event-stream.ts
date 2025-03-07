@@ -1,6 +1,6 @@
 import EventEmitter from 'events'
-import { createReadStream } from 'fs'
-import { writeFile } from 'fs/promises'
+//CF import { createReadStream } from 'fs'
+//CF import { writeFile } from 'fs/promises'
 import { createInterface } from 'readline'
 import type { BaileysEventEmitter } from '../Types'
 import { delay } from './generics'
@@ -22,7 +22,9 @@ export const captureEventStream = (ev: BaileysEventEmitter, filename: string) =>
 
 		writeMutex.mutex(
 			async() => {
-				await writeFile(filename, content, { flag: 'a' })
+				const writeFile = {} as any //CF
+				console.log('WARNING [await writeFile?.(filename, content, { flag: "a" })] not compatible', '[filename]:', filename, '[content]', content, '[{ flag: "a" }]', { flag: 'a' }) //CF
+				await writeFile?.(filename, content, { flag: 'a' }) //CF
 			}
 		)
 
@@ -40,7 +42,9 @@ export const readAndEmitEventStream = (filename: string, delayIntervalMs = 0) =>
 
 	const fireEvents = async() => {
 		// from: https://stackoverflow.com/questions/6156501/read-a-file-one-line-at-a-time-in-node-js
-		const fileStream = createReadStream(filename)
+		const createReadStream = {} as any //CF
+		console.log('WARNING [createReadStream?.(filename)] not compatible', '[filename]:', filename) //CF
+		const fileStream = createReadStream?.(filename) //CF
 
 		const rl = createInterface({
 			input: fileStream,
