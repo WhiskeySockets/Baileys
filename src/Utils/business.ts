@@ -247,7 +247,7 @@ export const uploadingNecessaryImages = async(
 					toReadable(Buffer.concat(contentBlocks)),
 					{
 						mediaType: 'product-catalog-image',
-						fileEncSha256B64: sha,
+						fileSha256B64: sha,
 						timeoutMs
 					}
 				)

@@ -9,6 +9,7 @@ import { Label } from './Label'
 import { LabelAssociation } from './LabelAssociation'
 import { MessageUpsertType, MessageUserReceiptUpdate, WAMessage, WAMessageKey, WAMessageUpdate } from './Message'
 import { ConnectionState } from './State'
+import { NewsletterSettingsUpdate, SubscriberAction, NewsletterViewRole } from './Newsletter'
 
 export type BaileysEventMap = {
     /** connection state has been updated -- WS closed, opened, connecting etc. */
@@ -58,6 +59,12 @@ export type BaileysEventMap = {
     'group-participants.update': { id: string, author: string, participants: string[], action: ParticipantAction }
     'group.join-request': { id: string, author: string, participant: string, action: RequestJoinAction, method: RequestJoinMethod }
 
+    'newsletter.reaction': { id: string, server_id: string, reaction: {code?: string, count?: number, removed?: boolean}}
+    'newsletter.view': { id: string, server_id: string, count: number}
+    /**don't handles subscribe/unsubscribe actions */
+    'newsletter-participants.update': { id: string, author: string, user: string, new_role: NewsletterViewRole, action: SubscriberAction}
+    'newsletter-settings.update': { id: string, update: NewsletterSettingsUpdate}
+
     'blocklist.set': { blocklist: string[] }
     'blocklist.update': { blocklist: string[], type: 'add' | 'remove' }
 
@@ -65,6 +72,8 @@ export type BaileysEventMap = {
     'call': WACallEvent[]
     'labels.edit': Label
     'labels.association': { association: LabelAssociation, type: 'add' | 'remove' }
+
+  
 }
 
 export type BufferedEventData = {

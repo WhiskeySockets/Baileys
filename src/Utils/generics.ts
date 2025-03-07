@@ -464,3 +464,7 @@ export function bytesToCrockford(buffer: Buffer): string {
 
 	return crockford.join('')
 }
+
+export const encodeNewsletterMessage = (message: proto.IMessage) => (
+    proto.Message.encode(message).finish()
+)
