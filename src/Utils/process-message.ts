@@ -141,7 +141,7 @@ export async function decryptPollVote(
 	const decKey = await hmacSign(sign, key0, 'sha256')
 	const aad = toBinary(`${pollMsgId}\u0000${voterJid}`)
 
-	const decrypted = aesDecryptGCM(encPayload!, decKey, encIv!, aad)
+	const decrypted = await aesDecryptGCM(encPayload!, decKey, encIv!, aad)
 	return proto.Message.PollVoteMessage.decode(decrypted)
 
 	function toBinary(txt: string) {

@@ -758,7 +758,7 @@ export const decryptMediaRetryData = async(
 	msgId: string
 ) => {
 	const retryKey = await getMediaRetryKey(mediaKey)
-	const plaintext = aesDecryptGCM(ciphertext, retryKey, iv, Buffer.from(msgId))
+	const plaintext = await aesDecryptGCM(ciphertext, retryKey, iv, Buffer.from(msgId))
 	return proto.MediaRetryNotification.decode(plaintext)
 }
 

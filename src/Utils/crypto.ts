@@ -1,5 +1,4 @@
 import * as libsignal from 'libsignal'
-import { createCipheriv, createDecipheriv } from 'node:crypto'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { KeyPair } from '../Types'
 
@@ -48,8 +47,6 @@ export const signedKeyPair = (identityKeyPair: KeyPair, keyId: number) => {
 	return { keyPair: preKey, signature, keyId }
 }
 
-const GCM_TAG_LENGTH = 128 >> 3
-
 /**
  * encrypt AES 256 GCM;
  * where the tag tag is suffixed to the ciphertext
@@ -83,16 +80,32 @@ export async function aesEncryptGCM(plaintext: Uint8Array, key: Uint8Array, iv: 
  * decrypt AES 256 GCM;
  * where the auth tag is suffixed to the ciphertext
  * */
-export function aesDecryptGCM(ciphertext: Uint8Array, key: Uint8Array, iv: Uint8Array, additionalData: Uint8Array) {
-	const decipher = createDecipheriv('aes-256-gcm', key, iv)
-	// decrypt additional adata
-	const enc = ciphertext.slice(0, ciphertext.length - GCM_TAG_LENGTH)
-	const tag = ciphertext.slice(ciphertext.length - GCM_TAG_LENGTH)
-	// set additional data
-	decipher.setAAD(additionalData)
-	decipher.setAuthTag(tag)
+export async function aesDecryptGCM(ciphertext: Uint8Array, key: Uint8Array, iv: Uint8Array, additionalData: Uint8Array): Promise<Buffer> {
+	// Import the 256-bit key as a CryptoKey for AES-GCM encryption
+	const cryptoKey = await crypto.subtle.importKey(
+		'raw', // Key format is raw binary
+		key, // The key as a Uint8Array
+		{ name: 'AES-GCM' }, // Algorithm specification
+		false, // Key is not extractable
+		['decrypt'] // Key usage
+	)
 
-	return Buffer.concat([ decipher.update(enc), decipher.final() ])
+	// Define the AES-GCM parameters
+	const algorithm = {
+		name: 'AES-GCM', // Algorithm name
+		iv: iv, // Initialization vector
+		additionalData: additionalData, // Additional authenticated data
+		tagLength: 128 // Authentication tag length in bits (16 bytes)
+	}
+
+	// Decrypt the encrypted data
+	const decrypted = await crypto.subtle.decrypt(
+		algorithm,
+		cryptoKey,
+		ciphertext
+	)
+
+	return Buffer.from(decrypted)
 }
 
 export async function aesEncryptCTR(plaintext: Uint8Array | Buffer, key: Uint8Array | Buffer, iv: Uint8Array | Buffer): Promise<Buffer> {
@@ -228,12 +241,6 @@ export async function aesEncrypt(
 	result.set(new Uint8Array(ciphertext), iv.length)
 
 	return Buffer.from(result.buffer)
-}
-
-// encrypt AES 256 CBC with a given IV
-export function aesEncrypWithIV(buffer: Buffer, key: Buffer, IV: Buffer) {
-	const aes = createCipheriv('aes-256-cbc', key, IV)
-	return Buffer.concat([aes.update(buffer), aes.final()]) // prefix IV to the buffer
 }
 
 // sign HMAC using SHA 256 or SHA 512
