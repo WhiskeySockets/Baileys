@@ -13,7 +13,7 @@ export type WAMessage = proto.IWebMessageInfo
 export type WAMessageContent = proto.IMessage
 export type WAContactMessage = proto.Message.IContactMessage
 export type WAContactsArrayMessage = proto.Message.IContactsArrayMessage
-export type WAMessageKey = proto.IMessageKey
+export type WAMessageKey = proto.IMessageKey & {server_id?: string}
 export type WATextMessage = proto.Message.IExtendedTextMessage
 export type WAContextInfo = proto.IContextInfo
 export type WALocationMessage = proto.Message.ILocationMessage
@@ -233,12 +233,14 @@ export type MiscMessageGenerationOptions = MinimalRelayOptions & {
     font?: number
     /** if it is broadcast */
     broadcast?: boolean
+    /** upload high quality preview for link previews */
+    linkPreviewHighQuality?: boolean
 }
 export type MessageGenerationOptionsFromContent = MiscMessageGenerationOptions & {
 	userJid: string
 }
 
-export type WAMediaUploadFunction = (readStream: Readable, opts: { fileEncSha256B64: string, mediaType: MediaType, timeoutMs?: number }) => Promise<{ mediaUrl: string, directPath: string }>
+export type WAMediaUploadFunction = (readStream: Readable, opts: { fileSha256B64: string, mediaType: MediaType, timeoutMs?: number, newsletter?: boolean }) => Promise<{ mediaUrl: string, directPath: string }>
 
 export type MediaGenerationOptions = {
 	logger?: ILogger
@@ -254,6 +256,8 @@ export type MediaGenerationOptions = {
     backgroundColor?: string
 
     font?: number
+
+    newsletter?: boolean
 }
 export type MessageContentGenerationOptions = MediaGenerationOptions & {
 	getUrlInfo?: (text: string) => Promise<WAUrlInfo | undefined>

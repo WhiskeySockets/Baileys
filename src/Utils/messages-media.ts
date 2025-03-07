@@ -16,7 +16,6 @@ import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, jidNormalized
 import { aesDecryptGCM, aesEncryptGCM, hkdf } from './crypto'
 import { generateMessageID } from './generics'
 import { ILogger } from './logger'
-
 const getTmpFilesDirectory = () => tmpdir()
 
 const getImageProcessingLibrary = async() => {
@@ -332,12 +331,13 @@ type EncryptedStreamOptions = {
 	saveOriginalFileIfRequired?: boolean
 	logger?: ILogger
 	opts?: AxiosRequestConfig
+	raw?: boolean
 }
 
 export const encryptedStream = async(
-	media: WAMediaUpload,
-	mediaType: MediaType,
-	{ logger, saveOriginalFileIfRequired, opts }: EncryptedStreamOptions = {}
+    media: WAMediaUpload,
+    mediaType: MediaType,
+    { logger, saveOriginalFileIfRequired, opts, raw }: EncryptedStreamOptions = {}
 ) => {
 	const { stream, type } = await getStream(media, opts)
 
@@ -397,10 +397,16 @@ export const encryptedStream = async(
 		const fileSha256 = sha256Plain.digest()
 		const fileEncSha256 = sha256Enc.digest()
 
-		encWriteStream.push(mac)
+		if(!raw) {
+			encWriteStream.push(mac)
+		}
 		encWriteStream.push(null)
 
 		writeStream?.end()
+		if (writeStream) {
+			// Wait for the 'finish' event, which signifies  that all data has been flushed to the underlying system.
+			await once(writeStream!, 'finish');
+		}
 		stream.destroy()
 
 		logger?.debug('encrypted data successfully')
@@ -439,7 +445,10 @@ export const encryptedStream = async(
 	function onChunk(buff: Buffer) {
 		sha256Enc = sha256Enc.update(buff)
 		hmac = hmac.update(buff)
-		encWriteStream.push(buff)
+		if(!raw) {
+            encWriteStream.push(buff)
+        }
+
 	}
 }
 
@@ -461,9 +470,13 @@ export const getUrlFromDirectPath = (directPath: string) => `https://${DEF_HOST}
 export const downloadContentFromMessage = async(
 	{ mediaKey, directPath, url }: DownloadableMessage,
 	type: MediaType,
-	opts: MediaDownloadOptions = { }
+	opts: MediaDownloadOptions = { },
+	decrypt: boolean = true
 ) => {
 	const downloadUrl = url || getUrlFromDirectPath(directPath!)
+    if(!decrypt) {
+        return getHttpStream(downloadUrl, opts.options)
+    }
 	const keys = await getMediaKeys(mediaKey, type)
 
 	return downloadEncryptedContent(downloadUrl, keys, opts)
@@ -598,27 +611,40 @@ export const getWAUploadToServer = (
 	{ customUploadHosts, fetchAgent, logger, options }: SocketConfig,
 	refreshMediaConn: (force: boolean) => Promise<MediaConnInfo>,
 ): WAMediaUploadFunction => {
-	return async(stream, { mediaType, fileEncSha256B64, timeoutMs }) => {
+	return async(stream, { mediaType, fileSha256B64, timeoutMs, newsletter }) => {
 		// send a query JSON to obtain the url & auth token to upload our media
 		let uploadInfo = await refreshMediaConn(false)
 
 		let urls: { mediaUrl: string, directPath: string } | undefined
 		const hosts = [ ...customUploadHosts, ...uploadInfo.hosts ]
 
-		fileEncSha256B64 = encodeBase64EncodedStringForUpload(fileEncSha256B64)
+		const chunks: Buffer[] = []
+		for await (const chunk of stream) {
+			chunks.push(chunk)
+		}
+
+		const reqBody = Buffer.concat(chunks)
+		fileSha256B64 = encodeBase64EncodedStringForUpload(fileSha256B64)
 
 		for(const { hostname } of hosts) {
 			logger.debug(`uploading to "${hostname}"`)
 
 			const auth = encodeURIComponent(uploadInfo.auth) // the auth token
-			const url = `https://${hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
+						let urlPrefix: string | undefined
+			if (newsletter) {
+				urlPrefix = `/newsletter/newsletter-${mediaType}`
+			} else {
+				urlPrefix = MEDIA_PATH_MAP[mediaType]
+			}
+
+			const url = `https://${hostname}${urlPrefix}/${fileSha256B64}?auth=${auth}&token=${fileSha256B64}`
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			let result: any
 			try {
 
 				const body = await axios.post(
 					url,
-					stream,
+					reqBody,
 					{
 						...options,
 						headers: {
