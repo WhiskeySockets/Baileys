@@ -1,13 +1,15 @@
 
+import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
-import NodeCache from 'node-cache'
+import Long = require('long');
 import { proto } from '../../WAProto'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import { MessageReceiptType, MessageRelayOptions, MessageUserReceipt, SocketConfig, WACallEvent, WAMessageKey, WAMessageStatus, WAMessageStubType, WAPatchName } from '../Types'
 import {
 	aesDecryptCTR,
 	aesEncryptGCM,
+	cleanMessage,
 	Curve,
 	decodeMediaRetryNode,
 	decodeMessageNode,
@@ -27,7 +29,6 @@ import {
 	xmppPreKey,
 	xmppSignedPreKey
 } from '../Utils'
-import { cleanMessage } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
 import {
 	areJidsSameUser,
@@ -476,7 +477,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const companionSharedKey = Curve.sharedKey(authState.creds.pairingEphemeralKeyPair.private, codePairingPublicKey)
 			const random = randomBytes(32)
 			const linkCodeSalt = randomBytes(32)
-			const linkCodePairingExpanded = hkdf(companionSharedKey, 32, {
+			const linkCodePairingExpanded = await hkdf(companionSharedKey, 32, {
 				salt: linkCodeSalt,
 				info: 'link_code_pairing_key_bundle_encryption_key'
 			})
@@ -486,7 +487,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const encryptedPayload = Buffer.concat([linkCodeSalt, encryptIv, encrypted])
 			const identitySharedKey = Curve.sharedKey(authState.creds.signedIdentityKey.private, primaryIdentityPublicKey)
 			const identityPayload = Buffer.concat([companionSharedKey, identitySharedKey, random])
-			authState.creds.advSecretKey = hkdf(identityPayload, 32, { info: 'adv_secret' }).toString('base64')
+			authState.creds.advSecretKey = (await hkdf(identityPayload, 32, { info: 'adv_secret' })).toString('base64')
 			await query({
 				tag: 'iq',
 				attrs: {
@@ -637,7 +638,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							(
 								// basically, we only want to know when a message from us has been delivered to/read by the other person
 								// or another device of ours has read some messages
-								status > proto.WebMessageInfo.Status.DELIVERY_ACK ||
+								status >= proto.WebMessageInfo.Status.SERVER_ACK ||
 								!isNodeFromMe
 							)
 						) {
@@ -846,7 +847,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			throw new Boom('Not authenticated')
 		}
 
-		const pdoMessage = {
+		const pdoMessage: proto.Message.IPeerDataOperationRequestMessage = {
 			historySyncOnDemandRequest: {
 				chatJid: oldestMsgKey.remoteJid,
 				oldestMsgFromMe: oldestMsgKey.fromMe,
@@ -866,7 +867,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		if(placeholderResendCache.get(messageKey?.id!)) {
-			logger.debug('already requested resend', { messageKey })
+			logger.debug({ messageKey }, 'already requested resend')
 			return
 		} else {
 			placeholderResendCache.set(messageKey?.id!, true)
@@ -875,7 +876,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await delay(5000)
 
 		if(!placeholderResendCache.get(messageKey?.id!)) {
-			logger.debug('message received while resend requested', { messageKey })
+			logger.debug({ messageKey }, 'message received while resend requested')
 			return 'RESOLVED'
 		}
 
@@ -888,7 +889,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		setTimeout(() => {
 			if(placeholderResendCache.get(messageKey?.id!)) {
-				logger.debug('PDO message without response after 15 seconds. Phone possibly offline', { messageKey })
+				logger.debug({ messageKey }, 'PDO message without response after 15 seconds. Phone possibly offline')
 				placeholderResendCache.del(messageKey?.id!)
 			}
 		}, 15_000)
