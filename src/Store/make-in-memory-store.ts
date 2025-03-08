@@ -35,8 +35,8 @@ export type BaileysInMemoryStoreConfig = {
 
 const makeMessagesDictionary = () => makeOrderedDictionary(waMessageID)
 
-export default (config: BaileysInMemoryStoreConfig) => {
-	const socket = config.socket
+export default async(config: BaileysInMemoryStoreConfig) => {
+	const socket = await config.socket
 	const chatKey = config.chatKey || waChatKey(true)
 	const labelAssociationKey = config.labelAssociationKey || waLabelAssociationKey
 	const logger: ILogger = config.logger || DEFAULT_CONNECTION_CONFIG.logger.child({ stream: 'in-mem-store' })
@@ -421,7 +421,7 @@ export default (config: BaileysInMemoryStoreConfig) => {
 			const message: WAMessage | undefined = messages[jid]?.array.slice(-1)[0]
 			return message
 		},
-		fetchImageUrl: async(jid: string, sock: WASocket | undefined) => {
+		fetchImageUrl: async(jid: string, sock: Awaited<WASocket> | undefined) => {
 			const contact = contacts[jid]
 			if(!contact) {
 				return sock?.profilePictureUrl(jid)
@@ -433,7 +433,7 @@ export default (config: BaileysInMemoryStoreConfig) => {
 
 			return contact.imgUrl
 		},
-		fetchGroupMetadata: async(jid: string, sock: WASocket | undefined) => {
+		fetchGroupMetadata: async(jid: string, sock: Awaited<WASocket> | undefined) => {
 			if(!groupMetadata[jid]) {
 				const metadata = await sock?.groupMetadata(jid)
 				if(metadata) {

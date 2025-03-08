@@ -26,21 +26,21 @@ const question = (text: string) => new Promise<string>((resolve) => rl.question(
 
 // the store maintains the data of the WA connection in memory
 // can be written out to a file & read from it
-const store = useStore ? makeInMemoryStore({ logger }) : undefined
-store?.readFromFile('./baileys_store_multi.json')
-// save every 10s
-setInterval(() => {
-	store?.writeToFile('./baileys_store_multi.json')
-}, 10_000)
 
 // start a connection
 const startSock = async() => {
+	const store = useStore ? await makeInMemoryStore({ logger }) : undefined
+	store?.readFromFile('./baileys_store_multi.json')
+	// save every 10s
+	setInterval(() => {
+		store?.writeToFile('./baileys_store_multi.json')
+	}, 10_000)
 	const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info')
 	// fetch latest version of WA Web
 	const { version, isLatest } = await fetchLatestBaileysVersion()
 	console.log(`using WA v${version.join('.')}, isLatest: ${isLatest}`)
 
-	const sock = makeWASocket({
+	const sock = await makeWASocket({
 		version,
 		logger,
 		printQRInTerminal: !usePairingCode,
