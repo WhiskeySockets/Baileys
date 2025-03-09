@@ -1,10 +1,15 @@
 //CF import WebSocket from 'ws'
+import { logForDevelopment } from '../..'
 import { DEFAULT_ORIGIN } from '../../Defaults'
 import { AbstractSocketClient } from './types'
+
+let socketGlobal: WebSocket | null = null //CF
+let timeMaxOpenSocket: NodeJS.Timeout | null = null //CF
 
 export class WebSocketClient extends AbstractSocketClient {
 
 	protected socket: WebSocket | null = null
+	public timeWs: NodeJS.Timeout | null = null
 
 	get isOpen(): boolean {
 		return this.socket?.readyState === WebSocket.OPEN
@@ -41,25 +46,44 @@ export class WebSocketClient extends AbstractSocketClient {
 		} */
 
 		//CF \/
-		const Const_response = await fetch(this.url.href.replace('wss://', 'https://'), {
+		if (socketGlobal) {
+			try {
+				(socketGlobal as WebSocket)?.close()
+				socketGlobal = null
+			} catch { }
+		}
+		if (timeMaxOpenSocket) {
+			clearTimeout(timeMaxOpenSocket)
+			timeMaxOpenSocket = null
+		}
+
+		const response = await fetch(this.url.href.replace('wss://', 'https://'), {
 			headers: {
 				'origin': DEFAULT_ORIGIN,
 				'Upgrade': 'websocket'
 			}
 		}) as Response & { webSocket: WebSocket }
 
-		this.socket = Const_response?.webSocket
+		this.socket = response?.webSocket
+		socketGlobal = response?.webSocket
 		if (!this.socket) {
-			console.log("ERRO [!this.socket] Error connecting to WhatsApp websocket")
+			if (logForDevelopment) console.log("ERRO [!this.socket] Error connecting to WhatsApp websocket")
 		}
+
+		timeMaxOpenSocket = setTimeout(() => {
+			this?.socket?.close()
+		}, Math.floor(Math.random() * (50000 - 30000 + 1)) + 30000)
 
 		this.socket.addEventListener('open', (event) => this.emit('open', event))
 		this.socket.addEventListener('message', (event) => {
-			let Let_eventData = event.data
-			if (Let_eventData instanceof ArrayBuffer) {
-				Let_eventData = Buffer.from(Let_eventData)
+			if (logForDevelopment) console.log('')
+			if (logForDevelopment) console.log('WARNING [RECEIVING]: ', '[event.data]', event.data)
+			if (logForDevelopment) console.log('')
+			let eventData = event.data
+			if (eventData instanceof ArrayBuffer) {
+				eventData = Buffer.from(eventData)
 			}
-			this.emit('message', Let_eventData)
+			this.emit('message', eventData)
 		})
 		this.socket.addEventListener('error', (event) => this.emit('error', event))
 		this.socket.addEventListener('close', (event) => this.emit('close', event))
@@ -75,6 +99,7 @@ export class WebSocketClient extends AbstractSocketClient {
 	}
 
 	async close(): Promise<void> {
+		if (logForDevelopment) console.log('WARNING [closed()]')
 		if(!this.socket) {
 			return
 		}
@@ -83,6 +108,9 @@ export class WebSocketClient extends AbstractSocketClient {
 		this.socket = null
 	}
 	send(str: string | Uint8Array/*CF , cb?: (err?: Error) => void */): boolean {
+		if (logForDevelopment) console.log('')
+		if (logForDevelopment) console.log('WARNING [SENT]: ', '[str]', str)
+		if (logForDevelopment) console.log('')
 		this.socket?.send(str/*CF , cb */)
 
 		return Boolean(this.socket)

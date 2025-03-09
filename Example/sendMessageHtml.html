@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Send WhatsApp Message</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        body { background-color: #d0e7ff; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .container { display: flex; flex: 90%; max-width: 1300px; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 0 10px rgba(0,0,0,0.1); height: calc(-30px + 100vh); overflow-y: auto; margin: 0px 12px; }
+        .container-bots-list { flex: 40%; padding: 20px; background: #00b86e; color: white; display: flex; flex-direction: column; justify-content: space-between; min-height: 576px; }
+        .bots-list { overflow-y: auto; max-height: 400px; display: flex; gap: 20px; flex-direction: column; }
+        .container-bots-list h2 { margin-bottom: 16px; }
+        .bot-item { background: rgba(255, 255, 255, 0.2); padding: 10px; border-radius: 8px; display: flex; gap: 6px; flex-direction: column; margin-right: 20px; }
+        .content { width: 60%; padding: 20px; text-align: center; display: flex; flex-direction: column; justify-content: space-between; gap: 36px; min-height: 576px; }
+        input, textarea { width: 100%; padding: 10px; margin: 5px 0; border-radius: 8px; border: 1px solid #ccc; }
+        button { width: 100%; padding: 10px; border-radius: 8px; border: none; background: #00b86e; color: white; font-weight: bold; cursor: pointer; }
+        button:hover { background: hsl(156, 100%, 29%); }
+        label { display: block; font-weight: bold; margin-left: 2px; font-size: 14px; text-align: start; }
+        .back-button { padding: 10px; background: #4a90e2; color: white; text-align: center; border-radius: 8px; cursor: pointer; text-decoration: none; display: block; font-weight: bold; }
+        .back-button:hover { background: #357ab7; }
+        @media (max-width: 768px) { .container { flex-direction: column; } .bots-list, .content { width: 100%; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="container-bots-list">
+            <div>
+                <h2>Registered UserBots:</h2>
+                <div id="bot-list" class="bots-list"></div>
+            </div>
+            <a href="/site/register-whatsapp" class="back-button">Go to Register WhatsApp</a>
+        </div>
+        <div class="content">
+            <h2>Send Message</h2>
+            <div>
+                <label for="userBot">UserBot:</label>
+                <input type="text" id="userBot" placeholder="Enter userBot">
+            </div>
+            <div>
+                <label for="phone">Phone Number:</label>
+                <input type="text" id="phone" placeholder="Enter phone number">
+            </div>
+            <div>
+                <label for="message">Message:</label>
+                <textarea id="message" placeholder="Enter your message"></textarea>
+            </div>
+            <div>
+                <label for="adminPassword">Admin password:</label>
+                <input type="password" id="adminPassword" placeholder="Enter admin password">
+            </div>
+            <button id="sendButton" onclick="sendMessage()">Send Message</button>
+        </div>
+    </div>
+    <script>
+        const apiBase = window.location.origin + "/api";
+
+        function formatNumberBr(numero) {
+            let numStr = numero.toString().replace(/\D/g, '')
+
+            if (numStr.startsWith('55') && (numStr.length === 12 || numStr.length === 13)) {
+                numStr = numStr.slice(2)
+
+                let ddd = numStr.slice(0, 2)
+                let numeroPrincipal = numStr.slice(2)
+
+                let formato = numeroPrincipal.length === 9
+                    ? `${numeroPrincipal.slice(0, 5)}-${numeroPrincipal.slice(5)}`
+                    : `${numeroPrincipal.slice(0, 4)}-${numeroPrincipal.slice(4)}`
+
+                return `+55 (${ddd}) ${formato}`
+            }
+
+            return numero.toString()
+        }
+
+        async function fetchBots() {
+            const res = await fetch(`${apiBase}/get-all-user-bot`);
+            const bots = await res.json();
+            const list = document.getElementById("bot-list");
+            list.innerHTML = bots.map(bot => `
+                <div class="bot-item">
+                    <strong>${bot.userBot}</strong>
+                    <span>Name: ${bot.name}</span>
+                    <span>Phone: ${formatNumberBr(bot.phone)}</span>
+                    <span>Path: ${bot.path}</span>
+                    <span>Size: ${bot.size} bytes</span>
+                    <span>Updated: ${new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })?.format(new Date(!bot?.updated || bot?.updated === 'not found' ? '11/11/1111-11:11' : bot?.updated))?.replace(',', ' -')}</span>
+                    <span>Created: ${new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })?.format(new Date(!bot?.created || bot?.created === 'not found' ? '11/11/1111-11:11' : bot?.created))?.replace(',', ' -')}</span>
+                </div>
+            `).join("");
+        }
+
+        async function sendMessage() {
+            try {
+                const sendButton = document.getElementById("sendButton");
+                document.getElementById("sendButton").textContent = "Sending Message...";
+                sendButton.style.pointerEvents = "none";
+                sendButton.style.background = "#babcbb";
+
+                const userBot = document.getElementById("userBot").value;
+                const phone = document.getElementById("phone").value;
+                const message = document.getElementById("message").value;
+                const adminPassword = document.getElementById("adminPassword").value;
+                if (!userBot || !phone || !message || !adminPassword) return alert("Fill in all fields!");
+                
+                const res = await fetch(`${apiBase}/send-message`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ userBot, phone, message, adminPassword })
+                });
+
+                if (!res.ok) {
+                    return alert("Error sending message");
+                }
+                
+                alert("Message sent successfully");
+            } catch (error) {
+                alert("Unknown error");
+            } finally {
+                const sendButton = document.getElementById("sendButton");
+                document.getElementById("sendButton").textContent = "Send Message";
+                sendButton.style.pointerEvents = "";
+                sendButton.style.background = "#00b86e";
+            }
+        }
+
+        fetchBots();
+    </script>
+</body>
+</html>

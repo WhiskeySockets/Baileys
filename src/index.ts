@@ -13,4 +13,4 @@ export type WASocket = ReturnType<typeof makeWASocket>
 export { makeWASocket }
 export default makeWASocket
 
-console.log('start, test 01')
+export const logForDevelopment = false //CF

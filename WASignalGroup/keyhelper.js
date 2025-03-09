@@ -1,4 +1,4 @@
-const curve = require('../libsignal_custom/src/curve');
+const curve = require('../node_modules_custom/libsignal_custom/src/curve');
 const nodeCrypto = require('crypto');
 
 exports.generateSenderKey = function() {

@@ -1,69 +1,184 @@
-import { Boom } from '@hapi/boom'
+
 import NodeCache from '@cacheable/node-cache'
-//CF import readline from 'readline'
-import makeWASocket, { AnyMessageContent, BinaryInfo, delay, DisconnectReason, downloadAndProcessHistorySyncNotification, encodeWAM, fetchLatestBaileysVersion, getAggregateVotesInPollMessage, getHistoryMsg, isJidNewsletter, makeCacheableSignalKeyStore, makeInMemoryStore, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
-//import MAIN_LOGGER from '../src/Utils/logger'
-//CF import open from 'open'
-//CF import fs from 'fs'
 import P from 'pino'
+import type { Boom } from '@hapi/boom'
+import { ExecutionContext, R2Bucket } from "@cloudflare/workers-types"
+import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion, logForDevelopment, makeCacheableSignalKeyStore, useMultiFileAuthState } from "../src"
+import registerWhatsappHtml from './registerWhatsappHtml.html'
+import sendMessageHtml from './sendMessageHtml.html'
 
 
-import { ExecutionContext, R2Bucket } from '@cloudflare/workers-types' //CF
-
-
-//CF \/
-type Type_envData = {
-    R2_fileStorage: R2Bucket;
+export type envData = {
+    R2_whatsappCloudflareWorkers: R2Bucket;
 }
-//CF /\
 
 
-//CF \/
 export default {
-	async fetch(Parameter_request: Request, Parameter_env: Type_envData, Parameter_ctx: ExecutionContext): Promise<Response> {
-		const Const_newUrl = new URL(Parameter_request.url)
-		const Const_pathName = Const_newUrl.pathname
+	async fetch(request: Request, env: envData, ctx: ExecutionContext): Promise<Response> {
+		const newUrl = new URL(request.url)
+		const pathName = newUrl.pathname
+		// Used to retrieve all userBot in registerWhatsappHtml.html and sendMessageHtml.html
+		const prefixUserBot = 'userBot'
 
-		// Example: /send-message?phone=1234567890&message=Hello%20World&code=123456
-		if (Const_pathName.startsWith('/send-message')) {
+		// Site: /site/register-whatsapp
+		if (pathName.startsWith('/site/register-whatsapp')) {
+            const response = new Response(registerWhatsappHtml, {
+                status: 200,
+                statusText: 'OK',
+                headers: {
+                    'Content-Type': 'text/html',
+                    'Cache-Control': 'no-cache',
+                    'Access-Control-Allow-Origin': '*',
+                }
+            })
+
+            return response
+		}
+
+		// Site: /site/send-message
+		else if (pathName.startsWith('/site/send-message')) {
+            const response = new Response(sendMessageHtml, {
+                status: 200,
+                statusText: 'OK',
+                headers: {
+                    'Content-Type': 'text/html',
+                    'Cache-Control': 'no-cache',
+                    'Access-Control-Allow-Origin': '*',
+                }
+            })
+
+            return response
+		}
+
+		// Example: POST /api/register-whatsapp {userBot: "bot01", adminPassword: "123456"}
+		else if (pathName.startsWith('/api/register-whatsapp') && request.method === 'POST') {
 			try {
-				const Const_number = Const_newUrl.searchParams.get('phone') || ''
-				const Const_message = Const_newUrl.searchParams.get('message') || ''
-				const Const_code = Const_newUrl.searchParams.get('code') || ''
+				const requestBody = await request.json()
 
-				if (Const_code !== '123456') {
-					console.log('WARNING [Const_code !== ***] No permission')
-					return new Response('WARNING [Const_code !== ***] No permission', {status: 401})
+				let userBot = requestBody.userBot
+				const adminPassword = requestBody.adminPassword
+
+				if (adminPassword !== '123456') {
+					console.log('WARNING [adminPassword !== ***] No permission')
+					return new Response('WARNING [adminPassword !== ***] No permission', {status: 401})
 				}
 
-				if (!Const_number || !Const_message) {
-					console.log('WARNING [!Const_number || !Const_message] Missing phone or message')
-					return new Response('WARNING [!Const_number || !Const_message] Missing phone or message', {status: 400})
+				if (!userBot) {
+					console.log('WARNING [!userBot] Missing userBot')
+					return new Response('WARNING [!userBot] Missing userBot', {status: 400})
 				}
 
-				console.log(`SUCCESS [Const_message] Sending message: ${Const_message}`)
-				console.log(`SUCCESS [Const_number] To the number: ${Const_number}`)
+				userBot = `${prefixUserBot}/${userBot}`
+
+				console.log(`SUCCESS [userBot] Name userBot: ${userBot}`)
+
+				// IMPORTANT
+				// Deleting old creds.json is necessary to avoid bugs
+				// IMPORTANT
+				await env.R2_whatsappCloudflareWorkers.delete(`${userBot}/creds.json`)
+
+				const sockAndLink = await apiRegisterWhatsapp(userBot, env.R2_whatsappCloudflareWorkers)
+
+				if (!sockAndLink) {
+					console.log('WARNING [!sock] Generating link');
+					return new Response('WARNING [!sock] Generating link', { status: 400 })
+				}
+
+				const sock = sockAndLink.sock
+				const link = sockAndLink.link
+
+				ctx.waitUntil(
+					new Promise((resolve, reject) => {
+						setTimeout(async () => {
+							try {
+								await sock.ws.close()
+								sock.end({
+									name: 'false',
+									message: 'false'
+								})
+								resolve(undefined)
+							}
+
+							catch (error) {
+								reject(error)
+							}
+						}, 30000)
+					})
+				)
+
+				return new Response(JSON.stringify({
+					link: link
+				}), {
+					status: 200,
+					headers: {
+						'Content-Type': 'application/json'
+					}
+				})
+			}
+
+			catch (error) {
+				console.log('ERRO [catch] Erro in /send-message', error)
+				return new Response('ERRO [catch] Erro in /send-message', {status: 500})
+			}
+		}
+
+		// Example: POST /api/send-message { userBot: "bot01", phone: "1234567890", message: "Hello World", adminPassword: "123456" }
+		else if (pathName.startsWith('/api/send-message') && request.method === 'POST') {
+			try {
+				const requestBody = await request.json()
+
+				let userBot = requestBody.userBot
+				const phone = requestBody.phone
+				let message = requestBody.message
+				const adminPassword = requestBody.adminPassword
+
+				if (adminPassword !== '123456') {
+					console.log('WARNING [adminPassword !== ***] No permission')
+					return new Response('WARNING [adminPassword !== ***] No permission', {status: 401})
+				}
+
+				if (!userBot || !phone || !message) {
+					console.log('WARNING [!userBot || !phone || !message] Missing phone or message')
+					return new Response('WARNING [!phone || !message] Missing phone or message', {status: 400})
+				}
+
+				userBot = `${prefixUserBot}/${userBot}`
+				message = message?.replace(/\r?\n|\r/g, '\n')
+
+				console.log(`SUCCESS [userBot] Name userBot: ${userBot}`)
+				console.log(`SUCCESS [message] Sending message: ${message}`)
+				console.log(`SUCCESS [phone] To the phone: ${phone}`)
 
 				// IMPORTANT
 				// It is necessary to have already stored in R2 the auth_info_baileys/creds.json of the sender's WhatsApp account
 				// IMPORTANT
-				const Const_creds = await Parameter_env.R2_fileStorage.get('auth_info_baileys/creds.json')
-				if (!Const_creds) {
-					console.log('WARNING [!Const_creds] No credentials found')
-					return new Response('WARNING [!Const_creds] No credentials found', {status: 400})
+				const creds = await env.R2_whatsappCloudflareWorkers.get(`${userBot}/creds.json`)
+				if (!creds) {
+					console.log('WARNING [!creds] No credentials found')
+					return new Response('WARNING [!creds] No credentials found', {status: 400})
 				}
 
-				var Const_sock = await Function_sendMessage(Const_number, Const_message, Parameter_env.R2_fileStorage)
-				if(!Const_sock) {
-					console.log('WARNING [!Const_sock] Sending message')
-					return new Response('WARNING [!Const_sock] Sending message', {status: 400})
+				//var sock = await iniciar(env, phone, message)
+				const sockAndSuccessSend = await apiSendMessage(userBot, phone, message, env.R2_whatsappCloudflareWorkers)
+
+				if(!sockAndSuccessSend) {
+					console.log('WARNING [!sock] Sending message')
+					return new Response('WARNING [!sock] Sending message', {status: 400})
 				}
 
-				await Const_sock.ws.close()
-				Const_sock.end({
+				const sock = sockAndSuccessSend.sock
+				const successSend = sockAndSuccessSend.successSend
+
+				await sock.ws.close()
+				sock.end({
 					name: 'false',
 					message: 'false'
 				})
+
+				if (!successSend) {
+					console.log('WARNING [!successSend] Message not sent')
+					return new Response('WARNING [!successSend] Message not sent', {status: 400})
+				}
 
 				return new Response('SUCCESS [sent] Message sent successfully!', {
 					status: 200,
@@ -73,365 +188,234 @@ export default {
 				})
 			}
 
-			catch (Parameter_error) {
-				console.log('ERRO [catch] Erro in /send-message', Parameter_error)
+			catch (error) {
+				console.log('ERRO [catch] Erro in /send-message', error)
 				return new Response('ERRO [catch] Erro in /send-message', {status: 500})
 			}
 		}
 
+		// Example: GET /api/get-all-user-bot
+		else if (pathName.startsWith('/api/get-all-user-bot') && request.method === 'GET') {
+			const allUserBotHead = await env.R2_whatsappCloudflareWorkers.list({ prefix: `${prefixUserBot}/` })
+
+			const objects: { userBot: string; name: string; phone: string; path: string; size: number; created: string; updated: Date; }[] = []
+			for (const obj of allUserBotHead.objects) {
+				const head = await env.R2_whatsappCloudflareWorkers.head(obj.key)
+
+				objects.push({
+					userBot: head?.customMetadata?.userBot || 'not found',
+					name: head?.customMetadata?.name || 'not found',
+					phone: head?.customMetadata?.phone || 'not found',
+					path: head?.customMetadata?.path || 'not found',
+					size: obj.size,
+					created: head?.customMetadata?.created || 'not found',
+					updated: obj.uploaded
+				})
+			}
+
+			objects.sort((a, b) => {
+				const createdA = new Date(!a?.created || a?.created === 'not found' ? '11/11/1111-11:11' : a?.created).getTime()
+				const createdB = new Date(!b?.created || b?.created === 'not found' ? '11/11/1111-11:11' : b?.created).getTime()
+		
+				return createdB - createdA
+			})
+
+			return new Response(JSON.stringify(objects), {
+				status: 200,
+				headers: {
+					'Content-Type': 'application/json'
+				}
+			})
+		}
+
 		else {
-			console.log('WARNING [else] Not found')
-			return new Response('WARNING [else] Not found', {status: 404})
+			return new Response('No found', {status: 404})
 		}
 	}
 }
-//CF /\
 
+async function apiSendMessage(userBot: string, phone: string, message: string, R2FileStorage: R2Bucket): Promise<{sock: ReturnType<typeof makeWASocket>, successSend: boolean} | false> {
+	try {
+		const logger = P({ timestamp: () => `,"time":"${new Date().toJSON()}"` })
+		logger.level = 'silent'
 
-async function Function_sendMessage(Parameter_phone: string, Parameter_message: string, Parameter_R2FileStorage: R2Bucket): Promise<ReturnType<typeof makeWASocket> | false> { //CF
-	try { //CF
-		const logger = P({ timestamp: () => `,"time":"${new Date().toJSON()}"` } /*CF , P.destination('./wa-logs.txt') */)
-		logger.level = 'silent' /*CF 'trace' */
-
-		const useStore = false /*CF !process.argv.includes('--no-store') */
-		const doReplies = true /*CF process.argv.includes('--do-reply') */
-		const usePairingCode = false /* process.argv.includes('--use-pairing-code') */
-
-		// external map to store retry counts of messages when decryption/encryption fails
-		// keep this out of the socket itself, so as to prevent a message decryption/encryption loop across socket restarts
 		const msgRetryCounterCache = new NodeCache()
 
-		const onDemandMap = new Map<string, string>()
-
-		// Read line interface
-		/*CF const rl = readline.createInterface({ input: process.stdin, output: process.stdout }) */
-		/*CF const question = (text: string) => new Promise<string>((resolve) => rl.question(text, resolve)) */
-
-		// the store maintains the data of the WA connection in memory
-		// can be written out to a file & read from it
-		/*CF const store = useStore ? makeInMemoryStore({ logger }) : undefined
-		store?.readFromFile('./baileys_store_multi.json') */
-		// save every 10s
-		/*CF setInterval(() => {
-			store?.writeToFile('./baileys_store_multi.json')
-		}, 10_000) */
-
-		// start a connection
+		let successSend = false
 		const startSock = async() => {
-			const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info', Parameter_R2FileStorage) //CF
-			// fetch latest version of WA Web
+			const { state, saveCreds } = await useMultiFileAuthState(userBot, R2FileStorage) //CF
 			const { version, isLatest } = await fetchLatestBaileysVersion()
-			console.log(`using WA v${version.join('.')}, isLatest: ${isLatest}`)
+			if (logForDevelopment) console.log(`WARNING [startSock = async() => {...] Using WA v${version.join('.')}, isLatest: ${isLatest}`)
 
 			const sock = makeWASocket({
 				version,
 				logger,
-				printQRInTerminal: !usePairingCode,
+				printQRInTerminal: false,
 				auth: {
 					creds: state.creds,
-					/** caching makes the store faster to send/recv messages */
 					keys: makeCacheableSignalKeyStore(state.keys, logger),
 				},
 				msgRetryCounterCache,
-				generateHighQualityLinkPreview: true,
-				// ignore all broadcast messages -- to receive the same
-				// comment the line below out
-				// shouldIgnoreJid: jid => isJidBroadcast(jid),
-				// implement to handle retries & poll updates
-				/* getMessage, */
+				generateHighQualityLinkPreview: true
 			})
 
-			/*CF store?.bind(sock.ev) */
-
-			// Pairing code for Web clients
-			/*CF if (usePairingCode && !sock.authState.creds.registered) {
-				// todo move to QR event
-				const phoneNumber = await question('Please enter your phone number:\n')
-				const code = await sock.requestPairingCode(phoneNumber)
-				console.log(`Pairing code: ${code}`)
-			} */
-
-			const sendMessageWTyping = async(msg: AnyMessageContent, jid: string): Promise<proto.WebMessageInfo | undefined> => { //CF
-				await sock.presenceSubscribe(jid)
-				await delay(500) //CF
-
-				await sock.sendPresenceUpdate('composing', jid)
-				await delay(2000) //CF
-
-				await sock.sendPresenceUpdate('paused', jid)
-
-				return await sock.sendMessage(jid, msg) //CF
-			}
-
-			// the process function lets you process all events that just occurred
-			// efficiently in a batch
 			sock.ev.process(
-				// events is a map for event name => event data
 				async(events) => {
-					// something about the connection changed
-					// maybe it closed, or we received all offline message or connection opened
 					if(events['connection.update']) {
 						const update = events['connection.update']
 						const { connection, lastDisconnect } = update
 						if(connection === 'close') {
-							// reconnect if not logged out
 							if((lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut) {
-								startSock()
-							} else {
-								console.log('Connection closed. You are logged out.')
+								if (logForDevelopment) console.log('WARNING [events["connection.update"]] Reconnection not allowed')
+							}
+
+							else {
+								if (logForDevelopment) console.log('WARNING [events["connection.update"]] Connection closed. You are logged out')
 							}
 						}
-						
-						// WARNING: THIS WILL SEND A WAM EXAMPLE AND THIS IS A ****CAPTURED MESSAGE.****
-						// DO NOT ACTUALLY ENABLE THIS UNLESS YOU MODIFIED THE FILE.JSON!!!!!
-						// THE ANALYTICS IN THE FILE ARE OLD. DO NOT USE THEM.
-						// YOUR APP SHOULD HAVE GLOBALS AND ANALYTICS ACCURATE TO TIME, DATE AND THE SESSION
-						// THIS FILE.JSON APPROACH IS JUST AN APPROACH I USED, BE FREE TO DO THIS IN ANOTHER WAY.
-						// THE FIRST EVENT CONTAINS THE CONSTANT GLOBALS, EXCEPT THE seqenceNumber(in the event) and commitTime
-						// THIS INCLUDES STUFF LIKE ocVersion WHICH IS CRUCIAL FOR THE PREVENTION OF THE WARNING
-						/*CF const sendWAMExample = false;
-						if(connection === 'open' && sendWAMExample) {
-							/// sending WAM EXAMPLE
-							const {
-								header: {
-									wamVersion,
-									eventSequenceNumber,
-								},
-								events,
-							} = JSON.parse(await fs.promises.readFile("./boot_analytics_test.json", "utf-8"))
 
-							const binaryInfo = new BinaryInfo({
-								protocolVersion: wamVersion,
-								sequence: eventSequenceNumber,
-								events: events
-							})
-
-							const buffer = encodeWAM(binaryInfo);
-							
-							const result = await sock.sendWAMBuffer(buffer)
-							console.log(result)
-						} */
-
-						console.log('connection update', update)
+						if (logForDevelopment) console.log('WARNING [events["connection.update"]] Connection update', update)
 					}
 
-					// credentials updated -- save them
 					if(events['creds.update']) {
 						await saveCreds()
 					}
-
-					/*CF if(events['labels.association']) {
-						console.log(events['labels.association'])
-					} */
-
-
-					/*CF if(events['labels.edit']) {
-						console.log(events['labels.edit'])
-					} */
-
-					/*CF if(events.call) {
-						console.log('recv call event', events.call)
-					} */
-
-					// history received
-					/*CF if(events['messaging-history.set']) {
-						const { chats, contacts, messages, isLatest, progress, syncType } = events['messaging-history.set']
-						if (syncType === proto.HistorySync.HistorySyncType.ON_DEMAND) {
-							console.log('received on-demand history sync, messages=', messages)
-						}
-						console.log(`recv ${chats.length} chats, ${contacts.length} contacts, ${messages.length} msgs (is latest: ${isLatest}, progress: ${progress}%), type: ${syncType}`)
-					} */
-
-					// received a new message
-					/*CF if(events['messages.upsert']) {
-						const upsert = events['messages.upsert']
-						console.log('recv messages ', JSON.stringify(upsert, undefined, 2))
-
-						if(upsert.type === 'notify') {
-							for (const msg of upsert.messages) { */
-								//TODO: More built-in implementation of this
-								/* if (
-									msg.message?.protocolMessage?.type ===
-									proto.Message.ProtocolMessage.Type.HISTORY_SYNC_NOTIFICATION
-								) {
-									const historySyncNotification = getHistoryMsg(msg.message)
-									if (
-									historySyncNotification?.syncType ==
-									proto.HistorySync.HistorySyncType.ON_DEMAND
-									) {
-									const { messages } =
-										await downloadAndProcessHistorySyncNotification(
-										historySyncNotification,
-										{}
-										)
-
-										
-										const chatId = onDemandMap.get(
-											historySyncNotification!.peerDataRequestSessionId!
-										)
-										
-										console.log(messages)
-
-									onDemandMap.delete(
-										historySyncNotification!.peerDataRequestSessionId!
-									)
-
-									/*
-										// 50 messages is the limit imposed by whatsapp
-										//TODO: Add ratelimit of 7200 seconds
-										//TODO: Max retries 10
-										const messageId = await sock.fetchMessageHistory(
-											50,
-											oldestMessageKey,
-											oldestMessageTimestamp
-										)
-										onDemandMap.set(messageId, chatId)
-									}
-								} */
-
-								/*CF if (msg.message?.conversation || msg.message?.extendedTextMessage?.text) {
-									const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text
-									if (text == "requestPlaceholder" && !upsert.requestId) {
-										const messageId = await sock.requestPlaceholderResend(msg.key) 
-										console.log('requested placeholder resync, id=', messageId)
-									} else if (upsert.requestId) {
-										console.log('Message received from phone, id=', upsert.requestId, msg)
-									}
-
-									// go to an old chat and send this
-									if (text == "onDemandHistSync") {
-										const messageId = await sock.fetchMessageHistory(50, msg.key, msg.messageTimestamp!) 
-										console.log('requested on-demand sync, id=', messageId)
-									}
-								}
-
-								if(!msg.key.fromMe && doReplies && !isJidNewsletter(msg.key?.remoteJid!)) {
-
-									console.log('replying to', msg.key.remoteJid)
-									await sock!.readMessages([msg.key])
-									await sendMessageWTyping({ text: 'Hello there!' }, msg.key.remoteJid!)
-								}
-							}
-						}
-					} */
-
-					// messages updated like status delivered, message deleted etc.
-					/*CF if(events['messages.update']) {
-						console.log(
-							JSON.stringify(events['messages.update'], undefined, 2)
-						)
-
-						for(const { key, update } of events['messages.update']) {
-							if(update.pollUpdates) {
-								const pollCreation = await getMessage(key)
-								if(pollCreation) {
-									console.log(
-										'got poll update, aggregation: ',
-										getAggregateVotesInPollMessage({
-											message: pollCreation,
-											pollUpdates: update.pollUpdates,
-										})
-									)
-								}
-							}
-						}
-					} */
-
-					/*CF if(events['message-receipt.update']) {
-						console.log(events['message-receipt.update'])
-					} */
-
-					/*CF if(events['messages.reaction']) {
-						console.log(events['messages.reaction'])
-					} */
-
-					/*CF if(events['presence.update']) {
-						console.log(events['presence.update'])
-					} */
-
-					/*CF if(events['chats.update']) {
-						console.log(events['chats.update'])
-					} */
-
-					/*CF if(events['contacts.update']) {
-						for(const contact of events['contacts.update']) {
-							if(typeof contact.imgUrl !== 'undefined') {
-								const newUrl = contact.imgUrl === null
-									? null
-									: await sock!.profilePictureUrl(contact.id!).catch(() => null)
-								console.log(
-									`contact ${contact.id} has a new profile pic: ${newUrl}`,
-								)
-							}
-						}
-					} */
-
-					/*CF if(events['chats.delete']) {
-						console.log('chats deleted ', events['chats.delete'])
-					} */
 				}
 			)
 
-			/*CF return sock */
+			const delay = (ms: number) => new Promise<true>((resolve) => setTimeout(() => resolve(true), ms))
 
-			/*CF async function getMessage(key: WAMessageKey): Promise<WAMessageContent | undefined> {
-				if(store) {
-					const msg = await store.loadMessage(key.remoteJid!, key.id!)
-					return msg?.message || undefined
-				}
+			let countAttempt = 0
 
-				// only if store is present
-				return proto.Message.fromObject({})
-			} */
+			await delay(2000)
 
-			//CF \/
-			const Function_delay = (Parameter_ms: number) => new Promise<true>((Parameter_resolve) => setTimeout(() => Parameter_resolve(true), Parameter_ms))
-
-			let Let_successSend = false
-			let Let_countAttempt = 0
-
-			await Function_delay(2000)
-
-			while (!Let_successSend && Let_countAttempt < 10) {
-				Let_countAttempt++;
-				console.log(`Attempted sending of message n°${Let_countAttempt + 1}`)
+			while (!successSend && countAttempt < 2) {
+				countAttempt++;
+				if (logForDevelopment) console.log(`WARNING [while (!successSend && countAttempt < 2) {...] Attempted sending of message n°${countAttempt}`)
 
 				try {
-					const Const_responseSendMessage = await sendMessageWTyping({ text: Parameter_message }, `${Parameter_phone}@s.whatsapp.net`)
+					const jid = `${phone}@s.whatsapp.net`
 
-					if (Const_responseSendMessage?.status! >= 1) {
-						Let_successSend = true
-						console.log("Message sent successfully!", Const_responseSendMessage)
+					await sock.sendPresenceUpdate('composing', jid)
+					await delay(2000 + Math.random() * 3000)
 
-						await Function_delay(5000)
+					await sock.sendPresenceUpdate('paused', jid)
+
+					const responseSendMessage = await sock.sendMessage(jid, { text: message })
+
+					if (responseSendMessage?.status! >= 1) {
+						successSend = true
+						if (logForDevelopment) console.log("WARNING [responseSendMessage?.status! >= 1] {...] Message sent successfully!", responseSendMessage)
+
+						await delay(5000)
 						break
 					}
 
-					console.log("Error [!(Const_responseSendMessage?.status! >= 1)] sending message, trying again in 2 seconds...", Const_responseSendMessage)
+					if (logForDevelopment) console.log("ERRO [!(responseSendMessage?.status! >= 1)] sending message, trying again in 2 seconds...", responseSendMessage)
 				}
 				catch (error) {
-					console.error("Error [CATCH] sending message, trying again in 2 seconds...", error)
+					if (logForDevelopment) console.log("ERRO [catch] sending message, trying again in 2 seconds...", error)
 				}
 
-				await Function_delay(2000)
+				await delay(2000)
 			}
-			//CF /\
 
 			return sock
 		}
 
-		const Const_return = await startSock()
-		if (!Const_return) {
+		const returnIntermediary = await startSock()
+		if (!returnIntermediary) {
 			return false
 		}
 
-		return Const_return
-	} //CF
+		return {sock: returnIntermediary, successSend: successSend}
+	}
 
-	//CF \/
-	catch (Parameter_error) {
-		console.log('ERRO [CATCH] [Function_sendMessage]:', Parameter_error)
+	catch (error) {
+		if (logForDevelopment) console.log('ERRO [catch] [sendMessage()]:', error)
 		return false
 	}
-	//CF /\
-} //CF
+}
+
+async function apiRegisterWhatsapp(userBot: string, R2FileStorage: R2Bucket): Promise<{sock: ReturnType<typeof makeWASocket>, link: string} | false> {
+	try {
+		const logger = P({ timestamp: () => `,"time":"${new Date().toJSON()}"` })
+		logger.level = 'silent'
+
+		const msgRetryCounterCache = new NodeCache()
+
+		const dateNowForReconnection = Date.now()
+		const startSock = async() => {
+			const { state, saveCreds } = await useMultiFileAuthState(userBot, R2FileStorage)
+			const { version, isLatest } = await fetchLatestBaileysVersion()
+			if (logForDevelopment) console.log(`WARNING [startSock = async() => {...] Using WA v${version.join('.')}, isLatest: ${isLatest}`)
+
+			const sock = makeWASocket({
+				version,
+				logger,
+				printQRInTerminal: false,
+				auth: {
+					creds: state.creds,
+					keys: makeCacheableSignalKeyStore(state.keys, logger),
+				},
+				msgRetryCounterCache,
+				generateHighQualityLinkPreview: true
+			})
+
+			let waitForLink = ''
+			sock.ev.process(
+				async(events) => {
+					if(events['connection.update']) {
+						const update = events['connection.update']
+						const { connection, lastDisconnect } = update
+						if(connection === 'close') {
+							if((lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut) {
+								if ((Date.now() - dateNowForReconnection) <= 15000) {
+									if (logForDevelopment) console.log('WARNING [events["connection.update"]] Reconnection allowed')
+									startSock()
+								}
+
+								else {
+									if (logForDevelopment) console.log('WARNING [events["connection.update"]] Reconnection not allowed')
+								}
+							}
+
+							else {
+								if (logForDevelopment) console.log('WARNING [events["connection.update"]] Connection closed. You are logged out')
+							}
+						}
+
+						if (update.qr) {
+							waitForLink = update.qr
+						}
+					}
+
+					if(events['creds.update']) {
+						await saveCreds()
+					}
+				}
+			)
+
+			while (!waitForLink) {
+				await new Promise(resolve => setTimeout(resolve, 1000))
+			}
+
+			return {
+				sock,
+				link: waitForLink
+			}
+		}
+
+		const returnIntermediary = await startSock()
+		if (!returnIntermediary) {
+			return false
+		}
+
+		return returnIntermediary
+	}
+
+	catch (error) {
+		if (logForDevelopment) console.log('ERRO [catch] [connectWhatsapp()]:', error)
+		return false
+	}
+}

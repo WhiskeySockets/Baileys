@@ -9,6 +9,7 @@ import { getUrlInfo } from '../Utils/link-preview'
 import { areJidsSameUser, BinaryNode, BinaryNodeAttributes, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, isJidUser, jidDecode, jidEncode, jidNormalizedUser, JidWithDevice, S_WHATSAPP_NET } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeGroupsSocket } from './groups'
+import { logForDevelopment } from '..'
 
 export const makeMessagesSocket = (config: SocketConfig) => {
 	const {
@@ -706,6 +707,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			content: AnyMessageContent,
 			options: MiscMessageGenerationOptions = { }
 		) => {
+			if (logForDevelopment) console.log('WARNING [sendMessage()]', '[jid]', jid) //CF
+			if (logForDevelopment) console.log('WARNING [sendMessage()]', '[content]', content) //CF
+			if (logForDevelopment) console.log('WARNING [sendMessage()]', '[options]', options) //CF
+
+			if (logForDevelopment) console.log('WARNING [sendMessage()]', '[authState]', authState) //CF
+
 			const userJid = authState.creds.me!.id
 			if(
 				typeof content === 'object' &&

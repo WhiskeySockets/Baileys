@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register WhatsApp Bot</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        body { background-color: #d0e7ff; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .container { display: flex; flex: 90%; max-width: 1300px; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 0 10px rgba(0,0,0,0.1); height: calc(-30px + 100vh); overflow-y: auto; margin: 0px 12px; }
+        .container-bots-list { flex: 40%; padding: 20px; background: #4a90e2; color: white; display: flex; flex-direction: column; justify-content: space-between; min-height: 576px; }
+        .bots-list { overflow-y: auto; max-height: 400px; display: flex; gap: 20px; flex-direction: column; }
+        .container-bots-list h2 { margin-bottom: 16px; }
+        .bot-item { background: rgba(255, 255, 255, 0.2); padding: 10px; border-radius: 8px; display: flex; gap: 6px; flex-direction: column; margin-right: 20px; }
+        .content { width: 60%; padding: 20px; text-align: center; display: flex; flex-direction: column; justify-content: space-between; gap: 36px; min-height: 576px; }
+        .warning { color: #e63946; font-weight: bold; }
+        .qrcode-space { padding: 8px; border: hsl(0deg 0% 0% / 30%) 2px solid; max-height: 390px; height: 100%; width: auto; background: #b3d4ff; display: flex; align-items: center; justify-content: center; border-radius: 8px; margin-bottom: 10px; font-weight: bold; color: #00000080; margin: auto; aspect-ratio: 1 / 1; transition: height 0.3s ease; cursor: default; }
+        .qrcode-space img { width: 100%; height: 100%; }
+        input { width: 100%; padding: 10px; margin: 5px 0; border-radius: 8px; border: 1px solid #ccc; }
+        button { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; }
+        button { background: #4a90e2; color: white; font-weight: bold; cursor: pointer; border: none; }
+        button:hover { background: #357ab7; }
+        label { display: block; font-weight: bold; margin-left: 2px; font-size: 14px; text-align: start; }
+        .delete-warning { color: #cc0000; font-size: 12px; letter-spacing: 1px; text-transform: uppercase;}
+        .timer { font-size: 18px; font-weight: bold; }
+        .send-message-button { padding: 10px; background: #00b86e; color: white; text-align: center; border-radius: 8px; cursor: pointer; text-decoration: none; display: block; font-weight: bold; }
+        .send-message-button:hover { background: #00995c; }
+        .content-child { display: flex; gap: 10px; flex-direction: column; height: 100%; }
+        .content-qrcode { display: flex; flex-direction: column; gap: 12px; height: 100%; }
+        .container-input { display: flex; gap: 12px; flex-direction: column; }
+        .container-qrcode-input { display: flex; gap: 32px; flex-direction: column; height: 100%; }
+        @media (max-width: 768px) { .container { flex-direction: column; } .bots-list, .content { width: 100%; } }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="container-bots-list">
+            <div>
+                <h2>Registered UserBots:</h2>
+                <div id="bot-list" class="bots-list"></div>
+            </div>
+            <a href="/site/send-message" class="send-message-button">Go to Send Message</a>
+        </div>
+        <div class="content">
+            <div class="content-child">
+                <div class="warning">BE QUICK. POINT THE CAMERA BEFORE GENERATING THE QR CODE</div>
+                <div class="container-qrcode-input">
+                    <div class="content-qrcode">
+                        <div id="qrcode" class="qrcode-space">QR Code Here</div>
+                        <div class="timer" id="timer"></div>
+                    </div>
+                    <div id="container-input" class="container-input">
+                        <div>
+                            <label for="userBot">UserBot for new or existing bot:</label>
+                            <input type="text" id="userBot" placeholder="Enter userBot">
+                        </div>
+                        <div>
+                            <label for="adminPassword">Admin password:</label>
+                            <input type="password" id="adminPassword" placeholder="Enter admin password">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button id="buttonGenerate" onclick="registerBot()"><span id="spanGenerate">Generate QR Code</span><br><span class="delete-warning">delete typed userBot immediately after clicking</span></button>
+        </div>
+    </div>
+    <script>
+        const apiBase = window.location.origin + "/api"
+
+        function formatNumberBr(numero) {
+            let numStr = numero.toString().replace(/\D/g, '')
+
+            if (numStr.startsWith('55') && (numStr.length === 12 || numStr.length === 13)) {
+                numStr = numStr.slice(2)
+
+                let ddd = numStr.slice(0, 2)
+                let numeroPrincipal = numStr.slice(2)
+
+                let formato = numeroPrincipal.length === 9
+                    ? `${numeroPrincipal.slice(0, 5)}-${numeroPrincipal.slice(5)}`
+                    : `${numeroPrincipal.slice(0, 4)}-${numeroPrincipal.slice(4)}`
+
+                return `+55 (${ddd}) ${formato}`
+            }
+
+            return numero.toString()
+        }
+
+        async function fetchBots() {
+            const res = await fetch(`${apiBase}/get-all-user-bot`)
+            const bots = await res.json()
+            const list = document.getElementById("bot-list")
+            list.innerHTML = bots.map(bot => `
+                <div class="bot-item">
+                    <strong>${bot.userBot}</strong>
+                    <span>Name: ${bot.name}</span>
+                    <span>Phone: ${formatNumberBr(bot.phone)}</span>
+                    <span>Path: ${bot.path}</span>
+                    <span>Size: ${bot.size} bytes</span>
+                    <span>Updated: ${new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })?.format(new Date(!bot?.updated || bot?.updated === 'not found' ? '11/11/1111-11:11' : bot?.updated))?.replace(',', ' -')}</span>
+                    <span>Created: ${new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })?.format(new Date(!bot?.created || bot?.created === 'not found' ? '11/11/1111-11:11' : bot?.created))?.replace(',', ' -')}</span>
+                </div>
+            `).join("")
+        }
+
+        async function registerBot() {
+            try {
+                const buttonGenerateElement = document.getElementById("buttonGenerate")
+                document.getElementById("spanGenerate").textContent = "Generating QR Code..."
+                buttonGenerateElement.style.pointerEvents = "none"
+                buttonGenerateElement.style.background = "#babcbb"
+
+                const userBot = document.getElementById("userBot").value
+                const adminPassword = document.getElementById("adminPassword").value
+                if (!userBot || !adminPassword) return alert("Fill in all fields!")
+                
+                const res = await fetch(`${apiBase}/register-whatsapp`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ userBot, adminPassword })
+                })
+
+                if(!res.ok) {
+                    if (res.status === 401) {
+                        return alert("Invalid admin password")
+                    }
+
+                    else {
+                        return alert("Error generating QR Code")
+                    }
+                }
+
+                const data = await res.json()
+
+                if (!data.link) return alert("Error generating QR Code")
+                document.getElementById("qrcode").innerHTML = ""
+                document.getElementById("qrcode").style.background = "#ffffff"
+                new QRCode(document.getElementById("qrcode"), { text: data.link, width: 500, height: 500, correctLevel: QRCode.CorrectLevel.L })
+
+                document.getElementById("spanGenerate").textContent = "Read the QR Code"
+
+                let timeLeft = 30
+                const timerElement = document.getElementById("timer")
+                timerElement.textContent = `Expires in ${timeLeft} seconds`
+                const containerInputElement = document.getElementById("container-input")
+                containerInputElement.style.display = "none"
+
+                const countdown = setInterval(() => {
+                    timeLeft--
+                    timerElement.textContent = `Expires in ${timeLeft} seconds`
+                    if (timeLeft <= 0) {
+                        clearInterval(countdown)
+                        document.getElementById("qrcode").innerHTML = "QR Code Expired"
+                        timerElement.textContent = ""
+                        const containerInputElement = document.getElementById("container-input")
+                        containerInputElement.style.display = ""
+                        document.getElementById("qrcode").background = ""
+
+                        const buttonGenerateElement = document.getElementById("buttonGenerate")
+                        document.getElementById("spanGenerate").textContent = "Generate QR Code"
+                        buttonGenerateElement.style.pointerEvents = ""
+                        buttonGenerateElement.style.background = ""
+
+                        fetchBots()
+                    }
+                }, 1000)
+            }
+            
+            catch (error) {
+                alert("Error unknown")
+                const buttonGenerateElement = document.getElementById("buttonGenerate")
+                document.getElementById("spanGenerate").textContent = "Generate QR Code"
+                buttonGenerateElement.style.pointerEvents = ""
+                buttonGenerateElement.style.background = ""
+            }
+        }
+
+        fetchBots()
+    </script>
+</body>
+</html>

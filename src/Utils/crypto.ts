@@ -2,6 +2,7 @@ import { /*CF createCipheriv, createDecipheriv,  */createHash, createHmac, rando
 import * as libsignal from '../../node_modules_custom/libsignal_custom'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { KeyPair } from '../Types'
+import { logForDevelopment } from '..'
 
 /** prefix version byte to the pub keys, required for some curve crypto functions */
 export const generateSignalPubKey = (pubKey: Uint8Array | Buffer) => (
@@ -13,6 +14,8 @@ export const generateSignalPubKey = (pubKey: Uint8Array | Buffer) => (
 export const Curve = {
 	generateKeyPair: (): KeyPair => {
 		const { pubKey, privKey } = libsignal.curve.generateKeyPair()
+		if (logForDevelopment) console.log('WARNING [generateKeyPair()]', '[pubKey]', pubKey) //CF
+		if (logForDevelopment) console.log('WARNING [generateKeyPair()]', '[privKey]', privKey) //CF
 		return {
 			private: Buffer.from(privKey),
 			// remove version byte

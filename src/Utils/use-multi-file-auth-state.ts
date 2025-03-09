@@ -21,7 +21,7 @@ import { R2Bucket } from '@cloudflare/workers-types' //CF
  * Again, I wouldn't endorse this for any production level use other than perhaps a bot.
  * Would recommend writing an auth state for use with a proper SQL or No-SQL DB
  * */
-export const useMultiFileAuthState = async(folder: string, Parameter_R2Bucket: R2Bucket): Promise<{ state: AuthenticationState, saveCreds: () => Promise<void> }> => { //CF
+export const useMultiFileAuthState = async(folder: string, R2Bucket: R2Bucket): Promise<{ state: AuthenticationState, saveCreds: () => Promise<void> }> => { //CF
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	/*CF const writeData = (data: any, file: string) => {
 		const filePath = join(folder, fixFileName(file)!)
@@ -66,26 +66,32 @@ export const useMultiFileAuthState = async(folder: string, Parameter_R2Bucket: R
 	} */
 
 	const writeData = async (data: any, file: string) => {
-		const Const_filePath = join(join(folder, fixFileName(file)!))
-		const Const_dataFormatted = JSON.stringify(data, BufferJSON.replacer)
+		const filePath = join(join(folder, fixFileName(file)!))
+		const dataFormatted = JSON.stringify(data, BufferJSON.replacer)
+		console.log("data", data)
+		console.log("folder", folder)
 
-		await Parameter_R2Bucket.put(Const_filePath, Const_dataFormatted)
+		await R2Bucket.put(filePath, dataFormatted, {
+			customMetadata: {
+				userBot: filePath?.split("/")?.slice(-2, -1)?.[0] || 'not found',
+				name: data?.me?.name || 'not found',
+				phone: data?.me?.id?.split(":")?.[0] || data?.id || 'not found',
+				path: filePath || 'not found',
+				created: new Date().toISOString()
+			}
+		})
 	}
 
 	const readData = async(file: string) => {
 		try {
-			const Const_filePath = join(folder, fixFileName(file)!)
+			const filePath = join(folder, fixFileName(file)!)
 
-			console.log("Const_filePath", Const_filePath)
+			const resultGetR2  = await R2Bucket.get(filePath)
+			if (!resultGetR2) { return null }
 
-			const Const_resultGetR2  = await Parameter_R2Bucket.get(Const_filePath)
-			if (!Const_resultGetR2) { return null }
+			const data = await resultGetR2.text()
 
-			const Const_data = await Const_resultGetR2.text()
-
-			////console.log('Const_data 1111111', Const_data)
-
-			return JSON.parse(Const_data, BufferJSON.reviver)
+			return JSON.parse(data, BufferJSON.reviver)
 		} catch(error) {
 			return null
 		}
@@ -94,7 +100,7 @@ export const useMultiFileAuthState = async(folder: string, Parameter_R2Bucket: R
 	const removeData = async(file: string) => {
 		try {
 			const filePath = join(folder, fixFileName(file)!)
-			await Parameter_R2Bucket.delete(filePath)
+			await R2Bucket.delete(filePath)
 		} catch{
 
 		}

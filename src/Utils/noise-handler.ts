@@ -5,6 +5,7 @@ import { KeyPair } from '../Types'
 import { BinaryNode, decodeBinaryNode } from '../WABinary'
 import { aesDecryptGCM, aesEncryptGCM, Curve, hkdf, sha256 } from './crypto'
 import { ILogger } from './logger'
+import { logForDevelopment } from '..'
 
 const generateIV = (counter: number) => {
 	const iv = new ArrayBuffer(12)
@@ -126,6 +127,7 @@ export const makeNoiseHandler = ({
 			return keyEnc
 		},
 		encodeFrame: async(data: Buffer | Uint8Array) => { //CF
+			if (logForDevelopment) console.log('WARNING [encodeFrame()]', '[data]', data) //CF
 			/*CF if(isFinished) {
 				data = encrypt(data)
 			} */

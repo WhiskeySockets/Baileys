@@ -20,32 +20,32 @@ export abstract class AbstractSocketClient /*CF extends EventEmitter */ {
 	//CF \/
 	private eventListeners: Map<string, Set<(...args: any[]) => void>> = new Map()
 
-	on(Parameter_event: string, listener: (...Parameter_args: any[]) => void): void {
-        if (!this.eventListeners.has(Parameter_event)) {
-            this.eventListeners.set(Parameter_event, new Set())
+	on(event: string, listener: (...args: any[]) => void): void {
+        if (!this.eventListeners.has(event)) {
+            this.eventListeners.set(event, new Set())
         }
-        this.eventListeners.get(Parameter_event)!.add(listener)
+        this.eventListeners.get(event)!.add(listener)
     }
 
-    off(Parameter_event: string, listener: (...Parameter_args: any[]) => void): void {
-        this.eventListeners.get(Parameter_event)?.delete(listener)
-        if (this.eventListeners.get(Parameter_event)?.size === 0) {
-            this.eventListeners.delete(Parameter_event)
+    off(event: string, listener: (...args: any[]) => void): void {
+        this.eventListeners.get(event)?.delete(listener)
+        if (this.eventListeners.get(event)?.size === 0) {
+            this.eventListeners.delete(event)
         }
     }
 
-    emit(Parameter_event: string, ...Parameter_args: any[]): boolean {
-        const Const_listeners = this.eventListeners.get(Parameter_event)
-        if (!Const_listeners || Const_listeners.size === 0) {
+    emit(event: string, ...args: any[]): boolean {
+        const listeners = this.eventListeners.get(event)
+        if (!listeners || listeners.size === 0) {
             return false
         }
 
-        Const_listeners.forEach(Parameter_listener => Parameter_listener(...Parameter_args))
+        listeners.forEach(listener => listener(...args))
         return true
     }
 
-    removeAllListeners(Parameter_event: string): void {
-        this.eventListeners.delete(Parameter_event)
+    removeAllListeners(event: string): void {
+        this.eventListeners.delete(event)
     }
 	//CF /\
 }

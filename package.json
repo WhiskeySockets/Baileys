@@ -1,6 +1,6 @@
 {
   "name": "whatsapp-cloudflare-workers",
-  "version": "6.7.16.0",
+  "version": "6.7.16-worker.0",
   "description": "A version of baileys that works on cloudflare workers",
   "keywords": [
     "whatsapp",
@@ -18,7 +18,8 @@
     "lib/*",
     "WAProto/*",
     "WASignalGroup/*.js",
-    "engine-requirements.js"
+    "engine-requirements.js",
+    "node_modules_custom/*"
   ],
   "scripts": {
     "build:all": "tsc && typedoc",
@@ -27,6 +28,7 @@
     "changelog:last": "conventional-changelog -p angular -r 2",
     "changelog:preview": "conventional-changelog -p angular -u",
     "changelog:update": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",
+		"dev": "wrangler dev",
     "example": "node --inspect -r ts-node/register Example/example.ts",
     "gen:protobuf": "sh WAProto/GenerateStatics.sh",
     "lint": "eslint src --ext .js,.ts",
@@ -38,6 +40,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "dev": "wrangler dev",
     "@adiwajshing/keyed-db": "^0.2.4",
     "@cacheable/node-cache": "^1.4.0",
     "@hapi/boom": "^9.1.3",
@@ -69,7 +72,8 @@
     "ts-jest": "^27.0.3",
     "ts-node": "^10.8.1",
     "typedoc": "^0.24.7",
-    "typescript": "^4.6.4"
+    "typescript": "^4.6.4",
+    "wrangler": "^3.114.0"
   },
   "peerDependenciesMeta": {
     "jimp": {

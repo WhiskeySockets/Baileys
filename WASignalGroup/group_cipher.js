@@ -1,6 +1,6 @@
 const queue_job = require('./queue_job');
 const SenderKeyMessage = require('./sender_key_message');
-const crypto = require('../libsignal_custom/src/crypto');
+const crypto = require('../node_modules_custom/libsignal_custom/src/crypto');
 
 class GroupCipher {
   constructor(senderKeyStore, senderKeyName) {

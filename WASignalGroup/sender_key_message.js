@@ -1,5 +1,5 @@
 const CiphertextMessage = require('./ciphertext_message');
-const curve = require('../libsignal_custom/src/curve');
+const curve = require('../node_modules_custom/libsignal_custom/src/curve');
 const protobufs = require('./protobufs');
 
 class SenderKeyMessage extends CiphertextMessage {
