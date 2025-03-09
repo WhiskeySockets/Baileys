@@ -40,7 +40,7 @@ const PASSWORD_ADMIN = "123456";
 2. Fill in the `UserBot` and `Admin Password` fields.
 3. Click the blue **"Generate QR Code"** button.
 4. Scan the QR Code with WhatsApp on your phone **as quickly as possible** to avoid errors.
-5. Wait **30 segundos** for the UserBot to appear in the list.
+5. Wait **30 seconds** for the UserBot to appear in the list.
 
 ### 2. Test Message Sending
 1. Go to the **Send Message** page by clicking the green **"Go to Send Message"** button.
