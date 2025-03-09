@@ -1,41 +1,61 @@
-<h1><img src="https://raw.githubusercontent.com/WhiskeySockets/Baileys/master/Media/logo.png" width="24" height="24" title="WhiskeySockets colorful logo"/> Baileys</h1>
+# WhatsApp Cloudflare Workers
 
-![NPM Downloads](https://img.shields.io/npm/dw/%40whiskeysockets%2Fbaileys?label=npm&color=%23CB3837)
-![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/whiskeysockets/baileys)
-![Discord](https://img.shields.io/discord/725839806084546610?label=discord&color=%235865F2)
+This project allows you to register multiple WhatsApp numbers and send messages to any number using Cloudflare Workers. Baileys has been modified to be compatible with Cloudflare Workers.
 
-A Websockets-based TypeScript library for interacting with the WhatsApp Web API.
+## How to Set Up and Run the Project
 
-## Usage
-All major documentation is hosted at the guide https://guide.whiskeysockets.io, TypeDoc available at https://baileys.whiskeysockets.io
+### 1. Clone the Repository
+```sh
+git clone https://github.com/rafaelsg-01/whatsapp-cloudflare-workers.git
+cd whatsapp-cloudflare-workers
+```
 
-# Disclaimer
-This project is not affiliated, associated, authorized, endorsed by, or in any way officially connected with WhatsApp or any of its subsidiaries or its affiliates.
-The official WhatsApp website can be found at whatsapp.com. "WhatsApp" as well as related names, marks, emblems and images are registered trademarks of their respective owners.
+### 2. Install Dependencies
+```sh
+npm install
+```
 
-The maintainers of Baileys do not in any way condone the use of this application in practices that violate the Terms of Service of WhatsApp. The maintainers of this application call upon the personal responsibility of its users to use this application in a fair way, as it is intended to be used.
-Use at your own discretion. Do not spam people with this. We discourage any stalkerware, bulk or automated messaging usage.
+### 3. Run the Local Server
+```sh
+wrangler dev
+```
+The server will be available at: [http://127.0.0.1:8787/](http://127.0.0.1:8787/)
 
-# License
-Copyright (c) 2023 Rajeh Taher/WhiskeySockets
+---
 
-Licensed under the MIT License:
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+## UserBot Registration
+Choose a name for your **UserBot**, using only characters from `a-z`, `A-Z` and `0-9`.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The default admin password is **`123456`**, and it can be changed in the file:
+```ts
+/Example/example.ts
+```
+In the variable:
+```ts
+const PASSWORD_ADMIN = "123456";
+```
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+### 1. Connect to WhatsApp
+1. Access the main page.
+2. Fill in the `UserBot` and `Admin Password` fields.
+3. Click the blue **"Generate QR Code"** button.
+4. Scan the QR Code with WhatsApp on your phone **as quickly as possible** to avoid errors.
+5. Wait **30 segundos** for the UserBot to appear in the list.
 
-Thus, the maintainers of the project can't be held liable for any potential misuse of this project.
+### 2. Test Message Sending
+1. Go to the **Send Message** page by clicking the green **"Go to Send Message"** button.
+2. Fill in the following fields:
+   - **UserBot** (the one you just created)
+   - **Phone number (destination)**
+   - **Message**
+   - **Admin Password**
+3. Click **"Send Message"** and if everything is correct, the message will be sent!
+
+---
+
+This project is also available via npm:
+```sh
+npm i whatsapp-cloudflare-workers
+```
+
+If you have any questions or need help, feel free to open an issue or contribute with improvements!

@@ -20,8 +20,10 @@ export default {
 		// Used to retrieve all userBot in registerWhatsappHtml.html and sendMessageHtml.html
 		const prefixUserBot = 'userBot'
 
+		const PASSWORD_ADMIN = '123456'
+
 		// Site: /site/register-whatsapp
-		if (pathName.startsWith('/site/register-whatsapp')) {
+		if (pathName.startsWith('/site/register-whatsapp') || pathName === '/') {
             const response = new Response(registerWhatsappHtml, {
                 status: 200,
                 statusText: 'OK',
@@ -58,7 +60,7 @@ export default {
 				let userBot = requestBody.userBot
 				const adminPassword = requestBody.adminPassword
 
-				if (adminPassword !== '123456') {
+				if (adminPassword !== PASSWORD_ADMIN) {
 					console.log('WARNING [adminPassword !== ***] No permission')
 					return new Response('WARNING [adminPassword !== ***] No permission', {status: 401})
 				}
@@ -132,7 +134,7 @@ export default {
 				let message = requestBody.message
 				const adminPassword = requestBody.adminPassword
 
-				if (adminPassword !== '123456') {
+				if (adminPassword !== PASSWORD_ADMIN) {
 					console.log('WARNING [adminPassword !== ***] No permission')
 					return new Response('WARNING [adminPassword !== ***] No permission', {status: 401})
 				}
