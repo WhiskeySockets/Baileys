@@ -1,6 +1,29 @@
 # WhatsApp Cloudflare Workers
 
-This project allows you to register multiple WhatsApp numbers and send messages to any number using Cloudflare Workers. Baileys has been modified to be compatible with Cloudflare Workers.
+This project is a modified version of **Baileys WhatsApp**, specifically optimized to run on **Cloudflare Workers**. It allows you to register multiple WhatsApp numbers and send messages to any number efficiently.
+
+## How does it work?
+
+- The system operates **directly on the edge**, using Cloudflare Workers to establish connections with WhatsApp.
+- A direct connection is made with the **WhatsApp server WebSocket** and maintained for a short period (between **10 and 50 seconds**).
+- This duration is sufficient to **register an account** and obtain the key or to **send messages**.
+- After this period, the connection is closed, ensuring **efficient resource consumption** and **significant processing savings**.
+
+## Scalability
+
+- **Scalability tests have not yet been conducted**.
+- It is suspected that message sending will be managed through a **queue system**, rather than horizontal scalability.
+
+This approach aims to keep the system lightweight and efficient without requiring persistent connections.
+
+### Page to register multiple WhatsApp accounts
+![image](https://github.com/user-attachments/assets/60cc8478-1c25-4ec0-b89a-7eaea2d16442)
+
+### Generate QR Code
+![image](https://github.com/user-attachments/assets/a7c387b6-83e9-4bcd-bcaf-496102da9622)
+
+### Page to send message
+![image](https://github.com/user-attachments/assets/0200d4c4-b45c-4708-8ed0-9f1a80d5393d)
 
 ## How to Set Up and Run the Project
 
@@ -19,7 +42,7 @@ npm install
 ```sh
 wrangler dev
 ```
-The server will be available at: [http://127.0.0.1:8787/](http://127.0.0.1:8787/)
+The server will be available at: [http://127.0.0.1:8787](http://127.0.0.1:8787)
 
 ---
 
