@@ -1,4 +1,5 @@
 import { Boom } from '@hapi/boom'
+import { Mutex } from 'async-mutex'
 import { proto } from '../../WAProto'
 import { NOISE_MODE, WA_CERT_DETAILS } from '../Defaults'
 import { KeyPair } from '../Types'
@@ -13,7 +14,7 @@ const generateIV = (counter: number) => {
 	return new Uint8Array(iv)
 }
 
-export const makeNoiseHandler = ({
+export const makeNoiseHandler = async({
 	keyPair: { private: privateKey, public: publicKey },
 	NOISE_HEADER,
 	logger,
@@ -26,22 +27,26 @@ export const makeNoiseHandler = ({
 }) => {
 	logger = logger.child({ class: 'ns' })
 
-	const authenticate = (data: Uint8Array) => {
+	const authenticate = async(data: Uint8Array) => {
 		if(!isFinished) {
-			hash = sha256(Buffer.concat([hash, data]))
+			hash = await sha256(Buffer.concat([hash, data]))
 		}
 	}
 
-	const encrypt = (plaintext: Uint8Array) => {
-		const result = aesEncryptGCM(plaintext, encKey, generateIV(writeCounter), hash)
+	// running without lock causes a race condition and the authentication fails
+	const mutex = new Mutex()
+
+	const encrypt = async(plaintext: Uint8Array) => {
+		await mutex.acquire()
+		const result = await aesEncryptGCM(plaintext, encKey, generateIV(writeCounter), hash)
 
 		writeCounter += 1
-
-		authenticate(result)
+		await authenticate(result)
+		mutex.release()
 		return result
 	}
 
-	const decrypt = (ciphertext: Uint8Array) => {
+	const decrypt = async(ciphertext: Uint8Array) => {
 		// before the handshake is finished, we use the same counter
 		// after handshake, the counters are different
 		const iv = generateIV(isFinished ? readCounter : writeCounter)
@@ -53,7 +58,7 @@ export const makeNoiseHandler = ({
 			writeCounter += 1
 		}
 
-		authenticate(ciphertext)
+		await authenticate(ciphertext)
 		return result
 	}
 
@@ -82,7 +87,7 @@ export const makeNoiseHandler = ({
 	}
 
 	const data = Buffer.from(NOISE_MODE)
-	let hash = data.byteLength === 32 ? data : sha256(data)
+	let hash = data.byteLength === 32 ? data : await sha256(data)
 	let salt = hash
 	let encKey = hash
 	let decKey = hash
@@ -93,8 +98,8 @@ export const makeNoiseHandler = ({
 
 	let inBytes = Buffer.alloc(0)
 
-	authenticate(NOISE_HEADER)
-	authenticate(publicKey)
+	await authenticate(NOISE_HEADER)
+	await authenticate(publicKey)
 
 	return {
 		encrypt,
@@ -103,13 +108,13 @@ export const makeNoiseHandler = ({
 		mixIntoKey,
 		finishInit,
 		processHandshake: async({ serverHello }: proto.HandshakeMessage, noiseKey: KeyPair) => {
-			authenticate(serverHello!.ephemeral!)
+			await authenticate(serverHello!.ephemeral!)
 			await mixIntoKey(Curve.sharedKey(privateKey, serverHello!.ephemeral!))
 
-			const decStaticContent = decrypt(serverHello!.static!)
+			const decStaticContent = await decrypt(serverHello!.static!)
 			await mixIntoKey(Curve.sharedKey(privateKey, decStaticContent))
 
-			const certDecoded = decrypt(serverHello!.payload!)
+			const certDecoded = await decrypt(serverHello!.payload!)
 
 			const { intermediate: certIntermediate } = proto.CertChain.decode(certDecoded)
 
@@ -119,14 +124,14 @@ export const makeNoiseHandler = ({
 				throw new Boom('certification match failed', { statusCode: 400 })
 			}
 
-			const keyEnc = encrypt(noiseKey.public)
+			const keyEnc = await encrypt(noiseKey.public)
 			await mixIntoKey(Curve.sharedKey(noiseKey.private, serverHello!.ephemeral!))
 
 			return keyEnc
 		},
-		encodeFrame: (data: Buffer | Uint8Array) => {
+		encodeFrame: async(data: Buffer | Uint8Array) => {
 			if(isFinished) {
-				data = encrypt(data)
+				data = await encrypt(data)
 			}
 
 			let header: Buffer
@@ -177,7 +182,7 @@ export const makeNoiseHandler = ({
 				inBytes = inBytes.slice(size + 3)
 
 				if(isFinished) {
-					const result = decrypt(frame)
+					const result = await decrypt(frame)
 					frame = await decodeBinaryNode(result)
 				}
 

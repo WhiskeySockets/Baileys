@@ -4,8 +4,8 @@ import { BinaryNode, S_WHATSAPP_NET } from '../WABinary'
 import { USyncQuery } from '../WAUSync'
 import { makeSocket } from './socket'
 
-export const makeUSyncSocket = (config: SocketConfig) => {
-	const sock = makeSocket(config)
+export const makeUSyncSocket = async(config: SocketConfig) => {
+	const sock = await makeSocket(config)
 
 	const {
 		generateMessageTag,
