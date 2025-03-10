@@ -242,19 +242,6 @@ export function bindWaitForEvent<T extends keyof BaileysEventMap>(ev: BaileysEve
 
 export const bindWaitForConnectionUpdate = (ev: BaileysEventEmitter) => bindWaitForEvent(ev, 'connection.update')
 
-export const printQRIfNecessaryListener = (ev: BaileysEventEmitter, logger: ILogger) => {
-	ev.on('connection.update', async({ qr }) => {
-		if(qr) {
-			const QR = await import('qrcode-terminal')
-				.then(m => m.default || m)
-				.catch(() => {
-					logger.error('QR code terminal not added as dependency')
-				})
-			QR?.generate(qr, { small: true })
-		}
-	})
-}
-
 /**
  * utility that fetches latest baileys version from the master branch.
  * Use to ensure your WA connection is always on the latest version
