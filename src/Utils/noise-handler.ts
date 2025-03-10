@@ -1,10 +1,10 @@
 import { Boom } from '@hapi/boom'
+import { Mutex } from 'async-mutex'
 import { proto } from '../../WAProto'
 import { NOISE_MODE, WA_CERT_DETAILS } from '../Defaults'
 import { KeyPair } from '../Types'
 import { BinaryNode, decodeBinaryNode } from '../WABinary'
 import { aesDecryptGCM, aesEncryptGCM, Curve, hkdf, sha256 } from './crypto'
-import { Lock } from './lock'
 import { ILogger } from './logger'
 
 const generateIV = (counter: number) => {
@@ -34,15 +34,15 @@ export const makeNoiseHandler = async({
 	}
 
 	// running without lock causes a race condition and the authentication fails
-	const lock = new Lock()
+	const mutex = new Mutex()
 
 	const encrypt = async(plaintext: Uint8Array) => {
-		await lock.acquire()
+		await mutex.acquire()
 		const result = await aesEncryptGCM(plaintext, encKey, generateIV(writeCounter), hash)
 
 		writeCounter += 1
 		await authenticate(result)
-		lock.release()
+		mutex.release()
 		return result
 	}
 
