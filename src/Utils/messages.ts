@@ -416,11 +416,11 @@ export const generateWAMessageContent = async(
 		m.pinInChatMessage = {}
 		m.messageContextInfo = {}
 
-		m.pinInChatMessage.key = message.pin
-		m.pinInChatMessage.type = message.type
+		m.pinInChatMessage.key = message.pin.key
+		m.pinInChatMessage.type = message.pin.type
 		m.pinInChatMessage.senderTimestampMs = Date.now()
 
-		m.messageContextInfo.messageAddOnDurationInSecs = message.type === 1 ? message.time || 86400 : 0
+		m.messageContextInfo.messageAddOnDurationInSecs = message.pin.type === 1 ? message.pin.time || 86400 : 0
 	} else if('buttonReply' in message) {
 		switch (message.type) {
 		case 'template':
