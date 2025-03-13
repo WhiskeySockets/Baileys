@@ -522,7 +522,7 @@ export const makeMessagesSocket = async(config: SocketConfig) => {
 				const stanza: BinaryNode = {
 					tag: 'message',
 					attrs: {
-						id: msgId!,
+						id: msgId,
 						type: getMessageType(message),
 						...(additionalAttributes || {})
 					},
