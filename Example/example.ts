@@ -1,16 +1,14 @@
 import { Boom } from '@hapi/boom'
 import NodeCache from '@cacheable/node-cache'
 import readline from 'readline'
-import makeWASocket, { AnyMessageContent, BinaryInfo, delay, DisconnectReason, downloadAndProcessHistorySyncNotification, encodeWAM, fetchLatestBaileysVersion, getAggregateVotesInPollMessage, getHistoryMsg, isJidNewsletter, makeCacheableSignalKeyStore, makeInMemoryStore, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
+import makeWASocket, { AnyMessageContent, BinaryInfo, delay, DisconnectReason, encodeWAM, fetchLatestBaileysVersion, getAggregateVotesInPollMessage, isJidNewsletter, makeCacheableSignalKeyStore, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
 //import MAIN_LOGGER from '../src/Utils/logger'
-import open from 'open'
 import fs from 'fs'
 import P from 'pino'
 
 const logger = P({ timestamp: () => `,"time":"${new Date().toJSON()}"` }, P.destination('./wa-logs.txt'))
 logger.level = 'trace'
 
-const useStore = !process.argv.includes('--no-store')
 const doReplies = process.argv.includes('--do-reply')
 const usePairingCode = process.argv.includes('--use-pairing-code')
 
@@ -18,23 +16,12 @@ const usePairingCode = process.argv.includes('--use-pairing-code')
 // keep this out of the socket itself, so as to prevent a message decryption/encryption loop across socket restarts
 const msgRetryCounterCache = new NodeCache()
 
-const onDemandMap = new Map<string, string>()
-
 // Read line interface
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
 const question = (text: string) => new Promise<string>((resolve) => rl.question(text, resolve))
 
-// the store maintains the data of the WA connection in memory
-// can be written out to a file & read from it
-
 // start a connection
 const startSock = async() => {
-	const store = useStore ? await makeInMemoryStore({ logger }) : undefined
-	store?.readFromFile('./baileys_store_multi.json')
-	// save every 10s
-	setInterval(() => {
-		store?.writeToFile('./baileys_store_multi.json')
-	}, 10_000)
 	const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info')
 	// fetch latest version of WA Web
 	const { version, isLatest } = await fetchLatestBaileysVersion()
@@ -57,8 +44,6 @@ const startSock = async() => {
 		// implement to handle retries & poll updates
 		getMessage,
 	})
-
-	store?.bind(sock.ev)
 
 	// Pairing code for Web clients
 	if (usePairingCode && !sock.authState.creds.registered) {
@@ -98,7 +83,7 @@ const startSock = async() => {
 						console.log('Connection closed. You are logged out.')
 					}
 				}
-				
+
 				// WARNING: THIS WILL SEND A WAM EXAMPLE AND THIS IS A ****CAPTURED MESSAGE.****
 				// DO NOT ACTUALLY ENABLE THIS UNLESS YOU MODIFIED THE FILE.JSON!!!!!
 				// THE ANALYTICS IN THE FILE ARE OLD. DO NOT USE THEM.
@@ -124,7 +109,7 @@ const startSock = async() => {
 					})
 
 					const buffer = encodeWAM(binaryInfo);
-					
+
 					const result = await sock.sendWAMBuffer(buffer)
 					console.log(result)
 				}
@@ -182,11 +167,11 @@ const startSock = async() => {
 								  {}
 								)
 
-								
+
 								const chatId = onDemandMap.get(
 									historySyncNotification!.peerDataRequestSessionId!
 								)
-								
+
 								console.log(messages)
 
 							  onDemandMap.delete(
@@ -209,7 +194,7 @@ const startSock = async() => {
 						if (msg.message?.conversation || msg.message?.extendedTextMessage?.text) {
 							const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text
 							if (text == "requestPlaceholder" && !upsert.requestId) {
-								const messageId = await sock.requestPlaceholderResend(msg.key) 
+								const messageId = await sock.requestPlaceholderResend(msg.key)
 								console.log('requested placeholder resync, id=', messageId)
 							} else if (upsert.requestId) {
 								console.log('Message received from phone, id=', upsert.requestId, msg)
@@ -217,7 +202,7 @@ const startSock = async() => {
 
 							// go to an old chat and send this
 							if (text == "onDemandHistSync") {
-								const messageId = await sock.fetchMessageHistory(50, msg.key, msg.messageTimestamp!) 
+								const messageId = await sock.fetchMessageHistory(50, msg.key, msg.messageTimestamp!)
 								console.log('requested on-demand sync, id=', messageId)
 							}
 						}
@@ -240,7 +225,7 @@ const startSock = async() => {
 
 				for(const { key, update } of events['messages.update']) {
 					if(update.pollUpdates) {
-						const pollCreation = await getMessage(key)
+						const pollCreation: proto.IMessage = {} // get the poll creation message somehow
 						if(pollCreation) {
 							console.log(
 								'got poll update, aggregation: ',
@@ -292,10 +277,8 @@ const startSock = async() => {
 	return sock
 
 	async function getMessage(key: WAMessageKey): Promise<WAMessageContent | undefined> {
-		if(store) {
-			const msg = await store.loadMessage(key.remoteJid!, key.id!)
-			return msg?.message || undefined
-		}
+	  // Implement a way to retreive messages that were upserted from messages.upsert
+			// up to you
 
 		// only if store is present
 		return proto.Message.fromObject({})
