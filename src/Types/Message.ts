@@ -170,12 +170,14 @@ export type AnyRegularMessageContent = (
         listReply: Omit<proto.Message.IListResponseMessage, 'contextInfo'>
     }
     | {
-        pin: WAMessageKey
+        pin: {
+	key: WAMessageKey
         type: proto.PinInChat.Type
         /**
          * 24 hours, 7 days, 30 days
          */
         time?: 86400 | 604800 | 2592000
+	}
     }
     | {
         product: WASendableProduct
