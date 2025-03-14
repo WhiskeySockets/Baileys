@@ -28,7 +28,6 @@ import {
 	getPlatformId,
 	makeEventBuffer,
 	makeNoiseHandler,
-	printQRIfNecessaryListener,
 	promiseTimeout,
 } from '../Utils'
 import {
@@ -64,6 +63,10 @@ export const makeSocket = (config: SocketConfig) => {
 		qrTimeout,
 		makeSignalRepository,
 	} = config
+
+	if(printQRInTerminal) {
+		console.warn('⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.')
+	}
 
 	const url = typeof waWebSocketUrl === 'string' ? new URL(waWebSocketUrl) : waWebSocketUrl
 
@@ -732,9 +735,6 @@ export const makeSocket = (config: SocketConfig) => {
 		Object.assign(creds, update)
 	})
 
-	if(printQRInTerminal) {
-		printQRIfNecessaryListener(ev, logger)
-	}
 
 	return {
 		type: 'md' as 'md',
