@@ -49,7 +49,7 @@ import { WebSocketClient } from './Client'
  * - query phone connection
  */
 
-export const makeSocket = (config: SocketConfig) => {
+export const makeSocket = async(config: SocketConfig) => {
 	const {
 		waWebSocketUrl,
 		connectTimeoutMs,
@@ -87,7 +87,7 @@ export const makeSocket = (config: SocketConfig) => {
 	/** ephemeral key pair used to encrypt/decrypt communication. Unique for each connection */
 	const ephemeralKeyPair = Curve.generateKeyPair()
 	/** WA noise protocol wrapper */
-	const noise = makeNoiseHandler({
+	const noise = await makeNoiseHandler({
 		keyPair: ephemeralKeyPair,
 		NOISE_HEADER: NOISE_WA_HEADER,
 		logger,
@@ -115,7 +115,7 @@ export const makeSocket = (config: SocketConfig) => {
 			throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
 		}
 
-		const bytes = noise.encodeFrame(data)
+		const bytes = await noise.encodeFrame(data)
 		await promiseTimeout<void>(
 			connectTimeoutMs,
 			async(resolve, reject) => {
@@ -252,7 +252,7 @@ export const makeSocket = (config: SocketConfig) => {
 			logger.info({ node }, 'logging in...')
 		}
 
-		const payloadEnc = noise.encrypt(
+		const payloadEnc = await noise.encrypt(
 			proto.ClientPayload.encode(node).finish()
 		)
 		await sendRawMessage(
@@ -263,7 +263,7 @@ export const makeSocket = (config: SocketConfig) => {
 				},
 			}).finish()
 		)
-		noise.finishInit()
+		await noise.finishInit()
 		startKeepAliveRequest()
 	}
 
@@ -307,8 +307,8 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const onMessageReceived = (data: Buffer) => {
-		noise.decodeFrame(data, frame => {
+	const onMessageReceived = async(data: Buffer) => {
+		await noise.decodeFrame(data, frame => {
 			// reset ping timeout
 			lastDateRecv = new Date()
 
@@ -545,7 +545,7 @@ export const makeSocket = (config: SocketConfig) => {
 		const salt = randomBytes(32)
 		const randomIv = randomBytes(16)
 		const key = await derivePairingCodeKey(authState.creds.pairingCode!, salt)
-		const ciphered = aesEncryptCTR(authState.creds.pairingEphemeralKeyPair.public, key, randomIv)
+		const ciphered = await aesEncryptCTR(authState.creds.pairingEphemeralKeyPair.public, key, randomIv)
 		return Buffer.concat([salt, randomIv, ciphered])
 	}
 
@@ -627,7 +627,7 @@ export const makeSocket = (config: SocketConfig) => {
 	ws.on('CB:iq,,pair-success', async(stanza: BinaryNode) => {
 		logger.debug('pair success recv')
 		try {
-			const { reply, creds: updatedCreds } = configureSuccessfulPairing(stanza, creds)
+			const { reply, creds: updatedCreds } = await configureSuccessfulPairing(stanza, creds)
 
 			logger.info(
 				{ me: updatedCreds.me, platform: updatedCreds.platform },
