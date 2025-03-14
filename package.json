@@ -71,7 +71,7 @@
     "sharp": "^0.32.6",
     "ts-jest": "^27.0.3",
     "ts-node": "^10.8.1",
-    "typedoc": "^0.24.7",
+    "typedoc": "^0.27.9",
     "typescript": "^5.8.2"
   },
   "peerDependencies": {
