@@ -887,3 +887,75 @@ Some examples:
     sock.ws.on(`CB:edge_routing,id:abcd,routing_info`, (node: BinaryNode) => { })
     ```
  Also, this repo is now licenced under GPL 3 since it uses [libsignal-node](https://git.questbook.io/backend/service-coderunner/-/merge_requests/1)
+
+## Interactive Messages (Buttons and Lists)
+
+This version of Baileys has support for interactive messages like buttons and lists.
+
+### Sending Buttons
+
+```javascript
+// Send a message with buttons
+const buttons = [
+    {buttonId: 'id1', buttonText: {displayText: 'Button 1'}, type: 1},
+    {buttonId: 'id2', buttonText: {displayText: 'Button 2'}, type: 1}
+]
+
+await sock.sendMessage(jid, {
+    text: 'Button message content',
+    footer: 'Optional footer text',
+    buttons: buttons
+})
+```
+
+### Sending Lists
+
+```javascript
+// Send a message with a list of options
+const sections = [
+    {
+        title: "Section 1",
+        rows: [
+            {title: "Option 1", rowId: "option1"},
+            {title: "Option 2", rowId: "option2"}
+        ]
+    },
+    {
+        title: "Section 2",
+        rows: [
+            {title: "Option 3", rowId: "option3"},
+            {title: "Option 4", rowId: "option4"}
+        ]
+    }
+]
+
+await sock.sendMessage(jid, {
+    text: "List message content",
+    footer: "Optional footer text",
+    title: "Optional title",
+    buttonText: "Click me to see the list",
+    sections
+})
+```
+
+### Receiving Button and List Responses
+
+You can listen for button and list responses in the `messages.upsert` event:
+
+```javascript
+sock.ev.on('messages.upsert', async ({ messages }) => {
+    const msg = messages[0]
+    
+    // Button response
+    if(msg.message?.buttonsResponseMessage) {
+        const buttonId = msg.message.buttonsResponseMessage.selectedButtonId
+        console.log(`User clicked button: ${buttonId}`)
+    }
+    
+    // List response
+    if(msg.message?.listResponseMessage) {
+        const rowId = msg.message.listResponseMessage.singleSelectReply.selectedRowId
+        console.log(`User selected option: ${rowId}`)
+    }
+})
+```

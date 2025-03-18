@@ -1,7 +1,7 @@
 {
-  "name": "baileys",
-  "version": "6.7.8",
-  "description": "WhatsApp API",
+  "name": "@whiskeysockets/baileys",
+  "version": "6.6.16-buttons",
+  "description": "WhatsApp API with support for interactive buttons and lists",
   "keywords": [
     "whatsapp",
     "js-whatsapp",

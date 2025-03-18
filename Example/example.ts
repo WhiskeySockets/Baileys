@@ -178,55 +178,72 @@ const startSock = async() => {
 							) {
 							  const { messages } =
 								await downloadAndProcessHistorySyncNotification(
-								  historySyncNotification,
-								  {}
+								  sock!,
+								  historySyncNotification
 								)
-
-								
-								const chatId = onDemandMap.get(
-									historySyncNotification!.peerDataRequestSessionId!
-								)
-								
-								console.log(messages)
-
-							  onDemandMap.delete(
-								historySyncNotification!.peerDataRequestSessionId!
-							  )
-
-							  /*
-								// 50 messages is the limit imposed by whatsapp
-								//TODO: Add ratelimit of 7200 seconds
-								//TODO: Max retries 10
-								const messageId = await sock.fetchMessageHistory(
-									50,
-									oldestMessageKey,
-									oldestMessageTimestamp
-								)
-								onDemandMap.set(messageId, chatId)
 							}
 						  } */
-
-						if (msg.message?.conversation || msg.message?.extendedTextMessage?.text) {
-							const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text
-							if (text == "requestPlaceholder" && !upsert.requestId) {
-								const messageId = await sock.requestPlaceholderResend(msg.key) 
-								console.log('requested placeholder resync, id=', messageId)
-							} else if (upsert.requestId) {
-								console.log('Message received from phone, id=', upsert.requestId, msg)
-							}
-
-							// go to an old chat and send this
-							if (text == "onDemandHistSync") {
-								const messageId = await sock.fetchMessageHistory(50, msg.key, msg.messageTimestamp!) 
-								console.log('requested on-demand sync, id=', messageId)
-							}
-						}
-
-						if(!msg.key.fromMe && doReplies && !isJidNewsletter(msg.key?.remoteJid!)) {
-
+						if (!msg.key.fromMe && doReplies) {
 							console.log('replying to', msg.key.remoteJid)
 							await sock!.readMessages([msg.key])
-							await sendMessageWTyping({ text: 'Hello there!' }, msg.key.remoteJid!)
+							
+                            // Exemplo de resposta com botões
+                            if(msg.message?.conversation === 'botoes') {
+                                const buttons = [
+                                    {buttonId: 'id1', buttonText: {displayText: 'Botão 1'}, type: 1},
+                                    {buttonId: 'id2', buttonText: {displayText: 'Botão 2'}, type: 1}
+                                ]
+                                
+                                await sendMessageWTyping({
+                                    text: 'Aqui estão os botões solicitados',
+                                    footer: 'Selecione uma opção',
+                                    buttons: buttons
+                                }, msg.key.remoteJid!)
+                            }
+                            // Exemplo de resposta com lista
+                            else if(msg.message?.conversation === 'lista') {
+                                const sections = [
+                                    {
+                                        title: "Seção 1",
+                                        rows: [
+                                            {title: "Opção 1", rowId: "option1"},
+                                            {title: "Opção 2", rowId: "option2"}
+                                        ]
+                                    },
+                                    {
+                                        title: "Seção 2",
+                                        rows: [
+                                            {title: "Opção 3", rowId: "option3"},
+                                            {title: "Opção 4", rowId: "option4"}
+                                        ]
+                                    }
+                                ]
+                                
+                                await sendMessageWTyping({
+                                    text: "Lista de opções",
+                                    footer: "Escolha uma opção",
+                                    title: "Menu",
+                                    buttonText: "Ver opções",
+                                    sections
+                                }, msg.key.remoteJid!)
+                            }
+                            // Resposta a um botão ou lista
+                            else if(msg.message?.buttonsResponseMessage) {
+                                const buttonId = msg.message.buttonsResponseMessage.selectedButtonId
+                                await sendMessageWTyping({ 
+                                    text: `Você clicou no botão: ${buttonId}` 
+                                }, msg.key.remoteJid!)
+                            }
+                            else if(msg.message?.listResponseMessage) {
+                                const rowId = msg.message.listResponseMessage.singleSelectReply.selectedRowId
+                                await sendMessageWTyping({ 
+                                    text: `Você selecionou a opção: ${rowId}` 
+                                }, msg.key.remoteJid!)
+                            }
+                            // Resposta normal
+                            else {
+                                await sendMessageWTyping({ text: 'Hello there!' }, msg.key.remoteJid!)
+                            }
 						}
 					}
 				}

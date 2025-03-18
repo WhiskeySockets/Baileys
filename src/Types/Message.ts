@@ -63,8 +63,28 @@ type ViewOnce = {
     viewOnce?: boolean
 }
 
+type Buttonable = {
+    /** add buttons to the message  */
+    buttons?: proto.Message.ButtonsMessage.IButton[]
+}
+type Templatable = {
+    /** add buttons to the message (conflicts with normal buttons)*/
+    templateButtons?: proto.IHydratedTemplateButton[]
+
+    footer?: string
+}
 type Editable = {
   edit?: WAMessageKey
+}
+type Listable = {
+    /** Sections of the List */
+    sections?: proto.Message.ListMessage.ISection[]
+
+    /** Title of a List Message only */
+    title?: string
+
+    /** Text of the bnutton on the list (required) */
+    buttonText?: string
 }
 type WithDimensions = {
     width?: number
@@ -144,11 +164,11 @@ export type AnyRegularMessageContent = (
 	    text: string
         linkPreview?: WAUrlInfo | null
     }
-    & Mentionable & Contextable & Editable)
+    & Mentionable & Contextable & Buttonable & Templatable & Listable & Editable)
     | AnyMediaMessageContent
     | ({
         poll: PollMessageOptions
-    } & Mentionable & Contextable & Editable)
+    } & Mentionable & Contextable & Buttonable & Templatable & Editable)
     | {
         contacts: {
             displayName?: string
@@ -183,7 +203,7 @@ export type AnyRegularMessageContent = (
         body?: string
         footer?: string
     } | SharePhoneNumber | RequestPhoneNumber
-) & ViewOnce
+)
 
 export type AnyMessageContent = AnyRegularMessageContent | {
 	forward: WAMessage
