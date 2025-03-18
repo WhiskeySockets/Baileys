@@ -2,7 +2,7 @@ import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto'
 import { DEFAULT_CACHE_TTLS, PROCESSABLE_HISTORY_TYPES } from '../Defaults'
-import { ALL_WA_PATCH_NAMES, ChatModification, ChatMutation, LTHashState, MessageUpsertType, PresenceData, SocketConfig, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAMessage, WAPatchCreate, WAPatchName, WAPresence, WAPrivacyCallValue, WAPrivacyGroupAddValue, WAPrivacyMessagesValue, WAPrivacyOnlineValue, WAPrivacyValue, WAReadReceiptsValue } from '../Types'
+import { ALL_WA_PATCH_NAMES, BotListInfo, ChatModification, ChatMutation, LTHashState, MessageUpsertType, PresenceData, SocketConfig, WABusinessHoursConfig, WABusinessProfile, WAMediaUpload, WAMessage, WAPatchCreate, WAPatchName, WAPresence, WAPrivacyCallValue, WAPrivacyGroupAddValue, WAPrivacyMessagesValue, WAPrivacyOnlineValue, WAPrivacyValue, WAReadReceiptsValue } from '../Types'
 import { LabelActionBody } from '../Types/Label'
 import { chatModificationToAppPatch, ChatMutationMap, decodePatches, decodeSyncdSnapshot, encodeSyncdPatch, extractSyncdPatches, generateProfilePicture, getHistoryMsg, newLTHashState, processSyncAction } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
@@ -10,7 +10,6 @@ import processMessage from '../Utils/process-message'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, jidNormalizedUser, reduceBinaryNodeToDictionary, S_WHATSAPP_NET } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeUSyncSocket } from './usync'
-
 const MAX_SYNC_ATTEMPTS = 2
 
 export const makeChatsSocket = (config: SocketConfig) => {
@@ -142,6 +141,39 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				}
 			}]
 		})
+	}
+
+	const getBotListV2 = async() => {
+	  const resp = await query({
+    		tag: 'iq',
+    		attrs: {
+     			xmlns: 'bot',
+     			to: S_WHATSAPP_NET,
+     			type: 'get'
+    		},
+    		content: [{
+     			tag: 'bot',
+     			attrs: {
+      				v: '2'
+     			}
+    		}]
+   	})
+
+		const botNode = getBinaryNodeChild(resp, 'bot')
+
+		const botList: BotListInfo[] = []
+		for(const section of getBinaryNodeChildren(botNode, 'section')) {
+		  if(section.attrs.type === 'all') {
+				for(const bot of getBinaryNodeChildren(section, 'bot')) {
+				  botList.push({
+						jid: bot.attrs.jid,
+						personaId: bot.attrs['persona_id']
+					})
+				}
+			}
+		}
+
+		return botList
 	}
 
 	const onWhatsApp = async(...jids: string[]) => {
@@ -979,6 +1011,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	return {
 		...sock,
+		getBotListV2,
 		processingMutex,
 		fetchPrivacySettings,
 		upsertMessage,
