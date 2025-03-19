@@ -286,20 +286,25 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 
 		let shouldIncludeDeviceIdentity = false
+
 		const nodes = await Promise.all(
 			patched.map(
 				async patchedMessageWithJid => {
 				  const { recipientJid: jid, ...patchedMessage } = patchedMessageWithJid
+					if(!jid) {
+					  return {} as BinaryNode
+					}
+
 					const bytes = encodeWAMessage(patchedMessage)
 					const { type, ciphertext } = await signalRepository
-						.encryptMessage({ jid: jid!, data: bytes })
+						.encryptMessage({ jid: jid, data: bytes })
 					if(type === 'pkmsg') {
 						shouldIncludeDeviceIdentity = true
 					}
 
 					const node: BinaryNode = {
 						tag: 'to',
-						attrs: { jid: jid! },
+						attrs: { jid: jid },
 						content: [{
 							tag: 'enc',
 							attrs: {
