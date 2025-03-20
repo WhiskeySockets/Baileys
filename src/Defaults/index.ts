@@ -51,7 +51,12 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	auth: undefined as unknown as AuthenticationState,
 	markOnlineOnConnect: true,
 	syncFullHistory: false,
-	patchMessageBeforeSending: msg => msg,
+	patchMessageBeforeSending: (msg, recipientJids?: string[] ) => {
+            if (!recipientJids || recipientJids.length === 0) {
+                return msg;
+            }
+            return recipientJids.map(jid => ({ recipientJid: jid, ...msg }));
+    	},
 	shouldSyncHistoryMessage: () => true,
 	shouldIgnoreJid: () => false,
 	linkPreviewImageThumbnailWidth: 192,
