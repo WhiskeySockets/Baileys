@@ -1,21 +1,21 @@
 import * as libsignal from 'libsignal'
-import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage, SenderKeyName, SenderKeyRecord } from '../../WASignalGroup'
 import { SignalAuthState } from '../Types'
 import { SignalRepository } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import { jidDecode } from '../WABinary'
+import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage, SenderKeyName, SenderKeyRecord } from '../WASignalGroup'
 
 export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository {
 	const storage = signalStorage(auth)
 	return {
 		decryptGroupMessage({ group, authorJid, msg }) {
 			const senderName = jidToSignalSenderKeyName(group, authorJid)
-			const cipher = new GroupCipher(storage, senderName)
+			const cipher = new GroupCipher(storage as any, senderName as any)
 
 			return cipher.decrypt(msg)
 		},
 		async processSenderKeyDistributionMessage({ item, authorJid }) {
-			const builder = new GroupSessionBuilder(storage)
+			const builder = new GroupSessionBuilder(storage as any)
 			const senderName = jidToSignalSenderKeyName(item.groupId!, authorJid)
 
 			const senderMsg = new SenderKeyDistributionMessage(null, null, null, null, item.axolotlSenderKeyDistributionMessage)
@@ -24,7 +24,7 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 				await storage.storeSenderKey(senderName, new SenderKeyRecord())
 			}
 
-			await builder.process(senderName, senderMsg)
+			await builder.process(senderName as any, senderMsg)
 		},
 		async decryptMessage({ jid, type, ciphertext }) {
 			const addr = jidToSignalProtocolAddress(jid)
@@ -51,15 +51,15 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 		},
 		async encryptGroupMessage({ group, meId, data }) {
 			const senderName = jidToSignalSenderKeyName(group, meId)
-			const builder = new GroupSessionBuilder(storage)
+			const builder = new GroupSessionBuilder(storage as any)
 
 			const { [senderName]: senderKey } = await auth.keys.get('sender-key', [senderName])
 			if(!senderKey) {
 				await storage.storeSenderKey(senderName, new SenderKeyRecord())
 			}
 
-			const senderKeyDistributionMessage = await builder.create(senderName)
-			const session = new GroupCipher(storage, senderName)
+			const senderKeyDistributionMessage = await builder.create(senderName as any)
+			const session = new GroupCipher(storage as any, senderName as any)
 			const ciphertext = await session.encrypt(data)
 
 			return {
@@ -121,7 +121,7 @@ function signalStorage({ creds, keys }: SignalAuthState) {
 		loadSenderKey: async(keyId: string) => {
 			const { [keyId]: key } = await keys.get('sender-key', [keyId])
 			if(key) {
-				return new SenderKeyRecord(key)
+				return new SenderKeyRecord(key as any)
 			}
 		},
 		storeSenderKey: async(keyId, key) => {
