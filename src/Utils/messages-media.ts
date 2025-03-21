@@ -1,7 +1,6 @@
 import { Boom } from '@hapi/boom'
 import axios, { AxiosRequestConfig } from 'axios'
 import { exec } from 'child_process'
-import { createCipheriv, createDecipheriv, Decipher } from 'crypto'
 import { once } from 'events'
 import { createReadStream, createWriteStream, promises as fs, WriteStream } from 'fs'
 import type { IAudioMetadata } from 'music-metadata'
@@ -13,7 +12,7 @@ import { proto } from '../../WAProto'
 import { DEFAULT_ORIGIN, MEDIA_HKDF_KEY_MAPPING, MEDIA_PATH_MAP } from '../Defaults'
 import { BaileysEventMap, DownloadableMessage, MediaConnInfo, MediaDecryptionKeyInfo, MediaType, MessageType, SocketConfig, WAGenericMediaMessage, WAMediaPayloadURL, WAMediaUpload, WAMediaUploadFunction, WAMessageContent } from '../Types'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, jidNormalizedUser } from '../WABinary'
-import { aesDecryptGCM, aesEncryptGCM, hkdf, hmacSign, randomBytes, sha256 } from './crypto'
+import { aesDecryptCTR, aesDecryptGCM, aesEncryptCTR, aesEncryptGCM, hkdf, hmacSign, randomBytes, sha256 } from './crypto'
 import { generateMessageID } from './generics'
 import { ILogger } from './logger'
 
@@ -370,8 +369,6 @@ export const encryptedStream = async(
 	}
 
 	let fileLength = 0
-	const aes = createCipheriv('aes-256-cbc', cipherKey, iv)
-
 	// Data for HMAC calculation
 	let hmacData: Buffer = Buffer.from(iv)
 
@@ -402,7 +399,8 @@ export const encryptedStream = async(
 				await once(writeStream, 'drain')
 			}
 
-			const encryptedChunk = aes.update(data)
+			// Encrypt using Web Crypto API
+			const encryptedChunk = await aesEncryptCTR(data, cipherKey, iv)
 			// Collect data for HMAC
 			hmacData = Buffer.concat([hmacData, encryptedChunk])
 			// Store encrypted chunks
@@ -410,14 +408,6 @@ export const encryptedStream = async(
 			// Push to write stream
 			encWriteStream.push(encryptedChunk)
 		}
-
-		const finalChunk = aes.final()
-		// Add final chunk to HMAC data
-		hmacData = Buffer.concat([hmacData, finalChunk])
-		// Store final encrypted chunk
-		encDataChunks.push(Buffer.from(finalChunk))
-		// Push to write stream
-		encWriteStream.push(finalChunk)
 
 		// Use hmacSign instead of createHmac
 		const fullHmac = await hmacSign(hmacData, macKey!, 'sha256')
@@ -452,7 +442,6 @@ export const encryptedStream = async(
 		// destroy all streams with error
 		encWriteStream.destroy()
 		writeStream?.destroy()
-		aes.destroy()
 		stream.destroy()
 
 		if(didSaveToTmpPath) {
@@ -541,8 +530,7 @@ export const downloadEncryptedContent = async(
 	)
 
 	let remainingBytes = Buffer.from([])
-
-	let aes: Decipher
+	let ivValue = iv
 
 	const pushBytes = (bytes: Buffer, push: (bytes: Buffer) => void) => {
 		if(startByte || endByte) {
@@ -565,36 +553,26 @@ export const downloadEncryptedContent = async(
 			remainingBytes = data.slice(decryptLength)
 			data = data.slice(0, decryptLength)
 
-			if(!aes) {
-				let ivValue = iv
-				if(firstBlockIsIV) {
-					ivValue = data.slice(0, AES_CHUNK_SIZE)
-					data = data.slice(AES_CHUNK_SIZE)
-				}
-
-				aes = createDecipheriv('aes-256-cbc', cipherKey, ivValue)
-				// if an end byte that is not EOF is specified
-				// stop auto padding (PKCS7) -- otherwise throws an error for decryption
-				if(endByte) {
-					aes.setAutoPadding(false)
-				}
-
+			// Handle IV if it's in the first block
+			if(firstBlockIsIV && ivValue === iv) {
+				ivValue = data.slice(0, AES_CHUNK_SIZE)
+				data = data.slice(AES_CHUNK_SIZE)
+				firstBlockIsIV = false
 			}
 
 			try {
-				pushBytes(aes.update(data), b => this.push(b))
-				callback()
+				// Decrypt using Web Crypto API
+				aesDecryptCTR(data, cipherKey, ivValue).then(decrypted => {
+					pushBytes(decrypted, b => this.push(b))
+					callback()
+				}).catch(callback)
 			} catch(error) {
 				callback(error)
 			}
 		},
 		final(callback) {
-			try {
-				pushBytes(aes.final(), b => this.push(b))
-				callback()
-			} catch(error) {
-				callback(error)
-			}
+			// No need for final operation as each chunk is processed independently
+			callback()
 		},
 	})
 	return fetched.pipe(output, { end: true })
