@@ -1,5 +1,4 @@
 import { Boom } from '@hapi/boom'
-import { randomBytes } from 'crypto'
 import { URL } from 'url'
 import { promisify } from 'util'
 import { proto } from '../../WAProto'
@@ -29,6 +28,7 @@ import {
 	makeEventBuffer,
 	makeNoiseHandler,
 	promiseTimeout,
+	randomBytes,
 } from '../Utils'
 import {
 	assertNodeErrorFree,

@@ -475,3 +475,9 @@ export async function derivePairingCodeKey(pairingCode: string, salt: Buffer): P
 
 	return Buffer.from(derivedBits)
 }
+
+export function randomBytes(size: number): Buffer {
+	const bytes = new Uint8Array(size)
+	crypto.getRandomValues(bytes)
+	return Buffer.from(bytes)
+}

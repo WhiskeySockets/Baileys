@@ -1,7 +1,7 @@
 import { Boom } from '@hapi/boom'
 import axios, { AxiosRequestConfig } from 'axios'
 import { exec } from 'child_process'
-import * as Crypto from 'crypto'
+import { createCipheriv, createDecipheriv, createHash, createHmac, Decipher } from 'crypto'
 import { once } from 'events'
 import { createReadStream, createWriteStream, promises as fs, WriteStream } from 'fs'
 import type { IAudioMetadata } from 'music-metadata'
@@ -13,7 +13,7 @@ import { proto } from '../../WAProto'
 import { DEFAULT_ORIGIN, MEDIA_HKDF_KEY_MAPPING, MEDIA_PATH_MAP } from '../Defaults'
 import { BaileysEventMap, DownloadableMessage, MediaConnInfo, MediaDecryptionKeyInfo, MediaType, MessageType, SocketConfig, WAGenericMediaMessage, WAMediaPayloadURL, WAMediaUpload, WAMediaUploadFunction, WAMessageContent } from '../Types'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, jidNormalizedUser } from '../WABinary'
-import { aesDecryptGCM, aesEncryptGCM, hkdf } from './crypto'
+import { aesDecryptGCM, aesEncryptGCM, hkdf, randomBytes } from './crypto'
 import { generateMessageID } from './generics'
 import { ILogger } from './logger'
 
@@ -343,7 +343,7 @@ export const encryptedStream = async(
 
 	logger?.debug('fetched media stream')
 
-	const mediaKey = Crypto.randomBytes(32)
+	const mediaKey = randomBytes(32)
 	const { cipherKey, iv, macKey } = await getMediaKeys(mediaKey, mediaType)
 	const encWriteStream = new Readable({ read: () => {} })
 
@@ -359,10 +359,10 @@ export const encryptedStream = async(
 	}
 
 	let fileLength = 0
-	const aes = Crypto.createCipheriv('aes-256-cbc', cipherKey, iv)
-	let hmac = Crypto.createHmac('sha256', macKey!).update(iv)
-	let sha256Plain = Crypto.createHash('sha256')
-	let sha256Enc = Crypto.createHash('sha256')
+	const aes = createCipheriv('aes-256-cbc', cipherKey, iv)
+	let hmac = createHmac('sha256', macKey!).update(iv)
+	let sha256Plain = createHash('sha256')
+	let sha256Enc = createHash('sha256')
 
 	try {
 		for await (const data of stream) {
@@ -518,7 +518,7 @@ export const downloadEncryptedContent = async(
 
 	let remainingBytes = Buffer.from([])
 
-	let aes: Crypto.Decipher
+	let aes: Decipher
 
 	const pushBytes = (bytes: Buffer, push: (bytes: Buffer) => void) => {
 		if(startByte || endByte) {
@@ -548,7 +548,7 @@ export const downloadEncryptedContent = async(
 					data = data.slice(AES_CHUNK_SIZE)
 				}
 
-				aes = Crypto.createDecipheriv('aes-256-cbc', cipherKey, ivValue)
+				aes = createDecipheriv('aes-256-cbc', cipherKey, ivValue)
 				// if an end byte that is not EOF is specified
 				// stop auto padding (PKCS7) -- otherwise throws an error for decryption
 				if(endByte) {
@@ -681,7 +681,7 @@ export const encryptMediaRetryRequest = async(
 	const recp: proto.IServerErrorReceipt = { stanzaId: key.id }
 	const recpBuffer = proto.ServerErrorReceipt.encode(recp).finish()
 
-	const iv = Crypto.randomBytes(12)
+	const iv = randomBytes(12)
 	const retryKey = await getMediaRetryKey(mediaKey)
 	const ciphertext = await aesEncryptGCM(recpBuffer, retryKey, iv, Buffer.from(key.id!))
 
