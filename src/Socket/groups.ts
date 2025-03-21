@@ -284,7 +284,7 @@ export const makeGroupsSocket = async(config: SocketConfig) => {
 				{
 					key: {
 						remoteJid: inviteMessage.groupJid,
-						id: generateMessageIDV2(sock.user?.id),
+						id: await generateMessageIDV2(sock.user?.id),
 						fromMe: false,
 						participant: key.remoteJid,
 					},

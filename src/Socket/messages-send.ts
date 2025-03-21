@@ -337,7 +337,7 @@ export const makeMessagesSocket = async(config: SocketConfig) => {
 		const isStatus = jid === statusJid
 		const isLid = server === 'lid'
 
-		msgId = msgId || generateMessageIDV2(sock.user?.id)
+		msgId = msgId || await generateMessageIDV2(sock.user?.id)
 		useUserDevicesCache = useUserDevicesCache !== false
 		useCachedGroupMetadata = useCachedGroupMetadata !== false && !isStatus
 
@@ -758,7 +758,7 @@ export const makeMessagesSocket = async(config: SocketConfig) => {
 						upload: waUploadToServer,
 						mediaCache: config.mediaCache,
 						options: config.options,
-						messageId: generateMessageIDV2(sock.user?.id),
+						messageId: await generateMessageIDV2(sock.user?.id),
 						...options,
 					}
 				)
