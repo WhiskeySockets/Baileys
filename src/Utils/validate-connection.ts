@@ -1,10 +1,9 @@
 import { Boom } from '@hapi/boom'
-import { createHash } from 'crypto'
 import { proto } from '../../WAProto'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import type { AuthenticationCreds, SignalCreds, SocketConfig } from '../Types'
 import { BinaryNode, getBinaryNodeChild, jidDecode, S_WHATSAPP_NET } from '../WABinary'
-import { Curve, hmacSign } from './crypto'
+import { Curve, hmacSign, md5 } from './crypto'
 import { encodeBigEndian } from './generics'
 import { createSignalIdentity } from './signal'
 
@@ -78,9 +77,7 @@ export const generateRegistrationNode = (
 ) => {
 	// the app version needs to be md5 hashed
 	// and passed in
-	const appVersionBuf = createHash('md5')
-		.update(config.version.join('.')) // join as string
-		.digest()
+	const appVersionBuf = md5(Buffer.from(config.version.join('.')))
 
 	const companion: proto.IDeviceProps = {
 		os: config.browser[0],

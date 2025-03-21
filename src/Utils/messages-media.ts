@@ -1,7 +1,7 @@
 import { Boom } from '@hapi/boom'
 import axios, { AxiosRequestConfig } from 'axios'
 import { exec } from 'child_process'
-import { createCipheriv, createDecipheriv, createHash, createHmac, Decipher } from 'crypto'
+import { createCipheriv, createDecipheriv, createHmac, Decipher } from 'crypto'
 import { once } from 'events'
 import { createReadStream, createWriteStream, promises as fs, WriteStream } from 'fs'
 import type { IAudioMetadata } from 'music-metadata'
@@ -13,7 +13,7 @@ import { proto } from '../../WAProto'
 import { DEFAULT_ORIGIN, MEDIA_HKDF_KEY_MAPPING, MEDIA_PATH_MAP } from '../Defaults'
 import { BaileysEventMap, DownloadableMessage, MediaConnInfo, MediaDecryptionKeyInfo, MediaType, MessageType, SocketConfig, WAGenericMediaMessage, WAMediaPayloadURL, WAMediaUpload, WAMediaUploadFunction, WAMessageContent } from '../Types'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, jidNormalizedUser } from '../WABinary'
-import { aesDecryptGCM, aesEncryptGCM, hkdf, randomBytes } from './crypto'
+import { aesDecryptGCM, aesEncryptGCM, hkdf, randomBytes, sha256 } from './crypto'
 import { generateMessageID } from './generics'
 import { ILogger } from './logger'
 
@@ -361,8 +361,9 @@ export const encryptedStream = async(
 	let fileLength = 0
 	const aes = createCipheriv('aes-256-cbc', cipherKey, iv)
 	let hmac = createHmac('sha256', macKey!).update(iv)
-	let sha256Plain = createHash('sha256')
-	let sha256Enc = createHash('sha256')
+
+	const plainDataChunks: Buffer[] = []
+	const encDataChunks: Buffer[] = []
 
 	try {
 		for await (const data of stream) {
@@ -381,7 +382,9 @@ export const encryptedStream = async(
 				)
 			}
 
-			sha256Plain = sha256Plain.update(data)
+			// Accumulate plain data for hashing later
+			plainDataChunks.push(Buffer.from(data))
+
 			if(writeStream && !writeStream.write(data)) {
 				await once(writeStream, 'drain')
 			}
@@ -392,10 +395,12 @@ export const encryptedStream = async(
 		onChunk(aes.final())
 
 		const mac = hmac.digest().slice(0, 10)
-		sha256Enc = sha256Enc.update(mac)
+		// Add mac to enc data
+		encDataChunks.push(mac)
 
-		const fileSha256 = sha256Plain.digest()
-		const fileEncSha256 = sha256Enc.digest()
+		// Use sha256 function instead of digest
+		const fileSha256 = await sha256(Buffer.concat(plainDataChunks))
+		const fileEncSha256 = await sha256(Buffer.concat(encDataChunks))
 
 		encWriteStream.push(mac)
 		encWriteStream.push(null)
@@ -421,8 +426,6 @@ export const encryptedStream = async(
 		writeStream?.destroy()
 		aes.destroy()
 		hmac.destroy()
-		sha256Plain.destroy()
-		sha256Enc.destroy()
 		stream.destroy()
 
 		if(didSaveToTmpPath) {
@@ -437,7 +440,8 @@ export const encryptedStream = async(
 	}
 
 	function onChunk(buff: Buffer) {
-		sha256Enc = sha256Enc.update(buff)
+		// Accumulate encrypted data chunks
+		encDataChunks.push(Buffer.from(buff))
 		hmac = hmac.update(buff)
 		encWriteStream.push(buff)
 	}

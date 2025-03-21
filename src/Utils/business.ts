@@ -1,7 +1,7 @@
 import { Boom } from '@hapi/boom'
-import { createHash } from 'crypto'
 import { CatalogCollection, CatalogStatus, OrderDetails, OrderProduct, Product, ProductCreate, ProductUpdate, WAMediaUpload, WAMediaUploadFunction } from '../Types'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, getBinaryNodeChildString } from '../WABinary'
+import { sha256 } from './crypto'
 import { getStream, getUrlFromDirectPath, toReadable } from './messages-media'
 
 export const parseCatalogNode = (node: BinaryNode) => {
@@ -234,17 +234,16 @@ export const uploadingNecessaryImages = async(
 				}
 
 				const { stream } = await getStream(img)
-				const hasher = createHash('sha256')
 				const contentBlocks: Buffer[] = []
 				for await (const block of stream) {
-					hasher.update(block)
 					contentBlocks.push(block)
 				}
 
-				const sha = hasher.digest('base64')
+				const buffer = Buffer.concat(contentBlocks)
+				const sha = (await sha256(buffer)).toString('base64')
 
 				const { directPath } = await waUploadToServer(
-					toReadable(Buffer.concat(contentBlocks)),
+					toReadable(buffer),
 					{
 						mediaType: 'product-catalog-image',
 						fileEncSha256B64: sha,
