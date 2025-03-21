@@ -17,7 +17,6 @@
   "files": [
     "lib/*",
     "WAProto/*",
-    "WASignalGroup/*.js",
     "engine-requirements.js"
   ],
   "scripts": {
