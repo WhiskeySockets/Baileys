@@ -1,7 +1,6 @@
 import { Boom } from '@hapi/boom'
 import axios, { AxiosRequestConfig } from 'axios'
 import { exec } from 'child_process'
-import * as Crypto from 'crypto'
 import { once } from 'events'
 import { createReadStream, createWriteStream, promises as fs, WriteStream } from 'fs'
 import type { IAudioMetadata } from 'music-metadata'
@@ -13,7 +12,7 @@ import { proto } from '../../WAProto'
 import { DEFAULT_ORIGIN, MEDIA_HKDF_KEY_MAPPING, MEDIA_PATH_MAP } from '../Defaults'
 import { BaileysEventMap, DownloadableMessage, MediaConnInfo, MediaDecryptionKeyInfo, MediaType, MessageType, SocketConfig, WAGenericMediaMessage, WAMediaPayloadURL, WAMediaUpload, WAMediaUploadFunction, WAMessageContent } from '../Types'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, jidNormalizedUser } from '../WABinary'
-import { aesDecryptGCM, aesEncryptGCM, hkdf } from './crypto'
+import { aesDecryptCTR, aesDecryptGCM, aesEncryptCTR, aesEncryptGCM, hkdf, hmacSign, randomBytes, sha256 } from './crypto'
 import { generateMessageID } from './generics'
 import { ILogger } from './logger'
 
@@ -334,6 +333,17 @@ type EncryptedStreamOptions = {
 	opts?: AxiosRequestConfig
 }
 
+/**
+	 * Encrypts media as per WhatsApp specifications.
+	 * Takes the media and returns:
+	 * - mediaKey: The key used to encrypt the media
+	 * - encWriteStream: The encrypted media stream
+	 * - bodyPath: Path to the temporary file if stored
+	 * - fileEncSha256: SHA256 hash of the encrypted file
+	 * - fileSha256: SHA256 hash of the original file
+	 * - fileLength: Size of the media file in bytes
+	 * - didSaveToTmpPath: Whether the media was saved to a temporary path
+	 */
 export const encryptedStream = async(
 	media: WAMediaUpload,
 	mediaType: MediaType,
@@ -343,7 +353,7 @@ export const encryptedStream = async(
 
 	logger?.debug('fetched media stream')
 
-	const mediaKey = Crypto.randomBytes(32)
+	const mediaKey = randomBytes(32)
 	const { cipherKey, iv, macKey } = await getMediaKeys(mediaKey, mediaType)
 	const encWriteStream = new Readable({ read: () => {} })
 
@@ -359,10 +369,11 @@ export const encryptedStream = async(
 	}
 
 	let fileLength = 0
-	const aes = Crypto.createCipheriv('aes-256-cbc', cipherKey, iv)
-	let hmac = Crypto.createHmac('sha256', macKey!).update(iv)
-	let sha256Plain = Crypto.createHash('sha256')
-	let sha256Enc = Crypto.createHash('sha256')
+	// Data for HMAC calculation
+	let hmacData: Buffer = Buffer.from(iv)
+
+	const plainDataChunks: Buffer[] = []
+	const encDataChunks: Buffer[] = []
 
 	try {
 		for await (const data of stream) {
@@ -381,21 +392,33 @@ export const encryptedStream = async(
 				)
 			}
 
-			sha256Plain = sha256Plain.update(data)
+			// Accumulate plain data for hashing later
+			plainDataChunks.push(Buffer.from(data))
+
 			if(writeStream && !writeStream.write(data)) {
 				await once(writeStream, 'drain')
 			}
 
-			onChunk(aes.update(data))
+			// Encrypt using Web Crypto API
+			const encryptedChunk = await aesEncryptCTR(data, cipherKey, iv)
+			// Collect data for HMAC
+			hmacData = Buffer.concat([hmacData, encryptedChunk])
+			// Store encrypted chunks
+			encDataChunks.push(Buffer.from(encryptedChunk))
+			// Push to write stream
+			encWriteStream.push(encryptedChunk)
 		}
 
-		onChunk(aes.final())
+		// Use hmacSign instead of createHmac
+		const fullHmac = await hmacSign(hmacData, macKey!, 'sha256')
+		const mac = fullHmac.slice(0, 10)
 
-		const mac = hmac.digest().slice(0, 10)
-		sha256Enc = sha256Enc.update(mac)
+		// Add mac to enc data for SHA calculation
+		encDataChunks.push(mac)
 
-		const fileSha256 = sha256Plain.digest()
-		const fileEncSha256 = sha256Enc.digest()
+		// Use sha256 function instead of digest
+		const fileSha256 = await sha256(Buffer.concat(plainDataChunks))
+		const fileEncSha256 = await sha256(Buffer.concat(encDataChunks))
 
 		encWriteStream.push(mac)
 		encWriteStream.push(null)
@@ -419,10 +442,6 @@ export const encryptedStream = async(
 		// destroy all streams with error
 		encWriteStream.destroy()
 		writeStream?.destroy()
-		aes.destroy()
-		hmac.destroy()
-		sha256Plain.destroy()
-		sha256Enc.destroy()
 		stream.destroy()
 
 		if(didSaveToTmpPath) {
@@ -434,12 +453,6 @@ export const encryptedStream = async(
 		}
 
 		throw error
-	}
-
-	function onChunk(buff: Buffer) {
-		sha256Enc = sha256Enc.update(buff)
-		hmac = hmac.update(buff)
-		encWriteStream.push(buff)
 	}
 }
 
@@ -517,8 +530,7 @@ export const downloadEncryptedContent = async(
 	)
 
 	let remainingBytes = Buffer.from([])
-
-	let aes: Crypto.Decipher
+	let ivValue = iv
 
 	const pushBytes = (bytes: Buffer, push: (bytes: Buffer) => void) => {
 		if(startByte || endByte) {
@@ -541,36 +553,26 @@ export const downloadEncryptedContent = async(
 			remainingBytes = data.slice(decryptLength)
 			data = data.slice(0, decryptLength)
 
-			if(!aes) {
-				let ivValue = iv
-				if(firstBlockIsIV) {
-					ivValue = data.slice(0, AES_CHUNK_SIZE)
-					data = data.slice(AES_CHUNK_SIZE)
-				}
-
-				aes = Crypto.createDecipheriv('aes-256-cbc', cipherKey, ivValue)
-				// if an end byte that is not EOF is specified
-				// stop auto padding (PKCS7) -- otherwise throws an error for decryption
-				if(endByte) {
-					aes.setAutoPadding(false)
-				}
-
+			// Handle IV if it's in the first block
+			if(firstBlockIsIV && ivValue === iv) {
+				ivValue = data.slice(0, AES_CHUNK_SIZE)
+				data = data.slice(AES_CHUNK_SIZE)
+				firstBlockIsIV = false
 			}
 
 			try {
-				pushBytes(aes.update(data), b => this.push(b))
-				callback()
+				// Decrypt using Web Crypto API
+				aesDecryptCTR(data, cipherKey, ivValue).then(decrypted => {
+					pushBytes(decrypted, b => this.push(b))
+					callback()
+				}).catch(callback)
 			} catch(error) {
 				callback(error)
 			}
 		},
 		final(callback) {
-			try {
-				pushBytes(aes.final(), b => this.push(b))
-				callback()
-			} catch(error) {
-				callback(error)
-			}
+			// No need for final operation as each chunk is processed independently
+			callback()
 		},
 	})
 	return fetched.pipe(output, { end: true })
@@ -681,9 +683,9 @@ export const encryptMediaRetryRequest = async(
 	const recp: proto.IServerErrorReceipt = { stanzaId: key.id }
 	const recpBuffer = proto.ServerErrorReceipt.encode(recp).finish()
 
-	const iv = Crypto.randomBytes(12)
+	const iv = randomBytes(12)
 	const retryKey = await getMediaRetryKey(mediaKey)
-	const ciphertext = aesEncryptGCM(recpBuffer, retryKey, iv, Buffer.from(key.id!))
+	const ciphertext = await aesEncryptGCM(recpBuffer, retryKey, iv, Buffer.from(key.id!))
 
 	const req: BinaryNode = {
 		tag: 'receipt',
@@ -758,7 +760,7 @@ export const decryptMediaRetryData = async(
 	msgId: string
 ) => {
 	const retryKey = await getMediaRetryKey(mediaKey)
-	const plaintext = aesDecryptGCM(ciphertext, retryKey, iv, Buffer.from(msgId))
+	const plaintext = await aesDecryptGCM(ciphertext, retryKey, iv, Buffer.from(msgId))
 	return proto.MediaRetryNotification.decode(plaintext)
 }
 
