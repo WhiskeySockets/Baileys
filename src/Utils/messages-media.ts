@@ -1,7 +1,7 @@
 import { Boom } from '@hapi/boom'
 import axios, { AxiosRequestConfig } from 'axios'
 import { exec } from 'child_process'
-import { createCipheriv, createDecipheriv, createHmac, Decipher } from 'crypto'
+import { createCipheriv, createDecipheriv, Decipher } from 'crypto'
 import { once } from 'events'
 import { createReadStream, createWriteStream, promises as fs, WriteStream } from 'fs'
 import type { IAudioMetadata } from 'music-metadata'
@@ -13,7 +13,7 @@ import { proto } from '../../WAProto'
 import { DEFAULT_ORIGIN, MEDIA_HKDF_KEY_MAPPING, MEDIA_PATH_MAP } from '../Defaults'
 import { BaileysEventMap, DownloadableMessage, MediaConnInfo, MediaDecryptionKeyInfo, MediaType, MessageType, SocketConfig, WAGenericMediaMessage, WAMediaPayloadURL, WAMediaUpload, WAMediaUploadFunction, WAMessageContent } from '../Types'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildBuffer, jidNormalizedUser } from '../WABinary'
-import { aesDecryptGCM, aesEncryptGCM, hkdf, randomBytes, sha256 } from './crypto'
+import { aesDecryptGCM, aesEncryptGCM, hkdf, hmacSign, randomBytes, sha256 } from './crypto'
 import { generateMessageID } from './generics'
 import { ILogger } from './logger'
 
@@ -334,6 +334,17 @@ type EncryptedStreamOptions = {
 	opts?: AxiosRequestConfig
 }
 
+/**
+	 * Encrypts media as per WhatsApp specifications.
+	 * Takes the media and returns:
+	 * - mediaKey: The key used to encrypt the media
+	 * - encWriteStream: The encrypted media stream
+	 * - bodyPath: Path to the temporary file if stored
+	 * - fileEncSha256: SHA256 hash of the encrypted file
+	 * - fileSha256: SHA256 hash of the original file
+	 * - fileLength: Size of the media file in bytes
+	 * - didSaveToTmpPath: Whether the media was saved to a temporary path
+	 */
 export const encryptedStream = async(
 	media: WAMediaUpload,
 	mediaType: MediaType,
@@ -360,7 +371,9 @@ export const encryptedStream = async(
 
 	let fileLength = 0
 	const aes = createCipheriv('aes-256-cbc', cipherKey, iv)
-	let hmac = createHmac('sha256', macKey!).update(iv)
+
+	// Data for HMAC calculation
+	let hmacData: Buffer = Buffer.from(iv)
 
 	const plainDataChunks: Buffer[] = []
 	const encDataChunks: Buffer[] = []
@@ -389,13 +402,28 @@ export const encryptedStream = async(
 				await once(writeStream, 'drain')
 			}
 
-			onChunk(aes.update(data))
+			const encryptedChunk = aes.update(data)
+			// Collect data for HMAC
+			hmacData = Buffer.concat([hmacData, encryptedChunk])
+			// Store encrypted chunks
+			encDataChunks.push(Buffer.from(encryptedChunk))
+			// Push to write stream
+			encWriteStream.push(encryptedChunk)
 		}
 
-		onChunk(aes.final())
+		const finalChunk = aes.final()
+		// Add final chunk to HMAC data
+		hmacData = Buffer.concat([hmacData, finalChunk])
+		// Store final encrypted chunk
+		encDataChunks.push(Buffer.from(finalChunk))
+		// Push to write stream
+		encWriteStream.push(finalChunk)
 
-		const mac = hmac.digest().slice(0, 10)
-		// Add mac to enc data
+		// Use hmacSign instead of createHmac
+		const fullHmac = await hmacSign(hmacData, macKey!, 'sha256')
+		const mac = fullHmac.slice(0, 10)
+
+		// Add mac to enc data for SHA calculation
 		encDataChunks.push(mac)
 
 		// Use sha256 function instead of digest
@@ -425,7 +453,6 @@ export const encryptedStream = async(
 		encWriteStream.destroy()
 		writeStream?.destroy()
 		aes.destroy()
-		hmac.destroy()
 		stream.destroy()
 
 		if(didSaveToTmpPath) {
@@ -437,13 +464,6 @@ export const encryptedStream = async(
 		}
 
 		throw error
-	}
-
-	function onChunk(buff: Buffer) {
-		// Accumulate encrypted data chunks
-		encDataChunks.push(Buffer.from(buff))
-		hmac = hmac.update(buff)
-		encWriteStream.push(buff)
 	}
 }
 
