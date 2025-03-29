@@ -4,6 +4,7 @@ import type { AuthenticationState, MediaType, SocketConfig, WAVersion } from '..
 import { Browsers } from '../Utils'
 import logger from '../Utils/logger'
 import { version } from './baileys-version.json'
+import {makeEnhancedLibSignalRepository} from "../Signal";
 
 export const UNAUTHORIZED_CODES = [401, 403, 419]
 
@@ -65,7 +66,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	countryCode: 'US',
 	getMessage: async() => undefined,
 	cachedGroupMetadata: async() => undefined,
-	makeSignalRepository: makeLibSignalRepository
+	makeSignalRepository: makeEnhancedLibSignalRepository
 }
 
 export const MEDIA_PATH_MAP: { [T in MediaType]?: string } = {
