@@ -284,9 +284,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		if(!Array.isArray(patched)) {
 		  patched = jids.map(jid => ({ recipientJid: jid, ...patched }))
 		}
-		
+
 		let shouldIncludeDeviceIdentity = false
-		
+
 		const nodes = await Promise.all(
 			patched.map(
 				async patchedMessageWithJid => {
