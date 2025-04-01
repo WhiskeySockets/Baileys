@@ -282,7 +282,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	) => {
 		let patched = await patchMessageBeforeSending(message, jids)
 		if(!Array.isArray(patched)) {
-		  patched = jids.map(jid => ({ recipientJid: jid, ...patched }))
+		  patched = jids ? jids.map(jid => ({ recipientJid: jid, ...patched })) : [patched]
 		}
 
 		let shouldIncludeDeviceIdentity = false
