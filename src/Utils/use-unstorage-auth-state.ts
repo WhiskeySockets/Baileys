@@ -16,7 +16,6 @@ export const useUnstorageAuthState = async(
 
 	const writeData = async(data: any, key: string) => {
 		const jsonString = JSON.stringify(data, BufferJSON.replacer)
-		console.log(`Writing key: ${fixKey(key)}, Data being written:`, jsonString)
 		await store.setItem(fixKey(key), jsonString)
 	}
 
