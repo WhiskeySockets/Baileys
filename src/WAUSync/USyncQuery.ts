@@ -108,4 +108,8 @@ export class USyncQuery {
 		return this
 	}
 
+	withLIDProtocol() {
+		this.protocols.push(new USyncLIDProtocol())
+		return this
+	}
 }
