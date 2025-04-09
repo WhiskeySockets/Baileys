@@ -1,7 +1,6 @@
 
 import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
-import { randomBytes } from 'crypto'
 import Long = require('long');
 import { proto } from '../../WAProto'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
@@ -25,6 +24,7 @@ import {
 	MISSING_KEYS_ERROR_TEXT,
 	NACK_REASONS,
 	NO_MESSAGE_FOUND_ERROR_TEXT,
+	randomBytes,
 	unixTimestampSeconds,
 	xmppPreKey,
 	xmppSignedPreKey
@@ -46,7 +46,7 @@ import {
 import { extractGroupMetadata } from './groups'
 import { makeMessagesSocket } from './messages-send'
 
-export const makeMessagesRecvSocket = (config: SocketConfig) => {
+export const makeMessagesRecvSocket = async(config: SocketConfig) => {
 	const {
 		logger,
 		retryRequestDelayMs,
@@ -54,7 +54,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		getMessage,
 		shouldIgnoreJid
 	} = config
-	const sock = makeMessagesSocket(config)
+	const sock = await makeMessagesSocket(config)
 	const {
 		ev,
 		authState,
@@ -483,7 +483,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			})
 			const encryptPayload = Buffer.concat([Buffer.from(authState.creds.signedIdentityKey.public), primaryIdentityPublicKey, random])
 			const encryptIv = randomBytes(12)
-			const encrypted = aesEncryptGCM(encryptPayload, linkCodePairingExpanded, encryptIv, Buffer.alloc(0))
+			const encrypted = await aesEncryptGCM(encryptPayload, linkCodePairingExpanded, encryptIv, Buffer.alloc(0))
 			const encryptedPayload = Buffer.concat([linkCodeSalt, encryptIv, encrypted])
 			const identitySharedKey = Curve.sharedKey(authState.creds.signedIdentityKey.private, primaryIdentityPublicKey)
 			const identityPayload = Buffer.concat([companionSharedKey, identitySharedKey, random])
