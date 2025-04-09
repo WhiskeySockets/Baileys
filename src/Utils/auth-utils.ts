@@ -13,7 +13,7 @@ import { ILogger } from './logger'
  */
 export function makeCacheableSignalKeyStore(
 	store: SignalKeyStore,
-	logger: ILogger,
+	logger?: ILogger,
 	_cache?: CacheStore
 ): SignalKeyStore {
 	const cache = _cache || new NodeCache({
@@ -40,7 +40,7 @@ export function makeCacheableSignalKeyStore(
 			}
 
 			if(idsToFetch.length) {
-				logger.trace({ items: idsToFetch.length }, 'loading from store')
+				logger?.trace({ items: idsToFetch.length }, 'loading from store')
 				const fetched = await store.get(type, idsToFetch)
 				for(const id of idsToFetch) {
 					const item = fetched[id]
@@ -62,7 +62,7 @@ export function makeCacheableSignalKeyStore(
 				}
 			}
 
-			logger.trace({ keys }, 'updated cache')
+			logger?.trace({ keys }, 'updated cache')
 
 			await store.set(data)
 		},

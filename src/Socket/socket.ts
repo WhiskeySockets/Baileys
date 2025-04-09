@@ -777,5 +777,3 @@ function mapWebSocketError(handler: (err: Error) => void) {
 		)
 	}
 }
-
-export type Socket = ReturnType<typeof makeSocket>

@@ -148,12 +148,8 @@ const encodeBinaryNodeInner = (
 		}
 	}
 
-	const isNibble = (str: string) => {
-		if(!str) {
-			return false
-		}
-
-		if(str.length > TAGS.PACKED_MAX) {
+	const isNibble = (str?: string) => {
+		if(!str || str.length > TAGS.PACKED_MAX) {
 			return false
 		}
 
@@ -167,12 +163,8 @@ const encodeBinaryNodeInner = (
 		return true
 	}
 
-	const isHex = (str: string) => {
-		if(!str) {
-			return false
-		}
-
-		if(str.length > TAGS.PACKED_MAX) {
+	const isHex = (str?: string) => {
+		if(!str || str.length > TAGS.PACKED_MAX) {
 			return false
 		}
 
@@ -186,7 +178,7 @@ const encodeBinaryNodeInner = (
 		return true
 	}
 
-	const writeString = (str: string) => {
+	const writeString = (str?: string) => {
 		if(str === undefined || str === null) {
 			pushByte(TAGS.LIST_EMPTY)
 			return
@@ -224,7 +216,6 @@ const encodeBinaryNodeInner = (
 		}
 	}
 
-	// Validate node before processing
 	if(!tag) {
 		throw new Error('Invalid node: tag cannot be undefined')
 	}
