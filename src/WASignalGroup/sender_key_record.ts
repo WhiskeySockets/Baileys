@@ -1,6 +1,6 @@
 import { SenderKeyState } from './sender_key_state';
 
-interface SenderKeyStateStructure {
+export interface SenderKeyStateStructure {
     senderKeyId: number;
     senderChainKey: {
         iteration: number;
@@ -73,4 +73,16 @@ export class SenderKeyRecord {
     public serialize(): SenderKeyStateStructure[] {
         return this.senderKeyStates.map(state => state.getStructure());
     }
+	static deserialize(data: Uint8Array | string | SenderKeyStateStructure[]): SenderKeyRecord {
+		let parsed: SenderKeyStateStructure[]
+		if (typeof data === 'string') {
+			parsed = JSON.parse(data)
+		} else if (data instanceof Uint8Array) {
+			const str = Buffer.from(data).toString('utf-8')
+			parsed = JSON.parse(str)
+		} else {
+			parsed = data
+		}
+		return new SenderKeyRecord(parsed)
+	}
 }

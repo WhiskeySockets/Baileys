@@ -5,7 +5,7 @@ import { SenderKeyName } from './sender_key_name';
 import { SenderKeyRecord } from './sender_key_record';
 import { SenderKeyState } from './sender_key_state';
 
-interface SenderKeyStore {
+export interface SenderKeyStore {
     loadSenderKey(senderKeyName: SenderKeyName): Promise<SenderKeyRecord>;
     storeSenderKey(senderKeyName: SenderKeyName, record: SenderKeyRecord): Promise<void>;
 }
