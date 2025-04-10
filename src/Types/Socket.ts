@@ -1,9 +1,9 @@
 
 import { AxiosRequestConfig } from 'axios'
 import type { Agent } from 'https'
-import type { Logger } from 'pino'
 import type { URL } from 'url'
 import { proto } from '../../WAProto'
+import { ILogger } from '../Utils/logger'
 import { AuthenticationState, SignalAuthState, TransactionCapabilityOptions } from './Auth'
 import { GroupMetadata } from './GroupMetadata'
 import { MediaConnInfo } from './Message'
@@ -23,6 +23,8 @@ export type CacheStore = {
     flushAll(): void
 }
 
+export type PatchedMessageWithRecipientJID = proto.IMessage & {recipientJid?: string}
+
 export type SocketConfig = {
     /** the WS url to connect to WA */
     waWebSocketUrl: string | URL
@@ -38,16 +40,18 @@ export type SocketConfig = {
 	mobile?: boolean
     /** proxy agent */
     agent?: Agent
-    /** pino logger */
-    logger: Logger
+    /** logger */
+    logger: ILogger
     /** version to connect with */
     version: WAVersion
     /** override browser config */
     browser: WABrowserDescription
     /** agent used for fetch requests -- uploading/downloading media */
     fetchAgent?: Agent
-    /** should the QR be printed in the terminal */
-    printQRInTerminal: boolean
+    /** should the QR be printed in the terminal
+    * @deprecated This feature has been removed
+    */
+    printQRInTerminal?: boolean
     /** should events be emitted for actions done by this socket connection */
     emitOwnEvents: boolean
     /** custom upload hosts to upload media to */
@@ -104,8 +108,8 @@ export type SocketConfig = {
      * */
     patchMessageBeforeSending: (
         msg: proto.IMessage,
-        recipientJids: string[],
-    ) => Promise<proto.IMessage> | proto.IMessage
+        recipientJids?: string[],
+    ) => Promise<PatchedMessageWithRecipientJID[] | PatchedMessageWithRecipientJID> | PatchedMessageWithRecipientJID[] | PatchedMessageWithRecipientJID
 
     /** verify app state MACs */
     appStateMacVerification: {

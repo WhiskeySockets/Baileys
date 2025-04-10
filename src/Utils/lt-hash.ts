@@ -35,16 +35,16 @@ class d {
 		var n = this
 		return n.add(n.subtract(e, r), t)
 	}
-	_addSingle(e, t) {
+	async _addSingle(e, t) {
 		var r = this
-		const n = new Uint8Array(hkdf(Buffer.from(t), o, { info: r.salt })).buffer
-		return r.performPointwiseWithOverflow(e, n, ((e, t) => e + t))
+		const n = new Uint8Array(await hkdf(Buffer.from(t), o, { info: r.salt })).buffer
+		return r.performPointwiseWithOverflow(await e, n, ((e, t) => e + t))
 	}
-	_subtractSingle(e, t) {
+	async _subtractSingle(e, t) {
 		var r = this
 
-		const n = new Uint8Array(hkdf(Buffer.from(t), o, { info: r.salt })).buffer
-		return r.performPointwiseWithOverflow(e, n, ((e, t) => e - t))
+		const n = new Uint8Array(await hkdf(Buffer.from(t), o, { info: r.salt })).buffer
+		return r.performPointwiseWithOverflow(await e, n, ((e, t) => e - t))
 	}
 	performPointwiseWithOverflow(e, t, r) {
 		const n = new DataView(e)

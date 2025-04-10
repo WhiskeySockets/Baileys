@@ -1,12 +1,12 @@
 import { Boom } from '@hapi/boom'
 import { AxiosRequestConfig } from 'axios'
-import type { Logger } from 'pino'
 import { proto } from '../../WAProto'
 import { BaileysEventEmitter, Chat, ChatModification, ChatMutation, ChatUpdate, Contact, InitialAppStateSyncOptions, LastMessageList, LTHashState, WAPatchCreate, WAPatchName } from '../Types'
 import { ChatLabelAssociation, LabelAssociationType, MessageLabelAssociation } from '../Types/LabelAssociation'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, jidNormalizedUser } from '../WABinary'
 import { aesDecrypt, aesEncrypt, hkdf, hmacSign } from './crypto'
 import { toNumber } from './generics'
+import { ILogger } from './logger'
 import { LT_HASH_ANTI_TAMPERING } from './lt-hash'
 import { downloadContentFromMessage, } from './messages-media'
 
@@ -14,8 +14,8 @@ type FetchAppStateSyncKey = (keyId: string) => Promise<proto.Message.IAppStateSy
 
 export type ChatMutationMap = { [index: string]: ChatMutation }
 
-const mutationKeys = (keydata: Uint8Array) => {
-	const expanded = hkdf(keydata, 160, { info: 'WhatsApp Mutation Keys' })
+const mutationKeys = async(keydata: Uint8Array) => {
+	const expanded = await hkdf(keydata, 160, { info: 'WhatsApp Mutation Keys' })
 	return {
 		indexKey: expanded.slice(0, 32),
 		valueEncryptionKey: expanded.slice(32, 64),
@@ -86,9 +86,9 @@ const makeLtHashGenerator = ({ indexValueMap, hash }: Pick<LTHashState, 'hash' |
 				subBuffs.push(new Uint8Array(prevOp.valueMac).buffer)
 			}
 		},
-		finish: () => {
+		finish: async() => {
 			const hashArrayBuffer = new Uint8Array(hash).buffer
-			const result = LT_HASH_ANTI_TAMPERING.subtractThenAdd(hashArrayBuffer, addBuffs, subBuffs)
+			const result = await LT_HASH_ANTI_TAMPERING.subtractThenAdd(hashArrayBuffer, addBuffs, subBuffs)
 			const buffer = Buffer.from(result)
 
 			return {
@@ -144,7 +144,7 @@ export const encodeSyncdPatch = async(
 	})
 	const encoded = proto.SyncActionData.encode(dataProto).finish()
 
-	const keyValue = mutationKeys(key.keyData!)
+	const keyValue = await mutationKeys(key.keyData!)
 
 	const encValue = aesEncrypt(encoded, keyValue.valueEncryptionKey)
 	const valueMac = generateMac(operation, encValue, encKeyId, keyValue.valueMacKey)
@@ -153,7 +153,7 @@ export const encodeSyncdPatch = async(
 	// update LT hash
 	const generator = makeLtHashGenerator(state)
 	generator.mix({ indexMac, valueMac, operation })
-	Object.assign(state, generator.finish())
+	Object.assign(state, await generator.finish())
 
 	state.version += 1
 
@@ -217,13 +217,13 @@ export const decodeSyncdMutations = async(
 		const syncAction = proto.SyncActionData.decode(result)
 
 		if(validateMacs) {
-			const hmac = hmacSign(syncAction.index, key.indexKey)
+			const hmac = hmacSign(syncAction.index!, key.indexKey)
 			if(Buffer.compare(hmac, record.index!.blob!) !== 0) {
 				throw new Boom('HMAC index verification failed')
 			}
 		}
 
-		const indexStr = Buffer.from(syncAction.index).toString()
+		const indexStr = Buffer.from(syncAction.index!).toString()
 		onMutation({ syncAction, index: JSON.parse(indexStr) })
 
 		ltGenerator.mix({
@@ -233,7 +233,7 @@ export const decodeSyncdMutations = async(
 		})
 	}
 
-	return ltGenerator.finish()
+	return await ltGenerator.finish()
 
 	async function getKey(keyId: Uint8Array) {
 		const base64Key = Buffer.from(keyId).toString('base64')
@@ -261,7 +261,7 @@ export const decodeSyncdPatch = async(
 			throw new Boom(`failed to find key "${base64Key}" to decode patch`, { statusCode: 404, data: { msg } })
 		}
 
-		const mainKey = mutationKeys(mainKeyObj.keyData!)
+		const mainKey = await mutationKeys(mainKeyObj.keyData!)
 		const mutationmacs = msg.mutations!.map(mutation => mutation.record!.value!.blob!.slice(-32))
 
 		const patchMac = generatePatchMac(msg.snapshotMac!, mutationmacs, toNumber(msg.version!.version), name, mainKey.patchMacKey)
@@ -390,7 +390,7 @@ export const decodeSyncdSnapshot = async(
 			throw new Boom(`failed to find key "${base64Key}" to decode mutation`)
 		}
 
-		const result = mutationKeys(keyEnc.keyData!)
+		const result = await mutationKeys(keyEnc.keyData!)
 		const computedSnapshotMac = generateSnapshotMac(newState.hash, newState.version, name, result.snapshotMacKey)
 		if(Buffer.compare(snapshot.mac!, computedSnapshotMac) !== 0) {
 			throw new Boom(`failed to verify LTHash at ${newState.version} of ${name} from snapshot`)
@@ -410,7 +410,7 @@ export const decodePatches = async(
 	getAppStateSyncKey: FetchAppStateSyncKey,
 	options: AxiosRequestConfig<{}>,
 	minimumVersionNumber?: number,
-	logger?: Logger,
+	logger?: ILogger,
 	validateMacs = true
 ) => {
 	const newState: LTHashState = {
@@ -458,7 +458,7 @@ export const decodePatches = async(
 				throw new Boom(`failed to find key "${base64Key}" to decode mutation`)
 			}
 
-			const result = mutationKeys(keyEnc.keyData!)
+			const result = await mutationKeys(keyEnc.keyData!)
 			const computedSnapshotMac = generateSnapshotMac(newState.hash, newState.version, name, result.snapshotMacKey)
 			if(Buffer.compare(snapshotMac!, computedSnapshotMac) !== 0) {
 				throw new Boom(`failed to verify LTHash at ${newState.version} of ${name}`)
@@ -716,7 +716,7 @@ export const processSyncAction = (
 	ev: BaileysEventEmitter,
 	me: Contact,
 	initialSyncOpts?: InitialAppStateSyncOptions,
-	logger?: Logger,
+	logger?: ILogger,
 ) => {
 	const isInitialSync = !!initialSyncOpts
 	const accountSettings = initialSyncOpts?.accountSettings

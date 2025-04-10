@@ -28,7 +28,6 @@ import {
 	getPlatformId,
 	makeEventBuffer,
 	makeNoiseHandler,
-	printQRIfNecessaryListener,
 	promiseTimeout,
 } from '../Utils'
 import {
@@ -64,6 +63,10 @@ export const makeSocket = (config: SocketConfig) => {
 		qrTimeout,
 		makeSignalRepository,
 	} = config
+
+	if(printQRInTerminal) {
+		console.warn('⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.')
+	}
 
 	const url = typeof waWebSocketUrl === 'string' ? new URL(waWebSocketUrl) : waWebSocketUrl
 
@@ -238,7 +241,7 @@ export const makeSocket = (config: SocketConfig) => {
 
 		logger.trace({ handshake }, 'handshake recv from WA')
 
-		const keyEnc = noise.processHandshake(handshake, creds.noiseKey)
+		const keyEnc = await noise.processHandshake(handshake, creds.noiseKey)
 
 		let node: proto.IClientPayload
 		if(!creds.me) {
@@ -671,7 +674,7 @@ export const makeSocket = (config: SocketConfig) => {
 	})
 
 	ws.on('CB:ib,,offline_preview', (node: BinaryNode) => {
-	  logger.info('offline preview received', node)
+	  logger.info('offline preview received', JSON.stringify(node))
 		sendNode({
 			tag: 'ib',
 			attrs: {},
@@ -732,9 +735,6 @@ export const makeSocket = (config: SocketConfig) => {
 		Object.assign(creds, update)
 	})
 
-	if(printQRInTerminal) {
-		printQRIfNecessaryListener(ev, logger)
-	}
 
 	return {
 		type: 'md' as 'md',
@@ -777,5 +777,3 @@ function mapWebSocketError(handler: (err: Error) => void) {
 		)
 	}
 }
-
-export type Socket = ReturnType<typeof makeSocket>

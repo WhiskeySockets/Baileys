@@ -1,5 +1,7 @@
 import { USyncQueryProtocol } from '../Types/USync'
 import { BinaryNode, getBinaryNodeChild } from '../WABinary'
+import { USyncBotProfileProtocol } from './Protocols/UsyncBotProfileProtocol'
+import { USyncLIDProtocol } from './Protocols/UsyncLIDProtocol'
 import { USyncContactProtocol, USyncDeviceProtocol, USyncDisappearingModeProtocol, USyncStatusProtocol } from './Protocols'
 import { USyncUser } from './USyncUser'
 
@@ -98,6 +100,16 @@ export class USyncQuery {
 
 	withDisappearingModeProtocol() {
 		this.protocols.push(new USyncDisappearingModeProtocol())
+		return this
+	}
+
+	withBotProfileProtocol() {
+		this.protocols.push(new USyncBotProfileProtocol())
+		return this
+	}
+
+	withLIDProtocol() {
+		this.protocols.push(new USyncLIDProtocol())
 		return this
 	}
 }
