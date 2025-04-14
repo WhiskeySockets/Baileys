@@ -4,6 +4,7 @@ import { exec } from 'child_process'
 import * as Crypto from 'crypto'
 import { once } from 'events'
 import { createReadStream, createWriteStream, promises as fs, WriteStream } from 'fs'
+import { loadEsm } from 'load-esm'
 import type { IAudioMetadata } from 'music-metadata'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -186,19 +187,18 @@ export const mediaMessageSHA256B64 = (message: WAMessageContent) => {
 }
 
 export async function getAudioDuration(buffer: Buffer | string | Readable) {
-	const musicMetadata = await import('music-metadata')
+	// load-esm is used to avoid the TypeScript compiler to convert the dynamic import to require
+	const musicMetadata = await loadEsm<typeof import('music-metadata')>('music-metadata')
 	let metadata: IAudioMetadata
+	const options = {
+		duration: true
+	}
 	if(Buffer.isBuffer(buffer)) {
-		metadata = await musicMetadata.parseBuffer(buffer, undefined, { duration: true })
+		metadata = await musicMetadata.parseBuffer(buffer, undefined, options)
 	} else if(typeof buffer === 'string') {
-		const rStream = createReadStream(buffer)
-		try {
-			metadata = await musicMetadata.parseStream(rStream, undefined, { duration: true })
-		} finally {
-			rStream.destroy()
-		}
+		metadata = await musicMetadata.parseFile(buffer, options)
 	} else {
-		metadata = await musicMetadata.parseStream(buffer, undefined, { duration: true })
+		metadata = await musicMetadata.parseStream(buffer, undefined, options)
 	}
 
 	return metadata.format.duration
