@@ -23,7 +23,7 @@ export class USyncStatusProtocol implements USyncQueryProtocol {
 	parser(node: BinaryNode): StatusData | undefined {
 		if(node.tag === 'status') {
 			assertNodeErrorFree(node)
-			let status: string | null = node?.content!.toString()
+			let status: string | null = node?.content?.toString() ?? null
 			const setAt = new Date(+(node?.attrs.t || 0) * 1000)
 			if(!status) {
 				if(+node.attrs?.code === 401) {
