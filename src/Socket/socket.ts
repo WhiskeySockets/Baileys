@@ -18,6 +18,7 @@ import {
 	bytesToCrockford,
 	configureSuccessfulPairing,
 	Curve,
+	delay,
 	derivePairingCodeKey,
 	generateLoginNode,
 	generateMdTagPrefix,
@@ -125,18 +126,24 @@ export const makeSocket = (config: SocketConfig) => {
 				} catch(error) {
 					reject(error)
 				}
-			}
+			}, { silent: true }
 		)
 	}
 
 	/** send a binary node */
-	const sendNode = (frame: BinaryNode) => {
+	const sendNode = async(frame: BinaryNode) => {
 		if(logger.level === 'trace') {
 			logger.trace({ xml: binaryNodeToString(frame), msg: 'xml send' })
 		}
 
-		const buff = encodeBinaryNode(frame)
-		return sendRawMessage(buff)
+		try {
+			const buff = encodeBinaryNode(frame)
+			// return sendRawMessage(buff)
+			await sendRawMessage(buff)
+		} catch(err) {
+			logger?.error(`[Baileys] sendNode() error: ${err?.message || err}`)
+			throw err
+		}
 	}
 
 	/** log & process any unexpected errors */
@@ -197,7 +204,7 @@ export const makeSocket = (config: SocketConfig) => {
 					ws.on(`TAG:${msgId}`, onRecv)
 					ws.on('close', onErr) // if the socket closes, you'll never receive the message
 					ws.off('error', onErr)
-				},
+				}, { silent: true }
 			)
 		} finally {
 			ws.off(`TAG:${msgId}`, onRecv!)
@@ -206,23 +213,58 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 	}
 
+
 	/** send a query, and wait for its response. auto-generates message ID if not provided */
-	const query = async(node: BinaryNode, timeoutMs?: number) => {
+	const query = async(
+		node: BinaryNode,
+		timeoutMs?: number,
+		retryAttempts = 6,
+		retryDelayMs = 10000
+	  ): Promise<BinaryNode> => {
 		if(!node.attrs.id) {
-			node.attrs.id = generateMessageTag()
+		  node.attrs.id = generateMessageTag()
 		}
 
 		const msgId = node.attrs.id
-		const wait = waitForMessage(msgId, timeoutMs)
 
-		await sendNode(node)
+		for(let attempt = 1; attempt <= retryAttempts; attempt++) {
+		  const wait = waitForMessage(msgId, timeoutMs)
 
-		const result = await (wait as Promise<BinaryNode>)
-		if('tag' in result) {
-			assertNodeErrorFree(result)
+		  try {
+				await sendNode(node)
+
+				const result = await (wait as Promise<BinaryNode | null>)
+
+				if(!result || typeof result !== 'object') {
+					logger?.warn(`[Baileys] query() - no result or invalid (attempt ${attempt}/${retryAttempts})`)
+					if(attempt < retryAttempts) {
+						await delay(retryDelayMs)
+					}
+
+					continue
+				}
+
+				if('tag' in result) {
+					assertNodeErrorFree(result)
+				}
+
+				return result
+		  } catch(err: any) {
+				logger?.warn(`[Baileys] query() failed (attempt ${attempt}/${retryAttempts}): ${err?.message || err}`)
+				logger?.debug('[Baileys] query() error details:', err)
+
+				if (attempt === retryAttempts) {
+					logger?.error(`[Baileys] query() permanently failed after ${retryAttempts} attempts`)
+					throw err
+				}
+
+				await delay(retryDelayMs)
+		  }
 		}
 
-		return result
+		throw new Boom('query() failed after all retry attempts', {
+		  statusCode: DisconnectReason.timedOut
+		})
 	}
 
 	/** connection handshake */
