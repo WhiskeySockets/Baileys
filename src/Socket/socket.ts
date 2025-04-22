@@ -18,7 +18,6 @@ import {
 	bytesToCrockford,
 	configureSuccessfulPairing,
 	Curve,
-	delay,
 	derivePairingCodeKey,
 	generateLoginNode,
 	generateMdTagPrefix,
@@ -113,40 +112,33 @@ export const makeSocket = (config: SocketConfig) => {
 	/** send a raw buffer */
 	const sendRawMessage = async(data: Uint8Array | Buffer) => {
 		if(!ws.isOpen) {
-			// throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
-			// return Promise.reject(new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed }))
-			end(new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed }))
-			return
+			throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
 		}
 
 		const bytes = noise.encodeFrame(data)
 		await promiseTimeout<void>(
 			connectTimeoutMs,
-			async(resolve, reject) => {
+			async(resolve) => {
 				try {
 					await sendPromise.call(ws, bytes)
 					resolve()
 				} catch(error) {
-					reject(error)
+					// reject(error)
+					logger.error({ error }, '[Baileys] error in sendRawMessage')
+					resolve(undefined as void)
 				}
-			}, { silent: true }
+			}
 		)
 	}
 
 	/** send a binary node */
-	const sendNode = async(frame: BinaryNode) => {
-		try {
-			if(logger.level === 'trace') {
-				logger.trace({ xml: binaryNodeToString(frame), msg: 'xml send' })
-			}
-
-			const buff = encodeBinaryNode(frame)
-			// return sendRawMessage(buff)
-			await sendRawMessage(buff)
-		} catch(err) {
-			logger?.error(`[Baileys] sendNode() error: ${err?.message || err}`)
-			throw err
+	const sendNode = (frame: BinaryNode) => {
+		if(logger.level === 'trace') {
+			logger.trace({ xml: binaryNodeToString(frame), msg: 'xml send' })
 		}
+
+		const buff = encodeBinaryNode(frame)
+		return sendRawMessage(buff)
 	}
 
 	/** log & process any unexpected errors */
@@ -201,13 +193,18 @@ export const makeSocket = (config: SocketConfig) => {
 				(resolve, reject) => {
 					onRecv = resolve
 					onErr = err => {
-						reject(err || new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed }))
+						if(err.message === 'Timed Out') {
+							logger.error({ err }, '[Baileys] error in waitForMessage')
+							resolve(undefined as T)
+						} else {
+							reject(err || new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed }))
+						}
 					}
 
 					ws.on(`TAG:${msgId}`, onRecv)
 					ws.on('close', onErr) // if the socket closes, you'll never receive the message
 					ws.off('error', onErr)
-				}, { silent: true }
+				},
 			)
 		} finally {
 			ws.off(`TAG:${msgId}`, onRecv!)
@@ -216,62 +213,23 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 	}
 
-
 	/** send a query, and wait for its response. auto-generates message ID if not provided */
-	const query = async(
-		node: BinaryNode,
-		timeoutMs?: number,
-		retryAttempts = 3,
-		retryDelayMs = 5000
-	  ): Promise<BinaryNode> => {
+	const query = async(node: BinaryNode, timeoutMs?: number) => {
 		if(!node.attrs.id) {
-		  node.attrs.id = generateMessageTag()
+			node.attrs.id = generateMessageTag()
 		}
 
 		const msgId = node.attrs.id
+		const wait = waitForMessage(msgId, timeoutMs)
 
-		for(let attempt = 1; attempt <= retryAttempts; attempt++) {
-		  const wait = waitForMessage(msgId, timeoutMs)
+		await sendNode(node)
 
-		  try {
-				await sendNode(node)
-
-				const result = await (wait as Promise<BinaryNode | null>)
-
-				if(!result || typeof result !== 'object') {
-					logger?.warn(`[Baileys] query() - no result or invalid (attempt ${attempt}/${retryAttempts})`)
-					if(attempt < retryAttempts) {
-						await delay(retryDelayMs)
-					}
-
-					continue
-				}
-
-				if('tag' in result) {
-					assertNodeErrorFree(result)
-				}
-
-				return result
-		  } catch(err: any) {
-				logger?.warn(`[Baileys] query() failed (attempt ${attempt}/${retryAttempts}): ${err?.message || err}`)
-				logger?.debug('[Baileys] query() error details:', err)
-
-				if(attempt === retryAttempts) {
-					logger?.error(`[Baileys] query() permanently failed after ${retryAttempts} attempts`)
-					throw err
-				}
-
-				await delay(retryDelayMs)
-		  }
+		const result = await (wait as Promise<BinaryNode>)
+		if('tag' in result) {
+			assertNodeErrorFree(result)
 		}
 
-		// throw new Boom('query() failed after all retry attempts', {
-		//   statusCode: DisconnectReason.timedOut
-		// })
-		end(new Boom('query() failed after all retry attempts', {
-			statusCode: DisconnectReason.timedOut
-		}))
-		return {} as BinaryNode
+		return result
 	}
 
 	/** connection handshake */
@@ -503,20 +461,7 @@ export const makeSocket = (config: SocketConfig) => {
 			}
 		}, keepAliveIntervalMs)
 	)
-	/** i have no idea why this exists. pls enlighten me */
-	const sendPassiveIq = (tag: 'passive' | 'active') => (
-		query({
-			tag: 'iq',
-			attrs: {
-				to: S_WHATSAPP_NET,
-				xmlns: 'passive',
-				type: 'set',
-			},
-			content: [
-				{ tag, attrs: {} }
-			]
-		})
-	)
+
 
 	/** logout & invalidate connection */
 	const logout = async(msg?: string) => {
@@ -707,7 +652,6 @@ export const makeSocket = (config: SocketConfig) => {
 	// login complete
 	ws.on('CB:success', async(node: BinaryNode) => {
 		await uploadPreKeysToServerIfRequired()
-		await sendPassiveIq('active')
 
 		logger.info('opened connection to WA')
 		clearTimeout(qrTimer) // will never happen in all likelyhood -- but just in case WA sends success on first try

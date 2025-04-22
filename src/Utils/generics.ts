@@ -154,38 +154,29 @@ export const delayCancellable = (ms: number) => {
 	return { delay, cancel }
 }
 
-export async function promiseTimeout<T>(
-	ms: number | undefined,
-	promise: (resolve: (v: T) => void, reject: (error) => void) => void,
-	options?: { silent?: boolean }
-) {
+export async function promiseTimeout<T>(ms: number | undefined, promise: (resolve: (v: T) => void, reject: (error) => void) => void) {
 	if(!ms) {
 		return new Promise(promise)
 	}
 
 	const stack = new Error().stack
-	const { delay, cancel } = delayCancellable(ms)
-
+	// Create a promise that rejects in <ms> milliseconds
+	const { delay, cancel } = delayCancellable (ms)
 	const p = new Promise((resolve, reject) => {
 		delay
-			.then(() => {
-				if (options?.silent) {
-					console.warn(`[Baileys] promiseTimeout(): Timeout after ${ms}ms — continuing silently.`)
-					resolve(undefined as T) // resolve with undefined instead of rejecting
-				} else {
-					reject(
-						new Boom('Timed Out', {
-							statusCode: DisconnectReason.timedOut,
-							data: { stack }
-						})
-					)
-				}
-			})
-			.catch((err) => reject(err))
+			.then(() => reject(
+				new Boom('Timed Out', {
+					statusCode: DisconnectReason.timedOut,
+					data: {
+						stack
+					}
+				})
+			))
+			.catch (err => reject(err))
 
-		promise(resolve, reject)
-	}).finally(cancel)
-
+		promise (resolve, reject)
+	})
+		.finally (cancel)
 	return p as Promise<T>
 }
 
