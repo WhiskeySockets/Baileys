@@ -221,8 +221,8 @@ export const makeSocket = (config: SocketConfig) => {
 	const query = async(
 		node: BinaryNode,
 		timeoutMs?: number,
-		retryAttempts = 4,
-		retryDelayMs = 10000
+		retryAttempts = 3,
+		retryDelayMs = 5000
 	  ): Promise<BinaryNode> => {
 		if(!node.attrs.id) {
 		  node.attrs.id = generateMessageTag()
@@ -317,26 +317,32 @@ export const makeSocket = (config: SocketConfig) => {
 	}
 
 	const getAvailablePreKeysOnServer = async() => {
-		const result = await query({
-			tag: 'iq',
-			attrs: {
-				id: generateMessageTag(),
-				xmlns: 'encrypt',
-				type: 'get',
-				to: S_WHATSAPP_NET
-			},
-			content: [
-				{ tag: 'count', attrs: {} }
-			]
-		})
-		const countChild = getBinaryNodeChild(result, 'count')
-		if(countChild && !countChild.attrs) {
-			// throw new Boom('Invalid count response', { data: result })
-			logger.error('[Baileys] Invalid count response getAvailablePreKeysOnServer')
+		try {
+			const result = await query({
+				tag: 'iq',
+				attrs: {
+					id: generateMessageTag(),
+					xmlns: 'encrypt',
+					type: 'get',
+					to: S_WHATSAPP_NET
+				},
+				content: [
+					{ tag: 'count', attrs: {} }
+				]
+			})
+
+			const countChild = getBinaryNodeChild(result, 'count')
+
+			if(!countChild?.attrs?.value) {
+				logger.warn('[Baileys] Invalid or missing count response from getAvailablePreKeysOnServer')
+				return
+			}
+
+			return +countChild.attrs.value
+		} catch(err) {
+			logger.error('[Baileys] Failed to get available pre-keys:', err)
 			return
 		}
-
-		return +countChild!.attrs.value
 	}
 
 	/** generates and uploads a set of pre-keys to the server */
