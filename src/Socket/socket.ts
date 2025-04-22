@@ -330,6 +330,12 @@ export const makeSocket = (config: SocketConfig) => {
 			]
 		})
 		const countChild = getBinaryNodeChild(result, 'count')
+		if(countChild && !countChild.attrs) {
+			// throw new Boom('Invalid count response', { data: result })
+			logger.error('[Baileys] Invalid count response getAvailablePreKeysOnServer')
+			return
+		}
+
 		return +countChild!.attrs.value
 	}
 
@@ -351,7 +357,7 @@ export const makeSocket = (config: SocketConfig) => {
 	const uploadPreKeysToServerIfRequired = async() => {
 		const preKeyCount = await getAvailablePreKeysOnServer()
 		logger.info(`${preKeyCount} pre-keys found on server`)
-		if(preKeyCount <= MIN_PREKEY_COUNT) {
+		if(preKeyCount && preKeyCount <= MIN_PREKEY_COUNT) {
 			await uploadPreKeys()
 		}
 	}
