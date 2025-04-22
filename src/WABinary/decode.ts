@@ -1,9 +1,9 @@
 import { promisify } from 'util'
 import { inflate } from 'zlib'
+import logger from '../Utils/logger'
 import * as constants from './constants'
 import { jidEncode } from './jid-utils'
 import type { BinaryNode, BinaryNodeCodingOptions } from './types'
-import logger from '../Utils/logger'
 
 const inflatePromise = promisify(inflate)
 
