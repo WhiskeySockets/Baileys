@@ -113,7 +113,10 @@ export const makeSocket = (config: SocketConfig) => {
 	/** send a raw buffer */
 	const sendRawMessage = async(data: Uint8Array | Buffer) => {
 		if(!ws.isOpen) {
-			throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
+			// throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
+			// return Promise.reject(new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed }))
+			end(new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed }))
+			return
 		}
 
 		const bytes = noise.encodeFrame(data)
@@ -132,11 +135,11 @@ export const makeSocket = (config: SocketConfig) => {
 
 	/** send a binary node */
 	const sendNode = async(frame: BinaryNode) => {
-		if(logger.level === 'trace') {
-			logger.trace({ xml: binaryNodeToString(frame), msg: 'xml send' })
-		}
-
 		try {
+			if(logger.level === 'trace') {
+				logger.trace({ xml: binaryNodeToString(frame), msg: 'xml send' })
+			}
+
 			const buff = encodeBinaryNode(frame)
 			// return sendRawMessage(buff)
 			await sendRawMessage(buff)
@@ -218,7 +221,7 @@ export const makeSocket = (config: SocketConfig) => {
 	const query = async(
 		node: BinaryNode,
 		timeoutMs?: number,
-		retryAttempts = 6,
+		retryAttempts = 4,
 		retryDelayMs = 10000
 	  ): Promise<BinaryNode> => {
 		if(!node.attrs.id) {
@@ -253,7 +256,7 @@ export const makeSocket = (config: SocketConfig) => {
 				logger?.warn(`[Baileys] query() failed (attempt ${attempt}/${retryAttempts}): ${err?.message || err}`)
 				logger?.debug('[Baileys] query() error details:', err)
 
-				if (attempt === retryAttempts) {
+				if(attempt === retryAttempts) {
 					logger?.error(`[Baileys] query() permanently failed after ${retryAttempts} attempts`)
 					throw err
 				}
@@ -262,9 +265,13 @@ export const makeSocket = (config: SocketConfig) => {
 		  }
 		}
 
-		throw new Boom('query() failed after all retry attempts', {
-		  statusCode: DisconnectReason.timedOut
-		})
+		// throw new Boom('query() failed after all retry attempts', {
+		//   statusCode: DisconnectReason.timedOut
+		// })
+		end(new Boom('query() failed after all retry attempts', {
+			statusCode: DisconnectReason.timedOut
+		}))
+		return {} as BinaryNode
 	}
 
 	/** connection handshake */
