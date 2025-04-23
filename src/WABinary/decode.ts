@@ -149,10 +149,7 @@ export const decodeDecompressedBinaryNode = (
 
 	const readAdJid = () => {
 		const rawDomainType = readByte()
-		const domainType = typeof rawDomainType === 'number'
-		  ? rawDomainType
-		  : Number(rawDomainType)
-
+		const domainType = Number(rawDomainType)
 
 		const device = readByte()
 		const user = readString(readByte())
