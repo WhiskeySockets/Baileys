@@ -48,13 +48,13 @@ export function decodeMessageNode(
 	const isMeLid = (jid: string) => areJidsSameUser(jid, meLid)
 
 	if(isJidUser(from) || isLidUser(from)) {
-    if (recipient && !isJidMetaIa(recipient)) {
+		if(recipient && !isJidMetaIa(recipient)) {
 			if(!isMe(from) && !isMeLid(from)) {
 				throw new Boom('receipient present, but msg not from me', { data: stanza })
 			}
 
 			chatId = recipient
-    } else {
+		} else {
 			chatId = from
 		}
 
@@ -109,8 +109,8 @@ export function decodeMessageNode(
 
 	if(key.fromMe) {
 		fullMessage.status = proto.WebMessageInfo.Status.SERVER_ACK
-  }
-  
+	}
+
 	return {
 		fullMessage,
 		author,
@@ -170,7 +170,7 @@ export const decryptMessageNode = (
 								type: e2eType,
 								ciphertext: content
 							})
-                break
+							break
 						case 'plaintext':
 							msgBuffer = content
 							break
@@ -196,7 +196,7 @@ export const decryptMessageNode = (
 							Object.assign(fullMessage.message, msg)
 						} else {
 							fullMessage.message = msg
-            }
+						}
 					} catch(err) {
 						logger.error(
 							{ key: fullMessage.key, err },
