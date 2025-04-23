@@ -46,6 +46,8 @@ export const jidDecode = (jid: string | undefined): FullJid | undefined => {
 export const areJidsSameUser = (jid1: string | undefined, jid2: string | undefined) => (
 	jidDecode(jid1)?.user === jidDecode(jid2)?.user
 )
+/** is the jid Meta IA */
+export const isJidMetaIa = (jid: string | undefined) => (jid?.endsWith('@bot'))
 /** is the jid a user */
 export const isJidUser = (jid: string | undefined) => (jid?.endsWith('@s.whatsapp.net'))
 /** is the jid a group */
