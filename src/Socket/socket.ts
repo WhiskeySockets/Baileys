@@ -218,7 +218,7 @@ export const makeSocket = (config: SocketConfig) => {
 
 		const [result] = await Promise.all([
 			waitForMessage(msgId, timeoutMs),
-			await sendNode(node)
+			sendNode(node)
 		])
 
 		if('tag' in result) {
