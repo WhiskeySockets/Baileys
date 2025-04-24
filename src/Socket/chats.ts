@@ -179,6 +179,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	const onWhatsApp = async(...jids: string[]) => {
 		const usyncQuery = new USyncQuery()
 			.withContactProtocol()
+			.withLIDProtocol()
 
 		for(const jid of jids) {
 			const phone = `+${jid.replace('+', '').split('@')[0].split(':')[0]}`
@@ -188,7 +189,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		const results = await sock.executeUSyncQuery(usyncQuery)
 
 		if(results) {
-			return results.list.filter((a) => !!a.contact).map(({ contact, id }) => ({ jid: id, exists: contact }))
+			return results.list.filter((a) => !!a.contact).map(({ contact, id, lid }) => ({ jid: id, exists: contact, lid }))
 		}
 	}
 

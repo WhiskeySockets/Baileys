@@ -14,65 +14,66 @@ import { createEnhancedSignalKeyStore } from './enhanced-signal-store'
  * @param _cache cache store to use
  */
 export function makeCacheableSignalKeyStore(
-        store: SignalKeyStore,
-        logger: ILogger,
-        _cache?: CacheStore
+	store: SignalKeyStore,
+	logger?: ILogger,
+	_cache?: CacheStore
 ): SignalKeyStore {
-        const cache = _cache || new NodeCache({
-                stdTTL: DEFAULT_CACHE_TTLS.SIGNAL_STORE, // 5 minutes
-                useClones: false,
-                deleteOnExpire: true,
-        })
+	const cache = _cache || new NodeCache({
+		stdTTL: DEFAULT_CACHE_TTLS.SIGNAL_STORE, // 5 minutes
+		useClones: false,
+		deleteOnExpire: true,
+	})
 
-        function getUniqueId(type: string, id: string) {
-                return `${type}.${id}`
-        }
+	function getUniqueId(type: string, id: string) {
+		return `${type}.${id}`
+	}
 
-        return {
-                async get(type, ids) {
-                        const data: { [_: string]: SignalDataTypeMap[typeof type] } = { }
-                        const idsToFetch: string[] = []
-                        for(const id of ids) {
-                                const item = cache.get<SignalDataTypeMap[typeof type]>(getUniqueId(type, id))
-                                if(typeof item !== 'undefined') {
-                                        data[id] = item
-                                } else {
-                                        idsToFetch.push(id)
-                                }
-                        }
+	return {
+		async get(type, ids) {
+			const data: { [_: string]: SignalDataTypeMap[typeof type] } = { }
+			const idsToFetch: string[] = []
+			for(const id of ids) {
+				const item = cache.get<SignalDataTypeMap[typeof type]>(getUniqueId(type, id))
+				if(typeof item !== 'undefined') {
+					data[id] = item
+				} else {
+					idsToFetch.push(id)
+				}
+			}
 
-                        if(idsToFetch.length) {
-                                logger.trace({ items: idsToFetch.length }, 'loading from store')
-                                const fetched = await store.get(type, idsToFetch)
-                                for(const id of idsToFetch) {
-                                        const item = fetched[id]
-                                        if(item) {
-                                                data[id] = item
-                                                cache.set(getUniqueId(type, id), item)
-                                        }
-                                }
-                        }
+			if(idsToFetch.length) {
+				logger?.trace({ items: idsToFetch.length }, 'loading from store')
+				const fetched = await store.get(type, idsToFetch)
+				for(const id of idsToFetch) {
+					const item = fetched[id]
+					if(item) {
+						data[id] = item
+						cache.set(getUniqueId(type, id), item)
+					}
+				}
+			}
 
-                        return data
-                },
-                async set(data) {
-                        let keys = 0
-                        for(const type in data) {
-                                for(const id in data[type]) {
-                                        cache.set(getUniqueId(type, id), data[type][id])
-                                        keys += 1
-                                }
-                        }
+			return data
+		},
+		async set(data) {
+			let keys = 0
+			for(const type in data) {
+				for(const id in data[type]) {
+					cache.set(getUniqueId(type, id), data[type][id])
+					keys += 1
+				}
+			}
 
-                        logger.trace({ keys }, 'updated cache')
+			logger?.trace({ keys }, 'updated cache')
 
-                        await store.set(data)
-                },
-                async clear() {
-                        cache.flushAll()
-                        await store.clear?.()
-                }
-        }
+			await store.set(data)
+		},
+		async clear() {
+			cache.flushAll()
+			await store.clear?.()
+		}
+	}
+
 }
 
 /**
