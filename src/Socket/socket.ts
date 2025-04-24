@@ -221,7 +221,6 @@ export const makeSocket = (config: SocketConfig) => {
 			await sendNode(node)
 		])
 
-
 		if('tag' in result) {
 			assertNodeErrorFree(result)
 		}
