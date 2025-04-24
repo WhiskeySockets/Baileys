@@ -134,50 +134,56 @@ export const delay = (ms: number) => delayCancellable (ms).delay
 export const delayCancellable = (ms: number) => {
 	const stack = new Error().stack
 	let timeout: NodeJS.Timeout
-	let reject: (error) => void
+	let reject!: (error: Error) => void
+	let alreadyRejected = false              // 💡 single-reject guard
+
 	const delay: Promise<void> = new Promise((resolve, _reject) => {
 		timeout = setTimeout(resolve, ms)
 		reject = _reject
 	})
-	const cancel = () => {
-		clearTimeout (timeout)
+
+	const cancel = (cause?: Error) => {
+		if (alreadyRejected) return
+		clearTimeout(timeout)
 		reject(
+			cause ??
 			new Boom('Cancelled', {
 				statusCode: 500,
-				data: {
-					stack
-				}
+				data: { stack }
 			})
 		)
+		alreadyRejected = true
 	}
 
 	return { delay, cancel }
 }
 
-export async function promiseTimeout<T>(ms: number | undefined, promise: (resolve: (v: T) => void, reject: (error) => void) => void) {
-	if(!ms) {
-		return new Promise(promise)
-	}
+export async function promiseTimeout<T>(
+	ms: number | undefined,
+	promise: (resolve: (v: T) => void, reject: (err: Error) => void) => void
+) {
+	if (!ms) return new Promise<T>(promise)
 
 	const stack = new Error().stack
-	// Create a promise that rejects in <ms> milliseconds
-	const { delay, cancel } = delayCancellable (ms)
-	const p = new Promise((resolve, reject) => {
-		delay
-			.then(() => reject(
-				new Boom('Timed Out', {
-					statusCode: DisconnectReason.timedOut,
-					data: {
-						stack
-					}
-				})
-			))
-			.catch (err => reject(err))
+	const { delay, cancel } = delayCancellable(ms)
 
-		promise (resolve, reject)
+	return new Promise<T>((resolve, reject) => {
+		// run user task
+		promise(
+			v => { cancel(); resolve(v) },
+			err => { cancel(err); reject(err) }
+		)
+
+		// fire timeout
+		delay.then(() => {
+			const err = new Boom('Timed Out', {
+				statusCode: DisconnectReason.timedOut,
+				data: { stack }
+			})
+			cancel(err)                       // propagates real error
+		})
+		.catch(reject)                       // delay-layer errors
 	})
-		.finally (cancel)
-	return p as Promise<T>
 }
 
 // inspired from whatsmeow code
