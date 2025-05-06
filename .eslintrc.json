@@ -1,29 +1,31 @@
 {
-    "extends": "@whiskeysockets",
-    "parserOptions": {
-        "sourceType": "module",
-        "project": "./tsconfig.json"
-    },
-    "ignorePatterns": ["src/Tests/*"],
-    "rules": {
-        "@typescript-eslint/no-explicit-any": [
-            "warn",
-            {
-                "ignoreRestArgs": true
-            }
-        ],
-        "@typescript-eslint/no-inferrable-types": [
-            "warn"
-        ],
-        "@typescript-eslint/no-redundant-type-constituents": [
-            "warn"
-        ],
-        "@typescript-eslint/no-unnecessary-type-assertion": [
-            "warn"
-        ],
-        "no-restricted-syntax": "off",
-        "keyword-spacing": [
-            "warn"
-        ]
-    }
+	"extends": "@whiskeysockets",
+	"parserOptions": {
+		"sourceType": "module",
+		"project": "./tsconfig.json"
+	},
+	"ignorePatterns": ["src/Tests/*"],
+	"rules": {
+		"indent": ["error", "tab", { "SwitchCase": 1 }],
+		"@typescript-eslint/no-explicit-any": [
+			"warn",
+			{
+				"ignoreRestArgs": true
+			}
+		],
+		"@typescript-eslint/no-inferrable-types": ["warn"],
+		"@typescript-eslint/no-redundant-type-constituents": ["warn"],
+		"@typescript-eslint/no-unnecessary-type-assertion": ["warn"],
+		"no-restricted-syntax": "off",
+		"keyword-spacing": "off",
+		"implicit-arrow-linebreak": ["off"],
+		"space-before-function-paren": [
+			"error",
+			{
+				"anonymous": "never",
+				"named": "never",
+				"asyncArrow": "always"
+			}
+		]
+	}
 }
