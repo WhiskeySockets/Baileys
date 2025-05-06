@@ -155,14 +155,14 @@ export const prepareWAMessageMedia = async(
 										(typeof uploadData['jpegThumbnail'] === 'undefined')
 	const requiresWaveformProcessing = mediaType === 'audio' && uploadData.ptt === true
 	const requiresAudioBackground = options.backgroundColor && mediaType === 'audio' && uploadData.ptt === true
-  const requiresOriginalForSomeProcessing = requiresDurationComputation || requiresThumbnailComputation
+	const requiresOriginalForSomeProcessing = requiresDurationComputation || requiresThumbnailComputation
 	const {
 		mediaKey,
 		encFilePath,
 		originalFilePath,
 		fileEncSha256,
 		fileSha256,
-		fileLength	
+		fileLength
 	} = await encryptedStream(
 		uploadData.media,
 		options.mediaTypeOverride || mediaType,
@@ -221,13 +221,16 @@ export const prepareWAMessageMedia = async(
 	])
 		.finally(
 			async() => {
-        try {
-          await fs.unlink(encFilePath)
-          if (originalFilePath) await fs.unlink(originalFilePath)
-          logger?.debug('removed tmp files')
-        } catch(error) {
-          logger?.warn('failed to remove tmp file')
-        }
+				try {
+					await fs.unlink(encFilePath)
+					if(originalFilePath) {
+						await fs.unlink(originalFilePath)
+					}
+
+					logger?.debug('removed tmp files')
+				} catch(error) {
+					logger?.warn('failed to remove tmp file')
+				}
 			}
 		)
 
