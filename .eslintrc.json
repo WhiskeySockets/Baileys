@@ -1,12 +1,14 @@
 {
-	"extends": "@whiskeysockets",
+	"extends": ["@whiskeysockets", "plugin:prettier/recommended"],
+	"plugins": ["prettier"],
 	"parserOptions": {
 		"sourceType": "module",
 		"project": "./tsconfig.json"
 	},
 	"ignorePatterns": ["src/Tests/*"],
 	"rules": {
-		"indent": ["error", "tab", { "SwitchCase": 1 }],
+		"camelcase": "off",
+		"indent": "off",
 		"@typescript-eslint/no-explicit-any": [
 			"warn",
 			{
@@ -22,9 +24,15 @@
 		"space-before-function-paren": [
 			"error",
 			{
-				"anonymous": "never",
+				"anonymous": "always",
 				"named": "never",
 				"asyncArrow": "always"
+			}
+		],
+		"@typescript-eslint/no-unused-vars": [
+			"error",
+			{
+				"caughtErrors": "none"
 			}
 		]
 	}
