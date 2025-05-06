@@ -5,15 +5,14 @@ import logger from '../Utils/logger'
 import { randomJid } from './utils'
 
 describe('Event Buffer Tests', () => {
-
 	let ev: ReturnType<typeof makeEventBuffer>
 	beforeEach(() => {
-		const _logger = logger.child({ })
+		const _logger = logger.child({})
 		_logger.level = 'trace'
 		ev = makeEventBuffer(_logger)
 	})
 
-	it('should buffer a chat upsert & update event', async() => {
+	it('should buffer a chat upsert & update event', async () => {
 		const chatId = randomJid()
 
 		const chats: Chat[] = []
@@ -23,14 +22,14 @@ describe('Event Buffer Tests', () => {
 
 		ev.buffer()
 		await Promise.all([
-			(async() => {
+			(async () => {
 				ev.buffer()
 				await delay(100)
 				ev.emit('chats.upsert', [{ id: chatId, conversationTimestamp: 123, unreadCount: 1 }])
 				const flushed = ev.flush()
 				expect(flushed).toBeFalsy()
 			})(),
-			(async() => {
+			(async () => {
 				ev.buffer()
 				await delay(200)
 				ev.emit('chats.update', [{ id: chatId, conversationTimestamp: 124, unreadCount: 1 }])
@@ -47,7 +46,7 @@ describe('Event Buffer Tests', () => {
 		expect(chats[0].unreadCount).toEqual(2)
 	})
 
-	it('should overwrite a chats.delete event', async() => {
+	it('should overwrite a chats.delete event', async () => {
 		const chatId = randomJid()
 		const chats: Partial<Chat>[] = []
 
@@ -65,7 +64,7 @@ describe('Event Buffer Tests', () => {
 		expect(chats).toHaveLength(1)
 	})
 
-	it('should overwrite a chats.update event', async() => {
+	it('should overwrite a chats.update event', async () => {
 		const chatId = randomJid()
 		const chatsDeleted: string[] = []
 
@@ -82,7 +81,7 @@ describe('Event Buffer Tests', () => {
 		expect(chatsDeleted).toHaveLength(1)
 	})
 
-	it('should release a conditional update at the right time', async() => {
+	it('should release a conditional update at the right time', async () => {
 		const chatId = randomJid()
 		const chatId2 = randomJid()
 		const chatsUpserted: Chat[] = []
@@ -93,41 +92,49 @@ describe('Event Buffer Tests', () => {
 		ev.on('chats.update', () => fail('not should have emitted'))
 
 		ev.buffer()
-		ev.emit('chats.update', [{
-			id: chatId,
-			archived: true,
-			conditional(buff) {
-				if(buff.chatUpserts[chatId]) {
-					return true
+		ev.emit('chats.update', [
+			{
+				id: chatId,
+				archived: true,
+				conditional(buff) {
+					if (buff.chatUpserts[chatId]) {
+						return true
+					}
 				}
 			}
-		}])
-		ev.emit('chats.update', [{
-			id: chatId2,
-			archived: true,
-			conditional(buff) {
-				if(buff.historySets.chats[chatId2]) {
-					return true
+		])
+		ev.emit('chats.update', [
+			{
+				id: chatId2,
+				archived: true,
+				conditional(buff) {
+					if (buff.historySets.chats[chatId2]) {
+						return true
+					}
 				}
 			}
-		}])
+		])
 
 		ev.flush()
 
 		ev.buffer()
-		ev.emit('chats.upsert', [{
-			id: chatId,
-			conversationTimestamp: 123,
-			unreadCount: 1,
-			muteEndTime: 123
-		}])
-		ev.emit('messaging-history.set', {
-			chats: [{
-				id: chatId2,
+		ev.emit('chats.upsert', [
+			{
+				id: chatId,
 				conversationTimestamp: 123,
 				unreadCount: 1,
 				muteEndTime: 123
-			}],
+			}
+		])
+		ev.emit('messaging-history.set', {
+			chats: [
+				{
+					id: chatId2,
+					conversationTimestamp: 123,
+					unreadCount: 1,
+					muteEndTime: 123
+				}
+			],
 			contacts: [],
 			messages: [],
 			isLatest: false
@@ -144,7 +151,7 @@ describe('Event Buffer Tests', () => {
 		expect(chatsSynced[0].archived).toEqual(true)
 	})
 
-	it('should discard a conditional update', async() => {
+	it('should discard a conditional update', async () => {
 		const chatId = randomJid()
 		const chatsUpserted: Chat[] = []
 
@@ -152,21 +159,25 @@ describe('Event Buffer Tests', () => {
 		ev.on('chats.update', () => fail('not should have emitted'))
 
 		ev.buffer()
-		ev.emit('chats.update', [{
-			id: chatId,
-			archived: true,
-			conditional(buff) {
-				if(buff.chatUpserts[chatId]) {
-					return false
+		ev.emit('chats.update', [
+			{
+				id: chatId,
+				archived: true,
+				conditional(buff) {
+					if (buff.chatUpserts[chatId]) {
+						return false
+					}
 				}
 			}
-		}])
-		ev.emit('chats.upsert', [{
-			id: chatId,
-			conversationTimestamp: 123,
-			unreadCount: 1,
-			muteEndTime: 123
-		}])
+		])
+		ev.emit('chats.upsert', [
+			{
+				id: chatId,
+				conversationTimestamp: 123,
+				unreadCount: 1,
+				muteEndTime: 123
+			}
+		])
 
 		ev.flush()
 
@@ -174,7 +185,7 @@ describe('Event Buffer Tests', () => {
 		expect(chatsUpserted[0].archived).toBeUndefined()
 	})
 
-	it('should overwrite a chats.update event with a history event', async() => {
+	it('should overwrite a chats.update event with a history event', async () => {
 		const chatId = randomJid()
 		let chatRecv: Chat | undefined
 
@@ -199,7 +210,7 @@ describe('Event Buffer Tests', () => {
 		expect(chatRecv?.archived).toBeTruthy()
 	})
 
-	it('should buffer message upsert events', async() => {
+	it('should buffer message upsert events', async () => {
 		const messageTimestamp = unixTimestampSeconds()
 		const msg: proto.IWebMessageInfo = {
 			key: {
@@ -235,7 +246,7 @@ describe('Event Buffer Tests', () => {
 		expect(msgs[0].status).toEqual(WAMessageStatus.READ)
 	})
 
-	it('should buffer a message receipt update', async() => {
+	it('should buffer a message receipt update', async () => {
 		const msg: proto.IWebMessageInfo = {
 			key: {
 				remoteJid: randomJid(),
@@ -269,7 +280,7 @@ describe('Event Buffer Tests', () => {
 		expect(msgs[0].userReceipt).toHaveLength(1)
 	})
 
-	it('should buffer multiple status updates', async() => {
+	it('should buffer multiple status updates', async () => {
 		const key: WAMessageKey = {
 			remoteJid: randomJid(),
 			id: generateMessageID(),
@@ -290,7 +301,7 @@ describe('Event Buffer Tests', () => {
 		expect(msgs[0].update.status).toEqual(WAMessageStatus.READ)
 	})
 
-	it('should remove chat unread counter', async() => {
+	it('should remove chat unread counter', async () => {
 		const msg: proto.IWebMessageInfo = {
 			key: {
 				remoteJid: '12345@s.whatsapp.net',

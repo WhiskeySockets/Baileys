@@ -7,11 +7,8 @@ import { KeyPair } from '../Types'
 const { subtle } = globalThis.crypto
 
 /** prefix version byte to the pub keys, required for some curve crypto functions */
-export const generateSignalPubKey = (pubKey: Uint8Array | Buffer) => (
-	pubKey.length === 33
-		? pubKey
-		: Buffer.concat([ KEY_BUNDLE_TYPE, pubKey ])
-)
+export const generateSignalPubKey = (pubKey: Uint8Array | Buffer) =>
+	pubKey.length === 33 ? pubKey : Buffer.concat([KEY_BUNDLE_TYPE, pubKey])
 
 export const Curve = {
 	generateKeyPair: (): KeyPair => {
@@ -26,14 +23,12 @@ export const Curve = {
 		const shared = libsignal.curve.calculateAgreement(generateSignalPubKey(publicKey), privateKey)
 		return Buffer.from(shared)
 	},
-	sign: (privateKey: Uint8Array, buf: Uint8Array) => (
-		libsignal.curve.calculateSignature(privateKey, buf)
-	),
+	sign: (privateKey: Uint8Array, buf: Uint8Array) => libsignal.curve.calculateSignature(privateKey, buf),
 	verify: (pubKey: Uint8Array, message: Uint8Array, signature: Uint8Array) => {
 		try {
 			libsignal.curve.verifySignature(generateSignalPubKey(pubKey), message, signature)
 			return true
-		} catch(error) {
+		} catch (error) {
 			return false
 		}
 	}
@@ -73,7 +68,7 @@ export function aesDecryptGCM(ciphertext: Uint8Array, key: Uint8Array, iv: Uint8
 	decipher.setAAD(additionalData)
 	decipher.setAuthTag(tag)
 
-	return Buffer.concat([ decipher.update(enc), decipher.final() ])
+	return Buffer.concat([decipher.update(enc), decipher.final()])
 }
 
 export function aesEncryptCTR(plaintext: Uint8Array, key: Uint8Array, iv: Uint8Array) {
@@ -111,7 +106,11 @@ export function aesEncrypWithIV(buffer: Buffer, key: Buffer, IV: Buffer) {
 }
 
 // sign HMAC using SHA 256
-export function hmacSign(buffer: Buffer | Uint8Array, key: Buffer | Uint8Array, variant: 'sha256' | 'sha512' = 'sha256') {
+export function hmacSign(
+	buffer: Buffer | Uint8Array,
+	key: Buffer | Uint8Array,
+	variant: 'sha256' | 'sha512' = 'sha256'
+) {
 	return createHmac(variant, key).update(buffer).digest()
 }
 
@@ -127,27 +126,17 @@ export function md5(buffer: Buffer) {
 export async function hkdf(
 	buffer: Uint8Array | Buffer,
 	expandedLength: number,
-	info: { salt?: Buffer, info?: string }
+	info: { salt?: Buffer; info?: string }
 ): Promise<Buffer> {
 	// Ensure we have a Uint8Array for the key material
-	const inputKeyMaterial = buffer instanceof Uint8Array
-		? buffer
-		: new Uint8Array(buffer)
+	const inputKeyMaterial = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer)
 
 	// Set default values if not provided
 	const salt = info.salt ? new Uint8Array(info.salt) : new Uint8Array(0)
-	const infoBytes = info.info
-		? new TextEncoder().encode(info.info)
-		: new Uint8Array(0)
+	const infoBytes = info.info ? new TextEncoder().encode(info.info) : new Uint8Array(0)
 
 	// Import the input key material
-	const importedKey = await subtle.importKey(
-		'raw',
-		inputKeyMaterial,
-		{ name: 'HKDF' },
-		false,
-		['deriveBits']
-	)
+	const importedKey = await subtle.importKey('raw', inputKeyMaterial, { name: 'HKDF' }, false, ['deriveBits'])
 
 	// Derive bits using HKDF
 	const derivedBits = await subtle.deriveBits(
@@ -164,7 +153,6 @@ export async function hkdf(
 	return Buffer.from(derivedBits)
 }
 
-
 export async function derivePairingCodeKey(pairingCode: string, salt: Buffer): Promise<Buffer> {
 	// Convert inputs to formats Web Crypto API can work with
 	const encoder = new TextEncoder()
@@ -172,13 +160,7 @@ export async function derivePairingCodeKey(pairingCode: string, salt: Buffer): P
 	const saltBuffer = salt instanceof Uint8Array ? salt : new Uint8Array(salt)
 
 	// Import the pairing code as key material
-	const keyMaterial = await subtle.importKey(
-		'raw',
-		pairingCodeBuffer,
-		{ name: 'PBKDF2' },
-		false,
-		['deriveBits']
-	)
+	const keyMaterial = await subtle.importKey('raw', pairingCodeBuffer, { name: 'PBKDF2' }, false, ['deriveBits'])
 
 	// Derive bits using PBKDF2 with the same parameters
 	// 2 << 16 = 131,072 iterations

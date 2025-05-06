@@ -26,7 +26,7 @@ export class USyncUser {
 	}
 
 	withPersonaId(personaId: string) {
-	  this.personaId = personaId
-	  return this
+		this.personaId = personaId
+		return this
 	}
 }
