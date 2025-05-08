@@ -28,7 +28,6 @@ import {
 	getPlatformId,
 	makeEventBuffer,
 	makeNoiseHandler,
-	printQRIfNecessaryListener,
 	promiseTimeout,
 } from '../Utils'
 import {
@@ -64,6 +63,10 @@ export const makeSocket = (config: SocketConfig) => {
 		qrTimeout,
 		makeSignalRepository,
 	} = config
+
+	if(printQRInTerminal) {
+		console.warn('⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.')
+	}
 
 	const url = typeof waWebSocketUrl === 'string' ? new URL(waWebSocketUrl) : waWebSocketUrl
 
@@ -184,7 +187,7 @@ export const makeSocket = (config: SocketConfig) => {
 		let onRecv: (json) => void
 		let onErr: (err) => void
 		try {
-			return await promiseTimeout<T>(timeoutMs,
+			const result = await promiseTimeout<T>(timeoutMs,
 				(resolve, reject) => {
 					onRecv = resolve
 					onErr = err => {
@@ -196,6 +199,8 @@ export const makeSocket = (config: SocketConfig) => {
 					ws.off('error', onErr)
 				},
 			)
+
+			return result as any
 		} finally {
 			ws.off(`TAG:${msgId}`, onRecv!)
 			ws.off('close', onErr!) // if the socket closes, you'll never receive the message
@@ -210,11 +215,12 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 
 		const msgId = node.attrs.id
-		const wait = waitForMessage(msgId, timeoutMs)
 
-		await sendNode(node)
+		const [result] = await Promise.all([
+			waitForMessage(msgId, timeoutMs),
+			sendNode(node)
+		])
 
-		const result = await (wait as Promise<BinaryNode>)
 		if('tag' in result) {
 			assertNodeErrorFree(result)
 		}
@@ -732,9 +738,6 @@ export const makeSocket = (config: SocketConfig) => {
 		Object.assign(creds, update)
 	})
 
-	if(printQRInTerminal) {
-		printQRIfNecessaryListener(ev, logger)
-	}
 
 	return {
 		type: 'md' as 'md',
@@ -777,5 +780,3 @@ function mapWebSocketError(handler: (err: Error) => void) {
 		)
 	}
 }
-
-export type Socket = ReturnType<typeof makeSocket>

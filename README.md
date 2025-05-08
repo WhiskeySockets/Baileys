@@ -7,7 +7,7 @@
 Baileys is a WebSockets-based TypeScript library for interacting with the WhatsApp Web API.
 
 # Usage
-All major documentation is hosted at the [guide](https://guide.whiskeysockets.io), with API documentation at https://baileys.whiskeysockets.io
+A new guide has been posted at https://baileys.wiki.
 
 # Sponsor
 If you'd like to financially support this project, you can do so by supporting the current maintainer [here](https://purpshell.dev/sponsor).
