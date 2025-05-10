@@ -74,3 +74,16 @@ export const jidNormalizedUser = (jid: string | undefined) => {
 	const { user, server } = result
 	return jidEncode(user, server === 'c.us' ? 's.whatsapp.net' : server as JidServer)
 }
+
+export const LidNormalizedUser = (lid?: string) => {
+	if(!lid?.endsWith('@lid')) {
+		return ''
+	}
+
+	const atIndex = lid.indexOf('@')
+	const colonIndex = lid.indexOf(':')
+
+	const id = lid.slice(0, colonIndex > -1 ? colonIndex : atIndex).replace(/\D/g, '')
+
+	return id ? `${id}@lid` : ''
+}
