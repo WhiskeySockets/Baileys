@@ -6,12 +6,6 @@ on:
 permissions:
   issues: write
   pull-requests: write
-exempt-issue-labels:
-  - bug
-  - enhancement
-exempt-pr-labels:
-  - bug
-  - enhancement
 jobs:
   stale:
     runs-on: ubuntu-latest
@@ -23,3 +17,5 @@ jobs:
         stale-pr-message: 'This PR is stale because it has been open 6 days with no activity. Remove the stale label or comment or this will be closed in 2 days'
         days-before-stale: 15
         days-before-close: 30
+        exempt-issue-labels: 'bug,enhancement'
+        exempt-pr-labels: 'bug,enhancement'
