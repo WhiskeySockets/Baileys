@@ -6,6 +6,7 @@
     "whatsapp",
     "automation"
   ],
+  "main": "index.js",
   "homepage": "https://github.com/WhiskeySockets/Baileys/",
   "repository": {
     "url": "git@github.com:WhiskeySockets/Baileys.git"
