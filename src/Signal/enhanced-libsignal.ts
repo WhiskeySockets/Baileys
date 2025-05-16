@@ -80,40 +80,35 @@ export function makeEnhancedLibSignalRepository(auth: SignalAuthState): SignalRe
             const cipher = new libsignal.SessionCipher(storage, addr)
 
             // Use transaction to ensure atomicity
-            return (enhancedAuth.keys as SignalKeyStoreWithTransaction).transaction(async () => {
-                const { type: sigType, body } = await cipher.encrypt(data)
-                const type = sigType === 3 ? 'pkmsg' : 'msg'
-                return { type, ciphertext: Buffer.from(body, 'binary') }
-            })
+            const { type: sigType, body } = await cipher.encrypt(data)
+            const type = sigType === 3 ? 'pkmsg' : 'msg'
+            return { type, ciphertext: Buffer.from(body, 'binary') }
         },
         async encryptGroupMessage({ group, meId, data }) {
             const senderName = jidToSignalSenderKeyName(group, meId)
             const builder = new GroupSessionBuilder(storage)
 
             // Use transaction to ensure atomicity
-            return (enhancedAuth.keys as SignalKeyStoreWithTransaction).transaction(async () => {
-                const { [senderName]: senderKey } = await enhancedAuth.keys.get('sender-key', [senderName])
-                if(!senderKey) {
-                    await storage.storeSenderKey(senderName, new SenderKeyRecord())
-                }
+            const { [senderName]: senderKey } = await enhancedAuth.keys.get('sender-key', [senderName])
+            if(!senderKey) {
+                await storage.storeSenderKey(senderName, new SenderKeyRecord())
+            }
 
-                const senderKeyDistributionMessage = await builder.create(senderName)
-                const session = new GroupCipher(storage, senderName)
-                const ciphertext = await session.encrypt(data)
+            const senderKeyDistributionMessage = await builder.create(senderName)
+            const session = new GroupCipher(storage, senderName)
+            const ciphertext = await session.encrypt(data)
 
-                return {
-                    ciphertext,
-                    senderKeyDistributionMessage: senderKeyDistributionMessage.serialize(),
-                }
-            })
+            return {
+                ciphertext,
+                senderKeyDistributionMessage: senderKeyDistributionMessage.serialize(),
+            }
         },
         async injectE2ESession({ jid, session }) {
             const cipher = new libsignal.SessionBuilder(storage, jidToSignalProtocolAddress(jid))
             
             // Use transaction to ensure atomicity
-            return (enhancedAuth.keys as SignalKeyStoreWithTransaction).transaction(async () => {
-                await cipher.initOutgoing(session)
-            })
+            await cipher.initOutgoing(session)
+
         },
         jidToSignalProtocolAddress(jid) {
             return jidToSignalProtocolAddress(jid).toString()
