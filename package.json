@@ -49,6 +49,7 @@
     "music-metadata": "^7.12.3",
     "pino": "^9.6",
     "protobufjs": "^7.2.4",
+    "unstorage": "^1.15.0",
     "ws": "^8.13.0"
   },
   "devDependencies": {
