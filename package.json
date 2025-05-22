@@ -90,6 +90,6 @@
       "optional": true
     }
   },
-  "packageManager": "yarn@1.22.19",
+  "packageManager": "yarn@1.22.19"
   
 }
