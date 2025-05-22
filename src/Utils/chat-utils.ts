@@ -793,7 +793,7 @@ export const processSyncAction = (
 			]
 		})
 	} else if(action?.contactAction) {
-		ev.emit('contacts.upsert', [{ id, name: action.contactAction.fullName! }])
+		ev.emit('contacts.upsert', [{ id, name: action.contactAction.fullName!, lid: action.contactAction.lidJid as string }])
 	} else if(action?.pushNameSetting) {
 		const name = action?.pushNameSetting?.name
 		if(name && me?.name !== name) {
