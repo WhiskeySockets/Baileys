@@ -335,9 +335,9 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 	if(descChild) {
 		desc = getBinaryNodeChildString(descChild, 'body')
 		descOwner = descChild.attrs.participant
-		descOwnerPhoneNumber = descChild.attrs.participant_pn
+		descOwnerPhoneNumber = descChild.attrs.participant_pn ? jidNormalizedUser(descChild.attrs.participant_pn) : undefined
 		descId = descChild.attrs.id
-		descTime = +descChild.attrs.t
+		descTime = descChild.attrs.t ? +descChild.attrs.t : undefined
 	}
 
 	const groupId = group.attrs.id.includes('@') ? group.attrs.id : jidEncode(group.attrs.id, 'g.us')
@@ -348,10 +348,10 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 		addressingMode: group.attrs.addressing_mode,
 		subject: group.attrs.subject,
 		subjectOwner: group.attrs.s_o,
-		subjectOwnerPhoneNumber: group.attrs.s_o_pn,
-		subjectTime: +group.attrs.s_t,
+		subjectOwnerPhoneNumber: group.attrs.s_o_pn ? jidNormalizedUser(group.attrs.s_o_pn) : undefined,
+		subjectTime: group.attrs.s_t ? +group.attrs.s_t : undefined,
 		size: getBinaryNodeChildren(group, 'participant').length,
-		creation: +group.attrs.creation,
+		creation: group.attrs.creation ? +group.attrs.creation : undefined,
 		owner: group.attrs.creator ? jidNormalizedUser(group.attrs.creator) : undefined,
 		desc,
 		descId,
@@ -369,7 +369,7 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 			({ attrs }) => {
 				return {
 					id: attrs.jid,
-					phoneNumber: attrs.phone_number,
+					phoneNumber: attrs.phone_number ? jidNormalizedUser(attrs.phone_number) : undefined,
 					admin: (attrs.type || null) as GroupParticipant['admin'],
 				}
 			}
