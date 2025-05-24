@@ -1,12 +1,15 @@
 import * as libsignal from 'libsignal'
-import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage, SenderKeyName, SenderKeyRecord } from '../../WASignalGroup'
 import { SignalAuthState } from '../Types'
 import { SignalRepository } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import { jidDecode } from '../WABinary'
+import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from '../WASignalGroup'
+import type { SenderKeyStore } from '../WASignalGroup/group_cipher'
+import { SenderKeyName } from '../WASignalGroup/sender_key_name'
+import { SenderKeyRecord } from '../WASignalGroup/sender_key_record'
 
 export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository {
-	const storage = signalStorage(auth)
+	const storage: SenderKeyStore = signalStorage(auth)
 	return {
 		decryptGroupMessage({ group, authorJid, msg }) {
 			const senderName = jidToSignalSenderKeyName(group, authorJid)
@@ -19,7 +22,8 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 			const senderName = jidToSignalSenderKeyName(item.groupId!, authorJid)
 
 			const senderMsg = new SenderKeyDistributionMessage(null, null, null, null, item.axolotlSenderKeyDistributionMessage)
-			const { [senderName]: senderKey } = await auth.keys.get('sender-key', [senderName])
+			const keyId = senderName.toString()
+			const { [keyId]: senderKey } = await auth.keys.get('sender-key', [keyId])
 			if(!senderKey) {
 				await storage.storeSenderKey(senderName, new SenderKeyRecord())
 			}
@@ -53,7 +57,8 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 			const senderName = jidToSignalSenderKeyName(group, meId)
 			const builder = new GroupSessionBuilder(storage)
 
-			const { [senderName]: senderKey } = await auth.keys.get('sender-key', [senderName])
+			const keyId = senderName.toString()
+			const { [keyId]: senderKey } = await auth.keys.get('sender-key', [keyId])
 			if(!senderKey) {
 				await storage.storeSenderKey(senderName, new SenderKeyRecord())
 			}
@@ -82,11 +87,11 @@ const jidToSignalProtocolAddress = (jid: string) => {
 	return new libsignal.ProtocolAddress(user, device || 0)
 }
 
-const jidToSignalSenderKeyName = (group: string, user: string): string => {
-	return new SenderKeyName(group, jidToSignalProtocolAddress(user)).toString()
+const jidToSignalSenderKeyName = (group: string, user: string): SenderKeyName => {
+	return new SenderKeyName(group, jidToSignalProtocolAddress(user))
 }
 
-function signalStorage({ creds, keys }: SignalAuthState) {
+function signalStorage({ creds, keys }: SignalAuthState): SenderKeyStore & Record<string, any> {
 	return {
 		loadSession: async(id: string) => {
 			const { [id]: sess } = await keys.get('session', [id])
@@ -94,7 +99,7 @@ function signalStorage({ creds, keys }: SignalAuthState) {
 				return libsignal.SessionRecord.deserialize(sess)
 			}
 		},
-		storeSession: async(id, session) => {
+		storeSession: async(id: string, session: any) => {
 			await keys.set({ 'session': { [id]: session.serialize() } })
 		},
 		isTrustedIdentity: () => {
@@ -118,14 +123,19 @@ function signalStorage({ creds, keys }: SignalAuthState) {
 				pubKey: Buffer.from(key.keyPair.public)
 			}
 		},
-		loadSenderKey: async(keyId: string) => {
+		async loadSenderKey(senderKeyName: SenderKeyName): Promise<SenderKeyRecord> {
+			const keyId = senderKeyName.toString()
 			const { [keyId]: key } = await keys.get('sender-key', [keyId])
 			if(key) {
-				return new SenderKeyRecord(key)
+				return SenderKeyRecord.deserialize(key)
+			} else {
+				return new SenderKeyRecord()
 			}
 		},
-		storeSenderKey: async(keyId, key) => {
-			await keys.set({ 'sender-key': { [keyId]: key.serialize() } })
+		async storeSenderKey(senderKeyName: SenderKeyName, record: SenderKeyRecord): Promise<void> {
+			const keyId = senderKeyName.toString()
+			const serialized = Buffer.from(JSON.stringify(record.serialize()))
+			await keys.set({ 'sender-key': { [keyId]: serialized } })
 		},
 		getOurRegistrationId: () => (
 			creds.registrationId
