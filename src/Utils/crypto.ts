@@ -4,11 +4,7 @@ import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { KeyPair } from '../Types'
 
 // insure browser & node compatibility
-if (typeof globalThis.crypto === 'undefined') {
-    globalThis.crypto = webcrypto;
-}
-
-const { subtle } = globalThis.crypto
+const subtle = globalThis?.crypto?.subtle || webcrypto?.subtle;
 
 /** prefix version byte to the pub keys, required for some curve crypto functions */
 export const generateSignalPubKey = (pubKey: Uint8Array | Buffer) => (
