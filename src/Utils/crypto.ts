@@ -1,9 +1,13 @@
-import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto'
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, webcrypto } from 'crypto'
 import * as libsignal from 'libsignal'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { KeyPair } from '../Types'
 
 // insure browser & node compatibility
+if (typeof globalThis.crypto === 'undefined') {
+    globalThis.crypto = webcrypto;
+}
+
 const { subtle } = globalThis.crypto
 
 /** prefix version byte to the pub keys, required for some curve crypto functions */
