@@ -1,10 +1,10 @@
-import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, webcrypto } from 'crypto'
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto'
 import * as libsignal from 'libsignal'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { KeyPair } from '../Types'
 
 // insure browser & node compatibility
-const subtle = globalThis?.crypto?.subtle || webcrypto?.subtle;
+const subtle  = globalThis.crypto?.subtle || crypto.subtle;
 
 /** prefix version byte to the pub keys, required for some curve crypto functions */
 export const generateSignalPubKey = (pubKey: Uint8Array | Buffer) => (
