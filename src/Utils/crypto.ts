@@ -128,7 +128,7 @@ export async function hkdf(
 	expandedLength: number,
 	info: { salt?: Buffer, info?: string }
 ): Promise<Buffer> {
-    const subtle = globalSubtle || globalThis.crypto?.subtle;
+    const subtle = globalSubtle || crypto?.subtle;
 	// Ensure we have a Uint8Array for the key material
 	const inputKeyMaterial = buffer instanceof Uint8Array
 		? buffer
@@ -167,7 +167,7 @@ export async function hkdf(
 
 export async function derivePairingCodeKey(pairingCode: string, salt: Buffer): Promise<Buffer> {
 	// Convert inputs to formats Web Crypto API can work with
-    const subtle = globalSubtle || globalThis.crypto?.subtle;
+    const subtle = globalSubtle || crypto?.subtle;
 	const encoder = new TextEncoder()
 	const pairingCodeBuffer = encoder.encode(pairingCode)
 	const saltBuffer = salt instanceof Uint8Array ? salt : new Uint8Array(salt)
