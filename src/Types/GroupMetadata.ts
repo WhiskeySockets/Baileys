@@ -1,6 +1,6 @@
 import { Contact } from './Contact'
 
-export type GroupParticipant = (Contact & { isAdmin?: boolean, isSuperAdmin?: boolean, admin?: 'admin' | 'superadmin' | null })
+export type GroupParticipant = (Contact & { isAdmin?: boolean, isSuperAdmin?: boolean, admin?: 'admin' | 'superadmin' | null, phoneNumber?: string })
 
 export type ParticipantAction = 'add' | 'remove' | 'promote' | 'demote' | 'modify'
 
@@ -16,12 +16,15 @@ export interface GroupMetadata {
     subject: string
     /** group subject owner */
     subjectOwner?: string
+    subjectOwnerPhoneNumber?: string
     /** group subject modification date */
     subjectTime?: number
     creation?: number
     desc?: string
     descOwner?: string
+    descOwnerPhoneNumber?: string
     descId?: string
+    descTime?: number
     /** if this group is part of a community, it returns the jid of the community to which it belongs */
     linkedParent?: string
     /** is set when the group only allows admins to change group settings */
