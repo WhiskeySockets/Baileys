@@ -165,39 +165,35 @@ export const prepareWAMessageMedia = async (message: AnyMediaMessageContent, opt
 	const requiresWaveformProcessing = mediaType === 'audio' && uploadData.ptt === true
 	const requiresAudioBackground = options.backgroundColor && mediaType === 'audio' && uploadData.ptt === true
 	const requiresOriginalForSomeProcessing = requiresDurationComputation || requiresThumbnailComputation
-	const {
-		mediaKey,
-		encFilePath,
-		originalFilePath,
-		fileEncSha256,
-		fileSha256,
-		fileLength
-	} = await encryptedStream(
+	const { mediaKey, encFilePath, originalFilePath, fileEncSha256, fileSha256, fileLength } = await encryptedStream(
 		uploadData.media,
 		options.mediaTypeOverride || mediaType,
 		{
 			logger,
 			saveOriginalFileIfRequired: requiresOriginalForSomeProcessing,
 			opts: options.options
-		})
+		}
+	)
 	// url safe Base64 encode the SHA256 hash of the body
 	const fileEncSha256B64 = fileEncSha256.toString('base64')
 	const [{ mediaUrl, directPath }] = await Promise.all([
-		(async() => {
-			const result = await options.upload(
-				encFilePath,
-				{ fileEncSha256B64, mediaType, timeoutMs: options.mediaUploadTimeoutMs }
-			)
+		(async () => {
+			const result = await options.upload(encFilePath, {
+				fileEncSha256B64,
+				mediaType,
+				timeoutMs: options.mediaUploadTimeoutMs
+			})
 			logger?.debug({ mediaType, cacheableKey }, 'uploaded media')
 			return result
 		})(),
 		(async () => {
 			try {
-				if(requiresThumbnailComputation) {
-					const {
-						thumbnail,
-						originalImageDimensions
-					} = await generateThumbnail(originalFilePath!, mediaType as 'image' | 'video', options)
+				if (requiresThumbnailComputation) {
+					const { thumbnail, originalImageDimensions } = await generateThumbnail(
+						originalFilePath!,
+						mediaType as 'image' | 'video',
+						options
+					)
 					uploadData.jpegThumbnail = thumbnail
 					if (!uploadData.width && originalImageDimensions) {
 						uploadData.width = originalImageDimensions.width
@@ -208,12 +204,12 @@ export const prepareWAMessageMedia = async (message: AnyMediaMessageContent, opt
 					logger?.debug('generated thumbnail')
 				}
 
-				if(requiresDurationComputation) {
+				if (requiresDurationComputation) {
 					uploadData.seconds = await getAudioDuration(originalFilePath!)
 					logger?.debug('computed audio duration')
 				}
 
-				if(requiresWaveformProcessing) {
+				if (requiresWaveformProcessing) {
 					uploadData.waveform = await getAudioWaveform(originalFilePath!, logger)
 					logger?.debug('processed waveform')
 				}
@@ -225,22 +221,19 @@ export const prepareWAMessageMedia = async (message: AnyMediaMessageContent, opt
 			} catch (error) {
 				logger?.warn({ trace: error.stack }, 'failed to obtain extra info')
 			}
-		})(),
-	])
-		.finally(
-			async() => {
-				try {
-					await fs.unlink(encFilePath)
-					if(originalFilePath) {
-						await fs.unlink(originalFilePath)
-					}
-
-					logger?.debug('removed tmp files')
-				} catch(error) {
-					logger?.warn('failed to remove tmp file')
-				}
+		})()
+	]).finally(async () => {
+		try {
+			await fs.unlink(encFilePath)
+			if (originalFilePath) {
+				await fs.unlink(originalFilePath)
 			}
-		)
+
+			logger?.debug('removed tmp files')
+		} catch (error) {
+			logger?.warn('failed to remove tmp file')
+		}
+	})
 
 	const obj = WAProto.Message.fromObject({
 		[`${mediaType}Message`]: MessageTypeProto[mediaType].fromObject({

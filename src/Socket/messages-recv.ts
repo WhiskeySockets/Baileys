@@ -634,10 +634,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			isLid ? authState.creds.me?.lid : authState.creds.me?.id
 		)
 		const remoteJid = !isNodeFromMe || isJidGroup(attrs.from) ? attrs.from : attrs.recipient
-		const fromMe = !attrs.recipient || (
-			(attrs.type === 'retry' || attrs.type === 'sender') 
-			&& isNodeFromMe
-		)
+		const fromMe = !attrs.recipient || ((attrs.type === 'retry' || attrs.type === 'sender') && isNodeFromMe)
 
 		const key: proto.IMessageKey = {
 			remoteJid,

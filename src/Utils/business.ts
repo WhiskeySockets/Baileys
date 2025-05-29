@@ -3,7 +3,17 @@ import { createHash } from 'crypto'
 import { createWriteStream, promises as fs } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { CatalogCollection, CatalogStatus, OrderDetails, OrderProduct, Product, ProductCreate, ProductUpdate, WAMediaUpload, WAMediaUploadFunction } from '../Types'
+import {
+	CatalogCollection,
+	CatalogStatus,
+	OrderDetails,
+	OrderProduct,
+	Product,
+	ProductCreate,
+	ProductUpdate,
+	WAMediaUpload,
+	WAMediaUploadFunction
+} from '../Types'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, getBinaryNodeChildString } from '../WABinary'
 import { generateMessageIDV2 } from './generics'
 import { getStream, getUrlFromDirectPath } from './messages-media'
@@ -232,35 +242,29 @@ export const uploadingNecessaryImages = async (
 				}
 			}
 
-				const { stream } = await getStream(img)
-				const hasher = createHash('sha256')
+			const { stream } = await getStream(img)
+			const hasher = createHash('sha256')
 
-				const filePath = join(tmpdir(), 'img' + generateMessageIDV2())
-				const encFileWriteStream = createWriteStream(filePath)
+			const filePath = join(tmpdir(), 'img' + generateMessageIDV2())
+			const encFileWriteStream = createWriteStream(filePath)
 
-				for await (const block of stream) {
-					hasher.update(block)
-					encFileWriteStream.write(block)
-				}
+			for await (const block of stream) {
+				hasher.update(block)
+				encFileWriteStream.write(block)
+			}
 
 			const sha = hasher.digest('base64')
 
-				const { directPath } = await waUploadToServer(
-					filePath,
-					{
-						mediaType: 'product-catalog-image',
-						fileEncSha256B64: sha,
-						timeoutMs
-					}
-				)
+			const { directPath } = await waUploadToServer(filePath, {
+				mediaType: 'product-catalog-image',
+				fileEncSha256B64: sha,
+				timeoutMs
+			})
 
-				await fs
-					.unlink(filePath)
-					.catch(err => console.log('Error deleting temp file ', err))
+			await fs.unlink(filePath).catch(err => console.log('Error deleting temp file ', err))
 
-				return { url: getUrlFromDirectPath(directPath) }
-			}
-		)
+			return { url: getUrlFromDirectPath(directPath) }
+		})
 	)
 	return results
 }
