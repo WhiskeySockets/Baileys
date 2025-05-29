@@ -1,20 +1,32 @@
 import { Boom } from '@hapi/boom'
 import { AxiosRequestConfig } from 'axios'
 import { proto } from '../../WAProto'
-import { BaileysEventEmitter, Chat, ChatModification, ChatMutation, ChatUpdate, Contact, InitialAppStateSyncOptions, LastMessageList, LTHashState, WAPatchCreate, WAPatchName } from '../Types'
+import {
+	BaileysEventEmitter,
+	Chat,
+	ChatModification,
+	ChatMutation,
+	ChatUpdate,
+	Contact,
+	InitialAppStateSyncOptions,
+	LastMessageList,
+	LTHashState,
+	WAPatchCreate,
+	WAPatchName
+} from '../Types'
 import { ChatLabelAssociation, LabelAssociationType, MessageLabelAssociation } from '../Types/LabelAssociation'
 import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, jidNormalizedUser } from '../WABinary'
 import { aesDecrypt, aesEncrypt, hkdf, hmacSign } from './crypto'
 import { toNumber } from './generics'
 import { ILogger } from './logger'
 import { LT_HASH_ANTI_TAMPERING } from './lt-hash'
-import { downloadContentFromMessage, } from './messages-media'
+import { downloadContentFromMessage } from './messages-media'
 
 type FetchAppStateSyncKey = (keyId: string) => Promise<proto.Message.IAppStateSyncKeyData | null | undefined>
 
 export type ChatMutationMap = { [index: string]: ChatMutation }
 
-const mutationKeys = async(keydata: Uint8Array) => {
+const mutationKeys = async (keydata: Uint8Array) => {
 	const expanded = await hkdf(keydata, 160, { info: 'WhatsApp Mutation Keys' })
 	return {
 		indexKey: expanded.slice(0, 32),
@@ -25,16 +37,21 @@ const mutationKeys = async(keydata: Uint8Array) => {
 	}
 }
 
-const generateMac = (operation: proto.SyncdMutation.SyncdOperation, data: Buffer, keyId: Uint8Array | string, key: Buffer) => {
+const generateMac = (
+	operation: proto.SyncdMutation.SyncdOperation,
+	data: Buffer,
+	keyId: Uint8Array | string,
+	key: Buffer
+) => {
 	const getKeyData = () => {
 		let r: number
 		switch (operation) {
-		case proto.SyncdMutation.SyncdOperation.SET:
-			r = 0x01
-			break
-		case proto.SyncdMutation.SyncdOperation.REMOVE:
-			r = 0x02
-			break
+			case proto.SyncdMutation.SyncdOperation.SET:
+				r = 0x01
+				break
+			case proto.SyncdMutation.SyncdOperation.REMOVE:
+				r = 0x02
+				break
 		}
 
 		const buff = Buffer.from([r])
@@ -58,7 +75,7 @@ const to64BitNetworkOrder = (e: number) => {
 	return buff
 }
 
-type Mac = { indexMac: Uint8Array, valueMac: Uint8Array, operation: proto.SyncdMutation.SyncdOperation }
+type Mac = { indexMac: Uint8Array; valueMac: Uint8Array; operation: proto.SyncdMutation.SyncdOperation }
 
 const makeLtHashGenerator = ({ indexValueMap, hash }: Pick<LTHashState, 'hash' | 'indexValueMap'>) => {
 	indexValueMap = { ...indexValueMap }
@@ -69,8 +86,8 @@ const makeLtHashGenerator = ({ indexValueMap, hash }: Pick<LTHashState, 'hash' |
 		mix: ({ indexMac, valueMac, operation }: Mac) => {
 			const indexMacBase64 = Buffer.from(indexMac).toString('base64')
 			const prevOp = indexValueMap[indexMacBase64]
-			if(operation === proto.SyncdMutation.SyncdOperation.REMOVE) {
-				if(!prevOp) {
+			if (operation === proto.SyncdMutation.SyncdOperation.REMOVE) {
+				if (!prevOp) {
 					throw new Boom('tried remove, but no previous op', { data: { indexMac, valueMac } })
 				}
 
@@ -82,11 +99,11 @@ const makeLtHashGenerator = ({ indexValueMap, hash }: Pick<LTHashState, 'hash' |
 				indexValueMap[indexMacBase64] = { valueMac }
 			}
 
-			if(prevOp) {
+			if (prevOp) {
 				subBuffs.push(new Uint8Array(prevOp.valueMac).buffer)
 			}
 		},
-		finish: async() => {
+		finish: async () => {
 			const hashArrayBuffer = new Uint8Array(hash).buffer
 			const result = await LT_HASH_ANTI_TAMPERING.subtractThenAdd(hashArrayBuffer, addBuffs, subBuffs)
 			const buffer = Buffer.from(result)
@@ -100,34 +117,31 @@ const makeLtHashGenerator = ({ indexValueMap, hash }: Pick<LTHashState, 'hash' |
 }
 
 const generateSnapshotMac = (lthash: Uint8Array, version: number, name: WAPatchName, key: Buffer) => {
-	const total = Buffer.concat([
-		lthash,
-		to64BitNetworkOrder(version),
-		Buffer.from(name, 'utf-8')
-	])
+	const total = Buffer.concat([lthash, to64BitNetworkOrder(version), Buffer.from(name, 'utf-8')])
 	return hmacSign(total, key, 'sha256')
 }
 
-const generatePatchMac = (snapshotMac: Uint8Array, valueMacs: Uint8Array[], version: number, type: WAPatchName, key: Buffer) => {
-	const total = Buffer.concat([
-		snapshotMac,
-		...valueMacs,
-		to64BitNetworkOrder(version),
-		Buffer.from(type, 'utf-8')
-	])
+const generatePatchMac = (
+	snapshotMac: Uint8Array,
+	valueMacs: Uint8Array[],
+	version: number,
+	type: WAPatchName,
+	key: Buffer
+) => {
+	const total = Buffer.concat([snapshotMac, ...valueMacs, to64BitNetworkOrder(version), Buffer.from(type, 'utf-8')])
 	return hmacSign(total, key)
 }
 
 export const newLTHashState = (): LTHashState => ({ version: 0, hash: Buffer.alloc(128), indexValueMap: {} })
 
-export const encodeSyncdPatch = async(
+export const encodeSyncdPatch = async (
 	{ type, index, syncAction, apiVersion, operation }: WAPatchCreate,
 	myAppStateKeyId: string,
 	state: LTHashState,
 	getAppStateSyncKey: FetchAppStateSyncKey
 ) => {
 	const key = !!myAppStateKeyId ? await getAppStateSyncKey(myAppStateKeyId) : undefined
-	if(!key) {
+	if (!key) {
 		throw new Boom(`myAppStateKey ("${myAppStateKeyId}") not present`, { statusCode: 404 })
 	}
 
@@ -185,7 +199,7 @@ export const encodeSyncdPatch = async(
 	return { patch, state }
 }
 
-export const decodeSyncdMutations = async(
+export const decodeSyncdMutations = async (
 	msgMutations: (proto.ISyncdMutation | proto.ISyncdRecord)[],
 	initialState: LTHashState,
 	getAppStateSyncKey: FetchAppStateSyncKey,
@@ -196,19 +210,20 @@ export const decodeSyncdMutations = async(
 	// indexKey used to HMAC sign record.index.blob
 	// valueEncryptionKey used to AES-256-CBC encrypt record.value.blob[0:-32]
 	// the remaining record.value.blob[0:-32] is the mac, it the HMAC sign of key.keyId + decoded proto data + length of bytes in keyId
-	for(const msgMutation of msgMutations) {
+	for (const msgMutation of msgMutations) {
 		// if it's a syncdmutation, get the operation property
 		// otherwise, if it's only a record -- it'll be a SET mutation
 		const operation = 'operation' in msgMutation ? msgMutation.operation : proto.SyncdMutation.SyncdOperation.SET
-		const record = ('record' in msgMutation && !!msgMutation.record) ? msgMutation.record : msgMutation as proto.ISyncdRecord
+		const record =
+			'record' in msgMutation && !!msgMutation.record ? msgMutation.record : (msgMutation as proto.ISyncdRecord)
 
 		const key = await getKey(record.keyId!.id!)
 		const content = Buffer.from(record.value!.blob!)
 		const encContent = content.slice(0, -32)
 		const ogValueMac = content.slice(-32)
-		if(validateMacs) {
+		if (validateMacs) {
 			const contentHmac = generateMac(operation!, encContent, record.keyId!.id!, key.valueMacKey)
-			if(Buffer.compare(contentHmac, ogValueMac) !== 0) {
+			if (Buffer.compare(contentHmac, ogValueMac) !== 0) {
 				throw new Boom('HMAC content verification failed')
 			}
 		}
@@ -216,9 +231,9 @@ export const decodeSyncdMutations = async(
 		const result = aesDecrypt(encContent, key.valueEncryptionKey)
 		const syncAction = proto.SyncActionData.decode(result)
 
-		if(validateMacs) {
+		if (validateMacs) {
 			const hmac = hmacSign(syncAction.index!, key.indexKey)
-			if(Buffer.compare(hmac, record.index!.blob!) !== 0) {
+			if (Buffer.compare(hmac, record.index!.blob!) !== 0) {
 				throw new Boom('HMAC index verification failed')
 			}
 		}
@@ -238,15 +253,18 @@ export const decodeSyncdMutations = async(
 	async function getKey(keyId: Uint8Array) {
 		const base64Key = Buffer.from(keyId).toString('base64')
 		const keyEnc = await getAppStateSyncKey(base64Key)
-		if(!keyEnc) {
-			throw new Boom(`failed to find key "${base64Key}" to decode mutation`, { statusCode: 404, data: { msgMutations } })
+		if (!keyEnc) {
+			throw new Boom(`failed to find key "${base64Key}" to decode mutation`, {
+				statusCode: 404,
+				data: { msgMutations }
+			})
 		}
 
 		return mutationKeys(keyEnc.keyData!)
 	}
 }
 
-export const decodeSyncdPatch = async(
+export const decodeSyncdPatch = async (
 	msg: proto.ISyncdPatch,
 	name: WAPatchName,
 	initialState: LTHashState,
@@ -254,18 +272,24 @@ export const decodeSyncdPatch = async(
 	onMutation: (mutation: ChatMutation) => void,
 	validateMacs: boolean
 ) => {
-	if(validateMacs) {
+	if (validateMacs) {
 		const base64Key = Buffer.from(msg.keyId!.id!).toString('base64')
 		const mainKeyObj = await getAppStateSyncKey(base64Key)
-		if(!mainKeyObj) {
+		if (!mainKeyObj) {
 			throw new Boom(`failed to find key "${base64Key}" to decode patch`, { statusCode: 404, data: { msg } })
 		}
 
 		const mainKey = await mutationKeys(mainKeyObj.keyData!)
 		const mutationmacs = msg.mutations!.map(mutation => mutation.record!.value!.blob!.slice(-32))
 
-		const patchMac = generatePatchMac(msg.snapshotMac!, mutationmacs, toNumber(msg.version!.version), name, mainKey.patchMacKey)
-		if(Buffer.compare(patchMac, msg.patchMac!) !== 0) {
+		const patchMac = generatePatchMac(
+			msg.snapshotMac!,
+			mutationmacs,
+			toNumber(msg.version!.version),
+			name,
+			mainKey.patchMacKey
+		)
+		if (Buffer.compare(patchMac, msg.patchMac!) !== 0) {
 			throw new Boom('Invalid patch mac')
 		}
 	}
@@ -274,68 +298,59 @@ export const decodeSyncdPatch = async(
 	return result
 }
 
-export const extractSyncdPatches = async(
-	result: BinaryNode,
-	options: AxiosRequestConfig<{}>
-) => {
+export const extractSyncdPatches = async (result: BinaryNode, options: AxiosRequestConfig<{}>) => {
 	const syncNode = getBinaryNodeChild(result, 'sync')
 	const collectionNodes = getBinaryNodeChildren(syncNode, 'collection')
 
-	const final = {} as { [T in WAPatchName]: { patches: proto.ISyncdPatch[], hasMorePatches: boolean, snapshot?: proto.ISyncdSnapshot } }
+	const final = {} as {
+		[T in WAPatchName]: { patches: proto.ISyncdPatch[]; hasMorePatches: boolean; snapshot?: proto.ISyncdSnapshot }
+	}
 	await Promise.all(
-		collectionNodes.map(
-			async collectionNode => {
-				const patchesNode = getBinaryNodeChild(collectionNode, 'patches')
+		collectionNodes.map(async collectionNode => {
+			const patchesNode = getBinaryNodeChild(collectionNode, 'patches')
 
-				const patches = getBinaryNodeChildren(patchesNode || collectionNode, 'patch')
-				const snapshotNode = getBinaryNodeChild(collectionNode, 'snapshot')
+			const patches = getBinaryNodeChildren(patchesNode || collectionNode, 'patch')
+			const snapshotNode = getBinaryNodeChild(collectionNode, 'snapshot')
 
-				const syncds: proto.ISyncdPatch[] = []
-				const name = collectionNode.attrs.name as WAPatchName
+			const syncds: proto.ISyncdPatch[] = []
+			const name = collectionNode.attrs.name as WAPatchName
 
-				const hasMorePatches = collectionNode.attrs.has_more_patches === 'true'
+			const hasMorePatches = collectionNode.attrs.has_more_patches === 'true'
 
-				let snapshot: proto.ISyncdSnapshot | undefined = undefined
-				if(snapshotNode && !!snapshotNode.content) {
-					if(!Buffer.isBuffer(snapshotNode)) {
-						snapshotNode.content = Buffer.from(Object.values(snapshotNode.content))
-					}
-
-					const blobRef = proto.ExternalBlobReference.decode(
-						snapshotNode.content as Buffer
-					)
-					const data = await downloadExternalBlob(blobRef, options)
-					snapshot = proto.SyncdSnapshot.decode(data)
+			let snapshot: proto.ISyncdSnapshot | undefined = undefined
+			if (snapshotNode && !!snapshotNode.content) {
+				if (!Buffer.isBuffer(snapshotNode)) {
+					snapshotNode.content = Buffer.from(Object.values(snapshotNode.content))
 				}
 
-				for(let { content } of patches) {
-					if(content) {
-						if(!Buffer.isBuffer(content)) {
-							content = Buffer.from(Object.values(content))
-						}
-
-						const syncd = proto.SyncdPatch.decode(content as Uint8Array)
-						if(!syncd.version) {
-							syncd.version = { version: +collectionNode.attrs.version + 1 }
-						}
-
-						syncds.push(syncd)
-					}
-				}
-
-				final[name] = { patches: syncds, hasMorePatches, snapshot }
+				const blobRef = proto.ExternalBlobReference.decode(snapshotNode.content as Buffer)
+				const data = await downloadExternalBlob(blobRef, options)
+				snapshot = proto.SyncdSnapshot.decode(data)
 			}
-		)
+
+			for (let { content } of patches) {
+				if (content) {
+					if (!Buffer.isBuffer(content)) {
+						content = Buffer.from(Object.values(content))
+					}
+
+					const syncd = proto.SyncdPatch.decode(content as Uint8Array)
+					if (!syncd.version) {
+						syncd.version = { version: +collectionNode.attrs.version + 1 }
+					}
+
+					syncds.push(syncd)
+				}
+			}
+
+			final[name] = { patches: syncds, hasMorePatches, snapshot }
+		})
 	)
 
 	return final
 }
 
-
-export const downloadExternalBlob = async(
-	blob: proto.IExternalBlobReference,
-	options: AxiosRequestConfig<{}>
-) => {
+export const downloadExternalBlob = async (blob: proto.IExternalBlobReference, options: AxiosRequestConfig<{}>) => {
 	const stream = await downloadContentFromMessage(blob, 'md-app-state', { options })
 	const bufferArray: Buffer[] = []
 	for await (const chunk of stream) {
@@ -345,16 +360,13 @@ export const downloadExternalBlob = async(
 	return Buffer.concat(bufferArray)
 }
 
-export const downloadExternalPatch = async(
-	blob: proto.IExternalBlobReference,
-	options: AxiosRequestConfig<{}>
-) => {
+export const downloadExternalPatch = async (blob: proto.IExternalBlobReference, options: AxiosRequestConfig<{}>) => {
 	const buffer = await downloadExternalBlob(blob, options)
 	const syncData = proto.SyncdMutations.decode(buffer)
 	return syncData
 }
 
-export const decodeSyncdSnapshot = async(
+export const decodeSyncdSnapshot = async (
 	name: WAPatchName,
 	snapshot: proto.ISyncdSnapshot,
 	getAppStateSyncKey: FetchAppStateSyncKey,
@@ -365,34 +377,33 @@ export const decodeSyncdSnapshot = async(
 	newState.version = toNumber(snapshot.version!.version)
 
 	const mutationMap: ChatMutationMap = {}
-	const areMutationsRequired = typeof minimumVersionNumber === 'undefined'
-		|| newState.version > minimumVersionNumber
+	const areMutationsRequired = typeof minimumVersionNumber === 'undefined' || newState.version > minimumVersionNumber
 
 	const { hash, indexValueMap } = await decodeSyncdMutations(
 		snapshot.records!,
 		newState,
 		getAppStateSyncKey,
 		areMutationsRequired
-			? (mutation) => {
-				const index = mutation.syncAction.index?.toString()
-				mutationMap[index!] = mutation
-			}
-			: () => { },
+			? mutation => {
+					const index = mutation.syncAction.index?.toString()
+					mutationMap[index!] = mutation
+				}
+			: () => {},
 		validateMacs
 	)
 	newState.hash = hash
 	newState.indexValueMap = indexValueMap
 
-	if(validateMacs) {
+	if (validateMacs) {
 		const base64Key = Buffer.from(snapshot.keyId!.id!).toString('base64')
 		const keyEnc = await getAppStateSyncKey(base64Key)
-		if(!keyEnc) {
+		if (!keyEnc) {
 			throw new Boom(`failed to find key "${base64Key}" to decode mutation`)
 		}
 
 		const result = await mutationKeys(keyEnc.keyData!)
 		const computedSnapshotMac = generateSnapshotMac(newState.hash, newState.version, name, result.snapshotMacKey)
-		if(Buffer.compare(snapshot.mac!, computedSnapshotMac) !== 0) {
+		if (Buffer.compare(snapshot.mac!, computedSnapshotMac) !== 0) {
 			throw new Boom(`failed to verify LTHash at ${newState.version} of ${name} from snapshot`)
 		}
 	}
@@ -403,7 +414,7 @@ export const decodeSyncdSnapshot = async(
 	}
 }
 
-export const decodePatches = async(
+export const decodePatches = async (
 	name: WAPatchName,
 	syncds: proto.ISyncdPatch[],
 	initial: LTHashState,
@@ -420,9 +431,9 @@ export const decodePatches = async(
 
 	const mutationMap: ChatMutationMap = {}
 
-	for(const syncd of syncds) {
+	for (const syncd of syncds) {
 		const { version, keyId, snapshotMac } = syncd
-		if(syncd.externalMutations) {
+		if (syncd.externalMutations) {
 			logger?.trace({ name, version }, 'downloading external patch')
 			const ref = await downloadExternalPatch(syncd.externalMutations, options)
 			logger?.debug({ name, version, mutations: ref.mutations.length }, 'downloaded external patch')
@@ -441,26 +452,26 @@ export const decodePatches = async(
 			getAppStateSyncKey,
 			shouldMutate
 				? mutation => {
-					const index = mutation.syncAction.index?.toString()
-					mutationMap[index!] = mutation
-				}
-				: (() => { }),
+						const index = mutation.syncAction.index?.toString()
+						mutationMap[index!] = mutation
+					}
+				: () => {},
 			true
 		)
 
 		newState.hash = decodeResult.hash
 		newState.indexValueMap = decodeResult.indexValueMap
 
-		if(validateMacs) {
+		if (validateMacs) {
 			const base64Key = Buffer.from(keyId!.id!).toString('base64')
 			const keyEnc = await getAppStateSyncKey(base64Key)
-			if(!keyEnc) {
+			if (!keyEnc) {
 				throw new Boom(`failed to find key "${base64Key}" to decode mutation`)
 			}
 
 			const result = await mutationKeys(keyEnc.keyData!)
 			const computedSnapshotMac = generateSnapshotMac(newState.hash, newState.version, name, result.snapshotMacKey)
-			if(Buffer.compare(snapshotMac!, computedSnapshotMac) !== 0) {
+			if (Buffer.compare(snapshotMac!, computedSnapshotMac) !== 0) {
 				throw new Boom(`failed to verify LTHash at ${newState.version} of ${name}`)
 			}
 		}
@@ -472,38 +483,35 @@ export const decodePatches = async(
 	return { state: newState, mutationMap }
 }
 
-export const chatModificationToAppPatch = (
-	mod: ChatModification,
-	jid: string
-) => {
+export const chatModificationToAppPatch = (mod: ChatModification, jid: string) => {
 	const OP = proto.SyncdMutation.SyncdOperation
 	const getMessageRange = (lastMessages: LastMessageList) => {
 		let messageRange: proto.SyncActionValue.ISyncActionMessageRange
-		if(Array.isArray(lastMessages)) {
+		if (Array.isArray(lastMessages)) {
 			const lastMsg = lastMessages[lastMessages.length - 1]
 			messageRange = {
 				lastMessageTimestamp: lastMsg?.messageTimestamp,
-				messages: lastMessages?.length ? lastMessages.map(
-					m => {
-						if(!m.key?.id || !m.key?.remoteJid) {
-							throw new Boom('Incomplete key', { statusCode: 400, data: m })
-						}
+				messages: lastMessages?.length
+					? lastMessages.map(m => {
+							if (!m.key?.id || !m.key?.remoteJid) {
+								throw new Boom('Incomplete key', { statusCode: 400, data: m })
+							}
 
-						if(isJidGroup(m.key.remoteJid) && !m.key.fromMe && !m.key.participant) {
-							throw new Boom('Expected not from me message to have participant', { statusCode: 400, data: m })
-						}
+							if (isJidGroup(m.key.remoteJid) && !m.key.fromMe && !m.key.participant) {
+								throw new Boom('Expected not from me message to have participant', { statusCode: 400, data: m })
+							}
 
-						if(!m.messageTimestamp || !toNumber(m.messageTimestamp)) {
-							throw new Boom('Missing timestamp in last message list', { statusCode: 400, data: m })
-						}
+							if (!m.messageTimestamp || !toNumber(m.messageTimestamp)) {
+								throw new Boom('Missing timestamp in last message list', { statusCode: 400, data: m })
+							}
 
-						if(m.key.participant) {
-							m.key.participant = jidNormalizedUser(m.key.participant)
-						}
+							if (m.key.participant) {
+								m.key.participant = jidNormalizedUser(m.key.participant)
+							}
 
-						return m
-					}
-				) : undefined
+							return m
+						})
+					: undefined
 			}
 		} else {
 			messageRange = lastMessages
@@ -513,7 +521,7 @@ export const chatModificationToAppPatch = (
 	}
 
 	let patch: WAPatchCreate
-	if('mute' in mod) {
+	if ('mute' in mod) {
 		patch = {
 			syncAction: {
 				muteAction: {
@@ -526,7 +534,7 @@ export const chatModificationToAppPatch = (
 			apiVersion: 2,
 			operation: OP.SET
 		}
-	} else if('archive' in mod) {
+	} else if ('archive' in mod) {
 		patch = {
 			syncAction: {
 				archiveChatAction: {
@@ -539,7 +547,7 @@ export const chatModificationToAppPatch = (
 			apiVersion: 3,
 			operation: OP.SET
 		}
-	} else if('markRead' in mod) {
+	} else if ('markRead' in mod) {
 		patch = {
 			syncAction: {
 				markChatAsReadAction: {
@@ -552,7 +560,7 @@ export const chatModificationToAppPatch = (
 			apiVersion: 3,
 			operation: OP.SET
 		}
-	} else if('deleteForMe' in mod) {
+	} else if ('deleteForMe' in mod) {
 		const { timestamp, key, deleteMedia } = mod.deleteForMe
 		patch = {
 			syncAction: {
@@ -566,7 +574,7 @@ export const chatModificationToAppPatch = (
 			apiVersion: 3,
 			operation: OP.SET
 		}
-	} else if('clear' in mod) {
+	} else if ('clear' in mod) {
 		patch = {
 			syncAction: {
 				clearChatAction: {} // add message range later
@@ -576,7 +584,7 @@ export const chatModificationToAppPatch = (
 			apiVersion: 6,
 			operation: OP.SET
 		}
-	} else if('pin' in mod) {
+	} else if ('pin' in mod) {
 		patch = {
 			syncAction: {
 				pinAction: {
@@ -588,7 +596,7 @@ export const chatModificationToAppPatch = (
 			apiVersion: 5,
 			operation: OP.SET
 		}
-	} else if('star' in mod) {
+	} else if ('star' in mod) {
 		const key = mod.star.messages[0]
 		patch = {
 			syncAction: {
@@ -601,11 +609,11 @@ export const chatModificationToAppPatch = (
 			apiVersion: 2,
 			operation: OP.SET
 		}
-	} else if('delete' in mod) {
+	} else if ('delete' in mod) {
 		patch = {
 			syncAction: {
 				deleteChatAction: {
-					messageRange: getMessageRange(mod.lastMessages),
+					messageRange: getMessageRange(mod.lastMessages)
 				}
 			},
 			index: ['deleteChat', jid, '1'],
@@ -613,7 +621,7 @@ export const chatModificationToAppPatch = (
 			apiVersion: 6,
 			operation: OP.SET
 		}
-	} else if('pushNameSetting' in mod) {
+	} else if ('pushNameSetting' in mod) {
 		patch = {
 			syncAction: {
 				pushNameSetting: {
@@ -623,71 +631,64 @@ export const chatModificationToAppPatch = (
 			index: ['setting_pushName'],
 			type: 'critical_block',
 			apiVersion: 1,
-			operation: OP.SET,
+			operation: OP.SET
 		}
-	} else if('addLabel' in mod) {
+	} else if ('addLabel' in mod) {
 		patch = {
 			syncAction: {
 				labelEditAction: {
 					name: mod.addLabel.name,
 					color: mod.addLabel.color,
-					predefinedId : mod.addLabel.predefinedId,
+					predefinedId: mod.addLabel.predefinedId,
 					deleted: mod.addLabel.deleted
 				}
 			},
 			index: ['label_edit', mod.addLabel.id],
 			type: 'regular',
 			apiVersion: 3,
-			operation: OP.SET,
+			operation: OP.SET
 		}
-	} else if('addChatLabel' in mod) {
+	} else if ('addChatLabel' in mod) {
 		patch = {
 			syncAction: {
 				labelAssociationAction: {
-					labeled: true,
+					labeled: true
 				}
 			},
 			index: [LabelAssociationType.Chat, mod.addChatLabel.labelId, jid],
 			type: 'regular',
 			apiVersion: 3,
-			operation: OP.SET,
+			operation: OP.SET
 		}
-	} else if('removeChatLabel' in mod) {
+	} else if ('removeChatLabel' in mod) {
 		patch = {
 			syncAction: {
 				labelAssociationAction: {
-					labeled: false,
+					labeled: false
 				}
 			},
 			index: [LabelAssociationType.Chat, mod.removeChatLabel.labelId, jid],
 			type: 'regular',
 			apiVersion: 3,
-			operation: OP.SET,
+			operation: OP.SET
 		}
-	} else if('addMessageLabel' in mod) {
+	} else if ('addMessageLabel' in mod) {
 		patch = {
 			syncAction: {
 				labelAssociationAction: {
-					labeled: true,
+					labeled: true
 				}
 			},
-			index: [
-				LabelAssociationType.Message,
-				mod.addMessageLabel.labelId,
-				jid,
-				mod.addMessageLabel.messageId,
-				'0',
-				'0'
-			],
+			index: [LabelAssociationType.Message, mod.addMessageLabel.labelId, jid, mod.addMessageLabel.messageId, '0', '0'],
 			type: 'regular',
 			apiVersion: 3,
-			operation: OP.SET,
+			operation: OP.SET
 		}
-	} else if('removeMessageLabel' in mod) {
+	} else if ('removeMessageLabel' in mod) {
 		patch = {
 			syncAction: {
 				labelAssociationAction: {
-					labeled: false,
+					labeled: false
 				}
 			},
 			index: [
@@ -700,7 +701,7 @@ export const chatModificationToAppPatch = (
 			],
 			type: 'regular',
 			apiVersion: 3,
-			operation: OP.SET,
+			operation: OP.SET
 		}
 	} else {
 		throw new Boom('not supported')
@@ -716,7 +717,7 @@ export const processSyncAction = (
 	ev: BaileysEventEmitter,
 	me: Contact,
 	initialSyncOpts?: InitialAppStateSyncOptions,
-	logger?: ILogger,
+	logger?: ILogger
 ) => {
 	const isInitialSync = !!initialSyncOpts
 	const accountSettings = initialSyncOpts?.accountSettings
@@ -728,20 +729,15 @@ export const processSyncAction = (
 		index: [type, id, msgId, fromMe]
 	} = syncAction
 
-	if(action?.muteAction) {
-		ev.emit(
-			'chats.update',
-			[
-				{
-					id,
-					muteEndTime: action.muteAction?.muted
-						? toNumber(action.muteAction.muteEndTimestamp)
-						: null,
-					conditional: getChatUpdateConditional(id, undefined)
-				}
-			]
-		)
-	} else if(action?.archiveChatAction || type === 'archive' || type === 'unarchive') {
+	if (action?.muteAction) {
+		ev.emit('chats.update', [
+			{
+				id,
+				muteEndTime: action.muteAction?.muted ? toNumber(action.muteAction.muteEndTimestamp) : null,
+				conditional: getChatUpdateConditional(id, undefined)
+			}
+		])
+	} else if (action?.archiveChatAction || type === 'archive' || type === 'unarchive') {
 		// okay so we've to do some annoying computation here
 		// when we're initially syncing the app state
 		// there are a few cases we need to handle
@@ -753,9 +749,7 @@ export const processSyncAction = (
 		// 2. if the account unarchiveChats setting is false -- then it doesn't matter,
 		//	it'll always take an app state action to mark in unarchived -- which we'll get anyway
 		const archiveAction = action?.archiveChatAction
-		const isArchived = archiveAction
-			? archiveAction.archived
-			: type === 'archive'
+		const isArchived = archiveAction ? archiveAction.archived : type === 'archive'
 		// // basically we don't need to fire an "archive" update if the chat is being marked unarchvied
 		// // this only applies for the initial sync
 		// if(isInitialSync && !isArchived) {
@@ -765,24 +759,28 @@ export const processSyncAction = (
 		const msgRange = !accountSettings?.unarchiveChats ? undefined : archiveAction?.messageRange
 		// logger?.debug({ chat: id, syncAction }, 'message range archive')
 
-		ev.emit('chats.update', [{
-			id,
-			archived: isArchived,
-			conditional: getChatUpdateConditional(id, msgRange)
-		}])
-	} else if(action?.markChatAsReadAction) {
+		ev.emit('chats.update', [
+			{
+				id,
+				archived: isArchived,
+				conditional: getChatUpdateConditional(id, msgRange)
+			}
+		])
+	} else if (action?.markChatAsReadAction) {
 		const markReadAction = action.markChatAsReadAction
 		// basically we don't need to fire an "read" update if the chat is being marked as read
 		// because the chat is read by default
 		// this only applies for the initial sync
 		const isNullUpdate = isInitialSync && markReadAction.read
 
-		ev.emit('chats.update', [{
-			id,
-			unreadCount: isNullUpdate ? null : !!markReadAction?.read ? 0 : -1,
-			conditional: getChatUpdateConditional(id, markReadAction?.messageRange)
-		}])
-	} else if(action?.deleteMessageForMeAction || type === 'deleteMessageForMe') {
+		ev.emit('chats.update', [
+			{
+				id,
+				unreadCount: isNullUpdate ? null : !!markReadAction?.read ? 0 : -1,
+				conditional: getChatUpdateConditional(id, markReadAction?.messageRange)
+			}
+		])
+	} else if (action?.deleteMessageForMeAction || type === 'deleteMessageForMe') {
 		ev.emit('messages.delete', {
 			keys: [
 				{
@@ -792,30 +790,32 @@ export const processSyncAction = (
 				}
 			]
 		})
-	} else if(action?.contactAction) {
+	} else if (action?.contactAction) {
 		ev.emit('contacts.upsert', [{ id, name: action.contactAction.fullName! }])
-	} else if(action?.pushNameSetting) {
+	} else if (action?.pushNameSetting) {
 		const name = action?.pushNameSetting?.name
-		if(name && me?.name !== name) {
+		if (name && me?.name !== name) {
 			ev.emit('creds.update', { me: { ...me, name } })
 		}
-	} else if(action?.pinAction) {
-		ev.emit('chats.update', [{
-			id,
-			pinned: action.pinAction?.pinned ? toNumber(action.timestamp) : null,
-			conditional: getChatUpdateConditional(id, undefined)
-		}])
-	} else if(action?.unarchiveChatsSetting) {
+	} else if (action?.pinAction) {
+		ev.emit('chats.update', [
+			{
+				id,
+				pinned: action.pinAction?.pinned ? toNumber(action.timestamp) : null,
+				conditional: getChatUpdateConditional(id, undefined)
+			}
+		])
+	} else if (action?.unarchiveChatsSetting) {
 		const unarchiveChats = !!action.unarchiveChatsSetting.unarchiveChats
 		ev.emit('creds.update', { accountSettings: { unarchiveChats } })
 
 		logger?.info(`archive setting updated => '${action.unarchiveChatsSetting.unarchiveChats}'`)
-		if(accountSettings) {
+		if (accountSettings) {
 			accountSettings.unarchiveChats = unarchiveChats
 		}
-	} else if(action?.starAction || type === 'star') {
+	} else if (action?.starAction || type === 'star') {
 		let starred = action?.starAction?.starred
-		if(typeof starred !== 'boolean') {
+		if (typeof starred !== 'boolean') {
 			starred = syncAction.index[syncAction.index.length - 1] === '1'
 		}
 
@@ -825,11 +825,11 @@ export const processSyncAction = (
 				update: { starred }
 			}
 		])
-	} else if(action?.deleteChatAction || type === 'deleteChat') {
-		if(!isInitialSync) {
+	} else if (action?.deleteChatAction || type === 'deleteChat') {
+		if (!isInitialSync) {
 			ev.emit('chats.delete', [id])
 		}
-	} else if(action?.labelEditAction) {
+	} else if (action?.labelEditAction) {
 		const { name, color, deleted, predefinedId } = action.labelEditAction
 
 		ev.emit('labels.edit', {
@@ -839,42 +839,47 @@ export const processSyncAction = (
 			deleted: deleted!,
 			predefinedId: predefinedId ? String(predefinedId) : undefined
 		})
-	} else if(action?.labelAssociationAction) {
+	} else if (action?.labelAssociationAction) {
 		ev.emit('labels.association', {
-			type: action.labelAssociationAction.labeled
-				? 'add'
-				: 'remove',
-			association: type === LabelAssociationType.Chat
-				? {
-					type: LabelAssociationType.Chat,
-					chatId: syncAction.index[2],
-					labelId: syncAction.index[1]
-				} as ChatLabelAssociation
-				: {
-					type: LabelAssociationType.Message,
-					chatId: syncAction.index[2],
-					messageId: syncAction.index[3],
-					labelId: syncAction.index[1]
-				} as MessageLabelAssociation
+			type: action.labelAssociationAction.labeled ? 'add' : 'remove',
+			association:
+				type === LabelAssociationType.Chat
+					? ({
+							type: LabelAssociationType.Chat,
+							chatId: syncAction.index[2],
+							labelId: syncAction.index[1]
+						} as ChatLabelAssociation)
+					: ({
+							type: LabelAssociationType.Message,
+							chatId: syncAction.index[2],
+							messageId: syncAction.index[3],
+							labelId: syncAction.index[1]
+						} as MessageLabelAssociation)
 		})
 	} else {
 		logger?.debug({ syncAction, id }, 'unprocessable update')
 	}
 
-	function getChatUpdateConditional(id: string, msgRange: proto.SyncActionValue.ISyncActionMessageRange | null | undefined): ChatUpdate['conditional'] {
+	function getChatUpdateConditional(
+		id: string,
+		msgRange: proto.SyncActionValue.ISyncActionMessageRange | null | undefined
+	): ChatUpdate['conditional'] {
 		return isInitialSync
-			? (data) => {
-				const chat = data.historySets.chats[id] || data.chatUpserts[id]
-				if(chat) {
-					return msgRange ? isValidPatchBasedOnMessageRange(chat, msgRange) : true
+			? data => {
+					const chat = data.historySets.chats[id] || data.chatUpserts[id]
+					if (chat) {
+						return msgRange ? isValidPatchBasedOnMessageRange(chat, msgRange) : true
+					}
 				}
-			}
 			: undefined
 	}
 
-	function isValidPatchBasedOnMessageRange(chat: Chat, msgRange: proto.SyncActionValue.ISyncActionMessageRange | null | undefined) {
-		  const lastMsgTimestamp = Number(msgRange?.lastMessageTimestamp || msgRange?.lastSystemMessageTimestamp || 0)
-		  const chatLastMsgTimestamp = Number(chat?.lastMessageRecvTimestamp || 0)
-		  return lastMsgTimestamp >= chatLastMsgTimestamp
+	function isValidPatchBasedOnMessageRange(
+		chat: Chat,
+		msgRange: proto.SyncActionValue.ISyncActionMessageRange | null | undefined
+	) {
+		const lastMsgTimestamp = Number(msgRange?.lastMessageTimestamp || msgRange?.lastSystemMessageTimestamp || 0)
+		const chatLastMsgTimestamp = Number(chat?.lastMessageRecvTimestamp || 0)
+		return lastMsgTimestamp >= chatLastMsgTimestamp
 	}
 }

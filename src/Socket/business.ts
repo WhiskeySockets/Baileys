@@ -1,43 +1,46 @@
 import { GetCatalogOptions, ProductCreate, ProductUpdate, SocketConfig } from '../Types'
-import { parseCatalogNode, parseCollectionsNode, parseOrderDetailsNode, parseProductNode, toProductNode, uploadingNecessaryImagesOfProduct } from '../Utils/business'
+import {
+	parseCatalogNode,
+	parseCollectionsNode,
+	parseOrderDetailsNode,
+	parseProductNode,
+	toProductNode,
+	uploadingNecessaryImagesOfProduct
+} from '../Utils/business'
 import { BinaryNode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
 import { getBinaryNodeChild } from '../WABinary/generic-utils'
 import { makeMessagesRecvSocket } from './messages-recv'
 
 export const makeBusinessSocket = (config: SocketConfig) => {
 	const sock = makeMessagesRecvSocket(config)
-	const {
-		authState,
-		query,
-		waUploadToServer
-	} = sock
+	const { authState, query, waUploadToServer } = sock
 
-	const getCatalog = async({ jid, limit, cursor }: GetCatalogOptions) => {
+	const getCatalog = async ({ jid, limit, cursor }: GetCatalogOptions) => {
 		jid = jid || authState.creds.me?.id
 		jid = jidNormalizedUser(jid)
 
 		const queryParamNodes: BinaryNode[] = [
 			{
 				tag: 'limit',
-				attrs: { },
+				attrs: {},
 				content: Buffer.from((limit || 10).toString())
 			},
 			{
 				tag: 'width',
-				attrs: { },
+				attrs: {},
 				content: Buffer.from('100')
 			},
 			{
 				tag: 'height',
-				attrs: { },
+				attrs: {},
 				content: Buffer.from('100')
-			},
+			}
 		]
 
-		if(cursor) {
+		if (cursor) {
 			queryParamNodes.push({
 				tag: 'after',
-				attrs: { },
+				attrs: {},
 				content: cursor
 			})
 		}
@@ -54,7 +57,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 					tag: 'product_catalog',
 					attrs: {
 						jid,
-						'allow_shop_source': 'true'
+						allow_shop_source: 'true'
 					},
 					content: queryParamNodes
 				}
@@ -63,7 +66,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 		return parseCatalogNode(result)
 	}
 
-	const getCollections = async(jid?: string, limit = 51) => {
+	const getCollections = async (jid?: string, limit = 51) => {
 		jid = jid || authState.creds.me?.id
 		jid = jidNormalizedUser(jid)
 		const result = await query({
@@ -72,33 +75,33 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 				to: S_WHATSAPP_NET,
 				type: 'get',
 				xmlns: 'w:biz:catalog',
-				'smax_id': '35'
+				smax_id: '35'
 			},
 			content: [
 				{
 					tag: 'collections',
 					attrs: {
-						'biz_jid': jid,
+						biz_jid: jid
 					},
 					content: [
 						{
 							tag: 'collection_limit',
-							attrs: { },
+							attrs: {},
 							content: Buffer.from(limit.toString())
 						},
 						{
 							tag: 'item_limit',
-							attrs: { },
+							attrs: {},
 							content: Buffer.from(limit.toString())
 						},
 						{
 							tag: 'width',
-							attrs: { },
+							attrs: {},
 							content: Buffer.from('100')
 						},
 						{
 							tag: 'height',
-							attrs: { },
+							attrs: {},
 							content: Buffer.from('100')
 						}
 					]
@@ -109,14 +112,14 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 		return parseCollectionsNode(result)
 	}
 
-	const getOrderDetails = async(orderId: string, tokenBase64: string) => {
+	const getOrderDetails = async (orderId: string, tokenBase64: string) => {
 		const result = await query({
 			tag: 'iq',
 			attrs: {
 				to: S_WHATSAPP_NET,
 				type: 'get',
 				xmlns: 'fb:thrift_iq',
-				'smax_id': '5'
+				smax_id: '5'
 			},
 			content: [
 				{
@@ -128,23 +131,23 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 					content: [
 						{
 							tag: 'image_dimensions',
-							attrs: { },
+							attrs: {},
 							content: [
 								{
 									tag: 'width',
-									attrs: { },
+									attrs: {},
 									content: Buffer.from('100')
 								},
 								{
 									tag: 'height',
-									attrs: { },
+									attrs: {},
 									content: Buffer.from('100')
 								}
 							]
 						},
 						{
 							tag: 'token',
-							attrs: { },
+							attrs: {},
 							content: Buffer.from(tokenBase64)
 						}
 					]
@@ -155,7 +158,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 		return parseOrderDetailsNode(result)
 	}
 
-	const productUpdate = async(productId: string, update: ProductUpdate) => {
+	const productUpdate = async (productId: string, update: ProductUpdate) => {
 		update = await uploadingNecessaryImagesOfProduct(update, waUploadToServer)
 		const editNode = toProductNode(productId, update)
 
@@ -174,12 +177,12 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 						editNode,
 						{
 							tag: 'width',
-							attrs: { },
+							attrs: {},
 							content: '100'
 						},
 						{
 							tag: 'height',
-							attrs: { },
+							attrs: {},
 							content: '100'
 						}
 					]
@@ -193,7 +196,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 		return parseProductNode(productNode!)
 	}
 
-	const productCreate = async(create: ProductCreate) => {
+	const productCreate = async (create: ProductCreate) => {
 		// ensure isHidden is defined
 		create.isHidden = !!create.isHidden
 		create = await uploadingNecessaryImagesOfProduct(create, waUploadToServer)
@@ -214,12 +217,12 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 						createNode,
 						{
 							tag: 'width',
-							attrs: { },
+							attrs: {},
 							content: '100'
 						},
 						{
 							tag: 'height',
-							attrs: { },
+							attrs: {},
 							content: '100'
 						}
 					]
@@ -233,7 +236,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 		return parseProductNode(productNode!)
 	}
 
-	const productDelete = async(productIds: string[]) => {
+	const productDelete = async (productIds: string[]) => {
 		const result = await query({
 			tag: 'iq',
 			attrs: {
@@ -245,19 +248,17 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 				{
 					tag: 'product_catalog_delete',
 					attrs: { v: '1' },
-					content: productIds.map(
-						id => ({
-							tag: 'product',
-							attrs: { },
-							content: [
-								{
-									tag: 'id',
-									attrs: { },
-									content: Buffer.from(id)
-								}
-							]
-						})
-					)
+					content: productIds.map(id => ({
+						tag: 'product',
+						attrs: {},
+						content: [
+							{
+								tag: 'id',
+								attrs: {},
+								content: Buffer.from(id)
+							}
+						]
+					}))
 				}
 			]
 		})
