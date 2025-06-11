@@ -13,6 +13,26 @@ const getCompressedJpegThumbnail = async (url: string, { thumbnailWidth, fetchOp
 	return result
 }
 
+/** Processes base64 image and generates a thumbnail for it */
+const getCompressedJpegThumbnailFromBase64 = async (image: string, { thumbnailWidth }: URLGenerationOptions) => {
+	const matches = image.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/)
+	if (!matches || matches.length !== 3) {
+		throw new Error("Invalid base64 image format")
+	}
+	
+	const extension = matches[1]
+	const base64Data = matches[2]
+	const buffer = Buffer.from(base64Data, 'base64')
+	const result = await extractImageThumb(buffer, thumbnailWidth)
+	return { result, extension }
+}
+
+/** Checks if a string is a base64 encoded image */
+const isBase64Image = (str: string): boolean => {
+	const matches = str.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/)
+	return matches !== null && matches.length === 3
+}
+
 export type URLGenerationOptions = {
 	thumbnailWidth: number
 	fetchOpts: {
@@ -42,13 +62,11 @@ export const getUrlInfo = async (
 		// retries
 		const retries = 0
 		const maxRetry = 5
-
 		const { getLinkPreview } = await import('link-preview-js')
 		let previewLink = text
 		if (!text.startsWith('https://') && !text.startsWith('http://')) {
 			previewLink = 'https://' + previewLink
 		}
-
 		const info = await getLinkPreview(previewLink, {
 			...opts.fetchOpts,
 			followRedirects: 'follow',
@@ -58,7 +76,6 @@ export const getUrlInfo = async (
 				if (retries >= maxRetry) {
 					return false
 				}
-
 				if (
 					forwardedURLObj.hostname === urlObj.hostname ||
 					forwardedURLObj.hostname === 'www.' + urlObj.hostname ||
@@ -74,7 +91,6 @@ export const getUrlInfo = async (
 		})
 		if (info && 'title' in info && info.title) {
 			const [image] = info.images
-
 			const urlInfo: WAUrlInfo = {
 				'canonical-url': info.url,
 				'matched-text': text,
@@ -83,25 +99,57 @@ export const getUrlInfo = async (
 				originalThumbnailUrl: image
 			}
 
-			if (opts.uploadImage) {
-				const { imageMessage } = await prepareWAMessageMedia(
-					{ image: { url: image } },
-					{
-						upload: opts.uploadImage,
-						mediaTypeOverride: 'thumbnail-link',
-						options: opts.fetchOpts
+			// Handle image processing - check if it's base64 or URL
+			if (image) {
+				if (opts.uploadImage) {
+					let imageInput: { url: string } | { data: Buffer }
+					
+					if (isBase64Image(image)) {
+						// Handle base64 image
+						const matches = image.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/)
+						if (matches && matches.length === 3) {
+							const base64Data = matches[2]
+							const buffer = Buffer.from(base64Data, 'base64')
+							imageInput = { data: buffer }
+						} else {
+							opts.logger?.debug({ image: image.substring(0, 50) + '...' }, 'Invalid base64 image format')
+							return urlInfo
+						}
+					} else {
+						// Handle URL image
+						imageInput = { url: image }
 					}
-				)
-				urlInfo.jpegThumbnail = imageMessage?.jpegThumbnail ? Buffer.from(imageMessage.jpegThumbnail) : undefined
-				urlInfo.highQualityThumbnail = imageMessage || undefined
-			} else {
-				try {
-					urlInfo.jpegThumbnail = image ? (await getCompressedJpegThumbnail(image, opts)).buffer : undefined
-				} catch (error) {
-					opts.logger?.debug({ err: error.stack, url: previewLink }, 'error in generating thumbnail')
+
+					const { imageMessage } = await prepareWAMessageMedia(
+						{ image: imageInput },
+						{
+							upload: opts.uploadImage,
+							mediaTypeOverride: 'thumbnail-link',
+							options: opts.fetchOpts
+						}
+					)
+					urlInfo.jpegThumbnail = imageMessage?.jpegThumbnail ? Buffer.from(imageMessage.jpegThumbnail) : undefined
+					urlInfo.highQualityThumbnail = imageMessage || undefined
+				} else {
+					try {
+						if (isBase64Image(image)) {
+							// Process base64 image
+							const { result } = await getCompressedJpegThumbnailFromBase64(image, opts)
+							urlInfo.jpegThumbnail = result.buffer
+						} else {
+							// Process URL image
+							urlInfo.jpegThumbnail = (await getCompressedJpegThumbnail(image, opts)).buffer
+						}
+					} catch (error) {
+						opts.logger?.debug({ 
+							err: error.stack, 
+							url: previewLink, 
+							imageType: isBase64Image(image) ? 'base64' : 'url' 
+						}, 'error in generating thumbnail')
+					}
 				}
 			}
-
+			
 			return urlInfo
 		}
 	} catch (error) {
