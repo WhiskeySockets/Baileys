@@ -8,7 +8,7 @@ export class USyncContactProtocol implements USyncQueryProtocol {
 	getQueryElement(): BinaryNode {
 		return {
 			tag: 'contact',
-			attrs: {},
+			attrs: {}
 		}
 	}
 
@@ -17,12 +17,12 @@ export class USyncContactProtocol implements USyncQueryProtocol {
 		return {
 			tag: 'contact',
 			attrs: {},
-			content: user.phone,
+			content: user.phone
 		}
 	}
 
 	parser(node: BinaryNode): boolean {
-		if(node.tag === 'contact') {
+		if (node.tag === 'contact') {
 			assertNodeErrorFree(node)
 			return node?.attrs?.type === 'in'
 		}

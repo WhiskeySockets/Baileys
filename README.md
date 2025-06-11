@@ -1,24 +1,30 @@
-# <div align='center'>Baileys - Typescript/Javascript WhatsApp Web API</div>
+<h1 align='center'><img alt="Baileys logo" src="https://raw.githubusercontent.com/WhiskeySockets/Baileys/refs/heads/master/Media/logo.png" height="75"/></h1>
 
 <div align='center'>
 
-![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/whiskeysockets/baileys/total)
 ![NPM Downloads](https://img.shields.io/npm/dw/%40whiskeysockets%2Fbaileys?label=npm&color=%23CB3837)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/whiskeysockets/baileys)
-![GitHub License](https://img.shields.io/github/license/whiskeysockets/baileys)
 ![Discord](https://img.shields.io/discord/725839806084546610?label=discord&color=%235865F2)
-![GitHub Repo stars](https://img.shields.io/github/stars/whiskeysockets/baileys)
-![GitHub forks](https://img.shields.io/github/forks/whiskeysockets/baileys)
 
 </div>
 
-### Important Note
+<div align='center'>Baileys is a WebSockets-based TypeScript library for interacting with the WhatsApp Web API.</div>
 
-This library was originally a project for **CS-2362 at Ashoka University** and is in no way affiliated with or endorsed by WhatsApp. Use at your own discretion. Do not spam people with this. We discourage any stalkerware, bulk or automated messaging usage. 
+# Important Note
+This is a temporally README, the new guide is at development and will be fully released when it's finished.
 
-#### Liability and License Notice
-Baileys and its maintainers cannot be held liable for misuse of this application, as stated in the [MIT license](https://github.com/WhiskeySockets/Baileys/blob/master/LICENSE).
+New Guide: https://baileys.wiki
+
+# Sponsor
+If you'd like to financially support this project, you can do so by supporting the current maintainer [here](https://purpshell.dev/sponsor).
+
+# Disclaimer
+This project is not affiliated, associated, authorized, endorsed by, or in any way officially connected with WhatsApp or any of its subsidiaries or its affiliates.
+The official WhatsApp website can be found at whatsapp.com. "WhatsApp" as well as related names, marks, emblems and images are registered trademarks of their respective owners.
+
 The maintainers of Baileys do not in any way condone the use of this application in practices that violate the Terms of Service of WhatsApp. The maintainers of this application call upon the personal responsibility of its users to use this application in a fair way, as it is intended to be used.
+Use at your own discretion. Do not spam people with this. We discourage any stalkerware, bulk or automated messaging usage.
+
 ##
 
 - Baileys does not require Selenium or any other browser to be interface with WhatsApp Web, it does so directly using a **WebSocket**. 
@@ -921,7 +927,7 @@ if (result.exists) console.log (`${jid} exists on WhatsApp, as jid: ${result.jid
 
 - You need to have oldest message in chat
 ```ts
-const msg = await getOldestMessageInChat(jid)
+const msg = await getOldestMessageInChat(jid) // implement this on your end
 await sock.fetchMessageHistory(
     50, //quantity (max: 50 per query)
     msg.key,
@@ -1272,5 +1278,26 @@ sock.ws.on('CB:edge_routing,id:abcd', (node: BinaryNode) => { })
 sock.ws.on('CB:edge_routing,id:abcd,routing_info', (node: BinaryNode) => { })
 ```
 
-> [!NOTE]
-> Also, this repo is now licenced under GPL 3 since it uses [libsignal-node](https://git.questbook.io/backend/service-coderunner/-/merge_requests/1)
+# License
+Copyright (c) 2025 Rajeh Taher/WhiskeySockets
+
+Licensed under the MIT License:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Thus, the maintainers of the project can't be held liable for any potential misuse of this project.
