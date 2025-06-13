@@ -36141,6 +36141,15 @@ export namespace proto {
         /** MessageKey id */
         id?: (string|null);
 
+        /** MessageKey senderLid */
+        senderLid?: (string|null);
+
+        /** MessageKey senderPn */
+        senderPn?: (string|null);
+
+        /** MessageKey participantLid */
+        participantLid?: (string|null);
+
         /** MessageKey participant */
         participant?: (string|null);
     }
@@ -36162,6 +36171,15 @@ export namespace proto {
 
         /** MessageKey id. */
         public id?: (string|null);
+
+        /** MessageKey senderLid. */
+        public senderLid?: (string|null);
+
+        /** MessageKey senderPn. */
+        public senderPn?: (string|null);
+
+        /** MessageKey participantLid. */
+        public participantLid?: (string|null);
 
         /** MessageKey participant. */
         public participant?: (string|null);
