@@ -7,8 +7,8 @@ import * as constants from './constants'
  * to maintain functional code structure
  * */
 export type BinaryNode = {
-    tag: string
-    attrs: { [key: string]: string }
+	tag: string
+	attrs: { [key: string]: string }
 	content?: BinaryNode[] | string | Uint8Array
 }
 export type BinaryNodeAttributes = BinaryNode['attrs']
