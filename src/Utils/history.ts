@@ -37,7 +37,12 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 		case proto.HistorySync.HistorySyncType.FULL:
 		case proto.HistorySync.HistorySyncType.ON_DEMAND:
 			for (const chat of item.conversations! as Chat[]) {
-				contacts.push({ id: chat.id, name: chat.name || undefined })
+				contacts.push({
+					id: chat.id,
+					name: chat.name || undefined,
+					lid: chat.lidJid || undefined,
+					jid: isJidUser(chat.id) ? chat.id : undefined
+				})
 
 				const msgs = chat.messages || []
 				delete chat.messages
