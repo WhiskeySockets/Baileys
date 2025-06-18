@@ -22,6 +22,7 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 			if (!item.groupId) {
 				throw new Error('Group ID is required for sender key distribution message')
 			}
+
 			const senderName = jidToSignalSenderKeyName(item.groupId, authorJid)
 
 			const senderMsg = new SenderKeyDistributionMessage(
@@ -140,6 +141,7 @@ function signalStorage({ creds, keys }: SignalAuthState): SenderKeyStore & Recor
 			if (key) {
 				return SenderKeyRecord.deserialize(key)
 			}
+
 			return new SenderKeyRecord()
 		},
 		storeSenderKey: async (senderKeyName, key) => {
