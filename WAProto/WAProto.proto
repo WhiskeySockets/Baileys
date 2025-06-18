@@ -1,7 +1,7 @@
 syntax = "proto3";
 package waproto;
 
-/// WhatsApp Version: 2.3000.1023759987
+/// WhatsApp Version: 2.3000.1023888953
 
 message ADVDeviceIdentity {
     optional uint32 rawId = 1;
@@ -327,6 +327,7 @@ message BotCapabilityMetadata {
         PROACTIVE_MESSAGE = 33;
         RICH_RESPONSE_UNIFIED_RESPONSE = 34;
         PROMOTION_MESSAGE = 35;
+        SIMPLIFIED_PROFILE_PAGE = 36;
     }
 }
 
@@ -410,6 +411,8 @@ message BotMetadata {
     optional BotQuotaMetadata botQuotaMetadata = 23;
     optional BotAgeCollectionMetadata botAgeCollectionMetadata = 24;
     optional string conversationStarterPromptId = 25;
+    optional string botResponseId = 26;
+    optional BotSignatureVerificationMetadata verificationMetadata = 27;
 }
 
 enum BotMetricsEntryPoint {
@@ -628,6 +631,20 @@ enum BotSessionSource {
     EMU_FLASH_FOLLOWUP = 5;
     VOICE = 6;
 }
+message BotSignatureVerificationMetadata {
+    repeated BotSignatureVerificationUseCaseProof proofs = 1;
+}
+
+message BotSignatureVerificationUseCaseProof {
+    optional int32 version = 1;
+    optional BotSignatureUseCase useCase = 2;
+    optional bytes signature = 3;
+    optional bytes certificateChain = 4;
+    enum BotSignatureUseCase {
+        WA_BOT_MSG = 0;
+    }
+}
+
 message BotSourcesMetadata {
     repeated BotSourceItem sources = 1;
     message BotSourceItem {
@@ -2686,6 +2703,11 @@ message Message {
             optional FullHistorySyncOnDemandRequestResponse fullHistorySyncOnDemandRequestResponse = 6;
             optional CompanionMetaNonceFetchResponse companionMetaNonceFetchRequestResponse = 7;
             optional SyncDSnapshotFatalRecoveryResponse syncdSnapshotFatalRecoveryResponse = 8;
+            optional CompanionCanonicalUserNonceFetchResponse companionCanonicalUserNonceFetchRequestResponse = 9;
+            message CompanionCanonicalUserNonceFetchResponse {
+                optional string nonce = 1;
+            }
+            
             message CompanionMetaNonceFetchResponse {
                 optional string nonce = 1;
             }
@@ -2752,6 +2774,7 @@ message Message {
         FULL_HISTORY_SYNC_ON_DEMAND = 6;
         COMPANION_META_NONCE_FETCH = 7;
         COMPANION_SYNCD_SNAPSHOT_FATAL_RECOVERY = 8;
+        COMPANION_CANONICAL_USER_NONCE_FETCH = 9;
     }
     message PinInChatMessage {
         optional MessageKey key = 1;
@@ -3750,6 +3773,8 @@ message StatusAttribution {
             FACEBOOK = 2;
             MESSENGER = 3;
             SPOTIFY = 4;
+            YOUTUBE = 5;
+            PINTEREST = 6;
         }
     }
     
@@ -3883,6 +3908,7 @@ message SyncActionValue {
     optional CtwaPerCustomerDataSharingAction ctwaPerCustomerDataSharingAction = 62;
     optional PaymentTosAction paymentTosAction = 63;
     optional PrivacySettingChannelsPersonalisedRecommendationAction privacySettingChannelsPersonalisedRecommendationAction = 64;
+    optional BusinessBroadcastAssociationAction businessBroadcastAssociationAction = 65;
     message AgentAction {
         optional string name = 1;
         optional int32 deviceID = 2;
@@ -3900,6 +3926,10 @@ message SyncActionValue {
     
     message BotWelcomeRequestAction {
         optional bool isSent = 1;
+    }
+    
+    message BusinessBroadcastAssociationAction {
+        optional bool deleted = 1;
     }
     
     message CallLogAction {
