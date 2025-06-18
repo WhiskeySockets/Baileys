@@ -3,7 +3,6 @@ import { DEFAULT_ORIGIN } from '../../Defaults'
 import { AbstractSocketClient } from './types'
 
 export class WebSocketClient extends AbstractSocketClient {
-
 	protected socket: WebSocket | null = null
 
 	get isOpen(): boolean {
@@ -20,7 +19,7 @@ export class WebSocketClient extends AbstractSocketClient {
 	}
 
 	async connect(): Promise<void> {
-		if(this.socket) {
+		if (this.socket) {
 			return
 		}
 
@@ -29,20 +28,20 @@ export class WebSocketClient extends AbstractSocketClient {
 			headers: this.config.options?.headers as {},
 			handshakeTimeout: this.config.connectTimeoutMs,
 			timeout: this.config.connectTimeoutMs,
-			agent: this.config.agent,
+			agent: this.config.agent
 		})
 
 		this.socket.setMaxListeners(0)
 
 		const events = ['close', 'error', 'upgrade', 'message', 'open', 'ping', 'pong', 'unexpected-response']
 
-		for(const event of events) {
+		for (const event of events) {
 			this.socket?.on(event, (...args: any[]) => this.emit(event, ...args))
 		}
 	}
 
 	async close(): Promise<void> {
-		if(!this.socket) {
+		if (!this.socket) {
 			return
 		}
 

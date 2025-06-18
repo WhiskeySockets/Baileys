@@ -7,7 +7,7 @@ export class USyncLIDProtocol implements USyncQueryProtocol {
 	getQueryElement(): BinaryNode {
 		return {
 			tag: 'lid',
-			attrs: {},
+			attrs: {}
 		}
 	}
 
@@ -16,7 +16,7 @@ export class USyncLIDProtocol implements USyncQueryProtocol {
 	}
 
 	parser(node: BinaryNode): string | null {
-		if(node.tag === 'lid') {
+		if (node.tag === 'lid') {
 			return node.attrs.val
 		}
 
