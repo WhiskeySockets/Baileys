@@ -724,9 +724,8 @@ export const updateMessageWithReceipt = (msg: Pick<WAMessage, 'userReceipt'>, re
 export const updateMessageWithReaction = (msg: Pick<WAMessage, 'reactions'>, reaction: proto.IReaction) => {
 	const authorID = getKeyAuthor(reaction.key)
 
-
 	const reactions = (msg.reactions || []).filter(r => getKeyAuthor(r.key) !== authorID)
-  reaction.text = reaction.text || ""
+	reaction.text = reaction.text || ''
 	reactions.push(reaction)
 	msg.reactions = reactions
 }
