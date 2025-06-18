@@ -7,9 +7,18 @@ export class SenderChainKey {
     private readonly iteration: number;
     private readonly chainKey: Uint8Array;
 
-    constructor(iteration: number, chainKey: Uint8Array | string) {
+    constructor(iteration: number, chainKey: any) {
         this.iteration = iteration;
-        this.chainKey = typeof chainKey === 'string' ? Buffer.from(chainKey, 'base64') : chainKey;
+        if (typeof chainKey === 'string') {
+            this.chainKey = Buffer.from(chainKey, 'base64');
+        } else if (chainKey instanceof Uint8Array) {
+            this.chainKey = chainKey;
+        } else if (chainKey && typeof chainKey === 'object') {
+            const values = Object.values(chainKey) as number[];
+            this.chainKey = Buffer.from(values);
+        } else {
+            this.chainKey = Buffer.alloc(0);
+        }
     }
 
     public getIteration(): number {
@@ -31,7 +40,7 @@ export class SenderChainKey {
     }
 
     public getSeed(): Uint8Array {
-        return typeof this.chainKey === 'string' ? Buffer.from(this.chainKey, 'base64') : this.chainKey;
+        return this.chainKey;
     }
 
     private getDerivative(seed: Uint8Array, key: Uint8Array | string): Uint8Array {
