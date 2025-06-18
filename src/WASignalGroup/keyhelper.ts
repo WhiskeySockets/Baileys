@@ -22,7 +22,7 @@ export function generateSenderSigningKey(key?: KeyPairType): SigningKeyPair {
     }
 
     return {
-        public: key.pubKey,
-        private: key.privKey,
+        public: Buffer.from(key.pubKey),
+        private: Buffer.from(key.privKey),
     };
 }

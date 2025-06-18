@@ -90,15 +90,23 @@ export class SenderKeyState {
         };
     }
 
-    public getSigningKeyPublic(): Uint8Array {
+    public getSigningKeyPublic(): Buffer {
         const publicKey = this.senderKeyStateStructure.senderSigningKey.public;
-        return typeof publicKey === 'string' ? Buffer.from(publicKey, 'base64') : publicKey;
+        if (publicKey instanceof Buffer) {
+            return publicKey;
+        }
+        return Buffer.from(publicKey || []);
     }
 
-    public getSigningKeyPrivate(): Uint8Array | undefined {
+    public getSigningKeyPrivate(): Buffer | undefined {
         const privateKey = this.senderKeyStateStructure.senderSigningKey.private;
-        if (!privateKey) return undefined;
-        return typeof privateKey === 'string' ? Buffer.from(privateKey, 'base64') : privateKey;
+        if (!privateKey) {
+            return undefined;
+        }
+        if (privateKey instanceof Buffer) {
+            return privateKey;
+        }
+        return Buffer.from(privateKey);
     }
 
     public hasSenderMessageKey(iteration: number): boolean {

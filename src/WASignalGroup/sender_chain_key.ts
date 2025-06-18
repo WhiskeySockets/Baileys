@@ -5,19 +5,14 @@ export class SenderChainKey {
     private readonly MESSAGE_KEY_SEED: Uint8Array = Buffer.from([0x01]);
     private readonly CHAIN_KEY_SEED: Uint8Array = Buffer.from([0x02]);
     private readonly iteration: number;
-    private readonly chainKey: Uint8Array;
+    private readonly chainKey: Buffer;
 
     constructor(iteration: number, chainKey: any) {
         this.iteration = iteration;
-        if (typeof chainKey === 'string') {
-            this.chainKey = Buffer.from(chainKey, 'base64');
-        } else if (chainKey instanceof Uint8Array) {
+        if (chainKey instanceof Buffer) {
             this.chainKey = chainKey;
-        } else if (chainKey && typeof chainKey === 'object') {
-            const values = Object.values(chainKey) as number[];
-            this.chainKey = Buffer.from(values);
         } else {
-            this.chainKey = Buffer.alloc(0);
+            this.chainKey = Buffer.from(chainKey || []);
         }
     }
 
@@ -43,8 +38,7 @@ export class SenderChainKey {
         return this.chainKey;
     }
 
-    private getDerivative(seed: Uint8Array, key: Uint8Array | string): Uint8Array {
-        const keyBuffer = typeof key === 'string' ? Buffer.from(key, 'base64') : key;
-        return calculateMAC(keyBuffer, seed);
+    private getDerivative(seed: Uint8Array, key: Buffer): Uint8Array {
+        return calculateMAC(key, seed);
     }
 }
