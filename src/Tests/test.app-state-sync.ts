@@ -4,7 +4,6 @@ import { processSyncAction } from '../Utils/chat-utils'
 import logger from '../Utils/logger'
 
 describe('App State Sync Tests', () => {
-
 	const me: Contact = { id: randomJid() }
 	// case when initial sync is off
 	it('should return archive=false event', () => {
@@ -57,7 +56,7 @@ describe('App State Sync Tests', () => {
 			]
 		]
 
-		for(const mutations of CASES) {
+		for (const mutations of CASES) {
 			const events = processSyncAction(mutations, me, undefined, logger)
 			expect(events['chats.update']).toHaveLength(1)
 			const event = events['chats.update']?.[0]
@@ -129,7 +128,7 @@ describe('App State Sync Tests', () => {
 						}
 					}
 				}
-			],
+			]
 		]
 
 		const ctx: InitialAppStateSyncOptions = {
@@ -139,7 +138,7 @@ describe('App State Sync Tests', () => {
 			accountSettings: { unarchiveChats: true }
 		}
 
-		for(const mutations of CASES) {
+		for (const mutations of CASES) {
 			const events = processSyncActions(mutations, me, ctx, logger)
 			expect(events['chats.update']?.length).toBeFalsy()
 		}
@@ -152,7 +151,7 @@ describe('App State Sync Tests', () => {
 		const index = ['archive', jid]
 		const now = unixTimestampSeconds()
 
-		const CASES: { settings: AccountSettings, mutations: ChatMutation[] }[] = [
+		const CASES: { settings: AccountSettings; mutations: ChatMutation[] }[] = [
 			{
 				settings: { unarchiveChats: true },
 				mutations: [
@@ -169,7 +168,7 @@ describe('App State Sync Tests', () => {
 							}
 						}
 					}
-				],
+				]
 			},
 			{
 				settings: { unarchiveChats: false },
@@ -187,11 +186,11 @@ describe('App State Sync Tests', () => {
 							}
 						}
 					}
-				],
+				]
 			}
 		]
 
-		for(const { mutations, settings } of CASES) {
+		for (const { mutations, settings } of CASES) {
 			const ctx: InitialAppStateSyncOptions = {
 				recvChats: {
 					[jid]: { lastMsgRecvTimestamp: now }
