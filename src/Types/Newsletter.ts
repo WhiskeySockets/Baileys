@@ -1,40 +1,41 @@
-export enum MexOperations {
-	NotificationNewsletterAdminPromote = 'notification_newsletter_admin_promote',
-	NotificationNewsletterCreate = 'notification_newsletter_create',
-	NotificationNewsletterUpdate = 'notification_newsletter_update'
-}
-
 export enum XWAPaths {
 	xwa2_newsletter_create = 'xwa2_newsletter_create',
+	xwa2_newsletter_subscribers = 'xwa2_newsletter_subscribers',
+	xwa2_newsletter_view = 'xwa2_newsletter_view',
 	xwa2_newsletter_metadata = 'xwa2_newsletter_metadata',
+	xwa2_newsletter_admin_count = 'xwa2_newsletter_admin',
+	xwa2_newsletter_mute_v2 = 'xwa2_newsletter_mute_v2',
+	xwa2_newsletter_unmute_v2 = 'xwa2_newsletter_unmute_v2',
 	xwa2_newsletter_follow = 'xwa2_newsletter_follow',
 	xwa2_newsletter_unfollow = 'xwa2_newsletter_unfollow',
-	xwa2_newsletter_mute = 'xwa2_newsletter_mute',
-	xwa2_newsletter_unmute = 'xwa2_newsletter_unmute',
-	xwa2_newsletter_update_name = 'xwa2_newsletter_update_name',
-	xwa2_newsletter_update_description = 'xwa2_newsletter_update_description',
-	xwa2_newsletter_update_picture = 'xwa2_newsletter_update_picture',
 	xwa2_newsletter_fetch_messages = 'xwa2_newsletter_fetch_messages',
-	xwa2_newsletter_react_message = 'xwa2_newsletter_react_message'
+	xwa2_newsletter_react_message = 'xwa2_newsletter_react_message',
+	xwa2_newsletter_change_owner = 'xwa2_newsletter_change_owner',
+	xwa2_newsletter_demote = 'xwa2_newsletter_demote',
+	xwa2_newsletter_delete = 'xwa2_newsletter_delete',
+	xwa2_newsletter_delete_v2 = 'xwa2_newsletter_delete_v2'
 }
 
 export enum QueryIds {
 	CREATE = '8823471724422422',
 	SEND_MESSAGE = '25652179902648530',
-	UPDATE_METADATA = '24250201037901610'
-	// METADATA = '30328461880085868',
-	// FOLLOW = '25828729351659754',
-	// UNFOLLOW = '26322968335588385',
-	// MUTE = '26293699938539345',
-	// UNMUTE = '27532553881297531',
-	// UPDATE_PICTURE = '25737299994070529',
-	// FETCH_MESSAGES = '25914917409605391',
-	// REACT_MESSAGE = '27993859068412869',
+	UPDATE_METADATA = '24250201037901610',
+	METADATA = '9305958616175970',
+	SUBSCRIBERS = '9783111038412085',
+	FOLLOW = '7871414976211147',
+	UNFOLLOW = '7238632346214362',
+	MUTE = '29766401636284406',
+	UNMUTE = '9864994326891137',
+	ADMIN_COUNT = '7130823597031706',
+	CHANGE_OWNER = '7341777602580933',
+	DEMOTE = '6551828931592903',
+	DELETE = '8316537688363079'
 }
 
 export type NewsletterUpdate = {
 	name?: string
 	description?: string
+	picture?: string
 }
 export interface NewsletterCreateResponse {
 	id: string
@@ -77,8 +78,6 @@ export interface NewsletterCreateResponse {
 
 export type NewsletterViewRole = 'ADMIN' | 'GUEST' | 'OWNER' | 'SUBSCRIBER'
 
-export type SubscriberAction = 'promote' | 'demote'
-
 export interface NewsletterMetadata {
 	id: string
 	owner?: string // The owner of the newsletter, if available
@@ -104,56 +103,4 @@ export interface NewsletterMetadata {
 		name?: string
 		description?: string
 	}
-}
-
-export interface NewsletterViewerMetadata {
-	role: NewsletterViewRole
-	mute?: 'ON' | 'OFF'
-}
-
-export interface NewsletterFetchedUpdate {
-	server_id: string
-	views?: number
-	reactions?: {
-		code: string
-		count: number
-	}[]
-	message?: any // This would be the actual WAProto.IWebMessageInfo
-}
-
-export interface NewsletterSettingsUpdate {
-	name?: string
-	description?: string
-	picture?: {
-		url?: string
-		directPath?: string
-		mediaKey?: string
-		id?: string
-	}
-	verification?: 'VERIFIED' | 'UNVERIFIED'
-	mute_state?: 'ON' | 'OFF'
-}
-
-export interface NewsletterReaction {
-	id: string
-	server_id: string
-	reaction: {
-		code?: string
-		count?: number
-		removed?: boolean
-	}
-}
-
-export interface NewsletterView {
-	id: string
-	server_id: string
-	count: number
-}
-
-export interface NewsletterParticipantUpdate {
-	id: string
-	author: string
-	user: string
-	new_role: NewsletterViewRole
-	action: SubscriberAction
 }

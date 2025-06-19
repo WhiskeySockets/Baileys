@@ -181,20 +181,21 @@ export const encodeBase64EncodedStringForUpload = (b64: string) =>
 	encodeURIComponent(b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/\=+$/, ''))
 
 export const generateProfilePicture = async (mediaUpload: WAMediaUpload) => {
-	let bufferOrFilePath: Buffer | string
+	let buffer: Buffer
 	if (Buffer.isBuffer(mediaUpload)) {
-		bufferOrFilePath = mediaUpload
-	} else if ('url' in mediaUpload) {
-		bufferOrFilePath = mediaUpload.url.toString()
+		buffer = mediaUpload
 	} else {
-		bufferOrFilePath = await toBuffer(mediaUpload.stream)
+		// Use getStream to handle all WAMediaUpload types (Buffer, Stream, URL)
+		const { stream } = await getStream(mediaUpload)
+		// Convert the resulting stream to a buffer
+		buffer = await toBuffer(stream)
 	}
 
 	const lib = await getImageProcessingLibrary()
 	let img: Promise<Buffer>
 	if ('sharp' in lib && typeof lib.sharp?.default === 'function') {
 		img = lib.sharp
-			.default(bufferOrFilePath)
+			.default(buffer)
 			.resize(640, 640)
 			.jpeg({
 				quality: 50
@@ -202,7 +203,7 @@ export const generateProfilePicture = async (mediaUpload: WAMediaUpload) => {
 			.toBuffer()
 	} else if ('jimp' in lib && typeof lib.jimp?.read === 'function') {
 		const { read, MIME_JPEG, RESIZE_BILINEAR } = lib.jimp
-		const jimp = await read(bufferOrFilePath as string)
+		const jimp = await read(buffer)
 		const min = Math.min(jimp.getWidth(), jimp.getHeight())
 		const cropped = jimp.crop(0, 0, min, min)
 
