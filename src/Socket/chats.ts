@@ -219,10 +219,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		const usyncQuery = new USyncQuery().withContactProtocol().withLIDProtocol()
 
 		for (const jid of jids) {
-			const {user, server} = jidDecode(jid)
+			const [user, server] = jid.split('@')
 			if(server === 'lid') {
-				usyncQuery.withUser(new USyncUser().withLid(jid))
-			} else if(server === 'c.us' || server === 's.whatsapp.net') {
+				usyncQuery.withUser(new USyncUser().withLid(`${user.split(':')[0]}@lid`))
+			} else if(server !== 'g.us') {
 				const phone = `+${jid.replace('+', '').split('@')[0].split(':')[0]}`
 			
 				usyncQuery.withUser(new USyncUser().withPhone(phone))
