@@ -8,17 +8,13 @@ export enum XWAPaths {
 	xwa2_newsletter_unmute_v2 = 'xwa2_newsletter_unmute_v2',
 	xwa2_newsletter_follow = 'xwa2_newsletter_follow',
 	xwa2_newsletter_unfollow = 'xwa2_newsletter_unfollow',
-	xwa2_newsletter_fetch_messages = 'xwa2_newsletter_fetch_messages',
-	xwa2_newsletter_react_message = 'xwa2_newsletter_react_message',
 	xwa2_newsletter_change_owner = 'xwa2_newsletter_change_owner',
 	xwa2_newsletter_demote = 'xwa2_newsletter_demote',
-	xwa2_newsletter_delete = 'xwa2_newsletter_delete',
 	xwa2_newsletter_delete_v2 = 'xwa2_newsletter_delete_v2'
 }
 
 export enum QueryIds {
 	CREATE = '8823471724422422',
-	SEND_MESSAGE = '25652179902648530',
 	UPDATE_METADATA = '24250201037901610',
 	METADATA = '9305958616175970',
 	SUBSCRIBERS = '9783111038412085',
@@ -80,7 +76,7 @@ export type NewsletterViewRole = 'ADMIN' | 'GUEST' | 'OWNER' | 'SUBSCRIBER'
 
 export interface NewsletterMetadata {
 	id: string
-	owner?: string // The owner of the newsletter, if available
+	owner?: string
 	name: string
 	description?: string
 	invite?: string
