@@ -12,7 +12,6 @@ export enum XWAPaths {
 	xwa2_newsletter_demote = 'xwa2_newsletter_demote',
 	xwa2_newsletter_delete_v2 = 'xwa2_newsletter_delete_v2'
 }
-
 export enum QueryIds {
 	CREATE = '8823471724422422',
 	UPDATE_METADATA = '24250201037901610',
@@ -25,9 +24,8 @@ export enum QueryIds {
 	ADMIN_COUNT = '7130823597031706',
 	CHANGE_OWNER = '7341777602580933',
 	DEMOTE = '6551828931592903',
-	DELETE = '8316537688363079'
+	DELETE = '30062808666639665'
 }
-
 export type NewsletterUpdate = {
 	name?: string
 	description?: string
@@ -71,9 +69,7 @@ export interface NewsletterCreateResponse {
 		role: NewsletterViewRole
 	}
 }
-
 export type NewsletterViewRole = 'ADMIN' | 'GUEST' | 'OWNER' | 'SUBSCRIBER'
-
 export interface NewsletterMetadata {
 	id: string
 	owner?: string
