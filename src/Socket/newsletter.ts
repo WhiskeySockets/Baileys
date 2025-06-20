@@ -1,7 +1,6 @@
 import { Boom } from '@hapi/boom'
 import type { NewsletterCreateResponse, WAMediaUpload } from '../Types'
 import { NewsletterMetadata, NewsletterUpdate, QueryIds, XWAPaths } from '../Types'
-import type { NewsletterViewRole } from '../Types/Newsletter'
 import { generateProfilePicture } from '../Utils/messages-media'
 import { getBinaryNodeChild, S_WHATSAPP_NET } from '../WABinary'
 import { GroupsSocket } from './groups'
@@ -51,20 +50,26 @@ export const makeNewsletterSocket = (sock: GroupsSocket) => {
 
 	const executeWMexQuery = async <T>(variables: any, queryId: string, dataPath: string): Promise<T> => {
 		const result = await newsletterWMexQuery(variables, queryId)
-		console.log('WMex Query Result:', JSON.stringify(result, null, 2))
 		const child = getBinaryNodeChild(result, 'result')
-		console.log('WMex Query Child:', JSON.stringify(child, null, 2))
-		let data: any
+
 		if (child?.content) {
-			data = JSON.parse(child.content.toString())
-			const response = data?.data?.[dataPath]
+			const data = JSON.parse(child.content.toString())
+
+			if (data.errors && data.errors.length > 0) {
+				const error = data.errors[0]
+				const errorMessage = error.message || 'Unknown error'
+				const errorCode = error.extensions?.error_code || 400
+				throw new Boom(`GraphQL server error: ${errorMessage}`, { statusCode: errorCode, data: error })
+			}
+
+			const response = dataPath ? data?.data?.[dataPath] : data?.data
 			if (typeof response !== 'undefined') {
 				return response as T
 			}
 		}
 
-		const action = dataPath.replace('xwa2_newsletter_', '').replace(/_/g, ' ')
-		throw new Boom(`Failed to ${action}`, { statusCode: 400 })
+		const action = dataPath?.replace('xwa2_newsletter_', '').replace(/_/g, ' ')
+		throw new Boom(`Failed to ${action}, unexpected response structure.`, { statusCode: 400, data: result })
 	}
 
 	const newsletterUpdate = async (jid: string, updates: NewsletterUpdate) => {
@@ -114,22 +119,19 @@ export const makeNewsletterSocket = (sock: GroupsSocket) => {
 			)
 		},
 
-		newsletterMetadata: async (type: 'invite' | 'jid', key: string, role: NewsletterViewRole = 'GUEST') => {
-			const result = await executeWMexQuery<any>(
-				{
-					input: {
-						key,
-						type: type.toUpperCase(),
-						view_role: role
-					},
-					fetch_viewer_metadata: true,
-					fetch_full_image: true,
-					fetch_creation_time: false,
-					fetch_wam_sub: false
-				},
-				QueryIds.METADATA,
-				XWAPaths.xwa2_newsletter_metadata
-			)
+		newsletterMetadata: async (type: 'invite' | 'jid', key: string) => {
+			const variables = {
+				fetch_creation_time: true,
+				fetch_full_image: true,
+				fetch_viewer_metadata: true,
+				input: {
+					key,
+					type: type.toUpperCase()
+				}
+			}
+
+			const result = await executeWMexQuery<any>(variables, QueryIds.METADATA, XWAPaths.xwa2_newsletter_metadata)
+
 			return typeof result === 'object' && result !== null && result.id
 				? result
 				: typeof result === 'object' && result !== null && result.result

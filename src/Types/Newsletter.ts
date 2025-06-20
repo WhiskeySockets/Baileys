@@ -2,7 +2,7 @@ export enum XWAPaths {
 	xwa2_newsletter_create = 'xwa2_newsletter_create',
 	xwa2_newsletter_subscribers = 'xwa2_newsletter_subscribers',
 	xwa2_newsletter_view = 'xwa2_newsletter_view',
-	xwa2_newsletter_metadata = 'xwa2_newsletter_metadata',
+	xwa2_newsletter_metadata = 'xwa2_newsletter',
 	xwa2_newsletter_admin_count = 'xwa2_newsletter_admin',
 	xwa2_newsletter_mute_v2 = 'xwa2_newsletter_mute_v2',
 	xwa2_newsletter_unmute_v2 = 'xwa2_newsletter_unmute_v2',
@@ -16,7 +16,7 @@ export enum XWAPaths {
 export enum QueryIds {
 	CREATE = '8823471724422422',
 	UPDATE_METADATA = '24250201037901610',
-	METADATA = '9305958616175970',
+	METADATA = '6563316087068696',
 	SUBSCRIBERS = '9783111038412085',
 	FOLLOW = '7871414976211147',
 	UNFOLLOW = '7238632346214362',
