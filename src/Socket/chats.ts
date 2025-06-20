@@ -221,7 +221,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		for (const jid of jids) {
 			const {user, server} = jidDecode(jid)
 			if(server === 'lid') {
-				usyncQuery.withUser(new USyncUser().withLid(phone))
+				usyncQuery.withUser(new USyncUser().withLid(jid))
 			} else if(server === 'c.us' || server === 's.whatsapp.net') {
 				const phone = `+${jid.replace('+', '').split('@')[0].split(':')[0]}`
 			
