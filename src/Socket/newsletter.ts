@@ -189,19 +189,31 @@ export const makeNewsletterSocket = (sock: GroupsSocket) => {
 			})
 		},
 
-		newsletterFetchMessages: async (jid: string, count: number, after?: number) => {
+		newsletterFetchMessages: async (jid: string, count: number, since: number, after: number) => {
+			const messageUpdateAttrs: { count: string; since?: string; after?: string } = {
+				count: count.toString()
+			}
+
+			if (typeof since === 'number') {
+				messageUpdateAttrs.since = since.toString()
+			}
+
+			if (after) {
+				messageUpdateAttrs.after = after.toString()
+			}
+
 			const result = await query({
 				tag: 'iq',
 				attrs: {
 					id: generateMessageTag(),
 					type: 'get',
 					xmlns: 'newsletter',
-					to: S_WHATSAPP_NET
+					to: jid
 				},
 				content: [
 					{
-						tag: 'messages',
-						attrs: { jid: jid, count: count.toString(), after: after?.toString() || '100' }
+						tag: 'message_updates',
+						attrs: messageUpdateAttrs
 					}
 				]
 			})
