@@ -1,9 +1,9 @@
-import { Boom } from '@hapi/boom'
 import type { NewsletterCreateResponse, WAMediaUpload } from '../Types'
 import { NewsletterMetadata, NewsletterUpdate, QueryIds, XWAPaths } from '../Types'
 import { generateProfilePicture } from '../Utils/messages-media'
-import { getBinaryNodeChild, S_WHATSAPP_NET } from '../WABinary'
+import { getBinaryNodeChild } from '../WABinary'
 import { GroupsSocket } from './groups'
+import { executeWMexQuery as genericExecuteWMexQuery } from './mex'
 
 const parseNewsletterCreateResponse = (response: NewsletterCreateResponse): NewsletterMetadata => {
 	const { id, thread_metadata: thread, viewer_metadata: viewer } = response
@@ -42,51 +42,9 @@ const parseNewsletterMetadata = (result: unknown): NewsletterMetadata | null => 
 
 export const makeNewsletterSocket = (sock: GroupsSocket) => {
 	const { query, generateMessageTag } = sock
-	const newsletterWMexQuery = async (variables: Record<string, unknown>, queryId: string) => {
-		const result = await query({
-			tag: 'iq',
-			attrs: {
-				id: generateMessageTag(),
-				type: 'get',
-				to: S_WHATSAPP_NET,
-				xmlns: 'w:mex'
-			},
-			content: [
-				{
-					tag: 'query',
-					attrs: { query_id: queryId },
-					content: Buffer.from(JSON.stringify({ variables }), 'utf-8')
-				}
-			]
-		})
-		return result
-	}
 
-	const executeWMexQuery = async <T>(
-		variables: Record<string, unknown>,
-		queryId: string,
-		dataPath: string
-	): Promise<T> => {
-		const result = await newsletterWMexQuery(variables, queryId)
-		const child = getBinaryNodeChild(result, 'result')
-		if (child?.content) {
-			const data = JSON.parse(child.content.toString())
-
-			if (data.errors && data.errors.length > 0) {
-				const errorMessages = data.errors.map((err: Error) => err.message || 'Unknown error').join(', ')
-				const firstError = data.errors[0]
-				const errorCode = firstError.extensions?.error_code || 400
-				throw new Boom(`GraphQL server error: ${errorMessages}`, { statusCode: errorCode, data: firstError })
-			}
-
-			const response = dataPath ? data?.data?.[dataPath] : data?.data
-			if (typeof response !== 'undefined') {
-				return response as T
-			}
-		}
-
-		const action = dataPath?.replace('xwa2_newsletter_', '').replace(/_/g, ' ')
-		throw new Boom(`Failed to ${action}, unexpected response structure.`, { statusCode: 400, data: result })
+	const executeWMexQuery = <T>(variables: Record<string, unknown>, queryId: string, dataPath: string): Promise<T> => {
+		return genericExecuteWMexQuery<T>(variables, queryId, dataPath, query, generateMessageTag)
 	}
 
 	const newsletterUpdate = async (jid: string, updates: NewsletterUpdate) => {
