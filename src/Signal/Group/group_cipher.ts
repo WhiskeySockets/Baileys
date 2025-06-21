@@ -1,9 +1,9 @@
-import queueJob from './queue_job';
-import { SenderKeyMessage } from './sender_key_message';
+import queueJob from './queue-job';
+import { SenderKeyMessage } from './sender-key-message';
 import { decrypt, encrypt } from 'libsignal/src/crypto';
-import { SenderKeyName } from './sender_key_name';
-import { SenderKeyRecord } from './sender_key_record';
-import { SenderKeyState } from './sender_key_state';
+import { SenderKeyName } from './sender-key-name';
+import { SenderKeyRecord } from './sender-key-record';
+import { SenderKeyState } from './sender-key-state';
 
 export interface SenderKeyStore {
     loadSenderKey(senderKeyName: SenderKeyName): Promise<SenderKeyRecord>;

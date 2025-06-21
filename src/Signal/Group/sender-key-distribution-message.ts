@@ -1,5 +1,5 @@
-import { proto } from '../../WAProto';
-import { CiphertextMessage } from './ciphertext_message';
+import { proto } from '../../../WAProto';
+import { CiphertextMessage } from './ciphertext-message';
 
 interface SenderKeyDistributionMessageStructure {
     id: number;

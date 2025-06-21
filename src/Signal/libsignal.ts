@@ -3,10 +3,10 @@ import { SignalAuthState } from '../Types'
 import { SignalRepository } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import { jidDecode } from '../WABinary'
-import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from '../WASignalGroup'
-import type { SenderKeyStore } from '../WASignalGroup/group_cipher'
-import { SenderKeyName } from '../WASignalGroup/sender_key_name'
-import { SenderKeyRecord } from '../WASignalGroup/sender_key_record'
+import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from './Group'
+import type { SenderKeyStore } from './Group/group_cipher'
+import { SenderKeyName } from './Group/sender-key-name'
+import { SenderKeyRecord } from './Group/sender-key-record'
 
 export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository {
 	const storage: SenderKeyStore = signalStorage(auth)
@@ -111,7 +111,7 @@ function signalStorage({ creds, keys }: SignalAuthState): SenderKeyStore & Recor
 				return libsignal.SessionRecord.deserialize(sess)
 			}
 		},
-		storeSession: async (id, session) => {
+		storeSession: async (id: string, session: libsignal.SessionRecord) => {
 			await keys.set({ session: { [id]: session.serialize() } })
 		},
 		isTrustedIdentity: () => {
@@ -144,7 +144,7 @@ function signalStorage({ creds, keys }: SignalAuthState): SenderKeyStore & Recor
 
 			return new SenderKeyRecord()
 		},
-		storeSenderKey: async (senderKeyName, key) => {
+		storeSenderKey: async (senderKeyName: SenderKeyName, key: SenderKeyRecord) => {
 			const keyId = senderKeyName.toString()
 			const serialized = JSON.stringify(key.serialize())
 			await keys.set({ 'sender-key': { [keyId]: Buffer.from(serialized, 'utf-8') } })

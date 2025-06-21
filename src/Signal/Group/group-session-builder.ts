@@ -1,6 +1,6 @@
-import { SenderKeyName } from './sender_key_name';
-import { SenderKeyRecord } from './sender_key_record';
-import { SenderKeyDistributionMessage } from './sender_key_distribution_message';
+import { SenderKeyName } from './sender-key-name';
+import { SenderKeyRecord } from './sender-key-record';
+import { SenderKeyDistributionMessage } from './sender-key-distribution-message';
 import * as keyhelper from './keyhelper';
 
 interface SenderKeyStore {

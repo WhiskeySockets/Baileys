@@ -1,5 +1,5 @@
-import { SenderKeyState } from './sender_key_state';
-import { BufferJSON } from '../Utils/generics';
+import { SenderKeyState } from './sender-key-state';
+import { BufferJSON } from '../../Utils/generics';
 
 export interface SenderKeyStateStructure {
     senderKeyId: number;

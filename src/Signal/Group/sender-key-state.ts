@@ -1,5 +1,5 @@
-import { SenderChainKey } from './sender_chain_key';
-import { SenderMessageKey } from './sender_message_key';
+import { SenderChainKey } from './sender-chain-key';
+import { SenderMessageKey } from './sender-message-key';
 
 interface SenderChainKeyStructure {
     iteration: number;
