@@ -1,6 +1,6 @@
-// vim: ts=4:sw=4
+// @ts-nocheck
 
-const BaseKeyType = require('./base_key_type')
+import BaseKeyType from './base_key_type'
 
 const CLOSED_SESSIONS_MAX = 40
 const SESSION_RECORD_VERSION = 'v1'
@@ -17,7 +17,7 @@ class SessionEntry {
 	}
 
 	toString() {
-		const baseKey = this.indexInfo && this.indexInfo.baseKey && this.indexInfo.baseKey.toString('base64')
+		const baseKey = this.indexInfo?.baseKey?.toString('base64')
 		return `<SessionEntry [baseKey=${baseKey}]>`
 	}
 
@@ -31,6 +31,7 @@ class SessionEntry {
 		if (this._chains.hasOwnProperty(id)) {
 			throw new Error('Overwrite attempt')
 		}
+
 		this._chains[id] = value
 	}
 
@@ -45,6 +46,7 @@ class SessionEntry {
 		if (!this._chains.hasOwnProperty(id)) {
 			throw new ReferenceError('Not Found')
 		}
+
 		delete this._chains[id]
 	}
 
@@ -80,6 +82,7 @@ class SessionEntry {
 			data.pendingPreKey = Object.assign({}, this.pendingPreKey)
 			data.pendingPreKey.baseKey = this.pendingPreKey.baseKey.toString('base64')
 		}
+
 		return data
 	}
 
@@ -108,6 +111,7 @@ class SessionEntry {
 			obj.pendingPreKey = Object.assign({}, data.pendingPreKey)
 			obj.pendingPreKey.baseKey = Buffer.from(data.pendingPreKey.baseKey, 'base64')
 		}
+
 		return obj
 	}
 
@@ -119,15 +123,17 @@ class SessionEntry {
 			for (const [idx, key] of Object.entries(c.messageKeys)) {
 				messageKeys[idx] = key.toString('base64')
 			}
+
 			r[key] = {
 				chainKey: {
 					counter: c.chainKey.counter,
-					key: c.chainKey.key && c.chainKey.key.toString('base64')
+					key: c.chainKey.key?.toString('base64')
 				},
 				chainType: c.chainType,
 				messageKeys: messageKeys
 			}
 		}
+
 		return r
 	}
 
@@ -139,6 +145,7 @@ class SessionEntry {
 			for (const [idx, key] of Object.entries(c.messageKeys)) {
 				messageKeys[idx] = Buffer.from(key, 'base64')
 			}
+
 			r[key] = {
 				chainKey: {
 					counter: c.chainKey.counter,
@@ -148,6 +155,7 @@ class SessionEntry {
 				messageKeys: messageKeys
 			}
 		}
+
 		return r
 	}
 }
@@ -155,7 +163,7 @@ class SessionEntry {
 const migrations = [
 	{
 		version: 'v1',
-		migrate: function migrateV1(data) {
+		migrate: function (data) {
 			const sessions = data._sessions
 			if (data.registrationId) {
 				for (const key in sessions) {
@@ -194,6 +202,7 @@ class SessionRecord {
 				run = true
 			}
 		}
+
 		if (!run) {
 			throw new Error('Error migrating SessionRecord')
 		}
@@ -203,12 +212,14 @@ class SessionRecord {
 		if (data.version !== SESSION_RECORD_VERSION) {
 			this.migrate(data)
 		}
+
 		const obj = new this()
 		if (data._sessions) {
 			for (const [key, entry] of Object.entries(data._sessions)) {
 				obj.sessions[key] = SessionEntry.deserialize(entry)
 			}
 		}
+
 		return obj
 	}
 
@@ -222,6 +233,7 @@ class SessionRecord {
 		for (const [key, entry] of Object.entries(this.sessions)) {
 			_sessions[key] = entry.serialize()
 		}
+
 		return {
 			_sessions,
 			version: this.version
@@ -239,6 +251,7 @@ class SessionRecord {
 		if (session && session.indexInfo.baseKeyType === BaseKeyType.OURS) {
 			throw new Error('Tried to lookup a session using our basekey')
 		}
+
 		return session
 	}
 
@@ -268,6 +281,7 @@ class SessionRecord {
 			console.warn('Session already closed', session)
 			return
 		}
+
 		console.info('Closing session:', session)
 		session.indexInfo.closed = Date.now()
 	}
@@ -276,6 +290,7 @@ class SessionRecord {
 		if (!this.isClosed(session)) {
 			console.warn('Session already open')
 		}
+
 		console.info('Opening session:', session)
 		session.indexInfo.closed = -1
 	}
@@ -297,6 +312,7 @@ class SessionRecord {
 					oldestSession = session
 				}
 			}
+
 			if (oldestKey) {
 				console.info('Removing old closed session:', oldestSession)
 				delete this.sessions[oldestKey]
@@ -313,4 +329,4 @@ class SessionRecord {
 	}
 }
 
-module.exports = SessionRecord
+export default SessionRecord

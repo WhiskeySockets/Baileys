@@ -1,14 +1,14 @@
 // @ts-nocheck
 
 import { proto } from '../../../WAProto'
-import ChainType from './chain_type.js'
-import crypto from './crypto.js'
-import curve from './curve.js'
-import errors from './errors.js'
-import ProtocolAddress from './protocol_address.js'
-import queueJob from './queue_job.js'
-import SessionBuilder from './session_builder.js'
-import SessionRecord from './session_record.js'
+import ChainType from './chain_type'
+import * as crypto from './crypto'
+import * as curve from './curve'
+import * as errors from './errors'
+import ProtocolAddress from './protocol_address'
+import queueJob from './queue_job'
+import SessionBuilder from './session_builder'
+import SessionRecord from './session_record'
 
 const VERSION = 3
 

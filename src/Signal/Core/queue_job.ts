@@ -1,4 +1,4 @@
-// vim: ts=4:sw=4:expandtab
+// @ts-nocheck
 
 /*
  * jobQueue manages multiple queues indexed by device to serialize
@@ -11,8 +11,9 @@ const _gcLimit = 10000
 
 async function _asyncQueueExecutor(queue, cleanup) {
 	let offt = 0
+	// eslint-disable-next-line no-constant-condition
 	while (true) {
-		let limit = Math.min(queue.length, _gcLimit) // Break up thundering hurds for GC duty.
+		const limit = Math.min(queue.length, _gcLimit) // Break up thundering hurds for GC duty.
 		for (let i = offt; i < limit; i++) {
 			const job = queue[i]
 			try {
@@ -21,6 +22,7 @@ async function _asyncQueueExecutor(queue, cleanup) {
 				job.reject(e)
 			}
 		}
+
 		if (limit < queue.length) {
 			/* Perform lazy GC of queue for faster iteration. */
 			if (limit >= _gcLimit) {
@@ -33,10 +35,11 @@ async function _asyncQueueExecutor(queue, cleanup) {
 			break
 		}
 	}
+
 	cleanup()
 }
 
-module.exports = function (bucket, awaitable) {
+export default function (bucket, awaitable) {
 	/* Run the async awaitable only when all other async calls registered
 	 * here have completed (or thrown).  The bucket argument is a hashable
 	 * key representing the task queue to use. */
@@ -49,11 +52,13 @@ module.exports = function (bucket, awaitable) {
 			console.warn('Unhandled bucket type (for naming):', typeof bucket, bucket)
 		}
 	}
+
 	let inactive
 	if (!_queueAsyncBuckets.has(bucket)) {
 		_queueAsyncBuckets.set(bucket, [])
 		inactive = true
 	}
+
 	const queue = _queueAsyncBuckets.get(bucket)
 	const job = new Promise((resolve, reject) =>
 		queue.push({
@@ -66,5 +71,6 @@ module.exports = function (bucket, awaitable) {
 		/* An executor is not currently active; Start one now. */
 		_asyncQueueExecutor(queue, () => _queueAsyncBuckets.delete(bucket))
 	}
+
 	return job
 }

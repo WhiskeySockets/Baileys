@@ -1,4 +1,6 @@
-const crypto = require('./crypto.js')
+// @ts-nocheck
+
+import * as crypto from './crypto'
 
 var VERSION = 0
 
@@ -28,6 +30,7 @@ function getEncodedChunk(hash, offset) {
 	while (s.length < 5) {
 		s = '0' + s
 	}
+
 	return s
 }
 
@@ -45,11 +48,11 @@ async function getDisplayStringFor(identifier, key, iterations) {
 	)
 }
 
-exports.FingerprintGenerator = function (iterations) {
+export function FingerprintGenerator(iterations) {
 	this.iterations = iterations
 }
 
-exports.FingerprintGenerator.prototype = {
+FingerprintGenerator.prototype = {
 	createFor: function (localIdentifier, localIdentityKey, remoteIdentifier, remoteIdentityKey) {
 		if (
 			typeof localIdentifier !== 'string' ||

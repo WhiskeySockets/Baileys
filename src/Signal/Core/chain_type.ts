@@ -3,4 +3,4 @@ const ChainType = {
 	RECEIVING: 2
 }
 
-module.exports = ChainType
+export default ChainType

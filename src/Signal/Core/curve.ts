@@ -1,7 +1,7 @@
-'use strict'
+// @ts-nocheck
 
-const curveJs = require('curve25519-js')
-const nodeCrypto = require('crypto')
+import * as curveJs from 'curve25519-js'
+import nodeCrypto from 'node:crypto'
 // from: https://github.com/digitalbazaar/x25519-key-agreement-key-2019/blob/master/lib/crypto.js
 const PUBLIC_KEY_DER_PREFIX = Buffer.from([48, 42, 48, 5, 6, 3, 43, 101, 110, 3, 33, 0])
 
@@ -9,6 +9,7 @@ const PRIVATE_KEY_DER_PREFIX = Buffer.from([48, 46, 2, 1, 0, 48, 5, 6, 3, 43, 10
 
 const KEY_BUNDLE_TYPE = Buffer.from([5])
 
+// eslint-disable-next-line func-style
 const prefixKeyInPublicKey = function (pubKey) {
 	return Buffer.concat([KEY_BUNDLE_TYPE, pubKey])
 }
@@ -17,10 +18,12 @@ function validatePrivKey(privKey) {
 	if (privKey === undefined) {
 		throw new Error('Undefined private key')
 	}
+
 	if (!(privKey instanceof Buffer)) {
 		throw new Error(`Invalid private key type: ${privKey.constructor.name}`)
 	}
-	if (privKey.byteLength != 32) {
+
+	if (privKey.byteLength !== 32) {
 		throw new Error(`Incorrect private key length: ${privKey.byteLength}`)
 	}
 }
@@ -29,10 +32,12 @@ function scrubPubKeyFormat(pubKey) {
 	if (!(pubKey instanceof Buffer)) {
 		throw new Error(`Invalid public key type: ${pubKey.constructor.name}`)
 	}
-	if (pubKey === undefined || ((pubKey.byteLength != 33 || pubKey[0] != 5) && pubKey.byteLength != 32)) {
+
+	if (pubKey === undefined || ((pubKey.byteLength !== 33 || pubKey[0] !== 5) && pubKey.byteLength !== 32)) {
 		throw new Error('Invalid public key')
 	}
-	if (pubKey.byteLength == 33) {
+
+	if (pubKey.byteLength === 33) {
 		return pubKey.slice(1)
 	} else {
 		console.error('WARNING: Expected pubkey of length 33, please report the ST and client that generated the pubkey')
@@ -53,13 +58,13 @@ function unclampEd25519PrivateKey(clampedSk) {
 	return unclampedSk
 }
 
-exports.getPublicFromPrivateKey = function (privKey) {
+export function getPublicFromPrivateKey(privKey) {
 	const unclampedPK = unclampEd25519PrivateKey(privKey)
 	const keyPair = curveJs.generateKeyPair(unclampedPK)
 	return prefixKeyInPublicKey(Buffer.from(keyPair.public))
 }
 
-exports.generateKeyPair = function () {
+export function generateKeyPair() {
 	try {
 		const { publicKey: publicDerBytes, privateKey: privateDerBytes } = nodeCrypto.generateKeyPairSync('x25519', {
 			publicKeyEncoding: { format: 'der', type: 'spki' },
@@ -82,10 +87,10 @@ exports.generateKeyPair = function () {
 	}
 }
 
-exports.calculateAgreement = function (pubKey, privKey) {
+export function calculateAgreement(pubKey, privKey) {
 	pubKey = scrubPubKeyFormat(pubKey)
 	validatePrivKey(privKey)
-	if (!pubKey || pubKey.byteLength != 32) {
+	if (!pubKey || pubKey.byteLength !== 32) {
 		throw new Error('Invalid public key')
 	}
 
@@ -111,24 +116,28 @@ exports.calculateAgreement = function (pubKey, privKey) {
 	}
 }
 
-exports.calculateSignature = function (privKey, message) {
+export function calculateSignature(privKey, message) {
 	validatePrivKey(privKey)
 	if (!message) {
 		throw new Error('Invalid message')
 	}
+
 	return Buffer.from(curveJs.sign(privKey, message))
 }
 
-exports.verifySignature = function (pubKey, msg, sig, isInit) {
+export function verifySignature(pubKey, msg, sig, isInit = false) {
 	pubKey = scrubPubKeyFormat(pubKey)
-	if (!pubKey || pubKey.byteLength != 32) {
+	if (!pubKey || pubKey.byteLength !== 32) {
 		throw new Error('Invalid public key')
 	}
+
 	if (!msg) {
 		throw new Error('Invalid message')
 	}
-	if (!sig || sig.byteLength != 64) {
+
+	if (!sig || sig.byteLength !== 64) {
 		throw new Error('Invalid signature')
 	}
+
 	return isInit ? true : curveJs.verify(pubKey, msg, sig)
 }
