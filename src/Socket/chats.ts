@@ -215,11 +215,21 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	const onWhatsApp = async (...jids: string[]) => {
-		const usyncQuery = new USyncQuery().withContactProtocol().withLIDProtocol()
+		const usyncQuery = new USyncQuery()
+			.withContactProtocol()
+			.withLIDProtocol()
 
 		for (const jid of jids) {
-			const phone = `+${jid.replace('+', '').split('@')[0].split(':')[0]}`
-			usyncQuery.withUser(new USyncUser().withPhone(phone))
+			const withAt = jid.includes('@')
+			const [user, domain] = jid.split('@')
+			if (domain === 'lid') {
+				usyncQuery.withUser(new USyncUser().withLid(jid))
+			} else if (domain === 's.whatsapp.net') {
+				usyncQuery.withUser(new USyncUser().withId(jid))
+			} else {
+				const phone = `+${jid.replace('+', '').split('@')[0].split(':')[0]}`
+				usyncQuery.withUser(new USyncUser().withPhone(phone))
+			}
 		}
 
 		const results = await sock.executeUSyncQuery(usyncQuery)
