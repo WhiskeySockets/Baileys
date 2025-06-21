@@ -40,11 +40,11 @@ type SignedPreKey = PreKey & {
 	signature: Uint8Array
 }
 
-type E2ESession = {
+export type E2ESession = {
 	registrationId: number
 	identityKey: Uint8Array
 	signedPreKey: SignedPreKey
-	preKey: PreKey
+	preKey?: PreKey
 }
 
 type E2ESessionOpts = {
@@ -69,7 +69,7 @@ export type SignalRepository = {
 }
 
 // @TODO: later we need to merge the type from src/Types/Auth.ts
-type KeyPair = {
+export type SignalKeyPair = {
 	pubKey: Buffer
 	privKey: Buffer
 }
@@ -80,13 +80,13 @@ export interface SignalSessionStore {
 
 	isTrustedIdentity(id: string, identityKey: Uint8Array): Promise<boolean>
 
-	loadPreKey(id: number | string): Promise<KeyPair | undefined>
+	loadPreKey(id: number | string): Promise<SignalKeyPair | undefined>
 	removePreKey(id: number): Promise<void>
 
-	loadSignedPreKey(id: number | string): Promise<KeyPair>
+	loadSignedPreKey(id: number | string): Promise<SignalKeyPair>
 
 	getOurRegistrationId(): Promise<number>
-	getOurIdentity(): Promise<KeyPair>
+	getOurIdentity(): Promise<SignalKeyPair>
 
 	loadSenderKey(senderKeyName: SenderKeyName): Promise<SenderKeyRecord>
 	storeSenderKey(senderKeyName: SenderKeyName, record: SenderKeyRecord): Promise<void>

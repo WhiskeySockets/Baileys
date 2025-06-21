@@ -49,12 +49,10 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 			let result: Buffer
 			switch (type) {
 				case 'pkmsg':
-					// @ts-expect-error fix later
-					result = await session.decryptPreKeyWhisperMessage(ciphertext)
+					result = await session.decryptPreKeyWhisperMessage(Buffer.from(ciphertext))
 					break
 				case 'msg':
-					// @ts-expect-error fix later
-					result = await session.decryptWhisperMessage(ciphertext)
+					result = await session.decryptWhisperMessage(Buffer.from(ciphertext))
 					break
 				default:
 					throw new Error(`Unknown message type: ${type}`)
@@ -65,10 +63,9 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 		async encryptMessage({ jid, data }) {
 			const addr = jidToSignalProtocolAddress(jid)
 			const cipher = new SessionCipher(signalStore, addr)
-			// @ts-expect-error fix later
-			const { type: sigType, body } = await cipher.encrypt(data)
+			const { type: sigType, body } = await cipher.encrypt(Buffer.from(data))
 			const type = sigType === 3 ? 'pkmsg' : 'msg'
-			return { type, ciphertext: Buffer.from(body, 'binary') }
+			return { type, ciphertext: body }
 		},
 		async encryptGroupMessage({ group, meId, data }) {
 			const senderName = jidToSignalSenderKeyName(group, meId)
@@ -113,12 +110,21 @@ function signalStorage({ creds, keys }: SignalAuthState): SignalSessionStore {
 		loadSession: async (id: string) => {
 			const { [id]: sess } = await keys.get('session', [id])
 			if (sess) {
-				return SessionRecord.deserialize(sess)
+				let data
+				if (Buffer.isBuffer(sess)) {
+					data = JSON.parse(sess.toString('utf-8'))
+				} else if (typeof sess === 'string') {
+					data = JSON.parse(sess)
+				} else {
+					data = sess
+				}
+
+				return SessionRecord.deserialize(data)
 			}
 		},
 		storeSession: async (id: string, session: SessionRecord) => {
-			// @ts-expect-error fix later
-			await keys.set({ session: { [id]: session.serialize() } })
+			const serialized = JSON.stringify(session.serialize())
+			await keys.set({ session: { [id]: Buffer.from(serialized, 'utf-8') } })
 		},
 		isTrustedIdentity: async () => {
 			return true

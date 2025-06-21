@@ -1,10 +1,10 @@
 class SignalError extends Error {}
 
 export class UntrustedIdentityKeyError extends SignalError {
-	public addr: any
-	public identityKey: any
+	public addr: string
+	public identityKey: Uint8Array
 
-	constructor(addr: any, identityKey: any) {
+	constructor(addr: string, identityKey: Uint8Array) {
 		super()
 		this.name = 'UntrustedIdentityKeyError'
 		this.addr = addr
@@ -13,21 +13,21 @@ export class UntrustedIdentityKeyError extends SignalError {
 }
 
 export class SessionError extends SignalError {
-	constructor(message) {
+	constructor(message?: string) {
 		super(message)
 		this.name = 'SessionError'
 	}
 }
 
 export class MessageCounterError extends SessionError {
-	constructor(message) {
+	constructor(message?: string) {
 		super(message)
 		this.name = 'MessageCounterError'
 	}
 }
 
 export class PreKeyError extends SessionError {
-	constructor(message) {
+	constructor(message?: string) {
 		super(message)
 		this.name = 'PreKeyError'
 	}

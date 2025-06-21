@@ -1,7 +1,6 @@
 import * as nodeCrypto from 'crypto'
 import { generateKeyPair } from '../../crypto'
-
-type KeyPairType = ReturnType<typeof generateKeyPair>
+import { SignalKeyPair } from '../../Types'
 
 export function generateSenderKey(): Buffer {
 	return nodeCrypto.randomBytes(32)
@@ -16,7 +15,7 @@ interface SigningKeyPair {
 	private: Buffer
 }
 
-export function generateSenderSigningKey(key?: KeyPairType): SigningKeyPair {
+export function generateSenderSigningKey(key?: SignalKeyPair): SigningKeyPair {
 	if (!key) {
 		key = generateKeyPair()
 	}

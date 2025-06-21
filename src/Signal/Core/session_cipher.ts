@@ -7,7 +7,8 @@ import ChainType from './chain_type'
 import * as errors from './errors'
 import ProtocolAddress from './protocol_address'
 import SessionBuilder from './session_builder'
-import SessionRecord from './session_record'
+import SessionRecord, { Chain } from './session_record'
+import { SessionEntry } from './session_record'
 
 const VERSION = 3
 
@@ -24,7 +25,7 @@ class SessionCipher {
 		this.storage = storage
 	}
 
-	_encodeTupleByte(number1, number2) {
+	_encodeTupleByte(number1: number, number2: number) {
 		if (number1 > 15 || number2 > 15) {
 			throw TypeError('Numbers must be 4 bits or less')
 		}
@@ -32,7 +33,7 @@ class SessionCipher {
 		return (number1 << 4) | number2
 	}
 
-	_decodeTupleByte(byte) {
+	_decodeTupleByte(byte: number) {
 		return [byte >> 4, byte & 0xf]
 	}
 
@@ -49,16 +50,16 @@ class SessionCipher {
 		return record
 	}
 
-	async storeRecord(record) {
+	async storeRecord(record: SessionRecord) {
 		record.removeOldSessions()
 		await this.storage.storeSession(this.addr.toString(), record)
 	}
 
-	async queueJob(awaitable) {
+	async queueJob<T>(awaitable: () => Promise<T>) {
 		return await queueJob(this.addr.toString(), awaitable)
 	}
 
-	async encrypt(data) {
+	async encrypt(data: Buffer) {
 		const ourIdentityKey = await this.storage.getOurIdentity()
 		return await this.queueJob(async () => {
 			const record = await this.getRecord()
@@ -77,6 +78,10 @@ class SessionCipher {
 			}
 
 			const chain = session.getChain(session.currentRatchet.ephemeralKeyPair.pubKey)
+			if (!chain) {
+				throw new Error('No chain found for current ephemeral key')
+			}
+
 			if (chain.chainType === ChainType.RECEIVING) {
 				throw new Error('Tried to encrypt on a receiving chain')
 			}
@@ -105,7 +110,7 @@ class SessionCipher {
 			result.set(msgBuf, 1)
 			result.set(mac.slice(0, 8), msgBuf.byteLength + 1)
 			await this.storeRecord(record)
-			let type, body
+			let type: number, body: Buffer
 			if (session.pendingPreKey) {
 				type = 3 // prekey bundle
 				const preKeyMsg = proto.PreKeySignalMessage.create({
@@ -136,18 +141,18 @@ class SessionCipher {
 		})
 	}
 
-	async decryptWithSessions(data, sessions) {
+	async decryptWithSessions(data: Uint8Array, sessions: SessionEntry[]) {
 		// Iterate through the sessions, attempting to decrypt using each one.
 		// Stop and return the result if we get a valid result.
 		if (!sessions.length) {
 			throw new errors.SessionError('No sessions available')
 		}
 
-		const errs: any[] = []
+		const errs: unknown[] = []
 		for (const session of sessions) {
-			let plaintext
+			let plaintext: Buffer
 			try {
-				plaintext = await this.doDecryptWhisperMessage(data, session)
+				plaintext = await this.doDecryptWhisperMessage(Buffer.from(data), session)
 				session.indexInfo.used = Date.now()
 				return {
 					session,
@@ -166,7 +171,7 @@ class SessionCipher {
 		throw new errors.SessionError('No matching sessions found for message')
 	}
 
-	async decryptWhisperMessage(data) {
+	async decryptWhisperMessage(data: Buffer) {
 		return await this.queueJob(async () => {
 			const record = await this.getRecord()
 			if (!record) {
@@ -193,7 +198,7 @@ class SessionCipher {
 		})
 	}
 
-	async decryptPreKeyWhisperMessage(data) {
+	async decryptPreKeyWhisperMessage(data: Buffer) {
 		const versions = this._decodeTupleByte(data[0])
 		if (versions[1] > 3 || versions[0] < 3) {
 			// min version > 3 or max version < 3
@@ -214,7 +219,7 @@ class SessionCipher {
 			const builder = new SessionBuilder(this.storage, this.addr)
 			const preKeyId = await builder.initIncoming(record, preKeyProto)
 			const session = record.getSession(preKeyProto.baseKey)
-			const plaintext = await this.doDecryptWhisperMessage(preKeyProto.message, session)
+			const plaintext = await this.doDecryptWhisperMessage(Buffer.from(preKeyProto.message!), session)
 			await this.storeRecord(record)
 			if (preKeyId) {
 				await this.storage.removePreKey(preKeyId)
@@ -224,7 +229,7 @@ class SessionCipher {
 		})
 	}
 
-	async doDecryptWhisperMessage(messageBuffer, session) {
+	async doDecryptWhisperMessage(messageBuffer: Buffer, session?: SessionEntry) {
 		if (!session) {
 			throw new TypeError('session required')
 		}
@@ -237,14 +242,22 @@ class SessionCipher {
 
 		const messageProto = messageBuffer.slice(1, -8)
 		const message = proto.SignalMessage.decode(messageProto)
-		this.maybeStepRatchet(session, message.ratchetKey, message.previousCounter)
-		const chain = session.getChain(message.ratchetKey)
-		if (chain.chainType === ChainType.SENDING) {
+		this.maybeStepRatchet(session, Buffer.from(message.ratchetKey!), message.previousCounter!)
+		const chain = session.getChain(Buffer.from(message.ratchetKey!))
+		if (chain?.chainType === ChainType.SENDING) {
 			throw new Error('Tried to decrypt on a sending chain')
 		}
 
+		if (!chain) {
+			throw new errors.SessionError('No chain found for ratchet key')
+		}
+
+		if (!message.counter) {
+			throw new errors.MessageCounterError('Message counter is missing')
+		}
+
 		this.fillMessageKeys(chain, message.counter)
-		if (!chain.messageKeys.hasOwnProperty(message.counter)) {
+		if (!chain?.messageKeys.hasOwnProperty(message.counter)) {
 			// Most likely the message was already decrypted and we are trying to process
 			// twice.  This can happen if the user restarts before the server gets an ACK.
 			throw new errors.MessageCounterError('Key used already or never filled')
@@ -280,7 +293,7 @@ class SessionCipher {
 		return plaintext
 	}
 
-	fillMessageKeys(chain, counter) {
+	fillMessageKeys(chain: Chain, counter: number) {
 		if (chain.chainKey.counter >= counter) {
 			return
 		}
@@ -300,7 +313,7 @@ class SessionCipher {
 		return this.fillMessageKeys(chain, counter)
 	}
 
-	maybeStepRatchet(session, remoteKey, previousCounter) {
+	maybeStepRatchet(session: SessionEntry, remoteKey: Buffer, previousCounter: number) {
 		if (session.getChain(remoteKey)) {
 			return
 		}
@@ -325,7 +338,7 @@ class SessionCipher {
 		ratchet.lastRemoteEphemeralKey = remoteKey
 	}
 
-	calculateRatchet(session, remoteKey, sending) {
+	calculateRatchet(session: SessionEntry, remoteKey: Buffer, sending: boolean) {
 		const ratchet = session.currentRatchet
 		const sharedSecret = curve.calculateAgreement(remoteKey, ratchet.ephemeralKeyPair.privKey)
 		const masterKey = crypto.deriveSecrets(sharedSecret, ratchet.rootKey, Buffer.from('WhisperRatchet'), /*chunks*/ 2)
