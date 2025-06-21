@@ -6,10 +6,10 @@ interface QueueJob<T> {
 	reject: (reason?: unknown) => void
 }
 
-const _queueAsyncBuckets = new Map<string | number, Array<QueueJob<any>>>()
+const _queueAsyncBuckets = new Map<string | number, Array<QueueJob<unknown>>>()
 const _gcLimit = 10000
 
-async function _asyncQueueExecutor(queue: Array<QueueJob<any>>, cleanup: () => void): Promise<void> {
+async function _asyncQueueExecutor(queue: Array<QueueJob<unknown>>, cleanup: () => void): Promise<void> {
 	let offt = 0
 	// eslint-disable-next-line no-constant-condition
 	while (true) {
@@ -54,7 +54,7 @@ export default function queueJob<T>(bucket: string | number, awaitable: () => Pr
 	const job = new Promise<T>((resolve, reject) => {
 		queue.push({
 			awaitable,
-			resolve: resolve as (value: any) => void,
+			resolve: resolve as (value: T) => void,
 			reject
 		})
 	})
