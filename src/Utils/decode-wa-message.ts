@@ -118,7 +118,7 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 		key,
 		attrs: {
 			id: participant_pn ?? participant_lid,
-			addressing_mode
+			addressingMode: addressing_mode as 'pn' | 'lid'
 		},
 		messageTimestamp: +stanza.attrs.t,
 		pushName: pushname,

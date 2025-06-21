@@ -52658,7 +52658,7 @@ export namespace proto {
         /** WebMessageInfo attrs give opposite id of addressingMode */
         attrs?: {
             id?: string
-            addressing_mode: 'pn' | 'lid'
+            addressingMode: 'pn' | 'lid'
         }
 
         /** WebMessageInfo message */
