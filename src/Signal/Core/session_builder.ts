@@ -144,7 +144,7 @@ class SessionBuilder {
 		const ourIdentityKey = await this.storage.getOurIdentity()
 		const a1 = curve.calculateAgreement(Buffer.from(theirSignedPubKey!), ourIdentityKey.privKey)
 		const a2 = curve.calculateAgreement(Buffer.from(theirIdentityPubKey), ourSignedKey!.privKey)
-		const a3 = curve.calculateAgreement(Buffer.from(theirIdentityPubKey), ourSignedKey!.privKey)
+		const a3 = curve.calculateAgreement(Buffer.from(theirSignedPubKey!), ourSignedKey!.privKey)
 		if (isInitiator) {
 			sharedSecret.set(new Uint8Array(a1), 32)
 			sharedSecret.set(new Uint8Array(a2), 32 * 2)
