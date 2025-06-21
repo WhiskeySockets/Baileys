@@ -1,5 +1,5 @@
-import { calculateSignature, verifySignature } from 'libsignal/src/curve'
 import { proto } from '../../../WAProto'
+import { calculateSignature, verifySignature } from '../../crypto'
 import { CiphertextMessage } from './ciphertext-message'
 
 interface SenderKeyMessageStructure {
@@ -78,12 +78,12 @@ export class SenderKeyMessage extends CiphertextMessage {
 	public verifySignature(signatureKey: Uint8Array): void {
 		const part1 = this.serialized.slice(0, this.serialized.length - this.SIGNATURE_LENGTH)
 		const part2 = this.serialized.slice(-1 * this.SIGNATURE_LENGTH)
-		const res = verifySignature(signatureKey, part1, part2)
+		const res = verifySignature(Buffer.from(signatureKey), Buffer.from(part1), Buffer.from(part2))
 		if (!res) throw new Error('Invalid signature!')
 	}
 
 	private getSignature(signatureKey: Uint8Array, serialized: Uint8Array): Uint8Array {
-		return Buffer.from(calculateSignature(signatureKey, serialized))
+		return Buffer.from(calculateSignature(Buffer.from(signatureKey), Buffer.from(serialized)))
 	}
 
 	public serialize(): Uint8Array {

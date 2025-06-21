@@ -1,5 +1,6 @@
 import { AxiosRequestConfig } from 'axios'
 import { proto } from '../../WAProto'
+import { aesDecryptGCM, hmacSign } from '../crypto'
 import {
 	AuthenticationCreds,
 	BaileysEventEmitter,
@@ -14,7 +15,6 @@ import {
 } from '../Types'
 import { getContentType, normalizeMessageContent } from '../Utils/messages'
 import { areJidsSameUser, isJidBroadcast, isJidStatusBroadcast, jidNormalizedUser } from '../WABinary'
-import { aesDecryptGCM, hmacSign } from './crypto'
 import { toNumber } from './generics'
 import { downloadAndProcessHistorySyncNotification } from './history'
 import { ILogger } from './logger'

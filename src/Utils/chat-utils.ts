@@ -1,6 +1,7 @@
 import { Boom } from '@hapi/boom'
 import { AxiosRequestConfig } from 'axios'
 import { proto } from '../../WAProto'
+import { aesDecrypt, aesEncrypt, hkdf, hmacSign } from '../crypto'
 import {
 	BaileysEventEmitter,
 	Chat,
@@ -23,7 +24,6 @@ import {
 	isJidUser,
 	jidNormalizedUser
 } from '../WABinary'
-import { aesDecrypt, aesEncrypt, hkdf, hmacSign } from './crypto'
 import { toNumber } from './generics'
 import { ILogger } from './logger'
 import { LT_HASH_ANTI_TAMPERING } from './lt-hash'

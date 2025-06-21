@@ -1,17 +1,12 @@
+import { SignalSessionStore } from '../../Types/Signal'
 import * as keyhelper from './keyhelper'
 import { SenderKeyDistributionMessage } from './sender-key-distribution-message'
 import { SenderKeyName } from './sender-key-name'
-import { SenderKeyRecord } from './sender-key-record'
-
-interface SenderKeyStore {
-	loadSenderKey(senderKeyName: SenderKeyName): Promise<SenderKeyRecord>
-	storeSenderKey(senderKeyName: SenderKeyName, record: SenderKeyRecord): Promise<void>
-}
 
 export class GroupSessionBuilder {
-	private readonly senderKeyStore: SenderKeyStore
+	private readonly senderKeyStore: SignalSessionStore
 
-	constructor(senderKeyStore: SenderKeyStore) {
+	constructor(senderKeyStore: SignalSessionStore) {
 		this.senderKeyStore = senderKeyStore
 	}
 

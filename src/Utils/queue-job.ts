@@ -1,13 +1,15 @@
+// Type-safe async job queue utility for serializing operations per bucket key.
+
 interface QueueJob<T> {
 	awaitable: () => Promise<T>
 	resolve: (value: T | PromiseLike<T>) => void
 	reject: (reason?: unknown) => void
 }
 
-const _queueAsyncBuckets = new Map<string | number, Array<QueueJob<any>>>()
+const _queueAsyncBuckets = new Map<string | number, Array<QueueJob<unknown>>>()
 const _gcLimit = 10000
 
-async function _asyncQueueExecutor(queue: Array<QueueJob<any>>, cleanup: () => void): Promise<void> {
+async function _asyncQueueExecutor(queue: Array<QueueJob<unknown>>, cleanup: () => void): Promise<void> {
 	let offt = 0
 	// eslint-disable-next-line no-constant-condition
 	while (true) {
@@ -36,12 +38,12 @@ async function _asyncQueueExecutor(queue: Array<QueueJob<any>>, cleanup: () => v
 	cleanup()
 }
 
+/**
+ * Serializes async operations for a given bucket key.
+ * @param bucket string or number key to identify the queue
+ * @param awaitable async function to execute
+ */
 export default function queueJob<T>(bucket: string | number, awaitable: () => Promise<T>): Promise<T> {
-	// Skip name assignment since it's readonly in strict mode
-	if (typeof bucket !== 'string') {
-		console.warn('Unhandled bucket type (for naming):', typeof bucket, bucket)
-	}
-
 	let inactive = false
 	if (!_queueAsyncBuckets.has(bucket)) {
 		_queueAsyncBuckets.set(bucket, [])
@@ -52,7 +54,7 @@ export default function queueJob<T>(bucket: string | number, awaitable: () => Pr
 	const job = new Promise<T>((resolve, reject) => {
 		queue.push({
 			awaitable,
-			resolve: resolve as (value: any) => void,
+			resolve: resolve as (value: T) => void,
 			reject
 		})
 	})
