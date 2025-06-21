@@ -1,12 +1,12 @@
 // @ts-nocheck
 
 import { proto } from '../../../WAProto'
+import queueJob from '../../Utils/queue-job'
 import ChainType from './chain_type'
 import * as crypto from './crypto'
 import * as curve from './curve'
 import * as errors from './errors'
 import ProtocolAddress from './protocol_address'
-import queueJob from './queue_job'
 import SessionBuilder from './session_builder'
 import SessionRecord from './session_record'
 

@@ -1,5 +1,5 @@
+import queueJob from '../../Utils/queue-job'
 import { decrypt, encrypt } from '../Core/crypto'
-import queueJob from './queue-job'
 import { SenderKeyMessage } from './sender-key-message'
 import { SenderKeyName } from './sender-key-name'
 import { SenderKeyRecord } from './sender-key-record'
