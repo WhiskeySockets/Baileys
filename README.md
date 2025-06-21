@@ -28,7 +28,7 @@ Use at your own discretion. Do not spam people with this. We discourage any stal
 ##
 
 - Baileys does not require Selenium or any other browser to be interface with WhatsApp Web, it does so directly using a **WebSocket**. 
-- Not running Selenium or Chromimum saves you like **half a gig** of ram :/ 
+- Not running Selenium or Chromium saves you like **half a gig** of ram :/ 
 - Baileys supports interacting with the multi-device & web versions of WhatsApp.
 - Thank you to [@pokearaujo](https://github.com/pokearaujo/multidevice) for writing his observations on the workings of WhatsApp Multi-Device. Also, thank you to [@Sigalor](https://github.com/sigalor/whatsapp-web-reveng) for writing his observations on the workings of WhatsApp Web and thanks to [@Rhymen](https://github.com/Rhymen/go-whatsapp/) for the __go__ implementation.
 
