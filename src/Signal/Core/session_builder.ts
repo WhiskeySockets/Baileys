@@ -1,11 +1,11 @@
 // @ts-nocheck
 'use strict'
 
+import * as crypto from '../../crypto'
+import * as curve from '../../crypto'
 import queueJob from '../../Utils/queue-job'
 import BaseKeyType from './base_key_type'
 import ChainType from './chain_type'
-import * as crypto from './crypto'
-import * as curve from './curve'
 import * as errors from './errors'
 import SessionRecord from './session_record'
 

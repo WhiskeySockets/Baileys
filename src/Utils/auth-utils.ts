@@ -1,5 +1,6 @@
 import NodeCache from '@cacheable/node-cache'
 import { randomBytes } from 'crypto'
+import { Curve, signedKeyPair } from '../crypto'
 import { DEFAULT_CACHE_TTLS } from '../Defaults'
 import type {
 	AuthenticationCreds,
@@ -10,7 +11,6 @@ import type {
 	SignalKeyStoreWithTransaction,
 	TransactionCapabilityOptions
 } from '../Types'
-import { Curve, signedKeyPair } from './crypto'
 import { delay, generateRegistrationId } from './generics'
 import { ILogger } from './logger'
 

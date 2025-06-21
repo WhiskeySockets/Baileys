@@ -1,6 +1,6 @@
+import { generateSignalPubKey } from '../crypto'
 import { SignalAuthState } from '../Types'
 import { SignalRepository } from '../Types/Signal'
-import { generateSignalPubKey } from '../Utils'
 import { jidDecode } from '../WABinary'
 import ProtocolAddress from './Core/protocol_address'
 import SessionBuilder from './Core/session_builder'

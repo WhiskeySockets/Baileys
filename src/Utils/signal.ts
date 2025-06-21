@@ -1,4 +1,5 @@
 import { chunk } from 'lodash'
+import { Curve, generateSignalPubKey } from '../crypto'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import { SignalRepository } from '../Types'
 import {
@@ -21,7 +22,6 @@ import {
 	S_WHATSAPP_NET
 } from '../WABinary'
 import { DeviceListData, ParsedDeviceInfo, USyncQueryResultList } from '../WAUSync'
-import { Curve, generateSignalPubKey } from './crypto'
 import { encodeBigEndian } from './generics'
 
 export const createSignalIdentity = (wid: string, accountSignatureKey: Uint8Array): SignalIdentity => {

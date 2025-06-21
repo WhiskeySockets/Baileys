@@ -1,5 +1,5 @@
+import { signalDecrypt as decrypt, signalEncrypt as encrypt } from '../../crypto'
 import queueJob from '../../Utils/queue-job'
-import { decrypt, encrypt } from '../Core/crypto'
 import { SenderKeyMessage } from './sender-key-message'
 import { SenderKeyName } from './sender-key-name'
 import { SenderKeyRecord } from './sender-key-record'
@@ -109,7 +109,7 @@ export class GroupCipher {
 
 	private async getPlainText(iv: Uint8Array, key: Uint8Array, ciphertext: Uint8Array): Promise<Uint8Array> {
 		try {
-			return decrypt(key, ciphertext, iv)
+			return decrypt(Buffer.from(key), Buffer.from(ciphertext), Buffer.from(iv))
 		} catch (e) {
 			throw new Error('InvalidMessageException')
 		}
@@ -124,7 +124,7 @@ export class GroupCipher {
 			const ivBuffer = typeof iv === 'string' ? Buffer.from(iv, 'base64') : iv
 			const keyBuffer = typeof key === 'string' ? Buffer.from(key, 'base64') : key
 			const plaintextBuffer = typeof plaintext === 'string' ? Buffer.from(plaintext) : plaintext
-			return encrypt(keyBuffer, plaintextBuffer, ivBuffer)
+			return encrypt(Buffer.from(keyBuffer), Buffer.from(plaintextBuffer), Buffer.from(ivBuffer))
 		} catch (e) {
 			throw new Error('InvalidMessageException')
 		}

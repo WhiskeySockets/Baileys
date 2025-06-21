@@ -1,10 +1,10 @@
 // @ts-nocheck
 
 import { proto } from '../../../WAProto'
+import * as crypto from '../../crypto'
+import * as curve from '../../crypto'
 import queueJob from '../../Utils/queue-job'
 import ChainType from './chain_type'
-import * as crypto from './crypto'
-import * as curve from './curve'
 import * as errors from './errors'
 import ProtocolAddress from './protocol_address'
 import SessionBuilder from './session_builder'
@@ -99,7 +99,7 @@ class SessionCipher {
 			msg.ratchetKey = session.currentRatchet.ephemeralKeyPair.pubKey
 			msg.counter = chain.chainKey.counter
 			msg.previousCounter = session.currentRatchet.previousCounter
-			msg.ciphertext = crypto.encrypt(keys[0], data, keys[2].slice(0, 16))
+			msg.ciphertext = crypto.signalEncrypt(keys[0], data, keys[2].slice(0, 16))
 			const msgBuf = proto.SignalMessage.encode(msg).finish()
 			const macInput = Buffer.alloc(msgBuf.byteLength + 33 * 2 + 1)
 			macInput.set(ourIdentityKey.pubKey)
@@ -272,7 +272,7 @@ class SessionCipher {
 		// This is where we most likely fail if the session is not a match.
 		// Don't misinterpret this as corruption.
 		crypto.verifyMAC(macInput, keys[1], messageBuffer.slice(-8), 8)
-		const plaintext = crypto.decrypt(keys[0], message.ciphertext, keys[2].slice(0, 16))
+		const plaintext = crypto.signalDecrypt(keys[0], message.ciphertext, keys[2].slice(0, 16))
 		delete session.pendingPreKey
 		return plaintext
 	}

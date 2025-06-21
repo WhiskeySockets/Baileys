@@ -1,4 +1,4 @@
-import { hkdf } from './crypto'
+import { hkdf } from '../crypto'
 
 /**
  * LT Hash is a summation based hash algorithm that maintains the integrity of a piece of data

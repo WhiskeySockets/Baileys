@@ -1,5 +1,5 @@
 import * as nodeCrypto from 'crypto'
-import { generateKeyPair } from '../Core/curve'
+import { generateKeyPair } from '../../crypto'
 
 type KeyPairType = ReturnType<typeof generateKeyPair>
 

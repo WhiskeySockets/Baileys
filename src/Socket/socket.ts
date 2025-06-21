@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto'
 import { URL } from 'url'
 import { promisify } from 'util'
 import { proto } from '../../WAProto'
+import { aesEncryptCTR, Curve, derivePairingCodeKey } from '../crypto'
 import {
 	DEF_CALLBACK_PREFIX,
 	DEF_TAG_PREFIX,
@@ -13,12 +14,9 @@ import {
 import { DisconnectReason, SocketConfig } from '../Types'
 import {
 	addTransactionCapability,
-	aesEncryptCTR,
 	bindWaitForConnectionUpdate,
 	bytesToCrockford,
 	configureSuccessfulPairing,
-	Curve,
-	derivePairingCodeKey,
 	generateLoginNode,
 	generateMdTagPrefix,
 	generateRegistrationNode,

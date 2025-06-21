@@ -3,6 +3,7 @@ import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
 import Long = require('long')
 import { proto } from '../../WAProto'
+import { aesDecryptCTR, aesEncryptGCM, Curve, derivePairingCodeKey, hkdf } from '../crypto'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import {
 	MessageReceiptType,
@@ -16,22 +17,17 @@ import {
 	WAPatchName
 } from '../Types'
 import {
-	aesDecryptCTR,
-	aesEncryptGCM,
 	cleanMessage,
-	Curve,
 	decodeMediaRetryNode,
 	decodeMessageNode,
 	decryptMessageNode,
 	delay,
-	derivePairingCodeKey,
 	encodeBigEndian,
 	encodeSignedDeviceIdentity,
 	getCallStatusFromNode,
 	getHistoryMsg,
 	getNextPreKeys,
 	getStatusFromReceiptType,
-	hkdf,
 	MISSING_KEYS_ERROR_TEXT,
 	NACK_REASONS,
 	NO_MESSAGE_FOUND_ERROR_TEXT,

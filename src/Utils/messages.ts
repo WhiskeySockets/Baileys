@@ -4,6 +4,7 @@ import { randomBytes } from 'crypto'
 import { promises as fs } from 'fs'
 import { type Transform } from 'stream'
 import { proto } from '../../WAProto'
+import { sha256 } from '../crypto'
 import { MEDIA_KEYS, URL_REGEX, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import {
 	AnyMediaMessageContent,
@@ -24,7 +25,6 @@ import {
 	WATextMessage
 } from '../Types'
 import { isJidGroup, isJidStatusBroadcast, jidNormalizedUser } from '../WABinary'
-import { sha256 } from './crypto'
 import { generateMessageIDV2, getKeyAuthor, unixTimestampSeconds } from './generics'
 import { ILogger } from './logger'
 import {
