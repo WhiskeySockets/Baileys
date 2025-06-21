@@ -1,4 +1,3 @@
-// Curve25519 key generation, agreement, and signature utilities
 import * as curveJs from 'curve25519-js'
 import nodeCrypto from 'node:crypto'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
@@ -89,7 +88,7 @@ export function calculateAgreement(pubKey: Buffer, privKey: Buffer) {
 export function calculateSignature(privKey: Buffer, message: Buffer) {
 	validatePrivKey(privKey)
 	if (!message) throw new Error('Invalid message')
-	// curveJs.sign expects (privKey, message), but if a third argument is needed, pass undefined
+
 	return Buffer.from(curveJs.sign(privKey, message, undefined))
 }
 
@@ -101,7 +100,6 @@ export function verifySignature(pubKey: Buffer, msg: Buffer, sig: Buffer, isInit
 	return isInit ? true : curveJs.verify(pubKey, msg, sig)
 }
 
-// Unified Curve API
 export const Curve = {
 	generateKeyPair: (): KeyPair => {
 		const { pubKey, privKey } = generateKeyPair()
@@ -133,8 +131,6 @@ export const Curve = {
 		}
 	}
 }
-
-// Signed key pair utility (migrated from old Utils/crypto.ts)
 
 export function signedKeyPair(identityKeyPair: KeyPair, keyId: number) {
 	const preKey = Curve.generateKeyPair()

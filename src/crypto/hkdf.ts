@@ -1,5 +1,3 @@
-// HKDF and PBKDF2 key derivation utilities
-
 const { subtle } = globalThis.crypto
 
 export async function hkdf(

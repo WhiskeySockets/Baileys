@@ -1,5 +1,3 @@
-// Signal protocol-specific cryptographic primitives
-
 import nodeCrypto from 'node:crypto'
 
 export function calculateMAC(key: Buffer, data: Buffer) {
@@ -48,8 +46,6 @@ export function verifyMAC(data: Buffer, key: Buffer, mac: Buffer, length: number
 	}
 }
 
-// HMAC signing utility (migrated from old Utils/crypto.ts)
-
 export function hmacSign(
 	buffer: Buffer | Uint8Array,
 	key: Buffer | Uint8Array,
@@ -58,7 +54,6 @@ export function hmacSign(
 	return nodeCrypto.createHmac(variant, key).update(buffer).digest()
 }
 
-// SHA-256 hash utility (migrated from old Utils/crypto.ts)
 export function sha256(buffer: Buffer) {
 	return require('crypto').createHash('sha256').update(buffer).digest()
 }

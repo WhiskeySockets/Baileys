@@ -1,5 +1,3 @@
-// Centralized crypto module exports
-
 export * from './aes'
 export * from './curve'
 export * from './hkdf'

@@ -1,5 +1,3 @@
-// AES encryption/decryption utilities
-
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto'
 
 const GCM_TAG_LENGTH = 128 >> 3
