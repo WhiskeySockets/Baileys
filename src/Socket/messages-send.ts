@@ -151,7 +151,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			const user = jidDecode(jid)?.user
 			jid = jidNormalizedUser(jid)
 			if(useCache) {
-				const devices = userDevicesCache.get<JidWithDevice[]>(user!)
+				const devices = await userDevicesCache.get<JidWithDevice[]>(user!)
 				if(devices) {
 					deviceResults.push(...devices)
 
@@ -190,7 +190,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			for(const key in deviceMap) {
-				userDevicesCache.set(key, deviceMap[key])
+				await userDevicesCache.set(key, deviceMap[key])
 			}
 		}
 

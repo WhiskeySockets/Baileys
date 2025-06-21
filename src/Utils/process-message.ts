@@ -277,7 +277,7 @@ const processMessage = async(
 		case proto.Message.ProtocolMessage.Type.PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE:
 			const response = protocolMsg.peerDataOperationRequestResponseMessage!
 			if(response) {
-				placeholderResendCache?.del(response.stanzaId!)
+				await placeholderResendCache?.del(response.stanzaId!)
 				// TODO: IMPLEMENT HISTORY SYNC ETC (sticker uploads etc.).
 				const { peerDataOperationResult } = response
 				for(const result of peerDataOperationResult!) {

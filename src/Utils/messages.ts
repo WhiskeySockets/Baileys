@@ -137,7 +137,7 @@ export const prepareWAMessageMedia = async(
 
 	// check for cache hit
 	if(cacheableKey) {
-		const mediaBuff = options.mediaCache!.get<Buffer>(cacheableKey)
+		const mediaBuff = await options.mediaCache!.get<Buffer>(cacheableKey)
 		if(mediaBuff) {
 			logger?.debug({ cacheableKey }, 'got media cache hit')
 
@@ -257,7 +257,7 @@ export const prepareWAMessageMedia = async(
 
 	if(cacheableKey) {
 		logger?.debug({ cacheableKey }, 'set cache')
-		options.mediaCache!.set(cacheableKey, WAProto.Message.encode(obj).finish())
+		await options.mediaCache!.set(cacheableKey, WAProto.Message.encode(obj).finish())
 	}
 
 	return obj

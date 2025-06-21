@@ -152,15 +152,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const msgId = msgKey.id!
 
 		const key = `${msgId}:${msgKey?.participant}`
-		let retryCount = msgRetryCache.get<number>(key) || 0
+		let retryCount = await msgRetryCache.get<number>(key) || 0
 		if(retryCount >= maxMsgRetryCount) {
 			logger.debug({ retryCount, msgId }, 'reached retry limit, clearing')
-			msgRetryCache.del(key)
+			await msgRetryCache.del(key)
 			return
 		}
 
 		retryCount += 1
-		msgRetryCache.set(key, retryCount)
+		await msgRetryCache.set(key, retryCount)
 
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
 
@@ -549,16 +549,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		return data instanceof Buffer ? data : Buffer.from(data)
 	}
 
-	const willSendMessageAgain = (id: string, participant: string) => {
+	const willSendMessageAgain = async (id: string, participant: string) => {
 		const key = `${id}:${participant}`
-		const retryCount = msgRetryCache.get<number>(key) || 0
+		const retryCount = await msgRetryCache.get<number>(key) || 0
 		return retryCount < maxMsgRetryCount
 	}
 
-	const updateSendMessageAgainCount = (id: string, participant: string) => {
+	const updateSendMessageAgainCount = async (id: string, participant: string) => {
 		const key = `${id}:${participant}`
-		const newValue = (msgRetryCache.get<number>(key) || 0) + 1
-		msgRetryCache.set(key, newValue)
+		const newValue = (await msgRetryCache.get<number>(key) || 0) + 1
+		await msgRetryCache.set(key, newValue)
 	}
 
 	const sendMessagesAgain = async(
@@ -675,7 +675,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							// correctly set who is asking for the retry
 							key.participant = key.participant || attrs.from
 							const retryNode = getBinaryNodeChild(node, 'retry')
-							if(willSendMessageAgain(ids[0], key.participant)) {
+							if(await willSendMessageAgain(ids[0], key.participant)) {
 								if(key.fromMe) {
 									try {
 										logger.debug({ attrs, key }, 'recv retry request')
@@ -762,8 +762,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 			logger.debug('received unavailable message, acked and requested resend from phone')
 		} else {
-			if(placeholderResendCache.get(node.attrs.id)) {
-				placeholderResendCache.del(node.attrs.id)
+			if(await placeholderResendCache.get(node.attrs.id)) {
+				await placeholderResendCache.del(node.attrs.id)
 			}
 		}
 
@@ -879,16 +879,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			throw new Boom('Not authenticated')
 		}
 
-		if(placeholderResendCache.get(messageKey?.id!)) {
+		if(await placeholderResendCache.get(messageKey?.id!)) {
 			logger.debug({ messageKey }, 'already requested resend')
 			return
 		} else {
-			placeholderResendCache.set(messageKey?.id!, true)
+			await placeholderResendCache.set(messageKey?.id!, true)
 		}
 
 		await delay(5000)
 
-		if(!placeholderResendCache.get(messageKey?.id!)) {
+		if(!(await placeholderResendCache.get(messageKey?.id!))) {
 			logger.debug({ messageKey }, 'message received while resend requested')
 			return 'RESOLVED'
 		}
@@ -900,10 +900,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			peerDataOperationRequestType: proto.Message.PeerDataOperationRequestType.PLACEHOLDER_MESSAGE_RESEND
 		}
 
-		setTimeout(() => {
-			if(placeholderResendCache.get(messageKey?.id!)) {
+		setTimeout(async () => {
+			if(await placeholderResendCache.get(messageKey?.id!)) {
 				logger.debug({ messageKey }, 'PDO message without response after 15 seconds. Phone possibly offline')
-				placeholderResendCache.del(messageKey?.id!)
+				await placeholderResendCache.del(messageKey?.id!)
 			}
 		}, 15_000)
 
@@ -929,10 +929,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			call.isVideo = !!getBinaryNodeChild(infoChild, 'video')
 			call.isGroup = infoChild.attrs.type === 'group' || !!infoChild.attrs['group-jid']
 			call.groupJid = infoChild.attrs['group-jid']
-			callOfferCache.set(call.id, call)
+			await callOfferCache.set(call.id, call)
 		}
 
-		const existingCall = callOfferCache.get<WACallEvent>(call.id)
+		const existingCall = await callOfferCache.get<WACallEvent>(call.id)
 
 		// use existing call info to populate this event
 		if(existingCall) {
@@ -942,7 +942,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		// delete data once call has ended
 		if(status === 'reject' || status === 'accept' || status === 'timeout' || status === 'terminate') {
-			callOfferCache.del(call.id)
+			await callOfferCache.del(call.id)
 		}
 
 		ev.emit('call', [call])
