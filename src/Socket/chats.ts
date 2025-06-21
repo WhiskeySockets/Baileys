@@ -44,6 +44,7 @@ import {
 	BinaryNode,
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
+	jidDecode,
 	jidNormalizedUser,
 	reduceBinaryNodeToDictionary,
 	S_WHATSAPP_NET
@@ -637,10 +638,13 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				}
 			})
 		} else {
+			const { server } = jidDecode(toJid)!
+			const isLid = server === 'lid'
+
 			await sendNode({
 				tag: 'chatstate',
 				attrs: {
-					from: me.id,
+					from: isLid ? me.lid! : me.id,
 					to: toJid!
 				},
 				content: [
