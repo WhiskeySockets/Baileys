@@ -52655,6 +52655,12 @@ export namespace proto {
         /** WebMessageInfo key */
         key: proto.IMessageKey;
 
+        /** WebMessageInfo attrs give opposite id of addressingMode */
+        attrs?: {
+            id?: string
+            addressing_mode: 'pn' | 'lid'
+        }
+
         /** WebMessageInfo message */
         message?: (proto.IMessage|null);
 

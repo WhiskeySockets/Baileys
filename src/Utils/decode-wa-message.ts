@@ -110,14 +110,16 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 		remoteJid: chatId,
 		fromMe,
 		id: msgId,
-		senderLid: stanza?.attrs?.sender_lid,
-		senderPn: stanza?.attrs?.sender_pn,
-		participant,
-		participantLid: stanza?.attrs?.participant_lid
+		participant
 	}
 
+	const { addressing_mode, participant_pn, participant_lid } = stanza.attrs
 	const fullMessage: proto.IWebMessageInfo = {
 		key,
+		attrs: {
+			id: participant_pn ?? participant_lid,
+			addressing_mode
+		},
 		messageTimestamp: +stanza.attrs.t,
 		pushName: pushname,
 		broadcast: isJidBroadcast(from)
