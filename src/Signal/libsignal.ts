@@ -1,11 +1,12 @@
-import * as libsignal from 'libsignal'
 import { SignalAuthState } from '../Types'
 import { SignalRepository } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import { jidDecode } from '../WABinary'
+import SessionCipher from './Core/session_cipher'
 import type { SenderKeyStore } from './Group/group_cipher'
 import { SenderKeyName } from './Group/sender-key-name'
 import { SenderKeyRecord } from './Group/sender-key-record'
+import * as libsignal from './Core'
 import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from './Group'
 
 export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository {
@@ -42,7 +43,7 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 		},
 		async decryptMessage({ jid, type, ciphertext }) {
 			const addr = jidToSignalProtocolAddress(jid)
-			const session = new libsignal.SessionCipher(storage, addr)
+			const session = new SessionCipher(storage, addr)
 			let result: Buffer
 			switch (type) {
 				case 'pkmsg':
@@ -59,7 +60,7 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 		},
 		async encryptMessage({ jid, data }) {
 			const addr = jidToSignalProtocolAddress(jid)
-			const cipher = new libsignal.SessionCipher(storage, addr)
+			const cipher = new SessionCipher(storage, addr)
 
 			const { type: sigType, body } = await cipher.encrypt(data)
 			const type = sigType === 3 ? 'pkmsg' : 'msg'

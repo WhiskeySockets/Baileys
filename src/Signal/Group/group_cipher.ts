@@ -1,4 +1,4 @@
-import { decrypt, encrypt } from 'libsignal/src/crypto'
+import { decrypt, encrypt } from '../Core/crypto'
 import queueJob from './queue-job'
 import { SenderKeyMessage } from './sender-key-message'
 import { SenderKeyName } from './sender-key-name'
