@@ -35,13 +35,6 @@ function calculateMAC(key, data) {
 	return Buffer.from(hmac.digest())
 }
 
-function hash(data) {
-	assertBuffer(data)
-	const sha512 = nodeCrypto.createHash('sha512')
-	sha512.update(data)
-	return sha512.digest()
-}
-
 // Salts always end up being 32 bytes
 function deriveSecrets(input, salt, info, chunks = 3) {
 	// Specific implementation of RFC 5869 that only returns the first 3 32-byte chunks
@@ -84,4 +77,4 @@ function verifyMAC(data, key, mac, length) {
 	}
 }
 
-export { deriveSecrets, decrypt, encrypt, hash, calculateMAC, verifyMAC }
+export { deriveSecrets, decrypt, encrypt, calculateMAC, verifyMAC }

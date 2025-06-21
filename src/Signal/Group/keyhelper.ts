@@ -11,7 +11,7 @@ export function generateSenderKeyId(): number {
 	return nodeCrypto.randomInt(2147483647)
 }
 
-export interface SigningKeyPair {
+interface SigningKeyPair {
 	public: Buffer
 	private: Buffer
 }
