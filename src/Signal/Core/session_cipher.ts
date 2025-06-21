@@ -252,7 +252,7 @@ class SessionCipher {
 			throw new errors.SessionError('No chain found for ratchet key')
 		}
 
-		if (!message.counter) {
+		if (message.counter === null || message.counter === undefined) {
 			throw new errors.MessageCounterError('Message counter is missing')
 		}
 
