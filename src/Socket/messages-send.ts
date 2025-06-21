@@ -256,9 +256,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				await userDevicesCache.mset(Object.entries(deviceMap).map(([key, value]) => ({ key, value })))
 			} else {
 				for (const key in deviceMap) {
-					if (deviceMap[key]) {
-						await userDevicesCache.set(key, deviceMap[key])
-					}
+					if (deviceMap[key]) await userDevicesCache.set(key, deviceMap[key])
 				}
 			}
 		}
