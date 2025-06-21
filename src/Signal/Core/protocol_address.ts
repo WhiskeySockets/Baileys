@@ -1,7 +1,8 @@
-// @ts-nocheck
-
 class ProtocolAddress {
-	static from(encodedAddress) {
+	id: string
+	deviceId: number
+
+	static from(encodedAddress: string): ProtocolAddress {
 		if (typeof encodedAddress !== 'string' || !encodedAddress.match(/.*\.\d+/)) {
 			throw new Error('Invalid address encoding')
 		}
@@ -10,7 +11,7 @@ class ProtocolAddress {
 		return new this(parts[0], parseInt(parts[1]))
 	}
 
-	constructor(id, deviceId) {
+	constructor(id: string, deviceId: number) {
 		if (typeof id !== 'string') {
 			throw new TypeError('id required for addr')
 		}
@@ -27,11 +28,11 @@ class ProtocolAddress {
 		this.deviceId = deviceId
 	}
 
-	toString() {
+	toString(): string {
 		return `${this.id}.${this.deviceId}`
 	}
 
-	is(other) {
+	is(other: unknown): boolean {
 		if (!(other instanceof ProtocolAddress)) {
 			return false
 		}

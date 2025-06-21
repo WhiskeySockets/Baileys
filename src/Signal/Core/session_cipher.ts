@@ -1,8 +1,7 @@
-// @ts-nocheck
-
 import { proto } from '../../../WAProto'
 import * as crypto from '../../crypto'
 import * as curve from '../../crypto'
+import { SignalSessionStore } from '../../Types/Signal'
 import queueJob from '../../Utils/queue-job'
 import ChainType from './chain_type'
 import * as errors from './errors'
@@ -12,16 +11,11 @@ import SessionRecord from './session_record'
 
 const VERSION = 3
 
-function assertBuffer(value) {
-	if (!(value instanceof Buffer)) {
-		throw TypeError(`Expected Buffer instead of: ${value.constructor.name}`)
-	}
-
-	return value
-}
-
 class SessionCipher {
-	constructor(storage, protocolAddress) {
+	addr: ProtocolAddress
+	storage: SignalSessionStore
+
+	constructor(storage: SignalSessionStore, protocolAddress: ProtocolAddress) {
 		if (!(protocolAddress instanceof ProtocolAddress)) {
 			throw new TypeError('protocolAddress must be a ProtocolAddress')
 		}
@@ -65,7 +59,6 @@ class SessionCipher {
 	}
 
 	async encrypt(data) {
-		assertBuffer(data)
 		const ourIdentityKey = await this.storage.getOurIdentity()
 		return await this.queueJob(async () => {
 			const record = await this.getRecord()
@@ -150,7 +143,7 @@ class SessionCipher {
 			throw new errors.SessionError('No sessions available')
 		}
 
-		const errs = []
+		const errs: any[] = []
 		for (const session of sessions) {
 			let plaintext
 			try {
@@ -167,14 +160,13 @@ class SessionCipher {
 
 		console.error('Failed to decrypt message with any known session...')
 		for (const e of errs) {
-			console.error('Session error:' + e, e.stack)
+			console.error('Session error:' + e, (e as Error).stack)
 		}
 
 		throw new errors.SessionError('No matching sessions found for message')
 	}
 
 	async decryptWhisperMessage(data) {
-		assertBuffer(data)
 		return await this.queueJob(async () => {
 			const record = await this.getRecord()
 			if (!record) {
@@ -202,7 +194,6 @@ class SessionCipher {
 	}
 
 	async decryptPreKeyWhisperMessage(data) {
-		assertBuffer(data)
 		const versions = this._decodeTupleByte(data[0])
 		if (versions[1] > 3 || versions[0] < 3) {
 			// min version > 3 or max version < 3
@@ -234,7 +225,6 @@ class SessionCipher {
 	}
 
 	async doDecryptWhisperMessage(messageBuffer, session) {
-		assertBuffer(messageBuffer)
 		if (!session) {
 			throw new TypeError('session required')
 		}
@@ -260,8 +250,17 @@ class SessionCipher {
 			throw new errors.MessageCounterError('Key used already or never filled')
 		}
 
-		const messageKey = chain.messageKeys[message.counter]
-		delete chain.messageKeys[message.counter]
+		const counter = message.counter
+		if (counter === null || counter === undefined || typeof counter !== 'number') {
+			throw new errors.MessageCounterError('Invalid message counter')
+		}
+
+		const messageKey = chain.messageKeys[counter]
+		if (!messageKey) {
+			throw new errors.MessageCounterError('Message key not found')
+		}
+
+		delete chain.messageKeys[counter]
 		const keys = crypto.deriveSecrets(messageKey, Buffer.alloc(32), Buffer.from('WhisperMessageKeys'))
 		const ourIdentityKey = await this.storage.getOurIdentity()
 		const macInput = Buffer.alloc(messageProto.byteLength + 33 * 2 + 1)
@@ -272,6 +271,10 @@ class SessionCipher {
 		// This is where we most likely fail if the session is not a match.
 		// Don't misinterpret this as corruption.
 		crypto.verifyMAC(macInput, keys[1], messageBuffer.slice(-8), 8)
+		if (!message.ciphertext || !(message.ciphertext instanceof Buffer)) {
+			throw new errors.MessageCounterError('Invalid ciphertext buffer')
+		}
+
 		const plaintext = crypto.signalDecrypt(keys[0], message.ciphertext, keys[2].slice(0, 16))
 		delete session.pendingPreKey
 		return plaintext

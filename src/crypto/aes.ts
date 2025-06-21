@@ -45,27 +45,12 @@ export function aesEncrypt(buffer: Buffer | Uint8Array, key: Buffer) {
 	return Buffer.concat([IV, aes.update(buffer), aes.final()])
 }
 
-// CBC legacy for Signal protocol
-function assertBuffer(value: any) {
-	if (!(value instanceof Buffer)) {
-		throw TypeError(`Expected Buffer instead of: ${value.constructor.name}`)
-	}
-
-	return value
-}
-
 export function signalEncrypt(key: Buffer, data: Buffer, iv: Buffer) {
-	assertBuffer(key)
-	assertBuffer(data)
-	assertBuffer(iv)
 	const cipher = createCipheriv('aes-256-cbc', key, iv)
 	return Buffer.concat([cipher.update(data), cipher.final()])
 }
 
 export function signalDecrypt(key: Buffer, data: Buffer, iv: Buffer) {
-	assertBuffer(key)
-	assertBuffer(data)
-	assertBuffer(iv)
 	const decipher = createDecipheriv('aes-256-cbc', key, iv)
 	return Buffer.concat([decipher.update(data), decipher.final()])
 }

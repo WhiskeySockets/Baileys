@@ -1,9 +1,10 @@
-// @ts-nocheck
-
 class SignalError extends Error {}
 
 export class UntrustedIdentityKeyError extends SignalError {
-	constructor(addr, identityKey) {
+	public addr: any
+	public identityKey: any
+
+	constructor(addr: any, identityKey: any) {
 		super()
 		this.name = 'UntrustedIdentityKeyError'
 		this.addr = addr

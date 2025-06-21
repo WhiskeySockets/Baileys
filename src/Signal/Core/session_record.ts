@@ -1,17 +1,15 @@
-// @ts-nocheck
-
 import BaseKeyType from './base_key_type'
 
 const CLOSED_SESSIONS_MAX = 40
 const SESSION_RECORD_VERSION = 'v1'
 
-function assertBuffer(value) {
-	if (!Buffer.isBuffer(value)) {
-		throw new TypeError('Buffer required')
-	}
-}
-
 class SessionEntry {
+	_chains: any
+	indexInfo: any
+	currentRatchet: any
+	pendingPreKey?: any
+	registrationId?: any
+
 	constructor() {
 		this._chains = {}
 	}
@@ -26,7 +24,6 @@ class SessionEntry {
 	}
 
 	addChain(key, value) {
-		assertBuffer(key)
 		const id = key.toString('base64')
 		if (this._chains.hasOwnProperty(id)) {
 			throw new Error('Overwrite attempt')
@@ -36,12 +33,10 @@ class SessionEntry {
 	}
 
 	getChain(key) {
-		assertBuffer(key)
 		return this._chains[key.toString('base64')]
 	}
 
 	deleteChain(key) {
-		assertBuffer(key)
 		const id = key.toString('base64')
 		if (!this._chains.hasOwnProperty(id)) {
 			throw new ReferenceError('Not Found')
@@ -79,8 +74,10 @@ class SessionEntry {
 			_chains: this._serialize_chains(this._chains)
 		}
 		if (this.pendingPreKey) {
-			data.pendingPreKey = Object.assign({}, this.pendingPreKey)
-			data.pendingPreKey.baseKey = this.pendingPreKey.baseKey.toString('base64')
+			if (this.pendingPreKey) {
+				;(data as any).pendingPreKey = Object.assign({}, this.pendingPreKey)(data as any).pendingPreKey.baseKey =
+					this.pendingPreKey.baseKey.toString('base64')
+			}
 		}
 
 		return data
@@ -121,7 +118,7 @@ class SessionEntry {
 			const c = chains[key]
 			const messageKeys = {}
 			for (const [idx, key] of Object.entries(c.messageKeys)) {
-				messageKeys[idx] = key.toString('base64')
+				messageKeys[idx] = (key as Buffer).toString('base64')
 			}
 
 			r[key] = {
@@ -143,7 +140,7 @@ class SessionEntry {
 			const c = chains_data[key]
 			const messageKeys = {}
 			for (const [idx, key] of Object.entries(c.messageKeys)) {
-				messageKeys[idx] = Buffer.from(key, 'base64')
+				messageKeys[idx] = Buffer.from(key as string, 'base64')
 			}
 
 			r[key] = {
@@ -188,6 +185,9 @@ const migrations = [
 ]
 
 class SessionRecord {
+	sessions: any
+	version: any
+
 	static createEntry() {
 		return new SessionEntry()
 	}
@@ -231,7 +231,7 @@ class SessionRecord {
 	serialize() {
 		const _sessions = {}
 		for (const [key, entry] of Object.entries(this.sessions)) {
-			_sessions[key] = entry.serialize()
+			_sessions[key] = (entry as SessionEntry).serialize()
 		}
 
 		return {
@@ -242,11 +242,10 @@ class SessionRecord {
 
 	haveOpenSession() {
 		const openSession = this.getOpenSession()
-		return !!openSession && typeof openSession.registrationId === 'number'
+		return !!openSession && typeof (openSession as any).registrationId === 'number'
 	}
 
-	getSession(key) {
-		assertBuffer(key)
+	getSession(key): SessionEntry | undefined {
 		const session = this.sessions[key.toString('base64')]
 		if (session && session.indexInfo.baseKeyType === BaseKeyType.OURS) {
 			throw new Error('Tried to lookup a session using our basekey')
@@ -255,10 +254,10 @@ class SessionRecord {
 		return session
 	}
 
-	getOpenSession() {
+	getOpenSession(): SessionEntry | undefined {
 		for (const session of Object.values(this.sessions)) {
 			if (!this.isClosed(session)) {
-				return session
+				return session as SessionEntry
 			}
 		}
 	}
@@ -267,13 +266,15 @@ class SessionRecord {
 		this.sessions[session.indexInfo.baseKey.toString('base64')] = session
 	}
 
-	getSessions() {
+	getSessions(): SessionEntry[] {
 		// Return sessions ordered with most recently used first.
-		return Array.from(Object.values(this.sessions)).sort((a, b) => {
-			const aUsed = a.indexInfo.used || 0
-			const bUsed = b.indexInfo.used || 0
-			return aUsed === bUsed ? 0 : aUsed < bUsed ? 1 : -1
-		})
+		return Array.from(Object.values(this.sessions))
+			.map(s => s as SessionEntry)
+			.sort((a, b) => {
+				const aUsed = (a as any).indexInfo?.used || 0
+				const bUsed = (b as any).indexInfo?.used || 0
+				return aUsed === bUsed ? 0 : aUsed < bUsed ? 1 : -1
+			})
 	}
 
 	closeSession(session) {
@@ -305,8 +306,8 @@ class SessionRecord {
 			let oldestSession
 			for (const [key, session] of Object.entries(this.sessions)) {
 				if (
-					session.indexInfo.closed !== -1 &&
-					(!oldestSession || session.indexInfo.closed < oldestSession.indexInfo.closed)
+					(session as any).indexInfo.closed !== -1 &&
+					(!oldestSession || (session as any).indexInfo.closed < oldestSession.indexInfo.closed)
 				) {
 					oldestKey = key
 					oldestSession = session

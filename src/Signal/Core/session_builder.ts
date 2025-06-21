@@ -1,16 +1,18 @@
-// @ts-nocheck
-'use strict'
-
 import * as crypto from '../../crypto'
 import * as curve from '../../crypto'
+import { SignalSessionStore } from '../../Types/Signal'
 import queueJob from '../../Utils/queue-job'
 import BaseKeyType from './base_key_type'
 import ChainType from './chain_type'
 import * as errors from './errors'
+import ProtocolAddress from './protocol_address'
 import SessionRecord from './session_record'
 
 class SessionBuilder {
-	constructor(storage, protocolAddress) {
+	addr: ProtocolAddress
+	storage: SignalSessionStore
+
+	constructor(storage: SignalSessionStore, protocolAddress: ProtocolAddress) {
 		this.addr = protocolAddress
 		this.storage = storage
 	}

@@ -1,4 +1,7 @@
 import { proto } from '../../WAProto'
+import SessionRecord from '../Signal/Core/session_record'
+import type { SenderKeyName } from '../Signal/Group/sender-key-name'
+import type { SenderKeyRecord } from '../Signal/Group/sender-key-record'
 
 type DecryptGroupSignalOpts = {
 	group: string
@@ -63,4 +66,28 @@ export type SignalRepository = {
 	}>
 	injectE2ESession(opts: E2ESessionOpts): Promise<void>
 	jidToSignalProtocolAddress(jid: string): string
+}
+
+// @TODO: later we need to merge the type from src/Types/Auth.ts
+type KeyPair = {
+	pubKey: Buffer
+	privKey: Buffer
+}
+
+export interface SignalSessionStore {
+	loadSession(id: string): Promise<SessionRecord | undefined>
+	storeSession(id: string, record: SessionRecord): Promise<void>
+
+	isTrustedIdentity(id: string, identityKey: Uint8Array): Promise<boolean>
+
+	loadPreKey(id: number | string): Promise<KeyPair | undefined>
+	removePreKey(id: number): Promise<void>
+
+	loadSignedPreKey(id: number | string): Promise<KeyPair>
+
+	getOurRegistrationId(): Promise<number>
+	getOurIdentity(): Promise<KeyPair>
+
+	loadSenderKey(senderKeyName: SenderKeyName): Promise<SenderKeyRecord>
+	storeSenderKey(senderKeyName: SenderKeyName, record: SenderKeyRecord): Promise<void>
 }

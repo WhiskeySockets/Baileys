@@ -2,26 +2,13 @@
 
 import nodeCrypto from 'node:crypto'
 
-function assertBuffer(value: any) {
-	if (!(value instanceof Buffer)) {
-		throw TypeError(`Expected Buffer instead of: ${value.constructor.name}`)
-	}
-
-	return value
-}
-
 export function calculateMAC(key: Buffer, data: Buffer) {
-	assertBuffer(key)
-	assertBuffer(data)
 	const hmac = nodeCrypto.createHmac('sha256', key)
 	hmac.update(data)
 	return Buffer.from(hmac.digest())
 }
 
 export function deriveSecrets(input: Buffer, salt: Buffer, info: Buffer, chunks = 3) {
-	assertBuffer(input)
-	assertBuffer(salt)
-	assertBuffer(info)
 	if (salt.byteLength !== 32) {
 		throw new Error('Got salt of incorrect length')
 	}
