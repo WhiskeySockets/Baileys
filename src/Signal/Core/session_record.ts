@@ -58,7 +58,7 @@ interface SerializedSessionEntry {
 		created: number
 		remoteIdentityKey: string
 	}
-	_chains: { [id: string]: any }
+	_chains: { [id: string]: Chain }
 	pendingPreKey?: {
 		signedKeyId: number
 		baseKey: string
@@ -137,8 +137,11 @@ export class SessionEntry {
 			_chains: this._serialize_chains(this._chains)
 		}
 		if (this.pendingPreKey) {
-			;(data as any).pendingPreKey = Object.assign({}, this.pendingPreKey)
-			;(data as any).pendingPreKey.baseKey = this.pendingPreKey.baseKey.toString('base64')
+			const pendingPreKey = {
+				...this.pendingPreKey,
+				baseKey: this.pendingPreKey.baseKey.toString('base64')
+			}
+			data.pendingPreKey = pendingPreKey
 		}
 
 		return data
@@ -306,10 +309,10 @@ class SessionRecord {
 
 	haveOpenSession() {
 		const openSession = this.getOpenSession()
-		return !!openSession && typeof (openSession as any).registrationId === 'number'
+		return !!openSession && typeof openSession.registrationId === 'number'
 	}
 
-	getSession(key): SessionEntry | undefined {
+	getSession(key: Buffer): SessionEntry | undefined {
 		const session = this.sessions[key.toString('base64')]
 		if (session && session.indexInfo.baseKeyType === BaseKeyType.OURS) {
 			throw new Error('Tried to lookup a session using our basekey')
@@ -326,7 +329,7 @@ class SessionRecord {
 		}
 	}
 
-	setSession(session) {
+	setSession(session: SessionEntry) {
 		this.sessions[session.indexInfo.baseKey.toString('base64')] = session
 	}
 
@@ -335,13 +338,13 @@ class SessionRecord {
 		return Array.from(Object.values(this.sessions))
 			.map(s => s)
 			.sort((a, b) => {
-				const aUsed = (a as any).indexInfo?.used || 0
-				const bUsed = (b as any).indexInfo?.used || 0
+				const aUsed = a.indexInfo?.used || 0
+				const bUsed = b.indexInfo?.used || 0
 				return aUsed === bUsed ? 0 : aUsed < bUsed ? 1 : -1
 			})
 	}
 
-	closeSession(session) {
+	closeSession(session: SessionEntry) {
 		if (this.isClosed(session)) {
 			console.warn('Session already closed', session)
 			return
@@ -351,7 +354,7 @@ class SessionRecord {
 		session.indexInfo.closed = Date.now()
 	}
 
-	openSession(session) {
+	openSession(session: SessionEntry) {
 		if (!this.isClosed(session)) {
 			console.warn('Session already open')
 		}
@@ -360,18 +363,18 @@ class SessionRecord {
 		session.indexInfo.closed = -1
 	}
 
-	isClosed(session) {
+	isClosed(session: SessionEntry) {
 		return session.indexInfo.closed !== -1
 	}
 
 	removeOldSessions() {
 		while (Object.keys(this.sessions).length > CLOSED_SESSIONS_MAX) {
-			let oldestKey
-			let oldestSession
+			let oldestKey: string | undefined
+			let oldestSession: SessionEntry | undefined
 			for (const [key, session] of Object.entries(this.sessions)) {
 				if (
-					(session as any).indexInfo.closed !== -1 &&
-					(!oldestSession || (session as any).indexInfo.closed < oldestSession.indexInfo.closed)
+					session.indexInfo.closed !== -1 &&
+					(!oldestSession || session.indexInfo.closed < oldestSession.indexInfo.closed)
 				) {
 					oldestKey = key
 					oldestSession = session

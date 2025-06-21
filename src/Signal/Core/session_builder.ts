@@ -72,7 +72,7 @@ class SessionBuilder {
 			throw new errors.UntrustedIdentityKeyError(this.addr.id, message.identityKey!)
 		}
 
-		if (sessionRecord.getSession(message.baseKey)) {
+		if (sessionRecord.getSession(Buffer.from(message.baseKey!))) {
 			// This just means we haven't replied.
 			return
 		}

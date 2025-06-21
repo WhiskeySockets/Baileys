@@ -15,6 +15,13 @@ import {
 } from '../Types'
 import { BinaryNode, getAllBinaryNodeChildren, jidDecode } from '../WABinary'
 
+interface Long {
+	low: number
+	high: number
+	unsigned: boolean
+	toNumber(): number
+}
+
 const PLATFORM_MAP = {
 	aix: 'AIX',
 	darwin: 'Mac OS',
@@ -104,9 +111,7 @@ export const encodeBigEndian = (e: number, t = 4) => {
 	return a
 }
 
-// @ts-expect-error FIX THI LATER
 export const toNumber = (t: Long | number | null | undefined): number =>
-	// @ts-expect-error FIX THI LATER
 	typeof t === 'object' && t ? ('toNumber' in t ? t.toNumber() : (t as Long).low) : t || 0
 
 /** unix timestamp of a date in seconds */

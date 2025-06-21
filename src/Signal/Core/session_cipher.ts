@@ -218,7 +218,7 @@ class SessionCipher {
 
 			const builder = new SessionBuilder(this.storage, this.addr)
 			const preKeyId = await builder.initIncoming(record, preKeyProto)
-			const session = record.getSession(preKeyProto.baseKey)
+			const session = record.getSession(Buffer.from(preKeyProto.baseKey!))
 			const plaintext = await this.doDecryptWhisperMessage(Buffer.from(preKeyProto.message!), session)
 			await this.storeRecord(record)
 			if (preKeyId) {
