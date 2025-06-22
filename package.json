@@ -1,6 +1,6 @@
 {
-  "name": "baileys",
-  "version": "6.7.18",
+  "name": "watchtool-baileys",
+  "version": "6.7.27",
   "description": "A WebSockets library for interacting with WhatsApp Web",
   "keywords": [
     "whatsapp",
@@ -44,7 +44,7 @@
     "@whiskeysockets/eslint-config": "github:whiskeysockets/eslint-config",
     "async-mutex": "^0.5.0",
     "axios": "^1.6.0",
-    "libsignal": "github:WhiskeySockets/libsignal-node",
+    "libsignal": "github:Watchtool/libsignal-node",
     "lodash": "^4.17.21",
     "music-metadata": "^7.12.3",
     "pino": "^9.6",

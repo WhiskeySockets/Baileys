@@ -1484,8 +1484,8 @@
   version "1.0.0"
   resolved "https://codeload.github.com/whiskeysockets/eslint-config/tar.gz/326b55f2842668f4e11f471451c4e39819a0e1bf"
   dependencies:
-    "@typescript-eslint/eslint-plugin" "^7.15.0"
-    "@typescript-eslint/parser" "^7.15.0"
+    "@typescript-eslint/eslint-plugin" "^8.32.0"
+    "@typescript-eslint/parser" "^8.32.0"
     eslint-plugin-simple-import-sort "^12.1.1"
 
 JSONStream@^1.0.4:
@@ -4984,9 +4984,9 @@ levn@~0.3.0:
     prelude-ls "~1.1.2"
     type-check "~0.3.2"
 
-"libsignal@github:WhiskeySockets/libsignal-node":
+"libsignal@github:Watchtool/libsignal-node":
   version "2.0.1"
-  resolved "https://codeload.github.com/WhiskeySockets/libsignal-node/tar.gz/83a3e3a3864511cb74df1b796373f0d49d071134"
+  resolved "https://codeload.github.com/Watchtool/libsignal-node/tar.gz/807c2f6412f65b2ff415aa74495d8d26e7fb458c"
   dependencies:
     curve25519-js "^0.0.4"
     protobufjs "6.8.8"
