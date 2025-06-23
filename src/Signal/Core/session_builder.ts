@@ -56,7 +56,6 @@ class SessionBuilder {
 			} else {
 				const openSession = record.getOpenSession()
 				if (openSession) {
-					console.warn('Closing stale open session for new outgoing prekey bundle')
 					record.closeSession(openSession)
 				}
 			}
@@ -89,7 +88,6 @@ class SessionBuilder {
 
 		const existingOpenSession = sessionRecord.getOpenSession()
 		if (existingOpenSession) {
-			console.warn('Closing open session in favor of incoming prekey bundle')
 			sessionRecord.closeSession(existingOpenSession)
 		}
 

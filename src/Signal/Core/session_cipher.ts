@@ -190,7 +190,6 @@ class SessionCipher {
 				// was the most current.  Simply make a note of it and continue.  If our
 				// actual open session is for reason invalid, that must be handled via
 				// a full SessionError response.
-				console.warn('Decrypted message with closed session.')
 			}
 
 			await this.storeRecord(record)
