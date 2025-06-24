@@ -460,14 +460,14 @@ export const makeSocket = (config: SocketConfig) => {
 	}
 
 	const requestPairingCode = async (phoneNumber: string, customPairingCode?: string): Promise<string> => {
-		if (customPairingCode) {
-			if (!/^\d{8}$/.test(customPairingCode)) {
-				throw new Error('Custom pairing code must be exactly 8 digits')
-			}
-			authState.creds.pairingCode = customPairingCode
-		} else {
-			authState.creds.pairingCode = bytesToCrockford(randomBytes(5))
+		const pairingCode = customPairingCode ?? bytesToCrockford(randomBytes(5))
+
+		if (customPairingCode && !/^\d{8}$/.test(pairingCode)) {
+			throw new Error('Custom pairing code must be exactly 8 chars')
 		}
+
+		authState.creds.pairingCode = pairingCode
+
 		authState.creds.me = {
 			id: jidEncode(phoneNumber, 's.whatsapp.net'),
 			name: '~'
