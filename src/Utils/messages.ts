@@ -146,7 +146,7 @@ export const prepareWAMessageMedia = async (
 	}
 
 	if (cacheableKey) {
-		const mediaBuff = options.mediaCache!.get<Buffer>(cacheableKey)
+		const mediaBuff = await options.mediaCache!.get<Buffer>(cacheableKey)
 		if (mediaBuff) {
 			logger?.debug({ cacheableKey }, 'got media cache hit')
 

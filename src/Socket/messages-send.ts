@@ -1,4 +1,5 @@
 import NodeCache from '@cacheable/node-cache'
+
 import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, WA_DEFAULT_EPHEMERAL } from '../Defaults'
@@ -196,20 +197,34 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const toFetch: string[] = []
 		jids = Array.from(new Set(jids))
 
-		for (let jid of jids) {
-			const user = jidDecode(jid)?.user
-			jid = jidNormalizedUser(jid)
-			if (useCache) {
-				const devices = userDevicesCache.get<JidWithDevice[]>(user!)
-				if (devices) {
-					deviceResults.push(...devices)
-
+		if (userDevicesCache.mget) {
+			// if the cache supports mget, we can fetch all devices in one go
+			const cachedDevices = await userDevicesCache.mget<JidWithDevice[]>(jids)
+			for (const jid of jids) {
+				const user = jidDecode(jid)?.user
+				if (cachedDevices[jid]) {
+					deviceResults.push(...cachedDevices[jid])
 					logger.trace({ user }, 'using cache for devices')
 				} else {
 					toFetch.push(jid)
 				}
-			} else {
-				toFetch.push(jid)
+			}
+		} else {
+			for (let jid of jids) {
+				const user = jidDecode(jid)?.user
+				jid = jidNormalizedUser(jid)
+				if (useCache) {
+					const devices = await userDevicesCache.get<JidWithDevice[]>(user!)
+					if (devices) {
+						deviceResults.push(...devices)
+
+						logger.trace({ user }, 'using cache for devices')
+					} else {
+						toFetch.push(jid)
+					}
+				} else {
+					toFetch.push(jid)
+				}
 			}
 		}
 
@@ -236,8 +251,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				deviceResults.push(item)
 			}
 
-			for (const key in deviceMap) {
-				userDevicesCache.set(key, deviceMap[key]!)
+			if (userDevicesCache.mset) {
+				// if the cache supports mset, we can set all devices in one go
+				await userDevicesCache.mset(Object.entries(deviceMap).map(([key, value]) => ({ key, value })))
+			} else {
+				for (const key in deviceMap) {
+					if (deviceMap[key]) {
+						await userDevicesCache.set(key, deviceMap[key])
+					}
+				}
 			}
 		}
 
