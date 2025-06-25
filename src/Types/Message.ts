@@ -35,11 +35,18 @@ export type WAMediaPayloadURL = { url: URL | string }
 export type WAMediaPayloadStream = { stream: Readable }
 export type WAMediaUpload = Buffer | WAMediaPayloadStream | WAMediaPayloadURL
 
+export type Sticker = {
+	data: WAMediaUpload
+	emojis?: string[]
+	accessibilityLabel?: string
+}
+
 export type StickerPack = {
-	stickers: WAMediaUpload[]
+	stickers: Sticker[]
 	cover: WAMediaUpload
 	name: string
 	publisher: string
+	description?: string
 	packId?: string
 }
 

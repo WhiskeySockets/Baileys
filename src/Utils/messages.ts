@@ -33,7 +33,9 @@ import {
 	generateThumbnail,
 	getAudioDuration,
 	getAudioWaveform,
-	MediaDownloadOptions
+	getStream,
+	MediaDownloadOptions,
+	toBuffer
 } from './messages-media'
 
 type MediaUploadData = {
@@ -407,33 +409,59 @@ export const generateWAMessageContent = async (
 			}
 		}
 	} else if ('stickerPack' in message) {
-		const { stickers, cover, name, publisher, packId } = message.stickerPack
-		const [coverMessage, ...stickerMessages] = await Promise.all([
-			prepareWAMessageMedia({ sticker: cover }, { ...options, mediaTypeOverride: 'sticker' }),
-			...stickers.map(sticker => prepareWAMessageMedia({ sticker }, { ...options, mediaTypeOverride: 'sticker' }))
+		const { stickers, cover, name, publisher, packId, description } = message.stickerPack
+
+		const coverBuffer = await toBuffer((await getStream(cover)).stream)
+		const imageDataHash = sha256(coverBuffer).toString('base64')
+
+		const [coverUploadResult, ...stickerUploadResults] = await Promise.all([
+			prepareWAMessageMedia({ image: coverBuffer }, { ...options, mediaTypeOverride: 'image' }),
+			...stickers.map(s => prepareWAMessageMedia({ sticker: s.data }, { ...options, mediaTypeOverride: 'sticker' }))
 		])
 
-		const coverSticker = coverMessage.stickerMessage!
+		const stickerPackIdValue = packId || generateMessageIDV2()
+		const coverImage = coverUploadResult.imageMessage!
+
+		const stickerPackSize = stickerUploadResults.reduce(
+			(acc, s) => acc + (s.stickerMessage?.fileLength ? +s.stickerMessage.fileLength : 0),
+			0
+		)
 
 		m.stickerPackMessage = {
 			name: name,
 			publisher: publisher,
-			stickerPackId: packId || generateMessageIDV2(),
+			stickerPackId: stickerPackIdValue,
+			packDescription: description,
+			stickerPackOrigin: WAProto.Message.StickerPackMessage.StickerPackOrigin.THIRD_PARTY,
+			stickerPackSize,
 
-			stickers: stickerMessages.map(s => s.stickerMessage!),
+			stickers: stickerUploadResults.map((uploadResult, i) => {
+				const stickerMsg = uploadResult.stickerMessage!
+				const fileSha256B64 = Buffer.from(stickerMsg.fileSha256!).toString('base64')
 
-			fileSha256: coverSticker.fileSha256,
-			fileEncSha256: coverSticker.fileEncSha256,
-			mediaKey: coverSticker.mediaKey,
-			directPath: coverSticker.directPath,
-			fileLength: coverSticker.fileLength,
-			mediaKeyTimestamp: coverSticker.mediaKeyTimestamp,
+				return {
+					fileName: `${fileSha256B64}.webp`,
+					mimetype: stickerMsg.mimetype,
+					isAnimated: stickerMsg.isAnimated,
+					emojis: stickers[i].emojis || [],
+					accessibilityLabel: stickers[i].accessibilityLabel
+				}
+			}),
 
-			thumbnailDirectPath: coverSticker.directPath,
-			thumbnailSha256: coverSticker.fileSha256,
-			thumbnailEncSha256: coverSticker.fileEncSha256,
-			thumbnailHeight: coverSticker.height,
-			thumbnailWidth: coverSticker.width
+			fileSha256: coverImage.fileSha256,
+			fileEncSha256: coverImage.fileEncSha256,
+			mediaKey: coverImage.mediaKey,
+			directPath: coverImage.directPath,
+			fileLength: coverImage.fileLength,
+			mediaKeyTimestamp: coverImage.mediaKeyTimestamp,
+			trayIconFileName: `${stickerPackIdValue}.png`,
+			imageDataHash,
+
+			thumbnailDirectPath: coverImage.directPath,
+			thumbnailSha256: coverImage.fileSha256,
+			thumbnailEncSha256: coverImage.fileEncSha256,
+			thumbnailHeight: coverImage.height,
+			thumbnailWidth: coverImage.width
 		}
 	} else if ('pin' in message) {
 		m.pinInChatMessage = {}
