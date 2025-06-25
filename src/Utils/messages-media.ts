@@ -448,7 +448,12 @@ export const downloadContentFromMessage = async (
 	type: MediaType,
 	opts: MediaDownloadOptions = {}
 ) => {
-	const downloadUrl = url || getUrlFromDirectPath(directPath!)
+	const isValidMediaUrl = url?.startsWith('https://mmg.whatsapp.net/')
+	const downloadUrl = isValidMediaUrl ? url : getUrlFromDirectPath(directPath!)
+	if (!downloadUrl) {
+		throw new Boom('No valid media URL or directPath present in message', { statusCode: 400 })
+	}
+
 	const keys = await getMediaKeys(mediaKey, type)
 
 	return downloadEncryptedContent(downloadUrl, keys, opts)
