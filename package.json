@@ -44,7 +44,7 @@
     "axios": "^1.6.0",
     "libsignal": "github:WhiskeySockets/libsignal-node",
     "lodash": "^4.17.21",
-    "music-metadata": "^7.12.3",
+    "music-metadata": "^11.3.0",
     "pino": "^9.6",
     "protobufjs": "^7.2.4",
     "ws": "^8.13.0"
