@@ -13,6 +13,7 @@ import type {
 import { Curve, signedKeyPair } from './crypto'
 import { delay, generateRegistrationId } from './generics'
 import { ILogger } from './logger'
+import { createEnhancedSignalKeyStore } from './enhanced-signal-store'
 
 /**
  * Adds caching capability to a SignalKeyStore
@@ -82,6 +83,7 @@ export function makeCacheableSignalKeyStore(
 			await store.clear?.()
 		}
 	}
+
 }
 
 /**
@@ -217,3 +219,20 @@ export const initAuthCreds = (): AuthenticationCreds => {
 		routingInfo: undefined
 	}
 }
+
+/**
+ * Enhanced version of addTransactionCapability with improved locking mechanisms
+ * to prevent race conditions and data corruption.
+ * 
+ * This implementation adds:
+ * 1. Per-key type mutexes to prevent concurrent access to the same key type
+ * 2. Per-key mutexes to prevent concurrent access to the same key
+ * 3. Improved transaction handling with proper locking
+ * 4. Special handling for pre-keys to prevent unexpected deletion
+ * 
+ * @param state the key store to apply this capability to
+ * @param logger logger to log events
+ * @param options transaction capability options
+ * @returns SignalKeyStore with enhanced transaction capability
+ */
+export const addEnhancedTransactionCapability = createEnhancedSignalKeyStore
