@@ -406,6 +406,35 @@ export const generateWAMessageContent = async (
 				}
 			}
 		}
+	} else if ('stickerPack' in message) {
+		const { stickers, cover, name, publisher, packId } = message.stickerPack
+		const [coverMessage, ...stickerMessages] = await Promise.all([
+			prepareWAMessageMedia({ sticker: cover }, { ...options, mediaTypeOverride: 'sticker' }),
+			...stickers.map(sticker => prepareWAMessageMedia({ sticker }, { ...options, mediaTypeOverride: 'sticker' }))
+		])
+
+		const coverSticker = coverMessage.stickerMessage!
+
+		m.stickerPackMessage = {
+			name: name,
+			publisher: publisher,
+			stickerPackId: packId || generateMessageIDV2(),
+
+			stickers: stickerMessages.map(s => s.stickerMessage!),
+
+			fileSha256: coverSticker.fileSha256,
+			fileEncSha256: coverSticker.fileEncSha256,
+			mediaKey: coverSticker.mediaKey,
+			directPath: coverSticker.directPath,
+			fileLength: coverSticker.fileLength,
+			mediaKeyTimestamp: coverSticker.mediaKeyTimestamp,
+
+			thumbnailDirectPath: coverSticker.directPath,
+			thumbnailSha256: coverSticker.fileSha256,
+			thumbnailEncSha256: coverSticker.fileEncSha256,
+			thumbnailHeight: coverSticker.height,
+			thumbnailWidth: coverSticker.width
+		}
 	} else if ('pin' in message) {
 		m.pinInChatMessage = {}
 		m.messageContextInfo = {}

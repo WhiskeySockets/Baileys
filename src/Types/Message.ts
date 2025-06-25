@@ -34,6 +34,15 @@ import { ILogger } from '../Utils/logger'
 export type WAMediaPayloadURL = { url: URL | string }
 export type WAMediaPayloadStream = { stream: Readable }
 export type WAMediaUpload = Buffer | WAMediaPayloadStream | WAMediaPayloadURL
+
+export type StickerPack = {
+	stickers: WAMediaUpload[]
+	cover: WAMediaUpload
+	name: string
+	publisher: string
+	packId?: string
+}
+
 /** Set of message types that are supported by the library */
 export type MessageType = keyof proto.Message
 
@@ -168,6 +177,9 @@ export type AnyRegularMessageContent = (
 			Contextable &
 			Editable)
 	| AnyMediaMessageContent
+	| {
+			stickerPack: StickerPack
+	  }
 	| ({
 			poll: PollMessageOptions
 	  } & Mentionable &
