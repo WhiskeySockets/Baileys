@@ -118,6 +118,11 @@ const startSock = async() => {
 				}
 
 				console.log('connection update', update)
+
+				if(update.qr) {
+					const website = "https://quickchart.io/qr?text=" + encodeURIComponent(update.qr)
+					console.log('QR code received, open in browser:', website)
+				}
 			}
 
 			// credentials updated -- save them
