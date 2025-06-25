@@ -33,4 +33,6 @@ jobs:
             npm install @whiskeysockets/baileys@${{ github.event.pull_request.head.repo.full_name }}#${{ github.event.pull_request.head.ref }}
             # YARN v2
             yarn add @whiskeysockets/baileys@${{ github.event.pull_request.head.repo.full_name }}#${{ github.event.pull_request.head.ref }}
+            # PNPM
+            pnpm add @whiskeysockets/baileys@${{ github.event.pull_request.head.repo.full_name }}#${{ github.event.pull_request.head.ref }}
             ```
