@@ -94,6 +94,8 @@ export class SenderKeyState {
 		const publicKey = this.senderKeyStateStructure.senderSigningKey.public
 		if (publicKey instanceof Buffer) {
 			return publicKey
+		} else if (typeof publicKey === 'string') {
+			return Buffer.from(publicKey, 'base64')
 		}
 
 		return Buffer.from(publicKey || [])
@@ -107,9 +109,11 @@ export class SenderKeyState {
 
 		if (privateKey instanceof Buffer) {
 			return privateKey
+		} else if (typeof privateKey === 'string') {
+			return Buffer.from(privateKey, 'base64')
 		}
 
-		return Buffer.from(privateKey)
+		return Buffer.from(privateKey || [])
 	}
 
 	public hasSenderMessageKey(iteration: number): boolean {
