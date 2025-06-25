@@ -98,7 +98,7 @@ export class SenderKeyState {
 			return Buffer.from(publicKey, 'base64')
 		}
 
-		return Buffer.from(publicKey)
+		return Buffer.from(publicKey || [])
 	}
 
 	public getSigningKeyPrivate(): Buffer | undefined {
@@ -113,7 +113,7 @@ export class SenderKeyState {
 			return Buffer.from(privateKey, 'base64')
 		}
 
-		return Buffer.from(privateKey)
+		return Buffer.from(privateKey || [])
 	}
 
 	public hasSenderMessageKey(iteration: number): boolean {
