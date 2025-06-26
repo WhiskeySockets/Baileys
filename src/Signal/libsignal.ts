@@ -14,11 +14,29 @@ import { jidDecode } from '../WABinary'
 export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository {
   const storage = signalStorage(auth)
   return {
-    decryptGroupMessage({ group, authorJid, msg }) {
+    // Decrypt group message with additional error handling for "Bad MAC"
+    async decryptGroupMessage({ group, authorJid, msg }) {
       const senderName = jidToSignalSenderKeyName(group, authorJid)
       const cipher = new GroupCipher(storage, senderName)
-      return cipher.decrypt(msg)
+      try {
+        return await cipher.decrypt(msg)
+      } catch (err: any) {
+        if (
+          err &&
+          err.message &&
+          (err.message.includes("BadMac") || err.message.includes("Bad MAC"))
+        ) {
+          console.error(
+            "Bad MAC error encountered in group message decryption for",
+            senderName
+          )
+          // Reset the sender key record to refresh the group session in case of a corrupted key
+          await storage.storeSenderKey(senderName, new SenderKeyRecord())
+        }
+        throw err
+      }
     },
+
     async processSenderKeyDistributionMessage({ item, authorJid }) {
       const builder = new GroupSessionBuilder(storage)
       const senderName = jidToSignalSenderKeyName(item.groupId!, authorJid)
@@ -30,53 +48,60 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
         null,
         item.axolotlSenderKeyDistributionMessage
       )
-      const { [senderName]: senderKey } = await auth.keys.get('sender-key', [senderName])
+      const { [senderName]: senderKey } = await auth.keys.get('sender-key', [
+        senderName
+      ])
       if (!senderKey) {
         await storage.storeSenderKey(senderName, new SenderKeyRecord())
       }
 
       await builder.process(senderName, senderMsg)
     },
+
+    // Decrypt one-on-one message with error fallback for "Bad MAC"
     async decryptMessage({ jid, type, ciphertext }) {
-      console.log('[Decrypt] JID:', jid, 'Type:', type)
       const addr = jidToSignalProtocolAddress(jid)
-      console.log('[Address]', addr.toString())
       const session = new libsignal.SessionCipher(storage, addr)
-      const hasSession = await storage.loadSession(addr.toString())
-      console.log('[Session exists?]', Boolean(hasSession))
-      
+      let result: Buffer
       try {
-        let result: Buffer
-        if (type === 'pkmsg') {
-          result = await session.decryptPreKeyWhisperMessage(ciphertext)
-        } else if (type === 'msg') {
-          result = await session.decryptWhisperMessage(ciphertext)
-        } else {
-          throw new Error(`Unknown message type: ${type}`)
+        switch (type) {
+          case 'pkmsg':
+            result = await session.decryptPreKeyWhisperMessage(ciphertext)
+            break
+          case 'msg':
+            result = await session.decryptWhisperMessage(ciphertext)
+            break
+          default:
+            throw new Error("Unknown message type")
         }
-        console.log('[Decryption Successful]')
         return result
-      } catch (err) {
-        console.error('[Decryption Error]', err)
+      } catch (err: any) {
+        if (
+          err &&
+          err.message &&
+          (err.message.includes("BadMac") || err.message.includes("Bad MAC"))
+        ) {
+          console.error(
+            "Bad MAC error encountered in one-on-one message decryption for",
+            jid
+          )
+          // Reset the session record so that future messages can initialize a new session
+          await storage.storeSession(addr.toString(), new libsignal.SessionRecord())
+        }
         throw err
       }
     },
+
     async encryptMessage({ jid, data }) {
       const addr = jidToSignalProtocolAddress(jid)
       const cipher = new libsignal.SessionCipher(storage, addr)
-      
-      const hasSession = await storage.loadSession(addr.toString())
-      if (!hasSession) {
-        throw new Error(`Cannot encrypt – no session found for ${jid}`)
-      }
 
       const { type: sigType, body } = await cipher.encrypt(data)
-      // Normalize: sigType 3 to 'pkmsg', otherwise 'msg'
       const type = sigType === 3 ? 'pkmsg' : 'msg'
       return { type, ciphertext: Buffer.from(body, 'binary') }
     },
-    async encryptGroupMessage({ group, meId, data }) {
-      const senderName = jidToSignalSenderKeyName(group, meId)
+
+    async encryptGroupMessage({ group      const senderName = jidToSignalSenderKeyName(group, meId)
       const builder = new GroupSessionBuilder(storage)
 
       const { [senderName]: senderKey } = await auth.keys.get('sender-key', [senderName])
@@ -87,39 +112,36 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
       const senderKeyDistributionMessage = await builder.create(senderName)
       const session = new GroupCipher(storage, senderName)
       const ciphertext = await session.encrypt(data)
+
       return {
         ciphertext,
         senderKeyDistributionMessage: senderKeyDistributionMessage.serialize()
       }
     },
+
     async injectE2ESession({ jid, session }) {
-      const cipher = new libsignal.SessionBuilder(storage, jidToSignalProtocolAddress(jid))
-      await cipher.initOutgoing(session)
+      const builder = new libsignal.SessionBuilder(
+        storage,
+        jidToSignalProtocolAddress(jid)
+      )
+      await builder.initOutgoing(session)
     },
+
     jidToSignalProtocolAddress(jid) {
-      // Return the protocol address as a string.
       return jidToSignalProtocolAddress(jid).toString()
     }
   }
 }
 
-// Converts a jid into a libsignal.ProtocolAddress.
-// If the decoded device number is not valid, defaults to 0.
 const jidToSignalProtocolAddress = (jid: string) => {
-  const decoded = jidDecode(jid)
-  if (!decoded) {
-    throw new Error(`Failed to decode jid: ${jid}`)
-  }
-  const { user, device } = decoded
-  return new libsignal.ProtocolAddress(user, typeof device === 'number' ? device : 0)
+  const { user, device } = jidDecode(jid)!
+  return new libsignal.ProtocolAddress(user, device || 0)
 }
 
-// Builds the sender key name using the group and the user's protocol address.
 const jidToSignalSenderKeyName = (group: string, user: string): string => {
   return new SenderKeyName(group, jidToSignalProtocolAddress(user)).toString()
 }
 
-// Provides the necessary storage functions required by libsignal.
 function signalStorage({ creds, keys }: SignalAuthState) {
   return {
     loadSession: async (id: string) => {
@@ -144,7 +166,8 @@ function signalStorage({ creds, keys }: SignalAuthState) {
         }
       }
     },
-    removePreKey: (id: number) => keys.set({ 'pre-key': { [id]: null } }),
+    removePreKey: (id: number) =>
+      keys.set({ 'pre-key': { [id]: null } }),
     loadSignedPreKey: () => {
       const key = creds.signedPreKey
       return {
