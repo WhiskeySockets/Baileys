@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto'
 import { URL } from 'url'
 import { promisify } from 'util'
 import { proto } from '../../WAProto'
+import { aesEncryptCTR, Curve, derivePairingCodeKey } from '../crypto'
 import {
 	DEF_CALLBACK_PREFIX,
 	DEF_TAG_PREFIX,
@@ -13,12 +14,9 @@ import {
 import { DisconnectReason, SocketConfig } from '../Types'
 import {
 	addTransactionCapability,
-	aesEncryptCTR,
 	bindWaitForConnectionUpdate,
 	bytesToCrockford,
 	configureSuccessfulPairing,
-	Curve,
-	derivePairingCodeKey,
 	generateLoginNode,
 	generateMdTagPrefix,
 	generateRegistrationNode,
@@ -177,7 +175,7 @@ export const makeSocket = (config: SocketConfig) => {
 	 * @param msgId the message tag to await
 	 * @param timeoutMs timeout after which the promise will reject
 	 */
-	const waitForMessage = async <T>(msgId: string, timeoutMs = defaultQueryTimeoutMs) => {
+	const waitForMessage = async <T = BinaryNode>(msgId: string, timeoutMs = defaultQueryTimeoutMs) => {
 		let onRecv: (json) => void
 		let onErr: (err) => void
 		try {
@@ -192,7 +190,7 @@ export const makeSocket = (config: SocketConfig) => {
 				ws.off('error', onErr)
 			})
 
-			return result as any
+			return result
 		} finally {
 			ws.off(`TAG:${msgId}`, onRecv!)
 			ws.off('close', onErr!) // if the socket closes, you'll never receive the message

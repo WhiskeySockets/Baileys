@@ -15,6 +15,13 @@ import {
 } from '../Types'
 import { BinaryNode, getAllBinaryNodeChildren, jidDecode } from '../WABinary'
 
+interface Long {
+	low: number
+	high: number
+	unsigned: boolean
+	toNumber(): number
+}
+
 const PLATFORM_MAP = {
 	aix: 'AIX',
 	darwin: 'Mac OS',

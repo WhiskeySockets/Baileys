@@ -1,7 +1,7 @@
 import { BufferJSON } from '../../Utils/generics'
 import { SenderKeyState } from './sender-key-state'
 
-export interface SenderKeyStateStructure {
+interface SenderKeyStateStructure {
 	senderKeyId: number
 	senderChainKey: {
 		iteration: number
