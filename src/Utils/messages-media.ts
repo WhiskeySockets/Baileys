@@ -139,8 +139,8 @@ export const extractImageThumb = async (bufferOrFilePath: Readable | Buffer | st
 export const encodeBase64EncodedStringForUpload = (b64: string) =>
 	encodeURIComponent(b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/\=+$/, ''))
 
-export const generateProfilePicture = async (mediaUpload: WAMediaUpload, dimensions?: { w: number; h: number }) => {
-	const { w = 640, h = 640 } = dimensions || {}
+export const generateProfilePicture = async (mediaUpload: WAMediaUpload, dimensions?: { width: number; height: number }) => {
+	const { width: w = 640, height: h = 640 } = dimensions || {}
 
 	let bufferOrFilePath: Buffer | string
 	if (Buffer.isBuffer(mediaUpload)) {
