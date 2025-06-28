@@ -1,7 +1,7 @@
 syntax = "proto3";
 package proto;
 
-/// WhatsApp Version: 2.3000.1024062742
+/// WhatsApp Version: 2.3000.1024064590
 
 message ADVDeviceIdentity {
     optional uint32 rawId = 1;
@@ -782,10 +782,10 @@ message ChatRowOpaqueData {
 }
 
 message Citation {
-    required string title = 1;
-    required string subtitle = 2;
-    required string cmsId = 3;
-    required string imageUrl = 4;
+    optional string title = 1;
+    optional string subtitle = 2;
+    optional string cmsId = 3;
+    optional string imageUrl = 4;
 }
 
 message ClientPairingProps {
@@ -1202,7 +1202,7 @@ message ContextInfo {
 }
 
 message Conversation {
-    required string id = 1;
+    optional string id = 1;
     repeated HistorySyncMsg messages = 2;
     optional string newJid = 3;
     optional string oldJid = 4;
@@ -1471,7 +1471,7 @@ message GroupMention {
 }
 
 message GroupParticipant {
-    required string userJid = 1;
+    optional string userJid = 1;
     optional Rank rank = 2;
     enum Rank {
         REGULAR = 0;
@@ -1504,7 +1504,7 @@ message HandshakeMessage {
 }
 
 message HistorySync {
-    required HistorySyncType syncType = 1;
+    optional HistorySyncType syncType = 1;
     repeated Conversation conversations = 2;
     repeated WebMessageInfo statusV3Messages = 3;
     optional uint32 chunkOrder = 5;
@@ -1622,8 +1622,8 @@ message KeyId {
 }
 
 message LIDMigrationMapping {
-    required uint64 pn = 1;
-    required uint64 assignedLid = 2;
+    optional uint64 pn = 1;
+    optional uint64 assignedLid = 2;
     optional uint64 latestLid = 3;
 }
 
@@ -3824,7 +3824,7 @@ message StatusMentionMessage {
 }
 
 message StatusPSA {
-    required uint64 campaignId = 44;
+    optional uint64 campaignId = 44;
     optional uint64 campaignExpirationTimestamp = 45;
 }
 
@@ -3963,15 +3963,15 @@ message SyncActionValue {
     }
     
     message CustomPaymentMethod {
-        required string credentialId = 1;
-        required string country = 2;
-        required string type = 3;
+        optional string credentialId = 1;
+        optional string country = 2;
+        optional string type = 3;
         repeated SyncActionValue.CustomPaymentMethodMetadata metadata = 4;
     }
     
     message CustomPaymentMethodMetadata {
-        required string key = 1;
-        required string value = 2;
+        optional string key = 1;
+        optional string value = 2;
     }
     
     message CustomPaymentMethodsAction {
@@ -4075,8 +4075,8 @@ message SyncActionValue {
     }
     
     message MerchantPaymentPartnerAction {
-        required Status status = 1;
-        required string country = 2;
+        optional Status status = 1;
+        optional string country = 2;
         optional string gatewayName = 3;
         optional string credentialId = 4;
         enum Status {
@@ -4122,8 +4122,8 @@ message SyncActionValue {
     }
     
     message PaymentTosAction {
-        required PaymentNotice paymentNotice = 1;
-        required bool accepted = 2;
+        optional PaymentNotice paymentNotice = 1;
+        optional bool accepted = 2;
         enum PaymentNotice {
             BR_PAY_PRIVACY_POLICY = 0;
         }
@@ -4387,7 +4387,7 @@ message UserPassword {
 }
 
 message UserReceipt {
-    required string userJid = 1;
+    optional string userJid = 1;
     optional int64 receiptTimestamp = 2;
     optional int64 readTimestamp = 3;
     optional int64 playedTimestamp = 4;
@@ -4469,7 +4469,7 @@ message WebFeatures {
 }
 
 message WebMessageInfo {
-    required MessageKey key = 1;
+    optional MessageKey key = 1;
     optional Message message = 2;
     optional uint64 messageTimestamp = 3;
     optional Status status = 4;
