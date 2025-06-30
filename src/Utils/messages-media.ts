@@ -180,8 +180,14 @@ export const extractImageThumb = async (bufferOrFilePath: Readable | Buffer | st
 export const encodeBase64EncodedStringForUpload = (b64: string) =>
 	encodeURIComponent(b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/\=+$/, ''))
 
-export const generateProfilePicture = async (mediaUpload: WAMediaUpload) => {
+export const generateProfilePicture = async (
+	mediaUpload: WAMediaUpload,
+	dimensions?: { width: number; height: number }
+) => {
 	let buffer: Buffer
+
+	const { width: w = 640, height: h = 640 } = dimensions || {}
+
 	if (Buffer.isBuffer(mediaUpload)) {
 		buffer = mediaUpload
 	} else {
@@ -196,7 +202,7 @@ export const generateProfilePicture = async (mediaUpload: WAMediaUpload) => {
 	if ('sharp' in lib && typeof lib.sharp?.default === 'function') {
 		img = lib.sharp
 			.default(buffer)
-			.resize(640, 640)
+			.resize(w, h)
 			.jpeg({
 				quality: 50
 			})
@@ -207,7 +213,7 @@ export const generateProfilePicture = async (mediaUpload: WAMediaUpload) => {
 		const min = Math.min(jimp.getWidth(), jimp.getHeight())
 		const cropped = jimp.crop(0, 0, min, min)
 
-		img = cropped.quality(50).resize(640, 640, RESIZE_BILINEAR).getBufferAsync(MIME_JPEG)
+		img = cropped.quality(50).resize(w, h, RESIZE_BILINEAR).getBufferAsync(MIME_JPEG)
 	} else {
 		throw new Boom('No image processing library available')
 	}
@@ -490,7 +496,12 @@ export const downloadContentFromMessage = async (
 	type: MediaType,
 	opts: MediaDownloadOptions = {}
 ) => {
-	const downloadUrl = url || getUrlFromDirectPath(directPath!)
+	const isValidMediaUrl = url?.startsWith('https://mmg.whatsapp.net/')
+	const downloadUrl = isValidMediaUrl ? url : getUrlFromDirectPath(directPath!)
+	if (!downloadUrl) {
+		throw new Boom('No valid media URL or directPath present in message', { statusCode: 400 })
+	}
+
 	const keys = await getMediaKeys(mediaKey, type)
 
 	return downloadEncryptedContent(downloadUrl, keys, opts)
