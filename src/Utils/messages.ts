@@ -126,7 +126,7 @@ export const prepareWAMessageMedia = async (
 	}
 
 	const uploadData: MediaUploadData = {
-		...(message as any),
+		...message,
 		media: message[mediaType]
 	}
 	delete uploadData[mediaType]
