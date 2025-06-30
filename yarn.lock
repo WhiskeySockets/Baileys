@@ -1717,8 +1717,8 @@
   version "1.0.0"
   resolved "https://codeload.github.com/whiskeysockets/eslint-config/tar.gz/f264cd06d24a43f76e4ad2d81528f8485a1e7efe"
   dependencies:
-    "@typescript-eslint/eslint-plugin" "^8.32.0"
-    "@typescript-eslint/parser" "^8.32.0"
+    "@typescript-eslint/eslint-plugin" "^7.15.0"
+    "@typescript-eslint/parser" "^7.15.0"
     eslint-plugin-simple-import-sort "^12.1.1"
 
 JSONStream@^1.0.4:
@@ -3503,6 +3503,11 @@ fetch-blob@^3.1.2, fetch-blob@^3.1.4:
   dependencies:
     node-domexception "^1.0.0"
     web-streams-polyfill "^3.0.3"
+
+fflate@^0.8.2:
+  version "0.8.2"
+  resolved "https://registry.yarnpkg.com/fflate/-/fflate-0.8.2.tgz#fc8631f5347812ad6028bbe4a2308b2792aa1dea"
+  integrity sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A==
 
 figures@^5.0.0:
   version "5.0.0"
