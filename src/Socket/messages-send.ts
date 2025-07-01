@@ -79,7 +79,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			useClones: false
 		})
 
-	const urlInfoCache = new NodeCache({ stdTTL: 5 * 60, useClones: false }) // 2 minutes
+	const urlInfoCache = new NodeCache({ stdTTL: 5 * 60, useClones: false }) // 5 minutes
 
 	let mediaConn: Promise<MediaConnInfo>
 	const refreshMediaConn = async (forceGet = false) => {
