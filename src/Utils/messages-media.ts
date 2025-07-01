@@ -9,6 +9,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { Readable, Transform } from 'stream'
 import { URL } from 'url'
+import { ResizeStrategy } from 'jimp'
 import { proto } from '../../WAProto'
 import { DEFAULT_ORIGIN, MEDIA_HKDF_KEY_MAPPING, MEDIA_PATH_MAP } from '../Defaults'
 import {
@@ -32,22 +33,12 @@ import { ILogger } from './logger'
 const getTmpFilesDirectory = () => tmpdir()
 
 const getImageProcessingLibrary = async () => {
-	const [_jimp, sharp] = await Promise.all([
-		(async () => {
-			const jimp = await import('jimp').catch(() => {})
-			return jimp
-		})(),
-		(async () => {
-			const sharp = await import('sharp').catch(() => {})
-			return sharp
-		})()
-	])
+	const [jimp, sharp] = await Promise.all([import('jimp').catch(() => {}), import('sharp').catch(() => {})])
 
 	if (sharp) {
 		return { sharp }
 	}
 
-	const jimp = _jimp?.default || _jimp
 	if (jimp) {
 		return { jimp }
 	}
@@ -159,15 +150,15 @@ export const extractImageThumb = async (bufferOrFilePath: Readable | Buffer | st
 				height: dimensions.height
 			}
 		}
-	} else if ('jimp' in lib && typeof lib.jimp?.read === 'function') {
-		const { read, MIME_JPEG, RESIZE_BILINEAR, AUTO } = lib.jimp
-
-		const jimp = await read(bufferOrFilePath as string)
+	} else if ('jimp' in lib && typeof lib.jimp?.Jimp === 'object') {
+		const jimp = await lib.jimp.default.Jimp.read(bufferOrFilePath)
 		const dimensions = {
-			width: jimp.getWidth(),
-			height: jimp.getHeight()
+			width: jimp.width,
+			height: jimp.height
 		}
-		const buffer = await jimp.quality(50).resize(width, AUTO, RESIZE_BILINEAR).getBufferAsync(MIME_JPEG)
+		const buffer = await jimp
+			.resize({ w: width, mode: ResizeStrategy.BILINEAR })
+			.getBuffer('image/jpeg', { quality: 50 })
 		return {
 			buffer,
 			original: dimensions
@@ -207,13 +198,12 @@ export const generateProfilePicture = async (
 				quality: 50
 			})
 			.toBuffer()
-	} else if ('jimp' in lib && typeof lib.jimp?.read === 'function') {
-		const { read, MIME_JPEG, RESIZE_BILINEAR } = lib.jimp
-		const jimp = await read(buffer)
-		const min = Math.min(jimp.getWidth(), jimp.getHeight())
-		const cropped = jimp.crop(0, 0, min, min)
+	} else if ('jimp' in lib && typeof lib.jimp?.Jimp === 'object') {
+		const jimp = await lib.jimp.default.Jimp.read(buffer)
+		const min = Math.min(jimp.width, jimp.height)
+		const cropped = jimp.crop({ x: 0, y: 0, w: min, h: min })
 
-		img = cropped.quality(50).resize(w, h, RESIZE_BILINEAR).getBufferAsync(MIME_JPEG)
+		img = cropped.resize({ w, h, mode: ResizeStrategy.BILINEAR }).getBuffer('image/jpeg', { quality: 50 })
 	} else {
 		throw new Boom('No image processing library available')
 	}
