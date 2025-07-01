@@ -60,6 +60,47 @@ export const hkdfInfoKey = (type: MediaType) => {
 	return `WhatsApp ${hkdfInfo} Keys`
 }
 
+export const getRawMediaUploadData = async (media: WAMediaUpload, mediaType: MediaType, logger?: ILogger) => {
+	const { stream } = await getStream(media)
+	logger?.debug('got stream for raw upload')
+
+	const hasher = Crypto.createHash('sha256')
+	const filePath = join(tmpdir(), mediaType + generateMessageIDV2())
+	const fileWriteStream = createWriteStream(filePath)
+
+	let fileLength = 0
+	try {
+		for await (const data of stream) {
+			fileLength += data.length
+			hasher.update(data)
+			if (!fileWriteStream.write(data)) {
+				await once(fileWriteStream, 'drain')
+			}
+		}
+
+		fileWriteStream.end()
+		await once(fileWriteStream, 'finish')
+		stream.destroy()
+		const fileSha256 = hasher.digest()
+		logger?.debug('hashed data for raw upload')
+		return {
+			filePath: filePath,
+			fileSha256,
+			fileLength
+		}
+	} catch (error) {
+		fileWriteStream.destroy()
+		stream.destroy()
+		try {
+			await fs.unlink(filePath)
+		} catch {
+			//
+		}
+
+		throw error
+	}
+}
+
 /** generates all the keys required to encrypt/decrypt & sign a media message */
 export async function getMediaKeys(
 	buffer: Uint8Array | string | null | undefined,
@@ -143,22 +184,24 @@ export const generateProfilePicture = async (
 	mediaUpload: WAMediaUpload,
 	dimensions?: { width: number; height: number }
 ) => {
+	let buffer: Buffer
+
 	const { width: w = 640, height: h = 640 } = dimensions || {}
 
-	let bufferOrFilePath: Buffer | string
 	if (Buffer.isBuffer(mediaUpload)) {
-		bufferOrFilePath = mediaUpload
-	} else if ('url' in mediaUpload) {
-		bufferOrFilePath = mediaUpload.url.toString()
+		buffer = mediaUpload
 	} else {
-		bufferOrFilePath = await toBuffer(mediaUpload.stream)
+		// Use getStream to handle all WAMediaUpload types (Buffer, Stream, URL)
+		const { stream } = await getStream(mediaUpload)
+		// Convert the resulting stream to a buffer
+		buffer = await toBuffer(stream)
 	}
 
 	const lib = await getImageProcessingLibrary()
 	let img: Promise<Buffer>
 	if ('sharp' in lib && typeof lib.sharp?.default === 'function') {
 		img = lib.sharp
-			.default(bufferOrFilePath)
+			.default(buffer)
 			.resize(w, h)
 			.jpeg({
 				quality: 50
@@ -166,7 +209,7 @@ export const generateProfilePicture = async (
 			.toBuffer()
 	} else if ('jimp' in lib && typeof lib.jimp?.read === 'function') {
 		const { read, MIME_JPEG, RESIZE_BILINEAR } = lib.jimp
-		const jimp = await read(bufferOrFilePath as string)
+		const jimp = await read(buffer)
 		const min = Math.min(jimp.getWidth(), jimp.getHeight())
 		const cropped = jimp.crop(0, 0, min, min)
 
