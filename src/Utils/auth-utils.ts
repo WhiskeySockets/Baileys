@@ -1,6 +1,6 @@
 import NodeCache from '@cacheable/node-cache'
-import { randomBytes } from 'crypto'
-import { DEFAULT_CACHE_TTLS } from '../Defaults'
+import {randomBytes} from 'crypto'
+import {DEFAULT_CACHE_TTLS} from '../Defaults'
 import type {
 	AuthenticationCreds,
 	CacheStore,
@@ -10,9 +10,11 @@ import type {
 	SignalKeyStoreWithTransaction,
 	TransactionCapabilityOptions
 } from '../Types'
-import { Curve, signedKeyPair } from './crypto'
-import { delay, generateRegistrationId } from './generics'
-import { ILogger } from './logger'
+import {Curve, signedKeyPair} from './crypto'
+import {delay, generateRegistrationId} from './generics'
+import {ILogger} from './logger'
+import {Mutex} from 'async-mutex'
+
 
 /**
  * Adds caching capability to a SignalKeyStore
@@ -51,7 +53,7 @@ export function makeCacheableSignalKeyStore(
 			}
 
 			if (idsToFetch.length) {
-				logger?.trace({ items: idsToFetch.length }, 'loading from store')
+				logger?.trace({items: idsToFetch.length}, 'loading from store')
 				const fetched = await store.get(type, idsToFetch)
 				for (const id of idsToFetch) {
 					const item = fetched[id]
@@ -73,7 +75,7 @@ export function makeCacheableSignalKeyStore(
 				}
 			}
 
-			logger?.trace({ keys }, 'updated cache')
+			logger?.trace({keys}, 'updated cache')
 
 			await store.set(data)
 		},
@@ -94,8 +96,16 @@ export function makeCacheableSignalKeyStore(
 export const addTransactionCapability = (
 	state: SignalKeyStore,
 	logger: ILogger,
-	{ maxCommitRetries, delayBetweenTriesMs }: TransactionCapabilityOptions
+	{maxCommitRetries, delayBetweenTriesMs}: TransactionCapabilityOptions
 ): SignalKeyStoreWithTransaction => {
+
+	// Mutex for each key type (session, pre-key, etc.)
+	const keyTypeMutexes = new Map<string, Mutex>()
+	// Mutex for individual keysAdd commentMore actions
+	const keyMutexes = new Map<string, Mutex>()
+	// Global transaction mutex
+	const transactionMutex = new Mutex()
+
 	// number of queries made to the DB during the transaction
 	// only there for logging purposes
 	let dbQueriesInTransaction = 0
@@ -103,6 +113,7 @@ export const addTransactionCapability = (
 	let mutations: SignalDataSet = {}
 
 	let transactionsInProgress = 0
+
 
 	return {
 		get: async (type, ids) => {
@@ -112,10 +123,20 @@ export const addTransactionCapability = (
 				// only fetch if there are any items to fetch
 				if (idsRequiringFetch.length) {
 					dbQueriesInTransaction += 1
-					const result = await state.get(type, idsRequiringFetch)
 
-					transactionCache[type] ||= {}
-					Object.assign(transactionCache[type]!, result)
+					// Acquire mutex for this key type to prevent concurrent access
+					const typeMutex = getKeyTypeMutex(type as string)
+					await typeMutex.acquire()
+
+					try {
+						const result = await state.get(type, idsRequiringFetch)
+
+						// Update transaction cache
+						transactionCache[type] ||= {}
+						Object.assign(transactionCache[type]!, result)
+					} finally {
+						typeMutex.release()
+					}
 				}
 
 				return ids.reduce((dict, id) => {
@@ -127,69 +148,192 @@ export const addTransactionCapability = (
 					return dict
 				}, {})
 			} else {
-				return state.get(type, ids)
+				// Not in transaction, fetch directly with mutex protection
+				const typeMutex = getKeyTypeMutex(type as string)
+				return await typeMutex.acquire().then(async (release) => {
+					try {
+						return await state.get(type, ids)
+					} finally {
+						release()
+					}
+				})
 			}
 		},
-		set: data => {
+		set: async data => {
 			if (isInTransaction()) {
-				logger.trace({ types: Object.keys(data) }, 'caching in transaction')
+				logger.trace({types: Object.keys(data)}, 'caching in transaction')
 				for (const key in data) {
 					transactionCache[key] = transactionCache[key] || {}
-					Object.assign(transactionCache[key], data[key])
 
-					mutations[key] = mutations[key] || {}
-					Object.assign(mutations[key], data[key])
-				}
-			} else {
-				return state.set(data)
-			}
-		},
-		isInTransaction,
-		async transaction(work) {
-			let result: Awaited<ReturnType<typeof work>>
-			transactionsInProgress += 1
-			if (transactionsInProgress === 1) {
-				logger.trace('entering transaction')
-			}
+					// Special handling for pre-keys to prevent unexpected deletion
+					if (key === 'pre-key') {
+						for (const keyId in data[key]) {
+							// If we're trying to delete a pre-key, check if we have it in cache first
+							if (data[key][keyId] === null) {
+								// Only allow deletion if we have the key in cache
+								// This prevents unexpected deletions during race conditions
+								if (transactionCache[key] && transactionCache[key][keyId]) {
+									if (!transactionCache[key]) {
+										transactionCache[key] = {}
+									}
+									transactionCache[key][keyId] = null
 
-			try {
-				result = await work()
-				// commit if this is the outermost transaction
-				if (transactionsInProgress === 1) {
-					if (Object.keys(mutations).length) {
-						logger.trace('committing transaction')
-						// retry mechanism to ensure we've some recovery
-						// in case a transaction fails in the first attempt
-						let tries = maxCommitRetries
-						while (tries) {
-							tries -= 1
-							//eslint-disable-next-line max-depth
-							try {
-								await state.set(mutations)
-								logger.trace({ dbQueriesInTransaction }, 'committed transaction')
-								break
-							} catch (error) {
-								logger.warn(`failed to commit ${Object.keys(mutations).length} mutations, tries left=${tries}`)
-								await delay(delayBetweenTriesMs)
+									if (!mutations[key]) {
+										mutations[key] = {}
+									}
+									mutations[key][keyId] = null
+								} else {
+									// Skip deletion if key doesn't exist in cache
+									logger.warn(`Attempted to delete non-existent pre-key: ${keyId}`)
+									continue
+								}
+							} else {
+								// Normal update
+								if (!transactionCache[key]) {
+									transactionCache[key] = {}
+								}
+								transactionCache[key][keyId] = data[key][keyId]
+
+								if (!mutations[key]) {
+									mutations[key] = {}
+								}
+								mutations[key][keyId] = data[key][keyId]
 							}
 						}
 					} else {
-						logger.trace('no mutations in transaction')
+						// Normal handling for other key types
+						Object.assign(transactionCache[key], data[key])
+
+						mutations[key] = mutations[key] || {}
+						Object.assign(mutations[key], data[key])
+					}
+
+				}
+			} else {
+				// Not in transaction, apply directly with mutex protection
+				const mutexes: Mutex[] = []
+
+				try {
+					// Acquire all necessary mutexes to prevent concurrent access
+					for (const keyType in data) {
+						const typeMutex = getKeyTypeMutex(keyType)
+						await typeMutex.acquire()
+						mutexes.push(typeMutex)
+
+						// For pre-keys, we need special handling
+						if (keyType === 'pre-key') {
+							for (const keyId in data[keyType]) {
+								if (data[keyType][keyId] === null) {
+									// Check if the key exists before deleting
+									const existingKeys = await state.get(keyType as any, [keyId])
+									if (!existingKeys[keyId]) {
+										// Skip deletion if key doesn't exist
+										logger.warn(`Attempted to delete non-existent pre-key: ${keyId}`)
+										delete data[keyType][keyId]
+									}
+								}
+							}
+						}
+					}
+
+					// Apply changes to the store
+					await state.set(data)
+				} finally {
+					// Release all mutexes in reverse order
+					while (mutexes.length > 0) {
+						const mutex = mutexes.pop()
+						if (mutex) mutex.release()
 					}
 				}
-			} finally {
-				transactionsInProgress -= 1
-				if (transactionsInProgress === 0) {
-					transactionCache = {}
-					mutations = {}
-					dbQueriesInTransaction = 0
-				}
 			}
+		},
+		isInTransaction,
+		...(state.clear ? { clear: state.clear } : {}),
+		async transaction(work) {
+			return transactionMutex.acquire().then(async (releaseTxMutex) => {
+				let result: Awaited<ReturnType<typeof work>>
+				try {
+					transactionsInProgress += 1
+					if (transactionsInProgress === 1) {
+						logger.trace('entering transaction')
+					}
 
-			return result
+
+					// Release the transaction mutex now that we've updated the counter
+					// This allows other transactions to start preparing
+					releaseTxMutex()
+
+					try {
+						result = await work()
+						// commit if this is the outermost transaction
+						if (transactionsInProgress === 1) {
+							if (Object.keys(mutations).length) {
+								logger.trace('committing transaction')
+								// retry mechanism to ensure we've some recovery
+								// in case a transaction fails in the first attempt
+								let tries = maxCommitRetries
+								while (tries) {
+									tries -= 1
+									//eslint-disable-next-line max-depth
+									try {
+										// Acquire mutexes for all key types being modified
+										const mutexes: Mutex[] = []
+										for (const keyType in mutations) {
+											const typeMutex = getKeyTypeMutex(keyType)
+											await typeMutex.acquire()
+											mutexes.push(typeMutex)
+										}
+										try {
+											await state.set(mutations)
+											logger.trace({ dbQueriesInTransaction }, 'committed transaction')
+											break
+										} finally {
+											// Release all mutexes in reverse order
+											while (mutexes.length > 0) {
+												const mutex = mutexes.pop()
+												if (mutex) mutex.release()
+											}
+										}
+
+									} catch (error) {
+										logger.warn(`failed to commit ${Object.keys(mutations).length} mutations, tries left=${tries}`)
+										await delay(delayBetweenTriesMs)
+									}
+								}
+							} else {
+								logger.trace('no mutations in transaction')
+							}
+						}
+					} finally {
+						transactionsInProgress -= 1
+						if (transactionsInProgress === 0) {
+							transactionCache = {}
+							mutations = {}
+							dbQueriesInTransaction = 0
+						}
+					}
+
+					return result
+				} catch (error) {
+					// If we haven't released the transaction mutex yet, release it
+					releaseTxMutex()
+					throw error
+				}
+			})
 		}
 	}
 
+	// Get or create a mutex for a specific key typeAdd commentMore actions
+	function getKeyTypeMutex(type: string): Mutex {
+		let mutex = keyTypeMutexes.get(type)
+		if (!mutex) {
+			mutex = new Mutex()
+			keyTypeMutexes.set(type, mutex)
+		}
+		return mutex
+	}
+	
+	// Check if we are currently in a transaction
 	function isInTransaction() {
 		return transactionsInProgress > 0
 	}
