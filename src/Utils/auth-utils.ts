@@ -86,6 +86,149 @@ export function makeCacheableSignalKeyStore(
 }
 
 /**
+ * Handles pre-key operations for transactions
+ */
+function handlePreKeyOperations(
+	data: SignalDataSet,
+	key: string,
+	transactionCache: SignalDataSet,
+	mutations: SignalDataSet,
+	logger: ILogger
+) {
+	for (const keyId in data[key]) {
+		const isDeleteOperation = data[key][keyId] === null
+
+		if (isDeleteOperation) {
+			// Only allow deletion if we have the key in cache
+			if (!transactionCache[key]?.[keyId]) {
+				// Skip deletion if key doesn't exist in cache
+				logger.warn(`Attempted to delete non-existent pre-key: ${keyId}`)
+				continue
+			}
+
+			if (!transactionCache[key]) {
+				transactionCache[key] = {}
+			}
+
+			transactionCache[key][keyId] = null
+
+			if (!mutations[key]) {
+				mutations[key] = {}
+			}
+
+			mutations[key][keyId] = null
+		} else {
+			// Normal update
+			if (!transactionCache[key]) {
+				transactionCache[key] = {}
+			}
+
+			transactionCache[key][keyId] = data[key][keyId]
+
+			if (!mutations[key]) {
+				mutations[key] = {}
+			}
+
+			mutations[key][keyId] = data[key][keyId]
+		}
+	}
+}
+
+/**
+ * Handles normal key operations for transactions
+ */
+function handleNormalKeyOperations(
+	data: SignalDataSet,
+	key: string,
+	transactionCache: SignalDataSet,
+	mutations: SignalDataSet
+) {
+	Object.assign(transactionCache[key], data[key])
+	mutations[key] = mutations[key] || {}
+	Object.assign(mutations[key], data[key])
+}
+
+/**
+ * Processes pre-key deletions outside of transactions
+ */
+async function processPreKeyDeletions(data: SignalDataSet, keyType: string, state: SignalKeyStore, logger: ILogger) {
+	for (const keyId in data[keyType]) {
+		const isDeleteOperation = data[keyType][keyId] === null
+
+		if (isDeleteOperation) {
+			// Check if the key exists before deleting
+			const existingKeys = await state.get(keyType as keyof SignalDataTypeMap, [keyId])
+			if (!existingKeys[keyId]) {
+				// Skip deletion if key doesn't exist
+				logger.warn(`Attempted to delete non-existent pre-key: ${keyId}`)
+				delete data[keyType][keyId]
+			}
+		}
+	}
+}
+
+/**
+ * Acquires mutexes for given key types
+ */
+async function acquireMutexes(keyTypes: string[], getKeyTypeMutex: (type: string) => Mutex): Promise<Mutex[]> {
+	const mutexes: Mutex[] = []
+
+	for (const keyType of keyTypes) {
+		const typeMutex = getKeyTypeMutex(keyType)
+		await typeMutex.acquire()
+		mutexes.push(typeMutex)
+	}
+
+	return mutexes
+}
+
+/**
+ * Releases mutexes in reverse order
+ */
+function releaseMutexes(mutexes: Mutex[]) {
+	while (mutexes.length > 0) {
+		const mutex = mutexes.pop()
+		if (mutex) mutex.release()
+	}
+}
+
+/**
+ * Attempts to commit transaction with retry mechanism
+ */
+async function commitWithRetry(
+	mutations: SignalDataSet,
+	state: SignalKeyStore,
+	getKeyTypeMutex: (type: string) => Mutex,
+	maxRetries: number,
+	delayMs: number,
+	logger: ILogger
+): Promise<void> {
+	let tries = maxRetries
+
+	while (tries > 0) {
+		tries -= 1
+
+		try {
+			const mutexes = await acquireMutexes(Object.keys(mutations), getKeyTypeMutex)
+
+			try {
+				await state.set(mutations)
+				logger.trace('committed transaction')
+				break
+			} finally {
+				releaseMutexes(mutexes)
+			}
+		} catch (error) {
+			logger.warn(`failed to commit ${Object.keys(mutations).length} mutations, tries left=${tries}`)
+
+			if (tries > 0) {
+				await delay(delayMs)
+			}
+		}
+	}
+}
+
+/**
  * Adds DB like transaction capability (https://en.wikipedia.org/wiki/Database_transaction) to the SignalKeyStore,
  * this allows batch read & write operations & improves the performance of the lib
  * @param state the key store to apply this capability to
@@ -99,8 +242,7 @@ export const addTransactionCapability = (
 ): SignalKeyStoreWithTransaction => {
 	// Mutex for each key type (session, pre-key, etc.)
 	const keyTypeMutexes = new Map<string, Mutex>()
-	// Mutex for individual keysAdd commentMore actions
-	const keyMutexes = new Map<string, Mutex>()
+
 	// Global transaction mutex
 	const transactionMutex = new Mutex()
 
@@ -111,6 +253,22 @@ export const addTransactionCapability = (
 	let mutations: SignalDataSet = {}
 
 	let transactionsInProgress = 0
+
+	// Get or create a mutex for a specific key type
+	function getKeyTypeMutex(type: string): Mutex {
+		let mutex = keyTypeMutexes.get(type)
+		if (!mutex) {
+			mutex = new Mutex()
+			keyTypeMutexes.set(type, mutex)
+		}
+
+		return mutex
+	}
+
+	// Check if we are currently in a transaction
+	function isInTransaction() {
+		return transactionsInProgress > 0
+	}
 
 	return {
 		get: async (type, ids) => {
@@ -164,86 +322,31 @@ export const addTransactionCapability = (
 
 					// Special handling for pre-keys to prevent unexpected deletion
 					if (key === 'pre-key') {
-						for (const keyId in data[key]) {
-							// If we're trying to delete a pre-key, check if we have it in cache first
-							if (data[key][keyId] === null) {
-								// Only allow deletion if we have the key in cache
-								// This prevents unexpected deletions during race conditions
-								if (transactionCache[key]?.[keyId]) {
-									if (!transactionCache[key]) {
-										transactionCache[key] = {}
-									}
-
-									transactionCache[key][keyId] = null
-
-									if (!mutations[key]) {
-										mutations[key] = {}
-									}
-
-									mutations[key][keyId] = null
-								} else {
-									// Skip deletion if key doesn't exist in cache
-									logger.warn(`Attempted to delete non-existent pre-key: ${keyId}`)
-									continue
-								}
-							} else {
-								// Normal update
-								if (!transactionCache[key]) {
-									transactionCache[key] = {}
-								}
-
-								transactionCache[key][keyId] = data[key][keyId]
-
-								if (!mutations[key]) {
-									mutations[key] = {}
-								}
-
-								mutations[key][keyId] = data[key][keyId]
-							}
-						}
+						handlePreKeyOperations(data, key, transactionCache, mutations, logger)
 					} else {
 						// Normal handling for other key types
-						Object.assign(transactionCache[key], data[key])
-
-						mutations[key] = mutations[key] || {}
-						Object.assign(mutations[key], data[key])
+						handleNormalKeyOperations(data, key, transactionCache, mutations)
 					}
 				}
 			} else {
 				// Not in transaction, apply directly with mutex protection
-				const mutexes: Mutex[] = []
+				let mutexes: Mutex[] = []
 
 				try {
 					// Acquire all necessary mutexes to prevent concurrent access
-					for (const keyType in data) {
-						const typeMutex = getKeyTypeMutex(keyType)
-						await typeMutex.acquire()
-						mutexes.push(typeMutex)
+					mutexes = await acquireMutexes(Object.keys(data), getKeyTypeMutex)
 
-						// For pre-keys, we need special handling
+					// Process pre-keys separately
+					for (const keyType in data) {
 						if (keyType === 'pre-key') {
-							for (const keyId in data[keyType]) {
-								if (data[keyType][keyId] === null) {
-									// Check if the key exists before deleting
-									const existingKeys = await state.get(keyType as any, [keyId])
-									if (!existingKeys[keyId]) {
-										// Skip deletion if key doesn't exist
-										logger.warn(`Attempted to delete non-existent pre-key: ${keyId}`)
-										delete data[keyType][keyId]
-									}
-								}
-							}
+							await processPreKeyDeletions(data, keyType, state, logger)
 						}
 					}
 
 					// Apply changes to the store
 					await state.set(data)
 				} finally {
-					// Release all mutexes in reverse order
-					while (mutexes.length > 0) {
-						const mutex = mutexes.pop()
-						if (mutex) mutex.release()
-					}
+					releaseMutexes(mutexes)
 				}
 			}
 		},
@@ -266,39 +369,12 @@ export const addTransactionCapability = (
 						result = await work()
 						// commit if this is the outermost transaction
 						if (transactionsInProgress === 1) {
-							if (Object.keys(mutations).length) {
-								logger.trace('committing transaction')
-								// retry mechanism to ensure we've some recovery
-								// in case a transaction fails in the first attempt
-								let tries = maxCommitRetries
-								while (tries) {
-									tries -= 1
-									//eslint-disable-next-line max-depth
-									try {
-										// Acquire mutexes for all key types being modified
-										const mutexes: Mutex[] = []
-										for (const keyType in mutations) {
-											const typeMutex = getKeyTypeMutex(keyType)
-											await typeMutex.acquire()
-											mutexes.push(typeMutex)
-										}
+							const hasMutations = Object.keys(mutations).length > 0
 
-										try {
-											await state.set(mutations)
-											logger.trace({ dbQueriesInTransaction }, 'committed transaction')
-											break
-										} finally {
-											// Release all mutexes in reverse order
-											while (mutexes.length > 0) {
-												const mutex = mutexes.pop()
-												if (mutex) mutex.release()
-											}
-										}
-									} catch (error) {
-										logger.warn(`failed to commit ${Object.keys(mutations).length} mutations, tries left=${tries}`)
-										await delay(delayBetweenTriesMs)
-									}
-								}
+							if (hasMutations) {
+								logger.trace('committing transaction')
+								await commitWithRetry(mutations, state, getKeyTypeMutex, maxCommitRetries, delayBetweenTriesMs, logger)
+								logger.trace({ dbQueriesInTransaction }, 'transaction completed')
 							} else {
 								logger.trace('no mutations in transaction')
 							}
@@ -320,22 +396,6 @@ export const addTransactionCapability = (
 				}
 			})
 		}
-	}
-
-	// Get or create a mutex for a specific key typeAdd commentMore actions
-	function getKeyTypeMutex(type: string): Mutex {
-		let mutex = keyTypeMutexes.get(type)
-		if (!mutex) {
-			mutex = new Mutex()
-			keyTypeMutexes.set(type, mutex)
-		}
-
-		return mutex
-	}
-
-	// Check if we are currently in a transaction
-	function isInTransaction() {
-		return transactionsInProgress > 0
 	}
 }
 
