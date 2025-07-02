@@ -36,7 +36,7 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 
 			return (auth.keys as SignalKeyStoreWithTransaction).transaction(async () => {
 				const { [senderNameStr]: senderKey } = await auth.keys.get('sender-key', [senderNameStr])
-				if(!senderKey) {
+				if (!senderKey) {
 					await storage.storeSenderKey(senderName, new SenderKeyRecord())
 				}
 
@@ -48,7 +48,7 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 			const session = new libsignal.SessionCipher(storage, addr)
 
 			// Use transaction to ensure atomicityAdd commentMore actions
-			return (auth.keys as SignalKeyStoreWithTransaction as SignalKeyStoreWithTransaction).transaction(async () => {
+			return (auth.keys as SignalKeyStoreWithTransaction).transaction(async () => {
 				let result: Buffer
 				switch (type) {
 					case 'pkmsg':
@@ -82,7 +82,7 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 			// Use transaction to ensure atomicity
 			return (auth.keys as SignalKeyStoreWithTransaction).transaction(async () => {
 				const { [senderNameStr]: senderKey } = await auth.keys.get('sender-key', [senderNameStr])
-				if(!senderKey) {
+				if (!senderKey) {
 					await storage.storeSenderKey(senderName, new SenderKeyRecord())
 				}
 
@@ -92,7 +92,7 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 
 				return {
 					ciphertext,
-					senderKeyDistributionMessage: senderKeyDistributionMessage.serialize(),
+					senderKeyDistributionMessage: senderKeyDistributionMessage.serialize()
 				}
 			})
 		},

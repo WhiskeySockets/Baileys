@@ -1,6 +1,7 @@
 import NodeCache from '@cacheable/node-cache'
-import {randomBytes} from 'crypto'
-import {DEFAULT_CACHE_TTLS} from '../Defaults'
+import { Mutex } from 'async-mutex'
+import { randomBytes } from 'crypto'
+import { DEFAULT_CACHE_TTLS } from '../Defaults'
 import type {
 	AuthenticationCreds,
 	CacheStore,
@@ -10,11 +11,9 @@ import type {
 	SignalKeyStoreWithTransaction,
 	TransactionCapabilityOptions
 } from '../Types'
-import {Curve, signedKeyPair} from './crypto'
-import {delay, generateRegistrationId} from './generics'
-import {ILogger} from './logger'
-import {Mutex} from 'async-mutex'
-
+import { Curve, signedKeyPair } from './crypto'
+import { delay, generateRegistrationId } from './generics'
+import { ILogger } from './logger'
 
 /**
  * Adds caching capability to a SignalKeyStore
@@ -53,7 +52,7 @@ export function makeCacheableSignalKeyStore(
 			}
 
 			if (idsToFetch.length) {
-				logger?.trace({items: idsToFetch.length}, 'loading from store')
+				logger?.trace({ items: idsToFetch.length }, 'loading from store')
 				const fetched = await store.get(type, idsToFetch)
 				for (const id of idsToFetch) {
 					const item = fetched[id]
@@ -75,7 +74,7 @@ export function makeCacheableSignalKeyStore(
 				}
 			}
 
-			logger?.trace({keys}, 'updated cache')
+			logger?.trace({ keys }, 'updated cache')
 
 			await store.set(data)
 		},
@@ -96,9 +95,8 @@ export function makeCacheableSignalKeyStore(
 export const addTransactionCapability = (
 	state: SignalKeyStore,
 	logger: ILogger,
-	{maxCommitRetries, delayBetweenTriesMs}: TransactionCapabilityOptions
+	{ maxCommitRetries, delayBetweenTriesMs }: TransactionCapabilityOptions
 ): SignalKeyStoreWithTransaction => {
-
 	// Mutex for each key type (session, pre-key, etc.)
 	const keyTypeMutexes = new Map<string, Mutex>()
 	// Mutex for individual keysAdd commentMore actions
@@ -113,7 +111,6 @@ export const addTransactionCapability = (
 	let mutations: SignalDataSet = {}
 
 	let transactionsInProgress = 0
-
 
 	return {
 		get: async (type, ids) => {
@@ -150,7 +147,7 @@ export const addTransactionCapability = (
 			} else {
 				// Not in transaction, fetch directly with mutex protection
 				const typeMutex = getKeyTypeMutex(type as string)
-				return await typeMutex.acquire().then(async (release) => {
+				return await typeMutex.acquire().then(async release => {
 					try {
 						return await state.get(type, ids)
 					} finally {
@@ -161,7 +158,7 @@ export const addTransactionCapability = (
 		},
 		set: async data => {
 			if (isInTransaction()) {
-				logger.trace({types: Object.keys(data)}, 'caching in transaction')
+				logger.trace({ types: Object.keys(data) }, 'caching in transaction')
 				for (const key in data) {
 					transactionCache[key] = transactionCache[key] || {}
 
@@ -172,15 +169,17 @@ export const addTransactionCapability = (
 							if (data[key][keyId] === null) {
 								// Only allow deletion if we have the key in cache
 								// This prevents unexpected deletions during race conditions
-								if (transactionCache[key] && transactionCache[key][keyId]) {
+								if (transactionCache[key]?.[keyId]) {
 									if (!transactionCache[key]) {
 										transactionCache[key] = {}
 									}
+
 									transactionCache[key][keyId] = null
 
 									if (!mutations[key]) {
 										mutations[key] = {}
 									}
+
 									mutations[key][keyId] = null
 								} else {
 									// Skip deletion if key doesn't exist in cache
@@ -192,11 +191,13 @@ export const addTransactionCapability = (
 								if (!transactionCache[key]) {
 									transactionCache[key] = {}
 								}
+
 								transactionCache[key][keyId] = data[key][keyId]
 
 								if (!mutations[key]) {
 									mutations[key] = {}
 								}
+
 								mutations[key][keyId] = data[key][keyId]
 							}
 						}
@@ -207,7 +208,6 @@ export const addTransactionCapability = (
 						mutations[key] = mutations[key] || {}
 						Object.assign(mutations[key], data[key])
 					}
-
 				}
 			} else {
 				// Not in transaction, apply directly with mutex protection
@@ -250,14 +250,13 @@ export const addTransactionCapability = (
 		isInTransaction,
 		...(state.clear ? { clear: state.clear } : {}),
 		async transaction(work) {
-			return transactionMutex.acquire().then(async (releaseTxMutex) => {
+			return transactionMutex.acquire().then(async releaseTxMutex => {
 				let result: Awaited<ReturnType<typeof work>>
 				try {
 					transactionsInProgress += 1
 					if (transactionsInProgress === 1) {
 						logger.trace('entering transaction')
 					}
-
 
 					// Release the transaction mutex now that we've updated the counter
 					// This allows other transactions to start preparing
@@ -283,6 +282,7 @@ export const addTransactionCapability = (
 											await typeMutex.acquire()
 											mutexes.push(typeMutex)
 										}
+
 										try {
 											await state.set(mutations)
 											logger.trace({ dbQueriesInTransaction }, 'committed transaction')
@@ -294,7 +294,6 @@ export const addTransactionCapability = (
 												if (mutex) mutex.release()
 											}
 										}
-
 									} catch (error) {
 										logger.warn(`failed to commit ${Object.keys(mutations).length} mutations, tries left=${tries}`)
 										await delay(delayBetweenTriesMs)
@@ -330,9 +329,10 @@ export const addTransactionCapability = (
 			mutex = new Mutex()
 			keyTypeMutexes.set(type, mutex)
 		}
+
 		return mutex
 	}
-	
+
 	// Check if we are currently in a transaction
 	function isInTransaction() {
 		return transactionsInProgress > 0
