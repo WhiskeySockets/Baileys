@@ -11,10 +11,10 @@ export function makeMockSignalKeyStore(): SignalKeyStore {
 
 	return {
 		get(type, ids) {
-			const data: { [_: string]: SignalDataTypeMap[typeof type] } = { }
-			for(const id of ids) {
+			const data: { [_: string]: SignalDataTypeMap[typeof type] } = {}
+			for (const id of ids) {
 				const item = store[getUniqueId(type, id)]
-				if(typeof item !== 'undefined') {
+				if (typeof item !== 'undefined') {
 					data[id] = item
 				}
 			}
@@ -22,12 +22,12 @@ export function makeMockSignalKeyStore(): SignalKeyStore {
 			return data
 		},
 		set(data) {
-			for(const type in data) {
-				for(const id in data[type]) {
+			for (const type in data) {
+				for (const id in data[type]) {
 					store[getUniqueId(type, id)] = data[type][id]
 				}
 			}
-		},
+		}
 	}
 
 	function getUniqueId(type: string, id: string) {

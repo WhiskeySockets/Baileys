@@ -5,7 +5,7 @@ import {
 	parseOrderDetailsNode,
 	parseProductNode,
 	toProductNode,
-	uploadingNecessaryImagesOfProduct,
+	uploadingNecessaryImagesOfProduct
 } from '../Utils/business'
 import { BinaryNode, jidNormalizedUser, S_WHATSAPP_NET } from '../WABinary'
 import { getBinaryNodeChild } from '../WABinary/generic-utils'
@@ -23,25 +23,25 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 			{
 				tag: 'limit',
 				attrs: {},
-				content: Buffer.from((limit || 10).toString()),
+				content: Buffer.from((limit || 10).toString())
 			},
 			{
 				tag: 'width',
 				attrs: {},
-				content: Buffer.from('100'),
+				content: Buffer.from('100')
 			},
 			{
 				tag: 'height',
 				attrs: {},
-				content: Buffer.from('100'),
-			},
+				content: Buffer.from('100')
+			}
 		]
 
 		if (cursor) {
 			queryParamNodes.push({
 				tag: 'after',
 				attrs: {},
-				content: cursor,
+				content: cursor
 			})
 		}
 
@@ -50,18 +50,18 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 			attrs: {
 				to: S_WHATSAPP_NET,
 				type: 'get',
-				xmlns: 'w:biz:catalog',
+				xmlns: 'w:biz:catalog'
 			},
 			content: [
 				{
 					tag: 'product_catalog',
 					attrs: {
 						jid,
-						allow_shop_source: 'true',
+						allow_shop_source: 'true'
 					},
-					content: queryParamNodes,
-				},
-			],
+					content: queryParamNodes
+				}
+			]
 		})
 		return parseCatalogNode(result)
 	}
@@ -75,38 +75,38 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 				to: S_WHATSAPP_NET,
 				type: 'get',
 				xmlns: 'w:biz:catalog',
-				smax_id: '35',
+				smax_id: '35'
 			},
 			content: [
 				{
 					tag: 'collections',
 					attrs: {
-						biz_jid: jid,
+						biz_jid: jid
 					},
 					content: [
 						{
 							tag: 'collection_limit',
 							attrs: {},
-							content: Buffer.from(limit.toString()),
+							content: Buffer.from(limit.toString())
 						},
 						{
 							tag: 'item_limit',
 							attrs: {},
-							content: Buffer.from(limit.toString()),
+							content: Buffer.from(limit.toString())
 						},
 						{
 							tag: 'width',
 							attrs: {},
-							content: Buffer.from('100'),
+							content: Buffer.from('100')
 						},
 						{
 							tag: 'height',
 							attrs: {},
-							content: Buffer.from('100'),
-						},
-					],
-				},
-			],
+							content: Buffer.from('100')
+						}
+					]
+				}
+			]
 		})
 
 		return parseCollectionsNode(result)
@@ -119,14 +119,14 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 				to: S_WHATSAPP_NET,
 				type: 'get',
 				xmlns: 'fb:thrift_iq',
-				smax_id: '5',
+				smax_id: '5'
 			},
 			content: [
 				{
 					tag: 'order',
 					attrs: {
 						op: 'get',
-						id: orderId,
+						id: orderId
 					},
 					content: [
 						{
@@ -136,23 +136,23 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 								{
 									tag: 'width',
 									attrs: {},
-									content: Buffer.from('100'),
+									content: Buffer.from('100')
 								},
 								{
 									tag: 'height',
 									attrs: {},
-									content: Buffer.from('100'),
-								},
-							],
+									content: Buffer.from('100')
+								}
+							]
 						},
 						{
 							tag: 'token',
 							attrs: {},
-							content: Buffer.from(tokenBase64),
-						},
-					],
-				},
-			],
+							content: Buffer.from(tokenBase64)
+						}
+					]
+				}
+			]
 		})
 
 		return parseOrderDetailsNode(result)
@@ -167,7 +167,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 			attrs: {
 				to: S_WHATSAPP_NET,
 				type: 'set',
-				xmlns: 'w:biz:catalog',
+				xmlns: 'w:biz:catalog'
 			},
 			content: [
 				{
@@ -178,16 +178,16 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 						{
 							tag: 'width',
 							attrs: {},
-							content: '100',
+							content: '100'
 						},
 						{
 							tag: 'height',
 							attrs: {},
-							content: '100',
-						},
-					],
-				},
-			],
+							content: '100'
+						}
+					]
+				}
+			]
 		})
 
 		const productCatalogEditNode = getBinaryNodeChild(result, 'product_catalog_edit')
@@ -207,7 +207,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 			attrs: {
 				to: S_WHATSAPP_NET,
 				type: 'set',
-				xmlns: 'w:biz:catalog',
+				xmlns: 'w:biz:catalog'
 			},
 			content: [
 				{
@@ -218,16 +218,16 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 						{
 							tag: 'width',
 							attrs: {},
-							content: '100',
+							content: '100'
 						},
 						{
 							tag: 'height',
 							attrs: {},
-							content: '100',
-						},
-					],
-				},
-			],
+							content: '100'
+						}
+					]
+				}
+			]
 		})
 
 		const productCatalogAddNode = getBinaryNodeChild(result, 'product_catalog_add')
@@ -242,30 +242,30 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 			attrs: {
 				to: S_WHATSAPP_NET,
 				type: 'set',
-				xmlns: 'w:biz:catalog',
+				xmlns: 'w:biz:catalog'
 			},
 			content: [
 				{
 					tag: 'product_catalog_delete',
 					attrs: { v: '1' },
-					content: productIds.map((id) => ({
+					content: productIds.map(id => ({
 						tag: 'product',
 						attrs: {},
 						content: [
 							{
 								tag: 'id',
 								attrs: {},
-								content: Buffer.from(id),
-							},
-						],
-					})),
-				},
-			],
+								content: Buffer.from(id)
+							}
+						]
+					}))
+				}
+			]
 		})
 
 		const productCatalogDelNode = getBinaryNodeChild(result, 'product_catalog_delete')
 		return {
-			deleted: +(productCatalogDelNode?.attrs.deleted_count || 0),
+			deleted: +(productCatalogDelNode?.attrs.deleted_count || 0)
 		}
 	}
 
@@ -277,6 +277,6 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 		getCollections,
 		productCreate,
 		productDelete,
-		productUpdate,
+		productUpdate
 	}
 }

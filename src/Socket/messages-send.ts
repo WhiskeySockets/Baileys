@@ -17,6 +17,7 @@ import {
 	assertMediaContent,
 	bindWaitForEvent,
 	decryptMediaRetryData,
+	encodeNewsletterMessage,
 	encodeSignedDeviceIdentity,
 	encodeWAMessage,
 	encryptMediaRetryRequest,
@@ -47,6 +48,7 @@ import {
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeGroupsSocket } from './groups'
+import { makeNewsletterSocket, NewsletterSocket } from './newsletter'
 
 export const makeMessagesSocket = (config: SocketConfig) => {
 	const {
@@ -55,9 +57,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		generateHighQualityLinkPreview,
 		options: axiosOptions,
 		patchMessageBeforeSending,
-		cachedGroupMetadata,
+		cachedGroupMetadata
 	} = config
-	const sock = makeGroupsSocket(config)
+	const sock: NewsletterSocket = makeNewsletterSocket(makeGroupsSocket(config))
 	const {
 		ev,
 		authState,
@@ -68,7 +70,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		fetchPrivacySettings,
 		sendNode,
 		groupMetadata,
-		groupToggleEphemeral,
+		groupToggleEphemeral
 	} = sock
 
 	const userDevicesCache =
@@ -88,7 +90,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					attrs: {
 						type: 'set',
 						xmlns: 'w:m',
-						to: S_WHATSAPP_NET,
+						to: S_WHATSAPP_NET
 					},
 					content: [{ tag: 'media_conn', attrs: {} }],
 				})
@@ -123,8 +125,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const node: BinaryNode = {
 			tag: 'receipt',
 			attrs: {
-				id: messageIds[0],
-			},
+				id: messageIds[0]
+			}
 		}
 		const isReadReceipt = type === 'read' || type === 'read-self'
 		if (isReadReceipt) {
@@ -280,7 +282,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				attrs: {
 					xmlns: 'encrypt',
 					type: 'get',
-					to: S_WHATSAPP_NET,
+					to: S_WHATSAPP_NET
 				},
 				content: [
 					{
@@ -322,8 +324,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			additionalAttributes: {
 				category: 'peer',
 				// eslint-disable-next-line camelcase
-				push_priority: 'high_force',
-			},
+				push_priority: 'high_force'
+			}
 		})
 
 		return msgId
@@ -397,6 +399,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const isGroup = server === 'g.us'
 		const isStatus = jid === statusJid
 		const isLid = server === 'lid'
+		const isNewsletter = server === 'newsletter'
 
 		msgId = msgId || generateMessageIDV2(sock.user?.id)
 		useUserDevicesCache = useUserDevicesCache !== false
@@ -414,6 +417,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				destinationJid,
 				message,
 			},
+			messageContextInfo: message.messageContextInfo
 		}
 
 		const extraAttrs = {}
