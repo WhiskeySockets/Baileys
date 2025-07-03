@@ -9,7 +9,7 @@ import { CacheStore } from './Socket'
 
 // export the WAMessage Prototypes
 export { proto as WAProto }
-export type WAMessage = proto.IWebMessageInfo
+export type WAMessage = proto.IWebMessageInfo & { key: WAMessageKey }
 export type WAMessageContent = proto.IMessage
 export type WAContactMessage = proto.Message.IContactMessage
 export type WAContactsArrayMessage = proto.Message.IContactsArrayMessage
@@ -19,6 +19,7 @@ export type WAMessageKey = proto.IMessageKey & {
 	senderPn?: string
 	participantLid?: string
 	participantPn?: string
+	isViewOnce?: boolean
 }
 export type WATextMessage = proto.Message.IExtendedTextMessage
 export type WAContextInfo = proto.IContextInfo
