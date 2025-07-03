@@ -158,6 +158,10 @@ export const decryptMessageNode = (
 						fullMessage.verifiedBizName = details.verifiedName
 					}
 
+					if (tag === 'unavailable' && attrs.type === 'view_once') {
+						fullMessage.key.isViewOnce = true
+					}
+
 					if (tag !== 'enc' && tag !== 'plaintext') {
 						continue
 					}

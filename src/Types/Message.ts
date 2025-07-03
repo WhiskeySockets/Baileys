@@ -19,6 +19,7 @@ export type WAMessageKey = proto.IMessageKey & {
 	senderPn?: string
 	participantLid?: string
 	participantPn?: string
+	isViewOnce?: boolean
 }
 export type WATextMessage = proto.Message.IExtendedTextMessage
 export type WAContextInfo = proto.IContextInfo
