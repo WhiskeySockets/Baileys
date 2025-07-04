@@ -54,8 +54,13 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 	const sock = makeGroupsSocket(config)
 	const { query, generateMessageTag, authState, signalRepository } = sock
 
-	const executeWMexQuery = <T>(variables: Record<string, unknown>, queryId: string, dataPath: string): Promise<T> => {
-		return genericExecuteWMexQuery<T>(variables, queryId, dataPath, query, generateMessageTag)
+	const executeWMexQuery = <T>(
+		variables: Record<string, unknown>,
+		queryId: string,
+		dataPath: string,
+		error = false
+	): Promise<T> => {
+		return genericExecuteWMexQuery<T>(variables, queryId, dataPath, query, generateMessageTag, error)
 	}
 
 	const newsletterUpdate = async (jid: string, updates: NewsletterUpdate) => {
@@ -166,7 +171,12 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 					view_role: 'GUEST'
 				}
 			}
-			const result = await executeWMexQuery<unknown>(variables, QueryIds.METADATA, XWAPaths.xwa2_newsletter_metadata)
+			const result = await executeWMexQuery<unknown>(
+				variables,
+				QueryIds.METADATA,
+				XWAPaths.xwa2_newsletter_metadata,
+				false
+			)
 			return parseNewsletterMetadata(result)
 		},
 
