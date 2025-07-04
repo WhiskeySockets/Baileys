@@ -175,7 +175,7 @@ export const prepareWAMessageMedia = async (
 
 	const isNewsletter = !!options.jid && isJidNewsletter(options.jid)
 	if (isNewsletter) {
-		logger?.info({ key: cacheableKey }, 'Preparing raw media for newsletter')
+		logger?.debug({ key: cacheableKey }, 'Preparing raw media for newsletter')
 		const { filePath, fileSha256, fileLength } = await getRawMediaUploadData(
 			uploadData.media,
 			options.mediaTypeOverride || mediaType,
