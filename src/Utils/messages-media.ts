@@ -317,7 +317,14 @@ export const getStream = async (item: WAMediaUpload, opts?: AxiosRequestConfig) 
 		return { stream: item.stream, type: 'readable' } as const
 	}
 
-	if (item.url.toString().startsWith('http://') || item.url.toString().startsWith('https://')) {
+	const urlStr = item.url.toString()
+
+	if (urlStr.startsWith('data:')) {
+		const buffer = Buffer.from(urlStr.split(',')[1], 'base64')
+		return { stream: toReadable(buffer), type: 'buffer' } as const
+	}
+
+	if (urlStr.startsWith('http://') || urlStr.startsWith('https://')) {
 		return { stream: await getHttpStream(item.url, opts), type: 'remote' } as const
 	}
 
