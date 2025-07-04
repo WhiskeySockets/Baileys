@@ -17,10 +17,12 @@ const parseNewsletterCreateResponse = (response: NewsletterCreateResponse): News
 		invite: thread.invite,
 		subscribers: parseInt(thread.subscribers_count, 10),
 		verification: thread.verification,
-		picture: {
-			id: thread.picture.id,
-			directPath: thread.picture.direct_path
-		},
+		picture: thread?.picture
+			? {
+					id: thread.picture.id,
+					directPath: thread.picture.direct_path
+				}
+			: undefined,
 		mute_state: viewer.mute
 	}
 }
