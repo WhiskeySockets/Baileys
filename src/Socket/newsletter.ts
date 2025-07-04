@@ -81,6 +81,11 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 
 		newsletterUpdate,
 
+		newsletterSubscribed: async (): Promise<NewsletterMetadata[]> => {
+			const result = await executeWMexQuery<any[]>({}, QueryIds.SUBSCRIBED, XWAPaths.xwa2_newsletter_subscribed)
+			return result.map(parseNewsletterMetadata).filter(a => a !== null) as NewsletterMetadata[]
+		},
+
 		newsletterSubscribers: async (jid: string) => {
 			return executeWMexQuery<{ subscribers: number }>(
 				{ newsletter_id: jid },
