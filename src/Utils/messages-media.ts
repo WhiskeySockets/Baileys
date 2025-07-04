@@ -518,12 +518,16 @@ export const getUrlFromDirectPath = (directPath: string) => `https://${DEF_HOST}
 export const downloadContentFromMessage = async (
 	{ mediaKey, directPath, url }: DownloadableMessage,
 	type: MediaType,
-	opts: MediaDownloadOptions = {}
+	opts: MediaDownloadOptions = {},
+	decrypt: boolean = true
 ) => {
 	const isValidMediaUrl = url?.startsWith('https://mmg.whatsapp.net/')
 	const downloadUrl = isValidMediaUrl ? url : getUrlFromDirectPath(directPath!)
 	if (!downloadUrl) {
 		throw new Boom('No valid media URL or directPath present in message', { statusCode: 400 })
+	}
+	if (!decrypt) {
+		return getHttpStream(downloadUrl, opts.options)
 	}
 
 	const keys = await getMediaKeys(mediaKey, type)
