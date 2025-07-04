@@ -1031,7 +1031,8 @@ export const downloadMediaMessage = async <Type extends 'buffer' | 'stream'>(
 			download = media
 		}
 
-		const stream = await downloadContentFromMessage(download, mediaType, options)
+		const decrypt = !isJidNewsletter(message.key.remoteJid || undefined)
+		const stream = await downloadContentFromMessage(download, mediaType, options, decrypt)
 		if (type === 'buffer') {
 			const bufferArray: Buffer[] = []
 			for await (const chunk of stream) {
