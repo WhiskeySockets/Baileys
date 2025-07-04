@@ -10,6 +10,8 @@ export enum XWAPaths {
 	xwa2_newsletter_unmute_v2 = 'xwa2_newsletter_unmute_v2',
 	xwa2_newsletter_follow = 'xwa2_newsletter_follow',
 	xwa2_newsletter_unfollow = 'xwa2_newsletter_unfollow',
+	xwa2_newsletter_join_v2 = 'xwa2_newsletter_join_v2',
+	xwa2_newsletter_leave_v2 = 'xwa2_newsletter_leave_v2',
 	xwa2_newsletter_change_owner = 'xwa2_newsletter_change_owner',
 	xwa2_newsletter_demote = 'xwa2_newsletter_demote',
 	xwa2_newsletter_delete_v2 = 'xwa2_newsletter_delete_v2',
