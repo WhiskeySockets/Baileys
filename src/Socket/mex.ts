@@ -42,7 +42,7 @@ export const executeWMexQuery = async <T>(
 			const errorMessages = data.errors.map((err: Error) => err.message || 'Unknown error').join(', ')
 			const firstError = data.errors[0]
 			const errorCode = firstError.extensions?.error_code || 400
-			throw new Boom(`GraphQL server error: ${errorMessages}`, { statusCode: errorCode, data: firstError })
+			throw new Boom(`GraphQL server error: ${errorMessages}`, { statusCode: errorCode, data: result })
 		}
 
 		const response = dataPath ? data?.data?.[dataPath] : data?.data
