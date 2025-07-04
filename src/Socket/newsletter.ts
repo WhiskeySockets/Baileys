@@ -64,6 +64,7 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 
 	return {
 		...sock,
+		executeWMexQuery,
 		newsletterCreate: async (name: string, description?: string): Promise<NewsletterMetadata> => {
 			const variables = {
 				input: {
