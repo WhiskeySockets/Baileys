@@ -582,7 +582,6 @@ export const chatModificationToAppPatch = (mod: ChatModification, jid: string) =
 			operation: OP.SET
 		}
 	} else if ('clear' in mod) {
-		
 		patch = {
 			syncAction: {
 				clearChatAction: {
