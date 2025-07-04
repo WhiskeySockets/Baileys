@@ -6,7 +6,7 @@ import { getBinaryNodeChild } from '../WABinary'
 import { makeGroupsSocket } from './groups'
 import { executeWMexQuery as genericExecuteWMexQuery } from './mex'
 
-const parseNewsletterCreateResponse = (response: NewsletterCreateResponse): NewsletterMetadata => {
+export const parseNewsletterCreateResponse = (response: NewsletterCreateResponse): NewsletterMetadata => {
 	const { id, thread_metadata: thread, viewer_metadata: viewer } = response
 	return {
 		id: id,
