@@ -31,14 +31,15 @@ export const executeWMexQuery = async <T>(
 	queryId: string,
 	dataPath: string,
 	query: (node: BinaryNode) => Promise<BinaryNode>,
-	generateMessageTag: () => string
+	generateMessageTag: () => string,
+	error: boolean = true
 ): Promise<T> => {
 	const result = await wMexQuery(variables, queryId, query, generateMessageTag)
 	const child = getBinaryNodeChild(result, 'result')
 	if (child?.content) {
 		const data = JSON.parse(child.content.toString())
 
-		if (data.errors && data.errors.length > 0) {
+		if (data.errors && data.errors.length > 0 && error) {
 			const errorMessages = data.errors.map((err: Error) => err.message || 'Unknown error').join(', ')
 			const firstError = data.errors[0]
 			const errorCode = firstError.extensions?.error_code || 400
