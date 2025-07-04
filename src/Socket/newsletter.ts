@@ -76,7 +76,7 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 				QueryIds.CREATE,
 				XWAPaths.xwa2_newsletter_create
 			)
-			return parseNewsletterCreateResponse(rawResponse)
+			return rawResponse as any
 		},
 
 		newsletterUpdate,
