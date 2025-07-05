@@ -48,6 +48,19 @@ export class WebSocketClient extends AbstractSocketClient {
 		this.socket.close()
 		this.socket = null
 	}
+
+	async restart(): Promise<void> {
+		if (this.socket) {
+			await new Promise(resolve => {
+				this.socket!.once('close', resolve)
+				this.socket!.terminate()
+			})
+			this.socket = null
+		}
+
+		await this.connect()
+	}
+
 	send(str: string | Uint8Array, cb?: (err?: Error) => void): boolean {
 		this.socket?.send(str, cb)
 
