@@ -1042,17 +1042,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				onUnexpectedError(error, 'presence update requests')
 			)
 		}
-
-		if (
-			receivedPendingNotifications && // if we don't have the app state key
-			// we keep buffering events until we finally have
-			// the key and can sync the messages
-			// todo scrutinize
-			!authState.creds?.myAppStateKeyId
-		) {
-			ev.buffer()
-			needToFlushWithAppStateSync = true
-		}
 	})
 
 	return {
