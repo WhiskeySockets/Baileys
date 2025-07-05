@@ -79,6 +79,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			useClones: false
 		})
 
+	const urlInfoCache = new NodeCache({ stdTTL: 5 * 60, useClones: false }) // 5 minutes
+
 	let mediaConn: Promise<MediaConnInfo>
 	const refreshMediaConn = async (forceGet = false) => {
 		const media = await mediaConn
@@ -800,8 +802,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const fullMsg = await generateWAMessage(jid, content, {
 					logger,
 					userJid,
-					getUrlInfo: text =>
-						getUrlInfo(text, {
+					getUrlInfo: text => {
+						const cached = urlInfoCache.get(text)
+						if (cached) return Promise.resolve(cached)
+
+						return getUrlInfo(text, {
 							thumbnailWidth: linkPreviewImageThumbnailWidth,
 							fetchOpts: {
 								timeout: 3_000,
@@ -809,8 +814,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							},
 							logger,
 							uploadImage: generateHighQualityLinkPreview ? waUploadToServer : undefined
-						}),
-					//TODO: CACHE
+						}).then(result => {
+							urlInfoCache.set(text, result)
+							return result
+						})
+					},
 					getProfilePicUrl: sock.profilePictureUrl,
 					upload: waUploadToServer,
 					mediaCache: config.mediaCache,
