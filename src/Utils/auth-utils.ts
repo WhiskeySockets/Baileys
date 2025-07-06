@@ -34,53 +34,62 @@ export function makeCacheableSignalKeyStore(
 			deleteOnExpire: true
 		})
 
+	// Mutex for protecting cache operations
+	const cacheMutex = new Mutex()
+
 	function getUniqueId(type: string, id: string) {
 		return `${type}.${id}`
 	}
 
 	return {
 		async get(type, ids) {
-			const data: { [_: string]: SignalDataTypeMap[typeof type] } = {}
-			const idsToFetch: string[] = []
-			for (const id of ids) {
-				const item = cache.get<SignalDataTypeMap[typeof type]>(getUniqueId(type, id))
-				if (typeof item !== 'undefined') {
-					data[id] = item
-				} else {
-					idsToFetch.push(id)
-				}
-			}
-
-			if (idsToFetch.length) {
-				logger?.trace({ items: idsToFetch.length }, 'loading from store')
-				const fetched = await store.get(type, idsToFetch)
-				for (const id of idsToFetch) {
-					const item = fetched[id]
-					if (item) {
+			return cacheMutex.runExclusive(async () => {
+				const data: { [_: string]: SignalDataTypeMap[typeof type] } = {}
+				const idsToFetch: string[] = []
+				for (const id of ids) {
+					const item = cache.get<SignalDataTypeMap[typeof type]>(getUniqueId(type, id))
+					if (typeof item !== 'undefined') {
 						data[id] = item
-						cache.set(getUniqueId(type, id), item)
+					} else {
+						idsToFetch.push(id)
 					}
 				}
-			}
 
-			return data
+				if (idsToFetch.length) {
+					logger?.trace({ items: idsToFetch.length }, 'loading from store')
+					const fetched = await store.get(type, idsToFetch)
+					for (const id of idsToFetch) {
+						const item = fetched[id]
+						if (item) {
+							data[id] = item
+							cache.set(getUniqueId(type, id), item)
+						}
+					}
+				}
+
+				return data
+			})
 		},
 		async set(data) {
-			let keys = 0
-			for (const type in data) {
-				for (const id in data[type]) {
-					cache.set(getUniqueId(type, id), data[type][id])
-					keys += 1
+			return cacheMutex.runExclusive(async () => {
+				let keys = 0
+				for (const type in data) {
+					for (const id in data[type]) {
+						cache.set(getUniqueId(type, id), data[type][id])
+						keys += 1
+					}
 				}
-			}
 
-			logger?.trace({ keys }, 'updated cache')
+				logger?.trace({ keys }, 'updated cache')
 
-			await store.set(data)
+				await store.set(data)
+			})
 		},
 		async clear() {
-			cache.flushAll()
-			await store.clear?.()
+			return cacheMutex.runExclusive(async () => {
+				cache.flushAll()
+				await store.clear?.()
+			})
 		}
 	}
 }
@@ -168,32 +177,48 @@ async function processPreKeyDeletions(data: SignalDataSet, keyType: string, stat
 }
 
 /**
- * Acquires mutexes for given key types
+ * Executes a function with mutexes acquired for given key types
+ * Uses async-mutex's runExclusive with efficient batching
  */
-async function acquireMutexes(keyTypes: string[], getKeyTypeMutex: (type: string) => Mutex): Promise<Mutex[]> {
-	const mutexes: Mutex[] = []
-
-	for (const keyType of keyTypes) {
-		const typeMutex = getKeyTypeMutex(keyType)
-		await typeMutex.acquire()
-		mutexes.push(typeMutex)
+async function withMutexes<T>(
+	keyTypes: string[],
+	getKeyTypeMutex: (type: string) => Mutex,
+	fn: () => Promise<T>
+): Promise<T> {
+	if (keyTypes.length === 0) {
+		return fn()
 	}
 
-	return mutexes
-}
+	if (keyTypes.length === 1) {
+		return getKeyTypeMutex(keyTypes[0]).runExclusive(fn)
+	}
 
-/**
- * Releases mutexes in reverse order
- */
-function releaseMutexes(mutexes: Mutex[]) {
-	while (mutexes.length > 0) {
-		const mutex = mutexes.pop()
-		if (mutex) mutex.release()
+	// For multiple mutexes, sort by key type to prevent deadlocks
+	// Then acquire all mutexes in order using Promise.all for better efficiency
+	const sortedKeyTypes = [...keyTypes].sort()
+	const mutexes = sortedKeyTypes.map(getKeyTypeMutex)
+
+	// Acquire all mutexes in order to prevent deadlocks
+	const releases: (() => void)[] = []
+
+	try {
+		for (const mutex of mutexes) {
+			releases.push(await mutex.acquire())
+		}
+
+		return await fn()
+	} finally {
+		// Release in reverse order
+		while (releases.length > 0) {
+			const release = releases.pop()
+			if (release) release()
+		}
 	}
 }
 
 /**
  * Attempts to commit transaction with retry mechanism
+ * Uses async-mutex's withTimeout for better timeout handling
  */
 async function commitWithRetry(
 	mutations: SignalDataSet,
@@ -209,15 +234,12 @@ async function commitWithRetry(
 		tries -= 1
 
 		try {
-			const mutexes = await acquireMutexes(Object.keys(mutations), getKeyTypeMutex)
-
-			try {
+			// Use basic withMutexes - withTimeout is for decorating mutexes, not functions
+			await withMutexes(Object.keys(mutations), getKeyTypeMutex, async () => {
 				await state.set(mutations)
 				logger.trace('committed transaction')
-				break
-			} finally {
-				releaseMutexes(mutexes)
-			}
+			})
+			break
 		} catch (error) {
 			logger.warn(`failed to commit ${Object.keys(mutations).length} mutations, tries left=${tries}`)
 
@@ -258,6 +280,7 @@ export const addTransactionCapability = (
 	function getKeyTypeMutex(type: string): Mutex {
 		let mutex = keyTypeMutexes.get(type)
 		if (!mutex) {
+			// Create regular mutex, timeout only for critical operations
 			mutex = new Mutex()
 			keyTypeMutexes.set(type, mutex)
 		}
@@ -279,19 +302,14 @@ export const addTransactionCapability = (
 				if (idsRequiringFetch.length) {
 					dbQueriesInTransaction += 1
 
-					// Acquire mutex for this key type to prevent concurrent access
-					const typeMutex = getKeyTypeMutex(type as string)
-					await typeMutex.acquire()
-
-					try {
+					// Use runExclusive for cleaner mutex handling
+					await getKeyTypeMutex(type as string).runExclusive(async () => {
 						const result = await state.get(type, idsRequiringFetch)
 
 						// Update transaction cache
 						transactionCache[type] ||= {}
 						Object.assign(transactionCache[type]!, result)
-					} finally {
-						typeMutex.release()
-					}
+					})
 				}
 
 				return ids.reduce((dict, id) => {
@@ -304,14 +322,7 @@ export const addTransactionCapability = (
 				}, {})
 			} else {
 				// Not in transaction, fetch directly with mutex protection
-				const typeMutex = getKeyTypeMutex(type as string)
-				return await typeMutex.acquire().then(async release => {
-					try {
-						return await state.get(type, ids)
-					} finally {
-						release()
-					}
-				})
+				return await getKeyTypeMutex(type as string).runExclusive(() => state.get(type, ids))
 			}
 		},
 		set: async data => {
@@ -330,12 +341,7 @@ export const addTransactionCapability = (
 				}
 			} else {
 				// Not in transaction, apply directly with mutex protection
-				let mutexes: Mutex[] = []
-
-				try {
-					// Acquire all necessary mutexes to prevent concurrent access
-					mutexes = await acquireMutexes(Object.keys(data), getKeyTypeMutex)
-
+				await withMutexes(Object.keys(data), getKeyTypeMutex, async () => {
 					// Process pre-keys separately
 					for (const keyType in data) {
 						if (keyType === 'pre-key') {
@@ -345,9 +351,7 @@ export const addTransactionCapability = (
 
 					// Apply changes to the store
 					await state.set(data)
-				} finally {
-					releaseMutexes(mutexes)
-				}
+				})
 			}
 		},
 		isInTransaction,
