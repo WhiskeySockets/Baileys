@@ -4,7 +4,6 @@ import { exec } from 'child_process'
 import * as Crypto from 'crypto'
 import { once } from 'events'
 import { createReadStream, createWriteStream, promises as fs, WriteStream } from 'fs'
-import { ResizeStrategy } from 'jimp'
 import type { IAudioMetadata } from 'music-metadata'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -157,7 +156,7 @@ export const extractImageThumb = async (bufferOrFilePath: Readable | Buffer | st
 			height: jimp.height
 		}
 		const buffer = await jimp
-			.resize({ w: width, mode: ResizeStrategy.BILINEAR })
+			.resize({ w: width, mode: lib.jimp.ResizeStrategy.BILINEAR })
 			.getBuffer('image/jpeg', { quality: 50 })
 		return {
 			buffer,
@@ -203,7 +202,7 @@ export const generateProfilePicture = async (
 		const min = Math.min(jimp.width, jimp.height)
 		const cropped = jimp.crop({ x: 0, y: 0, w: min, h: min })
 
-		img = cropped.resize({ w, h, mode: ResizeStrategy.BILINEAR }).getBuffer('image/jpeg', { quality: 50 })
+		img = cropped.resize({ w, h, mode: lib.jimp.ResizeStrategy.BILINEAR }).getBuffer('image/jpeg', { quality: 50 })
 	} else {
 		throw new Boom('No image processing library available')
 	}
