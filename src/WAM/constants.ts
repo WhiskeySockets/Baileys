@@ -29,16 +29,16 @@ export const WEB_EVENTS: Event[] = [
 				{
 					FALSE: 0,
 					TRUE: 1,
-					UNDEFINED: 2,
-				},
+					UNDEFINED: 2
+				}
 			],
 			webcWindowNightmare: [16, 'boolean'],
 			webcWindowPhantom: [15, 'boolean'],
-			webcWindowSelenium: [17, 'boolean'],
+			webcWindowSelenium: [17, 'boolean']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'Login',
@@ -52,8 +52,8 @@ export const WEB_EVENTS: Event[] = [
 					ENC_KEY_READ_FAILURE: 3,
 					ENC_KEY_STORED_USED: 4,
 					ENC_KEY_PLAIN_DELETED: 5,
-					ENC_KEY_PLAIN_RECOVERED: 6,
-				},
+					ENC_KEY_PLAIN_RECOVERED: 6
+				}
 			],
 			connectionOrigin: [
 				6,
@@ -61,8 +61,8 @@ export const WEB_EVENTS: Event[] = [
 					PERSON: 1,
 					PUSH: 2,
 					OTHER: 3,
-					BACKOFF: 4,
-				},
+					BACKOFF: 4
+				}
 			],
 			connectionSequenceStep: [
 				11,
@@ -76,8 +76,8 @@ export const WEB_EVENTS: Event[] = [
 					PRIMARY_HTTP: 8,
 					SOFTLAYER_HTTP: 9,
 					HOST_FALLBACK_HTTP: 10,
-					NO_DNS_HTTP: 11,
-				},
+					NO_DNS_HTTP: 11
+				}
 			],
 			connectionT: [5, 'timer'],
 			dnsResolutionMethod: [
@@ -86,8 +86,8 @@ export const WEB_EVENTS: Event[] = [
 					SYSTEM: 1,
 					GOOGLE: 2,
 					HARDCODED: 3,
-					NO_DNS: 4,
-				},
+					NO_DNS: 4
+				}
 			],
 			loginDnsResolver: [
 				13,
@@ -95,8 +95,8 @@ export const WEB_EVENTS: Event[] = [
 					SYSTEM: 1,
 					GOOGLE: 2,
 					HARDCODED: 3,
-					NO_DNS: 4,
-				},
+					NO_DNS: 4
+				}
 			],
 			loginIpSource: [
 				14,
@@ -106,8 +106,8 @@ export const WEB_EVENTS: Event[] = [
 					PUSH_FALLBACKS: 3,
 					G_FALLBACK_WHATSAPP_NET: 4,
 					HARDCODED_LIST: 5,
-					EX_WHATSAPP_NET: 6,
-				},
+					EX_WHATSAPP_NET: 6
+				}
 			],
 			loginPort: [
 				15,
@@ -115,8 +115,8 @@ export const WEB_EVENTS: Event[] = [
 					P5222: 1,
 					P443: 2,
 					P80: 3,
-					UNKNOWN: 4,
-				},
+					UNKNOWN: 4
+				}
 			],
 			loginResult: [
 				1,
@@ -127,8 +127,8 @@ export const WEB_EVENTS: Event[] = [
 					SERVER_GOAWAY: 4,
 					NETWORK_ERROR: 5,
 					ANDROID_KEYSTORE_ERROR: 6,
-					CERTIFICATE_ERROR: 7,
-				},
+					CERTIFICATE_ERROR: 7
+				}
 			],
 			loginT: [3, 'timer'],
 			longConnect: [4, 'boolean'],
@@ -137,11 +137,11 @@ export const WEB_EVENTS: Event[] = [
 			pendingAcksCount: [17, 'integer'],
 			retryCount: [2, 'integer'],
 			sequenceStep: [7, 'integer'],
-			serverErrorCode: [9, 'integer'],
+			serverErrorCode: [9, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcPageLoad',
@@ -155,8 +155,8 @@ export const WEB_EVENTS: Event[] = [
 					CHECKING: 2,
 					DOWNLOADING: 3,
 					UPDATEREADY: 4,
-					OBSOLETE: 5,
-				},
+					OBSOLETE: 5
+				}
 			],
 			webcCached: [30, 'boolean'],
 			webcConnectEnd: [10, 'timer'],
@@ -190,8 +190,8 @@ export const WEB_EVENTS: Event[] = [
 					NAVIGATE_NEXT: 0,
 					RELOAD: 1,
 					BACK_FORWARD: 2,
-					UNDEFINED: 255,
-				},
+					UNDEFINED: 255
+				}
 			],
 			webcPageLoadT: [34, 'timer'],
 			webcParallellyFetched: [41, 'boolean'],
@@ -209,11 +209,11 @@ export const WEB_EVENTS: Event[] = [
 			webcWsNormal: [27, 'timer'],
 			webcWsOpening: [24, 'timer'],
 			webcWsPairing: [25, 'timer'],
-			webcWsSyncing: [26, 'timer'],
+			webcWsSyncing: [26, 'timer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'OfflineResume',
@@ -244,8 +244,8 @@ export const WEB_EVENTS: Event[] = [
 					COMPLETE: 1,
 					INCOMPLETE_UNKNOWN_ERROR: 2,
 					INCOMPLETE_DISCONNECT: 3,
-					INCOMPLETE_APP_RESTART: 4,
-				},
+					INCOMPLETE_APP_RESTART: 4
+				}
 			],
 			offlineSizeBytes: [10, 'integer'],
 			onTrickleMode: [15, 'boolean'],
@@ -260,11 +260,11 @@ export const WEB_EVENTS: Event[] = [
 			processedNotificationCount: [32, 'integer'],
 			processedReceiptCount: [33, 'integer'],
 			socketConnectT: [12, 'timer'],
-			transientOfflineSessionId: [34, 'string'],
+			transientOfflineSessionId: [34, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcDbOpen',
@@ -272,11 +272,11 @@ export const WEB_EVENTS: Event[] = [
 		props: {
 			webcDbName: [1, 'string'],
 			webcDbOpenNumAttempts: [3, 'integer'],
-			webcDbOpenWasSuccess: [2, 'boolean'],
+			webcDbOpenWasSuccess: [2, 'boolean']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'PsIdUpdate',
@@ -288,15 +288,15 @@ export const WEB_EVENTS: Event[] = [
 				{
 					CREATED: 1,
 					ROTATED: 2,
-					DELETED: 3,
-				},
+					DELETED: 3
+				}
 			],
 			psIdKey: [1, 'integer'],
-			psIdRotationFrequence: [3, 'integer'],
+			psIdRotationFrequence: [3, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebDbVersionsSource',
@@ -308,21 +308,21 @@ export const WEB_EVENTS: Event[] = [
 					KNOB: 1,
 					LOCAL: 2,
 					STATIC: 3,
-					KNOB_WITH_LOCAL_OVERRIDE: 4,
-				},
+					KNOB_WITH_LOCAL_OVERRIDE: 4
+				}
 			],
 			webSchemaInitiator: [
 				2,
 				{
 					MAIN: 1,
 					WEB_WORKER: 2,
-					SERVICE_WORKER: 3,
-				},
-			],
+					SERVICE_WORKER: 3
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcAssetLoad',
@@ -333,17 +333,17 @@ export const WEB_EVENTS: Event[] = [
 				{
 					UNCACHED: 0,
 					IDB: 1,
-					SW: 2,
-				},
+					SW: 2
+				}
 			],
 			webcAssetFromCache: [2, 'boolean'],
 			webcAssetLoadT: [3, 'timer'],
 			webcAssetName: [1, 'string'],
-			webcAssetSize: [5, 'number'],
+			webcAssetSize: [5, 'number']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcStorageStat',
@@ -352,11 +352,11 @@ export const WEB_EVENTS: Event[] = [
 			webcAgeOfStorage: [3, 'integer'],
 			webcPackingEnabled: [4, 'boolean'],
 			webcStorageQuota: [2, 'integer'],
-			webcStorageUsage: [1, 'integer'],
+			webcStorageUsage: [1, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'OfflineResumeStage',
@@ -373,8 +373,8 @@ export const WEB_EVENTS: Event[] = [
 					SCREEN_LOAD: 4,
 					OFFLINE_PREVIEW: 5,
 					OFFLINE_COMPLETE_RECEIVED: 6,
-					PREACKS_SENT: 7,
-				},
+					PREACKS_SENT: 7
+				}
 			],
 			isResumeInForeground: [5, 'boolean'],
 			isResumeStartedInForeground: [14, 'boolean'],
@@ -393,17 +393,17 @@ export const WEB_EVENTS: Event[] = [
 					UNKNOWN: 3,
 					CONNECT_REASON_USER: 4,
 					CONNECT_REASON_PUSH: 5,
-					CONNECT_REASON_BACKOFF: 6,
-				},
+					CONNECT_REASON_BACKOFF: 6
+				}
 			],
 			offlineSessionId: [2, 'string'],
 			offlineSizeBytes: [16, 'integer'],
 			offlineStageTimestampMs: [3, 'integer'],
-			passiveModeT: [17, 'timer'],
+			passiveModeT: [17, 'timer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcStreamModeChange',
@@ -421,13 +421,13 @@ export const WEB_EVENTS: Event[] = [
 					TOS_BLOCK: 6,
 					SMB_TOS_BLOCK: 7,
 					DEPRECATED_VERSION: 8,
-					LOCK: 9,
-				},
-			],
+					LOCK: 9
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcStatusSync',
@@ -439,11 +439,11 @@ export const WEB_EVENTS: Event[] = [
 			webcStatusRecentRowCount: [5, 'integer'],
 			webcStatusSyncT: [1, 'timer'],
 			webcStatusViewedItemCount: [3, 'integer'],
-			webcStatusViewedRowCount: [6, 'integer'],
+			webcStatusViewedRowCount: [6, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'TsNavigation',
@@ -455,8 +455,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					BUSINESS_INITIATED: 0,
 					CONSUMER_INITIATED: 1,
-					NO_MESSAGES_LAST_24H: 2,
-				},
+					NO_MESSAGES_LAST_24H: 2
+				}
 			],
 			entryPointConversionApp: [24, 'string'],
 			entryPointConversionSource: [25, 'string'],
@@ -558,8 +558,8 @@ export const WEB_EVENTS: Event[] = [
 					GROUP_MEMBER_ADD_GROUP_CREATION: 89,
 					GROUP_MEMBER_ADD_EXISTING_GROUP: 90,
 					GROUP_CHAT: 91,
-					GROUP_CREATION: 92,
-				},
+					GROUP_CREATION: 92
+				}
 			],
 			navigationSource: [
 				3,
@@ -654,8 +654,8 @@ export const WEB_EVENTS: Event[] = [
 					GROUP_MEMBER_ADD_GROUP_CREATION: 89,
 					GROUP_MEMBER_ADD_EXISTING_GROUP: 90,
 					GROUP_CHAT: 91,
-					GROUP_CREATION: 92,
-				},
+					GROUP_CREATION: 92
+				}
 			],
 			relativeTimestampMs: [4, 'integer'],
 			smbCatalogBusinessVertical: [20, 'string'],
@@ -671,8 +671,8 @@ export const WEB_EVENTS: Event[] = [
 					CHANNEL: 5,
 					SUB_GROUP: 6,
 					DEFAULT_SUB_GROUP: 7,
-					PARENT_GROUP: 8,
-				},
+					PARENT_GROUP: 8
+				}
 			],
 			tsSessionId: [5, 'integer'],
 			typeOfGroup: [
@@ -680,13 +680,13 @@ export const WEB_EVENTS: Event[] = [
 				{
 					GROUP: 1,
 					SUBGROUP: 2,
-					DEFAULT_SUBGROUP: 3,
-				},
-			],
+					DEFAULT_SUBGROUP: 3
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'UserActivity',
@@ -698,11 +698,11 @@ export const WEB_EVENTS: Event[] = [
 			userActivitySessionCum: [7, 'integer'],
 			userActivitySessionId: [1, 'string'],
 			userActivitySessionSeq: [6, 'integer'],
-			userActivityStartTime: [2, 'integer'],
+			userActivityStartTime: [2, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'TsBitArray',
@@ -714,11 +714,11 @@ export const WEB_EVENTS: Event[] = [
 			cumulativeBits: [4, 'integer'],
 			relativeTimestampMs: [5, 'integer'],
 			sessionSeq: [6, 'integer'],
-			tsSessionId: [7, 'integer'],
+			tsSessionId: [7, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcResourceLoad',
@@ -726,21 +726,21 @@ export const WEB_EVENTS: Event[] = [
 		props: {
 			webcResourceCached: [3, 'boolean'],
 			webcResourceDuration: [2, 'timer'],
-			webcResourceName: [1, 'string'],
+			webcResourceName: [1, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdAppStateMessageRange',
 		id: 2522,
 		props: {
-			additionalMessagesCount: [1, 'integer'],
+			additionalMessagesCount: [1, 'integer']
 		},
 		weight: 1000,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdBootstrapDataApplied',
@@ -753,8 +753,8 @@ export const WEB_EVENTS: Event[] = [
 					REGULAR_LOW: 2,
 					REGULAR_HIGH: 3,
 					CRITICAL_BLOCK: 4,
-					CRITICAL_UNBLOCK_LOW: 5,
-				},
+					CRITICAL_UNBLOCK_LOW: 5
+				}
 			],
 			historySyncChunkOrder: [14, 'integer'],
 			historySyncStageProgress: [11, 'integer'],
@@ -768,40 +768,40 @@ export const WEB_EVENTS: Event[] = [
 					PUSHNAME: 4,
 					STATUS_V3: 5,
 					NON_BLOCKING_DATA: 6,
-					ON_DEMAND: 7,
-				},
+					ON_DEMAND: 7
+				}
 			],
 			mdBootstrapPayloadType: [
 				3,
 				{
 					CRITICAL: 1,
-					NON_CRITICAL: 2,
-				},
+					NON_CRITICAL: 2
+				}
 			],
 			mdBootstrapSource: [
 				2,
 				{
 					APP_STATE: 1,
-					HISTORY: 2,
-				},
+					HISTORY: 2
+				}
 			],
 			mdBootstrapStepDuration: [6, 'integer'],
 			mdBootstrapStepResult: [
 				12,
 				{
 					SUCCESS: 1,
-					FAILURE: 2,
-				},
+					FAILURE: 2
+				}
 			],
 			mdRegAttemptId: [9, 'string'],
 			mdSessionId: [1, 'string'],
 			mdTimestamp: [4, 'integer'],
 			sentViaMms: [13, 'boolean'],
-			usedSnapshot: [7, 'boolean'],
+			usedSnapshot: [7, 'boolean']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdBootstrapAppStateDataDownloaded',
@@ -817,34 +817,34 @@ export const WEB_EVENTS: Event[] = [
 					PUSHNAME: 4,
 					STATUS_V3: 5,
 					NON_BLOCKING_DATA: 6,
-					ON_DEMAND: 7,
-				},
+					ON_DEMAND: 7
+				}
 			],
 			mdBootstrapPayloadSize: [4, 'integer'],
 			mdBootstrapPayloadType: [
 				2,
 				{
 					CRITICAL: 1,
-					NON_CRITICAL: 2,
-				},
+					NON_CRITICAL: 2
+				}
 			],
 			mdBootstrapStepDuration: [6, 'integer'],
 			mdBootstrapStepResult: [
 				7,
 				{
 					SUCCESS: 1,
-					FAILURE: 2,
-				},
+					FAILURE: 2
+				}
 			],
 			mdRegAttemptId: [10, 'string'],
 			mdSessionId: [1, 'string'],
 			mdStorageQuotaBytes: [8, 'integer'],
 			mdStorageQuotaUsedBytes: [9, 'integer'],
-			mdTimestamp: [3, 'integer'],
+			mdTimestamp: [3, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdAppStateKeyRotation',
@@ -855,13 +855,13 @@ export const WEB_EVENTS: Event[] = [
 				{
 					APP_STATE_SYNC_KEY_EXPIRY: 1,
 					DEVICE_DEREGISTERATION: 2,
-					NO_KEYS: 3,
-				},
-			],
+					NO_KEYS: 3
+				}
+			]
 		},
 		weight: 1000,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdAppStateSyncDaily',
@@ -875,11 +875,11 @@ export const WEB_EVENTS: Event[] = [
 			storedMutationCount: [7, 'integer'],
 			unsetActionCount: [8, 'integer'],
 			unsupportedActionCount: [5, 'integer'],
-			uploadConflictCount: [10, 'integer'],
+			uploadConflictCount: [10, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcPwaEvent',
@@ -888,13 +888,13 @@ export const WEB_EVENTS: Event[] = [
 			webcPwaAction: [
 				2,
 				{
-					INSTALL: 1,
-				},
-			],
+					INSTALL: 1
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'DeepLinkClick',
@@ -902,11 +902,11 @@ export const WEB_EVENTS: Event[] = [
 		props: {
 			deepLinkHasPhoneNumber: [2, 'boolean'],
 			deepLinkHasText: [1, 'boolean'],
-			deepLinkSessionId: [3, 'string'],
+			deepLinkSessionId: [3, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MessageSecretErrors',
@@ -976,14 +976,14 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			messageSecretAllowedList: [
 				1,
 				{
-					MESSAGE_POLL: 0,
-				},
+					MESSAGE_POLL: 0
+				}
 			],
 			messageSecretError: [
 				2,
@@ -991,13 +991,13 @@ export const WEB_EVENTS: Event[] = [
 					MISSING_MESSAGE_SECRET: 0,
 					WRONG_LENGTH: 1,
 					ENCRYPTION_ERROR: 2,
-					DECRYPTION_ERROR: 3,
-				},
-			],
+					DECRYPTION_ERROR: 3
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ChatMessageCounts',
@@ -1010,8 +1010,8 @@ export const WEB_EVENTS: Event[] = [
 				60,
 				{
 					SHOPS: 0,
-					NATIVE: 1,
-				},
+					NATIVE: 1
+				}
 			],
 			bizConversationDepth: [65, 'integer'],
 			blockReason: [
@@ -1022,8 +1022,8 @@ export const WEB_EVENTS: Event[] = [
 					NO_SIGN_UP: 2,
 					SPAM: 3,
 					OFFENSIVE_MESSAGES: 4,
-					OTP_DID_NOT_REQUEST: 5,
-				},
+					OTP_DID_NOT_REQUEST: 5
+				}
 			],
 			broadcastMsgsReceived: [30, 'integer'],
 			broadcastMsgsSent: [29, 'integer'],
@@ -1043,16 +1043,16 @@ export const WEB_EVENTS: Event[] = [
 				{
 					NOT_MUTED: 1,
 					MUTED_NO_NOTIFICATIONS: 2,
-					MUTED_SILENT_NOTIFICATIONS: 3,
-				},
+					MUTED_SILENT_NOTIFICATIONS: 3
+				}
 			],
 			chatOrigins: [
 				179,
 				{
 					LID_USERNAME: 1,
 					LID_CTWA: 2,
-					OTHERS: 3,
-				},
+					OTHERS: 3
+				}
 			],
 			chatOverflowClicks: [79, 'integer'],
 			chatTypeInd: [
@@ -1061,8 +1061,8 @@ export const WEB_EVENTS: Event[] = [
 					INDIVIDUAL: 1,
 					SMB: 2,
 					ENT: 3,
-					INTEROP: 4,
-				},
+					INTEROP: 4
+				}
 			],
 			collectionInquiriesSent: [44, 'integer'],
 			commandSheetShow: [174, 'integer'],
@@ -1076,8 +1076,8 @@ export const WEB_EVENTS: Event[] = [
 					INITIATED_BY_ME: 2,
 					INITIATED_BY_OTHER: 3,
 					CHAT_PICKER: 4,
-					BIZ_UPGRADE_FB_HOSTING: 5,
-				},
+					BIZ_UPGRADE_FB_HOSTING: 5
+				}
 			],
 			documentMessagesReceived: [151, 'integer'],
 			documentMessagesSent: [152, 'integer'],
@@ -1092,8 +1092,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					INITIATED_BY_ME: 1,
 					INITIATED_BY_OTHER: 2,
-					BIZ_UPGRADE_FB_HOSTING: 3,
-				},
+					BIZ_UPGRADE_FB_HOSTING: 3
+				}
 			],
 			ephemeralityTriggerAction: [
 				110,
@@ -1102,8 +1102,8 @@ export const WEB_EVENTS: Event[] = [
 					CHAT_SETTINGS: 1,
 					ACCOUNT_SETTINGS: 2,
 					BULK_CHANGE: 3,
-					BIZ_SUPPORTS_FB_HOSTING: 4,
-				},
+					BIZ_SUPPORTS_FB_HOSTING: 4
+				}
 			],
 			eventCreationMessagesReceived: [142, 'integer'],
 			eventCreationMessagesSent: [143, 'integer'],
@@ -1138,8 +1138,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					NEW: 0,
 					RETAINED: 1,
-					RESURRECTED: 2,
-				},
+					RESURRECTED: 2
+				}
 			],
 			gifMessagesReceived: [167, 'integer'],
 			gifMessagesSent: [168, 'integer'],
@@ -1149,8 +1149,8 @@ export const WEB_EVENTS: Event[] = [
 				87,
 				{
 					ADMINS_ONLY: 1,
-					ALL_PARTICIPANTS: 2,
-				},
+					ALL_PARTICIPANTS: 2
+				}
 			],
 			groupMembershipReplies: [51, 'integer'],
 			groupPrivateReplies: [52, 'integer'],
@@ -1198,8 +1198,8 @@ export const WEB_EVENTS: Event[] = [
 					MASKED_PHONE_NUMBER: 4,
 					VERIFIED_BUSINESS_NAME: 5,
 					PLACEHOLDER: 6,
-					PUSHNAME: 7,
-				},
+					PUSHNAME: 7
+				}
 			],
 			ordersSent: [38, 'integer'],
 			p2mOdNnpTransactionsSent: [83, 'integer'],
@@ -1258,8 +1258,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					GROUP: 1,
 					SUBGROUP: 2,
-					DEFAULT_SUBGROUP: 3,
-				},
+					DEFAULT_SUBGROUP: 3
+				}
 			],
 			urlMessagesReceived: [138, 'integer'],
 			urlMessagesSent: [139, 'integer'],
@@ -1270,11 +1270,11 @@ export const WEB_EVENTS: Event[] = [
 			viewOnceMessagesOpened: [18, 'integer'],
 			viewOnceMessagesReceived: [17, 'integer'],
 			viewOnceMessagesSent: [16, 'integer'],
-			voiceCallsOffered: [77, 'integer'],
+			voiceCallsOffered: [77, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'AddressingModeMismatch',
@@ -1286,15 +1286,15 @@ export const WEB_EVENTS: Event[] = [
 					ADD_PARTICIPANT: 1,
 					REMOVE_PARTICIPANT: 2,
 					PROMOTE_PARTICIPANT: 3,
-					DEMOTE_PARTICIPANT: 4,
-				},
+					DEMOTE_PARTICIPANT: 4
+				}
 			],
 			localAddressingMode: [
 				2,
 				{
 					PN: 1,
-					LID: 2,
-				},
+					LID: 2
+				}
 			],
 			mismatchOrigin: [
 				6,
@@ -1303,21 +1303,21 @@ export const WEB_EVENTS: Event[] = [
 					ACK_OUTGOING_MESSAGE: 2,
 					GROUP_NOTIFICATION: 3,
 					GROUP_PROFILE_PICTURE_NOTIFICATION: 4,
-					IQ_RESPONSES: 5,
-				},
+					IQ_RESPONSES: 5
+				}
 			],
 			notificationTag: [3, 'string'],
 			serverAddressingMode: [
 				5,
 				{
 					PN: 1,
-					LID: 2,
-				},
-			],
+					LID: 2
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdBadDeviceSentMessage',
@@ -1328,20 +1328,20 @@ export const WEB_EVENTS: Event[] = [
 				{
 					INVALID_SENDER: 1,
 					MISSING_DSM: 2,
-					INVALID_DSM: 3,
-				},
+					INVALID_DSM: 3
+				}
 			],
 			peerType: [
 				1,
 				{
 					PRIMARY: 1,
-					COMPANION: 2,
-				},
-			],
+					COMPANION: 2
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'GatedMessageReceived',
@@ -1351,13 +1351,13 @@ export const WEB_EVENTS: Event[] = [
 				1,
 				{
 					TOS3: 1,
-					COUNTRY: 2,
-				},
-			],
+					COUNTRY: 2
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MessageReceive',
@@ -1368,8 +1368,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					DIRECT_CHAT: 0,
 					INVOKED: 1,
-					MEMBER: 2,
-				},
+					MEMBER: 2
+				}
 			],
 			botType: [
 				37,
@@ -1377,16 +1377,16 @@ export const WEB_EVENTS: Event[] = [
 					UNKNOWN: 0,
 					METABOT: 1,
 					BOT_1P_BIZ: 2,
-					BOT_3P_BIZ: 3,
-				},
+					BOT_3P_BIZ: 3
+				}
 			],
 			chatOrigins: [
 				38,
 				{
 					LID_USERNAME: 1,
 					LID_CTWA: 2,
-					OTHERS: 3,
-				},
+					OTHERS: 3
+				}
 			],
 			deviceCount: [16, 'integer'],
 			deviceSizeBucket: [
@@ -1407,8 +1407,8 @@ export const WEB_EVENTS: Event[] = [
 					LT4000: 12,
 					LT4500: 13,
 					LT5000: 14,
-					LARGEST_BUCKET: 15,
-				},
+					LARGEST_BUCKET: 15
+				}
 			],
 			disappearingChatInitiator: [
 				14,
@@ -1417,8 +1417,8 @@ export const WEB_EVENTS: Event[] = [
 					INITIATED_BY_ME: 2,
 					INITIATED_BY_OTHER: 3,
 					CHAT_PICKER: 4,
-					BIZ_UPGRADE_FB_HOSTING: 5,
-				},
+					BIZ_UPGRADE_FB_HOSTING: 5
+				}
 			],
 			editType: [
 				25,
@@ -1426,8 +1426,8 @@ export const WEB_EVENTS: Event[] = [
 					NOT_EDITED: 0,
 					EDITED: 1,
 					SENDER_REVOKE: 2,
-					ADMIN_REVOKE: 3,
-				},
+					ADMIN_REVOKE: 3
+				}
 			],
 			ephemeralityDuration: [13, 'integer'],
 			ephemeralityInitiator: [
@@ -1435,8 +1435,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					INITIATED_BY_ME: 1,
 					INITIATED_BY_OTHER: 2,
-					BIZ_UPGRADE_FB_HOSTING: 3,
-				},
+					BIZ_UPGRADE_FB_HOSTING: 3
+				}
 			],
 			ephemeralityTriggerAction: [
 				27,
@@ -1445,8 +1445,8 @@ export const WEB_EVENTS: Event[] = [
 					CHAT_SETTINGS: 1,
 					ACCOUNT_SETTINGS: 2,
 					BULK_CHANGE: 3,
-					BIZ_SUPPORTS_FB_HOSTING: 4,
-				},
+					BIZ_SUPPORTS_FB_HOSTING: 4
+				}
 			],
 			hasUsername: [39, 'boolean'],
 			isAComment: [36, 'boolean'],
@@ -1458,15 +1458,15 @@ export const WEB_EVENTS: Event[] = [
 				33,
 				{
 					PN: 1,
-					LID: 2,
-				},
+					LID: 2
+				}
 			],
 			messageAddressingMode: [
 				34,
 				{
 					PN: 1,
-					LID: 2,
-				},
+					LID: 2
+				}
 			],
 			messageIsInternational: [4, 'boolean'],
 			messageIsInvisible: [23, 'boolean'],
@@ -1535,8 +1535,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			messageQueueTime: [15, 'timer'],
 			messageReceiveT0: [6, 'timer'],
@@ -1549,8 +1549,8 @@ export const WEB_EVENTS: Event[] = [
 					BROADCAST: 3,
 					STATUS: 4,
 					CHANNEL: 5,
-					INTEROP: 6,
-				},
+					INTEROP: 6
+				}
 			],
 			mutedGroupMessage: [8, 'boolean'],
 			numOfWebUrlsInTextMessage: [3, 'integer'],
@@ -1564,8 +1564,8 @@ export const WEB_EVENTS: Event[] = [
 					MASKED_PHONE_NUMBER: 4,
 					VERIFIED_BUSINESS_NAME: 5,
 					PLACEHOLDER: 6,
-					PUSHNAME: 7,
-				},
+					PUSHNAME: 7
+				}
 			],
 			paddingBytesSize: [22, 'integer'],
 			participantCount: [17, 'integer'],
@@ -1574,16 +1574,16 @@ export const WEB_EVENTS: Event[] = [
 				20,
 				{
 					SENDER: 0,
-					ADMIN: 1,
-				},
+					ADMIN: 1
+				}
 			],
 			senderDefaultDisappearingDuration: [11, 'integer'],
 			serverAddressingMode: [
 				35,
 				{
 					PN: 1,
-					LID: 2,
-				},
+					LID: 2
+				}
 			],
 			stickerIsAi: [29, 'boolean'],
 			stickerIsFromStickerMaker: [31, 'boolean'],
@@ -1594,21 +1594,21 @@ export const WEB_EVENTS: Event[] = [
 					WEB_STICKER_MAKER: 2,
 					IOS_STICKER_MAKER: 3,
 					ANDROID_STICKER_MAKER: 4,
-					TRANSPARENT_IMAGE: 5,
-				},
+					TRANSPARENT_IMAGE: 5
+				}
 			],
 			typeOfGroup: [
 				21,
 				{
 					GROUP: 1,
 					SUBGROUP: 2,
-					DEFAULT_SUBGROUP: 3,
-				},
-			],
+					DEFAULT_SUBGROUP: 3
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'PlaceholderActivity',
@@ -1633,8 +1633,8 @@ export const WEB_EVENTS: Event[] = [
 					LT4000: 12,
 					LT4500: 13,
 					LT5000: 14,
-					LARGEST_BUCKET: 15,
-				},
+					LARGEST_BUCKET: 15
+				}
 			],
 			e2eSenderType: [
 				16,
@@ -1644,8 +1644,8 @@ export const WEB_EVENTS: Event[] = [
 					MY_COMPANION: 3,
 					OTHER_COMPANION: 4,
 					MY_HOSTED_COMPANION: 5,
-					OTHER_HOSTED_COMPANION: 6,
-				},
+					OTHER_HOSTED_COMPANION: 6
+				}
 			],
 			isHostedChat: [19, 'boolean'],
 			isLid: [12, 'boolean'],
@@ -1716,8 +1716,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			messageType: [
 				5,
@@ -1727,8 +1727,8 @@ export const WEB_EVENTS: Event[] = [
 					BROADCAST: 3,
 					STATUS: 4,
 					CHANNEL: 5,
-					INTEROP: 6,
-				},
+					INTEROP: 6
+				}
 			],
 			participantCount: [10, 'integer'],
 			placeholderActionInd: [
@@ -1737,8 +1737,8 @@ export const WEB_EVENTS: Event[] = [
 					OTHER: 0,
 					ADD: 1,
 					VIEW: 2,
-					POPULATE: 3,
-				},
+					POPULATE: 3
+				}
 			],
 			placeholderAddReason: [
 				11,
@@ -1756,8 +1756,8 @@ export const WEB_EVENTS: Event[] = [
 					SIGNAL_FUTURE_MESSAGE: 10,
 					SIGNAL_INVALID_SIGNATURE: 11,
 					SIGNAL_BAD_MAC: 12,
-					SIGNAL_INVALID_SESSION: 13,
-				},
+					SIGNAL_INVALID_SESSION: 13
+				}
 			],
 			placeholderChatTypeInd: [
 				3,
@@ -1768,8 +1768,8 @@ export const WEB_EVENTS: Event[] = [
 					STATUS: 3,
 					BROADCAST: 4,
 					CHANNEL: 5,
-					INTEROP: 6,
-				},
+					INTEROP: 6
+				}
 			],
 			placeholderPopulationType: [
 				17,
@@ -1777,8 +1777,8 @@ export const WEB_EVENTS: Event[] = [
 					OTHER: 0,
 					RETRY: 1,
 					PEER_MESSAGE: 2,
-					RESEND: 3,
-				},
+					RESEND: 3
+				}
 			],
 			placeholderTimePeriod: [4, 'integer'],
 			placeholderTypeInd: [
@@ -1787,21 +1787,21 @@ export const WEB_EVENTS: Event[] = [
 					OTHER: 0,
 					CIPHERTEXT: 1,
 					FANOUT: 2,
-					DOWNGRADE: 3,
-				},
+					DOWNGRADE: 3
+				}
 			],
 			typeOfGroup: [
 				13,
 				{
 					GROUP: 1,
 					SUBGROUP: 2,
-					DEFAULT_SUBGROUP: 3,
-				},
-			],
+					DEFAULT_SUBGROUP: 3
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'SenderKeyExpired',
@@ -1815,8 +1815,8 @@ export const WEB_EVENTS: Event[] = [
 					GROUP: 2,
 					STATUS: 3,
 					BROADCAST: 4,
-					CHANNEL: 5,
-				},
+					CHANNEL: 5
+				}
 			],
 			deviceSizeBucket: [
 				2,
@@ -1836,8 +1836,8 @@ export const WEB_EVENTS: Event[] = [
 					LT4000: 12,
 					LT4500: 13,
 					LT5000: 14,
-					LARGEST_BUCKET: 15,
-				},
+					LARGEST_BUCKET: 15
+				}
 			],
 			expiryReason: [
 				3,
@@ -1849,13 +1849,13 @@ export const WEB_EVENTS: Event[] = [
 					PERIODIC_ROTATION: 5,
 					KEY_CORRUPTION: 6,
 					PEER_COMPANION_UNPAIR: 7,
-					OTHER_DEVICE_UNPAIR: 8,
-				},
-			],
+					OTHER_DEVICE_UNPAIR: 8
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MexEventV2',
@@ -1869,11 +1869,11 @@ export const WEB_EVENTS: Event[] = [
 			mexEventV2IsMex: [6, 'boolean'],
 			mexEventV2OperationName: [7, 'string'],
 			mexEventV2QueryId: [8, 'string'],
-			mexEventV2StartTime: [9, 'integer'],
+			mexEventV2StartTime: [9, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'GraphqlCatalogRequest',
@@ -1885,8 +1885,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					SMB: 1,
 					API_DC: 2,
-					API: 3,
-				},
+					API: 3
+				}
 			],
 			graphqlCatalogEndpoint: [
 				1,
@@ -1898,21 +1898,21 @@ export const WEB_EVENTS: Event[] = [
 					GET_SINGLE_COLLECTION: 5,
 					GET_CATEGORIES: 6,
 					GET_VARIANTS: 7,
-					GET_PROMOTIONS: 8,
-				},
+					GET_PROMOTIONS: 8
+				}
 			],
 			graphqlErrorCode: [3, 'integer'],
 			graphqlRequestResult: [
 				2,
 				{
 					SUCCESS: 1,
-					FAILURE: 2,
-				},
-			],
+					FAILURE: 2
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'private',
-		privateStatsIdInt: 0,
+		privateStatsIdInt: 0
 	},
 	{
 		name: 'MexEvent',
@@ -1928,11 +1928,11 @@ export const WEB_EVENTS: Event[] = [
 			mexEventRequestSize: [8, 'integer'],
 			mexEventResponseSize: [9, 'integer'],
 			mexEventRetries: [10, 'integer'],
-			mexEventStartTime: [11, 'integer'],
+			mexEventStartTime: [11, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'FmxAction',
@@ -1944,8 +1944,8 @@ export const WEB_EVENTS: Event[] = [
 				3,
 				{
 					FMX_CARD: 0,
-					SAFETY_TOOLS: 1,
-				},
+					SAFETY_TOOLS: 1
+				}
 			],
 			fmxEvent: [
 				4,
@@ -1959,8 +1959,8 @@ export const WEB_EVENTS: Event[] = [
 					FMX_CARD_INSERTED: 6,
 					FMX_CARD_VIEWED: 7,
 					LEARN_MORE: 8,
-					HIGHLIGHT_GROUP_NAME: 9,
-				},
+					HIGHLIGHT_GROUP_NAME: 9
+				}
 			],
 			highlightGroupType: [
 				6,
@@ -1971,26 +1971,26 @@ export const WEB_EVENTS: Event[] = [
 					ADMIN: 3,
 					SAVED_CONTACTS: 4,
 					PARTICIPANTS: 5,
-					MORE: 6,
-				},
+					MORE: 6
+				}
 			],
 			isSenderSmb: [7, 'boolean'],
-			notAContactShown: [5, 'boolean'],
+			notAContactShown: [5, 'boolean']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'UnknownStanza',
 		id: 3448,
 		props: {
 			unknownStanzaTag: [1, 'string'],
-			unknownStanzaType: [2, 'string'],
+			unknownStanzaType: [2, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'IncomingMessageDrop',
@@ -2001,8 +2001,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					DIRECT_CHAT: 0,
 					INVOKED: 1,
-					MEMBER: 2,
-				},
+					MEMBER: 2
+				}
 			],
 			botType: [
 				14,
@@ -2010,8 +2010,8 @@ export const WEB_EVENTS: Event[] = [
 					UNKNOWN: 0,
 					METABOT: 1,
 					BOT_1P_BIZ: 2,
-					BOT_3P_BIZ: 3,
-				},
+					BOT_3P_BIZ: 3
+				}
 			],
 			e2eCiphertextType: [
 				1,
@@ -2019,8 +2019,8 @@ export const WEB_EVENTS: Event[] = [
 					MESSAGE: 0,
 					PREKEY_MESSAGE: 1,
 					SENDER_KEY_MESSAGE: 2,
-					MESSAGE_SECRET_MESSAGE: 3,
-				},
+					MESSAGE_SECRET_MESSAGE: 3
+				}
 			],
 			e2eDestination: [
 				2,
@@ -2030,8 +2030,8 @@ export const WEB_EVENTS: Event[] = [
 					LIST: 2,
 					STATUS: 3,
 					CHANNEL: 4,
-					INTEROP: 5,
-				},
+					INTEROP: 5
+				}
 			],
 			e2eFailureReason: [
 				9,
@@ -2134,8 +2134,8 @@ export const WEB_EVENTS: Event[] = [
 					ERROR_INVALID_KEY_MATEIRAL_DATA_LEN: 95,
 					ERROR_SESSION_STATE_GET_SENDER_RATCHET_KEY: 96,
 					ERROR_SESSION_STATE_GET_LOCAL_IDENTITY_KEY: 97,
-					ERROR_SESSION_STATE_GET_REMOTE_IDENTITY_KEY: 98,
-				},
+					ERROR_SESSION_STATE_GET_REMOTE_IDENTITY_KEY: 98
+				}
 			],
 			e2eSenderType: [
 				3,
@@ -2145,16 +2145,16 @@ export const WEB_EVENTS: Event[] = [
 					MY_COMPANION: 3,
 					OTHER_COMPANION: 4,
 					MY_HOSTED_COMPANION: 5,
-					OTHER_HOSTED_COMPANION: 6,
-				},
+					OTHER_HOSTED_COMPANION: 6
+				}
 			],
 			invisibleMessageCategory: [
 				13,
 				{
 					PEER: 1,
 					INVISIBLE_KEY_DISTRIBUTION: 2,
-					OTHER: 3,
-				},
+					OTHER: 3
+				}
 			],
 			messageDropReason: [
 				4,
@@ -2174,8 +2174,8 @@ export const WEB_EVENTS: Event[] = [
 					MESSAGE_REVOKED: 13,
 					PAYMENT_MESSAGE_REVOKED: 14,
 					DUPLICATE_MESSAGE: 15,
-					DUPLICATE_DELIVERY: 16,
-				},
+					DUPLICATE_DELIVERY: 16
+				}
 			],
 			messageMediaType: [
 				5,
@@ -2241,8 +2241,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			offline: [6, 'boolean'],
 			offlineCount: [11, 'integer'],
@@ -2251,21 +2251,21 @@ export const WEB_EVENTS: Event[] = [
 				8,
 				{
 					SENDER: 0,
-					ADMIN: 1,
-				},
+					ADMIN: 1
+				}
 			],
 			typeOfGroup: [
 				10,
 				{
 					GROUP: 1,
 					SUBGROUP: 2,
-					DEFAULT_SUBGROUP: 3,
-				},
-			],
+					DEFAULT_SUBGROUP: 3
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcOfflineNotificationProcess',
@@ -2279,8 +2279,8 @@ export const WEB_EVENTS: Event[] = [
 					OFFLINE_PREVIEW: 3,
 					PROCESSING: 4,
 					PROCESS_COMPLETE: 5,
-					PROCESS_INTERRUPTED: 6,
-				},
+					PROCESS_INTERRUPTED: 6
+				}
 			],
 			offlineProcessDecryptErrorCount: [5, 'integer'],
 			offlineProcessMailboxAge: [6, 'integer'],
@@ -2292,14 +2292,14 @@ export const WEB_EVENTS: Event[] = [
 				12,
 				{
 					PUSH_NOTIFICATION: 1,
-					PERIODIC_BACKGROUND_SYNC: 2,
-				},
+					PERIODIC_BACKGROUND_SYNC: 2
+				}
 			],
-			swVersion: [11, 'string'],
+			swVersion: [11, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdCriticalEvent',
@@ -2312,8 +2312,8 @@ export const WEB_EVENTS: Event[] = [
 					REGULAR_LOW: 2,
 					REGULAR_HIGH: 3,
 					CRITICAL_BLOCK: 4,
-					CRITICAL_UNBLOCK_LOW: 5,
-				},
+					CRITICAL_UNBLOCK_LOW: 5
+				}
 			],
 			mdCriticalEventCode: [
 				1,
@@ -2333,13 +2333,13 @@ export const WEB_EVENTS: Event[] = [
 					ACTION_INVALID_INDEX_DATA: 13,
 					MISSING_MUTATION_TO_REMOVE: 14,
 					LTHASH_INCONSISTENCY_ON_DAILY_CHECK: 15,
-					LTHASH_INCONSISTENCY_ON_SNAPSHOT_MAC_MISMATCH: 16,
-				},
-			],
+					LTHASH_INCONSISTENCY_ON_SNAPSHOT_MAC_MISMATCH: 16
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdLinkDeviceCompanion',
@@ -2356,27 +2356,27 @@ export const WEB_EVENTS: Event[] = [
 					UPLOAD_PREKEYS: 4,
 					COMPLETE: 5,
 					GENERATE_PREKEYS: 6,
-					SENT_PREKEYS: 7,
-				},
+					SENT_PREKEYS: 7
+				}
 			],
 			mdRegAttemptId: [9, 'string'],
 			mdSessionId: [1, 'string'],
 			mdTimestampS: [7, 'integer'],
-			mdWasUpgraded: [5, 'boolean'],
+			mdWasUpgraded: [5, 'boolean']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'AdvStoredTimestampExpired',
 		id: 3036,
 		props: {
-			advExpireTimeInHours: [1, 'integer'],
+			advExpireTimeInHours: [1, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcQplHealth',
@@ -2397,13 +2397,13 @@ export const WEB_EVENTS: Event[] = [
 					POINT_NAME_TOO_LONG: 9,
 					ANNOTATION_KEY_TOO_LONG: 10,
 					POINT_DATA_TOO_LONG: 11,
-					ERROR_PARSING_CONFIG: 12,
-				},
-			],
+					ERROR_PARSING_CONFIG: 12
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'CommunityHomeAction',
@@ -2413,11 +2413,11 @@ export const WEB_EVENTS: Event[] = [
 			communityHomeGroupJoins: [2, 'integer'],
 			communityHomeGroupNavigations: [3, 'integer'],
 			communityHomeId: [4, 'string'],
-			communityHomeViews: [5, 'integer'],
+			communityHomeViews: [5, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'CommunityTabAction',
@@ -2427,11 +2427,11 @@ export const WEB_EVENTS: Event[] = [
 			communityTabGroupNavigations: [1, 'integer'],
 			communityTabToHomeViews: [2, 'integer'],
 			communityTabViews: [3, 'integer'],
-			communityTabViewsViaContextMenu: [5, 'integer'],
+			communityTabViewsViaContextMenu: [5, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'Daily',
@@ -2449,8 +2449,8 @@ export const WEB_EVENTS: Event[] = [
 					ENC_KEY_READ_FAILURE: 3,
 					ENC_KEY_STORED_USED: 4,
 					ENC_KEY_PLAIN_DELETED: 5,
-					ENC_KEY_PLAIN_RECOVERED: 6,
-				},
+					ENC_KEY_PLAIN_RECOVERED: 6
+				}
 			],
 			androidXmppWorkersRuntime: [167, 'integer'],
 			appCodeHash: [103, 'string'],
@@ -2471,8 +2471,8 @@ export const WEB_EVENTS: Event[] = [
 				10,
 				{
 					WIFI_ONLY: 0,
-					WIFI_OR_CELLULAR: 1,
-				},
+					WIFI_OR_CELLULAR: 1
+				}
 			],
 			backupRestoreEncryptionVersion: [138, 'integer'],
 			backupSchedule: [
@@ -2482,8 +2482,8 @@ export const WEB_EVENTS: Event[] = [
 					DAILY: 1,
 					WEEKLY: 2,
 					MONTHLY: 3,
-					MANUAL: 4,
-				},
+					MANUAL: 4
+				}
 			],
 			channelsMediaFolderSize: [186, 'integer'],
 			chatDatabaseSize: [19, 'integer'],
@@ -2497,8 +2497,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					NOT_ADDED: 1,
 					UNVERIFIED: 2,
-					VERIFIED: 3,
-				},
+					VERIFIED: 3
+				}
 			],
 			entSecurityNotificationsEnabled: [134, 'boolean'],
 			experimentTmoPreloadGroupDaily: [166, 'integer'],
@@ -2538,8 +2538,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					ALLOWED: 1,
 					BLOCKED: 2,
-					UNKNOWN: 3,
-				},
+					UNKNOWN: 3
+				}
 			],
 			packageName: [102, 'string'],
 			passkeyExists: [165, 'boolean'],
@@ -2559,8 +2559,8 @@ export const WEB_EVENTS: Event[] = [
 					ONLY_SHARE_WITH: 2,
 					MY_CONTACTS: 3,
 					MY_CONTACTS_EXCEPT: 4,
-					EVERYONE: 5,
-				},
+					EVERYONE: 5
+				}
 			],
 			privacySettingsAboutExceptNum: [
 				142,
@@ -2578,8 +2578,8 @@ export const WEB_EVENTS: Event[] = [
 					B70: 11,
 					B80: 12,
 					B90: 13,
-					B100: 14,
-				},
+					B100: 14
+				}
 			],
 			privacySettingsGroups: [
 				143,
@@ -2588,8 +2588,8 @@ export const WEB_EVENTS: Event[] = [
 					ONLY_SHARE_WITH: 2,
 					MY_CONTACTS: 3,
 					MY_CONTACTS_EXCEPT: 4,
-					EVERYONE: 5,
-				},
+					EVERYONE: 5
+				}
 			],
 			privacySettingsGroupsExceptNum: [
 				144,
@@ -2607,8 +2607,8 @@ export const WEB_EVENTS: Event[] = [
 					B70: 11,
 					B80: 12,
 					B90: 13,
-					B100: 14,
-				},
+					B100: 14
+				}
 			],
 			privacySettingsLastSeen: [
 				145,
@@ -2617,8 +2617,8 @@ export const WEB_EVENTS: Event[] = [
 					ONLY_SHARE_WITH: 2,
 					MY_CONTACTS: 3,
 					MY_CONTACTS_EXCEPT: 4,
-					EVERYONE: 5,
-				},
+					EVERYONE: 5
+				}
 			],
 			privacySettingsLastSeenExceptNum: [
 				146,
@@ -2636,8 +2636,8 @@ export const WEB_EVENTS: Event[] = [
 					B70: 11,
 					B80: 12,
 					B90: 13,
-					B100: 14,
-				},
+					B100: 14
+				}
 			],
 			privacySettingsProfilePhoto: [
 				147,
@@ -2646,8 +2646,8 @@ export const WEB_EVENTS: Event[] = [
 					ONLY_SHARE_WITH: 2,
 					MY_CONTACTS: 3,
 					MY_CONTACTS_EXCEPT: 4,
-					EVERYONE: 5,
-				},
+					EVERYONE: 5
+				}
 			],
 			privacySettingsProfilePhotoExceptNum: [
 				148,
@@ -2665,8 +2665,8 @@ export const WEB_EVENTS: Event[] = [
 					B70: 11,
 					B80: 12,
 					B90: 13,
-					B100: 14,
-				},
+					B100: 14
+				}
 			],
 			privacySettingsStatus: [
 				150,
@@ -2675,8 +2675,8 @@ export const WEB_EVENTS: Event[] = [
 					ONLY_SHARE_WITH: 2,
 					MY_CONTACTS: 3,
 					MY_CONTACTS_EXCEPT: 4,
-					EVERYONE: 5,
-				},
+					EVERYONE: 5
+				}
 			],
 			privacySettingsStatusExceptNum: [
 				151,
@@ -2694,8 +2694,8 @@ export const WEB_EVENTS: Event[] = [
 					B70: 11,
 					B80: 12,
 					B90: 13,
-					B100: 14,
-				},
+					B100: 14
+				}
 			],
 			privacySettingsStatusShareNum: [
 				152,
@@ -2713,8 +2713,8 @@ export const WEB_EVENTS: Event[] = [
 					B70: 11,
 					B80: 12,
 					B90: 13,
-					B100: 14,
-				},
+					B100: 14
+				}
 			],
 			receiptsEnabled: [8, 'boolean'],
 			secretCodeActive: [172, 'boolean'],
@@ -2726,11 +2726,11 @@ export const WEB_EVENTS: Event[] = [
 			supportedDecoders: [169, 'string'],
 			supportedEncoders: [170, 'string'],
 			videoFolderFileCount: [23, 'integer'],
-			videoFolderSize: [22, 'integer'],
+			videoFolderSize: [22, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'KeepInChatNotif',
@@ -2739,11 +2739,11 @@ export const WEB_EVENTS: Event[] = [
 			kicGroupNotificationTaps: [3, 'integer'],
 			kicGroupNotifications: [4, 'integer'],
 			kicNotificationTaps: [5, 'integer'],
-			kicNotifications: [6, 'integer'],
+			kicNotifications: [6, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'NotificationSetting',
@@ -2755,16 +2755,16 @@ export const WEB_EVENTS: Event[] = [
 				3,
 				{
 					DEFAULT: 1,
-					CUSTOM: 2,
-				},
+					CUSTOM: 2
+				}
 			],
 			inAppNotificationAlertStyle: [
 				4,
 				{
 					NONE: 1,
 					BANNERS: 2,
-					ALERTS: 3,
-				},
+					ALERTS: 3
+				}
 			],
 			inAppNotificationSound: [5, 'boolean'],
 			inAppNotificationVibrate: [6, 'boolean'],
@@ -2774,15 +2774,15 @@ export const WEB_EVENTS: Event[] = [
 				9,
 				{
 					DEFAULT: 1,
-					CUSTOM: 2,
-				},
+					CUSTOM: 2
+				}
 			],
 			offlineNotification: [11, 'boolean'],
-			showPreview: [10, 'boolean'],
+			showPreview: [10, 'boolean']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'PnhDailyCtwa',
@@ -2790,11 +2790,11 @@ export const WEB_EVENTS: Event[] = [
 		props: {
 			matMessagesReceived: [1, 'integer'],
 			threadDs: [3, 'string'],
-			threadId: [2, 'string'],
+			threadId: [2, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'PnhDaily',
@@ -2812,13 +2812,13 @@ export const WEB_EVENTS: Event[] = [
 				{
 					GROUP: 1,
 					SUBGROUP: 2,
-					DEFAULT_SUBGROUP: 3,
-				},
-			],
+					DEFAULT_SUBGROUP: 3
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'PrivacyHighlightDaily',
@@ -2830,8 +2830,8 @@ export const WEB_EVENTS: Event[] = [
 			privacyHighlightCategory: [
 				4,
 				{
-					E2EE: 0,
-				},
+					E2EE: 0
+				}
 			],
 			privacyHighlightSurface: [
 				5,
@@ -2848,13 +2848,13 @@ export const WEB_EVENTS: Event[] = [
 					LINKED_DEVICES_SCREEN: 9,
 					CALLING_SCREEN_AUDIO: 10,
 					CALLING_SCREEN_VIDEO: 11,
-					SPLIT_VIEW_HOME_PLACEHOLDER: 12,
-				},
-			],
+					SPLIT_VIEW_HOME_PLACEHOLDER: 12
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'PttDaily',
@@ -2909,41 +2909,41 @@ export const WEB_EVENTS: Event[] = [
 			pttStopTapGroup: [26, 'integer'],
 			pttStopTapIndividual: [27, 'integer'],
 			pttStopTapInterop: [51, 'integer'],
-			pttStopTapNewsletter: [41, 'integer'],
+			pttStopTapNewsletter: [41, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ScreenLockSettingsData',
 		id: 4802,
 		props: {
-			screenAutoLockDuration: [1, 'integer'],
+			screenAutoLockDuration: [1, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ScreenLockSettings',
 		id: 3872,
 		props: {
-			screenLockDuration: [1, 'integer'],
+			screenLockDuration: [1, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'private',
-		privateStatsIdInt: 113760892,
+		privateStatsIdInt: 113760892
 	},
 	{
 		name: 'WebcFtsStorage',
 		id: 3642,
 		props: {
-			ftsTotalSize: [1, 'integer'],
+			ftsTotalSize: [1, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'NotificationEngagement',
@@ -2968,8 +2968,8 @@ export const WEB_EVENTS: Event[] = [
 					LT4000: 12,
 					LT4500: 13,
 					LT5000: 14,
-					LARGEST_BUCKET: 15,
-				},
+					LARGEST_BUCKET: 15
+				}
 			],
 			groupTypeClient: [
 				3,
@@ -2977,8 +2977,8 @@ export const WEB_EVENTS: Event[] = [
 					REGULAR_GROUP: 1,
 					SUB_GROUP: 2,
 					DEFAULT_SUB_GROUP: 3,
-					PARENT_GROUP: 4,
-				},
+					PARENT_GROUP: 4
+				}
 			],
 			isAGroup: [4, 'boolean'],
 			isWebBackgroundSyncNotif: [18, 'boolean'],
@@ -2994,11 +2994,11 @@ export const WEB_EVENTS: Event[] = [
 			totalNotifRtcVoipDecline: [12, 'integer'],
 			totalNotifShowPreview: [13, 'integer'],
 			totalNotifShown: [14, 'integer'],
-			totalNotifTapToOpen: [15, 'integer'],
+			totalNotifTapToOpen: [15, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdBootstrapHistorySyncStatusAfterPairing',
@@ -3011,8 +3011,8 @@ export const WEB_EVENTS: Event[] = [
 					MINS_20: 2,
 					MINS_40: 3,
 					MINS_60: 4,
-					MINS_5: 5,
-				},
+					MINS_5: 5
+				}
 			],
 			isLoopRunning: [12, 'boolean'],
 			lastProcessedNotificationChunkOrder: [2, 'integer'],
@@ -3026,8 +3026,8 @@ export const WEB_EVENTS: Event[] = [
 					PUSHNAME: 4,
 					STATUS_V3: 5,
 					NON_BLOCKING_DATA: 6,
-					ON_DEMAND: 7,
-				},
+					ON_DEMAND: 7
+				}
 			],
 			mdHistorySyncStatusResult: [
 				5,
@@ -3044,19 +3044,19 @@ export const WEB_EVENTS: Event[] = [
 					FAIL_TO_STORE_CHUNK: 10,
 					FAIL_TO_FETCH: 11,
 					FAIL_TO_PREPROCESS: 12,
-					FAIL_TO_ENCRYPT: 13,
-				},
+					FAIL_TO_ENCRYPT: 13
+				}
 			],
 			mdSessionId: [6, 'string'],
 			mdTimestamp: [7, 'integer'],
 			missingNotificationCount: [8, 'integer'],
 			nextNotificationChunkOrder: [9, 'integer'],
 			totalProcessedMessageCount: [10, 'integer'],
-			unprocessedNotificationCount: [11, 'integer'],
+			unprocessedNotificationCount: [11, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebDbVersionNonAnonymous',
@@ -3076,14 +3076,14 @@ export const WEB_EVENTS: Event[] = [
 					WORKER_STORAGE: 9,
 					SW: 10,
 					WAWC: 11,
-					WAWC_DB_ENC: 12,
-				},
+					WAWC_DB_ENC: 12
+				}
 			],
-			webDbVersionNumber: [2, 'integer'],
+			webDbVersionNumber: [2, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'SyncdKeyCount',
@@ -3093,11 +3093,11 @@ export const WEB_EVENTS: Event[] = [
 			p80MuationsPerKey: [2, 'integer'],
 			p95MuationsPerKey: [3, 'integer'],
 			syncdSessionLengthDays: [4, 'integer'],
-			totalKeyCount: [5, 'integer'],
+			totalKeyCount: [5, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdAppStateSyncMutationStats',
@@ -3113,8 +3113,8 @@ export const WEB_EVENTS: Event[] = [
 					LT500: 5,
 					LT1K: 6,
 					LT5K: 7,
-					GTE5K: 8,
-				},
+					GTE5K: 8
+				}
 			],
 			failed: [
 				2,
@@ -3126,8 +3126,8 @@ export const WEB_EVENTS: Event[] = [
 					LT500: 5,
 					LT1K: 6,
 					LT5K: 7,
-					GTE5K: 8,
-				},
+					GTE5K: 8
+				}
 			],
 			invalid: [
 				3,
@@ -3139,8 +3139,8 @@ export const WEB_EVENTS: Event[] = [
 					LT500: 5,
 					LT1K: 6,
 					LT5K: 7,
-					GTE5K: 8,
-				},
+					GTE5K: 8
+				}
 			],
 			orphan: [
 				4,
@@ -3152,8 +3152,8 @@ export const WEB_EVENTS: Event[] = [
 					LT500: 5,
 					LT1K: 6,
 					LT5K: 7,
-					GTE5K: 8,
-				},
+					GTE5K: 8
+				}
 			],
 			syncdAction: [5, 'string'],
 			unsupported: [
@@ -3166,13 +3166,13 @@ export const WEB_EVENTS: Event[] = [
 					LT500: 5,
 					LT1K: 6,
 					LT5K: 7,
-					GTE5K: 8,
-				},
-			],
+					GTE5K: 8
+				}
+			]
 		},
 		weight: 20,
 		wamChannel: 'private',
-		privateStatsIdInt: 0,
+		privateStatsIdInt: 0
 	},
 	{
 		name: 'GroupJoinC',
@@ -3180,7 +3180,7 @@ export const WEB_EVENTS: Event[] = [
 		props: {},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MessageHighRetryCount',
@@ -3204,8 +3204,8 @@ export const WEB_EVENTS: Event[] = [
 					LT4000: 12,
 					LT4500: 13,
 					LT5000: 14,
-					LARGEST_BUCKET: 15,
-				},
+					LARGEST_BUCKET: 15
+				}
 			],
 			e2eSenderType: [
 				3,
@@ -3215,8 +3215,8 @@ export const WEB_EVENTS: Event[] = [
 					MY_COMPANION: 3,
 					OTHER_COMPANION: 4,
 					MY_HOSTED_COMPANION: 5,
-					OTHER_HOSTED_COMPANION: 6,
-				},
+					OTHER_HOSTED_COMPANION: 6
+				}
 			],
 			mediaType: [
 				1,
@@ -3282,8 +3282,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			messageType: [
 				4,
@@ -3293,14 +3293,14 @@ export const WEB_EVENTS: Event[] = [
 					BROADCAST: 3,
 					STATUS: 4,
 					CHANNEL: 5,
-					INTEROP: 6,
-				},
+					INTEROP: 6
+				}
 			],
-			retryCount: [2, 'integer'],
+			retryCount: [2, 'integer']
 		},
 		weight: 20,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'OfflineCountTooHigh',
@@ -3327,8 +3327,8 @@ export const WEB_EVENTS: Event[] = [
 					CALL_RELAY: 15,
 					MUTE: 16,
 					SCREEN_SHARE: 17,
-					UNKNOWN: 18,
-				},
+					UNKNOWN: 18
+				}
 			],
 			mediaType: [
 				3,
@@ -3394,8 +3394,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			messageType: [
 				4,
@@ -3405,8 +3405,8 @@ export const WEB_EVENTS: Event[] = [
 					BROADCAST: 3,
 					STATUS: 4,
 					CHANNEL: 5,
-					INTEROP: 6,
-				},
+					INTEROP: 6
+				}
 			],
 			notificationStanzaType: [6, 'string'],
 			offlineCount: [2, 'integer'],
@@ -3418,13 +3418,13 @@ export const WEB_EVENTS: Event[] = [
 					RECEIPT: 2,
 					CALL: 3,
 					NOTIFICATION: 4,
-					APPDATA: 5,
-				},
-			],
+					APPDATA: 5
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'E2eMessageRecv',
@@ -3435,8 +3435,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					DIRECT_CHAT: 0,
 					INVOKED: 1,
-					MEMBER: 2,
-				},
+					MEMBER: 2
+				}
 			],
 			botType: [
 				19,
@@ -3444,8 +3444,8 @@ export const WEB_EVENTS: Event[] = [
 					UNKNOWN: 0,
 					METABOT: 1,
 					BOT_1P_BIZ: 2,
-					BOT_3P_BIZ: 3,
-				},
+					BOT_3P_BIZ: 3
+				}
 			],
 			e2eCiphertextType: [
 				5,
@@ -3453,8 +3453,8 @@ export const WEB_EVENTS: Event[] = [
 					MESSAGE: 0,
 					PREKEY_MESSAGE: 1,
 					SENDER_KEY_MESSAGE: 2,
-					MESSAGE_SECRET_MESSAGE: 3,
-				},
+					MESSAGE_SECRET_MESSAGE: 3
+				}
 			],
 			e2eCiphertextVersion: [6, 'integer'],
 			e2eDestination: [
@@ -3465,8 +3465,8 @@ export const WEB_EVENTS: Event[] = [
 					LIST: 2,
 					STATUS: 3,
 					CHANNEL: 4,
-					INTEROP: 5,
-				},
+					INTEROP: 5
+				}
 			],
 			e2eFailureReason: [
 				2,
@@ -3569,8 +3569,8 @@ export const WEB_EVENTS: Event[] = [
 					ERROR_INVALID_KEY_MATEIRAL_DATA_LEN: 95,
 					ERROR_SESSION_STATE_GET_SENDER_RATCHET_KEY: 96,
 					ERROR_SESSION_STATE_GET_LOCAL_IDENTITY_KEY: 97,
-					ERROR_SESSION_STATE_GET_REMOTE_IDENTITY_KEY: 98,
-				},
+					ERROR_SESSION_STATE_GET_REMOTE_IDENTITY_KEY: 98
+				}
 			],
 			e2eSenderType: [
 				8,
@@ -3580,8 +3580,8 @@ export const WEB_EVENTS: Event[] = [
 					MY_COMPANION: 3,
 					OTHER_COMPANION: 4,
 					MY_HOSTED_COMPANION: 5,
-					OTHER_HOSTED_COMPANION: 6,
-				},
+					OTHER_HOSTED_COMPANION: 6
+				}
 			],
 			e2eSuccessful: [1, 'boolean'],
 			editType: [
@@ -3590,8 +3590,8 @@ export const WEB_EVENTS: Event[] = [
 					NOT_EDITED: 0,
 					EDITED: 1,
 					SENDER_REVOKE: 2,
-					ADMIN_REVOKE: 3,
-				},
+					ADMIN_REVOKE: 3
+				}
 			],
 			isHostedChat: [20, 'boolean'],
 			isLid: [11, 'boolean'],
@@ -3599,15 +3599,15 @@ export const WEB_EVENTS: Event[] = [
 				16,
 				{
 					PN: 1,
-					LID: 2,
-				},
+					LID: 2
+				}
 			],
 			messageAddressingMode: [
 				17,
 				{
 					PN: 1,
-					LID: 2,
-				},
+					LID: 2
+				}
 			],
 			messageMediaType: [
 				7,
@@ -3673,8 +3673,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			offline: [9, 'boolean'],
 			retryCount: [3, 'integer'],
@@ -3682,15 +3682,15 @@ export const WEB_EVENTS: Event[] = [
 				10,
 				{
 					SENDER: 0,
-					ADMIN: 1,
-				},
+					ADMIN: 1
+				}
 			],
 			serverAddressingMode: [
 				18,
 				{
 					PN: 1,
-					LID: 2,
-				},
+					LID: 2
+				}
 			],
 			stanzaType: [
 				14,
@@ -3699,21 +3699,21 @@ export const WEB_EVENTS: Event[] = [
 					RECEIPT: 2,
 					CALL: 3,
 					NOTIFICATION: 4,
-					APPDATA: 5,
-				},
+					APPDATA: 5
+				}
 			],
 			typeOfGroup: [
 				12,
 				{
 					GROUP: 1,
 					SUBGROUP: 2,
-					DEFAULT_SUBGROUP: 3,
-				},
-			],
+					DEFAULT_SUBGROUP: 3
+				}
+			]
 		},
 		weight: 20,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ReceiptStanzaReceive',
@@ -3785,8 +3785,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			messageType: [
 				10,
@@ -3796,16 +3796,16 @@ export const WEB_EVENTS: Event[] = [
 					BROADCAST: 3,
 					STATUS: 4,
 					CHANNEL: 5,
-					INTEROP: 6,
-				},
+					INTEROP: 6
+				}
 			],
 			receiptAggregation: [
 				11,
 				{
 					NONE: 0,
 					MULTI_MESSAGES: 1,
-					MULTI_PARTICIPANTS: 2,
-				},
+					MULTI_PARTICIPANTS: 2
+				}
 			],
 			receiptStanzaDuration: [1, 'timer'],
 			receiptStanzaHasOrphaned: [6, 'boolean'],
@@ -3820,15 +3820,15 @@ export const WEB_EVENTS: Event[] = [
 					WAITING_TO_PROCESS: 2,
 					PROCESS: 3,
 					WAITING_TO_ACK: 5,
-					ACK: 4,
-				},
+					ACK: 4
+				}
 			],
 			receiptStanzaTotalCount: [7, 'integer'],
-			receiptStanzaType: [4, 'string'],
+			receiptStanzaType: [4, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'CtwaActionBannerUnderstand',
@@ -3845,25 +3845,25 @@ export const WEB_EVENTS: Event[] = [
 				8,
 				{
 					LOCAL: 0,
-					UNIVERSAL: 1,
-				},
+					UNIVERSAL: 1
+				}
 			],
 			validLocale: [9, 'boolean'],
-			validNotification: [10, 'boolean'],
+			validNotification: [10, 'boolean']
 		},
 		weight: 1,
 		wamChannel: 'private',
-		privateStatsIdInt: 0,
+		privateStatsIdInt: 0
 	},
 	{
 		name: 'WaOldCode',
 		id: 3940,
 		props: {
-			deviceId: [1, 'string'],
+			deviceId: [1, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'NotificationDelivery',
@@ -3874,8 +3874,8 @@ export const WEB_EVENTS: Event[] = [
 				2,
 				{
 					SHOW: 1,
-					REMOVE: 2,
-				},
+					REMOVE: 2
+				}
 			],
 			notificationDeliveryT: [3, 'integer'],
 			notificationDestination: [
@@ -3885,8 +3885,8 @@ export const WEB_EVENTS: Event[] = [
 					GROUP: 2,
 					OTHER: 3,
 					CHANNEL: 4,
-					INTEROP: 5,
-				},
+					INTEROP: 5
+				}
 			],
 			notificationId: [5, 'string'],
 			notificationSource: [
@@ -3894,8 +3894,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					PUSH_TRIGGERED: 1,
 					MAIN_APP: 2,
-					IN_APP: 3,
-				},
+					IN_APP: 3
+				}
 			],
 			threadId: [7, 'string'],
 			uiNotificationType: [
@@ -3929,33 +3929,33 @@ export const WEB_EVENTS: Event[] = [
 					OTHER: 26,
 					INVITE_JOINED: 27,
 					SCHEDULED_CALL_LOCAL_REMINDER: 28,
-					PTV_MESSAGE: 29,
-				},
-			],
+					PTV_MESSAGE: 29
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdAppStateDirtyBits',
 		id: 2520,
 		props: {
-			dirtyBitsFalsePositive: [2, 'boolean'],
+			dirtyBitsFalsePositive: [2, 'boolean']
 		},
 		weight: 1000,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdAppStateOfflineNotifications',
 		id: 2602,
 		props: {
-			redundantCount: [1, 'integer'],
+			redundantCount: [1, 'integer']
 		},
 		weight: 1000,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdRetryFromUnknownDevice',
@@ -3966,13 +3966,13 @@ export const WEB_EVENTS: Event[] = [
 				1,
 				{
 					PRIMARY: 1,
-					COMPANION: 2,
-				},
-			],
+					COMPANION: 2
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'E2eRetryReject',
@@ -3986,8 +3986,8 @@ export const WEB_EVENTS: Event[] = [
 					BROADCAST: 3,
 					STATUS: 4,
 					CHANNEL: 5,
-					INTEROP: 6,
-				},
+					INTEROP: 6
+				}
 			],
 			msgRetryCount: [2, 'integer'],
 			retryRejectReason: [
@@ -3996,31 +3996,31 @@ export const WEB_EVENTS: Event[] = [
 					OTHER: 0,
 					DOUBLE_CHECKMARK: 1,
 					IDENTITY_CHANGE: 2,
-					MESSAGE_NOT_EXIST: 3,
-				},
+					MESSAGE_NOT_EXIST: 3
+				}
 			],
 			retryRevoke: [4, 'boolean'],
 			senderDeviceType: [
 				5,
 				{
 					PRIMARY: 1,
-					COMPANION: 2,
-				},
-			],
+					COMPANION: 2
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ClockSkewDifferenceT',
 		id: 3178,
 		props: {
-			clockSkewHourly: [1, 'integer'],
+			clockSkewHourly: [1, 'integer']
 		},
 		weight: 10000,
 		wamChannel: 'private',
-		privateStatsIdInt: 37887164,
+		privateStatsIdInt: 37887164
 	},
 	{
 		name: 'MdBootstrapAppStateCriticalDataProcessing',
@@ -4039,23 +4039,23 @@ export const WEB_EVENTS: Event[] = [
 					APPLIED_MUTATIONS: 8,
 					PUSHNAME_APPLIED: 9,
 					PUSHNAME_INVALID: 10,
-					ENTERED_RETRY_MODE: 11,
-				},
+					ENTERED_RETRY_MODE: 11
+				}
 			],
 			mdBootstrapPayloadType: [
 				2,
 				{
 					CRITICAL: 1,
-					NON_CRITICAL: 2,
-				},
+					NON_CRITICAL: 2
+				}
 			],
 			mdRegAttemptId: [3, 'string'],
 			mdSessionId: [4, 'string'],
-			mdTimestamp: [5, 'integer'],
+			mdTimestamp: [5, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcNativeUpsellCta',
@@ -4066,8 +4066,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					IMPRESSION: 1,
 					CTA_BTN_CLICK: 2,
-					CTA_DISMISS: 3,
-				},
+					CTA_DISMISS: 3
+				}
 			],
 			webcNativeUpsellCtaSource: [
 				1,
@@ -4081,13 +4081,13 @@ export const WEB_EVENTS: Event[] = [
 					CALL_BTN_MODAL_2: 7,
 					MISSED_CALL_MODAL: 8,
 					MISSED_CALL_MODAL_2: 9,
-					QR_BANNER_2: 10,
-				},
-			],
+					QR_BANNER_2: 10
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebDbTableUsage',
@@ -4097,23 +4097,23 @@ export const WEB_EVENTS: Event[] = [
 			webScenario: [
 				2,
 				{
-					OFFLINE_RESUME: 0,
-				},
+					OFFLINE_RESUME: 0
+				}
 			],
 			webTable: [3, 'string'],
 			webTableLogReason: [
 				4,
 				{
 					BASE: 0,
-					EXCEEDED_THRESHOLD: 1,
-				},
+					EXCEEDED_THRESHOLD: 1
+				}
 			],
 			webTableReadCount: [5, 'integer'],
-			webTableWriteCount: [6, 'integer'],
+			webTableWriteCount: [6, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebDbLoadFromVersionFailureNonAnonymous',
@@ -4124,8 +4124,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					MAIN: 1,
 					WEB_WORKER: 2,
-					SERVICE_WORKER: 3,
-				},
+					SERVICE_WORKER: 3
+				}
 			],
 			webDbName: [
 				2,
@@ -4141,13 +4141,13 @@ export const WEB_EVENTS: Event[] = [
 					WORKER_STORAGE: 9,
 					SW: 10,
 					WAWC: 11,
-					WAWC_DB_ENC: 12,
-				},
-			],
+					WAWC_DB_ENC: 12
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcJobInfo',
@@ -4161,8 +4161,8 @@ export const WEB_EVENTS: Event[] = [
 					COMPLETED: 0,
 					ERROR: 1,
 					TIMEOUT: 2,
-					ABORTED: 3,
-				},
+					ABORTED: 3
+				}
 			],
 			pendingJobsCount: [4, 'integer'],
 			scenario: [
@@ -4170,26 +4170,26 @@ export const WEB_EVENTS: Event[] = [
 				{
 					INITIAL_PAIRING: 0,
 					OFFLINE_RESUME: 1,
-					IDLE: 2,
-				},
+					IDLE: 2
+				}
 			],
 			webcJobAddedT: [6, 'integer'],
 			webcJobCompletedT: [8, 'integer'],
-			webcJobStartedT: [7, 'integer'],
+			webcJobStartedT: [7, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcRawPlatforms',
 		id: 2416,
 		props: {
-			webcRawPlatform: [1, 'string'],
+			webcRawPlatform: [1, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebWamForceFlush',
@@ -4197,7 +4197,7 @@ export const WEB_EVENTS: Event[] = [
 		props: {},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ChatMute',
@@ -4208,15 +4208,15 @@ export const WEB_EVENTS: Event[] = [
 				{
 					MUTE: 1,
 					UNMUTE: 2,
-					EXPIRE: 3,
-				},
+					EXPIRE: 3
+				}
 			],
 			chatMuteNotificationChoice: [
 				5,
 				{
 					NO_NOTIFICATIONS_WHEN_MUTED: 1,
-					YES_NOTIFICATIONS_WHEN_MUTED: 2,
-				},
+					YES_NOTIFICATIONS_WHEN_MUTED: 2
+				}
 			],
 			muteChatType: [
 				4,
@@ -4224,8 +4224,8 @@ export const WEB_EVENTS: Event[] = [
 					ONE_ON_ONE: 1,
 					GROUP: 2,
 					CHANNEL: 3,
-					INTEROP: 4,
-				},
+					INTEROP: 4
+				}
 			],
 			muteDuration: [1, 'timer'],
 			muteEntryPoint: [
@@ -4233,20 +4233,20 @@ export const WEB_EVENTS: Event[] = [
 				{
 					CHAT_LIST_SCREEN: 1,
 					CONTACT_INFO: 2,
-					CONVERSATION_SCREEN: 3,
-				},
+					CONVERSATION_SCREEN: 3
+				}
 			],
 			muteGroupSize: [2, 'integer'],
 			waOfficialAccountName: [
 				7,
 				{
-					WHATSAPP_CHATPSA: 1,
-				},
-			],
+					WHATSAPP_CHATPSA: 1
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ChatPsaAction',
@@ -4316,8 +4316,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			psaCampaignId: [4, 'string'],
 			psaMessageActionType: [
@@ -4328,14 +4328,14 @@ export const WEB_EVENTS: Event[] = [
 					REACT: 3,
 					LINK_CLICK: 4,
 					MEDIA_PLAY: 5,
-					DELETE: 6,
-				},
+					DELETE: 6
+				}
 			],
-			psaMsgId: [5, 'string'],
+			psaMsgId: [5, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ChatPsaRead',
@@ -4405,8 +4405,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			psaCampaignId: [4, 'string'],
 			psaMsgId: [5, 'string'],
@@ -4414,13 +4414,13 @@ export const WEB_EVENTS: Event[] = [
 				3,
 				{
 					CHAT_LIST: 1,
-					CHAT: 2,
-				},
-			],
+					CHAT: 2
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ChatPsaRemove',
@@ -4490,8 +4490,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			lastReceivedMessageTs: [4, 'timer'],
 			lastReceivedMsgId: [8, 'string'],
@@ -4501,8 +4501,8 @@ export const WEB_EVENTS: Event[] = [
 					OTHER: 0,
 					MESSAGES_ARENT_HELPFUL: 1,
 					TOO_MANY_MESSAGES: 2,
-					IT_LOOKS_SUSPICIOUS: 3,
-				},
+					IT_LOOKS_SUSPICIOUS: 3
+				}
 			],
 			psaCampaignId: [9, 'string'],
 			psaMessageRemoveAction: [
@@ -4513,8 +4513,8 @@ export const WEB_EVENTS: Event[] = [
 					ARCHIVE: 3,
 					UNARCHIVE: 4,
 					CLEAR: 5,
-					DELETE_ALL: 6,
-				},
+					DELETE_ALL: 6
+				}
 			],
 			psaMessageRemoveEntryPoint: [
 				6,
@@ -4533,19 +4533,19 @@ export const WEB_EVENTS: Event[] = [
 					DELETE_ALL_FROM_CONTACT_INFO: 12,
 					DELETE_ALL_FROM_CONVERSATION: 13,
 					CLEAR_FROM_CONVERSATION: 14,
-					BLOCK_FROM_CONSENT_MODAL: 15,
-				},
+					BLOCK_FROM_CONSENT_MODAL: 15
+				}
 			],
 			waOfficialAccountName: [
 				7,
 				{
-					WHATSAPP_CHATPSA: 1,
-				},
-			],
+					WHATSAPP_CHATPSA: 1
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ForwardSend',
@@ -4558,8 +4558,8 @@ export const WEB_EVENTS: Event[] = [
 					INITIATED_BY_ME: 2,
 					INITIATED_BY_OTHER: 3,
 					CHAT_PICKER: 4,
-					BIZ_UPGRADE_FB_HOSTING: 5,
-				},
+					BIZ_UPGRADE_FB_HOSTING: 5
+				}
 			],
 			e2eCiphertextType: [
 				12,
@@ -4567,8 +4567,8 @@ export const WEB_EVENTS: Event[] = [
 					MESSAGE: 0,
 					PREKEY_MESSAGE: 1,
 					SENDER_KEY_MESSAGE: 2,
-					MESSAGE_SECRET_MESSAGE: 3,
-				},
+					MESSAGE_SECRET_MESSAGE: 3
+				}
 			],
 			e2eCiphertextVersion: [11, 'integer'],
 			ephemeralityDuration: [18, 'integer'],
@@ -4577,8 +4577,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					INITIATED_BY_ME: 1,
 					INITIATED_BY_OTHER: 2,
-					BIZ_UPGRADE_FB_HOSTING: 3,
-				},
+					BIZ_UPGRADE_FB_HOSTING: 3
+				}
 			],
 			ephemeralityTriggerAction: [
 				25,
@@ -4587,8 +4587,8 @@ export const WEB_EVENTS: Event[] = [
 					CHAT_SETTINGS: 1,
 					ACCOUNT_SETTINGS: 2,
 					BULK_CHANGE: 3,
-					BIZ_SUPPORTS_FB_HOSTING: 4,
-				},
+					BIZ_SUPPORTS_FB_HOSTING: 4
+				}
 			],
 			fastForwardEnabled: [5, 'boolean'],
 			isForwardedForward: [22, 'boolean'],
@@ -4601,8 +4601,8 @@ export const WEB_EVENTS: Event[] = [
 					API_MARKETING: 1,
 					API_UTILITY: 2,
 					OTHER_API_BIZ_MSG: 3,
-					SMB_BIZ_MSG: 4,
-				},
+					SMB_BIZ_MSG: 4
+				}
 			],
 			messageForwardAgeT: [4, 'timer'],
 			messageIsFanout: [6, 'boolean'],
@@ -4672,8 +4672,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			messageSendT: [13, 'timer'],
 			messageType: [
@@ -4684,8 +4684,8 @@ export const WEB_EVENTS: Event[] = [
 					BROADCAST: 3,
 					STATUS: 4,
 					CHANNEL: 5,
-					INTEROP: 6,
-				},
+					INTEROP: 6
+				}
 			],
 			receiverDefaultDisappearingDuration: [20, 'integer'],
 			resendCount: [8, 'integer'],
@@ -4696,15 +4696,15 @@ export const WEB_EVENTS: Event[] = [
 				{
 					GROUP: 1,
 					SUBGROUP: 2,
-					DEFAULT_SUBGROUP: 3,
-				},
+					DEFAULT_SUBGROUP: 3
+				}
 			],
 			wouldBeFrequentlyForwardedAt3: [16, 'boolean'],
-			wouldBeFrequentlyForwardedAt4: [17, 'boolean'],
+			wouldBeFrequentlyForwardedAt4: [17, 'boolean']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'NonMessagePeerDataMediaUpload',
@@ -4722,8 +4722,8 @@ export const WEB_EVENTS: Event[] = [
 					SEND_RECENT_STICKER_BOOTSTRAP: 1,
 					GENERAL_LINK_PREVIEW: 2,
 					HISTORY_SYNC_ON_DEMAND: 3,
-					PLACEHOLDER_MESSAGE_RESEND: 4,
-				},
+					PLACEHOLDER_MESSAGE_RESEND: 4
+				}
 			],
 			peerDataResponseResult: [
 				8,
@@ -4734,15 +4734,15 @@ export const WEB_EVENTS: Event[] = [
 					REQUEST_INVALID: 4,
 					FAIL_TO_UPLOAD: 5,
 					FAIL_TO_SEND_RESPONSE: 6,
-					REQUEST_TOO_OLD: 7,
-				},
+					REQUEST_TOO_OLD: 7
+				}
 			],
 			peerDataSuccessInlineNoUploadCount: [9, 'integer'],
-			peerDataSuccessUploadCount: [7, 'integer'],
+			peerDataSuccessUploadCount: [7, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'NonMessagePeerDataOperationResponse',
@@ -4758,8 +4758,8 @@ export const WEB_EVENTS: Event[] = [
 					SEND_RECENT_STICKER_BOOTSTRAP: 1,
 					GENERAL_LINK_PREVIEW: 2,
 					HISTORY_SYNC_ON_DEMAND: 3,
-					PLACEHOLDER_MESSAGE_RESEND: 4,
-				},
+					PLACEHOLDER_MESSAGE_RESEND: 4
+				}
 			],
 			peerDataResponseApplyResult: [
 				8,
@@ -4768,16 +4768,16 @@ export const WEB_EVENTS: Event[] = [
 					OTHER_ERROR: 2,
 					INVALID_RESPONSE: 3,
 					FAIL_TO_DOWNLOAD: 4,
-					REQUEST_TIMEOUT: 5,
-				},
+					REQUEST_TIMEOUT: 5
+				}
 			],
 			peerDataResponseCount: [5, 'integer'],
 			peerDataSuccessProcessCount: [6, 'integer'],
-			peerDataSuccessResponseCount: [7, 'integer'],
+			peerDataSuccessResponseCount: [7, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'NonMessagePeerDataRequest',
@@ -4792,13 +4792,13 @@ export const WEB_EVENTS: Event[] = [
 					SEND_RECENT_STICKER_BOOTSTRAP: 1,
 					GENERAL_LINK_PREVIEW: 2,
 					HISTORY_SYNC_ON_DEMAND: 3,
-					PLACEHOLDER_MESSAGE_RESEND: 4,
-				},
-			],
+					PLACEHOLDER_MESSAGE_RESEND: 4
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcLinkPreviewResponseHandle',
@@ -4807,11 +4807,11 @@ export const WEB_EVENTS: Event[] = [
 			didRespondHqPreview: [5, 'boolean'],
 			isPreviewSuccess: [2, 'boolean'],
 			previewDurationMs: [4, 'integer'],
-			previewSessionId: [3, 'string'],
+			previewSessionId: [3, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdBootstrapHistoryDataDownloaded',
@@ -4829,8 +4829,8 @@ export const WEB_EVENTS: Event[] = [
 					PUSHNAME: 4,
 					STATUS_V3: 5,
 					NON_BLOCKING_DATA: 6,
-					ON_DEMAND: 7,
-				},
+					ON_DEMAND: 7
+				}
 			],
 			mdBootstrapMessagesCount: [5, 'integer'],
 			mdBootstrapPayloadSize: [4, 'integer'],
@@ -4838,27 +4838,27 @@ export const WEB_EVENTS: Event[] = [
 				2,
 				{
 					CRITICAL: 1,
-					NON_CRITICAL: 2,
-				},
+					NON_CRITICAL: 2
+				}
 			],
 			mdBootstrapStepDuration: [7, 'integer'],
 			mdBootstrapStepResult: [
 				8,
 				{
 					SUCCESS: 1,
-					FAILURE: 2,
-				},
+					FAILURE: 2
+				}
 			],
 			mdHsOldestMessageTimestamp: [11, 'integer'],
 			mdRegAttemptId: [12, 'string'],
 			mdSessionId: [1, 'string'],
 			mdStorageQuotaBytes: [9, 'integer'],
 			mdStorageQuotaUsedBytes: [10, 'integer'],
-			mdTimestamp: [3, 'integer'],
+			mdTimestamp: [3, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdBootstrapHistoryDataStartDownloading',
@@ -4875,24 +4875,24 @@ export const WEB_EVENTS: Event[] = [
 					PUSHNAME: 4,
 					STATUS_V3: 5,
 					NON_BLOCKING_DATA: 6,
-					ON_DEMAND: 7,
-				},
+					ON_DEMAND: 7
+				}
 			],
 			mdBootstrapPayloadSize: [4, 'integer'],
 			mdBootstrapPayloadType: [
 				5,
 				{
 					CRITICAL: 1,
-					NON_CRITICAL: 2,
-				},
+					NON_CRITICAL: 2
+				}
 			],
 			mdBootstrapStepDuration: [6, 'integer'],
 			mdSessionId: [7, 'string'],
-			mdTimestamp: [8, 'integer'],
+			mdTimestamp: [8, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'E2eMessageSend',
@@ -4903,8 +4903,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					DIRECT_CHAT: 0,
 					INVOKED: 1,
-					MEMBER: 2,
-				},
+					MEMBER: 2
+				}
 			],
 			botType: [
 				17,
@@ -4912,8 +4912,8 @@ export const WEB_EVENTS: Event[] = [
 					UNKNOWN: 0,
 					METABOT: 1,
 					BOT_1P_BIZ: 2,
-					BOT_3P_BIZ: 3,
-				},
+					BOT_3P_BIZ: 3
+				}
 			],
 			e2eCiphertextType: [
 				5,
@@ -4921,8 +4921,8 @@ export const WEB_EVENTS: Event[] = [
 					MESSAGE: 0,
 					PREKEY_MESSAGE: 1,
 					SENDER_KEY_MESSAGE: 2,
-					MESSAGE_SECRET_MESSAGE: 3,
-				},
+					MESSAGE_SECRET_MESSAGE: 3
+				}
 			],
 			e2eCiphertextVersion: [6, 'integer'],
 			e2eDestination: [
@@ -4933,8 +4933,8 @@ export const WEB_EVENTS: Event[] = [
 					LIST: 2,
 					STATUS: 3,
 					CHANNEL: 4,
-					INTEROP: 5,
-				},
+					INTEROP: 5
+				}
 			],
 			e2eFailureReason: [
 				2,
@@ -5037,15 +5037,15 @@ export const WEB_EVENTS: Event[] = [
 					ERROR_INVALID_KEY_MATEIRAL_DATA_LEN: 95,
 					ERROR_SESSION_STATE_GET_SENDER_RATCHET_KEY: 96,
 					ERROR_SESSION_STATE_GET_LOCAL_IDENTITY_KEY: 97,
-					ERROR_SESSION_STATE_GET_REMOTE_IDENTITY_KEY: 98,
-				},
+					ERROR_SESSION_STATE_GET_REMOTE_IDENTITY_KEY: 98
+				}
 			],
 			e2eReceiverType: [
 				8,
 				{
 					PRIMARY: 1,
-					COMPANION: 2,
-				},
+					COMPANION: 2
+				}
 			],
 			e2eSuccessful: [1, 'boolean'],
 			editType: [
@@ -5054,8 +5054,8 @@ export const WEB_EVENTS: Event[] = [
 					NOT_EDITED: 0,
 					EDITED: 1,
 					SENDER_REVOKE: 2,
-					ADMIN_REVOKE: 3,
-				},
+					ADMIN_REVOKE: 3
+				}
 			],
 			encRetryCount: [9, 'integer'],
 			isLid: [12, 'boolean'],
@@ -5063,8 +5063,8 @@ export const WEB_EVENTS: Event[] = [
 				16,
 				{
 					PN: 1,
-					LID: 2,
-				},
+					LID: 2
+				}
 			],
 			messageIsInvisible: [10, 'boolean'],
 			messageMediaType: [
@@ -5131,29 +5131,29 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			retryCount: [3, 'integer'],
 			revokeType: [
 				11,
 				{
 					SENDER: 0,
-					ADMIN: 1,
-				},
+					ADMIN: 1
+				}
 			],
 			typeOfGroup: [
 				13,
 				{
 					GROUP: 1,
 					SUBGROUP: 2,
-					DEFAULT_SUBGROUP: 3,
-				},
-			],
+					DEFAULT_SUBGROUP: 3
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'PrekeysDepletion',
@@ -5177,8 +5177,8 @@ export const WEB_EVENTS: Event[] = [
 					LT4000: 12,
 					LT4500: 13,
 					LT5000: 14,
-					LARGEST_BUCKET: 15,
-				},
+					LARGEST_BUCKET: 15
+				}
 			],
 			messageType: [
 				2,
@@ -5188,8 +5188,8 @@ export const WEB_EVENTS: Event[] = [
 					BROADCAST: 3,
 					STATUS: 4,
 					CHANNEL: 5,
-					INTEROP: 6,
-				},
+					INTEROP: 6
+				}
 			],
 			prekeysFetchReason: [
 				1,
@@ -5206,13 +5206,13 @@ export const WEB_EVENTS: Event[] = [
 					USER_INTENT_PREFETCH: 10,
 					RESEND_MESSAGE: 11,
 					RETRY_MESSAGE: 12,
-					USER_INTENT_STATUS_PREFETCH: 13,
-				},
-			],
+					USER_INTENT_STATUS_PREFETCH: 13
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'AndroidMessageSendPerf',
@@ -5240,8 +5240,8 @@ export const WEB_EVENTS: Event[] = [
 					LT4000: 12,
 					LT4500: 13,
 					LT5000: 14,
-					LARGEST_BUCKET: 15,
-				},
+					LARGEST_BUCKET: 15
+				}
 			],
 			durationAbs: [11, 'timer'],
 			durationRelative: [12, 'timer'],
@@ -5252,8 +5252,8 @@ export const WEB_EVENTS: Event[] = [
 					NOT_EDITED: 0,
 					EDITED: 1,
 					SENDER_REVOKE: 2,
-					ADMIN_REVOKE: 3,
-				},
+					ADMIN_REVOKE: 3
+				}
 			],
 			fetchPrekeys: [15, 'boolean'],
 			fetchPrekeysPercentage: [21, 'integer'],
@@ -5275,8 +5275,8 @@ export const WEB_EVENTS: Event[] = [
 					LT4000: 12,
 					LT4500: 13,
 					LT5000: 14,
-					LARGEST_BUCKET: 15,
-				},
+					LARGEST_BUCKET: 15
+				}
 			],
 			isDirectedMessage: [33, 'boolean'],
 			isE2eBackfill: [27, 'boolean'],
@@ -5350,8 +5350,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			messageIsFirstUserMessage: [30, 'boolean'],
 			messageIsInvisible: [31, 'boolean'],
@@ -5363,8 +5363,8 @@ export const WEB_EVENTS: Event[] = [
 					BROADCAST: 3,
 					STATUS: 4,
 					CHANNEL: 5,
-					INTEROP: 6,
-				},
+					INTEROP: 6
+				}
 			],
 			networkWasDisconnected: [14, 'boolean'],
 			participantCount: [37, 'integer'],
@@ -5383,8 +5383,8 @@ export const WEB_EVENTS: Event[] = [
 					CLIENT_WAITING_TO_ENCRYPT: 5,
 					CLIENT_READY_TO_SEND: 6,
 					CLIENT_ENCRYPT: 7,
-					CLIENT_PREKEYS_FETCH: 8,
-				},
+					CLIENT_PREKEYS_FETCH: 8
+				}
 			],
 			senderDeviceCount: [40, 'integer'],
 			senderKeyDistributionCountPercentage: [23, 'integer'],
@@ -5407,8 +5407,8 @@ export const WEB_EVENTS: Event[] = [
 					LT4000: 12,
 					LT4500: 13,
 					LT5000: 14,
-					LARGEST_BUCKET: 15,
-				},
+					LARGEST_BUCKET: 15
+				}
 			],
 			threadsInExecution: [19, 'integer'],
 			typeOfGroup: [
@@ -5416,13 +5416,13 @@ export const WEB_EVENTS: Event[] = [
 				{
 					GROUP: 1,
 					SUBGROUP: 2,
-					DEFAULT_SUBGROUP: 3,
-				},
-			],
+					DEFAULT_SUBGROUP: 3
+				}
+			]
 		},
 		weight: 2000,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdDeviceSyncAck',
@@ -5436,47 +5436,47 @@ export const WEB_EVENTS: Event[] = [
 					GROUP: 2,
 					STATUS: 3,
 					BROADCAST: 4,
-					CHANNEL: 5,
-				},
+					CHANNEL: 5
+				}
 			],
 			isLid: [3, 'boolean'],
 			localAddressingMode: [
 				5,
 				{
 					PN: 1,
-					LID: 2,
-				},
+					LID: 2
+				}
 			],
 			revoke: [2, 'boolean'],
 			serverAddressingMode: [
 				6,
 				{
 					PN: 1,
-					LID: 2,
-				},
+					LID: 2
+				}
 			],
 			typeOfGroup: [
 				4,
 				{
 					GROUP: 1,
 					SUBGROUP: 2,
-					DEFAULT_SUBGROUP: 3,
-				},
-			],
+					DEFAULT_SUBGROUP: 3
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'AdvMetadataCreationFailure',
 		id: 3048,
 		props: {
-			advMetadataIsMe: [1, 'boolean'],
+			advMetadataIsMe: [1, 'boolean']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdGroupParticipantMissAck',
@@ -5500,8 +5500,8 @@ export const WEB_EVENTS: Event[] = [
 					LT4000: 12,
 					LT4500: 13,
 					LT5000: 14,
-					LARGEST_BUCKET: 15,
-				},
+					LARGEST_BUCKET: 15
+				}
 			],
 			isLid: [2, 'boolean'],
 			messageIsRevoke: [3, 'boolean'],
@@ -5512,13 +5512,13 @@ export const WEB_EVENTS: Event[] = [
 				{
 					GROUP: 1,
 					SUBGROUP: 2,
-					DEFAULT_SUBGROUP: 3,
-				},
-			],
+					DEFAULT_SUBGROUP: 3
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'CrashLog',
@@ -5547,34 +5547,34 @@ export const WEB_EVENTS: Event[] = [
 					UFAD: 11,
 					EXPERIMENTAL_UFAD_DETECTION: 12,
 					UX_BREAKING_EXCEPTION: 13,
-					UX_GRACEFUL_RECOVERY_EXCEPTION: 14,
-				},
-			],
+					UX_GRACEFUL_RECOVERY_EXCEPTION: 14
+				}
+			]
 		},
 		weight: 100,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcPageResume',
 		id: 884,
 		props: {
-			webcResumeCount: [1, 'integer'],
+			webcResumeCount: [1, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcPhoneDisconnected',
 		id: 878,
 		props: {
 			webcPhoneBbarShownT: [2, 'timer'],
-			webcPhoneDisconnectedT: [1, 'timer'],
+			webcPhoneDisconnectedT: [1, 'timer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdSyncdDogfoodingFeatureUsage',
@@ -5587,13 +5587,13 @@ export const WEB_EVENTS: Event[] = [
 					UNPIN_4TH_CHAT_MUTATION: 2,
 					DELETE_MUTATION: 3,
 					CLEAR_CHAT_REMOVE_STARRED_MUTATION: 4,
-					CLEAR_CHAT_KEEP_STARRED_MUTATION: 5,
-				},
-			],
+					CLEAR_CHAT_KEEP_STARRED_MUTATION: 5
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdFatalError',
@@ -5606,8 +5606,8 @@ export const WEB_EVENTS: Event[] = [
 					REGULAR_LOW: 2,
 					REGULAR_HIGH: 3,
 					CRITICAL_BLOCK: 4,
-					CRITICAL_UNBLOCK_LOW: 5,
-				},
+					CRITICAL_UNBLOCK_LOW: 5
+				}
 			],
 			currentPrimaryAppVersion: [14, 'string'],
 			daysSinceLastPeriodicSync: [11, 'integer'],
@@ -5735,8 +5735,8 @@ export const WEB_EVENTS: Event[] = [
 					MALFORMED_MUTATION_DELETE_CHAT: 99,
 					FAILED_MUTATION_CLEAR_CHAT: 100,
 					FAILED_MUTATION_DELETE_CHAT: 101,
-					CHAT_DB_CORRUPTION: 102,
-				},
+					CHAT_DB_CORRUPTION: 102
+				}
 			],
 			patchSnapshotMutationCount: [9, 'integer'],
 			patchVersion: [5, 'integer'],
@@ -5746,16 +5746,16 @@ export const WEB_EVENTS: Event[] = [
 				{
 					SNAPSHOT: 1,
 					EXTERNAL_PATCH: 2,
-					INLINE_PATCH: 3,
-				},
+					INLINE_PATCH: 3
+				}
 			],
 			timeSincePairingMs: [6, 'integer'],
 			timeSinceRefreshMs: [7, 'integer'],
-			timeSinceTabTakeoverMs: [8, 'integer'],
+			timeSinceTabTakeoverMs: [8, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MediaUpload2',
@@ -5767,8 +5767,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					HOSTNAME: 0,
 					IP4: 1,
-					IP6: 2,
-				},
+					IP6: 2
+				}
 			],
 			debugMediaException: [34, 'string'],
 			debugMediaIp: [32, 'string'],
@@ -5785,8 +5785,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					HTTP1: 0,
 					HTTP2: 1,
-					HTTP3: 2,
-				},
+					HTTP3: 2
+				}
 			],
 			isViewOnce: [49, 'boolean'],
 			mediaId: [46, 'integer'],
@@ -5799,8 +5799,8 @@ export const WEB_EVENTS: Event[] = [
 					LIGER: 2,
 					APACHE: 3,
 					WATLS: 4,
-					CRONET: 5,
-				},
+					CRONET: 5
+				}
 			],
 			originalSize: [53, 'integer'],
 			overallAttemptCount: [4, 'integer'],
@@ -5818,8 +5818,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					RESUME_CHECK: 1,
 					UPLOAD: 2,
-					FINALIZE: 3,
-				},
+					FINALIZE: 3
+				}
 			],
 			overallMediaKeyReuse: [
 				40,
@@ -5827,8 +5827,8 @@ export const WEB_EVENTS: Event[] = [
 					NONE_NEW_CONTENT: 1,
 					NONE_EXPIRED: 2,
 					REUSED: 3,
-					NONE_WAS_STATUS: 4,
-				},
+					NONE_WAS_STATUS: 4
+				}
 			],
 			overallMediaSize: [7, 'number'],
 			overallMediaType: [
@@ -5895,8 +5895,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			overallMmsVersion: [6, 'integer'],
 			overallOptimisticFlag: [
@@ -5906,8 +5906,8 @@ export const WEB_EVENTS: Event[] = [
 					OPTIMISTIC: 1,
 					OPT_USED: 2,
 					OPT_TAKEOVER: 3,
-					OPT_DISABLED: 4,
-				},
+					OPT_DISABLED: 4
+				}
 			],
 			overallQueueT: [9, 'timer'],
 			overallRetryCount: [3, 'integer'],
@@ -5923,8 +5923,8 @@ export const WEB_EVENTS: Event[] = [
 					MEDIA_RETRY: 5,
 					WEB_REUPLOAD: 6,
 					THUMBNAIL: 7,
-					EXPRESS_PATH_UPLOAD: 8,
-				},
+					EXPRESS_PATH_UPLOAD: 8
+				}
 			],
 			overallUploadOrigin: [
 				44,
@@ -5941,8 +5941,8 @@ export const WEB_EVENTS: Event[] = [
 					CHANNEL: 10,
 					BROADCAST: 11,
 					MULTI_CHAT: 12,
-					INTEROP: 13,
-				},
+					INTEROP: 13
+				}
 			],
 			overallUploadResult: [
 				35,
@@ -5987,8 +5987,8 @@ export const WEB_EVENTS: Event[] = [
 					ERROR_NO_ENCRYPTION_ALGORITHM: 38,
 					ERROR_HOST_SWITCH_REQUIRED: 39,
 					ERROR_WAMSYS: 40,
-					ERROR_INVALID_URL: 41,
-				},
+					ERROR_INVALID_URL: 41
+				}
 			],
 			overallUserVisibleT: [14, 'timer'],
 			photoQualitySetting: [
@@ -5997,8 +5997,8 @@ export const WEB_EVENTS: Event[] = [
 					AUTO: 0,
 					DATA_SAVER: 1,
 					HIGH_QUALITY: 2,
-					HIGHEST_QUALITY: 3,
-				},
+					HIGHEST_QUALITY: 3
+				}
 			],
 			resumeConnectT: [17, 'timer'],
 			resumeHttpCode: [20, 'integer'],
@@ -6017,8 +6017,8 @@ export const WEB_EVENTS: Event[] = [
 					OTHER: 1,
 					CAMERA: 2,
 					GALLERY: 3,
-					SHARE: 4,
-				},
+					SHARE: 4
+				}
 			],
 			usedFallbackHint: [47, 'string'],
 			videoQualitySetting: [
@@ -6027,13 +6027,13 @@ export const WEB_EVENTS: Event[] = [
 					AUTO: 0,
 					DATA_SAVER: 1,
 					HIGH_QUALITY: 2,
-					HIGHEST_QUALITY: 3,
-				},
-			],
+					HIGHEST_QUALITY: 3
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcMediaErrorUnknownDetails',
@@ -6046,13 +6046,13 @@ export const WEB_EVENTS: Event[] = [
 				2,
 				{
 					DOWNLOAD: 1,
-					UPLOAD: 2,
-				},
-			],
+					UPLOAD: 2
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcMediaLoad',
@@ -6063,14 +6063,14 @@ export const WEB_EVENTS: Event[] = [
 				{
 					SUCCESS: 0,
 					SILENCE: 1,
-					ZEROWIDTH: 2,
-				},
+					ZEROWIDTH: 2
+				}
 			],
-			webcMediaLoadT: [1, 'timer'],
+			webcMediaLoadT: [1, 'timer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'StickerError',
@@ -6081,13 +6081,13 @@ export const WEB_EVENTS: Event[] = [
 				{
 					DECOMPRESSION: 2,
 					SENDER_VALIDATION: 3,
-					RECEIVER_VALIDATION: 4,
-				},
-			],
+					RECEIVER_VALIDATION: 4
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'StickerLatency',
@@ -6097,14 +6097,14 @@ export const WEB_EVENTS: Event[] = [
 			stickerLatencyAction: [
 				2,
 				{
-					DECOMPRESSION: 2,
-				},
+					DECOMPRESSION: 2
+				}
 			],
-			stickerLatencyTtAction: [3, 'integer'],
+			stickerLatencyTtAction: [3, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcProgressiveImage',
@@ -6113,11 +6113,11 @@ export const WEB_EVENTS: Event[] = [
 			webcFirstRenderScans: [1, 'integer'],
 			webcFirstRenderT: [2, 'timer'],
 			webcFullQualityT: [4, 'timer'],
-			webcMidQualityT: [3, 'timer'],
+			webcMidQualityT: [3, 'timer']
 		},
 		weight: 10,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'SendDocument',
@@ -6134,13 +6134,13 @@ export const WEB_EVENTS: Event[] = [
 					DOCUMENT: 5,
 					COMPRESSED_FILE: 6,
 					EXECUTABLE: 7,
-					VCARD: 8,
-				},
-			],
+					VCARD: 8
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcMediaAnalyzed',
@@ -6148,11 +6148,11 @@ export const WEB_EVENTS: Event[] = [
 		props: {
 			webcMediaAnalyzeT: [3, 'timer'],
 			webcMediaExtensions: [2, 'string'],
-			webcMediaSupported: [1, 'boolean'],
+			webcMediaSupported: [1, 'boolean']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'VideoTranscoder',
@@ -6166,8 +6166,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					SLOMO: 0,
 					VIDEO: 1,
-					GIF: 2,
-				},
+					GIF: 2
+				}
 			],
 			sourceFrameRate: [13, 'number'],
 			sourceHeight: [10, 'number'],
@@ -6181,8 +6181,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					IMAGE: 0,
 					VIDEO: 1,
-					GIF: 2,
-				},
+					GIF: 2
+				}
 			],
 			targetFrameRate: [21, 'number'],
 			targetHeight: [18, 'number'],
@@ -6192,8 +6192,8 @@ export const WEB_EVENTS: Event[] = [
 				1,
 				{
 					WA_IPHONE: 0,
-					FB_IPHONE: 1,
-				},
+					FB_IPHONE: 1
+				}
 			],
 			transcoderContainsVideocomposition: [5, 'boolean'],
 			transcoderHasEdits: [6, 'boolean'],
@@ -6204,14 +6204,14 @@ export const WEB_EVENTS: Event[] = [
 					UNKNOWN: 0,
 					SUCCEEDED: 1,
 					FAILED: 2,
-					CANCELLED: 3,
-				},
+					CANCELLED: 3
+				}
 			],
-			transcoderT: [3, 'timer'],
+			transcoderT: [3, 'timer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'StickerSend',
@@ -6232,15 +6232,15 @@ export const WEB_EVENTS: Event[] = [
 					WEB_STICKER_MAKER: 2,
 					IOS_STICKER_MAKER: 3,
 					ANDROID_STICKER_MAKER: 4,
-					TRANSPARENT_IMAGE: 5,
-				},
+					TRANSPARENT_IMAGE: 5
+				}
 			],
 			stickerSendMessageType: [
 				4,
 				{
 					REGULAR: 1,
-					PAYMENTS: 2,
-				},
+					PAYMENTS: 2
+				}
 			],
 			stickerSendOrigin: [
 				1,
@@ -6257,13 +6257,13 @@ export const WEB_EVENTS: Event[] = [
 					AI_STICKER_CREATE: 10,
 					AI_STICKER_CREATE_TRAY: 11,
 					AI_STICKER_CREATE_CHAT: 12,
-					STATUS_QUICK_REPLY: 13,
-				},
-			],
+					STATUS_QUICK_REPLY: 13
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MediaDownload2',
@@ -6275,8 +6275,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					HOSTNAME: 0,
 					IP4: 1,
-					IP6: 2,
-				},
+					IP6: 2
+				}
 			],
 			daysSinceReceive: [46, 'integer'],
 			debugMediaException: [24, 'string'],
@@ -6297,8 +6297,8 @@ export const WEB_EVENTS: Event[] = [
 					INELIGIBLE_IMAGE_TOO_SMALL: 3,
 					INELIGIBLE_PARTIAL_HASHES_NOT_FOUND: 4,
 					ERROR_DETERMINING_ELIGIBILITY: 5,
-					NOT_DOWNLOADED_ENOUGH_BYTES_TO_DETERMINE_ELIGIBILITY: 6,
-				},
+					NOT_DOWNLOADED_ENOUGH_BYTES_TO_DETERMINE_ELIGIBILITY: 6
+				}
 			],
 			downloadResumePoint: [14, 'integer'],
 			downloadTimeToFirstByteT: [21, 'timer'],
@@ -6313,8 +6313,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					HTTP1: 0,
 					HTTP2: 1,
-					HTTP3: 2,
-				},
+					HTTP3: 2
+				}
 			],
 			isSenderPlatformCapi: [52, 'boolean'],
 			isViewOnce: [41, 'boolean'],
@@ -6327,8 +6327,8 @@ export const WEB_EVENTS: Event[] = [
 					LIGER: 2,
 					APACHE: 3,
 					WATLS: 4,
-					CRONET: 5,
-				},
+					CRONET: 5
+				}
 			],
 			overallAttemptCount: [4, 'integer'],
 			overallBackendStore: [
@@ -6340,8 +6340,8 @@ export const WEB_EVENTS: Event[] = [
 					OIL: 3,
 					EXPRESS_PATH: 4,
 					STATIC: 5,
-					MANIFOLD: 6,
-				},
+					MANIFOLD: 6
+				}
 			],
 			overallConnBlockFetchT: [10, 'timer'],
 			overallConnectionClass: [29, 'string'],
@@ -6357,8 +6357,8 @@ export const WEB_EVENTS: Event[] = [
 					PREFETCH: 3,
 					HEADER: 4,
 					THUMBNAIL: 5,
-					EXPRESS_PATH_DOWNLOAD: 6,
-				},
+					EXPRESS_PATH_DOWNLOAD: 6
+				}
 			],
 			overallDownloadOrigin: [
 				35,
@@ -6377,8 +6377,8 @@ export const WEB_EVENTS: Event[] = [
 					COMMUNITY: 12,
 					CHANNEL: 13,
 					BROADCAST: 14,
-					INTEROP: 15,
-				},
+					INTEROP: 15
+				}
 			],
 			overallDownloadResult: [
 				25,
@@ -6420,8 +6420,8 @@ export const WEB_EVENTS: Event[] = [
 					ERROR_NO_MEDIA_HASH: 36,
 					ERROR_NO_MEDIA_KEY: 37,
 					ERROR_NO_SIDECAR: 38,
-					ERROR_HASH_VERIFICATION_FAILURE: 39,
-				},
+					ERROR_HASH_VERIFICATION_FAILURE: 39
+				}
 			],
 			overallFileValidationT: [13, 'timer'],
 			overallIsEncrypted: [28, 'boolean'],
@@ -6491,19 +6491,19 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			overallMmsVersion: [6, 'integer'],
 			overallQueueT: [9, 'timer'],
 			overallRetryCount: [3, 'integer'],
 			overallT: [8, 'timer'],
 			sleepModeAffected: [51, 'boolean'],
-			usedFallbackHint: [40, 'string'],
+			usedFallbackHint: [40, 'string']
 		},
 		weight: 50,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcMediaRmr',
@@ -6573,8 +6573,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			webcBrowserNetworkType: [2, 'string'],
 			webcBrowserStorageQuotaBytes: [11, 'integer'],
@@ -6587,8 +6587,8 @@ export const WEB_EVENTS: Event[] = [
 					GROUP: 1,
 					BROADCAST_LIST: 2,
 					COMMUNITY: 3,
-					NEWSLETTER: 4,
-				},
+					NEWSLETTER: 4
+				}
 			],
 			webcMediaRmrError: [8, 'boolean'],
 			webcMediaRmrT: [6, 'timer'],
@@ -6613,14 +6613,14 @@ export const WEB_EVENTS: Event[] = [
 					MSG_INIT: 12,
 					MSG_UPDATE: 13,
 					MSG_DELETE: 14,
-					MSG_RENDER: 15,
-				},
+					MSG_RENDER: 15
+				}
 			],
-			webcRmrStatusCode: [13, 'integer'],
+			webcRmrStatusCode: [13, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'BlockEventsFs',
@@ -6678,15 +6678,15 @@ export const WEB_EVENTS: Event[] = [
 					BIZ_BLOCK_LIST: 46,
 					BIZ_CALL_LOG_BLOCK: 47,
 					ONGOING_CALL_LINK_BLOCK: 48,
-					ONE_TO_ONE_BLOCKED_CHAT_COMPOSER: 49,
-				},
+					ONE_TO_ONE_BLOCKED_CHAT_COMPOSER: 49
+				}
 			],
 			blockEventActionType: [
 				2,
 				{
 					BLOCK: 0,
-					UNBLOCK: 1,
-				},
+					UNBLOCK: 1
+				}
 			],
 			blockEventIsSuspicious: [3, 'boolean'],
 			blockEventIsUnsub: [4, 'boolean'],
@@ -6722,13 +6722,13 @@ export const WEB_EVENTS: Event[] = [
 					CALL_IS_FULL: 25,
 					SILENCED: 26,
 					CALL_MISSED_SILENCED: 27,
-					CALL_DOES_NOT_EXIST_FOR_REJOIN: 28,
-				},
-			],
+					CALL_DOES_NOT_EXIST_FOR_REJOIN: 28
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'SignCredential',
@@ -6738,8 +6738,8 @@ export const WEB_EVENTS: Event[] = [
 				6,
 				{
 					FOREGROUND: 1,
-					BACKGROUND: 2,
-				},
+					BACKGROUND: 2
+				}
 			],
 			isFromWameta: [8, 'boolean'],
 			overallT: [4, 'timer'],
@@ -6747,8 +6747,8 @@ export const WEB_EVENTS: Event[] = [
 				7,
 				{
 					DIT: 1,
-					DIRECTORY_SEARCH: 2,
-				},
+					DIRECTORY_SEARCH: 2
+				}
 			],
 			retryCount: [2, 'integer'],
 			signCredentialResult: [
@@ -6758,15 +6758,15 @@ export const WEB_EVENTS: Event[] = [
 					ERROR_BAD_REQUEST: 2,
 					ERROR_SERVER: 3,
 					ERROR_OTHER: 4,
-					ERROR_CLIENT_NETWORK: 5,
-				},
+					ERROR_CLIENT_NETWORK: 5
+				}
 			],
 			signCredentialT: [3, 'timer'],
-			waConnectedToChatd: [5, 'boolean'],
+			waConnectedToChatd: [5, 'boolean']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'PsBufferUpload',
@@ -6776,8 +6776,8 @@ export const WEB_EVENTS: Event[] = [
 				6,
 				{
 					FOREGROUND: 1,
-					BACKGROUND: 2,
-				},
+					BACKGROUND: 2
+				}
 			],
 			isFromWamsys: [12, 'boolean'],
 			isUserSampled: [14, 'boolean'],
@@ -6796,8 +6796,8 @@ export const WEB_EVENTS: Event[] = [
 					ERROR_SERVER_OTHER: 8,
 					SKIPPED_NO_NETWORK: 9,
 					SKIPPED_NO_DATA: 10,
-					ERROR_ACCESS_TOKEN: 11,
-				},
+					ERROR_ACCESS_TOKEN: 11
+				}
 			],
 			psBufferUploadT: [2, 'timer'],
 			psDitheredT: [11, 'integer'],
@@ -6820,21 +6820,21 @@ export const WEB_EVENTS: Event[] = [
 					REASON_LAST_SIGNREQ_OTHER_ERROR: 12,
 					REASON_WAIT_FOR_GEN_TOKEN: 13,
 					REASON_GEN_SHAREDKEY_FAILURE: 14,
-					REASON_WAIT_FOR_GEN_FIRST_TOKEN: 15,
-				},
+					REASON_WAIT_FOR_GEN_FIRST_TOKEN: 15
+				}
 			],
 			psUploadReason: [
 				9,
 				{
 					REASON_PS_PINGER: 0,
-					REASON_PS_OFFCYCLE: 1,
-				},
+					REASON_PS_OFFCYCLE: 1
+				}
 			],
-			waConnectedToChatd: [5, 'boolean'],
+			waConnectedToChatd: [5, 'boolean']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'EditMessageSend',
@@ -6847,8 +6847,8 @@ export const WEB_EVENTS: Event[] = [
 					NOT_EDITED: 0,
 					EDITED: 1,
 					SENDER_REVOKE: 2,
-					ADMIN_REVOKE: 3,
-				},
+					ADMIN_REVOKE: 3
+				}
 			],
 			mediaType: [
 				8,
@@ -6914,8 +6914,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			messageSendResultIsTerminal: [3, 'boolean'],
 			messageType: [
@@ -6926,8 +6926,8 @@ export const WEB_EVENTS: Event[] = [
 					BROADCAST: 3,
 					STATUS: 4,
 					CHANNEL: 5,
-					INTEROP: 6,
-				},
+					INTEROP: 6
+				}
 			],
 			resendCount: [5, 'integer'],
 			retryCount: [6, 'integer'],
@@ -6936,13 +6936,13 @@ export const WEB_EVENTS: Event[] = [
 				{
 					GROUP: 1,
 					SUBGROUP: 2,
-					DEFAULT_SUBGROUP: 3,
-				},
-			],
+					DEFAULT_SUBGROUP: 3
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MessageSend',
@@ -6953,8 +6953,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					DIRECT_CHAT: 0,
 					INVOKED: 1,
-					MEMBER: 2,
-				},
+					MEMBER: 2
+				}
 			],
 			botType: [
 				55,
@@ -6962,16 +6962,16 @@ export const WEB_EVENTS: Event[] = [
 					UNKNOWN: 0,
 					METABOT: 1,
 					BOT_1P_BIZ: 2,
-					BOT_3P_BIZ: 3,
-				},
+					BOT_3P_BIZ: 3
+				}
 			],
 			chatOrigins: [
 				58,
 				{
 					LID_USERNAME: 1,
 					LID_CTWA: 2,
-					OTHERS: 3,
-				},
+					OTHERS: 3
+				}
 			],
 			deviceCount: [31, 'integer'],
 			deviceSizeBucket: [
@@ -6992,8 +6992,8 @@ export const WEB_EVENTS: Event[] = [
 					LT4000: 12,
 					LT4500: 13,
 					LT5000: 14,
-					LARGEST_BUCKET: 15,
-				},
+					LARGEST_BUCKET: 15
+				}
 			],
 			disappearingChatInitiator: [
 				30,
@@ -7002,8 +7002,8 @@ export const WEB_EVENTS: Event[] = [
 					INITIATED_BY_ME: 2,
 					INITIATED_BY_OTHER: 3,
 					CHAT_PICKER: 4,
-					BIZ_UPGRADE_FB_HOSTING: 5,
-				},
+					BIZ_UPGRADE_FB_HOSTING: 5
+				}
 			],
 			e2eBackfill: [23, 'boolean'],
 			e2eCiphertextType: [
@@ -7012,8 +7012,8 @@ export const WEB_EVENTS: Event[] = [
 					MESSAGE: 0,
 					PREKEY_MESSAGE: 1,
 					SENDER_KEY_MESSAGE: 2,
-					MESSAGE_SECRET_MESSAGE: 3,
-				},
+					MESSAGE_SECRET_MESSAGE: 3
+				}
 			],
 			e2eCiphertextVersion: [9, 'integer'],
 			e2eFailureReason: [
@@ -7117,8 +7117,8 @@ export const WEB_EVENTS: Event[] = [
 					ERROR_INVALID_KEY_MATEIRAL_DATA_LEN: 95,
 					ERROR_SESSION_STATE_GET_SENDER_RATCHET_KEY: 96,
 					ERROR_SESSION_STATE_GET_LOCAL_IDENTITY_KEY: 97,
-					ERROR_SESSION_STATE_GET_REMOTE_IDENTITY_KEY: 98,
-				},
+					ERROR_SESSION_STATE_GET_REMOTE_IDENTITY_KEY: 98
+				}
 			],
 			editDuration: [43, 'integer'],
 			editType: [
@@ -7127,8 +7127,8 @@ export const WEB_EVENTS: Event[] = [
 					NOT_EDITED: 0,
 					EDITED: 1,
 					SENDER_REVOKE: 2,
-					ADMIN_REVOKE: 3,
-				},
+					ADMIN_REVOKE: 3
+				}
 			],
 			ephemeralityDuration: [21, 'integer'],
 			ephemeralityInitiator: [
@@ -7136,8 +7136,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					INITIATED_BY_ME: 1,
 					INITIATED_BY_OTHER: 2,
-					BIZ_UPGRADE_FB_HOSTING: 3,
-				},
+					BIZ_UPGRADE_FB_HOSTING: 3
+				}
 			],
 			ephemeralityTriggerAction: [
 				48,
@@ -7146,8 +7146,8 @@ export const WEB_EVENTS: Event[] = [
 					CHAT_SETTINGS: 1,
 					ACCOUNT_SETTINGS: 2,
 					BULK_CHANGE: 3,
-					BIZ_SUPPORTS_FB_HOSTING: 4,
-				},
+					BIZ_SUPPORTS_FB_HOSTING: 4
+				}
 			],
 			excessPayloadKbSize: [40, 'integer'],
 			fastForwardEnabled: [15, 'boolean'],
@@ -7161,8 +7161,8 @@ export const WEB_EVENTS: Event[] = [
 				53,
 				{
 					PN: 1,
-					LID: 2,
-				},
+					LID: 2
+				}
 			],
 			mediaCaptionPresent: [8, 'boolean'],
 			messageDistributionType: [
@@ -7170,8 +7170,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					REGULAR_MESSAGE: 0,
 					DIRECT_MESSAGE: 1,
-					SENDER_KEY_DISTRIBUTION_MESSAGE: 2,
-				},
+					SENDER_KEY_DISTRIBUTION_MESSAGE: 2
+				}
 			],
 			messageForwardAgeT: [14, 'timer'],
 			messageIsFanout: [5, 'boolean'],
@@ -7246,8 +7246,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			messageSendOptUploadEnabled: [12, 'boolean'],
 			messageSendResult: [
@@ -7266,8 +7266,8 @@ export const WEB_EVENTS: Event[] = [
 					ERROR_E2EE: 12,
 					ERROR_INVALID_PROTOBUF: 13,
 					SERVER_ERROR: 14,
-					EPHEMERALLY_EXPIRED: 15,
-				},
+					EPHEMERALLY_EXPIRED: 15
+				}
 			],
 			messageSendResultIsTerminal: [17, 'boolean'],
 			messageSendT: [11, 'timer'],
@@ -7279,8 +7279,8 @@ export const WEB_EVENTS: Event[] = [
 					BROADCAST: 3,
 					STATUS: 4,
 					CHANNEL: 5,
-					INTEROP: 6,
-				},
+					INTEROP: 6
+				}
 			],
 			networkWasDisconnected: [37, 'boolean'],
 			oppositeVisibleIdentification: [
@@ -7292,8 +7292,8 @@ export const WEB_EVENTS: Event[] = [
 					MASKED_PHONE_NUMBER: 4,
 					VERIFIED_BUSINESS_NAME: 5,
 					PLACEHOLDER: 6,
-					PUSHNAME: 7,
-				},
+					PUSHNAME: 7
+				}
 			],
 			overallMediaSize: [42, 'number'],
 			participantCount: [32, 'integer'],
@@ -7305,8 +7305,8 @@ export const WEB_EVENTS: Event[] = [
 				34,
 				{
 					SENDER: 0,
-					ADMIN: 1,
-				},
+					ADMIN: 1
+				}
 			],
 			sendButtonPressT: [45, 'integer'],
 			senderDefaultDisappearingDuration: [27, 'integer'],
@@ -7322,8 +7322,8 @@ export const WEB_EVENTS: Event[] = [
 					WEB_STICKER_MAKER: 2,
 					IOS_STICKER_MAKER: 3,
 					ANDROID_STICKER_MAKER: 4,
-					TRANSPARENT_IMAGE: 5,
-				},
+					TRANSPARENT_IMAGE: 5
+				}
 			],
 			thumbSize: [20, 'number'],
 			typeOfGroup: [
@@ -7331,13 +7331,13 @@ export const WEB_EVENTS: Event[] = [
 				{
 					GROUP: 1,
 					SUBGROUP: 2,
-					DEFAULT_SUBGROUP: 3,
-				},
-			],
+					DEFAULT_SUBGROUP: 3
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'RevokeMessageSend',
@@ -7352,8 +7352,8 @@ export const WEB_EVENTS: Event[] = [
 					BROADCAST: 3,
 					STATUS: 4,
 					CHANNEL: 5,
-					INTEROP: 6,
-				},
+					INTEROP: 6
+				}
 			],
 			resendCount: [3, 'integer'],
 			retryCount: [4, 'integer'],
@@ -7362,13 +7362,13 @@ export const WEB_EVENTS: Event[] = [
 				6,
 				{
 					SENDER: 0,
-					ADMIN: 1,
-				},
-			],
+					ADMIN: 1
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'BotBizJourney',
@@ -7385,23 +7385,23 @@ export const WEB_EVENTS: Event[] = [
 					BOT_BIZ_NUX_APPEAR: 5,
 					BOT_BIZ_NUX_DISMISS: 6,
 					BOT_BIZ_NUX_SELECT: 7,
-					BOT_BIZ_INFO_CHAT_CLICK: 8,
-				},
+					BOT_BIZ_INFO_CHAT_CLICK: 8
+				}
 			],
 			botBizEntryPoint: [
 				6,
 				{
 					SHARED_BOT_BIZ_CARD: 1,
 					SHARED_BOT_BIZ_DEEPLINK: 2,
-					BOT_BIZ_CHAT: 3,
-				},
+					BOT_BIZ_CHAT: 3
+				}
 			],
 			botBizType: [
 				7,
 				{
 					BOT_BIZ_3P: 1,
-					BOT_BIZ_1P: 2,
-				},
+					BOT_BIZ_1P: 2
+				}
 			],
 			botType: [
 				4,
@@ -7409,13 +7409,13 @@ export const WEB_EVENTS: Event[] = [
 					UNKNOWN: 0,
 					METABOT: 1,
 					BOT_1P_BIZ: 2,
-					BOT_3P_BIZ: 3,
-				},
-			],
+					BOT_3P_BIZ: 3
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'TsExternal',
@@ -7429,14 +7429,14 @@ export const WEB_EVENTS: Event[] = [
 					CALL: 1,
 					VIDEO: 2,
 					PTT_RECORD: 3,
-					PTT_PLAY: 4,
-				},
+					PTT_PLAY: 4
+				}
 			],
-			tsSessionId: [4, 'integer'],
+			tsSessionId: [4, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'DeepLinkConversion',
@@ -7446,15 +7446,15 @@ export const WEB_EVENTS: Event[] = [
 				8,
 				{
 					BUSINESS: 0,
-					CONSUMER: 1,
-				},
+					CONSUMER: 1
+				}
 			],
 			ctwaChatCreationMode: [
 				4,
 				{
 					JID: 0,
-					LID: 1,
-				},
+					LID: 1
+				}
 			],
 			ctwaConversionType: [
 				3,
@@ -7473,8 +7473,8 @@ export const WEB_EVENTS: Event[] = [
 					FIRST_BIZ_REPLY_CONTINUATION: 11,
 					SECOND_MESSAGE_CONTINUATION: 12,
 					SECOND_BIZ_REPLY_CONTINUATION: 13,
-					THIRD_MESSAGE_CONTINUATION: 14,
-				},
+					THIRD_MESSAGE_CONTINUATION: 14
+				}
 			],
 			deepLinkConversionData: [2, 'string'],
 			deepLinkConversionSource: [1, 'string'],
@@ -7483,14 +7483,14 @@ export const WEB_EVENTS: Event[] = [
 				5,
 				{
 					VIEWED: 0,
-					DISMISSED: 1,
-				},
+					DISMISSED: 1
+				}
 			],
-			trustBannerType: [6, 'string'],
+			trustBannerType: [6, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'EphemeralOutOfSyncInfo',
@@ -7514,8 +7514,8 @@ export const WEB_EVENTS: Event[] = [
 					LT4000: 12,
 					LT4500: 13,
 					LT5000: 14,
-					LARGEST_BUCKET: 15,
-				},
+					LARGEST_BUCKET: 15
+				}
 			],
 			incomingMessageEphemeralityDuration: [2, 'integer'],
 			isAGroup: [3, 'boolean'],
@@ -7523,11 +7523,11 @@ export const WEB_EVENTS: Event[] = [
 			otherDefaultModeDuration: [6, 'integer'],
 			threadEphemeralityDuration: [7, 'integer'],
 			threadId: [8, 'string'],
-			userDefaultModeDuration: [9, 'integer'],
+			userDefaultModeDuration: [9, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'EphemeralSyncResponseReceive',
@@ -7540,8 +7540,8 @@ export const WEB_EVENTS: Event[] = [
 					INITIATED_BY_ME: 2,
 					INITIATED_BY_OTHER: 3,
 					CHAT_PICKER: 4,
-					BIZ_UPGRADE_FB_HOSTING: 5,
-				},
+					BIZ_UPGRADE_FB_HOSTING: 5
+				}
 			],
 			clientEphemeralityDuration: [2, 'integer'],
 			clientEphemeralityInitiator: [
@@ -7549,8 +7549,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					INITIATED_BY_ME: 1,
 					INITIATED_BY_OTHER: 2,
-					BIZ_UPGRADE_FB_HOSTING: 3,
-				},
+					BIZ_UPGRADE_FB_HOSTING: 3
+				}
 			],
 			clientEphemeralitySettingTimestamp: [4, 'integer'],
 			clientEphemeralityTriggerAction: [
@@ -7560,8 +7560,8 @@ export const WEB_EVENTS: Event[] = [
 					CHAT_SETTINGS: 1,
 					ACCOUNT_SETTINGS: 2,
 					BULK_CHANGE: 3,
-					BIZ_SUPPORTS_FB_HOSTING: 4,
-				},
+					BIZ_SUPPORTS_FB_HOSTING: 4
+				}
 			],
 			esrDisappearingModeInitiator: [
 				6,
@@ -7570,8 +7570,8 @@ export const WEB_EVENTS: Event[] = [
 					INITIATED_BY_ME: 2,
 					INITIATED_BY_OTHER: 3,
 					CHAT_PICKER: 4,
-					BIZ_UPGRADE_FB_HOSTING: 5,
-				},
+					BIZ_UPGRADE_FB_HOSTING: 5
+				}
 			],
 			esrEphemeralityDuration: [7, 'integer'],
 			esrEphemeralityInitiator: [
@@ -7579,8 +7579,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					INITIATED_BY_ME: 1,
 					INITIATED_BY_OTHER: 2,
-					BIZ_UPGRADE_FB_HOSTING: 3,
-				},
+					BIZ_UPGRADE_FB_HOSTING: 3
+				}
 			],
 			esrEphemeralitySettingTimestamp: [9, 'integer'],
 			esrEphemeralityTriggerAction: [
@@ -7590,8 +7590,8 @@ export const WEB_EVENTS: Event[] = [
 					CHAT_SETTINGS: 1,
 					ACCOUNT_SETTINGS: 2,
 					BULK_CHANGE: 3,
-					BIZ_SUPPORTS_FB_HOSTING: 4,
-				},
+					BIZ_SUPPORTS_FB_HOSTING: 4
+				}
 			],
 			esrFailureReason: [
 				11,
@@ -7604,22 +7604,22 @@ export const WEB_EVENTS: Event[] = [
 					ATTEMPTS_EXHAUSTED: 6,
 					NO_USER_INFO: 7,
 					NO_CHAT_SESSION: 8,
-					INVALID_EPHEMERAL_DURATION: 9,
-				},
+					INVALID_EPHEMERAL_DURATION: 9
+				}
 			],
 			esrResolveResult: [
 				12,
 				{
 					SUCCESS: 1,
-					ERROR: 2,
-				},
+					ERROR: 2
+				}
 			],
 			isAGroup: [13, 'boolean'],
-			threadId: [14, 'string'],
+			threadId: [14, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'EphemeralSyncResponseSend',
@@ -7632,8 +7632,8 @@ export const WEB_EVENTS: Event[] = [
 					INITIATED_BY_ME: 2,
 					INITIATED_BY_OTHER: 3,
 					CHAT_PICKER: 4,
-					BIZ_UPGRADE_FB_HOSTING: 5,
-				},
+					BIZ_UPGRADE_FB_HOSTING: 5
+				}
 			],
 			clientEphemeralityDuration: [2, 'integer'],
 			clientEphemeralityInitiator: [
@@ -7641,8 +7641,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					INITIATED_BY_ME: 1,
 					INITIATED_BY_OTHER: 2,
-					BIZ_UPGRADE_FB_HOSTING: 3,
-				},
+					BIZ_UPGRADE_FB_HOSTING: 3
+				}
 			],
 			clientEphemeralitySettingTimestamp: [4, 'integer'],
 			clientEphemeralityTriggerAction: [
@@ -7652,8 +7652,8 @@ export const WEB_EVENTS: Event[] = [
 					CHAT_SETTINGS: 1,
 					ACCOUNT_SETTINGS: 2,
 					BULK_CHANGE: 3,
-					BIZ_SUPPORTS_FB_HOSTING: 4,
-				},
+					BIZ_SUPPORTS_FB_HOSTING: 4
+				}
 			],
 			esrDisappearingModeInitiator: [
 				6,
@@ -7662,8 +7662,8 @@ export const WEB_EVENTS: Event[] = [
 					INITIATED_BY_ME: 2,
 					INITIATED_BY_OTHER: 3,
 					CHAT_PICKER: 4,
-					BIZ_UPGRADE_FB_HOSTING: 5,
-				},
+					BIZ_UPGRADE_FB_HOSTING: 5
+				}
 			],
 			esrEphemeralityDuration: [7, 'integer'],
 			esrEphemeralityInitiator: [
@@ -7671,8 +7671,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					INITIATED_BY_ME: 1,
 					INITIATED_BY_OTHER: 2,
-					BIZ_UPGRADE_FB_HOSTING: 3,
-				},
+					BIZ_UPGRADE_FB_HOSTING: 3
+				}
 			],
 			esrEphemeralitySettingTimestamp: [9, 'integer'],
 			esrEphemeralityTriggerAction: [
@@ -7682,8 +7682,8 @@ export const WEB_EVENTS: Event[] = [
 					CHAT_SETTINGS: 1,
 					ACCOUNT_SETTINGS: 2,
 					BULK_CHANGE: 3,
-					BIZ_SUPPORTS_FB_HOSTING: 4,
-				},
+					BIZ_SUPPORTS_FB_HOSTING: 4
+				}
 			],
 			esrFailureReason: [
 				11,
@@ -7696,16 +7696,16 @@ export const WEB_EVENTS: Event[] = [
 					ATTEMPTS_EXHAUSTED: 6,
 					NO_USER_INFO: 7,
 					NO_CHAT_SESSION: 8,
-					INVALID_EPHEMERAL_DURATION: 9,
-				},
+					INVALID_EPHEMERAL_DURATION: 9
+				}
 			],
 			esrSendAttempt: [12, 'integer'],
 			esrSendResult: [
 				13,
 				{
 					SUCCESS: 1,
-					ERROR: 2,
-				},
+					ERROR: 2
+				}
 			],
 			isAGroup: [14, 'boolean'],
 			messageDisappearingModeInitiator: [
@@ -7715,8 +7715,8 @@ export const WEB_EVENTS: Event[] = [
 					INITIATED_BY_ME: 2,
 					INITIATED_BY_OTHER: 3,
 					CHAT_PICKER: 4,
-					BIZ_UPGRADE_FB_HOSTING: 5,
-				},
+					BIZ_UPGRADE_FB_HOSTING: 5
+				}
 			],
 			messageEphemeralityDuration: [16, 'integer'],
 			messageEphemeralityInitiator: [
@@ -7724,8 +7724,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					INITIATED_BY_ME: 1,
 					INITIATED_BY_OTHER: 2,
-					BIZ_UPGRADE_FB_HOSTING: 3,
-				},
+					BIZ_UPGRADE_FB_HOSTING: 3
+				}
 			],
 			messageEphemeralitySettingTimestamp: [18, 'integer'],
 			messageEphemeralityTriggerAction: [
@@ -7735,14 +7735,14 @@ export const WEB_EVENTS: Event[] = [
 					CHAT_SETTINGS: 1,
 					ACCOUNT_SETTINGS: 2,
 					BULK_CHANGE: 3,
-					BIZ_SUPPORTS_FB_HOSTING: 4,
-				},
+					BIZ_SUPPORTS_FB_HOSTING: 4
+				}
 			],
-			threadId: [20, 'string'],
+			threadId: [20, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ChannelGapDetected',
@@ -7755,15 +7755,15 @@ export const WEB_EVENTS: Event[] = [
 					OWNER: 1,
 					ADMIN: 2,
 					FOLLOWER: 3,
-					GUEST: 4,
-				},
+					GUEST: 4
+				}
 			],
 			cid: [3, 'string'],
-			gapSize: [4, 'integer'],
+			gapSize: [4, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ChannelMessageHistoryRequest',
@@ -7778,8 +7778,8 @@ export const WEB_EVENTS: Event[] = [
 					NEWER: 2,
 					LATEST: 3,
 					EXACT: 4,
-					GAP: 5,
-				},
+					GAP: 5
+				}
 			],
 			channelUserType: [
 				3,
@@ -7787,17 +7787,17 @@ export const WEB_EVENTS: Event[] = [
 					OWNER: 1,
 					ADMIN: 2,
 					FOLLOWER: 3,
-					GUEST: 4,
-				},
+					GUEST: 4
+				}
 			],
 			cid: [4, 'string'],
 			processingDurationT: [5, 'timer'],
 			requestDurationT: [6, 'timer'],
-			requestSuccessful: [7, 'boolean'],
+			requestSuccessful: [7, 'boolean']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ChannelCoreEvent',
@@ -7810,8 +7810,8 @@ export const WEB_EVENTS: Event[] = [
 					FOLLOW: 1,
 					UNFOLLOW: 2,
 					MUTE: 3,
-					UNMUTE: 4,
-				},
+					UNMUTE: 4
+				}
 			],
 			channelDirectorySessionId: [7, 'integer'],
 			channelEntryPoint: [
@@ -7830,15 +7830,15 @@ export const WEB_EVENTS: Event[] = [
 					STATUS: 10,
 					ADMIN_INVITE_MESSAGE: 11,
 					MEDIA_BROWSER: 12,
-					SIMILAR_CHANNEL: 13,
-				},
+					SIMILAR_CHANNEL: 13
+				}
 			],
 			channelEntryPointApp: [
 				3,
 				{
 					EXTERNAL_UNKNOWN: 1,
-					WHATSAPP: 2,
-				},
+					WHATSAPP: 2
+				}
 			],
 			channelEntryPointMetadata: [
 				10,
@@ -7846,15 +7846,15 @@ export const WEB_EVENTS: Event[] = [
 					STATUS_HEADER: 1,
 					LINK_TOOLTIP: 2,
 					LINK_BUTTON: 3,
-					POST_TOOLTIP: 4,
-				},
+					POST_TOOLTIP: 4
+				}
 			],
 			channelEventUnit: [
 				12,
 				{
 					RECOMMENDED_CHANNELS: 1,
-					SIMILAR_CHANNELS: 2,
-				},
+					SIMILAR_CHANNELS: 2
+				}
 			],
 			cid: [4, 'string'],
 			directoryChannelIndex: [9, 'integer'],
@@ -7867,14 +7867,14 @@ export const WEB_EVENTS: Event[] = [
 					CHANNEL_DIRECTORY: 3,
 					CHANNEL_DIRECTORY_SEARCH: 4,
 					CHANNEL_PROFILE: 5,
-					CHANNEL_UPDATES_HOME_SEARCH: 6,
-				},
+					CHANNEL_UPDATES_HOME_SEARCH: 6
+				}
 			],
-			similarChannelsSessionId: [13, 'integer'],
+			similarChannelsSessionId: [13, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'UserNoticeError',
@@ -7885,8 +7885,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					LEGACY_USER_NOTICE: 0,
 					BADGED_USER_NOTICE: 1,
-					PDFN_DISCLOSURE: 2,
-				},
+					PDFN_DISCLOSURE: 2
+				}
 			],
 			userNoticeContentVersion: [2, 'integer'],
 			userNoticeErrorEvent: [
@@ -7906,14 +7906,14 @@ export const WEB_EVENTS: Event[] = [
 					JSON_FETCH_REDIRECT: 12,
 					IMAGE_FETCH_REDIRECT: 13,
 					IMAGE_FETCH_FORBIDDEN: 14,
-					JSON_FETCH_FORBIDDEN: 15,
-				},
+					JSON_FETCH_FORBIDDEN: 15
+				}
 			],
-			userNoticeId: [1, 'integer'],
+			userNoticeId: [1, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'StickerCommonQueryToStaticServer',
@@ -7928,13 +7928,13 @@ export const WEB_EVENTS: Event[] = [
 					STICKER_STORE_DATA: 0,
 					PREVIEW_IMAGE_DOWNLOAD: 1,
 					STICKER_PACK_DATA: 2,
-					STICKER_SEARCH: 3,
-				},
-			],
+					STICKER_SEARCH: 3
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdExpansionAgentBrowserMdId',
@@ -7956,13 +7956,13 @@ export const WEB_EVENTS: Event[] = [
 					CUSTOM_AGENT_NAME: 2,
 					MESSAGE_INFO: 3,
 					ACTIVE: 4,
-					DELETE: 5,
-				},
-			],
+					DELETE: 5
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'PsPhoneNumberHyperlink',
@@ -7981,15 +7981,15 @@ export const WEB_EVENTS: Event[] = [
 					CLICK_COPY_PHONE_NUMBER: 7,
 					CLOSE_DIALOG_BOX: 8,
 					MESSAGE_SENT: 9,
-					CLICK_CALL_ON_WHATSAPP: 10,
-				},
+					CLICK_CALL_ON_WHATSAPP: 10
+				}
 			],
 			phoneNumberStatusOnWa: [3, 'boolean'],
-			sequenceNumber: [4, 'integer'],
+			sequenceNumber: [4, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'private',
-		privateStatsIdInt: 113760892,
+		privateStatsIdInt: 113760892
 	},
 	{
 		name: 'GroupCreateC',
@@ -7997,7 +7997,7 @@ export const WEB_EVENTS: Event[] = [
 		props: {},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'SendRevokeMessage',
@@ -8067,8 +8067,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			messageType: [
 				1,
@@ -8078,24 +8078,24 @@ export const WEB_EVENTS: Event[] = [
 					BROADCAST: 3,
 					STATUS: 4,
 					CHANNEL: 5,
-					INTEROP: 6,
-				},
+					INTEROP: 6
+				}
 			],
-			revokeSendDelay: [3, 'integer'],
+			revokeSendDelay: [3, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'UtmMessageSend',
 		id: 4018,
 		props: {
-			businessPhoneNumber: [1, 'integer'],
+			businessPhoneNumber: [1, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'private',
-		privateStatsIdInt: 0,
+		privateStatsIdInt: 0
 	},
 	{
 		name: 'WebcMessageSend',
@@ -8166,8 +8166,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			messageSendT: [4, 'timer'],
 			messageType: [
@@ -8178,13 +8178,13 @@ export const WEB_EVENTS: Event[] = [
 					BROADCAST: 3,
 					STATUS: 4,
 					CHANNEL: 5,
-					INTEROP: 6,
-				},
-			],
+					INTEROP: 6
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdChatAssignmentSecondaryAction',
@@ -8195,8 +8195,8 @@ export const WEB_EVENTS: Event[] = [
 				8,
 				{
 					ASSIGNED: 0,
-					UNASSIGNED: 1,
-				},
+					UNASSIGNED: 1
+				}
 			],
 			mdChatAssignmentSecondaryActionBrowserId: [2, 'string'],
 			mdChatAssignmentSecondaryActionChatType: [
@@ -8207,24 +8207,24 @@ export const WEB_EVENTS: Event[] = [
 					INDIVIDUAL: 2,
 					COMMUNITY: 3,
 					CHANNEL: 4,
-					INTEROP: 5,
-				},
+					INTEROP: 5
+				}
 			],
 			mdChatAssignmentSecondaryActionError: [
 				4,
 				{
 					ERROR_FETCHING_AGENT_NAME: 0,
 					ERROR_FETCHING_CHAT: 1,
-					ERROR_OTHER: 2,
-				},
+					ERROR_OTHER: 2
+				}
 			],
 			mdChatAssignmentSecondaryActionMdId: [5, 'integer'],
 			mdChatAssignmentSecondaryActionSource: [
 				6,
 				{
 					NONE: 0,
-					BOOTSTRAP: 1,
-				},
+					BOOTSTRAP: 1
+				}
 			],
 			mdChatAssignmentSecondaryActionType: [
 				7,
@@ -8233,13 +8233,13 @@ export const WEB_EVENTS: Event[] = [
 					ACTION_SYSTEM_MESSAGE_CREATION_ERROR: 1,
 					ACTION_SYSTEM_MESSAGE_RENDERED: 2,
 					ACTION_CHAT_STATUS_TICKER_SHOWN: 3,
-					ACTION_TOOLTIP_SHOWN: 4,
-				},
-			],
+					ACTION_TOOLTIP_SHOWN: 4
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdChatAssignment',
@@ -8253,8 +8253,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					ACTION_ASSIGNED: 0,
 					ACTION_UNASSIGNED: 1,
-					ACTION_REASSIGNED: 2,
-				},
+					ACTION_REASSIGNED: 2
+				}
 			],
 			chatAssignmentAgentId: [5, 'string'],
 			chatAssignmentBrowserId: [6, 'string'],
@@ -8264,8 +8264,8 @@ export const WEB_EVENTS: Event[] = [
 					INDIVIDUAL: 0,
 					GROUP: 1,
 					COMMUNITY: 2,
-					CHANNEL: 3,
-				},
+					CHANNEL: 3
+				}
 			],
 			chatAssignmentEntryPoint: [
 				8,
@@ -8274,15 +8274,15 @@ export const WEB_EVENTS: Event[] = [
 					CONTACT_INFO_SCREEN: 1,
 					MULTI_SELECT: 2,
 					SYSTEM_MESSAGE: 3,
-					CHAT_LIST_SWIPE: 4,
-				},
+					CHAT_LIST_SWIPE: 4
+				}
 			],
 			chatAssignmentMdId: [9, 'integer'],
-			chatsCnt: [10, 'integer'],
+			chatsCnt: [10, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'OtpRetriever',
@@ -8294,8 +8294,8 @@ export const WEB_EVENTS: Event[] = [
 				12,
 				{
 					INBOX: 1,
-					ARCHIVED: 2,
-				},
+					ARCHIVED: 2
+				}
 			],
 			ctaFallbackReason: [
 				2,
@@ -8310,15 +8310,15 @@ export const WEB_EVENTS: Event[] = [
 					INCOMPATIBLE_OS_VERSION: 7,
 					NO_RETRIEVER_BUTTON: 8,
 					FEATURE_DISABLED: 9,
-					AMBIGUOUS_DELIVERY_DESTINATION: 10,
-				},
+					AMBIGUOUS_DELIVERY_DESTINATION: 10
+				}
 			],
 			ctaType: [
 				3,
 				{
 					COPY_CODE: 0,
-					AUTOFILL: 1,
-				},
+					AUTOFILL: 1
+				}
 			],
 			isKeepChatsArchivedEnabled: [13, 'boolean'],
 			isMessageNotificationEnabled: [14, 'boolean'],
@@ -8337,8 +8337,8 @@ export const WEB_EVENTS: Event[] = [
 					OTP_CONFIGURATION: 6,
 					OTP_REQUEST_SENDER: 7,
 					OTP_ZERO_TAP_SENDER: 8,
-					OTP_CONF_OPTION: 9,
-				},
+					OTP_CONF_OPTION: 9
+				}
 			],
 			otpEventType: [
 				6,
@@ -8359,8 +8359,8 @@ export const WEB_EVENTS: Event[] = [
 					ZERO_TAP_SEND_CODE_FAILED: 13,
 					OTP_CONF_OPT_ZERO_TAP_FLAG_ENABLED: 14,
 					OTP_CONF_OPT_ZERO_TAP_FLAG_DISABLED: 15,
-					HANDSHAKE_CONFIRMATION_SENT: 16,
-				},
+					HANDSHAKE_CONFIRMATION_SENT: 16
+				}
 			],
 			otpFailureReason: [16, 'string'],
 			otpHandshakeElapsedTimeMs: [21, 'integer'],
@@ -8371,8 +8371,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					ONE_TAP: 0,
 					ZERO_TAP: 1,
-					COPY_CODE: 2,
-				},
+					COPY_CODE: 2
+				}
 			],
 			otpSdkVersion: [22, 'string'],
 			otpSessionId: [8, 'string'],
@@ -8380,11 +8380,11 @@ export const WEB_EVENTS: Event[] = [
 			templateId: [17, 'string'],
 			thirdPartyPackageNameFromIntent: [9, 'string'],
 			thirdPartyPackageSignatureHash: [10, 'string'],
-			waDeviceId: [25, 'integer'],
+			waDeviceId: [25, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'private',
-		privateStatsIdInt: 113760892,
+		privateStatsIdInt: 113760892
 	},
 	{
 		name: 'BizCatalogView',
@@ -8396,8 +8396,8 @@ export const WEB_EVENTS: Event[] = [
 					UNKNOWN: 1,
 					SMB: 2,
 					ENT: 3,
-					CLOUDAPI: 4,
-				},
+					CLOUDAPI: 4
+				}
 			],
 			cartToggle: [13, 'boolean'],
 			catalogCategoryId: [19, 'string'],
@@ -8426,8 +8426,8 @@ export const WEB_EVENTS: Event[] = [
 					CATALOG_ENTRY_POINT_BIZ_ACTION_BAR: 20,
 					CATALOG_ENTRY_POINT_BIZ_ONBOARDING: 21,
 					CATALOG_ENTRY_POINT_TRUST_CARD: 22,
-					CATALOG_ENTRY_POINT_FLOWS: 23,
-				},
+					CATALOG_ENTRY_POINT_FLOWS: 23
+				}
 			],
 			catalogEventSampled: [11, 'boolean'],
 			catalogOwnerJid: [10, 'string'],
@@ -8476,8 +8476,8 @@ export const WEB_EVENTS: Event[] = [
 					ACTION_PLP_PRODUCT_VARIANT_BOTTOM_SHEET_OPEN: 44,
 					ACTION_PLP_PRODUCT_VARIANT_CHANGE: 45,
 					ACTION_PDP_PRODUCT_VARIANT_CHANGE: 46,
-					ACTION_PLP_BOTTOM_SHEET_SEE_MORE_DETAILS: 47,
-				},
+					ACTION_PLP_BOTTOM_SHEET_SEE_MORE_DETAILS: 47
+				}
 			],
 			collectionId: [15, 'string'],
 			collectionIndex: [16, 'string'],
@@ -8489,16 +8489,16 @@ export const WEB_EVENTS: Event[] = [
 					QR_CODE_SHEET: 3,
 					DEEP_LINK_BANNER: 4,
 					DEEP_LINK_SMB_NOTIFICATION: 5,
-					DEEP_LINK_MESSENGER_APP: 6,
-				},
+					DEEP_LINK_MESSENGER_APP: 6
+				}
 			],
 			entryPointConversationInitiated: [
 				22,
 				{
 					BUSINESS_INITIATED: 0,
 					CONSUMER_INITIATED: 1,
-					NO_MESSAGES_LAST_24H: 2,
-				},
+					NO_MESSAGES_LAST_24H: 2
+				}
 			],
 			entryPointConversionApp: [20, 'string'],
 			entryPointConversionSource: [21, 'string'],
@@ -8509,11 +8509,11 @@ export const WEB_EVENTS: Event[] = [
 			productId: [9, 'string'],
 			productIndex: [17, 'string'],
 			quantity: [6, 'integer'],
-			sequenceNumber: [18, 'integer'],
+			sequenceNumber: [18, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'private',
-		privateStatsIdInt: 0,
+		privateStatsIdInt: 0
 	},
 	{
 		name: 'CatalogBiz',
@@ -8598,8 +8598,8 @@ export const WEB_EVENTS: Event[] = [
 					ACTION_COLLECTION_ASSIGN_ITEMS: 77,
 					ACTION_COLLECTION_UNASSIGN_ITEMS: 78,
 					ACTION_COLLECTION_CHANGE_ORDER: 80,
-					ACTION_COLLECTION_ITEM_CHANGE_ORDER: 81,
-				},
+					ACTION_COLLECTION_ITEM_CHANGE_ORDER: 81
+				}
 			],
 			catalogEntryPoint: [
 				7,
@@ -8626,8 +8626,8 @@ export const WEB_EVENTS: Event[] = [
 					CATALOG_ENTRY_POINT_BIZ_ACTION_BAR: 20,
 					CATALOG_ENTRY_POINT_BIZ_ONBOARDING: 21,
 					CATALOG_ENTRY_POINT_TRUST_CARD: 22,
-					CATALOG_ENTRY_POINT_FLOWS: 23,
-				},
+					CATALOG_ENTRY_POINT_FLOWS: 23
+				}
 			],
 			catalogSessionId: [3, 'string'],
 			collectionCount: [18, 'integer'],
@@ -8641,8 +8641,8 @@ export const WEB_EVENTS: Event[] = [
 					QR_CODE_SHEET: 3,
 					DEEP_LINK_BANNER: 4,
 					DEEP_LINK_SMB_NOTIFICATION: 5,
-					DEEP_LINK_MESSENGER_APP: 6,
-				},
+					DEEP_LINK_MESSENGER_APP: 6
+				}
 			],
 			errorCode: [5, 'integer'],
 			isOrderMsgAttached: [10, 'boolean'],
@@ -8651,21 +8651,21 @@ export const WEB_EVENTS: Event[] = [
 			productId: [2, 'string'],
 			productIds: [12, 'string'],
 			productIndex: [16, 'string'],
-			quantity: [11, 'integer'],
+			quantity: [11, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcImgError',
 		id: 1700,
 		props: {
-			webcImgErrorCode: [1, 'number'],
+			webcImgErrorCode: [1, 'number']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'GroupJourney',
@@ -8727,8 +8727,8 @@ export const WEB_EVENTS: Event[] = [
 					CLOSE_BTN_CLICKED: 51,
 					AI_CHAT_CLICK: 52,
 					NEW_CHAT_CLICK: 53,
-					SERP_LOADED: 54,
-				},
+					SERP_LOADED: 54
+				}
 			],
 			appSessionId: [2, 'string'],
 			groupSize: [3, 'integer'],
@@ -8746,8 +8746,8 @@ export const WEB_EVENTS: Event[] = [
 					GROUP_INFO: 9,
 					NOTIFICATION: 10,
 					EXPRESSIONS_EMOJI: 11,
-					INVITE_NON_WA_CONTACT: 12,
-				},
+					INVITE_NON_WA_CONTACT: 12
+				}
 			],
 			threadType: [
 				5,
@@ -8759,8 +8759,8 @@ export const WEB_EVENTS: Event[] = [
 					CHANNEL: 5,
 					SUB_GROUP: 6,
 					DEFAULT_SUB_GROUP: 7,
-					PARENT_GROUP: 8,
-				},
+					PARENT_GROUP: 8
+				}
 			],
 			uiSurface: [
 				7,
@@ -8855,21 +8855,21 @@ export const WEB_EVENTS: Event[] = [
 					GROUP_MEMBER_ADD_GROUP_CREATION: 89,
 					GROUP_MEMBER_ADD_EXISTING_GROUP: 90,
 					GROUP_CHAT: 91,
-					GROUP_CREATION: 92,
-				},
+					GROUP_CREATION: 92
+				}
 			],
 			userRole: [
 				6,
 				{
 					MEMBER: 0,
 					ADMIN: 1,
-					CADMIN: 2,
-				},
-			],
+					CADMIN: 2
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcMessageQuery',
@@ -8887,8 +8887,8 @@ export const WEB_EVENTS: Event[] = [
 					GROUP: 1,
 					BROADCAST_LIST: 2,
 					COMMUNITY: 3,
-					NEWSLETTER: 4,
-				},
+					NEWSLETTER: 4
+				}
 			],
 			webcDocumentMessageCount: [16, 'integer'],
 			webcEarliestMessageIndex: [11, 'integer'],
@@ -8900,16 +8900,16 @@ export const WEB_EVENTS: Event[] = [
 					UNKNOWN: 0,
 					USER_SCROLL: 1,
 					NEW_MESSAGE_PREFETCH: 2,
-					SEARCH_RESULT_CLICK: 3,
-				},
+					SEARCH_RESULT_CLICK: 3
+				}
 			],
 			webcMessageQueryType: [
 				3,
 				{
 					LOAD_PREV: 0,
 					LOAD_NEXT: 1,
-					LOAD_AROUND: 2,
-				},
+					LOAD_AROUND: 2
+				}
 			],
 			webcOtherMessageCount: [18, 'integer'],
 			webcPhotoMessageCount: [7, 'integer'],
@@ -8918,11 +8918,11 @@ export const WEB_EVENTS: Event[] = [
 			webcResponseBytes: [10, 'integer'],
 			webcStickerMessageCount: [17, 'integer'],
 			webcTextMessageCount: [5, 'integer'],
-			webcVideoMessageCount: [6, 'integer'],
+			webcVideoMessageCount: [6, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MediaPicker',
@@ -8995,8 +8995,8 @@ export const WEB_EVENTS: Event[] = [
 					THUNDERSTORM_IN_APP_PHOTO_LIBRARY: 49,
 					TRANSPARENT_IMAGE_EDIT_STICKER: 50,
 					BUSINESS_FLOWS: 51,
-					SYSTEM_INTENT: 52,
-				},
+					SYSTEM_INTENT: 52
+				}
 			],
 			mediaPickerOriginThirdParty: [21, 'boolean'],
 			mediaPickerSent: [2, 'integer'],
@@ -9069,8 +9069,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			motionPhotoImpressionCount: [31, 'integer'],
 			motionPhotoSentCount: [32, 'integer'],
@@ -9081,8 +9081,8 @@ export const WEB_EVENTS: Event[] = [
 					AUTO: 0,
 					DATA_SAVER: 1,
 					HIGH_QUALITY: 2,
-					HIGHEST_QUALITY: 3,
-				},
+					HIGHEST_QUALITY: 3
+				}
 			],
 			pickerSessionId: [30, 'integer'],
 			statusRecipients: [17, 'integer'],
@@ -9092,13 +9092,13 @@ export const WEB_EVENTS: Event[] = [
 					AUTO: 0,
 					DATA_SAVER: 1,
 					HIGH_QUALITY: 2,
-					HIGHEST_QUALITY: 3,
-				},
-			],
+					HIGHEST_QUALITY: 3
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcStatusSession',
@@ -9110,11 +9110,11 @@ export const WEB_EVENTS: Event[] = [
 			webcStatusRecentRowCount: [5, 'integer'],
 			webcStatusSessionId: [1, 'integer'],
 			webcStatusViewedItemCount: [3, 'integer'],
-			webcStatusViewedRowCount: [6, 'integer'],
+			webcStatusViewedRowCount: [6, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'TestAnonymousDailyId',
@@ -9124,14 +9124,14 @@ export const WEB_EVENTS: Event[] = [
 				1,
 				{
 					TEST_VALUE1: 1,
-					TEST_VALUE2: 2,
-				},
+					TEST_VALUE2: 2
+				}
 			],
-			psTestFloatField: [2, 'number'],
+			psTestFloatField: [2, 'number']
 		},
 		weight: 1,
 		wamChannel: 'private',
-		privateStatsIdInt: 248614979,
+		privateStatsIdInt: 248614979
 	},
 	{
 		name: 'TestAnonymousDaily',
@@ -9139,17 +9139,17 @@ export const WEB_EVENTS: Event[] = [
 		props: {},
 		weight: 1,
 		wamChannel: 'private',
-		privateStatsIdInt: 113760892,
+		privateStatsIdInt: 113760892
 	},
 	{
 		name: 'TestAnonymousIdLess',
 		id: 3004,
 		props: {
-			psTimeSinceLastEventInMin: [1, 'integer'],
+			psTimeSinceLastEventInMin: [1, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'private',
-		privateStatsIdInt: 0,
+		privateStatsIdInt: 0
 	},
 	{
 		name: 'TestAnonymousMonthlyId',
@@ -9157,7 +9157,7 @@ export const WEB_EVENTS: Event[] = [
 		props: {},
 		weight: 1,
 		wamChannel: 'private',
-		privateStatsIdInt: 191000728,
+		privateStatsIdInt: 191000728
 	},
 	{
 		name: 'TestAnonymousWeeklyId',
@@ -9165,11 +9165,11 @@ export const WEB_EVENTS: Event[] = [
 		props: {
 			psTestBooleanField: [2, 'boolean'],
 			psTestStringField: [3, 'string'],
-			psTimeSinceLastEventInMin: [1, 'integer'],
+			psTimeSinceLastEventInMin: [1, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'private',
-		privateStatsIdInt: 42196056,
+		privateStatsIdInt: 42196056
 	},
 	{
 		name: 'ChannelSimilarChannels',
@@ -9180,8 +9180,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					DISPLAYED: 0,
 					HIDDEN: 1,
-					CLOSED: 2,
-				},
+					CLOSED: 2
+				}
 			],
 			bannerStatusReason: [
 				2,
@@ -9190,8 +9190,8 @@ export const WEB_EVENTS: Event[] = [
 					NOT_ENOUGH_SIMILAR_CHANNELS: 1,
 					SIMILAR_CHANNELS_FOUND: 2,
 					CLOSE_TAP: 3,
-					UNFOLLOW_TAP: 4,
-				},
+					UNFOLLOW_TAP: 4
+				}
 			],
 			cid: [3, 'string'],
 			similarChannelDisplayRank: [4, 'integer'],
@@ -9203,8 +9203,8 @@ export const WEB_EVENTS: Event[] = [
 					CHANNEL_DIRECTORY: 3,
 					CHANNEL_DIRECTORY_SEARCH: 4,
 					CHANNEL_PROFILE: 5,
-					CHANNEL_UPDATES_HOME_SEARCH: 6,
-				},
+					CHANNEL_UPDATES_HOME_SEARCH: 6
+				}
 			],
 			similarChannelId: [6, 'string'],
 			similarChannelRank: [7, 'integer'],
@@ -9214,14 +9214,14 @@ export const WEB_EVENTS: Event[] = [
 					OWNER: 1,
 					ADMIN: 2,
 					FOLLOWER: 3,
-					GUEST: 4,
-				},
+					GUEST: 4
+				}
 			],
-			similarChannelsSessionId: [10, 'integer'],
+			similarChannelsSessionId: [10, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'UiMessageYourselfAction',
@@ -9236,20 +9236,20 @@ export const WEB_EVENTS: Event[] = [
 					SEARCH_BAR_PRESSED: 3,
 					SEARCH_FULL_NAME_YOU_SELECTED: 4,
 					NEW_NTS_CREATED: 5,
-					EXISTING_NTS_OPENED: 6,
-				},
+					EXISTING_NTS_OPENED: 6
+				}
 			],
 			uiMessageYourselfFunnelName: [
 				3,
 				{
 					NEW_CHAT: 1,
-					CONTACT_AND_GLOBAL_SEARCH: 2,
-				},
-			],
+					CONTACT_AND_GLOBAL_SEARCH: 2
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MediaStreamPlayback',
@@ -9325,8 +9325,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			overallPlayT: [10, 'timer'],
 			overallT: [1, 'timer'],
@@ -9337,8 +9337,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					CONVERSATION: 1,
 					STATUS: 2,
-					CHANNELS: 3,
-				},
+					CHANNELS: 3
+				}
 			],
 			playbackState: [
 				11,
@@ -9349,17 +9349,17 @@ export const WEB_EVENTS: Event[] = [
 					BUFFERING: 4,
 					OUTSIDE: 5,
 					ENDED: 6,
-					ERROR: 7,
-				},
+					ERROR: 7
+				}
 			],
 			seekCount: [13, 'integer'],
 			totalRebufferingCount: [9, 'integer'],
 			totalRebufferingT: [8, 'timer'],
-			videoDuration: [6, 'integer'],
+			videoDuration: [6, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'PrivacyTipAction',
@@ -9371,13 +9371,13 @@ export const WEB_EVENTS: Event[] = [
 					VIEW: 1,
 					CLICK_PRIVACY_TIP: 2,
 					CLICK_OK: 3,
-					CLICK_OUTSIDE: 4,
-				},
-			],
+					CLICK_OUTSIDE: 4
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'UiAction',
@@ -9388,8 +9388,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					DIRECT_CHAT: 0,
 					INVOKED: 1,
-					MEMBER: 2,
-				},
+					MEMBER: 2
+				}
 			],
 			botType: [
 				11,
@@ -9397,8 +9397,8 @@ export const WEB_EVENTS: Event[] = [
 					UNKNOWN: 0,
 					METABOT: 1,
 					BOT_1P_BIZ: 2,
-					BOT_3P_BIZ: 3,
-				},
+					BOT_3P_BIZ: 3
+				}
 			],
 			dbMainThreadCount: [13, 'integer'],
 			dbReadsCount: [14, 'integer'],
@@ -9409,8 +9409,8 @@ export const WEB_EVENTS: Event[] = [
 				10,
 				{
 					PN: 1,
-					LID: 2,
-				},
+					LID: 2
+				}
 			],
 			participantCount: [6, 'integer'],
 			sizeBucket: [
@@ -9431,8 +9431,8 @@ export const WEB_EVENTS: Event[] = [
 					LT4000: 12,
 					LT4500: 13,
 					LT5000: 14,
-					LARGEST_BUCKET: 15,
-				},
+					LARGEST_BUCKET: 15
+				}
 			],
 			uiActionChatType: [
 				7,
@@ -9441,8 +9441,8 @@ export const WEB_EVENTS: Event[] = [
 					GROUP: 2,
 					SUBGROUP: 3,
 					DEFAULT_SUBGROUP: 4,
-					CHANNEL: 5,
-				},
+					CHANNEL: 5
+				}
 			],
 			uiActionPreloaded: [2, 'boolean'],
 			uiActionT: [3, 'timer'],
@@ -9467,13 +9467,13 @@ export const WEB_EVENTS: Event[] = [
 					CHAT_LIST_OPEN: 15,
 					CALL_LIST_OPEN: 16,
 					CHANNEL_INFO_OPEN: 17,
-					TTRC: 18,
-				},
-			],
+					TTRC: 18
+				}
+			]
 		},
 		weight: 5000,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'AdvertiseTooltipImpression',
@@ -9538,8 +9538,8 @@ export const WEB_EVENTS: Event[] = [
 					SMB_HOME_SCREEN_OVERFLOW_MANAGE_ITEM: 54,
 					SMB_BUSINESS_HOME_QP_CARD: 55,
 					SMB_CREATED_AD: 56,
-					SMB_BUSINESS_HOME_CARD_COUPON_PROMOTION: 57,
-				},
+					SMB_BUSINESS_HOME_CARD_COUPON_PROMOTION: 57
+				}
 			],
 			tooltipAction: [
 				2,
@@ -9547,13 +9547,13 @@ export const WEB_EVENTS: Event[] = [
 					EMPTY: 1,
 					ENTER_AD_CREATION_FLOW: 2,
 					DISMISS: 3,
-					IGNORE: 4,
-				},
-			],
+					IGNORE: 4
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ChannelLinkShare',
@@ -9564,16 +9564,16 @@ export const WEB_EVENTS: Event[] = [
 				{
 					WHATSAPP: 1,
 					STATUS: 2,
-					EXTERNAL: 3,
-				},
+					EXTERNAL: 3
+				}
 			],
 			channelLinkShareEntryPoint: [
 				2,
 				{
 					CHANNEL_INFO_PAGE: 1,
 					CHANNEL_THREAD: 2,
-					PRODUCER_CONTEXT_CARD: 3,
-				},
+					PRODUCER_CONTEXT_CARD: 3
+				}
 			],
 			channelLinkShareScreen: [
 				4,
@@ -9581,14 +9581,14 @@ export const WEB_EVENTS: Event[] = [
 					CONTEXT_CARD: 1,
 					CHANNEL_INFO: 2,
 					CHANNEL_THREAD: 3,
-					SHARE_LINK_SCREEN: 4,
-				},
+					SHARE_LINK_SCREEN: 4
+				}
 			],
-			cid: [3, 'string'],
+			cid: [3, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'CommunityFeatureUsage',
@@ -9601,19 +9601,19 @@ export const WEB_EVENTS: Event[] = [
 					ENTRY: 1,
 					GROUP_NAV: 2,
 					GROUP_ADD: 3,
-					COMMUNITY_NAV: 4,
-				},
+					COMMUNITY_NAV: 4
+				}
 			],
 			communityUiFeature: [
 				3,
 				{
-					SUBGROUP_SWITCH: 1,
-				},
-			],
+					SUBGROUP_SWITCH: 1
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'GroupProfilePicture',
@@ -9632,8 +9632,8 @@ export const WEB_EVENTS: Event[] = [
 					TAP_ACTION_ITEM_WEB_SEARCH: 7,
 					EMOJI_PANEL_OPEN: 8,
 					STICKER_PANEL_OPEN: 9,
-					PROFILE_PIC_UPDATED: 10,
-				},
+					PROFILE_PIC_UPDATED: 10
+				}
 			],
 			hasProfilePicture: [3, 'boolean'],
 			isAdmin: [4, 'boolean'],
@@ -9657,8 +9657,8 @@ export const WEB_EVENTS: Event[] = [
 					LT4000: 15,
 					LT4500: 16,
 					LT5000: 17,
-					LARGEST_BUCKET: 18,
-				},
+					LARGEST_BUCKET: 18
+				}
 			],
 			profilePictureType: [
 				6,
@@ -9668,13 +9668,13 @@ export const WEB_EVENTS: Event[] = [
 					WEB_SEARCH: 3,
 					EMOJI: 4,
 					STICKER: 5,
-					REMOVE_PHOTO: 6,
-				},
-			],
+					REMOVE_PHOTO: 6
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'KeepInChatNux',
@@ -9687,8 +9687,8 @@ export const WEB_EVENTS: Event[] = [
 					FIRST_DM_NUX_IMPRESSION: 1,
 					KIC_NUX_IMPRESSION: 2,
 					KIC_NUX_LEARN_MORE_TAP: 3,
-					KIC_SYSTEM_MESSAGE_GENERATE: 4,
-				},
+					KIC_SYSTEM_MESSAGE_GENERATE: 4
+				}
 			],
 			threadId: [3, 'string'],
 			trigger: [
@@ -9700,13 +9700,13 @@ export const WEB_EVENTS: Event[] = [
 					USER_MESSAGE_KEPT: 4,
 					KEPT_FOLDER_TAP_FIRST_TIME: 5,
 					UNKEEP_MESSAGE_FIRST_TIME: 6,
-					EPHEMERAL_SETTINGS: 7,
-				},
-			],
+					EPHEMERAL_SETTINGS: 7
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'LwiEntryPointImpression',
@@ -9774,8 +9774,8 @@ export const WEB_EVENTS: Event[] = [
 					SMB_HOME_SCREEN_OVERFLOW_MANAGE_ITEM: 54,
 					SMB_BUSINESS_HOME_QP_CARD: 55,
 					SMB_CREATED_AD: 56,
-					SMB_BUSINESS_HOME_CARD_COUPON_PROMOTION: 57,
-				},
+					SMB_BUSINESS_HOME_CARD_COUPON_PROMOTION: 57
+				}
 			],
 			lwiSubEntryPoint: [
 				6,
@@ -9784,15 +9784,15 @@ export const WEB_EVENTS: Event[] = [
 					SMB_HOME_SCREEN_STATUS_TAB: 2,
 					SMB_HOME_SCREEN_CALL_HISTORY_TAB: 3,
 					SMB_HOME_SCREEN_COMMUNITIES_TAB: 4,
-					SMB_HOME_SCREEN_BIZ_HOME_TAB: 5,
-				},
+					SMB_HOME_SCREEN_BIZ_HOME_TAB: 5
+				}
 			],
 			statusSessionId: [5, 'integer'],
-			userHasLinkedFbPage: [4, 'boolean'],
+			userHasLinkedFbPage: [4, 'boolean']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'LwiEntryTap',
@@ -9860,8 +9860,8 @@ export const WEB_EVENTS: Event[] = [
 					SMB_HOME_SCREEN_OVERFLOW_MANAGE_ITEM: 54,
 					SMB_BUSINESS_HOME_QP_CARD: 55,
 					SMB_CREATED_AD: 56,
-					SMB_BUSINESS_HOME_CARD_COUPON_PROMOTION: 57,
-				},
+					SMB_BUSINESS_HOME_CARD_COUPON_PROMOTION: 57
+				}
 			],
 			lwiFlowId: [1, 'string'],
 			lwiSubEntryPoint: [
@@ -9871,23 +9871,23 @@ export const WEB_EVENTS: Event[] = [
 					SMB_HOME_SCREEN_STATUS_TAB: 2,
 					SMB_HOME_SCREEN_CALL_HISTORY_TAB: 3,
 					SMB_HOME_SCREEN_COMMUNITIES_TAB: 4,
-					SMB_HOME_SCREEN_BIZ_HOME_TAB: 5,
-				},
+					SMB_HOME_SCREEN_BIZ_HOME_TAB: 5
+				}
 			],
 			statusSessionId: [6, 'integer'],
 			statusTypeMedia: [
 				12,
 				{
 					IMAGE: 1,
-					VIDEO: 2,
-				},
+					VIDEO: 2
+				}
 			],
 			userHasLinkedFbPage: [5, 'boolean'],
-			waCampaignId: [10, 'string'],
+			waCampaignId: [10, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'LwiScreen',
@@ -9897,8 +9897,8 @@ export const WEB_EVENTS: Event[] = [
 				41,
 				{
 					REGULAR: 1,
-					RECOMMENDED: 2,
-				},
+					RECOMMENDED: 2
+				}
 			],
 			adMediaOriginalAspectRatio: [47, 'string'],
 			adMediaPreviewAspectRatio: [48, 'string'],
@@ -9906,8 +9906,8 @@ export const WEB_EVENTS: Event[] = [
 				40,
 				{
 					IMAGE: 1,
-					VIDEO: 2,
-				},
+					VIDEO: 2
+				}
 			],
 			adsContentSelected: [
 				42,
@@ -9919,24 +9919,24 @@ export const WEB_EVENTS: Event[] = [
 					LWI_ADS_CONTENT_TYPE_CAMERA: 9,
 					LWI_ADS_CONTENT_TYPE_RECENTLY_USED_MEDIA: 10,
 					LWI_ADS_CONTENT_TYPE_CATALOGS_ALL: 11,
-					LWI_ADS_CONTENT_TYPE_STATUSES_ALL: 12,
-				},
+					LWI_ADS_CONTENT_TYPE_STATUSES_ALL: 12
+				}
 			],
 			alertCount: [33, 'integer'],
 			audienceType: [
 				45,
 				{
 					REGION: 1,
-					MAP: 2,
-				},
+					MAP: 2
+				}
 			],
 			billingStatus: [
 				36,
 				{
 					UNKNOWN: 1,
 					NO_ACTION_REQUIRED: 2,
-					HAS_PENDING_ACTIONS: 3,
-				},
+					HAS_PENDING_ACTIONS: 3
+				}
 			],
 			createAdEnabled: [12, 'boolean'],
 			ctwaAdAccountType: [
@@ -9944,16 +9944,16 @@ export const WEB_EVENTS: Event[] = [
 				{
 					CTWA_FB_PAGE_LINKED_ACCOUNT: 0,
 					CTWA_FB_PAGELESS_ACCOUNT: 1,
-					CTWA_WA_AD_ACCOUNT: 2,
-				},
+					CTWA_WA_AD_ACCOUNT: 2
+				}
 			],
 			ctwaLoginType: [
 				59,
 				{
 					CTWA_LOGIN_TYPE_FB_NATIVE: 0,
 					CTWA_LOGIN_TYPE_FB_WEB: 1,
-					CTWA_LOGIN_TYPE_WA_AD_ACCOUNT: 2,
-				},
+					CTWA_LOGIN_TYPE_WA_AD_ACCOUNT: 2
+				}
 			],
 			defaultAdsContentSelected: [
 				9,
@@ -9965,15 +9965,15 @@ export const WEB_EVENTS: Event[] = [
 					LWI_ADS_CONTENT_TYPE_CAMERA: 9,
 					LWI_ADS_CONTENT_TYPE_RECENTLY_USED_MEDIA: 10,
 					LWI_ADS_CONTENT_TYPE_CATALOGS_ALL: 11,
-					LWI_ADS_CONTENT_TYPE_STATUSES_ALL: 12,
-				},
+					LWI_ADS_CONTENT_TYPE_STATUSES_ALL: 12
+				}
 			],
 			defaultAudienceLocationType: [
 				57,
 				{
 					CITY_LEVEL: 1,
-					COUNTRY_LEVEL: 2,
-				},
+					COUNTRY_LEVEL: 2
+				}
 			],
 			itemCount: [39, 'integer'],
 			lwiAdCampaignId: [46, 'string'],
@@ -9981,8 +9981,8 @@ export const WEB_EVENTS: Event[] = [
 				22,
 				{
 					PAGE: 1,
-					WHATSAPP: 2,
-				},
+					WHATSAPP: 2
+				}
 			],
 			lwiAlertReason: [
 				6,
@@ -10023,8 +10023,8 @@ export const WEB_EVENTS: Event[] = [
 					LWI_INVALID_STATE: 34,
 					LWI_FAILED_TO_ENROLL_COUPON: 35,
 					LWI_CHANGES_NOT_SAVED: 36,
-					LWI_LOCATION_SYSTEM_SETTING_RESOLUTION_REQUIRED: 37,
-				},
+					LWI_LOCATION_SYSTEM_SETTING_RESOLUTION_REQUIRED: 37
+				}
 			],
 			lwiBudgetInLocal: [15, 'integer'],
 			lwiBudgetOptionsInLocal: [54, 'string'],
@@ -10038,8 +10038,8 @@ export const WEB_EVENTS: Event[] = [
 					VIEW_AD: 5,
 					COMPLETE_PAYMENT: 6,
 					RECREATE_AD_WITH_RECOMMENDATION: 7,
-					EDIT_AD_WITH_RECOMMENDATION: 8,
-				},
+					EDIT_AD_WITH_RECOMMENDATION: 8
+				}
 			],
 			lwiCtwaAdStatusType: [
 				25,
@@ -10054,8 +10054,8 @@ export const WEB_EVENTS: Event[] = [
 					COMPLETED: 8,
 					EXTENDABLE: 9,
 					UNABLE_TO_CREATE: 10,
-					LIMITED_DELIVERY: 11,
-				},
+					LIMITED_DELIVERY: 11
+				}
 			],
 			lwiCurrency: [16, 'string'],
 			lwiDefaultBudgetInLocal: [17, 'integer'],
@@ -10065,8 +10065,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					UNKOWN: 1,
 					MATCHES_TARGETING_SPEC: 2,
-					DIFFERS_FROM_TARGETING_SPEC: 3,
-				},
+					DIFFERS_FROM_TARGETING_SPEC: 3
+				}
 			],
 			lwiDurationInDays: [20, 'integer'],
 			lwiEventSequenceNumber: [2, 'integer'],
@@ -10316,8 +10316,8 @@ export const WEB_EVENTS: Event[] = [
 					LWI_ACTION_SAVE_CHANGES_DIALOG_OPTION_TAPPED: 240,
 					LWI_ACTION_GO_BACK_DIALOG_OPTION_TAPPED: 241,
 					LWI_ACTION_LOCATION_SYSTEM_SETTING_TURN_ON_OK_TAPPED: 242,
-					LWI_ACTION_LOCATION_SYSTEM_SETTING_TURN_ON_NO_THANKS_TAPPED: 243,
-				},
+					LWI_ACTION_LOCATION_SYSTEM_SETTING_TURN_ON_NO_THANKS_TAPPED: 243
+				}
 			],
 			lwiScreenReference: [
 				4,
@@ -10395,8 +10395,8 @@ export const WEB_EVENTS: Event[] = [
 					LWI_SCREEN_CONSENT_HOST: 71,
 					LWI_SCREEN_COUPON_PROMOTION_NUX: 72,
 					LWI_DIALOG_LOCATION_PERMISSION: 73,
-					LWI_DIALOG_SYSTEM_LOCATION_SETTINGS_RESOLUTION: 74,
-				},
+					LWI_DIALOG_SYSTEM_LOCATION_SETTINGS_RESOLUTION: 74
+				}
 			],
 			lwiTargetingSpec: [21, 'string'],
 			lwiTotalCtwaAds: [26, 'integer'],
@@ -10408,8 +10408,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					ONBOARDING_ENTRY_POINT_FAST_TRACK: 1,
 					ONBOARDING_ENTRY_POINT_AD_REVIEW_SCREEN: 2,
-					ONBOARDING_ENTRY_POINT_CONSENT_HOST: 3,
-				},
+					ONBOARDING_ENTRY_POINT_CONSENT_HOST: 3
+				}
 			],
 			paymentMethodSet: [13, 'boolean'],
 			productId: [3, 'string'],
@@ -10431,14 +10431,14 @@ export const WEB_EVENTS: Event[] = [
 				{
 					UNKNOWN: 1,
 					NO_ACTION_REQUIRED: 2,
-					HAS_ERRORS: 3,
-				},
+					HAS_ERRORS: 3
+				}
 			],
-			waAdAccountId: [44, 'string'],
+			waAdAccountId: [44, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ManageAdsEntryPointImpression',
@@ -10450,13 +10450,13 @@ export const WEB_EVENTS: Event[] = [
 					WEB_OVERFLOW_MENU: 1,
 					SMB_CHAT_LIST_CTWA_BANNER: 2,
 					SMB_NATIVE_ADS_MANAGEMENT: 3,
-					SMB_BUSINESS_TOOLS_MANAGE_ADS_LIST_ITEM: 4,
-				},
-			],
+					SMB_BUSINESS_TOOLS_MANAGE_ADS_LIST_ITEM: 4
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ManageAdsEntryPointTap',
@@ -10468,13 +10468,13 @@ export const WEB_EVENTS: Event[] = [
 					WEB_OVERFLOW_MENU: 1,
 					SMB_CHAT_LIST_CTWA_BANNER: 2,
 					SMB_NATIVE_ADS_MANAGEMENT: 3,
-					SMB_BUSINESS_TOOLS_MANAGE_ADS_LIST_ITEM: 4,
-				},
-			],
+					SMB_BUSINESS_TOOLS_MANAGE_ADS_LIST_ITEM: 4
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'SmbDataSharingConsentScreen',
@@ -10486,8 +10486,8 @@ export const WEB_EVENTS: Event[] = [
 					NEW_ORDER: 0,
 					CART: 1,
 					LABEL_CHAT: 2,
-					LABEL_MESSAGE: 3,
-				},
+					LABEL_MESSAGE: 3
+				}
 			],
 			smbDataSharingConsentScreenType: [
 				1,
@@ -10495,14 +10495,14 @@ export const WEB_EVENTS: Event[] = [
 					SMB_DATA_SHARING_CONSENT_SCREEN_VIEW: 0,
 					SMB_DATA_SHARING_CONSENT_SCREEN_AGREE: 1,
 					SMB_DATA_SHARING_CONSENT_SCREEN_DISAGREE: 2,
-					SMB_DATA_SHARING_CONSENT_SCREEN_CANCEL: 3,
-				},
+					SMB_DATA_SHARING_CONSENT_SCREEN_CANCEL: 3
+				}
 			],
-			smbDataSharingConsentScreenVersion: [2, 'integer'],
+			smbDataSharingConsentScreenVersion: [2, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'SuspendedGroupDelete',
@@ -10512,13 +10512,13 @@ export const WEB_EVENTS: Event[] = [
 				1,
 				{
 					BOTTOM_SHEET_BTN: 1,
-					BLOCKED_COMPOSER_BTN: 2,
-				},
-			],
+					BLOCKED_COMPOSER_BTN: 2
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'private',
-		privateStatsIdInt: 0,
+		privateStatsIdInt: 0
 	},
 	{
 		name: 'SupportAiSession',
@@ -10543,13 +10543,13 @@ export const WEB_EVENTS: Event[] = [
 					SUBMIT_MESSAGE_FEEDBACK_FAILED: 13,
 					SUBMIT_MESSAGE_FEEDBACK_SUCCEEDED: 14,
 					NEGATIVE_FEEDBACK_OPTIONS_SCREEN_CANCELLED: 15,
-					NEGATIVE_FEEDBACK_OPTIONS_SCREEN_SHOWN: 16,
-				},
-			],
+					NEGATIVE_FEEDBACK_OPTIONS_SCREEN_SHOWN: 16
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'BannerEvent',
@@ -10564,8 +10564,8 @@ export const WEB_EVENTS: Event[] = [
 					DISMISS: 3,
 					ELIGIBLE: 4,
 					REVOKED: 5,
-					RENDERED: 6,
-				},
+					RENDERED: 6
+				}
 			],
 			bannerType: [
 				1,
@@ -10636,13 +10636,13 @@ export const WEB_EVENTS: Event[] = [
 					GOOGLE_STORAGE_90_PERCENT_FULL: 64,
 					GOOGLE_BACKUP_GB_THRESHOLD: 65,
 					PAYMENTS_PIX_ONBOARDING_BANNER: 66,
-					P2M_PIX_ORDER_HOME_BANNER: 67,
-				},
-			],
+					P2M_PIX_ORDER_HOME_BANNER: 67
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ViewBusinessProfile',
@@ -10661,8 +10661,8 @@ export const WEB_EVENTS: Event[] = [
 					B1K: 8,
 					B10K: 9,
 					B100K: 10,
-					B1M: 11,
-				},
+					B1M: 11
+				}
 			],
 			bizIgSize: [
 				10,
@@ -10677,8 +10677,8 @@ export const WEB_EVENTS: Event[] = [
 					B1K: 8,
 					B10K: 9,
 					B100K: 10,
-					B1M: 11,
-				},
+					B1M: 11
+				}
 			],
 			businessProfileJid: [3, 'string'],
 			catalogSessionId: [6, 'string'],
@@ -10689,8 +10689,8 @@ export const WEB_EVENTS: Event[] = [
 				5,
 				{
 					FACEBOOK: 0,
-					INSTAGRAM: 1,
-				},
+					INSTAGRAM: 1
+				}
 			],
 			profileEntryPoint: [
 				8,
@@ -10720,8 +10720,8 @@ export const WEB_EVENTS: Event[] = [
 					MISSED_CALL_NOTIFICATION_BLOCK_ACTION: 23,
 					INTEROP: 24,
 					FORWARDED_BIZ_MSG_DIRECT_TAP: 25,
-					FORWARDED_BIZ_MSG_CHAT_HEADER: 26,
-				},
+					FORWARDED_BIZ_MSG_CHAT_HEADER: 26
+				}
 			],
 			scrollDepth: [4, 'integer'],
 			viewBusinessProfileAction: [
@@ -10745,20 +10745,20 @@ export const WEB_EVENTS: Event[] = [
 					ACTION_APP_IMPRESSION: 16,
 					ACTION_CLICK_STATUS: 17,
 					ACTION_EXIT: 18,
-					ACTION_COVER_PHOTO_IMPRESSION: 19,
-				},
+					ACTION_COVER_PHOTO_IMPRESSION: 19
+				}
 			],
 			websiteSource: [
 				2,
 				{
 					SOURCE_OTHER: 1,
-					SOURCE_INSTAGRAM: 2,
-				},
-			],
+					SOURCE_INSTAGRAM: 2
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'DisappearingMessageKeepInChat',
@@ -10777,15 +10777,15 @@ export const WEB_EVENTS: Event[] = [
 					UNKEEP_MESSAGE: 2,
 					VIEW_KEPT_MESSAGES: 3,
 					SEARCH_RESULTS_DISPLAY: 4,
-					SEARCH_RESULTS_TAP: 5,
-				},
+					SEARCH_RESULTS_TAP: 5
+				}
 			],
 			kicActor: [
 				6,
 				{
 					SENDER: 1,
-					RECIPIENT: 2,
-				},
+					RECIPIENT: 2
+				}
 			],
 			kicEntryPoint: [
 				7,
@@ -10795,8 +10795,8 @@ export const WEB_EVENTS: Event[] = [
 					CHAT: 3,
 					MEDIA: 4,
 					DOCS: 5,
-					LINKS: 6,
-				},
+					LINKS: 6
+				}
 			],
 			mediaType: [
 				8,
@@ -10862,18 +10862,18 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			messageExpiredOnUnkeep: [9, 'boolean'],
 			messageExpiryTimer: [10, 'integer'],
 			messagesInFolder: [11, 'integer'],
 			messagesSelected: [12, 'integer'],
-			threadId: [13, 'string'],
+			threadId: [13, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MdBootstrapHistoryDataReceived',
@@ -10890,22 +10890,22 @@ export const WEB_EVENTS: Event[] = [
 					PUSHNAME: 4,
 					STATUS_V3: 5,
 					NON_BLOCKING_DATA: 6,
-					ON_DEMAND: 7,
-				},
+					ON_DEMAND: 7
+				}
 			],
 			mdBootstrapPayloadType: [
 				2,
 				{
 					CRITICAL: 1,
-					NON_CRITICAL: 2,
-				},
+					NON_CRITICAL: 2
+				}
 			],
 			mdSessionId: [1, 'string'],
-			mdTimestamp: [4, 'integer'],
+			mdTimestamp: [4, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'AttachmentTrayActions',
@@ -10917,8 +10917,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					CLICK: 1,
 					SEND: 2,
-					CANCEL: 3,
-				},
+					CANCEL: 3
+				}
 			],
 			attachmentTrayActionTarget: [
 				3,
@@ -10938,8 +10938,8 @@ export const WEB_EVENTS: Event[] = [
 					ORDER: 13,
 					CATALOG: 14,
 					QUICK_REPLY: 15,
-					STICKER_MAKER: 16,
-				},
+					STICKER_MAKER: 16
+				}
 			],
 			groupSizeBucket: [
 				4,
@@ -10959,8 +10959,8 @@ export const WEB_EVENTS: Event[] = [
 					LT4000: 12,
 					LT4500: 13,
 					LT5000: 14,
-					LARGEST_BUCKET: 15,
-				},
+					LARGEST_BUCKET: 15
+				}
 			],
 			isAGroup: [5, 'boolean'],
 			isSuccessful: [6, 'boolean'],
@@ -10969,14 +10969,14 @@ export const WEB_EVENTS: Event[] = [
 				{
 					PHOTO: 1,
 					VIDEO: 2,
-					MIXED: 3,
-				},
+					MIXED: 3
+				}
 			],
-			sendTime: [8, 'integer'],
+			sendTime: [8, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'AutoMuteLargeGroupActions',
@@ -10991,36 +10991,36 @@ export const WEB_EVENTS: Event[] = [
 					USER_DIALOG_VIEW: 4,
 					USER_ADMIT_BY_OK: 5,
 					USER_ADMIT_BY_MESSAGE_SEND: 6,
-					USER_DISMISS_BY_UNMUTE: 7,
-				},
+					USER_DISMISS_BY_UNMUTE: 7
+				}
 			],
 			autoMuteGroupId: [2, 'string'],
-			autoMuteGroupSize: [3, 'integer'],
+			autoMuteGroupSize: [3, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'BusinessMute',
 		id: 1376,
 		props: {
 			muteT: [2, 'timer'],
-			muteeId: [1, 'string'],
+			muteeId: [1, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'BusinessUnmute',
 		id: 1378,
 		props: {
-			muteeId: [1, 'string'],
+			muteeId: [1, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ChannelOpen',
@@ -11043,8 +11043,8 @@ export const WEB_EVENTS: Event[] = [
 					STATUS: 10,
 					ADMIN_INVITE_MESSAGE: 11,
 					MEDIA_BROWSER: 12,
-					SIMILAR_CHANNEL: 13,
-				},
+					SIMILAR_CHANNEL: 13
+				}
 			],
 			channelEntryPointMetadata: [
 				9,
@@ -11052,8 +11052,8 @@ export const WEB_EVENTS: Event[] = [
 					STATUS_HEADER: 1,
 					LINK_TOOLTIP: 2,
 					LINK_BUTTON: 3,
-					POST_TOOLTIP: 4,
-				},
+					POST_TOOLTIP: 4
+				}
 			],
 			channelSessionId: [3, 'integer'],
 			channelUserType: [
@@ -11062,27 +11062,27 @@ export const WEB_EVENTS: Event[] = [
 					OWNER: 1,
 					ADMIN: 2,
 					FOLLOWER: 3,
-					GUEST: 4,
-				},
+					GUEST: 4
+				}
 			],
 			cid: [6, 'string'],
 			hasNetworkConnection: [7, 'boolean'],
 			similarChannelsSessionId: [11, 'integer'],
-			unreadMessages: [5, 'integer'],
+			unreadMessages: [5, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'GroupCatchUp',
 		id: 3058,
 		props: {
-			mentionsCountPendingPercentage: [4, 'integer'],
+			mentionsCountPendingPercentage: [4, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'InlineVideoPlaybackClosed',
@@ -11097,8 +11097,8 @@ export const WEB_EVENTS: Event[] = [
 					LOGO: 1,
 					MUSIC: 2,
 					AUTHOR: 3,
-					WATCH_MORE_END: 4,
-				},
+					WATCH_MORE_END: 4
+				}
 			],
 			inlineVideoDurationT: [2, 'timer'],
 			inlineVideoError: [11, 'string'],
@@ -11115,8 +11115,8 @@ export const WEB_EVENTS: Event[] = [
 					STREAMABLE: 5,
 					NETFLIX: 6,
 					LASSO: 7,
-					SHARECHAT: 8,
-				},
+					SHARECHAT: 8
+				}
 			],
 			inlineVideoWatchT: [5, 'timer'],
 			messageType: [
@@ -11127,13 +11127,13 @@ export const WEB_EVENTS: Event[] = [
 					BROADCAST: 3,
 					STATUS: 4,
 					CHANNEL: 5,
-					INTEROP: 6,
-				},
-			],
+					INTEROP: 6
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MessageDeleteActions',
@@ -11143,8 +11143,8 @@ export const WEB_EVENTS: Event[] = [
 				1,
 				{
 					DELETE_FOR_ME: 0,
-					DELETE_FOR_EVERYONE: 1,
-				},
+					DELETE_FOR_EVERYONE: 1
+				}
 			],
 			isAGroup: [2, 'boolean'],
 			mediaType: [
@@ -11211,15 +11211,15 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			messagesDeleted: [3, 'integer'],
-			threadId: [4, 'string'],
+			threadId: [4, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'Ptt',
@@ -11235,23 +11235,23 @@ export const WEB_EVENTS: Event[] = [
 				{
 					SENT: 1,
 					CANCELLED: 2,
-					TOO_SHORT: 3,
-				},
+					TOO_SHORT: 3
+				}
 			],
 			pttSize: [3, 'number'],
 			pttSource: [
 				2,
 				{
 					FROM_CONVERSATION: 0,
-					FROM_VOICEMAIL: 1,
-				},
+					FROM_VOICEMAIL: 1
+				}
 			],
 			pttStop: [6, 'boolean'],
-			pttStopTapCnt: [10, 'integer'],
+			pttStopTapCnt: [10, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'SnackbarDeleteUndo',
@@ -11322,22 +11322,22 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			messagesUndeleted: [2, 'integer'],
 			snackbarActionType: [
 				3,
 				{
 					SNACKBAR_SHOWN: 0,
-					MESSAGE_UNDELETE: 1,
-				},
+					MESSAGE_UNDELETE: 1
+				}
 			],
-			threadId: [4, 'string'],
+			threadId: [4, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebInternDogfoodingUpsell',
@@ -11348,13 +11348,13 @@ export const WEB_EVENTS: Event[] = [
 				{
 					SHOWN: 0,
 					ACCEPT: 1,
-					DISMISS: 2,
-				},
-			],
+					DISMISS: 2
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcChatOpen',
@@ -11366,11 +11366,11 @@ export const WEB_EVENTS: Event[] = [
 			webcFinalRenderedMessageCount: [5, 'integer'],
 			webcRenderedMessageCount: [4, 'integer'],
 			webcUnreadCount: [1, 'number'],
-			webcWindowHeightFloat: [8, 'number'],
+			webcWindowHeightFloat: [8, 'number']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcElectronDeprecationCta',
@@ -11381,28 +11381,28 @@ export const WEB_EVENTS: Event[] = [
 				{
 					IMPRESSION: 1,
 					CTA_BTN_CLICK: 2,
-					CTA_DISMISS: 3,
-				},
+					CTA_DISMISS: 3
+				}
 			],
 			webcElectronDeprecationCtaSource: [
 				2,
 				{
 					INTRO_PANEL: 1,
 					BUTTERBAR: 2,
-					LINK_DEVICE_BANNER: 3,
-				},
+					LINK_DEVICE_BANNER: 3
+				}
 			],
 			webcElectronDeprecationCtaType: [
 				3,
 				{
 					SOFT_MIGRATION: 1,
-					APP_EXPIRY_NOTICE: 2,
-				},
-			],
+					APP_EXPIRY_NOTICE: 2
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcLogin',
@@ -11424,11 +11424,11 @@ export const WEB_EVENTS: Event[] = [
 			webcSyncMessageCount: [5, 'integer'],
 			webcSyncMessageSize: [7, 'integer'],
 			webcSyncMessageT: [6, 'timer'],
-			webcSyncT: [4, 'timer'],
+			webcSyncT: [4, 'timer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcMemoryStat',
@@ -11439,11 +11439,11 @@ export const WEB_EVENTS: Event[] = [
 			numMessages: [8, 'number'],
 			totalJsHeapSize: [10, 'integer'],
 			uptime: [6, 'number'],
-			usedJsHeapSize: [11, 'integer'],
+			usedJsHeapSize: [11, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcMenu',
@@ -11454,8 +11454,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					THREADS_SCREEN_CLICK: 1,
 					CHAT_SCREEN_CLICK: 2,
-					SETTINGS_SCREEN_CLICK: 3,
-				},
+					SETTINGS_SCREEN_CLICK: 3
+				}
 			],
 			webcMenuItemLabel: [
 				3,
@@ -11484,13 +11484,13 @@ export const WEB_EVENTS: Event[] = [
 					SETTINGS_HELP: 22,
 					OPEN: 23,
 					CLOSE: 24,
-					BUSINESS_TOOLS: 25,
-				},
-			],
+					BUSINESS_TOOLS: 25
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ChatFolderOpen',
@@ -11498,11 +11498,11 @@ export const WEB_EVENTS: Event[] = [
 		props: {
 			activityIndicatorCount: [2, 'integer'],
 			folderType: [1, 'string'],
-			hasImportantMessages: [3, 'boolean'],
+			hasImportantMessages: [3, 'boolean']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'OrderDetailsActionsSmb',
@@ -11519,8 +11519,8 @@ export const WEB_EVENTS: Event[] = [
 				14,
 				{
 					OPPOSITE_PARTY_INITIATED: 0,
-					SELF_INITIATED: 1,
-				},
+					SELF_INITIATED: 1
+				}
 			],
 			messageDepth: [15, 'integer'],
 			orderDetailEntryPoint: [7, 'string'],
@@ -11585,18 +11585,18 @@ export const WEB_EVENTS: Event[] = [
 					CONTINUE_ORDER_REQUEST: 57,
 					VIEW_PROMPT: 58,
 					CLICK_PROCEED_WITHOUT_CATALOG: 59,
-					CLICK_CREATE_ORDER_DETAILS_FROM_PAYMENT_METHOD_ADDED_PROMPT: 60,
-				},
+					CLICK_CREATE_ORDER_DETAILS_FROM_PAYMENT_METHOD_ADDED_PROMPT: 60
+				}
 			],
 			orderEligibleToSend: [11, 'boolean'],
 			paymentStatus: [9, 'boolean'],
 			paymentType: [10, 'string'],
 			sharingOrderStatusEvents: [12, 'boolean'],
-			threadIdHmac: [16, 'string'],
+			threadIdHmac: [16, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcStickerMakerEvents',
@@ -11612,13 +11612,13 @@ export const WEB_EVENTS: Event[] = [
 					STICKER_ADDED: 4,
 					TEXT_ADDED: 5,
 					IMAGE_OUTLINED: 6,
-					SEND_STICKER: 7,
-				},
-			],
+					SEND_STICKER: 7
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'QuickReply',
@@ -11633,8 +11633,8 @@ export const WEB_EVENTS: Event[] = [
 				16,
 				{
 					OPPOSITE_PARTY_INITIATED: 0,
-					SELF_INITIATED: 1,
-				},
+					SELF_INITIATED: 1
+				}
 			],
 			messageDepth: [17, 'integer'],
 			quickReplyAction: [
@@ -11653,8 +11653,8 @@ export const WEB_EVENTS: Event[] = [
 					ACTION_SETTINGS_MEDIA_TRANSCODE: 11,
 					ACTION_CHAT_CLICK_CANCEL: 12,
 					ACTION_SMART_DEFAULT_CLICK: 13,
-					QUICK_REPLY_MESSAGE_SENT: 14,
-				},
+					QUICK_REPLY_MESSAGE_SENT: 14
+				}
 			],
 			quickReplyCount: [2, 'integer'],
 			quickReplyEntryPoint: [
@@ -11665,8 +11665,8 @@ export const WEB_EVENTS: Event[] = [
 					QUICK_REPLY_ENTRY_POINT_SETTINGS_MENU: 3,
 					QUICK_REPLY_ENTRY_POINT_BANNERS: 4,
 					QUICK_REPLY_ENTRY_POINT_NUX: 5,
-					QUICK_REPLY_ENTRY_POINT_ACTION_BAR: 6,
-				},
+					QUICK_REPLY_ENTRY_POINT_ACTION_BAR: 6
+				}
 			],
 			quickReplyKeywordCount: [3, 'integer'],
 			quickReplyKeywordMatched: [4, 'boolean'],
@@ -11676,8 +11676,8 @@ export const WEB_EVENTS: Event[] = [
 					UNKNOWN: 0,
 					CONVERSATIONS: 1,
 					BUTTON: 2,
-					KEYBOARD: 3,
-				},
+					KEYBOARD: 3
+				}
 			],
 			quickReplyTranscodeResult: [
 				8,
@@ -11687,16 +11687,16 @@ export const WEB_EVENTS: Event[] = [
 					QUICK_REPLY_TRANSCODE_RESULT_FAIL_IMAGE_UNKNOWN: 3,
 					QUICK_REPLY_TRANSCODE_RESULT_FAIL_IMAGE_ENCODING: 4,
 					QUICK_REPLY_TRANSCODE_RESULT_FAIL_IMAGE_FILE_COPY: 5,
-					QUICK_REPLY_TRANSCODE_RESULT_FAIL_VIDEO_UNKNOWN: 6,
-				},
+					QUICK_REPLY_TRANSCODE_RESULT_FAIL_VIDEO_UNKNOWN: 6
+				}
 			],
 			threadCreationDate: [14, 'string'],
 			threadEntryPoint: [13, 'string'],
-			threadIdHmac: [15, 'string'],
+			threadIdHmac: [15, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'UserNotice',
@@ -11708,16 +11708,16 @@ export const WEB_EVENTS: Event[] = [
 					AUTO_START: 0,
 					BANNER: 1,
 					DEEP_LINK: 2,
-					JUST_IN_TIME: 3,
-				},
+					JUST_IN_TIME: 3
+				}
 			],
 			noticeType: [
 				4,
 				{
 					LEGACY_USER_NOTICE: 0,
 					BADGED_USER_NOTICE: 1,
-					PDFN_DISCLOSURE: 2,
-				},
+					PDFN_DISCLOSURE: 2
+				}
 			],
 			userNoticeContentVersion: [2, 'integer'],
 			userNoticeEvent: [
@@ -11775,14 +11775,14 @@ export const WEB_EVENTS: Event[] = [
 					PDFN_6_SECONDARY_BTN_CLICKED: 1020,
 					PDFN_7_SECONDARY_BTN_CLICKED: 1021,
 					PDFN_8_SECONDARY_BTN_CLICKED: 1022,
-					PDFN_9_SECONDARY_BTN_CLICKED: 1023,
-				},
+					PDFN_9_SECONDARY_BTN_CLICKED: 1023
+				}
 			],
-			userNoticeId: [1, 'integer'],
+			userNoticeId: [1, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MessageContextMenuActions',
@@ -11797,8 +11797,8 @@ export const WEB_EVENTS: Event[] = [
 					OPEN: 1,
 					CLICK: 2,
 					COMPLETE: 3,
-					CANCEL: 4,
-				},
+					CANCEL: 4
+				}
 			],
 			messageContextMenuOption: [
 				5,
@@ -11814,13 +11814,13 @@ export const WEB_EVENTS: Event[] = [
 					REPORT: 9,
 					MESSAGE_CONTACT: 10,
 					MESSAGE_INFO: 11,
-					EDIT: 12,
-				},
-			],
+					EDIT: 12
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WaFsGroupJoinRequestAction',
@@ -11836,16 +11836,16 @@ export const WEB_EVENTS: Event[] = [
 					MEMBERSHIP_REQUEST_APPROVAL_MODE_OFF: 4,
 					MEMBERSHIP_REQUEST_APPROVE: 5,
 					MEMBERSHIP_REQUEST_REJECT: 6,
-					MEMBERSHIP_REQUEST_CANCEL: 7,
-				},
+					MEMBERSHIP_REQUEST_CANCEL: 7
+				}
 			],
 			groupJoinRequestGroupsInCommon: [5, 'integer'],
 			isSuccessful: [3, 'boolean'],
-			serverResponseTime: [4, 'timer'],
+			serverResponseTime: [4, 'timer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ReportToAdminEvents',
@@ -11857,14 +11857,14 @@ export const WEB_EVENTS: Event[] = [
 					CLICK_OPEN_ADMIN_DASHBOARD: 0,
 					CLICK_SEND_FOR_ADMIN_REVIEW: 1,
 					CLICK_CONFIRM_SEND_FOR_ADMIN_REVIEW: 2,
-					CLICK_CANCEL_SEND_FOR_ADMIN_REVIEW: 3,
-				},
+					CLICK_CANCEL_SEND_FOR_ADMIN_REVIEW: 3
+				}
 			],
-			rtaGroupId: [2, 'string'],
+			rtaGroupId: [2, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ChatAction',
@@ -11876,8 +11876,8 @@ export const WEB_EVENTS: Event[] = [
 					INDIVIDUAL: 1,
 					GROUP: 2,
 					BUSINESS: 3,
-					BROADCAST_LIST: 4,
-				},
+					BROADCAST_LIST: 4
+				}
 			],
 			chatActionEntryPoint: [
 				2,
@@ -11889,8 +11889,8 @@ export const WEB_EVENTS: Event[] = [
 					CONVERSATION_LIST_BULK_EDIT: 5,
 					CONVERSATION_MENU: 6,
 					WEB_ACTION: 7,
-					SYSTEM_NOTIFICATIONS: 8,
-				},
+					SYSTEM_NOTIFICATIONS: 8
+				}
 			],
 			chatActionMuteDuration: [4, 'timer'],
 			chatActionType: [
@@ -11904,13 +11904,13 @@ export const WEB_EVENTS: Event[] = [
 					DELETE: 6,
 					PIN: 7,
 					UNREAD: 8,
-					READ: 9,
-				},
-			],
+					READ: 9
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'LabelEvent',
@@ -11930,8 +11930,8 @@ export const WEB_EVENTS: Event[] = [
 					CLICK_POSITIVE: 5,
 					CLICK_NEGATIVE: 6,
 					UPDATE_LABEL_COUNT: 7,
-					AUTO_ADDED: 8,
-				},
+					AUTO_ADDED: 8
+				}
 			],
 			labelOperationEntryPoint: [6, 'string'],
 			labelTarget: [
@@ -11950,25 +11950,25 @@ export const WEB_EVENTS: Event[] = [
 					BULK_UNLABEL_DIALOG: 11,
 					LABEL_COMBINED_DIALOG: 12,
 					GROUP: 13,
-					BROADCAST: 14,
-				},
+					BROADCAST: 14
+				}
 			],
 			lastMessageDirection: [
 				14,
 				{
 					OPPOSITE_PARTY_INITIATED: 0,
-					SELF_INITIATED: 1,
-				},
+					SELF_INITIATED: 1
+				}
 			],
 			messageDepth: [15, 'integer'],
 			predefinedLabelNumber: [3, 'integer'],
 			threadCreationDate: [11, 'string'],
 			threadId: [12, 'string'],
-			threadIdHmac: [13, 'string'],
+			threadIdHmac: [13, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'StatusReportingEvents',
@@ -11980,13 +11980,13 @@ export const WEB_EVENTS: Event[] = [
 					CLICK_REPORT: 0,
 					CLICK_SUBMIT_REPORT: 1,
 					CLICK_CANCEL_REPORT: 2,
-					CLICK_SUBMIT_REPORT_BLOCK: 3,
-				},
-			],
+					CLICK_SUBMIT_REPORT_BLOCK: 3
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'BusinessInteraction',
@@ -11996,16 +11996,16 @@ export const WEB_EVENTS: Event[] = [
 				1,
 				{
 					ACTION_CLICK: 1,
-					ACTION_MSG_SENT: 2,
-				},
+					ACTION_MSG_SENT: 2
+				}
 			],
 			businessInteractionTargetScreen: [
 				2,
 				{
 					INDIVIDUAL_CHAT: 1,
 					LANDING_PAGE: 2,
-					OTHER: 3,
-				},
+					OTHER: 3
+				}
 			],
 			businessJid: [3, 'string'],
 			entryPointApp: [
@@ -12014,8 +12014,8 @@ export const WEB_EVENTS: Event[] = [
 					FACEBOOK: 1,
 					INSTAGRAM: 2,
 					WHATSAPP: 3,
-					EXTERNAL: 4,
-				},
+					EXTERNAL: 4
+				}
 			],
 			entryPointSource: [
 				5,
@@ -12024,8 +12024,8 @@ export const WEB_EVENTS: Event[] = [
 					MESSAGE_SHORT_LINK: 2,
 					QR_CODE: 3,
 					CUSTOM_LINK: 4,
-					CUSTOM_QR_CODE_LINK: 5,
-				},
+					CUSTOM_QR_CODE_LINK: 5
+				}
 			],
 			internalEntryPoint: [
 				6,
@@ -12035,14 +12035,14 @@ export const WEB_EVENTS: Event[] = [
 					GROUP: 3,
 					OTHER: 4,
 					OUTSIDE_OF_WA: 5,
-					CHANNEL: 6,
-				},
+					CHANNEL: 6
+				}
 			],
-			sequenceNumber: [7, 'integer'],
+			sequenceNumber: [7, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'private',
-		privateStatsIdInt: 113760892,
+		privateStatsIdInt: 113760892
 	},
 	{
 		name: 'BusinessToolsClick',
@@ -12058,8 +12058,8 @@ export const WEB_EVENTS: Event[] = [
 					ENTRY_DEEPLINK: 4,
 					ENTRY_STATUS_TAB_MENU: 5,
 					ENTRY_CALLS_TAB_MENU: 6,
-					ENTRY_BUSINESS_TOOLS_TAB: 7,
-				},
+					ENTRY_BUSINESS_TOOLS_TAB: 7
+				}
 			],
 			businessToolsItem: [
 				3,
@@ -12085,8 +12085,8 @@ export const WEB_EVENTS: Event[] = [
 					PREMIUM_TOOLS: 18,
 					BUSINESS_DIRECTORY: 19,
 					MANAGE_ADS: 20,
-					META_VERIFIED: 21,
-				},
+					META_VERIFIED: 21
+				}
 			],
 			businessToolsSequenceNumber: [2, 'integer'],
 			businessToolsSessionId: [1, 'string'],
@@ -12094,13 +12094,13 @@ export const WEB_EVENTS: Event[] = [
 				4,
 				{
 					FACEBOOK: 0,
-					INSTAGRAM: 1,
-				},
-			],
+					INSTAGRAM: 1
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'BusinessToolsEntry',
@@ -12116,15 +12116,15 @@ export const WEB_EVENTS: Event[] = [
 					ENTRY_DEEPLINK: 4,
 					ENTRY_STATUS_TAB_MENU: 5,
 					ENTRY_CALLS_TAB_MENU: 6,
-					ENTRY_BUSINESS_TOOLS_TAB: 7,
-				},
+					ENTRY_BUSINESS_TOOLS_TAB: 7
+				}
 			],
 			businessToolsSequenceNumber: [2, 'integer'],
-			businessToolsSessionId: [1, 'string'],
+			businessToolsSessionId: [1, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'BusinessToolsImpression',
@@ -12140,15 +12140,15 @@ export const WEB_EVENTS: Event[] = [
 					ENTRY_DEEPLINK: 4,
 					ENTRY_STATUS_TAB_MENU: 5,
 					ENTRY_CALLS_TAB_MENU: 6,
-					ENTRY_BUSINESS_TOOLS_TAB: 7,
-				},
+					ENTRY_BUSINESS_TOOLS_TAB: 7
+				}
 			],
 			businessToolsSequenceNumber: [2, 'integer'],
-			businessToolsSessionId: [1, 'string'],
+			businessToolsSessionId: [1, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'CadminDemote',
@@ -12158,8 +12158,8 @@ export const WEB_EVENTS: Event[] = [
 				1,
 				{
 					PROMOTION_NOTIFICATION: 1,
-					MEMBER_LIST: 2,
-				},
+					MEMBER_LIST: 2
+				}
 			],
 			cadminDemoteResult: [
 				2,
@@ -12169,14 +12169,14 @@ export const WEB_EVENTS: Event[] = [
 					CANCEL: 3,
 					RETRY_SUCCESS: 4,
 					RETRY_FAILURE: 5,
-					RETRY_CANCEL: 6,
-				},
+					RETRY_CANCEL: 6
+				}
 			],
-			isLastCadminOrCreator: [4, 'boolean'],
+			isLastCadminOrCreator: [4, 'boolean']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ChannelAdmin',
@@ -12187,8 +12187,8 @@ export const WEB_EVENTS: Event[] = [
 				2,
 				{
 					CREATION: 1,
-					EDIT: 2,
-				},
+					EDIT: 2
+				}
 			],
 			channelAdminAction: [
 				3,
@@ -12210,14 +12210,14 @@ export const WEB_EVENTS: Event[] = [
 					SEARCH_FOLLOWER: 15,
 					REACTIONS_SET_TO_ANY_EMOJI: 16,
 					REACTIONS_SET_TO_DEFAULT_EMOJI: 17,
-					REACTIONS_SET_TO_NONE_EMOJI: 18,
-				},
+					REACTIONS_SET_TO_NONE_EMOJI: 18
+				}
 			],
-			channelAdminSessionId: [4, 'integer'],
+			channelAdminSessionId: [4, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ChannelDyi',
@@ -12228,13 +12228,13 @@ export const WEB_EVENTS: Event[] = [
 				{
 					CHANNEL_REPORT_REQUEST: 1,
 					CHANNEL_REPORT_DOWNLOAD: 2,
-					CHANNEL_REPORT_EXPORT: 3,
-				},
-			],
+					CHANNEL_REPORT_EXPORT: 3
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ChatFilterEvent',
@@ -12296,8 +12296,8 @@ export const WEB_EVENTS: Event[] = [
 					CLOSE_BTN_CLICKED: 51,
 					AI_CHAT_CLICK: 52,
 					NEW_CHAT_CLICK: 53,
-					SERP_LOADED: 54,
-				},
+					SERP_LOADED: 54
+				}
 			],
 			activitySessionId: [6, 'string'],
 			filterType: [
@@ -12325,8 +12325,8 @@ export const WEB_EVENTS: Event[] = [
 					PERSONAL: 19,
 					BUSINESS: 20,
 					LABEL: 21,
-					FAVORITES: 22,
-				},
+					FAVORITES: 22
+				}
 			],
 			labelName: [11, 'string'],
 			metadata: [7, 'string'],
@@ -12341,20 +12341,20 @@ export const WEB_EVENTS: Event[] = [
 					GROUP: 2,
 					BROADCAST_LIST: 3,
 					MESSAGE: 4,
-					BUSINESS: 5,
-				},
+					BUSINESS: 5
+				}
 			],
 			sessionId: [3, 'integer'],
 			targetScreen: [
 				5,
 				{
-					CHAT_LIST: 0,
-				},
-			],
+					CHAT_LIST: 0
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'CommunityCreation',
@@ -12377,8 +12377,8 @@ export const WEB_EVENTS: Event[] = [
 					CREATE_COMMUNITY_FAIL: 11,
 					HELP_ICON_CLICK: 12,
 					LINK_GROUP_CONFIRMATION_OK: 13,
-					LINK_GROUP_CONFIRMATION_CANCEL: 14,
-				},
+					LINK_GROUP_CONFIRMATION_CANCEL: 14
+				}
 			],
 			communityCreationCurrentScreen: [
 				3,
@@ -12391,8 +12391,8 @@ export const WEB_EVENTS: Event[] = [
 					DEEP_LINK: 6,
 					BANNER: 7,
 					GROUP_INFO: 8,
-					LINK_GROUP_CONFIRMATION: 9,
-				},
+					LINK_GROUP_CONFIRMATION: 9
+				}
 			],
 			communityCreationEntrypoint: [
 				5,
@@ -12404,15 +12404,15 @@ export const WEB_EVENTS: Event[] = [
 					DEEP_LINK_BANNER: 5,
 					DEEP_LINK_PSA: 6,
 					DEEP_LINK_CHAT: 7,
-					DEEP_LINK_CHANNEL: 8,
-				},
+					DEEP_LINK_CHANNEL: 8
+				}
 			],
 			communityCreationSessionId: [4, 'string'],
-			communityId: [6, 'string'],
+			communityId: [6, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ContactUsSession',
@@ -12427,8 +12427,8 @@ export const WEB_EVENTS: Event[] = [
 					EMAIL_SEND: 3,
 					IN_APP_FAQ: 4,
 					CANCELLED: 5,
-					FAQ: 6,
-				},
+					FAQ: 6
+				}
 			],
 			contactUsFaq: [2, 'boolean'],
 			contactUsLogs: [4, 'boolean'],
@@ -12437,11 +12437,11 @@ export const WEB_EVENTS: Event[] = [
 			contactUsOutageEmail: [6, 'boolean'],
 			contactUsScreenshotC: [19, 'number'],
 			contactUsT: [11, 'timer'],
-			languageCode: [21, 'string'],
+			languageCode: [21, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'DeepLinkMsgSent',
@@ -12450,14 +12450,14 @@ export const WEB_EVENTS: Event[] = [
 			deepLinkAction: [
 				1,
 				{
-					MSG_SENT: 1,
-				},
+					MSG_SENT: 1
+				}
 			],
-			deepLinkSessionId: [2, 'string'],
+			deepLinkSessionId: [2, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'DeepLinkOpen',
@@ -12471,8 +12471,8 @@ export const WEB_EVENTS: Event[] = [
 					QR_CODE_SHEET: 3,
 					DEEP_LINK_BANNER: 4,
 					DEEP_LINK_SMB_NOTIFICATION: 5,
-					DEEP_LINK_MESSENGER_APP: 6,
-				},
+					DEEP_LINK_MESSENGER_APP: 6
+				}
 			],
 			deepLinkSessionId: [6, 'string'],
 			deepLinkType: [
@@ -12594,8 +12594,8 @@ export const WEB_EVENTS: Event[] = [
 					DEEP_LINK_CONTACTS_PERMISSION: 114,
 					DEEP_LINK_NOTIFICATIONS_PERMISSION: 115,
 					DEEP_LINK_WABAI_ONBOARDING: 116,
-					DEEP_LINK_CHAT_LIST: 117,
-				},
+					DEEP_LINK_CHAT_LIST: 117
+				}
 			],
 			isContact: [4, 'boolean'],
 			linkOwnerType: [
@@ -12603,14 +12603,14 @@ export const WEB_EVENTS: Event[] = [
 				{
 					CONSUMER: 1,
 					SMB: 2,
-					ENT: 3,
-				},
+					ENT: 3
+				}
 			],
-			sourceSurface: [7, 'integer'],
+			sourceSurface: [7, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'DisappearingMessageChatPicker',
@@ -12622,8 +12622,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					DEFAULT_MODE_SETTING: 0,
 					STORAGE_SETTING: 1,
-					PRIVACY_SETTING: 2,
-				},
+					PRIVACY_SETTING: 2
+				}
 			],
 			dmChatPickerEventName: [
 				3,
@@ -12631,18 +12631,18 @@ export const WEB_EVENTS: Event[] = [
 					CHAT_PICKER_LINK_IMPRESSION: 0,
 					CHAT_PICKER_TRAY_OPEN: 1,
 					CHAT_PICKER_TRAY_EXIT: 2,
-					CHAT_PICKER_CHATS_SELECTED: 3,
-				},
+					CHAT_PICKER_CHATS_SELECTED: 3
+				}
 			],
 			ephemeralityDuration: [4, 'integer'],
 			groupChatsSelected: [5, 'integer'],
 			groupSizeDistributionJson: [9, 'string'],
 			newlyEphemeralChats: [7, 'integer'],
-			totalChatsInChatPicker: [8, 'integer'],
+			totalChatsInChatPicker: [8, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'DisappearingModeSettingChange',
@@ -12657,16 +12657,16 @@ export const WEB_EVENTS: Event[] = [
 					GROUP_CHAT_DISAPPEARING_MESSAGES_SETTING: 4,
 					DEEP_LINK: 5,
 					STORAGE_SETTINGS: 6,
-					PRIVACY_SETTINGS: 7,
-				},
+					PRIVACY_SETTINGS: 7
+				}
 			],
 			lastToggleTimestamp: [3, 'integer'],
 			newEphemeralityDuration: [2, 'integer'],
-			previousEphemeralityDuration: [1, 'integer'],
+			previousEphemeralityDuration: [1, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'DisappearingModeSettingEvents',
@@ -12681,8 +12681,8 @@ export const WEB_EVENTS: Event[] = [
 					GROUP_CHAT_DISAPPEARING_MESSAGES_SETTING: 4,
 					DEEP_LINK: 5,
 					STORAGE_SETTINGS: 6,
-					PRIVACY_SETTINGS: 7,
-				},
+					PRIVACY_SETTINGS: 7
+				}
 			],
 			disappearingModeSettingEventName: [
 				1,
@@ -12690,16 +12690,16 @@ export const WEB_EVENTS: Event[] = [
 					DEFAULT_MESSAGE_TIMER_OPEN: 1,
 					DEFAULT_MESSAGE_TIMER_SET: 2,
 					DEFAULT_MESSAGE_TIMER_EXIT: 3,
-					LEARN_MORE_CLICK: 4,
-				},
+					LEARN_MORE_CLICK: 4
+				}
 			],
 			lastToggleTimestamp: [2, 'integer'],
 			newEphemeralityDuration: [3, 'integer'],
-			previousEphemeralityDuration: [4, 'integer'],
+			previousEphemeralityDuration: [4, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'EditBusinessProfile',
@@ -12714,8 +12714,8 @@ export const WEB_EVENTS: Event[] = [
 					QUICK_REPLY_SMART_DEFAULT: 4,
 					WA_PAGES: 5,
 					PROFILE_COMPLETENESS: 6,
-					DIRECTORY_ONBOARDING: 7,
-				},
+					DIRECTORY_ONBOARDING: 7
+				}
 			],
 			editBusinessProfileSessionId: [2, 'string'],
 			editProfileAction: [
@@ -12737,8 +12737,8 @@ export const WEB_EVENTS: Event[] = [
 					UPGRADE_TO_CUSTOM_LINK_CLICK: 14,
 					DIALOG_BOX_GEOCODE_IMPRESSION: 15,
 					DIALOG_BOX_GEOCODE_ACCEPT: 16,
-					DIALOG_BOX_GEOCODE_REVOKE: 17,
-				},
+					DIALOG_BOX_GEOCODE_REVOKE: 17
+				}
 			],
 			editProfileActionField: [
 				9,
@@ -12749,19 +12749,19 @@ export const WEB_EVENTS: Event[] = [
 					EMAIL: 4,
 					WEBSITE: 5,
 					CATEGORY: 6,
-					PROFILE: 7,
-				},
+					PROFILE: 7
+				}
 			],
 			hasAddress: [5, 'boolean'],
 			hasCategory: [4, 'boolean'],
 			hasDescription: [3, 'boolean'],
 			hasEmail: [7, 'boolean'],
 			hasHours: [6, 'boolean'],
-			hasWebsite: [8, 'boolean'],
+			hasWebsite: [8, 'boolean']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'EphemeralSettingChange',
@@ -12777,8 +12777,8 @@ export const WEB_EVENTS: Event[] = [
 					CHAT_PICKER: 4,
 					EPHEMERAL_NUX: 5,
 					CHAT_PICKER_DISAPPEARING_MODE_TIMER: 6,
-					CHAT_PICKER_STORAGE_SETTING: 7,
-				},
+					CHAT_PICKER_STORAGE_SETTING: 7
+				}
 			],
 			ephemeralSettingGroupSize: [
 				5,
@@ -12800,15 +12800,15 @@ export const WEB_EVENTS: Event[] = [
 					LT4000: 15,
 					LT4500: 16,
 					LT5000: 17,
-					LARGEST_BUCKET: 18,
-				},
+					LARGEST_BUCKET: 18
+				}
 			],
 			previousEphemeralityDuration: [2, 'integer'],
-			threadId: [6, 'string'],
+			threadId: [6, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'GifFromProviderSent',
@@ -12818,13 +12818,13 @@ export const WEB_EVENTS: Event[] = [
 				1,
 				{
 					GIPHY: 0,
-					TENOR: 1,
-				},
-			],
+					TENOR: 1
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'GifSearchCancelled',
@@ -12834,13 +12834,13 @@ export const WEB_EVENTS: Event[] = [
 				1,
 				{
 					GIPHY: 0,
-					TENOR: 1,
-				},
-			],
+					TENOR: 1
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'GifSearchNoResults',
@@ -12850,15 +12850,15 @@ export const WEB_EVENTS: Event[] = [
 				1,
 				{
 					GIPHY: 0,
-					TENOR: 1,
-				},
+					TENOR: 1
+				}
 			],
 			inputLanguageCode: [3, 'string'],
-			languageCode: [2, 'string'],
+			languageCode: [2, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'GifSearchResultTapped',
@@ -12868,14 +12868,14 @@ export const WEB_EVENTS: Event[] = [
 				1,
 				{
 					GIPHY: 0,
-					TENOR: 1,
-				},
+					TENOR: 1
+				}
 			],
-			rank: [2, 'integer'],
+			rank: [2, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'GifSearchSessionStarted',
@@ -12885,13 +12885,13 @@ export const WEB_EVENTS: Event[] = [
 				1,
 				{
 					GIPHY: 0,
-					TENOR: 1,
-				},
-			],
+					TENOR: 1
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'KeepInChatErrors',
@@ -12904,8 +12904,8 @@ export const WEB_EVENTS: Event[] = [
 				4,
 				{
 					KEEP_MESSAGE: 1,
-					UNKEEP_MESSAGE: 2,
-				},
+					UNKEEP_MESSAGE: 2
+				}
 			],
 			kicErrorCode: [
 				5,
@@ -12925,14 +12925,14 @@ export const WEB_EVENTS: Event[] = [
 					KEPT_BEYOND_EXPIRY: 13,
 					NOT_PART_OF_THE_GROUP: 14,
 					CONTACT_BLOCKED: 15,
-					UNKNOWN: 999,
-				},
+					UNKNOWN: 999
+				}
 			],
-			kicMessageEphemeralityDuration: [6, 'integer'],
+			kicMessageEphemeralityDuration: [6, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'KeepInChatPerf',
@@ -12957,30 +12957,30 @@ export const WEB_EVENTS: Event[] = [
 					KEPT_BEYOND_EXPIRY: 13,
 					NOT_PART_OF_THE_GROUP: 14,
 					CONTACT_BLOCKED: 15,
-					UNKNOWN: 999,
-				},
+					UNKNOWN: 999
+				}
 			],
 			kicMessageEphemeralityDuration: [3, 'integer'],
 			kicRequestType: [
 				4,
 				{
 					KEEP: 1,
-					UNKEEP: 2,
-				},
+					UNKEEP: 2
+				}
 			],
 			requestSendTime: [5, 'integer'],
 			response: [
 				6,
 				{
 					SUCCESS: 1,
-					ERROR: 2,
-				},
+					ERROR: 2
+				}
 			],
-			threadId: [7, 'string'],
+			threadId: [7, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MessagingUserJourney',
@@ -13052,8 +13052,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			messagingActionType: [
 				2,
@@ -13098,8 +13098,8 @@ export const WEB_EVENTS: Event[] = [
 					CLICK_PIN: 37,
 					DISPLAY: 38,
 					SELECT_OPTION: 39,
-					CLICK_UNPIN: 40,
-				},
+					CLICK_UNPIN: 40
+				}
 			],
 			pinInChatExpirySecs: [3, 'integer'],
 			threadType: [
@@ -13112,8 +13112,8 @@ export const WEB_EVENTS: Event[] = [
 					CHANNEL: 5,
 					SUB_GROUP: 6,
 					DEFAULT_SUB_GROUP: 7,
-					PARENT_GROUP: 8,
-				},
+					PARENT_GROUP: 8
+				}
 			],
 			uiSurface: [
 				5,
@@ -13208,8 +13208,8 @@ export const WEB_EVENTS: Event[] = [
 					GROUP_MEMBER_ADD_GROUP_CREATION: 89,
 					GROUP_MEMBER_ADD_EXISTING_GROUP: 90,
 					GROUP_CHAT: 91,
-					GROUP_CREATION: 92,
-				},
+					GROUP_CREATION: 92
+				}
 			],
 			userJourneyFunnelId: [6, 'string'],
 			userRole: [
@@ -13217,13 +13217,13 @@ export const WEB_EVENTS: Event[] = [
 				{
 					MEMBER: 0,
 					ADMIN: 1,
-					CADMIN: 2,
-				},
-			],
+					CADMIN: 2
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'MetaVerifiedInteraction',
@@ -13235,8 +13235,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					SMBA: 1,
 					SMBI: 2,
-					ENT: 3,
-				},
+					ENT: 3
+				}
 			],
 			metaVerifiedInteractionAction: [
 				3,
@@ -13251,8 +13251,8 @@ export const WEB_EVENTS: Event[] = [
 					MV_INTERACTION_ACTION_CLICK_CUSTOM_WEBPAGE_AND_LINK: 8,
 					MV_INTERACTION_ACTION_CLICK_MULTI_DEVICE: 9,
 					MV_INTERACTION_ACTION_CLICK_MV_LEARN_MORE: 10,
-					MV_INTERACTION_ACTION_CLICK_MV_HOME: 11,
-				},
+					MV_INTERACTION_ACTION_CLICK_MV_HOME: 11
+				}
 			],
 			metaVerifiedInteractionAssetType: [
 				4,
@@ -13260,8 +13260,8 @@ export const WEB_EVENTS: Event[] = [
 					CHANNEL: 1,
 					SMB: 2,
 					ENT: 3,
-					PERSONAL: 4,
-				},
+					PERSONAL: 4
+				}
 			],
 			metaVerifiedInteractionReferral: [
 				5,
@@ -13270,8 +13270,8 @@ export const WEB_EVENTS: Event[] = [
 					CONTACT_CARD: 2,
 					SETTINGS: 3,
 					BUSINESS_TOOLS: 4,
-					NOTIFICATION: 5,
-				},
+					NOTIFICATION: 5
+				}
 			],
 			metaVerifiedInteractionSurface: [
 				6,
@@ -13281,13 +13281,13 @@ export const WEB_EVENTS: Event[] = [
 					CROSS_SELL_PROFILE_INTERSTITIAL: 3,
 					META_VERIFIED_HOME: 4,
 					SETTINGS: 5,
-					BUSINESS_TOOLS: 6,
-				},
-			],
+					BUSINESS_TOOLS: 6
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'private',
-		privateStatsIdInt: 113760892,
+		privateStatsIdInt: 113760892
 	},
 	{
 		name: 'PaidMessagingUserInteractionsLogger',
@@ -13304,24 +13304,24 @@ export const WEB_EVENTS: Event[] = [
 					CTA_CALL: 5,
 					CTA_REMINDER: 6,
 					SEE_ALL: 7,
-					THUMBNAIL: 8,
-				},
+					THUMBNAIL: 8
+				}
 			],
 			pmxActionType: [
 				2,
 				{
 					VIEW: 0,
 					CLICK: 1,
-					READ: 2,
-				},
+					READ: 2
+				}
 			],
 			pmxComponentType: [
 				3,
 				{
 					NONE: 0,
 					HEADER: 1,
-					BUTTON: 2,
-				},
+					BUTTON: 2
+				}
 			],
 			pmxHashedMessageKey: [11, 'integer'],
 			pmxHeaderMediaType: [
@@ -13332,33 +13332,33 @@ export const WEB_EVENTS: Event[] = [
 					VIDEO: 2,
 					LOCATION: 3,
 					DOCUMENT: 4,
-					GIF: 5,
-				},
+					GIF: 5
+				}
 			],
 			pmxHostStorage: [
 				8,
 				{
 					NONE: 0,
 					ON_PREMISE: 1,
-					FACEBOOK: 2,
-				},
+					FACEBOOK: 2
+				}
 			],
 			pmxMarketingFormat: [
 				5,
 				{
 					CAROUSEL: 0,
 					MPM: 1,
-					CUSTOM: 2,
-				},
+					CUSTOM: 2
+				}
 			],
 			pmxMessageDeliveredTs: [10, 'integer'],
 			pmxQueryParams: [6, 'string'],
 			pmxSenderCountryCode: [9, 'string'],
-			templateId: [7, 'string'],
+			templateId: [7, 'string']
 		},
 		weight: 1,
 		wamChannel: 'private',
-		privateStatsIdInt: 113760892,
+		privateStatsIdInt: 113760892
 	},
 	{
 		name: 'PinInChatInteraction',
@@ -13368,8 +13368,8 @@ export const WEB_EVENTS: Event[] = [
 				1,
 				{
 					ADMIN: 1,
-					MEMBER: 2,
-				},
+					MEMBER: 2
+				}
 			],
 			groupSize: [2, 'integer'],
 			groupTypeClient: [
@@ -13378,8 +13378,8 @@ export const WEB_EVENTS: Event[] = [
 					REGULAR_GROUP: 1,
 					SUB_GROUP: 2,
 					DEFAULT_SUB_GROUP: 3,
-					PARENT_GROUP: 4,
-				},
+					PARENT_GROUP: 4
+				}
 			],
 			isAGroup: [4, 'boolean'],
 			isSelfPin: [8, 'boolean'],
@@ -13447,21 +13447,21 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			pinCount: [6, 'integer'],
 			pinInChatInteractionType: [
 				7,
 				{
-					TAP_ON_BANNER: 1,
-				},
+					TAP_ON_BANNER: 1
+				}
 			],
-			pinIndex: [9, 'integer'],
+			pinIndex: [9, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'PinInChatMessageSend',
@@ -13471,8 +13471,8 @@ export const WEB_EVENTS: Event[] = [
 				1,
 				{
 					ADMIN: 1,
-					MEMBER: 2,
-				},
+					MEMBER: 2
+				}
 			],
 			groupTypeClient: [
 				2,
@@ -13480,8 +13480,8 @@ export const WEB_EVENTS: Event[] = [
 					REGULAR_GROUP: 1,
 					SUB_GROUP: 2,
 					DEFAULT_SUB_GROUP: 3,
-					PARENT_GROUP: 4,
-				},
+					PARENT_GROUP: 4
+				}
 			],
 			isAGroup: [3, 'boolean'],
 			isSelfParentMessage: [7, 'boolean'],
@@ -13550,22 +13550,22 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			pinInChatExpirySecs: [5, 'integer'],
 			pinInChatType: [
 				6,
 				{
 					PIN_FOR_ALL: 1,
-					UNPIN_FOR_ALL: 2,
-				},
+					UNPIN_FOR_ALL: 2
+				}
 			],
-			timeRemainingToExpirySecs: [9, 'integer'],
+			timeRemainingToExpirySecs: [9, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'PnhRequestRevealAction',
@@ -13579,21 +13579,21 @@ export const WEB_EVENTS: Event[] = [
 					SEND_REQUEST: 3,
 					SHARE_PN_SHEET_APPEAR: 4,
 					DISMISS: 5,
-					SHARE_NUMBER: 6,
-				},
+					SHARE_NUMBER: 6
+				}
 			],
 			pnhChatParty: [
 				2,
 				{
 					BIZ: 1,
-					CONSUMER: 2,
-				},
+					CONSUMER: 2
+				}
 			],
 			pnhChatType: [
 				3,
 				{
-					CTWA: 1,
-				},
+					CTWA: 1
+				}
 			],
 			pnhEntryPoint: [
 				4,
@@ -13604,14 +13604,14 @@ export const WEB_EVENTS: Event[] = [
 					VIDEO: 4,
 					PN_REQUEST: 5,
 					SYSTEM_MESSAGE: 6,
-					CHAT_INFO_PN_VISIBILITY: 7,
-				},
+					CHAT_INFO_PN_VISIBILITY: 7
+				}
 			],
-			threadId: [5, 'string'],
+			threadId: [5, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'PollsActions',
@@ -13625,8 +13625,8 @@ export const WEB_EVENTS: Event[] = [
 					GROUP: 2,
 					STATUS: 3,
 					BROADCAST: 4,
-					CHANNEL: 5,
-				},
+					CHANNEL: 5
+				}
 			],
 			groupSizeBucket: [
 				1,
@@ -13646,8 +13646,8 @@ export const WEB_EVENTS: Event[] = [
 					LT4000: 12,
 					LT4500: 13,
 					LT5000: 14,
-					LARGEST_BUCKET: 15,
-				},
+					LARGEST_BUCKET: 15
+				}
 			],
 			isAGroup: [6, 'boolean'],
 			isAdmin: [2, 'boolean'],
@@ -13659,8 +13659,8 @@ export const WEB_EVENTS: Event[] = [
 					VIEW_RESULTS_MODAL: 4,
 					REMOVE_VOTE: 5,
 					VOTE: 6,
-					CHANGE_VOTE: 7,
-				},
+					CHANGE_VOTE: 7
+				}
 			],
 			pollCreationDs: [4, 'integer'],
 			pollOptionsCount: [5, 'integer'],
@@ -13669,13 +13669,13 @@ export const WEB_EVENTS: Event[] = [
 				{
 					GROUP: 1,
 					SUBGROUP: 2,
-					DEFAULT_SUBGROUP: 3,
-				},
-			],
+					DEFAULT_SUBGROUP: 3
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'PrivacySettingsClick',
@@ -13691,8 +13691,8 @@ export const WEB_EVENTS: Event[] = [
 					PRIVACY_CHECKUP_BANNER: 4,
 					PRIVACY_CHECKUP_DEEP_LINK: 5,
 					PRIVACY_CHECKUP_WA_CHAT: 6,
-					PRIVACY_CHECKUP_SETTINGS_SEARCH: 7,
-				},
+					PRIVACY_CHECKUP_SETTINGS_SEARCH: 7
+				}
 			],
 			privacyControlItem: [
 				2,
@@ -13718,13 +13718,13 @@ export const WEB_EVENTS: Event[] = [
 					FACE_AND_HAND_EFFECTS: 18,
 					ADVANCED: 19,
 					CHAT_LOCK: 20,
-					AVATAR: 21,
-				},
-			],
+					AVATAR: 21
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'PttPlayback',
@@ -13743,8 +13743,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					SPEED_1: 0,
 					SPEED_1_5: 1,
-					SPEED_2: 2,
-				},
+					SPEED_2: 2
+				}
 			],
 			pttPlaybackSpeedCnt: [11, 'integer'],
 			pttPlayedOutOfChat: [18, 'boolean'],
@@ -13759,8 +13759,8 @@ export const WEB_EVENTS: Event[] = [
 					ANDROIDPLAYER: 4,
 					EXOPLAYER: 5,
 					UWPPLAYER: 6,
-					VOIPPLAYER: 7,
-				},
+					VOIPPLAYER: 7
+				}
 			],
 			pttPlayerInitT: [2, 'timer'],
 			pttPlayerPlayT: [3, 'timer'],
@@ -13769,8 +13769,8 @@ export const WEB_EVENTS: Event[] = [
 				5,
 				{
 					MANUAL: 0,
-					SEQUENTIAL: 1,
-				},
+					SEQUENTIAL: 1
+				}
 			],
 			pttType: [
 				6,
@@ -13781,13 +13781,13 @@ export const WEB_EVENTS: Event[] = [
 					AMR_NB: 3,
 					AMR_WB: 4,
 					OPUS: 5,
-					MULTIPLE_TRACKS: 6,
-				},
-			],
+					MULTIPLE_TRACKS: 6
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ReactionActions',
@@ -13857,8 +13857,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			messageType: [
 				1,
@@ -13868,21 +13868,21 @@ export const WEB_EVENTS: Event[] = [
 					BROADCAST: 3,
 					STATUS: 4,
 					CHANNEL: 5,
-					INTEROP: 6,
-				},
+					INTEROP: 6
+				}
 			],
 			reactionAction: [
 				2,
 				{
 					OPEN_TRAY: 1,
 					DELETE: 2,
-					UPDATE: 3,
-				},
-			],
+					UPDATE: 3
+				}
+			]
 		},
 		weight: 20,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'SettingsClick',
@@ -13895,8 +13895,8 @@ export const WEB_EVENTS: Event[] = [
 					SETTINGS_SEARCH: 1,
 					DEEP_LINK: 2,
 					PRIVACY_CHECKUP: 3,
-					METAB_SCREEN: 4,
-				},
+					METAB_SCREEN: 4
+				}
 			],
 			settingsItem: [
 				1,
@@ -13934,20 +13934,20 @@ export const WEB_EVENTS: Event[] = [
 					LOGOUT: 30,
 					META_VERIFIED: 31,
 					TEXT_STATUS: 32,
-					THIRD_PARTY: 33,
-				},
+					THIRD_PARTY: 33
+				}
 			],
 			settingsPageType: [
 				3,
 				{
 					SETTINGS: 0,
-					ME_TAB: 1,
-				},
-			],
+					ME_TAB: 1
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'SettingsSearchInitiate',
@@ -13957,13 +13957,13 @@ export const WEB_EVENTS: Event[] = [
 				1,
 				{
 					SETTINGS: 0,
-					ME_TAB: 1,
-				},
-			],
+					ME_TAB: 1
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'SettingsSearchTap',
@@ -14006,13 +14006,13 @@ export const WEB_EVENTS: Event[] = [
 					LOGOUT: 30,
 					META_VERIFIED: 31,
 					TEXT_STATUS: 32,
-					THIRD_PARTY: 33,
-				},
-			],
+					THIRD_PARTY: 33
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'SmbDataSharingConsentSetting',
@@ -14023,15 +14023,15 @@ export const WEB_EVENTS: Event[] = [
 				{
 					ENTRY_POINT_ORDER_SCREEN: 0,
 					ENTRY_POINT_SETTINGS_SCREEN: 1,
-					ENTRY_POINT_LABELS_SCREEN: 2,
-				},
+					ENTRY_POINT_LABELS_SCREEN: 2
+				}
 			],
 			smbDataSharingConsentSettingType: [2, 'boolean'],
-			smbDataSharingConsentSettingVersion: [3, 'integer'],
+			smbDataSharingConsentSettingVersion: [3, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'StatusItemView',
@@ -14103,8 +14103,8 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
 			psaCampaignId: [17, 'string'],
 			psaCampaignItemIndex: [18, 'integer'],
@@ -14116,8 +14116,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					SUCCESS: 1,
 					CANCEL: 2,
-					ERROR: 3,
-				},
+					ERROR: 3
+				}
 			],
 			statusItemImpressionCount: [14, 'integer'],
 			statusItemIndex: [16, 'integer'],
@@ -14154,8 +14154,8 @@ export const WEB_EVENTS: Event[] = [
 					MEDIA_INVALID_CODE: 23,
 					MEDIA_SUSPICIOUS_CONTENT: 24,
 					MEDIA_ERROR_CRONET: 25,
-					PARTIAL_IMAGE_DOWNLOAD: 26,
-				},
+					PARTIAL_IMAGE_DOWNLOAD: 26
+				}
 			],
 			statusItemViewTime: [6, 'timer'],
 			statusRowIndex: [2, 'integer'],
@@ -14176,8 +14176,8 @@ export const WEB_EVENTS: Event[] = [
 					SEE_ALL_RECENT: 12,
 					SEE_ALL_VIEWED: 13,
 					SEE_ALL_MUTED: 14,
-					SEE_ALL_SEARCH: 15,
-				},
+					SEE_ALL_SEARCH: 15
+				}
 			],
 			statusViewerSessionId: [1, 'integer'],
 			urlStatusClicked: [
@@ -14185,21 +14185,21 @@ export const WEB_EVENTS: Event[] = [
 				{
 					ONE_CLICK: 1,
 					TWO_CLICKS: 2,
-					NO_CLICK: 3,
-				},
+					NO_CLICK: 3
+				}
 			],
 			urlStatusType: [
 				27,
 				{
 					NO_PREVIEW: 1,
 					TRUNCATED: 2,
-					NON_TRUNCATED: 3,
-				},
-			],
+					NON_TRUNCATED: 3
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'StatusReply',
@@ -14226,22 +14226,22 @@ export const WEB_EVENTS: Event[] = [
 					GIF_VIDEO: 14,
 					QUICK_REPLY: 15,
 					POLL: 16,
-					AVATAR_QUICK_REPLY: 17,
-				},
+					AVATAR_QUICK_REPLY: 17
+				}
 			],
 			statusReplyResult: [
 				2,
 				{
 					OK: 1,
 					CANCELLED: 2,
-					ERROR_UNKNOWN: 3,
-				},
+					ERROR_UNKNOWN: 3
+				}
 			],
-			statusSessionId: [1, 'integer'],
+			statusSessionId: [1, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'StatusRowView',
@@ -14256,8 +14256,8 @@ export const WEB_EVENTS: Event[] = [
 					FOWARDS_SWIPE: 3,
 					BACKWARDS_TAP: 4,
 					FOWARDS_TAP: 5,
-					PREVIOUS_ROW_TIMEOUT: 6,
-				},
+					PREVIOUS_ROW_TIMEOUT: 6
+				}
 			],
 			statusRowIndex: [4, 'integer'],
 			statusRowSection: [
@@ -14277,17 +14277,17 @@ export const WEB_EVENTS: Event[] = [
 					SEE_ALL_RECENT: 12,
 					SEE_ALL_VIEWED: 13,
 					SEE_ALL_MUTED: 14,
-					SEE_ALL_SEARCH: 15,
-				},
+					SEE_ALL_SEARCH: 15
+				}
 			],
 			statusRowUnreadItemCount: [7, 'integer'],
 			statusRowViewCount: [6, 'integer'],
 			statusSessionId: [1, 'integer'],
-			statusViewerSessionId: [2, 'integer'],
+			statusViewerSessionId: [2, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'UiRevokeAction',
@@ -14301,15 +14301,15 @@ export const WEB_EVENTS: Event[] = [
 					ADMIN_DELETE_FOR_EVERYONE: 2,
 					SENDER_DELETE_FOR_EVERYONE: 3,
 					ADMIN_AND_SENDER_DELETE_FOR_EVERYONE: 4,
-					DELETE_FOR_EVERYONE_SELECTED: 5,
-				},
+					DELETE_FOR_EVERYONE_SELECTED: 5
+				}
 			],
 			uiRevokeActionDuration: [2, 'integer'],
-			uiRevokeActionSessionId: [3, 'string'],
+			uiRevokeActionSessionId: [3, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WaShopsManagement',
@@ -14332,14 +14332,14 @@ export const WEB_EVENTS: Event[] = [
 					ACTION_SHARE_SHOPS: 11,
 					ACTION_CLICK_VIEW_SHOPS_FROM_EDIT_BIZ_PROFILE: 12,
 					ACTION_CLICK_COMMERCE_MANAGER_FROM_EDIT_BIZ_PROFILE: 13,
-					ACTION_CLICK_CANCEL_FROM_EDIT_BIZ_PROFILE: 14,
-				},
+					ACTION_CLICK_CANCEL_FROM_EDIT_BIZ_PROFILE: 14
+				}
 			],
-			shopsSellerJid: [3, 'string'],
+			shopsSellerJid: [3, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcButterbarEvent',
@@ -14351,8 +14351,8 @@ export const WEB_EVENTS: Event[] = [
 					IMPRESSION: 1,
 					CLICK_CTA: 2,
 					CLICK_DISMISS: 3,
-					AUTO_DISMISS: 4,
-				},
+					AUTO_DISMISS: 4
+				}
 			],
 			webcButterbarType: [
 				2,
@@ -14363,23 +14363,23 @@ export const WEB_EVENTS: Event[] = [
 					UPDATE_DUE_TO_SOFT_MIN: 4,
 					UWP_UPSELL: 5,
 					NOTIFICATION: 6,
-					OFFLINE_NOTIFICATION: 7,
-				},
-			],
+					OFFLINE_NOTIFICATION: 7
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcEmojiOpen',
 		id: 1166,
 		props: {
-			webcEmojiOpenTab: [1, 'string'],
+			webcEmojiOpenTab: [1, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcLinkPreviewDisplay',
@@ -14396,13 +14396,13 @@ export const WEB_EVENTS: Event[] = [
 					PREVIEW_MALFORMED: 3,
 					PREVIEW_NOT_FOUND: 4,
 					PREVIEW_GENERAL_ERROR: 5,
-					PREVIEW_DECRYPTION_ERROR: 6,
-				},
-			],
+					PREVIEW_DECRYPTION_ERROR: 6
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WhatsappQuickPromotionClientEligibilityWaterfall',
@@ -14412,11 +14412,11 @@ export const WEB_EVENTS: Event[] = [
 			instanceLogData: [5, 'string'],
 			promotionId: [2, 'string'],
 			qpFailureReason: [3, 'string'],
-			step: [4, 'string'],
+			step: [4, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'GatedChatOpened',
@@ -14426,14 +14426,14 @@ export const WEB_EVENTS: Event[] = [
 				1,
 				{
 					TOS3: 1,
-					COUNTRY: 2,
-				},
+					COUNTRY: 2
+				}
 			],
-			selfInitiated: [2, 'boolean'],
+			selfInitiated: [2, 'boolean']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'HfmTextSearchComplete',
@@ -14441,7 +14441,7 @@ export const WEB_EVENTS: Event[] = [
 		props: {},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'SmbPaidMessagesButtonLogger',
@@ -14452,8 +14452,8 @@ export const WEB_EVENTS: Event[] = [
 			pmButtonEventType: [
 				3,
 				{
-					CLICK: 0,
-				},
+					CLICK: 0
+				}
 			],
 			pmButtonIndex: [4, 'integer'],
 			pmButtonType: [
@@ -14463,15 +14463,15 @@ export const WEB_EVENTS: Event[] = [
 					CTA_URL: 1,
 					CTA_CALL: 2,
 					CTA_CATALOG: 3,
-					CTA_CATALOG_ITEM: 4,
-				},
+					CTA_CATALOG_ITEM: 4
+				}
 			],
 			pmIsTrackableLink: [7, 'string'],
-			pmServerCampaignId: [6, 'string'],
+			pmServerCampaignId: [6, 'string']
 		},
 		weight: 1,
 		wamChannel: 'private',
-		privateStatsIdInt: 113760892,
+		privateStatsIdInt: 113760892
 	},
 	{
 		name: 'SystemMessageClick',
@@ -14483,8 +14483,8 @@ export const WEB_EVENTS: Event[] = [
 				3,
 				{
 					PRIVACY: 1,
-					GROUPS: 2,
-				},
+					GROUPS: 2
+				}
 			],
 			systemMessageType: [
 				4,
@@ -14503,13 +14503,13 @@ export const WEB_EVENTS: Event[] = [
 					GROUP_INVITE_LINK_UNAVAILABLE: 15,
 					GROUP_INVITE_LINK_AVAILABLE: 16,
 					GROUP_JOIN_REQUEST: 17,
-					GROUP_SUGGEST: 18,
-				},
-			],
+					GROUP_SUGGEST: 18
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'ViewOnceScreenshotActions',
@@ -14522,8 +14522,8 @@ export const WEB_EVENTS: Event[] = [
 				{
 					PHOTO: 1,
 					VIDEO: 2,
-					PTT: 3,
-				},
+					PTT: 3
+				}
 			],
 			voSsAction: [
 				4,
@@ -14542,13 +14542,13 @@ export const WEB_EVENTS: Event[] = [
 					SCREENSHOT_TAKEN: 12,
 					SCREEN_RECORDING_BLOCKED: 13,
 					SCREEN_RECORDING_STARTED: 14,
-					PLACEHOLDER_MESSAGE_LEARN_MORE_TAP: 15,
-				},
-			],
+					PLACEHOLDER_MESSAGE_LEARN_MORE_TAP: 15
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'CtwaConsumerDisclosure',
@@ -14564,21 +14564,21 @@ export const WEB_EVENTS: Event[] = [
 					BACK_BUTTON_TOOLBAR: 3,
 					BACK_BUTTON_SYSTEM: 4,
 					DISMISS: 5,
-					DISCLOSURE_INFO_VIEW: 6,
-				},
+					DISCLOSURE_INFO_VIEW: 6
+				}
 			],
 			disclosureType: [
 				2,
 				{
 					NON_BLOCKING: 0,
 					BLOCKING: 1,
-					INFO: 2,
-				},
-			],
+					INFO: 2
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'private',
-		privateStatsIdInt: 0,
+		privateStatsIdInt: 0
 	},
 	{
 		name: 'Ctwa3pdConversion',
@@ -14589,11 +14589,11 @@ export const WEB_EVENTS: Event[] = [
 			ctwa3pdConversionType: [3, 'string'],
 			ctwa3pdSchemaVersion: [4, 'integer'],
 			ctwa3pdSurfaceType: [5, 'string'],
-			ctwaTrackingPayload: [6, 'string'],
+			ctwaTrackingPayload: [6, 'string']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'CtwaLabelSignal',
@@ -14604,8 +14604,8 @@ export const WEB_EVENTS: Event[] = [
 				2,
 				{
 					CHAT: 0,
-					MESSAGE: 1,
-				},
+					MESSAGE: 1
+				}
 			],
 			ctwaLabelType: [
 				3,
@@ -14613,17 +14613,17 @@ export const WEB_EVENTS: Event[] = [
 					NEW_ORDER: 0,
 					PENDING_PAYMENT: 1,
 					PAID: 2,
-					ORDER_COMPLETE: 3,
-				},
+					ORDER_COMPLETE: 3
+				}
 			],
 			deepLinkConversionData: [4, 'string'],
 			deepLinkConversionSource: [5, 'string'],
 			eventSharingSettingEnabled: [6, 'boolean'],
-			globalSharingSettingEnabled: [7, 'boolean'],
+			globalSharingSettingEnabled: [7, 'boolean']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'CtwaOrderSignal',
@@ -14639,8 +14639,8 @@ export const WEB_EVENTS: Event[] = [
 				6,
 				{
 					CREATED: 0,
-					UPDATED: 1,
-				},
+					UPDATED: 1
+				}
 			],
 			orderStatus: [
 				7,
@@ -14651,13 +14651,13 @@ export const WEB_EVENTS: Event[] = [
 					CANCELLED: 3,
 					PENDING: 4,
 					PARTIALLY_SHIPPED: 5,
-					PAID_CHANGE: 6,
-				},
-			],
+					PAID_CHANGE: 6
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'PsChannelPostForward',
@@ -14667,8 +14667,8 @@ export const WEB_EVENTS: Event[] = [
 				6,
 				{
 					UPDATE: 0,
-					UPDATE_CARD: 1,
-				},
+					UPDATE_CARD: 1
+				}
 			],
 			channelForwardGroupType: [
 				1,
@@ -14678,8 +14678,8 @@ export const WEB_EVENTS: Event[] = [
 					GROUP: 2,
 					STATUS: 3,
 					BROADCAST: 4,
-					CHANNEL: 5,
-				},
+					CHANNEL: 5
+				}
 			],
 			cid: [2, 'string'],
 			mediaType: [
@@ -14746,14 +14746,14 @@ export const WEB_EVENTS: Event[] = [
 					EVENT_RESPOND: 59,
 					LOTTIE_STICKER: 60,
 					INTERACTIVE_PRODUCT_CAROUSEL: 61,
-					INTERACTIVE_PRODUCT: 62,
-				},
+					INTERACTIVE_PRODUCT: 62
+				}
 			],
-			postId: [4, 'string'],
+			postId: [4, 'string']
 		},
 		weight: 1,
 		wamChannel: 'private',
-		privateStatsIdInt: 0,
+		privateStatsIdInt: 0
 	},
 	{
 		name: 'WebContactListStartNewChat',
@@ -14765,13 +14765,13 @@ export const WEB_EVENTS: Event[] = [
 				{
 					CONTACT: 1,
 					GROUP: 2,
-					CONTACTLESS: 3,
-				},
-			],
+					CONTACTLESS: 3
+				}
+			]
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
+		privateStatsIdInt: -1
 	},
 	{
 		name: 'WebcMediaEditorSend',
@@ -14783,566 +14783,459 @@ export const WEB_EVENTS: Event[] = [
 			imageCount: [1, 'integer'],
 			paintedImageCount: [3, 'integer'],
 			stickerLayerCount: [6, 'integer'],
-			textLayerCount: [4, 'integer'],
+			textLayerCount: [4, 'integer']
 		},
 		weight: 1,
 		wamChannel: 'regular',
-		privateStatsIdInt: -1,
-	},
+		privateStatsIdInt: -1
+	}
 ]
 
 export const WEB_GLOBALS: Global[] = [
 	{
-		'name': 'abKey2',
-		'id': 4473,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'regular'
-		]
+		name: 'abKey2',
+		id: 4473,
+		type: 'string',
+		validator: 'string',
+		channels: ['regular']
 	},
 	{
-		'name': 'appBuild',
-		'id': 1657,
-		'type': {
-			'DEBUG': 1,
-			'ALPHA': 2,
-			'BETA': 3,
-			'RELEASE': 4
+		name: 'appBuild',
+		id: 1657,
+		type: {
+			DEBUG: 1,
+			ALPHA: 2,
+			BETA: 3,
+			RELEASE: 4
 		},
-		'channels': [
-			'regular',
-			'private'
-		]
+		channels: ['regular', 'private']
 	},
 	{
-		'name': 'appIsBetaRelease',
-		'id': 21,
-		'type': 'boolean',
-		'validator': 'boolean',
-		'channels': [
-			'regular',
-			'private'
-		]
+		name: 'appIsBetaRelease',
+		id: 21,
+		type: 'boolean',
+		validator: 'boolean',
+		channels: ['regular', 'private']
 	},
 	{
-		'name': 'appVersion',
-		'id': 17,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'regular',
-			'private'
-		]
+		name: 'appVersion',
+		id: 17,
+		type: 'string',
+		validator: 'string',
+		channels: ['regular', 'private']
 	},
 	{
-		'name': 'browser',
-		'id': 779,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'regular'
-		]
+		name: 'browser',
+		id: 779,
+		type: 'string',
+		validator: 'string',
+		channels: ['regular']
 	},
 	{
-		'name': 'browserVersion',
-		'id': 295,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'regular'
-		]
+		name: 'browserVersion',
+		id: 295,
+		type: 'string',
+		validator: 'string',
+		channels: ['regular']
 	},
 	{
-		'name': 'datacenter',
-		'id': 2795,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'regular'
-		]
+		name: 'datacenter',
+		id: 2795,
+		type: 'string',
+		validator: 'string',
+		channels: ['regular']
 	},
 	{
-		'name': 'deviceClassification',
-		'id': 14507,
-		'type': {
-			'MOBILE': 0,
-			'TABLET': 1,
-			'WEARABLES': 2,
-			'VR': 3,
-			'DESKTOP': 4,
-			'FOLDABLE': 5,
-			'AR_GLASS': 6,
-			'UNDEFINED': 100
+		name: 'deviceClassification',
+		id: 14507,
+		type: {
+			MOBILE: 0,
+			TABLET: 1,
+			WEARABLES: 2,
+			VR: 3,
+			DESKTOP: 4,
+			FOLDABLE: 5,
+			AR_GLASS: 6,
+			UNDEFINED: 100
 		},
-		'channels': [
-			'regular'
-		]
+		channels: ['regular']
 	},
 	{
-		'name': 'deviceName',
-		'id': 13,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'regular',
-			'private'
-		]
+		name: 'deviceName',
+		id: 13,
+		type: 'string',
+		validator: 'string',
+		channels: ['regular', 'private']
 	},
 	{
-		'name': 'deviceVersion',
-		'id': 4505,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'regular'
-		]
+		name: 'deviceVersion',
+		id: 4505,
+		type: 'string',
+		validator: 'string',
+		channels: ['regular']
 	},
 	{
-		'name': 'expoKey',
-		'id': 5029,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'regular',
-			'private'
-		]
+		name: 'expoKey',
+		id: 5029,
+		type: 'string',
+		validator: 'string',
+		channels: ['regular', 'private']
 	},
 	{
-		'name': 'mcc',
-		'id': 5,
-		'type': 'integer',
-		'channels': [
-			'regular',
-			'private'
-		]
+		name: 'mcc',
+		id: 5,
+		type: 'integer',
+		channels: ['regular', 'private']
 	},
 	{
-		'name': 'memClass',
-		'id': 655,
-		'type': 'integer',
-		'channels': [
-			'regular',
-			'private'
-		]
+		name: 'memClass',
+		id: 655,
+		type: 'integer',
+		channels: ['regular', 'private']
 	},
 	{
-		'name': 'mnc',
-		'id': 3,
-		'type': 'integer',
-		'channels': [
-			'regular',
-			'private'
-		]
+		name: 'mnc',
+		id: 3,
+		type: 'integer',
+		channels: ['regular', 'private']
 	},
 	{
-		'name': 'networkIsWifi',
-		'id': 23,
-		'type': 'boolean',
-		'validator': 'boolean',
-		'channels': [
-			'regular'
-		]
+		name: 'networkIsWifi',
+		id: 23,
+		type: 'boolean',
+		validator: 'boolean',
+		channels: ['regular']
 	},
 	{
-		'name': 'ocVersion',
-		'id': 6251,
-		'type': 'integer',
-		'channels': [
-			'regular',
-			'private'
-		]
+		name: 'ocVersion',
+		id: 6251,
+		type: 'integer',
+		channels: ['regular', 'private']
 	},
 	{
-		'name': 'osVersion',
-		'id': 15,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'regular',
-			'private'
-		]
+		name: 'osVersion',
+		id: 15,
+		type: 'string',
+		validator: 'string',
+		channels: ['regular', 'private']
 	},
 	{
-		'name': 'platform',
-		'id': 11,
-		'type': {
-			'IPHONE': 1,
-			'ANDROID': 2,
-			'BB': 3,
-			'BBX': 7,
-			'S40': 4,
-			'SYMBIAN': 5,
-			'WP': 6,
-			'WEBCLIENT': 8,
-			'OSMETA': 11,
-			'ENT': 12,
-			'SMBA': 13,
-			'KAIOS': 14,
-			'SMBI': 15,
-			'WINDOWS': 16,
-			'WEB': 17,
-			'PORTAL': 18,
-			'BLOKS': 19,
-			'BLUEA': 20,
-			'BLUEI': 21,
-			'FBLITEA': 22,
-			'GREENA': 23,
-			'GREENI': 24,
-			'IGDA': 25,
-			'IGDI': 26,
-			'IGLITEA': 27,
-			'MLITEA': 28,
-			'MSGRA': 29,
-			'MSGRI': 30,
-			'MSGRP': 31,
-			'MSGRW': 32,
-			'IGDW': 33,
-			'PAGE': 34,
-			'MSGRDM': 35,
-			'MSGRDW': 36,
-			'MSGROM': 37,
-			'MSGROC': 38,
-			'MSGRM': 43,
-			'IGDM': 44,
-			'WEARM': 45,
-			'CAPI': 46,
-			'XR': 47,
-			'MACOS': 48,
-			'WAMETA_REPL': 49,
-			'ARDEV': 50,
-			'WEAROS': 51,
-			'MSGRVR': 52,
-			'BLUEW': 53,
-			'IPHONEWAMETATEST': 54,
-			'MSGRAR': 57,
-			'IPAD': 58,
-			'WAVOIP_CLI': 59,
-			'MSGRT': 60,
-			'IGDT': 61,
-			'ANDROIDWAMETATEST': 62,
-			'MSGRSG': 63,
-			'IGDSG': 64,
-			'INTEROP': 65,
-			'INTEROP_MSGR': 66,
-			'TEST': 9,
-			'UNKNOWN': 10
+		name: 'platform',
+		id: 11,
+		type: {
+			IPHONE: 1,
+			ANDROID: 2,
+			BB: 3,
+			BBX: 7,
+			S40: 4,
+			SYMBIAN: 5,
+			WP: 6,
+			WEBCLIENT: 8,
+			OSMETA: 11,
+			ENT: 12,
+			SMBA: 13,
+			KAIOS: 14,
+			SMBI: 15,
+			WINDOWS: 16,
+			WEB: 17,
+			PORTAL: 18,
+			BLOKS: 19,
+			BLUEA: 20,
+			BLUEI: 21,
+			FBLITEA: 22,
+			GREENA: 23,
+			GREENI: 24,
+			IGDA: 25,
+			IGDI: 26,
+			IGLITEA: 27,
+			MLITEA: 28,
+			MSGRA: 29,
+			MSGRI: 30,
+			MSGRP: 31,
+			MSGRW: 32,
+			IGDW: 33,
+			PAGE: 34,
+			MSGRDM: 35,
+			MSGRDW: 36,
+			MSGROM: 37,
+			MSGROC: 38,
+			MSGRM: 43,
+			IGDM: 44,
+			WEARM: 45,
+			CAPI: 46,
+			XR: 47,
+			MACOS: 48,
+			WAMETA_REPL: 49,
+			ARDEV: 50,
+			WEAROS: 51,
+			MSGRVR: 52,
+			BLUEW: 53,
+			IPHONEWAMETATEST: 54,
+			MSGRAR: 57,
+			IPAD: 58,
+			WAVOIP_CLI: 59,
+			MSGRT: 60,
+			IGDT: 61,
+			ANDROIDWAMETATEST: 62,
+			MSGRSG: 63,
+			IGDSG: 64,
+			INTEROP: 65,
+			INTEROP_MSGR: 66,
+			TEST: 9,
+			UNKNOWN: 10
 		},
-		'channels': [
-			'regular',
-			'private'
-		]
+		channels: ['regular', 'private']
 	},
 	{
-		'name': 'psCountryCode',
-		'id': 6833,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'private'
-		]
+		name: 'psCountryCode',
+		id: 6833,
+		type: 'string',
+		validator: 'string',
+		channels: ['private']
 	},
 	{
-		'name': 'psId',
-		'id': 6005,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'private'
-		]
+		name: 'psId',
+		id: 6005,
+		type: 'string',
+		validator: 'string',
+		channels: ['private']
 	},
 	{
-		'name': 'serviceImprovementOptOut',
-		'id': 13293,
-		'type': 'boolean',
-		'validator': 'boolean',
-		'channels': [
-			'regular',
-			'private'
-		]
+		name: 'serviceImprovementOptOut',
+		id: 13293,
+		type: 'boolean',
+		validator: 'boolean',
+		channels: ['regular', 'private']
 	},
 	{
-		'name': 'streamId',
-		'id': 3543,
-		'type': 'integer',
-		'channels': [
-			'regular',
-			'private'
-		]
+		name: 'streamId',
+		id: 3543,
+		type: 'integer',
+		channels: ['regular', 'private']
 	},
 	{
-		'name': 'wametaLoggerTestFilter',
-		'id': 15881,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'regular',
-			'private'
-		]
+		name: 'wametaLoggerTestFilter',
+		id: 15881,
+		type: 'string',
+		validator: 'string',
+		channels: ['regular', 'private']
 	},
 	{
-		'name': 'webcBucket',
-		'id': 875,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'regular'
-		]
+		name: 'webcBucket',
+		id: 875,
+		type: 'string',
+		validator: 'string',
+		channels: ['regular']
 	},
 	{
-		'name': 'webcEnv',
-		'id': 633,
-		'type': {
-			'PROD': 0,
-			'INTERN': 1,
-			'DEV': 2,
-			'E2E': 3
+		name: 'webcEnv',
+		id: 633,
+		type: {
+			PROD: 0,
+			INTERN: 1,
+			DEV: 2,
+			E2E: 3
 		},
-		'channels': [
-			'regular'
-		]
+		channels: ['regular']
 	},
 	{
-		'name': 'webcNativeAutolaunch',
-		'id': 1009,
-		'type': 'boolean',
-		'validator': 'boolean',
-		'channels': [
-			'regular'
-		]
+		name: 'webcNativeAutolaunch',
+		id: 1009,
+		type: 'boolean',
+		validator: 'boolean',
+		channels: ['regular']
 	},
 	{
-		'name': 'webcNativeBetaUpdates',
-		'id': 1007,
-		'type': 'boolean',
-		'validator': 'boolean',
-		'channels': [
-			'regular'
-		]
+		name: 'webcNativeBetaUpdates',
+		id: 1007,
+		type: 'boolean',
+		validator: 'boolean',
+		channels: ['regular']
 	},
 	{
-		'name': 'webcPhoneAppVersion',
-		'id': 1005,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'regular'
-		]
+		name: 'webcPhoneAppVersion',
+		id: 1005,
+		type: 'string',
+		validator: 'string',
+		channels: ['regular']
 	},
 	{
-		'name': 'webcPhoneCharging',
-		'id': 783,
-		'type': 'boolean',
-		'validator': 'boolean',
-		'channels': [
-			'regular'
-		]
+		name: 'webcPhoneCharging',
+		id: 783,
+		type: 'boolean',
+		validator: 'boolean',
+		channels: ['regular']
 	},
 	{
-		'name': 'webcPhoneDeviceManufacturer',
-		'id': 829,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'regular'
-		]
+		name: 'webcPhoneDeviceManufacturer',
+		id: 829,
+		type: 'string',
+		validator: 'string',
+		channels: ['regular']
 	},
 	{
-		'name': 'webcPhoneDeviceModel',
-		'id': 831,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'regular'
-		]
+		name: 'webcPhoneDeviceModel',
+		id: 831,
+		type: 'string',
+		validator: 'string',
+		channels: ['regular']
 	},
 	{
-		'name': 'webcPhoneOsBuildNumber',
-		'id': 833,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'regular'
-		]
+		name: 'webcPhoneOsBuildNumber',
+		id: 833,
+		type: 'string',
+		validator: 'string',
+		channels: ['regular']
 	},
 	{
-		'name': 'webcPhoneOsVersion',
-		'id': 835,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'regular'
-		]
+		name: 'webcPhoneOsVersion',
+		id: 835,
+		type: 'string',
+		validator: 'string',
+		channels: ['regular']
 	},
 	{
-		'name': 'webcPhonePlatform',
-		'id': 707,
-		'type': {
-			'IPHONE': 1,
-			'ANDROID': 2,
-			'BB': 3,
-			'BBX': 7,
-			'S40': 4,
-			'SYMBIAN': 5,
-			'WP': 6,
-			'WEBCLIENT': 8,
-			'OSMETA': 11,
-			'ENT': 12,
-			'SMBA': 13,
-			'KAIOS': 14,
-			'SMBI': 15,
-			'WINDOWS': 16,
-			'WEB': 17,
-			'PORTAL': 18,
-			'BLOKS': 19,
-			'BLUEA': 20,
-			'BLUEI': 21,
-			'FBLITEA': 22,
-			'GREENA': 23,
-			'GREENI': 24,
-			'IGDA': 25,
-			'IGDI': 26,
-			'IGLITEA': 27,
-			'MLITEA': 28,
-			'MSGRA': 29,
-			'MSGRI': 30,
-			'MSGRP': 31,
-			'MSGRW': 32,
-			'IGDW': 33,
-			'PAGE': 34,
-			'MSGRDM': 35,
-			'MSGRDW': 36,
-			'MSGROM': 37,
-			'MSGROC': 38,
-			'MSGRM': 43,
-			'IGDM': 44,
-			'WEARM': 45,
-			'CAPI': 46,
-			'XR': 47,
-			'MACOS': 48,
-			'WAMETA_REPL': 49,
-			'ARDEV': 50,
-			'WEAROS': 51,
-			'MSGRVR': 52,
-			'BLUEW': 53,
-			'IPHONEWAMETATEST': 54,
-			'MSGRAR': 57,
-			'IPAD': 58,
-			'WAVOIP_CLI': 59,
-			'MSGRT': 60,
-			'IGDT': 61,
-			'ANDROIDWAMETATEST': 62,
-			'MSGRSG': 63,
-			'IGDSG': 64,
-			'INTEROP': 65,
-			'INTEROP_MSGR': 66,
-			'TEST': 9,
-			'UNKNOWN': 10
+		name: 'webcPhonePlatform',
+		id: 707,
+		type: {
+			IPHONE: 1,
+			ANDROID: 2,
+			BB: 3,
+			BBX: 7,
+			S40: 4,
+			SYMBIAN: 5,
+			WP: 6,
+			WEBCLIENT: 8,
+			OSMETA: 11,
+			ENT: 12,
+			SMBA: 13,
+			KAIOS: 14,
+			SMBI: 15,
+			WINDOWS: 16,
+			WEB: 17,
+			PORTAL: 18,
+			BLOKS: 19,
+			BLUEA: 20,
+			BLUEI: 21,
+			FBLITEA: 22,
+			GREENA: 23,
+			GREENI: 24,
+			IGDA: 25,
+			IGDI: 26,
+			IGLITEA: 27,
+			MLITEA: 28,
+			MSGRA: 29,
+			MSGRI: 30,
+			MSGRP: 31,
+			MSGRW: 32,
+			IGDW: 33,
+			PAGE: 34,
+			MSGRDM: 35,
+			MSGRDW: 36,
+			MSGROM: 37,
+			MSGROC: 38,
+			MSGRM: 43,
+			IGDM: 44,
+			WEARM: 45,
+			CAPI: 46,
+			XR: 47,
+			MACOS: 48,
+			WAMETA_REPL: 49,
+			ARDEV: 50,
+			WEAROS: 51,
+			MSGRVR: 52,
+			BLUEW: 53,
+			IPHONEWAMETATEST: 54,
+			MSGRAR: 57,
+			IPAD: 58,
+			WAVOIP_CLI: 59,
+			MSGRT: 60,
+			IGDT: 61,
+			ANDROIDWAMETATEST: 62,
+			MSGRSG: 63,
+			IGDSG: 64,
+			INTEROP: 65,
+			INTEROP_MSGR: 66,
+			TEST: 9,
+			UNKNOWN: 10
 		},
-		'channels': [
-			'regular'
-		]
+		channels: ['regular']
 	},
 	{
-		'name': 'webcTabId',
-		'id': 3727,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'regular'
-		]
+		name: 'webcTabId',
+		id: 3727,
+		type: 'string',
+		validator: 'string',
+		channels: ['regular']
 	},
 	{
-		'name': 'webcWebArch',
-		'id': 6605,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'regular'
-		]
+		name: 'webcWebArch',
+		id: 6605,
+		type: 'string',
+		validator: 'string',
+		channels: ['regular']
 	},
 	{
-		'name': 'webcWebDeviceManufacturer',
-		'id': 6599,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'regular'
-		]
+		name: 'webcWebDeviceManufacturer',
+		id: 6599,
+		type: 'string',
+		validator: 'string',
+		channels: ['regular']
 	},
 	{
-		'name': 'webcWebDeviceModel',
-		'id': 6601,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'regular'
-		]
+		name: 'webcWebDeviceModel',
+		id: 6601,
+		type: 'string',
+		validator: 'string',
+		channels: ['regular']
 	},
 	{
-		'name': 'webcWebOsReleaseNumber',
-		'id': 6603,
-		'type': 'string',
-		'validator': 'string',
-		'channels': [
-			'regular'
-		]
+		name: 'webcWebOsReleaseNumber',
+		id: 6603,
+		type: 'string',
+		validator: 'string',
+		channels: ['regular']
 	},
 	{
-		'name': 'webcWebPlatform',
-		'id': 899,
-		'type': {
-			'WEB': 1,
-			'WIN32': 2,
-			'DARWIN': 3,
-			'IOS_TABLET': 4,
-			'ANDROID_TABLET': 5,
-			'WINSTORE': 6,
-			'MACSTORE': 7,
-			'DARWIN_BETA': 8,
-			'WIN32_BETA': 9,
-			'PWA': 10
+		name: 'webcWebPlatform',
+		id: 899,
+		type: {
+			WEB: 1,
+			WIN32: 2,
+			DARWIN: 3,
+			IOS_TABLET: 4,
+			ANDROID_TABLET: 5,
+			WINSTORE: 6,
+			MACSTORE: 7,
+			DARWIN_BETA: 8,
+			WIN32_BETA: 9,
+			PWA: 10
 		},
-		'channels': [
-			'regular',
-			'private'
-		]
+		channels: ['regular', 'private']
 	},
 	{
-		'name': 'yearClass',
-		'id': 689,
-		'type': 'integer',
-		'channels': [
-			'regular',
-			'private'
-		]
+		name: 'yearClass',
+		id: 689,
+		type: 'integer',
+		channels: ['regular', 'private']
 	},
 	{
-		'name': 'yearClass2016',
-		'id': 2617,
-		'type': 'integer',
-		'channels': [
-			'regular',
-			'private'
-		]
+		name: 'yearClass2016',
+		id: 2617,
+		type: 'integer',
+		channels: ['regular', 'private']
 	},
 	{
-		'name': 'commitTime',
-		'id': 47,
-		'type': 'integer',
-		'channels': [
-			'regular',
-			'private'
-		]
+		name: 'commitTime',
+		id: 47,
+		type: 'integer',
+		channels: ['regular', 'private']
 	},
 	{
-		'name': 'sequenceNumber',
-		'id': 3433,
-		'type': 'integer',
-		'channels': [
-			'regular',
-			'private'
-		]
+		name: 'sequenceNumber',
+		id: 3433,
+		type: 'integer',
+		channels: ['regular', 'private']
 	}
 ]
 
@@ -15353,18 +15246,18 @@ export const FLAG_BYTE = 8,
 	FLAG_EXTENDED = 4
 
 export type Event = {
-    name: string
-    id: number
-    props: {[key: string]: [number, string | {[key: string]: number}]}
-    weight: number
-    wamChannel: string
-    privateStatsIdInt: number
+	name: string
+	id: number
+	props: { [key: string]: [number, string | { [key: string]: number }] }
+	weight: number
+	wamChannel: string
+	privateStatsIdInt: number
 }
 
 export type Global = {
 	name: string
 	id: number
-	type: string | {[key: string]: number}
+	type: string | { [key: string]: number }
 	validator?: string
 	channels: string[]
 }
