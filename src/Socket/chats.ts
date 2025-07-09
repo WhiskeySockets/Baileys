@@ -66,7 +66,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	const { ev, ws, authState, generateMessageTag, sendNode, query, onUnexpectedError } = sock
 
 	let privacySettings: { [_: string]: string } | undefined
-	let needToFlushWithAppStateSync = false
 	let pendingAppStateSync = false
 	/** this mutex ensures that the notifications (receipts, messages etc.) are processed in order */
 	const processingMutex = makeMutex()
@@ -1019,11 +1018,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 				const accountSyncCounter = (authState.creds.accountSyncCounter || 0) + 1
 				ev.emit('creds.update', { accountSyncCounter })
-
-				if (needToFlushWithAppStateSync) {
-					logger.debug('flushing with app state sync')
-					ev.flush()
-				}
 			}
 		}
 	})
@@ -1056,7 +1050,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 	})
 
-	ev.on('connection.update', ({ connection, receivedPendingNotifications }) => {
+	ev.on('connection.update', ({ connection }) => {
 		if (connection === 'open') {
 			if (fireInitQueries) {
 				executeInitQueries().catch(error => onUnexpectedError(error, 'init queries'))
@@ -1065,17 +1059,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			sendPresenceUpdate(markOnlineOnConnect ? 'available' : 'unavailable').catch(error =>
 				onUnexpectedError(error, 'presence update requests')
 			)
-		}
-
-		if (
-			receivedPendingNotifications && // if we don't have the app state key
-			// we keep buffering events until we finally have
-			// the key and can sync the messages
-			// todo scrutinize
-			!authState.creds?.myAppStateKeyId
-		) {
-			ev.buffer()
-			needToFlushWithAppStateSync = true
 		}
 	})
 
