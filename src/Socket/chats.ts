@@ -7,7 +7,6 @@ import {
 	BotListInfo,
 	ChatModification,
 	ChatMutation,
-	ContactAction,
 	LTHashState,
 	MessageUpsertType,
 	PresenceData,
@@ -862,7 +861,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	/**
 	 * Add or Edit Contact
 	 */
-	const addOrEditContact = (jid: string, contact: ContactAction) => {
+	const addOrEditContact = (jid: string, contact: proto.SyncActionValue.IContactAction) => {
 		return chatModify(
 			{
 				contact
