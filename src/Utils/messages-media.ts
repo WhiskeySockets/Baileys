@@ -4,7 +4,7 @@ import { exec } from 'child_process'
 import * as Crypto from 'crypto'
 import { once } from 'events'
 import { createReadStream, createWriteStream, promises as fs, WriteStream } from 'fs'
-import type { IAudioMetadata } from 'music-metadata'
+import type { IAudioMetadata } from 'music-metadata' with { 'resolution-mode': 'import' }
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { Readable, Transform } from 'stream'
