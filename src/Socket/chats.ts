@@ -46,6 +46,7 @@ import {
 	getBinaryNodeChildren,
 	jidDecode,
 	jidNormalizedUser,
+	jidDecode,
 	reduceBinaryNodeToDictionary,
 	S_WHATSAPP_NET
 } from '../WABinary'
@@ -219,8 +220,14 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		const usyncQuery = new USyncQuery().withContactProtocol().withLIDProtocol()
 
 		for (const jid of jids) {
-			const phone = `+${jid.replace('+', '').split('@')[0].split(':')[0]}`
-			usyncQuery.withUser(new USyncUser().withPhone(phone))
+			const [user, server] = jid.split('@')
+			if(server === 'lid') {
+				usyncQuery.withUser(new USyncUser().withLid(`${user.split(':')[0]}@lid`))
+			} else if(server !== 'g.us') {
+				const phone = `+${jid.replace('+', '').split('@')[0].split(':')[0]}`
+			
+				usyncQuery.withUser(new USyncUser().withPhone(phone))
+			}
 		}
 
 		const results = await sock.executeUSyncQuery(usyncQuery)
