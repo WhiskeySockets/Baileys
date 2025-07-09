@@ -360,7 +360,7 @@ export const generateWAMessageContent = async (
 	options: MessageContentGenerationOptions
 ) => {
 	let m: WAMessageContent = {}
-	if ('text' in message) {
+	if ('text' in message && !!message.text) {
 		const extContent = { text: message.text } as WATextMessage
 
 		let urlInfo = message.linkPreview
@@ -396,7 +396,7 @@ export const generateWAMessageContent = async (
 		}
 
 		m.extendedTextMessage = extContent
-	} else if ('contacts' in message) {
+	} else if ('contacts' in message && !!message.contacts) {
 		const contactLen = message.contacts.contacts.length
 		if (!contactLen) {
 			throw new Boom('require atleast 1 contact', { statusCode: 400 })
@@ -407,22 +407,22 @@ export const generateWAMessageContent = async (
 		} else {
 			m.contactsArrayMessage = WAProto.Message.ContactsArrayMessage.fromObject(message.contacts)
 		}
-	} else if ('location' in message) {
+	} else if ('location' in message && !!message.location) {
 		m.locationMessage = WAProto.Message.LocationMessage.fromObject(message.location)
-	} else if ('react' in message) {
+	} else if ('react' in message && !!message.react) {
 		if (!message.react.senderTimestampMs) {
 			message.react.senderTimestampMs = Date.now()
 		}
 
 		m.reactionMessage = WAProto.Message.ReactionMessage.fromObject(message.react)
-	} else if ('delete' in message) {
+	} else if ('delete' in message && !!message.delete) {
 		m.protocolMessage = {
 			key: message.delete,
 			type: WAProto.Message.ProtocolMessage.Type.REVOKE
 		}
-	} else if ('forward' in message) {
+	} else if ('forward' in message && !!message.forward) {
 		m = generateForwardMessageContent(message.forward, message.force)
-	} else if ('disappearingMessagesInChat' in message) {
+	} else if ('disappearingMessagesInChat' in message && !!message.disappearingMessagesInChat) {
 		const exp =
 			typeof message.disappearingMessagesInChat === 'boolean'
 				? message.disappearingMessagesInChat
@@ -430,7 +430,7 @@ export const generateWAMessageContent = async (
 					: 0
 				: message.disappearingMessagesInChat
 		m = prepareDisappearingMessageSettingContent(exp)
-	} else if ('groupInvite' in message) {
+	} else if ('groupInvite' in message && !!message.groupInvite) {
 		m.groupInviteMessage = {}
 		m.groupInviteMessage.inviteCode = message.groupInvite.inviteCode
 		m.groupInviteMessage.inviteExpiration = message.groupInvite.inviteExpiration
@@ -449,7 +449,7 @@ export const generateWAMessageContent = async (
 				}
 			}
 		}
-	} else if ('pin' in message) {
+	} else if ('pin' in message && !!message.pin) {
 		m.pinInChatMessage = {}
 		m.messageContextInfo = {}
 
@@ -458,7 +458,7 @@ export const generateWAMessageContent = async (
 		m.pinInChatMessage.senderTimestampMs = Date.now()
 
 		m.messageContextInfo.messageAddOnDurationInSecs = message.type === 1 ? message.time || 86400 : 0
-	} else if ('buttonReply' in message) {
+	} else if ('buttonReply' in message && !!message.buttonReply) {
 		switch (message.type) {
 			case 'template':
 				m.templateButtonReplyMessage = {
@@ -478,7 +478,7 @@ export const generateWAMessageContent = async (
 	} else if ('ptv' in message && message.ptv) {
 		const { videoMessage } = await prepareWAMessageMedia({ video: message.video }, options)
 		m.ptvMessage = videoMessage
-	} else if ('product' in message) {
+	} else if ('product' in message && !!message.product) {
 		const { imageMessage } = await prepareWAMessageMedia({ image: message.product.productImage }, options)
 		m.productMessage = WAProto.Message.ProductMessage.fromObject({
 			...message,
@@ -487,9 +487,9 @@ export const generateWAMessageContent = async (
 				productImage: imageMessage
 			}
 		})
-	} else if ('listReply' in message) {
+	} else if ('listReply' in message && !!message.listReply) {
 		m.listResponseMessage = { ...message.listReply }
-	} else if ('poll' in message) {
+	} else if ('poll' in message && !!message.poll) {
 		message.poll.selectableCount ||= 0
 		message.poll.toAnnouncementGroup ||= false
 
@@ -526,13 +526,19 @@ export const generateWAMessageContent = async (
 				m.pollCreationMessage = pollCreationMessage
 			}
 		}
-	} else if ('sharePhoneNumber' in message) {
+	} else if ('sharePhoneNumber' in message && message.sharePhoneNumber) {
 		m.protocolMessage = {
 			type: proto.Message.ProtocolMessage.Type.SHARE_PHONE_NUMBER
 		}
-	} else if ('requestPhoneNumber' in message) {
+	} else if ('requestPhoneNumber' in message && message.requestPhoneNumber) {
 		m.requestPhoneNumberMessage = {}
-	} else {
+	} else if (
+		'video' in message ||
+		'image' in message ||
+		'audio' in message ||
+		'sticker' in message ||
+		'document' in message
+	) {
 		m = await prepareWAMessageMedia(message, options)
 	}
 
@@ -546,7 +552,7 @@ export const generateWAMessageContent = async (
 		m[messageType].contextInfo.mentionedJid = message.mentions
 	}
 
-	if ('edit' in message) {
+	if ('edit' in message && !!message.edit) {
 		m = {
 			protocolMessage: {
 				key: message.edit,
