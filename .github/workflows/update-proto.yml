@@ -12,48 +12,143 @@ permissions:
 jobs:
   update-proto:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Install Node
-        uses: actions/setup-node@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20.x
+          cache: 'yarn'
 
-      - name: Install packages
+      - name: Install dependencies
         run: |
-          yarn
-          yarn --pure-lockfile --cwd proto-extract
+          yarn install --frozen-lockfile
+          
+          # Handle corrupted yarn.lock in proto-extract
+          cd proto-extract
+          if ! yarn install --frozen-lockfile 2>/dev/null; then
+            echo "Yarn.lock corrupted, regenerating..."
+            rm -f yarn.lock
+            yarn install
+          fi
 
-      - name: Update WAProto.proto
+      - name: Extract WAProto information
         id: wa_proto_info
         run: |
-          yarn --cwd proto-extract start > wa-logs.txt
-          WA_VERSION=$(cat wa-logs.txt | perl -n -e'/Current version\: (.+)/ && print $1')
-          WA_JS_URL=$(cat wa-logs.txt | perl -n -e'/Found source JS URL\: (.+)/ && print $1')
+          set -euo pipefail
+          
+          yarn --cwd proto-extract start > wa-logs.txt 2>&1
+          
+          # Validate log file exists and has content
+          if [[ ! -s wa-logs.txt ]]; then
+            echo "Error: wa-logs.txt is empty or missing"
+            exit 1
+          fi
+          
+          # Extract version with validation
+          WA_VERSION=$(grep -oP 'Current version\: \K[^\s]+' wa-logs.txt || echo "")
+          if [[ -z "$WA_VERSION" ]]; then
+            echo "Error: Could not extract WA version from logs"
+            cat wa-logs.txt
+            exit 1
+          fi
+          
+          # Extract JS URL with validation
+          WA_JS_URL=$(grep -oP 'Found source JS URL\: \K[^\s]+' wa-logs.txt || echo "")
+          if [[ -z "$WA_JS_URL" ]]; then
+            echo "Error: Could not extract WA JS URL from logs"
+            cat wa-logs.txt
+            exit 1
+          fi
+          
+          echo "Successfully extracted:"
+          echo "  Version: $WA_VERSION"
+          echo "  JS URL: $WA_JS_URL"
+          
           echo "wa_version=$WA_VERSION" >> $GITHUB_OUTPUT
           echo "wa_js_url=$WA_JS_URL" >> $GITHUB_OUTPUT
 
-      - name: GenerateStatics
+      - name: Generate protobuf statics
         run: yarn gen:protobuf
 
-      - name: Update baileys-version.json
+      - name: Update baileys version file
         run: |
-          WA_VERSION="${{steps.wa_proto_info.outputs.wa_version}}"
-          WA_NUMBERS=$(echo $WA_VERSION | sed "s/\./, /g")
-          echo -e "{\n\t\"version\": [$WA_NUMBERS]\n}" > src/Defaults/baileys-version.json
+          set -euo pipefail
+          
+          WA_VERSION="${{ steps.wa_proto_info.outputs.wa_version }}"
+          
+          # Validate version format (should be x.y.z)
+          if [[ ! "$WA_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Invalid version format: $WA_VERSION"
+            exit 1
+          fi
+          
+          # Convert version to array format
+          WA_NUMBERS=$(echo "$WA_VERSION" | sed 's/\./, /g')
+          
+          # Create version file with proper formatting
+          cat > src/Defaults/baileys-version.json << EOF
+          {
+          	"version": [$WA_NUMBERS]
+          }
+          EOF
+          
+          echo "Updated baileys-version.json with version: [$WA_NUMBERS]"
 
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v5
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No changes detected"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Changes detected:"
+            git diff --name-only
+          fi
+
+      - name: Create pull request
+        if: steps.changes.outputs.has_changes == 'true'
+        uses: peter-evans/create-pull-request@v6
         with:
-          commit-message: "chore: updated proto/version to v${{steps.wa_proto_info.outputs.wa_version}}"
-          title: "Whatsapp v${{steps.wa_proto_info.outputs.wa_version}} proto/version change"
-          branch: "update-proto/stable"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update proto/version to v${{ steps.wa_proto_info.outputs.wa_version }}"
+          title: "WhatsApp v${{ steps.wa_proto_info.outputs.wa_version }} proto/version update"
+          branch: "update-proto/v${{ steps.wa_proto_info.outputs.wa_version }}"
           delete-branch: true
-          labels: "update-proto"
-          body: "Automated changes\nFound source JS URL: ${{steps.wa_proto_info.outputs.wa_js_url}}\nCurrent version: v${{steps.wa_proto_info.outputs.wa_version}}"
+          labels: |
+            update-proto
+            automated
+          body: |
+            ## Automated WAProto Update
+            
+            **Version:** v${{ steps.wa_proto_info.outputs.wa_version }}
+            **Source JS URL:** ${{ steps.wa_proto_info.outputs.wa_js_url }}
+            
+            ### Changes
+            - Updated WAProto definitions
+            - Updated baileys-version.json
+            
+            ---
+            *This PR was automatically created by the Update WAProto workflow*
           add-paths: |
             WAProto/*
             src/Defaults/baileys-version.json
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f wa-logs.txt
+
+      - name: Workflow summary
+        if: always()
+        run: |
+          if [[ "${{ steps.changes.outputs.has_changes }}" == "true" ]]; then
+            echo "Created PR for WAProto v${{ steps.wa_proto_info.outputs.wa_version }}"
+          else
+            echo "WAProto is up to date"
+          fi
