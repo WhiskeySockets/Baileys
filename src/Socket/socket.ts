@@ -345,7 +345,6 @@ export const makeSocket = (config: SocketConfig) => {
 		clearTimeout(qrTimer)
 
 		ws.removeAllListeners('close')
-		ws.removeAllListeners('error')
 		ws.removeAllListeners('open')
 		ws.removeAllListeners('message')
 

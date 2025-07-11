@@ -94,6 +94,7 @@ export type ChatModification =
 	  }
 	| {
 			clear: boolean
+			lastMessages: LastMessageList
 	  }
 	| {
 			deleteForMe: { deleteMedia: boolean; key: WAMessageKey; timestamp: number }
@@ -109,6 +110,7 @@ export type ChatModification =
 			lastMessages: LastMessageList
 	  }
 	| { delete: true; lastMessages: LastMessageList }
+	| { contact: proto.SyncActionValue.IContactAction | null }
 	// Label
 	| { addLabel: LabelActionBody }
 	// Label assosiation

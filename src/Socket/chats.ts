@@ -257,7 +257,11 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	/** update the profile picture for yourself or a group */
-	const updateProfilePicture = async (jid: string, content: WAMediaUpload) => {
+	const updateProfilePicture = async (
+		jid: string,
+		content: WAMediaUpload,
+		dimensions?: { width: number; height: number }
+	) => {
 		let targetJid
 		if (!jid) {
 			throw new Boom(
@@ -269,7 +273,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			targetJid = jidNormalizedUser(jid) // in case it is someone other than us
 		}
 
-		const { img } = await generateProfilePicture(content)
+		const { img } = await generateProfilePicture(content, dimensions)
 		await query({
 			tag: 'iq',
 			attrs: {
@@ -855,6 +859,30 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	/**
+	 * Add or Edit Contact
+	 */
+	const addOrEditContact = (jid: string, contact: proto.SyncActionValue.IContactAction) => {
+		return chatModify(
+			{
+				contact
+			},
+			jid
+		)
+	}
+
+	/**
+	 * Remove Contact
+	 */
+	const removeContact = (jid: string) => {
+		return chatModify(
+			{
+				contact: null
+			},
+			jid
+		)
+	}
+
+	/**
 	 * Adds label
 	 */
 	const addLabel = (jid: string, labels: LabelActionBody) => {
@@ -1083,6 +1111,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		resyncAppState,
 		chatModify,
 		cleanDirtyBits,
+		addOrEditContact,
+		removeContact,
 		addLabel,
 		addChatLabel,
 		removeChatLabel,

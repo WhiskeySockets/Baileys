@@ -443,3 +443,7 @@ export function bytesToCrockford(buffer: Buffer): string {
 
 	return crockford.join('')
 }
+
+export function encodeNewsletterMessage(message: proto.IMessage): Uint8Array {
+	return proto.Message.encode(message).finish()
+}

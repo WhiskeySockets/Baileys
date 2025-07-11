@@ -46,9 +46,6 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 
 				const msgs = chat.messages || []
 				delete chat.messages
-				delete chat.archived
-				delete chat.muteEndTime
-				delete chat.pinned
 
 				for (const item of msgs) {
 					const message = item.message!
@@ -73,10 +70,6 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 							verifiedName: message.messageStubParameters?.[0]
 						})
 					}
-				}
-
-				if (isJidUser(chat.id) && chat.readOnly && chat.archived) {
-					delete chat.readOnly
 				}
 
 				chats.push({ ...chat })
