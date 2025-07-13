@@ -584,7 +584,9 @@ export const chatModificationToAppPatch = (mod: ChatModification, jid: string) =
 	} else if ('clear' in mod) {
 		patch = {
 			syncAction: {
-				clearChatAction: {} // add message range later
+				clearChatAction: {
+					messageRange: getMessageRange(mod.lastMessages)
+				}
 			},
 			index: ['clearChat', jid, '1' /*the option here is 0 when keep starred messages is enabled*/, '0'],
 			type: 'regular_high',
@@ -602,6 +604,16 @@ export const chatModificationToAppPatch = (mod: ChatModification, jid: string) =
 			type: 'regular_low',
 			apiVersion: 5,
 			operation: OP.SET
+		}
+	} else if ('contact' in mod) {
+		patch = {
+			syncAction: {
+				contactAction: mod.contact || {}
+			},
+			index: ['contact', jid],
+			type: 'critical_unblock_low',
+			apiVersion: 2,
+			operation: mod.contact ? OP.SET : OP.REMOVE
 		}
 	} else if ('star' in mod) {
 		const key = mod.star.messages[0]

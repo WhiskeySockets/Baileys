@@ -32,22 +32,12 @@ import { ILogger } from './logger'
 const getTmpFilesDirectory = () => tmpdir()
 
 const getImageProcessingLibrary = async () => {
-	const [_jimp, sharp] = await Promise.all([
-		(async () => {
-			const jimp = await import('jimp').catch(() => {})
-			return jimp
-		})(),
-		(async () => {
-			const sharp = await import('sharp').catch(() => {})
-			return sharp
-		})()
-	])
+	const [jimp, sharp] = await Promise.all([import('jimp').catch(() => {}), import('sharp').catch(() => {})])
 
 	if (sharp) {
 		return { sharp }
 	}
 
-	const jimp = _jimp?.default || _jimp
 	if (jimp) {
 		return { jimp }
 	}
@@ -58,6 +48,47 @@ const getImageProcessingLibrary = async () => {
 export const hkdfInfoKey = (type: MediaType) => {
 	const hkdfInfo = MEDIA_HKDF_KEY_MAPPING[type]
 	return `WhatsApp ${hkdfInfo} Keys`
+}
+
+export const getRawMediaUploadData = async (media: WAMediaUpload, mediaType: MediaType, logger?: ILogger) => {
+	const { stream } = await getStream(media)
+	logger?.debug('got stream for raw upload')
+
+	const hasher = Crypto.createHash('sha256')
+	const filePath = join(tmpdir(), mediaType + generateMessageIDV2())
+	const fileWriteStream = createWriteStream(filePath)
+
+	let fileLength = 0
+	try {
+		for await (const data of stream) {
+			fileLength += data.length
+			hasher.update(data)
+			if (!fileWriteStream.write(data)) {
+				await once(fileWriteStream, 'drain')
+			}
+		}
+
+		fileWriteStream.end()
+		await once(fileWriteStream, 'finish')
+		stream.destroy()
+		const fileSha256 = hasher.digest()
+		logger?.debug('hashed data for raw upload')
+		return {
+			filePath: filePath,
+			fileSha256,
+			fileLength
+		}
+	} catch (error) {
+		fileWriteStream.destroy()
+		stream.destroy()
+		try {
+			await fs.unlink(filePath)
+		} catch {
+			//
+		}
+
+		throw error
+	}
 }
 
 /** generates all the keys required to encrypt/decrypt & sign a media message */
@@ -118,15 +149,15 @@ export const extractImageThumb = async (bufferOrFilePath: Readable | Buffer | st
 				height: dimensions.height
 			}
 		}
-	} else if ('jimp' in lib && typeof lib.jimp?.read === 'function') {
-		const { read, MIME_JPEG, RESIZE_BILINEAR, AUTO } = lib.jimp
-
-		const jimp = await read(bufferOrFilePath as string)
+	} else if ('jimp' in lib && typeof lib.jimp?.Jimp === 'object') {
+		const jimp = await lib.jimp.default.Jimp.read(bufferOrFilePath)
 		const dimensions = {
-			width: jimp.getWidth(),
-			height: jimp.getHeight()
+			width: jimp.width,
+			height: jimp.height
 		}
-		const buffer = await jimp.quality(50).resize(width, AUTO, RESIZE_BILINEAR).getBufferAsync(MIME_JPEG)
+		const buffer = await jimp
+			.resize({ w: width, mode: lib.jimp.ResizeStrategy.BILINEAR })
+			.getBuffer('image/jpeg', { quality: 50 })
 		return {
 			buffer,
 			original: dimensions
@@ -139,33 +170,39 @@ export const extractImageThumb = async (bufferOrFilePath: Readable | Buffer | st
 export const encodeBase64EncodedStringForUpload = (b64: string) =>
 	encodeURIComponent(b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/\=+$/, ''))
 
-export const generateProfilePicture = async (mediaUpload: WAMediaUpload) => {
-	let bufferOrFilePath: Buffer | string
+export const generateProfilePicture = async (
+	mediaUpload: WAMediaUpload,
+	dimensions?: { width: number; height: number }
+) => {
+	let buffer: Buffer
+
+	const { width: w = 640, height: h = 640 } = dimensions || {}
+
 	if (Buffer.isBuffer(mediaUpload)) {
-		bufferOrFilePath = mediaUpload
-	} else if ('url' in mediaUpload) {
-		bufferOrFilePath = mediaUpload.url.toString()
+		buffer = mediaUpload
 	} else {
-		bufferOrFilePath = await toBuffer(mediaUpload.stream)
+		// Use getStream to handle all WAMediaUpload types (Buffer, Stream, URL)
+		const { stream } = await getStream(mediaUpload)
+		// Convert the resulting stream to a buffer
+		buffer = await toBuffer(stream)
 	}
 
 	const lib = await getImageProcessingLibrary()
 	let img: Promise<Buffer>
 	if ('sharp' in lib && typeof lib.sharp?.default === 'function') {
 		img = lib.sharp
-			.default(bufferOrFilePath)
-			.resize(640, 640)
+			.default(buffer)
+			.resize(w, h)
 			.jpeg({
 				quality: 50
 			})
 			.toBuffer()
-	} else if ('jimp' in lib && typeof lib.jimp?.read === 'function') {
-		const { read, MIME_JPEG, RESIZE_BILINEAR } = lib.jimp
-		const jimp = await read(bufferOrFilePath as string)
-		const min = Math.min(jimp.getWidth(), jimp.getHeight())
-		const cropped = jimp.crop(0, 0, min, min)
+	} else if ('jimp' in lib && typeof lib.jimp?.Jimp === 'object') {
+		const jimp = await lib.jimp.default.Jimp.read(buffer)
+		const min = Math.min(jimp.width, jimp.height)
+		const cropped = jimp.crop({ x: 0, y: 0, w: min, h: min })
 
-		img = cropped.quality(50).resize(640, 640, RESIZE_BILINEAR).getBufferAsync(MIME_JPEG)
+		img = cropped.resize({ w, h, mode: lib.jimp.ResizeStrategy.BILINEAR }).getBuffer('image/jpeg', { quality: 50 })
 	} else {
 		throw new Boom('No image processing library available')
 	}
@@ -269,7 +306,14 @@ export const getStream = async (item: WAMediaUpload, opts?: AxiosRequestConfig) 
 		return { stream: item.stream, type: 'readable' } as const
 	}
 
-	if (item.url.toString().startsWith('http://') || item.url.toString().startsWith('https://')) {
+	const urlStr = item.url.toString()
+
+	if (urlStr.startsWith('data:')) {
+		const buffer = Buffer.from(urlStr.split(',')[1], 'base64')
+		return { stream: toReadable(buffer), type: 'buffer' } as const
+	}
+
+	if (urlStr.startsWith('http://') || urlStr.startsWith('https://')) {
 		return { stream: await getHttpStream(item.url, opts), type: 'remote' } as const
 	}
 
@@ -448,7 +492,12 @@ export const downloadContentFromMessage = async (
 	type: MediaType,
 	opts: MediaDownloadOptions = {}
 ) => {
-	const downloadUrl = url || getUrlFromDirectPath(directPath!)
+	const isValidMediaUrl = url?.startsWith('https://mmg.whatsapp.net/')
+	const downloadUrl = isValidMediaUrl ? url : getUrlFromDirectPath(directPath!)
+	if (!downloadUrl) {
+		throw new Boom('No valid media URL or directPath present in message', { statusCode: 400 })
+	}
+
 	const keys = await getMediaKeys(mediaKey, type)
 
 	return downloadEncryptedContent(downloadUrl, keys, opts)
