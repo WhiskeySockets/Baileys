@@ -1,0 +1,32 @@
+const {
+  default: makeWASocket,
+  useMultiFileAuthState,
+  DisconnectReason
+} = require('@whiskeysockets/baileys');
+
+const { Boom } = require('@hapi/boom');
+
+async function startBot() {
+  const { state, saveCreds } = await useMultiFileAuthState('./devxcyber');
+
+  const sock = makeWASocket({
+    auth: state,
+    printQRInTerminal: true
+  });
+
+  sock.ev.on('creds.update', saveCreds);
+
+  sock.ev.on('messages.upsert', async ({ messages, type }) => {
+    const msg = messages[0];
+    if (!msg.message) return;
+
+    const from = msg.key.remoteJid;
+    const text = msg.message.conversation || msg.message.extendedTextMessage?.text;
+
+    if (text?.toLowerCase() === 'hi') {
+      await sock.sendMessage(from, { text: 'Hello! 👋 This is your bot.' });
+    }
+  });
+}
+
+startBot();
