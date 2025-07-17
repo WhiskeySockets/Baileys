@@ -3,7 +3,8 @@ import { makeLibSignalRepository } from '../Signal/libsignal'
 import type { AuthenticationState, MediaType, SocketConfig, WAVersion } from '../Types'
 import { Browsers } from '../Utils'
 import logger from '../Utils/logger'
-import { version } from './baileys-version.json'
+import versionJson from './baileys-version.json'
+const version = versionJson.version
 
 export const UNAUTHORIZED_CODES = [401, 403, 419]
 
@@ -33,37 +34,39 @@ export const PROCESSABLE_HISTORY_TYPES = [
 	proto.Message.HistorySyncNotification.HistorySyncType.ON_DEMAND
 ]
 
-export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
-	version: version as WAVersion,
-	browser: Browsers.ubuntu('Chrome'),
-	waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
-	connectTimeoutMs: 20_000,
-	keepAliveIntervalMs: 30_000,
-	logger: logger.child({ class: 'baileys' }),
-	emitOwnEvents: true,
-	defaultQueryTimeoutMs: 60_000,
-	customUploadHosts: [],
-	retryRequestDelayMs: 250,
-	maxMsgRetryCount: 5,
-	fireInitQueries: true,
-	auth: undefined as unknown as AuthenticationState,
-	markOnlineOnConnect: true,
-	syncFullHistory: false,
-	patchMessageBeforeSending: msg => msg,
-	shouldSyncHistoryMessage: () => true,
-	shouldIgnoreJid: () => false,
-	linkPreviewImageThumbnailWidth: 192,
-	transactionOpts: { maxCommitRetries: 10, delayBetweenTriesMs: 3000 },
-	generateHighQualityLinkPreview: false,
-	options: {},
-	appStateMacVerification: {
-		patch: false,
-		snapshot: false
-	},
-	countryCode: 'US',
-	getMessage: async () => undefined,
-	cachedGroupMetadata: async () => undefined,
-	makeSignalRepository: makeLibSignalRepository
+export function getDefaultConnectionConfig(): SocketConfig {
+	return {
+		version: version as WAVersion,
+		browser: Browsers.ubuntu('Chrome'),
+		waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
+		connectTimeoutMs: 20_000,
+		keepAliveIntervalMs: 30_000,
+		logger: logger.child({ class: 'baileys' }),
+		emitOwnEvents: true,
+		defaultQueryTimeoutMs: 60_000,
+		customUploadHosts: [],
+		retryRequestDelayMs: 250,
+		maxMsgRetryCount: 5,
+		fireInitQueries: true,
+		auth: undefined as unknown as AuthenticationState,
+		markOnlineOnConnect: true,
+		syncFullHistory: false,
+		patchMessageBeforeSending: msg => msg,
+		shouldSyncHistoryMessage: () => true,
+		shouldIgnoreJid: () => false,
+		linkPreviewImageThumbnailWidth: 192,
+		transactionOpts: { maxCommitRetries: 10, delayBetweenTriesMs: 3000 },
+		generateHighQualityLinkPreview: false,
+		options: {},
+		appStateMacVerification: {
+			patch: false,
+			snapshot: false
+		},
+		countryCode: 'US',
+		getMessage: async () => undefined,
+		cachedGroupMetadata: async () => undefined,
+		makeSignalRepository: makeLibSignalRepository
+	}
 }
 
 export const MEDIA_PATH_MAP: { [T in MediaType]?: string } = {
