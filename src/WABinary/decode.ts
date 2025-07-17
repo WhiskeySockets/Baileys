@@ -57,7 +57,7 @@ export const decodeDecompressedBinaryNode = (
 		let val = 0
 		for (let i = 0; i < n; i++) {
 			const shift = littleEndian ? i : n - 1 - i
-			val |= next() << (shift * 8)
+			val |= next()! << (shift * 8)
 		}
 
 		return val
@@ -65,7 +65,7 @@ export const decodeDecompressedBinaryNode = (
 
 	const readInt20 = () => {
 		checkEOS(3)
-		return ((next() & 15) << 16) + (next() << 8) + next()
+		return ((next()! & 15) << 16) + (next()! << 8) + next()!
 	}
 
 	const unpackHex = (value: number) => {
@@ -104,11 +104,12 @@ export const decodeDecompressedBinaryNode = (
 	}
 
 	const readPacked8 = (tag: number) => {
-		const startByte = readByte()
+		const startByte = readByte()!
 		let value = ''
 
 		for (let i = 0; i < (startByte & 127); i++) {
-			const curByte = readByte()
+			const curByte = readByte()!
+
 			value += String.fromCharCode(unpackByte(tag, (curByte & 0xf0) >> 4))
 			value += String.fromCharCode(unpackByte(tag, curByte & 0x0f))
 		}
@@ -138,8 +139,8 @@ export const decodeDecompressedBinaryNode = (
 	}
 
 	const readJidPair = () => {
-		const i = readString(readByte())
-		const j = readString(readByte())
+		const i = readString(readByte()!)
+		const j = readString(readByte()!)
 		if (j) {
 			return (i || '') + '@' + j
 		}
@@ -152,7 +153,7 @@ export const decodeDecompressedBinaryNode = (
 		const domainType = Number(rawDomainType)
 
 		const device = readByte()
-		const user = readString(readByte())
+		const user = readString(readByte()!)
 
 		return jidEncode(user, domainType === 0 || domainType === 128 ? 's.whatsapp.net' : 'lid', device)
 	}
@@ -167,11 +168,11 @@ export const decodeDecompressedBinaryNode = (
 			case TAGS.DICTIONARY_1:
 			case TAGS.DICTIONARY_2:
 			case TAGS.DICTIONARY_3:
-				return getTokenDouble(tag - TAGS.DICTIONARY_0, readByte())
+				return getTokenDouble(tag - TAGS.DICTIONARY_0, readByte()!)
 			case TAGS.LIST_EMPTY:
 				return ''
 			case TAGS.BINARY_8:
-				return readStringFromChars(readByte())
+				return readStringFromChars(readByte()!)
 			case TAGS.BINARY_20:
 				return readStringFromChars(readInt20())
 			case TAGS.BINARY_32:
@@ -190,7 +191,7 @@ export const decodeDecompressedBinaryNode = (
 
 	const readList = (tag: number) => {
 		const items: BinaryNode[] = []
-		const size = readListSize(tag)
+		const size = readListSize(tag)!
 		for (let i = 0; i < size; i++) {
 			items.push(decodeDecompressedBinaryNode(buffer, opts, indexRef))
 		}
@@ -212,8 +213,8 @@ export const decodeDecompressedBinaryNode = (
 		return value
 	}
 
-	const listSize = readListSize(readByte())
-	const header = readString(readByte())
+	const listSize = readListSize(readByte()!)
+	const header = readString(readByte()!)
 	if (!listSize || !header.length) {
 		throw new Error('invalid node')
 	}
@@ -227,21 +228,21 @@ export const decodeDecompressedBinaryNode = (
 	// read the attributes in
 	const attributesLength = (listSize - 1) >> 1
 	for (let i = 0; i < attributesLength; i++) {
-		const key = readString(readByte())
-		const value = readString(readByte())
+		const key = readString(readByte()!)
+		const value = readString(readByte()!)
 
 		attrs[key] = value
 	}
 
 	if (listSize % 2 === 0) {
-		const tag = readByte()
+		const tag = readByte()!
 		if (isListTag(tag)) {
 			data = readList(tag)
 		} else {
 			let decoded: Buffer | string
 			switch (tag) {
 				case TAGS.BINARY_8:
-					decoded = readBytes(readByte())
+					decoded = readBytes(readByte()!)
 					break
 				case TAGS.BINARY_20:
 					decoded = readBytes(readInt20())

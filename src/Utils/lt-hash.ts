@@ -5,56 +5,61 @@ import { hkdf } from './crypto'
  * over a series of mutations. You can add/remove mutations and it'll return a hash equal to
  * if the same series of mutations was made sequentially.
  */
-
 const o = 128
 
-class d {
+class LTHash {
 	salt: string
 
 	constructor(e: string) {
 		this.salt = e
 	}
-	add(e, t) {
-		var r = this
+
+	async add(e: ArrayBuffer, t: ArrayBuffer[]): Promise<ArrayBuffer> {
 		for (const item of t) {
-			e = r._addSingle(e, item)
+			e = await this._addSingle(e, item)
 		}
 
 		return e
 	}
-	subtract(e, t) {
-		var r = this
+
+	async subtract(e: ArrayBuffer, t: ArrayBuffer[]): Promise<ArrayBuffer> {
 		for (const item of t) {
-			e = r._subtractSingle(e, item)
+			e = await this._subtractSingle(e, item)
 		}
 
 		return e
 	}
-	subtractThenAdd(e, t, r) {
-		var n = this
-		return n.add(n.subtract(e, r), t)
-	}
-	async _addSingle(e, t) {
-		var r = this
-		const n = new Uint8Array(await hkdf(Buffer.from(t), o, { info: r.salt })).buffer
-		return r.performPointwiseWithOverflow(await e, n, (e, t) => e + t)
-	}
-	async _subtractSingle(e, t) {
-		var r = this
 
-		const n = new Uint8Array(await hkdf(Buffer.from(t), o, { info: r.salt })).buffer
-		return r.performPointwiseWithOverflow(await e, n, (e, t) => e - t)
+	async subtractThenAdd(e: ArrayBuffer, addList: ArrayBuffer[], subtractList: ArrayBuffer[]): Promise<ArrayBuffer> {
+		const subtracted = await this.subtract(e, subtractList)
+		return this.add(subtracted, addList)
 	}
-	performPointwiseWithOverflow(e, t, r) {
-		const n = new DataView(e),
-			i = new DataView(t),
-			a = new ArrayBuffer(n.byteLength),
-			s = new DataView(a)
-		for (let e = 0; e < n.byteLength; e += 2) {
-			s.setUint16(e, r(n.getUint16(e, !0), i.getUint16(e, !0)), !0)
+
+	private async _addSingle(e: ArrayBuffer, t: ArrayBuffer): Promise<ArrayBuffer> {
+		const derived = new Uint8Array(await hkdf(Buffer.from(t), o, { info: this.salt })).buffer
+		return this.performPointwiseWithOverflow(e, derived, (a, b) => a + b)
+	}
+
+	private async _subtractSingle(e: ArrayBuffer, t: ArrayBuffer): Promise<ArrayBuffer> {
+		const derived = new Uint8Array(await hkdf(Buffer.from(t), o, { info: this.salt })).buffer
+		return this.performPointwiseWithOverflow(e, derived, (a, b) => a - b)
+	}
+
+	private performPointwiseWithOverflow(
+		e: ArrayBuffer,
+		t: ArrayBuffer,
+		op: (a: number, b: number) => number
+	): ArrayBuffer {
+		const n = new DataView(e)
+		const i = new DataView(t)
+		const out = new ArrayBuffer(n.byteLength)
+		const s = new DataView(out)
+
+		for (let offset = 0; offset < n.byteLength; offset += 2) {
+			s.setUint16(offset, op(n.getUint16(offset, true), i.getUint16(offset, true)), true)
 		}
 
-		return a
+		return out
 	}
 }
-export const LT_HASH_ANTI_TAMPERING = new d('WhatsApp Patch Integrity')
+export const LT_HASH_ANTI_TAMPERING = new LTHash('WhatsApp Patch Integrity')

@@ -1,3 +1,4 @@
+/* @ts-ignore */
 import { decrypt, encrypt } from 'libsignal/src/crypto'
 import queueJob from './queue-job'
 import { SenderKeyMessage } from './sender-key-message'

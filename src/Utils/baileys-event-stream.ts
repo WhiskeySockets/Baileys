@@ -18,7 +18,7 @@ export const captureEventStream = (ev: BaileysEventEmitter, filename: string) =>
 	// monkey patch eventemitter to capture all events
 	ev.emit = function (...args: any[]) {
 		const content = JSON.stringify({ timestamp: Date.now(), event: args[0], data: args[1] }) + '\n'
-		const result = oldEmit.apply(ev, args)
+		const result = oldEmit.apply(ev, args as any)
 
 		writeMutex.mutex(async () => {
 			await writeFile(filename, content, { flag: 'a' })

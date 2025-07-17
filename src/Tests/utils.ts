@@ -1,4 +1,3 @@
-import { SignalDataTypeMap, SignalKeyStore } from '../Types'
 import { jidEncode } from '../WABinary'
 
 export function randomJid() {

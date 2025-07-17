@@ -31,7 +31,7 @@ export const jidDecode = (jid: string | undefined): FullJid | undefined => {
 	const userCombined = jid!.slice(0, sepIdx)
 
 	const [userAgent, device] = userCombined.split(':')
-	const user = userAgent.split('_')[0]
+	const user = userAgent!.split('_')[0]!
 
 	return {
 		server: server as JidServer,
@@ -61,7 +61,7 @@ export const isJidNewsletter = (jid: string | undefined) => jid?.endsWith('@news
 
 const botRegexp = /^1313555\d{4}$|^131655500\d{2}$/
 
-export const isJidBot = (jid: string | undefined) => jid && botRegexp.test(jid.split('@')[0]) && jid.endsWith('@c.us')
+export const isJidBot = (jid: string | undefined) => jid && botRegexp.test(jid.split('@')[0]!) && jid.endsWith('@c.us')
 
 export const jidNormalizedUser = (jid: string | undefined) => {
 	const result = jidDecode(jid)
