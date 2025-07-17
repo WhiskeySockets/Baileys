@@ -1,6 +1,7 @@
+/* @ts-ignore */
 import * as libsignal from 'libsignal'
-import { SignalAuthState } from '../Types'
-import { SignalRepository } from '../Types/Signal'
+import type { SignalAuthState } from '../Types'
+import type { SignalRepository } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import { jidDecode } from '../WABinary'
 import type { SenderKeyStore } from './Group/group_cipher'
@@ -111,7 +112,8 @@ function signalStorage({ creds, keys }: SignalAuthState): SenderKeyStore & Recor
 				return libsignal.SessionRecord.deserialize(sess)
 			}
 		},
-		storeSession: async (id: string, session: libsignal.SessionRecord) => {
+		// TODO: Replace with libsignal.SessionRecord when type exports are added to libsignal
+		storeSession: async (id: string, session: any) => {
 			await keys.set({ session: { [id]: session.serialize() } })
 		},
 		isTrustedIdentity: () => {

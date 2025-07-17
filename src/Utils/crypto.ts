@@ -1,7 +1,8 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto'
+/* @ts-ignore */
 import * as libsignal from 'libsignal'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
-import { KeyPair } from '../Types'
+import type { KeyPair } from '../Types'
 
 // insure browser & node compatibility
 const { subtle } = globalThis.crypto

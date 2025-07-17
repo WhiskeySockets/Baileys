@@ -1,4 +1,4 @@
-import { EventInputType } from './constants'
+import type { EventInputType } from './constants'
 
 export class BinaryInfo {
 	protocolVersion = 5
