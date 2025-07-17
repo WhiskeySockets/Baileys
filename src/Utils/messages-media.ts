@@ -139,7 +139,7 @@ export const extractImageThumb = async (bufferOrFilePath: Readable | Buffer | st
 	}
 
 	const lib = await getImageProcessingLibrary()
-	if ('sharp' in lib && typeof lib.sharp?.default === 'function') {
+	if ('sharp' in lib && lib.sharp) {
 		const img = lib.sharp.default(bufferOrFilePath)
 		const dimensions = await img.metadata()
 
@@ -151,8 +151,9 @@ export const extractImageThumb = async (bufferOrFilePath: Readable | Buffer | st
 				height: dimensions.height
 			}
 		}
-	} else if ('jimp' in lib && typeof lib.jimp?.Jimp === 'object') {
-		const jimp = await lib.jimp.default.Jimp.read(bufferOrFilePath)
+	} else if ('jimp' in lib && lib.jimp) {
+		const Jimp = lib.jimp.Jimp
+		const jimp = await Jimp.read(bufferOrFilePath)
 		const dimensions = {
 			width: jimp.width,
 			height: jimp.height
@@ -191,7 +192,7 @@ export const generateProfilePicture = async (
 
 	const lib = await getImageProcessingLibrary()
 	let img: Promise<Buffer>
-	if ('sharp' in lib && typeof lib.sharp?.default === 'function') {
+	if ('sharp' in lib && lib.sharp) {
 		img = lib.sharp
 			.default(buffer)
 			.resize(w, h)
@@ -199,8 +200,9 @@ export const generateProfilePicture = async (
 				quality: 50
 			})
 			.toBuffer()
-	} else if ('jimp' in lib && typeof lib.jimp?.Jimp === 'object') {
-		const jimp = await lib.jimp.default.Jimp.read(buffer)
+	} else if ('jimp' in lib && lib.jimp) {
+		const Jimp = lib.jimp.Jimp
+		const jimp = await Jimp.read(buffer)
 		const min = Math.min(jimp.width, jimp.height)
 		const cropped = jimp.crop({ x: 0, y: 0, w: min, h: min })
 
@@ -311,7 +313,7 @@ export const getStream = async (item: WAMediaUpload, opts?: AxiosRequestConfig) 
 	const urlStr = item.url.toString()
 
 	if (urlStr.startsWith('data:')) {
-		const buffer = Buffer.from(urlStr.split(',')[1], 'base64')
+		const buffer = Buffer.from(urlStr.split(',')[1] ?? '', 'base64')
 		return { stream: toReadable(buffer), type: 'buffer' } as const
 	}
 

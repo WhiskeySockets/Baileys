@@ -1101,13 +1101,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		logger.info({ from, child }, 'got newsletter notification')
 
+		if (!child) return
 		switch (child.tag) {
 			case 'reaction':
 				const reactionUpdate = {
-					id: from,
-					server_id: child.attrs.message_id,
+					id: from ?? '',
+					server_id: child.attrs.message_id ?? '',
 					reaction: {
-						code: getBinaryNodeChildString(child, 'reaction'),
+						code: getBinaryNodeChildString(child, 'reaction') ?? '',
 						count: 1
 					}
 				}
@@ -1116,8 +1117,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 			case 'view':
 				const viewUpdate = {
-					id: from,
-					server_id: child.attrs.message_id,
+					id: from ?? '',
+					server_id: child.attrs.message_id ?? '',
 					count: parseInt(child.content?.toString() || '0', 10)
 				}
 				ev.emit('newsletter.view', viewUpdate)
@@ -1125,11 +1126,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 			case 'participant':
 				const participantUpdate = {
-					id: from,
-					author,
-					user: child.attrs.jid,
-					action: child.attrs.action,
-					new_role: child.attrs.role
+					id: from ?? '',
+					author: author ?? '',
+					user: child.attrs.jid ?? '',
+					action: child.attrs.action ?? '',
+					new_role: child.attrs.role ?? ''
 				}
 				ev.emit('newsletter-participants.update', participantUpdate)
 				break
@@ -1145,7 +1146,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					if (descriptionNode?.content) update.description = descriptionNode.content.toString()
 
 					ev.emit('newsletter-settings.update', {
-						id: from,
+						id: from ?? '',
 						update
 					})
 				}
@@ -1163,12 +1164,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						const messageProto = proto.Message.decode(contentBuf)
 						const fullMessage = proto.WebMessageInfo.fromObject({
 							key: {
-								remoteJid: from,
-								id: child.attrs.message_id || child.attrs.server_id,
+								remoteJid: from ?? '',
+								id: child?.attrs.message_id ?? child?.attrs.server_id ?? '',
 								fromMe: false
 							},
 							message: messageProto,
-							messageTimestamp: +child.attrs.t
+							messageTimestamp: +(child?.attrs.t ?? 0)
 						})
 						await upsertMessage(fullMessage, 'append')
 						logger.info('Processed plaintext newsletter message')
@@ -1228,9 +1229,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				for (const update of updates) {
 					if (update.jid && update.user) {
 						ev.emit('newsletter-participants.update', {
-							id: update.jid,
-							author: node.attrs.from,
-							user: update.user,
+							id: update.jid ?? '',
+							author: node.attrs.from ?? '',
+							user: update.user ?? '',
 							new_role: 'ADMIN',
 							action: 'promote'
 						})

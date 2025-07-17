@@ -30,7 +30,7 @@ import {
 	generateThumbnail,
 	getAudioDuration,
 	getAudioWaveform,
-    getRawMediaUploadData,
+	getRawMediaUploadData,
 	type MediaDownloadOptions
 } from './messages-media'
 
@@ -177,7 +177,7 @@ export const prepareWAMessageMedia = async (
 		await fs.unlink(filePath)
 
 		const obj = WAProto.Message.fromObject({
-			[`${mediaType}Message`]: MessageTypeProto[mediaType].fromObject({
+			[`${mediaType}Message`]: MessageTypeProto[mediaType as keyof typeof MessageTypeProto].fromObject({
 				url: mediaUrl,
 				directPath,
 				fileSha256,
