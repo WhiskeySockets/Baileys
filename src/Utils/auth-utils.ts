@@ -94,53 +94,85 @@ export function makeCacheableSignalKeyStore(
 	}
 }
 
+// Module-level specialized mutexes for pre-key operations
+const preKeyMutex = new Mutex()
+const signedPreKeyMutex = new Mutex()
+
 /**
- * Handles pre-key operations for transactions
+ * Get the appropriate mutex for the key type
  */
-function handlePreKeyOperations(
+const getPreKeyMutex = (keyType: string): Mutex => {
+	return keyType === 'signed-pre-key' ? signedPreKeyMutex : preKeyMutex
+}
+
+/**
+ * Handles pre-key operations with mutex protection
+ */
+async function handlePreKeyOperations(
 	data: SignalDataSet,
-	key: string,
+	keyType: string,
 	transactionCache: SignalDataSet,
 	mutations: SignalDataSet,
-	logger: ILogger
-) {
-	for (const keyId in data[key]) {
-		const isDeleteOperation = data[key][keyId] === null
+	logger: ILogger,
+	isInTransaction: boolean,
+	state?: SignalKeyStore
+): Promise<void> {
+	const mutex = getPreKeyMutex(keyType)
 
-		if (isDeleteOperation) {
-			// Only allow deletion if we have the key in cache
-			if (!transactionCache[key]?.[keyId]) {
-				// Skip deletion if key doesn't exist in cache
-				logger.warn(`Attempted to delete non-existent pre-key: ${keyId}`)
-				continue
+	await mutex.runExclusive(async () => {
+		const keyData = data[keyType]
+		if (!keyData) return
+
+		// Ensure structures exist
+		transactionCache[keyType] = transactionCache[keyType] || {}
+		mutations[keyType] = mutations[keyType] || {}
+
+		// Separate deletions from updates for batch processing
+		const deletionKeys: string[] = []
+		const updateKeys: string[] = []
+
+		for (const keyId in keyData) {
+			if (keyData[keyId] === null) {
+				deletionKeys.push(keyId)
+			} else {
+				updateKeys.push(keyId)
 			}
-
-			if (!transactionCache[key]) {
-				transactionCache[key] = {}
-			}
-
-			transactionCache[key][keyId] = null
-
-			if (!mutations[key]) {
-				mutations[key] = {}
-			}
-
-			mutations[key][keyId] = null
-		} else {
-			// Normal update
-			if (!transactionCache[key]) {
-				transactionCache[key] = {}
-			}
-
-			transactionCache[key][keyId] = data[key][keyId]
-
-			if (!mutations[key]) {
-				mutations[key] = {}
-			}
-
-			mutations[key][keyId] = data[key][keyId]
 		}
-	}
+
+		// Process updates first (no validation needed)
+		for (const keyId of updateKeys) {
+			transactionCache[keyType][keyId] = keyData[keyId]
+			mutations[keyType][keyId] = keyData[keyId]
+		}
+
+		// Process deletions with validation
+		if (deletionKeys.length > 0) {
+			if (isInTransaction) {
+				// In transaction, only allow deletion if key exists in cache
+				for (const keyId of deletionKeys) {
+					if (transactionCache[keyType][keyId]) {
+						transactionCache[keyType][keyId] = null
+						mutations[keyType][keyId] = null
+					} else {
+						logger.warn(`Skipping deletion of non-existent ${keyType} in transaction: ${keyId}`)
+					}
+				}
+			} else {
+				// Outside transaction, batch validate all deletions
+				if (state) {
+					const existingKeys = await state.get(keyType as keyof SignalDataTypeMap, deletionKeys)
+					for (const keyId of deletionKeys) {
+						if (existingKeys[keyId]) {
+							transactionCache[keyType][keyId] = null
+							mutations[keyType][keyId] = null
+						} else {
+							logger.warn(`Skipping deletion of non-existent ${keyType}: ${keyId}`)
+						}
+					}
+				}
+			}
+		}
+	})
 }
 
 /**
@@ -158,23 +190,33 @@ function handleNormalKeyOperations(
 }
 
 /**
- * Processes pre-key deletions outside of transactions
+ * Process pre-key deletions with validation
  */
-async function processPreKeyDeletions(data: SignalDataSet, keyType: string, state: SignalKeyStore, logger: ILogger) {
-	for (const keyId in data[keyType]) {
-		const isDeleteOperation = data[keyType][keyId] === null
+async function processPreKeyDeletions(
+	data: SignalDataSet,
+	keyType: string,
+	state: SignalKeyStore,
+	logger: ILogger
+): Promise<void> {
+	const mutex = getPreKeyMutex(keyType)
 
-		if (isDeleteOperation) {
-			// Check if the key exists before deleting
-			const existingKeys = await state.get(keyType as keyof SignalDataTypeMap, [keyId])
-			if (!existingKeys[keyId]) {
-				// Skip deletion if key doesn't exist
-				logger.warn(`Attempted to delete non-existent pre-key: ${keyId}`)
-				delete data[keyType][keyId]
+	await mutex.runExclusive(async () => {
+		const keyData = data[keyType]
+		if (!keyData) return
+
+		// Validate deletions
+		for (const keyId in keyData) {
+			if (keyData[keyId] === null) {
+				const existingKeys = await state.get(keyType as keyof SignalDataTypeMap, [keyId])
+				if (!existingKeys[keyId]) {
+					logger.warn(`Skipping deletion of non-existent ${keyType}: ${keyId}`)
+					delete data[keyType][keyId]
+				}
 			}
 		}
-	}
+	})
 }
+
 
 /**
  * Executes a function with mutexes acquired for given key types
@@ -265,6 +307,9 @@ export const addTransactionCapability = (
 	// Mutex for each key type (session, pre-key, etc.)
 	const keyTypeMutexes = new Map<string, Mutex>()
 
+	// Per-sender-key-name mutexes for fine-grained serialization
+	const senderKeyMutexes = new Map<string, Mutex>()
+
 	// Global transaction mutex
 	const transactionMutex = new Mutex()
 
@@ -288,6 +333,23 @@ export const addTransactionCapability = (
 		return mutex
 	}
 
+	// Get or create a mutex for a specific sender key name
+	function getSenderKeyMutex(senderKeyName: string): Mutex {
+		let mutex = senderKeyMutexes.get(senderKeyName)
+		if (!mutex) {
+			mutex = new Mutex()
+			senderKeyMutexes.set(senderKeyName, mutex)
+			logger.info({ senderKeyName }, 'created new sender key mutex')
+		}
+
+		return mutex
+	}
+
+	// Sender key operations with proper mutex sequencing
+	function queueSenderKeyOperation<T>(senderKeyName: string, operation: () => Promise<T>): Promise<T> {
+		return getSenderKeyMutex(senderKeyName).runExclusive(operation)
+	}
+
 	// Check if we are currently in a transaction
 	function isInTransaction() {
 		return transactionsInProgress > 0
@@ -302,14 +364,30 @@ export const addTransactionCapability = (
 				if (idsRequiringFetch.length) {
 					dbQueriesInTransaction += 1
 
-					// Use runExclusive for cleaner mutex handling
-					await getKeyTypeMutex(type as string).runExclusive(async () => {
-						const result = await state.get(type, idsRequiringFetch)
+					// Use per-sender-key queue for sender-key operations when possible
+					if (type === 'sender-key') {
+						logger.info({ idsRequiringFetch }, 'processing sender keys in transaction')
+						// For sender keys, process each one with queued operations to maintain serialization
+						for (const senderKeyName of idsRequiringFetch) {
+							await queueSenderKeyOperation(senderKeyName, async () => {
+								logger.info({ senderKeyName }, 'fetching sender key in transaction')
+								const result = await state.get(type, [senderKeyName])
+								// Update transaction cache
+								transactionCache[type] ||= {}
+								Object.assign(transactionCache[type]!, result)
+								logger.info({ senderKeyName, hasResult: !!result[senderKeyName] }, 'sender key fetch complete')
+							})
+						}
+					} else {
+						// Use runExclusive for cleaner mutex handling
+						await getKeyTypeMutex(type as string).runExclusive(async () => {
+							const result = await state.get(type, idsRequiringFetch)
 
-						// Update transaction cache
-						transactionCache[type] ||= {}
-						Object.assign(transactionCache[type]!, result)
-					})
+							// Update transaction cache
+							transactionCache[type] ||= {}
+							Object.assign(transactionCache[type]!, result)
+						})
+					}
 				}
 
 				return ids.reduce((dict, id) => {
@@ -321,8 +399,22 @@ export const addTransactionCapability = (
 					return dict
 				}, {})
 			} else {
-				// Not in transaction, fetch directly with mutex protection
-				return await getKeyTypeMutex(type as string).runExclusive(() => state.get(type, ids))
+				// Not in transaction, fetch directly with queue protection
+				if (type === 'sender-key') {
+					// For sender keys, use individual queues to maintain per-key serialization
+					const results: { [key: string]: SignalDataTypeMap[typeof type] } = {}
+					for (const senderKeyName of ids) {
+						const result = await queueSenderKeyOperation(
+							senderKeyName,
+							async () => await state.get(type, [senderKeyName])
+						)
+						Object.assign(results, result)
+					}
+
+					return results
+				} else {
+					return await getKeyTypeMutex(type as string).runExclusive(() => state.get(type, ids))
+				}
 			}
 		},
 		set: async data => {
@@ -331,9 +423,9 @@ export const addTransactionCapability = (
 				for (const key in data) {
 					transactionCache[key] = transactionCache[key] || {}
 
-					// Special handling for pre-keys to prevent unexpected deletion
-					if (key === 'pre-key') {
-						handlePreKeyOperations(data, key, transactionCache, mutations, logger)
+					// Special handling for pre-keys and signed-pre-keys
+					if (key === 'pre-key' || key === 'signed-pre-key') {
+						await handlePreKeyOperations(data, key, transactionCache, mutations, logger, true)
 					} else {
 						// Normal handling for other key types
 						handleNormalKeyOperations(data, key, transactionCache, mutations)
@@ -341,17 +433,59 @@ export const addTransactionCapability = (
 				}
 			} else {
 				// Not in transaction, apply directly with mutex protection
-				await withMutexes(Object.keys(data), getKeyTypeMutex, async () => {
-					// Process pre-keys separately
-					for (const keyType in data) {
-						if (keyType === 'pre-key') {
-							await processPreKeyDeletions(data, keyType, state, logger)
-						}
+				const hasSenderKeys = 'sender-key' in data
+				const senderKeyNames = hasSenderKeys ? Object.keys(data['sender-key'] || {}) : []
+
+				if (hasSenderKeys) {
+					logger.info({ senderKeyNames }, 'processing sender key set operations')
+					// Handle sender key operations with per-key queues
+					for (const senderKeyName of senderKeyNames) {
+						await queueSenderKeyOperation(senderKeyName, async () => {
+							// Create data subset for this specific sender key
+							const senderKeyData = {
+								'sender-key': {
+									[senderKeyName]: data['sender-key']![senderKeyName]
+								}
+							}
+
+							logger.trace({ senderKeyName }, 'storing sender key')
+							// Apply changes to the store
+							await state.set(senderKeyData)
+							logger.trace({ senderKeyName }, 'sender key stored')
+						})
 					}
 
-					// Apply changes to the store
-					await state.set(data)
-				})
+					// Handle any non-sender-key data with regular mutexes
+					const nonSenderKeyData = { ...data }
+					delete nonSenderKeyData['sender-key']
+
+					if (Object.keys(nonSenderKeyData).length > 0) {
+						await withMutexes(Object.keys(nonSenderKeyData), getKeyTypeMutex, async () => {
+							// Process pre-keys and signed-pre-keys separately with specialized mutexes
+							for (const keyType in nonSenderKeyData) {
+								if (keyType === 'pre-key' || keyType === 'signed-pre-key') {
+									await processPreKeyDeletions(nonSenderKeyData, keyType, state, logger)
+								}
+							}
+
+							// Apply changes to the store
+							await state.set(nonSenderKeyData)
+						})
+					}
+				} else {
+					// No sender keys - use original logic
+					await withMutexes(Object.keys(data), getKeyTypeMutex, async () => {
+						// Process pre-keys and signed-pre-keys separately with specialized mutexes
+						for (const keyType in data) {
+							if (keyType === 'pre-key' || keyType === 'signed-pre-key') {
+								await processPreKeyDeletions(data, keyType, state, logger)
+							}
+						}
+
+						// Apply changes to the store
+						await state.set(data)
+					})
+				}
 			}
 		},
 		isInTransaction,
