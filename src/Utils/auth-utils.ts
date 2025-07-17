@@ -146,30 +146,32 @@ async function handlePreKeyOperations(
 		}
 
 		// Process deletions with validation
-		if (deletionKeys.length > 0) {
-			if (isInTransaction) {
-				// In transaction, only allow deletion if key exists in cache
-				for (const keyId of deletionKeys) {
-					if (transactionCache[keyType][keyId]) {
-						transactionCache[keyType][keyId] = null
-						mutations[keyType][keyId] = null
-					} else {
-						logger.warn(`Skipping deletion of non-existent ${keyType} in transaction: ${keyId}`)
-					}
+		if (deletionKeys.length === 0) return
+
+		if (isInTransaction) {
+			// In transaction, only allow deletion if key exists in cache
+			for (const keyId of deletionKeys) {
+				if (transactionCache[keyType][keyId]) {
+					transactionCache[keyType][keyId] = null
+					mutations[keyType][keyId] = null
+				} else {
+					logger.warn(`Skipping deletion of non-existent ${keyType} in transaction: ${keyId}`)
 				}
+			}
+
+			return
+		}
+
+		// Outside transaction, batch validate all deletions
+		if (!state) return
+
+		const existingKeys = await state.get(keyType as keyof SignalDataTypeMap, deletionKeys)
+		for (const keyId of deletionKeys) {
+			if (existingKeys[keyId]) {
+				transactionCache[keyType][keyId] = null
+				mutations[keyType][keyId] = null
 			} else {
-				// Outside transaction, batch validate all deletions
-				if (state) {
-					const existingKeys = await state.get(keyType as keyof SignalDataTypeMap, deletionKeys)
-					for (const keyId of deletionKeys) {
-						if (existingKeys[keyId]) {
-							transactionCache[keyType][keyId] = null
-							mutations[keyType][keyId] = null
-						} else {
-							logger.warn(`Skipping deletion of non-existent ${keyType}: ${keyId}`)
-						}
-					}
-				}
+				logger.warn(`Skipping deletion of non-existent ${keyType}: ${keyId}`)
 			}
 		}
 	})
@@ -216,7 +218,6 @@ async function processPreKeyDeletions(
 		}
 	})
 }
-
 
 /**
  * Executes a function with mutexes acquired for given key types
