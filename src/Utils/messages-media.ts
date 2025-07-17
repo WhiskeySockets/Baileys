@@ -152,14 +152,15 @@ export const extractImageThumb = async (bufferOrFilePath: Readable | Buffer | st
 			}
 		}
 	} else if ('jimp' in lib && typeof lib.jimp?.Jimp === 'object') {
-		const jimp = await (await import('jimp')).Jimp.read(bufferOrFilePath)
+		//@ts-ignore
+		const jimp = await lib.jimp.default.Jimp.read(buffer)
 		const dimensions = {
 			width: jimp.width,
 			height: jimp.height
-		}
-		const buffer = await jimp
+		} as { width: number; height: number }
+		const buffer = (await jimp
 			.resize({ w: width, mode: lib.jimp.ResizeStrategy.BILINEAR })
-			.getBuffer('image/jpeg', { quality: 50 })
+			.getBuffer('image/jpeg', { quality: 50 })) as Buffer<ArrayBufferLike>
 		return {
 			buffer,
 			original: dimensions
@@ -200,7 +201,8 @@ export const generateProfilePicture = async (
 			})
 			.toBuffer()
 	} else if ('jimp' in lib && typeof lib.jimp?.Jimp === 'object') {
-		const jimp = await (await import('jimp')).Jimp.read(buffer)
+		//@ts-ignore
+		const jimp = await lib.jimp.default.Jimp.read(buffer)
 		const min = Math.min(jimp.width, jimp.height)
 		const cropped = jimp.crop({ x: 0, y: 0, w: min, h: min })
 
