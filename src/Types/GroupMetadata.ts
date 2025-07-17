@@ -1,4 +1,4 @@
-import { Contact } from './Contact'
+import type { Contact } from './Contact'
 
 export type GroupParticipant = Contact & {
 	isAdmin?: boolean
@@ -18,6 +18,7 @@ export interface GroupMetadata {
 	addressingMode: 'pn' | 'lid'
 	owner: string | undefined
 	ownerJid?: string | undefined
+	owner_country_code: string
 	subject: string
 	/** group subject owner */
 	subjectOwner?: string

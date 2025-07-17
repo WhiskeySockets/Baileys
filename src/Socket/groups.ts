@@ -1,15 +1,9 @@
 import { proto } from '../../WAProto'
-import {
-	GroupMetadata,
-	GroupParticipant,
-	ParticipantAction,
-	SocketConfig,
-	WAMessageKey,
-	WAMessageStubType
-} from '../Types'
+import type { GroupMetadata, GroupParticipant, ParticipantAction, SocketConfig, WAMessageKey } from '../Types'
+import { WAMessageStubType } from '../Types'
 import { generateMessageIDV2, unixTimestampSeconds } from '../Utils'
 import {
-	BinaryNode,
+	type BinaryNode,
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
 	getBinaryNodeChildString,
@@ -317,24 +311,25 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 		desc = getBinaryNodeChildString(descChild, 'body')
 		descOwner = descChild.attrs.participant ? jidNormalizedUser(descChild.attrs.participant) : undefined
 		descOwnerJid = descChild.attrs.participant_pn ? jidNormalizedUser(descChild.attrs.participant_pn) : undefined
-		descTime = +descChild.attrs.t
+		descTime = +descChild.attrs.t!
 		descId = descChild.attrs.id
 	}
 
-	const groupId = group.attrs.id.includes('@') ? group.attrs.id : jidEncode(group.attrs.id, 'g.us')
+	const groupId = group.attrs.id!.includes('@') ? group.attrs.id : jidEncode(group.attrs.id!, 'g.us')
 	const eph = getBinaryNodeChild(group, 'ephemeral')?.attrs.expiration
 	const memberAddMode = getBinaryNodeChildString(group, 'member_add_mode') === 'all_member_add'
 	const metadata: GroupMetadata = {
-		id: groupId,
+		id: groupId!,
 		addressingMode: group.attrs.addressing_mode as 'pn' | 'lid',
-		subject: group.attrs.subject,
+		subject: group.attrs.subject!,
 		subjectOwner: group.attrs.s_o,
 		subjectOwnerJid: group.attrs.s_o_pn,
-		subjectTime: +group.attrs.s_t,
+		subjectTime: +group.attrs.s_t!,
 		size: getBinaryNodeChildren(group, 'participant').length,
-		creation: +group.attrs.creation,
+		creation: +group.attrs.creation!,
 		owner: group.attrs.creator ? jidNormalizedUser(group.attrs.creator) : undefined,
 		ownerJid: group.attrs.creator_pn ? jidNormalizedUser(group.attrs.creator_pn) : undefined,
+		owner_country_code: group.attrs.creator_country_code,
 		desc,
 		descId,
 		descOwner,
@@ -349,7 +344,7 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 		memberAddMode,
 		participants: getBinaryNodeChildren(group, 'participant').map(({ attrs }) => {
 			return {
-				id: attrs.jid,
+				id: attrs.jid!,
 				jid: isJidUser(attrs.jid) ? attrs.jid : jidNormalizedUser(attrs.phone_number),
 				lid: isLidUser(attrs.jid) ? attrs.jid : attrs.lid,
 				admin: (attrs.type || null) as GroupParticipant['admin']
@@ -359,3 +354,5 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 	}
 	return metadata
 }
+
+export type GroupsSocket = ReturnType<typeof makeGroupsSocket>

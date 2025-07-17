@@ -2,6 +2,8 @@ import { makeLibSignalRepository } from '../Signal/libsignal'
 import { SignalAuthState, SignalDataTypeMap } from '../Types'
 import { Curve, generateRegistrationId, generateSignalPubKey, signedKeyPair } from '../Utils'
 
+// TODO: should move to libsignal
+
 describe('Signal Tests', () => {
 	it('should correctly encrypt/decrypt 1 message', async () => {
 		const user1 = makeUser()
