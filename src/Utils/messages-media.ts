@@ -152,7 +152,7 @@ export const extractImageThumb = async (bufferOrFilePath: Readable | Buffer | st
 			}
 		}
 	} else if ('jimp' in lib && typeof lib.jimp?.Jimp === 'object') {
-		const jimp = await lib.jimp.default.Jimp.read(bufferOrFilePath)
+		const jimp = await (await import('jimp')).Jimp.read(bufferOrFilePath)
 		const dimensions = {
 			width: jimp.width,
 			height: jimp.height
@@ -200,7 +200,7 @@ export const generateProfilePicture = async (
 			})
 			.toBuffer()
 	} else if ('jimp' in lib && typeof lib.jimp?.Jimp === 'object') {
-		const jimp = await lib.jimp.default.Jimp.read(buffer)
+		const jimp = await (await import('jimp')).Jimp.read(buffer)
 		const min = Math.min(jimp.width, jimp.height)
 		const cropped = jimp.crop({ x: 0, y: 0, w: min, h: min })
 
@@ -311,7 +311,7 @@ export const getStream = async (item: WAMediaUpload, opts?: AxiosRequestConfig) 
 	const urlStr = item.url.toString()
 
 	if (urlStr.startsWith('data:')) {
-		const buffer = Buffer.from(urlStr.split(',')[1], 'base64')
+		const buffer = Buffer.from(urlStr.split(',')[1] ?? '', 'base64')
 		return { stream: toReadable(buffer), type: 'buffer' } as const
 	}
 

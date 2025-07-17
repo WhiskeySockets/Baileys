@@ -75,7 +75,7 @@ export type BaileysEventMap = {
 
 	/** Newsletter-related events */
 	'newsletter.reaction': {
-		id: string
+		id: string | undefined
 		server_id: string
 		reaction: { code?: string; count?: number; removed?: boolean }
 	}

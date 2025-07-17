@@ -30,7 +30,7 @@ import {
 	generateThumbnail,
 	getAudioDuration,
 	getAudioWaveform,
-    getRawMediaUploadData,
+	getRawMediaUploadData,
 	type MediaDownloadOptions
 } from './messages-media'
 
@@ -176,16 +176,21 @@ export const prepareWAMessageMedia = async (
 
 		await fs.unlink(filePath)
 
-		const obj = WAProto.Message.fromObject({
-			[`${mediaType}Message`]: MessageTypeProto[mediaType].fromObject({
-				url: mediaUrl,
-				directPath,
-				fileSha256,
-				fileLength,
-				...uploadData,
-				media: undefined
+		let obj: proto.Message
+		if (mediaType in MessageTypeProto) {
+			obj = WAProto.Message.fromObject({
+				[`${mediaType}Message`]: (MessageTypeProto as any)[mediaType].fromObject({
+					url: mediaUrl,
+					directPath,
+					fileSha256,
+					fileLength,
+					...uploadData,
+					media: undefined
+				})
 			})
-		})
+		} else {
+			throw new Boom(`Unsupported mediaType: ${mediaType}`, { statusCode: 400 })
+		}
 
 		if (uploadData.ptv) {
 			obj.ptvMessage = obj.videoMessage

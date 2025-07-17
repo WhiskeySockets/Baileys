@@ -47,7 +47,7 @@ import {
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeGroupsSocket } from './groups'
-import { makeNewsletterSocket, NewsletterSocket } from './newsletter'
+import { makeNewsletterSocket, type NewsletterSocket } from './newsletter'
 
 export const makeMessagesSocket = (config: SocketConfig) => {
 	const {
