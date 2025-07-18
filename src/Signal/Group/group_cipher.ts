@@ -53,9 +53,14 @@ export class GroupCipher {
 		}
 
 		const senderKeyMessage = new SenderKeyMessage(null, null, null, null, senderKeyMessageBytes)
-		const senderKeyState = record.getSenderKeyState(senderKeyMessage.getKeyId())
+		let senderKeyState = record.getSenderKeyState(senderKeyMessage.getKeyId())
+		
+		// Fallback: try to get the latest sender key state if specific keyId not found
 		if (!senderKeyState) {
-			throw new Error('No session found to decrypt message')
+			senderKeyState = record.getSenderKeyState()
+			if (!senderKeyState) {
+				throw new Error('No session found to decrypt message')
+			}
 		}
 
 		senderKeyMessage.verifySignature(senderKeyState.getSigningKeyPublic())
