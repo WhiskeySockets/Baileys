@@ -15,8 +15,12 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 			const senderName = jidToSignalSenderKeyName(group, authorJid)
 			const cipher = new GroupCipher(storage, senderName)
 
-			return cipher.decrypt(msg)
+			// Use transaction to ensure atomicity
+			return (auth.keys as SignalKeyStoreWithTransaction).transaction(async () => {
+				return cipher.decrypt(msg)
+			})
 		},
+
 		async processSenderKeyDistributionMessage({ item, authorJid }) {
 			const builder = new GroupSessionBuilder(storage)
 			if (!item.groupId) {
