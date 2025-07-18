@@ -1,8 +1,9 @@
 import type { NewsletterCreateResponse, WAMediaUpload } from '../Types'
-import { NewsletterMetadata, NewsletterUpdate, QueryIds, XWAPaths } from '../Types'
+import type { NewsletterMetadata, NewsletterUpdate } from '../Types'
+import { QueryIds, XWAPaths } from '../Types'
 import { generateProfilePicture } from '../Utils/messages-media'
 import { getBinaryNodeChild } from '../WABinary'
-import { GroupsSocket } from './groups'
+import type { GroupsSocket } from './groups'
 import { executeWMexQuery as genericExecuteWMexQuery } from './mex'
 
 const parseNewsletterCreateResponse = (response: NewsletterCreateResponse): NewsletterMetadata => {

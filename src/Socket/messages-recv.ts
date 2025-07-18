@@ -1095,9 +1095,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	// Handles newsletter notifications
 	async function handleNewsletterNotification(node: BinaryNode) {
-		const from = node.attrs.from
-		const [child] = getAllBinaryNodeChildren(node)
-		const author = node.attrs.participant
+		const from = node.attrs.from!
+		const child = getAllBinaryNodeChildren(node)[0]!
+		const author = node.attrs.participant!
 
 		logger.info({ from, child }, 'got newsletter notification')
 
@@ -1105,7 +1105,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			case 'reaction':
 				const reactionUpdate = {
 					id: from,
-					server_id: child.attrs.message_id,
+					server_id: child.attrs.message_id!,
 					reaction: {
 						code: getBinaryNodeChildString(child, 'reaction'),
 						count: 1
@@ -1117,7 +1117,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			case 'view':
 				const viewUpdate = {
 					id: from,
-					server_id: child.attrs.message_id,
+					server_id: child.attrs.message_id!,
 					count: parseInt(child.content?.toString() || '0', 10)
 				}
 				ev.emit('newsletter.view', viewUpdate)
@@ -1127,9 +1127,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const participantUpdate = {
 					id: from,
 					author,
-					user: child.attrs.jid,
-					action: child.attrs.action,
-					new_role: child.attrs.role
+					user: child.attrs.jid!,
+					action: child.attrs.action!,
+					new_role: child.attrs.role!
 				}
 				ev.emit('newsletter-participants.update', participantUpdate)
 				break
@@ -1168,7 +1168,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								fromMe: false
 							},
 							message: messageProto,
-							messageTimestamp: +child.attrs.t
+							messageTimestamp: +child.attrs.t!
 						})
 						await upsertMessage(fullMessage, 'append')
 						logger.info('Processed plaintext newsletter message')
@@ -1229,7 +1229,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					if (update.jid && update.user) {
 						ev.emit('newsletter-participants.update', {
 							id: update.jid,
-							author: node.attrs.from,
+							author: node.attrs.from!,
 							user: update.user,
 							new_role: 'ADMIN',
 							action: 'promote'

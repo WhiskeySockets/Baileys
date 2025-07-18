@@ -47,7 +47,8 @@ import {
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeGroupsSocket } from './groups'
-import { makeNewsletterSocket, NewsletterSocket } from './newsletter'
+import type { NewsletterSocket } from './newsletter'
+import { makeNewsletterSocket } from './newsletter'
 
 export const makeMessagesSocket = (config: SocketConfig) => {
 	const {
@@ -307,7 +308,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const msgId = await relayMessage(meJid, protocolMessage, {
 			additionalAttributes: {
 				category: 'peer',
-				// eslint-disable-next-line camelcase
+
 				push_priority: 'high_force'
 			}
 		})

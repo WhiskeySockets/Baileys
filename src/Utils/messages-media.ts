@@ -32,6 +32,7 @@ import type { ILogger } from './logger'
 const getTmpFilesDirectory = () => tmpdir()
 
 const getImageProcessingLibrary = async () => {
+	//@ts-ignore
 	const [jimp, sharp] = await Promise.all([import('jimp').catch(() => {}), import('sharp').catch(() => {})])
 
 	if (sharp) {
@@ -152,7 +153,7 @@ export const extractImageThumb = async (bufferOrFilePath: Readable | Buffer | st
 			}
 		}
 	} else if ('jimp' in lib && typeof lib.jimp?.Jimp === 'object') {
-		const jimp = await lib.jimp.default.Jimp.read(bufferOrFilePath)
+		const jimp = await (lib.jimp.Jimp as any).read(bufferOrFilePath)
 		const dimensions = {
 			width: jimp.width,
 			height: jimp.height
@@ -200,7 +201,7 @@ export const generateProfilePicture = async (
 			})
 			.toBuffer()
 	} else if ('jimp' in lib && typeof lib.jimp?.Jimp === 'object') {
-		const jimp = await lib.jimp.default.Jimp.read(buffer)
+		const jimp = await (lib.jimp.Jimp as any).read(buffer)
 		const min = Math.min(jimp.width, jimp.height)
 		const cropped = jimp.crop({ x: 0, y: 0, w: min, h: min })
 
@@ -242,7 +243,8 @@ export async function getAudioDuration(buffer: Buffer | string | Readable) {
  */
 export async function getAudioWaveform(buffer: Buffer | string | Readable, logger?: ILogger) {
 	try {
-		const { default: decoder } = await eval("import('audio-decode')")
+		// @ts-ignore
+		const { default: decoder } = await import('audio-decode')
 		let audioData: Buffer
 		if (Buffer.isBuffer(buffer)) {
 			audioData = buffer
@@ -311,7 +313,7 @@ export const getStream = async (item: WAMediaUpload, opts?: AxiosRequestConfig) 
 	const urlStr = item.url.toString()
 
 	if (urlStr.startsWith('data:')) {
-		const buffer = Buffer.from(urlStr.split(',')[1], 'base64')
+		const buffer = Buffer.from(urlStr.split(',')[1]!, 'base64')
 		return { stream: toReadable(buffer), type: 'buffer' } as const
 	}
 
