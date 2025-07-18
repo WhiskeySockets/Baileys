@@ -1,14 +1,19 @@
-import { AccountSettings, ChatMutation, Contact, InitialAppStateSyncOptions } from '../Types'
-import { unixTimestampSeconds } from '../Utils'
-import { processSyncAction } from '../Utils/chat-utils'
-import logger from '../Utils/logger'
+import {
+	AccountSettings,
+	ChatMutation,
+	Contact,
+	InitialAppStateSyncOptions,
+} from "../Types";
+import { unixTimestampSeconds } from "../Utils";
+import { processSyncAction } from "../Utils/chat-utils";
+import logger from "../Utils/logger";
 
-describe('App State Sync Tests', () => {
-	const me: Contact = { id: randomJid() }
+describe("App State Sync Tests", () => {
+	const me: Contact = { id: randomJid() };
 	// case when initial sync is off
-	it('should return archive=false event', () => {
-		const jid = randomJid()
-		const index = ['archive', jid]
+	it("should return archive=false event", () => {
+		const jid = randomJid();
+		const index = ["archive", jid];
 
 		const CASES: ChatMutation[][] = [
 			[
@@ -19,12 +24,12 @@ describe('App State Sync Tests', () => {
 							archiveChatAction: {
 								archived: false,
 								messageRange: {
-									lastMessageTimestamp: unixTimestampSeconds()
-								}
-							}
-						}
-					}
-				}
+									lastMessageTimestamp: unixTimestampSeconds(),
+								},
+							},
+						},
+					},
+				},
 			],
 			[
 				{
@@ -34,11 +39,11 @@ describe('App State Sync Tests', () => {
 							archiveChatAction: {
 								archived: true,
 								messageRange: {
-									lastMessageTimestamp: unixTimestampSeconds()
-								}
-							}
-						}
-					}
+									lastMessageTimestamp: unixTimestampSeconds(),
+								},
+							},
+						},
+					},
 				},
 				{
 					index,
@@ -47,28 +52,28 @@ describe('App State Sync Tests', () => {
 							archiveChatAction: {
 								archived: false,
 								messageRange: {
-									lastMessageTimestamp: unixTimestampSeconds()
-								}
-							}
-						}
-					}
-				}
-			]
-		]
+									lastMessageTimestamp: unixTimestampSeconds(),
+								},
+							},
+						},
+					},
+				},
+			],
+		];
 
 		for (const mutations of CASES) {
-			const events = processSyncAction(mutations, me, undefined, logger)
-			expect(events['chats.update']).toHaveLength(1)
-			const event = events['chats.update']?.[0]
-			expect(event.archive).toEqual(false)
+			const events = processSyncAction(mutations, me, undefined, logger);
+			expect(events["chats.update"]).toHaveLength(1);
+			const event = events["chats.update"]?.[0];
+			expect(event.archive).toEqual(false);
 		}
-	})
+	});
 	// case when initial sync is on
 	// and unarchiveChats = true
-	it('should not fire any archive event', () => {
-		const jid = randomJid()
-		const index = ['archive', jid]
-		const now = unixTimestampSeconds()
+	it("should not fire any archive event", () => {
+		const jid = randomJid();
+		const index = ["archive", jid];
+		const now = unixTimestampSeconds();
 
 		const CASES: ChatMutation[][] = [
 			[
@@ -79,12 +84,12 @@ describe('App State Sync Tests', () => {
 							archiveChatAction: {
 								archived: true,
 								messageRange: {
-									lastMessageTimestamp: now - 1
-								}
-							}
-						}
-					}
-				}
+									lastMessageTimestamp: now - 1,
+								},
+							},
+						},
+					},
+				},
 			],
 			[
 				{
@@ -94,12 +99,12 @@ describe('App State Sync Tests', () => {
 							archiveChatAction: {
 								archived: false,
 								messageRange: {
-									lastMessageTimestamp: now + 10
-								}
-							}
-						}
-					}
-				}
+									lastMessageTimestamp: now + 10,
+								},
+							},
+						},
+					},
+				},
 			],
 			[
 				{
@@ -109,11 +114,11 @@ describe('App State Sync Tests', () => {
 							archiveChatAction: {
 								archived: true,
 								messageRange: {
-									lastMessageTimestamp: now + 10
-								}
-							}
-						}
-					}
+									lastMessageTimestamp: now + 10,
+								},
+							},
+						},
+					},
 				},
 				{
 					index,
@@ -122,34 +127,34 @@ describe('App State Sync Tests', () => {
 							archiveChatAction: {
 								archived: false,
 								messageRange: {
-									lastMessageTimestamp: now + 11
-								}
-							}
-						}
-					}
-				}
-			]
-		]
+									lastMessageTimestamp: now + 11,
+								},
+							},
+						},
+					},
+				},
+			],
+		];
 
 		const ctx: InitialAppStateSyncOptions = {
 			recvChats: {
-				[jid]: { lastMsgRecvTimestamp: now }
+				[jid]: { lastMsgRecvTimestamp: now },
 			},
-			accountSettings: { unarchiveChats: true }
-		}
+			accountSettings: { unarchiveChats: true },
+		};
 
 		for (const mutations of CASES) {
-			const events = processSyncActions(mutations, me, ctx, logger)
-			expect(events['chats.update']?.length).toBeFalsy()
+			const events = processSyncActions(mutations, me, ctx, logger);
+			expect(events["chats.update"]?.length).toBeFalsy();
 		}
-	})
+	});
 
 	// case when initial sync is on
 	// with unarchiveChats = true & unarchiveChats = false
-	it('should fire archive=true events', () => {
-		const jid = randomJid()
-		const index = ['archive', jid]
-		const now = unixTimestampSeconds()
+	it("should fire archive=true events", () => {
+		const jid = randomJid();
+		const index = ["archive", jid];
+		const now = unixTimestampSeconds();
 
 		const CASES: { settings: AccountSettings; mutations: ChatMutation[] }[] = [
 			{
@@ -162,13 +167,13 @@ describe('App State Sync Tests', () => {
 								archiveChatAction: {
 									archived: true,
 									messageRange: {
-										lastMessageTimestamp: now
-									}
-								}
-							}
-						}
-					}
-				]
+										lastMessageTimestamp: now,
+									},
+								},
+							},
+						},
+					},
+				],
 			},
 			{
 				settings: { unarchiveChats: false },
@@ -180,27 +185,27 @@ describe('App State Sync Tests', () => {
 								archiveChatAction: {
 									archived: true,
 									messageRange: {
-										lastMessageTimestamp: now - 10
-									}
-								}
-							}
-						}
-					}
-				]
-			}
-		]
+										lastMessageTimestamp: now - 10,
+									},
+								},
+							},
+						},
+					},
+				],
+			},
+		];
 
 		for (const { mutations, settings } of CASES) {
 			const ctx: InitialAppStateSyncOptions = {
 				recvChats: {
-					[jid]: { lastMsgRecvTimestamp: now }
+					[jid]: { lastMsgRecvTimestamp: now },
 				},
-				accountSettings: settings
-			}
-			const events = processSyncActions(mutations, me, ctx, logger)
-			expect(events['chats.update']).toHaveLength(1)
-			const event = events['chats.update']?.[0]
-			expect(event.archive).toEqual(true)
+				accountSettings: settings,
+			};
+			const events = processSyncActions(mutations, me, ctx, logger);
+			expect(events["chats.update"]).toHaveLength(1);
+			const event = events["chats.update"]?.[0];
+			expect(event.archive).toEqual(true);
 		}
-	})
-})
+	});
+});
