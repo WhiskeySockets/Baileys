@@ -10,6 +10,14 @@ export interface SenderKeyStore {
 	storeSenderKey(senderKeyName: SenderKeyName, record: SenderKeyRecord): Promise<void>
 }
 
+export interface SenderKeyStoreWithQueue extends SenderKeyStore {
+	queueGroupMessage?: (
+		senderKeyName: string,
+		messageBytes: Uint8Array,
+		originalCipher: { decrypt: (messageBytes: Uint8Array) => Promise<Uint8Array> }
+	) => Promise<Uint8Array>
+}
+
 export class GroupCipher {
 	private readonly senderKeyStore: SenderKeyStore
 	private readonly senderKeyName: SenderKeyName
@@ -47,6 +55,7 @@ export class GroupCipher {
 	}
 
 	public async decrypt(senderKeyMessageBytes: Uint8Array): Promise<Uint8Array> {
+		// Load sender key through the store (which may coordinate with transaction system)
 		const record = await this.senderKeyStore.loadSenderKey(this.senderKeyName)
 		if (!record) {
 			throw new Error('No SenderKeyRecord found for decryption')
@@ -54,11 +63,22 @@ export class GroupCipher {
 
 		const senderKeyMessage = new SenderKeyMessage(null, null, null, null, senderKeyMessageBytes)
 		let senderKeyState = record.getSenderKeyState(senderKeyMessage.getKeyId())
-		
+
 		// Fallback: try to get the latest sender key state if specific keyId not found
 		if (!senderKeyState) {
 			senderKeyState = record.getSenderKeyState()
 			if (!senderKeyState) {
+				// If no sender key state available, check if we can queue the message
+				const storeWithQueue = this.senderKeyStore as SenderKeyStoreWithQueue
+				if (storeWithQueue.queueGroupMessage && record.isEmpty()) {
+					// Queue the message for processing when sender key becomes available
+					return storeWithQueue.queueGroupMessage(
+						this.senderKeyName.toString(),
+						senderKeyMessageBytes,
+						this // Pass the original cipher instance
+					)
+				}
+
 				throw new Error('No session found to decrypt message')
 			}
 		}
