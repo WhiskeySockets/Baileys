@@ -63,7 +63,9 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	if (isJidUser(from) || isLidUser(from)) {
 		if (recipient && !isJidMetaIa(recipient)) {
 			if (!isMe(from!) && !isMeLid(from!)) {
-				throw new Boom('receipient present, but msg not from me', { data: stanza })
+				throw new Boom('receipient present, but msg not from me', {
+					data: stanza
+				})
 			}
 
 			chatId = recipient
@@ -205,7 +207,6 @@ export const decryptMessageNode = (
 						)
 						msg = msg.deviceSentMessage?.message || msg
 						if (msg.senderKeyDistributionMessage) {
-							//eslint-disable-next-line max-depth
 							try {
 								await repository.processSenderKeyDistributionMessage({
 									authorJid: author,

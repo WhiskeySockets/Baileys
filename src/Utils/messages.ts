@@ -152,7 +152,10 @@ export const prepareWAMessageMedia = async (
 			const obj = WAProto.Message.decode(mediaBuff)
 			const key = `${mediaType}Message`
 
-			Object.assign(obj[key as keyof proto.Message]!, { ...uploadData, media: undefined })
+			Object.assign(obj[key as keyof proto.Message]!, {
+				...uploadData,
+				media: undefined
+			})
 
 			return obj
 		}
@@ -189,7 +192,9 @@ export const prepareWAMessageMedia = async (
 				})
 			})
 		} else {
-			throw new Boom(`Unsupported mediaType: ${mediaType}`, { statusCode: 400 })
+			throw new Boom(`Unsupported mediaType: ${mediaType}`, {
+				statusCode: 400
+			})
 		}
 
 		if (uploadData.ptv) {
@@ -860,7 +865,13 @@ export function getAggregateVotesInPollMessage(
 
 /** Given a list of message keys, aggregates them by chat & sender. Useful for sending read receipts in bulk */
 export const aggregateMessageKeysNotFromMe = (keys: proto.IMessageKey[]) => {
-	const keyMap: { [id: string]: { jid: string; participant: string | undefined; messageIds: string[] } } = {}
+	const keyMap: {
+		[id: string]: {
+			jid: string
+			participant: string | undefined
+			messageIds: string[]
+		}
+	} = {}
 	for (const { remoteJid, id, participant, fromMe } of keys) {
 		if (!fromMe) {
 			const uqKey = `${remoteJid}:${participant || ''}`
@@ -962,7 +973,10 @@ export const assertMediaContent = (content: proto.IMessage | null | undefined) =
 		content?.audioMessage ||
 		content?.stickerMessage
 	if (!mediaContent) {
-		throw new Boom('given message is not a media message', { statusCode: 400, data: content })
+		throw new Boom('given message is not a media message', {
+			statusCode: 400,
+			data: content
+		})
 	}
 
 	return mediaContent

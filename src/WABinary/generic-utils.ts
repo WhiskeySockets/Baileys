@@ -52,7 +52,9 @@ export const getBinaryNodeChildUInt = (node: BinaryNode, childTag: string, lengt
 export const assertNodeErrorFree = (node: BinaryNode) => {
 	const errNode = getBinaryNodeChild(node, 'error')
 	if (errNode) {
-		throw new Boom(errNode.attrs.text || 'Unknown error', { data: +errNode.attrs.code! })
+		throw new Boom(errNode.attrs.text || 'Unknown error', {
+			data: +errNode.attrs.code!
+		})
 	}
 }
 

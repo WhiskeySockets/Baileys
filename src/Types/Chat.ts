@@ -97,7 +97,11 @@ export type ChatModification =
 			lastMessages: LastMessageList
 	  }
 	| {
-			deleteForMe: { deleteMedia: boolean; key: WAMessageKey; timestamp: number }
+			deleteForMe: {
+				deleteMedia: boolean
+				key: WAMessageKey
+				timestamp: number
+			}
 	  }
 	| {
 			star: {

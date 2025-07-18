@@ -118,7 +118,9 @@ export const toProductNode = (productId: string | undefined, product: ProductCre
 			attrs: {},
 			content: product.images.map(img => {
 				if (!('url' in img)) {
-					throw new Boom('Expected img for product to already be uploaded', { statusCode: 400 })
+					throw new Boom('Expected img for product to already be uploaded', {
+						statusCode: 400
+					})
 				}
 
 				return {

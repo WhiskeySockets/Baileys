@@ -12,7 +12,9 @@ import { downloadContentFromMessage } from './messages-media'
 const inflatePromise = promisify(inflate)
 
 export const downloadHistory = async (msg: proto.Message.IHistorySyncNotification, options: AxiosRequestConfig<{}>) => {
-	const stream = await downloadContentFromMessage(msg, 'md-msg-hist', { options })
+	const stream = await downloadContentFromMessage(msg, 'md-msg-hist', {
+		options
+	})
 	const bufferArray: Buffer[] = []
 	for await (const chunk of stream) {
 		bufferArray.push(chunk)

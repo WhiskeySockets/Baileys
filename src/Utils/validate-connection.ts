@@ -128,7 +128,9 @@ export const configureSuccessfulPairing = (
 	const businessNode = getBinaryNodeChild(pairSuccessNode, 'biz')
 
 	if (!deviceIdentityNode || !deviceNode) {
-		throw new Boom('Missing device-identity or device in pair success node', { data: stanza })
+		throw new Boom('Missing device-identity or device in pair success node', {
+			data: stanza
+		})
 	}
 
 	const bizName = businessNode?.attrs.name

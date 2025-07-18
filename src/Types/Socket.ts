@@ -22,7 +22,9 @@ export type CacheStore = {
 	flushAll(): void
 }
 
-export type PatchedMessageWithRecipientJID = proto.IMessage & { recipientJid?: string }
+export type PatchedMessageWithRecipientJID = proto.IMessage & {
+	recipientJid?: string
+}
 
 export type SocketConfig = {
 	/** the WS url to connect to WA */

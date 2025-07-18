@@ -44,16 +44,17 @@ export const getPlatformId = (browser: string) => {
 }
 
 export const BufferJSON = {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	replacer: (k: any, value: any) => {
 		if (Buffer.isBuffer(value) || value instanceof Uint8Array || value?.type === 'Buffer') {
-			return { type: 'Buffer', data: Buffer.from(value?.data || value).toString('base64') }
+			return {
+				type: 'Buffer',
+				data: Buffer.from(value?.data || value).toString('base64')
+			}
 		}
 
 		return value
 	},
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	reviver: (_: any, value: any) => {
 		if (typeof value === 'object' && !!value && (value.buffer === true || value.type === 'Buffer')) {
 			const val = value.data || value.value
@@ -85,7 +86,7 @@ export const unpadRandomMax16 = (e: Uint8Array | Buffer) => {
 		throw new Error('unpadPkcs7 given empty bytes')
 	}
 
-	var r = t[t.length - 1]!
+	const r = t[t.length - 1]!
 	if (r > t.length) {
 		throw new Error(`unpad given ${t.length} bytes, but pad is ${r}`)
 	}
@@ -223,7 +224,10 @@ export function bindWaitForEvent<T extends keyof BaileysEventMap>(ev: BaileysEve
 			closeListener = ({ connection, lastDisconnect }) => {
 				if (connection === 'close') {
 					reject(
-						lastDisconnect?.error || new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
+						lastDisconnect?.error ||
+							new Boom('Connection Closed', {
+								statusCode: DisconnectReason.connectionClosed
+							})
 					)
 				}
 			}
@@ -395,11 +399,7 @@ export const getCodeFromWSError = (error: Error) => {
 		if (!Number.isNaN(code) && code >= 400) {
 			statusCode = code
 		}
-	} else if (
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		(error as any)?.code?.startsWith('E') ||
-		error?.message?.includes('timed out')
-	) {
+	} else if ((error as any)?.code?.startsWith('E') || error?.message?.includes('timed out')) {
 		// handle ETIMEOUT, ENOTFOUND etc
 		statusCode = 408
 	}
@@ -415,7 +415,6 @@ export const isWABusinessPlatform = (platform: string) => {
 	return platform === 'smbi' || platform === 'smba'
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function trimUndefined(obj: { [_: string]: any }) {
 	for (const key in obj) {
 		if (typeof obj[key] === 'undefined') {

@@ -74,7 +74,11 @@ export type SignalDataTypeMap = {
 	'app-state-sync-version': LTHashState
 }
 
-export type SignalDataSet = { [T in keyof SignalDataTypeMap]?: { [id: string]: SignalDataTypeMap[T] | null } }
+export type SignalDataSet = {
+	[T in keyof SignalDataTypeMap]?: {
+		[id: string]: SignalDataTypeMap[T] | null
+	}
+}
 
 type Awaitable<T> = T | Promise<T>
 

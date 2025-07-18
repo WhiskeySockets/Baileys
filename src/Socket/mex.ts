@@ -42,7 +42,10 @@ export const executeWMexQuery = async <T>(
 			const errorMessages = data.errors.map((err: Error) => err.message || 'Unknown error').join(', ')
 			const firstError = data.errors[0]
 			const errorCode = firstError.extensions?.error_code || 400
-			throw new Boom(`GraphQL server error: ${errorMessages}`, { statusCode: errorCode, data: firstError })
+			throw new Boom(`GraphQL server error: ${errorMessages}`, {
+				statusCode: errorCode,
+				data: firstError
+			})
 		}
 
 		const response = dataPath ? data?.data?.[dataPath] : data?.data
@@ -54,5 +57,8 @@ export const executeWMexQuery = async <T>(
 	const action = (dataPath || '').startsWith('xwa2_')
 		? dataPath.substring(5).replace(/_/g, ' ')
 		: dataPath?.replace(/_/g, ' ')
-	throw new Boom(`Failed to ${action}, unexpected response structure.`, { statusCode: 400, data: result })
+	throw new Boom(`Failed to ${action}, unexpected response structure.`, {
+		statusCode: 400,
+		data: result
+	})
 }

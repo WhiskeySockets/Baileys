@@ -135,7 +135,10 @@ export const extractDeviceJids = (result: USyncQueryResultList[], myJid: string,
 	const extracted: JidWithDevice[] = []
 
 	for (const userResult of result) {
-		const { devices, id } = userResult as { devices: ParsedDeviceInfo; id: string }
+		const { devices, id } = userResult as {
+			devices: ParsedDeviceInfo
+			id: string
+		}
 		const { user } = jidDecode(id)!
 		const deviceList = devices?.deviceList as DeviceListData[]
 		if (Array.isArray(deviceList)) {
@@ -185,10 +188,18 @@ export const getNextPreKeysNode = async (state: AuthenticationState, count: numb
 			to: S_WHATSAPP_NET
 		},
 		content: [
-			{ tag: 'registration', attrs: {}, content: encodeBigEndian(creds.registrationId) },
+			{
+				tag: 'registration',
+				attrs: {},
+				content: encodeBigEndian(creds.registrationId)
+			},
 			{ tag: 'type', attrs: {}, content: KEY_BUNDLE_TYPE },
 			{ tag: 'identity', attrs: {}, content: creds.signedIdentityKey.public },
-			{ tag: 'list', attrs: {}, content: Object.keys(preKeys).map(k => xmppPreKey(preKeys[+k]!, +k)) },
+			{
+				tag: 'list',
+				attrs: {},
+				content: Object.keys(preKeys).map(k => xmppPreKey(preKeys[+k]!, +k))
+			},
 			xmppSignedPreKey(creds.signedPreKey)
 		]
 	}

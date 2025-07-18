@@ -1,0 +1,11 @@
+export default {
+  useTabs: true,
+  tabWidth: 2,
+  semi: false,
+  singleQuote: true,
+  jsxSingleQuote: true,
+  bracketSpacing: true,
+  arrowParens: 'avoid',
+  printWidth: 120,
+  trailingComma: 'none',
+};

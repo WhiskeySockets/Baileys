@@ -33,7 +33,6 @@ const getFileLock = (path: string): Mutex => {
 export const useMultiFileAuthState = async (
 	folder: string
 ): Promise<{ state: AuthenticationState; saveCreds: () => Promise<void> }> => {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const writeData = async (data: any, file: string) => {
 		const filePath = join(folder, fixFileName(file)!)
 		const mutex = getFileLock(filePath)

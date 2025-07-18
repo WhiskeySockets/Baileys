@@ -105,7 +105,9 @@ export async function getMediaKeys(
 	}
 
 	// expand using HKDF to 112 bytes, also pass in the relevant app info
-	const expandedMediaKey = await hkdf(buffer, 112, { info: hkdfInfoKey(mediaType) })
+	const expandedMediaKey = await hkdf(buffer, 112, {
+		info: hkdfInfoKey(mediaType)
+	})
 	return {
 		iv: expandedMediaKey.slice(0, 16),
 		cipherKey: expandedMediaKey.slice(16, 48),
@@ -152,7 +154,7 @@ export const extractImageThumb = async (bufferOrFilePath: Readable | Buffer | st
 			}
 		}
 	} else if ('jimp' in lib && typeof lib.jimp?.Jimp === 'object') {
-		//@ts-ignore
+		//@ts-expect-error
 		const jimp = await lib.jimp.default.Jimp.read(buffer)
 		const dimensions = {
 			width: jimp.width,
@@ -318,7 +320,10 @@ export const getStream = async (item: WAMediaUpload, opts?: AxiosRequestConfig) 
 	}
 
 	if (urlStr.startsWith('http://') || urlStr.startsWith('https://')) {
-		return { stream: await getHttpStream(item.url, opts), type: 'remote' } as const
+		return {
+			stream: await getHttpStream(item.url, opts),
+			type: 'remote'
+		} as const
 	}
 
 	return { stream: createReadStream(item.url), type: 'file' } as const
@@ -346,7 +351,10 @@ export async function generateThumbnail(
 	} else if (mediaType === 'video') {
 		const imgFilename = join(getTmpFilesDirectory(), generateMessageIDV2() + '.jpg')
 		try {
-			await extractVideoThumb(file, imgFilename, '00:00:00', { width: 32, height: 32 })
+			await extractVideoThumb(file, imgFilename, '00:00:00', {
+				width: 32,
+				height: 32
+			})
 			const buff = await fs.readFile(imgFilename)
 			thumbnail = buff.toString('base64')
 
@@ -363,7 +371,10 @@ export async function generateThumbnail(
 }
 
 export const getHttpStream = async (url: string | URL, options: AxiosRequestConfig & { isStream?: true } = {}) => {
-	const fetched = await axios.get(url.toString(), { ...options, responseType: 'stream' })
+	const fetched = await axios.get(url.toString(), {
+		...options,
+		responseType: 'stream'
+	})
 	return fetched.data as Readable
 }
 
@@ -499,7 +510,9 @@ export const downloadContentFromMessage = async (
 	const isValidMediaUrl = url?.startsWith('https://mmg.whatsapp.net/')
 	const downloadUrl = isValidMediaUrl ? url : getUrlFromDirectPath(directPath!)
 	if (!downloadUrl) {
-		throw new Boom('No valid media URL or directPath present in message', { statusCode: 400 })
+		throw new Boom('No valid media URL or directPath present in message', {
+			statusCode: 400
+		})
 	}
 
 	const keys = await getMediaKeys(mediaKey, type)
@@ -642,7 +655,7 @@ export const getWAUploadToServer = (
 
 			const auth = encodeURIComponent(uploadInfo.auth) // the auth token
 			const url = `https://${hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 			let result: any
 			try {
 				const body = await axios.post(url, createReadStream(filePath), {
@@ -767,7 +780,9 @@ export const decodeMediaRetryNode = (node: BinaryNode) => {
 		if (ciphertext && iv) {
 			event.media = { ciphertext, iv }
 		} else {
-			event.error = new Boom('Failed to re-upload media (missing ciphertext)', { statusCode: 404 })
+			event.error = new Boom('Failed to re-upload media (missing ciphertext)', {
+				statusCode: 404
+			})
 		}
 	}
 

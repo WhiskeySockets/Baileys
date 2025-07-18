@@ -14,7 +14,9 @@ export * from './Newsletter'
 import type { AuthenticationState } from './Auth'
 import type { SocketConfig } from './Socket'
 
-export type UserFacingSocketConfig = Partial<SocketConfig> & { auth: AuthenticationState }
+export type UserFacingSocketConfig = Partial<SocketConfig> & {
+	auth: AuthenticationState
+}
 
 export type BrowsersMap = {
 	ubuntu(browser: string): [string, string, string]

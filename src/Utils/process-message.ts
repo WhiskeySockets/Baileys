@@ -194,7 +194,10 @@ const processMessage = async (
 						ev.emit('creds.update', {
 							processedHistoryMessages: [
 								...(creds.processedHistoryMessages || []),
-								{ key: message.key, messageTimestamp: message.messageTimestamp }
+								{
+									key: message.key,
+									messageTimestamp: message.messageTimestamp
+								}
 							]
 						})
 					}
@@ -219,7 +222,9 @@ const processMessage = async (
 							const strKeyId = Buffer.from(keyId!.keyId!).toString('base64')
 							newKeys.push(strKeyId)
 
-							await keyStore.set({ 'app-state-sync-key': { [strKeyId]: keyData! } })
+							await keyStore.set({
+								'app-state-sync-key': { [strKeyId]: keyData! }
+							})
 
 							newAppStateSyncKeyId = strKeyId
 						}
@@ -240,7 +245,11 @@ const processMessage = async (
 							...message.key,
 							id: protocolMsg.key!.id
 						},
-						update: { message: null, messageStubType: WAMessageStubType.REVOKE, key: message.key }
+						update: {
+							message: null,
+							messageStubType: WAMessageStubType.REVOKE,
+							key: message.key
+						}
 					}
 				])
 				break
@@ -258,7 +267,7 @@ const processMessage = async (
 					const { peerDataOperationResult } = response
 					for (const result of peerDataOperationResult!) {
 						const { placeholderMessageResendResponse: retryResponse } = result
-						//eslint-disable-next-line max-depth
+
 						if (retryResponse) {
 							const webMessageInfo = proto.WebMessageInfo.decode(retryResponse.webMessageInfoBytes!)
 							// wait till another upsert event is available, don't want it to be part of the PDO response message
@@ -309,13 +318,24 @@ const processMessage = async (
 		//let actor = whatsappID (message.participant)
 		let participants: string[]
 		const emitParticipantsUpdate = (action: ParticipantAction) =>
-			ev.emit('group-participants.update', { id: jid, author: message.participant!, participants, action })
+			ev.emit('group-participants.update', {
+				id: jid,
+				author: message.participant!,
+				participants,
+				action
+			})
 		const emitGroupUpdate = (update: Partial<GroupMetadata>) => {
 			ev.emit('groups.update', [{ id: jid, ...update, author: message.participant ?? undefined }])
 		}
 
 		const emitGroupRequestJoin = (participant: string, action: RequestJoinAction, method: RequestJoinMethod) => {
-			ev.emit('group.join-request', { id: jid, author: message.participant!, participant, action, method: method! })
+			ev.emit('group.join-request', {
+				id: jid,
+				author: message.participant!,
+				participant,
+				action,
+				method: method!
+			})
 		}
 
 		const participantsIncludesMe = () => participants.find(jid => areJidsSameUser(meId, jid))
@@ -355,11 +375,15 @@ const processMessage = async (
 				break
 			case WAMessageStubType.GROUP_CHANGE_ANNOUNCE:
 				const announceValue = message.messageStubParameters?.[0]
-				emitGroupUpdate({ announce: announceValue === 'true' || announceValue === 'on' })
+				emitGroupUpdate({
+					announce: announceValue === 'true' || announceValue === 'on'
+				})
 				break
 			case WAMessageStubType.GROUP_CHANGE_RESTRICT:
 				const restrictValue = message.messageStubParameters?.[0]
-				emitGroupUpdate({ restrict: restrictValue === 'true' || restrictValue === 'on' })
+				emitGroupUpdate({
+					restrict: restrictValue === 'true' || restrictValue === 'on'
+				})
 				break
 			case WAMessageStubType.GROUP_CHANGE_SUBJECT:
 				const name = message.messageStubParameters?.[0]

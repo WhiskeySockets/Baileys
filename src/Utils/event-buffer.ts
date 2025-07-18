@@ -52,7 +52,7 @@ type BaileysBufferableEventEmitter = BaileysEventEmitter & {
 	 * */
 	buffer(): void
 	/** buffers all events till the promise completes */
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	createBufferedFunction<A extends any[], T>(work: (...args: A) => Promise<T>): (...args: A) => Promise<T>
 	/**
 	 * flushes all buffered events
@@ -195,7 +195,7 @@ function append<E extends BufferableEvent>(
 	data: BufferedEventData,
 	historyCache: Set<string>,
 	event: E,
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	eventData: any,
 	logger: ILogger
 ) {
@@ -446,7 +446,10 @@ function append<E extends BufferableEvent>(
 				if (existing) {
 					updateMessageWithReaction(existing.message, reaction)
 				} else {
-					data.messageReactions[keyStr] = data.messageReactions[keyStr] || { key, reactions: [] }
+					data.messageReactions[keyStr] = data.messageReactions[keyStr] || {
+						key,
+						reactions: []
+					}
 					updateMessageWithReaction(data.messageReactions[keyStr], reaction)
 				}
 			}
@@ -460,7 +463,10 @@ function append<E extends BufferableEvent>(
 				if (existing) {
 					updateMessageWithReceipt(existing.message, receipt)
 				} else {
-					data.messageReceipts[keyStr] = data.messageReceipts[keyStr] || { key, userReceipt: [] }
+					data.messageReceipts[keyStr] = data.messageReceipts[keyStr] || {
+						key,
+						userReceipt: []
+					}
 					updateMessageWithReceipt(data.messageReceipts[keyStr], receipt)
 				}
 			}

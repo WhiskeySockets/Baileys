@@ -307,7 +307,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const msgId = await relayMessage(meJid, protocolMessage, {
 			additionalAttributes: {
 				category: 'peer',
-				// eslint-disable-next-line camelcase
+
 				push_priority: 'high_force'
 			}
 		})
@@ -331,7 +331,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 
 				const bytes = encodeWAMessage(patchedMessage)
-				const { type, ciphertext } = await signalRepository.encryptMessage({ jid, data: bytes })
+				const { type, ciphertext } = await signalRepository.encryptMessage({
+					jid,
+					data: bytes
+				})
 				if (type === 'pkmsg') {
 					shouldIncludeDeviceIdentity = true
 				}
@@ -405,7 +408,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			// only send to the specific device that asked for a retry
 			// otherwise the message is sent out to every device that should be a recipient
 			if (!isGroup && !isStatus) {
-				additionalAttributes = { ...additionalAttributes, device_fanout: 'false' }
+				additionalAttributes = {
+					...additionalAttributes,
+					device_fanout: 'false'
+				}
 			}
 
 			const { user, device } = jidDecode(participant.jid)!
@@ -536,7 +542,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					content: ciphertext
 				})
 
-				await authState.keys.set({ 'sender-key-memory': { [jid]: senderKeyMap } })
+				await authState.keys.set({
+					'sender-key-memory': { [jid]: senderKeyMap }
+				})
 			} else {
 				const { user: meUser } = jidDecode(meId)!
 

@@ -39,7 +39,11 @@ export type WAMediaUpload = Buffer | WAMediaPayloadStream | WAMediaPayloadURL
 /** Set of message types that are supported by the library */
 export type MessageType = keyof proto.Message
 
-export type DownloadableMessage = { mediaKey?: Uint8Array | null; directPath?: string | null; url?: string | null }
+export type DownloadableMessage = {
+	mediaKey?: Uint8Array | null
+	directPath?: string | null
+	url?: string | null
+}
 
 export type MessageReceiptType =
 	| 'read'
@@ -307,11 +311,17 @@ export type MessageUpsertType = 'append' | 'notify'
 
 export type MessageUserReceipt = proto.IUserReceipt
 
-export type WAMessageUpdate = { update: Partial<WAMessage>; key: proto.IMessageKey }
+export type WAMessageUpdate = {
+	update: Partial<WAMessage>
+	key: proto.IMessageKey
+}
 
 export type WAMessageCursor = { before: WAMessageKey | undefined } | { after: WAMessageKey | undefined }
 
-export type MessageUserReceiptUpdate = { key: proto.IMessageKey; receipt: MessageUserReceipt }
+export type MessageUserReceiptUpdate = {
+	key: proto.IMessageKey
+	receipt: MessageUserReceipt
+}
 
 export type MediaDecryptionKeyInfo = {
 	iv: Buffer

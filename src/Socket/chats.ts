@@ -543,7 +543,9 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 								logger.info(`restored state of ${name} from snapshot to v${newState.version} with mutations`)
 
-								await authState.keys.set({ 'app-state-sync-version': { [name]: newState } })
+								await authState.keys.set({
+									'app-state-sync-version': { [name]: newState }
+								})
 							}
 
 							// only process if there are syncd patches
@@ -559,7 +561,9 @@ export const makeChatsSocket = (config: SocketConfig) => {
 									appStateMacVerification.patch
 								)
 
-								await authState.keys.set({ 'app-state-sync-version': { [name]: newState } })
+								await authState.keys.set({
+									'app-state-sync-version': { [name]: newState }
+								})
 
 								logger.info(`synced ${name} to v${newState.version}`)
 								initialVersionMap[name] = newState.version
@@ -584,7 +588,9 @@ export const makeChatsSocket = (config: SocketConfig) => {
 								{ name, error: error.stack },
 								`failed to sync state from version${isIrrecoverableError ? '' : ', removing and trying from scratch'}`
 							)
-							await authState.keys.set({ 'app-state-sync-version': { [name]: null } })
+							await authState.keys.set({
+								'app-state-sync-version': { [name]: null }
+							})
 							// increment number of retries
 							attemptsMap[name] = (attemptsMap[name] || 0) + 1
 
@@ -719,7 +725,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 
 		if (presence) {
-			ev.emit('presence.update', { id: jid!, presences: { [participant!]: presence } })
+			ev.emit('presence.update', {
+				id: jid!,
+				presences: { [participant!]: presence }
+			})
 		}
 	}
 
@@ -778,7 +787,9 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				}
 				await query(node)
 
-				await authState.keys.set({ 'app-state-sync-version': { [name]: state } })
+				await authState.keys.set({
+					'app-state-sync-version': { [name]: state }
+				})
 			})
 		})
 
@@ -786,7 +797,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			const { onMutation } = newAppStateChunkHandler(false)
 			const { mutationMap } = await decodePatches(
 				name,
-				[{ ...encodeResult!.patch, version: { version: encodeResult!.state.version } }],
+				[
+					{
+						...encodeResult!.patch,
+						version: { version: encodeResult!.state.version }
+					}
+				],
 				initial!,
 				getAppStateSyncKey,
 				config.options,
@@ -974,12 +990,20 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			jid = jidNormalizedUser(jid!)
 
 			if (!msg.key.fromMe) {
-				ev.emit('contacts.update', [{ id: jid, notify: msg.pushName, verifiedName: msg.verifiedBizName! }])
+				ev.emit('contacts.update', [
+					{
+						id: jid,
+						notify: msg.pushName,
+						verifiedName: msg.verifiedBizName!
+					}
+				])
 			}
 
 			// update our pushname too
 			if (msg.key.fromMe && msg.pushName && authState.creds.me?.name !== msg.pushName) {
-				ev.emit('creds.update', { me: { ...authState.creds.me!, name: msg.pushName } })
+				ev.emit('creds.update', {
+					me: { ...authState.creds.me!, name: msg.pushName }
+				})
 			}
 		}
 

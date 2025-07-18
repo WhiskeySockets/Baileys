@@ -13,9 +13,15 @@ describe('Signal Tests', () => {
 
 		await prepareForSendingMessage(user1, user2)
 
-		const result = await user1.repository.encryptMessage({ jid: user2.jid, data: msg })
+		const result = await user1.repository.encryptMessage({
+			jid: user2.jid,
+			data: msg
+		})
 
-		const dec = await user2.repository.decryptMessage({ jid: user1.jid, ...result })
+		const dec = await user2.repository.decryptMessage({
+			jid: user1.jid,
+			...result
+		})
 
 		expect(dec).toEqual(msg)
 	})
@@ -29,9 +35,15 @@ describe('Signal Tests', () => {
 		for (let preKeyId = 2; preKeyId <= 3; preKeyId++) {
 			await prepareForSendingMessage(user1, user2, preKeyId)
 
-			const result = await user1.repository.encryptMessage({ jid: user2.jid, data: msg })
+			const result = await user1.repository.encryptMessage({
+				jid: user2.jid,
+				data: msg
+			})
 
-			const dec = await user2.repository.decryptMessage({ jid: user1.jid, ...result })
+			const dec = await user2.repository.decryptMessage({
+				jid: user1.jid,
+				...result
+			})
 
 			expect(dec).toEqual(msg)
 		}
@@ -46,9 +58,15 @@ describe('Signal Tests', () => {
 		await prepareForSendingMessage(user1, user2)
 
 		for (let i = 0; i < 10; i++) {
-			const result = await user1.repository.encryptMessage({ jid: user2.jid, data: msg })
+			const result = await user1.repository.encryptMessage({
+				jid: user2.jid,
+				data: msg
+			})
 
-			const dec = await user2.repository.decryptMessage({ jid: user1.jid, ...result })
+			const dec = await user2.repository.decryptMessage({
+				jid: user1.jid,
+				...result
+			})
 
 			expect(dec).toEqual(msg)
 		}

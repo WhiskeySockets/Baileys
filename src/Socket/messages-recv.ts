@@ -805,7 +805,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			msg.message?.protocolMessage?.type === proto.Message.ProtocolMessage.Type.SHARE_PHONE_NUMBER &&
 			node.attrs.sender_pn
 		) {
-			ev.emit('chats.phoneNumberShare', { lid: node.attrs.from!, jid: node.attrs.sender_pn })
+			ev.emit('chats.phoneNumberShare', {
+				lid: node.attrs.from!,
+				jid: node.attrs.sender_pn
+			})
 		}
 
 		try {
@@ -979,7 +982,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleBadAck = async ({ attrs }: BinaryNode) => {
-		const key: WAMessageKey = { remoteJid: attrs.from, fromMe: true, id: attrs.id }
+		const key: WAMessageKey = {
+			remoteJid: attrs.from,
+			fromMe: true,
+			id: attrs.id
+		}
 
 		// WARNING: REFRAIN FROM ENABLING THIS FOR NOW. IT WILL CAUSE A LOOP
 		// // current hypothesis is that if pash is sent in the ack

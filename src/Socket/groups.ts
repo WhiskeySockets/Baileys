@@ -183,7 +183,15 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 						...(description ? { id: generateMessageIDV2() } : { delete: 'true' }),
 						...(prev ? { prev } : {})
 					},
-					content: description ? [{ tag: 'body', attrs: {}, content: Buffer.from(description, 'utf-8') }] : undefined
+					content: description
+						? [
+								{
+									tag: 'body',
+									attrs: {},
+									content: Buffer.from(description, 'utf-8')
+								}
+							]
+						: undefined
 				}
 			])
 		},
@@ -211,7 +219,11 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 		 */
 		groupRevokeInviteV4: async (groupJid: string, invitedJid: string) => {
 			const result = await groupQuery(groupJid, 'set', [
-				{ tag: 'revoke', attrs: {}, content: [{ tag: 'participant', attrs: { jid: invitedJid } }] }
+				{
+					tag: 'revoke',
+					attrs: {},
+					content: [{ tag: 'participant', attrs: { jid: invitedJid } }]
+				}
 			])
 			return !!result
 		},
@@ -280,7 +292,10 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 		},
 		groupToggleEphemeral: async (jid: string, ephemeralExpiration: number) => {
 			const content: BinaryNode = ephemeralExpiration
-				? { tag: 'ephemeral', attrs: { expiration: ephemeralExpiration.toString() } }
+				? {
+						tag: 'ephemeral',
+						attrs: { expiration: ephemeralExpiration.toString() }
+					}
 				: { tag: 'not_ephemeral', attrs: {} }
 			await groupQuery(jid, 'set', [content])
 		},
@@ -292,7 +307,11 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 		},
 		groupJoinApprovalMode: async (jid: string, mode: 'on' | 'off') => {
 			await groupQuery(jid, 'set', [
-				{ tag: 'membership_approval_mode', attrs: {}, content: [{ tag: 'group_join', attrs: { state: mode } }] }
+				{
+					tag: 'membership_approval_mode',
+					attrs: {},
+					content: [{ tag: 'group_join', attrs: { state: mode } }]
+				}
 			])
 		},
 		groupFetchAllParticipating

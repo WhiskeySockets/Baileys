@@ -74,7 +74,9 @@ export const makeSocket = (config: SocketConfig) => {
 	const url = typeof waWebSocketUrl === 'string' ? new URL(waWebSocketUrl) : waWebSocketUrl
 
 	if (config.mobile || url.protocol === 'tcp:') {
-		throw new Boom('Mobile API is not supported anymore', { statusCode: DisconnectReason.loggedOut })
+		throw new Boom('Mobile API is not supported anymore', {
+			statusCode: DisconnectReason.loggedOut
+		})
 	}
 
 	if (url.protocol === 'wss' && authState?.creds?.routingInfo) {
@@ -114,7 +116,9 @@ export const makeSocket = (config: SocketConfig) => {
 	/** send a raw buffer */
 	const sendRawMessage = async (data: Uint8Array | Buffer) => {
 		if (!ws.isOpen) {
-			throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
+			throw new Boom('Connection Closed', {
+				statusCode: DisconnectReason.connectionClosed
+			})
 		}
 
 		const bytes = noise.encodeFrame(data)
@@ -185,7 +189,12 @@ export const makeSocket = (config: SocketConfig) => {
 			const result = await promiseTimeout<T>(timeoutMs, (resolve, reject) => {
 				onRecv = resolve
 				onErr = err => {
-					reject(err || new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed }))
+					reject(
+						err ||
+							new Boom('Connection Closed', {
+								statusCode: DisconnectReason.connectionClosed
+							})
+					)
 				}
 
 				ws.on(`TAG:${msgId}`, onRecv)
@@ -371,7 +380,9 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 
 		if (ws.isClosed || ws.isClosing) {
-			throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
+			throw new Boom('Connection Closed', {
+				statusCode: DisconnectReason.connectionClosed
+			})
 		}
 
 		let onOpen: () => void
@@ -401,7 +412,11 @@ export const makeSocket = (config: SocketConfig) => {
 				it could be that the network is down
 			*/
 			if (diff > keepAliveIntervalMs + 5000) {
-				end(new Boom('Connection was lost', { statusCode: DisconnectReason.connectionLost }))
+				end(
+					new Boom('Connection was lost', {
+						statusCode: DisconnectReason.connectionLost
+					})
+				)
 			} else if (ws.isOpen) {
 				// if its all good, send a keep alive request
 				query({
@@ -456,7 +471,11 @@ export const makeSocket = (config: SocketConfig) => {
 			})
 		}
 
-		end(new Boom(msg || 'Intentional Logout', { statusCode: DisconnectReason.loggedOut }))
+		end(
+			new Boom(msg || 'Intentional Logout', {
+				statusCode: DisconnectReason.loggedOut
+			})
+		)
 	}
 
 	const requestPairingCode = async (phoneNumber: string, customPairingCode?: string): Promise<string> => {
@@ -487,7 +506,7 @@ export const makeSocket = (config: SocketConfig) => {
 					attrs: {
 						jid: authState.creds.me.id,
 						stage: 'companion_hello',
-						// eslint-disable-next-line camelcase
+
 						should_show_push_notification: 'true'
 					},
 					content: [
@@ -560,10 +579,20 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 	})
 	ws.on('error', mapWebSocketError(end))
-	ws.on('close', () => end(new Boom('Connection Terminated', { statusCode: DisconnectReason.connectionClosed })))
+	ws.on('close', () =>
+		end(
+			new Boom('Connection Terminated', {
+				statusCode: DisconnectReason.connectionClosed
+			})
+		)
+	)
 	// the server terminated the connection
 	ws.on('CB:xmlstreamend', () =>
-		end(new Boom('Connection Terminated by Server', { statusCode: DisconnectReason.connectionClosed }))
+		end(
+			new Boom('Connection Terminated by Server', {
+				statusCode: DisconnectReason.connectionClosed
+			})
+		)
 	)
 	// QR gen
 	ws.on('CB:iq,type:set,pair-device', async (stanza: BinaryNode) => {
@@ -591,7 +620,11 @@ export const makeSocket = (config: SocketConfig) => {
 
 			const refNode = refNodes.shift()
 			if (!refNode) {
-				end(new Boom('QR refs attempts ended', { statusCode: DisconnectReason.timedOut }))
+				end(
+					new Boom('QR refs attempts ended', {
+						statusCode: DisconnectReason.timedOut
+					})
+				)
 				return
 			}
 
@@ -635,7 +668,9 @@ export const makeSocket = (config: SocketConfig) => {
 		logger.info('opened connection to WA')
 		clearTimeout(qrTimer) // will never happen in all likelyhood -- but just in case WA sends success on first try
 
-		ev.emit('creds.update', { me: { ...authState.creds.me!, lid: node.attrs.lid } })
+		ev.emit('creds.update', {
+			me: { ...authState.creds.me!, lid: node.attrs.lid }
+		})
 
 		ev.emit('connection.update', { connection: 'open' })
 	})
@@ -654,7 +689,11 @@ export const makeSocket = (config: SocketConfig) => {
 	})
 
 	ws.on('CB:ib,,downgrade_webclient', () => {
-		end(new Boom('Multi-device beta not joined', { statusCode: DisconnectReason.multideviceMismatch }))
+		end(
+			new Boom('Multi-device beta not joined', {
+				statusCode: DisconnectReason.multideviceMismatch
+			})
+		)
 	})
 
 	ws.on('CB:ib,,offline_preview', (node: BinaryNode) => {
@@ -684,7 +723,11 @@ export const makeSocket = (config: SocketConfig) => {
 			didStartBuffer = true
 		}
 
-		ev.emit('connection.update', { connection: 'connecting', receivedPendingNotifications: false, qr: undefined })
+		ev.emit('connection.update', {
+			connection: 'connecting',
+			receivedPendingNotifications: false,
+			qr: undefined
+		})
 	})
 
 	// called when all offline notifs are handled
@@ -719,7 +762,7 @@ export const makeSocket = (config: SocketConfig) => {
 	})
 
 	return {
-		type: 'md' as 'md',
+		type: 'md' as const,
 		ws,
 		ev,
 		authState: { creds, keys },
@@ -751,6 +794,11 @@ export const makeSocket = (config: SocketConfig) => {
  * */
 function mapWebSocketError(handler: (err: Error) => void) {
 	return (error: Error) => {
-		handler(new Boom(`WebSocket Error (${error?.message})`, { statusCode: getCodeFromWSError(error), data: error }))
+		handler(
+			new Boom(`WebSocket Error (${error?.message})`, {
+				statusCode: getCodeFromWSError(error),
+				data: error
+			})
+		)
 	}
 }

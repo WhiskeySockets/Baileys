@@ -152,7 +152,11 @@ export const makeNewsletterSocket = (sock: GroupsSocket) => {
 		},
 
 		newsletterFetchMessages: async (jid: string, count: number, since: number, after: number) => {
-			const messageUpdateAttrs: { count: string; since?: string; after?: string } = {
+			const messageUpdateAttrs: {
+				count: string
+				since?: string
+				after?: string
+			} = {
 				count: count.toString()
 			}
 			if (typeof since === 'number') {

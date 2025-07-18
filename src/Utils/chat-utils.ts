@@ -86,7 +86,11 @@ const to64BitNetworkOrder = (e: number) => {
 	return buff
 }
 
-type Mac = { indexMac: Uint8Array; valueMac: Uint8Array; operation: proto.SyncdMutation.SyncdOperation }
+type Mac = {
+	indexMac: Uint8Array
+	valueMac: Uint8Array
+	operation: proto.SyncdMutation.SyncdOperation
+}
 
 const makeLtHashGenerator = ({ indexValueMap, hash }: Pick<LTHashState, 'hash' | 'indexValueMap'>) => {
 	indexValueMap = { ...indexValueMap }
@@ -99,7 +103,9 @@ const makeLtHashGenerator = ({ indexValueMap, hash }: Pick<LTHashState, 'hash' |
 			const prevOp = indexValueMap[indexMacBase64]
 			if (operation === proto.SyncdMutation.SyncdOperation.REMOVE) {
 				if (!prevOp) {
-					throw new Boom('tried remove, but no previous op', { data: { indexMac, valueMac } })
+					throw new Boom('tried remove, but no previous op', {
+						data: { indexMac, valueMac }
+					})
 				}
 
 				// remove from index value mac, since this mutation is erased
@@ -143,7 +149,11 @@ const generatePatchMac = (
 	return hmacSign(total, key)
 }
 
-export const newLTHashState = (): LTHashState => ({ version: 0, hash: Buffer.alloc(128), indexValueMap: {} })
+export const newLTHashState = (): LTHashState => ({
+	version: 0,
+	hash: Buffer.alloc(128),
+	indexValueMap: {}
+})
 
 export const encodeSyncdPatch = async (
 	{ type, index, syncAction, apiVersion, operation }: WAPatchCreate,
@@ -153,7 +163,9 @@ export const encodeSyncdPatch = async (
 ) => {
 	const key = !!myAppStateKeyId ? await getAppStateSyncKey(myAppStateKeyId) : undefined
 	if (!key) {
-		throw new Boom(`myAppStateKey ("${myAppStateKeyId}") not present`, { statusCode: 404 })
+		throw new Boom(`myAppStateKey ("${myAppStateKeyId}") not present`, {
+			statusCode: 404
+		})
 	}
 
 	const encKeyId = Buffer.from(myAppStateKeyId, 'base64')
@@ -287,7 +299,10 @@ export const decodeSyncdPatch = async (
 		const base64Key = Buffer.from(msg.keyId!.id!).toString('base64')
 		const mainKeyObj = await getAppStateSyncKey(base64Key)
 		if (!mainKeyObj) {
-			throw new Boom(`failed to find key "${base64Key}" to decode patch`, { statusCode: 404, data: { msg } })
+			throw new Boom(`failed to find key "${base64Key}" to decode patch`, {
+				statusCode: 404,
+				data: { msg }
+			})
 		}
 
 		const mainKey = await mutationKeys(mainKeyObj.keyData!)
@@ -314,7 +329,11 @@ export const extractSyncdPatches = async (result: BinaryNode, options: AxiosRequ
 	const collectionNodes = getBinaryNodeChildren(syncNode, 'collection')
 
 	const final = {} as {
-		[T in WAPatchName]: { patches: proto.ISyncdPatch[]; hasMorePatches: boolean; snapshot?: proto.ISyncdSnapshot }
+		[T in WAPatchName]: {
+			patches: proto.ISyncdPatch[]
+			hasMorePatches: boolean
+			snapshot?: proto.ISyncdSnapshot
+		}
 	}
 	await Promise.all(
 		collectionNodes.map(async collectionNode => {
@@ -362,7 +381,9 @@ export const extractSyncdPatches = async (result: BinaryNode, options: AxiosRequ
 }
 
 export const downloadExternalBlob = async (blob: proto.IExternalBlobReference, options: AxiosRequestConfig<{}>) => {
-	const stream = await downloadContentFromMessage(blob, 'md-app-state', { options })
+	const stream = await downloadContentFromMessage(blob, 'md-app-state', {
+		options
+	})
 	const bufferArray: Buffer[] = []
 	for await (const chunk of stream) {
 		bufferArray.push(chunk)
@@ -513,7 +534,10 @@ export const chatModificationToAppPatch = (mod: ChatModification, jid: string) =
 							}
 
 							if (!m.messageTimestamp || !toNumber(m.messageTimestamp)) {
-								throw new Boom('Missing timestamp in last message list', { statusCode: 400, data: m })
+								throw new Boom('Missing timestamp in last message list', {
+									statusCode: 400,
+									data: m
+								})
 							}
 
 							if (m.key.participant) {

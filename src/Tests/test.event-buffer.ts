@@ -230,12 +230,18 @@ describe('Event Buffer Tests', () => {
 		})
 
 		ev.buffer()
-		ev.emit('messages.upsert', { messages: [proto.WebMessageInfo.fromObject(msg)], type: 'notify' })
+		ev.emit('messages.upsert', {
+			messages: [proto.WebMessageInfo.fromObject(msg)],
+			type: 'notify'
+		})
 
 		msg.messageTimestamp = unixTimestampSeconds() + 1
 		msg.messageStubType = undefined
 		msg.message = { conversation: 'Test' }
-		ev.emit('messages.upsert', { messages: [proto.WebMessageInfo.fromObject(msg)], type: 'notify' })
+		ev.emit('messages.upsert', {
+			messages: [proto.WebMessageInfo.fromObject(msg)],
+			type: 'notify'
+		})
 		ev.emit('messages.update', [{ key: msg.key, update: { status: WAMessageStatus.READ } }])
 
 		ev.flush()
@@ -263,7 +269,10 @@ describe('Event Buffer Tests', () => {
 		ev.on('message-receipt.update', () => fail('should not emit'))
 
 		ev.buffer()
-		ev.emit('messages.upsert', { messages: [proto.WebMessageInfo.fromObject(msg)], type: 'notify' })
+		ev.emit('messages.upsert', {
+			messages: [proto.WebMessageInfo.fromObject(msg)],
+			type: 'notify'
+		})
 		ev.emit('message-receipt.update', [
 			{
 				key: msg.key,
@@ -319,8 +328,17 @@ describe('Event Buffer Tests', () => {
 		ev.on('chats.update', c => chats.push(...c))
 
 		ev.buffer()
-		ev.emit('messages.upsert', { messages: [proto.WebMessageInfo.fromObject(msg)], type: 'notify' })
-		ev.emit('chats.update', [{ id: msg.key.remoteJid!, unreadCount: 1, conversationTimestamp: msg.messageTimestamp }])
+		ev.emit('messages.upsert', {
+			messages: [proto.WebMessageInfo.fromObject(msg)],
+			type: 'notify'
+		})
+		ev.emit('chats.update', [
+			{
+				id: msg.key.remoteJid!,
+				unreadCount: 1,
+				conversationTimestamp: msg.messageTimestamp
+			}
+		])
 		ev.emit('messages.update', [{ key: msg.key, update: { status: WAMessageStatus.READ } }])
 
 		ev.flush()
