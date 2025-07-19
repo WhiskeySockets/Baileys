@@ -27,7 +27,7 @@ export function makeCacheableSignalKeyStore(
 ): SignalKeyStore {
 	const cache =
 		_cache ||
-		new NodeCache({
+		new NodeCache<SignalDataTypeMap[keyof SignalDataTypeMap]>({
 			stdTTL: DEFAULT_CACHE_TTLS.SIGNAL_STORE, // 5 minutes
 			useClones: false,
 			deleteOnExpire: true
@@ -42,7 +42,7 @@ export function makeCacheableSignalKeyStore(
 			const data: { [_: string]: SignalDataTypeMap[typeof type] } = {}
 			const idsToFetch: string[] = []
 			for (const id of ids) {
-				const item = cache.get<SignalDataTypeMap[typeof type]>(getUniqueId(type, id))
+				const item = cache.get<SignalDataTypeMap[typeof type]>(getUniqueId(type, id)) as any
 				if (typeof item !== 'undefined') {
 					data[id] = item
 				} else {
@@ -68,7 +68,7 @@ export function makeCacheableSignalKeyStore(
 			let keys = 0
 			for (const type in data) {
 				for (const id in data[type as keyof SignalDataTypeMap]) {
-					cache.set(getUniqueId(type, id), data[type as keyof SignalDataTypeMap]![id])
+					cache.set(getUniqueId(type, id), data[type as keyof SignalDataTypeMap]![id]!)
 					keys += 1
 				}
 			}

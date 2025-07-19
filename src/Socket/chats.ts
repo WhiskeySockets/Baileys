@@ -4,6 +4,7 @@ import { proto } from '../../WAProto'
 import { DEFAULT_CACHE_TTLS, PROCESSABLE_HISTORY_TYPES } from '../Defaults'
 import type {
 	BotListInfo,
+	CacheStore,
 	ChatModification,
 	ChatMutation,
 	LTHashState,
@@ -73,10 +74,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	const placeholderResendCache =
 		config.placeholderResendCache ||
-		new NodeCache({
+		(new NodeCache<number>({
 			stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
 			useClones: false
-		})
+		}) as CacheStore)
 
 	if (!config.placeholderResendCache) {
 		config.placeholderResendCache = placeholderResendCache

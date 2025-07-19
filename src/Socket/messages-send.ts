@@ -75,7 +75,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	const userDevicesCache =
 		config.userDevicesCache ||
-		new NodeCache({
+		new NodeCache<JidWithDevice[]>({
 			stdTTL: DEFAULT_CACHE_TTLS.USER_DEVICES, // 5 minutes
 			useClones: false
 		})
@@ -237,7 +237,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			for (const key in deviceMap) {
-				userDevicesCache.set(key, deviceMap[key])
+				userDevicesCache.set(key, deviceMap[key]!)
 			}
 		}
 
