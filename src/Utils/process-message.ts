@@ -1,5 +1,5 @@
 import type { AxiosRequestConfig } from 'axios'
-import { proto } from '../../WAProto'
+import { proto } from '../../WAProto/index.js'
 import type {
 	AuthenticationCreds,
 	BaileysEventEmitter,

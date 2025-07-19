@@ -1,5 +1,5 @@
 import { Boom } from '@hapi/boom'
-import { proto } from '../../WAProto'
+import { proto } from '../../WAProto/index.js'
 import { NOISE_MODE, WA_CERT_DETAILS } from '../Defaults'
 import type { KeyPair } from '../Types'
 import type { BinaryNode } from '../WABinary'

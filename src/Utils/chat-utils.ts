@@ -1,6 +1,6 @@
 import { Boom } from '@hapi/boom'
 import type { AxiosRequestConfig } from 'axios'
-import { proto } from '../../WAProto'
+import { proto } from '../../WAProto/index.js'
 import type {
 	BaileysEventEmitter,
 	Chat,

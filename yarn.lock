@@ -1861,6 +1861,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@topoconfig/extends@npm:^0.16.2":
+  version: 0.16.2
+  resolution: "@topoconfig/extends@npm:0.16.2"
+  bin:
+    xtends: target/esm/cli.mjs
+  checksum: 10c0/9719b3cd84d2525dd4f4f19f47007b08909e9b19c74b498ebac8c596795d9613e383eac3e5f2e63fb5083af2d7eab5606a422f94d3554cb982736dc97c58cd81
+  languageName: node
+  linkType: hard
+
 "@types/babel__core@npm:^7.1.14":
   version: 7.20.5
   resolution: "@types/babel__core@npm:7.20.5"
@@ -2659,6 +2668,7 @@ __metadata:
     protobufjs-cli: "npm:^1.1.3"
     release-it: "npm:^15.10.3"
     ts-jest: "npm:^29.3.2"
+    tsc-esm-fix: "npm:^3.1.2"
     tsx: "npm:^4.20.3"
     typedoc: "npm:^0.27.9"
     typedoc-plugin-markdown: "npm:4.4.2"
@@ -3782,6 +3792,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"depseek@npm:^0.4.1":
+  version: 0.4.1
+  resolution: "depseek@npm:0.4.1"
+  checksum: 10c0/1313fba818793a5be4514c95f8770cbbe45cf6e746b629166115d0a380b3ccd2a4577355a928063daecec303e488cc414d1279938dd4d4521a57304746f0e892
+  languageName: node
+  linkType: hard
+
 "detect-newline@npm:^3.0.0":
   version: 3.1.0
   resolution: "detect-newline@npm:3.1.0"
@@ -4807,6 +4824,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"fs-extra@npm:^11.2.0":
+  version: 11.3.0
+  resolution: "fs-extra@npm:11.3.0"
+  dependencies:
+    graceful-fs: "npm:^4.2.0"
+    jsonfile: "npm:^6.0.1"
+    universalify: "npm:^2.0.0"
+  checksum: 10c0/5f95e996186ff45463059feb115a22fb048bdaf7e487ecee8a8646c78ed8fdca63630e3077d4c16ce677051f5e60d3355a06f3cd61f3ca43f48cc58822a44d0a
+  languageName: node
+  linkType: hard
+
 "fs-minipass@npm:^3.0.0":
   version: 3.0.3
   resolution: "fs-minipass@npm:3.0.3"
@@ -5179,7 +5207,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"graceful-fs@npm:^4.1.2, graceful-fs@npm:^4.1.9, graceful-fs@npm:^4.2.11, graceful-fs@npm:^4.2.6, graceful-fs@npm:^4.2.9":
+"graceful-fs@npm:^4.1.2, graceful-fs@npm:^4.1.6, graceful-fs@npm:^4.1.9, graceful-fs@npm:^4.2.0, graceful-fs@npm:^4.2.11, graceful-fs@npm:^4.2.6, graceful-fs@npm:^4.2.9":
   version: 4.2.11
   resolution: "graceful-fs@npm:4.2.11"
   checksum: 10c0/386d011a553e02bc594ac2ca0bd6d9e4c22d7fa8cfbfc448a6d148c59ea881b092db9dbe3547ae4b88e55f1b01f7c4a2ecc53b310c042793e63aa44cf6c257f2
@@ -6836,6 +6864,19 @@ __metadata:
   bin:
     json: lib/json.js
   checksum: 10c0/330eea4d69902f775b5babd65848383e066765a9d9d9536e80dd369af89bfe3728408f1287c0ba40f5d90ead391542836ed010a8ed0c8169396b4aac3847a5bf
+  languageName: node
+  linkType: hard
+
+"jsonfile@npm:^6.0.1":
+  version: 6.1.0
+  resolution: "jsonfile@npm:6.1.0"
+  dependencies:
+    graceful-fs: "npm:^4.1.6"
+    universalify: "npm:^2.0.0"
+  dependenciesMeta:
+    graceful-fs:
+      optional: true
+  checksum: 10c0/4f95b5e8a5622b1e9e8f33c96b7ef3158122f595998114d1e7f03985649ea99cb3cd99ce1ed1831ae94c8c8543ab45ebd044207612f31a56fd08462140e46865
   languageName: node
   linkType: hard
 
@@ -9886,6 +9927,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tsc-esm-fix@npm:^3.1.2":
+  version: 3.1.2
+  resolution: "tsc-esm-fix@npm:3.1.2"
+  dependencies:
+    "@topoconfig/extends": "npm:^0.16.2"
+    depseek: "npm:^0.4.1"
+    fast-glob: "npm:^3.3.2"
+    fs-extra: "npm:^11.2.0"
+    json5: "npm:^2.2.3"
+    type-flag: "npm:^3.0.0"
+  bin:
+    tsc-esm-fix: target/esm/cli.mjs
+  checksum: 10c0/5072d08273cb942cf2868ecfeb1a213e3fa35f11c0e13807901610d80b90dd849c65d5f9714d7ac99b7c6faa9256d56afdd146fc4c1832226441dc7e3eb2e0d9
+  languageName: node
+  linkType: hard
+
 "tslib@npm:^2.0.1, tslib@npm:^2.1.0, tslib@npm:^2.4.0":
   version: 2.8.1
   resolution: "tslib@npm:2.8.1"
@@ -9980,6 +10037,13 @@ __metadata:
   version: 4.41.0
   resolution: "type-fest@npm:4.41.0"
   checksum: 10c0/f5ca697797ed5e88d33ac8f1fec21921839871f808dc59345c9cf67345bfb958ce41bd821165dbf3ae591cedec2bf6fe8882098dfdd8dc54320b859711a2c1e4
+  languageName: node
+  linkType: hard
+
+"type-flag@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "type-flag@npm:3.0.0"
+  checksum: 10c0/b1015d4eb18cd85432fa3bcd0228149dd6893a9c1360a2ad619f79b72e19acfb648a932e2a9ccf2e2db0f0c4b86385bd886a3364e221afb116424e0ae6d1b1ba
   languageName: node
   linkType: hard
 
@@ -10171,6 +10235,13 @@ __metadata:
   version: 6.0.1
   resolution: "universal-user-agent@npm:6.0.1"
   checksum: 10c0/5c9c46ffe19a975e11e6443640ed4c9e0ce48fcc7203325757a8414ac49940ebb0f4667f2b1fa561489d1eb22cb2d05a0f7c82ec20c5cba42e58e188fb19b187
+  languageName: node
+  linkType: hard
+
+"universalify@npm:^2.0.0":
+  version: 2.0.1
+  resolution: "universalify@npm:2.0.1"
+  checksum: 10c0/73e8ee3809041ca8b818efb141801a1004e3fc0002727f1531f4de613ea281b494a40909596dae4a042a4fb6cd385af5d4db2e137b1362e0e91384b828effd3a
   languageName: node
   linkType: hard
 

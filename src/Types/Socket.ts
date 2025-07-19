@@ -1,7 +1,7 @@
 import type { AxiosRequestConfig } from 'axios'
 import type { Agent } from 'https'
 import type { URL } from 'url'
-import { proto } from '../../WAProto'
+import { proto } from '../../WAProto/index.js'
 import type { ILogger } from '../Utils/logger'
 import type { AuthenticationState, SignalAuthState, TransactionCapabilityOptions } from './Auth'
 import type { GroupMetadata } from './GroupMetadata'

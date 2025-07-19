@@ -13,6 +13,12 @@ try {
     'import $1 from'
   );
 
+  // add missing extension to the import
+  content = content.replace(
+    /(['"])protobufjs\/minimal(['"])/g,
+    '$1protobufjs/minimal.js$2'
+  );
+
   // Write back
   writeFileSync(filePath, content, 'utf8');
 

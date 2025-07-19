@@ -2,8 +2,9 @@ import { Boom } from '@hapi/boom'
 import axios, { type AxiosRequestConfig } from 'axios'
 import { createHash, randomBytes } from 'crypto'
 import { platform, release } from 'os'
-import { proto } from '../../WAProto'
-import { version as baileysVersion } from '../Defaults/baileys-version.json'
+import { proto } from '../../WAProto/index.js'
+import version from '../Defaults/baileys-version.json' assert { type: 'json' }
+const baileysVersion = version.version
 import type {
 	BaileysEventEmitter,
 	BaileysEventMap,
