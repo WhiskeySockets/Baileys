@@ -21,7 +21,7 @@
     "engine-requirements.js"
   ],
   "scripts": {
-    "build:all": "yarn build && yarn build:docs",
+    "build:all": "npm run build && npm run build:docs",
     "build:docs": "typedoc",
     "build": "tsc -P tsconfig.build.json && tsc-esm-fix --tsconfig='tsconfig.build.json' --ext='.js'",
     "changelog:last": "conventional-changelog -p angular -r 2",
@@ -31,9 +31,9 @@
     "gen:protobuf": "sh WAProto/GenerateStatics.sh",
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\"",
     "lint": "tsc && eslint src --ext .js,.ts",
-    "lint:fix": "yarn format && yarn lint --fix",
-    "prepack": "yarn build",
-    "prepare": "yarn build",
+    "lint:fix": "npm run format && npm run lint --fix",
+    "prepack": "npm run build",
+    "prepare": "npm run build",
     "preinstall": "node ./engine-requirements.js",
     "release": "release-it",
     "test": "jest"
