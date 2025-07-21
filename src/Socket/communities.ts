@@ -105,7 +105,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 		...sock,
 		communityMetadata,
 		communityCreate: async(subject, body) => {
-			const descriptionId = generateMessageID().substring(0, 12) // Simulando um "HexFormat.of().formatHex(Bytes.random(12))"
+			const descriptionId = generateMessageID().substring(0, 12)
 
 			const result = await communityQuery(
 				'@g.us',
