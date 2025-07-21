@@ -1,5 +1,5 @@
-import { USyncQueryProtocol } from '../../Types/USync'
-import { BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, getBinaryNodeChildString } from '../../WABinary'
+import type { USyncQueryProtocol } from '../../Types/USync'
+import { type BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, getBinaryNodeChildString } from '../../WABinary'
 import { USyncUser } from '../USyncUser'
 
 export type BotProfileCommand = {
@@ -35,7 +35,7 @@ export class USyncBotProfileProtocol implements USyncQueryProtocol {
 		return {
 			tag: 'bot',
 			attrs: {},
-			content: [{ tag: 'profile', attrs: { persona_id: user.personaId } }]
+			content: [{ tag: 'profile', attrs: { persona_id: user.personaId! } }]
 		}
 	}
 
@@ -62,12 +62,12 @@ export class USyncBotProfileProtocol implements USyncQueryProtocol {
 
 		return {
 			isDefault: !!getBinaryNodeChild(profile, 'default'),
-			jid: node.attrs.jid,
+			jid: node.attrs.jid!,
 			name: getBinaryNodeChildString(profile, 'name')!,
 			attributes: getBinaryNodeChildString(profile, 'attributes')!,
 			description: getBinaryNodeChildString(profile, 'description')!,
 			category: getBinaryNodeChildString(profile, 'category')!,
-			personaId: profile!.attrs['persona_id'],
+			personaId: profile!.attrs['persona_id']!,
 			commandsDescription: getBinaryNodeChildString(commandsNode, 'description')!,
 			commands,
 			prompts

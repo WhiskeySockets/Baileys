@@ -1,8 +1,9 @@
-import { AxiosRequestConfig } from 'axios'
+import type { AxiosRequestConfig } from 'axios'
 import { promisify } from 'util'
 import { inflate } from 'zlib'
-import { proto } from '../../WAProto'
-import { Chat, Contact, WAMessageStubType } from '../Types'
+import { proto } from '../../WAProto/index.js'
+import type { Chat, Contact } from '../Types'
+import { WAMessageStubType } from '../Types'
 import { isJidUser } from '../WABinary'
 import { toNumber } from './generics'
 import { normalizeMessageContent } from './messages'
@@ -37,13 +38,15 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 		case proto.HistorySync.HistorySyncType.FULL:
 		case proto.HistorySync.HistorySyncType.ON_DEMAND:
 			for (const chat of item.conversations! as Chat[]) {
-				contacts.push({ id: chat.id, name: chat.name || undefined })
+				contacts.push({
+					id: chat.id,
+					name: chat.name || undefined,
+					lid: chat.lidJid || undefined,
+					jid: isJidUser(chat.id) ? chat.id : undefined
+				})
 
 				const msgs = chat.messages || []
 				delete chat.messages
-				delete chat.archived
-				delete chat.muteEndTime
-				delete chat.pinned
 
 				for (const item of msgs) {
 					const message = item.message!
@@ -68,10 +71,6 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 							verifiedName: message.messageStubParameters?.[0]
 						})
 					}
-				}
-
-				if (isJidUser(chat.id) && chat.readOnly && chat.archived) {
-					delete chat.readOnly
 				}
 
 				chats.push({ ...chat })

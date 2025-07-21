@@ -2,7 +2,7 @@ import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
 import { URL } from 'url'
 import { promisify } from 'util'
-import { proto } from '../../WAProto'
+import { proto } from '../../WAProto/index.js'
 import {
 	DEF_CALLBACK_PREFIX,
 	DEF_TAG_PREFIX,
@@ -10,7 +10,8 @@ import {
 	MIN_PREKEY_COUNT,
 	NOISE_WA_HEADER
 } from '../Defaults'
-import { DisconnectReason, SocketConfig } from '../Types'
+import type { SocketConfig } from '../Types'
+import { DisconnectReason } from '../Types'
 import {
 	addTransactionCapability,
 	aesEncryptCTR,
@@ -32,7 +33,7 @@ import {
 } from '../Utils'
 import {
 	assertNodeErrorFree,
-	BinaryNode,
+	type BinaryNode,
 	binaryNodeToString,
 	encodeBinaryNode,
 	getBinaryNodeChild,
@@ -178,8 +179,8 @@ export const makeSocket = (config: SocketConfig) => {
 	 * @param timeoutMs timeout after which the promise will reject
 	 */
 	const waitForMessage = async <T>(msgId: string, timeoutMs = defaultQueryTimeoutMs) => {
-		let onRecv: (json) => void
-		let onErr: (err) => void
+		let onRecv: (json: any) => void
+		let onErr: (err: Boom | Error) => void
 		try {
 			const result = await promiseTimeout<T>(timeoutMs, (resolve, reject) => {
 				onRecv = resolve
@@ -268,8 +269,8 @@ export const makeSocket = (config: SocketConfig) => {
 			},
 			content: [{ tag: 'count', attrs: {} }]
 		})
-		const countChild = getBinaryNodeChild(result, 'count')
-		return +countChild!.attrs.value
+		const countChild = getBinaryNodeChild(result, 'count')!
+		return +countChild.attrs.value!
 	}
 
 	/** generates and uploads a set of pre-keys to the server */
@@ -345,7 +346,6 @@ export const makeSocket = (config: SocketConfig) => {
 		clearTimeout(qrTimer)
 
 		ws.removeAllListeners('close')
-		ws.removeAllListeners('error')
 		ws.removeAllListeners('open')
 		ws.removeAllListeners('message')
 
@@ -459,8 +459,15 @@ export const makeSocket = (config: SocketConfig) => {
 		end(new Boom(msg || 'Intentional Logout', { statusCode: DisconnectReason.loggedOut }))
 	}
 
-	const requestPairingCode = async (phoneNumber: string): Promise<string> => {
-		authState.creds.pairingCode = bytesToCrockford(randomBytes(5))
+	const requestPairingCode = async (phoneNumber: string, customPairingCode?: string): Promise<string> => {
+		const pairingCode = customPairingCode ?? bytesToCrockford(randomBytes(5))
+
+		if (customPairingCode && customPairingCode?.length !== 8) {
+			throw new Error('Custom pairing code must be exactly 8 chars')
+		}
+
+		authState.creds.pairingCode = pairingCode
+
 		authState.creds.me = {
 			id: jidEncode(phoneNumber, 's.whatsapp.net'),
 			name: '~'
@@ -480,7 +487,7 @@ export const makeSocket = (config: SocketConfig) => {
 					attrs: {
 						jid: authState.creds.me.id,
 						stage: 'companion_hello',
-						// eslint-disable-next-line camelcase
+
 						should_show_push_notification: 'true'
 					},
 					content: [
@@ -547,7 +554,7 @@ export const makeSocket = (config: SocketConfig) => {
 	ws.on('open', async () => {
 		try {
 			await validateConnection()
-		} catch (err) {
+		} catch (err: any) {
 			logger.error({ err }, 'error in validating connection')
 			end(err)
 		}
@@ -565,7 +572,7 @@ export const makeSocket = (config: SocketConfig) => {
 			attrs: {
 				to: S_WHATSAPP_NET,
 				type: 'result',
-				id: stanza.attrs.id
+				id: stanza.attrs.id!
 			}
 		}
 		await sendNode(iq)
@@ -615,7 +622,7 @@ export const makeSocket = (config: SocketConfig) => {
 			ev.emit('connection.update', { isNewLogin: true, qr: undefined })
 
 			await sendNode(reply)
-		} catch (error) {
+		} catch (error: any) {
 			logger.info({ trace: error.stack }, 'error in pairing')
 			end(error)
 		}

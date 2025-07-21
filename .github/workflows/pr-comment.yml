@@ -18,19 +18,36 @@ jobs:
 
       - uses: mshick/add-pr-comment@v2
         with:
-          repo-token: ${{ secrets.PERSONAL_TOKEN}}
+          repo-token: ${{ secrets.PERSONAL_TOKEN }}
           message-id: pr-test
           message: |
-            Thanks for your contribution.
+            Thanks for opening this pull request and contributing to the project!
 
-            The next step is to wait for review and approval to merge it to main repository
+            The next step is for the maintainers to review your changes. If everything looks good, it will be approved and merged into the main branch.
 
-            The community can help reacting with a thumb up (:thumbsup:) for approval and rocket (:rocket:) for who has tested it.
+            In the meantime, anyone in the community is encouraged to test this pull request and provide feedback.
 
-            To test this PR you can run the following command below:
+            ### ✅ How to confirm it works
+
+            If you’ve tested this PR, please comment below with:
+
+            ```
+            Tested and working ✅
+            ```
+
+            This helps us speed up the review and merge process.
+
+            ### 📦 To test this PR locally:
+
             ```
             # NPM
             npm install @whiskeysockets/baileys@${{ github.event.pull_request.head.repo.full_name }}#${{ github.event.pull_request.head.ref }}
-            # YARN v2
+
+            # Yarn (v2+)
             yarn add @whiskeysockets/baileys@${{ github.event.pull_request.head.repo.full_name }}#${{ github.event.pull_request.head.ref }}
+
+            # PNPM
+            pnpm add @whiskeysockets/baileys@${{ github.event.pull_request.head.repo.full_name }}#${{ github.event.pull_request.head.ref }}
             ```
+
+            If you encounter any issues or have feedback, feel free to comment as well.

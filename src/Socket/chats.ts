@@ -1,10 +1,10 @@
 import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
-import { proto } from '../../WAProto'
+import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, PROCESSABLE_HISTORY_TYPES } from '../Defaults'
-import {
-	ALL_WA_PATCH_NAMES,
+import type {
 	BotListInfo,
+	CacheStore,
 	ChatModification,
 	ChatMutation,
 	LTHashState,
@@ -25,10 +25,11 @@ import {
 	WAPrivacyValue,
 	WAReadReceiptsValue
 } from '../Types'
-import { LabelActionBody } from '../Types/Label'
+import { ALL_WA_PATCH_NAMES } from '../Types'
+import type { LabelActionBody } from '../Types/Label'
 import {
 	chatModificationToAppPatch,
-	ChatMutationMap,
+	type ChatMutationMap,
 	decodePatches,
 	decodeSyncdSnapshot,
 	encodeSyncdPatch,
@@ -41,9 +42,10 @@ import {
 import { makeMutex } from '../Utils/make-mutex'
 import processMessage from '../Utils/process-message'
 import {
-	BinaryNode,
+	type BinaryNode,
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
+	jidDecode,
 	jidNormalizedUser,
 	reduceBinaryNodeToDictionary,
 	S_WHATSAPP_NET
@@ -72,10 +74,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	const placeholderResendCache =
 		config.placeholderResendCache ||
-		new NodeCache({
+		(new NodeCache<number>({
 			stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
 			useClones: false
-		})
+		}) as CacheStore)
 
 	if (!config.placeholderResendCache) {
 		config.placeholderResendCache = placeholderResendCache
@@ -204,8 +206,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			if (section.attrs.type === 'all') {
 				for (const bot of getBinaryNodeChildren(section, 'bot')) {
 					botList.push({
-						jid: bot.attrs.jid,
-						personaId: bot.attrs['persona_id']
+						jid: bot.attrs.jid!,
+						personaId: bot.attrs['persona_id']!
 					})
 				}
 			}
@@ -218,7 +220,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		const usyncQuery = new USyncQuery().withContactProtocol().withLIDProtocol()
 
 		for (const jid of jids) {
-			const phone = `+${jid.replace('+', '').split('@')[0].split(':')[0]}`
+			const phone = `+${jid.replace('+', '').split('@')[0]?.split(':')[0]}`
 			usyncQuery.withUser(new USyncUser().withPhone(phone))
 		}
 
@@ -256,7 +258,11 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	/** update the profile picture for yourself or a group */
-	const updateProfilePicture = async (jid: string, content: WAMediaUpload) => {
+	const updateProfilePicture = async (
+		jid: string,
+		content: WAMediaUpload,
+		dimensions?: { width: number; height: number }
+	) => {
 		let targetJid
 		if (!jid) {
 			throw new Boom(
@@ -266,16 +272,18 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 		if (jidNormalizedUser(jid) !== jidNormalizedUser(authState.creds.me!.id)) {
 			targetJid = jidNormalizedUser(jid) // in case it is someone other than us
+		} else {
+			targetJid = undefined
 		}
 
-		const { img } = await generateProfilePicture(content)
+		const { img } = await generateProfilePicture(content, dimensions)
 		await query({
 			tag: 'iq',
 			attrs: {
-				target: targetJid,
 				to: S_WHATSAPP_NET,
 				type: 'set',
-				xmlns: 'w:profile:picture'
+				xmlns: 'w:profile:picture',
+				...(targetJid ? { target: targetJid } : {})
 			},
 			content: [
 				{
@@ -298,15 +306,17 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 		if (jidNormalizedUser(jid) !== jidNormalizedUser(authState.creds.me!.id)) {
 			targetJid = jidNormalizedUser(jid) // in case it is someone other than us
+		} else {
+			targetJid = undefined
 		}
 
 		await query({
 			tag: 'iq',
 			attrs: {
-				target: targetJid,
 				to: S_WHATSAPP_NET,
 				type: 'set',
-				xmlns: 'w:profile:picture'
+				xmlns: 'w:profile:picture',
+				...(targetJid ? { target: targetJid } : {})
 			}
 		})
 	}
@@ -472,7 +482,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					const states = {} as { [T in WAPatchName]: LTHashState }
 					const nodes: BinaryNode[] = []
 
-					for (const name of collectionsToHandle) {
+					for (const name of collectionsToHandle as Set<WAPatchName>) {
 						const result = await authState.keys.get('app-state-sync-version', [name])
 						let state = result[name]
 
@@ -564,7 +574,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 								// collection is done with sync
 								collectionsToHandle.delete(name)
 							}
-						} catch (error) {
+						} catch (error: any) {
 							// if retry attempts overshoot
 							// or key not found
 							const isIrrecoverableError =
@@ -590,7 +600,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 			const { onMutation } = newAppStateChunkHandler(isInitialSync)
 			for (const key in globalMutationMap) {
-				onMutation(globalMutationMap[key])
+				onMutation(globalMutationMap[key]!)
 			}
 		}
 	)
@@ -632,15 +642,18 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			await sendNode({
 				tag: 'presence',
 				attrs: {
-					name: me.name,
+					name: me.name.replace(/@/g, ''),
 					type
 				}
 			})
 		} else {
+			const { server } = jidDecode(toJid)!
+			const isLid = server === 'lid'
+
 			await sendNode({
 				tag: 'chatstate',
 				attrs: {
-					from: me.id,
+					from: isLid ? me.lid! : me.id,
 					to: toJid!
 				},
 				content: [
@@ -681,7 +694,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		const jid = attrs.from
 		const participant = attrs.participant || attrs.from
 
-		if (shouldIgnoreJid(jid) && jid !== '@s.whatsapp.net') {
+		if (shouldIgnoreJid(jid!) && jid !== '@s.whatsapp.net') {
 			return
 		}
 
@@ -692,12 +705,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			}
 		} else if (Array.isArray(content)) {
 			const [firstChild] = content
-			let type = firstChild.tag as WAPresence
+			let type = firstChild!.tag as WAPresence
 			if (type === 'paused') {
 				type = 'available'
 			}
 
-			if (firstChild.attrs?.media === 'audio') {
+			if (firstChild!.attrs?.media === 'audio') {
 				type = 'recording'
 			}
 
@@ -707,7 +720,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 
 		if (presence) {
-			ev.emit('presence.update', { id: jid, presences: { [participant]: presence } })
+			ev.emit('presence.update', { id: jid!, presences: { [participant!]: presence } })
 		}
 	}
 
@@ -782,7 +795,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				logger
 			)
 			for (const key in mutationMap) {
-				onMutation(mutationMap[key])
+				onMutation(mutationMap[key]!)
 			}
 		}
 	}
@@ -845,6 +858,30 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					messages,
 					star
 				}
+			},
+			jid
+		)
+	}
+
+	/**
+	 * Add or Edit Contact
+	 */
+	const addOrEditContact = (jid: string, contact: proto.SyncActionValue.IContactAction) => {
+		return chatModify(
+			{
+				contact
+			},
+			jid
+		)
+	}
+
+	/**
+	 * Remove Contact
+	 */
+	const removeContact = (jid: string) => {
+		return chatModify(
+			{
+				contact: null
 			},
 			jid
 		)
@@ -1079,6 +1116,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		resyncAppState,
 		chatModify,
 		cleanDirtyBits,
+		addOrEditContact,
+		removeContact,
 		addLabel,
 		addChatLabel,
 		removeChatLabel,

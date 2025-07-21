@@ -1,8 +1,8 @@
 import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
-import { proto } from '../../WAProto'
+import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, WA_DEFAULT_EPHEMERAL } from '../Defaults'
-import {
+import type {
 	AnyMessageContent,
 	MediaConnInfo,
 	MessageReceiptType,
@@ -16,6 +16,7 @@ import {
 	assertMediaContent,
 	bindWaitForEvent,
 	decryptMediaRetryData,
+	encodeNewsletterMessage,
 	encodeSignedDeviceIdentity,
 	encodeWAMessage,
 	encryptMediaRetryRequest,
@@ -32,8 +33,8 @@ import {
 import { getUrlInfo } from '../Utils/link-preview'
 import {
 	areJidsSameUser,
-	BinaryNode,
-	BinaryNodeAttributes,
+	type BinaryNode,
+	type BinaryNodeAttributes,
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
 	isJidGroup,
@@ -41,11 +42,13 @@ import {
 	jidDecode,
 	jidEncode,
 	jidNormalizedUser,
-	JidWithDevice,
+	type JidWithDevice,
 	S_WHATSAPP_NET
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeGroupsSocket } from './groups'
+import type { NewsletterSocket } from './newsletter'
+import { makeNewsletterSocket } from './newsletter'
 
 export const makeMessagesSocket = (config: SocketConfig) => {
 	const {
@@ -56,7 +59,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		patchMessageBeforeSending,
 		cachedGroupMetadata
 	} = config
-	const sock = makeGroupsSocket(config)
+	const sock: NewsletterSocket = makeNewsletterSocket(makeGroupsSocket(config))
 	const {
 		ev,
 		authState,
@@ -72,7 +75,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	const userDevicesCache =
 		config.userDevicesCache ||
-		new NodeCache({
+		new NodeCache<JidWithDevice[]>({
 			stdTTL: DEFAULT_CACHE_TTLS.USER_DEVICES, // 5 minutes
 			useClones: false
 		})
@@ -91,14 +94,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					},
 					content: [{ tag: 'media_conn', attrs: {} }]
 				})
-				const mediaConnNode = getBinaryNodeChild(result, 'media_conn')
+				const mediaConnNode = getBinaryNodeChild(result, 'media_conn')!
 				const node: MediaConnInfo = {
 					hosts: getBinaryNodeChildren(mediaConnNode, 'host').map(({ attrs }) => ({
-						hostname: attrs.hostname,
-						maxContentLengthBytes: +attrs.maxContentLengthBytes
+						hostname: attrs.hostname!,
+						maxContentLengthBytes: +attrs.maxContentLengthBytes!
 					})),
-					auth: mediaConnNode!.attrs.auth,
-					ttl: +mediaConnNode!.attrs.ttl,
+					auth: mediaConnNode.attrs.auth!,
+					ttl: +mediaConnNode.attrs.ttl!,
 					fetchDate: new Date()
 				}
 				logger.debug('fetched media conn')
@@ -119,10 +122,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		messageIds: string[],
 		type: MessageReceiptType
 	) => {
+		if (!messageIds || messageIds.length === 0) {
+			throw new Boom('missing ids in receipt')
+		}
+
 		const node: BinaryNode = {
 			tag: 'receipt',
 			attrs: {
-				id: messageIds[0]
+				id: messageIds[0]!
 			}
 		}
 		const isReadReceipt = type === 'read' || type === 'read-self'
@@ -224,13 +231,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			for (const item of extracted) {
 				deviceMap[item.user] = deviceMap[item.user] || []
-				deviceMap[item.user].push(item)
+				deviceMap[item.user]?.push(item)
 
 				deviceResults.push(item)
 			}
 
 			for (const key in deviceMap) {
-				userDevicesCache.set(key, deviceMap[key])
+				userDevicesCache.set(key, deviceMap[key]!)
 			}
 		}
 
@@ -301,7 +308,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const msgId = await relayMessage(meJid, protocolMessage, {
 			additionalAttributes: {
 				category: 'peer',
-				// eslint-disable-next-line camelcase
+
 				push_priority: 'high_force'
 			}
 		})
@@ -373,6 +380,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const isGroup = server === 'g.us'
 		const isStatus = jid === statusJid
 		const isLid = server === 'lid'
+		const isNewsletter = server === 'newsletter'
 
 		msgId = msgId || generateMessageIDV2(sock.user?.id)
 		useUserDevicesCache = useUserDevicesCache !== false
@@ -387,10 +395,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			deviceSentMessage: {
 				destinationJid,
 				message
-			}
+			},
+			messageContextInfo: message.messageContextInfo
 		}
 
-		const extraAttrs = {}
+		const extraAttrs: BinaryNodeAttributes = {}
 
 		if (participant) {
 			// when the retry request is not for a group
@@ -408,6 +417,30 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			const mediaType = getMediaType(message)
 			if (mediaType) {
 				extraAttrs['mediatype'] = mediaType
+			}
+
+			if (isNewsletter) {
+				// Patch message if needed, then encode as plaintext
+				const patched = patchMessageBeforeSending ? await patchMessageBeforeSending(message, []) : message
+				const bytes = encodeNewsletterMessage(patched as proto.IMessage)
+				binaryNodeContent.push({
+					tag: 'plaintext',
+					attrs: {},
+					content: bytes
+				})
+				const stanza: BinaryNode = {
+					tag: 'message',
+					attrs: {
+						to: jid,
+						id: msgId,
+						type: getMessageType(message),
+						...(additionalAttributes || {})
+					},
+					content: binaryNodeContent
+				}
+				logger.debug({ msgId }, `sending newsletter message to ${jid}`)
+				await sendNode(stanza)
+				return
 			}
 
 			if (normalizeMessageContent(message)?.pinInChatMessage) {
@@ -734,7 +767,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 								content.url = getUrlFromDirectPath(content.directPath!)
 
 								logger.debug({ directPath: media.directPath, key: result.key }, 'media update successful')
-							} catch (err) {
+							} catch (err: any) {
 								error = err
 							}
 						}

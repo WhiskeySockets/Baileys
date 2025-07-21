@@ -2,7 +2,7 @@ name: Update WAProto
 
 on:
   schedule:
-    - cron: "10 1 * * *"
+    - cron: '10 1 * * *'
   workflow_dispatch:
 
 permissions:
@@ -22,10 +22,15 @@ jobs:
         with:
           node-version: 20.x
 
+      - name: Enable Corepack and Set Yarn Version
+        run: |
+          corepack enable
+          corepack prepare yarn@4.x --activate
+
       - name: Install packages
         run: |
-          yarn
-          yarn --pure-lockfile --cwd proto-extract
+          yarn install --immutable
+          yarn --cwd proto-extract install --immutable
 
       - name: Update WAProto.proto
         id: wa_proto_info
@@ -48,11 +53,11 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
-          commit-message: "chore: updated proto/version to v${{steps.wa_proto_info.outputs.wa_version}}"
-          title: "Whatsapp v${{steps.wa_proto_info.outputs.wa_version}} proto/version change"
-          branch: "update-proto/stable"
+          commit-message: 'chore: updated proto/version to v${{steps.wa_proto_info.outputs.wa_version}}'
+          title: 'Whatsapp v${{steps.wa_proto_info.outputs.wa_version}} proto/version change'
+          branch: 'update-proto/stable'
           delete-branch: true
-          labels: "update-proto"
+          labels: 'update-proto'
           body: "Automated changes\nFound source JS URL: ${{steps.wa_proto_info.outputs.wa_js_url}}\nCurrent version: v${{steps.wa_proto_info.outputs.wa_version}}"
           add-paths: |
             WAProto/*
