@@ -1,10 +1,11 @@
 import { DEFAULT_CONNECTION_CONFIG } from '../Defaults'
+
 import type { UserFacingSocketConfig } from '../Types'
-import { makeBusinessSocket } from './business'
+import { makeCommunitiesSocket } from './communities'
 
 // export the last socket layer
 const makeWASocket = (config: UserFacingSocketConfig) =>
-	makeBusinessSocket({
+	makeCommunitiesSocket({
 		...DEFAULT_CONNECTION_CONFIG,
 		...config
 	})
