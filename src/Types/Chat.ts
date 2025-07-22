@@ -1,4 +1,4 @@
-import type { proto } from '../../WAProto'
+import type { proto } from '../../WAProto/index.js'
 import type { AccountSettings } from './Auth'
 import type { BufferedEventData } from './Events'
 import type { LabelActionBody } from './Label'

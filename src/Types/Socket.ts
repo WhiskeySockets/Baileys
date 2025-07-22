@@ -1,12 +1,12 @@
-import { AxiosRequestConfig } from 'axios'
+import type { AxiosRequestConfig } from 'axios'
 import type { Agent } from 'https'
 import type { URL } from 'url'
-import { proto } from '../../WAProto'
-import { ILogger } from '../Utils/logger'
-import { AuthenticationState, SignalAuthState, TransactionCapabilityOptions } from './Auth'
-import { GroupMetadata } from './GroupMetadata'
-import { MediaConnInfo } from './Message'
-import { SignalRepository } from './Signal'
+import { proto } from '../../WAProto/index.js'
+import type { ILogger } from '../Utils/logger'
+import type { AuthenticationState, SignalAuthState, TransactionCapabilityOptions } from './Auth'
+import type { GroupMetadata } from './GroupMetadata'
+import { type MediaConnInfo } from './Message'
+import type { SignalRepository } from './Signal'
 
 export type WAVersion = [number, number, number]
 export type WABrowserDescription = [string, string, string]

@@ -1,6 +1,6 @@
 import EventEmitter from 'events'
-import { proto } from '../../WAProto'
-import {
+import { proto } from '../../WAProto/index.js'
+import type {
 	BaileysEvent,
 	BaileysEventEmitter,
 	BaileysEventMap,
@@ -8,11 +8,11 @@ import {
 	Chat,
 	ChatUpdate,
 	Contact,
-	WAMessage,
-	WAMessageStatus
+	WAMessage
 } from '../Types'
+import { WAMessageStatus } from '../Types'
 import { trimUndefined } from './generics'
-import { ILogger } from './logger'
+import type { ILogger } from './logger'
 import { updateMessageWithReaction, updateMessageWithReceipt } from './messages'
 import { isRealMessage, shouldIncrementChatUnread } from './process-message'
 
@@ -79,7 +79,7 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 	// take the generic event and fire it as a baileys event
 	ev.on('event', (map: BaileysEventData) => {
 		for (const event in map) {
-			ev.emit(event, map[event])
+			ev.emit(event, map[event as keyof BaileysEventMap])
 		}
 	})
 
@@ -249,7 +249,7 @@ function append<E extends BufferableEvent>(
 			for (const chat of eventData as Chat[]) {
 				let upsert = data.chatUpserts[chat.id]
 				if (!upsert) {
-					upsert = data.historySets[chat.id]
+					upsert = data.historySets.chats[chat.id]
 					if (upsert) {
 						logger.debug({ chatId: chat.id }, 'absorbed chat upsert in chat set')
 					}
@@ -339,7 +339,7 @@ function append<E extends BufferableEvent>(
 				}
 
 				if (data.contactUpdates[contact.id]) {
-					upsert = Object.assign(data.contactUpdates[contact.id], trimUndefined(contact)) as Contact
+					upsert = Object.assign(data.contactUpdates[contact.id]!, trimUndefined(contact)) as Contact
 					delete data.contactUpdates[contact.id]
 				}
 			}
@@ -550,7 +550,7 @@ function consolidateEvents(data: BufferedEventData) {
 
 	const messageUpsertList = Object.values(data.messageUpserts)
 	if (messageUpsertList.length) {
-		const type = messageUpsertList[0].type
+		const type = messageUpsertList[0]!.type
 		map['messages.upsert'] = {
 			messages: messageUpsertList.map(m => m.message),
 			type

@@ -3,7 +3,7 @@ name: Publish Release
 on:
   push:
     tags:
-      - "v*"
+      - 'v*'
 
 permissions: write-all
 
@@ -23,24 +23,26 @@ jobs:
         uses: actions/setup-node@v3.6.0
         with:
           node-version: 20.x
-          registry-url: "https://registry.npmjs.org"
+          registry-url: 'https://registry.npmjs.org'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Get yarn cache directory path
-        id: yarn-cache-dir-path
-        run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+      - name: Enable Corepack and Set Yarn Version
+        run: |
+          corepack enable
+          corepack prepare yarn@4.x --activate
 
-      - uses: actions/cache@v3
-        id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+      - name: Restore Yarn Cache
+        uses: actions/cache@v3
+        id: yarn-cache
         with:
-          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          path: .yarn/cache
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn-
 
       - name: Install Dependencies
-        run: yarn
+        run: yarn install --immutable
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -48,7 +50,7 @@ jobs:
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      
+
       - name: Publish in NPM (whiskeysockets scope)
         run: |
           npx json -I -f package.json -e "this.name='@whiskeysockets/baileys'"
@@ -66,7 +68,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Make Package
-        run: npm pack
+        run: yarn pack
 
       - name: Rename Pack
         run: mv *.tgz baileys.tgz

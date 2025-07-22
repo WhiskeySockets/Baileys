@@ -1,5 +1,5 @@
-import { USyncQueryProtocol } from '../../Types/USync'
-import { assertNodeErrorFree, BinaryNode } from '../../WABinary'
+import type { USyncQueryProtocol } from '../../Types/USync'
+import { assertNodeErrorFree, type BinaryNode } from '../../WABinary'
 
 export type DisappearingModeData = {
 	duration: number
@@ -23,7 +23,7 @@ export class USyncDisappearingModeProtocol implements USyncQueryProtocol {
 	parser(node: BinaryNode): DisappearingModeData | undefined {
 		if (node.tag === 'disappearing_mode') {
 			assertNodeErrorFree(node)
-			const duration: number = +node?.attrs.duration
+			const duration: number = +node?.attrs.duration!
 			const setAt = new Date(+(node?.attrs.t || 0) * 1000)
 
 			return {
