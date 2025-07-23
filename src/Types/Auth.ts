@@ -88,11 +88,6 @@ export type SignalKeyStore = {
 export type SignalKeyStoreWithTransaction = SignalKeyStore & {
 	isInTransaction: () => boolean
 	transaction<T>(exec: () => Promise<T>): Promise<T>
-	queueGroupMessage?: (
-		senderKeyName: string,
-		messageBytes: Uint8Array,
-		originalCipher: { decrypt: (messageBytes: Uint8Array) => Promise<Uint8Array> }
-	) => Promise<Uint8Array>
 }
 
 export type TransactionCapabilityOptions = {

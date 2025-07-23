@@ -3,13 +3,13 @@ import { SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
 import { SignalRepository } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import { jidDecode } from '../WABinary'
-import type { SenderKeyStoreWithQueue } from './Group/group_cipher'
+import type { SenderKeyStore } from './Group/group_cipher'
 import { SenderKeyName } from './Group/sender-key-name'
 import { SenderKeyRecord } from './Group/sender-key-record'
 import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from './Group'
 
 export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository {
-	const storage: SenderKeyStoreWithQueue = signalStorage(auth)
+	const storage: SenderKeyStore = signalStorage(auth)
 	return {
 		decryptGroupMessage({ group, authorJid, msg }) {
 			const senderName = jidToSignalSenderKeyName(group, authorJid)
@@ -123,7 +123,7 @@ const jidToSignalSenderKeyName = (group: string, user: string): SenderKeyName =>
 	return new SenderKeyName(group, jidToSignalProtocolAddress(user))
 }
 
-function signalStorage({ creds, keys }: SignalAuthState): SenderKeyStoreWithQueue & Record<string, unknown> {
+function signalStorage({ creds, keys }: SignalAuthState): SenderKeyStore & Record<string, any> {
 	return {
 		loadSession: async (id: string) => {
 			const { [id]: sess } = await keys.get('session', [id])
@@ -176,7 +176,6 @@ function signalStorage({ creds, keys }: SignalAuthState): SenderKeyStoreWithQueu
 				privKey: Buffer.from(signedIdentityKey.private),
 				pubKey: generateSignalPubKey(signedIdentityKey.public)
 			}
-		},
-		queueGroupMessage: 'queueGroupMessage' in keys ? keys.queueGroupMessage : undefined
+		}
 	}
 }

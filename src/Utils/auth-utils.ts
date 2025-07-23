@@ -15,21 +15,6 @@ import { Curve, signedKeyPair } from './crypto'
 import { delay, generateRegistrationId } from './generics'
 import { ILogger } from './logger'
 
-interface QueuedGroupMessage {
-	senderKeyName: string
-	messageBytes: Uint8Array
-	resolve: (result: Uint8Array) => void
-	reject: (error: Error) => void
-	timestamp: number
-	originalCipher: {
-		decrypt: (messageBytes: Uint8Array) => Promise<Uint8Array>
-	}
-}
-
-interface MessageQueueConfig {
-	messageTimeoutMs: number
-}
-
 /**
  * Adds caching capability to a SignalKeyStore
  * @param store the store to add caching to
@@ -318,10 +303,7 @@ async function commitWithRetry(
 export const addTransactionCapability = (
 	state: SignalKeyStore,
 	logger: ILogger,
-	{ maxCommitRetries, delayBetweenTriesMs }: TransactionCapabilityOptions,
-	messageQueueConfig: MessageQueueConfig = {
-		messageTimeoutMs: 30000
-	}
+	{ maxCommitRetries, delayBetweenTriesMs }: TransactionCapabilityOptions
 ): SignalKeyStoreWithTransaction => {
 	// Mutex for each key type (session, pre-key, etc.)
 	const keyTypeMutexes = new Map<string, Mutex>()
@@ -331,9 +313,6 @@ export const addTransactionCapability = (
 
 	// Global transaction mutex
 	const transactionMutex = new Mutex()
-
-	// Message queue for pending group messages (per sender key)
-	const messageQueue = new Map<string, QueuedGroupMessage[]>()
 
 	// number of queries made to the DB during the transaction
 	// only there for logging purposes
@@ -372,93 +351,13 @@ export const addTransactionCapability = (
 		return getSenderKeyMutex(senderKeyName).runExclusive(operation)
 	}
 
-	/**
-	 * Adds a message to the queue for later processing when sender key becomes available
-	 */
-	async function queueMessage(
-		senderKeyName: string,
-		messageBytes: Uint8Array,
-		originalCipher: { decrypt: (messageBytes: Uint8Array) => Promise<Uint8Array> }
-	): Promise<Uint8Array> {
-		return getSenderKeyMutex(senderKeyName).runExclusive(async () => {
-			const queue = messageQueue.get(senderKeyName) || []
-
-			// Create promise that will be resolved when message is processed
-			return new Promise<Uint8Array>((resolve, reject) => {
-				const queuedMessage: QueuedGroupMessage = {
-					senderKeyName,
-					messageBytes,
-					resolve,
-					reject,
-					timestamp: Date.now(),
-					originalCipher
-				}
-
-				queue.push(queuedMessage)
-				messageQueue.set(senderKeyName, queue)
-
-				logger.debug({ senderKeyName, queueSize: queue.length }, 'message queued for sender key')
-
-				// Set timeout for message
-				setTimeout(() => {
-					getSenderKeyMutex(senderKeyName)
-						.runExclusive(async () => {
-							const currentQueue = messageQueue.get(senderKeyName) || []
-							const messageIndex = currentQueue.findIndex(m => m === queuedMessage)
-							if (messageIndex !== -1) {
-								currentQueue.splice(messageIndex, 1)
-								if (currentQueue.length === 0) {
-									messageQueue.delete(senderKeyName)
-								} else {
-									messageQueue.set(senderKeyName, currentQueue)
-								}
-
-								reject(new Error('Message timeout - sender key not received'))
-							}
-						})
-						.catch(() => {
-							// Ignore mutex errors during cleanup
-						})
-				}, messageQueueConfig.messageTimeoutMs)
-			})
-		})
-	}
-
-	/**
-	 * Processes queued messages for a sender key
-	 */
-	async function processQueuedMessages(senderKeyName: string): Promise<void> {
-		return getSenderKeyMutex(senderKeyName).runExclusive(async () => {
-			const queue = messageQueue.get(senderKeyName)
-			if (!queue || queue.length === 0) {
-				return
-			}
-
-			logger.debug({ senderKeyName, queueSize: queue.length }, 'processing queued messages')
-
-			// Process all queued messages - they should succeed now that sender key is available
-			for (const queuedMessage of queue) {
-				try {
-					const result = await queuedMessage.originalCipher.decrypt(queuedMessage.messageBytes)
-					queuedMessage.resolve(result)
-				} catch (error) {
-					logger.warn({ senderKeyName, error: error.message }, 'queued message still failed after sender key available')
-					queuedMessage.reject(error as Error)
-				}
-			}
-
-			// Clean up all processed messages
-			messageQueue.delete(senderKeyName)
-		})
-	}
-
 	// Check if we are currently in a transaction
 	function isInTransaction() {
 		return transactionsInProgress > 0
 	}
 
-	const storeImplementation = {
-		get: async <T extends keyof SignalDataTypeMap>(type: T, ids: string[]) => {
+	return {
+		get: async (type, ids) => {
 			if (isInTransaction()) {
 				const dict = transactionCache[type]
 				const idsRequiringFetch = dict ? ids.filter(item => typeof dict[item] === 'undefined') : ids
@@ -492,7 +391,7 @@ export const addTransactionCapability = (
 					}
 				}
 
-				return ids.reduce((dict: { [id: string]: SignalDataTypeMap[T] }, id: string) => {
+				return ids.reduce((dict, id) => {
 					const value = transactionCache[type]?.[id]
 					if (value) {
 						dict[id] = value
@@ -519,22 +418,11 @@ export const addTransactionCapability = (
 				}
 			}
 		},
-		set: async (data: SignalDataSet) => {
-			// Track sender key updates for queue processing
-			const senderKeyUpdates: string[] = []
-
+		set: async data => {
 			if (isInTransaction()) {
 				logger.trace({ types: Object.keys(data) }, 'caching in transaction')
 				for (const key in data) {
 					transactionCache[key] = transactionCache[key] || {}
-
-					// Track sender key updates
-					if (key === 'sender-key') {
-						const senderKeyData = data[key]
-						if (senderKeyData) {
-							senderKeyUpdates.push(...Object.keys(senderKeyData))
-						}
-					}
 
 					// Special handling for pre-keys and signed-pre-keys
 					if (key === 'pre-key' || key === 'signed-pre-key') {
@@ -566,9 +454,6 @@ export const addTransactionCapability = (
 							await state.set(senderKeyData)
 							logger.trace({ senderKeyName }, 'sender key stored')
 						})
-
-						// Track sender key for queue processing
-						senderKeyUpdates.push(senderKeyName)
 					}
 
 					// Handle any non-sender-key data with regular mutexes
@@ -603,31 +488,12 @@ export const addTransactionCapability = (
 					})
 				}
 			}
-
-			// Process queued messages for any updated sender keys
-			for (const senderKeyName of senderKeyUpdates) {
-				// Process queue asynchronously to avoid blocking
-				processQueuedMessages(senderKeyName).catch(error => {
-					logger.warn({ senderKeyName, error: error.message }, 'failed to process queued messages')
-				})
-			}
 		},
 		isInTransaction,
 		...(state.clear ? { clear: state.clear } : {}),
-
-		// Add queue management methods
-		queueGroupMessage: async (
-			senderKeyName: string,
-			messageBytes: Uint8Array,
-			originalCipher: { decrypt: (messageBytes: Uint8Array) => Promise<Uint8Array> }
-		): Promise<Uint8Array> => {
-			return queueMessage(senderKeyName, messageBytes, originalCipher)
-		},
-		async transaction<T>(work: () => Promise<T>): Promise<T> {
+		async transaction(work) {
 			return transactionMutex.acquire().then(async releaseTxMutex => {
 				let result: Awaited<ReturnType<typeof work>>
-				let mutexReleased = false
-
 				try {
 					transactionsInProgress += 1
 					if (transactionsInProgress === 1) {
@@ -637,7 +503,6 @@ export const addTransactionCapability = (
 					// Release the transaction mutex now that we've updated the counter
 					// This allows other transactions to start preparing
 					releaseTxMutex()
-					mutexReleased = true
 
 					try {
 						result = await work()
@@ -664,18 +529,13 @@ export const addTransactionCapability = (
 
 					return result
 				} catch (error) {
-					// Only release if we haven't already released the mutex
-					if (!mutexReleased) {
-						releaseTxMutex()
-					}
-
+					// If we haven't released the transaction mutex yet, release it
+					releaseTxMutex()
 					throw error
 				}
 			})
 		}
 	}
-
-	return storeImplementation as SignalKeyStoreWithTransaction
 }
 
 export const initAuthCreds = (): AuthenticationCreds => {
