@@ -15,6 +15,7 @@ import type {
 	MessageGenerationOptions,
 	MessageGenerationOptionsFromContent,
 	MessageUserReceipt,
+	StickerPack,
 	WAMediaUpload,
 	WAMessage,
 	WAMessageContent,
@@ -454,96 +455,7 @@ export const generateWAMessageContent = async (
 			}
 		}
 	} else if ('stickerPack' in message) {
-		const { stickers, cover, name, publisher, packId, description } = message.stickerPack
-
-		// 1. Enforce Sticker Limits
-		if (stickers.length > 60) {
-			throw new Boom('Sticker pack exceeds the maximum limit of 60 stickers', { statusCode: 400 })
-		}
-
-		const stickerPackIdValue = packId || generateMessageIDV2()
-		// const coverBuffer = await toBuffer((await getStream(cover)).stream)
-
-		const lib = await getImageProcessingLibrary()
-		const stickerData: Record<string, [Uint8Array, { level: 0 }]> = {}
-		const stickerPromises = stickers.map(async (s, i) => {
-			const { stream } = await getStream(s.data)
-			const buffer = await toBuffer(stream)
-
-			let webpBuffer: Buffer
-			if ('sharp' in lib && lib.sharp) {
-				webpBuffer = await lib.sharp.default(buffer).webp().toBuffer()
-			} else if ('jimp' in lib && lib.jimp) {
-				const jimpImage = await lib.jimp.Jimp.read(buffer)
-				webpBuffer = await jimpImage.getBuffer('image/jpeg')
-			} else {
-				throw new Boom('No image processing library available for converting sticker to WebP')
-			}
-
-			if (webpBuffer.length > 1024 * 1024) {
-				throw new Boom(`Sticker at index ${i} exceeds the 1MB size limit`, { statusCode: 400 })
-			}
-
-			const hash = sha256(webpBuffer).toString('base64').replace(/\//g, '-')
-			const fileName = `${hash}.webp`
-			stickerData[fileName] = [new Uint8Array(webpBuffer), { level: 0 as 0 }]
-			return {
-				fileName,
-				mimetype: 'image/webp',
-				isAnimated: false,
-				emojis: s.emojis || [],
-				accessibilityLabel: s.accessibilityLabel
-			}
-		})
-
-		const stickerMetadata = await Promise.all(stickerPromises)
-
-		const zipBuffer = await new Promise<Buffer>((resolve, reject) => {
-			zip(stickerData, (err, data) => {
-				if (err) {
-					reject(err)
-				} else {
-					resolve(Buffer.from(data))
-				}
-			})
-		})
-
-		const stickerPackSize = zipBuffer.length
-
-		const [
-			stickerPackUpload
-			// coverUpload
-		] = await Promise.all([
-			encryptedStream(zipBuffer, 'sticker-pack', { logger: options.logger, opts: options.options })
-			// prepareWAMessageMedia({ image: coverBuffer }, { ...options, mediaTypeOverride: 'image' })
-		])
-
-		const stickerPackUploadResult = await options.upload(stickerPackUpload.encFilePath, {
-			fileEncSha256B64: stickerPackUpload.fileEncSha256.toString('base64'),
-			mediaType: 'sticker-pack',
-			timeoutMs: options.mediaUploadTimeoutMs
-		})
-
-		await fs.unlink(stickerPackUpload.encFilePath)
-
-		m.stickerPackMessage = {
-			name: name,
-			publisher: publisher,
-			stickerPackId: stickerPackIdValue,
-			packDescription: description,
-			stickerPackOrigin: WAProto.Message.StickerPackMessage.StickerPackOrigin.USER_CREATED,
-			stickerPackSize: stickerPackSize,
-			stickers: stickerMetadata,
-
-			fileSha256: stickerPackUpload.fileSha256,
-			fileEncSha256: stickerPackUpload.fileEncSha256,
-			mediaKey: stickerPackUpload.mediaKey,
-			directPath: stickerPackUploadResult.directPath,
-			fileLength: stickerPackUpload.fileLength,
-			mediaKeyTimestamp: unixTimestampSeconds(),
-
-			trayIconFileName: `${stickerPackIdValue}.png`
-		}
+		m = await prepareStickerPackMessage(message.stickerPack, options)
 	} else if ('pin' in message) {
 		m.pinInChatMessage = {}
 		m.messageContextInfo = {}
@@ -1057,4 +969,97 @@ export const assertMediaContent = (content: proto.IMessage | null | undefined) =
 	}
 
 	return mediaContent
+}
+
+async function prepareStickerPackMessage(
+	stickerPack: StickerPack,
+	options: MessageContentGenerationOptions
+): Promise<proto.IMessage> {
+	const { stickers, name, publisher, packId, description } = stickerPack
+
+	if (stickers.length > 60) {
+		throw new Boom('Sticker pack exceeds the maximum limit of 60 stickers', { statusCode: 400 })
+	}
+
+	const stickerPackIdValue = packId || generateMessageIDV2()
+
+	const lib = await getImageProcessingLibrary()
+	const stickerData: Record<string, [Uint8Array, { level: 0 }]> = {}
+	const stickerPromises = stickers.map(async (s, i) => {
+		const { stream } = await getStream(s.data)
+		const buffer = await toBuffer(stream)
+
+		let webpBuffer: Buffer
+		if ('sharp' in lib && lib.sharp) {
+			webpBuffer = await lib.sharp.default(buffer).webp().toBuffer()
+		} else if ('jimp' in lib && lib.jimp) {
+			const jimpImage = await lib.jimp.Jimp.read(buffer)
+			webpBuffer = await jimpImage.getBuffer('image/jpeg')
+		} else {
+			throw new Boom('No image processing library available for converting sticker to WebP')
+		}
+
+		if (webpBuffer.length > 1024 * 1024) {
+			throw new Boom(`Sticker at index ${i} exceeds the 1MB size limit`, { statusCode: 400 })
+		}
+
+		const hash = sha256(webpBuffer).toString('base64').replace(/\//g, '-')
+		const fileName = `${hash}.webp`
+		stickerData[fileName] = [new Uint8Array(webpBuffer), { level: 0 as 0 }]
+		return {
+			fileName,
+			mimetype: 'image/webp',
+			isAnimated: false,
+			emojis: s.emojis || [],
+			accessibilityLabel: s.accessibilityLabel
+		}
+	})
+
+	const stickerMetadata = await Promise.all(stickerPromises)
+
+	const zipBuffer = await new Promise<Buffer>((resolve, reject) => {
+		zip(stickerData, (err, data) => {
+			if (err) {
+				reject(err)
+			} else {
+				resolve(Buffer.from(data))
+			}
+		})
+	})
+
+	const stickerPackSize = zipBuffer.length
+
+	const stickerPackUpload = await encryptedStream(zipBuffer, 'sticker-pack', {
+		logger: options.logger,
+		opts: options.options
+	})
+
+	const stickerPackUploadResult = await options.upload(stickerPackUpload.encFilePath, {
+		fileEncSha256B64: stickerPackUpload.fileEncSha256.toString('base64'),
+		mediaType: 'sticker-pack',
+		timeoutMs: options.mediaUploadTimeoutMs
+	})
+
+	await fs.unlink(stickerPackUpload.encFilePath)
+
+	const stickerPackMessage: proto.Message.IStickerPackMessage = {
+		name: name,
+		publisher: publisher,
+		stickerPackId: stickerPackIdValue,
+		packDescription: description,
+		stickerPackOrigin: WAProto.Message.StickerPackMessage.StickerPackOrigin.USER_CREATED,
+		stickerPackSize: stickerPackSize,
+		stickers: stickerMetadata,
+
+		fileSha256: stickerPackUpload.fileSha256,
+		fileEncSha256: stickerPackUpload.fileEncSha256,
+		mediaKey: stickerPackUpload.mediaKey,
+		directPath: stickerPackUploadResult.directPath,
+		fileLength: stickerPackUpload.fileLength,
+		mediaKeyTimestamp: unixTimestampSeconds(),
+
+		trayIconFileName: `${stickerPackIdValue}.png`
+	}
+
+	return { stickerPackMessage }
 }
