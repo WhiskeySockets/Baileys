@@ -981,6 +981,10 @@ async function prepareStickerPackMessage(
 		throw new Boom('Sticker pack exceeds the maximum limit of 60 stickers', { statusCode: 400 })
 	}
 
+	if (stickers.length === 0) {
+		throw new Boom('Sticker pack must contain at least one sticker', { statusCode: 400 })
+	}
+
 	const stickerPackIdValue = packId || generateMessageIDV2()
 
 	const lib = await getImageProcessingLibrary()
@@ -1059,6 +1063,48 @@ async function prepareStickerPackMessage(
 		mediaKeyTimestamp: unixTimestampSeconds(),
 
 		trayIconFileName: `${stickerPackIdValue}.png`
+	}
+
+	try {
+		const trayBuffer = await toBuffer((await getStream(stickers[0]!?.data)).stream)
+		let thumbnailBuffer: Buffer
+
+		if ('sharp' in lib && lib.sharp) {
+			thumbnailBuffer = await lib.sharp.default(trayBuffer).resize(252, 252).jpeg().toBuffer()
+		} else if ('jimp' in lib && lib.jimp) {
+			const jimpImage = await lib.jimp.Jimp.read(trayBuffer)
+			thumbnailBuffer = await jimpImage.resize(252, 252).getBuffer('image/jpeg')
+		} else {
+			throw new Error('No image processing library available for thumbnail generation')
+		}
+
+		if (!thumbnailBuffer || thumbnailBuffer.length === 0) {
+			throw new Error('Failed to generate thumbnail buffer')
+		}
+
+		const thumbUpload = await encryptedStream(thumbnailBuffer, 'image', {
+			logger: options.logger,
+			opts: options.options
+		})
+
+		const thumbUploadResult = await options.upload(thumbUpload.encFilePath, {
+			fileEncSha256B64: thumbUpload.fileEncSha256.toString('base64'),
+			mediaType: 'image',
+			timeoutMs: options.mediaUploadTimeoutMs
+		})
+
+		await fs.unlink(thumbUpload.encFilePath)
+
+		Object.assign(stickerPackMessage, {
+			thumbnailDirectPath: thumbUploadResult.directPath,
+			thumbnailSha256: thumbUpload.fileSha256,
+			thumbnailEncSha256: thumbUpload.fileEncSha256,
+			thumbnailHeight: 252,
+			thumbnailWidth: 252,
+			imageDataHash: sha256(thumbnailBuffer).toString('base64')
+		})
+	} catch (e) {
+		options.logger?.warn?.(`Thumbnail generation failed: ${e}`)
 	}
 
 	return { stickerPackMessage }
