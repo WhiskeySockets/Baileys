@@ -1073,7 +1073,7 @@ async function prepareStickerPackMessage(
 			thumbnailBuffer = await lib.sharp.default(trayBuffer).resize(252, 252).jpeg().toBuffer()
 		} else if ('jimp' in lib && lib.jimp) {
 			const jimpImage = await lib.jimp.Jimp.read(trayBuffer)
-			thumbnailBuffer = await jimpImage.resize(252, 252).getBuffer('image/jpeg')
+			thumbnailBuffer = await jimpImage.resize({ w: 252, h: 252 }).getBuffer('image/jpeg')
 		} else {
 			throw new Error('No image processing library available for thumbnail generation')
 		}
