@@ -31,6 +31,7 @@ import {
 	generateThumbnail,
 	getAudioDuration,
 	getAudioWaveform,
+	getImageProcessingLibrary,
 	getRawMediaUploadData,
 	getStream,
 	type MediaDownloadOptions,
@@ -455,13 +456,37 @@ export const generateWAMessageContent = async (
 	} else if ('stickerPack' in message) {
 		const { stickers, cover, name, publisher, packId, description } = message.stickerPack
 
+		// 1. Enforce Sticker Limits
+		if (stickers.length > 60) {
+			throw new Boom('Sticker pack exceeds the maximum limit of 60 stickers', { statusCode: 400 })
+		}
+
+		const stickerPackIdValue = packId || generateMessageIDV2()
+		// const coverBuffer = await toBuffer((await getStream(cover)).stream)
+
+		const lib = await getImageProcessingLibrary()
 		const stickerData: Record<string, [Uint8Array, { level: 0 }]> = {}
 		const stickerPromises = stickers.map(async (s, i) => {
 			const { stream } = await getStream(s.data)
 			const buffer = await toBuffer(stream)
-			const hash = sha256(buffer).toString('base64url')
-			const fileName = `${i.toString().padStart(2, '0')}_${hash}.webp`
-			stickerData[fileName] = [new Uint8Array(buffer), { level: 0 as 0 }]
+
+			let webpBuffer: Buffer
+			if ('sharp' in lib && lib.sharp) {
+				webpBuffer = await lib.sharp.default(buffer).webp().toBuffer()
+			} else if ('jimp' in lib && lib.jimp) {
+				const jimpImage = await lib.jimp.Jimp.read(buffer)
+				webpBuffer = await jimpImage.getBuffer('image/jpeg')
+			} else {
+				throw new Boom('No image processing library available for converting sticker to WebP')
+			}
+
+			if (webpBuffer.length > 1024 * 1024) {
+				throw new Boom(`Sticker at index ${i} exceeds the 1MB size limit`, { statusCode: 400 })
+			}
+
+			const hash = sha256(webpBuffer).toString('base64').replace(/\//g, '-')
+			const fileName = `${hash}.webp`
+			stickerData[fileName] = [new Uint8Array(webpBuffer), { level: 0 as 0 }]
 			return {
 				fileName,
 				mimetype: 'image/webp',
@@ -483,12 +508,14 @@ export const generateWAMessageContent = async (
 			})
 		})
 
-		// Upload the cover as a regular image and use its metadata for the thumbnail fields
-		const coverBuffer = await toBuffer((await getStream(cover)).stream)
+		const stickerPackSize = zipBuffer.length
 
-		const [stickerPackUpload, coverUpload] = await Promise.all([
-			encryptedStream(zipBuffer, 'sticker-pack', { logger: options.logger, opts: options.options }),
-			prepareWAMessageMedia({ image: coverBuffer }, { ...options, mediaTypeOverride: 'image' })
+		const [
+			stickerPackUpload
+			// coverUpload
+		] = await Promise.all([
+			encryptedStream(zipBuffer, 'sticker-pack', { logger: options.logger, opts: options.options })
+			// prepareWAMessageMedia({ image: coverBuffer }, { ...options, mediaTypeOverride: 'image' })
 		])
 
 		const stickerPackUploadResult = await options.upload(stickerPackUpload.encFilePath, {
@@ -499,17 +526,13 @@ export const generateWAMessageContent = async (
 
 		await fs.unlink(stickerPackUpload.encFilePath)
 
-		const coverImage = coverUpload.imageMessage!
-		const imageDataHash = sha256(coverBuffer).toString('base64')
-		const stickerPackIdValue = packId || generateMessageIDV2()
-
 		m.stickerPackMessage = {
 			name: name,
 			publisher: publisher,
 			stickerPackId: stickerPackIdValue,
 			packDescription: description,
-			stickerPackOrigin: WAProto.Message.StickerPackMessage.StickerPackOrigin.THIRD_PARTY,
-			stickerPackSize: stickerPackUpload.fileLength,
+			stickerPackOrigin: WAProto.Message.StickerPackMessage.StickerPackOrigin.USER_CREATED,
+			stickerPackSize: stickerPackSize,
 			stickers: stickerMetadata,
 
 			fileSha256: stickerPackUpload.fileSha256,
@@ -519,12 +542,7 @@ export const generateWAMessageContent = async (
 			fileLength: stickerPackUpload.fileLength,
 			mediaKeyTimestamp: unixTimestampSeconds(),
 
-			imageDataHash,
-			thumbnailDirectPath: coverImage.directPath,
-			thumbnailSha256: coverImage.fileSha256,
-			thumbnailEncSha256: coverImage.fileEncSha256,
-			thumbnailHeight: coverImage.height,
-			thumbnailWidth: coverImage.width
+			trayIconFileName: `${stickerPackIdValue}.png`
 		}
 	} else if ('pin' in message) {
 		m.pinInChatMessage = {}

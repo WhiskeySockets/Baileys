@@ -31,8 +31,7 @@ import type { ILogger } from './logger'
 
 const getTmpFilesDirectory = () => tmpdir()
 
-const getImageProcessingLibrary = async () => {
-	//@ts-ignore
+export const getImageProcessingLibrary = async () => {
 	const [jimp, sharp] = await Promise.all([import('jimp').catch(() => {}), import('sharp').catch(() => {})])
 
 	if (sharp) {
@@ -152,8 +151,8 @@ export const extractImageThumb = async (bufferOrFilePath: Readable | Buffer | st
 				height: dimensions.height
 			}
 		}
-	} else if ('jimp' in lib && typeof lib.jimp?.Jimp === 'object') {
-		const jimp = await (lib.jimp.Jimp as any).read(bufferOrFilePath)
+	} else if ('jimp' in lib && lib.jimp) {
+		const jimp = await lib.jimp.Jimp.read(bufferOrFilePath)
 		const dimensions = {
 			width: jimp.width,
 			height: jimp.height
