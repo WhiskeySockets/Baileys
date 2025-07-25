@@ -543,10 +543,10 @@ export const generateWAMessageContent = async (
 	if ('mentions' in message && message.mentions?.length) {
 		const messageType = Object.keys(m)[0]! as Exclude<keyof proto.IMessage, 'conversation'>
 		const key = m[messageType]
-		if ('contextInfo' in key!) {
-			key.contextInfo = key.contextInfo || {}
-			key.contextInfo.mentionedJid = message.mentions
+		if (!('contextInfo' in key! && key?.contextInfo)) {
+			key.contextInfo = {}
 		}
+		key.contextInfo.mentionedJid = message.mentions
 	}
 
 	if ('edit' in message) {
@@ -563,8 +563,10 @@ export const generateWAMessageContent = async (
 	if ('contextInfo' in message && !!message.contextInfo) {
 		const messageType = Object.keys(m)[0]! as Exclude<keyof proto.IMessage, 'conversation'>
 		const key = m[messageType]
-		if ('contextInfo' in key!) {
+		if ('contextInfo' in key! && key?.contextInfo) {
 			key.contextInfo = { ...key.contextInfo, ...message.contextInfo }
+		} else {
+			key.contextInfo = message.contextInfo
 		}
 	}
 
