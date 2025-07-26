@@ -999,6 +999,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				if (historyMsg && authState.creds.myAppStateKeyId) {
 					pendingAppStateSync = false
 					await doAppStateSync()
+				} else {
+					if (needToFlushWithAppStateSync) {
+						logger.debug('flushing with app state sync')
+						ev.flush()
+						needToFlushWithAppStateSync = false
+					}
 				}
 			})(),
 			processMessage(msg, {
@@ -1028,6 +1034,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				if (needToFlushWithAppStateSync) {
 					logger.debug('flushing with app state sync')
 					ev.flush()
+					needToFlushWithAppStateSync = false
 				}
 			}
 		}
