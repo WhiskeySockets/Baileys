@@ -73,6 +73,9 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	/** this mutex ensures that the notifications (receipts, messages etc.) are processed in order */
 	const processingMutex = makeMutex()
 
+	// Timeout for AwaitingInitialSync state
+	let awaitingSyncTimeout: NodeJS.Timeout | undefined
+
 	const placeholderResendCache =
 		config.placeholderResendCache ||
 		(new NodeCache<number>({
@@ -992,6 +995,11 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 		// State machine: decide on sync and flush
 		if (historyMsg && syncState === SyncState.AwaitingInitialSync) {
+			if (awaitingSyncTimeout) {
+				clearTimeout(awaitingSyncTimeout)
+				awaitingSyncTimeout = undefined
+			}
+
 			if (shouldProcessHistoryMsg) {
 				syncState = SyncState.Syncing
 				logger.info('Transitioned to Syncing state')
@@ -1086,6 +1094,18 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			syncState = SyncState.AwaitingInitialSync
 			logger.info('Connection is now AwaitingInitialSync, buffering events')
 			ev.buffer()
+
+			if (awaitingSyncTimeout) {
+				clearTimeout(awaitingSyncTimeout)
+			}
+
+			awaitingSyncTimeout = setTimeout(() => {
+				if (syncState === SyncState.AwaitingInitialSync) {
+					logger.warn('Timeout in AwaitingInitialSync, forcing state to Online and flushing buffer')
+					syncState = SyncState.Online
+					ev.flush()
+				}
+			}, 20_000)
 		}
 	})
 
