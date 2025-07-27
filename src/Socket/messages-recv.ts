@@ -612,10 +612,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		logger.debug({ participant, sendToAll }, 'forced new session for retry recp')
 
 		for (const [i, msg] of msgs.entries()) {
-			if (!ids[i]) continue
-
-			if (msg && willSendMessageAgain(ids[i], participant)) {
-				updateSendMessageAgainCount(ids[i], participant)
+			if (msg) {
+				updateSendMessageAgainCount(ids[i]!, participant)
 				const msgRelayOpts: MessageRelayOptions = { messageId: ids[i] }
 
 				if (sendToAll) {
@@ -703,10 +701,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						// correctly set who is asking for the retry
 						key.participant = key.participant || attrs.from
 						const retryNode = getBinaryNodeChild(node, 'retry')
-						if (ids[0] && key.participant && willSendMessageAgain(ids[0], key.participant!)) {
+						if (willSendMessageAgain(ids[0]!, key.participant!)) {
 							if (key.fromMe) {
 								try {
-									updateSendMessageAgainCount(ids[0], key.participant)
 									logger.debug({ attrs, key }, 'recv retry request')
 									await sendMessagesAgain(key, ids, retryNode!)
 								} catch (error: any) {
