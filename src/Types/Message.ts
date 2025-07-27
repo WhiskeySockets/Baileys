@@ -39,6 +39,39 @@ export type WAMediaUpload = Buffer | WAMediaPayloadStream | WAMediaPayloadURL
 /** Set of message types that are supported by the library */
 export type MessageType = keyof proto.Message
 
+export type MessageWithContextInfo =
+	| 'imageMessage'
+	| 'contactMessage'
+	| 'locationMessage'
+	| 'extendedTextMessage'
+	| 'documentMessage'
+	| 'audioMessage'
+	| 'videoMessage'
+	| 'call'
+	| 'contactsArrayMessage'
+	| 'liveLocationMessage'
+	| 'templateMessage'
+	| 'stickerMessage'
+	| 'groupInviteMessage'
+	| 'templateButtonReplyMessage'
+	| 'productMessage'
+	| 'listMessage'
+	| 'orderMessage'
+	| 'listResponseMessage'
+	| 'buttonsMessage'
+	| 'buttonsResponseMessage'
+	| 'interactiveMessage'
+	| 'interactiveResponseMessage'
+	| 'pollCreationMessage'
+	| 'requestPhoneNumberMessage'
+	| 'messageHistoryBundle'
+	| 'eventMessage'
+	| 'newsletterAdminInviteMessage'
+	| 'albumMessage'
+	| 'stickerPackMessage'
+	| 'pollResultSnapshotMessage'
+	| 'messageHistoryNotice'
+
 export type DownloadableMessage = { mediaKey?: Uint8Array | null; directPath?: string | null; url?: string | null }
 
 export type MessageReceiptType =
