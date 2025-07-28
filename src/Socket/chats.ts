@@ -1089,24 +1089,40 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			)
 		}
 
-		// State machine: start buffering on pending notifications
-		if (receivedPendingNotifications && syncState === SyncState.Connecting) {
-			syncState = SyncState.AwaitingInitialSync
-			logger.info('Connection is now AwaitingInitialSync, buffering events')
-			ev.buffer()
-
-			if (awaitingSyncTimeout) {
-				clearTimeout(awaitingSyncTimeout)
-			}
-
-			awaitingSyncTimeout = setTimeout(() => {
-				if (syncState === SyncState.AwaitingInitialSync) {
-					logger.warn('Timeout in AwaitingInitialSync, forcing state to Online and flushing buffer')
-					syncState = SyncState.Online
-					ev.flush()
-				}
-			}, 20_000)
+		if (!receivedPendingNotifications || syncState !== SyncState.Connecting) {
+			return
 		}
+
+		syncState = SyncState.AwaitingInitialSync
+		logger.info('Connection is now AwaitingInitialSync, buffering events')
+		ev.buffer()
+
+		const willSyncHistory = shouldSyncHistoryMessage(
+			proto.Message.HistorySyncNotification.fromObject({
+				syncType: proto.HistorySync.HistorySyncType.RECENT
+			})
+		)
+
+		if (!willSyncHistory) {
+			logger.info('History sync is disabled by config, not waiting for notification. Transitioning to Online.')
+			syncState = SyncState.Online
+			setTimeout(() => ev.flush(), 0)
+			return
+		}
+
+		logger.info('History sync is enabled, awaiting notification with a 20s timeout.')
+
+		if (awaitingSyncTimeout) {
+			clearTimeout(awaitingSyncTimeout)
+		}
+
+		awaitingSyncTimeout = setTimeout(() => {
+			if (syncState === SyncState.AwaitingInitialSync) {
+				logger.warn('Timeout in AwaitingInitialSync, forcing state to Online and flushing buffer')
+				syncState = SyncState.Online
+				ev.flush()
+			}
+		}, 20_000)
 	})
 
 	return {
