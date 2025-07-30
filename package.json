@@ -23,7 +23,7 @@
   "scripts": {
     "build:all": "npm run build && npm run build:docs",
     "build:docs": "typedoc",
-    "build": "tsc -P tsconfig.build.json && tsc-esm-fix --tsconfig='tsconfig.build.json' --ext='.js'",
+    "build": "tsc -P tsconfig.build.json && tsc-esm-fix --tsconfig=tsconfig.build.json --ext=.js",
     "changelog:last": "conventional-changelog -p angular -r 2",
     "changelog:preview": "conventional-changelog -p angular -u",
     "changelog:update": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",
