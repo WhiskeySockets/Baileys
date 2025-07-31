@@ -522,12 +522,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					message.senderKeyDistributionMessage = senderKeyMsg.senderKeyDistributionMessage
 
-					const { ciphertext } = await signalRepository.encryptGroupMessage({
-						group: destinationJid,
-						data: encodeWAMessage(message),
-						meId
-					})
-
 					binaryNodeContent.push({
 						tag: 'enc',
 						attrs: { v: '2', type: 'msg', count: '2' },
