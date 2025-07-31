@@ -562,7 +562,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						logger.debug({ jid }, 'adding device identity')
 					}
 
-					await authState.keys.set({ 'sender-key-memory': { [jid]: senderKeyMap } })
 					await sendNode(stanza)
 
 					return msgId
