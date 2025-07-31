@@ -1,0 +1,7 @@
+POST http://localhost:3100/send-message
+Content-Type: application/json
+
+{
+  "jid": "120363417393533025@g.us",
+  "message": "Hola amigo!"
+}
