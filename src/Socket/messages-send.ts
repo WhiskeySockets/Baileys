@@ -524,7 +524,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					binaryNodeContent.push({
 						tag: 'enc',
-						attrs: { v: '2', type: 'msg' },
+						attrs: { v: '2', type: 'msg', count: '2' },
 						content: ciphertext
 					})
 
