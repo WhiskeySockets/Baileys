@@ -623,7 +623,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await assertSessions([participant], true)
 
 		const isGroup = isJidGroup(remoteJid)
-		
+
 		if (isGroup) {
 			await authState.keys.set({ 'sender-key-memory': { [remoteJid]: null } })
 		}
@@ -832,6 +832,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		try {
+			if (msg.key.participant) {
+				await assertSessions([author || msg.key.participant], false)
+			}
+			
 			await Promise.all([
 				processingMutex.mutex(async () => {
 					await decrypt()
