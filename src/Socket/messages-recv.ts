@@ -622,7 +622,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const sendToAll = !jidDecode(participant)?.device
 		await assertSessions([participant], true)
 
-		if (isJidGroup(remoteJid)) {
+		const isGroup = isJidGroup(remoteJid)
+		
+		if (isGroup) {
 			await authState.keys.set({ 'sender-key-memory': { [remoteJid]: null } })
 		}
 
@@ -632,6 +634,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			if (msg) {
 				updateSendMessageAgainCount(ids[i]!, participant)
 				const msgRelayOpts: MessageRelayOptions = { messageId: ids[i] }
+
+				if (isGroup) {
+					msgRelayOpts.forceResendDistributionMessage = true
+				}
 
 				if (sendToAll) {
 					msgRelayOpts.useUserDevicesCache = false
