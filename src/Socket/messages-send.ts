@@ -368,7 +368,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			additionalNodes,
 			useUserDevicesCache,
 			useCachedGroupMetadata,
-			statusJidList
+			statusJidList,
+			forceResendDistributionMessage = false
 		}: MessageRelayOptions
 	) => {
 		const meId = authState.creds.me!.id
@@ -513,7 +514,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 				// if there are some participants with whom the session has not been established
 				// if there are, we re-send the senderkey
-				if (senderKeyJids.length) {
+				if (senderKeyJids.length || forceResendDistributionMessage) {
 					logger.debug({ senderKeyJids }, 'sending new sender key')
 
 					const senderKeyMsg: proto.IMessage = {

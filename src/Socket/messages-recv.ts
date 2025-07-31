@@ -58,7 +58,8 @@ import { extractGroupMetadata } from './groups'
 import { makeMessagesSocket } from './messages-send'
 
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
-	const { logger, retryRequestDelayMs, maxMsgRetryCount, getMessage, shouldIgnoreJid } = config
+	const { logger, retryRequestDelayMs, maxMsgRetryCount, getMessage, shouldIgnoreJid, recentMessageSentHistory } =
+		config
 	const sock = makeMessagesSocket(config)
 	const {
 		ev,
@@ -594,9 +595,25 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		msgRetryCache.set(key, newValue)
 	}
 
+	const getMessageForRetry = async (key: proto.IMessageKey) => {
+		try {
+			const recentMsg = recentMessageSentHistory.get(key.remoteJid!, key.id!)
+
+			if (recentMsg) {
+				return recentMsg
+			}
+
+			const message = await getMessage({ ...key })
+
+			return message
+		} catch {
+			logger.error({ key }, 'error getting message for retry')
+			return undefined
+		}
+	}
+
 	const sendMessagesAgain = async (key: proto.IMessageKey, ids: string[], retryNode: BinaryNode) => {
-		// todo: implement a cache to store the last 256 sent messages (copy whatsmeow)
-		const msgs = await Promise.all(ids.map(id => getMessage({ ...key, id })))
+		const msgs = await Promise.all(ids.map(id => getMessageForRetry({ ...key, id })))
 		const remoteJid = key.remoteJid!
 		const participant = key.participant || remoteJid
 		// if it's the primary jid sending the request
