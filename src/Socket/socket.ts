@@ -273,6 +273,18 @@ export const makeSocket = (config: SocketConfig) => {
 		return +countChild.attrs.value!
 	}
 
+	const verifyCurrentPreKeyExists = async () => {
+		const currentPreKeyId = creds.nextPreKeyId - 1
+		if (currentPreKeyId <= 0) {
+			return { exists: false, currentPreKeyId: 0 }
+		}
+
+		const preKeys = await keys.get('pre-key', [currentPreKeyId.toString()])
+		const exists = !!preKeys[currentPreKeyId.toString()]
+
+		return { exists, currentPreKeyId }
+	}
+
 	/** generates and uploads a set of pre-keys to the server */
 	const uploadPreKeys = async (count = INITIAL_PREKEY_COUNT) => {
 		await keys.transaction(async () => {
@@ -288,9 +300,20 @@ export const makeSocket = (config: SocketConfig) => {
 
 	const uploadPreKeysToServerIfRequired = async () => {
 		const preKeyCount = await getAvailablePreKeysOnServer()
+		const { exists: currentPreKeyExists, currentPreKeyId } = await verifyCurrentPreKeyExists()
+
 		logger.info(`${preKeyCount} pre-keys found on server`)
-		if (preKeyCount <= MIN_PREKEY_COUNT) {
+		logger.info(`Current prekey ID: ${currentPreKeyId}, exists in storage: ${currentPreKeyExists}`)
+
+		const lowServerCount = preKeyCount <= MIN_PREKEY_COUNT
+		const missingCurrentPreKey = !currentPreKeyExists && currentPreKeyId > 0
+
+		const shouldUpload = lowServerCount || missingCurrentPreKey
+
+		if (shouldUpload) {
 			await uploadPreKeys()
+		} else {
+			logger.info(`PreKey validation passed - Server: ${preKeyCount}, Current prekey ${currentPreKeyId} exists`)
 		}
 	}
 
