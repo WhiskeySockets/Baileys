@@ -31,7 +31,7 @@ export class SenderKeyMessage extends CiphertextMessage {
 			const version = serialized[0]!
 			const message = serialized.slice(1, serialized.length - this.SIGNATURE_LENGTH)
 			const signature = serialized.slice(-1 * this.SIGNATURE_LENGTH)
-			const senderKeyMessage = proto.SenderKeyMessage.decode(message).toJSON() as SenderKeyMessageStructure
+			const senderKeyMessage = proto.SenderKeyMessage.decode(message)
 
 			this.serialized = serialized
 			this.messageVersion = (version & 0xff) >> 4

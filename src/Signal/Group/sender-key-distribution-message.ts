@@ -27,9 +27,7 @@ export class SenderKeyDistributionMessage extends CiphertextMessage {
 		if (serialized) {
 			try {
 				const message = serialized.slice(1)
-				const distributionMessage = proto.SenderKeyDistributionMessage.decode(
-					message
-				).toJSON() as SenderKeyDistributionMessageStructure
+				const distributionMessage = proto.SenderKeyDistributionMessage.decode(message)
 
 				this.serialized = serialized
 				this.id = distributionMessage.id

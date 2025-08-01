@@ -62,7 +62,7 @@ export const generateLoginNode = (userJid: string, config: SocketConfig): proto.
 		username: +user,
 		device: device
 	}
-	return proto.ClientPayload.fromObject(payload)
+	return proto.ClientPayload.create(payload)
 }
 
 const getPlatformType = (platform: string): proto.DeviceProps.PlatformType => {
@@ -107,7 +107,7 @@ export const generateRegistrationNode = (
 		}
 	}
 
-	return proto.ClientPayload.fromObject(registerPayload)
+	return proto.ClientPayload.create(registerPayload)
 }
 
 export const configureSuccessfulPairing = (

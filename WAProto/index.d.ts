@@ -11,18 +11,15 @@ export namespace proto {
     }
 
     class ADVDeviceIdentity implements IADVDeviceIdentity {
-        constructor(properties?: proto.IADVDeviceIdentity);
+        constructor(p?: proto.IADVDeviceIdentity);
         public rawId: number;
         public timestamp: (number|Long);
         public keyIndex: number;
         public accountType: proto.ADVEncryptionType;
         public deviceType: proto.ADVEncryptionType;
         public static create(properties?: proto.IADVDeviceIdentity): proto.ADVDeviceIdentity;
-        public static encode(message: proto.IADVDeviceIdentity, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ADVDeviceIdentity;
-        public static fromObject(object: { [k: string]: any }): proto.ADVDeviceIdentity;
-        public static toObject(message: proto.ADVDeviceIdentity, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IADVDeviceIdentity, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ADVDeviceIdentity;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -40,18 +37,15 @@ export namespace proto {
     }
 
     class ADVKeyIndexList implements IADVKeyIndexList {
-        constructor(properties?: proto.IADVKeyIndexList);
+        constructor(p?: proto.IADVKeyIndexList);
         public rawId: number;
         public timestamp: (number|Long);
         public currentIndex: number;
         public validIndexes: number[];
         public accountType: proto.ADVEncryptionType;
         public static create(properties?: proto.IADVKeyIndexList): proto.ADVKeyIndexList;
-        public static encode(message: proto.IADVKeyIndexList, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ADVKeyIndexList;
-        public static fromObject(object: { [k: string]: any }): proto.ADVKeyIndexList;
-        public static toObject(message: proto.ADVKeyIndexList, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IADVKeyIndexList, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ADVKeyIndexList;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -63,17 +57,14 @@ export namespace proto {
     }
 
     class ADVSignedDeviceIdentity implements IADVSignedDeviceIdentity {
-        constructor(properties?: proto.IADVSignedDeviceIdentity);
+        constructor(p?: proto.IADVSignedDeviceIdentity);
         public details: Uint8Array;
         public accountSignatureKey: Uint8Array;
         public accountSignature: Uint8Array;
         public deviceSignature: Uint8Array;
         public static create(properties?: proto.IADVSignedDeviceIdentity): proto.ADVSignedDeviceIdentity;
-        public static encode(message: proto.IADVSignedDeviceIdentity, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ADVSignedDeviceIdentity;
-        public static fromObject(object: { [k: string]: any }): proto.ADVSignedDeviceIdentity;
-        public static toObject(message: proto.ADVSignedDeviceIdentity, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IADVSignedDeviceIdentity, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ADVSignedDeviceIdentity;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -84,16 +75,13 @@ export namespace proto {
     }
 
     class ADVSignedDeviceIdentityHMAC implements IADVSignedDeviceIdentityHMAC {
-        constructor(properties?: proto.IADVSignedDeviceIdentityHMAC);
+        constructor(p?: proto.IADVSignedDeviceIdentityHMAC);
         public details: Uint8Array;
         public hmac: Uint8Array;
         public accountType: proto.ADVEncryptionType;
         public static create(properties?: proto.IADVSignedDeviceIdentityHMAC): proto.ADVSignedDeviceIdentityHMAC;
-        public static encode(message: proto.IADVSignedDeviceIdentityHMAC, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ADVSignedDeviceIdentityHMAC;
-        public static fromObject(object: { [k: string]: any }): proto.ADVSignedDeviceIdentityHMAC;
-        public static toObject(message: proto.ADVSignedDeviceIdentityHMAC, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IADVSignedDeviceIdentityHMAC, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ADVSignedDeviceIdentityHMAC;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -104,16 +92,13 @@ export namespace proto {
     }
 
     class ADVSignedKeyIndexList implements IADVSignedKeyIndexList {
-        constructor(properties?: proto.IADVSignedKeyIndexList);
+        constructor(p?: proto.IADVSignedKeyIndexList);
         public details: Uint8Array;
         public accountSignature: Uint8Array;
         public accountSignatureKey: Uint8Array;
         public static create(properties?: proto.IADVSignedKeyIndexList): proto.ADVSignedKeyIndexList;
-        public static encode(message: proto.IADVSignedKeyIndexList, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ADVSignedKeyIndexList;
-        public static fromObject(object: { [k: string]: any }): proto.ADVSignedKeyIndexList;
-        public static toObject(message: proto.ADVSignedKeyIndexList, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IADVSignedKeyIndexList, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ADVSignedKeyIndexList;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -124,16 +109,13 @@ export namespace proto {
     }
 
     class AIQueryFanout implements IAIQueryFanout {
-        constructor(properties?: proto.IAIQueryFanout);
+        constructor(p?: proto.IAIQueryFanout);
         public messageKey?: (proto.IMessageKey|null);
         public message?: (proto.IMessage|null);
         public timestamp: (number|Long);
         public static create(properties?: proto.IAIQueryFanout): proto.AIQueryFanout;
-        public static encode(message: proto.IAIQueryFanout, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.AIQueryFanout;
-        public static fromObject(object: { [k: string]: any }): proto.AIQueryFanout;
-        public static toObject(message: proto.AIQueryFanout, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IAIQueryFanout, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.AIQueryFanout;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -144,16 +126,13 @@ export namespace proto {
     }
 
     class AIRichResponseMessage implements IAIRichResponseMessage {
-        constructor(properties?: proto.IAIRichResponseMessage);
+        constructor(p?: proto.IAIRichResponseMessage);
         public messageType: proto.AIRichResponseMessage.AIRichResponseMessageType;
         public submessages: proto.AIRichResponseMessage.IAIRichResponseSubMessage[];
         public unifiedResponse?: (proto.AIRichResponseMessage.IAIRichResponseUnifiedResponse|null);
         public static create(properties?: proto.IAIRichResponseMessage): proto.AIRichResponseMessage;
-        public static encode(message: proto.IAIRichResponseMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.AIRichResponseMessage;
-        public static fromObject(object: { [k: string]: any }): proto.AIRichResponseMessage;
-        public static toObject(message: proto.AIRichResponseMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IAIRichResponseMessage, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.AIRichResponseMessage;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -165,15 +144,12 @@ export namespace proto {
         }
 
         class AIRichResponseCodeMetadata implements IAIRichResponseCodeMetadata {
-            constructor(properties?: proto.AIRichResponseMessage.IAIRichResponseCodeMetadata);
+            constructor(p?: proto.AIRichResponseMessage.IAIRichResponseCodeMetadata);
             public codeLanguage: string;
             public codeBlocks: proto.AIRichResponseMessage.AIRichResponseCodeMetadata.IAIRichResponseCodeBlock[];
             public static create(properties?: proto.AIRichResponseMessage.IAIRichResponseCodeMetadata): proto.AIRichResponseMessage.AIRichResponseCodeMetadata;
-            public static encode(message: proto.AIRichResponseMessage.IAIRichResponseCodeMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.AIRichResponseMessage.AIRichResponseCodeMetadata;
-            public static fromObject(object: { [k: string]: any }): proto.AIRichResponseMessage.AIRichResponseCodeMetadata;
-            public static toObject(message: proto.AIRichResponseMessage.AIRichResponseCodeMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.AIRichResponseMessage.IAIRichResponseCodeMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.AIRichResponseMessage.AIRichResponseCodeMetadata;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -185,15 +161,12 @@ export namespace proto {
             }
 
             class AIRichResponseCodeBlock implements IAIRichResponseCodeBlock {
-                constructor(properties?: proto.AIRichResponseMessage.AIRichResponseCodeMetadata.IAIRichResponseCodeBlock);
+                constructor(p?: proto.AIRichResponseMessage.AIRichResponseCodeMetadata.IAIRichResponseCodeBlock);
                 public highlightType: proto.AIRichResponseMessage.AIRichResponseCodeMetadata.AIRichResponseCodeHighlightType;
                 public codeContent: string;
                 public static create(properties?: proto.AIRichResponseMessage.AIRichResponseCodeMetadata.IAIRichResponseCodeBlock): proto.AIRichResponseMessage.AIRichResponseCodeMetadata.AIRichResponseCodeBlock;
-                public static encode(message: proto.AIRichResponseMessage.AIRichResponseCodeMetadata.IAIRichResponseCodeBlock, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.AIRichResponseMessage.AIRichResponseCodeMetadata.AIRichResponseCodeBlock;
-                public static fromObject(object: { [k: string]: any }): proto.AIRichResponseMessage.AIRichResponseCodeMetadata.AIRichResponseCodeBlock;
-                public static toObject(message: proto.AIRichResponseMessage.AIRichResponseCodeMetadata.AIRichResponseCodeBlock, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.AIRichResponseMessage.AIRichResponseCodeMetadata.IAIRichResponseCodeBlock, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.AIRichResponseMessage.AIRichResponseCodeMetadata.AIRichResponseCodeBlock;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -213,15 +186,12 @@ export namespace proto {
         }
 
         class AIRichResponseContentItemsMetadata implements IAIRichResponseContentItemsMetadata {
-            constructor(properties?: proto.AIRichResponseMessage.IAIRichResponseContentItemsMetadata);
+            constructor(p?: proto.AIRichResponseMessage.IAIRichResponseContentItemsMetadata);
             public itemsMetadata: proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.IAIRichResponseContentItemMetadata[];
             public contentType: proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.ContentType;
             public static create(properties?: proto.AIRichResponseMessage.IAIRichResponseContentItemsMetadata): proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata;
-            public static encode(message: proto.AIRichResponseMessage.IAIRichResponseContentItemsMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata;
-            public static fromObject(object: { [k: string]: any }): proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata;
-            public static toObject(message: proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.AIRichResponseMessage.IAIRichResponseContentItemsMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -232,15 +202,12 @@ export namespace proto {
             }
 
             class AIRichResponseContentItemMetadata implements IAIRichResponseContentItemMetadata {
-                constructor(properties?: proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.IAIRichResponseContentItemMetadata);
+                constructor(p?: proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.IAIRichResponseContentItemMetadata);
                 public reelItem?: (proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.IAIRichResponseReelItem|null);
                 public aIRichResponseContentItem?: "reelItem";
                 public static create(properties?: proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.IAIRichResponseContentItemMetadata): proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.AIRichResponseContentItemMetadata;
-                public static encode(message: proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.IAIRichResponseContentItemMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.AIRichResponseContentItemMetadata;
-                public static fromObject(object: { [k: string]: any }): proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.AIRichResponseContentItemMetadata;
-                public static toObject(message: proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.AIRichResponseContentItemMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.IAIRichResponseContentItemMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.AIRichResponseContentItemMetadata;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -252,17 +219,14 @@ export namespace proto {
             }
 
             class AIRichResponseReelItem implements IAIRichResponseReelItem {
-                constructor(properties?: proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.IAIRichResponseReelItem);
+                constructor(p?: proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.IAIRichResponseReelItem);
                 public title: string;
                 public profileIconUrl: string;
                 public thumbnailUrl: string;
                 public videoUrl: string;
                 public static create(properties?: proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.IAIRichResponseReelItem): proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.AIRichResponseReelItem;
-                public static encode(message: proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.IAIRichResponseReelItem, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.AIRichResponseReelItem;
-                public static fromObject(object: { [k: string]: any }): proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.AIRichResponseReelItem;
-                public static toObject(message: proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.AIRichResponseReelItem, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.IAIRichResponseReelItem, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.AIRichResponseMessage.AIRichResponseContentItemsMetadata.AIRichResponseReelItem;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -280,17 +244,14 @@ export namespace proto {
         }
 
         class AIRichResponseDynamicMetadata implements IAIRichResponseDynamicMetadata {
-            constructor(properties?: proto.AIRichResponseMessage.IAIRichResponseDynamicMetadata);
+            constructor(p?: proto.AIRichResponseMessage.IAIRichResponseDynamicMetadata);
             public type: proto.AIRichResponseMessage.AIRichResponseDynamicMetadata.AIRichResponseDynamicMetadataType;
             public version: (number|Long);
             public url: string;
             public loopCount: number;
             public static create(properties?: proto.AIRichResponseMessage.IAIRichResponseDynamicMetadata): proto.AIRichResponseMessage.AIRichResponseDynamicMetadata;
-            public static encode(message: proto.AIRichResponseMessage.IAIRichResponseDynamicMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.AIRichResponseMessage.AIRichResponseDynamicMetadata;
-            public static fromObject(object: { [k: string]: any }): proto.AIRichResponseMessage.AIRichResponseDynamicMetadata;
-            public static toObject(message: proto.AIRichResponseMessage.AIRichResponseDynamicMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.AIRichResponseMessage.IAIRichResponseDynamicMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.AIRichResponseMessage.AIRichResponseDynamicMetadata;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -309,15 +270,12 @@ export namespace proto {
         }
 
         class AIRichResponseGridImageMetadata implements IAIRichResponseGridImageMetadata {
-            constructor(properties?: proto.AIRichResponseMessage.IAIRichResponseGridImageMetadata);
+            constructor(p?: proto.AIRichResponseMessage.IAIRichResponseGridImageMetadata);
             public gridImageUrl?: (proto.AIRichResponseMessage.IAIRichResponseImageURL|null);
             public imageUrls: proto.AIRichResponseMessage.IAIRichResponseImageURL[];
             public static create(properties?: proto.AIRichResponseMessage.IAIRichResponseGridImageMetadata): proto.AIRichResponseMessage.AIRichResponseGridImageMetadata;
-            public static encode(message: proto.AIRichResponseMessage.IAIRichResponseGridImageMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.AIRichResponseMessage.AIRichResponseGridImageMetadata;
-            public static fromObject(object: { [k: string]: any }): proto.AIRichResponseMessage.AIRichResponseGridImageMetadata;
-            public static toObject(message: proto.AIRichResponseMessage.AIRichResponseGridImageMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.AIRichResponseMessage.IAIRichResponseGridImageMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.AIRichResponseMessage.AIRichResponseGridImageMetadata;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -328,16 +286,13 @@ export namespace proto {
         }
 
         class AIRichResponseImageURL implements IAIRichResponseImageURL {
-            constructor(properties?: proto.AIRichResponseMessage.IAIRichResponseImageURL);
+            constructor(p?: proto.AIRichResponseMessage.IAIRichResponseImageURL);
             public imagePreviewUrl: string;
             public imageHighResUrl: string;
             public sourceUrl: string;
             public static create(properties?: proto.AIRichResponseMessage.IAIRichResponseImageURL): proto.AIRichResponseMessage.AIRichResponseImageURL;
-            public static encode(message: proto.AIRichResponseMessage.IAIRichResponseImageURL, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.AIRichResponseMessage.AIRichResponseImageURL;
-            public static fromObject(object: { [k: string]: any }): proto.AIRichResponseMessage.AIRichResponseImageURL;
-            public static toObject(message: proto.AIRichResponseMessage.AIRichResponseImageURL, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.AIRichResponseMessage.IAIRichResponseImageURL, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.AIRichResponseMessage.AIRichResponseImageURL;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -349,17 +304,14 @@ export namespace proto {
         }
 
         class AIRichResponseInlineImageMetadata implements IAIRichResponseInlineImageMetadata {
-            constructor(properties?: proto.AIRichResponseMessage.IAIRichResponseInlineImageMetadata);
+            constructor(p?: proto.AIRichResponseMessage.IAIRichResponseInlineImageMetadata);
             public imageUrl?: (proto.AIRichResponseMessage.IAIRichResponseImageURL|null);
             public imageText: string;
             public alignment: proto.AIRichResponseMessage.AIRichResponseInlineImageMetadata.AIRichResponseImageAlignment;
             public tapLinkUrl: string;
             public static create(properties?: proto.AIRichResponseMessage.IAIRichResponseInlineImageMetadata): proto.AIRichResponseMessage.AIRichResponseInlineImageMetadata;
-            public static encode(message: proto.AIRichResponseMessage.IAIRichResponseInlineImageMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.AIRichResponseMessage.AIRichResponseInlineImageMetadata;
-            public static fromObject(object: { [k: string]: any }): proto.AIRichResponseMessage.AIRichResponseInlineImageMetadata;
-            public static toObject(message: proto.AIRichResponseMessage.AIRichResponseInlineImageMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.AIRichResponseMessage.IAIRichResponseInlineImageMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.AIRichResponseMessage.AIRichResponseInlineImageMetadata;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -378,15 +330,12 @@ export namespace proto {
         }
 
         class AIRichResponseLatexMetadata implements IAIRichResponseLatexMetadata {
-            constructor(properties?: proto.AIRichResponseMessage.IAIRichResponseLatexMetadata);
+            constructor(p?: proto.AIRichResponseMessage.IAIRichResponseLatexMetadata);
             public text: string;
             public expressions: proto.AIRichResponseMessage.AIRichResponseLatexMetadata.IAIRichResponseLatexExpression[];
             public static create(properties?: proto.AIRichResponseMessage.IAIRichResponseLatexMetadata): proto.AIRichResponseMessage.AIRichResponseLatexMetadata;
-            public static encode(message: proto.AIRichResponseMessage.IAIRichResponseLatexMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.AIRichResponseMessage.AIRichResponseLatexMetadata;
-            public static fromObject(object: { [k: string]: any }): proto.AIRichResponseMessage.AIRichResponseLatexMetadata;
-            public static toObject(message: proto.AIRichResponseMessage.AIRichResponseLatexMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.AIRichResponseMessage.IAIRichResponseLatexMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.AIRichResponseMessage.AIRichResponseLatexMetadata;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -405,7 +354,7 @@ export namespace proto {
             }
 
             class AIRichResponseLatexExpression implements IAIRichResponseLatexExpression {
-                constructor(properties?: proto.AIRichResponseMessage.AIRichResponseLatexMetadata.IAIRichResponseLatexExpression);
+                constructor(p?: proto.AIRichResponseMessage.AIRichResponseLatexMetadata.IAIRichResponseLatexExpression);
                 public latexExpression: string;
                 public url: string;
                 public width: number;
@@ -416,11 +365,8 @@ export namespace proto {
                 public imageBottomPadding: number;
                 public imageTrailingPadding: number;
                 public static create(properties?: proto.AIRichResponseMessage.AIRichResponseLatexMetadata.IAIRichResponseLatexExpression): proto.AIRichResponseMessage.AIRichResponseLatexMetadata.AIRichResponseLatexExpression;
-                public static encode(message: proto.AIRichResponseMessage.AIRichResponseLatexMetadata.IAIRichResponseLatexExpression, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.AIRichResponseMessage.AIRichResponseLatexMetadata.AIRichResponseLatexExpression;
-                public static fromObject(object: { [k: string]: any }): proto.AIRichResponseMessage.AIRichResponseLatexMetadata.AIRichResponseLatexExpression;
-                public static toObject(message: proto.AIRichResponseMessage.AIRichResponseLatexMetadata.AIRichResponseLatexExpression, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.AIRichResponseMessage.AIRichResponseLatexMetadata.IAIRichResponseLatexExpression, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.AIRichResponseMessage.AIRichResponseLatexMetadata.AIRichResponseLatexExpression;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
         }
@@ -435,7 +381,7 @@ export namespace proto {
         }
 
         class AIRichResponseMapMetadata implements IAIRichResponseMapMetadata {
-            constructor(properties?: proto.AIRichResponseMessage.IAIRichResponseMapMetadata);
+            constructor(p?: proto.AIRichResponseMessage.IAIRichResponseMapMetadata);
             public centerLatitude: number;
             public centerLongitude: number;
             public latitudeDelta: number;
@@ -443,11 +389,8 @@ export namespace proto {
             public annotations: proto.AIRichResponseMessage.AIRichResponseMapMetadata.IAIRichResponseMapAnnotation[];
             public showInfoList: boolean;
             public static create(properties?: proto.AIRichResponseMessage.IAIRichResponseMapMetadata): proto.AIRichResponseMessage.AIRichResponseMapMetadata;
-            public static encode(message: proto.AIRichResponseMessage.IAIRichResponseMapMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.AIRichResponseMessage.AIRichResponseMapMetadata;
-            public static fromObject(object: { [k: string]: any }): proto.AIRichResponseMessage.AIRichResponseMapMetadata;
-            public static toObject(message: proto.AIRichResponseMessage.AIRichResponseMapMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.AIRichResponseMessage.IAIRichResponseMapMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.AIRichResponseMessage.AIRichResponseMapMetadata;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -462,18 +405,15 @@ export namespace proto {
             }
 
             class AIRichResponseMapAnnotation implements IAIRichResponseMapAnnotation {
-                constructor(properties?: proto.AIRichResponseMessage.AIRichResponseMapMetadata.IAIRichResponseMapAnnotation);
+                constructor(p?: proto.AIRichResponseMessage.AIRichResponseMapMetadata.IAIRichResponseMapAnnotation);
                 public annotationNumber: number;
                 public latitude: number;
                 public longitude: number;
                 public title: string;
                 public body: string;
                 public static create(properties?: proto.AIRichResponseMessage.AIRichResponseMapMetadata.IAIRichResponseMapAnnotation): proto.AIRichResponseMessage.AIRichResponseMapMetadata.AIRichResponseMapAnnotation;
-                public static encode(message: proto.AIRichResponseMessage.AIRichResponseMapMetadata.IAIRichResponseMapAnnotation, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.AIRichResponseMessage.AIRichResponseMapMetadata.AIRichResponseMapAnnotation;
-                public static fromObject(object: { [k: string]: any }): proto.AIRichResponseMessage.AIRichResponseMapMetadata.AIRichResponseMapAnnotation;
-                public static toObject(message: proto.AIRichResponseMessage.AIRichResponseMapMetadata.AIRichResponseMapAnnotation, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.AIRichResponseMessage.AIRichResponseMapMetadata.IAIRichResponseMapAnnotation, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.AIRichResponseMessage.AIRichResponseMapMetadata.AIRichResponseMapAnnotation;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
         }
@@ -497,7 +437,7 @@ export namespace proto {
         }
 
         class AIRichResponseSubMessage implements IAIRichResponseSubMessage {
-            constructor(properties?: proto.AIRichResponseMessage.IAIRichResponseSubMessage);
+            constructor(p?: proto.AIRichResponseMessage.IAIRichResponseSubMessage);
             public messageType: proto.AIRichResponseMessage.AIRichResponseSubMessageType;
             public gridImageMetadata?: (proto.AIRichResponseMessage.IAIRichResponseGridImageMetadata|null);
             public messageText: string;
@@ -509,11 +449,8 @@ export namespace proto {
             public mapMetadata?: (proto.AIRichResponseMessage.IAIRichResponseMapMetadata|null);
             public contentItemsMetadata?: (proto.AIRichResponseMessage.IAIRichResponseContentItemsMetadata|null);
             public static create(properties?: proto.AIRichResponseMessage.IAIRichResponseSubMessage): proto.AIRichResponseMessage.AIRichResponseSubMessage;
-            public static encode(message: proto.AIRichResponseMessage.IAIRichResponseSubMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.AIRichResponseMessage.AIRichResponseSubMessage;
-            public static fromObject(object: { [k: string]: any }): proto.AIRichResponseMessage.AIRichResponseSubMessage;
-            public static toObject(message: proto.AIRichResponseMessage.AIRichResponseSubMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.AIRichResponseMessage.IAIRichResponseSubMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.AIRichResponseMessage.AIRichResponseSubMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -535,14 +472,11 @@ export namespace proto {
         }
 
         class AIRichResponseTableMetadata implements IAIRichResponseTableMetadata {
-            constructor(properties?: proto.AIRichResponseMessage.IAIRichResponseTableMetadata);
+            constructor(p?: proto.AIRichResponseMessage.IAIRichResponseTableMetadata);
             public rows: proto.AIRichResponseMessage.AIRichResponseTableMetadata.IAIRichResponseTableRow[];
             public static create(properties?: proto.AIRichResponseMessage.IAIRichResponseTableMetadata): proto.AIRichResponseMessage.AIRichResponseTableMetadata;
-            public static encode(message: proto.AIRichResponseMessage.IAIRichResponseTableMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.AIRichResponseMessage.AIRichResponseTableMetadata;
-            public static fromObject(object: { [k: string]: any }): proto.AIRichResponseMessage.AIRichResponseTableMetadata;
-            public static toObject(message: proto.AIRichResponseMessage.AIRichResponseTableMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.AIRichResponseMessage.IAIRichResponseTableMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.AIRichResponseMessage.AIRichResponseTableMetadata;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -554,15 +488,12 @@ export namespace proto {
             }
 
             class AIRichResponseTableRow implements IAIRichResponseTableRow {
-                constructor(properties?: proto.AIRichResponseMessage.AIRichResponseTableMetadata.IAIRichResponseTableRow);
+                constructor(p?: proto.AIRichResponseMessage.AIRichResponseTableMetadata.IAIRichResponseTableRow);
                 public items: string[];
                 public isHeading: boolean;
                 public static create(properties?: proto.AIRichResponseMessage.AIRichResponseTableMetadata.IAIRichResponseTableRow): proto.AIRichResponseMessage.AIRichResponseTableMetadata.AIRichResponseTableRow;
-                public static encode(message: proto.AIRichResponseMessage.AIRichResponseTableMetadata.IAIRichResponseTableRow, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.AIRichResponseMessage.AIRichResponseTableMetadata.AIRichResponseTableRow;
-                public static fromObject(object: { [k: string]: any }): proto.AIRichResponseMessage.AIRichResponseTableMetadata.AIRichResponseTableRow;
-                public static toObject(message: proto.AIRichResponseMessage.AIRichResponseTableMetadata.AIRichResponseTableRow, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.AIRichResponseMessage.AIRichResponseTableMetadata.IAIRichResponseTableRow, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.AIRichResponseMessage.AIRichResponseTableMetadata.AIRichResponseTableRow;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
         }
@@ -572,14 +503,11 @@ export namespace proto {
         }
 
         class AIRichResponseUnifiedResponse implements IAIRichResponseUnifiedResponse {
-            constructor(properties?: proto.AIRichResponseMessage.IAIRichResponseUnifiedResponse);
+            constructor(p?: proto.AIRichResponseMessage.IAIRichResponseUnifiedResponse);
             public data: Uint8Array;
             public static create(properties?: proto.AIRichResponseMessage.IAIRichResponseUnifiedResponse): proto.AIRichResponseMessage.AIRichResponseUnifiedResponse;
-            public static encode(message: proto.AIRichResponseMessage.IAIRichResponseUnifiedResponse, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.AIRichResponseMessage.AIRichResponseUnifiedResponse;
-            public static fromObject(object: { [k: string]: any }): proto.AIRichResponseMessage.AIRichResponseUnifiedResponse;
-            public static toObject(message: proto.AIRichResponseMessage.AIRichResponseUnifiedResponse, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.AIRichResponseMessage.IAIRichResponseUnifiedResponse, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.AIRichResponseMessage.AIRichResponseUnifiedResponse;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
     }
@@ -592,17 +520,14 @@ export namespace proto {
     }
 
     class Account implements IAccount {
-        constructor(properties?: proto.IAccount);
+        constructor(p?: proto.IAccount);
         public lid: string;
         public username: string;
         public countryCode: string;
         public isUsernameDeleted: boolean;
         public static create(properties?: proto.IAccount): proto.Account;
-        public static encode(message: proto.IAccount, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Account;
-        public static fromObject(object: { [k: string]: any }): proto.Account;
-        public static toObject(message: proto.Account, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IAccount, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Account;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -612,15 +537,12 @@ export namespace proto {
     }
 
     class ActionLink implements IActionLink {
-        constructor(properties?: proto.IActionLink);
+        constructor(p?: proto.IActionLink);
         public url: string;
         public buttonTitle: string;
         public static create(properties?: proto.IActionLink): proto.ActionLink;
-        public static encode(message: proto.IActionLink, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ActionLink;
-        public static fromObject(object: { [k: string]: any }): proto.ActionLink;
-        public static toObject(message: proto.ActionLink, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IActionLink, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ActionLink;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -632,17 +554,14 @@ export namespace proto {
     }
 
     class AutoDownloadSettings implements IAutoDownloadSettings {
-        constructor(properties?: proto.IAutoDownloadSettings);
+        constructor(p?: proto.IAutoDownloadSettings);
         public downloadImages: boolean;
         public downloadAudio: boolean;
         public downloadVideo: boolean;
         public downloadDocuments: boolean;
         public static create(properties?: proto.IAutoDownloadSettings): proto.AutoDownloadSettings;
-        public static encode(message: proto.IAutoDownloadSettings, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.AutoDownloadSettings;
-        public static fromObject(object: { [k: string]: any }): proto.AutoDownloadSettings;
-        public static toObject(message: proto.AutoDownloadSettings, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IAutoDownloadSettings, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.AutoDownloadSettings;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -652,15 +571,12 @@ export namespace proto {
     }
 
     class AvatarUserSettings implements IAvatarUserSettings {
-        constructor(properties?: proto.IAvatarUserSettings);
+        constructor(p?: proto.IAvatarUserSettings);
         public fbid: string;
         public password: string;
         public static create(properties?: proto.IAvatarUserSettings): proto.AvatarUserSettings;
-        public static encode(message: proto.IAvatarUserSettings, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.AvatarUserSettings;
-        public static fromObject(object: { [k: string]: any }): proto.AvatarUserSettings;
-        public static toObject(message: proto.AvatarUserSettings, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IAvatarUserSettings, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.AvatarUserSettings;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -673,18 +589,15 @@ export namespace proto {
     }
 
     class BizAccountLinkInfo implements IBizAccountLinkInfo {
-        constructor(properties?: proto.IBizAccountLinkInfo);
+        constructor(p?: proto.IBizAccountLinkInfo);
         public whatsappBizAcctFbid: (number|Long);
         public whatsappAcctNumber: string;
         public issueTime: (number|Long);
         public hostStorage: proto.BizAccountLinkInfo.HostStorageType;
         public accountType: proto.BizAccountLinkInfo.AccountType;
         public static create(properties?: proto.IBizAccountLinkInfo): proto.BizAccountLinkInfo;
-        public static encode(message: proto.IBizAccountLinkInfo, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BizAccountLinkInfo;
-        public static fromObject(object: { [k: string]: any }): proto.BizAccountLinkInfo;
-        public static toObject(message: proto.BizAccountLinkInfo, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBizAccountLinkInfo, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BizAccountLinkInfo;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -706,15 +619,12 @@ export namespace proto {
     }
 
     class BizAccountPayload implements IBizAccountPayload {
-        constructor(properties?: proto.IBizAccountPayload);
+        constructor(p?: proto.IBizAccountPayload);
         public vnameCert?: (proto.IVerifiedNameCertificate|null);
         public bizAcctLinkInfo: Uint8Array;
         public static create(properties?: proto.IBizAccountPayload): proto.BizAccountPayload;
-        public static encode(message: proto.IBizAccountPayload, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BizAccountPayload;
-        public static fromObject(object: { [k: string]: any }): proto.BizAccountPayload;
-        public static toObject(message: proto.BizAccountPayload, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBizAccountPayload, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BizAccountPayload;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -730,7 +640,7 @@ export namespace proto {
     }
 
     class BizIdentityInfo implements IBizIdentityInfo {
-        constructor(properties?: proto.IBizIdentityInfo);
+        constructor(p?: proto.IBizIdentityInfo);
         public vlevel: proto.BizIdentityInfo.VerifiedLevelValue;
         public vnameCert?: (proto.IVerifiedNameCertificate|null);
         public signed: boolean;
@@ -740,11 +650,8 @@ export namespace proto {
         public privacyModeTs: (number|Long);
         public featureControls: (number|Long);
         public static create(properties?: proto.IBizIdentityInfo): proto.BizIdentityInfo;
-        public static encode(message: proto.IBizIdentityInfo, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BizIdentityInfo;
-        public static fromObject(object: { [k: string]: any }): proto.BizIdentityInfo;
-        public static toObject(message: proto.BizIdentityInfo, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBizIdentityInfo, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BizIdentityInfo;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -773,15 +680,12 @@ export namespace proto {
     }
 
     class BotAgeCollectionMetadata implements IBotAgeCollectionMetadata {
-        constructor(properties?: proto.IBotAgeCollectionMetadata);
+        constructor(p?: proto.IBotAgeCollectionMetadata);
         public ageCollectionEligible: boolean;
         public shouldTriggerAgeCollectionOnClient: boolean;
         public static create(properties?: proto.IBotAgeCollectionMetadata): proto.BotAgeCollectionMetadata;
-        public static encode(message: proto.IBotAgeCollectionMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotAgeCollectionMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.BotAgeCollectionMetadata;
-        public static toObject(message: proto.BotAgeCollectionMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotAgeCollectionMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotAgeCollectionMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -794,18 +698,15 @@ export namespace proto {
     }
 
     class BotAvatarMetadata implements IBotAvatarMetadata {
-        constructor(properties?: proto.IBotAvatarMetadata);
+        constructor(p?: proto.IBotAvatarMetadata);
         public sentiment: number;
         public behaviorGraph: string;
         public action: number;
         public intensity: number;
         public wordCount: number;
         public static create(properties?: proto.IBotAvatarMetadata): proto.BotAvatarMetadata;
-        public static encode(message: proto.IBotAvatarMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotAvatarMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.BotAvatarMetadata;
-        public static toObject(message: proto.BotAvatarMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotAvatarMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotAvatarMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -814,14 +715,11 @@ export namespace proto {
     }
 
     class BotCapabilityMetadata implements IBotCapabilityMetadata {
-        constructor(properties?: proto.IBotCapabilityMetadata);
+        constructor(p?: proto.IBotCapabilityMetadata);
         public capabilities: proto.BotCapabilityMetadata.BotCapabilityType[];
         public static create(properties?: proto.IBotCapabilityMetadata): proto.BotCapabilityMetadata;
-        public static encode(message: proto.IBotCapabilityMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotCapabilityMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.BotCapabilityMetadata;
-        public static toObject(message: proto.BotCapabilityMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotCapabilityMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotCapabilityMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -872,14 +770,11 @@ export namespace proto {
     }
 
     class BotImagineMetadata implements IBotImagineMetadata {
-        constructor(properties?: proto.IBotImagineMetadata);
+        constructor(p?: proto.IBotImagineMetadata);
         public imagineType: proto.BotImagineMetadata.ImagineType;
         public static create(properties?: proto.IBotImagineMetadata): proto.BotImagineMetadata;
-        public static encode(message: proto.IBotImagineMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotImagineMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.BotImagineMetadata;
-        public static toObject(message: proto.BotImagineMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotImagineMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotImagineMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -899,14 +794,11 @@ export namespace proto {
     }
 
     class BotLinkedAccount implements IBotLinkedAccount {
-        constructor(properties?: proto.IBotLinkedAccount);
+        constructor(p?: proto.IBotLinkedAccount);
         public type: proto.BotLinkedAccount.BotLinkedAccountType;
         public static create(properties?: proto.IBotLinkedAccount): proto.BotLinkedAccount;
-        public static encode(message: proto.IBotLinkedAccount, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotLinkedAccount;
-        public static fromObject(object: { [k: string]: any }): proto.BotLinkedAccount;
-        public static toObject(message: proto.BotLinkedAccount, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotLinkedAccount, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotLinkedAccount;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -924,16 +816,13 @@ export namespace proto {
     }
 
     class BotLinkedAccountsMetadata implements IBotLinkedAccountsMetadata {
-        constructor(properties?: proto.IBotLinkedAccountsMetadata);
+        constructor(p?: proto.IBotLinkedAccountsMetadata);
         public accounts: proto.IBotLinkedAccount[];
         public acAuthTokens: Uint8Array;
         public acErrorCode: number;
         public static create(properties?: proto.IBotLinkedAccountsMetadata): proto.BotLinkedAccountsMetadata;
-        public static encode(message: proto.IBotLinkedAccountsMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotLinkedAccountsMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.BotLinkedAccountsMetadata;
-        public static toObject(message: proto.BotLinkedAccountsMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotLinkedAccountsMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotLinkedAccountsMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -948,7 +837,7 @@ export namespace proto {
     }
 
     class BotMediaMetadata implements IBotMediaMetadata {
-        constructor(properties?: proto.IBotMediaMetadata);
+        constructor(p?: proto.IBotMediaMetadata);
         public fileSha256: string;
         public mediaKey: string;
         public fileEncSha256: string;
@@ -957,11 +846,8 @@ export namespace proto {
         public mimetype: string;
         public orientationType: proto.BotMediaMetadata.OrientationType;
         public static create(properties?: proto.IBotMediaMetadata): proto.BotMediaMetadata;
-        public static encode(message: proto.IBotMediaMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotMediaMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.BotMediaMetadata;
-        public static toObject(message: proto.BotMediaMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotMediaMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotMediaMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -980,15 +866,12 @@ export namespace proto {
     }
 
     class BotMemoryFact implements IBotMemoryFact {
-        constructor(properties?: proto.IBotMemoryFact);
+        constructor(p?: proto.IBotMemoryFact);
         public fact: string;
         public factId: string;
         public static create(properties?: proto.IBotMemoryFact): proto.BotMemoryFact;
-        public static encode(message: proto.IBotMemoryFact, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotMemoryFact;
-        public static fromObject(object: { [k: string]: any }): proto.BotMemoryFact;
-        public static toObject(message: proto.BotMemoryFact, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotMemoryFact, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotMemoryFact;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -999,16 +882,13 @@ export namespace proto {
     }
 
     class BotMemoryMetadata implements IBotMemoryMetadata {
-        constructor(properties?: proto.IBotMemoryMetadata);
+        constructor(p?: proto.IBotMemoryMetadata);
         public addedFacts: proto.IBotMemoryFact[];
         public removedFacts: proto.IBotMemoryFact[];
         public disclaimer: string;
         public static create(properties?: proto.IBotMemoryMetadata): proto.BotMemoryMetadata;
-        public static encode(message: proto.IBotMemoryMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotMemoryMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.BotMemoryMetadata;
-        public static toObject(message: proto.BotMemoryMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotMemoryMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotMemoryMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -1017,14 +897,11 @@ export namespace proto {
     }
 
     class BotMemuMetadata implements IBotMemuMetadata {
-        constructor(properties?: proto.IBotMemuMetadata);
+        constructor(p?: proto.IBotMemuMetadata);
         public faceImages: proto.IBotMediaMetadata[];
         public static create(properties?: proto.IBotMemuMetadata): proto.BotMemuMetadata;
-        public static encode(message: proto.IBotMemuMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotMemuMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.BotMemuMetadata;
-        public static toObject(message: proto.BotMemuMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotMemuMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotMemuMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -1056,7 +933,7 @@ export namespace proto {
     }
 
     class BotMetadata implements IBotMetadata {
-        constructor(properties?: proto.IBotMetadata);
+        constructor(p?: proto.IBotMetadata);
         public avatarMetadata?: (proto.IBotAvatarMetadata|null);
         public personaId: string;
         public pluginMetadata?: (proto.IBotPluginMetadata|null);
@@ -1082,11 +959,8 @@ export namespace proto {
         public botQuotaMetadata?: (proto.IBotQuotaMetadata|null);
         public botAgeCollectionMetadata?: (proto.IBotAgeCollectionMetadata|null);
         public static create(properties?: proto.IBotMetadata): proto.BotMetadata;
-        public static encode(message: proto.IBotMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.BotMetadata;
-        public static toObject(message: proto.BotMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -1124,16 +998,13 @@ export namespace proto {
     }
 
     class BotMetricsMetadata implements IBotMetricsMetadata {
-        constructor(properties?: proto.IBotMetricsMetadata);
+        constructor(p?: proto.IBotMetricsMetadata);
         public destinationId: string;
         public destinationEntryPoint: proto.BotMetricsEntryPoint;
         public threadOrigin: proto.BotMetricsThreadEntryPoint;
         public static create(properties?: proto.IBotMetricsMetadata): proto.BotMetricsMetadata;
-        public static encode(message: proto.IBotMetricsMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotMetricsMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.BotMetricsMetadata;
-        public static toObject(message: proto.BotMetricsMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotMetricsMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotMetricsMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -1149,14 +1020,11 @@ export namespace proto {
     }
 
     class BotModeSelectionMetadata implements IBotModeSelectionMetadata {
-        constructor(properties?: proto.IBotModeSelectionMetadata);
+        constructor(p?: proto.IBotModeSelectionMetadata);
         public mode: proto.BotModeSelectionMetadata.BotUserSelectionMode[];
         public static create(properties?: proto.IBotModeSelectionMetadata): proto.BotModeSelectionMetadata;
-        public static encode(message: proto.IBotModeSelectionMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotModeSelectionMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.BotModeSelectionMetadata;
-        public static toObject(message: proto.BotModeSelectionMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotModeSelectionMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotModeSelectionMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -1174,15 +1042,12 @@ export namespace proto {
     }
 
     class BotModelMetadata implements IBotModelMetadata {
-        constructor(properties?: proto.IBotModelMetadata);
+        constructor(p?: proto.IBotModelMetadata);
         public modelType: proto.BotModelMetadata.ModelType;
         public premiumModelStatus: proto.BotModelMetadata.PremiumModelStatus;
         public static create(properties?: proto.IBotModelMetadata): proto.BotModelMetadata;
-        public static encode(message: proto.IBotModelMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotModelMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.BotModelMetadata;
-        public static toObject(message: proto.BotModelMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotModelMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotModelMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -1217,7 +1082,7 @@ export namespace proto {
     }
 
     class BotPluginMetadata implements IBotPluginMetadata {
-        constructor(properties?: proto.IBotPluginMetadata);
+        constructor(p?: proto.IBotPluginMetadata);
         public provider: proto.BotPluginMetadata.SearchProvider;
         public pluginType: proto.BotPluginMetadata.PluginType;
         public thumbnailCdnUrl: string;
@@ -1231,11 +1096,8 @@ export namespace proto {
         public parentPluginType: proto.BotPluginMetadata.PluginType;
         public faviconCdnUrl: string;
         public static create(properties?: proto.IBotPluginMetadata): proto.BotPluginMetadata;
-        public static encode(message: proto.IBotPluginMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotPluginMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.BotPluginMetadata;
-        public static toObject(message: proto.BotPluginMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotPluginMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotPluginMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -1261,15 +1123,12 @@ export namespace proto {
     }
 
     class BotProgressIndicatorMetadata implements IBotProgressIndicatorMetadata {
-        constructor(properties?: proto.IBotProgressIndicatorMetadata);
+        constructor(p?: proto.IBotProgressIndicatorMetadata);
         public progressDescription: string;
         public stepsMetadata: proto.BotProgressIndicatorMetadata.IBotPlanningStepMetadata[];
         public static create(properties?: proto.IBotProgressIndicatorMetadata): proto.BotProgressIndicatorMetadata;
-        public static encode(message: proto.IBotProgressIndicatorMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotProgressIndicatorMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.BotProgressIndicatorMetadata;
-        public static toObject(message: proto.BotProgressIndicatorMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotProgressIndicatorMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotProgressIndicatorMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -1286,7 +1145,7 @@ export namespace proto {
         }
 
         class BotPlanningStepMetadata implements IBotPlanningStepMetadata {
-            constructor(properties?: proto.BotProgressIndicatorMetadata.IBotPlanningStepMetadata);
+            constructor(p?: proto.BotProgressIndicatorMetadata.IBotPlanningStepMetadata);
             public statusTitle: string;
             public statusBody: string;
             public sourcesMetadata: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.IBotPlanningSearchSourcesMetadata[];
@@ -1295,11 +1154,8 @@ export namespace proto {
             public isEnhancedSearch: boolean;
             public sections: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.IBotPlanningStepSectionMetadata[];
             public static create(properties?: proto.BotProgressIndicatorMetadata.IBotPlanningStepMetadata): proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata;
-            public static encode(message: proto.BotProgressIndicatorMetadata.IBotPlanningStepMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata;
-            public static fromObject(object: { [k: string]: any }): proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata;
-            public static toObject(message: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.BotProgressIndicatorMetadata.IBotPlanningStepMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -1313,17 +1169,14 @@ export namespace proto {
             }
 
             class BotPlanningSearchSourceMetadata implements IBotPlanningSearchSourceMetadata {
-                constructor(properties?: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.IBotPlanningSearchSourceMetadata);
+                constructor(p?: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.IBotPlanningSearchSourceMetadata);
                 public title: string;
                 public provider: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.BotSearchSourceProvider;
                 public sourceUrl: string;
                 public favIconUrl: string;
                 public static create(properties?: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.IBotPlanningSearchSourceMetadata): proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.BotPlanningSearchSourceMetadata;
-                public static encode(message: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.IBotPlanningSearchSourceMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.BotPlanningSearchSourceMetadata;
-                public static fromObject(object: { [k: string]: any }): proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.BotPlanningSearchSourceMetadata;
-                public static toObject(message: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.BotPlanningSearchSourceMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.IBotPlanningSearchSourceMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.BotPlanningSearchSourceMetadata;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -1334,16 +1187,13 @@ export namespace proto {
             }
 
             class BotPlanningSearchSourcesMetadata implements IBotPlanningSearchSourcesMetadata {
-                constructor(properties?: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.IBotPlanningSearchSourcesMetadata);
+                constructor(p?: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.IBotPlanningSearchSourcesMetadata);
                 public sourceTitle: string;
                 public provider: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.BotPlanningSearchSourcesMetadata.BotPlanningSearchSourceProvider;
                 public sourceUrl: string;
                 public static create(properties?: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.IBotPlanningSearchSourcesMetadata): proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.BotPlanningSearchSourcesMetadata;
-                public static encode(message: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.IBotPlanningSearchSourcesMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.BotPlanningSearchSourcesMetadata;
-                public static fromObject(object: { [k: string]: any }): proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.BotPlanningSearchSourcesMetadata;
-                public static toObject(message: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.BotPlanningSearchSourcesMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.IBotPlanningSearchSourcesMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.BotPlanningSearchSourcesMetadata;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -1364,16 +1214,13 @@ export namespace proto {
             }
 
             class BotPlanningStepSectionMetadata implements IBotPlanningStepSectionMetadata {
-                constructor(properties?: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.IBotPlanningStepSectionMetadata);
+                constructor(p?: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.IBotPlanningStepSectionMetadata);
                 public sectionTitle: string;
                 public sectionBody: string;
                 public sourcesMetadata: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.IBotPlanningSearchSourceMetadata[];
                 public static create(properties?: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.IBotPlanningStepSectionMetadata): proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.BotPlanningStepSectionMetadata;
-                public static encode(message: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.IBotPlanningStepSectionMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.BotPlanningStepSectionMetadata;
-                public static fromObject(object: { [k: string]: any }): proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.BotPlanningStepSectionMetadata;
-                public static toObject(message: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.BotPlanningStepSectionMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.IBotPlanningStepSectionMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotProgressIndicatorMetadata.BotPlanningStepMetadata.BotPlanningStepSectionMetadata;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -1399,15 +1246,12 @@ export namespace proto {
     }
 
     class BotPromotionMessageMetadata implements IBotPromotionMessageMetadata {
-        constructor(properties?: proto.IBotPromotionMessageMetadata);
+        constructor(p?: proto.IBotPromotionMessageMetadata);
         public promotionType: proto.BotPromotionMessageMetadata.BotPromotionType;
         public buttonTitle: string;
         public static create(properties?: proto.IBotPromotionMessageMetadata): proto.BotPromotionMessageMetadata;
-        public static encode(message: proto.IBotPromotionMessageMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotPromotionMessageMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.BotPromotionMessageMetadata;
-        public static toObject(message: proto.BotPromotionMessageMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotPromotionMessageMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotPromotionMessageMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -1425,15 +1269,12 @@ export namespace proto {
     }
 
     class BotPromptSuggestion implements IBotPromptSuggestion {
-        constructor(properties?: proto.IBotPromptSuggestion);
+        constructor(p?: proto.IBotPromptSuggestion);
         public prompt: string;
         public promptId: string;
         public static create(properties?: proto.IBotPromptSuggestion): proto.BotPromptSuggestion;
-        public static encode(message: proto.IBotPromptSuggestion, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotPromptSuggestion;
-        public static fromObject(object: { [k: string]: any }): proto.BotPromptSuggestion;
-        public static toObject(message: proto.BotPromptSuggestion, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotPromptSuggestion, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotPromptSuggestion;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -1442,14 +1283,11 @@ export namespace proto {
     }
 
     class BotPromptSuggestions implements IBotPromptSuggestions {
-        constructor(properties?: proto.IBotPromptSuggestions);
+        constructor(p?: proto.IBotPromptSuggestions);
         public suggestions: proto.IBotPromptSuggestion[];
         public static create(properties?: proto.IBotPromptSuggestions): proto.BotPromptSuggestions;
-        public static encode(message: proto.IBotPromptSuggestions, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotPromptSuggestions;
-        public static fromObject(object: { [k: string]: any }): proto.BotPromptSuggestions;
-        public static toObject(message: proto.BotPromptSuggestions, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotPromptSuggestions, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotPromptSuggestions;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -1458,14 +1296,11 @@ export namespace proto {
     }
 
     class BotQuotaMetadata implements IBotQuotaMetadata {
-        constructor(properties?: proto.IBotQuotaMetadata);
+        constructor(p?: proto.IBotQuotaMetadata);
         public botFeatureQuotaMetadata: proto.BotQuotaMetadata.IBotFeatureQuotaMetadata[];
         public static create(properties?: proto.IBotQuotaMetadata): proto.BotQuotaMetadata;
-        public static encode(message: proto.IBotQuotaMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotQuotaMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.BotQuotaMetadata;
-        public static toObject(message: proto.BotQuotaMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotQuotaMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotQuotaMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -1478,16 +1313,13 @@ export namespace proto {
         }
 
         class BotFeatureQuotaMetadata implements IBotFeatureQuotaMetadata {
-            constructor(properties?: proto.BotQuotaMetadata.IBotFeatureQuotaMetadata);
+            constructor(p?: proto.BotQuotaMetadata.IBotFeatureQuotaMetadata);
             public featureType: proto.BotQuotaMetadata.BotFeatureQuotaMetadata.BotFeatureType;
             public remainingQuota: number;
             public expirationTimestamp: (number|Long);
             public static create(properties?: proto.BotQuotaMetadata.IBotFeatureQuotaMetadata): proto.BotQuotaMetadata.BotFeatureQuotaMetadata;
-            public static encode(message: proto.BotQuotaMetadata.IBotFeatureQuotaMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotQuotaMetadata.BotFeatureQuotaMetadata;
-            public static fromObject(object: { [k: string]: any }): proto.BotQuotaMetadata.BotFeatureQuotaMetadata;
-            public static toObject(message: proto.BotQuotaMetadata.BotFeatureQuotaMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.BotQuotaMetadata.IBotFeatureQuotaMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotQuotaMetadata.BotFeatureQuotaMetadata;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -1509,18 +1341,15 @@ export namespace proto {
     }
 
     class BotReminderMetadata implements IBotReminderMetadata {
-        constructor(properties?: proto.IBotReminderMetadata);
+        constructor(p?: proto.IBotReminderMetadata);
         public requestMessageKey?: (proto.IMessageKey|null);
         public action: proto.BotReminderMetadata.ReminderAction;
         public name: string;
         public nextTriggerTimestamp: (number|Long);
         public frequency: proto.BotReminderMetadata.ReminderFrequency;
         public static create(properties?: proto.IBotReminderMetadata): proto.BotReminderMetadata;
-        public static encode(message: proto.IBotReminderMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotReminderMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.BotReminderMetadata;
-        public static toObject(message: proto.BotReminderMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotReminderMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotReminderMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -1547,14 +1376,11 @@ export namespace proto {
     }
 
     class BotRenderingMetadata implements IBotRenderingMetadata {
-        constructor(properties?: proto.IBotRenderingMetadata);
+        constructor(p?: proto.IBotRenderingMetadata);
         public keywords: proto.BotRenderingMetadata.IKeyword[];
         public static create(properties?: proto.IBotRenderingMetadata): proto.BotRenderingMetadata;
-        public static encode(message: proto.IBotRenderingMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotRenderingMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.BotRenderingMetadata;
-        public static toObject(message: proto.BotRenderingMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotRenderingMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotRenderingMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -1566,15 +1392,12 @@ export namespace proto {
         }
 
         class Keyword implements IKeyword {
-            constructor(properties?: proto.BotRenderingMetadata.IKeyword);
+            constructor(p?: proto.BotRenderingMetadata.IKeyword);
             public value: string;
             public associatedPrompts: string[];
             public static create(properties?: proto.BotRenderingMetadata.IKeyword): proto.BotRenderingMetadata.Keyword;
-            public static encode(message: proto.BotRenderingMetadata.IKeyword, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotRenderingMetadata.Keyword;
-            public static fromObject(object: { [k: string]: any }): proto.BotRenderingMetadata.Keyword;
-            public static toObject(message: proto.BotRenderingMetadata.Keyword, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.BotRenderingMetadata.IKeyword, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotRenderingMetadata.Keyword;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
     }
@@ -1585,15 +1408,12 @@ export namespace proto {
     }
 
     class BotSessionMetadata implements IBotSessionMetadata {
-        constructor(properties?: proto.IBotSessionMetadata);
+        constructor(p?: proto.IBotSessionMetadata);
         public sessionId: string;
         public sessionSource: proto.BotSessionSource;
         public static create(properties?: proto.IBotSessionMetadata): proto.BotSessionMetadata;
-        public static encode(message: proto.IBotSessionMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotSessionMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.BotSessionMetadata;
-        public static toObject(message: proto.BotSessionMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotSessionMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotSessionMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -1612,14 +1432,11 @@ export namespace proto {
     }
 
     class BotSourcesMetadata implements IBotSourcesMetadata {
-        constructor(properties?: proto.IBotSourcesMetadata);
+        constructor(p?: proto.IBotSourcesMetadata);
         public sources: proto.BotSourcesMetadata.IBotSourceItem[];
         public static create(properties?: proto.IBotSourcesMetadata): proto.BotSourcesMetadata;
-        public static encode(message: proto.IBotSourcesMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotSourcesMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.BotSourcesMetadata;
-        public static toObject(message: proto.BotSourcesMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotSourcesMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotSourcesMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -1635,7 +1452,7 @@ export namespace proto {
         }
 
         class BotSourceItem implements IBotSourceItem {
-            constructor(properties?: proto.BotSourcesMetadata.IBotSourceItem);
+            constructor(p?: proto.BotSourcesMetadata.IBotSourceItem);
             public provider: proto.BotSourcesMetadata.BotSourceItem.SourceProvider;
             public thumbnailCdnUrl: string;
             public sourceProviderUrl: string;
@@ -1643,11 +1460,8 @@ export namespace proto {
             public faviconCdnUrl: string;
             public citationNumber: number;
             public static create(properties?: proto.BotSourcesMetadata.IBotSourceItem): proto.BotSourcesMetadata.BotSourceItem;
-            public static encode(message: proto.BotSourcesMetadata.IBotSourceItem, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotSourcesMetadata.BotSourceItem;
-            public static fromObject(object: { [k: string]: any }): proto.BotSourcesMetadata.BotSourceItem;
-            public static toObject(message: proto.BotSourcesMetadata.BotSourceItem, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.BotSourcesMetadata.IBotSourceItem, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotSourcesMetadata.BotSourceItem;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -1670,17 +1484,14 @@ export namespace proto {
     }
 
     class BotSuggestedPromptMetadata implements IBotSuggestedPromptMetadata {
-        constructor(properties?: proto.IBotSuggestedPromptMetadata);
+        constructor(p?: proto.IBotSuggestedPromptMetadata);
         public suggestedPrompts: string[];
         public selectedPromptIndex: number;
         public promptSuggestions?: (proto.IBotPromptSuggestions|null);
         public selectedPromptId: string;
         public static create(properties?: proto.IBotSuggestedPromptMetadata): proto.BotSuggestedPromptMetadata;
-        public static encode(message: proto.IBotSuggestedPromptMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.BotSuggestedPromptMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.BotSuggestedPromptMetadata;
-        public static toObject(message: proto.BotSuggestedPromptMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IBotSuggestedPromptMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.BotSuggestedPromptMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -1703,7 +1514,7 @@ export namespace proto {
     }
 
     class CallLogRecord implements ICallLogRecord {
-        constructor(properties?: proto.ICallLogRecord);
+        constructor(p?: proto.ICallLogRecord);
         public callResult: proto.CallLogRecord.CallResult;
         public isDndMode: boolean;
         public silenceReason: proto.CallLogRecord.SilenceReason;
@@ -1720,11 +1531,8 @@ export namespace proto {
         public participants: proto.CallLogRecord.IParticipantInfo[];
         public callType: proto.CallLogRecord.CallType;
         public static create(properties?: proto.ICallLogRecord): proto.CallLogRecord;
-        public static encode(message: proto.ICallLogRecord, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.CallLogRecord;
-        public static fromObject(object: { [k: string]: any }): proto.CallLogRecord;
-        public static toObject(message: proto.CallLogRecord, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ICallLogRecord, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.CallLogRecord;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -1756,15 +1564,12 @@ export namespace proto {
         }
 
         class ParticipantInfo implements IParticipantInfo {
-            constructor(properties?: proto.CallLogRecord.IParticipantInfo);
+            constructor(p?: proto.CallLogRecord.IParticipantInfo);
             public userJid: string;
             public callResult: proto.CallLogRecord.CallResult;
             public static create(properties?: proto.CallLogRecord.IParticipantInfo): proto.CallLogRecord.ParticipantInfo;
-            public static encode(message: proto.CallLogRecord.IParticipantInfo, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.CallLogRecord.ParticipantInfo;
-            public static fromObject(object: { [k: string]: any }): proto.CallLogRecord.ParticipantInfo;
-            public static toObject(message: proto.CallLogRecord.ParticipantInfo, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.CallLogRecord.IParticipantInfo, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.CallLogRecord.ParticipantInfo;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -1782,15 +1587,12 @@ export namespace proto {
     }
 
     class CertChain implements ICertChain {
-        constructor(properties?: proto.ICertChain);
+        constructor(p?: proto.ICertChain);
         public leaf?: (proto.CertChain.INoiseCertificate|null);
         public intermediate?: (proto.CertChain.INoiseCertificate|null);
         public static create(properties?: proto.ICertChain): proto.CertChain;
-        public static encode(message: proto.ICertChain, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.CertChain;
-        public static fromObject(object: { [k: string]: any }): proto.CertChain;
-        public static toObject(message: proto.CertChain, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ICertChain, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.CertChain;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -1802,15 +1604,12 @@ export namespace proto {
         }
 
         class NoiseCertificate implements INoiseCertificate {
-            constructor(properties?: proto.CertChain.INoiseCertificate);
+            constructor(p?: proto.CertChain.INoiseCertificate);
             public details: Uint8Array;
             public signature: Uint8Array;
             public static create(properties?: proto.CertChain.INoiseCertificate): proto.CertChain.NoiseCertificate;
-            public static encode(message: proto.CertChain.INoiseCertificate, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.CertChain.NoiseCertificate;
-            public static fromObject(object: { [k: string]: any }): proto.CertChain.NoiseCertificate;
-            public static toObject(message: proto.CertChain.NoiseCertificate, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.CertChain.INoiseCertificate, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.CertChain.NoiseCertificate;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -1825,18 +1624,15 @@ export namespace proto {
             }
 
             class Details implements IDetails {
-                constructor(properties?: proto.CertChain.NoiseCertificate.IDetails);
+                constructor(p?: proto.CertChain.NoiseCertificate.IDetails);
                 public serial: number;
                 public issuerSerial: number;
                 public key: Uint8Array;
                 public notBefore: (number|Long);
                 public notAfter: (number|Long);
                 public static create(properties?: proto.CertChain.NoiseCertificate.IDetails): proto.CertChain.NoiseCertificate.Details;
-                public static encode(message: proto.CertChain.NoiseCertificate.IDetails, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.CertChain.NoiseCertificate.Details;
-                public static fromObject(object: { [k: string]: any }): proto.CertChain.NoiseCertificate.Details;
-                public static toObject(message: proto.CertChain.NoiseCertificate.Details, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.CertChain.NoiseCertificate.IDetails, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.CertChain.NoiseCertificate.Details;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
         }
@@ -1848,15 +1644,12 @@ export namespace proto {
     }
 
     class ChatLockSettings implements IChatLockSettings {
-        constructor(properties?: proto.IChatLockSettings);
+        constructor(p?: proto.IChatLockSettings);
         public hideLockedChats: boolean;
         public secretCode?: (proto.IUserPassword|null);
         public static create(properties?: proto.IChatLockSettings): proto.ChatLockSettings;
-        public static encode(message: proto.IChatLockSettings, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ChatLockSettings;
-        public static fromObject(object: { [k: string]: any }): proto.ChatLockSettings;
-        public static toObject(message: proto.ChatLockSettings, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IChatLockSettings, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ChatLockSettings;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -1865,14 +1658,11 @@ export namespace proto {
     }
 
     class ChatRowOpaqueData implements IChatRowOpaqueData {
-        constructor(properties?: proto.IChatRowOpaqueData);
+        constructor(p?: proto.IChatRowOpaqueData);
         public draftMessage?: (proto.ChatRowOpaqueData.IDraftMessage|null);
         public static create(properties?: proto.IChatRowOpaqueData): proto.ChatRowOpaqueData;
-        public static encode(message: proto.IChatRowOpaqueData, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ChatRowOpaqueData;
-        public static fromObject(object: { [k: string]: any }): proto.ChatRowOpaqueData;
-        public static toObject(message: proto.ChatRowOpaqueData, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IChatRowOpaqueData, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ChatRowOpaqueData;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -1887,18 +1677,15 @@ export namespace proto {
         }
 
         class DraftMessage implements IDraftMessage {
-            constructor(properties?: proto.ChatRowOpaqueData.IDraftMessage);
+            constructor(p?: proto.ChatRowOpaqueData.IDraftMessage);
             public text: string;
             public omittedUrl: string;
             public ctwaContextLinkData?: (proto.ChatRowOpaqueData.DraftMessage.ICtwaContextLinkData|null);
             public ctwaContext?: (proto.ChatRowOpaqueData.DraftMessage.ICtwaContextData|null);
             public timestamp: (number|Long);
             public static create(properties?: proto.ChatRowOpaqueData.IDraftMessage): proto.ChatRowOpaqueData.DraftMessage;
-            public static encode(message: proto.ChatRowOpaqueData.IDraftMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ChatRowOpaqueData.DraftMessage;
-            public static fromObject(object: { [k: string]: any }): proto.ChatRowOpaqueData.DraftMessage;
-            public static toObject(message: proto.ChatRowOpaqueData.DraftMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.ChatRowOpaqueData.IDraftMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ChatRowOpaqueData.DraftMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -1920,7 +1707,7 @@ export namespace proto {
             }
 
             class CtwaContextData implements ICtwaContextData {
-                constructor(properties?: proto.ChatRowOpaqueData.DraftMessage.ICtwaContextData);
+                constructor(p?: proto.ChatRowOpaqueData.DraftMessage.ICtwaContextData);
                 public conversionSource: string;
                 public conversionData: Uint8Array;
                 public sourceUrl: string;
@@ -1934,11 +1721,8 @@ export namespace proto {
                 public mediaUrl: string;
                 public isSuspiciousLink: boolean;
                 public static create(properties?: proto.ChatRowOpaqueData.DraftMessage.ICtwaContextData): proto.ChatRowOpaqueData.DraftMessage.CtwaContextData;
-                public static encode(message: proto.ChatRowOpaqueData.DraftMessage.ICtwaContextData, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ChatRowOpaqueData.DraftMessage.CtwaContextData;
-                public static fromObject(object: { [k: string]: any }): proto.ChatRowOpaqueData.DraftMessage.CtwaContextData;
-                public static toObject(message: proto.ChatRowOpaqueData.DraftMessage.CtwaContextData, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.ChatRowOpaqueData.DraftMessage.ICtwaContextData, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ChatRowOpaqueData.DraftMessage.CtwaContextData;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -1959,17 +1743,14 @@ export namespace proto {
             }
 
             class CtwaContextLinkData implements ICtwaContextLinkData {
-                constructor(properties?: proto.ChatRowOpaqueData.DraftMessage.ICtwaContextLinkData);
+                constructor(p?: proto.ChatRowOpaqueData.DraftMessage.ICtwaContextLinkData);
                 public context: string;
                 public sourceUrl: string;
                 public icebreaker: string;
                 public phone: string;
                 public static create(properties?: proto.ChatRowOpaqueData.DraftMessage.ICtwaContextLinkData): proto.ChatRowOpaqueData.DraftMessage.CtwaContextLinkData;
-                public static encode(message: proto.ChatRowOpaqueData.DraftMessage.ICtwaContextLinkData, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ChatRowOpaqueData.DraftMessage.CtwaContextLinkData;
-                public static fromObject(object: { [k: string]: any }): proto.ChatRowOpaqueData.DraftMessage.CtwaContextLinkData;
-                public static toObject(message: proto.ChatRowOpaqueData.DraftMessage.CtwaContextLinkData, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.ChatRowOpaqueData.DraftMessage.ICtwaContextLinkData, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ChatRowOpaqueData.DraftMessage.CtwaContextLinkData;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
         }
@@ -1983,17 +1764,14 @@ export namespace proto {
     }
 
     class Citation implements ICitation {
-        constructor(properties?: proto.ICitation);
+        constructor(p?: proto.ICitation);
         public title: string;
         public subtitle: string;
         public cmsId: string;
         public imageUrl: string;
         public static create(properties?: proto.ICitation): proto.Citation;
-        public static encode(message: proto.ICitation, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Citation;
-        public static fromObject(object: { [k: string]: any }): proto.Citation;
-        public static toObject(message: proto.Citation, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ICitation, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Citation;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -2003,15 +1781,12 @@ export namespace proto {
     }
 
     class ClientPairingProps implements IClientPairingProps {
-        constructor(properties?: proto.IClientPairingProps);
+        constructor(p?: proto.IClientPairingProps);
         public isChatDbLidMigrated: boolean;
         public isSyncdPureLidSession: boolean;
         public static create(properties?: proto.IClientPairingProps): proto.ClientPairingProps;
-        public static encode(message: proto.IClientPairingProps, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ClientPairingProps;
-        public static fromObject(object: { [k: string]: any }): proto.ClientPairingProps;
-        public static toObject(message: proto.ClientPairingProps, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IClientPairingProps, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ClientPairingProps;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -2049,7 +1824,7 @@ export namespace proto {
     }
 
     class ClientPayload implements IClientPayload {
-        constructor(properties?: proto.IClientPayload);
+        constructor(p?: proto.IClientPayload);
         public username: (number|Long);
         public passive: boolean;
         public userAgent?: (proto.ClientPayload.IUserAgent|null);
@@ -2081,11 +1856,8 @@ export namespace proto {
         public lidDbMigrated: boolean;
         public accountType: proto.ClientPayload.AccountType;
         public static create(properties?: proto.IClientPayload): proto.ClientPayload;
-        public static encode(message: proto.IClientPayload, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ClientPayload;
-        public static fromObject(object: { [k: string]: any }): proto.ClientPayload;
-        public static toObject(message: proto.ClientPayload, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IClientPayload, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ClientPayload;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -2130,15 +1902,12 @@ export namespace proto {
         }
 
         class DNSSource implements IDNSSource {
-            constructor(properties?: proto.ClientPayload.IDNSSource);
+            constructor(p?: proto.ClientPayload.IDNSSource);
             public dnsMethod: proto.ClientPayload.DNSSource.DNSResolutionMethod;
             public appCached: boolean;
             public static create(properties?: proto.ClientPayload.IDNSSource): proto.ClientPayload.DNSSource;
-            public static encode(message: proto.ClientPayload.IDNSSource, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ClientPayload.DNSSource;
-            public static fromObject(object: { [k: string]: any }): proto.ClientPayload.DNSSource;
-            public static toObject(message: proto.ClientPayload.DNSSource, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.ClientPayload.IDNSSource, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ClientPayload.DNSSource;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -2166,7 +1935,7 @@ export namespace proto {
         }
 
         class DevicePairingRegistrationData implements IDevicePairingRegistrationData {
-            constructor(properties?: proto.ClientPayload.IDevicePairingRegistrationData);
+            constructor(p?: proto.ClientPayload.IDevicePairingRegistrationData);
             public eRegid: Uint8Array;
             public eKeytype: Uint8Array;
             public eIdent: Uint8Array;
@@ -2176,11 +1945,8 @@ export namespace proto {
             public buildHash: Uint8Array;
             public deviceProps: Uint8Array;
             public static create(properties?: proto.ClientPayload.IDevicePairingRegistrationData): proto.ClientPayload.DevicePairingRegistrationData;
-            public static encode(message: proto.ClientPayload.IDevicePairingRegistrationData, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ClientPayload.DevicePairingRegistrationData;
-            public static fromObject(object: { [k: string]: any }): proto.ClientPayload.DevicePairingRegistrationData;
-            public static toObject(message: proto.ClientPayload.DevicePairingRegistrationData, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.ClientPayload.IDevicePairingRegistrationData, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ClientPayload.DevicePairingRegistrationData;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -2197,16 +1963,13 @@ export namespace proto {
         }
 
         class InteropData implements IInteropData {
-            constructor(properties?: proto.ClientPayload.IInteropData);
+            constructor(p?: proto.ClientPayload.IInteropData);
             public accountId: (number|Long);
             public token: Uint8Array;
             public enableReadReceipts: boolean;
             public static create(properties?: proto.ClientPayload.IInteropData): proto.ClientPayload.InteropData;
-            public static encode(message: proto.ClientPayload.IInteropData, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ClientPayload.InteropData;
-            public static fromObject(object: { [k: string]: any }): proto.ClientPayload.InteropData;
-            public static toObject(message: proto.ClientPayload.InteropData, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.ClientPayload.IInteropData, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ClientPayload.InteropData;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -2243,7 +2006,7 @@ export namespace proto {
         }
 
         class UserAgent implements IUserAgent {
-            constructor(properties?: proto.ClientPayload.IUserAgent);
+            constructor(p?: proto.ClientPayload.IUserAgent);
             public platform: proto.ClientPayload.UserAgent.Platform;
             public appVersion?: (proto.ClientPayload.UserAgent.IAppVersion|null);
             public mcc: string;
@@ -2261,11 +2024,8 @@ export namespace proto {
             public deviceType: proto.ClientPayload.UserAgent.DeviceType;
             public deviceModelType: string;
             public static create(properties?: proto.ClientPayload.IUserAgent): proto.ClientPayload.UserAgent;
-            public static encode(message: proto.ClientPayload.IUserAgent, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ClientPayload.UserAgent;
-            public static fromObject(object: { [k: string]: any }): proto.ClientPayload.UserAgent;
-            public static toObject(message: proto.ClientPayload.UserAgent, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.ClientPayload.IUserAgent, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ClientPayload.UserAgent;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -2280,18 +2040,15 @@ export namespace proto {
             }
 
             class AppVersion implements IAppVersion {
-                constructor(properties?: proto.ClientPayload.UserAgent.IAppVersion);
+                constructor(p?: proto.ClientPayload.UserAgent.IAppVersion);
                 public primary: number;
                 public secondary: number;
                 public tertiary: number;
                 public quaternary: number;
                 public quinary: number;
                 public static create(properties?: proto.ClientPayload.UserAgent.IAppVersion): proto.ClientPayload.UserAgent.AppVersion;
-                public static encode(message: proto.ClientPayload.UserAgent.IAppVersion, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ClientPayload.UserAgent.AppVersion;
-                public static fromObject(object: { [k: string]: any }): proto.ClientPayload.UserAgent.AppVersion;
-                public static toObject(message: proto.ClientPayload.UserAgent.AppVersion, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.ClientPayload.UserAgent.IAppVersion, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ClientPayload.UserAgent.AppVersion;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -2358,17 +2115,14 @@ export namespace proto {
         }
 
         class WebInfo implements IWebInfo {
-            constructor(properties?: proto.ClientPayload.IWebInfo);
+            constructor(p?: proto.ClientPayload.IWebInfo);
             public refToken: string;
             public version: string;
             public webdPayload?: (proto.ClientPayload.WebInfo.IWebdPayload|null);
             public webSubPlatform: proto.ClientPayload.WebInfo.WebSubPlatform;
             public static create(properties?: proto.ClientPayload.IWebInfo): proto.ClientPayload.WebInfo;
-            public static encode(message: proto.ClientPayload.IWebInfo, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ClientPayload.WebInfo;
-            public static fromObject(object: { [k: string]: any }): proto.ClientPayload.WebInfo;
-            public static toObject(message: proto.ClientPayload.WebInfo, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.ClientPayload.IWebInfo, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ClientPayload.WebInfo;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -2398,7 +2152,7 @@ export namespace proto {
             }
 
             class WebdPayload implements IWebdPayload {
-                constructor(properties?: proto.ClientPayload.WebInfo.IWebdPayload);
+                constructor(p?: proto.ClientPayload.WebInfo.IWebdPayload);
                 public usesParticipantInKey: boolean;
                 public supportsStarredMessages: boolean;
                 public supportsDocumentMessages: boolean;
@@ -2411,11 +2165,8 @@ export namespace proto {
                 public documentTypes: string;
                 public features: Uint8Array;
                 public static create(properties?: proto.ClientPayload.WebInfo.IWebdPayload): proto.ClientPayload.WebInfo.WebdPayload;
-                public static encode(message: proto.ClientPayload.WebInfo.IWebdPayload, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ClientPayload.WebInfo.WebdPayload;
-                public static fromObject(object: { [k: string]: any }): proto.ClientPayload.WebInfo.WebdPayload;
-                public static toObject(message: proto.ClientPayload.WebInfo.WebdPayload, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.ClientPayload.WebInfo.IWebdPayload, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ClientPayload.WebInfo.WebdPayload;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
         }
@@ -2427,15 +2178,12 @@ export namespace proto {
     }
 
     class CommentMetadata implements ICommentMetadata {
-        constructor(properties?: proto.ICommentMetadata);
+        constructor(p?: proto.ICommentMetadata);
         public commentParentKey?: (proto.IMessageKey|null);
         public replyCount: number;
         public static create(properties?: proto.ICommentMetadata): proto.CommentMetadata;
-        public static encode(message: proto.ICommentMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.CommentMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.CommentMetadata;
-        public static toObject(message: proto.CommentMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ICommentMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.CommentMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -2444,14 +2192,11 @@ export namespace proto {
     }
 
     class CompanionCommitment implements ICompanionCommitment {
-        constructor(properties?: proto.ICompanionCommitment);
+        constructor(p?: proto.ICompanionCommitment);
         public hash: Uint8Array;
         public static create(properties?: proto.ICompanionCommitment): proto.CompanionCommitment;
-        public static encode(message: proto.ICompanionCommitment, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.CompanionCommitment;
-        public static fromObject(object: { [k: string]: any }): proto.CompanionCommitment;
-        public static toObject(message: proto.CompanionCommitment, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ICompanionCommitment, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.CompanionCommitment;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -2462,16 +2207,13 @@ export namespace proto {
     }
 
     class CompanionEphemeralIdentity implements ICompanionEphemeralIdentity {
-        constructor(properties?: proto.ICompanionEphemeralIdentity);
+        constructor(p?: proto.ICompanionEphemeralIdentity);
         public publicKey: Uint8Array;
         public deviceType: proto.DeviceProps.PlatformType;
         public ref: string;
         public static create(properties?: proto.ICompanionEphemeralIdentity): proto.CompanionEphemeralIdentity;
-        public static encode(message: proto.ICompanionEphemeralIdentity, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.CompanionEphemeralIdentity;
-        public static fromObject(object: { [k: string]: any }): proto.CompanionEphemeralIdentity;
-        public static toObject(message: proto.CompanionEphemeralIdentity, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ICompanionEphemeralIdentity, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.CompanionEphemeralIdentity;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -2481,15 +2223,12 @@ export namespace proto {
     }
 
     class Config implements IConfig {
-        constructor(properties?: proto.IConfig);
+        constructor(p?: proto.IConfig);
         public field: { [k: string]: proto.IField };
         public version: number;
         public static create(properties?: proto.IConfig): proto.Config;
-        public static encode(message: proto.IConfig, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Config;
-        public static fromObject(object: { [k: string]: any }): proto.Config;
-        public static toObject(message: proto.Config, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IConfig, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Config;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -2544,7 +2283,7 @@ export namespace proto {
     }
 
     class ContextInfo implements IContextInfo {
-        constructor(properties?: proto.IContextInfo);
+        constructor(p?: proto.IContextInfo);
         public stanzaId: string;
         public participant: string;
         public quotedMessage?: (proto.IMessage|null);
@@ -2593,11 +2332,8 @@ export namespace proto {
         public isQuestion: boolean;
         public statusSourceType: proto.ContextInfo.StatusSourceType;
         public static create(properties?: proto.IContextInfo): proto.ContextInfo;
-        public static encode(message: proto.IContextInfo, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ContextInfo;
-        public static fromObject(object: { [k: string]: any }): proto.ContextInfo;
-        public static toObject(message: proto.ContextInfo, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IContextInfo, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ContextInfo;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -2611,17 +2347,14 @@ export namespace proto {
         }
 
         class AdReplyInfo implements IAdReplyInfo {
-            constructor(properties?: proto.ContextInfo.IAdReplyInfo);
+            constructor(p?: proto.ContextInfo.IAdReplyInfo);
             public advertiserName: string;
             public mediaType: proto.ContextInfo.AdReplyInfo.MediaType;
             public jpegThumbnail: Uint8Array;
             public caption: string;
             public static create(properties?: proto.ContextInfo.IAdReplyInfo): proto.ContextInfo.AdReplyInfo;
-            public static encode(message: proto.ContextInfo.IAdReplyInfo, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ContextInfo.AdReplyInfo;
-            public static fromObject(object: { [k: string]: any }): proto.ContextInfo.AdReplyInfo;
-            public static toObject(message: proto.ContextInfo.AdReplyInfo, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.ContextInfo.IAdReplyInfo, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ContextInfo.AdReplyInfo;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -2639,14 +2372,11 @@ export namespace proto {
         }
 
         class BusinessMessageForwardInfo implements IBusinessMessageForwardInfo {
-            constructor(properties?: proto.ContextInfo.IBusinessMessageForwardInfo);
+            constructor(p?: proto.ContextInfo.IBusinessMessageForwardInfo);
             public businessOwnerJid: string;
             public static create(properties?: proto.ContextInfo.IBusinessMessageForwardInfo): proto.ContextInfo.BusinessMessageForwardInfo;
-            public static encode(message: proto.ContextInfo.IBusinessMessageForwardInfo, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ContextInfo.BusinessMessageForwardInfo;
-            public static fromObject(object: { [k: string]: any }): proto.ContextInfo.BusinessMessageForwardInfo;
-            public static toObject(message: proto.ContextInfo.BusinessMessageForwardInfo, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.ContextInfo.IBusinessMessageForwardInfo, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ContextInfo.BusinessMessageForwardInfo;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -2657,16 +2387,13 @@ export namespace proto {
         }
 
         class DataSharingContext implements IDataSharingContext {
-            constructor(properties?: proto.ContextInfo.IDataSharingContext);
+            constructor(p?: proto.ContextInfo.IDataSharingContext);
             public showMmDisclosure: boolean;
             public encryptedSignalTokenConsented: string;
             public parameters: proto.ContextInfo.DataSharingContext.IParameters[];
             public static create(properties?: proto.ContextInfo.IDataSharingContext): proto.ContextInfo.DataSharingContext;
-            public static encode(message: proto.ContextInfo.IDataSharingContext, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ContextInfo.DataSharingContext;
-            public static fromObject(object: { [k: string]: any }): proto.ContextInfo.DataSharingContext;
-            public static toObject(message: proto.ContextInfo.DataSharingContext, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.ContextInfo.IDataSharingContext, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ContextInfo.DataSharingContext;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -2681,18 +2408,15 @@ export namespace proto {
             }
 
             class Parameters implements IParameters {
-                constructor(properties?: proto.ContextInfo.DataSharingContext.IParameters);
+                constructor(p?: proto.ContextInfo.DataSharingContext.IParameters);
                 public key: string;
                 public stringData: string;
                 public intData: (number|Long);
                 public floatData: number;
                 public contents?: (proto.ContextInfo.DataSharingContext.IParameters|null);
                 public static create(properties?: proto.ContextInfo.DataSharingContext.IParameters): proto.ContextInfo.DataSharingContext.Parameters;
-                public static encode(message: proto.ContextInfo.DataSharingContext.IParameters, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ContextInfo.DataSharingContext.Parameters;
-                public static fromObject(object: { [k: string]: any }): proto.ContextInfo.DataSharingContext.Parameters;
-                public static toObject(message: proto.ContextInfo.DataSharingContext.Parameters, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.ContextInfo.DataSharingContext.IParameters, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ContextInfo.DataSharingContext.Parameters;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
         }
@@ -2726,7 +2450,7 @@ export namespace proto {
         }
 
         class ExternalAdReplyInfo implements IExternalAdReplyInfo {
-            constructor(properties?: proto.ContextInfo.IExternalAdReplyInfo);
+            constructor(p?: proto.ContextInfo.IExternalAdReplyInfo);
             public title: string;
             public body: string;
             public mediaType: proto.ContextInfo.ExternalAdReplyInfo.MediaType;
@@ -2753,11 +2477,8 @@ export namespace proto {
             public wtwaAdFormat: boolean;
             public adType: proto.ContextInfo.ExternalAdReplyInfo.AdType;
             public static create(properties?: proto.ContextInfo.IExternalAdReplyInfo): proto.ContextInfo.ExternalAdReplyInfo;
-            public static encode(message: proto.ContextInfo.IExternalAdReplyInfo, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ContextInfo.ExternalAdReplyInfo;
-            public static fromObject(object: { [k: string]: any }): proto.ContextInfo.ExternalAdReplyInfo;
-            public static toObject(message: proto.ContextInfo.ExternalAdReplyInfo, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.ContextInfo.IExternalAdReplyInfo, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ContextInfo.ExternalAdReplyInfo;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -2783,17 +2504,14 @@ export namespace proto {
         }
 
         class FeatureEligibilities implements IFeatureEligibilities {
-            constructor(properties?: proto.ContextInfo.IFeatureEligibilities);
+            constructor(p?: proto.ContextInfo.IFeatureEligibilities);
             public cannotBeReactedTo: boolean;
             public cannotBeRanked: boolean;
             public canRequestFeedback: boolean;
             public canBeReshared: boolean;
             public static create(properties?: proto.ContextInfo.IFeatureEligibilities): proto.ContextInfo.FeatureEligibilities;
-            public static encode(message: proto.ContextInfo.IFeatureEligibilities, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ContextInfo.FeatureEligibilities;
-            public static fromObject(object: { [k: string]: any }): proto.ContextInfo.FeatureEligibilities;
-            public static toObject(message: proto.ContextInfo.FeatureEligibilities, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.ContextInfo.IFeatureEligibilities, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ContextInfo.FeatureEligibilities;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -2804,16 +2522,13 @@ export namespace proto {
         }
 
         class ForwardedAIBotMessageInfo implements IForwardedAIBotMessageInfo {
-            constructor(properties?: proto.ContextInfo.IForwardedAIBotMessageInfo);
+            constructor(p?: proto.ContextInfo.IForwardedAIBotMessageInfo);
             public botName: string;
             public botJid: string;
             public creatorName: string;
             public static create(properties?: proto.ContextInfo.IForwardedAIBotMessageInfo): proto.ContextInfo.ForwardedAIBotMessageInfo;
-            public static encode(message: proto.ContextInfo.IForwardedAIBotMessageInfo, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ContextInfo.ForwardedAIBotMessageInfo;
-            public static fromObject(object: { [k: string]: any }): proto.ContextInfo.ForwardedAIBotMessageInfo;
-            public static toObject(message: proto.ContextInfo.ForwardedAIBotMessageInfo, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.ContextInfo.IForwardedAIBotMessageInfo, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ContextInfo.ForwardedAIBotMessageInfo;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -2826,18 +2541,15 @@ export namespace proto {
         }
 
         class ForwardedNewsletterMessageInfo implements IForwardedNewsletterMessageInfo {
-            constructor(properties?: proto.ContextInfo.IForwardedNewsletterMessageInfo);
+            constructor(p?: proto.ContextInfo.IForwardedNewsletterMessageInfo);
             public newsletterJid: string;
             public serverMessageId: number;
             public newsletterName: string;
             public contentType: proto.ContextInfo.ForwardedNewsletterMessageInfo.ContentType;
             public accessibilityText: string;
             public static create(properties?: proto.ContextInfo.IForwardedNewsletterMessageInfo): proto.ContextInfo.ForwardedNewsletterMessageInfo;
-            public static encode(message: proto.ContextInfo.IForwardedNewsletterMessageInfo, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ContextInfo.ForwardedNewsletterMessageInfo;
-            public static fromObject(object: { [k: string]: any }): proto.ContextInfo.ForwardedNewsletterMessageInfo;
-            public static toObject(message: proto.ContextInfo.ForwardedNewsletterMessageInfo, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.ContextInfo.IForwardedNewsletterMessageInfo, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ContextInfo.ForwardedNewsletterMessageInfo;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -2881,15 +2593,12 @@ export namespace proto {
         }
 
         class UTMInfo implements IUTMInfo {
-            constructor(properties?: proto.ContextInfo.IUTMInfo);
+            constructor(p?: proto.ContextInfo.IUTMInfo);
             public utmSource: string;
             public utmCampaign: string;
             public static create(properties?: proto.ContextInfo.IUTMInfo): proto.ContextInfo.UTMInfo;
-            public static encode(message: proto.ContextInfo.IUTMInfo, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ContextInfo.UTMInfo;
-            public static fromObject(object: { [k: string]: any }): proto.ContextInfo.UTMInfo;
-            public static toObject(message: proto.ContextInfo.UTMInfo, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.ContextInfo.IUTMInfo, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ContextInfo.UTMInfo;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
     }
@@ -2951,7 +2660,7 @@ export namespace proto {
     }
 
     class Conversation implements IConversation {
-        constructor(properties?: proto.IConversation);
+        constructor(p?: proto.IConversation);
         public id: string;
         public messages: proto.IHistorySyncMsg[];
         public newJid: string;
@@ -3006,11 +2715,8 @@ export namespace proto {
         public limitSharingTrigger: proto.LimitSharing.TriggerType;
         public limitSharingInitiatedByMe: boolean;
         public static create(properties?: proto.IConversation): proto.Conversation;
-        public static encode(message: proto.IConversation, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Conversation;
-        public static fromObject(object: { [k: string]: any }): proto.Conversation;
-        public static toObject(message: proto.Conversation, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IConversation, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Conversation;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3029,15 +2735,12 @@ export namespace proto {
     }
 
     class DeviceCapabilities implements IDeviceCapabilities {
-        constructor(properties?: proto.IDeviceCapabilities);
+        constructor(p?: proto.IDeviceCapabilities);
         public chatLockSupportLevel: proto.DeviceCapabilities.ChatLockSupportLevel;
         public lidMigration?: (proto.DeviceCapabilities.ILIDMigration|null);
         public static create(properties?: proto.IDeviceCapabilities): proto.DeviceCapabilities;
-        public static encode(message: proto.IDeviceCapabilities, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.DeviceCapabilities;
-        public static fromObject(object: { [k: string]: any }): proto.DeviceCapabilities;
-        public static toObject(message: proto.DeviceCapabilities, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IDeviceCapabilities, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.DeviceCapabilities;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3054,14 +2757,11 @@ export namespace proto {
         }
 
         class LIDMigration implements ILIDMigration {
-            constructor(properties?: proto.DeviceCapabilities.ILIDMigration);
+            constructor(p?: proto.DeviceCapabilities.ILIDMigration);
             public chatDbMigrationTimestamp: (number|Long);
             public static create(properties?: proto.DeviceCapabilities.ILIDMigration): proto.DeviceCapabilities.LIDMigration;
-            public static encode(message: proto.DeviceCapabilities.ILIDMigration, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.DeviceCapabilities.LIDMigration;
-            public static fromObject(object: { [k: string]: any }): proto.DeviceCapabilities.LIDMigration;
-            public static toObject(message: proto.DeviceCapabilities.LIDMigration, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.DeviceCapabilities.ILIDMigration, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.DeviceCapabilities.LIDMigration;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
     }
@@ -3072,15 +2772,12 @@ export namespace proto {
     }
 
     class DeviceConsistencyCodeMessage implements IDeviceConsistencyCodeMessage {
-        constructor(properties?: proto.IDeviceConsistencyCodeMessage);
+        constructor(p?: proto.IDeviceConsistencyCodeMessage);
         public generation: number;
         public signature: Uint8Array;
         public static create(properties?: proto.IDeviceConsistencyCodeMessage): proto.DeviceConsistencyCodeMessage;
-        public static encode(message: proto.IDeviceConsistencyCodeMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.DeviceConsistencyCodeMessage;
-        public static fromObject(object: { [k: string]: any }): proto.DeviceConsistencyCodeMessage;
-        public static toObject(message: proto.DeviceConsistencyCodeMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IDeviceConsistencyCodeMessage, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.DeviceConsistencyCodeMessage;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3096,7 +2793,7 @@ export namespace proto {
     }
 
     class DeviceListMetadata implements IDeviceListMetadata {
-        constructor(properties?: proto.IDeviceListMetadata);
+        constructor(p?: proto.IDeviceListMetadata);
         public senderKeyHash: Uint8Array;
         public senderTimestamp: (number|Long);
         public senderKeyIndexes: number[];
@@ -3106,11 +2803,8 @@ export namespace proto {
         public recipientTimestamp: (number|Long);
         public recipientKeyIndexes: number[];
         public static create(properties?: proto.IDeviceListMetadata): proto.DeviceListMetadata;
-        public static encode(message: proto.IDeviceListMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.DeviceListMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.DeviceListMetadata;
-        public static toObject(message: proto.DeviceListMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IDeviceListMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.DeviceListMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3123,18 +2817,15 @@ export namespace proto {
     }
 
     class DeviceProps implements IDeviceProps {
-        constructor(properties?: proto.IDeviceProps);
+        constructor(p?: proto.IDeviceProps);
         public os: string;
         public version?: (proto.DeviceProps.IAppVersion|null);
         public platformType: proto.DeviceProps.PlatformType;
         public requireFullSync: boolean;
         public historySyncConfig?: (proto.DeviceProps.IHistorySyncConfig|null);
         public static create(properties?: proto.IDeviceProps): proto.DeviceProps;
-        public static encode(message: proto.IDeviceProps, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.DeviceProps;
-        public static fromObject(object: { [k: string]: any }): proto.DeviceProps;
-        public static toObject(message: proto.DeviceProps, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IDeviceProps, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.DeviceProps;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3149,18 +2840,15 @@ export namespace proto {
         }
 
         class AppVersion implements IAppVersion {
-            constructor(properties?: proto.DeviceProps.IAppVersion);
+            constructor(p?: proto.DeviceProps.IAppVersion);
             public primary: number;
             public secondary: number;
             public tertiary: number;
             public quaternary: number;
             public quinary: number;
             public static create(properties?: proto.DeviceProps.IAppVersion): proto.DeviceProps.AppVersion;
-            public static encode(message: proto.DeviceProps.IAppVersion, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.DeviceProps.AppVersion;
-            public static fromObject(object: { [k: string]: any }): proto.DeviceProps.AppVersion;
-            public static toObject(message: proto.DeviceProps.AppVersion, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.DeviceProps.IAppVersion, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.DeviceProps.AppVersion;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -3182,7 +2870,7 @@ export namespace proto {
         }
 
         class HistorySyncConfig implements IHistorySyncConfig {
-            constructor(properties?: proto.DeviceProps.IHistorySyncConfig);
+            constructor(p?: proto.DeviceProps.IHistorySyncConfig);
             public fullSyncDaysLimit: number;
             public fullSyncSizeMbLimit: number;
             public storageQuotaMb: number;
@@ -3198,11 +2886,8 @@ export namespace proto {
             public supportAddOnHistorySyncMigration: boolean;
             public supportMessageAssociation: boolean;
             public static create(properties?: proto.DeviceProps.IHistorySyncConfig): proto.DeviceProps.HistorySyncConfig;
-            public static encode(message: proto.DeviceProps.IHistorySyncConfig, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.DeviceProps.HistorySyncConfig;
-            public static fromObject(object: { [k: string]: any }): proto.DeviceProps.HistorySyncConfig;
-            public static toObject(message: proto.DeviceProps.HistorySyncConfig, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.DeviceProps.IHistorySyncConfig, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.DeviceProps.HistorySyncConfig;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -3243,17 +2928,14 @@ export namespace proto {
     }
 
     class DisappearingMode implements IDisappearingMode {
-        constructor(properties?: proto.IDisappearingMode);
+        constructor(p?: proto.IDisappearingMode);
         public initiator: proto.DisappearingMode.Initiator;
         public trigger: proto.DisappearingMode.Trigger;
         public initiatorDeviceJid: string;
         public initiatedByMe: boolean;
         public static create(properties?: proto.IDisappearingMode): proto.DisappearingMode;
-        public static encode(message: proto.IDisappearingMode, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.DisappearingMode;
-        public static fromObject(object: { [k: string]: any }): proto.DisappearingMode;
-        public static toObject(message: proto.DisappearingMode, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IDisappearingMode, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.DisappearingMode;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3282,16 +2964,13 @@ export namespace proto {
     }
 
     class EmbeddedContent implements IEmbeddedContent {
-        constructor(properties?: proto.IEmbeddedContent);
+        constructor(p?: proto.IEmbeddedContent);
         public embeddedMessage?: (proto.IEmbeddedMessage|null);
         public embeddedMusic?: (proto.IEmbeddedMusic|null);
         public content?: ("embeddedMessage"|"embeddedMusic");
         public static create(properties?: proto.IEmbeddedContent): proto.EmbeddedContent;
-        public static encode(message: proto.IEmbeddedContent, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.EmbeddedContent;
-        public static fromObject(object: { [k: string]: any }): proto.EmbeddedContent;
-        public static toObject(message: proto.EmbeddedContent, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IEmbeddedContent, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.EmbeddedContent;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3301,15 +2980,12 @@ export namespace proto {
     }
 
     class EmbeddedMessage implements IEmbeddedMessage {
-        constructor(properties?: proto.IEmbeddedMessage);
+        constructor(p?: proto.IEmbeddedMessage);
         public stanzaId: string;
         public message?: (proto.IMessage|null);
         public static create(properties?: proto.IEmbeddedMessage): proto.EmbeddedMessage;
-        public static encode(message: proto.IEmbeddedMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.EmbeddedMessage;
-        public static fromObject(object: { [k: string]: any }): proto.EmbeddedMessage;
-        public static toObject(message: proto.EmbeddedMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IEmbeddedMessage, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.EmbeddedMessage;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3328,7 +3004,7 @@ export namespace proto {
     }
 
     class EmbeddedMusic implements IEmbeddedMusic {
-        constructor(properties?: proto.IEmbeddedMusic);
+        constructor(p?: proto.IEmbeddedMusic);
         public musicContentMediaId: string;
         public songId: string;
         public author: string;
@@ -3341,11 +3017,8 @@ export namespace proto {
         public countryBlocklist: Uint8Array;
         public isExplicit: boolean;
         public static create(properties?: proto.IEmbeddedMusic): proto.EmbeddedMusic;
-        public static encode(message: proto.IEmbeddedMusic, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.EmbeddedMusic;
-        public static fromObject(object: { [k: string]: any }): proto.EmbeddedMusic;
-        public static toObject(message: proto.EmbeddedMusic, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IEmbeddedMusic, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.EmbeddedMusic;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3355,15 +3028,12 @@ export namespace proto {
     }
 
     class EncryptedPairingRequest implements IEncryptedPairingRequest {
-        constructor(properties?: proto.IEncryptedPairingRequest);
+        constructor(p?: proto.IEncryptedPairingRequest);
         public encryptedPayload: Uint8Array;
         public iv: Uint8Array;
         public static create(properties?: proto.IEncryptedPairingRequest): proto.EncryptedPairingRequest;
-        public static encode(message: proto.IEncryptedPairingRequest, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.EncryptedPairingRequest;
-        public static fromObject(object: { [k: string]: any }): proto.EncryptedPairingRequest;
-        public static toObject(message: proto.EncryptedPairingRequest, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IEncryptedPairingRequest, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.EncryptedPairingRequest;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3373,15 +3043,12 @@ export namespace proto {
     }
 
     class EphemeralSetting implements IEphemeralSetting {
-        constructor(properties?: proto.IEphemeralSetting);
+        constructor(p?: proto.IEphemeralSetting);
         public duration: number;
         public timestamp: (number|Long);
         public static create(properties?: proto.IEphemeralSetting): proto.EphemeralSetting;
-        public static encode(message: proto.IEphemeralSetting, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.EphemeralSetting;
-        public static fromObject(object: { [k: string]: any }): proto.EphemeralSetting;
-        public static toObject(message: proto.EphemeralSetting, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IEphemeralSetting, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.EphemeralSetting;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3390,14 +3057,11 @@ export namespace proto {
     }
 
     class EventAdditionalMetadata implements IEventAdditionalMetadata {
-        constructor(properties?: proto.IEventAdditionalMetadata);
+        constructor(p?: proto.IEventAdditionalMetadata);
         public isStale: boolean;
         public static create(properties?: proto.IEventAdditionalMetadata): proto.EventAdditionalMetadata;
-        public static encode(message: proto.IEventAdditionalMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.EventAdditionalMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.EventAdditionalMetadata;
-        public static toObject(message: proto.EventAdditionalMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IEventAdditionalMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.EventAdditionalMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3409,17 +3073,14 @@ export namespace proto {
     }
 
     class EventResponse implements IEventResponse {
-        constructor(properties?: proto.IEventResponse);
+        constructor(p?: proto.IEventResponse);
         public eventResponseMessageKey?: (proto.IMessageKey|null);
         public timestampMs: (number|Long);
         public eventResponseMessage?: (proto.Message.IEventResponseMessage|null);
         public unread: boolean;
         public static create(properties?: proto.IEventResponse): proto.EventResponse;
-        public static encode(message: proto.IEventResponse, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.EventResponse;
-        public static fromObject(object: { [k: string]: any }): proto.EventResponse;
-        public static toObject(message: proto.EventResponse, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IEventResponse, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.EventResponse;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3429,15 +3090,12 @@ export namespace proto {
     }
 
     class ExitCode implements IExitCode {
-        constructor(properties?: proto.IExitCode);
+        constructor(p?: proto.IExitCode);
         public code: (number|Long);
         public text: string;
         public static create(properties?: proto.IExitCode): proto.ExitCode;
-        public static encode(message: proto.IExitCode, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ExitCode;
-        public static fromObject(object: { [k: string]: any }): proto.ExitCode;
-        public static toObject(message: proto.ExitCode, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IExitCode, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ExitCode;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3451,7 +3109,7 @@ export namespace proto {
     }
 
     class ExternalBlobReference implements IExternalBlobReference {
-        constructor(properties?: proto.IExternalBlobReference);
+        constructor(p?: proto.IExternalBlobReference);
         public mediaKey: Uint8Array;
         public directPath: string;
         public handle: string;
@@ -3459,11 +3117,8 @@ export namespace proto {
         public fileSha256: Uint8Array;
         public fileEncSha256: Uint8Array;
         public static create(properties?: proto.IExternalBlobReference): proto.ExternalBlobReference;
-        public static encode(message: proto.IExternalBlobReference, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ExternalBlobReference;
-        public static fromObject(object: { [k: string]: any }): proto.ExternalBlobReference;
-        public static toObject(message: proto.ExternalBlobReference, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IExternalBlobReference, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ExternalBlobReference;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3476,18 +3131,15 @@ export namespace proto {
     }
 
     class Field implements IField {
-        constructor(properties?: proto.IField);
+        constructor(p?: proto.IField);
         public minVersion: number;
         public maxVersion: number;
         public notReportableMinVersion: number;
         public isMessage: boolean;
         public subfield: { [k: string]: proto.IField };
         public static create(properties?: proto.IField): proto.Field;
-        public static encode(message: proto.IField, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Field;
-        public static fromObject(object: { [k: string]: any }): proto.Field;
-        public static toObject(message: proto.Field, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IField, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Field;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3515,7 +3167,7 @@ export namespace proto {
     }
 
     class GlobalSettings implements IGlobalSettings {
-        constructor(properties?: proto.IGlobalSettings);
+        constructor(p?: proto.IGlobalSettings);
         public lightThemeWallpaper?: (proto.IWallpaperSettings|null);
         public mediaVisibility: proto.MediaVisibility;
         public darkThemeWallpaper?: (proto.IWallpaperSettings|null);
@@ -3537,11 +3189,8 @@ export namespace proto {
         public chatLockSettings?: (proto.IChatLockSettings|null);
         public chatDbLidMigrationTimestamp: (number|Long);
         public static create(properties?: proto.IGlobalSettings): proto.GlobalSettings;
-        public static encode(message: proto.IGlobalSettings, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.GlobalSettings;
-        public static fromObject(object: { [k: string]: any }): proto.GlobalSettings;
-        public static toObject(message: proto.GlobalSettings, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IGlobalSettings, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.GlobalSettings;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3551,15 +3200,12 @@ export namespace proto {
     }
 
     class GroupMention implements IGroupMention {
-        constructor(properties?: proto.IGroupMention);
+        constructor(p?: proto.IGroupMention);
         public groupJid: string;
         public groupSubject: string;
         public static create(properties?: proto.IGroupMention): proto.GroupMention;
-        public static encode(message: proto.IGroupMention, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.GroupMention;
-        public static fromObject(object: { [k: string]: any }): proto.GroupMention;
-        public static toObject(message: proto.GroupMention, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IGroupMention, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.GroupMention;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3569,15 +3215,12 @@ export namespace proto {
     }
 
     class GroupParticipant implements IGroupParticipant {
-        constructor(properties?: proto.IGroupParticipant);
+        constructor(p?: proto.IGroupParticipant);
         public userJid: string;
         public rank: proto.GroupParticipant.Rank;
         public static create(properties?: proto.IGroupParticipant): proto.GroupParticipant;
-        public static encode(message: proto.IGroupParticipant, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.GroupParticipant;
-        public static fromObject(object: { [k: string]: any }): proto.GroupParticipant;
-        public static toObject(message: proto.GroupParticipant, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IGroupParticipant, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.GroupParticipant;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3597,16 +3240,13 @@ export namespace proto {
     }
 
     class HandshakeMessage implements IHandshakeMessage {
-        constructor(properties?: proto.IHandshakeMessage);
+        constructor(p?: proto.IHandshakeMessage);
         public clientHello?: (proto.HandshakeMessage.IClientHello|null);
         public serverHello?: (proto.HandshakeMessage.IServerHello|null);
         public clientFinish?: (proto.HandshakeMessage.IClientFinish|null);
         public static create(properties?: proto.IHandshakeMessage): proto.HandshakeMessage;
-        public static encode(message: proto.IHandshakeMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.HandshakeMessage;
-        public static fromObject(object: { [k: string]: any }): proto.HandshakeMessage;
-        public static toObject(message: proto.HandshakeMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IHandshakeMessage, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.HandshakeMessage;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3618,15 +3258,12 @@ export namespace proto {
         }
 
         class ClientFinish implements IClientFinish {
-            constructor(properties?: proto.HandshakeMessage.IClientFinish);
+            constructor(p?: proto.HandshakeMessage.IClientFinish);
             public static: Uint8Array;
             public payload: Uint8Array;
             public static create(properties?: proto.HandshakeMessage.IClientFinish): proto.HandshakeMessage.ClientFinish;
-            public static encode(message: proto.HandshakeMessage.IClientFinish, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.HandshakeMessage.ClientFinish;
-            public static fromObject(object: { [k: string]: any }): proto.HandshakeMessage.ClientFinish;
-            public static toObject(message: proto.HandshakeMessage.ClientFinish, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.HandshakeMessage.IClientFinish, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.HandshakeMessage.ClientFinish;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -3637,16 +3274,13 @@ export namespace proto {
         }
 
         class ClientHello implements IClientHello {
-            constructor(properties?: proto.HandshakeMessage.IClientHello);
+            constructor(p?: proto.HandshakeMessage.IClientHello);
             public ephemeral: Uint8Array;
             public static: Uint8Array;
             public payload: Uint8Array;
             public static create(properties?: proto.HandshakeMessage.IClientHello): proto.HandshakeMessage.ClientHello;
-            public static encode(message: proto.HandshakeMessage.IClientHello, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.HandshakeMessage.ClientHello;
-            public static fromObject(object: { [k: string]: any }): proto.HandshakeMessage.ClientHello;
-            public static toObject(message: proto.HandshakeMessage.ClientHello, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.HandshakeMessage.IClientHello, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.HandshakeMessage.ClientHello;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -3657,16 +3291,13 @@ export namespace proto {
         }
 
         class ServerHello implements IServerHello {
-            constructor(properties?: proto.HandshakeMessage.IServerHello);
+            constructor(p?: proto.HandshakeMessage.IServerHello);
             public ephemeral: Uint8Array;
             public static: Uint8Array;
             public payload: Uint8Array;
             public static create(properties?: proto.HandshakeMessage.IServerHello): proto.HandshakeMessage.ServerHello;
-            public static encode(message: proto.HandshakeMessage.IServerHello, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.HandshakeMessage.ServerHello;
-            public static fromObject(object: { [k: string]: any }): proto.HandshakeMessage.ServerHello;
-            public static toObject(message: proto.HandshakeMessage.ServerHello, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.HandshakeMessage.IServerHello, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.HandshakeMessage.ServerHello;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
     }
@@ -3692,7 +3323,7 @@ export namespace proto {
     }
 
     class HistorySync implements IHistorySync {
-        constructor(properties?: proto.IHistorySync);
+        constructor(p?: proto.IHistorySync);
         public syncType: proto.HistorySync.HistorySyncType;
         public conversations: proto.IConversation[];
         public statusV3Messages: proto.IWebMessageInfo[];
@@ -3711,11 +3342,8 @@ export namespace proto {
         public shareableChatIdentifierEncryptionKey: Uint8Array;
         public accounts: proto.IAccount[];
         public static create(properties?: proto.IHistorySync): proto.HistorySync;
-        public static encode(message: proto.IHistorySync, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.HistorySync;
-        public static fromObject(object: { [k: string]: any }): proto.HistorySync;
-        public static toObject(message: proto.HistorySync, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IHistorySync, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.HistorySync;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3743,15 +3371,12 @@ export namespace proto {
     }
 
     class HistorySyncMsg implements IHistorySyncMsg {
-        constructor(properties?: proto.IHistorySyncMsg);
+        constructor(p?: proto.IHistorySyncMsg);
         public message?: (proto.IWebMessageInfo|null);
         public msgOrderId: (number|Long);
         public static create(properties?: proto.IHistorySyncMsg): proto.HistorySyncMsg;
-        public static encode(message: proto.IHistorySyncMsg, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.HistorySyncMsg;
-        public static fromObject(object: { [k: string]: any }): proto.HistorySyncMsg;
-        public static toObject(message: proto.HistorySyncMsg, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IHistorySyncMsg, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.HistorySyncMsg;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3763,18 +3388,15 @@ export namespace proto {
     }
 
     class HydratedTemplateButton implements IHydratedTemplateButton {
-        constructor(properties?: proto.IHydratedTemplateButton);
+        constructor(p?: proto.IHydratedTemplateButton);
         public index: number;
         public quickReplyButton?: (proto.HydratedTemplateButton.IHydratedQuickReplyButton|null);
         public urlButton?: (proto.HydratedTemplateButton.IHydratedURLButton|null);
         public callButton?: (proto.HydratedTemplateButton.IHydratedCallButton|null);
         public hydratedButton?: ("quickReplyButton"|"urlButton"|"callButton");
         public static create(properties?: proto.IHydratedTemplateButton): proto.HydratedTemplateButton;
-        public static encode(message: proto.IHydratedTemplateButton, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.HydratedTemplateButton;
-        public static fromObject(object: { [k: string]: any }): proto.HydratedTemplateButton;
-        public static toObject(message: proto.HydratedTemplateButton, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IHydratedTemplateButton, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.HydratedTemplateButton;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3786,15 +3408,12 @@ export namespace proto {
         }
 
         class HydratedCallButton implements IHydratedCallButton {
-            constructor(properties?: proto.HydratedTemplateButton.IHydratedCallButton);
+            constructor(p?: proto.HydratedTemplateButton.IHydratedCallButton);
             public displayText: string;
             public phoneNumber: string;
             public static create(properties?: proto.HydratedTemplateButton.IHydratedCallButton): proto.HydratedTemplateButton.HydratedCallButton;
-            public static encode(message: proto.HydratedTemplateButton.IHydratedCallButton, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.HydratedTemplateButton.HydratedCallButton;
-            public static fromObject(object: { [k: string]: any }): proto.HydratedTemplateButton.HydratedCallButton;
-            public static toObject(message: proto.HydratedTemplateButton.HydratedCallButton, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.HydratedTemplateButton.IHydratedCallButton, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.HydratedTemplateButton.HydratedCallButton;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -3804,15 +3423,12 @@ export namespace proto {
         }
 
         class HydratedQuickReplyButton implements IHydratedQuickReplyButton {
-            constructor(properties?: proto.HydratedTemplateButton.IHydratedQuickReplyButton);
+            constructor(p?: proto.HydratedTemplateButton.IHydratedQuickReplyButton);
             public displayText: string;
             public id: string;
             public static create(properties?: proto.HydratedTemplateButton.IHydratedQuickReplyButton): proto.HydratedTemplateButton.HydratedQuickReplyButton;
-            public static encode(message: proto.HydratedTemplateButton.IHydratedQuickReplyButton, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.HydratedTemplateButton.HydratedQuickReplyButton;
-            public static fromObject(object: { [k: string]: any }): proto.HydratedTemplateButton.HydratedQuickReplyButton;
-            public static toObject(message: proto.HydratedTemplateButton.HydratedQuickReplyButton, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.HydratedTemplateButton.IHydratedQuickReplyButton, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.HydratedTemplateButton.HydratedQuickReplyButton;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -3824,17 +3440,14 @@ export namespace proto {
         }
 
         class HydratedURLButton implements IHydratedURLButton {
-            constructor(properties?: proto.HydratedTemplateButton.IHydratedURLButton);
+            constructor(p?: proto.HydratedTemplateButton.IHydratedURLButton);
             public displayText: string;
             public url: string;
             public consentedUsersUrl: string;
             public webviewPresentation: proto.HydratedTemplateButton.HydratedURLButton.WebviewPresentationType;
             public static create(properties?: proto.HydratedTemplateButton.IHydratedURLButton): proto.HydratedTemplateButton.HydratedURLButton;
-            public static encode(message: proto.HydratedTemplateButton.IHydratedURLButton, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.HydratedTemplateButton.HydratedURLButton;
-            public static fromObject(object: { [k: string]: any }): proto.HydratedTemplateButton.HydratedURLButton;
-            public static toObject(message: proto.HydratedTemplateButton.HydratedURLButton, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.HydratedTemplateButton.IHydratedURLButton, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.HydratedTemplateButton.HydratedURLButton;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -3854,15 +3467,12 @@ export namespace proto {
     }
 
     class IdentityKeyPairStructure implements IIdentityKeyPairStructure {
-        constructor(properties?: proto.IIdentityKeyPairStructure);
+        constructor(p?: proto.IIdentityKeyPairStructure);
         public publicKey: Uint8Array;
         public privateKey: Uint8Array;
         public static create(properties?: proto.IIdentityKeyPairStructure): proto.IdentityKeyPairStructure;
-        public static encode(message: proto.IIdentityKeyPairStructure, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.IdentityKeyPairStructure;
-        public static fromObject(object: { [k: string]: any }): proto.IdentityKeyPairStructure;
-        public static toObject(message: proto.IdentityKeyPairStructure, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IIdentityKeyPairStructure, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.IdentityKeyPairStructure;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3878,7 +3488,7 @@ export namespace proto {
     }
 
     class InteractiveAnnotation implements IInteractiveAnnotation {
-        constructor(properties?: proto.IInteractiveAnnotation);
+        constructor(p?: proto.IInteractiveAnnotation);
         public polygonVertices: proto.IPoint[];
         public shouldSkipConfirmation: boolean;
         public embeddedContent?: (proto.IEmbeddedContent|null);
@@ -3889,11 +3499,8 @@ export namespace proto {
         public tapAction?: (proto.ITapLinkAction|null);
         public action?: ("location"|"newsletter"|"embeddedAction"|"tapAction");
         public static create(properties?: proto.IInteractiveAnnotation): proto.InteractiveAnnotation;
-        public static encode(message: proto.IInteractiveAnnotation, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.InteractiveAnnotation;
-        public static fromObject(object: { [k: string]: any }): proto.InteractiveAnnotation;
-        public static toObject(message: proto.InteractiveAnnotation, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IInteractiveAnnotation, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.InteractiveAnnotation;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3916,7 +3523,7 @@ export namespace proto {
     }
 
     class KeepInChat implements IKeepInChat {
-        constructor(properties?: proto.IKeepInChat);
+        constructor(p?: proto.IKeepInChat);
         public keepType: proto.KeepType;
         public serverTimestamp: (number|Long);
         public key?: (proto.IMessageKey|null);
@@ -3924,11 +3531,8 @@ export namespace proto {
         public clientTimestampMs: (number|Long);
         public serverTimestampMs: (number|Long);
         public static create(properties?: proto.IKeepInChat): proto.KeepInChat;
-        public static encode(message: proto.IKeepInChat, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.KeepInChat;
-        public static fromObject(object: { [k: string]: any }): proto.KeepInChat;
-        public static toObject(message: proto.KeepInChat, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IKeepInChat, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.KeepInChat;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3947,18 +3551,15 @@ export namespace proto {
     }
 
     class KeyExchangeMessage implements IKeyExchangeMessage {
-        constructor(properties?: proto.IKeyExchangeMessage);
+        constructor(p?: proto.IKeyExchangeMessage);
         public id: number;
         public baseKey: Uint8Array;
         public ratchetKey: Uint8Array;
         public identityKey: Uint8Array;
         public baseKeySignature: Uint8Array;
         public static create(properties?: proto.IKeyExchangeMessage): proto.KeyExchangeMessage;
-        public static encode(message: proto.IKeyExchangeMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.KeyExchangeMessage;
-        public static fromObject(object: { [k: string]: any }): proto.KeyExchangeMessage;
-        public static toObject(message: proto.KeyExchangeMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IKeyExchangeMessage, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.KeyExchangeMessage;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3967,14 +3568,11 @@ export namespace proto {
     }
 
     class KeyId implements IKeyId {
-        constructor(properties?: proto.IKeyId);
+        constructor(p?: proto.IKeyId);
         public id: Uint8Array;
         public static create(properties?: proto.IKeyId): proto.KeyId;
-        public static encode(message: proto.IKeyId, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.KeyId;
-        public static fromObject(object: { [k: string]: any }): proto.KeyId;
-        public static toObject(message: proto.KeyId, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IKeyId, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.KeyId;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -3985,16 +3583,13 @@ export namespace proto {
     }
 
     class LIDMigrationMapping implements ILIDMigrationMapping {
-        constructor(properties?: proto.ILIDMigrationMapping);
+        constructor(p?: proto.ILIDMigrationMapping);
         public pn: (number|Long);
         public assignedLid: (number|Long);
         public latestLid: (number|Long);
         public static create(properties?: proto.ILIDMigrationMapping): proto.LIDMigrationMapping;
-        public static encode(message: proto.ILIDMigrationMapping, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.LIDMigrationMapping;
-        public static fromObject(object: { [k: string]: any }): proto.LIDMigrationMapping;
-        public static toObject(message: proto.LIDMigrationMapping, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ILIDMigrationMapping, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.LIDMigrationMapping;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -4003,14 +3598,11 @@ export namespace proto {
     }
 
     class LIDMigrationMappingSyncMessage implements ILIDMigrationMappingSyncMessage {
-        constructor(properties?: proto.ILIDMigrationMappingSyncMessage);
+        constructor(p?: proto.ILIDMigrationMappingSyncMessage);
         public encodedMappingPayload: Uint8Array;
         public static create(properties?: proto.ILIDMigrationMappingSyncMessage): proto.LIDMigrationMappingSyncMessage;
-        public static encode(message: proto.ILIDMigrationMappingSyncMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.LIDMigrationMappingSyncMessage;
-        public static fromObject(object: { [k: string]: any }): proto.LIDMigrationMappingSyncMessage;
-        public static toObject(message: proto.LIDMigrationMappingSyncMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ILIDMigrationMappingSyncMessage, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.LIDMigrationMappingSyncMessage;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -4020,15 +3612,12 @@ export namespace proto {
     }
 
     class LIDMigrationMappingSyncPayload implements ILIDMigrationMappingSyncPayload {
-        constructor(properties?: proto.ILIDMigrationMappingSyncPayload);
+        constructor(p?: proto.ILIDMigrationMappingSyncPayload);
         public pnToLidMappings: proto.ILIDMigrationMapping[];
         public chatDbMigrationTimestamp: (number|Long);
         public static create(properties?: proto.ILIDMigrationMappingSyncPayload): proto.LIDMigrationMappingSyncPayload;
-        public static encode(message: proto.ILIDMigrationMappingSyncPayload, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.LIDMigrationMappingSyncPayload;
-        public static fromObject(object: { [k: string]: any }): proto.LIDMigrationMappingSyncPayload;
-        public static toObject(message: proto.LIDMigrationMappingSyncPayload, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ILIDMigrationMappingSyncPayload, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.LIDMigrationMappingSyncPayload;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -4038,15 +3627,12 @@ export namespace proto {
     }
 
     class LegacyMessage implements ILegacyMessage {
-        constructor(properties?: proto.ILegacyMessage);
+        constructor(p?: proto.ILegacyMessage);
         public eventResponseMessage?: (proto.Message.IEventResponseMessage|null);
         public pollVote?: (proto.Message.IPollVoteMessage|null);
         public static create(properties?: proto.ILegacyMessage): proto.LegacyMessage;
-        public static encode(message: proto.ILegacyMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.LegacyMessage;
-        public static fromObject(object: { [k: string]: any }): proto.LegacyMessage;
-        public static toObject(message: proto.LegacyMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ILegacyMessage, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.LegacyMessage;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -4058,17 +3644,14 @@ export namespace proto {
     }
 
     class LimitSharing implements ILimitSharing {
-        constructor(properties?: proto.ILimitSharing);
+        constructor(p?: proto.ILimitSharing);
         public sharingLimited: boolean;
         public trigger: proto.LimitSharing.TriggerType;
         public limitSharingSettingTimestamp: (number|Long);
         public initiatedByMe: boolean;
         public static create(properties?: proto.ILimitSharing): proto.LimitSharing;
-        public static encode(message: proto.ILimitSharing, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.LimitSharing;
-        public static fromObject(object: { [k: string]: any }): proto.LimitSharing;
-        public static toObject(message: proto.LimitSharing, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ILimitSharing, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.LimitSharing;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -4089,16 +3672,13 @@ export namespace proto {
     }
 
     class LocalizedName implements ILocalizedName {
-        constructor(properties?: proto.ILocalizedName);
+        constructor(p?: proto.ILocalizedName);
         public lg: string;
         public lc: string;
         public verifiedName: string;
         public static create(properties?: proto.ILocalizedName): proto.LocalizedName;
-        public static encode(message: proto.ILocalizedName, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.LocalizedName;
-        public static fromObject(object: { [k: string]: any }): proto.LocalizedName;
-        public static toObject(message: proto.LocalizedName, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ILocalizedName, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.LocalizedName;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -4109,16 +3689,13 @@ export namespace proto {
     }
 
     class Location implements ILocation {
-        constructor(properties?: proto.ILocation);
+        constructor(p?: proto.ILocation);
         public degreesLatitude: number;
         public degreesLongitude: number;
         public name: string;
         public static create(properties?: proto.ILocation): proto.Location;
-        public static encode(message: proto.ILocation, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Location;
-        public static fromObject(object: { [k: string]: any }): proto.Location;
-        public static toObject(message: proto.Location, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ILocation, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Location;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -4127,14 +3704,11 @@ export namespace proto {
     }
 
     class MediaData implements IMediaData {
-        constructor(properties?: proto.IMediaData);
+        constructor(p?: proto.IMediaData);
         public localPath: string;
         public static create(properties?: proto.IMediaData): proto.MediaData;
-        public static encode(message: proto.IMediaData, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.MediaData;
-        public static fromObject(object: { [k: string]: any }): proto.MediaData;
-        public static toObject(message: proto.MediaData, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IMediaData, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.MediaData;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -4145,16 +3719,13 @@ export namespace proto {
     }
 
     class MediaNotifyMessage implements IMediaNotifyMessage {
-        constructor(properties?: proto.IMediaNotifyMessage);
+        constructor(p?: proto.IMediaNotifyMessage);
         public expressPathUrl: string;
         public fileEncSha256: Uint8Array;
         public fileLength: (number|Long);
         public static create(properties?: proto.IMediaNotifyMessage): proto.MediaNotifyMessage;
-        public static encode(message: proto.IMediaNotifyMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.MediaNotifyMessage;
-        public static fromObject(object: { [k: string]: any }): proto.MediaNotifyMessage;
-        public static toObject(message: proto.MediaNotifyMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IMediaNotifyMessage, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.MediaNotifyMessage;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -4166,17 +3737,14 @@ export namespace proto {
     }
 
     class MediaRetryNotification implements IMediaRetryNotification {
-        constructor(properties?: proto.IMediaRetryNotification);
+        constructor(p?: proto.IMediaRetryNotification);
         public stanzaId: string;
         public directPath: string;
         public result: proto.MediaRetryNotification.ResultType;
         public messageSecret: Uint8Array;
         public static create(properties?: proto.IMediaRetryNotification): proto.MediaRetryNotification;
-        public static encode(message: proto.IMediaRetryNotification, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.MediaRetryNotification;
-        public static fromObject(object: { [k: string]: any }): proto.MediaRetryNotification;
-        public static toObject(message: proto.MediaRetryNotification, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IMediaRetryNotification, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.MediaRetryNotification;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -4202,15 +3770,12 @@ export namespace proto {
     }
 
     class MemberLabel implements IMemberLabel {
-        constructor(properties?: proto.IMemberLabel);
+        constructor(p?: proto.IMemberLabel);
         public label: string;
         public labelTimestamp: (number|Long);
         public static create(properties?: proto.IMemberLabel): proto.MemberLabel;
-        public static encode(message: proto.IMemberLabel, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.MemberLabel;
-        public static fromObject(object: { [k: string]: any }): proto.MemberLabel;
-        public static toObject(message: proto.MemberLabel, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IMemberLabel, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.MemberLabel;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -4304,7 +3869,7 @@ export namespace proto {
     }
 
     class Message implements IMessage {
-        constructor(properties?: proto.IMessage);
+        constructor(p?: proto.IMessage);
         public conversation: string;
         public senderKeyDistributionMessage?: (proto.Message.ISenderKeyDistributionMessage|null);
         public imageMessage?: (proto.Message.IImageMessage|null);
@@ -4392,11 +3957,8 @@ export namespace proto {
         public questionMessage?: (proto.Message.IFutureProofMessage|null);
         public messageHistoryNotice?: (proto.Message.IMessageHistoryNotice|null);
         public static create(properties?: proto.IMessage): proto.Message;
-        public static encode(message: proto.IMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message;
-        public static fromObject(object: { [k: string]: any }): proto.Message;
-        public static toObject(message: proto.Message, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IMessage, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -4409,16 +3971,13 @@ export namespace proto {
         }
 
         class AlbumMessage implements IAlbumMessage {
-            constructor(properties?: proto.Message.IAlbumMessage);
+            constructor(p?: proto.Message.IAlbumMessage);
             public expectedImageCount: number;
             public expectedVideoCount: number;
             public contextInfo?: (proto.IContextInfo|null);
             public static create(properties?: proto.Message.IAlbumMessage): proto.Message.AlbumMessage;
-            public static encode(message: proto.Message.IAlbumMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.AlbumMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.AlbumMessage;
-            public static toObject(message: proto.Message.AlbumMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IAlbumMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.AlbumMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -4428,15 +3987,12 @@ export namespace proto {
         }
 
         class AppStateFatalExceptionNotification implements IAppStateFatalExceptionNotification {
-            constructor(properties?: proto.Message.IAppStateFatalExceptionNotification);
+            constructor(p?: proto.Message.IAppStateFatalExceptionNotification);
             public collectionNames: string[];
             public timestamp: (number|Long);
             public static create(properties?: proto.Message.IAppStateFatalExceptionNotification): proto.Message.AppStateFatalExceptionNotification;
-            public static encode(message: proto.Message.IAppStateFatalExceptionNotification, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.AppStateFatalExceptionNotification;
-            public static fromObject(object: { [k: string]: any }): proto.Message.AppStateFatalExceptionNotification;
-            public static toObject(message: proto.Message.AppStateFatalExceptionNotification, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IAppStateFatalExceptionNotification, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.AppStateFatalExceptionNotification;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -4446,15 +4002,12 @@ export namespace proto {
         }
 
         class AppStateSyncKey implements IAppStateSyncKey {
-            constructor(properties?: proto.Message.IAppStateSyncKey);
+            constructor(p?: proto.Message.IAppStateSyncKey);
             public keyId?: (proto.Message.IAppStateSyncKeyId|null);
             public keyData?: (proto.Message.IAppStateSyncKeyData|null);
             public static create(properties?: proto.Message.IAppStateSyncKey): proto.Message.AppStateSyncKey;
-            public static encode(message: proto.Message.IAppStateSyncKey, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.AppStateSyncKey;
-            public static fromObject(object: { [k: string]: any }): proto.Message.AppStateSyncKey;
-            public static toObject(message: proto.Message.AppStateSyncKey, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IAppStateSyncKey, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.AppStateSyncKey;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -4465,16 +4018,13 @@ export namespace proto {
         }
 
         class AppStateSyncKeyData implements IAppStateSyncKeyData {
-            constructor(properties?: proto.Message.IAppStateSyncKeyData);
+            constructor(p?: proto.Message.IAppStateSyncKeyData);
             public keyData: Uint8Array;
             public fingerprint?: (proto.Message.IAppStateSyncKeyFingerprint|null);
             public timestamp: (number|Long);
             public static create(properties?: proto.Message.IAppStateSyncKeyData): proto.Message.AppStateSyncKeyData;
-            public static encode(message: proto.Message.IAppStateSyncKeyData, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.AppStateSyncKeyData;
-            public static fromObject(object: { [k: string]: any }): proto.Message.AppStateSyncKeyData;
-            public static toObject(message: proto.Message.AppStateSyncKeyData, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IAppStateSyncKeyData, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.AppStateSyncKeyData;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -4485,16 +4035,13 @@ export namespace proto {
         }
 
         class AppStateSyncKeyFingerprint implements IAppStateSyncKeyFingerprint {
-            constructor(properties?: proto.Message.IAppStateSyncKeyFingerprint);
+            constructor(p?: proto.Message.IAppStateSyncKeyFingerprint);
             public rawId: number;
             public currentIndex: number;
             public deviceIndexes: number[];
             public static create(properties?: proto.Message.IAppStateSyncKeyFingerprint): proto.Message.AppStateSyncKeyFingerprint;
-            public static encode(message: proto.Message.IAppStateSyncKeyFingerprint, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.AppStateSyncKeyFingerprint;
-            public static fromObject(object: { [k: string]: any }): proto.Message.AppStateSyncKeyFingerprint;
-            public static toObject(message: proto.Message.AppStateSyncKeyFingerprint, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IAppStateSyncKeyFingerprint, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.AppStateSyncKeyFingerprint;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -4503,14 +4050,11 @@ export namespace proto {
         }
 
         class AppStateSyncKeyId implements IAppStateSyncKeyId {
-            constructor(properties?: proto.Message.IAppStateSyncKeyId);
+            constructor(p?: proto.Message.IAppStateSyncKeyId);
             public keyId: Uint8Array;
             public static create(properties?: proto.Message.IAppStateSyncKeyId): proto.Message.AppStateSyncKeyId;
-            public static encode(message: proto.Message.IAppStateSyncKeyId, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.AppStateSyncKeyId;
-            public static fromObject(object: { [k: string]: any }): proto.Message.AppStateSyncKeyId;
-            public static toObject(message: proto.Message.AppStateSyncKeyId, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IAppStateSyncKeyId, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.AppStateSyncKeyId;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -4519,14 +4063,11 @@ export namespace proto {
         }
 
         class AppStateSyncKeyRequest implements IAppStateSyncKeyRequest {
-            constructor(properties?: proto.Message.IAppStateSyncKeyRequest);
+            constructor(p?: proto.Message.IAppStateSyncKeyRequest);
             public keyIds: proto.Message.IAppStateSyncKeyId[];
             public static create(properties?: proto.Message.IAppStateSyncKeyRequest): proto.Message.AppStateSyncKeyRequest;
-            public static encode(message: proto.Message.IAppStateSyncKeyRequest, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.AppStateSyncKeyRequest;
-            public static fromObject(object: { [k: string]: any }): proto.Message.AppStateSyncKeyRequest;
-            public static toObject(message: proto.Message.AppStateSyncKeyRequest, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IAppStateSyncKeyRequest, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.AppStateSyncKeyRequest;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -4535,14 +4076,11 @@ export namespace proto {
         }
 
         class AppStateSyncKeyShare implements IAppStateSyncKeyShare {
-            constructor(properties?: proto.Message.IAppStateSyncKeyShare);
+            constructor(p?: proto.Message.IAppStateSyncKeyShare);
             public keys: proto.Message.IAppStateSyncKey[];
             public static create(properties?: proto.Message.IAppStateSyncKeyShare): proto.Message.AppStateSyncKeyShare;
-            public static encode(message: proto.Message.IAppStateSyncKeyShare, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.AppStateSyncKeyShare;
-            public static fromObject(object: { [k: string]: any }): proto.Message.AppStateSyncKeyShare;
-            public static toObject(message: proto.Message.AppStateSyncKeyShare, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IAppStateSyncKeyShare, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.AppStateSyncKeyShare;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -4566,7 +4104,7 @@ export namespace proto {
         }
 
         class AudioMessage implements IAudioMessage {
-            constructor(properties?: proto.Message.IAudioMessage);
+            constructor(p?: proto.Message.IAudioMessage);
             public url: string;
             public mimetype: string;
             public fileSha256: Uint8Array;
@@ -4584,11 +4122,8 @@ export namespace proto {
             public viewOnce: boolean;
             public accessibilityLabel: string;
             public static create(properties?: proto.Message.IAudioMessage): proto.Message.AudioMessage;
-            public static encode(message: proto.Message.IAudioMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.AudioMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.AudioMessage;
-            public static toObject(message: proto.Message.AudioMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IAudioMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.AudioMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -4600,17 +4135,14 @@ export namespace proto {
         }
 
         class BCallMessage implements IBCallMessage {
-            constructor(properties?: proto.Message.IBCallMessage);
+            constructor(p?: proto.Message.IBCallMessage);
             public sessionId: string;
             public mediaType: proto.Message.BCallMessage.MediaType;
             public masterKey: Uint8Array;
             public caption: string;
             public static create(properties?: proto.Message.IBCallMessage): proto.Message.BCallMessage;
-            public static encode(message: proto.Message.IBCallMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.BCallMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.BCallMessage;
-            public static toObject(message: proto.Message.BCallMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IBCallMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.BCallMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -4633,7 +4165,7 @@ export namespace proto {
         }
 
         class BotFeedbackMessage implements IBotFeedbackMessage {
-            constructor(properties?: proto.Message.IBotFeedbackMessage);
+            constructor(p?: proto.Message.IBotFeedbackMessage);
             public messageKey?: (proto.IMessageKey|null);
             public kind: proto.Message.BotFeedbackMessage.BotFeedbackKind;
             public text: string;
@@ -4641,11 +4173,8 @@ export namespace proto {
             public kindPositive: (number|Long);
             public kindReport: proto.Message.BotFeedbackMessage.ReportKind;
             public static create(properties?: proto.Message.IBotFeedbackMessage): proto.Message.BotFeedbackMessage;
-            public static encode(message: proto.Message.IBotFeedbackMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.BotFeedbackMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.BotFeedbackMessage;
-            public static toObject(message: proto.Message.BotFeedbackMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IBotFeedbackMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.BotFeedbackMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -4702,7 +4231,7 @@ export namespace proto {
         }
 
         class ButtonsMessage implements IButtonsMessage {
-            constructor(properties?: proto.Message.IButtonsMessage);
+            constructor(p?: proto.Message.IButtonsMessage);
             public contentText: string;
             public footerText: string;
             public contextInfo?: (proto.IContextInfo|null);
@@ -4715,11 +4244,8 @@ export namespace proto {
             public locationMessage?: (proto.Message.ILocationMessage|null);
             public header?: ("text"|"documentMessage"|"imageMessage"|"videoMessage"|"locationMessage");
             public static create(properties?: proto.Message.IButtonsMessage): proto.Message.ButtonsMessage;
-            public static encode(message: proto.Message.IButtonsMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ButtonsMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.ButtonsMessage;
-            public static toObject(message: proto.Message.ButtonsMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IButtonsMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ButtonsMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -4733,17 +4259,14 @@ export namespace proto {
             }
 
             class Button implements IButton {
-                constructor(properties?: proto.Message.ButtonsMessage.IButton);
+                constructor(p?: proto.Message.ButtonsMessage.IButton);
                 public buttonId: string;
                 public buttonText?: (proto.Message.ButtonsMessage.Button.IButtonText|null);
                 public type: proto.Message.ButtonsMessage.Button.Type;
                 public nativeFlowInfo?: (proto.Message.ButtonsMessage.Button.INativeFlowInfo|null);
                 public static create(properties?: proto.Message.ButtonsMessage.IButton): proto.Message.ButtonsMessage.Button;
-                public static encode(message: proto.Message.ButtonsMessage.IButton, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ButtonsMessage.Button;
-                public static fromObject(object: { [k: string]: any }): proto.Message.ButtonsMessage.Button;
-                public static toObject(message: proto.Message.ButtonsMessage.Button, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.ButtonsMessage.IButton, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ButtonsMessage.Button;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -4754,14 +4277,11 @@ export namespace proto {
                 }
 
                 class ButtonText implements IButtonText {
-                    constructor(properties?: proto.Message.ButtonsMessage.Button.IButtonText);
+                    constructor(p?: proto.Message.ButtonsMessage.Button.IButtonText);
                     public displayText: string;
                     public static create(properties?: proto.Message.ButtonsMessage.Button.IButtonText): proto.Message.ButtonsMessage.Button.ButtonText;
-                    public static encode(message: proto.Message.ButtonsMessage.Button.IButtonText, writer?: $protobuf.Writer): $protobuf.Writer;
-                    public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ButtonsMessage.Button.ButtonText;
-                    public static fromObject(object: { [k: string]: any }): proto.Message.ButtonsMessage.Button.ButtonText;
-                    public static toObject(message: proto.Message.ButtonsMessage.Button.ButtonText, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                    public toJSON(): { [k: string]: any };
+                    public static encode(m: proto.Message.ButtonsMessage.Button.IButtonText, w?: $protobuf.Writer): $protobuf.Writer;
+                    public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ButtonsMessage.Button.ButtonText;
                     public static getTypeUrl(typeUrlPrefix?: string): string;
                 }
 
@@ -4771,15 +4291,12 @@ export namespace proto {
                 }
 
                 class NativeFlowInfo implements INativeFlowInfo {
-                    constructor(properties?: proto.Message.ButtonsMessage.Button.INativeFlowInfo);
+                    constructor(p?: proto.Message.ButtonsMessage.Button.INativeFlowInfo);
                     public name: string;
                     public paramsJson: string;
                     public static create(properties?: proto.Message.ButtonsMessage.Button.INativeFlowInfo): proto.Message.ButtonsMessage.Button.NativeFlowInfo;
-                    public static encode(message: proto.Message.ButtonsMessage.Button.INativeFlowInfo, writer?: $protobuf.Writer): $protobuf.Writer;
-                    public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ButtonsMessage.Button.NativeFlowInfo;
-                    public static fromObject(object: { [k: string]: any }): proto.Message.ButtonsMessage.Button.NativeFlowInfo;
-                    public static toObject(message: proto.Message.ButtonsMessage.Button.NativeFlowInfo, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                    public toJSON(): { [k: string]: any };
+                    public static encode(m: proto.Message.ButtonsMessage.Button.INativeFlowInfo, w?: $protobuf.Writer): $protobuf.Writer;
+                    public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ButtonsMessage.Button.NativeFlowInfo;
                     public static getTypeUrl(typeUrlPrefix?: string): string;
                 }
 
@@ -4809,18 +4326,15 @@ export namespace proto {
         }
 
         class ButtonsResponseMessage implements IButtonsResponseMessage {
-            constructor(properties?: proto.Message.IButtonsResponseMessage);
+            constructor(p?: proto.Message.IButtonsResponseMessage);
             public selectedButtonId: string;
             public contextInfo?: (proto.IContextInfo|null);
             public type: proto.Message.ButtonsResponseMessage.Type;
             public selectedDisplayText?: (string|null);
             public response?: "selectedDisplayText";
             public static create(properties?: proto.Message.IButtonsResponseMessage): proto.Message.ButtonsResponseMessage;
-            public static encode(message: proto.Message.IButtonsResponseMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ButtonsResponseMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.ButtonsResponseMessage;
-            public static toObject(message: proto.Message.ButtonsResponseMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IButtonsResponseMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ButtonsResponseMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -4843,7 +4357,7 @@ export namespace proto {
         }
 
         class Call implements ICall {
-            constructor(properties?: proto.Message.ICall);
+            constructor(p?: proto.Message.ICall);
             public callKey: Uint8Array;
             public conversionSource: string;
             public conversionData: Uint8Array;
@@ -4852,11 +4366,8 @@ export namespace proto {
             public ctwaPayload: Uint8Array;
             public contextInfo?: (proto.IContextInfo|null);
             public static create(properties?: proto.Message.ICall): proto.Message.Call;
-            public static encode(message: proto.Message.ICall, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.Call;
-            public static fromObject(object: { [k: string]: any }): proto.Message.Call;
-            public static toObject(message: proto.Message.Call, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.ICall, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.Call;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -4869,18 +4380,15 @@ export namespace proto {
         }
 
         class CallLogMessage implements ICallLogMessage {
-            constructor(properties?: proto.Message.ICallLogMessage);
+            constructor(p?: proto.Message.ICallLogMessage);
             public isVideo: boolean;
             public callOutcome: proto.Message.CallLogMessage.CallOutcome;
             public durationSecs: (number|Long);
             public callType: proto.Message.CallLogMessage.CallType;
             public participants: proto.Message.CallLogMessage.ICallParticipant[];
             public static create(properties?: proto.Message.ICallLogMessage): proto.Message.CallLogMessage;
-            public static encode(message: proto.Message.ICallLogMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.CallLogMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.CallLogMessage;
-            public static toObject(message: proto.Message.CallLogMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.ICallLogMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.CallLogMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -4903,15 +4411,12 @@ export namespace proto {
             }
 
             class CallParticipant implements ICallParticipant {
-                constructor(properties?: proto.Message.CallLogMessage.ICallParticipant);
+                constructor(p?: proto.Message.CallLogMessage.ICallParticipant);
                 public jid: string;
                 public callOutcome: proto.Message.CallLogMessage.CallOutcome;
                 public static create(properties?: proto.Message.CallLogMessage.ICallParticipant): proto.Message.CallLogMessage.CallParticipant;
-                public static encode(message: proto.Message.CallLogMessage.ICallParticipant, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.CallLogMessage.CallParticipant;
-                public static fromObject(object: { [k: string]: any }): proto.Message.CallLogMessage.CallParticipant;
-                public static toObject(message: proto.Message.CallLogMessage.CallParticipant, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.CallLogMessage.ICallParticipant, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.CallLogMessage.CallParticipant;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -4927,14 +4432,11 @@ export namespace proto {
         }
 
         class CancelPaymentRequestMessage implements ICancelPaymentRequestMessage {
-            constructor(properties?: proto.Message.ICancelPaymentRequestMessage);
+            constructor(p?: proto.Message.ICancelPaymentRequestMessage);
             public key?: (proto.IMessageKey|null);
             public static create(properties?: proto.Message.ICancelPaymentRequestMessage): proto.Message.CancelPaymentRequestMessage;
-            public static encode(message: proto.Message.ICancelPaymentRequestMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.CancelPaymentRequestMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.CancelPaymentRequestMessage;
-            public static toObject(message: proto.Message.CancelPaymentRequestMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.ICancelPaymentRequestMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.CancelPaymentRequestMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -4944,15 +4446,12 @@ export namespace proto {
         }
 
         class Chat implements IChat {
-            constructor(properties?: proto.Message.IChat);
+            constructor(p?: proto.Message.IChat);
             public displayName: string;
             public id: string;
             public static create(properties?: proto.Message.IChat): proto.Message.Chat;
-            public static encode(message: proto.Message.IChat, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.Chat;
-            public static fromObject(object: { [k: string]: any }): proto.Message.Chat;
-            public static toObject(message: proto.Message.Chat, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IChat, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.Chat;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -4965,18 +4464,15 @@ export namespace proto {
         }
 
         class CloudAPIThreadControlNotification implements ICloudAPIThreadControlNotification {
-            constructor(properties?: proto.Message.ICloudAPIThreadControlNotification);
+            constructor(p?: proto.Message.ICloudAPIThreadControlNotification);
             public status: proto.Message.CloudAPIThreadControlNotification.CloudAPIThreadControl;
             public senderNotificationTimestampMs: (number|Long);
             public consumerLid: string;
             public consumerPhoneNumber: string;
             public notificationContent?: (proto.Message.CloudAPIThreadControlNotification.ICloudAPIThreadControlNotificationContent|null);
             public static create(properties?: proto.Message.ICloudAPIThreadControlNotification): proto.Message.CloudAPIThreadControlNotification;
-            public static encode(message: proto.Message.ICloudAPIThreadControlNotification, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.CloudAPIThreadControlNotification;
-            public static fromObject(object: { [k: string]: any }): proto.Message.CloudAPIThreadControlNotification;
-            public static toObject(message: proto.Message.CloudAPIThreadControlNotification, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.ICloudAPIThreadControlNotification, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.CloudAPIThreadControlNotification;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -4994,15 +4490,12 @@ export namespace proto {
             }
 
             class CloudAPIThreadControlNotificationContent implements ICloudAPIThreadControlNotificationContent {
-                constructor(properties?: proto.Message.CloudAPIThreadControlNotification.ICloudAPIThreadControlNotificationContent);
+                constructor(p?: proto.Message.CloudAPIThreadControlNotification.ICloudAPIThreadControlNotificationContent);
                 public handoffNotificationText: string;
                 public extraJson: string;
                 public static create(properties?: proto.Message.CloudAPIThreadControlNotification.ICloudAPIThreadControlNotificationContent): proto.Message.CloudAPIThreadControlNotification.CloudAPIThreadControlNotificationContent;
-                public static encode(message: proto.Message.CloudAPIThreadControlNotification.ICloudAPIThreadControlNotificationContent, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.CloudAPIThreadControlNotification.CloudAPIThreadControlNotificationContent;
-                public static fromObject(object: { [k: string]: any }): proto.Message.CloudAPIThreadControlNotification.CloudAPIThreadControlNotificationContent;
-                public static toObject(message: proto.Message.CloudAPIThreadControlNotification.CloudAPIThreadControlNotificationContent, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.CloudAPIThreadControlNotification.ICloudAPIThreadControlNotificationContent, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.CloudAPIThreadControlNotification.CloudAPIThreadControlNotificationContent;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
         }
@@ -5013,15 +4506,12 @@ export namespace proto {
         }
 
         class CommentMessage implements ICommentMessage {
-            constructor(properties?: proto.Message.ICommentMessage);
+            constructor(p?: proto.Message.ICommentMessage);
             public message?: (proto.IMessage|null);
             public targetMessageKey?: (proto.IMessageKey|null);
             public static create(properties?: proto.Message.ICommentMessage): proto.Message.CommentMessage;
-            public static encode(message: proto.Message.ICommentMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.CommentMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.CommentMessage;
-            public static toObject(message: proto.Message.CommentMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.ICommentMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.CommentMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -5032,16 +4522,13 @@ export namespace proto {
         }
 
         class ContactMessage implements IContactMessage {
-            constructor(properties?: proto.Message.IContactMessage);
+            constructor(p?: proto.Message.IContactMessage);
             public displayName: string;
             public vcard: string;
             public contextInfo?: (proto.IContextInfo|null);
             public static create(properties?: proto.Message.IContactMessage): proto.Message.ContactMessage;
-            public static encode(message: proto.Message.IContactMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ContactMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.ContactMessage;
-            public static toObject(message: proto.Message.ContactMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IContactMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ContactMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -5052,16 +4539,13 @@ export namespace proto {
         }
 
         class ContactsArrayMessage implements IContactsArrayMessage {
-            constructor(properties?: proto.Message.IContactsArrayMessage);
+            constructor(p?: proto.Message.IContactsArrayMessage);
             public displayName: string;
             public contacts: proto.Message.IContactMessage[];
             public contextInfo?: (proto.IContextInfo|null);
             public static create(properties?: proto.Message.IContactsArrayMessage): proto.Message.ContactsArrayMessage;
-            public static encode(message: proto.Message.IContactsArrayMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ContactsArrayMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.ContactsArrayMessage;
-            public static toObject(message: proto.Message.ContactsArrayMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IContactsArrayMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ContactsArrayMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -5070,14 +4554,11 @@ export namespace proto {
         }
 
         class DeclinePaymentRequestMessage implements IDeclinePaymentRequestMessage {
-            constructor(properties?: proto.Message.IDeclinePaymentRequestMessage);
+            constructor(p?: proto.Message.IDeclinePaymentRequestMessage);
             public key?: (proto.IMessageKey|null);
             public static create(properties?: proto.Message.IDeclinePaymentRequestMessage): proto.Message.DeclinePaymentRequestMessage;
-            public static encode(message: proto.Message.IDeclinePaymentRequestMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.DeclinePaymentRequestMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.DeclinePaymentRequestMessage;
-            public static toObject(message: proto.Message.DeclinePaymentRequestMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IDeclinePaymentRequestMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.DeclinePaymentRequestMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -5088,16 +4569,13 @@ export namespace proto {
         }
 
         class DeviceSentMessage implements IDeviceSentMessage {
-            constructor(properties?: proto.Message.IDeviceSentMessage);
+            constructor(p?: proto.Message.IDeviceSentMessage);
             public destinationJid: string;
             public message?: (proto.IMessage|null);
             public phash: string;
             public static create(properties?: proto.Message.IDeviceSentMessage): proto.Message.DeviceSentMessage;
-            public static encode(message: proto.Message.IDeviceSentMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.DeviceSentMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.DeviceSentMessage;
-            public static toObject(message: proto.Message.DeviceSentMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IDeviceSentMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.DeviceSentMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -5126,7 +4604,7 @@ export namespace proto {
         }
 
         class DocumentMessage implements IDocumentMessage {
-            constructor(properties?: proto.Message.IDocumentMessage);
+            constructor(p?: proto.Message.IDocumentMessage);
             public url: string;
             public mimetype: string;
             public title: string;
@@ -5149,11 +4627,8 @@ export namespace proto {
             public caption: string;
             public accessibilityLabel: string;
             public static create(properties?: proto.Message.IDocumentMessage): proto.Message.DocumentMessage;
-            public static encode(message: proto.Message.IDocumentMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.DocumentMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.DocumentMessage;
-            public static toObject(message: proto.Message.DocumentMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IDocumentMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.DocumentMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -5164,16 +4639,13 @@ export namespace proto {
         }
 
         class EncCommentMessage implements IEncCommentMessage {
-            constructor(properties?: proto.Message.IEncCommentMessage);
+            constructor(p?: proto.Message.IEncCommentMessage);
             public targetMessageKey?: (proto.IMessageKey|null);
             public encPayload: Uint8Array;
             public encIv: Uint8Array;
             public static create(properties?: proto.Message.IEncCommentMessage): proto.Message.EncCommentMessage;
-            public static encode(message: proto.Message.IEncCommentMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.EncCommentMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.EncCommentMessage;
-            public static toObject(message: proto.Message.EncCommentMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IEncCommentMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.EncCommentMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -5184,16 +4656,13 @@ export namespace proto {
         }
 
         class EncEventResponseMessage implements IEncEventResponseMessage {
-            constructor(properties?: proto.Message.IEncEventResponseMessage);
+            constructor(p?: proto.Message.IEncEventResponseMessage);
             public eventCreationMessageKey?: (proto.IMessageKey|null);
             public encPayload: Uint8Array;
             public encIv: Uint8Array;
             public static create(properties?: proto.Message.IEncEventResponseMessage): proto.Message.EncEventResponseMessage;
-            public static encode(message: proto.Message.IEncEventResponseMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.EncEventResponseMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.EncEventResponseMessage;
-            public static toObject(message: proto.Message.EncEventResponseMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IEncEventResponseMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.EncEventResponseMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -5204,16 +4673,13 @@ export namespace proto {
         }
 
         class EncReactionMessage implements IEncReactionMessage {
-            constructor(properties?: proto.Message.IEncReactionMessage);
+            constructor(p?: proto.Message.IEncReactionMessage);
             public targetMessageKey?: (proto.IMessageKey|null);
             public encPayload: Uint8Array;
             public encIv: Uint8Array;
             public static create(properties?: proto.Message.IEncReactionMessage): proto.Message.EncReactionMessage;
-            public static encode(message: proto.Message.IEncReactionMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.EncReactionMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.EncReactionMessage;
-            public static toObject(message: proto.Message.EncReactionMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IEncReactionMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.EncReactionMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -5231,7 +4697,7 @@ export namespace proto {
         }
 
         class EventMessage implements IEventMessage {
-            constructor(properties?: proto.Message.IEventMessage);
+            constructor(p?: proto.Message.IEventMessage);
             public contextInfo?: (proto.IContextInfo|null);
             public isCanceled: boolean;
             public name: string;
@@ -5243,11 +4709,8 @@ export namespace proto {
             public extraGuestsAllowed: boolean;
             public isScheduleCall: boolean;
             public static create(properties?: proto.Message.IEventMessage): proto.Message.EventMessage;
-            public static encode(message: proto.Message.IEventMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.EventMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.EventMessage;
-            public static toObject(message: proto.Message.EventMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IEventMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.EventMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -5258,16 +4721,13 @@ export namespace proto {
         }
 
         class EventResponseMessage implements IEventResponseMessage {
-            constructor(properties?: proto.Message.IEventResponseMessage);
+            constructor(p?: proto.Message.IEventResponseMessage);
             public response: proto.Message.EventResponseMessage.EventResponseType;
             public timestampMs: (number|Long);
             public extraGuestCount: number;
             public static create(properties?: proto.Message.IEventResponseMessage): proto.Message.EventResponseMessage;
-            public static encode(message: proto.Message.IEventResponseMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.EventResponseMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.EventResponseMessage;
-            public static toObject(message: proto.Message.EventResponseMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IEventResponseMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.EventResponseMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -5313,7 +4773,7 @@ export namespace proto {
         }
 
         class ExtendedTextMessage implements IExtendedTextMessage {
-            constructor(properties?: proto.Message.IExtendedTextMessage);
+            constructor(p?: proto.Message.IExtendedTextMessage);
             public text: string;
             public matchedText: string;
             public description: string;
@@ -5343,11 +4803,8 @@ export namespace proto {
             public linkPreviewMetadata?: (proto.Message.ILinkPreviewMetadata|null);
             public paymentLinkMetadata?: (proto.Message.IPaymentLinkMetadata|null);
             public static create(properties?: proto.Message.IExtendedTextMessage): proto.Message.ExtendedTextMessage;
-            public static encode(message: proto.Message.IExtendedTextMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ExtendedTextMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.ExtendedTextMessage;
-            public static toObject(message: proto.Message.ExtendedTextMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IExtendedTextMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ExtendedTextMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -5386,14 +4843,11 @@ export namespace proto {
         }
 
         class FullHistorySyncOnDemandRequestMetadata implements IFullHistorySyncOnDemandRequestMetadata {
-            constructor(properties?: proto.Message.IFullHistorySyncOnDemandRequestMetadata);
+            constructor(p?: proto.Message.IFullHistorySyncOnDemandRequestMetadata);
             public requestId: string;
             public static create(properties?: proto.Message.IFullHistorySyncOnDemandRequestMetadata): proto.Message.FullHistorySyncOnDemandRequestMetadata;
-            public static encode(message: proto.Message.IFullHistorySyncOnDemandRequestMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.FullHistorySyncOnDemandRequestMetadata;
-            public static fromObject(object: { [k: string]: any }): proto.Message.FullHistorySyncOnDemandRequestMetadata;
-            public static toObject(message: proto.Message.FullHistorySyncOnDemandRequestMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IFullHistorySyncOnDemandRequestMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.FullHistorySyncOnDemandRequestMetadata;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -5402,14 +4856,11 @@ export namespace proto {
         }
 
         class FutureProofMessage implements IFutureProofMessage {
-            constructor(properties?: proto.Message.IFutureProofMessage);
+            constructor(p?: proto.Message.IFutureProofMessage);
             public message?: (proto.IMessage|null);
             public static create(properties?: proto.Message.IFutureProofMessage): proto.Message.FutureProofMessage;
-            public static encode(message: proto.Message.IFutureProofMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.FutureProofMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.FutureProofMessage;
-            public static toObject(message: proto.Message.FutureProofMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IFutureProofMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.FutureProofMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -5425,7 +4876,7 @@ export namespace proto {
         }
 
         class GroupInviteMessage implements IGroupInviteMessage {
-            constructor(properties?: proto.Message.IGroupInviteMessage);
+            constructor(p?: proto.Message.IGroupInviteMessage);
             public groupJid: string;
             public inviteCode: string;
             public inviteExpiration: (number|Long);
@@ -5435,11 +4886,8 @@ export namespace proto {
             public contextInfo?: (proto.IContextInfo|null);
             public groupType: proto.Message.GroupInviteMessage.GroupType;
             public static create(properties?: proto.Message.IGroupInviteMessage): proto.Message.GroupInviteMessage;
-            public static encode(message: proto.Message.IGroupInviteMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.GroupInviteMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.GroupInviteMessage;
-            public static toObject(message: proto.Message.GroupInviteMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IGroupInviteMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.GroupInviteMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -5464,7 +4912,7 @@ export namespace proto {
         }
 
         class HighlyStructuredMessage implements IHighlyStructuredMessage {
-            constructor(properties?: proto.Message.IHighlyStructuredMessage);
+            constructor(p?: proto.Message.IHighlyStructuredMessage);
             public namespace: string;
             public elementName: string;
             public params: string[];
@@ -5475,11 +4923,8 @@ export namespace proto {
             public deterministicLc: string;
             public hydratedHsm?: (proto.Message.ITemplateMessage|null);
             public static create(properties?: proto.Message.IHighlyStructuredMessage): proto.Message.HighlyStructuredMessage;
-            public static encode(message: proto.Message.IHighlyStructuredMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.HighlyStructuredMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.HighlyStructuredMessage;
-            public static toObject(message: proto.Message.HighlyStructuredMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IHighlyStructuredMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.HighlyStructuredMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -5492,17 +4937,14 @@ export namespace proto {
             }
 
             class HSMLocalizableParameter implements IHSMLocalizableParameter {
-                constructor(properties?: proto.Message.HighlyStructuredMessage.IHSMLocalizableParameter);
+                constructor(p?: proto.Message.HighlyStructuredMessage.IHSMLocalizableParameter);
                 public default: string;
                 public currency?: (proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.IHSMCurrency|null);
                 public dateTime?: (proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.IHSMDateTime|null);
                 public paramOneof?: ("currency"|"dateTime");
                 public static create(properties?: proto.Message.HighlyStructuredMessage.IHSMLocalizableParameter): proto.Message.HighlyStructuredMessage.HSMLocalizableParameter;
-                public static encode(message: proto.Message.HighlyStructuredMessage.IHSMLocalizableParameter, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.HighlyStructuredMessage.HSMLocalizableParameter;
-                public static fromObject(object: { [k: string]: any }): proto.Message.HighlyStructuredMessage.HSMLocalizableParameter;
-                public static toObject(message: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.HighlyStructuredMessage.IHSMLocalizableParameter, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.HighlyStructuredMessage.HSMLocalizableParameter;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -5514,15 +4956,12 @@ export namespace proto {
                 }
 
                 class HSMCurrency implements IHSMCurrency {
-                    constructor(properties?: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.IHSMCurrency);
+                    constructor(p?: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.IHSMCurrency);
                     public currencyCode: string;
                     public amount1000: (number|Long);
                     public static create(properties?: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.IHSMCurrency): proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMCurrency;
-                    public static encode(message: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.IHSMCurrency, writer?: $protobuf.Writer): $protobuf.Writer;
-                    public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMCurrency;
-                    public static fromObject(object: { [k: string]: any }): proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMCurrency;
-                    public static toObject(message: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMCurrency, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                    public toJSON(): { [k: string]: any };
+                    public static encode(m: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.IHSMCurrency, w?: $protobuf.Writer): $protobuf.Writer;
+                    public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMCurrency;
                     public static getTypeUrl(typeUrlPrefix?: string): string;
                 }
 
@@ -5532,16 +4971,13 @@ export namespace proto {
                 }
 
                 class HSMDateTime implements IHSMDateTime {
-                    constructor(properties?: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.IHSMDateTime);
+                    constructor(p?: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.IHSMDateTime);
                     public component?: (proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.IHSMDateTimeComponent|null);
                     public unixEpoch?: (proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.IHSMDateTimeUnixEpoch|null);
                     public datetimeOneof?: ("component"|"unixEpoch");
                     public static create(properties?: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.IHSMDateTime): proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime;
-                    public static encode(message: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.IHSMDateTime, writer?: $protobuf.Writer): $protobuf.Writer;
-                    public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime;
-                    public static fromObject(object: { [k: string]: any }): proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime;
-                    public static toObject(message: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                    public toJSON(): { [k: string]: any };
+                    public static encode(m: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.IHSMDateTime, w?: $protobuf.Writer): $protobuf.Writer;
+                    public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime;
                     public static getTypeUrl(typeUrlPrefix?: string): string;
                 }
 
@@ -5558,7 +4994,7 @@ export namespace proto {
                     }
 
                     class HSMDateTimeComponent implements IHSMDateTimeComponent {
-                        constructor(properties?: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.IHSMDateTimeComponent);
+                        constructor(p?: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.IHSMDateTimeComponent);
                         public dayOfWeek: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.HSMDateTimeComponent.DayOfWeekType;
                         public year: number;
                         public month: number;
@@ -5567,11 +5003,8 @@ export namespace proto {
                         public minute: number;
                         public calendar: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.HSMDateTimeComponent.CalendarType;
                         public static create(properties?: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.IHSMDateTimeComponent): proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.HSMDateTimeComponent;
-                        public static encode(message: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.IHSMDateTimeComponent, writer?: $protobuf.Writer): $protobuf.Writer;
-                        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.HSMDateTimeComponent;
-                        public static fromObject(object: { [k: string]: any }): proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.HSMDateTimeComponent;
-                        public static toObject(message: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.HSMDateTimeComponent, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                        public toJSON(): { [k: string]: any };
+                        public static encode(m: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.IHSMDateTimeComponent, w?: $protobuf.Writer): $protobuf.Writer;
+                        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.HSMDateTimeComponent;
                         public static getTypeUrl(typeUrlPrefix?: string): string;
                     }
 
@@ -5598,14 +5031,11 @@ export namespace proto {
                     }
 
                     class HSMDateTimeUnixEpoch implements IHSMDateTimeUnixEpoch {
-                        constructor(properties?: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.IHSMDateTimeUnixEpoch);
+                        constructor(p?: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.IHSMDateTimeUnixEpoch);
                         public timestamp: (number|Long);
                         public static create(properties?: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.IHSMDateTimeUnixEpoch): proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.HSMDateTimeUnixEpoch;
-                        public static encode(message: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.IHSMDateTimeUnixEpoch, writer?: $protobuf.Writer): $protobuf.Writer;
-                        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.HSMDateTimeUnixEpoch;
-                        public static fromObject(object: { [k: string]: any }): proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.HSMDateTimeUnixEpoch;
-                        public static toObject(message: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.HSMDateTimeUnixEpoch, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                        public toJSON(): { [k: string]: any };
+                        public static encode(m: proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.IHSMDateTimeUnixEpoch, w?: $protobuf.Writer): $protobuf.Writer;
+                        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.HighlyStructuredMessage.HSMLocalizableParameter.HSMDateTime.HSMDateTimeUnixEpoch;
                         public static getTypeUrl(typeUrlPrefix?: string): string;
                     }
                 }
@@ -5630,7 +5060,7 @@ export namespace proto {
         }
 
         class HistorySyncNotification implements IHistorySyncNotification {
-            constructor(properties?: proto.Message.IHistorySyncNotification);
+            constructor(p?: proto.Message.IHistorySyncNotification);
             public fileSha256: Uint8Array;
             public fileLength: (number|Long);
             public mediaKey: Uint8Array;
@@ -5646,11 +5076,8 @@ export namespace proto {
             public fullHistorySyncOnDemandRequestMetadata?: (proto.Message.IFullHistorySyncOnDemandRequestMetadata|null);
             public encHandle: string;
             public static create(properties?: proto.Message.IHistorySyncNotification): proto.Message.HistorySyncNotification;
-            public static encode(message: proto.Message.IHistorySyncNotification, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.HistorySyncNotification;
-            public static fromObject(object: { [k: string]: any }): proto.Message.HistorySyncNotification;
-            public static toObject(message: proto.Message.HistorySyncNotification, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IHistorySyncNotification, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.HistorySyncNotification;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -5701,7 +5128,7 @@ export namespace proto {
         }
 
         class ImageMessage implements IImageMessage {
-            constructor(properties?: proto.Message.IImageMessage);
+            constructor(p?: proto.Message.IImageMessage);
             public url: string;
             public mimetype: string;
             public caption: string;
@@ -5732,11 +5159,8 @@ export namespace proto {
             public imageSourceType: proto.Message.ImageMessage.ImageSourceType;
             public accessibilityLabel: string;
             public static create(properties?: proto.Message.IImageMessage): proto.Message.ImageMessage;
-            public static encode(message: proto.Message.IImageMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ImageMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.ImageMessage;
-            public static toObject(message: proto.Message.ImageMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IImageMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ImageMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -5755,14 +5179,11 @@ export namespace proto {
         }
 
         class InitialSecurityNotificationSettingSync implements IInitialSecurityNotificationSettingSync {
-            constructor(properties?: proto.Message.IInitialSecurityNotificationSettingSync);
+            constructor(p?: proto.Message.IInitialSecurityNotificationSettingSync);
             public securityNotificationEnabled: boolean;
             public static create(properties?: proto.Message.IInitialSecurityNotificationSettingSync): proto.Message.InitialSecurityNotificationSettingSync;
-            public static encode(message: proto.Message.IInitialSecurityNotificationSettingSync, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.InitialSecurityNotificationSettingSync;
-            public static fromObject(object: { [k: string]: any }): proto.Message.InitialSecurityNotificationSettingSync;
-            public static toObject(message: proto.Message.InitialSecurityNotificationSettingSync, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IInitialSecurityNotificationSettingSync, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.InitialSecurityNotificationSettingSync;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -5779,7 +5200,7 @@ export namespace proto {
         }
 
         class InteractiveMessage implements IInteractiveMessage {
-            constructor(properties?: proto.Message.IInteractiveMessage);
+            constructor(p?: proto.Message.IInteractiveMessage);
             public header?: (proto.Message.InteractiveMessage.IHeader|null);
             public body?: (proto.Message.InteractiveMessage.IBody|null);
             public footer?: (proto.Message.InteractiveMessage.IFooter|null);
@@ -5791,11 +5212,8 @@ export namespace proto {
             public carouselMessage?: (proto.Message.InteractiveMessage.ICarouselMessage|null);
             public interactiveMessage?: ("shopStorefrontMessage"|"collectionMessage"|"nativeFlowMessage"|"carouselMessage");
             public static create(properties?: proto.Message.IInteractiveMessage): proto.Message.InteractiveMessage;
-            public static encode(message: proto.Message.IInteractiveMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.InteractiveMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.InteractiveMessage;
-            public static toObject(message: proto.Message.InteractiveMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IInteractiveMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.InteractiveMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -5806,14 +5224,11 @@ export namespace proto {
             }
 
             class Body implements IBody {
-                constructor(properties?: proto.Message.InteractiveMessage.IBody);
+                constructor(p?: proto.Message.InteractiveMessage.IBody);
                 public text: string;
                 public static create(properties?: proto.Message.InteractiveMessage.IBody): proto.Message.InteractiveMessage.Body;
-                public static encode(message: proto.Message.InteractiveMessage.IBody, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.InteractiveMessage.Body;
-                public static fromObject(object: { [k: string]: any }): proto.Message.InteractiveMessage.Body;
-                public static toObject(message: proto.Message.InteractiveMessage.Body, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.InteractiveMessage.IBody, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.InteractiveMessage.Body;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -5823,15 +5238,12 @@ export namespace proto {
             }
 
             class CarouselMessage implements ICarouselMessage {
-                constructor(properties?: proto.Message.InteractiveMessage.ICarouselMessage);
+                constructor(p?: proto.Message.InteractiveMessage.ICarouselMessage);
                 public cards: proto.Message.IInteractiveMessage[];
                 public messageVersion: number;
                 public static create(properties?: proto.Message.InteractiveMessage.ICarouselMessage): proto.Message.InteractiveMessage.CarouselMessage;
-                public static encode(message: proto.Message.InteractiveMessage.ICarouselMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.InteractiveMessage.CarouselMessage;
-                public static fromObject(object: { [k: string]: any }): proto.Message.InteractiveMessage.CarouselMessage;
-                public static toObject(message: proto.Message.InteractiveMessage.CarouselMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.InteractiveMessage.ICarouselMessage, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.InteractiveMessage.CarouselMessage;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -5842,16 +5254,13 @@ export namespace proto {
             }
 
             class CollectionMessage implements ICollectionMessage {
-                constructor(properties?: proto.Message.InteractiveMessage.ICollectionMessage);
+                constructor(p?: proto.Message.InteractiveMessage.ICollectionMessage);
                 public bizJid: string;
                 public id: string;
                 public messageVersion: number;
                 public static create(properties?: proto.Message.InteractiveMessage.ICollectionMessage): proto.Message.InteractiveMessage.CollectionMessage;
-                public static encode(message: proto.Message.InteractiveMessage.ICollectionMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.InteractiveMessage.CollectionMessage;
-                public static fromObject(object: { [k: string]: any }): proto.Message.InteractiveMessage.CollectionMessage;
-                public static toObject(message: proto.Message.InteractiveMessage.CollectionMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.InteractiveMessage.ICollectionMessage, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.InteractiveMessage.CollectionMessage;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -5860,14 +5269,11 @@ export namespace proto {
             }
 
             class Footer implements IFooter {
-                constructor(properties?: proto.Message.InteractiveMessage.IFooter);
+                constructor(p?: proto.Message.InteractiveMessage.IFooter);
                 public text: string;
                 public static create(properties?: proto.Message.InteractiveMessage.IFooter): proto.Message.InteractiveMessage.Footer;
-                public static encode(message: proto.Message.InteractiveMessage.IFooter, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.InteractiveMessage.Footer;
-                public static fromObject(object: { [k: string]: any }): proto.Message.InteractiveMessage.Footer;
-                public static toObject(message: proto.Message.InteractiveMessage.Footer, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.InteractiveMessage.IFooter, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.InteractiveMessage.Footer;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -5884,7 +5290,7 @@ export namespace proto {
             }
 
             class Header implements IHeader {
-                constructor(properties?: proto.Message.InteractiveMessage.IHeader);
+                constructor(p?: proto.Message.InteractiveMessage.IHeader);
                 public title: string;
                 public subtitle: string;
                 public hasMediaAttachment: boolean;
@@ -5896,11 +5302,8 @@ export namespace proto {
                 public productMessage?: (proto.Message.IProductMessage|null);
                 public media?: ("documentMessage"|"imageMessage"|"jpegThumbnail"|"videoMessage"|"locationMessage"|"productMessage");
                 public static create(properties?: proto.Message.InteractiveMessage.IHeader): proto.Message.InteractiveMessage.Header;
-                public static encode(message: proto.Message.InteractiveMessage.IHeader, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.InteractiveMessage.Header;
-                public static fromObject(object: { [k: string]: any }): proto.Message.InteractiveMessage.Header;
-                public static toObject(message: proto.Message.InteractiveMessage.Header, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.InteractiveMessage.IHeader, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.InteractiveMessage.Header;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -5911,16 +5314,13 @@ export namespace proto {
             }
 
             class NativeFlowMessage implements INativeFlowMessage {
-                constructor(properties?: proto.Message.InteractiveMessage.INativeFlowMessage);
+                constructor(p?: proto.Message.InteractiveMessage.INativeFlowMessage);
                 public buttons: proto.Message.InteractiveMessage.NativeFlowMessage.INativeFlowButton[];
                 public messageParamsJson: string;
                 public messageVersion: number;
                 public static create(properties?: proto.Message.InteractiveMessage.INativeFlowMessage): proto.Message.InteractiveMessage.NativeFlowMessage;
-                public static encode(message: proto.Message.InteractiveMessage.INativeFlowMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.InteractiveMessage.NativeFlowMessage;
-                public static fromObject(object: { [k: string]: any }): proto.Message.InteractiveMessage.NativeFlowMessage;
-                public static toObject(message: proto.Message.InteractiveMessage.NativeFlowMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.InteractiveMessage.INativeFlowMessage, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.InteractiveMessage.NativeFlowMessage;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -5932,15 +5332,12 @@ export namespace proto {
                 }
 
                 class NativeFlowButton implements INativeFlowButton {
-                    constructor(properties?: proto.Message.InteractiveMessage.NativeFlowMessage.INativeFlowButton);
+                    constructor(p?: proto.Message.InteractiveMessage.NativeFlowMessage.INativeFlowButton);
                     public name: string;
                     public buttonParamsJson: string;
                     public static create(properties?: proto.Message.InteractiveMessage.NativeFlowMessage.INativeFlowButton): proto.Message.InteractiveMessage.NativeFlowMessage.NativeFlowButton;
-                    public static encode(message: proto.Message.InteractiveMessage.NativeFlowMessage.INativeFlowButton, writer?: $protobuf.Writer): $protobuf.Writer;
-                    public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.InteractiveMessage.NativeFlowMessage.NativeFlowButton;
-                    public static fromObject(object: { [k: string]: any }): proto.Message.InteractiveMessage.NativeFlowMessage.NativeFlowButton;
-                    public static toObject(message: proto.Message.InteractiveMessage.NativeFlowMessage.NativeFlowButton, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                    public toJSON(): { [k: string]: any };
+                    public static encode(m: proto.Message.InteractiveMessage.NativeFlowMessage.INativeFlowButton, w?: $protobuf.Writer): $protobuf.Writer;
+                    public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.InteractiveMessage.NativeFlowMessage.NativeFlowButton;
                     public static getTypeUrl(typeUrlPrefix?: string): string;
                 }
             }
@@ -5952,16 +5349,13 @@ export namespace proto {
             }
 
             class ShopMessage implements IShopMessage {
-                constructor(properties?: proto.Message.InteractiveMessage.IShopMessage);
+                constructor(p?: proto.Message.InteractiveMessage.IShopMessage);
                 public id: string;
                 public surface: proto.Message.InteractiveMessage.ShopMessage.Surface;
                 public messageVersion: number;
                 public static create(properties?: proto.Message.InteractiveMessage.IShopMessage): proto.Message.InteractiveMessage.ShopMessage;
-                public static encode(message: proto.Message.InteractiveMessage.IShopMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.InteractiveMessage.ShopMessage;
-                public static fromObject(object: { [k: string]: any }): proto.Message.InteractiveMessage.ShopMessage;
-                public static toObject(message: proto.Message.InteractiveMessage.ShopMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.InteractiveMessage.IShopMessage, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.InteractiveMessage.ShopMessage;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -5983,17 +5377,14 @@ export namespace proto {
         }
 
         class InteractiveResponseMessage implements IInteractiveResponseMessage {
-            constructor(properties?: proto.Message.IInteractiveResponseMessage);
+            constructor(p?: proto.Message.IInteractiveResponseMessage);
             public body?: (proto.Message.InteractiveResponseMessage.IBody|null);
             public contextInfo?: (proto.IContextInfo|null);
             public nativeFlowResponseMessage?: (proto.Message.InteractiveResponseMessage.INativeFlowResponseMessage|null);
             public interactiveResponseMessage?: "nativeFlowResponseMessage";
             public static create(properties?: proto.Message.IInteractiveResponseMessage): proto.Message.InteractiveResponseMessage;
-            public static encode(message: proto.Message.IInteractiveResponseMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.InteractiveResponseMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.InteractiveResponseMessage;
-            public static toObject(message: proto.Message.InteractiveResponseMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IInteractiveResponseMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.InteractiveResponseMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -6005,15 +5396,12 @@ export namespace proto {
             }
 
             class Body implements IBody {
-                constructor(properties?: proto.Message.InteractiveResponseMessage.IBody);
+                constructor(p?: proto.Message.InteractiveResponseMessage.IBody);
                 public text: string;
                 public format: proto.Message.InteractiveResponseMessage.Body.Format;
                 public static create(properties?: proto.Message.InteractiveResponseMessage.IBody): proto.Message.InteractiveResponseMessage.Body;
-                public static encode(message: proto.Message.InteractiveResponseMessage.IBody, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.InteractiveResponseMessage.Body;
-                public static fromObject(object: { [k: string]: any }): proto.Message.InteractiveResponseMessage.Body;
-                public static toObject(message: proto.Message.InteractiveResponseMessage.Body, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.InteractiveResponseMessage.IBody, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.InteractiveResponseMessage.Body;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -6032,16 +5420,13 @@ export namespace proto {
             }
 
             class NativeFlowResponseMessage implements INativeFlowResponseMessage {
-                constructor(properties?: proto.Message.InteractiveResponseMessage.INativeFlowResponseMessage);
+                constructor(p?: proto.Message.InteractiveResponseMessage.INativeFlowResponseMessage);
                 public name: string;
                 public paramsJson: string;
                 public version: number;
                 public static create(properties?: proto.Message.InteractiveResponseMessage.INativeFlowResponseMessage): proto.Message.InteractiveResponseMessage.NativeFlowResponseMessage;
-                public static encode(message: proto.Message.InteractiveResponseMessage.INativeFlowResponseMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.InteractiveResponseMessage.NativeFlowResponseMessage;
-                public static fromObject(object: { [k: string]: any }): proto.Message.InteractiveResponseMessage.NativeFlowResponseMessage;
-                public static toObject(message: proto.Message.InteractiveResponseMessage.NativeFlowResponseMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.InteractiveResponseMessage.INativeFlowResponseMessage, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.InteractiveResponseMessage.NativeFlowResponseMessage;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
         }
@@ -6060,7 +5445,7 @@ export namespace proto {
         }
 
         class InvoiceMessage implements IInvoiceMessage {
-            constructor(properties?: proto.Message.IInvoiceMessage);
+            constructor(p?: proto.Message.IInvoiceMessage);
             public note: string;
             public token: string;
             public attachmentType: proto.Message.InvoiceMessage.AttachmentType;
@@ -6072,11 +5457,8 @@ export namespace proto {
             public attachmentDirectPath: string;
             public attachmentJpegThumbnail: Uint8Array;
             public static create(properties?: proto.Message.IInvoiceMessage): proto.Message.InvoiceMessage;
-            public static encode(message: proto.Message.IInvoiceMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.InvoiceMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.InvoiceMessage;
-            public static toObject(message: proto.Message.InvoiceMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IInvoiceMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.InvoiceMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -6095,16 +5477,13 @@ export namespace proto {
         }
 
         class KeepInChatMessage implements IKeepInChatMessage {
-            constructor(properties?: proto.Message.IKeepInChatMessage);
+            constructor(p?: proto.Message.IKeepInChatMessage);
             public key?: (proto.IMessageKey|null);
             public keepType: proto.KeepType;
             public timestampMs: (number|Long);
             public static create(properties?: proto.Message.IKeepInChatMessage): proto.Message.KeepInChatMessage;
-            public static encode(message: proto.Message.IKeepInChatMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.KeepInChatMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.KeepInChatMessage;
-            public static toObject(message: proto.Message.KeepInChatMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IKeepInChatMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.KeepInChatMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -6115,16 +5494,13 @@ export namespace proto {
         }
 
         class LinkPreviewMetadata implements ILinkPreviewMetadata {
-            constructor(properties?: proto.Message.ILinkPreviewMetadata);
+            constructor(p?: proto.Message.ILinkPreviewMetadata);
             public paymentLinkMetadata?: (proto.Message.IPaymentLinkMetadata|null);
             public urlMetadata?: (proto.Message.IURLMetadata|null);
             public fbExperimentId: number;
             public static create(properties?: proto.Message.ILinkPreviewMetadata): proto.Message.LinkPreviewMetadata;
-            public static encode(message: proto.Message.ILinkPreviewMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.LinkPreviewMetadata;
-            public static fromObject(object: { [k: string]: any }): proto.Message.LinkPreviewMetadata;
-            public static toObject(message: proto.Message.LinkPreviewMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.ILinkPreviewMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.LinkPreviewMetadata;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -6140,7 +5516,7 @@ export namespace proto {
         }
 
         class ListMessage implements IListMessage {
-            constructor(properties?: proto.Message.IListMessage);
+            constructor(p?: proto.Message.IListMessage);
             public title: string;
             public description: string;
             public buttonText: string;
@@ -6150,11 +5526,8 @@ export namespace proto {
             public footerText: string;
             public contextInfo?: (proto.IContextInfo|null);
             public static create(properties?: proto.Message.IListMessage): proto.Message.ListMessage;
-            public static encode(message: proto.Message.IListMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ListMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.ListMessage;
-            public static toObject(message: proto.Message.ListMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IListMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ListMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -6171,14 +5544,11 @@ export namespace proto {
             }
 
             class Product implements IProduct {
-                constructor(properties?: proto.Message.ListMessage.IProduct);
+                constructor(p?: proto.Message.ListMessage.IProduct);
                 public productId: string;
                 public static create(properties?: proto.Message.ListMessage.IProduct): proto.Message.ListMessage.Product;
-                public static encode(message: proto.Message.ListMessage.IProduct, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ListMessage.Product;
-                public static fromObject(object: { [k: string]: any }): proto.Message.ListMessage.Product;
-                public static toObject(message: proto.Message.ListMessage.Product, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.ListMessage.IProduct, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ListMessage.Product;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -6188,15 +5558,12 @@ export namespace proto {
             }
 
             class ProductListHeaderImage implements IProductListHeaderImage {
-                constructor(properties?: proto.Message.ListMessage.IProductListHeaderImage);
+                constructor(p?: proto.Message.ListMessage.IProductListHeaderImage);
                 public productId: string;
                 public jpegThumbnail: Uint8Array;
                 public static create(properties?: proto.Message.ListMessage.IProductListHeaderImage): proto.Message.ListMessage.ProductListHeaderImage;
-                public static encode(message: proto.Message.ListMessage.IProductListHeaderImage, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ListMessage.ProductListHeaderImage;
-                public static fromObject(object: { [k: string]: any }): proto.Message.ListMessage.ProductListHeaderImage;
-                public static toObject(message: proto.Message.ListMessage.ProductListHeaderImage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.ListMessage.IProductListHeaderImage, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ListMessage.ProductListHeaderImage;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -6207,16 +5574,13 @@ export namespace proto {
             }
 
             class ProductListInfo implements IProductListInfo {
-                constructor(properties?: proto.Message.ListMessage.IProductListInfo);
+                constructor(p?: proto.Message.ListMessage.IProductListInfo);
                 public productSections: proto.Message.ListMessage.IProductSection[];
                 public headerImage?: (proto.Message.ListMessage.IProductListHeaderImage|null);
                 public businessOwnerJid: string;
                 public static create(properties?: proto.Message.ListMessage.IProductListInfo): proto.Message.ListMessage.ProductListInfo;
-                public static encode(message: proto.Message.ListMessage.IProductListInfo, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ListMessage.ProductListInfo;
-                public static fromObject(object: { [k: string]: any }): proto.Message.ListMessage.ProductListInfo;
-                public static toObject(message: proto.Message.ListMessage.ProductListInfo, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.ListMessage.IProductListInfo, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ListMessage.ProductListInfo;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -6226,15 +5590,12 @@ export namespace proto {
             }
 
             class ProductSection implements IProductSection {
-                constructor(properties?: proto.Message.ListMessage.IProductSection);
+                constructor(p?: proto.Message.ListMessage.IProductSection);
                 public title: string;
                 public products: proto.Message.ListMessage.IProduct[];
                 public static create(properties?: proto.Message.ListMessage.IProductSection): proto.Message.ListMessage.ProductSection;
-                public static encode(message: proto.Message.ListMessage.IProductSection, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ListMessage.ProductSection;
-                public static fromObject(object: { [k: string]: any }): proto.Message.ListMessage.ProductSection;
-                public static toObject(message: proto.Message.ListMessage.ProductSection, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.ListMessage.IProductSection, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ListMessage.ProductSection;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -6245,16 +5606,13 @@ export namespace proto {
             }
 
             class Row implements IRow {
-                constructor(properties?: proto.Message.ListMessage.IRow);
+                constructor(p?: proto.Message.ListMessage.IRow);
                 public title: string;
                 public description: string;
                 public rowId: string;
                 public static create(properties?: proto.Message.ListMessage.IRow): proto.Message.ListMessage.Row;
-                public static encode(message: proto.Message.ListMessage.IRow, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ListMessage.Row;
-                public static fromObject(object: { [k: string]: any }): proto.Message.ListMessage.Row;
-                public static toObject(message: proto.Message.ListMessage.Row, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.ListMessage.IRow, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ListMessage.Row;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -6264,15 +5622,12 @@ export namespace proto {
             }
 
             class Section implements ISection {
-                constructor(properties?: proto.Message.ListMessage.ISection);
+                constructor(p?: proto.Message.ListMessage.ISection);
                 public title: string;
                 public rows: proto.Message.ListMessage.IRow[];
                 public static create(properties?: proto.Message.ListMessage.ISection): proto.Message.ListMessage.Section;
-                public static encode(message: proto.Message.ListMessage.ISection, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ListMessage.Section;
-                public static fromObject(object: { [k: string]: any }): proto.Message.ListMessage.Section;
-                public static toObject(message: proto.Message.ListMessage.Section, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.ListMessage.ISection, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ListMessage.Section;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
         }
@@ -6286,18 +5641,15 @@ export namespace proto {
         }
 
         class ListResponseMessage implements IListResponseMessage {
-            constructor(properties?: proto.Message.IListResponseMessage);
+            constructor(p?: proto.Message.IListResponseMessage);
             public title: string;
             public listType: proto.Message.ListResponseMessage.ListType;
             public singleSelectReply?: (proto.Message.ListResponseMessage.ISingleSelectReply|null);
             public contextInfo?: (proto.IContextInfo|null);
             public description: string;
             public static create(properties?: proto.Message.IListResponseMessage): proto.Message.ListResponseMessage;
-            public static encode(message: proto.Message.IListResponseMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ListResponseMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.ListResponseMessage;
-            public static toObject(message: proto.Message.ListResponseMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IListResponseMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ListResponseMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -6313,14 +5665,11 @@ export namespace proto {
             }
 
             class SingleSelectReply implements ISingleSelectReply {
-                constructor(properties?: proto.Message.ListResponseMessage.ISingleSelectReply);
+                constructor(p?: proto.Message.ListResponseMessage.ISingleSelectReply);
                 public selectedRowId: string;
                 public static create(properties?: proto.Message.ListResponseMessage.ISingleSelectReply): proto.Message.ListResponseMessage.SingleSelectReply;
-                public static encode(message: proto.Message.ListResponseMessage.ISingleSelectReply, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ListResponseMessage.SingleSelectReply;
-                public static fromObject(object: { [k: string]: any }): proto.Message.ListResponseMessage.SingleSelectReply;
-                public static toObject(message: proto.Message.ListResponseMessage.SingleSelectReply, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.ListResponseMessage.ISingleSelectReply, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ListResponseMessage.SingleSelectReply;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
         }
@@ -6339,7 +5688,7 @@ export namespace proto {
         }
 
         class LiveLocationMessage implements ILiveLocationMessage {
-            constructor(properties?: proto.Message.ILiveLocationMessage);
+            constructor(p?: proto.Message.ILiveLocationMessage);
             public degreesLatitude: number;
             public degreesLongitude: number;
             public accuracyInMeters: number;
@@ -6351,11 +5700,8 @@ export namespace proto {
             public jpegThumbnail: Uint8Array;
             public contextInfo?: (proto.IContextInfo|null);
             public static create(properties?: proto.Message.ILiveLocationMessage): proto.Message.LiveLocationMessage;
-            public static encode(message: proto.Message.ILiveLocationMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.LiveLocationMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.LiveLocationMessage;
-            public static toObject(message: proto.Message.LiveLocationMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.ILiveLocationMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.LiveLocationMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -6375,7 +5721,7 @@ export namespace proto {
         }
 
         class LocationMessage implements ILocationMessage {
-            constructor(properties?: proto.Message.ILocationMessage);
+            constructor(p?: proto.Message.ILocationMessage);
             public degreesLatitude: number;
             public degreesLongitude: number;
             public name: string;
@@ -6389,11 +5735,8 @@ export namespace proto {
             public jpegThumbnail: Uint8Array;
             public contextInfo?: (proto.IContextInfo|null);
             public static create(properties?: proto.Message.ILocationMessage): proto.Message.LocationMessage;
-            public static encode(message: proto.Message.ILocationMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.LocationMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.LocationMessage;
-            public static toObject(message: proto.Message.LocationMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.ILocationMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.LocationMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -6408,7 +5751,7 @@ export namespace proto {
         }
 
         class MMSThumbnailMetadata implements IMMSThumbnailMetadata {
-            constructor(properties?: proto.Message.IMMSThumbnailMetadata);
+            constructor(p?: proto.Message.IMMSThumbnailMetadata);
             public thumbnailDirectPath: string;
             public thumbnailSha256: Uint8Array;
             public thumbnailEncSha256: Uint8Array;
@@ -6417,11 +5760,8 @@ export namespace proto {
             public thumbnailHeight: number;
             public thumbnailWidth: number;
             public static create(properties?: proto.Message.IMMSThumbnailMetadata): proto.Message.MMSThumbnailMetadata;
-            public static encode(message: proto.Message.IMMSThumbnailMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.MMSThumbnailMetadata;
-            public static fromObject(object: { [k: string]: any }): proto.Message.MMSThumbnailMetadata;
-            public static toObject(message: proto.Message.MMSThumbnailMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IMMSThumbnailMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.MMSThumbnailMetadata;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -6437,7 +5777,7 @@ export namespace proto {
         }
 
         class MessageHistoryBundle implements IMessageHistoryBundle {
-            constructor(properties?: proto.Message.IMessageHistoryBundle);
+            constructor(p?: proto.Message.IMessageHistoryBundle);
             public mimetype: string;
             public fileSha256: Uint8Array;
             public mediaKey: Uint8Array;
@@ -6447,11 +5787,8 @@ export namespace proto {
             public contextInfo?: (proto.IContextInfo|null);
             public messageHistoryMetadata?: (proto.Message.IMessageHistoryMetadata|null);
             public static create(properties?: proto.Message.IMessageHistoryBundle): proto.Message.MessageHistoryBundle;
-            public static encode(message: proto.Message.IMessageHistoryBundle, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.MessageHistoryBundle;
-            public static fromObject(object: { [k: string]: any }): proto.Message.MessageHistoryBundle;
-            public static toObject(message: proto.Message.MessageHistoryBundle, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IMessageHistoryBundle, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.MessageHistoryBundle;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -6462,16 +5799,13 @@ export namespace proto {
         }
 
         class MessageHistoryMetadata implements IMessageHistoryMetadata {
-            constructor(properties?: proto.Message.IMessageHistoryMetadata);
+            constructor(p?: proto.Message.IMessageHistoryMetadata);
             public historyReceivers: string[];
             public firstMessageTimestamp: (number|Long);
             public messageCount: (number|Long);
             public static create(properties?: proto.Message.IMessageHistoryMetadata): proto.Message.MessageHistoryMetadata;
-            public static encode(message: proto.Message.IMessageHistoryMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.MessageHistoryMetadata;
-            public static fromObject(object: { [k: string]: any }): proto.Message.MessageHistoryMetadata;
-            public static toObject(message: proto.Message.MessageHistoryMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IMessageHistoryMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.MessageHistoryMetadata;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -6481,15 +5815,12 @@ export namespace proto {
         }
 
         class MessageHistoryNotice implements IMessageHistoryNotice {
-            constructor(properties?: proto.Message.IMessageHistoryNotice);
+            constructor(p?: proto.Message.IMessageHistoryNotice);
             public contextInfo?: (proto.IContextInfo|null);
             public messageHistoryMetadata?: (proto.Message.IMessageHistoryMetadata|null);
             public static create(properties?: proto.Message.IMessageHistoryNotice): proto.Message.MessageHistoryNotice;
-            public static encode(message: proto.Message.IMessageHistoryNotice, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.MessageHistoryNotice;
-            public static fromObject(object: { [k: string]: any }): proto.Message.MessageHistoryNotice;
-            public static toObject(message: proto.Message.MessageHistoryNotice, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IMessageHistoryNotice, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.MessageHistoryNotice;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -6503,7 +5834,7 @@ export namespace proto {
         }
 
         class NewsletterAdminInviteMessage implements INewsletterAdminInviteMessage {
-            constructor(properties?: proto.Message.INewsletterAdminInviteMessage);
+            constructor(p?: proto.Message.INewsletterAdminInviteMessage);
             public newsletterJid: string;
             public newsletterName: string;
             public jpegThumbnail: Uint8Array;
@@ -6511,11 +5842,8 @@ export namespace proto {
             public inviteExpiration: (number|Long);
             public contextInfo?: (proto.IContextInfo|null);
             public static create(properties?: proto.Message.INewsletterAdminInviteMessage): proto.Message.NewsletterAdminInviteMessage;
-            public static encode(message: proto.Message.INewsletterAdminInviteMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.NewsletterAdminInviteMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.NewsletterAdminInviteMessage;
-            public static toObject(message: proto.Message.NewsletterAdminInviteMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.INewsletterAdminInviteMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.NewsletterAdminInviteMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -6538,7 +5866,7 @@ export namespace proto {
         }
 
         class OrderMessage implements IOrderMessage {
-            constructor(properties?: proto.Message.IOrderMessage);
+            constructor(p?: proto.Message.IOrderMessage);
             public orderId: string;
             public thumbnail: Uint8Array;
             public itemCount: number;
@@ -6555,11 +5883,8 @@ export namespace proto {
             public orderRequestMessageId?: (proto.IMessageKey|null);
             public catalogType: string;
             public static create(properties?: proto.Message.IOrderMessage): proto.Message.OrderMessage;
-            public static encode(message: proto.Message.IOrderMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.OrderMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.OrderMessage;
-            public static toObject(message: proto.Message.OrderMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IOrderMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.OrderMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -6582,15 +5907,12 @@ export namespace proto {
         }
 
         class PaymentInviteMessage implements IPaymentInviteMessage {
-            constructor(properties?: proto.Message.IPaymentInviteMessage);
+            constructor(p?: proto.Message.IPaymentInviteMessage);
             public serviceType: proto.Message.PaymentInviteMessage.ServiceType;
             public expiryTimestamp: (number|Long);
             public static create(properties?: proto.Message.IPaymentInviteMessage): proto.Message.PaymentInviteMessage;
-            public static encode(message: proto.Message.IPaymentInviteMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PaymentInviteMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.PaymentInviteMessage;
-            public static toObject(message: proto.Message.PaymentInviteMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IPaymentInviteMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PaymentInviteMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -6610,15 +5932,12 @@ export namespace proto {
         }
 
         class PaymentLinkMetadata implements IPaymentLinkMetadata {
-            constructor(properties?: proto.Message.IPaymentLinkMetadata);
+            constructor(p?: proto.Message.IPaymentLinkMetadata);
             public button?: (proto.Message.PaymentLinkMetadata.IPaymentLinkButton|null);
             public header?: (proto.Message.PaymentLinkMetadata.IPaymentLinkHeader|null);
             public static create(properties?: proto.Message.IPaymentLinkMetadata): proto.Message.PaymentLinkMetadata;
-            public static encode(message: proto.Message.IPaymentLinkMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PaymentLinkMetadata;
-            public static fromObject(object: { [k: string]: any }): proto.Message.PaymentLinkMetadata;
-            public static toObject(message: proto.Message.PaymentLinkMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IPaymentLinkMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PaymentLinkMetadata;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -6629,14 +5948,11 @@ export namespace proto {
             }
 
             class PaymentLinkButton implements IPaymentLinkButton {
-                constructor(properties?: proto.Message.PaymentLinkMetadata.IPaymentLinkButton);
+                constructor(p?: proto.Message.PaymentLinkMetadata.IPaymentLinkButton);
                 public displayText: string;
                 public static create(properties?: proto.Message.PaymentLinkMetadata.IPaymentLinkButton): proto.Message.PaymentLinkMetadata.PaymentLinkButton;
-                public static encode(message: proto.Message.PaymentLinkMetadata.IPaymentLinkButton, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PaymentLinkMetadata.PaymentLinkButton;
-                public static fromObject(object: { [k: string]: any }): proto.Message.PaymentLinkMetadata.PaymentLinkButton;
-                public static toObject(message: proto.Message.PaymentLinkMetadata.PaymentLinkButton, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.PaymentLinkMetadata.IPaymentLinkButton, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PaymentLinkMetadata.PaymentLinkButton;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -6645,14 +5961,11 @@ export namespace proto {
             }
 
             class PaymentLinkHeader implements IPaymentLinkHeader {
-                constructor(properties?: proto.Message.PaymentLinkMetadata.IPaymentLinkHeader);
+                constructor(p?: proto.Message.PaymentLinkMetadata.IPaymentLinkHeader);
                 public headerType: proto.Message.PaymentLinkMetadata.PaymentLinkHeader.PaymentLinkHeaderType;
                 public static create(properties?: proto.Message.PaymentLinkMetadata.IPaymentLinkHeader): proto.Message.PaymentLinkMetadata.PaymentLinkHeader;
-                public static encode(message: proto.Message.PaymentLinkMetadata.IPaymentLinkHeader, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PaymentLinkMetadata.PaymentLinkHeader;
-                public static fromObject(object: { [k: string]: any }): proto.Message.PaymentLinkMetadata.PaymentLinkHeader;
-                public static toObject(message: proto.Message.PaymentLinkMetadata.PaymentLinkHeader, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.PaymentLinkMetadata.IPaymentLinkHeader, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PaymentLinkMetadata.PaymentLinkHeader;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -6676,7 +5989,7 @@ export namespace proto {
         }
 
         class PeerDataOperationRequestMessage implements IPeerDataOperationRequestMessage {
-            constructor(properties?: proto.Message.IPeerDataOperationRequestMessage);
+            constructor(p?: proto.Message.IPeerDataOperationRequestMessage);
             public peerDataOperationRequestType: proto.Message.PeerDataOperationRequestType;
             public requestStickerReupload: proto.Message.PeerDataOperationRequestMessage.IRequestStickerReupload[];
             public requestUrlPreview: proto.Message.PeerDataOperationRequestMessage.IRequestUrlPreview[];
@@ -6685,11 +5998,8 @@ export namespace proto {
             public fullHistorySyncOnDemandRequest?: (proto.Message.PeerDataOperationRequestMessage.IFullHistorySyncOnDemandRequest|null);
             public syncdCollectionFatalRecoveryRequest?: (proto.Message.PeerDataOperationRequestMessage.ISyncDCollectionFatalRecoveryRequest|null);
             public static create(properties?: proto.Message.IPeerDataOperationRequestMessage): proto.Message.PeerDataOperationRequestMessage;
-            public static encode(message: proto.Message.IPeerDataOperationRequestMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PeerDataOperationRequestMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.PeerDataOperationRequestMessage;
-            public static toObject(message: proto.Message.PeerDataOperationRequestMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IPeerDataOperationRequestMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PeerDataOperationRequestMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -6701,15 +6011,12 @@ export namespace proto {
             }
 
             class FullHistorySyncOnDemandRequest implements IFullHistorySyncOnDemandRequest {
-                constructor(properties?: proto.Message.PeerDataOperationRequestMessage.IFullHistorySyncOnDemandRequest);
+                constructor(p?: proto.Message.PeerDataOperationRequestMessage.IFullHistorySyncOnDemandRequest);
                 public requestMetadata?: (proto.Message.IFullHistorySyncOnDemandRequestMetadata|null);
                 public historySyncConfig?: (proto.DeviceProps.IHistorySyncConfig|null);
                 public static create(properties?: proto.Message.PeerDataOperationRequestMessage.IFullHistorySyncOnDemandRequest): proto.Message.PeerDataOperationRequestMessage.FullHistorySyncOnDemandRequest;
-                public static encode(message: proto.Message.PeerDataOperationRequestMessage.IFullHistorySyncOnDemandRequest, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PeerDataOperationRequestMessage.FullHistorySyncOnDemandRequest;
-                public static fromObject(object: { [k: string]: any }): proto.Message.PeerDataOperationRequestMessage.FullHistorySyncOnDemandRequest;
-                public static toObject(message: proto.Message.PeerDataOperationRequestMessage.FullHistorySyncOnDemandRequest, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.PeerDataOperationRequestMessage.IFullHistorySyncOnDemandRequest, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PeerDataOperationRequestMessage.FullHistorySyncOnDemandRequest;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -6723,7 +6030,7 @@ export namespace proto {
             }
 
             class HistorySyncOnDemandRequest implements IHistorySyncOnDemandRequest {
-                constructor(properties?: proto.Message.PeerDataOperationRequestMessage.IHistorySyncOnDemandRequest);
+                constructor(p?: proto.Message.PeerDataOperationRequestMessage.IHistorySyncOnDemandRequest);
                 public chatJid: string;
                 public oldestMsgId: string;
                 public oldestMsgFromMe: boolean;
@@ -6731,11 +6038,8 @@ export namespace proto {
                 public oldestMsgTimestampMs: (number|Long);
                 public accountLid: string;
                 public static create(properties?: proto.Message.PeerDataOperationRequestMessage.IHistorySyncOnDemandRequest): proto.Message.PeerDataOperationRequestMessage.HistorySyncOnDemandRequest;
-                public static encode(message: proto.Message.PeerDataOperationRequestMessage.IHistorySyncOnDemandRequest, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PeerDataOperationRequestMessage.HistorySyncOnDemandRequest;
-                public static fromObject(object: { [k: string]: any }): proto.Message.PeerDataOperationRequestMessage.HistorySyncOnDemandRequest;
-                public static toObject(message: proto.Message.PeerDataOperationRequestMessage.HistorySyncOnDemandRequest, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.PeerDataOperationRequestMessage.IHistorySyncOnDemandRequest, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PeerDataOperationRequestMessage.HistorySyncOnDemandRequest;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -6744,14 +6048,11 @@ export namespace proto {
             }
 
             class PlaceholderMessageResendRequest implements IPlaceholderMessageResendRequest {
-                constructor(properties?: proto.Message.PeerDataOperationRequestMessage.IPlaceholderMessageResendRequest);
+                constructor(p?: proto.Message.PeerDataOperationRequestMessage.IPlaceholderMessageResendRequest);
                 public messageKey?: (proto.IMessageKey|null);
                 public static create(properties?: proto.Message.PeerDataOperationRequestMessage.IPlaceholderMessageResendRequest): proto.Message.PeerDataOperationRequestMessage.PlaceholderMessageResendRequest;
-                public static encode(message: proto.Message.PeerDataOperationRequestMessage.IPlaceholderMessageResendRequest, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PeerDataOperationRequestMessage.PlaceholderMessageResendRequest;
-                public static fromObject(object: { [k: string]: any }): proto.Message.PeerDataOperationRequestMessage.PlaceholderMessageResendRequest;
-                public static toObject(message: proto.Message.PeerDataOperationRequestMessage.PlaceholderMessageResendRequest, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.PeerDataOperationRequestMessage.IPlaceholderMessageResendRequest, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PeerDataOperationRequestMessage.PlaceholderMessageResendRequest;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -6760,14 +6061,11 @@ export namespace proto {
             }
 
             class RequestStickerReupload implements IRequestStickerReupload {
-                constructor(properties?: proto.Message.PeerDataOperationRequestMessage.IRequestStickerReupload);
+                constructor(p?: proto.Message.PeerDataOperationRequestMessage.IRequestStickerReupload);
                 public fileSha256: string;
                 public static create(properties?: proto.Message.PeerDataOperationRequestMessage.IRequestStickerReupload): proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload;
-                public static encode(message: proto.Message.PeerDataOperationRequestMessage.IRequestStickerReupload, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload;
-                public static fromObject(object: { [k: string]: any }): proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload;
-                public static toObject(message: proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.PeerDataOperationRequestMessage.IRequestStickerReupload, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PeerDataOperationRequestMessage.RequestStickerReupload;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -6777,15 +6075,12 @@ export namespace proto {
             }
 
             class RequestUrlPreview implements IRequestUrlPreview {
-                constructor(properties?: proto.Message.PeerDataOperationRequestMessage.IRequestUrlPreview);
+                constructor(p?: proto.Message.PeerDataOperationRequestMessage.IRequestUrlPreview);
                 public url: string;
                 public includeHqThumbnail: boolean;
                 public static create(properties?: proto.Message.PeerDataOperationRequestMessage.IRequestUrlPreview): proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview;
-                public static encode(message: proto.Message.PeerDataOperationRequestMessage.IRequestUrlPreview, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview;
-                public static fromObject(object: { [k: string]: any }): proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview;
-                public static toObject(message: proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.PeerDataOperationRequestMessage.IRequestUrlPreview, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PeerDataOperationRequestMessage.RequestUrlPreview;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -6795,15 +6090,12 @@ export namespace proto {
             }
 
             class SyncDCollectionFatalRecoveryRequest implements ISyncDCollectionFatalRecoveryRequest {
-                constructor(properties?: proto.Message.PeerDataOperationRequestMessage.ISyncDCollectionFatalRecoveryRequest);
+                constructor(p?: proto.Message.PeerDataOperationRequestMessage.ISyncDCollectionFatalRecoveryRequest);
                 public collectionName: string;
                 public timestamp: (number|Long);
                 public static create(properties?: proto.Message.PeerDataOperationRequestMessage.ISyncDCollectionFatalRecoveryRequest): proto.Message.PeerDataOperationRequestMessage.SyncDCollectionFatalRecoveryRequest;
-                public static encode(message: proto.Message.PeerDataOperationRequestMessage.ISyncDCollectionFatalRecoveryRequest, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PeerDataOperationRequestMessage.SyncDCollectionFatalRecoveryRequest;
-                public static fromObject(object: { [k: string]: any }): proto.Message.PeerDataOperationRequestMessage.SyncDCollectionFatalRecoveryRequest;
-                public static toObject(message: proto.Message.PeerDataOperationRequestMessage.SyncDCollectionFatalRecoveryRequest, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.PeerDataOperationRequestMessage.ISyncDCollectionFatalRecoveryRequest, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PeerDataOperationRequestMessage.SyncDCollectionFatalRecoveryRequest;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
         }
@@ -6815,16 +6107,13 @@ export namespace proto {
         }
 
         class PeerDataOperationRequestResponseMessage implements IPeerDataOperationRequestResponseMessage {
-            constructor(properties?: proto.Message.IPeerDataOperationRequestResponseMessage);
+            constructor(p?: proto.Message.IPeerDataOperationRequestResponseMessage);
             public peerDataOperationRequestType: proto.Message.PeerDataOperationRequestType;
             public stanzaId: string;
             public peerDataOperationResult: proto.Message.PeerDataOperationRequestResponseMessage.IPeerDataOperationResult[];
             public static create(properties?: proto.Message.IPeerDataOperationRequestResponseMessage): proto.Message.PeerDataOperationRequestResponseMessage;
-            public static encode(message: proto.Message.IPeerDataOperationRequestResponseMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PeerDataOperationRequestResponseMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.PeerDataOperationRequestResponseMessage;
-            public static toObject(message: proto.Message.PeerDataOperationRequestResponseMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IPeerDataOperationRequestResponseMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PeerDataOperationRequestResponseMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -6842,7 +6131,7 @@ export namespace proto {
             }
 
             class PeerDataOperationResult implements IPeerDataOperationResult {
-                constructor(properties?: proto.Message.PeerDataOperationRequestResponseMessage.IPeerDataOperationResult);
+                constructor(p?: proto.Message.PeerDataOperationRequestResponseMessage.IPeerDataOperationResult);
                 public mediaUploadResult: proto.MediaRetryNotification.ResultType;
                 public stickerMessage?: (proto.Message.IStickerMessage|null);
                 public linkPreviewResponse?: (proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ILinkPreviewResponse|null);
@@ -6852,11 +6141,8 @@ export namespace proto {
                 public companionMetaNonceFetchRequestResponse?: (proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ICompanionMetaNonceFetchResponse|null);
                 public syncdSnapshotFatalRecoveryResponse?: (proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ISyncDSnapshotFatalRecoveryResponse|null);
                 public static create(properties?: proto.Message.PeerDataOperationRequestResponseMessage.IPeerDataOperationResult): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult;
-                public static encode(message: proto.Message.PeerDataOperationRequestResponseMessage.IPeerDataOperationResult, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult;
-                public static fromObject(object: { [k: string]: any }): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult;
-                public static toObject(message: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.PeerDataOperationRequestResponseMessage.IPeerDataOperationResult, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -6867,14 +6153,11 @@ export namespace proto {
                 }
 
                 class CompanionMetaNonceFetchResponse implements ICompanionMetaNonceFetchResponse {
-                    constructor(properties?: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ICompanionMetaNonceFetchResponse);
+                    constructor(p?: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ICompanionMetaNonceFetchResponse);
                     public nonce: string;
                     public static create(properties?: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ICompanionMetaNonceFetchResponse): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.CompanionMetaNonceFetchResponse;
-                    public static encode(message: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ICompanionMetaNonceFetchResponse, writer?: $protobuf.Writer): $protobuf.Writer;
-                    public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.CompanionMetaNonceFetchResponse;
-                    public static fromObject(object: { [k: string]: any }): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.CompanionMetaNonceFetchResponse;
-                    public static toObject(message: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.CompanionMetaNonceFetchResponse, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                    public toJSON(): { [k: string]: any };
+                    public static encode(m: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ICompanionMetaNonceFetchResponse, w?: $protobuf.Writer): $protobuf.Writer;
+                    public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.CompanionMetaNonceFetchResponse;
                     public static getTypeUrl(typeUrlPrefix?: string): string;
                 }
 
@@ -6884,15 +6167,12 @@ export namespace proto {
                 }
 
                 class FullHistorySyncOnDemandRequestResponse implements IFullHistorySyncOnDemandRequestResponse {
-                    constructor(properties?: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.IFullHistorySyncOnDemandRequestResponse);
+                    constructor(p?: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.IFullHistorySyncOnDemandRequestResponse);
                     public requestMetadata?: (proto.Message.IFullHistorySyncOnDemandRequestMetadata|null);
                     public responseCode: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.FullHistorySyncOnDemandResponseCode;
                     public static create(properties?: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.IFullHistorySyncOnDemandRequestResponse): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.FullHistorySyncOnDemandRequestResponse;
-                    public static encode(message: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.IFullHistorySyncOnDemandRequestResponse, writer?: $protobuf.Writer): $protobuf.Writer;
-                    public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.FullHistorySyncOnDemandRequestResponse;
-                    public static fromObject(object: { [k: string]: any }): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.FullHistorySyncOnDemandRequestResponse;
-                    public static toObject(message: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.FullHistorySyncOnDemandRequestResponse, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                    public toJSON(): { [k: string]: any };
+                    public static encode(m: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.IFullHistorySyncOnDemandRequestResponse, w?: $protobuf.Writer): $protobuf.Writer;
+                    public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.FullHistorySyncOnDemandRequestResponse;
                     public static getTypeUrl(typeUrlPrefix?: string): string;
                 }
 
@@ -6917,7 +6197,7 @@ export namespace proto {
                 }
 
                 class LinkPreviewResponse implements ILinkPreviewResponse {
-                    constructor(properties?: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ILinkPreviewResponse);
+                    constructor(p?: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ILinkPreviewResponse);
                     public url: string;
                     public title: string;
                     public description: string;
@@ -6926,11 +6206,8 @@ export namespace proto {
                     public previewType: string;
                     public hqThumbnail?: (proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse.ILinkPreviewHighQualityThumbnail|null);
                     public static create(properties?: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ILinkPreviewResponse): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse;
-                    public static encode(message: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ILinkPreviewResponse, writer?: $protobuf.Writer): $protobuf.Writer;
-                    public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse;
-                    public static fromObject(object: { [k: string]: any }): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse;
-                    public static toObject(message: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                    public toJSON(): { [k: string]: any };
+                    public static encode(m: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ILinkPreviewResponse, w?: $protobuf.Writer): $protobuf.Writer;
+                    public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse;
                     public static getTypeUrl(typeUrlPrefix?: string): string;
                 }
 
@@ -6947,7 +6224,7 @@ export namespace proto {
                     }
 
                     class LinkPreviewHighQualityThumbnail implements ILinkPreviewHighQualityThumbnail {
-                        constructor(properties?: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse.ILinkPreviewHighQualityThumbnail);
+                        constructor(p?: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse.ILinkPreviewHighQualityThumbnail);
                         public directPath: string;
                         public thumbHash: string;
                         public encThumbHash: string;
@@ -6956,11 +6233,8 @@ export namespace proto {
                         public thumbWidth: number;
                         public thumbHeight: number;
                         public static create(properties?: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse.ILinkPreviewHighQualityThumbnail): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse.LinkPreviewHighQualityThumbnail;
-                        public static encode(message: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse.ILinkPreviewHighQualityThumbnail, writer?: $protobuf.Writer): $protobuf.Writer;
-                        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse.LinkPreviewHighQualityThumbnail;
-                        public static fromObject(object: { [k: string]: any }): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse.LinkPreviewHighQualityThumbnail;
-                        public static toObject(message: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse.LinkPreviewHighQualityThumbnail, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                        public toJSON(): { [k: string]: any };
+                        public static encode(m: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse.ILinkPreviewHighQualityThumbnail, w?: $protobuf.Writer): $protobuf.Writer;
+                        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.LinkPreviewResponse.LinkPreviewHighQualityThumbnail;
                         public static getTypeUrl(typeUrlPrefix?: string): string;
                     }
                 }
@@ -6970,14 +6244,11 @@ export namespace proto {
                 }
 
                 class PlaceholderMessageResendResponse implements IPlaceholderMessageResendResponse {
-                    constructor(properties?: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.IPlaceholderMessageResendResponse);
+                    constructor(p?: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.IPlaceholderMessageResendResponse);
                     public webMessageInfoBytes: Uint8Array;
                     public static create(properties?: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.IPlaceholderMessageResendResponse): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.PlaceholderMessageResendResponse;
-                    public static encode(message: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.IPlaceholderMessageResendResponse, writer?: $protobuf.Writer): $protobuf.Writer;
-                    public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.PlaceholderMessageResendResponse;
-                    public static fromObject(object: { [k: string]: any }): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.PlaceholderMessageResendResponse;
-                    public static toObject(message: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.PlaceholderMessageResendResponse, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                    public toJSON(): { [k: string]: any };
+                    public static encode(m: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.IPlaceholderMessageResendResponse, w?: $protobuf.Writer): $protobuf.Writer;
+                    public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.PlaceholderMessageResendResponse;
                     public static getTypeUrl(typeUrlPrefix?: string): string;
                 }
 
@@ -6987,15 +6258,12 @@ export namespace proto {
                 }
 
                 class SyncDSnapshotFatalRecoveryResponse implements ISyncDSnapshotFatalRecoveryResponse {
-                    constructor(properties?: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ISyncDSnapshotFatalRecoveryResponse);
+                    constructor(p?: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ISyncDSnapshotFatalRecoveryResponse);
                     public collectionSnapshot: Uint8Array;
                     public isCompressed: boolean;
                     public static create(properties?: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ISyncDSnapshotFatalRecoveryResponse): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.SyncDSnapshotFatalRecoveryResponse;
-                    public static encode(message: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ISyncDSnapshotFatalRecoveryResponse, writer?: $protobuf.Writer): $protobuf.Writer;
-                    public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.SyncDSnapshotFatalRecoveryResponse;
-                    public static fromObject(object: { [k: string]: any }): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.SyncDSnapshotFatalRecoveryResponse;
-                    public static toObject(message: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.SyncDSnapshotFatalRecoveryResponse, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                    public toJSON(): { [k: string]: any };
+                    public static encode(m: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.ISyncDSnapshotFatalRecoveryResponse, w?: $protobuf.Writer): $protobuf.Writer;
+                    public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.SyncDSnapshotFatalRecoveryResponse;
                     public static getTypeUrl(typeUrlPrefix?: string): string;
                 }
 
@@ -7005,15 +6273,12 @@ export namespace proto {
                 }
 
                 class WaffleNonceFetchResponse implements IWaffleNonceFetchResponse {
-                    constructor(properties?: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.IWaffleNonceFetchResponse);
+                    constructor(p?: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.IWaffleNonceFetchResponse);
                     public nonce: string;
                     public waEntFbid: string;
                     public static create(properties?: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.IWaffleNonceFetchResponse): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.WaffleNonceFetchResponse;
-                    public static encode(message: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.IWaffleNonceFetchResponse, writer?: $protobuf.Writer): $protobuf.Writer;
-                    public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.WaffleNonceFetchResponse;
-                    public static fromObject(object: { [k: string]: any }): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.WaffleNonceFetchResponse;
-                    public static toObject(message: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.WaffleNonceFetchResponse, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                    public toJSON(): { [k: string]: any };
+                    public static encode(m: proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.IWaffleNonceFetchResponse, w?: $protobuf.Writer): $protobuf.Writer;
+                    public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PeerDataOperationRequestResponseMessage.PeerDataOperationResult.WaffleNonceFetchResponse;
                     public static getTypeUrl(typeUrlPrefix?: string): string;
                 }
             }
@@ -7038,16 +6303,13 @@ export namespace proto {
         }
 
         class PinInChatMessage implements IPinInChatMessage {
-            constructor(properties?: proto.Message.IPinInChatMessage);
+            constructor(p?: proto.Message.IPinInChatMessage);
             public key?: (proto.IMessageKey|null);
             public type: proto.Message.PinInChatMessage.Type;
             public senderTimestampMs: (number|Long);
             public static create(properties?: proto.Message.IPinInChatMessage): proto.Message.PinInChatMessage;
-            public static encode(message: proto.Message.IPinInChatMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PinInChatMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.PinInChatMessage;
-            public static toObject(message: proto.Message.PinInChatMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IPinInChatMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PinInChatMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7065,14 +6327,11 @@ export namespace proto {
         }
 
         class PlaceholderMessage implements IPlaceholderMessage {
-            constructor(properties?: proto.Message.IPlaceholderMessage);
+            constructor(p?: proto.Message.IPlaceholderMessage);
             public type: proto.Message.PlaceholderMessage.PlaceholderType;
             public static create(properties?: proto.Message.IPlaceholderMessage): proto.Message.PlaceholderMessage;
-            public static encode(message: proto.Message.IPlaceholderMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PlaceholderMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.PlaceholderMessage;
-            public static toObject(message: proto.Message.PlaceholderMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IPlaceholderMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PlaceholderMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7101,7 +6360,7 @@ export namespace proto {
         }
 
         class PollCreationMessage implements IPollCreationMessage {
-            constructor(properties?: proto.Message.IPollCreationMessage);
+            constructor(p?: proto.Message.IPollCreationMessage);
             public encKey: Uint8Array;
             public name: string;
             public options: proto.Message.PollCreationMessage.IOption[];
@@ -7111,11 +6370,8 @@ export namespace proto {
             public pollType: proto.Message.PollCreationMessage.PollType;
             public correctAnswer?: (proto.Message.PollCreationMessage.IOption|null);
             public static create(properties?: proto.Message.IPollCreationMessage): proto.Message.PollCreationMessage;
-            public static encode(message: proto.Message.IPollCreationMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PollCreationMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.PollCreationMessage;
-            public static toObject(message: proto.Message.PollCreationMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IPollCreationMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PollCreationMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7127,15 +6383,12 @@ export namespace proto {
             }
 
             class Option implements IOption {
-                constructor(properties?: proto.Message.PollCreationMessage.IOption);
+                constructor(p?: proto.Message.PollCreationMessage.IOption);
                 public optionName: string;
                 public optionHash: string;
                 public static create(properties?: proto.Message.PollCreationMessage.IOption): proto.Message.PollCreationMessage.Option;
-                public static encode(message: proto.Message.PollCreationMessage.IOption, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PollCreationMessage.Option;
-                public static fromObject(object: { [k: string]: any }): proto.Message.PollCreationMessage.Option;
-                public static toObject(message: proto.Message.PollCreationMessage.Option, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.PollCreationMessage.IOption, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PollCreationMessage.Option;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -7151,15 +6404,12 @@ export namespace proto {
         }
 
         class PollEncValue implements IPollEncValue {
-            constructor(properties?: proto.Message.IPollEncValue);
+            constructor(p?: proto.Message.IPollEncValue);
             public encPayload: Uint8Array;
             public encIv: Uint8Array;
             public static create(properties?: proto.Message.IPollEncValue): proto.Message.PollEncValue;
-            public static encode(message: proto.Message.IPollEncValue, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PollEncValue;
-            public static fromObject(object: { [k: string]: any }): proto.Message.PollEncValue;
-            public static toObject(message: proto.Message.PollEncValue, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IPollEncValue, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PollEncValue;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7170,16 +6420,13 @@ export namespace proto {
         }
 
         class PollResultSnapshotMessage implements IPollResultSnapshotMessage {
-            constructor(properties?: proto.Message.IPollResultSnapshotMessage);
+            constructor(p?: proto.Message.IPollResultSnapshotMessage);
             public name: string;
             public pollVotes: proto.Message.PollResultSnapshotMessage.IPollVote[];
             public contextInfo?: (proto.IContextInfo|null);
             public static create(properties?: proto.Message.IPollResultSnapshotMessage): proto.Message.PollResultSnapshotMessage;
-            public static encode(message: proto.Message.IPollResultSnapshotMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PollResultSnapshotMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.PollResultSnapshotMessage;
-            public static toObject(message: proto.Message.PollResultSnapshotMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IPollResultSnapshotMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PollResultSnapshotMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7191,15 +6438,12 @@ export namespace proto {
             }
 
             class PollVote implements IPollVote {
-                constructor(properties?: proto.Message.PollResultSnapshotMessage.IPollVote);
+                constructor(p?: proto.Message.PollResultSnapshotMessage.IPollVote);
                 public optionName: string;
                 public optionVoteCount: (number|Long);
                 public static create(properties?: proto.Message.PollResultSnapshotMessage.IPollVote): proto.Message.PollResultSnapshotMessage.PollVote;
-                public static encode(message: proto.Message.PollResultSnapshotMessage.IPollVote, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PollResultSnapshotMessage.PollVote;
-                public static fromObject(object: { [k: string]: any }): proto.Message.PollResultSnapshotMessage.PollVote;
-                public static toObject(message: proto.Message.PollResultSnapshotMessage.PollVote, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.PollResultSnapshotMessage.IPollVote, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PollResultSnapshotMessage.PollVote;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
         }
@@ -7212,17 +6456,14 @@ export namespace proto {
         }
 
         class PollUpdateMessage implements IPollUpdateMessage {
-            constructor(properties?: proto.Message.IPollUpdateMessage);
+            constructor(p?: proto.Message.IPollUpdateMessage);
             public pollCreationMessageKey?: (proto.IMessageKey|null);
             public vote?: (proto.Message.IPollEncValue|null);
             public metadata?: (proto.Message.IPollUpdateMessageMetadata|null);
             public senderTimestampMs: (number|Long);
             public static create(properties?: proto.Message.IPollUpdateMessage): proto.Message.PollUpdateMessage;
-            public static encode(message: proto.Message.IPollUpdateMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PollUpdateMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.PollUpdateMessage;
-            public static toObject(message: proto.Message.PollUpdateMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IPollUpdateMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PollUpdateMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7230,13 +6471,10 @@ export namespace proto {
         }
 
         class PollUpdateMessageMetadata implements IPollUpdateMessageMetadata {
-            constructor(properties?: proto.Message.IPollUpdateMessageMetadata);
+            constructor(p?: proto.Message.IPollUpdateMessageMetadata);
             public static create(properties?: proto.Message.IPollUpdateMessageMetadata): proto.Message.PollUpdateMessageMetadata;
-            public static encode(message: proto.Message.IPollUpdateMessageMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PollUpdateMessageMetadata;
-            public static fromObject(object: { [k: string]: any }): proto.Message.PollUpdateMessageMetadata;
-            public static toObject(message: proto.Message.PollUpdateMessageMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IPollUpdateMessageMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PollUpdateMessageMetadata;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7245,14 +6483,11 @@ export namespace proto {
         }
 
         class PollVoteMessage implements IPollVoteMessage {
-            constructor(properties?: proto.Message.IPollVoteMessage);
+            constructor(p?: proto.Message.IPollVoteMessage);
             public selectedOptions: Uint8Array[];
             public static create(properties?: proto.Message.IPollVoteMessage): proto.Message.PollVoteMessage;
-            public static encode(message: proto.Message.IPollVoteMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.PollVoteMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.PollVoteMessage;
-            public static toObject(message: proto.Message.PollVoteMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IPollVoteMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.PollVoteMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7266,7 +6501,7 @@ export namespace proto {
         }
 
         class ProductMessage implements IProductMessage {
-            constructor(properties?: proto.Message.IProductMessage);
+            constructor(p?: proto.Message.IProductMessage);
             public product?: (proto.Message.ProductMessage.IProductSnapshot|null);
             public businessOwnerJid: string;
             public catalog?: (proto.Message.ProductMessage.ICatalogSnapshot|null);
@@ -7274,11 +6509,8 @@ export namespace proto {
             public footer: string;
             public contextInfo?: (proto.IContextInfo|null);
             public static create(properties?: proto.Message.IProductMessage): proto.Message.ProductMessage;
-            public static encode(message: proto.Message.IProductMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ProductMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.ProductMessage;
-            public static toObject(message: proto.Message.ProductMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IProductMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ProductMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7291,16 +6523,13 @@ export namespace proto {
             }
 
             class CatalogSnapshot implements ICatalogSnapshot {
-                constructor(properties?: proto.Message.ProductMessage.ICatalogSnapshot);
+                constructor(p?: proto.Message.ProductMessage.ICatalogSnapshot);
                 public catalogImage?: (proto.Message.IImageMessage|null);
                 public title: string;
                 public description: string;
                 public static create(properties?: proto.Message.ProductMessage.ICatalogSnapshot): proto.Message.ProductMessage.CatalogSnapshot;
-                public static encode(message: proto.Message.ProductMessage.ICatalogSnapshot, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ProductMessage.CatalogSnapshot;
-                public static fromObject(object: { [k: string]: any }): proto.Message.ProductMessage.CatalogSnapshot;
-                public static toObject(message: proto.Message.ProductMessage.CatalogSnapshot, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.ProductMessage.ICatalogSnapshot, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ProductMessage.CatalogSnapshot;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -7320,7 +6549,7 @@ export namespace proto {
             }
 
             class ProductSnapshot implements IProductSnapshot {
-                constructor(properties?: proto.Message.ProductMessage.IProductSnapshot);
+                constructor(p?: proto.Message.ProductMessage.IProductSnapshot);
                 public productImage?: (proto.Message.IImageMessage|null);
                 public productId: string;
                 public title: string;
@@ -7334,11 +6563,8 @@ export namespace proto {
                 public salePriceAmount1000: (number|Long);
                 public signedUrl: string;
                 public static create(properties?: proto.Message.ProductMessage.IProductSnapshot): proto.Message.ProductMessage.ProductSnapshot;
-                public static encode(message: proto.Message.ProductMessage.IProductSnapshot, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ProductMessage.ProductSnapshot;
-                public static fromObject(object: { [k: string]: any }): proto.Message.ProductMessage.ProductSnapshot;
-                public static toObject(message: proto.Message.ProductMessage.ProductSnapshot, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.ProductMessage.IProductSnapshot, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ProductMessage.ProductSnapshot;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
         }
@@ -7371,7 +6597,7 @@ export namespace proto {
         }
 
         class ProtocolMessage implements IProtocolMessage {
-            constructor(properties?: proto.Message.IProtocolMessage);
+            constructor(p?: proto.Message.IProtocolMessage);
             public key?: (proto.IMessageKey|null);
             public type: proto.Message.ProtocolMessage.Type;
             public ephemeralExpiration: number;
@@ -7397,11 +6623,8 @@ export namespace proto {
             public aiQueryFanout?: (proto.IAIQueryFanout|null);
             public memberLabel?: (proto.IMemberLabel|null);
             public static create(properties?: proto.Message.IProtocolMessage): proto.Message.ProtocolMessage;
-            public static encode(message: proto.Message.IProtocolMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ProtocolMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.ProtocolMessage;
-            public static toObject(message: proto.Message.ProtocolMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IProtocolMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ProtocolMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7445,17 +6668,14 @@ export namespace proto {
         }
 
         class ReactionMessage implements IReactionMessage {
-            constructor(properties?: proto.Message.IReactionMessage);
+            constructor(p?: proto.Message.IReactionMessage);
             public key?: (proto.IMessageKey|null);
             public text: string;
             public groupingKey: string;
             public senderTimestampMs: (number|Long);
             public static create(properties?: proto.Message.IReactionMessage): proto.Message.ReactionMessage;
-            public static encode(message: proto.Message.IReactionMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ReactionMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.ReactionMessage;
-            public static toObject(message: proto.Message.ReactionMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IReactionMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ReactionMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7470,7 +6690,7 @@ export namespace proto {
         }
 
         class RequestPaymentMessage implements IRequestPaymentMessage {
-            constructor(properties?: proto.Message.IRequestPaymentMessage);
+            constructor(p?: proto.Message.IRequestPaymentMessage);
             public noteMessage?: (proto.IMessage|null);
             public currencyCodeIso4217: string;
             public amount1000: (number|Long);
@@ -7479,11 +6699,8 @@ export namespace proto {
             public amount?: (proto.IMoney|null);
             public background?: (proto.IPaymentBackground|null);
             public static create(properties?: proto.Message.IRequestPaymentMessage): proto.Message.RequestPaymentMessage;
-            public static encode(message: proto.Message.IRequestPaymentMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.RequestPaymentMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.RequestPaymentMessage;
-            public static toObject(message: proto.Message.RequestPaymentMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IRequestPaymentMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.RequestPaymentMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7492,14 +6709,11 @@ export namespace proto {
         }
 
         class RequestPhoneNumberMessage implements IRequestPhoneNumberMessage {
-            constructor(properties?: proto.Message.IRequestPhoneNumberMessage);
+            constructor(p?: proto.Message.IRequestPhoneNumberMessage);
             public contextInfo?: (proto.IContextInfo|null);
             public static create(properties?: proto.Message.IRequestPhoneNumberMessage): proto.Message.RequestPhoneNumberMessage;
-            public static encode(message: proto.Message.IRequestPhoneNumberMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.RequestPhoneNumberMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.RequestPhoneNumberMessage;
-            public static toObject(message: proto.Message.RequestPhoneNumberMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IRequestPhoneNumberMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.RequestPhoneNumberMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7508,14 +6722,11 @@ export namespace proto {
         }
 
         class RequestWelcomeMessageMetadata implements IRequestWelcomeMessageMetadata {
-            constructor(properties?: proto.Message.IRequestWelcomeMessageMetadata);
+            constructor(p?: proto.Message.IRequestWelcomeMessageMetadata);
             public localChatState: proto.Message.RequestWelcomeMessageMetadata.LocalChatState;
             public static create(properties?: proto.Message.IRequestWelcomeMessageMetadata): proto.Message.RequestWelcomeMessageMetadata;
-            public static encode(message: proto.Message.IRequestWelcomeMessageMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.RequestWelcomeMessageMetadata;
-            public static fromObject(object: { [k: string]: any }): proto.Message.RequestWelcomeMessageMetadata;
-            public static toObject(message: proto.Message.RequestWelcomeMessageMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IRequestWelcomeMessageMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.RequestWelcomeMessageMetadata;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7534,16 +6745,13 @@ export namespace proto {
         }
 
         class ScheduledCallCreationMessage implements IScheduledCallCreationMessage {
-            constructor(properties?: proto.Message.IScheduledCallCreationMessage);
+            constructor(p?: proto.Message.IScheduledCallCreationMessage);
             public scheduledTimestampMs: (number|Long);
             public callType: proto.Message.ScheduledCallCreationMessage.CallType;
             public title: string;
             public static create(properties?: proto.Message.IScheduledCallCreationMessage): proto.Message.ScheduledCallCreationMessage;
-            public static encode(message: proto.Message.IScheduledCallCreationMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ScheduledCallCreationMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.ScheduledCallCreationMessage;
-            public static toObject(message: proto.Message.ScheduledCallCreationMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IScheduledCallCreationMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ScheduledCallCreationMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7562,15 +6770,12 @@ export namespace proto {
         }
 
         class ScheduledCallEditMessage implements IScheduledCallEditMessage {
-            constructor(properties?: proto.Message.IScheduledCallEditMessage);
+            constructor(p?: proto.Message.IScheduledCallEditMessage);
             public key?: (proto.IMessageKey|null);
             public editType: proto.Message.ScheduledCallEditMessage.EditType;
             public static create(properties?: proto.Message.IScheduledCallEditMessage): proto.Message.ScheduledCallEditMessage;
-            public static encode(message: proto.Message.IScheduledCallEditMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.ScheduledCallEditMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.ScheduledCallEditMessage;
-            public static toObject(message: proto.Message.ScheduledCallEditMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IScheduledCallEditMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.ScheduledCallEditMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7590,17 +6795,14 @@ export namespace proto {
         }
 
         class SecretEncryptedMessage implements ISecretEncryptedMessage {
-            constructor(properties?: proto.Message.ISecretEncryptedMessage);
+            constructor(p?: proto.Message.ISecretEncryptedMessage);
             public targetMessageKey?: (proto.IMessageKey|null);
             public encPayload: Uint8Array;
             public encIv: Uint8Array;
             public secretEncType: proto.Message.SecretEncryptedMessage.SecretEncType;
             public static create(properties?: proto.Message.ISecretEncryptedMessage): proto.Message.SecretEncryptedMessage;
-            public static encode(message: proto.Message.ISecretEncryptedMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.SecretEncryptedMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.SecretEncryptedMessage;
-            public static toObject(message: proto.Message.SecretEncryptedMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.ISecretEncryptedMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.SecretEncryptedMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7620,16 +6822,13 @@ export namespace proto {
         }
 
         class SendPaymentMessage implements ISendPaymentMessage {
-            constructor(properties?: proto.Message.ISendPaymentMessage);
+            constructor(p?: proto.Message.ISendPaymentMessage);
             public noteMessage?: (proto.IMessage|null);
             public requestMessageKey?: (proto.IMessageKey|null);
             public background?: (proto.IPaymentBackground|null);
             public static create(properties?: proto.Message.ISendPaymentMessage): proto.Message.SendPaymentMessage;
-            public static encode(message: proto.Message.ISendPaymentMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.SendPaymentMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.SendPaymentMessage;
-            public static toObject(message: proto.Message.SendPaymentMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.ISendPaymentMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.SendPaymentMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7639,15 +6838,12 @@ export namespace proto {
         }
 
         class SenderKeyDistributionMessage implements ISenderKeyDistributionMessage {
-            constructor(properties?: proto.Message.ISenderKeyDistributionMessage);
+            constructor(p?: proto.Message.ISenderKeyDistributionMessage);
             public groupId: string;
             public axolotlSenderKeyDistributionMessage: Uint8Array;
             public static create(properties?: proto.Message.ISenderKeyDistributionMessage): proto.Message.SenderKeyDistributionMessage;
-            public static encode(message: proto.Message.ISenderKeyDistributionMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.SenderKeyDistributionMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.SenderKeyDistributionMessage;
-            public static toObject(message: proto.Message.SenderKeyDistributionMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.ISenderKeyDistributionMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.SenderKeyDistributionMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7658,16 +6854,13 @@ export namespace proto {
         }
 
         class StatusNotificationMessage implements IStatusNotificationMessage {
-            constructor(properties?: proto.Message.IStatusNotificationMessage);
+            constructor(p?: proto.Message.IStatusNotificationMessage);
             public responseMessageKey?: (proto.IMessageKey|null);
             public originalMessageKey?: (proto.IMessageKey|null);
             public type: proto.Message.StatusNotificationMessage.StatusNotificationType;
             public static create(properties?: proto.Message.IStatusNotificationMessage): proto.Message.StatusNotificationMessage;
-            public static encode(message: proto.Message.IStatusNotificationMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.StatusNotificationMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.StatusNotificationMessage;
-            public static toObject(message: proto.Message.StatusNotificationMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IStatusNotificationMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.StatusNotificationMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7704,7 +6897,7 @@ export namespace proto {
         }
 
         class StickerMessage implements IStickerMessage {
-            constructor(properties?: proto.Message.IStickerMessage);
+            constructor(p?: proto.Message.IStickerMessage);
             public url: string;
             public fileSha256: Uint8Array;
             public fileEncSha256: Uint8Array;
@@ -7726,11 +6919,8 @@ export namespace proto {
             public isLottie: boolean;
             public accessibilityLabel: string;
             public static create(properties?: proto.Message.IStickerMessage): proto.Message.StickerMessage;
-            public static encode(message: proto.Message.IStickerMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.StickerMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.StickerMessage;
-            public static toObject(message: proto.Message.StickerMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IStickerMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.StickerMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7760,7 +6950,7 @@ export namespace proto {
         }
 
         class StickerPackMessage implements IStickerPackMessage {
-            constructor(properties?: proto.Message.IStickerPackMessage);
+            constructor(p?: proto.Message.IStickerPackMessage);
             public stickerPackId: string;
             public name: string;
             public publisher: string;
@@ -7784,11 +6974,8 @@ export namespace proto {
             public stickerPackSize: (number|Long);
             public stickerPackOrigin: proto.Message.StickerPackMessage.StickerPackOrigin;
             public static create(properties?: proto.Message.IStickerPackMessage): proto.Message.StickerPackMessage;
-            public static encode(message: proto.Message.IStickerPackMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.StickerPackMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.StickerPackMessage;
-            public static toObject(message: proto.Message.StickerPackMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IStickerPackMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.StickerPackMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7804,7 +6991,7 @@ export namespace proto {
             }
 
             class Sticker implements ISticker {
-                constructor(properties?: proto.Message.StickerPackMessage.ISticker);
+                constructor(p?: proto.Message.StickerPackMessage.ISticker);
                 public fileName: string;
                 public isAnimated: boolean;
                 public emojis: string[];
@@ -7812,11 +6999,8 @@ export namespace proto {
                 public isLottie: boolean;
                 public mimetype: string;
                 public static create(properties?: proto.Message.StickerPackMessage.ISticker): proto.Message.StickerPackMessage.Sticker;
-                public static encode(message: proto.Message.StickerPackMessage.ISticker, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.StickerPackMessage.Sticker;
-                public static fromObject(object: { [k: string]: any }): proto.Message.StickerPackMessage.Sticker;
-                public static toObject(message: proto.Message.StickerPackMessage.Sticker, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.StickerPackMessage.ISticker, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.StickerPackMessage.Sticker;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -7834,16 +7018,13 @@ export namespace proto {
         }
 
         class StickerSyncRMRMessage implements IStickerSyncRMRMessage {
-            constructor(properties?: proto.Message.IStickerSyncRMRMessage);
+            constructor(p?: proto.Message.IStickerSyncRMRMessage);
             public filehash: string[];
             public rmrSource: string;
             public requestTimestamp: (number|Long);
             public static create(properties?: proto.Message.IStickerSyncRMRMessage): proto.Message.StickerSyncRMRMessage;
-            public static encode(message: proto.Message.IStickerSyncRMRMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.StickerSyncRMRMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.StickerSyncRMRMessage;
-            public static toObject(message: proto.Message.StickerSyncRMRMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IStickerSyncRMRMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.StickerSyncRMRMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7856,18 +7037,15 @@ export namespace proto {
         }
 
         class TemplateButtonReplyMessage implements ITemplateButtonReplyMessage {
-            constructor(properties?: proto.Message.ITemplateButtonReplyMessage);
+            constructor(p?: proto.Message.ITemplateButtonReplyMessage);
             public selectedId: string;
             public selectedDisplayText: string;
             public contextInfo?: (proto.IContextInfo|null);
             public selectedIndex: number;
             public selectedCarouselCardIndex: number;
             public static create(properties?: proto.Message.ITemplateButtonReplyMessage): proto.Message.TemplateButtonReplyMessage;
-            public static encode(message: proto.Message.ITemplateButtonReplyMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.TemplateButtonReplyMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.TemplateButtonReplyMessage;
-            public static toObject(message: proto.Message.TemplateButtonReplyMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.ITemplateButtonReplyMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.TemplateButtonReplyMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7881,7 +7059,7 @@ export namespace proto {
         }
 
         class TemplateMessage implements ITemplateMessage {
-            constructor(properties?: proto.Message.ITemplateMessage);
+            constructor(p?: proto.Message.ITemplateMessage);
             public contextInfo?: (proto.IContextInfo|null);
             public hydratedTemplate?: (proto.Message.TemplateMessage.IHydratedFourRowTemplate|null);
             public templateId: string;
@@ -7890,11 +7068,8 @@ export namespace proto {
             public interactiveMessageTemplate?: (proto.Message.IInteractiveMessage|null);
             public format?: ("fourRowTemplate"|"hydratedFourRowTemplate"|"interactiveMessageTemplate");
             public static create(properties?: proto.Message.ITemplateMessage): proto.Message.TemplateMessage;
-            public static encode(message: proto.Message.ITemplateMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.TemplateMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.TemplateMessage;
-            public static toObject(message: proto.Message.TemplateMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.ITemplateMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.TemplateMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -7912,7 +7087,7 @@ export namespace proto {
             }
 
             class FourRowTemplate implements IFourRowTemplate {
-                constructor(properties?: proto.Message.TemplateMessage.IFourRowTemplate);
+                constructor(p?: proto.Message.TemplateMessage.IFourRowTemplate);
                 public content?: (proto.Message.IHighlyStructuredMessage|null);
                 public footer?: (proto.Message.IHighlyStructuredMessage|null);
                 public buttons: proto.ITemplateButton[];
@@ -7923,11 +7098,8 @@ export namespace proto {
                 public locationMessage?: (proto.Message.ILocationMessage|null);
                 public title?: ("documentMessage"|"highlyStructuredMessage"|"imageMessage"|"videoMessage"|"locationMessage");
                 public static create(properties?: proto.Message.TemplateMessage.IFourRowTemplate): proto.Message.TemplateMessage.FourRowTemplate;
-                public static encode(message: proto.Message.TemplateMessage.IFourRowTemplate, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.TemplateMessage.FourRowTemplate;
-                public static fromObject(object: { [k: string]: any }): proto.Message.TemplateMessage.FourRowTemplate;
-                public static toObject(message: proto.Message.TemplateMessage.FourRowTemplate, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.TemplateMessage.IFourRowTemplate, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.TemplateMessage.FourRowTemplate;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -7945,7 +7117,7 @@ export namespace proto {
             }
 
             class HydratedFourRowTemplate implements IHydratedFourRowTemplate {
-                constructor(properties?: proto.Message.TemplateMessage.IHydratedFourRowTemplate);
+                constructor(p?: proto.Message.TemplateMessage.IHydratedFourRowTemplate);
                 public hydratedContentText: string;
                 public hydratedFooterText: string;
                 public hydratedButtons: proto.IHydratedTemplateButton[];
@@ -7958,11 +7130,8 @@ export namespace proto {
                 public locationMessage?: (proto.Message.ILocationMessage|null);
                 public title?: ("documentMessage"|"hydratedTitleText"|"imageMessage"|"videoMessage"|"locationMessage");
                 public static create(properties?: proto.Message.TemplateMessage.IHydratedFourRowTemplate): proto.Message.TemplateMessage.HydratedFourRowTemplate;
-                public static encode(message: proto.Message.TemplateMessage.IHydratedFourRowTemplate, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.TemplateMessage.HydratedFourRowTemplate;
-                public static fromObject(object: { [k: string]: any }): proto.Message.TemplateMessage.HydratedFourRowTemplate;
-                public static toObject(message: proto.Message.TemplateMessage.HydratedFourRowTemplate, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.Message.TemplateMessage.IHydratedFourRowTemplate, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.TemplateMessage.HydratedFourRowTemplate;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
         }
@@ -7972,14 +7141,11 @@ export namespace proto {
         }
 
         class URLMetadata implements IURLMetadata {
-            constructor(properties?: proto.Message.IURLMetadata);
+            constructor(p?: proto.Message.IURLMetadata);
             public fbExperimentId: number;
             public static create(properties?: proto.Message.IURLMetadata): proto.Message.URLMetadata;
-            public static encode(message: proto.Message.IURLMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.URLMetadata;
-            public static fromObject(object: { [k: string]: any }): proto.Message.URLMetadata;
-            public static toObject(message: proto.Message.URLMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IURLMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.URLMetadata;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -8014,7 +7180,7 @@ export namespace proto {
         }
 
         class VideoMessage implements IVideoMessage {
-            constructor(properties?: proto.Message.IVideoMessage);
+            constructor(p?: proto.Message.IVideoMessage);
             public url: string;
             public mimetype: string;
             public fileSha256: Uint8Array;
@@ -8043,11 +7209,8 @@ export namespace proto {
             public processedVideos: proto.IProcessedVideo[];
             public externalShareFullVideoDurationInSeconds: number;
             public static create(properties?: proto.Message.IVideoMessage): proto.Message.VideoMessage;
-            public static encode(message: proto.Message.IVideoMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Message.VideoMessage;
-            public static fromObject(object: { [k: string]: any }): proto.Message.VideoMessage;
-            public static toObject(message: proto.Message.VideoMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.Message.IVideoMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Message.VideoMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -8073,7 +7236,7 @@ export namespace proto {
     }
 
     class MessageAddOn implements IMessageAddOn {
-        constructor(properties?: proto.IMessageAddOn);
+        constructor(p?: proto.IMessageAddOn);
         public messageAddOnType: proto.MessageAddOn.MessageAddOnType;
         public messageAddOn?: (proto.IMessage|null);
         public senderTimestampMs: (number|Long);
@@ -8083,11 +7246,8 @@ export namespace proto {
         public messageAddOnKey?: (proto.IMessageKey|null);
         public legacyMessage?: (proto.ILegacyMessage|null);
         public static create(properties?: proto.IMessageAddOn): proto.MessageAddOn;
-        public static encode(message: proto.IMessageAddOn, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.MessageAddOn;
-        public static fromObject(object: { [k: string]: any }): proto.MessageAddOn;
-        public static toObject(message: proto.MessageAddOn, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IMessageAddOn, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.MessageAddOn;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8108,15 +7268,12 @@ export namespace proto {
     }
 
     class MessageAddOnContextInfo implements IMessageAddOnContextInfo {
-        constructor(properties?: proto.IMessageAddOnContextInfo);
+        constructor(p?: proto.IMessageAddOnContextInfo);
         public messageAddOnDurationInSecs: number;
         public messageAddOnExpiryType: proto.MessageContextInfo.MessageAddonExpiryType;
         public static create(properties?: proto.IMessageAddOnContextInfo): proto.MessageAddOnContextInfo;
-        public static encode(message: proto.IMessageAddOnContextInfo, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.MessageAddOnContextInfo;
-        public static fromObject(object: { [k: string]: any }): proto.MessageAddOnContextInfo;
-        public static toObject(message: proto.MessageAddOnContextInfo, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IMessageAddOnContextInfo, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.MessageAddOnContextInfo;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8127,16 +7284,13 @@ export namespace proto {
     }
 
     class MessageAssociation implements IMessageAssociation {
-        constructor(properties?: proto.IMessageAssociation);
+        constructor(p?: proto.IMessageAssociation);
         public associationType: proto.MessageAssociation.AssociationType;
         public parentMessageKey?: (proto.IMessageKey|null);
         public messageIndex: number;
         public static create(properties?: proto.IMessageAssociation): proto.MessageAssociation;
-        public static encode(message: proto.IMessageAssociation, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.MessageAssociation;
-        public static fromObject(object: { [k: string]: any }): proto.MessageAssociation;
-        public static toObject(message: proto.MessageAssociation, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IMessageAssociation, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.MessageAssociation;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8179,7 +7333,7 @@ export namespace proto {
     }
 
     class MessageContextInfo implements IMessageContextInfo {
-        constructor(properties?: proto.IMessageContextInfo);
+        constructor(p?: proto.IMessageContextInfo);
         public deviceListMetadata?: (proto.IDeviceListMetadata|null);
         public deviceListMetadataVersion: number;
         public messageSecret: Uint8Array;
@@ -8195,11 +7349,8 @@ export namespace proto {
         public limitSharing?: (proto.ILimitSharing|null);
         public limitSharingV2?: (proto.ILimitSharing|null);
         public static create(properties?: proto.IMessageContextInfo): proto.MessageContextInfo;
-        public static encode(message: proto.IMessageContextInfo, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.MessageContextInfo;
-        public static fromObject(object: { [k: string]: any }): proto.MessageContextInfo;
-        public static toObject(message: proto.MessageContextInfo, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IMessageContextInfo, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.MessageContextInfo;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8219,17 +7370,14 @@ export namespace proto {
     }
 
     class MessageKey implements IMessageKey {
-        constructor(properties?: proto.IMessageKey);
+        constructor(p?: proto.IMessageKey);
         public remoteJid: string;
         public fromMe: boolean;
         public id: string;
         public participant: string;
         public static create(properties?: proto.IMessageKey): proto.MessageKey;
-        public static encode(message: proto.IMessageKey, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.MessageKey;
-        public static fromObject(object: { [k: string]: any }): proto.MessageKey;
-        public static toObject(message: proto.MessageKey, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IMessageKey, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.MessageKey;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8240,16 +7388,13 @@ export namespace proto {
     }
 
     class MessageSecretMessage implements IMessageSecretMessage {
-        constructor(properties?: proto.IMessageSecretMessage);
+        constructor(p?: proto.IMessageSecretMessage);
         public version: number;
         public encIv: Uint8Array;
         public encPayload: Uint8Array;
         public static create(properties?: proto.IMessageSecretMessage): proto.MessageSecretMessage;
-        public static encode(message: proto.IMessageSecretMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.MessageSecretMessage;
-        public static fromObject(object: { [k: string]: any }): proto.MessageSecretMessage;
-        public static toObject(message: proto.MessageSecretMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IMessageSecretMessage, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.MessageSecretMessage;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8260,16 +7405,13 @@ export namespace proto {
     }
 
     class Money implements IMoney {
-        constructor(properties?: proto.IMoney);
+        constructor(p?: proto.IMoney);
         public value: (number|Long);
         public offset: number;
         public currencyCode: string;
         public static create(properties?: proto.IMoney): proto.Money;
-        public static encode(message: proto.IMoney, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Money;
-        public static fromObject(object: { [k: string]: any }): proto.Money;
-        public static toObject(message: proto.Money, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IMoney, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Money;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8316,7 +7458,7 @@ export namespace proto {
     }
 
     class MsgOpaqueData implements IMsgOpaqueData {
-        constructor(properties?: proto.IMsgOpaqueData);
+        constructor(p?: proto.IMsgOpaqueData);
         public body: string;
         public caption: string;
         public lng: number;
@@ -8357,11 +7499,8 @@ export namespace proto {
         public eventEndTime: (number|Long);
         public plainProtobufBytes: Uint8Array;
         public static create(properties?: proto.IMsgOpaqueData): proto.MsgOpaqueData;
-        public static encode(message: proto.IMsgOpaqueData, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.MsgOpaqueData;
-        public static fromObject(object: { [k: string]: any }): proto.MsgOpaqueData;
-        public static toObject(message: proto.MsgOpaqueData, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IMsgOpaqueData, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.MsgOpaqueData;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8377,7 +7516,7 @@ export namespace proto {
         }
 
         class EventLocation implements IEventLocation {
-            constructor(properties?: proto.MsgOpaqueData.IEventLocation);
+            constructor(p?: proto.MsgOpaqueData.IEventLocation);
             public degreesLatitude: number;
             public degreesLongitude: number;
             public name: string;
@@ -8385,11 +7524,8 @@ export namespace proto {
             public url: string;
             public jpegThumbnail: Uint8Array;
             public static create(properties?: proto.MsgOpaqueData.IEventLocation): proto.MsgOpaqueData.EventLocation;
-            public static encode(message: proto.MsgOpaqueData.IEventLocation, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.MsgOpaqueData.EventLocation;
-            public static fromObject(object: { [k: string]: any }): proto.MsgOpaqueData.EventLocation;
-            public static toObject(message: proto.MsgOpaqueData.EventLocation, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.MsgOpaqueData.IEventLocation, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.MsgOpaqueData.EventLocation;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -8405,15 +7541,12 @@ export namespace proto {
         }
 
         class PollOption implements IPollOption {
-            constructor(properties?: proto.MsgOpaqueData.IPollOption);
+            constructor(p?: proto.MsgOpaqueData.IPollOption);
             public name: string;
             public hash: string;
             public static create(properties?: proto.MsgOpaqueData.IPollOption): proto.MsgOpaqueData.PollOption;
-            public static encode(message: proto.MsgOpaqueData.IPollOption, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.MsgOpaqueData.PollOption;
-            public static fromObject(object: { [k: string]: any }): proto.MsgOpaqueData.PollOption;
-            public static toObject(message: proto.MsgOpaqueData.PollOption, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.MsgOpaqueData.IPollOption, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.MsgOpaqueData.PollOption;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -8423,15 +7556,12 @@ export namespace proto {
         }
 
         class PollVoteSnapshot implements IPollVoteSnapshot {
-            constructor(properties?: proto.MsgOpaqueData.IPollVoteSnapshot);
+            constructor(p?: proto.MsgOpaqueData.IPollVoteSnapshot);
             public option?: (proto.MsgOpaqueData.IPollOption|null);
             public optionVoteCount: number;
             public static create(properties?: proto.MsgOpaqueData.IPollVoteSnapshot): proto.MsgOpaqueData.PollVoteSnapshot;
-            public static encode(message: proto.MsgOpaqueData.IPollVoteSnapshot, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.MsgOpaqueData.PollVoteSnapshot;
-            public static fromObject(object: { [k: string]: any }): proto.MsgOpaqueData.PollVoteSnapshot;
-            public static toObject(message: proto.MsgOpaqueData.PollVoteSnapshot, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.MsgOpaqueData.IPollVoteSnapshot, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.MsgOpaqueData.PollVoteSnapshot;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -8440,14 +7570,11 @@ export namespace proto {
         }
 
         class PollVotesSnapshot implements IPollVotesSnapshot {
-            constructor(properties?: proto.MsgOpaqueData.IPollVotesSnapshot);
+            constructor(p?: proto.MsgOpaqueData.IPollVotesSnapshot);
             public pollVotes: proto.MsgOpaqueData.IPollVoteSnapshot[];
             public static create(properties?: proto.MsgOpaqueData.IPollVotesSnapshot): proto.MsgOpaqueData.PollVotesSnapshot;
-            public static encode(message: proto.MsgOpaqueData.IPollVotesSnapshot, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.MsgOpaqueData.PollVotesSnapshot;
-            public static fromObject(object: { [k: string]: any }): proto.MsgOpaqueData.PollVotesSnapshot;
-            public static toObject(message: proto.MsgOpaqueData.PollVotesSnapshot, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.MsgOpaqueData.IPollVotesSnapshot, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.MsgOpaqueData.PollVotesSnapshot;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
     }
@@ -8458,15 +7585,12 @@ export namespace proto {
     }
 
     class MsgRowOpaqueData implements IMsgRowOpaqueData {
-        constructor(properties?: proto.IMsgRowOpaqueData);
+        constructor(p?: proto.IMsgRowOpaqueData);
         public currentMsg?: (proto.IMsgOpaqueData|null);
         public quotedMsg?: (proto.IMsgOpaqueData|null);
         public static create(properties?: proto.IMsgRowOpaqueData): proto.MsgRowOpaqueData;
-        public static encode(message: proto.IMsgRowOpaqueData, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.MsgRowOpaqueData;
-        public static fromObject(object: { [k: string]: any }): proto.MsgRowOpaqueData;
-        public static toObject(message: proto.MsgRowOpaqueData, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IMsgRowOpaqueData, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.MsgRowOpaqueData;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8476,15 +7600,12 @@ export namespace proto {
     }
 
     class NoiseCertificate implements INoiseCertificate {
-        constructor(properties?: proto.INoiseCertificate);
+        constructor(p?: proto.INoiseCertificate);
         public details: Uint8Array;
         public signature: Uint8Array;
         public static create(properties?: proto.INoiseCertificate): proto.NoiseCertificate;
-        public static encode(message: proto.INoiseCertificate, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.NoiseCertificate;
-        public static fromObject(object: { [k: string]: any }): proto.NoiseCertificate;
-        public static toObject(message: proto.NoiseCertificate, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.INoiseCertificate, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.NoiseCertificate;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8499,18 +7620,15 @@ export namespace proto {
         }
 
         class Details implements IDetails {
-            constructor(properties?: proto.NoiseCertificate.IDetails);
+            constructor(p?: proto.NoiseCertificate.IDetails);
             public serial: number;
             public issuer: string;
             public expires: (number|Long);
             public subject: string;
             public key: Uint8Array;
             public static create(properties?: proto.NoiseCertificate.IDetails): proto.NoiseCertificate.Details;
-            public static encode(message: proto.NoiseCertificate.IDetails, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.NoiseCertificate.Details;
-            public static fromObject(object: { [k: string]: any }): proto.NoiseCertificate.Details;
-            public static toObject(message: proto.NoiseCertificate.Details, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.NoiseCertificate.IDetails, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.NoiseCertificate.Details;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
     }
@@ -8523,17 +7641,14 @@ export namespace proto {
     }
 
     class NotificationMessageInfo implements INotificationMessageInfo {
-        constructor(properties?: proto.INotificationMessageInfo);
+        constructor(p?: proto.INotificationMessageInfo);
         public key?: (proto.IMessageKey|null);
         public message?: (proto.IMessage|null);
         public messageTimestamp: (number|Long);
         public participant: string;
         public static create(properties?: proto.INotificationMessageInfo): proto.NotificationMessageInfo;
-        public static encode(message: proto.INotificationMessageInfo, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.NotificationMessageInfo;
-        public static fromObject(object: { [k: string]: any }): proto.NotificationMessageInfo;
-        public static toObject(message: proto.NotificationMessageInfo, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.INotificationMessageInfo, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.NotificationMessageInfo;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8547,7 +7662,7 @@ export namespace proto {
     }
 
     class NotificationSettings implements INotificationSettings {
-        constructor(properties?: proto.INotificationSettings);
+        constructor(p?: proto.INotificationSettings);
         public messageVibrate: string;
         public messagePopup: string;
         public messageLight: string;
@@ -8555,11 +7670,8 @@ export namespace proto {
         public reactionsMuted: boolean;
         public callVibrate: string;
         public static create(properties?: proto.INotificationSettings): proto.NotificationSettings;
-        public static encode(message: proto.INotificationSettings, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.NotificationSettings;
-        public static fromObject(object: { [k: string]: any }): proto.NotificationSettings;
-        public static toObject(message: proto.NotificationSettings, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.INotificationSettings, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.NotificationSettings;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8570,16 +7682,13 @@ export namespace proto {
     }
 
     class PairingRequest implements IPairingRequest {
-        constructor(properties?: proto.IPairingRequest);
+        constructor(p?: proto.IPairingRequest);
         public companionPublicKey: Uint8Array;
         public companionIdentityKey: Uint8Array;
         public advSecret: Uint8Array;
         public static create(properties?: proto.IPairingRequest): proto.PairingRequest;
-        public static encode(message: proto.IPairingRequest, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.PairingRequest;
-        public static fromObject(object: { [k: string]: any }): proto.PairingRequest;
-        public static toObject(message: proto.PairingRequest, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IPairingRequest, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.PairingRequest;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8590,16 +7699,13 @@ export namespace proto {
     }
 
     class PastParticipant implements IPastParticipant {
-        constructor(properties?: proto.IPastParticipant);
+        constructor(p?: proto.IPastParticipant);
         public userJid: string;
         public leaveReason: proto.PastParticipant.LeaveReason;
         public leaveTs: (number|Long);
         public static create(properties?: proto.IPastParticipant): proto.PastParticipant;
-        public static encode(message: proto.IPastParticipant, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.PastParticipant;
-        public static fromObject(object: { [k: string]: any }): proto.PastParticipant;
-        public static toObject(message: proto.PastParticipant, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IPastParticipant, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.PastParticipant;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8617,15 +7723,12 @@ export namespace proto {
     }
 
     class PastParticipants implements IPastParticipants {
-        constructor(properties?: proto.IPastParticipants);
+        constructor(p?: proto.IPastParticipants);
         public groupJid: string;
         public pastParticipants: proto.IPastParticipant[];
         public static create(properties?: proto.IPastParticipants): proto.PastParticipants;
-        public static encode(message: proto.IPastParticipants, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.PastParticipants;
-        public static fromObject(object: { [k: string]: any }): proto.PastParticipants;
-        public static toObject(message: proto.PastParticipants, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IPastParticipants, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.PastParticipants;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8644,7 +7747,7 @@ export namespace proto {
     }
 
     class PatchDebugData implements IPatchDebugData {
-        constructor(properties?: proto.IPatchDebugData);
+        constructor(p?: proto.IPatchDebugData);
         public currentLthash: Uint8Array;
         public newLthash: Uint8Array;
         public patchVersion: Uint8Array;
@@ -8657,11 +7760,8 @@ export namespace proto {
         public senderPlatform: proto.PatchDebugData.Platform;
         public isSenderPrimary: boolean;
         public static create(properties?: proto.IPatchDebugData): proto.PatchDebugData;
-        public static encode(message: proto.IPatchDebugData, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.PatchDebugData;
-        public static fromObject(object: { [k: string]: any }): proto.PatchDebugData;
-        public static toObject(message: proto.PatchDebugData, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IPatchDebugData, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.PatchDebugData;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8694,7 +7794,7 @@ export namespace proto {
     }
 
     class PaymentBackground implements IPaymentBackground {
-        constructor(properties?: proto.IPaymentBackground);
+        constructor(p?: proto.IPaymentBackground);
         public id: string;
         public fileLength: (number|Long);
         public width: number;
@@ -8706,11 +7806,8 @@ export namespace proto {
         public mediaData?: (proto.PaymentBackground.IMediaData|null);
         public type: proto.PaymentBackground.Type;
         public static create(properties?: proto.IPaymentBackground): proto.PaymentBackground;
-        public static encode(message: proto.IPaymentBackground, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.PaymentBackground;
-        public static fromObject(object: { [k: string]: any }): proto.PaymentBackground;
-        public static toObject(message: proto.PaymentBackground, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IPaymentBackground, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.PaymentBackground;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8725,18 +7822,15 @@ export namespace proto {
         }
 
         class MediaData implements IMediaData {
-            constructor(properties?: proto.PaymentBackground.IMediaData);
+            constructor(p?: proto.PaymentBackground.IMediaData);
             public mediaKey: Uint8Array;
             public mediaKeyTimestamp: (number|Long);
             public fileSha256: Uint8Array;
             public fileEncSha256: Uint8Array;
             public directPath: string;
             public static create(properties?: proto.PaymentBackground.IMediaData): proto.PaymentBackground.MediaData;
-            public static encode(message: proto.PaymentBackground.IMediaData, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.PaymentBackground.MediaData;
-            public static fromObject(object: { [k: string]: any }): proto.PaymentBackground.MediaData;
-            public static toObject(message: proto.PaymentBackground.MediaData, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.PaymentBackground.IMediaData, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.PaymentBackground.MediaData;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -8763,7 +7857,7 @@ export namespace proto {
     }
 
     class PaymentInfo implements IPaymentInfo {
-        constructor(properties?: proto.IPaymentInfo);
+        constructor(p?: proto.IPaymentInfo);
         public currencyDeprecated: proto.PaymentInfo.Currency;
         public amount1000: (number|Long);
         public receiverJid: string;
@@ -8778,11 +7872,8 @@ export namespace proto {
         public primaryAmount?: (proto.IMoney|null);
         public exchangeAmount?: (proto.IMoney|null);
         public static create(properties?: proto.IPaymentInfo): proto.PaymentInfo;
-        public static encode(message: proto.IPaymentInfo, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.PaymentInfo;
-        public static fromObject(object: { [k: string]: any }): proto.PaymentInfo;
-        public static toObject(message: proto.PaymentInfo, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IPaymentInfo, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.PaymentInfo;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8850,15 +7941,12 @@ export namespace proto {
     }
 
     class PhoneNumberToLIDMapping implements IPhoneNumberToLIDMapping {
-        constructor(properties?: proto.IPhoneNumberToLIDMapping);
+        constructor(p?: proto.IPhoneNumberToLIDMapping);
         public pnJid: string;
         public lidJid: string;
         public static create(properties?: proto.IPhoneNumberToLIDMapping): proto.PhoneNumberToLIDMapping;
-        public static encode(message: proto.IPhoneNumberToLIDMapping, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.PhoneNumberToLIDMapping;
-        public static fromObject(object: { [k: string]: any }): proto.PhoneNumberToLIDMapping;
-        public static toObject(message: proto.PhoneNumberToLIDMapping, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IPhoneNumberToLIDMapping, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.PhoneNumberToLIDMapping;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8869,16 +7957,13 @@ export namespace proto {
     }
 
     class PhotoChange implements IPhotoChange {
-        constructor(properties?: proto.IPhotoChange);
+        constructor(p?: proto.IPhotoChange);
         public oldPhoto: Uint8Array;
         public newPhoto: Uint8Array;
         public newPhotoId: number;
         public static create(properties?: proto.IPhotoChange): proto.PhotoChange;
-        public static encode(message: proto.IPhotoChange, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.PhotoChange;
-        public static fromObject(object: { [k: string]: any }): proto.PhotoChange;
-        public static toObject(message: proto.PhotoChange, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IPhotoChange, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.PhotoChange;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8891,18 +7976,15 @@ export namespace proto {
     }
 
     class PinInChat implements IPinInChat {
-        constructor(properties?: proto.IPinInChat);
+        constructor(p?: proto.IPinInChat);
         public type: proto.PinInChat.Type;
         public key?: (proto.IMessageKey|null);
         public senderTimestampMs: (number|Long);
         public serverTimestampMs: (number|Long);
         public messageAddOnContextInfo?: (proto.IMessageAddOnContextInfo|null);
         public static create(properties?: proto.IPinInChat): proto.PinInChat;
-        public static encode(message: proto.IPinInChat, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.PinInChat;
-        public static fromObject(object: { [k: string]: any }): proto.PinInChat;
-        public static toObject(message: proto.PinInChat, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IPinInChat, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.PinInChat;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8923,17 +8005,14 @@ export namespace proto {
     }
 
     class Point implements IPoint {
-        constructor(properties?: proto.IPoint);
+        constructor(p?: proto.IPoint);
         public xDeprecated: number;
         public yDeprecated: number;
         public x: number;
         public y: number;
         public static create(properties?: proto.IPoint): proto.Point;
-        public static encode(message: proto.IPoint, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Point;
-        public static fromObject(object: { [k: string]: any }): proto.Point;
-        public static toObject(message: proto.Point, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IPoint, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Point;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8942,14 +8021,11 @@ export namespace proto {
     }
 
     class PollAdditionalMetadata implements IPollAdditionalMetadata {
-        constructor(properties?: proto.IPollAdditionalMetadata);
+        constructor(p?: proto.IPollAdditionalMetadata);
         public pollInvalidated: boolean;
         public static create(properties?: proto.IPollAdditionalMetadata): proto.PollAdditionalMetadata;
-        public static encode(message: proto.IPollAdditionalMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.PollAdditionalMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.PollAdditionalMetadata;
-        public static toObject(message: proto.PollAdditionalMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IPollAdditionalMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.PollAdditionalMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8959,15 +8035,12 @@ export namespace proto {
     }
 
     class PollEncValue implements IPollEncValue {
-        constructor(properties?: proto.IPollEncValue);
+        constructor(p?: proto.IPollEncValue);
         public encPayload: Uint8Array;
         public encIv: Uint8Array;
         public static create(properties?: proto.IPollEncValue): proto.PollEncValue;
-        public static encode(message: proto.IPollEncValue, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.PollEncValue;
-        public static fromObject(object: { [k: string]: any }): proto.PollEncValue;
-        public static toObject(message: proto.PollEncValue, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IPollEncValue, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.PollEncValue;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -8980,18 +8053,15 @@ export namespace proto {
     }
 
     class PollUpdate implements IPollUpdate {
-        constructor(properties?: proto.IPollUpdate);
+        constructor(p?: proto.IPollUpdate);
         public pollUpdateMessageKey?: (proto.IMessageKey|null);
         public vote?: (proto.Message.IPollVoteMessage|null);
         public senderTimestampMs: (number|Long);
         public serverTimestampMs: (number|Long);
         public unread: boolean;
         public static create(properties?: proto.IPollUpdate): proto.PollUpdate;
-        public static encode(message: proto.IPollUpdate, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.PollUpdate;
-        public static fromObject(object: { [k: string]: any }): proto.PollUpdate;
-        public static toObject(message: proto.PollUpdate, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IPollUpdate, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.PollUpdate;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9002,16 +8072,13 @@ export namespace proto {
     }
 
     class PreKeyRecordStructure implements IPreKeyRecordStructure {
-        constructor(properties?: proto.IPreKeyRecordStructure);
+        constructor(p?: proto.IPreKeyRecordStructure);
         public id: number;
         public publicKey: Uint8Array;
         public privateKey: Uint8Array;
         public static create(properties?: proto.IPreKeyRecordStructure): proto.PreKeyRecordStructure;
-        public static encode(message: proto.IPreKeyRecordStructure, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.PreKeyRecordStructure;
-        public static fromObject(object: { [k: string]: any }): proto.PreKeyRecordStructure;
-        public static toObject(message: proto.PreKeyRecordStructure, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IPreKeyRecordStructure, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.PreKeyRecordStructure;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9025,7 +8092,7 @@ export namespace proto {
     }
 
     class PreKeySignalMessage implements IPreKeySignalMessage {
-        constructor(properties?: proto.IPreKeySignalMessage);
+        constructor(p?: proto.IPreKeySignalMessage);
         public registrationId: number;
         public preKeyId: number;
         public signedPreKeyId: number;
@@ -9033,11 +8100,8 @@ export namespace proto {
         public identityKey: Uint8Array;
         public message: Uint8Array;
         public static create(properties?: proto.IPreKeySignalMessage): proto.PreKeySignalMessage;
-        public static encode(message: proto.IPreKeySignalMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.PreKeySignalMessage;
-        public static fromObject(object: { [k: string]: any }): proto.PreKeySignalMessage;
-        public static toObject(message: proto.PreKeySignalMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IPreKeySignalMessage, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.PreKeySignalMessage;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9046,14 +8110,11 @@ export namespace proto {
     }
 
     class PremiumMessageInfo implements IPremiumMessageInfo {
-        constructor(properties?: proto.IPremiumMessageInfo);
+        constructor(p?: proto.IPremiumMessageInfo);
         public serverCampaignId: string;
         public static create(properties?: proto.IPremiumMessageInfo): proto.PremiumMessageInfo;
-        public static encode(message: proto.IPremiumMessageInfo, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.PremiumMessageInfo;
-        public static fromObject(object: { [k: string]: any }): proto.PremiumMessageInfo;
-        public static toObject(message: proto.PremiumMessageInfo, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IPremiumMessageInfo, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.PremiumMessageInfo;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9063,15 +8124,12 @@ export namespace proto {
     }
 
     class PrimaryEphemeralIdentity implements IPrimaryEphemeralIdentity {
-        constructor(properties?: proto.IPrimaryEphemeralIdentity);
+        constructor(p?: proto.IPrimaryEphemeralIdentity);
         public publicKey: Uint8Array;
         public nonce: Uint8Array;
         public static create(properties?: proto.IPrimaryEphemeralIdentity): proto.PrimaryEphemeralIdentity;
-        public static encode(message: proto.IPrimaryEphemeralIdentity, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.PrimaryEphemeralIdentity;
-        public static fromObject(object: { [k: string]: any }): proto.PrimaryEphemeralIdentity;
-        public static toObject(message: proto.PrimaryEphemeralIdentity, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IPrimaryEphemeralIdentity, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.PrimaryEphemeralIdentity;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9093,7 +8151,7 @@ export namespace proto {
     }
 
     class ProcessedVideo implements IProcessedVideo {
-        constructor(properties?: proto.IProcessedVideo);
+        constructor(p?: proto.IProcessedVideo);
         public directPath: string;
         public fileSha256: Uint8Array;
         public height: number;
@@ -9103,11 +8161,8 @@ export namespace proto {
         public quality: proto.ProcessedVideo.VideoQuality;
         public capabilities: string[];
         public static create(properties?: proto.IProcessedVideo): proto.ProcessedVideo;
-        public static encode(message: proto.IProcessedVideo, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ProcessedVideo;
-        public static fromObject(object: { [k: string]: any }): proto.ProcessedVideo;
-        public static toObject(message: proto.ProcessedVideo, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IProcessedVideo, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ProcessedVideo;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9127,15 +8182,12 @@ export namespace proto {
     }
 
     class ProloguePayload implements IProloguePayload {
-        constructor(properties?: proto.IProloguePayload);
+        constructor(p?: proto.IProloguePayload);
         public companionEphemeralIdentity: Uint8Array;
         public commitment?: (proto.ICompanionCommitment|null);
         public static create(properties?: proto.IProloguePayload): proto.ProloguePayload;
-        public static encode(message: proto.IProloguePayload, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ProloguePayload;
-        public static fromObject(object: { [k: string]: any }): proto.ProloguePayload;
-        public static toObject(message: proto.ProloguePayload, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IProloguePayload, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ProloguePayload;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9145,15 +8197,12 @@ export namespace proto {
     }
 
     class Pushname implements IPushname {
-        constructor(properties?: proto.IPushname);
+        constructor(p?: proto.IPushname);
         public id: string;
         public pushname: string;
         public static create(properties?: proto.IPushname): proto.Pushname;
-        public static encode(message: proto.IPushname, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Pushname;
-        public static fromObject(object: { [k: string]: any }): proto.Pushname;
-        public static toObject(message: proto.Pushname, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IPushname, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Pushname;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9166,18 +8215,15 @@ export namespace proto {
     }
 
     class Reaction implements IReaction {
-        constructor(properties?: proto.IReaction);
+        constructor(p?: proto.IReaction);
         public key?: (proto.IMessageKey|null);
         public text: string;
         public groupingKey: string;
         public senderTimestampMs: (number|Long);
         public unread: boolean;
         public static create(properties?: proto.IReaction): proto.Reaction;
-        public static encode(message: proto.IReaction, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Reaction;
-        public static fromObject(object: { [k: string]: any }): proto.Reaction;
-        public static toObject(message: proto.Reaction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IReaction, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Reaction;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9187,15 +8233,12 @@ export namespace proto {
     }
 
     class RecentEmojiWeight implements IRecentEmojiWeight {
-        constructor(properties?: proto.IRecentEmojiWeight);
+        constructor(p?: proto.IRecentEmojiWeight);
         public emoji: string;
         public weight: number;
         public static create(properties?: proto.IRecentEmojiWeight): proto.RecentEmojiWeight;
-        public static encode(message: proto.IRecentEmojiWeight, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.RecentEmojiWeight;
-        public static fromObject(object: { [k: string]: any }): proto.RecentEmojiWeight;
-        public static toObject(message: proto.RecentEmojiWeight, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IRecentEmojiWeight, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.RecentEmojiWeight;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9205,15 +8248,12 @@ export namespace proto {
     }
 
     class RecordStructure implements IRecordStructure {
-        constructor(properties?: proto.IRecordStructure);
+        constructor(p?: proto.IRecordStructure);
         public currentSession?: (proto.ISessionStructure|null);
         public previousSessions: proto.ISessionStructure[];
         public static create(properties?: proto.IRecordStructure): proto.RecordStructure;
-        public static encode(message: proto.IRecordStructure, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.RecordStructure;
-        public static fromObject(object: { [k: string]: any }): proto.RecordStructure;
-        public static toObject(message: proto.RecordStructure, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IRecordStructure, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.RecordStructure;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9225,17 +8265,14 @@ export namespace proto {
     }
 
     class Reportable implements IReportable {
-        constructor(properties?: proto.IReportable);
+        constructor(p?: proto.IReportable);
         public minVersion: number;
         public maxVersion: number;
         public notReportableMinVersion: number;
         public never: boolean;
         public static create(properties?: proto.IReportable): proto.Reportable;
-        public static encode(message: proto.IReportable, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.Reportable;
-        public static fromObject(object: { [k: string]: any }): proto.Reportable;
-        public static toObject(message: proto.Reportable, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IReportable, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.Reportable;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9244,14 +8281,11 @@ export namespace proto {
     }
 
     class ReportingTokenInfo implements IReportingTokenInfo {
-        constructor(properties?: proto.IReportingTokenInfo);
+        constructor(p?: proto.IReportingTokenInfo);
         public reportingTag: Uint8Array;
         public static create(properties?: proto.IReportingTokenInfo): proto.ReportingTokenInfo;
-        public static encode(message: proto.IReportingTokenInfo, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ReportingTokenInfo;
-        public static fromObject(object: { [k: string]: any }): proto.ReportingTokenInfo;
-        public static toObject(message: proto.ReportingTokenInfo, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IReportingTokenInfo, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ReportingTokenInfo;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9263,17 +8297,14 @@ export namespace proto {
     }
 
     class SenderKeyDistributionMessage implements ISenderKeyDistributionMessage {
-        constructor(properties?: proto.ISenderKeyDistributionMessage);
+        constructor(p?: proto.ISenderKeyDistributionMessage);
         public id: number;
         public iteration: number;
         public chainKey: Uint8Array;
         public signingKey: Uint8Array;
         public static create(properties?: proto.ISenderKeyDistributionMessage): proto.SenderKeyDistributionMessage;
-        public static encode(message: proto.ISenderKeyDistributionMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SenderKeyDistributionMessage;
-        public static fromObject(object: { [k: string]: any }): proto.SenderKeyDistributionMessage;
-        public static toObject(message: proto.SenderKeyDistributionMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ISenderKeyDistributionMessage, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SenderKeyDistributionMessage;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9284,16 +8315,13 @@ export namespace proto {
     }
 
     class SenderKeyMessage implements ISenderKeyMessage {
-        constructor(properties?: proto.ISenderKeyMessage);
+        constructor(p?: proto.ISenderKeyMessage);
         public id: number;
         public iteration: number;
         public ciphertext: Uint8Array;
         public static create(properties?: proto.ISenderKeyMessage): proto.SenderKeyMessage;
-        public static encode(message: proto.ISenderKeyMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SenderKeyMessage;
-        public static fromObject(object: { [k: string]: any }): proto.SenderKeyMessage;
-        public static toObject(message: proto.SenderKeyMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ISenderKeyMessage, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SenderKeyMessage;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9302,14 +8330,11 @@ export namespace proto {
     }
 
     class SenderKeyRecordStructure implements ISenderKeyRecordStructure {
-        constructor(properties?: proto.ISenderKeyRecordStructure);
+        constructor(p?: proto.ISenderKeyRecordStructure);
         public senderKeyStates: proto.ISenderKeyStateStructure[];
         public static create(properties?: proto.ISenderKeyRecordStructure): proto.SenderKeyRecordStructure;
-        public static encode(message: proto.ISenderKeyRecordStructure, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SenderKeyRecordStructure;
-        public static fromObject(object: { [k: string]: any }): proto.SenderKeyRecordStructure;
-        public static toObject(message: proto.SenderKeyRecordStructure, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ISenderKeyRecordStructure, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SenderKeyRecordStructure;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9321,17 +8346,14 @@ export namespace proto {
     }
 
     class SenderKeyStateStructure implements ISenderKeyStateStructure {
-        constructor(properties?: proto.ISenderKeyStateStructure);
+        constructor(p?: proto.ISenderKeyStateStructure);
         public senderKeyId: number;
         public senderChainKey?: (proto.SenderKeyStateStructure.ISenderChainKey|null);
         public senderSigningKey?: (proto.SenderKeyStateStructure.ISenderSigningKey|null);
         public senderMessageKeys: proto.SenderKeyStateStructure.ISenderMessageKey[];
         public static create(properties?: proto.ISenderKeyStateStructure): proto.SenderKeyStateStructure;
-        public static encode(message: proto.ISenderKeyStateStructure, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SenderKeyStateStructure;
-        public static fromObject(object: { [k: string]: any }): proto.SenderKeyStateStructure;
-        public static toObject(message: proto.SenderKeyStateStructure, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ISenderKeyStateStructure, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SenderKeyStateStructure;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9343,15 +8365,12 @@ export namespace proto {
         }
 
         class SenderChainKey implements ISenderChainKey {
-            constructor(properties?: proto.SenderKeyStateStructure.ISenderChainKey);
+            constructor(p?: proto.SenderKeyStateStructure.ISenderChainKey);
             public iteration: number;
             public seed: Uint8Array;
             public static create(properties?: proto.SenderKeyStateStructure.ISenderChainKey): proto.SenderKeyStateStructure.SenderChainKey;
-            public static encode(message: proto.SenderKeyStateStructure.ISenderChainKey, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SenderKeyStateStructure.SenderChainKey;
-            public static fromObject(object: { [k: string]: any }): proto.SenderKeyStateStructure.SenderChainKey;
-            public static toObject(message: proto.SenderKeyStateStructure.SenderChainKey, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SenderKeyStateStructure.ISenderChainKey, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SenderKeyStateStructure.SenderChainKey;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -9361,15 +8380,12 @@ export namespace proto {
         }
 
         class SenderMessageKey implements ISenderMessageKey {
-            constructor(properties?: proto.SenderKeyStateStructure.ISenderMessageKey);
+            constructor(p?: proto.SenderKeyStateStructure.ISenderMessageKey);
             public iteration: number;
             public seed: Uint8Array;
             public static create(properties?: proto.SenderKeyStateStructure.ISenderMessageKey): proto.SenderKeyStateStructure.SenderMessageKey;
-            public static encode(message: proto.SenderKeyStateStructure.ISenderMessageKey, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SenderKeyStateStructure.SenderMessageKey;
-            public static fromObject(object: { [k: string]: any }): proto.SenderKeyStateStructure.SenderMessageKey;
-            public static toObject(message: proto.SenderKeyStateStructure.SenderMessageKey, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SenderKeyStateStructure.ISenderMessageKey, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SenderKeyStateStructure.SenderMessageKey;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -9379,15 +8395,12 @@ export namespace proto {
         }
 
         class SenderSigningKey implements ISenderSigningKey {
-            constructor(properties?: proto.SenderKeyStateStructure.ISenderSigningKey);
+            constructor(p?: proto.SenderKeyStateStructure.ISenderSigningKey);
             public public: Uint8Array;
             public private: Uint8Array;
             public static create(properties?: proto.SenderKeyStateStructure.ISenderSigningKey): proto.SenderKeyStateStructure.SenderSigningKey;
-            public static encode(message: proto.SenderKeyStateStructure.ISenderSigningKey, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SenderKeyStateStructure.SenderSigningKey;
-            public static fromObject(object: { [k: string]: any }): proto.SenderKeyStateStructure.SenderSigningKey;
-            public static toObject(message: proto.SenderKeyStateStructure.SenderSigningKey, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SenderKeyStateStructure.ISenderSigningKey, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SenderKeyStateStructure.SenderSigningKey;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
     }
@@ -9397,14 +8410,11 @@ export namespace proto {
     }
 
     class ServerErrorReceipt implements IServerErrorReceipt {
-        constructor(properties?: proto.IServerErrorReceipt);
+        constructor(p?: proto.IServerErrorReceipt);
         public stanzaId: string;
         public static create(properties?: proto.IServerErrorReceipt): proto.ServerErrorReceipt;
-        public static encode(message: proto.IServerErrorReceipt, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.ServerErrorReceipt;
-        public static fromObject(object: { [k: string]: any }): proto.ServerErrorReceipt;
-        public static toObject(message: proto.ServerErrorReceipt, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IServerErrorReceipt, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.ServerErrorReceipt;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9425,7 +8435,7 @@ export namespace proto {
     }
 
     class SessionStructure implements ISessionStructure {
-        constructor(properties?: proto.ISessionStructure);
+        constructor(p?: proto.ISessionStructure);
         public sessionVersion: number;
         public localIdentityPublic: Uint8Array;
         public remoteIdentityPublic: Uint8Array;
@@ -9440,11 +8450,8 @@ export namespace proto {
         public needsRefresh: boolean;
         public aliceBaseKey: Uint8Array;
         public static create(properties?: proto.ISessionStructure): proto.SessionStructure;
-        public static encode(message: proto.ISessionStructure, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SessionStructure;
-        public static fromObject(object: { [k: string]: any }): proto.SessionStructure;
-        public static toObject(message: proto.SessionStructure, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ISessionStructure, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SessionStructure;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9458,17 +8465,14 @@ export namespace proto {
         }
 
         class Chain implements IChain {
-            constructor(properties?: proto.SessionStructure.IChain);
+            constructor(p?: proto.SessionStructure.IChain);
             public senderRatchetKey: Uint8Array;
             public senderRatchetKeyPrivate: Uint8Array;
             public chainKey?: (proto.SessionStructure.Chain.IChainKey|null);
             public messageKeys: proto.SessionStructure.Chain.IMessageKey[];
             public static create(properties?: proto.SessionStructure.IChain): proto.SessionStructure.Chain;
-            public static encode(message: proto.SessionStructure.IChain, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SessionStructure.Chain;
-            public static fromObject(object: { [k: string]: any }): proto.SessionStructure.Chain;
-            public static toObject(message: proto.SessionStructure.Chain, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SessionStructure.IChain, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SessionStructure.Chain;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -9480,15 +8484,12 @@ export namespace proto {
             }
 
             class ChainKey implements IChainKey {
-                constructor(properties?: proto.SessionStructure.Chain.IChainKey);
+                constructor(p?: proto.SessionStructure.Chain.IChainKey);
                 public index: number;
                 public key: Uint8Array;
                 public static create(properties?: proto.SessionStructure.Chain.IChainKey): proto.SessionStructure.Chain.ChainKey;
-                public static encode(message: proto.SessionStructure.Chain.IChainKey, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SessionStructure.Chain.ChainKey;
-                public static fromObject(object: { [k: string]: any }): proto.SessionStructure.Chain.ChainKey;
-                public static toObject(message: proto.SessionStructure.Chain.ChainKey, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.SessionStructure.Chain.IChainKey, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SessionStructure.Chain.ChainKey;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
 
@@ -9500,17 +8501,14 @@ export namespace proto {
             }
 
             class MessageKey implements IMessageKey {
-                constructor(properties?: proto.SessionStructure.Chain.IMessageKey);
+                constructor(p?: proto.SessionStructure.Chain.IMessageKey);
                 public index: number;
                 public cipherKey: Uint8Array;
                 public macKey: Uint8Array;
                 public iv: Uint8Array;
                 public static create(properties?: proto.SessionStructure.Chain.IMessageKey): proto.SessionStructure.Chain.MessageKey;
-                public static encode(message: proto.SessionStructure.Chain.IMessageKey, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SessionStructure.Chain.MessageKey;
-                public static fromObject(object: { [k: string]: any }): proto.SessionStructure.Chain.MessageKey;
-                public static toObject(message: proto.SessionStructure.Chain.MessageKey, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.SessionStructure.Chain.IMessageKey, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SessionStructure.Chain.MessageKey;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
         }
@@ -9526,7 +8524,7 @@ export namespace proto {
         }
 
         class PendingKeyExchange implements IPendingKeyExchange {
-            constructor(properties?: proto.SessionStructure.IPendingKeyExchange);
+            constructor(p?: proto.SessionStructure.IPendingKeyExchange);
             public sequence: number;
             public localBaseKey: Uint8Array;
             public localBaseKeyPrivate: Uint8Array;
@@ -9535,11 +8533,8 @@ export namespace proto {
             public localIdentityKey: Uint8Array;
             public localIdentityKeyPrivate: Uint8Array;
             public static create(properties?: proto.SessionStructure.IPendingKeyExchange): proto.SessionStructure.PendingKeyExchange;
-            public static encode(message: proto.SessionStructure.IPendingKeyExchange, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SessionStructure.PendingKeyExchange;
-            public static fromObject(object: { [k: string]: any }): proto.SessionStructure.PendingKeyExchange;
-            public static toObject(message: proto.SessionStructure.PendingKeyExchange, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SessionStructure.IPendingKeyExchange, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SessionStructure.PendingKeyExchange;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -9550,16 +8545,13 @@ export namespace proto {
         }
 
         class PendingPreKey implements IPendingPreKey {
-            constructor(properties?: proto.SessionStructure.IPendingPreKey);
+            constructor(p?: proto.SessionStructure.IPendingPreKey);
             public preKeyId: number;
             public signedPreKeyId: number;
             public baseKey: Uint8Array;
             public static create(properties?: proto.SessionStructure.IPendingPreKey): proto.SessionStructure.PendingPreKey;
-            public static encode(message: proto.SessionStructure.IPendingPreKey, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SessionStructure.PendingPreKey;
-            public static fromObject(object: { [k: string]: any }): proto.SessionStructure.PendingPreKey;
-            public static toObject(message: proto.SessionStructure.PendingPreKey, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SessionStructure.IPendingPreKey, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SessionStructure.PendingPreKey;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
     }
@@ -9572,17 +8564,14 @@ export namespace proto {
     }
 
     class SignalMessage implements ISignalMessage {
-        constructor(properties?: proto.ISignalMessage);
+        constructor(p?: proto.ISignalMessage);
         public ratchetKey: Uint8Array;
         public counter: number;
         public previousCounter: number;
         public ciphertext: Uint8Array;
         public static create(properties?: proto.ISignalMessage): proto.SignalMessage;
-        public static encode(message: proto.ISignalMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SignalMessage;
-        public static fromObject(object: { [k: string]: any }): proto.SignalMessage;
-        public static toObject(message: proto.SignalMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ISignalMessage, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SignalMessage;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9595,18 +8584,15 @@ export namespace proto {
     }
 
     class SignedPreKeyRecordStructure implements ISignedPreKeyRecordStructure {
-        constructor(properties?: proto.ISignedPreKeyRecordStructure);
+        constructor(p?: proto.ISignedPreKeyRecordStructure);
         public id: number;
         public publicKey: Uint8Array;
         public privateKey: Uint8Array;
         public signature: Uint8Array;
         public timestamp: (number|Long);
         public static create(properties?: proto.ISignedPreKeyRecordStructure): proto.SignedPreKeyRecordStructure;
-        public static encode(message: proto.ISignedPreKeyRecordStructure, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SignedPreKeyRecordStructure;
-        public static fromObject(object: { [k: string]: any }): proto.SignedPreKeyRecordStructure;
-        public static toObject(message: proto.SignedPreKeyRecordStructure, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ISignedPreKeyRecordStructure, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SignedPreKeyRecordStructure;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9615,14 +8601,11 @@ export namespace proto {
     }
 
     class StatusMentionMessage implements IStatusMentionMessage {
-        constructor(properties?: proto.IStatusMentionMessage);
+        constructor(p?: proto.IStatusMentionMessage);
         public quotedStatus?: (proto.IMessage|null);
         public static create(properties?: proto.IStatusMentionMessage): proto.StatusMentionMessage;
-        public static encode(message: proto.IStatusMentionMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.StatusMentionMessage;
-        public static fromObject(object: { [k: string]: any }): proto.StatusMentionMessage;
-        public static toObject(message: proto.StatusMentionMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IStatusMentionMessage, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.StatusMentionMessage;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9632,15 +8615,12 @@ export namespace proto {
     }
 
     class StatusPSA implements IStatusPSA {
-        constructor(properties?: proto.IStatusPSA);
+        constructor(p?: proto.IStatusPSA);
         public campaignId: (number|Long);
         public campaignExpirationTimestamp: (number|Long);
         public static create(properties?: proto.IStatusPSA): proto.StatusPSA;
-        public static encode(message: proto.IStatusPSA, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.StatusPSA;
-        public static fromObject(object: { [k: string]: any }): proto.StatusPSA;
-        public static toObject(message: proto.StatusPSA, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IStatusPSA, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.StatusPSA;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9660,7 +8640,7 @@ export namespace proto {
     }
 
     class StickerMetadata implements IStickerMetadata {
-        constructor(properties?: proto.IStickerMetadata);
+        constructor(p?: proto.IStickerMetadata);
         public url: string;
         public fileSha256: Uint8Array;
         public fileEncSha256: Uint8Array;
@@ -9674,11 +8654,8 @@ export namespace proto {
         public lastStickerSentTs: (number|Long);
         public isLottie: boolean;
         public static create(properties?: proto.IStickerMetadata): proto.StickerMetadata;
-        public static encode(message: proto.IStickerMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.StickerMetadata;
-        public static fromObject(object: { [k: string]: any }): proto.StickerMetadata;
-        public static toObject(message: proto.StickerMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IStickerMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.StickerMetadata;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9690,17 +8667,14 @@ export namespace proto {
     }
 
     class SyncActionData implements ISyncActionData {
-        constructor(properties?: proto.ISyncActionData);
+        constructor(p?: proto.ISyncActionData);
         public index: Uint8Array;
         public value?: (proto.ISyncActionValue|null);
         public padding: Uint8Array;
         public version: number;
         public static create(properties?: proto.ISyncActionData): proto.SyncActionData;
-        public static encode(message: proto.ISyncActionData, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionData;
-        public static fromObject(object: { [k: string]: any }): proto.SyncActionData;
-        public static toObject(message: proto.SyncActionData, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ISyncActionData, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionData;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9765,7 +8739,7 @@ export namespace proto {
     }
 
     class SyncActionValue implements ISyncActionValue {
-        constructor(properties?: proto.ISyncActionValue);
+        constructor(p?: proto.ISyncActionValue);
         public timestamp: (number|Long);
         public starAction?: (proto.SyncActionValue.IStarAction|null);
         public contactAction?: (proto.SyncActionValue.IContactAction|null);
@@ -9824,11 +8798,8 @@ export namespace proto {
         public ctwaPerCustomerDataSharingAction?: (proto.SyncActionValue.ICtwaPerCustomerDataSharingAction|null);
         public paymentTosAction?: (proto.SyncActionValue.IPaymentTosAction|null);
         public static create(properties?: proto.ISyncActionValue): proto.SyncActionValue;
-        public static encode(message: proto.ISyncActionValue, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue;
-        public static fromObject(object: { [k: string]: any }): proto.SyncActionValue;
-        public static toObject(message: proto.SyncActionValue, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ISyncActionValue, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -9841,16 +8812,13 @@ export namespace proto {
         }
 
         class AgentAction implements IAgentAction {
-            constructor(properties?: proto.SyncActionValue.IAgentAction);
+            constructor(p?: proto.SyncActionValue.IAgentAction);
             public name: string;
             public deviceID: number;
             public isDeleted: boolean;
             public static create(properties?: proto.SyncActionValue.IAgentAction): proto.SyncActionValue.AgentAction;
-            public static encode(message: proto.SyncActionValue.IAgentAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.AgentAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.AgentAction;
-            public static toObject(message: proto.SyncActionValue.AgentAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IAgentAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.AgentAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -9859,14 +8827,11 @@ export namespace proto {
         }
 
         class AndroidUnsupportedActions implements IAndroidUnsupportedActions {
-            constructor(properties?: proto.SyncActionValue.IAndroidUnsupportedActions);
+            constructor(p?: proto.SyncActionValue.IAndroidUnsupportedActions);
             public allowed: boolean;
             public static create(properties?: proto.SyncActionValue.IAndroidUnsupportedActions): proto.SyncActionValue.AndroidUnsupportedActions;
-            public static encode(message: proto.SyncActionValue.IAndroidUnsupportedActions, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.AndroidUnsupportedActions;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.AndroidUnsupportedActions;
-            public static toObject(message: proto.SyncActionValue.AndroidUnsupportedActions, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IAndroidUnsupportedActions, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.AndroidUnsupportedActions;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -9876,15 +8841,12 @@ export namespace proto {
         }
 
         class ArchiveChatAction implements IArchiveChatAction {
-            constructor(properties?: proto.SyncActionValue.IArchiveChatAction);
+            constructor(p?: proto.SyncActionValue.IArchiveChatAction);
             public archived: boolean;
             public messageRange?: (proto.SyncActionValue.ISyncActionMessageRange|null);
             public static create(properties?: proto.SyncActionValue.IArchiveChatAction): proto.SyncActionValue.ArchiveChatAction;
-            public static encode(message: proto.SyncActionValue.IArchiveChatAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.ArchiveChatAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.ArchiveChatAction;
-            public static toObject(message: proto.SyncActionValue.ArchiveChatAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IArchiveChatAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.ArchiveChatAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -9893,14 +8855,11 @@ export namespace proto {
         }
 
         class BotWelcomeRequestAction implements IBotWelcomeRequestAction {
-            constructor(properties?: proto.SyncActionValue.IBotWelcomeRequestAction);
+            constructor(p?: proto.SyncActionValue.IBotWelcomeRequestAction);
             public isSent: boolean;
             public static create(properties?: proto.SyncActionValue.IBotWelcomeRequestAction): proto.SyncActionValue.BotWelcomeRequestAction;
-            public static encode(message: proto.SyncActionValue.IBotWelcomeRequestAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.BotWelcomeRequestAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.BotWelcomeRequestAction;
-            public static toObject(message: proto.SyncActionValue.BotWelcomeRequestAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IBotWelcomeRequestAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.BotWelcomeRequestAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -9909,14 +8868,11 @@ export namespace proto {
         }
 
         class CallLogAction implements ICallLogAction {
-            constructor(properties?: proto.SyncActionValue.ICallLogAction);
+            constructor(p?: proto.SyncActionValue.ICallLogAction);
             public callLogRecord?: (proto.ICallLogRecord|null);
             public static create(properties?: proto.SyncActionValue.ICallLogAction): proto.SyncActionValue.CallLogAction;
-            public static encode(message: proto.SyncActionValue.ICallLogAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.CallLogAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.CallLogAction;
-            public static toObject(message: proto.SyncActionValue.CallLogAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.ICallLogAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.CallLogAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -9925,14 +8881,11 @@ export namespace proto {
         }
 
         class ChatAssignmentAction implements IChatAssignmentAction {
-            constructor(properties?: proto.SyncActionValue.IChatAssignmentAction);
+            constructor(p?: proto.SyncActionValue.IChatAssignmentAction);
             public deviceAgentID: string;
             public static create(properties?: proto.SyncActionValue.IChatAssignmentAction): proto.SyncActionValue.ChatAssignmentAction;
-            public static encode(message: proto.SyncActionValue.IChatAssignmentAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.ChatAssignmentAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.ChatAssignmentAction;
-            public static toObject(message: proto.SyncActionValue.ChatAssignmentAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IChatAssignmentAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.ChatAssignmentAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -9941,14 +8894,11 @@ export namespace proto {
         }
 
         class ChatAssignmentOpenedStatusAction implements IChatAssignmentOpenedStatusAction {
-            constructor(properties?: proto.SyncActionValue.IChatAssignmentOpenedStatusAction);
+            constructor(p?: proto.SyncActionValue.IChatAssignmentOpenedStatusAction);
             public chatOpened: boolean;
             public static create(properties?: proto.SyncActionValue.IChatAssignmentOpenedStatusAction): proto.SyncActionValue.ChatAssignmentOpenedStatusAction;
-            public static encode(message: proto.SyncActionValue.IChatAssignmentOpenedStatusAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.ChatAssignmentOpenedStatusAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.ChatAssignmentOpenedStatusAction;
-            public static toObject(message: proto.SyncActionValue.ChatAssignmentOpenedStatusAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IChatAssignmentOpenedStatusAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.ChatAssignmentOpenedStatusAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -9957,14 +8907,11 @@ export namespace proto {
         }
 
         class ClearChatAction implements IClearChatAction {
-            constructor(properties?: proto.SyncActionValue.IClearChatAction);
+            constructor(p?: proto.SyncActionValue.IClearChatAction);
             public messageRange?: (proto.SyncActionValue.ISyncActionMessageRange|null);
             public static create(properties?: proto.SyncActionValue.IClearChatAction): proto.SyncActionValue.ClearChatAction;
-            public static encode(message: proto.SyncActionValue.IClearChatAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.ClearChatAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.ClearChatAction;
-            public static toObject(message: proto.SyncActionValue.ClearChatAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IClearChatAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.ClearChatAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -9978,7 +8925,7 @@ export namespace proto {
         }
 
         class ContactAction implements IContactAction {
-            constructor(properties?: proto.SyncActionValue.IContactAction);
+            constructor(p?: proto.SyncActionValue.IContactAction);
             public fullName: string;
             public firstName: string;
             public lidJid: string;
@@ -9986,11 +8933,8 @@ export namespace proto {
             public pnJid: string;
             public username: string;
             public static create(properties?: proto.SyncActionValue.IContactAction): proto.SyncActionValue.ContactAction;
-            public static encode(message: proto.SyncActionValue.IContactAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.ContactAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.ContactAction;
-            public static toObject(message: proto.SyncActionValue.ContactAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IContactAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.ContactAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -9999,14 +8943,11 @@ export namespace proto {
         }
 
         class CtwaPerCustomerDataSharingAction implements ICtwaPerCustomerDataSharingAction {
-            constructor(properties?: proto.SyncActionValue.ICtwaPerCustomerDataSharingAction);
+            constructor(p?: proto.SyncActionValue.ICtwaPerCustomerDataSharingAction);
             public isCtwaPerCustomerDataSharingEnabled: boolean;
             public static create(properties?: proto.SyncActionValue.ICtwaPerCustomerDataSharingAction): proto.SyncActionValue.CtwaPerCustomerDataSharingAction;
-            public static encode(message: proto.SyncActionValue.ICtwaPerCustomerDataSharingAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.CtwaPerCustomerDataSharingAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.CtwaPerCustomerDataSharingAction;
-            public static toObject(message: proto.SyncActionValue.CtwaPerCustomerDataSharingAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.ICtwaPerCustomerDataSharingAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.CtwaPerCustomerDataSharingAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10018,17 +8959,14 @@ export namespace proto {
         }
 
         class CustomPaymentMethod implements ICustomPaymentMethod {
-            constructor(properties?: proto.SyncActionValue.ICustomPaymentMethod);
+            constructor(p?: proto.SyncActionValue.ICustomPaymentMethod);
             public credentialId: string;
             public country: string;
             public type: string;
             public metadata: proto.SyncActionValue.ICustomPaymentMethodMetadata[];
             public static create(properties?: proto.SyncActionValue.ICustomPaymentMethod): proto.SyncActionValue.CustomPaymentMethod;
-            public static encode(message: proto.SyncActionValue.ICustomPaymentMethod, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.CustomPaymentMethod;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.CustomPaymentMethod;
-            public static toObject(message: proto.SyncActionValue.CustomPaymentMethod, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.ICustomPaymentMethod, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.CustomPaymentMethod;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10038,15 +8976,12 @@ export namespace proto {
         }
 
         class CustomPaymentMethodMetadata implements ICustomPaymentMethodMetadata {
-            constructor(properties?: proto.SyncActionValue.ICustomPaymentMethodMetadata);
+            constructor(p?: proto.SyncActionValue.ICustomPaymentMethodMetadata);
             public key: string;
             public value: string;
             public static create(properties?: proto.SyncActionValue.ICustomPaymentMethodMetadata): proto.SyncActionValue.CustomPaymentMethodMetadata;
-            public static encode(message: proto.SyncActionValue.ICustomPaymentMethodMetadata, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.CustomPaymentMethodMetadata;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.CustomPaymentMethodMetadata;
-            public static toObject(message: proto.SyncActionValue.CustomPaymentMethodMetadata, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.ICustomPaymentMethodMetadata, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.CustomPaymentMethodMetadata;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10055,14 +8990,11 @@ export namespace proto {
         }
 
         class CustomPaymentMethodsAction implements ICustomPaymentMethodsAction {
-            constructor(properties?: proto.SyncActionValue.ICustomPaymentMethodsAction);
+            constructor(p?: proto.SyncActionValue.ICustomPaymentMethodsAction);
             public customPaymentMethods: proto.SyncActionValue.ICustomPaymentMethod[];
             public static create(properties?: proto.SyncActionValue.ICustomPaymentMethodsAction): proto.SyncActionValue.CustomPaymentMethodsAction;
-            public static encode(message: proto.SyncActionValue.ICustomPaymentMethodsAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.CustomPaymentMethodsAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.CustomPaymentMethodsAction;
-            public static toObject(message: proto.SyncActionValue.CustomPaymentMethodsAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.ICustomPaymentMethodsAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.CustomPaymentMethodsAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10071,14 +9003,11 @@ export namespace proto {
         }
 
         class DeleteChatAction implements IDeleteChatAction {
-            constructor(properties?: proto.SyncActionValue.IDeleteChatAction);
+            constructor(p?: proto.SyncActionValue.IDeleteChatAction);
             public messageRange?: (proto.SyncActionValue.ISyncActionMessageRange|null);
             public static create(properties?: proto.SyncActionValue.IDeleteChatAction): proto.SyncActionValue.DeleteChatAction;
-            public static encode(message: proto.SyncActionValue.IDeleteChatAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.DeleteChatAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.DeleteChatAction;
-            public static toObject(message: proto.SyncActionValue.DeleteChatAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IDeleteChatAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.DeleteChatAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10088,15 +9017,12 @@ export namespace proto {
         }
 
         class DeleteIndividualCallLogAction implements IDeleteIndividualCallLogAction {
-            constructor(properties?: proto.SyncActionValue.IDeleteIndividualCallLogAction);
+            constructor(p?: proto.SyncActionValue.IDeleteIndividualCallLogAction);
             public peerJid: string;
             public isIncoming: boolean;
             public static create(properties?: proto.SyncActionValue.IDeleteIndividualCallLogAction): proto.SyncActionValue.DeleteIndividualCallLogAction;
-            public static encode(message: proto.SyncActionValue.IDeleteIndividualCallLogAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.DeleteIndividualCallLogAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.DeleteIndividualCallLogAction;
-            public static toObject(message: proto.SyncActionValue.DeleteIndividualCallLogAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IDeleteIndividualCallLogAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.DeleteIndividualCallLogAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10106,15 +9032,12 @@ export namespace proto {
         }
 
         class DeleteMessageForMeAction implements IDeleteMessageForMeAction {
-            constructor(properties?: proto.SyncActionValue.IDeleteMessageForMeAction);
+            constructor(p?: proto.SyncActionValue.IDeleteMessageForMeAction);
             public deleteMedia: boolean;
             public messageTimestamp: (number|Long);
             public static create(properties?: proto.SyncActionValue.IDeleteMessageForMeAction): proto.SyncActionValue.DeleteMessageForMeAction;
-            public static encode(message: proto.SyncActionValue.IDeleteMessageForMeAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.DeleteMessageForMeAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.DeleteMessageForMeAction;
-            public static toObject(message: proto.SyncActionValue.DeleteMessageForMeAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IDeleteMessageForMeAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.DeleteMessageForMeAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10123,14 +9046,11 @@ export namespace proto {
         }
 
         class ExternalWebBetaAction implements IExternalWebBetaAction {
-            constructor(properties?: proto.SyncActionValue.IExternalWebBetaAction);
+            constructor(p?: proto.SyncActionValue.IExternalWebBetaAction);
             public isOptIn: boolean;
             public static create(properties?: proto.SyncActionValue.IExternalWebBetaAction): proto.SyncActionValue.ExternalWebBetaAction;
-            public static encode(message: proto.SyncActionValue.IExternalWebBetaAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.ExternalWebBetaAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.ExternalWebBetaAction;
-            public static toObject(message: proto.SyncActionValue.ExternalWebBetaAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IExternalWebBetaAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.ExternalWebBetaAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10139,14 +9059,11 @@ export namespace proto {
         }
 
         class FavoritesAction implements IFavoritesAction {
-            constructor(properties?: proto.SyncActionValue.IFavoritesAction);
+            constructor(p?: proto.SyncActionValue.IFavoritesAction);
             public favorites: proto.SyncActionValue.FavoritesAction.IFavorite[];
             public static create(properties?: proto.SyncActionValue.IFavoritesAction): proto.SyncActionValue.FavoritesAction;
-            public static encode(message: proto.SyncActionValue.IFavoritesAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.FavoritesAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.FavoritesAction;
-            public static toObject(message: proto.SyncActionValue.FavoritesAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IFavoritesAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.FavoritesAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10157,14 +9074,11 @@ export namespace proto {
             }
 
             class Favorite implements IFavorite {
-                constructor(properties?: proto.SyncActionValue.FavoritesAction.IFavorite);
+                constructor(p?: proto.SyncActionValue.FavoritesAction.IFavorite);
                 public id: string;
                 public static create(properties?: proto.SyncActionValue.FavoritesAction.IFavorite): proto.SyncActionValue.FavoritesAction.Favorite;
-                public static encode(message: proto.SyncActionValue.FavoritesAction.IFavorite, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.FavoritesAction.Favorite;
-                public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.FavoritesAction.Favorite;
-                public static toObject(message: proto.SyncActionValue.FavoritesAction.Favorite, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.SyncActionValue.FavoritesAction.IFavorite, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.FavoritesAction.Favorite;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
         }
@@ -10174,14 +9088,11 @@ export namespace proto {
         }
 
         class KeyExpiration implements IKeyExpiration {
-            constructor(properties?: proto.SyncActionValue.IKeyExpiration);
+            constructor(p?: proto.SyncActionValue.IKeyExpiration);
             public expiredKeyEpoch: number;
             public static create(properties?: proto.SyncActionValue.IKeyExpiration): proto.SyncActionValue.KeyExpiration;
-            public static encode(message: proto.SyncActionValue.IKeyExpiration, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.KeyExpiration;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.KeyExpiration;
-            public static toObject(message: proto.SyncActionValue.KeyExpiration, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IKeyExpiration, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.KeyExpiration;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10190,14 +9101,11 @@ export namespace proto {
         }
 
         class LabelAssociationAction implements ILabelAssociationAction {
-            constructor(properties?: proto.SyncActionValue.ILabelAssociationAction);
+            constructor(p?: proto.SyncActionValue.ILabelAssociationAction);
             public labeled: boolean;
             public static create(properties?: proto.SyncActionValue.ILabelAssociationAction): proto.SyncActionValue.LabelAssociationAction;
-            public static encode(message: proto.SyncActionValue.ILabelAssociationAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.LabelAssociationAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.LabelAssociationAction;
-            public static toObject(message: proto.SyncActionValue.LabelAssociationAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.ILabelAssociationAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.LabelAssociationAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10213,7 +9121,7 @@ export namespace proto {
         }
 
         class LabelEditAction implements ILabelEditAction {
-            constructor(properties?: proto.SyncActionValue.ILabelEditAction);
+            constructor(p?: proto.SyncActionValue.ILabelEditAction);
             public name: string;
             public color: number;
             public predefinedId: number;
@@ -10223,11 +9131,8 @@ export namespace proto {
             public type: proto.SyncActionValue.LabelEditAction.ListType;
             public isImmutable: boolean;
             public static create(properties?: proto.SyncActionValue.ILabelEditAction): proto.SyncActionValue.LabelEditAction;
-            public static encode(message: proto.SyncActionValue.ILabelEditAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.LabelEditAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.LabelEditAction;
-            public static toObject(message: proto.SyncActionValue.LabelEditAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.ILabelEditAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.LabelEditAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10250,14 +9155,11 @@ export namespace proto {
         }
 
         class LabelReorderingAction implements ILabelReorderingAction {
-            constructor(properties?: proto.SyncActionValue.ILabelReorderingAction);
+            constructor(p?: proto.SyncActionValue.ILabelReorderingAction);
             public sortedLabelIds: number[];
             public static create(properties?: proto.SyncActionValue.ILabelReorderingAction): proto.SyncActionValue.LabelReorderingAction;
-            public static encode(message: proto.SyncActionValue.ILabelReorderingAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.LabelReorderingAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.LabelReorderingAction;
-            public static toObject(message: proto.SyncActionValue.LabelReorderingAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.ILabelReorderingAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.LabelReorderingAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10269,17 +9171,14 @@ export namespace proto {
         }
 
         class LidContactAction implements ILidContactAction {
-            constructor(properties?: proto.SyncActionValue.ILidContactAction);
+            constructor(p?: proto.SyncActionValue.ILidContactAction);
             public fullName: string;
             public firstName: string;
             public username: string;
             public saveOnPrimaryAddressbook: boolean;
             public static create(properties?: proto.SyncActionValue.ILidContactAction): proto.SyncActionValue.LidContactAction;
-            public static encode(message: proto.SyncActionValue.ILidContactAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.LidContactAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.LidContactAction;
-            public static toObject(message: proto.SyncActionValue.LidContactAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.ILidContactAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.LidContactAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10288,14 +9187,11 @@ export namespace proto {
         }
 
         class LocaleSetting implements ILocaleSetting {
-            constructor(properties?: proto.SyncActionValue.ILocaleSetting);
+            constructor(p?: proto.SyncActionValue.ILocaleSetting);
             public locale: string;
             public static create(properties?: proto.SyncActionValue.ILocaleSetting): proto.SyncActionValue.LocaleSetting;
-            public static encode(message: proto.SyncActionValue.ILocaleSetting, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.LocaleSetting;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.LocaleSetting;
-            public static toObject(message: proto.SyncActionValue.LocaleSetting, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.ILocaleSetting, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.LocaleSetting;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10304,14 +9200,11 @@ export namespace proto {
         }
 
         class LockChatAction implements ILockChatAction {
-            constructor(properties?: proto.SyncActionValue.ILockChatAction);
+            constructor(p?: proto.SyncActionValue.ILockChatAction);
             public locked: boolean;
             public static create(properties?: proto.SyncActionValue.ILockChatAction): proto.SyncActionValue.LockChatAction;
-            public static encode(message: proto.SyncActionValue.ILockChatAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.LockChatAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.LockChatAction;
-            public static toObject(message: proto.SyncActionValue.LockChatAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.ILockChatAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.LockChatAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10321,15 +9214,12 @@ export namespace proto {
         }
 
         class MarkChatAsReadAction implements IMarkChatAsReadAction {
-            constructor(properties?: proto.SyncActionValue.IMarkChatAsReadAction);
+            constructor(p?: proto.SyncActionValue.IMarkChatAsReadAction);
             public read: boolean;
             public messageRange?: (proto.SyncActionValue.ISyncActionMessageRange|null);
             public static create(properties?: proto.SyncActionValue.IMarkChatAsReadAction): proto.SyncActionValue.MarkChatAsReadAction;
-            public static encode(message: proto.SyncActionValue.IMarkChatAsReadAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.MarkChatAsReadAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.MarkChatAsReadAction;
-            public static toObject(message: proto.SyncActionValue.MarkChatAsReadAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IMarkChatAsReadAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.MarkChatAsReadAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10344,7 +9234,7 @@ export namespace proto {
         }
 
         class MarketingMessageAction implements IMarketingMessageAction {
-            constructor(properties?: proto.SyncActionValue.IMarketingMessageAction);
+            constructor(p?: proto.SyncActionValue.IMarketingMessageAction);
             public name: string;
             public message: string;
             public type: proto.SyncActionValue.MarketingMessageAction.MarketingMessagePrototypeType;
@@ -10353,11 +9243,8 @@ export namespace proto {
             public isDeleted: boolean;
             public mediaId: string;
             public static create(properties?: proto.SyncActionValue.IMarketingMessageAction): proto.SyncActionValue.MarketingMessageAction;
-            public static encode(message: proto.SyncActionValue.IMarketingMessageAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.MarketingMessageAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.MarketingMessageAction;
-            public static toObject(message: proto.SyncActionValue.MarketingMessageAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IMarketingMessageAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.MarketingMessageAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10373,14 +9260,11 @@ export namespace proto {
         }
 
         class MarketingMessageBroadcastAction implements IMarketingMessageBroadcastAction {
-            constructor(properties?: proto.SyncActionValue.IMarketingMessageBroadcastAction);
+            constructor(p?: proto.SyncActionValue.IMarketingMessageBroadcastAction);
             public repliedCount: number;
             public static create(properties?: proto.SyncActionValue.IMarketingMessageBroadcastAction): proto.SyncActionValue.MarketingMessageBroadcastAction;
-            public static encode(message: proto.SyncActionValue.IMarketingMessageBroadcastAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.MarketingMessageBroadcastAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.MarketingMessageBroadcastAction;
-            public static toObject(message: proto.SyncActionValue.MarketingMessageBroadcastAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IMarketingMessageBroadcastAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.MarketingMessageBroadcastAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10392,17 +9276,14 @@ export namespace proto {
         }
 
         class MerchantPaymentPartnerAction implements IMerchantPaymentPartnerAction {
-            constructor(properties?: proto.SyncActionValue.IMerchantPaymentPartnerAction);
+            constructor(p?: proto.SyncActionValue.IMerchantPaymentPartnerAction);
             public status: proto.SyncActionValue.MerchantPaymentPartnerAction.Status;
             public country: string;
             public gatewayName: string;
             public credentialId: string;
             public static create(properties?: proto.SyncActionValue.IMerchantPaymentPartnerAction): proto.SyncActionValue.MerchantPaymentPartnerAction;
-            public static encode(message: proto.SyncActionValue.IMerchantPaymentPartnerAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.MerchantPaymentPartnerAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.MerchantPaymentPartnerAction;
-            public static toObject(message: proto.SyncActionValue.MerchantPaymentPartnerAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IMerchantPaymentPartnerAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.MerchantPaymentPartnerAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10421,16 +9302,13 @@ export namespace proto {
         }
 
         class MuteAction implements IMuteAction {
-            constructor(properties?: proto.SyncActionValue.IMuteAction);
+            constructor(p?: proto.SyncActionValue.IMuteAction);
             public muted: boolean;
             public muteEndTimestamp: (number|Long);
             public autoMuted: boolean;
             public static create(properties?: proto.SyncActionValue.IMuteAction): proto.SyncActionValue.MuteAction;
-            public static encode(message: proto.SyncActionValue.IMuteAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.MuteAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.MuteAction;
-            public static toObject(message: proto.SyncActionValue.MuteAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IMuteAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.MuteAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10443,18 +9321,15 @@ export namespace proto {
         }
 
         class NoteEditAction implements INoteEditAction {
-            constructor(properties?: proto.SyncActionValue.INoteEditAction);
+            constructor(p?: proto.SyncActionValue.INoteEditAction);
             public type: proto.SyncActionValue.NoteEditAction.NoteType;
             public chatJid: string;
             public createdAt: (number|Long);
             public deleted: boolean;
             public unstructuredContent: string;
             public static create(properties?: proto.SyncActionValue.INoteEditAction): proto.SyncActionValue.NoteEditAction;
-            public static encode(message: proto.SyncActionValue.INoteEditAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.NoteEditAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.NoteEditAction;
-            public static toObject(message: proto.SyncActionValue.NoteEditAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.INoteEditAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.NoteEditAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10471,14 +9346,11 @@ export namespace proto {
         }
 
         class NotificationActivitySettingAction implements INotificationActivitySettingAction {
-            constructor(properties?: proto.SyncActionValue.INotificationActivitySettingAction);
+            constructor(p?: proto.SyncActionValue.INotificationActivitySettingAction);
             public notificationActivitySetting: proto.SyncActionValue.NotificationActivitySettingAction.NotificationActivitySetting;
             public static create(properties?: proto.SyncActionValue.INotificationActivitySettingAction): proto.SyncActionValue.NotificationActivitySettingAction;
-            public static encode(message: proto.SyncActionValue.INotificationActivitySettingAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.NotificationActivitySettingAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.NotificationActivitySettingAction;
-            public static toObject(message: proto.SyncActionValue.NotificationActivitySettingAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.INotificationActivitySettingAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.NotificationActivitySettingAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10497,14 +9369,11 @@ export namespace proto {
         }
 
         class NuxAction implements INuxAction {
-            constructor(properties?: proto.SyncActionValue.INuxAction);
+            constructor(p?: proto.SyncActionValue.INuxAction);
             public acknowledged: boolean;
             public static create(properties?: proto.SyncActionValue.INuxAction): proto.SyncActionValue.NuxAction;
-            public static encode(message: proto.SyncActionValue.INuxAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.NuxAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.NuxAction;
-            public static toObject(message: proto.SyncActionValue.NuxAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.INuxAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.NuxAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10513,14 +9382,11 @@ export namespace proto {
         }
 
         class PaymentInfoAction implements IPaymentInfoAction {
-            constructor(properties?: proto.SyncActionValue.IPaymentInfoAction);
+            constructor(p?: proto.SyncActionValue.IPaymentInfoAction);
             public cpi: string;
             public static create(properties?: proto.SyncActionValue.IPaymentInfoAction): proto.SyncActionValue.PaymentInfoAction;
-            public static encode(message: proto.SyncActionValue.IPaymentInfoAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.PaymentInfoAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.PaymentInfoAction;
-            public static toObject(message: proto.SyncActionValue.PaymentInfoAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IPaymentInfoAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.PaymentInfoAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10530,15 +9396,12 @@ export namespace proto {
         }
 
         class PaymentTosAction implements IPaymentTosAction {
-            constructor(properties?: proto.SyncActionValue.IPaymentTosAction);
+            constructor(p?: proto.SyncActionValue.IPaymentTosAction);
             public paymentNotice: proto.SyncActionValue.PaymentTosAction.PaymentNotice;
             public accepted: boolean;
             public static create(properties?: proto.SyncActionValue.IPaymentTosAction): proto.SyncActionValue.PaymentTosAction;
-            public static encode(message: proto.SyncActionValue.IPaymentTosAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.PaymentTosAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.PaymentTosAction;
-            public static toObject(message: proto.SyncActionValue.PaymentTosAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IPaymentTosAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.PaymentTosAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10554,14 +9417,11 @@ export namespace proto {
         }
 
         class PinAction implements IPinAction {
-            constructor(properties?: proto.SyncActionValue.IPinAction);
+            constructor(p?: proto.SyncActionValue.IPinAction);
             public pinned: boolean;
             public static create(properties?: proto.SyncActionValue.IPinAction): proto.SyncActionValue.PinAction;
-            public static encode(message: proto.SyncActionValue.IPinAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.PinAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.PinAction;
-            public static toObject(message: proto.SyncActionValue.PinAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IPinAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.PinAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10570,14 +9430,11 @@ export namespace proto {
         }
 
         class PnForLidChatAction implements IPnForLidChatAction {
-            constructor(properties?: proto.SyncActionValue.IPnForLidChatAction);
+            constructor(p?: proto.SyncActionValue.IPnForLidChatAction);
             public pnJid: string;
             public static create(properties?: proto.SyncActionValue.IPnForLidChatAction): proto.SyncActionValue.PnForLidChatAction;
-            public static encode(message: proto.SyncActionValue.IPnForLidChatAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.PnForLidChatAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.PnForLidChatAction;
-            public static toObject(message: proto.SyncActionValue.PnForLidChatAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IPnForLidChatAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.PnForLidChatAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10586,14 +9443,11 @@ export namespace proto {
         }
 
         class PrimaryFeature implements IPrimaryFeature {
-            constructor(properties?: proto.SyncActionValue.IPrimaryFeature);
+            constructor(p?: proto.SyncActionValue.IPrimaryFeature);
             public flags: string[];
             public static create(properties?: proto.SyncActionValue.IPrimaryFeature): proto.SyncActionValue.PrimaryFeature;
-            public static encode(message: proto.SyncActionValue.IPrimaryFeature, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.PrimaryFeature;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.PrimaryFeature;
-            public static toObject(message: proto.SyncActionValue.PrimaryFeature, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IPrimaryFeature, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.PrimaryFeature;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10602,14 +9456,11 @@ export namespace proto {
         }
 
         class PrimaryVersionAction implements IPrimaryVersionAction {
-            constructor(properties?: proto.SyncActionValue.IPrimaryVersionAction);
+            constructor(p?: proto.SyncActionValue.IPrimaryVersionAction);
             public version: string;
             public static create(properties?: proto.SyncActionValue.IPrimaryVersionAction): proto.SyncActionValue.PrimaryVersionAction;
-            public static encode(message: proto.SyncActionValue.IPrimaryVersionAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.PrimaryVersionAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.PrimaryVersionAction;
-            public static toObject(message: proto.SyncActionValue.PrimaryVersionAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IPrimaryVersionAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.PrimaryVersionAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10618,14 +9469,11 @@ export namespace proto {
         }
 
         class PrivacySettingDisableLinkPreviewsAction implements IPrivacySettingDisableLinkPreviewsAction {
-            constructor(properties?: proto.SyncActionValue.IPrivacySettingDisableLinkPreviewsAction);
+            constructor(p?: proto.SyncActionValue.IPrivacySettingDisableLinkPreviewsAction);
             public isPreviewsDisabled: boolean;
             public static create(properties?: proto.SyncActionValue.IPrivacySettingDisableLinkPreviewsAction): proto.SyncActionValue.PrivacySettingDisableLinkPreviewsAction;
-            public static encode(message: proto.SyncActionValue.IPrivacySettingDisableLinkPreviewsAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.PrivacySettingDisableLinkPreviewsAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.PrivacySettingDisableLinkPreviewsAction;
-            public static toObject(message: proto.SyncActionValue.PrivacySettingDisableLinkPreviewsAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IPrivacySettingDisableLinkPreviewsAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.PrivacySettingDisableLinkPreviewsAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10634,14 +9482,11 @@ export namespace proto {
         }
 
         class PrivacySettingRelayAllCalls implements IPrivacySettingRelayAllCalls {
-            constructor(properties?: proto.SyncActionValue.IPrivacySettingRelayAllCalls);
+            constructor(p?: proto.SyncActionValue.IPrivacySettingRelayAllCalls);
             public isEnabled: boolean;
             public static create(properties?: proto.SyncActionValue.IPrivacySettingRelayAllCalls): proto.SyncActionValue.PrivacySettingRelayAllCalls;
-            public static encode(message: proto.SyncActionValue.IPrivacySettingRelayAllCalls, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.PrivacySettingRelayAllCalls;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.PrivacySettingRelayAllCalls;
-            public static toObject(message: proto.SyncActionValue.PrivacySettingRelayAllCalls, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IPrivacySettingRelayAllCalls, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.PrivacySettingRelayAllCalls;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10650,14 +9495,11 @@ export namespace proto {
         }
 
         class PushNameSetting implements IPushNameSetting {
-            constructor(properties?: proto.SyncActionValue.IPushNameSetting);
+            constructor(p?: proto.SyncActionValue.IPushNameSetting);
             public name: string;
             public static create(properties?: proto.SyncActionValue.IPushNameSetting): proto.SyncActionValue.PushNameSetting;
-            public static encode(message: proto.SyncActionValue.IPushNameSetting, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.PushNameSetting;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.PushNameSetting;
-            public static toObject(message: proto.SyncActionValue.PushNameSetting, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IPushNameSetting, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.PushNameSetting;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10670,18 +9512,15 @@ export namespace proto {
         }
 
         class QuickReplyAction implements IQuickReplyAction {
-            constructor(properties?: proto.SyncActionValue.IQuickReplyAction);
+            constructor(p?: proto.SyncActionValue.IQuickReplyAction);
             public shortcut: string;
             public message: string;
             public keywords: string[];
             public count: number;
             public deleted: boolean;
             public static create(properties?: proto.SyncActionValue.IQuickReplyAction): proto.SyncActionValue.QuickReplyAction;
-            public static encode(message: proto.SyncActionValue.IQuickReplyAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.QuickReplyAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.QuickReplyAction;
-            public static toObject(message: proto.SyncActionValue.QuickReplyAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IQuickReplyAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.QuickReplyAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10690,14 +9529,11 @@ export namespace proto {
         }
 
         class RecentEmojiWeightsAction implements IRecentEmojiWeightsAction {
-            constructor(properties?: proto.SyncActionValue.IRecentEmojiWeightsAction);
+            constructor(p?: proto.SyncActionValue.IRecentEmojiWeightsAction);
             public weights: proto.IRecentEmojiWeight[];
             public static create(properties?: proto.SyncActionValue.IRecentEmojiWeightsAction): proto.SyncActionValue.RecentEmojiWeightsAction;
-            public static encode(message: proto.SyncActionValue.IRecentEmojiWeightsAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.RecentEmojiWeightsAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.RecentEmojiWeightsAction;
-            public static toObject(message: proto.SyncActionValue.RecentEmojiWeightsAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IRecentEmojiWeightsAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.RecentEmojiWeightsAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10706,14 +9542,11 @@ export namespace proto {
         }
 
         class RemoveRecentStickerAction implements IRemoveRecentStickerAction {
-            constructor(properties?: proto.SyncActionValue.IRemoveRecentStickerAction);
+            constructor(p?: proto.SyncActionValue.IRemoveRecentStickerAction);
             public lastStickerSentTs: (number|Long);
             public static create(properties?: proto.SyncActionValue.IRemoveRecentStickerAction): proto.SyncActionValue.RemoveRecentStickerAction;
-            public static encode(message: proto.SyncActionValue.IRemoveRecentStickerAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.RemoveRecentStickerAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.RemoveRecentStickerAction;
-            public static toObject(message: proto.SyncActionValue.RemoveRecentStickerAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IRemoveRecentStickerAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.RemoveRecentStickerAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10722,14 +9555,11 @@ export namespace proto {
         }
 
         class SecurityNotificationSetting implements ISecurityNotificationSetting {
-            constructor(properties?: proto.SyncActionValue.ISecurityNotificationSetting);
+            constructor(p?: proto.SyncActionValue.ISecurityNotificationSetting);
             public showNotification: boolean;
             public static create(properties?: proto.SyncActionValue.ISecurityNotificationSetting): proto.SyncActionValue.SecurityNotificationSetting;
-            public static encode(message: proto.SyncActionValue.ISecurityNotificationSetting, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.SecurityNotificationSetting;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.SecurityNotificationSetting;
-            public static toObject(message: proto.SyncActionValue.SecurityNotificationSetting, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.ISecurityNotificationSetting, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.SecurityNotificationSetting;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10738,14 +9568,11 @@ export namespace proto {
         }
 
         class StarAction implements IStarAction {
-            constructor(properties?: proto.SyncActionValue.IStarAction);
+            constructor(p?: proto.SyncActionValue.IStarAction);
             public starred: boolean;
             public static create(properties?: proto.SyncActionValue.IStarAction): proto.SyncActionValue.StarAction;
-            public static encode(message: proto.SyncActionValue.IStarAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.StarAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.StarAction;
-            public static toObject(message: proto.SyncActionValue.StarAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IStarAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.StarAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10755,15 +9582,12 @@ export namespace proto {
         }
 
         class StatusPrivacyAction implements IStatusPrivacyAction {
-            constructor(properties?: proto.SyncActionValue.IStatusPrivacyAction);
+            constructor(p?: proto.SyncActionValue.IStatusPrivacyAction);
             public mode: proto.SyncActionValue.StatusPrivacyAction.StatusDistributionMode;
             public userJid: string[];
             public static create(properties?: proto.SyncActionValue.IStatusPrivacyAction): proto.SyncActionValue.StatusPrivacyAction;
-            public static encode(message: proto.SyncActionValue.IStatusPrivacyAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.StatusPrivacyAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.StatusPrivacyAction;
-            public static toObject(message: proto.SyncActionValue.StatusPrivacyAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IStatusPrivacyAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.StatusPrivacyAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10791,7 +9615,7 @@ export namespace proto {
         }
 
         class StickerAction implements IStickerAction {
-            constructor(properties?: proto.SyncActionValue.IStickerAction);
+            constructor(p?: proto.SyncActionValue.IStickerAction);
             public url: string;
             public fileEncSha256: Uint8Array;
             public mediaKey: Uint8Array;
@@ -10804,11 +9628,8 @@ export namespace proto {
             public deviceIdHint: number;
             public isLottie: boolean;
             public static create(properties?: proto.SyncActionValue.IStickerAction): proto.SyncActionValue.StickerAction;
-            public static encode(message: proto.SyncActionValue.IStickerAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.StickerAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.StickerAction;
-            public static toObject(message: proto.SyncActionValue.StickerAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IStickerAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.StickerAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10819,16 +9640,13 @@ export namespace proto {
         }
 
         class SubscriptionAction implements ISubscriptionAction {
-            constructor(properties?: proto.SyncActionValue.ISubscriptionAction);
+            constructor(p?: proto.SyncActionValue.ISubscriptionAction);
             public isDeactivated: boolean;
             public isAutoRenewing: boolean;
             public expirationDate: (number|Long);
             public static create(properties?: proto.SyncActionValue.ISubscriptionAction): proto.SyncActionValue.SubscriptionAction;
-            public static encode(message: proto.SyncActionValue.ISubscriptionAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.SubscriptionAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.SubscriptionAction;
-            public static toObject(message: proto.SyncActionValue.SubscriptionAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.ISubscriptionAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.SubscriptionAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10838,15 +9656,12 @@ export namespace proto {
         }
 
         class SyncActionMessage implements ISyncActionMessage {
-            constructor(properties?: proto.SyncActionValue.ISyncActionMessage);
+            constructor(p?: proto.SyncActionValue.ISyncActionMessage);
             public key?: (proto.IMessageKey|null);
             public timestamp: (number|Long);
             public static create(properties?: proto.SyncActionValue.ISyncActionMessage): proto.SyncActionValue.SyncActionMessage;
-            public static encode(message: proto.SyncActionValue.ISyncActionMessage, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.SyncActionMessage;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.SyncActionMessage;
-            public static toObject(message: proto.SyncActionValue.SyncActionMessage, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.ISyncActionMessage, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.SyncActionMessage;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10857,16 +9672,13 @@ export namespace proto {
         }
 
         class SyncActionMessageRange implements ISyncActionMessageRange {
-            constructor(properties?: proto.SyncActionValue.ISyncActionMessageRange);
+            constructor(p?: proto.SyncActionValue.ISyncActionMessageRange);
             public lastMessageTimestamp: (number|Long);
             public lastSystemMessageTimestamp: (number|Long);
             public messages: proto.SyncActionValue.ISyncActionMessage[];
             public static create(properties?: proto.SyncActionValue.ISyncActionMessageRange): proto.SyncActionValue.SyncActionMessageRange;
-            public static encode(message: proto.SyncActionValue.ISyncActionMessageRange, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.SyncActionMessageRange;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.SyncActionMessageRange;
-            public static toObject(message: proto.SyncActionValue.SyncActionMessageRange, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.ISyncActionMessageRange, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.SyncActionMessageRange;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10875,14 +9687,11 @@ export namespace proto {
         }
 
         class TimeFormatAction implements ITimeFormatAction {
-            constructor(properties?: proto.SyncActionValue.ITimeFormatAction);
+            constructor(p?: proto.SyncActionValue.ITimeFormatAction);
             public isTwentyFourHourFormatEnabled: boolean;
             public static create(properties?: proto.SyncActionValue.ITimeFormatAction): proto.SyncActionValue.TimeFormatAction;
-            public static encode(message: proto.SyncActionValue.ITimeFormatAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.TimeFormatAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.TimeFormatAction;
-            public static toObject(message: proto.SyncActionValue.TimeFormatAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.ITimeFormatAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.TimeFormatAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10891,14 +9700,11 @@ export namespace proto {
         }
 
         class UnarchiveChatsSetting implements IUnarchiveChatsSetting {
-            constructor(properties?: proto.SyncActionValue.IUnarchiveChatsSetting);
+            constructor(p?: proto.SyncActionValue.IUnarchiveChatsSetting);
             public unarchiveChats: boolean;
             public static create(properties?: proto.SyncActionValue.IUnarchiveChatsSetting): proto.SyncActionValue.UnarchiveChatsSetting;
-            public static encode(message: proto.SyncActionValue.IUnarchiveChatsSetting, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.UnarchiveChatsSetting;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.UnarchiveChatsSetting;
-            public static toObject(message: proto.SyncActionValue.UnarchiveChatsSetting, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IUnarchiveChatsSetting, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.UnarchiveChatsSetting;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10907,14 +9713,11 @@ export namespace proto {
         }
 
         class UserStatusMuteAction implements IUserStatusMuteAction {
-            constructor(properties?: proto.SyncActionValue.IUserStatusMuteAction);
+            constructor(p?: proto.SyncActionValue.IUserStatusMuteAction);
             public muted: boolean;
             public static create(properties?: proto.SyncActionValue.IUserStatusMuteAction): proto.SyncActionValue.UserStatusMuteAction;
-            public static encode(message: proto.SyncActionValue.IUserStatusMuteAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.UserStatusMuteAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.UserStatusMuteAction;
-            public static toObject(message: proto.SyncActionValue.UserStatusMuteAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IUserStatusMuteAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.UserStatusMuteAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10923,14 +9726,11 @@ export namespace proto {
         }
 
         class UsernameChatStartModeAction implements IUsernameChatStartModeAction {
-            constructor(properties?: proto.SyncActionValue.IUsernameChatStartModeAction);
+            constructor(p?: proto.SyncActionValue.IUsernameChatStartModeAction);
             public chatStartMode: proto.SyncActionValue.UsernameChatStartModeAction.ChatStartMode;
             public static create(properties?: proto.SyncActionValue.IUsernameChatStartModeAction): proto.SyncActionValue.UsernameChatStartModeAction;
-            public static encode(message: proto.SyncActionValue.IUsernameChatStartModeAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.UsernameChatStartModeAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.UsernameChatStartModeAction;
-            public static toObject(message: proto.SyncActionValue.UsernameChatStartModeAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IUsernameChatStartModeAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.UsernameChatStartModeAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10947,14 +9747,11 @@ export namespace proto {
         }
 
         class WaffleAccountLinkStateAction implements IWaffleAccountLinkStateAction {
-            constructor(properties?: proto.SyncActionValue.IWaffleAccountLinkStateAction);
+            constructor(p?: proto.SyncActionValue.IWaffleAccountLinkStateAction);
             public linkState: proto.SyncActionValue.WaffleAccountLinkStateAction.AccountLinkState;
             public static create(properties?: proto.SyncActionValue.IWaffleAccountLinkStateAction): proto.SyncActionValue.WaffleAccountLinkStateAction;
-            public static encode(message: proto.SyncActionValue.IWaffleAccountLinkStateAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.WaffleAccountLinkStateAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.WaffleAccountLinkStateAction;
-            public static toObject(message: proto.SyncActionValue.WaffleAccountLinkStateAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IWaffleAccountLinkStateAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.WaffleAccountLinkStateAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -10970,14 +9767,11 @@ export namespace proto {
         }
 
         class WamoUserIdentifierAction implements IWamoUserIdentifierAction {
-            constructor(properties?: proto.SyncActionValue.IWamoUserIdentifierAction);
+            constructor(p?: proto.SyncActionValue.IWamoUserIdentifierAction);
             public identifier: string;
             public static create(properties?: proto.SyncActionValue.IWamoUserIdentifierAction): proto.SyncActionValue.WamoUserIdentifierAction;
-            public static encode(message: proto.SyncActionValue.IWamoUserIdentifierAction, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncActionValue.WamoUserIdentifierAction;
-            public static fromObject(object: { [k: string]: any }): proto.SyncActionValue.WamoUserIdentifierAction;
-            public static toObject(message: proto.SyncActionValue.WamoUserIdentifierAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.SyncActionValue.IWamoUserIdentifierAction, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncActionValue.WamoUserIdentifierAction;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
     }
@@ -10987,14 +9781,11 @@ export namespace proto {
     }
 
     class SyncdIndex implements ISyncdIndex {
-        constructor(properties?: proto.ISyncdIndex);
+        constructor(p?: proto.ISyncdIndex);
         public blob: Uint8Array;
         public static create(properties?: proto.ISyncdIndex): proto.SyncdIndex;
-        public static encode(message: proto.ISyncdIndex, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncdIndex;
-        public static fromObject(object: { [k: string]: any }): proto.SyncdIndex;
-        public static toObject(message: proto.SyncdIndex, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ISyncdIndex, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncdIndex;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -11004,15 +9795,12 @@ export namespace proto {
     }
 
     class SyncdMutation implements ISyncdMutation {
-        constructor(properties?: proto.ISyncdMutation);
+        constructor(p?: proto.ISyncdMutation);
         public operation: proto.SyncdMutation.SyncdOperation;
         public record?: (proto.ISyncdRecord|null);
         public static create(properties?: proto.ISyncdMutation): proto.SyncdMutation;
-        public static encode(message: proto.ISyncdMutation, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncdMutation;
-        public static fromObject(object: { [k: string]: any }): proto.SyncdMutation;
-        public static toObject(message: proto.SyncdMutation, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ISyncdMutation, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncdMutation;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -11029,14 +9817,11 @@ export namespace proto {
     }
 
     class SyncdMutations implements ISyncdMutations {
-        constructor(properties?: proto.ISyncdMutations);
+        constructor(p?: proto.ISyncdMutations);
         public mutations: proto.ISyncdMutation[];
         public static create(properties?: proto.ISyncdMutations): proto.SyncdMutations;
-        public static encode(message: proto.ISyncdMutations, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncdMutations;
-        public static fromObject(object: { [k: string]: any }): proto.SyncdMutations;
-        public static toObject(message: proto.SyncdMutations, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ISyncdMutations, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncdMutations;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -11053,7 +9838,7 @@ export namespace proto {
     }
 
     class SyncdPatch implements ISyncdPatch {
-        constructor(properties?: proto.ISyncdPatch);
+        constructor(p?: proto.ISyncdPatch);
         public version?: (proto.ISyncdVersion|null);
         public mutations: proto.ISyncdMutation[];
         public externalMutations?: (proto.IExternalBlobReference|null);
@@ -11064,11 +9849,8 @@ export namespace proto {
         public deviceIndex: number;
         public clientDebugData: Uint8Array;
         public static create(properties?: proto.ISyncdPatch): proto.SyncdPatch;
-        public static encode(message: proto.ISyncdPatch, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncdPatch;
-        public static fromObject(object: { [k: string]: any }): proto.SyncdPatch;
-        public static toObject(message: proto.SyncdPatch, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ISyncdPatch, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncdPatch;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -11079,16 +9861,13 @@ export namespace proto {
     }
 
     class SyncdRecord implements ISyncdRecord {
-        constructor(properties?: proto.ISyncdRecord);
+        constructor(p?: proto.ISyncdRecord);
         public index?: (proto.ISyncdIndex|null);
         public value?: (proto.ISyncdValue|null);
         public keyId?: (proto.IKeyId|null);
         public static create(properties?: proto.ISyncdRecord): proto.SyncdRecord;
-        public static encode(message: proto.ISyncdRecord, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncdRecord;
-        public static fromObject(object: { [k: string]: any }): proto.SyncdRecord;
-        public static toObject(message: proto.SyncdRecord, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ISyncdRecord, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncdRecord;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -11100,17 +9879,14 @@ export namespace proto {
     }
 
     class SyncdSnapshot implements ISyncdSnapshot {
-        constructor(properties?: proto.ISyncdSnapshot);
+        constructor(p?: proto.ISyncdSnapshot);
         public version?: (proto.ISyncdVersion|null);
         public records: proto.ISyncdRecord[];
         public mac: Uint8Array;
         public keyId?: (proto.IKeyId|null);
         public static create(properties?: proto.ISyncdSnapshot): proto.SyncdSnapshot;
-        public static encode(message: proto.ISyncdSnapshot, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncdSnapshot;
-        public static fromObject(object: { [k: string]: any }): proto.SyncdSnapshot;
-        public static toObject(message: proto.SyncdSnapshot, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ISyncdSnapshot, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncdSnapshot;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -11119,14 +9895,11 @@ export namespace proto {
     }
 
     class SyncdValue implements ISyncdValue {
-        constructor(properties?: proto.ISyncdValue);
+        constructor(p?: proto.ISyncdValue);
         public blob: Uint8Array;
         public static create(properties?: proto.ISyncdValue): proto.SyncdValue;
-        public static encode(message: proto.ISyncdValue, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncdValue;
-        public static fromObject(object: { [k: string]: any }): proto.SyncdValue;
-        public static toObject(message: proto.SyncdValue, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ISyncdValue, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncdValue;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -11135,14 +9908,11 @@ export namespace proto {
     }
 
     class SyncdVersion implements ISyncdVersion {
-        constructor(properties?: proto.ISyncdVersion);
+        constructor(p?: proto.ISyncdVersion);
         public version: (number|Long);
         public static create(properties?: proto.ISyncdVersion): proto.SyncdVersion;
-        public static encode(message: proto.ISyncdVersion, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.SyncdVersion;
-        public static fromObject(object: { [k: string]: any }): proto.SyncdVersion;
-        public static toObject(message: proto.SyncdVersion, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ISyncdVersion, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.SyncdVersion;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -11152,15 +9922,12 @@ export namespace proto {
     }
 
     class TapLinkAction implements ITapLinkAction {
-        constructor(properties?: proto.ITapLinkAction);
+        constructor(p?: proto.ITapLinkAction);
         public title: string;
         public tapUrl: string;
         public static create(properties?: proto.ITapLinkAction): proto.TapLinkAction;
-        public static encode(message: proto.ITapLinkAction, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.TapLinkAction;
-        public static fromObject(object: { [k: string]: any }): proto.TapLinkAction;
-        public static toObject(message: proto.TapLinkAction, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ITapLinkAction, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.TapLinkAction;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -11172,18 +9939,15 @@ export namespace proto {
     }
 
     class TemplateButton implements ITemplateButton {
-        constructor(properties?: proto.ITemplateButton);
+        constructor(p?: proto.ITemplateButton);
         public index: number;
         public quickReplyButton?: (proto.TemplateButton.IQuickReplyButton|null);
         public urlButton?: (proto.TemplateButton.IURLButton|null);
         public callButton?: (proto.TemplateButton.ICallButton|null);
         public button?: ("quickReplyButton"|"urlButton"|"callButton");
         public static create(properties?: proto.ITemplateButton): proto.TemplateButton;
-        public static encode(message: proto.ITemplateButton, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.TemplateButton;
-        public static fromObject(object: { [k: string]: any }): proto.TemplateButton;
-        public static toObject(message: proto.TemplateButton, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.ITemplateButton, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.TemplateButton;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -11195,15 +9959,12 @@ export namespace proto {
         }
 
         class CallButton implements ICallButton {
-            constructor(properties?: proto.TemplateButton.ICallButton);
+            constructor(p?: proto.TemplateButton.ICallButton);
             public displayText?: (proto.Message.IHighlyStructuredMessage|null);
             public phoneNumber?: (proto.Message.IHighlyStructuredMessage|null);
             public static create(properties?: proto.TemplateButton.ICallButton): proto.TemplateButton.CallButton;
-            public static encode(message: proto.TemplateButton.ICallButton, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.TemplateButton.CallButton;
-            public static fromObject(object: { [k: string]: any }): proto.TemplateButton.CallButton;
-            public static toObject(message: proto.TemplateButton.CallButton, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.TemplateButton.ICallButton, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.TemplateButton.CallButton;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -11213,15 +9974,12 @@ export namespace proto {
         }
 
         class QuickReplyButton implements IQuickReplyButton {
-            constructor(properties?: proto.TemplateButton.IQuickReplyButton);
+            constructor(p?: proto.TemplateButton.IQuickReplyButton);
             public displayText?: (proto.Message.IHighlyStructuredMessage|null);
             public id: string;
             public static create(properties?: proto.TemplateButton.IQuickReplyButton): proto.TemplateButton.QuickReplyButton;
-            public static encode(message: proto.TemplateButton.IQuickReplyButton, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.TemplateButton.QuickReplyButton;
-            public static fromObject(object: { [k: string]: any }): proto.TemplateButton.QuickReplyButton;
-            public static toObject(message: proto.TemplateButton.QuickReplyButton, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.TemplateButton.IQuickReplyButton, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.TemplateButton.QuickReplyButton;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -11231,15 +9989,12 @@ export namespace proto {
         }
 
         class URLButton implements IURLButton {
-            constructor(properties?: proto.TemplateButton.IURLButton);
+            constructor(p?: proto.TemplateButton.IURLButton);
             public displayText?: (proto.Message.IHighlyStructuredMessage|null);
             public url?: (proto.Message.IHighlyStructuredMessage|null);
             public static create(properties?: proto.TemplateButton.IURLButton): proto.TemplateButton.URLButton;
-            public static encode(message: proto.TemplateButton.IURLButton, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.TemplateButton.URLButton;
-            public static fromObject(object: { [k: string]: any }): proto.TemplateButton.URLButton;
-            public static toObject(message: proto.TemplateButton.URLButton, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.TemplateButton.IURLButton, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.TemplateButton.URLButton;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
     }
@@ -11249,14 +10004,11 @@ export namespace proto {
     }
 
     class UrlTrackingMap implements IUrlTrackingMap {
-        constructor(properties?: proto.IUrlTrackingMap);
+        constructor(p?: proto.IUrlTrackingMap);
         public urlTrackingMapElements: proto.UrlTrackingMap.IUrlTrackingMapElement[];
         public static create(properties?: proto.IUrlTrackingMap): proto.UrlTrackingMap;
-        public static encode(message: proto.IUrlTrackingMap, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.UrlTrackingMap;
-        public static fromObject(object: { [k: string]: any }): proto.UrlTrackingMap;
-        public static toObject(message: proto.UrlTrackingMap, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IUrlTrackingMap, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.UrlTrackingMap;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -11270,17 +10022,14 @@ export namespace proto {
         }
 
         class UrlTrackingMapElement implements IUrlTrackingMapElement {
-            constructor(properties?: proto.UrlTrackingMap.IUrlTrackingMapElement);
+            constructor(p?: proto.UrlTrackingMap.IUrlTrackingMapElement);
             public originalUrl: string;
             public unconsentedUsersUrl: string;
             public consentedUsersUrl: string;
             public cardIndex: number;
             public static create(properties?: proto.UrlTrackingMap.IUrlTrackingMapElement): proto.UrlTrackingMap.UrlTrackingMapElement;
-            public static encode(message: proto.UrlTrackingMap.IUrlTrackingMapElement, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.UrlTrackingMap.UrlTrackingMapElement;
-            public static fromObject(object: { [k: string]: any }): proto.UrlTrackingMap.UrlTrackingMapElement;
-            public static toObject(message: proto.UrlTrackingMap.UrlTrackingMapElement, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.UrlTrackingMap.IUrlTrackingMapElement, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.UrlTrackingMap.UrlTrackingMapElement;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
     }
@@ -11293,17 +10042,14 @@ export namespace proto {
     }
 
     class UserPassword implements IUserPassword {
-        constructor(properties?: proto.IUserPassword);
+        constructor(p?: proto.IUserPassword);
         public encoding: proto.UserPassword.Encoding;
         public transformer: proto.UserPassword.Transformer;
         public transformerArg: proto.UserPassword.ITransformerArg[];
         public transformedData: Uint8Array;
         public static create(properties?: proto.IUserPassword): proto.UserPassword;
-        public static encode(message: proto.IUserPassword, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.UserPassword;
-        public static fromObject(object: { [k: string]: any }): proto.UserPassword;
-        public static toObject(message: proto.UserPassword, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IUserPassword, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.UserPassword;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -11326,15 +10072,12 @@ export namespace proto {
         }
 
         class TransformerArg implements ITransformerArg {
-            constructor(properties?: proto.UserPassword.ITransformerArg);
+            constructor(p?: proto.UserPassword.ITransformerArg);
             public key: string;
             public value?: (proto.UserPassword.TransformerArg.IValue|null);
             public static create(properties?: proto.UserPassword.ITransformerArg): proto.UserPassword.TransformerArg;
-            public static encode(message: proto.UserPassword.ITransformerArg, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.UserPassword.TransformerArg;
-            public static fromObject(object: { [k: string]: any }): proto.UserPassword.TransformerArg;
-            public static toObject(message: proto.UserPassword.TransformerArg, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.UserPassword.ITransformerArg, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.UserPassword.TransformerArg;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
@@ -11346,16 +10089,13 @@ export namespace proto {
             }
 
             class Value implements IValue {
-                constructor(properties?: proto.UserPassword.TransformerArg.IValue);
+                constructor(p?: proto.UserPassword.TransformerArg.IValue);
                 public asBlob?: (Uint8Array|null);
                 public asUnsignedInteger?: (number|null);
                 public value?: ("asBlob"|"asUnsignedInteger");
                 public static create(properties?: proto.UserPassword.TransformerArg.IValue): proto.UserPassword.TransformerArg.Value;
-                public static encode(message: proto.UserPassword.TransformerArg.IValue, writer?: $protobuf.Writer): $protobuf.Writer;
-                public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.UserPassword.TransformerArg.Value;
-                public static fromObject(object: { [k: string]: any }): proto.UserPassword.TransformerArg.Value;
-                public static toObject(message: proto.UserPassword.TransformerArg.Value, options?: $protobuf.IConversionOptions): { [k: string]: any };
-                public toJSON(): { [k: string]: any };
+                public static encode(m: proto.UserPassword.TransformerArg.IValue, w?: $protobuf.Writer): $protobuf.Writer;
+                public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.UserPassword.TransformerArg.Value;
                 public static getTypeUrl(typeUrlPrefix?: string): string;
             }
         }
@@ -11371,7 +10111,7 @@ export namespace proto {
     }
 
     class UserReceipt implements IUserReceipt {
-        constructor(properties?: proto.IUserReceipt);
+        constructor(p?: proto.IUserReceipt);
         public userJid: string;
         public receiptTimestamp: (number|Long);
         public readTimestamp: (number|Long);
@@ -11379,11 +10119,8 @@ export namespace proto {
         public pendingDeviceJid: string[];
         public deliveredDeviceJid: string[];
         public static create(properties?: proto.IUserReceipt): proto.UserReceipt;
-        public static encode(message: proto.IUserReceipt, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.UserReceipt;
-        public static fromObject(object: { [k: string]: any }): proto.UserReceipt;
-        public static toObject(message: proto.UserReceipt, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IUserReceipt, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.UserReceipt;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -11394,16 +10131,13 @@ export namespace proto {
     }
 
     class VerifiedNameCertificate implements IVerifiedNameCertificate {
-        constructor(properties?: proto.IVerifiedNameCertificate);
+        constructor(p?: proto.IVerifiedNameCertificate);
         public details: Uint8Array;
         public signature: Uint8Array;
         public serverSignature: Uint8Array;
         public static create(properties?: proto.IVerifiedNameCertificate): proto.VerifiedNameCertificate;
-        public static encode(message: proto.IVerifiedNameCertificate, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.VerifiedNameCertificate;
-        public static fromObject(object: { [k: string]: any }): proto.VerifiedNameCertificate;
-        public static toObject(message: proto.VerifiedNameCertificate, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IVerifiedNameCertificate, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.VerifiedNameCertificate;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -11418,18 +10152,15 @@ export namespace proto {
         }
 
         class Details implements IDetails {
-            constructor(properties?: proto.VerifiedNameCertificate.IDetails);
+            constructor(p?: proto.VerifiedNameCertificate.IDetails);
             public serial: (number|Long);
             public issuer: string;
             public verifiedName: string;
             public localizedNames: proto.ILocalizedName[];
             public issueTime: (number|Long);
             public static create(properties?: proto.VerifiedNameCertificate.IDetails): proto.VerifiedNameCertificate.Details;
-            public static encode(message: proto.VerifiedNameCertificate.IDetails, writer?: $protobuf.Writer): $protobuf.Writer;
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.VerifiedNameCertificate.Details;
-            public static fromObject(object: { [k: string]: any }): proto.VerifiedNameCertificate.Details;
-            public static toObject(message: proto.VerifiedNameCertificate.Details, options?: $protobuf.IConversionOptions): { [k: string]: any };
-            public toJSON(): { [k: string]: any };
+            public static encode(m: proto.VerifiedNameCertificate.IDetails, w?: $protobuf.Writer): $protobuf.Writer;
+            public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.VerifiedNameCertificate.Details;
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
     }
@@ -11440,15 +10171,12 @@ export namespace proto {
     }
 
     class WallpaperSettings implements IWallpaperSettings {
-        constructor(properties?: proto.IWallpaperSettings);
+        constructor(p?: proto.IWallpaperSettings);
         public filename: string;
         public opacity: number;
         public static create(properties?: proto.IWallpaperSettings): proto.WallpaperSettings;
-        public static encode(message: proto.IWallpaperSettings, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.WallpaperSettings;
-        public static fromObject(object: { [k: string]: any }): proto.WallpaperSettings;
-        public static toObject(message: proto.WallpaperSettings, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IWallpaperSettings, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.WallpaperSettings;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -11501,7 +10229,7 @@ export namespace proto {
     }
 
     class WebFeatures implements IWebFeatures {
-        constructor(properties?: proto.IWebFeatures);
+        constructor(p?: proto.IWebFeatures);
         public labelsDisplay: proto.WebFeatures.Flag;
         public voipIndividualOutgoing: proto.WebFeatures.Flag;
         public groupsV3: proto.WebFeatures.Flag;
@@ -11548,11 +10276,8 @@ export namespace proto {
         public externalMdOptInAvailable: proto.WebFeatures.Flag;
         public noDeleteMessageTimeLimit: proto.WebFeatures.Flag;
         public static create(properties?: proto.IWebFeatures): proto.WebFeatures;
-        public static encode(message: proto.IWebFeatures, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.WebFeatures;
-        public static fromObject(object: { [k: string]: any }): proto.WebFeatures;
-        public static toObject(message: proto.WebFeatures, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IWebFeatures, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.WebFeatures;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -11632,7 +10357,7 @@ export namespace proto {
     }
 
     class WebMessageInfo implements IWebMessageInfo {
-        constructor(properties?: proto.IWebMessageInfo);
+        constructor(p?: proto.IWebMessageInfo);
         public key: proto.IMessageKey;
         public message?: (proto.IMessage|null);
         public messageTimestamp: (number|Long);
@@ -11696,11 +10421,8 @@ export namespace proto {
         public supportAiCitations: proto.ICitation[];
         public botTargetId: string;
         public static create(properties?: proto.IWebMessageInfo): proto.WebMessageInfo;
-        public static encode(message: proto.IWebMessageInfo, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.WebMessageInfo;
-        public static fromObject(object: { [k: string]: any }): proto.WebMessageInfo;
-        public static toObject(message: proto.WebMessageInfo, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IWebMessageInfo, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.WebMessageInfo;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 
@@ -11953,17 +10675,14 @@ export namespace proto {
     }
 
     class WebNotificationsInfo implements IWebNotificationsInfo {
-        constructor(properties?: proto.IWebNotificationsInfo);
+        constructor(p?: proto.IWebNotificationsInfo);
         public timestamp: (number|Long);
         public unreadChats: number;
         public notifyMessageCount: number;
         public notifyMessages: proto.IWebMessageInfo[];
         public static create(properties?: proto.IWebNotificationsInfo): proto.WebNotificationsInfo;
-        public static encode(message: proto.IWebNotificationsInfo, writer?: $protobuf.Writer): $protobuf.Writer;
-        public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.WebNotificationsInfo;
-        public static fromObject(object: { [k: string]: any }): proto.WebNotificationsInfo;
-        public static toObject(message: proto.WebNotificationsInfo, options?: $protobuf.IConversionOptions): { [k: string]: any };
-        public toJSON(): { [k: string]: any };
+        public static encode(m: proto.IWebNotificationsInfo, w?: $protobuf.Writer): $protobuf.Writer;
+        public static decode(r: ($protobuf.Reader|Uint8Array), l?: number): proto.WebNotificationsInfo;
         public static getTypeUrl(typeUrlPrefix?: string): string;
     }
 }

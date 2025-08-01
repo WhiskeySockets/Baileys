@@ -161,7 +161,7 @@ export const encodeSyncdPatch = async (
 	state = { ...state, indexValueMap: { ...state.indexValueMap } }
 
 	const indexBuffer = Buffer.from(JSON.stringify(index))
-	const dataProto = proto.SyncActionData.fromObject({
+	const dataProto = proto.SyncActionData.create({
 		index: indexBuffer,
 		value: syncAction,
 		padding: new Uint8Array(0),
