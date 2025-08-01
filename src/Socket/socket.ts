@@ -273,6 +273,11 @@ export const makeSocket = (config: SocketConfig) => {
 		return +countChild.attrs.value!
 	}
 
+	const getLocalPreKeyCount = async () => {
+		const localPreKeys = await keys.get('pre-key', [])
+		return Object.keys(localPreKeys || {}).length
+	}
+
 	/** generates and uploads a set of pre-keys to the server */
 	const uploadPreKeys = async (count = INITIAL_PREKEY_COUNT) => {
 		await keys.transaction(async () => {
@@ -288,9 +293,19 @@ export const makeSocket = (config: SocketConfig) => {
 
 	const uploadPreKeysToServerIfRequired = async () => {
 		const preKeyCount = await getAvailablePreKeysOnServer()
-		logger.info(`${preKeyCount} pre-keys found on server`)
-		if (preKeyCount <= MIN_PREKEY_COUNT) {
+		const localPreKeyCount = await getLocalPreKeyCount()
+
+		logger.info(`${preKeyCount} pre-keys found on server, ${localPreKeyCount} local pre-keys available`)
+
+		const lowServerCount = preKeyCount <= MIN_PREKEY_COUNT
+		const countMismatch = localPreKeyCount !== preKeyCount
+
+		const shouldUpload = lowServerCount || countMismatch
+
+		if (shouldUpload) {
 			await uploadPreKeys()
+		} else {
+			logger.info(`PreKey count is sufficient and matches - Server: ${preKeyCount}, Local: ${localPreKeyCount}`)
 		}
 	}
 
