@@ -747,7 +747,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						msg.participant ??= node.attrs.participant
 						msg.messageTimestamp = +node.attrs.t!
 
-						const fullMsg = proto.WebMessageInfo.fromObject(msg)
+						const fullMsg = proto.WebMessageInfo.create(msg as proto.IWebMessageInfo)
 						await upsertMessage(fullMsg, 'append')
 					}
 				})
@@ -1161,7 +1161,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								? Buffer.from(plaintextNode.content, 'binary')
 								: Buffer.from(plaintextNode.content as Uint8Array)
 						const messageProto = proto.Message.decode(contentBuf)
-						const fullMessage = proto.WebMessageInfo.fromObject({
+						const fullMessage = proto.WebMessageInfo.create({
 							key: {
 								remoteJid: from,
 								id: child.attrs.message_id || child.attrs.server_id,
@@ -1292,7 +1292,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				msg.message = { call: { callKey: Buffer.from(call.id) } }
 			}
 
-			const protoMsg = proto.WebMessageInfo.fromObject(msg)
+			const protoMsg = proto.WebMessageInfo.create(msg)
 			upsertMessage(protoMsg, call.offline ? 'append' : 'notify')
 		}
 	})
