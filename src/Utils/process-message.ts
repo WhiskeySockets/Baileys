@@ -1,4 +1,3 @@
-import type { AxiosRequestConfig } from 'axios'
 import { proto } from '../../WAProto/index.js'
 import type {
 	AuthenticationCreds,
@@ -26,7 +25,7 @@ type ProcessMessageContext = {
 	keyStore: SignalKeyStoreWithTransaction
 	ev: BaileysEventEmitter
 	logger?: ILogger
-	options: AxiosRequestConfig<{}>
+	options: RequestInit
 }
 
 const REAL_MSG_STUB_TYPES = new Set([
