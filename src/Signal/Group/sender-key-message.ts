@@ -3,12 +3,6 @@ import { calculateSignature, verifySignature } from 'libsignal/src/curve'
 import { proto } from '../../../WAProto/index.js'
 import { CiphertextMessage } from './ciphertext-message'
 
-interface SenderKeyMessageStructure {
-	id: number
-	iteration: number
-	ciphertext: string | Buffer
-}
-
 export class SenderKeyMessage extends CiphertextMessage {
 	private readonly SIGNATURE_LENGTH = 64
 	private readonly messageVersion: number

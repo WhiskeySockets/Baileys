@@ -1,13 +1,6 @@
 import { proto } from '../../../WAProto/index.js'
 import { CiphertextMessage } from './ciphertext-message'
 
-interface SenderKeyDistributionMessageStructure {
-	id: number
-	iteration: number
-	chainKey: string | Uint8Array
-	signingKey: string | Uint8Array
-}
-
 export class SenderKeyDistributionMessage extends CiphertextMessage {
 	private readonly id: number
 	private readonly iteration: number
