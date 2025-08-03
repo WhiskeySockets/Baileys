@@ -1,44 +1,15 @@
-<h1><img alt="Baileys logo" src="https://raw.githubusercontent.com/WhiskeySockets/Baileys/refs/heads/master/Media/logo.png" height="75"/></h1>
+<h1><img alt="GB-BOT-MD logo" src="https:                                                                                       
+GB-BOT-MD es un proyecto que utiliza la biblioteca Baileys para interactuar con la API de WhatsApp Web.
 
-![NPM Downloads](https://img.shields.io/npm/dw/%40whiskeysockets%2Fbaileys?label=npm&color=%23CB3837)
-![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/whiskeysockets/baileys)
-![Discord](https://img.shields.io/discord/725839806084546610?label=discord&color=%235865F2)
+     
+Puedes encontrar más información sobre cómo utilizar GB-BOT-MD en nuestra documentación.
 
-Baileys is a WebSockets-based TypeScript library for interacting with the WhatsApp Web API.
+            
+Si deseas apoyar financieramente a GB-BOT-MD, puedes hacerlo a través de [este enlace](https:                           
 
-# Usage
-A new guide has been posted at https://baileys.wiki. The old guide can be accessed on [NPM](https://npmjs.com/package/baileys).
+                             
+Este proyecto no está afiliado, asociado, autorizado, respaldado por, o de ninguna manera oficialmente conectado con WhatsApp o cualquiera de sus subsidiarias o afiliados. El sitio web oficial de WhatsApp se puede encontrar en whatsapp.com. "WhatsApp" así como los nombres relacionados, marcas, emblemas e imágenes son marcas registradas de sus respectivos propietarios. Los mantenedores de GB-BOT-MD no aprueban el uso de esta aplicación en prácticas que violen los Términos de Servicio de WhatsApp.
 
-# Sponsor
-If you'd like to financially support this project, you can do so by supporting the current maintainer [here](https://purpshell.dev/sponsor).
-
-# Disclaimer
-This project is not affiliated, associated, authorized, endorsed by, or in any way officially connected with WhatsApp or any of its subsidiaries or its affiliates.
-The official WhatsApp website can be found at whatsapp.com. "WhatsApp" as well as related names, marks, emblems and images are registered trademarks of their respective owners.
-
-The maintainers of Baileys do not in any way condone the use of this application in practices that violate the Terms of Service of WhatsApp. The maintainers of this application call upon the personal responsibility of its users to use this application in a fair way, as it is intended to be used.
-Use at your own discretion. Do not spam people with this. We discourage any stalkerware, bulk or automated messaging usage.
-
-# License
-Copyright (c) 2025 Rajeh Taher/WhiskeySockets
-
-Licensed under the MIT License:
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-Thus, the maintainers of the project can't be held liable for any potential misuse of this project.
+          
+Copyright (c) 2025 GB-BOT-MD
+Licenciado bajo la Licencia MIT: Se concede permiso, sin cargo, a cualquier persona que obtenga una copia de este software y los archivos de documentación asociados (el "Software"), para tratar el Software sin restricción, incluyendo sin limitación los derechos de usar, copiar, modificar, fusionar, publicar, distribuir, sublicenciar y/o vender copias del Software, y para permitir a las personas a quienes se les proporcione el Software a hacerlo, sujeto a las siguientes condiciones: El aviso de copyright anterior y este aviso de permiso se incluirán en todas las copias o porciones sustanciales del Software. EL SOFTWARE SE PROPORCIONA "TAL CUAL", SIN GARANTÍA DE NINGÚN TIPO, EXPRESA O IMPLÍCITA, INCLUYENDO PERO NO LIMITADO A LAS GARANTÍAS DE COMERCIABILIDAD, IDONEIDAD PARA UN PROPÓSITO PARTICULAR Y NO INFRACCIÓN. EN NINGÚN CASO LOS AUTORES O TITULARES DE DERECHOS DE AUTOR SERÁN RESPONSABLES DE NINGUNA RECLAMACIÓN, DAÑOS U OTRA RESPONSABILIDAD, YA SEA EN UNA ACCIÓN DE CONTRATO, AGRAVIO O DE OTRA MANERA, QUE SURJA DE, FUERA DE O EN CONEXIÓN CON EL SOFTWARE O EL USO U OTROS TRATOS EN EL SOFTWARE.
