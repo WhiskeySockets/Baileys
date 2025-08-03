@@ -8,9 +8,9 @@ import {
 	DEF_TAG_PREFIX,
 	INITIAL_PREKEY_COUNT,
 	MIN_PREKEY_COUNT,
+	MIN_UPLOAD_INTERVAL,
 	NOISE_WA_HEADER,
-	UPLOAD_TIMEOUT,
-	MIN_UPLOAD_INTERVAL
+	UPLOAD_TIMEOUT
 } from '../Defaults'
 import type { SocketConfig } from '../Types'
 import { DisconnectReason } from '../Types'
@@ -369,6 +369,11 @@ export const makeSocket = (config: SocketConfig) => {
 			const shouldUpload = lowServerCount || missingCurrentPreKey
 
 			if (shouldUpload) {
+				const reasons = []
+				if (lowServerCount) reasons.push(`server count low (${preKeyCount})`)
+				if (missingCurrentPreKey) reasons.push(`current prekey ${currentPreKeyId} missing from storage`)
+
+				logger.info(`Uploading PreKeys due to: ${reasons.join(', ')}`)
 				await uploadPreKeys()
 			} else {
 				logger.info(`PreKey validation passed - Server: ${preKeyCount}, Current prekey ${currentPreKeyId} exists`)
