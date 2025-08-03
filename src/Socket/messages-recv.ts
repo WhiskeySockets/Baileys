@@ -706,8 +706,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								try {
 									logger.debug({ attrs, key }, 'recv retry request')
 									await sendMessagesAgain(key, ids, retryNode!)
-								} catch (error: any) {
-									logger.error({ key, ids, trace: error.stack }, 'error in sending message again')
+								} catch (error: unknown) {
+									logger.error(
+										{ key, ids, trace: error instanceof Error ? error.stack : 'Unknown error' },
+										'error in sending message again'
+									)
 								}
 							} else {
 								logger.info({ attrs, key }, 'recv retry for not fromMe message')
@@ -817,7 +820,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
 							return sendMessageAck(node, NACK_REASONS.ParsingError)
 						}
-						
+
 						const errorMessage = msg?.messageStubParameters?.[0] || ''
 						const isPreKeyError = errorMessage.includes('PreKey')
 
