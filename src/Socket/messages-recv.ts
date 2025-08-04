@@ -10,6 +10,7 @@ import type {
 	MessageUserReceipt,
 	SocketConfig,
 	WACallEvent,
+	WACallUpdateType,
 	WAMessageKey,
 	WAPatchName
 } from '../Types'
@@ -50,6 +51,7 @@ import {
 	isJidGroup,
 	isJidStatusBroadcast,
 	isJidUser,
+	isLidUser,
 	jidDecode,
 	jidNormalizedUser,
 	S_WHATSAPP_NET
@@ -935,6 +937,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleCall = async (node: BinaryNode) => {
+		let status : WACallUpdateType
 		const { attrs } = node
 		const [infoChild] = getAllBinaryNodeChildren(node)
 		if (!infoChild) {
@@ -943,7 +946,25 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		const callId = infoChild.attrs['call-id']!
 		const from = infoChild.attrs.from! || infoChild.attrs['call-creator']!
-		const status = getCallStatusFromNode(infoChild)
+		status = getCallStatusFromNode(infoChild)
+		if(isLidUser(from) && infoChild.tag==='relaylatency')
+		{
+			const verify = callOfferCache.get(callId);
+			if(!verify)
+			{
+			status = 'offer';
+			const callLid: WACallEvent = {
+			chatId: attrs.from!,
+			from,
+			id: callId,
+			date: new Date(+attrs.t! * 1000),
+			offline: !!attrs.offline,
+			status
+		    }				
+			callOfferCache.set(callId, callLid);
+		}
+
+		}
 		const call: WACallEvent = {
 			chatId: attrs.from!,
 			from,
