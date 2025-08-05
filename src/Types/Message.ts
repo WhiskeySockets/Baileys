@@ -14,6 +14,7 @@ export type WAMessageContent = proto.IMessage
 export type WAContactMessage = proto.Message.IContactMessage
 export type WAContactsArrayMessage = proto.Message.IContactsArrayMessage
 export type WAMessageKey = proto.IMessageKey & {
+	peerRecipientLid?: string
 	senderLid?: string
 	server_id?: string
 	senderPn?: string
