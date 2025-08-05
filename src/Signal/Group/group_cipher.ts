@@ -1,9 +1,9 @@
 /* @ts-ignore */
-import {decrypt, encrypt} from 'libsignal/src/crypto'
-import {SenderKeyMessage} from './sender-key-message'
-import {SenderKeyName} from './sender-key-name'
-import {SenderKeyRecord} from './sender-key-record'
-import {SenderKeyState} from './sender-key-state'
+import { decrypt, encrypt } from 'libsignal/src/crypto'
+import { SenderKeyMessage } from './sender-key-message'
+import { SenderKeyName } from './sender-key-name'
+import { SenderKeyRecord } from './sender-key-record'
+import { SenderKeyState } from './sender-key-state'
 
 export interface SenderKeyStore {
 	loadSenderKey(senderKeyName: SenderKeyName): Promise<SenderKeyRecord>
@@ -19,7 +19,6 @@ export class GroupCipher {
 		this.senderKeyStore = senderKeyStore
 		this.senderKeyName = senderKeyName
 	}
-
 
 	public async encrypt(paddedPlaintext: Uint8Array | string): Promise<Uint8Array> {
 		const record = await this.senderKeyStore.loadSenderKey(this.senderKeyName)

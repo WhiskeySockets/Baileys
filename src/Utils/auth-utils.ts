@@ -1,7 +1,7 @@
 import NodeCache from '@cacheable/node-cache'
-import {randomBytes} from 'crypto'
-import {Mutex} from 'async-mutex'
-import {DEFAULT_CACHE_TTLS} from '../Defaults'
+import { randomBytes } from 'crypto'
+import { Mutex } from 'async-mutex'
+import { DEFAULT_CACHE_TTLS } from '../Defaults'
 import type {
 	AuthenticationCreds,
 	CacheStore,
@@ -11,9 +11,9 @@ import type {
 	SignalKeyStoreWithTransaction,
 	TransactionCapabilityOptions
 } from '../Types'
-import {Curve, signedKeyPair} from './crypto'
-import {delay, generateRegistrationId} from './generics'
-import type {ILogger} from './logger'
+import { Curve, signedKeyPair } from './crypto'
+import { delay, generateRegistrationId } from './generics'
+import type { ILogger } from './logger'
 
 /**
  * Adds caching capability to a SignalKeyStore
@@ -56,7 +56,7 @@ export function makeCacheableSignalKeyStore(
 				}
 
 				if (idsToFetch.length) {
-					logger?.trace({items: idsToFetch.length}, 'loading from store')
+					logger?.trace({ items: idsToFetch.length }, 'loading from store')
 					const fetched = await store.get(type, idsToFetch)
 					for (const id of idsToFetch) {
 						const item = fetched[id]
@@ -80,7 +80,7 @@ export function makeCacheableSignalKeyStore(
 					}
 				}
 
-				logger?.trace({keys}, 'updated cache')
+				logger?.trace({ keys }, 'updated cache')
 
 				await store.set(data)
 			})
@@ -174,12 +174,9 @@ async function handlePreKeyOperations(
 		const existingKeys = await state.get(keyType as keyof SignalDataTypeMap, deletionKeys)
 		for (const keyId of deletionKeys) {
 			if (existingKeys[keyId]) {
-				if (transactionCache[keyType])
-					transactionCache[keyType][keyId] = null
+				if (transactionCache[keyType]) transactionCache[keyType][keyId] = null
 
-				if (mutations[keyType])
-					mutations[keyType][keyId] = null
-
+				if (mutations[keyType]) mutations[keyType][keyId] = null
 			} else {
 				logger.warn(`Skipping deletion of non-existent ${keyType}: ${keyId}`)
 			}
@@ -223,8 +220,7 @@ async function processPreKeyDeletions(
 				if (!existingKeys[keyId]) {
 					logger.warn(`Skipping deletion of non-existent ${keyType}: ${keyId}`)
 
-					if (data[keyType])
-						delete data[keyType][keyId]
+					if (data[keyType]) delete data[keyType][keyId]
 				}
 			}
 		}
@@ -281,7 +277,7 @@ async function withMutexes<T>(
 export const addTransactionCapability = (
 	state: SignalKeyStore,
 	logger: ILogger,
-	{maxCommitRetries, delayBetweenTriesMs}: TransactionCapabilityOptions
+	{ maxCommitRetries, delayBetweenTriesMs }: TransactionCapabilityOptions
 ): SignalKeyStoreWithTransaction => {
 	// number of queries made to the DB during the transaction
 	// only there for logging purposes
@@ -314,7 +310,7 @@ export const addTransactionCapability = (
 		if (!mutex) {
 			mutex = new Mutex()
 			senderKeyMutexes.set(senderKeyName, mutex)
-			logger.info({senderKeyName}, 'created new sender key mutex')
+			logger.info({ senderKeyName }, 'created new sender key mutex')
 		}
 
 		return mutex
@@ -341,16 +337,16 @@ export const addTransactionCapability = (
 
 					// Use per-sender-key queue for sender-key operations when possible
 					if (type === 'sender-key') {
-						logger.info({idsRequiringFetch}, 'processing sender keys in transaction')
+						logger.info({ idsRequiringFetch }, 'processing sender keys in transaction')
 						// For sender keys, process each one with queued operations to maintain serialization
 						for (const senderKeyName of idsRequiringFetch) {
 							await queueSenderKeyOperation(senderKeyName, async () => {
-								logger.info({senderKeyName}, 'fetching sender key in transaction')
+								logger.info({ senderKeyName }, 'fetching sender key in transaction')
 								const result = await state.get(type, [senderKeyName])
 								// Update transaction cache
 								transactionCache[type] ||= {}
 								Object.assign(transactionCache[type]!, result)
-								logger.info({senderKeyName, hasResult: !!result[senderKeyName]}, 'sender key fetch complete')
+								logger.info({ senderKeyName, hasResult: !!result[senderKeyName] }, 'sender key fetch complete')
 							})
 						}
 					} else {
@@ -394,7 +390,7 @@ export const addTransactionCapability = (
 		},
 		set: async data => {
 			if (isInTransaction()) {
-				logger.trace({types: Object.keys(data)}, 'caching in transaction')
+				logger.trace({ types: Object.keys(data) }, 'caching in transaction')
 				for (const key_ in data) {
 					const key = key_ as keyof SignalDataTypeMap
 					transactionCache[key] = transactionCache[key] || ({} as any)
@@ -413,7 +409,7 @@ export const addTransactionCapability = (
 				const senderKeyNames = hasSenderKeys ? Object.keys(data['sender-key'] || {}) : []
 
 				if (hasSenderKeys) {
-					logger.info({senderKeyNames}, 'processing sender key set operations')
+					logger.info({ senderKeyNames }, 'processing sender key set operations')
 					// Handle sender key operations with per-key queues
 					for (const senderKeyName of senderKeyNames) {
 						await queueSenderKeyOperation(senderKeyName, async () => {
@@ -427,15 +423,15 @@ export const addTransactionCapability = (
 							data['sender-key'] = data['sender-key'] || {}
 							data['sender-key'][senderKeyName] = data['sender-key']![senderKeyName] || null
 
-							logger.trace({senderKeyName}, 'storing sender key')
+							logger.trace({ senderKeyName }, 'storing sender key')
 							// Apply changes to the store
 							await state.set(data)
-							logger.trace({senderKeyName}, 'sender key stored')
+							logger.trace({ senderKeyName }, 'sender key stored')
 						})
 					}
 
 					// Handle any non-sender-key data with regular mutexes
-					const nonSenderKeyData = {...data}
+					const nonSenderKeyData = { ...data }
 					delete nonSenderKeyData['sender-key']
 
 					if (Object.keys(nonSenderKeyData).length > 0) {
@@ -491,7 +487,7 @@ export const addTransactionCapability = (
 							//eslint-disable-next-line max-depth
 							try {
 								await state.set(mutations)
-								logger.trace({dbQueriesInTransaction}, 'committed transaction')
+								logger.trace({ dbQueriesInTransaction }, 'committed transaction')
 								break
 							} catch (error) {
 								logger.warn(`failed to commit ${Object.keys(mutations).length} mutations, tries left=${tries}`)
