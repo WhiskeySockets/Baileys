@@ -16,8 +16,8 @@
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "files": [
-    "lib/*",
-    "WAProto/*",
+    "lib/**/*",
+    "WAProto/**/*",
     "engine-requirements.js"
   ],
   "scripts": {
