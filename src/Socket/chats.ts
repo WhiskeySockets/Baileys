@@ -629,6 +629,28 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		return child?.attrs?.url
 	}
 
+	const createCallLink = async (type: 'audio' | 'video', event?: { startTime: number }, timeoutMs?: number) => {
+		const result = await query(
+			{
+				tag: 'call',
+				attrs: {
+					id: generateMessageTag(),
+					to: '@call'
+				},
+				content: [
+					{
+						tag: 'link_create',
+						attrs: { media: type },
+						content: event ? [{ tag: 'event', attrs: { start_time: String(event.startTime) } }] : undefined
+					}
+				]
+			},
+			timeoutMs
+		)
+		const child = getBinaryNodeChild(result, 'link_create')
+		return child?.attrs?.token
+	}
+
 	const sendPresenceUpdate = async (type: WAPresence, toJid?: string) => {
 		const me = authState.creds.me!
 		if (type === 'available' || type === 'unavailable') {
@@ -1086,6 +1108,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	return {
 		...sock,
+		createCallLink,
 		getBotListV2,
 		processingMutex,
 		fetchPrivacySettings,
