@@ -619,6 +619,16 @@ export const chatModificationToAppPatch = (mod: ChatModification, jid: string) =
 			apiVersion: 2,
 			operation: mod.contact ? OP.SET : OP.REMOVE
 		}
+	} else if ('disableLinkPreviews' in mod) {
+		patch = {
+			syncAction: {
+				privacySettingDisableLinkPreviewsAction: mod.disableLinkPreviews || {}
+			},
+			index: ['setting_disableLinkPreviews'],
+			type: 'regular',
+			apiVersion: 8,
+			operation: OP.SET
+		}
 	} else if ('star' in mod) {
 		const key = mod.star.messages[0]!
 		patch = {

@@ -853,6 +853,18 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	/**
+	 * Enable/Disable link preview privacy, not related to baileys link preview generation
+	 */
+	const updateDisableLinkPreviewsPrivacy = (isPreviewsDisabled: boolean) => {
+		return chatModify(
+			{
+				disableLinkPreviews: { isPreviewsDisabled }
+			},
+			''
+		)
+	}
+
+	/**
 	 * Star or Unstar a message
 	 */
 	const star = (jid: string, messages: { id: string; fromMe?: boolean }[], star: boolean) => {
@@ -1144,6 +1156,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		updateProfileStatus,
 		updateProfileName,
 		updateBlockStatus,
+		updateDisableLinkPreviewsPrivacy,
 		updateCallPrivacy,
 		updateMessagesPrivacy,
 		updateLastSeenPrivacy,
