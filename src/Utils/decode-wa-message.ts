@@ -110,6 +110,7 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 		remoteJid: chatId,
 		fromMe,
 		id: msgId,
+		peerRecipientLid: stanza?.attrs?.peer_recipient_lid,
 		senderLid: stanza?.attrs?.sender_lid,
 		senderPn: stanza?.attrs?.sender_pn,
 		participant,
