@@ -27,6 +27,7 @@ import type {
 } from '../Types'
 import { ALL_WA_PATCH_NAMES } from '../Types'
 import type { LabelActionBody } from '../Types/Label'
+import { SyncState } from '../Types/State'
 import {
 	chatModificationToAppPatch,
 	type ChatMutationMap,
@@ -67,10 +68,13 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	const { ev, ws, authState, generateMessageTag, sendNode, query, onUnexpectedError } = sock
 
 	let privacySettings: { [_: string]: string } | undefined
-	let needToFlushWithAppStateSync = false
-	let pendingAppStateSync = false
+
+	let syncState: SyncState = SyncState.Connecting
 	/** this mutex ensures that the notifications (receipts, messages etc.) are processed in order */
 	const processingMutex = makeMutex()
+
+	// Timeout for AwaitingInitialSync state
+	let awaitingSyncTimeout: NodeJS.Timeout | undefined
 
 	const placeholderResendCache =
 		config.placeholderResendCache ||
@@ -849,6 +853,18 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	/**
+	 * Enable/Disable link preview privacy, not related to baileys link preview generation
+	 */
+	const updateDisableLinkPreviewsPrivacy = (isPreviewsDisabled: boolean) => {
+		return chatModify(
+			{
+				disableLinkPreviews: { isPreviewsDisabled }
+			},
+			''
+		)
+	}
+
+	/**
 	 * Star or Unstar a message
 	 */
 	const star = (jid: string, messages: { id: string; fromMe?: boolean }[], star: boolean) => {
@@ -989,15 +1005,42 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			? shouldSyncHistoryMessage(historyMsg) && PROCESSABLE_HISTORY_TYPES.includes(historyMsg.syncType!)
 			: false
 
-		if (historyMsg && !authState.creds.myAppStateKeyId) {
-			logger.warn('skipping app state sync, as myAppStateKeyId is not set')
-			pendingAppStateSync = true
+		// State machine: decide on sync and flush
+		if (historyMsg && syncState === SyncState.AwaitingInitialSync) {
+			if (awaitingSyncTimeout) {
+				clearTimeout(awaitingSyncTimeout)
+				awaitingSyncTimeout = undefined
+			}
+
+			if (shouldProcessHistoryMsg) {
+				syncState = SyncState.Syncing
+				logger.info('Transitioned to Syncing state')
+				// Let doAppStateSync handle the final flush after it's done
+			} else {
+				syncState = SyncState.Online
+				logger.info('History sync skipped, transitioning to Online state and flushing buffer')
+				ev.flush()
+			}
+		}
+
+		const doAppStateSync = async () => {
+			if (syncState === SyncState.Syncing) {
+				logger.info('Doing app state sync')
+				await resyncAppState(ALL_WA_PATCH_NAMES, true)
+
+				// Sync is complete, go online and flush everything
+				syncState = SyncState.Online
+				logger.info('App state sync complete, transitioning to Online state and flushing buffer')
+				ev.flush()
+
+				const accountSyncCounter = (authState.creds.accountSyncCounter || 0) + 1
+				ev.emit('creds.update', { accountSyncCounter })
+			}
 		}
 
 		await Promise.all([
 			(async () => {
-				if (historyMsg && authState.creds.myAppStateKeyId) {
-					pendingAppStateSync = false
+				if (shouldProcessHistoryMsg) {
 					await doAppStateSync()
 				}
 			})(),
@@ -1012,24 +1055,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			})
 		])
 
-		if (msg.message?.protocolMessage?.appStateSyncKeyShare && pendingAppStateSync) {
+		// If the app state key arrives and we are waiting to sync, trigger the sync now.
+		if (msg.message?.protocolMessage?.appStateSyncKeyShare && syncState === SyncState.Syncing) {
+			logger.info('App state sync key arrived, triggering app state sync')
 			await doAppStateSync()
-			pendingAppStateSync = false
-		}
-
-		async function doAppStateSync() {
-			if (!authState.creds.accountSyncCounter) {
-				logger.info('doing initial app state sync')
-				await resyncAppState(ALL_WA_PATCH_NAMES, true)
-
-				const accountSyncCounter = (authState.creds.accountSyncCounter || 0) + 1
-				ev.emit('creds.update', { accountSyncCounter })
-
-				if (needToFlushWithAppStateSync) {
-					logger.debug('flushing with app state sync')
-					ev.flush()
-				}
-			}
 		}
 	})
 
@@ -1072,16 +1101,40 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			)
 		}
 
-		if (
-			receivedPendingNotifications && // if we don't have the app state key
-			// we keep buffering events until we finally have
-			// the key and can sync the messages
-			// todo scrutinize
-			!authState.creds?.myAppStateKeyId
-		) {
-			ev.buffer()
-			needToFlushWithAppStateSync = true
+		if (!receivedPendingNotifications || syncState !== SyncState.Connecting) {
+			return
 		}
+
+		syncState = SyncState.AwaitingInitialSync
+		logger.info('Connection is now AwaitingInitialSync, buffering events')
+		ev.buffer()
+
+		const willSyncHistory = shouldSyncHistoryMessage(
+			proto.Message.HistorySyncNotification.fromObject({
+				syncType: proto.HistorySync.HistorySyncType.RECENT
+			})
+		)
+
+		if (!willSyncHistory) {
+			logger.info('History sync is disabled by config, not waiting for notification. Transitioning to Online.')
+			syncState = SyncState.Online
+			setTimeout(() => ev.flush(), 0)
+			return
+		}
+
+		logger.info('History sync is enabled, awaiting notification with a 20s timeout.')
+
+		if (awaitingSyncTimeout) {
+			clearTimeout(awaitingSyncTimeout)
+		}
+
+		awaitingSyncTimeout = setTimeout(() => {
+			if (syncState === SyncState.AwaitingInitialSync) {
+				logger.warn('Timeout in AwaitingInitialSync, forcing state to Online and flushing buffer')
+				syncState = SyncState.Online
+				ev.flush()
+			}
+		}, 20_000)
 	})
 
 	return {
@@ -1103,6 +1156,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		updateProfileStatus,
 		updateProfileName,
 		updateBlockStatus,
+		updateDisableLinkPreviewsPrivacy,
 		updateCallPrivacy,
 		updateMessagesPrivacy,
 		updateLastSeenPrivacy,
