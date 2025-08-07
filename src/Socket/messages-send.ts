@@ -368,7 +368,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			additionalNodes,
 			useUserDevicesCache,
 			useCachedGroupMetadata,
-			statusJidList
+			statusJidList,
+			forceResendDistributionMessage = false
 		}: MessageRelayOptions
 	) => {
 		const meId = authState.creds.me!.id
@@ -511,9 +512,64 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 				}
 
+				if (forceResendDistributionMessage) {
+					const senderKeyMsg: proto.IMessage = {
+						senderKeyDistributionMessage: {
+							axolotlSenderKeyDistributionMessage: senderKeyDistributionMessage,
+							groupId: destinationJid
+						}
+					}
+
+					message.senderKeyDistributionMessage = senderKeyMsg.senderKeyDistributionMessage
+
+					binaryNodeContent.push({
+						tag: 'enc',
+						attrs: { v: '2', type: 'msg', count: '2' },
+						content: ciphertext
+					})
+
+					const stanza: BinaryNode = {
+						tag: 'message',
+						attrs: {
+							id: msgId,
+							type: getMessageType(message),
+							...(additionalAttributes || {})
+						},
+						content: binaryNodeContent
+					}
+
+					if (participant) {
+						if (isJidGroup(destinationJid)) {
+							stanza.attrs.to = destinationJid
+							stanza.attrs.participant = participant.jid
+						} else if (areJidsSameUser(participant.jid, meId)) {
+							stanza.attrs.to = participant.jid
+							stanza.attrs.recipient = destinationJid
+						} else {
+							stanza.attrs.to = participant.jid
+						}
+					} else {
+						stanza.attrs.to = destinationJid
+					}
+
+					if (shouldIncludeDeviceIdentity) {
+						;(stanza.content as BinaryNode[]).push({
+							tag: 'device-identity',
+							attrs: {},
+							content: encodeSignedDeviceIdentity(authState.creds.account!, true)
+						})
+
+						logger.debug({ jid }, 'adding device identity')
+					}
+
+					await sendNode(stanza)
+
+					return msgId
+				}
+
 				// if there are some participants with whom the session has not been established
 				// if there are, we re-send the senderkey
-				if (senderKeyJids.length) {
+				if (!forceResendDistributionMessage && senderKeyJids.length) {
 					logger.debug({ senderKeyJids }, 'sending new sender key')
 
 					const senderKeyMsg: proto.IMessage = {

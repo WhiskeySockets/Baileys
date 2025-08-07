@@ -35,6 +35,9 @@ export const PROCESSABLE_HISTORY_TYPES = [
 	proto.Message.HistorySyncNotification.HistorySyncType.ON_DEMAND
 ]
 
+const MAX_RECENT_MESSAGE_SENT_HISTORY = 256
+const recentMessageSentHistory = new Map<string, proto.IMessage>()
+
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	version: version as WAVersion,
 	browser: Browsers.ubuntu('Chrome'),
@@ -64,6 +67,27 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	},
 	countryCode: 'US',
 	getMessage: async () => undefined,
+
+	recentMessageSentHistory: {
+		// TODO: use sqlite and async mutex
+		get: (from, messageId) => recentMessageSentHistory.get(`${from}:${messageId}`),
+		set: (from, messageId, message) => {
+			const key = `${from}:${messageId}`
+			if (recentMessageSentHistory.has(key)) {
+				recentMessageSentHistory.delete(key)
+			}
+
+			if (recentMessageSentHistory.size >= MAX_RECENT_MESSAGE_SENT_HISTORY) {
+				const firstKey = recentMessageSentHistory.keys().next().value
+				if (firstKey) {
+					recentMessageSentHistory.delete(firstKey)
+				}
+			}
+
+			recentMessageSentHistory.set(key, message)
+		}
+	},
+
 	cachedGroupMetadata: async () => undefined,
 	makeSignalRepository: makeLibSignalRepository
 }
