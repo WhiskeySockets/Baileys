@@ -131,6 +131,19 @@ export type PollMessageOptions = {
 	toAnnouncementGroup?: boolean
 }
 
+export type EventMessageOptions = {
+	name: string
+	description?: string
+	startDate: Date
+	endDate?: Date
+	location?: WALocationMessage
+	call?: 'audio' | 'video'
+	isCancelled?: boolean
+	isScheduleCall?: boolean
+	extraGuestsAllowed?: boolean
+	messageSecret?: Uint8Array<ArrayBufferLike>
+}
+
 type SharePhoneNumber = {
 	sharePhoneNumber: boolean
 }
@@ -203,6 +216,7 @@ export type AnyRegularMessageContent = (
 			Contextable &
 			Editable)
 	| AnyMediaMessageContent
+	| { event: EventMessageOptions }
 	| ({
 			poll: PollMessageOptions
 	  } & Mentionable &
@@ -327,6 +341,7 @@ export type MediaGenerationOptions = {
 export type MessageContentGenerationOptions = MediaGenerationOptions & {
 	getUrlInfo?: (text: string) => Promise<WAUrlInfo | undefined>
 	getProfilePicUrl?: (jid: string, type: 'image' | 'preview') => Promise<string | undefined>
+	getCallLink?: (type: 'audio' | 'video', event?: { startTime: number }) => Promise<string | undefined>
 	jid?: string
 }
 export type MessageGenerationOptions = MessageContentGenerationOptions & MessageGenerationOptionsFromContent
