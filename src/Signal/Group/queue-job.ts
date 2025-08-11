@@ -5,6 +5,11 @@ interface QueueJob<T> {
 }
 
 const _queueAsyncBuckets = new Map<string | number, Array<QueueJob<any>>>()
+
+export function cleanupQueues() {
+	_queueAsyncBuckets.clear()
+}
+
 const _gcLimit = 10000
 
 async function _asyncQueueExecutor(queue: Array<QueueJob<any>>, cleanup: () => void): Promise<void> {
