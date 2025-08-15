@@ -476,7 +476,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					if (mapping?.includes('@lid')) {
 						logger.debug(
 							{ user, lidForPN: mapping, deviceCount: userJids.length },
-							'📋 User has LID mapping - preparing bulk migration'
+							'User has LID mapping - preparing bulk migration'
 						)
 						return { shouldMigrate: true, lidForPN: mapping }
 					}
@@ -487,44 +487,52 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				return { shouldMigrate: false, lidForPN: undefined }
 			}
 
+			// Helper to migrate a single device
+			const migrateDeviceToLid = async (jid: string, lidForPN: string) => {
+				if (!jid.includes('@s.whatsapp.net')) return
+
+				try {
+					const jidDecoded = jidDecode(jid)
+					const deviceId = jidDecoded?.device || 0
+					const lidDecoded = jidDecode(lidForPN)
+					const lidWithDevice = jidEncode(lidDecoded?.user!, 'lid', deviceId)
+
+					await signalRepository.migrateSession(jid, lidWithDevice)
+					logger.debug({ fromJid: jid, toJid: lidWithDevice }, 'Migrated device session to LID')
+
+					// Delete PN session after successful migration
+					try {
+						await signalRepository.deleteSession(jid)
+						logger.debug({ deletedPNSession: jid }, '🗑️ Deleted PN session after migration')
+					} catch (deleteError) {
+						logger.warn({ jid, error: deleteError }, 'Failed to delete PN session')
+					}
+				} catch (migrationError) {
+					logger.warn({ jid, error: migrationError }, 'Failed to migrate device session')
+				}
+			}
+
 			// Process each user group for potential bulk LID migration
 			for (const [user, userJids] of userGroups) {
 				const mappingResult = await checkUserLidMapping(user, userJids)
-				let shouldMigrateUser = mappingResult.shouldMigrate
+				const shouldMigrateUser = mappingResult.shouldMigrate
 				const lidForPN = mappingResult.lidForPN
 
-				// Bulk migrate all devices for this user if LID mapping exists
+				// Migrate all devices for this user if LID mapping exists
 				if (shouldMigrateUser && lidForPN) {
-					try {
-						await signalRepository.migrateSession(user, lidForPN)
-						logger.info(
-							{
-								user,
-								lidMapping: lidForPN,
-								deviceCount: userJids.length,
-								devices: userJids
-							},
-							'All user sessions migrated to LID in assertSessions'
-						)
-
-						// Delete all PN sessions for this user in parallel
-						const pnJidsToDelete = userJids.filter(jid => jid.includes('@s.whatsapp.net'))
-						const deletionPromises = pnJidsToDelete.map(async jid => {
-							try {
-								await signalRepository.deleteSession(jid)
-								logger.debug({ deletedPNSession: jid }, '🗑️ Deleted PN session in bulk assertSessions migration')
-							} catch (deleteError) {
-								logger.warn({ jid, error: deleteError }, 'Failed to delete PN session in bulk assertSessions migration')
-							}
-						})
-						await Promise.all(deletionPromises)
-					} catch (migrationError) {
-						logger.warn(
-							{ user, lidForPN, error: migrationError },
-							'Failed to bulk migrate user sessions in assertSessions'
-						)
-						shouldMigrateUser = false
+					// Migrate each device individually
+					for (const jid of userJids) {
+						await migrateDeviceToLid(jid, lidForPN)
 					}
+
+					logger.info(
+						{
+							user,
+							lidMapping: lidForPN,
+							deviceCount: userJids.length
+						},
+						'Completed migration attempt for user devices'
+					)
 				}
 
 				// Helper to check session for migrated user
@@ -595,7 +603,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						lidUsersBeingFetched: Array.from(lidUsersBeingFetched),
 						pnUsersBeingFetched: Array.from(pnUsersBeingFetched)
 					},
-					'🚨 PROBLEM: Fetching both LID and PN sessions for same users'
+					'Fetching both LID and PN sessions for same users'
 				)
 			}
 
@@ -696,6 +704,49 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 				const userNodes: BinaryNode[] = []
 
+				// Helper to get encryption JID with LID migration
+				const getEncryptionJid = async (wireJid: string) => {
+					if (!wireJid.includes('@s.whatsapp.net')) return wireJid
+
+					try {
+						const lidMapping = signalRepository.getLIDMappingStore()
+						const lidForPN = await lidMapping.getLIDForPN(wireJid)
+
+						if (!lidForPN?.includes('@lid')) return wireJid
+
+						// Preserve device ID from original wire JID
+						const wireDecoded = jidDecode(wireJid)
+						const deviceId = wireDecoded?.device || 0
+						const lidDecoded = jidDecode(lidForPN)
+						const lidWithDevice = jidEncode(lidDecoded?.user!, 'lid', deviceId)
+
+						// Migrate session to LID for unified encryption layer
+						try {
+							await signalRepository.migrateSession(wireJid, lidWithDevice)
+							const recipientUser = jidNormalizedUser(wireJid)
+							const ownPnUser = jidNormalizedUser(meId)
+							const isOwnDevice = recipientUser === ownPnUser
+							logger.info({ wireJid, lidWithDevice, isOwnDevice }, 'Migrated to LID encryption')
+
+							// Delete PN session after successful migration
+							try {
+								await signalRepository.deleteSession(wireJid)
+								logger.debug({ deletedPNSession: wireJid }, 'Deleted PN session')
+							} catch (deleteError) {
+								logger.warn({ wireJid, error: deleteError }, 'Failed to delete PN session')
+							}
+
+							return lidWithDevice
+						} catch (migrationError) {
+							logger.warn({ wireJid, error: migrationError }, 'Failed to migrate session')
+							return wireJid
+						}
+					} catch (error) {
+						logger.debug({ wireJid, error }, 'Failed to check LID mapping')
+						return wireJid
+					}
+				}
+
 				// Encrypt to this user's devices sequentially to prevent session corruption
 				for (const { recipientJid: wireJid, patchedMessage } of userDevices) {
 					// DSM logic: Use DSM for own other devices (following whatsmeow implementation)
@@ -720,46 +771,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					const bytes = encodeWAMessage(messageToEncrypt)
 
-					// UNIFIED ENCRYPTION LAYER: Always use migrated LID session when available
-					// Keep wire JID for envelope addressing, but simplify encryption to LID-first approach
-					let encryptionJid = wireJid
-
-					// Check if we should migrate this device to LID for encryption
-					const recipientUser = jidNormalizedUser(wireJid)
-					const ownPnUser = jidNormalizedUser(meId)
-					const isOwnDevice = recipientUser === ownPnUser
-
-					// For ALL devices (own and recipient), check for LID migration for unified encryption layer
-					if (wireJid.includes('@s.whatsapp.net')) {
-						const lidMapping = signalRepository.getLIDMappingStore()
-						const lidForPN = await lidMapping.getLIDForPN(recipientUser)
-
-						if (lidForPN?.includes('@lid')) {
-							// Preserve device ID from original wire JID
-							const wireDecoded = jidDecode(wireJid)
-							const deviceId = wireDecoded?.device || 0
-							const lidDecoded = jidDecode(lidForPN)
-							const lidWithDevice = jidEncode(lidDecoded?.user!, 'lid', deviceId)
-
-							// Migrate session to LID for unified encryption layer
-							await signalRepository.migrateSession(recipientUser, lidForPN)
-							logger.info(
-								{ user: recipientUser, isOwnDevice, lidMapping: lidForPN, deviceId },
-								'🔄 Migrated to LID encryption (unified layer)'
-							)
-
-							// Delete PN session - we only want LID sessions for encryption
-							await signalRepository.deleteSession(wireJid)
-							logger.debug(
-								{ deletedPNSession: wireJid, usingLIDSession: lidWithDevice },
-								'🗑️ Deleted PN session - unified LID encryption'
-							)
-
-							// Always use LID for encryption, keep wire JID for addressing
-							encryptionJid = lidWithDevice
-							logger.debug({ wireJid, encryptionJid, isOwnDevice }, '🔐 Unified LID encryption layer')
-						}
-					}
+					// Get encryption JID with LID migration
+					const encryptionJid = await getEncryptionJid(wireJid)
 
 					// ENCRYPT: Use the determined encryption identity (prefers migrated LID)
 					const { type, ciphertext } = await signalRepository.encryptMessage({
