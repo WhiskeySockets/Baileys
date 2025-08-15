@@ -1,6 +1,6 @@
 import type { SignalKeyStoreWithTransaction } from '../Types'
-import { isLidUser, isJidUser, jidDecode } from '../WABinary'
 import logger from '../Utils/logger'
+import { isJidUser, isLidUser, jidDecode } from '../WABinary'
 
 export class LIDMappingStore {
 	private readonly keys: SignalKeyStoreWithTransaction

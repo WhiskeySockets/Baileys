@@ -842,18 +842,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							},
 							'Stored server-provided PN-LID mapping'
 						)
-
-						// If latestLid differs from assignedLid, this is a LID refresh/migration
-						if (mapping.latestLid && mapping.latestLid !== mapping.assignedLid) {
-							logger.info(
-								{
-									pn,
-									oldLid: `${mapping.assignedLid}@lid`,
-									newLid: lid
-								},
-								'LID refresh detected - updated to latest LID'
-							)
-						}
 					}
 				}
 			} catch (error) {

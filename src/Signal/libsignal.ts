@@ -6,11 +6,11 @@ import type { SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
 import type { SignalRepository } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import { jidDecode } from '../WABinary'
-import { LIDMappingStore } from './lid-mapping'
 import type { SenderKeyStore } from './Group/group_cipher'
 import { SenderKeyName } from './Group/sender-key-name'
 import { SenderKeyRecord } from './Group/sender-key-record'
 import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from './Group'
+import { LIDMappingStore } from './lid-mapping'
 
 export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository {
 	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction)
@@ -75,29 +75,25 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 
 			// Check for LID mapping and use it if session exists
 			if (jid.includes('@s.whatsapp.net')) {
-				try {
-					const lidForPN = await lidMapping.getLIDForPN(jid)
-					if (lidForPN && lidForPN.includes('@lid')) {
-						const lidAddr = jidToSignalProtocolAddress(lidForPN)
-						const { [lidAddr.toString()]: lidSession } = await auth.keys.get('session', [lidAddr.toString()])
+				const lidForPN = await lidMapping.getLIDForPN(jid)
+				if (lidForPN?.includes('@lid')) {
+					const lidAddr = jidToSignalProtocolAddress(lidForPN)
+					const { [lidAddr.toString()]: lidSession } = await auth.keys.get('session', [lidAddr.toString()])
 
-						if (lidSession) {
-							// LID session exists, use it
+					if (lidSession) {
+						// LID session exists, use it
+						encryptionJid = lidForPN
+					} else {
+						// Try to migrate if PN session exists
+						const pnAddr = jidToSignalProtocolAddress(jid)
+						const { [pnAddr.toString()]: pnSession } = await auth.keys.get('session', [pnAddr.toString()])
+
+						if (pnSession) {
+							// Migrate PN to LID
+							await repository.migrateSession(jid, lidForPN)
 							encryptionJid = lidForPN
-						} else {
-							// Try to migrate if PN session exists
-							const pnAddr = jidToSignalProtocolAddress(jid)
-							const { [pnAddr.toString()]: pnSession } = await auth.keys.get('session', [pnAddr.toString()])
-
-							if (pnSession) {
-								// Migrate PN to LID
-								await repository.migrateSession(jid, lidForPN)
-								encryptionJid = lidForPN
-							}
 						}
 					}
-				} catch (error) {
-					// Fallback to original JID on any error
 				}
 			}
 
@@ -219,7 +215,7 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 				const fromAddr = jidToSignalProtocolAddress(fromJid)
 				const fromSession = await storage.loadSession(fromAddr.toString())
 
-				if (fromSession && fromSession.haveOpenSession()) {
+				if (fromSession?.haveOpenSession()) {
 					// Deep copy session to prevent reference issues
 					const sessionBytes = fromSession.serialize()
 					const copiedSession = libsignal.SessionRecord.deserialize(sessionBytes)
@@ -280,7 +276,7 @@ function signalStorage(
 					const pnJid = device === '0' ? `${parts[0]}@s.whatsapp.net` : `${parts[0]}:${device}@s.whatsapp.net`
 
 					const lidForPN = await lidMapping.getLIDForPN(pnJid)
-					if (lidForPN && lidForPN.includes('@lid')) {
+					if (lidForPN?.includes('@lid')) {
 						const lidAddr = jidToSignalProtocolAddress(lidForPN)
 						const lidId = lidAddr.toString()
 
@@ -293,12 +289,14 @@ function signalStorage(
 				}
 
 				const { [actualId]: sess } = await keys.get('session', [actualId])
+
 				if (sess) {
 					return libsignal.SessionRecord.deserialize(sess)
 				}
 			} catch (e) {
 				return null
 			}
+
 			return null
 		},
 		// TODO: Replace with libsignal.SessionRecord when type exports are added to libsignal
