@@ -43,7 +43,7 @@ const storeMappingFromEnvelope = async (
 	repository: SignalRepository,
 	logger: ILogger
 ): Promise<void> => {
-	const { senderAlt } = extractAddressingContext(stanza, sender)
+	const { senderAlt } = extractAddressingContext(stanza)
 
 	if (senderAlt && isLidUser(senderAlt) && isJidUser(sender) && decryptionJid === sender) {
 		try {
@@ -83,11 +83,11 @@ type MessageType =
 	| 'other_status'
 	| 'newsletter'
 
-export const extractAddressingContext = (stanza: BinaryNode, _from: string, _participant?: string) => {
+export const extractAddressingContext = (stanza: BinaryNode) => {
 	const addressingMode = stanza.attrs.addressing_mode || 'pn'
 	let senderAlt: string | undefined
 	let recipientAlt: string | undefined
-	
+
 	if (addressingMode === 'lid') {
 		// Message is LID-addressed: sender is LID, extract corresponding PN
 		senderAlt = stanza.attrs.participant_pn || stanza.attrs.sender_pn
@@ -97,7 +97,7 @@ export const extractAddressingContext = (stanza: BinaryNode, _from: string, _par
 		senderAlt = stanza.attrs.participant_lid || stanza.attrs.sender_lid
 		recipientAlt = stanza.attrs.recipient_lid
 	}
-	
+
 	return {
 		addressingMode,
 		senderAlt,
@@ -250,13 +250,13 @@ export const decryptMessageNode = (
 							case 'msg':
 								const user = isJidUser(sender) ? sender : author
 								const decryptionJid = await getDecryptionJid(user, repository)
-								
+
 								msgBuffer = await repository.decryptMessage({
 									jid: decryptionJid,
 									type: e2eType,
 									ciphertext: content
 								})
-								
+
 								await storeMappingFromEnvelope(stanza, user, decryptionJid, repository, logger)
 								break
 							case 'plaintext':
