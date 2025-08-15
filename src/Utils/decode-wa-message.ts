@@ -10,42 +10,20 @@ import {
 	isJidNewsletter,
 	isJidStatusBroadcast,
 	isJidUser,
-	isLidUser,
-	jidDecode,
-	jidEncode,
-	jidNormalizedUser
+	isLidUser
 } from '../WABinary'
 import { unpadRandomMax16 } from './generics'
 import type { ILogger } from './logger'
 
-const getDecryptionJid = async (sender: string, repository: SignalRepository): Promise<string> => {
-	if (!sender.includes('@s.whatsapp.net')) {
-		return sender
-	}
-
-	const lidMapping = repository.getLIDMappingStore()
-	const normalizedSender = jidNormalizedUser(sender)
-	const lidForPN = await lidMapping.getLIDForPN(normalizedSender)
-
-	if (lidForPN?.includes('@lid')) {
-		const senderDecoded = jidDecode(sender)
-		const deviceId = senderDecoded?.device || 0
-		return jidEncode(jidDecode(lidForPN)!.user, 'lid', deviceId)
-	}
-
-	return sender
-}
-
 const storeMappingFromEnvelope = async (
 	stanza: BinaryNode,
 	sender: string,
-	decryptionJid: string,
 	repository: SignalRepository,
 	logger: ILogger
 ): Promise<void> => {
 	const { senderAlt } = extractAddressingContext(stanza)
 
-	if (senderAlt && isLidUser(senderAlt) && isJidUser(sender) && decryptionJid === sender) {
+	if (senderAlt && isLidUser(senderAlt) && isJidUser(sender)) {
 		try {
 			await repository.storeLIDPNMapping(senderAlt, sender)
 			logger.debug({ sender, senderAlt }, 'Stored LID mapping from envelope')
@@ -249,15 +227,14 @@ export const decryptMessageNode = (
 							case 'pkmsg':
 							case 'msg':
 								const user = isJidUser(sender) ? sender : author
-								const decryptionJid = await getDecryptionJid(user, repository)
 
 								msgBuffer = await repository.decryptMessage({
-									jid: decryptionJid,
+									jid: user,
 									type: e2eType,
 									ciphertext: content
 								})
 
-								await storeMappingFromEnvelope(stanza, user, decryptionJid, repository, logger)
+								await storeMappingFromEnvelope(stanza, user, repository, logger)
 								break
 							case 'plaintext':
 								msgBuffer = content
