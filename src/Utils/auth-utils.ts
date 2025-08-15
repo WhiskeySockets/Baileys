@@ -154,7 +154,7 @@ async function handlePreKeyOperations(
 		if (isInTransaction) {
 			// In transaction, only allow deletion if key exists in cache
 			for (const keyId of deletionKeys) {
-				if (transactionCache && transactionCache[keyType]) {
+				if (transactionCache[keyType]) {
 					transactionCache[keyType][keyId] = null
 					if (mutations[keyType]) {
 						// Mark for deletion in mutations
