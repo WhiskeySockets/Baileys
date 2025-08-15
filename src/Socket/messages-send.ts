@@ -503,7 +503,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					// Delete PN session after successful migration
 					try {
 						await signalRepository.deleteSession(jid)
-						logger.debug({ deletedPNSession: jid }, '🗑️ Deleted PN session after migration')
+						logger.debug({ deletedPNSession: jid }, 'Deleted PN session after migration')
 					} catch (deleteError) {
 						logger.warn({ jid, error: deleteError }, 'Failed to delete PN session')
 					}
@@ -765,7 +765,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 						if (isOwnUser && !isExactSenderDevice) {
 							messageToEncrypt = dsmMessage
-							logger.debug({ wireJid, targetUser }, '📱 Using DSM for own device')
+							logger.debug({ wireJid, targetUser }, 'Using DSM for own device')
 						}
 					}
 
