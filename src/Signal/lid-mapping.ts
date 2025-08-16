@@ -29,7 +29,7 @@ export class LIDMappingStore {
 		const pnUser = pnDecoded.user
 		const lidUser = lidDecoded.user
 
-		logger.info(`Storing USER LID mapping: PN ${pnUser} → LID ${lidUser}`)
+		logger.trace(`Storing USER LID mapping: PN ${pnUser} → LID ${lidUser}`)
 
 		await this.keys.transaction(async () => {
 			await this.keys.set({
@@ -40,7 +40,7 @@ export class LIDMappingStore {
 			})
 		})
 
-		logger.info(`USER LID mapping stored: PN ${pnUser} → LID ${lidUser}`)
+		logger.trace(`USER LID mapping stored: PN ${pnUser} → LID ${lidUser}`)
 	}
 
 	/**
@@ -58,7 +58,7 @@ export class LIDMappingStore {
 		const lidUser = stored[pnUser]
 
 		if (!lidUser) {
-			logger.warn(`No LID mapping found for PN user ${pnUser}`)
+			logger.trace(`No LID mapping found for PN user ${pnUser}`)
 			return null
 		}
 
@@ -68,7 +68,7 @@ export class LIDMappingStore {
 		const pnDevice = decoded.device !== undefined ? decoded.device : 0
 		const deviceSpecificLid = `${lidUser}:${pnDevice}@lid`
 
-		logger.info(`getLIDForPN: ${pn} → ${deviceSpecificLid} (user mapping with device ${pnDevice})`)
+		logger.trace(`getLIDForPN: ${pn} → ${deviceSpecificLid} (user mapping with device ${pnDevice})`)
 		return deviceSpecificLid
 	}
 
@@ -87,7 +87,7 @@ export class LIDMappingStore {
 		const pnUser = stored[`${lidUser}_reverse`]
 
 		if (!pnUser || typeof pnUser !== 'string') {
-			logger.warn(`No reverse mapping found for LID user: ${lidUser}`)
+			logger.trace(`No reverse mapping found for LID user: ${lidUser}`)
 			return null
 		}
 
@@ -95,7 +95,7 @@ export class LIDMappingStore {
 		const lidDevice = decoded.device !== undefined ? decoded.device : 0
 		const pnJid = `${pnUser}:${lidDevice}@s.whatsapp.net`
 
-		logger.info(`Found reverse mapping: ${lid} → ${pnJid}`)
+		logger.trace(`Found reverse mapping: ${lid} → ${pnJid}`)
 		return pnJid
 	}
 }
