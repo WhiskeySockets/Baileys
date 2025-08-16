@@ -638,6 +638,25 @@ export const makeSocket = (config: SocketConfig) => {
 		ev.emit('creds.update', { me: { ...authState.creds.me!, lid: node.attrs.lid } })
 
 		ev.emit('connection.update', { connection: 'open' })
+
+		if (node.attrs.lid && authState.creds.me?.id) {
+			const myLID = node.attrs.lid
+			process.nextTick(async () => {
+				try {
+					const myPN = authState.creds.me!.id
+
+					// Store our own LID-PN mapping
+					await signalRepository.storeLIDPNMapping(myLID, myPN)
+
+					// Create LID session for ourselves (whatsmeow pattern)
+					await signalRepository.migrateSession(myPN, myLID)
+
+					logger.info({ myPN, myLID }, 'Own LID session created successfully')
+				} catch (error) {
+					logger.error({ error, lid: myLID }, 'Failed to create own LID session')
+				}
+			})
+		}
 	})
 
 	ws.on('CB:stream:error', (node: BinaryNode) => {
