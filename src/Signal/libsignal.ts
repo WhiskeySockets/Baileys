@@ -158,21 +158,6 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 			}
 		},
 
-		shouldRecreateSession(_jid: string, retryCount: number) {
-			// Simple threshold - let WhatsApp server dictate when recreation is needed
-			return retryCount >= 2
-				? { shouldRecreate: true, reason: 'retry threshold met' }
-				: { shouldRecreate: false, reason: 'retry count below threshold' }
-		},
-
-		async recreateSession(jid: string) {
-			const addr = jidToSignalProtocolAddress(jid)
-
-			return (auth.keys as SignalKeyStoreWithTransaction).transaction(async () => {
-				await auth.keys.set({ session: { [addr.toString()]: null } })
-			})
-		},
-
 		async deleteSession(jid: string) {
 			const addr = jidToSignalProtocolAddress(jid)
 

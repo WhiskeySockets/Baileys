@@ -79,8 +79,6 @@ export type SignalRepository = {
 	getLIDMappingStore(): LIDMappingStore
 	migrateSession(fromJid: string, toJid: string): Promise<void>
 	validateSession(jid: string): Promise<{ exists: boolean; reason?: string }>
-	shouldRecreateSession(jid: string, retryCount: number): { shouldRecreate: boolean; reason: string }
-	recreateSession(jid: string, reason?: string): Promise<void>
 	deleteSession(jid: string): Promise<void>
 	destroy(): void
 }

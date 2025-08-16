@@ -357,97 +357,44 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return !!lidSessions[lidSignalId]
 	}
 
-	// Simplified session recreation logic using signalRepository
-	const shouldRecreateSessionForRetry = async (
-		retryCount: number,
-		participant: string
-	): Promise<{ recreate: boolean; reason: string }> => {
-		// Check if we have a session for this participant
-		const sessionKey = signalRepository.jidToSignalProtocolAddress(participant)
-		const participantSessions = await authState.keys.get('session', [sessionKey])
-		const hasSession = Object.keys(participantSessions).length > 0 && participantSessions[sessionKey]
-
-		if (!hasSession) {
-			return { recreate: true, reason: 'no session exists with participant' }
-		}
-
-		// Use signalRepository's recreation logic (already has rate limiting)
-		const result = signalRepository.shouldRecreateSession(participant, retryCount)
-		return { recreate: result.shouldRecreate, reason: result.reason }
-	}
-
-	const assertSessions = async (
-		jids: string[],
-		force: boolean,
-		retryContext?: { retryCount: number; participant: string }
-	) => {
+	const assertSessions = async (jids: string[], force: boolean) => {
 		let didFetchNewSession = false
-		let jidsRequiringFetch: string[] = []
+		const jidsRequiringFetch: string[] = []
 
 		// Apply same deduplication as in getUSyncDevices
 		jids = deduplicateLidPnJids(jids)
 
 		if (force) {
-			if (retryContext) {
-				// Check if we should recreate sessions based on whatsmeow logic
-				const { retryCount, participant } = retryContext
-				const shouldRecreate = await shouldRecreateSessionForRetry(retryCount, participant)
+			// Check which sessions are missing (with LID migration check)
+			const addrs = jids.map(jid => signalRepository.jidToSignalProtocolAddress(jid))
+			const sessions = await authState.keys.get('session', addrs)
 
-				if (shouldRecreate.recreate) {
-					logger.info(
-						{ participant, retryCount, reason: shouldRecreate.reason },
-						'Recreating session per whatsmeow pattern'
-					)
+			// Helper to check session for a JID
+			const checkJidSession = async (jid: string) => {
+				const signalId = signalRepository.jidToSignalProtocolAddress(jid)
+				let hasSession = !!sessions[signalId]
 
-					// CRITICAL: Delete existing broken sessions first (whatsmeow pattern)
-					const sessionsToDelete: { [key: string]: null } = {}
-					const sessionKeysToRecreate: string[] = []
-					for (const jid of jids) {
-						const sessionKey = signalRepository.jidToSignalProtocolAddress(jid)
-						sessionsToDelete[sessionKey] = null
-						sessionKeysToRecreate.push(sessionKey)
-					}
-
-					await authState.keys.set({ session: sessionsToDelete })
-
-					jidsRequiringFetch = jids
-				} else {
-					logger.debug({ participant, retryCount, reason: shouldRecreate.reason }, 'Using existing sessions')
-					// Still check which sessions are missing (with LID migration check)
-					const addrs = jids.map(jid => signalRepository.jidToSignalProtocolAddress(jid))
-					const sessions = await authState.keys.get('session', addrs)
-
-					// Helper to check session for a JID
-					const checkJidSession = async (jid: string) => {
-						const signalId = signalRepository.jidToSignalProtocolAddress(jid)
-						let hasSession = !!sessions[signalId]
-
-						// Check for migrated LID session if PN session missing
-						if (!hasSession) {
-							hasSession = await checkForMigratedLidSession(jid)
-							if (hasSession) {
-								logger.debug({ jid }, 'Found migrated LID session during retry, skipping PN fetch')
-							}
-						}
-
-						// Add to fetch list if no session exists
-						if (!hasSession) {
-							if (jid.includes('@lid')) {
-								logger.debug({ jid }, 'No LID session found, will create new LID session')
-							}
-
-							jidsRequiringFetch.push(jid)
-						}
-					}
-
-					// Process all JIDs
-					for (const jid of jids) {
-						await checkJidSession(jid)
+				// Check for migrated LID session if PN session missing
+				if (!hasSession) {
+					hasSession = await checkForMigratedLidSession(jid)
+					if (hasSession) {
+						logger.debug({ jid }, 'Found migrated LID session during force assert, skipping PN fetch')
 					}
 				}
-			} else {
-				// Standard force behavior - fetch for all
-				jidsRequiringFetch = jids
+
+				// Add to fetch list if no session exists
+				if (!hasSession) {
+					if (jid.includes('@lid')) {
+						logger.debug({ jid }, 'No LID session found, will create new LID session')
+					}
+
+					jidsRequiringFetch.push(jid)
+				}
+			}
+
+			// Process all JIDs
+			for (const jid of jids) {
+				await checkJidSession(jid)
 			}
 		} else {
 			const lidMapping = signalRepository.getLIDMappingStore()
