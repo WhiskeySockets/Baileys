@@ -2863,6 +2863,7 @@ __metadata:
     json: "npm:^11.0.0"
     libsignal: "git+https://github.com/whiskeysockets/libsignal-node"
     link-preview-js: "npm:^3.0.0"
+    lru-cache: "npm:^10.4.3"
     music-metadata: "npm:^11.7.0"
     open: "npm:^8.4.2"
     pino: "npm:^9.6"
@@ -7307,7 +7308,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lru-cache@npm:^10.0.1, lru-cache@npm:^10.2.0":
+"lru-cache@npm:^10.0.1, lru-cache@npm:^10.2.0, lru-cache@npm:^10.4.3":
   version: 10.4.3
   resolution: "lru-cache@npm:10.4.3"
   checksum: 10c0/ebd04fbca961e6c1d6c0af3799adcc966a1babe798f685bb84e6599266599cd95d94630b10262f5424539bc4640107e8a33aa28585374abf561d30d16f4b39fb
