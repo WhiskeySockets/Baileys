@@ -1,6 +1,6 @@
 import NodeCache from '@cacheable/node-cache'
-import { randomBytes } from 'crypto'
 import { Mutex } from 'async-mutex'
+import { randomBytes } from 'crypto'
 import { DEFAULT_CACHE_TTLS } from '../Defaults'
 import type {
 	AuthenticationCreds,
@@ -171,7 +171,7 @@ async function handlePreKeyOperations(
 		// Outside transaction, batch validate all deletions
 		if (!state) return
 
-		const existingKeys = await state.get(keyType as keyof SignalDataTypeMap, deletionKeys)
+		const existingKeys = await state.get(keyType, deletionKeys)
 		for (const keyId of deletionKeys) {
 			if (existingKeys[keyId]) {
 				if (transactionCache[keyType]) transactionCache[keyType][keyId] = null
@@ -216,7 +216,7 @@ async function processPreKeyDeletions(
 		// Validate deletions
 		for (const keyId in keyData) {
 			if (keyData[keyId] === null) {
-				const existingKeys = await state.get(keyType as keyof SignalDataTypeMap, [keyId])
+				const existingKeys = await state.get(keyType, [keyId])
 				if (!existingKeys[keyId]) {
 					logger.warn(`Skipping deletion of non-existent ${keyType}: ${keyId}`)
 
@@ -421,7 +421,7 @@ export const addTransactionCapability = (
 							// }
 
 							data['sender-key'] = data['sender-key'] || {}
-							data['sender-key'][senderKeyName] = data['sender-key']![senderKeyName] || null
+							data['sender-key'][senderKeyName] = data['sender-key'][senderKeyName] || null
 
 							logger.trace({ senderKeyName }, 'storing sender key')
 							// Apply changes to the store
