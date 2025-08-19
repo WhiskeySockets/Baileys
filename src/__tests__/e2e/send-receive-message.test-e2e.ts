@@ -1,7 +1,8 @@
-import makeWASocket, { DisconnectReason, jidNormalizedUser, proto, useMultiFileAuthState } from '../index'
 import { Boom } from '@hapi/boom'
+import { jest } from '@jest/globals'
 import { readFileSync } from 'node:fs'
 import P from 'pino'
+import makeWASocket, { DisconnectReason, jidNormalizedUser, proto, useMultiFileAuthState } from '../../index'
 
 jest.setTimeout(30_000)
 
@@ -33,8 +34,9 @@ describe('E2E Tests', () => {
 					if (reason === DisconnectReason.loggedOut) {
 						console.error('Logged out, please delete the baileys_auth_info_e2e folder and re-run the test')
 					}
+
 					if (lastDisconnect?.error) {
-						reject(new Error(`Connection closed: ${DisconnectReason[reason as number] || 'unknown'}`))
+						reject(new Error(`Connection closed: ${DisconnectReason[reason] || 'unknown'}`))
 					}
 				}
 			})
