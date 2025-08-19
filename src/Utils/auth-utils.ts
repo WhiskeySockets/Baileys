@@ -467,18 +467,15 @@ export const addTransactionCapability = (
 					for (const senderKeyName of senderKeyNames) {
 						await queueSenderKeyOperation(senderKeyName, async () => {
 							// Create data subset for this specific sender key
-							// const senderKeyData = {
-							// 	'sender-key': {
-							// 		[senderKeyName]: data['sender-key']![senderKeyName]
-							// 	}
-							// }
-
-							data['sender-key'] = data['sender-key'] || {}
-							data['sender-key'][senderKeyName] = data['sender-key'][senderKeyName] || null
+							const senderKeyData: SignalDataSet = {
+								'sender-key': {
+									[senderKeyName]: data['sender-key']![senderKeyName]
+								}
+							};
 
 							logger.trace({ senderKeyName }, 'storing sender key')
 							// Apply changes to the store
-							await state.set(data)
+							await state.set(senderKeyData)
 							logger.trace({ senderKeyName }, 'sender key stored')
 						})
 					}
