@@ -1,4 +1,4 @@
-import * as constants from './constants'
+import type { INode } from 'whatsapp-rust-bridge/binary'
 /**
  * the binary node WA uses internally for communication
  *
@@ -6,12 +6,6 @@ import * as constants from './constants'
  * This is done for easy serialization, to prevent running into issues with prototypes &
  * to maintain functional code structure
  * */
-export type BinaryNode = {
-	tag: string
-	attrs: { [key: string]: string }
-	content?: BinaryNode[] | string | Uint8Array
-}
+export type BinaryNode = INode
 export type BinaryNodeAttributes = BinaryNode['attrs']
 export type BinaryNodeData = BinaryNode['content']
-
-export type BinaryNodeCodingOptions = typeof constants

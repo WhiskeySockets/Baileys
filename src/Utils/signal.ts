@@ -90,7 +90,7 @@ export const parseAndInjectE2ESessions = async (node: BinaryNode, repository: Si
 		key
 			? {
 					keyId: getBinaryNodeChildUInt(key, 'id', 3)!,
-					publicKey: generateSignalPubKey(getBinaryNodeChildBuffer(key, 'value')!),
+					publicKey: Buffer.from(generateSignalPubKey(getBinaryNodeChildBuffer(key, 'value')!)),
 					signature: getBinaryNodeChildBuffer(key, 'signature')!
 				}
 			: undefined
@@ -119,7 +119,7 @@ export const parseAndInjectE2ESessions = async (node: BinaryNode, repository: Si
 					jid,
 					session: {
 						registrationId: registrationId!,
-						identityKey: generateSignalPubKey(identity),
+						identityKey: Buffer.from(generateSignalPubKey(identity)),
 						signedPreKey: extractKey(signedKey)!,
 						preKey: extractKey(key)!
 					}
