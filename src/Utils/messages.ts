@@ -4,7 +4,7 @@ import { randomBytes } from 'crypto'
 import { promises as fs } from 'fs'
 import { type Transform } from 'stream'
 import { proto } from '../../WAProto/index.js'
-import { MEDIA_KEYS, URL_REGEX, WA_DEFAULT_EPHEMERAL } from '../Defaults'
+import { CALL_AUDIO_PREFIX, CALL_VIDEO_PREFIX, MEDIA_KEYS, URL_REGEX, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import type {
 	AnyMediaMessageContent,
 	AnyMessageContent,
@@ -490,6 +490,28 @@ export const generateWAMessageContent = async (
 		})
 	} else if ('listReply' in message) {
 		m.listResponseMessage = { ...message.listReply }
+	} else if ('event' in message) {
+		m.eventMessage = {}
+		const startTime = Math.floor(message.event.startDate.getTime() / 1000)
+
+		if (message.event.call && options.getCallLink) {
+			const token = await options.getCallLink(message.event.call, { startTime })
+			m.eventMessage.joinLink = (message.event.call === 'audio' ? CALL_AUDIO_PREFIX : CALL_VIDEO_PREFIX) + token
+		}
+
+		m.messageContextInfo = {
+			// encKey
+			messageSecret: message.event.messageSecret || randomBytes(32)
+		}
+
+		m.eventMessage.name = message.event.name
+		m.eventMessage.description = message.event.description
+		m.eventMessage.startTime = startTime
+		m.eventMessage.endTime = message.event.endDate ? message.event.endDate.getTime() / 1000 : undefined
+		m.eventMessage.isCanceled = message.event.isCancelled ?? false
+		m.eventMessage.extraGuestsAllowed = message.event.extraGuestsAllowed
+		m.eventMessage.isScheduleCall = message.event.isScheduleCall ?? false
+		m.eventMessage.location = message.event.location
 	} else if ('poll' in message) {
 		message.poll.selectableCount ||= 0
 		message.poll.toAnnouncementGroup ||= false
