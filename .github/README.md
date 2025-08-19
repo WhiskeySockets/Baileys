@@ -1,13 +1,16 @@
 <h1><img alt="Baileys logo" src="https://raw.githubusercontent.com/WhiskeySockets/Baileys/refs/heads/master/Media/logo.png" height="75"/></h1>
 
-![NPM Downloads](https://img.shields.io/npm/dw/%40whiskeysockets%2Fbaileys?label=npm&color=%23CB3837)
+![NPM Downloads](https://img.shields.io/npm/dw/baileys?label=npm&color=%23CB3837)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/whiskeysockets/baileys)
 ![Discord](https://img.shields.io/discord/725839806084546610?label=discord&color=%235865F2)
 
 Baileys is a WebSockets-based TypeScript library for interacting with the WhatsApp Web API.
 
-# Usage
-A new guide has been posted at https://baileys.wiki. The old guide can be accessed on [NPM](https://npmjs.com/package/baileys).
+Join the WhiskeySockets community via the link: https://whiskey.so/discord
+
+# Usage & Guide
+A new guide has been posted at https://baileys.wiki (NOTE: This guide is still a work in progress). 
+The old guide can be accessed at the [README.md](https://github.com/WhiskeySockets/Baileys/tree/master/README.md) file or the [NPM homepage](https://npmjs.com/package/baileys).
 
 # Sponsor
 If you'd like to financially support this project, you can do so by supporting the current maintainer [here](https://purpshell.dev/sponsor).
