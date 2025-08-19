@@ -271,6 +271,8 @@ type MinimalRelayOptions = {
 }
 
 export type MessageRelayOptions = MinimalRelayOptions & {
+	forceResendDistributionMessage?: boolean
+
 	/** only send to a specific participant; used when a message decryption fails for a single user */
 	participant?: { jid: string; count: number }
 	/** additional attributes to add to the WA binary node */

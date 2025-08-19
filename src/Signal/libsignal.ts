@@ -1,6 +1,6 @@
 /* @ts-ignore */
 import * as libsignal from 'libsignal'
-import type { SignalAuthState } from '../Types'
+import type { SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
 import type { SignalRepository } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import { jidDecode } from '../WABinary'
@@ -34,12 +34,14 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 				item.axolotlSenderKeyDistributionMessage
 			)
 			const senderNameStr = senderName.toString()
-			const { [senderNameStr]: senderKey } = await auth.keys.get('sender-key', [senderNameStr])
-			if (!senderKey) {
-				await storage.storeSenderKey(senderName, new SenderKeyRecord())
-			}
+			return (auth.keys as SignalKeyStoreWithTransaction).transaction(async () => {
+				const { [senderNameStr]: senderKey } = await auth.keys.get('sender-key', [senderNameStr])
+				if (!senderKey) {
+					await storage.storeSenderKey(senderName, new SenderKeyRecord())
+				}
 
-			await builder.process(senderName, senderMsg)
+				await builder.process(senderName, senderMsg)
+			})
 		},
 		async decryptMessage({ jid, type, ciphertext }) {
 			const addr = jidToSignalProtocolAddress(jid)
@@ -114,7 +116,9 @@ function signalStorage({ creds, keys }: SignalAuthState): SenderKeyStore & Recor
 		},
 		// TODO: Replace with libsignal.SessionRecord when type exports are added to libsignal
 		storeSession: async (id: string, session: any) => {
-			await keys.set({ session: { [id]: session.serialize() } })
+			;(keys as SignalKeyStoreWithTransaction).transaction(async () => {
+				await keys.set({ session: { [id]: session.serialize() } })
+			})
 		},
 		isTrustedIdentity: () => {
 			return true
