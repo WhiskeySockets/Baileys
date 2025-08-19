@@ -289,6 +289,51 @@ export const addTransactionCapability = (
 	const keyTypeMutexes = new Map<string, Mutex>()
 	// Per-sender-key-name mutexes for fine-grained serialization
 	const senderKeyMutexes = new Map<string, Mutex>()
+	// Track last usage time for sender key mutexes (for cleanup)
+	const senderKeyMutexLastUsed = new Map<string, number>()
+
+	// Mutex expiration time: 1 hour in milliseconds
+	const SENDER_KEY_MUTEX_EXPIRY_MS = 60 * 60 * 1000
+
+	// Cleanup interval: every 30 minutes
+	const CLEANUP_INTERVAL_MS = 30 * 60 * 1000
+
+	// Cleanup timer
+	let cleanupTimer: NodeJS.Timer | null = null
+
+	// Start cleanup timer if not already running
+	function startCleanupTimer() {
+		if (!cleanupTimer) {
+			cleanupTimer = setInterval(() => {
+				cleanupExpiredSenderKeyMutexes()
+			}, CLEANUP_INTERVAL_MS)
+		}
+	}
+
+	// Clean up expired sender key mutexes
+	function cleanupExpiredSenderKeyMutexes() {
+		const now = Date.now()
+		const expiredKeys: string[] = []
+
+		for (const [senderKeyName, lastUsed] of senderKeyMutexLastUsed.entries()) {
+			if (now - lastUsed > SENDER_KEY_MUTEX_EXPIRY_MS) {
+				const mutex = senderKeyMutexes.get(senderKeyName)
+				// Only remove if mutex is not currently being used
+				if (mutex && !mutex.isLocked()) {
+					expiredKeys.push(senderKeyName)
+				}
+			}
+		}
+
+		if (expiredKeys.length > 0) {
+			for (const key of expiredKeys) {
+				senderKeyMutexes.delete(key)
+				senderKeyMutexLastUsed.delete(key)
+			}
+
+			logger.info({ expiredKeys: expiredKeys.length }, 'cleaned up expired sender key mutexes')
+		}
+	}
 
 	let transactionsInProgress = 0
 
@@ -309,9 +354,17 @@ export const addTransactionCapability = (
 		let mutex = senderKeyMutexes.get(senderKeyName)
 		if (!mutex) {
 			mutex = new Mutex()
+
+			if (senderKeyMutexes.size === 0) {
+				startCleanupTimer()
+			}
+
 			senderKeyMutexes.set(senderKeyName, mutex)
 			logger.info({ senderKeyName }, 'created new sender key mutex')
 		}
+
+		// Update last used time
+		senderKeyMutexLastUsed.set(senderKeyName, Date.now())
 
 		return mutex
 	}
