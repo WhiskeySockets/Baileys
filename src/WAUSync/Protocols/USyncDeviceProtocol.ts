@@ -1,5 +1,5 @@
-import { USyncQueryProtocol } from '../../Types/USync'
-import { assertNodeErrorFree, BinaryNode, getBinaryNodeChild } from '../../WABinary'
+import type { USyncQueryProtocol } from '../../Types/USync'
+import { assertNodeErrorFree, type BinaryNode, getBinaryNodeChild } from '../../WABinary'
 //import { USyncUser } from '../USyncUser'
 
 export type KeyIndexData = {
@@ -49,8 +49,8 @@ export class USyncDeviceProtocol implements USyncQueryProtocol {
 
 			if (Array.isArray(deviceListNode?.content)) {
 				for (const { tag, attrs } of deviceListNode.content) {
-					const id = +attrs.id
-					const keyIndex = +attrs['key-index']
+					const id = +attrs.id!
+					const keyIndex = +attrs['key-index']!
 					if (tag === 'device') {
 						deviceList.push({
 							id,
@@ -63,7 +63,7 @@ export class USyncDeviceProtocol implements USyncQueryProtocol {
 
 			if (keyIndexNode?.tag === 'key-index-list') {
 				keyIndex = {
-					timestamp: +keyIndexNode.attrs['ts'],
+					timestamp: +keyIndexNode.attrs['ts']!,
 					signedKeyIndex: keyIndexNode?.content as Uint8Array,
 					expectedTimestamp: keyIndexNode.attrs['expected_ts'] ? +keyIndexNode.attrs['expected_ts'] : undefined
 				}

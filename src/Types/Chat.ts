@@ -1,4 +1,4 @@
-import type { proto } from '../../WAProto'
+import type { proto } from '../../WAProto/index.js'
 import type { AccountSettings } from './Auth'
 import type { BufferedEventData } from './Events'
 import type { LabelActionBody } from './Label'
@@ -111,6 +111,7 @@ export type ChatModification =
 	  }
 	| { delete: true; lastMessages: LastMessageList }
 	| { contact: proto.SyncActionValue.IContactAction | null }
+	| { disableLinkPreviews: proto.SyncActionValue.IPrivacySettingDisableLinkPreviewsAction }
 	// Label
 	| { addLabel: LabelActionBody }
 	// Label assosiation

@@ -1,19 +1,20 @@
 import { Boom } from '@hapi/boom'
-import axios, { AxiosRequestConfig } from 'axios'
+import axios, { type AxiosRequestConfig } from 'axios'
 import { createHash, randomBytes } from 'crypto'
 import { platform, release } from 'os'
-import { proto } from '../../WAProto'
-import { version as baileysVersion } from '../Defaults/baileys-version.json'
-import {
+import { proto } from '../../WAProto/index.js'
+import version from '../Defaults/baileys-version.json' with { type: 'json' }
+const baileysVersion = version.version
+import type {
 	BaileysEventEmitter,
 	BaileysEventMap,
 	BrowsersMap,
 	ConnectionState,
-	DisconnectReason,
 	WACallUpdateType,
 	WAVersion
 } from '../Types'
-import { BinaryNode, getAllBinaryNodeChildren, jidDecode } from '../WABinary'
+import { DisconnectReason } from '../Types'
+import { type BinaryNode, getAllBinaryNodeChildren, jidDecode } from '../WABinary'
 
 const PLATFORM_MAP = {
 	aix: 'AIX',
@@ -22,7 +23,11 @@ const PLATFORM_MAP = {
 	android: 'Android',
 	freebsd: 'FreeBSD',
 	openbsd: 'OpenBSD',
-	sunos: 'Solaris'
+	sunos: 'Solaris',
+	linux: undefined,
+	haiku: undefined,
+	cygwin: undefined,
+	netbsd: undefined
 }
 
 export const Browsers: BrowsersMap = {
@@ -35,13 +40,13 @@ export const Browsers: BrowsersMap = {
 }
 
 export const getPlatformId = (browser: string) => {
-	const platformType = proto.DeviceProps.PlatformType[browser.toUpperCase()]
+	const platformType = proto.DeviceProps.PlatformType[browser.toUpperCase() as any]
 	return platformType ? platformType.toString() : '1' //chrome
 }
 
 export const BufferJSON = {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	replacer: (k, value: any) => {
+	replacer: (k: any, value: any) => {
 		if (Buffer.isBuffer(value) || value instanceof Uint8Array || value?.type === 'Buffer') {
 			return { type: 'Buffer', data: Buffer.from(value?.data || value).toString('base64') }
 		}
@@ -50,7 +55,7 @@ export const BufferJSON = {
 	},
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	reviver: (_, value: any) => {
+	reviver: (_: any, value: any) => {
 		if (typeof value === 'object' && !!value && (value.buffer === true || value.type === 'Buffer')) {
 			const val = value.data || value.value
 			return typeof val === 'string' ? Buffer.from(val, 'base64') : Buffer.from(val || [])
@@ -65,8 +70,10 @@ export const getKeyAuthor = (key: proto.IMessageKey | undefined | null, meId = '
 
 export const writeRandomPadMax16 = (msg: Uint8Array) => {
 	const pad = randomBytes(1)
-	pad[0] &= 0xf
-	if (!pad[0]) {
+
+	if (pad[0]) {
+		pad[0] &= 0xf
+	} else {
 		pad[0] = 0xf
 	}
 
@@ -79,7 +86,7 @@ export const unpadRandomMax16 = (e: Uint8Array | Buffer) => {
 		throw new Error('unpadPkcs7 given empty bytes')
 	}
 
-	var r = t[t.length - 1]
+	var r = t[t.length - 1]!
 	if (r > t.length) {
 		throw new Error(`unpad given ${t.length} bytes, but pad is ${r}`)
 	}
@@ -90,7 +97,7 @@ export const unpadRandomMax16 = (e: Uint8Array | Buffer) => {
 export const encodeWAMessage = (message: proto.IMessage) => writeRandomPadMax16(proto.Message.encode(message).finish())
 
 export const generateRegistrationId = (): number => {
-	return Uint16Array.from(randomBytes(2))[0] & 16383
+	return Uint16Array.from(randomBytes(2))[0]! & 16383
 }
 
 export const encodeBigEndian = (e: number, t = 4) => {
@@ -135,7 +142,7 @@ export const delay = (ms: number) => delayCancellable(ms).delay
 export const delayCancellable = (ms: number) => {
 	const stack = new Error().stack
 	let timeout: NodeJS.Timeout
-	let reject: (error) => void
+	let reject: (error: any) => void
 	const delay: Promise<void> = new Promise((resolve, _reject) => {
 		timeout = setTimeout(resolve, ms)
 		reject = _reject
@@ -157,7 +164,7 @@ export const delayCancellable = (ms: number) => {
 
 export async function promiseTimeout<T>(
 	ms: number | undefined,
-	promise: (resolve: (v: T) => void, reject: (error) => void) => void
+	promise: (resolve: (v: T) => void, reject: (error: any) => void) => void
 ) {
 	if (!ms) {
 		return new Promise(promise)

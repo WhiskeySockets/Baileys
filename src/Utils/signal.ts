@@ -1,7 +1,6 @@
-import { chunk } from 'lodash'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
-import { SignalRepository } from '../Types'
-import {
+import type { SignalRepository } from '../Types'
+import type {
 	AuthenticationCreds,
 	AuthenticationState,
 	KeyPair,
@@ -11,18 +10,27 @@ import {
 } from '../Types/Auth'
 import {
 	assertNodeErrorFree,
-	BinaryNode,
+	type BinaryNode,
 	getBinaryNodeChild,
 	getBinaryNodeChildBuffer,
 	getBinaryNodeChildren,
 	getBinaryNodeChildUInt,
 	jidDecode,
-	JidWithDevice,
+	type JidWithDevice,
 	S_WHATSAPP_NET
 } from '../WABinary'
-import { DeviceListData, ParsedDeviceInfo, USyncQueryResultList } from '../WAUSync'
+import type { DeviceListData, ParsedDeviceInfo, USyncQueryResultList } from '../WAUSync'
 import { Curve, generateSignalPubKey } from './crypto'
 import { encodeBigEndian } from './generics'
+
+function chunk<T>(array: T[], size: number): T[][] {
+	const chunks: T[][] = []
+	for (let i = 0; i < array.length; i += size) {
+		chunks.push(array.slice(i, i + size))
+	}
+
+	return chunks
+}
 
 export const createSignalIdentity = (wid: string, accountSignatureKey: Uint8Array): SignalIdentity => {
 	return {
@@ -100,11 +108,11 @@ export const parseAndInjectE2ESessions = async (node: BinaryNode, repository: Si
 	const chunks = chunk(nodes, chunkSize)
 	for (const nodesChunk of chunks) {
 		await Promise.all(
-			nodesChunk.map(async node => {
+			nodesChunk.map(async (node: BinaryNode) => {
 				const signedKey = getBinaryNodeChild(node, 'skey')!
 				const key = getBinaryNodeChild(node, 'key')!
 				const identity = getBinaryNodeChildBuffer(node, 'identity')!
-				const jid = node.attrs.jid
+				const jid = node.attrs.jid!
 				const registrationId = getBinaryNodeChildUInt(node, 'registration', 4)
 
 				await repository.injectE2ESession({
@@ -180,7 +188,7 @@ export const getNextPreKeysNode = async (state: AuthenticationState, count: numb
 			{ tag: 'registration', attrs: {}, content: encodeBigEndian(creds.registrationId) },
 			{ tag: 'type', attrs: {}, content: KEY_BUNDLE_TYPE },
 			{ tag: 'identity', attrs: {}, content: creds.signedIdentityKey.public },
-			{ tag: 'list', attrs: {}, content: Object.keys(preKeys).map(k => xmppPreKey(preKeys[+k], +k)) },
+			{ tag: 'list', attrs: {}, content: Object.keys(preKeys).map(k => xmppPreKey(preKeys[+k]!, +k)) },
 			xmppSignedPreKey(creds.signedPreKey)
 		]
 	}

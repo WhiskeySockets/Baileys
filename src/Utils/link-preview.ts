@@ -1,6 +1,6 @@
-import { AxiosRequestConfig } from 'axios'
-import { WAMediaUploadFunction, WAUrlInfo } from '../Types'
-import { ILogger } from './logger'
+import type { AxiosRequestConfig } from 'axios'
+import type { WAMediaUploadFunction, WAUrlInfo } from '../Types'
+import type { ILogger } from './logger'
 import { prepareWAMessageMedia } from './messages'
 import { extractImageThumb, getHttpStream } from './messages-media'
 
@@ -85,7 +85,7 @@ export const getUrlInfo = async (
 
 			if (opts.uploadImage) {
 				const { imageMessage } = await prepareWAMessageMedia(
-					{ image: { url: image } },
+					{ image: { url: image! } },
 					{
 						upload: opts.uploadImage,
 						mediaTypeOverride: 'thumbnail-link',
@@ -97,14 +97,14 @@ export const getUrlInfo = async (
 			} else {
 				try {
 					urlInfo.jpegThumbnail = image ? (await getCompressedJpegThumbnail(image, opts)).buffer : undefined
-				} catch (error) {
+				} catch (error: any) {
 					opts.logger?.debug({ err: error.stack, url: previewLink }, 'error in generating thumbnail')
 				}
 			}
 
 			return urlInfo
 		}
-	} catch (error) {
+	} catch (error: any) {
 		if (!error.message.includes('receive a valid')) {
 			throw error
 		}

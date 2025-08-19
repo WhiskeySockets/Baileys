@@ -1,12 +1,12 @@
-import makeWASocket from './Socket'
+import makeWASocket from './Socket/index'
 
-export * from '../WAProto'
-export * from './Utils'
-export * from './Types'
-export * from './Defaults'
-export * from './WABinary'
-export * from './WAM'
-export * from './WAUSync'
+export * from '../WAProto/index.js'
+export * from './Utils/index'
+export * from './Types/index'
+export * from './Defaults/index'
+export * from './WABinary/index'
+export * from './WAM/index'
+export * from './WAUSync/index'
 
 export type WASocket = ReturnType<typeof makeWASocket>
 export { makeWASocket }

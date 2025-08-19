@@ -1,4 +1,4 @@
-import { proto } from '../../../WAProto'
+import { proto } from '../../../WAProto/index.js'
 import { CiphertextMessage } from './ciphertext-message'
 
 interface SenderKeyDistributionMessageStructure {

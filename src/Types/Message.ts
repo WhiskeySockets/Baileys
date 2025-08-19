@@ -1,11 +1,11 @@
-import { AxiosRequestConfig } from 'axios'
+import type { AxiosRequestConfig } from 'axios'
 import type { Readable } from 'stream'
 import type { URL } from 'url'
-import { proto } from '../../WAProto'
+import { proto } from '../../WAProto/index.js'
 import { MEDIA_HKDF_KEY_MAPPING } from '../Defaults'
-import { BinaryNode } from '../WABinary'
+import type { BinaryNode } from '../WABinary'
 import type { GroupMetadata } from './GroupMetadata'
-import { CacheStore } from './Socket'
+import type { CacheStore } from './Socket'
 
 // export the WAMessage Prototypes
 export { proto as WAProto }
@@ -32,12 +32,45 @@ export type WAGenericMediaMessage =
 	| proto.Message.IStickerMessage
 export const WAMessageStubType = proto.WebMessageInfo.StubType
 export const WAMessageStatus = proto.WebMessageInfo.Status
-import { ILogger } from '../Utils/logger'
+import type { ILogger } from '../Utils/logger'
 export type WAMediaPayloadURL = { url: URL | string }
 export type WAMediaPayloadStream = { stream: Readable }
 export type WAMediaUpload = Buffer | WAMediaPayloadStream | WAMediaPayloadURL
 /** Set of message types that are supported by the library */
 export type MessageType = keyof proto.Message
+
+export type MessageWithContextInfo =
+	| 'imageMessage'
+	| 'contactMessage'
+	| 'locationMessage'
+	| 'extendedTextMessage'
+	| 'documentMessage'
+	| 'audioMessage'
+	| 'videoMessage'
+	| 'call'
+	| 'contactsArrayMessage'
+	| 'liveLocationMessage'
+	| 'templateMessage'
+	| 'stickerMessage'
+	| 'groupInviteMessage'
+	| 'templateButtonReplyMessage'
+	| 'productMessage'
+	| 'listMessage'
+	| 'orderMessage'
+	| 'listResponseMessage'
+	| 'buttonsMessage'
+	| 'buttonsResponseMessage'
+	| 'interactiveMessage'
+	| 'interactiveResponseMessage'
+	| 'pollCreationMessage'
+	| 'requestPhoneNumberMessage'
+	| 'messageHistoryBundle'
+	| 'eventMessage'
+	| 'newsletterAdminInviteMessage'
+	| 'albumMessage'
+	| 'stickerPackMessage'
+	| 'pollResultSnapshotMessage'
+	| 'messageHistoryNotice'
 
 export type DownloadableMessage = { mediaKey?: Uint8Array | null; directPath?: string | null; url?: string | null }
 
