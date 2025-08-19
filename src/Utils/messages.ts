@@ -177,9 +177,9 @@ export const prepareWAMessageMedia = async (
 
 		await fs.unlink(filePath)
 
-		const obj = WAProto.Message.fromObject({
+		const obj = WAProto.Message.create({
 			// todo: add more support here
-			[`${mediaType}Message`]: (MessageTypeProto as any)[mediaType].fromObject({
+			[`${mediaType}Message`]: (MessageTypeProto as any)[mediaType].create({
 				url: mediaUrl,
 				directPath,
 				fileSha256,
@@ -278,8 +278,8 @@ export const prepareWAMessageMedia = async (
 		}
 	})
 
-	const obj = WAProto.Message.fromObject({
-		[`${mediaType}Message`]: MessageTypeProto[mediaType as keyof typeof MessageTypeProto].fromObject({
+	const obj = WAProto.Message.create({
+		[`${mediaType}Message`]: MessageTypeProto[mediaType as keyof typeof MessageTypeProto].create({
 			url: mediaUrl,
 			directPath,
 			mediaKey,
@@ -289,7 +289,7 @@ export const prepareWAMessageMedia = async (
 			mediaKeyTimestamp: unixTimestampSeconds(),
 			...uploadData,
 			media: undefined
-		})
+		} as any)
 	})
 
 	if (uploadData.ptv) {
@@ -317,7 +317,7 @@ export const prepareDisappearingMessageSettingContent = (ephemeralExpiration?: n
 			}
 		}
 	}
-	return WAProto.Message.fromObject(content)
+	return WAProto.Message.create(content)
 }
 
 /**
@@ -404,18 +404,18 @@ export const generateWAMessageContent = async (
 		}
 
 		if (contactLen === 1) {
-			m.contactMessage = WAProto.Message.ContactMessage.fromObject(message.contacts.contacts[0]!)
+			m.contactMessage = WAProto.Message.ContactMessage.create(message.contacts.contacts[0])
 		} else {
-			m.contactsArrayMessage = WAProto.Message.ContactsArrayMessage.fromObject(message.contacts)
+			m.contactsArrayMessage = WAProto.Message.ContactsArrayMessage.create(message.contacts)
 		}
 	} else if ('location' in message) {
-		m.locationMessage = WAProto.Message.LocationMessage.fromObject(message.location)
+		m.locationMessage = WAProto.Message.LocationMessage.create(message.location)
 	} else if ('react' in message) {
 		if (!message.react.senderTimestampMs) {
 			message.react.senderTimestampMs = Date.now()
 		}
 
-		m.reactionMessage = WAProto.Message.ReactionMessage.fromObject(message.react)
+		m.reactionMessage = WAProto.Message.ReactionMessage.create(message.react)
 	} else if ('delete' in message) {
 		m.protocolMessage = {
 			key: message.delete,
@@ -481,7 +481,7 @@ export const generateWAMessageContent = async (
 		m.ptvMessage = videoMessage
 	} else if ('product' in message) {
 		const { imageMessage } = await prepareWAMessageMedia({ image: message.product.productImage }, options)
-		m.productMessage = WAProto.Message.ProductMessage.fromObject({
+		m.productMessage = WAProto.Message.ProductMessage.create({
 			...message,
 			product: {
 				...message.product,
@@ -574,7 +574,7 @@ export const generateWAMessageContent = async (
 		}
 	}
 
-	return WAProto.Message.fromObject(m)
+	return WAProto.Message.create(m)
 }
 
 export const generateWAMessageFromContent = (
@@ -601,7 +601,7 @@ export const generateWAMessageFromContent = (
 		let quotedMsg = normalizeMessageContent(quoted.message)!
 		const msgType = getContentType(quotedMsg)!
 		// strip any redundant properties
-		quotedMsg = proto.Message.fromObject({ [msgType]: quotedMsg[msgType] })
+		quotedMsg = proto.Message.create({ [msgType]: quotedMsg[msgType] })
 
 		const quotedContent = quotedMsg[msgType]
 		if (typeof quotedContent === 'object' && quotedContent && 'contextInfo' in quotedContent) {
@@ -644,7 +644,7 @@ export const generateWAMessageFromContent = (
 		}
 	}
 
-	message = WAProto.Message.fromObject(message)
+	message = WAProto.Message.create(message)
 
 	const messageJSON = {
 		key: {
@@ -658,7 +658,7 @@ export const generateWAMessageFromContent = (
 		participant: isJidGroup(jid) || isJidStatusBroadcast(jid) ? userJid : undefined,
 		status: WAMessageStatus.PENDING
 	}
-	return WAProto.WebMessageInfo.fromObject(messageJSON)
+	return WAProto.WebMessageInfo.create(messageJSON)
 }
 
 export const generateWAMessage = async (jid: string, content: AnyMessageContent, options: MessageGenerationOptions) => {
