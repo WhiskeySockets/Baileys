@@ -467,6 +467,7 @@ export const addTransactionCapability = (
 					for (const senderKeyName of senderKeyNames) {
 						await queueSenderKeyOperation(senderKeyName, async () => {
 							// Create data subset for this specific sender key
+							// @ts-ignore
 							const senderKeyData: SignalDataSet = {
 								'sender-key': {
 									[senderKeyName]: data['sender-key']![senderKeyName]

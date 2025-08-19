@@ -11,13 +11,16 @@ import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from '
 
 export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository {
 	const storage: SenderKeyStore = signalStorage(auth)
+
+	const parsedKeys = (auth.keys as SignalKeyStoreWithTransaction);
+	
 	return {
 		decryptGroupMessage({ group, authorJid, msg }) {
 			const senderName = jidToSignalSenderKeyName(group, authorJid)
 			const cipher = new GroupCipher(storage, senderName)
 
 			// Use transaction to ensure atomicity
-			return (auth.keys as SignalKeyStoreWithTransaction).transaction(async () => {
+			return parsedKeys.transaction(async () => {
 				return cipher.decrypt(msg)
 			})
 		},
@@ -42,7 +45,7 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 				await storage.storeSenderKey(senderName, new SenderKeyRecord())
 			}
 
-			return (auth.keys as SignalKeyStoreWithTransaction).transaction(async () => {
+			return parsedKeys.transaction(async () => {
 				const { [senderNameStr]: senderKey } = await auth.keys.get('sender-key', [senderNameStr])
 				if (!senderKey) {
 					await storage.storeSenderKey(senderName, new SenderKeyRecord())
@@ -56,7 +59,7 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 			const session = new libsignal.SessionCipher(storage, addr)
 
 			// Use transaction to ensure atomicity
-			return (auth.keys as SignalKeyStoreWithTransaction).transaction(async () => {
+			return parsedKeys.transaction(async () => {
 				let result: Buffer
 				switch (type) {
 					case 'pkmsg':
@@ -77,7 +80,7 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 			const cipher = new libsignal.SessionCipher(storage, addr)
 
 			// Use transaction to ensure atomicity
-			return (auth.keys as SignalKeyStoreWithTransaction).transaction(async () => {
+			return parsedKeys.transaction(async () => {
 				const { type: sigType, body } = await cipher.encrypt(data)
 				const type = sigType === 3 ? 'pkmsg' : 'msg'
 				return { type, ciphertext: Buffer.from(body, 'binary') }
@@ -89,7 +92,7 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 
 			const senderNameStr = senderName.toString()
 
-			return (auth.keys as SignalKeyStoreWithTransaction).transaction(async () => {
+			return parsedKeys.transaction(async () => {
 				const { [senderNameStr]: senderKey } = await auth.keys.get('sender-key', [senderNameStr])
 				if (!senderKey) {
 					await storage.storeSenderKey(senderName, new SenderKeyRecord())
@@ -107,7 +110,7 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 		},
 		async injectE2ESession({ jid, session }) {
 			const cipher = new libsignal.SessionBuilder(storage, jidToSignalProtocolAddress(jid))
-			return (auth.keys as SignalKeyStoreWithTransaction).transaction(async () => {
+			return parsedKeys.transaction(async () => {
 				await cipher.initOutgoing(session)
 			})
 		},
