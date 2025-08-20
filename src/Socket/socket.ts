@@ -131,12 +131,12 @@ export const makeSocket = (config: SocketConfig) => {
 	}
 
 	/** send a binary node */
-	const sendNode = async (frame: BinaryNode) => {
+	const sendNode = (frame: BinaryNode) => {
 		if (logger.level === 'trace') {
 			logger.trace({ xml: binaryNodeToString(frame), msg: 'xml send' })
 		}
 
-		const buff = await encodeBinaryNode(frame)
+		const buff = encodeBinaryNode(frame)
 		return sendRawMessage(buff)
 	}
 
