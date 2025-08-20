@@ -47,6 +47,7 @@
     "music-metadata": "^11.7.0",
     "pino": "^9.6",
     "protobufjs": "^7.2.4",
+    "whatsapp-rust-bridge": "^0.1.4",
     "ws": "^8.13.0"
   },
   "devDependencies": {
