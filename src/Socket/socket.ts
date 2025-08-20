@@ -2,6 +2,7 @@ import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
 import { URL } from 'url'
 import { promisify } from 'util'
+import { init as initWasm } from 'whatsapp-rust-bridge/binary'
 import { proto } from '../../WAProto/index.js'
 import {
 	DEF_CALLBACK_PREFIX,
@@ -63,6 +64,8 @@ export const makeSocket = (config: SocketConfig) => {
 		qrTimeout,
 		makeSignalRepository
 	} = config
+
+	initWasm()
 
 	if (printQRInTerminal) {
 		console.warn(
