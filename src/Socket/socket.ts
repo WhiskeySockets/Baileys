@@ -463,7 +463,7 @@ export const makeSocket = (config: SocketConfig) => {
 		const pairingCode = customPairingCode ?? bytesToCrockford(randomBytes(5))
 
 		if (customPairingCode && customPairingCode?.length !== 8) {
-			throw new Error('Custom pairing code must be exactly 8 chars')
+			throw new Boom('Custom pairing code must be 8 characters', { statusCode: 422 })
 		}
 
 		authState.creds.pairingCode = pairingCode
