@@ -378,6 +378,53 @@ export const addTransactionCapability = (
 		return transactionsInProgress > 0
 	}
 
+	// Helper function to handle transaction commit with retries
+	async function commitTransaction(): Promise<void> {
+		if (!Object.keys(mutations).length) {
+			logger.trace('no mutations in transaction')
+			return
+		}
+
+		logger.trace('committing transaction')
+		let tries = maxCommitRetries
+
+		while (tries > 0) {
+			tries -= 1
+			try {
+				await state.set(mutations)
+				logger.trace({ dbQueriesInTransaction }, 'committed transaction')
+				return
+			} catch (error) {
+				logger.warn(`failed to commit ${Object.keys(mutations).length} mutations, tries left=${tries}`)
+				if (tries > 0) {
+					await delay(delayBetweenTriesMs)
+				}
+			}
+		}
+	}
+
+	// Helper function to clean up transaction state
+	function cleanupTransactionState(): void {
+		transactionsInProgress -= 1
+		if (transactionsInProgress === 0) {
+			transactionCache = {}
+			mutations = {}
+			dbQueriesInTransaction = 0
+		}
+	}
+
+	// Helper function to execute work within transaction
+	async function executeTransactionWork(work: () => Promise<any>): Promise<any> {
+		const result = await work()
+
+		// commit if this is the outermost transaction
+		if (transactionsInProgress === 1) {
+			await commitTransaction()
+		}
+
+		return result
+	}
+
 	return {
 		get: async (type, ids) => {
 			if (isInTransaction()) {
@@ -466,8 +513,7 @@ export const addTransactionCapability = (
 					for (const senderKeyName of senderKeyNames) {
 						await queueSenderKeyOperation(senderKeyName, async () => {
 							// Create data subset for this specific sender key
-							// @ts-ignore
-							const senderKeyData: SignalDataSet = {
+							const senderKeyData = {
 								'sender-key': {
 									[senderKeyName]: data['sender-key']![senderKeyName]
 								}
@@ -475,7 +521,7 @@ export const addTransactionCapability = (
 
 							logger.trace({ senderKeyName }, 'storing sender key')
 							// Apply changes to the store
-							await state.set(senderKeyData)
+							await state.set(senderKeyData as SignalDataSet)
 							logger.trace({ senderKeyName }, 'sender key stored')
 						})
 					}
@@ -517,61 +563,27 @@ export const addTransactionCapability = (
 		},
 		isInTransaction,
 		async transaction(work, key) {
-			return getTransactionMutex(key)
-				.acquire()
-				.then(async releaseTxMutex => {
-					let result: Awaited<ReturnType<typeof work>>
-					try {
-						transactionsInProgress += 1
-						if (transactionsInProgress === 1) {
-							logger.trace('entering transaction')
-						}
+			const releaseTxMutex = await getTransactionMutex(key).acquire()
 
-						// Release the transaction mutex now that we've updated the counter
-						// This allows other transactions to start preparing
-						releaseTxMutex()
+			try {
+				transactionsInProgress += 1
+				if (transactionsInProgress === 1) {
+					logger.trace('entering transaction')
+				}
 
-						try {
-							result = await work()
-							// commit if this is the outermost transaction
-							if (transactionsInProgress === 1) {
-								if (Object.keys(mutations).length) {
-									logger.trace('committing transaction')
-									// retry mechanism to ensure we've some recovery
-									// in case a transaction fails in the first attempt
-									let tries = maxCommitRetries
-									while (tries) {
-										tries -= 1
-										//eslint-disable-next-line max-depth
-										try {
-											await state.set(mutations)
-											logger.trace({ dbQueriesInTransaction }, 'committed transaction')
-											break
-										} catch (error) {
-											logger.warn(`failed to commit ${Object.keys(mutations).length} mutations, tries left=${tries}`)
-											await delay(delayBetweenTriesMs)
-										}
-									}
-								} else {
-									logger.trace('no mutations in transaction')
-								}
-							}
-						} finally {
-							transactionsInProgress -= 1
-							if (transactionsInProgress === 0) {
-								transactionCache = {}
-								mutations = {}
-								dbQueriesInTransaction = 0
-							}
-						}
+				// Release the transaction mutex now that we've updated the counter
+				// This allows other transactions to start preparing
+				releaseTxMutex()
 
-						return result
-					} catch (error) {
-						// If we haven't released the transaction mutex yet, release it
-						releaseTxMutex()
-						throw error
-					}
-				})
+				try {
+					return await executeTransactionWork(work)
+				} finally {
+					cleanupTransactionState()
+				}
+			} catch (error) {
+				releaseTxMutex()
+				throw error
+			}
 		}
 	}
 }

@@ -14,18 +14,19 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 
 	const parsedKeys = auth.keys as SignalKeyStoreWithTransaction
 
-	function isLikelySyncMessage(addr): boolean {
-		const key = addr.toString();
+	function isLikelySyncMessage(addr: any): boolean {
+		const key = addr.toString()
 
 		// Only bypass for WhatsApp system addresses, not regular user contacts
 		// Be very specific about sync service patterns
-		return key.includes('@lid.whatsapp.net') ||           // WhatsApp system messages
-			key.includes('@broadcast') ||                   // Broadcast messages
-			key.includes('@newsletter') ||                  // Newsletter messages
-			key === 'status@broadcast' ||                   // Status updates
-			key.includes('@g.us.history') ||               // Group history sync
-			key.includes('.whatsapp.net.history');
-
+		return (
+			key.includes('@lid.whatsapp.net') || // WhatsApp system messages
+			key.includes('@broadcast') || // Broadcast messages
+			key.includes('@newsletter') || // Newsletter messages
+			key === 'status@broadcast' || // Status updates
+			key.includes('@g.us.history') || // Group history sync
+			key.includes('.whatsapp.net.history')
+		)
 	}
 
 	return {
@@ -68,7 +69,7 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 				await builder.process(senderName, senderMsg)
 			}, item.groupId)
 		},
-		async decryptMessage({jid, type, ciphertext}) {
+		async decryptMessage({ jid, type, ciphertext }) {
 			const addr = jidToSignalProtocolAddress(jid)
 			const session = new libsignal.SessionCipher(storage, addr)
 
