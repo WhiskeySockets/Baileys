@@ -645,7 +645,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			logger.debug({ msgId }, `sending message to ${participants.length} devices`)
 
 			await sendNode(stanza)
-		})
+		}, meId)
 
 		return msgId
 	}

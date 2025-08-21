@@ -283,7 +283,7 @@ export const makeSocket = (config: SocketConfig) => {
 			ev.emit('creds.update', update)
 
 			logger.info({ count }, 'uploaded pre-keys')
-		})
+		}, authState?.creds?.me?.id || 'pre-keys')
 	}
 
 	const uploadPreKeysToServerIfRequired = async () => {

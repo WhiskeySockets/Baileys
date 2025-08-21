@@ -285,12 +285,11 @@ export const addTransactionCapability = (
 	let transactionCache: SignalDataSet = {}
 	let mutations: SignalDataSet = {}
 
-	// Mutex for each key type (session, pre-key, etc.)
-	const keyTypeMutexes = new Map<string, Mutex>()
-	// Per-sender-key-name mutexes for fine-grained serialization
-	const senderKeyMutexes = new Map<string, Mutex>()
+	// Map to hold mutexes for different key types
+	const mutexMap = new Map<string, Mutex>()
+
 	// Track last usage time for sender key mutexes (for cleanup)
-	const senderKeyMutexLastUsed = new Map<string, number>()
+	const mutexLastUsed = new Map<string, number>()
 
 	// Mutex expiration time: 1 hour in milliseconds
 	const SENDER_KEY_MUTEX_EXPIRY_MS = 60 * 60 * 1000
@@ -305,67 +304,67 @@ export const addTransactionCapability = (
 	function startCleanupTimer() {
 		if (!cleanupTimer) {
 			cleanupTimer = setInterval(() => {
-				cleanupExpiredSenderKeyMutexes()
+				cleanupExpiredMutexes()
 			}, CLEANUP_INTERVAL_MS)
 		}
 	}
 
-	// Clean up expired sender key mutexes
-	function cleanupExpiredSenderKeyMutexes() {
+	startCleanupTimer()
+
+	// Clean up expired mutexes
+	function cleanupExpiredMutexes() {
 		const now = Date.now()
 		const expiredKeys: string[] = []
 
-		for (const [senderKeyName, lastUsed] of senderKeyMutexLastUsed.entries()) {
+		for (const [key, lastUsed] of mutexLastUsed.entries()) {
 			if (now - lastUsed > SENDER_KEY_MUTEX_EXPIRY_MS) {
-				const mutex = senderKeyMutexes.get(senderKeyName)
-				// Only remove if mutex is not currently being used
+				const mutex = mutexMap.get(key)
 				if (mutex && !mutex.isLocked()) {
-					expiredKeys.push(senderKeyName)
+					expiredKeys.push(key)
 				}
 			}
 		}
 
 		if (expiredKeys.length > 0) {
 			for (const key of expiredKeys) {
-				senderKeyMutexes.delete(key)
-				senderKeyMutexLastUsed.delete(key)
+				mutexMap.delete(key)
+				mutexLastUsed.delete(key)
 			}
 
-			logger.info({ expiredKeys: expiredKeys.length }, 'cleaned up expired sender key mutexes')
+			logger.info({ expiredKeys: expiredKeys.length }, 'cleaned up expired mutexes')
 		}
 	}
 
 	let transactionsInProgress = 0
 
-	// Get or create a mutex for a specific key type
 	function getKeyTypeMutex(type: string): Mutex {
-		let mutex = keyTypeMutexes.get(type)
-		if (!mutex) {
-			// Create regular mutex, timeout only for critical operations
-			mutex = new Mutex()
-			keyTypeMutexes.set(type, mutex)
-		}
-
-		return mutex
+		return getMutex(`keytype:${type}`)
 	}
 
-	// Get or create a mutex for a specific sender key name
 	function getSenderKeyMutex(senderKeyName: string): Mutex {
-		let mutex = senderKeyMutexes.get(senderKeyName)
+		return getMutex(`senderkey:${senderKeyName}`)
+	}
+
+	function getTransactionMutex(key: string): Mutex {
+		return getMutex(`transaction:${key}`)
+	}
+
+	// Get or create a mutex for a specific key name
+	function getMutex(key: string): Mutex {
+		let mutex = mutexMap.get(key)
 		if (!mutex) {
 			mutex = new Mutex()
+			mutexMap.set(key, mutex)
 
-			if (senderKeyMutexes.size === 0) {
+			if (mutexMap.size === 1) {
 				startCleanupTimer()
 			}
 
-			senderKeyMutexes.set(senderKeyName, mutex)
-			logger.info({ senderKeyName }, 'created new sender key mutex')
+			logger.info({ key }, 'created new mutex')
 		}
 
-		// Update last used time
-		senderKeyMutexLastUsed.set(senderKeyName, Date.now())
-
+		// Atualizar último uso para cleanup
+		mutexLastUsed.set(key, Date.now())
 		return mutex
 	}
 
@@ -472,7 +471,7 @@ export const addTransactionCapability = (
 								'sender-key': {
 									[senderKeyName]: data['sender-key']![senderKeyName]
 								}
-							};
+							}
 
 							logger.trace({ senderKeyName }, 'storing sender key')
 							// Apply changes to the store
@@ -517,48 +516,62 @@ export const addTransactionCapability = (
 			}
 		},
 		isInTransaction,
-		async transaction(work) {
-			let result: Awaited<ReturnType<typeof work>>
-			transactionsInProgress += 1
-			if (transactionsInProgress === 1) {
-				logger.trace('entering transaction')
-			}
+		async transaction(work, key) {
+			return getTransactionMutex(key)
+				.acquire()
+				.then(async releaseTxMutex => {
+					let result: Awaited<ReturnType<typeof work>>
+					try {
+						transactionsInProgress += 1
+						if (transactionsInProgress === 1) {
+							logger.trace('entering transaction')
+						}
 
-			try {
-				result = await work()
-				// commit if this is the outermost transaction
-				if (transactionsInProgress === 1) {
-					if (Object.keys(mutations).length) {
-						logger.trace('committing transaction')
-						// retry mechanism to ensure we've some recovery
-						// in case a transaction fails in the first attempt
-						let tries = maxCommitRetries
-						while (tries) {
-							tries -= 1
-							//eslint-disable-next-line max-depth
-							try {
-								await state.set(mutations)
-								logger.trace({ dbQueriesInTransaction }, 'committed transaction')
-								break
-							} catch (error) {
-								logger.warn(`failed to commit ${Object.keys(mutations).length} mutations, tries left=${tries}`)
-								await delay(delayBetweenTriesMs)
+						// Release the transaction mutex now that we've updated the counter
+						// This allows other transactions to start preparing
+						releaseTxMutex()
+
+						try {
+							result = await work()
+							// commit if this is the outermost transaction
+							if (transactionsInProgress === 1) {
+								if (Object.keys(mutations).length) {
+									logger.trace('committing transaction')
+									// retry mechanism to ensure we've some recovery
+									// in case a transaction fails in the first attempt
+									let tries = maxCommitRetries
+									while (tries) {
+										tries -= 1
+										//eslint-disable-next-line max-depth
+										try {
+											await state.set(mutations)
+											logger.trace({ dbQueriesInTransaction }, 'committed transaction')
+											break
+										} catch (error) {
+											logger.warn(`failed to commit ${Object.keys(mutations).length} mutations, tries left=${tries}`)
+											await delay(delayBetweenTriesMs)
+										}
+									}
+								} else {
+									logger.trace('no mutations in transaction')
+								}
+							}
+						} finally {
+							transactionsInProgress -= 1
+							if (transactionsInProgress === 0) {
+								transactionCache = {}
+								mutations = {}
+								dbQueriesInTransaction = 0
 							}
 						}
-					} else {
-						logger.trace('no mutations in transaction')
-					}
-				}
-			} finally {
-				transactionsInProgress -= 1
-				if (transactionsInProgress === 0) {
-					transactionCache = {}
-					mutations = {}
-					dbQueriesInTransaction = 0
-				}
-			}
 
-			return result
+						return result
+					} catch (error) {
+						// If we haven't released the transaction mutex yet, release it
+						releaseTxMutex()
+						throw error
+					}
+				})
 		}
 	}
 }
