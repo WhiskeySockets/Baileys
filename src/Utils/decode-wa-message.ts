@@ -18,6 +18,13 @@ import type { ILogger } from './logger'
 export const NO_MESSAGE_FOUND_ERROR_TEXT = 'Message absent from node'
 export const MISSING_KEYS_ERROR_TEXT = 'Key used already or never filled'
 
+// Retry configuration for failed decryption
+export const DECRYPTION_RETRY_CONFIG = {
+	maxRetries: 3,
+	baseDelayMs: 100,
+	sessionRecordErrors: ['No session record', 'SessionError: No session record']
+}
+
 export const NACK_REASONS = {
 	ParsingError: 487,
 	UnrecognizedStanza: 488,
@@ -176,28 +183,34 @@ export const decryptMessageNode = (
 
 					try {
 						const e2eType = tag === 'plaintext' ? 'plaintext' : attrs.type
-						switch (e2eType) {
-							case 'skmsg':
-								msgBuffer = await repository.decryptGroupMessage({
-									group: sender,
-									authorJid: author,
-									msg: content
-								})
-								break
-							case 'pkmsg':
-							case 'msg':
-								const user = isJidUser(sender) ? sender : author
-								msgBuffer = await repository.decryptMessage({
-									jid: user,
-									type: e2eType,
-									ciphertext: content
-								})
-								break
-							case 'plaintext':
-								msgBuffer = content
-								break
-							default:
-								throw new Error(`Unknown e2e type: ${e2eType}`)
+						if (e2eType !== 'plaintext') {
+							msgBuffer = await decryptWithRetry(
+								async () => {
+									switch (e2eType) {
+										case 'skmsg':
+											return await repository.decryptGroupMessage({
+												group: sender,
+												authorJid: author,
+												msg: content
+											})
+										case 'pkmsg':
+										case 'msg':
+											const user = isJidUser(sender) ? sender : author
+											return await repository.decryptMessage({
+												jid: user,
+												type: e2eType,
+												ciphertext: content
+											})
+										default:
+											throw new Error(`Unknown e2e type: ${e2eType}`)
+									}
+								},
+								logger,
+								fullMessage.key,
+								e2eType!
+							)
+						} else {
+							msgBuffer = content
 						}
 
 						let msg: proto.IMessage = proto.Message.decode(
@@ -212,7 +225,7 @@ export const decryptMessageNode = (
 									item: msg.senderKeyDistributionMessage
 								})
 							} catch (err) {
-								logger.error({ key: fullMessage.key, err }, 'failed to decrypt message')
+								logger.error({ key: fullMessage.key, err }, 'failed to process sender key distribution message')
 							}
 						}
 
@@ -222,7 +235,17 @@ export const decryptMessageNode = (
 							fullMessage.message = msg
 						}
 					} catch (err: any) {
-						logger.error({ key: fullMessage.key, err }, 'failed to decrypt message')
+						const errorContext = {
+							key: fullMessage.key,
+							err,
+							messageType: tag === 'plaintext' ? 'plaintext' : attrs.type,
+							sender,
+							author,
+							isSessionRecordError: isSessionRecordError(err)
+						}
+
+						logger.error(errorContext, 'failed to decrypt message')
+
 						fullMessage.messageStubType = proto.WebMessageInfo.StubType.CIPHERTEXT
 						fullMessage.messageStubParameters = [err.message]
 					}
@@ -236,4 +259,69 @@ export const decryptMessageNode = (
 			}
 		}
 	}
+}
+
+/**
+ * Utility function to check if an error is related to missing session record
+ */
+function isSessionRecordError(error: any): boolean {
+	const errorMessage = error?.message || error?.toString() || ''
+	return DECRYPTION_RETRY_CONFIG.sessionRecordErrors.some(errorPattern => errorMessage.includes(errorPattern))
+}
+
+/**
+ * Sleep utility for retry delays
+ */
+function sleep(ms: number): Promise<void> {
+	return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+/**
+ * Decrypt a single message with retry logic for session record errors
+ */
+async function decryptWithRetry(
+	decryptFn: () => Promise<Uint8Array>,
+	logger: ILogger,
+	messageKey: WAMessageKey,
+	messageType: string
+): Promise<Uint8Array> {
+	let lastError: any
+
+	for (let attempt = 0; attempt <= DECRYPTION_RETRY_CONFIG.maxRetries; attempt++) {
+		try {
+			return await decryptFn()
+		} catch (error: any) {
+			lastError = error
+
+			// Only retry for session record errors
+			if (!isSessionRecordError(error)) {
+				throw error
+			}
+
+			// Don't retry on the last attempt
+			if (attempt === DECRYPTION_RETRY_CONFIG.maxRetries) {
+				break
+			}
+
+			// Calculate delay with exponential backoff
+			const delay = DECRYPTION_RETRY_CONFIG.baseDelayMs * Math.pow(2, attempt)
+
+			logger.warn(
+				{
+					key: messageKey,
+					attempt: attempt + 1,
+					maxRetries: DECRYPTION_RETRY_CONFIG.maxRetries + 1,
+					error: error.message,
+					messageType,
+					delayMs: delay
+				},
+				'Session record error detected, retrying decryption'
+			)
+
+			await sleep(delay)
+		}
+	}
+
+	// If all retries failed, throw the last error
+	throw lastError
 }
