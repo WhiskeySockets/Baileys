@@ -16,9 +16,11 @@ import type {
 } from '../Types'
 import { WAMessageStatus, WAMessageStubType } from '../Types'
 import {
+	addRecentMessage,
 	aesDecryptCTR,
 	aesEncryptGCM,
 	cleanMessage,
+	cleanupOldRetryStates,
 	Curve,
 	decodeMediaRetryNode,
 	decodeMessageNode,
@@ -29,12 +31,17 @@ import {
 	encodeSignedDeviceIdentity,
 	getCallStatusFromNode,
 	getHistoryMsg,
+	getMessageForRetry,
 	getNextPreKeys,
+	getRecentMessage,
 	getStatusFromReceiptType,
 	hkdf,
+	incrementIncomingRetryCounter,
 	MISSING_KEYS_ERROR_TEXT,
 	NACK_REASONS,
 	NO_MESSAGE_FOUND_ERROR_TEXT,
+	type SessionRecreationContext,
+	shouldDropRetryRequest,
 	unixTimestampSeconds,
 	xmppPreKey,
 	xmppSignedPreKey
@@ -79,6 +86,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		uploadPreKeys,
 		sendPeerDataOperationMessage
 	} = sock
+
+	const PENDING_MESSAGE_DECRYPTIONS = new Map<
+		string,
+		{
+			node: BinaryNode
+			retryCount: number
+			timestamp: number
+		}
+	>()
+	const MAX_DECRYPT_RETRY_COUNT = 3
+	const DECRYPT_RETRY_DELAY = 2000
 
 	/** this mutex ensures that each retryRequest will wait for the previous one to finish */
 	const retryMutex = makeMutex()
@@ -168,11 +186,28 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const { fullMessage } = decodeMessageNode(node, authState.creds.me!.id, authState.creds.me!.lid || '')
 		const { key: msgKey } = fullMessage
 		const msgId = msgKey.id!
+		const senderJid = node.attrs.from || ''
+
+		// Check internal retry counter (whatsmeow pattern - max 10 per sender/message)
+		const internalRetryCount = incrementIncomingRetryCounter(senderJid, msgId)
+		if (shouldDropRetryRequest(senderJid, msgId)) {
+			logger.warn(
+				{
+					senderJid,
+					msgId,
+					internalRetryCount
+				},
+				'Dropping retry request: internal retry counter exceeded limit (10)'
+			)
+			return
+		}
 
 		const key = `${msgId}:${msgKey?.participant}`
 		let retryCount = msgRetryCache.get<number>(key) || 0
+
+		// Enhanced retry limit check (whatsmeow uses 5 max retries)
 		if (retryCount >= maxMsgRetryCount) {
-			logger.debug({ retryCount, msgId }, 'reached retry limit, clearing')
+			logger.warn({ retryCount, msgId }, 'reached maximum retry limit (5), not sending more retry receipts')
 			msgRetryCache.del(key)
 			return
 		}
@@ -182,10 +217,37 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
 
+		// Enhanced retry logic inspired by whatsmeow
 		if (retryCount === 1) {
-			//request a resend via phone
-			const msgId = await requestPlaceholderResend(msgKey)
-			logger.debug(`sendRetryRequest: requested placeholder resend for message ${msgId}`)
+			// First retry - request resend via phone (whatsmeow pattern)
+			try {
+				const msgId = await requestPlaceholderResend(msgKey)
+				logger.debug(
+					{
+						retryCount,
+						msgId,
+						internalRetryCount
+					},
+					'sendRetryRequest: requested placeholder resend for message (first retry)'
+				)
+			} catch (error) {
+				logger.warn(
+					{
+						msgId,
+						error: (error as Error).message
+					},
+					'Failed to request placeholder resend'
+				)
+			}
+		} else {
+			logger.debug(
+				{
+					retryCount,
+					msgId,
+					internalRetryCount
+				},
+				'sendRetryRequest: retry count > 1, skipping placeholder resend'
+			)
 		}
 
 		const deviceIdentity = encodeSignedDeviceIdentity(account!, true)
@@ -223,7 +285,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				receipt.attrs.participant = node.attrs.participant
 			}
 
-			if (retryCount > 1 || forceIncludeKeys) {
+			// Include keys based on whatsmeow logic:
+			// - Always include on first retry (retryCount === 1)
+			// - Include when forced (MAC errors, session errors)
+			// - Include when retry count > 1 (session recreation scenarios)
+			const shouldIncludeKeys = retryCount === 1 || forceIncludeKeys || retryCount > 1
+
+			if (shouldIncludeKeys) {
 				const { update, preKeys } = await getNextPreKeys(authState, 1)
 
 				const [keyId] = Object.keys(preKeys)
@@ -243,6 +311,26 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				})
 
 				ev.emit('creds.update', update)
+
+				logger.debug(
+					{
+						retryCount,
+						forceIncludeKeys,
+						shouldIncludeKeys,
+						internalRetryCount
+					},
+					'Including keys and device identity in retry receipt'
+				)
+			} else {
+				logger.debug(
+					{
+						retryCount,
+						forceIncludeKeys,
+						shouldIncludeKeys,
+						internalRetryCount
+					},
+					'Not including keys in retry receipt'
+				)
 			}
 
 			await sendNode(receipt)
@@ -597,8 +685,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const sendMessagesAgain = async (key: proto.IMessageKey, ids: string[], retryNode: BinaryNode) => {
-		// todo: implement a cache to store the last 256 sent messages (copy whatsmeow)
-		const msgs = await Promise.all(ids.map(id => getMessage({ ...key, id })))
+		// Use WhatsmeOW-compatible message retrieval (cache first, then callback)
+		const msgs = await Promise.all(ids.map(id => getMessageForRetry(key.remoteJid!, id, getMessage)))
 		const remoteJid = key.remoteJid!
 		const participant = key.participant || remoteJid
 		// if it's the primary jid sending the request
@@ -703,19 +791,74 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						// correctly set who is asking for the retry
 						key.participant = key.participant || attrs.from
 						const retryNode = getBinaryNodeChild(node, 'retry')
+
+						// Check internal retry counter (whatsmeow pattern)
+						const senderJid = attrs.from || ''
+						const messageId = ids[0] || ''
+
+						if (shouldDropRetryRequest(senderJid, messageId)) {
+							logger.warn(
+								{
+									senderJid,
+									messageId,
+									attrs
+								},
+								'Dropping retry receipt: internal retry counter exceeded limit (10)'
+							)
+							return
+						}
+
+						// Increment internal retry counter
+						const internalRetryCount = incrementIncomingRetryCounter(senderJid, messageId)
+
 						if (willSendMessageAgain(ids[0]!, key.participant!)) {
 							if (key.fromMe) {
 								try {
-									logger.debug({ attrs, key }, 'recv retry request')
+									logger.debug(
+										{
+											attrs,
+											key,
+											internalRetryCount
+										},
+										'recv retry request'
+									)
+
+									// Check if we have the message in recent cache (whatsmeow pattern)
+									const recentMessage = getRecentMessage(key.remoteJid || '', messageId)
+									//eslint-disable-next-line max-depth
+									if (recentMessage) {
+										logger.debug(
+											{
+												jid: key.remoteJid,
+												id: messageId
+											},
+											'Found message in recent cache for retry'
+										)
+									}
+
 									await sendMessagesAgain(key, ids, retryNode!)
 								} catch (error: any) {
 									logger.error({ key, ids, trace: error.stack }, 'error in sending message again')
 								}
 							} else {
-								logger.info({ attrs, key }, 'recv retry for not fromMe message')
+								logger.info(
+									{
+										attrs,
+										key,
+										internalRetryCount
+									},
+									'recv retry for not fromMe message'
+								)
 							}
 						} else {
-							logger.info({ attrs, key }, 'will not send message again, as sent too many times')
+							logger.info(
+								{
+									attrs,
+									key,
+									internalRetryCount
+								},
+								'will not send message again, as sent too many times'
+							)
 						}
 					}
 				})
@@ -792,88 +935,220 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}
 		}
 
-		const {
-			fullMessage: msg,
-			category,
-			author,
-			decrypt
-		} = decryptMessageNode(node, authState.creds.me!.id, authState.creds.me!.lid || '', signalRepository, logger)
-
-		if (response && msg?.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT) {
-			msg.messageStubParameters = [NO_MESSAGE_FOUND_ERROR_TEXT, response]
-		}
-
-		if (
-			msg.message?.protocolMessage?.type === proto.Message.ProtocolMessage.Type.SHARE_PHONE_NUMBER &&
-			node.attrs.sender_pn
-		) {
-			ev.emit('chats.phoneNumberShare', { lid: node.attrs.from!, jid: node.attrs.sender_pn })
-		}
+		const messageKey = `${node.attrs.from}_${node.attrs.id}_${node.attrs.participant || ''}`
 
 		try {
+			// Create session recreation context (whatsmeow-inspired)
+			const sessionContext: SessionRecreationContext = {
+				authState,
+				logger,
+				signalRepository,
+				query
+			}
+
+			const {
+				fullMessage: msg,
+				category,
+				author,
+				decrypt
+			} = decryptMessageNode(
+				node,
+				authState.creds.me!.id,
+				authState.creds.me!.lid || '',
+				signalRepository,
+				logger,
+				sendRetryRequest,
+				sessionContext
+			)
+
+			if (response && msg?.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT) {
+				msg.messageStubParameters = [NO_MESSAGE_FOUND_ERROR_TEXT, response]
+			}
+
+			if (
+				msg.message?.protocolMessage?.type === proto.Message.ProtocolMessage.Type.SHARE_PHONE_NUMBER &&
+				node.attrs.sender_pn
+			) {
+				ev.emit('chats.phoneNumberShare', { lid: node.attrs.from!, jid: node.attrs.sender_pn })
+			}
+
 			await Promise.all([
 				processingMutex.mutex(async () => {
-					await decrypt()
-					// message failed to decrypt
-					if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT) {
-						if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
-							return sendMessageAck(node, NACK_REASONS.ParsingError)
+					try {
+						await decrypt()
+
+						// Remove from retry queue if the decrypt was succeed
+						if (PENDING_MESSAGE_DECRYPTIONS.has(messageKey)) {
+							PENDING_MESSAGE_DECRYPTIONS.delete(messageKey)
+							console.warn({ messageKey }, 'Message decrypted successfully after retry')
 						}
 
-						retryMutex.mutex(async () => {
-							if (ws.isOpen) {
-								if (getBinaryNodeChild(node, 'unavailable')) {
-									return
-								}
+						if (msg.key?.remoteJid && msg.key?.id) {
+							addRecentMessage(msg.key.remoteJid, msg.key.id, msg.message!)
+							logger.debug(
+								{
+									jid: msg.key.remoteJid,
+									id: msg.key.id
+								},
+								'Added message to recent cache for retry receipts'
+							)
+						}
 
-								const encNode = getBinaryNodeChild(node, 'enc')
-								await sendRetryRequest(node, !encNode)
-								if (retryRequestDelayMs) {
-									await delay(retryRequestDelayMs)
+						// message failed to decrypt
+						if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT) {
+							if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
+								return sendMessageAck(node, NACK_REASONS.ParsingError)
+							}
+
+							return retryMutex.mutex(async () => {
+								if (ws.isOpen) {
+									if (getBinaryNodeChild(node, 'unavailable')) {
+										return
+									}
+
+									const encNode = getBinaryNodeChild(node, 'enc')
+
+									console.warn({ messageKey, node }, 'Message decryption failed, sending retry request')
+
+									await sendRetryRequest(node, !encNode)
+									if (retryRequestDelayMs) {
+										await delay(retryRequestDelayMs)
+									}
+								} else {
+									logger.debug({ node }, 'connection closed, ignoring retry req')
 								}
+							})
+						} else {
+							let type: MessageReceiptType = undefined
+							let participant = msg.key.participant
+							if (category === 'peer') {
+								type = 'peer_msg'
+							} else if (msg.key.fromMe) {
+								type = 'sender'
+								if (isJidUser(msg.key.remoteJid!)) {
+									participant = author
+								}
+							} else if (!sendActiveReceipts) {
+								type = 'inactive'
+							}
+
+							await sendReceipt(msg.key.remoteJid!, participant!, [msg.key.id!], type)
+
+							const isAnyHistoryMsg = getHistoryMsg(msg.message!)
+							if (isAnyHistoryMsg) {
+								const jid = jidNormalizedUser(msg.key.remoteJid!)
+								await sendReceipt(jid, undefined, [msg.key.id!], 'hist_sync')
+							}
+						}
+
+						cleanMessage(msg, authState.creds.me!.id)
+						await sendMessageAck(node)
+						await upsertMessage(msg, node.attrs.offline ? 'append' : 'notify')
+					} catch (decryptError: any) {
+						console.error({ error: decryptError, messageKey }, 'Decryption failed')
+
+						if (
+							decryptError.message.includes('No session') ||
+							decryptError.message.includes('Bad MAC') ||
+							decryptError.message.includes('MAC verification') ||
+							decryptError.message.includes('No matching sessions')
+						) {
+							console.warn('trying to handle session error in message decryption')
+
+							const pendingDecryption = PENDING_MESSAGE_DECRYPTIONS.get(messageKey)
+
+							if (!pendingDecryption) {
+								// Primeira falha - adiciona à queue
+								PENDING_MESSAGE_DECRYPTIONS.set(messageKey, {
+									node,
+									retryCount: 1,
+									timestamp: Date.now()
+								})
+
+								console.warn({ messageKey, error: decryptError.message }, 'Session not found, scheduling retry')
+
+								// Agenda retry
+								setTimeout(() => {
+									retryMessageDecryption(messageKey).catch(err =>
+										logger.error({ err, messageKey }, 'Error in retry decryption')
+									)
+								}, DECRYPT_RETRY_DELAY)
+
+								// try to process the message as a ciphertext
+								msg.messageStubType = proto.WebMessageInfo.StubType.CIPHERTEXT
+								msg.messageStubParameters = ['Session not ready, retrying...']
+
+								cleanMessage(msg, authState.creds.me!.id)
+								await sendMessageAck(node)
+								await upsertMessage(msg, node.attrs.offline ? 'append' : 'notify')
+							} else if (pendingDecryption.retryCount < MAX_DECRYPT_RETRY_COUNT) {
+								// Retry
+								pendingDecryption.retryCount++
+								console.warn({ messageKey, retryCount: pendingDecryption.retryCount }, 'Retrying message decryption')
+
+								setTimeout(() => {
+									retryMessageDecryption(messageKey).catch(err =>
+										console.error({ err, messageKey }, 'Error in retry decryption')
+									)
+								}, DECRYPT_RETRY_DELAY * pendingDecryption.retryCount)
 							} else {
-								logger.debug({ node }, 'connection closed, ignoring retry req')
-							}
-						})
-					} else {
-						// no type in the receipt => message delivered
-						let type: MessageReceiptType = undefined
-						let participant = msg.key.participant
-						if (category === 'peer') {
-							// special peer message
-							type = 'peer_msg'
-						} else if (msg.key.fromMe) {
-							// message was sent by us from a different device
-							type = 'sender'
-							// need to specially handle this case
-							if (isJidUser(msg.key.remoteJid!)) {
-								participant = author
-							}
-						} else if (!sendActiveReceipts) {
-							type = 'inactive'
-						}
+								// max retry count reached
+								PENDING_MESSAGE_DECRYPTIONS.delete(messageKey)
+								console.error({ messageKey }, 'Max retry count reached for message decryption')
 
-						await sendReceipt(msg.key.remoteJid!, participant!, [msg.key.id!], type)
+								msg.messageStubType = proto.WebMessageInfo.StubType.CIPHERTEXT
+								msg.messageStubParameters = ['Decryption failed after retries']
 
-						// send ack for history message
-						const isAnyHistoryMsg = getHistoryMsg(msg.message!)
-						if (isAnyHistoryMsg) {
-							const jid = jidNormalizedUser(msg.key.remoteJid!)
-							await sendReceipt(jid, undefined, [msg.key.id!], 'hist_sync')
+								cleanMessage(msg, authState.creds.me!.id)
+								await sendMessageAck(node)
+								await upsertMessage(msg, node.attrs.offline ? 'append' : 'notify')
+							}
+						} else {
+							// other error, log and throw
+							logger.error({ error: decryptError, messageKey }, 'Decryption failed with non-session error')
+							throw decryptError
 						}
 					}
-
-					cleanMessage(msg, authState.creds.me!.id)
-
-					await sendMessageAck(node)
-
-					await upsertMessage(msg, node.attrs.offline ? 'append' : 'notify')
 				})
 			])
 		} catch (error) {
 			logger.error({ error, node }, 'error in handling message')
+			await sendMessageAck(node) // Ainda assim envia ack para evitar loops
 		}
 	}
+
+	const retryMessageDecryption = async (messageKey: string) => {
+		const pendingDecryption = PENDING_MESSAGE_DECRYPTIONS.get(messageKey)
+
+		if (!pendingDecryption) {
+			return
+		}
+
+		const { node } = pendingDecryption
+
+		try {
+			// try to decrypt the message again
+			await handleMessage(node)
+		} catch (error) {
+			logger.error({ error, messageKey }, 'Retry decryption failed')
+
+			if (pendingDecryption.retryCount >= MAX_DECRYPT_RETRY_COUNT) {
+				PENDING_MESSAGE_DECRYPTIONS.delete(messageKey)
+			}
+		}
+	}
+
+	setInterval(() => {
+		const now = Date.now()
+		const maxAge = 5 * 60 * 1000 // 5 minutes
+
+		for (const [key, pending] of PENDING_MESSAGE_DECRYPTIONS.entries()) {
+			if (now - pending.timestamp > maxAge) {
+				PENDING_MESSAGE_DECRYPTIONS.delete(key)
+				logger.debug({ key }, 'Removed old pending decryption from queue')
+			}
+		}
+	}, 60000)
 
 	const fetchMessageHistory = async (
 		count: number,
@@ -1322,6 +1597,25 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		if (typeof isOnline !== 'undefined') {
 			sendActiveReceipts = isOnline
 			logger.trace(`sendActiveReceipts set to "${sendActiveReceipts}"`)
+		}
+	})
+
+	// Setup automatic cleanup of old retry states (inspired by whatsmeow)
+	const cleanupInterval = setInterval(
+		() => {
+			try {
+				cleanupOldRetryStates()
+			} catch (error: any) {
+				logger.warn({ error: error.message }, 'Failed to cleanup old retry states')
+			}
+		},
+		60 * 60 * 1000
+	) // Run every hour
+
+	// Cleanup on socket close
+	sock.ev.on('connection.update', ({ connection }) => {
+		if (connection === 'close') {
+			clearInterval(cleanupInterval)
 		}
 	})
 

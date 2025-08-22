@@ -129,6 +129,62 @@ export const parseAndInjectE2ESessions = async (node: BinaryNode, repository: Si
 	}
 }
 
+/**
+ * Fetch prekeys for specified JIDs from WhatsApp servers
+ * Inspired by whatsmeow's fetchPreKeys implementation
+ * @param jids Array of JIDs to fetch prekeys for
+ * @param queryFn Function to send IQ queries to WhatsApp servers
+ * @param signalRepository Signal repository for session injection
+ * @param logger Logger instance for debugging
+ * @returns Promise<boolean> indicating if prekeys were successfully fetched
+ */
+export const fetchPreKeys = async (
+	jids: string[],
+	queryFn: (node: BinaryNode) => Promise<BinaryNode>,
+	signalRepository: SignalRepository,
+	logger?: { debug: (msg: any, extra?: any) => void; error: (msg: any, extra?: any) => void }
+): Promise<boolean> => {
+	if (!jids.length) {
+		return false
+	}
+
+	try {
+		logger?.debug({ jids }, 'fetching prekeys for session recreation')
+
+		// Create prekey request similar to whatsmeow's fetchPreKeys
+		const result = await queryFn({
+			tag: 'iq',
+			attrs: {
+				xmlns: 'encrypt',
+				type: 'get',
+				to: S_WHATSAPP_NET
+			},
+			content: [
+				{
+					tag: 'key',
+					attrs: {},
+					content: jids.map(jid => ({
+						tag: 'user',
+						attrs: {
+							jid,
+							reason: 'identity' // Same as whatsmeow
+						}
+					}))
+				}
+			]
+		})
+
+		// Parse and inject E2E sessions using existing function
+		await parseAndInjectE2ESessions(result, signalRepository)
+
+		logger?.debug({ jids }, 'successfully fetched and injected prekeys')
+		return true
+	} catch (error) {
+		logger?.error({ jids, error }, 'failed to fetch prekeys')
+		return false
+	}
+}
+
 export const extractDeviceJids = (result: USyncQueryResultList[], myJid: string, excludeZeroDevices: boolean) => {
 	const { user: myUser, device: myDevice } = jidDecode(myJid)!
 
