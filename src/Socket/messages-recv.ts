@@ -935,7 +935,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}
 		}
 
-		// Criar chave única para esta mensagem
 		const messageKey = `${node.attrs.from}_${node.attrs.id}_${node.attrs.participant || ''}`
 
 		try {
@@ -978,7 +977,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					try {
 						await decrypt()
 
-						// Remove da queue de retry se descriptografia foi bem sucedida
+						// Remove from retry queue if the decrypt was succeed
 						if (PENDING_MESSAGE_DECRYPTIONS.has(messageKey)) {
 							PENDING_MESSAGE_DECRYPTIONS.delete(messageKey)
 							console.warn({ messageKey }, 'Message decrypted successfully after retry')
@@ -1020,7 +1019,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								}
 							})
 						} else {
-							// Processamento normal da mensagem
 							let type: MessageReceiptType = undefined
 							let participant = msg.key.participant
 							if (category === 'peer') {
