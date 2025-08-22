@@ -31,7 +31,7 @@
     "gen:protobuf": "sh WAProto/GenerateStatics.sh",
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\"",
     "lint": "tsc && eslint src --ext .js,.ts",
-    "lint:fix": "npm run format && npm run lint --fix",
+    "lint:fix": "npm run format && npm run lint -- --fix",
     "prepack": "npm run build",
     "prepare": "npm run build",
     "preinstall": "node ./engine-requirements.js",
