@@ -70,10 +70,8 @@ export const getKeyAuthor = (key: proto.IMessageKey | undefined | null, meId = '
 
 export const writeRandomPadMax16 = (msg: Uint8Array) => {
 	const pad = randomBytes(1)
-
-	if (pad[0]) {
-		pad[0] &= 0xf
-	} else {
+	pad[0]! &= 0xf
+	if (!pad[0]) {
 		pad[0] = 0xf
 	}
 
