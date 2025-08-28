@@ -14,6 +14,7 @@ import type {
 import { Curve, signedKeyPair } from './crypto'
 import { delay, generateRegistrationId } from './generics'
 import type { ILogger } from './logger'
+import { LRUCache } from 'lru-cache'
 
 /**
  * Adds caching capability to a SignalKeyStore
@@ -285,55 +286,12 @@ export const addTransactionCapability = (
 	let transactionCache: SignalDataSet = {}
 	let mutations: SignalDataSet = {}
 
-	// Map to hold mutexes for different key types
-	const mutexMap = new Map<string, Mutex>()
-
-	// Track last usage time for sender key mutexes (for cleanup)
-	const mutexLastUsed = new Map<string, number>()
-
-	// Mutex expiration time: 1 hour in milliseconds
-	const SENDER_KEY_MUTEX_EXPIRY_MS = 60 * 60 * 1000
-
-	// Cleanup interval: every 30 minutes
-	const CLEANUP_INTERVAL_MS = 30 * 60 * 1000
-
-	// Cleanup timer
-	let cleanupTimer: NodeJS.Timer | null = null
-
-	// Start cleanup timer if not already running
-	function startCleanupTimer() {
-		if (!cleanupTimer) {
-			cleanupTimer = setInterval(() => {
-				cleanupExpiredMutexes()
-			}, CLEANUP_INTERVAL_MS)
-		}
-	}
-
-	startCleanupTimer()
-
-	// Clean up expired mutexes
-	function cleanupExpiredMutexes() {
-		const now = Date.now()
-		const expiredKeys: string[] = []
-
-		for (const [key, lastUsed] of mutexLastUsed.entries()) {
-			if (now - lastUsed > SENDER_KEY_MUTEX_EXPIRY_MS) {
-				const mutex = mutexMap.get(key)
-				if (mutex && !mutex.isLocked()) {
-					expiredKeys.push(key)
-				}
-			}
-		}
-
-		if (expiredKeys.length > 0) {
-			for (const key of expiredKeys) {
-				mutexMap.delete(key)
-				mutexLastUsed.delete(key)
-			}
-
-			logger.info({ expiredKeys: expiredKeys.length }, 'cleaned up expired mutexes')
-		}
-	}
+	// LRU Cache to hold mutexes for different key types
+	const mutexCache = new LRUCache<string, Mutex>({
+		ttl: 60 * 60 * 1000, // 1 hour
+		ttlAutopurge: true,
+		updateAgeOnGet: true
+	});
 
 	let transactionsInProgress = 0
 
@@ -351,20 +309,13 @@ export const addTransactionCapability = (
 
 	// Get or create a mutex for a specific key name
 	function getMutex(key: string): Mutex {
-		let mutex = mutexMap.get(key)
+		let mutex = mutexCache.get(key)
 		if (!mutex) {
 			mutex = new Mutex()
-			mutexMap.set(key, mutex)
-
-			if (mutexMap.size === 1) {
-				startCleanupTimer()
-			}
-
+			mutexCache.set(key, mutex)
 			logger.info({ key }, 'created new mutex')
 		}
 
-		// Atualizar último uso para cleanup
-		mutexLastUsed.set(key, Date.now())
 		return mutex
 	}
 
