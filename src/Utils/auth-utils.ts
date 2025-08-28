@@ -1,6 +1,7 @@
 import NodeCache from '@cacheable/node-cache'
 import { Mutex } from 'async-mutex'
 import { randomBytes } from 'crypto'
+import { LRUCache } from 'lru-cache'
 import { DEFAULT_CACHE_TTLS } from '../Defaults'
 import type {
 	AuthenticationCreds,
@@ -14,7 +15,6 @@ import type {
 import { Curve, signedKeyPair } from './crypto'
 import { delay, generateRegistrationId } from './generics'
 import type { ILogger } from './logger'
-import { LRUCache } from 'lru-cache'
 
 /**
  * Adds caching capability to a SignalKeyStore
@@ -291,7 +291,7 @@ export const addTransactionCapability = (
 		ttl: 60 * 60 * 1000, // 1 hour
 		ttlAutopurge: true,
 		updateAgeOnGet: true
-	});
+	})
 
 	let transactionsInProgress = 0
 
