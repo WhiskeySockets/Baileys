@@ -60,7 +60,7 @@ import { extractGroupMetadata } from './groups'
 import { makeMessagesSocket } from './messages-send'
 
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
-	const { logger, retryRequestDelayMs, maxMsgRetryCount, getMessage, shouldIgnoreJid } = config
+	const { logger, retryRequestDelayMs, maxMsgRetryCount, getMessage, shouldIgnoreJid, enableAutoSessionRecreation } = config
 	const sock = makeMessagesSocket(config)
 	const {
 		ev,
@@ -77,7 +77,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		relayMessage,
 		sendReceipt,
 		uploadPreKeys,
-		sendPeerDataOperationMessage
+		sendPeerDataOperationMessage,
+		messageRetryManager
 	} = sock
 
 	/** this mutex ensures that each retryRequest will wait for the previous one to finish */
@@ -181,6 +182,32 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		msgRetryCache.set(key, retryCount)
 
 		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
+		const fromJid = node.attrs.from!
+
+		// Check if we should recreate the session
+		let shouldRecreateSession = false
+		let recreateReason = ''
+
+		if (enableAutoSessionRecreation && messageRetryManager) {
+			try {
+				// Check if we have a session with this JID
+				const sessionId = signalRepository.jidToSignalProtocolAddress(fromJid)
+				const { [sessionId]: sessionData } = await authState.keys.get('session', [sessionId])
+				const hasSession = !!sessionData
+				const result = messageRetryManager.shouldRecreateSession(fromJid, retryCount, hasSession)
+				shouldRecreateSession = result.recreate
+				recreateReason = result.reason
+
+				if (shouldRecreateSession) {
+					logger.info({ fromJid, retryCount, reason: recreateReason }, 'recreating session for retry')
+					// Delete existing session to force recreation
+					await authState.keys.set({ session: { [sessionId]: null } })
+					forceIncludeKeys = true
+				}
+			} catch (error) {
+				logger.warn({ error, fromJid }, 'failed to check session recreation')
+			}
+		}
 
 		if (retryCount === 1) {
 			//request a resend via phone
@@ -223,7 +250,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				receipt.attrs.participant = node.attrs.participant
 			}
 
-			if (retryCount > 1 || forceIncludeKeys) {
+			if (retryCount > 1 || forceIncludeKeys || shouldRecreateSession) {
 				const { update, preKeys } = await getNextPreKeys(authState, 1)
 
 				const [keyId] = Object.keys(preKeys)
@@ -247,7 +274,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 			await sendNode(receipt)
 
-			logger.info({ msgAttrs: node.attrs, retryCount }, 'sent retry receipt')
+			logger.info({ msgAttrs: node.attrs, retryCount, shouldRecreateSession, recreateReason }, 'sent retry receipt')
 		})
 	}
 
@@ -597,21 +624,70 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const sendMessagesAgain = async (key: proto.IMessageKey, ids: string[], retryNode: BinaryNode) => {
-		// todo: implement a cache to store the last 256 sent messages (copy whatsmeow)
-		const msgs = await Promise.all(ids.map(id => getMessage({ ...key, id })))
 		const remoteJid = key.remoteJid!
 		const participant = key.participant || remoteJid
+
+		const retryCount = +retryNode.attrs.count || 1
+
+		// Try to get messages from cache first, then fallback to getMessage
+		const msgs: (proto.IMessage | undefined)[] = []
+		for (const id of ids) {
+			let msg: proto.IMessage | undefined
+
+			// Try to get from retry cache first if enabled
+			if (messageRetryManager) {
+				const cachedMsg = messageRetryManager.getRecentMessage(remoteJid, id)
+				if (cachedMsg) {
+					msg = cachedMsg.message
+					logger.debug({ jid: remoteJid, id }, 'found message in retry cache')
+				}
+			}
+
+			// Fallback to getMessage if not found in cache
+			if (!msg) {
+				msg = await getMessage({ ...key, id })
+				if (msg) {
+					logger.debug({ jid: remoteJid, id }, 'found message via getMessage')
+				}
+			}
+
+			msgs.push(msg)
+		}
+
 		// if it's the primary jid sending the request
 		// just re-send the message to everyone
 		// prevents the first message decryption failure
 		const sendToAll = !jidDecode(participant)?.device
-		await assertSessions([participant], true)
+
+		// Check if we should recreate session for this retry
+		let shouldRecreateSession = false
+		let recreateReason = ''
+
+		if (enableAutoSessionRecreation && messageRetryManager) {
+			try {
+				const sessionId = signalRepository.jidToSignalProtocolAddress(participant)
+				const { [sessionId]: sessionData } = await authState.keys.get('session', [sessionId])
+				const hasSession = !!sessionData
+				const result = messageRetryManager.shouldRecreateSession(participant, retryCount, hasSession)
+				shouldRecreateSession = result.recreate
+				recreateReason = result.reason
+
+				if (shouldRecreateSession) {
+					logger.info({ participant, retryCount, reason: recreateReason }, 'recreating session for outgoing retry')
+					await authState.keys.set({ session: { [sessionId]: null } })
+				}
+			} catch (error) {
+				logger.warn({ error, participant }, 'failed to check session recreation for outgoing retry')
+			}
+		}
+
+		await assertSessions([participant], shouldRecreateSession)
 
 		if (isJidGroup(remoteJid)) {
 			await authState.keys.set({ 'sender-key-memory': { [remoteJid]: null } })
 		}
 
-		logger.debug({ participant, sendToAll }, 'forced new session for retry recp')
+		logger.debug({ participant, sendToAll, shouldRecreateSession, recreateReason }, 'forced new session for retry recp')
 
 		for (const [i, msg] of msgs.entries()) {
 			if (msg) {
@@ -1318,7 +1394,25 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	})
 
-	ev.on('connection.update', ({ isOnline }) => {
+	let cleanupInterval: NodeJS.Timeout | undefined
+	if (messageRetryManager) {
+		cleanupInterval = setInterval(() => {
+			try {
+				messageRetryManager.cleanupSessionHistory()
+				const stats = messageRetryManager.getCacheStats()
+				logger.debug(stats, 'cleaned up retry manager caches')
+			} catch (error) {
+				logger.warn({ error }, 'failed to cleanup retry manager caches')
+			}
+		}, 30 * 60 * 1000) // cleanup every 30 minutes
+	}
+
+	ev.on('connection.update', ({ isOnline, connection }) => {
+		if (connection === 'close' && cleanupInterval) {
+			clearInterval(cleanupInterval)
+			cleanupInterval = undefined
+		}
+
 		if (typeof isOnline !== 'undefined') {
 			sendActiveReceipts = isOnline
 			logger.trace(`sendActiveReceipts set to "${sendActiveReceipts}"`)
@@ -1331,6 +1425,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		sendRetryRequest,
 		rejectCall,
 		fetchMessageHistory,
-		requestPlaceholderResend
+		requestPlaceholderResend,
+		messageRetryManager
 	}
 }
