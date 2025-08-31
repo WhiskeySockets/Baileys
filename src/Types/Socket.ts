@@ -24,6 +24,11 @@ export type CacheStore = {
 
 export type PatchedMessageWithRecipientJID = proto.IMessage & { recipientJid?: string }
 
+export type RecentMessageSentHistoryStore = {
+	get: (from: string, messageId: string) => proto.IMessage | undefined
+	set: (from: string, messageId: string, message: proto.IMessage) => void
+}
+
 export type SocketConfig = {
 	/** the WS url to connect to WA */
 	waWebSocketUrl: string | URL
@@ -127,6 +132,10 @@ export type SocketConfig = {
 	 * (solves the "this message can take a while" issue) can be retried
 	 * */
 	getMessage: (key: proto.IMessageKey) => Promise<proto.IMessage | undefined>
+
+
+	recentMessageSentHistory: RecentMessageSentHistoryStore
+
 
 	/** cached group metadata, use to prevent redundant requests to WA & speed up msg sending */
 	cachedGroupMetadata: (jid: string) => Promise<GroupMetadata | undefined>
