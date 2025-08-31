@@ -149,6 +149,26 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 
 			return await parseGroupResult(result)
 		},
+		communityCreateGroup: async (subject: string, participants: string[], parentCommunityJid: string) => {
+			const key = generateMessageIDV2()
+			const result = await communityQuery('@g.us', 'set', [
+				{
+					tag: 'create',
+					attrs: {
+						subject,
+						key
+					},
+					content: [
+						...participants.map(jid => ({
+							tag: 'participant',
+							attrs: { jid }
+						})),
+						{ tag: 'linked_parent', attrs: { jid: parentCommunityJid } }
+					]
+				}
+			])
+			return await parseGroupResult(result)
+		},
 		communityLeave: async (id: string) => {
 			await communityQuery('@g.us', 'set', [
 				{
