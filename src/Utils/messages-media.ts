@@ -632,7 +632,7 @@ export const getWAUploadToServer = (
 		// send a query JSON to obtain the url & auth token to upload our media
 		let uploadInfo = await refreshMediaConn(false)
 
-		let urls: { mediaUrl: string; directPath: string } | undefined
+		let urls: { mediaUrl: string; directPath: string; meta_hmac?: string; ts?: number; fbid?: number } | undefined
 		const hosts = [...customUploadHosts, ...uploadInfo.hosts]
 
 		fileEncSha256B64 = encodeBase64EncodedStringForUpload(fileEncSha256B64)
@@ -664,7 +664,10 @@ export const getWAUploadToServer = (
 				if (result?.url || result?.directPath) {
 					urls = {
 						mediaUrl: result.url,
-						directPath: result.direct_path
+						directPath: result.direct_path,
+						meta_hmac: result.meta_hmac,
+						fbid: result.fbid,
+						ts: result.ts
 					}
 					break
 				} else {

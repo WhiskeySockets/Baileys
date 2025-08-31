@@ -77,7 +77,8 @@ export const MEDIA_PATH_MAP: { [T in MediaType]?: string } = {
 	'thumbnail-link': '/mms/image',
 	'product-catalog-image': '/product/image',
 	'md-app-state': '',
-	'md-msg-hist': '/mms/md-app-state'
+	'md-msg-hist': '/mms/md-app-state',
+	'biz-cover-photo': '/pps/biz-cover-photo'
 }
 
 export const MEDIA_HKDF_KEY_MAPPING = {
@@ -98,7 +99,8 @@ export const MEDIA_HKDF_KEY_MAPPING = {
 	'md-app-state': 'App State',
 	'product-catalog-image': '',
 	'payment-bg-image': 'Payment Background',
-	ptv: 'Video'
+	ptv: 'Video',
+	'biz-cover-photo': 'Image'
 }
 
 export const MEDIA_KEYS = Object.keys(MEDIA_PATH_MAP) as MediaType[]
