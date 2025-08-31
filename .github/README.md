@@ -14,16 +14,20 @@ Join the WhiskeySockets community via the link: https://whiskey.so/discord
 > 
 > The survey is anonymous and requires no personal info at all. You are required to sign-in with Google to keep responses to one person. You are able to edit your response after you submit. The deadline for this form is September 30, 2025.
 > 
-> I encourage you to put the effort, all it takes is 5-10 minutes and you get to ask me any questions you have. - Rajeh (purpshell)
+> I encourage you to put the effort, all it takes is 5-10 minutes and you get to ask me any questions you have.
+> 
+> \- Rajeh (purpshell)
 > 
 > Fill in the survey via the link: https://whiskey.so/survey 
 
 # Usage & Guide
 
 > [!IMPORTANT]
-> The new guide is a work in progress. Expect missing pages, errors. You can still access the old guide here: [README.md](https://github.com/WhiskeySockets/Baileys/tree/master/README.md), or the [NPM homepage](https://npmjs.com/package/baileys).
+> The new guide is a work in progress. Expect missing pages/content. [Report missing or incorrect content.](https://github.com/WhiskeySockets/baileys.wiki-site/issues/new)
+> 
+> **You can still access the old guide here:** [README.md](https://github.com/WhiskeySockets/Baileys/tree/master/README.md), or the [NPM homepage](https://npmjs.com/package/baileys).
 
-The new & full guide is posted at https://baileys.wiki .
+The new guide is posted at https://baileys.wiki .
 
 # Sponsor
 > [!TIP]
