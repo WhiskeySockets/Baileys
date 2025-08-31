@@ -26,18 +26,6 @@ const logDebug = (...args: any[]) => {
   if (DEBUG) console.log('[Baileys Business]', ...args)
 }
 
-/**
- * Safe wrapper around getBinaryNodeChildString to avoid throwing
- * when a tag is missing or invalid.
- */
-const safeGetChildString = (node: BinaryNode, tag: string): string | undefined => {
-  try {
-    return getBinaryNodeChildString(node, tag)
-  } catch {
-    logDebug(`Missing or invalid tag "${tag}" in node "<${node.tag}>"`)
-    return undefined
-  }
-}
 
 /**
  * Default timeout for uploads, can be overridden per-call.
