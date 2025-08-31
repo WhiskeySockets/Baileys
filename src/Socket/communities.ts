@@ -187,6 +187,30 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 				}
 			])
 		},
+		communityLinkGroup: async (groupJid: string, parentCommunityJid: string) => {
+			await communityQuery(parentCommunityJid, 'set', [
+				{
+					tag: 'links',
+					attrs: {},
+					content: [
+						{
+							tag: 'link',
+							attrs: { link_type: 'sub_group' },
+							content: [{ tag: 'group', attrs: { jid: groupJid } }]
+						}
+					]
+				}
+			])
+		},
+		communityUnlinkGroup: async (groupJid: string, parentCommunityJid: string) => {
+			await communityQuery(parentCommunityJid, 'set', [
+				{
+					tag: 'unlink',
+					attrs: { unlink_type: 'sub_group' },
+					content: [{ tag: 'group', attrs: { jid: groupJid } }]
+				}
+			])
+		},
 		communityRequestParticipantsList: async (jid: string) => {
 			const result = await communityQuery(jid, 'get', [
 				{
