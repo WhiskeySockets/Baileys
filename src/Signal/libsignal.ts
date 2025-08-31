@@ -1,6 +1,6 @@
 /* @ts-ignore */
 import * as libsignal from 'libsignal'
-import type { SignalAuthState } from '../Types'
+import type { SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
 import type { SignalRepository } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import { jidDecode } from '../WABinary'
@@ -11,12 +11,33 @@ import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from '
 
 export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository {
 	const storage: SenderKeyStore = signalStorage(auth)
+
+	const parsedKeys = auth.keys as SignalKeyStoreWithTransaction
+
+	function isLikelySyncMessage(addr: any): boolean {
+		const key = addr.toString()
+
+		// Only bypass for WhatsApp system addresses, not regular user contacts
+		// Be very specific about sync service patterns
+		return (
+			key.includes('@lid.whatsapp.net') || // WhatsApp system messages
+			key.includes('@broadcast') || // Broadcast messages
+			key.includes('@newsletter') || // Newsletter messages
+			key === 'status@broadcast' || // Status updates
+			key.includes('@g.us.history') || // Group history sync
+			key.includes('.whatsapp.net.history')
+		)
+	}
+
 	return {
 		decryptGroupMessage({ group, authorJid, msg }) {
 			const senderName = jidToSignalSenderKeyName(group, authorJid)
 			const cipher = new GroupCipher(storage, senderName)
 
-			return cipher.decrypt(msg)
+			// Use transaction to ensure atomicity
+			return parsedKeys.transaction(async () => {
+				return cipher.decrypt(msg)
+			}, group)
 		},
 		async processSenderKeyDistributionMessage({ item, authorJid }) {
 			const builder = new GroupSessionBuilder(storage)
@@ -39,55 +60,83 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 				await storage.storeSenderKey(senderName, new SenderKeyRecord())
 			}
 
-			await builder.process(senderName, senderMsg)
+			return parsedKeys.transaction(async () => {
+				const { [senderNameStr]: senderKey } = await auth.keys.get('sender-key', [senderNameStr])
+				if (!senderKey) {
+					await storage.storeSenderKey(senderName, new SenderKeyRecord())
+				}
+
+				await builder.process(senderName, senderMsg)
+			}, item.groupId)
 		},
 		async decryptMessage({ jid, type, ciphertext }) {
 			const addr = jidToSignalProtocolAddress(jid)
 			const session = new libsignal.SessionCipher(storage, addr)
-			let result: Buffer
-			switch (type) {
-				case 'pkmsg':
-					result = await session.decryptPreKeyWhisperMessage(ciphertext)
-					break
-				case 'msg':
-					result = await session.decryptWhisperMessage(ciphertext)
-					break
-				default:
-					throw new Error(`Unknown message type: ${type}`)
+
+			async function doDecrypt() {
+				let result: Buffer
+				switch (type) {
+					case 'pkmsg':
+						result = await session.decryptPreKeyWhisperMessage(ciphertext)
+						break
+					case 'msg':
+						result = await session.decryptWhisperMessage(ciphertext)
+						break
+				}
+
+				return result
 			}
 
-			return result
+			if (isLikelySyncMessage(addr)) {
+				// If it's a sync message, we can skip the transaction
+				// as it is likely to be a system message that doesn't require strict atomicity
+				return await doDecrypt()
+			}
+
+			// If it's not a sync message, we need to ensure atomicity
+			// For regular messages, we use a transaction to ensure atomicity
+			return (auth.keys as SignalKeyStoreWithTransaction).transaction(async () => {
+				return await doDecrypt()
+			}, jid)
 		},
 		async encryptMessage({ jid, data }) {
 			const addr = jidToSignalProtocolAddress(jid)
 			const cipher = new libsignal.SessionCipher(storage, addr)
 
-			const { type: sigType, body } = await cipher.encrypt(data)
-			const type = sigType === 3 ? 'pkmsg' : 'msg'
-			return { type, ciphertext: Buffer.from(body, 'binary') }
+			// Use transaction to ensure atomicity
+			return parsedKeys.transaction(async () => {
+				const { type: sigType, body } = await cipher.encrypt(data)
+				const type = sigType === 3 ? 'pkmsg' : 'msg'
+				return { type, ciphertext: Buffer.from(body, 'binary') }
+			}, jid)
 		},
 		async encryptGroupMessage({ group, meId, data }) {
 			const senderName = jidToSignalSenderKeyName(group, meId)
 			const builder = new GroupSessionBuilder(storage)
 
 			const senderNameStr = senderName.toString()
-			const { [senderNameStr]: senderKey } = await auth.keys.get('sender-key', [senderNameStr])
-			if (!senderKey) {
-				await storage.storeSenderKey(senderName, new SenderKeyRecord())
-			}
 
-			const senderKeyDistributionMessage = await builder.create(senderName)
-			const session = new GroupCipher(storage, senderName)
-			const ciphertext = await session.encrypt(data)
+			return parsedKeys.transaction(async () => {
+				const { [senderNameStr]: senderKey } = await auth.keys.get('sender-key', [senderNameStr])
+				if (!senderKey) {
+					await storage.storeSenderKey(senderName, new SenderKeyRecord())
+				}
 
-			return {
-				ciphertext,
-				senderKeyDistributionMessage: senderKeyDistributionMessage.serialize()
-			}
+				const senderKeyDistributionMessage = await builder.create(senderName)
+				const session = new GroupCipher(storage, senderName)
+				const ciphertext = await session.encrypt(data)
+
+				return {
+					ciphertext,
+					senderKeyDistributionMessage: senderKeyDistributionMessage.serialize()
+				}
+			}, group)
 		},
 		async injectE2ESession({ jid, session }) {
 			const cipher = new libsignal.SessionBuilder(storage, jidToSignalProtocolAddress(jid))
-			await cipher.initOutgoing(session)
+			return parsedKeys.transaction(async () => {
+				await cipher.initOutgoing(session)
+			}, jid)
 		},
 		jidToSignalProtocolAddress(jid) {
 			return jidToSignalProtocolAddress(jid).toString()
