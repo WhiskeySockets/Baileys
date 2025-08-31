@@ -36,7 +36,8 @@
     "prepare": "npm run build",
     "preinstall": "node ./engine-requirements.js",
     "release": "release-it",
-    "test": "node --experimental-vm-modules ./node_modules/.bin/jest"
+    "test": "node --experimental-vm-modules ./node_modules/.bin/jest --testMatch '**/*.test.ts'",
+    "test:e2e": "node --experimental-vm-modules ./node_modules/.bin/jest --testMatch '**/*.test-e2e.ts'"
   },
   "dependencies": {
     "@cacheable/node-cache": "^1.4.0",
