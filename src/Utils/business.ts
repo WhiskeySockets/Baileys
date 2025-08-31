@@ -173,8 +173,7 @@ export const toProductNode = (productId: string | undefined, product: ProductCre
     })
   }
 
-  // New: support for category
-  if (typeof (product as any).category !== 'undefined') {
+  if ('category' in product) {
     const category = (product as any).category
     if (category) {
       content.push({
