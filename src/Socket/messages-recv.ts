@@ -810,6 +810,45 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			ev.emit('chats.phoneNumberShare', { lid: node.attrs.from!, jid: node.attrs.sender_pn })
 		}
 
+		if (msg.message?.protocolMessage?.lidMigrationMappingSyncMessage?.encodedMappingPayload) {
+			try {
+				const payload = msg.message.protocolMessage.lidMigrationMappingSyncMessage.encodedMappingPayload
+				const decoded = proto.LIDMigrationMappingSyncPayload.decode(payload)
+
+				logger.debug(
+					{
+						mappingCount: decoded.pnToLidMappings?.length || 0,
+						timestamp: decoded.chatDbMigrationTimestamp
+					},
+					'Received LID migration sync message from server'
+				)
+
+				const lidMapping = signalRepository.getLIDMappingStore()
+				if (decoded.pnToLidMappings && decoded.pnToLidMappings.length > 0) {
+					for (const mapping of decoded.pnToLidMappings) {
+						const pn = `${mapping.pn}@s.whatsapp.net`
+						// Use latestLid if available, otherwise assignedLid (proper LID refresh)
+						const lidValue = mapping.latestLid || mapping.assignedLid
+						const lid = `${lidValue}@lid`
+
+						await lidMapping.storeLIDPNMapping(lid, pn)
+						logger.debug(
+							{
+								pn,
+								lid,
+								assignedLid: mapping.assignedLid,
+								latestLid: mapping.latestLid,
+								usedLatest: !!mapping.latestLid
+							},
+							'Stored server-provided PN-LID mapping'
+						)
+					}
+				}
+			} catch (error) {
+				logger.error({ error }, 'Failed to process LID migration sync message')
+			}
+		}
+
 		try {
 			await Promise.all([
 				processingMutex.mutex(async () => {
