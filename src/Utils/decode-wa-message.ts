@@ -10,7 +10,8 @@ import {
 	isJidNewsletter,
 	isJidStatusBroadcast,
 	isJidUser,
-	isLidUser
+	isLidUser,
+	jidNormalizedUser
 } from '../WABinary'
 import { unpadRandomMax16 } from './generics'
 import type { ILogger } from './logger'
@@ -110,8 +111,8 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 		remoteJid: chatId,
 		fromMe,
 		id: msgId,
-		senderLid: stanza?.attrs?.sender_lid,
-		senderPn: stanza?.attrs?.sender_pn,
+		senderLid: stanza?.attrs?.sender_lid || jidNormalizedUser(chatId),
+		senderPn: stanza?.attrs?.sender_pn || jidNormalizedUser(chatId),
 		participant,
 		participantPn: stanza?.attrs?.participant_pn,
 		participantLid: stanza?.attrs?.participant_lid,
