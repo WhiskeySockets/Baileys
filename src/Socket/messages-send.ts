@@ -59,7 +59,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		options: axiosOptions,
 		patchMessageBeforeSending,
 		cachedGroupMetadata,
-		enableRecentMessageCache
+		enableRecentMessageCache,
+		maxMsgRetryCount
 	} = config
 	const sock: NewsletterSocket = makeNewsletterSocket(makeGroupsSocket(config))
 	const {
@@ -83,7 +84,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		})
 
 	// Initialize message retry manager if enabled
-	const messageRetryManager = enableRecentMessageCache ? new MessageRetryManager(logger) : null
+	const messageRetryManager = enableRecentMessageCache ? new MessageRetryManager(logger, maxMsgRetryCount) : null
 
 	let mediaConn: Promise<MediaConnInfo>
 	const refreshMediaConn = async (forceGet = false) => {

@@ -672,6 +672,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				if (cachedMsg) {
 					msg = cachedMsg.message
 					logger.debug({ jid: remoteJid, id }, 'found message in retry cache')
+
+					// Mark retry as successful since we found the message
+					messageRetryManager.markRetrySuccess(id)
 				}
 			}
 
@@ -680,6 +683,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				msg = await getMessage({ ...key, id })
 				if (msg) {
 					logger.debug({ jid: remoteJid, id }, 'found message via getMessage')
+					// Also mark as successful if found via getMessage
+					if (messageRetryManager) {
+						messageRetryManager.markRetrySuccess(id)
+					}
 				}
 			}
 
@@ -770,6 +777,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const items = getBinaryNodeChildren(content[0], 'item')
 			ids.push(...items.map(i => i.attrs.id!))
 		}
+
 
 		try {
 			await Promise.all([
@@ -918,6 +926,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			ev.emit('chats.phoneNumberShare', { lid: node.attrs.from!, jid: node.attrs.sender_pn })
 		}
 
+		if (msg.key?.remoteJid && msg.key?.id && messageRetryManager) {
+			messageRetryManager.addRecentMessage(msg.key.remoteJid, msg.key.id, msg.message!)
+			logger.debug(
+				{
+					jid: msg.key.remoteJid,
+					id: msg.key.id
+				},
+				'Added message to recent cache for retry receipts'
+			)
+		}
 		try {
 			await Promise.all([
 				processingMutex.mutex(async () => {
@@ -1426,25 +1444,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	})
 
-	let cleanupInterval: NodeJS.Timeout | undefined
-	if (messageRetryManager) {
-		cleanupInterval = setInterval(() => {
-			try {
-				messageRetryManager.cleanupSessionHistory()
-				const stats = messageRetryManager.getCacheStats()
-				logger.debug(stats, 'cleaned up retry manager caches')
-			} catch (error) {
-				logger.warn({ error }, 'failed to cleanup retry manager caches')
-			}
-		}, 30 * 60 * 1000) // cleanup every 30 minutes
-	}
-
-	ev.on('connection.update', ({ isOnline, connection }) => {
-		if (connection === 'close' && cleanupInterval) {
-			clearInterval(cleanupInterval)
-			cleanupInterval = undefined
-		}
-
+	ev.on('connection.update', ({ isOnline }) => {
 		if (typeof isOnline !== 'undefined') {
 			sendActiveReceipts = isOnline
 			logger.trace(`sendActiveReceipts set to "${sendActiveReceipts}"`)
