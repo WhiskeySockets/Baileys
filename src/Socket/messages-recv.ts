@@ -60,7 +60,8 @@ import { extractGroupMetadata } from './groups'
 import { makeMessagesSocket } from './messages-send'
 
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
-	const { logger, retryRequestDelayMs, maxMsgRetryCount, getMessage, shouldIgnoreJid, enableAutoSessionRecreation } = config
+	const { logger, retryRequestDelayMs, maxMsgRetryCount, getMessage, shouldIgnoreJid, enableAutoSessionRecreation } =
+		config
 	const sock = makeMessagesSocket(config)
 	const {
 		ev,
@@ -173,7 +174,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		if (messageRetryManager) {
 			// Check if we've exceeded max retries using the new system
 			if (messageRetryManager.hasExceededMaxRetries(msgId)) {
-				logger.debug({msgId}, 'reached retry limit with new retry manager, clearing')
+				logger.debug({ msgId }, 'reached retry limit with new retry manager, clearing')
 				messageRetryManager.markRetryFailed(msgId)
 				return
 			}
@@ -189,7 +190,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const key = `${msgId}:${msgKey?.participant}`
 			let retryCount = msgRetryCache.get<number>(key) || 0
 			if (retryCount >= maxMsgRetryCount) {
-				logger.debug({retryCount, msgId}, 'reached retry limit, clearing')
+				logger.debug({ retryCount, msgId }, 'reached retry limit, clearing')
 				msgRetryCache.del(key)
 				return
 			}
@@ -201,7 +202,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const key = `${msgId}:${msgKey?.participant}`
 		const retryCount = msgRetryCache.get<number>(key) || 1
 
-		const {account, signedPreKey, signedIdentityKey: identityKey} = authState.creds
+		const { account, signedPreKey, signedIdentityKey: identityKey } = authState.creds
 		const fromJid = node.attrs.from!
 
 		// Check if we should recreate the session
@@ -218,13 +219,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				recreateReason = result.reason
 
 				if (shouldRecreateSession) {
-					logger.info({fromJid, retryCount, reason: recreateReason}, 'recreating session for retry')
+					logger.info({ fromJid, retryCount, reason: recreateReason }, 'recreating session for retry')
 					// Delete existing session to force recreation
-					await authState.keys.set({session: {[sessionId]: null}})
+					await authState.keys.set({ session: { [sessionId]: null } })
 					forceIncludeKeys = true
 				}
 			} catch (error) {
-				logger.warn({error, fromJid}, 'failed to check session recreation')
+				logger.warn({ error, fromJid }, 'failed to check session recreation')
 			}
 		}
 
@@ -237,7 +238,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						const msgId = await requestPlaceholderResend(msgKey)
 						logger.debug(`sendRetryRequest: requested placeholder resend for message ${msgId} (scheduled)`)
 					} catch (error) {
-						logger.warn({error, msgId}, 'failed to send scheduled phone request')
+						logger.warn({ error, msgId }, 'failed to send scheduled phone request')
 					}
 				})
 			} else {
@@ -778,7 +779,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			ids.push(...items.map(i => i.attrs.id!))
 		}
 
-
 		try {
 			await Promise.all([
 				processingMutex.mutex(async () => {
@@ -936,6 +936,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				'Added message to recent cache for retry receipts'
 			)
 		}
+
 		try {
 			await Promise.all([
 				processingMutex.mutex(async () => {

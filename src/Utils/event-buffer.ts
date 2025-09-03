@@ -95,6 +95,7 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 			if (bufferTimeout) {
 				clearTimeout(bufferTimeout)
 			}
+
 			bufferTimeout = setTimeout(() => {
 				if (isBuffering) {
 					logger.warn('Buffer timeout reached, auto-flushing')
@@ -187,6 +188,7 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 							}
 						}, 100) // Small delay to allow nested buffers
 					}
+
 					return result
 				} catch (error) {
 					throw error

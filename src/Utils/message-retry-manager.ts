@@ -1,13 +1,13 @@
+import { LRUCache } from 'lru-cache'
 import { proto } from '../../WAProto'
-import type {ILogger} from './logger'
-import {LRUCache} from "lru-cache";
+import type { ILogger } from './logger'
 
 /** Number of sent messages to cache in memory for handling retry receipts */
 const RECENT_MESSAGES_SIZE = 512
 
 /** Timeout for session recreation - 1 hour */
 const RECREATE_SESSION_TIMEOUT = 60 * 60 * 1000 // 1 hour in milliseconds
-const PHONE_REQUEST_DELAY = 3000;
+const PHONE_REQUEST_DELAY = 3000
 export interface RecentMessageKey {
 	to: string
 	id: string
@@ -43,8 +43,15 @@ export class MessageRetryManager {
 	private recentMessagesMap = new LRUCache<string, RecentMessage>({
 		max: RECENT_MESSAGES_SIZE
 	})
-	private sessionRecreateHistory = new LRUCache<string, number>({  ttl: RECREATE_SESSION_TIMEOUT * 2, ttlAutopurge: true })
-	private retryCounters = new LRUCache<string, number>({  ttl: 15 * 60 * 1000, ttlAutopurge: true, updateAgeOnGet: true }) // 15 minutes TTL
+	private sessionRecreateHistory = new LRUCache<string, number>({
+		ttl: RECREATE_SESSION_TIMEOUT * 2,
+		ttlAutopurge: true
+	})
+	private retryCounters = new LRUCache<string, number>({
+		ttl: 15 * 60 * 1000,
+		ttlAutopurge: true,
+		updateAgeOnGet: true
+	}) // 15 minutes TTL
 	private pendingPhoneRequests: PendingPhoneRequest = {}
 	private readonly maxMsgRetryCount: number = 5
 	private statistics: RetryStatistics = {
@@ -56,7 +63,10 @@ export class MessageRetryManager {
 		phoneRequests: 0
 	}
 
-	constructor(private logger: ILogger, maxMsgRetryCount: number) {
+	constructor(
+		private logger: ILogger,
+		maxMsgRetryCount: number
+	) {
 		this.maxMsgRetryCount = maxMsgRetryCount
 	}
 
@@ -108,7 +118,7 @@ export class MessageRetryManager {
 		const prevTime = this.sessionRecreateHistory.get(jid)
 
 		// If no previous recreation or it's been more than an hour
-		if (!prevTime || (now - prevTime) > RECREATE_SESSION_TIMEOUT) {
+		if (!prevTime || now - prevTime > RECREATE_SESSION_TIMEOUT) {
 			this.sessionRecreateHistory.set(jid, now)
 			this.statistics.sessionRecreations++
 			return {
@@ -158,6 +168,7 @@ export class MessageRetryManager {
 	 */
 	markRetryFailed(messageId: string): void {
 		this.statistics.failedRetries++
+		this.retryCounters.delete(messageId)
 	}
 
 	/**
