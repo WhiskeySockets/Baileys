@@ -256,12 +256,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		if (force) {
 			jidsRequiringFetch = jids
 		} else {
-			const addrs = jids.map(jid => signalRepository.jidToSignalProtocolAddress(jid))
-			const sessions = await authState.keys.get('session', addrs)
+			// Use the improved validateSession method that checks for staleness
 			for (const jid of jids) {
-				const signalId = signalRepository.jidToSignalProtocolAddress(jid)
-				if (!sessions[signalId]) {
+				const validation = await signalRepository.validateSession(jid)
+				if (!validation.exists) {
 					jidsRequiringFetch.push(jid)
+					if (validation.reason) {
+						logger.debug({ jid, reason: validation.reason }, 'session validation failed')
+					}
 				}
 			}
 		}
