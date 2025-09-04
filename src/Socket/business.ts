@@ -50,7 +50,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 			attrs: {
 				to: S_WHATSAPP_NET,
 				type: 'get',
-				xmlns: 'w:biz:catalog',
+				xmlns: 'w:biz:catalog'
 			},
 			content: [
 				{
@@ -59,9 +59,9 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 						jid,
 						allow_shop_source: 'true'
 					},
-					content: queryParamNodes,
-				},
-			],
+					content: queryParamNodes
+				}
+			]
 		})
 		return parseCatalogNode(result)
 	}
@@ -126,7 +126,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 					tag: 'order',
 					attrs: {
 						op: 'get',
-						id: orderId,
+						id: orderId
 					},
 					content: [
 						{
@@ -167,7 +167,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 			attrs: {
 				to: S_WHATSAPP_NET,
 				type: 'set',
-				xmlns: 'w:biz:catalog',
+				xmlns: 'w:biz:catalog'
 			},
 			content: [
 				{
@@ -207,7 +207,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 			attrs: {
 				to: S_WHATSAPP_NET,
 				type: 'set',
-				xmlns: 'w:biz:catalog',
+				xmlns: 'w:biz:catalog'
 			},
 			content: [
 				{
@@ -242,7 +242,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 			attrs: {
 				to: S_WHATSAPP_NET,
 				type: 'set',
-				xmlns: 'w:biz:catalog',
+				xmlns: 'w:biz:catalog'
 			},
 			content: [
 				{
@@ -265,7 +265,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 
 		const productCatalogDelNode = getBinaryNodeChild(result, 'product_catalog_delete')
 		return {
-			deleted: +(productCatalogDelNode?.attrs.deleted_count || 0),
+			deleted: +(productCatalogDelNode?.attrs.deleted_count || 0)
 		}
 	}
 
@@ -277,6 +277,6 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 		getCollections,
 		productCreate,
 		productDelete,
-		productUpdate,
+		productUpdate
 	}
 }
