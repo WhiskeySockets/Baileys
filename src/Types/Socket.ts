@@ -95,6 +95,12 @@ export type SocketConfig = {
 	 * */
 	generateHighQualityLinkPreview: boolean
 
+	/** Enable automatic session recreation for failed messages */
+	enableAutoSessionRecreation: boolean
+
+	/** Enable recent message caching for retry handling */
+	enableRecentMessageCache: boolean
+
 	/**
 	 * Returns if a jid should be ignored,
 	 * no event for that jid will be triggered.

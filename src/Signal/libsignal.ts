@@ -10,7 +10,7 @@ import { SenderKeyRecord } from './Group/sender-key-record'
 import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from './Group'
 
 export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository {
-	const storage: SenderKeyStore = signalStorage(auth)
+	const storage = signalStorage(auth)
 	return {
 		decryptGroupMessage({ group, authorJid, msg }) {
 			const senderName = jidToSignalSenderKeyName(group, authorJid)
@@ -88,6 +88,24 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 		async injectE2ESession({ jid, session }) {
 			const cipher = new libsignal.SessionBuilder(storage, jidToSignalProtocolAddress(jid))
 			await cipher.initOutgoing(session)
+		},
+		async validateSession(jid: string) {
+			try {
+				const addr = jidToSignalProtocolAddress(jid)
+				const session = await storage.loadSession(addr.toString())
+
+				if (!session) {
+					return { exists: false, reason: 'no session' }
+				}
+
+				if (!session.haveOpenSession()) {
+					return { exists: false, reason: 'no open session' }
+				}
+
+				return { exists: true }
+			} catch (error) {
+				return { exists: false, reason: 'validation error' }
+			}
 		},
 		jidToSignalProtocolAddress(jid) {
 			return jidToSignalProtocolAddress(jid).toString()
