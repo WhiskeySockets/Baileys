@@ -6,14 +6,15 @@ import {
 	type BinaryNode,
 	isJidBroadcast,
 	isJidGroup,
-	isJidMetaIa,
+	isJidMetaAI,
 	isJidNewsletter,
 	isJidStatusBroadcast,
-	isJidUser,
+	isPnUser,
 	isLidUser,
 	jidDecode,
 	jidEncode,
-	jidNormalizedUser
+	jidNormalizedUser,
+	transferDevice
 } from '../WABinary'
 import { unpadRandomMax16 } from './generics'
 import type { ILogger } from './logger'
@@ -23,17 +24,7 @@ const getDecryptionJid = async (sender: string, repository: SignalRepository): P
 		return sender
 	}
 
-	const lidMapping = repository.getLIDMappingStore()
-	const normalizedSender = jidNormalizedUser(sender)
-	const lidForPN = await lidMapping.getLIDForPN(normalizedSender)
-
-	if (lidForPN?.includes('@lid')) {
-		const senderDecoded = jidDecode(sender)
-		const deviceId = senderDecoded?.device || 0
-		return jidEncode(jidDecode(lidForPN)!.user, 'lid', deviceId)
-	}
-
-	return sender
+	return (await repository.getLIDMappingStore().getLIDForPN(sender))!
 }
 
 const storeMappingFromEnvelope = async (
@@ -45,7 +36,7 @@ const storeMappingFromEnvelope = async (
 ): Promise<void> => {
 	const { senderAlt } = extractAddressingContext(stanza)
 
-	if (senderAlt && isLidUser(senderAlt) && isJidUser(sender) && decryptionJid === sender) {
+	if (senderAlt && isLidUser(senderAlt) && isPnUser(sender) && decryptionJid === sender) {
 		try {
 			await repository.storeLIDPNMapping(senderAlt, sender)
 			logger.debug({ sender, senderAlt }, 'Stored LID mapping from envelope')
@@ -88,14 +79,24 @@ export const extractAddressingContext = (stanza: BinaryNode) => {
 	let senderAlt: string | undefined
 	let recipientAlt: string | undefined
 
+	const sender = stanza.attrs.participant || stanza.attrs.from
+
+
 	if (addressingMode === 'lid') {
 		// Message is LID-addressed: sender is LID, extract corresponding PN
-		senderAlt = stanza.attrs.participant_pn || stanza.attrs.sender_pn
+		// without device data
+		senderAlt = stanza.attrs.participant_pn || stanza.attrs.sender_pn || stanza.attrs.peer_recipient_pn
 		recipientAlt = stanza.attrs.recipient_pn
+		// with device data
+		if (sender && senderAlt) senderAlt = transferDevice(sender, senderAlt)
 	} else {
 		// Message is PN-addressed: sender is PN, extract corresponding LID
-		senderAlt = stanza.attrs.participant_lid || stanza.attrs.sender_lid
+		// without device data
+		senderAlt = stanza.attrs.participant_lid || stanza.attrs.sender_lid || stanza.attrs.peer_recipient_lid
 		recipientAlt = stanza.attrs.recipient_lid
+
+		//with device data
+		if (sender && senderAlt) senderAlt = transferDevice(sender, senderAlt)
 	}
 
 	return {
@@ -119,11 +120,13 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	const participant: string | undefined = stanza.attrs.participant
 	const recipient: string | undefined = stanza.attrs.recipient
 
+	const addressingContext = extractAddressingContext(stanza)
+
 	const isMe = (jid: string) => areJidsSameUser(jid, meId)
 	const isMeLid = (jid: string) => areJidsSameUser(jid, meLid)
 
-	if (isJidUser(from) || isLidUser(from)) {
-		if (recipient && !isJidMetaIa(recipient)) {
+	if (isPnUser(from) || isLidUser(from)) {
+		if (recipient && !isJidMetaAI(recipient)) {
 			if (!isMe(from!) && !isMeLid(from!)) {
 				throw new Boom('receipient present, but msg not from me', { data: stanza })
 			}
@@ -170,13 +173,11 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 
 	const key: WAMessageKey = {
 		remoteJid: chatId,
+		remoteJidAlt: !isJidGroup(chatId) ? addressingContext.senderAlt : undefined,
 		fromMe,
 		id: msgId,
-		senderLid: stanza?.attrs?.sender_lid,
-		senderPn: stanza?.attrs?.sender_pn || stanza?.attrs?.peer_recipient_pn,
 		participant,
-		participantPn: stanza?.attrs?.participant_pn,
-		participantLid: stanza?.attrs?.participant_lid,
+		participantAlt: isJidGroup(chatId) ? addressingContext.senderAlt : undefined,
 		...(msgType === 'newsletter' && stanza.attrs.server_id ? { server_id: stanza.attrs.server_id } : {})
 	}
 
@@ -221,7 +222,7 @@ export const decryptMessageNode = (
 					}
 
 					if (tag === 'unavailable' && attrs.type === 'view_once') {
-						fullMessage.key.isViewOnce = true
+						fullMessage.key.isViewOnce = true // TODO: remove from here and add a STUB TYPE
 					}
 
 					if (tag !== 'enc' && tag !== 'plaintext') {
@@ -236,6 +237,12 @@ export const decryptMessageNode = (
 
 					let msgBuffer: Uint8Array
 
+					const user = isPnUser(sender) ? sender : author // TODO: flaky logic
+					const decryptionJid = await getDecryptionJid(user, repository)
+					if (tag !== "plaintext") {
+						await storeMappingFromEnvelope(stanza, user, decryptionJid, repository, logger)
+					}
+
 					try {
 						const e2eType = tag === 'plaintext' ? 'plaintext' : attrs.type
 						switch (e2eType) {
@@ -248,16 +255,11 @@ export const decryptMessageNode = (
 								break
 							case 'pkmsg':
 							case 'msg':
-								const user = isJidUser(sender) ? sender : author
-								const decryptionJid = await getDecryptionJid(user, repository)
-
 								msgBuffer = await repository.decryptMessage({
 									jid: decryptionJid,
 									type: e2eType,
 									ciphertext: content
 								})
-
-								await storeMappingFromEnvelope(stanza, user, decryptionJid, repository, logger)
 								break
 							case 'plaintext':
 								msgBuffer = content
