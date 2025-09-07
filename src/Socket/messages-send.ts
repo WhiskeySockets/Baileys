@@ -13,45 +13,43 @@ import type {
 } from '../Types'
 import { WAMessageAddressingMode } from '../Types'
 import {
-	aggregateMessageKeysNotFromMe,
-	assertMediaContent,
-	bindWaitForEvent,
-	decryptMediaRetryData,
-	encodeNewsletterMessage,
-	encodeSignedDeviceIdentity,
-	encodeWAMessage,
-	encryptMediaRetryRequest,
-	extractDeviceJids,
-	generateMessageIDV2,
-	generateWAMessage,
-	getStatusCodeForMediaRetry,
-	getUrlFromDirectPath,
-	getWAUploadToServer,
-	MessageRetryManager,
-	normalizeMessageContent,
-	parseAndInjectE2ESessions,
-	unixTimestampSeconds
+  aggregateMessageKeysNotFromMe,
+  assertMediaContent,
+  bindWaitForEvent,
+  decryptMediaRetryData,
+  encodeNewsletterMessage,
+  encodeSignedDeviceIdentity,
+  encodeWAMessage,
+  encryptMediaRetryRequest,
+  extractDeviceJids,
+  generateMessageIDV2,
+  generateWAMessage,
+  getStatusCodeForMediaRetry,
+  getUrlFromDirectPath,
+  getWAUploadToServer,
+  MessageRetryManager,
+  normalizeMessageContent,
+  parseAndInjectE2ESessions,
+  unixTimestampSeconds
 } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
 import { makeKeyedMutex } from '../Utils/make-mutex'
 import {
-	areJidsSameUser,
-	type BinaryNode,
-	type BinaryNodeAttributes,
-	getBinaryNodeChild,
-	getBinaryNodeChildren,
-	isJidGroup,
-	isPnUser,
-	jidDecode,
-	jidEncode,
-	jidNormalizedUser,
-	type JidWithDevice,
-	S_WHATSAPP_NET,
-	transferDevice
+  areJidsSameUser,
+  type BinaryNode,
+  type BinaryNodeAttributes,
+  getBinaryNodeChild,
+  getBinaryNodeChildren,
+  isJidGroup,
+  isPnUser,
+  jidDecode,
+  jidEncode,
+  jidNormalizedUser,
+  type JidWithDevice,
+  S_WHATSAPP_NET,
+  transferDevice
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
-import { makeGroupsSocket } from './groups'
-import type { NewsletterSocket } from './newsletter'
 import { makeNewsletterSocket } from './newsletter'
 
 export const makeMessagesSocket = (config: SocketConfig) => {
@@ -65,7 +63,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		enableRecentMessageCache,
 		maxMsgRetryCount
 	} = config
-	const sock: NewsletterSocket = makeNewsletterSocket(makeGroupsSocket(config))
+	const sock = makeNewsletterSocket(config)
 	const {
 		ev,
 		authState,
