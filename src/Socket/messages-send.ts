@@ -2,39 +2,40 @@ import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, WA_DEFAULT_EPHEMERAL } from '../Defaults'
-import {
-	WAMessageAddressingMode,
-	type AnyMessageContent,
-	type MediaConnInfo,
-	type MessageReceiptType,
-	type MessageRelayOptions,
-	type MiscMessageGenerationOptions,
-	type SocketConfig,
-	type WAMessageKey
+import type {
+	AnyMessageContent,
+	MediaConnInfo,
+	MessageReceiptType,
+	MessageRelayOptions,
+	MiscMessageGenerationOptions,
+	SocketConfig,
+	WAMessageKey
 } from '../Types'
+import { WAMessageAddressingMode } from '../Types'
 import {
-	aggregateMessageKeysNotFromMe,
-	assertMediaContent,
-	bindWaitForEvent,
-	decryptMediaRetryData,
-	encodeNewsletterMessage,
-	encodeSignedDeviceIdentity,
-	encodeWAMessage,
-	encryptMediaRetryRequest,
-	extractDeviceJids,
-	generateMessageIDV2,
-	generateWAMessage,
-	getStatusCodeForMediaRetry,
-	getUrlFromDirectPath,
-	getWAUploadToServer,
-	MessageRetryManager,
-	normalizeMessageContent,
-	parseAndInjectE2ESessions,
-	unixTimestampSeconds
+  aggregateMessageKeysNotFromMe,
+  assertMediaContent,
+  bindWaitForEvent,
+  decryptMediaRetryData,
+  encodeNewsletterMessage,
+  encodeSignedDeviceIdentity,
+  encodeWAMessage,
+  encryptMediaRetryRequest,
+  extractDeviceJids,
+  generateMessageIDV2,
+  generateWAMessage,
+  getStatusCodeForMediaRetry,
+  getUrlFromDirectPath,
+  getWAUploadToServer,
+  MessageRetryManager,
+  normalizeMessageContent,
+  parseAndInjectE2ESessions,
+  unixTimestampSeconds
 } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
 import { makeKeyedMutex } from '../Utils/make-mutex'
 import {
+<<<<<<<
 	areJidsSameUser,
 	type BinaryNode,
 	type BinaryNodeAttributes,
@@ -48,6 +49,21 @@ import {
 	type JidWithDevice,
 	S_WHATSAPP_NET,
 	transferDevice
+=======
+  areJidsSameUser,
+  type BinaryNode,
+  type BinaryNodeAttributes,
+  getBinaryNodeChild,
+  getBinaryNodeChildren,
+  isJidGroup,
+  isPnUser,
+  jidDecode,
+  jidEncode,
+  jidNormalizedUser,
+  type JidWithDevice,
+  S_WHATSAPP_NET,
+  transferDevice
+>>>>>>>
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeGroupsSocket } from './groups'

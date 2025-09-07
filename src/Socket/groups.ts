@@ -1,16 +1,16 @@
 import { proto } from '../../WAProto/index.js'
 import type { GroupMetadata, GroupParticipant, ParticipantAction, SocketConfig, WAMessageKey } from '../Types'
-import { WAMessageStubType, WAMessageAddressingMode } from '../Types'
+import { WAMessageAddressingMode, WAMessageStubType } from '../Types'
 import { generateMessageIDV2, unixTimestampSeconds } from '../Utils'
 import {
-	type BinaryNode,
-	getBinaryNodeChild,
-	getBinaryNodeChildren,
-	getBinaryNodeChildString,
-	isPnUser,
-	isLidUser,
-	jidEncode,
-	jidNormalizedUser
+  type BinaryNode,
+  getBinaryNodeChild,
+  getBinaryNodeChildren,
+  getBinaryNodeChildString,
+  isLidUser,
+  isPnUser,
+  jidEncode,
+  jidNormalizedUser
 } from '../WABinary'
 import { makeChatsSocket } from './chats'
 

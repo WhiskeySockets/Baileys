@@ -314,6 +314,7 @@ const processMessage = async (
 					const lid = latestLid || assignedLid
 					pairs.push({ lid: `${lid}@lid`, pn: `${pn}@s.whatsapp.net` })
 				}
+
 				await lidMappingStore.storeLIDPNMappings(pairs)
 		}
 	} else if (content?.reactionMessage) {

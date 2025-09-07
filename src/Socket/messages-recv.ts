@@ -50,7 +50,6 @@ import {
 	getBinaryNodeChildString,
 	isJidGroup,
 	isJidStatusBroadcast,
-	isPnUser,
 	isLidUser,
 	jidDecode,
 	jidNormalizedUser,
@@ -705,7 +704,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					const deviceData = devices.map(d => ({ id: d.attrs.jid, lid: d.attrs.lid }))
 					logger.info({ deviceData }, 'my own devices changed')
 				}
+
 				//TODO: drop a new event, add hashes
+
 				break
 			case 'server_sync':
 				const update = getBinaryNodeChild(node, 'collection')

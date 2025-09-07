@@ -9,11 +9,8 @@ import {
 	isJidMetaAI,
 	isJidNewsletter,
 	isJidStatusBroadcast,
-	isPnUser,
 	isLidUser,
-	jidDecode,
-	jidEncode,
-	jidNormalizedUser,
+	isPnUser,
 	transferDevice
 } from '../WABinary'
 import { unpadRandomMax16 } from './generics'

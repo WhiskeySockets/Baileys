@@ -1,7 +1,6 @@
-import type { WASocket } from '..'
 import type { SignalKeyStoreWithTransaction } from '../Types'
 import logger from '../Utils/logger'
-import { isPnUser, isLidUser, jidDecode } from '../WABinary'
+import { isLidUser, isPnUser, jidDecode } from '../WABinary'
 
 //TODO: Caching
 export class LIDMappingStore {
@@ -48,6 +47,7 @@ export class LIDMappingStore {
 				logger.warn(`Invalid LID-PN mapping: ${lid}, ${pn}`)
 				continue
 			}
+
 			const [lidJid, pnJid] = isLidUser(lid) ? [lid, pn] : [pn, lid]
 
 			const lidDecoded = jidDecode(lidJid)
