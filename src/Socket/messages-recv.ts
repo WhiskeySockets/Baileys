@@ -814,45 +814,24 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			msg.message?.protocolMessage?.type === proto.Message.ProtocolMessage.Type.SHARE_PHONE_NUMBER &&
 			node.attrs.sender_pn
 		) {
-			ev.emit('chats.phoneNumberShare', { lid: node.attrs.from!, jid: node.attrs.sender_pn })
+			const lid = jidNormalizedUser(node.attrs.from!), pn = jidNormalizedUser(node.attrs.sender_pn)
+			ev.emit('lid-mapping.update', { lid, pn })
+			await signalRepository.storeLIDPNMapping(lid, pn)
 		}
 
-		if (msg.message?.protocolMessage?.lidMigrationMappingSyncMessage?.encodedMappingPayload) {
-			try {
-				const payload = msg.message.protocolMessage.lidMigrationMappingSyncMessage.encodedMappingPayload
-				const decoded = proto.LIDMigrationMappingSyncPayload.decode(payload)
-
-				logger.debug(
-					{
-						mappingCount: decoded.pnToLidMappings?.length || 0,
-						timestamp: decoded.chatDbMigrationTimestamp
-					},
-					'Received LID migration sync message from server'
-				)
-
-				const lidMapping = signalRepository.getLIDMappingStore()
-				if (decoded.pnToLidMappings && decoded.pnToLidMappings.length > 0) {
-					for (const mapping of decoded.pnToLidMappings) {
-						const pn = `${mapping.pn}@s.whatsapp.net`
-						// Use latestLid if available, otherwise assignedLid (proper LID refresh)
-						const lidValue = mapping.latestLid || mapping.assignedLid
-						const lid = `${lidValue}@lid`
-
-						await lidMapping.storeLIDPNMapping(lid, pn)
-						logger.debug(
-							{
-								pn,
-								lid,
-								assignedLid: mapping.assignedLid,
-								latestLid: mapping.latestLid,
-								usedLatest: !!mapping.latestLid
-							},
-							'Stored server-provided PN-LID mapping'
-						)
-					}
+		const alt = msg.key.participantAlt || msg.key.remoteJidAlt
+		// store new mappings we didn't have before
+		if (!!alt) {
+			const altServer = jidDecode(alt)?.server
+			const lidMapping = signalRepository.getLIDMappingStore()
+			if (altServer === "lid") {
+				if (!await lidMapping.getPNForLID(alt)) {
+					await lidMapping.storeLIDPNMapping(alt, msg.key.participant || msg.key.remoteJid!)
 				}
-			} catch (error) {
-				logger.error({ error }, 'Failed to process LID migration sync message')
+			} else {
+				if (!await lidMapping.getLIDForPN(alt)) {
+					await lidMapping.storeLIDPNMapping(msg.key.participant || msg.key.remoteJid!, alt)
+				}
 			}
 		}
 
