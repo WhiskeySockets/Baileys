@@ -35,21 +35,6 @@ import {
 import { getUrlInfo } from '../Utils/link-preview'
 import { makeKeyedMutex } from '../Utils/make-mutex'
 import {
-<<<<<<<
-	areJidsSameUser,
-	type BinaryNode,
-	type BinaryNodeAttributes,
-	getBinaryNodeChild,
-	getBinaryNodeChildren,
-	isJidGroup,
-	isPnUser,
-	jidDecode,
-	jidEncode,
-	jidNormalizedUser,
-	type JidWithDevice,
-	S_WHATSAPP_NET,
-	transferDevice
-=======
   areJidsSameUser,
   type BinaryNode,
   type BinaryNodeAttributes,
@@ -63,7 +48,6 @@ import {
   type JidWithDevice,
   S_WHATSAPP_NET,
   transferDevice
->>>>>>>
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeGroupsSocket } from './groups'
