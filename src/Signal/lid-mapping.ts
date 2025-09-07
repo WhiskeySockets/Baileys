@@ -60,7 +60,7 @@ export class LIDMappingStore {
 			pairMap[pnUser] = lidUser
 		}
 
-		logger.trace(`Storing ${Object.keys(pairMap).length} pn mappings`, pairMap)
+		logger.trace({ pairMap }, `Storing ${Object.keys(pairMap).length} pn mappings`)
 
 		await this.keys.transaction(async () => {
 			for (const [pnUser, lidUser] of Object.entries(pairMap)) {
