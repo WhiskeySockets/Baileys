@@ -10,10 +10,50 @@ import {
 	isJidNewsletter,
 	isJidStatusBroadcast,
 	isJidUser,
-	isLidUser
+	isLidUser,
+	jidDecode,
+	jidEncode,
+	jidNormalizedUser
 } from '../WABinary'
 import { unpadRandomMax16 } from './generics'
 import type { ILogger } from './logger'
+
+const getDecryptionJid = async (sender: string, repository: SignalRepository): Promise<string> => {
+	if (!sender.includes('@s.whatsapp.net')) {
+		return sender
+	}
+
+	const lidMapping = repository.getLIDMappingStore()
+	const normalizedSender = jidNormalizedUser(sender)
+	const lidForPN = await lidMapping.getLIDForPN(normalizedSender)
+
+	if (lidForPN?.includes('@lid')) {
+		const senderDecoded = jidDecode(sender)
+		const deviceId = senderDecoded?.device || 0
+		return jidEncode(jidDecode(lidForPN)!.user, 'lid', deviceId)
+	}
+
+	return sender
+}
+
+const storeMappingFromEnvelope = async (
+	stanza: BinaryNode,
+	sender: string,
+	decryptionJid: string,
+	repository: SignalRepository,
+	logger: ILogger
+): Promise<void> => {
+	const { senderAlt } = extractAddressingContext(stanza)
+
+	if (senderAlt && isLidUser(senderAlt) && isJidUser(sender) && decryptionJid === sender) {
+		try {
+			await repository.storeLIDPNMapping(senderAlt, sender)
+			logger.debug({ sender, senderAlt }, 'Stored LID mapping from envelope')
+		} catch (error) {
+			logger.warn({ sender, senderAlt, error }, 'Failed to store LID mapping')
+		}
+	}
+}
 
 export const NO_MESSAGE_FOUND_ERROR_TEXT = 'Message absent from node'
 export const MISSING_KEYS_ERROR_TEXT = 'Key used already or never filled'
@@ -49,6 +89,28 @@ type MessageType =
 	| 'direct_peer_status'
 	| 'other_status'
 	| 'newsletter'
+
+export const extractAddressingContext = (stanza: BinaryNode) => {
+	const addressingMode = stanza.attrs.addressing_mode || 'pn'
+	let senderAlt: string | undefined
+	let recipientAlt: string | undefined
+
+	if (addressingMode === 'lid') {
+		// Message is LID-addressed: sender is LID, extract corresponding PN
+		senderAlt = stanza.attrs.participant_pn || stanza.attrs.sender_pn
+		recipientAlt = stanza.attrs.recipient_pn
+	} else {
+		// Message is PN-addressed: sender is PN, extract corresponding LID
+		senderAlt = stanza.attrs.participant_lid || stanza.attrs.sender_lid
+		recipientAlt = stanza.attrs.recipient_lid
+	}
+
+	return {
+		addressingMode,
+		senderAlt,
+		recipientAlt
+	}
+}
 
 /**
  * Decode the received node as a message.
@@ -118,7 +180,7 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 		fromMe,
 		id: msgId,
 		senderLid: stanza?.attrs?.sender_lid,
-		senderPn: stanza?.attrs?.sender_pn,
+		senderPn: stanza?.attrs?.sender_pn || stanza?.attrs?.peer_recipient_pn,
 		participant,
 		participantPn: stanza?.attrs?.participant_pn,
 		participantLid: stanza?.attrs?.participant_lid,
@@ -161,7 +223,7 @@ export const decryptMessageNode = (
 				for (const { tag, attrs, content } of stanza.content) {
 					if (tag === 'verified_name' && content instanceof Uint8Array) {
 						const cert = proto.VerifiedNameCertificate.decode(content)
-						const details = proto.VerifiedNameCertificate.Details.decode(cert.details!)
+						const details = proto.VerifiedNameCertificate.Details.decode(cert.details)
 						fullMessage.verifiedBizName = details.verifiedName
 					}
 
@@ -183,34 +245,33 @@ export const decryptMessageNode = (
 
 					try {
 						const e2eType = tag === 'plaintext' ? 'plaintext' : attrs.type
-						if (e2eType !== 'plaintext') {
-							msgBuffer = await decryptWithRetry(
-								async () => {
-									switch (e2eType) {
-										case 'skmsg':
-											return await repository.decryptGroupMessage({
-												group: sender,
-												authorJid: author,
-												msg: content
-											})
-										case 'pkmsg':
-										case 'msg':
-											const user = isJidUser(sender) ? sender : author
-											return await repository.decryptMessage({
-												jid: user,
-												type: e2eType,
-												ciphertext: content
-											})
-										default:
-											throw new Error(`Unknown e2e type: ${e2eType}`)
-									}
-								},
-								logger,
-								fullMessage.key,
-								e2eType!
-							)
-						} else {
-							msgBuffer = content
+
+						switch (e2eType) {
+							case 'skmsg':
+								msgBuffer = await repository.decryptGroupMessage({
+									group: sender,
+									authorJid: author,
+									msg: content
+								})
+								break
+							case 'pkmsg':
+							case 'msg':
+								const user = isJidUser(sender) ? sender : author
+								const decryptionJid = await getDecryptionJid(user, repository)
+
+								msgBuffer = await repository.decryptMessage({
+									jid: decryptionJid,
+									type: e2eType,
+									ciphertext: content
+								})
+
+								await storeMappingFromEnvelope(stanza, user, decryptionJid, repository, logger)
+								break
+							case 'plaintext':
+								msgBuffer = content
+								break
+							default:
+								throw new Error(`Unknown e2e type: ${e2eType}`)
 						}
 
 						let msg: proto.IMessage = proto.Message.decode(
@@ -269,59 +330,3 @@ function isSessionRecordError(error: any): boolean {
 	return DECRYPTION_RETRY_CONFIG.sessionRecordErrors.some(errorPattern => errorMessage.includes(errorPattern))
 }
 
-/**
- * Sleep utility for retry delays
- */
-function sleep(ms: number): Promise<void> {
-	return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-/**
- * Decrypt a single message with retry logic for session record errors
- */
-async function decryptWithRetry(
-	decryptFn: () => Promise<Uint8Array>,
-	logger: ILogger,
-	messageKey: WAMessageKey,
-	messageType: string
-): Promise<Uint8Array> {
-	let lastError: any
-
-	for (let attempt = 0; attempt <= DECRYPTION_RETRY_CONFIG.maxRetries; attempt++) {
-		try {
-			return await decryptFn()
-		} catch (error: any) {
-			lastError = error
-
-			// Only retry for session record errors
-			if (!isSessionRecordError(error)) {
-				throw error
-			}
-
-			// Don't retry on the last attempt
-			if (attempt === DECRYPTION_RETRY_CONFIG.maxRetries) {
-				break
-			}
-
-			// Calculate delay with exponential backoff
-			const delay = DECRYPTION_RETRY_CONFIG.baseDelayMs * Math.pow(2, attempt)
-
-			logger.warn(
-				{
-					key: messageKey,
-					attempt: attempt + 1,
-					maxRetries: DECRYPTION_RETRY_CONFIG.maxRetries + 1,
-					error: error.message,
-					messageType,
-					delayMs: delay
-				},
-				'Session record error detected, retrying decryption'
-			)
-
-			await sleep(delay)
-		}
-	}
-
-	// If all retries failed, throw the last error
-	throw lastError
-}
