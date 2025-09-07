@@ -307,8 +307,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 			await sendNode(receipt)
 
-			logger.info({ msgAttrs: node.attrs, retryCount, shouldRecreateSession, recreateReason }, 'sent retry receipt')
-		})
+			logger.info({ msgAttrs: node.attrs, retryCount }, 'sent retry receipt')
+		}, authState?.creds?.me?.id || 'sendRetryRequest')
 	}
 
 	const handleEncryptNotification = async (node: BinaryNode) => {

@@ -58,6 +58,13 @@ const storeMappingFromEnvelope = async (
 export const NO_MESSAGE_FOUND_ERROR_TEXT = 'Message absent from node'
 export const MISSING_KEYS_ERROR_TEXT = 'Key used already or never filled'
 
+// Retry configuration for failed decryption
+export const DECRYPTION_RETRY_CONFIG = {
+	maxRetries: 3,
+	baseDelayMs: 100,
+	sessionRecordErrors: ['No session record', 'SessionError: No session record']
+}
+
 export const NACK_REASONS = {
 	ParsingError: 487,
 	UnrecognizedStanza: 488,
@@ -238,6 +245,7 @@ export const decryptMessageNode = (
 
 					try {
 						const e2eType = tag === 'plaintext' ? 'plaintext' : attrs.type
+
 						switch (e2eType) {
 							case 'skmsg':
 								msgBuffer = await repository.decryptGroupMessage({
@@ -278,7 +286,7 @@ export const decryptMessageNode = (
 									item: msg.senderKeyDistributionMessage
 								})
 							} catch (err) {
-								logger.error({ key: fullMessage.key, err }, 'failed to decrypt message')
+								logger.error({ key: fullMessage.key, err }, 'failed to process sender key distribution message')
 							}
 						}
 
@@ -288,7 +296,17 @@ export const decryptMessageNode = (
 							fullMessage.message = msg
 						}
 					} catch (err: any) {
-						logger.error({ key: fullMessage.key, err }, 'failed to decrypt message')
+						const errorContext = {
+							key: fullMessage.key,
+							err,
+							messageType: tag === 'plaintext' ? 'plaintext' : attrs.type,
+							sender,
+							author,
+							isSessionRecordError: isSessionRecordError(err)
+						}
+
+						logger.error(errorContext, 'failed to decrypt message')
+
 						fullMessage.messageStubType = proto.WebMessageInfo.StubType.CIPHERTEXT
 						fullMessage.messageStubParameters = [err.message]
 					}
@@ -303,3 +321,12 @@ export const decryptMessageNode = (
 		}
 	}
 }
+
+/**
+ * Utility function to check if an error is related to missing session record
+ */
+function isSessionRecordError(error: any): boolean {
+	const errorMessage = error?.message || error?.toString() || ''
+	return DECRYPTION_RETRY_CONFIG.sessionRecordErrors.some(errorPattern => errorMessage.includes(errorPattern))
+}
+

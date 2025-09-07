@@ -331,7 +331,7 @@ export const makeSocket = (config: SocketConfig) => {
 				// Update credentials immediately to prevent duplicate IDs on retry
 				ev.emit('creds.update', update)
 				return node // Only return node since update is already used
-			})
+			}, creds?.me?.id || 'upload-pre-keys')
 
 			// Upload to server (outside transaction, can fail without affecting local keys)
 			try {

@@ -601,7 +601,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 						}
 					}
 				}
-			})
+			}, authState?.creds?.me?.id || 'resync-app-state')
 
 			const { onMutation } = newAppStateChunkHandler(isInitialSync)
 			for (const key in globalMutationMap) {
@@ -807,7 +807,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				await query(node)
 
 				await authState.keys.set({ 'app-state-sync-version': { [name]: state } })
-			})
+			}, authState?.creds?.me?.id || 'app-patch')
 		})
 
 		if (config.emitOwnEvents) {

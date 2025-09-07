@@ -1128,11 +1128,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			await sendNode(stanza)
 
-			// Add message to retry cache if enabled
+      // Add message to retry cache if enabled
 			if (messageRetryManager && !participant) {
 				messageRetryManager.addRecentMessage(destinationJid, msgId, message)
 			}
-		})
+		}, meId)
 
 		return msgId
 	}
