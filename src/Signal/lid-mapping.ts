@@ -1,12 +1,15 @@
+import type { WASocket } from '..'
 import type { SignalKeyStoreWithTransaction } from '../Types'
 import logger from '../Utils/logger'
 import { isJidUser, isLidUser, jidDecode } from '../WABinary'
 
 export class LIDMappingStore {
 	private readonly keys: SignalKeyStoreWithTransaction
+	private socket: WASocket
 
-	constructor(keys: SignalKeyStoreWithTransaction) {
+	constructor(keys: SignalKeyStoreWithTransaction, socket: WASocket) {
 		this.keys = keys
+		this.socket = socket // needed to get LID from PN if not found
 	}
 
 	/**
@@ -55,11 +58,16 @@ export class LIDMappingStore {
 		// Look up user-level mapping (whatsmeow approach)
 		const pnUser = decoded.user
 		const stored = await this.keys.get('lid-mapping', [pnUser])
-		const lidUser = stored[pnUser]
+		let lidUser = stored[pnUser]
 
 		if (!lidUser) {
-			logger.trace(`No LID mapping found for PN user ${pnUser}`)
-			return null
+			logger.trace(`No LID mapping found for PN user ${pnUser}; getting from USync`)
+			const { exists, lid } = (await this.socket.onWhatsApp(pn))?.[0]!
+			if (exists) {
+				lidUser = jidDecode(lid)?.user
+			} else {
+				return null
+			}
 		}
 
 		if (typeof lidUser !== 'string') return null
