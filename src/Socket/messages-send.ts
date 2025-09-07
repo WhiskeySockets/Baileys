@@ -247,28 +247,39 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const toFetch: string[] = []
 		// Deduplicate and normalize JIDs
 		jids = deduplicateLidPnJids(Array.from(new Set(jids)))
+		const jidsWithUser = jids
+			.map(jid => {
+				const decoded = jidDecode(jid)
+				const user = decoded?.user
+				const device = decoded?.device
+				const isExplicitDevice = typeof device === 'number' && device >= 0
 
-		for (let jid of jids) {
-			const decoded = jidDecode(jid)
-			const user = decoded?.user
-			const device = decoded?.device
-			const isExplicitDevice = typeof device === 'number' && device >= 0
+				// Handle explicit device JIDs directly
+				if (isExplicitDevice && user) {
+					deviceResults.push({
+						user,
+						device,
+						wireJid: jid // Preserve exact JID format for wire protocol
+					})
+					return null
+				}
 
-			// Handle explicit device JIDs directly
-			if (isExplicitDevice && user) {
-				deviceResults.push({
-					user,
-					device,
-					wireJid: jid // Preserve exact JID format for wire protocol
-				})
-				continue
-			}
+				// For user JIDs, normalize and prepare for device enumeration
+				jid = jidNormalizedUser(jid)
+				return { jid, user }
+			})
+			.filter(jid => jid !== null)
 
-			// For user JIDs, normalize and prepare for device enumeration
-			jid = jidNormalizedUser(jid)
+		let mgetDevices: undefined | Record<string, JidWithDevice[] | undefined>
+		if (useCache && userDevicesCache.mget) {
+			// if the cache supports mget, we can get all devices in one go
+			const toFetch = jidsWithUser.map(j => j?.user).filter(Boolean) as string[]
+			mgetDevices = await userDevicesCache.mget(toFetch)
+		}
 
+		for (let { jid, user } of jidsWithUser) {
 			if (useCache) {
-				const devices = userDevicesCache.get(user!) as JidWithDevice[]
+				const devices = mgetDevices?.[user!] || ((await userDevicesCache.get(user!)) as JidWithDevice[])
 				if (devices) {
 					const isLidJid = jid.includes('@lid')
 					const devicesWithWire = devices.map(d => ({
@@ -281,8 +292,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				} else {
 					toFetch.push(jid)
 				}
-			} else {
-				toFetch.push(jid)
 			}
 		}
 
@@ -342,8 +351,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 			}
 
-			for (const key in deviceMap) {
-				userDevicesCache.set(key, deviceMap[key]!)
+			if (userDevicesCache.mset) {
+				// if the cache supports mset, we can set all devices in one go
+				await userDevicesCache.mset(Object.entries(deviceMap).map(([key, value]) => ({ key, value })))
+			} else {
+				for (const key in deviceMap) {
+					if (deviceMap[key]) await userDevicesCache.set(key, deviceMap[key])
+				}
 			}
 		}
 
