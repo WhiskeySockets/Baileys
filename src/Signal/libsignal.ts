@@ -28,8 +28,7 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 		return (
 			key.includes('@lid.whatsapp.net') || // WhatsApp system messages
 			key.includes('@broadcast') || // Broadcast messages
-			key.includes('@newsletter') || // Newsletter messages
-			key === 'status@broadcast' // Status updates
+			key.includes('@newsletter') 
 		)
 	}
 
