@@ -3,7 +3,7 @@ import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import {
-    WAMessageAddressingMode,
+	WAMessageAddressingMode,
 	type AnyMessageContent,
 	type MediaConnInfo,
 	type MessageReceiptType,
@@ -47,7 +47,7 @@ import {
 	jidNormalizedUser,
 	type JidWithDevice,
 	S_WHATSAPP_NET,
-    transferDevice
+	transferDevice
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeGroupsSocket } from './groups'
@@ -902,7 +902,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 
 					if (!isStatus) {
-						const groupAddressingMode = groupData?.addressingMode || (isLid ? WAMessageAddressingMode.LID : WAMessageAddressingMode.PN)
+						const groupAddressingMode =
+							groupData?.addressingMode || (isLid ? WAMessageAddressingMode.LID : WAMessageAddressingMode.PN)
 						additionalAttributes = {
 							...additionalAttributes,
 							addressing_mode: groupAddressingMode

@@ -74,8 +74,8 @@ export const jidNormalizedUser = (jid: string | undefined) => {
 }
 
 export const transferDevice = (fromJid: string, toJid: string) => {
-		const fromDecoded = jidDecode(fromJid)
-		const deviceId = fromDecoded?.device || 0
-		const {server, user}= jidDecode(toJid)!
-		return jidEncode(user, server, deviceId)
+	const fromDecoded = jidDecode(fromJid)
+	const deviceId = fromDecoded?.device || 0
+	const { server, user } = jidDecode(toJid)!
+	return jidEncode(user, server, deviceId)
 }

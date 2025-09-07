@@ -44,6 +44,7 @@ import {
 	S_WHATSAPP_NET
 } from '../WABinary'
 import { WebSocketClient } from './Client'
+import { USyncQuery, USyncUser } from '../WAUSync/'
 
 /**
  * Connects to WA servers and performs:
@@ -67,6 +68,9 @@ export const makeSocket = (config: SocketConfig) => {
 		makeSignalRepository
 	} = config
 
+	const uqTagId = generateMdTagPrefix()
+	const generateMessageTag = () => `${uqTagId}${epoch++}`
+
 	if (printQRInTerminal) {
 		console.warn(
 			'⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.'
@@ -81,98 +85,6 @@ export const makeSocket = (config: SocketConfig) => {
 
 	if (url.protocol === 'wss' && authState?.creds?.routingInfo) {
 		url.searchParams.append('ED', authState.creds.routingInfo.toString('base64url'))
-	}
-
-	const ws = new WebSocketClient(url, config)
-
-	ws.connect()
-
-	const ev = makeEventBuffer(logger)
-	/** ephemeral key pair used to encrypt/decrypt communication. Unique for each connection */
-	const ephemeralKeyPair = Curve.generateKeyPair()
-	/** WA noise protocol wrapper */
-	const noise = makeNoiseHandler({
-		keyPair: ephemeralKeyPair,
-		NOISE_HEADER: NOISE_WA_HEADER,
-		logger,
-		routingInfo: authState?.creds?.routingInfo
-	})
-
-	const { creds } = authState
-	// add transaction capability
-	const keys = addTransactionCapability(authState.keys, logger, transactionOpts)
-	const signalRepository = makeSignalRepository({ creds, keys })
-
-	let lastDateRecv: Date
-	let epoch = 1
-	let keepAliveReq: NodeJS.Timeout
-	let qrTimer: NodeJS.Timeout
-	let closed = false
-
-	const uqTagId = generateMdTagPrefix()
-	const generateMessageTag = () => `${uqTagId}${epoch++}`
-
-	const sendPromise = promisify(ws.send)
-	/** send a raw buffer */
-	const sendRawMessage = async (data: Uint8Array | Buffer) => {
-		if (!ws.isOpen) {
-			throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
-		}
-
-		const bytes = noise.encodeFrame(data)
-		await promiseTimeout<void>(connectTimeoutMs, async (resolve, reject) => {
-			try {
-				await sendPromise.call(ws, bytes)
-				resolve()
-			} catch (error) {
-				reject(error)
-			}
-		})
-	}
-
-	/** send a binary node */
-	const sendNode = (frame: BinaryNode) => {
-		if (logger.level === 'trace') {
-			logger.trace({ xml: binaryNodeToString(frame), msg: 'xml send' })
-		}
-
-		const buff = encodeBinaryNode(frame)
-		return sendRawMessage(buff)
-	}
-
-	/** log & process any unexpected errors */
-	const onUnexpectedError = (err: Error | Boom, msg: string) => {
-		logger.error({ err }, `unexpected error in '${msg}'`)
-	}
-
-	/** await the next incoming message */
-	const awaitNextMessage = async <T>(sendMsg?: Uint8Array) => {
-		if (!ws.isOpen) {
-			throw new Boom('Connection Closed', {
-				statusCode: DisconnectReason.connectionClosed
-			})
-		}
-
-		let onOpen: (data: T) => void
-		let onClose: (err: Error) => void
-
-		const result = promiseTimeout<T>(connectTimeoutMs, (resolve, reject) => {
-			onOpen = resolve
-			onClose = mapWebSocketError(reject)
-			ws.on('frame', onOpen)
-			ws.on('close', onClose)
-			ws.on('error', onClose)
-		}).finally(() => {
-			ws.off('frame', onOpen)
-			ws.off('close', onClose)
-			ws.off('error', onClose)
-		})
-
-		if (sendMsg) {
-			sendRawMessage(sendMsg).catch(onClose!)
-		}
-
-		return result
 	}
 
 	/**
@@ -239,6 +151,169 @@ export const makeSocket = (config: SocketConfig) => {
 
 		if (result && 'tag' in result) {
 			assertNodeErrorFree(result)
+		}
+
+		return result
+	}
+
+	const executeUSyncQuery = async (usyncQuery: USyncQuery) => {
+		if (usyncQuery.protocols.length === 0) {
+			throw new Boom('USyncQuery must have at least one protocol')
+		}
+
+		// todo: validate users, throw WARNING on no valid users
+		// variable below has only validated users
+		const validUsers = usyncQuery.users
+
+		const userNodes = validUsers.map(user => {
+			return {
+				tag: 'user',
+				attrs: {
+					jid: !user.phone ? user.id : undefined
+				},
+				content: usyncQuery.protocols.map(a => a.getUserElement(user)).filter(a => a !== null)
+			} as BinaryNode
+		})
+
+		const listNode: BinaryNode = {
+			tag: 'list',
+			attrs: {},
+			content: userNodes
+		}
+
+		const queryNode: BinaryNode = {
+			tag: 'query',
+			attrs: {},
+			content: usyncQuery.protocols.map(a => a.getQueryElement())
+		}
+		const iq = {
+			tag: 'iq',
+			attrs: {
+				to: S_WHATSAPP_NET,
+				type: 'get',
+				xmlns: 'usync'
+			},
+			content: [
+				{
+					tag: 'usync',
+					attrs: {
+						context: usyncQuery.context,
+						mode: usyncQuery.mode,
+						sid: generateMessageTag(),
+						last: 'true',
+						index: '0'
+					},
+					content: [queryNode, listNode]
+				}
+			]
+		}
+
+		const result = await query(iq)
+
+		return usyncQuery.parseUSyncQueryResult(result)
+	}
+
+	const onWhatsApp = async (...jids: string[]) => {
+		const usyncQuery = new USyncQuery().withContactProtocol().withLIDProtocol()
+
+		for (const jid of jids) {
+			const phone = `+${jid.replace('+', '').split('@')[0]?.split(':')[0]}`
+			usyncQuery.withUser(new USyncUser().withPhone(phone))
+		}
+
+		const results = await executeUSyncQuery(usyncQuery)
+
+		if (results) {
+			return results.list
+				.filter(a => !!a.contact)
+				.map(({ contact, id, lid }) => ({ jid: id, exists: contact as boolean, lid: lid as string }))
+		}
+	}
+
+	const ws = new WebSocketClient(url, config)
+
+	ws.connect()
+
+	const ev = makeEventBuffer(logger)
+	/** ephemeral key pair used to encrypt/decrypt communication. Unique for each connection */
+	const ephemeralKeyPair = Curve.generateKeyPair()
+	/** WA noise protocol wrapper */
+	const noise = makeNoiseHandler({
+		keyPair: ephemeralKeyPair,
+		NOISE_HEADER: NOISE_WA_HEADER,
+		logger,
+		routingInfo: authState?.creds?.routingInfo
+	})
+
+	const { creds } = authState
+	// add transaction capability
+	const keys = addTransactionCapability(authState.keys, logger, transactionOpts)
+	const signalRepository = makeSignalRepository({ creds, keys }, onWhatsApp)
+
+	let lastDateRecv: Date
+	let epoch = 1
+	let keepAliveReq: NodeJS.Timeout
+	let qrTimer: NodeJS.Timeout
+	let closed = false
+
+	const sendPromise = promisify(ws.send)
+	/** send a raw buffer */
+	const sendRawMessage = async (data: Uint8Array | Buffer) => {
+		if (!ws.isOpen) {
+			throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
+		}
+
+		const bytes = noise.encodeFrame(data)
+		await promiseTimeout<void>(connectTimeoutMs, async (resolve, reject) => {
+			try {
+				await sendPromise.call(ws, bytes)
+				resolve()
+			} catch (error) {
+				reject(error)
+			}
+		})
+	}
+
+	/** send a binary node */
+	const sendNode = (frame: BinaryNode) => {
+		if (logger.level === 'trace') {
+			logger.trace({ xml: binaryNodeToString(frame), msg: 'xml send' })
+		}
+
+		const buff = encodeBinaryNode(frame)
+		return sendRawMessage(buff)
+	}
+
+	/** log & process any unexpected errors */
+	const onUnexpectedError = (err: Error | Boom, msg: string) => {
+		logger.error({ err }, `unexpected error in '${msg}'`)
+	}
+
+	/** await the next incoming message */
+	const awaitNextMessage = async <T>(sendMsg?: Uint8Array) => {
+		if (!ws.isOpen) {
+			throw new Boom('Connection Closed', {
+				statusCode: DisconnectReason.connectionClosed
+			})
+		}
+
+		let onOpen: (data: T) => void
+		let onClose: (err: Error) => void
+
+		const result = promiseTimeout<T>(connectTimeoutMs, (resolve, reject) => {
+			onOpen = resolve
+			onClose = mapWebSocketError(reject)
+			ws.on('frame', onOpen)
+			ws.on('close', onClose)
+			ws.on('error', onClose)
+		}).finally(() => {
+			ws.off('frame', onOpen)
+			ws.off('close', onClose)
+			ws.off('error', onClose)
+		})
+
+		if (sendMsg) {
+			sendRawMessage(sendMsg).catch(onClose!)
 		}
 
 		return result
@@ -878,7 +953,9 @@ export const makeSocket = (config: SocketConfig) => {
 		requestPairingCode,
 		/** Waits for the connection to WA to reach a state */
 		waitForConnectionUpdate: bindWaitForConnectionUpdate(ev),
-		sendWAMBuffer
+		sendWAMBuffer,
+		executeUSyncQuery,
+		onWhatsApp
 	}
 }
 

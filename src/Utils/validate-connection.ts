@@ -155,7 +155,6 @@ export const configureSuccessfulPairing = (
 	const deviceMsg = Buffer.concat([devicePrefix, deviceDetails, signedIdentityKey.public, accountSignatureKey])
 	account.deviceSignature = Curve.sign(signedIdentityKey.private, deviceMsg)
 
-
 	const identity = createSignalIdentity(lid!, accountSignatureKey)
 	const accountEnc = encodeSignedDeviceIdentity(account, false)
 

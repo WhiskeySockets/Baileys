@@ -321,7 +321,7 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 	const metadata: GroupMetadata = {
 		id: groupId!,
 		notify: group.attrs.notify,
-		addressingMode: group.attrs.addressing_mode === "lid" ? WAMessageAddressingMode.LID : WAMessageAddressingMode.PN,
+		addressingMode: group.attrs.addressing_mode === 'lid' ? WAMessageAddressingMode.LID : WAMessageAddressingMode.PN,
 		subject: group.attrs.subject!,
 		subjectOwner: group.attrs.s_o,
 		subjectOwnerPn: group.attrs.s_o_pn,

@@ -88,7 +88,6 @@ export const extractAddressingContext = (stanza: BinaryNode) => {
 
 	const sender = stanza.attrs.participant || stanza.attrs.from
 
-
 	if (addressingMode === 'lid') {
 		// Message is LID-addressed: sender is LID, extract corresponding PN
 		// without device data
@@ -246,7 +245,7 @@ export const decryptMessageNode = (
 
 					const user = isPnUser(sender) ? sender : author // TODO: flaky logic
 					const decryptionJid = await getDecryptionJid(user, repository)
-					if (tag !== "plaintext") {
+					if (tag !== 'plaintext') {
 						await storeMappingFromEnvelope(stanza, user, decryptionJid, repository, logger)
 					}
 

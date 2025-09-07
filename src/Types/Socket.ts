@@ -7,6 +7,7 @@ import type { AuthenticationState, SignalAuthState, TransactionCapabilityOptions
 import type { GroupMetadata } from './GroupMetadata'
 import { type MediaConnInfo } from './Message'
 import type { SignalRepository } from './Signal'
+import type { WASocket } from '../index.js'
 
 export type WAVersion = [number, number, number]
 export type WABrowserDescription = [string, string, string]
@@ -137,5 +138,15 @@ export type SocketConfig = {
 	/** cached group metadata, use to prevent redundant requests to WA & speed up msg sending */
 	cachedGroupMetadata: (jid: string) => Promise<GroupMetadata | undefined>
 
-	makeSignalRepository: (auth: SignalAuthState) => SignalRepository
+	makeSignalRepository: (
+		auth: SignalAuthState,
+		onWhatsAppFunc?: (...jids: string[]) => Promise<
+			| {
+					jid: string
+					exists: boolean
+					lid: string
+			  }[]
+			| undefined
+		>
+	) => SignalRepository
 }
