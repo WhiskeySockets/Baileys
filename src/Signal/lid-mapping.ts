@@ -38,7 +38,7 @@ export class LIDMappingStore {
 					[`${lidUser}_reverse`]: pnUser // "102765716062358_reverse" -> "554396160286"
 				}
 			})
-		})
+		}, 'lid-mapping')
 
 		logger.trace(`USER LID mapping stored: PN ${pnUser} → LID ${lidUser}`)
 	}

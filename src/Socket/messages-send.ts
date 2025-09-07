@@ -87,7 +87,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	// Initialize message retry manager if enabled
 	const messageRetryManager = enableRecentMessageCache ? new MessageRetryManager(logger, maxMsgRetryCount) : null
 
-  // Prevent race conditions in Signal session encryption by user
+	// Prevent race conditions in Signal session encryption by user
 	const encryptionMutex = makeKeyedMutex()
 
 	let mediaConn: Promise<MediaConnInfo>
@@ -395,9 +395,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 
 					jidsRequiringFetch.push(jid)
-					if (validation.reason) {
-						logger.debug({ jid, reason: validation.reason }, 'session validation failed')
-					}
 				}
 			}
 
@@ -1128,7 +1125,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			await sendNode(stanza)
 
-      // Add message to retry cache if enabled
+			// Add message to retry cache if enabled
 			if (messageRetryManager && !participant) {
 				messageRetryManager.addRecentMessage(destinationJid, msgId, message)
 			}

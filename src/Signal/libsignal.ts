@@ -13,10 +13,8 @@ import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from '
 import { LIDMappingStore } from './lid-mapping'
 
 export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository {
-
 	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction)
 	const storage = signalStorage(auth, lidMapping)
-
 
 	const parsedKeys = auth.keys as SignalKeyStoreWithTransaction
 
@@ -28,7 +26,7 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 		return (
 			key.includes('@lid.whatsapp.net') || // WhatsApp system messages
 			key.includes('@broadcast') || // Broadcast messages
-			key.includes('@newsletter') 
+			key.includes('@newsletter')
 		)
 	}
 
@@ -39,7 +37,6 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 	})
 
 	const repository: SignalRepository = {
-
 		decryptGroupMessage({ group, authorJid, msg }) {
 			const senderName = jidToSignalSenderKeyName(group, authorJid)
 			const cipher = new GroupCipher(storage, senderName)
@@ -175,24 +172,6 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 			return parsedKeys.transaction(async () => {
 				await cipher.initOutgoing(session)
 			}, jid)
-		},
-		async validateSession(jid: string) {
-			try {
-				const addr = jidToSignalProtocolAddress(jid)
-				const session = await storage.loadSession(addr.toString())
-
-				if (!session) {
-					return { exists: false, reason: 'no session' }
-				}
-
-				if (!session.haveOpenSession()) {
-					return { exists: false, reason: 'no open session' }
-				}
-
-				return { exists: true }
-			} catch (error) {
-				return { exists: false, reason: 'validation error' }
-			}
 		},
 		jidToSignalProtocolAddress(jid) {
 			return jidToSignalProtocolAddress(jid).toString()

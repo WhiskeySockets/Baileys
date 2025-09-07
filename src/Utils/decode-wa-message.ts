@@ -329,4 +329,3 @@ function isSessionRecordError(error: any): boolean {
 	const errorMessage = error?.message || error?.toString() || ''
 	return DECRYPTION_RETRY_CONFIG.sessionRecordErrors.some(errorPattern => errorMessage.includes(errorPattern))
 }
-
