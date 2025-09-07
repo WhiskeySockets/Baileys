@@ -1039,7 +1039,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						// correctly set who is asking for the retry
 						key.participant = key.participant || attrs.from
 						const retryNode = getBinaryNodeChild(node, 'retry')
-						if (ids[0] && key.participant && willSendMessageAgain(ids[0], key.participant!)) {
+						if (ids[0] && key.participant && willSendMessageAgain(ids[0], key.participant)) {
 							if (key.fromMe) {
 								try {
 									updateSendMessageAgainCount(ids[0], key.participant)
@@ -1147,7 +1147,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			msg.message?.protocolMessage?.type === proto.Message.ProtocolMessage.Type.SHARE_PHONE_NUMBER &&
 			node.attrs.sender_pn
 		) {
-			const lid = jidNormalizedUser(node.attrs.from!),
+			const lid = jidNormalizedUser(node.attrs.from),
 				pn = jidNormalizedUser(node.attrs.sender_pn)
 			ev.emit('lid-mapping.update', { lid, pn })
 			await signalRepository.storeLIDPNMapping(lid, pn)
@@ -1248,7 +1248,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								// message was sent by us from a different device
 								type = 'sender'
 								// need to specially handle this case
-								if (isLidUser(msg.key.remoteJid!) || isLidUser(msg.key.remoteJidAlt!)) {
+								if (isLidUser(msg.key.remoteJid!) || isLidUser(msg.key.remoteJidAlt)) {
 									participant = author // TODO: investigate sending receipts to LIDs and not PNs
 								}
 							} else if (!sendActiveReceipts) {

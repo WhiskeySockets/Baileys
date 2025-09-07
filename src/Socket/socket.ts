@@ -43,8 +43,8 @@ import {
 	jidEncode,
 	S_WHATSAPP_NET
 } from '../WABinary'
-import { WebSocketClient } from './Client'
 import { USyncQuery, USyncUser } from '../WAUSync/'
+import { WebSocketClient } from './Client'
 
 /**
  * Connects to WA servers and performs:

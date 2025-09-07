@@ -7,7 +7,6 @@ import type { AuthenticationState, SignalAuthState, TransactionCapabilityOptions
 import type { GroupMetadata } from './GroupMetadata'
 import { type MediaConnInfo } from './Message'
 import type { SignalRepository } from './Signal'
-import type { WASocket } from '../index.js'
 
 export type WAVersion = [number, number, number]
 export type WABrowserDescription = [string, string, string]
