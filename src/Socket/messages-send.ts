@@ -13,41 +13,41 @@ import type {
 } from '../Types'
 import { WAMessageAddressingMode } from '../Types'
 import {
-  aggregateMessageKeysNotFromMe,
-  assertMediaContent,
-  bindWaitForEvent,
-  decryptMediaRetryData,
-  encodeNewsletterMessage,
-  encodeSignedDeviceIdentity,
-  encodeWAMessage,
-  encryptMediaRetryRequest,
-  extractDeviceJids,
-  generateMessageIDV2,
-  generateWAMessage,
-  getStatusCodeForMediaRetry,
-  getUrlFromDirectPath,
-  getWAUploadToServer,
-  MessageRetryManager,
-  normalizeMessageContent,
-  parseAndInjectE2ESessions,
-  unixTimestampSeconds
+	aggregateMessageKeysNotFromMe,
+	assertMediaContent,
+	bindWaitForEvent,
+	decryptMediaRetryData,
+	encodeNewsletterMessage,
+	encodeSignedDeviceIdentity,
+	encodeWAMessage,
+	encryptMediaRetryRequest,
+	extractDeviceJids,
+	generateMessageIDV2,
+	generateWAMessage,
+	getStatusCodeForMediaRetry,
+	getUrlFromDirectPath,
+	getWAUploadToServer,
+	MessageRetryManager,
+	normalizeMessageContent,
+	parseAndInjectE2ESessions,
+	unixTimestampSeconds
 } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
 import { makeKeyedMutex } from '../Utils/make-mutex'
 import {
-  areJidsSameUser,
-  type BinaryNode,
-  type BinaryNodeAttributes,
-  getBinaryNodeChild,
-  getBinaryNodeChildren,
-  isJidGroup,
-  isPnUser,
-  jidDecode,
-  jidEncode,
-  jidNormalizedUser,
-  type JidWithDevice,
-  S_WHATSAPP_NET,
-  transferDevice
+	areJidsSameUser,
+	type BinaryNode,
+	type BinaryNodeAttributes,
+	getBinaryNodeChild,
+	getBinaryNodeChildren,
+	isJidGroup,
+	isPnUser,
+	jidDecode,
+	jidEncode,
+	jidNormalizedUser,
+	type JidWithDevice,
+	S_WHATSAPP_NET,
+	transferDevice
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeNewsletterSocket } from './newsletter'
