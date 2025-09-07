@@ -227,7 +227,7 @@ const processMessage = async (
 						}
 
 						logger?.info({ newAppStateSyncKeyId, newKeys }, 'injecting new app state sync keys')
-					})
+					}, meId)
 
 					ev.emit('creds.update', { myAppStateKeyId: newAppStateSyncKeyId })
 				} else {

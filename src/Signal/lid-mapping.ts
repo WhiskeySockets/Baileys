@@ -47,14 +47,16 @@ export class LIDMappingStore {
 
 		await this.keys.transaction(async () => {
 			for (const [pnUser, lidUser] of Object.entries(pairMap)) {
-				await this.keys.set({
-					'lid-mapping': {
-						[pnUser]: lidUser, // "554396160286" -> "102765716062358"
-						[`${lidUser}_reverse`]: pnUser // "102765716062358_reverse" -> "554396160286"
-					}
-				})
-			}
-		})
+          await this.keys.set({
+            'lid-mapping': {
+              [pnUser]: lidUser, // "554396160286" -> "102765716062358"
+              [`${lidUser}_reverse`]: pnUser // "102765716062358_reverse" -> "554396160286"
+            }
+          })
+      }
+    }, 'lid-mapping')
+    
+		logger.trace(`USER LID mapping stored: PN ${pnUser} → LID ${lidUser}`)
 	}
 
 

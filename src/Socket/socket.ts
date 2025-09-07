@@ -12,7 +12,6 @@ import {
 	NOISE_WA_HEADER,
 	UPLOAD_TIMEOUT
 } from '../Defaults'
-import { cleanupQueues } from '../Signal/Group/queue-job'
 import type { SocketConfig } from '../Types'
 import { DisconnectReason } from '../Types'
 import {
@@ -331,7 +330,7 @@ export const makeSocket = (config: SocketConfig) => {
 				// Update credentials immediately to prevent duplicate IDs on retry
 				ev.emit('creds.update', update)
 				return node // Only return node since update is already used
-			})
+			}, creds?.me?.id || 'upload-pre-keys')
 
 			// Upload to server (outside transaction, can fail without affecting local keys)
 			try {
@@ -453,8 +452,6 @@ export const makeSocket = (config: SocketConfig) => {
 			logger.trace({ trace: error?.stack }, 'connection already closed')
 			return
 		}
-
-		cleanupQueues()
 
 		closed = true
 		logger.info({ trace: error?.stack }, error ? 'connection errored' : 'connection closed')
