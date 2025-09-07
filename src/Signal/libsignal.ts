@@ -13,6 +13,7 @@ import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from '
 import { LIDMappingStore } from './lid-mapping'
 
 export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository {
+
 	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction)
 	const storage = signalStorage(auth, lidMapping)
 	// Simple operation-level deduplication (5 minutes)
@@ -126,6 +127,24 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 		async injectE2ESession({ jid, session }) {
 			const cipher = new libsignal.SessionBuilder(storage, jidToSignalProtocolAddress(jid))
 			await cipher.initOutgoing(session)
+		},
+		async validateSession(jid: string) {
+			try {
+				const addr = jidToSignalProtocolAddress(jid)
+				const session = await storage.loadSession(addr.toString())
+
+				if (!session) {
+					return { exists: false, reason: 'no session' }
+				}
+
+				if (!session.haveOpenSession()) {
+					return { exists: false, reason: 'no open session' }
+				}
+
+				return { exists: true }
+			} catch (error) {
+				return { exists: false, reason: 'validation error' }
+			}
 		},
 		jidToSignalProtocolAddress(jid) {
 			return jidToSignalProtocolAddress(jid).toString()
