@@ -10,6 +10,7 @@ import type {
 	MessageUserReceipt,
 	SocketConfig,
 	WACallEvent,
+	WACallUpdateType,
 	WAMessageKey,
 	WAPatchName
 } from '../Types'
@@ -50,6 +51,7 @@ import {
 	isJidGroup,
 	isJidStatusBroadcast,
 	isJidUser,
+	isLidUser,
 	jidDecode,
 	jidNormalizedUser,
 	S_WHATSAPP_NET
@@ -586,7 +588,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const willSendMessageAgain = (id: string, participant: string) => {
 		const key = `${id}:${participant}`
 		const retryCount = msgRetryCache.get<number>(key) || 0
-		return retryCount < maxMsgRetryCount
+		return retryCount <= maxMsgRetryCount
 	}
 
 	const updateSendMessageAgainCount = (id: string, participant: string) => {
@@ -631,8 +633,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		logger.debug({ participant, sendToAll }, 'forced new session for retry recp')
 
 		for (const [i, msg] of msgs.entries()) {
-			if (msg) {
-				updateSendMessageAgainCount(ids[i]!, participant)
+			if (!ids[i]) continue
+
+			if (msg && willSendMessageAgain(ids[i], participant)) {
+				updateSendMessageAgainCount(ids[i], participant)
 				const msgRelayOpts: MessageRelayOptions = { messageId: ids[i] }
 
 				if (isGroup) {
@@ -724,13 +728,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						// correctly set who is asking for the retry
 						key.participant = key.participant || attrs.from
 						const retryNode = getBinaryNodeChild(node, 'retry')
-						if (willSendMessageAgain(ids[0]!, key.participant!)) {
+						if (ids[0] && key.participant && willSendMessageAgain(ids[0], key.participant!)) {
 							if (key.fromMe) {
 								try {
+									updateSendMessageAgainCount(ids[0], key.participant)
 									logger.debug({ attrs, key }, 'recv retry request')
 									await sendMessagesAgain(key, ids, retryNode!)
-								} catch (error: any) {
-									logger.error({ key, ids, trace: error.stack }, 'error in sending message again')
+								} catch (error: unknown) {
+									logger.error(
+										{ key, ids, trace: error instanceof Error ? error.stack : 'Unknown error' },
+										'error in sending message again'
+									)
 								}
 							} else {
 								logger.info({ attrs, key }, 'recv retry for not fromMe message')
@@ -770,7 +778,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						msg.participant ??= node.attrs.participant
 						msg.messageTimestamp = +node.attrs.t!
 
-						const fullMsg = proto.WebMessageInfo.fromObject(msg)
+						const fullMsg = proto.WebMessageInfo.create(msg as proto.IWebMessageInfo)
 						await upsertMessage(fullMsg, 'append')
 					}
 				})
@@ -831,6 +839,45 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			ev.emit('chats.phoneNumberShare', { lid: node.attrs.from!, jid: node.attrs.sender_pn })
 		}
 
+		if (msg.message?.protocolMessage?.lidMigrationMappingSyncMessage?.encodedMappingPayload) {
+			try {
+				const payload = msg.message.protocolMessage.lidMigrationMappingSyncMessage.encodedMappingPayload
+				const decoded = proto.LIDMigrationMappingSyncPayload.decode(payload)
+
+				logger.debug(
+					{
+						mappingCount: decoded.pnToLidMappings?.length || 0,
+						timestamp: decoded.chatDbMigrationTimestamp
+					},
+					'Received LID migration sync message from server'
+				)
+
+				const lidMapping = signalRepository.getLIDMappingStore()
+				if (decoded.pnToLidMappings && decoded.pnToLidMappings.length > 0) {
+					for (const mapping of decoded.pnToLidMappings) {
+						const pn = `${mapping.pn}@s.whatsapp.net`
+						// Use latestLid if available, otherwise assignedLid (proper LID refresh)
+						const lidValue = mapping.latestLid || mapping.assignedLid
+						const lid = `${lidValue}@lid`
+
+						await lidMapping.storeLIDPNMapping(lid, pn)
+						logger.debug(
+							{
+								pn,
+								lid,
+								assignedLid: mapping.assignedLid,
+								latestLid: mapping.latestLid,
+								usedLatest: !!mapping.latestLid
+							},
+							'Stored server-provided PN-LID mapping'
+						)
+					}
+				}
+			} catch (error) {
+				logger.error({ error }, 'Failed to process LID migration sync message')
+			}
+		}
+
 		try {
 			if (msg.key.participant) {
 				await assertSessions([author || msg.key.participant], false)
@@ -845,10 +892,36 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							return sendMessageAck(node, NACK_REASONS.ParsingError)
 						}
 
+						const errorMessage = msg?.messageStubParameters?.[0] || ''
+						const isPreKeyError = errorMessage.includes('PreKey')
+
+						console.debug(`[handleMessage] Attempting retry request for failed decryption`)
+
+						// Handle both pre-key and normal retries in single mutex
 						retryMutex.mutex(async () => {
-							if (ws.isOpen) {
-								if (getBinaryNodeChild(node, 'unavailable')) {
+							try {
+								if (!ws.isOpen) {
+									logger.debug({ node }, 'Connection closed, skipping retry')
 									return
+								}
+
+								if (getBinaryNodeChild(node, 'unavailable')) {
+									logger.debug('Message unavailable, skipping retry')
+									return
+								}
+
+								// Handle pre-key errors with upload and delay
+								if (isPreKeyError) {
+									logger.info({ error: errorMessage }, 'PreKey error detected, uploading and retrying')
+
+									try {
+										logger.debug('Uploading pre-keys for error recovery')
+										await uploadPreKeys(5)
+										logger.debug('Waiting for server to process new pre-keys')
+										await delay(1000)
+									} catch (uploadErr) {
+										logger.error({ uploadErr }, 'Pre-key upload failed, proceeding with retry anyway')
+									}
 								}
 
 								const encNode = getBinaryNodeChild(node, 'enc')
@@ -856,8 +929,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								if (retryRequestDelayMs) {
 									await delay(retryRequestDelayMs)
 								}
-							} else {
-								logger.debug({ node }, 'connection closed, ignoring retry req')
+							} catch (err) {
+								logger.error({ err, isPreKeyError }, 'Failed to handle retry, attempting basic retry')
+								// Still attempt retry even if pre-key upload failed
+								try {
+									const encNode = getBinaryNodeChild(node, 'enc')
+									await sendRetryRequest(node, !encNode)
+								} catch (retryErr) {
+									logger.error({ retryErr }, 'Failed to send retry after error handling')
+								}
 							}
 						})
 					} else {
@@ -962,15 +1042,34 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleCall = async (node: BinaryNode) => {
+		let status: WACallUpdateType
 		const { attrs } = node
 		const [infoChild] = getAllBinaryNodeChildren(node)
+
 		if (!infoChild) {
 			throw new Boom('Missing call info in call node')
 		}
 
 		const callId = infoChild.attrs['call-id']!
 		const from = infoChild.attrs.from! || infoChild.attrs['call-creator']!
-		const status = getCallStatusFromNode(infoChild)
+		status = getCallStatusFromNode(infoChild)
+
+		if (isLidUser(from) && infoChild.tag === 'relaylatency') {
+			const verify = callOfferCache.get(callId)
+			if (!verify) {
+				status = 'offer'
+				const callLid: WACallEvent = {
+					chatId: attrs.from!,
+					from,
+					id: callId,
+					date: new Date(+attrs.t! * 1000),
+					offline: !!attrs.offline,
+					status
+				}
+				callOfferCache.set(callId, callLid)
+			}
+		}
+
 		const call: WACallEvent = {
 			chatId: attrs.from!,
 			from,
@@ -1188,7 +1287,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								? Buffer.from(plaintextNode.content, 'binary')
 								: Buffer.from(plaintextNode.content as Uint8Array)
 						const messageProto = proto.Message.decode(contentBuf)
-						const fullMessage = proto.WebMessageInfo.fromObject({
+						const fullMessage = proto.WebMessageInfo.create({
 							key: {
 								remoteJid: from,
 								id: child.attrs.message_id || child.attrs.server_id,
@@ -1319,7 +1418,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				msg.message = { call: { callKey: Buffer.from(call.id) } }
 			}
 
-			const protoMsg = proto.WebMessageInfo.fromObject(msg)
+			const protoMsg = proto.WebMessageInfo.create(msg)
 			upsertMessage(protoMsg, call.offline ? 'append' : 'notify')
 		}
 	})
