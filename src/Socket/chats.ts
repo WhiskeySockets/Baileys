@@ -66,7 +66,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		shouldSyncHistoryMessage
 	} = config
 	const sock = makeUSyncSocket(config)
-	const { ev, ws, authState, generateMessageTag, sendNode, query, onUnexpectedError } = sock
+	const { ev, ws, authState, generateMessageTag, sendNode, query, signalRepository, onUnexpectedError } = sock
 
 	let privacySettings: { [_: string]: string } | undefined
 
@@ -232,7 +232,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		const results = await sock.executeUSyncQuery(usyncQuery)
 
 		if (results) {
-			return results.list.filter(a => !!a.contact).map(({ contact, id, lid }) => ({ jid: id, exists: contact, lid }))
+			return results.list.filter(a => !!a.contact).map(({ contact, id, lid }) => ({ jid: id, exists: contact as boolean, lid: lid as string }))
 		}
 	}
 
@@ -1092,6 +1092,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				}
 			})(),
 			processMessage(msg, {
+				signalRepository,
 				shouldProcessHistoryMsg,
 				placeholderResendCache,
 				ev,

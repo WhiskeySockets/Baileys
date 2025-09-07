@@ -2,14 +2,15 @@ import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, WA_DEFAULT_EPHEMERAL } from '../Defaults'
-import type {
-	AnyMessageContent,
-	MediaConnInfo,
-	MessageReceiptType,
-	MessageRelayOptions,
-	MiscMessageGenerationOptions,
-	SocketConfig,
-	WAMessageKey
+import {
+    WAMessageAddressingMode,
+	type AnyMessageContent,
+	type MediaConnInfo,
+	type MessageReceiptType,
+	type MessageRelayOptions,
+	type MiscMessageGenerationOptions,
+	type SocketConfig,
+	type WAMessageKey
 } from '../Types'
 import {
 	aggregateMessageKeysNotFromMe,
@@ -440,11 +441,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				if (!jid.includes('@s.whatsapp.net')) return
 
 				try {
-					const jidDecoded = jidDecode(jid)
-					const deviceId = jidDecoded?.device || 0
-					const lidDecoded = jidDecode(lidForPN)
-					const lidWithDevice = jidEncode(lidDecoded?.user!, 'lid', deviceId)
-
+					const lidWithDevice = transferDevice(jid, lidForPN)
 					await signalRepository.migrateSession(jid, lidWithDevice)
 					logger.debug({ fromJid: jid, toJid: lidWithDevice }, 'Migrated device session to LID')
 
@@ -899,7 +896,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 
 					if (!isStatus) {
-						const groupAddressingMode = groupData?.addressingMode || (isLid ? 'lid' : 'pn')
+						const groupAddressingMode = groupData?.addressingMode || (isLid ? WAMessageAddressingMode.LID : WAMessageAddressingMode.PN)
 						additionalAttributes = {
 							...additionalAttributes,
 							addressing_mode: groupAddressingMode

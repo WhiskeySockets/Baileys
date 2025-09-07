@@ -425,11 +425,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				break
 			case 'devices':
 				const devices = getBinaryNodeChildren(child, 'device')
-				if (areJidsSameUser(child!.attrs.jid, authState.creds.me!.id)) {
-					const deviceJids = devices.map(d => d.attrs.jid)
-					logger.info({ deviceJids }, 'got my own devices')
+				if (areJidsSameUser(child!.attrs.jid, authState.creds.me!.id) || areJidsSameUser(child!.attrs.lid, authState.creds.me!.lid)) {
+					const deviceData = devices.map(d => ({id: d.attrs.jid, lid: d.attrs.lid}))
+					logger.info({ deviceData }, 'my own devices changed')
 				}
-
+				//TODO: drop a new event, add hashes
 				break
 			case 'server_sync':
 				const update = getBinaryNodeChild(node, 'collection')
@@ -904,8 +904,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							// message was sent by us from a different device
 							type = 'sender'
 							// need to specially handle this case
-							if (isJidUser(msg.key.remoteJid!)) {
-								participant = author
+							if (isLidUser(msg.key.remoteJid!) || isLidUser(msg.key.remoteJidAlt!)) {
+								participant = author // TODO: investigate sending receipts to LIDs and not PNs
 							}
 						} else if (!sendActiveReceipts) {
 							type = 'inactive'
