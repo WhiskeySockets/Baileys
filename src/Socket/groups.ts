@@ -1,6 +1,6 @@
 import { proto } from '../../WAProto/index.js'
 import type { GroupMetadata, GroupParticipant, ParticipantAction, SocketConfig, WAMessageKey } from '../Types'
-import { WAMessageStubType } from '../Types'
+import { WAMessageStubType, WAMessageAddressingMode } from '../Types'
 import { generateMessageIDV2, unixTimestampSeconds } from '../Utils'
 import {
 	type BinaryNode,
@@ -305,12 +305,12 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 	let desc: string | undefined
 	let descId: string | undefined
 	let descOwner: string | undefined
-	let descOwnerJid: string | undefined
+	let descOwnerPn: string | undefined
 	let descTime: number | undefined
 	if (descChild) {
 		desc = getBinaryNodeChildString(descChild, 'body')
 		descOwner = descChild.attrs.participant ? jidNormalizedUser(descChild.attrs.participant) : undefined
-		descOwnerJid = descChild.attrs.participant_pn ? jidNormalizedUser(descChild.attrs.participant_pn) : undefined
+		descOwnerPn = descChild.attrs.participant_pn ? jidNormalizedUser(descChild.attrs.participant_pn) : undefined
 		descTime = +descChild.attrs.t!
 		descId = descChild.attrs.id
 	}
@@ -320,20 +320,21 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 	const memberAddMode = getBinaryNodeChildString(group, 'member_add_mode') === 'all_member_add'
 	const metadata: GroupMetadata = {
 		id: groupId!,
-		addressingMode: group.attrs.addressing_mode as 'pn' | 'lid',
+		notify: group.attrs.notify,
+		addressingMode: group.attrs.addressing_mode === "lid" ? WAMessageAddressingMode.LID : WAMessageAddressingMode.PN,
 		subject: group.attrs.subject!,
 		subjectOwner: group.attrs.s_o,
-		subjectOwnerJid: group.attrs.s_o_pn,
+		subjectOwnerPn: group.attrs.s_o_pn,
 		subjectTime: +group.attrs.s_t!,
 		size: group.attrs.size ? +group.attrs.size : getBinaryNodeChildren(group, 'participant').length,
 		creation: +group.attrs.creation!,
 		owner: group.attrs.creator ? jidNormalizedUser(group.attrs.creator) : undefined,
-		ownerJid: group.attrs.creator_pn ? jidNormalizedUser(group.attrs.creator_pn) : undefined,
+		ownerPn: group.attrs.creator_pn ? jidNormalizedUser(group.attrs.creator_pn) : undefined,
 		owner_country_code: group.attrs.creator_country_code,
 		desc,
 		descId,
 		descOwner,
-		descOwnerJid,
+		descOwnerPn,
 		descTime,
 		linkedParent: getBinaryNodeChild(group, 'linked_parent')?.attrs.jid || undefined,
 		restrict: !!getBinaryNodeChild(group, 'locked'),
