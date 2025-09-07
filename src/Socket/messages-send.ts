@@ -39,12 +39,13 @@ import {
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
 	isJidGroup,
-	isJidUser,
+	isPnUser,
 	jidDecode,
 	jidEncode,
 	jidNormalizedUser,
 	type JidWithDevice,
-	S_WHATSAPP_NET
+	S_WHATSAPP_NET,
+    transferDevice
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeGroupsSocket } from './groups'
@@ -141,7 +142,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			node.attrs.t = unixTimestampSeconds().toString()
 		}
 
-		if (type === 'sender' && isJidUser(jid)) {
+		if (type === 'sender' && isPnUser(jid)) {
 			node.attrs.recipient = jid
 			node.attrs.to = participant!
 		} else {

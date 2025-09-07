@@ -50,7 +50,7 @@ import {
 	getBinaryNodeChildString,
 	isJidGroup,
 	isJidStatusBroadcast,
-	isJidUser,
+	isPnUser,
 	isLidUser,
 	jidDecode,
 	jidNormalizedUser,
@@ -276,6 +276,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const handleGroupNotification = (participant: string, child: BinaryNode, msg: Partial<proto.IWebMessageInfo>) => {
 		const participantJid = getBinaryNodeChild(child, 'participant')?.attrs?.jid || participant
+		// TODO: Add participant LID
 		switch (child?.tag) {
 			case 'create':
 				const metadata = extractGroupMetadata(child)

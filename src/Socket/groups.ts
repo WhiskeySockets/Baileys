@@ -7,7 +7,7 @@ import {
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
 	getBinaryNodeChildString,
-	isJidUser,
+	isPnUser,
 	isLidUser,
 	jidEncode,
 	jidNormalizedUser
@@ -345,8 +345,8 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 		participants: getBinaryNodeChildren(group, 'participant').map(({ attrs }) => {
 			return {
 				id: attrs.jid!,
-				jid: isJidUser(attrs.jid) ? attrs.jid : jidNormalizedUser(attrs.phone_number),
-				lid: isLidUser(attrs.jid) ? attrs.jid : attrs.lid,
+				phoneNumber: isLidUser(attrs.jid) && isPnUser(attrs.phoneNumber) ? attrs.phoneNumber : undefined,
+				lid: isPnUser(attrs.jid) && isLidUser(attrs.lid) ? attrs.lid : undefined,
 				admin: (attrs.type || null) as GroupParticipant['admin']
 			}
 		}),

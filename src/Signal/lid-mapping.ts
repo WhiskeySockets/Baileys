@@ -1,8 +1,9 @@
 import type { WASocket } from '..'
 import type { SignalKeyStoreWithTransaction } from '../Types'
 import logger from '../Utils/logger'
-import { isJidUser, isLidUser, jidDecode } from '../WABinary'
+import { isPnUser, isLidUser, jidDecode } from '../WABinary'
 
+//TODO: Caching
 export class LIDMappingStore {
 	private readonly keys: SignalKeyStoreWithTransaction
 	private socket: WASocket
@@ -16,41 +17,52 @@ export class LIDMappingStore {
 	 * Store LID-PN mapping - USER LEVEL
 	 */
 	async storeLIDPNMapping(lid: string, pn: string): Promise<void> {
+		return this.storeLIDPNMappings([{lid, pn}])
+	}
+
+	/**
+	 * Store LID-PN mapping - USER LEVEL
+	 */
+	async storeLIDPNMappings(pairs: { lid: string, pn: string }[]): Promise<void> {
 		// Validate inputs
-		if (!((isLidUser(lid) && isJidUser(pn)) || (isJidUser(lid) && isLidUser(pn)))) {
-			logger.warn(`Invalid LID-PN mapping: ${lid}, ${pn}`)
-			return
+		const pairMap: { [_: string]: string } = {}
+		for (const {lid, pn} of pairs) {
+			if (!((isLidUser(lid) && isPnUser(pn)) || (isPnUser(lid) && isLidUser(pn)))) {
+				logger.warn(`Invalid LID-PN mapping: ${lid}, ${pn}`)
+				continue
+			}
+			const [lidJid, pnJid] = isLidUser(lid) ? [lid, pn] : [pn, lid]
+
+			const lidDecoded = jidDecode(lidJid)
+			const pnDecoded = jidDecode(pnJid)
+
+			if (!lidDecoded || !pnDecoded) return
+
+			const pnUser = pnDecoded.user
+			const lidUser = lidDecoded.user
+			pairMap[pnUser] = lidUser
 		}
 
-		const [lidJid, pnJid] = isLidUser(lid) ? [lid, pn] : [pn, lid]
-
-		const lidDecoded = jidDecode(lidJid)
-		const pnDecoded = jidDecode(pnJid)
-
-		if (!lidDecoded || !pnDecoded) return
-
-		const pnUser = pnDecoded.user
-		const lidUser = lidDecoded.user
-
-		logger.trace(`Storing USER LID mapping: PN ${pnUser} → LID ${lidUser}`)
+		logger.trace(`Storing ${Object.keys(pairMap).length} pn mappings`, pairMap)
 
 		await this.keys.transaction(async () => {
-			await this.keys.set({
-				'lid-mapping': {
-					[pnUser]: lidUser, // "554396160286" -> "102765716062358"
-					[`${lidUser}_reverse`]: pnUser // "102765716062358_reverse" -> "554396160286"
-				}
-			})
+			for (const [pnUser, lidUser] of Object.entries(pairMap)) {
+				await this.keys.set({
+					'lid-mapping': {
+						[pnUser]: lidUser, // "554396160286" -> "102765716062358"
+						[`${lidUser}_reverse`]: pnUser // "102765716062358_reverse" -> "554396160286"
+					}
+				})
+			}
 		})
-
-		logger.trace(`USER LID mapping stored: PN ${pnUser} → LID ${lidUser}`)
 	}
+
 
 	/**
 	 * Get LID for PN - Returns device-specific LID based on user mapping
 	 */
 	async getLIDForPN(pn: string): Promise<string | null> {
-		if (!isJidUser(pn)) return null
+		if (!isPnUser(pn)) return null
 
 		const decoded = jidDecode(pn)
 		if (!decoded) return null
