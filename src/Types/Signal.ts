@@ -74,6 +74,7 @@ export type SignalRepository = {
 		ciphertext: Uint8Array
 	}>
 	injectE2ESession(opts: E2ESessionOpts): Promise<void>
+	validateSession(jid: string): Promise<{ exists: boolean; reason?: string }>
 	jidToSignalProtocolAddress(jid: string): string
 	storeLIDPNMapping(lid: string, pn: string): Promise<void>
 	getLIDMappingStore(): LIDMappingStore

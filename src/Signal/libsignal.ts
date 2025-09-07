@@ -176,6 +176,24 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 				await cipher.initOutgoing(session)
 			}, jid)
 		},
+		async validateSession(jid: string) {
+			try {
+				const addr = jidToSignalProtocolAddress(jid)
+				const session = await storage.loadSession(addr.toString())
+
+				if (!session) {
+					return { exists: false, reason: 'no session' }
+				}
+
+				if (!session.haveOpenSession()) {
+					return { exists: false, reason: 'no open session' }
+				}
+
+				return { exists: true }
+			} catch (error) {
+				return { exists: false, reason: 'validation error' }
+			}
+		},
 		jidToSignalProtocolAddress(jid) {
 			return jidToSignalProtocolAddress(jid).toString()
 		},
