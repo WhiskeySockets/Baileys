@@ -1,6 +1,6 @@
 import { proto } from '../../WAProto/index.js'
 import { makeLibSignalRepository } from '../Signal/libsignal'
-import type { AuthenticationState, MediaType, SocketConfig, WAVersion } from '../Types'
+import type { AuthenticationState, SocketConfig, WAVersion } from '../Types'
 import { Browsers } from '../Utils'
 import logger from '../Utils/logger'
 import defaultVersion from './baileys-version.json' with { type: 'json' }
@@ -104,6 +104,8 @@ export const MEDIA_HKDF_KEY_MAPPING = {
 	ptv: 'Video',
 	'biz-cover-photo': 'Image'
 }
+
+export type MediaType = keyof typeof MEDIA_HKDF_KEY_MAPPING
 
 export const MEDIA_KEYS = Object.keys(MEDIA_PATH_MAP) as MediaType[]
 

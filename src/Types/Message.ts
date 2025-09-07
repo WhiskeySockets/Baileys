@@ -2,7 +2,7 @@ import type { AxiosRequestConfig } from 'axios'
 import type { Readable } from 'stream'
 import type { URL } from 'url'
 import { proto } from '../../WAProto/index.js'
-import { MEDIA_HKDF_KEY_MAPPING } from '../Defaults'
+import type { MediaType } from '../Defaults'
 import type { BinaryNode } from '../WABinary'
 import type { GroupMetadata } from './GroupMetadata'
 import type { CacheStore } from './Socket'
@@ -152,7 +152,6 @@ type RequestPhoneNumber = {
 	requestPhoneNumber: boolean
 }
 
-export type MediaType = keyof typeof MEDIA_HKDF_KEY_MAPPING
 export type AnyMediaMessageContent = (
 	| ({
 			image: WAMediaUpload

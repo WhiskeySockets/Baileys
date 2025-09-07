@@ -4,12 +4,18 @@ import { randomBytes } from 'crypto'
 import { promises as fs } from 'fs'
 import { type Transform } from 'stream'
 import { proto } from '../../WAProto/index.js'
-import { CALL_AUDIO_PREFIX, CALL_VIDEO_PREFIX, MEDIA_KEYS, URL_REGEX, WA_DEFAULT_EPHEMERAL } from '../Defaults'
+import {
+	CALL_AUDIO_PREFIX,
+	CALL_VIDEO_PREFIX,
+	MEDIA_KEYS,
+	type MediaType,
+	URL_REGEX,
+	WA_DEFAULT_EPHEMERAL
+} from '../Defaults'
 import type {
 	AnyMediaMessageContent,
 	AnyMessageContent,
 	DownloadableMessage,
-	MediaType,
 	MessageContentGenerationOptions,
 	MessageGenerationOptions,
 	MessageGenerationOptionsFromContent,
