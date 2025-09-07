@@ -2107,10 +2107,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^16.0.0":
-  version: 16.18.126
-  resolution: "@types/node@npm:16.18.126"
-  checksum: 10c0/5c137eb141d33de32b16ff26047ff6d449432b58d0d25f7cced2040c97727d81fe1099a7581eb336d14a6840f5b09e363bdd43d7a6995e8e81eb47aa51e413fc
+"@types/node@npm:^20.9.0":
+  version: 20.19.13
+  resolution: "@types/node@npm:20.19.13"
+  dependencies:
+    undici-types: "npm:~6.21.0"
+  checksum: 10c0/25fba13d50c4f18ac56a50d4491502e7d095f09e44c17c0c6887aa5e4e6122e961e92fc3b682ed8c053ab87a05ce10f501345d23d96fdfba8002ecce6c8ced51
   languageName: node
   linkType: hard
 
@@ -2439,9 +2441,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@whiskeysockets/eslint-config@github:whiskeysockets/eslint-config":
+"@whiskeysockets/eslint-config@npm:^1.0.0":
   version: 1.0.0
-  resolution: "@whiskeysockets/eslint-config@https://github.com/whiskeysockets/eslint-config.git#commit=299e8389baf62f9aa3034de18ff0d62cc0a5e838"
+  resolution: "@whiskeysockets/eslint-config@npm:1.0.0"
   dependencies:
     "@typescript-eslint/eslint-plugin": "npm:^8.37.0"
     "@typescript-eslint/parser": "npm:^8.37.0"
@@ -2449,7 +2451,7 @@ __metadata:
   peerDependencies:
     eslint: ^9.31.0
     typescript: ">=4"
-  checksum: 10c0/08029c788b43959c7811f9d9ecd24111cf52eb25d555934fb3eaad6350f63468c4c692d358a735a9bc8527be7772d7349e1a583b5513cbe27cff035ec0774aba
+  checksum: 10c0/26fc3670d35889a8117c269eae16efc9865116a71d5a466169f6adeb08ddc0cd7223772a92db020bc010dcaa21cdbecae5ac3db490ca87a629ffd0b612dd5d7b
   languageName: node
   linkType: hard
 
@@ -2845,11 +2847,11 @@ __metadata:
     "@eslint/js": "npm:^9.31.0"
     "@hapi/boom": "npm:^9.1.3"
     "@types/jest": "npm:^30.0.0"
-    "@types/node": "npm:^16.0.0"
+    "@types/node": "npm:^20.9.0"
     "@types/ws": "npm:^8.0.0"
     "@typescript-eslint/eslint-plugin": "npm:^8.32.0"
     "@typescript-eslint/parser": "npm:^8.32.0"
-    "@whiskeysockets/eslint-config": "github:whiskeysockets/eslint-config"
+    "@whiskeysockets/eslint-config": "npm:^1.0.0"
     async-mutex: "npm:^0.5.0"
     axios: "npm:^1.6.0"
     conventional-changelog-cli: "npm:^2.2.2"
@@ -7308,7 +7310,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lru-cache@npm:^10.0.1, lru-cache@npm:^10.2.0":
+"lru-cache@npm:^10.0.1, lru-cache@npm:^10.2.0, lru-cache@npm:^10.4.3":
   version: 10.4.3
   resolution: "lru-cache@npm:10.4.3"
   checksum: 10c0/ebd04fbca961e6c1d6c0af3799adcc966a1babe798f685bb84e6599266599cd95d94630b10262f5424539bc4640107e8a33aa28585374abf561d30d16f4b39fb
@@ -10359,6 +10361,13 @@ __metadata:
   version: 1.13.7
   resolution: "underscore@npm:1.13.7"
   checksum: 10c0/fad2b4aac48847674aaf3c30558f383399d4fdafad6dd02dd60e4e1b8103b52c5a9e5937e0cc05dacfd26d6a0132ed0410ab4258241240757e4a4424507471cd
+  languageName: node
+  linkType: hard
+
+"undici-types@npm:~6.21.0":
+  version: 6.21.0
+  resolution: "undici-types@npm:6.21.0"
+  checksum: 10c0/c01ed51829b10aa72fc3ce64b747f8e74ae9b60eafa19a7b46ef624403508a54c526ffab06a14a26b3120d055e1104d7abe7c9017e83ced038ea5cf52f8d5e04
   languageName: node
   linkType: hard
 

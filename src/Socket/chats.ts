@@ -26,6 +26,7 @@ import type {
 	WAReadReceiptsValue
 } from '../Types'
 import { ALL_WA_PATCH_NAMES } from '../Types'
+import type { QuickReplyAction } from '../Types/Bussines.js'
 import type { LabelActionBody } from '../Types/Label'
 import { SyncState } from '../Types/State'
 import {
@@ -633,6 +634,28 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		return child?.attrs?.url
 	}
 
+	const createCallLink = async (type: 'audio' | 'video', event?: { startTime: number }, timeoutMs?: number) => {
+		const result = await query(
+			{
+				tag: 'call',
+				attrs: {
+					id: generateMessageTag(),
+					to: '@call'
+				},
+				content: [
+					{
+						tag: 'link_create',
+						attrs: { media: type },
+						content: event ? [{ tag: 'event', attrs: { start_time: String(event.startTime) } }] : undefined
+					}
+				]
+			},
+			timeoutMs
+		)
+		const child = getBinaryNodeChild(result, 'link_create')
+		return child?.attrs?.token
+	}
+
 	const sendPresenceUpdate = async (type: WAPresence, toJid?: string) => {
 		const me = authState.creds.me!
 		if (type === 'available' || type === 'unavailable') {
@@ -976,6 +999,30 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	/**
+	 * Add or Edit Quick Reply
+	 */
+	const addOrEditQuickReply = (quickReply: QuickReplyAction) => {
+		return chatModify(
+			{
+				quickReply
+			},
+			''
+		)
+	}
+
+	/**
+	 * Remove Quick Reply
+	 */
+	const removeQuickReply = (timestamp: string) => {
+		return chatModify(
+			{
+				quickReply: { timestamp, deleted: true }
+			},
+			''
+		)
+	}
+
+	/**
 	 * queries need to be fired on connection open
 	 * help ensure parity with WA Web
 	 * */
@@ -1110,7 +1157,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		ev.buffer()
 
 		const willSyncHistory = shouldSyncHistoryMessage(
-			proto.Message.HistorySyncNotification.fromObject({
+			proto.Message.HistorySyncNotification.create({
 				syncType: proto.HistorySync.HistorySyncType.RECENT
 			})
 		)
@@ -1139,6 +1186,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	return {
 		...sock,
+		createCallLink,
 		getBotListV2,
 		processingMutex,
 		fetchPrivacySettings,
@@ -1177,6 +1225,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		removeChatLabel,
 		addMessageLabel,
 		removeMessageLabel,
-		star
+		star,
+		addOrEditQuickReply,
+		removeQuickReply
 	}
 }
