@@ -90,7 +90,7 @@ export class LIDMappingStore {
 
 		if (!lidUser) {
 			logger.trace(`No LID mapping found for PN user ${pnUser}; getting from USync`)
-			const { exists, lid } = (await this.onWhatsAppFunc?.(pn))?.[0]!
+			const { exists, lid } = (await this.onWhatsAppFunc?.(pn))?.[0]! // this function already adds LIDs to mapping
 			if (exists) {
 				lidUser = jidDecode(lid)?.user
 			} else {
@@ -119,6 +119,7 @@ export class LIDMappingStore {
 
 		// Look up reverse user mapping
 		const lidUser = decoded.user
+		// TODO: remove this style and instead load all mappings somehow, and then assign them in the map
 		const stored = await this.keys.get('lid-mapping', [`${lidUser}_reverse`])
 		const pnUser = stored[`${lidUser}_reverse`]
 
