@@ -40,6 +40,7 @@ import {
 	encodeBinaryNode,
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
+	isLidUser,
 	jidEncode,
 	S_WHATSAPP_NET
 } from '../WABinary'
@@ -256,16 +257,28 @@ export const makeSocket = (config: SocketConfig) => {
 	}
 
 	const onWhatsApp = async (...jids: string[]) => {
-		const usyncQuery = new USyncQuery().withContactProtocol().withLIDProtocol()
+		const usyncQuery = new USyncQuery().withLIDProtocol()
 
+		// .withContactProtocol() when dealing with phone
+		// .withId simply with LIDs and WIDs
 		for (const jid of jids) {
-			const phone = `+${jid.replace('+', '').split('@')[0]?.split(':')[0]}`
-			usyncQuery.withUser(new USyncUser().withPhone(phone))
+			if (isLidUser(jid)) {
+				usyncQuery.withUser(new USyncUser().withId(jid)) // intentional
+			} else {
+				const phone = `+${jid.replace('+', '').split('@')[0]?.split(':')[0]}`
+				usyncQuery.withUser(new USyncUser().withPhone(phone))
+			}
 		}
 
 		const results = await executeUSyncQuery(usyncQuery)
 
 		if (results) {
+			if (results.list.filter(a => a.lid).length > 0) {
+				const lidMapping = signalRepository.getLIDMappingStore()
+				const lidOnly = results.list.filter(a => a.lid)
+				await lidMapping.storeLIDPNMappings(lidOnly.map(a => ({ pn: a.id, lid: a.lid as string })))
+			}
+
 			return results.list
 				.filter(a => !!a.contact)
 				.map(({ contact, id, lid }) => ({ jid: id, exists: contact as boolean, lid: lid as string }))
