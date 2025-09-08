@@ -1,53 +1,84 @@
 import type { SignalKeyStoreWithTransaction } from '../Types'
 import logger from '../Utils/logger'
-import { isJidUser, isLidUser, jidDecode } from '../WABinary'
+import { isLidUser, isPnUser, jidDecode } from '../WABinary'
 
+//TODO: Caching
 export class LIDMappingStore {
 	private readonly keys: SignalKeyStoreWithTransaction
+	private onWhatsAppFunc?: (...jids: string[]) => Promise<
+		| {
+				jid: string
+				exists: boolean
+				lid: string
+		  }[]
+		| undefined
+	>
 
-	constructor(keys: SignalKeyStoreWithTransaction) {
+	constructor(
+		keys: SignalKeyStoreWithTransaction,
+		onWhatsAppFunc?: (...jids: string[]) => Promise<
+			| {
+					jid: string
+					exists: boolean
+					lid: string
+			  }[]
+			| undefined
+		>
+	) {
 		this.keys = keys
+		this.onWhatsAppFunc = onWhatsAppFunc // needed to get LID from PN if not found
 	}
 
 	/**
 	 * Store LID-PN mapping - USER LEVEL
 	 */
 	async storeLIDPNMapping(lid: string, pn: string): Promise<void> {
+		return this.storeLIDPNMappings([{ lid, pn }])
+	}
+
+	/**
+	 * Store LID-PN mapping - USER LEVEL
+	 */
+	async storeLIDPNMappings(pairs: { lid: string; pn: string }[]): Promise<void> {
 		// Validate inputs
-		if (!((isLidUser(lid) && isJidUser(pn)) || (isJidUser(lid) && isLidUser(pn)))) {
-			logger.warn(`Invalid LID-PN mapping: ${lid}, ${pn}`)
-			return
+		const pairMap: { [_: string]: string } = {}
+		for (const { lid, pn } of pairs) {
+			if (!((isLidUser(lid) && isPnUser(pn)) || (isPnUser(lid) && isLidUser(pn)))) {
+				logger.warn(`Invalid LID-PN mapping: ${lid}, ${pn}`)
+				continue
+			}
+
+			const [lidJid, pnJid] = isLidUser(lid) ? [lid, pn] : [pn, lid]
+
+			const lidDecoded = jidDecode(lidJid)
+			const pnDecoded = jidDecode(pnJid)
+
+			if (!lidDecoded || !pnDecoded) return
+
+			const pnUser = pnDecoded.user
+			const lidUser = lidDecoded.user
+			pairMap[pnUser] = lidUser
 		}
 
-		const [lidJid, pnJid] = isLidUser(lid) ? [lid, pn] : [pn, lid]
-
-		const lidDecoded = jidDecode(lidJid)
-		const pnDecoded = jidDecode(pnJid)
-
-		if (!lidDecoded || !pnDecoded) return
-
-		const pnUser = pnDecoded.user
-		const lidUser = lidDecoded.user
-
-		logger.trace(`Storing USER LID mapping: PN ${pnUser} → LID ${lidUser}`)
+		logger.trace({ pairMap }, `Storing ${Object.keys(pairMap).length} pn mappings`)
 
 		await this.keys.transaction(async () => {
-			await this.keys.set({
-				'lid-mapping': {
-					[pnUser]: lidUser, // "554396160286" -> "102765716062358"
-					[`${lidUser}_reverse`]: pnUser // "102765716062358_reverse" -> "554396160286"
-				}
-			})
+			for (const [pnUser, lidUser] of Object.entries(pairMap)) {
+				await this.keys.set({
+					'lid-mapping': {
+						[pnUser]: lidUser, // "554396160286" -> "102765716062358"
+						[`${lidUser}_reverse`]: pnUser // "102765716062358_reverse" -> "554396160286"
+					}
+				})
+			}
 		}, 'lid-mapping')
-
-		logger.trace(`USER LID mapping stored: PN ${pnUser} → LID ${lidUser}`)
 	}
 
 	/**
 	 * Get LID for PN - Returns device-specific LID based on user mapping
 	 */
 	async getLIDForPN(pn: string): Promise<string | null> {
-		if (!isJidUser(pn)) return null
+		if (!isPnUser(pn)) return null
 
 		const decoded = jidDecode(pn)
 		if (!decoded) return null
@@ -55,11 +86,16 @@ export class LIDMappingStore {
 		// Look up user-level mapping (whatsmeow approach)
 		const pnUser = decoded.user
 		const stored = await this.keys.get('lid-mapping', [pnUser])
-		const lidUser = stored[pnUser]
+		let lidUser = stored[pnUser]
 
 		if (!lidUser) {
-			logger.trace(`No LID mapping found for PN user ${pnUser}`)
-			return null
+			logger.trace(`No LID mapping found for PN user ${pnUser}; getting from USync`)
+			const { exists, lid } = (await this.onWhatsAppFunc?.(pn))?.[0]!
+			if (exists) {
+				lidUser = jidDecode(lid)?.user
+			} else {
+				return null
+			}
 		}
 
 		if (typeof lidUser !== 'string') return null

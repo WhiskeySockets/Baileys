@@ -3,8 +3,7 @@ import axios, { type AxiosRequestConfig } from 'axios'
 import { createHash, randomBytes } from 'crypto'
 import { platform, release } from 'os'
 import { proto } from '../../WAProto/index.js'
-import version from '../Defaults/baileys-version.json' with { type: 'json' }
-const baileysVersion = version.version
+const baileysVersion = [2, 3000, 1023223821]
 import type {
 	BaileysEventEmitter,
 	BaileysEventMap,

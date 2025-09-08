@@ -50,7 +50,6 @@ import {
 	getBinaryNodeChildString,
 	isJidGroup,
 	isJidStatusBroadcast,
-	isJidUser,
 	isLidUser,
 	jidDecode,
 	jidNormalizedUser,
@@ -549,6 +548,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const handleGroupNotification = (participant: string, child: BinaryNode, msg: Partial<proto.IWebMessageInfo>) => {
 		const participantJid = getBinaryNodeChild(child, 'participant')?.attrs?.jid || participant
+		// TODO: Add participant LID
 		switch (child?.tag) {
 			case 'create':
 				const metadata = extractGroupMetadata(child)
@@ -697,10 +697,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				break
 			case 'devices':
 				const devices = getBinaryNodeChildren(child, 'device')
-				if (areJidsSameUser(child!.attrs.jid, authState.creds.me!.id)) {
-					const deviceJids = devices.map(d => d.attrs.jid)
-					logger.info({ deviceJids }, 'got my own devices')
+				if (
+					areJidsSameUser(child!.attrs.jid, authState.creds.me!.id) ||
+					areJidsSameUser(child!.attrs.lid, authState.creds.me!.lid)
+				) {
+					const deviceData = devices.map(d => ({ id: d.attrs.jid, lid: d.attrs.lid }))
+					logger.info({ deviceData }, 'my own devices changed')
 				}
+
+				//TODO: drop a new event, add hashes
 
 				break
 			case 'server_sync':
@@ -1034,7 +1039,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						// correctly set who is asking for the retry
 						key.participant = key.participant || attrs.from
 						const retryNode = getBinaryNodeChild(node, 'retry')
-						if (ids[0] && key.participant && willSendMessageAgain(ids[0], key.participant!)) {
+						if (ids[0] && key.participant && willSendMessageAgain(ids[0], key.participant)) {
 							if (key.fromMe) {
 								try {
 									updateSendMessageAgainCount(ids[0], key.participant)
@@ -1142,56 +1147,36 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			msg.message?.protocolMessage?.type === proto.Message.ProtocolMessage.Type.SHARE_PHONE_NUMBER &&
 			node.attrs.sender_pn
 		) {
-			ev.emit('chats.phoneNumberShare', { lid: node.attrs.from!, jid: node.attrs.sender_pn })
+			const lid = jidNormalizedUser(node.attrs.from),
+				pn = jidNormalizedUser(node.attrs.sender_pn)
+			ev.emit('lid-mapping.update', { lid, pn })
+			await signalRepository.storeLIDPNMapping(lid, pn)
 		}
 
-		if (msg.key?.remoteJid && msg.key?.id && messageRetryManager) {
-			messageRetryManager.addRecentMessage(msg.key.remoteJid, msg.key.id, msg.message!)
-			logger.debug(
-				{
-					jid: msg.key.remoteJid,
-					id: msg.key.id
-				},
-				'Added message to recent cache for retry receipts'
-			)
-
-			if (msg.message?.protocolMessage?.lidMigrationMappingSyncMessage?.encodedMappingPayload) {
-				try {
-					const payload = msg.message.protocolMessage.lidMigrationMappingSyncMessage.encodedMappingPayload
-					const decoded = proto.LIDMigrationMappingSyncPayload.decode(payload)
-
-					logger.debug(
-						{
-							mappingCount: decoded.pnToLidMappings?.length || 0,
-							timestamp: decoded.chatDbMigrationTimestamp
-						},
-						'Received LID migration sync message from server'
-					)
-
-					const lidMapping = signalRepository.getLIDMappingStore()
-					if (decoded.pnToLidMappings && decoded.pnToLidMappings.length > 0) {
-						for (const mapping of decoded.pnToLidMappings) {
-							const pn = `${mapping.pn}@s.whatsapp.net`
-							// Use latestLid if available, otherwise assignedLid (proper LID refresh)
-							const lidValue = mapping.latestLid || mapping.assignedLid
-							const lid = `${lidValue}@lid`
-
-							await lidMapping.storeLIDPNMapping(lid, pn)
-							logger.debug(
-								{
-									pn,
-									lid,
-									assignedLid: mapping.assignedLid,
-									latestLid: mapping.latestLid,
-									usedLatest: !!mapping.latestLid
-								},
-								'Stored server-provided PN-LID mapping'
-							)
-						}
-					}
-				} catch (error) {
-					logger.error({ error }, 'Failed to process LID migration sync message')
+		const alt = msg.key.participantAlt || msg.key.remoteJidAlt
+		// store new mappings we didn't have before
+		if (!!alt) {
+			const altServer = jidDecode(alt)?.server
+			const lidMapping = signalRepository.getLIDMappingStore()
+			if (altServer === 'lid') {
+				if (!(await lidMapping.getPNForLID(alt))) {
+					await lidMapping.storeLIDPNMapping(alt, msg.key.participant || msg.key.remoteJid!)
 				}
+			} else {
+				if (!(await lidMapping.getLIDForPN(alt))) {
+					await lidMapping.storeLIDPNMapping(msg.key.participant || msg.key.remoteJid!, alt)
+				}
+			}
+
+			if (msg.key?.remoteJid && msg.key?.id && messageRetryManager) {
+				messageRetryManager.addRecentMessage(msg.key.remoteJid, msg.key.id, msg.message!)
+				logger.debug(
+					{
+						jid: msg.key.remoteJid,
+						id: msg.key.id
+					},
+					'Added message to recent cache for retry receipts'
+				)
 			}
 
 			try {
@@ -1263,8 +1248,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								// message was sent by us from a different device
 								type = 'sender'
 								// need to specially handle this case
-								if (isJidUser(msg.key.remoteJid!)) {
-									participant = author
+								if (isLidUser(msg.key.remoteJid!) || isLidUser(msg.key.remoteJidAlt)) {
+									participant = author // TODO: investigate sending receipts to LIDs and not PNs
 								}
 							} else if (!sendActiveReceipts) {
 								type = 'inactive'

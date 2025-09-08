@@ -11,6 +11,7 @@ import type {
 	SocketConfig,
 	WAMessageKey
 } from '../Types'
+import { WAMessageAddressingMode } from '../Types'
 import {
 	aggregateMessageKeysNotFromMe,
 	assertMediaContent,
@@ -40,16 +41,15 @@ import {
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
 	isJidGroup,
-	isJidUser,
+	isPnUser,
 	jidDecode,
 	jidEncode,
 	jidNormalizedUser,
 	type JidWithDevice,
-	S_WHATSAPP_NET
+	S_WHATSAPP_NET,
+	transferDevice
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
-import { makeGroupsSocket } from './groups'
-import type { NewsletterSocket } from './newsletter'
 import { makeNewsletterSocket } from './newsletter'
 
 export const makeMessagesSocket = (config: SocketConfig) => {
@@ -63,7 +63,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		enableRecentMessageCache,
 		maxMsgRetryCount
 	} = config
-	const sock: NewsletterSocket = makeNewsletterSocket(makeGroupsSocket(config))
+	const sock = makeNewsletterSocket(config)
 	const {
 		ev,
 		authState,
@@ -147,7 +147,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			node.attrs.t = unixTimestampSeconds().toString()
 		}
 
-		if (type === 'sender' && isJidUser(jid)) {
+		if (type === 'sender' && isPnUser(jid)) {
 			node.attrs.recipient = jid
 			node.attrs.to = participant!
 		} else {
@@ -445,11 +445,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				if (!jid.includes('@s.whatsapp.net')) return
 
 				try {
-					const jidDecoded = jidDecode(jid)
-					const deviceId = jidDecoded?.device || 0
-					const lidDecoded = jidDecode(lidForPN)
-					const lidWithDevice = jidEncode(lidDecoded?.user!, 'lid', deviceId)
-
+					const lidWithDevice = transferDevice(jid, lidForPN)
 					await signalRepository.migrateSession(jid, lidWithDevice)
 					logger.debug({ fromJid: jid, toJid: lidWithDevice }, 'Migrated device session to LID')
 
@@ -904,7 +900,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 
 					if (!isStatus) {
-						const groupAddressingMode = groupData?.addressingMode || (isLid ? 'lid' : 'pn')
+						const groupAddressingMode =
+							groupData?.addressingMode || (isLid ? WAMessageAddressingMode.LID : WAMessageAddressingMode.PN)
 						additionalAttributes = {
 							...additionalAttributes,
 							addressing_mode: groupAddressingMode

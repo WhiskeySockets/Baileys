@@ -9,7 +9,8 @@ import type {
 	ParticipantAction,
 	RequestJoinAction,
 	RequestJoinMethod,
-	SignalKeyStoreWithTransaction
+	SignalKeyStoreWithTransaction,
+	SignalRepository
 } from '../Types'
 import { WAMessageStubType } from '../Types'
 import { getContentType, normalizeMessageContent } from '../Utils/messages'
@@ -27,6 +28,7 @@ type ProcessMessageContext = {
 	ev: BaileysEventEmitter
 	logger?: ILogger
 	options: AxiosRequestConfig<{}>
+	signalRepository: SignalRepository
 }
 
 const REAL_MSG_STUB_TYPES = new Set([
@@ -145,7 +147,16 @@ export function decryptPollVote(
 
 const processMessage = async (
 	message: proto.IWebMessageInfo,
-	{ shouldProcessHistoryMsg, placeholderResendCache, ev, creds, keyStore, logger, options }: ProcessMessageContext
+	{
+		shouldProcessHistoryMsg,
+		placeholderResendCache,
+		ev,
+		creds,
+		signalRepository,
+		keyStore,
+		logger,
+		options
+	}: ProcessMessageContext
 ) => {
 	const meId = creds.me!.id
 	const { accountSettings } = creds
@@ -292,6 +303,19 @@ const processMessage = async (
 					}
 				])
 				break
+			case proto.Message.ProtocolMessage.Type.LID_MIGRATION_MAPPING_SYNC:
+				const lidMappingStore = signalRepository.getLIDMappingStore()
+				const encodedPayload = protocolMsg.lidMigrationMappingSyncMessage?.encodedMappingPayload!
+				const { pnToLidMappings, chatDbMigrationTimestamp } =
+					proto.LIDMigrationMappingSyncPayload.decode(encodedPayload)
+				logger?.debug({ pnToLidMappings, chatDbMigrationTimestamp }, 'got lid mappings and chat db migration timestamp')
+				const pairs = []
+				for (const { pn, latestLid, assignedLid } of pnToLidMappings) {
+					const lid = latestLid || assignedLid
+					pairs.push({ lid: `${lid}@lid`, pn: `${pn}@s.whatsapp.net` })
+				}
+
+				await lidMappingStore.storeLIDPNMappings(pairs)
 		}
 	} else if (content?.reactionMessage) {
 		const reaction: proto.IReaction = {

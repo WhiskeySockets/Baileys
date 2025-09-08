@@ -137,5 +137,15 @@ export type SocketConfig = {
 	/** cached group metadata, use to prevent redundant requests to WA & speed up msg sending */
 	cachedGroupMetadata: (jid: string) => Promise<GroupMetadata | undefined>
 
-	makeSignalRepository: (auth: SignalAuthState) => SignalRepository
+	makeSignalRepository: (
+		auth: SignalAuthState,
+		onWhatsAppFunc?: (...jids: string[]) => Promise<
+			| {
+					jid: string
+					exists: boolean
+					lid: string
+			  }[]
+			| undefined
+		>
+	) => SignalRepository
 }

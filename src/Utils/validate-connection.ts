@@ -133,6 +133,7 @@ export const configureSuccessfulPairing = (
 
 	const bizName = businessNode?.attrs.name
 	const jid = deviceNode.attrs.jid
+	const lid = deviceNode.attrs.lid
 
 	const { details, hmac, accountType } = proto.ADVSignedDeviceIdentityHMAC.decode(deviceIdentityNode.content as Buffer)
 	const isHostedAccount = accountType !== undefined && accountType === proto.ADVEncryptionType.HOSTED
@@ -154,7 +155,7 @@ export const configureSuccessfulPairing = (
 	const deviceMsg = Buffer.concat([devicePrefix, deviceDetails, signedIdentityKey.public, accountSignatureKey])
 	account.deviceSignature = Curve.sign(signedIdentityKey.private, deviceMsg)
 
-	const identity = createSignalIdentity(jid!, accountSignatureKey)
+	const identity = createSignalIdentity(lid!, accountSignatureKey)
 	const accountEnc = encodeSignedDeviceIdentity(account, false)
 
 	const deviceIdentity = proto.ADVDeviceIdentity.decode(account.details)
@@ -183,7 +184,7 @@ export const configureSuccessfulPairing = (
 
 	const authUpdate: Partial<AuthenticationCreds> = {
 		account,
-		me: { id: jid!, name: bizName },
+		me: { id: jid!, name: bizName, lid },
 		signalIdentities: [...(signalIdentities || []), identity],
 		platform: platformNode?.attrs.name
 	}

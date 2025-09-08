@@ -14,12 +14,10 @@ export type WAMessageContent = proto.IMessage
 export type WAContactMessage = proto.Message.IContactMessage
 export type WAContactsArrayMessage = proto.Message.IContactsArrayMessage
 export type WAMessageKey = proto.IMessageKey & {
-	senderLid?: string
+	remoteJidAlt?: string
+	participantAlt?: string
 	server_id?: string
-	senderPn?: string
-	participantLid?: string
-	participantPn?: string
-	isViewOnce?: boolean
+	isViewOnce?: boolean // TODO: remove out of the message key, place in WebMessageInfo
 }
 export type WATextMessage = proto.Message.IExtendedTextMessage
 export type WAContextInfo = proto.IContextInfo
@@ -38,6 +36,11 @@ export type WAMediaPayloadStream = { stream: Readable }
 export type WAMediaUpload = Buffer | WAMediaPayloadStream | WAMediaPayloadURL
 /** Set of message types that are supported by the library */
 export type MessageType = keyof proto.Message
+
+export enum WAMessageAddressingMode {
+	PN = 'pn',
+	LID = 'lid'
+}
 
 export type MessageWithContextInfo =
 	| 'imageMessage'
