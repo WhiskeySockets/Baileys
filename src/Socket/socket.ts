@@ -87,6 +87,49 @@ export const makeSocket = (config: SocketConfig) => {
 		url.searchParams.append('ED', authState.creds.routingInfo.toString('base64url'))
 	}
 
+	/** ephemeral key pair used to encrypt/decrypt communication. Unique for each connection */
+	const ephemeralKeyPair = Curve.generateKeyPair()
+	/** WA noise protocol wrapper */
+	const noise = makeNoiseHandler({
+		keyPair: ephemeralKeyPair,
+		NOISE_HEADER: NOISE_WA_HEADER,
+		logger,
+		routingInfo: authState?.creds?.routingInfo
+	})
+
+	const ws = new WebSocketClient(url, config)
+
+	ws.connect()
+
+
+	const sendPromise = promisify(ws.send)
+	/** send a raw buffer */
+	const sendRawMessage = async (data: Uint8Array | Buffer) => {
+		if (!ws.isOpen) {
+			throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
+		}
+
+		const bytes = noise.encodeFrame(data)
+		await promiseTimeout<void>(connectTimeoutMs, async (resolve, reject) => {
+			try {
+				await sendPromise.call(ws, bytes)
+				resolve()
+			} catch (error) {
+				reject(error)
+			}
+		})
+	}
+
+	/** send a binary node */
+	const sendNode = (frame: BinaryNode) => {
+		if (logger.level === 'trace') {
+			logger.trace({ xml: binaryNodeToString(frame), msg: 'xml send' })
+		}
+
+		const buff = encodeBinaryNode(frame)
+		return sendRawMessage(buff)
+	}
+
 	/**
 	 * Wait for a message with a certain tag to be received
 	 * @param msgId the message tag to await
@@ -143,11 +186,12 @@ export const makeSocket = (config: SocketConfig) => {
 		const msgId = node.attrs.id
 
 		const result = await promiseTimeout<any>(timeoutMs, async (resolve, reject) => {
-			const result = await waitForMessage(msgId, timeoutMs).catch(reject)
+			const result = waitForMessage(msgId, timeoutMs).catch(reject)
 			sendNode(node)
-				.then(() => resolve(result))
+				.then(async () => resolve(await result))
 				.catch(reject)
 		})
+
 
 		if (result && 'tag' in result) {
 			assertNodeErrorFree(result)
@@ -230,20 +274,7 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const ws = new WebSocketClient(url, config)
-
-	ws.connect()
-
 	const ev = makeEventBuffer(logger)
-	/** ephemeral key pair used to encrypt/decrypt communication. Unique for each connection */
-	const ephemeralKeyPair = Curve.generateKeyPair()
-	/** WA noise protocol wrapper */
-	const noise = makeNoiseHandler({
-		keyPair: ephemeralKeyPair,
-		NOISE_HEADER: NOISE_WA_HEADER,
-		logger,
-		routingInfo: authState?.creds?.routingInfo
-	})
 
 	const { creds } = authState
 	// add transaction capability
@@ -255,34 +286,6 @@ export const makeSocket = (config: SocketConfig) => {
 	let keepAliveReq: NodeJS.Timeout
 	let qrTimer: NodeJS.Timeout
 	let closed = false
-
-	const sendPromise = promisify(ws.send)
-	/** send a raw buffer */
-	const sendRawMessage = async (data: Uint8Array | Buffer) => {
-		if (!ws.isOpen) {
-			throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
-		}
-
-		const bytes = noise.encodeFrame(data)
-		await promiseTimeout<void>(connectTimeoutMs, async (resolve, reject) => {
-			try {
-				await sendPromise.call(ws, bytes)
-				resolve()
-			} catch (error) {
-				reject(error)
-			}
-		})
-	}
-
-	/** send a binary node */
-	const sendNode = (frame: BinaryNode) => {
-		if (logger.level === 'trace') {
-			logger.trace({ xml: binaryNodeToString(frame), msg: 'xml send' })
-		}
-
-		const buff = encodeBinaryNode(frame)
-		return sendRawMessage(buff)
-	}
 
 	/** log & process any unexpected errors */
 	const onUnexpectedError = (err: Error | Boom, msg: string) => {
@@ -409,6 +412,7 @@ export const makeSocket = (config: SocketConfig) => {
 
 			// Upload to server (outside transaction, can fail without affecting local keys)
 			try {
+				console.log("LOG", node)
 				await query(node)
 				logger.info({ count }, 'uploaded pre-keys successfully')
 				lastUploadTime = Date.now()
