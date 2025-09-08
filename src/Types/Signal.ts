@@ -4,7 +4,7 @@ import type { LIDMappingStore } from '../Signal/lid-mapping'
 type DecryptGroupSignalOpts = {
 	group: string
 	authorJid: string
-	msg: Uint8Array
+	msg: Buffer
 }
 
 type ProcessSenderKeyDistributionMessageOpts = {
@@ -15,12 +15,12 @@ type ProcessSenderKeyDistributionMessageOpts = {
 type DecryptSignalProtoOpts = {
 	jid: string
 	type: 'pkmsg' | 'msg'
-	ciphertext: Uint8Array
+	ciphertext: Buffer
 }
 
 type EncryptMessageOpts = {
 	jid: string
-	data: Uint8Array
+	data: Buffer
 }
 
 type EncryptMessageWithWireOpts = {
@@ -37,16 +37,16 @@ type EncryptGroupMessageOpts = {
 
 type PreKey = {
 	keyId: number
-	publicKey: Uint8Array
+	publicKey: Buffer
 }
 
 type SignedPreKey = PreKey & {
-	signature: Uint8Array
+	signature: Buffer
 }
 
 type E2ESession = {
 	registrationId: number
-	identityKey: Uint8Array
+	identityKey: Buffer
 	signedPreKey: SignedPreKey
 	preKey: PreKey
 }
@@ -59,10 +59,10 @@ type E2ESessionOpts = {
 export type SignalRepository = {
 	decryptGroupMessage(opts: DecryptGroupSignalOpts): Promise<Uint8Array>
 	processSenderKeyDistributionMessage(opts: ProcessSenderKeyDistributionMessageOpts): Promise<void>
-	decryptMessage(opts: DecryptSignalProtoOpts): Promise<Uint8Array>
+	decryptMessage(opts: DecryptSignalProtoOpts): Promise<Buffer>
 	encryptMessage(opts: EncryptMessageOpts): Promise<{
 		type: 'pkmsg' | 'msg'
-		ciphertext: Uint8Array
+		ciphertext: Buffer
 	}>
 	encryptMessageWithWire(opts: EncryptMessageWithWireOpts): Promise<{
 		type: 'pkmsg' | 'msg'
