@@ -7,7 +7,23 @@ import open from 'open'
 import fs from 'fs'
 import P from 'pino'
 
-const logger = P({ timestamp: () => `,"time":"${new Date().toJSON()}"` }, P.destination('./wa-logs.txt'))
+const logger = P({
+  level: "trace",
+  transport: {
+    targets: [
+      {
+        target: "pino-pretty", // pretty-print for console
+        options: { colorize: true },
+        level: "trace",
+      },
+      {
+        target: "pino/file", // raw file output
+        options: { destination: './wa-logs.txt' },
+        level: "trace",
+      },
+    ],
+  },
+})
 logger.level = 'trace'
 
 const doReplies = process.argv.includes('--do-reply')
