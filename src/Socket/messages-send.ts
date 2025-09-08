@@ -277,7 +277,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			mgetDevices = await userDevicesCache.mget(toFetch)
 		}
 
-		for (let { jid, user } of jidsWithUser) {
+		for (const { jid, user } of jidsWithUser) {
 			if (useCache) {
 				const devices = mgetDevices?.[user!] || ((await userDevicesCache.get(user!)) as JidWithDevice[])
 				if (devices) {
