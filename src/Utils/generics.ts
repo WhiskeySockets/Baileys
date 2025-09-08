@@ -258,11 +258,7 @@ export const fetchLatestBaileysVersion = async (options: AxiosRequestConfig<{}> 
 		const versionMatch = versionLine!.match(/const version = \[(\d+),\s*(\d+),\s*(\d+)\]/)
 
 		if (versionMatch) {
-			const version = [
-				parseInt(versionMatch[1]!),
-				parseInt(versionMatch[2]!),
-				parseInt(versionMatch[3]!)
-			] as WAVersion
+			const version = [parseInt(versionMatch[1]!), parseInt(versionMatch[2]!), parseInt(versionMatch[3]!)] as WAVersion
 
 			return {
 				version,

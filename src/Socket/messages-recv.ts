@@ -1148,7 +1148,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			node.attrs.sender_pn
 		) {
 			const lid = jidNormalizedUser(node.attrs.from),
-			pn = jidNormalizedUser(node.attrs.sender_pn)
+				pn = jidNormalizedUser(node.attrs.sender_pn)
 			ev.emit('lid-mapping.update', { lid, pn })
 			await signalRepository.storeLIDPNMapping(lid, pn)
 		}

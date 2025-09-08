@@ -101,7 +101,6 @@ export const makeSocket = (config: SocketConfig) => {
 
 	ws.connect()
 
-
 	const sendPromise = promisify(ws.send)
 	/** send a raw buffer */
 	const sendRawMessage = async (data: Uint8Array | Buffer) => {
@@ -191,7 +190,6 @@ export const makeSocket = (config: SocketConfig) => {
 				.then(async () => resolve(await result))
 				.catch(reject)
 		})
-
 
 		if (result && 'tag' in result) {
 			assertNodeErrorFree(result)
@@ -412,7 +410,6 @@ export const makeSocket = (config: SocketConfig) => {
 
 			// Upload to server (outside transaction, can fail without affecting local keys)
 			try {
-				console.log("LOG", node)
 				await query(node)
 				logger.info({ count }, 'uploaded pre-keys successfully')
 				lastUploadTime = Date.now()
