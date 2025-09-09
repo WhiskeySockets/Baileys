@@ -1,0 +1,14 @@
+{
+  "name": "baileys-docker-bot",
+  "version": "1.0.0",
+  "description": "Dockerized minimal Baileys bot example",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^7.0.0-rc.2",
+    "pino": "^9.0.0"
+  }
+}

@@ -1,0 +1,15 @@
+version: "3.9"
+services:
+  bot:
+    build: .
+    image: baileys-bot:latest
+    container_name: baileys-bot
+    environment:
+      - BAILEYS_AUTH_DIR=/app/auth
+      - NODE_ENV=production
+    volumes:
+      - ./auth:/app/auth
+    # Keep stdin/tty open so the QR renders nicely in the terminal
+    stdin_open: true
+    tty: true
+    restart: unless-stopped

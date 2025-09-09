@@ -1,0 +1,10 @@
+node_modules
+npm-debug.log*
+yarn.lock
+pnpm-lock.yaml
+.git
+.gitignore
+Dockerfile
+docker-compose.yml
+# Exclude local auth from build context; it will be mounted by compose
+auth
