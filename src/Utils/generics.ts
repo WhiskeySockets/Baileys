@@ -2,8 +2,7 @@ import { Boom } from '@hapi/boom'
 import { createHash, randomBytes } from 'crypto'
 import { platform, release } from 'os'
 import { proto } from '../../WAProto/index.js'
-import version from '../Defaults/baileys-version.json' with { type: 'json' }
-const baileysVersion = version.version
+const baileysVersion = [2, 3000, 1023223821]
 import type {
 	BaileysEventEmitter,
 	BaileysEventMap,
@@ -69,14 +68,9 @@ export const getKeyAuthor = (key: proto.IMessageKey | undefined | null, meId = '
 
 export const writeRandomPadMax16 = (msg: Uint8Array) => {
 	const pad = randomBytes(1)
+	const padLength = (pad[0]! & 0x0f) + 1
 
-	if (pad[0]) {
-		pad[0] &= 0xf
-	} else {
-		pad[0] = 0xf
-	}
-
-	return Buffer.concat([msg, Buffer.alloc(pad[0], pad[0])])
+	return Buffer.concat([msg, Buffer.alloc(padLength, padLength)])
 }
 
 export const unpadRandomMax16 = (e: Uint8Array | Buffer) => {
@@ -250,7 +244,7 @@ export const bindWaitForConnectionUpdate = (ev: BaileysEventEmitter) => bindWait
  * Use to ensure your WA connection is always on the latest version
  */
 export const fetchLatestBaileysVersion = async (options: RequestInit = {}) => {
-	const URL = 'https://raw.githubusercontent.com/WhiskeySockets/Baileys/master/src/Defaults/baileys-version.json'
+	const URL = 'https://raw.githubusercontent.com/WhiskeySockets/Baileys/master/src/Defaults/index.ts'
 	try {
 		const response = await fetch(URL, {
 			dispatcher: options.dispatcher,
@@ -261,10 +255,21 @@ export const fetchLatestBaileysVersion = async (options: RequestInit = {}) => {
 			throw new Boom(`Failed to fetch latest Baileys version: ${response.statusText}`, { statusCode: response.status })
 		}
 
-		const data = (await response.json()) as { version: WAVersion }
-		return {
-			version: data.version,
-			isLatest: true
+		const text = await response.text()
+		// Extract version from line 7 (const version = [...])
+		const lines = text.split('\n')
+		const versionLine = lines[6] // Line 7 (0-indexed)
+		const versionMatch = versionLine!.match(/const version = \[(\d+),\s*(\d+),\s*(\d+)\]/)
+
+		if (versionMatch) {
+			const version = [parseInt(versionMatch[1]!), parseInt(versionMatch[2]!), parseInt(versionMatch[3]!)] as WAVersion
+
+			return {
+				version,
+				isLatest: true
+			}
+		} else {
+			throw new Error('Could not parse version from Defaults/index.ts')
 		}
 	} catch (error) {
 		return {

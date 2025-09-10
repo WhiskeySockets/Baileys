@@ -69,7 +69,7 @@ export const getUrlInfo = async (
 					return false
 				}
 			},
-			headers: opts.fetchOpts?.headers
+			headers: opts.fetchOpts?.headers as {}
 		})
 		if (info && 'title' in info && info.title) {
 			const [image] = info.images

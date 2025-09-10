@@ -3,7 +3,6 @@ import { inflate } from 'zlib'
 import { proto } from '../../WAProto/index.js'
 import type { Chat, Contact } from '../Types'
 import { WAMessageStubType } from '../Types'
-import { isJidUser } from '../WABinary'
 import { toNumber } from './generics'
 import { normalizeMessageContent } from './messages'
 import { downloadContentFromMessage } from './messages-media'
@@ -41,7 +40,7 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 					id: chat.id,
 					name: chat.name || undefined,
 					lid: chat.lidJid || undefined,
-					jid: isJidUser(chat.id) ? chat.id : undefined
+					phoneNumber: chat.pnJid || undefined
 				})
 
 				const msgs = chat.messages || []

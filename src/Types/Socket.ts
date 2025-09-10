@@ -94,6 +94,12 @@ export type SocketConfig = {
 	 * */
 	generateHighQualityLinkPreview: boolean
 
+	/** Enable automatic session recreation for failed messages */
+	enableAutoSessionRecreation: boolean
+
+	/** Enable recent message caching for retry handling */
+	enableRecentMessageCache: boolean
+
 	/**
 	 * Returns if a jid should be ignored,
 	 * no event for that jid will be triggered.
@@ -130,5 +136,15 @@ export type SocketConfig = {
 	/** cached group metadata, use to prevent redundant requests to WA & speed up msg sending */
 	cachedGroupMetadata: (jid: string) => Promise<GroupMetadata | undefined>
 
-	makeSignalRepository: (auth: SignalAuthState) => SignalRepository
+	makeSignalRepository: (
+		auth: SignalAuthState,
+		onWhatsAppFunc?: (...jids: string[]) => Promise<
+			| {
+					jid: string
+					exists: boolean
+					lid: string
+			  }[]
+			| undefined
+		>
+	) => SignalRepository
 }
