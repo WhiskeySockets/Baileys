@@ -59,8 +59,8 @@ export class SenderKeyState {
 				public:
 					typeof signatureKeyPublic === 'string'
 						? Buffer.from(signatureKeyPublic, 'base64')
-						: Buffer.isBuffer(signatureKeyPublic)
-							? signatureKeyPublic
+						: signatureKeyPublic instanceof Uint8Array
+							? Buffer.from(signatureKeyPublic)
 							: Buffer.alloc(0)
 			}
 
