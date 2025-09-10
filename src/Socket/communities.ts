@@ -1,4 +1,3 @@
-import { proto } from '../../WAProto/index.js'
 import {
 	type GroupMetadata,
 	type GroupParticipant,
@@ -17,6 +16,7 @@ import {
 	jidEncode,
 	jidNormalizedUser
 } from '../WABinary'
+import { proto, type ProtoType } from '../WAProto'
 import { makeBusinessSocket } from './business'
 
 export const makeCommunitiesSocket = (config: SocketConfig) => {
@@ -313,7 +313,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 		 * @param inviteMessage the message to accept
 		 */
 		communityAcceptInviteV4: ev.createBufferedFunction(
-			async (key: string | WAMessageKey, inviteMessage: proto.Message.IGroupInviteMessage) => {
+			async (key: string | WAMessageKey, inviteMessage: ProtoType.Message.IGroupInviteMessage) => {
 				key = typeof key === 'string' ? { remoteJid: key } : key
 				const results = await communityQuery(inviteMessage.groupJid!, 'set', [
 					{

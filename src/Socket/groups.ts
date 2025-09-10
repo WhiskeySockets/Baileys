@@ -1,4 +1,3 @@
-import { proto } from '../../WAProto/index.js'
 import type { GroupMetadata, GroupParticipant, ParticipantAction, SocketConfig, WAMessageKey } from '../Types'
 import { WAMessageAddressingMode, WAMessageStubType } from '../Types'
 import { generateMessageIDV2, unixTimestampSeconds } from '../Utils'
@@ -12,6 +11,7 @@ import {
 	jidEncode,
 	jidNormalizedUser
 } from '../WABinary'
+import { proto, type ProtoType } from '../WAProto'
 import { makeChatsSocket } from './chats'
 
 export const makeGroupsSocket = (config: SocketConfig) => {
@@ -222,7 +222,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 		 * @param inviteMessage the message to accept
 		 */
 		groupAcceptInviteV4: ev.createBufferedFunction(
-			async (key: string | WAMessageKey, inviteMessage: proto.Message.IGroupInviteMessage) => {
+			async (key: string | WAMessageKey, inviteMessage: ProtoType.Message.IGroupInviteMessage) => {
 				key = typeof key === 'string' ? { remoteJid: key } : key
 				const results = await groupQuery(inviteMessage.groupJid!, 'set', [
 					{

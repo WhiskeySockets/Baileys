@@ -1,12 +1,12 @@
 import type { AxiosRequestConfig } from 'axios'
 import type { Agent } from 'https'
 import type { URL } from 'url'
-import { proto } from '../../WAProto/index.js'
 import type { ILogger } from '../Utils/logger'
 import type { AuthenticationState, SignalAuthState, TransactionCapabilityOptions } from './Auth'
 import type { GroupMetadata } from './GroupMetadata'
 import { type MediaConnInfo } from './Message'
 import type { SignalRepository } from './Signal'
+import type { ProtoType } from '../WAProto'
 
 export type WAVersion = [number, number, number]
 export type WABrowserDescription = [string, string, string]
@@ -22,7 +22,7 @@ export type CacheStore = {
 	flushAll(): void
 }
 
-export type PatchedMessageWithRecipientJID = proto.IMessage & { recipientJid?: string }
+export type PatchedMessageWithRecipientJID = ProtoType.IMessage & { recipientJid?: string }
 
 export type SocketConfig = {
 	/** the WS url to connect to WA */
@@ -64,7 +64,7 @@ export type SocketConfig = {
 	/** provide an auth state object to maintain the auth state */
 	auth: AuthenticationState
 	/** manage history processing with this control; by default will sync up everything */
-	shouldSyncHistoryMessage: (msg: proto.Message.IHistorySyncNotification) => boolean
+	shouldSyncHistoryMessage: (msg: ProtoType.Message.IHistorySyncNotification) => boolean
 	/** transaction capability options for SignalKeyStore */
 	transactionOpts: TransactionCapabilityOptions
 	/** marks the client as online whenever the socket successfully connects */
@@ -112,7 +112,7 @@ export type SocketConfig = {
 	 * Optionally patch the message before sending out
 	 * */
 	patchMessageBeforeSending: (
-		msg: proto.IMessage,
+		msg: ProtoType.IMessage,
 		recipientJids?: string[]
 	) =>
 		| Promise<PatchedMessageWithRecipientJID[] | PatchedMessageWithRecipientJID>
@@ -132,7 +132,7 @@ export type SocketConfig = {
 	 * implement this so that messages failed to send
 	 * (solves the "this message can take a while" issue) can be retried
 	 * */
-	getMessage: (key: proto.IMessageKey) => Promise<proto.IMessage | undefined>
+	getMessage: (key: ProtoType.IMessageKey) => Promise<ProtoType.IMessage | undefined>
 
 	/** cached group metadata, use to prevent redundant requests to WA & speed up msg sending */
 	cachedGroupMetadata: (jid: string) => Promise<GroupMetadata | undefined>
@@ -141,10 +141,10 @@ export type SocketConfig = {
 		auth: SignalAuthState,
 		onWhatsAppFunc?: (...jids: string[]) => Promise<
 			| {
-					jid: string
-					exists: boolean
-					lid: string
-			  }[]
+				jid: string
+				exists: boolean
+				lid: string
+			}[]
 			| undefined
 		>
 	) => SignalRepository

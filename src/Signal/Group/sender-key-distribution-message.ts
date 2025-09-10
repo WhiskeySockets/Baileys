@@ -1,4 +1,4 @@
-import { proto } from '../../../WAProto/index.js'
+import { proto } from '../../WAProto'
 import { CiphertextMessage } from './ciphertext-message'
 
 export class SenderKeyDistributionMessage extends CiphertextMessage {

@@ -1,5 +1,5 @@
-import { proto } from '../../WAProto/index.js'
 import type { LIDMappingStore } from '../Signal/lid-mapping'
+import type { ProtoType } from '../WAProto'
 
 type DecryptGroupSignalOpts = {
 	group: string
@@ -8,7 +8,7 @@ type DecryptGroupSignalOpts = {
 }
 
 type ProcessSenderKeyDistributionMessageOpts = {
-	item: proto.Message.ISenderKeyDistributionMessage
+	item: ProtoType.Message.ISenderKeyDistributionMessage
 	authorJid: string
 }
 

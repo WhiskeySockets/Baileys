@@ -1,6 +1,5 @@
 import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
-import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, PROCESSABLE_HISTORY_TYPES } from '../Defaults'
 import type {
 	BotListInfo,
@@ -54,6 +53,8 @@ import {
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeSocket } from './socket.js'
+import { proto, type ProtoType } from '../WAProto'
+
 const MAX_SYNC_ATTEMPTS = 2
 
 export const makeChatsSocket = (config: SocketConfig) => {
@@ -692,12 +693,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			},
 			content: tcToken
 				? [
-						{
-							tag: 'tctoken',
-							attrs: {},
-							content: tcToken
-						}
-					]
+					{
+						tag: 'tctoken',
+						attrs: {},
+						content: tcToken
+					}
+				]
 				: undefined
 		})
 
@@ -744,7 +745,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}
 
 		let initial: LTHashState
-		let encodeResult: { patch: proto.ISyncdPatch; state: LTHashState }
+		let encodeResult: { patch: ProtoType.ISyncdPatch; state: LTHashState }
 
 		await processingMutex.mutex(async () => {
 			await authState.keys.transaction(async () => {
@@ -890,7 +891,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	/**
 	 * Add or Edit Contact
 	 */
-	const addOrEditContact = (jid: string, contact: proto.SyncActionValue.IContactAction) => {
+	const addOrEditContact = (jid: string, contact: ProtoType.SyncActionValue.IContactAction) => {
 		return chatModify(
 			{
 				contact
@@ -1019,15 +1020,15 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		ev.emit('messages.upsert', { messages: [msg], type })
 
 		if (!!msg.pushName) {
-			let jid = msg.key.fromMe ? authState.creds.me!.id : msg.key.participant || msg.key.remoteJid
+			let jid = msg.key?.fromMe ? authState.creds.me!.id : msg?.key?.participant || msg.key?.remoteJid
 			jid = jidNormalizedUser(jid!)
 
-			if (!msg.key.fromMe) {
+			if (!msg.key?.fromMe) {
 				ev.emit('contacts.update', [{ id: jid, notify: msg.pushName, verifiedName: msg.verifiedBizName! }])
 			}
 
 			// update our pushname too
-			if (msg.key.fromMe && msg.pushName && authState.creds.me?.name !== msg.pushName) {
+			if (msg.key?.fromMe && msg.pushName && authState.creds.me?.name !== msg.pushName) {
 				ev.emit('creds.update', { me: { ...authState.creds.me!, name: msg.pushName } })
 			}
 		}

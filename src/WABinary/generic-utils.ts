@@ -1,8 +1,7 @@
 import { Boom } from '@hapi/boom'
-import { proto } from '../../WAProto/index.js'
 import { type BinaryNode } from './types'
+import { proto, type ProtoType } from '../WAProto'
 
-// some extra useful utilities
 
 export const getBinaryNodeChildren = (node: BinaryNode | undefined, childTag: string) => {
 	if (Array.isArray(node?.content)) {
@@ -74,7 +73,7 @@ export const reduceBinaryNodeToDictionary = (node: BinaryNode, tag: string) => {
 }
 
 export const getBinaryNodeMessages = ({ content }: BinaryNode) => {
-	const msgs: proto.WebMessageInfo[] = []
+	const msgs: ProtoType.WebMessageInfo[] = []
 	if (Array.isArray(content)) {
 		for (const item of content) {
 			if (item.tag === 'message') {

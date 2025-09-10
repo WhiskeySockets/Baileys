@@ -1,6 +1,4 @@
-/* @ts-ignore */
-import * as libsignal from 'libsignal'
-/* @ts-ignore */
+import * as  libsignal from '@raphaelvserafim/libsignal'
 import { LRUCache } from 'lru-cache'
 import type { SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
 import type { SignalRepository } from '../Types/Signal'
@@ -16,10 +14,10 @@ export function makeLibSignalRepository(
 	auth: SignalAuthState,
 	onWhatsAppFunc?: (...jids: string[]) => Promise<
 		| {
-				jid: string
-				exists: boolean
-				lid: string
-		  }[]
+			jid: string
+			exists: boolean
+			lid: string
+		}[]
 		| undefined
 	>
 ): SignalRepository {
@@ -94,10 +92,10 @@ export function makeLibSignalRepository(
 				let result: Buffer
 				switch (type) {
 					case 'pkmsg':
-						result = await session.decryptPreKeyWhisperMessage(ciphertext)
+						result = await session.decryptPreKeyWhisperMessage(Buffer.from(ciphertext))
 						break
 					case 'msg':
-						result = await session.decryptWhisperMessage(ciphertext)
+						result = await session.decryptWhisperMessage(Buffer.from(ciphertext))
 						break
 				}
 
@@ -150,9 +148,9 @@ export function makeLibSignalRepository(
 
 			// Use transaction to ensure atomicity
 			return parsedKeys.transaction(async () => {
-				const { type: sigType, body } = await cipher.encrypt(data)
+				const { type: sigType, body } = await cipher.encrypt(Buffer.from(data))
 				const type = sigType === 3 ? 'pkmsg' : 'msg'
-				return { type, ciphertext: Buffer.from(body, 'binary') }
+				return { type, ciphertext: Buffer.from(body) }
 			}, jid)
 		},
 		async encryptGroupMessage({ group, meId, data }) {

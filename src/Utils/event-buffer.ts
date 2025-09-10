@@ -1,5 +1,4 @@
 import EventEmitter from 'events'
-import { proto } from '../../WAProto/index.js'
 import type {
 	BaileysEvent,
 	BaileysEventEmitter,
@@ -15,6 +14,7 @@ import { trimUndefined } from './generics'
 import type { ILogger } from './logger'
 import { updateMessageWithReaction, updateMessageWithReceipt } from './messages'
 import { isRealMessage, shouldIncrementChatUnread } from './process-message'
+import type { ProtoType } from '../WAProto'
 
 const BUFFERABLE_EVENT = [
 	'messaging-history.set',
@@ -241,7 +241,11 @@ function append<E extends BufferableEvent>(
 	switch (event) {
 		case 'messaging-history.set':
 			for (const chat of eventData.chats as Chat[]) {
-				const existingChat = data.historySets.chats[chat.id]
+				if (!chat?.id) {
+					console.warn('chat without id in history set')
+					continue
+				}
+				const existingChat = data.historySets.chats[chat?.id]
 				if (existingChat) {
 					existingChat.endOfHistoryTransferType = chat.endOfHistoryTransferType
 				}
@@ -286,6 +290,10 @@ function append<E extends BufferableEvent>(
 			break
 		case 'chats.upsert':
 			for (const chat of eventData as Chat[]) {
+				if (!chat?.id) {
+					console.warn('chat without id in history set')
+					continue
+				}
 				let upsert = data.chatUpserts[chat.id]
 				if (!upsert) {
 					upsert = data.historySets.chats[chat.id]
@@ -522,6 +530,10 @@ function append<E extends BufferableEvent>(
 
 	function absorbingChatUpdate(existing: Chat) {
 		const chatId = existing.id
+		if (!chatId) {
+			console.warn('chat without id in chat update')
+			return
+		}
 		const update = data.chatUpdates[chatId]
 		if (update) {
 			const conditionMatches = update.conditional ? update.conditional(data) : true
@@ -657,4 +669,4 @@ function concatChats<C extends Partial<Chat>>(a: C, b: Partial<Chat>) {
 	return Object.assign(a, b)
 }
 
-const stringifyMessageKey = (key: proto.IMessageKey) => `${key.remoteJid},${key.id},${key.fromMe ? '1' : '0'}`
+const stringifyMessageKey = (key: ProtoType.IMessageKey) => `${key.remoteJid},${key.id},${key.fromMe ? '1' : '0'}`

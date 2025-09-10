@@ -1,5 +1,4 @@
 import { Boom } from '@hapi/boom'
-import { proto } from '../../WAProto/index.js'
 import type { SignalRepository, WAMessage, WAMessageKey } from '../Types'
 import {
 	areJidsSameUser,
@@ -15,6 +14,7 @@ import {
 } from '../WABinary'
 import { unpadRandomMax16 } from './generics'
 import type { ILogger } from './logger'
+import { proto, type ProtoType } from '../WAProto'
 
 const getDecryptionJid = async (sender: string, repository: SignalRepository): Promise<string> => {
 	if (!sender.includes('@s.whatsapp.net')) {
@@ -272,12 +272,11 @@ export const decryptMessageNode = (
 								throw new Error(`Unknown e2e type: ${e2eType}`)
 						}
 
-						let msg: proto.IMessage = proto.Message.decode(
+						let msg: ProtoType.IMessage = proto.Message.decode(
 							e2eType !== 'plaintext' ? unpadRandomMax16(msgBuffer) : msgBuffer
 						)
 						msg = msg.deviceSentMessage?.message || msg
 						if (msg.senderKeyDistributionMessage) {
-							//eslint-disable-next-line max-depth
 							try {
 								await repository.processSenderKeyDistributionMessage({
 									authorJid: author,

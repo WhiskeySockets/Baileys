@@ -1,6 +1,5 @@
 import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
-import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import type {
 	AnyMessageContent,
@@ -9,6 +8,7 @@ import type {
 	MessageRelayOptions,
 	MiscMessageGenerationOptions,
 	SocketConfig,
+	WAMessage,
 	WAMessageKey
 } from '../Types'
 import { WAMessageAddressingMode } from '../Types'
@@ -51,6 +51,7 @@ import {
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeNewsletterSocket } from './newsletter'
+import { proto, type ProtoType } from '../WAProto'
 
 export const makeMessagesSocket = (config: SocketConfig) => {
 	const {
@@ -583,14 +584,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	}
 
 	const sendPeerDataOperationMessage = async (
-		pdoMessage: proto.Message.IPeerDataOperationRequestMessage
+		pdoMessage: ProtoType.Message.IPeerDataOperationRequestMessage
 	): Promise<string> => {
 		//TODO: for later, abstract the logic to send a Peer Message instead of just PDO - useful for App State Key Resync with phone
 		if (!authState.creds.me?.id) {
 			throw new Boom('Not authenticated')
 		}
 
-		const protocolMessage: proto.IMessage = {
+		const protocolMessage: ProtoType.IMessage = {
 			protocolMessage: {
 				peerDataOperationRequestMessage: pdoMessage,
 				type: proto.Message.ProtocolMessage.Type.PEER_DATA_OPERATION_REQUEST_MESSAGE
@@ -612,9 +613,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	const createParticipantNodes = async (
 		jids: string[],
-		message: proto.IMessage,
+		message: ProtoType.IMessage,
 		extraAttrs?: BinaryNode['attrs'],
-		dsmMessage?: proto.IMessage
+		dsmMessage?: ProtoType.IMessage
 	) => {
 		let patched = await patchMessageBeforeSending(message, jids)
 		if (!Array.isArray(patched)) {
@@ -627,7 +628,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const meLid = authState.creds.me?.lid
 		const meLidUser = meLid ? jidDecode(meLid)?.user : null
 
-		const devicesByUser = new Map<string, Array<{ recipientJid: string; patchedMessage: proto.IMessage }>>()
+		const devicesByUser = new Map<string, Array<{ recipientJid: string; patchedMessage: ProtoType.IMessage }>>()
 
 		for (const patchedMessageWithJid of patched) {
 			const { recipientJid: wireJid, ...patchedMessage } = patchedMessageWithJid
@@ -764,7 +765,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	const relayMessage = async (
 		jid: string,
-		message: proto.IMessage,
+		message: ProtoType.IMessage,
 		{
 			messageId: msgId,
 			participant,
@@ -811,7 +812,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const binaryNodeContent: BinaryNode[] = []
 		const devices: DeviceWithWireJid[] = []
 
-		const meMsg: proto.IMessage = {
+		const meMsg: ProtoType.IMessage = {
 			deviceSentMessage: {
 				destinationJid,
 				message
@@ -846,7 +847,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			if (isNewsletter) {
 				// Patch message if needed, then encode as plaintext
 				const patched = patchMessageBeforeSending ? await patchMessageBeforeSending(message, []) : message
-				const bytes = encodeNewsletterMessage(patched as proto.IMessage)
+				const bytes = encodeNewsletterMessage(patched as ProtoType.IMessage)
 				binaryNodeContent.push({
 					tag: 'plaintext',
 					attrs: {},
@@ -948,7 +949,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				if (senderKeyJids.length) {
 					logger.debug({ senderKeyJids }, 'sending new sender key')
 
-					const senderKeyMsg: proto.IMessage = {
+					const senderKeyMsg: ProtoType.IMessage = {
 						senderKeyDistributionMessage: {
 							axolotlSenderKeyDistributionMessage: senderKeyDistributionMessage,
 							groupId: destinationJid
@@ -1105,7 +1106,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			if (shouldIncludeDeviceIdentity) {
-				;(stanza.content as BinaryNode[]).push({
+				; (stanza.content as BinaryNode[]).push({
 					tag: 'device-identity',
 					attrs: {},
 					content: encodeSignedDeviceIdentity(authState.creds.account!, true)
@@ -1115,10 +1116,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			if (additionalNodes && additionalNodes.length > 0) {
-				;(stanza.content as BinaryNode[]).push(...additionalNodes)
+				; (stanza.content as BinaryNode[]).push(...additionalNodes)
 			}
 
 			logger.debug({ msgId }, `sending message to ${participants.length} devices`)
+
+			//surprise comes here :)
 
 			await sendNode(stanza)
 
@@ -1131,7 +1134,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return msgId
 	}
 
-	const getMessageType = (message: proto.IMessage) => {
+	const getMessageType = (message: ProtoType.IMessage) => {
 		if (message.pollCreationMessage || message.pollCreationMessageV2 || message.pollCreationMessageV3) {
 			return 'poll'
 		}
@@ -1143,7 +1146,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return 'text'
 	}
 
-	const getMediaType = (message: proto.IMessage) => {
+	const getMediaType = (message: ProtoType.IMessage) => {
 		if (message.imageMessage) {
 			return 'image'
 		} else if (message.videoMessage) {
@@ -1224,17 +1227,20 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		createParticipantNodes,
 		getUSyncDevices,
 		messageRetryManager,
-		updateMediaMessage: async (message: proto.IWebMessageInfo) => {
+		updateMediaMessage: async (message: ProtoType.IWebMessageInfo) => {
 			const content = assertMediaContent(message.message)
 			const mediaKey = content.mediaKey!
 			const meId = authState.creds.me!.id
-			const node = await encryptMediaRetryRequest(message.key, mediaKey, meId)
+			if (!message?.key) {
+				throw new Boom('Message key is missing', { statusCode: 400 })
+			}
+			const node = await encryptMediaRetryRequest(message?.key, mediaKey, meId)
 
 			let error: Error | undefined = undefined
 			await Promise.all([
 				sendNode(node),
 				waitForMsgMediaUpdate(async update => {
-					const result = update.find(c => c.key.id === message.key.id)
+					const result = update.find(c => c.key.id === message.key?.id)
 					if (result) {
 						if (result.error) {
 							error = result.error
@@ -1352,7 +1358,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 
 				await relayMessage(jid, fullMsg.message!, {
-					messageId: fullMsg.key.id!,
+					messageId: fullMsg.key?.id!,
 					useCachedGroupMetadata: options.useCachedGroupMetadata,
 					additionalAttributes,
 					statusJidList: options.statusJidList,
@@ -1360,7 +1366,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				})
 				if (config.emitOwnEvents) {
 					process.nextTick(() => {
-						processingMutex.mutex(() => upsertMessage(fullMsg, 'append'))
+						processingMutex.mutex(() => upsertMessage(fullMsg as WAMessage, 'append'))
 					})
 				}
 

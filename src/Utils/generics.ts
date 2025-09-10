@@ -2,8 +2,9 @@ import { Boom } from '@hapi/boom'
 import axios, { type AxiosRequestConfig } from 'axios'
 import { createHash, randomBytes } from 'crypto'
 import { platform, release } from 'os'
-import { proto } from '../../WAProto/index.js'
+
 const baileysVersion = [2, 3000, 1023223821]
+
 import type {
 	BaileysEventEmitter,
 	BaileysEventMap,
@@ -14,6 +15,7 @@ import type {
 } from '../Types'
 import { DisconnectReason } from '../Types'
 import { type BinaryNode, getAllBinaryNodeChildren, jidDecode } from '../WABinary'
+import { proto, type ProtoType } from '../WAProto'
 
 const PLATFORM_MAP = {
 	aix: 'AIX',
@@ -39,12 +41,11 @@ export const Browsers: BrowsersMap = {
 }
 
 export const getPlatformId = (browser: string) => {
-	const platformType = proto.DeviceProps.PlatformType[browser.toUpperCase() as any]
+	const platformType = proto.DeviceProps.PlatformType[browser.toUpperCase() as keyof typeof proto.DeviceProps.PlatformType]
 	return platformType ? platformType.toString() : '1' //chrome
 }
 
 export const BufferJSON = {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	replacer: (k: any, value: any) => {
 		if (Buffer.isBuffer(value) || value instanceof Uint8Array || value?.type === 'Buffer') {
 			return { type: 'Buffer', data: Buffer.from(value?.data || value).toString('base64') }
@@ -52,8 +53,6 @@ export const BufferJSON = {
 
 		return value
 	},
-
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	reviver: (_: any, value: any) => {
 		if (typeof value === 'object' && !!value && (value.buffer === true || value.type === 'Buffer')) {
 			const val = value.data || value.value
@@ -64,7 +63,7 @@ export const BufferJSON = {
 	}
 }
 
-export const getKeyAuthor = (key: proto.IMessageKey | undefined | null, meId = 'me') =>
+export const getKeyAuthor = (key: ProtoType.IMessageKey | undefined | null, meId = 'me') =>
 	(key?.fromMe ? meId : key?.participant || key?.remoteJid) || ''
 
 export const writeRandomPadMax16 = (msg: Uint8Array) => {
@@ -88,7 +87,7 @@ export const unpadRandomMax16 = (e: Uint8Array | Buffer) => {
 	return new Uint8Array(t.buffer, t.byteOffset, t.length - r)
 }
 
-export const encodeWAMessage = (message: proto.IMessage) => writeRandomPadMax16(proto.Message.encode(message).finish())
+export const encodeWAMessage = (message: ProtoType.IMessage) => writeRandomPadMax16(proto.Message.encode(message).finish())
 
 export const generateRegistrationId = (): number => {
 	return Uint16Array.from(randomBytes(2))[0]! & 16383
@@ -321,7 +320,7 @@ export const generateMdTagPrefix = () => {
 	return `${bytes.readUInt16BE()}.${bytes.readUInt16BE(2)}-`
 }
 
-const STATUS_MAP: { [_: string]: proto.WebMessageInfo.Status } = {
+const STATUS_MAP: { [_: string]: ProtoType.WebMessageInfo.Status } = {
 	sender: proto.WebMessageInfo.Status.SERVER_ACK,
 	played: proto.WebMessageInfo.Status.PLAYED,
 	read: proto.WebMessageInfo.Status.READ,
@@ -457,6 +456,6 @@ export function bytesToCrockford(buffer: Buffer): string {
 	return crockford.join('')
 }
 
-export function encodeNewsletterMessage(message: proto.IMessage): Uint8Array {
+export function encodeNewsletterMessage(message: ProtoType.IMessage): Uint8Array {
 	return proto.Message.encode(message).finish()
 }

@@ -1,33 +1,32 @@
 import type { AxiosRequestConfig } from 'axios'
 import type { Readable } from 'stream'
 import type { URL } from 'url'
-import { proto } from '../../WAProto/index.js'
 import type { MediaType } from '../Defaults'
 import type { BinaryNode } from '../WABinary'
 import type { GroupMetadata } from './GroupMetadata'
 import type { CacheStore } from './Socket'
+import { proto, type ProtoType } from '../WAProto'
 
 // export the WAMessage Prototypes
-export { proto as WAProto }
-export type WAMessage = proto.IWebMessageInfo & { key: WAMessageKey }
-export type WAMessageContent = proto.IMessage
-export type WAContactMessage = proto.Message.IContactMessage
-export type WAContactsArrayMessage = proto.Message.IContactsArrayMessage
-export type WAMessageKey = proto.IMessageKey & {
+export type WAMessage = ProtoType.IWebMessageInfo & { key: WAMessageKey }
+export type WAMessageContent = ProtoType.IMessage
+export type WAContactMessage = ProtoType.Message.IContactMessage
+export type WAContactsArrayMessage = ProtoType.Message.IContactsArrayMessage
+export type WAMessageKey = ProtoType.IMessageKey & {
 	remoteJidAlt?: string
 	participantAlt?: string
 	server_id?: string
 	isViewOnce?: boolean // TODO: remove out of the message key, place in WebMessageInfo
 }
-export type WATextMessage = proto.Message.IExtendedTextMessage
-export type WAContextInfo = proto.IContextInfo
-export type WALocationMessage = proto.Message.ILocationMessage
+export type WATextMessage = ProtoType.Message.IExtendedTextMessage
+export type WAContextInfo = ProtoType.IContextInfo
+export type WALocationMessage = ProtoType.Message.ILocationMessage
 export type WAGenericMediaMessage =
-	| proto.Message.IVideoMessage
-	| proto.Message.IImageMessage
-	| proto.Message.IAudioMessage
-	| proto.Message.IDocumentMessage
-	| proto.Message.IStickerMessage
+	| ProtoType.Message.IVideoMessage
+	| ProtoType.Message.IImageMessage
+	| ProtoType.Message.IAudioMessage
+	| ProtoType.Message.IDocumentMessage
+	| ProtoType.Message.IStickerMessage
 export const WAMessageStubType = proto.WebMessageInfo.StubType
 export const WAMessageStatus = proto.WebMessageInfo.Status
 import type { ILogger } from '../Utils/logger'
@@ -35,7 +34,7 @@ export type WAMediaPayloadURL = { url: URL | string }
 export type WAMediaPayloadStream = { stream: Readable }
 export type WAMediaUpload = Buffer | WAMediaPayloadStream | WAMediaPayloadURL
 /** Set of message types that are supported by the library */
-export type MessageType = keyof proto.Message
+export type MessageType = keyof ProtoType.Message
 
 export enum WAMessageAddressingMode {
 	PN = 'pn',
@@ -100,7 +99,7 @@ export interface WAUrlInfo {
 	title: string
 	description?: string
 	jpegThumbnail?: Buffer
-	highQualityThumbnail?: proto.Message.IImageMessage
+	highQualityThumbnail?: ProtoType.Message.IImageMessage
 	originalThumbnailUrl?: string
 }
 
@@ -111,7 +110,7 @@ type Mentionable = {
 }
 type Contextable = {
 	/** add contextInfo to the message */
-	contextInfo?: proto.IContextInfo
+	contextInfo?: ProtoType.IContextInfo
 }
 type ViewOnce = {
 	viewOnce?: boolean
@@ -157,39 +156,39 @@ type RequestPhoneNumber = {
 
 export type AnyMediaMessageContent = (
 	| ({
-			image: WAMediaUpload
-			caption?: string
-			jpegThumbnail?: string
-	  } & Mentionable &
-			Contextable &
-			WithDimensions)
+		image: WAMediaUpload
+		caption?: string
+		jpegThumbnail?: string
+	} & Mentionable &
+		Contextable &
+		WithDimensions)
 	| ({
-			video: WAMediaUpload
-			caption?: string
-			gifPlayback?: boolean
-			jpegThumbnail?: string
-			/** if set to true, will send as a `video note` */
-			ptv?: boolean
-	  } & Mentionable &
-			Contextable &
-			WithDimensions)
+		video: WAMediaUpload
+		caption?: string
+		gifPlayback?: boolean
+		jpegThumbnail?: string
+		/** if set to true, will send as a `video note` */
+		ptv?: boolean
+	} & Mentionable &
+		Contextable &
+		WithDimensions)
 	| {
-			audio: WAMediaUpload
-			/** if set to true, will send as a `voice note` */
-			ptt?: boolean
-			/** optionally tell the duration of the audio */
-			seconds?: number
-	  }
+		audio: WAMediaUpload
+		/** if set to true, will send as a `voice note` */
+		ptt?: boolean
+		/** optionally tell the duration of the audio */
+		seconds?: number
+	}
 	| ({
-			sticker: WAMediaUpload
-			isAnimated?: boolean
-	  } & WithDimensions)
+		sticker: WAMediaUpload
+		isAnimated?: boolean
+	} & WithDimensions)
 	| ({
-			document: WAMediaUpload
-			mimetype: string
-			fileName?: string
-			caption?: string
-	  } & Contextable)
+		document: WAMediaUpload
+		mimetype: string
+		fileName?: string
+		caption?: string
+	} & Contextable)
 ) & { mimetype?: string } & Editable
 
 export type ButtonReplyInfo = {
@@ -206,58 +205,58 @@ export type GroupInviteInfo = {
 	subject: string
 }
 
-export type WASendableProduct = Omit<proto.Message.ProductMessage.IProductSnapshot, 'productImage'> & {
+export type WASendableProduct = Omit<ProtoType.Message.ProductMessage.IProductSnapshot, 'productImage'> & {
 	productImage: WAMediaUpload
 }
 
 export type AnyRegularMessageContent = (
 	| ({
-			text: string
-			linkPreview?: WAUrlInfo | null
-	  } & Mentionable &
-			Contextable &
-			Editable)
+		text: string
+		linkPreview?: WAUrlInfo | null
+	} & Mentionable &
+		Contextable &
+		Editable)
 	| AnyMediaMessageContent
 	| { event: EventMessageOptions }
 	| ({
-			poll: PollMessageOptions
-	  } & Mentionable &
-			Contextable &
-			Editable)
+		poll: PollMessageOptions
+	} & Mentionable &
+		Contextable &
+		Editable)
 	| {
-			contacts: {
-				displayName?: string
-				contacts: proto.Message.IContactMessage[]
-			}
-	  }
+		contacts: {
+			displayName?: string
+			contacts: ProtoType.Message.IContactMessage[]
+		}
+	}
 	| {
-			location: WALocationMessage
-	  }
-	| { react: proto.Message.IReactionMessage }
+		location: WALocationMessage
+	}
+	| { react: ProtoType.Message.IReactionMessage }
 	| {
-			buttonReply: ButtonReplyInfo
-			type: 'template' | 'plain'
-	  }
+		buttonReply: ButtonReplyInfo
+		type: 'template' | 'plain'
+	}
 	| {
-			groupInvite: GroupInviteInfo
-	  }
+		groupInvite: GroupInviteInfo
+	}
 	| {
-			listReply: Omit<proto.Message.IListResponseMessage, 'contextInfo'>
-	  }
+		listReply: Omit<ProtoType.Message.IListResponseMessage, 'contextInfo'>
+	}
 	| {
-			pin: WAMessageKey
-			type: proto.PinInChat.Type
-			/**
-			 * 24 hours, 7 days, 30 days
-			 */
-			time?: 86400 | 604800 | 2592000
-	  }
+		pin: WAMessageKey
+		type: ProtoType.PinInChat.Type
+		/**
+		 * 24 hours, 7 days, 30 days
+		 */
+		time?: 86400 | 604800 | 2592000
+	}
 	| {
-			product: WASendableProduct
-			businessOwnerJid?: string
-			body?: string
-			footer?: string
-	  }
+		product: WASendableProduct
+		businessOwnerJid?: string
+		body?: string
+		footer?: string
+	}
 	| SharePhoneNumber
 	| RequestPhoneNumber
 ) &
@@ -266,16 +265,22 @@ export type AnyRegularMessageContent = (
 export type AnyMessageContent =
 	| AnyRegularMessageContent
 	| {
-			forward: WAMessage
-			force?: boolean
-	  }
+		forward: WAMessage
+		force?: boolean
+	}
 	| {
-			/** Delete your message or anyone's message in a group (admin required) */
-			delete: WAMessageKey
-	  }
+		/** Delete your message or anyone's message in a group (admin required) */
+		delete: WAMessageKey
+	}
 	| {
-			disappearingMessagesInChat: boolean | number
-	  }
+		disappearingMessagesInChat: boolean | number
+	} | {
+		interactiveMessage: ProtoType.Message.IInteractiveMessage
+	} | {
+		templateButtons: ProtoType.IHydratedTemplateButton[]
+	} | {
+		buttons: ProtoType.Message.IButtonsMessage[]
+	}
 
 export type GroupMetadataParticipants = Pick<GroupMetadata, 'participants'>
 
@@ -355,13 +360,13 @@ export type MessageGenerationOptions = MessageContentGenerationOptions & Message
  */
 export type MessageUpsertType = 'append' | 'notify'
 
-export type MessageUserReceipt = proto.IUserReceipt
+export type MessageUserReceipt = ProtoType.IUserReceipt
 
-export type WAMessageUpdate = { update: Partial<WAMessage>; key: proto.IMessageKey }
+export type WAMessageUpdate = { update: Partial<WAMessage>; key: ProtoType.IMessageKey }
 
 export type WAMessageCursor = { before: WAMessageKey | undefined } | { after: WAMessageKey | undefined }
 
-export type MessageUserReceiptUpdate = { key: proto.IMessageKey; receipt: MessageUserReceipt }
+export type MessageUserReceiptUpdate = { key: ProtoType.IMessageKey; receipt: MessageUserReceipt }
 
 export type MediaDecryptionKeyInfo = {
 	iv: Buffer
@@ -369,4 +374,4 @@ export type MediaDecryptionKeyInfo = {
 	macKey?: Buffer
 }
 
-export type MinimalMessage = Pick<proto.IWebMessageInfo, 'key' | 'messageTimestamp'>
+export type MinimalMessage = Pick<ProtoType.IWebMessageInfo, 'key' | 'messageTimestamp'>

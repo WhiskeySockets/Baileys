@@ -1,33 +1,32 @@
 import type { AxiosRequestConfig } from 'axios'
 import { promisify } from 'util'
 import { inflate } from 'zlib'
-import { proto } from '../../WAProto/index.js'
 import type { Chat, Contact } from '../Types'
 import { WAMessageStubType } from '../Types'
 import { toNumber } from './generics'
 import { normalizeMessageContent } from './messages'
 import { downloadContentFromMessage } from './messages-media'
+import { proto, type ProtoType } from '../WAProto'
 
 const inflatePromise = promisify(inflate)
 
-export const downloadHistory = async (msg: proto.Message.IHistorySyncNotification, options: AxiosRequestConfig<{}>) => {
+export const downloadHistory = async (msg: ProtoType.Message.IHistorySyncNotification, options: AxiosRequestConfig<{}>) => {
 	const stream = await downloadContentFromMessage(msg, 'md-msg-hist', { options })
 	const bufferArray: Buffer[] = []
 	for await (const chunk of stream) {
 		bufferArray.push(chunk)
 	}
 
-	let buffer = Buffer.concat(bufferArray)
+	let buffer: Buffer = Buffer.concat(bufferArray)
 
-	// decompress buffer
 	buffer = await inflatePromise(buffer)
 
 	const syncData = proto.HistorySync.decode(buffer)
 	return syncData
 }
 
-export const processHistoryMessage = (item: proto.IHistorySync) => {
-	const messages: proto.IWebMessageInfo[] = []
+export const processHistoryMessage = (item: ProtoType.IHistorySync) => {
+	const messages: ProtoType.IWebMessageInfo[] = []
 	const contacts: Contact[] = []
 	const chats: Chat[] = []
 
@@ -38,7 +37,7 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 		case proto.HistorySync.HistorySyncType.ON_DEMAND:
 			for (const chat of item.conversations! as Chat[]) {
 				contacts.push({
-					id: chat.id,
+					id: chat.id!,
 					name: chat.name || undefined,
 					lid: chat.lidJid || undefined,
 					phoneNumber: chat.pnJid || undefined
@@ -56,7 +55,7 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 						chat.messages = [{ message }]
 					}
 
-					if (!message.key.fromMe && !chat.lastMessageRecvTimestamp) {
+					if (!message?.key?.fromMe && !chat.lastMessageRecvTimestamp) {
 						chat.lastMessageRecvTimestamp = toNumber(message.messageTimestamp)
 					}
 
@@ -66,7 +65,7 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 						message.messageStubParameters?.[0]
 					) {
 						contacts.push({
-							id: message.key.participant || message.key.remoteJid!,
+							id: message.key?.participant || message.key?.remoteJid!,
 							verifiedName: message.messageStubParameters?.[0]
 						})
 					}
@@ -94,14 +93,14 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 }
 
 export const downloadAndProcessHistorySyncNotification = async (
-	msg: proto.Message.IHistorySyncNotification,
+	msg: ProtoType.Message.IHistorySyncNotification,
 	options: AxiosRequestConfig<{}>
 ) => {
 	const historyMsg = await downloadHistory(msg, options)
 	return processHistoryMessage(historyMsg)
 }
 
-export const getHistoryMsg = (message: proto.IMessage) => {
+export const getHistoryMsg = (message: ProtoType.IMessage) => {
 	const normalizedContent = !!message ? normalizeMessageContent(message) : undefined
 	const anyHistoryMsg = normalizedContent?.protocolMessage?.historySyncNotification
 

@@ -1,14 +1,14 @@
 import { Boom } from '@hapi/boom'
 import { createHash } from 'crypto'
-import { proto } from '../../WAProto/index.js'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import type { AuthenticationCreds, SignalCreds, SocketConfig } from '../Types'
 import { type BinaryNode, getBinaryNodeChild, jidDecode, S_WHATSAPP_NET } from '../WABinary'
 import { Curve, hmacSign } from './crypto'
 import { encodeBigEndian } from './generics'
 import { createSignalIdentity } from './signal'
+import { proto, type ProtoType } from '../WAProto'
 
-const getUserAgent = (config: SocketConfig): proto.ClientPayload.IUserAgent => {
+const getUserAgent = (config: SocketConfig): ProtoType.ClientPayload.IUserAgent => {
 	return {
 		appVersion: {
 			primary: config.version[0],
@@ -32,7 +32,7 @@ const PLATFORM_MAP = {
 	Windows: proto.ClientPayload.WebInfo.WebSubPlatform.WIN32
 }
 
-const getWebInfo = (config: SocketConfig): proto.ClientPayload.IWebInfo => {
+const getWebInfo = (config: SocketConfig): ProtoType.ClientPayload.IWebInfo => {
 	let webSubPlatform = proto.ClientPayload.WebInfo.WebSubPlatform.WEB_BROWSER
 	if (config.syncFullHistory && PLATFORM_MAP[config.browser[0] as keyof typeof PLATFORM_MAP]) {
 		webSubPlatform = PLATFORM_MAP[config.browser[0] as keyof typeof PLATFORM_MAP]
@@ -42,7 +42,7 @@ const getWebInfo = (config: SocketConfig): proto.ClientPayload.IWebInfo => {
 }
 
 const getClientPayload = (config: SocketConfig) => {
-	const payload: proto.IClientPayload = {
+	const payload: ProtoType.IClientPayload = {
 		connectType: proto.ClientPayload.ConnectType.WIFI_UNKNOWN,
 		connectReason: proto.ClientPayload.ConnectReason.USER_ACTIVATED,
 		userAgent: getUserAgent(config)
@@ -53,9 +53,9 @@ const getClientPayload = (config: SocketConfig) => {
 	return payload
 }
 
-export const generateLoginNode = (userJid: string, config: SocketConfig): proto.IClientPayload => {
+export const generateLoginNode = (userJid: string, config: SocketConfig): ProtoType.IClientPayload => {
 	const { user, device } = jidDecode(userJid)!
-	const payload: proto.IClientPayload = {
+	const payload: ProtoType.IClientPayload = {
 		...getClientPayload(config),
 		passive: false,
 		pull: true,
@@ -65,7 +65,7 @@ export const generateLoginNode = (userJid: string, config: SocketConfig): proto.
 	return proto.ClientPayload.create(payload)
 }
 
-const getPlatformType = (platform: string): proto.DeviceProps.PlatformType => {
+const getPlatformType = (platform: string): ProtoType.DeviceProps.PlatformType => {
 	const platformType = platform.toUpperCase()
 	return (
 		proto.DeviceProps.PlatformType[platformType as keyof typeof proto.DeviceProps.PlatformType] ||
@@ -83,7 +83,7 @@ export const generateRegistrationNode = (
 		.update(config.version.join('.')) // join as string
 		.digest()
 
-	const companion: proto.IDeviceProps = {
+	const companion: ProtoType.IDeviceProps = {
 		os: config.browser[0],
 		platformType: getPlatformType(config.browser[1]),
 		requireFullSync: config.syncFullHistory
@@ -91,7 +91,7 @@ export const generateRegistrationNode = (
 
 	const companionProto = proto.DeviceProps.encode(companion).finish()
 
-	const registerPayload: proto.IClientPayload = {
+	const registerPayload: ProtoType.IClientPayload = {
 		...getClientPayload(config),
 		passive: false,
 		pull: false,
@@ -195,7 +195,7 @@ export const configureSuccessfulPairing = (
 	}
 }
 
-export const encodeSignedDeviceIdentity = (account: proto.IADVSignedDeviceIdentity, includeSignatureKey: boolean) => {
+export const encodeSignedDeviceIdentity = (account: ProtoType.IADVSignedDeviceIdentity, includeSignatureKey: boolean) => {
 	account = { ...account }
 	// set to null if we are not to include the signature key
 	// or if we are including the signature key but it is empty

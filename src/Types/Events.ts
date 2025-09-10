@@ -1,5 +1,4 @@
 import type { Boom } from '@hapi/boom'
-import { proto } from '../../WAProto/index.js'
 import type { AuthenticationCreds } from './Auth'
 import type { WACallEvent } from './Call'
 import type { Chat, ChatUpdate, PresenceData } from './Chat'
@@ -9,6 +8,7 @@ import type { Label } from './Label'
 import type { LabelAssociation } from './LabelAssociation'
 import type { MessageUpsertType, MessageUserReceiptUpdate, WAMessage, WAMessageKey, WAMessageUpdate } from './Message'
 import type { ConnectionState } from './State'
+import type { ProtoType } from '../WAProto'
 
 // TODO: refactor this mess
 export type BaileysEventMap = {
@@ -23,7 +23,7 @@ export type BaileysEventMap = {
 		messages: WAMessage[]
 		isLatest?: boolean
 		progress?: number | null
-		syncType?: proto.HistorySync.HistorySyncType
+		syncType?: ProtoType.HistorySync.HistorySyncType
 		peerDataRequestSessionId?: string | null
 	}
 	/** upsert chats */
@@ -49,7 +49,7 @@ export type BaileysEventMap = {
 	 *  */
 	'messages.upsert': { messages: WAMessage[]; type: MessageUpsertType; requestId?: string }
 	/** message was reacted to. If reaction was removed -- then "reaction.text" will be falsey */
-	'messages.reaction': { key: WAMessageKey; reaction: proto.IReaction }[]
+	'messages.reaction': { key: WAMessageKey; reaction: ProtoType.IReaction }[]
 
 	'message-receipt.update': MessageUserReceiptUpdate[]
 
@@ -92,7 +92,7 @@ export type BufferedEventData = {
 		empty: boolean
 		isLatest: boolean
 		progress?: number | null
-		syncType?: proto.HistorySync.HistorySyncType
+		syncType?: ProtoType.HistorySync.HistorySyncType
 		peerDataRequestSessionId?: string
 	}
 	chatUpserts: { [jid: string]: Chat }
@@ -103,8 +103,8 @@ export type BufferedEventData = {
 	messageUpserts: { [key: string]: { type: MessageUpsertType; message: WAMessage } }
 	messageUpdates: { [key: string]: WAMessageUpdate }
 	messageDeletes: { [key: string]: WAMessageKey }
-	messageReactions: { [key: string]: { key: WAMessageKey; reactions: proto.IReaction[] } }
-	messageReceipts: { [key: string]: { key: WAMessageKey; userReceipt: proto.IUserReceipt[] } }
+	messageReactions: { [key: string]: { key: WAMessageKey; reactions: ProtoType.IReaction[] } }
+	messageReceipts: { [key: string]: { key: WAMessageKey; userReceipt: ProtoType.IUserReceipt[] } }
 	groupUpdates: { [jid: string]: Partial<GroupMetadata> }
 }
 

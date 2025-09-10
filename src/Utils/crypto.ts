@@ -1,11 +1,8 @@
-import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto'
-/* @ts-ignore */
-import * as libsignal from 'libsignal'
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, subtle } from 'crypto'
+import * as  libsignal from '@raphaelvserafim/libsignal'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import type { KeyPair } from '../Types'
 
-// insure browser & node compatibility
-const { subtle } = globalThis.crypto
 
 /** prefix version byte to the pub keys, required for some curve crypto functions */
 export const generateSignalPubKey = (pubKey: Uint8Array | Buffer) =>
@@ -158,7 +155,7 @@ export async function derivePairingCodeKey(pairingCode: string, salt: Buffer): P
 	// Convert inputs to formats Web Crypto API can work with
 	const encoder = new TextEncoder()
 	const pairingCodeBuffer = encoder.encode(pairingCode)
-	const saltBuffer = salt instanceof Uint8Array ? salt : new Uint8Array(salt)
+	const saltBuffer: Uint8Array = salt instanceof Uint8Array ? salt : new Uint8Array(salt)
 
 	// Import the pairing code as key material
 	const keyMaterial = await subtle.importKey('raw', pairingCodeBuffer, { name: 'PBKDF2' }, false, ['deriveBits'])
@@ -168,7 +165,7 @@ export async function derivePairingCodeKey(pairingCode: string, salt: Buffer): P
 	const derivedBits = await subtle.deriveBits(
 		{
 			name: 'PBKDF2',
-			salt: saltBuffer,
+			salt: saltBuffer as BufferSource,
 			iterations: 2 << 16,
 			hash: 'SHA-256'
 		},

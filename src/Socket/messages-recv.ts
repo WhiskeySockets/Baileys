@@ -2,7 +2,6 @@ import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
 import Long from 'long'
-import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import type {
 	MessageReceiptType,
@@ -11,6 +10,7 @@ import type {
 	SocketConfig,
 	WACallEvent,
 	WACallUpdateType,
+	WAMessage,
 	WAMessageKey,
 	WAPatchName
 } from '../Types'
@@ -57,6 +57,7 @@ import {
 } from '../WABinary'
 import { extractGroupMetadata } from './groups'
 import { makeMessagesSocket } from './messages-send'
+import { proto, type ProtoType } from '../WAProto'
 
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const { logger, retryRequestDelayMs, maxMsgRetryCount, getMessage, shouldIgnoreJid, enableAutoSessionRecreation } =
@@ -115,7 +116,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			throw new Boom('Not authenticated')
 		}
 
-		const pdoMessage: proto.Message.IPeerDataOperationRequestMessage = {
+		const pdoMessage: ProtoType.Message.IPeerDataOperationRequestMessage = {
 			historySyncOnDemandRequest: {
 				chatJid: oldestMsgKey.remoteJid,
 				oldestMsgFromMe: oldestMsgKey.fromMe,
@@ -295,7 +296,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								? Buffer.from(plaintextNode.content, 'binary')
 								: Buffer.from(plaintextNode.content as Uint8Array)
 						const messageProto = proto.Message.decode(contentBuf)
-						const fullMessage = proto.WebMessageInfo.create({
+						const fullMessage: ProtoType.WebMessageInfo = proto.WebMessageInfo.create({
 							key: {
 								remoteJid: from,
 								id: child.attrs.message_id || child.attrs.server_id,
@@ -304,7 +305,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							message: messageProto,
 							messageTimestamp: +child.attrs.t!
 						})
-						await upsertMessage(fullMessage, 'append')
+						await upsertMessage(fullMessage as WAMessage, 'append')
 						logger.info('Processed plaintext newsletter message')
 					} catch (error) {
 						logger.error({ error }, 'Failed to decode plaintext newsletter message')
@@ -546,7 +547,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const handleGroupNotification = (participant: string, child: BinaryNode, msg: Partial<proto.IWebMessageInfo>) => {
+	const handleGroupNotification = (participant: string, child: BinaryNode, msg: Partial<ProtoType.IWebMessageInfo>) => {
 		const participantJid = getBinaryNodeChild(child, 'participant')?.attrs?.jid || participant
 		// TODO: Add participant LID
 		switch (child?.tag) {
@@ -658,7 +659,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const processNotification = async (node: BinaryNode) => {
-		const result: Partial<proto.IWebMessageInfo> = {}
+		const result: Partial<ProtoType.IWebMessageInfo> = {}
 		const [child] = getAllBinaryNodeChildren(node)
 		const nodeType = node.attrs.type
 		const from = jidNormalizedUser(node.attrs.from)
@@ -874,16 +875,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		msgRetryCache.set(key, newValue)
 	}
 
-	const sendMessagesAgain = async (key: proto.IMessageKey, ids: string[], retryNode: BinaryNode) => {
+	const sendMessagesAgain = async (key: ProtoType.IMessageKey, ids: string[], retryNode: BinaryNode) => {
 		const remoteJid = key.remoteJid!
 		const participant = key.participant || remoteJid
 
 		const retryCount = +retryNode.attrs.count! || 1
 
 		// Try to get messages from cache first, then fallback to getMessage
-		const msgs: (proto.IMessage | undefined)[] = []
+		const msgs: (ProtoType.IMessage | undefined)[] = []
 		for (const id of ids) {
-			let msg: proto.IMessage | undefined
+			let msg: ProtoType.IMessage | undefined
 
 			// Try to get from retry cache first if enabled
 			if (messageRetryManager) {
@@ -980,7 +981,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const remoteJid = !isNodeFromMe || isJidGroup(attrs.from) ? attrs.from : attrs.recipient
 		const fromMe = !attrs.recipient || ((attrs.type === 'retry' || attrs.type === 'sender') && isNodeFromMe)
 
-		const key: proto.IMessageKey = {
+		const key: ProtoType.IMessageKey = {
 			remoteJid,
 			id: '',
 			fromMe,
@@ -1089,8 +1090,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						msg.participant ??= node.attrs.participant
 						msg.messageTimestamp = +node.attrs.t!
 
-						const fullMsg = proto.WebMessageInfo.create(msg as proto.IWebMessageInfo)
-						await upsertMessage(fullMsg, 'append')
+						const fullMsg = proto.WebMessageInfo.create(msg as ProtoType.IWebMessageInfo)
+						await upsertMessage(fullMsg as WAMessage, 'append')
 					}
 				})
 			])
@@ -1483,7 +1484,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		// missed call + group call notification message generation
 		if (call.status === 'timeout' || (call.status === 'offer' && call.isGroup)) {
-			const msg: proto.IWebMessageInfo = {
+			const msg: ProtoType.IWebMessageInfo = {
 				key: {
 					remoteJid: call.chatId,
 					id: call.id,
@@ -1504,7 +1505,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}
 
 			const protoMsg = proto.WebMessageInfo.create(msg)
-			upsertMessage(protoMsg, call.offline ? 'append' : 'notify')
+			upsertMessage(protoMsg as WAMessage, call.offline ? 'append' : 'notify')
 		}
 	})
 

@@ -1,5 +1,4 @@
-/* @ts-ignore */
-import { decrypt, encrypt } from 'libsignal/src/crypto'
+import * as  libsignal from '@raphaelvserafim/libsignal'
 import { SenderKeyMessage } from './sender-key-message'
 import { SenderKeyName } from './sender-key-name'
 import { SenderKeyRecord } from './sender-key-record'
@@ -102,7 +101,7 @@ export class GroupCipher {
 
 	private async getPlainText(iv: Uint8Array, key: Uint8Array, ciphertext: Uint8Array): Promise<Uint8Array> {
 		try {
-			return decrypt(key, ciphertext, iv)
+			return libsignal.crypto.decrypt(key, ciphertext, iv)
 		} catch (e) {
 			throw new Error('InvalidMessageException')
 		}
@@ -117,7 +116,7 @@ export class GroupCipher {
 			const ivBuffer = typeof iv === 'string' ? Buffer.from(iv, 'base64') : iv
 			const keyBuffer = typeof key === 'string' ? Buffer.from(key, 'base64') : key
 			const plaintextBuffer = typeof plaintext === 'string' ? Buffer.from(plaintext) : plaintext
-			return encrypt(keyBuffer, plaintextBuffer, ivBuffer)
+			return libsignal.crypto.encrypt(keyBuffer, plaintextBuffer, ivBuffer)
 		} catch (e) {
 			throw new Error('InvalidMessageException')
 		}

@@ -1,4 +1,4 @@
-import type { proto } from '../../WAProto/index.js'
+import type { ProtoType } from '../WAProto/'
 import type { AccountSettings } from './Auth'
 import type { QuickReplyAction } from './Bussines.js'
 import type { BufferedEventData } from './Events'
@@ -44,19 +44,19 @@ export type BotListInfo = {
 }
 
 export type ChatMutation = {
-	syncAction: proto.ISyncActionData
+	syncAction: ProtoType.ISyncActionData
 	index: string[]
 }
 
 export type WAPatchCreate = {
-	syncAction: proto.ISyncActionValue
+	syncAction: ProtoType.ISyncActionValue
 	index: string[]
 	type: WAPatchName
 	apiVersion: number
-	operation: proto.SyncdMutation.SyncdOperation
+	operation: ProtoType.SyncdMutation.SyncdOperation
 }
 
-export type Chat = proto.IConversation & {
+export type Chat = ProtoType.IConversation & {
 	/** unix timestamp of when the last message was received in the chat */
 	lastMessageRecvTimestamp?: number
 }
@@ -82,39 +82,39 @@ export type ChatUpdate = Partial<
  * the last messages in a chat, sorted reverse-chronologically. That is, the latest message should be first in the chat
  * for MD modifications, the last message in the array (i.e. the earlist message) must be the last message recv in the chat
  * */
-export type LastMessageList = MinimalMessage[] | proto.SyncActionValue.ISyncActionMessageRange
+export type LastMessageList = MinimalMessage[] | ProtoType.SyncActionValue.ISyncActionMessageRange
 
 export type ChatModification =
 	| {
-			archive: boolean
-			lastMessages: LastMessageList
-	  }
+		archive: boolean
+		lastMessages: LastMessageList
+	}
 	| { pushNameSetting: string }
 	| { pin: boolean }
 	| {
-			/** mute for duration, or provide timestamp of mute to remove*/
-			mute: number | null
-	  }
+		/** mute for duration, or provide timestamp of mute to remove*/
+		mute: number | null
+	}
 	| {
-			clear: boolean
-			lastMessages: LastMessageList
-	  }
+		clear: boolean
+		lastMessages: LastMessageList
+	}
 	| {
-			deleteForMe: { deleteMedia: boolean; key: WAMessageKey; timestamp: number }
-	  }
+		deleteForMe: { deleteMedia: boolean; key: WAMessageKey; timestamp: number }
+	}
 	| {
-			star: {
-				messages: { id: string; fromMe?: boolean }[]
-				star: boolean
-			}
-	  }
+		star: {
+			messages: { id: string; fromMe?: boolean }[]
+			star: boolean
+		}
+	}
 	| {
-			markRead: boolean
-			lastMessages: LastMessageList
-	  }
+		markRead: boolean
+		lastMessages: LastMessageList
+	}
 	| { delete: true; lastMessages: LastMessageList }
-	| { contact: proto.SyncActionValue.IContactAction | null }
-	| { disableLinkPreviews: proto.SyncActionValue.IPrivacySettingDisableLinkPreviewsAction }
+	| { contact: ProtoType.SyncActionValue.IContactAction | null }
+	| { disableLinkPreviews: ProtoType.SyncActionValue.IPrivacySettingDisableLinkPreviewsAction }
 	// Label
 	| { addLabel: LabelActionBody }
 	// Label assosiation
