@@ -1,4 +1,5 @@
 import type { AxiosRequestConfig } from 'axios'
+import { Buffer } from 'node:buffer'
 import type { WAMediaUploadFunction, WAUrlInfo } from '../Types'
 import type { ILogger } from './logger'
 import { prepareWAMessageMedia } from './messages'

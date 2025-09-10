@@ -1,9 +1,10 @@
 import { Boom } from '@hapi/boom'
 import axios, { type AxiosRequestConfig } from 'axios'
-import { createHash, randomBytes } from 'crypto'
-import { platform, release } from 'os'
+import { createHash, randomBytes } from 'node:crypto'
+import { platform, release } from 'node:os'
 import { proto } from '../../WAProto/index.js'
 const baileysVersion = [2, 3000, 1023223821]
+import { Buffer } from 'node:buffer'
 import type {
 	BaileysEventEmitter,
 	BaileysEventMap,

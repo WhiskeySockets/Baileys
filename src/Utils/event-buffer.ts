@@ -1,4 +1,4 @@
-import EventEmitter from 'events'
+import EventEmitter from 'node:events'
 import { proto } from '../../WAProto/index.js'
 import type {
 	BaileysEvent,

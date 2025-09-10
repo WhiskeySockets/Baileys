@@ -1,5 +1,5 @@
-import { EventEmitter } from 'events'
-import { URL } from 'url'
+import { EventEmitter } from 'node:events'
+import { URL } from 'node:url'
 import type { SocketConfig } from '../../Types'
 
 export abstract class AbstractSocketClient extends EventEmitter {

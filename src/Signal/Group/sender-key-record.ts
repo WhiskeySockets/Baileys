@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import { BufferJSON } from '../../Utils/generics'
 import { SenderKeyState } from './sender-key-state'
 

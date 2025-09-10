@@ -1,7 +1,8 @@
 import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
-import { randomBytes } from 'crypto'
 import Long from 'long'
+import { Buffer } from 'node:buffer'
+import { randomBytes } from 'node:crypto'
 import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import type {
@@ -1159,11 +1160,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const altServer = jidDecode(alt)?.server
 			const lidMapping = signalRepository.getLIDMappingStore()
 			if (altServer === 'lid') {
-				if (typeof await lidMapping.getPNForLID(alt) == "string") {
+				if (typeof (await lidMapping.getPNForLID(alt)) === 'string') {
 					await lidMapping.storeLIDPNMapping(alt, msg.key.participant || msg.key.remoteJid!)
 				}
 			} else {
-				if (typeof await lidMapping.getLIDForPN(alt) == "string") {
+				if (typeof (await lidMapping.getLIDForPN(alt)) === 'string') {
 					await lidMapping.storeLIDPNMapping(msg.key.participant || msg.key.remoteJid!, alt)
 				}
 			}

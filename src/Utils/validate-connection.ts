@@ -1,5 +1,6 @@
 import { Boom } from '@hapi/boom'
-import { createHash } from 'crypto'
+import { Buffer } from 'node:buffer'
+import { createHash } from 'node:crypto'
 import { proto } from '../../WAProto/index.js'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import type { AuthenticationCreds, SignalCreds, SocketConfig } from '../Types'

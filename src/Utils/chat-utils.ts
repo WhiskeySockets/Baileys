@@ -1,5 +1,6 @@
 import { Boom } from '@hapi/boom'
 import type { AxiosRequestConfig } from 'axios'
+import { Buffer } from 'node:buffer'
 import { proto } from '../../WAProto/index.js'
 import type {
 	BaileysEventEmitter,

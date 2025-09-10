@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import { SenderChainKey } from './sender-chain-key'
 import { SenderMessageKey } from './sender-message-key'
 
