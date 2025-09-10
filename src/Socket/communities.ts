@@ -226,9 +226,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 			}
 
 			// Fetch all subgroups of the community
-			const result = await communityQuery(communityJid, 'get', [
-				{ tag: 'sub_groups', attrs: {} }
-			])
+			const result = await communityQuery(communityJid, 'get', [{ tag: 'sub_groups', attrs: {} }])
 
 			const linkedGroupsData = []
 			const subGroupsNode = getBinaryNodeChild(result, 'sub_groups')
@@ -240,7 +238,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 						subject: groupNode.attrs.subject || '',
 						creation: groupNode.attrs.creation ? Number(groupNode.attrs.creation) : undefined,
 						owner: groupNode.attrs.creator ? jidNormalizedUser(groupNode.attrs.creator) : undefined,
-						size: groupNode.attrs.size ? Number(groupNode.attrs.size) : undefined,
+						size: groupNode.attrs.size ? Number(groupNode.attrs.size) : undefined
 					})
 				}
 			}
