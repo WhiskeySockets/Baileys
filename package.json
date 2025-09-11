@@ -81,7 +81,7 @@
     "tsx": "^4.20.3",
     "typedoc": "^0.27.9",
     "typedoc-plugin-markdown": "4.4.2",
-    "typescript": "^5.9.2"
+    "typescript": "^5.8.2"
   },
   "peerDependencies": {
     "audio-decode": "^2.1.3",
