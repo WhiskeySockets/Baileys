@@ -64,17 +64,8 @@ export class SenderKeyState {
 			}
 
 			const signingKeyStructure: SenderSigningKeyStructure = {
-				public:
-					typeof signatureKeyPublic === 'string'
-						? Buffer.from(signatureKeyPublic, 'base64')
-						: signatureKeyPublic instanceof Uint8Array
-							? Buffer.from(signatureKeyPublic)
-							: Buffer.alloc(0)
-			}
-
-			if (signatureKeyPrivate) {
-				signingKeyStructure.private =
-					typeof signatureKeyPrivate === 'string' ? Buffer.from(signatureKeyPrivate, 'base64') : signatureKeyPrivate
+				public: toBuffer(signatureKeyPublic),
+				private: signatureKeyPrivate ? toBuffer(signatureKeyPrivate) : undefined
 			}
 
 			this.senderKeyStateStructure = {
