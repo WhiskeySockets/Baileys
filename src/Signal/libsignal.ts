@@ -283,7 +283,7 @@ export function makeLibSignalRepository(
 	return repository
 }
 
-const jidToSignalProtocolAddress = (jid: string) => {
+const jidToSignalProtocolAddress = (jid: string): libsignal.ProtocolAddress => {
 	const decoded = jidDecode(jid)!
 	const { user, device, server } = decoded
 
@@ -295,13 +295,7 @@ const jidToSignalProtocolAddress = (jid: string) => {
 }
 
 const jidToSignalSenderKeyName = (group: string, user: string): SenderKeyName => {
-	const signalAddress = jidToSignalProtocolAddress(user)
-	const sender = {
-		id: signalAddress.getName(),
-		deviceId: signalAddress.getDeviceId(),
-		toString: () => signalAddress.toString()
-	}
-	return new SenderKeyName(group, sender)
+	return new SenderKeyName(group, jidToSignalProtocolAddress(user))
 }
 
 function signalStorage(
