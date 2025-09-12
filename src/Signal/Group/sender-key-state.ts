@@ -96,16 +96,29 @@ export class SenderKeyState {
 	}
 
 	public getSigningKeyPublic(): Buffer {
-		const publicKey = this.senderKeyStateStructure.senderSigningKey.public
-		if (publicKey instanceof Buffer) {
-			return publicKey
-		} else if (publicKey instanceof Uint8Array) {
-			return Buffer.from(publicKey)
-		} else if (typeof publicKey === 'string') {
-			return Buffer.from(publicKey, 'base64')
+		let key = this.senderKeyStateStructure.senderSigningKey.public
+
+		// normalize into Buffer
+		if (!(key instanceof Buffer)) {
+			if (key instanceof Uint8Array) {
+				key = Buffer.from(key)
+			} else if (typeof key === 'string') {
+				key = Buffer.from(key, 'base64')
+			} else {
+				key = Buffer.from(key || [])
+			}
 		}
 
-		return Buffer.from(publicKey || [])
+		const publicKey = key as Buffer
+
+		if (publicKey.length === 32) {
+			const fixed = Buffer.alloc(33)
+			fixed[0] = 0x05
+			publicKey.copy(fixed, 1)
+			return fixed
+		}
+
+		return publicKey
 	}
 
 	public getSigningKeyPrivate(): Buffer | undefined {
