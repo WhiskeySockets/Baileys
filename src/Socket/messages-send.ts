@@ -476,7 +476,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						jidToFetch = lidWithDevice
 
 						if (hasSession) {
-							logger.debug({ originalJid: jid, lidJid: lidWithDevice }, '✅ Found bulk-migrated LID session')
+							logger.debug({ originalJid: jid, lidJid: lidWithDevice }, 'Found bulk-migrated LID session')
 						}
 					}
 
@@ -650,8 +650,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 							// Delete PN session after successful migration
 							try {
-								await signalRepository.deleteSession([wireJid])
-								logger.debug({ deletedPNSession: wireJid }, 'Deleted PN session')
+								if (migrationResult.migrated) {
+									await signalRepository.deleteSession([wireJid])
+									logger.debug({ deletedPNSession: wireJid }, 'Deleted PN session')
+								}
 							} catch (deleteError) {
 								logger.warn({ wireJid, error: deleteError }, 'Failed to delete PN session')
 							}
