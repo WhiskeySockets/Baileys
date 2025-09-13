@@ -252,8 +252,6 @@ export function makeLibSignalRepository(
 					}
 				})
 
-				if (!migrationOps.length) return
-
 				// 3. Batch check which LID sessions already exist
 				const lidAddrs = migrationOps.map(op => op.toAddr.toString())
 				const existingSessions = await auth.keys.get('session', lidAddrs)
