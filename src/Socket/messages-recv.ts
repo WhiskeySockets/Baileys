@@ -1,7 +1,8 @@
 import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
-import { randomBytes } from 'crypto'
 import Long from 'long'
+import { Buffer } from 'node:buffer'
+import { randomBytes } from 'node:crypto'
 import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import type {

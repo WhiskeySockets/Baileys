@@ -1,8 +1,9 @@
 import { Boom } from '@hapi/boom'
-import { createHash } from 'crypto'
-import { createWriteStream, promises as fs } from 'fs'
-import { tmpdir } from 'os'
-import { join } from 'path'
+import { Buffer } from 'node:buffer'
+import { createHash } from 'node:crypto'
+import { createWriteStream, promises as fs } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import type {
 	CatalogCollection,
 	CatalogStatus,

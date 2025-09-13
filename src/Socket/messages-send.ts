@@ -1,5 +1,6 @@
 import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
+import process from 'node:process'
 import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import type {

@@ -1,6 +1,7 @@
-import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto'
 /* @ts-ignore */
 import * as libsignal from 'libsignal'
+import { Buffer } from 'node:buffer'
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'node:crypto'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import type { KeyPair } from '../Types'
 

@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import * as constants from './constants'
 import { type FullJid, jidDecode } from './jid-utils'
 import type { BinaryNode, BinaryNodeCodingOptions } from './types'

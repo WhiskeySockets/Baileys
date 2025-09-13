@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import type { GetCatalogOptions, ProductCreate, ProductUpdate, SocketConfig, WAMediaUpload } from '../Types'
 import type { UpdateBussinesProfileProps } from '../Types/Bussines'
 import { getRawMediaUploadData } from '../Utils'

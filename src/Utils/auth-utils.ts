@@ -1,7 +1,7 @@
 import NodeCache from '@cacheable/node-cache'
 import { Mutex } from 'async-mutex'
-import { randomBytes } from 'crypto'
 import { LRUCache } from 'lru-cache'
+import { randomBytes } from 'node:crypto'
 import { DEFAULT_CACHE_TTLS } from '../Defaults'
 import type {
 	AuthenticationCreds,

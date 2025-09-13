@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import { SenderKeyState } from '../../../Signal/Group/sender-key-state'
 import { SenderMessageKey } from '../../../Signal/Group/sender-message-key'
 

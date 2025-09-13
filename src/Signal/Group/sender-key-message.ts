@@ -1,5 +1,6 @@
 /* @ts-ignore */
 import { calculateSignature, verifySignature } from 'libsignal/src/curve'
+import { Buffer } from 'node:buffer'
 import { proto } from '../../../WAProto/index.js'
 import { CiphertextMessage } from './ciphertext-message'
 
