@@ -1,6 +1,4 @@
-/* @ts-ignore */
 import * as libsignal from 'libsignal'
-/* @ts-ignore */
 import { LRUCache } from 'lru-cache'
 import type { SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
 import type { SignalRepository } from '../Types/Signal'
@@ -28,7 +26,7 @@ export function makeLibSignalRepository(
 
 	const parsedKeys = auth.keys as SignalKeyStoreWithTransaction
 
-	function isLikelySyncMessage(addr: any): boolean {
+	function isLikelySyncMessage(addr: libsignal.ProtocolAddress): boolean {
 		const key = addr.toString()
 
 		// Only bypass for WhatsApp system addresses, not regular user contacts
@@ -285,7 +283,7 @@ export function makeLibSignalRepository(
 	return repository
 }
 
-const jidToSignalProtocolAddress = (jid: string) => {
+const jidToSignalProtocolAddress = (jid: string): libsignal.ProtocolAddress => {
 	const decoded = jidDecode(jid)!
 	const { user, device, server } = decoded
 
@@ -303,7 +301,7 @@ const jidToSignalSenderKeyName = (group: string, user: string): SenderKeyName =>
 function signalStorage(
 	{ creds, keys }: SignalAuthState,
 	lidMapping: LIDMappingStore
-): SenderKeyStore & Record<string, any> {
+): SenderKeyStore & libsignal.SignalStorage {
 	return {
 		loadSession: async (id: string) => {
 			try {
@@ -340,8 +338,7 @@ function signalStorage(
 
 			return null
 		},
-		// TODO: Replace with libsignal.SessionRecord when type exports are added to libsignal
-		storeSession: async (id: string, session: any) => {
+		storeSession: async (id: string, session: libsignal.SessionRecord) => {
 			await keys.set({ session: { [id]: session.serialize() } })
 		},
 		isTrustedIdentity: () => {
@@ -384,7 +381,7 @@ function signalStorage(
 			const { signedIdentityKey } = creds
 			return {
 				privKey: Buffer.from(signedIdentityKey.private),
-				pubKey: generateSignalPubKey(signedIdentityKey.public)
+				pubKey: Buffer.from(generateSignalPubKey(signedIdentityKey.public))
 			}
 		}
 	}
