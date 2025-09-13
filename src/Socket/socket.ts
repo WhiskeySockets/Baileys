@@ -853,7 +853,7 @@ export const makeSocket = (config: SocketConfig) => {
 					await signalRepository.lidMapping.storeLIDPNMappings([{ lid: myLID, pn: myPN }])
 
 					// Create LID session for ourselves (whatsmeow pattern)
-					await signalRepository.migrateSession([myPN], myLID)
+					const migrationResult = await signalRepository.migrateSession([myPN], myLID)
 
 					logger.info({ myPN, myLID }, 'Own LID session created successfully')
 				} catch (error) {

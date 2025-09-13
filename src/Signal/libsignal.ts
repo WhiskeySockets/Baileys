@@ -219,12 +219,12 @@ export function makeLibSignalRepository(
 			}, `delete-${jids.length}-sessions`)
 		},
 
-		async migrateSession(fromJids: string[], toJid: string) {
-			if (!fromJids.length || !toJid.includes('@lid')) return
+		async migrateSession(fromJids: string[], toJid: string): Promise<{ migrated: number; skipped: number; total: number }> {
+			if (!fromJids.length || !toJid.includes('@lid')) return { migrated: 0, skipped: 0, total: 0 }
 
 			// Filter valid PN JIDs
 			const validJids = fromJids.filter(jid => jid.includes('@s.whatsapp.net'))
-			if (!validJids.length) return
+			if (!validJids.length) return { migrated: 0, skipped: 0, total: fromJids.length }
 
 			// Single optimized transaction for all migrations
 			return parsedKeys.transaction(async () => {
@@ -260,8 +260,11 @@ export function makeLibSignalRepository(
 
 				// 4. Filter out sessions that already have LID sessions
 				const opsToMigrate = migrationOps.filter(op => !existingSessions[op.toAddr.toString()])
+				const skippedCount = migrationOps.length - opsToMigrate.length
 
-				if (!opsToMigrate.length) return
+				if (!opsToMigrate.length) {
+					return { migrated: 0, skipped: skippedCount, total: validJids.length }
+				}
 
 				// 5. Execute all migrations in parallel
 				await Promise.all(
@@ -280,6 +283,8 @@ export function makeLibSignalRepository(
 
 					})
 				)
+
+				return { migrated: opsToMigrate.length, skipped: skippedCount, total: validJids.length }
 			}, `migrate-${validJids.length}-sessions-${jidDecode(toJid)?.user}`)
 		},
 

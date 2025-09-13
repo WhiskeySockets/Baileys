@@ -430,16 +430,30 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				// Migrate all devices for this user if LID mapping exists
 				if (shouldMigrateUser && lidForPN) {
 					// Bulk migrate all user devices in single transaction
-					await signalRepository.migrateSession(userJids, lidForPN)
+					const migrationResult = await signalRepository.migrateSession(userJids, lidForPN)
 
-					logger.info(
-						{
-							user,
-							lidMapping: lidForPN,
-							deviceCount: userJids.length
-						},
-						'Completed bulk migration for user devices'
-					)
+					if (migrationResult.migrated > 0) {
+						logger.info(
+							{
+								user,
+								lidMapping: lidForPN,
+								migrated: migrationResult.migrated,
+								skipped: migrationResult.skipped,
+								total: migrationResult.total
+							},
+							'Completed bulk migration for user devices'
+						)
+					} else {
+						logger.debug(
+							{
+								user,
+								lidMapping: lidForPN,
+								skipped: migrationResult.skipped,
+								total: migrationResult.total
+							},
+							'All user device sessions already migrated'
+						)
+					}
 				}
 
 				// Helper to check session for migrated user
@@ -628,7 +642,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 						// Migrate session to LID for unified encryption layer
 						try {
-							await signalRepository.migrateSession([wireJid], lidWithDevice)
+							const migrationResult = await signalRepository.migrateSession([wireJid], lidWithDevice)
 							const recipientUser = jidNormalizedUser(wireJid)
 							const ownPnUser = jidNormalizedUser(meId)
 							const isOwnDevice = recipientUser === ownPnUser
