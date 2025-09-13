@@ -211,6 +211,44 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 				}
 			])
 		},
+		communityFetchLinkedGroups: async (jid: string) => {
+			let communityJid = jid
+			let isCommunity = false
+
+			// Try to determine if it is a subgroup or a community
+			const metadata = await sock.groupMetadata(jid)
+			if (metadata.linkedParent) {
+				// It is a subgroup, get the community jid
+				communityJid = metadata.linkedParent
+			} else {
+				// It is a community
+				isCommunity = true
+			}
+
+			// Fetch all subgroups of the community
+			const result = await communityQuery(communityJid, 'get', [{ tag: 'sub_groups', attrs: {} }])
+
+			const linkedGroupsData = []
+			const subGroupsNode = getBinaryNodeChild(result, 'sub_groups')
+			if (subGroupsNode) {
+				const groupNodes = getBinaryNodeChildren(subGroupsNode, 'group')
+				for (const groupNode of groupNodes) {
+					linkedGroupsData.push({
+						id: groupNode.attrs.id ? jidEncode(groupNode.attrs.id, 'g.us') : undefined,
+						subject: groupNode.attrs.subject || '',
+						creation: groupNode.attrs.creation ? Number(groupNode.attrs.creation) : undefined,
+						owner: groupNode.attrs.creator ? jidNormalizedUser(groupNode.attrs.creator) : undefined,
+						size: groupNode.attrs.size ? Number(groupNode.attrs.size) : undefined
+					})
+				}
+			}
+
+			return {
+				communityJid,
+				isCommunity,
+				linkedGroups: linkedGroupsData
+			}
+		},
 		communityRequestParticipantsList: async (jid: string) => {
 			const result = await communityQuery(jid, 'get', [
 				{
