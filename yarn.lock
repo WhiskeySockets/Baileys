@@ -7339,11 +7339,11 @@ __metadata:
 
 "libsignal@git+https://github.com/whiskeysockets/libsignal-node":
   version: 2.0.1
-  resolution: "libsignal@https://github.com/whiskeysockets/libsignal-node.git#commit=e9195615fb351c85ab0604e17de34276a9afada3"
+  resolution: "libsignal@https://github.com/whiskeysockets/libsignal-node.git#commit=e81ecfc32eb74951d789ab37f7e341ab66d5fff1"
   dependencies:
     curve25519-js: "npm:^0.0.4"
     protobufjs: "npm:6.8.8"
-  checksum: 10c0/500bbc9642ca6f1339beb2c982fc08b6ddd60747cc063fee118270a035140a5963273a87ed4a8742eb6b0d05cf9bb28cfcc066def39b5dc18f42872ee69b3ad1
+  checksum: 10c0/d1ae7d8a5fadd6bb1c486d1b2ebc388967fee57c13f52b473127c1cbd9cd647b44545ff07c2b9cc49b3dea4e25ccfcfece31c526fdbdbf065837c85d189e97a0
   languageName: node
   linkType: hard
 
