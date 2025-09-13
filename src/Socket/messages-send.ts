@@ -350,18 +350,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return deviceResults
 	}
 
-	// Helper to check if JID has migrated LID session
-	const checkForMigratedLidSession = async (jid: string): Promise<boolean> => {
-		if (!jid.includes('@s.whatsapp.net')) return false
-
-		const lidMapping = signalRepository.getLIDMappingStore()
-		const lidForPN = await lidMapping.getLIDForPN(jid)
-		if (!lidForPN?.includes('@lid')) return false
-
-		const lidSignalId = signalRepository.jidToSignalProtocolAddress(lidForPN)
-		const lidSessions = await authState.keys.get('session', [lidSignalId])
-		return !!lidSessions[lidSignalId]
-	}
 
 	const assertSessions = async (jids: string[], force: boolean) => {
 		let didFetchNewSession = false
@@ -375,20 +363,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			const addrs = jids.map(jid => signalRepository.jidToSignalProtocolAddress(jid))
 			const sessions = await authState.keys.get('session', addrs)
 
-			// Helper to check session for a JID
-			const checkJidSession = async (jid: string) => {
+			// Simplified: Check session existence directly
+			const checkJidSession = (jid: string) => {
 				const signalId = signalRepository.jidToSignalProtocolAddress(jid)
-				let hasSession = !!sessions[signalId]
-
-				// Check for migrated LID session if PN session missing
-				if (!hasSession) {
-					hasSession = await checkForMigratedLidSession(jid)
-					if (hasSession) {
-						logger.debug({ jid }, 'Found migrated LID session during force assert, skipping PN fetch')
-					}
-				}
+				const hasSession = !!sessions[signalId]
 
 				// Add to fetch list if no session exists
+				// Session type selection (LID vs PN) is handled in encryptMessage
 				if (!hasSession) {
 					if (jid.includes('@lid')) {
 						logger.debug({ jid }, 'No LID session found, will create new LID session')
@@ -400,10 +381,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			// Process all JIDs
 			for (const jid of jids) {
-				await checkJidSession(jid)
+				checkJidSession(jid)
 			}
 		} else {
-			const lidMapping = signalRepository.getLIDMappingStore()
 			const addrs = jids.map(jid => signalRepository.jidToSignalProtocolAddress(jid))
 			const sessions = await authState.keys.get('session', addrs)
 
@@ -425,7 +405,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 
 				try {
-					const mapping = await lidMapping.getLIDForPN(user)
+					const mapping = await signalRepository.lidMapping.getLIDForPN(user)
 					if (mapping?.includes('@lid')) {
 						logger.debug(
 							{ user, lidForPN: mapping, deviceCount: userJids.length },
@@ -636,8 +616,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					if (!wireJid.includes('@s.whatsapp.net')) return wireJid
 
 					try {
-						const lidMapping = signalRepository.getLIDMappingStore()
-						const lidForPN = await lidMapping.getLIDForPN(wireJid)
+						const lidForPN = await signalRepository.lidMapping.getLIDForPN(wireJid)
 
 						if (!lidForPN?.includes('@lid')) return wireJid
 

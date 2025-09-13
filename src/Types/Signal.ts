@@ -76,9 +76,12 @@ export type SignalRepository = {
 	injectE2ESession(opts: E2ESessionOpts): Promise<void>
 	validateSession(jid: string): Promise<{ exists: boolean; reason?: string }>
 	jidToSignalProtocolAddress(jid: string): string
-	storeLIDPNMapping(lid: string, pn: string): Promise<void>
-	getLIDMappingStore(): LIDMappingStore
 	migrateSession(fromJids: string[], toJid: string): Promise<void>
 	validateSession(jid: string): Promise<{ exists: boolean; reason?: string }>
 	deleteSession(jids: string[]): Promise<void>
+}
+
+// Optimized repository with pre-loaded LID mapping store
+export interface SignalRepositoryWithLIDStore extends SignalRepository {
+	lidMapping: LIDMappingStore
 }

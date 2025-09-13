@@ -34,14 +34,7 @@ export class LIDMappingStore {
 		this.keys = keys
 		this.onWhatsAppFunc = onWhatsAppFunc // needed to get LID from PN if not found
 	}
-
-	/**
-	 * Store LID-PN mapping - USER LEVEL
-	 */
-	async storeLIDPNMapping(lid: string, pn: string): Promise<void> {
-		return this.storeLIDPNMappings([{ lid, pn }])
-	}
-
+	
 	/**
 	 * Store LID-PN mapping - USER LEVEL
 	 */
@@ -63,6 +56,25 @@ export class LIDMappingStore {
 
 			const pnUser = pnDecoded.user
 			const lidUser = lidDecoded.user
+
+			// Check if mapping already exists (cache first, then database)
+			let existingLidUser = this.mappingCache.get(`pn:${pnUser}`)
+			if (!existingLidUser) {
+				// Cache miss - check database
+				const stored = await this.keys.get('lid-mapping', [pnUser])
+				existingLidUser = stored[pnUser]
+				if (existingLidUser) {
+					// Update cache with database value
+					this.mappingCache.set(`pn:${pnUser}`, existingLidUser)
+					this.mappingCache.set(`lid:${existingLidUser}`, pnUser)
+				}
+			}
+
+			if (existingLidUser === lidUser) {
+				logger.debug({ pnUser, lidUser }, 'LID mapping already exists, skipping')
+				continue
+			}
+
 			pairMap[pnUser] = lidUser
 		}
 

@@ -1,7 +1,7 @@
 /* @ts-ignore */
 import * as libsignal from 'libsignal'
 import type { SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
-import type { SignalRepository } from '../Types/Signal'
+import type { SignalRepository, SignalRepositoryWithLIDStore } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import { jidDecode, transferDevice } from '../WABinary'
 import type { SenderKeyStore } from './Group/group_cipher'
@@ -20,7 +20,7 @@ export function makeLibSignalRepository(
 		  }[]
 		| undefined
 	>
-): SignalRepository {
+): SignalRepositoryWithLIDStore {
 	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction, onWhatsAppFunc)
 	const storage = signalStorage(auth, lidMapping)
 
@@ -39,7 +39,7 @@ export function makeLibSignalRepository(
 	}
 
 
-	const repository: SignalRepository = {
+	const repository: SignalRepositoryWithLIDStore = {
 		decryptGroupMessage({ group, authorJid, msg }) {
 			const senderName = jidToSignalSenderKeyName(group, authorJid)
 			const cipher = new GroupCipher(storage, senderName)
@@ -180,13 +180,9 @@ export function makeLibSignalRepository(
 			return jidToSignalProtocolAddress(jid).toString()
 		},
 
-		async storeLIDPNMapping(lid: string, pn: string) {
-			await lidMapping.storeLIDPNMapping(lid, pn)
-		},
 
-		getLIDMappingStore() {
-			return lidMapping
-		},
+		// Optimized direct access to LID mapping store
+		lidMapping,
 
 		async validateSession(jid: string) {
 			try {

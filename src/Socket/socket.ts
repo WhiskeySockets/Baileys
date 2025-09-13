@@ -272,9 +272,8 @@ export const makeSocket = (config: SocketConfig) => {
 
 		if (results) {
 			if (results.list.filter(a => !!a.lid).length > 0) {
-				const lidMapping = signalRepository.getLIDMappingStore()
 				const lidOnly = results.list.filter(a => !!a.lid)
-				await lidMapping.storeLIDPNMappings(lidOnly.map(a => ({ pn: a.id, lid: a.lid as string })))
+				await signalRepository.lidMapping.storeLIDPNMappings(lidOnly.map(a => ({ pn: a.id, lid: a.lid as string })))
 			}
 
 			return results.list
@@ -851,7 +850,7 @@ export const makeSocket = (config: SocketConfig) => {
 					const myPN = authState.creds.me!.id
 
 					// Store our own LID-PN mapping
-					await signalRepository.storeLIDPNMapping(myLID, myPN)
+					await signalRepository.lidMapping.storeLIDPNMappings([{ lid: myLID, pn: myPN }])
 
 					// Create LID session for ourselves (whatsmeow pattern)
 					await signalRepository.migrateSession([myPN], myLID)
