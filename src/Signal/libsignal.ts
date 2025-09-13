@@ -1,9 +1,9 @@
+/* @ts-ignore */
 import * as libsignal from 'libsignal'
-import { LRUCache } from 'lru-cache'
 import type { SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
 import type { SignalRepository } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
-import { jidDecode } from '../WABinary'
+import { jidDecode, transferDevice } from '../WABinary'
 import type { SenderKeyStore } from './Group/group_cipher'
 import { SenderKeyName } from './Group/sender-key-name'
 import { SenderKeyRecord } from './Group/sender-key-record'
@@ -38,11 +38,6 @@ export function makeLibSignalRepository(
 		)
 	}
 
-	// Simple operation-level deduplication (5 minutes)
-	const recentMigrations = new LRUCache<string, boolean>({
-		max: 500,
-		ttl: 5 * 60 * 1000
-	})
 
 	const repository: SignalRepository = {
 		decryptGroupMessage({ group, authorJid, msg }) {
@@ -136,7 +131,7 @@ export function makeLibSignalRepository(
 
 						if (pnSession) {
 							// Migrate PN to LID
-							await repository.migrateSession(jid, lidForPN)
+							await repository.migrateSession([jid], lidForPN)
 							encryptionJid = lidForPN
 						}
 					}
@@ -212,71 +207,89 @@ export function makeLibSignalRepository(
 			}
 		},
 
-		async deleteSession(jid: string) {
-			const addr = jidToSignalProtocolAddress(jid)
+		async deleteSession(jids: string[]) {
+			if (!jids.length) return
 
+			// Convert JIDs to signal addresses and prepare for bulk deletion
+			const sessionUpdates: { [key: string]: null } = {}
+			jids.forEach(jid => {
+				const addr = jidToSignalProtocolAddress(jid)
+				sessionUpdates[addr.toString()] = null
+			})
+
+			// Single transaction for all deletions
 			return parsedKeys.transaction(async () => {
-				await auth.keys.set({ session: { [addr.toString()]: null } })
-			}, jid)
+				await auth.keys.set({ session: sessionUpdates })
+			}, `delete-${jids.length}-sessions`)
 		},
 
-		async migrateSession(fromJid: string, toJid: string) {
-			// Only migrate PN → LID
-			if (!fromJid.includes('@s.whatsapp.net') || !toJid.includes('@lid')) {
-				return
-			}
+		async migrateSession(fromJids: string[], toJid: string) {
+			if (!fromJids.length || !toJid.includes('@lid')) return
 
-			const fromDecoded = jidDecode(fromJid)
-			const toDecoded = jidDecode(toJid)
-			if (!fromDecoded || !toDecoded) return
+			// Filter valid PN JIDs
+			const validJids = fromJids.filter(jid => jid.includes('@s.whatsapp.net'))
+			if (!validJids.length) return
 
-			const deviceId = fromDecoded.device || 0
-			const migrationKey = `${fromDecoded.user}.${deviceId}→${toDecoded.user}.${deviceId}`
-
-			// Check if recently migrated (5 min window)
-			if (recentMigrations.has(migrationKey)) {
-				return
-			}
-
-			// Check if LID session already exists
-			const lidAddr = jidToSignalProtocolAddress(toJid)
-			const { [lidAddr.toString()]: lidExists } = await auth.keys.get('session', [lidAddr.toString()])
-			if (lidExists) {
-				recentMigrations.set(migrationKey, true)
-				return
-			}
-
+			// Single optimized transaction for all migrations
 			return parsedKeys.transaction(async () => {
-				// Store mapping
-				await lidMapping.storeLIDPNMapping(toJid, fromJid)
+				// 1. Batch store all LID mappings
+				const mappings = validJids.map(jid => ({
+					lid: transferDevice(jid, toJid),
+					pn: jid
+				}))
+				await lidMapping.storeLIDPNMappings(mappings)
 
-				// Load and copy session
-				const fromAddr = jidToSignalProtocolAddress(fromJid)
-				const fromSession = await storage.loadSession(fromAddr.toString())
+				// 2. Prepare migration operations
+				const migrationOps = validJids.map(jid => {
+					const lidWithDevice = transferDevice(jid, toJid)
+					const fromDecoded = jidDecode(jid)!
+					const toDecoded = jidDecode(lidWithDevice)!
+					
+					return {
+						fromJid: jid,
+						toJid: lidWithDevice,
+						pnUser: fromDecoded.user,
+						lidUser: toDecoded.user,
+						deviceId: fromDecoded.device || 0,
+						fromAddr: jidToSignalProtocolAddress(jid),
+						toAddr: jidToSignalProtocolAddress(lidWithDevice)
+					}
+				})
+
+				if (!migrationOps.length) return
+
+				// 3. Batch check which LID sessions already exist
+				const lidAddrs = migrationOps.map(op => op.toAddr.toString())
+				const existingSessions = await auth.keys.get('session', lidAddrs)
+
+				// 4. Filter out sessions that already have LID sessions
+				const opsToMigrate = migrationOps.filter(op => !existingSessions[op.toAddr.toString()])
+
+				if (!opsToMigrate.length) return
+
+				// 5. Execute all migrations in parallel
+				await Promise.all(
+					opsToMigrate.map(async (op) => {
+						const fromSession = await storage.loadSession(op.fromAddr.toString())
 
 				if (fromSession?.haveOpenSession()) {
-					// Deep copy session to prevent reference issues
+							// Copy session to LID address
 					const sessionBytes = fromSession.serialize()
 					const copiedSession = libsignal.SessionRecord.deserialize(sessionBytes)
+							await storage.storeSession(op.toAddr.toString(), copiedSession)
 
-					// Store at LID address
-					await storage.storeSession(lidAddr.toString(), copiedSession)
-
-					// Delete PN session - maintain single encryption layer
-					await auth.keys.set({ session: { [fromAddr.toString()]: null } })
+							// Delete PN session
+							await auth.keys.set({ session: { [op.fromAddr.toString()]: null } })
 				}
 
-				recentMigrations.set(migrationKey, true)
-			}, fromJid)
+					})
+				)
+			}, `migrate-${validJids.length}-sessions-${jidDecode(toJid)?.user}`)
 		},
 
 		async encryptMessageWithWire({ encryptionJid, wireJid, data }) {
 			const result = await repository.encryptMessage({ jid: encryptionJid, data })
 			return { ...result, wireJid }
-		},
-
-		destroy() {
-			recentMigrations.clear()
 		}
 	}
 
@@ -286,6 +299,10 @@ export function makeLibSignalRepository(
 const jidToSignalProtocolAddress = (jid: string): libsignal.ProtocolAddress => {
 	const decoded = jidDecode(jid)!
 	const { user, device, server } = decoded
+	
+	if (!user) {
+		throw new Error(`JID decoded but user is empty: "${jid}" -> user: "${user}", server: "${server}", device: ${device}`)
+	}
 
 	// LID addresses get _1 suffix for Signal protocol
 	const signalUser = server === 'lid' ? `${user}_1` : user
