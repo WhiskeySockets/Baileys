@@ -16,7 +16,7 @@ export function makeLibSignalRepository(
 		| {
 				jid: string
 				exists: boolean
-				lid: string
+				lid: string | undefined
 		  }[]
 		| undefined
 	>
