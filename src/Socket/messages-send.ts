@@ -456,43 +456,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 				}
 
-				// Helper to check session for migrated user
-				const checkMigratedSession = async (jid: string) => {
-					const signalId = signalRepository.jidToSignalProtocolAddress(jid)
-					let hasSession = !!sessions[signalId]
-					let jidToFetch = jid
-
-					// Check if we should use migrated LID session instead
-					if (shouldMigrateUser && lidForPN && jid.includes('@s.whatsapp.net')) {
-						const originalDecoded = jidDecode(jid)
-						const deviceId = originalDecoded?.device || 0
-						const lidDecoded = jidDecode(lidForPN)
-						const lidWithDevice = jidEncode(lidDecoded?.user!, 'lid', deviceId)
-
-						// Check if LID session exists
-						const lidSignalId = signalRepository.jidToSignalProtocolAddress(lidWithDevice)
-						const lidSessions = await authState.keys.get('session', [lidSignalId])
-						hasSession = !!lidSessions[lidSignalId]
-						jidToFetch = lidWithDevice
-
-						if (hasSession) {
-							logger.debug({ originalJid: jid, lidJid: lidWithDevice }, 'Found bulk-migrated LID session')
-						}
-					}
-
-					// Add to fetch list if no session exists
-					if (!hasSession) {
-						jidsRequiringFetch.push(jidToFetch)
-						logger.debug(
-							{ jid: jidToFetch, originalJid: jid !== jidToFetch ? jid : undefined },
-							'Adding to session fetch list'
-						)
-					}
-				}
-
-				// Now check which sessions need to be fetched for this user
 				for (const jid of userJids) {
-					await checkMigratedSession(jid)
+					const signalId = signalRepository.jidToSignalProtocolAddress(jid)
+					if (!sessions[signalId]) {
+						jidsRequiringFetch.push(jid)
+						logger.debug({ jid }, 'Adding to session fetch list')
+					}
 				}
 			}
 		}
