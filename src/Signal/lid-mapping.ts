@@ -14,7 +14,7 @@ export class LIDMappingStore {
 		| {
 				jid: string
 				exists: boolean
-				lid: string | undefined
+				lid: string
 		  }[]
 		| undefined
 	>
@@ -25,7 +25,7 @@ export class LIDMappingStore {
 			| {
 					jid: string
 					exists: boolean
-					lid: string | undefined
+					lid: string
 			  }[]
 			| undefined
 		>
