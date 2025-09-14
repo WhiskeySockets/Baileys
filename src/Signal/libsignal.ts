@@ -335,13 +335,10 @@ function signalStorage(
 						const lidAddr = jidToSignalProtocolAddress(lidForPN)
 						const lidId = lidAddr.toString()
 
+						// Check if LID session exists
 						const { [lidId]: lidSession } = await keys.get('session', [lidId])
 						if (lidSession) {
 							actualId = lidId
-						} else {
-							// User has LID mapping but no LID session - don't fall back to PN
-							// This forces session recreation as LID (maintaining single source of truth)
-							return null
 						}
 					}
 				}
