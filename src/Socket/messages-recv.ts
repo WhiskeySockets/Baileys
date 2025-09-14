@@ -1150,21 +1150,24 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const lid = jidNormalizedUser(node.attrs.from),
 				pn = jidNormalizedUser(node.attrs.sender_pn)
 			ev.emit('lid-mapping.update', { lid, pn })
-			await signalRepository.storeLIDPNMapping(lid, pn)
+			await signalRepository.lidMapping.storeLIDPNMappings([{ lid, pn }])
 		}
 
 		const alt = msg.key.participantAlt || msg.key.remoteJidAlt
 		// store new mappings we didn't have before
 		if (!!alt) {
 			const altServer = jidDecode(alt)?.server
-			const lidMapping = signalRepository.getLIDMappingStore()
 			if (altServer === 'lid') {
-				if (typeof (await lidMapping.getPNForLID(alt)) === 'string') {
-					await lidMapping.storeLIDPNMapping(alt, msg.key.participant || msg.key.remoteJid!)
+				if (typeof (await signalRepository.lidMapping.getPNForLID(alt)) === 'string') {
+					await signalRepository.lidMapping.storeLIDPNMappings([
+						{ lid: alt, pn: msg.key.participant || msg.key.remoteJid! }
+					])
 				}
 			} else {
-				if (typeof (await lidMapping.getLIDForPN(alt)) === 'string') {
-					await lidMapping.storeLIDPNMapping(msg.key.participant || msg.key.remoteJid!, alt)
+				if (typeof (await signalRepository.lidMapping.getLIDForPN(alt)) === 'string') {
+					await signalRepository.lidMapping.storeLIDPNMappings([
+						{ lid: msg.key.participant || msg.key.remoteJid!, pn: alt }
+					])
 				}
 			}
 		}

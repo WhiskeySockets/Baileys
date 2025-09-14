@@ -1,6 +1,7 @@
 import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto/index.js'
-import type { SignalRepository, WAMessage, WAMessageKey } from '../Types'
+import type { WAMessage, WAMessageKey } from '../Types'
+import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import {
 	areJidsSameUser,
 	type BinaryNode,
@@ -16,26 +17,26 @@ import {
 import { unpadRandomMax16 } from './generics'
 import type { ILogger } from './logger'
 
-const getDecryptionJid = async (sender: string, repository: SignalRepository): Promise<string> => {
+const getDecryptionJid = async (sender: string, repository: SignalRepositoryWithLIDStore): Promise<string> => {
 	if (!sender.includes('@s.whatsapp.net')) {
 		return sender
 	}
 
-	return (await repository.getLIDMappingStore().getLIDForPN(sender))!
+	return (await repository.lidMapping.getLIDForPN(sender))!
 }
 
 const storeMappingFromEnvelope = async (
 	stanza: BinaryNode,
 	sender: string,
 	decryptionJid: string,
-	repository: SignalRepository,
+	repository: SignalRepositoryWithLIDStore,
 	logger: ILogger
 ): Promise<void> => {
 	const { senderAlt } = extractAddressingContext(stanza)
 
 	if (senderAlt && isLidUser(senderAlt) && isPnUser(sender) && decryptionJid === sender) {
 		try {
-			await repository.storeLIDPNMapping(senderAlt, sender)
+			await repository.lidMapping.storeLIDPNMappings([{ lid: senderAlt, pn: sender }])
 			logger.debug({ sender, senderAlt }, 'Stored LID mapping from envelope')
 		} catch (error) {
 			logger.warn({ sender, senderAlt, error }, 'Failed to store LID mapping')
@@ -206,7 +207,7 @@ export const decryptMessageNode = (
 	stanza: BinaryNode,
 	meId: string,
 	meLid: string,
-	repository: SignalRepository,
+	repository: SignalRepositoryWithLIDStore,
 	logger: ILogger
 ) => {
 	const { fullMessage, author, sender } = decodeMessageNode(stanza, meId, meLid)

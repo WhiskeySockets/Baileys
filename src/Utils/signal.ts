@@ -1,5 +1,5 @@
 import { KEY_BUNDLE_TYPE } from '../Defaults'
-import type { SignalRepository } from '../Types'
+import type { SignalRepositoryWithLIDStore } from '../Types'
 import type {
 	AuthenticationCreds,
 	AuthenticationState,
@@ -85,7 +85,7 @@ export const xmppPreKey = (pair: KeyPair, id: number): BinaryNode => ({
 	]
 })
 
-export const parseAndInjectE2ESessions = async (node: BinaryNode, repository: SignalRepository) => {
+export const parseAndInjectE2ESessions = async (node: BinaryNode, repository: SignalRepositoryWithLIDStore) => {
 	const extractKey = (key: BinaryNode) =>
 		key
 			? {

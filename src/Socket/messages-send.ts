@@ -47,8 +47,7 @@ import {
 	jidEncode,
 	jidNormalizedUser,
 	type JidWithDevice,
-	S_WHATSAPP_NET,
-	transferDevice
+	S_WHATSAPP_NET
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeNewsletterSocket } from './newsletter'
@@ -366,19 +365,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return deviceResults
 	}
 
-	// Helper to check if JID has migrated LID session
-	const checkForMigratedLidSession = async (jid: string): Promise<boolean> => {
-		if (!jid.includes('@s.whatsapp.net')) return false
-
-		const lidMapping = signalRepository.getLIDMappingStore()
-		const lidForPN = await lidMapping.getLIDForPN(jid)
-		if (!lidForPN?.includes('@lid')) return false
-
-		const lidSignalId = signalRepository.jidToSignalProtocolAddress(lidForPN)
-		const lidSessions = await authState.keys.get('session', [lidSignalId])
-		return !!lidSessions[lidSignalId]
-	}
-
 	const assertSessions = async (jids: string[], force: boolean) => {
 		let didFetchNewSession = false
 		const jidsRequiringFetch: string[] = []
@@ -391,20 +377,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			const addrs = jids.map(jid => signalRepository.jidToSignalProtocolAddress(jid))
 			const sessions = await authState.keys.get('session', addrs)
 
-			// Helper to check session for a JID
-			const checkJidSession = async (jid: string) => {
+			// Simplified: Check session existence directly
+			const checkJidSession = (jid: string) => {
 				const signalId = signalRepository.jidToSignalProtocolAddress(jid)
-				let hasSession = !!sessions[signalId]
-
-				// Check for migrated LID session if PN session missing
-				if (!hasSession) {
-					hasSession = await checkForMigratedLidSession(jid)
-					if (hasSession) {
-						logger.debug({ jid }, 'Found migrated LID session during force assert, skipping PN fetch')
-					}
-				}
+				const hasSession = !!sessions[signalId]
 
 				// Add to fetch list if no session exists
+				// Session type selection (LID vs PN) is handled in encryptMessage
 				if (!hasSession) {
 					if (jid.includes('@lid')) {
 						logger.debug({ jid }, 'No LID session found, will create new LID session')
@@ -416,10 +395,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			// Process all JIDs
 			for (const jid of jids) {
-				await checkJidSession(jid)
+				checkJidSession(jid)
 			}
 		} else {
-			const lidMapping = signalRepository.getLIDMappingStore()
 			const addrs = jids.map(jid => signalRepository.jidToSignalProtocolAddress(jid))
 			const sessions = await authState.keys.get('session', addrs)
 
@@ -441,7 +419,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 
 				try {
-					const mapping = await lidMapping.getLIDForPN(user)
+					// Convert user to proper PN JID format for getLIDForPN
+					const pnJid = `${user}@s.whatsapp.net`
+					const mapping = await signalRepository.lidMapping.getLIDForPN(pnJid)
 					if (mapping?.includes('@lid')) {
 						logger.debug(
 							{ user, lidForPN: mapping, deviceCount: userJids.length },
@@ -456,27 +436,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				return { shouldMigrate: false, lidForPN: undefined }
 			}
 
-			// Helper to migrate a single device
-			const migrateDeviceToLid = async (jid: string, lidForPN: string) => {
-				if (!jid.includes('@s.whatsapp.net')) return
-
-				try {
-					const lidWithDevice = transferDevice(jid, lidForPN)
-					await signalRepository.migrateSession(jid, lidWithDevice)
-					logger.debug({ fromJid: jid, toJid: lidWithDevice }, 'Migrated device session to LID')
-
-					// Delete PN session after successful migration
-					try {
-						await signalRepository.deleteSession(jid)
-						logger.debug({ deletedPNSession: jid }, 'Deleted PN session after migration')
-					} catch (deleteError) {
-						logger.warn({ jid, error: deleteError }, 'Failed to delete PN session')
-					}
-				} catch (migrationError) {
-					logger.warn({ jid, error: migrationError }, 'Failed to migrate device session')
-				}
-			}
-
 			// Process each user group for potential bulk LID migration
 			for (const [user, userJids] of userGroups) {
 				const mappingResult = await checkUserLidMapping(user, userJids)
@@ -485,59 +444,52 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 				// Migrate all devices for this user if LID mapping exists
 				if (shouldMigrateUser && lidForPN) {
-					// Migrate each device individually
-					for (const jid of userJids) {
-						await migrateDeviceToLid(jid, lidForPN)
-					}
+					// Bulk migrate all user devices in single transaction
+					const migrationResult = await signalRepository.migrateSession(userJids, lidForPN)
 
-					logger.info(
-						{
-							user,
-							lidMapping: lidForPN,
-							deviceCount: userJids.length
-						},
-						'Completed migration attempt for user devices'
-					)
-				}
-
-				// Helper to check session for migrated user
-				const checkMigratedSession = async (jid: string) => {
-					const signalId = signalRepository.jidToSignalProtocolAddress(jid)
-					let hasSession = !!sessions[signalId]
-					let jidToFetch = jid
-
-					// Check if we should use migrated LID session instead
-					if (shouldMigrateUser && lidForPN && jid.includes('@s.whatsapp.net')) {
-						const originalDecoded = jidDecode(jid)
-						const deviceId = originalDecoded?.device || 0
-						const lidDecoded = jidDecode(lidForPN)
-						const lidWithDevice = jidEncode(lidDecoded?.user!, 'lid', deviceId)
-
-						// Check if LID session exists
-						const lidSignalId = signalRepository.jidToSignalProtocolAddress(lidWithDevice)
-						const lidSessions = await authState.keys.get('session', [lidSignalId])
-						hasSession = !!lidSessions[lidSignalId]
-						jidToFetch = lidWithDevice
-
-						if (hasSession) {
-							logger.debug({ originalJid: jid, lidJid: lidWithDevice }, '✅ Found bulk-migrated LID session')
-						}
-					}
-
-					// Add to fetch list if no session exists
-					if (!hasSession) {
-						jidsRequiringFetch.push(jidToFetch)
+					if (migrationResult.migrated > 0) {
+						logger.info(
+							{
+								user,
+								lidMapping: lidForPN,
+								migrated: migrationResult.migrated,
+								skipped: migrationResult.skipped,
+								total: migrationResult.total
+							},
+							'Completed bulk migration for user devices'
+						)
+					} else {
 						logger.debug(
-							{ jid: jidToFetch, originalJid: jid !== jidToFetch ? jid : undefined },
-							'Adding to session fetch list'
+							{
+								user,
+								lidMapping: lidForPN,
+								skipped: migrationResult.skipped,
+								total: migrationResult.total
+							},
+							'All user device sessions already migrated'
 						)
 					}
 				}
 
-				// Now check which sessions need to be fetched for this user
-				for (const jid of userJids) {
-					await checkMigratedSession(jid)
+				// Direct bulk session check with LID single source of truth
+				const addMissingSessionsToFetchList = (jid: string) => {
+					const signalId = signalRepository.jidToSignalProtocolAddress(jid)
+					if (sessions[signalId]) return
+
+					// Determine correct JID to fetch (LID if mapping exists, otherwise original)
+					if (jid.includes('@s.whatsapp.net') && shouldMigrateUser && lidForPN) {
+						const decoded = jidDecode(jid)!
+						const lidDeviceJid =
+							decoded.device !== undefined ? `${jidDecode(lidForPN)!.user}:${decoded.device}@lid` : lidForPN
+						jidsRequiringFetch.push(lidDeviceJid)
+						logger.debug({ pnJid: jid, lidJid: lidDeviceJid }, 'Adding LID JID to fetch list (conversion)')
+					} else {
+						jidsRequiringFetch.push(jid)
+						logger.debug({ jid }, 'Adding JID to fetch list')
+					}
 				}
+
+				userJids.forEach(addMissingSessionsToFetchList)
 			}
 		}
 
@@ -674,8 +626,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					if (!wireJid.includes('@s.whatsapp.net')) return wireJid
 
 					try {
-						const lidMapping = signalRepository.getLIDMappingStore()
-						const lidForPN = await lidMapping.getLIDForPN(wireJid)
+						const lidForPN = await signalRepository.lidMapping.getLIDForPN(wireJid)
 
 						if (!lidForPN?.includes('@lid')) return wireJid
 
@@ -687,7 +638,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 						// Migrate session to LID for unified encryption layer
 						try {
-							await signalRepository.migrateSession(wireJid, lidWithDevice)
+							const migrationResult = await signalRepository.migrateSession([wireJid], lidWithDevice)
 							const recipientUser = jidNormalizedUser(wireJid)
 							const ownPnUser = jidNormalizedUser(meId)
 							const isOwnDevice = recipientUser === ownPnUser
@@ -695,8 +646,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 							// Delete PN session after successful migration
 							try {
-								await signalRepository.deleteSession(wireJid)
-								logger.debug({ deletedPNSession: wireJid }, 'Deleted PN session')
+								if (migrationResult.migrated) {
+									await signalRepository.deleteSession([wireJid])
+									logger.debug({ deletedPNSession: wireJid }, 'Deleted PN session')
+								}
 							} catch (deleteError) {
 								logger.warn({ wireJid, error: deleteError }, 'Failed to delete PN session')
 							}
