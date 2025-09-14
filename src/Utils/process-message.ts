@@ -10,7 +10,6 @@ import type {
 	RequestJoinAction,
 	RequestJoinMethod,
 	SignalKeyStoreWithTransaction,
-	SignalRepository,
 	SignalRepositoryWithLIDStore
 } from '../Types'
 import { WAMessageStubType } from '../Types'
@@ -20,7 +19,6 @@ import { aesDecryptGCM, hmacSign } from './crypto'
 import { toNumber } from './generics'
 import { downloadAndProcessHistorySyncNotification } from './history'
 import type { ILogger } from './logger'
-import { sign } from 'crypto'
 
 type ProcessMessageContext = {
 	shouldProcessHistoryMsg: boolean

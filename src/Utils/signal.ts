@@ -1,5 +1,5 @@
 import { KEY_BUNDLE_TYPE } from '../Defaults'
-import type { SignalRepository, SignalRepositoryWithLIDStore } from '../Types'
+import type { SignalRepositoryWithLIDStore } from '../Types'
 import type {
 	AuthenticationCreds,
 	AuthenticationState,

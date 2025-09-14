@@ -1159,11 +1159,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const altServer = jidDecode(alt)?.server
 			if (altServer === 'lid') {
 				if (typeof (await signalRepository.lidMapping.getPNForLID(alt)) === 'string') {
-					await signalRepository.lidMapping.storeLIDPNMappings([{ lid: alt, pn: msg.key.participant || msg.key.remoteJid! }])
+					await signalRepository.lidMapping.storeLIDPNMappings([
+						{ lid: alt, pn: msg.key.participant || msg.key.remoteJid! }
+					])
 				}
 			} else {
 				if (typeof (await signalRepository.lidMapping.getLIDForPN(alt)) === 'string') {
-					await signalRepository.lidMapping.storeLIDPNMappings([{ lid: msg.key.participant || msg.key.remoteJid!, pn: alt }])
+					await signalRepository.lidMapping.storeLIDPNMappings([
+						{ lid: msg.key.participant || msg.key.remoteJid!, pn: alt }
+					])
 				}
 			}
 		}

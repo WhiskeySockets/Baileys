@@ -1,10 +1,9 @@
+import { LRUCache } from 'lru-cache'
 import type { SignalKeyStoreWithTransaction } from '../Types'
 import logger from '../Utils/logger'
 import { isLidUser, isPnUser, jidDecode } from '../WABinary'
-import { LRUCache } from 'lru-cache'
 
 export class LIDMappingStore {
-
 	private readonly mappingCache = new LRUCache<string, string>({
 		ttl: 7 * 24 * 60 * 60 * 1000, // 7 days
 		ttlAutopurge: true,

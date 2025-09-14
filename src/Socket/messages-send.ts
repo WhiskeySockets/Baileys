@@ -46,8 +46,7 @@ import {
 	jidEncode,
 	jidNormalizedUser,
 	type JidWithDevice,
-	S_WHATSAPP_NET,
-	transferDevice
+	S_WHATSAPP_NET
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeNewsletterSocket } from './newsletter'
@@ -350,7 +349,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return deviceResults
 	}
 
-
 	const assertSessions = async (jids: string[], force: boolean) => {
 		let didFetchNewSession = false
 		const jidsRequiringFetch: string[] = []
@@ -422,7 +420,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				return { shouldMigrate: false, lidForPN: undefined }
 			}
 
-
 			// Process each user group for potential bulk LID migration
 			for (const [user, userJids] of userGroups) {
 				const mappingResult = await checkUserLidMapping(user, userJids)
@@ -459,23 +456,24 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 
 				// Direct bulk session check with LID single source of truth
-				for (const jid of userJids) {
+				const addMissingSessionsToFetchList = (jid: string) => {
 					const signalId = signalRepository.jidToSignalProtocolAddress(jid)
-					if (!sessions[signalId]) {
-						// Determine correct JID to fetch (LID if mapping exists, otherwise original)
-						if (jid.includes('@s.whatsapp.net') && shouldMigrateUser && lidForPN) {
-							const decoded = jidDecode(jid)!
-							const lidDeviceJid = decoded.device !== undefined 
-								? `${jidDecode(lidForPN)!.user}:${decoded.device}@lid`
-								: lidForPN
-							jidsRequiringFetch.push(lidDeviceJid)
-							logger.debug({ pnJid: jid, lidJid: lidDeviceJid }, 'Adding LID JID to fetch list (conversion)')
-						} else {
-							jidsRequiringFetch.push(jid)
-							logger.debug({ jid }, 'Adding JID to fetch list')
-						}
+					if (sessions[signalId]) return
+
+					// Determine correct JID to fetch (LID if mapping exists, otherwise original)
+					if (jid.includes('@s.whatsapp.net') && shouldMigrateUser && lidForPN) {
+						const decoded = jidDecode(jid)!
+						const lidDeviceJid =
+							decoded.device !== undefined ? `${jidDecode(lidForPN)!.user}:${decoded.device}@lid` : lidForPN
+						jidsRequiringFetch.push(lidDeviceJid)
+						logger.debug({ pnJid: jid, lidJid: lidDeviceJid }, 'Adding LID JID to fetch list (conversion)')
+					} else {
+						jidsRequiringFetch.push(jid)
+						logger.debug({ jid }, 'Adding JID to fetch list')
 					}
 				}
+
+				userJids.forEach(addMissingSessionsToFetchList)
 			}
 		}
 
