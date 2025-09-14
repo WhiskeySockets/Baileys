@@ -6,7 +6,7 @@ import type { ILogger } from '../Utils/logger'
 import type { AuthenticationState, SignalAuthState, TransactionCapabilityOptions } from './Auth'
 import type { GroupMetadata } from './GroupMetadata'
 import { type MediaConnInfo } from './Message'
-import type { SignalRepository } from './Signal'
+import type { SignalRepositoryWithLIDStore } from './Signal'
 
 export type WAVersion = [number, number, number]
 export type WABrowserDescription = [string, string, string]
@@ -143,9 +143,9 @@ export type SocketConfig = {
 			| {
 					jid: string
 					exists: boolean
-					lid: string
+					lid: string | undefined
 			  }[]
 			| undefined
 		>
-	) => SignalRepository
+	) => SignalRepositoryWithLIDStore
 }
