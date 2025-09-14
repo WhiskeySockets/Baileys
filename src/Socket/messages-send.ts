@@ -405,7 +405,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 
 				try {
-					const mapping = await signalRepository.lidMapping.getLIDForPN(user)
+					// Convert user to proper PN JID format for getLIDForPN
+					const pnJid = `${user}@s.whatsapp.net`
+					const mapping = await signalRepository.lidMapping.getLIDForPN(pnJid)
 					if (mapping?.includes('@lid')) {
 						logger.debug(
 							{ user, lidForPN: mapping, deviceCount: userJids.length },
@@ -456,11 +458,22 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 				}
 
+				// Direct bulk session check with LID single source of truth
 				for (const jid of userJids) {
 					const signalId = signalRepository.jidToSignalProtocolAddress(jid)
 					if (!sessions[signalId]) {
-						jidsRequiringFetch.push(jid)
-						logger.debug({ jid }, 'Adding to session fetch list')
+						// Determine correct JID to fetch (LID if mapping exists, otherwise original)
+						if (jid.includes('@s.whatsapp.net') && shouldMigrateUser && lidForPN) {
+							const decoded = jidDecode(jid)!
+							const lidDeviceJid = decoded.device !== undefined 
+								? `${jidDecode(lidForPN)!.user}:${decoded.device}@lid`
+								: lidForPN
+							jidsRequiringFetch.push(lidDeviceJid)
+							logger.debug({ pnJid: jid, lidJid: lidDeviceJid }, 'Adding LID JID to fetch list (conversion)')
+						} else {
+							jidsRequiringFetch.push(jid)
+							logger.debug({ jid }, 'Adding JID to fetch list')
+						}
 					}
 				}
 			}
