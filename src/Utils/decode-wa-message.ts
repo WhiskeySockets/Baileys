@@ -79,11 +79,11 @@ type MessageType =
 	| 'newsletter'
 
 export const extractAddressingContext = (stanza: BinaryNode) => {
-	const addressingMode = stanza.attrs.addressing_mode || 'pn'
 	let senderAlt: string | undefined
 	let recipientAlt: string | undefined
 
 	const sender = stanza.attrs.participant || stanza.attrs.from
+	const addressingMode = stanza.attrs.addressing_mode || (sender?.endsWith('lid') ? 'lid' : 'pn')
 
 	if (addressingMode === 'lid') {
 		// Message is LID-addressed: sender is LID, extract corresponding PN
