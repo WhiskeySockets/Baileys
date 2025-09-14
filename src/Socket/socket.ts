@@ -278,7 +278,7 @@ export const makeSocket = (config: SocketConfig) => {
 
 			return results.list
 				.filter(a => !!a.contact)
-				.map(({ contact, id, lid }) => ({ jid: id, exists: contact as boolean, lid: lid as string | undefined }))
+				.map(({ contact, id, lid }) => ({ jid: id, exists: contact as boolean, lid: lid as string }))
 		}
 	}
 
