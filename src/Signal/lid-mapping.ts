@@ -4,11 +4,11 @@ import { isLidUser, isPnUser, jidDecode } from '../WABinary'
 import { LRUCache } from 'lru-cache'
 
 export class LIDMappingStore {
-	// LID/PN mapping cache - mirrors database mappings for fast lookups
+
 	private readonly mappingCache = new LRUCache<string, string>({
-		ttl: 30 * 60 * 1000, // 30 minutes
+		ttl: 7 * 24 * 60 * 60 * 1000, // 7 days
 		ttlAutopurge: true,
-		updateAgeOnGet: true // Keep frequently accessed mappings cached longer
+		updateAgeOnGet: true
 	})
 	private readonly keys: SignalKeyStoreWithTransaction
 	private onWhatsAppFunc?: (...jids: string[]) => Promise<
@@ -34,7 +34,7 @@ export class LIDMappingStore {
 		this.keys = keys
 		this.onWhatsAppFunc = onWhatsAppFunc // needed to get LID from PN if not found
 	}
-	
+
 	/**
 	 * Store LID-PN mapping - USER LEVEL
 	 */
