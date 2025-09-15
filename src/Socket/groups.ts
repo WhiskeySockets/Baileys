@@ -30,46 +30,56 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 		})
 
 	const groupMetadata = async (jid: string) => {
-		const result = await groupQuery(jid, 'get', [{ tag: 'query', attrs: { request: 'interactive' } }])
-		return extractGroupMetadata(result)
+		try {
+			const result = await groupQuery(jid, 'get', [{ tag: 'query', attrs: { request: 'interactive' } }])
+			return extractGroupMetadata(result)
+		} catch (err) {
+			if (err) {
+				config.logger?.warn(`${err}: error trying to fetch groupMetadata for ${jid}`)
+				return undefined
+			}
+		}
 	}
 
 	const groupFetchAllParticipating = async () => {
-		const result = await query({
-			tag: 'iq',
-			attrs: {
-				to: '@g.us',
-				xmlns: 'w:g2',
-				type: 'get'
-			},
-			content: [
-				{
-					tag: 'participating',
-					attrs: {},
-					content: [
-						{ tag: 'participants', attrs: {} },
-						{ tag: 'description', attrs: {} }
-					]
+		try {
+			const result = await query({
+				tag: 'iq',
+				attrs: { to: '@g.us', xmlns: 'w:g2', type: 'get' },
+				content: [
+					{
+						tag: 'participating',
+						attrs: {},
+						content: [
+							{ tag: 'participants', attrs: {} },
+							{ tag: 'description', attrs: {} }
+						]
+					}
+				]
+			})
+
+			const data: { [_: string]: GroupMetadata } = {}
+			const groupsChild = getBinaryNodeChild(result, 'groups')
+			if (groupsChild) {
+				const groups = getBinaryNodeChildren(groupsChild, 'group')
+				for (const groupNode of groups) {
+					const meta = extractGroupMetadata({
+						tag: 'result',
+						attrs: {},
+						content: [groupNode]
+					})
+					data[meta.id] = meta
 				}
-			]
-		})
-		const data: { [_: string]: GroupMetadata } = {}
-		const groupsChild = getBinaryNodeChild(result, 'groups')
-		if (groupsChild) {
-			const groups = getBinaryNodeChildren(groupsChild, 'group')
-			for (const groupNode of groups) {
-				const meta = extractGroupMetadata({
-					tag: 'result',
-					attrs: {},
-					content: [groupNode]
-				})
-				data[meta.id] = meta
+			}
+
+			sock.ev.emit('groups.update', Object.values(data))
+			return data
+		} catch (err) {
+			if (err) {
+				config.logger?.warn(`${err}: error trying to fetch all participating groups`)
+				return {}
 			}
 		}
-
-		sock.ev.emit('groups.update', Object.values(data))
-
-		return data
 	}
 
 	sock.ws.on('CB:ib,,dirty', async (node: BinaryNode) => {
@@ -174,7 +184,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 		},
 		groupUpdateDescription: async (jid: string, description?: string) => {
 			const metadata = await groupMetadata(jid)
-			const prev = metadata.descId ?? null
+			const prev = metadata?.descId ?? null
 
 			await groupQuery(jid, 'set', [
 				{
@@ -346,7 +356,7 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 		participants: getBinaryNodeChildren(group, 'participant').map(({ attrs }) => {
 			return {
 				id: attrs.jid!,
-				phoneNumber: isLidUser(attrs.jid) && isPnUser(attrs.phone_number) ? attrs.phone_number : undefined,
+				phoneNumber: isLidUser(attrs.jid) && isPnUser(attrs.phoneNumber) ? attrs.phoneNumber : undefined,
 				lid: isPnUser(attrs.jid) && isLidUser(attrs.lid) ? attrs.lid : undefined,
 				admin: (attrs.type || null) as GroupParticipant['admin']
 			}
