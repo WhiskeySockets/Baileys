@@ -621,48 +621,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 				const userNodes: BinaryNode[] = []
 
-				// Helper to get encryption JID with LID migration
 				const getEncryptionJid = async (wireJid: string) => {
-					if (!wireJid.includes('@s.whatsapp.net')) return wireJid
-
-					try {
+					if (wireJid.includes('@s.whatsapp.net')) {
 						const lidForPN = await signalRepository.lidMapping.getLIDForPN(wireJid)
-
-						if (!lidForPN?.includes('@lid')) return wireJid
-
-						// Preserve device ID from original wire JID
-						const wireDecoded = jidDecode(wireJid)
-						const deviceId = wireDecoded?.device || 0
-						const lidDecoded = jidDecode(lidForPN)
-						const lidWithDevice = jidEncode(lidDecoded?.user!, 'lid', deviceId)
-
-						// Migrate session to LID for unified encryption layer
-						try {
-							const migrationResult = await signalRepository.migrateSession([wireJid], lidWithDevice)
-							const recipientUser = jidNormalizedUser(wireJid)
-							const ownPnUser = jidNormalizedUser(meId)
-							const isOwnDevice = recipientUser === ownPnUser
-							logger.info({ wireJid, lidWithDevice, isOwnDevice }, 'Migrated to LID encryption')
-
-							// Delete PN session after successful migration
-							try {
-								if (migrationResult.migrated) {
-									await signalRepository.deleteSession([wireJid])
-									logger.debug({ deletedPNSession: wireJid }, 'Deleted PN session')
-								}
-							} catch (deleteError) {
-								logger.warn({ wireJid, error: deleteError }, 'Failed to delete PN session')
-							}
-
-							return lidWithDevice
-						} catch (migrationError) {
-							logger.warn({ wireJid, error: migrationError }, 'Failed to migrate session')
-							return wireJid
+						if (lidForPN?.includes('@lid')) {
+							return lidForPN
 						}
-					} catch (error) {
-						logger.debug({ wireJid, error }, 'Failed to check LID mapping')
-						return wireJid
 					}
+					return wireJid
 				}
 
 				// Encrypt to this user's devices sequentially to prevent session corruption
@@ -689,7 +655,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					const bytes = encodeWAMessage(messageToEncrypt)
 
-					// Get encryption JID with LID migration
 					const encryptionJid = await getEncryptionJid(wireJid)
 
 					// ENCRYPT: Use the determined encryption identity (prefers migrated LID)
