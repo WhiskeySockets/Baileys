@@ -874,6 +874,23 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await msgRetryCache.set(key, newValue)
 	}
 
+	const getMessageForRetry = async (key: proto.IMessageKey) => {
+		try {
+			const recentMsg = recentMessageSentHistory.get(key.remoteJid!, key.id!)
+
+			if (recentMsg) {
+				return recentMsg
+			}
+
+			const message = await getMessage({ ...key })
+
+			return message
+		} catch {
+			logger.error({ key }, 'error getting message for retry')
+			return undefined
+		}
+	}
+
 	const sendMessagesAgain = async (key: proto.IMessageKey, ids: string[], retryNode: BinaryNode) => {
 		const remoteJid = key.remoteJid!
 		const participant = key.participant || remoteJid
@@ -941,7 +958,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		await assertSessions([participant], shouldRecreateSession)
 
-		if (isJidGroup(remoteJid)) {
+		const isGroup = isJidGroup(remoteJid)
+
+		if (isGroup) {
 			await authState.keys.set({ 'sender-key-memory': { [remoteJid]: null } })
 		}
 
@@ -953,6 +972,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			if (msg && (await willSendMessageAgain(ids[i], participant))) {
 				updateSendMessageAgainCount(ids[i], participant)
 				const msgRelayOpts: MessageRelayOptions = { messageId: ids[i] }
+
+				if (isGroup) {
+					msgRelayOpts.forceResendDistributionMessage = true
+				}
 
 				if (sendToAll) {
 					msgRelayOpts.useUserDevicesCache = false
@@ -1184,6 +1207,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		try {
+			if (msg.key.participant) {
+				await assertSessions([author || msg.key.participant], false)
+			}
+			
 			await Promise.all([
 				processingMutex.mutex(async () => {
 					await decrypt()
