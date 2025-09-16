@@ -333,161 +333,27 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return deviceResults
 	}
 
-	const assertSessions = async (jids: string[], force: boolean) => {
+	const assertSessions = async (jids: string[]) => {
 		let didFetchNewSession = false
 		const jidsRequiringFetch: string[] = []
 
-		if (force) {
-			// Check which sessions are missing (with LID migration check)
-			const addrs = jids.map(jid => signalRepository.jidToSignalProtocolAddress(jid))
-			const sessions = await authState.keys.get('session', addrs)
+		// Check which sessions are missing
+		const addrs = jids.map(jid => signalRepository.jidToSignalProtocolAddress(jid))
+		const sessions = await authState.keys.get('session', addrs)
 
-			// Simplified: Check session existence directly
-			const checkJidSession = (jid: string) => {
-				const signalId = signalRepository.jidToSignalProtocolAddress(jid)
-				const hasSession = !!sessions[signalId]
+		// Check session existence directly
+		for (const jid of jids) {
+			const signalId = signalRepository.jidToSignalProtocolAddress(jid)
+			const hasSession = !!sessions[signalId]
 
-				// Add to fetch list if no session exists
-				// Session type selection (LID vs PN) is handled in encryptMessage
-				if (!hasSession) {
-					if (jid.includes('@lid')) {
-						logger.debug({ jid }, 'No LID session found, will create new LID session')
-					}
-
-					jidsRequiringFetch.push(jid)
-				}
-			}
-
-			// Process all JIDs
-			for (const jid of jids) {
-				checkJidSession(jid)
-			}
-		} else {
-			const addrs = jids.map(jid => signalRepository.jidToSignalProtocolAddress(jid))
-			const sessions = await authState.keys.get('session', addrs)
-
-			// Group JIDs by user for bulk migration
-			const userGroups = new Map<string, string[]>()
-			for (const jid of jids) {
-				const user = jidNormalizedUser(jid)
-				if (!userGroups.has(user)) {
-					userGroups.set(user, [])
-				}
-
-				userGroups.get(user)!.push(jid)
-			}
-
-			// Helper to check LID mapping for a user
-			const checkUserLidMapping = async (user: string, userJids: string[]) => {
-				if (!userJids.some(jid => jid.includes('@s.whatsapp.net'))) {
-					return { shouldMigrate: false, lidForPN: undefined }
-				}
-
-				try {
-					// Convert user to proper PN JID format for getLIDForPN
-					const pnJid = `${user}@s.whatsapp.net`
-					const mapping = await signalRepository.lidMapping.getLIDForPN(pnJid)
-					if (mapping?.includes('@lid')) {
-						logger.debug(
-							{ user, lidForPN: mapping, deviceCount: userJids.length },
-							'User has LID mapping - preparing bulk migration'
-						)
-						return { shouldMigrate: true, lidForPN: mapping }
-					}
-				} catch (error) {
-					logger.debug({ user, error }, 'Failed to check LID mapping for user')
-				}
-
-				return { shouldMigrate: false, lidForPN: undefined }
-			}
-
-			// Process each user group for potential bulk LID migration
-			for (const [user, userJids] of userGroups) {
-				const mappingResult = await checkUserLidMapping(user, userJids)
-				const shouldMigrateUser = mappingResult.shouldMigrate
-				const lidForPN = mappingResult.lidForPN
-
-				// Migrate all devices for this user if LID mapping exists
-				if (shouldMigrateUser && lidForPN) {
-					// Bulk migrate all user devices in single transaction
-					const migrationResult = await signalRepository.migrateSession(userJids, lidForPN)
-
-					if (migrationResult.migrated > 0) {
-						logger.info(
-							{
-								user,
-								lidMapping: lidForPN,
-								migrated: migrationResult.migrated,
-								skipped: migrationResult.skipped,
-								total: migrationResult.total
-							},
-							'Completed bulk migration for user devices'
-						)
-					} else {
-						logger.debug(
-							{
-								user,
-								lidMapping: lidForPN,
-								skipped: migrationResult.skipped,
-								total: migrationResult.total
-							},
-							'All user device sessions already migrated'
-						)
-					}
-				}
-
-				// Direct bulk session check with LID single source of truth
-				const addMissingSessionsToFetchList = (jid: string) => {
-					const signalId = signalRepository.jidToSignalProtocolAddress(jid)
-					if (sessions[signalId]) return
-
-					// Determine correct JID to fetch (LID if mapping exists, otherwise original)
-					if (jid.includes('@s.whatsapp.net') && shouldMigrateUser && lidForPN) {
-						const decoded = jidDecode(jid)!
-						const lidDeviceJid =
-							decoded.device !== undefined ? `${jidDecode(lidForPN)!.user}:${decoded.device}@lid` : lidForPN
-						jidsRequiringFetch.push(lidDeviceJid)
-						logger.debug({ pnJid: jid, lidJid: lidDeviceJid }, 'Adding LID JID to fetch list (conversion)')
-					} else {
-						jidsRequiringFetch.push(jid)
-						logger.debug({ jid }, 'Adding JID to fetch list')
-					}
-				}
-
-				userJids.forEach(addMissingSessionsToFetchList)
+			// Add to fetch list if no session exists
+			if (!hasSession) {
+				jidsRequiringFetch.push(jid)
 			}
 		}
 
 		if (jidsRequiringFetch.length) {
 			logger.debug({ jidsRequiringFetch }, 'fetching sessions')
-
-			// DEBUG: Check if there are PN versions of LID users being fetched
-			const lidUsersBeingFetched = new Set<string>()
-			const pnUsersBeingFetched = new Set<string>()
-
-			for (const jid of jidsRequiringFetch) {
-				const user = jidDecode(jid)?.user
-				if (user) {
-					if (jid.includes('@lid')) {
-						lidUsersBeingFetched.add(user)
-					} else if (jid.includes('@s.whatsapp.net')) {
-						pnUsersBeingFetched.add(user)
-					}
-				}
-			}
-
-			// Find overlaps
-			const overlapping = Array.from(pnUsersBeingFetched).filter(user => lidUsersBeingFetched.has(user))
-			if (overlapping.length > 0) {
-				logger.warn(
-					{
-						overlapping,
-						lidUsersBeingFetched: Array.from(lidUsersBeingFetched),
-						pnUsersBeingFetched: Array.from(pnUsersBeingFetched)
-					},
-					'Fetching both LID and PN sessions for same users'
-				)
-			}
 
 			const result = await query({
 				tag: 'iq',
@@ -855,7 +721,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						}
 					}
 
-					await assertSessions(senderKeyJids, false)
+					await assertSessions(senderKeyJids)
 
 					const result = await createParticipantNodes(senderKeyJids, senderKeyMsg, extraAttrs)
 					shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || result.shouldIncludeDeviceIdentity
@@ -944,7 +810,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					allJids.push(jid)
 				}
 
-				await assertSessions([...otherJids, ...meJids], false)
+				await assertSessions([...otherJids, ...meJids])
 
 				const [
 					{ nodes: meNodes, shouldIncludeDeviceIdentity: s1 },
