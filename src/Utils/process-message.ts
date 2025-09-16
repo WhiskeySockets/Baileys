@@ -9,7 +9,8 @@ import type {
 	ParticipantAction,
 	RequestJoinAction,
 	RequestJoinMethod,
-	SignalKeyStoreWithTransaction
+	SignalKeyStoreWithTransaction,
+	SignalRepositoryWithLIDStore
 } from '../Types'
 import { WAMessageStubType } from '../Types'
 import { getContentType, normalizeMessageContent } from '../Utils/messages'
@@ -27,6 +28,7 @@ type ProcessMessageContext = {
 	ev: BaileysEventEmitter
 	logger?: ILogger
 	options: AxiosRequestConfig<{}>
+	signalRepository: SignalRepositoryWithLIDStore
 }
 
 const REAL_MSG_STUB_TYPES = new Set([
@@ -145,7 +147,16 @@ export function decryptPollVote(
 
 const processMessage = async (
 	message: proto.IWebMessageInfo,
-	{ shouldProcessHistoryMsg, placeholderResendCache, ev, creds, keyStore, logger, options }: ProcessMessageContext
+	{
+		shouldProcessHistoryMsg,
+		placeholderResendCache,
+		ev,
+		creds,
+		signalRepository,
+		keyStore,
+		logger,
+		options
+	}: ProcessMessageContext
 ) => {
 	const meId = creds.me!.id
 	const { accountSettings } = creds
@@ -225,7 +236,7 @@ const processMessage = async (
 						}
 
 						logger?.info({ newAppStateSyncKeyId, newKeys }, 'injecting new app state sync keys')
-					})
+					}, meId)
 
 					ev.emit('creds.update', { myAppStateKeyId: newAppStateSyncKeyId })
 				} else {
@@ -253,7 +264,7 @@ const processMessage = async (
 			case proto.Message.ProtocolMessage.Type.PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE:
 				const response = protocolMsg.peerDataOperationRequestResponseMessage!
 				if (response) {
-					placeholderResendCache?.del(response.stanzaId!)
+					await placeholderResendCache?.del(response.stanzaId!)
 					// TODO: IMPLEMENT HISTORY SYNC ETC (sticker uploads etc.).
 					const { peerDataOperationResult } = response
 					for (const result of peerDataOperationResult!) {
@@ -292,6 +303,18 @@ const processMessage = async (
 					}
 				])
 				break
+			case proto.Message.ProtocolMessage.Type.LID_MIGRATION_MAPPING_SYNC:
+				const encodedPayload = protocolMsg.lidMigrationMappingSyncMessage?.encodedMappingPayload!
+				const { pnToLidMappings, chatDbMigrationTimestamp } =
+					proto.LIDMigrationMappingSyncPayload.decode(encodedPayload)
+				logger?.debug({ pnToLidMappings, chatDbMigrationTimestamp }, 'got lid mappings and chat db migration timestamp')
+				const pairs = []
+				for (const { pn, latestLid, assignedLid } of pnToLidMappings) {
+					const lid = latestLid || assignedLid
+					pairs.push({ lid: `${lid}@lid`, pn: `${pn}@s.whatsapp.net` })
+				}
+
+				await signalRepository.lidMapping.storeLIDPNMappings(pairs)
 		}
 	} else if (content?.reactionMessage) {
 		const reaction: proto.IReaction = {

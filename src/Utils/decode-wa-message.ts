@@ -1,53 +1,42 @@
 import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto/index.js'
-import type { SignalRepository, WAMessage, WAMessageKey } from '../Types'
+import type { WAMessage, WAMessageKey } from '../Types'
+import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import {
 	areJidsSameUser,
 	type BinaryNode,
 	isJidBroadcast,
 	isJidGroup,
-	isJidMetaIa,
+	isJidMetaAI,
 	isJidNewsletter,
 	isJidStatusBroadcast,
-	isJidUser,
 	isLidUser,
-	jidDecode,
-	jidEncode,
-	jidNormalizedUser
+	isPnUser,
+	transferDevice
 } from '../WABinary'
 import { unpadRandomMax16 } from './generics'
 import type { ILogger } from './logger'
 
-const getDecryptionJid = async (sender: string, repository: SignalRepository): Promise<string> => {
+const getDecryptionJid = async (sender: string, repository: SignalRepositoryWithLIDStore): Promise<string> => {
 	if (!sender.includes('@s.whatsapp.net')) {
 		return sender
 	}
 
-	const lidMapping = repository.getLIDMappingStore()
-	const normalizedSender = jidNormalizedUser(sender)
-	const lidForPN = await lidMapping.getLIDForPN(normalizedSender)
-
-	if (lidForPN?.includes('@lid')) {
-		const senderDecoded = jidDecode(sender)
-		const deviceId = senderDecoded?.device || 0
-		return jidEncode(jidDecode(lidForPN)!.user, 'lid', deviceId)
-	}
-
-	return sender
+	return (await repository.lidMapping.getLIDForPN(sender))!
 }
 
 const storeMappingFromEnvelope = async (
 	stanza: BinaryNode,
 	sender: string,
 	decryptionJid: string,
-	repository: SignalRepository,
+	repository: SignalRepositoryWithLIDStore,
 	logger: ILogger
 ): Promise<void> => {
 	const { senderAlt } = extractAddressingContext(stanza)
 
-	if (senderAlt && isLidUser(senderAlt) && isJidUser(sender) && decryptionJid === sender) {
+	if (senderAlt && isLidUser(senderAlt) && isPnUser(sender) && decryptionJid === sender) {
 		try {
-			await repository.storeLIDPNMapping(senderAlt, sender)
+			await repository.lidMapping.storeLIDPNMappings([{ lid: senderAlt, pn: sender }])
 			logger.debug({ sender, senderAlt }, 'Stored LID mapping from envelope')
 		} catch (error) {
 			logger.warn({ sender, senderAlt, error }, 'Failed to store LID mapping')
@@ -57,6 +46,13 @@ const storeMappingFromEnvelope = async (
 
 export const NO_MESSAGE_FOUND_ERROR_TEXT = 'Message absent from node'
 export const MISSING_KEYS_ERROR_TEXT = 'Key used already or never filled'
+
+// Retry configuration for failed decryption
+export const DECRYPTION_RETRY_CONFIG = {
+	maxRetries: 3,
+	baseDelayMs: 100,
+	sessionRecordErrors: ['No session record', 'SessionError: No session record']
+}
 
 export const NACK_REASONS = {
 	ParsingError: 487,
@@ -84,18 +80,27 @@ type MessageType =
 	| 'newsletter'
 
 export const extractAddressingContext = (stanza: BinaryNode) => {
-	const addressingMode = stanza.attrs.addressing_mode || 'pn'
 	let senderAlt: string | undefined
 	let recipientAlt: string | undefined
 
+	const sender = stanza.attrs.participant || stanza.attrs.from
+	const addressingMode = stanza.attrs.addressing_mode || (sender?.endsWith('lid') ? 'lid' : 'pn')
+
 	if (addressingMode === 'lid') {
 		// Message is LID-addressed: sender is LID, extract corresponding PN
-		senderAlt = stanza.attrs.participant_pn || stanza.attrs.sender_pn
+		// without device data
+		senderAlt = stanza.attrs.participant_pn || stanza.attrs.sender_pn || stanza.attrs.peer_recipient_pn
 		recipientAlt = stanza.attrs.recipient_pn
+		// with device data
+		if (sender && senderAlt) senderAlt = transferDevice(sender, senderAlt)
 	} else {
 		// Message is PN-addressed: sender is PN, extract corresponding LID
-		senderAlt = stanza.attrs.participant_lid || stanza.attrs.sender_lid
+		// without device data
+		senderAlt = stanza.attrs.participant_lid || stanza.attrs.sender_lid || stanza.attrs.peer_recipient_lid
 		recipientAlt = stanza.attrs.recipient_lid
+
+		//with device data
+		if (sender && senderAlt) senderAlt = transferDevice(sender, senderAlt)
 	}
 
 	return {
@@ -119,11 +124,13 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	const participant: string | undefined = stanza.attrs.participant
 	const recipient: string | undefined = stanza.attrs.recipient
 
+	const addressingContext = extractAddressingContext(stanza)
+
 	const isMe = (jid: string) => areJidsSameUser(jid, meId)
 	const isMeLid = (jid: string) => areJidsSameUser(jid, meLid)
 
-	if (isJidUser(from) || isLidUser(from)) {
-		if (recipient && !isJidMetaIa(recipient)) {
+	if (isPnUser(from) || isLidUser(from)) {
+		if (recipient && !isJidMetaAI(recipient)) {
 			if (!isMe(from!) && !isMeLid(from!)) {
 				throw new Boom('receipient present, but msg not from me', { data: stanza })
 			}
@@ -170,13 +177,11 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 
 	const key: WAMessageKey = {
 		remoteJid: chatId,
+		remoteJidAlt: !isJidGroup(chatId) ? addressingContext.senderAlt : undefined,
 		fromMe,
 		id: msgId,
-		senderLid: stanza?.attrs?.sender_lid,
-		senderPn: stanza?.attrs?.sender_pn || stanza?.attrs?.peer_recipient_pn,
 		participant,
-		participantPn: stanza?.attrs?.participant_pn,
-		participantLid: stanza?.attrs?.participant_lid,
+		participantAlt: isJidGroup(chatId) ? addressingContext.senderAlt : undefined,
 		...(msgType === 'newsletter' && stanza.attrs.server_id ? { server_id: stanza.attrs.server_id } : {})
 	}
 
@@ -202,7 +207,7 @@ export const decryptMessageNode = (
 	stanza: BinaryNode,
 	meId: string,
 	meLid: string,
-	repository: SignalRepository,
+	repository: SignalRepositoryWithLIDStore,
 	logger: ILogger
 ) => {
 	const { fullMessage, author, sender } = decodeMessageNode(stanza, meId, meLid)
@@ -221,7 +226,7 @@ export const decryptMessageNode = (
 					}
 
 					if (tag === 'unavailable' && attrs.type === 'view_once') {
-						fullMessage.key.isViewOnce = true
+						fullMessage.key.isViewOnce = true // TODO: remove from here and add a STUB TYPE
 					}
 
 					if (tag !== 'enc' && tag !== 'plaintext') {
@@ -236,8 +241,15 @@ export const decryptMessageNode = (
 
 					let msgBuffer: Uint8Array
 
+					const user = isPnUser(sender) ? sender : author // TODO: flaky logic
+					const decryptionJid = await getDecryptionJid(user, repository)
+					if (tag !== 'plaintext') {
+						await storeMappingFromEnvelope(stanza, user, decryptionJid, repository, logger)
+					}
+
 					try {
 						const e2eType = tag === 'plaintext' ? 'plaintext' : attrs.type
+
 						switch (e2eType) {
 							case 'skmsg':
 								msgBuffer = await repository.decryptGroupMessage({
@@ -248,16 +260,11 @@ export const decryptMessageNode = (
 								break
 							case 'pkmsg':
 							case 'msg':
-								const user = isJidUser(sender) ? sender : author
-								const decryptionJid = await getDecryptionJid(user, repository)
-
 								msgBuffer = await repository.decryptMessage({
 									jid: decryptionJid,
 									type: e2eType,
 									ciphertext: content
 								})
-
-								await storeMappingFromEnvelope(stanza, user, decryptionJid, repository, logger)
 								break
 							case 'plaintext':
 								msgBuffer = content
@@ -278,7 +285,7 @@ export const decryptMessageNode = (
 									item: msg.senderKeyDistributionMessage
 								})
 							} catch (err) {
-								logger.error({ key: fullMessage.key, err }, 'failed to decrypt message')
+								logger.error({ key: fullMessage.key, err }, 'failed to process sender key distribution message')
 							}
 						}
 
@@ -288,9 +295,19 @@ export const decryptMessageNode = (
 							fullMessage.message = msg
 						}
 					} catch (err: any) {
-						logger.error({ key: fullMessage.key, err }, 'failed to decrypt message')
+						const errorContext = {
+							key: fullMessage.key,
+							err,
+							messageType: tag === 'plaintext' ? 'plaintext' : attrs.type,
+							sender,
+							author,
+							isSessionRecordError: isSessionRecordError(err)
+						}
+
+						logger.error(errorContext, 'failed to decrypt message')
+
 						fullMessage.messageStubType = proto.WebMessageInfo.StubType.CIPHERTEXT
-						fullMessage.messageStubParameters = [err.message]
+						fullMessage.messageStubParameters = [err.message.toString()]
 					}
 				}
 			}
@@ -302,4 +319,12 @@ export const decryptMessageNode = (
 			}
 		}
 	}
+}
+
+/**
+ * Utility function to check if an error is related to missing session record
+ */
+function isSessionRecordError(error: any): boolean {
+	const errorMessage = error?.message || error?.toString() || ''
+	return DECRYPTION_RETRY_CONFIG.sessionRecordErrors.some(errorPattern => errorMessage.includes(errorPattern))
 }

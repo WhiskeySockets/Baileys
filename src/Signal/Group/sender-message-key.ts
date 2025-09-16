@@ -1,4 +1,3 @@
-/* @ts-ignore */
 import { deriveSecrets } from 'libsignal/src/crypto'
 
 export class SenderMessageKey {
