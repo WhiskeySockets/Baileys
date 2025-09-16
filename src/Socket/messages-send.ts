@@ -883,10 +883,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 
 				if (groupData?.ephemeralDuration && groupData.ephemeralDuration > 0) {
-						additionalAttributes = {
-							...additionalAttributes,
-							expiration:  groupData.ephemeralDuration.toString()
-						}
+					additionalAttributes = {
+						...additionalAttributes,
+						expiration: groupData.ephemeralDuration.toString()
+					}
 				}
 
 				const patched = await patchMessageBeforeSending(message)
