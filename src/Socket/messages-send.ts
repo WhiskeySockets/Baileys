@@ -200,38 +200,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		wireJid: string // The exact JID format that should be used in wire protocol (envelope addressing)
 	}
 
-	/**
-	 * Deduplicate JIDs when both LID and PN versions exist for same user
-	 * Prefers LID over PN to maintain single encryption layer
-	 */
-	const deduplicateLidPnJids = (jids: string[]): string[] => {
-		const lidUsers = new Set<string>()
-		const filteredJids: string[] = []
-
-		// Collect all LID users
-		for (const jid of jids) {
-			if (jid.includes('@lid')) {
-				const user = jidDecode(jid)?.user
-				if (user) lidUsers.add(user)
-			}
-		}
-
-		// Filter out PN versions when LID exists
-		for (const jid of jids) {
-			if (jid.includes('@s.whatsapp.net')) {
-				const user = jidDecode(jid)?.user
-				if (user && lidUsers.has(user)) {
-					logger.debug({ jid }, 'Skipping PN - LID version exists')
-					continue
-				}
-			}
-
-			filteredJids.push(jid)
-		}
-
-		return filteredJids
-	}
-
 	/** Fetch all the devices we've to send a message to */
 	const getUSyncDevices = async (
 		jids: string[],
@@ -245,7 +213,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 
 		const toFetch: string[] = []
-		jids = deduplicateLidPnJids(Array.from(new Set(jids)))
+
 		const jidsWithUser = jids
 			.map(jid => {
 				const decoded = jidDecode(jid)
@@ -368,9 +336,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	const assertSessions = async (jids: string[], force: boolean) => {
 		let didFetchNewSession = false
 		const jidsRequiringFetch: string[] = []
-
-		// Apply same deduplication as in getUSyncDevices
-		jids = deduplicateLidPnJids(jids)
 
 		if (force) {
 			// Check which sessions are missing (with LID migration check)
