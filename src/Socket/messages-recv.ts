@@ -53,7 +53,8 @@ import {
 	isLidUser,
 	jidDecode,
 	jidNormalizedUser,
-	S_WHATSAPP_NET
+	S_WHATSAPP_NET,
+	swapLidJidAttrs
 } from '../WABinary'
 import { extractGroupMetadata } from './groups'
 import { makeMessagesSocket } from './messages-send'
@@ -1450,6 +1451,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		identifier: string,
 		exec: (node: BinaryNode) => Promise<void>
 	) => {
+
+		swapLidJidAttrs(node.attrs)
+
 		const isOffline = !!node.attrs.offline
 
 		if (isOffline) {

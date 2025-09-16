@@ -79,3 +79,32 @@ export const transferDevice = (fromJid: string, toJid: string) => {
 	const { server, user } = jidDecode(toJid)!
 	return jidEncode(user, server, deviceId)
 }
+
+/**
+ * Swaps LID (Linked ID) JID attributes in the provided attributes object.
+ *
+ * - If the `from` attribute ends with '@lid' and `sender_pn` exists,
+ *   it moves the LID JID to `sender_lid`, replaces `from` with `sender_pn`
+ * - If the `recipient` attribute ends with '@lid', `peer_recipient_pn` exists,
+ *   and `peer_recipient_pn` does not end with '@lid', it moves the LID JID to `peer_recipient_lid`,
+ *   replaces `recipient` with `peer_recipient_pn`
+ *
+ * @param attrs - The attributes object containing JID fields to be swapped.
+ */
+export const swapLidJidAttrs = (attrs: Record<string, string>) => {
+	if(
+		attrs.from?.endsWith('@lid') && attrs.sender_pn
+	) {
+		attrs['sender_lid'] = attrs.from
+		attrs.from = attrs.sender_pn
+	}
+
+	if (
+		attrs.recipient?.endsWith('@lid') &&
+		attrs.peer_recipient_pn &&
+		!attrs.peer_recipient_pn.endsWith?.('@lid')
+	) {
+		attrs['peer_recipient_lid'] = attrs.recipient
+		attrs.recipient = attrs.peer_recipient_pn
+	}
+}
