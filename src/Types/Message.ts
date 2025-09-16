@@ -2,7 +2,7 @@ import type { AxiosRequestConfig } from 'axios'
 import type { Readable } from 'stream'
 import type { URL } from 'url'
 import { proto } from '../../WAProto/index.js'
-import { MEDIA_HKDF_KEY_MAPPING } from '../Defaults'
+import type { MediaType } from '../Defaults'
 import type { BinaryNode } from '../WABinary'
 import type { GroupMetadata } from './GroupMetadata'
 import type { CacheStore } from './Socket'
@@ -14,12 +14,10 @@ export type WAMessageContent = proto.IMessage
 export type WAContactMessage = proto.Message.IContactMessage
 export type WAContactsArrayMessage = proto.Message.IContactsArrayMessage
 export type WAMessageKey = proto.IMessageKey & {
-	senderLid?: string
+	remoteJidAlt?: string
+	participantAlt?: string
 	server_id?: string
-	senderPn?: string
-	participantLid?: string
-	participantPn?: string
-	isViewOnce?: boolean
+	isViewOnce?: boolean // TODO: remove out of the message key, place in WebMessageInfo
 }
 export type WATextMessage = proto.Message.IExtendedTextMessage
 export type WAContextInfo = proto.IContextInfo
@@ -38,6 +36,11 @@ export type WAMediaPayloadStream = { stream: Readable }
 export type WAMediaUpload = Buffer | WAMediaPayloadStream | WAMediaPayloadURL
 /** Set of message types that are supported by the library */
 export type MessageType = keyof proto.Message
+
+export enum WAMessageAddressingMode {
+	PN = 'pn',
+	LID = 'lid'
+}
 
 export type MessageWithContextInfo =
 	| 'imageMessage'
@@ -131,6 +134,19 @@ export type PollMessageOptions = {
 	toAnnouncementGroup?: boolean
 }
 
+export type EventMessageOptions = {
+	name: string
+	description?: string
+	startDate: Date
+	endDate?: Date
+	location?: WALocationMessage
+	call?: 'audio' | 'video'
+	isCancelled?: boolean
+	isScheduleCall?: boolean
+	extraGuestsAllowed?: boolean
+	messageSecret?: Uint8Array<ArrayBufferLike>
+}
+
 type SharePhoneNumber = {
 	sharePhoneNumber: boolean
 }
@@ -139,7 +155,6 @@ type RequestPhoneNumber = {
 	requestPhoneNumber: boolean
 }
 
-export type MediaType = keyof typeof MEDIA_HKDF_KEY_MAPPING
 export type AnyMediaMessageContent = (
 	| ({
 			image: WAMediaUpload
@@ -203,6 +218,7 @@ export type AnyRegularMessageContent = (
 			Contextable &
 			Editable)
 	| AnyMediaMessageContent
+	| { event: EventMessageOptions }
 	| ({
 			poll: PollMessageOptions
 	  } & Mentionable &
@@ -307,7 +323,7 @@ export type MessageGenerationOptionsFromContent = MiscMessageGenerationOptions &
 export type WAMediaUploadFunction = (
 	encFilePath: string,
 	opts: { fileEncSha256B64: string; mediaType: MediaType; timeoutMs?: number }
-) => Promise<{ mediaUrl: string; directPath: string }>
+) => Promise<{ mediaUrl: string; directPath: string; meta_hmac?: string; ts?: number; fbid?: number }>
 
 export type MediaGenerationOptions = {
 	logger?: ILogger
@@ -327,6 +343,7 @@ export type MediaGenerationOptions = {
 export type MessageContentGenerationOptions = MediaGenerationOptions & {
 	getUrlInfo?: (text: string) => Promise<WAUrlInfo | undefined>
 	getProfilePicUrl?: (jid: string, type: 'image' | 'preview') => Promise<string | undefined>
+	getCallLink?: (type: 'audio' | 'video', event?: { startTime: number }) => Promise<string | undefined>
 	jid?: string
 }
 export type MessageGenerationOptions = MessageContentGenerationOptions & MessageGenerationOptionsFromContent
