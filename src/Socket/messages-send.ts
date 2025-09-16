@@ -452,16 +452,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 				const userNodes: BinaryNode[] = []
 
-				const getEncryptionJid = async (wireJid: string) => {
-					if (wireJid.includes('@s.whatsapp.net')) {
-						const lidForPN = await signalRepository.lidMapping.getLIDForPN(wireJid)
-						if (lidForPN?.includes('@lid')) {
-							return lidForPN
-						}
-					}
-					return wireJid
-				}
-
 				// Encrypt to this user's devices sequentially to prevent session corruption
 				for (const { recipientJid: wireJid, patchedMessage } of userDevices) {
 					// DSM logic: Use DSM for own other devices (following whatsmeow implementation)
@@ -486,11 +476,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					const bytes = encodeWAMessage(messageToEncrypt)
 
-					const encryptionJid = await getEncryptionJid(wireJid)
-
-					// ENCRYPT: Use the determined encryption identity (prefers migrated LID)
+					// libsignal.encryptMessage handles LID mapping automatically
 					const { type, ciphertext } = await signalRepository.encryptMessage({
-						jid: encryptionJid, // Unified encryption layer (LID when available)
+						jid: wireJid,
 						data: bytes
 					})
 
