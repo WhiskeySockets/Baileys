@@ -1,5 +1,4 @@
 import * as nodeCrypto from 'crypto'
-/* @ts-ignore */
 import { generateKeyPair } from 'libsignal/src/curve'
 
 type KeyPairType = ReturnType<typeof generateKeyPair>

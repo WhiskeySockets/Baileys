@@ -14,6 +14,7 @@ import type {
 } from '../Types'
 import { DisconnectReason } from '../Types'
 import { type BinaryNode, getAllBinaryNodeChildren, jidDecode } from '../WABinary'
+import { sha256 } from './crypto'
 
 const PLATFORM_MAP = {
 	aix: 'AIX',
@@ -86,6 +87,13 @@ export const unpadRandomMax16 = (e: Uint8Array | Buffer) => {
 	}
 
 	return new Uint8Array(t.buffer, t.byteOffset, t.length - r)
+}
+
+// code is inspired by whatsmeow
+export const generateParticipantHashV2 = (participants: string[]): string => {
+	participants.sort()
+	const sha256Hash = sha256(Buffer.from(participants.join(''))).toString('base64')
+	return '2:' + sha256Hash.slice(0, 6)
 }
 
 export const encodeWAMessage = (message: proto.IMessage) => writeRandomPadMax16(proto.Message.encode(message).finish())
