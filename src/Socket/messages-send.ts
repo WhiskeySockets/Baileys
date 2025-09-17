@@ -353,14 +353,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 			} else {
 				const sessions = await authState.keys.get('session', [signalId])
-			const hasSession = !!sessions[signalId]
+				const hasSession = !!sessions[signalId]
 				peerSessionsCache.set(signalId, hasSession)
 				if (hasSession) {
 					continue
 				}
 			}
 
-				jidsRequiringFetch.push(jid)
+			jidsRequiringFetch.push(jid)
 		}
 
 		if (jidsRequiringFetch.length) {
@@ -444,17 +444,17 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			async ({ recipientJid: wireJid, message: patchedMessage }: any) => {
 				if (!wireJid) return null
 				let msgToEncrypt = patchedMessage
-					if (dsmMessage) {
-						const { user: targetUser } = jidDecode(wireJid)!
-						const { user: ownPnUser } = jidDecode(meId)!
-						const ownLidUser = meLidUser
-						const isOwnUser = targetUser === ownPnUser || (ownLidUser && targetUser === ownLidUser)
+				if (dsmMessage) {
+					const { user: targetUser } = jidDecode(wireJid)!
+					const { user: ownPnUser } = jidDecode(meId)!
+					const ownLidUser = meLidUser
+					const isOwnUser = targetUser === ownPnUser || (ownLidUser && targetUser === ownLidUser)
 					const isExactSenderDevice = wireJid === meId || (meLid && wireJid === meLid)
-						if (isOwnUser && !isExactSenderDevice) {
+					if (isOwnUser && !isExactSenderDevice) {
 						msgToEncrypt = dsmMessage
-							logger.debug({ wireJid, targetUser }, 'Using DSM for own device')
-						}
+						logger.debug({ wireJid, targetUser }, 'Using DSM for own device')
 					}
+				}
 
 				const bytes = encodeWAMessage(msgToEncrypt)
 				const mutexKey = wireJid
@@ -482,7 +482,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							}
 						]
 					}
-			})
+				})
 				return node
 			}
 		)
