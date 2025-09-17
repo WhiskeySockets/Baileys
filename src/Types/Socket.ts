@@ -145,6 +145,7 @@ export type SocketConfig = {
 
 	makeSignalRepository: (
 		auth: SignalAuthState,
+		logger: ILogger,
 		onWhatsAppFunc?: (...jids: string[]) => Promise<
 			| {
 					jid: string

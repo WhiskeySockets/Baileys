@@ -34,10 +34,10 @@ const storeMappingFromEnvelope = async (
 ): Promise<void> => {
 	const { senderAlt } = extractAddressingContext(stanza)
 
-	if (senderAlt && isLidUser(senderAlt) && isPnUser(sender) && decryptionJid === sender) {
+	if (senderAlt && isLidUser(senderAlt) && isPnUser(sender)) {
 		try {
 			await repository.lidMapping.storeLIDPNMappings([{ lid: senderAlt, pn: sender }])
-			logger.debug({ sender, senderAlt }, 'Stored LID mapping from envelope')
+			logger.debug({ sender, senderAlt, decryptionJid }, 'Stored LID mapping from envelope')
 		} catch (error) {
 			logger.warn({ sender, senderAlt, error }, 'Failed to store LID mapping')
 		}
