@@ -45,14 +45,7 @@ describe('E2E Tests', () => {
 
 	afterAll(async () => {
 		if (sock) {
-			await new Promise<void>(resolve => {
-				sock.ev.on('connection.update', update => {
-					if (update.connection === 'close') {
-						resolve()
-					}
-				})
-				sock.end(undefined)
-			})
+			await sock.end(undefined)
 		}
 	})
 
