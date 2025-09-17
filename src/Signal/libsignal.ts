@@ -157,8 +157,8 @@ export function makeLibSignalRepository(
 		},
 		async injectE2ESession({ jid, session }) {
 			let wireJid = jid
-			const decoded = jidDecode(jid)
-			if (decoded?.server === 's.whatsapp.net') {
+
+			if (jid.includes('@s.whatsapp.net')) {
 				const lidForPN = await lidMapping.getLIDForPN(jid)
 				if (lidForPN?.includes('@lid')) {
 					wireJid = lidForPN
