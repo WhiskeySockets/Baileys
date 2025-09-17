@@ -5,10 +5,10 @@ import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import type { ILogger } from '../Utils/logger'
 import { jidDecode, transferDevice } from '../WABinary'
-import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from './Group'
 import type { SenderKeyStore } from './Group/group_cipher'
 import { SenderKeyName } from './Group/sender-key-name'
 import { SenderKeyRecord } from './Group/sender-key-record'
+import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from './Group'
 import { LIDMappingStore } from './lid-mapping'
 
 export function makeLibSignalRepository(
