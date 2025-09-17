@@ -118,6 +118,7 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	let msgType: MessageType
 	let chatId: string
 	let author: string
+	let fromMe: boolean = false
 
 	const msgId = stanza.attrs.id
 	const from = stanza.attrs.from
@@ -135,6 +136,10 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 				throw new Boom('receipient present, but msg not from me', { data: stanza })
 			}
 
+			if (isMe(from!) || isMeLid(from!)) {
+				fromMe = true
+			}
+
 			chatId = recipient
 		} else {
 			chatId = from!
@@ -145,6 +150,10 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	} else if (isJidGroup(from)) {
 		if (!participant) {
 			throw new Boom('No participant in group message')
+		}
+
+		if (isMe(participant) || isMeLid(participant)) {
+			fromMe = true
 		}
 
 		msgType = 'group'
@@ -162,17 +171,22 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 			msgType = isParticipantMe ? 'peer_broadcast' : 'other_broadcast'
 		}
 
+		fromMe = isParticipantMe;
 		chatId = from!
 		author = participant
 	} else if (isJidNewsletter(from)) {
 		msgType = 'newsletter'
 		chatId = from!
 		author = from!
+
+		if (isMe(from!) || isMeLid(from!)) {
+			fromMe = true
+		}
+		
 	} else {
 		throw new Boom('Unknown message type', { data: stanza })
 	}
 
-	const fromMe = (isLidUser(from) ? isMeLid : isMe)((stanza.attrs.participant || stanza.attrs.from)!)
 	const pushname = stanza?.attrs?.notify
 
 	const key: WAMessageKey = {
