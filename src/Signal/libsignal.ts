@@ -1,7 +1,7 @@
 /* @ts-ignore */
 import * as libsignal from 'libsignal'
 import type { SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
-import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
+import type { SignalRepositoryWithLIDStore, EncryptMessageOpts } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import { jidDecode, transferDevice } from '../WABinary'
 import type { SenderKeyStore } from './Group/group_cipher'
@@ -147,6 +147,54 @@ export function makeLibSignalRepository(
 				return { type, ciphertext: Buffer.from(body, 'binary') }
 			}, jid)
 		},
+
+		async encryptMessages(opts: EncryptMessageOpts[]) {
+			const toFetch = opts.map(o => o.jid).filter(jid => jid.includes('@s.whatsapp.net'))
+
+			const lidMappings = await lidMapping.getLIDForPNs(toFetch)
+
+			const encryptionData = opts.map(({ jid, data }) => {
+				let encryptionJid = jid
+
+				if (jid.includes('@s.whatsapp.net')) {
+					const lidForPN = lidMappings.get(jid)
+					if (lidForPN?.includes('@lid')) {
+						encryptionJid = lidForPN
+					}
+				}
+
+				return {
+					originalJid: jid,
+					encryptionJid,
+					data,
+					addr: jidToSignalProtocolAddress(encryptionJid)
+				}
+			})
+
+			const sessionIds = encryptionData.map(item => item.addr.toString())
+			const sessions = await auth.keys.get('session', sessionIds)
+
+			return parsedKeys.transaction(async () => {
+				const results = await Promise.all(
+					encryptionData.map(async ({ originalJid, data, addr }) => {
+						const session = sessions[addr.toString()]
+
+						if (!session) {
+							throw new Error(`No session found for ${originalJid}`)
+						}
+
+						const cipher = new libsignal.SessionCipher(storage, addr)
+						const { type: sigType, body } = await cipher.encrypt(data)
+						const type: 'pkmsg' | 'msg' = sigType === 3 ? 'pkmsg' : 'msg'
+
+						return { type, ciphertext: Buffer.from(body, 'binary') as Uint8Array }
+					})
+				)
+
+				return results
+			}, `encrypt-${opts.length}-messages`)
+		},
+
 		async encryptGroupMessage({ group, meId, data }) {
 			const senderName = jidToSignalSenderKeyName(group, meId)
 			const builder = new GroupSessionBuilder(storage)
@@ -266,22 +314,45 @@ export function makeLibSignalRepository(
 						return { migrated: 0, skipped: skippedCount, total: validJids.length }
 					}
 
-					// 5. Execute all migrations in parallel
-					await Promise.all(
-						opsToMigrate.map(async op => {
-							const fromSession = await storage.loadSession(op.fromAddr.toString())
+					const sessions = opsToMigrate.map(op => op.fromAddr.toString())
+					const loadedSessions: { id: string; session: libsignal.SessionRecord } = await storage.loadSessions(sessions)
+					const migrated: string[] = []
 
-							if (fromSession?.haveOpenSession()) {
-								// Copy session to LID address
-								const sessionBytes = fromSession.serialize()
+					const toStore = Object.entries(loadedSessions)
+						.map(([id, session]) => {
+							const op = opsToMigrate.find(o => o.fromAddr.toString() === id)
+							if (op && session?.haveOpenSession()) {
+								const sessionBytes = session.serialize()
 								const copiedSession = libsignal.SessionRecord.deserialize(sessionBytes)
-								await storage.storeSession(op.toAddr.toString(), copiedSession)
-
-								// Delete PN session
-								await auth.keys.set({ session: { [op.fromAddr.toString()]: null } })
+								migrated.push(id)
+								return { id: op.toAddr.toString(), session: copiedSession }
+							} else {
+								return null
 							}
 						})
+						.filter((v): v is { id: string; session: libsignal.SessionRecord } => v !== null)
+
+					// 5. Store all migrated sessions in bulk
+					await storage.storeSessions(
+						toStore.reduce(
+							(acc, cur) => {
+								acc[cur.id] = cur.session
+								return acc
+							},
+							{} as { [id: string]: libsignal.SessionRecord }
+						)
 					)
+
+					const toDelete = migrated.reduce(
+						(acc, id) => {
+							acc[id] = null
+							return acc
+						},
+						{} as { [id: string]: null }
+					)
+
+					// 6. Delete all old PN sessions in bulk
+					await auth.keys.set({ session: toDelete })
 
 					return { migrated: opsToMigrate.length, skipped: skippedCount, total: validJids.length }
 				},
@@ -359,6 +430,55 @@ function signalStorage(
 
 			return null
 		},
+		loadSessions: async (ids: string[]) => {
+			const sessions: { [id: string]: libsignal.SessionRecord } = {}
+
+			const toPnJid = ids.map(id => {
+				if (id.includes('.') && !id.includes('_1')) {
+					const parts = id.split('.')
+					const device = parts[1] || '0'
+					const pnJid = device === '0' ? `${parts[0]}@s.whatsapp.net` : `${parts[0]}:${device}@s.whatsapp.net`
+					return { id, pnJid }
+				} else {
+					return { id, pnJid: null }
+				}
+			})
+
+			const lidMappings = await lidMapping.getLIDForPNs(
+				toPnJid.filter(({ pnJid }) => pnJid !== null).map(({ pnJid }) => pnJid!)
+			)
+
+			const toFetch = toPnJid.map(({ id, pnJid }) => {
+				if (!pnJid) {
+					return id
+				}
+				const lidMapped = lidMappings.get(pnJid)
+				if (lidMapped && lidMapped.includes('@lid')) {
+					const lidAddr = jidToSignalProtocolAddress(lidMapped)
+					return lidAddr.toString()
+				} else {
+					return id
+				}
+			})
+			const stored = await keys.get('session', toFetch)
+			ids.forEach((id, idx) => {
+				const fetchId = toFetch[idx]
+				const sess = stored[fetchId]
+				if (sess) {
+					sessions[id] = libsignal.SessionRecord.deserialize(sess)
+				}
+			})
+
+			return sessions
+		},
+		storeSessions: async (sessions: { [id: string]: libsignal.SessionRecord }) => {
+			const toStore: { [id: string]: Buffer } = {}
+			Object.keys(sessions).forEach(id => {
+				toStore[id] = sessions[id].serialize()
+			})
+			await keys.set({ session: toStore })
+		},
+
 		storeSession: async (id: string, session: libsignal.SessionRecord) => {
 			await keys.set({ session: { [id]: session.serialize() } })
 		},
