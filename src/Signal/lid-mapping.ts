@@ -56,10 +56,9 @@ export class LIDMappingStore {
 			const pnUser = pnDecoded.user
 			const lidUser = lidDecoded.user
 
-			// Check if mapping already exists (cache first, then database)
 			let existingLidUser = this.mappingCache.get(`pn:${pnUser}`)
 			if (!existingLidUser) {
-				// Cache miss - check database
+				logger.trace(`Cache miss for PN user ${pnUser}; checking database`)
 				const stored = await this.keys.get('lid-mapping', [pnUser])
 				existingLidUser = stored[pnUser]
 				if (existingLidUser) {
@@ -83,12 +82,11 @@ export class LIDMappingStore {
 			for (const [pnUser, lidUser] of Object.entries(pairMap)) {
 				await this.keys.set({
 					'lid-mapping': {
-						[pnUser]: lidUser, // "554396160286" -> "102765716062358"
-						[`${lidUser}_reverse`]: pnUser // "102765716062358_reverse" -> "554396160286"
+						[pnUser]: lidUser,
+						[`${lidUser}_reverse`]: pnUser
 					}
 				})
 
-				// Update cache with both directions
 				this.mappingCache.set(`pn:${pnUser}`, lidUser)
 				this.mappingCache.set(`lid:${lidUser}`, pnUser)
 			}
@@ -114,10 +112,8 @@ export class LIDMappingStore {
 			lidUser = stored[pnUser]
 
 			if (lidUser) {
-				// Cache the database result
 				this.mappingCache.set(`pn:${pnUser}`, lidUser)
 			} else {
-				// Not in database - try USync
 				logger.trace(`No LID mapping found for PN user ${pnUser}; getting from USync`)
 				const { exists, lid } = (await this.onWhatsAppFunc?.(pn))?.[0]! // this function already adds LIDs to mapping
 				if (exists && lid) {
