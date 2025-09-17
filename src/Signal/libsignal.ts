@@ -9,9 +9,11 @@ import { SenderKeyName } from './Group/sender-key-name'
 import { SenderKeyRecord } from './Group/sender-key-record'
 import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from './Group'
 import { LIDMappingStore } from './lid-mapping'
+import type { ILogger } from '../Utils/logger'
 
 export function makeLibSignalRepository(
 	auth: SignalAuthState,
+	logger: ILogger,
 	onWhatsAppFunc?: (...jids: string[]) => Promise<
 		| {
 				jid: string
@@ -21,7 +23,7 @@ export function makeLibSignalRepository(
 		| undefined
 	>
 ): SignalRepositoryWithLIDStore {
-	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction, onWhatsAppFunc)
+	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction, logger, onWhatsAppFunc)
 	const storage = signalStorage(auth, lidMapping)
 
 	const parsedKeys = auth.keys as SignalKeyStoreWithTransaction

@@ -1,6 +1,6 @@
 import { LRUCache } from 'lru-cache'
 import type { SignalKeyStoreWithTransaction } from '../Types'
-import logger from '../Utils/logger'
+import type { ILogger } from '../Utils/logger'
 import { isLidUser, isPnUser, jidDecode } from '../WABinary'
 
 export class LIDMappingStore {
@@ -10,6 +10,7 @@ export class LIDMappingStore {
 		updateAgeOnGet: true
 	})
 	private readonly keys: SignalKeyStoreWithTransaction
+	private readonly logger: ILogger
 	private onWhatsAppFunc?: (...jids: string[]) => Promise<
 		| {
 				jid: string
@@ -21,6 +22,7 @@ export class LIDMappingStore {
 
 	constructor(
 		keys: SignalKeyStoreWithTransaction,
+		logger: ILogger,
 		onWhatsAppFunc?: (...jids: string[]) => Promise<
 			| {
 					jid: string
@@ -31,6 +33,7 @@ export class LIDMappingStore {
 		>
 	) {
 		this.keys = keys
+		this.logger = logger
 		this.onWhatsAppFunc = onWhatsAppFunc // needed to get LID from PN if not found
 	}
 
@@ -42,7 +45,7 @@ export class LIDMappingStore {
 		const pairMap: { [_: string]: string } = {}
 		for (const { lid, pn } of pairs) {
 			if (!((isLidUser(lid) && isPnUser(pn)) || (isPnUser(lid) && isLidUser(pn)))) {
-				logger.warn(`Invalid LID-PN mapping: ${lid}, ${pn}`)
+				this.logger.warn(`Invalid LID-PN mapping: ${lid}, ${pn}`)
 				continue
 			}
 
@@ -58,7 +61,7 @@ export class LIDMappingStore {
 
 			let existingLidUser = this.mappingCache.get(`pn:${pnUser}`)
 			if (!existingLidUser) {
-				logger.trace(`Cache miss for PN user ${pnUser}; checking database`)
+				this.logger.trace(`Cache miss for PN user ${pnUser}; checking database`)
 				const stored = await this.keys.get('lid-mapping', [pnUser])
 				existingLidUser = stored[pnUser]
 				if (existingLidUser) {
@@ -69,14 +72,14 @@ export class LIDMappingStore {
 			}
 
 			if (existingLidUser === lidUser) {
-				logger.debug({ pnUser, lidUser }, 'LID mapping already exists, skipping')
+				this.logger.debug({ pnUser, lidUser }, 'LID mapping already exists, skipping')
 				continue
 			}
 
 			pairMap[pnUser] = lidUser
 		}
 
-		logger.trace({ pairMap }, `Storing ${Object.keys(pairMap).length} pn mappings`)
+		this.logger.trace({ pairMap }, `Storing ${Object.keys(pairMap).length} pn mappings`)
 
 		await this.keys.transaction(async () => {
 			for (const [pnUser, lidUser] of Object.entries(pairMap)) {
@@ -114,7 +117,7 @@ export class LIDMappingStore {
 			if (lidUser) {
 				this.mappingCache.set(`pn:${pnUser}`, lidUser)
 			} else {
-				logger.trace(`No LID mapping found for PN user ${pnUser}; getting from USync`)
+				this.logger.trace(`No LID mapping found for PN user ${pnUser}; getting from USync`)
 				const { exists, lid } = (await this.onWhatsAppFunc?.(pn))?.[0]! // this function already adds LIDs to mapping
 				if (exists && lid) {
 					lidUser = jidDecode(lid)?.user
@@ -129,7 +132,7 @@ export class LIDMappingStore {
 		}
 
 		if (typeof lidUser !== 'string' || !lidUser) {
-			logger.warn(`Invalid or empty LID user for PN ${pn}: lidUser = "${lidUser}"`)
+			this.logger.warn(`Invalid or empty LID user for PN ${pn}: lidUser = "${lidUser}"`)
 			return null
 		}
 
@@ -137,7 +140,7 @@ export class LIDMappingStore {
 		const pnDevice = decoded.device !== undefined ? decoded.device : 0
 		const deviceSpecificLid = `${lidUser}:${pnDevice}@lid`
 
-		logger.trace(`getLIDForPN: ${pn} → ${deviceSpecificLid} (user mapping with device ${pnDevice})`)
+		this.logger.trace(`getLIDForPN: ${pn} → ${deviceSpecificLid} (user mapping with device ${pnDevice})`)
 		return deviceSpecificLid
 	}
 
@@ -160,7 +163,7 @@ export class LIDMappingStore {
 			pnUser = stored[`${lidUser}_reverse`]
 
 			if (!pnUser || typeof pnUser !== 'string') {
-				logger.trace(`No reverse mapping found for LID user: ${lidUser}`)
+				this.logger.trace(`No reverse mapping found for LID user: ${lidUser}`)
 				return null
 			}
 
@@ -171,7 +174,7 @@ export class LIDMappingStore {
 		const lidDevice = decoded.device !== undefined ? decoded.device : 0
 		const pnJid = `${pnUser}:${lidDevice}@s.whatsapp.net`
 
-		logger.trace(`Found reverse mapping: ${lid} → ${pnJid}`)
+		this.logger.trace(`Found reverse mapping: ${lid} → ${pnJid}`)
 		return pnJid
 	}
 }
