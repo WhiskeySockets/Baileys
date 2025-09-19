@@ -308,8 +308,10 @@ const jidToSignalProtocolAddress = (jid: string): libsignal.ProtocolAddress => {
 		)
 	}
 
+	const cleanUser = user.replace(/\./g, '').replace(/:/g, '')
+
 	// LID addresses get _1 suffix for Signal protocol
-	const signalUser = server === 'lid' ? `${user}_1` : user
+	const signalUser = server === 'lid' ? `${cleanUser}_1` : cleanUser
 	const finalDevice = device || 0
 
 	return new libsignal.ProtocolAddress(signalUser, finalDevice)
