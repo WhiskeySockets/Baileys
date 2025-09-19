@@ -1,4 +1,5 @@
 import { Boom } from '@hapi/boom'
+import { Buffer } from 'node:buffer'
 import type { BinaryNode } from '../WABinary'
 import { getBinaryNodeChild, S_WHATSAPP_NET } from '../WABinary'
 

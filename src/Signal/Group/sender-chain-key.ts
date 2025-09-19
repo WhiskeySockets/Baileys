@@ -1,4 +1,5 @@
 import { calculateMAC } from 'libsignal/src/crypto'
+import { Buffer } from 'node:buffer'
 import { SenderMessageKey } from './sender-message-key'
 
 export class SenderChainKey {

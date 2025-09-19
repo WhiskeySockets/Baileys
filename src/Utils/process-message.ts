@@ -1,4 +1,5 @@
 import type { AxiosRequestConfig } from 'axios'
+import { Buffer } from 'node:buffer'
 import { proto } from '../../WAProto/index.js'
 import type {
 	AuthenticationCreds,

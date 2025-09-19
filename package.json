@@ -64,6 +64,7 @@
     "esbuild-register": "^3.6.0",
     "eslint": "^9",
     "eslint-config-prettier": "^10.1.2",
+    "eslint-plugin-n": "^17.21.3",
     "eslint-plugin-prettier": "^5.4.0",
     "jest": "^30.0.5",
     "jimp": "^1.6.0",

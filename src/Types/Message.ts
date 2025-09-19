@@ -1,6 +1,6 @@
 import type { AxiosRequestConfig } from 'axios'
-import type { Readable } from 'stream'
-import type { URL } from 'url'
+import type { Readable } from 'node:stream'
+import type { URL } from 'node:url'
 import { proto } from '../../WAProto/index.js'
 import type { MediaType } from '../Defaults'
 import type { BinaryNode } from '../WABinary'
@@ -30,6 +30,7 @@ export type WAGenericMediaMessage =
 	| proto.Message.IStickerMessage
 export const WAMessageStubType = proto.WebMessageInfo.StubType
 export const WAMessageStatus = proto.WebMessageInfo.Status
+import { Buffer } from 'node:buffer'
 import type { ILogger } from '../Utils/logger'
 export type WAMediaPayloadURL = { url: URL | string }
 export type WAMediaPayloadStream = { stream: Readable }

@@ -1,5 +1,5 @@
-import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto'
 import * as curve from 'libsignal/src/curve'
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'node:crypto'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import type { KeyPair } from '../Types'
 

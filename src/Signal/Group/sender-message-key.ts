@@ -1,4 +1,5 @@
 import { deriveSecrets } from 'libsignal/src/crypto'
+import { Buffer } from 'node:buffer'
 
 export class SenderMessageKey {
 	private readonly iteration: number

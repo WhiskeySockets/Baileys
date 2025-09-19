@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import { BinaryInfo } from './BinaryInfo'
 import {
 	FLAG_BYTE,

@@ -1,8 +1,9 @@
 import { Boom } from '@hapi/boom'
 import axios from 'axios'
-import { randomBytes } from 'crypto'
-import { promises as fs } from 'fs'
-import { type Transform } from 'stream'
+import { Buffer } from 'node:buffer'
+import { randomBytes } from 'node:crypto'
+import { promises as fs } from 'node:fs'
+import { type Transform } from 'node:stream'
 import { proto } from '../../WAProto/index.js'
 import {
 	CALL_AUDIO_PREFIX,

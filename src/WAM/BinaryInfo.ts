@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import type { EventInputType } from './constants'
 
 export class BinaryInfo {
