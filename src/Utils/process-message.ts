@@ -11,7 +11,7 @@ import type {
 	RequestJoinAction,
 	RequestJoinMethod,
 	SignalKeyStoreWithTransaction,
-	SignalRepository
+	SignalRepositoryWithLIDStore
 } from '../Types'
 import { WAMessageStubType } from '../Types'
 import { getContentType, normalizeMessageContent } from '../Utils/messages'
@@ -29,7 +29,7 @@ type ProcessMessageContext = {
 	ev: BaileysEventEmitter
 	logger?: ILogger
 	options: AxiosRequestConfig<{}>
-	signalRepository: SignalRepository
+	signalRepository: SignalRepositoryWithLIDStore
 }
 
 const REAL_MSG_STUB_TYPES = new Set([
@@ -265,7 +265,7 @@ const processMessage = async (
 			case proto.Message.ProtocolMessage.Type.PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE:
 				const response = protocolMsg.peerDataOperationRequestResponseMessage!
 				if (response) {
-					placeholderResendCache?.del(response.stanzaId!)
+					await placeholderResendCache?.del(response.stanzaId!)
 					// TODO: IMPLEMENT HISTORY SYNC ETC (sticker uploads etc.).
 					const { peerDataOperationResult } = response
 					for (const result of peerDataOperationResult!) {
@@ -305,7 +305,6 @@ const processMessage = async (
 				])
 				break
 			case proto.Message.ProtocolMessage.Type.LID_MIGRATION_MAPPING_SYNC:
-				const lidMappingStore = signalRepository.getLIDMappingStore()
 				const encodedPayload = protocolMsg.lidMigrationMappingSyncMessage?.encodedMappingPayload!
 				const { pnToLidMappings, chatDbMigrationTimestamp } =
 					proto.LIDMigrationMappingSyncPayload.decode(encodedPayload)
@@ -316,7 +315,7 @@ const processMessage = async (
 					pairs.push({ lid: `${lid}@lid`, pn: `${pn}@s.whatsapp.net` })
 				}
 
-				await lidMappingStore.storeLIDPNMappings(pairs)
+				await signalRepository.lidMapping.storeLIDPNMappings(pairs)
 		}
 	} else if (content?.reactionMessage) {
 		const reaction: proto.IReaction = {

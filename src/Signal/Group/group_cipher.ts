@@ -1,4 +1,3 @@
-/* @ts-ignore */
 import { decrypt, encrypt } from 'libsignal/src/crypto'
 import { Buffer } from 'node:buffer'
 import { SenderKeyMessage } from './sender-key-message'
