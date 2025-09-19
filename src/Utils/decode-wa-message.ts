@@ -255,7 +255,7 @@ export const decryptMessageNode = (
 								msgBuffer = await repository.decryptGroupMessage({
 									group: sender,
 									authorJid: author,
-									msg: content
+									msg: Buffer.from(content)
 								})
 								break
 							case 'pkmsg':
@@ -263,7 +263,7 @@ export const decryptMessageNode = (
 								msgBuffer = await repository.decryptMessage({
 									jid: decryptionJid,
 									type: e2eType,
-									ciphertext: content
+									ciphertext: Buffer.from(content)
 								})
 								break
 							case 'plaintext':

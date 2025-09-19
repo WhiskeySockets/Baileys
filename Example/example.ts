@@ -46,7 +46,7 @@ const startSock = async() => {
 	const { version, isLatest } = await fetchLatestBaileysVersion()
 	console.log(`using WA v${version.join('.')}, isLatest: ${isLatest}`)
 
-	const sock = makeWASocket({
+	const sock = await makeWASocket({
 		version,
 		logger,
 		auth: {
