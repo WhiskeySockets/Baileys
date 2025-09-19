@@ -1,5 +1,13 @@
 <h1><img alt="Baileys logo" src="https://raw.githubusercontent.com/WhiskeySockets/Baileys/refs/heads/master/Media/logo.png" height="75"/></h1>
 
+
+> [!CAUTION]
+> NOTICE OF BREAKING CHANGE.
+> 
+> As of 7.0.0, multiple breaking changes were introduced into the library.
+> 
+> Please check out https://whiskey.so/migrate-latest for more information.
+
 Baileys is a WebSockets-based TypeScript library for interacting with the WhatsApp Web API.
 
 Join the WhiskeySockets community via the link: https://whiskey.so/discord
@@ -14,7 +22,10 @@ Join the WhiskeySockets community via the link: https://whiskey.so/discord
 > 
 > \- Rajeh (purpshell)
 > 
-> Fill in the survey via the link: https://whiskey.so/survey 
+> Fill in the survey via the link: https://whiskey.so/survey
+
+
+
 
 # Usage & Guide
 

@@ -12,7 +12,7 @@ describe('Connection Deadlock Test', () => {
 
 		state.creds.me = { id: '1234567890:1@s.whatsapp.net', name: 'Test User' }
 
-		const sock = makeWASocket({
+		const sock = await makeWASocket({
 			...DEFAULT_CONNECTION_CONFIG,
 			auth: state,
 			shouldSyncHistoryMessage: () => false
@@ -26,7 +26,7 @@ describe('Connection Deadlock Test', () => {
 
 		// 2. Now, emit a regular message. Because the previous step should have
 		// flushed the buffer, this message should be processed immediately.
-		const regularMessage = proto.WebMessageInfo.fromObject({
+		const regularMessage = proto.WebMessageInfo.create({
 			key: { remoteJid: '1234567890@s.whatsapp.net', fromMe: false, id: 'REGULAR_MSG_1' },
 			messageTimestamp: Date.now() / 1000,
 			message: { conversation: 'Hello, world!' }
