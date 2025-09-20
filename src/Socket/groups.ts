@@ -323,13 +323,11 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 		notify: group.attrs.notify,
 		addressingMode: group.attrs.addressing_mode === 'lid' ? WAMessageAddressingMode.LID : WAMessageAddressingMode.PN,
 		subject: group.attrs.subject!,
-		subjectOwner: group.attrs.s_o,
-		subjectOwnerPn: group.attrs.s_o_pn,
+		subjectOwner: group.attrs.creator ? jidNormalizedUser(group.attrs.creator) : undefined,
+		subjectOwnerPn: group.attrs.creator_pn ? jidNormalizedUser(group.attrs.creator_pn) : undefined,
 		subjectTime: +group.attrs.s_t!,
 		size: group.attrs.size ? +group.attrs.size : getBinaryNodeChildren(group, 'participant').length,
 		creation: +group.attrs.creation!,
-		owner: group.attrs.creator ? jidNormalizedUser(group.attrs.creator) : undefined,
-		ownerPn: group.attrs.creator_pn ? jidNormalizedUser(group.attrs.creator_pn) : undefined,
 		owner_country_code: group.attrs.creator_country_code,
 		desc,
 		descId,
@@ -347,7 +345,6 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 			return {
 				id: attrs.jid!,
 				phoneNumber: isLidUser(attrs.jid) && isPnUser(attrs.phone_number) ? attrs.phone_number : undefined,
-				lid: isPnUser(attrs.jid) && isLidUser(attrs.lid) ? attrs.lid : undefined,
 				admin: (attrs.type || null) as GroupParticipant['admin']
 			}
 		}),
