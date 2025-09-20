@@ -1,5 +1,5 @@
 /* @ts-ignore */
-import * as libsignal from 'libsignal'
+import * as libsignal from 'libsignal-waweb'
 import type { SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
 import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
@@ -86,10 +86,10 @@ export function makeLibSignalRepository(
 				let result: Buffer
 				switch (type) {
 					case 'pkmsg':
-						result = await session.decryptPreKeyWhisperMessage(ciphertext)
+						result = await session.decryptPreKeyWhisperMessage(ciphertext) as Buffer
 						break
 					case 'msg':
-						result = await session.decryptWhisperMessage(ciphertext)
+						result = await session.decryptWhisperMessage(ciphertext) as Buffer
 						break
 				}
 
@@ -322,7 +322,7 @@ const jidToSignalSenderKeyName = (group: string, user: string): SenderKeyName =>
 function signalStorage(
 	{ creds, keys }: SignalAuthState,
 	lidMapping: LIDMappingStore
-): SenderKeyStore & libsignal.SignalStorage {
+): SenderKeyStore & libsignal.ISessionStore {
 	return {
 		loadSession: async (id: string) => {
 			try {
@@ -362,9 +362,6 @@ function signalStorage(
 		storeSession: async (id: string, session: libsignal.SessionRecord) => {
 			await keys.set({ session: { [id]: session.serialize() } })
 		},
-		isTrustedIdentity: () => {
-			return true
-		},
 		loadPreKey: async (id: number | string) => {
 			const keyId = id.toString()
 			const { [keyId]: key } = await keys.get('pre-key', [keyId])
@@ -375,8 +372,8 @@ function signalStorage(
 				}
 			}
 		},
-		removePreKey: (id: number) => keys.set({ 'pre-key': { [id]: null } }),
-		loadSignedPreKey: () => {
+		removePreKey: async (id: number) => keys.set({ 'pre-key': { [id]: null } }),
+		loadSignedPreKey: async () => {
 			const key = creds.signedPreKey
 			return {
 				privKey: Buffer.from(key.keyPair.private),
@@ -397,8 +394,8 @@ function signalStorage(
 			const serialized = JSON.stringify(key.serialize())
 			await keys.set({ 'sender-key': { [keyId]: Buffer.from(serialized, 'utf-8') } })
 		},
-		getOurRegistrationId: () => creds.registrationId,
-		getOurIdentity: () => {
+		getOurRegistrationId: async () => creds.registrationId,
+		getOurIdentity: async () => {
 			const { signedIdentityKey } = creds
 			return {
 				privKey: Buffer.from(signedIdentityKey.private),
