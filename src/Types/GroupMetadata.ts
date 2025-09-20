@@ -18,6 +18,8 @@ export interface GroupMetadata {
 	notify?: string
 	/** group uses 'lid' or 'pn' to send messages */
 	addressingMode?: WAMessageAddressingMode
+	owner: string | undefined
+	ownerPn?: string | undefined
 	owner_country_code?: string | undefined
 	subject: string
 	/** group subject owner */
