@@ -15,6 +15,7 @@ import {
 	getBinaryNodeChildBuffer,
 	getBinaryNodeChildren,
 	getBinaryNodeChildUInt,
+	isPnUser,
 	jidDecode,
 	type JidWithDevice,
 	S_WHATSAPP_NET
@@ -113,10 +114,19 @@ export const parseAndInjectE2ESessions = async (node: BinaryNode, repository: Si
 				const key = getBinaryNodeChild(node, 'key')!
 				const identity = getBinaryNodeChildBuffer(node, 'identity')!
 				const jid = node.attrs.jid!
+
+				let wireJid = jid
+				if (isPnUser(jid)) {
+					const mapped = await repository.lidMapping.getLIDForPN(jid)
+					if (mapped) {
+						wireJid = mapped
+					}
+				}
+
 				const registrationId = getBinaryNodeChildUInt(node, 'registration', 4)
 
 				await repository.injectE2ESession({
-					jid,
+					jid: wireJid,
 					session: {
 						registrationId: registrationId!,
 						identityKey: generateSignalPubKey(identity),

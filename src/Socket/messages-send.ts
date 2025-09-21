@@ -202,7 +202,35 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	/** Device info with wire JID format for envelope addressing */
 	type DeviceWithWireJid = JidWithDevice & {
-		wireJid: string // The exact JID format that should be used in wire protocol (envelope addressing)
+		wireJid: string
+	}
+
+	const resolveSessionJids = async (jids: string[]): Promise<Map<string, string>> => {
+		const uniquePnJids = Array.from(new Set(jids.filter(isPnUser)))
+		if (!uniquePnJids.length) {
+			return new Map()
+		}
+
+		const lookups = await Promise.all(
+			uniquePnJids.map(async pnJid => {
+				try {
+					const resolved = await signalRepository.lidMapping.getLIDForPN(pnJid)
+					return resolved ? ([pnJid, resolved] as const) : null
+				} catch (error) {
+					logger.warn({ pnJid, error }, 'Failed to resolve LID mapping for PN JID')
+					return null
+				}
+			})
+		)
+
+		const sessionMap = new Map<string, string>()
+		for (const entry of lookups) {
+			if (entry) {
+				sessionMap.set(entry[0], entry[1])
+			}
+		}
+
+		return sessionMap
 	}
 
 	/** Fetch all the devices we've to send a message to */
@@ -424,16 +452,21 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return msgId
 	}
 
-	const createParticipantNodes = async (
-		jids: string[],
+	const createParticipantNodesWithSessionMap = async (
+		recipientWireJids: string[],
+		sessionMap: Map<string, string>,
 		message: proto.IMessage,
 		extraAttrs?: BinaryNode['attrs'],
 		dsmMessage?: proto.IMessage
 	) => {
-		const patched = await patchMessageBeforeSending(message, jids)
+		if (!recipientWireJids.length) {
+			return { nodes: [] as BinaryNode[], shouldIncludeDeviceIdentity: false }
+		}
+
+		const patched = await patchMessageBeforeSending(message, recipientWireJids)
 		const patchedMessages = Array.isArray(patched)
 			? patched
-			: jids.map(jid => ({ recipientJid: jid, message: patched }))
+			: recipientWireJids.map(jid => ({ recipientJid: jid, message: patched }))
 
 		let shouldIncludeDeviceIdentity = false
 		const meId = authState.creds.me!.id
@@ -443,6 +476,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const encryptionPromises = (patchedMessages as any).map(
 			async ({ recipientJid: wireJid, message: patchedMessage }: any) => {
 				if (!wireJid) return null
+				wireJid = sessionMap.get(wireJid) ?? wireJid
 				let msgToEncrypt = patchedMessage
 				if (dsmMessage) {
 					const { user: targetUser } = jidDecode(wireJid)!
@@ -491,6 +525,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return { nodes, shouldIncludeDeviceIdentity }
 	}
 
+	const createParticipantNodes = async (
+		recipientWireJids: string[],
+		message: proto.IMessage,
+		extraAttrs?: BinaryNode['attrs'],
+		dsmMessage?: proto.IMessage
+	) => {
+		const sessionMap = await resolveSessionJids(recipientWireJids)
+		return createParticipantNodesWithSessionMap(recipientWireJids, sessionMap, message, extraAttrs, dsmMessage)
+	}
+
 	const relayMessage = async (
 		jid: string,
 		message: proto.IMessage,
@@ -507,8 +551,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const meId = authState.creds.me!.id
 		const meLid = authState.creds.me?.lid
 		let shouldIncludeDeviceIdentity = false
-		const { user, server } = jidDecode(jid)!
 		const statusJid = 'status@broadcast'
+
+		const { user, server } = jidDecode(jid)!
 		const isGroup = server === 'g.us'
 		const isStatus = jid === statusJid
 		const isLid = server === 'lid'
@@ -646,18 +691,19 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					meId: groupSenderIdentity
 				})
 
-				const senderKeyJids: string[] = []
+				const deviceSessionMap = await resolveSessionJids(devices.map(d => d.wireJid))
+				const senderKeyRecipients: string[] = []
 				for (const device of devices) {
 					const deviceJid = device.wireJid
 					const hasKey = !!senderKeyMap[deviceJid]
 					if (!hasKey || !!participant) {
-						senderKeyJids.push(deviceJid)
+						senderKeyRecipients.push(deviceJid)
 						senderKeyMap[deviceJid] = true
 					}
 				}
 
-				if (senderKeyJids.length) {
-					logger.debug({ senderKeyJids }, 'sending new sender key')
+				if (senderKeyRecipients.length) {
+					logger.debug({ senderKeyJids: senderKeyRecipients }, 'sending new sender key')
 
 					const senderKeyMsg: proto.IMessage = {
 						senderKeyDistributionMessage: {
@@ -666,9 +712,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						}
 					}
 
-					await assertSessions(senderKeyJids)
+					const senderKeySessionTargets = senderKeyRecipients.map(jid => deviceSessionMap.get(jid) ?? jid)
+					await assertSessions(senderKeySessionTargets)
 
-					const result = await createParticipantNodes(senderKeyJids, senderKeyMsg, extraAttrs)
+					const result = await createParticipantNodesWithSessionMap(
+						senderKeyRecipients,
+						deviceSessionMap,
+						senderKeyMsg,
+						extraAttrs
+					)
 					shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || result.shouldIncludeDeviceIdentity
 
 					participants.push(...result.nodes)
@@ -728,9 +780,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 				}
 
-				const allJids: string[] = []
-				const meJids: string[] = []
-				const otherJids: string[] = []
+				const allRecipients: string[] = []
+				const meRecipients: string[] = []
+				const otherRecipients: string[] = []
+				const meWireJids: string[] = []
+				const otherWireJids: string[] = []
 				const { user: mePnUser } = jidDecode(meId)!
 				const { user: meLidUser } = meLid ? jidDecode(meLid)! : { user: null }
 
@@ -744,32 +798,34 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					// Check if this is our device (could match either PN or LID user)
 					const isMe = user === mePnUser || (meLidUser && user === meLidUser)
 
-					const jid = wireJid
-
 					if (isMe) {
-						meJids.push(jid)
+						meRecipients.push(wireJid)
+						meWireJids.push(wireJid)
 					} else {
-						otherJids.push(jid)
+						otherRecipients.push(wireJid)
+						otherWireJids.push(wireJid)
 					}
 
-					allJids.push(jid)
+					allRecipients.push(wireJid)
 				}
 
-				await assertSessions(allJids)
+				const deviceSessionMap = await resolveSessionJids(devices.map(d => d.wireJid))
+				const sessionTargets = allRecipients.map(jid => deviceSessionMap.get(jid) ?? jid)
+				await assertSessions(sessionTargets)
 
 				const [
 					{ nodes: meNodes, shouldIncludeDeviceIdentity: s1 },
 					{ nodes: otherNodes, shouldIncludeDeviceIdentity: s2 }
 				] = await Promise.all([
 					// For own devices: use DSM if available (1:1 chats only)
-					createParticipantNodes(meJids, meMsg || message, extraAttrs),
-					createParticipantNodes(otherJids, message, extraAttrs, meMsg)
+					createParticipantNodesWithSessionMap(meRecipients, deviceSessionMap, meMsg || message, extraAttrs),
+					createParticipantNodesWithSessionMap(otherRecipients, deviceSessionMap, message, extraAttrs, meMsg)
 				])
 				participants.push(...meNodes)
 				participants.push(...otherNodes)
 
-				if (meJids.length > 0 || otherJids.length > 0) {
-					extraAttrs['phash'] = generateParticipantHashV2([...meJids, ...otherJids])
+				if (meWireJids.length > 0 || otherWireJids.length > 0) {
+					extraAttrs['phash'] = generateParticipantHashV2([...meWireJids, ...otherWireJids])
 				}
 
 				shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || s1 || s2

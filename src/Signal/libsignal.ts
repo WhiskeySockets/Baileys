@@ -112,18 +112,7 @@ export function makeLibSignalRepository(
 		},
 
 		async encryptMessage({ jid, data }) {
-			// LID SINGLE SOURCE OF TRUTH
-			let encryptionJid = jid
-
-			// filter PN to LID when mapping exists
-			if (jid.includes('@s.whatsapp.net')) {
-				const lidForPN = await lidMapping.getLIDForPN(jid)
-				if (lidForPN?.includes('@lid')) {
-					encryptionJid = lidForPN
-				}
-			}
-
-			const addr = jidToSignalProtocolAddress(encryptionJid)
+			const addr = jidToSignalProtocolAddress(jid)
 			const cipher = new libsignal.SessionCipher(storage, addr)
 
 			// Use transaction to ensure atomicity
@@ -156,16 +145,7 @@ export function makeLibSignalRepository(
 			}, group)
 		},
 		async injectE2ESession({ jid, session }) {
-			let wireJid = jid
-
-			if (jid.includes('@s.whatsapp.net')) {
-				const lidForPN = await lidMapping.getLIDForPN(jid)
-				if (lidForPN?.includes('@lid')) {
-					wireJid = lidForPN
-				}
-			}
-
-			const cipher = new libsignal.SessionBuilder(storage, jidToSignalProtocolAddress(wireJid))
+			const cipher = new libsignal.SessionBuilder(storage, jidToSignalProtocolAddress(jid))
 			return parsedKeys.transaction(async () => {
 				await cipher.initOutgoing(session)
 			}, jid)
@@ -282,11 +262,6 @@ export function makeLibSignalRepository(
 				},
 				`migrate-${validJids.length}-sessions-${jidDecode(toJid)?.user}`
 			)
-		},
-
-		async encryptMessageWithWire({ encryptionJid, wireJid, data }) {
-			const result = await repository.encryptMessage({ jid: encryptionJid, data })
-			return { ...result, wireJid }
 		}
 	}
 
