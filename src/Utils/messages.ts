@@ -607,6 +607,21 @@ export const generateWAMessageContent = async (
 		m = await prepareWAMessageMedia(message, options)
 	}
 
+	if('sections' in message && !!message.sections) {
+		const amessage: any = message as any
+
+		const listMessage: proto.Message.IListMessage = {
+			sections: amessage.sections,
+			buttonText: amessage.buttonText,
+			title: amessage.title,
+			footerText: amessage.footer,
+			description: amessage.text,
+			listType: proto.Message.ListMessage.ListType.SINGLE_SELECT
+		}
+
+		m = { listMessage }
+	}
+
 	if (hasOptionalProperty(message, 'viewOnce') && !!message.viewOnce) {
 		m = { viewOnceMessage: { message: m } }
 	}
