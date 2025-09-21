@@ -6,7 +6,6 @@ import makeWASocket, { AnyMessageContent, BinaryInfo, CacheStore, delay, Disconn
 import open from 'open'
 import fs from 'fs'
 import P from 'pino'
-import http from 'http'
 
 const logger = P({
   level: "trace",
@@ -115,13 +114,6 @@ const startSock = async() => {
 				// THE FIRST EVENT CONTAINS THE CONSTANT GLOBALS, EXCEPT THE seqenceNumber(in the event) and commitTime
 				// THIS INCLUDES STUFF LIKE ocVersion WHICH IS CRUCIAL FOR THE PREVENTION OF THE WARNING
 				const sendWAMExample = false;
-				if(connection === 'open'){
-					bot = sock
-					sock.ws.on('CB:message', data => {
-				// Usado para debugar novas features
-				//console.log('CB:message', JSON.stringify(data, null, 2))
-			})
-				}
 				if(connection === 'open' && sendWAMExample) {
 					/// sending WAM EXAMPLE
 					const {
@@ -281,38 +273,3 @@ const startSock = async() => {
 }
 
 startSock()
-
-const server = http.createServer(async (req, res) => {
-	if (req.method === 'POST' && req.url === '/send-message') {
-		let body = ''
-		req.on('data', chunk => {
-			body += chunk.toString()
-		})
-
-		req.on('end', async () => {
-			try {
-				const { jid, message } = JSON.parse(body)
-
-				if (!jid || !message) {
-					res.writeHead(400, { 'Content-Type': 'application/json' })
-					res.end(JSON.stringify({ error: 'Missing jid or message in request body' }))
-					return
-				}
-				
-				await bot!.sendMessage(jid, { text: message })
-				res.writeHead(200, { 'Content-Type': 'application/json' })
-				res.end(JSON.stringify({ success: true }))
-			} catch (error) {
-				res.writeHead(500, { 'Content-Type': 'application/json' })
-				res.end(JSON.stringify({ error: 'Failed to send message', details: error.message }))
-			}
-		})
-	} else {
-		res.writeHead(404, { 'Content-Type': 'application/json' })
-		res.end(JSON.stringify({ error: 'Not Found' }))
-	}
-})
-
-server.listen(3100, () => {
-	console.log('HTTP server running on http://localhost:3100')
-})
