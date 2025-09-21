@@ -45,6 +45,7 @@
     "async-mutex": "^0.5.0",
     "axios": "^1.6.0",
     "libsignal": "git+https://github.com/whiskeysockets/libsignal-node",
+    "libsignal-waweb": "github:vinikjkkj/libsignal-waweb",
     "lru-cache": "^11.1.0",
     "music-metadata": "^11.7.0",
     "pino": "^9.6",

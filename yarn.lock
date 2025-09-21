@@ -3019,6 +3019,7 @@ __metadata:
     jiti: "npm:^2.4.2"
     json: "npm:^11.0.0"
     libsignal: "git+https://github.com/whiskeysockets/libsignal-node"
+    libsignal-waweb: "github:vinikjkkj/libsignal-waweb"
     link-preview-js: "npm:^3.0.0"
     lru-cache: "npm:^11.1.0"
     music-metadata: "npm:^11.7.0"
@@ -7337,6 +7338,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"libsignal-waweb@github:vinikjkkj/libsignal-waweb":
+  version: 0.1.0
+  resolution: "libsignal-waweb@https://github.com/vinikjkkj/libsignal-waweb.git#commit=ce70f318ff63999fe07853d4336ffa7411d2c971"
+  dependencies:
+    tweetnacl: "npm:^1.0.3"
+    wa-modules-loader: "github:vinikjkkj/wa-modules-loader"
+  checksum: 10c0/2e283e462be7e3702fc02a55e267a2f9334e34b1b5aef123f3b9d22072a76079a65a931774ed9e4d529cea62075b3728fab59297bb8a7630f4b67a6a44050b77
+  languageName: node
+  linkType: hard
+
 "libsignal@git+https://github.com/whiskeysockets/libsignal-node":
   version: 2.0.1
   resolution: "libsignal@https://github.com/whiskeysockets/libsignal-node.git#commit=e81ecfc32eb74951d789ab37f7e341ab66d5fff1"
@@ -10387,6 +10398,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tweetnacl@npm:^1.0.3":
+  version: 1.0.3
+  resolution: "tweetnacl@npm:1.0.3"
+  checksum: 10c0/069d9df51e8ad4a89fbe6f9806c68e06c65be3c7d42f0701cc43dba5f0d6064686b238bbff206c5addef8854e3ce00c643bff59432ea2f2c639feab0ee1a93f9
+  languageName: node
+  linkType: hard
+
 "type-check@npm:^0.4.0, type-check@npm:~0.4.0":
   version: 0.4.0
   resolution: "type-check@npm:0.4.0"
@@ -10864,6 +10882,15 @@ __metadata:
   bin:
     vm2: bin/vm2
   checksum: 10c0/16e8e6bb389ae88b8ffbc439e8d7c09db3b98f7f738440af5b78080d6cb35db66b41b0ad055cc59bcc45cb8e270ed850667207348e90760b430403741f72337a
+  languageName: node
+  linkType: hard
+
+"wa-modules-loader@github:vinikjkkj/wa-modules-loader":
+  version: 1.0.0
+  resolution: "wa-modules-loader@https://github.com/vinikjkkj/wa-modules-loader.git#commit=2ae3842547532a3081d46bb41a0397b678b2bd00"
+  bin:
+    wa-export: dist/export/index.js
+  checksum: 10c0/bad16a06e1c93b699c14e5cf9fccf01c8d1dad0f4a85086ad85297696c84eacd90c108dd9e4c18cbdbc67d8899b98d0f5cf523162ca8ec0958aea65b4e9c0e27
   languageName: node
   linkType: hard
 
