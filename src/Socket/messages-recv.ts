@@ -813,7 +813,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					getBinaryNodeChildBuffer(linkCodeCompanionReg, 'link_code_pairing_wrapped_primary_ephemeral_pub')
 				)
 				const codePairingPublicKey = await decipherLinkPublicKey(primaryEphemeralPublicKeyWrapped)
-				const companionSharedKey = Curve.sharedKey(
+				const companionSharedKey = await Curve.sharedKey(
 					authState.creds.pairingEphemeralKeyPair.private,
 					codePairingPublicKey
 				)
@@ -831,7 +831,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const encryptIv = randomBytes(12)
 				const encrypted = aesEncryptGCM(encryptPayload, linkCodePairingExpanded, encryptIv, Buffer.alloc(0))
 				const encryptedPayload = Buffer.concat([linkCodeSalt, encryptIv, encrypted])
-				const identitySharedKey = Curve.sharedKey(authState.creds.signedIdentityKey.private, primaryIdentityPublicKey)
+				const identitySharedKey = await Curve.sharedKey(authState.creds.signedIdentityKey.private, primaryIdentityPublicKey)
 				const identityPayload = Buffer.concat([companionSharedKey, identitySharedKey, random])
 				authState.creds.advSecretKey = (await hkdf(identityPayload, 32, { info: 'adv_secret' })).toString('base64')
 				await query({

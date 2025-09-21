@@ -306,13 +306,13 @@ export const addTransactionCapability = (
 	}
 }
 
-export const initAuthCreds = (): AuthenticationCreds => {
-	const identityKey = Curve.generateKeyPair()
+export const initAuthCreds = async (): Promise<AuthenticationCreds> => {
+	const identityKey = await Curve.generateKeyPair()
 	return {
-		noiseKey: Curve.generateKeyPair(),
-		pairingEphemeralKeyPair: Curve.generateKeyPair(),
+		noiseKey: await Curve.generateKeyPair(),
+		pairingEphemeralKeyPair: await Curve.generateKeyPair(),
 		signedIdentityKey: identityKey,
-		signedPreKey: signedKeyPair(identityKey, 1),
+		signedPreKey: await signedKeyPair(identityKey, 1),
 		registrationId: generateRegistrationId(),
 		advSecretKey: randomBytes(32).toString('base64'),
 		processedHistoryMessages: [],
