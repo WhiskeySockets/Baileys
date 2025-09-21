@@ -201,7 +201,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			return
 		}
 
-		logger.info({ operation, updates }, 'got mex newsletter notification')
+		logger.debug({ operation, updates }, 'got mex newsletter notification')
 
 		switch (operation) {
 			case 'NotificationNewsletterUpdate':
