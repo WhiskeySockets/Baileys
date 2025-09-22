@@ -369,30 +369,54 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	const assertSessions = async (jids: string[]) => {
 		let didFetchNewSession = false
 		const uniqueJids = [...new Set(jids)] // Deduplicate JIDs
-		const jidsRequiringFetch: string[] = []
+		if (!uniqueJids.length) {
+			return didFetchNewSession
+		}
 
-		// Check peerSessionsCache and authState.keys
+		const jidsRequiringFetch: string[] = []
+		const signalIdToJids = new Map<string, string[]>()
+		const signalIdsToLookup: string[] = []
+		const seenSignalIds = new Set<string>()
+
 		for (const jid of uniqueJids) {
 			const signalId = signalRepository.jidToSignalProtocolAddress(jid)
-			const cachedSession = peerSessionsCache.get(signalId)
-			if (cachedSession !== undefined) {
-				if (cachedSession) {
-					continue // Session exists in cache
-				}
+			if (!signalIdToJids.has(signalId)) {
+				signalIdToJids.set(signalId, [jid])
 			} else {
-				const sessions = await authState.keys.get('session', [signalId])
-				const hasSession = !!sessions[signalId]
-				peerSessionsCache.set(signalId, hasSession)
-				if (hasSession) {
-					continue
-				}
+				signalIdToJids.get(signalId)!.push(jid)
 			}
 
-			jidsRequiringFetch.push(jid)
+			const cachedSession = peerSessionsCache.get(signalId)
+			if (cachedSession !== undefined) {
+				if (!cachedSession) {
+					jidsRequiringFetch.push(jid)
+				}
+				continue
+			}
+
+			if (!seenSignalIds.has(signalId)) {
+				seenSignalIds.add(signalId)
+				signalIdsToLookup.push(signalId)
+			}
+		}
+
+		if (signalIdsToLookup.length) {
+			const storeSessions = await authState.keys.get('session', signalIdsToLookup)
+			for (const signalId of signalIdsToLookup) {
+				const hasSession = !!storeSessions[signalId]
+				peerSessionsCache.set(signalId, hasSession)
+				if (!hasSession) {
+					const relatedJids = signalIdToJids.get(signalId)
+					if (relatedJids?.length) {
+						jidsRequiringFetch.push(...relatedJids)
+					}
+				}
+			}
 		}
 
 		if (jidsRequiringFetch.length) {
-			logger.debug({ jidsRequiringFetch }, 'fetching sessions')
+			const uniqueFetchJids = [...new Set(jidsRequiringFetch)]
+			logger.debug({ jidsRequiringFetch: uniqueFetchJids }, 'fetching sessions')
 			const result = await query({
 				tag: 'iq',
 				attrs: {
@@ -404,7 +428,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					{
 						tag: 'key',
 						attrs: {},
-						content: jidsRequiringFetch.map(jid => ({
+						content: uniqueFetchJids.map(jid => ({
 							tag: 'user',
 							attrs: { jid }
 						}))
@@ -414,8 +438,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			await parseAndInjectE2ESessions(result, signalRepository)
 			didFetchNewSession = true
 
-			// Cache fetched sessions
-			for (const jid of jidsRequiringFetch) {
+			for (const jid of uniqueFetchJids) {
 				const signalId = signalRepository.jidToSignalProtocolAddress(jid)
 				peerSessionsCache.set(signalId, true)
 			}
