@@ -391,6 +391,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				if (!cachedSession) {
 					jidsRequiringFetch.push(jid)
 				}
+
 				continue
 			}
 
