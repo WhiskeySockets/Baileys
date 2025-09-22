@@ -783,8 +783,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const allRecipients: string[] = []
 				const meRecipients: string[] = []
 				const otherRecipients: string[] = []
-				const meWireJids: string[] = []
-				const otherWireJids: string[] = []
 				const { user: mePnUser } = jidDecode(meId)!
 				const { user: meLidUser } = meLid ? jidDecode(meLid)! : { user: null }
 
@@ -800,10 +798,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					if (isMe) {
 						meRecipients.push(wireJid)
-						meWireJids.push(wireJid)
 					} else {
 						otherRecipients.push(wireJid)
-						otherWireJids.push(wireJid)
 					}
 
 					allRecipients.push(wireJid)
@@ -824,8 +820,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				participants.push(...meNodes)
 				participants.push(...otherNodes)
 
-				if (meWireJids.length > 0 || otherWireJids.length > 0) {
-					extraAttrs['phash'] = generateParticipantHashV2([...meWireJids, ...otherWireJids])
+				if (meRecipients.length > 0 || otherRecipients.length > 0) {
+					extraAttrs['phash'] = generateParticipantHashV2([...meRecipients, ...otherRecipients])
 				}
 
 				shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || s1 || s2
