@@ -803,6 +803,7 @@ export const normalizeMessageContent = (content: WAMessageContent | null | undef
 			message?.associatedChildMessage ||
 			message?.groupStatusMessage ||
 			message?.groupStatusMessageV2
+			message?.lottieStickerMessage
 		)
 	}
 }
