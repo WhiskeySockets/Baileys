@@ -1,4 +1,4 @@
-import { proto } from '../../WAProto'
+import { proto } from '../../WAProto/index.js'
 
 export enum XWAPaths {
 	xwa2_newsletter_create = 'xwa2_newsletter_create',
