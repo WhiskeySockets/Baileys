@@ -22,13 +22,13 @@ const getDecryptionJid = async (sender: string, repository: SignalRepositoryWith
 		return sender
 	}
 
-	return (await repository.lidMapping.getLIDForPN(sender))!
+	const mapped = await repository.lidMapping.getLIDForPN(sender)
+	return mapped || sender
 }
 
 const storeMappingFromEnvelope = async (
 	stanza: BinaryNode,
 	sender: string,
-	decryptionJid: string,
 	repository: SignalRepositoryWithLIDStore,
 	logger: ILogger
 ): Promise<void> => {
@@ -37,7 +37,8 @@ const storeMappingFromEnvelope = async (
 	if (senderAlt && isLidUser(senderAlt) && isPnUser(sender)) {
 		try {
 			await repository.lidMapping.storeLIDPNMappings([{ lid: senderAlt, pn: sender }])
-			logger.debug({ sender, senderAlt, decryptionJid }, 'Stored LID mapping from envelope')
+			await repository.migrateSession(sender, senderAlt)
+			logger.debug({ sender, senderAlt }, 'Stored LID mapping from envelope')
 		} catch (error) {
 			logger.warn({ sender, senderAlt, error }, 'Failed to store LID mapping')
 		}
@@ -242,10 +243,12 @@ export const decryptMessageNode = (
 					let msgBuffer: Uint8Array
 
 					const user = isPnUser(sender) ? sender : author // TODO: flaky logic
-					const decryptionJid = await getDecryptionJid(user, repository)
+
 					if (tag !== 'plaintext') {
-						await storeMappingFromEnvelope(stanza, user, decryptionJid, repository, logger)
+						await storeMappingFromEnvelope(stanza, user, repository, logger)
 					}
+
+					const decryptionJid = await getDecryptionJid(user, repository)
 
 					try {
 						const e2eType = tag === 'plaintext' ? 'plaintext' : attrs.type

@@ -11,30 +11,10 @@ export class LIDMappingStore {
 	})
 	private readonly keys: SignalKeyStoreWithTransaction
 	private readonly logger: ILogger
-	private onWhatsAppFunc?: (...jids: string[]) => Promise<
-		| {
-				jid: string
-				exists: boolean
-				lid: string
-		  }[]
-		| undefined
-	>
 
-	constructor(
-		keys: SignalKeyStoreWithTransaction,
-		logger: ILogger,
-		onWhatsAppFunc?: (...jids: string[]) => Promise<
-			| {
-					jid: string
-					exists: boolean
-					lid: string
-			  }[]
-			| undefined
-		>
-	) {
+	constructor(keys: SignalKeyStoreWithTransaction, logger: ILogger) {
 		this.keys = keys
 		this.logger = logger
-		this.onWhatsAppFunc = onWhatsAppFunc // needed to get LID from PN if not found
 	}
 
 	/**
@@ -116,22 +96,15 @@ export class LIDMappingStore {
 
 			if (lidUser) {
 				this.mappingCache.set(`pn:${pnUser}`, lidUser)
+				this.mappingCache.set(`lid:${lidUser}`, pnUser)
 			} else {
-				this.logger.trace(`No LID mapping found for PN user ${pnUser}; getting from USync`)
-				const { exists, lid } = (await this.onWhatsAppFunc?.(pn))?.[0]! // this function already adds LIDs to mapping
-				if (exists && lid) {
-					lidUser = jidDecode(lid)?.user
-					if (lidUser) {
-						// Cache the USync result
-						this.mappingCache.set(`pn:${pnUser}`, lidUser)
-					}
-				} else {
-					return null
-				}
+				this.logger.trace(`No LID mapping found for PN user ${pnUser}`)
+				return null
 			}
 		}
 
-		if (typeof lidUser !== 'string' || !lidUser) {
+		lidUser = lidUser.toString()
+		if (!lidUser) {
 			this.logger.warn(`Invalid or empty LID user for PN ${pn}: lidUser = "${lidUser}"`)
 			return null
 		}

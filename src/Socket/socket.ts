@@ -271,9 +271,13 @@ export const makeSocket = (config: SocketConfig) => {
 		const results = await executeUSyncQuery(usyncQuery)
 
 		if (results) {
-			if (results.list.filter(a => !!a.lid).length > 0) {
-				const lidOnly = results.list.filter(a => !!a.lid)
-				await signalRepository.lidMapping.storeLIDPNMappings(lidOnly.map(a => ({ pn: a.id, lid: a.lid as string })))
+			const lidOnly = results.list.filter(a => !!a.lid)
+			if (lidOnly.length > 0) {
+				const pairs = lidOnly.map(a => ({ pn: a.id, lid: a.lid as string }))
+				await signalRepository.lidMapping.storeLIDPNMappings(pairs)
+				for (const { pn, lid } of pairs) {
+					await signalRepository.migrateSession(pn, lid)
+				}
 			}
 
 			return results.list
@@ -853,7 +857,7 @@ export const makeSocket = (config: SocketConfig) => {
 					await signalRepository.lidMapping.storeLIDPNMappings([{ lid: myLID, pn: myPN }])
 
 					// Create LID session for ourselves (whatsmeow pattern)
-					await signalRepository.migrateSession([myPN], myLID)
+					await signalRepository.migrateSession(myPN, myLID)
 
 					logger.info({ myPN, myLID }, 'Own LID session created successfully')
 				} catch (error) {

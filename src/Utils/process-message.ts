@@ -315,6 +315,11 @@ const processMessage = async (
 				}
 
 				await signalRepository.lidMapping.storeLIDPNMappings(pairs)
+				if (pairs.length) {
+					for (const { pn, lid } of pairs) {
+						await signalRepository.migrateSession(pn, lid)
+					}
+				}
 		}
 	} else if (content?.reactionMessage) {
 		const reaction: proto.IReaction = {

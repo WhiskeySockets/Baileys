@@ -215,10 +215,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			uniquePnJids.map(async pnJid => {
 				try {
 					const resolved = await signalRepository.lidMapping.getLIDForPN(pnJid)
-					return resolved ? ([pnJid, resolved] as const) : null
+					return resolved ? ([pnJid, resolved] as const) : [pnJid, pnJid]
 				} catch (error) {
 					logger.warn({ pnJid, error }, 'Failed to resolve LID mapping for PN JID')
-					return null
+					return [pnJid, pnJid]
 				}
 			})
 		)
@@ -359,6 +359,25 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			} else {
 				for (const key in deviceMap) {
 					if (deviceMap[key]) await userDevicesCache.set(key, deviceMap[key])
+				}
+			}
+
+			const userDeviceUpdates: { [userId: string]: string[] } = {}
+			for (const [userId, devices] of Object.entries(deviceMap)) {
+				if (devices && devices.length > 0) {
+					userDeviceUpdates[userId] = devices.map(d => d.device?.toString() || '0')
+				}
+			}
+
+			if (Object.keys(userDeviceUpdates).length > 0) {
+				try {
+					await authState.keys.set({ 'user-devices': userDeviceUpdates })
+					logger.debug(
+						{ userCount: Object.keys(userDeviceUpdates).length },
+						'stored user device lists for bulk migration'
+					)
+				} catch (error) {
+					logger.warn({ error }, 'failed to store user device lists')
 				}
 			}
 		}

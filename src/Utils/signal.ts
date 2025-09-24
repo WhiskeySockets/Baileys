@@ -15,7 +15,6 @@ import {
 	getBinaryNodeChildBuffer,
 	getBinaryNodeChildren,
 	getBinaryNodeChildUInt,
-	isPnUser,
 	jidDecode,
 	type JidWithDevice,
 	S_WHATSAPP_NET
@@ -107,35 +106,8 @@ export const parseAndInjectE2ESessions = async (node: BinaryNode, repository: Si
 	// It's rare case when you need to E2E sessions for so many users, but it's possible
 	const chunkSize = 100
 	const chunks = chunk(nodes, chunkSize)
-	const resolveChunkLids = async (nodesChunk: BinaryNode[]) => {
-		const resolved = new Map<string, string>()
-		const uniquePnJids = new Set<string>()
-		for (const { attrs } of nodesChunk) {
-			const nodeJid = attrs.jid!
-			if (isPnUser(nodeJid)) {
-				uniquePnJids.add(nodeJid)
-			}
-		}
-
-		if (!uniquePnJids.size) {
-			return resolved
-		}
-
-		await Promise.all(
-			Array.from(uniquePnJids).map(async pnJid => {
-				const mapped = await repository.lidMapping.getLIDForPN(pnJid)
-				if (mapped) {
-					resolved.set(pnJid, mapped)
-				}
-			})
-		)
-
-		return resolved
-	}
 
 	for (const nodesChunk of chunks) {
-		const resolvedMap = await resolveChunkLids(nodesChunk)
-
 		await Promise.all(
 			nodesChunk.map(async (node: BinaryNode) => {
 				const signedKey = getBinaryNodeChild(node, 'skey')!
@@ -143,12 +115,11 @@ export const parseAndInjectE2ESessions = async (node: BinaryNode, repository: Si
 				const identity = getBinaryNodeChildBuffer(node, 'identity')!
 				const jid = node.attrs.jid!
 
-				const wireJid = resolvedMap.get(jid) ?? jid
-
 				const registrationId = getBinaryNodeChildUInt(node, 'registration', 4)
 
+				// loadSession() in libsignal.ts already handle this
 				await repository.injectE2ESession({
-					jid: wireJid,
+					jid: jid,
 					session: {
 						registrationId: registrationId!,
 						identityKey: generateSignalPubKey(identity),
