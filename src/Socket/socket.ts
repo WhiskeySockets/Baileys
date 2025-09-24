@@ -42,6 +42,7 @@ import {
 	getBinaryNodeChildren,
 	isLidUser,
 	jidEncode,
+	jidDecode,
 	S_WHATSAPP_NET
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync/'
@@ -856,7 +857,15 @@ export const makeSocket = (config: SocketConfig) => {
 					// Store our own LID-PN mapping
 					await signalRepository.lidMapping.storeLIDPNMappings([{ lid: myLID, pn: myPN }])
 
-					// Create LID session for ourselves (whatsmeow pattern)
+					// Create device list for our own user (needed for bulk migration)
+					const { user, device } = jidDecode(myPN)!
+					await authState.keys.set({
+						'user-devices': {
+							[user]: [device?.toString() || '0']
+						}
+					})
+
+					// migrate our own session
 					await signalRepository.migrateSession(myPN, myLID)
 
 					logger.info({ myPN, myLID }, 'Own LID session created successfully')

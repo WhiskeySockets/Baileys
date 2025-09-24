@@ -213,6 +213,12 @@ export function makeLibSignalRepository(auth: SignalAuthState, logger: ILogger):
 				return { migrated: 0, skipped: 0, total: 0 }
 			}
 
+			const { device: fromDevice } = jidDecode(fromJid)!
+			const fromDeviceStr = fromDevice?.toString() || '0'
+			if (!userDevices.includes(fromDeviceStr)) {
+				userDevices.push(fromDeviceStr)
+			}
+
 			// Step 2: Bulk check session existence for all user devices
 			const deviceSessionKeys = userDevices.map(device => `${user}.${device}`)
 			const existingSessions = await parsedKeys.get('session', deviceSessionKeys)
