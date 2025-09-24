@@ -30,11 +30,12 @@ const storeMappingFromEnvelope = async (
 	stanza: BinaryNode,
 	sender: string,
 	repository: SignalRepositoryWithLIDStore,
+	decryptionJid: string,
 	logger: ILogger
 ): Promise<void> => {
 	const { senderAlt } = extractAddressingContext(stanza)
 
-	if (senderAlt && isLidUser(senderAlt) && isPnUser(sender)) {
+	if (senderAlt && isLidUser(senderAlt) && isPnUser(sender) && decryptionJid === sender) {
 		try {
 			await repository.lidMapping.storeLIDPNMappings([{ lid: senderAlt, pn: sender }])
 			await repository.migrateSession(sender, senderAlt)
@@ -244,11 +245,11 @@ export const decryptMessageNode = (
 
 					const user = isPnUser(sender) ? sender : author // TODO: flaky logic
 
-					if (tag !== 'plaintext') {
-						await storeMappingFromEnvelope(stanza, user, repository, logger)
-					}
-
 					const decryptionJid = await getDecryptionJid(user, repository)
+
+					if (tag !== 'plaintext') {
+						await storeMappingFromEnvelope(stanza, user, repository, decryptionJid, logger)
+					}
 
 					try {
 						const e2eType = tag === 'plaintext' ? 'plaintext' : attrs.type
