@@ -362,6 +362,7 @@ function signalStorage(
 				return lidAddr.toString()
 			}
 		}
+
 		return id
 	}
 

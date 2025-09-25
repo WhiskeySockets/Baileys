@@ -41,8 +41,8 @@ import {
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
 	isLidUser,
-	jidEncode,
 	jidDecode,
+	jidEncode,
 	S_WHATSAPP_NET
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync/'
