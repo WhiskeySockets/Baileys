@@ -284,7 +284,7 @@ export function makeLibSignalRepository(auth: SignalAuthState, logger: ILogger):
 					const pnSessions = await parsedKeys.get('session', pnAddrStrings)
 
 					// Prepare bulk session updates (PN → LID migration + deletion)
-					const sessionUpdates: { [key: string]: Buffer | null } = {}
+					const sessionUpdates: { [key: string]: Uint8Array | null } = {}
 
 					for (const op of migrationOps) {
 						const pnAddrStr = op.fromAddr.toString()
@@ -296,7 +296,7 @@ export function makeLibSignalRepository(auth: SignalAuthState, logger: ILogger):
 							const fromSession = libsignal.SessionRecord.deserialize(pnSession)
 							if (fromSession.haveOpenSession()) {
 								// Queue for bulk update: copy to LID, delete from PN
-								sessionUpdates[lidAddrStr] = Buffer.from(fromSession.serialize())
+								sessionUpdates[lidAddrStr] = fromSession.serialize()
 								sessionUpdates[pnAddrStr] = null
 
 								migratedCount++
