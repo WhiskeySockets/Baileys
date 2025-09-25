@@ -7,6 +7,7 @@ import { WAMessageStubType } from '../Types'
 import { toNumber } from './generics'
 import { normalizeMessageContent } from './messages'
 import { downloadContentFromMessage } from './messages-media'
+import { decodeAndHydrate } from './proto-utils.js'
 
 const inflatePromise = promisify(inflate)
 
@@ -22,7 +23,7 @@ export const downloadHistory = async (msg: proto.Message.IHistorySyncNotificatio
 	// decompress buffer
 	buffer = await inflatePromise(buffer)
 
-	const syncData = proto.HistorySync.decode(buffer)
+	const syncData = decodeAndHydrate('HistorySync', buffer)
 	return syncData
 }
 

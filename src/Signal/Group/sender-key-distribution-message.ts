@@ -1,4 +1,5 @@
 import { proto } from '../../../WAProto/index.js'
+import { decodeAndHydrate } from '../../Utils/proto-utils.js'
 import { CiphertextMessage } from './ciphertext-message'
 
 export class SenderKeyDistributionMessage extends CiphertextMessage {
@@ -20,19 +21,13 @@ export class SenderKeyDistributionMessage extends CiphertextMessage {
 		if (serialized) {
 			try {
 				const message = serialized.slice(1)
-				const distributionMessage = proto.SenderKeyDistributionMessage.decode(message)
+				const distributionMessage = decodeAndHydrate('SenderKeyDistributionMessage', message)
 
 				this.serialized = serialized
 				this.id = distributionMessage.id
 				this.iteration = distributionMessage.iteration
-				this.chainKey =
-					typeof distributionMessage.chainKey === 'string'
-						? Buffer.from(distributionMessage.chainKey, 'base64')
-						: distributionMessage.chainKey
-				this.signatureKey =
-					typeof distributionMessage.signingKey === 'string'
-						? Buffer.from(distributionMessage.signingKey, 'base64')
-						: distributionMessage.signingKey
+				this.chainKey = distributionMessage.chainKey
+				this.signatureKey = distributionMessage.signingKey
 			} catch (e) {
 				throw new Error(String(e))
 			}
