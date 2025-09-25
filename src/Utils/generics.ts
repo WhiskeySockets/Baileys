@@ -1,48 +1,12 @@
 import { Boom } from '@hapi/boom'
 import axios, { type AxiosRequestConfig } from 'axios'
 import { createHash, randomBytes } from 'crypto'
-import { platform, release } from 'os'
 import { proto } from '../../WAProto/index.js'
 const baileysVersion = [2, 3000, 1023223821]
-import type {
-	BaileysEventEmitter,
-	BaileysEventMap,
-	BrowsersMap,
-	ConnectionState,
-	WACallUpdateType,
-	WAVersion
-} from '../Types'
+import type { BaileysEventEmitter, BaileysEventMap, ConnectionState, WACallUpdateType, WAVersion } from '../Types'
 import { DisconnectReason } from '../Types'
 import { type BinaryNode, getAllBinaryNodeChildren, jidDecode } from '../WABinary'
 import { sha256 } from './crypto'
-
-const PLATFORM_MAP = {
-	aix: 'AIX',
-	darwin: 'Mac OS',
-	win32: 'Windows',
-	android: 'Android',
-	freebsd: 'FreeBSD',
-	openbsd: 'OpenBSD',
-	sunos: 'Solaris',
-	linux: undefined,
-	haiku: undefined,
-	cygwin: undefined,
-	netbsd: undefined
-}
-
-export const Browsers: BrowsersMap = {
-	ubuntu: browser => ['Ubuntu', browser, '22.04.4'],
-	macOS: browser => ['Mac OS', browser, '14.4.1'],
-	baileys: browser => ['Baileys', browser, '6.5.0'],
-	windows: browser => ['Windows', browser, '10.0.22631'],
-	/** The appropriate browser based on your OS & release */
-	appropriate: browser => [PLATFORM_MAP[platform()] || 'Ubuntu', browser, release()]
-}
-
-export const getPlatformId = (browser: string) => {
-	const platformType = proto.DeviceProps.PlatformType[browser.toUpperCase() as any]
-	return platformType ? platformType.toString() : '1' //chrome
-}
 
 export const BufferJSON = {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -59,6 +23,14 @@ export const BufferJSON = {
 		if (typeof value === 'object' && !!value && (value.buffer === true || value.type === 'Buffer')) {
 			const val = value.data || value.value
 			return typeof val === 'string' ? Buffer.from(val, 'base64') : Buffer.from(val || [])
+		}
+
+		if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+			const keys = Object.keys(value)
+			if (keys.length > 0 && keys.every(k => !isNaN(parseInt(k, 10)))) {
+				// It's an object-like buffer, convert it.
+				return Buffer.from(Object.values(value))
+			}
 		}
 
 		return value

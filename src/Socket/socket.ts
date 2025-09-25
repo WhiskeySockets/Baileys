@@ -28,7 +28,6 @@ import {
 	getCodeFromWSError,
 	getErrorCodeFromStreamError,
 	getNextPreKeysNode,
-	getPlatformId,
 	makeEventBuffer,
 	makeNoiseHandler,
 	promiseTimeout
@@ -46,6 +45,7 @@ import {
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync/'
 import { WebSocketClient } from './Client'
+import { getPlatformId } from '../Utils/browser-utils.js'
 
 /**
  * Connects to WA servers and performs:
