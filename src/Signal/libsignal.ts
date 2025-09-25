@@ -349,26 +349,27 @@ function signalStorage(
 	{ creds, keys }: SignalAuthState,
 	lidMapping: LIDMappingStore
 ): SenderKeyStore & libsignal.SignalStorage {
+	// Shared function to resolve PN signal address to LID if mapping exists
+	const resolveSignalAddress = async (id: string): Promise<string> => {
+		if (id.includes('.') && !id.includes('_1')) {
+			const parts = id.split('.')
+			const device = parts[1] || '0'
+			const pnJid = device === '0' ? `${parts[0]}@s.whatsapp.net` : `${parts[0]}:${device}@s.whatsapp.net`
+
+			const lidForPN = await lidMapping.getLIDForPN(pnJid)
+			if (lidForPN?.includes('@lid')) {
+				const lidAddr = jidToSignalProtocolAddress(lidForPN)
+				return lidAddr.toString()
+			}
+		}
+		return id
+	}
+
 	return {
 		loadSession: async (id: string) => {
 			try {
-				// LID SINGLE SOURCE OF TRUTH: Auto-redirect PN to LID if mapping exists
-				let actualId = id
-				if (id.includes('.') && !id.includes('_1')) {
-					// This is a PN signal address format (e.g., "1234567890.0")
-					// Convert back to JID to check for LID mapping
-					const parts = id.split('.')
-					const device = parts[1] || '0'
-					const pnJid = device === '0' ? `${parts[0]}@s.whatsapp.net` : `${parts[0]}:${device}@s.whatsapp.net`
-
-					const lidForPN = await lidMapping.getLIDForPN(pnJid)
-					if (lidForPN?.includes('@lid')) {
-						const lidAddr = jidToSignalProtocolAddress(lidForPN)
-						actualId = lidAddr.toString()
-					}
-				}
-
-				const { [actualId]: sess } = await keys.get('session', [actualId])
+				const wireJid = await resolveSignalAddress(id)
+				const { [wireJid]: sess } = await keys.get('session', [wireJid])
 
 				if (sess) {
 					return libsignal.SessionRecord.deserialize(sess)
@@ -380,7 +381,8 @@ function signalStorage(
 			return null
 		},
 		storeSession: async (id: string, session: libsignal.SessionRecord) => {
-			await keys.set({ session: { [id]: session.serialize() } })
+			const wireJid = await resolveSignalAddress(id)
+			await keys.set({ session: { [wireJid]: session.serialize() } })
 		},
 		isTrustedIdentity: () => {
 			return true
