@@ -46,10 +46,8 @@ export class LIDMappingStore {
 				continue
 			}
 
-			const [lidJid, pnJid] = isLidUser(lid) ? [lid, pn] : [pn, lid]
-
-			const lidDecoded = jidDecode(lidJid)
-			const pnDecoded = jidDecode(pnJid)
+			const lidDecoded = jidDecode(lid)
+			const pnDecoded = jidDecode(pn)
 
 			if (!lidDecoded || !pnDecoded) return
 
