@@ -143,6 +143,58 @@ export class LIDMappingStore {
 		return deviceSpecificLid
 	}
 
+	async getLIDForPNs(pns: string[]): Promise<Map<string, string | null>> {
+		const pnUsers = pns
+			.map(pn => {
+				const decoded = jidDecode(pn)
+				if (!decoded || !isPnUser(pn)) return null
+				return { pn, user: decoded.user, device: decoded.device ?? 0 }
+			})
+			.filter(p => p !== null) as { pn: string; user: string; device: number }[]
+
+		const results = await this.keys.get(
+			'lid-mapping',
+			pnUsers.map(p => p.user)
+		)
+
+		// initialize mapping with nulls
+		const mapping = new Map(pns.map(pn => [pn, null as string | null]))
+
+		// set everything we found so far
+		for (const { pn, user, device } of pnUsers) {
+			const lidUser = results[user]
+			if (typeof lidUser === 'string' && lidUser) {
+				const deviceSpecificLid = `${lidUser}:${device}@lid`
+				mapping.set(pn, deviceSpecificLid)
+				// cache it
+				this.mappingCache.set(`pn:${user}`, lidUser)
+			}
+		}
+
+		// what's missing we need to fetch from USync
+		const missingPNs = pns.filter(pn => mapping.get(pn) === null)
+
+		if (missingPNs.length > 0 && this.onWhatsAppFunc) {
+			logger.trace(`No LID mapping found for PN users ${missingPNs.join(', ')}; getting from USync`)
+			const usyncResults = await this.onWhatsAppFunc(...missingPNs)
+			for (const { jid: pn, exists, lid } of usyncResults ?? []) {
+				if (exists && lid) {
+					const decoded = jidDecode(pn)
+					const lidUser = jidDecode(lid)?.user
+					if (decoded && lidUser) {
+						const device = decoded.device ?? 0
+						const deviceSpecificLid = `${lidUser}:${device}@lid`
+						mapping.set(pn, deviceSpecificLid)
+						// cache it
+						this.mappingCache.set(`pn:${decoded.user}`, lidUser)
+					}
+				}
+			}
+		}
+
+		return mapping
+	}
+
 	/**
 	 * Get PN for LID - USER LEVEL with device construction
 	 */

@@ -18,7 +18,7 @@ type DecryptSignalProtoOpts = {
 	ciphertext: Uint8Array
 }
 
-type EncryptMessageOpts = {
+export type EncryptMessageOpts = {
 	jid: string
 	data: Uint8Array
 }
@@ -64,6 +64,13 @@ export type SignalRepository = {
 		type: 'pkmsg' | 'msg'
 		ciphertext: Uint8Array
 	}>
+	encryptMessages(opts: EncryptMessageOpts[]): Promise<
+		{
+			type: 'pkmsg' | 'msg'
+			ciphertext: Uint8Array
+		}[]
+	>
+
 	encryptMessageWithWire(opts: EncryptMessageWithWireOpts): Promise<{
 		type: 'pkmsg' | 'msg'
 		ciphertext: Uint8Array
