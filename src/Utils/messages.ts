@@ -367,7 +367,7 @@ export const generateWAMessageContent = async (
 	options: MessageContentGenerationOptions
 ) => {
 	let m: WAMessageContent = {}
-	if ('text' in message) {
+	if (Object.keys(message).includes('text')) {
 		const extContent = { text: message.text } as WATextMessage
 
 		let urlInfo = message.linkPreview
@@ -403,7 +403,7 @@ export const generateWAMessageContent = async (
 		}
 
 		m.extendedTextMessage = extContent
-	} else if ('contacts' in message) {
+	} else if (Object.keys(message).includes('contacts')) {
 		const contactLen = message.contacts.contacts.length
 		if (!contactLen) {
 			throw new Boom('require atleast 1 contact', { statusCode: 400 })
@@ -414,20 +414,20 @@ export const generateWAMessageContent = async (
 		} else {
 			m.contactsArrayMessage = WAProto.Message.ContactsArrayMessage.create(message.contacts)
 		}
-	} else if ('location' in message) {
+	} else if (Object.keys(message).includes('location')) {
 		m.locationMessage = WAProto.Message.LocationMessage.create(message.location)
-	} else if ('react' in message) {
+	} else if (Object.keys(message).includes('react')) {
 		if (!message.react.senderTimestampMs) {
 			message.react.senderTimestampMs = Date.now()
 		}
 
 		m.reactionMessage = WAProto.Message.ReactionMessage.create(message.react)
-	} else if ('delete' in message) {
+	} else if (Object.keys(message).includes('delete')) {
 		m.protocolMessage = {
 			key: message.delete,
 			type: WAProto.Message.ProtocolMessage.Type.REVOKE
 		}
-	} else if ('forward' in message) {
+	} else if (Object.keys(message).includes('forward')) {
 		m = generateForwardMessageContent(message.forward, message.force)
 	} else if ('disappearingMessagesInChat' in message) {
 		const exp =
@@ -437,7 +437,7 @@ export const generateWAMessageContent = async (
 					: 0
 				: message.disappearingMessagesInChat
 		m = prepareDisappearingMessageSettingContent(exp)
-	} else if ('groupInvite' in message) {
+	} else if (Object.keys(message).includes('groupInvite')) {
 		m.groupInviteMessage = {}
 		m.groupInviteMessage.inviteCode = message.groupInvite.inviteCode
 		m.groupInviteMessage.inviteExpiration = message.groupInvite.inviteExpiration
@@ -456,7 +456,7 @@ export const generateWAMessageContent = async (
 				}
 			}
 		}
-	} else if ('pin' in message) {
+	} else if (Object.keys(message).includes('pin')) {
 		m.pinInChatMessage = {}
 		m.messageContextInfo = {}
 
@@ -465,7 +465,7 @@ export const generateWAMessageContent = async (
 		m.pinInChatMessage.senderTimestampMs = Date.now()
 
 		m.messageContextInfo.messageAddOnDurationInSecs = message.type === 1 ? message.time || 86400 : 0
-	} else if ('buttonReply' in message) {
+	} else if (Object.keys(message).includes('buttonReply')) {
 		switch (message.type) {
 			case 'template':
 				m.templateButtonReplyMessage = {
@@ -482,10 +482,10 @@ export const generateWAMessageContent = async (
 				}
 				break
 		}
-	} else if ('ptv' in message && message.ptv) {
+	} else if (Object.keys(message).includes('ptv') && message.ptv) {
 		const { videoMessage } = await prepareWAMessageMedia({ video: message.video }, options)
 		m.ptvMessage = videoMessage
-	} else if ('product' in message) {
+	} else if (Object.keys(message).includes('product')) {
 		const { imageMessage } = await prepareWAMessageMedia({ image: message.product.productImage }, options)
 		m.productMessage = WAProto.Message.ProductMessage.create({
 			...message,
@@ -494,9 +494,9 @@ export const generateWAMessageContent = async (
 				productImage: imageMessage
 			}
 		})
-	} else if ('listReply' in message) {
+	} else if (Object.keys(message).includes('listReply')) {
 		m.listResponseMessage = { ...message.listReply }
-	} else if ('event' in message) {
+	} else if (Object.keys(message).includes('event')) {
 		m.eventMessage = {}
 		const startTime = Math.floor(message.event.startDate.getTime() / 1000)
 
@@ -518,7 +518,7 @@ export const generateWAMessageContent = async (
 		m.eventMessage.extraGuestsAllowed = message.event.extraGuestsAllowed
 		m.eventMessage.isScheduleCall = message.event.isScheduleCall ?? false
 		m.eventMessage.location = message.event.location
-	} else if ('poll' in message) {
+	} else if (Object.keys(message).includes('poll')) {
 		message.poll.selectableCount ||= 0
 		message.poll.toAnnouncementGroup ||= false
 
@@ -540,7 +540,7 @@ export const generateWAMessageContent = async (
 		const pollCreationMessage = {
 			name: message.poll.name,
 			selectableOptionsCount: message.poll.selectableCount,
-			options: message.poll.values.map(optionName => ({ optionName }))
+			options: message.poll.values.map((optionName) => ({ optionName }))
 		}
 
 		if (message.poll.toAnnouncementGroup) {
@@ -555,7 +555,7 @@ export const generateWAMessageContent = async (
 				m.pollCreationMessage = pollCreationMessage
 			}
 		}
-	} else if ('sharePhoneNumber' in message) {
+	} else if (Object.keys(message).includes('sharePhoneNumber')) {
 		m.protocolMessage = {
 			type: proto.Message.ProtocolMessage.Type.SHARE_PHONE_NUMBER
 		}
@@ -700,7 +700,9 @@ export const generateWAMessage = async (jid: string, content: AnyMessageContent,
 export const getContentType = (content: proto.IMessage | undefined) => {
 	if (content) {
 		const keys = Object.keys(content)
-		const key = keys.find(k => (k === 'conversation' || k.includes('Message')) && k !== 'senderKeyDistributionMessage')
+		const key = keys.find(
+			(k) => (k === 'conversation' || k.includes('Message')) && k !== 'senderKeyDistributionMessage'
+		)
 		return key as keyof typeof content
 	}
 }
@@ -802,7 +804,7 @@ export const getDevice = (id: string) =>
 /** Upserts a receipt in the message */
 export const updateMessageWithReceipt = (msg: Pick<WAMessage, 'userReceipt'>, receipt: MessageUserReceipt) => {
 	msg.userReceipt = msg.userReceipt || []
-	const recp = msg.userReceipt.find(m => m.userJid === receipt.userJid)
+	const recp = msg.userReceipt.find((m) => m.userJid === receipt.userJid)
 	if (recp) {
 		Object.assign(recp, receipt)
 	} else {
@@ -814,7 +816,7 @@ export const updateMessageWithReceipt = (msg: Pick<WAMessage, 'userReceipt'>, re
 export const updateMessageWithReaction = (msg: Pick<WAMessage, 'reactions'>, reaction: proto.IReaction) => {
 	const authorID = getKeyAuthor(reaction.key)
 
-	const reactions = (msg.reactions || []).filter(r => getKeyAuthor(r.key) !== authorID)
+	const reactions = (msg.reactions || []).filter((r) => getKeyAuthor(r.key) !== authorID)
 	reaction.text = reaction.text || ''
 	reactions.push(reaction)
 	msg.reactions = reactions
@@ -824,7 +826,7 @@ export const updateMessageWithReaction = (msg: Pick<WAMessage, 'reactions'>, rea
 export const updateMessageWithPollUpdate = (msg: Pick<WAMessage, 'pollUpdates'>, update: proto.IPollUpdate) => {
 	const authorID = getKeyAuthor(update.pollUpdateMessageKey)
 
-	const reactions = (msg.pollUpdates || []).filter(r => getKeyAuthor(r.pollUpdateMessageKey) !== authorID)
+	const reactions = (msg.pollUpdates || []).filter((r) => getKeyAuthor(r.pollUpdateMessageKey) !== authorID)
 	if (update.vote?.selectedOptions?.length) {
 		reactions.push(update)
 	}
@@ -925,7 +927,7 @@ export const downloadMediaMessage = async <Type extends 'buffer' | 'stream'>(
 	options: MediaDownloadOptions,
 	ctx?: DownloadMediaMessageContext
 ) => {
-	const result = await downloadMsg().catch(async error => {
+	const result = await downloadMsg().catch(async (error) => {
 		if (
 			ctx &&
 			axios.isAxiosError(error) && // check if the message requires a reupload
