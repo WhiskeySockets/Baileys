@@ -174,7 +174,7 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 			msgType = isParticipantMe ? 'peer_broadcast' : 'other_broadcast'
 		}
 
-		fromMe = isParticipantMe;
+		fromMe = isParticipantMe
 		chatId = from!
 		author = participant
 	} else if (isJidNewsletter(from)) {
@@ -185,7 +185,6 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 		if (isMe(from!) || isMeLid(from!)) {
 			fromMe = true
 		}
-		
 	} else {
 		throw new Boom('Unknown message type', { data: stanza })
 	}
