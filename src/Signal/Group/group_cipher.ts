@@ -19,7 +19,7 @@ export class GroupCipher {
 		this.senderKeyName = senderKeyName
 	}
 
-	public async encrypt(paddedPlaintext: Uint8Array | string): Promise<Uint8Array> {
+	public async encrypt(paddedPlaintext: Uint8Array): Promise<Uint8Array> {
 		const record = await this.senderKeyStore.loadSenderKey(this.senderKeyName)
 		if (!record) {
 			throw new Error('No SenderKeyRecord found for encryption')
@@ -107,16 +107,9 @@ export class GroupCipher {
 		}
 	}
 
-	private async getCipherText(
-		iv: Uint8Array | string,
-		key: Uint8Array | string,
-		plaintext: Uint8Array | string
-	): Promise<Buffer> {
+	private async getCipherText(iv: Uint8Array, key: Uint8Array, plaintext: Uint8Array): Promise<Buffer> {
 		try {
-			const ivBuffer = typeof iv === 'string' ? Buffer.from(iv, 'base64') : iv
-			const keyBuffer = typeof key === 'string' ? Buffer.from(key, 'base64') : key
-			const plaintextBuffer = typeof plaintext === 'string' ? Buffer.from(plaintext) : plaintext
-			return encrypt(keyBuffer, plaintextBuffer, ivBuffer)
+			return encrypt(key, plaintext, iv)
 		} catch (e) {
 			throw new Error('InvalidMessageException')
 		}
