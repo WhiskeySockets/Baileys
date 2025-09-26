@@ -569,7 +569,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	) => {
 		const meId = authState.creds.me!.id
 		const meLid = authState.creds.me?.lid
-		let shouldIncludeDeviceIdentity = false
+		const isRetryResend = Boolean(participant?.jid)
+		let shouldIncludeDeviceIdentity = isRetryResend
 		const statusJid = 'status@broadcast'
 
 		const { user, server } = jidDecode(jid)!
@@ -715,7 +716,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				for (const device of devices) {
 					const deviceJid = device.wireJid
 					const hasKey = !!senderKeyMap[deviceJid]
-					if (!hasKey || !!participant) {
+					if (!hasKey && !isRetryResend) {
 						senderKeyRecipients.push(deviceJid)
 						senderKeyMap[deviceJid] = true
 					}
@@ -745,13 +746,30 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					participants.push(...result.nodes)
 				}
 
-				binaryNodeContent.push({
-					tag: 'enc',
-					attrs: { v: '2', type: 'skmsg' },
-					content: ciphertext
-				})
+				if (isRetryResend) {
+					const { type, ciphertext: encryptedContent } = await signalRepository.encryptMessage({
+						data: bytes,
+						jid: participant?.jid! 
+					})
 
-				await authState.keys.set({ 'sender-key-memory': { [jid]: senderKeyMap } })
+					binaryNodeContent.push({
+						tag: 'enc',
+						attrs: {
+							v: '2',
+							type,
+							count: participant!.count.toString()
+						},
+						content: encryptedContent
+					})
+				} else {
+					binaryNodeContent.push({
+						tag: 'enc',
+						attrs: { v: '2', type: 'skmsg' },
+						content: ciphertext
+					})
+
+					await authState.keys.set({ 'sender-key-memory': { [jid]: senderKeyMap } })
+				}
 			} else {
 				const { user: ownUser } = jidDecode(ownId)!
 
