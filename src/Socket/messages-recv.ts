@@ -39,6 +39,7 @@ import {
 	xmppSignedPreKey
 } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
+import { decodeAndHydrate } from '../Utils/proto-utils'
 import {
 	areJidsSameUser,
 	type BinaryNode,
@@ -293,7 +294,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							typeof plaintextNode.content === 'string'
 								? Buffer.from(plaintextNode.content, 'binary')
 								: Buffer.from(plaintextNode.content as Uint8Array)
-						const messageProto = proto.Message.decode(contentBuf)
+						const messageProto = decodeAndHydrate(proto.Message, contentBuf)
 						const fullMessage = proto.WebMessageInfo.create({
 							key: {
 								remoteJid: from,
