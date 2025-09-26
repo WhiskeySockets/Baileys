@@ -201,6 +201,10 @@ export const prepareWAMessageMedia = async (
 			delete obj.videoMessage
 		}
 
+		if (obj.stickerMessage) {
+			obj.stickerMessage.stickerSentTs = Date.now()
+		}
+
 		if (cacheableKey) {
 			logger?.debug({ cacheableKey }, 'set cache')
 			await options.mediaCache!.set(cacheableKey, WAProto.Message.encode(obj).finish())
