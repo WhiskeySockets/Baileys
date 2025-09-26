@@ -106,6 +106,7 @@ export const parseAndInjectE2ESessions = async (node: BinaryNode, repository: Si
 	// It's rare case when you need to E2E sessions for so many users, but it's possible
 	const chunkSize = 100
 	const chunks = chunk(nodes, chunkSize)
+
 	for (const nodesChunk of chunks) {
 		await Promise.all(
 			nodesChunk.map(async (node: BinaryNode) => {
@@ -113,6 +114,7 @@ export const parseAndInjectE2ESessions = async (node: BinaryNode, repository: Si
 				const key = getBinaryNodeChild(node, 'key')!
 				const identity = getBinaryNodeChildBuffer(node, 'identity')!
 				const jid = node.attrs.jid!
+
 				const registrationId = getBinaryNodeChildUInt(node, 'registration', 4)
 
 				await repository.injectE2ESession({

@@ -939,7 +939,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}
 		}
 
-		await assertSessions([participant], shouldRecreateSession)
+		await assertSessions([participant])
 
 		if (isJidGroup(remoteJid)) {
 			await authState.keys.set({ 'sender-key-memory': { [remoteJid]: null } })
@@ -1130,23 +1130,23 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				pn = jidNormalizedUser(node.attrs.sender_pn)
 			ev.emit('lid-mapping.update', { lid, pn })
 			await signalRepository.lidMapping.storeLIDPNMappings([{ lid, pn }])
+			await signalRepository.migrateSession(pn, lid)
 		}
 
 		const alt = msg.key.participantAlt || msg.key.remoteJidAlt
 		// store new mappings we didn't have before
 		if (!!alt) {
 			const altServer = jidDecode(alt)?.server
+			const primaryJid = msg.key.participant || msg.key.remoteJid!
 			if (altServer === 'lid') {
 				if (typeof (await signalRepository.lidMapping.getPNForLID(alt)) === 'string') {
-					await signalRepository.lidMapping.storeLIDPNMappings([
-						{ lid: alt, pn: msg.key.participant || msg.key.remoteJid! }
-					])
+					await signalRepository.lidMapping.storeLIDPNMappings([{ lid: alt, pn: primaryJid }])
+					await signalRepository.migrateSession(primaryJid, alt)
 				}
 			} else {
 				if (typeof (await signalRepository.lidMapping.getLIDForPN(alt)) === 'string') {
-					await signalRepository.lidMapping.storeLIDPNMappings([
-						{ lid: msg.key.participant || msg.key.remoteJid!, pn: alt }
-					])
+					await signalRepository.lidMapping.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
+					await signalRepository.migrateSession(alt, primaryJid)
 				}
 			}
 		}
