@@ -749,7 +749,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				if (isRetryResend) {
 					const { type, ciphertext: encryptedContent } = await signalRepository.encryptMessage({
 						data: bytes,
-						jid: participant?.jid! 
+						jid: participant?.jid!
 					})
 
 					binaryNodeContent.push({
