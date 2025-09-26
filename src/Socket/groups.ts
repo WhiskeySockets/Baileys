@@ -152,7 +152,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 			const nodeAction = getBinaryNodeChild(node, action)
 			const participantsAffected = getBinaryNodeChildren(nodeAction, 'participant')
 			return participantsAffected.map(p => {
-				return { status: p.attrs.error || '200', jid: p.attrs.jid }
+				return { status: p.attrs.error || '200', jid: jidNormalizedUser(p.attrs.jid) }
 			})
 		},
 		groupParticipantsUpdate: async (jid: string, participants: string[], action: ParticipantAction) => {
@@ -169,7 +169,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 			const node = getBinaryNodeChild(result, action)
 			const participantsAffected = getBinaryNodeChildren(node, 'participant')
 			return participantsAffected.map(p => {
-				return { status: p.attrs.error || '200', jid: p.attrs.jid, content: p }
+				return { status: p.attrs.error || '200', jid: jidNormalizedUser(p.attrs.jid), content: p }
 			})
 		},
 		groupUpdateDescription: async (jid: string, description?: string) => {
@@ -264,7 +264,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 							participant: key.remoteJid
 						},
 						messageStubType: WAMessageStubType.GROUP_PARTICIPANT_ADD,
-						messageStubParameters: [authState.creds.me!.id],
+						messageStubParameters: [jidNormalizedUser(authState.creds.me!.id)],
 						participant: key.remoteJid,
 						messageTimestamp: unixTimestampSeconds()
 					},
@@ -344,11 +344,21 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 		joinApprovalMode: !!getBinaryNodeChild(group, 'membership_approval_mode'),
 		memberAddMode,
 		participants: getBinaryNodeChildren(group, 'participant').map(({ attrs }) => {
+			// normalize participant jid to remove device/agent suffixes
+			const normalizedId = jidNormalizedUser(attrs.jid)
+			// extract phone and lid values safely
+			const phoneNumber = attrs.phone_number && isPnUser(attrs.phone_number) ? jidNormalizedUser(attrs.phone_number) : undefined
+			const lidVal = attrs.lid && isLidUser(attrs.lid) ? jidNormalizedUser(attrs.lid) : undefined
+			const adminType = (attrs.type || null) as GroupParticipant['admin']
+
 			return {
-				id: attrs.jid!,
-				phoneNumber: isLidUser(attrs.jid) && isPnUser(attrs.phone_number) ? attrs.phone_number : undefined,
-				lid: isPnUser(attrs.jid) && isLidUser(attrs.lid) ? attrs.lid : undefined,
-				admin: (attrs.type || null) as GroupParticipant['admin']
+				id: normalizedId,
+				phoneNumber,
+				lid: lidVal,
+				admin: adminType,
+				// convenience boolean flags for quick checks
+				isAdmin: adminType === 'admin',
+				isSuperAdmin: adminType === 'superadmin'
 			}
 		}),
 		ephemeralDuration: eph ? +eph : undefined
