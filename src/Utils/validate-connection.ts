@@ -6,6 +6,7 @@ import type { AuthenticationCreds, SignalCreds, SocketConfig } from '../Types'
 import { type BinaryNode, getBinaryNodeChild, jidDecode, S_WHATSAPP_NET } from '../WABinary'
 import { Curve, hmacSign } from './crypto'
 import { encodeBigEndian } from './generics'
+import { decodeAndHydrate } from './proto-utils'
 import { createSignalIdentity } from './signal'
 
 const getUserAgent = (config: SocketConfig): proto.ClientPayload.IUserAgent => {
@@ -135,7 +136,10 @@ export const configureSuccessfulPairing = (
 	const jid = deviceNode.attrs.jid
 	const lid = deviceNode.attrs.lid
 
-	const { details, hmac, accountType } = proto.ADVSignedDeviceIdentityHMAC.decode(deviceIdentityNode.content as Buffer)
+	const { details, hmac, accountType } = decodeAndHydrate(
+		proto.ADVSignedDeviceIdentityHMAC,
+		deviceIdentityNode.content as Buffer
+	)
 	const isHostedAccount = accountType !== undefined && accountType === proto.ADVEncryptionType.HOSTED
 
 	const hmacPrefix = isHostedAccount ? Buffer.from([6, 5]) : Buffer.alloc(0)
@@ -144,7 +148,7 @@ export const configureSuccessfulPairing = (
 		throw new Boom('Invalid account signature')
 	}
 
-	const account = proto.ADVSignedDeviceIdentity.decode(details)
+	const account = decodeAndHydrate(proto.ADVSignedDeviceIdentity, details)
 	const { accountSignatureKey, accountSignature, details: deviceDetails } = account
 	const accountMsg = Buffer.concat([Buffer.from([6, 0]), deviceDetails, signedIdentityKey.public])
 	if (!Curve.verify(accountSignatureKey, accountMsg, accountSignature)) {
@@ -158,7 +162,7 @@ export const configureSuccessfulPairing = (
 	const identity = createSignalIdentity(lid!, accountSignatureKey)
 	const accountEnc = encodeSignedDeviceIdentity(account, false)
 
-	const deviceIdentity = proto.ADVDeviceIdentity.decode(account.details)
+	const deviceIdentity = decodeAndHydrate(proto.ADVDeviceIdentity, account.details)
 
 	const reply: BinaryNode = {
 		tag: 'iq',

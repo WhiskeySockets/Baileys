@@ -84,6 +84,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			useClones: false
 		})
 
+	const peerSessionsCache = new NodeCache<boolean>({
+		stdTTL: DEFAULT_CACHE_TTLS.USER_DEVICES,
+		useClones: false
+	})
+
 	// Initialize message retry manager if enabled
 	const messageRetryManager = enableRecentMessageCache ? new MessageRetryManager(logger, maxMsgRetryCount) : null
 
@@ -197,39 +202,35 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	/** Device info with wire JID format for envelope addressing */
 	type DeviceWithWireJid = JidWithDevice & {
-		wireJid: string // The exact JID format that should be used in wire protocol (envelope addressing)
+		wireJid: string
 	}
 
-	/**
-	 * Deduplicate JIDs when both LID and PN versions exist for same user
-	 * Prefers LID over PN to maintain single encryption layer
-	 */
-	const deduplicateLidPnJids = (jids: string[]): string[] => {
-		const lidUsers = new Set<string>()
-		const filteredJids: string[] = []
-
-		// Collect all LID users
-		for (const jid of jids) {
-			if (jid.includes('@lid')) {
-				const user = jidDecode(jid)?.user
-				if (user) lidUsers.add(user)
-			}
+	const resolveSessionJids = async (jids: string[]): Promise<Map<string, string>> => {
+		const uniquePnJids = Array.from(new Set(jids.filter(isPnUser)))
+		if (!uniquePnJids.length) {
+			return new Map()
 		}
 
-		// Filter out PN versions when LID exists
-		for (const jid of jids) {
-			if (jid.includes('@s.whatsapp.net')) {
-				const user = jidDecode(jid)?.user
-				if (user && lidUsers.has(user)) {
-					logger.debug({ jid }, 'Skipping PN - LID version exists')
-					continue
+		const lookups = await Promise.all(
+			uniquePnJids.map(async pnJid => {
+				try {
+					const resolved = await signalRepository.lidMapping.getLIDForPN(pnJid)
+					return resolved ? ([pnJid, resolved] as const) : [pnJid, pnJid]
+				} catch (error) {
+					logger.warn({ pnJid, error }, 'Failed to resolve LID mapping for PN JID')
+					return [pnJid, pnJid]
 				}
-			}
+			})
+		)
 
-			filteredJids.push(jid)
+		const sessionMap = new Map<string, string>()
+		for (const entry of lookups) {
+			if (entry) {
+				sessionMap.set(entry[0], entry[1])
+			}
 		}
 
-		return filteredJids
+		return sessionMap
 	}
 
 	/** Fetch all the devices we've to send a message to */
@@ -245,7 +246,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 
 		const toFetch: string[] = []
-		jids = deduplicateLidPnJids(Array.from(new Set(jids)))
+
 		const jidsWithUser = jids
 			.map(jid => {
 				const decoded = jidDecode(jid)
@@ -360,170 +361,57 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					if (deviceMap[key]) await userDevicesCache.set(key, deviceMap[key])
 				}
 			}
+
+			const userDeviceUpdates: { [userId: string]: string[] } = {}
+			for (const [userId, devices] of Object.entries(deviceMap)) {
+				if (devices && devices.length > 0) {
+					userDeviceUpdates[userId] = devices.map(d => d.device?.toString() || '0')
+				}
+			}
+
+			if (Object.keys(userDeviceUpdates).length > 0) {
+				try {
+					await authState.keys.set({ 'device-list': userDeviceUpdates })
+					logger.debug(
+						{ userCount: Object.keys(userDeviceUpdates).length },
+						'stored user device lists for bulk migration'
+					)
+				} catch (error) {
+					logger.warn({ error }, 'failed to store user device lists')
+				}
+			}
 		}
 
 		return deviceResults
 	}
 
-	const assertSessions = async (jids: string[], force: boolean) => {
+	const assertSessions = async (jids: string[]) => {
 		let didFetchNewSession = false
+		const uniqueJids = [...new Set(jids)] // Deduplicate JIDs
 		const jidsRequiringFetch: string[] = []
 
-		// Apply same deduplication as in getUSyncDevices
-		jids = deduplicateLidPnJids(jids)
-
-		if (force) {
-			// Check which sessions are missing (with LID migration check)
-			const addrs = jids.map(jid => signalRepository.jidToSignalProtocolAddress(jid))
-			const sessions = await authState.keys.get('session', addrs)
-
-			// Simplified: Check session existence directly
-			const checkJidSession = (jid: string) => {
-				const signalId = signalRepository.jidToSignalProtocolAddress(jid)
+		// Check peerSessionsCache and authState.keys
+		for (const jid of uniqueJids) {
+			const signalId = signalRepository.jidToSignalProtocolAddress(jid)
+			const cachedSession = peerSessionsCache.get(signalId)
+			if (cachedSession !== undefined) {
+				if (cachedSession) {
+					continue // Session exists in cache
+				}
+			} else {
+				const sessions = await authState.keys.get('session', [signalId])
 				const hasSession = !!sessions[signalId]
-
-				// Add to fetch list if no session exists
-				// Session type selection (LID vs PN) is handled in encryptMessage
-				if (!hasSession) {
-					if (jid.includes('@lid')) {
-						logger.debug({ jid }, 'No LID session found, will create new LID session')
-					}
-
-					jidsRequiringFetch.push(jid)
+				peerSessionsCache.set(signalId, hasSession)
+				if (hasSession) {
+					continue
 				}
 			}
 
-			// Process all JIDs
-			for (const jid of jids) {
-				checkJidSession(jid)
-			}
-		} else {
-			const addrs = jids.map(jid => signalRepository.jidToSignalProtocolAddress(jid))
-			const sessions = await authState.keys.get('session', addrs)
-
-			// Group JIDs by user for bulk migration
-			const userGroups = new Map<string, string[]>()
-			for (const jid of jids) {
-				const user = jidNormalizedUser(jid)
-				if (!userGroups.has(user)) {
-					userGroups.set(user, [])
-				}
-
-				userGroups.get(user)!.push(jid)
-			}
-
-			// Helper to check LID mapping for a user
-			const checkUserLidMapping = async (user: string, userJids: string[]) => {
-				if (!userJids.some(jid => jid.includes('@s.whatsapp.net'))) {
-					return { shouldMigrate: false, lidForPN: undefined }
-				}
-
-				try {
-					// Convert user to proper PN JID format for getLIDForPN
-					const pnJid = `${user}@s.whatsapp.net`
-					const mapping = await signalRepository.lidMapping.getLIDForPN(pnJid)
-					if (mapping?.includes('@lid')) {
-						logger.debug(
-							{ user, lidForPN: mapping, deviceCount: userJids.length },
-							'User has LID mapping - preparing bulk migration'
-						)
-						return { shouldMigrate: true, lidForPN: mapping }
-					}
-				} catch (error) {
-					logger.debug({ user, error }, 'Failed to check LID mapping for user')
-				}
-
-				return { shouldMigrate: false, lidForPN: undefined }
-			}
-
-			// Process each user group for potential bulk LID migration
-			for (const [user, userJids] of userGroups) {
-				const mappingResult = await checkUserLidMapping(user, userJids)
-				const shouldMigrateUser = mappingResult.shouldMigrate
-				const lidForPN = mappingResult.lidForPN
-
-				// Migrate all devices for this user if LID mapping exists
-				if (shouldMigrateUser && lidForPN) {
-					// Bulk migrate all user devices in single transaction
-					const migrationResult = await signalRepository.migrateSession(userJids, lidForPN)
-
-					if (migrationResult.migrated > 0) {
-						logger.info(
-							{
-								user,
-								lidMapping: lidForPN,
-								migrated: migrationResult.migrated,
-								skipped: migrationResult.skipped,
-								total: migrationResult.total
-							},
-							'Completed bulk migration for user devices'
-						)
-					} else {
-						logger.debug(
-							{
-								user,
-								lidMapping: lidForPN,
-								skipped: migrationResult.skipped,
-								total: migrationResult.total
-							},
-							'All user device sessions already migrated'
-						)
-					}
-				}
-
-				// Direct bulk session check with LID single source of truth
-				const addMissingSessionsToFetchList = (jid: string) => {
-					const signalId = signalRepository.jidToSignalProtocolAddress(jid)
-					if (sessions[signalId]) return
-
-					// Determine correct JID to fetch (LID if mapping exists, otherwise original)
-					if (jid.includes('@s.whatsapp.net') && shouldMigrateUser && lidForPN) {
-						const decoded = jidDecode(jid)!
-						const lidDeviceJid =
-							decoded.device !== undefined ? `${jidDecode(lidForPN)!.user}:${decoded.device}@lid` : lidForPN
-						jidsRequiringFetch.push(lidDeviceJid)
-						logger.debug({ pnJid: jid, lidJid: lidDeviceJid }, 'Adding LID JID to fetch list (conversion)')
-					} else {
-						jidsRequiringFetch.push(jid)
-						logger.debug({ jid }, 'Adding JID to fetch list')
-					}
-				}
-
-				userJids.forEach(addMissingSessionsToFetchList)
-			}
+			jidsRequiringFetch.push(jid)
 		}
 
 		if (jidsRequiringFetch.length) {
 			logger.debug({ jidsRequiringFetch }, 'fetching sessions')
-
-			// DEBUG: Check if there are PN versions of LID users being fetched
-			const lidUsersBeingFetched = new Set<string>()
-			const pnUsersBeingFetched = new Set<string>()
-
-			for (const jid of jidsRequiringFetch) {
-				const user = jidDecode(jid)?.user
-				if (user) {
-					if (jid.includes('@lid')) {
-						lidUsersBeingFetched.add(user)
-					} else if (jid.includes('@s.whatsapp.net')) {
-						pnUsersBeingFetched.add(user)
-					}
-				}
-			}
-
-			// Find overlaps
-			const overlapping = Array.from(pnUsersBeingFetched).filter(user => lidUsersBeingFetched.has(user))
-			if (overlapping.length > 0) {
-				logger.warn(
-					{
-						overlapping,
-						lidUsersBeingFetched: Array.from(lidUsersBeingFetched),
-						pnUsersBeingFetched: Array.from(pnUsersBeingFetched)
-					},
-					'Fetching both LID and PN sessions for same users'
-				)
-			}
-
 			const result = await query({
 				tag: 'iq',
 				attrs: {
@@ -543,8 +431,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				]
 			})
 			await parseAndInjectE2ESessions(result, signalRepository)
-
 			didFetchNewSession = true
+
+			// Cache fetched sessions
+			for (const jid of jidsRequiringFetch) {
+				const signalId = signalRepository.jidToSignalProtocolAddress(jid)
+				peerSessionsCache.set(signalId, true)
+			}
 		}
 
 		return didFetchNewSession
@@ -578,133 +471,58 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return msgId
 	}
 
-	const createParticipantNodes = async (
-		jids: string[],
+	const createParticipantNodesWithSessionMap = async (
+		recipientWireJids: string[],
+		sessionMap: Map<string, string>,
 		message: proto.IMessage,
 		extraAttrs?: BinaryNode['attrs'],
 		dsmMessage?: proto.IMessage
 	) => {
-		let patched = await patchMessageBeforeSending(message, jids)
-		if (!Array.isArray(patched)) {
-			patched = jids ? jids.map(jid => ({ recipientJid: jid, ...patched })) : [patched]
+		if (!recipientWireJids.length) {
+			return { nodes: [] as BinaryNode[], shouldIncludeDeviceIdentity: false }
 		}
 
-		let shouldIncludeDeviceIdentity = false
+		const patched = await patchMessageBeforeSending(message, recipientWireJids)
+		const patchedMessages = Array.isArray(patched)
+			? patched
+			: recipientWireJids.map(jid => ({ recipientJid: jid, message: patched }))
 
+		let shouldIncludeDeviceIdentity = false
 		const meId = authState.creds.me!.id
 		const meLid = authState.creds.me?.lid
 		const meLidUser = meLid ? jidDecode(meLid)?.user : null
 
-		const devicesByUser = new Map<string, Array<{ recipientJid: string; patchedMessage: proto.IMessage }>>()
-
-		for (const patchedMessageWithJid of patched) {
-			const { recipientJid: wireJid, ...patchedMessage } = patchedMessageWithJid
-			if (!wireJid) continue
-
-			// Extract user from JID for grouping
-			const decoded = jidDecode(wireJid)
-			const user = decoded?.user
-
-			if (!user) continue
-
-			if (!devicesByUser.has(user)) {
-				devicesByUser.set(user, [])
-			}
-
-			devicesByUser.get(user)!.push({ recipientJid: wireJid, patchedMessage })
-		}
-
-		// Process each user's devices sequentially, but different users in parallel
-		const userEncryptionPromises = Array.from(devicesByUser.entries()).map(([user, userDevices]) =>
-			encryptionMutex.mutex(user, async () => {
-				logger.debug({ user, deviceCount: userDevices.length }, 'Acquiring encryption lock for user devices')
-
-				const userNodes: BinaryNode[] = []
-
-				// Helper to get encryption JID with LID migration
-				const getEncryptionJid = async (wireJid: string) => {
-					if (!wireJid.includes('@s.whatsapp.net')) return wireJid
-
-					try {
-						const lidForPN = await signalRepository.lidMapping.getLIDForPN(wireJid)
-
-						if (!lidForPN?.includes('@lid')) return wireJid
-
-						// Preserve device ID from original wire JID
-						const wireDecoded = jidDecode(wireJid)
-						const deviceId = wireDecoded?.device || 0
-						const lidDecoded = jidDecode(lidForPN)
-						const lidWithDevice = jidEncode(lidDecoded?.user!, 'lid', deviceId)
-
-						// Migrate session to LID for unified encryption layer
-						try {
-							const migrationResult = await signalRepository.migrateSession([wireJid], lidWithDevice)
-							const recipientUser = jidNormalizedUser(wireJid)
-							const ownPnUser = jidNormalizedUser(meId)
-							const isOwnDevice = recipientUser === ownPnUser
-							logger.info({ wireJid, lidWithDevice, isOwnDevice }, 'Migrated to LID encryption')
-
-							// Delete PN session after successful migration
-							try {
-								if (migrationResult.migrated) {
-									await signalRepository.deleteSession([wireJid])
-									logger.debug({ deletedPNSession: wireJid }, 'Deleted PN session')
-								}
-							} catch (deleteError) {
-								logger.warn({ wireJid, error: deleteError }, 'Failed to delete PN session')
-							}
-
-							return lidWithDevice
-						} catch (migrationError) {
-							logger.warn({ wireJid, error: migrationError }, 'Failed to migrate session')
-							return wireJid
-						}
-					} catch (error) {
-						logger.debug({ wireJid, error }, 'Failed to check LID mapping')
-						return wireJid
+		const encryptionPromises = (patchedMessages as any).map(
+			async ({ recipientJid: wireJid, message: patchedMessage }: any) => {
+				if (!wireJid) return null
+				wireJid = sessionMap.get(wireJid) ?? wireJid
+				let msgToEncrypt = patchedMessage
+				if (dsmMessage) {
+					const { user: targetUser } = jidDecode(wireJid)!
+					const { user: ownPnUser } = jidDecode(meId)!
+					const ownLidUser = meLidUser
+					const isOwnUser = targetUser === ownPnUser || (ownLidUser && targetUser === ownLidUser)
+					const isExactSenderDevice = wireJid === meId || (meLid && wireJid === meLid)
+					if (isOwnUser && !isExactSenderDevice) {
+						msgToEncrypt = dsmMessage
+						logger.debug({ wireJid, targetUser }, 'Using DSM for own device')
 					}
 				}
 
-				// Encrypt to this user's devices sequentially to prevent session corruption
-				for (const { recipientJid: wireJid, patchedMessage } of userDevices) {
-					// DSM logic: Use DSM for own other devices (following whatsmeow implementation)
-					let messageToEncrypt = patchedMessage
-					if (dsmMessage) {
-						const { user: targetUser } = jidDecode(wireJid)!
-						const { user: ownPnUser } = jidDecode(meId)!
-						const ownLidUser = meLidUser
-
-						// Check if this is our device (same user, different device)
-						const isOwnUser = targetUser === ownPnUser || (ownLidUser && targetUser === ownLidUser)
-
-						// Exclude exact sender device (whatsmeow: if jid == ownJID || jid == ownLID { continue })
-						const isExactSenderDevice =
-							wireJid === meId || (authState.creds.me?.lid && wireJid === authState.creds.me.lid)
-
-						if (isOwnUser && !isExactSenderDevice) {
-							messageToEncrypt = dsmMessage
-							logger.debug({ wireJid, targetUser }, 'Using DSM for own device')
-						}
-					}
-
-					const bytes = encodeWAMessage(messageToEncrypt)
-
-					// Get encryption JID with LID migration
-					const encryptionJid = await getEncryptionJid(wireJid)
-
-					// ENCRYPT: Use the determined encryption identity (prefers migrated LID)
+				const bytes = encodeWAMessage(msgToEncrypt)
+				const mutexKey = wireJid
+				const node = await encryptionMutex.mutex(mutexKey, async () => {
 					const { type, ciphertext } = await signalRepository.encryptMessage({
-						jid: encryptionJid, // Unified encryption layer (LID when available)
+						jid: wireJid,
 						data: bytes
 					})
-
 					if (type === 'pkmsg') {
 						shouldIncludeDeviceIdentity = true
 					}
 
-					const node: BinaryNode = {
+					return {
 						tag: 'to',
-						attrs: { jid: wireJid }, // Always use original wire identity in envelope
+						attrs: { jid: wireJid },
 						content: [
 							{
 								tag: 'enc',
@@ -717,18 +535,23 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							}
 						]
 					}
-					userNodes.push(node)
-				}
-
-				logger.debug({ user, nodesCreated: userNodes.length }, 'Releasing encryption lock for user devices')
-				return userNodes
-			})
+				})
+				return node
+			}
 		)
 
-		// Wait for all users to complete (users are processed in parallel)
-		const userNodesArrays = await Promise.all(userEncryptionPromises)
-		const nodes = userNodesArrays.flat()
+		const nodes = (await Promise.all(encryptionPromises)).filter(node => node !== null) as BinaryNode[]
 		return { nodes, shouldIncludeDeviceIdentity }
+	}
+
+	const createParticipantNodes = async (
+		recipientWireJids: string[],
+		message: proto.IMessage,
+		extraAttrs?: BinaryNode['attrs'],
+		dsmMessage?: proto.IMessage
+	) => {
+		const sessionMap = await resolveSessionJids(recipientWireJids)
+		return createParticipantNodesWithSessionMap(recipientWireJids, sessionMap, message, extraAttrs, dsmMessage)
 	}
 
 	const relayMessage = async (
@@ -746,19 +569,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	) => {
 		const meId = authState.creds.me!.id
 		const meLid = authState.creds.me?.lid
-
-		// ADDRESSING CONSISTENCY: Keep envelope addressing as user provided, handle LID migration in encryption
-
 		let shouldIncludeDeviceIdentity = false
+		const statusJid = 'status@broadcast'
 
 		const { user, server } = jidDecode(jid)!
-		const statusJid = 'status@broadcast'
 		const isGroup = server === 'g.us'
 		const isStatus = jid === statusJid
 		const isLid = server === 'lid'
 		const isNewsletter = server === 'newsletter'
-
-		// Keep user's original JID choice for envelope addressing
 		const finalJid = jid
 
 		// ADDRESSING CONSISTENCY: Match own identity to conversation context
@@ -777,7 +595,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		const participants: BinaryNode[] = []
 		const destinationJid = !isStatus ? finalJid : statusJid
-
 		const binaryNodeContent: BinaryNode[] = []
 		const devices: DeviceWithWireJid[] = []
 
@@ -792,18 +609,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const extraAttrs: BinaryNodeAttributes = {}
 
 		if (participant) {
-			// when the retry request is not for a group
-			// only send to the specific device that asked for a retry
-			// otherwise the message is sent out to every device that should be a recipient
 			if (!isGroup && !isStatus) {
 				additionalAttributes = { ...additionalAttributes, device_fanout: 'false' }
 			}
 
-			const { user, device } = jidDecode(participant.jid)! // rajeh: how does this even make sense TODO check out
+			const { user, device } = jidDecode(participant.jid)!
 			devices.push({
 				user,
 				device,
-				wireJid: participant.jid // Use the participant JID as wire JID
+				wireJid: participant.jid
 			})
 		}
 
@@ -814,7 +628,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			if (isNewsletter) {
-				// Patch message if needed, then encode as plaintext
 				const patched = patchMessageBeforeSending ? await patchMessageBeforeSending(message, []) : message
 				const bytes = encodeNewsletterMessage(patched as proto.IMessage)
 				binaryNodeContent.push({
@@ -883,14 +696,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 
 				const patched = await patchMessageBeforeSending(message)
-
 				if (Array.isArray(patched)) {
 					throw new Boom('Per-jid patching is not supported in groups')
 				}
 
 				const bytes = encodeWAMessage(patched)
-
-				// This should match the group's addressing mode and conversation context
 				const groupAddressingMode = groupData?.addressingMode || (isLid ? 'lid' : 'pn')
 				const groupSenderIdentity = groupAddressingMode === 'lid' && meLid ? meLid : meId
 
@@ -900,23 +710,19 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					meId: groupSenderIdentity
 				})
 
-				const senderKeyJids: string[] = []
-				// ensure a connection is established with every device
+				const deviceSessionMap = await resolveSessionJids(devices.map(d => d.wireJid))
+				const senderKeyRecipients: string[] = []
 				for (const device of devices) {
-					// This preserves the LID migration results from getUSyncDevices
 					const deviceJid = device.wireJid
 					const hasKey = !!senderKeyMap[deviceJid]
 					if (!hasKey || !!participant) {
-						senderKeyJids.push(deviceJid)
-						// store that this person has had the sender keys sent to them
+						senderKeyRecipients.push(deviceJid)
 						senderKeyMap[deviceJid] = true
 					}
 				}
 
-				// if there are some participants with whom the session has not been established
-				// if there are, we re-send the senderkey
-				if (senderKeyJids.length) {
-					logger.debug({ senderKeyJids }, 'sending new sender key')
+				if (senderKeyRecipients.length) {
+					logger.debug({ senderKeyJids: senderKeyRecipients }, 'sending new sender key')
 
 					const senderKeyMsg: proto.IMessage = {
 						senderKeyDistributionMessage: {
@@ -925,9 +731,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						}
 					}
 
-					await assertSessions(senderKeyJids, false)
+					const senderKeySessionTargets = senderKeyRecipients.map(jid => deviceSessionMap.get(jid) ?? jid)
+					await assertSessions(senderKeySessionTargets)
 
-					const result = await createParticipantNodes(senderKeyJids, senderKeyMsg, extraAttrs)
+					const result = await createParticipantNodesWithSessionMap(
+						senderKeyRecipients,
+						deviceSessionMap,
+						senderKeyMsg,
+						extraAttrs
+					)
 					shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || result.shouldIncludeDeviceIdentity
 
 					participants.push(...result.nodes)
@@ -974,7 +786,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 								: jidEncode(jidDecode(meId)?.user!, 's.whatsapp.net', undefined)
 
 						// Enumerate devices for sender and target with consistent addressing
-						const sessionDevices = await getUSyncDevices([senderIdentity, jid], false, false)
+						const sessionDevices = await getUSyncDevices([senderIdentity, jid], true, false)
 						devices.push(...sessionDevices)
 
 						logger.debug(
@@ -987,9 +799,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 				}
 
-				const allJids: string[] = []
-				const meJids: string[] = []
-				const otherJids: string[] = []
+				const allRecipients: string[] = []
+				const meRecipients: string[] = []
+				const otherRecipients: string[] = []
 				const { user: mePnUser } = jidDecode(meId)!
 				const { user: meLidUser } = meLid ? jidDecode(meLid)! : { user: null }
 
@@ -1003,32 +815,32 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					// Check if this is our device (could match either PN or LID user)
 					const isMe = user === mePnUser || (meLidUser && user === meLidUser)
 
-					const jid = wireJid
-
 					if (isMe) {
-						meJids.push(jid)
+						meRecipients.push(wireJid)
 					} else {
-						otherJids.push(jid)
+						otherRecipients.push(wireJid)
 					}
 
-					allJids.push(jid)
+					allRecipients.push(wireJid)
 				}
 
-				await assertSessions([...otherJids, ...meJids], false)
+				const deviceSessionMap = await resolveSessionJids(devices.map(d => d.wireJid))
+				const sessionTargets = allRecipients.map(jid => deviceSessionMap.get(jid) ?? jid)
+				await assertSessions(sessionTargets)
 
 				const [
 					{ nodes: meNodes, shouldIncludeDeviceIdentity: s1 },
 					{ nodes: otherNodes, shouldIncludeDeviceIdentity: s2 }
 				] = await Promise.all([
 					// For own devices: use DSM if available (1:1 chats only)
-					createParticipantNodes(meJids, meMsg || message, extraAttrs),
-					createParticipantNodes(otherJids, message, extraAttrs, meMsg)
+					createParticipantNodesWithSessionMap(meRecipients, deviceSessionMap, meMsg || message, extraAttrs),
+					createParticipantNodesWithSessionMap(otherRecipients, deviceSessionMap, message, extraAttrs, meMsg)
 				])
 				participants.push(...meNodes)
 				participants.push(...otherNodes)
 
-				if (meJids.length > 0 || otherJids.length > 0) {
-					extraAttrs['phash'] = generateParticipantHashV2([...meJids, ...otherJids])
+				if (meRecipients.length > 0 || otherRecipients.length > 0) {
+					extraAttrs['phash'] = generateParticipantHashV2([...meRecipients, ...otherRecipients])
 				}
 
 				shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || s1 || s2
@@ -1114,6 +926,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			return 'event'
 		}
 
+		if (getMediaType(message) !== 'text') {
+			return 'media'
+		}
+
 		return 'text'
 	}
 
@@ -1149,6 +965,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		} else if (message.groupInviteMessage) {
 			return 'url'
 		}
+
+		return 'text'
 	}
 
 	const getPrivacyTokens = async (jids: string[]) => {
@@ -1317,12 +1135,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							event_type: 'creation'
 						}
 					} as BinaryNode)
-				}
-
-				if ('cachedGroupMetadata' in options) {
-					console.warn(
-						'cachedGroupMetadata in sendMessage are deprecated, now cachedGroupMetadata is part of the socket config.'
-					)
 				}
 
 				await relayMessage(jid, fullMsg.message!, {

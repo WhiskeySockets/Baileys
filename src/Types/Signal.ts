@@ -23,12 +23,6 @@ type EncryptMessageOpts = {
 	data: Uint8Array
 }
 
-type EncryptMessageWithWireOpts = {
-	encryptionJid: string // JID used for session lookup (LID)
-	wireJid: string // JID used for envelope (PN)
-	data: Uint8Array
-}
-
 type EncryptGroupMessageOpts = {
 	group: string
 	data: Uint8Array
@@ -64,11 +58,6 @@ export type SignalRepository = {
 		type: 'pkmsg' | 'msg'
 		ciphertext: Uint8Array
 	}>
-	encryptMessageWithWire(opts: EncryptMessageWithWireOpts): Promise<{
-		type: 'pkmsg' | 'msg'
-		ciphertext: Uint8Array
-		wireJid: string // Return the wire JID for envelope
-	}>
 	encryptGroupMessage(opts: EncryptGroupMessageOpts): Promise<{
 		senderKeyDistributionMessage: Uint8Array
 		ciphertext: Uint8Array
@@ -76,7 +65,7 @@ export type SignalRepository = {
 	injectE2ESession(opts: E2ESessionOpts): Promise<void>
 	validateSession(jid: string): Promise<{ exists: boolean; reason?: string }>
 	jidToSignalProtocolAddress(jid: string): string
-	migrateSession(fromJids: string[], toJid: string): Promise<{ migrated: number; skipped: number; total: number }>
+	migrateSession(fromJid: string, toJid: string): Promise<{ migrated: number; skipped: number; total: number }>
 	validateSession(jid: string): Promise<{ exists: boolean; reason?: string }>
 	deleteSession(jids: string[]): Promise<void>
 }

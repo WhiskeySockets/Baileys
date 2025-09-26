@@ -16,20 +16,22 @@ import {
 } from '../WABinary'
 import { unpadRandomMax16 } from './generics'
 import type { ILogger } from './logger'
+import { decodeAndHydrate } from './proto-utils'
 
 const getDecryptionJid = async (sender: string, repository: SignalRepositoryWithLIDStore): Promise<string> => {
 	if (!sender.includes('@s.whatsapp.net')) {
 		return sender
 	}
 
-	return (await repository.lidMapping.getLIDForPN(sender))!
+	const mapped = await repository.lidMapping.getLIDForPN(sender)
+	return mapped || sender
 }
 
 const storeMappingFromEnvelope = async (
 	stanza: BinaryNode,
 	sender: string,
-	decryptionJid: string,
 	repository: SignalRepositoryWithLIDStore,
+	decryptionJid: string,
 	logger: ILogger
 ): Promise<void> => {
 	const { senderAlt } = extractAddressingContext(stanza)
@@ -37,6 +39,7 @@ const storeMappingFromEnvelope = async (
 	if (senderAlt && isLidUser(senderAlt) && isPnUser(sender) && decryptionJid === sender) {
 		try {
 			await repository.lidMapping.storeLIDPNMappings([{ lid: senderAlt, pn: sender }])
+			await repository.migrateSession(sender, senderAlt)
 			logger.debug({ sender, senderAlt }, 'Stored LID mapping from envelope')
 		} catch (error) {
 			logger.warn({ sender, senderAlt, error }, 'Failed to store LID mapping')
@@ -220,7 +223,7 @@ export const decryptMessageNode = (
 			if (Array.isArray(stanza.content)) {
 				for (const { tag, attrs, content } of stanza.content) {
 					if (tag === 'verified_name' && content instanceof Uint8Array) {
-						const cert = proto.VerifiedNameCertificate.decode(content)
+						const cert = decodeAndHydrate(proto.VerifiedNameCertificate, content)
 						const details = proto.VerifiedNameCertificate.Details.decode(cert.details)
 						fullMessage.verifiedBizName = details.verifiedName
 					}
@@ -242,9 +245,11 @@ export const decryptMessageNode = (
 					let msgBuffer: Uint8Array
 
 					const user = isPnUser(sender) ? sender : author // TODO: flaky logic
+
 					const decryptionJid = await getDecryptionJid(user, repository)
+
 					if (tag !== 'plaintext') {
-						await storeMappingFromEnvelope(stanza, user, decryptionJid, repository, logger)
+						await storeMappingFromEnvelope(stanza, user, repository, decryptionJid, logger)
 					}
 
 					try {
@@ -273,7 +278,8 @@ export const decryptMessageNode = (
 								throw new Error(`Unknown e2e type: ${e2eType}`)
 						}
 
-						let msg: proto.IMessage = proto.Message.decode(
+						let msg: proto.IMessage = decodeAndHydrate(
+							proto.Message,
 							e2eType !== 'plaintext' ? unpadRandomMax16(msgBuffer) : msgBuffer
 						)
 						msg = msg.deviceSentMessage?.message || msg
