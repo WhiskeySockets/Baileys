@@ -926,6 +926,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			return 'event'
 		}
 
+		if (getMediaType(message) !== 'text') {
+			return 'media'
+		}
+
 		return 'text'
 	}
 
@@ -961,6 +965,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		} else if (message.groupInviteMessage) {
 			return 'url'
 		}
+
+		return 'text'
 	}
 
 	const getPrivacyTokens = async (jids: string[]) => {
