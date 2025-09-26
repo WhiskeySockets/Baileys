@@ -205,34 +205,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		wireJid: string
 	}
 
-	const resolveSessionJids = async (jids: string[]): Promise<Map<string, string>> => {
-		const uniquePnJids = Array.from(new Set(jids.filter(isPnUser)))
-		if (!uniquePnJids.length) {
-			return new Map()
-		}
-
-		const lookups = await Promise.all(
-			uniquePnJids.map(async pnJid => {
-				try {
-					const resolved = await signalRepository.lidMapping.getLIDForPN(pnJid)
-					return resolved ? ([pnJid, resolved] as const) : [pnJid, pnJid]
-				} catch (error) {
-					logger.warn({ pnJid, error }, 'Failed to resolve LID mapping for PN JID')
-					return [pnJid, pnJid]
-				}
-			})
-		)
-
-		const sessionMap = new Map<string, string>()
-		for (const entry of lookups) {
-			if (entry) {
-				sessionMap.set(entry[0], entry[1])
-			}
-		}
-
-		return sessionMap
-	}
-
 	/** Fetch all the devices we've to send a message to */
 	const getUSyncDevices = async (
 		jids: string[],
@@ -471,9 +443,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return msgId
 	}
 
-	const createParticipantNodesWithSessionMap = async (
+	const createParticipantNodes = async (
 		recipientWireJids: string[],
-		sessionMap: Map<string, string>,
 		message: proto.IMessage,
 		extraAttrs?: BinaryNode['attrs'],
 		dsmMessage?: proto.IMessage
@@ -495,7 +466,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const encryptionPromises = (patchedMessages as any).map(
 			async ({ recipientJid: wireJid, message: patchedMessage }: any) => {
 				if (!wireJid) return null
-				wireJid = sessionMap.get(wireJid) ?? wireJid
 				let msgToEncrypt = patchedMessage
 				if (dsmMessage) {
 					const { user: targetUser } = jidDecode(wireJid)!
@@ -542,16 +512,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		const nodes = (await Promise.all(encryptionPromises)).filter(node => node !== null) as BinaryNode[]
 		return { nodes, shouldIncludeDeviceIdentity }
-	}
-
-	const createParticipantNodes = async (
-		recipientWireJids: string[],
-		message: proto.IMessage,
-		extraAttrs?: BinaryNode['attrs'],
-		dsmMessage?: proto.IMessage
-	) => {
-		const sessionMap = await resolveSessionJids(recipientWireJids)
-		return createParticipantNodesWithSessionMap(recipientWireJids, sessionMap, message, extraAttrs, dsmMessage)
 	}
 
 	const relayMessage = async (
@@ -718,7 +678,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					meId: groupSenderIdentity
 				})
 
-				const deviceSessionMap = await resolveSessionJids(devices.map(d => d.wireJid))
 				const senderKeyRecipients: string[] = []
 				for (const device of devices) {
 					const deviceJid = device.wireJid
@@ -739,15 +698,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						}
 					}
 
-					const senderKeySessionTargets = senderKeyRecipients.map(jid => deviceSessionMap.get(jid) ?? jid)
+					const senderKeySessionTargets = senderKeyRecipients
 					await assertSessions(senderKeySessionTargets)
 
-					const result = await createParticipantNodesWithSessionMap(
-						senderKeyRecipients,
-						deviceSessionMap,
-						senderKeyMsg,
-						extraAttrs
-					)
+					const result = await createParticipantNodes(senderKeyRecipients, senderKeyMsg, extraAttrs)
 					shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || result.shouldIncludeDeviceIdentity
 
 					participants.push(...result.nodes)
@@ -849,17 +803,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					allRecipients.push(wireJid)
 				}
 
-				const deviceSessionMap = await resolveSessionJids(devices.map(d => d.wireJid))
-				const sessionTargets = allRecipients.map(jid => deviceSessionMap.get(jid) ?? jid)
-				await assertSessions(sessionTargets)
+				await assertSessions(allRecipients)
 
 				const [
 					{ nodes: meNodes, shouldIncludeDeviceIdentity: s1 },
 					{ nodes: otherNodes, shouldIncludeDeviceIdentity: s2 }
 				] = await Promise.all([
 					// For own devices: use DSM if available (1:1 chats only)
-					createParticipantNodesWithSessionMap(meRecipients, deviceSessionMap, meMsg || message, extraAttrs),
-					createParticipantNodesWithSessionMap(otherRecipients, deviceSessionMap, message, extraAttrs, meMsg)
+					createParticipantNodes(meRecipients, meMsg || message, extraAttrs),
+					createParticipantNodes(otherRecipients, message, extraAttrs, meMsg)
 				])
 				participants.push(...meNodes)
 				participants.push(...otherNodes)
