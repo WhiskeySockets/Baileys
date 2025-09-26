@@ -1,4 +1,3 @@
-import type { AxiosRequestConfig } from 'axios'
 import type { Agent } from 'https'
 import type { URL } from 'url'
 import { proto } from '../../WAProto/index.js'
@@ -131,8 +130,8 @@ export type SocketConfig = {
 		snapshot: boolean
 	}
 
-	/** options for axios */
-	options: AxiosRequestConfig<{}>
+	/** options for HTTP fetch requests */
+	options: RequestInit
 	/**
 	 * fetch a message from your store
 	 * implement this so that messages failed to send
