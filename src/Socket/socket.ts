@@ -276,6 +276,10 @@ export const makeSocket = (config: SocketConfig) => {
 			}
 		}
 
+		if (usyncQuery.users.length == 0) {
+			return [] // return early without forcing an empty query
+		}
+
 		const results = await executeUSyncQuery(usyncQuery)
 
 		if (results) {
