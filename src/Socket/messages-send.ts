@@ -371,7 +371,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			if (Object.keys(userDeviceUpdates).length > 0) {
 				try {
-					await authState.keys.set({ 'user-devices': userDeviceUpdates })
+					await authState.keys.set({ 'device-list': userDeviceUpdates })
 					logger.debug(
 						{ userCount: Object.keys(userDeviceUpdates).length },
 						'stored user device lists for bulk migration'

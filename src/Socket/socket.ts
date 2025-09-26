@@ -860,7 +860,7 @@ export const makeSocket = (config: SocketConfig) => {
 					// Create device list for our own user (needed for bulk migration)
 					const { user, device } = jidDecode(myPN)!
 					await authState.keys.set({
-						'user-devices': {
+						'device-list': {
 							[user]: [device?.toString() || '0']
 						}
 					})

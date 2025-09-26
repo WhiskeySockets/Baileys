@@ -117,9 +117,8 @@ export const parseAndInjectE2ESessions = async (node: BinaryNode, repository: Si
 
 				const registrationId = getBinaryNodeChildUInt(node, 'registration', 4)
 
-				// loadSession() in libsignal.ts already handle this
 				await repository.injectE2ESession({
-					jid: jid,
+					jid,
 					session: {
 						registrationId: registrationId!,
 						identityKey: generateSignalPubKey(identity),

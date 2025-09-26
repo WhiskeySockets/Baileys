@@ -200,15 +200,10 @@ export function makeLibSignalRepository(auth: SignalAuthState, logger: ILogger):
 
 			const { user } = jidDecode(fromJid)!
 
-			if (migratedSessionCache.has(user)) {
-				logger.debug({ fromJid, user }, 'user already bulk migrated - skipping')
-				return { migrated: 0, skipped: 0, total: 0 }
-			}
-
 			logger.debug({ fromJid }, 'bulk device migration - loading all user devices')
 
 			// Get user's device list from storage
-			const { [user]: userDevices } = await parsedKeys.get('user-devices', [user])
+			const { [user]: userDevices } = await parsedKeys.get('device-list', [user])
 			if (!userDevices) {
 				return { migrated: 0, skipped: 0, total: 0 }
 			}
@@ -219,8 +214,14 @@ export function makeLibSignalRepository(auth: SignalAuthState, logger: ILogger):
 				userDevices.push(fromDeviceStr)
 			}
 
-			// Step 2: Bulk check session existence for all user devices
-			const deviceSessionKeys = userDevices.map(device => `${user}.${device}`)
+			// Filter out cached devices before database fetch
+			const uncachedDevices = userDevices.filter(device => {
+				const deviceKey = `${user}.${device}`
+				return !migratedSessionCache.has(deviceKey)
+			})
+
+			// Bulk check session existence only for uncached devices
+			const deviceSessionKeys = uncachedDevices.map(device => `${user}.${device}`)
 			const existingSessions = await parsedKeys.get('session', deviceSessionKeys)
 
 			// Step 3: Convert existing sessions to JIDs (only migrate sessions that exist)
@@ -309,8 +310,13 @@ export function makeLibSignalRepository(auth: SignalAuthState, logger: ILogger):
 						await parsedKeys.set({ session: sessionUpdates })
 						logger.debug({ migratedSessions: migratedCount }, 'bulk session migration complete')
 
-						// Cache user-level migration
-						migratedSessionCache.set(user, true)
+						// Cache device-level migrations
+						for (const op of migrationOps) {
+							if (sessionUpdates[op.toAddr.toString()]) {
+								const deviceKey = `${op.pnUser}.${op.deviceId}`
+								migratedSessionCache.set(deviceKey, true)
+							}
+						}
 					}
 
 					const skippedCount = totalOps - migratedCount
