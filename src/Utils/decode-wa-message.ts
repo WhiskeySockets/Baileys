@@ -16,7 +16,7 @@ import {
 } from '../WABinary'
 import { unpadRandomMax16 } from './generics'
 import type { ILogger } from './logger'
-import { decodeAndHydrate } from './proto-utils.js'
+import { decodeAndHydrate } from './proto-utils'
 
 const getDecryptionJid = async (sender: string, repository: SignalRepositoryWithLIDStore): Promise<string> => {
 	if (!sender.includes('@s.whatsapp.net')) {
@@ -221,7 +221,7 @@ export const decryptMessageNode = (
 			if (Array.isArray(stanza.content)) {
 				for (const { tag, attrs, content } of stanza.content) {
 					if (tag === 'verified_name' && content instanceof Uint8Array) {
-						const cert = decodeAndHydrate('VerifiedNameCertificate', content)
+						const cert = decodeAndHydrate(proto.VerifiedNameCertificate, content)
 						const details = proto.VerifiedNameCertificate.Details.decode(cert.details)
 						fullMessage.verifiedBizName = details.verifiedName
 					}
@@ -275,7 +275,7 @@ export const decryptMessageNode = (
 						}
 
 						let msg: proto.IMessage = decodeAndHydrate(
-							'Message',
+							proto.Message,
 							e2eType !== 'plaintext' ? unpadRandomMax16(msgBuffer) : msgBuffer
 						)
 						msg = msg.deviceSentMessage?.message || msg

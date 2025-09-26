@@ -32,8 +32,8 @@ import {
 	makeNoiseHandler,
 	promiseTimeout
 } from '../Utils'
-import { getPlatformId } from '../Utils/browser-utils.js'
-import { decodeAndHydrate } from '../Utils/proto-utils.js'
+import { getPlatformId } from '../Utils/browser-utils'
+import { decodeAndHydrate } from '../Utils/proto-utils'
 import {
 	assertNodeErrorFree,
 	type BinaryNode,
@@ -343,7 +343,7 @@ export const makeSocket = (config: SocketConfig) => {
 		const init = proto.HandshakeMessage.encode(helloMsg).finish()
 
 		const result = await awaitNextMessage<Uint8Array>(init)
-		const handshake = decodeAndHydrate('HandshakeMessage', result)
+		const handshake = decodeAndHydrate(proto.HandshakeMessage, result)
 
 		logger.trace({ handshake }, 'handshake recv from WA')
 

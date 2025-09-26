@@ -19,7 +19,7 @@ import { aesDecryptGCM, hmacSign } from './crypto'
 import { toNumber } from './generics'
 import { downloadAndProcessHistorySyncNotification } from './history'
 import type { ILogger } from './logger'
-import { decodeAndHydrate } from './proto-utils.js'
+import { decodeAndHydrate } from './proto-utils'
 
 type ProcessMessageContext = {
 	shouldProcessHistoryMsg: boolean
@@ -272,7 +272,7 @@ const processMessage = async (
 						const { placeholderMessageResendResponse: retryResponse } = result
 						//eslint-disable-next-line max-depth
 						if (retryResponse) {
-							const webMessageInfo = decodeAndHydrate('WebMessageInfo', retryResponse.webMessageInfoBytes!)
+							const webMessageInfo = decodeAndHydrate(proto.WebMessageInfo, retryResponse.webMessageInfoBytes!)
 							// wait till another upsert event is available, don't want it to be part of the PDO response message
 							setTimeout(() => {
 								ev.emit('messages.upsert', {
@@ -307,7 +307,7 @@ const processMessage = async (
 			case proto.Message.ProtocolMessage.Type.LID_MIGRATION_MAPPING_SYNC:
 				const encodedPayload = protocolMsg.lidMigrationMappingSyncMessage?.encodedMappingPayload!
 				const { pnToLidMappings, chatDbMigrationTimestamp } = decodeAndHydrate(
-					'LIDMigrationMappingSyncPayload',
+					proto.LIDMigrationMappingSyncPayload,
 					encodedPayload
 				)
 				logger?.debug({ pnToLidMappings, chatDbMigrationTimestamp }, 'got lid mappings and chat db migration timestamp')

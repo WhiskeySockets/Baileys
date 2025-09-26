@@ -1,7 +1,7 @@
 import { proto } from '../../WAProto/index.js'
 import { makeLibSignalRepository } from '../Signal/libsignal'
 import type { AuthenticationState, SocketConfig, WAVersion } from '../Types'
-import { Browsers } from '../Utils/browser-utils.js'
+import { Browsers } from '../Utils/browser-utils'
 import logger from '../Utils/logger'
 
 const version = [2, 3000, 1023223821]
