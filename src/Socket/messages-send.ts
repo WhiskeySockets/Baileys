@@ -696,6 +696,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					devices.push(...additionalDevices)
 				}
 
+				if (groupData?.ephemeralDuration && groupData.ephemeralDuration > 0) {
+					additionalAttributes = {
+						...additionalAttributes,
+						expiration: groupData.ephemeralDuration.toString()
+					}
+				}
+
 				const patched = await patchMessageBeforeSending(message)
 				if (Array.isArray(patched)) {
 					throw new Boom('Per-jid patching is not supported in groups')
@@ -764,7 +771,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				} else {
 					binaryNodeContent.push({
 						tag: 'enc',
-						attrs: { v: '2', type: 'skmsg' },
+						attrs: { v: '2', type: 'skmsg', ...extraAttrs },
 						content: ciphertext
 					})
 
@@ -944,7 +951,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			return 'event'
 		}
 
-		if (getMediaType(message) !== 'text') {
+		if (getMediaType(message) !== '') {
 			return 'media'
 		}
 
@@ -984,7 +991,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			return 'url'
 		}
 
-		return 'text'
+		return ''
 	}
 
 	const getPrivacyTokens = async (jids: string[]) => {
