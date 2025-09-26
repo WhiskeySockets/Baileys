@@ -15,6 +15,7 @@ describe('BufferJSON', () => {
 		const serialized = JSON.stringify(originalObject, BufferJSON.replacer)
 
 		expect(serialized).toContain('"type":"Buffer"')
+		expect(serialized).not.toContain('"data":[1,2,3,4,5]')
 
 		const revived = JSON.parse(serialized, BufferJSON.reviver)
 
@@ -32,6 +33,18 @@ describe('BufferJSON', () => {
 		expect(revived.key).toEqual(originalObject.key)
 		expect(revived.nested.data).toEqual(originalObject.nested.data)
 		expect(revived.id).toEqual(originalObject.id)
+	})
+
+	it('should not corrupt legitimate objects that are not buffers', () => {
+		const legitimateProtoObject = {
+			'0': 'some-value',
+			'1': 'another-value'
+		}
+		const jsonString = JSON.stringify(legitimateProtoObject)
+		const revived = JSON.parse(jsonString, BufferJSON.reviver)
+
+		expect(Buffer.isBuffer(revived)).toBe(false)
+		expect(revived).toEqual(legitimateProtoObject)
 	})
 
 	it('should not convert other objects or null values', () => {

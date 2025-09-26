@@ -20,16 +20,17 @@ export const BufferJSON = {
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	reviver: (_: any, value: any) => {
-		if (typeof value === 'object' && !!value && (value.buffer === true || value.type === 'Buffer')) {
-			const val = value.data || value.value
-			return typeof val === 'string' ? Buffer.from(val, 'base64') : Buffer.from(val || [])
+		if (typeof value === 'object' && value !== null && value.type === 'Buffer' && typeof value.data === 'string') {
+			return Buffer.from(value.data, 'base64')
 		}
 
-		if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+		if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
 			const keys = Object.keys(value)
 			if (keys.length > 0 && keys.every(k => !isNaN(parseInt(k, 10)))) {
-				// It's an object-like buffer, convert it.
-				return Buffer.from(Object.values(value))
+				const values = Object.values(value)
+				if (values.every(v => typeof v === 'number')) {
+					return Buffer.from(values)
+				}
 			}
 		}
 
