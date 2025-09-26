@@ -261,22 +261,23 @@ export const makeSocket = (config: SocketConfig) => {
 	const onWhatsApp = async (...jids: string[]) => {
 		let usyncQuery = new USyncQuery().withLIDProtocol()
 
-		let contactEnabled = false;
+		let contactEnabled = false
 		for (const jid of jids) {
 			if (isLidUser(jid)) {
 				// usyncQuery.withUser(new USyncUser().withLid(jid)) // intentional but needs JID too
-				continue;
+				continue
 			} else {
 				if (!contactEnabled) {
 					contactEnabled = true
 					usyncQuery = usyncQuery.withContactProtocol()
 				}
+
 				const phone = `+${jid.replace('+', '').split('@')[0]?.split(':')[0]}`
 				usyncQuery.withUser(new USyncUser().withPhone(phone))
 			}
 		}
 
-		if (usyncQuery.users.length == 0) {
+		if (usyncQuery.users.length === 0) {
 			return [] // return early without forcing an empty query
 		}
 
