@@ -200,9 +200,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		await sendReceipts(keys, readType)
 	}
 
-	/** Device info with wire JID format for envelope addressing */
-	type DeviceWithWireJid = JidWithDevice & {
-		wireJid: string
+	/** Device info with wire JID */
+	type DeviceWithJid = JidWithDevice & {
+		jid: string
 	}
 
 	/** Fetch all the devices we've to send a message to */
@@ -210,8 +210,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		jids: string[],
 		useCache: boolean,
 		ignoreZeroDevices: boolean
-	): Promise<DeviceWithWireJid[]> => {
-		const deviceResults: DeviceWithWireJid[] = []
+	): Promise<DeviceWithJid[]> => {
+		const deviceResults: DeviceWithJid[] = []
 
 		if (!useCache) {
 			logger.debug('not using cache for devices')
@@ -230,7 +230,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					deviceResults.push({
 						user,
 						device,
-						wireJid: jid // again this makes no sense
+						jid
 					})
 					return null
 				}
@@ -254,11 +254,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					(userDevicesCache.mget ? undefined : ((await userDevicesCache.get(user!)) as JidWithDevice[]))
 				if (devices) {
 					const isLidJid = jid.includes('@lid')
-					const devicesWithWire = devices.map(d => ({
+					const devicesWithJid = devices.map(d => ({
 						...d,
-						wireJid: isLidJid ? jidEncode(d.user, 'lid', d.device) : jidEncode(d.user, 's.whatsapp.net', d.device)
+						jid: isLidJid ? jidEncode(d.user, 'lid', d.device) : jidEncode(d.user, 's.whatsapp.net', d.device)
 					}))
-					deviceResults.push(...devicesWithWire)
+					deviceResults.push(...devicesWithJid)
 
 					logger.trace({ user }, 'using cache for devices')
 				} else {
@@ -304,20 +304,20 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 				// Process all devices for this user
 				for (const item of userDevices) {
-					const finalWireJid = isLidUser
+					const finalJid = isLidUser
 						? jidEncode(user, 'lid', item.device)
 						: jidEncode(item.user, 's.whatsapp.net', item.device)
 
 					deviceResults.push({
 						...item,
-						wireJid: finalWireJid
+						jid: finalJid
 					})
 
 					logger.debug(
 						{
 							user: item.user,
 							device: item.device,
-							finalWireJid,
+							finalJid,
 							usedLid: isLidUser
 						},
 						'Processed device with LID priority'
@@ -444,19 +444,19 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	}
 
 	const createParticipantNodes = async (
-		recipientWireJids: string[],
+		recipientJids: string[],
 		message: proto.IMessage,
 		extraAttrs?: BinaryNode['attrs'],
 		dsmMessage?: proto.IMessage
 	) => {
-		if (!recipientWireJids.length) {
+		if (!recipientJids.length) {
 			return { nodes: [] as BinaryNode[], shouldIncludeDeviceIdentity: false }
 		}
 
-		const patched = await patchMessageBeforeSending(message, recipientWireJids)
+		const patched = await patchMessageBeforeSending(message, recipientJids)
 		const patchedMessages = Array.isArray(patched)
 			? patched
-			: recipientWireJids.map(jid => ({ recipientJid: jid, message: patched }))
+			: recipientJids.map(jid => ({ recipientJid: jid, message: patched }))
 
 		let shouldIncludeDeviceIdentity = false
 		const meId = authState.creds.me!.id
@@ -464,26 +464,26 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const meLidUser = meLid ? jidDecode(meLid)?.user : null
 
 		const encryptionPromises = (patchedMessages as any).map(
-			async ({ recipientJid: wireJid, message: patchedMessage }: any) => {
-				if (!wireJid) return null
+			async ({ recipientJid: jid, message: patchedMessage }: any) => {
+				if (!jid) return null
 				let msgToEncrypt = patchedMessage
 				if (dsmMessage) {
-					const { user: targetUser } = jidDecode(wireJid)!
+					const { user: targetUser } = jidDecode(jid)!
 					const { user: ownPnUser } = jidDecode(meId)!
 					const ownLidUser = meLidUser
 					const isOwnUser = targetUser === ownPnUser || (ownLidUser && targetUser === ownLidUser)
-					const isExactSenderDevice = wireJid === meId || (meLid && wireJid === meLid)
+					const isExactSenderDevice = jid === meId || (meLid && jid === meLid)
 					if (isOwnUser && !isExactSenderDevice) {
 						msgToEncrypt = dsmMessage
-						logger.debug({ wireJid, targetUser }, 'Using DSM for own device')
+						logger.debug({ jid, targetUser }, 'Using DSM for own device')
 					}
 				}
 
 				const bytes = encodeWAMessage(msgToEncrypt)
-				const mutexKey = wireJid
+				const mutexKey = jid
 				const node = await encryptionMutex.mutex(mutexKey, async () => {
 					const { type, ciphertext } = await signalRepository.encryptMessage({
-						jid: wireJid,
+						jid,
 						data: bytes
 					})
 					if (type === 'pkmsg') {
@@ -492,7 +492,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 					return {
 						tag: 'to',
-						attrs: { jid: wireJid },
+						attrs: { jid },
 						content: [
 							{
 								tag: 'enc',
@@ -557,7 +557,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const participants: BinaryNode[] = []
 		const destinationJid = !isStatus ? finalJid : statusJid
 		const binaryNodeContent: BinaryNode[] = []
-		const devices: DeviceWithWireJid[] = []
+		const devices: DeviceWithJid[] = []
 
 		const meMsg: proto.IMessage = {
 			deviceSentMessage: {
@@ -578,7 +578,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			devices.push({
 				user,
 				device,
-				wireJid: participant.jid
+				jid: participant.jid
 			})
 		}
 
@@ -680,7 +680,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 				const senderKeyRecipients: string[] = []
 				for (const device of devices) {
-					const deviceJid = device.wireJid
+					const deviceJid = device.jid
 					const hasKey = !!senderKeyMap[deviceJid]
 					if (!hasKey && !isRetryResend) {
 						senderKeyRecipients.push(deviceJid)
@@ -739,7 +739,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					devices.push({
 						user,
 						device: 0,
-						wireJid: jidEncode(user, targetUserServer, 0)
+						jid: jidEncode(user, targetUserServer, 0)
 					})
 
 					// Own user matches conversation addressing mode
@@ -750,7 +750,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						devices.push({
 							user: ownUserForAddressing,
 							device: 0,
-							wireJid: jidEncode(ownUserForAddressing, ownUserServer, 0)
+							jid: jidEncode(ownUserForAddressing, ownUserServer, 0)
 						})
 					}
 
@@ -771,7 +771,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						logger.debug(
 							{
 								deviceCount: devices.length,
-								devices: devices.map(d => `${d.user}:${d.device}@${jidDecode(d.wireJid)?.server}`)
+								devices: devices.map(d => `${d.user}:${d.device}@${jidDecode(d.jid)?.server}`)
 							},
 							'Device enumeration complete with unified addressing'
 						)
@@ -784,10 +784,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const { user: mePnUser } = jidDecode(meId)!
 				const { user: meLidUser } = meLid ? jidDecode(meLid)! : { user: null }
 
-				for (const { user, wireJid } of devices) {
-					const isExactSenderDevice = wireJid === meId || (meLid && wireJid === meLid)
+				for (const { user, jid } of devices) {
+					const isExactSenderDevice = jid === meId || (meLid && jid === meLid)
 					if (isExactSenderDevice) {
-						logger.debug({ wireJid, meId, meLid }, 'Skipping exact sender device (whatsmeow pattern)')
+						logger.debug({ jid, meId, meLid }, 'Skipping exact sender device (whatsmeow pattern)')
 						continue
 					}
 
@@ -795,12 +795,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					const isMe = user === mePnUser || (meLidUser && user === meLidUser)
 
 					if (isMe) {
-						meRecipients.push(wireJid)
+						meRecipients.push(jid)
 					} else {
-						otherRecipients.push(wireJid)
+						otherRecipients.push(jid)
 					}
 
-					allRecipients.push(wireJid)
+					allRecipients.push(jid)
 				}
 
 				await assertSessions(allRecipients)
