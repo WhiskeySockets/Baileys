@@ -383,7 +383,19 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 
 		if (jidsRequiringFetch.length) {
-			logger.debug({ jidsRequiringFetch }, 'fetching sessions')
+			
+			// LID if mapped, otherwise original
+			const wireJids = await Promise.all(
+				jidsRequiringFetch.map(async jid => {
+					if (jid.includes('@s.whatsapp.net')) {
+						const lid = await signalRepository.lidMapping.getLIDForPN(jid)
+						return lid ? lid : jid
+					}
+					return jid
+				})
+			)
+
+			logger.debug({ jidsRequiringFetch, wireJids }, 'fetching sessions')
 			const result = await query({
 				tag: 'iq',
 				attrs: {
@@ -395,7 +407,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					{
 						tag: 'key',
 						attrs: {},
-						content: jidsRequiringFetch.map(jid => ({
+						content: wireJids.map(jid => ({
 							tag: 'user',
 							attrs: { jid }
 						}))
@@ -405,9 +417,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			await parseAndInjectE2ESessions(result, signalRepository)
 			didFetchNewSession = true
 
-			// Cache fetched sessions
-			for (const jid of jidsRequiringFetch) {
-				const signalId = signalRepository.jidToSignalProtocolAddress(jid)
+			// Cache fetched sessions using wire JIDs
+			for (const wireJid of wireJids) {
+				const signalId = signalRepository.jidToSignalProtocolAddress(wireJid)
 				peerSessionsCache.set(signalId, true)
 			}
 		}
