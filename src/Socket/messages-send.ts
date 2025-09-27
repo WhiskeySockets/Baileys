@@ -362,7 +362,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const uniqueJids = [...new Set(jids)] // Deduplicate JIDs
 		const jidsRequiringFetch: string[] = []
 
-		// Check peerSessionsCache and authState.keys
+		// Check peerSessionsCache and validate sessions using libsignal loadSession
 		for (const jid of uniqueJids) {
 			const signalId = signalRepository.jidToSignalProtocolAddress(jid)
 			const cachedSession = peerSessionsCache.get(signalId)
@@ -371,8 +371,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					continue // Session exists in cache
 				}
 			} else {
-				const sessions = await authState.keys.get('session', [signalId])
-				const hasSession = !!sessions[signalId]
+				const sessionValidation = await signalRepository.validateSession(jid)
+				const hasSession = sessionValidation.exists
 				peerSessionsCache.set(signalId, hasSession)
 				if (hasSession) {
 					continue
