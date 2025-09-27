@@ -383,7 +383,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 
 		if (jidsRequiringFetch.length) {
-			
 			// LID if mapped, otherwise original
 			const wireJids = await Promise.all(
 				jidsRequiringFetch.map(async jid => {
@@ -391,6 +390,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						const lid = await signalRepository.lidMapping.getLIDForPN(jid)
 						return lid ? lid : jid
 					}
+
 					return jid
 				})
 			)
