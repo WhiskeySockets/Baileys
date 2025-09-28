@@ -281,7 +281,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 			const nodeAction = getBinaryNodeChild(node, action)
 			const participantsAffected = getBinaryNodeChildren(nodeAction, 'participant')
 			return participantsAffected.map(p => {
-				return { status: p.attrs.error || '200', jid: p.attrs.jid }
+				return { status: p.attrs.error || '200', jid: jidNormalizedUser(p.attrs.jid) }
 			})
 		},
 		communityParticipantsUpdate: async (jid: string, participants: string[], action: ParticipantAction) => {
@@ -298,7 +298,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 			const node = getBinaryNodeChild(result, action)
 			const participantsAffected = getBinaryNodeChildren(node, 'participant')
 			return participantsAffected.map(p => {
-				return { status: p.attrs.error || '200', jid: p.attrs.jid, content: p }
+				return { status: p.attrs.error || '200', jid: jidNormalizedUser(p.attrs.jid), content: p }
 			})
 		},
 		communityUpdateDescription: async (jid: string, description?: string) => {
@@ -393,7 +393,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 							participant: key.remoteJid
 						},
 						messageStubType: WAMessageStubType.GROUP_PARTICIPANT_ADD,
-						messageStubParameters: [authState.creds.me!.id],
+						messageStubParameters: [jidNormalizedUser(authState.creds.me!.id)],
 						participant: key.remoteJid,
 						messageTimestamp: unixTimestampSeconds()
 					},
@@ -464,9 +464,13 @@ export const extractCommunityMetadata = (result: BinaryNode) => {
 		joinApprovalMode: !!getBinaryNodeChild(community, 'membership_approval_mode'),
 		memberAddMode,
 		participants: getBinaryNodeChildren(community, 'participant').map(({ attrs }) => {
+			const normalizedId = jidNormalizedUser(attrs.jid)
+			const adminType = (attrs.type || null) as GroupParticipant['admin']
 			return {
-				id: attrs.jid!,
-				admin: (attrs.type || null) as GroupParticipant['admin']
+				id: normalizedId,
+				admin: adminType,
+				isAdmin: adminType === 'admin',
+				isSuperAdmin: adminType === 'superadmin'
 			}
 		}),
 		ephemeralDuration: eph ? +eph : undefined,

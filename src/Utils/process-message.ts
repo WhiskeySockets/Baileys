@@ -339,13 +339,26 @@ const processMessage = async (
 		//let actor = whatsappID (message.participant)
 		let participants: string[]
 		const emitParticipantsUpdate = (action: ParticipantAction) =>
-			ev.emit('group-participants.update', { id: jid, author: message.participant!, participants, action })
+			ev.emit('group-participants.update', {
+				id: jid,
+				author: message.participant!,
+				participants: participants.map(p => jidNormalizedUser(p)),
+				action
+			})
 		const emitGroupUpdate = (update: Partial<GroupMetadata>) => {
-			ev.emit('groups.update', [{ id: jid, ...update, author: message.participant ?? undefined }])
+			ev.emit('groups.update', [
+				{ id: jid, ...update, author: message.participant ? jidNormalizedUser(message.participant) : message.participant! }
+			])
 		}
 
 		const emitGroupRequestJoin = (participant: string, action: RequestJoinAction, method: RequestJoinMethod) => {
-			ev.emit('group.join-request', { id: jid, author: message.participant!, participant, action, method: method! })
+			ev.emit('group.join-request', {
+				id: jid,
+				author: message.participant ? jidNormalizedUser(message.participant) : message.participant!,
+				participant: jidNormalizedUser(participant),
+				action,
+				method: method!
+			})
 		}
 
 		const participantsIncludesMe = () => participants.find(jid => areJidsSameUser(meId, jid))
