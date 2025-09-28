@@ -57,7 +57,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		logger,
 		linkPreviewImageThumbnailWidth,
 		generateHighQualityLinkPreview,
-		options: axiosOptions,
+		options: httpRequestOptions,
 		patchMessageBeforeSending,
 		cachedGroupMetadata,
 		enableRecentMessageCache,
@@ -1077,7 +1077,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							thumbnailWidth: linkPreviewImageThumbnailWidth,
 							fetchOpts: {
 								timeout: 3_000,
-								...(axiosOptions || {})
+								...(httpRequestOptions || {})
 							},
 							logger,
 							uploadImage: generateHighQualityLinkPreview ? waUploadToServer : undefined
