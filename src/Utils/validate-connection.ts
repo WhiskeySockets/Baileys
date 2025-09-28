@@ -1,7 +1,13 @@
 import { Boom } from '@hapi/boom'
 import { createHash } from 'crypto'
 import { proto } from '../../WAProto/index.js'
-import { KEY_BUNDLE_TYPE, WA_ADV_ACCOUNT_SIG_PREFIX, WA_ADV_DEVICE_SIG_PREFIX, WA_ADV_HOSTED_ACCOUNT_SIG_PREFIX, WA_ADV_HOSTED_DEVICE_SIG_PREFIX } from '../Defaults'
+import {
+	KEY_BUNDLE_TYPE,
+	WA_ADV_ACCOUNT_SIG_PREFIX,
+	WA_ADV_DEVICE_SIG_PREFIX,
+	WA_ADV_HOSTED_ACCOUNT_SIG_PREFIX,
+	WA_ADV_HOSTED_DEVICE_SIG_PREFIX
+} from '../Defaults'
 import type { AuthenticationCreds, SignalCreds, SocketConfig } from '../Types'
 import { type BinaryNode, getBinaryNodeChild, jidDecode, S_WHATSAPP_NET } from '../WABinary'
 import { Curve, hmacSign } from './crypto'
@@ -151,7 +157,8 @@ export const configureSuccessfulPairing = (
 
 	const account = decodeAndHydrate(proto.ADVSignedDeviceIdentity, details)
 	const { accountSignatureKey, accountSignature, details: deviceDetails } = account
-	const accountMsg = Buffer.concat([accountPrefix, deviceDetails, signedIdentityKey.public])
+	const accountSignaturePrefix = isHostedAccount ? WA_ADV_HOSTED_ACCOUNT_SIG_PREFIX : WA_ADV_ACCOUNT_SIG_PREFIX
+	const accountMsg = Buffer.concat([accountSignaturePrefix, deviceDetails, signedIdentityKey.public])
 	if (!Curve.verify(accountSignatureKey, accountMsg, accountSignature)) {
 		throw new Boom('Failed to verify account signature')
 	}
