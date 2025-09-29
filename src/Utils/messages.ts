@@ -542,6 +542,10 @@ export const generateWAMessageContent = async (
 			messageSecret: message.poll.messageSecret || randomBytes(32)
 		}
 
+		if (isJidNewsletter(options.jid)) {
+			m.messageContextInfo = undefined
+		}
+
 		const pollCreationMessage = {
 			name: message.poll.name,
 			selectableOptionsCount: message.poll.selectableCount,
