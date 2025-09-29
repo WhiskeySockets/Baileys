@@ -298,11 +298,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				deviceMap[item.user]?.push(item)
 			}
 
-			// Process each user's devices as a group for bulk LID migration
-			for (const [user, userDevices] of Object.entries(deviceMap)) {
+			// Helper function to process individual user devices
+			const processUserDevices = (user: string, userDevices: JidWithDevice[], requestedLidUsers: Set<string>, deviceResults: DeviceWithJid[]) => {
 				const isLidUser = requestedLidUsers.has(user)
-
-				// Process all devices for this user
 				for (const item of userDevices) {
 					const finalJid = isLidUser
 						? jidEncode(user, 'lid', item.device)
@@ -323,6 +321,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						'Processed device with LID priority'
 					)
 				}
+			}
+
+			// Process each user's devices as a group for bulk LID migration
+			for (const [user, userDevices] of Object.entries(deviceMap)) {
+				processUserDevices(user, userDevices, requestedLidUsers, deviceResults)
 			}
 
 			if (userDevicesCache.mset) {
@@ -374,6 +377,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const sessionValidation = await signalRepository.validateSession(jid)
 				const hasSession = sessionValidation.exists
 				peerSessionsCache.set(signalId, hasSession)
+				if (!hasSession) {
+					logger.warn({ jid }, 'No existing session found for JID, fetching new session.')
+				}
 				if (hasSession) {
 					continue
 				}
@@ -396,26 +402,32 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			)
 
 			logger.debug({ jidsRequiringFetch, wireJids }, 'fetching sessions')
-			const result = await query({
-				tag: 'iq',
-				attrs: {
-					xmlns: 'encrypt',
-					type: 'get',
-					to: S_WHATSAPP_NET
-				},
-				content: [
-					{
-						tag: 'key',
-						attrs: {},
-						content: wireJids.map(jid => ({
-							tag: 'user',
-							attrs: { jid }
-						}))
-					}
-				]
-			})
-			await parseAndInjectE2ESessions(result, signalRepository)
-			didFetchNewSession = true
+			try {
+				const result = await query({
+					tag: 'iq',
+					attrs: {
+						xmlns: 'encrypt',
+						type: 'get',
+						to: S_WHATSAPP_NET
+					},
+					content: [
+						{
+							tag: 'key',
+							attrs: {},
+							content: wireJids.map(jid => ({
+								tag: 'user',
+								attrs: { jid }
+							}))
+						}
+					]
+				})
+				await parseAndInjectE2ESessions(result, signalRepository)
+				didFetchNewSession = true
+				logger.debug({ jidsRequiringFetch }, 'Successfully fetched and injected new sessions.')
+			} catch (error) {
+				logger.error({ jidsRequiringFetch, error }, 'Failed to fetch or inject new sessions.')
+				// Depending on the severity, you might want to rethrow or handle this error differently
+			}
 
 			// Cache fetched sessions using wire JIDs
 			for (const wireJid of wireJids) {
@@ -558,7 +570,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				logger.debug({ originalJid: jid, pnJid }, 'Converted LID to PN for message relay')
 				finalJid = pnJid
 			} else {
-				logger.warn({ jid }, 'Could not convert LID to PN for message relay, using original LID')
+				logger.error({ jid }, 'Failed to convert LID to PN for message relay. Messages to this JID might not be delivered.')
+				throw new Boom('Failed to convert LID to PN for message relay', { statusCode: 400 })
 			}
 		}
 
