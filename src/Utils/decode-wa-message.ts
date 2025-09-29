@@ -258,9 +258,9 @@ export const decryptMessageNode = (
 
 					let msgBuffer: Uint8Array
 
-					const user = isPnUser(sender) ? sender : author // TODO: flaky logic
+					const user = msgType === 'chat' ? sender : author
 
-					const decryptionJid = await getDecryptionJid(user, repository)
+					const decryptionJid = isPnUser(user) ? await getDecryptionJid(user, repository) : user
 
 					if (tag !== 'plaintext') {
 						await storeMappingFromEnvelope(stanza, user, repository, decryptionJid, logger)
