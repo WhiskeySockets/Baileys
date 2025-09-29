@@ -1227,9 +1227,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							type = 'sender'
 							// need to specially handle this case
 							if (isLidUser(msg.key.remoteJid!) || isLidUser(msg.key.remoteJidAlt)) {
-								participant = author // TODO: investigate sending receipts to LIDs and not PNs
+								participant = author
+								const pnJid = await signalRepository.lidMapping.getPNForLID(msg.key.remoteJid!)
+								if (pnJid) {
+									msg.key.remoteJid = pnJid
+									logger.debug({ originalJid: msg.key.remoteJid!, pnJid }, 'Converted LID to PN for message receipt')
+								} else {
+									logger.warn({ jid: msg.key.remoteJid! }, 'Could not convert LID to PN for message receipt, using original LID')
+								}
 							}
-						} else if (!sendActiveReceipts) {
+							} else if (!sendActiveReceipts) {
 							type = 'inactive'
 						}
 

@@ -550,7 +550,17 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const isStatus = jid === statusJid
 		const isLid = server === 'lid'
 		const isNewsletter = server === 'newsletter'
-		const finalJid = jid
+		let finalJid = jid
+
+		if (isLid) {
+			const pnJid = await signalRepository.lidMapping.getPNForLID(jid)
+			if (pnJid) {
+				logger.debug({ originalJid: jid, pnJid }, 'Converted LID to PN for message relay')
+				finalJid = pnJid
+			} else {
+				logger.warn({ jid }, 'Could not convert LID to PN for message relay, using original LID')
+			}
+		}
 
 		// ADDRESSING CONSISTENCY: Match own identity to conversation context
 		// TODO: investigate if this is true
