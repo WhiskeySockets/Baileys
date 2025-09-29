@@ -1139,15 +1139,25 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const altServer = jidDecode(alt)?.server
 			const primaryJid = msg.key.participant || msg.key.remoteJid!
 			if (altServer === 'lid') {
-				if (typeof (await signalRepository.lidMapping.getPNForLID(alt)) === 'string') {
-					await signalRepository.lidMapping.storeLIDPNMappings([{ lid: alt, pn: primaryJid }])
-					await signalRepository.migrateSession(primaryJid, alt)
+				const mappedJid = await signalRepository.lidMapping.getPNForLID(primaryJid)
+				if (mappedJid) {
+					msg.key.remoteJid = mappedJid
+					msg.key.participant = mappedJid
 				}
-			} else {
-				if (typeof (await signalRepository.lidMapping.getLIDForPN(alt)) === 'string') {
-					await signalRepository.lidMapping.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
-					await signalRepository.migrateSession(alt, primaryJid)
-				}
+			}
+		}
+
+		// After decryption, check if remoteJid or participant is a LID and map to PN if possible
+		if (isLidUser(msg.key.remoteJid!)) {
+			const mappedJid = await signalRepository.lidMapping.getPNForLID(msg.key.remoteJid!)
+			if (mappedJid) {
+				msg.key.remoteJid = mappedJid
+			}
+		}
+		if (msg.key.participant && isLidUser(msg.key.participant)) {
+			const mappedJid = await signalRepository.lidMapping.getPNForLID(msg.key.participant)
+			if (mappedJid) {
+				msg.key.participant = mappedJid
 			}
 		}
 

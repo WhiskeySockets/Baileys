@@ -577,7 +577,18 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const isStatus = jid === statusJid
 		const isLid = server === 'lid'
 		const isNewsletter = server === 'newsletter'
-		const finalJid = jid
+		let finalJid = jid
+
+		// If the JID is a LID, try to map it to a PN JID
+		if (isLid) {
+			const mappedJid = await signalRepository.lidMapping.getPNForLID(jid)
+			if (mappedJid) {
+				finalJid = mappedJid
+				logger.debug({ originalJid: jid, finalJid }, 'Mapped LID JID to PN JID for sending')
+			} else {
+				logger.warn({ jid }, 'Could not map LID JID to PN JID for sending, using original LID JID')
+			}
+		}
 
 		// ADDRESSING CONSISTENCY: Match own identity to conversation context
 		// TODO: investigate if this is true
