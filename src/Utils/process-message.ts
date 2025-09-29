@@ -12,14 +12,20 @@ import type {
 	SignalKeyStoreWithTransaction,
 	SignalRepositoryWithLIDStore
 } from '../Types'
-import { WAMessageStubType } from '../Types'
+import { WAMessageAddressingMode, WAMessageStubType } from '../Types'
 import { getContentType, normalizeMessageContent } from '../Utils/messages'
 import { areJidsSameUser, isJidBroadcast, isJidStatusBroadcast, jidNormalizedUser } from '../WABinary'
 import { aesDecryptGCM, hmacSign } from './crypto'
 import { toNumber } from './generics'
 import { downloadAndProcessHistorySyncNotification } from './history'
 import type { ILogger } from './logger'
+import logger from './logger'
 import { decodeAndHydrate } from './proto-utils'
+
+const GROUP_TAG = 'group'
+const MEMBERSHIP_APPROVAL_REQUESTS = 'membership_approval_requests'
+const MEMBER_ADD_MODE = 'member_add_mode'
+const POLL_VOTE = 'Poll Vote'
 
 type ProcessMessageContext = {
 	shouldProcessHistoryMsg: boolean
@@ -41,13 +47,12 @@ const REAL_MSG_STUB_TYPES = new Set([
 
 const REAL_MSG_REQ_ME_STUB_TYPES = new Set([WAMessageStubType.GROUP_PARTICIPANT_ADD])
 
-/** Cleans a received message to further processing */
-export const cleanMessage = (message: proto.IWebMessageInfo, meId: string) => {
-	// ensure remoteJid and participant doesn't have device or agent in it
-	message.key.remoteJid = jidNormalizedUser(message.key.remoteJid!)
+/** Cleans a received message for further processing */
+export const cleanMessage = (message: proto.IWebMessageInfo, meId: string): void => {
+	message.key.remoteJid = jidNormalizedUser(message.key.remoteJid ?? '')
 	message.key.participant = message.key.participant ? jidNormalizedUser(message.key.participant) : undefined
 	const content = normalizeMessageContent(message.message)
-	// if the message has a reaction, ensure fromMe & remoteJid are from our perspective
+
 	if (content?.reactionMessage) {
 		normaliseKey(content.reactionMessage.key!)
 	}
@@ -56,26 +61,18 @@ export const cleanMessage = (message: proto.IWebMessageInfo, meId: string) => {
 		normaliseKey(content.pollUpdateMessage.pollCreationMessageKey!)
 	}
 
-	function normaliseKey(msgKey: proto.IMessageKey) {
-		// if the reaction is from another user
-		// we've to correctly map the key to this user's perspective
+	function normaliseKey(msgKey: proto.IMessageKey): void {
 		if (!message.key.fromMe) {
-			// if the sender believed the message being reacted to is not from them
-			// we've to correct the key to be from them, or some other participant
 			msgKey.fromMe = !msgKey.fromMe
 				? areJidsSameUser(msgKey.participant || msgKey.remoteJid!, meId)
-				: // if the message being reacted to, was from them
-					// fromMe automatically becomes false
-					false
-			// set the remoteJid to being the same as the chat the message came from
+				: false
 			msgKey.remoteJid = message.key.remoteJid
-			// set participant of the message
 			msgKey.participant = msgKey.participant || message.key.participant
 		}
 	}
 }
 
-export const isRealMessage = (message: proto.IWebMessageInfo, meId: string) => {
+export const isRealMessage = (message: proto.IWebMessageInfo, meId: string): boolean => {
 	const normalizedContent = normalizeMessageContent(message.message)
 	const hasSomeContent = !!getContentType(normalizedContent)
 	return (
@@ -90,60 +87,55 @@ export const isRealMessage = (message: proto.IWebMessageInfo, meId: string) => {
 	)
 }
 
-export const shouldIncrementChatUnread = (message: proto.IWebMessageInfo) =>
+export const shouldIncrementChatUnread = (message: proto.IWebMessageInfo): boolean =>
 	!message.key.fromMe && !message.messageStubType
 
 /**
  * Get the ID of the chat from the given key.
  * Typically -- that'll be the remoteJid, but for broadcasts, it'll be the participant
  */
-export const getChatId = ({ remoteJid, participant, fromMe }: proto.IMessageKey) => {
+export const getChatId = ({ remoteJid, participant, fromMe }: proto.IMessageKey): string => {
 	if (isJidBroadcast(remoteJid!) && !isJidStatusBroadcast(remoteJid!) && !fromMe) {
 		return participant!
 	}
-
 	return remoteJid!
 }
 
 type PollContext = {
-	/** normalised jid of the person that created the poll */
+	/** Normalised JID of the person that created the poll */
 	pollCreatorJid: string
 	/** ID of the poll creation message */
 	pollMsgId: string
-	/** poll creation message enc key */
+	/** Poll creation message encryption key */
 	pollEncKey: Uint8Array
-	/** jid of the person that voted */
+	/** JID of the person that voted */
 	voterJid: string
 }
 
 /**
  * Decrypt a poll vote
- * @param vote encrypted vote
- * @param ctx additional info about the poll required for decryption
- * @returns list of SHA256 options
+ * @param vote Encrypted vote
+ * @param ctx Additional info about the poll required for decryption
+ * @returns List of SHA256 options
  */
-export function decryptPollVote(
+export const decryptPollVote = (
 	{ encPayload, encIv }: proto.Message.IPollEncValue,
 	{ pollCreatorJid, pollMsgId, pollEncKey, voterJid }: PollContext
-) {
+): proto.Message.PollVoteMessage => {
 	const sign = Buffer.concat([
-		toBinary(pollMsgId),
-		toBinary(pollCreatorJid),
-		toBinary(voterJid),
-		toBinary('Poll Vote'),
+		Buffer.from(pollMsgId),
+		Buffer.from(pollCreatorJid),
+		Buffer.from(voterJid),
+		Buffer.from(POLL_VOTE),
 		new Uint8Array([1])
 	])
 
 	const key0 = hmacSign(pollEncKey, new Uint8Array(32), 'sha256')
 	const decKey = hmacSign(sign, key0, 'sha256')
-	const aad = toBinary(`${pollMsgId}\u0000${voterJid}`)
+	const aad = Buffer.from(`${pollMsgId}${voterJid}`)
 
 	const decrypted = aesDecryptGCM(encPayload!, decKey, encIv!, aad)
 	return proto.Message.PollVoteMessage.decode(decrypted)
-
-	function toBinary(txt: string) {
-		return Buffer.from(txt)
-	}
 }
 
 const processMessage = async (
@@ -158,8 +150,8 @@ const processMessage = async (
 		logger,
 		options
 	}: ProcessMessageContext
-) => {
-	const meId = creds.me!.id
+): Promise<void> => {
+	const meId = jidNormalizedUser(creds.me?.id ?? '')
 	const { accountSettings } = creds
 
 	const chat: Partial<Chat> = { id: jidNormalizedUser(getChatId(message.key)) }
@@ -168,16 +160,13 @@ const processMessage = async (
 	if (isRealMsg) {
 		chat.messages = [{ message }]
 		chat.conversationTimestamp = toNumber(message.messageTimestamp)
-		// only increment unread count if not CIPHERTEXT and from another person
 		if (shouldIncrementChatUnread(message)) {
-			chat.unreadCount = (chat.unreadCount || 0) + 1
+			chat.unreadCount = (chat.unreadCount ?? 0) + 1
 		}
 	}
 
 	const content = normalizeMessageContent(message.message)
 
-	// unarchive chat if it's a real message, or someone reacted to our message
-	// and we've the unarchive chats setting on
 	if ((isRealMsg || content?.reactionMessage?.key?.fromMe) && accountSettings?.unarchiveChats) {
 		chat.archived = false
 		chat.readOnly = false
@@ -187,71 +176,72 @@ const processMessage = async (
 	if (protocolMsg) {
 		switch (protocolMsg.type) {
 			case proto.Message.ProtocolMessage.Type.HISTORY_SYNC_NOTIFICATION:
-				const histNotification = protocolMsg.historySyncNotification!
+				const histNotification = protocolMsg.historySyncNotification
+				if (!histNotification) {
+					logger?.warn({ id: message.key.id }, 'Missing history sync notification')
+					break
+				}
 				const process = shouldProcessHistoryMsg
 				const isLatest = !creds.processedHistoryMessages?.length
 
 				logger?.info(
-					{
-						histNotification,
-						process,
-						id: message.key.id,
-						isLatest
-					},
-					'got history notification'
+					{ histNotification, process, id: message.key.id, isLatest },
+					'Got history notification'
 				)
 
 				if (process) {
 					if (histNotification.syncType !== proto.HistorySync.HistorySyncType.ON_DEMAND) {
 						ev.emit('creds.update', {
 							processedHistoryMessages: [
-								...(creds.processedHistoryMessages || []),
+								...(creds.processedHistoryMessages ?? []),
 								{ key: message.key, messageTimestamp: message.messageTimestamp }
 							]
 						})
 					}
 
 					const data = await downloadAndProcessHistorySyncNotification(histNotification, options)
-
 					ev.emit('messaging-history.set', {
 						...data,
 						isLatest: histNotification.syncType !== proto.HistorySync.HistorySyncType.ON_DEMAND ? isLatest : undefined,
 						peerDataRequestSessionId: histNotification.peerDataRequestSessionId
 					})
 				}
-
 				break
 			case proto.Message.ProtocolMessage.Type.APP_STATE_SYNC_KEY_SHARE:
-				const keys = protocolMsg.appStateSyncKeyShare!.keys
+				const keys = protocolMsg.appStateSyncKeyShare?.keys
 				if (keys?.length) {
 					let newAppStateSyncKeyId = ''
 					await keyStore.transaction(async () => {
 						const newKeys: string[] = []
 						for (const { keyData, keyId } of keys) {
-							const strKeyId = Buffer.from(keyId!.keyId!).toString('base64')
+							if (!keyId?.keyId || !keyData) {
+								logger?.warn({ keyId }, 'Skipping invalid key in app state sync')
+								continue
+							}
+							const strKeyId = Buffer.from(keyId.keyId).toString('base64')
 							newKeys.push(strKeyId)
-
-							await keyStore.set({ 'app-state-sync-key': { [strKeyId]: keyData! } })
-
+							await keyStore.set({ 'app-state-sync-key': { [strKeyId]: keyData } })
 							newAppStateSyncKeyId = strKeyId
 						}
-
-						logger?.info({ newAppStateSyncKeyId, newKeys }, 'injecting new app state sync keys')
+						logger?.info({ newAppStateSyncKeyId, newKeys }, 'Injecting new app state sync keys')
 					}, meId)
 
-					ev.emit('creds.update', { myAppStateKeyId: newAppStateSyncKeyId })
+					if (newAppStateSyncKeyId) {
+						ev.emit('creds.update', { myAppStateKeyId: newAppStateSyncKeyId })
+					}
 				} else {
-					logger?.info({ protocolMsg }, 'recv app state sync with 0 keys')
+					logger?.info({ protocolMsg }, 'Received app state sync with 0 keys')
 				}
-
 				break
 			case proto.Message.ProtocolMessage.Type.REVOKE:
+				const revokeKey = protocolMsg.key
+				if (!revokeKey?.id) {
+					logger?.warn({ id: message.key.id }, 'Missing key for revoke message')
+					break
+				}
 				ev.emit('messages.update', [
 					{
-						key: {
-							...message.key,
-							id: protocolMsg.key!.id
-						},
+						key: { ...message.key, id: revokeKey.id },
 						update: { message: null, messageStubType: WAMessageStubType.REVOKE, key: message.key }
 					}
 				])
@@ -259,38 +249,41 @@ const processMessage = async (
 			case proto.Message.ProtocolMessage.Type.EPHEMERAL_SETTING:
 				Object.assign(chat, {
 					ephemeralSettingTimestamp: toNumber(message.messageTimestamp),
-					ephemeralExpiration: protocolMsg.ephemeralExpiration || null
+					ephemeralExpiration: protocolMsg.ephemeralExpiration ?? null
 				})
 				break
 			case proto.Message.ProtocolMessage.Type.PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE:
-				const response = protocolMsg.peerDataOperationRequestResponseMessage!
-				if (response) {
-					await placeholderResendCache?.del(response.stanzaId!)
-					// TODO: IMPLEMENT HISTORY SYNC ETC (sticker uploads etc.).
-					const { peerDataOperationResult } = response
-					for (const result of peerDataOperationResult!) {
-						const { placeholderMessageResendResponse: retryResponse } = result
-						//eslint-disable-next-line max-depth
-						if (retryResponse) {
-							const webMessageInfo = decodeAndHydrate(proto.WebMessageInfo, retryResponse.webMessageInfoBytes!)
-							// wait till another upsert event is available, don't want it to be part of the PDO response message
-							setTimeout(() => {
-								ev.emit('messages.upsert', {
-									messages: [webMessageInfo],
-									type: 'notify',
-									requestId: response.stanzaId!
-								})
-							}, 500)
-						}
+				const response = protocolMsg.peerDataOperationRequestResponseMessage
+				if (!response) {
+					logger?.warn({ id: message.key.id }, 'Missing peer data operation response')
+					break
+				}
+				if (response.stanzaId) {
+					await placeholderResendCache?.del(response.stanzaId)
+				}
+				for (const result of response.peerDataOperationResult ?? []) {
+					const { placeholderMessageResendResponse: retryResponse } = result
+					if (retryResponse?.webMessageInfoBytes) {
+						const webMessageInfo = decodeAndHydrate(proto.WebMessageInfo, retryResponse.webMessageInfoBytes)
+						setTimeout(() => {
+							ev.emit('messages.upsert', {
+								messages: [webMessageInfo],
+								type: 'notify',
+								requestId: response.stanzaId!
+							})
+						}, 500)
 					}
 				}
-
 				break
 			case proto.Message.ProtocolMessage.Type.MESSAGE_EDIT:
+				const editKey = protocolMsg.key
+				if (!editKey?.id) {
+					logger?.warn({ id: message.key.id }, 'Missing key for message edit')
+					break
+				}
 				ev.emit('messages.update', [
 					{
-						// flip the sender / fromMe properties because they're in the perspective of the sender
-						key: { ...message.key, id: protocolMsg.key?.id },
+						key: { ...message.key, id: editKey.id },
 						update: {
 							message: {
 								editedMessage: {
@@ -305,96 +298,100 @@ const processMessage = async (
 				])
 				break
 			case proto.Message.ProtocolMessage.Type.LID_MIGRATION_MAPPING_SYNC:
-				const encodedPayload = protocolMsg.lidMigrationMappingSyncMessage?.encodedMappingPayload!
+				const encodedPayload = protocolMsg.lidMigrationMappingSyncMessage?.encodedMappingPayload
+				if (!encodedPayload) {
+					logger?.warn({ id: message.key.id }, 'Missing encoded payload for LID migration')
+					break
+				}
 				const { pnToLidMappings, chatDbMigrationTimestamp } = decodeAndHydrate(
 					proto.LIDMigrationMappingSyncPayload,
 					encodedPayload
 				)
-				logger?.debug({ pnToLidMappings, chatDbMigrationTimestamp }, 'got lid mappings and chat db migration timestamp')
-				const pairs = []
-				for (const { pn, latestLid, assignedLid } of pnToLidMappings) {
+				logger?.debug({ pnToLidMappings, chatDbMigrationTimestamp }, 'Got LID mappings and chat DB migration timestamp')
+				const pairs: { lid: string; pn: string }[] = []
+				for (const { pn, latestLid, assignedLid } of pnToLidMappings ?? []) {
 					const lid = latestLid || assignedLid
-					pairs.push({ lid: `${lid}@lid`, pn: `${pn}@s.whatsapp.net` })
+					if (pn && lid) {
+						pairs.push({ lid: `${lid}@lid`, pn: `${pn}@s.whatsapp.net` })
+					}
 				}
-
-				await signalRepository.lidMapping.storeLIDPNMappings(pairs)
 				if (pairs.length) {
+					await signalRepository.lidMapping.storeLIDPNMappings(pairs)
 					for (const { pn, lid } of pairs) {
 						await signalRepository.migrateSession(pn, lid)
 					}
 				}
+				break
 		}
 	} else if (content?.reactionMessage) {
 		const reaction: proto.IReaction = {
 			...content.reactionMessage,
 			key: message.key
 		}
-		ev.emit('messages.reaction', [
-			{
-				reaction,
-				key: content.reactionMessage?.key!
-			}
-		])
+		const reactionKey = content.reactionMessage?.key
+		if (reactionKey) {
+			ev.emit('messages.reaction', [{ reaction, key: reactionKey }])
+		}
 	} else if (message.messageStubType) {
-		const jid = message.key?.remoteJid!
-		//let actor = whatsappID (message.participant)
-		let participants: string[]
-		const emitParticipantsUpdate = (action: ParticipantAction) =>
-			ev.emit('group-participants.update', {
-				id: jid,
-				author: message.participant!,
-				participants: participants.map(p => jidNormalizedUser(p)),
-				action
-			})
-		const emitGroupUpdate = (update: Partial<GroupMetadata>) => {
+		const jid = message.key?.remoteJid ?? ''
+		const participants = message.messageStubParameters ?? []
+
+		const emitParticipantsUpdate = (action: ParticipantAction): void => {
+			if (participants.length) {
+				ev.emit('group-participants.update', {
+					id: jid,
+					author: message.participant ? jidNormalizedUser(message.participant) : undefined,
+					participants: participants.map(p => jidNormalizedUser(p)),
+					action
+				})
+			}
+		}
+
+		const emitGroupUpdate = (update: Partial<GroupMetadata>): void => {
 			ev.emit('groups.update', [
-				{ id: jid, ...update, author: message.participant ? jidNormalizedUser(message.participant) : message.participant! }
+				{
+					id: jid,
+					...update,
+					author: message.participant ? jidNormalizedUser(message.participant) : undefined
+				}
 			])
 		}
 
-		const emitGroupRequestJoin = (participant: string, action: RequestJoinAction, method: RequestJoinMethod) => {
+		const emitGroupRequestJoin = (participant: string, action: RequestJoinAction, method: RequestJoinMethod): void => {
 			ev.emit('group.join-request', {
 				id: jid,
-				author: message.participant ? jidNormalizedUser(message.participant) : message.participant!,
+				author: message.participant ? jidNormalizedUser(message.participant) : undefined,
 				participant: jidNormalizedUser(participant),
 				action,
-				method: method!
+				method
 			})
 		}
 
-		const participantsIncludesMe = () => participants.find(jid => areJidsSameUser(meId, jid))
+		const participantsIncludesMe = (): boolean => participants.some(jid => areJidsSameUser(meId, jid))
 
 		switch (message.messageStubType) {
 			case WAMessageStubType.GROUP_PARTICIPANT_CHANGE_NUMBER:
-				participants = message.messageStubParameters || []
 				emitParticipantsUpdate('modify')
 				break
 			case WAMessageStubType.GROUP_PARTICIPANT_LEAVE:
 			case WAMessageStubType.GROUP_PARTICIPANT_REMOVE:
-				participants = message.messageStubParameters || []
 				emitParticipantsUpdate('remove')
-				// mark the chat read only if you left the group
 				if (participantsIncludesMe()) {
 					chat.readOnly = true
 				}
-
 				break
 			case WAMessageStubType.GROUP_PARTICIPANT_ADD:
 			case WAMessageStubType.GROUP_PARTICIPANT_INVITE:
 			case WAMessageStubType.GROUP_PARTICIPANT_ADD_REQUEST_JOIN:
-				participants = message.messageStubParameters || []
 				if (participantsIncludesMe()) {
 					chat.readOnly = false
 				}
-
 				emitParticipantsUpdate('add')
 				break
 			case WAMessageStubType.GROUP_PARTICIPANT_DEMOTE:
-				participants = message.messageStubParameters || []
 				emitParticipantsUpdate('demote')
 				break
 			case WAMessageStubType.GROUP_PARTICIPANT_PROMOTE:
-				participants = message.messageStubParameters || []
 				emitParticipantsUpdate('promote')
 				break
 			case WAMessageStubType.GROUP_CHANGE_ANNOUNCE:
@@ -407,8 +404,10 @@ const processMessage = async (
 				break
 			case WAMessageStubType.GROUP_CHANGE_SUBJECT:
 				const name = message.messageStubParameters?.[0]
-				chat.name = name
-				emitGroupUpdate({ subject: name })
+				if (name) {
+					chat.name = name
+					emitGroupUpdate({ subject: name })
+				}
 				break
 			case WAMessageStubType.GROUP_CHANGE_DESCRIPTION:
 				const description = message.messageStubParameters?.[0]
@@ -428,19 +427,21 @@ const processMessage = async (
 				emitGroupUpdate({ joinApprovalMode: approvalMode === 'on' })
 				break
 			case WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST_NON_ADMIN_ADD:
-				const participant = message.messageStubParameters?.[0] as string
+				const participant = message.messageStubParameters?.[0]
 				const action = message.messageStubParameters?.[1] as RequestJoinAction
 				const method = message.messageStubParameters?.[2] as RequestJoinMethod
-				emitGroupRequestJoin(participant, action, method)
+				if (participant && action && method) {
+					emitGroupRequestJoin(participant, action, method)
+				}
 				break
 		}
-	} /*  else if(content?.pollUpdateMessage) {
+	}
+
+	// Commented-out pollUpdateMessage block preserved as is
+	/* else if (content?.pollUpdateMessage) {
 		const creationMsgKey = content.pollUpdateMessage.pollCreationMessageKey!
-		// we need to fetch the poll creation message to get the poll enc key
-		// TODO: make standalone, remove getMessage reference
-		// TODO: Remove entirely
 		const pollMsg = await getMessage(creationMsgKey)
-		if(pollMsg) {
+		if (pollMsg) {
 			const meIdNormalised = jidNormalizedUser(meId)
 			const pollCreatorJid = getKeyAuthor(creationMsgKey, meIdNormalised)
 			const voterJid = getKeyAuthor(message.key, meIdNormalised)
@@ -470,19 +471,13 @@ const processMessage = async (
 						}
 					}
 				])
-			} catch(err) {
-				logger?.warn(
-					{ err, creationMsgKey },
-					'failed to decrypt poll vote'
-				)
+			} catch (err) {
+				logger?.warn({ err, creationMsgKey }, 'Failed to decrypt poll vote')
 			}
 		} else {
-			logger?.warn(
-				{ creationMsgKey },
-				'poll creation message not found, cannot decrypt update'
-			)
+			logger?.warn({ creationMsgKey }, 'Poll creation message not found, cannot decrypt update')
 		}
-		} */
+	} */
 
 	if (Object.keys(chat).length > 1) {
 		ev.emit('chats.update', [chat])
