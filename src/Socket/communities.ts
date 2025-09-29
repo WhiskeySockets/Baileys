@@ -13,38 +13,43 @@ import {
 	type BinaryNode,
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
-	getBinaryNodeChildString,
 	jidEncode,
 	jidNormalizedUser
 } from '../WABinary'
 import { makeBusinessSocket } from './business'
 
+const XMLNS_G2 = 'w:g2'
+const COMMUNITY_TAG = 'community'
+const MEMBERSHIP_APPROVAL_REQUESTS = 'membership_approval_requests'
+const MEMBER_ADD_MODE = 'member_add_mode'
+const ADDRESSING_MODE = 'addressing_mode'
+
 export const makeCommunitiesSocket = (config: SocketConfig) => {
 	const sock = makeBusinessSocket(config)
 	const { authState, ev, query, upsertMessage } = sock
 
-	const communityQuery = async (jid: string, type: 'get' | 'set', content: BinaryNode[]) =>
+	const communityQuery = async (jid: string, type: 'get' | 'set', content: BinaryNode[]): Promise<BinaryNode> =>
 		query({
 			tag: 'iq',
 			attrs: {
 				type,
-				xmlns: 'w:g2',
+				xmlns: XMLNS_G2,
 				to: jid
 			},
 			content
 		})
 
-	const communityMetadata = async (jid: string) => {
+	const communityMetadata = async (jid: string): Promise<GroupMetadata> => {
 		const result = await communityQuery(jid, 'get', [{ tag: 'query', attrs: { request: 'interactive' } }])
 		return extractCommunityMetadata(result)
 	}
 
-	const communityFetchAllParticipating = async () => {
+	const communityFetchAllParticipating = async (): Promise<{ [_: string]: GroupMetadata }> => {
 		const result = await query({
 			tag: 'iq',
 			attrs: {
 				to: '@g.us',
-				xmlns: 'w:g2',
+				xmlns: XMLNS_G2,
 				type: 'get'
 			},
 			content: [
@@ -61,7 +66,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 		const data: { [_: string]: GroupMetadata } = {}
 		const communitiesChild = getBinaryNodeChild(result, 'communities')
 		if (communitiesChild) {
-			const communities = getBinaryNodeChildren(communitiesChild, 'community')
+			const communities = getBinaryNodeChildren(communitiesChild, COMMUNITY_TAG)
 			for (const communityNode of communities) {
 				const meta = extractCommunityMetadata({
 					tag: 'result',
@@ -77,30 +82,30 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 		return data
 	}
 
-	async function parseGroupResult(node: BinaryNode) {
+	async function parseGroupResult(node: BinaryNode): Promise<GroupMetadata | null> {
 		logger.info({ node }, 'parseGroupResult')
 		const groupNode = getBinaryNodeChild(node, 'group')
 		if (groupNode) {
 			try {
 				logger.info({ groupNode }, 'groupNode')
 				const metadata = await sock.groupMetadata(`${groupNode.attrs.id}@g.us`)
-				return metadata ? metadata : Optional.empty()
+				return metadata ?? null
 			} catch (error) {
-				console.error('Error parsing group metadata:', error)
-				return Optional.empty()
+				logger.error('Error parsing group metadata:', error)
+				return null
 			}
 		}
 
-		return Optional.empty()
-	}
-
-	const Optional = {
-		empty: () => null,
-		of: (value: null) => (value !== null ? { value } : null)
+		return null
 	}
 
 	sock.ws.on('CB:ib,,dirty', async (node: BinaryNode) => {
-		const { attrs } = getBinaryNodeChild(node, 'dirty')!
+		const dirtyNode = getBinaryNodeChild(node, 'dirty')
+		if (!dirtyNode) {
+			logger.error('No dirty node found')
+			return
+		}
+		const { attrs } = dirtyNode
 		if (attrs.type !== 'communities') {
 			return
 		}
@@ -112,7 +117,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 	return {
 		...sock,
 		communityMetadata,
-		communityCreate: async (subject: string, body: string) => {
+		communityCreate: async (subject: string, body: string): Promise<GroupMetadata | null> => {
 			const descriptionId = generateMessageID().substring(0, 12)
 
 			const result = await communityQuery('@g.us', 'set', [
@@ -149,7 +154,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 
 			return await parseGroupResult(result)
 		},
-		communityCreateGroup: async (subject: string, participants: string[], parentCommunityJid: string) => {
+		communityCreateGroup: async (subject: string, participants: string[], parentCommunityJid: string): Promise<GroupMetadata | null> => {
 			const key = generateMessageIDV2()
 			const result = await communityQuery('@g.us', 'set', [
 				{
@@ -169,16 +174,16 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 			])
 			return await parseGroupResult(result)
 		},
-		communityLeave: async (id: string) => {
+		communityLeave: async (id: string): Promise<void> => {
 			await communityQuery('@g.us', 'set', [
 				{
 					tag: 'leave',
 					attrs: {},
-					content: [{ tag: 'community', attrs: { id } }]
+					content: [{ tag: COMMUNITY_TAG, attrs: { id } }]
 				}
 			])
 		},
-		communityUpdateSubject: async (jid: string, subject: string) => {
+		communityUpdateSubject: async (jid: string, subject: string): Promise<void> => {
 			await communityQuery(jid, 'set', [
 				{
 					tag: 'subject',
@@ -187,7 +192,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 				}
 			])
 		},
-		communityLinkGroup: async (groupJid: string, parentCommunityJid: string) => {
+		communityLinkGroup: async (groupJid: string, parentCommunityJid: string): Promise<void> => {
 			await communityQuery(parentCommunityJid, 'set', [
 				{
 					tag: 'links',
@@ -202,7 +207,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 				}
 			])
 		},
-		communityUnlinkGroup: async (groupJid: string, parentCommunityJid: string) => {
+		communityUnlinkGroup: async (groupJid: string, parentCommunityJid: string): Promise<void> => {
 			await communityQuery(parentCommunityJid, 'set', [
 				{
 					tag: 'unlink',
@@ -211,18 +216,18 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 				}
 			])
 		},
-		communityRequestParticipantsList: async (jid: string) => {
+		communityRequestParticipantsList: async (jid: string): Promise<{ [key: string]: string }[]> => {
 			const result = await communityQuery(jid, 'get', [
 				{
-					tag: 'membership_approval_requests',
+					tag: MEMBERSHIP_APPROVAL_REQUESTS,
 					attrs: {}
 				}
 			])
-			const node = getBinaryNodeChild(result, 'membership_approval_requests')
+			const node = getBinaryNodeChild(result, MEMBERSHIP_APPROVAL_REQUESTS)
 			const participants = getBinaryNodeChildren(node, 'membership_approval_request')
 			return participants.map(v => v.attrs)
 		},
-		communityRequestParticipantsUpdate: async (jid: string, participants: string[], action: 'approve' | 'reject') => {
+		communityRequestParticipantsUpdate: async (jid: string, participants: string[], action: 'approve' | 'reject'): Promise<{ status: string, jid: string }[]> => {
 			const result = await communityQuery(jid, 'set', [
 				{
 					tag: 'membership_requests_action',
@@ -246,7 +251,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 				return { status: p.attrs.error || '200', jid: jidNormalizedUser(p.attrs.jid) }
 			})
 		},
-		communityParticipantsUpdate: async (jid: string, participants: string[], action: ParticipantAction) => {
+		communityParticipantsUpdate: async (jid: string, participants: string[], action: ParticipantAction): Promise<{ status: string, jid: string, content: BinaryNode }[]> => {
 			const result = await communityQuery(jid, 'set', [
 				{
 					tag: action,
@@ -263,7 +268,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 				return { status: p.attrs.error || '200', jid: jidNormalizedUser(p.attrs.jid), content: p }
 			})
 		},
-		communityUpdateDescription: async (jid: string, description?: string) => {
+		communityUpdateDescription: async (jid: string, description?: string): Promise<void> => {
 			const metadata = await communityMetadata(jid)
 			const prev = metadata.descId ?? null
 
@@ -278,19 +283,19 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 				}
 			])
 		},
-		communityInviteCode: async (jid: string) => {
+		communityInviteCode: async (jid: string): Promise<string | undefined> => {
 			const result = await communityQuery(jid, 'get', [{ tag: 'invite', attrs: {} }])
 			const inviteNode = getBinaryNodeChild(result, 'invite')
 			return inviteNode?.attrs.code
 		},
-		communityRevokeInvite: async (jid: string) => {
+		communityRevokeInvite: async (jid: string): Promise<string | undefined> => {
 			const result = await communityQuery(jid, 'set', [{ tag: 'invite', attrs: {} }])
 			const inviteNode = getBinaryNodeChild(result, 'invite')
 			return inviteNode?.attrs.code
 		},
-		communityAcceptInvite: async (code: string) => {
+		communityAcceptInvite: async (code: string): Promise<string | undefined> => {
 			const results = await communityQuery('@g.us', 'set', [{ tag: 'invite', attrs: { code } }])
-			const result = getBinaryNodeChild(results, 'community')
+			const result = getBinaryNodeChild(results, COMMUNITY_TAG)
 			return result?.attrs.jid
 		},
 
@@ -300,7 +305,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 		 * @param invitedJid jid of person you invited
 		 * @returns true if successful
 		 */
-		communityRevokeInviteV4: async (communityJid: string, invitedJid: string) => {
+		communityRevokeInviteV4: async (communityJid: string, invitedJid: string): Promise<boolean> => {
 			const result = await communityQuery(communityJid, 'set', [
 				{ tag: 'revoke', attrs: {}, content: [{ tag: 'participant', attrs: { jid: invitedJid } }] }
 			])
@@ -313,7 +318,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 		 * @param inviteMessage the message to accept
 		 */
 		communityAcceptInviteV4: ev.createBufferedFunction(
-			async (key: string | WAMessageKey, inviteMessage: proto.Message.IGroupInviteMessage) => {
+			async (key: string | WAMessageKey, inviteMessage: proto.Message.IGroupInviteMessage): Promise<string | undefined> => {
 				key = typeof key === 'string' ? { remoteJid: key } : key
 				const results = await communityQuery(inviteMessage.groupJid!, 'set', [
 					{
@@ -365,11 +370,11 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 				return results.attrs.from
 			}
 		),
-		communityGetInviteInfo: async (code: string) => {
+		communityGetInviteInfo: async (code: string): Promise<GroupMetadata> => {
 			const results = await communityQuery('@g.us', 'get', [{ tag: 'invite', attrs: { code } }])
 			return extractCommunityMetadata(results)
 		},
-		communityToggleEphemeral: async (jid: string, ephemeralExpiration: number) => {
+		communityToggleEphemeral: async (jid: string, ephemeralExpiration: number): Promise<void> => {
 			const content: BinaryNode = ephemeralExpiration
 				? { tag: 'ephemeral', attrs: { expiration: ephemeralExpiration.toString() } }
 				: { tag: 'not_ephemeral', attrs: {} }
@@ -378,13 +383,13 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 		communitySettingUpdate: async (
 			jid: string,
 			setting: 'announcement' | 'not_announcement' | 'locked' | 'unlocked'
-		) => {
+		): Promise<void> => {
 			await communityQuery(jid, 'set', [{ tag: setting, attrs: {} }])
 		},
-		communityMemberAddMode: async (jid: string, mode: 'admin_add' | 'all_member_add') => {
-			await communityQuery(jid, 'set', [{ tag: 'member_add_mode', attrs: {}, content: mode }])
+		communityMemberAddMode: async (jid: string, mode: 'admin_add' | 'all_member_add'): Promise<void> => {
+			await communityQuery(jid, 'set', [{ tag: MEMBER_ADD_MODE, attrs: {}, content: mode }])
 		},
-		communityJoinApprovalMode: async (jid: string, mode: 'on' | 'off') => {
+		communityJoinApprovalMode: async (jid: string, mode: 'on' | 'off'): Promise<void> => {
 			await communityQuery(jid, 'set', [
 				{ tag: 'membership_approval_mode', attrs: {}, content: [{ tag: 'community_join', attrs: { state: mode } }] }
 			])
@@ -393,13 +398,16 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 	}
 }
 
-export const extractCommunityMetadata = (result: BinaryNode) => {
-	const community = getBinaryNodeChild(result, 'community')!
+export const extractCommunityMetadata = (result: BinaryNode): GroupMetadata => {
+	const community = getBinaryNodeChild(result, COMMUNITY_TAG)
+	if (!community) {
+		throw new Error('Community node not found in result')
+	}
 	const descChild = getBinaryNodeChild(community, 'description')
 	let desc: string | undefined
 	let descId: string | undefined
 	if (descChild) {
-		desc = getBinaryNodeChildString(descChild, 'body')
+		desc = getBinaryNodeChild(community, 'body')?.content?.toString()
 		descId = descChild.attrs.id
 	}
 
@@ -407,7 +415,8 @@ export const extractCommunityMetadata = (result: BinaryNode) => {
 		? community.attrs.id
 		: jidEncode(community.attrs.id || '', 'g.us')
 	const eph = getBinaryNodeChild(community, 'ephemeral')?.attrs.expiration
-	const memberAddMode = getBinaryNodeChildString(community, 'member_add_mode') === 'all_member_add'
+	const memberAddModeValue = getBinaryNodeChild(community, MEMBER_ADD_MODE)?.content?.toString() ?? ''
+	const memberAddMode = memberAddModeValue === 'all_member_add'
 	const metadata: GroupMetadata = {
 		id: communityId,
 		subject: community.attrs.subject || '',
@@ -436,7 +445,7 @@ export const extractCommunityMetadata = (result: BinaryNode) => {
 			}
 		}),
 		ephemeralDuration: eph ? +eph : undefined,
-		addressingMode: getBinaryNodeChildString(community, 'addressing_mode')! as GroupMetadata['addressingMode']
+		addressingMode: getBinaryNodeChild(community, ADDRESSING_MODE)?.content?.toString()! as GroupMetadata['addressingMode']
 	}
 	return metadata
 }
