@@ -1,0 +1,1 @@
+{"version":3,"file":"use-multi-file-auth-state.d.ts","sourceRoot":"","sources":["../../src/Utils/use-multi-file-auth-state.ts"],"names":[],"mappings":"AAIA,OAAO,KAAK,EAAuB,mBAAmB,EAAqB,MAAM,UAAU,CAAA;AAqB3F;;;;;;KAMK;AACL,eAAO,MAAM,qBAAqB,GACjC,QAAQ,MAAM,KACZ,OAAO,CAAC;IAAE,KAAK,EAAE,mBAAmB,CAAC;IAAC,SAAS,EAAE,MAAM,OAAO,CAAC,IAAI,CAAC,CAAA;CAAE,CAqGxE,CAAA"}

@@ -1,0 +1,1 @@
+{"version":3,"file":"constants.d.ts","sourceRoot":"","sources":["../../src/WABinary/constants.ts"],"names":[],"mappings":"AAAA,eAAO,MAAM,IAAI;;;;;;;;;;;;;;;;;;CAkBhB,CAAA;AAED,eAAO,MAAM,kBAAkB,qpZAygCrB,CAAA;AAEV,eAAO,MAAM,kBAAkB,UA6O9B,CAAA;AAED,eAAO,MAAM,SAAS,EAAE;IAAE,CAAC,KAAK,EAAE,MAAM,GAAG;QAAE,IAAI,CAAC,EAAE,MAAM,CAAC;QAAC,KAAK,EAAE,MAAM,CAAA;KAAE,CAAA;CAAO,CAAA"}

@@ -1,0 +1,1 @@
+{"version":3,"file":"BinaryInfo.d.ts","sourceRoot":"","sources":["../../src/WAM/BinaryInfo.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,cAAc,EAAE,MAAM,aAAa,CAAA;AAEjD,qBAAa,UAAU;IACtB,eAAe,SAAI;IACnB,QAAQ,SAAI;IACZ,MAAM,EAAS,cAAc,EAAE,CAAA;IAC/B,MAAM,EAAE,MAAM,EAAE,CAAK;gBAET,OAAO,GAAE,OAAO,CAAC,UAAU,CAAM;CAG7C"}

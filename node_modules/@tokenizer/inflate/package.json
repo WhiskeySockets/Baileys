@@ -1,0 +1,75 @@
+{
+  "name": "@tokenizer/inflate",
+  "version": "0.2.7",
+  "description": "Tokenized zip support",
+  "type": "module",
+  "exports": "./lib/index.js",
+  "files": [
+    "lib/**/*.js",
+    "lib/**/*.d.ts"
+  ],
+  "scripts": {
+    "clean": "del-cli 'lib/**/*.js' 'lib/**/*.js.map' 'lib/**/*.d.ts' 'test/**/*.js' 'test/**/*.js.map'",
+    "compile-src": "tsc -p lib",
+    "compile-test": "tsc -p test",
+    "compile": "yarn run compile-src && yarn run compile-test",
+    "build": "yarn run clean && yarn run compile",
+    "eslint": "eslint lib test",
+    "lint-md": "remark -u preset-lint-recommended .",
+    "lint-ts": "biome check",
+    "fix": "yarn run biome lint --write",
+    "test": "mocha",
+    "start": "yarn run compile && yarn run lint && yarn run cover-test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "author": {
+    "name": "Borewit",
+    "url": "https://github.com/Borewit"
+  },
+  "license": "MIT",
+  "packageManager": "yarn@4.3.1",
+  "devDependencies": {
+    "@aws-sdk/client-s3": "^3.750.0",
+    "@biomejs/biome": "=1.9.4",
+    "@tokenizer/s3": "^1.0.1",
+    "@types/chai": "^5.0.1",
+    "@types/debug": "^4",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.13.5",
+    "chai": "^5.2.0",
+    "del-cli": "^6.0.0",
+    "file-type": "^20.1.0",
+    "mocha": "^11.1.0",
+    "strtok3": "^10.2.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "debug": "^4.4.0",
+    "fflate": "^0.8.2",
+    "token-types": "^6.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Borewit/tokenizer-inflate.git"
+  },
+  "bugs": {
+    "url": "hhttps://github.com/Borewit/tokenizer-inflate/issues"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/Borewit"
+  },
+  "keywords": [
+    "zip",
+    "unzip",
+    "decompress",
+    "inflate",
+    "strtok3",
+    "tokenizer",
+    "stream",
+    "S3"
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "name": "@cacheable/memoize",
+  "version": "2.0.2",
+  "description": "Memoization utilities for cacheable",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.js"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jaredwray/cacheable.git",
+    "directory": "packages/memoize"
+  },
+  "author": "Jared Wray <me@jaredwray.com>",
+  "license": "MIT",
+  "private": false,
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.2",
+    "@faker-js/faker": "^10.0.0",
+    "@types/node": "^24.3.0",
+    "@vitest/coverage-v8": "^3.2.4",
+    "lru-cache": "^11.1.0",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "keywords": [
+    "cacheable",
+    "caching",
+    "keyv",
+    "memoization",
+    "memoize",
+    "performance",
+    "wrapper",
+    "wrap",
+    "getOrSet"
+  ],
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@cacheable/utils": "^2.0.2"
+  },
+  "scripts": {
+    "build": "rimraf ./dist && tsup src/index.ts --format cjs,esm --dts --clean --minify",
+    "prepublish": "pnpm build",
+    "lint": "biome check --write --error-on-warnings",
+    "test": "pnpm lint && vitest run --coverage",
+    "test:ci": "biome check --error-on-warnings && vitest run --coverage",
+    "clean": "rimraf ./dist ./coverage ./node_modules"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "slow-redact",
+  "version": "0.3.0",
+  "description": "Redact JS objects",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test",
+    "test:integration": "node --test test/integration.test.js",
+    "test:all": "node --test test/*.test.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "bench": "node benchmarks/basic.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pinojs/slow-redact.git"
+  },
+  "keywords": [
+    "redact"
+  ],
+  "author": "Matteo Collina <hello@matteocollina.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/pinojs/slow-redact/issues"
+  },
+  "homepage": "https://github.com/pinojs/slow-redact#readme",
+  "devDependencies": {
+    "eslint": "^9.36.0",
+    "fast-redact": "^3.5.0",
+    "mitata": "^1.0.34",
+    "neostandard": "^0.12.2"
+  }
+}
