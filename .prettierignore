@@ -1,9 +1,0 @@
-lib
-coverage
-*.lock
-*.json
-src/WABinary/index.ts
-WAProto
-WASignalGroup
-Example/Example.ts
-docs
