@@ -674,6 +674,7 @@ export const getWAUploadToServer = (
 						'Content-Type': 'application/octet-stream',
 						Origin: DEFAULT_ORIGIN
 					},
+					duplex: 'half',
 					// Note: custom agents/proxy require undici Agent; omitted here.
 					signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined
 				})
