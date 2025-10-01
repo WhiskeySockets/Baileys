@@ -319,6 +319,28 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
+	const ackSendMutex = makeMutex()
+	const ackWindow: number[] = []
+	const ACK_WINDOW_MS = 1000
+	const ACK_MAX_PER_WINDOW = 40
+
+	const applyAckRateLimit = async () => {
+		while (true) {
+			const now = Date.now()
+			while (ackWindow.length && now - ackWindow[0] >= ACK_WINDOW_MS) {
+				ackWindow.shift()
+			}
+
+			if (ackWindow.length < ACK_MAX_PER_WINDOW) {
+				ackWindow.push(now)
+				return
+			}
+
+			const waitMs = Math.max(ACK_WINDOW_MS - (now - ackWindow[0]!), 25)
+			await delay(waitMs)
+		}
+	}
+
 	const sendMessageAck = async ({ tag, attrs, content }: BinaryNode, errorCode?: number) => {
 		const stanza: BinaryNode = {
 			tag: 'ack',
