@@ -375,7 +375,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		logger.debug({ recv: { tag, attrs }, sent: stanza.attrs }, 'sent ack')
-		await sendNode(stanza)
+		await ackSendMutex.mutex(async () => {
+			await applyAckRateLimit()
+			await sendNode(stanza)
+		})
 	}
 
 	const rejectCall = async (callId: string, callFrom: string) => {
