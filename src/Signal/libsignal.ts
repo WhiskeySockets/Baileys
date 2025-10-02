@@ -1,7 +1,7 @@
 /* @ts-ignore */
 import * as libsignal from 'libsignal'
 import { LRUCache } from 'lru-cache'
-import type { SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
+import type { LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
 import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import type { ILogger } from '../Utils/logger'
@@ -12,8 +12,12 @@ import { SenderKeyRecord } from './Group/sender-key-record'
 import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from './Group'
 import { LIDMappingStore } from './lid-mapping'
 
-export function makeLibSignalRepository(auth: SignalAuthState, logger: ILogger): SignalRepositoryWithLIDStore {
-	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction, logger)
+export function makeLibSignalRepository(
+	auth: SignalAuthState,
+	logger: ILogger,
+	pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>
+): SignalRepositoryWithLIDStore {
+	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction, logger, pnToLIDFunc)
 	const storage = signalStorage(auth, lidMapping)
 
 	const parsedKeys = auth.keys as SignalKeyStoreWithTransaction
@@ -22,18 +26,6 @@ export function makeLibSignalRepository(auth: SignalAuthState, logger: ILogger):
 		ttlAutopurge: true,
 		updateAgeOnGet: true
 	})
-
-	function isLikelySyncMessage(addr: libsignal.ProtocolAddress): boolean {
-		const key = addr.toString()
-
-		// Only bypass for WhatsApp system addresses, not regular user contacts
-		// Be very specific about sync service patterns
-		return (
-			key.includes('@lid.whatsapp.net') || // WhatsApp system messages
-			key.includes('@broadcast') || // Broadcast messages
-			key.includes('@newsletter')
-		)
-	}
 
 	const repository: SignalRepositoryWithLIDStore = {
 		decryptGroupMessage({ group, authorJid, msg }) {
@@ -93,12 +85,6 @@ export function makeLibSignalRepository(auth: SignalAuthState, logger: ILogger):
 				return result
 			}
 
-			if (isLikelySyncMessage(addr)) {
-				// If it's a sync message, we can skip the transaction
-				// as it is likely to be a system message that doesn't require strict atomicity
-				return await doDecrypt()
-			}
-
 			// If it's not a sync message, we need to ensure atomicity
 			// For regular messages, we use a transaction to ensure atomicity
 			return parsedKeys.transaction(async () => {
@@ -117,6 +103,7 @@ export function makeLibSignalRepository(auth: SignalAuthState, logger: ILogger):
 				return { type, ciphertext: Buffer.from(body, 'binary') }
 			}, jid)
 		},
+
 		async encryptGroupMessage({ group, meId, data }) {
 			const senderName = jidToSignalSenderKeyName(group, meId)
 			const builder = new GroupSessionBuilder(storage)
@@ -139,6 +126,7 @@ export function makeLibSignalRepository(auth: SignalAuthState, logger: ILogger):
 				}
 			}, group)
 		},
+
 		async injectE2ESession({ jid, session }) {
 			const cipher = new libsignal.SessionBuilder(storage, jidToSignalProtocolAddress(jid))
 			return parsedKeys.transaction(async () => {
@@ -191,6 +179,7 @@ export function makeLibSignalRepository(auth: SignalAuthState, logger: ILogger):
 			fromJid: string,
 			toJid: string
 		): Promise<{ migrated: number; skipped: number; total: number }> {
+			// TODO: use usync to handle this entire mess
 			if (!fromJid || !toJid.includes('@lid')) return { migrated: 0, skipped: 0, total: 0 }
 
 			// Only support PN to LID migration
