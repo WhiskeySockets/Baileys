@@ -392,16 +392,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		if (jidsRequiringFetch.length) {
 			// LID if mapped, otherwise original
-			const wireJids = await Promise.all(
-				jidsRequiringFetch.map(async jid => {
-					if (jid.includes('@s.whatsapp.net')) {
-						const lid = await signalRepository.lidMapping.getLIDForPN(jid)
-						return lid ? lid : jid
-					}
-
-					return jid
-				})
-			)
+			const wireJids = [
+				...jidsRequiringFetch.filter(jid => !!jid.includes('@lid')),
+				...(
+					(await signalRepository.lidMapping.getLIDsForPNs(
+						jidsRequiringFetch.filter(jid => !!jid.includes('@s.whatsapp.net'))
+					)) || []
+				).map(a => a.lid)
+			]
 
 			logger.debug({ jidsRequiringFetch, wireJids }, 'fetching sessions')
 			const result = await query({
