@@ -39,6 +39,7 @@ import {
 	areJidsSameUser,
 	type BinaryNode,
 	type BinaryNodeAttributes,
+	type FullJid,
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
 	isJidGroup,
@@ -281,7 +282,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 		}
 
-		const query = new USyncQuery().withContext('message').withDeviceProtocol()
+		const query = new USyncQuery().withContext('message').withDeviceProtocol().withLIDProtocol()
 
 		for (const jid of toFetch) {
 			query.withUser(new USyncUser().withId(jid)) // todo: investigate - the idea here is that <user> should have an inline lid field with the lid being the pn equivalent
@@ -290,8 +291,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const result = await sock.executeUSyncQuery(query)
 
 		if (result) {
+			// TODO: LID MAP this stuff (lid protocol will now return lid with devices)
 			const extracted = extractDeviceJids(result?.list, authState.creds.me!.id, ignoreZeroDevices)
-			const deviceMap: { [_: string]: JidWithDevice[] } = {}
+			const deviceMap: { [_: string]: FullJid[] } = {}
 
 			for (const item of extracted) {
 				deviceMap[item.user] = deviceMap[item.user] || []
@@ -305,8 +307,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				// Process all devices for this user
 				for (const item of userDevices) {
 					const finalJid = isLidUser
-						? jidEncode(user, 'lid', item.device)
-						: jidEncode(item.user, 's.whatsapp.net', item.device)
+						? jidEncode(user, item.server == 'hosted' ? 'hosted.lid' : 'lid', item.device)
+						: jidEncode(item.user, item.server == 'hosted' ? 'hosted' :'s.whatsapp.net', item.device)
 
 					deviceResults.push({
 						...item,

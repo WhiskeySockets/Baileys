@@ -11,6 +11,7 @@ import type {
 import {
 	assertNodeErrorFree,
 	type BinaryNode,
+	type FullJid,
 	getBinaryNodeChild,
 	getBinaryNodeChildBuffer,
 	getBinaryNodeChildren,
@@ -134,20 +135,21 @@ export const parseAndInjectE2ESessions = async (node: BinaryNode, repository: Si
 export const extractDeviceJids = (result: USyncQueryResultList[], myJid: string, excludeZeroDevices: boolean) => {
 	const { user: myUser, device: myDevice } = jidDecode(myJid)!
 
-	const extracted: JidWithDevice[] = []
+	const extracted: FullJid[] = []
 
 	for (const userResult of result) {
+		// TODO: ADD SUPPORT FOR HOSTED JIDS
 		const { devices, id } = userResult as { devices: ParsedDeviceInfo; id: string }
 		const { user } = jidDecode(id)!
 		const deviceList = devices?.deviceList as DeviceListData[]
 		if (Array.isArray(deviceList)) {
-			for (const { id: device, keyIndex } of deviceList) {
+			for (const { id: device, keyIndex, isHosted } of deviceList) {
 				if (
 					(!excludeZeroDevices || device !== 0) && // if zero devices are not-excluded, or device is non zero
 					(myUser !== user || myDevice !== device) && // either different user or if me user, not this device
 					(device === 0 || !!keyIndex) // ensure that "key-index" is specified for "non-zero" devices, produces a bad req otherwise
 				) {
-					extracted.push({ user, device })
+					extracted.push({ user, device, server: isHosted ? 'hosted' : 's.whatsapp.net' })
 				}
 			}
 		}

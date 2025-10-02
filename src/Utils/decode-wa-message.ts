@@ -121,7 +121,7 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	let msgType: MessageType
 	let chatId: string
 	let author: string
-	let fromMe: boolean = false
+	let fromMe = false
 
 	const msgId = stanza.attrs.id
 	const from = stanza.attrs.from
