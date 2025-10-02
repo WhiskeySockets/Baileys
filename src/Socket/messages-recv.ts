@@ -58,6 +58,66 @@ import {
 import { extractGroupMetadata } from './groups'
 import { makeMessagesSocket } from './messages-send'
 
+export type RetryParticipantResolution = {
+        jid?: string
+        hasDevice: boolean
+        source: string
+}
+
+export const resolveRetryParticipant = (
+        existingParticipant: string | undefined,
+        remoteJid: string,
+        retryNode?: BinaryNode
+): RetryParticipantResolution => {
+        const retryAttrs = retryNode?.attrs || {}
+        const candidates: { jid?: string; source: string }[] = [
+                { jid: existingParticipant, source: 'receipt.participant' },
+                { jid: retryAttrs.participant, source: 'retry.participant' },
+                { jid: retryAttrs.from, source: 'retry.from' },
+                { jid: retryAttrs.sender, source: 'retry.sender' },
+                { jid: retryAttrs['device_jid'], source: 'retry.device_jid' },
+                { jid: retryAttrs.jid, source: 'retry.jid' },
+                { jid: retryAttrs.author, source: 'retry.author' }
+        ]
+
+        const seen = new Set<string>()
+        let fallback: RetryParticipantResolution | undefined
+
+        for (const candidate of candidates) {
+                if (!candidate.jid || seen.has(candidate.jid)) {
+                        continue
+                }
+
+                seen.add(candidate.jid)
+
+                if (candidate.jid === remoteJid && isJidGroup(candidate.jid)) {
+                        continue
+                }
+
+                const decoded = jidDecode(candidate.jid)
+                const hasDevice = Boolean(decoded?.device)
+
+                if (hasDevice) {
+                        return { ...candidate, hasDevice }
+                }
+
+                if (!fallback) {
+                        fallback = { ...candidate, hasDevice }
+                }
+        }
+
+        if (!fallback && !isJidGroup(remoteJid)) {
+                const decoded = jidDecode(remoteJid)
+                fallback = {
+                        jid: remoteJid,
+                        hasDevice: Boolean(decoded?.device),
+                        source: 'remoteJid'
+                }
+        }
+
+        return fallback || { hasDevice: false, source: 'unknown' }
+}
+
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const { logger, retryRequestDelayMs, maxMsgRetryCount, getMessage, shouldIgnoreJid, enableAutoSessionRecreation } =
 		config
@@ -874,11 +934,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await msgRetryCache.set(key, newValue)
 	}
 
-	const sendMessagesAgain = async (key: proto.IMessageKey, ids: string[], retryNode: BinaryNode) => {
-		const remoteJid = key.remoteJid!
-		const participant = key.participant || remoteJid
+        const sendMessagesAgain = async (key: proto.IMessageKey, ids: string[], retryNode: BinaryNode) => {
+                const remoteJid = key.remoteJid!
+                const participant = key.participant || remoteJid
 
-		const retryCount = +retryNode.attrs.count! || 1
+                const retryCount = +retryNode.attrs.count! || 1
 
 		// Try to get messages from cache first, then fallback to getMessage
 		const msgs: (proto.IMessage | undefined)[] = []
@@ -912,10 +972,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			msgs.push(msg)
 		}
 
-		// if it's the primary jid sending the request
-		// just re-send the message to everyone
-		// prevents the first message decryption failure
-		const sendToAll = !jidDecode(participant)?.device
+                const participantResolution = resolveRetryParticipant(participant, remoteJid, retryNode)
+                const sendToAll = !participantResolution.jid
+                const hasDeviceIdentifier = Boolean(participantResolution.hasDevice)
 
 		// Check if we should recreate session for this retry
 		let shouldRecreateSession = false
@@ -939,31 +998,62 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}
 		}
 
-		await assertSessions([participant])
+                const participantJidForSession = participantResolution.jid || participant
+                await assertSessions([participantJidForSession])
 
-		if (isJidGroup(remoteJid)) {
-			await authState.keys.set({ 'sender-key-memory': { [remoteJid]: null } })
-		}
+                if (isJidGroup(remoteJid)) {
+                        await authState.keys.set({ 'sender-key-memory': { [remoteJid]: null } })
+                }
 
-		logger.debug({ participant, sendToAll, shouldRecreateSession, recreateReason }, 'forced new session for retry recp')
+                logger.debug(
+                        {
+                                participant,
+                                resolvedParticipant: participantResolution.jid,
+                                sendToAll,
+                                shouldRecreateSession,
+                                recreateReason,
+                                hasDeviceIdentifier
+                        },
+                        'forced new session for retry recp'
+                )
 
 		for (const [i, msg] of msgs.entries()) {
 			if (!ids[i]) continue
 
 			if (msg && (await willSendMessageAgain(ids[i], participant))) {
 				updateSendMessageAgainCount(ids[i], participant)
-				const msgRelayOpts: MessageRelayOptions = { messageId: ids[i] }
+                                const msgRelayOpts: MessageRelayOptions = { messageId: ids[i] }
 
-				if (sendToAll) {
-					msgRelayOpts.useUserDevicesCache = false
-				} else {
-					msgRelayOpts.participant = {
-						jid: participant,
-						count: +retryNode.attrs.count!
-					}
-				}
+                                if (participantResolution.jid) {
+                                        msgRelayOpts.participant = {
+                                                jid: participantResolution.jid,
+                                                count: +retryNode.attrs.count! || retryCount
+                                        }
 
-				await relayMessage(key.remoteJid!, msg, msgRelayOpts)
+                                        if (!hasDeviceIdentifier) {
+                                                logger.info(
+                                                        {
+                                                                messageId: ids[i],
+                                                                participant: participantResolution.jid,
+                                                                resolutionSource: participantResolution.source
+                                                        },
+                                                        'retry request without device id; targeting participant anyway'
+                                                )
+                                        }
+                                } else {
+                                        msgRelayOpts.useUserDevicesCache = false
+                                        logger.warn(
+                                                {
+                                                        messageId: ids[i],
+                                                        participant,
+                                                        remoteJid,
+                                                        retryAttrs: retryNode.attrs
+                                                },
+                                                'retry request missing participant info; falling back to broadcast resend'
+                                        )
+                                }
+
+                                await relayMessage(key.remoteJid!, msg, msgRelayOpts)
 			} else {
 				logger.debug({ jid: key.remoteJid, id: ids[i] }, 'recv retry request, but message not available')
 			}
@@ -1501,4 +1591,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		requestPlaceholderResend,
 		messageRetryManager
 	}
+}
+
+export const __testing = {
+        resolveRetryParticipant
 }
