@@ -42,6 +42,7 @@ import {
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
 	isJidGroup,
+	isLidUser,
 	isPnUser,
 	jidDecode,
 	jidEncode,
@@ -152,7 +153,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			node.attrs.t = unixTimestampSeconds().toString()
 		}
 
-		if (type === 'sender' && isPnUser(jid)) {
+		if (type === 'sender' && (isPnUser(jid) || isLidUser(jid))) {
 			node.attrs.recipient = jid
 			node.attrs.to = participant!
 		} else {
