@@ -113,7 +113,7 @@ export class LIDMappingStore {
 				} else {
 					this.logger.trace(`No LID mapping found for PN user ${pnUser}; batch getting from USync`)
 					usyncFetch.push(pn)
-					continue;
+					continue
 				}
 			}
 
@@ -131,9 +131,7 @@ export class LIDMappingStore {
 			successfulPairs[pn] = { lid: deviceSpecificLid, pn }
 		}
 
-		console.log(this.pnToLIDFunc)
 		if (usyncFetch.length > 0) {
-			console.log(usyncFetch)
 			const result = await this.pnToLIDFunc?.(usyncFetch) // this function already adds LIDs to mapping
 			if (result && result.length > 0) {
 				this.storeLIDPNMappings(result)
