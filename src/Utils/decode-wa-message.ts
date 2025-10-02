@@ -13,15 +13,15 @@ import {
 	isJidNewsletter,
 	isJidStatusBroadcast,
 	isLidUser,
-	isPnUser,
-//	transferDevice
+	isPnUser
+	//	transferDevice
 } from '../WABinary'
 import { unpadRandomMax16 } from './generics'
 import type { ILogger } from './logger'
 import { decodeAndHydrate } from './proto-utils'
 
 const getDecryptionJid = async (sender: string, repository: SignalRepositoryWithLIDStore): Promise<string> => {
-	if (!sender.includes('@s.whatsapp.net')) {
+	if (sender.includes('@lid')) {
 		return sender
 	}
 
