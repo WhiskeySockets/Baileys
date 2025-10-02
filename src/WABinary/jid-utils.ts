@@ -5,7 +5,24 @@ export const PSA_WID = '0@c.us'
 export const STORIES_JID = 'status@broadcast'
 export const META_AI_JID = '13135550002@c.us'
 
-export type JidServer = 'c.us' | 'g.us' | 'broadcast' | 's.whatsapp.net' | 'call' | 'lid' | 'newsletter' | 'bot' | 'hosted' | 'hosted.lid'
+export type JidServer =
+	| 'c.us'
+	| 'g.us'
+	| 'broadcast'
+	| 's.whatsapp.net'
+	| 'call'
+	| 'lid'
+	| 'newsletter'
+	| 'bot'
+	| 'hosted'
+	| 'hosted.lid'
+
+export enum WAJIDDomains {
+	WHATSAPP = 0,
+	LID = 1,
+	HOSTED = 128,
+	HOSTED_LID = 129
+}
 
 export type JidWithDevice = {
 	user: string
@@ -14,13 +31,15 @@ export type JidWithDevice = {
 
 export type FullJid = JidWithDevice & {
 	server: JidServer
+	domainType?: number
 }
 
 export const jidEncode = (user: string | number | null, server: JidServer, device?: number, agent?: number) => {
-	return `${user || ''}${!!agent ? `.${agent}` : ''}${!!device ? `:${device}` : ''}@${server}`
+	return `${user || ''}${!!agent ? `_${agent}` : ''}${!!device ? `:${device}` : ''}@${server}`
 }
 
 export const jidDecode = (jid: string | undefined): FullJid | undefined => {
+	// todo: investigate how to implement hosted ids in this case
 	const sepIdx = typeof jid === 'string' ? jid.indexOf('@') : -1
 	if (sepIdx < 0) {
 		return undefined
@@ -32,9 +51,19 @@ export const jidDecode = (jid: string | undefined): FullJid | undefined => {
 	const [userAgent, device] = userCombined.split(':')
 	const user = userAgent!.split('_')[0]!
 
+	let domainType = WAJIDDomains.WHATSAPP
+	if (server === 'lid') {
+		domainType = WAJIDDomains.LID
+	} else if (server === 'hosted') {
+		domainType = WAJIDDomains.HOSTED
+	} else if (server === 'hosted.lid') {
+		domainType = WAJIDDomains.HOSTED_LID
+	}
+
 	return {
 		server: server as JidServer,
 		user,
+		domainType,
 		device: device ? +device : undefined
 	}
 }
