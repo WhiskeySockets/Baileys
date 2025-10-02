@@ -17,7 +17,6 @@ import {
 	getBinaryNodeChildren,
 	getBinaryNodeChildUInt,
 	jidDecode,
-	type JidWithDevice,
 	S_WHATSAPP_NET
 } from '../WABinary'
 import type { DeviceListData, ParsedDeviceInfo, USyncQueryResultList } from '../WAUSync'

@@ -628,7 +628,7 @@ export const generateWAMessageFromContent = (
 
 	if (quoted && !isJidNewsletter(jid)) {
 		const participant = quoted.key.fromMe
-			? userJid
+			? userJid // TODO: Add support for LIDs
 			: quoted.participant || quoted.key.participant || quoted.key.remoteJid
 
 		let quotedMsg = normalizeMessageContent(quoted.message)!
@@ -688,7 +688,7 @@ export const generateWAMessageFromContent = (
 		message: message,
 		messageTimestamp: timestamp,
 		messageStubParameters: [],
-		participant: isJidGroup(jid) || isJidStatusBroadcast(jid) ? userJid : undefined,
+		participant: isJidGroup(jid) || isJidStatusBroadcast(jid) ? userJid : undefined, // TODO: Add support for LIDs
 		status: WAMessageStatus.PENDING
 	}
 	return WAProto.WebMessageInfo.create(messageJSON)
