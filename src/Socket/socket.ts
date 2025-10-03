@@ -33,7 +33,6 @@ import {
 	promiseTimeout
 } from '../Utils'
 import { getPlatformId } from '../Utils/browser-utils'
-import { decodeAndHydrate } from '../Utils/proto-utils'
 import {
 	assertNodeErrorFree,
 	type BinaryNode,
@@ -366,14 +365,14 @@ export const makeSocket = (config: SocketConfig) => {
 		let helloMsg: proto.IHandshakeMessage = {
 			clientHello: { ephemeral: ephemeralKeyPair.public }
 		}
-		helloMsg = proto.HandshakeMessage.create(helloMsg)
+		helloMsg = proto.HandshakeMessage.fromObject(helloMsg)
 
 		logger.info({ browser, helloMsg }, 'connected to WA')
 
 		const init = proto.HandshakeMessage.encode(helloMsg).finish()
 
 		const result = await awaitNextMessage<Uint8Array>(init)
-		const handshake = decodeAndHydrate(proto.HandshakeMessage, result)
+		const handshake = proto.HandshakeMessage.decode(result)
 
 		logger.trace({ handshake }, 'handshake recv from WA')
 

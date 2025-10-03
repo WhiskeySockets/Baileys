@@ -9,7 +9,9 @@ import type {
 	RequestJoinAction,
 	RequestJoinMethod,
 	SignalKeyStoreWithTransaction,
-	SignalRepositoryWithLIDStore
+	SignalRepositoryWithLIDStore,
+	WAMessage,
+	WAMessageKey
 } from '../Types'
 import { WAMessageStubType } from '../Types'
 import { getContentType, normalizeMessageContent } from '../Utils/messages'
@@ -27,7 +29,6 @@ import { aesDecryptGCM, hmacSign } from './crypto'
 import { toNumber } from './generics'
 import { downloadAndProcessHistorySyncNotification } from './history'
 import type { ILogger } from './logger'
-import { decodeAndHydrate } from './proto-utils'
 
 type ProcessMessageContext = {
 	shouldProcessHistoryMsg: boolean
@@ -50,11 +51,11 @@ const REAL_MSG_STUB_TYPES = new Set([
 const REAL_MSG_REQ_ME_STUB_TYPES = new Set([WAMessageStubType.GROUP_PARTICIPANT_ADD])
 
 /** Cleans a received message to further processing */
-export const cleanMessage = (message: proto.IWebMessageInfo, meId: string) => {
+export const cleanMessage = (message: WAMessage, meId: string) => {
 	// ensure remoteJid and participant doesn't have device or agent in it
 	if (isJidHostedPnUser(message.key.remoteJid!) || isJidHostedLidUser(message.key.remoteJid!)) {
 		message.key.remoteJid = jidEncode(
-			jidDecode(message.key.remoteJid!)?.user!,
+			jidDecode(message.key?.remoteJid!)?.user!,
 			isJidHostedPnUser(message.key.remoteJid!) ? 's.whatsapp.net' : 'lid'
 		)
 	} else {
@@ -80,7 +81,7 @@ export const cleanMessage = (message: proto.IWebMessageInfo, meId: string) => {
 		normaliseKey(content.pollUpdateMessage.pollCreationMessageKey!)
 	}
 
-	function normaliseKey(msgKey: proto.IMessageKey) {
+	function normaliseKey(msgKey: WAMessageKey) {
 		// if the reaction is from another user
 		// we've to correctly map the key to this user's perspective
 		if (!message.key.fromMe) {
@@ -100,7 +101,7 @@ export const cleanMessage = (message: proto.IWebMessageInfo, meId: string) => {
 	}
 }
 
-export const isRealMessage = (message: proto.IWebMessageInfo, meId: string) => {
+export const isRealMessage = (message: WAMessage, meId: string) => {
 	const normalizedContent = normalizeMessageContent(message.message)
 	const hasSomeContent = !!getContentType(normalizedContent)
 	return (
@@ -115,14 +116,13 @@ export const isRealMessage = (message: proto.IWebMessageInfo, meId: string) => {
 	)
 }
 
-export const shouldIncrementChatUnread = (message: proto.IWebMessageInfo) =>
-	!message.key.fromMe && !message.messageStubType
+export const shouldIncrementChatUnread = (message: WAMessage) => !message.key.fromMe && !message.messageStubType
 
 /**
  * Get the ID of the chat from the given key.
  * Typically -- that'll be the remoteJid, but for broadcasts, it'll be the participant
  */
-export const getChatId = ({ remoteJid, participant, fromMe }: proto.IMessageKey) => {
+export const getChatId = ({ remoteJid, participant, fromMe }: WAMessageKey) => {
 	if (isJidBroadcast(remoteJid!) && !isJidStatusBroadcast(remoteJid!) && !fromMe) {
 		return participant!
 	}
@@ -172,7 +172,7 @@ export function decryptPollVote(
 }
 
 const processMessage = async (
-	message: proto.IWebMessageInfo,
+	message: WAMessage,
 	{
 		shouldProcessHistoryMsg,
 		placeholderResendCache,
@@ -297,11 +297,12 @@ const processMessage = async (
 						const { placeholderMessageResendResponse: retryResponse } = result
 						//eslint-disable-next-line max-depth
 						if (retryResponse) {
-							const webMessageInfo = decodeAndHydrate(proto.WebMessageInfo, retryResponse.webMessageInfoBytes!)
+							const webMessageInfo = proto.WebMessageInfo.decode(retryResponse.webMessageInfoBytes!)
 							// wait till another upsert event is available, don't want it to be part of the PDO response message
+							// TODO: parse through proper message handling utilities (to add relevant key fields)
 							setTimeout(() => {
 								ev.emit('messages.upsert', {
-									messages: [webMessageInfo],
+									messages: [webMessageInfo as WAMessage],
 									type: 'notify',
 									requestId: response.stanzaId!
 								})
@@ -331,10 +332,8 @@ const processMessage = async (
 				break
 			case proto.Message.ProtocolMessage.Type.LID_MIGRATION_MAPPING_SYNC:
 				const encodedPayload = protocolMsg.lidMigrationMappingSyncMessage?.encodedMappingPayload!
-				const { pnToLidMappings, chatDbMigrationTimestamp } = decodeAndHydrate(
-					proto.LIDMigrationMappingSyncPayload,
-					encodedPayload
-				)
+				const { pnToLidMappings, chatDbMigrationTimestamp } =
+					proto.LIDMigrationMappingSyncPayload.decode(encodedPayload)
 				logger?.debug({ pnToLidMappings, chatDbMigrationTimestamp }, 'got lid mappings and chat db migration timestamp')
 				const pairs = []
 				for (const { pn, latestLid, assignedLid } of pnToLidMappings) {

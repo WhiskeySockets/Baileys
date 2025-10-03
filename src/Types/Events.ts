@@ -23,7 +23,7 @@ export type BaileysEventMap = {
 		messages: WAMessage[]
 		isLatest?: boolean
 		progress?: number | null
-		syncType?: proto.HistorySync.HistorySyncType
+		syncType?: proto.HistorySync.HistorySyncType | null
 		peerDataRequestSessionId?: string | null
 	}
 	/** upsert chats */

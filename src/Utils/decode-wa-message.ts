@@ -18,7 +18,6 @@ import {
 } from '../WABinary'
 import { unpadRandomMax16 } from './generics'
 import type { ILogger } from './logger'
-import { decodeAndHydrate } from './proto-utils'
 
 const getDecryptionJid = async (sender: string, repository: SignalRepositoryWithLIDStore): Promise<string> => {
 	if (sender.includes('@lid')) {
@@ -239,8 +238,8 @@ export const decryptMessageNode = (
 			if (Array.isArray(stanza.content)) {
 				for (const { tag, attrs, content } of stanza.content) {
 					if (tag === 'verified_name' && content instanceof Uint8Array) {
-						const cert = decodeAndHydrate(proto.VerifiedNameCertificate, content)
-						const details = proto.VerifiedNameCertificate.Details.decode(cert.details)
+						const cert = proto.VerifiedNameCertificate.decode(content)
+						const details = proto.VerifiedNameCertificate.Details.decode(cert.details!)
 						fullMessage.verifiedBizName = details.verifiedName
 					}
 
@@ -294,8 +293,7 @@ export const decryptMessageNode = (
 								throw new Error(`Unknown e2e type: ${e2eType}`)
 						}
 
-						let msg: proto.IMessage = decodeAndHydrate(
-							proto.Message,
+						let msg: proto.IMessage = proto.Message.decode(
 							e2eType !== 'plaintext' ? unpadRandomMax16(msgBuffer) : msgBuffer
 						)
 						msg = msg.deviceSentMessage?.message || msg

@@ -2,7 +2,14 @@ import { Boom } from '@hapi/boom'
 import { createHash, randomBytes } from 'crypto'
 import { proto } from '../../WAProto/index.js'
 const baileysVersion = [2, 3000, 1023223821]
-import type { BaileysEventEmitter, BaileysEventMap, ConnectionState, WACallUpdateType, WAVersion } from '../Types'
+import type {
+	BaileysEventEmitter,
+	BaileysEventMap,
+	ConnectionState,
+	WACallUpdateType,
+	WAMessageKey,
+	WAVersion
+} from '../Types'
 import { DisconnectReason } from '../Types'
 import { type BinaryNode, getAllBinaryNodeChildren, jidDecode } from '../WABinary'
 import { sha256 } from './crypto'
@@ -37,7 +44,7 @@ export const BufferJSON = {
 	}
 }
 
-export const getKeyAuthor = (key: proto.IMessageKey | undefined | null, meId = 'me') =>
+export const getKeyAuthor = (key: WAMessageKey | undefined | null, meId = 'me') =>
 	(key?.fromMe ? meId : key?.participant || key?.remoteJid) || ''
 
 export const writeRandomPadMax16 = (msg: Uint8Array) => {
