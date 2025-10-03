@@ -1192,7 +1192,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const handleMessage = async (node: BinaryNode) => {
 		if (shouldIgnoreJid(node.attrs.from!) && node.attrs.from !== '@s.whatsapp.net') {
 			logger.debug({ key: node.attrs.key }, 'ignored message')
-			await sendMessageAck(node)
+			await sendMessageAck(node, NACK_REASONS.UnhandledError)
 			return
 		}
 
@@ -1212,32 +1212,19 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			decrypt
 		} = decryptMessageNode(node, authState.creds.me!.id, authState.creds.me!.lid || '', signalRepository, logger)
 
-		if (
-			msg.message?.protocolMessage?.type === proto.Message.ProtocolMessage.Type.SHARE_PHONE_NUMBER &&
-			node.attrs.sender_pn
-		) {
-			const lid = jidNormalizedUser(node.attrs.from),
-				pn = jidNormalizedUser(node.attrs.sender_pn)
-			ev.emit('lid-mapping.update', { lid, pn })
-			await signalRepository.lidMapping.storeLIDPNMappings([{ lid, pn }])
-			await signalRepository.migrateSession(pn, lid)
-		}
-
 		const alt = msg.key.participantAlt || msg.key.remoteJidAlt
 		// store new mappings we didn't have before
 		if (!!alt) {
 			const altServer = jidDecode(alt)?.server
 			const primaryJid = msg.key.participant || msg.key.remoteJid!
 			if (altServer === 'lid') {
-				if (typeof (await signalRepository.lidMapping.getPNForLID(alt)) === 'string') {
+				if (!(await signalRepository.lidMapping.getPNForLID(alt))) {
 					await signalRepository.lidMapping.storeLIDPNMappings([{ lid: alt, pn: primaryJid }])
 					await signalRepository.migrateSession(primaryJid, alt)
 				}
 			} else {
-				if (typeof (await signalRepository.lidMapping.getLIDForPN(alt)) === 'string') {
-					await signalRepository.lidMapping.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
-					await signalRepository.migrateSession(alt, primaryJid)
-				}
+				await signalRepository.lidMapping.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
+				await signalRepository.migrateSession(alt, primaryJid)
 			}
 		}
 
@@ -1334,8 +1321,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 
 					cleanMessage(msg, authState.creds.me!.id)
-
-					await sendMessageAck(node)
 
 					await upsertMessage(msg, node.attrs.offline ? 'append' : 'notify')
 				})

@@ -11,7 +11,6 @@ import type {
 	SocketConfig,
 	WAMessageKey
 } from '../Types'
-import { WAMessageAddressingMode } from '../Types'
 import {
 	aggregateMessageKeysNotFromMe,
 	assertMediaContent,
@@ -39,9 +38,11 @@ import {
 	areJidsSameUser,
 	type BinaryNode,
 	type BinaryNodeAttributes,
+	type FullJid,
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
 	isJidGroup,
+	isLidUser,
 	isPnUser,
 	jidDecode,
 	jidEncode,
@@ -152,7 +153,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			node.attrs.t = unixTimestampSeconds().toString()
 		}
 
-		if (type === 'sender' && isPnUser(jid)) {
+		if (type === 'sender' && (isPnUser(jid) || isLidUser(jid))) {
 			node.attrs.recipient = jid
 			node.attrs.to = participant!
 		} else {
@@ -281,7 +282,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 		}
 
-		const query = new USyncQuery().withContext('message').withDeviceProtocol()
+		const query = new USyncQuery().withContext('message').withDeviceProtocol().withLIDProtocol()
 
 		for (const jid of toFetch) {
 			query.withUser(new USyncUser().withId(jid)) // todo: investigate - the idea here is that <user> should have an inline lid field with the lid being the pn equivalent
@@ -290,8 +291,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const result = await sock.executeUSyncQuery(query)
 
 		if (result) {
+			// TODO: LID MAP this stuff (lid protocol will now return lid with devices)
+			const lidResults = result.list.filter(a => !!a.lid)
+			if (lidResults.length > 0) {
+				logger.trace('Storing LID maps from device call')
+				await signalRepository.lidMapping.storeLIDPNMappings(lidResults.map(a => ({ lid: a.lid as string, pn: a.id })))
+			}
+
 			const extracted = extractDeviceJids(result?.list, authState.creds.me!.id, ignoreZeroDevices)
-			const deviceMap: { [_: string]: JidWithDevice[] } = {}
+			const deviceMap: { [_: string]: FullJid[] } = {}
 
 			for (const item of extracted) {
 				deviceMap[item.user] = deviceMap[item.user] || []
@@ -305,8 +313,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				// Process all devices for this user
 				for (const item of userDevices) {
 					const finalJid = isLidUser
-						? jidEncode(user, 'lid', item.device)
-						: jidEncode(item.user, 's.whatsapp.net', item.device)
+						? jidEncode(user, item.server === 'hosted' ? 'hosted.lid' : 'lid', item.device)
+						: jidEncode(item.user, item.server === 'hosted' ? 'hosted' : 's.whatsapp.net', item.device)
 
 					deviceResults.push({
 						...item,
@@ -384,16 +392,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		if (jidsRequiringFetch.length) {
 			// LID if mapped, otherwise original
-			const wireJids = await Promise.all(
-				jidsRequiringFetch.map(async jid => {
-					if (jid.includes('@s.whatsapp.net')) {
-						const lid = await signalRepository.lidMapping.getLIDForPN(jid)
-						return lid ? lid : jid
-					}
-
-					return jid
-				})
-			)
+			const wireJids = [
+				...jidsRequiringFetch.filter(jid => !!jid.includes('@lid')),
+				...(
+					(await signalRepository.lidMapping.getLIDsForPNs(
+						jidsRequiringFetch.filter(jid => !!jid.includes('@s.whatsapp.net'))
+					)) || []
+				).map(a => a.lid)
+			]
 
 			logger.debug({ jidsRequiringFetch, wireJids }, 'fetching sessions')
 			const result = await query({
@@ -552,17 +558,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const isNewsletter = server === 'newsletter'
 		const finalJid = jid
 
-		// ADDRESSING CONSISTENCY: Match own identity to conversation context
-		// TODO: investigate if this is true
-		let ownId = meId
-		if (isLid && meLid) {
-			ownId = meLid
-			logger.debug({ to: jid, ownId }, 'Using LID identity for @lid conversation')
-		} else {
-			logger.debug({ to: jid, ownId }, 'Using PN identity for @s.whatsapp.net conversation')
-		}
-
-		msgId = msgId || generateMessageIDV2(sock.user?.id)
+		msgId = msgId || generateMessageIDV2(meId)
 		useUserDevicesCache = useUserDevicesCache !== false
 		useCachedGroupMetadata = useCachedGroupMetadata !== false && !isStatus
 
@@ -634,13 +630,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						if (groupData && Array.isArray(groupData?.participants)) {
 							logger.trace({ jid, participants: groupData.participants.length }, 'using cached group metadata')
 						} else if (!isStatus) {
-							groupData = await groupMetadata(jid)
+							groupData = await groupMetadata(jid) // TODO: start storing group participant list + addr mode in Signal & stop relying on this
 						}
 
 						return groupData
 					})(),
 					(async () => {
 						if (!participant && !isStatus) {
+							// what if sender memory is less accurate than the cached metadata
+							// on participant change in group, we should do sender memory manipulation
 							const result = await authState.keys.get('sender-key-memory', [jid]) // TODO: check out what if the sender key memory doesn't include the LID stuff now?
 							return result[jid] || {}
 						}
@@ -650,14 +648,18 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				])
 
 				if (!participant) {
-					const participantsList = groupData && !isStatus ? groupData.participants.map(p => p.id) : []
-					if (isStatus && statusJidList) {
-						participantsList.push(...statusJidList)
-					}
+					const participantsList = []
+					if (isStatus) {
+						if (statusJidList?.length) participantsList.push(...statusJidList)
+					} else {
+						// default to LID based groups
+						let groupAddressingMode = 'lid'
+						if (groupData) {
+							participantsList.push(...groupData.participants.map(p => p.id))
+							groupAddressingMode = groupData?.addressingMode || groupAddressingMode
+						}
 
-					if (!isStatus) {
-						const groupAddressingMode =
-							groupData?.addressingMode || (isLid ? WAMessageAddressingMode.LID : WAMessageAddressingMode.PN)
+						// default to lid addressing mode in a group
 						additionalAttributes = {
 							...additionalAttributes,
 							addressing_mode: groupAddressingMode
@@ -681,7 +683,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 
 				const bytes = encodeWAMessage(patched)
-				const groupAddressingMode = groupData?.addressingMode || (isLid ? 'lid' : 'pn')
+				const groupAddressingMode = additionalAttributes?.['addressing_mode'] || groupData?.addressingMode || 'lid'
 				const groupSenderIdentity = groupAddressingMode === 'lid' && meLid ? meLid : meId
 
 				const { ciphertext, senderKeyDistributionMessage } = await signalRepository.encryptGroupMessage({
@@ -694,7 +696,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				for (const device of devices) {
 					const deviceJid = device.jid
 					const hasKey = !!senderKeyMap[deviceJid]
-					if (!hasKey && !isRetryResend) {
+					if (!hasKey || !!participant) {
+						//todo: revamp all this logic
+						// the goal is to follow with what I said above for each group, and instead of a true false map of ids, we can set an array full of those the app has already sent pkmsgs
 						senderKeyRecipients.push(deviceJid)
 						senderKeyMap[deviceJid] = true
 					}
@@ -744,6 +748,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					await authState.keys.set({ 'sender-key-memory': { [jid]: senderKeyMap } })
 				}
 			} else {
+				// ADDRESSING CONSISTENCY: Match own identity to conversation context
+				// TODO: investigate if this is true
+				let ownId = meId
+				if (isLid && meLid) {
+					ownId = meLid
+					logger.debug({ to: jid, ownId }, 'Using LID identity for @lid conversation')
+				} else {
+					logger.debug({ to: jid, ownId }, 'Using PN identity for @s.whatsapp.net conversation')
+				}
+
 				const { user: ownUser } = jidDecode(ownId)!
 
 				if (!participant) {
@@ -751,10 +765,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					devices.push({
 						user,
 						device: 0,
-						jid: jidEncode(user, targetUserServer, 0)
+						jid: jidEncode(user, targetUserServer, 0) // rajeh, todo: this entire logic is convoluted and weird.
 					})
 
-					// Own user matches conversation addressing mode
 					if (user !== ownUser) {
 						const ownUserServer = isLid ? 'lid' : 's.whatsapp.net'
 						const ownUserForAddressing = isLid && meLid ? jidDecode(meLid)!.user : jidDecode(meId)!.user

@@ -1,7 +1,7 @@
 import { LRUCache } from 'lru-cache'
-import type { SignalKeyStoreWithTransaction } from '../Types'
+import type { LIDMapping, SignalKeyStoreWithTransaction } from '../Types'
 import type { ILogger } from '../Utils/logger'
-import { isLidUser, isPnUser, jidDecode } from '../WABinary'
+import { isLidUser, isPnUser, jidDecode, jidNormalizedUser } from '../WABinary'
 
 export class LIDMappingStore {
 	private readonly mappingCache = new LRUCache<string, string>({
@@ -12,15 +12,22 @@ export class LIDMappingStore {
 	private readonly keys: SignalKeyStoreWithTransaction
 	private readonly logger: ILogger
 
-	constructor(keys: SignalKeyStoreWithTransaction, logger: ILogger) {
+	private pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>
+
+	constructor(
+		keys: SignalKeyStoreWithTransaction,
+		logger: ILogger,
+		pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>
+	) {
 		this.keys = keys
+		this.pnToLIDFunc = pnToLIDFunc
 		this.logger = logger
 	}
 
 	/**
 	 * Store LID-PN mapping - USER LEVEL
 	 */
-	async storeLIDPNMappings(pairs: { lid: string; pn: string }[]): Promise<void> {
+	async storeLIDPNMappings(pairs: LIDMapping[]): Promise<void> {
 		// Validate inputs
 		const pairMap: { [_: string]: string } = {}
 		for (const { lid, pn } of pairs) {
@@ -78,41 +85,87 @@ export class LIDMappingStore {
 	 * Get LID for PN - Returns device-specific LID based on user mapping
 	 */
 	async getLIDForPN(pn: string): Promise<string | null> {
-		if (!isPnUser(pn)) return null
+		return (await this.getLIDsForPNs([pn]))?.[0]?.lid || null
+	}
 
-		const decoded = jidDecode(pn)
-		if (!decoded) return null
+	async getLIDsForPNs(pns: string[]): Promise<LIDMapping[] | null> {
+		const usyncFetch: { [_: string]: number[] } = {}
+		// mapped from pn to lid mapping to prevent duplication in results later
+		const successfulPairs: { [_: string]: LIDMapping } = {}
+		for (const pn of pns) {
+			if (!isPnUser(pn)) continue
 
-		// Check cache first for PN → LID mapping
-		const pnUser = decoded.user
-		let lidUser = this.mappingCache.get(`pn:${pnUser}`)
+			const decoded = jidDecode(pn)
+			if (!decoded) continue
 
-		if (!lidUser) {
-			// Cache miss - check database
-			const stored = await this.keys.get('lid-mapping', [pnUser])
-			lidUser = stored[pnUser]
+			// Check cache first for PN → LID mapping
+			const pnUser = decoded.user
+			let lidUser = this.mappingCache.get(`pn:${pnUser}`)
 
-			if (lidUser) {
-				this.mappingCache.set(`pn:${pnUser}`, lidUser)
-				this.mappingCache.set(`lid:${lidUser}`, pnUser)
+			if (!lidUser) {
+				// Cache miss - check database
+				const stored = await this.keys.get('lid-mapping', [pnUser])
+				lidUser = stored[pnUser]
+
+				if (lidUser) {
+					this.mappingCache.set(`pn:${pnUser}`, lidUser)
+					this.mappingCache.set(`lid:${lidUser}`, pnUser)
+				} else {
+					this.logger.trace(`No LID mapping found for PN user ${pnUser}; batch getting from USync`)
+					const device = decoded.device || 0
+					const normalizedPn = jidNormalizedUser(pn)
+					if (!usyncFetch[normalizedPn]) {
+						usyncFetch[normalizedPn] = [device]
+					} else {
+						usyncFetch[normalizedPn].push(device)
+					}
+
+					continue
+				}
+			}
+
+			lidUser = lidUser.toString()
+			if (!lidUser) {
+				this.logger.warn(`Invalid or empty LID user for PN ${pn}: lidUser = "${lidUser}"`)
+				return null
+			}
+
+			// Push the PN device ID to the LID to maintain device separation
+			const pnDevice = decoded.device !== undefined ? decoded.device : 0
+			const deviceSpecificLid = `${lidUser}${!!pnDevice ? `:${pnDevice}` : ``}@lid`
+
+			this.logger.trace(`getLIDForPN: ${pn} → ${deviceSpecificLid} (user mapping with device ${pnDevice})`)
+			successfulPairs[pn] = { lid: deviceSpecificLid, pn }
+		}
+
+		if (Object.keys(usyncFetch).length > 0) {
+			const result = await this.pnToLIDFunc?.(Object.keys(usyncFetch)) // this function already adds LIDs to mapping
+			if (result && result.length > 0) {
+				this.storeLIDPNMappings(result)
+				for (const pair of result) {
+					const pnUser = jidDecode(pair.pn)?.user
+					if (!pnUser) continue
+					const lidUser = jidDecode(pair.lid)?.user
+					if (!lidUser) continue
+
+					for (const device of usyncFetch[pair.pn]!) {
+						const deviceSpecificLid = `${lidUser}${!!device ? `:${device}` : ``}@lid`
+
+						this.logger.trace(
+							`getLIDForPN: USYNC success for ${pair.pn} → ${deviceSpecificLid} (user mapping with device ${device})`
+						)
+
+						const deviceSpecificPn = `${pnUser}${!!device ? `:${device}` : ``}@s.whatsapp.net`
+
+						successfulPairs[deviceSpecificPn] = { lid: deviceSpecificLid, pn: deviceSpecificPn }
+					}
+				}
 			} else {
-				this.logger.trace(`No LID mapping found for PN user ${pnUser}`)
 				return null
 			}
 		}
 
-		lidUser = lidUser.toString()
-		if (!lidUser) {
-			this.logger.warn(`Invalid or empty LID user for PN ${pn}: lidUser = "${lidUser}"`)
-			return null
-		}
-
-		// Push the PN device ID to the LID to maintain device separation
-		const pnDevice = decoded.device !== undefined ? decoded.device : 0
-		const deviceSpecificLid = `${lidUser}:${pnDevice}@lid`
-
-		this.logger.trace(`getLIDForPN: ${pn} → ${deviceSpecificLid} (user mapping with device ${pnDevice})`)
-		return deviceSpecificLid
+		return Object.values(successfulPairs)
 	}
 
 	/**
