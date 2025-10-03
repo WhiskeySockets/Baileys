@@ -189,8 +189,9 @@ export const addTransactionCapability = (
 			const ctx = txStorage.getStore()
 
 			if (!ctx) {
-				// No transaction - direct read with queue protection
-				return getQueue(type).add(async () => state.get(type, ids))
+				// No transaction - direct read with mutex protection (not queue)
+				// Use mutex instead of queue to provide mutual exclusion for reads and writes, reducing queuing overhead and improving event loop responsiveness (does not allow concurrent reads)
+				return getTxMutex(type).runExclusive(() => state.get(type, ids))
 			}
 
 			// In transaction - check cache first
@@ -201,7 +202,7 @@ export const addTransactionCapability = (
 				ctx.dbQueries++
 				logger.trace({ type, count: missing.length }, 'fetching missing keys in transaction')
 
-				const fetched = await getQueue(type).add(async () => state.get(type, missing))
+				const fetched = await getTxMutex(type).runExclusive(() => state.get(type, missing))
 
 				// Update cache
 				ctx.cache[type] = ctx.cache[type] || ({} as any)
