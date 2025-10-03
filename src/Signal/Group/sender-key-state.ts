@@ -37,7 +37,11 @@ export class SenderKeyState {
 		senderKeyStateStructure?: SenderKeyStateStructure | null
 	) {
 		if (senderKeyStateStructure) {
-			this.senderKeyStateStructure = senderKeyStateStructure
+			if (!Array.isArray(senderKeyStateStructure.senderMessageKeys)) {
+				this.senderKeyStateStructure = { ...senderKeyStateStructure, senderMessageKeys: [] }
+			} else {
+				this.senderKeyStateStructure = senderKeyStateStructure
+			}
 		} else {
 			if (signatureKeyPair) {
 				signatureKeyPublic = signatureKeyPair.public
