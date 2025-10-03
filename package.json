@@ -1,7 +1,7 @@
 {
-  "name": "baileys",
+  "name": "@whiskeysockets/baileys",
   "type": "module",
-  "version": "6.7.19",
+  "version": "6.7.20",
   "description": "A WebSockets library for interacting with WhatsApp Web",
   "keywords": [
     "whatsapp",
