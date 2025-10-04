@@ -447,8 +447,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				// Schedule phone request with delay (like whatsmeow)
 				messageRetryManager.schedulePhoneRequest(msgId, async () => {
 					try {
-						const msgId = await requestPlaceholderResend(msgKey)
-						logger.debug(`sendRetryRequest: requested placeholder resend for message ${msgId} (scheduled)`)
+						const requestId = await requestPlaceholderResend(msgKey)
+						logger.debug(`sendRetryRequest: requested placeholder resend (${requestId}) for message ${msgId} (scheduled)`)
 					} catch (error) {
 						logger.warn({ error, msgId }, 'failed to send scheduled phone request')
 					}

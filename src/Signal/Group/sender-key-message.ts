@@ -5,7 +5,7 @@ import { CiphertextMessage } from './ciphertext-message'
 interface SenderKeyMessageStructure {
 	id: number
 	iteration: number
-	ciphertext: Buffer
+	ciphertext: string | Buffer
 }
 
 export class SenderKeyMessage extends CiphertextMessage {
@@ -36,7 +36,9 @@ export class SenderKeyMessage extends CiphertextMessage {
 			this.messageVersion = (version & 0xff) >> 4
 			this.keyId = senderKeyMessage.id
 			this.iteration = senderKeyMessage.iteration
-			this.ciphertext = senderKeyMessage.ciphertext
+			this.ciphertext = typeof senderKeyMessage.ciphertext === 'string'
+				? Buffer.from(senderKeyMessage.ciphertext, 'base64')
+				: senderKeyMessage.ciphertext
 			this.signature = signature
 		} else {
 			const version = (((this.CURRENT_VERSION << 4) | this.CURRENT_VERSION) & 0xff) % 256

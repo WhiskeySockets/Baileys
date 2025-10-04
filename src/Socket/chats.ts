@@ -601,6 +601,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * type = "image for the high res picture"
 	 */
 	const profilePictureUrl = async (jid: string, type: 'preview' | 'image' = 'preview', timeoutMs?: number) => {
+		// TOOD: Add support for tctoken, existingID, and newsletter + group options
 		jid = jidNormalizedUser(jid)
 		const result = await query(
 			{

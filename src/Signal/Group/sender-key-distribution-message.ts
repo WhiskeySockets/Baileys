@@ -4,8 +4,8 @@ import { CiphertextMessage } from './ciphertext-message'
 interface SenderKeyDistributionMessageStructure {
 	id: number
 	iteration: number
-	chainKey: Uint8Array
-	signingKey: Uint8Array
+	chainKey: string | Uint8Array
+	signingKey: string | Uint8Array
 }
 
 export class SenderKeyDistributionMessage extends CiphertextMessage {
@@ -34,8 +34,14 @@ export class SenderKeyDistributionMessage extends CiphertextMessage {
 				this.serialized = serialized
 				this.id = distributionMessage.id
 				this.iteration = distributionMessage.iteration
-				this.chainKey = distributionMessage.chainKey
-				this.signatureKey = distributionMessage.signingKey
+				this.chainKey =
+					typeof distributionMessage.chainKey === 'string'
+						? Buffer.from(distributionMessage.chainKey, 'base64')
+						: distributionMessage.chainKey
+				this.signatureKey =
+					typeof distributionMessage.signingKey === 'string'
+						? Buffer.from(distributionMessage.signingKey, 'base64')
+						: distributionMessage.signingKey
 			} catch (e) {
 				throw new Error(String(e))
 			}
