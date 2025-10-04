@@ -531,7 +531,23 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 		)
 
-		const nodes = (await Promise.all(encryptionPromises)).filter(node => node !== null) as BinaryNode[]
+		// Use Promise.allSettled to attempt encryption for all participants without failing on the first error.
+		const results = await Promise.allSettled(encryptionPromises)
+
+		const nodes: BinaryNode[] = []
+		results.forEach((result, i) => {
+			if (result.status === 'fulfilled') {
+				// If the promise was fulfilled, add the resulting node to our list.
+				if (result.value) {
+					nodes.push(result.value)
+				}
+			} else {
+				// If the promise was rejected, inform us about the error and skip this participant.
+				// We get the failed ID from the original list using the index.
+				const failedId = (patchedMessages as any)[i]?.recipientJid
+				logger.warn({ id: failedId, err: result.reason?.message }, 'Skipping participant due to encryption failure')
+			}
+		})
 		return { nodes, shouldIncludeDeviceIdentity }
 	}
 
