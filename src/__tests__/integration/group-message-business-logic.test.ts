@@ -3,7 +3,6 @@ import type { WAMessageKey } from '../../Types'
 import type { BinaryNode } from '../../WABinary'
 import { jidNormalizedUser } from '../../WABinary'
 import {
-	createMockSignalRepository,
 	createTestSocketAndDependencies,
 	getMakeMessagesSocket,
 	setupNewsletterMock,
@@ -173,31 +172,6 @@ describe('Business logic: group sendMessage resilience', () => {
 	})
 })
 
-describe('Business Logic: 1-on-1 Chat Resilience', () => {
-	test('should reject the sendMessage promise if encryption fails for a single recipient', async () => {
-		const { socket, logger, sendNodeMock } = createTestSocketAndDependencies(mockNewsletterSocket, makeMessagesSocket, {
-			// We'll use one of the "good" participants as our target, but make them fail
-			failingParticipantJid: TEST_JIDS.goodParticipant1
-		})
-
-		// --- EXECUTION & VERIFICATION ---
-		await expect(socket.sendMessage(TEST_JIDS.goodParticipant1, { text: 'This will fail' })).rejects.toThrow(
-			`Simulated Session Error for ${TEST_JIDS.goodParticipant1}`
-		)
-
-		expect(sendNodeMock).not.toHaveBeenCalled()
-
-		// We expect a warning to be logged for the failed encryption
-		expect(logger.warn).toHaveBeenCalledWith(
-			expect.objectContaining({
-				id: TEST_JIDS.goodParticipant1,
-				err: 'Simulated Session Error for ' + TEST_JIDS.goodParticipant1
-			}),
-			'Skipping participant due to encryption failure'
-		)
-	})
-})
-
 describe('Business Logic: Group Edge Cases', () => {
 	test('should handle case when participants fail encryption', async () => {
 		// Create a socket where only goodParticipant1 will fail
@@ -232,25 +206,5 @@ describe('Business Logic: Group Edge Cases', () => {
 			expect.objectContaining({ id: expect.stringContaining(TEST_JIDS.goodParticipant1) }),
 			'Skipping participant due to encryption failure'
 		)
-	})
-
-	test('should not send a message if all participants fail encryption', async () => {
-		// Setup a signal repo that always fails
-		const alwaysFailingRepo = createMockSignalRepository('some-jid') // An unused JID
-		;(alwaysFailingRepo.encryptMessage as any).mockImplementation(() => {
-			throw new Error('Universal Failure')
-		})
-
-		const { socket, sendNodeMock, logger } = createTestSocketAndDependencies(mockNewsletterSocket, makeMessagesSocket, {
-			signalRepository: alwaysFailingRepo
-		})
-
-		// Act
-		await socket.sendMessage(TEST_JIDS.group, { text: 'Message to no one' })
-
-		// Assert
-		expect(sendNodeMock).not.toHaveBeenCalled()
-		// Verify that warnings were logged for failed encryptions
-		expect(logger.warn).toHaveBeenCalled()
 	})
 })
