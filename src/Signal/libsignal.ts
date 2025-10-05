@@ -329,7 +329,7 @@ const jidToSignalProtocolAddress = (jid: string): libsignal.ProtocolAddress => {
 		)
 	}
 
-	let signalUser = domainType !== WAJIDDomains.WHATSAPP ? `${user}_${domainType}`: user;
+	const signalUser = domainType !== WAJIDDomains.WHATSAPP ? `${user}_${domainType}` : user
 	const finalDevice = device || 0
 
 	return new libsignal.ProtocolAddress(signalUser, finalDevice)
@@ -344,14 +344,19 @@ function signalStorage(
 	lidMapping: LIDMappingStore
 ): SenderKeyStore & libsignal.SignalStorage {
 	// Shared function to resolve PN signal address to LID if mapping exists
-	const resolveSignalAddress = async (id: string): Promise<string> => {
-		if (id.includes('.') && !id.includes('_1')) {
-			const parts = id.split('.')
-			const device = parts[1] || '0'
-			const pnJid = device === '0' ? `${parts[0]}@s.whatsapp.net` : `${parts[0]}:${device}@s.whatsapp.net`
+	const resolveLIDSignalAddress = async (id: string): Promise<string> => {
+		if (id.includes('.')) {
+			const [deviceId, domainType_] = id.split('_')
+			const domainType = parseInt(domainType_ || '0')
+			const [user, device] = deviceId!.split('.')
 
-			const lidForPN = await lidMapping.getLIDForPN(pnJid)
+			if (domainType === WAJIDDomains.LID || domainType === WAJIDDomains.HOSTED_LID) return id
+
+			const pnJid = `${user!}${device !== '0' ? `:${device}` : ''}@s.whatsapp.net`
+
+			let lidForPN = await lidMapping.getLIDForPN(pnJid)
 			if (lidForPN?.includes('@lid')) {
+				if (domainType === WAJIDDomains.HOSTED) lidForPN = `${lidForPN.split('@')[0]}@hosted.lid`
 				const lidAddr = jidToSignalProtocolAddress(lidForPN)
 				return lidAddr.toString()
 			}
@@ -363,7 +368,7 @@ function signalStorage(
 	return {
 		loadSession: async (id: string) => {
 			try {
-				const wireJid = await resolveSignalAddress(id)
+				const wireJid = await resolveLIDSignalAddress(id)
 				const { [wireJid]: sess } = await keys.get('session', [wireJid])
 
 				if (sess) {
@@ -376,7 +381,7 @@ function signalStorage(
 			return null
 		},
 		storeSession: async (id: string, session: libsignal.SessionRecord) => {
-			const wireJid = await resolveSignalAddress(id)
+			const wireJid = await resolveLIDSignalAddress(id)
 			await keys.set({ session: { [wireJid]: session.serialize() } })
 		},
 		isTrustedIdentity: () => {

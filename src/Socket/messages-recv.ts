@@ -448,7 +448,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				messageRetryManager.schedulePhoneRequest(msgId, async () => {
 					try {
 						const requestId = await requestPlaceholderResend(msgKey)
-						logger.debug(`sendRetryRequest: requested placeholder resend (${requestId}) for message ${msgId} (scheduled)`)
+						logger.debug(
+							`sendRetryRequest: requested placeholder resend (${requestId}) for message ${msgId} (scheduled)`
+						)
 					} catch (error) {
 						logger.warn({ error, msgId }, 'failed to send scheduled phone request')
 					}
@@ -478,7 +480,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							t: node.attrs.t!,
 							v: '1',
 							// ADD ERROR FIELD
-						  error: '0'
+							error: '0'
 						}
 					},
 					{
