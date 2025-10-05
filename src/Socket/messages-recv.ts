@@ -5,6 +5,8 @@ import Long from 'long'
 import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import type {
+	GroupParticipant,
+	LIDMapping,
 	MessageReceiptType,
 	MessageRelayOptions,
 	MessageUserReceipt,
@@ -28,6 +30,7 @@ import {
 	derivePairingCodeKey,
 	encodeBigEndian,
 	encodeSignedDeviceIdentity,
+	extractAddressingContext,
 	getCallStatusFromNode,
 	getHistoryMsg,
 	getNextPreKeys,
@@ -51,6 +54,7 @@ import {
 	isJidGroup,
 	isJidStatusBroadcast,
 	isLidUser,
+	isPnUser,
 	jidDecode,
 	jidNormalizedUser,
 	S_WHATSAPP_NET
@@ -550,16 +554,22 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const handleGroupNotification = (participant: string, child: BinaryNode, msg: Partial<WAMessage>) => {
-		const participantJid = getBinaryNodeChild(child, 'participant')?.attrs?.jid || participant
-		// TODO: Add participant LID
+	const handleGroupNotification = (fullNode: BinaryNode, child: BinaryNode, msg: Partial<WAMessage>) => {
+		// TODO: Support PN/LID (Here is only LID now)
+
+		const actingParticipantLid = fullNode.attrs.participant
+		const actingParticipantPn = fullNode.attrs.participant_pn
+
+		const affectedParticipantLid = getBinaryNodeChild(child, 'participant')?.attrs?.jid || actingParticipantLid!
+		const affectedParticipantPn = getBinaryNodeChild(child, 'participant')?.attrs?.phone_number || actingParticipantPn!
+
 		switch (child?.tag) {
 			case 'create':
 				const metadata = extractGroupMetadata(child)
 
 				msg.messageStubType = WAMessageStubType.GROUP_CREATE
 				msg.messageStubParameters = [metadata.subject]
-				msg.key = { participant: metadata.owner }
+				msg.key = { participant: metadata.owner, participantAlt: metadata.ownerPn }
 
 				ev.emit('chats.upsert', [
 					{
@@ -571,7 +581,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				ev.emit('groups.upsert', [
 					{
 						...metadata,
-						author: participant
+						author: actingParticipantLid,
+						authorPn: actingParticipantPn
 					}
 				])
 				break
@@ -597,12 +608,22 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const stubType = `GROUP_PARTICIPANT_${child.tag.toUpperCase()}`
 				msg.messageStubType = WAMessageStubType[stubType as keyof typeof WAMessageStubType]
 
-				const participants = getBinaryNodeChildren(child, 'participant').map(p => p.attrs.jid!)
+				const participants = getBinaryNodeChildren(child, 'participant').map(({ attrs }) => {
+					// TODO: Store LID MAPPINGS
+					return {
+						id: attrs.jid!,
+						phoneNumber: isLidUser(attrs.jid) && isPnUser(attrs.phone_number) ? attrs.phone_number : undefined,
+						lid: isPnUser(attrs.jid) && isLidUser(attrs.lid) ? attrs.lid : undefined,
+						admin: (attrs.type || null) as GroupParticipant['admin']
+					}
+				})
+
 				if (
 					participants.length === 1 &&
 					// if recv. "remove" message and sender removed themselves
 					// mark as left
-					areJidsSameUser(participants[0], participant) &&
+					(areJidsSameUser(participants[0]!.id, actingParticipantLid) ||
+						areJidsSameUser(participants[0]!.id, actingParticipantPn)) &&
 					child.tag === 'remove'
 				) {
 					msg.messageStubType = WAMessageStubType.GROUP_PARTICIPANT_LEAVE
@@ -651,12 +672,20 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				break
 			case 'created_membership_requests':
 				msg.messageStubType = WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST_NON_ADMIN_ADD
-				msg.messageStubParameters = [participantJid, 'created', child.attrs.request_method!]
+				msg.messageStubParameters = [
+					{ lid: affectedParticipantLid, pn: affectedParticipantPn } as LIDMapping,
+					'created',
+					child.attrs.request_method!
+				]
 				break
 			case 'revoked_membership_requests':
-				const isDenied = areJidsSameUser(participantJid, participant)
+				const isDenied = areJidsSameUser(affectedParticipantLid, actingParticipantLid)
+				// TODO: LIDMAPPING SUPPORT
 				msg.messageStubType = WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST_NON_ADMIN_ADD
-				msg.messageStubParameters = [participantJid, isDenied ? 'revoked' : 'rejected']
+				msg.messageStubParameters = [
+					{ lid: affectedParticipantLid, pn: affectedParticipantPn } as LIDMapping,
+					isDenied ? 'revoked' : 'rejected'
+				]
 				break
 		}
 	}
@@ -690,7 +719,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await handleMexNewsletterNotification(node)
 				break
 			case 'w:gp2':
-				handleGroupNotification(node.attrs.participant!, child!, result)
+				// TODO: HANDLE PARTICIPANT_PN
+				handleGroupNotification(node, child!, result)
 				break
 			case 'mediaretry':
 				const event = decodeMediaRetryNode(node)
@@ -1083,10 +1113,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					const msg = await processNotification(node)
 					if (msg) {
 						const fromMe = areJidsSameUser(node.attrs.participant || remoteJid, authState.creds.me!.id)
+						const { senderAlt: participantAlt, addressingMode } = extractAddressingContext(node)
 						msg.key = {
 							remoteJid,
 							fromMe,
 							participant: node.attrs.participant,
+							participantAlt,
+							addressingMode,
 							id: node.attrs.id,
 							...(msg.key || {})
 						}

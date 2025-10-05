@@ -5,6 +5,8 @@ import type {
 	CacheStore,
 	Chat,
 	GroupMetadata,
+	GroupParticipant,
+	LIDMapping,
 	ParticipantAction,
 	RequestJoinAction,
 	RequestJoinMethod,
@@ -101,14 +103,14 @@ export const cleanMessage = (message: WAMessage, meId: string) => {
 	}
 }
 
-export const isRealMessage = (message: WAMessage, meId: string) => {
+// TODO: target:audit AUDIT THIS FUNCTION AGAIN
+export const isRealMessage = (message: WAMessage) => {
 	const normalizedContent = normalizeMessageContent(message.message)
 	const hasSomeContent = !!getContentType(normalizedContent)
 	return (
 		(!!normalizedContent ||
 			REAL_MSG_STUB_TYPES.has(message.messageStubType!) ||
-			(REAL_MSG_REQ_ME_STUB_TYPES.has(message.messageStubType!) &&
-				message.messageStubParameters?.some(p => areJidsSameUser(meId, p)))) &&
+			REAL_MSG_REQ_ME_STUB_TYPES.has(message.messageStubType!)) &&
 		hasSomeContent &&
 		!normalizedContent?.protocolMessage &&
 		!normalizedContent?.reactionMessage &&
@@ -188,7 +190,7 @@ const processMessage = async (
 	const { accountSettings } = creds
 
 	const chat: Partial<Chat> = { id: jidNormalizedUser(getChatId(message.key)) }
-	const isRealMsg = isRealMessage(message, meId)
+	const isRealMsg = isRealMessage(message)
 
 	if (isRealMsg) {
 		chat.messages = [{ message }]
@@ -362,18 +364,34 @@ const processMessage = async (
 	} else if (message.messageStubType) {
 		const jid = message.key?.remoteJid!
 		//let actor = whatsappID (message.participant)
-		let participants: string[]
+		let participants: GroupParticipant[]
 		const emitParticipantsUpdate = (action: ParticipantAction) =>
-			ev.emit('group-participants.update', { id: jid, author: message.participant!, participants, action })
+			ev.emit('group-participants.update', {
+				id: jid,
+				author: message.key.participant!,
+				authorPn: message.key.participantAlt!,
+				participants,
+				action
+			})
 		const emitGroupUpdate = (update: Partial<GroupMetadata>) => {
-			ev.emit('groups.update', [{ id: jid, ...update, author: message.participant ?? undefined }])
+			ev.emit('groups.update', [
+				{ id: jid, ...update, author: message.key.participant ?? undefined, authorPn: message.key.participantAlt }
+			])
 		}
 
-		const emitGroupRequestJoin = (participant: string, action: RequestJoinAction, method: RequestJoinMethod) => {
-			ev.emit('group.join-request', { id: jid, author: message.participant!, participant, action, method: method! })
+		const emitGroupRequestJoin = (participant: LIDMapping, action: RequestJoinAction, method: RequestJoinMethod) => {
+			ev.emit('group.join-request', {
+				id: jid,
+				author: message.key.participant!,
+				authorPn: message.key.participantAlt!,
+				participant: participant.lid,
+				participantPn: participant.pn,
+				action,
+				method: method!
+			})
 		}
 
-		const participantsIncludesMe = () => participants.find(jid => areJidsSameUser(meId, jid))
+		const participantsIncludesMe = () => participants.find(jid => areJidsSameUser(meId, jid.phoneNumber)) // ADD SUPPORT FOR LID
 
 		switch (message.messageStubType) {
 			case WAMessageStubType.GROUP_PARTICIPANT_CHANGE_NUMBER:
@@ -438,8 +456,8 @@ const processMessage = async (
 				const approvalMode = message.messageStubParameters?.[0]
 				emitGroupUpdate({ joinApprovalMode: approvalMode === 'on' })
 				break
-			case WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST_NON_ADMIN_ADD:
-				const participant = message.messageStubParameters?.[0] as string
+			case WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST_NON_ADMIN_ADD: // TODO: Add other events
+				const participant = message.messageStubParameters?.[0] as LIDMapping
 				const action = message.messageStubParameters?.[1] as RequestJoinAction
 				const method = message.messageStubParameters?.[2] as RequestJoinMethod
 				emitGroupRequestJoin(participant, action, method)
