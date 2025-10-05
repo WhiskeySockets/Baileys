@@ -5,7 +5,7 @@ import type { LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction } from 
 import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import type { ILogger } from '../Utils/logger'
-import { jidDecode, transferDevice } from '../WABinary'
+import { jidDecode, transferDevice, WAJIDDomains } from '../WABinary'
 import type { SenderKeyStore } from './Group/group_cipher'
 import { SenderKeyName } from './Group/sender-key-name'
 import { SenderKeyRecord } from './Group/sender-key-record'
@@ -321,7 +321,7 @@ export function makeLibSignalRepository(
 
 const jidToSignalProtocolAddress = (jid: string): libsignal.ProtocolAddress => {
 	const decoded = jidDecode(jid)!
-	const { user, device, server } = decoded
+	const { user, device, server, domainType } = decoded
 
 	if (!user) {
 		throw new Error(
@@ -329,8 +329,7 @@ const jidToSignalProtocolAddress = (jid: string): libsignal.ProtocolAddress => {
 		)
 	}
 
-	// LID addresses get _1 suffix for Signal protocol
-	const signalUser = server === 'lid' ? `${user}_1` : user
+	let signalUser = domainType !== WAJIDDomains.WHATSAPP ? `${user}_${domainType}`: user;
 	const finalDevice = device || 0
 
 	return new libsignal.ProtocolAddress(signalUser, finalDevice)

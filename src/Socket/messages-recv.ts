@@ -476,7 +476,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							count: retryCount.toString(),
 							id: node.attrs.id!,
 							t: node.attrs.t!,
-							v: '1'
+							v: '1',
+							// ADD ERROR FIELD
+						  error: '0'
 						}
 					},
 					{

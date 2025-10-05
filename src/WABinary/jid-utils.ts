@@ -49,7 +49,7 @@ export const jidDecode = (jid: string | undefined): FullJid | undefined => {
 	const userCombined = jid!.slice(0, sepIdx)
 
 	const [userAgent, device] = userCombined.split(':')
-	const user = userAgent!.split('_')[0]!
+	const [user, agent] = userAgent!.split('_')
 
 	let domainType = WAJIDDomains.WHATSAPP
 	if (server === 'lid') {
@@ -58,11 +58,13 @@ export const jidDecode = (jid: string | undefined): FullJid | undefined => {
 		domainType = WAJIDDomains.HOSTED
 	} else if (server === 'hosted.lid') {
 		domainType = WAJIDDomains.HOSTED_LID
+	} else if (agent) {
+		domainType = parseInt(agent)
 	}
 
 	return {
 		server: server as JidServer,
-		user,
+		user: user!,
 		domainType,
 		device: device ? +device : undefined
 	}
