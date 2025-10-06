@@ -740,7 +740,8 @@ export const normalizeMessageContent = (content: WAMessageContent | null | undef
 			message?.documentWithCaptionMessage ||
 			message?.viewOnceMessageV2 ||
 			message?.viewOnceMessageV2Extension ||
-			message?.editedMessage
+			message?.editedMessage ||
+			message?.associatedChildMessage
 		)
 	}
 }
