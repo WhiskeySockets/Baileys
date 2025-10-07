@@ -332,6 +332,10 @@ const jidToSignalProtocolAddress = (jid: string): libsignal.ProtocolAddress => {
 	const signalUser = domainType !== WAJIDDomains.WHATSAPP ? `${user}_${domainType}` : user
 	const finalDevice = device || 0
 
+	if (device == 99 && decoded.server !== 'hosted' && decoded.server !== 'hosted.lid') {
+		throw new Error('Unexpected non-hosted device JID with device 99. This ID seems invalid. ID:' + jid)
+	}
+
 	return new libsignal.ProtocolAddress(signalUser, finalDevice)
 }
 
