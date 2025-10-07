@@ -280,14 +280,15 @@ export const fetchLatestWaWebVersion = async () => {
 			const { execSync } = await import('child_process')
 			data = execSync('curl -s https://web.whatsapp.com/sw.js', {
 				encoding: 'utf8',
-				timeout: 10000,
+				timeout: 10000
 			})
 		} catch (error: any) {
-			const errorMsg = error?.code === 'ENOENT'
-				? 'curl command not found, please install curl'
-				: error?.killed
-				? 'Request timeout while fetching sw.js'
-				: `Failed to fetch sw.js: ${error?.message || 'Unknown error'}`
+			const errorMsg =
+				error?.code === 'ENOENT'
+					? 'curl command not found, please install curl'
+					: error?.killed
+						? 'Request timeout while fetching sw.js'
+						: `Failed to fetch sw.js: ${error?.message || 'Unknown error'}`
 
 			throw new Boom(errorMsg, {
 				statusCode: error?.code === 'ENOENT' ? 501 : 500,
