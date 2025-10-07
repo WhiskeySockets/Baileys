@@ -5,7 +5,24 @@ export const PSA_WID = '0@c.us'
 export const STORIES_JID = 'status@broadcast'
 export const META_AI_JID = '13135550002@c.us'
 
-export type JidServer = 'c.us' | 'g.us' | 'broadcast' | 's.whatsapp.net' | 'call' | 'lid' | 'newsletter' | 'bot'
+export type JidServer =
+	| 'c.us'
+	| 'g.us'
+	| 'broadcast'
+	| 's.whatsapp.net'
+	| 'call'
+	| 'lid'
+	| 'newsletter'
+	| 'bot'
+	| 'hosted'
+	| 'hosted.lid'
+
+export enum WAJIDDomains {
+	WHATSAPP = 0,
+	LID = 1,
+	HOSTED = 128,
+	HOSTED_LID = 129
+}
 
 export type JidWithDevice = {
 	user: string
@@ -22,6 +39,7 @@ export const jidEncode = (user: string | number | null, server: JidServer, devic
 }
 
 export const jidDecode = (jid: string | undefined): FullJid | undefined => {
+	// todo: investigate how to implement hosted ids in this case
 	const sepIdx = typeof jid === 'string' ? jid.indexOf('@') : -1
 	if (sepIdx < 0) {
 		return undefined
@@ -31,12 +49,23 @@ export const jidDecode = (jid: string | undefined): FullJid | undefined => {
 	const userCombined = jid!.slice(0, sepIdx)
 
 	const [userAgent, device] = userCombined.split(':')
-	const user = userAgent!.split('_')[0]!
+	const [user, agent] = userAgent!.split('_')
+
+	let domainType = WAJIDDomains.WHATSAPP
+	if (server === 'lid') {
+		domainType = WAJIDDomains.LID
+	} else if (server === 'hosted') {
+		domainType = WAJIDDomains.HOSTED
+	} else if (server === 'hosted.lid') {
+		domainType = WAJIDDomains.HOSTED_LID
+	} else if (agent) {
+		domainType = parseInt(agent)
+	}
 
 	return {
 		server: server as JidServer,
-		user,
-		domainType: server === 'lid' ? 1 : 0,
+		user: user!,
+		domainType,
 		device: device ? +device : undefined
 	}
 }
@@ -58,6 +87,10 @@ export const isJidGroup = (jid: string | undefined) => jid?.endsWith('@g.us')
 export const isJidStatusBroadcast = (jid: string) => jid === 'status@broadcast'
 /** is the jid a newsletter */
 export const isJidNewsletter = (jid: string | undefined) => jid?.endsWith('@newsletter')
+/** is the jid a hosted PN */
+export const isJidHostedPnUser = (jid: string | undefined) => jid?.endsWith('@hosted')
+/** is the jid a hosted LID */
+export const isJidHostedLidUser = (jid: string | undefined) => jid?.endsWith('@hosted.lid')
 
 const botRegexp = /^1313555\d{4}$|^131655500\d{2}$/
 

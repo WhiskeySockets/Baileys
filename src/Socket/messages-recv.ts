@@ -5,12 +5,15 @@ import Long from 'long'
 import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import type {
+	GroupParticipant,
+	LIDMapping,
 	MessageReceiptType,
 	MessageRelayOptions,
 	MessageUserReceipt,
 	SocketConfig,
 	WACallEvent,
 	WACallUpdateType,
+	WAMessage,
 	WAMessageKey,
 	WAPatchName
 } from '../Types'
@@ -27,6 +30,7 @@ import {
 	derivePairingCodeKey,
 	encodeBigEndian,
 	encodeSignedDeviceIdentity,
+	extractAddressingContext,
 	getCallStatusFromNode,
 	getHistoryMsg,
 	getNextPreKeys,
@@ -34,7 +38,6 @@ import {
 	hkdf,
 	MISSING_KEYS_ERROR_TEXT,
 	NACK_REASONS,
-	NO_MESSAGE_FOUND_ERROR_TEXT,
 	unixTimestampSeconds,
 	xmppPreKey,
 	xmppSignedPreKey
@@ -51,6 +54,7 @@ import {
 	isJidGroup,
 	isJidStatusBroadcast,
 	isLidUser,
+	isPnUser,
 	jidDecode,
 	jidNormalizedUser,
 	S_WHATSAPP_NET
@@ -294,8 +298,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							typeof plaintextNode.content === 'string'
 								? Buffer.from(plaintextNode.content, 'binary')
 								: Buffer.from(plaintextNode.content as Uint8Array)
-						const messageProto = proto.Message.decode(contentBuf)
-						const fullMessage = proto.WebMessageInfo.create({
+						const messageProto = proto.Message.decode(contentBuf).toJSON()
+						const fullMessage = proto.WebMessageInfo.fromObject({
 							key: {
 								remoteJid: from,
 								id: child.attrs.message_id || child.attrs.server_id,
@@ -303,7 +307,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							},
 							message: messageProto,
 							messageTimestamp: +child.attrs.t!
-						})
+						}).toJSON() as WAMessage
 						await upsertMessage(fullMessage, 'append')
 						logger.info('Processed plaintext newsletter message')
 					} catch (error) {
@@ -447,8 +451,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				// Schedule phone request with delay (like whatsmeow)
 				messageRetryManager.schedulePhoneRequest(msgId, async () => {
 					try {
-						const msgId = await requestPlaceholderResend(msgKey)
-						logger.debug(`sendRetryRequest: requested placeholder resend for message ${msgId} (scheduled)`)
+						const requestId = await requestPlaceholderResend(msgKey)
+						logger.debug(
+							`sendRetryRequest: requested placeholder resend (${requestId}) for message ${msgId} (scheduled)`
+						)
 					} catch (error) {
 						logger.warn({ error, msgId }, 'failed to send scheduled phone request')
 					}
@@ -476,7 +482,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							count: retryCount.toString(),
 							id: node.attrs.id!,
 							t: node.attrs.t!,
-							v: '1'
+							v: '1',
+							// ADD ERROR FIELD
+							error: '0'
 						}
 					},
 					{
@@ -546,16 +554,22 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const handleGroupNotification = (participant: string, child: BinaryNode, msg: Partial<proto.IWebMessageInfo>) => {
-		const participantJid = getBinaryNodeChild(child, 'participant')?.attrs?.jid || participant
-		// TODO: Add participant LID
+	const handleGroupNotification = (fullNode: BinaryNode, child: BinaryNode, msg: Partial<WAMessage>) => {
+		// TODO: Support PN/LID (Here is only LID now)
+
+		const actingParticipantLid = fullNode.attrs.participant
+		const actingParticipantPn = fullNode.attrs.participant_pn
+
+		const affectedParticipantLid = getBinaryNodeChild(child, 'participant')?.attrs?.jid || actingParticipantLid!
+		const affectedParticipantPn = getBinaryNodeChild(child, 'participant')?.attrs?.phone_number || actingParticipantPn!
+
 		switch (child?.tag) {
 			case 'create':
 				const metadata = extractGroupMetadata(child)
 
 				msg.messageStubType = WAMessageStubType.GROUP_CREATE
 				msg.messageStubParameters = [metadata.subject]
-				msg.key = { participant: metadata.owner }
+				msg.key = { participant: metadata.owner, participantAlt: metadata.ownerPn }
 
 				ev.emit('chats.upsert', [
 					{
@@ -567,7 +581,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				ev.emit('groups.upsert', [
 					{
 						...metadata,
-						author: participant
+						author: actingParticipantLid,
+						authorPn: actingParticipantPn
 					}
 				])
 				break
@@ -593,12 +608,22 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const stubType = `GROUP_PARTICIPANT_${child.tag.toUpperCase()}`
 				msg.messageStubType = WAMessageStubType[stubType as keyof typeof WAMessageStubType]
 
-				const participants = getBinaryNodeChildren(child, 'participant').map(p => p.attrs.jid!)
+				const participants = getBinaryNodeChildren(child, 'participant').map(({ attrs }) => {
+					// TODO: Store LID MAPPINGS
+					return {
+						id: attrs.jid!,
+						phoneNumber: isLidUser(attrs.jid) && isPnUser(attrs.phone_number) ? attrs.phone_number : undefined,
+						lid: isPnUser(attrs.jid) && isLidUser(attrs.lid) ? attrs.lid : undefined,
+						admin: (attrs.type || null) as GroupParticipant['admin']
+					}
+				})
+
 				if (
 					participants.length === 1 &&
 					// if recv. "remove" message and sender removed themselves
 					// mark as left
-					areJidsSameUser(participants[0], participant) &&
+					(areJidsSameUser(participants[0]!.id, actingParticipantLid) ||
+						areJidsSameUser(participants[0]!.id, actingParticipantPn)) &&
 					child.tag === 'remove'
 				) {
 					msg.messageStubType = WAMessageStubType.GROUP_PARTICIPANT_LEAVE
@@ -647,18 +672,26 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				break
 			case 'created_membership_requests':
 				msg.messageStubType = WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST_NON_ADMIN_ADD
-				msg.messageStubParameters = [participantJid, 'created', child.attrs.request_method!]
+				msg.messageStubParameters = [
+					{ lid: affectedParticipantLid, pn: affectedParticipantPn } as LIDMapping,
+					'created',
+					child.attrs.request_method!
+				]
 				break
 			case 'revoked_membership_requests':
-				const isDenied = areJidsSameUser(participantJid, participant)
+				const isDenied = areJidsSameUser(affectedParticipantLid, actingParticipantLid)
+				// TODO: LIDMAPPING SUPPORT
 				msg.messageStubType = WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST_NON_ADMIN_ADD
-				msg.messageStubParameters = [participantJid, isDenied ? 'revoked' : 'rejected']
+				msg.messageStubParameters = [
+					{ lid: affectedParticipantLid, pn: affectedParticipantPn } as LIDMapping,
+					isDenied ? 'revoked' : 'rejected'
+				]
 				break
 		}
 	}
 
 	const processNotification = async (node: BinaryNode) => {
-		const result: Partial<proto.IWebMessageInfo> = {}
+		const result: Partial<WAMessage> = {}
 		const [child] = getAllBinaryNodeChildren(node)
 		const nodeType = node.attrs.type
 		const from = jidNormalizedUser(node.attrs.from)
@@ -686,7 +719,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await handleMexNewsletterNotification(node)
 				break
 			case 'w:gp2':
-				handleGroupNotification(node.attrs.participant!, child!, result)
+				// TODO: HANDLE PARTICIPANT_PN
+				handleGroupNotification(node, child!, result)
 				break
 			case 'mediaretry':
 				const event = decodeMediaRetryNode(node)
@@ -874,7 +908,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await msgRetryCache.set(key, newValue)
 	}
 
-	const sendMessagesAgain = async (key: proto.IMessageKey, ids: string[], retryNode: BinaryNode) => {
+	const sendMessagesAgain = async (key: WAMessageKey, ids: string[], retryNode: BinaryNode) => {
 		const remoteJid = key.remoteJid!
 		const participant = key.participant || remoteJid
 
@@ -939,7 +973,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}
 		}
 
-		await assertSessions([participant], shouldRecreateSession)
+		await assertSessions([participant])
 
 		if (isJidGroup(remoteJid)) {
 			await authState.keys.set({ 'sender-key-memory': { [remoteJid]: null } })
@@ -1079,17 +1113,20 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					const msg = await processNotification(node)
 					if (msg) {
 						const fromMe = areJidsSameUser(node.attrs.participant || remoteJid, authState.creds.me!.id)
+						const { senderAlt: participantAlt, addressingMode } = extractAddressingContext(node)
 						msg.key = {
 							remoteJid,
 							fromMe,
 							participant: node.attrs.participant,
+							participantAlt,
+							addressingMode,
 							id: node.attrs.id,
 							...(msg.key || {})
 						}
 						msg.participant ??= node.attrs.participant
 						msg.messageTimestamp = +node.attrs.t!
 
-						const fullMsg = proto.WebMessageInfo.create(msg as proto.IWebMessageInfo)
+						const fullMsg = proto.WebMessageInfo.fromObject(msg) as WAMessage
 						await upsertMessage(fullMsg, 'append')
 					}
 				})
@@ -1102,7 +1139,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const handleMessage = async (node: BinaryNode) => {
 		if (shouldIgnoreJid(node.attrs.from!) && node.attrs.from !== '@s.whatsapp.net') {
 			logger.debug({ key: node.attrs.key }, 'ignored message')
-			await sendMessageAck(node)
+			await sendMessageAck(node, NACK_REASONS.UnhandledError)
 			return
 		}
 
@@ -1115,23 +1152,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			return
 		}
 
-		let response: string | undefined
-
-		if (getBinaryNodeChild(node, 'unavailable') && !encNode) {
-			await sendMessageAck(node)
-			const { key } = decodeMessageNode(node, authState.creds.me!.id, authState.creds.me!.lid || '').fullMessage
-			response = await requestPlaceholderResend(key) // TODO: DEPRECATE THIS LOGIC AND PASS IT OFF TO THE RETRY MANAGER
-			if (response === 'RESOLVED') {
-				return
-			}
-
-			logger.debug('received unavailable message, acked and requested resend from phone')
-		} else {
-			if (await placeholderResendCache.get(node.attrs.id!)) {
-				await placeholderResendCache.del(node.attrs.id!)
-			}
-		}
-
 		const {
 			fullMessage: msg,
 			category,
@@ -1139,36 +1159,19 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			decrypt
 		} = decryptMessageNode(node, authState.creds.me!.id, authState.creds.me!.lid || '', signalRepository, logger)
 
-		if (response && msg?.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT) {
-			msg.messageStubParameters = [NO_MESSAGE_FOUND_ERROR_TEXT, response]
-		}
-
-		if (
-			msg.message?.protocolMessage?.type === proto.Message.ProtocolMessage.Type.SHARE_PHONE_NUMBER &&
-			node.attrs.sender_pn
-		) {
-			const lid = jidNormalizedUser(node.attrs.from),
-				pn = jidNormalizedUser(node.attrs.sender_pn)
-			ev.emit('lid-mapping.update', { lid, pn })
-			await signalRepository.lidMapping.storeLIDPNMappings([{ lid, pn }])
-		}
-
 		const alt = msg.key.participantAlt || msg.key.remoteJidAlt
 		// store new mappings we didn't have before
 		if (!!alt) {
 			const altServer = jidDecode(alt)?.server
+			const primaryJid = msg.key.participant || msg.key.remoteJid!
 			if (altServer === 'lid') {
-				if (typeof (await signalRepository.lidMapping.getPNForLID(alt)) === 'string') {
-					await signalRepository.lidMapping.storeLIDPNMappings([
-						{ lid: alt, pn: msg.key.participant || msg.key.remoteJid! }
-					])
+				if (!(await signalRepository.lidMapping.getPNForLID(alt))) {
+					await signalRepository.lidMapping.storeLIDPNMappings([{ lid: alt, pn: primaryJid }])
+					await signalRepository.migrateSession(primaryJid, alt)
 				}
 			} else {
-				if (typeof (await signalRepository.lidMapping.getLIDForPN(alt)) === 'string') {
-					await signalRepository.lidMapping.storeLIDPNMappings([
-						{ lid: msg.key.participant || msg.key.remoteJid!, pn: alt }
-					])
-				}
+				await signalRepository.lidMapping.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
+				await signalRepository.migrateSession(alt, primaryJid)
 			}
 		}
 
@@ -1203,11 +1206,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							try {
 								if (!ws.isOpen) {
 									logger.debug({ node }, 'Connection closed, skipping retry')
-									return
-								}
-
-								if (getBinaryNodeChild(node, 'unavailable')) {
-									logger.debug('Message unavailable, skipping retry')
 									return
 								}
 
@@ -1270,8 +1268,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 
 					cleanMessage(msg, authState.creds.me!.id)
-
-					await sendMessageAck(node)
 
 					await upsertMessage(msg, node.attrs.offline ? 'append' : 'notify')
 				})
@@ -1486,7 +1482,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		// missed call + group call notification message generation
 		if (call.status === 'timeout' || (call.status === 'offer' && call.isGroup)) {
-			const msg: proto.IWebMessageInfo = {
+			const msg: WAMessage = {
 				key: {
 					remoteJid: call.chatId,
 					id: call.id,
@@ -1506,7 +1502,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				msg.message = { call: { callKey: Buffer.from(call.id) } }
 			}
 
-			const protoMsg = proto.WebMessageInfo.create(msg)
+			const protoMsg = proto.WebMessageInfo.fromObject(msg) as WAMessage
 			upsertMessage(protoMsg, call.offline ? 'append' : 'notify')
 		}
 	})

@@ -11,12 +11,12 @@ import type {
 import {
 	assertNodeErrorFree,
 	type BinaryNode,
+	type FullJid,
 	getBinaryNodeChild,
 	getBinaryNodeChildBuffer,
 	getBinaryNodeChildren,
 	getBinaryNodeChildUInt,
 	jidDecode,
-	type JidWithDevice,
 	S_WHATSAPP_NET
 } from '../WABinary'
 import type { DeviceListData, ParsedDeviceInfo, USyncQueryResultList } from '../WAUSync'
@@ -106,6 +106,7 @@ export const parseAndInjectE2ESessions = async (node: BinaryNode, repository: Si
 	// It's rare case when you need to E2E sessions for so many users, but it's possible
 	const chunkSize = 100
 	const chunks = chunk(nodes, chunkSize)
+
 	for (const nodesChunk of chunks) {
 		await Promise.all(
 			nodesChunk.map(async (node: BinaryNode) => {
@@ -113,6 +114,7 @@ export const parseAndInjectE2ESessions = async (node: BinaryNode, repository: Si
 				const key = getBinaryNodeChild(node, 'key')!
 				const identity = getBinaryNodeChildBuffer(node, 'identity')!
 				const jid = node.attrs.jid!
+
 				const registrationId = getBinaryNodeChildUInt(node, 'registration', 4)
 
 				await repository.injectE2ESession({
@@ -132,20 +134,21 @@ export const parseAndInjectE2ESessions = async (node: BinaryNode, repository: Si
 export const extractDeviceJids = (result: USyncQueryResultList[], myJid: string, excludeZeroDevices: boolean) => {
 	const { user: myUser, device: myDevice } = jidDecode(myJid)!
 
-	const extracted: JidWithDevice[] = []
+	const extracted: FullJid[] = []
 
 	for (const userResult of result) {
+		// TODO: ADD SUPPORT FOR HOSTED JIDS
 		const { devices, id } = userResult as { devices: ParsedDeviceInfo; id: string }
 		const { user } = jidDecode(id)!
 		const deviceList = devices?.deviceList as DeviceListData[]
 		if (Array.isArray(deviceList)) {
-			for (const { id: device, keyIndex } of deviceList) {
+			for (const { id: device, keyIndex, isHosted } of deviceList) {
 				if (
 					(!excludeZeroDevices || device !== 0) && // if zero devices are not-excluded, or device is non zero
 					(myUser !== user || myDevice !== device) && // either different user or if me user, not this device
 					(device === 0 || !!keyIndex) // ensure that "key-index" is specified for "non-zero" devices, produces a bad req otherwise
 				) {
-					extracted.push({ user, device })
+					extracted.push({ user, device, server: isHosted ? 'hosted' : 's.whatsapp.net' })
 				}
 			}
 		}

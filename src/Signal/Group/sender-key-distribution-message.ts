@@ -1,6 +1,13 @@
 import { proto } from '../../../WAProto/index.js'
 import { CiphertextMessage } from './ciphertext-message'
 
+interface SenderKeyDistributionMessageStructure {
+	id: number
+	iteration: number
+	chainKey: string | Uint8Array
+	signingKey: string | Uint8Array
+}
+
 export class SenderKeyDistributionMessage extends CiphertextMessage {
 	private readonly id: number
 	private readonly iteration: number
@@ -20,7 +27,9 @@ export class SenderKeyDistributionMessage extends CiphertextMessage {
 		if (serialized) {
 			try {
 				const message = serialized.slice(1)
-				const distributionMessage = proto.SenderKeyDistributionMessage.decode(message)
+				const distributionMessage = proto.SenderKeyDistributionMessage.decode(
+					message
+				).toJSON() as SenderKeyDistributionMessageStructure
 
 				this.serialized = serialized
 				this.id = distributionMessage.id
@@ -73,11 +82,11 @@ export class SenderKeyDistributionMessage extends CiphertextMessage {
 	}
 
 	public getChainKey(): Uint8Array {
-		return typeof this.chainKey === 'string' ? Buffer.from(this.chainKey, 'base64') : this.chainKey
+		return this.chainKey
 	}
 
 	public getSignatureKey(): Uint8Array {
-		return typeof this.signatureKey === 'string' ? Buffer.from(this.signatureKey, 'base64') : this.signatureKey
+		return this.signatureKey
 	}
 
 	public getId(): number {

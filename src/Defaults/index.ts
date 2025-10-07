@@ -1,7 +1,7 @@
 import { proto } from '../../WAProto/index.js'
 import { makeLibSignalRepository } from '../Signal/libsignal'
 import type { AuthenticationState, SocketConfig, WAVersion } from '../Types'
-import { Browsers } from '../Utils'
+import { Browsers } from '../Utils/browser-utils'
 import logger from '../Utils/logger'
 
 const version = [2, 3000, 1023223821]
@@ -14,6 +14,11 @@ export const CALL_AUDIO_PREFIX = 'https://call.whatsapp.com/voice/'
 export const DEF_CALLBACK_PREFIX = 'CB:'
 export const DEF_TAG_PREFIX = 'TAG:'
 export const PHONE_CONNECTION_CB = 'CB:Pong'
+
+export const WA_ADV_ACCOUNT_SIG_PREFIX = Buffer.from([6, 0])
+export const WA_ADV_DEVICE_SIG_PREFIX = Buffer.from([6, 1])
+export const WA_ADV_HOSTED_ACCOUNT_SIG_PREFIX = Buffer.from([6, 5])
+export const WA_ADV_HOSTED_DEVICE_SIG_PREFIX = Buffer.from([6, 6])
 
 export const WA_DEFAULT_EPHEMERAL = 7 * 24 * 60 * 60
 

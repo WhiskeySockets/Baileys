@@ -12,7 +12,7 @@ import {
 	NOISE_WA_HEADER,
 	UPLOAD_TIMEOUT
 } from '../Defaults'
-import type { SocketConfig } from '../Types'
+import type { LIDMapping, SocketConfig } from '../Types'
 import { DisconnectReason } from '../Types'
 import {
 	addTransactionCapability,
@@ -28,11 +28,11 @@ import {
 	getCodeFromWSError,
 	getErrorCodeFromStreamError,
 	getNextPreKeysNode,
-	getPlatformId,
 	makeEventBuffer,
 	makeNoiseHandler,
 	promiseTimeout
 } from '../Utils'
+import { getPlatformId } from '../Utils/browser-utils'
 import {
 	assertNodeErrorFree,
 	type BinaryNode,
@@ -41,6 +41,7 @@ import {
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
 	isLidUser,
+	jidDecode,
 	jidEncode,
 	S_WHATSAPP_NET
 } from '../WABinary'
@@ -255,30 +256,59 @@ export const makeSocket = (config: SocketConfig) => {
 		return usyncQuery.parseUSyncQueryResult(result)
 	}
 
-	const onWhatsApp = async (...jids: string[]) => {
-		const usyncQuery = new USyncQuery().withLIDProtocol().withContactProtocol()
+	const onWhatsApp = async (...phoneNumber: string[]) => {
+		let usyncQuery = new USyncQuery()
 
-		for (const jid of jids) {
+		let contactEnabled = false
+		for (const jid of phoneNumber) {
 			if (isLidUser(jid)) {
-				usyncQuery.withUser(new USyncUser().withId(jid)) // intentional
+				logger?.warn('LIDs are not supported with onWhatsApp')
+				continue
 			} else {
+				if (!contactEnabled) {
+					contactEnabled = true
+					usyncQuery = usyncQuery.withContactProtocol()
+				}
+
 				const phone = `+${jid.replace('+', '').split('@')[0]?.split(':')[0]}`
 				usyncQuery.withUser(new USyncUser().withPhone(phone))
 			}
 		}
 
+		if (usyncQuery.users.length === 0) {
+			return [] // return early without forcing an empty query
+		}
+
 		const results = await executeUSyncQuery(usyncQuery)
 
 		if (results) {
-			if (results.list.filter(a => !!a.lid).length > 0) {
-				const lidOnly = results.list.filter(a => !!a.lid)
-				await signalRepository.lidMapping.storeLIDPNMappings(lidOnly.map(a => ({ pn: a.id, lid: a.lid as string })))
-			}
-
-			return results.list
-				.filter(a => !!a.contact)
-				.map(({ contact, id, lid }) => ({ jid: id, exists: contact as boolean, lid: lid as string }))
+			return results.list.filter(a => !!a.contact).map(({ contact, id }) => ({ jid: id, exists: contact as boolean }))
 		}
+	}
+
+	const pnFromLIDUSync = async (jids: string[]): Promise<LIDMapping[] | undefined> => {
+		const usyncQuery = new USyncQuery().withLIDProtocol().withContext('background')
+
+		for (const jid of jids) {
+			if (isLidUser(jid)) {
+				logger?.warn('LID user found in LID fetch call')
+				continue
+			} else {
+				usyncQuery.withUser(new USyncUser().withId(jid))
+			}
+		}
+
+		if (usyncQuery.users.length === 0) {
+			return [] // return early without forcing an empty query
+		}
+
+		const results = await executeUSyncQuery(usyncQuery)
+
+		if (results) {
+			return results.list.filter(a => !!a.lid).map(({ lid, id }) => ({ pn: id, lid: lid as string }))
+		}
+
+		return []
 	}
 
 	const ev = makeEventBuffer(logger)
@@ -286,7 +316,7 @@ export const makeSocket = (config: SocketConfig) => {
 	const { creds } = authState
 	// add transaction capability
 	const keys = addTransactionCapability(authState.keys, logger, transactionOpts)
-	const signalRepository = makeSignalRepository({ creds, keys }, onWhatsApp)
+	const signalRepository = makeSignalRepository({ creds, keys }, logger, pnFromLIDUSync)
 
 	let lastDateRecv: Date
 	let epoch = 1
@@ -334,7 +364,7 @@ export const makeSocket = (config: SocketConfig) => {
 		let helloMsg: proto.IHandshakeMessage = {
 			clientHello: { ephemeral: ephemeralKeyPair.public }
 		}
-		helloMsg = proto.HandshakeMessage.create(helloMsg)
+		helloMsg = proto.HandshakeMessage.fromObject(helloMsg)
 
 		logger.info({ browser, helloMsg }, 'connected to WA')
 
@@ -853,8 +883,16 @@ export const makeSocket = (config: SocketConfig) => {
 					// Store our own LID-PN mapping
 					await signalRepository.lidMapping.storeLIDPNMappings([{ lid: myLID, pn: myPN }])
 
-					// Create LID session for ourselves (whatsmeow pattern)
-					await signalRepository.migrateSession([myPN], myLID)
+					// Create device list for our own user (needed for bulk migration)
+					const { user, device } = jidDecode(myPN)!
+					await authState.keys.set({
+						'device-list': {
+							[user]: [device?.toString() || '0']
+						}
+					})
+
+					// migrate our own session
+					await signalRepository.migrateSession(myPN, myLID)
 
 					logger.info({ myPN, myLID }, 'Own LID session created successfully')
 				} catch (error) {

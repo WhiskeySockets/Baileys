@@ -1,7 +1,7 @@
 {
   "name": "baileys",
   "type": "module",
-  "version": "7.0.0-rc.3",
+  "version": "7.0.0-rc.5",
   "description": "A WebSockets library for interacting with WhatsApp Web",
   "keywords": [
     "whatsapp",
@@ -43,10 +43,10 @@
     "@cacheable/node-cache": "^1.4.0",
     "@hapi/boom": "^9.1.3",
     "async-mutex": "^0.5.0",
-    "axios": "^1.6.0",
     "libsignal": "git+https://github.com/whiskeysockets/libsignal-node",
     "lru-cache": "^11.1.0",
     "music-metadata": "^11.7.0",
+    "p-queue": "^9.0.0",
     "pino": "^9.6",
     "protobufjs": "^7.2.4",
     "whatsapp-rust-bridge": "^0.1.6",

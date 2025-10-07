@@ -78,7 +78,7 @@ export const getBinaryNodeMessages = ({ content }: BinaryNode) => {
 	if (Array.isArray(content)) {
 		for (const item of content) {
 			if (item.tag === 'message') {
-				msgs.push(proto.WebMessageInfo.decode(item.content as Uint8Array))
+				msgs.push(proto.WebMessageInfo.decode(item.content as Uint8Array).toJSON() as proto.WebMessageInfo)
 			}
 		}
 	}
