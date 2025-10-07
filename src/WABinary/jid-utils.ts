@@ -34,6 +34,20 @@ export type FullJid = JidWithDevice & {
 	domainType?: number
 }
 
+export const getServerFromDomainType = (initialServer: string, domainType?: WAJIDDomains): JidServer => {
+	switch(domainType) {
+		case WAJIDDomains.LID:
+			return 'lid'
+		case WAJIDDomains.HOSTED:
+			return 'hosted'
+		case WAJIDDomains.HOSTED_LID:
+			return 'hosted.lid'
+		case WAJIDDomains.WHATSAPP:
+		default:
+			return initialServer
+	}
+}
+
 export const jidEncode = (user: string | number | null, server: JidServer, device?: number, agent?: number) => {
 	return `${user || ''}${!!agent ? `_${agent}` : ''}${!!device ? `:${device}` : ''}@${server}`
 }

@@ -42,6 +42,7 @@ import {
 	type FullJid,
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
+	getServerFromDomainType,
 	isJidGroup,
 	isJidHostedLidUser,
 	isJidHostedPnUser,
@@ -320,9 +321,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 				// Process all devices for this user
 				for (const item of userDevices) {
+					const deterministicServer = getServerFromDomainType(item.server, item.domainType)
 					const finalJid = isLidUser
-						? jidEncode(user, item.server, item.device, item.domainType)
-						: jidEncode(item.user, item.server, item.device, item.domainType)
+						? jidEncode(user, deterministicServer, item.device)
+						: jidEncode(item.user, deterministicServer, item.device)
 
 					deviceResults.push({
 						...item,
