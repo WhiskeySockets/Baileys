@@ -629,7 +629,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					msg.messageStubType = WAMessageStubType.GROUP_PARTICIPANT_LEAVE
 				}
 
-				msg.messageStubParameters = participants
+				msg.messageStubParameters = participants.map(a => JSON.stringify(a))
 				break
 			case 'subject':
 				msg.messageStubType = WAMessageStubType.GROUP_CHANGE_SUBJECT
@@ -673,7 +673,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			case 'created_membership_requests':
 				msg.messageStubType = WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST_NON_ADMIN_ADD
 				msg.messageStubParameters = [
-					{ lid: affectedParticipantLid, pn: affectedParticipantPn } as LIDMapping,
+					JSON.stringify({ lid: affectedParticipantLid, pn: affectedParticipantPn }),
 					'created',
 					child.attrs.request_method!
 				]
@@ -683,7 +683,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				// TODO: LIDMAPPING SUPPORT
 				msg.messageStubType = WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST_NON_ADMIN_ADD
 				msg.messageStubParameters = [
-					{ lid: affectedParticipantLid, pn: affectedParticipantPn } as LIDMapping,
+					JSON.stringify({ lid: affectedParticipantLid, pn: affectedParticipantPn }),
 					isDenied ? 'revoked' : 'rejected'
 				]
 				break
