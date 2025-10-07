@@ -391,16 +391,48 @@ const processMessage = async (
 			})
 		}
 
-		const participantsIncludesMe = () => participants.find(jid => areJidsSameUser(meId, jid.phoneNumber)) // ADD SUPPORT FOR LID
+		const convertToGroupParticipants = (params: any[]): GroupParticipant[] => {
+			if (!params || !params.length) return []
+			
+			return params.map(param => {
+				if (typeof param === 'string') {
+					try {
+						const parsed = JSON.parse(param)
+						if (typeof parsed === 'object' && parsed !== null && 'id' in parsed) {
+							return parsed as GroupParticipant
+						}
+					} catch {
+						// Not JSON, treat as simple JID
+					}
+					
+					return {
+						id: param,
+						phoneNumber: param
+					} as GroupParticipant
+				}
+				
+				if (typeof param === 'object' && param !== null && 'id' in param) {
+					return param as GroupParticipant
+				}
+				
+				logger?.warn({ param, type: typeof param }, 'unexpected participant format in messageStubParameters')
+				return {
+					id: String(param),
+					phoneNumber: String(param)
+				} as GroupParticipant
+			})
+		}
+
+		const participantsIncludesMe = () => participants.find(jid => areJidsSameUser(meId, jid.phoneNumber || jid.lid || jid.id))
 
 		switch (message.messageStubType) {
 			case WAMessageStubType.GROUP_PARTICIPANT_CHANGE_NUMBER:
-				participants = message.messageStubParameters || []
+				participants = convertToGroupParticipants(message.messageStubParameters || [])
 				emitParticipantsUpdate('modify')
 				break
 			case WAMessageStubType.GROUP_PARTICIPANT_LEAVE:
 			case WAMessageStubType.GROUP_PARTICIPANT_REMOVE:
-				participants = message.messageStubParameters || []
+				participants = convertToGroupParticipants(message.messageStubParameters || [])
 				emitParticipantsUpdate('remove')
 				// mark the chat read only if you left the group
 				if (participantsIncludesMe()) {
@@ -411,7 +443,7 @@ const processMessage = async (
 			case WAMessageStubType.GROUP_PARTICIPANT_ADD:
 			case WAMessageStubType.GROUP_PARTICIPANT_INVITE:
 			case WAMessageStubType.GROUP_PARTICIPANT_ADD_REQUEST_JOIN:
-				participants = message.messageStubParameters || []
+				participants = convertToGroupParticipants(message.messageStubParameters || [])
 				if (participantsIncludesMe()) {
 					chat.readOnly = false
 				}
@@ -419,11 +451,11 @@ const processMessage = async (
 				emitParticipantsUpdate('add')
 				break
 			case WAMessageStubType.GROUP_PARTICIPANT_DEMOTE:
-				participants = message.messageStubParameters || []
+				participants = convertToGroupParticipants(message.messageStubParameters || [])
 				emitParticipantsUpdate('demote')
 				break
 			case WAMessageStubType.GROUP_PARTICIPANT_PROMOTE:
-				participants = message.messageStubParameters || []
+				participants = convertToGroupParticipants(message.messageStubParameters || [])
 				emitParticipantsUpdate('promote')
 				break
 			case WAMessageStubType.GROUP_CHANGE_ANNOUNCE:

@@ -609,21 +609,23 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				msg.messageStubType = WAMessageStubType[stubType as keyof typeof WAMessageStubType]
 
 				const participants = getBinaryNodeChildren(child, 'participant').map(({ attrs }) => {
-					// TODO: Store LID MAPPINGS
-					return {
-						id: attrs.jid!,
-						phoneNumber: isLidUser(attrs.jid) && isPnUser(attrs.phone_number) ? attrs.phone_number : undefined,
-						lid: isPnUser(attrs.jid) && isLidUser(attrs.lid) ? attrs.lid : undefined,
-						admin: (attrs.type || null) as GroupParticipant['admin']
-					}
+					const jid = attrs.jid!
+					const lid = (isPnUser(jid) && isLidUser(attrs.lid)) ? attrs.lid : undefined
+					const pn = (isLidUser(jid) && isPnUser(attrs.phone_number)) ? attrs.phone_number : undefined
+					const admin = attrs.type || null
+					
+					return JSON.stringify({
+						id: jid,
+						lid,
+						phoneNumber: pn,
+						admin
+					})
 				})
 
 				if (
 					participants.length === 1 &&
-					// if recv. "remove" message and sender removed themselves
-					// mark as left
-					(areJidsSameUser(participants[0]!.id, actingParticipantLid) ||
-						areJidsSameUser(participants[0]!.id, actingParticipantPn)) &&
+					(areJidsSameUser(JSON.parse(participants[0]!).id, actingParticipantLid) ||
+						areJidsSameUser(JSON.parse(participants[0]!).id, actingParticipantPn)) &&
 					child.tag === 'remove'
 				) {
 					msg.messageStubType = WAMessageStubType.GROUP_PARTICIPANT_LEAVE
