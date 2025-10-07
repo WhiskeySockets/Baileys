@@ -62,10 +62,12 @@ export const generateLoginNode = (userJid: string, config: SocketConfig): proto.
 	const { user, device } = jidDecode(userJid)!
 	const payload: proto.IClientPayload = {
 		...getClientPayload(config),
-		passive: false,
+		passive: true,
 		pull: true,
 		username: +user,
-		device: device
+		device: device,
+		// TODO: investigate (hard set as false atm)
+		lidDbMigrated: false
 	}
 	return proto.ClientPayload.fromObject(payload)
 }
@@ -74,7 +76,7 @@ const getPlatformType = (platform: string): proto.DeviceProps.PlatformType => {
 	const platformType = platform.toUpperCase()
 	return (
 		proto.DeviceProps.PlatformType[platformType as keyof typeof proto.DeviceProps.PlatformType] ||
-		proto.DeviceProps.PlatformType.DESKTOP
+		proto.DeviceProps.PlatformType.CHROME
 	)
 }
 
@@ -91,14 +93,31 @@ export const generateRegistrationNode = (
 	const companion: proto.IDeviceProps = {
 		os: config.browser[0],
 		platformType: getPlatformType(config.browser[1]),
-		requireFullSync: config.syncFullHistory
+		requireFullSync: config.syncFullHistory,
+		historySyncConfig: {
+			storageQuotaMb: 569150,
+			inlineInitialPayloadInE2EeMsg: true,
+			supportCallLogHistory: false,
+			supportBotUserAgentChatHistory: true,
+			supportCagReactionsAndPolls: true,
+			supportBizHostedMsg: true,
+			supportRecentSyncChunkMessageCountTuning: true,
+			supportHostedGroupMsg: true,
+			supportFbidBotChatHistory: true,
+			supportMessageAssociation: true
+		},
+		version: {
+			primary: 10,
+			secondary: 15,
+			tertiary: 7
+		}
 	}
 
 	const companionProto = proto.DeviceProps.encode(companion).finish()
 
 	const registerPayload: proto.IClientPayload = {
 		...getClientPayload(config),
-		passive: false,
+		passive: true,
 		pull: false,
 		devicePairingData: {
 			buildHash: appVersionBuf,

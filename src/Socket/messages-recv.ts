@@ -6,7 +6,6 @@ import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import type {
 	GroupParticipant,
-	LIDMapping,
 	MessageReceiptType,
 	MessageRelayOptions,
 	MessageUserReceipt,

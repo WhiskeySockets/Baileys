@@ -70,7 +70,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 		patch: false,
 		snapshot: false
 	},
-	countryCode: 'US',
+	countryCode: 'GB',
 	getMessage: async () => undefined,
 	cachedGroupMetadata: async () => undefined,
 	makeSignalRepository: makeLibSignalRepository
