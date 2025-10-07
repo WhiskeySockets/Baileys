@@ -699,7 +699,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				for (const device of devices) {
 					const deviceJid = device.jid
 					const hasKey = !!senderKeyMap[deviceJid]
-					if ((!hasKey || !!participant ) && !isJidHostedLidUser(deviceJid) && !isJidHostedPnUser(deviceJid)) {
+					if ((!hasKey || !!participant) && !isJidHostedLidUser(deviceJid) && !isJidHostedPnUser(deviceJid)) {
 						//todo: revamp all this logic
 						// the goal is to follow with what I said above for each group, and instead of a true false map of ids, we can set an array full of those the app has already sent pkmsgs
 						senderKeyRecipients.push(deviceJid)

@@ -66,6 +66,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 				data[meta.id] = meta
 			}
 		}
+
 		// TODO: properly parse LID / PN DATA
 		sock.ev.emit('groups.update', Object.values(data))
 
