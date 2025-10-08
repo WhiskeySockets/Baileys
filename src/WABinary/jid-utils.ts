@@ -34,7 +34,7 @@ export type FullJid = JidWithDevice & {
 	domainType?: number
 }
 
-export const getServerFromDomainType = (initialServer: string, domainType?: WAJIDDomains): JidServer => {
+export const getServerFromDomainType = (initialServer: JidServer, domainType?: WAJIDDomains): JidServer => {
 	switch(domainType) {
 		case WAJIDDomains.LID:
 			return 'lid'
