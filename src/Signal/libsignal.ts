@@ -226,7 +226,7 @@ export function makeLibSignalRepository(
 				}
 			}
 
-			logger.info(
+			logger.debug(
 				{
 					fromJid,
 					totalDevices: userDevices.length,
