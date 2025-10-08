@@ -18,7 +18,7 @@ import {
 	getBinaryNodeChildUInt,
 	jidDecode,
 	S_WHATSAPP_NET,
-    WAJIDDomains,
+	WAJIDDomains
 } from '../WABinary'
 import type { DeviceListData, ParsedDeviceInfo, USyncQueryResultList } from '../WAUSync'
 import { Curve, generateSignalPubKey } from './crypto'
@@ -153,7 +153,16 @@ export const extractDeviceJids = (
 					((myUser !== user && myLid !== user) || myDevice !== device) && // either different user or if me user, not this device
 					(device === 0 || !!keyIndex) // ensure that "key-index" is specified for "non-zero" devices, produces a bad req otherwise
 				) {
-					extracted.push({ user, device, domainType: isHosted ? domainType === WAJIDDomains.LID ? WAJIDDomains.HOSTED_LID : WAJIDDomains.HOSTED : domainType, server })
+					extracted.push({
+						user,
+						device,
+						domainType: isHosted
+							? domainType === WAJIDDomains.LID
+								? WAJIDDomains.HOSTED_LID
+								: WAJIDDomains.HOSTED
+							: domainType,
+						server
+					})
 				}
 			}
 		}
