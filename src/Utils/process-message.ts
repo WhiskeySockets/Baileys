@@ -125,11 +125,12 @@ export const shouldIncrementChatUnread = (message: WAMessage) => !message.key.fr
  * Typically -- that'll be the remoteJid, but for broadcasts, it'll be the participant
  */
 export const getChatId = ({ remoteJid, participant, fromMe }: WAMessageKey) => {
-	if (isJidBroadcast(remoteJid!) && !isJidStatusBroadcast(remoteJid!) && !fromMe) {
-		return participant!
+	const remote = remoteJid ?? ''
+	if (isJidBroadcast(remote) && !isJidStatusBroadcast(remote) && !fromMe) {
+		return participant ?? remote
 	}
 
-	return remoteJid!
+	return remote
 }
 
 type PollContext = {
