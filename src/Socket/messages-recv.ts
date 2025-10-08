@@ -302,7 +302,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							key: {
 								remoteJid: from,
 								id: child.attrs.message_id || child.attrs.server_id,
-								fromMe: false
+								fromMe: false // TODO: is this really true though
 							},
 							message: messageProto,
 							messageTimestamp: +child.attrs.t!
