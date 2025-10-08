@@ -124,11 +124,11 @@ export const shouldIncrementChatUnread = (message: WAMessage) => !message.key.fr
  * Get the ID of the chat from the given key.
  * Typically -- that'll be the remoteJid, but for broadcasts, it'll be the participant
  */
-export const getChatId = ({ remoteJid, participant, fromMe }: WAMessageKey, logger?: ILogger) => {
+export const getChatId = ({ remoteJid, participant, fromMe }: WAMessageKey, logger?: ILogger): string | undefined => {
 	const remote = remoteJid
 	if (!remote) {
 		logger?.warn('getChatId called with undefined remoteJid')
-		return ''
+		return undefined
 	}
 
 	if (isJidBroadcast(remote) && !isJidStatusBroadcast(remote) && !fromMe) {
@@ -195,7 +195,13 @@ const processMessage = async (
 	const meId = creds.me!.id
 	const { accountSettings } = creds
 
-	const chat: Partial<Chat> = { id: jidNormalizedUser(getChatId(message.key, logger)) }
+	const chatId = getChatId(message.key, logger)
+	if (!chatId) {
+		logger?.error({ key: message.key }, 'could not determine chat ID from message key')
+		return
+	}
+
+	const chat: Partial<Chat> = { id: jidNormalizedUser(chatId) }
 	const isRealMsg = isRealMessage(message)
 
 	if (isRealMsg) {
