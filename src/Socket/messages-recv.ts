@@ -36,7 +36,6 @@ import {
 	getStatusFromReceiptType,
 	hkdf,
 	MISSING_KEYS_ERROR_TEXT,
-	NACK_REASONS,
 	unixTimestampSeconds,
 	xmppPreKey,
 	xmppSignedPreKey
@@ -1141,12 +1140,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleMessage = (node: BinaryNode) => {
-		const ack = (errorCode?: number) => sendMessageAck(node, errorCode)
-
 		return withAck(node, async () => {
 			if (shouldIgnoreJid(node.attrs.from!) && node.attrs.from !== '@s.whatsapp.net') {
 				logger.debug({ key: node.attrs.key }, 'ignored message')
-				await ack(NACK_REASONS.UnhandledError)
 				return
 			}
 
@@ -1155,7 +1151,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			// TODO: temporary fix for crashes and issues resulting of failed msmsg decryption
 			if (encNode && encNode.attrs.type === 'msmsg') {
 				logger.debug({ key: node.attrs.key }, 'ignored msmsg')
-				await ack(NACK_REASONS.MissingMessageSecret)
 				return
 			}
 
@@ -1200,7 +1195,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						// message failed to decrypt
 						if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT) {
 							if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
-								return sendMessageAck(node, NACK_REASONS.ParsingError)
+								return
 							}
 
 							const errorMessage = msg?.messageStubParameters?.[0] || ''
@@ -1209,7 +1204,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							logger.debug(`[handleMessage] Attempting retry request for failed decryption`)
 
 							// Handle both pre-key and normal retries in single mutex
-							retryMutex.mutex(async () => {
+							await retryMutex.mutex(async () => {
 								try {
 									if (!ws.isOpen) {
 										logger.debug({ node }, 'Connection closed, skipping retry')
