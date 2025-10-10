@@ -6,6 +6,7 @@ import makeWASocket, { AnyMessageContent, BinaryInfo, CacheStore, delay, Disconn
 import open from 'open'
 import fs from 'fs'
 import P from 'pino'
+import { WAMHandler } from './wam'
 
 const logger = P({
   level: "trace",
@@ -63,6 +64,9 @@ const startSock = async() => {
 		getMessage
 	})
 
+
+	const wam = new WAMHandler(sock, state)
+
 	// Pairing code for Web clients
 	if (usePairingCode && !sock.authState.creds.registered) {
 		// todo move to QR event
@@ -101,37 +105,6 @@ const startSock = async() => {
 						console.log('Connection closed. You are logged out.')
 					}
 				}
-
-				// WARNING: THIS WILL SEND A WAM EXAMPLE AND THIS IS A ****CAPTURED MESSAGE.****
-				// DO NOT ACTUALLY ENABLE THIS UNLESS YOU MODIFIED THE FILE.JSON!!!!!
-				// THE ANALYTICS IN THE FILE ARE OLD. DO NOT USE THEM.
-				// YOUR APP SHOULD HAVE GLOBALS AND ANALYTICS ACCURATE TO TIME, DATE AND THE SESSION
-				// THIS FILE.JSON APPROACH IS JUST AN APPROACH I USED, BE FREE TO DO THIS IN ANOTHER WAY.
-				// THE FIRST EVENT CONTAINS THE CONSTANT GLOBALS, EXCEPT THE seqenceNumber(in the event) and commitTime
-				// THIS INCLUDES STUFF LIKE ocVersion WHICH IS CRUCIAL FOR THE PREVENTION OF THE WARNING
-				const sendWAMExample = false;
-				if(connection === 'open' && sendWAMExample) {
-					/// sending WAM EXAMPLE
-					const {
-						header: {
-							wamVersion,
-							eventSequenceNumber,
-						},
-						events,
-					} = JSON.parse(await fs.promises.readFile("./boot_analytics_test.json", "utf-8"))
-
-					const binaryInfo = new BinaryInfo({
-						protocolVersion: wamVersion,
-						sequence: eventSequenceNumber,
-						events: events
-					})
-
-					const buffer = encodeWAM(binaryInfo);
-
-					const result = await sock.sendWAMBuffer(buffer)
-					console.log(result)
-				}
-
 				console.log('connection update', update)
 			}
 
