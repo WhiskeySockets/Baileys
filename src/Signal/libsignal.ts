@@ -1,6 +1,5 @@
 /* @ts-ignore */
 import * as libsignal from 'libsignal'
-import { LRUCache } from 'lru-cache'
 import type { LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
 import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
@@ -11,6 +10,7 @@ import { SenderKeyName } from './Group/sender-key-name'
 import { SenderKeyRecord } from './Group/sender-key-record'
 import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from './Group'
 import { LIDMappingStore } from './lid-mapping'
+import NodeCache from '@cacheable/node-cache'
 
 export function makeLibSignalRepository(
 	auth: SignalAuthState,
@@ -21,10 +21,9 @@ export function makeLibSignalRepository(
 	const storage = signalStorage(auth, lidMapping)
 
 	const parsedKeys = auth.keys as SignalKeyStoreWithTransaction
-	const migratedSessionCache = new LRUCache<string, true>({
-		ttl: 7 * 24 * 60 * 60 * 1000, // 7 days
-		ttlAutopurge: true,
-		updateAgeOnGet: true
+	const migratedSessionCache = new NodeCache<true>({
+	    stdTTL: 60 * 60, //1h
+        useClones: false
 	})
 
 	const repository: SignalRepositoryWithLIDStore = {
