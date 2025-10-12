@@ -698,6 +698,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		switch (nodeType) {
 			case 'privacy_token':
 				const tokenList = getBinaryNodeChildren(child, 'token')
+				const updates: { [jid: string]: Buffer } = {}
 				for (const { attrs, content } of tokenList) {
 					const jid = attrs.jid
 					ev.emit('chats.update', [
@@ -708,6 +709,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					])
 
 					logger.debug({ jid }, 'got privacy token update')
+					updates[jidNormalizedUser(jid)] = content as Buffer
+				}
+
+				if (Object.keys(updates).length) {
+					await authState.keys.set({ 'privacy-token': updates })
 				}
 
 				break
