@@ -601,8 +601,27 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * type = "image for the high res picture"
 	 */
 	const profilePictureUrl = async (jid: string, type: 'preview' | 'image' = 'preview', timeoutMs?: number) => {
-		// TOOD: Add support for tctoken, existingID, and newsletter + group options
+		// TODO: Add support for existingID, and newsletter + group options
 		jid = jidNormalizedUser(jid)
+
+		let pictureContent: BinaryNode[] | undefined
+		try {
+			const privacyTokens = await authState.keys.get('privacy-token', [jid])
+			const tokenData = privacyTokens[jid] as Buffer | undefined
+			if (tokenData) {
+				pictureContent = [
+					{
+						tag: 'tctoken',
+						attrs: {},
+						content: tokenData
+					}
+				]
+				logger.trace({ jid }, 'added tcToken to profile picture request')
+			}
+		} catch (error: any) {
+			logger.warn({ jid, trace: error?.stack }, 'failed to get privacy token for profile picture request')
+		}
+
 		const result = await query(
 			{
 				tag: 'iq',
@@ -612,7 +631,13 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					type: 'get',
 					xmlns: 'w:profile:picture'
 				},
-				content: [{ tag: 'picture', attrs: { type, query: 'url' } }]
+				content: [
+					{
+						tag: 'picture',
+						attrs: { type, query: 'url' },
+						content: pictureContent
+					}
+				]
 			},
 			timeoutMs
 		)

@@ -3,6 +3,7 @@ import { inflate } from 'zlib'
 import { proto } from '../../WAProto/index.js'
 import type { Chat, Contact, WAMessage } from '../Types'
 import { WAMessageStubType } from '../Types'
+import { jidNormalizedUser } from '../WABinary'
 import { toNumber } from './generics'
 import { normalizeMessageContent } from './messages'
 import { downloadContentFromMessage } from './messages-media'
@@ -29,6 +30,7 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 	const messages: WAMessage[] = []
 	const contacts: Contact[] = []
 	const chats: Chat[] = []
+	const privacyTokens: { jid: string; token: Buffer }[] = []
 
 	switch (item.syncType) {
 		case proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP:
@@ -42,6 +44,13 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 					lid: chat.lidJid || undefined,
 					phoneNumber: chat.pnJid || undefined
 				})
+
+				if (chat.tcToken) {
+					privacyTokens.push({
+						jid: jidNormalizedUser(chat.id!),
+						token: chat.tcToken as Buffer
+					})
+				}
 
 				const msgs = chat.messages || []
 				delete chat.messages
@@ -87,6 +96,7 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 		chats,
 		contacts,
 		messages,
+		privacyTokens,
 		syncType: item.syncType,
 		progress: item.progress
 	}
