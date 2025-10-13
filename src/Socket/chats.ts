@@ -600,26 +600,34 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * type = "preview" for a low res picture
 	 * type = "image for the high res picture"
 	 */
-	const profilePictureUrl = async (jid: string, type: 'preview' | 'image' = 'preview', timeoutMs?: number) => {
+	const profilePictureUrl = async (
+		jid: string,
+		type: 'preview' | 'image' = 'preview',
+		timeoutMs?: number,
+		tcToken?: Uint8Array | null
+	) => {
 		// TODO: Add support for existingID, and newsletter + group options
 		jid = jidNormalizedUser(jid)
 
 		let pictureContent: BinaryNode[] | undefined
-		try {
-			const privacyTokens = await authState.keys.get('privacy-token', [jid])
-			const tokenData = privacyTokens[jid] as Buffer | undefined
-			if (tokenData) {
-				pictureContent = [
-					{
-						tag: 'tctoken',
-						attrs: {},
-						content: tokenData
-					}
-				]
-				logger.trace({ jid }, 'added tcToken to profile picture request')
+		let resolvedToken = tcToken ?? undefined
+		if (!resolvedToken && config.getPrivacyToken) {
+			try {
+				resolvedToken = (await config.getPrivacyToken(jid)) ?? undefined
+			} catch (error: any) {
+				logger.warn({ jid, trace: error?.stack }, 'failed to get privacy token for profile picture request')
 			}
-		} catch (error: any) {
-			logger.warn({ jid, trace: error?.stack }, 'failed to get privacy token for profile picture request')
+		}
+
+		if (resolvedToken && resolvedToken.length > 0) {
+			pictureContent = [
+				{
+					tag: 'tctoken',
+					attrs: {},
+					content: resolvedToken
+				}
+			]
+			logger.trace({ jid }, 'added tcToken to profile picture request')
 		}
 
 		const result = await query(
@@ -1110,7 +1118,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				creds: authState.creds,
 				keyStore: authState.keys,
 				logger,
-				options: config.options
+				options: config.options,
+				storePrivacyTokens: config.storePrivacyTokens
 			})
 		])
 

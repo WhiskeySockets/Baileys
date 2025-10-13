@@ -9,6 +9,21 @@ const makeWASocket = (config: UserFacingSocketConfig) => {
 		...config
 	}
 
+	if (!newConfig.getPrivacyToken || !newConfig.storePrivacyTokens) {
+		const memoryPrivacyTokens = new Map<string, Uint8Array>()
+		if (!newConfig.getPrivacyToken) {
+			newConfig.getPrivacyToken = async (jid: string) => memoryPrivacyTokens.get(jid)
+		}
+
+		if (!newConfig.storePrivacyTokens) {
+			newConfig.storePrivacyTokens = async (entries: { jid: string; token: Uint8Array }[]) => {
+				for (const entry of entries) {
+					memoryPrivacyTokens.set(entry.jid, entry.token)
+				}
+			}
+		}
+	}
+
 	// If the user hasn't provided their own history sync function,
 	// let's create a default one that respects the syncFullHistory flag.
 	// TODO: Change

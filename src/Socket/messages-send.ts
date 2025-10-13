@@ -955,12 +955,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					}
 				}
 
-				if (!isGroup && !isStatus && !participant) {
+				if (!isGroup && !isStatus && !participant && config.getPrivacyToken) {
 					try {
 						const normalizedJid = jidNormalizedUser(jid)
-						const privacyTokens = await authState.keys.get('privacy-token', [normalizedJid])
-						const tokenData = privacyTokens[normalizedJid]
-						if (tokenData) {
+						const tokenData = await config.getPrivacyToken(normalizedJid)
+						if (tokenData && tokenData.length > 0) {
 							;(stanza.content as BinaryNode[]).push({
 								tag: 'tctoken',
 								attrs: {},

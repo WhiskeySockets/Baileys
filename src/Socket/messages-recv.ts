@@ -698,22 +698,45 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		switch (nodeType) {
 			case 'privacy_token':
 				const tokenList = getBinaryNodeChildren(child, 'token')
-				const updates: { [jid: string]: Buffer } = {}
+				const updateMap = new Map<string, Uint8Array>()
 				for (const { attrs, content } of tokenList) {
-					const jid = attrs.jid
-					ev.emit('chats.update', [
-						{
-							id: jid,
-							tcToken: content as Buffer
-						}
-					])
+					const possibleJids = new Set<string>()
+					if (attrs.jid) {
+						possibleJids.add(jidNormalizedUser(attrs.jid))
+					}
 
-					logger.debug({ jid }, 'got privacy token update')
-					updates[jidNormalizedUser(jid)] = content as Buffer
+					if (attrs.lid) {
+						possibleJids.add(jidNormalizedUser(attrs.lid))
+					}
+
+					if (attrs.pn) {
+						possibleJids.add(jidNormalizedUser(attrs.pn))
+					}
+
+					if (!possibleJids.size && attrs.jid) {
+						possibleJids.add(jidNormalizedUser(attrs.jid))
+					}
+
+					for (const targetJid of possibleJids) {
+						const tokenBytes = content as Uint8Array
+						updateMap.set(targetJid, tokenBytes)
+						logger.debug({ jid: targetJid }, 'got privacy token update')
+					}
 				}
 
-				if (Object.keys(updates).length) {
-					await authState.keys.set({ 'privacy-token': updates })
+				if (updateMap.size) {
+					const chatUpdates: { id: string; tcToken: Uint8Array }[] = []
+					const updates: { jid: string; token: Uint8Array }[] = []
+					for (const [jid, token] of updateMap.entries()) {
+						chatUpdates.push({ id: jid, tcToken: token })
+						updates.push({ jid, token })
+					}
+
+					ev.emit('chats.update', chatUpdates)
+
+					if (config.storePrivacyTokens) {
+						await config.storePrivacyTokens(updates)
+					}
 				}
 
 				break

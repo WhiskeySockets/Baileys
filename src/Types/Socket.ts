@@ -141,6 +141,10 @@ export type SocketConfig = {
 
 	/** cached group metadata, use to prevent redundant requests to WA & speed up msg sending */
 	cachedGroupMetadata: (jid: string) => Promise<GroupMetadata | undefined>
+	/** fetch a stored privacy token for the given jid */
+	getPrivacyToken?: (jid: string) => Promise<Uint8Array | null | undefined>
+	/** persist privacy tokens retrieved from WA */
+	storePrivacyTokens?: (entries: { jid: string; token: Uint8Array }[]) => Promise<void>
 
 	makeSignalRepository: (
 		auth: SignalAuthState,

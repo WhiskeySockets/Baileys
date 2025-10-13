@@ -30,7 +30,7 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 	const messages: WAMessage[] = []
 	const contacts: Contact[] = []
 	const chats: Chat[] = []
-	const privacyTokens: { jid: string; token: Buffer }[] = []
+	const privacyTokens: { jid: string; token: Uint8Array }[] = []
 
 	switch (item.syncType) {
 		case proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP:
@@ -46,10 +46,25 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 				})
 
 				if (chat.tcToken) {
-					privacyTokens.push({
-						jid: jidNormalizedUser(chat.id!),
-						token: chat.tcToken as Buffer
-					})
+					const mappings = new Set<string>()
+					if (chat.id) {
+						mappings.add(jidNormalizedUser(chat.id))
+					}
+
+					if (chat.lidJid) {
+						mappings.add(jidNormalizedUser(chat.lidJid))
+					}
+
+					if (chat.pnJid) {
+						mappings.add(jidNormalizedUser(chat.pnJid))
+					}
+
+					for (const mappedJid of mappings) {
+						privacyTokens.push({
+							jid: mappedJid,
+							token: chat.tcToken
+						})
+					}
 				}
 
 				const msgs = chat.messages || []
