@@ -81,10 +81,15 @@ const processAppStateSyncKeys = async (
 	await keyStore.transaction(async () => {
 		const newKeys: string[] = []
 		for (const { keyData, keyId } of keys) {
-			const strKeyId = Buffer.from(keyId!.keyId).toString('base64')
+			if (!keyId?.keyId || !keyData) {
+				logger?.warn({ keyId, hasKeyData: !!keyData }, 'skipping malformed app state sync key entry')
+				continue
+			}
+
+			const strKeyId = Buffer.from(keyId.keyId).toString('base64')
 			newKeys.push(strKeyId)
 
-			await keyStore.set({ 'app-state-sync-key': { [strKeyId]: keyData! } })
+			await keyStore.set({ 'app-state-sync-key': { [strKeyId]: keyData } })
 
 			newAppStateSyncKeyId = strKeyId
 		}
@@ -321,7 +326,9 @@ const processMessage = async (
 				const keys = protocolMsg.appStateSyncKeyShare!.keys
 				if (keys?.length) {
 					const newAppStateSyncKeyId = await processAppStateSyncKeys(keys, keyStore, meId, logger)
-					ev.emit('creds.update', { myAppStateKeyId: newAppStateSyncKeyId })
+					if (newAppStateSyncKeyId) {
+						ev.emit('creds.update', { myAppStateKeyId: newAppStateSyncKeyId })
+					}
 				} else {
 					logger?.info({ protocolMsg }, 'recv app state sync with 0 keys')
 				}
