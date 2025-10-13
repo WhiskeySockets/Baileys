@@ -238,7 +238,13 @@ const processMessage = async (
 						})
 					}
 
-					const data = await downloadAndProcessHistorySyncNotification(histNotification, options)
+					const data = await downloadAndProcessHistorySyncNotification(histNotification, options, logger)
+
+					// Store LID/PN mappings from history sync
+					if (data.lidPnMappings?.length) {
+						await signalRepository.lidMapping.storeLIDPNMappings(data.lidPnMappings)
+						logger?.info({ count: data.lidPnMappings.length }, 'stored LID/PN mappings from history sync')
+					}
 
 					ev.emit('messaging-history.set', {
 						...data,

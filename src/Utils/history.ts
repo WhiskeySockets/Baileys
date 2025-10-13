@@ -1,9 +1,10 @@
 import { promisify } from 'util'
 import { inflate } from 'zlib'
 import { proto } from '../../WAProto/index.js'
-import type { Chat, Contact, WAMessage } from '../Types'
+import type { Chat, Contact, LIDMapping, WAMessage } from '../Types'
 import { WAMessageStubType } from '../Types'
 import { toNumber } from './generics'
+import type { ILogger } from './logger'
 import { normalizeMessageContent } from './messages'
 import { downloadContentFromMessage } from './messages-media'
 
@@ -25,10 +26,11 @@ export const downloadHistory = async (msg: proto.Message.IHistorySyncNotificatio
 	return syncData
 }
 
-export const processHistoryMessage = (item: proto.IHistorySync) => {
+export const processHistoryMessage = (item: proto.IHistorySync, logger?: ILogger) => {
 	const messages: WAMessage[] = []
 	const contacts: Contact[] = []
 	const chats: Chat[] = []
+	const lidPnMappings: LIDMapping[] = []
 
 	switch (item.syncType) {
 		case proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP:
@@ -36,12 +38,21 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 		case proto.HistorySync.HistorySyncType.FULL:
 		case proto.HistorySync.HistorySyncType.ON_DEMAND:
 			for (const chat of item.conversations! as Chat[]) {
+				logger?.debug(`Processing chat: ${chat.id}, LID: ${chat.lidJid}, PN: ${chat.pnJid}`)
 				contacts.push({
 					id: chat.id!,
 					name: chat.name || undefined,
 					lid: chat.lidJid || undefined,
 					phoneNumber: chat.pnJid || undefined
 				})
+
+				// Collect LID/PN mappings for storage
+				if (chat.lidJid && chat.pnJid) {
+					lidPnMappings.push({
+						lid: chat.lidJid,
+						pn: chat.pnJid
+					})
+				}
 
 				const msgs = chat.messages || []
 				delete chat.messages
@@ -87,6 +98,7 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 		chats,
 		contacts,
 		messages,
+		lidPnMappings,
 		syncType: item.syncType,
 		progress: item.progress
 	}
@@ -94,10 +106,11 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 
 export const downloadAndProcessHistorySyncNotification = async (
 	msg: proto.Message.IHistorySyncNotification,
-	options: RequestInit
+	options: RequestInit,
+	logger?: ILogger
 ) => {
 	const historyMsg = await downloadHistory(msg, options)
-	return processHistoryMessage(historyMsg)
+	return processHistoryMessage(historyMsg, logger)
 }
 
 export const getHistoryMsg = (message: proto.IMessage) => {
