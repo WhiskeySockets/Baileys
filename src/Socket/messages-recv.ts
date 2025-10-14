@@ -697,39 +697,38 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		switch (nodeType) {
 			case 'privacy_token':
+				const fromJid = jidNormalizedUser(node.attrs.from)
+				const senderLid = node.attrs.sender_lid ? jidNormalizedUser(node.attrs.sender_lid) : undefined
+
 				const tokenList = getBinaryNodeChildren(child, 'token')
-				const updateMap = new Map<string, Uint8Array>()
-				for (const { attrs, content } of tokenList) {
-					const possibleJids = new Set<string>()
-					if (attrs.jid) {
-						possibleJids.add(jidNormalizedUser(attrs.jid))
-					}
+				const updates: { jid: string; token: Uint8Array }[] = []
 
-					if (attrs.lid) {
-						possibleJids.add(jidNormalizedUser(attrs.lid))
-					}
+				for (const { content } of tokenList) {
+					const token = content as Uint8Array
 
-					if (attrs.pn) {
-						possibleJids.add(jidNormalizedUser(attrs.pn))
-					}
+					updates.push({ jid: fromJid, token })
+					logger.debug({ jid: fromJid }, 'got privacy token update, storing against sender PN')
 
-					if (!possibleJids.size && attrs.jid) {
-						possibleJids.add(jidNormalizedUser(attrs.jid))
-					}
+					if (senderLid) {
+						updates.push({ jid: senderLid, token })
+						logger.debug({ jid: senderLid }, 'also storing privacy token against sender LID')
 
-					for (const targetJid of possibleJids) {
-						const tokenBytes = content as Uint8Array
-						updateMap.set(targetJid, tokenBytes)
-						logger.debug({ jid: targetJid }, 'got privacy token update')
+						try {
+							await signalRepository.lidMapping.storeLIDPNMappings([{ lid: senderLid, pn: fromJid }])
+						} catch (error) {
+							logger.warn({ err: error, fromJid, senderLid }, 'failed to store LID mapping from privacy token')
+						}
 					}
 				}
 
-				if (updateMap.size) {
+				if (updates.length > 0) {
 					const chatUpdates: { id: string; tcToken: Uint8Array }[] = []
-					const updates: { jid: string; token: Uint8Array }[] = []
-					for (const [jid, token] of updateMap.entries()) {
-						chatUpdates.push({ id: jid, tcToken: token })
-						updates.push({ jid, token })
+					const uniqueJids = new Set(updates.map(u => u.jid))
+					for (const jid of uniqueJids) {
+						const update = updates.find(u => u.jid === jid)
+						if (update) {
+							chatUpdates.push({ id: jid, tcToken: update.token })
+						}
 					}
 
 					ev.emit('chats.update', chatUpdates)
