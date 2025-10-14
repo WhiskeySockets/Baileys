@@ -37,12 +37,29 @@ export const getUrlInfo = async (
 		fetchOpts: { timeout: 3000 }
 	}
 ): Promise<WAUrlInfo | undefined> => {
-	try {
-		// retries
-		const retries = 0
-		const maxRetry = 5
 
-		const { getLinkPreview } = await import('link-preview-js')
+	function isPrivateOrReservedIp(ip: string): boolean {
+		const octets = ip.split('.').map(octet => parseInt(octet, 10));
+
+		if (octets.length !== 4 || octets.some(isNaN)) {
+			if (ip === '::1') return true; // IPv6 loopback
+			return false;
+		}
+
+		const [octet1, octet2] = octets;
+		if (octet1 === 127) return true; // Loopback
+		if (octet1 === 10) return true; // Private A
+		if (octet1 === 192 && octet2 === 168) return true; // Private C
+		if (octet1 === 172 && (octet2 >= 16 && octet2 <= 31)) return true; // Private B
+		if (octet1 === 169 && octet2 === 254) return true; // Link-Local
+
+		return false;
+	}
+	
+	try {
+		const { getLinkPreview } = await import('link-preview-js');
+		const { lookup } = await import('node:dns');
+
 		let previewLink = text
 		if (!text.startsWith('https://') && !text.startsWith('http://')) {
 			previewLink = 'https://' + previewLink
@@ -50,27 +67,23 @@ export const getUrlInfo = async (
 
 		const info = await getLinkPreview(previewLink, {
 			...opts.fetchOpts,
-			followRedirects: 'follow',
-			handleRedirects: (baseURL: string, forwardedURL: string) => {
-				const urlObj = new URL(baseURL)
-				const forwardedURLObj = new URL(forwardedURL)
-				if (retries >= maxRetry) {
-					return false
-				}
-
-				if (
-					forwardedURLObj.hostname === urlObj.hostname ||
-					forwardedURLObj.hostname === 'www.' + urlObj.hostname ||
-					'www.' + forwardedURLObj.hostname === urlObj.hostname
-				) {
-					retries + 1
-					return true
-				} else {
-					return false
-				}
+			headers: opts.fetchOpts?.headers as {},
+			resolveDNSHost: async (url: string) => {
+				return new Promise((resolve, reject) => {
+					const hostname = new URL(url).hostname;
+					lookup(hostname, (err, address) => {
+						if (err) {
+							return reject(err);
+						}
+						if (isPrivateOrReservedIp(address)) {
+							return reject(new Error(`SSRF attempt detected: ${hostname} resolves to a reserved IP address ${address}`));
+						}
+						resolve(address);
+					});
+				});
 			},
-			headers: opts.fetchOpts?.headers as {}
-		})
+		});
+
 		if (info && 'title' in info && info.title) {
 			const [image] = info.images
 
