@@ -1,0 +1,18 @@
+
+
+```json
+{
+  "name": "Robert corazon2 💥 ",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.5.0"
+  }
+}
+```
+
+---
