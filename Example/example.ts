@@ -1,13 +1,30 @@
 import { Boom } from '@hapi/boom'
 import NodeCache from '@cacheable/node-cache'
 import readline from 'readline'
-import makeWASocket, { AnyMessageContent, BinaryInfo, delay, DisconnectReason, downloadAndProcessHistorySyncNotification, encodeWAM, fetchLatestBaileysVersion, getAggregateVotesInPollMessage, getHistoryMsg, isJidNewsletter, jidDecode, makeCacheableSignalKeyStore, normalizeMessageContent, PatchedMessageWithRecipientJID, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
+import makeWASocket, { AnyMessageContent, BinaryInfo, CacheStore, delay, DisconnectReason, downloadAndProcessHistorySyncNotification, encodeWAM, fetchLatestBaileysVersion, getAggregateVotesInPollMessage, getHistoryMsg, isJidNewsletter, jidDecode, makeCacheableSignalKeyStore, normalizeMessageContent, PatchedMessageWithRecipientJID, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
 //import MAIN_LOGGER from '../src/Utils/logger'
 import open from 'open'
 import fs from 'fs'
 import P from 'pino'
+import { WAMHandler } from './wam'
 
-const logger = P({ timestamp: () => `,"time":"${new Date().toJSON()}"` }, P.destination('./wa-logs.txt'))
+const logger = P({
+  level: "trace",
+  transport: {
+    targets: [
+      {
+        target: "pino-pretty", // pretty-print for console
+        options: { colorize: true },
+        level: "trace",
+      },
+      {
+        target: "pino/file", // raw file output
+        options: { destination: './wa-logs.txt' },
+        level: "trace",
+      },
+    ],
+  },
+})
 logger.level = 'trace'
 
 const doReplies = process.argv.includes('--do-reply')
@@ -15,7 +32,7 @@ const usePairingCode = process.argv.includes('--use-pairing-code')
 
 // external map to store retry counts of messages when decryption/encryption fails
 // keep this out of the socket itself, so as to prevent a message decryption/encryption loop across socket restarts
-const msgRetryCounterCache = new NodeCache()
+const msgRetryCounterCache = new NodeCache() as CacheStore
 
 const onDemandMap = new Map<string, string>()
 
@@ -46,6 +63,9 @@ const startSock = async() => {
 		// implement to handle retries & poll updates
 		getMessage
 	})
+
+
+	const wam = new WAMHandler(sock, state)
 
 	// Pairing code for Web clients
 	if (usePairingCode && !sock.authState.creds.registered) {
@@ -85,37 +105,6 @@ const startSock = async() => {
 						console.log('Connection closed. You are logged out.')
 					}
 				}
-
-				// WARNING: THIS WILL SEND A WAM EXAMPLE AND THIS IS A ****CAPTURED MESSAGE.****
-				// DO NOT ACTUALLY ENABLE THIS UNLESS YOU MODIFIED THE FILE.JSON!!!!!
-				// THE ANALYTICS IN THE FILE ARE OLD. DO NOT USE THEM.
-				// YOUR APP SHOULD HAVE GLOBALS AND ANALYTICS ACCURATE TO TIME, DATE AND THE SESSION
-				// THIS FILE.JSON APPROACH IS JUST AN APPROACH I USED, BE FREE TO DO THIS IN ANOTHER WAY.
-				// THE FIRST EVENT CONTAINS THE CONSTANT GLOBALS, EXCEPT THE seqenceNumber(in the event) and commitTime
-				// THIS INCLUDES STUFF LIKE ocVersion WHICH IS CRUCIAL FOR THE PREVENTION OF THE WARNING
-				const sendWAMExample = false;
-				if(connection === 'open' && sendWAMExample) {
-					/// sending WAM EXAMPLE
-					const {
-						header: {
-							wamVersion,
-							eventSequenceNumber,
-						},
-						events,
-					} = JSON.parse(await fs.promises.readFile("./boot_analytics_test.json", "utf-8"))
-
-					const binaryInfo = new BinaryInfo({
-						protocolVersion: wamVersion,
-						sequence: eventSequenceNumber,
-						events: events
-					})
-
-					const buffer = encodeWAM(binaryInfo);
-
-					const result = await sock.sendWAMBuffer(buffer)
-					console.log(result)
-				}
-
 				console.log('connection update', update)
 			}
 
@@ -247,7 +236,7 @@ const startSock = async() => {
 			// up to you
 
 		// only if store is present
-		return proto.Message.fromObject({ conversation: 'test' })
+		return proto.Message.create({ conversation: 'test' })
 	}
 }
 

@@ -32,7 +32,7 @@
 
     // DX Boosters
     "allowJs": false,
-    "checkJs": false
+    "checkJs": false,
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules"]

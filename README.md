@@ -1,19 +1,31 @@
 <h1 align='center'><img alt="Baileys logo" src="https://raw.githubusercontent.com/WhiskeySockets/Baileys/refs/heads/master/Media/logo.png" height="75"/></h1>
 
-<div align='center'>
-
-![NPM Downloads](https://img.shields.io/npm/dw/%40whiskeysockets%2Fbaileys?label=npm&color=%23CB3837)
-![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/whiskeysockets/baileys)
-![Discord](https://img.shields.io/discord/725839806084546610?label=discord&color=%235865F2)
-
-</div>
-
 <div align='center'>Baileys is a WebSockets-based TypeScript library for interacting with the WhatsApp Web API.</div>
 
-# Important Note
-This is a temporally README, the new guide is at development and will be fully released when it's finished.
 
-New Guide: https://baileys.wiki
+> [!CAUTION]
+> NOTICE OF BREAKING CHANGE.
+> 
+> As of 7.0.0, multiple breaking changes were introduced into the library.
+> 
+> Please check out https://whiskey.so/migrate-latest for more information.
+
+> [!IMPORTANT]
+> I made a survey for users of the project to ask questions, and provide Baileys valuable insights regarding its users. I will be publishing the results of this form (after filtering) as well so we can study and understand where we need to work.
+> 
+> The survey is anonymous and requires no personal info at all. You are required to sign-in with Google to keep responses to one person. You are able to edit your response after you submit. The deadline for this form is September 30, 2025.
+> 
+> I encourage you to put the effort, all it takes is 5-10 minutes and you get to ask me any questions you have.
+> 
+> \- Rajeh (purpshell)
+> 
+> Fill in the survey via the link: https://whiskey.so/survey 
+
+
+# Important Note
+This is a temporary README.md, the new guide is in development and will this file will be replaced with .github/README.md (already a default on GitHub).
+
+New guide link: https://baileys.wiki
 
 # Sponsor
 If you'd like to financially support this project, you can do so by supporting the current maintainer [here](https://purpshell.dev/sponsor).
@@ -320,6 +332,9 @@ sock.ev.on('messages.upsert', ({ messages }) => {
 
 > [!NOTE]
 > This example includes basic auth storage too
+
+> [!NOTE]
+> For reliable serialization of the authentication state, especially when storing as JSON, always use the BufferJSON utility.
 
 ```ts
 import makeWASocket, { DisconnectReason, useMultiFileAuthState } from '@whiskeysockets/baileys'
