@@ -12,7 +12,7 @@ describe('Connection Deadlock Test', () => {
 
 		state.creds.me = { id: '1234567890:1@s.whatsapp.net', name: 'Test User' }
 
-		const sock = await makeWASocket({
+		const sock = makeWASocket({
 			...DEFAULT_CONNECTION_CONFIG,
 			auth: state,
 			shouldSyncHistoryMessage: () => false

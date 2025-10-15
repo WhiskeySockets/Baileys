@@ -1,12 +1,9 @@
-import { init as initWasm } from 'whatsapp-rust-bridge/binary'
 import { DEFAULT_CONNECTION_CONFIG } from '../Defaults'
 import type { UserFacingSocketConfig } from '../Types'
 import { makeCommunitiesSocket } from './communities'
 
 // export the last socket layer
-const makeWASocket = async (config: UserFacingSocketConfig) => {
-	await initWasm()
-
+const makeWASocket = (config: UserFacingSocketConfig) => {
 	const newConfig = {
 		...DEFAULT_CONNECTION_CONFIG,
 		...config

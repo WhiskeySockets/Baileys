@@ -9,14 +9,14 @@ jest.setTimeout(30_000)
 describe('E2E Tests', () => {
 	jest.useFakeTimers()
 
-	let sock: Awaited<ReturnType<typeof makeWASocket>>
+	let sock: ReturnType<typeof makeWASocket>
 	let meJid: string | undefined
 
 	beforeAll(async () => {
 		const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info')
 		const logger = P({ level: 'silent' })
 
-		sock = await makeWASocket({
+		sock = makeWASocket({
 			auth: state,
 			logger
 		})
