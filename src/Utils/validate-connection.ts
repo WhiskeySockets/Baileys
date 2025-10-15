@@ -26,6 +26,7 @@ const getUserAgent = (config: SocketConfig): proto.ClientPayload.IUserAgent => {
 		device: 'Desktop',
 		osBuildNumber: '0.1',
 		localeLanguageIso6391: 'en',
+
 		mnc: '000',
 		mcc: '000',
 		localeCountryIso31661Alpha2: config.countryCode
@@ -39,7 +40,7 @@ const PLATFORM_MAP = {
 
 const getWebInfo = (config: SocketConfig): proto.ClientPayload.IWebInfo => {
 	let webSubPlatform = proto.ClientPayload.WebInfo.WebSubPlatform.WEB_BROWSER
-	if (config.syncFullHistory && PLATFORM_MAP[config.browser[0] as keyof typeof PLATFORM_MAP]) {
+	if (config.syncFullHistory && PLATFORM_MAP[config.browser[0] as keyof typeof PLATFORM_MAP] && config.browser[1] == 'Desktop') {
 		webSubPlatform = PLATFORM_MAP[config.browser[0] as keyof typeof PLATFORM_MAP]
 	}
 
@@ -117,7 +118,7 @@ export const generateRegistrationNode = (
 
 	const registerPayload: proto.IClientPayload = {
 		...getClientPayload(config),
-		passive: true,
+		passive: false,
 		pull: false,
 		devicePairingData: {
 			buildHash: appVersionBuf,
