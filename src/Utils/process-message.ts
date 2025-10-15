@@ -229,6 +229,7 @@ const processMessage = async (
 				)
 
 				if (process) {
+					// TODO: investigate
 					if (histNotification.syncType !== proto.HistorySync.HistorySyncType.ON_DEMAND) {
 						ev.emit('creds.update', {
 							processedHistoryMessages: [
