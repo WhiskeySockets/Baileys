@@ -436,7 +436,7 @@ export const makeSocket = (config: SocketConfig) => {
 		// Prevent multiple concurrent uploads
 		if (uploadPreKeysPromise) {
 			logger.debug('Pre-key upload already in progress, waiting for completion')
-			return uploadPreKeysPromise
+			await uploadPreKeysPromise
 		}
 
 		const uploadLogic = async () => {
