@@ -42,6 +42,7 @@ import {
 	type FullJid,
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
+	getServerFromDomainType,
 	isJidGroup,
 	isJidHostedLidUser,
 	isJidHostedPnUser,
@@ -279,7 +280,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		const requestedLidUsers = new Set<string>()
 		for (const jid of toFetch) {
-			if (jid.includes('@lid')) {
+			if (jid.includes('@lid') || jid.includes('@hosted.lid')) {
 				const user = jidDecode(jid)?.user
 				if (user) requestedLidUsers.add(user)
 			}
@@ -301,7 +302,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				await signalRepository.lidMapping.storeLIDPNMappings(lidResults.map(a => ({ lid: a.lid as string, pn: a.id })))
 			}
 
-			const extracted = extractDeviceJids(result?.list, authState.creds.me!.id, ignoreZeroDevices)
+			const extracted = extractDeviceJids(
+				result?.list,
+				authState.creds.me!.id,
+				authState.creds.me!.lid!,
+				ignoreZeroDevices
+			)
 			const deviceMap: { [_: string]: FullJid[] } = {}
 
 			for (const item of extracted) {
@@ -315,9 +321,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 				// Process all devices for this user
 				for (const item of userDevices) {
+					const deterministicServer = getServerFromDomainType(item.server, item.domainType)
 					const finalJid = isLidUser
-						? jidEncode(user, item.server === 'hosted' ? 'hosted.lid' : 'lid', item.device)
-						: jidEncode(item.user, item.server === 'hosted' ? 'hosted' : 's.whatsapp.net', item.device)
+						? jidEncode(user, deterministicServer, item.device)
+						: jidEncode(item.user, deterministicServer, item.device)
 
 					deviceResults.push({
 						...item,
@@ -699,7 +706,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				for (const device of devices) {
 					const deviceJid = device.jid
 					const hasKey = !!senderKeyMap[deviceJid]
-					if ((!hasKey || !!participant) && !isJidHostedLidUser(deviceJid) && !isJidHostedPnUser(deviceJid)) {
+					if (
+						(!hasKey || !!participant) &&
+						!isJidHostedLidUser(deviceJid) &&
+						!isJidHostedPnUser(deviceJid) &&
+						device.device !== 99
+					) {
 						//todo: revamp all this logic
 						// the goal is to follow with what I said above for each group, and instead of a true false map of ids, we can set an array full of those the app has already sent pkmsgs
 						senderKeyRecipients.push(deviceJid)

@@ -45,6 +45,7 @@ import {
 	jidEncode,
 	S_WHATSAPP_NET
 } from '../WABinary'
+import { BinaryInfo } from '../WAM/BinaryInfo.js'
 import { USyncQuery, USyncUser } from '../WAUSync/'
 import { WebSocketClient } from './Client'
 
@@ -68,6 +69,8 @@ export const makeSocket = (config: SocketConfig) => {
 		qrTimeout,
 		makeSignalRepository
 	} = config
+
+	const publicWAMBuffer = new BinaryInfo()
 
 	const uqTagId = generateMdTagPrefix()
 	const generateMessageTag = () => `${uqTagId}${epoch++}`
@@ -771,7 +774,7 @@ export const makeSocket = (config: SocketConfig) => {
 			content: [
 				{
 					tag: 'add',
-					attrs: {},
+					attrs: { t: Math.round(Date.now() / 1000) + '' },
 					content: wamBuffer
 				}
 			]
@@ -1001,6 +1004,7 @@ export const makeSocket = (config: SocketConfig) => {
 		uploadPreKeys,
 		uploadPreKeysToServerIfRequired,
 		requestPairingCode,
+		wamBuffer: publicWAMBuffer,
 		/** Waits for the connection to WA to reach a state */
 		waitForConnectionUpdate: bindWaitForConnectionUpdate(ev),
 		sendWAMBuffer,

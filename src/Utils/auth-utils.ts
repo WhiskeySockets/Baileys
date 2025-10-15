@@ -116,7 +116,6 @@ export const addTransactionCapability = (
 	logger: ILogger,
 	{ maxCommitRetries, delayBetweenTriesMs }: TransactionCapabilityOptions
 ): SignalKeyStoreWithTransaction => {
-	// AsyncLocalStorage for transaction context
 	const txStorage = new AsyncLocalStorage<TransactionContext>()
 
 	// Queues for concurrency control
@@ -189,9 +188,8 @@ export const addTransactionCapability = (
 			const ctx = txStorage.getStore()
 
 			if (!ctx) {
-				// No transaction - direct read with mutex protection (not queue)
-				// Use mutex instead of queue to provide mutual exclusion for reads and writes, reducing queuing overhead and improving event loop responsiveness (does not allow concurrent reads)
-				return getTxMutex(type).runExclusive(() => state.get(type, ids))
+				// No transaction - direct read without exclusive lock for concurrency
+				return state.get(type, ids)
 			}
 
 			// In transaction - check cache first
@@ -327,6 +325,7 @@ export const initAuthCreds = (): AuthenticationCreds => {
 		registered: false,
 		pairingCode: undefined,
 		lastPropHash: undefined,
-		routingInfo: undefined
+		routingInfo: undefined,
+		additionalData: undefined
 	}
 }

@@ -4,7 +4,7 @@ import type { AuthenticationState, SocketConfig, WAVersion } from '../Types'
 import { Browsers } from '../Utils/browser-utils'
 import logger from '../Utils/logger'
 
-const version = [2, 3000, 1023223821]
+const version = [2, 3000, 1027934701]
 
 export const UNAUTHORIZED_CODES = [401, 403, 419]
 
@@ -70,7 +70,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 		patch: false,
 		snapshot: false
 	},
-	countryCode: 'US',
+	countryCode: 'GB',
 	getMessage: async () => undefined,
 	cachedGroupMetadata: async () => undefined,
 	makeSignalRepository: makeLibSignalRepository
