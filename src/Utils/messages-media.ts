@@ -875,6 +875,18 @@ export const getWAUploadToServer = (
 			} catch (error: any) {
 				const isLast = hostname === hosts[uploadInfo.hosts.length - 1]?.hostname
 				logger.warn(
+					{
+						name: error?.name,
+						message: error?.message,
+						code: error?.code,
+						cause_code: error?.cause?.code,
+						cause_errno: error?.cause?.errno,
+						cause_message: error?.cause?.message,
+						stack: error?.stack,
+					},
+					`Upload for '${hostname}' failed`
+				);
+				logger.warn(
 					{ trace: error?.stack, uploadResult: result },
 					`Error in uploading to ${hostname} ${isLast ? '' : ', retrying...'}`
 				)
