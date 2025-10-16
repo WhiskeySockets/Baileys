@@ -467,10 +467,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 				push_priority: 'high_force'
 			},
-			additionalNodes: [{
-				tag: 'meta',
-				attrs: {'appdata': 'default'}
-			}]
+			additionalNodes: [
+				{
+					tag: 'meta',
+					attrs: { appdata: 'default' }
+				}
+			]
 		})
 
 		return msgId
