@@ -7,8 +7,8 @@ import {
 	type BinaryNode,
 	isJidBroadcast,
 	isJidGroup,
-	isJidHostedLidUser,
-	isJidHostedPnUser,
+	isHostedLidUser,
+	isHostedPnUser,
 	isJidMetaAI,
 	isJidNewsletter,
 	isJidStatusBroadcast,
@@ -134,7 +134,7 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	const isMe = (jid: string) => areJidsSameUser(jid, meId)
 	const isMeLid = (jid: string) => areJidsSameUser(jid, meLid)
 
-	if (isPnUser(from) || isLidUser(from) || isJidHostedLidUser(from) || isJidHostedPnUser(from)) {
+	if (isPnUser(from) || isLidUser(from) || isHostedLidUser(from) || isHostedPnUser(from)) {
 		if (recipient && !isJidMetaAI(recipient)) {
 			if (!isMe(from!) && !isMeLid(from!)) {
 				throw new Boom('receipient present, but msg not from me', { data: stanza })

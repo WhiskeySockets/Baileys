@@ -128,6 +128,7 @@ export function makeLibSignalRepository(
 		},
 
 		async injectE2ESession({ jid, session }) {
+			logger.trace({ jid }, 'injecting E2EE session')
 			const cipher = new libsignal.SessionBuilder(storage, jidToSignalProtocolAddress(jid))
 			return parsedKeys.transaction(async () => {
 				await cipher.initOutgoing(session)
@@ -350,13 +351,13 @@ function signalStorage(
 	// Shared function to resolve PN signal address to LID if mapping exists
 	const resolveLIDSignalAddress = async (id: string): Promise<string> => {
 		if (id.includes('.')) {
-			const [deviceId, domainType_] = id.split('_')
+			const [deviceId, device] = id.split('.')
+			const [user, domainType_] = deviceId!.split('_')
 			const domainType = parseInt(domainType_ || '0')
-			const [user, device] = deviceId!.split('.')
 
 			if (domainType === WAJIDDomains.LID || domainType === WAJIDDomains.HOSTED_LID) return id
 
-			const pnJid = `${user!}${device !== '0' ? `:${device}` : ''}@s.whatsapp.net`
+			const pnJid = `${user!}${device !== '0' ? `:${device}` : ''}@${domainType == WAJIDDomains.HOSTED ? 'hosted' : 's.whatsapp.net'}`
 
 			let lidForPN = await lidMapping.getLIDForPN(pnJid)
 			if (lidForPN?.includes('@lid')) {
@@ -389,7 +390,7 @@ function signalStorage(
 			await keys.set({ session: { [wireJid]: session.serialize() } })
 		},
 		isTrustedIdentity: () => {
-			return true
+			return true // todo: implement
 		},
 		loadPreKey: async (id: number | string) => {
 			const keyId = id.toString()

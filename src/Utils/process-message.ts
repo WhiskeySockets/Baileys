@@ -20,8 +20,8 @@ import { getContentType, normalizeMessageContent } from '../Utils/messages'
 import {
 	areJidsSameUser,
 	isJidBroadcast,
-	isJidHostedLidUser,
-	isJidHostedPnUser,
+	isHostedLidUser,
+	isHostedPnUser,
 	isJidStatusBroadcast,
 	jidDecode,
 	jidEncode,
@@ -55,19 +55,19 @@ const REAL_MSG_REQ_ME_STUB_TYPES = new Set([WAMessageStubType.GROUP_PARTICIPANT_
 /** Cleans a received message to further processing */
 export const cleanMessage = (message: WAMessage, meId: string) => {
 	// ensure remoteJid and participant doesn't have device or agent in it
-	if (isJidHostedPnUser(message.key.remoteJid!) || isJidHostedLidUser(message.key.remoteJid!)) {
+	if (isHostedPnUser(message.key.remoteJid!) || isHostedLidUser(message.key.remoteJid!)) {
 		message.key.remoteJid = jidEncode(
 			jidDecode(message.key?.remoteJid!)?.user!,
-			isJidHostedPnUser(message.key.remoteJid!) ? 's.whatsapp.net' : 'lid'
+			isHostedPnUser(message.key.remoteJid!) ? 's.whatsapp.net' : 'lid'
 		)
 	} else {
 		message.key.remoteJid = jidNormalizedUser(message.key.remoteJid!)
 	}
 
-	if (isJidHostedPnUser(message.key.participant!) || isJidHostedLidUser(message.key.participant!)) {
+	if (isHostedPnUser(message.key.participant!) || isHostedLidUser(message.key.participant!)) {
 		message.key.participant = jidEncode(
 			jidDecode(message.key.participant!)?.user!,
-			isJidHostedPnUser(message.key.participant!) ? 's.whatsapp.net' : 'lid'
+			isHostedPnUser(message.key.participant!) ? 's.whatsapp.net' : 'lid'
 		)
 	} else {
 		message.key.participant = jidNormalizedUser(message.key.participant!)
