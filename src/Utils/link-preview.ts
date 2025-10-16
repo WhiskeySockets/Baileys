@@ -37,24 +37,26 @@ export const getUrlInfo = async (
 		fetchOpts: { timeout: 3000 }
 	}
 ): Promise<WAUrlInfo | undefined> => {
+import net from 'node:net';
 
-	function isPrivateOrReservedIp(ip: string): boolean {
-		const octets = ip.split('.').map(octet => parseInt(octet, 10));
+function isPrivateOrReservedIp(ip) {
+  if (net.isIP(ip) === 0) return false;
+  if (ip === '::1') return true;
 
-		if (octets.length !== 4 || octets.some(isNaN)) {
-			if (ip === '::1') return true; // IPv6 loopback
-			return false;
-		}
+  const octets = ip.split('.').map(Number);
+  const [a, b] = octets;
 
-		const [octet1, octet2] = octets;
-		if (octet1 === 127) return true; // Loopback
-		if (octet1 === 10) return true; // Private A
-		if (octet1 === 192 && octet2 === 168) return true; // Private C
-		if (octet1 === 172 && (octet2 >= 16 && octet2 <= 31)) return true; // Private B
-		if (octet1 === 169 && octet2 === 254) return true; // Link-Local
-
-		return false;
-	}
+  return (
+    a === 10 ||
+    a === 127 ||
+    (a === 192 && b === 168) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 169 && b === 254) ||
+    (a === 100 && b >= 64 && b <= 127) || // Carrier-grade NAT
+    (a === 0) || // "This" network
+    (a >= 224 && a <= 239) // Multicast
+  );
+}
 	
 	try {
 		const { getLinkPreview } = await import('link-preview-js');
