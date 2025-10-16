@@ -100,35 +100,33 @@ export const parseAndInjectE2ESessions = async (node: BinaryNode, repository: Si
 		assertNodeErrorFree(node)
 	}
 
-	// Most of the work in repository.injectE2ESession is CPU intensive, not IO
-	// So Promise.all doesn't really help here,
-	// but blocks even loop if we're using it inside keys.transaction, and it makes it "sync" actually
-	// This way we chunk it in smaller parts and between those parts we can yield to the event loop
-	// It's rare case when you need to E2E sessions for so many users, but it's possible
+	// Sessions must be injected sequentially to prevent race conditions.
+	// When multiple sessions for the same user are injected in parallel via Promise.all,
+	// they can interfere with each other in the database transaction, causing some sessions
+	// to not be saved. This leads to "No session" errors later during encryption.
+	// By processing sequentially, we ensure each session is fully committed before the next begins.
 	const chunkSize = 100
 	const chunks = chunk(nodes, chunkSize)
 
 	for (const nodesChunk of chunks) {
-		await Promise.all(
-			nodesChunk.map(async (node: BinaryNode) => {
-				const signedKey = getBinaryNodeChild(node, 'skey')!
-				const key = getBinaryNodeChild(node, 'key')!
-				const identity = getBinaryNodeChildBuffer(node, 'identity')!
-				const jid = node.attrs.jid!
+		for (const node of nodesChunk) {
+			const signedKey = getBinaryNodeChild(node, 'skey')!
+			const key = getBinaryNodeChild(node, 'key')!
+			const identity = getBinaryNodeChildBuffer(node, 'identity')!
+			const jid = node.attrs.jid!
 
-				const registrationId = getBinaryNodeChildUInt(node, 'registration', 4)
+			const registrationId = getBinaryNodeChildUInt(node, 'registration', 4)
 
-				await repository.injectE2ESession({
-					jid,
-					session: {
-						registrationId: registrationId!,
-						identityKey: generateSignalPubKey(identity),
-						signedPreKey: extractKey(signedKey)!,
-						preKey: extractKey(key)!
-					}
-				})
+			await repository.injectE2ESession({
+				jid,
+				session: {
+					registrationId: registrationId!,
+					identityKey: generateSignalPubKey(identity),
+					signedPreKey: extractKey(signedKey)!,
+					preKey: extractKey(key)!
+				}
 			})
-		)
+		}
 	}
 }
 
