@@ -98,6 +98,13 @@ export class LIDMappingStore {
 			const decoded = jidDecode(pn)
 			if (!decoded) continue
 
+			// Special handling for hosted PN devices - they should not be LID-mapped
+			if (isHostedPnUser(pn)) {
+				this.logger.trace(`getLIDForPN: ${pn} is a hosted PN device, using it directly without LID mapping`)
+				successfulPairs[pn] = { lid: pn, pn }
+				continue
+			}
+
 			// Check cache first for PN → LID mapping
 			const pnUser = decoded.user
 			let lidUser = this.mappingCache.get(`pn:${pnUser}`)
@@ -154,15 +161,24 @@ export class LIDMappingStore {
 					if (!lidUser) continue
 
 					for (const device of usyncFetch[pair.pn]!) {
-						const deviceSpecificLid = `${lidUser}${!!device ? `:${device}` : ``}@${device === 99 ? 'hosted.lid' : 'lid'}`
+						// Hosted devices (device 99) should not be LID-mapped, use them as-is
+						if (device === 99) {
+							const deviceSpecificPn = `${pnUser}${!!device ? `:${device}` : ``}@hosted`
+							this.logger.trace(
+								`getLIDForPN: USYNC result for hosted device ${pair.pn} → ${deviceSpecificPn} (no LID mapping for hosted devices)`
+							)
+							successfulPairs[deviceSpecificPn] = { lid: deviceSpecificPn, pn: deviceSpecificPn }
+						} else {
+							const deviceSpecificLid = `${lidUser}${!!device ? `:${device}` : ``}@lid`
 
-						this.logger.trace(
-							`getLIDForPN: USYNC success for ${pair.pn} → ${deviceSpecificLid} (user mapping with device ${device})`
-						)
+							this.logger.trace(
+								`getLIDForPN: USYNC success for ${pair.pn} → ${deviceSpecificLid} (user mapping with device ${device})`
+							)
 
-						const deviceSpecificPn = `${pnUser}${!!device ? `:${device}` : ``}@${device === 99 ? 'hosted' : 's.whatsapp.net'}`
+							const deviceSpecificPn = `${pnUser}${!!device ? `:${device}` : ``}@s.whatsapp.net`
 
-						successfulPairs[deviceSpecificPn] = { lid: deviceSpecificLid, pn: deviceSpecificPn }
+							successfulPairs[deviceSpecificPn] = { lid: deviceSpecificLid, pn: deviceSpecificPn }
+						}
 					}
 				}
 			} else {
