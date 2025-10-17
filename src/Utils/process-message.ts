@@ -54,52 +54,38 @@ const REAL_MSG_REQ_ME_STUB_TYPES = new Set([WAMessageStubType.GROUP_PARTICIPANT_
 
 /** Cleans a received message to further processing */
 export const cleanMessage = (message: WAMessage, meId: string) => {
-	// ensure remoteJid and participant doesn't have device or agent in it
-	if (isHostedPnUser(message.key.remoteJid!) || isHostedLidUser(message.key.remoteJid!)) {
-		message.key.remoteJid = jidEncode(
-			jidDecode(message.key?.remoteJid!)?.user!,
-			isHostedPnUser(message.key.remoteJid!) ? 's.whatsapp.net' : 'lid'
-		)
-	} else {
+	// If the JID is NOT a hosted JID, then normalize it.
+	// If it IS a hosted JID, we do nothing, preserving it correctly.
+	if (message.key.remoteJid && !isHostedPnUser(message.key.remoteJid) && !isHostedLidUser(message.key.remoteJid)) {
 		message.key.remoteJid = jidNormalizedUser(message.key.remoteJid!)
 	}
 
-	if (isHostedPnUser(message.key.participant!) || isHostedLidUser(message.key.participant!)) {
-		message.key.participant = jidEncode(
-			jidDecode(message.key.participant!)?.user!,
-			isHostedPnUser(message.key.participant!) ? 's.whatsapp.net' : 'lid'
-		)
-	} else {
+	if (
+		message.key.participant &&
+		!isHostedPnUser(message.key.participant) &&
+		!isHostedLidUser(message.key.participant)
+	) {
 		message.key.participant = jidNormalizedUser(message.key.participant!)
 	}
 
 	const content = normalizeMessageContent(message.message)
-	// if the message has a reaction, ensure fromMe & remoteJid are from our perspective
+
+	// this helper function adjusts the perspective of a message key
+	// if the message was received from another user
+	const normaliseKey = (msgKey: WAMessageKey) => {
+		if (!message.key.fromMe) {
+			msgKey.fromMe = !msgKey.fromMe ? areJidsSameUser(msgKey.participant || msgKey.remoteJid!, meId) : false
+			msgKey.remoteJid = message.key.remoteJid
+			msgKey.participant = msgKey.participant || message.key.participant
+		}
+	}
+
 	if (content?.reactionMessage) {
 		normaliseKey(content.reactionMessage.key!)
 	}
 
 	if (content?.pollUpdateMessage) {
 		normaliseKey(content.pollUpdateMessage.pollCreationMessageKey!)
-	}
-
-	function normaliseKey(msgKey: WAMessageKey) {
-		// if the reaction is from another user
-		// we've to correctly map the key to this user's perspective
-		if (!message.key.fromMe) {
-			// if the sender believed the message being reacted to is not from them
-			// we've to correct the key to be from them, or some other participant
-			msgKey.fromMe = !msgKey.fromMe
-				? areJidsSameUser(msgKey.participant || msgKey.remoteJid!, meId)
-				: // if the message being reacted to, was from them
-					// fromMe automatically becomes false
-					false
-			// set the remoteJid to being the same as the chat the message came from
-			// TODO: investigate inconsistencies
-			msgKey.remoteJid = message.key.remoteJid
-			// set participant of the message
-			msgKey.participant = msgKey.participant || message.key.participant
-		}
 	}
 }
 
