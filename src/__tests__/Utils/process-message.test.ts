@@ -1,5 +1,5 @@
-import { cleanMessage } from '../../Utils/process-message'
 import type { WAMessage } from '../../Types'
+import { cleanMessage } from '../../Utils/process-message'
 
 const createBaseMessage = (key: Partial<WAMessage['key']>, message?: Partial<WAMessage['message']>): WAMessage => {
 	return {

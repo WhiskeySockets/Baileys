@@ -19,9 +19,9 @@ import { WAMessageStubType } from '../Types'
 import { getContentType, normalizeMessageContent } from '../Utils/messages'
 import {
 	areJidsSameUser,
-	isJidBroadcast,
 	isHostedLidUser,
 	isHostedPnUser,
+	isJidBroadcast,
 	isJidStatusBroadcast,
 	jidDecode,
 	jidEncode,
@@ -57,7 +57,7 @@ export const cleanMessage = (message: WAMessage, meId: string) => {
 	// If the JID is NOT a hosted JID, then normalize it.
 	// If it IS a hosted JID, we do nothing, preserving it correctly.
 	if (message.key.remoteJid && !isHostedPnUser(message.key.remoteJid) && !isHostedLidUser(message.key.remoteJid)) {
-		message.key.remoteJid = jidNormalizedUser(message.key.remoteJid!)
+		message.key.remoteJid = jidNormalizedUser(message.key.remoteJid)
 	}
 
 	if (
@@ -65,7 +65,7 @@ export const cleanMessage = (message: WAMessage, meId: string) => {
 		!isHostedPnUser(message.key.participant) &&
 		!isHostedLidUser(message.key.participant)
 	) {
-		message.key.participant = jidNormalizedUser(message.key.participant!)
+		message.key.participant = jidNormalizedUser(message.key.participant)
 	}
 
 	const content = normalizeMessageContent(message.message)

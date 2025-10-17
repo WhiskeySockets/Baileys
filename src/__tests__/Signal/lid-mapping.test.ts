@@ -1,8 +1,8 @@
 import { jest } from '@jest/globals'
-import { LIDMappingStore } from '../../Signal/lid-mapping'
-import { HOSTED_DEVICE_ID } from '../../WABinary'
-import type { LIDMapping, SignalDataTypeMap, SignalKeyStoreWithTransaction } from '../../Types'
 import P from 'pino'
+import { LIDMappingStore } from '../../Signal/lid-mapping'
+import type { LIDMapping, SignalDataTypeMap, SignalKeyStoreWithTransaction } from '../../Types'
+import { HOSTED_DEVICE_ID } from '../../WABinary'
 
 const mockKeys: jest.Mocked<SignalKeyStoreWithTransaction> = {
 	get: jest.fn<SignalKeyStoreWithTransaction['get']>() as any,

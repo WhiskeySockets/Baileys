@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals'
-import { parseAndInjectE2ESessions } from '../../Utils/signal'
 import type { SignalRepositoryWithLIDStore } from '../../Types'
+import { parseAndInjectE2ESessions } from '../../Utils/signal'
 import type { BinaryNode } from '../../WABinary/types'
 
 describe('parseAndInjectE2ESessions', () => {
