@@ -254,8 +254,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 
 		for (const { jid, user } of jidsWithUser) {
+			if (!user) {
+				logger.trace({ jid }, 'skipping jid with undefined user')
+				continue
+			}
+
 			if (useCache) {
-				const devices = mgetDevices?.[user!] || (userDevicesCache.mget ? undefined : await userDevicesCache.get(user!))
+				const devices = mgetDevices?.[user] || (userDevicesCache.mget ? undefined : await userDevicesCache.get(user))
 				if (devices) {
 					const devicesWithJid = devices.map(deviceInfo => {
 						const finalServer = getServerFromDomainType(deviceInfo.server, deviceInfo.domainType)
