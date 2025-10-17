@@ -357,7 +357,7 @@ function signalStorage(
 
 			if (domainType === WAJIDDomains.LID || domainType === WAJIDDomains.HOSTED_LID) return id
 
-			const pnJid = `${user!}${device !== '0' ? `:${device}` : ''}@${domainType == WAJIDDomains.HOSTED ? 'hosted' : 's.whatsapp.net'}`
+			const pnJid = `${user!}${device !== '0' ? `:${device}` : ''}@${domainType === WAJIDDomains.HOSTED ? 'hosted' : 's.whatsapp.net'}`
 
 			let lidForPN = await lidMapping.getLIDForPN(pnJid)
 			if (lidForPN?.includes('@lid')) {

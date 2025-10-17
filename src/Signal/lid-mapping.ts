@@ -174,6 +174,7 @@ export class LIDMappingStore {
 						let finalPn: string
 						let logMessage: string
 
+						// eslint-disable-next-line max-depth
 						if (device === HOSTED_DEVICE_ID) {
 							finalPn = jidEncode(pnUser, 'hosted', device)
 							finalLid = finalPn

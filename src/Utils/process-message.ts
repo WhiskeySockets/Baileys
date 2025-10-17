@@ -23,8 +23,6 @@ import {
 	isHostedPnUser,
 	isJidBroadcast,
 	isJidStatusBroadcast,
-	jidDecode,
-	jidEncode,
 	jidNormalizedUser
 } from '../WABinary'
 import { aesDecryptGCM, hmacSign } from './crypto'
