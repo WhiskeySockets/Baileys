@@ -58,6 +58,9 @@ export const getRawMediaUploadData = async (media: WAMediaUpload, mediaType: Med
 	const filePath = join(tmpdir(), mediaType + generateMessageIDV2())
 	const fileWriteStream = createWriteStream(filePath)
 
+	fileWriteStream.on('error', () => { 	logger?.debug('got error in fileWriteStream') })
+	stream.on('error', () => { 	logger?.debug('got error in stream') })
+
 	let fileLength = 0
 	try {
 		for await (const data of stream) {
@@ -70,7 +73,6 @@ export const getRawMediaUploadData = async (media: WAMediaUpload, mediaType: Med
 
 		fileWriteStream.end()
 		await once(fileWriteStream, 'finish')
-		stream.destroy()
 		const fileSha256 = hasher.digest()
 		logger?.debug('hashed data for raw upload')
 		return {
@@ -79,14 +81,9 @@ export const getRawMediaUploadData = async (media: WAMediaUpload, mediaType: Med
 			fileLength
 		}
 	} catch (error) {
-		fileWriteStream.destroy()
-		stream.destroy()
-		try {
-			await fs.unlink(filePath)
-		} catch {
-			//
-		}
-
+		fileWriteStream.destroy(error as Error)
+		stream.destroy(error as Error)
+		try { await fs.unlink(filePath) } catch { }
 		throw error
 	}
 }
