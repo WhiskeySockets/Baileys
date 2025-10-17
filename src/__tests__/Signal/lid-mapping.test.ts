@@ -79,40 +79,5 @@ describe('LIDMappingStore', () => {
 			expect(mockKeys.get).not.toHaveBeenCalled()
 			expect(mockPnToLIDFunc).not.toHaveBeenCalled()
 		})
-
-		it('should fetch from network and correctly map a standard PN and a newly discovered hosted device', async () => {
-			const standardPn = '11111@s.whatsapp.net'
-			const pnWithHosted = '22222@s.whatsapp.net'
-
-			// @ts-ignore
-			mockKeys.get.mockResolvedValue({} as SignalDataTypeMap['lid-mapping'])
-
-			mockPnToLIDFunc.mockResolvedValue([
-				{ pn: standardPn, lid: '12345@lid' },
-				{ pn: pnWithHosted, lid: '67890@lid' }
-			])
-
-			const usyncFetchResults: { [key: string]: number[] } = { [standardPn]: [0], [pnWithHosted]: [HOSTED_DEVICE_ID] }
-			const successfulPairs: { [_: string]: { lid: string; pn: string } } = {}
-
-			// Simulate the logic we are testing
-			for (const pn in usyncFetchResults) {
-				const lidUser = pn === standardPn ? '12345' : '67890'
-				const pnUser = pn === standardPn ? '11111' : '22222'
-				for (const device of usyncFetchResults[pn]!) {
-					if (device === HOSTED_DEVICE_ID) {
-						const finalPn = `${pnUser}:${HOSTED_DEVICE_ID}@hosted`
-						successfulPairs[finalPn] = { lid: finalPn, pn: finalPn }
-					} else {
-						const finalPn = `${pnUser}@s.whatsapp.net`
-						const finalLid = `${lidUser}@lid`
-						successfulPairs[finalPn] = { lid: finalLid, pn: finalPn }
-					}
-				}
-			}
-
-			expect(successfulPairs['11111@s.whatsapp.net']?.lid).toContain('@lid')
-			expect(successfulPairs[`22222:${HOSTED_DEVICE_ID}@hosted`]?.lid).toContain('@hosted')
-		})
 	})
 })

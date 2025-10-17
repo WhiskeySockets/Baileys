@@ -357,13 +357,14 @@ function signalStorage(
 
 			if (domainType === WAJIDDomains.LID || domainType === WAJIDDomains.HOSTED_LID) return id
 
-			const pnJid = `${user!}${device !== '0' ? `:${device}` : ''}@${domainType === WAJIDDomains.HOSTED ? 'hosted' : 's.whatsapp.net'}`
+			const server = domainType === WAJIDDomains.HOSTED ? 'hosted' : 's.whatsapp.net'
+			const pnJid = `${user!}${device !== '0' ? `:${device}` : ''}@${server}`
 
-			let lidForPN = await lidMapping.getLIDForPN(pnJid)
-			if (lidForPN?.includes('@lid')) {
-				if (domainType === WAJIDDomains.HOSTED) lidForPN = `${lidForPN.split('@')[0]}@hosted.lid`
-				const lidAddr = jidToSignalProtocolAddress(lidForPN)
-				return lidAddr.toString()
+			const finalJid = await lidMapping.getLIDForPN(pnJid)
+
+			if (finalJid) {
+				const finalSignalAddress = jidToSignalProtocolAddress(finalJid)
+				return finalSignalAddress.toString()
 			}
 		}
 
