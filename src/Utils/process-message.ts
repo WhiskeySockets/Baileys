@@ -70,14 +70,23 @@ export const cleanMessage = (message: WAMessage, meId: string) => {
 
 	const normaliseKey = (msgKey: WAMessageKey) => {
 		if (!message.key.fromMe) {
-			const originalAuthor = msgKey.participant
+			// Step 1: Identify the original author of the message being reacted to/voted on.
+			// In a group, this is `msgKey.participant`.
+			// In a 1-on-1 chat, `participant` is undefined, so we must fall back to `remoteJid`.
+			const originalAuthor = msgKey.participant || msgKey.remoteJid
 
-			const reactor = message.key.participant
+			// Step 2: Identify the actor (the person who sent the reaction or vote).
+			// In a group, this is `message.key.participant`.
+			// In a 1-on-1 chat, this is `message.key.remoteJid`.
+			const actor = message.key.participant || message.key.remoteJid
 
-			msgKey.fromMe = areJidsSameUser(originalAuthor || '', meId)
+			// Step 3: Determine if the original message was from us.
+			msgKey.fromMe = areJidsSameUser(originalAuthor!, meId)
 
-			msgKey.participant = reactor
+			// Step 4: The participant of the nested key should now always be the actor.
+			msgKey.participant = actor
 
+			// Step 5: The remoteJid of the nested key should always match the chat JID.
 			msgKey.remoteJid = message.key.remoteJid
 		}
 	}

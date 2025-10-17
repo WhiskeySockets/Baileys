@@ -315,22 +315,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				authState.creds.me!.lid!,
 				ignoreZeroDevices
 			)
+
 			const deviceMap: { [_: string]: FullJid[] } = {}
 
 			for (const item of extracted) {
+				const finalServer = getServerFromDomainType(item.server, item.domainType)
+				const finalJid = jidEncode(item.user, finalServer, item.device)
+				deviceResults.push({ ...item, jid: finalJid })
+
 				deviceMap[item.user] = deviceMap[item.user] || []
 				deviceMap[item.user]?.push(item)
-			}
-
-			for (const item of extracted) {
-				const finalServer = getServerFromDomainType(item.server, item.domainType)
-
-				const finalJid = jidEncode(item.user, finalServer, item.device)
-
-				deviceResults.push({
-					...item,
-					jid: finalJid
-				})
 			}
 
 			if (userDevicesCache.mset) {
