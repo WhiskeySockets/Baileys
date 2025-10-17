@@ -4,7 +4,7 @@ import type { SignalRepositoryWithLIDStore } from '../../Types'
 import type { BinaryNode } from '../../WABinary/types'
 
 describe('parseAndInjectE2ESessions', () => {
-	it('should process all user nodes sequentially', async () => {
+	it('should process all user node', async () => {
 		const mockRepository = {
 			injectE2ESession: jest.fn<SignalRepositoryWithLIDStore['injectE2ESession']>()
 		} as jest.Mocked<Pick<SignalRepositoryWithLIDStore, 'injectE2ESession'>>

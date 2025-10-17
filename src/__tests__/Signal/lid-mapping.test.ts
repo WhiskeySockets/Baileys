@@ -4,7 +4,6 @@ import { HOSTED_DEVICE_ID } from '../../WABinary'
 import type { LIDMapping, SignalDataTypeMap, SignalKeyStoreWithTransaction } from '../../Types'
 import P from 'pino'
 
-// No changes needed here, this is already correct
 const mockKeys: jest.Mocked<SignalKeyStoreWithTransaction> = {
 	get: jest.fn<SignalKeyStoreWithTransaction['get']>() as any,
 	set: jest.fn<SignalKeyStoreWithTransaction['set']>(),
