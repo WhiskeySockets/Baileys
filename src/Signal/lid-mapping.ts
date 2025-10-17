@@ -200,15 +200,13 @@ export class LIDMappingStore {
 	 * Get PN for LID - USER LEVEL with device construction
 	 */
 	async getPNForLID(lid: string): Promise<string | null> {
-		if (!isLidUser(lid)) return null
+		if (!isLidUser(lid) && !isHostedLidUser(lid)) {
+			this.logger.warn(`getPNForLID received a non-LID JID: ${lid}`)
+			return null
+		}
 
 		const decoded = jidDecode(lid)
 		if (!decoded) return null
-
-		if (isHostedLidUser(lid) || isHostedPnUser(lid)) {
-			this.logger.trace(`getPNForLID: ${lid} is a hosted JID, returning directly`)
-			return lid
-		}
 
 		// Check cache first for LID → PN mapping
 		const lidUser = decoded.user
