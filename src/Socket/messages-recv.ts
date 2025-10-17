@@ -44,6 +44,7 @@ import { makeMutex } from '../Utils/make-mutex'
 import {
 	areJidsSameUser,
 	type BinaryNode,
+	binaryNodeToString,
 	getAllBinaryNodeChildren,
 	getBinaryNodeChild,
 	getBinaryNodeChildBuffer,
@@ -1275,7 +1276,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					})
 				])
 			} catch (error) {
-				logger.error({ error, node }, 'error in handling message')
+				logger.error({ error, node: binaryNodeToString(node) }, 'error in handling message')
 			}
 		})
 	}

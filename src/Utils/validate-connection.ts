@@ -40,7 +40,11 @@ const PLATFORM_MAP = {
 
 const getWebInfo = (config: SocketConfig): proto.ClientPayload.IWebInfo => {
 	let webSubPlatform = proto.ClientPayload.WebInfo.WebSubPlatform.WEB_BROWSER
-	if (config.syncFullHistory && PLATFORM_MAP[config.browser[0] as keyof typeof PLATFORM_MAP] && config.browser[1] == 'Desktop') {
+	if (
+		config.syncFullHistory &&
+		PLATFORM_MAP[config.browser[0] as keyof typeof PLATFORM_MAP] &&
+		config.browser[1] === 'Desktop'
+	) {
 		webSubPlatform = PLATFORM_MAP[config.browser[0] as keyof typeof PLATFORM_MAP]
 	}
 
