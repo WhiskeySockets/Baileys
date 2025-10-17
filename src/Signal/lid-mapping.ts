@@ -205,6 +205,11 @@ export class LIDMappingStore {
 		const decoded = jidDecode(lid)
 		if (!decoded) return null
 
+		if (isHostedLidUser(lid) || isHostedPnUser(lid)) {
+			this.logger.trace(`getPNForLID: ${lid} is a hosted JID, returning directly`)
+			return lid
+		}
+
 		// Check cache first for LID → PN mapping
 		const lidUser = decoded.user
 		let pnUser = this.mappingCache.get(`lid:${lidUser}`)
@@ -224,7 +229,10 @@ export class LIDMappingStore {
 
 		// Construct device-specific PN JID
 		const lidDevice = decoded.device !== undefined ? decoded.device : 0
-		const pnJid = `${pnUser}:${lidDevice}@s.whatsapp.net`
+
+		const server = lidDevice === HOSTED_DEVICE_ID ? 'hosted' : 's.whatsapp.net'
+
+		const pnJid = jidEncode(pnUser, server, lidDevice)
 
 		this.logger.trace(`Found reverse mapping: ${lid} → ${pnJid}`)
 		return pnJid
