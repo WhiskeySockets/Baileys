@@ -70,13 +70,17 @@ export const cleanMessage = (message: WAMessage, meId: string) => {
 
 	const content = normalizeMessageContent(message.message)
 
-	// this helper function adjusts the perspective of a message key
-	// if the message was received from another user
 	const normaliseKey = (msgKey: WAMessageKey) => {
 		if (!message.key.fromMe) {
-			msgKey.fromMe = !msgKey.fromMe ? areJidsSameUser(msgKey.participant || msgKey.remoteJid!, meId) : false
+			const originalAuthor = msgKey.participant
+
+			const reactor = message.key.participant
+
+			msgKey.fromMe = areJidsSameUser(originalAuthor || '', meId)
+
+			msgKey.participant = reactor
+
 			msgKey.remoteJid = message.key.remoteJid
-			msgKey.participant = msgKey.participant || message.key.participant
 		}
 	}
 
