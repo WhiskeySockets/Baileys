@@ -681,7 +681,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				const bytes = encodeNewsletterMessage(patched as proto.IMessage)
 				binaryNodeContent.push({
 					tag: 'plaintext',
-					attrs: {},
+					attrs: extraAttrs,
 					content: bytes
 				})
 				const stanza: BinaryNode = {
