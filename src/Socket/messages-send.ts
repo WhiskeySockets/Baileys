@@ -84,7 +84,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	const userDevicesCache =
 		config.userDevicesCache ||
-		new NodeCache<JidWithDevice[]>({
+		new NodeCache<FullJid[]>({
 			stdTTL: DEFAULT_CACHE_TTLS.USER_DEVICES, // 5 minutes
 			useClones: false
 		})
@@ -246,7 +246,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			})
 			.filter(jid => jid !== null)
 
-		let mgetDevices: undefined | Record<string, JidWithDevice[] | undefined>
+		let mgetDevices: undefined | Record<string, FullJid[] | undefined>
 
 		if (useCache && userDevicesCache.mget) {
 			const usersToFetch = jidsWithUser.map(j => j?.user).filter(Boolean) as string[]
@@ -255,15 +255,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		for (const { jid, user } of jidsWithUser) {
 			if (useCache) {
-				const devices =
-					mgetDevices?.[user!] ||
-					(userDevicesCache.mget ? undefined : ((await userDevicesCache.get(user!)) as JidWithDevice[]))
+				const devices = mgetDevices?.[user!] || (userDevicesCache.mget ? undefined : await userDevicesCache.get(user!))
 				if (devices) {
-					const isLidJid = jid.includes('@lid')
-					const devicesWithJid = devices.map(d => ({
-						...d,
-						jid: isLidJid ? jidEncode(d.user, 'lid', d.device) : jidEncode(d.user, 's.whatsapp.net', d.device)
-					}))
+					const devicesWithJid = devices.map(deviceInfo => {
+						const finalServer = getServerFromDomainType(deviceInfo.server, deviceInfo.domainType)
+						const finalJid = jidEncode(deviceInfo.user, finalServer, deviceInfo.device)
+						return {
+							...deviceInfo,
+							jid: finalJid
+						}
+					})
 					deviceResults.push(...devicesWithJid)
 
 					logger.trace({ user }, 'using cache for devices')
@@ -316,32 +317,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				deviceMap[item.user]?.push(item)
 			}
 
-			// Process each user's devices as a group for bulk LID migration
-			for (const [user, userDevices] of Object.entries(deviceMap)) {
-				const isLidUser = requestedLidUsers.has(user)
+			for (const item of extracted) {
+				const finalServer = getServerFromDomainType(item.server, item.domainType)
 
-				// Process all devices for this user
-				for (const item of userDevices) {
-					const deterministicServer = getServerFromDomainType(item.server, item.domainType)
-					const finalJid = isLidUser
-						? jidEncode(user, deterministicServer, item.device)
-						: jidEncode(item.user, deterministicServer, item.device)
+				const finalJid = jidEncode(item.user, finalServer, item.device)
 
-					deviceResults.push({
-						...item,
-						jid: finalJid
-					})
-
-					logger.debug(
-						{
-							user: item.user,
-							device: item.device,
-							finalJid,
-							usedLid: isLidUser
-						},
-						'Processed device with LID priority'
-					)
-				}
+				deviceResults.push({
+					...item,
+					jid: finalJid
+				})
 			}
 
 			if (userDevicesCache.mset) {

@@ -4,6 +4,7 @@ export const SERVER_JID = 'server@c.us'
 export const PSA_WID = '0@c.us'
 export const STORIES_JID = 'status@broadcast'
 export const META_AI_JID = '13135550002@c.us'
+export const HOSTED_DEVICE_ID = 99
 
 export type JidServer =
 	| 'c.us'

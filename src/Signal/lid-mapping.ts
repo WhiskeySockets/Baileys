@@ -1,7 +1,16 @@
 import { LRUCache } from 'lru-cache'
 import type { LIDMapping, SignalKeyStoreWithTransaction } from '../Types'
 import type { ILogger } from '../Utils/logger'
-import { isHostedLidUser, isHostedPnUser, isLidUser, isPnUser, jidDecode, jidNormalizedUser } from '../WABinary'
+import {
+	HOSTED_DEVICE_ID,
+	isHostedLidUser,
+	isHostedPnUser,
+	isLidUser,
+	isPnUser,
+	jidDecode,
+	jidEncode,
+	jidNormalizedUser
+} from '../WABinary'
 
 export class LIDMappingStore {
 	private readonly mappingCache = new LRUCache<string, string>({
@@ -161,24 +170,22 @@ export class LIDMappingStore {
 					if (!lidUser) continue
 
 					for (const device of usyncFetch[pair.pn]!) {
-						// Hosted devices (device 99) should not be LID-mapped, use them as-is
-						if (device === 99) {
-							const deviceSpecificPn = `${pnUser}${!!device ? `:${device}` : ``}@hosted`
-							this.logger.trace(
-								`getLIDForPN: USYNC result for hosted device ${pair.pn} → ${deviceSpecificPn} (no LID mapping for hosted devices)`
-							)
-							successfulPairs[deviceSpecificPn] = { lid: deviceSpecificPn, pn: deviceSpecificPn }
+						let finalLid: string
+						let finalPn: string
+						let logMessage: string
+
+						if (device === HOSTED_DEVICE_ID) {
+							finalPn = jidEncode(pnUser, 'hosted', device)
+							finalLid = finalPn
+							logMessage = `getLIDForPN: Using direct @hosted JID for hosted device ${pair.pn} -> ${finalPn}`
 						} else {
-							const deviceSpecificLid = `${lidUser}${!!device ? `:${device}` : ``}@lid`
-
-							this.logger.trace(
-								`getLIDForPN: USYNC success for ${pair.pn} → ${deviceSpecificLid} (user mapping with device ${device})`
-							)
-
-							const deviceSpecificPn = `${pnUser}${!!device ? `:${device}` : ``}@s.whatsapp.net`
-
-							successfulPairs[deviceSpecificPn] = { lid: deviceSpecificLid, pn: deviceSpecificPn }
+							finalPn = jidEncode(pnUser, 's.whatsapp.net', device)
+							finalLid = jidEncode(lidUser, 'lid', device)
+							logMessage = `getLIDForPN: Mapped PN ${finalPn} to LID ${finalLid}`
 						}
+
+						this.logger.trace(logMessage)
+						successfulPairs[finalPn] = { lid: finalLid, pn: finalPn }
 					}
 				}
 			} else {
