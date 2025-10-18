@@ -5,10 +5,10 @@ import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import {
 	areJidsSameUser,
 	type BinaryNode,
-	isJidBroadcast,
-	isJidGroup,
 	isHostedLidUser,
 	isHostedPnUser,
+	isJidBroadcast,
+	isJidGroup,
 	isJidMetaAI,
 	isJidNewsletter,
 	isJidStatusBroadcast,
