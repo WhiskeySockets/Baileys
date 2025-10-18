@@ -360,8 +360,7 @@ function signalStorage(
 			const pnJid = `${user!}${device !== '0' ? `:${device}` : ''}@${domainType == WAJIDDomains.HOSTED ? 'hosted' : 's.whatsapp.net'}`
 
 			let lidForPN = await lidMapping.getLIDForPN(pnJid)
-			if (lidForPN?.includes('@lid')) {
-				if (domainType === WAJIDDomains.HOSTED) lidForPN = `${lidForPN.split('@')[0]}@hosted.lid`
+			if (lidForPN) {
 				const lidAddr = jidToSignalProtocolAddress(lidForPN)
 				return lidAddr.toString()
 			}
