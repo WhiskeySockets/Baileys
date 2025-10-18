@@ -109,26 +109,24 @@ export const parseAndInjectE2ESessions = async (node: BinaryNode, repository: Si
 	const chunks = chunk(nodes, chunkSize)
 
 	for (const nodesChunk of chunks) {
-		await Promise.all(
-			nodesChunk.map(async (node: BinaryNode) => {
-				const signedKey = getBinaryNodeChild(node, 'skey')!
-				const key = getBinaryNodeChild(node, 'key')!
-				const identity = getBinaryNodeChildBuffer(node, 'identity')!
-				const jid = node.attrs.jid!
+		for (const node of nodesChunk) {
+			const signedKey = getBinaryNodeChild(node, 'skey')!
+			const key = getBinaryNodeChild(node, 'key')!
+			const identity = getBinaryNodeChildBuffer(node, 'identity')!
+			const jid = node.attrs.jid!
 
-				const registrationId = getBinaryNodeChildUInt(node, 'registration', 4)
+			const registrationId = getBinaryNodeChildUInt(node, 'registration', 4)
 
-				await repository.injectE2ESession({
-					jid,
-					session: {
-						registrationId: registrationId!,
-						identityKey: generateSignalPubKey(identity),
-						signedPreKey: extractKey(signedKey)!,
-						preKey: extractKey(key)!
-					}
-				})
+			await repository.injectE2ESession({
+				jid,
+				session: {
+					registrationId: registrationId!,
+					identityKey: generateSignalPubKey(identity),
+					signedPreKey: extractKey(signedKey)!,
+					preKey: extractKey(key)!
+				}
 			})
-		)
+		}
 	}
 }
 
