@@ -57,11 +57,8 @@ export const getRawMediaUploadData = async (media: WAMediaUpload, mediaType: Med
 	const hasher = Crypto.createHash('sha256')
 	const filePath = join(tmpdir(), mediaType + generateMessageIDV2())
 	const fileWriteStream = createWriteStream(filePath)
-
-	fileWriteStream.on('error', () => { 	logger?.debug('got error in fileWriteStream') })
-	stream.on('error', () => { 	logger?.debug('got error in stream') })
-
 	let fileLength = 0
+
 	try {
 		for await (const data of stream) {
 			fileLength += data.length
@@ -71,19 +68,21 @@ export const getRawMediaUploadData = async (media: WAMediaUpload, mediaType: Med
 			}
 		}
 
-		fileWriteStream.end()
-		await once(fileWriteStream, 'finish')
+		await waitForCloseOrFinishStream(fileWriteStream)
+
 		const fileSha256 = hasher.digest()
 		logger?.debug('hashed data for raw upload')
+
 		return {
 			filePath: filePath,
 			fileSha256,
 			fileLength
 		}
 	} catch (error) {
-		fileWriteStream.destroy(error as Error)
-		stream.destroy(error as Error)
+		try { stream.destroy() } catch { }
+		await waitForCloseOrFinishStream(fileWriteStream)
 		try { await fs.unlink(filePath) } catch { }
+
 		throw error
 	}
 }
@@ -378,6 +377,13 @@ type EncryptedStreamOptions = {
 	opts?: RequestInit
 }
 
+const waitForCloseOrFinishStream = async (stream?: WriteStream) => {
+	if (!stream) return;
+	try { if (!stream.writableEnded) stream.end(); } catch { }
+	if (stream.destroyed || stream.closed || stream.writableFinished) return;
+	try { await Promise.race([once(stream, 'finish'), once(stream, 'close')]); } catch { }
+}
+
 export const encryptedStream = async (
 	media: WAMediaUpload,
 	mediaType: MediaType,
@@ -407,10 +413,12 @@ export const encryptedStream = async (
 	const sha256Plain = Crypto.createHash('sha256')
 	const sha256Enc = Crypto.createHash('sha256')
 
-	const onChunk = (buff: Buffer) => {
+	const writeChunk = async (buff: Buffer) => {
+		if (!encFileWriteStream.write(buff)) {
+			await once(encFileWriteStream, 'drain')
+		}
 		sha256Enc.update(buff)
 		hmac.update(buff)
-		encFileWriteStream.write(buff)
 	}
 
 	try {
@@ -434,10 +442,10 @@ export const encryptedStream = async (
 			}
 
 			sha256Plain.update(data)
-			onChunk(aes.update(data))
+			await writeChunk(aes.update(data))
 		}
 
-		onChunk(aes.final())
+		await writeChunk(aes.final())
 
 		const mac = hmac.digest().slice(0, 10)
 		sha256Enc.update(mac)
@@ -445,11 +453,14 @@ export const encryptedStream = async (
 		const fileSha256 = sha256Plain.digest()
 		const fileEncSha256 = sha256Enc.digest()
 
-		encFileWriteStream.write(mac)
+		if (!encFileWriteStream.write(mac)) {
+			await once(encFileWriteStream, 'drain')
+		}
 
-		encFileWriteStream.end()
-		originalFileStream?.end?.()
-		stream.destroy()
+		await Promise.allSettled([		
+			waitForCloseOrFinishStream(encFileWriteStream),
+			waitForCloseOrFinishStream(originalFileStream)
+		])
 
 		logger?.debug('encrypted data successfully')
 
@@ -463,15 +474,13 @@ export const encryptedStream = async (
 			fileLength
 		}
 	} catch (error) {
-		// destroy all streams with error
-		encFileWriteStream.destroy()
-		originalFileStream?.destroy?.()
-		aes.destroy()
-		hmac.destroy()
-		sha256Plain.destroy()
-		sha256Enc.destroy()
-		stream.destroy()
-
+		try { stream.destroy() } catch { }
+		try {
+			await Promise.allSettled([		
+				waitForCloseOrFinishStream(encFileWriteStream),
+				waitForCloseOrFinishStream(originalFileStream)
+			])
+		} catch { }
 		try {
 			await fs.unlink(encFilePath)
 			if (originalFilePath) {
@@ -480,6 +489,10 @@ export const encryptedStream = async (
 		} catch (err) {
 			logger?.error({ err }, 'failed deleting tmp files')
 		}
+		try { aes.destroy() } catch { }
+		try { hmac.destroy() } catch { }
+		try { sha256Plain.destroy() } catch { }
+		try { sha256Enc.destroy() } catch { }
 
 		throw error
 	}
