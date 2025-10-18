@@ -19,12 +19,22 @@ import {
 import { unpadRandomMax16 } from './generics'
 import type { ILogger } from './logger'
 
-const getDecryptionJid = async (sender: string, repository: SignalRepositoryWithLIDStore): Promise<string> => {
+const getDecryptionJid = async (
+	sender: string,
+	repository: SignalRepositoryWithLIDStore,
+	logger?: ILogger
+): Promise<string> => {
 	if (sender.includes('@lid')) {
 		return sender
 	}
 
 	const mapped = await repository.lidMapping.getLIDForPN(sender)
+
+	if (!mapped) {
+		// Log when no LID is found for a PN - useful for debugging decryption issues
+		logger?.debug({ sender }, 'No LID found for PN, proceeding with PN for decryption')
+	}
+
 	return mapped || sender
 }
 
@@ -261,7 +271,7 @@ export const decryptMessageNode = (
 
 					const user = isPnUser(sender) ? sender : author // TODO: flaky logic
 
-					const decryptionJid = await getDecryptionJid(user, repository)
+					const decryptionJid = await getDecryptionJid(user, repository, logger)
 
 					if (tag !== 'plaintext') {
 						await storeMappingFromEnvelope(stanza, user, repository, decryptionJid, logger)

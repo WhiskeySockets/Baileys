@@ -35,6 +35,7 @@ import {
 } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
 import { makeKeyedMutex } from '../Utils/make-mutex'
+import { getMessageReportingToken, shouldIncludeReportingToken } from '../Utils/reporting-utils'
 import {
 	areJidsSameUser,
 	type BinaryNode,
@@ -585,6 +586,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const destinationJid = !isStatus ? finalJid : statusJid
 		const binaryNodeContent: BinaryNode[] = []
 		const devices: DeviceWithJid[] = []
+		let reportingMessage: proto.IMessage | undefined
 
 		const meMsg: proto.IMessage = {
 			deviceSentMessage: {
@@ -702,6 +704,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 
 				const bytes = encodeWAMessage(patched)
+				reportingMessage = patched
 				const groupAddressingMode = additionalAttributes?.['addressing_mode'] || groupData?.addressingMode || 'lid'
 				const groupSenderIdentity = groupAddressingMode === 'lid' && meLid ? meLid : meId
 
@@ -783,6 +786,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 
 				const { user: ownUser } = jidDecode(ownId)!
+				if (!participant) {
+					const patchedForReporting = await patchMessageBeforeSending(message, [jid])
+					reportingMessage = Array.isArray(patchedForReporting)
+						? patchedForReporting.find(item => item.recipientJid === jid) || patchedForReporting[0]
+						: patchedForReporting
+				}
 
 				if (!participant) {
 					const targetUserServer = isLid ? 'lid' : 's.whatsapp.net'
@@ -928,6 +937,49 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			if (additionalNodes && additionalNodes.length > 0) {
 				;(stanza.content as BinaryNode[]).push(...additionalNodes)
+			}
+
+			if (!isNewsletter) {
+				if (
+					reportingMessage &&
+					shouldIncludeReportingToken(reportingMessage) &&
+					reportingMessage.messageContextInfo?.messageSecret &&
+					msgId
+				) {
+					try {
+						const encoded = encodeWAMessage(reportingMessage)
+						const reportingKey: WAMessageKey = {
+							id: msgId,
+							fromMe: true,
+							remoteJid: destinationJid,
+							participant: participant?.jid
+						}
+						const reportingNode = await getMessageReportingToken(encoded, reportingMessage, reportingKey)
+						if (reportingNode) {
+							;(stanza.content as BinaryNode[]).push(reportingNode)
+							logger.trace({ jid }, 'added reporting token to message')
+						}
+					} catch (error: any) {
+						logger.warn({ jid, trace: error?.stack }, 'failed to attach reporting token')
+					}
+				}
+
+				if (!isGroup && !isStatus && !participant && config.getPrivacyToken) {
+					try {
+						const normalizedJid = jidNormalizedUser(jid)
+						const tokenData = await config.getPrivacyToken(normalizedJid)
+						if (tokenData && tokenData.length > 0) {
+							;(stanza.content as BinaryNode[]).push({
+								tag: 'tctoken',
+								attrs: {},
+								content: tokenData
+							})
+							logger.trace({ jid }, 'added tcToken to message')
+						}
+					} catch (error: any) {
+						logger.warn({ jid, trace: error?.stack }, 'failed to get privacy token')
+					}
+				}
 			}
 
 			logger.debug({ msgId }, `sending message to ${participants.length} devices`)

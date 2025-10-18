@@ -59,6 +59,7 @@ export type WAPatchCreate = {
 export type Chat = proto.IConversation & {
 	/** unix timestamp of when the last message was received in the chat */
 	lastMessageRecvTimestamp?: number
+	tcToken?: Uint8Array | null
 }
 
 export type ChatUpdate = Partial<

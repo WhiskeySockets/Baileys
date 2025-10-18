@@ -698,17 +698,45 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		switch (nodeType) {
 			case 'privacy_token':
-				const tokenList = getBinaryNodeChildren(child, 'token')
-				for (const { attrs, content } of tokenList) {
-					const jid = attrs.jid
-					ev.emit('chats.update', [
-						{
-							id: jid,
-							tcToken: content as Buffer
-						}
-					])
+				const fromJid = jidNormalizedUser(node.attrs.from)
+				const senderLid = node.attrs.sender_lid ? jidNormalizedUser(node.attrs.sender_lid) : undefined
 
-					logger.debug({ jid }, 'got privacy token update')
+				const tokenList = getBinaryNodeChildren(child, 'token')
+				const updates: { jid: string; token: Uint8Array }[] = []
+
+				for (const { content } of tokenList) {
+					const token = content as Uint8Array
+
+					updates.push({ jid: fromJid, token })
+					logger.debug({ jid: fromJid }, 'got privacy token update, storing against sender PN')
+
+					if (senderLid) {
+						updates.push({ jid: senderLid, token })
+						logger.debug({ jid: senderLid }, 'also storing privacy token against sender LID')
+
+						try {
+							await signalRepository.lidMapping.storeLIDPNMappings([{ lid: senderLid, pn: fromJid }])
+						} catch (error) {
+							logger.warn({ err: error, fromJid, senderLid }, 'failed to store LID mapping from privacy token')
+						}
+					}
+				}
+
+				if (updates.length > 0) {
+					const chatUpdates: { id: string; tcToken: Uint8Array }[] = []
+					const uniqueJids = new Set(updates.map(u => u.jid))
+					for (const jid of uniqueJids) {
+						const update = updates.find(u => u.jid === jid)
+						if (update) {
+							chatUpdates.push({ id: jid, tcToken: update.token })
+						}
+					}
+
+					ev.emit('chats.update', chatUpdates)
+
+					if (config.storePrivacyTokens) {
+						await config.storePrivacyTokens(updates)
+					}
 				}
 
 				break
