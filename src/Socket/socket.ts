@@ -569,7 +569,7 @@ export const makeSocket = (config: SocketConfig) => {
 		})
 	}
 
-	const end = (error: Error | undefined) => {
+	const end = async (error: Error | undefined) => {
 		if (closed) {
 			logger.trace({ trace: error?.stack }, 'connection already closed')
 			return
@@ -587,7 +587,7 @@ export const makeSocket = (config: SocketConfig) => {
 
 		if (!ws.isClosed && !ws.isClosing) {
 			try {
-				ws.close()
+				await ws.close()
 			} catch {}
 		}
 
