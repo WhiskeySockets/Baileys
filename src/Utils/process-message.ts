@@ -19,9 +19,9 @@ import { WAMessageStubType } from '../Types'
 import { getContentType, normalizeMessageContent } from '../Utils/messages'
 import {
 	areJidsSameUser,
-	isJidBroadcast,
 	isHostedLidUser,
 	isHostedPnUser,
+	isJidBroadcast,
 	isJidStatusBroadcast,
 	jidDecode,
 	jidEncode,
@@ -90,7 +90,8 @@ export const cleanMessage = (message: WAMessage, meId: string, meLid: string) =>
 			// if the sender believed the message being reacted to is not from them
 			// we've to correct the key to be from them, or some other participant
 			msgKey.fromMe = !msgKey.fromMe
-				? areJidsSameUser(msgKey.participant || msgKey.remoteJid!, meId) || areJidsSameUser(msgKey.participant || msgKey.remoteJid!, meLid)
+				? areJidsSameUser(msgKey.participant || msgKey.remoteJid!, meId) ||
+					areJidsSameUser(msgKey.participant || msgKey.remoteJid!, meLid)
 				: // if the message being reacted to, was from them
 					// fromMe automatically becomes false
 					false
