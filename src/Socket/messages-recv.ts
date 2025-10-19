@@ -108,14 +108,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	let sendActiveReceipts = false
 
-	const withAck = async (node: BinaryNode, handler: () => Promise<boolean>) => {
-		let shouldAck = false
+	const withAck = async (node: BinaryNode, handler: () => Promise<void>) => {
 		try {
-			shouldAck = await handler()
+			await handler()
 		} finally {
-			if (shouldAck) {
-				await sendMessageAck(node)
-			}
+			await sendMessageAck(node)
 		}
 	}
 
@@ -1033,13 +1030,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 			if (shouldIgnoreJid(remoteJid!) && remoteJid !== S_WHATSAPP_NET) {
 				logger.debug({ remoteJid }, 'ignoring receipt from jid')
-				return false
+				return
 			}
 
 			const mainId = attrs.id
 			if (!mainId) {
 				logger.warn({ node }, 'received receipt with no ID')
-				return false
+				return
 			}
 
 			const ids = [mainId]
@@ -1109,7 +1106,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 				}
 			})
-			return true
 		})
 	}
 
@@ -1118,7 +1114,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const remoteJid = node.attrs.from
 			if (shouldIgnoreJid(remoteJid!) && remoteJid !== S_WHATSAPP_NET) {
 				logger.debug({ remoteJid, id: node.attrs.id }, 'ignored notification')
-				return false
+				return
 			}
 
 			await processingMutex.mutex(async () => {
@@ -1142,7 +1138,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					await upsertMessage(fullMsg, 'append')
 				}
 			})
-			return true
 		})
 	}
 
@@ -1150,7 +1145,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		return withAck(node, async () => {
 			if (shouldIgnoreJid(node.attrs.from!) && node.attrs.from !== S_WHATSAPP_NET) {
 				logger.debug({ key: node.attrs.key }, 'ignored message')
-				return false
+				return
 			}
 
 			const encNode = getBinaryNodeChild(node, 'enc')
@@ -1158,7 +1153,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			// TODO: temporary fix for crashes and issues resulting of failed msmsg decryption
 			if (encNode && encNode.attrs.type === 'msmsg') {
 				logger.debug({ key: node.attrs.key }, 'ignored msmsg')
-				return false
+				return
 			}
 
 			const {
@@ -1284,15 +1279,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			} catch (error) {
 				logger.error({ error, node: binaryNodeToString(node) }, 'error in handling message')
 			}
-
-			return true
 		})
 	}
 
 	const handleCall = async (node: BinaryNode) => {
 		const { attrs } = node
 		const [infoChild] = getAllBinaryNodeChildren(node)
-		let status = getCallStatusFromNode(infoChild!)
 
 		if (!infoChild) {
 			throw new Boom('Missing call info in call node')
@@ -1300,6 +1292,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		const callId = infoChild.attrs['call-id']!
 		const from = infoChild.attrs.from! || infoChild.attrs['call-creator']!
+		let status = getCallStatusFromNode(infoChild)
 
 		if (isLidUser(from) && infoChild.tag === 'relaylatency') {
 			const verify = await callOfferCache.get(callId)
