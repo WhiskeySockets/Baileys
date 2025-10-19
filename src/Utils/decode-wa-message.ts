@@ -19,12 +19,22 @@ import {
 import { unpadRandomMax16 } from './generics'
 import type { ILogger } from './logger'
 
-export const getDecryptionJid = async (sender: string, repository: SignalRepositoryWithLIDStore): Promise<string> => {
+export const getDecryptionJid = async (
+	sender: string,
+	repository: SignalRepositoryWithLIDStore,
+	logger?: ILogger
+): Promise<string> => {
 	if (isLidUser(sender) || isHostedLidUser(sender)) {
 		return sender
 	}
 
 	const mapped = await repository.lidMapping.getLIDForPN(sender)
+
+	if (!mapped) {
+		// Log when no LID is found for a PN - useful for debugging decryption issues
+		logger?.debug({ sender }, 'No LID found for PN, proceeding with PN for decryption')
+	}
+
 	return mapped || sender
 }
 
@@ -260,7 +270,7 @@ export const decryptMessageNode = (
 
 					let msgBuffer: Uint8Array
 
-					const decryptionJid = await getDecryptionJid(author, repository)
+					const decryptionJid = await getDecryptionJid(author, repository, logger)
 
 					if (tag !== 'plaintext') {
 						// TODO: Handle hosted devices
