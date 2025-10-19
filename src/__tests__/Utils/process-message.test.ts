@@ -65,7 +65,7 @@ describe('cleanMessage', () => {
 			expect(message.key.remoteJid).toBe('1234567890@s.whatsapp.net')
 		})
 
-		it('should PRESERVE a hosted LID JID and not normalize it', () => {
+		it('should correctly normalize a hosted LID JID back to LID form', () => {
 			const hostedLidJid = '9876543210:99@hosted.lid'
 			const message = createBaseMessage({
 				participant: hostedLidJid
