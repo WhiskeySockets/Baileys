@@ -122,7 +122,7 @@ export class LIDMappingStore {
 					this.logger.trace(`No LID mapping found for PN user ${pnUser}; batch getting from USync`)
 					const device = decoded.device || 0
 					let normalizedPn = jidNormalizedUser(pn)
-					if (isHostedLidUser(normalizedPn) || isHostedPnUser(normalizedPn)) {
+					if (isHostedPnUser(normalizedPn)) {
 						normalizedPn = `${pnUser}@s.whatsapp.net`
 					}
 

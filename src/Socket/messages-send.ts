@@ -281,7 +281,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		const requestedLidUsers = new Set<string>()
 		for (const jid of toFetch) {
-			if (jid.includes('@lid') || jid.includes('@hosted.lid')) {
+			if (isLidUser(jid) || isHostedLidUser(jid)) {
 				const user = jidDecode(jid)?.user
 				if (user) requestedLidUsers.add(user)
 			}
@@ -405,10 +405,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		if (jidsRequiringFetch.length) {
 			// LID if mapped, otherwise original
 			const wireJids = [
-				...jidsRequiringFetch.filter(jid => !!jid.includes('@lid') || !!jid.includes('@hosted.lid')),
+				...jidsRequiringFetch.filter(jid => !!isLidUser(jid) || !!isHostedLidUser(jid)),
 				...(
 					(await signalRepository.lidMapping.getLIDsForPNs(
-						jidsRequiringFetch.filter(jid => !!jid.includes('@s.whatsapp.net') || !!jid.includes('@hosted'))
+						jidsRequiringFetch.filter(jid => !!isPnUser(jid) || !!isHostedPnUser(jid)
 					)) || []
 				).map(a => a.lid)
 			]
