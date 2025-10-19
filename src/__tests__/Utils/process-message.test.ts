@@ -54,7 +54,7 @@ describe('cleanMessage', () => {
 	})
 
 	describe('Hosted JID Handling', () => {
-		it('should PRESERVE a hosted PN JID and not normalize it', () => {
+		it('should correctly normalize a hosted PN JID back to PN form', () => {
 			const hostedJid = '1234567890:99@hosted'
 			const message = createBaseMessage({
 				remoteJid: hostedJid
