@@ -12,6 +12,7 @@ import type {
 	WAMessage,
 	WAMessageKey
 } from '../Types'
+import { DisconnectReason } from '../Types'
 import {
 	aggregateMessageKeysNotFromMe,
 	assertMediaContent,
@@ -561,7 +562,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			statusJidList
 		}: MessageRelayOptions
 	) => {
-		const meId = authState.creds.me!.id
+		const meId = authState.creds.me?.id
+		if (!meId) {
+			throw new Boom('Cannot relay message, not authenticated', { statusCode: DisconnectReason.loggedOut })
+		}
+
 		const meLid = authState.creds.me?.lid
 		const isRetryResend = Boolean(participant?.jid)
 		let shouldIncludeDeviceIdentity = isRetryResend
