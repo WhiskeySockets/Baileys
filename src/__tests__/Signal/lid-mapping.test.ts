@@ -23,7 +23,7 @@ describe('LIDMappingStore', () => {
 	})
 
 	describe('getPNForLID', () => {
-		it('should correctly map a standard LID with a hosted device ID back to a HOSTED PN', async () => {
+		it('should correctly map a standard LID with a hosted device ID back to a standard PN with a hosted device', async () => {
 			const lidWithHostedDevice = `12345:${HOSTED_DEVICE_ID}@lid`
 			const pnUser = '54321'
 
