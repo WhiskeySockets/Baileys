@@ -11,7 +11,6 @@ import type {
 	MessageUserReceipt,
 	SocketConfig,
 	WACallEvent,
-	WACallUpdateType,
 	WAMessage,
 	WAMessageKey,
 	WAPatchName
@@ -1036,6 +1035,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				logger.debug({ remoteJid }, 'ignoring receipt from jid')
 				return false
 			}
+
 			const mainId = attrs.id
 			if (!mainId) {
 				logger.warn({ node }, 'received receipt with no ID')
@@ -1284,14 +1284,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			} catch (error) {
 				logger.error({ error, node: binaryNodeToString(node) }, 'error in handling message')
 			}
+
 			return true
 		})
 	}
 
 	const handleCall = async (node: BinaryNode) => {
-		let status: WACallUpdateType
 		const { attrs } = node
 		const [infoChild] = getAllBinaryNodeChildren(node)
+		let status = getCallStatusFromNode(infoChild!)
 
 		if (!infoChild) {
 			throw new Boom('Missing call info in call node')
@@ -1299,7 +1300,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		const callId = infoChild.attrs['call-id']!
 		const from = infoChild.attrs.from! || infoChild.attrs['call-creator']!
-		status = getCallStatusFromNode(infoChild)
 
 		if (isLidUser(from) && infoChild.tag === 'relaylatency') {
 			const verify = await callOfferCache.get(callId)
