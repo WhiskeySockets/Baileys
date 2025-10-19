@@ -78,12 +78,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		groupToggleEphemeral
 	} = sock
 
+	const shouldCloseUserDevicesCache = !config.userDevicesCache
 	const userDevicesCache =
 		config.userDevicesCache ||
 		new NodeCache<JidWithDevice[]>({
 			stdTTL: DEFAULT_CACHE_TTLS.USER_DEVICES, // 5 minutes
 			useClones: false
 		})
+	const localUserDevicesCache = shouldCloseUserDevicesCache
+		? (userDevicesCache as NodeCache<JidWithDevice[]>)
+		: undefined
 
 	const peerSessionsCache = new NodeCache<boolean>({
 		stdTTL: DEFAULT_CACHE_TTLS.USER_DEVICES,
@@ -92,6 +96,19 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	// Initialize message retry manager if enabled
 	const messageRetryManager = enableRecentMessageCache ? new MessageRetryManager(logger, maxMsgRetryCount) : null
+
+	const baseEnd = sock.end
+	let resourcesClosed = false
+	const cleanupResources = () => {
+		if (resourcesClosed) {
+			return
+		}
+
+		resourcesClosed = true
+		peerSessionsCache.close()
+		localUserDevicesCache?.close()
+		messageRetryManager?.shutdown()
+	}
 
 	// Prevent race conditions in Signal session encryption by user
 	const encryptionMutex = makeKeyedMutex()
@@ -1003,8 +1020,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	const waitForMsgMediaUpdate = bindWaitForEvent(ev, 'messages.media-update')
 
+	const end: typeof sock.end = error => {
+		cleanupResources()
+		baseEnd(error)
+	}
+
 	return {
 		...sock,
+		end,
 		getPrivacyTokens,
 		assertSessions,
 		relayMessage,
