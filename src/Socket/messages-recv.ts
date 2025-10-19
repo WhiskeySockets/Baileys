@@ -11,7 +11,6 @@ import type {
 	MessageUserReceipt,
 	SocketConfig,
 	WACallEvent,
-	WACallUpdateType,
 	WAMessage,
 	WAMessageKey,
 	WAPatchName
@@ -1049,7 +1048,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			participant: attrs.participant
 		}
 
-		if (shouldIgnoreJid(remoteJid!) && remoteJid !== '@s.whatsapp.net') {
+		if (shouldIgnoreJid(remoteJid!) && remoteJid !== S_WHATSAPP_NET) {
 			logger.debug({ remoteJid }, 'ignoring receipt from jid')
 			await sendMessageAck(node)
 			return
@@ -1129,7 +1128,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const handleNotification = async (node: BinaryNode) => {
 		const remoteJid = node.attrs.from
-		if (shouldIgnoreJid(remoteJid!) && remoteJid !== '@s.whatsapp.net') {
+		if (shouldIgnoreJid(remoteJid!) && remoteJid !== S_WHATSAPP_NET) {
 			logger.debug({ remoteJid, id: node.attrs.id }, 'ignored notification')
 			await sendMessageAck(node)
 			return
@@ -1165,7 +1164,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleMessage = async (node: BinaryNode) => {
-		if (shouldIgnoreJid(node.attrs.from!) && node.attrs.from !== '@s.whatsapp.net') {
+		if (shouldIgnoreJid(node.attrs.from!) && node.attrs.from !== S_WHATSAPP_NET) {
 			logger.debug({ key: node.attrs.key }, 'ignored message')
 			await sendMessageAck(node, NACK_REASONS.UnhandledError)
 			return
@@ -1306,9 +1305,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleCall = async (node: BinaryNode) => {
-		let status: WACallUpdateType
 		const { attrs } = node
 		const [infoChild] = getAllBinaryNodeChildren(node)
+		const status = getCallStatusFromNode(infoChild!)
 
 		if (!infoChild) {
 			throw new Boom('Missing call info in call node')
@@ -1316,23 +1315,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		const callId = infoChild.attrs['call-id']!
 		const from = infoChild.attrs.from! || infoChild.attrs['call-creator']!
-		status = getCallStatusFromNode(infoChild)
-
-		if (isLidUser(from) && infoChild.tag === 'relaylatency') {
-			const verify = await callOfferCache.get(callId)
-			if (!verify) {
-				status = 'offer'
-				const callLid: WACallEvent = {
-					chatId: attrs.from!,
-					from,
-					id: callId,
-					date: new Date(+attrs.t! * 1000),
-					offline: !!attrs.offline,
-					status
-				}
-				await callOfferCache.set(callId, callLid)
-			}
-		}
 
 		const call: WACallEvent = {
 			chatId: attrs.from!,

@@ -19,12 +19,12 @@ import {
 import { unpadRandomMax16 } from './generics'
 import type { ILogger } from './logger'
 
-const getDecryptionJid = async (
+export const getDecryptionJid = async (
 	sender: string,
 	repository: SignalRepositoryWithLIDStore,
 	logger?: ILogger
 ): Promise<string> => {
-	if (sender.includes('@lid')) {
+	if (isLidUser(sender) || isHostedLidUser(sender)) {
 		return sender
 	}
 
@@ -45,6 +45,7 @@ const storeMappingFromEnvelope = async (
 	decryptionJid: string,
 	logger: ILogger
 ): Promise<void> => {
+	// TODO: Handle hosted IDs
 	const { senderAlt } = extractAddressingContext(stanza)
 
 	if (senderAlt && isLidUser(senderAlt) && isPnUser(sender) && decryptionJid === sender) {
@@ -269,12 +270,11 @@ export const decryptMessageNode = (
 
 					let msgBuffer: Uint8Array
 
-					const user = isPnUser(sender) ? sender : author // TODO: flaky logic
-
-					const decryptionJid = await getDecryptionJid(user, repository, logger)
+					const decryptionJid = await getDecryptionJid(author, repository, logger)
 
 					if (tag !== 'plaintext') {
-						await storeMappingFromEnvelope(stanza, user, repository, decryptionJid, logger)
+						// TODO: Handle hosted devices
+						await storeMappingFromEnvelope(stanza, author, repository, decryptionJid, logger)
 					}
 
 					try {
