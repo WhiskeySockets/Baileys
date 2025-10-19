@@ -116,7 +116,6 @@ export const addTransactionCapability = (
 	logger: ILogger,
 	{ maxCommitRetries, delayBetweenTriesMs }: TransactionCapabilityOptions
 ): SignalKeyStoreWithTransaction => {
-	// AsyncLocalStorage for transaction context
 	const txStorage = new AsyncLocalStorage<TransactionContext>()
 
 	// Queues for concurrency control
@@ -189,8 +188,8 @@ export const addTransactionCapability = (
 			const ctx = txStorage.getStore()
 
 			if (!ctx) {
-				// No transaction - direct read with queue protection
-				return getQueue(type).add(async () => state.get(type, ids))
+				// No transaction - direct read without exclusive lock for concurrency
+				return state.get(type, ids)
 			}
 
 			// In transaction - check cache first
@@ -201,7 +200,7 @@ export const addTransactionCapability = (
 				ctx.dbQueries++
 				logger.trace({ type, count: missing.length }, 'fetching missing keys in transaction')
 
-				const fetched = await getQueue(type).add(async () => state.get(type, missing))
+				const fetched = await getTxMutex(type).runExclusive(() => state.get(type, missing))
 
 				// Update cache
 				ctx.cache[type] = ctx.cache[type] || ({} as any)
@@ -326,6 +325,7 @@ export const initAuthCreds = (): AuthenticationCreds => {
 		registered: false,
 		pairingCode: undefined,
 		lastPropHash: undefined,
-		routingInfo: undefined
+		routingInfo: undefined,
+		additionalData: undefined
 	}
 }

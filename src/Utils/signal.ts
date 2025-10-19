@@ -17,7 +17,8 @@ import {
 	getBinaryNodeChildren,
 	getBinaryNodeChildUInt,
 	jidDecode,
-	S_WHATSAPP_NET
+	S_WHATSAPP_NET,
+	WAJIDDomains
 } from '../WABinary'
 import type { DeviceListData, ParsedDeviceInfo, USyncQueryResultList } from '../WAUSync'
 import { Curve, generateSignalPubKey } from './crypto'
@@ -108,47 +109,58 @@ export const parseAndInjectE2ESessions = async (node: BinaryNode, repository: Si
 	const chunks = chunk(nodes, chunkSize)
 
 	for (const nodesChunk of chunks) {
-		await Promise.all(
-			nodesChunk.map(async (node: BinaryNode) => {
-				const signedKey = getBinaryNodeChild(node, 'skey')!
-				const key = getBinaryNodeChild(node, 'key')!
-				const identity = getBinaryNodeChildBuffer(node, 'identity')!
-				const jid = node.attrs.jid!
+		for (const node of nodesChunk) {
+			const signedKey = getBinaryNodeChild(node, 'skey')!
+			const key = getBinaryNodeChild(node, 'key')!
+			const identity = getBinaryNodeChildBuffer(node, 'identity')!
+			const jid = node.attrs.jid!
 
-				const registrationId = getBinaryNodeChildUInt(node, 'registration', 4)
+			const registrationId = getBinaryNodeChildUInt(node, 'registration', 4)
 
-				await repository.injectE2ESession({
-					jid,
-					session: {
-						registrationId: registrationId!,
-						identityKey: generateSignalPubKey(identity),
-						signedPreKey: extractKey(signedKey)!,
-						preKey: extractKey(key)!
-					}
-				})
+			await repository.injectE2ESession({
+				jid,
+				session: {
+					registrationId: registrationId!,
+					identityKey: generateSignalPubKey(identity),
+					signedPreKey: extractKey(signedKey)!,
+					preKey: extractKey(key)!
+				}
 			})
-		)
+		}
 	}
 }
 
-export const extractDeviceJids = (result: USyncQueryResultList[], myJid: string, excludeZeroDevices: boolean) => {
+export const extractDeviceJids = (
+	result: USyncQueryResultList[],
+	myJid: string,
+	myLid: string,
+	excludeZeroDevices: boolean
+) => {
 	const { user: myUser, device: myDevice } = jidDecode(myJid)!
 
 	const extracted: FullJid[] = []
 
 	for (const userResult of result) {
-		// TODO: ADD SUPPORT FOR HOSTED JIDS
 		const { devices, id } = userResult as { devices: ParsedDeviceInfo; id: string }
-		const { user } = jidDecode(id)!
+		const { user, domainType, server } = jidDecode(id)!
 		const deviceList = devices?.deviceList as DeviceListData[]
 		if (Array.isArray(deviceList)) {
 			for (const { id: device, keyIndex, isHosted } of deviceList) {
 				if (
 					(!excludeZeroDevices || device !== 0) && // if zero devices are not-excluded, or device is non zero
-					(myUser !== user || myDevice !== device) && // either different user or if me user, not this device
+					((myUser !== user && myLid !== user) || myDevice !== device) && // either different user or if me user, not this device
 					(device === 0 || !!keyIndex) // ensure that "key-index" is specified for "non-zero" devices, produces a bad req otherwise
 				) {
-					extracted.push({ user, device, server: isHosted ? 'hosted' : 's.whatsapp.net' })
+					extracted.push({
+						user,
+						device,
+						domainType: isHosted
+							? domainType === WAJIDDomains.LID
+								? WAJIDDomains.HOSTED_LID
+								: WAJIDDomains.HOSTED
+							: domainType,
+						server
+					})
 				}
 			}
 		}

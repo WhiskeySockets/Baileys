@@ -23,6 +23,7 @@ import type {
 	WAMediaUpload,
 	WAMessage,
 	WAMessageContent,
+	WAMessageKey,
 	WATextMessage
 } from '../Types'
 import { WAMessageStatus, WAProto } from '../Types'
@@ -39,7 +40,6 @@ import {
 	getRawMediaUploadData,
 	type MediaDownloadOptions
 } from './messages-media'
-import { decodeAndHydrate } from './proto-utils'
 
 type MediaUploadData = {
 	media: WAMediaUpload
@@ -156,7 +156,7 @@ export const prepareWAMessageMedia = async (
 		if (mediaBuff) {
 			logger?.debug({ cacheableKey }, 'got media cache hit')
 
-			const obj = decodeAndHydrate(proto.Message, mediaBuff)
+			const obj = proto.Message.decode(mediaBuff)
 			const key = `${mediaType}Message`
 
 			Object.assign(obj[key as keyof proto.Message]!, { ...uploadData, media: undefined })
@@ -183,9 +183,9 @@ export const prepareWAMessageMedia = async (
 
 		await fs.unlink(filePath)
 
-		const obj = WAProto.Message.create({
+		const obj = WAProto.Message.fromObject({
 			// todo: add more support here
-			[`${mediaType}Message`]: (MessageTypeProto as any)[mediaType].create({
+			[`${mediaType}Message`]: (MessageTypeProto as any)[mediaType].fromObject({
 				url: mediaUrl,
 				directPath,
 				fileSha256,
@@ -288,8 +288,8 @@ export const prepareWAMessageMedia = async (
 		}
 	})
 
-	const obj = WAProto.Message.create({
-		[`${mediaType}Message`]: MessageTypeProto[mediaType as keyof typeof MessageTypeProto].create({
+	const obj = WAProto.Message.fromObject({
+		[`${mediaType}Message`]: MessageTypeProto[mediaType as keyof typeof MessageTypeProto].fromObject({
 			url: mediaUrl,
 			directPath,
 			mediaKey,
@@ -327,7 +327,7 @@ export const prepareDisappearingMessageSettingContent = (ephemeralExpiration?: n
 			}
 		}
 	}
-	return WAProto.Message.create(content)
+	return WAProto.Message.fromObject(content)
 }
 
 /**
@@ -343,7 +343,7 @@ export const generateForwardMessageContent = (message: WAMessage, forceForward?:
 
 	// hacky copy
 	content = normalizeMessageContent(content)
-	content = decodeAndHydrate(proto.Message, proto.Message.encode(content!).finish())
+	content = proto.Message.decode(proto.Message.encode(content!).finish())
 
 	let key = Object.keys(content)[0] as keyof proto.IMessage
 
@@ -566,6 +566,16 @@ export const generateWAMessageContent = async (
 		}
 	} else if ('requestPhoneNumber' in message) {
 		m.requestPhoneNumberMessage = {}
+	} else if ('limitSharing' in message) {
+		m.protocolMessage = {
+			type: proto.Message.ProtocolMessage.Type.LIMIT_SHARING,
+			limitSharing: {
+				sharingLimited: message.limitSharing === true,
+				trigger: 1,
+				limitSharingSettingTimestamp: Date.now(),
+				initiatedByMe: true
+			}
+		}
 	} else {
 		m = await prepareWAMessageMedia(message, options)
 	}
@@ -691,7 +701,7 @@ export const generateWAMessageFromContent = (
 		participant: isJidGroup(jid) || isJidStatusBroadcast(jid) ? userJid : undefined, // TODO: Add support for LIDs
 		status: WAMessageStatus.PENDING
 	}
-	return WAProto.WebMessageInfo.create(messageJSON)
+	return WAProto.WebMessageInfo.fromObject(messageJSON) as WAMessage
 }
 
 export const generateWAMessage = async (jid: string, content: AnyMessageContent, options: MessageGenerationOptions) => {
@@ -894,7 +904,7 @@ export function getAggregateVotesInPollMessage(
 }
 
 /** Given a list of message keys, aggregates them by chat & sender. Useful for sending read receipts in bulk */
-export const aggregateMessageKeysNotFromMe = (keys: proto.IMessageKey[]) => {
+export const aggregateMessageKeysNotFromMe = (keys: WAMessageKey[]) => {
 	const keyMap: { [id: string]: { jid: string; participant: string | undefined; messageIds: string[] } } = {}
 	for (const { remoteJid, id, participant, fromMe } of keys) {
 		if (!fromMe) {

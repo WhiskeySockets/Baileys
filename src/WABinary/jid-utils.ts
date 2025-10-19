@@ -34,6 +34,20 @@ export type FullJid = JidWithDevice & {
 	domainType?: number
 }
 
+export const getServerFromDomainType = (initialServer: string, domainType?: WAJIDDomains): JidServer => {
+	switch (domainType) {
+		case WAJIDDomains.LID:
+			return 'lid'
+		case WAJIDDomains.HOSTED:
+			return 'hosted'
+		case WAJIDDomains.HOSTED_LID:
+			return 'hosted.lid'
+		case WAJIDDomains.WHATSAPP:
+		default:
+			return initialServer as JidServer
+	}
+}
+
 export const jidEncode = (user: string | number | null, server: JidServer, device?: number, agent?: number) => {
 	return `${user || ''}${!!agent ? `_${agent}` : ''}${!!device ? `:${device}` : ''}@${server}`
 }
@@ -49,7 +63,7 @@ export const jidDecode = (jid: string | undefined): FullJid | undefined => {
 	const userCombined = jid!.slice(0, sepIdx)
 
 	const [userAgent, device] = userCombined.split(':')
-	const user = userAgent!.split('_')[0]!
+	const [user, agent] = userAgent!.split('_')
 
 	let domainType = WAJIDDomains.WHATSAPP
 	if (server === 'lid') {
@@ -58,11 +72,13 @@ export const jidDecode = (jid: string | undefined): FullJid | undefined => {
 		domainType = WAJIDDomains.HOSTED
 	} else if (server === 'hosted.lid') {
 		domainType = WAJIDDomains.HOSTED_LID
+	} else if (agent) {
+		domainType = parseInt(agent)
 	}
 
 	return {
 		server: server as JidServer,
-		user,
+		user: user!,
 		domainType,
 		device: device ? +device : undefined
 	}
@@ -86,9 +102,9 @@ export const isJidStatusBroadcast = (jid: string) => jid === 'status@broadcast'
 /** is the jid a newsletter */
 export const isJidNewsletter = (jid: string | undefined) => jid?.endsWith('@newsletter')
 /** is the jid a hosted PN */
-export const isJidHostedPnUser = (jid: string | undefined) => jid?.endsWith('@hosted')
+export const isHostedPnUser = (jid: string | undefined) => jid?.endsWith('@hosted')
 /** is the jid a hosted LID */
-export const isJidHostedLidUser = (jid: string | undefined) => jid?.endsWith('@hosted.lid')
+export const isHostedLidUser = (jid: string | undefined) => jid?.endsWith('@hosted.lid')
 
 const botRegexp = /^1313555\d{4}$|^131655500\d{2}$/
 

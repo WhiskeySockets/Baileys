@@ -1,5 +1,4 @@
 import EventEmitter from 'events'
-import { proto } from '../../WAProto/index.js'
 import type {
 	BaileysEvent,
 	BaileysEventEmitter,
@@ -8,7 +7,8 @@ import type {
 	Chat,
 	ChatUpdate,
 	Contact,
-	WAMessage
+	WAMessage,
+	WAMessageKey
 } from '../Types'
 import { WAMessageStatus } from '../Types'
 import { trimUndefined } from './generics'
@@ -241,14 +241,15 @@ function append<E extends BufferableEvent>(
 	switch (event) {
 		case 'messaging-history.set':
 			for (const chat of eventData.chats as Chat[]) {
-				const existingChat = data.historySets.chats[chat.id]
+				const id = chat.id || ''
+				const existingChat = data.historySets.chats[id]
 				if (existingChat) {
 					existingChat.endOfHistoryTransferType = chat.endOfHistoryTransferType
 				}
 
-				if (!existingChat && !historyCache.has(chat.id)) {
-					data.historySets.chats[chat.id] = chat
-					historyCache.add(chat.id)
+				if (!existingChat && !historyCache.has(id)) {
+					data.historySets.chats[id] = chat
+					historyCache.add(id)
 
 					absorbingChatUpdate(chat)
 				}
@@ -286,11 +287,12 @@ function append<E extends BufferableEvent>(
 			break
 		case 'chats.upsert':
 			for (const chat of eventData as Chat[]) {
-				let upsert = data.chatUpserts[chat.id]
-				if (!upsert) {
-					upsert = data.historySets.chats[chat.id]
+				const id = chat.id || ''
+				let upsert = data.chatUpserts[id]
+				if (id && !upsert) {
+					upsert = data.historySets.chats[id]
 					if (upsert) {
-						logger.debug({ chatId: chat.id }, 'absorbed chat upsert in chat set')
+						logger.debug({ chatId: id }, 'absorbed chat upsert in chat set')
 					}
 				}
 
@@ -298,13 +300,13 @@ function append<E extends BufferableEvent>(
 					upsert = concatChats(upsert, chat)
 				} else {
 					upsert = chat
-					data.chatUpserts[chat.id] = upsert
+					data.chatUpserts[id] = upsert
 				}
 
 				absorbingChatUpdate(upsert)
 
-				if (data.chatDeletes.has(chat.id)) {
-					data.chatDeletes.delete(chat.id)
+				if (data.chatDeletes.has(id)) {
+					data.chatDeletes.delete(id)
 				}
 			}
 
@@ -521,7 +523,7 @@ function append<E extends BufferableEvent>(
 	}
 
 	function absorbingChatUpdate(existing: Chat) {
-		const chatId = existing.id
+		const chatId = existing.id || ''
 		const update = data.chatUpdates[chatId]
 		if (update) {
 			const conditionMatches = update.conditional ? update.conditional(data) : true
@@ -543,7 +545,7 @@ function append<E extends BufferableEvent>(
 		const chatId = message.key.remoteJid!
 		const chat = data.chatUpdates[chatId] || data.chatUpserts[chatId]
 		if (
-			isRealMessage(message, '') &&
+			isRealMessage(message) &&
 			shouldIncrementChatUnread(message) &&
 			typeof chat?.unreadCount === 'number' &&
 			chat.unreadCount > 0
@@ -657,4 +659,4 @@ function concatChats<C extends Partial<Chat>>(a: C, b: Partial<Chat>) {
 	return Object.assign(a, b)
 }
 
-const stringifyMessageKey = (key: proto.IMessageKey) => `${key.remoteJid},${key.id},${key.fromMe ? '1' : '0'}`
+const stringifyMessageKey = (key: WAMessageKey) => `${key.remoteJid},${key.id},${key.fromMe ? '1' : '0'}`

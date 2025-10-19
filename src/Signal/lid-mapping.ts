@@ -1,7 +1,15 @@
 import { LRUCache } from 'lru-cache'
 import type { LIDMapping, SignalKeyStoreWithTransaction } from '../Types'
 import type { ILogger } from '../Utils/logger'
-import { isLidUser, isPnUser, jidDecode, jidNormalizedUser } from '../WABinary'
+import {
+	isHostedLidUser,
+	isHostedPnUser,
+	isLidUser,
+	isPnUser,
+	jidDecode,
+	jidNormalizedUser,
+	WAJIDDomains
+} from '../WABinary'
 
 export class LIDMappingStore {
 	private readonly mappingCache = new LRUCache<string, string>({
@@ -93,7 +101,7 @@ export class LIDMappingStore {
 		// mapped from pn to lid mapping to prevent duplication in results later
 		const successfulPairs: { [_: string]: LIDMapping } = {}
 		for (const pn of pns) {
-			if (!isPnUser(pn)) continue
+			if (!isPnUser(pn) && !isHostedPnUser(pn)) continue
 
 			const decoded = jidDecode(pn)
 			if (!decoded) continue
@@ -113,11 +121,15 @@ export class LIDMappingStore {
 				} else {
 					this.logger.trace(`No LID mapping found for PN user ${pnUser}; batch getting from USync`)
 					const device = decoded.device || 0
-					const normalizedPn = jidNormalizedUser(pn)
+					let normalizedPn = jidNormalizedUser(pn)
+					if (isHostedLidUser(normalizedPn) || isHostedPnUser(normalizedPn)) {
+						normalizedPn = `${pnUser}@s.whatsapp.net`
+					}
+
 					if (!usyncFetch[normalizedPn]) {
 						usyncFetch[normalizedPn] = [device]
 					} else {
-						usyncFetch[normalizedPn].push(device)
+						usyncFetch[normalizedPn]?.push(device)
 					}
 
 					continue
@@ -132,7 +144,7 @@ export class LIDMappingStore {
 
 			// Push the PN device ID to the LID to maintain device separation
 			const pnDevice = decoded.device !== undefined ? decoded.device : 0
-			const deviceSpecificLid = `${lidUser}${!!pnDevice ? `:${pnDevice}` : ``}@lid`
+			const deviceSpecificLid = `${lidUser}${!!pnDevice ? `:${pnDevice}` : ``}@${decoded.server === 'hosted' ? 'hosted.lid' : 'lid'}`
 
 			this.logger.trace(`getLIDForPN: ${pn} → ${deviceSpecificLid} (user mapping with device ${pnDevice})`)
 			successfulPairs[pn] = { lid: deviceSpecificLid, pn }
@@ -143,19 +155,20 @@ export class LIDMappingStore {
 			if (result && result.length > 0) {
 				this.storeLIDPNMappings(result)
 				for (const pair of result) {
-					const pnUser = jidDecode(pair.pn)?.user
+					const pnDecoded = jidDecode(pair.pn)
+					const pnUser = pnDecoded?.user
 					if (!pnUser) continue
 					const lidUser = jidDecode(pair.lid)?.user
 					if (!lidUser) continue
 
 					for (const device of usyncFetch[pair.pn]!) {
-						const deviceSpecificLid = `${lidUser}${!!device ? `:${device}` : ``}@lid`
+						const deviceSpecificLid = `${lidUser}${!!device ? `:${device}` : ``}@${device === 99 ? 'hosted.lid' : 'lid'}`
 
 						this.logger.trace(
 							`getLIDForPN: USYNC success for ${pair.pn} → ${deviceSpecificLid} (user mapping with device ${device})`
 						)
 
-						const deviceSpecificPn = `${pnUser}${!!device ? `:${device}` : ``}@s.whatsapp.net`
+						const deviceSpecificPn = `${pnUser}${!!device ? `:${device}` : ``}@${device === 99 ? 'hosted' : 's.whatsapp.net'}`
 
 						successfulPairs[deviceSpecificPn] = { lid: deviceSpecificLid, pn: deviceSpecificPn }
 					}
@@ -196,7 +209,7 @@ export class LIDMappingStore {
 
 		// Construct device-specific PN JID
 		const lidDevice = decoded.device !== undefined ? decoded.device : 0
-		const pnJid = `${pnUser}:${lidDevice}@s.whatsapp.net`
+		const pnJid = `${pnUser}:${lidDevice}@${decoded.domainType === WAJIDDomains.HOSTED_LID ? 'hosted' : 's.whatsapp.net'}`
 
 		this.logger.trace(`Found reverse mapping: ${lid} → ${pnJid}`)
 		return pnJid

@@ -368,7 +368,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 				// update the invite message to be expired
 				if (key.id) {
 					// create new invite message that is expired
-					inviteMessage = proto.Message.GroupInviteMessage.create(inviteMessage)
+					inviteMessage = proto.Message.GroupInviteMessage.fromObject(inviteMessage)
 					inviteMessage.inviteExpiration = 0
 					inviteMessage.inviteCode = ''
 					ev.emit('messages.update', [
@@ -390,10 +390,10 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 							remoteJid: inviteMessage.groupJid,
 							id: generateMessageIDV2(sock.user?.id),
 							fromMe: false,
-							participant: key.remoteJid
+							participant: key.remoteJid // TODO: investigate if this makes any sense at all
 						},
 						messageStubType: WAMessageStubType.GROUP_PARTICIPANT_ADD,
-						messageStubParameters: [authState.creds.me!.id],
+						messageStubParameters: [JSON.stringify(authState.creds.me)],
 						participant: key.remoteJid,
 						messageTimestamp: unixTimestampSeconds()
 					},
@@ -465,6 +465,7 @@ export const extractCommunityMetadata = (result: BinaryNode) => {
 		memberAddMode,
 		participants: getBinaryNodeChildren(community, 'participant').map(({ attrs }) => {
 			return {
+				// TODO: IMPLEMENT THE PN/LID FIELDS HERE!!
 				id: attrs.jid!,
 				admin: (attrs.type || null) as GroupParticipant['admin']
 			}

@@ -1,8 +1,15 @@
 import { Boom } from '@hapi/boom'
 import { createHash, randomBytes } from 'crypto'
 import { proto } from '../../WAProto/index.js'
-const baileysVersion = [2, 3000, 1023223821]
-import type { BaileysEventEmitter, BaileysEventMap, ConnectionState, WACallUpdateType, WAVersion } from '../Types'
+const baileysVersion = [2, 3000, 1027934701]
+import type {
+	BaileysEventEmitter,
+	BaileysEventMap,
+	ConnectionState,
+	WACallUpdateType,
+	WAMessageKey,
+	WAVersion
+} from '../Types'
 import { DisconnectReason } from '../Types'
 import { type BinaryNode, getAllBinaryNodeChildren, jidDecode } from '../WABinary'
 import { sha256 } from './crypto'
@@ -37,7 +44,7 @@ export const BufferJSON = {
 	}
 }
 
-export const getKeyAuthor = (key: proto.IMessageKey | undefined | null, meId = 'me') =>
+export const getKeyAuthor = (key: WAMessageKey | undefined | null, meId = 'me') =>
 	(key?.fromMe ? meId : key?.participant || key?.remoteJid) || ''
 
 export const writeRandomPadMax16 = (msg: Uint8Array) => {
@@ -267,11 +274,21 @@ export const fetchLatestBaileysVersion = async (options: RequestInit = {}) => {
  */
 export const fetchLatestWaWebVersion = async (options: RequestInit = {}) => {
 	try {
+		// Absolute minimal headers required to bypass anti-bot detection
+		const defaultHeaders = {
+			'sec-fetch-site': 'none',
+			'user-agent':
+				'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+		}
+
+		const headers = { ...defaultHeaders, ...options.headers }
+
 		const response = await fetch('https://web.whatsapp.com/sw.js', {
-			dispatcher: options.dispatcher,
+			...options,
 			method: 'GET',
-			headers: options.headers
+			headers
 		})
+
 		if (!response.ok) {
 			throw new Boom(`Failed to fetch sw.js: ${response.statusText}`, { statusCode: response.status })
 		}

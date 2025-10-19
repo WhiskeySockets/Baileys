@@ -601,6 +601,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * type = "image for the high res picture"
 	 */
 	const profilePictureUrl = async (jid: string, type: 'preview' | 'image' = 'preview', timeoutMs?: number) => {
+		// TOOD: Add support for tctoken, existingID, and newsletter + group options
 		jid = jidNormalizedUser(jid)
 		const result = await query(
 			{
@@ -814,6 +815,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	/** sending non-abt props may fix QR scan fail if server expects */
 	const fetchProps = async () => {
+		//TODO: implement both protocol 1 and protocol 2 prop fetching, specially for abKey for WM
 		const resultNode = await query({
 			tag: 'iq',
 			attrs: {
