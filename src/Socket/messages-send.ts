@@ -44,14 +44,15 @@ import {
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
 	getServerFromDomainType,
-	isJidGroup,
 	isHostedLidUser,
 	isHostedPnUser,
+	isJidGroup,
 	isLidUser,
 	isPnUser,
 	jidDecode,
 	jidEncode,
 	jidNormalizedUser,
+	type JidServer,
 	type JidWithDevice,
 	S_WHATSAPP_NET
 } from '../WABinary'
@@ -247,7 +248,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			})
 			.filter(jid => jid !== null)
 
-		let mgetDevices: undefined | Record<string, JidWithDevice[] | undefined>
+		let mgetDevices: undefined | Record<string, FullJid[] | undefined>
 
 		if (useCache && userDevicesCache.mget) {
 			const usersToFetch = jidsWithUser.map(j => j?.user).filter(Boolean) as string[]
@@ -258,12 +259,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			if (useCache) {
 				const devices =
 					mgetDevices?.[user!] ||
-					(userDevicesCache.mget ? undefined : ((await userDevicesCache.get(user!)) as JidWithDevice[]))
+					(userDevicesCache.mget ? undefined : ((await userDevicesCache.get(user!)) as FullJid[]))
 				if (devices) {
-					const isLidJid = jid.includes('@lid')
 					const devicesWithJid = devices.map(d => ({
 						...d,
-						jid: isLidJid ? jidEncode(d.user, 'lid', d.device) : jidEncode(d.user, 's.whatsapp.net', d.device)
+						jid: jidEncode(d.user, d.server, d.device)
 					}))
 					deviceResults.push(...devicesWithJid)
 
@@ -282,7 +282,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		const requestedLidUsers = new Set<string>()
 		for (const jid of toFetch) {
-			if (jid.includes('@lid') || jid.includes('@hosted.lid')) {
+			if (isLidUser(jid) || isHostedLidUser(jid)) {
 				const user = jidDecode(jid)?.user
 				if (user) requestedLidUsers.add(user)
 			}
@@ -323,10 +323,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 				// Process all devices for this user
 				for (const item of userDevices) {
-					const deterministicServer = getServerFromDomainType(item.server, item.domainType)
 					const finalJid = isLidUser
-						? jidEncode(user, deterministicServer, item.device)
-						: jidEncode(item.user, deterministicServer, item.device)
+						? jidEncode(user, item.server, item.device)
+						: jidEncode(item.user, item.server, item.device)
 
 					deviceResults.push({
 						...item,
@@ -407,10 +406,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		if (jidsRequiringFetch.length) {
 			// LID if mapped, otherwise original
 			const wireJids = [
-				...jidsRequiringFetch.filter(jid => !!jid.includes('@lid') || !!jid.includes('@hosted.lid')),
+				...jidsRequiringFetch.filter(jid => !!isLidUser(jid) || !!isHostedLidUser(jid)),
 				...(
 					(await signalRepository.lidMapping.getLIDsForPNs(
-						jidsRequiringFetch.filter(jid => !!jid.includes('@s.whatsapp.net') || !!jid.includes('@hosted'))
+						jidsRequiringFetch.filter(jid => !!isPnUser(jid) || !!isHostedPnUser(jid)
 					)) || []
 				).map(a => a.lid)
 			]

@@ -502,7 +502,7 @@ export const makeSocket = (config: SocketConfig) => {
 		try {
 			let count = 0
 			const preKeyCount = await getAvailablePreKeysOnServer()
-			if (preKeyCount == 0) count = INITIAL_PREKEY_COUNT
+			if (preKeyCount === 0) count = INITIAL_PREKEY_COUNT
 			else count = MIN_PREKEY_COUNT
 			const { exists: currentPreKeyExists, currentPreKeyId } = await verifyCurrentPreKeyExists()
 

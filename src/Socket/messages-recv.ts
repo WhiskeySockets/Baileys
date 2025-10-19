@@ -1029,11 +1029,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				participant: attrs.participant
 			}
 
-			if (shouldIgnoreJid(remoteJid!) && remoteJid !== '@s.whatsapp.net') {
+			if (shouldIgnoreJid(remoteJid!) && remoteJid !== S_WHATSAPP_NET) {
 				logger.debug({ remoteJid }, 'ignoring receipt from jid')
 				return
 			}
-
 			const mainId = attrs.id
 			if (!mainId) {
 				logger.warn({ node }, 'received receipt with no ID')
@@ -1111,7 +1110,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const handleNotification = (node: BinaryNode) => {
 		return withAck(node, async () => {
 			const remoteJid = node.attrs.from
-			if (shouldIgnoreJid(remoteJid!) && remoteJid !== '@s.whatsapp.net') {
+			if (shouldIgnoreJid(remoteJid!) && remoteJid !== S_WHATSAPP_NET) {
 				logger.debug({ remoteJid, id: node.attrs.id }, 'ignored notification')
 				return
 			}
@@ -1142,7 +1141,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	const handleMessage = (node: BinaryNode) => {
 		return withAck(node, async () => {
-			if (shouldIgnoreJid(node.attrs.from!) && node.attrs.from !== '@s.whatsapp.net') {
+			if (shouldIgnoreJid(node.attrs.from!) && node.attrs.from !== S_WHATSAPP_NET) {
 				logger.debug({ key: node.attrs.key }, 'ignored message')
 				return
 			}
@@ -1270,7 +1269,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							}
 						}
 
-						cleanMessage(msg, authState.creds.me!.id)
+						cleanMessage(msg, authState.creds.me!.id, authState.creds.me!.lid || '')
 
 						await upsertMessage(msg, node.attrs.offline ? 'append' : 'notify')
 					})
