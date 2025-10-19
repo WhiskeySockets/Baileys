@@ -109,7 +109,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	let sendActiveReceipts = false
 
 	const withAck = async (node: BinaryNode, handler: () => Promise<boolean>) => {
-		let shouldAck = true
+		let shouldAck = false
 		try {
 			shouldAck = await handler()
 		} finally {
