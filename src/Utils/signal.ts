@@ -16,6 +16,7 @@ import {
 	getBinaryNodeChildBuffer,
 	getBinaryNodeChildren,
 	getBinaryNodeChildUInt,
+	getServerFromDomainType,
 	jidDecode,
 	S_WHATSAPP_NET,
 	WAJIDDomains
@@ -142,7 +143,7 @@ export const extractDeviceJids = (
 
 	for (const userResult of result) {
 		const { devices, id } = userResult as { devices: ParsedDeviceInfo; id: string }
-		const { user, domainType, server } = jidDecode(id)!
+		let { user, domainType, server } = jidDecode(id)!
 		const deviceList = devices?.deviceList as DeviceListData[]
 		if (Array.isArray(deviceList)) {
 			for (const { id: device, keyIndex, isHosted } of deviceList) {
@@ -151,15 +152,19 @@ export const extractDeviceJids = (
 					((myUser !== user && myLid !== user) || myDevice !== device) && // either different user or if me user, not this device
 					(device === 0 || !!keyIndex) // ensure that "key-index" is specified for "non-zero" devices, produces a bad req otherwise
 				) {
+					if (isHosted) {
+						if (domainType === WAJIDDomains.LID) {
+							domainType = WAJIDDomains.HOSTED_LID
+						} else {
+							domainType = WAJIDDomains.HOSTED
+						}
+					}
+
 					extracted.push({
 						user,
 						device,
-						domainType: isHosted
-							? domainType === WAJIDDomains.LID
-								? WAJIDDomains.HOSTED_LID
-								: WAJIDDomains.HOSTED
-							: domainType,
-						server
+						domainType,
+						server: getServerFromDomainType(server, domainType)
 					})
 				}
 			}
