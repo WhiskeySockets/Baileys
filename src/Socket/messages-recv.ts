@@ -109,11 +109,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	let sendActiveReceipts = false
 
-	const withAck = async (node: BinaryNode, handler: () => Promise<void>) => {
+	const withAck = async (node: BinaryNode, handler: () => Promise<boolean>) => {
+		let shouldAck = true
 		try {
-			await handler()
+			shouldAck = await handler()
 		} finally {
-			await sendMessageAck(node)
+			if (shouldAck) {
+				await sendMessageAck(node)
+			}
 		}
 	}
 
@@ -1031,19 +1034,21 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 			if (shouldIgnoreJid(remoteJid!) && remoteJid !== S_WHATSAPP_NET) {
 				logger.debug({ remoteJid }, 'ignoring receipt from jid')
-				return
+				return false
 			}
 			const mainId = attrs.id
 			if (!mainId) {
 				logger.warn({ node }, 'received receipt with no ID')
-				return
+				return false
 			}
 
 			const ids = [mainId]
 			if (Array.isArray(content)) {
-				const items = getBinaryNodeChildren(content[0], 'item')
-				const itemIds = items.map(i => i.attrs.id).filter(Boolean) as string[]
-				ids.push(...itemIds)
+				if (content.length > 0) {
+					const items = getBinaryNodeChildren(content[0], 'item')
+					const itemIds = items.map(i => i.attrs.id).filter(Boolean) as string[]
+					ids.push(...itemIds)
+				}
 			}
 
 			await processingMutex.mutex(async () => {
@@ -1104,6 +1109,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 				}
 			})
+			return true
 		})
 	}
 
@@ -1112,7 +1118,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const remoteJid = node.attrs.from
 			if (shouldIgnoreJid(remoteJid!) && remoteJid !== S_WHATSAPP_NET) {
 				logger.debug({ remoteJid, id: node.attrs.id }, 'ignored notification')
-				return
+				return false
 			}
 
 			await processingMutex.mutex(async () => {
@@ -1136,6 +1142,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					await upsertMessage(fullMsg, 'append')
 				}
 			})
+			return true
 		})
 	}
 
@@ -1143,7 +1150,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		return withAck(node, async () => {
 			if (shouldIgnoreJid(node.attrs.from!) && node.attrs.from !== S_WHATSAPP_NET) {
 				logger.debug({ key: node.attrs.key }, 'ignored message')
-				return
+				return false
 			}
 
 			const encNode = getBinaryNodeChild(node, 'enc')
@@ -1151,7 +1158,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			// TODO: temporary fix for crashes and issues resulting of failed msmsg decryption
 			if (encNode && encNode.attrs.type === 'msmsg') {
 				logger.debug({ key: node.attrs.key }, 'ignored msmsg')
-				return
+				return false
 			}
 
 			const {
@@ -1277,6 +1284,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			} catch (error) {
 				logger.error({ error, node: binaryNodeToString(node) }, 'error in handling message')
 			}
+			return true
 		})
 	}
 
