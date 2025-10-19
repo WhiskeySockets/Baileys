@@ -11,7 +11,6 @@ import type {
 	MessageUserReceipt,
 	SocketConfig,
 	WACallEvent,
-	WACallUpdateType,
 	WAMessage,
 	WAMessageKey,
 	WAPatchName
@@ -1278,9 +1277,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleCall = async (node: BinaryNode) => {
-		let status: WACallUpdateType
 		const { attrs } = node
 		const [infoChild] = getAllBinaryNodeChildren(node)
+		const status = getCallStatusFromNode(infoChild!)
 
 		if (!infoChild) {
 			throw new Boom('Missing call info in call node')
@@ -1288,7 +1287,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		const callId = infoChild.attrs['call-id']!
 		const from = infoChild.attrs.from! || infoChild.attrs['call-creator']!
-		status = getCallStatusFromNode(infoChild)
 
 		const call: WACallEvent = {
 			chatId: attrs.from!,

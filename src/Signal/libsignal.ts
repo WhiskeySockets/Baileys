@@ -5,7 +5,15 @@ import type { LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction } from 
 import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import type { ILogger } from '../Utils/logger'
-import { isHostedLidUser, isHostedPnUser, isLidUser, isPnUser, jidDecode, transferDevice, WAJIDDomains } from '../WABinary'
+import {
+	isHostedLidUser,
+	isHostedPnUser,
+	isLidUser,
+	isPnUser,
+	jidDecode,
+	transferDevice,
+	WAJIDDomains
+} from '../WABinary'
 import type { SenderKeyStore } from './Group/group_cipher'
 import { SenderKeyName } from './Group/sender-key-name'
 import { SenderKeyRecord } from './Group/sender-key-record'
@@ -223,9 +231,10 @@ export function makeLibSignalRepository(
 					if (!deviceStr) continue
 					const deviceNum = parseInt(deviceStr)
 					let jid = deviceNum === 0 ? `${user}@s.whatsapp.net` : `${user}:${deviceNum}@s.whatsapp.net`
-					if (deviceNum == 99) {
+					if (deviceNum === 99) {
 						jid = `${user}:99@hosted`
 					}
+
 					deviceJids.push(jid)
 				}
 			}

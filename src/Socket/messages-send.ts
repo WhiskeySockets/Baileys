@@ -42,7 +42,6 @@ import {
 	type FullJid,
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
-	getServerFromDomainType,
 	isHostedLidUser,
 	isHostedPnUser,
 	isJidGroup,
@@ -51,7 +50,6 @@ import {
 	jidDecode,
 	jidEncode,
 	jidNormalizedUser,
-	type JidServer,
 	type JidWithDevice,
 	S_WHATSAPP_NET
 } from '../WABinary'
@@ -408,7 +406,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				...jidsRequiringFetch.filter(jid => !!isLidUser(jid) || !!isHostedLidUser(jid)),
 				...(
 					(await signalRepository.lidMapping.getLIDsForPNs(
-						jidsRequiringFetch.filter(jid => !!isPnUser(jid) || !!isHostedPnUser(jid)
+						jidsRequiringFetch.filter(jid => !!isPnUser(jid) || !!isHostedPnUser(jid))
 					)) || []
 				).map(a => a.lid)
 			]
