@@ -199,6 +199,21 @@ export class MessageRetryManager {
 		}
 	}
 
+	/**
+	 * Dispose the manager and clear timers/caches to avoid leaks
+	 */
+	shutdown(): void {
+		for (const timeout of Object.values(this.pendingPhoneRequests)) {
+			clearTimeout(timeout)
+		}
+
+		this.pendingPhoneRequests = {}
+		this.recentMessagesMap.clear()
+		this.sessionRecreateHistory.clear()
+		this.retryCounters.clear()
+		this.logger.debug('Message retry manager shutdown complete')
+	}
+
 	private keyToString(key: RecentMessageKey): string {
 		return `${key.to}:${key.id}`
 	}

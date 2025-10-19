@@ -382,7 +382,7 @@ export const makeSocket = (config: SocketConfig) => {
 		const keyEnc = await noise.processHandshake(handshake, creds.noiseKey)
 
 		let node: proto.IClientPayload
-		if (!creds.me) {
+		if (!creds.me || !creds.registered) {
 			node = generateRegistrationNode(creds, config)
 			logger.info({ node }, 'not logged in, attempting registration...')
 		} else {
