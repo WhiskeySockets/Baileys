@@ -707,7 +707,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		const jid = attrs.from
 		const participant = attrs.participant || attrs.from
 
-		if (shouldIgnoreJid(jid!) && jid !== '@s.whatsapp.net') {
+		if (shouldIgnoreJid(jid!) && jid !== S_WHATSAPP_NET) {
 			return
 		}
 
@@ -1165,6 +1165,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 		awaitingSyncTimeout = setTimeout(() => {
 			if (syncState === SyncState.AwaitingInitialSync) {
+				// TODO: investigate
 				logger.warn('Timeout in AwaitingInitialSync, forcing state to Online and flushing buffer')
 				syncState = SyncState.Online
 				ev.flush()

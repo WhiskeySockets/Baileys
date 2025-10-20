@@ -1,7 +1,7 @@
 {
   "name": "baileys",
   "type": "module",
-  "version": "7.0.0-rc.5",
+  "version": "7.0.0-rc.6",
   "description": "A WebSockets library for interacting with WhatsApp Web",
   "keywords": [
     "whatsapp",
@@ -61,6 +61,7 @@
     "@typescript-eslint/parser": "^8",
     "@whiskeysockets/eslint-config": "^1.0.0",
     "conventional-changelog": "^7.1.1",
+    "conventional-changelog-angular": "^8.0.0",
     "esbuild-register": "^3.6.0",
     "eslint": "^9",
     "eslint-config-prettier": "^10.1.2",

@@ -5,7 +5,15 @@ import type { LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction } from 
 import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import type { ILogger } from '../Utils/logger'
-import { jidDecode, transferDevice, WAJIDDomains } from '../WABinary'
+import {
+	isHostedLidUser,
+	isHostedPnUser,
+	isLidUser,
+	isPnUser,
+	jidDecode,
+	transferDevice,
+	WAJIDDomains
+} from '../WABinary'
 import type { SenderKeyStore } from './Group/group_cipher'
 import { SenderKeyName } from './Group/sender-key-name'
 import { SenderKeyRecord } from './Group/sender-key-record'
@@ -181,10 +189,10 @@ export function makeLibSignalRepository(
 			toJid: string
 		): Promise<{ migrated: number; skipped: number; total: number }> {
 			// TODO: use usync to handle this entire mess
-			if (!fromJid || !toJid.includes('@lid')) return { migrated: 0, skipped: 0, total: 0 }
+			if (!fromJid || (!isLidUser(toJid) && !isHostedLidUser(toJid))) return { migrated: 0, skipped: 0, total: 0 }
 
 			// Only support PN to LID migration
-			if (!fromJid.includes('@s.whatsapp.net')) {
+			if (!isPnUser(fromJid) && !isHostedPnUser(fromJid)) {
 				return { migrated: 0, skipped: 0, total: 1 }
 			}
 
@@ -222,7 +230,11 @@ export function makeLibSignalRepository(
 					const deviceStr = sessionKey.split('.')[1]
 					if (!deviceStr) continue
 					const deviceNum = parseInt(deviceStr)
-					const jid = deviceNum === 0 ? `${user}@s.whatsapp.net` : `${user}:${deviceNum}@s.whatsapp.net`
+					let jid = deviceNum === 0 ? `${user}@s.whatsapp.net` : `${user}:${deviceNum}@s.whatsapp.net`
+					if (deviceNum === 99) {
+						jid = `${user}:99@hosted`
+					}
+
 					deviceJids.push(jid)
 				}
 			}
@@ -357,11 +369,10 @@ function signalStorage(
 
 			if (domainType === WAJIDDomains.LID || domainType === WAJIDDomains.HOSTED_LID) return id
 
-			const pnJid = `${user!}${device !== '0' ? `:${device}` : ''}@${domainType == WAJIDDomains.HOSTED ? 'hosted' : 's.whatsapp.net'}`
+			const pnJid = `${user!}${device !== '0' ? `:${device}` : ''}@${domainType === WAJIDDomains.HOSTED ? 'hosted' : 's.whatsapp.net'}`
 
-			let lidForPN = await lidMapping.getLIDForPN(pnJid)
-			if (lidForPN?.includes('@lid')) {
-				if (domainType === WAJIDDomains.HOSTED) lidForPN = `${lidForPN.split('@')[0]}@hosted.lid`
+			const lidForPN = await lidMapping.getLIDForPN(pnJid)
+			if (lidForPN) {
 				const lidAddr = jidToSignalProtocolAddress(lidForPN)
 				return lidAddr.toString()
 			}

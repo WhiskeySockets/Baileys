@@ -29,6 +29,7 @@ export const NOISE_WA_HEADER = Buffer.from([87, 65, 6, DICT_VERSION]) // last is
 /** from: https://stackoverflow.com/questions/3809401/what-is-a-good-regular-expression-to-match-a-url */
 export const URL_REGEX = /https:\/\/(?![^:@\/\s]+:[^:@\/\s]+@)[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(:\d+)?(\/[^\s]*)?/g
 
+// TODO: Add WA root CA
 export const WA_CERT_DETAILS = {
 	SERIAL: 0
 }
