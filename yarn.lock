@@ -1540,6 +1540,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@mitata/counters@npm:^0.0.8":
+  version: 0.0.8
+  resolution: "@mitata/counters@npm:0.0.8"
+  checksum: 10c0/e167d8b50b00c84395df277b226820231e4733d425a516adde1300fe0a6c25786e34fe32dc86ca8c0f90a681ff06ab858995c41d7c59ab148c7d3866097a0885
+  languageName: node
+  linkType: hard
+
 "@napi-rs/wasm-runtime@npm:^0.2.11":
   version: 0.2.12
   resolution: "@napi-rs/wasm-runtime@npm:0.2.12"
@@ -2159,11 +2166,11 @@ __metadata:
   linkType: hard
 
 "@types/node@npm:^22.0.0":
-  version: 22.18.8
-  resolution: "@types/node@npm:22.18.8"
+  version: 22.18.11
+  resolution: "@types/node@npm:22.18.11"
   dependencies:
     undici-types: "npm:~6.21.0"
-  checksum: 10c0/54473730e7417b923fec427f62ed3204259acbd8e450a7593bad8ae02a75effcfcc864b34bf02c108eeb9c04a404791687f42b801bafa5264a8761f4df9122fd
+  checksum: 10c0/3802f598608638e13ca350fbe2db0db5dde9a0b6704295fa1b6cec6defe24f9baf6a891eee6eaecd016bcd5ea18edecdaf71679d87079fe468913701adb61387
   languageName: node
   linkType: hard
 
@@ -2803,6 +2810,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"array-ify@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "array-ify@npm:1.0.0"
+  checksum: 10c0/75c9c072faac47bd61779c0c595e912fe660d338504ac70d10e39e1b8a4a0c9c87658703d619b9d1b70d324177ae29dc8d07dda0d0a15d005597bc4c5a59c70c
+  languageName: node
+  linkType: hard
+
 "array.prototype.map@npm:^1.0.5":
   version: 1.0.8
   resolution: "array.prototype.map@npm:1.0.8"
@@ -2983,6 +2997,7 @@ __metadata:
     "@eslint/eslintrc": "npm:^3.3.1"
     "@eslint/js": "npm:^9.31.0"
     "@hapi/boom": "npm:^9.1.3"
+    "@mitata/counters": "npm:^0.0.8"
     "@types/jest": "npm:^30.0.0"
     "@types/node": "npm:^20.9.0"
     "@types/ws": "npm:^8.0.0"
@@ -2991,6 +3006,7 @@ __metadata:
     "@whiskeysockets/eslint-config": "npm:^1.0.0"
     async-mutex: "npm:^0.5.0"
     conventional-changelog: "npm:^7.1.1"
+    conventional-changelog-angular: "npm:^8.0.0"
     esbuild-register: "npm:^3.6.0"
     eslint: "npm:^9"
     eslint-config-prettier: "npm:^10.1.2"
@@ -3002,7 +3018,9 @@ __metadata:
     libsignal: "git+https://github.com/whiskeysockets/libsignal-node"
     link-preview-js: "npm:^3.0.0"
     lru-cache: "npm:^11.1.0"
+    mitata: "npm:^1.0.34"
     music-metadata: "npm:^11.7.0"
+    old-baileys: "npm:@whiskeysockets/baileys@7.0.0-rc.6"
     open: "npm:^8.4.2"
     p-queue: "npm:^9.0.0"
     pino: "npm:^9.6"
@@ -3550,6 +3568,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"compare-func@npm:^2.0.0":
+  version: 2.0.0
+  resolution: "compare-func@npm:2.0.0"
+  dependencies:
+    array-ify: "npm:^1.0.0"
+    dot-prop: "npm:^5.1.0"
+  checksum: 10c0/78bd4dd4ed311a79bd264c9e13c36ed564cde657f1390e699e0f04b8eee1fc06ffb8698ce2dfb5fbe7342d509579c82d4e248f08915b708f77f7b72234086cc3
+  languageName: node
+  linkType: hard
+
 "concat-map@npm:0.0.1":
   version: 0.0.1
   resolution: "concat-map@npm:0.0.1"
@@ -3584,6 +3612,15 @@ __metadata:
   version: 1.0.5
   resolution: "content-type@npm:1.0.5"
   checksum: 10c0/b76ebed15c000aee4678c3707e0860cb6abd4e680a598c0a26e17f0bfae723ec9cc2802f0ff1bc6e4d80603719010431d2231018373d4dde10f9ccff9dadf5af
+  languageName: node
+  linkType: hard
+
+"conventional-changelog-angular@npm:^8.0.0":
+  version: 8.0.0
+  resolution: "conventional-changelog-angular@npm:8.0.0"
+  dependencies:
+    compare-func: "npm:^2.0.0"
+  checksum: 10c0/743faceab876bb9b9656f2389830d0ccb7c5caf02a629cb495d75c65c43414274728d7059b716d0c7d66fd663f8b978f25d44657148b8bc64ece12952cbfd886
   languageName: node
   linkType: hard
 
@@ -3969,6 +4006,15 @@ __metadata:
     domelementtype: "npm:^2.3.0"
     domhandler: "npm:^5.0.3"
   checksum: 10c0/47938f473b987ea71cd59e59626eb8666d3aa8feba5266e45527f3b636c7883cca7e582d901531961f742c519d7514636b7973353b648762b2e3bedbf235fada
+  languageName: node
+  linkType: hard
+
+"dot-prop@npm:^5.1.0":
+  version: 5.3.0
+  resolution: "dot-prop@npm:5.3.0"
+  dependencies:
+    is-obj: "npm:^2.0.0"
+  checksum: 10c0/93f0d343ef87fe8869320e62f2459f7e70f49c6098d948cc47e060f4a3f827d0ad61e83cb82f2bd90cd5b9571b8d334289978a43c0f98fea4f0e99ee8faa0599
   languageName: node
   linkType: hard
 
@@ -6940,7 +6986,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"libsignal@git+https://github.com/whiskeysockets/libsignal-node":
+"libsignal@git+https://github.com/whiskeysockets/libsignal-node, libsignal@git+https://github.com/whiskeysockets/libsignal-node.git":
   version: 2.0.1
   resolution: "libsignal@https://github.com/whiskeysockets/libsignal-node.git#commit=e81ecfc32eb74951d789ab37f7e341ab66d5fff1"
   dependencies:
@@ -7438,6 +7484,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"mitata@npm:^1.0.34":
+  version: 1.0.34
+  resolution: "mitata@npm:1.0.34"
+  checksum: 10c0/a78a0dd18203e47f444915e64e900e9686d5b6c53c461105f79a6b4795983a2f1fa573ce6fea697ebb29c31ff31b2e7e4f0ce072e0611e0313ebef274a0a5811
+  languageName: node
+  linkType: hard
+
 "mkdirp@npm:^1.0.4":
   version: 1.0.4
   resolution: "mkdirp@npm:1.0.4"
@@ -7686,6 +7739,36 @@ __metadata:
     has-symbols: "npm:^1.1.0"
     object-keys: "npm:^1.1.1"
   checksum: 10c0/3b2732bd860567ea2579d1567525168de925a8d852638612846bd8082b3a1602b7b89b67b09913cbb5b9bd6e95923b2ae73580baa9d99cb4e990564e8cbf5ddc
+  languageName: node
+  linkType: hard
+
+"old-baileys@npm:@whiskeysockets/baileys@7.0.0-rc.6":
+  version: 7.0.0-rc.6
+  resolution: "@whiskeysockets/baileys@npm:7.0.0-rc.6"
+  dependencies:
+    "@cacheable/node-cache": "npm:^1.4.0"
+    "@hapi/boom": "npm:^9.1.3"
+    async-mutex: "npm:^0.5.0"
+    libsignal: "git+https://github.com/whiskeysockets/libsignal-node.git"
+    lru-cache: "npm:^11.1.0"
+    music-metadata: "npm:^11.7.0"
+    p-queue: "npm:^9.0.0"
+    pino: "npm:^9.6"
+    protobufjs: "npm:^7.2.4"
+    ws: "npm:^8.13.0"
+  peerDependencies:
+    audio-decode: ^2.1.3
+    jimp: ^1.6.0
+    link-preview-js: ^3.0.0
+    sharp: "*"
+  peerDependenciesMeta:
+    audio-decode:
+      optional: true
+    jimp:
+      optional: true
+    link-preview-js:
+      optional: true
+  checksum: 10c0/2a44ee89dad67d99cfcd134ac96fdedccdd0ea2415bf946ff7a158a9e29ae31a68dd269af16a6e8f9f34145c327cffeadd9ffc8c9202a2c97d43368d894a04c2
   languageName: node
   linkType: hard
 

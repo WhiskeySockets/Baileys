@@ -1,60 +1,78 @@
 import * as constants from './constants'
 import { type FullJid, jidDecode } from './jid-utils'
 import type { BinaryNode, BinaryNodeCodingOptions } from './types'
-import { BufferWriter } from './buffer-utils'
 
 export const encodeBinaryNode = (
 	node: BinaryNode,
-	opts: Pick<BinaryNodeCodingOptions, 'TAGS' | 'TOKEN_MAP'> = constants
+	opts: Pick<BinaryNodeCodingOptions, 'TAGS' | 'TOKEN_MAP'> = constants,
+	buffer: number[] = [0]
 ): Buffer => {
-	const writer = new BufferWriter()
-	writer.writeByte(0)
-	encodeBinaryNodeInner(node, opts, writer)
-	return writer.toBuffer()
+	const encoded = encodeBinaryNodeInner(node, opts, buffer)
+	return Buffer.from(encoded)
 }
 
 const encodeBinaryNodeInner = (
 	{ tag, attrs, content }: BinaryNode,
 	opts: Pick<BinaryNodeCodingOptions, 'TAGS' | 'TOKEN_MAP'>,
-	writer: BufferWriter
-): void => {
+	buffer: number[]
+): number[] => {
 	const { TAGS, TOKEN_MAP } = opts
 
+	const pushByte = (value: number) => buffer.push(value & 0xff)
+
+	const pushInt = (value: number, n: number, littleEndian = false) => {
+		for (let i = 0; i < n; i++) {
+			const curShift = littleEndian ? i : n - 1 - i
+			buffer.push((value >> (curShift * 8)) & 0xff)
+		}
+	}
+
+	const pushBytes = (bytes: Uint8Array | Buffer | number[]) => {
+		for (const b of bytes) {
+			buffer.push(b)
+		}
+	}
+
+	const pushInt16 = (value: number) => {
+		pushBytes([(value >> 8) & 0xff, value & 0xff])
+	}
+
+	const pushInt20 = (value: number) => pushBytes([(value >> 16) & 0x0f, (value >> 8) & 0xff, value & 0xff])
 	const writeByteLength = (length: number) => {
 		if (length >= 4294967296) {
 			throw new Error('string too large to encode: ' + length)
 		}
 
 		if (length >= 1 << 20) {
-			writer.writeByte(TAGS.BINARY_32)
-			writer.writeInt(length, 4)
+			pushByte(TAGS.BINARY_32)
+			pushInt(length, 4) // 32 bit integer
 		} else if (length >= 256) {
-			writer.writeByte(TAGS.BINARY_20)
-			writer.writeInt20(length)
+			pushByte(TAGS.BINARY_20)
+			pushInt20(length)
 		} else {
-			writer.writeByte(TAGS.BINARY_8)
-			writer.writeByte(length)
+			pushByte(TAGS.BINARY_8)
+			pushByte(length)
 		}
 	}
 
 	const writeStringRaw = (str: string) => {
 		const bytes = Buffer.from(str, 'utf-8')
 		writeByteLength(bytes.length)
-		writer.writeBytes(bytes)
+		pushBytes(bytes)
 	}
 
 	const writeJid = ({ domainType, device, user, server }: FullJid) => {
 		if (typeof device !== 'undefined') {
-			writer.writeByte(TAGS.AD_JID)
-			writer.writeByte(domainType || 0)
-			writer.writeByte(device || 0)
+			pushByte(TAGS.AD_JID)
+			pushByte(domainType || 0)
+			pushByte(device || 0)
 			writeString(user)
 		} else {
-			writer.writeByte(TAGS.JID_PAIR)
+			pushByte(TAGS.JID_PAIR)
 			if (user.length) {
 				writeString(user)
 			} else {
-				writer.writeByte(TAGS.LIST_EMPTY)
+				pushByte(TAGS.LIST_EMPTY)
 			}
 
 			writeString(server)
@@ -103,14 +121,14 @@ const encodeBinaryNodeInner = (
 			throw new Error('Too many bytes to pack')
 		}
 
-		writer.writeByte(type === 'nibble' ? TAGS.NIBBLE_8 : TAGS.HEX_8)
+		pushByte(type === 'nibble' ? TAGS.NIBBLE_8 : TAGS.HEX_8)
 
 		let roundedLength = Math.ceil(str.length / 2.0)
 		if (str.length % 2 !== 0) {
 			roundedLength |= 128
 		}
 
-		writer.writeByte(roundedLength)
+		pushByte(roundedLength)
 		const packFunction = type === 'nibble' ? packNibble : packHex
 
 		const packBytePair = (v1: string, v2: string) => {
@@ -120,11 +138,11 @@ const encodeBinaryNodeInner = (
 
 		const strLengthHalf = Math.floor(str.length / 2)
 		for (let i = 0; i < strLengthHalf; i++) {
-			writer.writeByte(packBytePair(str[2 * i]!, str[2 * i + 1]!))
+			pushByte(packBytePair(str[2 * i]!, str[2 * i + 1]!))
 		}
 
 		if (str.length % 2 !== 0) {
-			writer.writeByte(packBytePair(str[str.length - 1]!, '\x00'))
+			pushByte(packBytePair(str[str.length - 1]!, '\x00'))
 		}
 	}
 
@@ -160,17 +178,17 @@ const encodeBinaryNodeInner = (
 
 	const writeString = (str?: string) => {
 		if (str === undefined || str === null) {
-			writer.writeByte(TAGS.LIST_EMPTY)
+			pushByte(TAGS.LIST_EMPTY)
 			return
 		}
 
 		const tokenIndex = TOKEN_MAP[str]
 		if (tokenIndex) {
 			if (typeof tokenIndex.dict === 'number') {
-				writer.writeByte(TAGS.DICTIONARY_0 + tokenIndex.dict)
+				pushByte(TAGS.DICTIONARY_0 + tokenIndex.dict)
 			}
 
-			writer.writeByte(tokenIndex.index)
+			pushByte(tokenIndex.index)
 		} else if (isNibble(str)) {
 			writePackedBytes(str, 'nibble')
 		} else if (isHex(str)) {
@@ -187,13 +205,12 @@ const encodeBinaryNodeInner = (
 
 	const writeListStart = (listSize: number) => {
 		if (listSize === 0) {
-			writer.writeByte(TAGS.LIST_EMPTY)
+			pushByte(TAGS.LIST_EMPTY)
 		} else if (listSize < 256) {
-			writer.writeByte(TAGS.LIST_8)
-			writer.writeByte(listSize)
+			pushBytes([TAGS.LIST_8, listSize])
 		} else {
-			writer.writeByte(TAGS.LIST_16)
-			writer.writeInt16(listSize)
+			pushByte(TAGS.LIST_16)
+			pushInt16(listSize)
 		}
 	}
 
@@ -217,18 +234,20 @@ const encodeBinaryNodeInner = (
 		writeString(content)
 	} else if (Buffer.isBuffer(content) || content instanceof Uint8Array) {
 		writeByteLength(content.length)
-		writer.writeBytes(content)
+		pushBytes(content)
 	} else if (Array.isArray(content)) {
 		const validContent = content.filter(
 			item => item && (item.tag || Buffer.isBuffer(item) || item instanceof Uint8Array || typeof item === 'string')
 		)
 		writeListStart(validContent.length)
 		for (const item of validContent) {
-			encodeBinaryNodeInner(item, opts, writer)
+			encodeBinaryNodeInner(item, opts, buffer)
 		}
 	} else if (typeof content === 'undefined') {
 		// do nothing
 	} else {
 		throw new Error(`invalid children for header "${tag}": ${content} (${typeof content})`)
 	}
+
+	return buffer
 }

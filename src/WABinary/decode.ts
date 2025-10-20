@@ -1,9 +1,8 @@
-import { promisify } from 'node:util'
-import { inflate } from 'node:zlib'
+import { promisify } from 'util'
+import { inflate } from 'zlib'
 import * as constants from './constants'
 import { jidEncode, type JidServer, WAJIDDomains } from './jid-utils'
 import type { BinaryNode, BinaryNodeCodingOptions } from './types'
-import { BufferReader } from './buffer-utils'
 
 const inflatePromise = promisify(inflate)
 
@@ -21,14 +20,52 @@ export const decompressingIfRequired = async (buffer: Buffer) => {
 export const decodeDecompressedBinaryNode = (
 	buffer: Buffer,
 	opts: Pick<BinaryNodeCodingOptions, 'DOUBLE_BYTE_TOKENS' | 'SINGLE_BYTE_TOKENS' | 'TAGS'>,
-	indexRef?: { index: number }
+	indexRef: { index: number } = { index: 0 }
 ): BinaryNode => {
 	const { DOUBLE_BYTE_TOKENS, SINGLE_BYTE_TOKENS, TAGS } = opts
 
-	const reader = new BufferReader(buffer)
-	// Support legacy indexRef parameter for backwards compatibility
-	if (indexRef) {
-		reader.setOffset(indexRef.index)
+	const checkEOS = (length: number) => {
+		if (indexRef.index + length > buffer.length) {
+			throw new Error('end of stream')
+		}
+	}
+
+	const next = () => {
+		const value = buffer[indexRef.index]
+		indexRef.index += 1
+		return value
+	}
+
+	const readByte = () => {
+		checkEOS(1)
+		return next()
+	}
+
+	const readBytes = (n: number) => {
+		checkEOS(n)
+		const value = buffer.slice(indexRef.index, indexRef.index + n)
+		indexRef.index += n
+		return value
+	}
+
+	const readStringFromChars = (length: number) => {
+		return readBytes(length).toString('utf-8')
+	}
+
+	const readInt = (n: number, littleEndian = false) => {
+		checkEOS(n)
+		let val = 0
+		for (let i = 0; i < n; i++) {
+			const shift = littleEndian ? i : n - 1 - i
+			val |= next()! << (shift * 8)
+		}
+
+		return val
+	}
+
+	const readInt20 = () => {
+		checkEOS(3)
+		return ((next()! & 15) << 16) + (next()! << 8) + next()!
 	}
 
 	const unpackHex = (value: number) => {
@@ -67,22 +104,21 @@ export const decodeDecompressedBinaryNode = (
 	}
 
 	const readPacked8 = (tag: number) => {
-		const startByte = reader.readByte()
-		const len = startByte & 127
-		const charCodes: number[] = []
+		const startByte = readByte()!
+		let value = ''
 
-		for (let i = 0; i < len; i++) {
-			const curByte = reader.readByte()
-			charCodes.push(unpackByte(tag, (curByte & 0xf0) >> 4))
-			charCodes.push(unpackByte(tag, curByte & 0x0f))
+		for (let i = 0; i < (startByte & 127); i++) {
+			const curByte = readByte()!
+
+			value += String.fromCharCode(unpackByte(tag, (curByte & 0xf0) >> 4))
+			value += String.fromCharCode(unpackByte(tag, curByte & 0x0f))
 		}
 
-		let finalChars = charCodes
 		if (startByte >> 7 !== 0) {
-			finalChars = charCodes.slice(0, -1)
+			value = value.slice(0, -1)
 		}
 
-		return String.fromCharCode(...finalChars)
+		return value
 	}
 
 	const isListTag = (tag: number) => {
@@ -94,17 +130,17 @@ export const decodeDecompressedBinaryNode = (
 			case TAGS.LIST_EMPTY:
 				return 0
 			case TAGS.LIST_8:
-				return reader.readByte()
+				return readByte()
 			case TAGS.LIST_16:
-				return reader.readInt16()
+				return readInt(2)
 			default:
 				throw new Error('invalid tag for list size: ' + tag)
 		}
 	}
 
 	const readJidPair = () => {
-		const i = readString(reader.readByte())
-		const j = readString(reader.readByte())
+		const i = readString(readByte()!)
+		const j = readString(readByte()!)
 		if (j) {
 			return (i || '') + '@' + j
 		}
@@ -113,11 +149,11 @@ export const decodeDecompressedBinaryNode = (
 	}
 
 	const readAdJid = () => {
-		const rawDomainType = reader.readByte()
+		const rawDomainType = readByte()
 		const domainType = Number(rawDomainType)
 
-		const device = reader.readByte()
-		const user = readString(reader.readByte())
+		const device = readByte()
+		const user = readString(readByte()!)
 
 		let server: JidServer = 's.whatsapp.net' // default whatsapp server
 		if (domainType === WAJIDDomains.LID) {
@@ -141,15 +177,15 @@ export const decodeDecompressedBinaryNode = (
 			case TAGS.DICTIONARY_1:
 			case TAGS.DICTIONARY_2:
 			case TAGS.DICTIONARY_3:
-				return getTokenDouble(tag - TAGS.DICTIONARY_0, reader.readByte())
+				return getTokenDouble(tag - TAGS.DICTIONARY_0, readByte()!)
 			case TAGS.LIST_EMPTY:
 				return ''
 			case TAGS.BINARY_8:
-				return reader.readStringFromChars(reader.readByte())
+				return readStringFromChars(readByte()!)
 			case TAGS.BINARY_20:
-				return reader.readStringFromChars(reader.readInt20())
+				return readStringFromChars(readInt20())
 			case TAGS.BINARY_32:
-				return reader.readStringFromChars(reader.readInt32())
+				return readStringFromChars(readInt(4))
 			case TAGS.JID_PAIR:
 				return readJidPair()
 			case TAGS.AD_JID:
@@ -166,12 +202,7 @@ export const decodeDecompressedBinaryNode = (
 		const items: BinaryNode[] = []
 		const size = readListSize(tag)!
 		for (let i = 0; i < size; i++) {
-			// Create a child index ref to track the child's read position
-			const childIndexRef = { index: reader.getOffset() }
-			const childNode = decodeDecompressedBinaryNode(buffer, opts, childIndexRef)
-			// Manually update the parent's reader offset with the child's final position
-			reader.setOffset(childIndexRef.index)
-			items.push(childNode)
+			items.push(decodeDecompressedBinaryNode(buffer, opts, indexRef))
 		}
 
 		return items
@@ -191,8 +222,8 @@ export const decodeDecompressedBinaryNode = (
 		return value
 	}
 
-	const listSize = readListSize(reader.readByte())
-	const header = readString(reader.readByte())
+	const listSize = readListSize(readByte()!)
+	const header = readString(readByte()!)
 	if (!listSize || !header.length) {
 		throw new Error('invalid node')
 	}
@@ -206,27 +237,27 @@ export const decodeDecompressedBinaryNode = (
 	// read the attributes in
 	const attributesLength = (listSize - 1) >> 1
 	for (let i = 0; i < attributesLength; i++) {
-		const key = readString(reader.readByte())
-		const value = readString(reader.readByte())
+		const key = readString(readByte()!)
+		const value = readString(readByte()!)
 
 		attrs[key] = value
 	}
 
 	if (listSize % 2 === 0) {
-		const tag = reader.readByte()
+		const tag = readByte()!
 		if (isListTag(tag)) {
 			data = readList(tag)
 		} else {
 			let decoded: Buffer | string
 			switch (tag) {
 				case TAGS.BINARY_8:
-					decoded = reader.readBytes(reader.readByte())
+					decoded = readBytes(readByte()!)
 					break
 				case TAGS.BINARY_20:
-					decoded = reader.readBytes(reader.readInt20())
+					decoded = readBytes(readInt20())
 					break
 				case TAGS.BINARY_32:
-					decoded = reader.readBytes(reader.readInt32())
+					decoded = readBytes(readInt(4))
 					break
 				default:
 					decoded = readString(tag)
@@ -235,11 +266,6 @@ export const decodeDecompressedBinaryNode = (
 
 			data = decoded
 		}
-	}
-
-	// Update indexRef for backwards compatibility
-	if (indexRef) {
-		indexRef.index = reader.getOffset()
 	}
 
 	return {

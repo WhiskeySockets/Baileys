@@ -1,7 +1,7 @@
 {
   "name": "baileys",
   "type": "module",
-  "version": "7.0.0-rc.5",
+  "version": "7.0.0-rc.6",
   "description": "A WebSockets library for interacting with WhatsApp Web",
   "keywords": [
     "whatsapp",
@@ -21,6 +21,7 @@
     "engine-requirements.js"
   ],
   "scripts": {
+    "bench": "npm run build && tsx --expose-gc ./bench/bench.ts",
     "build:all": "npm run build && npm run build:docs",
     "build:docs": "typedoc",
     "build": "tsc -P tsconfig.build.json && tsc-esm-fix --tsconfig=tsconfig.build.json --ext=.js",
@@ -54,6 +55,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.31.0",
+    "@mitata/counters": "^0.0.8",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.9.0",
     "@types/ws": "^8.0.0",
@@ -61,6 +63,7 @@
     "@typescript-eslint/parser": "^8",
     "@whiskeysockets/eslint-config": "^1.0.0",
     "conventional-changelog": "^7.1.1",
+    "conventional-changelog-angular": "^8.0.0",
     "esbuild-register": "^3.6.0",
     "eslint": "^9",
     "eslint-config-prettier": "^10.1.2",
@@ -71,6 +74,8 @@
     "json": "^11.0.0",
     "link-preview-js": "^3.0.0",
     "lru-cache": "^11.1.0",
+    "mitata": "^1.0.34",
+    "old-baileys": "npm:@whiskeysockets/baileys@7.0.0-rc.6",
     "open": "^8.4.2",
     "pino-pretty": "^13.1.1",
     "prettier": "^3.5.3",
