@@ -2,6 +2,7 @@ import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes }
 import * as curve from 'libsignal/src/curve'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import type { KeyPair } from '../Types'
+import type { ILogger } from './logger'
 
 // insure browser & node compatibility
 const { subtle } = globalThis.crypto
@@ -19,14 +20,14 @@ export const Curve = {
 			public: Buffer.from(pubKey.slice(1))
 		}
 	},
-	sharedKey: (privateKey: Uint8Array, publicKey: Uint8Array) => {
-		const shared = curve.calculateAgreement(generateSignalPubKey(publicKey), privateKey)
+	sharedKey: (privateKey: Uint8Array, publicKey: Uint8Array, logger?: ILogger) => {
+		const shared = curve.calculateAgreement(generateSignalPubKey(publicKey), privateKey, logger)
 		return Buffer.from(shared)
 	},
 	sign: (privateKey: Uint8Array, buf: Uint8Array) => curve.calculateSignature(privateKey, buf),
-	verify: (pubKey: Uint8Array, message: Uint8Array, signature: Uint8Array) => {
+	verify: (pubKey: Uint8Array, message: Uint8Array, signature: Uint8Array, logger?: ILogger) => {
 		try {
-			curve.verifySignature(generateSignalPubKey(pubKey), message, signature)
+			curve.verifySignature(generateSignalPubKey(pubKey), message, signature, logger)
 			return true
 		} catch (error) {
 			return false
