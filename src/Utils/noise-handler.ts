@@ -105,10 +105,10 @@ export const makeNoiseHandler = ({
 		finishInit,
 		processHandshake: async ({ serverHello }: proto.HandshakeMessage, noiseKey: KeyPair) => {
 			authenticate(serverHello!.ephemeral!)
-			await mixIntoKey(Curve.sharedKey(privateKey, serverHello!.ephemeral!))
+			await mixIntoKey(Curve.sharedKey(privateKey, serverHello!.ephemeral!, logger))
 
 			const decStaticContent = decrypt(serverHello!.static!)
-			await mixIntoKey(Curve.sharedKey(privateKey, decStaticContent))
+			await mixIntoKey(Curve.sharedKey(privateKey, decStaticContent, logger))
 
 			const certDecoded = decrypt(serverHello!.payload!)
 
@@ -121,7 +121,7 @@ export const makeNoiseHandler = ({
 			}
 
 			const keyEnc = encrypt(noiseKey.public)
-			await mixIntoKey(Curve.sharedKey(noiseKey.private, serverHello!.ephemeral!))
+			await mixIntoKey(Curve.sharedKey(noiseKey.private, serverHello!.ephemeral!, logger))
 
 			return keyEnc
 		},
