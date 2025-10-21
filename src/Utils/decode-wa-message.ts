@@ -107,7 +107,17 @@ export const extractAddressingContext = (stanza: BinaryNode) => {
 		//with device data
 		//if (sender && senderAlt) senderAlt = transferDevice(sender, senderAlt)
 	}
-
+    if (!senderAlt && sender) {
+        if (sender.endsWith('@lid')) {
+            // For LID senders, we need to find the corresponding PN
+            // This will be handled by the LID mapping lookup in the calling function
+            senderAlt = undefined; // Will be populated by LID mapping lookup
+        } else if (sender.endsWith('@s.whatsapp.net')) {
+            // For PN senders, we need to find the corresponding LID
+            // This will be handled by the LID mapping lookup in the calling function
+            senderAlt = undefined; // Will be populated by LID mapping lookup
+        }
+    }
 	return {
 		addressingMode,
 		senderAlt,
@@ -119,7 +129,7 @@ export const extractAddressingContext = (stanza: BinaryNode) => {
  * Decode the received node as a message.
  * @note this will only parse the message, not decrypt it
  */
-export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: string) {
+export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: string, repository?:any) {
 	let msgType: MessageType
 	let chatId: string
 	let author: string
@@ -192,14 +202,25 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	}
 
 	const pushname = stanza?.attrs?.notify
-
+    // Handle remoteJidAlt - try to get it from addressingContext, or look it up from repository
+    let remoteJidAlt = !isJidGroup(chatId) ? addressingContext.senderAlt : undefined;
+    let participantAlt = isJidGroup(chatId) ? addressingContext.senderAlt : undefined;
+    
+    // If senderAlt is not available and we have a repository, try to look it up
+    if (!addressingContext.senderAlt && repository && author) {
+        // This is an async operation, but we can't make this function async
+        // So we'll set a flag to indicate that the mapping should be looked up later
+        // The calling function will need to handle this
+        remoteJidAlt = undefined; // Will be populated by LID mapping lookup
+        participantAlt = undefined; // Will be populated by LID mapping lookup
+    }
 	const key: WAMessageKey = {
 		remoteJid: chatId,
-		remoteJidAlt: !isJidGroup(chatId) ? addressingContext.senderAlt : undefined,
+		remoteJidAlt,
 		fromMe,
 		id: msgId,
 		participant,
-		participantAlt: isJidGroup(chatId) ? addressingContext.senderAlt : undefined,
+		participantAlt,
 		addressingMode: addressingContext.addressingMode,
 		...(msgType === 'newsletter' && stanza.attrs.server_id ? { server_id: stanza.attrs.server_id } : {})
 	}
@@ -229,12 +250,44 @@ export const decryptMessageNode = (
 	repository: SignalRepositoryWithLIDStore,
 	logger: ILogger
 ) => {
-	const { fullMessage, author, sender } = decodeMessageNode(stanza, meId, meLid)
+	const { fullMessage, author, sender } = decodeMessageNode(stanza, meId, meLid,repository)
+	  // Handle LID mapping lookup for missing remoteJidAlt
+	  const handleLidMapping = async () => {
+        if (!fullMessage.key.remoteJidAlt && author && repository) {
+            logger?.debug({ author, hasRepository: !!repository }, 'Attempting LID mapping lookup for missing remoteJidAlt');
+            try {
+                if (author.endsWith('@lid')) {
+                    // Look up PN for LID
+                    const pn = await repository.lidMapping.getPNForLID(author);
+                    if (pn) {
+                        fullMessage.key.remoteJidAlt = pn;
+                        logger?.debug({ author, pn }, 'Found PN for LID from repository');
+                    } else {
+                        logger?.debug({ author }, 'No PN found for LID in repository');
+                    }
+                } else if (author.endsWith('@s.whatsapp.net')) {
+                    // Look up LID for PN
+                    const lid = await repository.lidMapping.getLIDForPN(author);
+                    if (lid) {
+                        fullMessage.key.remoteJidAlt = lid;
+                        logger?.debug({ author, lid }, 'Found LID for PN from repository');
+                    } else {
+                        logger?.debug({ author }, 'No LID found for PN in repository');
+                    }
+                }
+            } catch (error) {
+                logger?.warn({ author, error }, 'Failed to lookup LID mapping');
+            }
+        } else if (!fullMessage.key.remoteJidAlt) {
+            logger?.debug({ author, hasRepository: !!repository }, 'Skipping LID mapping lookup - missing requirements');
+        }
+    };
 	return {
 		fullMessage,
 		category: stanza.attrs.category,
 		author,
 		async decrypt() {
+			await handleLidMapping();
 			let decryptables = 0
 			if (Array.isArray(stanza.content)) {
 				for (const { tag, attrs, content } of stanza.content) {
