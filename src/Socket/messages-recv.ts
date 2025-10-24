@@ -1086,25 +1086,29 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						// correctly set who is asking for the retry
 						key.participant = key.participant || attrs.from
 						const retryNode = getBinaryNodeChild(node, 'retry')
-						if (ids[0] && key.participant && (await willSendMessageAgain(ids[0], key.participant))) {
-							if (key.fromMe) {
-								try {
-									updateSendMessageAgainCount(ids[0], key.participant)
-									logger.debug({ attrs, key }, 'recv retry request')
-									await sendMessagesAgain(key, ids, retryNode!)
-								} catch (error: unknown) {
-									logger.error(
-										{ key, ids, trace: error instanceof Error ? error.stack : 'Unknown error' },
-										'error in sending message again'
-									)
-								}
-							} else {
-								logger.info({ attrs, key }, 'recv retry for not fromMe message')
-							}
-						} else {
-							logger.info({ attrs, key }, 'will not send message again, as sent too many times')
-						}
-					}
+                                                if (ids[0] && key.participant) {
+                                                        const canResend = await willSendMessageAgain(ids[0], key.participant)
+
+                                                        if (!canResend) {
+                                                                logger.info({ attrs, key }, 'will not send message again, as sent too many times')
+                                                                return
+                                                        }
+
+                                                        if (key.fromMe) {
+                                                                try {
+                                                                        logger.debug({ attrs, key }, 'recv retry request')
+                                                                        await sendMessagesAgain(key, ids, retryNode!)
+                                                                } catch (error: unknown) {
+                                                                        logger.error(
+                                                                                { key, ids, trace: error instanceof Error ? error.stack : 'Unknown error' },
+                                                                                'error in sending message again'
+                                                                        )
+                                                                }
+                                                        } else {
+                                                                logger.info({ attrs, key }, 'recv retry for not fromMe message')
+                                                        }
+                                                }
+                                        }
 				})
 			])
 		} finally {
