@@ -1043,13 +1043,18 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			const content = assertMediaContent(message.message)
 			const mediaKey = content.mediaKey!
 			const meId = authState.creds.me!.id
-			const node = await encryptMediaRetryRequest(message.key, mediaKey, meId)
+                        if (!message.key) {
+                                throw new Boom('Missing message key for media retry update')
+                        }
+
+                        const messageKey = message.key
+                        const node = await encryptMediaRetryRequest(messageKey, mediaKey, meId)
 
 			let error: Error | undefined = undefined
 			await Promise.all([
 				sendNode(node),
 				waitForMsgMediaUpdate(async update => {
-					const result = update.find(c => c.key.id === message.key.id)
+                                        const result = update.find(c => c.key.id === messageKey.id)
 					if (result) {
 						if (result.error) {
 							error = result.error
@@ -1082,7 +1087,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				throw error
 			}
 
-			ev.emit('messages.update', [{ key: message.key, update: { message: message.message } }])
+                        ev.emit('messages.update', [{ key: messageKey, update: { message: message.message } }])
 
 			return message
 		},
@@ -1103,28 +1108,31 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						: disappearingMessagesInChat
 				await groupToggleEphemeral(jid, value)
 			} else {
-				const fullMsg = await generateWAMessage(jid, content, {
-					logger,
-					userJid,
-					getUrlInfo: text =>
-						getUrlInfo(text, {
-							thumbnailWidth: linkPreviewImageThumbnailWidth,
-							fetchOpts: {
-								timeout: 3_000,
-								...(httpRequestOptions || {})
-							},
-							logger,
-							uploadImage: generateHighQualityLinkPreview ? waUploadToServer : undefined
-						}),
-					//TODO: CACHE
-					getProfilePicUrl: sock.profilePictureUrl,
-					getCallLink: sock.createCallLink,
-					upload: waUploadToServer,
-					mediaCache: config.mediaCache,
-					options: config.options,
-					messageId: generateMessageIDV2(sock.user?.id),
-					...options
-				})
+                                const fullMsg = await generateWAMessage(jid, content, {
+                                        logger,
+                                        userJid,
+                                        getUrlInfo: text =>
+                                                getUrlInfo(text, {
+                                                        thumbnailWidth: linkPreviewImageThumbnailWidth,
+                                                        fetchOpts: {
+                                                                timeout: 3_000,
+                                                                ...(httpRequestOptions || {})
+                                                        },
+                                                        logger,
+                                                        uploadImage: generateHighQualityLinkPreview ? waUploadToServer : undefined
+                                                }),
+                                        //TODO: CACHE
+                                        getProfilePicUrl: sock.profilePictureUrl,
+                                        getCallLink: sock.createCallLink,
+                                        upload: waUploadToServer,
+                                        mediaCache: config.mediaCache,
+                                        options: config.options,
+                                        messageId: generateMessageIDV2(sock.user?.id),
+                                        ...options
+                                })
+                                if (!fullMsg.key) {
+                                        throw new Boom('Generated message missing key')
+                                }
 				const isEventMsg = 'event' in content && !!content.event
 				const isDeleteMsg = 'delete' in content && !!content.delete
 				const isEditMsg = 'edit' in content && !!content.edit

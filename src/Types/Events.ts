@@ -88,14 +88,15 @@ export type BaileysEventMap = {
 	'labels.association': { association: LabelAssociation; type: 'add' | 'remove' }
 
 	/** Newsletter-related events */
-	'newsletter.reaction': {
-		id: string
-		server_id: string
-		reaction: { code?: string; count?: number; removed?: boolean }
-	}
-	'newsletter.view': { id: string; server_id: string; count: number }
-	'newsletter-participants.update': { id: string; author: string; user: string; new_role: string; action: string }
-	'newsletter-settings.update': { id: string; update: any }
+        'newsletter.reaction': {
+                id: string
+                server_id: string
+                reaction: { code?: string; count?: number; removed?: boolean }
+        }
+        'newsletter.view': { id: string; server_id: string; count: number }
+        'newsletter-participants.update': { id: string; author: string; user: string; new_role: string; action: string }
+        'newsletter-settings.update': { id: string; update: any }
+        'newsletter.message.persisted': { id: string; serverId?: string; persistedAsProto: boolean }
 }
 
 export type BufferedEventData = {
