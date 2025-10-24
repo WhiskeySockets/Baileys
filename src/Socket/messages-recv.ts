@@ -11,7 +11,8 @@ import type {
 	MessageUserReceipt,
 	SocketConfig,
 	WACallEvent,
-	WAMessage,
+        ProtoWAMessage,
+        WAMessage,
 	WAMessageKey,
 	WAPatchName
 } from '../Types'
@@ -302,25 +303,30 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 			case 'message':
 				const plaintextNode = getBinaryNodeChild(child, 'plaintext')
-				if (plaintextNode?.content) {
-					try {
-						const contentBuf =
-							typeof plaintextNode.content === 'string'
-								? Buffer.from(plaintextNode.content, 'binary')
-								: Buffer.from(plaintextNode.content as Uint8Array)
-						const messageProto = proto.Message.decode(contentBuf).toJSON()
-						const fullMessage = proto.WebMessageInfo.fromObject({
-							key: {
-								remoteJid: from,
-								id: child.attrs.message_id || child.attrs.server_id,
-								fromMe: false // TODO: is this really true though
-							},
-							message: messageProto,
-							messageTimestamp: +child.attrs.t!
-						}).toJSON() as WAMessage
-						await upsertMessage(fullMessage, 'append')
-						logger.info('Processed plaintext newsletter message')
-					} catch (error) {
+                                if (plaintextNode?.content) {
+                                        try {
+                                                const contentBuf =
+                                                        typeof plaintextNode.content === 'string'
+                                                                ? Buffer.from(plaintextNode.content, 'binary')
+                                                                : Buffer.from(plaintextNode.content as Uint8Array)
+                                                const messageProto = proto.Message.decode(contentBuf)
+                                                const fullMessage = proto.WebMessageInfo.create({
+                                                        key: {
+                                                                remoteJid: from,
+                                                                id: child.attrs.message_id || child.attrs.server_id,
+                                                                fromMe: false // TODO: is this really true though
+                                                        },
+                                                        message: messageProto,
+                                                        messageTimestamp: +child.attrs.t!
+                                                }) as ProtoWAMessage
+                                                await upsertMessage(fullMessage, 'append')
+                                                ev.emit('newsletter.message.persisted', {
+                                                        id: from,
+                                                        serverId: child.attrs.message_id || child.attrs.server_id,
+                                                        persistedAsProto: fullMessage instanceof proto.WebMessageInfo
+                                                })
+                                                logger.info('Processed plaintext newsletter message')
+                                        } catch (error) {
 						logger.error({ error }, 'Failed to decode plaintext newsletter message')
 					}
 				}

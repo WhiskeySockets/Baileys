@@ -8,14 +8,15 @@ import type {
 	ChatModification,
 	ChatMutation,
 	LTHashState,
-	MessageUpsertType,
-	PresenceData,
-	SocketConfig,
-	WABusinessHoursConfig,
-	WABusinessProfile,
-	WAMediaUpload,
-	WAMessage,
-	WAPatchCreate,
+        MessageUpsertType,
+        PresenceData,
+        SocketConfig,
+        WABusinessHoursConfig,
+        WABusinessProfile,
+        WAMediaUpload,
+        WAMessage,
+        UpsertableWAMessage,
+        WAPatchCreate,
 	WAPatchName,
 	WAPresence,
 	WAPrivacyCallValue,
@@ -1017,27 +1018,28 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		await Promise.all([fetchProps(), fetchBlocklist(), fetchPrivacySettings()])
 	}
 
-	const upsertMessage = ev.createBufferedFunction(async (msg: WAMessage, type: MessageUpsertType) => {
-		ev.emit('messages.upsert', { messages: [msg], type })
+        const upsertMessage = ev.createBufferedFunction(async (msg: UpsertableWAMessage, type: MessageUpsertType) => {
+                const message = msg as WAMessage
+                ev.emit('messages.upsert', { messages: [message], type })
 
-		if (!!msg.pushName) {
-			let jid = msg.key.fromMe ? authState.creds.me!.id : msg.key.participant || msg.key.remoteJid
-			jid = jidNormalizedUser(jid!)
+                if (!!message.pushName) {
+                        let jid = message.key.fromMe ? authState.creds.me!.id : message.key.participant || message.key.remoteJid
+                        jid = jidNormalizedUser(jid!)
 
-			if (!msg.key.fromMe) {
-				ev.emit('contacts.update', [{ id: jid, notify: msg.pushName, verifiedName: msg.verifiedBizName! }])
-			}
+                        if (!message.key.fromMe) {
+                                ev.emit('contacts.update', [{ id: jid, notify: message.pushName, verifiedName: message.verifiedBizName! }])
+                        }
 
-			// update our pushname too
-			if (msg.key.fromMe && msg.pushName && authState.creds.me?.name !== msg.pushName) {
-				ev.emit('creds.update', { me: { ...authState.creds.me!, name: msg.pushName } })
-			}
-		}
+                        // update our pushname too
+                        if (message.key.fromMe && message.pushName && authState.creds.me?.name !== message.pushName) {
+                                ev.emit('creds.update', { me: { ...authState.creds.me!, name: message.pushName } })
+                        }
+                }
 
-		const historyMsg = getHistoryMsg(msg.message!)
-		const shouldProcessHistoryMsg = historyMsg
-			? shouldSyncHistoryMessage(historyMsg) && PROCESSABLE_HISTORY_TYPES.includes(historyMsg.syncType!)
-			: false
+                const historyMsg = getHistoryMsg(message.message!)
+                const shouldProcessHistoryMsg = historyMsg
+                        ? shouldSyncHistoryMessage(historyMsg) && PROCESSABLE_HISTORY_TYPES.includes(historyMsg.syncType!)
+                        : false
 
 		// State machine: decide on sync and flush
 		if (historyMsg && syncState === SyncState.AwaitingInitialSync) {
@@ -1078,12 +1080,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					await doAppStateSync()
 				}
 			})(),
-			processMessage(msg, {
-				signalRepository,
-				shouldProcessHistoryMsg,
-				placeholderResendCache,
-				ev,
-				creds: authState.creds,
+                        processMessage(message, {
+                                signalRepository,
+                                shouldProcessHistoryMsg,
+                                placeholderResendCache,
+                                ev,
+                                creds: authState.creds,
 				keyStore: authState.keys,
 				logger,
 				options: config.options
@@ -1091,11 +1093,11 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		])
 
 		// If the app state key arrives and we are waiting to sync, trigger the sync now.
-		if (msg.message?.protocolMessage?.appStateSyncKeyShare && syncState === SyncState.Syncing) {
-			logger.info('App state sync key arrived, triggering app state sync')
-			await doAppStateSync()
-		}
-	})
+                if (message.message?.protocolMessage?.appStateSyncKeyShare && syncState === SyncState.Syncing) {
+                        logger.info('App state sync key arrived, triggering app state sync')
+                        await doAppStateSync()
+                }
+        })
 
 	ws.on('CB:presence', handlePresenceUpdate)
 	ws.on('CB:chatstate', handlePresenceUpdate)

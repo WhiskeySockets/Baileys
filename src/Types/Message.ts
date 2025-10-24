@@ -9,6 +9,8 @@ import type { CacheStore } from './Socket'
 // export the WAMessage Prototypes
 export { proto as WAProto }
 export type WAMessage = proto.IWebMessageInfo & { key: WAMessageKey; messageStubParameters?: any }
+export type ProtoWAMessage = Omit<proto.WebMessageInfo, 'key'> & { key: WAMessageKey; messageStubParameters?: any }
+export type UpsertableWAMessage = WAMessage | ProtoWAMessage
 export type WAMessageContent = proto.IMessage
 export type WAContactMessage = proto.Message.IContactMessage
 export type WAContactsArrayMessage = proto.Message.IContactsArrayMessage
