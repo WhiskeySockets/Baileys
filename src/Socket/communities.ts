@@ -19,6 +19,15 @@ import {
 } from '../WABinary'
 import { makeBusinessSocket } from './business'
 
+const summarizeBinaryNode = (node?: BinaryNode | null) =>
+        node
+                ? {
+                        tag: node.tag,
+                        attrs: node.attrs,
+                        childTags: Array.isArray(node.content) ? node.content.map(child => child.tag) : undefined
+                }
+                : undefined
+
 export const makeCommunitiesSocket = (config: SocketConfig) => {
 	const sock = makeBusinessSocket(config)
 	const { authState, ev, query, upsertMessage } = sock
@@ -77,15 +86,15 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 		return data
 	}
 
-	async function parseGroupResult(node: BinaryNode) {
-		logger.info({ node }, 'parseGroupResult')
-		const groupNode = getBinaryNodeChild(node, 'group')
-		if (groupNode) {
-			try {
-				logger.info({ groupNode }, 'groupNode')
-				const metadata = await sock.groupMetadata(`${groupNode.attrs.id}@g.us`)
-				return metadata ? metadata : Optional.empty()
-			} catch (error) {
+        async function parseGroupResult(node: BinaryNode) {
+                logger.info({ node: summarizeBinaryNode(node) }, 'parseGroupResult')
+                const groupNode = getBinaryNodeChild(node, 'group')
+                if (groupNode) {
+                        try {
+                                logger.info({ group: summarizeBinaryNode(groupNode) }, 'groupNode')
+                                const metadata = await sock.groupMetadata(`${groupNode.attrs.id}@g.us`)
+                                return metadata ? metadata : Optional.empty()
+                        } catch (error) {
 				console.error('Error parsing group metadata:', error)
 				return Optional.empty()
 			}

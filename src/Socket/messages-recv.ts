@@ -107,7 +107,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			useClones: false
 		})
 
-	let sendActiveReceipts = false
+        let sendActiveReceipts = false
+
+        const summarizeBinaryNode = (node?: BinaryNode | null) =>
+                node
+                        ? {
+                                tag: node.tag,
+                                attrs: node.attrs,
+                                childTags: Array.isArray(node.content)
+                                        ? node.content.map(child => child.tag)
+                                        : undefined
+                        }
+                        : undefined
 
 	const fetchMessageHistory = async (
 		count: number,
@@ -236,7 +247,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const child = getAllBinaryNodeChildren(node)[0]!
 		const author = node.attrs.participant!
 
-		logger.info({ from, child }, 'got newsletter notification')
+                logger.info({ from, child: summarizeBinaryNode(child) }, 'got newsletter notification')
 
 		switch (child.tag) {
 			case 'reaction':
@@ -316,11 +327,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 				break
 
-			default:
-				logger.warn({ node }, 'Unknown newsletter notification')
-				break
-		}
-	}
+                        default:
+                                logger.warn({ from, child: summarizeBinaryNode(child) }, 'Unknown newsletter notification')
+                                break
+                }
+        }
 
 	const sendMessageAck = async ({ tag, attrs, content }: BinaryNode, errorCode?: number) => {
 		const stanza: BinaryNode = {
@@ -547,11 +558,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				logger.info({ jid: from }, 'identity changed')
 				// not handling right now
 				// signal will override new identity anyway
-			} else {
-				logger.info({ node }, 'unknown encrypt notification')
-			}
-		}
-	}
+                        } else {
+                                logger.debug(
+                                        { from, node: summarizeBinaryNode(node) },
+                                        'unknown encrypt notification'
+                                )
+                        }
+                }
+        }
 
 	const handleGroupNotification = (fullNode: BinaryNode, child: BinaryNode, msg: Partial<WAMessage>) => {
 		// TODO: Support PN/LID (Here is only LID now)
