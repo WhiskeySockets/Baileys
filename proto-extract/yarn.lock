@@ -12,12 +12,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"acorn@npm:^6.4.1":
-  version: 6.4.2
-  resolution: "acorn@npm:6.4.2"
+"acorn@npm:^8.15.0":
+  version: 8.15.0
+  resolution: "acorn@npm:8.15.0"
   bin:
     acorn: bin/acorn
-  checksum: 10c0/52a72d5d785fa64a95880f2951021a38954f8f69a4944dfeab6fb1449b0f02293eae109a56d55b58ff31a90a00d16a804658a12db8ef834c20b3d1201fe5ba5b
+  checksum: 10c0/dec73ff59b7d6628a01eebaece7f2bdb8bb62b9b5926dcad0f8931f2b8b79c2be21f6c68ac095592adb5adb15831a3635d9343e6a91d028bbe85d564875ec3ec
   languageName: node
   linkType: hard
 
@@ -485,7 +485,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "whatsapp-web-protobuf-extractor@workspace:."
   dependencies:
-    acorn: "npm:^6.4.1"
+    acorn: "npm:^8.15.0"
     acorn-walk: "npm:^6.1.1"
     request: "npm:^2.88.0"
     request-promise-core: "npm:^1.1.2"
