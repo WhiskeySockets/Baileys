@@ -6957,7 +6957,17 @@ __metadata:
 
 "libsignal-waweb@github:vinikjkkj/libsignal-waweb":
   version: 0.1.0
-  resolution: "libsignal-waweb@https://github.com/vinikjkkj/libsignal-waweb.git#commit=f56d092c48da44fdab05cdd07adb281c9698905b"
+  resolution: "libsignal-waweb@https://github.com/vinikjkkj/libsignal-waweb.git#commit=ce70f318ff63999fe07853d4336ffa7411d2c971"
+  dependencies:
+    tweetnacl: "npm:^1.0.3"
+    wa-modules-loader: "github:vinikjkkj/wa-modules-loader"
+  checksum: 10c0/2e283e462be7e3702fc02a55e267a2f9334e34b1b5aef123f3b9d22072a76079a65a931774ed9e4d529cea62075b3728fab59297bb8a7630f4b67a6a44050b77
+  languageName: node
+  linkType: hard
+
+"libsignal@git+https://github.com/whiskeysockets/libsignal-node":
+  version: 2.0.1
+  resolution: "libsignal@https://github.com/whiskeysockets/libsignal-node.git#commit=e81ecfc32eb74951d789ab37f7e341ab66d5fff1"
   dependencies:
     tweetnacl: "npm:^1.0.3"
     wa-modules-loader: "github:vinikjkkj/wa-modules-loader"
