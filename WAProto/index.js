@@ -16,10 +16,10 @@ function longToString(value, unsigned) {
 		return String(value);
 	}
 	const normalized = $util.Long.fromValue(value);
-	if (unsigned && normalized && typeof normalized === "object") {
-		normalized.unsigned = true;
-	}
-	return normalized.toString();
+	const prepared = unsigned && normalized && typeof normalized.toUnsigned === "function"
+		? normalized.toUnsigned()
+		: normalized;
+	return prepared.toString();
 }
 
 function longToNumber(value, unsigned) {
@@ -34,10 +34,12 @@ function longToNumber(value, unsigned) {
 		return Number(value);
 	}
 	const normalized = $util.Long.fromValue(value);
-	if (unsigned && normalized && typeof normalized === "object") {
-		normalized.unsigned = true;
-	}
-	return normalized.toNumber(unsigned);
+	const prepared = unsigned && normalized && typeof normalized.toUnsigned === "function"
+		? normalized.toUnsigned()
+		: typeof normalized.toSigned === "function"
+			? normalized.toSigned()
+			: normalized;
+	return prepared.toNumber();
 }
 
 export const proto = $root.proto = (() => {
