@@ -1,0 +1,30 @@
+```js
+// index.js
+const { default: makeWASocket, useSingleFileAuthState } = require("@adiwajshing/baileys")
+const { Boom } = require("@hapi/boom")
+const { state, saveState } = useSingleFileAuthState('./auth.json')
+
+async function startBot() {
+  const sock = makeWASocket({
+    auth: state,
+    printQRInTerminal: true
+  })
+
+  sock.ev.on('creds.update', saveState)
+
+  sock.ev.on('messages.upsert', async ({ messages }) => {
+    const msg = messages[0]
+    if (!msg.message || msg.key.fromMe) return
+
+    const text = msg.message.conversation || msg.message.extendedTextMessage?.text
+
+    if (text === "!status") {
+      await sock.sendMessage(msg.key.remoteJid, { text: "Der Bot ist online und verbunden mit Twitch." })
+    }
+
+    // Weitere Befehle wie !autoban, !begrüßung etc. kannst du hier einbauen
+  })
+}
+
+startBot()
+
