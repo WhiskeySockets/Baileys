@@ -229,7 +229,7 @@ const startSock = async() => {
 	return sock
 
 	async function getMessage(key: WAMessageKey): Promise<WAMessageContent | undefined> {
-	  // Implement a way to retreive messages that were upserted from messages.upsert
+	  // Implement a way to retrieve messages that were upserted from messages.upsert
 			// up to you
 
 		// only if store is present
