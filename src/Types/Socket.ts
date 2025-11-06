@@ -131,7 +131,7 @@ export type SocketConfig = {
 	}
 
 	/** options for HTTP fetch requests */
-	options: RequestInit
+	options: FetchRequestInit
 	/**
 	 * fetch a message from your store
 	 * implement this so that messages failed to send

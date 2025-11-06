@@ -39,7 +39,7 @@ type ProcessMessageContext = {
 	keyStore: SignalKeyStoreWithTransaction
 	ev: BaileysEventEmitter
 	logger?: ILogger
-	options: RequestInit
+	options: FetchRequestInit
 	signalRepository: SignalRepositoryWithLIDStore
 }
 

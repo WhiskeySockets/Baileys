@@ -8,6 +8,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { Readable, Transform } from 'stream'
 import { URL } from 'url'
+import fetch from 'node-fetch'
 import { proto } from '../../WAProto/index.js'
 import { DEFAULT_ORIGIN, MEDIA_HKDF_KEY_MAPPING, MEDIA_PATH_MAP, type MediaType } from '../Defaults'
 import type {
@@ -300,7 +301,7 @@ export const toBuffer = async (stream: Readable) => {
 	return Buffer.concat(chunks)
 }
 
-export const getStream = async (item: WAMediaUpload, opts?: RequestInit & { maxContentLength?: number }) => {
+export const getStream = async (item: WAMediaUpload, opts?: FetchRequestInit & { maxContentLength?: number }) => {
 	if (Buffer.isBuffer(item)) {
 		return { stream: toReadable(item), type: 'buffer' } as const
 	}
@@ -361,11 +362,11 @@ export async function generateThumbnail(
 	}
 }
 
-export const getHttpStream = async (url: string | URL, options: RequestInit & { isStream?: true } = {}) => {
+export const getHttpStream = async (url: string | URL, options: FetchRequestInit & { isStream?: true } = {}) => {
 	const response = await fetch(url.toString(), {
-		dispatcher: options.dispatcher,
+		agent: options.dispatcher,
 		method: 'GET',
-		headers: options.headers as HeadersInit
+		headers: options.headers
 	})
 	if (!response.ok) {
 		throw new Boom(`Failed to fetch stream from ${url}`, { statusCode: response.status, data: { url } })
@@ -378,7 +379,7 @@ export const getHttpStream = async (url: string | URL, options: RequestInit & { 
 type EncryptedStreamOptions = {
 	saveOriginalFileIfRequired?: boolean
 	logger?: ILogger
-	opts?: RequestInit
+	opts?: FetchRequestInit
 }
 
 export const encryptedStream = async (
@@ -498,7 +499,7 @@ const toSmallestChunkSize = (num: number) => {
 export type MediaDownloadOptions = {
 	startByte?: number
 	endByte?: number
-	options?: RequestInit
+	options?: FetchRequestInit
 }
 
 export const getUrlFromDirectPath = (directPath: string) => `https://${DEF_HOST}${directPath}`
@@ -662,7 +663,7 @@ export const getWAUploadToServer = (
 			try {
 				const stream = createReadStream(filePath)
 				const response = await fetch(url, {
-					dispatcher: fetchAgent,
+					agent: fetchAgent,
 					method: 'POST',
 					body: stream as any,
 					headers: {
@@ -674,7 +675,6 @@ export const getWAUploadToServer = (
 						'Content-Type': 'application/octet-stream',
 						Origin: DEFAULT_ORIGIN
 					},
-					duplex: 'half',
 					// Note: custom agents/proxy require undici Agent; omitted here.
 					signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined
 				})
