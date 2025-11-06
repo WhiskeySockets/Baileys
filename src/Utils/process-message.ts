@@ -219,15 +219,15 @@ const processMessage = async (
 				const process = shouldProcessHistoryMsg
 				const isLatest = !creds.processedHistoryMessages?.length
 
-				logger?.info(
-					{
-						histNotification,
-						process,
-						id: message.key.id,
-						isLatest
-					},
-					'got history notification'
-				)
+				//logger?.info(
+				//	{
+				//		histNotification,
+				//		process,
+				//		id: message.key.id,
+				//		isLatest
+				//	},
+				//	'got history notification'
+				//)
 
 				if (process) {
 					// TODO: investigate
