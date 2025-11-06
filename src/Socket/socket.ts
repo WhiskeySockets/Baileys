@@ -384,7 +384,7 @@ export const makeSocket = (config: SocketConfig) => {
 		let node: proto.IClientPayload
 		if (!creds.me) {
 			node = generateRegistrationNode(creds, config)
-			logger.info({ node }, 'not logged in, attempting registration...')
+			//logger.info({ node }, 'not logged in, attempting registration...')
 		} else {
 			node = generateLoginNode(creds.me.id, config)
 			logger.info({ node }, 'logging in...')
@@ -576,7 +576,7 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 
 		closed = true
-		logger.info({ trace: error?.stack }, error ? 'connection errored' : 'connection closed')
+		//logger.info({ trace: error?.stack }, error ? 'connection errored' : 'connection closed')
 
 		clearInterval(keepAliveReq)
 		clearTimeout(qrTimer)
