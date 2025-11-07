@@ -20,6 +20,7 @@ import {
 	encodeSignedDeviceIdentity,
 	encodeWAMessage,
 	encryptMediaRetryRequest,
+	encryptSignalProto,
 	extractDeviceJids,
 	generateMessageIDV2,
 	generateWAMessage,
@@ -39,6 +40,7 @@ import {
 	getBinaryNodeChildren,
 	isJidGroup,
 	isJidUser,
+	isLidUser,
 	jidDecode,
 	jidEncode,
 	jidNormalizedUser,
@@ -372,6 +374,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}: MessageRelayOptions
 	) => {
 		const meId = authState.creds.me!.id
+		const meLid = authState.creds.me!.lid;
+		const isRetryResend = Boolean(participant?.jid);
 
 		let shouldIncludeDeviceIdentity = false
 
@@ -381,6 +385,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const isStatus = jid === statusJid
 		const isLid = server === 'lid'
 		const isNewsletter = server === 'newsletter'
+		const isGroupOrStatus = isGroup || isStatus;
 
 		msgId = msgId || generateMessageIDV2(sock.user?.id)
 		useUserDevicesCache = useUserDevicesCache !== false
@@ -390,6 +395,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const destinationJid = !isStatus ? jidEncode(user, isLid ? 'lid' : isGroup ? 'g.us' : 's.whatsapp.net') : statusJid
 		const binaryNodeContent: BinaryNode[] = []
 		const devices: JidWithDevice[] = []
+		const encodedMsg = encodeWAMessage(message);
 
 		const meMsg: proto.IMessage = {
 			deviceSentMessage: {
@@ -447,7 +453,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				extraAttrs['decrypt-fail'] = 'hide'
 			}
 
-			if (isGroup || isStatus) {
+			if (isGroupOrStatus && !isRetryResend) {
 				const [groupData, senderKeyMap] = await Promise.all([
 					(async () => {
 						let groupData = useCachedGroupMetadata && cachedGroupMetadata ? await cachedGroupMetadata(jid) : undefined
@@ -469,22 +475,25 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					})()
 				])
 
-				if (!participant) {
-					const participantsList = groupData && !isStatus ? groupData.participants.map(p => p.id) : []
-					if (isStatus && statusJidList) {
-						participantsList.push(...statusJidList)
-					}
+				const participantsList = groupData ? groupData.participants.map(p => p.id) : [];
 
-					if (!isStatus) {
-						additionalAttributes = {
-							...additionalAttributes,
-							addressing_mode: groupData?.addressingMode || 'pn'
-						}
-					}
-
-					const additionalDevices = await getUSyncDevices(participantsList, !!useUserDevicesCache, false)
-					devices.push(...additionalDevices)
+				if (groupData?.ephemeralDuration) {
+					additionalAttributes = {
+						...additionalAttributes,
+						expiration: groupData.ephemeralDuration.toString()
+					};
 				}
+
+				if (isStatus && statusJidList) {
+					participantsList.push(...statusJidList);
+				}
+
+				const additionalDevices = await getUSyncDevices(
+					participantsList,
+					!!useUserDevicesCache,
+					false
+				);
+				devices.push(...additionalDevices);
 
 				const patched = await patchMessageBeforeSending(message)
 
@@ -537,20 +546,32 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					content: ciphertext
 				})
 
-				await authState.keys.set({ 'sender-key-memory': { [jid]: senderKeyMap } })
+				await authState.keys.set({
+					"sender-key-memory": { [jid]: senderKeyMap }
+				});
 			} else {
 				const { user: meUser } = jidDecode(meId)!
+				const { user: meLidUser } = jidDecode(meLid)!;
 
-				if (!participant) {
-					devices.push({ user })
-					if (user !== meUser) {
-						devices.push({ user: meUser })
+				const encodedMeMsg = encodeWAMessage({
+					deviceSentMessage: {
+						destinationJid,
+						message
 					}
+				});
 
-					if (additionalAttributes?.['category'] !== 'peer') {
-						const additionalDevices = await getUSyncDevices([meId, jid], !!useUserDevicesCache, true)
-						devices.push(...additionalDevices)
-					}
+				devices.push({ user });
+				devices.push({ user: meUser });
+
+				if (
+					!(additionalAttributes?.["category"] === "peer" && user === meUser)
+				) {
+					const additionalDevices = await getUSyncDevices(
+						[meId, jid],
+						!!useUserDevicesCache,
+						true
+					);
+					devices.push(...additionalDevices);
 				}
 
 				const allJids: string[] = []
@@ -600,6 +621,39 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						content: participants
 					})
 				}
+			}
+
+			if (isRetryResend) {
+				const isParticipantLid = isLidUser(participant!.jid);
+				const isMe = areJidsSameUser(
+					participant!.jid,
+					isParticipantLid ? meLid : meId
+				);
+
+				const encodedMessageToSend = isMe
+					? encodeWAMessage({
+						deviceSentMessage: {
+							destinationJid,
+							message
+						}
+					})
+					: encodedMsg;
+
+				const { type, ciphertext: encryptedContent } = await encryptSignalProto(
+					participant!.jid,
+					encodedMessageToSend,
+					authState
+				);
+
+				binaryNodeContent.push({
+					tag: "enc",
+					attrs: {
+						v: "2",
+						type,
+						count: participant!.count.toString()
+					},
+					content: encryptedContent
+				});
 			}
 
 			const stanza: BinaryNode = {

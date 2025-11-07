@@ -43,7 +43,7 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 		},
 		async decryptMessage({ jid, type, ciphertext }) {
 			const addr = jidToSignalProtocolAddress(jid)
-			const session = new libsignal.SessionCipher(storage, addr)
+			const session = new libsignal.SessionCipher(storage as any, addr)
 			let result: Buffer
 			switch (type) {
 				case 'pkmsg':
@@ -60,7 +60,7 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 		},
 		async encryptMessage({ jid, data }) {
 			const addr = jidToSignalProtocolAddress(jid)
-			const cipher = new libsignal.SessionCipher(storage, addr)
+			const cipher = new libsignal.SessionCipher(storage as any, addr)
 
 			const { type: sigType, body } = await cipher.encrypt(data)
 			const type = sigType === 3 ? 'pkmsg' : 'msg'
@@ -86,7 +86,7 @@ export function makeLibSignalRepository(auth: SignalAuthState): SignalRepository
 			}
 		},
 		async injectE2ESession({ jid, session }) {
-			const cipher = new libsignal.SessionBuilder(storage, jidToSignalProtocolAddress(jid))
+			const cipher = new libsignal.SessionBuilder(storage as any, jidToSignalProtocolAddress(jid))
 			await cipher.initOutgoing(session)
 		},
 		jidToSignalProtocolAddress(jid) {

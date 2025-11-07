@@ -1,5 +1,5 @@
 import { KEY_BUNDLE_TYPE } from '../Defaults'
-import type { SignalRepository } from '../Types'
+import type { SignalAuthState, SignalRepository } from '../Types'
 import type {
 	AuthenticationCreds,
 	AuthenticationState,
@@ -22,6 +22,8 @@ import {
 import type { DeviceListData, ParsedDeviceInfo, USyncQueryResultList } from '../WAUSync'
 import { Curve, generateSignalPubKey } from './crypto'
 import { encodeBigEndian } from './generics'
+import * as libsignal from "libsignal";
+import { SenderKeyRecord } from '../Signal/Group'
 
 function chunk<T>(array: T[], size: number): T[][] {
 	const chunks: T[][] = []
@@ -195,3 +197,72 @@ export const getNextPreKeysNode = async (state: AuthenticationState, count: numb
 
 	return { update, node }
 }
+
+const jidToSignalAddress = (jid: string) => jid.split("@")[0];
+
+export const jidToSignalProtocolAddress = (jid: string) => {
+	return new libsignal.ProtocolAddress(jidToSignalAddress(jid) as string, 0);
+};
+
+export const signalStorage = ({ creds, keys }: SignalAuthState) => ({
+	loadSession: async (id: string) => {
+		const { [id]: sess } = await keys.get("session", [id]);
+		if (sess) {
+			return libsignal.SessionRecord.deserialize(sess);
+		}
+	},
+	storeSession: async (id: any, session: any) => {
+		await keys.set({ session: { [id]: session.serialize() } });
+	},
+	isTrustedIdentity: () => {
+		return true;
+	},
+	loadPreKey: async (id: number | string) => {
+		const keyId = id.toString();
+		const { [keyId]: key } = await keys.get("pre-key", [keyId]);
+		if (key) {
+			return {
+				privKey: Buffer.from(key.private),
+				pubKey: Buffer.from(key.public)
+			};
+		}
+	},
+	removePreKey: (id: number) => keys.set({ "pre-key": { [id]: null } }),
+	loadSignedPreKey: () => {
+		const key = creds.signedPreKey;
+		return {
+			privKey: Buffer.from(key.keyPair.private),
+			pubKey: Buffer.from(key.keyPair.public)
+		};
+	},
+	loadSenderKey: async (keyId: string) => {
+		const { [keyId]: key } = await keys.get("sender-key", [keyId]);
+		if (key) {
+			return new SenderKeyRecord(key as any);
+		}
+	},
+	storeSenderKey: async (keyId: any, key: any) => {
+		await keys.set({ "sender-key": { [keyId]: key.serialize() } });
+	},
+	getOurRegistrationId: () => creds.registrationId,
+	getOurIdentity: () => {
+		const { signedIdentityKey } = creds;
+		return {
+			privKey: Buffer.from(signedIdentityKey.private),
+			pubKey: generateSignalPubKey(signedIdentityKey.public)
+		};
+	}
+});
+
+export const encryptSignalProto = async (
+	user: string,
+	buffer: Buffer,
+	auth: SignalAuthState
+) => {
+		const addr = jidToSignalProtocolAddress(user);
+	const cipher = new libsignal.SessionCipher(signalStorage(auth) as any, addr);
+
+	const { type: sigType, body } = await cipher.encrypt(buffer);
+	const type = sigType === 3 ? "pkmsg" : "msg";
+	return { type, ciphertext: Buffer.from(body, "binary") };
+};

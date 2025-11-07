@@ -1,6 +1,6 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto'
 /* @ts-ignore */
-import * as libsignal from 'libsignal'
+import * as libsignal from 'libsignal-protocol-typescript';
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import type { KeyPair } from '../Types'
 
