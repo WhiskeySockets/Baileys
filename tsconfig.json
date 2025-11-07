@@ -11,6 +11,7 @@
 
     "lib": ["ES2020", "ESNext.Array", "DOM"],
     "rootDir": "./src",
+    "typeRoots": ["./types", "./node_modules/@types"],
 
     // ESM Features
     "verbatimModuleSyntax": true,
