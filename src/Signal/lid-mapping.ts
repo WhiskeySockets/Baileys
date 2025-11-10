@@ -5,7 +5,7 @@ import { isHostedPnUser, isLidUser, isPnUser, jidDecode, jidNormalizedUser, WAJI
 
 export class LIDMappingStore {
 	private readonly mappingCache = new LRUCache<string, string>({
-		ttl: 7 * 24 * 60 * 60 * 1000, // 7 days
+		ttl: 3 * 24 * 60 * 60 * 1000, // 7 days
 		ttlAutopurge: true,
 		updateAgeOnGet: true
 	})
