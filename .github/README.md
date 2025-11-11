@@ -8,8 +8,6 @@
 > NOTICE OF BREAKING CHANGE.
 > 
 > As of 7.0.0, multiple breaking changes were introduced into the library.
-> 
-> Please check out https://xrelly-stack.com/migrate-latest for more information.
 
 Xrelly-stack is a WebSockets-based TypeScript library for interacting with the WhatsApp Web API.
 
