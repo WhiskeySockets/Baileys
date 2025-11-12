@@ -1189,7 +1189,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			await processingMutex.mutex(async () => {
 				await decrypt()
 				// message failed to decrypt
-				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT) {
+				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
 					if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
 						return sendMessageAck(node, NACK_REASONS.ParsingError)
 					}
