@@ -30,7 +30,9 @@ import {
 	getNextPreKeysNode,
 	makeEventBuffer,
 	makeNoiseHandler,
-	promiseTimeout
+	promiseTimeout,
+	signedKeyPair,
+	xmppSignedPreKey
 } from '../Utils'
 import { getPlatformId } from '../Utils/browser-utils'
 import {
@@ -201,6 +203,39 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 
 		return result
+	}
+
+	// Validate current key-bundle on server; on failure, trigger pre-key upload and rethrow
+	const digestKeyBundle = async (): Promise<void> => {
+		const res = await query({
+			tag: 'iq',
+			attrs: { to: S_WHATSAPP_NET, type: 'get', xmlns: 'encrypt' },
+			content: [{ tag: 'digest', attrs: {} }]
+		})
+		const digestNode = getBinaryNodeChild(res, 'digest')
+		if (!digestNode) {
+			await uploadPreKeys()
+			throw new Error('encrypt/get digest returned no digest node')
+		}
+	}
+
+	// Rotate our signed pre-key on server; on failure, run digest as fallback and rethrow
+	const rotateSignedPreKey = async (): Promise<void> => {
+		const newId = (creds.signedPreKey.keyId || 0) + 1
+		const skey = await signedKeyPair(creds.signedIdentityKey, newId)
+		await query({
+			tag: 'iq',
+			attrs: { to: S_WHATSAPP_NET, type: 'set', xmlns: 'encrypt' },
+			content: [
+				{
+					tag: 'rotate',
+					attrs: {},
+					content: [xmppSignedPreKey(skey)]
+				}
+			]
+		})
+		// Persist new signed pre-key in creds
+		ev.emit('creds.update', { signedPreKey: skey })
 	}
 
 	const executeUSyncQuery = async (usyncQuery: USyncQuery) => {
@@ -868,6 +903,13 @@ export const makeSocket = (config: SocketConfig) => {
 		try {
 			await uploadPreKeysToServerIfRequired()
 			await sendPassiveIq('active')
+
+			// After successful login, validate our key-bundle against server
+			try {
+				await digestKeyBundle()
+			} catch (e) {
+				logger.warn({ e }, 'failed to run digest after login')
+			}
 		} catch (err) {
 			logger.warn({ err }, 'failed to send initial passive iq')
 		}
@@ -1005,6 +1047,8 @@ export const makeSocket = (config: SocketConfig) => {
 		onUnexpectedError,
 		uploadPreKeys,
 		uploadPreKeysToServerIfRequired,
+		digestKeyBundle,
+		rotateSignedPreKey,
 		requestPairingCode,
 		wamBuffer: publicWAMBuffer,
 		/** Waits for the connection to WA to reach a state */

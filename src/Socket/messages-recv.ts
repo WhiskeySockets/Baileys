@@ -107,6 +107,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			useClones: false
 		})
 
+	// Debounce identity-change session refreshes per JID to avoid bursts
+	const identityAssertDebounce = new NodeCache<boolean>({ stdTTL: 5, useClones: false })
+
 	let sendActiveReceipts = false
 
 	const fetchMessageHistory = async (
@@ -545,8 +548,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const identityNode = getBinaryNodeChild(node, 'identity')
 			if (identityNode) {
 				logger.info({ jid: from }, 'identity changed')
-				// not handling right now
-				// signal will override new identity anyway
+				if (identityAssertDebounce.get(from!)) {
+					logger.debug({ jid: from }, 'skipping identity assert (debounced)')
+					return
+				}
+
+				identityAssertDebounce.set(from!, true)
+				try {
+					await assertSessions([from!], true)
+				} catch (error) {
+					logger.warn({ error, jid: from }, 'failed to assert sessions after identity change')
+				}
 			} else {
 				logger.info({ node }, 'unknown encrypt notification')
 			}
@@ -972,7 +984,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}
 		}
 
-		await assertSessions([participant])
+		await assertSessions([participant], true)
 
 		if (isJidGroup(remoteJid)) {
 			await authState.keys.set({ 'sender-key-memory': { [remoteJid]: null } })

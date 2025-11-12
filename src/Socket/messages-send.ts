@@ -299,6 +299,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			if (lidResults.length > 0) {
 				logger.trace('Storing LID maps from device call')
 				await signalRepository.lidMapping.storeLIDPNMappings(lidResults.map(a => ({ lid: a.lid as string, pn: a.id })))
+
+				// Force-refresh sessions for newly mapped LIDs to align identity addressing
+				try {
+					const lids = lidResults.map(a => a.lid as string)
+					if (lids.length) {
+						await assertSessions(lids, true)
+					}
+				} catch (e) {
+					logger.warn({ e, count: lidResults.length }, 'failed to assert sessions for newly mapped LIDs')
+				}
 			}
 
 			const extracted = extractDeviceJids(
@@ -373,7 +383,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return deviceResults
 	}
 
-	const assertSessions = async (jids: string[]) => {
+	const assertSessions = async (jids: string[], force?: boolean) => {
 		let didFetchNewSession = false
 		const uniqueJids = [...new Set(jids)] // Deduplicate JIDs
 		const jidsRequiringFetch: string[] = []
@@ -385,14 +395,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			const signalId = signalRepository.jidToSignalProtocolAddress(jid)
 			const cachedSession = peerSessionsCache.get(signalId)
 			if (cachedSession !== undefined) {
-				if (cachedSession) {
+				if (cachedSession && !force) {
 					continue // Session exists in cache
 				}
 			} else {
 				const sessionValidation = await signalRepository.validateSession(jid)
 				const hasSession = sessionValidation.exists
 				peerSessionsCache.set(signalId, hasSession)
-				if (hasSession) {
+				if (hasSession && !force) {
 					continue
 				}
 			}
@@ -423,10 +433,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					{
 						tag: 'key',
 						attrs: {},
-						content: wireJids.map(jid => ({
-							tag: 'user',
-							attrs: { jid }
-						}))
+						content: wireJids.map(jid => {
+							const attrs: { [key: string]: string } = { jid }
+							if (force) attrs.reason = 'identity'
+							return { tag: 'user', attrs }
+						})
 					}
 				]
 			})
