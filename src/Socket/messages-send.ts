@@ -17,6 +17,7 @@ import {
 	assertMediaContent,
 	bindWaitForEvent,
 	decryptMediaRetryData,
+	delay,
 	encodeNewsletterMessage,
 	encodeSignedDeviceIdentity,
 	encodeWAMessage,
@@ -1088,6 +1089,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		},
 		sendMessage: async (jid: string, content: AnyMessageContent, options: MiscMessageGenerationOptions = {}) => {
 			const userJid = authState.creds.me!.id
+
 			if (
 				typeof content === 'object' &&
 				'disappearingMessagesInChat' in content &&
@@ -1171,6 +1173,66 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					process.nextTick(() => {
 						processingMutex.mutex(() => upsertMessage(fullMsg, 'append'))
 					})
+				}
+
+				// Handle album media sending
+				if (typeof content === 'object' && 'album' in content && content.album) {
+					const { medias, delay: delayMs = 500 } = content.album
+
+					// Send each media with association to album
+					for (let i = 0; i < medias.length; i++) {
+						const media = medias[i]!
+
+						const mediaMsg = await generateWAMessage(jid, media as any, {
+							logger,
+							userJid,
+							getUrlInfo: text =>
+								getUrlInfo(text, {
+									thumbnailWidth: linkPreviewImageThumbnailWidth,
+									fetchOpts: {
+										timeout: 3_000,
+										...(httpRequestOptions || {})
+									},
+									logger,
+									uploadImage: generateHighQualityLinkPreview ? waUploadToServer : undefined
+								}),
+							getProfilePicUrl: sock.profilePictureUrl,
+							getCallLink: sock.createCallLink,
+							upload: waUploadToServer,
+							mediaCache: config.mediaCache,
+							options: config.options,
+							messageId: generateMessageIDV2(sock.user?.id),
+							...options
+						})
+
+						// Add message association to link this media to the album
+						mediaMsg.message = {
+							...mediaMsg.message,
+							messageContextInfo: {
+								messageAssociation: {
+									associationType: proto.MessageAssociation.AssociationType.MEDIA_ALBUM,
+									parentMessageKey: fullMsg.key
+								}
+							}
+						}
+
+						await relayMessage(jid, mediaMsg.message!, {
+							messageId: mediaMsg.key.id!,
+							useCachedGroupMetadata: options.useCachedGroupMetadata,
+							statusJidList: options.statusJidList
+						})
+
+						if (config.emitOwnEvents) {
+							process.nextTick(() => {
+								processingMutex.mutex(() => upsertMessage(mediaMsg, 'append'))
+							})
+						}
+
+						// Add delay between media sends (except for the last one)
+						if (i < medias.length - 1) {
+							await delay(delayMs)
+						}
+					}
 				}
 
 				return fullMsg

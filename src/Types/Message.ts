@@ -147,6 +147,32 @@ export type EventMessageOptions = {
 	messageSecret?: Uint8Array<ArrayBufferLike>
 }
 
+export type AlbumMedia = (
+	| ({
+			image: WAMediaUpload
+			caption?: string
+			jpegThumbnail?: string
+	  } & Mentionable &
+			Contextable &
+			WithDimensions)
+	| ({
+			video: WAMediaUpload
+			caption?: string
+			gifPlayback?: boolean
+			jpegThumbnail?: string
+			ptv?: boolean
+	  } & Mentionable &
+			Contextable &
+			WithDimensions)
+) & { mimetype?: string }
+
+export type AlbumMessageOptions = {
+	/** Array of media (images/videos) to send in the album */
+	medias: AlbumMedia[]
+	/** Delay in milliseconds between sending each media (default: 500ms) */
+	delay?: number
+}
+
 type SharePhoneNumber = {
 	sharePhoneNumber: boolean
 }
@@ -224,6 +250,9 @@ export type AnyRegularMessageContent = (
 	  } & Mentionable &
 			Contextable &
 			Editable)
+	| ({
+			album: AlbumMessageOptions
+	  } & Contextable)
 	| {
 			contacts: {
 				displayName?: string
