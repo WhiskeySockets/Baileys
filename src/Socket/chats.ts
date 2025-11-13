@@ -63,7 +63,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		fireInitQueries,
 		appStateMacVerification,
 		shouldIgnoreJid,
-		shouldSyncHistoryMessage
+		shouldSyncHistoryMessage,
+		getMessage
 	} = config
 	const sock = makeSocket(config)
 	const { ev, ws, authState, generateMessageTag, sendNode, query, signalRepository, onUnexpectedError } = sock
@@ -1086,7 +1087,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				creds: authState.creds,
 				keyStore: authState.keys,
 				logger,
-				options: config.options
+				options: config.options,
+				getMessage
 			})
 		])
 
