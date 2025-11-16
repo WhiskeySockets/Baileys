@@ -367,7 +367,8 @@ export const getHttpStream = async (
 	options: RequestInit & { isStream?: true; timeoutMs?: number } = {}
 ) => {
 	// Respect external signal if provided; otherwise apply a sane timeout
-	const signal = options.signal || (options.timeoutMs ? AbortSignal.timeout(options.timeoutMs) : AbortSignal.timeout(60_000))
+	const signal =
+		options.signal || (options.timeoutMs ? AbortSignal.timeout(options.timeoutMs) : AbortSignal.timeout(60_000))
 	const response = await fetch(url.toString(), {
 		dispatcher: options.dispatcher,
 		method: 'GET',
@@ -671,14 +672,16 @@ export const getWAUploadToServer = (
 			const auth = encodeURIComponent(uploadInfo.auth) // the auth token
 			const url = `https://${hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			let result: any; let response: any | undefined; let stream: any | undefined
+			let result: any
+			let response: any | undefined
+			let stream: any | undefined
 			try {
 				// ensure local file stream is always closed
 				stream = createReadStream(filePath)
 				response = await fetch(url, {
 					dispatcher: fetchAgent,
 					method: 'POST',
-					body: stream as any,
+					body: stream,
 					headers: {
 						...(() => {
 							const hdrs = options?.headers
@@ -730,6 +733,7 @@ export const getWAUploadToServer = (
 						stream.destroy()
 					}
 				} catch {}
+
 				// hint undici to release body resources if still readable
 				try {
 					if (response?.body?.cancel) {

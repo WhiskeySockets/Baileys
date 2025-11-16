@@ -995,6 +995,7 @@ export const downloadMediaMessage = async <Type extends 'buffer' | 'stream'>(
 			try {
 				stream.destroy()
 			} catch {}
+
 			return out
 		}
 

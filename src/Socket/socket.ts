@@ -581,7 +581,7 @@ export const makeSocket = (config: SocketConfig) => {
 		clearInterval(keepAliveReq)
 		clearTimeout(qrTimer)
 
-		ws.removeAllListeners()
+		ws.removeAllListeners('close')
 
 		if (!ws.isClosed && !ws.isClosing) {
 			try {
@@ -659,6 +659,7 @@ export const makeSocket = (config: SocketConfig) => {
 			}
 		}, keepAliveIntervalMs)
 	}
+
 	/** i have no idea why this exists. pls enlighten me */
 	const sendPassiveIq = (tag: 'passive' | 'active') =>
 		query({
