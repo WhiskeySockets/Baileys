@@ -1,4 +1,5 @@
 import { LRUCache } from 'lru-cache'
+import type { SignalStorage } from 'whatsapp-rust-bridge/binary'
 import {
 	GroupCipher,
 	GroupSessionBuilder,
@@ -11,7 +12,6 @@ import {
 } from 'whatsapp-rust-bridge/binary'
 import type { LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
 import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
-import { generateSignalPubKey } from '../Utils'
 import type { ILogger } from '../Utils/logger'
 import {
 	isHostedLidUser,
@@ -97,7 +97,7 @@ export function makeLibSignalRepository(
 			return parsedKeys.transaction(async () => {
 				const { type: sigType, body } = await cipher.encrypt(data)
 				const type = sigType === 3 ? 'pkmsg' : 'msg'
-				return { type, ciphertext: Buffer.from(body) }
+				return { type, ciphertext: body }
 			}, jid)
 		},
 
@@ -333,7 +333,7 @@ const jidToSignalProtocolAddress = (jid: string): ProtocolAddress => {
 	return new ProtocolAddress(signalUser, finalDevice)
 }
 
-function signalStorage({ creds, keys }: SignalAuthState, lidMapping: LIDMappingStore) {
+function signalStorage({ creds, keys }: SignalAuthState, lidMapping: LIDMappingStore): SignalStorage {
 	// Shared function to resolve PN signal address to LID if mapping exists
 	const resolveLIDSignalAddress = async (id: string): Promise<string> => {
 		if (id.includes('.')) {
@@ -368,8 +368,6 @@ function signalStorage({ creds, keys }: SignalAuthState, lidMapping: LIDMappingS
 			} catch (e) {
 				return null
 			}
-
-			return null
 		},
 		storeSession: async (id: string, session: SessionRecord) => {
 			const wireJid = await resolveLIDSignalAddress(id)
@@ -378,36 +376,45 @@ function signalStorage({ creds, keys }: SignalAuthState, lidMapping: LIDMappingS
 		isTrustedIdentity: () => {
 			return true // todo: implement
 		},
-		loadPreKey: async (id: number | string) => {
+		loadPreKey: async (id: number) => {
 			const keyId = id.toString()
 			const { [keyId]: key } = await keys.get('pre-key', [keyId])
 			if (key) {
 				return {
-					privKey: Buffer.from(key.private),
-					pubKey: Buffer.from(key.public)
+					privKey: key.private,
+					pubKey: key.public
 				}
 			}
 		},
 		removePreKey: (id: number) => keys.set({ 'pre-key': { [id]: null } }),
-		loadSignedPreKey: () => {
+		loadSignedPreKey: async (id: number) => {
 			const key = creds.signedPreKey
-			return key
+			if (!key || key.keyId !== id) {
+				return null
+			}
+
+			return {
+				keyId: key.keyId,
+				signature: key.signature,
+				keyPair: {
+					pubKey: key.keyPair.public,
+					privKey: key.keyPair.private
+				}
+			}
 		},
-		loadSenderKey: async (senderKeyName: SenderKeyName) => {
-			const keyId = senderKeyName.toString()
+		loadSenderKey: async (keyId: string) => {
 			const { [keyId]: key } = await keys.get('sender-key', [keyId])
 			return key ?? null
 		},
-		storeSenderKey: async (senderKeyName: SenderKeyName, keyBytes: Uint8Array) => {
-			const keyId = senderKeyName.toString()
-			await keys.set({ 'sender-key': { [keyId]: Buffer.from(keyBytes) } })
+		storeSenderKey: async (keyId: string, keyBytes: Uint8Array) => {
+			await keys.set({ 'sender-key': { [keyId]: keyBytes.slice() } })
 		},
 		getOurRegistrationId: () => creds.registrationId,
 		getOurIdentity: () => {
 			const { signedIdentityKey } = creds
 			return {
-				privKey: Buffer.from(signedIdentityKey.private),
-				pubKey: Buffer.from(generateSignalPubKey(signedIdentityKey.public))
+				privKey: signedIdentityKey.private,
+				pubKey: signedIdentityKey.public
 			}
 		}
 	}
