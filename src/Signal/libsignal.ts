@@ -1,7 +1,7 @@
-/* @ts-ignore */
 import * as libsignal from 'libsignal'
 import { LRUCache } from 'lru-cache'
-import type { LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
+import { ProtocolAddress, SessionBuilder, SessionCipher, SessionRecord } from 'whatsapp-rust-bridge/binary'
+import type { LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction, SignedKeyPair } from '../Types'
 import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import type { ILogger } from '../Utils/logger'
@@ -77,10 +77,10 @@ export function makeLibSignalRepository(
 		},
 		async decryptMessage({ jid, type, ciphertext }) {
 			const addr = jidToSignalProtocolAddress(jid)
-			const session = new libsignal.SessionCipher(storage, addr)
+			const session = new SessionCipher(storage, addr)
 
 			async function doDecrypt() {
-				let result: Buffer
+				let result: Uint8Array
 				switch (type) {
 					case 'pkmsg':
 						result = await session.decryptPreKeyWhisperMessage(ciphertext)
@@ -102,13 +102,13 @@ export function makeLibSignalRepository(
 
 		async encryptMessage({ jid, data }) {
 			const addr = jidToSignalProtocolAddress(jid)
-			const cipher = new libsignal.SessionCipher(storage, addr)
+			const cipher = new SessionCipher(storage, addr)
 
 			// Use transaction to ensure atomicity
 			return parsedKeys.transaction(async () => {
 				const { type: sigType, body } = await cipher.encrypt(data)
 				const type = sigType === 3 ? 'pkmsg' : 'msg'
-				return { type, ciphertext: Buffer.from(body, 'binary') }
+				return { type, ciphertext: Buffer.from(body) }
 			}, jid)
 		},
 
@@ -137,7 +137,7 @@ export function makeLibSignalRepository(
 
 		async injectE2ESession({ jid, session }) {
 			logger.trace({ jid }, 'injecting E2EE session')
-			const cipher = new libsignal.SessionBuilder(storage, jidToSignalProtocolAddress(jid))
+			const cipher = new SessionBuilder(storage, jidToSignalProtocolAddress(jid))
 			return parsedKeys.transaction(async () => {
 				await cipher.initOutgoing(session)
 			}, jid)
@@ -259,8 +259,8 @@ export function makeLibSignalRepository(
 						pnUser: string
 						lidUser: string
 						deviceId: number
-						fromAddr: libsignal.ProtocolAddress
-						toAddr: libsignal.ProtocolAddress
+						fromAddr: ProtocolAddress
+						toAddr: ProtocolAddress
 					}
 
 					const migrationOps: MigrationOp[] = deviceJids.map(jid => {
@@ -296,7 +296,7 @@ export function makeLibSignalRepository(
 						const pnSession = pnSessions[pnAddrStr]
 						if (pnSession) {
 							// Session exists (guaranteed from device discovery)
-							const fromSession = libsignal.SessionRecord.deserialize(pnSession)
+							const fromSession = SessionRecord.deserialize(pnSession)
 							if (fromSession.haveOpenSession()) {
 								// Queue for bulk update: copy to LID, delete from PN
 								sessionUpdates[lidAddrStr] = fromSession.serialize()
@@ -332,7 +332,7 @@ export function makeLibSignalRepository(
 	return repository
 }
 
-const jidToSignalProtocolAddress = (jid: string): libsignal.ProtocolAddress => {
+const jidToSignalProtocolAddress = (jid: string): ProtocolAddress => {
 	const decoded = jidDecode(jid)!
 	const { user, device, server, domainType } = decoded
 
@@ -349,7 +349,7 @@ const jidToSignalProtocolAddress = (jid: string): libsignal.ProtocolAddress => {
 		throw new Error('Unexpected non-hosted device JID with device 99. This ID seems invalid. ID:' + jid)
 	}
 
-	return new libsignal.ProtocolAddress(signalUser, finalDevice)
+	return new ProtocolAddress(signalUser, finalDevice)
 }
 
 const jidToSignalSenderKeyName = (group: string, user: string): SenderKeyName => {
@@ -359,7 +359,7 @@ const jidToSignalSenderKeyName = (group: string, user: string): SenderKeyName =>
 function signalStorage(
 	{ creds, keys }: SignalAuthState,
 	lidMapping: LIDMappingStore
-): SenderKeyStore & libsignal.SignalStorage {
+): Omit<libsignal.SignalStorage, 'loadSignedPreKey'> & SenderKeyStore & { loadSignedPreKey: () => SignedKeyPair } {
 	// Shared function to resolve PN signal address to LID if mapping exists
 	const resolveLIDSignalAddress = async (id: string): Promise<string> => {
 		if (id.includes('.')) {
@@ -388,7 +388,7 @@ function signalStorage(
 				const { [wireJid]: sess } = await keys.get('session', [wireJid])
 
 				if (sess) {
-					return libsignal.SessionRecord.deserialize(sess)
+					return SessionRecord.deserialize(sess)
 				}
 			} catch (e) {
 				return null
@@ -396,7 +396,7 @@ function signalStorage(
 
 			return null
 		},
-		storeSession: async (id: string, session: libsignal.SessionRecord) => {
+		storeSession: async (id: string, session: SessionRecord) => {
 			const wireJid = await resolveLIDSignalAddress(id)
 			await keys.set({ session: { [wireJid]: session.serialize() } })
 		},
@@ -416,10 +416,7 @@ function signalStorage(
 		removePreKey: (id: number) => keys.set({ 'pre-key': { [id]: null } }),
 		loadSignedPreKey: () => {
 			const key = creds.signedPreKey
-			return {
-				privKey: Buffer.from(key.keyPair.private),
-				pubKey: Buffer.from(key.keyPair.public)
-			}
+			return key
 		},
 		loadSenderKey: async (senderKeyName: SenderKeyName) => {
 			const keyId = senderKeyName.toString()
