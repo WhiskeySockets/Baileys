@@ -942,15 +942,7 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 	})
 
-	let didStartBuffer = false
 	process.nextTick(() => {
-		if (creds.me?.id) {
-			// start buffering important events
-			// if we're logged in
-			ev.buffer()
-			didStartBuffer = true
-		}
-
 		ev.emit('connection.update', { connection: 'connecting', receivedPendingNotifications: false, qr: undefined })
 	})
 
@@ -960,10 +952,6 @@ export const makeSocket = (config: SocketConfig) => {
 		const offlineNotifs = +(child?.attrs.count || 0)
 
 		logger.info(`handled ${offlineNotifs} offline messages/notifications`)
-		if (didStartBuffer) {
-			ev.flush()
-			logger.trace('flushed events for initial buffer')
-		}
 
 		ev.emit('connection.update', { receivedPendingNotifications: true })
 	})
