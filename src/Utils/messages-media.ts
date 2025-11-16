@@ -361,11 +361,18 @@ export async function generateThumbnail(
 	}
 }
 
-export const getHttpStream = async (url: string | URL, options: RequestInit & { isStream?: true } = {}) => {
+export const getHttpStream = async (
+	url: string | URL,
+	// add optional timeoutMs for safer streaming
+	options: RequestInit & { isStream?: true; timeoutMs?: number } = {}
+) => {
+	// Respect external signal if provided; otherwise apply a sane timeout
+	const signal = options.signal || (options.timeoutMs ? AbortSignal.timeout(options.timeoutMs) : AbortSignal.timeout(60_000))
 	const response = await fetch(url.toString(), {
 		dispatcher: options.dispatcher,
 		method: 'GET',
-		headers: options.headers as HeadersInit
+		headers: options.headers as HeadersInit,
+		signal
 	})
 	if (!response.ok) {
 		throw new Boom(`Failed to fetch stream from ${url}`, { statusCode: response.status, data: { url } })
@@ -622,6 +629,12 @@ export const downloadEncryptedContent = async (
 			}
 		}
 	})
+	// Help GC release buffers/crypto state once consumer is done
+	output.once('close', () => {
+		remainingBytes = Buffer.alloc(0)
+		// @ts-ignore
+		aes = undefined
+	})
 	return fetched.pipe(output, { end: true })
 }
 
@@ -658,10 +671,11 @@ export const getWAUploadToServer = (
 			const auth = encodeURIComponent(uploadInfo.auth) // the auth token
 			const url = `https://${hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			let result: any
+			let result: any; let response: any | undefined; let stream: any | undefined
 			try {
-				const stream = createReadStream(filePath)
-				const response = await fetch(url, {
+				// ensure local file stream is always closed
+				stream = createReadStream(filePath)
+				response = await fetch(url, {
 					dispatcher: fetchAgent,
 					method: 'POST',
 					body: stream as any,
@@ -706,6 +720,22 @@ export const getWAUploadToServer = (
 					{ trace: error?.stack, uploadResult: result },
 					`Error in uploading to ${hostname} ${isLast ? '' : ', retrying...'}`
 				)
+			} finally {
+				// defensive: destroy stream if still open (prevents FD leaks under failures)
+				try {
+					// stream may be captured in closure; ensure local variable accessible
+					// @ts-ignore
+					if (typeof stream !== 'undefined' && stream && typeof stream.destroy === 'function') {
+						// @ts-ignore
+						stream.destroy()
+					}
+				} catch {}
+				// hint undici to release body resources if still readable
+				try {
+					if (response?.body?.cancel) {
+						response.body.cancel()
+					}
+				} catch {}
 			}
 		}
 

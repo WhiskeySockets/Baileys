@@ -45,6 +45,8 @@ export class WebSocketClient extends AbstractSocketClient {
 			return
 		}
 
+		this.socket.removeAllListeners()
+
 		this.socket.close()
 		this.socket = null
 	}

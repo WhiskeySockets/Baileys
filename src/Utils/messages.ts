@@ -990,7 +990,12 @@ export const downloadMediaMessage = async <Type extends 'buffer' | 'stream'>(
 				bufferArray.push(chunk)
 			}
 
-			return Buffer.concat(bufferArray)
+			const out = Buffer.concat(bufferArray)
+			// explicitly destroy the stream to release underlying resources ASAP
+			try {
+				stream.destroy()
+			} catch {}
+			return out
 		}
 
 		return stream
