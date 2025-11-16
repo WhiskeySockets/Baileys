@@ -2,7 +2,6 @@ import { jest } from '@jest/globals'
 import type { ILogger } from '../../Utils/logger'
 import { processContactAction } from '../../Utils/sync-action-utils'
 
-
 describe('processContactAction', () => {
 	const mockLogger: ILogger = {
 		warn: jest.fn(),
