@@ -878,6 +878,36 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
+	const handlePrivacyTokenNotification = async (node: BinaryNode) => {
+		const tokensNode = getBinaryNodeChild(node, 'tokens')
+		const from = jidNormalizedUser(node.attrs.from)
+
+		if (!tokensNode) return
+
+		const tokenNodes = getBinaryNodeChildren(tokensNode, 'token')
+
+		for (const tokenNode of tokenNodes) {
+			const { attrs, content } = tokenNode
+			const type = attrs.type
+			const timestamp = attrs.t
+
+			if (type === 'trusted_contact' && content instanceof Buffer) {
+				logger.debug(
+					{
+						from,
+						timestamp,
+						tcToken: content
+					},
+					'received trusted contact token'
+				)
+
+				await authState.keys.set({
+					'contacts-tc-token': { [from]: { token: content, timestamp } }
+				})
+			}
+		}
+	}
+
 	async function decipherLinkPublicKey(data: Uint8Array | Buffer) {
 		const buffer = toRequiredBuffer(data)
 		const salt = buffer.slice(0, 32)
