@@ -1143,11 +1143,21 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		const encNode = getBinaryNodeChild(node, 'enc')
+		const unavailableNode = getBinaryNodeChild(node, 'unavailable')
 
 		// TODO: temporary fix for crashes and issues resulting of failed msmsg decryption
 		if (encNode && encNode.attrs.type === 'msmsg') {
 			logger.debug({ key: node.attrs.key }, 'ignored msmsg')
 			await sendMessageAck(node, NACK_REASONS.MissingMessageSecret)
+			return
+		}
+
+		if (unavailableNode) {
+			logger.warn(
+				{ id: node.attrs.id, from: node.attrs.from, type: unavailableNode.attrs?.type },
+				'received unavailable message, sending positive ack'
+			)
+			await sendMessageAck(node)
 			return
 		}
 
