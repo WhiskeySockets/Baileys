@@ -1382,6 +1382,20 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 				}
 			])
+
+			// resend the message with device_fanout=false, use at your own risk
+			// if (attrs.error === '475') {
+			// 	const msg = await getMessage(key)
+			// 	if (msg) {
+			// 		await relayMessage(key.remoteJid!, msg, {
+			// 			messageId: key.id!,
+			// 			useUserDevicesCache: false,
+			// 			additionalAttributes: {
+			// 				device_fanout: 'false'
+			// 			}
+			// 		})
+			// 	}
+			// }
 		}
 	}
 
