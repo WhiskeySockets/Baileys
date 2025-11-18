@@ -102,6 +102,7 @@ export const downloadAndProcessHistorySyncNotification = async (
 	} else {
 		historyMsg = await downloadHistory(msg, options)
 	}
+
 	return processHistoryMessage(historyMsg)
 }
 
