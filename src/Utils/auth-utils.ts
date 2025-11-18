@@ -31,11 +31,13 @@ interface TransactionContext {
  * Adds caching capability to a SignalKeyStore
  * @param store the store to add caching to
  * @param logger to log trace events
+ * @param prefix prefix for multiinstance with own cache
  * @param _cache cache store to use
  */
 export function makeCacheableSignalKeyStore(
 	store: SignalKeyStore,
 	logger?: ILogger,
+	prefix?: string,
 	_cache?: CacheStore
 ): SignalKeyStore {
 	const cache =
@@ -50,7 +52,7 @@ export function makeCacheableSignalKeyStore(
 	const cacheMutex = new Mutex()
 
 	function getUniqueId(type: string, id: string) {
-		return `${type}.${id}`
+		return prefix ? `${prefix}-${type}.${id}` : `${type}.${id}`
 	}
 
 	return {
