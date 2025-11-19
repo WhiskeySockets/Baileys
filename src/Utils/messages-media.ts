@@ -662,7 +662,7 @@ export const getWAUploadToServer = (
 			try {
 				const stream = createReadStream(filePath)
 				const response = await fetch(url, {
-					dispatcher: fetchAgent,
+					dispatcher: options?.dispatcher || fetchAgent,
 					method: 'POST',
 					body: stream as any,
 					headers: {
