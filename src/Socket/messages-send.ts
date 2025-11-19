@@ -929,7 +929,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			const tcTokenBuffer = contactTcTokenData[destinationJid]?.token
 
 			if (tcTokenBuffer) {
-				;(stanza.content as BinaryNode[]).push({
+				(stanza.content as BinaryNode[]).push({
 					tag: 'tctoken',
 					attrs: {},
 					content: tcTokenBuffer
