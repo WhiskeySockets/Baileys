@@ -872,10 +872,44 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				})
 				authState.creds.registered = true
 				ev.emit('creds.update', authState.creds)
+				break
+			case 'privacy_token':
+				await handlePrivacyTokenNotification(node)
+				break
 		}
 
 		if (Object.keys(result).length) {
 			return result
+		}
+	}
+
+	const handlePrivacyTokenNotification = async (node: BinaryNode) => {
+		const tokensNode = getBinaryNodeChild(node, 'tokens')
+		const from = jidNormalizedUser(node.attrs.from)
+
+		if (!tokensNode) return
+
+		const tokenNodes = getBinaryNodeChildren(tokensNode, 'token')
+
+		for (const tokenNode of tokenNodes) {
+			const { attrs, content } = tokenNode
+			const type = attrs.type
+			const timestamp = attrs.t
+
+			if (type === 'trusted_contact' && content instanceof Buffer) {
+				logger.debug(
+					{
+						from,
+						timestamp,
+						tcToken: content
+					},
+					'received trusted contact token'
+				)
+
+				await authState.keys.set({
+					'contacts-tc-token': { [from]: { token: content, timestamp } }
+				})
+			}
 		}
 	}
 
@@ -1369,6 +1403,20 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 				}
 			])
+
+			// resend the message with device_fanout=false, use at your own risk
+			// if (attrs.error === '475') {
+			// 	const msg = await getMessage(key)
+			// 	if (msg) {
+			// 		await relayMessage(key.remoteJid!, msg, {
+			// 			messageId: key.id!,
+			// 			useUserDevicesCache: false,
+			// 			additionalAttributes: {
+			// 				device_fanout: 'false'
+			// 			}
+			// 		})
+			// 	}
+			// }
 		}
 	}
 

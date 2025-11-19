@@ -41,7 +41,7 @@ export const PROCESSABLE_HISTORY_TYPES = [
 	proto.HistorySync.HistorySyncType.FULL,
 	proto.HistorySync.HistorySyncType.ON_DEMAND,
 	proto.HistorySync.HistorySyncType.NON_BLOCKING_DATA,
-	proto.HistorySync.HistorySyncType.INITIAL_STATUS_V3,
+	proto.HistorySync.HistorySyncType.INITIAL_STATUS_V3
 ]
 
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
