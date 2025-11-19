@@ -941,7 +941,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			const contactTcTokenData =
-				!isGroup && !isRetryResend && !isStatus ? await authState.keys.get('contacts-tc-token', [destinationJid]) : {}
+				!isGroup && !isRetryResend && !isStatus ? await authState.keys.get('tctoken', [destinationJid]) : {}
 
 			const tcTokenBuffer = contactTcTokenData[destinationJid]?.token
 

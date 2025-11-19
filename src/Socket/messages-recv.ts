@@ -919,7 +919,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				)
 
 				await authState.keys.set({
-					'contacts-tc-token': { [from]: { token: content, timestamp } }
+					tctoken: { [from]: { token: content, timestamp } }
 				})
 			}
 		}
