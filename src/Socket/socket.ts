@@ -12,7 +12,7 @@ import {
 	NOISE_WA_HEADER,
 	UPLOAD_TIMEOUT
 } from '../Defaults'
-import type { LIDMapping, SocketConfig } from '../Types'
+import type { KeyPair, LIDMapping, SocketConfig } from '../Types'
 import { DisconnectReason } from '../Types'
 import {
 	addTransactionCapability,
@@ -96,14 +96,9 @@ export const makeSocket = (config: SocketConfig) => {
 	}
 
 	/** ephemeral key pair used to encrypt/decrypt communication. Unique for each connection */
-	const ephemeralKeyPair = Curve.generateKeyPair()
-	/** WA noise protocol wrapper */
-	const noise = makeNoiseHandler({
-		keyPair: ephemeralKeyPair,
-		NOISE_HEADER: NOISE_WA_HEADER,
-		logger,
-		routingInfo: authState?.creds?.routingInfo
-	})
+	const ephemeralKeyPairPromise = Curve.generateKeyPair()
+	/** WA noise protocol wrapper (initialized after WS opens) */
+	let noise: ReturnType<typeof makeNoiseHandler> | undefined
 
 	const ws = new WebSocketClient(url, config)
 
@@ -114,6 +109,10 @@ export const makeSocket = (config: SocketConfig) => {
 	const sendRawMessage = async (data: Uint8Array | Buffer) => {
 		if (!ws.isOpen) {
 			throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
+		}
+
+		if (!noise) {
+			throw new Boom('Socket not initialized yet')
 		}
 
 		const bytes = noise.encodeFrame(data)
@@ -400,7 +399,7 @@ export const makeSocket = (config: SocketConfig) => {
 	}
 
 	/** connection handshake */
-	const validateConnection = async () => {
+	const validateConnection = async (ephemeralKeyPair: KeyPair) => {
 		let helloMsg: proto.IHandshakeMessage = {
 			clientHello: { ephemeral: ephemeralKeyPair.public }
 		}
@@ -415,7 +414,7 @@ export const makeSocket = (config: SocketConfig) => {
 
 		logger.trace({ handshake }, 'handshake recv from WA')
 
-		const keyEnc = await noise.processHandshake(handshake, creds.noiseKey)
+		const keyEnc = await noise!.processHandshake(handshake, creds.noiseKey)
 
 		let node: proto.IClientPayload
 		if (!creds.me) {
@@ -426,7 +425,7 @@ export const makeSocket = (config: SocketConfig) => {
 			logger.info({ node }, 'logging in...')
 		}
 
-		const payloadEnc = noise.encrypt(proto.ClientPayload.encode(node).finish())
+		const payloadEnc = noise!.encrypt(proto.ClientPayload.encode(node).finish())
 		await sendRawMessage(
 			proto.HandshakeMessage.encode({
 				clientFinish: {
@@ -435,7 +434,7 @@ export const makeSocket = (config: SocketConfig) => {
 				}
 			}).finish()
 		)
-		noise.finishInit()
+		noise!.finishInit()
 		startKeepAliveRequest()
 	}
 
@@ -567,6 +566,9 @@ export const makeSocket = (config: SocketConfig) => {
 	}
 
 	const onMessageReceived = (data: Buffer) => {
+		if (!noise) {
+			return
+		}
 		noise.decodeFrame(data, frame => {
 			// reset ping timeout
 			lastDateRecv = new Date()
@@ -821,11 +823,18 @@ export const makeSocket = (config: SocketConfig) => {
 		})
 	}
 
-	ws.on('message', onMessageReceived)
-
 	ws.on('open', async () => {
 		try {
-			await validateConnection()
+			const ephemeralKeyPair = await ephemeralKeyPairPromise
+			noise = makeNoiseHandler({
+				keyPair: ephemeralKeyPair,
+				NOISE_HEADER: NOISE_WA_HEADER,
+				logger,
+				routingInfo: authState?.creds?.routingInfo
+			})
+			// register message handler only after noise is initialized
+			ws.on('message', onMessageReceived)
+			await validateConnection(ephemeralKeyPair)
 		} catch (err: any) {
 			logger.error({ err }, 'error in validating connection')
 			end(err)

@@ -144,7 +144,7 @@ export const generateRegistrationNode = (
 	return proto.ClientPayload.fromObject(registerPayload)
 }
 
-export const configureSuccessfulPairing = (
+export const configureSuccessfulPairing = async (
 	stanza: BinaryNode,
 	{
 		advSecretKey,
@@ -201,7 +201,7 @@ export const configureSuccessfulPairing = (
 		signedIdentityKey.public,
 		accountSignatureKey!
 	])
-	account.deviceSignature = Curve.sign(signedIdentityKey.private, deviceMsg)
+	account.deviceSignature = await Curve.sign(signedIdentityKey.private, deviceMsg)
 
 	const identity = createSignalIdentity(lid!, accountSignatureKey!)
 	const accountEnc = encodeSignedDeviceIdentity(account, false)

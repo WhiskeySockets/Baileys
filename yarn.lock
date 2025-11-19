@@ -2102,13 +2102,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/long@npm:^4.0.0":
-  version: 4.0.2
-  resolution: "@types/long@npm:4.0.2"
-  checksum: 10c0/42ec66ade1f72ff9d143c5a519a65efc7c1c77be7b1ac5455c530ae9acd87baba065542f8847522af2e3ace2cc999f3ad464ef86e6b7352eece34daf88f8c924
-  languageName: node
-  linkType: hard
-
 "@types/markdown-it@npm:^14.1.1":
   version: 14.1.2
   resolution: "@types/markdown-it@npm:14.1.2"
@@ -2139,13 +2132,6 @@ __metadata:
   version: 16.9.1
   resolution: "@types/node@npm:16.9.1"
   checksum: 10c0/17877153b2fe748e85dd85432c7d6776cfaced7fd69f1998d005812d4865ac02e192a3adde7869ba8f449550f0a80ea6e3369e449a07c587e71222c56478e7d4
-  languageName: node
-  linkType: hard
-
-"@types/node@npm:^10.1.0":
-  version: 10.17.60
-  resolution: "@types/node@npm:10.17.60"
-  checksum: 10c0/0742294912a6e79786cdee9ed77cff6ee8ff007b55d8e21170fc3e5994ad3a8101fea741898091876f8dc32b0a5ae3d64537b7176799e92da56346028d2cbcd2
   languageName: node
   linkType: hard
 
@@ -3007,7 +2993,7 @@ __metadata:
     jimp: "npm:^1.6.0"
     jiti: "npm:^2.4.2"
     json: "npm:^11.0.0"
-    libsignal: "git+https://github.com/whiskeysockets/libsignal-node"
+    libsignal-waweb: "github:vinikjkkj/libsignal-waweb"
     link-preview-js: "npm:^3.0.0"
     lru-cache: "npm:^11.1.0"
     music-metadata: "npm:^11.7.0"
@@ -3727,13 +3713,6 @@ __metadata:
   version: 6.2.2
   resolution: "css-what@npm:6.2.2"
   checksum: 10c0/91e24c26fb977b4ccef30d7007d2668c1c10ac0154cc3f42f7304410e9594fb772aea4f30c832d2993b132ca8d99338050866476210316345ec2e7d47b248a56
-  languageName: node
-  linkType: hard
-
-"curve25519-js@npm:^0.0.4":
-  version: 0.0.4
-  resolution: "curve25519-js@npm:0.0.4"
-  checksum: 10c0/5b6c3a0dcaf045588aa78c2d1113310bf93fda9c59bd533b2a06da807024eec92feb39b203d1db9c09eda94bba1252d507fb3901283d32898e43090546785ddd
   languageName: node
   linkType: hard
 
@@ -6976,13 +6955,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"libsignal-waweb@github:vinikjkkj/libsignal-waweb":
+  version: 0.1.0
+  resolution: "libsignal-waweb@https://github.com/vinikjkkj/libsignal-waweb.git#commit=ce70f318ff63999fe07853d4336ffa7411d2c971"
+  dependencies:
+    tweetnacl: "npm:^1.0.3"
+    wa-modules-loader: "github:vinikjkkj/wa-modules-loader"
+  checksum: 10c0/2e283e462be7e3702fc02a55e267a2f9334e34b1b5aef123f3b9d22072a76079a65a931774ed9e4d529cea62075b3728fab59297bb8a7630f4b67a6a44050b77
+  languageName: node
+  linkType: hard
+
 "libsignal@git+https://github.com/whiskeysockets/libsignal-node":
   version: 2.0.1
   resolution: "libsignal@https://github.com/whiskeysockets/libsignal-node.git#commit=e81ecfc32eb74951d789ab37f7e341ab66d5fff1"
   dependencies:
-    curve25519-js: "npm:^0.0.4"
-    protobufjs: "npm:6.8.8"
-  checksum: 10c0/d1ae7d8a5fadd6bb1c486d1b2ebc388967fee57c13f52b473127c1cbd9cd647b44545ff07c2b9cc49b3dea4e25ccfcfece31c526fdbdbf065837c85d189e97a0
+    tweetnacl: "npm:^1.0.3"
+    wa-modules-loader: "github:vinikjkkj/wa-modules-loader"
+  checksum: 10c0/7b654d992c5b8f4ba11bf0a642a342a41394778d1d774a71c15ddf7f49a83a6b5e13eb9cf40e3cb406268038d2a4966320bb0b62965cfc9b01ac453da1ac38d2
   languageName: node
   linkType: hard
 
@@ -7103,13 +7092,6 @@ __metadata:
     chalk: "npm:^5.0.0"
     is-unicode-supported: "npm:^1.1.0"
   checksum: 10c0/c14f8567c6618a7f96209c4c4b9fb3b794187116904712f7b526e465a5c9535728aec983735a5bef919247d0e54b9b72b6680a7fb9fc72d76b945dac4865e669
-  languageName: node
-  linkType: hard
-
-"long@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "long@npm:4.0.0"
-  checksum: 10c0/50a6417d15b06104dbe4e3d4a667c39b137f130a9108ea8752b352a4cfae047531a3ac351c181792f3f8768fe17cca6b0f406674a541a86fb638aaac560d83ed
   languageName: node
   linkType: hard
 
@@ -8404,30 +8386,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"protobufjs@npm:6.8.8":
-  version: 6.8.8
-  resolution: "protobufjs@npm:6.8.8"
-  dependencies:
-    "@protobufjs/aspromise": "npm:^1.1.2"
-    "@protobufjs/base64": "npm:^1.1.2"
-    "@protobufjs/codegen": "npm:^2.0.4"
-    "@protobufjs/eventemitter": "npm:^1.1.0"
-    "@protobufjs/fetch": "npm:^1.1.0"
-    "@protobufjs/float": "npm:^1.0.2"
-    "@protobufjs/inquire": "npm:^1.1.0"
-    "@protobufjs/path": "npm:^1.1.2"
-    "@protobufjs/pool": "npm:^1.1.0"
-    "@protobufjs/utf8": "npm:^1.1.0"
-    "@types/long": "npm:^4.0.0"
-    "@types/node": "npm:^10.1.0"
-    long: "npm:^4.0.0"
-  bin:
-    pbjs: bin/pbjs
-    pbts: bin/pbts
-  checksum: 10c0/2511ed6089245b2102c333ac56190b104f8d8227972c00f041def8387abf841fded7b2cb7130063666b7bca84597a43005ea05c5f674132a0ddd5eb94a6e7916
-  languageName: node
-  linkType: hard
-
 "protobufjs@npm:^7.2.4":
   version: 7.5.3
   resolution: "protobufjs@npm:7.5.3"
@@ -9695,6 +9653,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tweetnacl@npm:^1.0.3":
+  version: 1.0.3
+  resolution: "tweetnacl@npm:1.0.3"
+  checksum: 10c0/069d9df51e8ad4a89fbe6f9806c68e06c65be3c7d42f0701cc43dba5f0d6064686b238bbff206c5addef8854e3ce00c643bff59432ea2f2c639feab0ee1a93f9
+  languageName: node
+  linkType: hard
+
 "type-check@npm:^0.4.0, type-check@npm:~0.4.0":
   version: 0.4.0
   resolution: "type-check@npm:0.4.0"
@@ -10142,6 +10107,15 @@ __metadata:
   bin:
     vm2: bin/vm2
   checksum: 10c0/16e8e6bb389ae88b8ffbc439e8d7c09db3b98f7f738440af5b78080d6cb35db66b41b0ad055cc59bcc45cb8e270ed850667207348e90760b430403741f72337a
+  languageName: node
+  linkType: hard
+
+"wa-modules-loader@github:vinikjkkj/wa-modules-loader":
+  version: 1.0.0
+  resolution: "wa-modules-loader@https://github.com/vinikjkkj/wa-modules-loader.git#commit=2ae3842547532a3081d46bb41a0397b678b2bd00"
+  bin:
+    wa-export: dist/export/index.js
+  checksum: 10c0/bad16a06e1c93b699c14e5cf9fccf01c8d1dad0f4a85086ad85297696c84eacd90c108dd9e4c18cbdbc67d8899b98d0f5cf523162ca8ec0958aea65b4e9c0e27
   languageName: node
   linkType: hard
 

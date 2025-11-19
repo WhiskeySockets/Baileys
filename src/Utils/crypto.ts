@@ -1,5 +1,5 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto'
-import * as curve from 'libsignal/src/curve'
+import * as libsignal from 'libsignal-waweb'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import type { KeyPair } from '../Types'
 
@@ -11,22 +11,21 @@ export const generateSignalPubKey = (pubKey: Uint8Array | Buffer) =>
 	pubKey.length === 33 ? pubKey : Buffer.concat([KEY_BUNDLE_TYPE, pubKey])
 
 export const Curve = {
-	generateKeyPair: (): KeyPair => {
-		const { pubKey, privKey } = curve.generateKeyPair()
+	generateKeyPair: async (): Promise<KeyPair> => {
+		const { public: pubKey, private: privKey } = await libsignal.generateKeyPair()
 		return {
 			private: Buffer.from(privKey),
-			// remove version byte
-			public: Buffer.from(pubKey.slice(1))
+			public: Buffer.from(pubKey)
 		}
 	},
-	sharedKey: (privateKey: Uint8Array, publicKey: Uint8Array) => {
-		const shared = curve.calculateAgreement(generateSignalPubKey(publicKey), privateKey)
+	sharedKey: async (privateKey: Uint8Array, publicKey: Uint8Array) => {
+		const shared = await libsignal.sharedKey(privateKey, publicKey)
 		return Buffer.from(shared)
 	},
-	sign: (privateKey: Uint8Array, buf: Uint8Array) => curve.calculateSignature(privateKey, buf),
-	verify: (pubKey: Uint8Array, message: Uint8Array, signature: Uint8Array) => {
+	sign: async (privateKey: Uint8Array, buf: Uint8Array) => libsignal.sign(privateKey, buf),
+	verify: async (pubKey: Uint8Array, message: Uint8Array, signature: Uint8Array) => {
 		try {
-			curve.verifySignature(generateSignalPubKey(pubKey), message, signature)
+			await libsignal.verify(pubKey, message, signature)
 			return true
 		} catch (error) {
 			return false
@@ -34,11 +33,11 @@ export const Curve = {
 	}
 }
 
-export const signedKeyPair = (identityKeyPair: KeyPair, keyId: number) => {
-	const preKey = Curve.generateKeyPair()
+export const signedKeyPair = async (identityKeyPair: KeyPair, keyId: number) => {
+	const preKey = await Curve.generateKeyPair()
 	const pubKey = generateSignalPubKey(preKey.public)
 
-	const signature = Curve.sign(identityKeyPair.private, pubKey)
+	const signature = await Curve.sign(identityKeyPair.private, pubKey)
 
 	return { keyPair: preKey, signature, keyId }
 }
