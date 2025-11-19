@@ -372,7 +372,7 @@ export const getHttpStream = async (url: string | URL, options: RequestInit & { 
 	}
 
 	// @ts-ignore Node18+ Readable.fromWeb exists
-	return Readable.fromWeb(response.body as any)
+	return response.body instanceof Readable ? response.body : Readable.fromWeb(response.body as any)
 }
 
 type EncryptedStreamOptions = {
