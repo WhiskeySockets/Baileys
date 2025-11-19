@@ -1199,7 +1199,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			return
 		}
 
-		if (unavailableNode) {
+		if (unavailableNode && unavailableNode.attrs?.type == 'view_once') {
 			logger.warn(
 				{ id: node.attrs.id, from: node.attrs.from, type: unavailableNode.attrs?.type },
 				'received unavailable message, sending positive ack'
