@@ -30,8 +30,9 @@ export default defineConfig([globalIgnores([
 ...base,
 {
     extends: [
-    	...tseslint.configs.recommendedTypeChecked,
-    	compat.extends("plugin:prettier/recommended"),
+      ...compat.extends("plugin:@typescript-eslint/recommended"),
+      ...compat.extends("plugin:@typescript-eslint/recommended-requiring-type-checking"),
+      ...compat.extends("plugin:prettier/recommended"),
  		],
 
 
