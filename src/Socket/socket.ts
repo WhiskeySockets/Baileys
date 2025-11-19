@@ -435,7 +435,7 @@ export const makeSocket = (config: SocketConfig) => {
 				}
 			}).finish()
 		)
-		noise.finishInit()
+		await noise.finishInit()
 		startKeepAliveRequest()
 	}
 
@@ -566,8 +566,8 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const onMessageReceived = (data: Buffer) => {
-		noise.decodeFrame(data, frame => {
+	const onMessageReceived = async (data: Buffer) => {
+		await noise.decodeFrame(data, frame => {
 			// reset ping timeout
 			lastDateRecv = new Date()
 
@@ -968,9 +968,9 @@ export const makeSocket = (config: SocketConfig) => {
 		end(new Boom('Multi-device beta not joined', { statusCode: DisconnectReason.multideviceMismatch }))
 	})
 
-	ws.on('CB:ib,,offline_preview', (node: BinaryNode) => {
+	ws.on('CB:ib,,offline_preview', async (node: BinaryNode) => {
 		logger.info('offline preview received', JSON.stringify(node))
-		sendNode({
+		await sendNode({
 			tag: 'ib',
 			attrs: {},
 			content: [{ tag: 'offline_batch', attrs: { count: '100' } }]

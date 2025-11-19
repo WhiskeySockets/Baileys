@@ -946,7 +946,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			const tcTokenBuffer = contactTcTokenData[destinationJid]?.token
 
 			if (tcTokenBuffer) {
-				(stanza.content as BinaryNode[]).push({
+				;(stanza.content as BinaryNode[]).push({
 					tag: 'tctoken',
 					attrs: {},
 					content: tcTokenBuffer
@@ -1198,8 +1198,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					additionalNodes
 				})
 				if (config.emitOwnEvents) {
-					process.nextTick(() => {
-						processingMutex.mutex(() => upsertMessage(fullMsg, 'append'))
+					process.nextTick(async () => {
+						await processingMutex.mutex(() => upsertMessage(fullMsg, 'append'))
 					})
 				}
 
