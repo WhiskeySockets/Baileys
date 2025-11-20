@@ -153,8 +153,8 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 
 	return {
 		process(handler) {
-			const listener = (map: BaileysEventData) => {
-				handler(map)
+			const listener = async (map: BaileysEventData) => {
+				await handler(map)
 			}
 
 			ev.on('event', listener)

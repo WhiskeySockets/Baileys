@@ -5,22 +5,10 @@
 
 > [!CAUTION]
 > NOTICE OF BREAKING CHANGE.
-> 
+>
 > As of 7.0.0, multiple breaking changes were introduced into the library.
-> 
+>
 > Please check out https://whiskey.so/migrate-latest for more information.
-
-> [!IMPORTANT]
-> I made a survey for users of the project to ask questions, and provide Baileys valuable insights regarding its users. I will be publishing the results of this form (after filtering) as well so we can study and understand where we need to work.
-> 
-> The survey is anonymous and requires no personal info at all. You are required to sign-in with Google to keep responses to one person. You are able to edit your response after you submit. The deadline for this form is September 30, 2025.
-> 
-> I encourage you to put the effort, all it takes is 5-10 minutes and you get to ask me any questions you have.
-> 
-> \- Rajeh (purpshell)
-> 
-> Fill in the survey via the link: https://whiskey.so/survey 
-
 
 # Important Note
 This is a temporary README.md, the new guide is in development and will this file will be replaced with .github/README.md (already a default on GitHub).
@@ -39,8 +27,8 @@ Use at your own discretion. Do not spam people with this. We discourage any stal
 
 ##
 
-- Baileys does not require Selenium or any other browser to be interface with WhatsApp Web, it does so directly using a **WebSocket**. 
-- Not running Selenium or Chromium saves you like **half a gig** of ram :/ 
+- Baileys does not require Selenium or any other browser to be interface with WhatsApp Web, it does so directly using a **WebSocket**.
+- Not running Selenium or Chromium saves you like **half a gig** of ram :/
 - Baileys supports interacting with the multi-device & web versions of WhatsApp.
 - Thank you to [@pokearaujo](https://github.com/pokearaujo/multidevice) for writing his observations on the workings of WhatsApp Multi-Device. Also, thank you to [@Sigalor](https://github.com/sigalor/whatsapp-web-reveng) for writing his observations on the workings of WhatsApp Web and thanks to [@Rhymen](https://github.com/Rhymen/go-whatsapp/) for the __go__ implementation.
 
@@ -48,7 +36,7 @@ Use at your own discretion. Do not spam people with this. We discourage any stal
 > The original repository had to be removed by the original author - we now continue development in this repository here.
 This is the only official repository and is maintained by the community.
 > **Join the Discord [here](https://discord.gg/WeJM5FP9GG)**
- 
+
 ## Example
 
 Do check out & run [example.ts](Example/example.ts) to see an example usage of the library.
@@ -71,7 +59,7 @@ yarn add github:WhiskeySockets/Baileys
 ```
 
 Then import your code using:
-```ts 
+```ts
 import makeWASocket from '@whiskeysockets/baileys'
 ```
 
@@ -290,7 +278,7 @@ const sock = makeWASocket({
     ```
 ## Saving & Restoring Sessions
 
-You obviously don't want to keep scanning the QR code every time you want to connect. 
+You obviously don't want to keep scanning the QR code every time you want to connect.
 
 So, you can load the credentials to log back in:
 ```ts
@@ -314,7 +302,7 @@ sock.ev.on('creds.update', saveCreds)
 
 ## Handling Events
 
-- Baileys uses the EventEmitter syntax for events. 
+- Baileys uses the EventEmitter syntax for events.
 They're all nicely typed up, so you shouldn't have any issues with an Intellisense editor like VS Code.
 
 > [!IMPORTANT]
@@ -451,10 +439,10 @@ The store also provides some simple functions such as `loadMessages` that utiliz
 
 ## Whatsapp IDs Explain
 
-- `id` is the WhatsApp ID, called `jid` too, of the person or group you're sending the message to. 
+- `id` is the WhatsApp ID, called `jid` too, of the person or group you're sending the message to.
     - It must be in the format ```[country code][phone number]@s.whatsapp.net```
-	    - Example for people: ```+19999999999@s.whatsapp.net```. 
-	    - For groups, it must be in the format ``` 123456789-123345@g.us ```. 
+	    - Example for people: ```+19999999999@s.whatsapp.net```.
+	    - For groups, it must be in the format ``` 123456789-123345@g.us ```.
     - For broadcast lists, it's `[timestamp of creation]@broadcast`.
     - For stories, the ID is `status@broadcast`.
 
@@ -513,7 +501,7 @@ await sock.sendMessage(jid, { forward: msg }) // WA forward the message!
 #### Location Message
 ```ts
 await sock.sendMessage(
-    jid, 
+    jid,
     {
         location: {
             degreesLatitude: 24.121231,
@@ -525,7 +513,7 @@ await sock.sendMessage(
 #### Contact Message
 ```ts
 const vcard = 'BEGIN:VCARD\n' // metadata of the contact card
-            + 'VERSION:3.0\n' 
+            + 'VERSION:3.0\n'
             + 'FN:Jeff Singh\n' // full name
             + 'ORG:Ashoka Uni;\n' // the organization of the contact
             + 'TEL;type=CELL;type=VOICE;waid=911234567890:+91 12345 67890\n' // WhatsApp ID + phone number
@@ -533,10 +521,10 @@ const vcard = 'BEGIN:VCARD\n' // metadata of the contact card
 
 await sock.sendMessage(
     id,
-    { 
-        contacts: { 
-            displayName: 'Jeff', 
-            contacts: [{ vcard }] 
+    {
+        contacts: {
+            displayName: 'Jeff',
+            contacts: [{ vcard }]
         }
     }
 )
@@ -626,8 +614,8 @@ Sending media (video, stickers, images) is easier & more efficient than ever.
 - Whatsapp doesn't support `.gif` files, that's why we send gifs as common `.mp4` video with `gifPlayback` flag
 ```ts
 await sock.sendMessage(
-    jid, 
-    { 
+    jid,
+    {
         video: fs.readFileSync('Media/ma_gif.mp4'),
         caption: 'hello word',
         gifPlayback: true
@@ -638,8 +626,8 @@ await sock.sendMessage(
 #### Video Message
 ```ts
 await sock.sendMessage(
-    id, 
-    { 
+    id,
+    {
         video: {
             url: './Media/ma_gif.mp4'
         },
@@ -663,7 +651,7 @@ await sock.sendMessage(
     ```
 ```ts
 await sock.sendMessage(
-    jid, 
+    jid,
     {
         audio: {
             url: './Media/audio.mp3'
@@ -676,8 +664,8 @@ await sock.sendMessage(
 #### Image Message
 ```ts
 await sock.sendMessage(
-    id, 
-    { 
+    id,
+    {
         image: {
             url: './Media/ma_img.png'
         },
@@ -692,8 +680,8 @@ await sock.sendMessage(
 
 ```ts
 await sock.sendMessage(
-    id, 
-    { 
+    id,
+    {
         image: {
             url: './Media/ma_img.png'
         },
@@ -748,7 +736,7 @@ sock.ev.on('messages.upsert', async ({ [m] }) => {
             m,
             'stream', // can be 'buffer' too
             { },
-            { 
+            {
                 logger,
                 // pass this so that baileys can request a reupload of media
                 // that has been deleted
@@ -764,7 +752,7 @@ sock.ev.on('messages.upsert', async ({ [m] }) => {
 
 ### Re-upload Media Message to Whatsapp
 
-- WhatsApp automatically removes old media from their servers. For the device to access said media -- a re-upload is required by another device that has it. This can be accomplished using: 
+- WhatsApp automatically removes old media from their servers. For the device to access said media -- a re-upload is required by another device that has it. This can be accomplished using:
 ```ts
 await sock.updateMediaMessage(msg)
 ```
@@ -790,17 +778,17 @@ const key: WAMessageKey
 await sock.readMessages([key])
 ```
 
-The message ID is the unique identifier of the message that you are marking as read. 
+The message ID is the unique identifier of the message that you are marking as read.
 On a `WAMessage`, the `messageID` can be accessed using ```messageID = message.key.id```.
 
 ### Update Presence
 
 - ``` presence ``` can be one of [these](https://baileys.whiskeysockets.io/types/WAPresence.html)
 - The presence expires after about 10 seconds.
-- This lets the person/group with `jid` know whether you're online, offline, typing etc. 
+- This lets the person/group with `jid` know whether you're online, offline, typing etc.
 
 ```ts
-await sock.sendPresenceUpdate('available', jid) 
+await sock.sendPresenceUpdate('available', jid)
 ```
 
 > [!NOTE]
@@ -849,12 +837,12 @@ await sock.chatModify(
             messages: [
                 {
                     id: 'ATWYHDNNWU81732J',
-                    fromMe: true, 
+                    fromMe: true,
                     timestamp: '1654823909'
                 }
             ]
         }
-    }, 
+    },
     jid
 )
 
@@ -915,7 +903,7 @@ await sock.chatModify({
 ```ts
 // turn on disappearing messages
 await sock.sendMessage(
-    jid, 
+    jid,
     // this is 1 week in seconds -- how long you want messages to appear for
     { disappearingMessagesInChat: WA_DEFAULT_EPHEMERAL }
 )
@@ -925,7 +913,7 @@ await sock.sendMessage(jid, { text: 'hello' }, { ephemeralExpiration: WA_DEFAULT
 
 // turn off disappearing messages
 await sock.sendMessage(
-    jid, 
+    jid,
     { disappearingMessagesInChat: false }
 )
 ```
@@ -980,7 +968,7 @@ console.log('business description: ' + profile.description + ', category: ' + pr
 sock.ev.on('presence.update', console.log)
 
 // request updates for a chat
-await sock.presenceSubscribe(jid) 
+await sock.presenceSubscribe(jid)
 ```
 
 ## Change Profile
@@ -1022,7 +1010,7 @@ await sock.sendMessage(group.id, { text: 'hello there' }) // say hello to everyo
 ```ts
 // id & people to add to the group (will throw error if it fails)
 await sock.groupParticipantsUpdate(
-    jid, 
+    jid,
     ['abcd@s.whatsapp.net', 'efgh@s.whatsapp.net'],
     'add' // replace this parameter with 'remove' or 'demote' or 'promote'
 )
@@ -1075,7 +1063,7 @@ console.log('group information: ' + response)
 ```
 ### Query Metadata (participants, name, description...)
 ```ts
-const metadata = await sock.groupMetadata(jid) 
+const metadata = await sock.groupMetadata(jid)
 console.log(metadata.id + ', title: ' + metadata.subject + ', description: ' + metadata.desc)
 ```
 ### Join using `groupInviteMessage`
@@ -1093,7 +1081,7 @@ console.log(response)
 const response = await sock.groupRequestParticipantsUpdate(
     jid, // group id
     ['abcd@s.whatsapp.net', 'efgh@s.whatsapp.net'],
-    'approve' // or 'reject' 
+    'approve' // or 'reject'
 )
 console.log(response)
 ```
@@ -1184,7 +1172,7 @@ await sock.updateGroupsAddPrivacy(value)
 | 90d    | 7.776.000  |
 
 ```ts
-const ephemeral = 86400 
+const ephemeral = 86400
 await sock.updateDefaultDisappearingMode(ephemeral)
 ```
 
@@ -1233,14 +1221,14 @@ const sock = makeWASocket({
     logger: P({ level: 'debug' }),
 })
 ```
-This will enable you to see all sorts of messages WhatsApp sends in the console. 
+This will enable you to see all sorts of messages WhatsApp sends in the console.
 
 ### How Whatsapp Communicate With Us
 
 > [!TIP]
 > If you want to learn whatsapp protocol, we recommend to study about Libsignal Protocol and Noise Protocol
 
-- **Example:** Functionality to track the battery percentage of your phone. You enable logging and you'll see a message about your battery pop up in the console: 
+- **Example:** Functionality to track the battery percentage of your phone. You enable logging and you'll see a message about your battery pop up in the console:
     ```
     {
         "level": 10,
@@ -1269,7 +1257,7 @@ This will enable you to see all sorts of messages WhatsApp sends in the console.
         },
         "msg":"communication"
     }
-    ``` 
+    ```
 
 The `'frame'` is what the message received is, it has three components:
 - `tag` -- what this frame is about (eg. message will have 'message')
