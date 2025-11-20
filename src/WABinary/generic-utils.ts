@@ -25,11 +25,11 @@ export const getBinaryNodeChildren = (node: BinaryNode | undefined, childTag: st
     }
 
     // Return first matching child
-    return index.get(childTag)
+    return index.get(childTag) || []
 }
 
 export const getBinaryNodeChild = (node: BinaryNode | undefined, childTag: string) => {
-  return getBinaryNodeChildren(node, childTag)?.[0]
+  return getBinaryNodeChildren(node, childTag)[0]
 }
 
 export const getAllBinaryNodeChildren = ({ content }: BinaryNode) => {
