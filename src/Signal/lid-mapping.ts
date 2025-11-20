@@ -5,7 +5,7 @@ import { isHostedPnUser, isLidUser, isPnUser, jidDecode, jidNormalizedUser, WAJI
 
 export class LIDMappingStore {
 	private readonly mappingCache = new LRUCache<string, string>({
-		ttl: 7 * 24 * 60 * 60 * 1000, // 7 days
+		ttl: 3 * 24 * 60 * 60 * 1000, // 7 days
 		ttlAutopurge: true,
 		updateAgeOnGet: true
 	})
@@ -145,7 +145,7 @@ export class LIDMappingStore {
 		if (Object.keys(usyncFetch).length > 0) {
 			const result = await this.pnToLIDFunc?.(Object.keys(usyncFetch)) // this function already adds LIDs to mapping
 			if (result && result.length > 0) {
-				this.storeLIDPNMappings(result)
+				await this.storeLIDPNMappings(result)
 				for (const pair of result) {
 					const pnDecoded = jidDecode(pair.pn)
 					const pnUser = pnDecoded?.user

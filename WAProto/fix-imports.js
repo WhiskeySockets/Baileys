@@ -1,5 +1,5 @@
-import { readFileSync, writeFileSync } from 'fs'
-import { exit } from 'process'
+import { readFileSync, writeFileSync } from 'fs';
+import { exit } from 'process';
 
 const filePath = './index.js'
 
