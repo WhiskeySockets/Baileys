@@ -104,7 +104,7 @@ export function makeLibSignalRepository(
 		async encryptGroupMessage({ group, meId, data }) {
 			const builder = new GroupSessionBuilder(storage)
 			const meAddr = new ProtocolAddress(jidDecode(meId)!.user, jidDecode(meId)!.device || 0)
-			const senderName = new SenderKeyName(group, meAddr)
+			const senderName = jidToSignalSenderKeyName(group, meId)
 
 			const senderKeyDistributionMessage = await builder.create(senderName)
 
@@ -331,6 +331,10 @@ const jidToSignalProtocolAddress = (jid: string): ProtocolAddress => {
 	}
 
 	return new ProtocolAddress(signalUser, finalDevice)
+}
+
+const jidToSignalSenderKeyName = (group: string, user: string): SenderKeyName => {
+	return new SenderKeyName(group, jidToSignalProtocolAddress(user))
 }
 
 function signalStorage({ creds, keys }: SignalAuthState, lidMapping: LIDMappingStore): SignalStorage {
