@@ -36,6 +36,7 @@ import {
 	hkdf,
 	MISSING_KEYS_ERROR_TEXT,
 	NACK_REASONS,
+	NO_MESSAGE_FOUND_ERROR_TEXT,
 	unixTimestampSeconds,
 	xmppPreKey,
 	xmppSignedPreKey
@@ -709,30 +710,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const from = jidNormalizedUser(node.attrs.from)
 
 		switch (nodeType) {
-			case 'privacy_token':
-				logger.info("Inside privacy_token case!")
-
-				const tokenList = getBinaryNodeChildren(child, 'token')
-				for (const { attrs, content } of tokenList) {
-					const jid = attrs.jid
-					ev.emit('chats.update', [
-						{
-							id: jid,
-							tcToken: content as Buffer
-						}
-					])
-
-					logger.info("Emitted event chats.update!")
-					logger.info({
-							id: jid,
-							tcToken: content as Buffer
-						})
-
-					logger.debug({ jid }, 'got privacy token update')
-				}
-
-				await handlePrivacyTokenNotification(node)
-				break
 			case 'newsletter':
 				await handleNewsletterNotification(node)
 				break
@@ -894,6 +871,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				authState.creds.registered = true
 				ev.emit('creds.update', authState.creds)
 				break
+			case 'privacy_token':
+				await handlePrivacyTokenNotification(node)
+				break
 		}
 
 		if (Object.keys(result).length) {
@@ -904,6 +884,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const handlePrivacyTokenNotification = async (node: BinaryNode) => {
 		const tokensNode = getBinaryNodeChild(node, 'tokens')
 		const from = jidNormalizedUser(node.attrs.from)
+		let lidForPN: string | null = null
+		try {
+			lidForPN = await signalRepository.lidMapping.getLIDForPN(from)
+		} catch (error) {
+			logger.warn({ error, jid: from }, 'Failed to get lid for PN in handlePrivacyTokenNotification.')
+		}
 
 		logger.info("Inside handlePrivacyTokenNotification method")
 		logger.info("Tokens node:")
@@ -921,7 +907,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const timestamp = attrs.t
 
 			if (type === 'trusted_contact' && content instanceof Buffer) {
-				logger.info(
+				logger.debug(
 					{
 						from,
 						timestamp,
@@ -938,6 +924,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await authState.keys.set({
 					tctoken: { [from]: { token: content, timestamp } }
 				})
+
+				if (lidForPN) {
+					await authState.keys.set({
+						tctoken: { [lidForPN]: { token: content, timestamp } }
+					})
+				}
 			}
 		}
 	}
@@ -1253,8 +1245,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await decrypt()
 				// message failed to decrypt
 				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
-					if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
-						return sendMessageAck(node, NACK_REASONS.ParsingError)
+					if (
+						msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT ||
+						msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT
+					) {
+						return sendMessageAck(node)
 					}
 
 					const errorMessage = msg?.messageStubParameters?.[0] || ''
@@ -1303,7 +1298,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						await sendMessageAck(node, NACK_REASONS.UnhandledError)
 					})
 				} else {
-					await sendMessageAck(node)
 					const isNewsletter = isJidNewsletter(msg.key.remoteJid!)
 					if (!isNewsletter) {
 						// no type in the receipt => message delivered
@@ -1329,9 +1323,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						const isAnyHistoryMsg = getHistoryMsg(msg.message!)
 						if (isAnyHistoryMsg) {
 							const jid = jidNormalizedUser(msg.key.remoteJid!)
-							await sendReceipt(jid, undefined, [msg.key.id!], 'hist_sync')
+							await sendReceipt(jid, undefined, [msg.key.id!], 'hist_sync') // TODO: investigate
 						}
 					} else {
+						await sendMessageAck(node)
 						logger.debug({ key: msg.key }, 'processed newsletter message without receipts')
 					}
 				}
