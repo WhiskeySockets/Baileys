@@ -709,6 +709,30 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const from = jidNormalizedUser(node.attrs.from)
 
 		switch (nodeType) {
+			case 'privacy_token':
+				logger.info("Inside privacy_token case!")
+
+				const tokenList = getBinaryNodeChildren(child, 'token')
+				for (const { attrs, content } of tokenList) {
+					const jid = attrs.jid
+					ev.emit('chats.update', [
+						{
+							id: jid,
+							tcToken: content as Buffer
+						}
+					])
+
+					logger.info("Emitted event chats.update!")
+					logger.info({
+							id: jid,
+							tcToken: content as Buffer
+						})
+
+					logger.debug({ jid }, 'got privacy token update')
+				}
+
+				await handlePrivacyTokenNotification(node)
+				break
 			case 'newsletter':
 				await handleNewsletterNotification(node)
 				break
@@ -870,9 +894,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				authState.creds.registered = true
 				ev.emit('creds.update', authState.creds)
 				break
-			case 'privacy_token':
-				await handlePrivacyTokenNotification(node)
-				break
 		}
 
 		if (Object.keys(result).length) {
@@ -884,9 +905,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const tokensNode = getBinaryNodeChild(node, 'tokens')
 		const from = jidNormalizedUser(node.attrs.from)
 
+		logger.info("Inside handlePrivacyTokenNotification method")
+		logger.info("Tokens node:")
+		logger.info(tokensNode)
 		if (!tokensNode) return
 
 		const tokenNodes = getBinaryNodeChildren(tokensNode, 'token')
+
+		logger.info("Token nodes after getBinaryNodeChildren:")
+		logger.info(tokenNodes)
 
 		for (const tokenNode of tokenNodes) {
 			const { attrs, content } = tokenNode
@@ -894,7 +921,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			const timestamp = attrs.t
 
 			if (type === 'trusted_contact' && content instanceof Buffer) {
-				logger.debug(
+				logger.info(
 					{
 						from,
 						timestamp,
@@ -902,6 +929,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					},
 					'received trusted contact token'
 				)
+
+				logger.info("Found trusted_contact!")
+				logger.info({
+					tctoken: { [from]: { token: content, timestamp } }
+				})
 
 				await authState.keys.set({
 					tctoken: { [from]: { token: content, timestamp } }
