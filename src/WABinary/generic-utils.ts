@@ -4,12 +4,32 @@ import { type BinaryNode } from './types'
 
 // some extra useful utilities
 
+const indexCache = new WeakMap<BinaryNode, Map<string, BinaryNode[]>>()
+
 export const getBinaryNodeChildren = (node: BinaryNode | undefined, childTag: string) => {
-	if (Array.isArray(node?.content)) {
-		return node.content.filter(item => item.tag === childTag)
+	if (!node || !Array.isArray(node.content)) return []
+
+	let index = indexCache.get(node)
+
+	// Build the index once per node
+	if (!index) {
+		index = new Map<string, BinaryNode[]>()
+
+		for (const child of node.content) {
+			let arr = index.get(child.tag)
+			if (!arr) index.set(child.tag, (arr = []))
+			arr.push(child)
+		}
+
+		indexCache.set(node, index)
 	}
 
-	return []
+	// Return first matching child
+	return index.get(childTag) || []
+}
+
+export const getBinaryNodeChild = (node: BinaryNode | undefined, childTag: string) => {
+	return getBinaryNodeChildren(node, childTag)[0]
 }
 
 export const getAllBinaryNodeChildren = ({ content }: BinaryNode) => {
@@ -18,12 +38,6 @@ export const getAllBinaryNodeChildren = ({ content }: BinaryNode) => {
 	}
 
 	return []
-}
-
-export const getBinaryNodeChild = (node: BinaryNode | undefined, childTag: string) => {
-	if (Array.isArray(node?.content)) {
-		return node?.content.find(item => item.tag === childTag)
-	}
 }
 
 export const getBinaryNodeChildBuffer = (node: BinaryNode | undefined, childTag: string) => {
