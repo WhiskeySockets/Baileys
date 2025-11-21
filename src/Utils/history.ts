@@ -9,7 +9,7 @@ import { downloadContentFromMessage } from './messages-media'
 
 const inflatePromise = promisify(inflate)
 
-export const downloadHistory = async (msg: proto.Message.IHistorySyncNotification, options: RequestInit) => {
+export const downloadHistory = async (msg: proto.Message.IHistorySyncNotification, options: FetchRequestInit) => {
 	const stream = await downloadContentFromMessage(msg, 'md-msg-hist', { options })
 	const bufferArray: Buffer[] = []
 	for await (const chunk of stream) {
@@ -94,7 +94,7 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 
 export const downloadAndProcessHistorySyncNotification = async (
 	msg: proto.Message.IHistorySyncNotification,
-	options: RequestInit
+	options: FetchRequestInit
 ) => {
 	let historyMsg: proto.HistorySync
 	if (msg.initialHistBootstrapInlinePayload) {

@@ -342,7 +342,7 @@ export type MediaGenerationOptions = {
 
 	mediaUploadTimeoutMs?: number
 
-	options?: RequestInit
+	options?: FetchRequestInit
 
 	backgroundColor?: string
 

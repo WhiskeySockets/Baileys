@@ -1,5 +1,6 @@
 import { Boom } from '@hapi/boom'
 import { createHash, randomBytes } from 'crypto'
+import fetch from 'node-fetch'
 import { proto } from '../../WAProto/index.js'
 const baileysVersion = [2, 3000, 1027934701]
 import type {
@@ -231,11 +232,11 @@ export const bindWaitForConnectionUpdate = (ev: BaileysEventEmitter) => bindWait
  * utility that fetches latest baileys version from the master branch.
  * Use to ensure your WA connection is always on the latest version
  */
-export const fetchLatestBaileysVersion = async (options: RequestInit = {}) => {
+export const fetchLatestBaileysVersion = async (options: FetchRequestInit = {}) => {
 	const URL = 'https://raw.githubusercontent.com/WhiskeySockets/Baileys/master/src/Defaults/index.ts'
 	try {
 		const response = await fetch(URL, {
-			dispatcher: options.dispatcher,
+			agent: options.dispatcher,
 			method: 'GET',
 			headers: options.headers
 		})
@@ -272,7 +273,7 @@ export const fetchLatestBaileysVersion = async (options: RequestInit = {}) => {
  * A utility that fetches the latest web version of whatsapp.
  * Use to ensure your WA connection is always on the latest version
  */
-export const fetchLatestWaWebVersion = async (options: RequestInit = {}) => {
+export const fetchLatestWaWebVersion = async (options: FetchRequestInit = {}) => {
 	try {
 		// Absolute minimal headers required to bypass anti-bot detection
 		const defaultHeaders = {

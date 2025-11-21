@@ -2,6 +2,7 @@ import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
 import { promises as fs } from 'fs'
 import { type Transform } from 'stream'
+import fetch from 'node-fetch'
 import { proto } from '../../WAProto/index.js'
 import {
 	CALL_AUDIO_PREFIX,
@@ -454,7 +455,10 @@ export const generateWAMessageContent = async (
 		if (options.getProfilePicUrl) {
 			const pfpUrl = await options.getProfilePicUrl(message.groupInvite.jid, 'preview')
 			if (pfpUrl) {
-				const resp = await fetch(pfpUrl, { method: 'GET', dispatcher: options?.options?.dispatcher })
+				const resp = await fetch(pfpUrl, {
+					method: 'GET',
+					agent: options?.options?.dispatcher
+				})
 				if (resp.ok) {
 					const buf = Buffer.from(await resp.arrayBuffer())
 					m.groupInviteMessage.jpegThumbnail = buf
