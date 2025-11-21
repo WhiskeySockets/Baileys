@@ -891,15 +891,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			logger.warn({ error, jid: from }, 'Failed to get lid for PN in handlePrivacyTokenNotification.')
 		}
 
-		logger.info("Inside handlePrivacyTokenNotification method")
-		logger.info("Tokens node:")
-		logger.info(tokensNode)
 		if (!tokensNode) return
 
 		const tokenNodes = getBinaryNodeChildren(tokensNode, 'token')
-
-		logger.info("Token nodes after getBinaryNodeChildren:")
-		logger.info(tokenNodes)
 
 		for (const tokenNode of tokenNodes) {
 			const { attrs, content } = tokenNode
@@ -915,11 +909,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					},
 					'received trusted contact token'
 				)
-
-				logger.info("Found trusted_contact!")
-				logger.info({
-					tctoken: { [from]: { token: content, timestamp } }
-				})
 
 				await authState.keys.set({
 					tctoken: { [from]: { token: content, timestamp } }
