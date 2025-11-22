@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "outDir": "lib/cjs",
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": true,
+    "verbatimModuleSyntax": false,
+		
+  },
+  "exclude": ["node_modules", "src/__tests__"]
+}

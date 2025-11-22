@@ -1,6 +1,5 @@
 {
   "name": "baileys",
-  "type": "module",
   "version": "7.0.0-rc.9",
   "description": "A WebSockets library for interacting with WhatsApp Web",
   "keywords": [
@@ -13,8 +12,9 @@
   },
   "license": "MIT",
   "author": "Rajeh Taher",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
+  "main": "lib/cjs/index.js",
+  "module": "lib/esm/index.js",
+  "types": "lib/types/index.d.ts",
   "files": [
     "lib/**/*",
     "WAProto/**/*",
@@ -23,7 +23,10 @@
   "scripts": {
     "build:all": "npm run build && npm run build:docs",
     "build:docs": "typedoc",
-    "build": "tsc -P tsconfig.build.json && tsc-esm-fix --tsconfig=tsconfig.build.json --ext=.js",
+    "build": "npm run build:types && npm run build:esm && npm run build:cjs",
+		"build:esm": "tsc -P tsconfig.build.json && tsc-esm-fix --tsconfig=tsconfig.build.json --ext=.js",
+    "build:cjs": "tsc -P tsconfig.cjs.json",
+    "build:types": "tsc -P tsconfig.types.json",
     "changelog:last": "conventional-changelog -p angular -r 2",
     "changelog:preview": "conventional-changelog -p angular -u",
     "changelog:update": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",
