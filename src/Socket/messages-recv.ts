@@ -1206,6 +1206,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}
 		}
 
+		if (msg.key?.addressingMode === 'pn' && msg.key?.remoteJidAlt?.includes('@lid')) {
+			logger.trace({ remoteJid: msg.key.remoteJid, remoteJidAlt: msg.key.remoteJidAlt }, 'LID/PN swap applied')
+		}
+
 		if (msg.key?.remoteJid && msg.key?.id && messageRetryManager) {
 			messageRetryManager.addRecentMessage(msg.key.remoteJid, msg.key.id, msg.message!)
 			logger.debug(
