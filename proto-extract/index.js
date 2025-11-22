@@ -1,7 +1,8 @@
-const request = require('request-promise-native');
+const fetch = require('node-fetch');
 const acorn = require('acorn');
 const walk = require('acorn-walk');
 const fs = require('fs/promises');
+const FormData = require('form-data');
 
 let whatsAppVersion = 'latest';
 
@@ -41,20 +42,20 @@ const extractAllExpressions = (node) => {
 
 
 async function findAppModules() {
-  const ua = {
-    headers: {
-      'User-Agent':
-        'Mozilla/5.0 (X11; Linux x86_64; rv:100.0) Gecko/20100101 Firefox/100.0',
-      'Sec-Fetch-Dest': 'script',
-      'Sec-Fetch-Mode': 'no-cors',
-      'Sec-Fetch-Site': 'same-origin',
-      Referer: 'https://web.whatsapp.com/',
-      Accept: '*/*',
-      'Accept-Language': 'Accept-Language: en-US,en;q=0.5',
-    },
+  const headers = {
+    'User-Agent':
+      'Mozilla/5.0 (X11; Linux x86_64; rv:100.0) Gecko/20100101 Firefox/100.0',
+    'Sec-Fetch-Dest': 'script',
+    'Sec-Fetch-Mode': 'no-cors',
+    'Sec-Fetch-Site': 'same-origin',
+    Referer: 'https://web.whatsapp.com/',
+    Accept: '*/*',
+    'Accept-Language': 'Accept-Language: en-US,en;q=0.5',
   };
+  
   const baseURL = 'https://web.whatsapp.com';
-  const serviceworker = await request.get(`${baseURL}/sw.js`, ua);
+  const response = await fetch(`${baseURL}/sw.js`, { headers });
+  const serviceworker = await response.text();
 
   const versions = [
     ...serviceworker.matchAll(/client_revision\\":([\d\.]+),/g),
@@ -72,7 +73,8 @@ async function findAppModules() {
 
   console.info('Found source JS URL:', bootstrapQRURL);
 
-  const qrData = await request.get(bootstrapQRURL, ua);
+  const qrResponse = await fetch(bootstrapQRURL, { headers });
+  const qrData = await qrResponse.text();
 
   // This one list of types is so long that it's split into two JavaScript declarations.
   // The module finder below can't handle it, so just patch it manually here.
