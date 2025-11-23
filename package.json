@@ -1,6 +1,6 @@
 {
-  "name": "baileys",
-  "version": "7.0.0-rc.9",
+  "name": "baileys-common-fix",
+  "version": "7.0.0-rc.10",
   "description": "A WebSockets library for interacting with WhatsApp Web",
   "keywords": [
     "whatsapp",
@@ -23,8 +23,8 @@
   "scripts": {
     "build:all": "npm run build && npm run build:docs",
     "build:docs": "typedoc",
-    "build": "npm run build:types && npm run build:esm && npm run build:cjs",
-		"build:esm": "tsc -P tsconfig.build.json && tsc-esm-fix --tsconfig=tsconfig.build.json --ext=.js",
+    "build": "npm run build:types && npm run build:esm && npm run build:cjs && cp -r WAProto ./lib",
+    "build:esm": "tsc -P tsconfig.build.json && tsc-esm-fix --tsconfig=tsconfig.build.json --ext=.js",
     "build:cjs": "tsc -P tsconfig.cjs.json",
     "build:types": "tsc -P tsconfig.types.json",
     "changelog:last": "conventional-changelog -p angular -r 2",
