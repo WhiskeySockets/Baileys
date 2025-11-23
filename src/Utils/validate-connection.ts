@@ -11,6 +11,7 @@ import type { AuthenticationCreds, SignalCreds, SocketConfig } from '../Types'
 import { type BinaryNode, getBinaryNodeChild, jidDecode, S_WHATSAPP_NET } from '../WABinary'
 import { Curve, hmacSign } from './crypto'
 import { encodeBigEndian } from './generics'
+import type { ILogger } from './logger'
 import { createSignalIdentity } from './signal'
 
 const getUserAgent = (config: SocketConfig): proto.ClientPayload.IUserAgent => {
@@ -150,7 +151,8 @@ export const configureSuccessfulPairing = (
 		advSecretKey,
 		signedIdentityKey,
 		signalIdentities
-	}: Pick<AuthenticationCreds, 'advSecretKey' | 'signedIdentityKey' | 'signalIdentities'>
+	}: Pick<AuthenticationCreds, 'advSecretKey' | 'signedIdentityKey' | 'signalIdentities'>,
+	logger?: ILogger
 ) => {
 	const msgId = stanza.attrs.id
 
@@ -191,7 +193,7 @@ export const configureSuccessfulPairing = (
 			? WA_ADV_HOSTED_ACCOUNT_SIG_PREFIX
 			: WA_ADV_ACCOUNT_SIG_PREFIX
 	const accountMsg = Buffer.concat([accountSignaturePrefix, deviceDetails!, signedIdentityKey.public])
-	if (!Curve.verify(accountSignatureKey!, accountMsg, accountSignature!)) {
+	if (!Curve.verify(accountSignatureKey!, accountMsg, accountSignature!, logger)) {
 		throw new Boom('Failed to verify account signature')
 	}
 

@@ -3007,7 +3007,7 @@ __metadata:
     jimp: "npm:^1.6.0"
     jiti: "npm:^2.4.2"
     json: "npm:^11.0.0"
-    libsignal: "git+https://github.com/whiskeysockets/libsignal-node"
+    libsignal: "git+https://github.com/jlucaso1/libsignal-node#feat-custom-logger"
     link-preview-js: "npm:^3.0.0"
     lru-cache: "npm:^11.1.0"
     music-metadata: "npm:^11.7.0"
@@ -6976,13 +6976,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"libsignal@git+https://github.com/whiskeysockets/libsignal-node":
+"libsignal@git+https://github.com/jlucaso1/libsignal-node#feat-custom-logger":
   version: 2.0.1
-  resolution: "libsignal@https://github.com/whiskeysockets/libsignal-node.git#commit=e81ecfc32eb74951d789ab37f7e341ab66d5fff1"
+  resolution: "libsignal@https://github.com/jlucaso1/libsignal-node.git#commit=98e361089320a9dbac04e5304ede77b7dfa1628a"
   dependencies:
     curve25519-js: "npm:^0.0.4"
     protobufjs: "npm:6.8.8"
-  checksum: 10c0/d1ae7d8a5fadd6bb1c486d1b2ebc388967fee57c13f52b473127c1cbd9cd647b44545ff07c2b9cc49b3dea4e25ccfcfece31c526fdbdbf065837c85d189e97a0
+  checksum: 10c0/61c3589038f85ccc85fdf925bdf9a876f93642e5e591c3b6a123ba71c183bd9bb5220f229dbe5c8267cdc95ad57b6103e5a6e1b5f60593b75882be29ff838046
   languageName: node
   linkType: hard
 

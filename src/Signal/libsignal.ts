@@ -1,4 +1,3 @@
-/* @ts-ignore */
 import * as libsignal from 'libsignal'
 import { LRUCache } from 'lru-cache'
 import type { LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
@@ -26,7 +25,7 @@ export function makeLibSignalRepository(
 	pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>
 ): SignalRepositoryWithLIDStore {
 	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction, logger, pnToLIDFunc)
-	const storage = signalStorage(auth, lidMapping)
+	const storage = signalStorage(auth, lidMapping, logger)
 
 	const parsedKeys = auth.keys as SignalKeyStoreWithTransaction
 	const migratedSessionCache = new LRUCache<string, true>({
@@ -77,7 +76,7 @@ export function makeLibSignalRepository(
 		},
 		async decryptMessage({ jid, type, ciphertext }) {
 			const addr = jidToSignalProtocolAddress(jid)
-			const session = new libsignal.SessionCipher(storage, addr)
+			const session = new libsignal.SessionCipher(storage, addr, logger)
 
 			async function doDecrypt() {
 				let result: Buffer
@@ -102,7 +101,7 @@ export function makeLibSignalRepository(
 
 		async encryptMessage({ jid, data }) {
 			const addr = jidToSignalProtocolAddress(jid)
-			const cipher = new libsignal.SessionCipher(storage, addr)
+			const cipher = new libsignal.SessionCipher(storage, addr, logger)
 
 			// Use transaction to ensure atomicity
 			return parsedKeys.transaction(async () => {
@@ -137,7 +136,7 @@ export function makeLibSignalRepository(
 
 		async injectE2ESession({ jid, session }) {
 			logger.trace({ jid }, 'injecting E2EE session')
-			const cipher = new libsignal.SessionBuilder(storage, jidToSignalProtocolAddress(jid))
+			const cipher = new libsignal.SessionBuilder(storage, jidToSignalProtocolAddress(jid), logger)
 			return parsedKeys.transaction(async () => {
 				await cipher.initOutgoing(session)
 			}, jid)
@@ -296,7 +295,7 @@ export function makeLibSignalRepository(
 						const pnSession = pnSessions[pnAddrStr]
 						if (pnSession) {
 							// Session exists (guaranteed from device discovery)
-							const fromSession = libsignal.SessionRecord.deserialize(pnSession)
+							const fromSession = libsignal.SessionRecord.deserialize(pnSession, logger)
 							if (fromSession.haveOpenSession()) {
 								// Queue for bulk update: copy to LID, delete from PN
 								sessionUpdates[lidAddrStr] = fromSession.serialize()
@@ -358,7 +357,8 @@ const jidToSignalSenderKeyName = (group: string, user: string): SenderKeyName =>
 
 function signalStorage(
 	{ creds, keys }: SignalAuthState,
-	lidMapping: LIDMappingStore
+	lidMapping: LIDMappingStore,
+	logger?: ILogger
 ): SenderKeyStore & libsignal.SignalStorage {
 	// Shared function to resolve PN signal address to LID if mapping exists
 	const resolveLIDSignalAddress = async (id: string): Promise<string> => {
@@ -388,7 +388,7 @@ function signalStorage(
 				const { [wireJid]: sess } = await keys.get('session', [wireJid])
 
 				if (sess) {
-					return libsignal.SessionRecord.deserialize(sess)
+					return libsignal.SessionRecord.deserialize(sess, logger)
 				}
 			} catch (e) {
 				return null

@@ -883,7 +883,7 @@ export const makeSocket = (config: SocketConfig) => {
 	ws.on('CB:iq,,pair-success', async (stanza: BinaryNode) => {
 		logger.debug('pair success recv')
 		try {
-			const { reply, creds: updatedCreds } = configureSuccessfulPairing(stanza, creds)
+			const { reply, creds: updatedCreds } = configureSuccessfulPairing(stanza, creds, logger)
 
 			logger.info(
 				{ me: updatedCreds.me, platform: updatedCreds.platform },
