@@ -1235,7 +1235,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					logger.debug(`[handleMessage] Attempting retry request for failed decryption`)
 
 					// Handle both pre-key and normal retries in single mutex
-					await retryMutex.mutex(async () => {
+					void retryMutex.mutex(async () => {
 						try {
 							if (!ws.isOpen) {
 								logger.debug({ node }, 'Connection closed, skipping retry')
