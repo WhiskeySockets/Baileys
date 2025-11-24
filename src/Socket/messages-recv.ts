@@ -36,6 +36,7 @@ import {
 	hkdf,
 	MISSING_KEYS_ERROR_TEXT,
 	NACK_REASONS,
+	NO_MESSAGE_FOUND_ERROR_TEXT,
 	unixTimestampSeconds,
 	xmppPreKey,
 	xmppSignedPreKey
@@ -709,21 +710,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const from = jidNormalizedUser(node.attrs.from)
 
 		switch (nodeType) {
-			case 'privacy_token':
-				const tokenList = getBinaryNodeChildren(child, 'token')
-				for (const { attrs, content } of tokenList) {
-					const jid = attrs.jid
-					ev.emit('chats.update', [
-						{
-							id: jid,
-							tcToken: content as Buffer
-						}
-					])
-
-					logger.debug({ jid }, 'got privacy token update')
-				}
-
-				break
 			case 'newsletter':
 				await handleNewsletterNotification(node)
 				break
@@ -1236,8 +1222,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await decrypt()
 				// message failed to decrypt
 				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
-					if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
-						return sendMessageAck(node, NACK_REASONS.ParsingError)
+					if (
+						msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT ||
+						msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT
+					) {
+						return sendMessageAck(node)
 					}
 
 					const errorMessage = msg?.messageStubParameters?.[0] || ''
@@ -1286,7 +1275,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						await sendMessageAck(node, NACK_REASONS.UnhandledError)
 					})
 				} else {
-					await sendMessageAck(node)
 					const isNewsletter = isJidNewsletter(msg.key.remoteJid!)
 					if (!isNewsletter) {
 						// no type in the receipt => message delivered
@@ -1312,9 +1300,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						const isAnyHistoryMsg = getHistoryMsg(msg.message!)
 						if (isAnyHistoryMsg) {
 							const jid = jidNormalizedUser(msg.key.remoteJid!)
-							await sendReceipt(jid, undefined, [msg.key.id!], 'hist_sync')
+							await sendReceipt(jid, undefined, [msg.key.id!], 'hist_sync') // TODO: investigate
 						}
 					} else {
+						await sendMessageAck(node)
 						logger.debug({ key: msg.key }, 'processed newsletter message without receipts')
 					}
 				}
