@@ -45,7 +45,7 @@ export const BufferJSON = {
 }
 
 export const getKeyAuthor = (key: WAMessageKey | undefined | null, meId = 'me') =>
-	(key?.fromMe ? meId : key?.participant || key?.remoteJid) || ''
+	(key?.fromMe ? meId : key?.participantAlt || key?.remoteJidAlt || key?.participant || key?.remoteJid) || ''
 
 export const writeRandomPadMax16 = (msg: Uint8Array) => {
 	const pad = randomBytes(1)
