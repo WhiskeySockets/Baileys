@@ -1,5 +1,5 @@
 import { LRUCache } from 'lru-cache'
-import type { SignalStorage } from 'whatsapp-rust-bridge/binary'
+import type { SignalStorage } from 'whatsapp-rust-bridge'
 import {
 	GroupCipher,
 	GroupSessionBuilder,
@@ -9,7 +9,7 @@ import {
 	SessionBuilder,
 	SessionCipher,
 	SessionRecord
-} from 'whatsapp-rust-bridge/binary'
+} from 'whatsapp-rust-bridge'
 import type { LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
 import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import type { ILogger } from '../Utils/logger'
