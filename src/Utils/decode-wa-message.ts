@@ -207,7 +207,7 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	if (addressingContext.addressingMode === 'lid' && !fromMe && key.remoteJidAlt) {
 		const tempJid = key.remoteJid
 		key.remoteJid = key.remoteJidAlt!
-		key.remoteJidAlt = tempJid
+		key.remoteJidAlt = tempJid ?? undefined
 		key.addressingMode = 'pn'
 	}
 
