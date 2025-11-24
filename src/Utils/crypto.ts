@@ -1,5 +1,5 @@
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'crypto'
-import { calculateAgreement, calculateSignature, generateKeyPair, verifySignature } from 'whatsapp-rust-bridge/binary'
+import { calculateAgreement, calculateSignature, generateKeyPair, verifySignature } from 'whatsapp-rust-bridge'
 import { KEY_BUNDLE_TYPE } from '../Defaults'
 import type { KeyPair } from '../Types'
 
