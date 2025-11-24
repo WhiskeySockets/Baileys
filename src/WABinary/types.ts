@@ -1,4 +1,4 @@
-import type { BinaryNode } from 'whatsapp-rust-bridge/binary'
+import type { BinaryNode } from 'whatsapp-rust-bridge'
 /**
  * the binary node WA uses internally for communication
  *
