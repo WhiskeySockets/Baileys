@@ -41,7 +41,7 @@ export function makeLibSignalRepository(
 
 	const repository: SignalRepositoryWithLIDStore = {
 		decryptGroupMessage({ group, authorJid, msg }) {
-			const senderAddr = new ProtocolAddress(jidDecode(authorJid)!.user, jidDecode(authorJid)!.device || 0)
+			const senderAddr = jidToSignalProtocolAddress(authorJid)
 			const cipher = new GroupCipher(storage, group, senderAddr)
 
 			// Use transaction to ensure atomicity
@@ -55,7 +55,7 @@ export function makeLibSignalRepository(
 				throw new Error('Group ID is required for sender key distribution message')
 			}
 
-			const senderAddr = new ProtocolAddress(jidDecode(authorJid)!.user, jidDecode(authorJid)!.device || 0)
+			const senderAddr = jidToSignalProtocolAddress(authorJid)
 
 			const senderName = new SenderKeyName(item.groupId, senderAddr)
 			const senderMsg = SenderKeyDistributionMessage.deserialize(item.axolotlSenderKeyDistributionMessage!)
@@ -103,7 +103,7 @@ export function makeLibSignalRepository(
 
 		async encryptGroupMessage({ group, meId, data }) {
 			const builder = new GroupSessionBuilder(storage)
-			const meAddr = new ProtocolAddress(jidDecode(meId)!.user, jidDecode(meId)!.device || 0)
+			const meAddr = jidToSignalProtocolAddress(meId)
 			const senderName = jidToSignalSenderKeyName(group, meId)
 
 			const senderKeyDistributionMessage = await builder.create(senderName)
