@@ -3131,6 +3131,8 @@ export namespace proto {
         participant?: (string|null);
         quotedMessage?: (proto.IMessage|null);
         remoteJid?: (string|null);
+        senderPn?: (string|null);
+        senderLid?: (string|null);
         mentionedJid?: (string[]|null);
         conversionSource?: (string|null);
         conversionData?: (Uint8Array|null);
@@ -3190,6 +3192,8 @@ export namespace proto {
         public participant?: (string|null);
         public quotedMessage?: (proto.IMessage|null);
         public remoteJid?: (string|null);
+        public senderPn?: (string|null);
+        public senderLid?: (string|null);
         public mentionedJid: string[];
         public conversionSource?: (string|null);
         public conversionData?: (Uint8Array|null);
@@ -9566,6 +9570,8 @@ export namespace proto {
 
     interface IMessageKey {
         remoteJid?: (string|null);
+        senderPn?: (string|null);
+        senderLid?: (string|null);
         fromMe?: (boolean|null);
         id?: (string|null);
         participant?: (string|null);
@@ -9574,6 +9580,8 @@ export namespace proto {
     class MessageKey implements IMessageKey {
         constructor(p?: proto.IMessageKey);
         public remoteJid?: (string|null);
+        public senderPn?: (string|null);
+        public senderLid?: (string|null);
         public fromMe?: (boolean|null);
         public id?: (string|null);
         public participant?: (string|null);
