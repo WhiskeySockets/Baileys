@@ -64,8 +64,15 @@ import { extractGroupMetadata } from './groups'
 import { makeMessagesSocket } from './messages-send'
 
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
-	const { logger, retryRequestDelayMs, maxMsgRetryCount, getMessage, shouldIgnoreJid, enableAutoSessionRecreation } =
-		config
+	const {
+		logger,
+		retryRequestDelayMs,
+		maxMsgRetryCount,
+		getMessage,
+		ignoreOfflineMessages,
+		shouldIgnoreJid,
+		enableAutoSessionRecreation
+	} = config
 	const sock = makeMessagesSocket(config)
 	const {
 		ev,
@@ -1169,6 +1176,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleMessage = async (node: BinaryNode) => {
+		if (ignoreOfflineMessages && node.attrs.offline) {
+			logger.debug({ key: node.attrs.key }, 'ignored offline message')
+			await sendMessageAck(node)
+			return
+		}
+
 		if (shouldIgnoreJid(node.attrs.from!) && node.attrs.from !== S_WHATSAPP_NET) {
 			logger.debug({ key: node.attrs.key }, 'ignored message')
 			await sendMessageAck(node, NACK_REASONS.UnhandledError)
