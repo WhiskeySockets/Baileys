@@ -204,6 +204,13 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 		...(msgType === 'newsletter' && stanza.attrs.server_id ? { server_id: stanza.attrs.server_id } : {})
 	}
 
+	if (addressingContext.addressingMode === 'lid' && !fromMe && key.remoteJidAlt) {
+		const tempJid = key.remoteJid!
+		key.remoteJid = key.remoteJidAlt!
+		key.remoteJidAlt = tempJid
+		key.addressingMode = 'pn'
+	}
+
 	const fullMessage: WAMessage = {
 		key,
 		category: stanza.attrs.category,
