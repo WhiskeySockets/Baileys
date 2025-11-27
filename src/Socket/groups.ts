@@ -15,6 +15,7 @@ import {
 import { makeChatsSocket } from './chats'
 
 export const makeGroupsSocket = (config: SocketConfig) => {
+	const { groupParticipantCache, logger } = config
 	const sock = makeChatsSocket(config)
 	const { authState, ev, query, upsertMessage } = sock
 
@@ -29,10 +30,30 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 			content
 		})
 
-	const groupMetadata = async (jid: string) => {
-		const result = await groupQuery(jid, 'get', [{ tag: 'query', attrs: { request: 'interactive' } }])
-		return extractGroupMetadata(result)
+	const persistParticipantsSnapshot = async (metadata: GroupMetadata) => {
+		if (!groupParticipantCache) return
+		const participantIds = metadata.participants.map(p => p.id).filter(Boolean)
+		if (!participantIds.length) return
+
+		try {
+			await groupParticipantCache.set(
+				metadata.id,
+				participantIds,
+				metadata.addressingMode || WAMessageAddressingMode.LID
+			)
+		} catch (error) {
+			logger?.warn({ error, groupJid: metadata.id }, 'failed to write group participant cache')
+		}
 	}
+
+	const fetchAndCacheParticipants = async (jid: string) => {
+		const result = await groupQuery(jid, 'get', [{ tag: 'query', attrs: { request: 'interactive' } }])
+		const metadata = extractGroupMetadata(result)
+		await persistParticipantsSnapshot(metadata)
+		return metadata
+	}
+
+	const groupMetadata = async (jid: string) => fetchAndCacheParticipants(jid)
 
 	const groupFetchAllParticipating = async () => {
 		const result = await query({
@@ -63,6 +84,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 					attrs: {},
 					content: [groupNode]
 				})
+				await persistParticipantsSnapshot(meta)
 				data[meta.id] = meta
 			}
 		}
@@ -82,6 +104,32 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 		await groupFetchAllParticipating()
 		await sock.cleanDirtyBits('groups')
 	})
+
+	if (groupParticipantCache) {
+		ev.on('group-participants.update', async ({ id, participants, action }) => {
+			const participantIds = participants.map(p => p.id).filter(Boolean)
+			if (!participantIds.length) return
+
+			try {
+				if (action === 'add') {
+					await groupParticipantCache.add(id, participantIds)
+				} else if (action === 'remove') {
+					await groupParticipantCache.remove(id, participantIds)
+				} else if (action === 'modify') {
+					await fetchAndCacheParticipants(id)
+				}
+			} catch (error) {
+				logger?.warn({ error, groupJid: id, action }, 'failed to delta update group participant cache')
+			}
+		})
+
+		sock.ws.on('CB:ib,,dirty', async (node: BinaryNode) => {
+			const dirty = getBinaryNodeChild(node, 'dirty')
+			if (dirty?.attrs.type === 'groups') {
+				logger?.trace('groups dirty bit received, participant cache left untouched')
+			}
+		})
+	}
 
 	return {
 		...sock,

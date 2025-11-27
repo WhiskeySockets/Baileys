@@ -4,6 +4,7 @@ import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import type {
 	AnyMessageContent,
+	GroupMetadata,
 	MediaConnInfo,
 	MessageReceiptType,
 	MessageRelayOptions,
@@ -12,6 +13,7 @@ import type {
 	WAMessage,
 	WAMessageKey
 } from '../Types'
+import { WAMessageAddressingMode } from '../Types'
 import {
 	aggregateMessageKeysNotFromMe,
 	assertMediaContent,
@@ -65,7 +67,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		patchMessageBeforeSending,
 		cachedGroupMetadata,
 		enableRecentMessageCache,
-		maxMsgRetryCount
+		maxMsgRetryCount,
+		groupParticipantCache
 	} = config
 	const sock = makeNewsletterSocket(config)
 	const {
@@ -652,30 +655,45 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			if (isGroupOrStatus && !isRetryResend) {
-				const [groupData, senderKeyMap] = await Promise.all([
-					(async () => {
-						let groupData = useCachedGroupMetadata && cachedGroupMetadata ? await cachedGroupMetadata(jid) : undefined // todo: should we rely on the cache specially if the cache is outdated and the metadata has new fields?
-						if (groupData && Array.isArray(groupData?.participants)) {
-							logger.trace({ jid, participants: groupData.participants.length }, 'using cached group metadata')
-						} else if (!isStatus) {
-							groupData = await groupMetadata(jid) // TODO: start storing group participant list + addr mode in Signal & stop relying on this
+				let groupData: GroupMetadata | undefined =
+					isGroup && useCachedGroupMetadata && cachedGroupMetadata ? await cachedGroupMetadata(jid) : undefined
+				if (groupData && Array.isArray(groupData.participants)) {
+					logger.trace({ jid, participants: groupData.participants.length }, 'using cached group metadata')
+				}
+
+				const senderKeyMapPromise: Promise<Record<string, boolean>> =
+					!participant && !isStatus
+						? Promise.resolve(authState.keys.get('sender-key-memory', [jid])).then(
+								(result: { [id: string]: { [jid: string]: boolean } }) => result?.[jid] || {}
+							)
+						: Promise.resolve({})
+
+				let participantsList: string[] = []
+				let addressingMode: WAMessageAddressingMode | 'lid' | 'pn' =
+					groupData?.addressingMode || WAMessageAddressingMode.LID
+
+				if (isGroup && groupParticipantCache) {
+					try {
+						const cached = await groupParticipantCache.get(jid)
+						if (cached) {
+							participantsList = cached.participants.slice()
+							addressingMode = cached.addressingMode || addressingMode
 						}
+					} catch (error) {
+						logger.warn({ error, jid }, 'failed to read group participant cache')
+					}
+				}
 
-						return groupData
-					})(),
-					(async () => {
-						if (!participant && !isStatus) {
-							// what if sender memory is less accurate than the cached metadata
-							// on participant change in group, we should do sender memory manipulation
-							const result = await authState.keys.get('sender-key-memory', [jid]) // TODO: check out what if the sender key memory doesn't include the LID stuff now?
-							return result[jid] || {}
-						}
+				if (isGroup && !participantsList.length && !isStatus) {
+					if (!groupData) {
+						groupData = await groupMetadata(jid)
+					}
 
-						return {}
-					})()
-				])
-
-				const participantsList = groupData ? groupData.participants.map(p => p.id) : []
+					if (groupData) {
+						participantsList = groupData.participants.map(p => p.id)
+						addressingMode = groupData.addressingMode || addressingMode
+					}
+				}
 
 				if (groupData?.ephemeralDuration && groupData.ephemeralDuration > 0) {
 					additionalAttributes = {
@@ -688,13 +706,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					participantsList.push(...statusJidList)
 				}
 
+				const senderKeyMap = await senderKeyMapPromise
+
 				const additionalDevices = await getUSyncDevices(participantsList, !!useUserDevicesCache, false)
 				devices.push(...additionalDevices)
 
 				if (isGroup) {
 					additionalAttributes = {
 						...additionalAttributes,
-						addressing_mode: groupData?.addressingMode || 'lid'
+						addressing_mode: addressingMode || WAMessageAddressingMode.LID
 					}
 				}
 
@@ -704,7 +724,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 
 				const bytes = encodeWAMessage(patched)
-				const groupAddressingMode = additionalAttributes?.['addressing_mode'] || groupData?.addressingMode || 'lid'
+				const groupAddressingMode = (additionalAttributes?.['addressing_mode'] as string) || addressingMode || 'lid'
 				const groupSenderIdentity = groupAddressingMode === 'lid' && meLid ? meLid : meId
 
 				const { ciphertext, senderKeyDistributionMessage } = await signalRepository.encryptGroupMessage({

@@ -4,7 +4,7 @@ import { proto } from '../../WAProto/index.js'
 import type { ILogger } from '../Utils/logger'
 import type { AuthenticationState, LIDMapping, SignalAuthState, TransactionCapabilityOptions } from './Auth'
 import type { GroupMetadata } from './GroupMetadata'
-import { type MediaConnInfo, type WAMessageKey } from './Message'
+import { type MediaConnInfo, type WAMessageAddressingMode, type WAMessageKey } from './Message'
 import type { SignalRepositoryWithLIDStore } from './Signal'
 
 export type WAVersion = [number, number, number]
@@ -25,6 +25,22 @@ export type PossiblyExtendedCacheStore = CacheStore & {
 	mget?: <T>(keys: string[]) => Promise<Record<string, T | undefined>>
 	mset?: <T>(entries: { key: string; value: T }[]) => Promise<void> | void | number | boolean
 	mdel?: (keys: string[]) => void | Promise<void> | number | boolean
+}
+
+export type GroupParticipantCacheEntry = {
+	participants: string[]
+	addressingMode: WAMessageAddressingMode | 'lid' | 'pn'
+}
+
+export interface GroupParticipantCache {
+	/** Returns participant JIDs and addressing mode for the group, or undefined on cache miss */
+	get(groupJid: string): Promise<GroupParticipantCacheEntry | undefined>
+	/** Overwrites the stored participant list for a group */
+	set(groupJid: string, participants: string[], addressingMode: WAMessageAddressingMode | 'lid' | 'pn'): Promise<void>
+	/** Adds specific participants to the cached group list */
+	add(groupJid: string, participants: string[]): Promise<void>
+	/** Removes specific participants from the cached group list */
+	remove(groupJid: string, participants: string[]): Promise<void>
 }
 
 export type PatchedMessageWithRecipientJID = proto.IMessage & { recipientJid?: string }
@@ -88,6 +104,11 @@ export type SocketConfig = {
 	callOfferCache?: CacheStore
 	/** cache to track placeholder resends */
 	placeholderResendCache?: CacheStore
+	/**
+	 * Optional cache for group participants.
+	 * Handles granular updates to prevent full metadata refetches.
+	 */
+	groupParticipantCache?: GroupParticipantCache
 	/** width for link preview images */
 	linkPreviewImageThumbnailWidth: number
 	/** Should Baileys ask the phone for full history, will be received async */
