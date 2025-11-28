@@ -1,3 +1,4 @@
+import { HttpsProxyAgent } from 'https-proxy-agent'
 import WebSocket from 'ws'
 import { DEFAULT_ORIGIN } from '../../Defaults'
 import { AbstractSocketClient } from './types'
@@ -28,7 +29,7 @@ export class WebSocketClient extends AbstractSocketClient {
 			headers: this.config.options?.headers as {},
 			handshakeTimeout: this.config.connectTimeoutMs,
 			timeout: this.config.connectTimeoutMs,
-			agent: this.config.agent
+			agent: this.config.proxyUrl ? new HttpsProxyAgent(this.config.proxyUrl) : this.config.agent
 		})
 
 		this.socket.setMaxListeners(0)
