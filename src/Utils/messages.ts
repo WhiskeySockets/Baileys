@@ -1060,3 +1060,5 @@ export const assertMediaContent = (content: proto.IMessage | null | undefined) =
 
 	return mediaContent
 }
+
+export { downloadContentFromMessage } from './messages-media'
