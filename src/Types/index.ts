@@ -65,3 +65,5 @@ export type WABusinessProfile = {
 }
 
 export type CurveKeyPair = { private: Uint8Array; public: Uint8Array }
+
+export type MessageRetryMap = { [key: string]: number }
