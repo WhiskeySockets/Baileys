@@ -128,7 +128,8 @@ export const makeSocket = (config: SocketConfig) => {
 	}
 
 	/** send a binary node */
-	const sendNode = (frame: BinaryNode) => {
+	const sendNode = async (frame: BinaryNode) => {
+		await waitForSocketOpen()
 		if (logger.level === 'trace') {
 			logger.trace({ xml: binaryNodeToString(frame), msg: 'xml send' })
 		}
@@ -185,19 +186,32 @@ export const makeSocket = (config: SocketConfig) => {
 	}
 
 	/** send a query, and wait for its response. auto-generates message ID if not provided */
-	const query = async (node: BinaryNode, timeoutMs?: number) => {
+	const query = async (node: BinaryNode, timeoutMs?: number, retryCount = 0) => {
 		if (!node.attrs.id) {
 			node.attrs.id = generateMessageTag()
 		}
 
 		const msgId = node.attrs.id
 
-		const result = await promiseTimeout<any>(timeoutMs, async (resolve, reject) => {
-			const result = waitForMessage(msgId, timeoutMs).catch(reject)
-			sendNode(node)
-				.then(async () => resolve(await result))
-				.catch(reject)
-		})
+		let result: any
+		for (let i = 0; i <= retryCount; i++) {
+			try {
+				result = await promiseTimeout<any>(timeoutMs, async (resolve, reject) => {
+					const result = waitForMessage(msgId, timeoutMs).catch(reject)
+					sendNode(node)
+						.then(async () => resolve(await result))
+						.catch(reject)
+				})
+				break
+			} catch (error) {
+				if (i === retryCount) {
+					throw error
+				}
+				const delay = Math.pow(2, i) * 1000
+				logger.warn(`Query timed out, retrying in ${delay}ms...`)
+				await new Promise(resolve => setTimeout(resolve, delay))
+			}
+		}
 
 		if (result && 'tag' in result) {
 			assertNodeErrorFree(result)
@@ -362,7 +376,11 @@ export const makeSocket = (config: SocketConfig) => {
 	let epoch = 1
 	let keepAliveReq: NodeJS.Timeout
 	let qrTimer: NodeJS.Timeout
-	let closed = false
+	let connectionState: {
+		connection: 'connecting' | 'open' | 'close'
+	} = {
+		connection: 'close'
+	}
 
 	/** log & process any unexpected errors */
 	const onUnexpectedError = (err: Error | Boom, msg: string) => {
@@ -606,12 +624,12 @@ export const makeSocket = (config: SocketConfig) => {
 	}
 
 	const end = (error: Error | undefined) => {
-		if (closed) {
+		if (connectionState.connection === 'close') {
 			logger.trace({ trace: error?.stack }, 'connection already closed')
 			return
 		}
 
-		closed = true
+		connectionState.connection = 'close'
 		logger.info({ trace: error?.stack }, error ? 'connection errored' : 'connection closed')
 
 		clearInterval(keepAliveReq)
@@ -628,7 +646,7 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 
 		ev.emit('connection.update', {
-			connection: 'close',
+			...connectionState,
 			lastDisconnect: {
 				error,
 				date: new Date()
@@ -732,12 +750,7 @@ export const makeSocket = (config: SocketConfig) => {
 	}
 
 	const requestPairingCode = async (phoneNumber: string, customPairingCode?: string): Promise<string> => {
-		const pairingCode = customPairingCode ?? bytesToCrockford(randomBytes(5))
-
-		if (customPairingCode && customPairingCode?.length !== 8) {
-			throw new Error('Custom pairing code must be exactly 8 chars')
-		}
-
+		const pairingCode = getPairingCode(customPairingCode)
 		authState.creds.pairingCode = pairingCode
 
 		authState.creds.me = {
@@ -868,7 +881,7 @@ export const makeSocket = (config: SocketConfig) => {
 			}
 
 			const ref = (refNode.content as Buffer).toString('utf-8')
-			const qr = [ref, noiseKeyB64, identityKeyB64, advB64].join(',')
+			const qr = generateQR(ref, noiseKeyB64, identityKeyB64, advB64)
 
 			ev.emit('connection.update', { qr })
 
@@ -878,6 +891,20 @@ export const makeSocket = (config: SocketConfig) => {
 
 		genPairQR()
 	})
+
+	const getPairingCode = (customPairingCode?: string): string => {
+		if (customPairingCode) {
+			if (customPairingCode.length !== 8) {
+				throw new Error('Custom pairing code must be exactly 8 chars')
+			}
+			return customPairingCode
+		}
+		return bytesToCrockford(randomBytes(5))
+	}
+
+	const generateQR = (ref: string, noiseKeyB64: string, identityKeyB64: string, advB64: string): string => {
+		return [ref, noiseKeyB64, identityKeyB64, advB64].join(',')
+	}
 	// device paired for the first time
 	// if device pairs successfully, the server asks to restart the connection
 	ws.on('CB:iq,,pair-success', async (stanza: BinaryNode) => {
@@ -920,7 +947,8 @@ export const makeSocket = (config: SocketConfig) => {
 
 		ev.emit('creds.update', { me: { ...authState.creds.me!, lid: node.attrs.lid } })
 
-		ev.emit('connection.update', { connection: 'open' })
+		connectionState.connection = 'open'
+		ev.emit('connection.update', { ...connectionState })
 
 		if (node.attrs.lid && authState.creds.me?.id) {
 			const myLID = node.attrs.lid
@@ -995,7 +1023,8 @@ export const makeSocket = (config: SocketConfig) => {
 			didStartBuffer = true
 		}
 
-		ev.emit('connection.update', { connection: 'connecting', receivedPendingNotifications: false, qr: undefined })
+		connectionState.connection = 'connecting'
+		ev.emit('connection.update', { ...connectionState, receivedPendingNotifications: false, qr: undefined })
 	})
 
 	// called when all offline notifs are handled

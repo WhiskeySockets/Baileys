@@ -40,7 +40,7 @@ const rl = readline.createInterface({ input: process.stdin, output: process.stdo
 const question = (text: string) => new Promise<string>((resolve) => rl.question(text, resolve))
 
 // start a connection
-const startSock = async() => {
+const startSock = async(phoneNumber?: string) => {
 	const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info')
 	// fetch latest version of WA Web
 	const { version, isLatest } = await fetchLatestBaileysVersion()
@@ -49,6 +49,7 @@ const startSock = async() => {
 	const sock = makeWASocket({
 		version,
 		logger,
+		proxyUrl: process.env.PROXY_URL,
 		auth: {
 			creds: state.creds,
 			/** caching makes the store faster to send/recv messages */
@@ -62,15 +63,6 @@ const startSock = async() => {
 		// implement to handle retries & poll updates
 		getMessage
 	})
-
-
-	// Pairing code for Web clients
-	if (usePairingCode && !sock.authState.creds.registered) {
-		// todo move to QR event
-		const phoneNumber = await question('Please enter your phone number:\n')
-		const code = await sock.requestPairingCode(phoneNumber)
-		console.log(`Pairing code: ${code}`)
-	}
 
 	const sendMessageWTyping = async(msg: AnyMessageContent, jid: string) => {
 		await sock.presenceSubscribe(jid)
@@ -93,11 +85,15 @@ const startSock = async() => {
 			// maybe it closed, or we received all offline message or connection opened
 			if(events['connection.update']) {
 				const update = events['connection.update']
-				const { connection, lastDisconnect } = update
+				const { connection, lastDisconnect, qr } = update
+				if (qr && usePairingCode && !sock.authState.creds.registered && phoneNumber) {
+					const code = await sock.requestPairingCode(phoneNumber)
+					console.log(`Pairing code: ${code}`)
+				}
 				if(connection === 'close') {
 					// reconnect if not logged out
 					if((lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut) {
-						startSock()
+						startSock(phoneNumber)
 					} else {
 						console.log('Connection closed. You are logged out.')
 					}
@@ -157,6 +153,19 @@ const startSock = async() => {
                 const messageId = await sock.fetchMessageHistory(50, msg.key, msg.messageTimestamp!)
                 console.log('requested on-demand sync, id=', messageId)
               }
+
+			  if (text === 'test-query-retry') {
+				try {
+					const result = await sock.query({
+						tag: 'iq',
+						attrs: { to: '@s.whatsapp.net', type: 'get', xmlns: 'w:p' },
+						content: [{ tag: 'ping', attrs: {} }]
+					}, 1, 2)
+					console.log('Query successful:', result)
+				} catch (error) {
+					console.error('Query failed after retries:', error)
+				}
+			  }
 
               if (!msg.key.fromMe && doReplies && !isJidNewsletter(msg.key?.remoteJid!)) {
 
@@ -237,4 +246,13 @@ const startSock = async() => {
 	}
 }
 
-startSock()
+async function run() {
+	let phoneNumber: string | undefined
+	if (usePairingCode) {
+		phoneNumber = await question('Please enter your phone number:\n')
+		rl.close()
+	}
+	startSock(phoneNumber)
+}
+
+run()

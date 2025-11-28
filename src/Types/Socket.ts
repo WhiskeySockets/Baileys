@@ -44,6 +44,8 @@ export type SocketConfig = {
 	mobile?: boolean
 	/** proxy agent */
 	agent?: Agent
+	/** proxy url */
+	proxyUrl?: string
 	/** logger */
 	logger: ILogger
 	/** version to connect with */
