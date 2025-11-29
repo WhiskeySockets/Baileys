@@ -566,6 +566,26 @@ export const generateWAMessageContent = async (
 		}
 	} else if ('requestPhoneNumber' in message) {
 		m.requestPhoneNumberMessage = {}
+	} else if ('interactiveMessage' in message) {
+		m.interactiveMessage = {
+			...message.interactiveMessage
+		}
+	} else if ('productMessage' in message) {
+		m.productMessage = {
+			...message.productMessage
+		}
+	} else if ('requestPaymentMessage' in message) {
+		m.requestPaymentMessage = {
+			...message.requestPaymentMessage
+		}
+	} else if ('pollResultMessage' in message) {
+		m.pollResultMessage = {
+			...message.pollResultMessage
+		}
+	} else if ('eventMessage' in message) {
+		m.eventMessage = {
+			...message.eventMessage
+		}
 	} else if ('limitSharing' in message) {
 		m.protocolMessage = {
 			type: proto.Message.ProtocolMessage.Type.LIMIT_SHARING,

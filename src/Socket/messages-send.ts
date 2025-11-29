@@ -53,6 +53,10 @@ import {
 	type JidWithDevice,
 	S_WHATSAPP_NET
 } from '../WABinary'
+import {
+	autoCleanJid,
+	isLidJid
+} from '../Utils/enhanced'
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeNewsletterSocket } from './newsletter'
 
@@ -279,7 +283,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		const requestedLidUsers = new Set<string>()
 		for (const jid of toFetch) {
-			if (isLidUser(jid) || isHostedLidUser(jid)) {
+			if (isLidJid(jid) || isHostedLidUser(jid)) {
 				const user = jidDecode(jid)?.user
 				if (user) requestedLidUsers.add(user)
 			}
@@ -413,7 +417,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		if (jidsRequiringFetch.length) {
 			// LID if mapped, otherwise original
 			const wireJids = [
-				...jidsRequiringFetch.filter(jid => !!isLidUser(jid) || !!isHostedLidUser(jid)),
+				...jidsRequiringFetch.filter(jid => !!isLidJid(jid) || !!isHostedLidUser(jid)),
 				...(
 					(await signalRepository.lidMapping.getLIDsForPNs(
 						jidsRequiringFetch.filter(jid => !!isPnUser(jid) || !!isHostedPnUser(jid))
@@ -469,7 +473,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 		}
 
-		const meJid = jidNormalizedUser(authState.creds.me.id)
+		const meJid = autoCleanJid(authState.creds.me.id)
 
 		const msgId = await relayMessage(meJid, protocolMessage, {
 			additionalAttributes: {
@@ -977,6 +981,22 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		if (message.eventMessage) {
 			return 'event'
+		}
+
+		if (message.albumMessage) {
+			return 'album'
+		}
+
+		if (message.interactiveMessage) {
+			return 'interactive'
+		}
+
+		if (message.requestPaymentMessage) {
+			return 'request_payment'
+		}
+
+		if (message.pollResultMessage) {
+			return 'poll_result'
 		}
 
 		if (getMediaType(message) !== '') {

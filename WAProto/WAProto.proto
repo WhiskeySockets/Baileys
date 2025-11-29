@@ -488,6 +488,15 @@ message BotFeedbackMessage {
 
     }
 
+	message PollResultMessage {
+		optional string name = 1;
+		repeated PollVote pollVotes = 2;
+		message PollVote {
+			optional string optionName = 1;
+			optional string optionVoteCount = 2;
+		}
+	}
+
 }
 
 message BotImagineMetadata {
@@ -2137,6 +2146,7 @@ message Message {
     optional StickerPackMessage stickerPackMessage = 86;
     optional FutureProofMessage statusMentionMessage = 87;
     optional PollResultSnapshotMessage pollResultSnapshotMessage = 88;
+	optional PollResultMessage pollResultMessage = 89;
     optional FutureProofMessage pollCreationOptionImageMessage = 90;
     optional FutureProofMessage associatedChildMessage = 91;
     optional FutureProofMessage groupStatusMentionMessage = 92;

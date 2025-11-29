@@ -173,6 +173,72 @@ const startSock = async(phoneNumber?: string) => {
                 await sock!.readMessages([msg.key])
                 await sendMessageWTyping({ text: 'Hello there!' }, msg.key.remoteJid!)
               }
+
+				if (text === '!album') {
+					await sock.sendMessage(msg.key.remoteJid!, {
+						albumMessage: [
+							{ image: { url: './Media/ma_img.png' }, caption: 'image 1' },
+							{ image: { url: './Media/ma_img.png' }, caption: 'image 2' }
+						]
+					});
+				}
+
+				if (text === '!event') {
+					await sock.sendMessage(msg.key.remoteJid!, {
+						eventMessage: {
+							name: 'My Event',
+							description: 'This is my event',
+							startTime: '1763019000',
+							endTime: '1763026200',
+						}
+					});
+				}
+
+				if (text === '!interactive') {
+					await sock.sendMessage(msg.key.remoteJid!, {
+						interactiveMessage: {
+							title: 'My Interactive Message',
+							footer: 'This is the footer',
+							buttons: [
+								{ name: 'cta_copy', buttonParamsJson: JSON.stringify({ display_text: 'Copy Code', id: '123', copy_code: 'abc' }) }
+							]
+						}
+					});
+				}
+
+				if (text === '!product') {
+					await sock.sendMessage(msg.key.remoteJid!, {
+						productMessage: {
+							title: 'My Product',
+							description: 'This is my product',
+							productId: '123',
+							retailerId: '456',
+							priceAmount1000: 10000,
+							currencyCode: 'USD'
+						}
+					});
+				}
+
+				if (text === '!payment') {
+					await sock.sendMessage(msg.key.remoteJid!, {
+						requestPaymentMessage: {
+							currency: 'USD',
+							amount: 10000,
+						}
+					});
+				}
+
+				if (text === '!poll_result') {
+					await sock.sendMessage(msg.key.remoteJid!, {
+						pollResultMessage: {
+							name: 'My Poll Result',
+							pollVotes: [
+								{ optionName: 'Option 1', optionVoteCount: '5' },
+								{ optionName: 'Option 2', optionVoteCount: '10' }
+							]
+						}
+					});
+				}
             }
           }
         }

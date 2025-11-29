@@ -284,6 +284,21 @@ export type AnyMessageContent =
 	| {
 			limitSharing: boolean
 	  }
+	| {
+			interactiveMessage: proto.Message.IInteractiveMessage
+	  }
+	| {
+			productMessage: proto.Message.IProductMessage
+	  }
+	| {
+			requestPaymentMessage: proto.Message.IRequestPaymentMessage
+	  }
+	| {
+			pollResultMessage: proto.BotFeedbackMessage.IPollResultMessage
+	  }
+	| {
+			eventMessage: proto.Message.IEventMessage
+	  }
 
 export type GroupMetadataParticipants = Pick<GroupMetadata, 'participants'>
 

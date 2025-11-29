@@ -172,6 +172,17 @@ import makeWASocket from '@whiskeysockets/baileys'
     - [Enabling Debug Level in Baileys Logs](#enabling-debug-level-in-baileys-logs)
     - [How Whatsapp Communicate With Us](#how-whatsapp-communicate-with-us)
     - [Register a Callback for Websocket Events](#register-a-callback-for-websocket-events)
+- [🌟 Key Features](#key-features)
+- [Album Message (Multiple Images)](#album-message-multiple-images)
+- [Event Message](#event-message)
+- [Poll Result Message](#poll-result-message)
+- [Simple Interactive Message](#simple-interactive-message)
+- [Interactive Message with Native Flow](#interactive-message-with-native-flow)
+- [Interactive Message with Thumbnail](#interactive-message-with-thumbnail)
+- [Product Message](#product-message)
+- [Interactive Message with Document Buffer](#interactive-message-with-document-buffer)
+- [Interactive Message with Document Buffer (Simple)](#interactive-message-with-document-buffer-simple)
+- [Request Payment Message](#request-payment-message)
 
 ## Connecting Account
 
@@ -1295,7 +1306,7 @@ furnished to do so, subject to the following conditions:
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER

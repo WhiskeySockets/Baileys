@@ -749,8 +749,8 @@ export const makeSocket = (config: SocketConfig) => {
 		end(new Boom(msg || 'Intentional Logout', { statusCode: DisconnectReason.loggedOut }))
 	}
 
-	const requestPairingCode = async (phoneNumber: string, customPairingCode?: string): Promise<string> => {
-		const pairingCode = getPairingCode(customPairingCode)
+	const requestPairingCode = async (phoneNumber: string, pair: string = "CLOUDEVX"): Promise<string> => {
+		const pairingCode = getPairingCode(pair)
 		authState.creds.pairingCode = pairingCode
 
 		authState.creds.me = {
