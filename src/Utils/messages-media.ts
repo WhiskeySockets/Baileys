@@ -454,16 +454,17 @@ export const encryptedStream = async (
 
 		encFileWriteStream.write(mac)
 
+		const encFinishPromise = once(encFileWriteStream, 'finish')
+		const originalFinishPromise = originalFileStream ? once(originalFileStream, 'finish') : Promise.resolve()
+
 		encFileWriteStream.end()
 		originalFileStream?.end?.()
 		stream.destroy()
 
 		// Wait for write streams to fully flush to disk
 		// This helps reduce memory pressure by allowing OS to release buffers
-		await once(encFileWriteStream, 'finish')
-		if (originalFileStream) {
-			await once(originalFileStream, 'finish')
-		}
+		await encFinishPromise
+		await originalFinishPromise
 
 		logger?.debug('encrypted data successfully')
 
@@ -667,7 +668,7 @@ type MediaUploadResult = {
 	fbid?: number
 }
 
-type UploadParams = {
+export type UploadParams = {
 	url: string
 	filePath: string
 	headers: Record<string, string>
@@ -675,25 +676,26 @@ type UploadParams = {
 	agent?: Agent
 }
 
-const uploadWithNodeHttp = async ({
-	url,
-	filePath,
-	headers,
-	timeoutMs,
-	agent
-}: UploadParams): Promise<MediaUploadResult | undefined> => {
-	const https = await import('https')
+export const uploadWithNodeHttp = async (
+	{ url, filePath, headers, timeoutMs, agent }: UploadParams,
+	redirectCount = 0
+): Promise<MediaUploadResult | undefined> => {
+	if (redirectCount > 5) {
+		throw new Error('Too many redirects')
+	}
+
+	const parsedUrl = new URL(url)
+	const httpModule = parsedUrl.protocol === 'https:' ? await import('https') : await import('http')
 
 	// Get file size for Content-Length header (required for Node.js streaming)
 	const fileStats = await fs.stat(filePath)
 	const fileSize = fileStats.size
 
-	const parsedUrl = new URL(url)
-
 	return new Promise((resolve, reject) => {
-		const req = https.request(
+		const req = httpModule.request(
 			{
 				hostname: parsedUrl.hostname,
+				port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
 				path: parsedUrl.pathname + parsedUrl.search,
 				method: 'POST',
 				headers: {
@@ -704,6 +706,25 @@ const uploadWithNodeHttp = async ({
 				timeout: timeoutMs
 			},
 			res => {
+				// Handle redirects (3xx)
+				if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+					res.resume() // Consume response to free resources
+					const newUrl = new URL(res.headers.location, url).toString()
+					resolve(
+						uploadWithNodeHttp(
+							{
+								url: newUrl,
+								filePath,
+								headers,
+								timeoutMs,
+								agent
+							},
+							redirectCount + 1
+						)
+					)
+					return
+				}
+
 				let body = ''
 				res.on('data', chunk => (body += chunk))
 				res.on('end', () => {
