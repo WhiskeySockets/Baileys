@@ -64,8 +64,15 @@ import { extractGroupMetadata } from './groups'
 import { makeMessagesSocket } from './messages-send'
 
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
-	const { logger, retryRequestDelayMs, maxMsgRetryCount, getMessage, shouldIgnoreJid, enableAutoSessionRecreation } =
-		config
+	const {
+		logger,
+		retryRequestDelayMs,
+		maxMsgRetryCount,
+		getMessage,
+		shouldIgnoreJid,
+		enableAutoSessionRecreation,
+		automaticMessageRerequestFromPhone
+	} = config
 	const sock = makeMessagesSocket(config)
 	const {
 		ev,
@@ -450,23 +457,26 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		if (retryCount <= 2) {
-			// Use new retry manager for phone requests if available
-			if (messageRetryManager) {
-				// Schedule phone request with delay (like whatsmeow)
-				messageRetryManager.schedulePhoneRequest(msgId, async () => {
-					try {
-						const requestId = await requestPlaceholderResend(msgKey)
-						logger.debug(
-							`sendRetryRequest: requested placeholder resend (${requestId}) for message ${msgId} (scheduled)`
-						)
-					} catch (error) {
-						logger.warn({ error, msgId }, 'failed to send scheduled phone request')
-					}
-				})
-			} else {
-				// Fallback to immediate request
-				const msgId = await requestPlaceholderResend(msgKey)
-				logger.debug(`sendRetryRequest: requested placeholder resend for message ${msgId}`)
+			// Only send PDO request on first retry (like whatsmeow) and if enabled
+			if (retryCount === 1 && automaticMessageRerequestFromPhone) {
+				// Use new retry manager for phone requests if available
+				if (messageRetryManager) {
+					// Schedule phone request with delay (like whatsmeow)
+					messageRetryManager.schedulePhoneRequest(msgId, async () => {
+						try {
+							const requestId = await requestPlaceholderResend(msgKey)
+							logger.debug(
+								`sendRetryRequest: requested placeholder resend (${requestId}) for message ${msgId} (scheduled)`
+							)
+						} catch (error) {
+							logger.warn({ error, msgId }, 'failed to send scheduled phone request')
+						}
+					})
+				} else {
+					// Fallback to immediate request
+					const msgId = await requestPlaceholderResend(msgKey)
+					logger.debug(`sendRetryRequest: requested placeholder resend for message ${msgId}`)
+				}
 			}
 		}
 
@@ -1306,6 +1316,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						await sendMessageAck(node)
 						logger.debug({ key: msg.key }, 'processed newsletter message without receipts')
 					}
+
+					// Cancel any pending PDO request for this message since we received it successfully
+					if (msg.key.id && placeholderResendCache.get(msg.key.id)) {
+						await placeholderResendCache.del(msg.key.id)
+						logger.debug({ msgId: msg.key.id }, 'cancelled pending phone request after successful decryption')
+					}
 				}
 
 				cleanMessage(msg, authState.creds.me!.id, authState.creds.me!.lid!)
@@ -1383,7 +1399,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		// error in acknowledgement,
 		// device could not display the message
 		if (attrs.error) {
-			logger.warn({ attrs }, 'received error in ack')
+			// Error 479 is expected when sending PDO requests and phone is offline
+			// Only log as debug level for this common case
+			if (attrs.error === '479') {
+				logger.debug({ attrs }, 'received error 479 in ack (phone possibly offline for PDO request)')
+			} else {
+				logger.warn({ attrs }, 'received error in ack')
+			}
+
 			ev.emit('messages.update', [
 				{
 					key,

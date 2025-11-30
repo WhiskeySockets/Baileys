@@ -107,6 +107,14 @@ export type SocketConfig = {
 	enableRecentMessageCache: boolean
 
 	/**
+	 * Automatically request unavailable messages from phone when decryption fails.
+	 * When enabled, Baileys will send a PDO (Peer Data Operation) request to your phone
+	 * to get a copy of the message if decryption fails. This requires the phone to be online.
+	 * @default true
+	 */
+	automaticMessageRerequestFromPhone: boolean
+
+	/**
 	 * Returns if a jid should be ignored,
 	 * no event for that jid will be triggered.
 	 * Messages from that jid will also not be decrypted

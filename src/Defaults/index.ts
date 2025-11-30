@@ -68,6 +68,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	generateHighQualityLinkPreview: false,
 	enableAutoSessionRecreation: true,
 	enableRecentMessageCache: true,
+	automaticMessageRerequestFromPhone: true,
 	options: {},
 	appStateMacVerification: {
 		patch: false,
