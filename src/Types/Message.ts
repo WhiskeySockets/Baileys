@@ -220,7 +220,7 @@ export type AnyMediaMessageContent = (
 		caption?: string
 	} & Contextable & Buttonable & 
 		Templatable & 
-		Interactiveable &)
+		Interactiveable)
 ) & { mimetype?: string } & Editable
 
 export type ButtonReplyInfo = {
