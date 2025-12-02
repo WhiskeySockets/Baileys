@@ -1433,7 +1433,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		node: BinaryNode
 	}
 
-	const makeOfflineNodeProcessor = () => {
+		const makeOfflineNodeProcessor = () => {
 		const nodeProcessorMap: Map<MessageType, (node: BinaryNode) => Promise<void>> = new Map([
 			['message', handleMessage],
 			['call', handleCall],
@@ -1443,6 +1443,32 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const nodes: OfflineNode[] = []
 		let isProcessing = false
 
+		const processNext = async () => {
+			if (!nodes.length || !ws.isOpen) {
+				isProcessing = false
+				return
+			}
+
+			const { type, node } = nodes.shift()!
+			const nodeProcessor = nodeProcessorMap.get(type)
+
+			if (!nodeProcessor) {
+				onUnexpectedError(new Error(`unknown offline node type: ${type}`), 'processing offline node')
+				// Continue processing next node
+				setImmediate(processNext)
+				return
+			}
+
+			try {
+				await nodeProcessor(node)
+			} catch (error) {
+				onUnexpectedError(error, 'processing offline node')
+			}
+
+			// Yield control back to the event loop before processing the next node
+			setImmediate(processNext)
+		}
+
 		const enqueue = (type: MessageType, node: BinaryNode) => {
 			nodes.push({ type, node })
 
@@ -1451,25 +1477,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}
 
 			isProcessing = true
-
-			const promise = async () => {
-				while (nodes.length && ws.isOpen) {
-					const { type, node } = nodes.shift()!
-
-					const nodeProcessor = nodeProcessorMap.get(type)
-
-					if (!nodeProcessor) {
-						onUnexpectedError(new Error(`unknown offline node type: ${type}`), 'processing offline node')
-						continue
-					}
-
-					await nodeProcessor(node)
-				}
-
-				isProcessing = false
-			}
-
-			promise().catch(error => onUnexpectedError(error, 'processing offline nodes'))
+			// Start processing asynchronously
+			setImmediate(processNext)
 		}
 
 		return { enqueue }
