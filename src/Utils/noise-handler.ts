@@ -6,7 +6,6 @@ import type { BinaryNode } from '../WABinary'
 import { decodeBinaryNode } from '../WABinary'
 import { aesDecryptGCM, aesEncryptGCM, Curve, hkdf, sha256 } from './crypto'
 import type { ILogger } from './logger'
-import { decodeAndHydrate } from './proto-utils'
 
 const generateIV = (counter: number) => {
 	const iv = new ArrayBuffer(12)
@@ -113,8 +112,8 @@ export const makeNoiseHandler = ({
 
 			const certDecoded = decrypt(serverHello!.payload!)
 
-			const { intermediate: certIntermediate } = decodeAndHydrate(proto.CertChain, certDecoded)
-
+			const { intermediate: certIntermediate /*leaf*/ } = proto.CertChain.decode(certDecoded)
+			// TODO: handle this leaf stuff
 			const { issuerSerial } = proto.CertChain.NoiseCertificate.Details.decode(certIntermediate!.details!)
 
 			if (issuerSerial !== WA_CERT_DETAILS.SERIAL) {

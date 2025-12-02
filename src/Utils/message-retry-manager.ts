@@ -5,6 +5,8 @@ import type { ILogger } from './logger'
 /** Number of sent messages to cache in memory for handling retry receipts */
 const RECENT_MESSAGES_SIZE = 512
 
+const MESSAGE_KEY_SEPARATOR = '\u0000'
+
 /** Timeout for session recreation - 1 hour */
 const RECREATE_SESSION_TIMEOUT = 60 * 60 * 1000 // 1 hour in milliseconds
 const PHONE_REQUEST_DELAY = 3000
@@ -26,9 +28,7 @@ export interface RetryCounter {
 	[messageId: string]: number
 }
 
-export interface PendingPhoneRequest {
-	[messageId: string]: NodeJS.Timeout
-}
+export type PendingPhoneRequest = Record<string, ReturnType<typeof setTimeout>>
 
 export interface RetryStatistics {
 	totalRetries: number
@@ -41,8 +41,18 @@ export interface RetryStatistics {
 
 export class MessageRetryManager {
 	private recentMessagesMap = new LRUCache<string, RecentMessage>({
-		max: RECENT_MESSAGES_SIZE
+		max: RECENT_MESSAGES_SIZE,
+		ttl: 5 * 60 * 1000,
+		ttlAutopurge: true,
+		dispose: (_value: RecentMessage, key: string) => {
+			const separatorIndex = key.lastIndexOf(MESSAGE_KEY_SEPARATOR)
+			if (separatorIndex > -1) {
+				const messageId = key.slice(separatorIndex + MESSAGE_KEY_SEPARATOR.length)
+				this.messageKeyIndex.delete(messageId)
+			}
+		}
 	})
+	private messageKeyIndex = new Map<string, string>()
 	private sessionRecreateHistory = new LRUCache<string, number>({
 		ttl: RECREATE_SESSION_TIMEOUT * 2,
 		ttlAutopurge: true
@@ -82,6 +92,7 @@ export class MessageRetryManager {
 			message,
 			timestamp: Date.now()
 		})
+		this.messageKeyIndex.set(id, keyStr)
 
 		this.logger.debug(`Added message to retry cache: ${to}/${id}`)
 	}
@@ -161,6 +172,7 @@ export class MessageRetryManager {
 		// Clean up retry counter for successful message
 		this.retryCounters.delete(messageId)
 		this.cancelPendingPhoneRequest(messageId)
+		this.removeRecentMessage(messageId)
 	}
 
 	/**
@@ -169,6 +181,8 @@ export class MessageRetryManager {
 	markRetryFailed(messageId: string): void {
 		this.statistics.failedRetries++
 		this.retryCounters.delete(messageId)
+		this.cancelPendingPhoneRequest(messageId)
+		this.removeRecentMessage(messageId)
 	}
 
 	/**
@@ -200,6 +214,16 @@ export class MessageRetryManager {
 	}
 
 	private keyToString(key: RecentMessageKey): string {
-		return `${key.to}:${key.id}`
+		return `${key.to}${MESSAGE_KEY_SEPARATOR}${key.id}`
+	}
+
+	private removeRecentMessage(messageId: string): void {
+		const keyStr = this.messageKeyIndex.get(messageId)
+		if (!keyStr) {
+			return
+		}
+
+		this.recentMessagesMap.delete(keyStr)
+		this.messageKeyIndex.delete(messageId)
 	}
 }

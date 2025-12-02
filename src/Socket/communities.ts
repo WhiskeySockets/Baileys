@@ -211,6 +211,44 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 				}
 			])
 		},
+		communityFetchLinkedGroups: async (jid: string) => {
+			let communityJid = jid
+			let isCommunity = false
+
+			// Try to determine if it is a subgroup or a community
+			const metadata = await sock.groupMetadata(jid)
+			if (metadata.linkedParent) {
+				// It is a subgroup, get the community jid
+				communityJid = metadata.linkedParent
+			} else {
+				// It is a community
+				isCommunity = true
+			}
+
+			// Fetch all subgroups of the community
+			const result = await communityQuery(communityJid, 'get', [{ tag: 'sub_groups', attrs: {} }])
+
+			const linkedGroupsData = []
+			const subGroupsNode = getBinaryNodeChild(result, 'sub_groups')
+			if (subGroupsNode) {
+				const groupNodes = getBinaryNodeChildren(subGroupsNode, 'group')
+				for (const groupNode of groupNodes) {
+					linkedGroupsData.push({
+						id: groupNode.attrs.id ? jidEncode(groupNode.attrs.id, 'g.us') : undefined,
+						subject: groupNode.attrs.subject || '',
+						creation: groupNode.attrs.creation ? Number(groupNode.attrs.creation) : undefined,
+						owner: groupNode.attrs.creator ? jidNormalizedUser(groupNode.attrs.creator) : undefined,
+						size: groupNode.attrs.size ? Number(groupNode.attrs.size) : undefined
+					})
+				}
+			}
+
+			return {
+				communityJid,
+				isCommunity,
+				linkedGroups: linkedGroupsData
+			}
+		},
 		communityRequestParticipantsList: async (jid: string) => {
 			const result = await communityQuery(jid, 'get', [
 				{
@@ -250,7 +288,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 			const result = await communityQuery(jid, 'set', [
 				{
 					tag: action,
-					attrs: {},
+					attrs: action === 'remove' ? { linked_groups: 'true' } : {},
 					content: participants.map(jid => ({
 						tag: 'participant',
 						attrs: { jid }
@@ -330,7 +368,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 				// update the invite message to be expired
 				if (key.id) {
 					// create new invite message that is expired
-					inviteMessage = proto.Message.GroupInviteMessage.create(inviteMessage)
+					inviteMessage = proto.Message.GroupInviteMessage.fromObject(inviteMessage)
 					inviteMessage.inviteExpiration = 0
 					inviteMessage.inviteCode = ''
 					ev.emit('messages.update', [
@@ -352,10 +390,10 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 							remoteJid: inviteMessage.groupJid,
 							id: generateMessageIDV2(sock.user?.id),
 							fromMe: false,
-							participant: key.remoteJid
+							participant: key.remoteJid // TODO: investigate if this makes any sense at all
 						},
 						messageStubType: WAMessageStubType.GROUP_PARTICIPANT_ADD,
-						messageStubParameters: [authState.creds.me!.id],
+						messageStubParameters: [JSON.stringify(authState.creds.me)],
 						participant: key.remoteJid,
 						messageTimestamp: unixTimestampSeconds()
 					},
@@ -427,6 +465,7 @@ export const extractCommunityMetadata = (result: BinaryNode) => {
 		memberAddMode,
 		participants: getBinaryNodeChildren(community, 'participant').map(({ attrs }) => {
 			return {
+				// TODO: IMPLEMENT THE PN/LID FIELDS HERE!!
 				id: attrs.jid!,
 				admin: (attrs.type || null) as GroupParticipant['admin']
 			}

@@ -1,4 +1,3 @@
-import type { AxiosRequestConfig } from 'axios'
 import type { WAMediaUploadFunction, WAUrlInfo } from '../Types'
 import type { ILogger } from './logger'
 import { prepareWAMessageMedia } from './messages'
@@ -19,7 +18,7 @@ export type URLGenerationOptions = {
 		/** Timeout in ms */
 		timeout: number
 		proxyUrl?: string
-		headers?: AxiosRequestConfig<{}>['headers']
+		headers?: HeadersInit
 	}
 	uploadImage?: WAMediaUploadFunction
 	logger?: ILogger
@@ -70,7 +69,7 @@ export const getUrlInfo = async (
 					return false
 				}
 			},
-			headers: opts.fetchOpts as {}
+			headers: opts.fetchOpts?.headers as {}
 		})
 		if (info && 'title' in info && info.title) {
 			const [image] = info.images

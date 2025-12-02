@@ -5,7 +5,24 @@ export const PSA_WID = '0@c.us'
 export const STORIES_JID = 'status@broadcast'
 export const META_AI_JID = '13135550002@c.us'
 
-export type JidServer = 'c.us' | 'g.us' | 'broadcast' | 's.whatsapp.net' | 'call' | 'lid' | 'newsletter' | 'bot'
+export type JidServer =
+	| 'c.us'
+	| 'g.us'
+	| 'broadcast'
+	| 's.whatsapp.net'
+	| 'call'
+	| 'lid'
+	| 'newsletter'
+	| 'bot'
+	| 'hosted'
+	| 'hosted.lid'
+
+export enum WAJIDDomains {
+	WHATSAPP = 0,
+	LID = 1,
+	HOSTED = 128,
+	HOSTED_LID = 129
+}
 
 export type JidWithDevice = {
 	user: string
@@ -17,11 +34,26 @@ export type FullJid = JidWithDevice & {
 	domainType?: number
 }
 
+export const getServerFromDomainType = (initialServer: string, domainType?: WAJIDDomains): JidServer => {
+	switch (domainType) {
+		case WAJIDDomains.LID:
+			return 'lid'
+		case WAJIDDomains.HOSTED:
+			return 'hosted'
+		case WAJIDDomains.HOSTED_LID:
+			return 'hosted.lid'
+		case WAJIDDomains.WHATSAPP:
+		default:
+			return initialServer as JidServer
+	}
+}
+
 export const jidEncode = (user: string | number | null, server: JidServer, device?: number, agent?: number) => {
 	return `${user || ''}${!!agent ? `_${agent}` : ''}${!!device ? `:${device}` : ''}@${server}`
 }
 
 export const jidDecode = (jid: string | undefined): FullJid | undefined => {
+	// todo: investigate how to implement hosted ids in this case
 	const sepIdx = typeof jid === 'string' ? jid.indexOf('@') : -1
 	if (sepIdx < 0) {
 		return undefined
@@ -31,12 +63,23 @@ export const jidDecode = (jid: string | undefined): FullJid | undefined => {
 	const userCombined = jid!.slice(0, sepIdx)
 
 	const [userAgent, device] = userCombined.split(':')
-	const user = userAgent!.split('_')[0]!
+	const [user, agent] = userAgent!.split('_')
+
+	let domainType = WAJIDDomains.WHATSAPP
+	if (server === 'lid') {
+		domainType = WAJIDDomains.LID
+	} else if (server === 'hosted') {
+		domainType = WAJIDDomains.HOSTED
+	} else if (server === 'hosted.lid') {
+		domainType = WAJIDDomains.HOSTED_LID
+	} else if (agent) {
+		domainType = parseInt(agent)
+	}
 
 	return {
 		server: server as JidServer,
-		user,
-		domainType: server === 'lid' ? 1 : 0,
+		user: user!,
+		domainType,
 		device: device ? +device : undefined
 	}
 }
@@ -58,6 +101,10 @@ export const isJidGroup = (jid: string | undefined) => jid?.endsWith('@g.us')
 export const isJidStatusBroadcast = (jid: string) => jid === 'status@broadcast'
 /** is the jid a newsletter */
 export const isJidNewsletter = (jid: string | undefined) => jid?.endsWith('@newsletter')
+/** is the jid a hosted PN */
+export const isHostedPnUser = (jid: string | undefined) => jid?.endsWith('@hosted')
+/** is the jid a hosted LID */
+export const isHostedLidUser = (jid: string | undefined) => jid?.endsWith('@hosted.lid')
 
 const botRegexp = /^1313555\d{4}$|^131655500\d{2}$/
 
