@@ -420,7 +420,7 @@ export const makeSocket = (config: SocketConfig) => {
 		let node: proto.IClientPayload
 		if (!creds.me) {
 			node = generateRegistrationNode(creds, config)
-			logger.info({ node }, 'not logged in, attempting registration...')
+			//logger.info({ node }, 'not logged in, attempting registration...')
 		} else {
 			node = generateLoginNode(creds.me.id, config)
 			logger.info({ node }, 'logging in...')
@@ -612,7 +612,7 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 
 		closed = true
-		logger.info({ trace: error?.stack }, error ? 'connection errored' : 'connection closed')
+		//logger.info({ trace: error?.stack }, error ? 'connection errored' : 'connection closed')
 
 		clearInterval(keepAliveReq)
 		clearTimeout(qrTimer)
@@ -986,15 +986,7 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 	})
 
-	let didStartBuffer = false
 	process.nextTick(() => {
-		if (creds.me?.id) {
-			// start buffering important events
-			// if we're logged in
-			ev.buffer()
-			didStartBuffer = true
-		}
-
 		ev.emit('connection.update', { connection: 'connecting', receivedPendingNotifications: false, qr: undefined })
 	})
 
@@ -1004,10 +996,6 @@ export const makeSocket = (config: SocketConfig) => {
 		const offlineNotifs = +(child?.attrs.count || 0)
 
 		logger.info(`handled ${offlineNotifs} offline messages/notifications`)
-		if (didStartBuffer) {
-			ev.flush()
-			logger.trace('flushed events for initial buffer')
-		}
 
 		ev.emit('connection.update', { receivedPendingNotifications: true })
 	})

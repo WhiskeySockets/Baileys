@@ -1118,6 +1118,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		},
 		sendMessage: async (jid: string, content: AnyMessageContent, options: MiscMessageGenerationOptions = {}) => {
 			const userJid = authState.creds.me!.id
+			if (!options.messageId) {
+				options.messageId =  generateMessageIDV2(sock.user?.id)
+			}
+
 			if (
 				typeof content === 'object' &&
 				'disappearingMessagesInChat' in content &&
@@ -1152,7 +1156,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					upload: waUploadToServer,
 					mediaCache: config.mediaCache,
 					options: config.options,
-					messageId: generateMessageIDV2(sock.user?.id),
 					...options
 				})
 				const isEventMsg = 'event' in content && !!content.event
