@@ -5,21 +5,22 @@ import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import {
 	areJidsSameUser,
 	type BinaryNode,
+	isHostedLidUser,
+	isHostedPnUser,
 	isJidBroadcast,
 	isJidGroup,
 	isJidMetaAI,
 	isJidNewsletter,
 	isJidStatusBroadcast,
 	isLidUser,
-	isPnUser,
-	transferDevice
+	isPnUser
+	//	transferDevice
 } from '../WABinary'
 import { unpadRandomMax16 } from './generics'
 import type { ILogger } from './logger'
-import { decodeAndHydrate } from './proto-utils'
 
-const getDecryptionJid = async (sender: string, repository: SignalRepositoryWithLIDStore): Promise<string> => {
-	if (!sender.includes('@s.whatsapp.net')) {
+export const getDecryptionJid = async (sender: string, repository: SignalRepositoryWithLIDStore): Promise<string> => {
+	if (isLidUser(sender) || isHostedLidUser(sender)) {
 		return sender
 	}
 
@@ -34,6 +35,7 @@ const storeMappingFromEnvelope = async (
 	decryptionJid: string,
 	logger: ILogger
 ): Promise<void> => {
+	// TODO: Handle hosted IDs
 	const { senderAlt } = extractAddressingContext(stanza)
 
 	if (senderAlt && isLidUser(senderAlt) && isPnUser(sender) && decryptionJid === sender) {
@@ -95,7 +97,7 @@ export const extractAddressingContext = (stanza: BinaryNode) => {
 		senderAlt = stanza.attrs.participant_pn || stanza.attrs.sender_pn || stanza.attrs.peer_recipient_pn
 		recipientAlt = stanza.attrs.recipient_pn
 		// with device data
-		if (sender && senderAlt) senderAlt = transferDevice(sender, senderAlt)
+		//if (sender && senderAlt) senderAlt = transferDevice(sender, senderAlt)
 	} else {
 		// Message is PN-addressed: sender is PN, extract corresponding LID
 		// without device data
@@ -103,7 +105,7 @@ export const extractAddressingContext = (stanza: BinaryNode) => {
 		recipientAlt = stanza.attrs.recipient_lid
 
 		//with device data
-		if (sender && senderAlt) senderAlt = transferDevice(sender, senderAlt)
+		//if (sender && senderAlt) senderAlt = transferDevice(sender, senderAlt)
 	}
 
 	return {
@@ -121,6 +123,7 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	let msgType: MessageType
 	let chatId: string
 	let author: string
+	let fromMe = false
 
 	const msgId = stanza.attrs.id
 	const from = stanza.attrs.from
@@ -132,10 +135,14 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	const isMe = (jid: string) => areJidsSameUser(jid, meId)
 	const isMeLid = (jid: string) => areJidsSameUser(jid, meLid)
 
-	if (isPnUser(from) || isLidUser(from)) {
+	if (isPnUser(from) || isLidUser(from) || isHostedLidUser(from) || isHostedPnUser(from)) {
 		if (recipient && !isJidMetaAI(recipient)) {
 			if (!isMe(from!) && !isMeLid(from!)) {
 				throw new Boom('receipient present, but msg not from me', { data: stanza })
+			}
+
+			if (isMe(from!) || isMeLid(from!)) {
+				fromMe = true
 			}
 
 			chatId = recipient
@@ -148,6 +155,10 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	} else if (isJidGroup(from)) {
 		if (!participant) {
 			throw new Boom('No participant in group message')
+		}
+
+		if (isMe(participant) || isMeLid(participant)) {
+			fromMe = true
 		}
 
 		msgType = 'group'
@@ -165,17 +176,21 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 			msgType = isParticipantMe ? 'peer_broadcast' : 'other_broadcast'
 		}
 
+		fromMe = isParticipantMe
 		chatId = from!
 		author = participant
 	} else if (isJidNewsletter(from)) {
 		msgType = 'newsletter'
 		chatId = from!
 		author = from!
+
+		if (isMe(from!) || isMeLid(from!)) {
+			fromMe = true
+		}
 	} else {
 		throw new Boom('Unknown message type', { data: stanza })
 	}
 
-	const fromMe = (isLidUser(from) ? isMeLid : isMe)((stanza.attrs.participant || stanza.attrs.from)!)
 	const pushname = stanza?.attrs?.notify
 
 	const key: WAMessageKey = {
@@ -185,11 +200,13 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 		id: msgId,
 		participant,
 		participantAlt: isJidGroup(chatId) ? addressingContext.senderAlt : undefined,
+		addressingMode: addressingContext.addressingMode,
 		...(msgType === 'newsletter' && stanza.attrs.server_id ? { server_id: stanza.attrs.server_id } : {})
 	}
 
 	const fullMessage: WAMessage = {
 		key,
+		category: stanza.attrs.category,
 		messageTimestamp: +stanza.attrs.t!,
 		pushName: pushname,
 		broadcast: isJidBroadcast(from)
@@ -223,13 +240,17 @@ export const decryptMessageNode = (
 			if (Array.isArray(stanza.content)) {
 				for (const { tag, attrs, content } of stanza.content) {
 					if (tag === 'verified_name' && content instanceof Uint8Array) {
-						const cert = decodeAndHydrate(proto.VerifiedNameCertificate, content)
-						const details = proto.VerifiedNameCertificate.Details.decode(cert.details)
+						const cert = proto.VerifiedNameCertificate.decode(content)
+						const details = proto.VerifiedNameCertificate.Details.decode(cert.details!)
 						fullMessage.verifiedBizName = details.verifiedName
 					}
 
 					if (tag === 'unavailable' && attrs.type === 'view_once') {
 						fullMessage.key.isViewOnce = true // TODO: remove from here and add a STUB TYPE
+					}
+
+					if (attrs.count && tag === 'enc') {
+						fullMessage.retryCount = Number(attrs.count)
 					}
 
 					if (tag !== 'enc' && tag !== 'plaintext') {
@@ -244,12 +265,11 @@ export const decryptMessageNode = (
 
 					let msgBuffer: Uint8Array
 
-					const user = isPnUser(sender) ? sender : author // TODO: flaky logic
-
-					const decryptionJid = await getDecryptionJid(user, repository)
+					const decryptionJid = await getDecryptionJid(author, repository)
 
 					if (tag !== 'plaintext') {
-						await storeMappingFromEnvelope(stanza, user, repository, decryptionJid, logger)
+						// TODO: Handle hosted devices
+						await storeMappingFromEnvelope(stanza, author, repository, decryptionJid, logger)
 					}
 
 					try {
@@ -278,8 +298,7 @@ export const decryptMessageNode = (
 								throw new Error(`Unknown e2e type: ${e2eType}`)
 						}
 
-						let msg: proto.IMessage = decodeAndHydrate(
-							proto.Message,
+						let msg: proto.IMessage = proto.Message.decode(
 							e2eType !== 'plaintext' ? unpadRandomMax16(msgBuffer) : msgBuffer
 						)
 						msg = msg.deviceSentMessage?.message || msg
@@ -319,7 +338,7 @@ export const decryptMessageNode = (
 			}
 
 			// if nothing was found to decrypt
-			if (!decryptables) {
+			if (!decryptables && !fullMessage.key?.isViewOnce) {
 				fullMessage.messageStubType = proto.WebMessageInfo.StubType.CIPHERTEXT
 				fullMessage.messageStubParameters = [NO_MESSAGE_FOUND_ERROR_TEXT]
 			}

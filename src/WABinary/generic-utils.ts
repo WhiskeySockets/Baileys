@@ -1,6 +1,5 @@
 import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto/index.js'
-import { decodeAndHydrate } from '../Utils/proto-utils'
 import { type BinaryNode } from './types'
 
 // some extra useful utilities
@@ -79,7 +78,7 @@ export const getBinaryNodeMessages = ({ content }: BinaryNode) => {
 	if (Array.isArray(content)) {
 		for (const item of content) {
 			if (item.tag === 'message') {
-				msgs.push(decodeAndHydrate(proto.WebMessageInfo, item.content as Buffer))
+				msgs.push(proto.WebMessageInfo.decode(item.content as Buffer).toJSON() as proto.WebMessageInfo)
 			}
 		}
 	}

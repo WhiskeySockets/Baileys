@@ -63,7 +63,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		fireInitQueries,
 		appStateMacVerification,
 		shouldIgnoreJid,
-		shouldSyncHistoryMessage
+		shouldSyncHistoryMessage,
+		getMessage
 	} = config
 	const sock = makeSocket(config)
 	const { ev, ws, authState, generateMessageTag, sendNode, query, signalRepository, onUnexpectedError } = sock
@@ -611,6 +612,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * type = "image for the high res picture"
 	 */
 	const profilePictureUrl = async (jid: string, type: 'preview' | 'image' = 'preview', timeoutMs?: number) => {
+		// TOOD: Add support for tctoken, existingID, and newsletter + group options
 		jid = jidNormalizedUser(jid)
 		const result = await query(
 			{
@@ -716,7 +718,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		const jid = attrs.from
 		const participant = attrs.participant || attrs.from
 
-		if (shouldIgnoreJid(jid!) && jid !== '@s.whatsapp.net') {
+		if (shouldIgnoreJid(jid!) && jid !== S_WHATSAPP_NET) {
 			return
 		}
 
@@ -824,6 +826,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	/** sending non-abt props may fix QR scan fail if server expects */
 	const fetchProps = async () => {
+		//TODO: implement both protocol 1 and protocol 2 prop fetching, specially for abKey for WM
 		const resultNode = await query({
 			tag: 'iq',
 			attrs: {
@@ -1044,7 +1047,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 		const historyMsg = getHistoryMsg(msg.message!)
 		const shouldProcessHistoryMsg = historyMsg
-			? shouldSyncHistoryMessage(historyMsg) && PROCESSABLE_HISTORY_TYPES.includes(historyMsg.syncType!)
+			? shouldSyncHistoryMessage(historyMsg) &&
+				PROCESSABLE_HISTORY_TYPES.includes(historyMsg.syncType! as proto.HistorySync.HistorySyncType)
 			: false
 
 		// State machine: decide on sync and flush
@@ -1094,7 +1098,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				creds: authState.creds,
 				keyStore: authState.keys,
 				logger,
-				options: config.options
+				options: config.options,
+				getMessage
 			})
 		])
 
@@ -1173,6 +1178,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 		awaitingSyncTimeout = setTimeout(() => {
 			if (syncState === SyncState.AwaitingInitialSync) {
+				// TODO: investigate
 				logger.warn('Timeout in AwaitingInitialSync, forcing state to Online and flushing buffer')
 				syncState = SyncState.Online
 				ev.flush()

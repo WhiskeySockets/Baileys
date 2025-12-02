@@ -1,7 +1,7 @@
 import { promisify } from 'util'
 import { inflate } from 'zlib'
 import * as constants from './constants'
-import { jidEncode } from './jid-utils'
+import { jidEncode, type JidServer, WAJIDDomains } from './jid-utils'
 import type { BinaryNode, BinaryNodeCodingOptions } from './types'
 
 const inflatePromise = promisify(inflate)
@@ -155,7 +155,16 @@ export const decodeDecompressedBinaryNode = (
 		const device = readByte()
 		const user = readString(readByte()!)
 
-		return jidEncode(user, domainType === 0 || domainType === 128 ? 's.whatsapp.net' : 'lid', device)
+		let server: JidServer = 's.whatsapp.net' // default whatsapp server
+		if (domainType === WAJIDDomains.LID) {
+			server = 'lid'
+		} else if (domainType === WAJIDDomains.HOSTED) {
+			server = 'hosted'
+		} else if (domainType === WAJIDDomains.HOSTED_LID) {
+			server = 'hosted.lid'
+		}
+
+		return jidEncode(user, server, device)
 	}
 
 	const readString = (tag: number): string => {
