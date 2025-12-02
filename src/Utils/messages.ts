@@ -594,7 +594,8 @@ export const generateWAMessageContent = async (
 				buttonsMessage.contentText = message.caption
 			}
 
-			const type = Object.keys(m)[0].replace('Message', '').toUpperCase()
+			const key = Object.keys(m)[0] ?? ''
+			const type = key.replace('Message', '').toUpperCase() as keyof typeof ButtonType
 			buttonsMessage.headerType = ButtonType[type]
 
 			Object.assign(buttonsMessage, m)
@@ -648,13 +649,15 @@ export const generateWAMessageContent = async (
 
 	if('sections' in message && !!message.sections) {
 		const listMessage: proto.Message.IListMessage = {
-			sections: message.sections,
-			buttonText: message.buttonText,
-			title: message.title,
-			footerText: message.footer,
-			description: message.text,
+			sections: message.sections as proto.Message.ListMessage.ISection[],
+			// set optional properties conditionally to avoid type errors
 			listType: proto.Message.ListMessage.ListType.SINGLE_SELECT
 		}
+
+		if ('buttonText' in message && typeof (message as any).buttonText !== 'undefined') listMessage.buttonText = (message as any).buttonText
+		if ('title' in message && typeof (message as any).title !== 'undefined') listMessage.title = (message as any).title
+		if ('footer' in message && typeof (message as any).footer !== 'undefined') listMessage.footerText = (message as any).footer
+		if ('text' in message && typeof (message as any).text !== 'undefined') listMessage.description = (message as any).text
 
 		m = { listMessage }
 	}
