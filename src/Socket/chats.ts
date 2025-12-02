@@ -71,8 +71,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	let privacySettings: { [_: string]: string } | undefined
 
 	let syncState: SyncState = SyncState.Connecting
-	/** this mutex ensures that the notifications (receipts, messages etc.) are processed in order */
-	const processingMutex = makeMutex()
 
 	/** this mutex ensures that messages are processed in order */
 	const messageMutex = makeMutex()
@@ -1186,7 +1184,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		...sock,
 		createCallLink,
 		getBotListV2,
-		processingMutex,
 		messageMutex,
 		receiptMutex,
 		appStatePatchMutex,
