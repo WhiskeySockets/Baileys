@@ -578,6 +578,16 @@ export const generateWAMessageContent = async (
 				initiatedByMe: true
 			}
 		}
+	} else if('interactiveButtons' in message) {
+		if ('image' in message) {
+			m = await prepareWAMessageMedia({ image: message.image },
+				options);
+		}
+
+		if ('video' in message) {
+			m = await prepareWAMessageMedia({ video: message.video },
+				options);
+		}
 	} else {
 		m = await prepareWAMessageMedia(message, options)
 	}
@@ -678,13 +688,10 @@ export const generateWAMessageContent = async (
 				text: message.caption
 			}
 
-			interactiveMessage.header = {
-				title: message.title,
-				subtitle: message.subtitle,
-				hasMediaAttachment: message?.media ?? false,
-			};
+			interactiveMessage.header.hasMediaAttachment = 'caption' in message ? true : false;
+	
 
-			Object.assign(interactiveMessage.header, m);
+			//Object.assign(interactiveMessage.header, m);
 		}
 
 		if('footer' in message && !!message.footer) {
@@ -697,7 +704,7 @@ export const generateWAMessageContent = async (
 			interactiveMessage.header = {
 				title: message.title,
 				subtitle: message.subtitle,
-				hasMediaAttachment: message?.media ?? false,
+				hasMediaAttachment: 'caption' in message ? true : false
 			};
 
 			Object.assign(interactiveMessage.header, m);
