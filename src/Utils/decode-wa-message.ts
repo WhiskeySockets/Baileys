@@ -56,7 +56,11 @@ export const MISSING_KEYS_ERROR_TEXT = 'Key used already or never filled'
 export const DECRYPTION_RETRY_CONFIG = {
 	maxRetries: 3,
 	baseDelayMs: 100,
-	sessionRecordErrors: ['No session record', 'SessionError: No session record']
+	sessionRecordErrors: [
+		'No session record',
+		'SessionError: No session record',
+		'No session found for keyId'
+	]
 }
 
 export const NACK_REASONS = {

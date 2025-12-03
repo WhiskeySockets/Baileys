@@ -53,9 +53,13 @@ export class GroupCipher {
 		}
 
 		const senderKeyMessage = new SenderKeyMessage(null, null, null, null, senderKeyMessageBytes)
-		const senderKeyState = record.getSenderKeyState(senderKeyMessage.getKeyId())
+		const keyId = senderKeyMessage.getKeyId()
+		const senderKeyState = record.getSenderKeyState(keyId)
 		if (!senderKeyState) {
-			throw new Error('No session found to decrypt message')
+			// When keyId is not found, the user likely left and rejoined the group
+			// with a new sender key. Reset the old key to force re-synchronization.
+			await this.senderKeyStore.storeSenderKey(this.senderKeyName, new SenderKeyRecord())
+			throw new Error(`No session found for keyId ${keyId}`)
 		}
 
 		senderKeyMessage.verifySignature(senderKeyState.getSigningKeyPublic())
