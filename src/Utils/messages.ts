@@ -679,52 +679,42 @@ export const generateWAMessageContent = async (
 			})
 		};
 
-		if (!interactiveMessage.header) interactiveMessage.header = {} as any;
-
-		if('title' in message && !!message.title) {
-			(interactiveMessage.header as any).title = message.title;
-			/*interactiveMessage.header = {
-				title: message.title,
-				subtitle: message.subtitle,
-				hasMediaAttachment: 'caption' in message ? true : false
-			};
-
-			Object.assign(interactiveMessage.header, m);*/
-		}
-
-		if('subtitle' in message && !!message.subtitle) {
-			(interactiveMessage.header as any).subtitle = message.subtitle;
-			/*interactiveMessage.header = {
-				title: message.title,
-				subtitle: message.subtitle,
-				hasMediaAttachment: 'caption' in message ? true : false
-			};
-
-			Object.assign(interactiveMessage.header, m);*/
-		}
-
-
-		if('text' in message && message.text) {
+		if('text' in message) {
 			interactiveMessage.body = {
-				text: message.text as string
+				text: message.text
 			};
-		} else if('caption' in message && message.caption) {
+		} else if('caption' in message) {
 			interactiveMessage.body = {
-				text: message.caption as string
-			};
-
-			if (interactiveMessage.header) {
-				interactiveMessage.header.hasMediaAttachment = true;
+				text: message.caption
 			}
-	
 
-			//Object.assign(interactiveMessage.header, m);
+			interactiveMessage.header = {
+				title: message.title,
+				subtitle: message.subtitle,
+				hasMediaAttachment: message?.media ?? false,
+			};
+
+			Object.assign(interactiveMessage.header, m);
 		}
 
 		if('footer' in message && !!message.footer) {
 			interactiveMessage.footer = {
 				text: message.footer
 			};
+		}
+
+		if('title' in message && !!message.title) {
+			interactiveMessage.header = {
+				title: message.title,
+				subtitle: message.subtitle,
+				hasMediaAttachment: message?.media ?? false,
+			};
+
+			Object.assign(interactiveMessage.header, m);
+		}
+		
+		if('media' in message){
+		    interactiveMessage.header.hasMediaAttachment = true;
 		}
 
 		if('contextInfo' in message && !!message.contextInfo) {
@@ -737,7 +727,7 @@ export const generateWAMessageContent = async (
 
 		m = { interactiveMessage };
 	}
-
+	
 	if ('viewOnce' in message && !!message.viewOnce) {
 		m = { viewOnceMessage: { message: m } }
 	}
