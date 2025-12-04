@@ -679,6 +679,31 @@ export const generateWAMessageContent = async (
 			})
 		};
 
+		if (!interactiveMessage.header) interactiveMessage.header = {} as any;
+
+		if('title' in message && !!message.title) {
+			interactiveMessage.header.title = message.title;
+			/*interactiveMessage.header = {
+				title: message.title,
+				subtitle: message.subtitle,
+				hasMediaAttachment: 'caption' in message ? true : false
+			};
+
+			Object.assign(interactiveMessage.header, m);*/
+		}
+
+		if('subtitle' in message && !!message.subtitle) {
+			interactiveMessage.header.subtitle = message.subtitle;
+			/*interactiveMessage.header = {
+				title: message.title,
+				subtitle: message.subtitle,
+				hasMediaAttachment: 'caption' in message ? true : false
+			};
+
+			Object.assign(interactiveMessage.header, m);*/
+		}
+
+
 		if('text' in message) {
 			interactiveMessage.body = {
 				text: message.text
@@ -698,16 +723,6 @@ export const generateWAMessageContent = async (
 			interactiveMessage.footer = {
 				text: message.footer
 			};
-		}
-
-		if('title' in message && !!message.title) {
-			interactiveMessage.header = {
-				title: message.title,
-				subtitle: message.subtitle,
-				hasMediaAttachment: 'caption' in message ? true : false
-			};
-
-			Object.assign(interactiveMessage.header, m);
 		}
 
 		if('contextInfo' in message && !!message.contextInfo) {
