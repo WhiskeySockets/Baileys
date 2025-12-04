@@ -3,12 +3,14 @@ import type { SignalStorage } from 'whatsapp-rust-bridge'
 import {
 	GroupCipher,
 	GroupSessionBuilder,
+	hasLogger,
 	ProtocolAddress,
 	SenderKeyDistributionMessage,
 	SenderKeyName,
 	SessionBuilder,
 	SessionCipher,
-	SessionRecord
+	SessionRecord,
+	setLogger
 } from 'whatsapp-rust-bridge'
 import type { LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
 import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
@@ -29,6 +31,10 @@ export function makeLibSignalRepository(
 	logger: ILogger,
 	pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>
 ): SignalRepositoryWithLIDStore {
+	if (!hasLogger()) {
+		setLogger(logger)
+	}
+
 	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction, logger, pnToLIDFunc)
 	const storage = signalStorage(auth, lidMapping)
 
