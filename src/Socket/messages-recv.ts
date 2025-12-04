@@ -1275,6 +1275,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						await sendMessageAck(node, NACK_REASONS.UnhandledError)
 					})
 				} else {
+					if (messageRetryManager && msg.key.id) {
+						messageRetryManager.cancelPendingPhoneRequest(msg.key.id)
+					}
+
 					const isNewsletter = isJidNewsletter(msg.key.remoteJid!)
 					if (!isNewsletter) {
 						// no type in the receipt => message delivered
