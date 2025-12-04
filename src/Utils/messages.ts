@@ -704,16 +704,18 @@ export const generateWAMessageContent = async (
 		}
 
 
-		if('text' in message) {
+		if('text' in message && message.text) {
 			interactiveMessage.body = {
-				text: message.text
+				text: message.text as string
 			};
-		} else if('caption' in message) {
+		} else if('caption' in message && message.caption) {
 			interactiveMessage.body = {
-				text: message.caption
-			}
+				text: message.caption as string
+			};
 
-			(interactiveMessage.header as any).hasMediaAttachment = 'caption' in message ? true : false;
+			if (interactiveMessage.header) {
+				interactiveMessage.header.hasMediaAttachment = true;
+			}
 	
 
 			//Object.assign(interactiveMessage.header, m);
