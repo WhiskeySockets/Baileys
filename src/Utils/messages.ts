@@ -682,7 +682,7 @@ export const generateWAMessageContent = async (
 		if (!interactiveMessage.header) interactiveMessage.header = {} as any;
 
 		if('title' in message && !!message.title) {
-			interactiveMessage.header.title = message.title;
+			(interactiveMessage.header as any).title = message.title;
 			/*interactiveMessage.header = {
 				title: message.title,
 				subtitle: message.subtitle,
@@ -693,7 +693,7 @@ export const generateWAMessageContent = async (
 		}
 
 		if('subtitle' in message && !!message.subtitle) {
-			interactiveMessage.header.subtitle = message.subtitle;
+			(interactiveMessage.header as any).subtitle = message.subtitle;
 			/*interactiveMessage.header = {
 				title: message.title,
 				subtitle: message.subtitle,
@@ -713,7 +713,7 @@ export const generateWAMessageContent = async (
 				text: message.caption
 			}
 
-			interactiveMessage.header.hasMediaAttachment = 'caption' in message ? true : false;
+			(interactiveMessage.header as any).hasMediaAttachment = 'caption' in message ? true : false;
 	
 
 			//Object.assign(interactiveMessage.header, m);
