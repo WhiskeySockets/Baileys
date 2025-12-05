@@ -1,46 +1,27 @@
+import { Mutex as AsyncMutex } from 'async-mutex'
+
 export const makeMutex = () => {
-    let task = Promise.resolve() as Promise<any>
-    let taskTimeout: NodeJS. Timeout | undefined
-    let chainLength = 0
-    const MAX_CHAIN = 50
+	const mutex = new AsyncMutex()
 
-    return {
-        mutex<T>(code: () => Promise<T> | T): Promise<T> {
-            // break the chain periodically so old promises can be GC'd
-            if (++chainLength > MAX_CHAIN) {
-                task = Promise. resolve()
-                chainLength = 0
-            }
-
-            task = (async () => {
-                try {
-                    await task
-                } catch {}
-
-                try {
-                    const result = await code()
-                    return result
-                } finally {
-                    clearTimeout(taskTimeout)
-                }
-            })()
-            return task
-        }
-    }
+	return {
+		mutex<T>(code: () => Promise<T> | T): Promise<T> {
+			return mutex.runExclusive(code)
+		}
+	}
 }
 
 export type Mutex = ReturnType<typeof makeMutex>
 
 export const makeKeyedMutex = () => {
-	const map: { [id: string]: Mutex } = {}
+	const map: { [id: string]: AsyncMutex } = {}
 
 	return {
 		mutex<T>(key: string, task: () => Promise<T> | T): Promise<T> {
-			if (!map[key]) {
-				map[key] = makeMutex()
+			if (! map[key]) {
+				map[key] = new AsyncMutex()
 			}
 
-			return map[key].mutex(task)
+			return map[key].runExclusive(task)
 		}
 	}
 }
