@@ -3025,6 +3025,7 @@ __metadata:
     typedoc: "npm:^0.27.9"
     typedoc-plugin-markdown: "npm:4.4.2"
     typescript: "npm:^5.8.2"
+    whatsapp-rust-bridge: /home/jlucaso/projects/whatsapp-rust-bridge/whatsapp-rust-bridge-0.4.7.tgz
     ws: "npm:^8.13.0"
   peerDependencies:
     audio-decode: ^2.1.3
@@ -10181,6 +10182,13 @@ __metadata:
   version: 3.0.1
   resolution: "webidl-conversions@npm:3.0.1"
   checksum: 10c0/5612d5f3e54760a797052eb4927f0ddc01383550f542ccd33d5238cfd65aeed392a45ad38364970d0a0f4fea32e1f4d231b3d8dac4a3bdd385e5cf802ae097db
+  languageName: node
+  linkType: hard
+
+"whatsapp-rust-bridge@file:/home/jlucaso/projects/whatsapp-rust-bridge/whatsapp-rust-bridge-0.4.7.tgz::locator=baileys%40workspace%3A.":
+  version: 0.4.7
+  resolution: "whatsapp-rust-bridge@file:/home/jlucaso/projects/whatsapp-rust-bridge/whatsapp-rust-bridge-0.4.7.tgz#/home/jlucaso/projects/whatsapp-rust-bridge/whatsapp-rust-bridge-0.4.7.tgz::hash=fc4c0e&locator=baileys%40workspace%3A."
+  checksum: 10c0/2441ad69731cca0921ce33062f95c083c48469d066c7698c31ceb1b9387dd664c1626cd14efb244c793300e678d41af70cfadd9a47d0d598247799949859eac4
   languageName: node
   linkType: hard
 
