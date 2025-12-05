@@ -1,31 +1,32 @@
 export const makeMutex = () => {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let task = Promise.resolve() as Promise<any>
+    let task = Promise.resolve() as Promise<any>
+    let taskTimeout: NodeJS. Timeout | undefined
+    let chainLength = 0
+    const MAX_CHAIN = 50
 
-	let taskTimeout: NodeJS.Timeout | undefined
+    return {
+        mutex<T>(code: () => Promise<T> | T): Promise<T> {
+            // break the chain periodically so old promises can be GC'd
+            if (++chainLength > MAX_CHAIN) {
+                task = Promise. resolve()
+                chainLength = 0
+            }
 
-	return {
-		mutex<T>(code: () => Promise<T> | T): Promise<T> {
-			task = (async () => {
-				// wait for the previous task to complete
-				// if there is an error, we swallow so as to not block the queue
-				try {
-					await task
-				} catch {}
+            task = (async () => {
+                try {
+                    await task
+                } catch {}
 
-				try {
-					// execute the current task
-					const result = await code()
-					return result
-				} finally {
-					clearTimeout(taskTimeout)
-				}
-			})()
-			// we replace the existing task, appending the new piece of execution to it
-			// so the next task will have to wait for this one to finish
-			return task
-		}
-	}
+                try {
+                    const result = await code()
+                    return result
+                } finally {
+                    clearTimeout(taskTimeout)
+                }
+            })()
+            return task
+        }
+    }
 }
 
 export type Mutex = ReturnType<typeof makeMutex>
