@@ -1433,7 +1433,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		node: BinaryNode
 	}
 
-		const makeOfflineNodeProcessor = () => {
+	/** Yields control to the event loop to prevent blocking */
+	const yieldToEventLoop = (): Promise<void> => {
+		return new Promise(resolve => setImmediate(resolve))
+	}
+
+	const makeOfflineNodeProcessor = () => {
 		const nodeProcessorMap: Map<MessageType, (node: BinaryNode) => Promise<void>> = new Map([
 			['message', handleMessage],
 			['call', handleCall],
@@ -1443,31 +1448,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const nodes: OfflineNode[] = []
 		let isProcessing = false
 
-		const processNext = async () => {
-			if (!nodes.length || !ws.isOpen) {
-				isProcessing = false
-				return
-			}
-
-			const { type, node } = nodes.shift()!
-			const nodeProcessor = nodeProcessorMap.get(type)
-
-			if (!nodeProcessor) {
-				onUnexpectedError(new Error(`unknown offline node type: ${type}`), 'processing offline node')
-				// Continue processing next node
-				setImmediate(processNext)
-				return
-			}
-
-			try {
-				await nodeProcessor(node)
-			} catch (error) {
-				onUnexpectedError(error, 'processing offline node')
-			}
-
-			// Yield control back to the event loop before processing the next node
-			setImmediate(processNext)
-		}
+		// Number of nodes to process before yielding to event loop
+		const BATCH_SIZE = 10
 
 		const enqueue = (type: MessageType, node: BinaryNode) => {
 			nodes.push({ type, node })
@@ -1477,8 +1459,35 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}
 
 			isProcessing = true
-			// Start processing asynchronously
-			setImmediate(processNext)
+
+			const promise = async () => {
+				let processedInBatch = 0
+
+				while (nodes.length && ws.isOpen) {
+					const { type, node } = nodes.shift()!
+
+					const nodeProcessor = nodeProcessorMap.get(type)
+
+					if (!nodeProcessor) {
+						onUnexpectedError(new Error(`unknown offline node type: ${type}`), 'processing offline node')
+						continue
+					}
+
+					await nodeProcessor(node)
+					processedInBatch++
+
+					// Yield to event loop after processing a batch
+					// This prevents blocking the event loop for too long when there are many offline nodes
+					if (processedInBatch >= BATCH_SIZE) {
+						processedInBatch = 0
+						await yieldToEventLoop()
+					}
+				}
+
+				isProcessing = false
+			}
+
+			promise().catch(error => onUnexpectedError(error, 'processing offline nodes'))
 		}
 
 		return { enqueue }
