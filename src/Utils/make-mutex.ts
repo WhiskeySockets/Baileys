@@ -13,15 +13,30 @@ export const makeMutex = () => {
 export type Mutex = ReturnType<typeof makeMutex>
 
 export const makeKeyedMutex = () => {
-	const map: { [id: string]: AsyncMutex } = {}
+	const map = new Map<string, { mutex: AsyncMutex; refCount: number }>()
 
 	return {
-		mutex<T>(key: string, task: () => Promise<T> | T): Promise<T> {
-			if (! map[key]) {
-				map[key] = new AsyncMutex()
+		async mutex<T>(key: string, task: () => Promise<T> | T): Promise<T> {
+			let entry = map.get(key)
+
+			if (!entry) {
+				entry = { mutex: new AsyncMutex(), refCount: 0 }
+				map.set(key, entry)
 			}
 
-			return map[key].runExclusive(task)
+			entry.refCount++
+
+			try {
+				return await entry.mutex.runExclusive(task)
+			} finally {
+				entry.refCount--
+				// only delete it if this is still the current entry
+				if (entry.refCount === 0 && map.get(key) === entry) {
+					map.delete(key)
+				}
+			}
 		}
 	}
 }
+
+export type KeyedMutex = ReturnType<typeof makeKeyedMutex>
