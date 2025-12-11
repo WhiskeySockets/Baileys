@@ -919,16 +919,26 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * Adding Labels to Member
 	 */
 
-	const addLabelMember = (jid: string, label: string) => {
+	const addLabelMember = (jid: string, memberLabel: string) => {
 		return relayMessage(jid, {
 			protocolMessage: {
         type: 30,
         memberLabel: {
-          label: label,
+          label: memberLabel?.slice(0, 30),
           labelTimestamp: Date.now()
         }
       }
-    }, {})
+    }, 
+	  {
+			additionalNodes: [{
+				tag: "meta",
+				attrs: {
+					tag_reason: "user_update",
+					appdata: "member_tag"
+				},
+				content: undefined
+			}]
+		})
 	}
 
 	/**
