@@ -71,7 +71,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		ev,
 		authState,
 		ws,
-		processingMutex,
+		messageMutex,
+		notificationMutex,
+		receiptMutex,
 		signalRepository,
 		query,
 		upsertMessage,
@@ -151,7 +153,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		await delay(5000)
 
-		if (!await placeholderResendCache.get(messageKey?.id!)) {
+		if (!(await placeholderResendCache.get(messageKey?.id!))) {
 			logger.debug({ messageKey }, 'message received while resend requested')
 			return 'RESOLVED'
 		}
@@ -1067,7 +1069,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		try {
 			await Promise.all([
-				processingMutex.mutex(async () => {
+				receiptMutex.mutex(async () => {
 					const status = getStatusFromReceiptType(attrs.type)
 					if (
 						typeof status !== 'undefined' &&
@@ -1141,7 +1143,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		try {
 			await Promise.all([
-				processingMutex.mutex(async () => {
+				notificationMutex.mutex(async () => {
 					const msg = await processNotification(node)
 					if (msg) {
 						const fromMe = areJidsSameUser(node.attrs.participant || remoteJid, authState.creds.me!.id)
@@ -1218,7 +1220,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		try {
-			await processingMutex.mutex(async () => {
+			await messageMutex.mutex(async () => {
 				await decrypt()
 				// message failed to decrypt
 				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
