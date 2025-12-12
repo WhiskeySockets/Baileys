@@ -633,7 +633,15 @@ export const makeSocket = (config: SocketConfig) => {
 			'CB:ib,,downgrade_webclient',
 			'CB:ib,,offline_preview',
 			'CB:ib,,edge_routing',
-			'CB:ib,,offline'
+			'CB:ib,,offline',
+			'CB:ib,,dirty',
+			'CB:message',
+			'CB:call',
+			'CB:receipt',
+			'CB:notification',
+			'CB:ack,class:message',
+			'CB:presence',
+			'CB:chatstate'
 		]
 
 		for (const event of cbEvents) {
