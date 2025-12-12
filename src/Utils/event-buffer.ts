@@ -66,8 +66,6 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 	const MAX_HISTORY_CACHE_SIZE = 10000
 	const BUFFER_TIMEOUT_MS = 30000
 
-	ev.setMaxListeners(100)
-
 	ev.on('event', (map: BaileysEventData) => {
 		if (destroyed) return
 		for (const event in map) {
