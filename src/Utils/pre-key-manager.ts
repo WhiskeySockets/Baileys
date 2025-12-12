@@ -123,4 +123,12 @@ export class PreKeyManager {
 			}
 		})
 	}
+
+	/**
+	 * Clean up all queues
+	 */
+	destroy(): void {
+		this.logger.debug({ queueCount: this.queues.size }, 'Destroying PreKeyManager queues')
+		this.queues.clear()
+	}
 }

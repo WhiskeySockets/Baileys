@@ -1186,6 +1186,16 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}, 20_000)
 	})
 
+	ev.on('connection.update', ({ connection }) => {
+		if (connection === 'close') {
+			if (awaitingSyncTimeout) {
+				clearTimeout(awaitingSyncTimeout)
+				awaitingSyncTimeout = undefined
+				logger.debug('Cleared awaitingSyncTimeout on connection close')
+			}
+		}
+	})
+
 	return {
 		...sock,
 		createCallLink,

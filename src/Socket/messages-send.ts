@@ -102,6 +102,20 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			} catch (err) {
 				logger.error({ err }, 'error destroying message retry manager')
 			}
+
+			try {
+				userDevicesCache.flushAll()
+				logger.debug('Cleared userDevicesCache')
+			} catch (err) {
+				logger.error({ err }, 'error clearing userDevicesCache')
+			}
+
+			try {
+				peerSessionsCache.flushAll()
+				logger.debug('Cleared peerSessionsCache')
+			} catch (err) {
+				logger.error({ err }, 'error clearing peerSessionsCache')
+			}
 		}
 	})
 
@@ -1219,6 +1233,20 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				messageRetryManager?.destroy()
 			} catch (err) {
 				logger.error({ err }, 'error destroying message retry manager')
+			}
+
+			try {
+				userDevicesCache.flushAll()
+				logger.debug('Cleared userDevicesCache in cleanup')
+			} catch (err) {
+				logger.error({ err }, 'error clearing userDevicesCache in cleanup')
+			}
+
+			try {
+				peerSessionsCache.flushAll()
+				logger.debug('Cleared peerSessionsCache in cleanup')
+			} catch (err) {
+				logger.error({ err }, 'error clearing peerSessionsCache in cleanup')
 			}
 		}
 	}

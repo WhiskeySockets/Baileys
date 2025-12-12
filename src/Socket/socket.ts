@@ -669,6 +669,12 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 
 		ev.removeAllListeners('connection.update')
+
+		try {
+			keys.cleanup()
+		} catch (err) {
+			logger.error({ err }, 'error cleaning up keys')
+		}
 	}
 
 	const waitForSocketOpen = async () => {

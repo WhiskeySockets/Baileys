@@ -1568,10 +1568,40 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	})
 
-	ev.on('connection.update', ({ isOnline }) => {
+	ev.on('connection.update', ({ connection, isOnline }) => {
 		if (typeof isOnline !== 'undefined') {
 			sendActiveReceipts = isOnline
 			logger.trace(`sendActiveReceipts set to "${sendActiveReceipts}"`)
+		}
+
+		if (connection === 'close') {
+			try {
+				msgRetryCache.flushAll()
+				logger.debug('Cleared msgRetryCache')
+			} catch (err) {
+				logger.error({ err }, 'error clearing msgRetryCache')
+			}
+
+			try {
+				callOfferCache.flushAll()
+				logger.debug('Cleared callOfferCache')
+			} catch (err) {
+				logger.error({ err }, 'error clearing callOfferCache')
+			}
+
+			try {
+				placeholderResendCache.flushAll()
+				logger.debug('Cleared placeholderResendCache')
+			} catch (err) {
+				logger.error({ err }, 'error clearing placeholderResendCache')
+			}
+
+			try {
+				identityAssertDebounce.flushAll()
+				logger.debug('Cleared identityAssertDebounce')
+			} catch (err) {
+				logger.error({ err }, 'error clearing identityAssertDebounce')
+			}
 		}
 	})
 

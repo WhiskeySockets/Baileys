@@ -338,6 +338,30 @@ export const addTransactionCapability = (
 			} finally {
 				releaseTxMutexRef(key)
 			}
+		},
+
+		cleanup: () => {
+			try {
+				preKeyManager.destroy()
+				logger.debug('Destroyed PreKeyManager')
+			} catch (err) {
+				logger.error({ err }, 'error destroying PreKeyManager')
+			}
+
+			try {
+				keyQueues.clear()
+				logger.debug({ queueCount: keyQueues.size }, 'Cleared key queues')
+			} catch (err) {
+				logger.error({ err }, 'error clearing key queues')
+			}
+
+			try {
+				txMutexes.clear()
+				txMutexRefCounts.clear()
+				logger.debug('Cleared transaction mutexes')
+			} catch (err) {
+				logger.error({ err }, 'error clearing transaction mutexes')
+			}
 		}
 	}
 }
