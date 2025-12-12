@@ -635,6 +635,12 @@ export const makeSocket = (config: SocketConfig) => {
 			}
 		})
 		ev.removeAllListeners('connection.update')
+
+		try {
+			ev.destroy()
+		} catch (err) {
+			logger.error({ err }, 'error destroying event buffer')
+		}
 	}
 
 	const waitForSocketOpen = async () => {

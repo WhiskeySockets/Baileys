@@ -45,70 +45,64 @@ type BaileysEventData = Partial<BaileysEventMap>
 const BUFFERABLE_EVENT_SET = new Set<BaileysEvent>(BUFFERABLE_EVENT)
 
 type BaileysBufferableEventEmitter = BaileysEventEmitter & {
-	/** Use to process events in a batch */
 	process(handler: (events: BaileysEventData) => void | Promise<void>): () => void
-	/**
-	 * starts buffering events, call flush() to release them
-	 * */
 	buffer(): void
-	/** buffers all events till the promise completes */
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	createBufferedFunction<A extends any[], T>(work: (...args: A) => Promise<T>): (...args: A) => Promise<T>
-	/**
-	 * flushes all buffered events
-	 * @returns returns true if the flush actually happened, otherwise false
-	 */
 	flush(): boolean
-	/** is there an ongoing buffer */
 	isBuffering(): boolean
+	destroy(): void
 }
 
-/**
- * The event buffer logically consolidates different events into a single event
- * making the data processing more efficient.
- */
 export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter => {
 	const ev = new EventEmitter()
 	const historyCache = new Set<string>()
+	const pendingTimeouts = new Set<ReturnType<typeof setTimeout>>()
 
 	let data = makeBufferData()
 	let isBuffering = false
 	let bufferTimeout: NodeJS.Timeout | null = null
 	let bufferCount = 0
-	const MAX_HISTORY_CACHE_SIZE = 10000 // Limit the history cache size to prevent memory bloat
-	const BUFFER_TIMEOUT_MS = 30000 // 30 seconds
+	let destroyed = false
+	const MAX_HISTORY_CACHE_SIZE = 10000
+	const BUFFER_TIMEOUT_MS = 30000
 
-	// take the generic event and fire it as a baileys event
+	ev.setMaxListeners(100)
+
 	ev.on('event', (map: BaileysEventData) => {
+		if (destroyed) return
 		for (const event in map) {
 			ev.emit(event, map[event as keyof BaileysEventMap])
 		}
 	})
 
 	function buffer() {
+		if (destroyed) return
+
 		if (!isBuffering) {
 			logger.debug('Event buffer activated')
 			isBuffering = true
 			bufferCount++
 
-			// Auto-flush after a timeout to prevent infinite buffering
 			if (bufferTimeout) {
 				clearTimeout(bufferTimeout)
+				pendingTimeouts.delete(bufferTimeout)
 			}
 
 			bufferTimeout = setTimeout(() => {
+				if (destroyed) return
 				if (isBuffering) {
 					logger.warn('Buffer timeout reached, auto-flushing')
 					flush()
 				}
 			}, BUFFER_TIMEOUT_MS)
+			pendingTimeouts.add(bufferTimeout)
 		} else {
 			bufferCount++
 		}
 	}
 
 	function flush() {
-		if (!isBuffering) {
+		if (destroyed || !isBuffering) {
 			return false
 		}
 
@@ -116,13 +110,12 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 		isBuffering = false
 		bufferCount = 0
 
-		// Clear timeout
 		if (bufferTimeout) {
 			clearTimeout(bufferTimeout)
+			pendingTimeouts.delete(bufferTimeout)
 			bufferTimeout = null
 		}
 
-		// Clear history cache if it exceeds the max size
 		if (historyCache.size > MAX_HISTORY_CACHE_SIZE) {
 			logger.debug({ cacheSize: historyCache.size }, 'Clearing history cache')
 			historyCache.clear()
@@ -151,9 +144,36 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 		return true
 	}
 
+	function destroy() {
+		if (destroyed) return
+
+		destroyed = true
+		logger.debug('Destroying event buffer')
+
+		if (bufferTimeout) {
+			clearTimeout(bufferTimeout)
+			bufferTimeout = null
+		}
+
+		pendingTimeouts.forEach(timeout => clearTimeout(timeout))
+		pendingTimeouts.clear()
+
+		historyCache.clear()
+		ev.removeAllListeners()
+
+		data = makeBufferData()
+		isBuffering = false
+		bufferCount = 0
+
+		logger.debug('Event buffer destroyed')
+	}
+
 	return {
 		process(handler) {
+			if (destroyed) return () => {}
+
 			const listener = async (map: BaileysEventData) => {
+				if (destroyed) return
 				await handler(map)
 			}
 
@@ -163,6 +183,8 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 			}
 		},
 		emit<T extends BaileysEvent>(event: BaileysEvent, evData: BaileysEventMap[T]) {
+			if (destroyed) return false
+
 			if (isBuffering && BUFFERABLE_EVENT_SET.has(event)) {
 				append(data, historyCache, event as BufferableEvent, evData, logger)
 				return true
@@ -177,16 +199,19 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 		flush,
 		createBufferedFunction(work) {
 			return async (...args) => {
+				if (destroyed) throw new Error('Event buffer destroyed')
+
 				buffer()
 				try {
 					const result = await work(...args)
-					// If this is the only buffer, flush after a small delay
-					if (bufferCount === 1) {
-						setTimeout(() => {
-							if (isBuffering && bufferCount === 1) {
+					if (!destroyed && bufferCount === 1) {
+						const timeout = setTimeout(() => {
+							if (!destroyed && isBuffering && bufferCount === 1) {
 								flush()
 							}
-						}, 100) // Small delay to allow nested buffers
+							pendingTimeouts.delete(timeout)
+						}, 100)
+						pendingTimeouts.add(timeout)
 					}
 
 					return result
@@ -194,13 +219,19 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 					throw error
 				} finally {
 					bufferCount = Math.max(0, bufferCount - 1)
-					if (bufferCount === 0) {
-						// Auto-flush when no other buffers are active
-						setTimeout(flush, 100)
+					if (!destroyed && bufferCount === 0) {
+						const timeout = setTimeout(() => {
+							if (!destroyed) {
+								flush()
+							}
+							pendingTimeouts.delete(timeout)
+						}, 100)
+						pendingTimeouts.add(timeout)
 					}
 				}
 			}
 		},
+		destroy,
 		on: (...args) => ev.on(...args),
 		off: (...args) => ev.off(...args),
 		removeAllListeners: (...args) => ev.removeAllListeners(...args)

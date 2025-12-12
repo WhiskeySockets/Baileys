@@ -93,10 +93,18 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		useClones: false
 	})
 
-	// Initialize message retry manager if enabled
 	const messageRetryManager = enableRecentMessageCache ? new MessageRetryManager(logger, maxMsgRetryCount) : null
 
-	// Prevent race conditions in Signal session encryption by user
+	ev.on('connection.update', ({ connection }) => {
+		if (connection === 'close') {
+			try {
+				messageRetryManager?.destroy()
+			} catch (err) {
+				logger.error({ err }, 'error destroying message retry manager')
+			}
+		}
+	})
+
 	const encryptionMutex = makeKeyedMutex()
 
 	let mediaConn: Promise<MediaConnInfo>
@@ -1204,6 +1212,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 
 				return fullMsg
+			}
+		},
+		cleanup: () => {
+			try {
+				messageRetryManager?.destroy()
+			} catch (err) {
+				logger.error({ err }, 'error destroying message retry manager')
 			}
 		}
 	}

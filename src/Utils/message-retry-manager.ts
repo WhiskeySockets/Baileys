@@ -2,14 +2,12 @@ import { LRUCache } from 'lru-cache'
 import type { proto } from '../../WAProto/index.js'
 import type { ILogger } from './logger'
 
-/** Number of sent messages to cache in memory for handling retry receipts */
 const RECENT_MESSAGES_SIZE = 512
-
 const MESSAGE_KEY_SEPARATOR = '\u0000'
-
-/** Timeout for session recreation - 1 hour */
-const RECREATE_SESSION_TIMEOUT = 60 * 60 * 1000 // 1 hour in milliseconds
+const RECREATE_SESSION_TIMEOUT = 60 * 60 * 1000
 const PHONE_REQUEST_DELAY = 3000
+const CLEANUP_INTERVAL = 5 * 60 * 1000
+
 export interface RecentMessageKey {
 	to: string
 	id: string
@@ -21,7 +19,7 @@ export interface RecentMessage {
 }
 
 export interface SessionRecreateHistory {
-	[jid: string]: number // timestamp
+	[jid: string]: number
 }
 
 export interface RetryCounter {
@@ -40,30 +38,14 @@ export interface RetryStatistics {
 }
 
 export class MessageRetryManager {
-	private recentMessagesMap = new LRUCache<string, RecentMessage>({
-		max: RECENT_MESSAGES_SIZE,
-		ttl: 5 * 60 * 1000,
-		ttlAutopurge: true,
-		dispose: (_value: RecentMessage, key: string) => {
-			const separatorIndex = key.lastIndexOf(MESSAGE_KEY_SEPARATOR)
-			if (separatorIndex > -1) {
-				const messageId = key.slice(separatorIndex + MESSAGE_KEY_SEPARATOR.length)
-				this.messageKeyIndex.delete(messageId)
-			}
-		}
-	})
-	private messageKeyIndex = new Map<string, string>()
-	private sessionRecreateHistory = new LRUCache<string, number>({
-		ttl: RECREATE_SESSION_TIMEOUT * 2,
-		ttlAutopurge: true
-	})
-	private retryCounters = new LRUCache<string, number>({
-		ttl: 15 * 60 * 1000,
-		ttlAutopurge: true,
-		updateAgeOnGet: true
-	}) // 15 minutes TTL
+	private recentMessagesMap: LRUCache<string, RecentMessage> | null
+	private messageKeyIndex: Map<string, string> | null
+	private sessionRecreateHistory: LRUCache<string, number> | null
+	private retryCounters: LRUCache<string, number> | null
 	private pendingPhoneRequests: PendingPhoneRequest = {}
+	private cleanupInterval: ReturnType<typeof setInterval> | null = null
 	private readonly maxMsgRetryCount: number = 5
+	private destroyed = false
 	private statistics: RetryStatistics = {
 		totalRetries: 0,
 		successfulRetries: 0,
@@ -78,16 +60,99 @@ export class MessageRetryManager {
 		maxMsgRetryCount: number
 	) {
 		this.maxMsgRetryCount = maxMsgRetryCount
+
+		this.recentMessagesMap = new LRUCache<string, RecentMessage>({
+			max: RECENT_MESSAGES_SIZE,
+			ttl: 5 * 60 * 1000,
+			ttlAutopurge: true,
+			dispose: (_value: RecentMessage, key: string) => {
+				if (this.destroyed || !this.messageKeyIndex) return
+				const separatorIndex = key.lastIndexOf(MESSAGE_KEY_SEPARATOR)
+				if (separatorIndex > -1) {
+					const messageId = key.slice(separatorIndex + MESSAGE_KEY_SEPARATOR.length)
+					this.messageKeyIndex.delete(messageId)
+				}
+			}
+		})
+
+		this.messageKeyIndex = new Map<string, string>()
+
+		this.sessionRecreateHistory = new LRUCache<string, number>({
+			max: 1000,
+			ttl: RECREATE_SESSION_TIMEOUT * 2,
+			ttlAutopurge: true
+		})
+
+		this.retryCounters = new LRUCache<string, number>({
+			max: 1000,
+			ttl: 15 * 60 * 1000,
+			ttlAutopurge: true,
+			updateAgeOnGet: true
+		})
+
+		this.cleanupInterval = setInterval(() => {
+			this.performCleanup()
+		}, CLEANUP_INTERVAL)
 	}
 
-	/**
-	 * Add a recent message to the cache for retry handling
-	 */
+	private performCleanup(): void {
+		if (this.destroyed) return
+
+		try {
+			Object.keys(this.pendingPhoneRequests).forEach(messageId => {
+				const timeout = this.pendingPhoneRequests[messageId]
+				if (timeout) {
+					this.cancelPendingPhoneRequest(messageId)
+				}
+			})
+
+			this.recentMessagesMap?.purgeStale()
+			this.sessionRecreateHistory?.purgeStale()
+			this.retryCounters?.purgeStale()
+
+			this.logger.debug('Performed periodic cleanup of retry manager')
+		} catch (error) {
+			this.logger.error({ error }, 'Error during retry manager cleanup')
+		}
+	}
+
+	destroy(): void {
+		if (this.destroyed) return
+
+		this.destroyed = true
+		this.logger.debug('Destroying message retry manager')
+
+		if (this.cleanupInterval) {
+			clearInterval(this.cleanupInterval)
+			this.cleanupInterval = null
+		}
+
+		Object.keys(this.pendingPhoneRequests).forEach(messageId => {
+			this.cancelPendingPhoneRequest(messageId)
+		})
+		this.pendingPhoneRequests = {}
+
+		this.recentMessagesMap?.clear()
+		this.recentMessagesMap = null
+
+		this.messageKeyIndex?.clear()
+		this.messageKeyIndex = null
+
+		this.sessionRecreateHistory?.clear()
+		this.sessionRecreateHistory = null
+
+		this.retryCounters?.clear()
+		this.retryCounters = null
+
+		this.logger.debug('Message retry manager destroyed')
+	}
+
 	addRecentMessage(to: string, id: string, message: proto.IMessage): void {
+		if (this.destroyed || !this.recentMessagesMap || !this.messageKeyIndex) return
+
 		const key: RecentMessageKey = { to, id }
 		const keyStr = this.keyToString(key)
 
-		// Add new message
 		this.recentMessagesMap.set(keyStr, {
 			message,
 			timestamp: Date.now()
@@ -97,20 +162,19 @@ export class MessageRetryManager {
 		this.logger.debug(`Added message to retry cache: ${to}/${id}`)
 	}
 
-	/**
-	 * Get a recent message from the cache
-	 */
 	getRecentMessage(to: string, id: string): RecentMessage | undefined {
+		if (this.destroyed || !this.recentMessagesMap) return undefined
+
 		const key: RecentMessageKey = { to, id }
 		const keyStr = this.keyToString(key)
 		return this.recentMessagesMap.get(keyStr)
 	}
 
-	/**
-	 * Check if a session should be recreated based on retry count and history
-	 */
 	shouldRecreateSession(jid: string, retryCount: number, hasSession: boolean): { reason: string; recreate: boolean } {
-		// If we don't have a session, always recreate
+		if (this.destroyed || !this.sessionRecreateHistory) {
+			return { reason: 'manager destroyed', recreate: false }
+		}
+
 		if (!hasSession) {
 			this.sessionRecreateHistory.set(jid, Date.now())
 			this.statistics.sessionRecreations++
@@ -120,7 +184,6 @@ export class MessageRetryManager {
 			}
 		}
 
-		// Only consider recreation if retry count > 1
 		if (retryCount < 2) {
 			return { reason: '', recreate: false }
 		}
@@ -128,7 +191,6 @@ export class MessageRetryManager {
 		const now = Date.now()
 		const prevTime = this.sessionRecreateHistory.get(jid)
 
-		// If no previous recreation or it's been more than an hour
 		if (!prevTime || now - prevTime > RECREATE_SESSION_TIMEOUT) {
 			this.sessionRecreateHistory.set(jid, now)
 			this.statistics.sessionRecreations++
@@ -141,69 +203,64 @@ export class MessageRetryManager {
 		return { reason: '', recreate: false }
 	}
 
-	/**
-	 * Increment retry counter for a message
-	 */
 	incrementRetryCount(messageId: string): number {
-		this.retryCounters.set(messageId, (this.retryCounters.get(messageId) || 0) + 1)
+		if (this.destroyed || !this.retryCounters) return 0
+
+		const current = this.retryCounters.get(messageId) || 0
+		const next = current + 1
+		this.retryCounters.set(messageId, next)
 		this.statistics.totalRetries++
-		return this.retryCounters.get(messageId)!
+		return next
 	}
 
-	/**
-	 * Get retry count for a message
-	 */
 	getRetryCount(messageId: string): number {
+		if (this.destroyed || !this.retryCounters) return 0
 		return this.retryCounters.get(messageId) || 0
 	}
 
-	/**
-	 * Check if message has exceeded maximum retry attempts
-	 */
 	hasExceededMaxRetries(messageId: string): boolean {
 		return this.getRetryCount(messageId) >= this.maxMsgRetryCount
 	}
 
-	/**
-	 * Mark retry as successful
-	 */
 	markRetrySuccess(messageId: string): void {
+		if (this.destroyed) return
+
 		this.statistics.successfulRetries++
-		// Clean up retry counter for successful message
-		this.retryCounters.delete(messageId)
+		this.retryCounters?.delete(messageId)
 		this.cancelPendingPhoneRequest(messageId)
 		this.removeRecentMessage(messageId)
 	}
 
-	/**
-	 * Mark retry as failed
-	 */
 	markRetryFailed(messageId: string): void {
+		if (this.destroyed) return
+
 		this.statistics.failedRetries++
-		this.retryCounters.delete(messageId)
+		this.retryCounters?.delete(messageId)
 		this.cancelPendingPhoneRequest(messageId)
 		this.removeRecentMessage(messageId)
 	}
 
-	/**
-	 * Schedule a phone request with delay
-	 */
 	schedulePhoneRequest(messageId: string, callback: () => void, delay: number = PHONE_REQUEST_DELAY): void {
-		// Cancel any existing request for this message
+		if (this.destroyed) return
+
 		this.cancelPendingPhoneRequest(messageId)
 
 		this.pendingPhoneRequests[messageId] = setTimeout(() => {
+			if (this.destroyed) return
+
 			delete this.pendingPhoneRequests[messageId]
 			this.statistics.phoneRequests++
-			callback()
+
+			try {
+				callback()
+			} catch (error) {
+				this.logger.error({ error, messageId }, 'Error executing phone request callback')
+			}
 		}, delay)
 
 		this.logger.debug(`Scheduled phone request for message ${messageId} with ${delay}ms delay`)
 	}
 
-	/**
-	 * Cancel pending phone request
-	 */
 	cancelPendingPhoneRequest(messageId: string): void {
 		const timeout = this.pendingPhoneRequests[messageId]
 		if (timeout) {
@@ -218,6 +275,8 @@ export class MessageRetryManager {
 	}
 
 	private removeRecentMessage(messageId: string): void {
+		if (this.destroyed || !this.recentMessagesMap || !this.messageKeyIndex) return
+
 		const keyStr = this.messageKeyIndex.get(messageId)
 		if (!keyStr) {
 			return
