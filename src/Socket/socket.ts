@@ -620,6 +620,25 @@ export const makeSocket = (config: SocketConfig) => {
 		ws.removeAllListeners('close')
 		ws.removeAllListeners('open')
 		ws.removeAllListeners('message')
+		ws.removeAllListeners('error')
+		ws.removeAllListeners('frame')
+
+		const cbEvents = [
+			'CB:xmlstreamend',
+			'CB:iq,type:set,pair-device',
+			'CB:iq,,pair-success',
+			'CB:success',
+			'CB:stream:error',
+			'CB:failure',
+			'CB:ib,,downgrade_webclient',
+			'CB:ib,,offline_preview',
+			'CB:ib,,edge_routing',
+			'CB:ib,,offline'
+		]
+
+		for (const event of cbEvents) {
+			ws.removeAllListeners(event)
+		}
 
 		if (!ws.isClosed && !ws.isClosing) {
 			try {

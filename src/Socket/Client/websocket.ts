@@ -45,8 +45,15 @@ export class WebSocketClient extends AbstractSocketClient {
 			return
 		}
 
+		const events = ['close', 'error', 'upgrade', 'message', 'open', 'ping', 'pong', 'unexpected-response']
+
+		for (const event of events) {
+			this.socket.removeAllListeners(event)
+		}
+
 		this.socket.close()
 		this.socket = null
+		this.removeAllListeners()
 	}
 	send(str: string | Uint8Array, cb?: (err?: Error) => void): boolean {
 		this.socket?.send(str, cb)
