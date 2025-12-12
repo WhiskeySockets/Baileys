@@ -71,7 +71,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		ev,
 		authState,
 		ws,
-		processingMutex,
+		messageMutex,
+		notificationMutex,
+		receiptMutex,
 		signalRepository,
 		query,
 		upsertMessage,
@@ -142,7 +144,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			throw new Boom('Not authenticated')
 		}
 
-		if (placeholderResendCache.get(messageKey?.id!)) {
+		if (await placeholderResendCache.get(messageKey?.id!)) {
 			logger.debug({ messageKey }, 'already requested resend')
 			return
 		} else {
@@ -151,7 +153,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		await delay(5000)
 
-		if (!placeholderResendCache.get(messageKey?.id!)) {
+		if (!(await placeholderResendCache.get(messageKey?.id!))) {
 			logger.debug({ messageKey }, 'message received while resend requested')
 			return 'RESOLVED'
 		}
@@ -166,7 +168,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		setTimeout(async () => {
-			if (placeholderResendCache.get(messageKey?.id!)) {
+			if (await placeholderResendCache.get(messageKey?.id!)) {
 				logger.debug({ messageKey }, 'PDO message without response after 15 seconds. Phone possibly offline')
 				await placeholderResendCache.del(messageKey?.id!)
 			}
@@ -1067,7 +1069,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		try {
 			await Promise.all([
-				processingMutex.mutex(async () => {
+				receiptMutex.mutex(async () => {
 					const status = getStatusFromReceiptType(attrs.type)
 					if (
 						typeof status !== 'undefined' &&
@@ -1141,7 +1143,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		try {
 			await Promise.all([
-				processingMutex.mutex(async () => {
+				notificationMutex.mutex(async () => {
 					const msg = await processNotification(node)
 					if (msg) {
 						const fromMe = areJidsSameUser(node.attrs.participant || remoteJid, authState.creds.me!.id)
@@ -1218,7 +1220,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		try {
-			await processingMutex.mutex(async () => {
+			await messageMutex.mutex(async () => {
 				await decrypt()
 				// message failed to decrypt
 				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
@@ -1275,6 +1277,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						await sendMessageAck(node, NACK_REASONS.UnhandledError)
 					})
 				} else {
+					if (messageRetryManager && msg.key.id) {
+						messageRetryManager.cancelPendingPhoneRequest(msg.key.id)
+					}
+
 					const isNewsletter = isJidNewsletter(msg.key.remoteJid!)
 					if (!isNewsletter) {
 						// no type in the receipt => message delivered
