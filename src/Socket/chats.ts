@@ -919,7 +919,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	/**
 	 * Update Member Label
 	 */
-
 	const updateMemberLabel = (jid: string, memberLabel: string) => {
 		return relayMessage(jid, {
 			protocolMessage: {
