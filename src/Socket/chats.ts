@@ -64,8 +64,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		appStateMacVerification,
 		shouldIgnoreJid,
 		shouldSyncHistoryMessage,
-		getMessage,
-		relayMessage, // Adding Member label feature in group, line (922)
+		getMessage
 	} = config
 	const sock = makeSocket(config)
 	const { ev, ws, authState, generateMessageTag, sendNode, query, signalRepository, onUnexpectedError } = sock
@@ -916,32 +915,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	/**
-	 * Adding Labels to Member
-	 */
-
-	const addLabelMember = (jid: string, memberLabel: string) => {
-		return relayMessage(jid, {
-			protocolMessage: {
-        type: 30,
-        memberLabel: {
-          label: memberLabel?.slice(0, 30),
-          labelTimestamp: Date.now()
-        }
-      }
-    }, 
-	  {
-			additionalNodes: [{
-				tag: "meta",
-				attrs: {
-					tag_reason: "user_update",
-					appdata: "member_tag"
-				},
-				content: undefined
-			}]
-		})
-	}
-
-	/**
 	 * Adds label
 	 */
 	const addLabel = (jid: string, labels: LabelActionBody) => {
@@ -1239,7 +1212,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		addOrEditContact,
 		removeContact,
 		addLabel,
-		addLabelMember,
 		addChatLabel,
 		removeChatLabel,
 		addMessageLabel,
