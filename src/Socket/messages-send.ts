@@ -1098,8 +1098,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 								content.url = getUrlFromDirectPath(content.directPath!)
 
 								logger.debug({ directPath: media.directPath, key: result.key }, 'media update successful')
-							} catch (err: any) {
-								error = err
+							} catch (err) {
+								error = err instanceof Error ? err : new Error(String(err))
 							}
 						}
 

@@ -826,9 +826,9 @@ export const makeSocket = (config: SocketConfig) => {
 	ws.on('open', async () => {
 		try {
 			await validateConnection()
-		} catch (err: any) {
+		} catch (err) {
 			logger.error({ err }, 'error in validating connection')
-			end(err)
+			end(err instanceof Error ? err : new Error(String(err)))
 		}
 	})
 	ws.on('error', mapWebSocketError(end))
@@ -894,9 +894,9 @@ export const makeSocket = (config: SocketConfig) => {
 			ev.emit('connection.update', { isNewLogin: true, qr: undefined })
 
 			await sendNode(reply)
-		} catch (error: any) {
-			logger.info({ trace: error.stack }, 'error in pairing')
-			end(error)
+		} catch (error) {
+			logger.info({ trace: error instanceof Error ? error.stack : error }, 'error in pairing')
+			end(error instanceof Error ? error : new Error(String(error)))
 		}
 	})
 	// login complete

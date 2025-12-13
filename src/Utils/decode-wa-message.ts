@@ -319,20 +319,21 @@ export const decryptMessageNode = (
 						} else {
 							fullMessage.message = msg
 						}
-					} catch (err: any) {
+					} catch (err) {
+						const error = err instanceof Error ? err : new Error(String(err))
 						const errorContext = {
 							key: fullMessage.key,
-							err,
+							err: error,
 							messageType: tag === 'plaintext' ? 'plaintext' : attrs.type,
 							sender,
 							author,
-							isSessionRecordError: isSessionRecordError(err)
+							isSessionRecordError: isSessionRecordError(error)
 						}
 
 						logger.error(errorContext, 'failed to decrypt message')
 
 						fullMessage.messageStubType = proto.WebMessageInfo.StubType.CIPHERTEXT
-						fullMessage.messageStubParameters = [err.message.toString()]
+						fullMessage.messageStubParameters = [error.message]
 					}
 				}
 			}

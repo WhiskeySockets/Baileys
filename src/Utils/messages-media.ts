@@ -621,16 +621,16 @@ export const downloadEncryptedContent = async (
 			try {
 				pushBytes(aes.update(data), b => this.push(b))
 				callback()
-			} catch (error: any) {
-				callback(error)
+			} catch (error) {
+				callback(error instanceof Error ? error : new Error(String(error)))
 			}
 		},
 		final(callback) {
 			try {
 				pushBytes(aes.final(), b => this.push(b))
 				callback()
-			} catch (error: any) {
-				callback(error)
+			} catch (error) {
+				callback(error instanceof Error ? error : new Error(String(error)))
 			}
 		}
 	})
@@ -864,10 +864,10 @@ export const getWAUploadToServer = (
 					uploadInfo = await refreshMediaConn(true)
 					throw new Error(`upload failed, reason: ${JSON.stringify(result)}`)
 				}
-			} catch (error: any) {
+			} catch (error) {
 				const isLast = hostname === hosts[uploadInfo.hosts.length - 1]?.hostname
 				logger.warn(
-					{ trace: error?.stack, uploadResult: result },
+					{ trace: error instanceof Error ? error.stack : error, uploadResult: result },
 					`Error in uploading to ${hostname} ${isLast ? '' : ', retrying...'}`
 				)
 			}
