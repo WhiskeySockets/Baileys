@@ -917,20 +917,20 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	/**
-	 *  update Member Label
+	 * Update Member Label
 	 */
 
 	const updateMemberLabel = (jid: string, memberLabel: string) => {
 		return relayMessage(jid, {
 			protocolMessage: {
-        type: proto.Message.ProtocolMessage.Type.GROUP_MEMBER_LABEL_CHANGE,
-        memberLabel: {
-          label: memberLabel?.slice(0, 30),
-          labelTimestamp: unixTimestampSeconds()
-        }
-      }
-    }, 
-	  {
+            	type: proto.Message.ProtocolMessage.Type.GROUP_MEMBER_LABEL_CHANGE,
+        		memberLabel: {
+          			label: memberLabel?.slice(0, 30),
+          			labelTimestamp: unixTimestampSeconds()
+        		}
+      		}
+    	}, 
+		{
 			additionalNodes: [{
 				tag: "meta",
 				attrs: {
@@ -966,7 +966,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					labelId
 				}
 			},
-			jid		
+			jid
 		)
 	}
 
@@ -1233,13 +1233,13 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		updateReadReceiptsPrivacy,
 		updateGroupsAddPrivacy,
 		updateDefaultDisappearingMode,
+		updateMemberLabel,
 		getBusinessProfile,
 		resyncAppState,
 		chatModify,
 		cleanDirtyBits,
 		addOrEditContact,
 		removeContact,
-		updateMemberLabel,
 		addLabel,
 		addChatLabel,
 		removeChatLabel,
