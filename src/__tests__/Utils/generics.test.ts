@@ -498,8 +498,8 @@ describe('bytesToCrockford', () => {
 	it('should use crockford characters only', () => {
 		const buffer = Buffer.from([0x00, 0xFF, 0x55, 0xAA])
 		const result = bytesToCrockford(buffer)
-		// Crockford excludes: I, L, O, U
-		expect(result).not.toMatch(/[ILOU0]/i)
+		// Crockford excludes: 0, I, L, O, U
+		expect(result).not.toMatch(/[0ILOU]/i)
 	})
 })
 

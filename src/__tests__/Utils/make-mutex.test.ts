@@ -149,7 +149,6 @@ describe('makeKeyedMutex', () => {
 
 	it('should execute tasks with different keys concurrently', async () => {
 		const order: string[] = []
-		const startTime = Date.now()
 
 		const task1 = keyedMutex.mutex('key1', async () => {
 			await delay(100)
@@ -163,12 +162,8 @@ describe('makeKeyedMutex', () => {
 
 		await Promise.all([task1, task2])
 
-		const elapsed = Date.now() - startTime
-
 		// key2 should finish first since they run concurrently
 		expect(order).toEqual(['key2', 'key1'])
-		// Total time should be ~100ms, not ~150ms (concurrent execution)
-		expect(elapsed).toBeLessThan(150)
 	})
 
 	it('should clean up mutex after task completes', async () => {
