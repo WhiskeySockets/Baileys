@@ -104,8 +104,9 @@ export const getUrlInfo = async (
 			return urlInfo
 		}
 	} catch (error) {
-		if (!(error instanceof Error) || !error.message.includes('receive a valid')) {
-			throw error
+		if (error instanceof Error && error.message.includes('receive a valid')) {
+			return
 		}
+		throw error
 	}
 }
