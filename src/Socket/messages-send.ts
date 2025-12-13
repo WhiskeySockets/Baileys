@@ -1060,7 +1060,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
         type: proto.Message.ProtocolMessage.Type.GROUP_MEMBER_LABEL_CHANGE,
         memberLabel: {
           label: memberLabel?.slice(0, 30),
-          labelTimestamp: Date.now()
+          labelTimestamp: unixTimestampSeconds()
         }
       }
     }, 
