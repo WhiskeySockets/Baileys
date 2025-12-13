@@ -39,7 +39,8 @@ import {
 	generateProfilePicture,
 	getHistoryMsg,
 	newLTHashState,
-	processSyncAction
+	processSyncAction,
+	unixTimestampSeconds
 } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
 import processMessage from '../Utils/process-message'
@@ -64,7 +65,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		appStateMacVerification,
 		shouldIgnoreJid,
 		shouldSyncHistoryMessage,
-		getMessage
+		getMessage,
+		relayMessage
 	} = config
 	const sock = makeSocket(config)
 	const { ev, ws, authState, generateMessageTag, sendNode, query, signalRepository, onUnexpectedError } = sock
@@ -915,6 +917,32 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	/**
+	 *  update Member Label
+	 */
+
+	const updateMemberLabel = (jid: string, memberLabel: string) => {
+		return relayMessage(jid, {
+			protocolMessage: {
+        type: proto.Message.ProtocolMessage.Type.GROUP_MEMBER_LABEL_CHANGE,
+        memberLabel: {
+          label: memberLabel?.slice(0, 30),
+          labelTimestamp: unixTimestampSeconds()
+        }
+      }
+    }, 
+	  {
+			additionalNodes: [{
+				tag: "meta",
+				attrs: {
+					tag_reason: "user_update",
+					appdata: "member_tag"
+				},
+				content: undefined
+			}]
+		})
+	}
+
+	/**
 	 * Adds label
 	 */
 	const addLabel = (jid: string, labels: LabelActionBody) => {
@@ -938,7 +966,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					labelId
 				}
 			},
-			jid
+			jid		
 		)
 	}
 
@@ -1211,6 +1239,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		cleanDirtyBits,
 		addOrEditContact,
 		removeContact,
+		updateMemberLabel,
 		addLabel,
 		addChatLabel,
 		removeChatLabel,
