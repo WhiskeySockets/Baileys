@@ -42,6 +42,21 @@ export type WAMediaUpload = Buffer | WAMediaPayloadStream | WAMediaPayloadURL
 /** Set of message types that are supported by the library */
 export type MessageType = keyof proto.Message
 
+export type Sticker = {
+	data: WAMediaUpload
+	emojis?: string[]
+	accessibilityLabel?: string
+}
+
+export type StickerPack = {
+	stickers: Sticker[]
+	cover: WAMediaUpload
+	name: string
+	publisher: string
+	description?: string
+	packId?: string
+}
+
 export enum WAMessageAddressingMode {
 	PN = 'pn',
 	LID = 'lid'
@@ -223,6 +238,7 @@ export type AnyRegularMessageContent = (
 			Contextable &
 			Editable)
 	| AnyMediaMessageContent
+	| { stickerPack: StickerPack }
 	| { event: EventMessageOptions }
 	| ({
 			poll: PollMessageOptions
