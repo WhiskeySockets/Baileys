@@ -1,7 +1,7 @@
 syntax = "proto3";
 package proto;
 
-/// WhatsApp Version: 2.3000.1031065906
+/// WhatsApp Version: 2.3000.1031065014
 
 message ADVDeviceIdentity {
     optional uint32 rawId = 1;
@@ -1028,10 +1028,10 @@ message ChatRowOpaqueData {
 }
 
 message Citation {
-    required string title = 1;
-    required string subtitle = 2;
-    required string cmsId = 3;
-    required string imageUrl = 4;
+    string title = 1;
+    string subtitle = 2;
+    string cmsId = 3;
+    string imageUrl = 4;
 }
 
 message ClientPairingProps {
@@ -1507,7 +1507,7 @@ message ContextInfo {
 }
 
 message Conversation {
-    required string id = 1;
+    string id = 1;
     repeated HistorySyncMsg messages = 2;
     optional string newJid = 3;
     optional string oldJid = 4;
@@ -1835,7 +1835,7 @@ message GroupMention {
 }
 
 message GroupParticipant {
-    required string userJid = 1;
+    string userJid = 1;
     optional Rank rank = 2;
     optional MemberLabel memberLabel = 3;
     enum Rank {
@@ -1873,7 +1873,7 @@ message HandshakeMessage {
 }
 
 message HistorySync {
-    required HistorySyncType syncType = 1;
+    HistorySyncType syncType = 1;
     repeated Conversation conversations = 2;
     repeated WebMessageInfo statusV3Messages = 3;
     optional uint32 chunkOrder = 5;
@@ -2033,8 +2033,8 @@ message KeyId {
 }
 
 message LIDMigrationMapping {
-    required uint64 pn = 1;
-    required uint64 assignedLid = 2;
+    uint64 pn = 1;
+    uint64 assignedLid = 2;
     optional uint64 latestLid = 3;
 }
 
@@ -3647,10 +3647,10 @@ message Message {
     }
     
     message VideoEndCard {
-        required string username = 1;
-        required string caption = 2;
-        required string thumbnailImageUrl = 3;
-        required string profilePictureUrl = 4;
+        string username = 1;
+        string caption = 2;
+        string thumbnailImageUrl = 3;
+        string profilePictureUrl = 4;
     }
     
     message VideoMessage {
@@ -4479,7 +4479,7 @@ message StatusMentionMessage {
 }
 
 message StatusPSA {
-    required uint64 campaignId = 44;
+    uint64 campaignId = 44;
     optional uint64 campaignExpirationTimestamp = 45;
 }
 
@@ -4611,7 +4611,7 @@ message SyncActionValue {
     }
     
     message BroadcastListParticipant {
-        required string lidJid = 1;
+        string lidJid = 1;
         optional string pnJid = 2;
     }
     
@@ -4655,15 +4655,15 @@ message SyncActionValue {
     }
     
     message CustomPaymentMethod {
-        required string credentialId = 1;
-        required string country = 2;
-        required string type = 3;
+        string credentialId = 1;
+        string country = 2;
+        string type = 3;
         repeated SyncActionValue.CustomPaymentMethodMetadata metadata = 4;
     }
     
     message CustomPaymentMethodMetadata {
-        required string key = 1;
-        required string value = 2;
+        string key = 1;
+        string value = 2;
     }
     
     message CustomPaymentMethodsAction {
@@ -4701,7 +4701,7 @@ message SyncActionValue {
     }
     
     message InteractiveMessageAction {
-        required InteractiveMessageActionMode type = 1;
+        InteractiveMessageActionMode type = 1;
         enum InteractiveMessageActionMode {
             DISABLE_CTA = 1;
         }
@@ -4789,8 +4789,8 @@ message SyncActionValue {
     }
     
     message MerchantPaymentPartnerAction {
-        required Status status = 1;
-        required string country = 2;
+        Status status = 1;
+        string country = 2;
         optional string gatewayName = 3;
         optional string credentialId = 4;
         enum Status {
@@ -4845,8 +4845,8 @@ message SyncActionValue {
     }
     
     message PaymentTosAction {
-        required PaymentNotice paymentNotice = 1;
-        required bool accepted = 2;
+        PaymentNotice paymentNotice = 1;
+        bool accepted = 2;
         enum PaymentNotice {
             BR_PAY_PRIVACY_POLICY = 0;
         }
@@ -5194,7 +5194,7 @@ message UserPassword {
 }
 
 message UserReceipt {
-    required string userJid = 1;
+    string userJid = 1;
     optional int64 receiptTimestamp = 2;
     optional int64 readTimestamp = 3;
     optional int64 playedTimestamp = 4;
@@ -5280,7 +5280,7 @@ enum WebLinkRenderConfig {
     SYSTEM = 1;
 }
 message WebMessageInfo {
-    required MessageKey key = 1;
+    MessageKey key = 1;
     optional Message message = 2;
     optional uint64 messageTimestamp = 3;
     optional Status status = 4;
