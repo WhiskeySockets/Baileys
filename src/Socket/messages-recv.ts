@@ -71,7 +71,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		ev,
 		authState,
 		ws,
-		processingMutex,
+		messageMutex,
+		notificationMutex,
+		receiptMutex,
 		signalRepository,
 		query,
 		upsertMessage,
@@ -142,7 +144,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			throw new Boom('Not authenticated')
 		}
 
-		if (placeholderResendCache.get(messageKey?.id!)) {
+		if (await placeholderResendCache.get(messageKey?.id!)) {
 			logger.debug({ messageKey }, 'already requested resend')
 			return
 		} else {
@@ -151,7 +153,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		await delay(5000)
 
-		if (!placeholderResendCache.get(messageKey?.id!)) {
+		if (!(await placeholderResendCache.get(messageKey?.id!))) {
 			logger.debug({ messageKey }, 'message received while resend requested')
 			return 'RESOLVED'
 		}
@@ -166,7 +168,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		setTimeout(async () => {
-			if (placeholderResendCache.get(messageKey?.id!)) {
+			if (await placeholderResendCache.get(messageKey?.id!)) {
 				logger.debug({ messageKey }, 'PDO message without response after 15 seconds. Phone possibly offline')
 				await placeholderResendCache.del(messageKey?.id!)
 			}
@@ -1067,7 +1069,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		try {
 			await Promise.all([
-				processingMutex.mutex(async () => {
+				receiptMutex.mutex(async () => {
 					const status = getStatusFromReceiptType(attrs.type)
 					if (
 						typeof status !== 'undefined' &&
@@ -1141,7 +1143,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		try {
 			await Promise.all([
-				processingMutex.mutex(async () => {
+				notificationMutex.mutex(async () => {
 					const msg = await processNotification(node)
 					if (msg) {
 						const fromMe = areJidsSameUser(node.attrs.participant || remoteJid, authState.creds.me!.id)
@@ -1218,7 +1220,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		try {
-			await processingMutex.mutex(async () => {
+			await messageMutex.mutex(async () => {
 				await decrypt()
 				// message failed to decrypt
 				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
@@ -1275,6 +1277,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						await sendMessageAck(node, NACK_REASONS.UnhandledError)
 					})
 				} else {
+					if (messageRetryManager && msg.key.id) {
+						messageRetryManager.cancelPendingPhoneRequest(msg.key.id)
+					}
+
 					const isNewsletter = isJidNewsletter(msg.key.remoteJid!)
 					if (!isNewsletter) {
 						// no type in the receipt => message delivered
@@ -1433,6 +1439,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		node: BinaryNode
 	}
 
+	/** Yields control to the event loop to prevent blocking */
+	const yieldToEventLoop = (): Promise<void> => {
+		return new Promise(resolve => setImmediate(resolve))
+	}
+
 	const makeOfflineNodeProcessor = () => {
 		const nodeProcessorMap: Map<MessageType, (node: BinaryNode) => Promise<void>> = new Map([
 			['message', handleMessage],
@@ -1442,6 +1453,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		])
 		const nodes: OfflineNode[] = []
 		let isProcessing = false
+
+		// Number of nodes to process before yielding to event loop
+		const BATCH_SIZE = 10
 
 		const enqueue = (type: MessageType, node: BinaryNode) => {
 			nodes.push({ type, node })
@@ -1453,6 +1467,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			isProcessing = true
 
 			const promise = async () => {
+				let processedInBatch = 0
+
 				while (nodes.length && ws.isOpen) {
 					const { type, node } = nodes.shift()!
 
@@ -1464,6 +1480,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 
 					await nodeProcessor(node)
+					processedInBatch++
+
+					// Yield to event loop after processing a batch
+					// This prevents blocking the event loop for too long when there are many offline nodes
+					if (processedInBatch >= BATCH_SIZE) {
+						processedInBatch = 0
+						await yieldToEventLoop()
+					}
 				}
 
 				isProcessing = false
