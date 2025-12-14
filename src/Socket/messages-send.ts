@@ -1049,6 +1049,31 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		return result
 	}
+	
+	/**
+	 * Update Member Label
+	 */
+	const updateMemberLabel = (jid: string, memberLabel: string) => {
+		return relayMessage(jid, {
+			protocolMessage: {
+            	type: proto.Message.ProtocolMessage.Type.GROUP_MEMBER_LABEL_CHANGE,
+        		memberLabel: {
+          			label: memberLabel?.slice(0, 30),
+          			labelTimestamp: unixTimestampSeconds()
+        		}
+      		}
+    	}, 
+		{
+			additionalNodes: [{
+				tag: "meta",
+				attrs: {
+					tag_reason: "user_update",
+					appdata: "member_tag"
+				},
+				content: undefined
+			}]
+		})
+	}
 
 	const waUploadToServer = getWAUploadToServer(config, refreshMediaConn)
 
@@ -1069,6 +1094,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		createParticipantNodes,
 		getUSyncDevices,
 		messageRetryManager,
+		updateMemberLabel,				
 		updateMediaMessage: async (message: WAMessage) => {
 			const content = assertMediaContent(message.message)
 			const mediaKey = content.mediaKey!

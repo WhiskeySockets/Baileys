@@ -40,7 +40,6 @@ import {
 	getHistoryMsg,
 	newLTHashState,
 	processSyncAction,
-	unixTimestampSeconds
 } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
 import processMessage from '../Utils/process-message'
@@ -65,8 +64,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		appStateMacVerification,
 		shouldIgnoreJid,
 		shouldSyncHistoryMessage,
-		getMessage,
-		relayMessage
+		getMessage
 	} = config
 	const sock = makeSocket(config)
 	const { ev, ws, authState, generateMessageTag, sendNode, query, signalRepository, onUnexpectedError } = sock
@@ -914,32 +912,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			},
 			jid
 		)
-	}
-
-	/**
-	 * Update Member Label
-	 */
-	const updateMemberLabel = (jid: string, memberLabel: string) => {
-		return relayMessage(jid, {
-			protocolMessage: {
-            	type: proto.Message.ProtocolMessage.Type.GROUP_MEMBER_LABEL_CHANGE,
-        		memberLabel: {
-          			label: memberLabel?.slice(0, 30),
-          			labelTimestamp: unixTimestampSeconds()
-        		}
-      		}
-    	}, 
-		{
-			additionalNodes: [{
-				tag: "meta",
-				attrs: {
-					tag_reason: "user_update",
-					appdata: "member_tag"
-				},
-				content: undefined
-			}]
-		})
-	}
+	}	
 
 	/**
 	 * Adds label
@@ -1232,7 +1205,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		updateReadReceiptsPrivacy,
 		updateGroupsAddPrivacy,
 		updateDefaultDisappearingMode,
-		updateMemberLabel,
 		getBusinessProfile,
 		resyncAppState,
 		chatModify,
