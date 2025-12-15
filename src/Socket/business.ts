@@ -23,7 +23,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 
 		node.push(
 			...simpleFields
-				.filter(key => args[key])
+				.filter(key => args[key] !== undefined && args[key] !== null)
 				.map(key => ({
 					tag: key,
 					attrs: {},
@@ -42,29 +42,32 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 		}
 
 		if (args.hours) {
-			node.push({
-				tag: 'business_hours',
-				attrs: { timezone: args.hours.timezone },
-				content: args.hours.days.map(config => {
-					const base = {
-						tag: 'business_hours_config',
-						attrs: { day_of_week: config.day, mode: config.mode }
-					}
-
-					if (config.mode === 'specific_hours') {
-						return {
-							...base,
-							attrs: {
-								...base.attrs,
-								open_time: config.openTimeInMinutes,
-								close_time: config.closeTimeInMinutes
-							}
-						}
-					}
-
-					return base
-				})
-			})
+		    node.push({
+		        tag: 'business_hours',
+		        attrs: { timezone: args.hours.timezone },
+		        content: args.hours.days.map(dayConfig => {
+		            const base = {
+		                tag: 'business_hours_config',
+		                attrs: { 
+		                    day_of_week: dayConfig.day, 
+		                    mode: dayConfig.mode 
+		                }
+		            }
+		
+		            if (dayConfig.mode === 'specific_hours') {
+		                return {
+		                    ...base,
+		                    attrs: {
+		                        ...base.attrs,
+		                        open_time: dayConfig.openTimeInMinutes,
+		                        close_time: dayConfig.closeTimeInMinutes
+		                    }
+		                }
+		            }
+		
+		            return base
+		        })
+		    })
 		}
 
 		const result = await query({
