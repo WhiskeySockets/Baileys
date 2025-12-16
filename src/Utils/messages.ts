@@ -714,7 +714,11 @@ export const generateWAMessageContent = async (
 		}
 		
 		if('media' in message){
-		    interactiveMessage.header.hasMediaAttachment = true;
+			if (!interactiveMessage.header) {
+				interactiveMessage.header = { hasMediaAttachment: true };
+			} else {
+				interactiveMessage.header.hasMediaAttachment = true;
+			}
 		}
 
 		if('contextInfo' in message && !!message.contextInfo) {
