@@ -379,18 +379,20 @@ type EncryptedStreamOptions = {
 	saveOriginalFileIfRequired?: boolean
 	logger?: ILogger
 	opts?: RequestInit
+	/** Optional media key to use for encryption. If not provided, a random key will be generated. */
+	mediaKey?: Buffer
 }
 
 export const encryptedStream = async (
 	media: WAMediaUpload,
 	mediaType: MediaType,
-	{ logger, saveOriginalFileIfRequired, opts }: EncryptedStreamOptions = {}
+	{ logger, saveOriginalFileIfRequired, opts, mediaKey: providedMediaKey }: EncryptedStreamOptions = {}
 ) => {
 	const { stream, type } = await getStream(media, opts)
 
 	logger?.debug('fetched media stream')
 
-	const mediaKey = Crypto.randomBytes(32)
+	const mediaKey = providedMediaKey || Crypto.randomBytes(32)
 	const { cipherKey, iv, macKey } = await getMediaKeys(mediaKey, mediaType)
 
 	const encFilePath = join(getTmpFilesDirectory(), mediaType + generateMessageIDV2() + '-enc')

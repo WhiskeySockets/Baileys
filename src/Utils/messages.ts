@@ -1091,13 +1091,26 @@ async function prepareStickerPackMessage(
 		const buffer = await toBuffer(stream)
 
 		let webpBuffer: Buffer
+		// Check if the buffer is already WebP (starts with RIFF....WEBP)
+		const isWebP =
+			buffer[0] === 0x52 &&
+			buffer[1] === 0x49 &&
+			buffer[2] === 0x46 &&
+			buffer[3] === 0x46 &&
+			buffer[8] === 0x57 &&
+			buffer[9] === 0x45 &&
+			buffer[10] === 0x42 &&
+			buffer[11] === 0x50
+
 		if ('sharp' in lib && lib.sharp) {
 			webpBuffer = await lib.sharp.default(buffer).webp().toBuffer()
-		} else if ('jimp' in lib && lib.jimp) {
-			const jimpImage = await lib.jimp.Jimp.read(buffer)
-			webpBuffer = await jimpImage.getBuffer('image/jpeg')
+		} else if (isWebP) {
+			// If already WebP and no sharp available, use as-is
+			webpBuffer = buffer
 		} else {
-			throw new Boom('No image processing library available for converting sticker to WebP')
+			throw new Boom(
+				'No image processing library (sharp) available for converting sticker to WebP. Either install sharp or provide stickers in WebP format.'
+			)
 		}
 
 		if (webpBuffer.length > 1024 * 1024) {
@@ -1117,6 +1130,35 @@ async function prepareStickerPackMessage(
 	})
 
 	const stickerMetadata = await Promise.all(stickerPromises)
+
+	// Process and add cover/tray icon to the ZIP
+	const trayIconFileName = `${stickerPackIdValue}.webp`
+	const { stream: coverStream } = await getStream(stickerPack.cover)
+	const coverBuffer = await toBuffer(coverStream)
+
+	let coverWebpBuffer: Buffer
+	const isCoverWebP =
+		coverBuffer[0] === 0x52 &&
+		coverBuffer[1] === 0x49 &&
+		coverBuffer[2] === 0x46 &&
+		coverBuffer[3] === 0x46 &&
+		coverBuffer[8] === 0x57 &&
+		coverBuffer[9] === 0x45 &&
+		coverBuffer[10] === 0x42 &&
+		coverBuffer[11] === 0x50
+
+	if ('sharp' in lib && lib.sharp) {
+		coverWebpBuffer = await lib.sharp.default(coverBuffer).webp().toBuffer()
+	} else if (isCoverWebP) {
+		coverWebpBuffer = coverBuffer
+	} else {
+		throw new Boom(
+			'No image processing library (sharp) available for converting cover to WebP. Either install sharp or provide cover in WebP format.'
+		)
+	}
+
+	// Add cover to ZIP data
+	stickerData[trayIconFileName] = [new Uint8Array(coverWebpBuffer), { level: 0 as 0 }]
 
 	const zipBuffer = await new Promise<Buffer>((resolve, reject) => {
 		zip(stickerData, (err, data) => {
@@ -1159,17 +1201,17 @@ async function prepareStickerPackMessage(
 		fileLength: stickerPackUpload.fileLength,
 		mediaKeyTimestamp: unixTimestampSeconds(),
 
-		trayIconFileName: `${stickerPackIdValue}.png`
+		trayIconFileName: trayIconFileName
 	}
 
 	try {
-		const trayBuffer = await toBuffer((await getStream(stickers[0]!?.data)).stream)
+		// Reuse the cover buffer we already processed for thumbnail generation
 		let thumbnailBuffer: Buffer
 
 		if ('sharp' in lib && lib.sharp) {
-			thumbnailBuffer = await lib.sharp.default(trayBuffer).resize(252, 252).jpeg().toBuffer()
+			thumbnailBuffer = await lib.sharp.default(coverBuffer).resize(252, 252).jpeg().toBuffer()
 		} else if ('jimp' in lib && lib.jimp) {
-			const jimpImage = await lib.jimp.Jimp.read(trayBuffer)
+			const jimpImage = await lib.jimp.Jimp.read(coverBuffer)
 			thumbnailBuffer = await jimpImage.resize({ w: 252, h: 252 }).getBuffer('image/jpeg')
 		} else {
 			throw new Error('No image processing library available for thumbnail generation')
@@ -1179,14 +1221,15 @@ async function prepareStickerPackMessage(
 			throw new Error('Failed to generate thumbnail buffer')
 		}
 
-		const thumbUpload = await encryptedStream(thumbnailBuffer, 'image', {
+		const thumbUpload = await encryptedStream(thumbnailBuffer, 'thumbnail-sticker-pack', {
 			logger: options.logger,
-			opts: options.options
+			opts: options.options,
+			mediaKey: stickerPackUpload.mediaKey // Use same mediaKey as the sticker pack ZIP
 		})
 
 		const thumbUploadResult = await options.upload(thumbUpload.encFilePath, {
 			fileEncSha256B64: thumbUpload.fileEncSha256.toString('base64'),
-			mediaType: 'image',
+			mediaType: 'thumbnail-sticker-pack',
 			timeoutMs: options.mediaUploadTimeoutMs
 		})
 
