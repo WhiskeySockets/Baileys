@@ -75,7 +75,7 @@ export function makeCacheableSignalKeyStore(
 						const item = fetched[id]
 						if (item) {
 							data[id] = item
-							cache.set(getUniqueId(type, id), item)
+							await cache.set(getUniqueId(type, id), item as SignalDataTypeMap[keyof SignalDataTypeMap])
 						}
 					}
 				}
@@ -118,9 +118,12 @@ export const addTransactionCapability = (
 ): SignalKeyStoreWithTransaction => {
 	const txStorage = new AsyncLocalStorage<TransactionContext>()
 
-	// Queues for concurrency control
+	// Queues for concurrency control (keyed by signal data type - bounded set)
 	const keyQueues = new Map<string, PQueue>()
+
+	// Transaction mutexes with reference counting for cleanup
 	const txMutexes = new Map<string, Mutex>()
+	const txMutexRefCounts = new Map<string, number>()
 
 	// Pre-key manager for specialized operations
 	const preKeyManager = new PreKeyManager(state, logger)
@@ -142,9 +145,35 @@ export const addTransactionCapability = (
 	function getTxMutex(key: string): Mutex {
 		if (!txMutexes.has(key)) {
 			txMutexes.set(key, new Mutex())
+			txMutexRefCounts.set(key, 0)
 		}
 
 		return txMutexes.get(key)!
+	}
+
+	/**
+	 * Acquire a reference to a transaction mutex
+	 */
+	function acquireTxMutexRef(key: string): void {
+		const count = txMutexRefCounts.get(key) ?? 0
+		txMutexRefCounts.set(key, count + 1)
+	}
+
+	/**
+	 * Release a reference to a transaction mutex and cleanup if no longer needed
+	 */
+	function releaseTxMutexRef(key: string): void {
+		const count = (txMutexRefCounts.get(key) ?? 1) - 1
+		txMutexRefCounts.set(key, count)
+
+		// Cleanup if no more references and mutex is not locked
+		if (count <= 0) {
+			const mutex = txMutexes.get(key)
+			if (mutex && !mutex.isLocked()) {
+				txMutexes.delete(key)
+				txMutexRefCounts.delete(key)
+			}
+		}
 	}
 
 	/**
@@ -279,29 +308,36 @@ export const addTransactionCapability = (
 			}
 
 			// New transaction - acquire mutex and create context
-			return getTxMutex(key).runExclusive(async () => {
-				const ctx: TransactionContext = {
-					cache: {},
-					mutations: {},
-					dbQueries: 0
-				}
+			const mutex = getTxMutex(key)
+			acquireTxMutexRef(key)
 
-				logger.trace('entering transaction')
+			try {
+				return await mutex.runExclusive(async () => {
+					const ctx: TransactionContext = {
+						cache: {},
+						mutations: {},
+						dbQueries: 0
+					}
 
-				try {
-					const result = await txStorage.run(ctx, work)
+					logger.trace('entering transaction')
 
-					// Commit mutations
-					await commitWithRetry(ctx.mutations)
+					try {
+						const result = await txStorage.run(ctx, work)
 
-					logger.trace({ dbQueries: ctx.dbQueries }, 'transaction completed')
+						// Commit mutations
+						await commitWithRetry(ctx.mutations)
 
-					return result
-				} catch (error) {
-					logger.error({ error }, 'transaction failed, rolling back')
-					throw error
-				}
-			})
+						logger.trace({ dbQueries: ctx.dbQueries }, 'transaction completed')
+
+						return result
+					} catch (error) {
+						logger.error({ error }, 'transaction failed, rolling back')
+						throw error
+					}
+				})
+			} finally {
+				releaseTxMutexRef(key)
+			}
 		}
 	}
 }

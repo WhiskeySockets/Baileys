@@ -30,7 +30,9 @@ import {
 	getNextPreKeysNode,
 	makeEventBuffer,
 	makeNoiseHandler,
-	promiseTimeout
+	promiseTimeout,
+	signedKeyPair,
+	xmppSignedPreKey
 } from '../Utils'
 import { getPlatformId } from '../Utils/browser-utils'
 import {
@@ -38,6 +40,7 @@ import {
 	type BinaryNode,
 	binaryNodeToString,
 	encodeBinaryNode,
+	getAllBinaryNodeChildren,
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
 	isLidUser,
@@ -201,6 +204,39 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 
 		return result
+	}
+
+	// Validate current key-bundle on server; on failure, trigger pre-key upload and rethrow
+	const digestKeyBundle = async (): Promise<void> => {
+		const res = await query({
+			tag: 'iq',
+			attrs: { to: S_WHATSAPP_NET, type: 'get', xmlns: 'encrypt' },
+			content: [{ tag: 'digest', attrs: {} }]
+		})
+		const digestNode = getBinaryNodeChild(res, 'digest')
+		if (!digestNode) {
+			await uploadPreKeys()
+			throw new Error('encrypt/get digest returned no digest node')
+		}
+	}
+
+	// Rotate our signed pre-key on server; on failure, run digest as fallback and rethrow
+	const rotateSignedPreKey = async (): Promise<void> => {
+		const newId = (creds.signedPreKey.keyId || 0) + 1
+		const skey = await signedKeyPair(creds.signedIdentityKey, newId)
+		await query({
+			tag: 'iq',
+			attrs: { to: S_WHATSAPP_NET, type: 'set', xmlns: 'encrypt' },
+			content: [
+				{
+					tag: 'rotate',
+					attrs: {},
+					content: [xmppSignedPreKey(skey)]
+				}
+			]
+		})
+		// Persist new signed pre-key in creds
+		ev.emit('creds.update', { signedPreKey: skey })
 	}
 
 	const executeUSyncQuery = async (usyncQuery: USyncQuery) => {
@@ -399,7 +435,7 @@ export const makeSocket = (config: SocketConfig) => {
 				}
 			}).finish()
 		)
-		noise.finishInit()
+		await noise.finishInit()
 		startKeepAliveRequest()
 	}
 
@@ -423,7 +459,7 @@ export const makeSocket = (config: SocketConfig) => {
 	let lastUploadTime = 0
 
 	/** generates and uploads a set of pre-keys to the server */
-	const uploadPreKeys = async (count = INITIAL_PREKEY_COUNT, retryCount = 0) => {
+	const uploadPreKeys = async (count = MIN_PREKEY_COUNT, retryCount = 0) => {
 		// Check minimum interval (except for retries)
 		if (retryCount === 0) {
 			const timeSinceLastUpload = Date.now() - lastUploadTime
@@ -436,7 +472,7 @@ export const makeSocket = (config: SocketConfig) => {
 		// Prevent multiple concurrent uploads
 		if (uploadPreKeysPromise) {
 			logger.debug('Pre-key upload already in progress, waiting for completion')
-			return uploadPreKeysPromise
+			await uploadPreKeysPromise
 		}
 
 		const uploadLogic = async () => {
@@ -457,7 +493,7 @@ export const makeSocket = (config: SocketConfig) => {
 				logger.info({ count }, 'uploaded pre-keys successfully')
 				lastUploadTime = Date.now()
 			} catch (uploadError) {
-				logger.error({ uploadError, count }, 'Failed to upload pre-keys to server')
+				logger.error({ uploadError: (uploadError as Error).toString(), count }, 'Failed to upload pre-keys to server')
 
 				// Exponential backoff retry (max 3 retries)
 				if (retryCount < 3) {
@@ -500,13 +536,16 @@ export const makeSocket = (config: SocketConfig) => {
 
 	const uploadPreKeysToServerIfRequired = async () => {
 		try {
+			let count = 0
 			const preKeyCount = await getAvailablePreKeysOnServer()
+			if (preKeyCount === 0) count = INITIAL_PREKEY_COUNT
+			else count = MIN_PREKEY_COUNT
 			const { exists: currentPreKeyExists, currentPreKeyId } = await verifyCurrentPreKeyExists()
 
 			logger.info(`${preKeyCount} pre-keys found on server`)
 			logger.info(`Current prekey ID: ${currentPreKeyId}, exists in storage: ${currentPreKeyExists}`)
 
-			const lowServerCount = preKeyCount <= MIN_PREKEY_COUNT
+			const lowServerCount = preKeyCount <= count
 			const missingCurrentPreKey = !currentPreKeyExists && currentPreKeyId > 0
 
 			const shouldUpload = lowServerCount || missingCurrentPreKey
@@ -517,7 +556,7 @@ export const makeSocket = (config: SocketConfig) => {
 				if (missingCurrentPreKey) reasons.push(`current prekey ${currentPreKeyId} missing from storage`)
 
 				logger.info(`Uploading PreKeys due to: ${reasons.join(', ')}`)
-				await uploadPreKeys()
+				await uploadPreKeys(count)
 			} else {
 				logger.info(`PreKey validation passed - Server: ${preKeyCount}, Current prekey ${currentPreKeyId} exists`)
 			}
@@ -527,8 +566,8 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const onMessageReceived = (data: Buffer) => {
-		noise.decodeFrame(data, frame => {
+	const onMessageReceived = async (data: Buffer) => {
+		await noise.decodeFrame(data, frame => {
 			// reset ping timeout
 			lastDateRecv = new Date()
 
@@ -865,6 +904,13 @@ export const makeSocket = (config: SocketConfig) => {
 		try {
 			await uploadPreKeysToServerIfRequired()
 			await sendPassiveIq('active')
+
+			// After successful login, validate our key-bundle against server
+			try {
+				await digestKeyBundle()
+			} catch (e) {
+				logger.warn({ e }, 'failed to run digest after login')
+			}
 		} catch (err) {
 			logger.warn({ err }, 'failed to send initial passive iq')
 		}
@@ -905,11 +951,12 @@ export const makeSocket = (config: SocketConfig) => {
 	})
 
 	ws.on('CB:stream:error', (node: BinaryNode) => {
-		logger.error({ node }, 'stream errored out')
+		const [reasonNode] = getAllBinaryNodeChildren(node)
+		logger.error({ reasonNode, fullErrorNode: node }, 'stream errored out')
 
 		const { reason, statusCode } = getErrorCodeFromStreamError(node)
 
-		end(new Boom(`Stream Errored (${reason})`, { statusCode, data: node }))
+		end(new Boom(`Stream Errored (${reason})`, { statusCode, data: reasonNode || node }))
 	})
 	// stream fail, possible logout
 	ws.on('CB:failure', (node: BinaryNode) => {
@@ -921,9 +968,9 @@ export const makeSocket = (config: SocketConfig) => {
 		end(new Boom('Multi-device beta not joined', { statusCode: DisconnectReason.multideviceMismatch }))
 	})
 
-	ws.on('CB:ib,,offline_preview', (node: BinaryNode) => {
+	ws.on('CB:ib,,offline_preview', async (node: BinaryNode) => {
 		logger.info('offline preview received', JSON.stringify(node))
-		sendNode({
+		await sendNode({
 			tag: 'ib',
 			attrs: {},
 			content: [{ tag: 'offline_batch', attrs: { count: '100' } }]
@@ -1002,6 +1049,8 @@ export const makeSocket = (config: SocketConfig) => {
 		onUnexpectedError,
 		uploadPreKeys,
 		uploadPreKeysToServerIfRequired,
+		digestKeyBundle,
+		rotateSignedPreKey,
 		requestPairingCode,
 		wamBuffer: publicWAMBuffer,
 		/** Waits for the connection to WA to reach a state */

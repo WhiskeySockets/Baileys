@@ -102,9 +102,9 @@ export const isJidStatusBroadcast = (jid: string) => jid === 'status@broadcast'
 /** is the jid a newsletter */
 export const isJidNewsletter = (jid: string | undefined) => jid?.endsWith('@newsletter')
 /** is the jid a hosted PN */
-export const isJidHostedPnUser = (jid: string | undefined) => jid?.endsWith('@hosted')
+export const isHostedPnUser = (jid: string | undefined) => jid?.endsWith('@hosted')
 /** is the jid a hosted LID */
-export const isJidHostedLidUser = (jid: string | undefined) => jid?.endsWith('@hosted.lid')
+export const isHostedLidUser = (jid: string | undefined) => jid?.endsWith('@hosted.lid')
 
 const botRegexp = /^1313555\d{4}$|^131655500\d{2}$/
 

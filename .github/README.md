@@ -3,42 +3,33 @@
 
 > [!CAUTION]
 > NOTICE OF BREAKING CHANGE.
-> 
+>
 > As of 7.0.0, multiple breaking changes were introduced into the library.
-> 
+>
 > Please check out https://whiskey.so/migrate-latest for more information.
 
 Baileys is a WebSockets-based TypeScript library for interacting with the WhatsApp Web API.
 
 Join the WhiskeySockets community via the link: https://whiskey.so/discord
 
-
-> [!IMPORTANT]
-> I made a survey for users of the project to ask questions, and provide Baileys valuable insights regarding its users. I will be publishing the results of this form (after filtering) as well so we can study and understand where we need to work.
-> 
-> The survey is anonymous and requires no personal info at all. You are required to sign-in with Google to keep responses to one person. You are able to edit your response after you submit. The deadline for this form is September 30, 2025.
-> 
-> I encourage you to put the effort, all it takes is 5-10 minutes and you get to ask me any questions you have.
-> 
-> \- Rajeh (purpshell)
-> 
-> Fill in the survey via the link: https://whiskey.so/survey
-
-
-
-
 # Usage & Guide
 
 > [!IMPORTANT]
 > The new guide is a work in progress. Expect missing pages/content. [Report missing or incorrect content.](https://github.com/WhiskeySockets/baileys.wiki-site/issues/new)
-> 
+>
 > **You can still access the old guide here:** [README.md](https://github.com/WhiskeySockets/Baileys/tree/master/README.md), or the [NPM homepage](https://npmjs.com/package/baileys).
 
 The new guide is posted at https://baileys.wiki .
 
+# Get Support
+
+If you'd like business to enterprise-level support from Rajeh, the current maintainer of Baileys, you can book a video chat. Book a 1 hour time slot by contacting him on Discord or pre-ordering [here](https://purpshell.dev/book). The earlier you pre-order the better, as his time slots usually fill up very quickly. He offers immense value per hour and will answer all your questions before the time runs out.
+
+If you are a business, we encourage you to contribute back to the high development costs of the project and to feed the maintainers who dump tens of hours a week on this. You can do so by booking meetings or sponsoring below. All support, even in bona fide / contribution hours, is welcome by businesses of all sizes. This is not condoning or endorsing businesses to use the library. See the Disclaimer below.
+
 # Sponsor
-> [!TIP]
-> If you'd like to financially support this project, you can do so by supporting the current maintainer [here](https://purpshell.dev/sponsor).
+
+If you'd like to financially support this project, you can do so by supporting the current maintainer [here](https://purpshell.dev/sponsor).
 
 # Disclaimer
 > [!CAUTION]

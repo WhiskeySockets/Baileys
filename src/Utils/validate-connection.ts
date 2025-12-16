@@ -26,6 +26,7 @@ const getUserAgent = (config: SocketConfig): proto.ClientPayload.IUserAgent => {
 		device: 'Desktop',
 		osBuildNumber: '0.1',
 		localeLanguageIso6391: 'en',
+
 		mnc: '000',
 		mcc: '000',
 		localeCountryIso31661Alpha2: config.countryCode
@@ -39,7 +40,11 @@ const PLATFORM_MAP = {
 
 const getWebInfo = (config: SocketConfig): proto.ClientPayload.IWebInfo => {
 	let webSubPlatform = proto.ClientPayload.WebInfo.WebSubPlatform.WEB_BROWSER
-	if (config.syncFullHistory && PLATFORM_MAP[config.browser[0] as keyof typeof PLATFORM_MAP]) {
+	if (
+		config.syncFullHistory &&
+		PLATFORM_MAP[config.browser[0] as keyof typeof PLATFORM_MAP] &&
+		config.browser[1] === 'Desktop'
+	) {
 		webSubPlatform = PLATFORM_MAP[config.browser[0] as keyof typeof PLATFORM_MAP]
 	}
 
@@ -95,8 +100,9 @@ export const generateRegistrationNode = (
 		platformType: getPlatformType(config.browser[1]),
 		requireFullSync: config.syncFullHistory,
 		historySyncConfig: {
-			storageQuotaMb: 569150,
+			storageQuotaMb: 10240,
 			inlineInitialPayloadInE2EeMsg: true,
+			recentSyncDaysLimit: undefined,
 			supportCallLogHistory: false,
 			supportBotUserAgentChatHistory: true,
 			supportCagReactionsAndPolls: true,
@@ -104,7 +110,11 @@ export const generateRegistrationNode = (
 			supportRecentSyncChunkMessageCountTuning: true,
 			supportHostedGroupMsg: true,
 			supportFbidBotChatHistory: true,
-			supportMessageAssociation: true
+			supportAddOnHistorySyncMigration: undefined,
+			supportMessageAssociation: true,
+			supportGroupHistory: false,
+			onDemandReady: undefined,
+			supportGuestChat: undefined
 		},
 		version: {
 			primary: 10,
@@ -117,7 +127,7 @@ export const generateRegistrationNode = (
 
 	const registerPayload: proto.IClientPayload = {
 		...getClientPayload(config),
-		passive: true,
+		passive: false,
 		pull: false,
 		devicePairingData: {
 			buildHash: appVersionBuf,

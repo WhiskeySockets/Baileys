@@ -16,7 +16,7 @@ export abstract class AbstractSocketClient extends EventEmitter {
 		this.setMaxListeners(0)
 	}
 
-	abstract connect(): Promise<void>
-	abstract close(): Promise<void>
+	abstract connect(): void
+	abstract close(): void
 	abstract send(str: Uint8Array | string, cb?: (err?: Error) => void): boolean
 }

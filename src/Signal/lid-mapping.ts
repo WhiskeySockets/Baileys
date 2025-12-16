@@ -1,11 +1,11 @@
 import { LRUCache } from 'lru-cache'
 import type { LIDMapping, SignalKeyStoreWithTransaction } from '../Types'
 import type { ILogger } from '../Utils/logger'
-import { isJidHostedLidUser, isJidHostedPnUser, isLidUser, isPnUser, jidDecode, jidNormalizedUser } from '../WABinary'
+import { isHostedPnUser, isLidUser, isPnUser, jidDecode, jidNormalizedUser, WAJIDDomains } from '../WABinary'
 
 export class LIDMappingStore {
 	private readonly mappingCache = new LRUCache<string, string>({
-		ttl: 7 * 24 * 60 * 60 * 1000, // 7 days
+		ttl: 3 * 24 * 60 * 60 * 1000, // 7 days
 		ttlAutopurge: true,
 		updateAgeOnGet: true
 	})
@@ -93,7 +93,7 @@ export class LIDMappingStore {
 		// mapped from pn to lid mapping to prevent duplication in results later
 		const successfulPairs: { [_: string]: LIDMapping } = {}
 		for (const pn of pns) {
-			if (!isPnUser(pn)) continue
+			if (!isPnUser(pn) && !isHostedPnUser(pn)) continue
 
 			const decoded = jidDecode(pn)
 			if (!decoded) continue
@@ -114,7 +114,7 @@ export class LIDMappingStore {
 					this.logger.trace(`No LID mapping found for PN user ${pnUser}; batch getting from USync`)
 					const device = decoded.device || 0
 					let normalizedPn = jidNormalizedUser(pn)
-					if (isJidHostedLidUser(normalizedPn) || isJidHostedPnUser(normalizedPn)) {
+					if (isHostedPnUser(normalizedPn)) {
 						normalizedPn = `${pnUser}@s.whatsapp.net`
 					}
 
@@ -145,7 +145,7 @@ export class LIDMappingStore {
 		if (Object.keys(usyncFetch).length > 0) {
 			const result = await this.pnToLIDFunc?.(Object.keys(usyncFetch)) // this function already adds LIDs to mapping
 			if (result && result.length > 0) {
-				this.storeLIDPNMappings(result)
+				await this.storeLIDPNMappings(result)
 				for (const pair of result) {
 					const pnDecoded = jidDecode(pair.pn)
 					const pnUser = pnDecoded?.user
@@ -201,7 +201,7 @@ export class LIDMappingStore {
 
 		// Construct device-specific PN JID
 		const lidDevice = decoded.device !== undefined ? decoded.device : 0
-		const pnJid = `${pnUser}:${lidDevice}@s.whatsapp.net`
+		const pnJid = `${pnUser}:${lidDevice}@${decoded.domainType === WAJIDDomains.HOSTED_LID ? 'hosted' : 's.whatsapp.net'}`
 
 		this.logger.trace(`Found reverse mapping: ${lid} → ${pnJid}`)
 		return pnJid
