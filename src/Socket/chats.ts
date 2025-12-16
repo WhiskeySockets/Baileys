@@ -63,7 +63,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		fireInitQueries,
 		appStateMacVerification,
 		shouldIgnoreJid,
-		shouldSyncHistoryMessage
+		shouldSyncHistoryMessage,
+		getMessage
 	} = config
 	const sock = makeSocket(config)
 	const { ev, ws, authState, generateMessageTag, sendNode, query, signalRepository, onUnexpectedError } = sock
@@ -71,8 +72,18 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	let privacySettings: { [_: string]: string } | undefined
 
 	let syncState: SyncState = SyncState.Connecting
-	/** this mutex ensures that the notifications (receipts, messages etc.) are processed in order */
-	const processingMutex = makeMutex()
+
+	/** this mutex ensures that messages are processed in order */
+	const messageMutex = makeMutex()
+
+	/** this mutex ensures that receipts are processed in order */
+	const receiptMutex = makeMutex()
+
+	/** this mutex ensures that app state patches are processed in order */
+	const appStatePatchMutex = makeMutex()
+
+	/** this mutex ensures that notifications are processed in order */
+	const notificationMutex = makeMutex()
 
 	// Timeout for AwaitingInitialSync state
 	let awaitingSyncTimeout: NodeJS.Timeout | undefined
@@ -747,7 +758,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		let initial: LTHashState
 		let encodeResult: { patch: proto.ISyncdPatch; state: LTHashState }
 
-		await processingMutex.mutex(async () => {
+		await appStatePatchMutex.mutex(async () => {
 			await authState.keys.transaction(async () => {
 				logger.debug({ patch: patchCreate }, 'applying app patch')
 
@@ -1036,7 +1047,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 		const historyMsg = getHistoryMsg(msg.message!)
 		const shouldProcessHistoryMsg = historyMsg
-			? shouldSyncHistoryMessage(historyMsg) && PROCESSABLE_HISTORY_TYPES.includes(historyMsg.syncType!)
+			? shouldSyncHistoryMessage(historyMsg) &&
+				PROCESSABLE_HISTORY_TYPES.includes(historyMsg.syncType! as proto.HistorySync.HistorySyncType)
 			: false
 
 		// State machine: decide on sync and flush
@@ -1086,7 +1098,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				creds: authState.creds,
 				keyStore: authState.keys,
 				logger,
-				options: config.options
+				options: config.options,
+				getMessage
 			})
 		])
 
@@ -1177,7 +1190,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		...sock,
 		createCallLink,
 		getBotListV2,
-		processingMutex,
+		messageMutex,
+		receiptMutex,
+		appStatePatchMutex,
+		notificationMutex,
 		fetchPrivacySettings,
 		upsertMessage,
 		appPatch,

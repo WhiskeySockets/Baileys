@@ -72,7 +72,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	const {
 		ev,
 		authState,
-		processingMutex,
+		messageMutex,
 		signalRepository,
 		upsertMessage,
 		query,
@@ -300,6 +300,16 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			if (lidResults.length > 0) {
 				logger.trace('Storing LID maps from device call')
 				await signalRepository.lidMapping.storeLIDPNMappings(lidResults.map(a => ({ lid: a.lid as string, pn: a.id })))
+
+				// Force-refresh sessions for newly mapped LIDs to align identity addressing
+				try {
+					const lids = lidResults.map(a => a.lid as string)
+					if (lids.length) {
+						await assertSessions(lids, true)
+					}
+				} catch (e) {
+					logger.warn({ e, count: lidResults.length }, 'failed to assert sessions for newly mapped LIDs')
+				}
 			}
 
 			const extracted = extractDeviceJids(
@@ -374,7 +384,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return deviceResults
 	}
 
-	const assertSessions = async (jids: string[]) => {
+	const assertSessions = async (jids: string[], force?: boolean) => {
 		let didFetchNewSession = false
 		const uniqueJids = [...new Set(jids)] // Deduplicate JIDs
 		const jidsRequiringFetch: string[] = []
@@ -386,14 +396,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			const signalId = signalRepository.jidToSignalProtocolAddress(jid)
 			const cachedSession = peerSessionsCache.get(signalId)
 			if (cachedSession !== undefined) {
-				if (cachedSession) {
+				if (cachedSession && !force) {
 					continue // Session exists in cache
 				}
 			} else {
 				const sessionValidation = await signalRepository.validateSession(jid)
 				const hasSession = sessionValidation.exists
 				peerSessionsCache.set(signalId, hasSession)
-				if (hasSession) {
+				if (hasSession && !force) {
 					continue
 				}
 			}
@@ -424,10 +434,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					{
 						tag: 'key',
 						attrs: {},
-						content: wireJids.map(jid => ({
-							tag: 'user',
-							attrs: { jid }
-						}))
+						content: wireJids.map(jid => {
+							const attrs: { [key: string]: string } = { jid }
+							if (force) attrs.reason = 'identity'
+							return { tag: 'user', attrs }
+						})
 					}
 				]
 			})
@@ -573,6 +584,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const isStatus = jid === statusJid
 		const isLid = server === 'lid'
 		const isNewsletter = server === 'newsletter'
+		const isGroupOrStatus = isGroup || isStatus
 		const finalJid = jid
 
 		msgId = msgId || generateMessageIDV2(meId)
@@ -641,7 +653,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				extraAttrs['decrypt-fail'] = 'hide' // todo: expand for reactions and other types
 			}
 
-			if (isGroup || isStatus) {
+			if (isGroupOrStatus && !isRetryResend) {
 				const [groupData, senderKeyMap] = await Promise.all([
 					(async () => {
 						let groupData = useCachedGroupMetadata && cachedGroupMetadata ? await cachedGroupMetadata(jid) : undefined // todo: should we rely on the cache specially if the cache is outdated and the metadata has new fields?
@@ -665,33 +677,26 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					})()
 				])
 
-				if (!participant) {
-					const participantsList = []
-					if (isStatus) {
-						if (statusJidList?.length) participantsList.push(...statusJidList)
-					} else {
-						// default to LID based groups
-						let groupAddressingMode = 'lid'
-						if (groupData) {
-							participantsList.push(...groupData.participants.map(p => p.id))
-							groupAddressingMode = groupData?.addressingMode || groupAddressingMode
-						}
-
-						// default to lid addressing mode in a group
-						additionalAttributes = {
-							...additionalAttributes,
-							addressing_mode: groupAddressingMode
-						}
-					}
-
-					const additionalDevices = await getUSyncDevices(participantsList, !!useUserDevicesCache, false)
-					devices.push(...additionalDevices)
-				}
+				const participantsList = groupData ? groupData.participants.map(p => p.id) : []
 
 				if (groupData?.ephemeralDuration && groupData.ephemeralDuration > 0) {
 					additionalAttributes = {
 						...additionalAttributes,
 						expiration: groupData.ephemeralDuration.toString()
+					}
+				}
+
+				if (isStatus && statusJidList) {
+					participantsList.push(...statusJidList)
+				}
+
+				const additionalDevices = await getUSyncDevices(participantsList, !!useUserDevicesCache, false)
+				devices.push(...additionalDevices)
+
+				if (isGroup) {
+					additionalAttributes = {
+						...additionalAttributes,
+						addressing_mode: groupData?.addressingMode || 'lid'
 					}
 				}
 
@@ -747,30 +752,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					participants.push(...result.nodes)
 				}
 
-				if (isRetryResend) {
-					const { type, ciphertext: encryptedContent } = await signalRepository.encryptMessage({
-						data: bytes,
-						jid: participant?.jid!
-					})
+				binaryNodeContent.push({
+					tag: 'enc',
+					attrs: { v: '2', type: 'skmsg', ...extraAttrs },
+					content: ciphertext
+				})
 
-					binaryNodeContent.push({
-						tag: 'enc',
-						attrs: {
-							v: '2',
-							type,
-							count: participant!.count.toString()
-						},
-						content: encryptedContent
-					})
-				} else {
-					binaryNodeContent.push({
-						tag: 'enc',
-						attrs: { v: '2', type: 'skmsg', ...extraAttrs },
-						content: ciphertext
-					})
-
-					await authState.keys.set({ 'sender-key-memory': { [jid]: senderKeyMap } })
-				}
+				await authState.keys.set({ 'sender-key-memory': { [jid]: senderKeyMap } })
 			} else {
 				// ADDRESSING CONSISTENCY: Match own identity to conversation context
 				// TODO: investigate if this is true
@@ -790,7 +778,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						: patchedForReporting
 				}
 
-				if (!participant) {
+				if (!isRetryResend) {
 					const targetUserServer = isLid ? 'lid' : 's.whatsapp.net'
 					devices.push({
 						user,
@@ -878,6 +866,35 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || s1 || s2
 			}
 
+			if (isRetryResend) {
+				const isParticipantLid = isLidUser(participant!.jid)
+				const isMe = areJidsSameUser(participant!.jid, isParticipantLid ? meLid : meId)
+
+				const encodedMessageToSend = isMe
+					? encodeWAMessage({
+							deviceSentMessage: {
+								destinationJid,
+								message
+							}
+						})
+					: encodeWAMessage(message)
+
+				const { type, ciphertext: encryptedContent } = await signalRepository.encryptMessage({
+					data: encodedMessageToSend,
+					jid: participant!.jid
+				})
+
+				binaryNodeContent.push({
+					tag: 'enc',
+					attrs: {
+						v: '2',
+						type,
+						count: participant!.count.toString()
+					},
+					content: encryptedContent
+				})
+			}
+
 			if (participants.length) {
 				if (additionalAttributes?.['category'] === 'peer') {
 					const peerNode = participants[0]?.content?.[0] as BinaryNode
@@ -958,7 +975,18 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 			}
 
-			// tctoken handling will be added after merge with master (PR #2080)
+			const contactTcTokenData =
+				!isGroup && !isRetryResend && !isStatus ? await authState.keys.get('tctoken', [destinationJid]) : {}
+
+			const tcTokenBuffer = contactTcTokenData[destinationJid]?.token
+
+			if (tcTokenBuffer) {
+				;(stanza.content as BinaryNode[]).push({
+					tag: 'tctoken',
+					attrs: {},
+					content: tcTokenBuffer
+				})
+			}
 
 			if (additionalNodes && additionalNodes.length > 0) {
 				;(stanza.content as BinaryNode[]).push(...additionalNodes)
@@ -1205,8 +1233,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					additionalNodes
 				})
 				if (config.emitOwnEvents) {
-					process.nextTick(() => {
-						processingMutex.mutex(() => upsertMessage(fullMsg, 'append'))
+					process.nextTick(async () => {
+						await messageMutex.mutex(() => upsertMessage(fullMsg, 'append'))
 					})
 				}
 

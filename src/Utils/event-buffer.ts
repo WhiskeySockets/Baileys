@@ -153,8 +153,8 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 
 	return {
 		process(handler) {
-			const listener = (map: BaileysEventData) => {
-				handler(map)
+			const listener = async (map: BaileysEventData) => {
+				await handler(map)
 			}
 
 			ev.on('event', listener)
@@ -163,6 +163,28 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 			}
 		},
 		emit<T extends BaileysEvent>(event: BaileysEvent, evData: BaileysEventMap[T]) {
+			// Check if this is a messages.upsert with a different type than what's buffered
+			// If so, flush the buffered messages first to avoid type overshadowing
+			if (event === 'messages.upsert') {
+				const { type } = evData as BaileysEventMap['messages.upsert']
+				const existingUpserts = Object.values(data.messageUpserts)
+				if (existingUpserts.length > 0) {
+					const bufferedType = existingUpserts[0]!.type
+					if (bufferedType !== type) {
+						logger.debug({ bufferedType, newType: type }, 'messages.upsert type mismatch, emitting buffered messages')
+						// Emit the buffered messages with their correct type
+						ev.emit('event', {
+							'messages.upsert': {
+								messages: existingUpserts.map(m => m.message),
+								type: bufferedType
+							}
+						})
+						// Clear the message upserts from the buffer
+						data.messageUpserts = {}
+					}
+				}
+			}
+
 			if (isBuffering && BUFFERABLE_EVENT_SET.has(event)) {
 				append(data, historyCache, event as BufferableEvent, evData, logger)
 				return true
