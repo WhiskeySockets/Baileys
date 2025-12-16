@@ -47,7 +47,7 @@ const createAnimatedWebP = async (): Promise<Buffer> => {
 		.webp()
 		.toBuffer()
 
-	const frame2 = await sharp({
+	await sharp({
 		create: { width: 100, height: 100, channels: 3, background: { r: 0, g: 0, b: 255 } }
 	})
 		.webp()
