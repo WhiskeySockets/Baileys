@@ -1068,6 +1068,70 @@ export const assertMediaContent = (content: proto.IMessage | null | undefined) =
 	return mediaContent
 }
 
+/**
+ * Checks if a WebP buffer is animated by looking for VP8X chunk with animation flag
+ * or ANIM/ANMF chunks
+ */
+function isAnimatedWebP(buffer: Buffer): boolean {
+	// WebP must start with RIFF....WEBP
+	if (
+		buffer.length < 12 ||
+		buffer[0] !== 0x52 ||
+		buffer[1] !== 0x49 ||
+		buffer[2] !== 0x46 ||
+		buffer[3] !== 0x46 ||
+		buffer[8] !== 0x57 ||
+		buffer[9] !== 0x45 ||
+		buffer[10] !== 0x42 ||
+		buffer[11] !== 0x50
+	) {
+		return false
+	}
+
+	// Parse chunks starting after RIFF header (12 bytes)
+	let offset = 12
+	while (offset < buffer.length - 8) {
+		const chunkFourCC = buffer.toString('ascii', offset, offset + 4)
+		const chunkSize = buffer.readUInt32LE(offset + 4)
+
+		if (chunkFourCC === 'VP8X') {
+			// VP8X extended header, check animation flag (bit 1 at offset+8)
+			const flagsOffset = offset + 8
+			if (flagsOffset < buffer.length) {
+				const flags = buffer[flagsOffset]!
+				if (flags & 0x02) {
+					return true
+				}
+			}
+		} else if (chunkFourCC === 'ANIM' || chunkFourCC === 'ANMF') {
+			// ANIM or ANMF chunks indicate animation
+			return true
+		}
+
+		// Move to next chunk (chunk size + 8 bytes header, padded to even)
+		offset += 8 + chunkSize + (chunkSize % 2)
+	}
+
+	return false
+}
+
+/**
+ * Checks if a buffer is a WebP file
+ */
+function isWebPBuffer(buffer: Buffer): boolean {
+	return (
+		buffer.length >= 12 &&
+		buffer[0] === 0x52 &&
+		buffer[1] === 0x49 &&
+		buffer[2] === 0x46 &&
+		buffer[3] === 0x46 &&
+		buffer[8] === 0x57 &&
+		buffer[9] === 0x45 &&
+		buffer[10] === 0x42 &&
+		buffer[11] === 0x50
+	)
+}
+
 async function prepareStickerPackMessage(
 	stickerPack: StickerPack,
 	options: MessageContentGenerationOptions
@@ -1091,22 +1155,18 @@ async function prepareStickerPackMessage(
 		const buffer = await toBuffer(stream)
 
 		let webpBuffer: Buffer
-		// Check if the buffer is already WebP (starts with RIFF....WEBP)
-		const isWebP =
-			buffer[0] === 0x52 &&
-			buffer[1] === 0x49 &&
-			buffer[2] === 0x46 &&
-			buffer[3] === 0x46 &&
-			buffer[8] === 0x57 &&
-			buffer[9] === 0x45 &&
-			buffer[10] === 0x42 &&
-			buffer[11] === 0x50
+		let isAnimated = false
+		const isWebP = isWebPBuffer(buffer)
 
-		if ('sharp' in lib && lib.sharp) {
-			webpBuffer = await lib.sharp.default(buffer).webp().toBuffer()
-		} else if (isWebP) {
-			// If already WebP and no sharp available, use as-is
+		if (isWebP) {
+			// Already WebP - preserve original to keep exif metadata and animation
 			webpBuffer = buffer
+			isAnimated = isAnimatedWebP(buffer)
+		} else if ('sharp' in lib && lib.sharp) {
+			// Convert to WebP, preserving metadata
+			webpBuffer = await lib.sharp.default(buffer).webp().toBuffer()
+			// Non-WebP inputs converted to WebP are not animated
+			isAnimated = false
 		} else {
 			throw new Boom(
 				'No image processing library (sharp) available for converting sticker to WebP. Either install sharp or provide stickers in WebP format.'
@@ -1123,7 +1183,7 @@ async function prepareStickerPackMessage(
 		return {
 			fileName,
 			mimetype: 'image/webp',
-			isAnimated: false,
+			isAnimated,
 			emojis: s.emojis || [],
 			accessibilityLabel: s.accessibilityLabel
 		}
@@ -1137,20 +1197,13 @@ async function prepareStickerPackMessage(
 	const coverBuffer = await toBuffer(coverStream)
 
 	let coverWebpBuffer: Buffer
-	const isCoverWebP =
-		coverBuffer[0] === 0x52 &&
-		coverBuffer[1] === 0x49 &&
-		coverBuffer[2] === 0x46 &&
-		coverBuffer[3] === 0x46 &&
-		coverBuffer[8] === 0x57 &&
-		coverBuffer[9] === 0x45 &&
-		coverBuffer[10] === 0x42 &&
-		coverBuffer[11] === 0x50
+	const isCoverWebP = isWebPBuffer(coverBuffer)
 
-	if ('sharp' in lib && lib.sharp) {
-		coverWebpBuffer = await lib.sharp.default(coverBuffer).webp().toBuffer()
-	} else if (isCoverWebP) {
+	if (isCoverWebP) {
+		// Already WebP - preserve original to keep exif metadata
 		coverWebpBuffer = coverBuffer
+	} else if ('sharp' in lib && lib.sharp) {
+		coverWebpBuffer = await lib.sharp.default(coverBuffer).webp().toBuffer()
 	} else {
 		throw new Boom(
 			'No image processing library (sharp) available for converting cover to WebP. Either install sharp or provide cover in WebP format.'

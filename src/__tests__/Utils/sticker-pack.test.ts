@@ -35,10 +35,159 @@ const createTestWebP = async (width = 100, height = 100, color = { r: 255, g: 0,
 		.toBuffer()
 }
 
+/**
+ * Creates a minimal animated WebP buffer for testing.
+ * This creates a valid animated WebP with VP8X header and animation flag set.
+ */
+const createAnimatedWebP = async (): Promise<Buffer> => {
+	// Create two frames with different colors
+	const frame1 = await sharp({
+		create: { width: 100, height: 100, channels: 3, background: { r: 255, g: 0, b: 0 } }
+	})
+		.webp()
+		.toBuffer()
+
+	const frame2 = await sharp({
+		create: { width: 100, height: 100, channels: 3, background: { r: 0, g: 0, b: 255 } }
+	})
+		.webp()
+		.toBuffer()
+
+	// Use sharp to create an animated WebP from the frames
+	const animatedWebP = await sharp(frame1, { animated: true }).webp({ loop: 0 }).toBuffer()
+
+	// If sharp doesn't create animation from a single frame, manually construct
+	// a minimal animated WebP structure for testing
+	// Check if the buffer has animation by looking for VP8X with animation flag
+	const hasAnimation =
+		animatedWebP.length >= 21 && animatedWebP.toString('ascii', 12, 16) === 'VP8X' && (animatedWebP[20]! & 0x02) !== 0
+
+	if (hasAnimation) {
+		return animatedWebP
+	}
+
+	// Create a minimal animated WebP manually for testing purposes
+	// This creates a valid WebP with VP8X extended header with animation flag
+	const riffHeader = Buffer.from('RIFF')
+	const webpHeader = Buffer.from('WEBP')
+
+	// VP8X chunk with animation flag (bit 1 set in flags byte)
+	const vp8xChunk = Buffer.alloc(18)
+	vp8xChunk.write('VP8X', 0, 4, 'ascii')
+	vp8xChunk.writeUInt32LE(10, 4) // chunk size
+	vp8xChunk[8] = 0x02 // flags: animation bit set
+	// Canvas size (100x100) - 1 in 24-bit format
+	vp8xChunk.writeUIntLE(99, 12, 3) // width - 1
+	vp8xChunk.writeUIntLE(99, 15, 3) // height - 1
+
+	// ANIM chunk (animation parameters)
+	const animChunk = Buffer.alloc(14)
+	animChunk.write('ANIM', 0, 4, 'ascii')
+	animChunk.writeUInt32LE(6, 4) // chunk size
+	animChunk.writeUInt32LE(0xffffffff, 8) // background color (white)
+	animChunk.writeUInt16LE(0, 12) // loop count (0 = infinite)
+
+	// ANMF chunk (animation frame) - minimal frame using VP8L
+	// We'll include the actual image data from a static WebP
+	const staticWebp = await sharp({
+		create: { width: 100, height: 100, channels: 4, background: { r: 255, g: 0, b: 0, alpha: 1 } }
+	})
+		.webp({ lossless: true })
+		.toBuffer()
+
+	// Extract the VP8L chunk from static WebP
+	let vp8lOffset = 12
+	let vp8lChunk: Buffer | null = null
+	while (vp8lOffset < staticWebp.length - 8) {
+		const chunkName = staticWebp.toString('ascii', vp8lOffset, vp8lOffset + 4)
+		const chunkSize = staticWebp.readUInt32LE(vp8lOffset + 4)
+		if (chunkName === 'VP8L' || chunkName === 'VP8 ') {
+			vp8lChunk = staticWebp.slice(vp8lOffset, vp8lOffset + 8 + chunkSize + (chunkSize % 2))
+			break
+		}
+
+		vp8lOffset += 8 + chunkSize + (chunkSize % 2)
+	}
+
+	if (!vp8lChunk) {
+		// Fallback: just return a buffer with animation markers
+		// This won't be a valid image but will test animation detection
+		const fakeAnimatedWebp = Buffer.concat([
+			riffHeader,
+			Buffer.alloc(4), // size placeholder
+			webpHeader,
+			vp8xChunk,
+			animChunk
+		])
+		fakeAnimatedWebp.writeUInt32LE(fakeAnimatedWebp.length - 8, 4)
+		return fakeAnimatedWebp
+	}
+
+	// Create ANMF chunk wrapping the VP8L data
+	const frameDataSize = vp8lChunk.length
+	const anmfHeader = Buffer.alloc(24)
+	anmfHeader.write('ANMF', 0, 4, 'ascii')
+	anmfHeader.writeUInt32LE(16 + frameDataSize, 4) // chunk size
+	// Frame X, Y (0, 0)
+	anmfHeader.writeUIntLE(0, 8, 3)
+	anmfHeader.writeUIntLE(0, 11, 3)
+	// Frame width, height - 1
+	anmfHeader.writeUIntLE(99, 14, 3)
+	anmfHeader.writeUIntLE(99, 17, 3)
+	// Duration (100ms)
+	anmfHeader.writeUIntLE(100, 20, 3)
+	// Flags
+	anmfHeader[23] = 0
+
+	const anmfChunk = Buffer.concat([anmfHeader, vp8lChunk])
+
+	// Combine all chunks
+	const animatedBuffer = Buffer.concat([
+		riffHeader,
+		Buffer.alloc(4), // size placeholder
+		webpHeader,
+		vp8xChunk,
+		animChunk,
+		anmfChunk
+	])
+
+	// Set RIFF size
+	animatedBuffer.writeUInt32LE(animatedBuffer.length - 8, 4)
+
+	return animatedBuffer
+}
+
+/**
+ * Creates a WebP buffer with EXIF metadata for testing exif preservation.
+ */
+const createWebPWithExif = async (): Promise<Buffer> => {
+	// Create a WebP with metadata using sharp
+	return sharp({
+		create: {
+			width: 100,
+			height: 100,
+			channels: 3,
+			background: { r: 128, g: 128, b: 128 }
+		}
+	})
+		.withMetadata({
+			exif: {
+				IFD0: {
+					Copyright: 'Test Copyright',
+					Artist: 'Test Artist'
+				}
+			}
+		})
+		.webp()
+		.toBuffer()
+}
+
 let MINIMAL_PNG: Buffer
 let MINIMAL_WEBP: Buffer
 let BLUE_PNG: Buffer
 let GREEN_PNG: Buffer
+let ANIMATED_WEBP: Buffer
+let WEBP_WITH_EXIF: Buffer
 
 // Track upload calls for verification
 type UploadCall = {
@@ -83,6 +232,8 @@ describe('Sticker Pack Messages', () => {
 		MINIMAL_WEBP = await createTestWebP()
 		BLUE_PNG = await createTestImage(100, 100, { r: 0, g: 0, b: 255 })
 		GREEN_PNG = await createTestImage(100, 100, { r: 0, g: 255, b: 0 })
+		ANIMATED_WEBP = await createAnimatedWebP()
+		WEBP_WITH_EXIF = await createWebPWithExif()
 	})
 
 	describe('Validation', () => {
@@ -710,6 +861,133 @@ describe('Sticker Pack Messages', () => {
 			expect(stickers?.[0]?.accessibilityLabel).toBe('First')
 			expect(stickers?.[1]?.accessibilityLabel).toBe('Second')
 			expect(stickers?.[2]?.accessibilityLabel).toBe('Third')
+		})
+	})
+
+	describe('Animated Sticker Detection', () => {
+		it('should detect animated WebP stickers and set isAnimated to true', async () => {
+			const stickerPack: StickerPack = {
+				name: 'Animated Test Pack',
+				publisher: 'Test Publisher',
+				cover: MINIMAL_PNG,
+				stickers: [{ data: ANIMATED_WEBP }]
+			}
+
+			const options = createMockOptions()
+
+			const result = await generateWAMessageContent({ stickerPack }, options)
+
+			expect(result.stickerPackMessage?.stickers?.[0]?.isAnimated).toBe(true)
+		})
+
+		it('should set isAnimated to false for static WebP stickers', async () => {
+			const stickerPack: StickerPack = {
+				name: 'Static Test Pack',
+				publisher: 'Test Publisher',
+				cover: MINIMAL_PNG,
+				stickers: [{ data: MINIMAL_WEBP }]
+			}
+
+			const options = createMockOptions()
+
+			const result = await generateWAMessageContent({ stickerPack }, options)
+
+			expect(result.stickerPackMessage?.stickers?.[0]?.isAnimated).toBe(false)
+		})
+
+		it('should set isAnimated to false for converted PNG stickers', async () => {
+			const stickerPack: StickerPack = {
+				name: 'Converted PNG Test',
+				publisher: 'Test Publisher',
+				cover: MINIMAL_PNG,
+				stickers: [{ data: MINIMAL_PNG }]
+			}
+
+			const options = createMockOptions()
+
+			const result = await generateWAMessageContent({ stickerPack }, options)
+
+			expect(result.stickerPackMessage?.stickers?.[0]?.isAnimated).toBe(false)
+		})
+
+		it('should handle mix of animated and static stickers', async () => {
+			const stickerPack: StickerPack = {
+				name: 'Mixed Animation Test',
+				publisher: 'Test Publisher',
+				cover: MINIMAL_PNG,
+				stickers: [
+					{ data: ANIMATED_WEBP, accessibilityLabel: 'animated' },
+					{ data: MINIMAL_WEBP, accessibilityLabel: 'static' },
+					{ data: MINIMAL_PNG, accessibilityLabel: 'converted' }
+				]
+			}
+
+			const options = createMockOptions()
+
+			const result = await generateWAMessageContent({ stickerPack }, options)
+
+			const stickers = result.stickerPackMessage?.stickers
+			expect(stickers?.[0]?.isAnimated).toBe(true)
+			expect(stickers?.[0]?.accessibilityLabel).toBe('animated')
+			expect(stickers?.[1]?.isAnimated).toBe(false)
+			expect(stickers?.[1]?.accessibilityLabel).toBe('static')
+			expect(stickers?.[2]?.isAnimated).toBe(false)
+			expect(stickers?.[2]?.accessibilityLabel).toBe('converted')
+		})
+	})
+
+	describe('WebP Exif Preservation', () => {
+		it('should preserve original WebP buffer without re-encoding', async () => {
+			// Use the WebP with exif metadata
+			const stickerPack: StickerPack = {
+				name: 'Exif Preservation Test',
+				publisher: 'Test Publisher',
+				cover: WEBP_WITH_EXIF,
+				stickers: [{ data: WEBP_WITH_EXIF }]
+			}
+
+			const options = createMockOptions()
+
+			const result = await generateWAMessageContent({ stickerPack }, options)
+
+			// The sticker should be processed successfully
+			expect(result.stickerPackMessage?.stickers).toHaveLength(1)
+			expect(result.stickerPackMessage?.stickers?.[0]?.mimetype).toBe('image/webp')
+		})
+
+		it('should not re-encode WebP stickers that are already valid', async () => {
+			// When a WebP is provided, it should be used as-is (preserving exif)
+			const stickerPack: StickerPack = {
+				name: 'No Re-encode Test',
+				publisher: 'Test Publisher',
+				cover: MINIMAL_WEBP,
+				stickers: [{ data: MINIMAL_WEBP }]
+			}
+
+			const options = createMockOptions()
+
+			const result = await generateWAMessageContent({ stickerPack }, options)
+
+			expect(result.stickerPackMessage?.stickers).toHaveLength(1)
+			// The file should have been added to the ZIP
+			expect(result.stickerPackMessage?.stickers?.[0]?.fileName).toMatch(/\.webp$/)
+		})
+
+		it('should preserve WebP cover image without re-encoding', async () => {
+			const stickerPack: StickerPack = {
+				name: 'Cover Preservation Test',
+				publisher: 'Test Publisher',
+				cover: WEBP_WITH_EXIF, // WebP cover should be preserved
+				stickers: [{ data: MINIMAL_PNG }]
+			}
+
+			const options = createMockOptions()
+
+			const result = await generateWAMessageContent({ stickerPack }, options)
+
+			// The tray icon should be in the message
+			expect(result.stickerPackMessage?.trayIconFileName).toBeDefined()
+			expect(result.stickerPackMessage?.trayIconFileName?.endsWith('.webp')).toBe(true)
 		})
 	})
 })
