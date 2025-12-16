@@ -91,7 +91,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		fetchPrivacySettings,
 		sendNode,
 		groupMetadata,
-		groupToggleEphemeral
+		groupToggleEphemeral,
+		registerSocketEndHandler
 	} = sock
 
 	const getLIDForPN = signalRepository.lidMapping.getLIDForPN.bind(signalRepository.lidMapping)
@@ -1226,6 +1227,21 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	const waUploadToServer = getWAUploadToServer(config, refreshMediaConn)
 
 	const waitForMsgMediaUpdate = bindWaitForEvent(ev, 'messages.media-update')
+
+	registerSocketEndHandler(() => {
+		if (!config.userDevicesCache && userDevicesCache.close) {
+			userDevicesCache.close()
+		}
+
+		if (peerSessionsCache.close) {
+			peerSessionsCache.close()
+		}
+
+		mediaConn = undefined as any
+		if (messageRetryManager) {
+			messageRetryManager.clear()
+		}
+	})
 
 	return {
 		...sock,
