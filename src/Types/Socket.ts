@@ -19,6 +19,7 @@ export type CacheStore = {
 	del(key: string): void | Promise<void> | number | boolean
 	/** flush all data */
 	flushAll(): void | Promise<void>
+	close?: () => void
 }
 
 export type PossiblyExtendedCacheStore = CacheStore & {
