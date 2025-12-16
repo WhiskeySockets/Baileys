@@ -27,7 +27,6 @@ export type BaileysEventMap = {
 		chats: Chat[]
 		contacts: Contact[]
 		messages: WAMessage[]
-		privacyTokens?: { jid: string; token: Uint8Array }[]
 		isLatest?: boolean
 		progress?: number | null
 		syncType?: proto.HistorySync.HistorySyncType | null
@@ -109,7 +108,6 @@ export type BufferedEventData = {
 		progress?: number | null
 		syncType?: proto.HistorySync.HistorySyncType
 		peerDataRequestSessionId?: string
-		privacyTokens?: { jid: string; token: Uint8Array }[]
 	}
 	chatUpserts: { [jid: string]: Chat }
 	chatUpdates: { [jid: string]: ChatUpdate }

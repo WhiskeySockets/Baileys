@@ -41,7 +41,6 @@ type ProcessMessageContext = {
 	logger?: ILogger
 	options: RequestInit
 	signalRepository: SignalRepositoryWithLIDStore
-	storePrivacyTokens?: (entries: { jid: string; token: Uint8Array }[]) => Promise<void>
 }
 
 const REAL_MSG_STUB_TYPES = new Set([
@@ -52,24 +51,6 @@ const REAL_MSG_STUB_TYPES = new Set([
 ])
 
 const REAL_MSG_REQ_ME_STUB_TYPES = new Set([WAMessageStubType.GROUP_PARTICIPANT_ADD])
-
-const handlePrivacyTokensFromHistory = async (
-	data: any,
-	storePrivacyTokens?: (entries: { jid: string; token: Uint8Array }[]) => Promise<void>,
-	logger?: ILogger
-) => {
-	if (data.privacyTokens?.length) {
-		if (storePrivacyTokens) {
-			await storePrivacyTokens(data.privacyTokens)
-			logger?.info({ count: data.privacyTokens.length }, 'stored privacy tokens from history sync')
-		} else {
-			logger?.debug(
-				{ count: data.privacyTokens.length },
-				'skipped persisting privacy tokens: no storePrivacyTokens implementation'
-			)
-		}
-	}
-}
 
 const processAppStateSyncKeys = async (
 	keys: any[],
@@ -119,8 +100,6 @@ const handlePeerDataOperationResponse = async (response: any, ev: BaileysEventEm
 		}
 	}
 }
-
-/** Cleans a received message to further processing */
 
 /** Cleans a received message to further processing */
 export const cleanMessage = (message: WAMessage, meId: string, meLid: string) => {
@@ -254,8 +233,7 @@ const processMessage = async (
 		signalRepository,
 		keyStore,
 		logger,
-		options,
-		storePrivacyTokens
+		options
 	}: ProcessMessageContext
 ) => {
 	const meId = creds.me!.id
@@ -312,8 +290,6 @@ const processMessage = async (
 					}
 
 					const data = await downloadAndProcessHistorySyncNotification(histNotification, options)
-
-					await handlePrivacyTokensFromHistory(data, storePrivacyTokens, logger)
 
 					ev.emit('messaging-history.set', {
 						...data,

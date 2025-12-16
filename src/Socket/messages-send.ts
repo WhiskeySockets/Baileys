@@ -932,10 +932,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				logger.debug({ jid }, 'adding device identity')
 			}
 
-			if (additionalNodes && additionalNodes.length > 0) {
-				;(stanza.content as BinaryNode[]).push(...additionalNodes)
-			}
-
 			if (!isNewsletter) {
 				if (
 					reportingMessage &&
@@ -960,23 +956,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						logger.warn({ jid, trace: error?.stack }, 'failed to attach reporting token')
 					}
 				}
+			}
 
-				if (!isGroup && !isStatus && !participant && config.getPrivacyToken) {
-					try {
-						const normalizedJid = jidNormalizedUser(jid)
-						const tokenData = await config.getPrivacyToken(normalizedJid)
-						if (tokenData && tokenData.length > 0) {
-							;(stanza.content as BinaryNode[]).push({
-								tag: 'tctoken',
-								attrs: {},
-								content: tokenData
-							})
-							logger.trace({ jid }, 'added tcToken to message')
-						}
-					} catch (error: any) {
-						logger.warn({ jid, trace: error?.stack }, 'failed to get privacy token')
-					}
-				}
+			// tctoken handling will be added after merge with master (PR #2080)
+
+			if (additionalNodes && additionalNodes.length > 0) {
+				;(stanza.content as BinaryNode[]).push(...additionalNodes)
 			}
 
 			logger.debug({ msgId }, `sending message to ${participants.length} devices`)
