@@ -55,55 +55,6 @@ const REAL_MSG_STUB_TYPES = new Set([
 
 const REAL_MSG_REQ_ME_STUB_TYPES = new Set([WAMessageStubType.GROUP_PARTICIPANT_ADD])
 
-const processAppStateSyncKeys = async (
-	keys: any[],
-	keyStore: SignalKeyStoreWithTransaction,
-	meId: string,
-	logger?: ILogger
-): Promise<string> => {
-	let newAppStateSyncKeyId = ''
-	await keyStore.transaction(async () => {
-		const newKeys: string[] = []
-		for (const { keyData, keyId } of keys) {
-			if (!keyId?.keyId || !keyData) {
-				logger?.warn({ keyId, hasKeyData: !!keyData }, 'skipping malformed app state sync key entry')
-				continue
-			}
-
-			const strKeyId = Buffer.from(keyId.keyId).toString('base64')
-			newKeys.push(strKeyId)
-
-			await keyStore.set({ 'app-state-sync-key': { [strKeyId]: keyData } })
-
-			newAppStateSyncKeyId = strKeyId
-		}
-
-		logger?.info({ newAppStateSyncKeyId, newKeys }, 'injecting new app state sync keys')
-	}, meId)
-	return newAppStateSyncKeyId
-}
-
-const handlePeerDataOperationResponse = async (response: any, ev: BaileysEventEmitter) => {
-	// TODO: IMPLEMENT HISTORY SYNC ETC (sticker uploads etc.).
-	const { peerDataOperationResult } = response
-	for (const result of peerDataOperationResult!) {
-		const { placeholderMessageResendResponse: retryResponse } = result
-
-		if (retryResponse) {
-			const webMessageInfo = proto.WebMessageInfo.decode(retryResponse.webMessageInfoBytes)
-			// wait till another upsert event is available, don't want it to be part of the PDO response message
-			// TODO: parse through proper message handling utilities (to add relevant key fields)
-			setTimeout(() => {
-				ev.emit('messages.upsert', {
-					messages: [webMessageInfo as WAMessage],
-					type: 'notify',
-					requestId: response.stanzaId!
-				})
-			}, 500)
-		}
-	}
-}
-
 /** Cleans a received message to further processing */
 export const cleanMessage = (message: WAMessage, meId: string, meLid: string) => {
 	// ensure remoteJid and participant doesn't have device or agent in it
@@ -347,10 +298,22 @@ const processMessage = async (
 			case proto.Message.ProtocolMessage.Type.APP_STATE_SYNC_KEY_SHARE:
 				const keys = protocolMsg.appStateSyncKeyShare!.keys
 				if (keys?.length) {
-					const newAppStateSyncKeyId = await processAppStateSyncKeys(keys, keyStore, meId, logger)
-					if (newAppStateSyncKeyId) {
-						ev.emit('creds.update', { myAppStateKeyId: newAppStateSyncKeyId })
-					}
+					let newAppStateSyncKeyId = ''
+					await keyStore.transaction(async () => {
+						const newKeys: string[] = []
+						for (const { keyData, keyId } of keys) {
+							const strKeyId = Buffer.from(keyId!.keyId!).toString('base64')
+							newKeys.push(strKeyId)
+
+							await keyStore.set({ 'app-state-sync-key': { [strKeyId]: keyData! } })
+
+							newAppStateSyncKeyId = strKeyId
+						}
+
+						logger?.info({ newAppStateSyncKeyId, newKeys }, 'injecting new app state sync keys')
+					}, meId)
+
+					ev.emit('creds.update', { myAppStateKeyId: newAppStateSyncKeyId })
 				} else {
 					logger?.info({ protocolMsg }, 'recv app state sync with 0 keys')
 				}
@@ -377,7 +340,24 @@ const processMessage = async (
 				const response = protocolMsg.peerDataOperationRequestResponseMessage!
 				if (response) {
 					await placeholderResendCache?.del(response.stanzaId!)
-					await handlePeerDataOperationResponse(response, ev)
+					// TODO: IMPLEMENT HISTORY SYNC ETC (sticker uploads etc.).
+					const { peerDataOperationResult } = response
+					for (const result of peerDataOperationResult!) {
+						const { placeholderMessageResendResponse: retryResponse } = result
+						//eslint-disable-next-line max-depth
+						if (retryResponse) {
+							const webMessageInfo = proto.WebMessageInfo.decode(retryResponse.webMessageInfoBytes!)
+							// wait till another upsert event is available, don't want it to be part of the PDO response message
+							// TODO: parse through proper message handling utilities (to add relevant key fields)
+							setTimeout(() => {
+								ev.emit('messages.upsert', {
+									messages: [webMessageInfo as WAMessage],
+									type: 'notify',
+									requestId: response.stanzaId!
+								})
+							}, 500)
+						}
+					}
 				}
 
 				break
