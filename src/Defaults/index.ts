@@ -85,7 +85,7 @@ export const MEDIA_PATH_MAP: { [T in MediaType]?: string } = {
 	document: '/mms/document',
 	audio: '/mms/audio',
 	sticker: '/mms/image',
-	'sticker-pack': '/mms/sticker',
+	'sticker-pack': '/mms/sticker-pack',
 	'thumbnail-sticker-pack': '/mms/thumbnail-sticker-pack',
 	'thumbnail-link': '/mms/image',
 	'product-catalog-image': '/product/image',
