@@ -1439,6 +1439,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		node: BinaryNode
 	}
 
+	/** Yields control to the event loop to prevent blocking */
+	const yieldToEventLoop = (): Promise<void> => {
+		return new Promise(resolve => setImmediate(resolve))
+	}
+
 	const makeOfflineNodeProcessor = () => {
 		const nodeProcessorMap: Map<MessageType, (node: BinaryNode) => Promise<void>> = new Map([
 			['message', handleMessage],
@@ -1448,6 +1453,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		])
 		const nodes: OfflineNode[] = []
 		let isProcessing = false
+
+		// Number of nodes to process before yielding to event loop
+		const BATCH_SIZE = 10
 
 		const enqueue = (type: MessageType, node: BinaryNode) => {
 			nodes.push({ type, node })
@@ -1459,6 +1467,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			isProcessing = true
 
 			const promise = async () => {
+				let processedInBatch = 0
+
 				while (nodes.length && ws.isOpen) {
 					const { type, node } = nodes.shift()!
 
@@ -1470,6 +1480,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 
 					await nodeProcessor(node)
+					processedInBatch++
+
+					// Yield to event loop after processing a batch
+					// This prevents blocking the event loop for too long when there are many offline nodes
+					if (processedInBatch >= BATCH_SIZE) {
+						processedInBatch = 0
+						await yieldToEventLoop()
+					}
 				}
 
 				isProcessing = false
