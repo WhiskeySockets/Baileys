@@ -381,7 +381,7 @@ const processMessage = async (
 				break
 			case proto.Message.ProtocolMessage.Type.GROUP_MEMBER_LABEL_CHANGE:
 				const labelAssociationMsg = protocolMsg.memberLabel
-				if (labelAssociationMsg && labelAssociationMsg.label) {
+				if (labelAssociationMsg?.label) {
 					ev.emit('group.member-tag.update', {
 						groupId: chat.id!,
 						label: labelAssociationMsg.label,
@@ -390,6 +390,7 @@ const processMessage = async (
 						messageTimestamp: Number(message.messageTimestamp)
 					})
 				}
+
 				break
 			case proto.Message.ProtocolMessage.Type.LID_MIGRATION_MAPPING_SYNC:
 				const encodedPayload = protocolMsg.lidMigrationMappingSyncMessage?.encodedMappingPayload!
