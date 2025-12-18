@@ -387,25 +387,30 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	 * Update Member Label
 	 */
 	const updateMemberLabel = (jid: string, memberLabel: string) => {
-		return relayMessage(jid, {
-			protocolMessage: {
-            	type: proto.Message.ProtocolMessage.Type.GROUP_MEMBER_LABEL_CHANGE,
-        		memberLabel: {
-          			label: memberLabel?.slice(0, 30),
-          			labelTimestamp: unixTimestampSeconds()
-        		}
-      		}
-    	}, 
-		{
-			additionalNodes: [{
-				tag: "meta",
-				attrs: {
-					tag_reason: "user_update",
-					appdata: "member_tag"
-				},
-				content: undefined
-			}]
-		})
+		return relayMessage(
+			jid,
+			{
+				protocolMessage: {
+					type: proto.Message.ProtocolMessage.Type.GROUP_MEMBER_LABEL_CHANGE,
+					memberLabel: {
+						label: memberLabel?.slice(0, 30),
+						labelTimestamp: unixTimestampSeconds()
+					}
+				}
+			},
+			{
+				additionalNodes: [
+					{
+						tag: 'meta',
+						attrs: {
+							tag_reason: 'user_update',
+							appdata: 'member_tag'
+						},
+						content: undefined
+					}
+				]
+			}
+		)
 	}
 
 	const assertSessions = async (jids: string[], force?: boolean) => {
