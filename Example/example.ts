@@ -225,7 +225,7 @@ const startSock = async() => {
 			}
 
 			if(events['group.member-tag.update']) {
-				console.log('group member tags update', JSON.stringify(events['group.member-tag.update'], undefined, 2))
+				console.log('group member tag update', JSON.stringify(events['group.member-tag.update'], undefined, 2))
 			}
 		}
 	)
