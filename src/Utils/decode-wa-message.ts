@@ -194,7 +194,7 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	const pushname = stanza?.attrs?.notify
 
 	const key: WAMessageKey = {
-		remoteJid: chatId,
+		remoteJid: !isJidGroup(chatId) ? addressingContext.senderAlt : chatId,
 		remoteJidAlt: !isJidGroup(chatId) ? addressingContext.senderAlt : undefined,
 		fromMe,
 		id: msgId,
