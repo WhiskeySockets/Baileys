@@ -184,6 +184,11 @@ export function makeLibSignalRepository(
 			}, `delete-${jids.length}-sessions`)
 		},
 
+		close() {
+			migratedSessionCache.clear()
+			lidMapping.close()
+		},
+
 		async migrateSession(
 			fromJid: string,
 			toJid: string
