@@ -154,7 +154,8 @@ export const extractDeviceJids = (
 				((myUser !== user && myLid !== user) || myDevice !== device) && // either different user or if me user, not this device
 				(device === 0 || !!keyIndex) // ensure that "key-index" is specified for "non-zero" devices, produces a bad req otherwise
 			) {
-				if (isHosted) {
+				// Device 99 must always be on the hosted domain
+				if (isHosted || device === 99) {
 					domainType = domainType === WAJIDDomains.LID ? WAJIDDomains.HOSTED_LID : WAJIDDomains.HOSTED
 				}
 
