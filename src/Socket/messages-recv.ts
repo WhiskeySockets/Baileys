@@ -85,7 +85,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		sendReceipt,
 		uploadPreKeys,
 		sendPeerDataOperationMessage,
-		messageRetryManager
+		messageRetryManager,
+		registerSocketEndHandler
 	} = sock
 
 	/** this mutex ensures that each retryRequest will wait for the previous one to finish */
@@ -1575,6 +1576,23 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			sendActiveReceipts = isOnline
 			logger.trace(`sendActiveReceipts set to "${sendActiveReceipts}"`)
 		}
+	})
+
+	registerSocketEndHandler(() => {
+		if (!config.msgRetryCounterCache && msgRetryCache.close) {
+			msgRetryCache.close()
+		}
+
+		if (!config.callOfferCache && callOfferCache.close) {
+			callOfferCache.close()
+		}
+
+		if (!config.placeholderResendCache && placeholderResendCache.close) {
+			placeholderResendCache.close()
+		}
+
+		identityAssertDebounce.close()
+		sendActiveReceipts = false
 	})
 
 	return {

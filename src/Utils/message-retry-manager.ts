@@ -213,6 +213,25 @@ export class MessageRetryManager {
 		}
 	}
 
+	clear(): void {
+		this.recentMessagesMap.clear()
+		this.messageKeyIndex.clear()
+		this.sessionRecreateHistory.clear()
+		this.retryCounters.clear()
+		for (const messageId of Object.keys(this.pendingPhoneRequests)) {
+			this.cancelPendingPhoneRequest(messageId)
+		}
+
+		this.statistics = {
+			totalRetries: 0,
+			successfulRetries: 0,
+			failedRetries: 0,
+			mediaRetries: 0,
+			sessionRecreations: 0,
+			phoneRequests: 0
+		}
+	}
+
 	private keyToString(key: RecentMessageKey): string {
 		return `${key.to}${MESSAGE_KEY_SEPARATOR}${key.id}`
 	}
