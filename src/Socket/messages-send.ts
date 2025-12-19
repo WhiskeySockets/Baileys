@@ -1230,7 +1230,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				})
 				if (config.emitOwnEvents) {
 					process.nextTick(async () => {
-						await messageMutex.mutex(() => upsertMessage(fullMsg, 'append'))
+						await messageMutex.mutex(jid,() => upsertMessage(fullMsg, 'append'))
 					})
 				}
 
