@@ -949,29 +949,27 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				logger.debug({ jid }, 'adding device identity')
 			}
 
-			if (!isNewsletter) {
-				if (
-					reportingMessage &&
-					shouldIncludeReportingToken(reportingMessage) &&
-					reportingMessage.messageContextInfo?.messageSecret &&
-					msgId
-				) {
-					try {
-						const encoded = encodeWAMessage(reportingMessage)
-						const reportingKey: WAMessageKey = {
-							id: msgId,
-							fromMe: true,
-							remoteJid: destinationJid,
-							participant: participant?.jid
-						}
-						const reportingNode = await getMessageReportingToken(encoded, reportingMessage, reportingKey)
-						if (reportingNode) {
-							;(stanza.content as BinaryNode[]).push(reportingNode)
-							logger.trace({ jid }, 'added reporting token to message')
-						}
-					} catch (error: any) {
-						logger.warn({ jid, trace: error?.stack }, 'failed to attach reporting token')
+			if (
+				!isNewsletter &&
+				reportingMessage &&
+				shouldIncludeReportingToken(reportingMessage) &&
+				reportingMessage.messageContextInfo?.messageSecret
+			) {
+				try {
+					const encoded = encodeWAMessage(reportingMessage)
+					const reportingKey: WAMessageKey = {
+						id: msgId,
+						fromMe: true,
+						remoteJid: destinationJid,
+						participant: participant?.jid
 					}
+					const reportingNode = await getMessageReportingToken(encoded, reportingMessage, reportingKey)
+					if (reportingNode) {
+						;(stanza.content as BinaryNode[]).push(reportingNode)
+						logger.trace({ jid }, 'added reporting token to message')
+					}
+				} catch (error: any) {
+					logger.warn({ jid, trace: error?.stack }, 'failed to attach reporting token')
 				}
 			}
 
