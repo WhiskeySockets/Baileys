@@ -10,6 +10,11 @@ export type ReportingField = {
 	s?: ReportingField[]
 }
 
+type CompiledReportingField = {
+	m?: boolean
+	children?: Map<number, CompiledReportingField>
+}
+
 const reportingFields: ReportingField[] = [
 	{ f: 1 },
 	{
@@ -67,7 +72,29 @@ const reportingFields: ReportingField[] = [
 	{ f: 94, s: [{ f: 1, m: true }] }
 ]
 
+const compileReportingFields = (fields: readonly ReportingField[]): Map<number, CompiledReportingField> => {
+	const map = new Map<number, CompiledReportingField>()
+	for (const f of fields) {
+		map.set(f.f, {
+			m: f.m,
+			children: f.s ? compileReportingFields(f.s) : undefined
+		})
+	}
+
+	return map
+}
+
+const compiledReportingFields = compileReportingFields(reportingFields)
+const EMPTY_MAP: Map<number, CompiledReportingField> = new Map()
+
 const ENC_SECRET_REPORT_TOKEN = 'Report Token'
+
+const WIRE = {
+	VARINT: 0,
+	FIXED64: 1,
+	BYTES: 2,
+	FIXED32: 5
+} as const
 
 export const shouldIncludeReportingToken = (message: proto.IMessage) =>
 	!message.reactionMessage &&
@@ -83,137 +110,198 @@ const generateMsgSecretKey = async (
 	origMsgSecret: Uint8Array
 ) => {
 	const useCaseSecret = Buffer.concat([
-		Buffer.from(origMsgId),
-		Buffer.from(origMsgSender),
-		Buffer.from(modificationSender),
-		Buffer.from(modificationType)
+		Buffer.from(origMsgId, 'utf8'),
+		Buffer.from(origMsgSender, 'utf8'),
+		Buffer.from(modificationSender, 'utf8'),
+		Buffer.from(modificationType, 'utf8')
 	])
 
 	return hkdf(origMsgSecret, 32, { info: useCaseSecret.toString('latin1') })
 }
 
-const extractReportingTokenContent = (data: Buffer, config: ReportingField[]): Buffer => {
-	const wireVarint = 0
-	const wireBytes = 2
+type FieldBytes = { num: number; bytes: Buffer }
 
-	type Field = { num: number; bytes: Buffer }
-	const fields: Field[] = []
-
+const extractReportingTokenContent = (data: Buffer, cfg: Map<number, CompiledReportingField>): Buffer | null => {
+	const out: FieldBytes[] = []
 	let i = 0
+
 	while (i < data.length) {
-		const tagData = decodeVarint(data, i)
-		if (tagData.bytes === 0) {
-			break
+		const tag = decodeVarint(data, i)
+		if (!tag.ok) {
+			return null
 		}
 
-		const fieldNum = tagData.value >> 3
-		const wireType = tagData.value & 0x7
-		const fieldCfg = config.find(f => f.f === fieldNum)
+		const fieldNum = tag.value >> 3
+		const wireType = tag.value & 0x7
 
 		const fieldStart = i
-		i += tagData.bytes
+		i += tag.bytes
 
-		if (!fieldCfg) {
-			switch (wireType) {
-				case wireVarint:
-					i += decodeVarint(data, i).bytes
-					break
-				case 1:
-					i += 8
-					break
-				case wireBytes: {
-					const lenData = decodeVarint(data, i)
-					i += lenData.bytes + lenData.value
-					break
+		const fieldCfg = cfg.get(fieldNum)
+
+		const pushSlice = (end: number): boolean => {
+			if (end > data.length) {
+				return false
+			}
+
+			out.push({ num: fieldNum, bytes: data.subarray(fieldStart, end) })
+			i = end
+			return true
+		}
+
+		const skip = (end: number): boolean => {
+			if (end > data.length) {
+				return false
+			}
+
+			i = end
+			return true
+		}
+
+		if (wireType === WIRE.VARINT) {
+			const v = decodeVarint(data, i)
+			if (!v.ok) {
+				return null
+			}
+
+			const end = i + v.bytes
+
+			if (!fieldCfg) {
+				if (!skip(end)) {
+					return null
 				}
 
-				case 5:
-					i += 4
-					break
-				default:
-					return Buffer.alloc(0)
+				continue
+			}
+
+			if (!pushSlice(end)) {
+				return null
 			}
 
 			continue
 		}
 
-		switch (wireType) {
-			case wireVarint: {
-				const varint = decodeVarint(data, i)
-				const varintEnd = i + varint.bytes
-				fields.push({ num: fieldNum, bytes: data.subarray(fieldStart, varintEnd) })
-				i = varintEnd
-				break
+		if (wireType === WIRE.FIXED64) {
+			const end = i + 8
+
+			if (!fieldCfg) {
+				if (!skip(end)) {
+					return null
+				}
+
+				continue
 			}
 
-			case 1: {
-				const end = i + 8
-				fields.push({ num: fieldNum, bytes: data.subarray(fieldStart, end) })
-				i = end
-				break
+			if (!pushSlice(end)) {
+				return null
 			}
 
-			case 5: {
-				const end = i + 4
-				fields.push({ num: fieldNum, bytes: data.subarray(fieldStart, end) })
-				i = end
-				break
+			continue
+		}
+
+		if (wireType === WIRE.FIXED32) {
+			const end = i + 4
+
+			if (!fieldCfg) {
+				if (!skip(end)) {
+					return null
+				}
+
+				continue
 			}
 
-			case wireBytes: {
-				const lenData = decodeVarint(data, i)
-				const valStart = i + lenData.bytes
-				const valEnd = valStart + lenData.value
+			if (!pushSlice(end)) {
+				return null
+			}
 
-				if (fieldCfg.m || fieldCfg.s) {
-					const sub = extractReportingTokenContent(data.subarray(valStart, valEnd), fieldCfg.s || [])
-					if (sub.length > 0) {
-						const newLen = encodeVarint(sub.length)
-						const newTag = encodeVarint(tagData.value)
-						const final = Buffer.concat([newTag, newLen, sub])
-						fields.push({ num: fieldNum, bytes: final })
-					}
-				} else {
-					fields.push({ num: fieldNum, bytes: data.subarray(fieldStart, valEnd) })
+			continue
+		}
+
+		if (wireType === WIRE.BYTES) {
+			const len = decodeVarint(data, i)
+			if (!len.ok) {
+				return null
+			}
+
+			const valStart = i + len.bytes
+			const valEnd = valStart + len.value
+			if (valEnd > data.length) {
+				return null
+			}
+
+			if (!fieldCfg) {
+				i = valEnd
+				continue
+			}
+
+			if (fieldCfg.m || fieldCfg.children) {
+				const sub = extractReportingTokenContent(data.subarray(valStart, valEnd), fieldCfg.children ?? EMPTY_MAP)
+				if (sub === null) {
+					return null
+				}
+
+				if (sub.length > 0) {
+					const newTag = encodeVarint(tag.value)
+					const newLen = encodeVarint(sub.length)
+					out.push({
+						num: fieldNum,
+						bytes: Buffer.concat([newTag, newLen, sub])
+					})
 				}
 
 				i = valEnd
-				break
+				continue
 			}
 
-			default:
-				return Buffer.alloc(0)
+			out.push({ num: fieldNum, bytes: data.subarray(fieldStart, valEnd) })
+			i = valEnd
+			continue
 		}
+
+		return null
 	}
 
-	fields.sort((a, b) => a.num - b.num)
-	return Buffer.concat(fields.map(f => f.bytes))
+	if (out.length === 0) {
+		return Buffer.alloc(0)
+	}
+
+	out.sort((a, b) => a.num - b.num)
+	return Buffer.concat(out.map(f => f.bytes))
 }
 
-const decodeVarint = (buffer: Buffer, offset: number) => {
+type Varint = { value: number; bytes: number; ok: boolean }
+
+const decodeVarint = (buffer: Buffer, offset: number): Varint => {
 	let value = 0
 	let bytes = 0
 	let shift = 0
+
 	while (offset + bytes < buffer.length) {
 		const current = buffer[offset + bytes]!
 		value |= (current & 0x7f) << shift
 		bytes++
+
 		if ((current & 0x80) === 0) {
-			return { value, bytes }
+			return { value, bytes, ok: true }
 		}
 
 		shift += 7
+
+		if (shift > 35) {
+			return { value: 0, bytes: 0, ok: false }
+		}
 	}
 
-	return { value: 0, bytes: 0 }
+	return { value: 0, bytes: 0, ok: false }
 }
 
-const encodeVarint = (value: number) => {
+const encodeVarint = (value: number): Buffer => {
 	const parts: number[] = []
-	let remaining = value
+	let remaining = value >>> 0
+
 	while (remaining > 0x7f) {
 		parts.push((remaining & 0x7f) | 0x80)
-		remaining >>= 7
+		remaining >>>= 7
 	}
 
 	parts.push(remaining)
@@ -225,28 +313,22 @@ export const getMessageReportingToken = async (
 	message: WAMessageContent,
 	key: WAMessageKey
 ): Promise<BinaryNode | null> => {
-	if (!message.messageContextInfo?.messageSecret || !key.id) {
+	const msgSecret = message.messageContextInfo?.messageSecret
+	if (!msgSecret || !key.id) {
 		return null
 	}
 
 	const from = key.fromMe ? key.remoteJid! : key.participant || key.remoteJid!
 	const to = key.fromMe ? key.participant || key.remoteJid! : key.remoteJid!
 
-	const reportingSecret = await generateMsgSecretKey(
-		ENC_SECRET_REPORT_TOKEN,
-		key.id,
-		from,
-		to,
-		message.messageContextInfo.messageSecret
-	)
+	const reportingSecret = await generateMsgSecretKey(ENC_SECRET_REPORT_TOKEN, key.id, from, to, msgSecret)
 
-	const content = extractReportingTokenContent(msgProtobuf, reportingFields)
-	if (content.length === 0) {
+	const content = extractReportingTokenContent(msgProtobuf, compiledReportingFields)
+	if (!content || content.length === 0) {
 		return null
 	}
 
-	const hmac = createHmac('sha256', reportingSecret).update(content)
-	const reportingToken = hmac.digest().subarray(0, 16)
+	const reportingToken = createHmac('sha256', reportingSecret).update(content).digest().subarray(0, 16)
 
 	return {
 		tag: 'reporting',
