@@ -2,6 +2,7 @@ import { randomBytes } from 'crypto'
 import { proto } from '../../../WAProto'
 import type { WAMessageKey } from '../../Types'
 import { getMessageReportingToken, shouldIncludeReportingToken } from '../../Utils/reporting-utils'
+import type { BinaryNode } from '../../WABinary'
 
 describe('Reporting Utils', () => {
 	describe('shouldIncludeReportingToken', () => {
@@ -67,7 +68,14 @@ describe('Reporting Utils', () => {
 		})
 
 		const encode = (msg: proto.IMessage) => Buffer.from(proto.Message.encode(msg).finish())
-		const getToken = (result: any) => (result?.content as any[])?.[0]?.content
+		const getToken = (result: BinaryNode | null): Buffer | undefined => {
+			const content = result?.content
+			if (Array.isArray(content) && content[0]) {
+				return content[0].content as Buffer | undefined
+			}
+
+			return undefined
+		}
 
 		it('should return null when message secret is missing', async () => {
 			const msg: proto.IMessage = { conversation: 'Hello' }

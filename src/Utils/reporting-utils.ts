@@ -96,7 +96,7 @@ const WIRE = {
 	FIXED32: 5
 } as const
 
-export const shouldIncludeReportingToken = (message: proto.IMessage) =>
+export const shouldIncludeReportingToken = (message: proto.IMessage): boolean =>
 	!message.reactionMessage &&
 	!message.encReactionMessage &&
 	!message.encEventResponseMessage &&
