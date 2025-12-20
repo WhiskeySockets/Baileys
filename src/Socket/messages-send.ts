@@ -951,9 +951,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			if (
 				!isNewsletter &&
-				reportingMessage &&
-				shouldIncludeReportingToken(reportingMessage) &&
-				reportingMessage.messageContextInfo?.messageSecret
+				!isRetryResend &&
+				reportingMessage?.messageContextInfo?.messageSecret &&
+				shouldIncludeReportingToken(reportingMessage)
 			) {
 				try {
 					const encoded = encodeWAMessage(reportingMessage)
