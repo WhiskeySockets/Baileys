@@ -127,7 +127,7 @@ export const makeNoiseHandler = ({
 			const { issuerSerial } = details
 
 			const verify = Curve.verify(details.key!, leaf.details, leaf.signature)
-			
+
 			const verifyIntermediate = Curve.verify(
 				WA_CERT_DETAILS.PUBLIC_KEY,
 				certIntermediate.details,
