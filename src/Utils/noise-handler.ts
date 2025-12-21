@@ -115,23 +115,19 @@ export const makeNoiseHandler = ({
 			const { intermediate: certIntermediate, leaf } = proto.CertChain.decode(certDecoded)
 			// leaf
 			if (!leaf?.details || !leaf?.signature) {
-  				throw new Boom('invalid noise leaf certificate', { statusCode: 400 })
+				throw new Boom('invalid noise leaf certificate', { statusCode: 400 })
 			}
 			if (!certIntermediate?.details || !certIntermediate?.signature) {
-  				throw new Boom('invalid noise intermediate certificate', { statusCode: 400 })
+				throw new Boom('invalid noise intermediate certificate', { statusCode: 400 })
 			}
 			const details = proto.CertChain.NoiseCertificate.Details.decode(certIntermediate.details)
-			
+
 			const { issuerSerial } = details
-			const verify = Curve.verify(
-				details.key!,
-				leaf.details!,
-				leaf.signature! 
-			)
+			const verify = Curve.verify(details.key!, leaf.details!, leaf.signature!)
 			const verifyIntermediate = Curve.verify(
 				WA_CERT_DETAILS.PUBLIC_KEY,
 				certIntermediate.details,
-				certIntermediate.signature,
+				certIntermediate.signature
 			)
 
 			if (!verify) {
