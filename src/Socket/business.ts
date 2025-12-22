@@ -31,7 +31,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 				}))
 		)
 
-		if (args.websites) {
+		if (args.websites !== undefined) {
 			node.push(
 				...args.websites.map(website => ({
 					tag: 'website',
@@ -41,7 +41,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 			)
 		}
 
-		if (args.hours) {
+		if (args.hours !== undefined) {
 		    node.push({
 		        tag: 'business_hours',
 		        attrs: { timezone: args.hours.timezone },
@@ -52,7 +52,7 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 		                    day_of_week: dayConfig.day, 
 		                    mode: dayConfig.mode 
 		                }
-		            }
+		            } as const
 		
 		            if (dayConfig.mode === 'specific_hours') {
 		                return {
