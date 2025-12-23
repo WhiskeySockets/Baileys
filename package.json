@@ -7,9 +7,9 @@
     "whatsapp",
     "automation"
   ],
-  "homepage": "https://github.com/WhiskeySockets/Baileys/",
+  "homepage": "https://github.com/jetsales/Baileys/",
   "repository": {
-    "url": "git@github.com:WhiskeySockets/Baileys.git"
+    "url": "git@github.com:jetsales/Baileys.git"
   },
   "license": "MIT",
   "author": "Rajeh Taher",
@@ -103,6 +103,6 @@
   },
   "packageManager": "yarn@4.9.2",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
   }
 }

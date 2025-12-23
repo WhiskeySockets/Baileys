@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -20,12 +20,12 @@ jobs:
         run: git fetch --tags -f || true
 
       - name: Setup Node
-        uses: actions/setup-node@v3.6.0
+        uses: actions/setup-node@v6
         with:
-          node-version: 20.x
+          node-version: 22.x
           registry-url: 'https://registry.npmjs.org'
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GPR_TOKEN }}
 
       - name: Enable Corepack and Set Yarn Version
         run: |
@@ -33,7 +33,7 @@ jobs:
           corepack prepare yarn@4.x --activate
 
       - name: Restore Yarn Cache
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         id: yarn-cache
         with:
           path: .yarn/cache
@@ -44,48 +44,17 @@ jobs:
       - name: Install Dependencies
         run: yarn install --immutable
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GPR_TOKEN }}
 
       - name: Publish in NPM (as `baileys`)
         run: npm publish --access public
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GPR_TOKEN }}
 
-      - name: Publish in NPM (whiskeysockets scope)
+      - name: Publish in NPM (jetsales scope)
         run: |
-          npx json -I -f package.json -e "this.name='@whiskeysockets/baileys'"
-          npm publish --access public --//registry.npmjs.org/:_authToken=$NPM_TOKEN
+          npx json -I -f package.json -e "this.name='@jetsales/baileys'"
+          npm publish --access public --//registry.npmjs.org/:_authToken=$GPR_TOKEN
           npx json -I -f package.json -e "this.name='baileys'"
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Generate Changelog
-        id: generate_changelog
-        run: |
-          changelog=$(npm run changelog:last --silent)
-          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          echo "${changelog}" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Make Package
-        run: yarn pack
-
-      - name: Rename Pack
-        run: mv *.tgz baileys.tgz
-
-      - name: Create Release
-        uses: meeDamian/github-release@2.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ github.ref }}
-          commitish: ${{ github.sha }}
-          name: ${{ github.ref_name }}
-          body: ${{ steps.generate_changelog.outputs.changelog }}
-          draft: false
-          prerelease: false
-          files: >
-            baileys.tgz
-          gzip: folders
-          allow_override: true
+          GPR_TOKEN: ${{ secrets.GPR_TOKEN }}

@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.PERSONAL_TOKEN }}
 
@@ -24,9 +24,9 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Setup Node
-        uses: actions/setup-node@v3.6.0
+        uses: actions/setup-node@v6
         with:
-          node-version: 20.x
+          node-version: 22.x
 
       - name: Enable Corepack and Set Yarn Version
         run: |
@@ -34,7 +34,7 @@ jobs:
           corepack prepare yarn@4.x --activate
 
       - name: Restore Yarn Cache
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         id: yarn-cache
         with:
           path: .yarn/cache
