@@ -731,95 +731,100 @@ export const makeSocket = (config: SocketConfig) => {
 		end(new Boom(msg || 'Intentional Logout', { statusCode: DisconnectReason.loggedOut }))
 	}
 
-	const requestPairingCode = async (phoneNumber: string, customPairingCode?: string): Promise<string> => {
-		const pairingCode = customPairingCode ?? bytesToCrockford(randomBytes(5))
+	 const requestPairingCode = async (phoneNumber: string, customPairingCode?: string): Promise<string> => {
+    const pairingCode = customPairingCode ?? bytesToCrockford(randomBytes(5));
+    if (customPairingCode && customPairingCode.length !== 8) {
+        throw new Error('Custom pairing code must be exactly 8 chars');
+    }
 
-		if (customPairingCode && customPairingCode?.length !== 8) {
-			throw new Error('Custom pairing code must be exactly 8 chars')
-		}
+    authState.creds.pairingCode = pairingCode;
+    authState.creds.me = {
+        id: jidEncode(phoneNumber, 's.whatsapp.net'),
+        name: '~'
+    };
 
-		authState.creds.pairingCode = pairingCode
+    authState.creds.pairingEphemeralKeyPair = Curve.generateKeyPair();
+    ev.emit('creds.update', authState.creds);
 
-		authState.creds.me = {
-			id: jidEncode(phoneNumber, 's.whatsapp.net'),
-			name: '~'
-		}
-		ev.emit('creds.update', authState.creds)
-		await sendNode({
-			tag: 'iq',
-			attrs: {
-				to: S_WHATSAPP_NET,
-				type: 'set',
-				id: generateMessageTag(),
-				xmlns: 'md'
-			},
-			content: [
-				{
-					tag: 'link_code_companion_reg',
-					attrs: {
-						jid: authState.creds.me.id,
-						stage: 'companion_hello',
+    const wrapped = await generatePairingKey();
 
-						should_show_push_notification: 'true'
-					},
-					content: [
-						{
-							tag: 'link_code_pairing_wrapped_companion_ephemeral_pub',
-							attrs: {},
-							content: await generatePairingKey()
-						},
-						{
-							tag: 'companion_server_auth_key_pub',
-							attrs: {},
-							content: authState.creds.noiseKey.public
-						},
-						{
-							tag: 'companion_platform_id',
-							attrs: {},
-							content: getPlatformId(browser[1])
-						},
-						{
-							tag: 'companion_platform_display',
-							attrs: {},
-							content: `${browser[1]} (${browser[0]})`
-						},
-						{
-							tag: 'link_code_pairing_nonce',
-							attrs: {},
-							content: '0'
-						}
-					]
-				}
-			]
-		})
-		return authState.creds.pairingCode
-	}
+    await sendNode({
+        tag: 'iq',
+        attrs: {
+            to: S_WHATSAPP_NET,
+            type: 'set',
+            id: generateMessageTag(),
+            xmlns: 'md'
+        },
+        content: [
+            {
+                tag: 'link_code_companion_reg',
+                attrs: {
+                    jid: authState.creds.me.id,
+                    stage: 'companion_hello',
+                    should_show_push_notification: 'true'
+                },
+                content: [
+                    {
+                        tag: 'link_code_pairing_wrapped_companion_ephemeral_pub',
+                        attrs: {},
+                        content: wrapped
+                    },
+                    {
+                        tag: 'companion_server_auth_key_pub',
+                        attrs: {},
+                        content: authState.creds.noiseKey.public
+                    },
+                    {
+                        tag: 'companion_platform_id',
+                        attrs: {},
+                        content: getPlatformId(browser[1])
+                    },
+                    {
+                        tag: 'companion_platform_display',
+                        attrs: {},
+                        content: `${browser[1]} (${browser[0]})`
+                    },
+                    {
+                        tag: 'link_code_pairing_nonce',
+                        attrs: {},
+                        content: '0'
+                    }
+                ]
+            }
+        ]
+    });
 
-	async function generatePairingKey() {
-		const salt = randomBytes(32)
-		const randomIv = randomBytes(16)
-		const key = await derivePairingCodeKey(authState.creds.pairingCode!, salt)
-		const ciphered = aesEncryptCTR(authState.creds.pairingEphemeralKeyPair.public, key, randomIv)
-		return Buffer.concat([salt, randomIv, ciphered])
-	}
+    return authState.creds.pairingCode;
+};
 
-	const sendWAMBuffer = (wamBuffer: Buffer) => {
-		return query({
-			tag: 'iq',
-			attrs: {
-				to: S_WHATSAPP_NET,
-				id: generateMessageTag(),
-				xmlns: 'w:stats'
-			},
-			content: [
-				{
-					tag: 'add',
-					attrs: { t: Math.round(Date.now() / 1000) + '' },
-					content: wamBuffer
-				}
-			]
-		})
-	}
+async function generatePairingKey(): Promise<Buffer> {
+    const salt = randomBytes(32);
+    const randomIv = randomBytes(16);
+    const key = await derivePairingCodeKey(authState.creds.pairingCode!, salt);
+    const ciphered = aesEncryptCTR(authState.creds.pairingEphemeralKeyPair.public, key, randomIv);
+    return Buffer.concat([salt, randomIv, ciphered]);
+}
+
+const sendWAMBuffer = (wamBuffer: Buffer) => {
+    return query({
+        tag: 'iq',
+        attrs: {
+            to: S_WHATSAPP_NET,
+            id: generateMessageTag(),
+            xmlns: 'w:stats'
+        },
+        content: [
+            {
+                tag: 'add',
+                attrs: { t: Math.round(Date.now() / 1000).toString() },
+                content: wamBuffer
+            }
+        ]
+    });
+};
+
+	
 
 	ws.on('message', onMessageReceived)
 
