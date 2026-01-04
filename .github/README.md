@@ -19,7 +19,7 @@ Join the WhiskeySockets community via the link: https://whiskey.so/discord
 >
 > **You can still access the old guide here:** [README.md](https://github.com/WhiskeySockets/Baileys/tree/master/README.md), or the [NPM homepage](https://npmjs.com/package/baileys).
 
-The new guide is posted at https://baileys.wiki .
+The new guide is posted at https://baileys.rapzmodzOfficial .
 
 # Get Support
 
