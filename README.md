@@ -13,7 +13,7 @@
 # Important Note
 This is a temporary README.md, the new guide is in development and will this file will be replaced with .github/README.md (already a default on GitHub).
 
-New guide link: https://baileys.wiki
+New guide link: https://baileys.RapzmodzOfficial
 
 # Get Support
 
