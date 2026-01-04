@@ -9,10 +9,10 @@
   ],
   "homepage": "https://github.com/WhiskeySockets/Baileys/",
   "repository": {
-    "url": "git+https://github.com/RapzmodzOfficial/baileys.git"
+    "url": "git+https://github.com/rapliahmadf123-glitch/baileys.git"
   },
   "license": "MIT",
-  "author": "RapzmodzOfficial",
+  "author": "rapliahmadf123-glitch",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "files": [
