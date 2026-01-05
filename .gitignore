@@ -9,7 +9,6 @@ baileys_store*.json
 browser-messages.json
 browser-token.json
 decoded-ws.json
-docs
 lib
 messages*.json
 node_modules
@@ -19,3 +18,6 @@ test.ts
 TestData
 wa-logs.txt
 coverage
+
+# Archived original Baileys code
+starting_point/
