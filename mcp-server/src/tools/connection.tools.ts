@@ -53,6 +53,10 @@ const PairingCodeOutputSchema = z.object({
   pairingCode: z.string(),
 });
 
+const QrCodeOutputSchema = z.object({
+  qrCode: z.string(),
+});
+
 // =============================================================================
 // Type Definitions
 // =============================================================================
@@ -122,13 +126,33 @@ export const connectionStatusTool: ToolDefinition<EmptyInput, unknown> = defineT
 export const requestPairingCodeTool: ToolDefinition<RequestPairingInput, { pairingCode: string }> = defineTool({
   name: 'whatsapp_request_pairing_code',
   title: 'Request Pairing Code',
-  description: 'Request a pairing code for phone number authentication (alternative to QR)',
+  description: 'Request a pairing code for phone number authentication. Auto-connects if not initialized.',
   inputSchema: RequestPairingInputSchema,
   outputSchema: PairingCodeOutputSchema,
   requiresConnection: false, // Used during connection setup
   handler: async (input: RequestPairingInput, ctx: ToolContext) => {
     const pairingCode = await ctx.services.connectionService.requestPairingCode(input.phoneNumber);
     return { pairingCode };
+  },
+});
+
+/**
+ * Get QR code tool definition.
+ */
+export const getQrCodeTool: ToolDefinition<EmptyInput, { qrCode: string }> = defineTool({
+  name: 'whatsapp_get_qr_code',
+  title: 'Get QR Code',
+  description: 'Get the QR code for authentication. Initiates connection if needed and waits for QR.',
+  inputSchema: EmptyInputSchema,
+  outputSchema: QrCodeOutputSchema,
+  requiresConnection: false,
+  handler: async (_input: EmptyInput, ctx: ToolContext) => {
+    // Check if we need to connect
+    if (!ctx.services.connectionService.getSocket()) {
+       await ctx.services.connectionService.connect();
+    }
+    const qrCode = await ctx.services.connectionService.waitForQR();
+    return { qrCode };
   },
 });
 
@@ -144,6 +168,7 @@ export const connectionTools: ToolDefinition<unknown, unknown>[] = [
   disconnectTool as ToolDefinition<unknown, unknown>,
   connectionStatusTool as ToolDefinition<unknown, unknown>,
   requestPairingCodeTool as ToolDefinition<unknown, unknown>,
+  getQrCodeTool as ToolDefinition<unknown, unknown>,
 ];
 
 // =============================================================================

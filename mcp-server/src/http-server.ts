@@ -15,6 +15,7 @@ import cors from 'cors';
 import { randomUUID } from 'node:crypto';
 import path from 'path';
 import fs from 'fs';
+import qrcode from 'qrcode-terminal';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { createMcpServer } from './server.js';
@@ -122,7 +123,14 @@ function createServiceContainer(sessionId: string): ServiceContainer {
   connectionService.on('messages.upsert', (data) => webhookService.dispatch('message.received', data));
   connectionService.on('messages.update', (data) => webhookService.dispatch('message.update', data));
   connectionService.on('connected', () => webhookService.dispatch('connection.update', { status: 'connected' }));
-  connectionService.on('qr', (qr) => webhookService.dispatch('connection.update', { status: 'qr_required', qr }));
+  
+  // Handle QR code: Dispatch to webhook AND print to console
+  connectionService.on('qr', (qr) => {
+    logger.info('QR Code received, scan with WhatsApp:');
+    qrcode.generate(qr as string, { small: true });
+    webhookService.dispatch('connection.update', { status: 'qr_required', qr });
+  });
+
   connectionService.on('groups.update', (data) => webhookService.dispatch('group.update', data));
   connectionService.on('presence.update', (data) => webhookService.dispatch('presence.update', data));
 

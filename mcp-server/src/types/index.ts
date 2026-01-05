@@ -185,6 +185,7 @@ export interface IConnectionService {
   getState(): ConnectionState;
   getSessionInfo(): SessionInfo | null;
   requestPairingCode(phoneNumber: string): Promise<string>;
+  waitForQR(timeoutMs?: number): Promise<string>;
   on(event: string, callback: (data: unknown) => void): void;
   off(event: string, callback: (data: unknown) => void): void;
 }

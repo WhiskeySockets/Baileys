@@ -195,9 +195,61 @@ export class ConnectionService implements IConnectionService {
   /**
    * Request pairing code for phone number
    */
+  /**
+   * Wait for QR code
+   */
+  async waitForQR(timeoutMs: number = 45000): Promise<string> {
+    if (this.state.qrCode) return this.state.qrCode;
+    if (this.isConnected()) throw new Error('Already connected');
+
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error('Timeout waiting for QR code'));
+      }, timeoutMs);
+
+      const onQR = (qr: unknown) => {
+        cleanup();
+        resolve(qr as string);
+      };
+
+      const onConnect = () => {
+         cleanup();
+         reject(new Error('Connected without QR (session restored?)'));
+      };
+      
+      const cleanup = () => {
+        this.off('qr', onQR);
+        this.off('connected', onConnect);
+        clearTimeout(timeout);
+      };
+
+      this.on('qr', onQR);
+      this.on('connected', onConnect);
+    });
+  }
+
+  /**
+   * Request pairing code for phone number
+   */
   async requestPairingCode(phoneNumber: string): Promise<string> {
     if (!this.socket) {
-      throw new Error('Socket not initialized. Call connect() first.');
+      logger.info('Socket not initialized, connecting for pairing code...');
+      await this.connect();
+      // Give it a moment to initialize
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    if (!this.socket) {
+      throw new Error('Failed to initialize socket');
+    }
+
+    // If connected, we might not be able to pair (already authenticated)
+    if (this.isConnected()) {
+       // If isRegistered is true, throw?
+       if (this.authService.isRegistered()) {
+         throw new Error('Already connected and registered');
+       }
     }
 
     const code = await this.socket.requestPairingCode(phoneNumber);
