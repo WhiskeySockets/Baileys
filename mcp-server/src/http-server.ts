@@ -114,13 +114,83 @@ function createServiceContainer(sessionId: string): ServiceContainer {
   };
 
   const connectionService = new ConnectionService(authService, serviceConfig);
-  const messageService = new MessageService(connectionService);
+  const messageService = new MessageService(connectionService, {
+    sessionId: USE_DATABASE ? sessionId : undefined,
+    messageRepository: repositories?.messages,
+  });
   const groupService = new GroupService(connectionService);
   const contactService = new ContactService(connectionService);
   const webhookService = new WebhookService();
 
   // Setup Webhook Dispatching for this session
-  connectionService.on('messages.upsert', (data) => webhookService.dispatch('message.received', data));
+  // Handle incoming messages: persist to DB and dispatch webhook
+  connectionService.on('messages.upsert', async (data) => {
+    webhookService.dispatch('message.received', data);
+    
+    // Persist incoming messages to database
+    if (USE_DATABASE && repositories?.messages) {
+      try {
+        const upsertData = data as { messages: Array<{ key: { id: string; remoteJid: string; fromMe?: boolean; participant?: string }; messageTimestamp?: number | bigint; message?: Record<string, unknown> }> };
+        
+        for (const msg of upsertData.messages) {
+          // Determine message type from message content
+          let messageType: 'TEXT' | 'IMAGE' | 'VIDEO' | 'AUDIO' | 'DOCUMENT' | 'STICKER' | 'LOCATION' | 'CONTACT' | 'REACTION' | 'OTHER' = 'OTHER';
+          let content: string | undefined;
+          
+          if (msg.message) {
+            if (msg.message.conversation) {
+              messageType = 'TEXT';
+              content = msg.message.conversation as string;
+            } else if (msg.message.extendedTextMessage) {
+              messageType = 'TEXT';
+              content = (msg.message.extendedTextMessage as { text?: string }).text;
+            } else if (msg.message.imageMessage) {
+              messageType = 'IMAGE';
+              content = (msg.message.imageMessage as { caption?: string }).caption;
+            } else if (msg.message.videoMessage) {
+              messageType = 'VIDEO';
+              content = (msg.message.videoMessage as { caption?: string }).caption;
+            } else if (msg.message.audioMessage) {
+              messageType = 'AUDIO';
+            } else if (msg.message.documentMessage) {
+              messageType = 'DOCUMENT';
+              content = (msg.message.documentMessage as { fileName?: string }).fileName;
+            } else if (msg.message.stickerMessage) {
+              messageType = 'STICKER';
+            } else if (msg.message.locationMessage) {
+              messageType = 'LOCATION';
+            } else if (msg.message.contactMessage) {
+              messageType = 'CONTACT';
+            } else if (msg.message.reactionMessage) {
+              messageType = 'REACTION';
+              content = (msg.message.reactionMessage as { text?: string }).text;
+            }
+          }
+          
+          const timestamp = msg.messageTimestamp 
+            ? new Date(Number(msg.messageTimestamp) * 1000)
+            : new Date();
+          
+          await repositories.messages.save({
+            sessionId,
+            messageId: msg.key.id,
+            remoteJid: msg.key.remoteJid,
+            fromMe: msg.key.fromMe ?? false,
+            participant: msg.key.participant,
+            messageType,
+            content,
+            status: 'DELIVERED',
+            timestamp,
+          });
+          
+          logger.debug({ messageId: msg.key.id, type: messageType }, 'Incoming message persisted to database');
+        }
+      } catch (error) {
+        logger.error({ error }, 'Failed to persist incoming messages to database');
+      }
+    }
+  });
+  
   connectionService.on('messages.update', (data) => webhookService.dispatch('message.update', data));
   connectionService.on('connected', () => webhookService.dispatch('connection.update', { status: 'connected' }));
   

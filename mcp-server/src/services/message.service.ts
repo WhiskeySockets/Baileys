@@ -6,6 +6,8 @@
 import type { WASocket, AnyMessageContent, WAMessage } from '@whiskeysockets/baileys';
 import { createChildLogger } from '../infrastructure/logger.js';
 import { type ConnectionService } from './connection.service.js';
+import type { IMessageRepository, CreateMessageInput } from '../repositories/interfaces.js';
+import type { MessageType } from '../generated/prisma/index.js';
 import type {
   IMessageService,
   SendTextInput,
@@ -17,11 +19,37 @@ import type {
 
 const logger = createChildLogger('MessageService');
 
+export interface MessageServiceConfig {
+  sessionId?: string;
+  messageRepository?: IMessageRepository;
+}
+
 export class MessageService implements IMessageService {
   private connectionService: ConnectionService;
+  private sessionId?: string;
+  private messageRepository?: IMessageRepository;
 
-  constructor(connectionService: ConnectionService) {
+  constructor(connectionService: ConnectionService, config?: MessageServiceConfig) {
     this.connectionService = connectionService;
+    this.sessionId = config?.sessionId;
+    this.messageRepository = config?.messageRepository;
+  }
+
+  /**
+   * Persist message to database if repository is available
+   */
+  private async persistMessage(input: CreateMessageInput): Promise<void> {
+    if (!this.messageRepository || !this.sessionId) {
+      return; // Skip if no repository or sessionId configured
+    }
+
+    try {
+      await this.messageRepository.save(input);
+      logger.debug({ messageId: input.messageId }, 'Message persisted to database');
+    } catch (error) {
+      logger.error({ error, messageId: input.messageId }, 'Failed to persist message to database');
+      // Don't throw - persistence failure shouldn't break message sending
+    }
   }
 // ... methods remain same
 
@@ -59,13 +87,27 @@ export class MessageService implements IMessageService {
     }
 
     const result = await socket.sendMessage(input.jid, content, options);
+    const timestamp = Date.now();
 
     logger.info({ messageId: result?.key?.id }, 'Text message sent');
+
+    // Persist sent message to database
+    await this.persistMessage({
+      sessionId: this.sessionId || '',
+      messageId: result?.key?.id || '',
+      remoteJid: input.jid,
+      fromMe: true,
+      messageType: 'TEXT',
+      content: input.text,
+      quotedId: input.quotedMessageId,
+      status: 'SENT',
+      timestamp: new Date(timestamp),
+    });
 
     return {
       success: true,
       messageId: result?.key?.id || '',
-      timestamp: Date.now(),
+      timestamp,
     };
   }
 
@@ -78,13 +120,37 @@ export class MessageService implements IMessageService {
 
     const content = this.buildMediaContent(input);
     const result = await socket.sendMessage(input.jid, content);
+    const timestamp = Date.now();
 
     logger.info({ messageId: result?.key?.id, mediaType: input.mediaType }, 'Media message sent');
+
+    // Map media type to MessageType enum
+    const messageTypeMap: Record<string, MessageType> = {
+      image: 'IMAGE',
+      video: 'VIDEO',
+      audio: 'AUDIO',
+      document: 'DOCUMENT',
+      sticker: 'STICKER',
+    };
+
+    // Persist sent message to database
+    await this.persistMessage({
+      sessionId: this.sessionId || '',
+      messageId: result?.key?.id || '',
+      remoteJid: input.jid,
+      fromMe: true,
+      messageType: messageTypeMap[input.mediaType] || 'OTHER',
+      content: input.caption,
+      mediaUrl: input.url,
+      mediaType: input.mimetype,
+      status: 'SENT',
+      timestamp: new Date(timestamp),
+    });
 
     return {
       success: true,
       messageId: result?.key?.id || '',
-      timestamp: Date.now(),
+      timestamp,
     };
   }
 
