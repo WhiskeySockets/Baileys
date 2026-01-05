@@ -1,0 +1,7 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./mcp-server" },
+    { "path": "./starting_point" }
+  ]
+}
