@@ -3,7 +3,7 @@
  * Handles all message operations: send, read, delete, forward
  */
 
-import type { WASocket, AnyMessageContent, proto } from '@whiskeysockets/baileys';
+import type { WASocket, AnyMessageContent, WAMessage } from '@whiskeysockets/baileys';
 import { createChildLogger } from '../infrastructure/logger.js';
 import { type ConnectionService } from './connection.service.js';
 import type {
@@ -46,7 +46,7 @@ export class MessageService implements IMessageService {
     logger.debug({ jid: input.jid }, 'Sending text message');
 
     const content: AnyMessageContent = { text: input.text };
-    const options: { quoted?: proto.IWebMessageInfo } = {};
+    const options: any = {};
 
     // Handle quoted message
     if (input.quotedMessageId) {
@@ -55,7 +55,7 @@ export class MessageService implements IMessageService {
           remoteJid: input.jid,
           id: input.quotedMessageId,
         },
-      } as proto.IWebMessageInfo;
+      } as WAMessage;
     }
 
     const result = await socket.sendMessage(input.jid, content, options);
@@ -180,11 +180,11 @@ export class MessageService implements IMessageService {
   /**
    * Forward a message
    */
-  async forwardMessage(jid: string, message: proto.IWebMessageInfo): Promise<SendMessageResult> {
+  async forwardMessage(jid: string, message: WAMessage): Promise<SendMessageResult> {
     const socket = this.getSocket();
     logger.debug({ jid }, 'Forwarding message');
 
-    const result = await socket.sendMessage(jid, { forward: message });
+    const result = await socket.sendMessage(jid, { forward: message } as any);
 
     logger.info({ messageId: result?.key?.id }, 'Message forwarded');
 

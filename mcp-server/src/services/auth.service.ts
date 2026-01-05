@@ -1,28 +1,55 @@
 /**
  * Auth Service
- * Manages WhatsApp authentication state using Baileys' useMultiFileAuthState
+ * Manages WhatsApp authentication state with support for both
+ * filesystem (legacy) and database (recommended) storage.
+ * 
+ * Storage modes:
+ * - Filesystem: Uses Baileys' useMultiFileAuthState (backwards compatible)
+ * - Database: Uses useDatabaseAuthState with repository pattern (recommended)
  */
 
 import { useMultiFileAuthState, type AuthenticationState } from '@whiskeysockets/baileys';
 import { createChildLogger } from '../infrastructure/logger.js';
+import { useDatabaseAuthState, clearDatabaseAuthState } from './database-auth-state.js';
+import type { ICredentialsRepository } from '../repositories/interfaces.js';
 
 const logger = createChildLogger('AuthService');
 
 export interface AuthServiceConfig {
-  authDir: string; // Required for multi-tenancy
+  // Filesystem mode (legacy)
+  authDir?: string;
+  
+  // Database mode (recommended)
+  sessionId?: string;
+  credentialsRepository?: ICredentialsRepository;
 }
 
 export class AuthService {
-  private authDir: string;
+  private config: AuthServiceConfig;
   private state: AuthenticationState | null = null;
   private saveCreds: (() => Promise<void>) | null = null;
+  private useDatabase: boolean;
 
   constructor(config: AuthServiceConfig) {
-    if (!config.authDir) {
-      throw new Error('authDir is required for multi-tenancy isolation');
+    // Validate config - need either authDir or database config
+    if (!config.authDir && !(config.sessionId && config.credentialsRepository)) {
+      throw new Error(
+        'AuthService requires either authDir (filesystem mode) or ' +
+        'sessionId + credentialsRepository (database mode)'
+      );
     }
-    this.authDir = config.authDir;
-    logger.info({ authDir: this.authDir }, 'AuthService initialized');
+    
+    this.config = config;
+    this.useDatabase = !!(config.sessionId && config.credentialsRepository);
+    
+    logger.info(
+      { 
+        mode: this.useDatabase ? 'database' : 'filesystem',
+        sessionId: config.sessionId,
+        authDir: config.authDir,
+      }, 
+      'AuthService initialized'
+    );
   }
 
   /**
@@ -34,13 +61,28 @@ export class AuthService {
     }
 
     logger.info('Loading authentication state...');
-    const { state, saveCreds } = await useMultiFileAuthState(this.authDir);
+
+    if (this.useDatabase) {
+      // Database mode
+      const { state, saveCreds } = await useDatabaseAuthState(
+        this.config.sessionId!,
+        this.config.credentialsRepository!
+      );
+      this.state = state;
+      this.saveCreds = saveCreds;
+    } else {
+      // Filesystem mode (legacy)
+      const { state, saveCreds } = await useMultiFileAuthState(this.config.authDir!);
+      this.state = state;
+      this.saveCreds = saveCreds;
+    }
     
-    this.state = state;
-    this.saveCreds = saveCreds;
+    logger.info(
+      { registered: this.state.creds.registered }, 
+      'Auth state loaded'
+    );
     
-    logger.info({ registered: state.creds.registered }, 'Auth state loaded');
-    return state;
+    return this.state;
   }
 
   /**
@@ -74,16 +116,37 @@ export class AuthService {
    * Clear stored auth state (for logout)
    */
   async clearState(): Promise<void> {
+    if (this.useDatabase && this.config.sessionId && this.config.credentialsRepository) {
+      await clearDatabaseAuthState(
+        this.config.sessionId,
+        this.config.credentialsRepository
+      );
+    }
+    
     this.state = null;
     this.saveCreds = null;
     logger.info('Auth state cleared');
   }
 
   /**
-   * Get the auth directory path
+   * Get the session ID (database mode only)
    */
-  getAuthDir(): string {
-    return this.authDir;
+  getSessionId(): string | undefined {
+    return this.config.sessionId;
+  }
+
+  /**
+   * Get the auth directory path (filesystem mode only)
+   */
+  getAuthDir(): string | undefined {
+    return this.config.authDir;
+  }
+
+  /**
+   * Check if using database mode
+   */
+  isDatabaseMode(): boolean {
+    return this.useDatabase;
   }
 }
 

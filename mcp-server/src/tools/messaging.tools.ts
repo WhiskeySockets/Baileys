@@ -1,179 +1,181 @@
 /**
- * Messaging MCP Tools
- * Tools for sending messages, reactions, and managing read status
+ * Messaging Tools
+ * 
+ * MCP tools for sending messages, reactions, and managing read status.
+ * Uses the Tool Registry for declarative, DRY registration.
+ * 
+ * @module tools/messaging.tools
  */
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { type ServiceContainer } from '../types/index.js';
-import { createChildLogger } from '../infrastructure/logger.js';
+import type { ToolRegistry, ToolDefinition, ToolContext } from './tool-registry.js';
+import { defineTool } from './tool-registry.js';
+import type { SendTextInput, SendMediaInput, SendReactionInput, MessageKey } from '../types/index.js';
 
-const logger = createChildLogger('MessagingTools');
+// =============================================================================
+// Schemas
+// =============================================================================
+
+const SendTextInputSchema = z.object({
+  jid: z.string().describe('Recipient JID (e.g., 1234567890@s.whatsapp.net for users, xxx@g.us for groups)'),
+  text: z.string().describe('Message text content'),
+  quotedMessageId: z.string().optional().describe('Optional message ID to reply to'),
+});
+
+const SendTextOutputSchema = z.object({
+  success: z.boolean(),
+  messageId: z.string(),
+  timestamp: z.number(),
+});
+
+const SendMediaInputSchema = z.object({
+  jid: z.string().describe('Recipient JID'),
+  mediaType: z.enum(['image', 'video', 'audio', 'document', 'sticker']).describe('Type of media'),
+  url: z.string().describe('URL or local file path to the media'),
+  caption: z.string().optional().describe('Optional caption (for image/video)'),
+  filename: z.string().optional().describe('Filename (for documents)'),
+  mimetype: z.string().optional().describe('MIME type if not auto-detected'),
+});
+
+const SendReactionInputSchema = z.object({
+  jid: z.string().describe('Chat JID where the message is'),
+  messageId: z.string().describe('ID of the message to react to'),
+  emoji: z.string().describe('Emoji to react with (empty string to remove)'),
+});
+
+const SuccessOutputSchema = z.object({
+  success: z.boolean(),
+});
+
+const MessageKeySchema = z.object({
+  remoteJid: z.string().describe('Chat JID'),
+  id: z.string().describe('Message ID'),
+  fromMe: z.boolean().optional().describe('Whether the message is from me'),
+});
+
+const ReadMessagesInputSchema = z.object({
+  messageKeys: z.array(MessageKeySchema).describe('Array of message keys to mark as read'),
+});
+
+const DeleteMessageInputSchema = z.object({
+  jid: z.string().describe('Chat JID'),
+  messageId: z.string().describe('Message ID to delete'),
+});
+
+// =============================================================================
+// Type Definitions for Schemas
+// =============================================================================
+
+type SendTextSchemaInput = z.infer<typeof SendTextInputSchema>;
+type SendMediaSchemaInput = z.infer<typeof SendMediaInputSchema>;
+type SendReactionSchemaInput = z.infer<typeof SendReactionInputSchema>;
+type ReadMessagesSchemaInput = z.infer<typeof ReadMessagesInputSchema>;
+type DeleteMessageSchemaInput = z.infer<typeof DeleteMessageInputSchema>;
+
+// =============================================================================
+// Tool Definitions
+// =============================================================================
 
 /**
- * Register all messaging-related MCP tools
+ * Send text message tool definition.
  */
-export function registerMessagingTools(server: McpServer, services: ServiceContainer): void {
-  const { messageService } = services;
+export const sendTextTool: ToolDefinition<SendTextSchemaInput, unknown> = defineTool({
+  name: 'whatsapp_send_text',
+  title: 'Send Text Message',
+  description: 'Send a text message to a WhatsApp user or group',
+  inputSchema: SendTextInputSchema,
+  outputSchema: SendTextOutputSchema,
+  handler: async (input: SendTextSchemaInput, ctx: ToolContext) => {
+    const result = await ctx.services.messageService.sendText(input as SendTextInput);
+    return result;
+  },
+});
 
-  // ========================================================================
-  // whatsapp_send_text
-  // ========================================================================
-  server.registerTool(
-    'whatsapp_send_text',
-    {
-      title: 'Send Text Message',
-      description: 'Send a text message to a WhatsApp user or group',
-      inputSchema: {
-        jid: z.string().describe('Recipient JID (e.g., 1234567890@s.whatsapp.net for users, xxx@g.us for groups)'),
-        text: z.string().describe('Message text content'),
-        quotedMessageId: z.string().optional().describe('Optional message ID to reply to'),
-      },
-      outputSchema: {
-        success: z.boolean(),
-        messageId: z.string(),
-        timestamp: z.number(),
-      },
-    },
-    async ({ jid, text, quotedMessageId }) => {
-      logger.info({ jid }, 'Tool: whatsapp_send_text');
-      
-      const result = await messageService.sendText({ jid, text, quotedMessageId });
-      
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
-      };
-    }
-  );
+/**
+ * Send media message tool definition.
+ */
+export const sendMediaTool: ToolDefinition<SendMediaSchemaInput, unknown> = defineTool({
+  name: 'whatsapp_send_media',
+  title: 'Send Media Message',
+  description: 'Send an image, video, audio, or document to a WhatsApp user or group',
+  inputSchema: SendMediaInputSchema,
+  outputSchema: SendTextOutputSchema,
+  handler: async (input: SendMediaSchemaInput, ctx: ToolContext) => {
+    const result = await ctx.services.messageService.sendMedia(input as SendMediaInput);
+    return result;
+  },
+});
 
-  // ========================================================================
-  // whatsapp_send_media
-  // ========================================================================
-  server.registerTool(
-    'whatsapp_send_media',
-    {
-      title: 'Send Media Message',
-      description: 'Send an image, video, audio, or document to a WhatsApp user or group',
-      inputSchema: {
-        jid: z.string().describe('Recipient JID'),
-        mediaType: z.enum(['image', 'video', 'audio', 'document', 'sticker']).describe('Type of media'),
-        url: z.string().describe('URL or local file path to the media'),
-        caption: z.string().optional().describe('Optional caption (for image/video)'),
-        filename: z.string().optional().describe('Filename (for documents)'),
-        mimetype: z.string().optional().describe('MIME type if not auto-detected'),
-      },
-      outputSchema: {
-        success: z.boolean(),
-        messageId: z.string(),
-        timestamp: z.number(),
-      },
-    },
-    async ({ jid, mediaType, url, caption, filename, mimetype }) => {
-      logger.info({ jid, mediaType }, 'Tool: whatsapp_send_media');
-      
-      const result = await messageService.sendMedia({ 
-        jid, 
-        mediaType, 
-        url, 
-        caption, 
-        filename, 
-        mimetype 
-      });
-      
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
-      };
-    }
-  );
+/**
+ * Send reaction tool definition.
+ */
+export const sendReactionTool: ToolDefinition<SendReactionSchemaInput, unknown> = defineTool({
+  name: 'whatsapp_send_reaction',
+  title: 'Send Reaction',
+  description: 'React to a message with an emoji. Use empty string to remove reaction.',
+  inputSchema: SendReactionInputSchema,
+  outputSchema: SendTextOutputSchema,
+  handler: async (input: SendReactionSchemaInput, ctx: ToolContext) => {
+    const result = await ctx.services.messageService.sendReaction(input as SendReactionInput);
+    return result;
+  },
+});
 
-  // ========================================================================
-  // whatsapp_send_reaction
-  // ========================================================================
-  server.registerTool(
-    'whatsapp_send_reaction',
-    {
-      title: 'Send Reaction',
-      description: 'React to a message with an emoji. Use empty string to remove reaction.',
-      inputSchema: {
-        jid: z.string().describe('Chat JID where the message is'),
-        messageId: z.string().describe('ID of the message to react to'),
-        emoji: z.string().describe('Emoji to react with (empty string to remove)'),
-      },
-      outputSchema: {
-        success: z.boolean(),
-        messageId: z.string(),
-        timestamp: z.number(),
-      },
-    },
-    async ({ jid, messageId, emoji }) => {
-      logger.info({ jid, messageId, emoji }, 'Tool: whatsapp_send_reaction');
-      
-      const result = await messageService.sendReaction({ jid, messageId, emoji });
-      
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
-      };
-    }
-  );
+/**
+ * Read messages tool definition.
+ */
+export const readMessagesTool: ToolDefinition<ReadMessagesSchemaInput, { success: boolean }> = defineTool({
+  name: 'whatsapp_read_messages',
+  title: 'Read Messages',
+  description: 'Mark messages as read',
+  inputSchema: ReadMessagesInputSchema,
+  outputSchema: SuccessOutputSchema,
+  handler: async (input: ReadMessagesSchemaInput, ctx: ToolContext) => {
+    await ctx.services.messageService.readMessages(input.messageKeys as MessageKey[]);
+    return { success: true };
+  },
+});
 
-  // ========================================================================
-  // whatsapp_read_messages
-  // ========================================================================
-  server.registerTool(
-    'whatsapp_read_messages',
-    {
-      title: 'Read Messages',
-      description: 'Mark messages as read',
-      inputSchema: {
-        messageKeys: z.array(z.object({
-          remoteJid: z.string().describe('Chat JID'),
-          id: z.string().describe('Message ID'),
-          fromMe: z.boolean().optional().describe('Whether the message is from me'),
-        })).describe('Array of message keys to mark as read'),
-      },
-      outputSchema: {
-        success: z.boolean(),
-      },
-    },
-    async ({ messageKeys }) => {
-      logger.info({ count: messageKeys.length }, 'Tool: whatsapp_read_messages');
-      
-      await messageService.readMessages(messageKeys);
-      
-      const result = { success: true };
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
-      };
-    }
-  );
+/**
+ * Delete message tool definition.
+ */
+export const deleteMessageTool: ToolDefinition<DeleteMessageSchemaInput, { success: boolean }> = defineTool({
+  name: 'whatsapp_delete_message',
+  title: 'Delete Message',
+  description: 'Delete a message for everyone (only works for your own messages)',
+  inputSchema: DeleteMessageInputSchema,
+  outputSchema: SuccessOutputSchema,
+  handler: async (input: DeleteMessageSchemaInput, ctx: ToolContext) => {
+    await ctx.services.messageService.deleteMessage(input.jid, input.messageId);
+    return { success: true };
+  },
+});
 
-  // ========================================================================
-  // whatsapp_delete_message
-  // ========================================================================
-  server.registerTool(
-    'whatsapp_delete_message',
-    {
-      title: 'Delete Message',
-      description: 'Delete a message for everyone (only works for your own messages)',
-      inputSchema: {
-        jid: z.string().describe('Chat JID'),
-        messageId: z.string().describe('Message ID to delete'),
-      },
-      outputSchema: {
-        success: z.boolean(),
-      },
-    },
-    async ({ jid, messageId }) => {
-      logger.info({ jid, messageId }, 'Tool: whatsapp_delete_message');
-      
-      await messageService.deleteMessage(jid, messageId);
-      
-      const result = { success: true };
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
-      };
-    }
-  );
+// =============================================================================
+// Tool Collection
+// =============================================================================
 
-  logger.info('Messaging tools registered');
+/**
+ * All messaging tool definitions.
+ * Used for bulk registration.
+ */
+export const messagingTools: ToolDefinition<unknown, unknown>[] = [
+  sendTextTool as ToolDefinition<unknown, unknown>,
+  sendMediaTool as ToolDefinition<unknown, unknown>,
+  sendReactionTool as ToolDefinition<unknown, unknown>,
+  readMessagesTool as ToolDefinition<unknown, unknown>,
+  deleteMessageTool as ToolDefinition<unknown, unknown>,
+];
+
+// =============================================================================
+// Registration Function
+// =============================================================================
+
+/**
+ * Register all messaging tools with the registry.
+ * 
+ * @param registry - Tool registry instance
+ */
+export function registerMessagingTools(registry: ToolRegistry): void {
+  registry.registerAll(messagingTools, 'messaging');
 }

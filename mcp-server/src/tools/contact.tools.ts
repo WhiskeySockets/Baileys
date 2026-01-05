@@ -1,181 +1,187 @@
 /**
- * Contact MCP Tools
- * Tools for checking numbers, getting profiles, and managing contacts
+ * Contact Tools
+ * 
+ * MCP tools for checking numbers, getting profiles, and managing contacts.
+ * Uses the Tool Registry for declarative, DRY registration.
+ * 
+ * @module tools/contact.tools
  */
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { type ServiceContainer } from '../types/index.js';
-import { createChildLogger } from '../infrastructure/logger.js';
+import type { ToolRegistry, ToolDefinition, ToolContext } from './tool-registry.js';
+import { defineTool } from './tool-registry.js';
 
-const logger = createChildLogger('ContactTools');
+// =============================================================================
+// Schemas
+// =============================================================================
+
+const JidInputSchema = z.object({
+  jid: z.string().describe('User JID'),
+});
+
+const PhoneNumberInputSchema = z.object({
+  phoneNumber: z.string().describe('Phone number with country code (e.g., +1234567890)'),
+});
+
+const CheckNumberOutputSchema = z.object({
+  exists: z.boolean(),
+  jid: z.string().optional(),
+});
+
+const ProfilePictureInputSchema = z.object({
+  jid: z.string().describe('User or group JID'),
+  highRes: z.boolean().optional().describe('Get high resolution image (default: false)'),
+});
+
+const ProfilePictureOutputSchema = z.object({
+  url: z.string().nullable(),
+});
+
+const StatusOutputSchema = z.object({
+  status: z.string().nullable(),
+});
+
+const SuccessOutputSchema = z.object({
+  success: z.boolean(),
+});
+
+const EmptyInputSchema = z.object({});
+
+const BlockedUsersOutputSchema = z.object({
+  blockedUsers: z.array(z.string()),
+});
+
+// =============================================================================
+// Type Definitions
+// =============================================================================
+
+type JidInput = z.infer<typeof JidInputSchema>;
+type PhoneNumberInput = z.infer<typeof PhoneNumberInputSchema>;
+type ProfilePictureInput = z.infer<typeof ProfilePictureInputSchema>;
+type EmptyInput = z.infer<typeof EmptyInputSchema>;
+
+// =============================================================================
+// Tool Definitions
+// =============================================================================
 
 /**
- * Register all contact-related MCP tools
+ * Check phone number tool definition.
  */
-export function registerContactTools(server: McpServer, services: ServiceContainer): void {
-  const { contactService } = services;
+export const checkNumberTool: ToolDefinition<PhoneNumberInput, unknown> = defineTool({
+  name: 'whatsapp_check_number',
+  title: 'Check Phone Number',
+  description: 'Check if a phone number is registered on WhatsApp',
+  inputSchema: PhoneNumberInputSchema,
+  outputSchema: CheckNumberOutputSchema,
+  handler: async (input: PhoneNumberInput, ctx: ToolContext) => {
+    return await ctx.services.contactService.checkNumber(input.phoneNumber);
+  },
+});
 
-  // ========================================================================
-  // whatsapp_check_number
-  // ========================================================================
-  server.registerTool(
-    'whatsapp_check_number',
-    {
-      title: 'Check Phone Number',
-      description: 'Check if a phone number is registered on WhatsApp',
-      inputSchema: {
-        phoneNumber: z.string().describe('Phone number with country code (e.g., +1234567890)'),
-      },
-      outputSchema: {
-        exists: z.boolean(),
-        jid: z.string().optional(),
-      },
-    },
-    async ({ phoneNumber }) => {
-      logger.info({ phoneNumber }, 'Tool: whatsapp_check_number');
-      
-      const result = await contactService.checkNumber(phoneNumber);
-      
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
-      };
-    }
-  );
+/**
+ * Get profile picture tool definition.
+ */
+export const getProfilePictureTool: ToolDefinition<ProfilePictureInput, { url: string | null }> = defineTool({
+  name: 'whatsapp_get_profile_picture',
+  title: 'Get Profile Picture',
+  description: 'Get the profile picture URL of a user or group',
+  inputSchema: ProfilePictureInputSchema,
+  outputSchema: ProfilePictureOutputSchema,
+  handler: async (input: ProfilePictureInput, ctx: ToolContext) => {
+    const url = await ctx.services.contactService.getProfilePicture(input.jid, input.highRes);
+    return { url };
+  },
+});
 
-  // ========================================================================
-  // whatsapp_get_profile_picture
-  // ========================================================================
-  server.registerTool(
-    'whatsapp_get_profile_picture',
-    {
-      title: 'Get Profile Picture',
-      description: 'Get the profile picture URL of a user or group',
-      inputSchema: {
-        jid: z.string().describe('User or group JID'),
-        highRes: z.boolean().optional().describe('Get high resolution image (default: false)'),
-      },
-      outputSchema: {
-        url: z.string().nullable(),
-      },
-    },
-    async ({ jid, highRes }) => {
-      logger.info({ jid, highRes }, 'Tool: whatsapp_get_profile_picture');
-      
-      const url = await contactService.getProfilePicture(jid, highRes);
-      const result = { url };
-      
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
-      };
-    }
-  );
+/**
+ * Get user status tool definition.
+ */
+export const getStatusTool: ToolDefinition<JidInput, { status: string | null }> = defineTool({
+  name: 'whatsapp_get_status',
+  title: 'Get User Status',
+  description: 'Get the "about" status text of a user',
+  inputSchema: JidInputSchema,
+  outputSchema: StatusOutputSchema,
+  handler: async (input: JidInput, ctx: ToolContext) => {
+    const status = await ctx.services.contactService.getStatus(input.jid);
+    return { status };
+  },
+});
 
-  // ========================================================================
-  // whatsapp_get_status
-  // ========================================================================
-  server.registerTool(
-    'whatsapp_get_status',
-    {
-      title: 'Get User Status',
-      description: 'Get the "about" status text of a user',
-      inputSchema: {
-        jid: z.string().describe('User JID'),
-      },
-      outputSchema: {
-        status: z.string().nullable(),
-      },
-    },
-    async ({ jid }) => {
-      logger.info({ jid }, 'Tool: whatsapp_get_status');
-      
-      const status = await contactService.getStatus(jid);
-      const result = { status };
-      
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
-      };
-    }
-  );
+/**
+ * Block user tool definition.
+ */
+export const blockUserTool: ToolDefinition<JidInput, { success: boolean }> = defineTool({
+  name: 'whatsapp_block_user',
+  title: 'Block User',
+  description: 'Block a user on WhatsApp',
+  inputSchema: z.object({
+    jid: z.string().describe('User JID to block'),
+  }),
+  outputSchema: SuccessOutputSchema,
+  handler: async (input: JidInput, ctx: ToolContext) => {
+    await ctx.services.contactService.blockUser(input.jid);
+    return { success: true };
+  },
+});
 
-  // ========================================================================
-  // whatsapp_block_user
-  // ========================================================================
-  server.registerTool(
-    'whatsapp_block_user',
-    {
-      title: 'Block User',
-      description: 'Block a user on WhatsApp',
-      inputSchema: {
-        jid: z.string().describe('User JID to block'),
-      },
-      outputSchema: {
-        success: z.boolean(),
-      },
-    },
-    async ({ jid }) => {
-      logger.info({ jid }, 'Tool: whatsapp_block_user');
-      
-      await contactService.blockUser(jid);
-      const result = { success: true };
-      
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
-      };
-    }
-  );
+/**
+ * Unblock user tool definition.
+ */
+export const unblockUserTool: ToolDefinition<JidInput, { success: boolean }> = defineTool({
+  name: 'whatsapp_unblock_user',
+  title: 'Unblock User',
+  description: 'Unblock a user on WhatsApp',
+  inputSchema: z.object({
+    jid: z.string().describe('User JID to unblock'),
+  }),
+  outputSchema: SuccessOutputSchema,
+  handler: async (input: JidInput, ctx: ToolContext) => {
+    await ctx.services.contactService.unblockUser(input.jid);
+    return { success: true };
+  },
+});
 
-  // ========================================================================
-  // whatsapp_unblock_user
-  // ========================================================================
-  server.registerTool(
-    'whatsapp_unblock_user',
-    {
-      title: 'Unblock User',
-      description: 'Unblock a user on WhatsApp',
-      inputSchema: {
-        jid: z.string().describe('User JID to unblock'),
-      },
-      outputSchema: {
-        success: z.boolean(),
-      },
-    },
-    async ({ jid }) => {
-      logger.info({ jid }, 'Tool: whatsapp_unblock_user');
-      
-      await contactService.unblockUser(jid);
-      const result = { success: true };
-      
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
-      };
-    }
-  );
+/**
+ * Get blocked users tool definition.
+ */
+export const getBlockedUsersTool: ToolDefinition<EmptyInput, { blockedUsers: string[] }> = defineTool({
+  name: 'whatsapp_get_blocked_users',
+  title: 'Get Blocked Users',
+  description: 'Get list of blocked users',
+  inputSchema: EmptyInputSchema,
+  outputSchema: BlockedUsersOutputSchema,
+  handler: async (_input: EmptyInput, ctx: ToolContext) => {
+    const blockedUsers = await ctx.services.contactService.getBlockedUsers();
+    return { blockedUsers };
+  },
+});
 
-  // ========================================================================
-  // whatsapp_get_blocked_users
-  // ========================================================================
-  server.registerTool(
-    'whatsapp_get_blocked_users',
-    {
-      title: 'Get Blocked Users',
-      description: 'Get list of blocked users',
-      inputSchema: {},
-      outputSchema: {
-        blockedUsers: z.array(z.string()),
-      },
-    },
-    async () => {
-      logger.info('Tool: whatsapp_get_blocked_users');
-      
-      const blockedUsers = await contactService.getBlockedUsers();
-      const result = { blockedUsers };
-      
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
-      };
-    }
-  );
+// =============================================================================
+// Tool Collection
+// =============================================================================
 
-  logger.info('Contact tools registered');
+/**
+ * All contact tool definitions.
+ */
+export const contactTools: ToolDefinition<unknown, unknown>[] = [
+  checkNumberTool as ToolDefinition<unknown, unknown>,
+  getProfilePictureTool as ToolDefinition<unknown, unknown>,
+  getStatusTool as ToolDefinition<unknown, unknown>,
+  blockUserTool as ToolDefinition<unknown, unknown>,
+  unblockUserTool as ToolDefinition<unknown, unknown>,
+  getBlockedUsersTool as ToolDefinition<unknown, unknown>,
+];
+
+// =============================================================================
+// Registration Function
+// =============================================================================
+
+/**
+ * Register all contact tools with the registry.
+ * 
+ * @param registry - Tool registry instance
+ */
+export function registerContactTools(registry: ToolRegistry): void {
+  registry.registerAll(contactTools, 'contact');
 }

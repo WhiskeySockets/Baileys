@@ -1,263 +1,263 @@
 /**
- * Group MCP Tools
- * Tools for creating and managing WhatsApp groups
+ * Group Tools
+ * 
+ * MCP tools for creating and managing WhatsApp groups.
+ * Uses the Tool Registry for declarative, DRY registration.
+ * 
+ * @module tools/group.tools
  */
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { type ServiceContainer } from '../types/index.js';
-import { createChildLogger } from '../infrastructure/logger.js';
+import type { ToolRegistry, ToolDefinition, ToolContext } from './tool-registry.js';
+import { defineTool } from './tool-registry.js';
+import type { CreateGroupInput, GroupParticipantsInput, GroupSettingsInput, GroupInfo } from '../types/index.js';
 
-const logger = createChildLogger('GroupTools');
+// =============================================================================
+// Schemas
+// =============================================================================
+
+const GroupJidInputSchema = z.object({
+  groupJid: z.string().describe('Group JID'),
+});
+
+const EmptyInputSchema = z.object({});
+
+const SuccessOutputSchema = z.object({
+  success: z.boolean(),
+});
+
+const CreateGroupInputSchema = z.object({
+  subject: z.string().describe('Group name/subject'),
+  participants: z.array(z.string()).describe('Array of participant JIDs to add'),
+});
+
+const CreateGroupOutputSchema = z.object({
+  jid: z.string(),
+  subject: z.string(),
+  owner: z.string().optional(),
+  creation: z.number().optional(),
+});
+
+const ParticipantActionSchema = z.enum(['add', 'remove', 'promote', 'demote']);
+
+const GroupParticipantsInputSchema = z.object({
+  groupJid: z.string().describe('Group JID'),
+  participants: z.array(z.string()).describe('Array of participant JIDs'),
+  action: ParticipantActionSchema.describe('Action to perform'),
+});
+
+const GroupSettingsInputSchema = z.object({
+  groupJid: z.string().describe('Group JID'),
+  subject: z.string().optional().describe('New group name'),
+  description: z.string().optional().describe('New group description'),
+  ephemeral: z.number().optional().describe('Disappearing messages duration in seconds (0 to disable)'),
+});
+
+const GroupParticipantSchema = z.object({
+  jid: z.string(),
+  admin: z.enum(['admin', 'superadmin']).nullable().optional(),
+});
+
+const GroupInfoOutputSchema = z.object({
+  jid: z.string(),
+  subject: z.string(),
+  owner: z.string().optional(),
+  creation: z.number().optional(),
+  description: z.string().optional(),
+  participants: z.array(GroupParticipantSchema),
+});
+
+const InviteCodeOutputSchema = z.object({
+  inviteCode: z.string(),
+  inviteLink: z.string(),
+});
+
+const JoinGroupInputSchema = z.object({
+  inviteCode: z.string().describe('Group invite code (from invite link)'),
+});
+
+const JoinGroupOutputSchema = z.object({
+  groupJid: z.string(),
+});
+
+const GroupListOutputSchema = z.object({
+  groups: z.array(z.object({
+    jid: z.string(),
+    subject: z.string(),
+    owner: z.string().optional(),
+  })),
+});
+
+// =============================================================================
+// Type Definitions
+// =============================================================================
+
+type GroupJidInput = z.infer<typeof GroupJidInputSchema>;
+type CreateGroupSchemaInput = z.infer<typeof CreateGroupInputSchema>;
+type GroupParticipantsSchemaInput = z.infer<typeof GroupParticipantsInputSchema>;
+type GroupSettingsSchemaInput = z.infer<typeof GroupSettingsInputSchema>;
+type JoinGroupSchemaInput = z.infer<typeof JoinGroupInputSchema>;
+type EmptyInput = z.infer<typeof EmptyInputSchema>;
+
+// =============================================================================
+// Tool Definitions
+// =============================================================================
 
 /**
- * Register all group-related MCP tools
+ * Create group tool definition.
  */
-export function registerGroupTools(server: McpServer, services: ServiceContainer): void {
-  const { groupService } = services;
+export const createGroupTool: ToolDefinition<CreateGroupSchemaInput, unknown> = defineTool({
+  name: 'whatsapp_create_group',
+  title: 'Create Group',
+  description: 'Create a new WhatsApp group',
+  inputSchema: CreateGroupInputSchema,
+  outputSchema: CreateGroupOutputSchema,
+  handler: async (input: CreateGroupSchemaInput, ctx: ToolContext) => {
+    const result = await ctx.services.groupService.createGroup(input as CreateGroupInput);
+    return result;
+  },
+});
 
-  // ========================================================================
-  // whatsapp_create_group
-  // ========================================================================
-  server.registerTool(
-    'whatsapp_create_group',
-    {
-      title: 'Create Group',
-      description: 'Create a new WhatsApp group',
-      inputSchema: {
-        subject: z.string().describe('Group name/subject'),
-        participants: z.array(z.string()).describe('Array of participant JIDs to add'),
-      },
-      outputSchema: {
-        jid: z.string(),
-        subject: z.string(),
-        owner: z.string().optional(),
-        creation: z.number().optional(),
-      },
-    },
-    async ({ subject, participants }) => {
-      logger.info({ subject, participantCount: participants.length }, 'Tool: whatsapp_create_group');
-      
-      const result = await groupService.createGroup({ subject, participants });
-      
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
-      };
-    }
-  );
+/**
+ * Manage group participants tool definition.
+ */
+export const groupParticipantsTool: ToolDefinition<GroupParticipantsSchemaInput, { success: boolean }> = defineTool({
+  name: 'whatsapp_group_participants',
+  title: 'Manage Group Participants',
+  description: 'Add, remove, promote, or demote group participants',
+  inputSchema: GroupParticipantsInputSchema,
+  outputSchema: SuccessOutputSchema,
+  handler: async (input: GroupParticipantsSchemaInput, ctx: ToolContext) => {
+    await ctx.services.groupService.updateParticipants(input as GroupParticipantsInput);
+    return { success: true };
+  },
+});
 
-  // ========================================================================
-  // whatsapp_group_participants
-  // ========================================================================
-  server.registerTool(
-    'whatsapp_group_participants',
-    {
-      title: 'Manage Group Participants',
-      description: 'Add, remove, promote, or demote group participants',
-      inputSchema: {
-        groupJid: z.string().describe('Group JID'),
-        participants: z.array(z.string()).describe('Array of participant JIDs'),
-        action: z.enum(['add', 'remove', 'promote', 'demote']).describe('Action to perform'),
-      },
-      outputSchema: {
-        success: z.boolean(),
-      },
-    },
-    async ({ groupJid, participants, action }) => {
-      logger.info({ groupJid, action, participantCount: participants.length }, 'Tool: whatsapp_group_participants');
-      
-      await groupService.updateParticipants({ groupJid, participants, action });
-      const result = { success: true };
-      
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
-      };
-    }
-  );
+/**
+ * Update group settings tool definition.
+ */
+export const groupSettingsTool: ToolDefinition<GroupSettingsSchemaInput, { success: boolean }> = defineTool({
+  name: 'whatsapp_group_settings',
+  title: 'Update Group Settings',
+  description: 'Update group subject, description, or ephemeral settings',
+  inputSchema: GroupSettingsInputSchema,
+  outputSchema: SuccessOutputSchema,
+  handler: async (input: GroupSettingsSchemaInput, ctx: ToolContext) => {
+    await ctx.services.groupService.updateSettings(input as GroupSettingsInput);
+    return { success: true };
+  },
+});
 
-  // ========================================================================
-  // whatsapp_group_settings
-  // ========================================================================
-  server.registerTool(
-    'whatsapp_group_settings',
-    {
-      title: 'Update Group Settings',
-      description: 'Update group subject, description, or ephemeral settings',
-      inputSchema: {
-        groupJid: z.string().describe('Group JID'),
-        subject: z.string().optional().describe('New group name'),
-        description: z.string().optional().describe('New group description'),
-        ephemeral: z.number().optional().describe('Disappearing messages duration in seconds (0 to disable)'),
-      },
-      outputSchema: {
-        success: z.boolean(),
-      },
-    },
-    async ({ groupJid, subject, description, ephemeral }) => {
-      logger.info({ groupJid }, 'Tool: whatsapp_group_settings');
-      
-      await groupService.updateSettings({ groupJid, subject, description, ephemeral });
-      const result = { success: true };
-      
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
-      };
-    }
-  );
+/**
+ * Get group info tool definition.
+ */
+export const getGroupInfoTool: ToolDefinition<GroupJidInput, GroupInfo> = defineTool({
+  name: 'whatsapp_get_group_info',
+  title: 'Get Group Info',
+  description: 'Get detailed information about a group',
+  inputSchema: GroupJidInputSchema,
+  outputSchema: GroupInfoOutputSchema,
+  handler: async (input: GroupJidInput, ctx: ToolContext) => {
+    return await ctx.services.groupService.getMetadata(input.groupJid);
+  },
+});
 
-  // ========================================================================
-  // whatsapp_get_group_info
-  // ========================================================================
-  server.registerTool(
-    'whatsapp_get_group_info',
-    {
-      title: 'Get Group Info',
-      description: 'Get detailed information about a group',
-      inputSchema: {
-        groupJid: z.string().describe('Group JID'),
-      },
-      outputSchema: {
-        jid: z.string(),
-        subject: z.string(),
-        owner: z.string().optional(),
-        creation: z.number().optional(),
-        description: z.string().optional(),
-        participants: z.array(z.object({
-          jid: z.string(),
-          admin: z.enum(['admin', 'superadmin']).nullable().optional(),
-        })),
-      },
-    },
-    async ({ groupJid }) => {
-      logger.info({ groupJid }, 'Tool: whatsapp_get_group_info');
-      
-      const result = await groupService.getMetadata(groupJid);
-      
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
-      };
-    }
-  );
+/**
+ * Leave group tool definition.
+ */
+export const leaveGroupTool: ToolDefinition<GroupJidInput, { success: boolean }> = defineTool({
+  name: 'whatsapp_leave_group',
+  title: 'Leave Group',
+  description: 'Leave a WhatsApp group',
+  inputSchema: GroupJidInputSchema,
+  outputSchema: SuccessOutputSchema,
+  handler: async (input: GroupJidInput, ctx: ToolContext) => {
+    await ctx.services.groupService.leave(input.groupJid);
+    return { success: true };
+  },
+});
 
-  // ========================================================================
-  // whatsapp_leave_group
-  // ========================================================================
-  server.registerTool(
-    'whatsapp_leave_group',
-    {
-      title: 'Leave Group',
-      description: 'Leave a WhatsApp group',
-      inputSchema: {
-        groupJid: z.string().describe('Group JID to leave'),
-      },
-      outputSchema: {
-        success: z.boolean(),
-      },
-    },
-    async ({ groupJid }) => {
-      logger.info({ groupJid }, 'Tool: whatsapp_leave_group');
-      
-      await groupService.leave(groupJid);
-      const result = { success: true };
-      
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
-      };
-    }
-  );
+/**
+ * Get group invite code tool definition.
+ */
+export const getGroupInviteTool: ToolDefinition<GroupJidInput, { inviteCode: string; inviteLink: string }> = defineTool({
+  name: 'whatsapp_get_group_invite',
+  title: 'Get Group Invite Code',
+  description: 'Get the invite code/link for a group (requires admin)',
+  inputSchema: GroupJidInputSchema,
+  outputSchema: InviteCodeOutputSchema,
+  handler: async (input: GroupJidInput, ctx: ToolContext) => {
+    const inviteCode = await ctx.services.groupService.getInviteCode(input.groupJid);
+    return {
+      inviteCode: inviteCode || '',
+      inviteLink: inviteCode ? `https://chat.whatsapp.com/${inviteCode}` : '',
+    };
+  },
+});
 
-  // ========================================================================
-  // whatsapp_get_group_invite
-  // ========================================================================
-  server.registerTool(
-    'whatsapp_get_group_invite',
-    {
-      title: 'Get Group Invite Code',
-      description: 'Get the invite code/link for a group (requires admin)',
-      inputSchema: {
-        groupJid: z.string().describe('Group JID'),
-      },
-      outputSchema: {
-        inviteCode: z.string(),
-        inviteLink: z.string(),
-      },
-    },
-    async ({ groupJid }) => {
-      logger.info({ groupJid }, 'Tool: whatsapp_get_group_invite');
-      
-      const inviteCode = await groupService.getInviteCode(groupJid);
-      const result = { 
-        inviteCode,
-        inviteLink: `https://chat.whatsapp.com/${inviteCode}`,
-      };
-      
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
-      };
-    }
-  );
+/**
+ * Join group via invite tool definition.
+ */
+export const joinGroupTool: ToolDefinition<JoinGroupSchemaInput, { groupJid: string }> = defineTool({
+  name: 'whatsapp_join_group',
+  title: 'Join Group via Invite',
+  description: 'Join a group using an invite code',
+  inputSchema: JoinGroupInputSchema,
+  outputSchema: JoinGroupOutputSchema,
+  handler: async (input: JoinGroupSchemaInput, ctx: ToolContext) => {
+    const groupJid = await ctx.services.groupService.joinViaInvite(input.inviteCode);
+    return { groupJid };
+  },
+});
 
-  // ========================================================================
-  // whatsapp_join_group
-  // ========================================================================
-  server.registerTool(
-    'whatsapp_join_group',
-    {
-      title: 'Join Group via Invite',
-      description: 'Join a group using an invite code',
-      inputSchema: {
-        inviteCode: z.string().describe('Group invite code (from invite link)'),
-      },
-      outputSchema: {
-        groupJid: z.string(),
-      },
-    },
-    async ({ inviteCode }) => {
-      logger.info('Tool: whatsapp_join_group');
-      
-      const groupJid = await groupService.joinViaInvite(inviteCode);
-      const result = { groupJid };
-      
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
-      };
-    }
-  );
+/**
+ * Get all groups tool definition.
+ */
+export const getAllGroupsTool: ToolDefinition<EmptyInput, unknown> = defineTool({
+  name: 'whatsapp_get_all_groups',
+  title: 'Get All Groups',
+  description: 'Get list of all groups the user participates in',
+  inputSchema: EmptyInputSchema,
+  outputSchema: GroupListOutputSchema,
+  handler: async (_input: EmptyInput, ctx: ToolContext) => {
+    const groups = await ctx.services.groupService.getAllGroups();
+    return {
+      groups: groups.map((g: GroupInfo) => ({
+        jid: g.jid,
+        subject: g.subject,
+        owner: g.owner,
+      })),
+    };
+  },
+});
 
-  // ========================================================================
-  // whatsapp_get_all_groups
-  // ========================================================================
-  server.registerTool(
-    'whatsapp_get_all_groups',
-    {
-      title: 'Get All Groups',
-      description: 'Get list of all groups the user participates in',
-      inputSchema: {},
-      outputSchema: {
-        groups: z.array(z.object({
-          jid: z.string(),
-          subject: z.string(),
-          owner: z.string().optional(),
-        })),
-      },
-    },
-    async () => {
-      logger.info('Tool: whatsapp_get_all_groups');
-      
-      const groups = await groupService.getAllGroups();
-      const result = { 
-        groups: groups.map(g => ({
-          jid: g.jid,
-          subject: g.subject,
-          owner: g.owner,
-        })),
-      };
-      
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result) }],
-      };
-    }
-  );
+// =============================================================================
+// Tool Collection
+// =============================================================================
 
-  logger.info('Group tools registered');
+/**
+ * All group tool definitions.
+ */
+export const groupTools: ToolDefinition<unknown, unknown>[] = [
+  createGroupTool as ToolDefinition<unknown, unknown>,
+  groupParticipantsTool as ToolDefinition<unknown, unknown>,
+  groupSettingsTool as ToolDefinition<unknown, unknown>,
+  getGroupInfoTool as ToolDefinition<unknown, unknown>,
+  leaveGroupTool as ToolDefinition<unknown, unknown>,
+  getGroupInviteTool as ToolDefinition<unknown, unknown>,
+  joinGroupTool as ToolDefinition<unknown, unknown>,
+  getAllGroupsTool as ToolDefinition<unknown, unknown>,
+];
+
+// =============================================================================
+// Registration Function
+// =============================================================================
+
+/**
+ * Register all group tools with the registry.
+ * 
+ * @param registry - Tool registry instance
+ */
+export function registerGroupTools(registry: ToolRegistry): void {
+  registry.registerAll(groupTools, 'group');
 }

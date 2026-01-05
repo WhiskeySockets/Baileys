@@ -4,6 +4,10 @@
  * Runs the MCP server with StreamableHTTP transport for web deployment.
  * This allows remote clients to connect via HTTP instead of stdio.
  * Supports multi-tenancy by creating isolated service containers for each session.
+ * 
+ * Storage modes (controlled by USE_DATABASE env var):
+ * - Filesystem: Uses baileys_auth_info/{sessionId}/ directories (default)
+ * - Database: Uses PostgreSQL via Prisma repositories (recommended for production)
  */
 
 import express, { Request, Response } from 'express';
@@ -15,6 +19,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { createMcpServer } from './server.js';
 import { logger } from './infrastructure/logger.js';
+import { getPrismaClient, disconnectPrisma } from './infrastructure/database.js';
 import { 
   AuthService, 
   ConnectionService, 
@@ -23,10 +28,19 @@ import {
   ContactService,
   WebhookService
 } from './services/index.js';
+import {
+  PrismaSessionRepository,
+  PrismaCredentialsRepository,
+  PrismaMessageRepository,
+  PrismaContactRepository,
+  PrismaGroupRepository,
+  type RepositoryContainer,
+} from './repositories/index.js';
 import { type ServiceContainer, type ServiceConfig } from './types/index.js';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const HOST = process.env.HOST || '0.0.0.0';
+const USE_DATABASE = process.env.USE_DATABASE === 'true';
 
 // Store active sessions and their associated services
 interface SessionContext {
@@ -36,35 +50,75 @@ interface SessionContext {
 
 const sessions: Record<string, SessionContext> = {};
 
+// Repository container (shared for database mode)
+let repositoryContainer: RepositoryContainer | undefined;
+
+/**
+ * Get or create repository container (singleton for database mode)
+ */
+function getRepositoryContainer(): RepositoryContainer {
+  if (!repositoryContainer) {
+    const prisma = getPrismaClient();
+    repositoryContainer = {
+      sessions: new PrismaSessionRepository(prisma),
+      credentials: new PrismaCredentialsRepository(prisma),
+      messages: new PrismaMessageRepository(prisma),
+      contacts: new PrismaContactRepository(prisma),
+      groups: new PrismaGroupRepository(prisma),
+    };
+  }
+  return repositoryContainer;
+}
+
 /**
  * Initialize services for a new session
- * Creates a unique auth directory for isolation
+ * Supports both filesystem (legacy) and database (recommended) modes
  */
 function createServiceContainer(sessionId: string): ServiceContainer {
-  // 1. Setup Session-Specific Auth Directory
-  const authBaseDir = process.env.AUTH_DIR || path.join(process.cwd(), 'baileys_auth_info');
-  const sessionAuthDir = path.join(authBaseDir, sessionId);
-  
-  if (!fs.existsSync(sessionAuthDir)) {
-    fs.mkdirSync(sessionAuthDir, { recursive: true });
+  let authService: AuthService;
+  let repositories: RepositoryContainer | undefined;
+
+  if (USE_DATABASE) {
+    // Database mode - use Prisma repositories
+    logger.info({ sessionId, mode: 'database' }, 'Initializing services for session');
+    
+    repositories = getRepositoryContainer();
+    
+    authService = new AuthService({
+      sessionId,
+      credentialsRepository: repositories.credentials,
+    });
+  } else {
+    // Filesystem mode (legacy)
+    const authBaseDir = process.env.AUTH_DIR || path.join(process.cwd(), 'baileys_auth_info');
+    const sessionAuthDir = path.join(authBaseDir, sessionId);
+    
+    if (!fs.existsSync(sessionAuthDir)) {
+      fs.mkdirSync(sessionAuthDir, { recursive: true });
+    }
+
+    logger.info({ sessionId, mode: 'filesystem', authDir: sessionAuthDir }, 'Initializing services for session');
+
+    authService = new AuthService({
+      authDir: sessionAuthDir,
+    });
   }
 
-  logger.info({ sessionId, authDir: sessionAuthDir }, 'Initializing services for session');
-
-  // 2. Initialize Services (DI)
+  // Initialize Services (DI)
   const serviceConfig: ServiceConfig = {
-    authDir: sessionAuthDir,
-    logger
+    authDir: USE_DATABASE ? undefined : process.env.AUTH_DIR,
+    sessionId: USE_DATABASE ? sessionId : undefined,
+    useDatabase: USE_DATABASE,
+    logger,
   };
 
-  const authService = new AuthService(serviceConfig);
   const connectionService = new ConnectionService(authService, serviceConfig);
   const messageService = new MessageService(connectionService);
   const groupService = new GroupService(connectionService);
   const contactService = new ContactService(connectionService);
   const webhookService = new WebhookService();
 
-  // 3. Setup Webhook Dispatching for this session
+  // Setup Webhook Dispatching for this session
   connectionService.on('messages.upsert', (data) => webhookService.dispatch('message.received', data));
   connectionService.on('messages.update', (data) => webhookService.dispatch('message.update', data));
   connectionService.on('connected', () => webhookService.dispatch('connection.update', { status: 'connected' }));
@@ -78,11 +132,11 @@ function createServiceContainer(sessionId: string): ServiceContainer {
     messageService,
     groupService,
     contactService,
-    webhookService
+    webhookService,
+    repositories,
   };
 
   // Start connection automatically for the session
-  // Note: We might want to make this lazy or triggered by a tool, but for now we auto-connect
   connectionService.connect().catch(err => {
     logger.error({ sessionId, error: err }, 'Failed to initiate WhatsApp connection');
   });
@@ -212,6 +266,11 @@ async function main(): Promise<void> {
       await transport.close();
     }
     
+    // Disconnect Prisma if using database mode
+    if (USE_DATABASE) {
+      await disconnectPrisma();
+    }
+    
     process.exit(0);
   };
 
@@ -220,7 +279,7 @@ async function main(): Promise<void> {
 
   // Start server
   app.listen(PORT, HOST, () => {
-    logger.info({ host: HOST, port: PORT }, 'WhatsApp MCP HTTP Server started');
+    logger.info({ host: HOST, port: PORT, mode: USE_DATABASE ? 'database' : 'filesystem' }, 'WhatsApp MCP HTTP Server started');
     logger.info(`Health check: http://${HOST}:${PORT}/health`);
     logger.info(`MCP endpoint: http://${HOST}:${PORT}/mcp`);
   });

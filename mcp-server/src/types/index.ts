@@ -3,6 +3,7 @@
  */
 
 import type { WASocket } from '@whiskeysockets/baileys';
+import type { RepositoryContainer } from '../repositories/interfaces.js';
 
 // ============================================================================
 // Connection Types
@@ -224,20 +225,48 @@ export interface IWebhookService {
   test(url: string): Promise<{ success: boolean; error?: string }>;
 }
 
+export interface IAuthService {
+  /** Load or initialize authentication state */
+  loadState(): Promise<unknown>;
+  /** Get current auth state (throws if not loaded) */
+  getState(): unknown;
+  /** Check if credentials are registered with WhatsApp */
+  isRegistered(): boolean;
+  /** Save updated credentials */
+  saveCredentials(): Promise<void>;
+  /** Clear stored auth state (for logout) */
+  clearState(): Promise<void>;
+  /** Get the session ID (database mode only) */
+  getSessionId(): string | undefined;
+  /** Get the auth directory path (filesystem mode only) */
+  getAuthDir(): string | undefined;
+  /** Check if using database mode */
+  isDatabaseMode(): boolean;
+}
+
 // ============================================================================
 // Dependency Injection
 // ============================================================================
 
 export interface ServiceConfig {
-  authDir: string; // Required for multi-tenancy
+  // Filesystem mode (legacy)
+  authDir?: string;
+  
+  // Database mode (recommended)
+  sessionId?: string;
+  useDatabase?: boolean;
+  
   logger?: unknown;
 }
 
 export interface ServiceContainer {
   connectionService: IConnectionService;
-  authService: unknown;
+  authService: IAuthService;
   messageService: IMessageService;
   groupService: IGroupService;
   contactService: IContactService;
   webhookService: IWebhookService;
+  
+  // Repository layer (database mode)
+  repositories?: RepositoryContainer;
 }

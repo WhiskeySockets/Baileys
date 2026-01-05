@@ -1,0 +1,233 @@
+// =============================================================================
+// Prisma Schema - WhatsApp MCP Server
+// =============================================================================
+// 
+// Database-agnostic schema design following Repository Pattern.
+// Currently configured for PostgreSQL (Supabase), but the application layer
+// abstracts all database operations through repository interfaces.
+//
+// Future migration to MongoDB, SQL Server, or Blob Storage requires only
+// implementing new repository classes - zero changes to business logic.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  // URL is configured in prisma.config.ts for Prisma 7+
+}
+
+// =============================================================================
+// Session Management
+// =============================================================================
+
+/// WhatsApp session representing a connected device/user
+/// Each session is isolated for multi-tenancy support
+model Session {
+  id          String        @id @default(cuid())
+  
+  // Session identification
+  phoneNumber String        @unique @map("phone_number")
+  jid         String?       // WhatsApp JID when connected
+  name        String?       // User's WhatsApp display name
+  platform    String?       // Device platform (iOS, Android, Web)
+  
+  // Connection status
+  status      SessionStatus @default(DISCONNECTED)
+  lastSeen    DateTime?     @map("last_seen")
+  
+  // Timestamps
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  
+  // Relations - cascade delete for data isolation
+  credentials Credential[]
+  messages    Message[]
+  contacts    Contact[]
+  groups      GroupCache[]
+  
+  @@index([status])
+  @@index([lastSeen])
+  @@map("sessions")
+}
+
+enum SessionStatus {
+  DISCONNECTED
+  CONNECTING
+  CONNECTED
+  QR_REQUIRED
+  PAIRING_REQUIRED
+}
+
+// =============================================================================
+// Auth Credentials (Baileys AuthenticationState)
+// =============================================================================
+
+/// Stores Baileys authentication credentials
+/// Replaces filesystem-based useMultiFileAuthState
+/// Categories: 'creds', 'app-state-sync-key', 'pre-key', 'sender-key', etc.
+model Credential {
+  id        String   @id @default(cuid())
+  sessionId String   @map("session_id")
+  
+  // Credential identification
+  // category: type of credential (creds, app-state-sync-key, pre-key, etc.)
+  // key: unique identifier within category
+  category  String
+  key       String
+  
+  // Credential data as JSON
+  // Stores the actual Baileys credential objects
+  data      Json
+  
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  @@unique([sessionId, category, key])
+  @@index([sessionId])
+  @@index([sessionId, category])
+  @@map("credentials")
+}
+
+// =============================================================================
+// Message History
+// =============================================================================
+
+/// Persisted message for history, search, and audit
+/// Enables message recall and conversation context for LLMs
+model Message {
+  id          String        @id @default(cuid())
+  sessionId   String        @map("session_id")
+  
+  // Message identification (from Baileys MessageKey)
+  messageId   String        @map("message_id")
+  remoteJid   String        @map("remote_jid")
+  fromMe      Boolean       @default(false) @map("from_me")
+  participant String?       // Sender JID for group messages
+  
+  // Content
+  messageType MessageType   @map("message_type")
+  content     String?       // Text content or caption
+  mediaUrl    String?       @map("media_url")
+  mediaType   String?       @map("media_type") // MIME type
+  quotedId    String?       @map("quoted_id") // ID of quoted message
+  
+  // Status tracking
+  status      MessageStatus @default(PENDING)
+  timestamp   DateTime
+  
+  // Timestamps
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  
+  // Relations
+  session     Session       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  @@unique([sessionId, messageId])
+  @@index([sessionId, remoteJid])
+  @@index([sessionId, timestamp])
+  @@index([sessionId, fromMe])
+  @@map("messages")
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+  STICKER
+  REACTION
+  LOCATION
+  CONTACT
+  POLL
+  OTHER
+}
+
+enum MessageStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  PLAYED     // For audio/video
+  FAILED
+  DELETED
+}
+
+// =============================================================================
+// Contact Cache
+// =============================================================================
+
+/// Cached contact information
+/// Reduces WhatsApp API calls for frequently accessed contacts
+model Contact {
+  id        String   @id @default(cuid())
+  sessionId String   @map("session_id")
+  
+  // Contact identification
+  jid       String
+  name      String?  // Saved contact name
+  notify    String?  // WhatsApp push name
+  status    String?  // Status message
+  imgUrl    String?  @map("img_url")
+  
+  // Additional metadata
+  isBlocked Boolean  @default(false) @map("is_blocked")
+  isBusiness Boolean @default(false) @map("is_business")
+  
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  @@unique([sessionId, jid])
+  @@index([sessionId])
+  @@map("contacts")
+}
+
+// =============================================================================
+// Group Cache
+// =============================================================================
+
+/// Cached group metadata
+/// Stores group info to avoid repeated API calls
+model GroupCache {
+  id          String   @id @default(cuid())
+  sessionId   String   @map("session_id")
+  
+  // Group identification
+  groupJid    String   @map("group_jid")
+  subject     String   // Group name
+  owner       String?  // Owner JID
+  description String?
+  
+  // Settings
+  announce    Boolean  @default(false) // Only admins can send
+  restrict    Boolean  @default(false) // Only admins can edit
+  ephemeral   Int?     // Disappearing messages duration
+  
+  // Participants stored as JSON array
+  // Format: [{ jid: string, admin?: 'admin' | 'superadmin' }]
+  participants Json    @default("[]")
+  
+  // Timestamps
+  creation    DateTime?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  @@unique([sessionId, groupJid])
+  @@index([sessionId])
+  @@map("group_cache")
+}
