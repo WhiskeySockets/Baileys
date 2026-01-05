@@ -1,0 +1,53 @@
+{
+  "name": "@baileys/mcp-server",
+  "version": "1.0.0",
+  "description": "MCP Server for WhatsApp integration via Baileys",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "bin": {
+    "whatsapp-mcp": "./lib/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "dev:http": "tsx watch src/http-server.ts",
+    "start": "node lib/index.js",
+    "start:http": "node lib/http-server.js",
+    "test": "node --experimental-vm-modules ./node_modules/.bin/jest",
+    "lint": "eslint src --ext .ts",
+    "clean": "rm -rf lib"
+  },
+  "dependencies": {
+    "@hapi/boom": "^9.1.3",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@whiskeysockets/baileys": "^6.7.16",
+    "cors": "^2.8.5",
+    "express": "^5.2.1",
+    "pino": "^9.6.0",
+    "qrcode-terminal": "^0.12.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^20.9.0",
+    "@types/qrcode-terminal": "^0.12.2",
+    "jest": "^30.0.5",
+    "ts-jest": "^29.4.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "license": "MIT",
+  "keywords": [
+    "whatsapp",
+    "mcp",
+    "model-context-protocol",
+    "llm",
+    "ai",
+    "baileys"
+  ]
+}
