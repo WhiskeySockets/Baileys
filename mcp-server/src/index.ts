@@ -39,7 +39,9 @@ async function main(): Promise<void> {
     };
 
     const authService = new AuthService(serviceConfig);
-    const connectionService = new ConnectionService(authService, serviceConfig);
+    // Explicitly disable terminal QR printing to prevent stdout pollution breaking MCP
+    // The ServiceConfig type doesn't include printQRInTerminal, but ConnectionServiceConfig does
+    const connectionService = new ConnectionService(authService, { ...serviceConfig, printQRInTerminal: false });
     const messageService = new MessageService(connectionService);
     const groupService = new GroupService(connectionService);
     const contactService = new ContactService(connectionService);

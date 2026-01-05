@@ -236,24 +236,37 @@ export class ConnectionService implements IConnectionService {
     if (!this.socket) {
       logger.info('Socket not initialized, connecting for pairing code...');
       await this.connect();
-      // Give it a moment to initialize
-      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     if (!this.socket) {
       throw new Error('Failed to initialize socket');
     }
 
-    // If connected, we might not be able to pair (already authenticated)
-    if (this.isConnected()) {
-       // If isRegistered is true, throw?
-       if (this.authService.isRegistered()) {
-         throw new Error('Already connected and registered');
-       }
+    // Wait for the socket to be ready for authentication
+    // The QR event indicates the socket is ready (we'll request pairing code instead of using QR)
+    if (this.state.status !== 'qr_required' && this.state.status !== 'connected') {
+      logger.info('Waiting for socket to be ready for authentication...');
+      try {
+        await this.waitForQR(15000); // Wait up to 15s for auth readiness
+      } catch (error) {
+        // If we connected without needing auth, that's fine
+        if (!this.isConnected()) {
+          throw new Error('Socket failed to reach authentication state');
+        }
+      }
     }
 
+    // If already connected, we can't request pairing code
+    if (this.isConnected()) {
+      if (this.authService.isRegistered()) {
+        throw new Error('Already connected and registered');
+      }
+    }
+
+    logger.info({ phoneNumber }, 'Requesting pairing code...');
     const code = await this.socket.requestPairingCode(phoneNumber);
     this.state = { status: 'pairing_required', pairingCode: code };
+    logger.info({ code }, 'Pairing code received');
     return code;
   }
 
