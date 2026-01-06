@@ -29,43 +29,57 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 			content
 		})
 
-	const groupMetadata = async (jid: string) => {
-		const result = await groupQuery(jid, 'get', [{ tag: 'query', attrs: { request: 'interactive' } }])
-		return extractGroupMetadata(result)
-	}
+    const groupMetadata = async (jid: string) => {
+        const result = await groupQuery(jid, 'get', [{ tag: 'query', attrs: { request: 'interactive' } }])
+        let meta = extractGroupMetadata(result)
+        if (!meta.subject) {
+            const alt = await groupQuery(jid, 'get', [{ tag: 'query', attrs: {} }])
+            const altMeta = extractGroupMetadata(alt)
+            if (altMeta.subject) {
+                meta = altMeta
+            }
+        }
+        return meta
+    }
 
-	const groupFetchAllParticipating = async () => {
-		const result = await query({
-			tag: 'iq',
-			attrs: {
-				to: '@g.us',
-				xmlns: 'w:g2',
-				type: 'get'
-			},
-			content: [
-				{
-					tag: 'participating',
-					attrs: {},
-					content: [
-						{ tag: 'participants', attrs: {} },
-						{ tag: 'description', attrs: {} }
-					]
-				}
-			]
-		})
-		const data: { [_: string]: GroupMetadata } = {}
-		const groupsChild = getBinaryNodeChild(result, 'groups')
-		if (groupsChild) {
-			const groups = getBinaryNodeChildren(groupsChild, 'group')
-			for (const groupNode of groups) {
-				const meta = extractGroupMetadata({
-					tag: 'result',
-					attrs: {},
-					content: [groupNode]
-				})
-				data[meta.id] = meta
-			}
-		}
+    const groupFetchAllParticipating = async () => {
+        const result = await query({
+            tag: 'iq',
+            attrs: {
+                to: '@g.us',
+                xmlns: 'w:g2',
+                type: 'get'
+            },
+            content: [
+                {
+                    tag: 'participating',
+                    attrs: {},
+                    content: [
+                        { tag: 'participants', attrs: {} },
+                        { tag: 'description', attrs: {} }
+                    ]
+                }
+            ]
+        })
+        const data: { [_: string]: GroupMetadata } = {}
+        const groupsChild = getBinaryNodeChild(result, 'groups')
+        if (groupsChild) {
+            const groups = getBinaryNodeChildren(groupsChild, 'group')
+            for (const groupNode of groups) {
+                const meta = extractGroupMetadata({
+                    tag: 'result',
+                    attrs: {},
+                    content: [groupNode]
+                })
+                data[meta.id] = meta
+            }
+        }
+
+        const missing = Object.values(data).filter(g => !g.subject)
+        for (const g of missing) {
+            const refreshed = await groupMetadata(g.id)
+            data[g.id] = refreshed
+        }
 
 		// TODO: properly parse LID / PN DATA
 		sock.ev.emit('groups.update', Object.values(data))
@@ -319,16 +333,16 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 	const groupId = group.attrs.id!.includes('@') ? group.attrs.id : jidEncode(group.attrs.id!, 'g.us')
 	const eph = getBinaryNodeChild(group, 'ephemeral')?.attrs.expiration
 	const memberAddMode = getBinaryNodeChildString(group, 'member_add_mode') === 'all_member_add'
-	const metadata: GroupMetadata = {
-		id: groupId!,
-		notify: group.attrs.notify,
-		addressingMode: group.attrs.addressing_mode === 'lid' ? WAMessageAddressingMode.LID : WAMessageAddressingMode.PN,
-		subject: group.attrs.subject!,
-		subjectOwner: group.attrs.s_o,
-		subjectOwnerPn: group.attrs.s_o_pn,
-		subjectTime: +group.attrs.s_t!,
-		size: group.attrs.size ? +group.attrs.size : getBinaryNodeChildren(group, 'participant').length,
-		creation: +group.attrs.creation!,
+    const metadata: GroupMetadata = {
+        id: groupId!,
+        notify: group.attrs.notify,
+        addressingMode: group.attrs.addressing_mode === 'lid' ? WAMessageAddressingMode.LID : WAMessageAddressingMode.PN,
+        subject: group.attrs.subject || group.attrs.notify || '',
+        subjectOwner: group.attrs.s_o,
+        subjectOwnerPn: group.attrs.s_o_pn,
+        subjectTime: +group.attrs.s_t!,
+        size: group.attrs.size ? +group.attrs.size : getBinaryNodeChildren(group, 'participant').length,
+        creation: +group.attrs.creation!,
 		owner: group.attrs.creator ? jidNormalizedUser(group.attrs.creator) : undefined,
 		ownerPn: group.attrs.creator_pn ? jidNormalizedUser(group.attrs.creator_pn) : undefined,
 		owner_country_code: group.attrs.creator_country_code,
