@@ -410,7 +410,7 @@ export const generateWAMessageContent = async (
 	} else if ('contacts' in message) {
 		const contactLen = message.contacts.contacts.length
 		if (!contactLen) {
-			throw new Boom('require atleast 1 contact', { statusCode: 400 })
+			throw new Boom('require at least 1 contact', { statusCode: 400 })
 		}
 
 		if (contactLen === 1) {
