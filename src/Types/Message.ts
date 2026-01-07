@@ -122,6 +122,26 @@ type ViewOnce = {
 	viewOnce?: boolean
 }
 
+type Buttonable = {
+	/** add buttons to the message */
+	buttons?: proto.Message.ButtonsMessage.IButton[]
+}
+type Templatable = {
+	/** add buttons to the message (conflicts with normal buttons) */
+	templateButtons?: proto.IHydratedTemplateButton[]
+	footer?: string
+}
+type Listable = {
+	/** Sections of the List */
+	sections?: proto.Message.ListMessage.ISection[]
+
+	/** Title of a List Message only */
+	title?: string
+
+	/** Text of the button on the list (required) */
+	buttonText?: string
+}
+
 type Editable = {
 	edit?: WAMessageKey
 }
@@ -160,6 +180,10 @@ type RequestPhoneNumber = {
 	requestPhoneNumber: boolean
 }
 
+export type InteractiveMessageContent = {
+	interactiveMessage: proto.Message.IInteractiveMessage
+}
+
 export type AnyMediaMessageContent = (
 	| ({
 			image: WAMediaUpload
@@ -167,6 +191,8 @@ export type AnyMediaMessageContent = (
 			jpegThumbnail?: string
 	  } & Mentionable &
 			Contextable &
+			Buttonable &
+			Templatable &
 			WithDimensions)
 	| ({
 			video: WAMediaUpload
@@ -177,6 +203,8 @@ export type AnyMediaMessageContent = (
 			ptv?: boolean
 	  } & Mentionable &
 			Contextable &
+			Buttonable &
+			Templatable &
 			WithDimensions)
 	| {
 			audio: WAMediaUpload
@@ -194,7 +222,9 @@ export type AnyMediaMessageContent = (
 			mimetype: string
 			fileName?: string
 			caption?: string
-	  } & Contextable)
+	  } & Contextable &
+			Buttonable &
+			Templatable)
 ) & { mimetype?: string } & Editable
 
 export type ButtonReplyInfo = {
@@ -221,6 +251,9 @@ export type AnyRegularMessageContent = (
 			linkPreview?: WAUrlInfo | null
 	  } & Mentionable &
 			Contextable &
+			Buttonable &
+			Templatable &
+			Listable &
 			Editable)
 	| AnyMediaMessageContent
 	| { event: EventMessageOptions }
@@ -263,6 +296,7 @@ export type AnyRegularMessageContent = (
 			body?: string
 			footer?: string
 	  }
+	| InteractiveMessageContent
 	| SharePhoneNumber
 	| RequestPhoneNumber
 ) &

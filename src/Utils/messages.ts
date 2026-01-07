@@ -74,6 +74,8 @@ const MessageTypeProto = {
 	document: WAProto.Message.DocumentMessage
 } as const
 
+const ButtonType = proto.Message.ButtonsMessage.HeaderType
+
 /**
  * Uses a regex to test whether the string contains a URL, and returns the URL if it does.
  * @param text eg. hello https://google.com
@@ -487,6 +489,8 @@ export const generateWAMessageContent = async (
 				}
 				break
 		}
+	} else if ('interactiveMessage' in message) {
+		m.interactiveMessage = message.interactiveMessage
 	} else if ('ptv' in message && message.ptv) {
 		const { videoMessage } = await prepareWAMessageMedia({ video: message.video }, options)
 		m.ptvMessage = videoMessage
@@ -578,6 +582,74 @@ export const generateWAMessageContent = async (
 		}
 	} else {
 		m = await prepareWAMessageMedia(message, options)
+	}
+
+	if ('buttons' in message && !!message.buttons) {
+		const buttonsMessage: proto.Message.IButtonsMessage = {
+			buttons: message.buttons.map(b => ({
+				...b,
+				type: proto.Message.ButtonsMessage.Button.Type.RESPONSE
+			}))
+		}
+
+		if ('text' in message) {
+			buttonsMessage.contentText = message.text
+			buttonsMessage.headerType = ButtonType.EMPTY
+		} else {
+			if ('caption' in message) {
+				buttonsMessage.contentText = message.caption
+			}
+
+			const rawHeaderType = Object.keys(m)[0]!.replace('Message', '').toUpperCase()
+			const normalizedHeaderType = rawHeaderType === 'PTV' ? 'VIDEO' : rawHeaderType
+			buttonsMessage.headerType = (ButtonType as any)[normalizedHeaderType]
+
+			Object.assign(buttonsMessage, m)
+		}
+
+		if ('footer' in message && !!message.footer) {
+			buttonsMessage.footerText = message.footer
+		}
+
+		m = { buttonsMessage }
+	} else if ('templateButtons' in message && !!message.templateButtons) {
+		const template: proto.Message.TemplateMessage.IHydratedFourRowTemplate = {
+			hydratedButtons: message.templateButtons
+		}
+
+		if ('text' in message) {
+			template.hydratedContentText = message.text
+		} else {
+			if ('caption' in message) {
+				template.hydratedContentText = message.caption
+			}
+
+			Object.assign(template, m)
+		}
+
+		if ('footer' in message && !!message.footer) {
+			template.hydratedFooterText = message.footer
+		}
+
+		m = {
+			templateMessage: {
+				fourRowTemplate: template,
+				hydratedTemplate: template
+			}
+		}
+	}
+
+	if ('sections' in message && !!message.sections) {
+		const listMessage: proto.Message.IListMessage = {
+			sections: message.sections,
+			buttonText: message.buttonText,
+			title: message.title,
+			footerText: message.footer,
+			description: 'text' in message ? message.text : undefined,
+			listType: proto.Message.ListMessage.ListType.SINGLE_SELECT
+		}
+
+		m = { listMessage }
 	}
 
 	if ('viewOnce' in message && !!message.viewOnce) {
@@ -1059,4 +1131,23 @@ export const assertMediaContent = (content: proto.IMessage | null | undefined) =
 	}
 
 	return mediaContent
+}
+
+/**
+ * Patch certain message types that are not rendered by default on MD
+ * WhatsApp Web still expects the wrapped payload for buttons & list.
+ */
+export const patchMessageForMdIfRequired = (message: proto.IMessage) => {
+	const requiresPatch = !!(message.buttonsMessage || message.listMessage || message.interactiveMessage)
+	if (requiresPatch) {
+		message = {
+			documentWithCaptionMessage: {
+				message: {
+					...message
+				}
+			}
+		}
+	}
+
+	return message
 }

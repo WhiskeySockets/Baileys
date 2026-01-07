@@ -589,6 +589,72 @@ await sock.sendMessage(
 )
 ```
 
+#### Buttons Message
+```ts
+await sock.sendMessage(jid, {
+    text: 'Choose an option:',
+    footer: 'Baileys',
+    buttons: [
+        { buttonId: 'opt1', buttonText: { displayText: 'Option 1' } },
+        { buttonId: 'opt2', buttonText: { displayText: 'Option 2' } }
+    ]
+})
+```
+
+#### Template Buttons Message
+```ts
+await sock.sendMessage(jid, {
+    text: 'Select:',
+    footer: 'Baileys',
+    templateButtons: [
+        { index: 0, quickReplyButton: { displayText: 'Yes', id: 'yes' } },
+        { index: 1, quickReplyButton: { displayText: 'No', id: 'no' } }
+    ]
+})
+```
+
+#### List Message
+```ts
+await sock.sendMessage(jid, {
+    text: 'Select an item:',
+    footer: 'Baileys',
+    title: 'Products',
+    buttonText: 'Open',
+    sections: [
+        {
+            title: 'Category A',
+            rows: [
+                { id: 'a1', title: 'Item A1', description: 'Desc A1' },
+                { id: 'a2', title: 'Item A2', description: 'Desc A2' }
+            ]
+        }
+    ]
+})
+```
+
+#### Interactive Message (Native Flow)
+```ts
+await sock.sendMessage(jid, {
+    interactiveMessage: {
+        header: { title: 'Menu' },
+        body: { text: 'Choose:' },
+        footer: { text: 'Baileys' },
+        nativeFlowMessage: {
+            buttons: [
+                {
+                    name: 'quick_reply',
+                    buttonParamsJson: JSON.stringify({ display_text: 'Option 1', id: 'opt1' })
+                },
+                {
+                    name: 'quick_reply',
+                    buttonParamsJson: JSON.stringify({ display_text: 'Option 2', id: 'opt2' })
+                }
+            ]
+        }
+    }
+})
+```
+
 ### Sending Messages with Link Previews
 
 1. By default, wa does not have link generation when sent from the web

@@ -30,6 +30,7 @@ import {
 	getWAUploadToServer,
 	MessageRetryManager,
 	normalizeMessageContent,
+	patchMessageForMdIfRequired,
 	parseAndInjectE2ESessions,
 	unixTimestampSeconds
 } from '../Utils'
@@ -589,6 +590,29 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return { nodes, shouldIncludeDeviceIdentity }
 	}
 
+	const createButtonNode = (message: proto.IMessage) => {
+		if (message.listMessage) {
+			return [
+				{
+					tag: 'list',
+					attrs: { type: 'product_list', v: '2' }
+				}
+			]
+		}
+
+		if (message.buttonsMessage || message.interactiveMessage?.nativeFlowMessage) {
+			return [
+				{
+					tag: 'interactive',
+					attrs: { type: 'native_flow', v: '1' },
+					content: [{ tag: 'native_flow', attrs: { v: '9', name: 'mixed' } }]
+				}
+			]
+		}
+
+		return null
+	}
+
 	const relayMessage = async (
 		jid: string,
 		message: proto.IMessage,
@@ -987,6 +1011,17 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				;(stanza.content as BinaryNode[]).push(...additionalNodes)
 			}
 
+			const innerMessage = message.documentWithCaptionMessage?.message || message
+			const buttonContent = createButtonNode(innerMessage)
+			if (buttonContent) {
+				;(stanza.content as BinaryNode[]).push({
+					tag: 'biz',
+					attrs: {},
+					content: buttonContent
+				})
+				logger.debug({ jid }, 'adding biz node for buttons message')
+			}
+
 			logger.debug({ msgId }, `sending message to ${participants.length} devices`)
 
 			await sendNode(stanza)
@@ -1035,6 +1070,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			return 'sticker'
 		} else if (message.listMessage) {
 			return 'list'
+		} else if (message.buttonsMessage) {
+			return 'buttons'
 		} else if (message.listResponseMessage) {
 			return 'list_response'
 		} else if (message.buttonsResponseMessage) {
@@ -1186,6 +1223,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					messageId: generateMessageIDV2(sock.user?.id),
 					...options
 				})
+				fullMsg.message = patchMessageForMdIfRequired(fullMsg.message!)
 				const isEventMsg = 'event' in content && !!content.event
 				const isDeleteMsg = 'delete' in content && !!content.delete
 				const isEditMsg = 'edit' in content && !!content.edit
