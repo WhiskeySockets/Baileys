@@ -8,6 +8,7 @@ import type { IAudioMetadata } from 'music-metadata'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { Readable, Transform } from 'stream'
+import type { ReadableStream as WebReadableStream } from 'stream/web'
 import { URL } from 'url'
 import { proto } from '../../WAProto/index.js'
 import { DEFAULT_ORIGIN, MEDIA_HKDF_KEY_MAPPING, MEDIA_PATH_MAP, type MediaType } from '../Defaults'
@@ -153,7 +154,18 @@ export const extractImageThumb = async (bufferOrFilePath: Readable | Buffer | st
 			}
 		}
 	} else if ('jimp' in lib && typeof lib.jimp?.Jimp === 'object') {
-		const jimp = await (lib.jimp.Jimp as any).read(bufferOrFilePath)
+		type JimpInstance = {
+			width: number
+			height: number
+			resize: (opts: { w: number; mode: unknown }) => JimpInstance
+			getBuffer: (mime: string, opts: { quality: number }) => Promise<Buffer>
+			crop: (opts: { x: number; y: number; w: number; h: number }) => JimpInstance
+		}
+		type JimpModule = {
+			Jimp: { read: (arg: Buffer | string) => Promise<JimpInstance> }
+			ResizeStrategy: { BILINEAR: unknown }
+		}
+		const jimp = await (lib.jimp as JimpModule).Jimp.read(bufferOrFilePath)
 		const dimensions = {
 			width: jimp.width,
 			height: jimp.height
@@ -201,7 +213,15 @@ export const generateProfilePicture = async (
 			})
 			.toBuffer()
 	} else if ('jimp' in lib && typeof lib.jimp?.Jimp === 'function') {
-		const jimp = await (lib.jimp.Jimp as any).read(buffer)
+		type JimpInstance = {
+			width: number
+			height: number
+			resize: (opts: { w: number; h?: number; mode: unknown }) => JimpInstance
+			getBuffer: (mime: string, opts: { quality: number }) => Promise<Buffer>
+			crop: (opts: { x: number; y: number; w: number; h: number }) => JimpInstance
+		}
+		type JimpModule = { Jimp: { read: (arg: Buffer) => Promise<JimpInstance> }; ResizeStrategy: { BILINEAR: unknown } }
+		const jimp = await (lib.jimp as JimpModule).Jimp.read(buffer)
 		const min = Math.min(jimp.width, jimp.height)
 		const cropped = jimp.crop({ x: 0, y: 0, w: min, h: min })
 
@@ -373,7 +393,9 @@ export const getHttpStream = async (url: string | URL, options: RequestInit & { 
 	}
 
 	// @ts-ignore Node18+ Readable.fromWeb exists
-	return response.body instanceof Readable ? response.body : Readable.fromWeb(response.body as any)
+	return response.body instanceof Readable
+		? response.body
+		: Readable.fromWeb(response.body as unknown as WebReadableStream)
 }
 
 type EncryptedStreamOptions = {
@@ -426,8 +448,8 @@ export const encryptedStream = async (
 
 			if (
 				type === 'remote' &&
-				(opts as any)?.maxContentLength &&
-				fileLength + data.length > (opts as any).maxContentLength
+				(opts as { maxContentLength?: number })?.maxContentLength &&
+				fileLength + data.length > (opts as { maxContentLength?: number }).maxContentLength!
 			) {
 				throw new Boom(`content length exceeded when encrypting "${type}"`, {
 					data: { media, type }
@@ -621,16 +643,16 @@ export const downloadEncryptedContent = async (
 			try {
 				pushBytes(aes.update(data), b => this.push(b))
 				callback()
-			} catch (error: any) {
-				callback(error)
+			} catch (error: unknown) {
+				callback(error as Error)
 			}
 		},
 		final(callback) {
 			try {
 				pushBytes(aes.final(), b => this.push(b))
 				callback()
-			} catch (error: any) {
-				callback(error)
+			} catch (error: unknown) {
+				callback(error as Error)
 			}
 		}
 	})
@@ -656,7 +678,7 @@ const isNodeRuntime = (): boolean => {
 		typeof process !== 'undefined' &&
 		process.versions?.node !== null &&
 		typeof process.versions.bun === 'undefined' &&
-		typeof (globalThis as any).Deno === 'undefined'
+		typeof (globalThis as { Deno?: unknown }).Deno === 'undefined'
 	)
 }
 
@@ -864,10 +886,10 @@ export const getWAUploadToServer = (
 					uploadInfo = await refreshMediaConn(true)
 					throw new Error(`upload failed, reason: ${JSON.stringify(result)}`)
 				}
-			} catch (error: any) {
+			} catch (error: unknown) {
 				const isLast = hostname === hosts[uploadInfo.hosts.length - 1]?.hostname
 				logger.warn(
-					{ trace: error?.stack, uploadResult: result },
+					{ trace: (error as Error)?.stack, uploadResult: result },
 					`Error in uploading to ${hostname} ${isLast ? '' : ', retrying...'}`
 				)
 			}

@@ -91,14 +91,14 @@ export const generateLinkPreviewIfRequired = async (
 		try {
 			const urlInfo = await getUrlInfo(url)
 			return urlInfo
-		} catch (error: any) {
+		} catch (error: unknown) {
 			// ignore if fails
-			logger?.warn({ trace: error.stack }, 'url generation failed')
+			logger?.warn({ trace: (error as Error)?.stack }, 'url generation failed')
 		}
 	}
 }
 
-const assertColor = async (color: any) => {
+const assertColor = async (color: string | number) => {
 	let assertedColor
 	if (typeof color === 'number') {
 		assertedColor = color > 0 ? color : 0xffffffff + Number(color) + 1
@@ -132,9 +132,9 @@ export const prepareWAMessageMedia = async (
 
 	const uploadData: MediaUploadData = {
 		...message,
-		media: (message as any)[mediaType]
+		media: (message as unknown as { [k: string]: WAMediaUpload })[mediaType]!
 	}
-	delete (uploadData as any)[mediaType]
+	delete (uploadData as Record<string, unknown>)[mediaType as string]
 	// check if cacheable + generate cache key
 	const cacheableKey =
 		typeof uploadData.media === 'object' &&
@@ -185,7 +185,7 @@ export const prepareWAMessageMedia = async (
 
 		const obj = WAProto.Message.fromObject({
 			// todo: add more support here
-			[`${mediaType}Message`]: (MessageTypeProto as any)[mediaType].fromObject({
+			[`${mediaType}Message`]: MessageTypeProto[mediaType as keyof typeof MessageTypeProto].fromObject({
 				url: mediaUrl,
 				directPath,
 				fileSha256,
@@ -268,11 +268,11 @@ export const prepareWAMessageMedia = async (
 				}
 
 				if (requiresAudioBackground) {
-					uploadData.backgroundArgb = await assertColor(options.backgroundColor)
+					uploadData.backgroundArgb = await assertColor(options.backgroundColor!)
 					logger?.debug('computed backgroundColor audio status')
 				}
-			} catch (error) {
-				logger?.warn({ trace: (error as any).stack }, 'failed to obtain extra info')
+			} catch (error: unknown) {
+				logger?.warn({ trace: (error as Error)?.stack }, 'failed to obtain extra info')
 			}
 		})()
 	]).finally(async () => {
@@ -299,7 +299,7 @@ export const prepareWAMessageMedia = async (
 			mediaKeyTimestamp: unixTimestampSeconds(),
 			...uploadData,
 			media: undefined
-		} as any)
+		} as object)
 	})
 
 	if (uploadData.ptv) {
@@ -681,7 +681,7 @@ export const generateWAMessageFromContent = (
 	) {
 		/* @ts-ignore */
 		innerMessage[key].contextInfo = {
-			...((innerMessage[key] as any).contextInfo || {}),
+			...((innerMessage[key] as unknown as { contextInfo?: proto.IContextInfo }).contextInfo || {}),
 			expiration: options.ephemeralExpiration || WA_DEFAULT_EPHEMERAL
 			//ephemeralSettingTimestamp: options.ephemeralOptions.eph_setting_ts?.toString()
 		}
@@ -942,7 +942,7 @@ export function getAggregateResponsesInEventMessage(
 	}
 
 	for (const update of eventResponses || []) {
-		const responseType = (update as any).eventResponse || 'UNKNOWN'
+		const responseType = (update as unknown as { eventResponse?: string }).eventResponse || 'UNKNOWN'
 		if (responseType !== 'UNKNOWN' && responseMap[responseType]) {
 			responseMap[responseType].responders.push(getKeyAuthor(update.eventResponseMessageKey, meId))
 		}

@@ -192,10 +192,10 @@ export const makeSocket = (config: SocketConfig) => {
 
 		const msgId = node.attrs.id
 
-		const result = await promiseTimeout<any>(timeoutMs, async (resolve, reject) => {
+		const result = await promiseTimeout<BinaryNode>(timeoutMs, async (resolve, reject) => {
 			const result = waitForMessage(msgId, timeoutMs).catch(reject)
 			sendNode(node)
-				.then(async () => resolve(await result))
+				.then(async () => resolve((await result) as BinaryNode))
 				.catch(reject)
 		})
 
@@ -826,9 +826,9 @@ export const makeSocket = (config: SocketConfig) => {
 	ws.on('open', async () => {
 		try {
 			await validateConnection()
-		} catch (err: any) {
+		} catch (err: unknown) {
 			logger.error({ err }, 'error in validating connection')
-			end(err)
+			end(err as Error)
 		}
 	})
 	ws.on('error', mapWebSocketError(end))
@@ -894,9 +894,9 @@ export const makeSocket = (config: SocketConfig) => {
 			ev.emit('connection.update', { isNewLogin: true, qr: undefined })
 
 			await sendNode(reply)
-		} catch (error: any) {
-			logger.info({ trace: error.stack }, 'error in pairing')
-			end(error)
+		} catch (error: unknown) {
+			logger.info({ trace: (error as Error)?.stack }, 'error in pairing')
+			end(error as Error)
 		}
 	})
 	// login complete

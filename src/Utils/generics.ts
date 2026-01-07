@@ -123,7 +123,7 @@ export const delay = (ms: number) => delayCancellable(ms).delay
 export const delayCancellable = (ms: number) => {
 	const stack = new Error().stack
 	let timeout: NodeJS.Timeout
-	let reject: (error: any) => void
+	let reject: (error: unknown) => void
 	const delay: Promise<void> = new Promise((resolve, _reject) => {
 		timeout = setTimeout(resolve, ms)
 		reject = _reject
@@ -145,7 +145,7 @@ export const delayCancellable = (ms: number) => {
 
 export async function promiseTimeout<T>(
 	ms: number | undefined,
-	promise: (resolve: (v: T) => void, reject: (error: any) => void) => void
+	promise: (resolve: (v: T) => void, reject: (error: unknown) => void) => void
 ) {
 	if (!ms) {
 		return new Promise(promise)

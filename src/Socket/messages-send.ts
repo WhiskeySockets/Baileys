@@ -529,8 +529,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		}
 
 		const patched = await patchMessageBeforeSending(message, recipientJids)
-		const patchedMessages = Array.isArray(patched)
-			? patched
+		const patchedMessagesTyped: Array<{ recipientJid: string; message: proto.IMessage }> = Array.isArray(patched)
+			? (patched as Array<{ recipientJid: string; message: proto.IMessage }>)
 			: recipientJids.map(jid => ({ recipientJid: jid, message: patched }))
 
 		let shouldIncludeDeviceIdentity = false
@@ -538,52 +538,50 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const meLid = authState.creds.me?.lid
 		const meLidUser = meLid ? jidDecode(meLid)?.user : null
 
-		const encryptionPromises = (patchedMessages as any).map(
-			async ({ recipientJid: jid, message: patchedMessage }: any) => {
-				if (!jid) return null
-				let msgToEncrypt = patchedMessage
-				if (dsmMessage) {
-					const { user: targetUser } = jidDecode(jid)!
-					const { user: ownPnUser } = jidDecode(meId)!
-					const ownLidUser = meLidUser
-					const isOwnUser = targetUser === ownPnUser || (ownLidUser && targetUser === ownLidUser)
-					const isExactSenderDevice = jid === meId || (meLid && jid === meLid)
-					if (isOwnUser && !isExactSenderDevice) {
-						msgToEncrypt = dsmMessage
-						logger.debug({ jid, targetUser }, 'Using DSM for own device')
-					}
+		const encryptionPromises = patchedMessagesTyped.map(async ({ recipientJid: jid, message: patchedMessage }) => {
+			if (!jid) return null
+			let msgToEncrypt = patchedMessage
+			if (dsmMessage) {
+				const { user: targetUser } = jidDecode(jid)!
+				const { user: ownPnUser } = jidDecode(meId)!
+				const ownLidUser = meLidUser
+				const isOwnUser = targetUser === ownPnUser || (ownLidUser && targetUser === ownLidUser)
+				const isExactSenderDevice = jid === meId || (meLid && jid === meLid)
+				if (isOwnUser && !isExactSenderDevice) {
+					msgToEncrypt = dsmMessage
+					logger.debug({ jid, targetUser }, 'Using DSM for own device')
+				}
+			}
+
+			const bytes = encodeWAMessage(msgToEncrypt)
+			const mutexKey = jid
+			const node = await encryptionMutex.mutex(mutexKey, async () => {
+				const { type, ciphertext } = await signalRepository.encryptMessage({
+					jid,
+					data: bytes
+				})
+				if (type === 'pkmsg') {
+					shouldIncludeDeviceIdentity = true
 				}
 
-				const bytes = encodeWAMessage(msgToEncrypt)
-				const mutexKey = jid
-				const node = await encryptionMutex.mutex(mutexKey, async () => {
-					const { type, ciphertext } = await signalRepository.encryptMessage({
-						jid,
-						data: bytes
-					})
-					if (type === 'pkmsg') {
-						shouldIncludeDeviceIdentity = true
-					}
-
-					return {
-						tag: 'to',
-						attrs: { jid },
-						content: [
-							{
-								tag: 'enc',
-								attrs: {
-									v: '2',
-									type,
-									...(extraAttrs || {})
-								},
-								content: ciphertext
-							}
-						]
-					}
-				})
-				return node
-			}
-		)
+				return {
+					tag: 'to',
+					attrs: { jid },
+					content: [
+						{
+							tag: 'enc',
+							attrs: {
+								v: '2',
+								type,
+								...(extraAttrs || {})
+							},
+							content: ciphertext
+						}
+					]
+				}
+			})
+			return node
+		})
 
 		const nodes = (await Promise.all(encryptionPromises)).filter(node => node !== null) as BinaryNode[]
 		return { nodes, shouldIncludeDeviceIdentity }
@@ -1129,8 +1127,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 								content.url = getUrlFromDirectPath(content.directPath!)
 
 								logger.debug({ directPath: media.directPath, key: result.key }, 'media update successful')
-							} catch (err: any) {
-								error = err
+							} catch (err: unknown) {
+								error = err as Error
 							}
 						}
 

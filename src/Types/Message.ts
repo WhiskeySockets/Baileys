@@ -10,7 +10,7 @@ import type { CacheStore } from './Socket'
 export { proto as WAProto }
 export type WAMessage = proto.IWebMessageInfo & {
 	key: WAMessageKey
-	messageStubParameters?: any
+	messageStubParameters?: string[]
 	category?: string
 	retryCount?: number
 }

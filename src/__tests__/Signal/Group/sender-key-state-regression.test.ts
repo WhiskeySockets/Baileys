@@ -6,10 +6,11 @@ describe('SenderKeyState regression: missing senderMessageKeys array', () => {
 		const legacyStructure = {
 			senderKeyId: 42,
 			senderChainKey: { iteration: 0, seed: Buffer.from([1, 2, 3]) },
-			senderSigningKey: { public: Buffer.from([4, 5, 6]) }
+			senderSigningKey: { public: Buffer.from([4, 5, 6]) },
+			senderMessageKeys: []
 		}
 
-		const state = new SenderKeyState(null, null, null, null, null, null, legacyStructure as any)
+		const state = new SenderKeyState(null, null, null, null, null, null, legacyStructure)
 		const msgKey = new SenderMessageKey(0, Buffer.from([7, 8, 9]))
 		state.addSenderMessageKey(msgKey)
 

@@ -575,15 +575,14 @@ export const makeChatsSocket = (config: SocketConfig) => {
 								// collection is done with sync
 								collectionsToHandle.delete(name)
 							}
-						} catch (error: any) {
+						} catch (error: unknown) {
 							// if retry attempts overshoot
 							// or key not found
+							const err = error as { output?: { statusCode?: number }; name?: string; stack?: string }
 							const isIrrecoverableError =
-								attemptsMap[name]! >= MAX_SYNC_ATTEMPTS ||
-								error.output?.statusCode === 404 ||
-								error.name === 'TypeError'
+								attemptsMap[name]! >= MAX_SYNC_ATTEMPTS || err.output?.statusCode === 404 || err.name === 'TypeError'
 							logger.info(
-								{ name, error: error.stack },
+								{ name, error: err.stack },
 								`failed to sync state from version${isIrrecoverableError ? '' : ', removing and trying from scratch'}`
 							)
 							await authState.keys.set({ 'app-state-sync-version': { [name]: null } })

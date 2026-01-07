@@ -96,15 +96,15 @@ export const getUrlInfo = async (
 			} else {
 				try {
 					urlInfo.jpegThumbnail = image ? (await getCompressedJpegThumbnail(image, opts)).buffer : undefined
-				} catch (error: any) {
-					opts.logger?.debug({ err: error.stack, url: previewLink }, 'error in generating thumbnail')
+				} catch (error: unknown) {
+					opts.logger?.debug({ err: (error as Error)?.stack, url: previewLink }, 'error in generating thumbnail')
 				}
 			}
 
 			return urlInfo
 		}
-	} catch (error: any) {
-		if (!error.message.includes('receive a valid')) {
+	} catch (error: unknown) {
+		if (!((error as Error)?.message || '').includes('receive a valid')) {
 			throw error
 		}
 	}
