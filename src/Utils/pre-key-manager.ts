@@ -44,13 +44,13 @@ export class PreKeyManager {
 
 			// Separate deletions from updates
 			const deletions: string[] = []
-			const updates: Record<string, any> = {}
+			const updates: Record<string, SignalDataTypeMap[typeof keyType]> = {}
 
 			for (const keyId in keyData) {
 				if (keyData[keyId] === null) {
 					deletions.push(keyId)
-				} else {
-					updates[keyId] = keyData[keyId]
+				} else if (typeof keyData[keyId] !== 'undefined') {
+					updates[keyId] = keyData[keyId]!
 				}
 			}
 

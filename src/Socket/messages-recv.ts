@@ -185,7 +185,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			return
 		}
 
-		let data: any
+		let data: {
+			operation?: string
+			updates?: Array<{ jid?: string; user?: string; settings?: Record<string, unknown> }>
+		}
 		try {
 			data = JSON.parse(mexNode.content.toString())
 		} catch (error) {
@@ -281,7 +284,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			case 'update':
 				const settingsNode = getBinaryNodeChild(child, 'settings')
 				if (settingsNode) {
-					const update: Record<string, any> = {}
+					const update: Partial<{ name: string; description: string }> = {}
 					const nameNode = getBinaryNodeChild(settingsNode, 'name')
 					if (nameNode?.content) update.name = nameNode.content.toString()
 
@@ -1179,7 +1182,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		const encNode = getBinaryNodeChild(node, 'enc')
 		// TODO: temporary fix for crashes and issues resulting of failed msmsg decryption
-		if (encNode && encNode.attrs.type === 'msmsg') {
+		if (encNode?.attrs.type === 'msmsg') {
 			logger.debug({ key: node.attrs.key }, 'ignored msmsg')
 			await sendMessageAck(node, NACK_REASONS.MissingMessageSecret)
 			return

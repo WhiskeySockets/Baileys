@@ -1,6 +1,6 @@
 declare global {
 	interface RequestInit {
-		dispatcher?: any
+		dispatcher?: unknown
 		duplex?: 'half' | 'full'
 	}
 }

@@ -26,6 +26,7 @@ export const Browsers: BrowsersMap = {
 }
 
 export const getPlatformId = (browser: string) => {
-	const platformType = proto.DeviceProps.PlatformType[browser.toUpperCase() as any]
+	const platformType =
+		proto.DeviceProps.PlatformType[browser.toUpperCase() as keyof typeof proto.DeviceProps.PlatformType]
 	return platformType ? platformType.toString() : '1' //chrome
 }

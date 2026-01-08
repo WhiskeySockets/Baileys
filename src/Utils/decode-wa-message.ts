@@ -319,7 +319,7 @@ export const decryptMessageNode = (
 						} else {
 							fullMessage.message = msg
 						}
-					} catch (err: any) {
+					} catch (err: unknown) {
 						const errorContext = {
 							key: fullMessage.key,
 							err,
@@ -332,7 +332,7 @@ export const decryptMessageNode = (
 						logger.error(errorContext, 'failed to decrypt message')
 
 						fullMessage.messageStubType = proto.WebMessageInfo.StubType.CIPHERTEXT
-						fullMessage.messageStubParameters = [err.message.toString()]
+						fullMessage.messageStubParameters = [(err as Error)?.message || String(err)]
 					}
 				}
 			}
@@ -349,7 +349,7 @@ export const decryptMessageNode = (
 /**
  * Utility function to check if an error is related to missing session record
  */
-function isSessionRecordError(error: any): boolean {
-	const errorMessage = error?.message || error?.toString() || ''
-	return DECRYPTION_RETRY_CONFIG.sessionRecordErrors.some(errorPattern => errorMessage.includes(errorPattern))
+function isSessionRecordError(error: unknown): boolean {
+	const message = (error as Error)?.message || String(error) || ''
+	return DECRYPTION_RETRY_CONFIG.sessionRecordErrors.some(errorPattern => message.includes(errorPattern))
 }

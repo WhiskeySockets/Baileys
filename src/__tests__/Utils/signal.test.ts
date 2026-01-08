@@ -7,9 +7,9 @@ describe('parseAndInjectE2ESessions', () => {
 	it('should process all user node', async () => {
 		const mockRepository = {
 			injectE2ESession: jest.fn<SignalRepositoryWithLIDStore['injectE2ESession']>()
-		} as jest.Mocked<Pick<SignalRepositoryWithLIDStore, 'injectE2ESession'>>
+		} as unknown as SignalRepositoryWithLIDStore
 
-		mockRepository.injectE2ESession.mockResolvedValue(undefined)
+		;(mockRepository.injectE2ESession as unknown as jest.Mock).mockImplementation(async () => undefined)
 
 		const createUserNode = (jid: string): BinaryNode => ({
 			tag: 'user',
@@ -53,7 +53,7 @@ describe('parseAndInjectE2ESessions', () => {
 			]
 		}
 
-		await parseAndInjectE2ESessions(mockNode, mockRepository as any)
+		await parseAndInjectE2ESessions(mockNode, mockRepository)
 
 		expect(mockRepository.injectE2ESession).toHaveBeenCalledTimes(3)
 		expect(mockRepository.injectE2ESession).toHaveBeenCalledWith(

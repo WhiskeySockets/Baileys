@@ -31,7 +31,16 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 
 	const groupMetadata = async (jid: string) => {
 		const result = await groupQuery(jid, 'get', [{ tag: 'query', attrs: { request: 'interactive' } }])
-		return extractGroupMetadata(result)
+		let meta = extractGroupMetadata(result)
+		if (!meta.subject) {
+			const alt = await groupQuery(jid, 'get', [{ tag: 'query', attrs: {} }])
+			const altMeta = extractGroupMetadata(alt)
+			if (altMeta.subject) {
+				meta = altMeta
+			}
+		}
+
+		return meta
 	}
 
 	const groupFetchAllParticipating = async () => {
@@ -65,6 +74,12 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 				})
 				data[meta.id] = meta
 			}
+		}
+
+		const missing = Object.values(data).filter(g => !g.subject)
+		for (const g of missing) {
+			const refreshed = await groupMetadata(g.id)
+			data[g.id] = refreshed
 		}
 
 		// TODO: properly parse LID / PN DATA
@@ -323,7 +338,7 @@ export const extractGroupMetadata = (result: BinaryNode) => {
 		id: groupId!,
 		notify: group.attrs.notify,
 		addressingMode: group.attrs.addressing_mode === 'lid' ? WAMessageAddressingMode.LID : WAMessageAddressingMode.PN,
-		subject: group.attrs.subject!,
+		subject: group.attrs.subject || group.attrs.notify || '',
 		subjectOwner: group.attrs.s_o,
 		subjectOwnerPn: group.attrs.s_o_pn,
 		subjectTime: +group.attrs.s_t!,

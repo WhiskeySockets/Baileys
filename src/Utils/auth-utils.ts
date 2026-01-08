@@ -60,7 +60,8 @@ export function makeCacheableSignalKeyStore(
 				const idsToFetch: string[] = []
 
 				for (const id of ids) {
-					const item = (await cache.get<SignalDataTypeMap[typeof type]>(getUniqueId(type, id))) as any
+					const cachedItem: unknown = await cache.get(getUniqueId(type, id))
+					const item = cachedItem as SignalDataTypeMap[typeof type] | undefined
 					if (typeof item !== 'undefined') {
 						data[id] = item
 					} else {
@@ -75,7 +76,8 @@ export function makeCacheableSignalKeyStore(
 						const item = fetched[id]
 						if (item) {
 							data[id] = item
-							await cache.set(getUniqueId(type, id), item as SignalDataTypeMap[keyof SignalDataTypeMap])
+							const unionItem = item as SignalDataTypeMap[keyof SignalDataTypeMap]
+							await cache.set(getUniqueId(type, id), unionItem)
 						}
 					}
 				}
@@ -232,12 +234,13 @@ export const addTransactionCapability = (
 				const fetched = await getTxMutex(type).runExclusive(() => state.get(type, missing))
 
 				// Update cache
-				ctx.cache[type] = ctx.cache[type] || ({} as any)
-				Object.assign(ctx.cache[type]!, fetched)
+				const currentCache = (ctx.cache[type] || {}) as NonNullable<SignalDataSet[typeof type]>
+				ctx.cache[type] = currentCache
+				Object.assign(currentCache, fetched)
 			}
 
 			// Return requested ids from cache
-			const result: { [key: string]: any } = {}
+			const result = {} as { [key: string]: SignalDataTypeMap[typeof type] }
 			for (const id of ids) {
 				const value = ctx.cache[type]?.[id]
 				if (value !== undefined && value !== null) {
