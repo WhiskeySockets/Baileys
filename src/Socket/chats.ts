@@ -28,7 +28,7 @@ import type {
 import { ALL_WA_PATCH_NAMES } from '../Types'
 import type { QuickReplyAction } from '../Types/Bussines.js'
 import type { LabelActionBody } from '../Types/Label'
-import { SyncState } from '../Types/State'
+import { SyncState } from '../Types'
 import {
 	chatModificationToAppPatch,
 	type ChatMutationMap,
@@ -41,7 +41,7 @@ import {
 	newLTHashState,
 	processSyncAction
 } from '../Utils'
-import { makeMutex } from '../Utils/make-mutex'
+import { makeMutex , makeKeyedMutex} from '../Utils/make-mutex'
 import processMessage from '../Utils/process-message'
 import {
 	type BinaryNode,
@@ -74,16 +74,16 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	let syncState: SyncState = SyncState.Connecting
 
 	/** this mutex ensures that messages are processed in order */
-	const messageMutex = makeMutex()
+	const messageMutex = makeKeyedMutex()
 
 	/** this mutex ensures that receipts are processed in order */
-	const receiptMutex = makeMutex()
+	const receiptMutex = makeKeyedMutex()
 
 	/** this mutex ensures that app state patches are processed in order */
 	const appStatePatchMutex = makeMutex()
 
 	/** this mutex ensures that notifications are processed in order */
-	const notificationMutex = makeMutex()
+	const notificationMutex = makeKeyedMutex()
 
 	// Timeout for AwaitingInitialSync state
 	let awaitingSyncTimeout: NodeJS.Timeout | undefined
