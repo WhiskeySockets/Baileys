@@ -206,4 +206,11 @@ export class LIDMappingStore {
 		this.logger.trace(`Found reverse mapping: ${lid} → ${pnJid}`)
 		return pnJid
 	}
+
+	/**
+	 * Close the cache and release resources
+	 */
+	close(): void {
+		this.mappingCache.clear()
+	}
 }
