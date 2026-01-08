@@ -7,11 +7,46 @@ import { decodeBinaryNode } from '../WABinary'
 import { aesDecryptGCM, aesEncryptGCM, Curve, hkdf, sha256 } from './crypto'
 import type { ILogger } from './logger'
 
-const generateIV = (counter: number) => {
-	const iv = new ArrayBuffer(12)
-	new DataView(iv).setUint32(8, counter)
+const IV_LENGTH = 12
 
+const EMPTY_BUFFER = Buffer.alloc(0)
+
+const generateIV = (counter: number): Uint8Array => {
+	const iv = new ArrayBuffer(IV_LENGTH)
+	new DataView(iv).setUint32(8, counter)
 	return new Uint8Array(iv)
+}
+
+class TransportState {
+	private readCounter = 0
+	private writeCounter = 0
+
+	private readonly iv = new Uint8Array(IV_LENGTH)
+
+	constructor(
+		private readonly encKey: Buffer,
+		private readonly decKey: Buffer
+	) {}
+
+	encrypt(plaintext: Uint8Array): Uint8Array {
+		const c = this.writeCounter++
+		this.iv[8] = (c >>> 24) & 0xff
+		this.iv[9] = (c >>> 16) & 0xff
+		this.iv[10] = (c >>> 8) & 0xff
+		this.iv[11] = c & 0xff
+
+		return aesEncryptGCM(plaintext, this.encKey, this.iv, EMPTY_BUFFER)
+	}
+
+	decrypt(ciphertext: Uint8Array): Buffer {
+		const c = this.readCounter++
+		this.iv[8] = (c >>> 24) & 0xff
+		this.iv[9] = (c >>> 16) & 0xff
+		this.iv[10] = (c >>> 8) & 0xff
+		this.iv[11] = c & 0xff
+
+		return aesDecryptGCM(ciphertext, this.decKey, this.iv, EMPTY_BUFFER) as Buffer
+	}
 }
 
 export const makeNoiseHandler = ({
@@ -27,40 +62,63 @@ export const makeNoiseHandler = ({
 }) => {
 	logger = logger.child({ class: 'ns' })
 
+	const data = Buffer.from(NOISE_MODE)
+	let hash = data.byteLength === 32 ? data : sha256(data)
+	let salt = hash
+	let encKey = hash
+	let decKey = hash
+	let counter = 0
+	let sentIntro = false
+
+	let inBytes: Buffer = Buffer.alloc(0)
+
+	let transport: TransportState | null = null
+	let isWaitingForTransport = false
+	let pendingOnFrame: ((buff: Uint8Array | BinaryNode) => void) | null = null
+
+	let introHeader: Buffer
+	if (routingInfo) {
+		introHeader = Buffer.alloc(7 + routingInfo.byteLength + NOISE_HEADER.length)
+		introHeader.write('ED', 0, 'utf8')
+		introHeader.writeUint8(0, 2)
+		introHeader.writeUint8(1, 3)
+		introHeader.writeUint8(routingInfo.byteLength >> 16, 4)
+		introHeader.writeUint16BE(routingInfo.byteLength & 65535, 5)
+		introHeader.set(routingInfo, 7)
+		introHeader.set(NOISE_HEADER, 7 + routingInfo.byteLength)
+	} else {
+		introHeader = Buffer.from(NOISE_HEADER)
+	}
+
 	const authenticate = (data: Uint8Array) => {
-		if (!isFinished) {
+		if (!transport) {
 			hash = sha256(Buffer.concat([hash, data]))
 		}
 	}
 
-	const encrypt = (plaintext: Uint8Array) => {
-		const result = aesEncryptGCM(plaintext, encKey, generateIV(writeCounter), hash)
+	const encrypt = (plaintext: Uint8Array): Uint8Array => {
+		if (transport) {
+			return transport.encrypt(plaintext)
+		}
 
-		writeCounter += 1
-
+		const result = aesEncryptGCM(plaintext, encKey, generateIV(counter++), hash)
 		authenticate(result)
 		return result
 	}
 
-	const decrypt = (ciphertext: Uint8Array) => {
-		// before the handshake is finished, we use the same counter
-		// after handshake, the counters are different
-		const iv = generateIV(isFinished ? readCounter : writeCounter)
-		const result = aesDecryptGCM(ciphertext, decKey, iv, hash)
-
-		if (isFinished) {
-			readCounter += 1
-		} else {
-			writeCounter += 1
+	const decrypt = (ciphertext: Uint8Array): Uint8Array => {
+		if (transport) {
+			return transport.decrypt(ciphertext)
 		}
 
+		const result = aesDecryptGCM(ciphertext, decKey, generateIV(counter++), hash)
 		authenticate(ciphertext)
 		return result
 	}
 
 	const localHKDF = async (data: Uint8Array) => {
 		const key = await hkdf(Buffer.from(data), 64, { salt, info: '' })
-		return [key.slice(0, 32), key.slice(32)]
+		return [key.subarray(0, 32), key.subarray(32)]
 	}
 
 	const mixIntoKey = async (data: Uint8Array) => {
@@ -68,31 +126,49 @@ export const makeNoiseHandler = ({
 		salt = write!
 		encKey = read!
 		decKey = read!
-		readCounter = 0
-		writeCounter = 0
+		counter = 0
 	}
 
 	const finishInit = async () => {
+		isWaitingForTransport = true
 		const [write, read] = await localHKDF(new Uint8Array(0))
-		encKey = write!
-		decKey = read!
-		hash = Buffer.from([])
-		readCounter = 0
-		writeCounter = 0
-		isFinished = true
+		transport = new TransportState(write!, read!)
+		isWaitingForTransport = false
+
+		logger.trace('Noise handler transitioned to Transport state')
+
+		if (pendingOnFrame) {
+			logger.trace({ length: inBytes.length }, 'Flushing buffered frames after transport ready')
+			await processData(pendingOnFrame)
+			pendingOnFrame = null
+		}
 	}
 
-	const data = Buffer.from(NOISE_MODE)
-	let hash = data.byteLength === 32 ? data : sha256(data)
-	let salt = hash
-	let encKey = hash
-	let decKey = hash
-	let readCounter = 0
-	let writeCounter = 0
-	let isFinished = false
-	let sentIntro = false
+	const processData = async (onFrame: (buff: Uint8Array | BinaryNode) => void) => {
+		let size: number | undefined
 
-	let inBytes = Buffer.alloc(0)
+		while (true) {
+			if (inBytes.length < 3) return
+
+			size = (inBytes[0]! << 16) | (inBytes[1]! << 8) | inBytes[2]!
+
+			if (inBytes.length < size + 3) return
+
+			let frame: Uint8Array | BinaryNode = inBytes.subarray(3, size + 3)
+			inBytes = inBytes.subarray(size + 3)
+
+			if (transport) {
+				const result = transport.decrypt(frame)
+				frame = await decodeBinaryNode(result)
+			}
+
+			if (logger.level === 'trace') {
+				logger.trace({ msg: (frame as BinaryNode)?.attrs?.id }, 'recv frame')
+			}
+
+			onFrame(frame)
+		}
+	}
 
 	authenticate(NOISE_HEADER)
 	authenticate(publicKey)
@@ -152,67 +228,41 @@ export const makeNoiseHandler = ({
 			return keyEnc
 		},
 		encodeFrame: (data: Buffer | Uint8Array) => {
-			if (isFinished) {
-				data = encrypt(data)
+			if (transport) {
+				data = transport.encrypt(data)
 			}
 
-			let header: Buffer
-
-			if (routingInfo) {
-				header = Buffer.alloc(7)
-				header.write('ED', 0, 'utf8')
-				header.writeUint8(0, 2)
-				header.writeUint8(1, 3)
-				header.writeUint8(routingInfo.byteLength >> 16, 4)
-				header.writeUint16BE(routingInfo.byteLength & 65535, 5)
-				header = Buffer.concat([header, routingInfo, NOISE_HEADER])
-			} else {
-				header = Buffer.from(NOISE_HEADER)
-			}
-
-			const introSize = sentIntro ? 0 : header.length
-			const frame = Buffer.alloc(introSize + 3 + data.byteLength)
+			const dataLen = data.byteLength
+			const introSize = sentIntro ? 0 : introHeader.length
+			const frame = Buffer.allocUnsafe(introSize + 3 + dataLen)
 
 			if (!sentIntro) {
-				frame.set(header)
+				frame.set(introHeader)
 				sentIntro = true
 			}
 
-			frame.writeUInt8(data.byteLength >> 16, introSize)
-			frame.writeUInt16BE(65535 & data.byteLength, introSize + 1)
+			frame[introSize] = (dataLen >>> 16) & 0xff
+			frame[introSize + 1] = (dataLen >>> 8) & 0xff
+			frame[introSize + 2] = dataLen & 0xff
+
 			frame.set(data, introSize + 3)
 
 			return frame
 		},
 		decodeFrame: async (newData: Buffer | Uint8Array, onFrame: (buff: Uint8Array | BinaryNode) => void) => {
-			// the binary protocol uses its own framing mechanism
-			// on top of the WS frames
-			// so we get this data and separate out the frames
-			const getBytesSize = () => {
-				if (inBytes.length >= 3) {
-					return (inBytes.readUInt8() << 16) | inBytes.readUInt16BE(1)
-				}
+			if (isWaitingForTransport) {
+				inBytes = Buffer.concat([inBytes, newData])
+				pendingOnFrame = onFrame
+				return
 			}
 
-			inBytes = Buffer.concat([inBytes, newData])
-
-			logger.trace(`recv ${newData.length} bytes, total recv ${inBytes.length} bytes`)
-
-			let size = getBytesSize()
-			while (size && inBytes.length >= size + 3) {
-				let frame: Uint8Array | BinaryNode = inBytes.slice(3, size + 3)
-				inBytes = inBytes.slice(size + 3)
-
-				if (isFinished) {
-					const result = decrypt(frame)
-					frame = await decodeBinaryNode(result)
-				}
-
-				logger.trace({ msg: (frame as BinaryNode)?.attrs?.id }, 'recv frame')
-
-				onFrame(frame)
-				size = getBytesSize()
+			if (inBytes.length === 0) {
+				inBytes = Buffer.from(newData)
+			} else {
+				inBytes = Buffer.concat([inBytes, newData])
 			}
+
+			await processData(onFrame)
 		}
 	}
 }
