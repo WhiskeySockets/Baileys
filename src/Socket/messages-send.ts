@@ -534,6 +534,18 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			? patched
 			: recipientJids.map(jid => ({ recipientJid: jid, message: patched }))
 
+		// Cache encoded bytes for identical message objects (common in groups)
+		const encodedCache = new WeakMap<proto.IMessage, Buffer>()
+		const getEncodedBytes = (msg: proto.IMessage): Buffer => {
+			let cached = encodedCache.get(msg)
+			if (!cached) {
+				cached = encodeWAMessage(msg)
+				encodedCache.set(msg, cached)
+			}
+
+			return cached
+		}
+
 		let shouldIncludeDeviceIdentity = false
 		const meId = authState.creds.me!.id
 		const meLid = authState.creds.me?.lid
@@ -560,7 +572,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						}
 					}
 
-					const bytes = encodeWAMessage(msgToEncrypt)
+					const bytes = getEncodedBytes(msgToEncrypt)
 					const mutexKey = jid
 
 					const node = await encryptionMutex.mutex(mutexKey, async () => {
