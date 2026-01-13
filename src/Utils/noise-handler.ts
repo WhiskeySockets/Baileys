@@ -112,9 +112,35 @@ export const makeNoiseHandler = ({
 
 			const certDecoded = decrypt(serverHello!.payload!)
 
-			const { intermediate: certIntermediate /*leaf*/ } = proto.CertChain.decode(certDecoded)
-			// TODO: handle this leaf stuff
-			const { issuerSerial } = proto.CertChain.NoiseCertificate.Details.decode(certIntermediate!.details!)
+			const { intermediate: certIntermediate, leaf } = proto.CertChain.decode(certDecoded)
+			// leaf
+			if (!leaf?.details || !leaf?.signature) {
+				throw new Boom('invalid noise leaf certificate', { statusCode: 400 })
+			}
+
+			if (!certIntermediate?.details || !certIntermediate?.signature) {
+				throw new Boom('invalid noise intermediate certificate', { statusCode: 400 })
+			}
+
+			const details = proto.CertChain.NoiseCertificate.Details.decode(certIntermediate.details)
+
+			const { issuerSerial } = details
+
+			const verify = Curve.verify(details.key!, leaf.details, leaf.signature)
+
+			const verifyIntermediate = Curve.verify(
+				WA_CERT_DETAILS.PUBLIC_KEY,
+				certIntermediate.details,
+				certIntermediate.signature
+			)
+
+			if (!verify) {
+				throw new Boom('noise certificate signature invalid', { statusCode: 400 })
+			}
+
+			if (!verifyIntermediate) {
+				throw new Boom('noise intermediate certificate signature invalid', { statusCode: 400 })
+			}
 
 			if (issuerSerial !== WA_CERT_DETAILS.SERIAL) {
 				throw new Boom('certification match failed', { statusCode: 400 })

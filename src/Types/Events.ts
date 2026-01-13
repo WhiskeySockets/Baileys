@@ -78,6 +78,14 @@ export type BaileysEventMap = {
 		action: RequestJoinAction
 		method: RequestJoinMethod
 	}
+	/*	update the labels assigned to a group participant */
+	'group.member-tag.update': {
+		groupId: string
+		participant: string
+		participantAlt?: string
+		label: string
+		messageTimestamp?: number
+	}
 
 	'blocklist.set': { blocklist: string[] }
 	'blocklist.update': { blocklist: string[]; type: 'add' | 'remove' }
