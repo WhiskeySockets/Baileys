@@ -19,7 +19,7 @@ export async function buildTcTokenFromJid({
 
 		const tcTokenBuffer = tcTokenData?.[jid]?.token
 
-		if (!tcTokenBuffer) return
+		if (!tcTokenBuffer) return baseContent.length > 0 ? baseContent : undefined
 
 		baseContent.push({
 			tag: 'tctoken',
