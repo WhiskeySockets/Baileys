@@ -33,6 +33,7 @@ import {
 	getHistoryMsg,
 	getNextPreKeys,
 	getStatusFromReceiptType,
+	handleIdentityChange,
 	hkdf,
 	MISSING_KEYS_ERROR_TEXT,
 	NACK_REASONS,
@@ -550,21 +551,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await uploadPreKeys()
 			}
 		} else {
-			const identityNode = getBinaryNodeChild(node, 'identity')
-			if (identityNode) {
-				logger.info({ jid: from }, 'identity changed')
-				if (identityAssertDebounce.get(from!)) {
-					logger.debug({ jid: from }, 'skipping identity assert (debounced)')
-					return
-				}
+			const result = await handleIdentityChange(node, {
+				meId: authState.creds.me?.id,
+				meLid: authState.creds.me?.lid,
+				validateSession: signalRepository.validateSession,
+				assertSessions,
+				debounceCache: identityAssertDebounce,
+				logger
+			})
 
-				identityAssertDebounce.set(from!, true)
-				try {
-					await assertSessions([from!], true)
-				} catch (error) {
-					logger.warn({ error, jid: from }, 'failed to assert sessions after identity change')
-				}
-			} else {
+			if (result.action === 'no_identity_node') {
 				logger.info({ node }, 'unknown encrypt notification')
 			}
 		}
@@ -1225,10 +1221,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await decrypt()
 				// message failed to decrypt
 				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
-					if (
-						msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT ||
-						msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT
-					) {
+					if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
+						return sendMessageAck(node, NACK_REASONS.ParsingError)
+					}
+
+					if (msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT) {
 						return sendMessageAck(node)
 					}
 
