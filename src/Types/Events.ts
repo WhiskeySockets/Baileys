@@ -45,6 +45,13 @@ export type BaileysEventMap = {
 	'contacts.upsert': Contact[]
 	'contacts.update': Partial<Contact>[]
 
+	/** User's devices have changed */
+	'devices.update': {
+		jid: string
+		lid?: string
+		devices: { id: string; lid?: string; hash?: string }[]
+	}
+
 	'messages.delete': { keys: WAMessageKey[] } | { jid: string; all: true }
 	'messages.update': WAMessageUpdate[]
 	'messages.media-update': { key: WAMessageKey; media?: { ciphertext: Uint8Array; iv: Uint8Array }; error?: Boom }[]

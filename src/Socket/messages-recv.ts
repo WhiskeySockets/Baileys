@@ -30,16 +30,24 @@ import {
 	encodeSignedDeviceIdentity,
 	extractAddressingContext,
 	getCallStatusFromNode,
-	getHistoryMsg,
 	getNextPreKeys,
 	getStatusFromReceiptType,
 	hkdf,
-	MISSING_KEYS_ERROR_TEXT,
 	NACK_REASONS,
-	NO_MESSAGE_FOUND_ERROR_TEXT,
 	unixTimestampSeconds,
 	xmppPreKey,
-	xmppSignedPreKey
+	xmppSignedPreKey,
+	extractLidMappingsFromParticipants,
+	extractRevokedMembershipMapping,
+	extractDeviceData,
+	shouldWarnMissingParticipantPn,
+	isMsmsgEncryption,
+	shouldSkipMessage,
+	isDecryptionFailure,
+	isRecoverableDecryptionError,
+	isPreKeyDecryptionError,
+	extractAltJidMapping,
+	prepareMessageReceipt
 } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
 import {
@@ -52,7 +60,6 @@ import {
 	getBinaryNodeChildren,
 	getBinaryNodeChildString,
 	isJidGroup,
-	isJidNewsletter,
 	isJidStatusBroadcast,
 	isLidUser,
 	isPnUser,
@@ -309,7 +316,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 							key: {
 								remoteJid: from,
 								id: child.attrs.message_id || child.attrs.server_id,
-								fromMe: false // TODO: is this really true though
+								fromMe: false
 							},
 							message: messageProto,
 							messageTimestamp: +child.attrs.t!
@@ -339,26 +346,26 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}
 		}
 
-		if (!!errorCode) {
+		if (errorCode) {
 			stanza.attrs.error = errorCode.toString()
 		}
 
-		if (!!attrs.participant) {
+		if (attrs.participant) {
 			stanza.attrs.participant = attrs.participant
 		}
 
-		if (!!attrs.recipient) {
+		if (attrs.recipient) {
 			stanza.attrs.recipient = attrs.recipient
 		}
 
-		if (
-			!!attrs.type &&
-			(tag !== 'message' || getBinaryNodeChild({ tag, attrs, content }, 'unavailable') || errorCode !== 0)
-		) {
+		const node = { tag, attrs, content }
+		const hasUnavailable = getBinaryNodeChild(node, 'unavailable')
+
+		if (attrs.type && (tag !== 'message' || hasUnavailable || errorCode !== 0)) {
 			stanza.attrs.type = attrs.type
 		}
 
-		if (tag === 'message' && getBinaryNodeChild({ tag, attrs, content }, 'unavailable')) {
+		if (tag === 'message' && hasUnavailable) {
 			stanza.attrs.from = authState.creds.me!.id
 		}
 
@@ -569,8 +576,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	}
 
-	const handleGroupNotification = (fullNode: BinaryNode, child: BinaryNode, msg: Partial<WAMessage>) => {
-		// TODO: Support PN/LID (Here is only LID now)
+	const handleGroupNotification = async (fullNode: BinaryNode, child: BinaryNode, msg: Partial<WAMessage>) => {
+		// Note: participant_pn and lid are extracted but variable naming reflects the typical case
 
 		const actingParticipantLid = fullNode.attrs.participant
 		const actingParticipantPn = fullNode.attrs.participant_pn
@@ -623,15 +630,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const stubType = `GROUP_PARTICIPANT_${child.tag.toUpperCase()}`
 				msg.messageStubType = WAMessageStubType[stubType as keyof typeof WAMessageStubType]
 
-				const participants = getBinaryNodeChildren(child, 'participant').map(({ attrs }) => {
-					// TODO: Store LID MAPPINGS
-					return {
-						id: attrs.jid!,
-						phoneNumber: isLidUser(attrs.jid) && isPnUser(attrs.phone_number) ? attrs.phone_number : undefined,
-						lid: isPnUser(attrs.jid) && isLidUser(attrs.lid) ? attrs.lid : undefined,
-						admin: (attrs.type || null) as GroupParticipant['admin']
-					}
-				})
+				const participantNodes = getBinaryNodeChildren(child, 'participant')
+				const lidMappings = extractLidMappingsFromParticipants(participantNodes)
+				if (lidMappings.length > 0) {
+					await signalRepository.lidMapping.storeLIDPNMappings(lidMappings)
+				}
+
+				const participants = participantNodes.map(({ attrs }) => ({
+					id: attrs.jid!,
+					phoneNumber: isLidUser(attrs.jid) && isPnUser(attrs.phone_number) ? attrs.phone_number : undefined,
+					lid: isPnUser(attrs.jid) && isLidUser(attrs.lid) ? attrs.lid : undefined,
+					admin: (attrs.type || null) as GroupParticipant['admin']
+				}))
 
 				if (
 					participants.length === 1 &&
@@ -695,7 +705,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				break
 			case 'revoked_membership_requests':
 				const isDenied = areJidsSameUser(affectedParticipantLid, actingParticipantLid)
-				// TODO: LIDMAPPING SUPPORT
+				const revokedMapping = extractRevokedMembershipMapping(
+					affectedParticipantLid,
+					affectedParticipantPn
+				)
+				if (revokedMapping) {
+					await signalRepository.lidMapping.storeLIDPNMappings([revokedMapping])
+				}
 				msg.messageStubType = WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST_NON_ADMIN_ADD
 				msg.messageStubParameters = [
 					JSON.stringify({ lid: affectedParticipantLid, pn: affectedParticipantPn }),
@@ -719,8 +735,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await handleMexNewsletterNotification(node)
 				break
 			case 'w:gp2':
-				// TODO: HANDLE PARTICIPANT_PN
-				handleGroupNotification(node, child!, result)
+				// Warn if participant is LID but participant_pn is missing
+				if (shouldWarnMissingParticipantPn(node.attrs)) {
+					logger.warn({ participant: node.attrs.participant }, 'missing participant_pn for LID participant')
+				}
+				await handleGroupNotification(node, child!, result)
 				break
 			case 'mediaretry':
 				const event = decodeMediaRetryNode(node)
@@ -730,17 +749,28 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await handleEncryptNotification(node)
 				break
 			case 'devices':
-				const devices = getBinaryNodeChildren(child, 'device')
-				if (
-					areJidsSameUser(child!.attrs.jid, authState.creds.me!.id) ||
+				const deviceNodeList = getBinaryNodeChildren(child, 'device')
+				const deviceData = extractDeviceData(deviceNodeList)
+
+				const ownerJid = child!.attrs.jid || child!.attrs.lid
+				if (!ownerJid) {
+					logger.warn({ child }, 'devices notification missing owner jid')
+					break
+				}
+
+				const isOwnDevices =
+					areJidsSameUser(ownerJid, authState.creds.me!.id) ||
 					areJidsSameUser(child!.attrs.lid, authState.creds.me!.lid)
-				) {
-					const deviceData = devices.map(d => ({ id: d.attrs.jid, lid: d.attrs.lid }))
+
+				if (isOwnDevices) {
 					logger.info({ deviceData }, 'my own devices changed')
 				}
 
-				//TODO: drop a new event, add hashes
-
+				ev.emit('devices.update', {
+					jid: ownerJid,
+					lid: child!.attrs.lid,
+					devices: deviceData
+				})
 				break
 			case 'server_sync':
 				const update = getBinaryNodeChild(node, 'collection')
@@ -1171,15 +1201,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const handleMessage = async (node: BinaryNode) => {
-		if (shouldIgnoreJid(node.attrs.from!) && node.attrs.from !== S_WHATSAPP_NET) {
+		if (shouldSkipMessage(node.attrs.from!, shouldIgnoreJid, S_WHATSAPP_NET)) {
 			logger.debug({ key: node.attrs.key }, 'ignored message')
 			await sendMessageAck(node, NACK_REASONS.UnhandledError)
 			return
 		}
 
-		const encNode = getBinaryNodeChild(node, 'enc')
-		// TODO: temporary fix for crashes and issues resulting of failed msmsg decryption
-		if (encNode && encNode.attrs.type === 'msmsg') {
+		if (isMsmsgEncryption(node)) {
 			logger.debug({ key: node.attrs.key }, 'ignored msmsg')
 			await sendMessageAck(node, NACK_REASONS.MissingMessageSecret)
 			return
@@ -1192,86 +1220,48 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			decrypt
 		} = decryptMessageNode(node, authState.creds.me!.id, authState.creds.me!.lid || '', signalRepository, logger)
 
-		const alt = msg.key.participantAlt || msg.key.remoteJidAlt
-		// store new mappings we didn't have before
-		if (!!alt) {
-			const altServer = jidDecode(alt)?.server
-			const primaryJid = msg.key.participant || msg.key.remoteJid!
-			if (altServer === 'lid') {
-				if (!(await signalRepository.lidMapping.getPNForLID(alt))) {
-					await signalRepository.lidMapping.storeLIDPNMappings([{ lid: alt, pn: primaryJid }])
-					await signalRepository.migrateSession(primaryJid, alt)
-				}
-			} else {
-				await signalRepository.lidMapping.storeLIDPNMappings([{ lid: primaryJid, pn: alt }])
-				await signalRepository.migrateSession(alt, primaryJid)
+		const altMapping = extractAltJidMapping(msg.key)
+		if (altMapping) {
+			const existingPn = await signalRepository.lidMapping.getPNForLID(altMapping.mapping.lid)
+			if (!existingPn) {
+				await signalRepository.lidMapping.storeLIDPNMappings([altMapping.mapping])
+				await signalRepository.migrateSession(altMapping.migrateFrom, altMapping.migrateTo)
 			}
 		}
 
 		if (msg.key?.remoteJid && msg.key?.id && messageRetryManager) {
 			messageRetryManager.addRecentMessage(msg.key.remoteJid, msg.key.id, msg.message!)
-			logger.debug(
-				{
-					jid: msg.key.remoteJid,
-					id: msg.key.id
-				},
-				'Added message to recent cache for retry receipts'
-			)
 		}
 
 		try {
 			await messageMutex.mutex(async () => {
 				await decrypt()
-				// message failed to decrypt
-				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
-					if (
-						msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT ||
-						msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT
-					) {
+
+				if (isDecryptionFailure(msg) && msg.category !== 'peer') {
+					if (isRecoverableDecryptionError(msg)) {
 						return sendMessageAck(node)
 					}
 
-					const errorMessage = msg?.messageStubParameters?.[0] || ''
-					const isPreKeyError = errorMessage.includes('PreKey')
-
-					logger.debug(`[handleMessage] Attempting retry request for failed decryption`)
-
-					// Handle both pre-key and normal retries in single mutex
 					await retryMutex.mutex(async () => {
-						try {
-							if (!ws.isOpen) {
-								logger.debug({ node }, 'Connection closed, skipping retry')
-								return
-							}
+						if (!ws.isOpen) {
+							return
+						}
 
-							// Handle pre-key errors with upload and delay
-							if (isPreKeyError) {
-								logger.info({ error: errorMessage }, 'PreKey error detected, uploading and retrying')
-
-								try {
-									logger.debug('Uploading pre-keys for error recovery')
-									await uploadPreKeys(5)
-									logger.debug('Waiting for server to process new pre-keys')
-									await delay(1000)
-								} catch (uploadErr) {
-									logger.error({ uploadErr }, 'Pre-key upload failed, proceeding with retry anyway')
-								}
-							}
-
-							const encNode = getBinaryNodeChild(node, 'enc')
-							await sendRetryRequest(node, !encNode)
-							if (retryRequestDelayMs) {
-								await delay(retryRequestDelayMs)
-							}
-						} catch (err) {
-							logger.error({ err, isPreKeyError }, 'Failed to handle retry, attempting basic retry')
-							// Still attempt retry even if pre-key upload failed
+						const isPreKeyError = isPreKeyDecryptionError(msg)
+						if (isPreKeyError) {
 							try {
-								const encNode = getBinaryNodeChild(node, 'enc')
-								await sendRetryRequest(node, !encNode)
-							} catch (retryErr) {
-								logger.error({ retryErr }, 'Failed to send retry after error handling')
+								await uploadPreKeys(5)
+								await delay(1000)
+							} catch (uploadErr) {
+								logger.error({ uploadErr }, 'Pre-key upload failed, proceeding with retry')
 							}
+						}
+
+						const hasEncNode = !!getBinaryNodeChild(node, 'enc')
+						await sendRetryRequest(node, !hasEncNode)
+
+						if (retryRequestDelayMs) {
+							await delay(retryRequestDelayMs)
 						}
 
 						await sendMessageAck(node, NACK_REASONS.UnhandledError)
@@ -1281,41 +1271,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						messageRetryManager.cancelPendingPhoneRequest(msg.key.id)
 					}
 
-					const isNewsletter = isJidNewsletter(msg.key.remoteJid!)
-					if (!isNewsletter) {
-						// no type in the receipt => message delivered
-						let type: MessageReceiptType = undefined
-						let participant = msg.key.participant
-						if (category === 'peer') {
-							// special peer message
-							type = 'peer_msg'
-						} else if (msg.key.fromMe) {
-							// message was sent by us from a different device
-							type = 'sender'
-							// need to specially handle this case
-							if (isLidUser(msg.key.remoteJid!) || isLidUser(msg.key.remoteJidAlt)) {
-								participant = author // TODO: investigate sending receipts to LIDs and not PNs
-							}
-						} else if (!sendActiveReceipts) {
-							type = 'inactive'
-						}
-
-						await sendReceipt(msg.key.remoteJid!, participant!, [msg.key.id!], type)
-
-						// send ack for history message
-						const isAnyHistoryMsg = getHistoryMsg(msg.message!)
-						if (isAnyHistoryMsg) {
-							const jid = jidNormalizedUser(msg.key.remoteJid!)
-							await sendReceipt(jid, undefined, [msg.key.id!], 'hist_sync') // TODO: investigate
+					const receiptData = prepareMessageReceipt(msg, category, author, sendActiveReceipts)
+					if (receiptData.shouldSendReceipt) {
+						await sendReceipt(receiptData.remoteJid, receiptData.participant!, [msg.key.id!], receiptData.type)
+						if (receiptData.isHistoryMessage) {
+							await sendReceipt(receiptData.normalizedJid, undefined, [msg.key.id!], 'hist_sync')
 						}
 					} else {
 						await sendMessageAck(node)
-						logger.debug({ key: msg.key }, 'processed newsletter message without receipts')
 					}
 				}
 
 				cleanMessage(msg, authState.creds.me!.id, authState.creds.me!.lid!)
-
 				await upsertMessage(msg, node.attrs.offline ? 'append' : 'notify')
 			})
 		} catch (error) {
