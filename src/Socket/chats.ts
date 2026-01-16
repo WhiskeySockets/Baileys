@@ -359,7 +359,12 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		return getBinaryNodeChildren(listNode, 'item').map(n => n.attrs.jid)
 	}
 
-	const updateBlockStatus = async (jid: string, action: 'block' | 'unblock') => {
+	const updateBlockStatus = async (jid: string, pn_jid: string, action: 'block' | 'unblock') => {
+		if (!jid || !pn_jid) {
+			throw new Boom(
+				'jid and pn_jid is required'
+			)
+		}
 		await query({
 			tag: 'iq',
 			attrs: {
@@ -372,7 +377,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					tag: 'item',
 					attrs: {
 						action,
-						jid
+						jid,
+						pn_jid
 					}
 				}
 			]
