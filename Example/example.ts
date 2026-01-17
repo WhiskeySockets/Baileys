@@ -223,6 +223,10 @@ const startSock = async() => {
 			if(events['chats.delete']) {
 				console.log('chats deleted ', events['chats.delete'])
 			}
+
+			if(events['group.member-tag.update']) {
+				console.log('group member tag update', JSON.stringify(events['group.member-tag.update'], undefined, 2))
+			}
 		}
 	)
 

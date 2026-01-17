@@ -54,6 +54,7 @@ import {
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
 import { makeSocket } from './socket.js'
+import { buildTcTokenFromJid } from '../Utils/tc-token-utils'
 const MAX_SYNC_ATTEMPTS = 2
 
 export const makeChatsSocket = (config: SocketConfig) => {
@@ -72,8 +73,18 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	let privacySettings: { [_: string]: string } | undefined
 
 	let syncState: SyncState = SyncState.Connecting
-	/** this mutex ensures that the notifications (receipts, messages etc.) are processed in order */
-	const processingMutex = makeMutex()
+
+	/** this mutex ensures that messages are processed in order */
+	const messageMutex = makeMutex()
+
+	/** this mutex ensures that receipts are processed in order */
+	const receiptMutex = makeMutex()
+
+	/** this mutex ensures that app state patches are processed in order */
+	const appStatePatchMutex = makeMutex()
+
+	/** this mutex ensures that notifications are processed in order */
+	const notificationMutex = makeMutex()
 
 	// Timeout for AwaitingInitialSync state
 	let awaitingSyncTimeout: NodeJS.Timeout | undefined
@@ -602,7 +613,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * type = "image for the high res picture"
 	 */
 	const profilePictureUrl = async (jid: string, type: 'preview' | 'image' = 'preview', timeoutMs?: number) => {
-		// TOOD: Add support for tctoken, existingID, and newsletter + group options
+		const baseContent: BinaryNode[] = [{ tag: 'picture', attrs: { type, query: 'url' } }]
+
+		const tcTokenContent = await buildTcTokenFromJid({ authState, jid, baseContent })
+
 		jid = jidNormalizedUser(jid)
 		const result = await query(
 			{
@@ -613,7 +627,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					type: 'get',
 					xmlns: 'w:profile:picture'
 				},
-				content: [{ tag: 'picture', attrs: { type, query: 'url' } }]
+				content: tcTokenContent
 			},
 			timeoutMs
 		)
@@ -684,24 +698,19 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * @param toJid the jid to subscribe to
 	 * @param tcToken token for subscription, use if present
 	 */
-	const presenceSubscribe = (toJid: string, tcToken?: Buffer) =>
-		sendNode({
+	const presenceSubscribe = async (toJid: string) => {
+		const tcTokenContent = await buildTcTokenFromJid({ authState, jid: toJid })
+
+		return sendNode({
 			tag: 'presence',
 			attrs: {
 				to: toJid,
 				id: generateMessageTag(),
 				type: 'subscribe'
 			},
-			content: tcToken
-				? [
-						{
-							tag: 'tctoken',
-							attrs: {},
-							content: tcToken
-						}
-					]
-				: undefined
+			content: tcTokenContent
 		})
+	}
 
 	const handlePresenceUpdate = ({ tag, attrs, content }: BinaryNode) => {
 		let presence: PresenceData | undefined
@@ -748,7 +757,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		let initial: LTHashState
 		let encodeResult: { patch: proto.ISyncdPatch; state: LTHashState }
 
-		await processingMutex.mutex(async () => {
+		await appStatePatchMutex.mutex(async () => {
 			await authState.keys.transaction(async () => {
 				logger.debug({ patch: patchCreate }, 'applying app patch')
 
@@ -1180,7 +1189,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		...sock,
 		createCallLink,
 		getBotListV2,
-		processingMutex,
+		messageMutex,
+		receiptMutex,
+		appStatePatchMutex,
+		notificationMutex,
 		fetchPrivacySettings,
 		upsertMessage,
 		appPatch,

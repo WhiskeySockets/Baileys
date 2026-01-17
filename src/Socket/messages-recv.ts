@@ -36,6 +36,7 @@ import {
 	hkdf,
 	MISSING_KEYS_ERROR_TEXT,
 	NACK_REASONS,
+	NO_MESSAGE_FOUND_ERROR_TEXT,
 	unixTimestampSeconds,
 	xmppPreKey,
 	xmppSignedPreKey
@@ -70,7 +71,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		ev,
 		authState,
 		ws,
-		processingMutex,
+		messageMutex,
+		notificationMutex,
+		receiptMutex,
 		signalRepository,
 		query,
 		upsertMessage,
@@ -141,16 +144,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			throw new Boom('Not authenticated')
 		}
 
-		if (placeholderResendCache.get(messageKey?.id!)) {
+		if (await placeholderResendCache.get(messageKey?.id!)) {
 			logger.debug({ messageKey }, 'already requested resend')
 			return
 		} else {
 			await placeholderResendCache.set(messageKey?.id!, true)
 		}
 
-		await delay(5000)
+		await delay(2000)
 
-		if (!placeholderResendCache.get(messageKey?.id!)) {
+		if (!(await placeholderResendCache.get(messageKey?.id!))) {
 			logger.debug({ messageKey }, 'message received while resend requested')
 			return 'RESOLVED'
 		}
@@ -165,11 +168,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		setTimeout(async () => {
-			if (placeholderResendCache.get(messageKey?.id!)) {
-				logger.debug({ messageKey }, 'PDO message without response after 15 seconds. Phone possibly offline')
+			if (await placeholderResendCache.get(messageKey?.id!)) {
+				logger.debug({ messageKey }, 'PDO message without response after 8 seconds. Phone possibly offline')
 				await placeholderResendCache.del(messageKey?.id!)
 			}
-		}, 15_000)
+		}, 8_000)
 
 		return sendPeerDataOperationMessage(pdoMessage)
 	}
@@ -428,12 +431,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		let shouldRecreateSession = false
 		let recreateReason = ''
 
-		if (enableAutoSessionRecreation && messageRetryManager) {
+		if (enableAutoSessionRecreation && messageRetryManager && retryCount > 1) {
 			try {
 				// Check if we have a session with this JID
 				const sessionId = signalRepository.jidToSignalProtocolAddress(fromJid)
 				const hasSession = await signalRepository.validateSession(fromJid)
-				const result = messageRetryManager.shouldRecreateSession(fromJid, retryCount, hasSession.exists)
+				const result = messageRetryManager.shouldRecreateSession(fromJid, hasSession.exists)
 				shouldRecreateSession = result.recreate
 				recreateReason = result.reason
 
@@ -709,21 +712,6 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const from = jidNormalizedUser(node.attrs.from)
 
 		switch (nodeType) {
-			case 'privacy_token':
-				const tokenList = getBinaryNodeChildren(child, 'token')
-				for (const { attrs, content } of tokenList) {
-					const jid = attrs.jid
-					ev.emit('chats.update', [
-						{
-							id: jid,
-							tcToken: content as Buffer
-						}
-					])
-
-					logger.debug({ jid }, 'got privacy token update')
-				}
-
-				break
 			case 'newsletter':
 				await handleNewsletterNotification(node)
 				break
@@ -1001,12 +989,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		let shouldRecreateSession = false
 		let recreateReason = ''
 
-		if (enableAutoSessionRecreation && messageRetryManager) {
+		if (enableAutoSessionRecreation && messageRetryManager && retryCount > 1) {
 			try {
 				const sessionId = signalRepository.jidToSignalProtocolAddress(participant)
 
 				const hasSession = await signalRepository.validateSession(participant)
-				const result = messageRetryManager.shouldRecreateSession(participant, retryCount, hasSession.exists)
+				const result = messageRetryManager.shouldRecreateSession(participant, hasSession.exists)
 				shouldRecreateSession = result.recreate
 				recreateReason = result.reason
 
@@ -1081,7 +1069,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		try {
 			await Promise.all([
-				processingMutex.mutex(async () => {
+				receiptMutex.mutex(async () => {
 					const status = getStatusFromReceiptType(attrs.type)
 					if (
 						typeof status !== 'undefined' &&
@@ -1155,7 +1143,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		try {
 			await Promise.all([
-				processingMutex.mutex(async () => {
+				notificationMutex.mutex(async () => {
 					const msg = await processNotification(node)
 					if (msg) {
 						const fromMe = areJidsSameUser(node.attrs.participant || remoteJid, authState.creds.me!.id)
@@ -1191,7 +1179,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		const encNode = getBinaryNodeChild(node, 'enc')
 		// TODO: temporary fix for crashes and issues resulting of failed msmsg decryption
-		if (encNode && encNode.attrs.type === 'msmsg') {
+		if (encNode?.attrs.type === 'msmsg') {
 			logger.debug({ key: node.attrs.key }, 'ignored msmsg')
 			await sendMessageAck(node, NACK_REASONS.MissingMessageSecret)
 			return
@@ -1232,12 +1220,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		try {
-			await processingMutex.mutex(async () => {
+			await messageMutex.mutex(async () => {
 				await decrypt()
 				// message failed to decrypt
 				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
-					if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
-						return sendMessageAck(node, NACK_REASONS.ParsingError)
+					if (
+						msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT ||
+						msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT
+					) {
+						return sendMessageAck(node)
 					}
 
 					const errorMessage = msg?.messageStubParameters?.[0] || ''
@@ -1286,7 +1277,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						await sendMessageAck(node, NACK_REASONS.UnhandledError)
 					})
 				} else {
-					await sendMessageAck(node)
+					if (messageRetryManager && msg.key.id) {
+						messageRetryManager.cancelPendingPhoneRequest(msg.key.id)
+					}
+
 					const isNewsletter = isJidNewsletter(msg.key.remoteJid!)
 					if (!isNewsletter) {
 						// no type in the receipt => message delivered
@@ -1312,9 +1306,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						const isAnyHistoryMsg = getHistoryMsg(msg.message!)
 						if (isAnyHistoryMsg) {
 							const jid = jidNormalizedUser(msg.key.remoteJid!)
-							await sendReceipt(jid, undefined, [msg.key.id!], 'hist_sync')
+							await sendReceipt(jid, undefined, [msg.key.id!], 'hist_sync') // TODO: investigate
 						}
 					} else {
+						await sendMessageAck(node)
 						logger.debug({ key: msg.key }, 'processed newsletter message without receipts')
 					}
 				}
@@ -1444,6 +1439,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		node: BinaryNode
 	}
 
+	/** Yields control to the event loop to prevent blocking */
+	const yieldToEventLoop = (): Promise<void> => {
+		return new Promise(resolve => setImmediate(resolve))
+	}
+
 	const makeOfflineNodeProcessor = () => {
 		const nodeProcessorMap: Map<MessageType, (node: BinaryNode) => Promise<void>> = new Map([
 			['message', handleMessage],
@@ -1453,6 +1453,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		])
 		const nodes: OfflineNode[] = []
 		let isProcessing = false
+
+		// Number of nodes to process before yielding to event loop
+		const BATCH_SIZE = 10
 
 		const enqueue = (type: MessageType, node: BinaryNode) => {
 			nodes.push({ type, node })
@@ -1464,6 +1467,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			isProcessing = true
 
 			const promise = async () => {
+				let processedInBatch = 0
+
 				while (nodes.length && ws.isOpen) {
 					const { type, node } = nodes.shift()!
 
@@ -1475,6 +1480,14 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 
 					await nodeProcessor(node)
+					processedInBatch++
+
+					// Yield to event loop after processing a batch
+					// This prevents blocking the event loop for too long when there are many offline nodes
+					if (processedInBatch >= BATCH_SIZE) {
+						processedInBatch = 0
+						await yieldToEventLoop()
+					}
 				}
 
 				isProcessing = false
