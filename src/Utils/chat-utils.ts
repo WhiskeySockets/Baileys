@@ -18,7 +18,15 @@ import {
 	LabelAssociationType,
 	type MessageLabelAssociation
 } from '../Types/LabelAssociation'
-import { type BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, jidNormalizedUser } from '../WABinary'
+import {
+	type BinaryNode,
+	getBinaryNodeChild,
+	getBinaryNodeChildren,
+	isJidGroup,
+	isLidUser,
+	isPnUser,
+	jidNormalizedUser
+} from '../WABinary'
 import { aesDecrypt, aesEncrypt, hkdf, hmacSign } from './crypto'
 import { toNumber } from './generics'
 import type { ILogger } from './logger'
@@ -832,14 +840,28 @@ export const processSyncAction = (
 			]
 		})
 	} else if (action?.contactAction) {
+		if (!id) {
+			logger?.warn({ syncAction }, 'contactAction sync: missing id in index')
+			return
+		}
+
+		const lidJid = action.contactAction.lidJid
+		const idIsPn = isPnUser(id)
+		// PN is in index[1], not in contactAction.pnJid which is usually null
+		const phoneNumber = idIsPn ? id : action.contactAction.pnJid || undefined
+
 		ev.emit('contacts.upsert', [
 			{
-				id: id!,
+				id,
 				name: action.contactAction.fullName!,
-				lid: action.contactAction.lidJid || undefined,
-				phoneNumber: action.contactAction.pnJid || undefined
+				lid: lidJid || undefined,
+				phoneNumber
 			}
 		])
+
+		if (lidJid && isLidUser(lidJid) && idIsPn) {
+			ev.emit('lid-mapping.update', { lid: lidJid, pn: id })
+		}
 	} else if (action?.pushNameSetting) {
 		const name = action?.pushNameSetting?.name
 		if (name && me?.name !== name) {
