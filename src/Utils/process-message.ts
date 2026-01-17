@@ -287,6 +287,16 @@ const processMessage = async (
 
 					const data = await downloadAndProcessHistorySyncNotification(histNotification, options)
 
+					// Emit LID-PN mappings from history sync
+					// This is how WhatsApp Web learns mappings for chats with non-contacts
+					if (data.lidPnMappings?.length) {
+						logger?.debug({ count: data.lidPnMappings.length }, 'processing LID-PN mappings from history sync')
+						// eslint-disable-next-line max-depth
+						for (const mapping of data.lidPnMappings) {
+							ev.emit('lid-mapping.update', mapping)
+						}
+					}
+
 					ev.emit('messaging-history.set', {
 						...data,
 						isLatest: histNotification.syncType !== proto.HistorySync.HistorySyncType.ON_DEMAND ? isLatest : undefined,
