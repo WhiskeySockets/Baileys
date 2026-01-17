@@ -3,7 +3,7 @@ name: Update WhatsApp Version
 on:
   schedule:
     # Run on the 1st of every month at 02:00 UTC
-    - cron: '0 2 1 * *'
+    - cron: '0 0 * * 0'
   workflow_dispatch:
 
 permissions:
