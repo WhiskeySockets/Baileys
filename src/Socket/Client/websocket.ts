@@ -40,7 +40,7 @@ export class WebSocketClient extends AbstractSocketClient {
 		}
 	}
 
-	close() {
+	async close() {
 		if (!this.socket) {
 			return
 		}
