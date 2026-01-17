@@ -18,20 +18,13 @@ import {
 	LabelAssociationType,
 	type MessageLabelAssociation
 } from '../Types/LabelAssociation'
-import {
-	type BinaryNode,
-	getBinaryNodeChild,
-	getBinaryNodeChildren,
-	isJidGroup,
-	isLidUser,
-	isPnUser,
-	jidNormalizedUser
-} from '../WABinary'
+import { type BinaryNode, getBinaryNodeChild, getBinaryNodeChildren, isJidGroup, jidNormalizedUser } from '../WABinary'
 import { aesDecrypt, aesEncrypt, hkdf, hmacSign } from './crypto'
 import { toNumber } from './generics'
 import type { ILogger } from './logger'
 import { LT_HASH_ANTI_TAMPERING } from './lt-hash'
 import { downloadContentFromMessage } from './messages-media'
+import { emitSyncActionResults, processContactAction } from './sync-action-utils'
 
 type FetchAppStateSyncKey = (keyId: string) => Promise<proto.Message.IAppStateSyncKeyData | null | undefined>
 
@@ -840,28 +833,8 @@ export const processSyncAction = (
 			]
 		})
 	} else if (action?.contactAction) {
-		if (!id) {
-			logger?.warn({ syncAction }, 'contactAction sync: missing id in index')
-			return
-		}
-
-		const lidJid = action.contactAction.lidJid
-		const idIsPn = isPnUser(id)
-		// PN is in index[1], not in contactAction.pnJid which is usually null
-		const phoneNumber = idIsPn ? id : action.contactAction.pnJid || undefined
-
-		ev.emit('contacts.upsert', [
-			{
-				id,
-				name: action.contactAction.fullName!,
-				lid: lidJid || undefined,
-				phoneNumber
-			}
-		])
-
-		if (lidJid && isLidUser(lidJid) && idIsPn) {
-			ev.emit('lid-mapping.update', { lid: lidJid, pn: id })
-		}
+		const results = processContactAction(action.contactAction, id, logger)
+		emitSyncActionResults(ev, results)
 	} else if (action?.pushNameSetting) {
 		const name = action?.pushNameSetting?.name
 		if (name && me?.name !== name) {
@@ -957,7 +930,7 @@ export const processSyncAction = (
 		ev.emit('contacts.upsert', [
 			{
 				id: id!,
-				name: action.lidContactAction.fullName!,
+				name: action.lidContactAction.fullName || undefined,
 				lid: id!,
 				phoneNumber: undefined
 			}
