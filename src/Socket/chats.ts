@@ -539,7 +539,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 									snapshot,
 									getAppStateSyncKey,
 									initialVersionMap[name],
-									appStateMacVerification.snapshot
+									appStateMacVerification.snapshot,
+									logger
 								)
 								states[name] = newState
 								Object.assign(globalMutationMap, mutationMap)
@@ -577,11 +578,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 								collectionsToHandle.delete(name)
 							}
 						} catch (error) {
-							const classification = classifySyncError(
-								error,
-								attemptsMap[name] ?? 0,
-								MAX_SYNC_ATTEMPTS
-							)
+							const classification = classifySyncError(error, attemptsMap[name] ?? 0, MAX_SYNC_ATTEMPTS)
 
 							switch (classification.action) {
 								case SyncErrorAction.BLOCK_ON_KEY:
@@ -1207,7 +1204,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	})
 
 	// Retry blocked collections when app-state-sync-keys arrive
-	ev.on('creds.update', async (update) => {
+	ev.on('creds.update', async update => {
 		if (update.myAppStateKeyId && blockedCollections.hasBlocked) {
 			const collectionsToRetry = blockedCollections.flush()
 

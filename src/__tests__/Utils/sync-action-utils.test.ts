@@ -5,8 +5,8 @@ import {
 	isSyncdMissingKeyError,
 	prepareCollectionSyncNode,
 	prepareCollectionSyncNodes,
-	SyncErrorAction,
-	SyncdMissingKeyError
+	SyncdMissingKeyError,
+	SyncErrorAction
 } from '../../Utils/sync-action-utils'
 
 describe('SyncdMissingKeyError', () => {
@@ -296,8 +296,16 @@ describe('prepareCollectionSyncNodes', () => {
 	it('should create nodes for each collection', () => {
 		const collections = [
 			{ name: 'regular' as const, state: { version: 0, hash: Buffer.from('a'), indexValueMap: {} }, isNewSync: true },
-			{ name: 'regular_high' as const, state: { version: 5, hash: Buffer.from('b'), indexValueMap: {} }, isNewSync: false },
-			{ name: 'critical_block' as const, state: { version: 10, hash: Buffer.from('c'), indexValueMap: {} }, isNewSync: false }
+			{
+				name: 'regular_high' as const,
+				state: { version: 5, hash: Buffer.from('b'), indexValueMap: {} },
+				isNewSync: false
+			},
+			{
+				name: 'critical_block' as const,
+				state: { version: 10, hash: Buffer.from('c'), indexValueMap: {} },
+				isNewSync: false
+			}
 		]
 
 		const nodes = prepareCollectionSyncNodes(collections)

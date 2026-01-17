@@ -1,7 +1,6 @@
 import { Boom } from '@hapi/boom'
 import type { LTHashState, WAPatchName } from '../Types'
 import type { BinaryNode } from '../WABinary'
-import type { ChatMutationMap } from './chat-utils'
 
 /**
  * Custom error class for missing app-state-sync-key errors.
@@ -155,11 +154,7 @@ export interface SyncErrorClassification {
  * @param maxAttempts - Maximum retry attempts allowed
  * @returns Classification with recommended action
  */
-export function classifySyncError(
-	error: unknown,
-	attemptCount: number,
-	maxAttempts: number
-): SyncErrorClassification {
+export function classifySyncError(error: unknown, attemptCount: number, maxAttempts: number): SyncErrorClassification {
 	const errorMessage = error instanceof Error ? error.message : String(error)
 	const errorStack = error instanceof Error ? error.stack : undefined
 
@@ -236,4 +231,3 @@ export function prepareCollectionSyncNode(name: WAPatchName, state: LTHashState)
 export function prepareCollectionSyncNodes(collections: readonly CollectionSyncState[]): BinaryNode[] {
 	return collections.map(({ name, state }) => prepareCollectionSyncNode(name, state))
 }
-

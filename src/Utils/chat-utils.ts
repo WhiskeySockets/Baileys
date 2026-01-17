@@ -81,7 +81,10 @@ const to64BitNetworkOrder = (e: number) => {
 
 type Mac = { indexMac: Uint8Array; valueMac: Uint8Array; operation: proto.SyncdMutation.SyncdOperation }
 
-const makeLtHashGenerator = ({ indexValueMap, hash }: Pick<LTHashState, 'hash' | 'indexValueMap'>) => {
+const makeLtHashGenerator = (
+	{ indexValueMap, hash }: Pick<LTHashState, 'hash' | 'indexValueMap'>,
+	logger?: ILogger
+) => {
 	indexValueMap = { ...indexValueMap }
 	const addBuffs: ArrayBuffer[] = []
 	const subBuffs: ArrayBuffer[] = []
@@ -92,7 +95,10 @@ const makeLtHashGenerator = ({ indexValueMap, hash }: Pick<LTHashState, 'hash' |
 			const prevOp = indexValueMap[indexMacBase64]
 			if (operation === proto.SyncdMutation.SyncdOperation.REMOVE) {
 				if (!prevOp) {
-					throw new Boom('tried remove, but no previous op', { data: { indexMac, valueMac } })
+					// WhatsApp Web behavior: log warning and skip, don't throw
+					// This can happen due to out-of-order patches or state drift
+					logger?.warn({ indexMac: indexMacBase64 }, 'REMOVE mutation missing in local state, skipping')
+					return
 				}
 
 				// remove from index value mac, since this mutation is erased
@@ -208,9 +214,10 @@ export const decodeSyncdMutations = async (
 	initialState: LTHashState,
 	getAppStateSyncKey: FetchAppStateSyncKey,
 	onMutation: (mutation: ChatMutation) => void,
-	validateMacs: boolean
+	validateMacs: boolean,
+	logger?: ILogger
 ) => {
-	const ltGenerator = makeLtHashGenerator(initialState)
+	const ltGenerator = makeLtHashGenerator(initialState, logger)
 	// indexKey used to HMAC sign record.index.blob
 	// valueEncryptionKey used to AES-256-CBC encrypt record.value.blob[0:-32]
 	// the remaining record.value.blob[0:-32] is the mac, it the HMAC sign of key.keyId + decoded proto data + length of bytes in keyId
@@ -271,7 +278,8 @@ export const decodeSyncdPatch = async (
 	initialState: LTHashState,
 	getAppStateSyncKey: FetchAppStateSyncKey,
 	onMutation: (mutation: ChatMutation) => void,
-	validateMacs: boolean
+	validateMacs: boolean,
+	logger?: ILogger
 ) => {
 	if (validateMacs) {
 		const base64Key = Buffer.from(msg.keyId!.id!).toString('base64')
@@ -295,7 +303,14 @@ export const decodeSyncdPatch = async (
 		}
 	}
 
-	const result = await decodeSyncdMutations(msg.mutations!, initialState, getAppStateSyncKey, onMutation, validateMacs)
+	const result = await decodeSyncdMutations(
+		msg.mutations!,
+		initialState,
+		getAppStateSyncKey,
+		onMutation,
+		validateMacs,
+		logger
+	)
 	return result
 }
 
@@ -372,7 +387,8 @@ export const decodeSyncdSnapshot = async (
 	snapshot: proto.ISyncdSnapshot,
 	getAppStateSyncKey: FetchAppStateSyncKey,
 	minimumVersionNumber: number | undefined,
-	validateMacs = true
+	validateMacs = true,
+	logger?: ILogger
 ) => {
 	const newState = newLTHashState()
 	newState.version = toNumber(snapshot.version!.version)
@@ -390,7 +406,8 @@ export const decodeSyncdSnapshot = async (
 					mutationMap[index!] = mutation
 				}
 			: () => {},
-		validateMacs
+		validateMacs,
+		logger
 	)
 	newState.hash = hash
 	newState.indexValueMap = indexValueMap
@@ -457,7 +474,8 @@ export const decodePatches = async (
 						mutationMap[index!] = mutation
 					}
 				: () => {},
-			true
+			true,
+			logger
 		)
 
 		newState.hash = decodeResult.hash
