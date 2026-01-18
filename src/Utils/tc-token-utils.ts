@@ -1,4 +1,4 @@
-import type { AuthenticationCreds, SignalKeyStoreWithTransaction } from '../Types'
+import type { SignalKeyStoreWithTransaction } from '../Types'
 import type { BinaryNode } from '../WABinary'
 
 type TcTokenParams = {
