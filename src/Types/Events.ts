@@ -78,6 +78,14 @@ export type BaileysEventMap = {
 		action: RequestJoinAction
 		method: RequestJoinMethod
 	}
+	/*	update the labels assigned to a group participant */
+	'group.member-tag.update': {
+		groupId: string
+		participant: string
+		participantAlt?: string
+		label: string
+		messageTimestamp?: number
+	}
 
 	'blocklist.set': { blocklist: string[] }
 	'blocklist.update': { blocklist: string[]; type: 'add' | 'remove' }
@@ -96,6 +104,24 @@ export type BaileysEventMap = {
 	'newsletter.view': { id: string; server_id: string; count: number }
 	'newsletter-participants.update': { id: string; author: string; user: string; new_role: string; action: string }
 	'newsletter-settings.update': { id: string; update: any }
+
+	/** Settings and actions sync events */
+	'chats.lock': { id: string; locked: boolean }
+	'settings.update':
+		| { setting: 'unarchiveChats'; value: boolean }
+		| { setting: 'locale'; value: string }
+		| { setting: 'disableLinkPreviews'; value: proto.SyncActionValue.IPrivacySettingDisableLinkPreviewsAction }
+		| { setting: 'timeFormat'; value: proto.SyncActionValue.ITimeFormatAction }
+		| { setting: 'privacySettingRelayAllCalls'; value: proto.SyncActionValue.IPrivacySettingRelayAllCalls }
+		| { setting: 'statusPrivacy'; value: proto.SyncActionValue.IStatusPrivacyAction }
+		| {
+				setting: 'notificationActivitySetting'
+				value: proto.SyncActionValue.NotificationActivitySettingAction.NotificationActivitySetting
+		  }
+		| {
+				setting: 'channelsPersonalisedRecommendation'
+				value: proto.SyncActionValue.IPrivacySettingChannelsPersonalisedRecommendationAction
+		  }
 }
 
 export type BufferedEventData = {
