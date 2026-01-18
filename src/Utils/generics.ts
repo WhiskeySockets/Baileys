@@ -121,7 +121,6 @@ export const debouncedTimeout = (intervalMs = 1000, task?: () => void) => {
 export const delay = (ms: number) => delayCancellable(ms).delay
 
 export const delayCancellable = (ms: number) => {
-	const stack = new Error().stack
 	let timeout: NodeJS.Timeout
 	let reject: (error: any) => void
 	const delay: Promise<void> = new Promise((resolve, _reject) => {
@@ -130,14 +129,7 @@ export const delayCancellable = (ms: number) => {
 	})
 	const cancel = () => {
 		clearTimeout(timeout)
-		reject(
-			new Boom('Cancelled', {
-				statusCode: 500,
-				data: {
-					stack
-				}
-			})
-		)
+		reject(new Boom('Cancelled', { statusCode: 500 }))
 	}
 
 	return { delay, cancel }
@@ -151,7 +143,6 @@ export async function promiseTimeout<T>(
 		return new Promise(promise)
 	}
 
-	const stack = new Error().stack
 	// Create a promise that rejects in <ms> milliseconds
 	const { delay, cancel } = delayCancellable(ms)
 	const p = new Promise((resolve, reject) => {
@@ -159,10 +150,7 @@ export async function promiseTimeout<T>(
 			.then(() =>
 				reject(
 					new Boom('Timed Out', {
-						statusCode: DisconnectReason.timedOut,
-						data: {
-							stack
-						}
+						statusCode: DisconnectReason.timedOut
 					})
 				)
 			)
