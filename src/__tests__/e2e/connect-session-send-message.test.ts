@@ -1,25 +1,19 @@
 import { describe, test } from '@jest/globals'
-import makeWASocket from '../Socket/index.js'
-import { useMultiFileAuthState } from '../Utils/use-multi-file-auth-state.js'
+import makeWASocket, {
+	DisconnectReason,
+	downloadContentFromMessage,
+	downloadMediaMessage,
+	jidNormalizedUser,
+	proto,
+	toBuffer,
+	useMultiFileAuthState,
+	type WAMessage
+} from '../../index'
 import pino from 'pino'
-import qrcode from 'qrcode-terminal'
+import qrcode from  'qrcode-terminal'
 import { Boom } from '@hapi/boom'
 
-/**
- * TESTE DE CONEXÃO COM RECONEXÃO APÓS ERRO 515
- * 
- * O erro 515 é COMPORTAMENTO NORMAL do protocolo WhatsApp após pairing.
- * Este teste demonstra como lidar com ele corretamente.
- * 
- * Fluxo esperado:
- * 1. QR Code exibido
- * 2. Usuário escaneia
- * 3. Erro 515 recebido (esperado!)
- * 4. Reconexão automática
- * 5. Conexão bem-sucedida
- * 
- * NOTA: O logger está em 'silent' para evitar flood de logs de sincronização
- */
+
 
 describe('WhatsApp Connection Test', () => {
 	test('connect with auto-reconnect after 515', async() => {
@@ -75,13 +69,16 @@ describe('WhatsApp Connection Test', () => {
 					// Testar envio de mensagem
 					try {
 						// Enviar mensagem para o próprio número (mensagem para si mesmo)
-						const myJid = sock.user?.id
-						if(myJid) {
+						//const myJid = sock.user?.id
+						const meJid = jidNormalizedUser(sock.user?.id)
+						const meLid = sock.user?.lid
+
+						if(meJid) {
 							console.log('\n📤 Enviando mensagem de teste...')
 							
 							// Adicionar timeout de 30s para sendMessage
 							const sendMessageWithTimeout = Promise.race([
-								sock.sendMessage(myJid, { 
+								sock.sendMessage(meJid, { 
 									text: '✅ Teste de conexão Baileys - ' + new Date().toLocaleString('pt-BR')
 								}),
 								new Promise((_, reject) => 
