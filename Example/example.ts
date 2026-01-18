@@ -1,7 +1,7 @@
 import { Boom } from '@hapi/boom'
 import NodeCache from '@cacheable/node-cache'
 import readline from 'readline'
-import makeWASocket, { AnyMessageContent, BinaryInfo, CacheStore, delay, DisconnectReason, downloadAndProcessHistorySyncNotification, encodeWAM, fetchLatestBaileysVersion, getAggregateVotesInPollMessage, getHistoryMsg, isJidNewsletter, jidDecode, makeCacheableSignalKeyStore, normalizeMessageContent, PatchedMessageWithRecipientJID, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
+import makeWASocket, { AnyMessageContent, BinaryInfo, CacheStore, delay, DisconnectReason, downloadAndProcessHistorySyncNotification, encodeWAM, fetchLatestBaileysVersion, generateMessageIDV2, getAggregateVotesInPollMessage, getHistoryMsg, isJidNewsletter, jidDecode, makeCacheableSignalKeyStore, normalizeMessageContent, PatchedMessageWithRecipientJID, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
 //import MAIN_LOGGER from '../src/Utils/logger'
 import open from 'open'
 import fs from 'fs'
@@ -135,7 +135,7 @@ const startSock = async() => {
 			// received a new message
       if (events['messages.upsert']) {
         const upsert = events['messages.upsert']
-        console.log('recv messages ', JSON.stringify(upsert, undefined, 2))
+        logger.debug(upsert, 'recv messages')
 
         if (!!upsert.requestId) {
           console.log("placeholder message received for request of id=" + upsert.requestId, upsert)
@@ -159,10 +159,9 @@ const startSock = async() => {
               }
 
               if (!msg.key.fromMe && doReplies && !isJidNewsletter(msg.key?.remoteJid!)) {
-
-                console.log('replying to', msg.key.remoteJid)
-                await sock!.readMessages([msg.key])
-                await sendMessageWTyping({ text: 'Hello there!' }, msg.key.remoteJid!)
+              	const id = generateMessageIDV2(sock.user?.id)
+              	logger.debug({id, orig_id: msg.key.id }, 'replying to message')
+                await sock.sendMessage(msg.key.remoteJid!, { text: 'pong '+msg.key.id }, {messageId: id })
               }
             }
           }
