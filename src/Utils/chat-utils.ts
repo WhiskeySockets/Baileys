@@ -326,7 +326,7 @@ export const extractSyncdPatches = async (result: BinaryNode, options: RequestIn
 					snapshotNode.content = Buffer.from(Object.values(snapshotNode.content))
 				}
 
-				const blobRef = proto.ExternalBlobReference.decode(snapshotNode.content as Buffer)
+				const blobRef = proto.ExternalBlobReference.decode(snapshotNode.content as Uint8Array)
 				const data = await downloadExternalBlob(blobRef, options)
 				snapshot = proto.SyncdSnapshot.decode(data)
 			}

@@ -169,7 +169,9 @@ export const configureSuccessfulPairing = (
 	const jid = deviceNode.attrs.jid
 	const lid = deviceNode.attrs.lid
 
-	const { details, hmac, accountType } = proto.ADVSignedDeviceIdentityHMAC.decode(deviceIdentityNode.content as Buffer)
+	const { details, hmac, accountType } = proto.ADVSignedDeviceIdentityHMAC.decode(
+		deviceIdentityNode.content as Uint8Array
+	)
 
 	let hmacPrefix = Buffer.from([])
 	if (accountType !== undefined && accountType === proto.ADVEncryptionType.HOSTED) {
