@@ -291,14 +291,31 @@ export const toReadable = (buffer: Buffer) => {
 	return readable
 }
 
-export const toBuffer = async (stream: Readable) => {
+export const toBuffer = async (stream: Readable, maxSize: number = 100 * 1024 * 1024) => {
 	const chunks: Buffer[] = []
-	for await (const chunk of stream) {
-		chunks.push(chunk)
-	}
+	let totalSize = 0
 
-	stream.destroy()
-	return Buffer.concat(chunks)
+	try {
+		for await (const chunk of stream) {
+			totalSize += chunk.length
+			
+			if (totalSize > maxSize) {
+				stream.destroy()
+				throw new Boom(`Stream exceeded maximum size of ${maxSize} bytes`, {
+					statusCode: 413,
+					data: { maxSize, receivedSize: totalSize }
+				})
+			}
+			
+			chunks.push(chunk)
+		}
+
+		stream.destroy()
+		return Buffer.concat(chunks)
+	} catch(error) {
+		stream.destroy()
+		throw error
+	}
 }
 
 export const getStream = async (item: WAMediaUpload, opts?: RequestInit & { maxContentLength?: number }) => {

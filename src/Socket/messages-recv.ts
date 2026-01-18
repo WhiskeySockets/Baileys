@@ -95,24 +95,31 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		config.msgRetryCounterCache ||
 		new NodeCache<number>({
 			stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
-			useClones: false
+			useClones: false,
+			max: 10000 // Limit to 10k entries to prevent unbounded growth
 		})
 	const callOfferCache =
 		config.callOfferCache ||
 		new NodeCache<WACallEvent>({
 			stdTTL: DEFAULT_CACHE_TTLS.CALL_OFFER, // 5 mins
-			useClones: false
+			useClones: false,
+			max: 1000 // Limit to 1k call offers
 		})
 
 	const placeholderResendCache =
 		config.placeholderResendCache ||
 		new NodeCache({
 			stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
-			useClones: false
+			useClones: false,
+			max: 5000 // Limit to 5k placeholder resends
 		})
 
 	// Debounce identity-change session refreshes per JID to avoid bursts
-	const identityAssertDebounce = new NodeCache<boolean>({ stdTTL: 5, useClones: false })
+	const identityAssertDebounce = new NodeCache<boolean>({ 
+		stdTTL: 5, 
+		useClones: false,
+		max: 1000 // Limit to 1k identity assertions
+	})
 
 	let sendActiveReceipts = false
 
@@ -1456,8 +1463,23 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		// Number of nodes to process before yielding to event loop
 		const BATCH_SIZE = 10
+		// Maximum offline nodes to store in memory (prevent unbounded growth)
+		const MAX_OFFLINE_NODES = 5000
+		// Remove 10% oldest nodes when limit is reached
+		const CLEANUP_PERCENTAGE = 0.1
 
 		const enqueue = (type: MessageType, node: BinaryNode) => {
+			// Check if we've exceeded the maximum offline nodes
+			if (nodes.length >= MAX_OFFLINE_NODES) {
+				const removeCount = Math.floor(MAX_OFFLINE_NODES * CLEANUP_PERCENTAGE)
+				logger.warn(
+					{ currentSize: nodes.length, removing: removeCount },
+					'offline nodes queue exceeded limit, removing oldest entries'
+				)
+				// Remove oldest 10% of nodes
+				nodes.splice(0, removeCount)
+			}
+
 			nodes.push({ type, node })
 
 			if (isProcessing) {

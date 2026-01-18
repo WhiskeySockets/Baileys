@@ -70,6 +70,7 @@ type BaileysBufferableEventEmitter = BaileysEventEmitter & {
 export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter => {
 	const ev = new EventEmitter()
 	const historyCache = new Set<string>()
+	const historyCacheOrder: string[] = [] // Track insertion order for LRU
 
 	let data = makeBufferData()
 	let isBuffering = false
@@ -77,6 +78,8 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 	let flushPendingTimeout: NodeJS.Timeout | null = null // Add a specific timer for the debounced flush to prevent leak
 	let bufferCount = 0
 	const MAX_HISTORY_CACHE_SIZE = 10000 // Limit the history cache size to prevent memory bloat
+	const CLEANUP_THRESHOLD = Math.floor(MAX_HISTORY_CACHE_SIZE * 0.8) // Start cleanup at 80%
+	const CLEANUP_TARGET = Math.floor(MAX_HISTORY_CACHE_SIZE * 0.6) // Reduce to 60% when cleaning
 	const BUFFER_TIMEOUT_MS = 30000 // 30 seconds
 
 	// take the generic event and fire it as a baileys event
@@ -128,10 +131,19 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 			flushPendingTimeout = null
 		}
 
-		// Clear history cache if it exceeds the max size
-		if (historyCache.size > MAX_HISTORY_CACHE_SIZE) {
-			logger.debug({ cacheSize: historyCache.size }, 'Clearing history cache')
-			historyCache.clear()
+		// Aggressive cleanup at 80% capacity using LRU strategy
+		if (historyCache.size >= CLEANUP_THRESHOLD) {
+			const removeCount = historyCache.size - CLEANUP_TARGET
+			logger.debug(
+				{ cacheSize: historyCache.size, removing: removeCount, targetSize: CLEANUP_TARGET },
+				'History cache cleanup - removing oldest entries (LRU)'
+			)
+			
+			// Remove oldest entries (FIFO/LRU approach)
+			for (let i = 0; i < removeCount && historyCacheOrder.length > 0; i++) {
+				const oldestKey = historyCacheOrder.shift()!
+				historyCache.delete(oldestKey)
+			}
 		}
 
 		const newData = makeBufferData()
