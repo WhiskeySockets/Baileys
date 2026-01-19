@@ -254,6 +254,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				if (j?.user) {
 					acc.push(j.user)
 				}
+				
 				return acc
 			}, [])
 			mgetDevices = await userDevicesCache.mget(usersToFetch)
