@@ -181,10 +181,7 @@ export const extractImageThumb = async (bufferOrFilePath: Readable | Buffer | st
 export const encodeBase64EncodedStringForUpload = (b64: string) => {
 	// Otimizado: Usa regex patterns cacheados para evitar recompilação
 	// 3 regex inline = 3000 compilações/hora → 0 compilações (cache)
-	const encoded = b64
-		.replace(BASE64_PLUS_REGEX, '-')
-		.replace(BASE64_SLASH_REGEX, '_')
-		.replace(BASE64_EQUALS_REGEX, '')
+	const encoded = b64.replace(BASE64_PLUS_REGEX, '-').replace(BASE64_SLASH_REGEX, '_').replace(BASE64_EQUALS_REGEX, '')
 	return encodeURIComponent(encoded)
 }
 
@@ -681,6 +678,7 @@ export function extensionForMediaMessage(message: WAMessageContent) {
 		const semicolonIdx = mimetype.indexOf(';')
 		const cleanMime = semicolonIdx >= 0 ? mimetype.substring(0, semicolonIdx) : mimetype
 		const slashIdx = cleanMime.indexOf('/')
+
 		return slashIdx >= 0 ? cleanMime.substring(slashIdx + 1) : undefined
 	}
 	const type = Object.keys(message)[0] as Exclude<MessageType, 'toJSON'>
