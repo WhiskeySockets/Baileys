@@ -683,8 +683,9 @@ export const generateWAMessageFromContent = (
 			delete quotedContent.contextInfo
 		}
 
+		const msgContent = innerMessage[key]
 		const contextInfo: proto.IContextInfo =
-			('contextInfo' in innerMessage[key]! && innerMessage[key]?.contextInfo) || {}
+			(msgContent && 'contextInfo' in msgContent && msgContent.contextInfo) || {}
 		contextInfo.participant = jidNormalizedUser(participant!)
 		contextInfo.stanzaId = quoted.key.id
 		contextInfo.quotedMessage = quotedMsg
@@ -975,8 +976,9 @@ export function getAggregateResponsesInEventMessage(
 
 	for (const update of eventResponses || []) {
 		const responseType = (update as any).eventResponse || 'UNKNOWN'
-		if (responseType !== 'UNKNOWN' && responseMap[responseType]) {
-			responseMap[responseType].responders.push(getKeyAuthor(update.eventResponseMessageKey, meId))
+		const responseEntry = responseMap[responseType]
+		if (responseType !== 'UNKNOWN' && responseEntry) {
+			responseEntry.responders.push(getKeyAuthor(update.eventResponseMessageKey, meId))
 		}
 	}
 
@@ -997,7 +999,10 @@ export const aggregateMessageKeysNotFromMe = (keys: WAMessageKey[]) => {
 				}
 			}
 
-			keyMap[uqKey].messageIds.push(id!)
+			const entry = keyMap[uqKey]
+			if (entry) {
+				entry.messageIds.push(id!)
+			}
 		}
 	}
 

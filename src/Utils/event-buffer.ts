@@ -204,7 +204,7 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 			}
 
 			if (isBuffering && BUFFERABLE_EVENT_SET.has(event)) {
-				append(data, historyCache, event as BufferableEvent, evData, logger)
+				append(data, historyCache, historyCacheOrder, event as BufferableEvent, evData, logger)
 				return true
 			}
 
@@ -275,6 +275,7 @@ const makeBufferData = (): BufferedEventData => {
 function append<E extends BufferableEvent>(
 	data: BufferedEventData,
 	historyCache: Set<string>,
+	historyCacheOrder: string[],
 	event: E,
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	eventData: any,
@@ -292,6 +293,7 @@ function append<E extends BufferableEvent>(
 				if (!existingChat && !historyCache.has(id)) {
 					data.historySets.chats[id] = chat
 					historyCache.add(id)
+					historyCacheOrder.push(id) // Track insertion order for LRU
 
 					absorbingChatUpdate(chat)
 				}
@@ -307,6 +309,7 @@ function append<E extends BufferableEvent>(
 					if (!historyCache.has(historyContactId) || hasAnyName) {
 						data.historySets.contacts[contact.id] = contact
 						historyCache.add(historyContactId)
+						historyCacheOrder.push(historyContactId) // Track insertion order for LRU
 					}
 				}
 			}
@@ -317,6 +320,7 @@ function append<E extends BufferableEvent>(
 				if (!existingMsg && !historyCache.has(key)) {
 					data.historySets.messages[key] = message
 					historyCache.add(key)
+					historyCacheOrder.push(key) // Track insertion order for LRU
 				}
 			}
 
@@ -460,9 +464,10 @@ function append<E extends BufferableEvent>(
 					message.messageTimestamp = existing.messageTimestamp
 				}
 
-				if (data.messageUpdates[key]) {
+				const messageUpdate = data.messageUpdates[key]
+				if (messageUpdate) {
 					logger.debug('absorbed prior message update in message upsert')
-					Object.assign(message, data.messageUpdates[key].update)
+					Object.assign(message, messageUpdate.update)
 					delete data.messageUpdates[key]
 				}
 
@@ -530,7 +535,10 @@ function append<E extends BufferableEvent>(
 					updateMessageWithReaction(existing.message, reaction)
 				} else {
 					data.messageReactions[keyStr] = data.messageReactions[keyStr] || { key, reactions: [] }
-					updateMessageWithReaction(data.messageReactions[keyStr], reaction)
+					const messageReaction = data.messageReactions[keyStr]
+					if (messageReaction) {
+						updateMessageWithReaction(messageReaction, reaction)
+					}
 				}
 			}
 
@@ -544,7 +552,10 @@ function append<E extends BufferableEvent>(
 					updateMessageWithReceipt(existing.message, receipt)
 				} else {
 					data.messageReceipts[keyStr] = data.messageReceipts[keyStr] || { key, userReceipt: [] }
-					updateMessageWithReceipt(data.messageReceipts[keyStr], receipt)
+					const messageReceipt = data.messageReceipts[keyStr]
+					if (messageReceipt) {
+						updateMessageWithReceipt(messageReceipt, receipt)
+					}
 				}
 			}
 

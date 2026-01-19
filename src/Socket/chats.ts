@@ -7,6 +7,7 @@ import type {
 	CacheStore,
 	ChatModification,
 	ChatMutation,
+	ConnectionState,
 	LTHashState,
 	MessageUpsertType,
 	PresenceData,
@@ -1112,7 +1113,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	ws.on('CB:presence', handlePresenceUpdate)
 	ws.on('CB:chatstate', handlePresenceUpdate)
 
-	ws.on('CB:ib,,dirty', async (node: BinaryNode) => {
+	const dirtyHandler = async (node: BinaryNode) => {
 		const { attrs } = getBinaryNodeChild(node, 'dirty')!
 		const type = attrs.type
 		switch (type) {
@@ -1135,9 +1136,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				logger.info({ node }, 'received unknown sync')
 				break
 		}
-	})
+	}
+	ws.on('CB:ib,,dirty', dirtyHandler)
 
-	ev.on('connection.update', ({ connection, receivedPendingNotifications }) => {
+	const connectionHandler = ({ connection, receivedPendingNotifications }: Partial<ConnectionState>) => {
 		if (connection === 'open') {
 			if (fireInitQueries) {
 				executeInitQueries().catch(error => onUnexpectedError(error, 'init queries'))
@@ -1183,7 +1185,22 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				ev.flush()
 			}
 		}, 20_000)
-	})
+	}
+	ev.on('connection.update', connectionHandler)
+
+	// Cleanup function to remove event listeners and prevent memory leaks
+	const cleanupChats = () => {
+		ws.off('CB:presence', handlePresenceUpdate)
+		ws.off('CB:chatstate', handlePresenceUpdate)
+		ws.off('CB:ib,,dirty', dirtyHandler)
+		ev.off('connection.update', connectionHandler)
+		
+		if (awaitingSyncTimeout) {
+			clearTimeout(awaitingSyncTimeout)
+		}
+		
+		logger.debug('chats event listeners cleaned up')
+	}
 
 	return {
 		...sock,
@@ -1230,6 +1247,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		removeMessageLabel,
 		star,
 		addOrEditQuickReply,
-		removeQuickReply
+		removeQuickReply,
+		cleanupChats // Export cleanup function
 	}
 }

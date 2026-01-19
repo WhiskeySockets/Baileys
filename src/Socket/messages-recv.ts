@@ -13,7 +13,8 @@ import type {
 	WACallEvent,
 	WAMessage,
 	WAMessageKey,
-	WAPatchName
+	WAPatchName,
+	ConnectionState
 } from '../Types'
 import { WAMessageStatus, WAMessageStubType } from '../Types'
 import {
@@ -91,34 +92,75 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	/** this mutex ensures that each retryRequest will wait for the previous one to finish */
 	const retryMutex = makeMutex()
 
-	const msgRetryCache =
-		config.msgRetryCounterCache ||
-		new NodeCache<number>({
-			stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
-			useClones: false,
-			max: 10000 // Limit to 10k entries to prevent unbounded growth
+	// Helper to create a limited cache with periodic cleanup
+	const createLimitedCache = <T>(options: { stdTTL: number; maxKeys: number; name: string }) => {
+		const cache = new NodeCache<T>({
+			stdTTL: options.stdTTL,
+			useClones: false
 		})
-	const callOfferCache =
-		config.callOfferCache ||
-		new NodeCache<WACallEvent>({
-			stdTTL: DEFAULT_CACHE_TTLS.CALL_OFFER, // 5 mins
-			useClones: false,
-			max: 1000 // Limit to 1k call offers
-		})
+		
+		// Periodic cleanup when size exceeds limit
+		const checkAndCleanup = () => {
+			const keys = cache.keys()
+			if (keys.length > options.maxKeys) {
+				const removeCount = Math.floor(keys.length * 0.2) // Remove 20% oldest
+				logger.warn(
+					{ cache: options.name, size: keys.length, removing: removeCount, limit: options.maxKeys },
+					'cache exceeded limit, removing oldest entries'
+				)
+				// Remove oldest entries (first 20%)
+				keys.slice(0, removeCount).forEach(key => cache.del(key))
+			}
+		}
+		
+		// Check every 60 seconds
+		const cleanupInterval = setInterval(checkAndCleanup, 60000)
+		
+		// Cleanup on set to avoid waiting for interval
+		const originalSet = cache.set.bind(cache)
+		cache.set = (key: string, value: T) => {
+			const result = originalSet(key, value)
+			if (cache.keys().length > options.maxKeys * 1.1) { // Check if 10% over limit
+				checkAndCleanup()
+			}
+			return result
+		}
+		
+		return { cache, cleanupInterval }
+	}
 
-	const placeholderResendCache =
-		config.placeholderResendCache ||
-		new NodeCache({
-			stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
-			useClones: false,
-			max: 5000 // Limit to 5k placeholder resends
-		})
+	const { cache: msgRetryCache, cleanupInterval: msgRetryCleanup } =
+		config.msgRetryCounterCache 
+			? { cache: config.msgRetryCounterCache, cleanupInterval: undefined }
+			: createLimitedCache<number>({
+				stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY,
+				maxKeys: 10000,
+				name: 'msgRetryCache'
+			})
+			
+	const { cache: callOfferCache, cleanupInterval: callOfferCleanup } =
+		config.callOfferCache
+			? { cache: config.callOfferCache, cleanupInterval: undefined }
+			: createLimitedCache<WACallEvent>({
+				stdTTL: DEFAULT_CACHE_TTLS.CALL_OFFER,
+				maxKeys: 1000,
+				name: 'callOfferCache'
+			})
+
+	const { cache: placeholderResendCache, cleanupInterval: placeholderCleanup } =
+		config.placeholderResendCache
+			? { cache: config.placeholderResendCache, cleanupInterval: undefined }
+			: createLimitedCache({
+				stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY,
+				maxKeys: 5000,
+				name: 'placeholderResendCache'
+			})
 
 	// Debounce identity-change session refreshes per JID to avoid bursts
-	const identityAssertDebounce = new NodeCache<boolean>({ 
-		stdTTL: 5, 
-		useClones: false,
-		max: 1000 // Limit to 1k identity assertions
+	const { cache: identityAssertDebounce, cleanupInterval: identityCleanup } = createLimitedCache<boolean>({
+		stdTTL: 5,
+		maxKeys: 1000,
+		name: 'identityAssertDebounce'
 	})
 
 	let sendActiveReceipts = false
@@ -1023,10 +1065,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		logger.debug({ participant, sendToAll, shouldRecreateSession, recreateReason }, 'forced new session for retry recp')
 
 		for (const [i, msg] of msgs.entries()) {
-			if (!ids[i]) continue
+			const msgId = ids[i]
+			if (!msgId) continue
 
-			if (msg && (await willSendMessageAgain(ids[i], participant))) {
-				await updateSendMessageAgainCount(ids[i], participant)
+			if (msg && (await willSendMessageAgain(msgId, participant))) {
+				await updateSendMessageAgainCount(msgId, participant)
 				const msgRelayOpts: MessageRelayOptions = { messageId: ids[i] }
 
 				if (sendToAll) {
@@ -1539,24 +1582,30 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	// recv a message
-	ws.on('CB:message', async (node: BinaryNode) => {
+	const messageHandler = async (node: BinaryNode) => {
 		await processNode('message', node, 'processing message', handleMessage)
-	})
+	}
+	ws.on('CB:message', messageHandler)
 
-	ws.on('CB:call', async (node: BinaryNode) => {
+	const callHandler = async (node: BinaryNode) => {
 		await processNode('call', node, 'handling call', handleCall)
-	})
+	}
+	ws.on('CB:call', callHandler)
 
-	ws.on('CB:receipt', async node => {
+	const receiptHandler = async (node: BinaryNode) => {
 		await processNode('receipt', node, 'handling receipt', handleReceipt)
-	})
+	}
+	ws.on('CB:receipt', receiptHandler)
 
-	ws.on('CB:notification', async (node: BinaryNode) => {
+	const notificationHandler = async (node: BinaryNode) => {
 		await processNode('notification', node, 'handling notification', handleNotification)
-	})
-	ws.on('CB:ack,class:message', (node: BinaryNode) => {
+	}
+	ws.on('CB:notification', notificationHandler)
+	
+	const badAckHandler = (node: BinaryNode) => {
 		handleBadAck(node).catch(error => onUnexpectedError(error, 'handling bad ack'))
-	})
+	}
+	ws.on('CB:ack,class:message', badAckHandler)
 
 	ev.on('call', async ([call]) => {
 		if (!call) {
@@ -1590,12 +1639,41 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 	})
 
-	ev.on('connection.update', ({ isOnline }) => {
+	const connectionUpdateListener = ({ isOnline }: Partial<ConnectionState>) => {
 		if (typeof isOnline !== 'undefined') {
 			sendActiveReceipts = isOnline
 			logger.trace(`sendActiveReceipts set to "${sendActiveReceipts}"`)
 		}
-	})
+	}
+	ev.on('connection.update', connectionUpdateListener)
+
+	// Cleanup function to remove event listeners and prevent memory leaks
+	const cleanup = () => {
+		// Remove WebSocket listeners
+		ws.off('CB:message', messageHandler)
+		ws.off('CB:call', callHandler)
+		ws.off('CB:receipt', receiptHandler)
+		ws.off('CB:notification', notificationHandler)
+		ws.off('CB:ack,class:message', badAckHandler)
+		
+		// Remove event emitter listeners
+		ev.off('call', async () => {})
+		ev.off('connection.update', connectionUpdateListener)
+		
+		// Clean up caches
+		msgRetryCache.flushAll()
+		callOfferCache.flushAll()
+		placeholderResendCache.flushAll()
+		identityAssertDebounce.flushAll()
+		
+		// Clear cleanup intervals
+		if (msgRetryCleanup) clearInterval(msgRetryCleanup)
+		if (callOfferCleanup) clearInterval(callOfferCleanup)
+		if (placeholderCleanup) clearInterval(placeholderCleanup)
+		if (identityCleanup) clearInterval(identityCleanup)
+		
+		logger.debug('messages-recv event listeners and caches cleaned up')
+	}
 
 	return {
 		...sock,
@@ -1604,6 +1682,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		rejectCall,
 		fetchMessageHistory,
 		requestPlaceholderResend,
-		messageRetryManager
+		messageRetryManager,
+		cleanup // Export cleanup function
 	}
 }

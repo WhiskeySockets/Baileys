@@ -80,8 +80,9 @@ export class PreKeyManager {
 		if (isInTransaction) {
 			// In transaction, only allow deletion if key exists in cache
 			for (const keyId of ids) {
-				if (transactionCache[keyType]?.[keyId]) {
-					transactionCache[keyType][keyId] = null
+				const keyTypeCache = transactionCache[keyType]
+				if (keyTypeCache?.[keyId]) {
+					keyTypeCache[keyId] = null
 					mutations[keyType]![keyId] = null
 				} else {
 					this.logger.warn(`Skipping deletion of non-existent ${keyType} in transaction: ${keyId}`)

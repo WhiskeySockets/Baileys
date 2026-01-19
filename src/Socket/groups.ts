@@ -73,7 +73,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 		return data
 	}
 
-	sock.ws.on('CB:ib,,dirty', async (node: BinaryNode) => {
+	const groupsDirtyHandler = async (node: BinaryNode) => {
 		const { attrs } = getBinaryNodeChild(node, 'dirty')!
 		if (attrs.type !== 'groups') {
 			return
@@ -81,10 +81,18 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 
 		await groupFetchAllParticipating()
 		await sock.cleanDirtyBits('groups')
-	})
+	}
+	sock.ws.on('CB:ib,,dirty', groupsDirtyHandler)
+
+	// Cleanup function to remove event listeners and prevent memory leaks
+	const cleanupGroups = () => {
+		sock.ws.off('CB:ib,,dirty', groupsDirtyHandler)
+		config.logger.debug('groups event listeners cleaned up')
+	}
 
 	return {
 		...sock,
+		cleanupGroups, // Export cleanup function
 		groupMetadata,
 		groupCreate: async (subject: string, participants: string[]) => {
 			const key = generateMessageIDV2()

@@ -253,7 +253,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			mgetDevices = await userDevicesCache.mget(usersToFetch)
 		}
 
-		for (const { jid, user } of jidsWithUser) {
+		for (const item of jidsWithUser) {
+			if (!item) continue
+			const { jid, user } = item
 			if (useCache) {
 				const devices =
 					mgetDevices?.[user!] ||
@@ -357,7 +359,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				await userDevicesCache.mset(Object.entries(deviceMap).map(([key, value]) => ({ key, value })))
 			} else {
 				for (const key in deviceMap) {
-					if (deviceMap[key]) await userDevicesCache.set(key, deviceMap[key])
+					const devices = deviceMap[key]
+					if (devices) await userDevicesCache.set(key, devices)
 				}
 			}
 
