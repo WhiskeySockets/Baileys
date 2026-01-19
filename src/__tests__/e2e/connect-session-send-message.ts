@@ -1,12 +1,7 @@
-//import qrcode from  'qrcode-terminal'
 import { Boom } from '@hapi/boom'
 import { describe, test } from '@jest/globals'
 import pino from 'pino'
-import {
-	makeWASocket,
-	jidNormalizedUser,
-	useMultiFileAuthState,
-} from '../../index'
+import { jidNormalizedUser, makeWASocket, useMultiFileAuthState } from '../../index'
 
 describe('WhatsApp Connection Test', () => {
 	test('connect with auto-reconnect after 515', async () => {
@@ -22,17 +17,15 @@ describe('WhatsApp Connection Test', () => {
 		let isReconnecting = false
 
 		return new Promise<void>((resolve, reject) => {
-			let timeout: NodeJS.Timeout
-
-			const cleanup = () => {
-				if (timeout) clearTimeout(timeout)
-			}
-
-			timeout = setTimeout(() => {
+			const timeout = setTimeout(() => {
 				cleanup()
-				sock.end(undefined).catch(() => { })
+				sock.end(undefined).catch(() => {})
 				reject(new Error('⏱️  Timeout após 3 minutos'))
 			}, 180000)
+
+			const cleanup = () => {
+				clearTimeout(timeout)
+			}
 
 			// Handler de conexão
 			const handleConnection = async (update: any) => {
@@ -105,7 +98,7 @@ describe('WhatsApp Connection Test', () => {
 						console.log('\n🔄 Erro 515: Pairing OK, reconectando em 3s...')
 
 						await new Promise(r => setTimeout(r, 3000))
-						await sock.end(undefined).catch(() => { })
+						await sock.end(undefined).catch(() => {})
 
 						// Recarregar credenciais e criar novo socket
 						const { state: newState, saveCreds: newSaveCreds } = await useMultiFileAuthState('baileys_auth_info')
@@ -122,7 +115,7 @@ describe('WhatsApp Connection Test', () => {
 						isReconnecting = false
 					} else if (statusCode && statusCode !== 515) {
 						cleanup()
-						await sock.end(undefined).catch(() => { })
+						await sock.end(undefined).catch(() => {})
 						reject(new Error(`❌ Erro ${statusCode}: ${lastDisconnect?.error?.message}`))
 					}
 				}

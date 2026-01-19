@@ -1653,7 +1653,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	ev.on('connection.update', connectionUpdateListener)
 
 	// Cleanup function to remove event listeners and prevent memory leaks
-	const cleanup = () => {
+	const cleanup = async () => {
 		// Remove WebSocket listeners
 		ws.off('CB:message', messageHandler)
 		ws.off('CB:call', callHandler)
@@ -1666,9 +1666,9 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		ev.off('connection.update', connectionUpdateListener)
 
 		// Clean up caches
-		msgRetryCache.flushAll()
-		callOfferCache.flushAll()
-		placeholderResendCache.flushAll()
+		await msgRetryCache.flushAll()
+		await callOfferCache.flushAll()
+		await placeholderResendCache.flushAll()
 		identityAssertDebounce.flushAll()
 
 		// Clear cleanup intervals
