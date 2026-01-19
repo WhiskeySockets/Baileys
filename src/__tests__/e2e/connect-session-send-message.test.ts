@@ -10,7 +10,7 @@ import makeWASocket, {
 	type WAMessage
 } from '../../index'
 import pino from 'pino'
-import qrcode from  'qrcode-terminal'
+//import qrcode from  'qrcode-terminal'
 import { Boom } from '@hapi/boom'
 
 
@@ -53,7 +53,7 @@ describe('WhatsApp Connection Test', () => {
 				
 				if(qr && !qrShown) {
 					console.log('\n📱 Escaneie o QR Code:')
-					qrcode.generate(qr, { small: true })
+					//qrcode.generate(qr, { small: true })
 					console.log()
 					qrShown = true
 				}
