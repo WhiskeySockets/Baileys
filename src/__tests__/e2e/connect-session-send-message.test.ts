@@ -1,4 +1,7 @@
+//import qrcode from  'qrcode-terminal'
+import { Boom } from '@hapi/boom'
 import { describe, test } from '@jest/globals'
+import pino from 'pino'
 import makeWASocket, {
 	DisconnectReason,
 	downloadContentFromMessage,
@@ -9,11 +12,6 @@ import makeWASocket, {
 	useMultiFileAuthState,
 	type WAMessage
 } from '../../index'
-import pino from 'pino'
-//import qrcode from  'qrcode-terminal'
-import { Boom } from '@hapi/boom'
-
-
 
 describe('WhatsApp Connection Test', () => {
 	test('connect with auto-reconnect after 515', async () => {
@@ -37,7 +35,7 @@ describe('WhatsApp Connection Test', () => {
 
 			timeout = setTimeout(() => {
 				cleanup()
-				sock.end(undefined).catch(() => { })
+				sock.end(undefined).catch(() => {})
 				reject(new Error('⏱️  Timeout após 3 minutos'))
 			}, 180000)
 
@@ -48,7 +46,7 @@ describe('WhatsApp Connection Test', () => {
 				console.log('\n📊 Estado:', {
 					connection,
 					qr: qr ? 'QR_DISPONÍVEL' : undefined,
-					erro: (lastDisconnect?.error as any)?.output?.statusCode
+					erro: lastDisconnect?.error?.output?.statusCode
 				})
 
 				if (qr && !qrShown) {
@@ -86,7 +84,7 @@ describe('WhatsApp Connection Test', () => {
 								)
 							])
 
-							const result = await sendMessageWithTimeout as any
+							const result = (await sendMessageWithTimeout) as any
 
 							console.log('✅ Mensagem enviada com sucesso!')
 							console.log('📝 ID da mensagem:', result?.key?.id)
@@ -113,7 +111,7 @@ describe('WhatsApp Connection Test', () => {
 						console.log('\n🔄 Erro 515: Pairing OK, reconectando em 3s...')
 
 						await new Promise(r => setTimeout(r, 3000))
-						await sock.end(undefined).catch(() => { })
+						await sock.end(undefined).catch(() => {})
 
 						// Recarregar credenciais e criar novo socket
 						const { state: newState, saveCreds: newSaveCreds } = await useMultiFileAuthState('baileys_auth_info')
@@ -128,10 +126,9 @@ describe('WhatsApp Connection Test', () => {
 						sock.ev.on('creds.update', newSaveCreds)
 
 						isReconnecting = false
-					}
-					else if (statusCode && statusCode !== 515) {
+					} else if (statusCode && statusCode !== 515) {
 						cleanup()
-						await sock.end(undefined).catch(() => { })
+						await sock.end(undefined).catch(() => {})
 						reject(new Error(`❌ Erro ${statusCode}: ${lastDisconnect?.error?.message}`))
 					}
 				}

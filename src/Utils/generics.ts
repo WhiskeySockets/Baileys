@@ -35,7 +35,7 @@ export const BufferJSON = {
 			if (keys.length > 0 && keys.every(k => !isNaN(parseInt(k, 10)))) {
 				const values = Object.values(value)
 				if (values.every(v => typeof v === 'number')) {
-					return Buffer.from(values as number[])
+					return Buffer.from(values)
 				}
 			}
 		}

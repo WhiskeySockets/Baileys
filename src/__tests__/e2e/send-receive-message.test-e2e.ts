@@ -61,9 +61,15 @@ function logPerformanceMetrics(testName: string, metrics: PerformanceMetrics): v
 	logMemoryMetrics('Memória Depois', metrics.memoryAfter)
 
 	console.log(`\n📈 Delta de Memória:`)
-	console.log(`  Heap Usado: ${formatBytes(metrics.memoryDelta.heapUsed)} ${metrics.memoryDelta.heapUsed > 0 ? '⬆️' : '⬇️'}`)
-	console.log(`  Heap Total: ${formatBytes(metrics.memoryDelta.heapTotal)} ${metrics.memoryDelta.heapTotal > 0 ? '⬆️' : '⬇️'}`)
-	console.log(`  Externo: ${formatBytes(metrics.memoryDelta.external)} ${metrics.memoryDelta.external > 0 ? '⬆️' : '⬇️'}`)
+	console.log(
+		`  Heap Usado: ${formatBytes(metrics.memoryDelta.heapUsed)} ${metrics.memoryDelta.heapUsed > 0 ? '⬆️' : '⬇️'}`
+	)
+	console.log(
+		`  Heap Total: ${formatBytes(metrics.memoryDelta.heapTotal)} ${metrics.memoryDelta.heapTotal > 0 ? '⬆️' : '⬇️'}`
+	)
+	console.log(
+		`  Externo: ${formatBytes(metrics.memoryDelta.external)} ${metrics.memoryDelta.external > 0 ? '⬆️' : '⬇️'}`
+	)
 	console.log(`  RSS: ${formatBytes(metrics.memoryDelta.rss)} ${metrics.memoryDelta.rss > 0 ? '⬆️' : '⬇️'}`)
 
 	console.log(`\n💻 Uso de CPU:`)
@@ -72,7 +78,8 @@ function logPerformanceMetrics(testName: string, metrics: PerformanceMetrics): v
 	console.log(`  Total: ${((metrics.cpuUsage.user + metrics.cpuUsage.system) / 1000).toFixed(2)}ms`)
 
 	// Detecção de possível vazamento
-	if (metrics.memoryDelta.heapUsed > 10 * 1024 * 1024) { // Mais de 10MB
+	if (metrics.memoryDelta.heapUsed > 10 * 1024 * 1024) {
+		// Mais de 10MB
 		console.log(`\n⚠️  AVISO: Aumento significativo no uso de memória (${formatBytes(metrics.memoryDelta.heapUsed)})`)
 	}
 }
@@ -201,14 +208,21 @@ describe('E2E Tests', () => {
 			process.stdout.write(`  Memória Inicial: ${formatBytes(initialMemory.heapUsed)}\n`)
 			process.stdout.write(`  Memória Final: ${formatBytes(finalMemory.heapUsed)}\n`)
 			const processDelta = finalMemory.heapUsed - initialMemory.heapUsed
-			process.stdout.write(`  Delta Total do Processo: ${formatBytes(Math.abs(processDelta))} ${processDelta > 0 ? '⬆️ (aumento)' : '⬇️ (redução)'}\n`)
+			process.stdout.write(
+				`  Delta Total do Processo: ${formatBytes(Math.abs(processDelta))} ${processDelta > 0 ? '⬆️ (aumento)' : '⬇️ (redução)'}\n`
+			)
 			process.stdout.write(`  RSS Inicial: ${formatBytes(initialMemory.rss)}\n`)
 			process.stdout.write(`  RSS Final: ${formatBytes(finalMemory.rss)}\n`)
 			const rssDelta = finalMemory.rss - initialMemory.rss
-			process.stdout.write(`  Delta RSS: ${formatBytes(Math.abs(rssDelta))} ${rssDelta > 0 ? '⬆️ (aumento)' : '⬇️ (redução)'}\n`)
+			process.stdout.write(
+				`  Delta RSS: ${formatBytes(Math.abs(rssDelta))} ${rssDelta > 0 ? '⬆️ (aumento)' : '⬇️ (redução)'}\n`
+			)
 
 			const totalMemoryIncrease = performanceHistory.reduce((sum, p) => sum + p.metrics.memoryDelta.heapUsed, 0)
-			const totalCpuTime = performanceHistory.reduce((sum, p) => sum + p.metrics.cpuUsage.user + p.metrics.cpuUsage.system, 0)
+			const totalCpuTime = performanceHistory.reduce(
+				(sum, p) => sum + p.metrics.cpuUsage.user + p.metrics.cpuUsage.system,
+				0
+			)
 			const totalDuration = performanceHistory.reduce((sum, p) => sum + p.metrics.duration, 0)
 
 			// Separar aumentos e reduções
@@ -219,25 +233,38 @@ describe('E2E Tests', () => {
 
 			process.stdout.write(`\n📈 Resumo Geral:\n`)
 			process.stdout.write(`  Total de testes com monitoramento: ${performanceHistory.length}\n`)
-			process.stdout.write(`  Total de aumentos de memória: ${formatBytes(totalIncrease)} (${memoryIncreases.length} testes)\n`)
-			process.stdout.write(`  Total de reduções de memória: ${formatBytes(totalDecrease)} (${memoryDecreases.length} testes - GC)\n`)
-			process.stdout.write(`  Balanço líquido de memória: ${formatBytes(Math.abs(totalMemoryIncrease))} ${totalMemoryIncrease > 0 ? '⬆️' : '⬇️'}\n`)
+			process.stdout.write(
+				`  Total de aumentos de memória: ${formatBytes(totalIncrease)} (${memoryIncreases.length} testes)\n`
+			)
+			process.stdout.write(
+				`  Total de reduções de memória: ${formatBytes(totalDecrease)} (${memoryDecreases.length} testes - GC)\n`
+			)
+			process.stdout.write(
+				`  Balanço líquido de memória: ${formatBytes(Math.abs(totalMemoryIncrease))} ${totalMemoryIncrease > 0 ? '⬆️' : '⬇️'}\n`
+			)
 			process.stdout.write(`  Tempo total de CPU: ${(totalCpuTime / 1000).toFixed(2)}ms\n`)
 			process.stdout.write(`  Duração total das operações: ${totalDuration.toFixed(2)}ms\n`)
-			process.stdout.write(`  Média de duração por teste: ${(totalDuration / performanceHistory.length).toFixed(2)}ms\n`)
+			process.stdout.write(
+				`  Média de duração por teste: ${(totalDuration / performanceHistory.length).toFixed(2)}ms\n`
+			)
 
 			process.stdout.write(`\n📋 Detalhes por teste:\n`)
 			performanceHistory.forEach((p, idx) => {
 				const memDelta = p.metrics.memoryDelta.heapUsed
 				const memStr = memDelta < 0 ? `${formatBytes(Math.abs(memDelta))} ⬇️ (GC)` : `${formatBytes(memDelta)} ⬆️`
 				process.stdout.write(`\n  ${idx + 1}. ${p.testName}\n`)
-				process.stdout.write(`     Memória: ${memStr} | CPU: ${((p.metrics.cpuUsage.user + p.metrics.cpuUsage.system) / 1000).toFixed(2)}ms | Duração: ${p.metrics.duration.toFixed(2)}ms\n`)
+				process.stdout.write(
+					`     Memória: ${memStr} | CPU: ${((p.metrics.cpuUsage.user + p.metrics.cpuUsage.system) / 1000).toFixed(2)}ms | Duração: ${p.metrics.duration.toFixed(2)}ms\n`
+				)
 			})
 
 			// Identificar testes com maior consumo (apenas positivos)
-			const sortedByMemoryIncrease = memoryIncreases.sort((a, b) => b.metrics.memoryDelta.heapUsed - a.metrics.memoryDelta.heapUsed)
-			const sortedByCpu = [...performanceHistory].sort((a, b) =>
-				(b.metrics.cpuUsage.user + b.metrics.cpuUsage.system) - (a.metrics.cpuUsage.user + a.metrics.cpuUsage.system)
+			const sortedByMemoryIncrease = memoryIncreases.sort(
+				(a, b) => b.metrics.memoryDelta.heapUsed - a.metrics.memoryDelta.heapUsed
+			)
+			const sortedByCpu = [...performanceHistory].sort(
+				(a, b) =>
+					b.metrics.cpuUsage.user + b.metrics.cpuUsage.system - (a.metrics.cpuUsage.user + a.metrics.cpuUsage.system)
 			)
 			const sortedByDuration = [...performanceHistory].sort((a, b) => b.metrics.duration - a.metrics.duration)
 
@@ -279,7 +306,9 @@ describe('E2E Tests', () => {
 				}
 			}
 
-			process.stdout.write(`\n💡 Nota: Valores negativos indicam que o Garbage Collector liberou memória durante a operação.\n`)
+			process.stdout.write(
+				`\n💡 Nota: Valores negativos indicam que o Garbage Collector liberou memória durante a operação.\n`
+			)
 			process.stdout.write(`${'='.repeat(80)}\n\n`)
 		}
 	})

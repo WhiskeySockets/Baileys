@@ -1048,7 +1048,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		const historyMsg = getHistoryMsg(msg.message!)
 		const shouldProcessHistoryMsg = historyMsg
 			? shouldSyncHistoryMessage(historyMsg) &&
-			PROCESSABLE_HISTORY_TYPES.includes(historyMsg.syncType! as proto.HistorySync.HistorySyncType)
+				PROCESSABLE_HISTORY_TYPES.includes(historyMsg.syncType! as proto.HistorySync.HistorySyncType)
 			: false
 
 		// State machine: decide on sync and flush
@@ -1137,6 +1137,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				break
 		}
 	}
+
 	ws.on('CB:ib,,dirty', dirtyHandler)
 
 	const connectionHandler = ({ connection, receivedPendingNotifications }: Partial<ConnectionState>) => {
@@ -1186,6 +1187,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			}
 		}, 20_000)
 	}
+
 	ev.on('connection.update', connectionHandler)
 
 	// Cleanup function to remove event listeners and prevent memory leaks

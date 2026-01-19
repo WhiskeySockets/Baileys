@@ -285,7 +285,7 @@ export async function getAudioWaveform(buffer: Buffer | string | Readable, logge
 }
 
 export const toReadable = (buffer: Buffer) => {
-	const readable = new Readable({ read: () => { } })
+	const readable = new Readable({ read: () => {} })
 	readable.push(buffer)
 	readable.push(null)
 	return readable

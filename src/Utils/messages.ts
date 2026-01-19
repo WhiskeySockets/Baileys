@@ -684,8 +684,7 @@ export const generateWAMessageFromContent = (
 		}
 
 		const msgContent = innerMessage[key]
-		const contextInfo: proto.IContextInfo =
-			(msgContent && 'contextInfo' in msgContent && msgContent.contextInfo) || {}
+		const contextInfo: proto.IContextInfo = (msgContent && 'contextInfo' in msgContent && msgContent.contextInfo) || {}
 		contextInfo.participant = jidNormalizedUser(participant!)
 		contextInfo.stanzaId = quoted.key.id
 		contextInfo.quotedMessage = quotedMsg

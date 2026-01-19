@@ -5,6 +5,7 @@ import Long from 'long'
 import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import type {
+	ConnectionState,
 	GroupParticipant,
 	MessageReceiptType,
 	MessageRelayOptions,
@@ -13,8 +14,7 @@ import type {
 	WACallEvent,
 	WAMessage,
 	WAMessageKey,
-	WAPatchName,
-	ConnectionState
+	WAPatchName
 } from '../Types'
 import { WAMessageStatus, WAMessageStubType } from '../Types'
 import {
@@ -120,37 +120,36 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const originalSet = cache.set.bind(cache)
 		cache.set = (key: string, value: T) => {
 			const result = originalSet(key, value)
-			if (cache.keys().length > options.maxKeys * 1.1) { // Check if 10% over limit
+			if (cache.keys().length > options.maxKeys * 1.1) {
+				// Check if 10% over limit
 				checkAndCleanup()
 			}
+
 			return result
 		}
 
 		return { cache, cleanupInterval }
 	}
 
-	const { cache: msgRetryCache, cleanupInterval: msgRetryCleanup } =
-		config.msgRetryCounterCache
-			? { cache: config.msgRetryCounterCache, cleanupInterval: undefined }
-			: createLimitedCache<number>({
+	const { cache: msgRetryCache, cleanupInterval: msgRetryCleanup } = config.msgRetryCounterCache
+		? { cache: config.msgRetryCounterCache, cleanupInterval: undefined }
+		: createLimitedCache<number>({
 				stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY,
 				maxKeys: 10000,
 				name: 'msgRetryCache'
 			})
 
-	const { cache: callOfferCache, cleanupInterval: callOfferCleanup } =
-		config.callOfferCache
-			? { cache: config.callOfferCache, cleanupInterval: undefined }
-			: createLimitedCache<WACallEvent>({
+	const { cache: callOfferCache, cleanupInterval: callOfferCleanup } = config.callOfferCache
+		? { cache: config.callOfferCache, cleanupInterval: undefined }
+		: createLimitedCache<WACallEvent>({
 				stdTTL: DEFAULT_CACHE_TTLS.CALL_OFFER,
 				maxKeys: 1000,
 				name: 'callOfferCache'
 			})
 
-	const { cache: placeholderResendCache, cleanupInterval: placeholderCleanup } =
-		config.placeholderResendCache
-			? { cache: config.placeholderResendCache, cleanupInterval: undefined }
-			: createLimitedCache({
+	const { cache: placeholderResendCache, cleanupInterval: placeholderCleanup } = config.placeholderResendCache
+		? { cache: config.placeholderResendCache, cleanupInterval: undefined }
+		: createLimitedCache({
 				stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY,
 				maxKeys: 5000,
 				name: 'placeholderResendCache'
@@ -1585,26 +1584,31 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	const messageHandler = async (node: BinaryNode) => {
 		await processNode('message', node, 'processing message', handleMessage)
 	}
+
 	ws.on('CB:message', messageHandler)
 
 	const callHandler = async (node: BinaryNode) => {
 		await processNode('call', node, 'handling call', handleCall)
 	}
+
 	ws.on('CB:call', callHandler)
 
 	const receiptHandler = async (node: BinaryNode) => {
 		await processNode('receipt', node, 'handling receipt', handleReceipt)
 	}
+
 	ws.on('CB:receipt', receiptHandler)
 
 	const notificationHandler = async (node: BinaryNode) => {
 		await processNode('notification', node, 'handling notification', handleNotification)
 	}
+
 	ws.on('CB:notification', notificationHandler)
 
 	const badAckHandler = (node: BinaryNode) => {
 		handleBadAck(node).catch(error => onUnexpectedError(error, 'handling bad ack'))
 	}
+
 	ws.on('CB:ack,class:message', badAckHandler)
 
 	ev.on('call', async ([call]) => {
@@ -1645,6 +1649,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			logger.trace(`sendActiveReceipts set to "${sendActiveReceipts}"`)
 		}
 	}
+
 	ev.on('connection.update', connectionUpdateListener)
 
 	// Cleanup function to remove event listeners and prevent memory leaks
@@ -1657,7 +1662,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		ws.off('CB:ack,class:message', badAckHandler)
 
 		// Remove event emitter listeners
-		ev.off('call', async () => { })
+		ev.off('call', async () => {})
 		ev.off('connection.update', connectionUpdateListener)
 
 		// Clean up caches

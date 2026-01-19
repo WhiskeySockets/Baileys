@@ -82,6 +82,7 @@ export const makeGroupsSocket = (config: SocketConfig) => {
 		await groupFetchAllParticipating()
 		await sock.cleanDirtyBits('groups')
 	}
+
 	sock.ws.on('CB:ib,,dirty', groupsDirtyHandler)
 
 	// Cleanup function to remove event listeners and prevent memory leaks
