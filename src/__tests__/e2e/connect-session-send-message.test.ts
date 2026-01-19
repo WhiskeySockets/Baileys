@@ -3,14 +3,8 @@ import { Boom } from '@hapi/boom'
 import { describe, test } from '@jest/globals'
 import pino from 'pino'
 import makeWASocket, {
-	DisconnectReason,
-	downloadContentFromMessage,
-	downloadMediaMessage,
 	jidNormalizedUser,
-	proto,
-	toBuffer,
 	useMultiFileAuthState,
-	type WAMessage
 } from '../../index'
 
 describe('WhatsApp Connection Test', () => {
@@ -69,7 +63,6 @@ describe('WhatsApp Connection Test', () => {
 						// Enviar mensagem para o próprio número (mensagem para si mesmo)
 						//const myJid = sock.user?.id
 						const meJid = jidNormalizedUser(sock.user?.id)
-						const meLid = sock.user?.lid
 
 						if (meJid) {
 							console.log('\n📤 Enviando mensagem de teste...')
