@@ -193,10 +193,10 @@ class PerformanceMonitor {
 
         return {
             testName, startTime: this.startTime, endTime, duration: endTime - this.startTime, initialMemory, finalMemory, memoryDelta: {
-                heapUsed: finalMemory.heapUsed - initialMemory.heapUsed, 
-                heapTotal: finalMemory.heapTotal - initialMemory.heapTotal, 
-                external: finalMemory.external - initialMemory.external, 
-                rss: finalMemory.rss - initialMemory.rss, 
+                heapUsed: finalMemory.heapUsed - initialMemory.heapUsed,
+                heapTotal: finalMemory.heapTotal - initialMemory.heapTotal,
+                external: finalMemory.external - initialMemory.external,
+                rss: finalMemory.rss - initialMemory.rss,
                 arrayBuffers: finalMemory.arrayBuffers - initialMemory.arrayBuffers
             },
             cpuUsage: getCpuUsage(finalCpu),

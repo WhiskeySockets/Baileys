@@ -507,17 +507,20 @@ export const makeSocket = (config: SocketConfig) => {
 			}
 		}
 
-		// Add timeout protection
+		// Add timeout protection (Otimizado: cleanup automático no finally)
+		let timeoutId: NodeJS.Timeout | undefined
 		uploadPreKeysPromise = Promise.race([
 			uploadLogic(),
-			new Promise<void>((_, reject) =>
-				setTimeout(() => reject(new Boom('Pre-key upload timeout', { statusCode: 408 })), UPLOAD_TIMEOUT)
-			)
+			new Promise<void>((_, reject) => {
+				timeoutId = setTimeout(() => reject(new Boom('Pre-key upload timeout', { statusCode: 408 })), UPLOAD_TIMEOUT)
+			})
 		])
 
 		try {
 			await uploadPreKeysPromise
 		} finally {
+			// Otimizado: Limpar timer órfão (100 timers/hora = 5-10MB vazamento)
+			if (timeoutId) clearTimeout(timeoutId)
 			uploadPreKeysPromise = null
 		}
 	}
@@ -873,6 +876,9 @@ export const makeSocket = (config: SocketConfig) => {
 
 			ev.emit('connection.update', { qr })
 
+			// Otimizado: Limpar timer existente antes de criar novo (evita multiplicação exponencial)
+			// 10 timers paralelos causavam CPU spike, agora sempre 1 ativo
+			if (qrTimer) clearTimeout(qrTimer)
 			qrTimer = setTimeout(genPairQR, qrMs)
 			qrMs = qrTimeout || 20_000 // shorter subsequent qrs
 		}
