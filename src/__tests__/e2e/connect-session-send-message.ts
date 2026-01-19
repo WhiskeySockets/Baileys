@@ -52,7 +52,6 @@ describe('WhatsApp Connection Test', () => {
 
 					// Testar envio de mensagem
 					try {
-						
 						const meJid = jidNormalizedUser(sock.user?.id)
 
 						if (meJid) {
