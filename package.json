@@ -38,6 +38,7 @@
     "release": "release-it",
     "test": "node --experimental-vm-modules ./node_modules/.bin/jest --testMatch '**/*.test.ts'",
     "test:win": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --roots src/__tests__",
+    "test:e2e:send-receive:debug": "node --expose-gc ./node_modules/jest/bin/jest.js --runInBand --detectOpenHandles --silent --testMatch \"**/send-receive-message.test-e2e.ts\" --testTimeout=120000",
     "test:e2e": "node --experimental-vm-modules ./node_modules/.bin/jest --testMatch '**/*.test-e2e.ts'",
     "update:version": "tsx ./scripts/update-version.ts"
   },

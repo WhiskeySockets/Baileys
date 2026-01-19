@@ -80,8 +80,10 @@ export const getRawMediaUploadData = async (media: WAMediaUpload, mediaType: Med
 			fileLength
 		}
 	} catch (error) {
+		// Guaranteed cleanup: destroy all resources on error
 		fileWriteStream.destroy()
 		stream.destroy()
+		hasher.destroy()
 		try {
 			await fs.unlink(filePath)
 		} catch {
@@ -250,7 +252,12 @@ export async function getAudioWaveform(buffer: Buffer | string | Readable, logge
 			audioData = buffer
 		} else if (typeof buffer === 'string') {
 			const rStream = createReadStream(buffer)
-			audioData = await toBuffer(rStream)
+			// Guaranteed cleanup: destroy stream after use
+			try {
+				audioData = await toBuffer(rStream)
+			} finally {
+				rStream.destroy()
+			}
 		} else {
 			audioData = await toBuffer(buffer)
 		}
@@ -780,19 +787,25 @@ const uploadWithFetch = async ({
 	const nodeStream = createReadStream(filePath)
 	const webStream = Readable.toWeb(nodeStream) as ReadableStream
 
-	const response = await fetch(url, {
-		dispatcher: agent,
-		method: 'POST',
-		body: webStream,
-		headers,
-		duplex: 'half',
-		signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined
-	})
-
+	// Guaranteed cleanup: ensure stream is destroyed on errors
 	try {
-		return (await response.json()) as MediaUploadResult
-	} catch {
-		return undefined
+		const response = await fetch(url, {
+			dispatcher: agent,
+			method: 'POST',
+			body: webStream,
+			headers,
+			duplex: 'half',
+			signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined
+		})
+
+		try {
+			return (await response.json()) as MediaUploadResult
+		} catch {
+			return undefined
+		}
+	} catch (error) {
+		nodeStream.destroy()
+		throw error
 	}
 }
 
