@@ -33,7 +33,7 @@ const getTmpFilesDirectory = () => tmpdir()
 
 const getImageProcessingLibrary = async () => {
 	//@ts-ignore
-	const [jimp, sharp] = await Promise.all([import('jimp').catch(() => {}), import('sharp').catch(() => {})])
+	const [jimp, sharp] = await Promise.all([import('jimp').catch(() => { }), import('sharp').catch(() => { })])
 
 	if (sharp) {
 		return { sharp }
@@ -285,7 +285,7 @@ export async function getAudioWaveform(buffer: Buffer | string | Readable, logge
 }
 
 export const toReadable = (buffer: Buffer) => {
-	const readable = new Readable({ read: () => {} })
+	const readable = new Readable({ read: () => { } })
 	readable.push(buffer)
 	readable.push(null)
 	return readable
@@ -298,7 +298,7 @@ export const toBuffer = async (stream: Readable, maxSize: number = 100 * 1024 * 
 	try {
 		for await (const chunk of stream) {
 			totalSize += chunk.length
-			
+
 			if (totalSize > maxSize) {
 				stream.destroy()
 				throw new Boom(`Stream exceeded maximum size of ${maxSize} bytes`, {
@@ -306,13 +306,13 @@ export const toBuffer = async (stream: Readable, maxSize: number = 100 * 1024 * 
 					data: { maxSize, receivedSize: totalSize }
 				})
 			}
-			
+
 			chunks.push(chunk)
 		}
 
 		stream.destroy()
 		return Buffer.concat(chunks)
-	} catch(error) {
+	} catch (error) {
 		stream.destroy()
 		throw error
 	}

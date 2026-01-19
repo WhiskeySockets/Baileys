@@ -138,7 +138,7 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 				{ cacheSize: historyCache.size, removing: removeCount, targetSize: CLEANUP_TARGET },
 				'History cache cleanup - removing oldest entries (LRU)'
 			)
-			
+
 			// Remove oldest entries (FIFO/LRU approach)
 			for (let i = 0; i < removeCount && historyCacheOrder.length > 0; i++) {
 				const oldestKey = historyCacheOrder.shift()!

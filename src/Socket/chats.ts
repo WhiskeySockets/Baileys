@@ -1048,7 +1048,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		const historyMsg = getHistoryMsg(msg.message!)
 		const shouldProcessHistoryMsg = historyMsg
 			? shouldSyncHistoryMessage(historyMsg) &&
-				PROCESSABLE_HISTORY_TYPES.includes(historyMsg.syncType! as proto.HistorySync.HistorySyncType)
+			PROCESSABLE_HISTORY_TYPES.includes(historyMsg.syncType! as proto.HistorySync.HistorySyncType)
 			: false
 
 		// State machine: decide on sync and flush
@@ -1194,11 +1194,11 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		ws.off('CB:chatstate', handlePresenceUpdate)
 		ws.off('CB:ib,,dirty', dirtyHandler)
 		ev.off('connection.update', connectionHandler)
-		
+
 		if (awaitingSyncTimeout) {
 			clearTimeout(awaitingSyncTimeout)
 		}
-		
+
 		logger.debug('chats event listeners cleaned up')
 	}
 
