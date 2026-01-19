@@ -2,7 +2,8 @@
 import { Boom } from '@hapi/boom'
 import { describe, test } from '@jest/globals'
 import pino from 'pino'
-import makeWASocket, {
+import {
+	makeWASocket,
 	jidNormalizedUser,
 	useMultiFileAuthState,
 } from '../../index'
@@ -29,7 +30,7 @@ describe('WhatsApp Connection Test', () => {
 
 			timeout = setTimeout(() => {
 				cleanup()
-				sock.end(undefined).catch(() => {})
+				sock.end(undefined).catch(() => { })
 				reject(new Error('⏱️  Timeout após 3 minutos'))
 			}, 180000)
 
@@ -104,7 +105,7 @@ describe('WhatsApp Connection Test', () => {
 						console.log('\n🔄 Erro 515: Pairing OK, reconectando em 3s...')
 
 						await new Promise(r => setTimeout(r, 3000))
-						await sock.end(undefined).catch(() => {})
+						await sock.end(undefined).catch(() => { })
 
 						// Recarregar credenciais e criar novo socket
 						const { state: newState, saveCreds: newSaveCreds } = await useMultiFileAuthState('baileys_auth_info')
@@ -121,7 +122,7 @@ describe('WhatsApp Connection Test', () => {
 						isReconnecting = false
 					} else if (statusCode && statusCode !== 515) {
 						cleanup()
-						await sock.end(undefined).catch(() => {})
+						await sock.end(undefined).catch(() => { })
 						reject(new Error(`❌ Erro ${statusCode}: ${lastDisconnect?.error?.message}`))
 					}
 				}
