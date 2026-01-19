@@ -690,7 +690,7 @@ function consolidateEvents(data: BufferedEventData) {
 			messageReceiptList.push({ key, receipt: userReceipt[i]! })
 		}
 	}
-	
+		
 	if (messageReceiptList.length) {
 		map['message-receipt.update'] = messageReceiptList
 	}

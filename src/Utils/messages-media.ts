@@ -681,6 +681,7 @@ export function extensionForMediaMessage(message: WAMessageContent) {
 
 		return slashIdx >= 0 ? cleanMime.substring(slashIdx + 1) : undefined
 	}
+
 	const type = Object.keys(message)[0] as Exclude<MessageType, 'toJSON'>
 	let extension: string
 	if (type === 'locationMessage' || type === 'liveLocationMessage' || type === 'productMessage') {
