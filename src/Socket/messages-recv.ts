@@ -98,7 +98,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			stdTTL: options.stdTTL,
 			useClones: false
 		})
-		
+
 		// Periodic cleanup when size exceeds limit
 		const checkAndCleanup = () => {
 			const keys = cache.keys()
@@ -112,10 +112,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				keys.slice(0, removeCount).forEach(key => cache.del(key))
 			}
 		}
-		
+
 		// Check every 60 seconds
 		const cleanupInterval = setInterval(checkAndCleanup, 60000)
-		
+
 		// Cleanup on set to avoid waiting for interval
 		const originalSet = cache.set.bind(cache)
 		cache.set = (key: string, value: T) => {
@@ -125,19 +125,19 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}
 			return result
 		}
-		
+
 		return { cache, cleanupInterval }
 	}
 
 	const { cache: msgRetryCache, cleanupInterval: msgRetryCleanup } =
-		config.msgRetryCounterCache 
+		config.msgRetryCounterCache
 			? { cache: config.msgRetryCounterCache, cleanupInterval: undefined }
 			: createLimitedCache<number>({
 				stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY,
 				maxKeys: 10000,
 				name: 'msgRetryCache'
 			})
-			
+
 	const { cache: callOfferCache, cleanupInterval: callOfferCleanup } =
 		config.callOfferCache
 			? { cache: config.callOfferCache, cleanupInterval: undefined }
@@ -1601,7 +1601,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await processNode('notification', node, 'handling notification', handleNotification)
 	}
 	ws.on('CB:notification', notificationHandler)
-	
+
 	const badAckHandler = (node: BinaryNode) => {
 		handleBadAck(node).catch(error => onUnexpectedError(error, 'handling bad ack'))
 	}
@@ -1655,23 +1655,23 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		ws.off('CB:receipt', receiptHandler)
 		ws.off('CB:notification', notificationHandler)
 		ws.off('CB:ack,class:message', badAckHandler)
-		
+
 		// Remove event emitter listeners
-		ev.off('call', async () => {})
+		ev.off('call', async () => { })
 		ev.off('connection.update', connectionUpdateListener)
-		
+
 		// Clean up caches
 		msgRetryCache.flushAll()
 		callOfferCache.flushAll()
 		placeholderResendCache.flushAll()
 		identityAssertDebounce.flushAll()
-		
+
 		// Clear cleanup intervals
 		if (msgRetryCleanup) clearInterval(msgRetryCleanup)
 		if (callOfferCleanup) clearInterval(callOfferCleanup)
 		if (placeholderCleanup) clearInterval(placeholderCleanup)
 		if (identityCleanup) clearInterval(identityCleanup)
-		
+
 		logger.debug('messages-recv event listeners and caches cleaned up')
 	}
 
