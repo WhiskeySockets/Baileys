@@ -68,7 +68,17 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		getMessage
 	} = config
 	const sock = makeSocket(config)
-	const { ev, ws, authState, generateMessageTag, sendNode, query, signalRepository, onUnexpectedError } = sock
+	const {
+		ev,
+		ws,
+		authState,
+		generateMessageTag,
+		sendNode,
+		query,
+		signalRepository,
+		onUnexpectedError,
+		registerSocketEndHandler
+	} = sock
 
 	let privacySettings: { [_: string]: string } | undefined
 
@@ -95,10 +105,6 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
 			useClones: false
 		}) as CacheStore)
-
-	if (!config.placeholderResendCache) {
-		config.placeholderResendCache = placeholderResendCache
-	}
 
 	/** helper function to fetch the given app state sync key */
 	const getAppStateSyncKey = async (keyId: string) => {
@@ -1183,6 +1189,20 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				ev.flush()
 			}
 		}, 20_000)
+	})
+
+	registerSocketEndHandler(() => {
+		if (awaitingSyncTimeout) {
+			clearTimeout(awaitingSyncTimeout)
+			awaitingSyncTimeout = undefined
+		}
+
+		if (!config.placeholderResendCache && placeholderResendCache.close) {
+			placeholderResendCache.close()
+		}
+
+		syncState = SyncState.Connecting
+		privacySettings = undefined
 	})
 
 	return {
