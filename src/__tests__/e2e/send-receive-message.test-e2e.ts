@@ -210,7 +210,7 @@ describe('E2E Tests', () => {
 			const totalMemoryIncrease = performanceHistory.reduce((sum, p) => sum + p.metrics.memoryDelta.heapUsed, 0)
 			const totalCpuTime = performanceHistory.reduce((sum, p) => sum + p.metrics.cpuUsage.user + p.metrics.cpuUsage.system, 0)
 			const totalDuration = performanceHistory.reduce((sum, p) => sum + p.metrics.duration, 0)
-			
+
 			// Separar aumentos e reduções
 			const memoryIncreases = performanceHistory.filter(p => p.metrics.memoryDelta.heapUsed > 0)
 			const memoryDecreases = performanceHistory.filter(p => p.metrics.memoryDelta.heapUsed < 0)
@@ -260,17 +260,17 @@ describe('E2E Tests', () => {
 			// Análise de possíveis problemas
 			const highMemoryTests = memoryIncreases.filter(p => p.metrics.memoryDelta.heapUsed > 5 * 1024 * 1024)
 			const slowTests = performanceHistory.filter(p => p.metrics.duration > 500)
-			
+
 			if (highMemoryTests.length > 0 || slowTests.length > 0) {
 				process.stdout.write(`\n⚠️  Análise de Problemas Potenciais:\n`)
-				
+
 				if (highMemoryTests.length > 0) {
 					process.stdout.write(`  • ${highMemoryTests.length} teste(s) com alto consumo de memória (>5MB):\n`)
 					highMemoryTests.forEach(p => {
 						process.stdout.write(`    - ${p.testName}: ${formatBytes(p.metrics.memoryDelta.heapUsed)}\n`)
 					})
 				}
-				
+
 				if (slowTests.length > 0) {
 					process.stdout.write(`  • ${slowTests.length} teste(s) lentos (>500ms):\n`)
 					slowTests.forEach(p => {
