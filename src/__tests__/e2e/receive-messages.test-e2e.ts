@@ -9,10 +9,8 @@ import makeWASocket, {
 	type WAMessage
 } from '../../index'
 
-// Timeout de 5 minutos para teste de recebimento contínuo
 jest.setTimeout(300_000)
 
-// Funções auxiliares para monitoramento de recursos
 interface MemoryMetrics {
 	heapUsed: number
 	heapTotal: number
@@ -116,11 +114,9 @@ function updateMessageStats(stats: MessageStats, messages: WAMessage[]): void {
 	for (const msg of messages) {
 		stats.total++
 
-		// Tipo de mensagem
 		const messageType = Object.keys(msg.message || {})[0] || 'unknown'
 		stats.byType[messageType] = (stats.byType[messageType] || 0) + 1
 
-		// Mensagem com mídia
 		const hasMedia =
 			!!msg.message?.imageMessage ||
 			!!msg.message?.videoMessage ||
@@ -131,7 +127,6 @@ function updateMessageStats(stats: MessageStats, messages: WAMessage[]): void {
 			stats.withMedia++
 		}
 
-		// Origem da mensagem
 		if (msg.key.remoteJid?.endsWith('@g.us')) {
 			stats.fromGroups++
 		} else {
@@ -155,7 +150,6 @@ class PerformanceMonitor {
 		this.messageStats = createEmptyMessageStats()
 		this.peakMemory = getMemoryUsage()
 
-		// Captura snapshot a cada 10 segundos
 		this.snapshotInterval = setInterval(() => {
 			this.captureSnapshot()
 		}, 10000)
@@ -176,7 +170,6 @@ class PerformanceMonitor {
 		const memory = getMemoryUsage()
 		const cpuDelta = this.initialCpu ? process.cpuUsage(this.initialCpu) : process.cpuUsage()
 
-		// Atualizar pico de memória
 		if (!this.peakMemory || memory.heapUsed > this.peakMemory.heapUsed) {
 			this.peakMemory = memory
 		}
@@ -225,12 +218,10 @@ function printReport(report: TestReport): void {
 	process.stdout.write(`📊 RELATÓRIO DE RECEBIMENTO DE MENSAGENS - ${report.testName}\n`)
 	process.stdout.write(`${'='.repeat(100)}\n\n`)
 
-	// Informações gerais
 	process.stdout.write(`⏱️  Duração Total: ${formatDuration(report.duration)}\n`)
 	process.stdout.write(`📅 Início: ${new Date(report.startTime).toLocaleString()}\n`)
 	process.stdout.write(`📅 Fim: ${new Date(report.endTime).toLocaleString()}\n\n`)
 
-	// Estatísticas de mensagens
 	process.stdout.write(`📨 ESTATÍSTICAS DE MENSAGENS\n`)
 	process.stdout.write(`${'─'.repeat(100)}\n`)
 	process.stdout.write(`  Total de mensagens recebidas: ${report.messageStats.total}\n`)
@@ -253,7 +244,6 @@ function printReport(report: TestReport): void {
 		process.stdout.write('\n')
 	}
 
-	// Métricas de memória
 	process.stdout.write(`💾 ANÁLISE DE MEMÓRIA\n`)
 	process.stdout.write(`${'─'.repeat(100)}\n`)
 	process.stdout.write(`  Memória Inicial:\n`)
@@ -282,7 +272,6 @@ function printReport(report: TestReport): void {
 		`    Array Buffers: ${formatBytes(Math.abs(report.memoryDelta.arrayBuffers))} ${report.memoryDelta.arrayBuffers > 0 ? '⬆️' : '⬇️'}\n\n`
 	)
 
-	// Análise de uso de memória
 	if (report.messageStats.total > 0) {
 		const memoryPerMessage = report.memoryDelta.heapUsed / report.messageStats.total
 		process.stdout.write(`  Análise:\n`)
@@ -297,7 +286,6 @@ function printReport(report: TestReport): void {
 		process.stdout.write('\n')
 	}
 
-	// Métricas de CPU
 	process.stdout.write(`💻 USO DE CPU\n`)
 	process.stdout.write(`${'─'.repeat(100)}\n`)
 	process.stdout.write(`  User Time: ${formatMicroseconds(report.cpuUsage.user)}\n`)
@@ -310,7 +298,6 @@ function printReport(report: TestReport): void {
 
 	process.stdout.write('\n')
 
-	// Histórico de snapshots
 	if (report.snapshots.length > 1) {
 		process.stdout.write(`📈 HISTÓRICO DE MONITORAMENTO (${report.snapshots.length} snapshots)\n`)
 		process.stdout.write(`${'─'.repeat(100)}\n`)
@@ -331,14 +318,12 @@ function printReport(report: TestReport): void {
 		process.stdout.write('\n')
 	}
 
-	// Análise final
 	process.stdout.write(`🔍 ANÁLISE GERAL\n`)
 	process.stdout.write(`${'─'.repeat(100)}\n`)
 
 	const warnings: string[] = []
 	const success: string[] = []
 
-	// Verificações
 	if (report.memoryDelta.heapUsed > 100 * 1024 * 1024) {
 		warnings.push(`Vazamento de memória suspeito: +${formatBytes(report.memoryDelta.heapUsed)}`)
 	} else if (report.memoryDelta.heapUsed < 0) {
@@ -435,7 +420,6 @@ describe('E2E Receive Messages Tests', () => {
 		monitor = new PerformanceMonitor()
 		monitor.start()
 
-		// Listener de mensagens
 		const messageListener = (update: BaileysEventMap['messages.upsert']) => {
 			const { messages, type } = update
 			console.log(`📨 [${type}] Recebidas ${messages.length} mensagem(ns)`)
@@ -452,21 +436,16 @@ describe('E2E Receive Messages Tests', () => {
 
 		sock.ev.on('messages.upsert', messageListener)
 
-		// Aguardar o tempo de teste
 		await new Promise(resolve => setTimeout(resolve, testDuration))
 
-		// Remover listener
 		sock.ev.off('messages.upsert', messageListener)
 
 		monitor.stop()
 
-		// Gerar relatório
 		const report = monitor.getReport('Monitor 2 Minutes', initialMemory)
 		printReport(report)
 
-		// Asserções
 		expect(sock.user).toBeDefined()
-		// Não falhamos se não recebemos mensagens, apenas alertamos no relatório
 	})
 
 	test('Monitor message receiving for 5 minutes with detailed tracking', async () => {
@@ -482,7 +461,6 @@ describe('E2E Receive Messages Tests', () => {
 
 		let messageCount = 0
 
-		// Listener de mensagens com mais detalhes
 		const messageListener = (update: BaileysEventMap['messages.upsert']) => {
 			const { messages, type } = update
 			messageCount += messages.length
@@ -491,7 +469,6 @@ describe('E2E Receive Messages Tests', () => {
 
 			monitor.onMessagesReceived(messages)
 
-			// Log periódico de memória a cada 50 mensagens
 			if (messageCount % 50 === 0) {
 				const currentMemory = getMemoryUsage()
 				console.log(`   💾 Heap atual: ${formatBytes(currentMemory.heapUsed)}`)
@@ -500,19 +477,15 @@ describe('E2E Receive Messages Tests', () => {
 
 		sock.ev.on('messages.upsert', messageListener)
 
-		// Aguardar o tempo de teste
 		await new Promise(resolve => setTimeout(resolve, testDuration))
 
-		// Remover listener
 		sock.ev.off('messages.upsert', messageListener)
 
 		monitor.stop()
 
-		// Gerar relatório
 		const report = monitor.getReport('Monitor 5 Minutes Extended', initialMemory)
 		printReport(report)
 
-		// Asserções
 		expect(sock.user).toBeDefined()
 	})
 })

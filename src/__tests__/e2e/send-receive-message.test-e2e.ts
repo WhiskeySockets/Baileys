@@ -14,8 +14,6 @@ import makeWASocket, {
 } from '../../index'
 
 jest.setTimeout(30_000)
-
-// Funções auxiliares para monitoramento de recursos
 interface MemoryMetrics {
 	heapUsed: number
 	heapTotal: number
@@ -77,7 +75,6 @@ function logPerformanceMetrics(testName: string, metrics: PerformanceMetrics): v
 	console.log(`  System: ${(metrics.cpuUsage.system / 1000).toFixed(2)}ms`)
 	console.log(`  Total: ${((metrics.cpuUsage.user + metrics.cpuUsage.system) / 1000).toFixed(2)}ms`)
 
-	// Detecção de possível vazamento
 	if (metrics.memoryDelta.heapUsed > 10 * 1024 * 1024) {
 		// Mais de 10MB
 		console.log(`\n⚠️  AVISO: Aumento significativo no uso de memória (${formatBytes(metrics.memoryDelta.heapUsed)})`)
@@ -89,7 +86,6 @@ async function measurePerformance<T>(
 	operation: () => Promise<T>,
 	history?: Array<{ testName: string; metrics: PerformanceMetrics }>
 ): Promise<T> {
-	// Força coleta de lixo se disponível
 	if (global.gc) {
 		global.gc()
 	}
@@ -119,7 +115,6 @@ async function measurePerformance<T>(
 
 	logPerformanceMetrics(testName, metrics)
 
-	// Adicionar ao histórico se fornecido
 	if (history) {
 		history.push({ testName, metrics })
 	}
@@ -133,11 +128,9 @@ describe('E2E Tests', () => {
 	let meLid: string | undefined
 	let groupJid: string | undefined
 
-	// Rastreamento de performance global
 	const performanceHistory: Array<{ testName: string; metrics: PerformanceMetrics }> = []
 	let initialMemory: MemoryMetrics
 
-	// Wrapper para medir performance e armazenar histórico
 	async function measureTest<T>(testName: string, operation: () => Promise<T>): Promise<T> {
 		return measurePerformance(testName, operation, performanceHistory)
 	}
@@ -198,7 +191,6 @@ describe('E2E Tests', () => {
 
 		const finalMemory = getMemoryUsage()
 
-		// Relatório final de performance
 		if (performanceHistory.length > 0) {
 			process.stdout.write(`\n\n${'='.repeat(80)}\n`)
 			process.stdout.write(`📊 RELATÓRIO FINAL DE PERFORMANCE\n`)
@@ -225,7 +217,6 @@ describe('E2E Tests', () => {
 			)
 			const totalDuration = performanceHistory.reduce((sum, p) => sum + p.metrics.duration, 0)
 
-			// Separar aumentos e reduções
 			const memoryIncreases = performanceHistory.filter(p => p.metrics.memoryDelta.heapUsed > 0)
 			const memoryDecreases = performanceHistory.filter(p => p.metrics.memoryDelta.heapUsed < 0)
 			const totalIncrease = memoryIncreases.reduce((sum, p) => sum + p.metrics.memoryDelta.heapUsed, 0)
@@ -258,7 +249,6 @@ describe('E2E Tests', () => {
 				)
 			})
 
-			// Identificar testes com maior consumo (apenas positivos)
 			const sortedByMemoryIncrease = memoryIncreases.sort(
 				(a, b) => b.metrics.memoryDelta.heapUsed - a.metrics.memoryDelta.heapUsed
 			)
@@ -284,7 +274,6 @@ describe('E2E Tests', () => {
 				process.stdout.write(`  ${idx + 1}. ${p.testName}: ${p.metrics.duration.toFixed(2)}ms\n`)
 			})
 
-			// Análise de possíveis problemas
 			const highMemoryTests = memoryIncreases.filter(p => p.metrics.memoryDelta.heapUsed > 5 * 1024 * 1024)
 			const slowTests = performanceHistory.filter(p => p.metrics.duration > 500)
 

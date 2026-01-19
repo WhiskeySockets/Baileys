@@ -617,7 +617,6 @@ function consolidateEvents(data: BufferedEventData) {
 	const map: BaileysEventData = {}
 
 	if (!data.historySets.empty) {
-		// Otimizado: Cache Object.values() em variáveis para evitar chamadas duplicadas
 		const historyChats = Object.values(data.historySets.chats)
 		const historyMessages = Object.values(data.historySets.messages)
 		const historyContacts = Object.values(data.historySets.contacts)
@@ -666,8 +665,6 @@ function consolidateEvents(data: BufferedEventData) {
 		map['messages.delete'] = { keys: messageDeleteList }
 	}
 
-	// Otimizado: Loop direto for...in em vez de Object.values().flatMap() (2x flatMap = O(3N) → O(N))
-	// Reduz alocações de arrays temporários e melhora throughput em mensagens com reações
 	const messageReactionList: Array<{ key: WAMessageKey; reaction: proto.IReaction }> = []
 	for (const id in data.messageReactions) {
 		if (!Object.hasOwnProperty.call(data.messageReactions, id)) continue
@@ -681,7 +678,6 @@ function consolidateEvents(data: BufferedEventData) {
 		map['messages.reaction'] = messageReactionList
 	}
 
-	// Otimizado: Loop direto for...in em vez de Object.values().flatMap()
 	const messageReceiptList: Array<{ key: WAMessageKey; receipt: proto.IUserReceipt }> = []
 	for (const id in data.messageReceipts) {
 		if (!Object.hasOwnProperty.call(data.messageReceipts, id)) continue

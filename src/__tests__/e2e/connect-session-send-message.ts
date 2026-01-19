@@ -27,7 +27,6 @@ describe('WhatsApp Connection Test', () => {
 				clearTimeout(timeout)
 			}
 
-			// Handler de conexão
 			const handleConnection = async (update: any) => {
 				const { connection, qr, lastDisconnect } = update
 
@@ -48,14 +47,12 @@ describe('WhatsApp Connection Test', () => {
 					console.log('\n✅ CONECTADO!')
 					console.log('👤 Usuário:', sock.user)
 
-					// Aguardar sincronização inicial do WhatsApp
 					console.log('\n⏳ Aguardando 5 segundos para sincronização...')
 					await new Promise(r => setTimeout(r, 5000))
 
 					// Testar envio de mensagem
 					try {
-						// Enviar mensagem para o próprio número (mensagem para si mesmo)
-						//const myJid = sock.user?.id
+						
 						const meJid = jidNormalizedUser(sock.user?.id)
 
 						if (meJid) {
@@ -76,7 +73,6 @@ describe('WhatsApp Connection Test', () => {
 							console.log('✅ Mensagem enviada com sucesso!')
 							console.log('📝 ID da mensagem:', result?.key?.id)
 
-							// Aguardar para garantir que a mensagem foi processada
 							await new Promise(r => setTimeout(r, 2000))
 						}
 					} catch (error: any) {
@@ -92,7 +88,6 @@ describe('WhatsApp Connection Test', () => {
 				if (connection === 'close') {
 					const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode
 
-					// Erro 515 = Pairing concluído, precisa reconectar
 					if (statusCode === 515 && !isReconnecting) {
 						isReconnecting = true
 						console.log('\n🔄 Erro 515: Pairing OK, reconectando em 3s...')
