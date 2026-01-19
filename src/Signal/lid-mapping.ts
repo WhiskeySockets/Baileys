@@ -125,6 +125,7 @@ export class LIDMappingStore {
 				if (!addResolvedPair(pn, decoded, cached)) {
 					return null
 				}
+
 				continue
 			}
 
