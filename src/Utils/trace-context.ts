@@ -554,11 +554,14 @@ export function extractTraceHeaders(headers: Record<string, string | undefined>)
 	}
 
 	// Parse baggage
-	if (headers[TRACE_HEADERS.BAGGAGE]) {
+	const baggageHeader = headers[TRACE_HEADERS.BAGGAGE]
+	if (baggageHeader) {
 		options.baggage = {}
-		const pairs = headers[TRACE_HEADERS.BAGGAGE].split(',')
+		const pairs = baggageHeader.split(',')
 		for (const pair of pairs) {
-			const [key, value] = pair.split('=')
+			const parts = pair.split('=')
+			const key = parts[0]
+			const value = parts[1]
 			if (key && value) {
 				options.baggage[key.trim()] = decodeURIComponent(value.trim())
 			}

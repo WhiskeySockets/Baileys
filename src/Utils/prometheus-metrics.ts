@@ -566,7 +566,7 @@ export class Summary implements BaseMetric {
  * Metrics registry
  */
 export class MetricsRegistry {
-	private metrics: Map<string, Counter | Gauge | Histogram | Summary> = new Map()
+	private metricsMap: Map<string, Counter | Gauge | Histogram | Summary> = new Map()
 	private prefix: string
 	private defaultLabels: Labels
 
@@ -580,7 +580,7 @@ export class MetricsRegistry {
 	 */
 	register<T extends Counter | Gauge | Histogram | Summary>(metric: T): T {
 		const fullName = this.prefix ? `${this.prefix}_${metric.name}` : metric.name
-		this.metrics.set(fullName, metric)
+		this.metricsMap.set(fullName, metric)
 		return metric
 	}
 
@@ -589,7 +589,7 @@ export class MetricsRegistry {
 	 */
 	get(name: string): Counter | Gauge | Histogram | Summary | undefined {
 		const fullName = this.prefix ? `${this.prefix}_${name}` : name
-		return this.metrics.get(fullName)
+		return this.metricsMap.get(fullName)
 	}
 
 	/**
@@ -597,14 +597,14 @@ export class MetricsRegistry {
 	 */
 	remove(name: string): boolean {
 		const fullName = this.prefix ? `${this.prefix}_${name}` : name
-		return this.metrics.delete(fullName)
+		return this.metricsMap.delete(fullName)
 	}
 
 	/**
 	 * Reset all metrics
 	 */
 	resetAll(): void {
-		for (const metric of this.metrics.values()) {
+		for (const metric of this.metricsMap.values()) {
 			metric.reset()
 		}
 	}
@@ -615,7 +615,7 @@ export class MetricsRegistry {
 	async metrics(): Promise<string> {
 		const lines: string[] = []
 
-		for (const [name, metric] of this.metrics) {
+		for (const [name, metric] of this.metricsMap) {
 			lines.push(`# HELP ${name} ${metric.help}`)
 			lines.push(`# TYPE ${name} ${metric.type}`)
 
