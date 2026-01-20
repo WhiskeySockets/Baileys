@@ -16,6 +16,7 @@
 import { EventEmitter } from 'events'
 import { metrics } from './prometheus-metrics.js'
 import type { CircuitBreaker } from './circuit-breaker.js'
+import { RETRY_BACKOFF_DELAYS, RETRY_JITTER_FACTOR } from '../Defaults/index.js'
 
 /**
  * Backoff strategies
@@ -631,6 +632,41 @@ export const retryConfigs = {
 		jitter: 0.1,
 		shouldRetry: retryPredicates.onNetworkError,
 	},
+
+	/**
+	 * RSocket-style retry (uses RETRY_BACKOFF_DELAYS from Defaults)
+	 * Delays: 1s, 2s, 5s, 10s, 20s with jitter
+	 */
+	rsocket: {
+		maxAttempts: RETRY_BACKOFF_DELAYS.length,
+		baseDelay: RETRY_BACKOFF_DELAYS[0],
+		maxDelay: RETRY_BACKOFF_DELAYS[RETRY_BACKOFF_DELAYS.length - 1],
+		backoffStrategy: 'exponential' as const,
+		jitter: RETRY_JITTER_FACTOR,
+	},
+}
+
+/**
+ * Get retry delay with jitter applied
+ * Uses RETRY_BACKOFF_DELAYS and RETRY_JITTER_FACTOR from Defaults
+ *
+ * @param attempt - Current attempt number (1-based)
+ * @returns Delay in ms with jitter applied
+ */
+export function getRetryDelayWithJitter(attempt: number): number {
+	const index = Math.min(Math.max(attempt - 1, 0), RETRY_BACKOFF_DELAYS.length - 1)
+	const baseDelay = RETRY_BACKOFF_DELAYS[index] ?? RETRY_BACKOFF_DELAYS[0] ?? 1000
+	const jitterRange = baseDelay * RETRY_JITTER_FACTOR
+	const jitter = (Math.random() * 2 - 1) * jitterRange // ±15%
+	return Math.round(baseDelay + jitter)
+}
+
+/**
+ * Get all retry delays with jitter for planning
+ * @returns Array of delays with jitter applied
+ */
+export function getAllRetryDelaysWithJitter(): number[] {
+	return RETRY_BACKOFF_DELAYS.map((_, i) => getRetryDelayWithJitter(i + 1))
 }
 
 export default retry
