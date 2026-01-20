@@ -24,6 +24,7 @@ import { toNumber } from './generics'
 import type { ILogger } from './logger'
 import { LT_HASH_ANTI_TAMPERING } from './lt-hash'
 import { downloadContentFromMessage } from './messages-media'
+import { emitSyncActionResults, processContactAction } from './sync-action-utils'
 
 type FetchAppStateSyncKey = (keyId: string) => Promise<proto.Message.IAppStateSyncKeyData | null | undefined>
 
@@ -832,14 +833,8 @@ export const processSyncAction = (
 			]
 		})
 	} else if (action?.contactAction) {
-		ev.emit('contacts.upsert', [
-			{
-				id: id!,
-				name: action.contactAction.fullName!,
-				lid: action.contactAction.lidJid || undefined,
-				phoneNumber: action.contactAction.pnJid || undefined
-			}
-		])
+		const results = processContactAction(action.contactAction, id, logger)
+		emitSyncActionResults(ev, results)
 	} else if (action?.pushNameSetting) {
 		const name = action?.pushNameSetting?.name
 		if (name && me?.name !== name) {
@@ -935,7 +930,7 @@ export const processSyncAction = (
 		ev.emit('contacts.upsert', [
 			{
 				id: id!,
-				name: action.lidContactAction.fullName!,
+				name: action.lidContactAction.fullName || undefined,
 				lid: id!,
 				phoneNumber: undefined
 			}
