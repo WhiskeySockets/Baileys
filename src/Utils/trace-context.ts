@@ -1,153 +1,154 @@
 /**
- * @fileoverview Contexto de rastreamento para requests
- * @module Utils/trace-context
+ * Request Tracing Context
  *
- * Fornece:
- * - Geração de trace IDs únicos
- * - Context propagation entre operações
- * - Correlation IDs para rastrear requests
+ * Provides:
+ * - Unique trace ID generation
+ * - Context propagation between operations
+ * - Correlation IDs for request tracking
  * - Performance timing
- * - Span tracking para operações aninhadas
- * - Baggage para dados contextuais
+ * - Span tracking for nested operations
+ * - Baggage for contextual data
+ *
+ * @module Utils/trace-context
  */
 
 import { randomBytes } from 'crypto'
 import { AsyncLocalStorage } from 'async_hooks'
 
 /**
- * Identificadores de trace
+ * Trace identifiers
  */
 export interface TraceIds {
-	/** ID único do trace (16 bytes hex) */
+	/** Unique trace ID (16 bytes hex) */
 	traceId: string
-	/** ID do span atual (8 bytes hex) */
+	/** Current span ID (8 bytes hex) */
 	spanId: string
-	/** ID do span pai (opcional) */
+	/** Parent span ID (optional) */
 	parentSpanId?: string
-	/** ID de correlação para logging */
+	/** Correlation ID for logging */
 	correlationId: string
 }
 
 /**
- * Dados de baggage (contexto propagado)
+ * Baggage data (propagated context)
  */
 export type Baggage = Record<string, string | number | boolean>
 
 /**
- * Status de um span
+ * Span status
  */
 export type SpanStatus = 'unset' | 'ok' | 'error'
 
 /**
- * Span representa uma unidade de trabalho
+ * Span represents a unit of work
  */
 export interface Span {
-	/** Nome da operação */
+	/** Operation name */
 	name: string
-	/** IDs de rastreamento */
+	/** Trace identifiers */
 	traceIds: TraceIds
-	/** Timestamp de início (ms) */
+	/** Start timestamp (ms) */
 	startTime: number
-	/** Timestamp de fim (ms) */
+	/** End timestamp (ms) */
 	endTime?: number
-	/** Duração em ms */
+	/** Duration in ms */
 	duration?: number
-	/** Status do span */
+	/** Span status */
 	status: SpanStatus
-	/** Atributos do span */
+	/** Span attributes */
 	attributes: Record<string, unknown>
-	/** Eventos ocorridos durante o span */
+	/** Events occurred during the span */
 	events: SpanEvent[]
-	/** Se o span está finalizado */
+	/** Whether the span has ended */
 	ended: boolean
 }
 
 /**
- * Evento dentro de um span
+ * Event within a span
  */
 export interface SpanEvent {
-	/** Nome do evento */
+	/** Event name */
 	name: string
-	/** Timestamp do evento */
+	/** Event timestamp */
 	timestamp: number
-	/** Atributos do evento */
+	/** Event attributes */
 	attributes?: Record<string, unknown>
 }
 
 /**
- * Contexto completo de trace
+ * Complete trace context
  */
 export interface TraceContext {
-	/** IDs de rastreamento */
+	/** Trace identifiers */
 	traceIds: TraceIds
-	/** Baggage (dados propagados) */
+	/** Baggage (propagated data) */
 	baggage: Baggage
-	/** Span atual */
+	/** Current span */
 	currentSpan?: Span
-	/** Stack de spans (para spans aninhados) */
+	/** Span stack (for nested spans) */
 	spanStack: Span[]
-	/** Timestamp de criação do contexto */
+	/** Context creation timestamp */
 	createdAt: number
-	/** Metadados adicionais */
+	/** Additional metadata */
 	metadata: Record<string, unknown>
 }
 
 /**
- * Opções para criar um novo contexto
+ * Options for creating a new context
  */
 export interface CreateContextOptions {
-	/** Trace ID existente (para propagação) */
+	/** Existing trace ID (for propagation) */
 	traceId?: string
 	/** Parent span ID */
 	parentSpanId?: string
-	/** Correlation ID existente */
+	/** Existing correlation ID */
 	correlationId?: string
-	/** Baggage inicial */
+	/** Initial baggage */
 	baggage?: Baggage
-	/** Metadados iniciais */
+	/** Initial metadata */
 	metadata?: Record<string, unknown>
 }
 
 /**
- * Opções para criar um span
+ * Options for creating a span
  */
 export interface CreateSpanOptions {
-	/** Nome do span */
+	/** Span name */
 	name: string
-	/** Atributos iniciais */
+	/** Initial attributes */
 	attributes?: Record<string, unknown>
-	/** Se deve ser filho do span atual */
+	/** Whether to be a child of the current span */
 	asChild?: boolean
 }
 
 /**
- * Storage assíncrono para contexto de trace
+ * Async storage for trace context
  */
 const traceStorage = new AsyncLocalStorage<TraceContext>()
 
 /**
- * Gera um ID hexadecimal aleatório
+ * Generate a random hexadecimal ID
  */
 function generateId(bytes: number): string {
 	return randomBytes(bytes).toString('hex')
 }
 
 /**
- * Gera um trace ID (16 bytes = 32 chars hex)
+ * Generate a trace ID (16 bytes = 32 chars hex)
  */
 export function generateTraceId(): string {
 	return generateId(16)
 }
 
 /**
- * Gera um span ID (8 bytes = 16 chars hex)
+ * Generate a span ID (8 bytes = 16 chars hex)
  */
 export function generateSpanId(): string {
 	return generateId(8)
 }
 
 /**
- * Gera um correlation ID mais legível
+ * Generate a more readable correlation ID
  */
 export function generateCorrelationId(): string {
 	const timestamp = Date.now().toString(36)
@@ -156,7 +157,7 @@ export function generateCorrelationId(): string {
 }
 
 /**
- * Cria um novo contexto de trace
+ * Create a new trace context
  */
 export function createTraceContext(options: CreateContextOptions = {}): TraceContext {
 	const traceId = options.traceId || generateTraceId()
@@ -178,14 +179,14 @@ export function createTraceContext(options: CreateContextOptions = {}): TraceCon
 }
 
 /**
- * Obtém o contexto de trace atual
+ * Get the current trace context
  */
 export function getCurrentContext(): TraceContext | undefined {
 	return traceStorage.getStore()
 }
 
 /**
- * Obtém o contexto de trace atual ou cria um novo
+ * Get the current trace context or create a new one
  */
 export function getOrCreateContext(): TraceContext {
 	const existing = getCurrentContext()
@@ -196,14 +197,14 @@ export function getOrCreateContext(): TraceContext {
 }
 
 /**
- * Executa função com contexto de trace
+ * Execute function with trace context
  */
 export function runWithContext<T>(context: TraceContext, fn: () => T): T {
 	return traceStorage.run(context, fn)
 }
 
 /**
- * Executa função com novo contexto de trace
+ * Execute function with new trace context
  */
 export function runWithNewContext<T>(options: CreateContextOptions, fn: () => T): T {
 	const context = createTraceContext(options)
@@ -211,7 +212,7 @@ export function runWithNewContext<T>(options: CreateContextOptions, fn: () => T)
 }
 
 /**
- * Executa função assíncrona com contexto de trace
+ * Execute async function with trace context
  */
 export async function runWithContextAsync<T>(
 	context: TraceContext,
@@ -221,7 +222,7 @@ export async function runWithContextAsync<T>(
 }
 
 /**
- * Cria um novo span
+ * Create a new span
  */
 export function createSpan(options: CreateSpanOptions): Span {
 	const context = getCurrentContext()
@@ -246,13 +247,13 @@ export function createSpan(options: CreateSpanOptions): Span {
 }
 
 /**
- * Inicia um span no contexto atual
+ * Start a span in the current context
  */
 export function startSpan(options: CreateSpanOptions): Span {
 	const context = getOrCreateContext()
 	const span = createSpan({ ...options, asChild: true })
 
-	// Push span atual para stack e define novo como atual
+	// Push current span to stack and set new one as current
 	if (context.currentSpan) {
 		context.spanStack.push(context.currentSpan)
 	}
@@ -262,7 +263,7 @@ export function startSpan(options: CreateSpanOptions): Span {
 }
 
 /**
- * Finaliza um span
+ * End a span
  */
 export function endSpan(span: Span, status?: SpanStatus): void {
 	if (span.ended) {
@@ -274,7 +275,7 @@ export function endSpan(span: Span, status?: SpanStatus): void {
 	span.status = status || 'ok'
 	span.ended = true
 
-	// Pop span do stack no contexto
+	// Pop span from stack in context
 	const context = getCurrentContext()
 	if (context && context.currentSpan === span) {
 		context.currentSpan = context.spanStack.pop()
@@ -282,7 +283,7 @@ export function endSpan(span: Span, status?: SpanStatus): void {
 }
 
 /**
- * Adiciona evento a um span
+ * Add event to a span
  */
 export function addSpanEvent(span: Span, name: string, attributes?: Record<string, unknown>): void {
 	if (span.ended) {
@@ -297,7 +298,7 @@ export function addSpanEvent(span: Span, name: string, attributes?: Record<strin
 }
 
 /**
- * Define atributos em um span
+ * Set attributes on a span
  */
 export function setSpanAttributes(span: Span, attributes: Record<string, unknown>): void {
 	if (span.ended) {
@@ -308,7 +309,7 @@ export function setSpanAttributes(span: Span, attributes: Record<string, unknown
 }
 
 /**
- * Marca span como erro
+ * Mark span as error
  */
 export function setSpanError(span: Span, error: Error): void {
 	if (span.ended) {
@@ -330,7 +331,7 @@ export function setSpanError(span: Span, error: Error): void {
 }
 
 /**
- * Decorator para rastrear função automaticamente
+ * Decorator for automatic function tracing
  */
 export function traced(name?: string) {
 	return function <T extends (...args: unknown[]) => unknown>(
@@ -378,7 +379,7 @@ export function traced(name?: string) {
 }
 
 /**
- * Wrapper para rastrear função
+ * Wrapper for tracing a function
  */
 export function traceFunction<T extends (...args: unknown[]) => unknown>(
 	name: string,
@@ -414,7 +415,7 @@ export function traceFunction<T extends (...args: unknown[]) => unknown>(
 }
 
 /**
- * Executa operação com span automático
+ * Execute operation with automatic span
  */
 export async function withSpan<T>(
 	name: string,
@@ -435,7 +436,7 @@ export async function withSpan<T>(
 }
 
 /**
- * Executa operação síncrona com span automático
+ * Execute sync operation with automatic span
  */
 export function withSpanSync<T>(
 	name: string,
@@ -455,10 +456,10 @@ export function withSpanSync<T>(
 	}
 }
 
-// === Gerenciamento de Baggage ===
+// === Baggage Management ===
 
 /**
- * Define item no baggage
+ * Set item in baggage
  */
 export function setBaggage(key: string, value: string | number | boolean): void {
 	const context = getCurrentContext()
@@ -468,7 +469,7 @@ export function setBaggage(key: string, value: string | number | boolean): void 
 }
 
 /**
- * Obtém item do baggage
+ * Get item from baggage
  */
 export function getBaggage(key: string): string | number | boolean | undefined {
 	const context = getCurrentContext()
@@ -476,7 +477,7 @@ export function getBaggage(key: string): string | number | boolean | undefined {
 }
 
 /**
- * Obtém todo o baggage
+ * Get all baggage
  */
 export function getAllBaggage(): Baggage {
 	const context = getCurrentContext()
@@ -484,7 +485,7 @@ export function getAllBaggage(): Baggage {
 }
 
 /**
- * Remove item do baggage
+ * Remove item from baggage
  */
 export function removeBaggage(key: string): void {
 	const context = getCurrentContext()
@@ -493,10 +494,10 @@ export function removeBaggage(key: string): void {
 	}
 }
 
-// === Utilitários de Headers ===
+// === Header Utilities ===
 
 /**
- * Headers padrão para propagação de trace
+ * Standard headers for trace propagation
  */
 export const TRACE_HEADERS = {
 	TRACE_ID: 'x-trace-id',
@@ -507,7 +508,7 @@ export const TRACE_HEADERS = {
 } as const
 
 /**
- * Injeta contexto em headers HTTP
+ * Inject context into HTTP headers
  */
 export function injectTraceHeaders(headers: Record<string, string>): Record<string, string> {
 	const context = getCurrentContext()
@@ -524,7 +525,7 @@ export function injectTraceHeaders(headers: Record<string, string>): Record<stri
 		result[TRACE_HEADERS.PARENT_SPAN_ID] = context.traceIds.parentSpanId
 	}
 
-	// Baggage como lista de key=value
+	// Baggage as key=value list
 	if (Object.keys(context.baggage).length > 0) {
 		result[TRACE_HEADERS.BAGGAGE] = Object.entries(context.baggage)
 			.map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`)
@@ -535,7 +536,7 @@ export function injectTraceHeaders(headers: Record<string, string>): Record<stri
 }
 
 /**
- * Extrai contexto de headers HTTP
+ * Extract context from HTTP headers
  */
 export function extractTraceHeaders(headers: Record<string, string | undefined>): CreateContextOptions {
 	const options: CreateContextOptions = {}
@@ -568,7 +569,7 @@ export function extractTraceHeaders(headers: Record<string, string | undefined>)
 }
 
 /**
- * Exporta trace context para serialização
+ * Export trace context for serialization
  */
 export function exportContext(context: TraceContext): string {
 	return JSON.stringify({
@@ -579,7 +580,7 @@ export function exportContext(context: TraceContext): string {
 }
 
 /**
- * Importa trace context de string serializada
+ * Import trace context from serialized string
  */
 export function importContext(serialized: string): CreateContextOptions {
 	try {
@@ -599,19 +600,19 @@ export function importContext(serialized: string): CreateContextOptions {
 // === Timer Utilities ===
 
 /**
- * Timer de alta precisão
+ * High precision timer
  */
 export interface PrecisionTimer {
-	/** Retorna tempo decorrido em milliseconds */
+	/** Return elapsed time in milliseconds */
 	elapsed(): number
-	/** Retorna tempo decorrido formatado */
+	/** Return formatted elapsed time */
 	elapsedFormatted(): string
-	/** Para o timer e retorna duração */
+	/** Stop the timer and return duration */
 	stop(): number
 }
 
 /**
- * Cria um timer de alta precisão
+ * Create a high precision timer
  */
 export function createPrecisionTimer(): PrecisionTimer {
 	const start = process.hrtime.bigint()

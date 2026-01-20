@@ -1,60 +1,61 @@
 /**
- * @fileoverview Logger customizado específico para Baileys
- * @module Utils/baileys-logger
+ * Custom Logger for Baileys/WhatsApp
  *
- * Fornece:
- * - Logger pré-configurado para contexto Baileys/WhatsApp
- * - Categorização de eventos por tipo (connection, message, media, etc.)
- * - Filtros específicos para reduzir ruído
- * - Métricas de eventos WhatsApp
- * - Formatação otimizada para debugging
+ * Provides:
+ * - Pre-configured logger for Baileys/WhatsApp context
+ * - Event categorization by type (connection, message, media, etc.)
+ * - Specific filters to reduce noise
+ * - WhatsApp event metrics
+ * - Optimized formatting for debugging
+ *
+ * @module Utils/baileys-logger
  */
 
 import type { ILogger } from './logger.js'
 import { StructuredLogger, createStructuredLogger, type LogLevel, type LogEntry } from './structured-logger.js'
 
 /**
- * Categorias de log específicas do Baileys
+ * Baileys-specific log categories
  */
 export type BaileysLogCategory =
-	| 'connection'    // Eventos de conexão WebSocket
-	| 'auth'          // Autenticação e QR code
-	| 'message'       // Envio/recebimento de mensagens
-	| 'media'         // Upload/download de mídia
-	| 'group'         // Operações de grupo
-	| 'presence'      // Status de presença
-	| 'call'          // Chamadas de voz/vídeo
-	| 'sync'          // Sincronização de dados
-	| 'encryption'    // Operações de criptografia
-	| 'retry'         // Retentativas de operações
-	| 'socket'        // Eventos de socket baixo nível
-	| 'binary'        // Codificação/decodificação binária
-	| 'unknown'       // Categoria desconhecida
+	| 'connection'    // WebSocket connection events
+	| 'auth'          // Authentication and QR code
+	| 'message'       // Message send/receive
+	| 'media'         // Media upload/download
+	| 'group'         // Group operations
+	| 'presence'      // Presence status
+	| 'call'          // Voice/video calls
+	| 'sync'          // Data synchronization
+	| 'encryption'    // Encryption operations
+	| 'retry'         // Operation retries
+	| 'socket'        // Low-level socket events
+	| 'binary'        // Binary encoding/decoding
+	| 'unknown'       // Unknown category
 
 /**
- * Configuração do Baileys Logger
+ * Baileys Logger configuration
  */
 export interface BaileysLoggerConfig {
-	/** Nível de log padrão */
+	/** Default log level */
 	level: LogLevel
-	/** Categorias a serem ignoradas */
+	/** Categories to ignore */
 	ignoredCategories?: BaileysLogCategory[]
-	/** Categorias com nível de log elevado (debug sempre) */
+	/** Categories with elevated log level (always debug) */
 	verboseCategories?: BaileysLogCategory[]
-	/** Se deve logar payloads de mensagens (pode ser sensível) */
+	/** Whether to log message payloads (may be sensitive) */
 	logMessagePayloads?: boolean
-	/** Se deve logar dados binários em hex */
+	/** Whether to log binary data in hex */
 	logBinaryData?: boolean
-	/** Prefixo para identificar instância */
+	/** Instance identifier prefix */
 	instanceId?: string
-	/** Handler para eventos específicos */
+	/** Handler for specific events */
 	eventHandler?: (category: BaileysLogCategory, entry: LogEntry) => void
-	/** Limite de tamanho para payloads logados (bytes) */
+	/** Size limit for logged payloads (bytes) */
 	maxPayloadSize?: number
 }
 
 /**
- * Métricas específicas do Baileys
+ * Baileys-specific metrics
  */
 export interface BaileysLoggerMetrics {
 	connectionAttempts: number
@@ -72,7 +73,7 @@ export interface BaileysLoggerMetrics {
 }
 
 /**
- * Padrões para detectar categoria de log
+ * Patterns to detect log category
  */
 const CATEGORY_PATTERNS: Array<{ pattern: RegExp; category: BaileysLogCategory }> = [
 	{ pattern: /connect|disconnect|socket|ws|websocket|open|close/i, category: 'connection' },
@@ -89,7 +90,18 @@ const CATEGORY_PATTERNS: Array<{ pattern: RegExp; category: BaileysLogCategory }
 ]
 
 /**
- * Logger customizado para Baileys
+ * Custom logger for Baileys
+ *
+ * @example
+ * ```typescript
+ * const logger = createBaileysLogger({
+ *   level: 'debug',
+ *   instanceId: 'session-1'
+ * })
+ *
+ * logger.logConnection('connected', { duration: 1500 })
+ * logger.logMessage('send', 'text', 'user@s.whatsapp.net')
+ * ```
  */
 export class BaileysLogger implements ILogger {
 	private structuredLogger: StructuredLogger
@@ -162,7 +174,7 @@ export class BaileysLogger implements ILogger {
 	}
 
 	/**
-	 * Cria logger filho com contexto adicional
+	 * Create child logger with additional context
 	 */
 	child(obj: Record<string, unknown>): BaileysLogger {
 		const childLogger = new BaileysLogger(this.config)
@@ -171,7 +183,7 @@ export class BaileysLogger implements ILogger {
 	}
 
 	/**
-	 * Detecta categoria do log baseado no conteúdo
+	 * Detect log category based on content
 	 */
 	private detectCategory(obj: unknown, msg?: string): BaileysLogCategory {
 		const searchText = [
@@ -190,14 +202,14 @@ export class BaileysLogger implements ILogger {
 	}
 
 	/**
-	 * Verifica se categoria deve ser logada
+	 * Check if category should be logged
 	 */
-	private shouldLogCategory(category: BaileysLogCategory, level: LogLevel): boolean {
+	private shouldLogCategory(category: BaileysLogCategory, _level: LogLevel): boolean {
 		if (this.config.ignoredCategories.includes(category)) {
 			return false
 		}
 
-		// Categorias verbose sempre logam em debug ou superior
+		// Verbose categories always log at debug or higher
 		if (this.config.verboseCategories.includes(category)) {
 			return true
 		}
@@ -206,14 +218,14 @@ export class BaileysLogger implements ILogger {
 	}
 
 	/**
-	 * Sanitiza payload de mensagem
+	 * Sanitize message payload
 	 */
 	private sanitizePayload(obj: unknown): unknown {
 		if (!this.config.logMessagePayloads) {
 			if (typeof obj === 'object' && obj !== null) {
 				const sanitized = { ...(obj as Record<string, unknown>) }
 
-				// Remover campos sensíveis de mensagem
+				// Remove sensitive message fields
 				const sensitiveFields = ['body', 'text', 'content', 'caption', 'payload', 'data']
 				for (const field of sensitiveFields) {
 					if (field in sanitized) {
@@ -230,7 +242,7 @@ export class BaileysLogger implements ILogger {
 			}
 		}
 
-		// Limitar tamanho do payload
+		// Limit payload size
 		if (typeof obj === 'object' && obj !== null) {
 			const str = JSON.stringify(obj)
 			if (str.length > this.config.maxPayloadSize) {
@@ -246,7 +258,7 @@ export class BaileysLogger implements ILogger {
 	}
 
 	/**
-	 * Atualiza métricas baseado no log
+	 * Update metrics based on log
 	 */
 	private updateMetrics(category: BaileysLogCategory, level: LogLevel, obj: unknown): void {
 		const objStr = typeof obj === 'object' ? JSON.stringify(obj) : String(obj)
@@ -296,7 +308,7 @@ export class BaileysLogger implements ILogger {
 	}
 
 	/**
-	 * Método principal de log
+	 * Main log method
 	 */
 	private log(level: LogLevel, obj: unknown, msg?: string): void {
 		const category = this.detectCategory(obj, msg)
@@ -305,13 +317,13 @@ export class BaileysLogger implements ILogger {
 			return
 		}
 
-		// Atualizar métricas
+		// Update metrics
 		this.updateMetrics(category, level, obj)
 
-		// Sanitizar payload
+		// Sanitize payload
 		const sanitizedObj = this.sanitizePayload(obj)
 
-		// Adicionar contexto do Baileys
+		// Add Baileys context
 		const enrichedObj = {
 			category,
 			instanceId: this.config.instanceId,
@@ -319,10 +331,10 @@ export class BaileysLogger implements ILogger {
 			...(typeof sanitizedObj === 'object' && sanitizedObj !== null ? sanitizedObj : { value: sanitizedObj }),
 		}
 
-		// Log estruturado
+		// Structured log
 		this.structuredLogger[level](enrichedObj, msg)
 
-		// Handler de evento
+		// Event handler
 		if (this.config.eventHandler) {
 			const entry: LogEntry = {
 				timestamp: new Date().toISOString(),
@@ -357,7 +369,7 @@ export class BaileysLogger implements ILogger {
 	}
 
 	/**
-	 * Log de conexão específico
+	 * Log connection-specific event
 	 */
 	logConnection(event: 'connecting' | 'connected' | 'disconnected' | 'error', details?: Record<string, unknown>): void {
 		const level: LogLevel = event === 'error' ? 'error' : event === 'disconnected' ? 'warn' : 'info'
@@ -365,7 +377,7 @@ export class BaileysLogger implements ILogger {
 	}
 
 	/**
-	 * Log de mensagem específico
+	 * Log message-specific event
 	 */
 	logMessage(
 		direction: 'send' | 'receive',
@@ -388,7 +400,7 @@ export class BaileysLogger implements ILogger {
 	}
 
 	/**
-	 * Log de mídia específico
+	 * Log media-specific event
 	 */
 	logMedia(
 		operation: 'upload' | 'download',
@@ -411,11 +423,11 @@ export class BaileysLogger implements ILogger {
 	}
 
 	/**
-	 * Sanitiza JID para log (remove parte do número)
+	 * Sanitize JID for logging (mask part of number)
 	 */
 	private sanitizeJid(jid: string): string {
 		if (process.env.NODE_ENV === 'production') {
-			// Em produção, mascara parte do número
+			// In production, mask part of the number
 			const parts = jid.split('@')
 			if (parts.length === 2 && parts[0].length > 4) {
 				return `${parts[0].substring(0, 4)}****@${parts[1]}`
@@ -425,7 +437,7 @@ export class BaileysLogger implements ILogger {
 	}
 
 	/**
-	 * Formata bytes para leitura humana
+	 * Format bytes for human readability
 	 */
 	private formatBytes(bytes: number): string {
 		if (bytes === 0) return '0 B'
@@ -436,21 +448,21 @@ export class BaileysLogger implements ILogger {
 	}
 
 	/**
-	 * Retorna métricas do logger
+	 * Get logger metrics
 	 */
 	getMetrics(): BaileysLoggerMetrics {
 		return { ...this.metrics }
 	}
 
 	/**
-	 * Retorna métricas do structured logger interno
+	 * Get internal structured logger metrics
 	 */
 	getStructuredMetrics() {
 		return this.structuredLogger.getMetrics()
 	}
 
 	/**
-	 * Reseta métricas
+	 * Reset metrics
 	 */
 	resetMetrics(): void {
 		this.metrics = this.createInitialMetrics()
@@ -458,7 +470,7 @@ export class BaileysLogger implements ILogger {
 	}
 
 	/**
-	 * Retorna instance ID
+	 * Get instance ID
 	 */
 	getInstanceId(): string {
 		return this.config.instanceId
@@ -466,14 +478,14 @@ export class BaileysLogger implements ILogger {
 }
 
 /**
- * Factory para criar Baileys Logger
+ * Factory to create Baileys Logger
  */
 export function createBaileysLogger(config?: Partial<BaileysLoggerConfig>): BaileysLogger {
 	return new BaileysLogger(config)
 }
 
 /**
- * Singleton para logger padrão do Baileys
+ * Default Baileys logger singleton
  */
 let defaultBaileysLogger: BaileysLogger | null = null
 

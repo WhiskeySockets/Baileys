@@ -1,15 +1,16 @@
 /**
- * @fileoverview Gerenciamento de eventos do Baileys
- * @module Utils/baileys-event-stream
+ * Baileys Event Stream Management
  *
- * Fornece:
- * - Event buffering com backpressure
- * - Event transformation e filtering
- * - Priority queues para eventos
+ * Provides:
+ * - Event buffering with backpressure
+ * - Event transformation and filtering
+ * - Priority queues for events
  * - Batch processing
- * - Dead letter queue para eventos falhos
- * - Replay de eventos
- * - Integração com logging e métricas
+ * - Dead letter queue for failed events
+ * - Event replay
+ * - Logging and metrics integration
+ *
+ * @module Utils/baileys-event-stream
  */
 
 import { EventEmitter } from 'events'
@@ -17,7 +18,7 @@ import { metrics } from './prometheus-metrics.js'
 import type { BaileysLogCategory } from './baileys-logger.js'
 
 /**
- * Tipos de eventos do Baileys
+ * Baileys event types
  */
 export type BaileysEventType =
 	| 'connection.update'
@@ -41,15 +42,15 @@ export type BaileysEventType =
 	| 'call'
 	| 'blocklist.set'
 	| 'blocklist.update'
-	| string // Para eventos customizados
+	| string // For custom events
 
 /**
- * Prioridade de eventos
+ * Event priority
  */
 export type EventPriority = 'critical' | 'high' | 'normal' | 'low'
 
 /**
- * Valores numéricos de prioridade
+ * Numeric priority values
  */
 const PRIORITY_VALUES: Record<EventPriority, number> = {
 	critical: 0,
@@ -59,7 +60,7 @@ const PRIORITY_VALUES: Record<EventPriority, number> = {
 }
 
 /**
- * Evento do stream
+ * Stream event
  */
 export interface StreamEvent<T = unknown> {
 	id: string
@@ -74,48 +75,48 @@ export interface StreamEvent<T = unknown> {
 }
 
 /**
- * Opções do Event Stream
+ * Event Stream options
  */
 export interface EventStreamOptions {
-	/** Tamanho máximo do buffer (default: 10000) */
+	/** Maximum buffer size (default: 10000) */
 	maxBufferSize?: number
-	/** Se deve aplicar backpressure quando buffer cheio */
+	/** Whether to apply backpressure when buffer is full */
 	enableBackpressure?: boolean
-	/** Limite de highWaterMark para backpressure */
+	/** High water mark limit for backpressure */
 	highWaterMark?: number
-	/** Limite de lowWaterMark para retomar */
+	/** Low water mark limit to resume */
 	lowWaterMark?: number
-	/** Tamanho do batch para processamento */
+	/** Batch size for processing */
 	batchSize?: number
-	/** Intervalo de flush em ms (0 = desabilitado) */
+	/** Flush interval in ms (0 = disabled) */
 	flushInterval?: number
-	/** Máximo de retries para eventos falhos */
+	/** Maximum retries for failed events */
 	maxRetries?: number
-	/** Tamanho da dead letter queue */
+	/** Dead letter queue size */
 	deadLetterQueueSize?: number
-	/** Se deve coletar métricas */
+	/** Whether to collect metrics */
 	collectMetrics?: boolean
-	/** Nome do stream para métricas */
+	/** Stream name for metrics */
 	streamName?: string
 }
 
 /**
- * Handler de evento
+ * Event handler
  */
 export type EventHandler<T = unknown> = (event: StreamEvent<T>) => void | Promise<void>
 
 /**
- * Filtro de evento
+ * Event filter
  */
 export type EventFilter<T = unknown> = (event: StreamEvent<T>) => boolean
 
 /**
- * Transformador de evento
+ * Event transformer
  */
 export type EventTransformer<T = unknown, R = unknown> = (event: StreamEvent<T>) => StreamEvent<R>
 
 /**
- * Resultado de processamento de batch
+ * Batch processing result
  */
 export interface BatchResult {
 	processed: number
@@ -124,7 +125,7 @@ export interface BatchResult {
 }
 
 /**
- * Estatísticas do stream
+ * Stream statistics
  */
 export interface EventStreamStats {
 	bufferSize: number
@@ -140,7 +141,7 @@ export interface EventStreamStats {
 }
 
 /**
- * Mapeamento de tipo de evento para categoria
+ * Event type to category mapping
  */
 const EVENT_CATEGORY_MAP: Record<string, BaileysLogCategory> = {
 	'connection.update': 'connection',
@@ -165,7 +166,7 @@ const EVENT_CATEGORY_MAP: Record<string, BaileysLogCategory> = {
 }
 
 /**
- * Prioridade padrão por tipo de evento
+ * Default priority by event type
  */
 const EVENT_PRIORITY_MAP: Partial<Record<BaileysEventType, EventPriority>> = {
 	'connection.update': 'critical',
@@ -178,14 +179,14 @@ const EVENT_PRIORITY_MAP: Partial<Record<BaileysEventType, EventPriority>> = {
 }
 
 /**
- * Gera ID único para evento
+ * Generate unique event ID
  */
 function generateEventId(): string {
 	return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
 }
 
 /**
- * Classe principal do Event Stream
+ * Main Event Stream class
  */
 export class BaileysEventStream extends EventEmitter {
 	private buffer: StreamEvent[] = []
@@ -217,7 +218,7 @@ export class BaileysEventStream extends EventEmitter {
 
 		this.stats = this.createInitialStats()
 
-		// Iniciar flush periódico se configurado
+		// Start periodic flush if configured
 		if (this.options.flushInterval > 0) {
 			this.flushTimer = setInterval(() => this.flush(), this.options.flushInterval)
 		}
@@ -243,10 +244,10 @@ export class BaileysEventStream extends EventEmitter {
 	}
 
 	/**
-	 * Adiciona evento ao stream
+	 * Add event to stream
 	 */
 	push<T>(type: BaileysEventType, data: T, options?: { priority?: EventPriority; metadata?: Record<string, unknown> }): boolean {
-		// Verificar backpressure
+		// Check backpressure
 		if (this.options.enableBackpressure && this.buffer.length >= this.options.highWaterMark) {
 			this.stats.isBackpressured = true
 			this.emit('backpressure', { bufferSize: this.buffer.length })
@@ -274,23 +275,23 @@ export class BaileysEventStream extends EventEmitter {
 			retryCount: 0,
 		}
 
-		// Aplicar transformadores
+		// Apply transformers
 		let transformedEvent: StreamEvent = event
 		for (const transformer of this.transformers) {
 			transformedEvent = transformer(transformedEvent)
 		}
 
-		// Aplicar filtros
+		// Apply filters
 		for (const filter of this.filters) {
 			if (!filter(transformedEvent)) {
 				return false
 			}
 		}
 
-		// Adicionar ao buffer na posição correta (por prioridade)
+		// Add to buffer at correct position (by priority)
 		this.insertByPriority(transformedEvent)
 
-		// Atualizar estatísticas
+		// Update statistics
 		this.stats.totalReceived++
 		this.stats.bufferSize = this.buffer.length
 		this.stats.lastEventTimestamp = Date.now()
@@ -303,7 +304,7 @@ export class BaileysEventStream extends EventEmitter {
 
 		this.emit('event', transformedEvent)
 
-		// Processar se não estiver pausado
+		// Process if not paused
 		if (!this.paused && !this.isProcessing) {
 			this.processNext()
 		}
@@ -312,12 +313,12 @@ export class BaileysEventStream extends EventEmitter {
 	}
 
 	/**
-	 * Insere evento no buffer por prioridade
+	 * Insert event in buffer by priority
 	 */
 	private insertByPriority(event: StreamEvent): void {
 		const eventPriorityValue = PRIORITY_VALUES[event.priority]
 
-		// Encontrar posição correta
+		// Find correct position
 		let insertIndex = this.buffer.length
 		for (let i = 0; i < this.buffer.length; i++) {
 			if (PRIORITY_VALUES[this.buffer[i].priority] > eventPriorityValue) {
@@ -330,7 +331,7 @@ export class BaileysEventStream extends EventEmitter {
 	}
 
 	/**
-	 * Registra handler para tipo de evento
+	 * Register handler for event type
 	 */
 	on<T = unknown>(event: BaileysEventType | '*', handler: EventHandler<T>): this {
 		if (!this.handlers.has(event)) {
@@ -352,7 +353,7 @@ export class BaileysEventStream extends EventEmitter {
 	}
 
 	/**
-	 * Registra handler único
+	 * Register single-use handler
 	 */
 	once<T = unknown>(event: BaileysEventType, handler: EventHandler<T>): this {
 		const wrappedHandler: EventHandler<T> = (e) => {
@@ -363,7 +364,7 @@ export class BaileysEventStream extends EventEmitter {
 	}
 
 	/**
-	 * Adiciona filtro
+	 * Add filter
 	 */
 	addFilter(filter: EventFilter): this {
 		this.filters.push(filter)
@@ -371,7 +372,7 @@ export class BaileysEventStream extends EventEmitter {
 	}
 
 	/**
-	 * Remove filtro
+	 * Remove filter
 	 */
 	removeFilter(filter: EventFilter): this {
 		const index = this.filters.indexOf(filter)
@@ -382,7 +383,7 @@ export class BaileysEventStream extends EventEmitter {
 	}
 
 	/**
-	 * Adiciona transformador
+	 * Add transformer
 	 */
 	addTransformer(transformer: EventTransformer): this {
 		this.transformers.push(transformer)
@@ -390,7 +391,7 @@ export class BaileysEventStream extends EventEmitter {
 	}
 
 	/**
-	 * Processa próximos eventos
+	 * Process next events
 	 */
 	private async processNext(): Promise<void> {
 		if (this.isProcessing || this.paused || this.buffer.length === 0) {
@@ -400,17 +401,17 @@ export class BaileysEventStream extends EventEmitter {
 		this.isProcessing = true
 
 		try {
-			// Pegar batch de eventos
+			// Get batch of events
 			const batch = this.buffer.splice(0, this.options.batchSize)
 			this.stats.bufferSize = this.buffer.length
 
-			// Verificar se saiu de backpressure
+			// Check if exited backpressure
 			if (this.stats.isBackpressured && this.buffer.length <= this.options.lowWaterMark) {
 				this.stats.isBackpressured = false
 				this.emit('drain')
 			}
 
-			// Processar batch
+			// Process batch
 			const startTime = Date.now()
 			let processed = 0
 			let failed = 0
@@ -430,7 +431,7 @@ export class BaileysEventStream extends EventEmitter {
 			const duration = Date.now() - startTime
 			this.emit('batch-processed', { processed, failed, duration } as BatchResult)
 
-			// Continuar processando se houver mais
+			// Continue processing if there are more
 			if (this.buffer.length > 0) {
 				setImmediate(() => this.processNext())
 			}
@@ -440,10 +441,10 @@ export class BaileysEventStream extends EventEmitter {
 	}
 
 	/**
-	 * Processa um evento
+	 * Process a single event
 	 */
 	private async processEvent(event: StreamEvent): Promise<void> {
-		// Handlers específicos do tipo
+		// Type-specific handlers
 		const typeHandlers = this.handlers.get(event.type)
 		if (typeHandlers) {
 			for (const handler of typeHandlers) {
@@ -451,7 +452,7 @@ export class BaileysEventStream extends EventEmitter {
 			}
 		}
 
-		// Handlers globais
+		// Global handlers
 		const globalHandlers = this.handlers.get('*')
 		if (globalHandlers) {
 			for (const handler of globalHandlers) {
@@ -461,13 +462,13 @@ export class BaileysEventStream extends EventEmitter {
 	}
 
 	/**
-	 * Trata evento que falhou
+	 * Handle failed event
 	 */
 	private async handleFailedEvent(event: StreamEvent, error: Error): Promise<void> {
 		event.retryCount = (event.retryCount || 0) + 1
 
 		if (event.retryCount <= this.options.maxRetries) {
-			// Re-adicionar ao buffer para retry
+			// Re-add to buffer for retry
 			event.originalTimestamp = event.originalTimestamp || event.timestamp
 			event.timestamp = Date.now()
 			this.buffer.push(event)
@@ -475,7 +476,7 @@ export class BaileysEventStream extends EventEmitter {
 
 			this.emit('retry', { event, error, attempt: event.retryCount })
 		} else {
-			// Enviar para dead letter queue
+			// Send to dead letter queue
 			this.addToDeadLetterQueue(event, error)
 		}
 
@@ -485,7 +486,7 @@ export class BaileysEventStream extends EventEmitter {
 	}
 
 	/**
-	 * Adiciona evento à dead letter queue
+	 * Add event to dead letter queue
 	 */
 	private addToDeadLetterQueue(event: StreamEvent, error: Error): void {
 		const dlqEvent = {
@@ -500,7 +501,7 @@ export class BaileysEventStream extends EventEmitter {
 
 		this.deadLetterQueue.push(dlqEvent)
 
-		// Limitar tamanho da DLQ
+		// Limit DLQ size
 		while (this.deadLetterQueue.length > this.options.deadLetterQueueSize) {
 			this.deadLetterQueue.shift()
 		}
@@ -510,7 +511,7 @@ export class BaileysEventStream extends EventEmitter {
 	}
 
 	/**
-	 * Força flush do buffer
+	 * Force flush the buffer
 	 */
 	async flush(): Promise<BatchResult> {
 		const startTime = Date.now()
@@ -543,7 +544,7 @@ export class BaileysEventStream extends EventEmitter {
 	}
 
 	/**
-	 * Pausa o processamento
+	 * Pause processing
 	 */
 	pause(): void {
 		this.paused = true
@@ -551,7 +552,7 @@ export class BaileysEventStream extends EventEmitter {
 	}
 
 	/**
-	 * Resume o processamento
+	 * Resume processing
 	 */
 	resume(): void {
 		this.paused = false
@@ -560,14 +561,14 @@ export class BaileysEventStream extends EventEmitter {
 	}
 
 	/**
-	 * Verifica se está pausado
+	 * Check if paused
 	 */
 	isPaused(): boolean {
 		return this.paused
 	}
 
 	/**
-	 * Limpa o buffer
+	 * Clear the buffer
 	 */
 	clear(): void {
 		this.buffer = []
@@ -576,14 +577,14 @@ export class BaileysEventStream extends EventEmitter {
 	}
 
 	/**
-	 * Retorna eventos da dead letter queue
+	 * Return dead letter queue events
 	 */
 	getDeadLetterQueue(): StreamEvent[] {
 		return [...this.deadLetterQueue]
 	}
 
 	/**
-	 * Limpa dead letter queue
+	 * Clear dead letter queue
 	 */
 	clearDeadLetterQueue(): void {
 		this.deadLetterQueue = []
@@ -591,7 +592,7 @@ export class BaileysEventStream extends EventEmitter {
 	}
 
 	/**
-	 * Replay eventos da dead letter queue
+	 * Replay dead letter queue events
 	 */
 	async replayDeadLetterQueue(): Promise<BatchResult> {
 		const events = this.deadLetterQueue.splice(0)
@@ -625,14 +626,14 @@ export class BaileysEventStream extends EventEmitter {
 	}
 
 	/**
-	 * Retorna estatísticas
+	 * Return statistics
 	 */
 	getStats(): EventStreamStats {
 		return { ...this.stats }
 	}
 
 	/**
-	 * Reseta estatísticas
+	 * Reset statistics
 	 */
 	resetStats(): void {
 		this.stats = this.createInitialStats()
@@ -641,7 +642,7 @@ export class BaileysEventStream extends EventEmitter {
 	}
 
 	/**
-	 * Destroy e limpa recursos
+	 * Destroy and clean up resources
 	 */
 	destroy(): void {
 		if (this.flushTimer) {
@@ -657,47 +658,47 @@ export class BaileysEventStream extends EventEmitter {
 }
 
 /**
- * Factory para criar event stream
+ * Factory to create event stream
  */
 export function createEventStream(options?: EventStreamOptions): BaileysEventStream {
 	return new BaileysEventStream(options)
 }
 
 /**
- * Filtros pré-definidos
+ * Pre-defined filters
  */
 export const eventFilters = {
-	/** Filtra por tipo de evento */
+	/** Filter by event type */
 	byType:
 		(...types: BaileysEventType[]): EventFilter =>
 			(event) =>
 				types.includes(event.type),
 
-	/** Filtra por categoria */
+	/** Filter by category */
 	byCategory:
 		(...categories: BaileysLogCategory[]): EventFilter =>
 			(event) =>
 				categories.includes(event.category),
 
-	/** Filtra por prioridade mínima */
+	/** Filter by minimum priority */
 	byMinPriority:
 		(minPriority: EventPriority): EventFilter =>
 			(event) =>
 				PRIORITY_VALUES[event.priority] <= PRIORITY_VALUES[minPriority],
 
-	/** Filtra eventos recentes (dentro de ms) */
+	/** Filter recent events (within ms) */
 	recentOnly:
 		(maxAgeMs: number): EventFilter =>
 			(event) =>
 				Date.now() - event.timestamp <= maxAgeMs,
 
-	/** Combina filtros com AND */
+	/** Combine filters with AND */
 	and:
 		(...filters: EventFilter[]): EventFilter =>
 			(event) =>
 				filters.every((f) => f(event)),
 
-	/** Combina filtros com OR */
+	/** Combine filters with OR */
 	or:
 		(...filters: EventFilter[]): EventFilter =>
 			(event) =>
@@ -705,10 +706,10 @@ export const eventFilters = {
 }
 
 /**
- * Transformadores pré-definidos
+ * Pre-defined transformers
  */
 export const eventTransformers = {
-	/** Adiciona timestamp de processamento */
+	/** Add processing timestamp */
 	addProcessingTimestamp: (): EventTransformer => (event) => ({
 		...event,
 		metadata: {
@@ -717,7 +718,7 @@ export const eventTransformers = {
 		},
 	}),
 
-	/** Adiciona ID de trace */
+	/** Add trace ID */
 	addTraceId:
 		(traceIdGenerator: () => string): EventTransformer =>
 			(event) => ({
@@ -728,7 +729,7 @@ export const eventTransformers = {
 				},
 			}),
 
-	/** Eleva prioridade baseado em condição */
+	/** Elevate priority based on condition */
 	elevatepriorityIf:
 		(condition: (event: StreamEvent) => boolean, newPriority: EventPriority): EventTransformer =>
 			(event) =>

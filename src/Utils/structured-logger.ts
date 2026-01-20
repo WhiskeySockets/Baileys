@@ -1,25 +1,26 @@
 /**
- * @fileoverview Sistema de logging estruturado para InfiniteAPI
- * @module Utils/structured-logger
+ * Structured Logging System for InfiniteAPI
  *
- * Fornece:
- * - Níveis de log configuráveis (trace, debug, info, warn, error, fatal)
- * - Formatação JSON para análise
- * - Contexto hierárquico com child loggers
- * - Integração com sistemas externos (hooks)
- * - Suporte a métricas de logging
- * - Sanitização de dados sensíveis
+ * Provides:
+ * - Configurable log levels (trace, debug, info, warn, error, fatal)
+ * - JSON formatting for log analysis
+ * - Hierarchical context with child loggers
+ * - External system integration via hooks
+ * - Logging metrics support
+ * - Sensitive data sanitization
+ *
+ * @module Utils/structured-logger
  */
 
 import type { ILogger } from './logger.js'
 
 /**
- * Níveis de log disponíveis (ordenados por severidade)
+ * Available log levels (ordered by severity)
  */
 export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal' | 'silent'
 
 /**
- * Valores numéricos para cada nível de log
+ * Numeric values for each log level
  */
 export const LOG_LEVEL_VALUES: Record<LogLevel, number> = {
 	trace: 10,
@@ -32,55 +33,55 @@ export const LOG_LEVEL_VALUES: Record<LogLevel, number> = {
 }
 
 /**
- * Configuração do logger estruturado
+ * Structured logger configuration
  */
 export interface StructuredLoggerConfig {
-	/** Nível mínimo de log a ser registrado */
+	/** Minimum log level to record */
 	level: LogLevel
-	/** Nome do serviço/componente */
+	/** Service/component name */
 	name?: string
-	/** Contexto adicional a ser incluído em todos os logs */
+	/** Additional context to include in all logs */
 	context?: Record<string, unknown>
-	/** Se deve formatar como JSON (true) ou texto legível (false) */
+	/** Format as JSON (true) or human-readable text (false) */
 	jsonFormat?: boolean
-	/** Campos a serem sanitizados (senhas, tokens, etc.) */
+	/** Fields to sanitize (passwords, tokens, etc.) */
 	redactFields?: string[]
-	/** Hook para enviar logs para sistemas externos */
+	/** Hook for sending logs to external systems */
 	externalHook?: (entry: LogEntry) => void | Promise<void>
-	/** Se deve incluir stack trace em erros */
+	/** Include stack trace in errors */
 	includeStackTrace?: boolean
-	/** Timezone para timestamps (default: UTC) */
+	/** Timezone for timestamps (default: UTC) */
 	timezone?: string
 }
 
 /**
- * Entrada de log estruturada
+ * Structured log entry
  */
 export interface LogEntry {
-	/** Timestamp ISO 8601 */
+	/** ISO 8601 timestamp */
 	timestamp: string
-	/** Nível do log */
+	/** Log level */
 	level: LogLevel
-	/** Valor numérico do nível */
+	/** Numeric level value */
 	levelValue: number
-	/** Mensagem principal */
+	/** Main message */
 	message: string
-	/** Nome do logger/componente */
+	/** Logger/component name */
 	name?: string
-	/** Contexto adicional */
+	/** Additional context */
 	context?: Record<string, unknown>
-	/** Dados do objeto logado */
+	/** Logged object data */
 	data?: Record<string, unknown>
-	/** Stack trace (para erros) */
+	/** Stack trace (for errors) */
 	stack?: string
-	/** ID de correlação para rastreamento */
+	/** Correlation ID for tracing */
 	correlationId?: string
-	/** Duração de operação em ms (se aplicável) */
+	/** Operation duration in ms (if applicable) */
 	durationMs?: number
 }
 
 /**
- * Métricas de logging
+ * Logger metrics
  */
 export interface LoggerMetrics {
 	totalLogs: number
@@ -90,7 +91,7 @@ export interface LoggerMetrics {
 }
 
 /**
- * Campos padrão a serem sanitizados
+ * Default fields to sanitize
  */
 const DEFAULT_REDACT_FIELDS = [
 	'password',
@@ -109,7 +110,19 @@ const DEFAULT_REDACT_FIELDS = [
 ]
 
 /**
- * Classe principal do Logger Estruturado
+ * Structured Logger main class
+ *
+ * @example
+ * ```typescript
+ * const logger = createStructuredLogger({
+ *   level: 'info',
+ *   name: 'my-service',
+ *   jsonFormat: true
+ * })
+ *
+ * logger.info({ userId: '123' }, 'User logged in')
+ * logger.error(new Error('Connection failed'))
+ * ```
  */
 export class StructuredLogger implements ILogger {
 	private config: Required<StructuredLoggerConfig>
@@ -144,14 +157,14 @@ export class StructuredLogger implements ILogger {
 	}
 
 	/**
-	 * Getter para o nível atual do logger (compatibilidade com ILogger)
+	 * Get current log level (ILogger compatibility)
 	 */
 	get level(): string {
 		return this.config.level
 	}
 
 	/**
-	 * Setter para o nível do logger
+	 * Set log level
 	 */
 	set level(newLevel: string) {
 		if (newLevel in LOG_LEVEL_VALUES) {
@@ -160,7 +173,7 @@ export class StructuredLogger implements ILogger {
 	}
 
 	/**
-	 * Cria um logger filho com contexto adicional
+	 * Create a child logger with additional context
 	 */
 	child(obj: Record<string, unknown>): StructuredLogger {
 		const childLogger = new StructuredLogger({
@@ -172,14 +185,14 @@ export class StructuredLogger implements ILogger {
 	}
 
 	/**
-	 * Verifica se o nível de log está habilitado
+	 * Check if log level is enabled
 	 */
 	isLevelEnabled(level: LogLevel): boolean {
 		return LOG_LEVEL_VALUES[level] >= LOG_LEVEL_VALUES[this.config.level]
 	}
 
 	/**
-	 * Método principal de logging
+	 * Main logging method
 	 */
 	private log(level: LogLevel, obj: unknown, msg?: string): void {
 		if (!this.isLevelEnabled(level)) {
@@ -188,13 +201,13 @@ export class StructuredLogger implements ILogger {
 
 		const entry = this.createLogEntry(level, obj, msg)
 
-		// Atualizar métricas
+		// Update metrics
 		this.updateMetrics(level)
 
 		// Output
 		this.output(entry)
 
-		// Hook externo (async, não bloqueia)
+		// External hook (async, non-blocking)
 		if (this.config.externalHook) {
 			Promise.resolve(this.config.externalHook(entry)).catch(() => {
 				// Silently ignore hook errors
@@ -203,7 +216,7 @@ export class StructuredLogger implements ILogger {
 	}
 
 	/**
-	 * Cria uma entrada de log estruturada
+	 * Create a structured log entry
 	 */
 	private createLogEntry(level: LogLevel, obj: unknown, msg?: string): LogEntry {
 		const timestamp = new Date().toISOString()
@@ -211,7 +224,7 @@ export class StructuredLogger implements ILogger {
 		let data: Record<string, unknown> | undefined
 		let stack: string | undefined
 
-		// Processar objeto
+		// Process object
 		if (obj instanceof Error) {
 			message = message || obj.message
 			if (this.config.includeStackTrace && obj.stack) {
@@ -231,7 +244,7 @@ export class StructuredLogger implements ILogger {
 			message = message || obj
 		}
 
-		// Extrair correlationId e durationMs se presentes
+		// Extract correlationId and durationMs if present
 		const correlationId = data?.correlationId as string | undefined
 		const durationMs = data?.durationMs as number | undefined
 
@@ -250,7 +263,7 @@ export class StructuredLogger implements ILogger {
 	}
 
 	/**
-	 * Sanitiza dados sensíveis
+	 * Sanitize sensitive data
 	 */
 	private sanitize(obj: Record<string, unknown>): Record<string, unknown> {
 		const sanitized: Record<string, unknown> = {}
@@ -271,7 +284,7 @@ export class StructuredLogger implements ILogger {
 	}
 
 	/**
-	 * Atualiza métricas internas
+	 * Update internal metrics
 	 */
 	private updateMetrics(level: LogLevel): void {
 		this.metrics.totalLogs++
@@ -284,7 +297,7 @@ export class StructuredLogger implements ILogger {
 	}
 
 	/**
-	 * Output do log
+	 * Output log entry
 	 */
 	private output(entry: LogEntry): void {
 		const output = this.config.jsonFormat ? JSON.stringify(entry) : this.formatText(entry)
@@ -308,7 +321,7 @@ export class StructuredLogger implements ILogger {
 	}
 
 	/**
-	 * Formata log como texto legível
+	 * Format log as human-readable text
 	 */
 	private formatText(entry: LogEntry): string {
 		const parts = [
@@ -333,7 +346,7 @@ export class StructuredLogger implements ILogger {
 		return text
 	}
 
-	// Métodos de conveniência para cada nível de log
+	// Convenience methods for each log level
 
 	trace(obj: unknown, msg?: string): void {
 		this.log('trace', obj, msg)
@@ -360,21 +373,21 @@ export class StructuredLogger implements ILogger {
 	}
 
 	/**
-	 * Log com contexto temporário
+	 * Log with temporary context
 	 */
 	withContext(context: Record<string, unknown>): StructuredLogger {
 		return this.child(context)
 	}
 
 	/**
-	 * Log com correlation ID
+	 * Log with correlation ID
 	 */
 	withCorrelationId(correlationId: string): StructuredLogger {
 		return this.child({ correlationId })
 	}
 
 	/**
-	 * Log de operação com duração
+	 * Log operation with duration tracking
 	 */
 	logOperation<T>(
 		operationName: string,
@@ -412,14 +425,14 @@ export class StructuredLogger implements ILogger {
 	}
 
 	/**
-	 * Retorna métricas do logger
+	 * Get logger metrics
 	 */
 	getMetrics(): LoggerMetrics {
 		return { ...this.metrics }
 	}
 
 	/**
-	 * Reseta métricas
+	 * Reset metrics
 	 */
 	resetMetrics(): void {
 		this.metrics = {
@@ -439,7 +452,7 @@ export class StructuredLogger implements ILogger {
 }
 
 /**
- * Factory para criar logger estruturado
+ * Factory to create structured logger
  */
 export function createStructuredLogger(config: Partial<StructuredLoggerConfig> = {}): StructuredLogger {
 	return new StructuredLogger({
@@ -449,7 +462,7 @@ export function createStructuredLogger(config: Partial<StructuredLoggerConfig> =
 }
 
 /**
- * Logger padrão singleton
+ * Default singleton logger
  */
 let defaultLogger: StructuredLogger | null = null
 
@@ -469,7 +482,7 @@ export function setDefaultLogger(logger: StructuredLogger): void {
 }
 
 /**
- * Utilitário para medir tempo de execução
+ * Utility to measure execution time
  */
 export function createTimer(): { elapsed: () => number; elapsedMs: () => string } {
 	const start = process.hrtime.bigint()

@@ -17,18 +17,18 @@ export * from './process-message'
 export * from './message-retry-manager'
 export * from './browser-utils'
 
-// === Novos Utilitários de Observabilidade e Resiliência ===
+// === Observability and Resilience Utilities ===
 
-// Logging estruturado
+// Structured logging
 export * from './structured-logger'
 export * from './logger-adapter'
 export * from './baileys-logger'
 
-// Observabilidade e rastreamento
+// Observability and tracing
 export * from './trace-context'
 export * from './prometheus-metrics'
 
-// Resiliência e performance
+// Resilience and performance
 export * from './cache-utils'
 export * from './circuit-breaker'
 export * from './retry-utils'

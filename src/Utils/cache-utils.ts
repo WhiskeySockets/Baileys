@@ -1,44 +1,45 @@
 /**
- * @fileoverview Sistema de cache inteligente
- * @module Utils/cache-utils
+ * Smart Cache System
  *
- * Fornece:
- * - Cache em memória com TTL configurável
- * - Invalidação automática e manual
- * - Métricas de hit/miss
- * - Estratégia LRU (Least Recently Used)
- * - Cache distribuído (preparado para Redis)
- * - Namespace para isolamento
- * - Serialização customizável
+ * Provides:
+ * - In-memory cache with configurable TTL
+ * - Automatic and manual invalidation
+ * - Hit/miss metrics
+ * - LRU (Least Recently Used) strategy
+ * - Distributed cache (prepared for Redis)
+ * - Namespace for isolation
+ * - Customizable serialization
+ *
+ * @module Utils/cache-utils
  */
 
 import { LRUCache } from 'lru-cache'
 import { metrics } from './prometheus-metrics.js'
 
 /**
- * Opções de configuração do cache
+ * Cache configuration options
  */
 export interface CacheOptions<V> {
-	/** Tempo de vida em ms (default: 5 minutos) */
+	/** Time to live in ms (default: 5 minutes) */
 	ttl?: number
-	/** Tamanho máximo do cache (default: 1000) */
+	/** Maximum cache size (default: 1000) */
 	maxSize?: number
-	/** Função para calcular tamanho de um item */
+	/** Function to calculate item size */
 	sizeCalculation?: (value: V) => number
-	/** Se deve atualizar TTL no acesso */
+	/** Whether to update TTL on access */
 	updateAgeOnGet?: boolean
-	/** Namespace para isolamento */
+	/** Namespace for isolation */
 	namespace?: string
-	/** Callback quando item expira */
+	/** Callback when item expires */
 	onExpire?: (key: string, value: V) => void
-	/** Se deve coletar métricas */
+	/** Whether to collect metrics */
 	collectMetrics?: boolean
-	/** Nome do cache para métricas */
+	/** Cache name for metrics */
 	metricName?: string
 }
 
 /**
- * Estatísticas do cache
+ * Cache statistics
  */
 export interface CacheStats {
 	hits: number
@@ -49,7 +50,7 @@ export interface CacheStats {
 }
 
 /**
- * Item do cache com metadados
+ * Cache item with metadata
  */
 export interface CacheItem<V> {
 	value: V
@@ -60,7 +61,7 @@ export interface CacheItem<V> {
 }
 
 /**
- * Resultado de operação de cache
+ * Cache operation result
  */
 export interface CacheResult<V> {
 	value: V | undefined
@@ -70,7 +71,7 @@ export interface CacheResult<V> {
 }
 
 /**
- * Classe principal do Cache
+ * Main Cache class
  */
 export class Cache<V = unknown> {
 	private cache: LRUCache<string, CacheItem<V>>
@@ -105,7 +106,7 @@ export class Cache<V = unknown> {
 	}
 
 	/**
-	 * Obtém valor do cache
+	 * Get value from cache
 	 */
 	get(key: string): V | undefined {
 		const fullKey = this.getFullKey(key)
@@ -132,7 +133,7 @@ export class Cache<V = unknown> {
 	}
 
 	/**
-	 * Obtém valor com resultado detalhado
+	 * Get value with detailed result
 	 */
 	getWithResult(key: string): CacheResult<V> {
 		const fullKey = this.getFullKey(key)
@@ -167,7 +168,7 @@ export class Cache<V = unknown> {
 	}
 
 	/**
-	 * Define valor no cache
+	 * Set value in cache
 	 */
 	set(key: string, value: V, ttl?: number): void {
 		const fullKey = this.getFullKey(key)
@@ -190,7 +191,7 @@ export class Cache<V = unknown> {
 	}
 
 	/**
-	 * Verifica se chave existe
+	 * Check if key exists
 	 */
 	has(key: string): boolean {
 		const fullKey = this.getFullKey(key)
@@ -198,7 +199,7 @@ export class Cache<V = unknown> {
 	}
 
 	/**
-	 * Remove item do cache
+	 * Remove item from cache
 	 */
 	delete(key: string): boolean {
 		const fullKey = this.getFullKey(key)
@@ -212,7 +213,7 @@ export class Cache<V = unknown> {
 	}
 
 	/**
-	 * Limpa todo o cache
+	 * Clear the entire cache
 	 */
 	clear(): void {
 		this.cache.clear()
@@ -224,7 +225,7 @@ export class Cache<V = unknown> {
 	}
 
 	/**
-	 * Obtém ou define valor (cache-aside pattern)
+	 * Get or set value (cache-aside pattern)
 	 */
 	async getOrSet(key: string, factory: () => V | Promise<V>, ttl?: number): Promise<V> {
 		const existing = this.get(key)
@@ -238,7 +239,7 @@ export class Cache<V = unknown> {
 	}
 
 	/**
-	 * Obtém ou define valor síncronamente
+	 * Get or set value synchronously
 	 */
 	getOrSetSync(key: string, factory: () => V, ttl?: number): V {
 		const existing = this.get(key)
@@ -252,7 +253,7 @@ export class Cache<V = unknown> {
 	}
 
 	/**
-	 * Invalida itens por padrão
+	 * Invalidate items by pattern
 	 */
 	invalidateByPattern(pattern: RegExp): number {
 		let count = 0
@@ -274,14 +275,14 @@ export class Cache<V = unknown> {
 	}
 
 	/**
-	 * Invalida itens por prefixo
+	 * Invalidate items by prefix
 	 */
 	invalidateByPrefix(prefix: string): number {
 		return this.invalidateByPattern(new RegExp(`^${prefix}`))
 	}
 
 	/**
-	 * Retorna estatísticas do cache
+	 * Return cache statistics
 	 */
 	getStats(): CacheStats {
 		const total = this.stats.hits + this.stats.misses
@@ -295,14 +296,14 @@ export class Cache<V = unknown> {
 	}
 
 	/**
-	 * Retorna tamanho atual
+	 * Return current size
 	 */
 	get size(): number {
 		return this.cache.size
 	}
 
 	/**
-	 * Retorna todas as chaves
+	 * Return all keys
 	 */
 	keys(): string[] {
 		const prefix = `${this.namespace}:`
@@ -310,14 +311,14 @@ export class Cache<V = unknown> {
 	}
 
 	/**
-	 * Retorna todos os valores
+	 * Return all values
 	 */
 	values(): V[] {
 		return Array.from(this.cache.values()).map((item) => item.value)
 	}
 
 	/**
-	 * Retorna todos os itens com metadados
+	 * Return all items with metadata
 	 */
 	entries(): Array<{ key: string; item: CacheItem<V> }> {
 		const prefix = `${this.namespace}:`
@@ -328,7 +329,7 @@ export class Cache<V = unknown> {
 	}
 
 	/**
-	 * Atualiza TTL de um item
+	 * Update TTL of an item
 	 */
 	touch(key: string, ttl?: number): boolean {
 		const fullKey = this.getFullKey(key)
@@ -345,7 +346,7 @@ export class Cache<V = unknown> {
 	}
 
 	/**
-	 * Obtém item expirado (se ainda em memória)
+	 * Get expired item (if still in memory)
 	 */
 	peek(key: string): V | undefined {
 		const fullKey = this.getFullKey(key)
@@ -359,14 +360,14 @@ export class Cache<V = unknown> {
 }
 
 /**
- * Factory para criar cache com tipo
+ * Factory to create typed cache
  */
 export function createCache<V>(options?: CacheOptions<V>): Cache<V> {
 	return new Cache<V>(options)
 }
 
 /**
- * Cache com múltiplos níveis (L1: memória, L2: externo)
+ * Multi-level cache (L1: memory, L2: external)
  */
 export class MultiLevelCache<V> {
 	private l1: Cache<V>
@@ -389,17 +390,17 @@ export class MultiLevelCache<V> {
 	}
 
 	async get(key: string): Promise<V | undefined> {
-		// Tentar L1 primeiro
+		// Try L1 first
 		const l1Value = this.l1.get(key)
 		if (l1Value !== undefined) {
 			return l1Value
 		}
 
-		// Tentar L2 se disponível
+		// Try L2 if available
 		if (this.l2) {
 			const l2Value = await this.l2.get(key)
 			if (l2Value !== undefined) {
-				// Promover para L1
+				// Promote to L1
 				this.l1.set(key, l2Value)
 				return l2Value
 			}
@@ -433,7 +434,7 @@ export class MultiLevelCache<V> {
 }
 
 /**
- * Decorator para cachear resultado de método
+ * Decorator to cache method result
  */
 export function cached<V>(options: CacheOptions<V> & { keyGenerator?: (...args: unknown[]) => string } = {}) {
 	const cache = new Cache<V>(options)
@@ -465,7 +466,7 @@ export function cached<V>(options: CacheOptions<V> & { keyGenerator?: (...args: 
 }
 
 /**
- * Wrapper para função com cache
+ * Wrapper for function with cache
  */
 export function withCache<T extends (...args: unknown[]) => unknown>(
 	fn: T,
@@ -497,7 +498,7 @@ export function withCache<T extends (...args: unknown[]) => unknown>(
 }
 
 /**
- * Cache global singleton por namespace
+ * Global singleton cache by namespace
  */
 const globalCaches: Map<string, Cache<unknown>> = new Map()
 

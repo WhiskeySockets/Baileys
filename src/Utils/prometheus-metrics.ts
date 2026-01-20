@@ -1,42 +1,43 @@
 /**
- * @fileoverview Exposição de métricas no formato Prometheus
+ * Prometheus Metrics Exposition
+ *
+ * Provides:
+ * - Counters for event counting
+ * - Gauges for instantaneous values
+ * - Histograms for value distribution
+ * - Summaries for percentiles
+ * - /metrics endpoint ready for scraping
+ * - Dynamic labels
+ * - Baileys events integration
+ *
+ * Note: Works standalone without prom-client,
+ * but can be integrated with prom-client if available.
+ *
  * @module Utils/prometheus-metrics
- *
- * Fornece:
- * - Counters para contagem de eventos
- * - Gauges para valores instantâneos
- * - Histograms para distribuição de valores
- * - Summaries para percentis
- * - Endpoint /metrics pronto para scraping
- * - Labels dinâmicas
- * - Integração com Baileys events
- *
- * Nota: Funciona de forma standalone sem prom-client,
- * mas pode ser integrado com prom-client se disponível.
  */
 
 /**
- * Tipo de métrica
+ * Metric type
  */
 export type MetricType = 'counter' | 'gauge' | 'histogram' | 'summary'
 
 /**
- * Labels para métricas
+ * Metric labels
  */
 export type Labels = Record<string, string>
 
 /**
- * Buckets padrão para histogramas (em ms)
+ * Default histogram buckets (in ms)
  */
 export const DEFAULT_BUCKETS = [5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000]
 
 /**
- * Percentis padrão para summaries
+ * Default summary percentiles
  */
 export const DEFAULT_PERCENTILES = [0.5, 0.9, 0.95, 0.99]
 
 /**
- * Interface base para métricas
+ * Base metric interface
  */
 export interface BaseMetric {
 	name: string
@@ -46,7 +47,7 @@ export interface BaseMetric {
 }
 
 /**
- * Valor de uma métrica com labels
+ * Metric value with labels
  */
 export interface MetricValue {
 	labels: Labels
@@ -55,7 +56,7 @@ export interface MetricValue {
 }
 
 /**
- * Valores de histograma
+ * Histogram values
  */
 export interface HistogramValue {
 	labels: Labels
@@ -65,7 +66,7 @@ export interface HistogramValue {
 }
 
 /**
- * Valores de summary
+ * Summary values
  */
 export interface SummaryValue {
 	labels: Labels
@@ -75,7 +76,7 @@ export interface SummaryValue {
 }
 
 /**
- * Classe Counter - incrementa monotonicamente
+ * Counter class - monotonically increasing
  */
 export class Counter implements BaseMetric {
 	readonly type = 'counter' as const
@@ -88,7 +89,7 @@ export class Counter implements BaseMetric {
 	) {}
 
 	/**
-	 * Incrementa o counter
+	 * Increment the counter
 	 */
 	inc(labelsOrValue?: Labels | number, value?: number): void {
 		let labels: Labels = {}
@@ -117,7 +118,7 @@ export class Counter implements BaseMetric {
 	}
 
 	/**
-	 * Retorna valor atual
+	 * Get current value
 	 */
 	get(labels: Labels = {}): number {
 		const key = this.labelsToKey(labels)
@@ -125,7 +126,7 @@ export class Counter implements BaseMetric {
 	}
 
 	/**
-	 * Reseta o counter
+	 * Reset the counter
 	 */
 	reset(labels?: Labels): void {
 		if (labels) {
@@ -137,7 +138,7 @@ export class Counter implements BaseMetric {
 	}
 
 	/**
-	 * Retorna todos os valores
+	 * Get all values
 	 */
 	getValues(): MetricValue[] {
 		return Array.from(this.values.values())
@@ -148,7 +149,7 @@ export class Counter implements BaseMetric {
 	}
 
 	/**
-	 * Cria versão com labels pré-definidas
+	 * Create version with pre-defined labels
 	 */
 	labels(labels: Labels): { inc: (value?: number) => void } {
 		return {
@@ -158,7 +159,7 @@ export class Counter implements BaseMetric {
 }
 
 /**
- * Classe Gauge - valor que pode aumentar e diminuir
+ * Gauge class - value that can increase and decrease
  */
 export class Gauge implements BaseMetric {
 	readonly type = 'gauge' as const
@@ -171,7 +172,7 @@ export class Gauge implements BaseMetric {
 	) {}
 
 	/**
-	 * Define valor
+	 * Set value
 	 */
 	set(labelsOrValue: Labels | number, value?: number): void {
 		let labels: Labels = {}
@@ -193,7 +194,7 @@ export class Gauge implements BaseMetric {
 	}
 
 	/**
-	 * Incrementa valor
+	 * Increment value
 	 */
 	inc(labelsOrValue?: Labels | number, value?: number): void {
 		let labels: Labels = {}
@@ -214,7 +215,7 @@ export class Gauge implements BaseMetric {
 	}
 
 	/**
-	 * Decrementa valor
+	 * Decrement value
 	 */
 	dec(labelsOrValue?: Labels | number, value?: number): void {
 		let labels: Labels = {}
@@ -235,14 +236,14 @@ export class Gauge implements BaseMetric {
 	}
 
 	/**
-	 * Define para timestamp atual
+	 * Set to current timestamp
 	 */
 	setToCurrentTime(labels: Labels = {}): void {
 		this.set(labels, Date.now() / 1000)
 	}
 
 	/**
-	 * Retorna valor atual
+	 * Get current value
 	 */
 	get(labels: Labels = {}): number {
 		const key = this.labelsToKey(labels)
@@ -250,7 +251,7 @@ export class Gauge implements BaseMetric {
 	}
 
 	/**
-	 * Reseta o gauge
+	 * Reset the gauge
 	 */
 	reset(labels?: Labels): void {
 		if (labels) {
@@ -262,7 +263,7 @@ export class Gauge implements BaseMetric {
 	}
 
 	/**
-	 * Retorna todos os valores
+	 * Get all values
 	 */
 	getValues(): MetricValue[] {
 		return Array.from(this.values.values())
@@ -273,7 +274,7 @@ export class Gauge implements BaseMetric {
 	}
 
 	/**
-	 * Cria versão com labels pré-definidas
+	 * Create version with pre-defined labels
 	 */
 	labels(labels: Labels): {
 		set: (value: number) => void
@@ -288,12 +289,12 @@ export class Gauge implements BaseMetric {
 	}
 
 	/**
-	 * Timer helper - retorna função para parar e registrar duração
+	 * Timer helper - returns function to stop and record duration
 	 */
 	startTimer(labels: Labels = {}): () => number {
 		const start = process.hrtime.bigint()
 		return () => {
-			const duration = Number(process.hrtime.bigint() - start) / 1_000_000_000 // segundos
+			const duration = Number(process.hrtime.bigint() - start) / 1_000_000_000 // seconds
 			this.set(labels, duration)
 			return duration
 		}
@@ -301,7 +302,7 @@ export class Gauge implements BaseMetric {
 }
 
 /**
- * Classe Histogram - distribuição de valores em buckets
+ * Histogram class - distribution of values in buckets
  */
 export class Histogram implements BaseMetric {
 	readonly type = 'histogram' as const
@@ -318,7 +319,7 @@ export class Histogram implements BaseMetric {
 	}
 
 	/**
-	 * Observa um valor
+	 * Observe a value
 	 */
 	observe(labelsOrValue: Labels | number, value?: number): void {
 		let labels: Labels = {}
@@ -344,7 +345,7 @@ export class Histogram implements BaseMetric {
 			this.values.set(key, histValue)
 		}
 
-		// Incrementar buckets apropriados
+		// Increment appropriate buckets
 		for (const bucket of this.buckets) {
 			if (observeValue <= bucket) {
 				histValue.buckets.set(bucket, (histValue.buckets.get(bucket) ?? 0) + 1)
@@ -368,7 +369,7 @@ export class Histogram implements BaseMetric {
 	}
 
 	/**
-	 * Retorna valores do histogram
+	 * Get histogram values
 	 */
 	get(labels: Labels = {}): HistogramValue | undefined {
 		const key = this.labelsToKey(labels)
@@ -376,7 +377,7 @@ export class Histogram implements BaseMetric {
 	}
 
 	/**
-	 * Reseta o histogram
+	 * Reset the histogram
 	 */
 	reset(labels?: Labels): void {
 		if (labels) {
@@ -388,14 +389,14 @@ export class Histogram implements BaseMetric {
 	}
 
 	/**
-	 * Retorna todos os valores
+	 * Get all values
 	 */
 	getValues(): HistogramValue[] {
 		return Array.from(this.values.values())
 	}
 
 	/**
-	 * Retorna buckets configurados
+	 * Get configured buckets
 	 */
 	getBuckets(): number[] {
 		return [...this.buckets]
@@ -406,7 +407,7 @@ export class Histogram implements BaseMetric {
 	}
 
 	/**
-	 * Cria versão com labels pré-definidas
+	 * Create version with pre-defined labels
 	 */
 	labels(labels: Labels): {
 		observe: (value: number) => void
@@ -420,7 +421,7 @@ export class Histogram implements BaseMetric {
 }
 
 /**
- * Classe Summary - percentis de valores
+ * Summary class - value percentiles
  */
 export class Summary implements BaseMetric {
 	readonly type = 'summary' as const
@@ -441,7 +442,7 @@ export class Summary implements BaseMetric {
 	}
 
 	/**
-	 * Observa um valor
+	 * Observe a value
 	 */
 	observe(labelsOrValue: Labels | number, value?: number): void {
 		let labels: Labels = {}
@@ -471,7 +472,7 @@ export class Summary implements BaseMetric {
 		summaryValue.sum += observeValue
 		summaryValue.count++
 
-		// Limitar tamanho
+		// Limit size
 		if (summaryValue.values.length > this.maxSize) {
 			const removed = summaryValue.values.shift()
 			if (removed !== undefined) {
@@ -494,7 +495,7 @@ export class Summary implements BaseMetric {
 	}
 
 	/**
-	 * Calcula percentil
+	 * Calculate percentile
 	 */
 	getPercentile(labels: Labels, percentile: number): number | undefined {
 		const key = this.labelsToKey(labels)
@@ -510,7 +511,7 @@ export class Summary implements BaseMetric {
 	}
 
 	/**
-	 * Retorna valores do summary
+	 * Get summary values
 	 */
 	get(labels: Labels = {}): SummaryValue | undefined {
 		const key = this.labelsToKey(labels)
@@ -518,7 +519,7 @@ export class Summary implements BaseMetric {
 	}
 
 	/**
-	 * Reseta o summary
+	 * Reset the summary
 	 */
 	reset(labels?: Labels): void {
 		if (labels) {
@@ -530,14 +531,14 @@ export class Summary implements BaseMetric {
 	}
 
 	/**
-	 * Retorna todos os valores
+	 * Get all values
 	 */
 	getValues(): SummaryValue[] {
 		return Array.from(this.values.values())
 	}
 
 	/**
-	 * Retorna percentis configurados
+	 * Get configured percentiles
 	 */
 	getPercentiles(): number[] {
 		return [...this.percentiles]
@@ -548,7 +549,7 @@ export class Summary implements BaseMetric {
 	}
 
 	/**
-	 * Cria versão com labels pré-definidas
+	 * Create version with pre-defined labels
 	 */
 	labels(labels: Labels): {
 		observe: (value: number) => void
@@ -562,7 +563,7 @@ export class Summary implements BaseMetric {
 }
 
 /**
- * Registry de métricas
+ * Metrics registry
  */
 export class MetricsRegistry {
 	private metrics: Map<string, Counter | Gauge | Histogram | Summary> = new Map()
@@ -575,7 +576,7 @@ export class MetricsRegistry {
 	}
 
 	/**
-	 * Registra uma métrica
+	 * Register a metric
 	 */
 	register<T extends Counter | Gauge | Histogram | Summary>(metric: T): T {
 		const fullName = this.prefix ? `${this.prefix}_${metric.name}` : metric.name
@@ -584,7 +585,7 @@ export class MetricsRegistry {
 	}
 
 	/**
-	 * Obtém uma métrica
+	 * Get a metric
 	 */
 	get(name: string): Counter | Gauge | Histogram | Summary | undefined {
 		const fullName = this.prefix ? `${this.prefix}_${name}` : name
@@ -592,7 +593,7 @@ export class MetricsRegistry {
 	}
 
 	/**
-	 * Remove uma métrica
+	 * Remove a metric
 	 */
 	remove(name: string): boolean {
 		const fullName = this.prefix ? `${this.prefix}_${name}` : name
@@ -600,7 +601,7 @@ export class MetricsRegistry {
 	}
 
 	/**
-	 * Reseta todas as métricas
+	 * Reset all metrics
 	 */
 	resetAll(): void {
 		for (const metric of this.metrics.values()) {
@@ -609,7 +610,7 @@ export class MetricsRegistry {
 	}
 
 	/**
-	 * Retorna métricas no formato Prometheus
+	 * Return metrics in Prometheus format
 	 */
 	async metrics(): Promise<string> {
 		const lines: string[] = []
@@ -675,7 +676,7 @@ export class MetricsRegistry {
 	}
 
 	/**
-	 * Retorna content type para Prometheus
+	 * Return content type for Prometheus
 	 */
 	contentType(): string {
 		return 'text/plain; version=0.0.4; charset=utf-8'
@@ -694,84 +695,84 @@ export class MetricsRegistry {
 	}
 }
 
-// === Métricas Padrão do Baileys ===
+// === Default Baileys Metrics ===
 
 /**
- * Registry global para métricas do Baileys
+ * Global registry for Baileys metrics
  */
 export const baileysMetrics = new MetricsRegistry({ prefix: 'baileys' })
 
 /**
- * Métricas pré-definidas para Baileys
+ * Pre-defined metrics for Baileys
  */
 export const metrics = {
-	// Conexão
+	// Connection
 	connectionAttempts: baileysMetrics.register(
-		new Counter('connection_attempts_total', 'Total de tentativas de conexão', ['status'])
+		new Counter('connection_attempts_total', 'Total connection attempts', ['status'])
 	),
 	connectionState: baileysMetrics.register(
-		new Gauge('connection_state', 'Estado atual da conexão (0=desconectado, 1=conectado)', ['instance'])
+		new Gauge('connection_state', 'Current connection state (0=disconnected, 1=connected)', ['instance'])
 	),
 	connectionDuration: baileysMetrics.register(
-		new Gauge('connection_duration_seconds', 'Duração da conexão atual em segundos', ['instance'])
+		new Gauge('connection_duration_seconds', 'Current connection duration in seconds', ['instance'])
 	),
 
-	// Mensagens
+	// Messages
 	messagesSent: baileysMetrics.register(
-		new Counter('messages_sent_total', 'Total de mensagens enviadas', ['type'])
+		new Counter('messages_sent_total', 'Total messages sent', ['type'])
 	),
 	messagesReceived: baileysMetrics.register(
-		new Counter('messages_received_total', 'Total de mensagens recebidas', ['type'])
+		new Counter('messages_received_total', 'Total messages received', ['type'])
 	),
 	messageLatency: baileysMetrics.register(
-		new Histogram('message_latency_ms', 'Latência de envio de mensagem em ms', ['type'], [10, 50, 100, 250, 500, 1000, 2500, 5000])
+		new Histogram('message_latency_ms', 'Message send latency in ms', ['type'], [10, 50, 100, 250, 500, 1000, 2500, 5000])
 	),
 
-	// Mídia
+	// Media
 	mediaUploads: baileysMetrics.register(
-		new Counter('media_uploads_total', 'Total de uploads de mídia', ['type', 'status'])
+		new Counter('media_uploads_total', 'Total media uploads', ['type', 'status'])
 	),
 	mediaDownloads: baileysMetrics.register(
-		new Counter('media_downloads_total', 'Total de downloads de mídia', ['type', 'status'])
+		new Counter('media_downloads_total', 'Total media downloads', ['type', 'status'])
 	),
 	mediaSize: baileysMetrics.register(
-		new Histogram('media_size_bytes', 'Tamanho de mídia em bytes', ['type', 'direction'], [1024, 10240, 102400, 1048576, 10485760])
+		new Histogram('media_size_bytes', 'Media size in bytes', ['type', 'direction'], [1024, 10240, 102400, 1048576, 10485760])
 	),
 
-	// Erros
+	// Errors
 	errors: baileysMetrics.register(
-		new Counter('errors_total', 'Total de erros', ['category', 'code'])
+		new Counter('errors_total', 'Total errors', ['category', 'code'])
 	),
 
 	// Retries
 	retries: baileysMetrics.register(
-		new Counter('retries_total', 'Total de retentativas', ['operation'])
+		new Counter('retries_total', 'Total retries', ['operation'])
 	),
 	retryLatency: baileysMetrics.register(
-		new Histogram('retry_latency_ms', 'Latência de retentativas em ms', ['operation'])
+		new Histogram('retry_latency_ms', 'Retry latency in ms', ['operation'])
 	),
 
 	// Socket
 	socketEvents: baileysMetrics.register(
-		new Counter('socket_events_total', 'Total de eventos de socket', ['event'])
+		new Counter('socket_events_total', 'Total socket events', ['event'])
 	),
 	socketLatency: baileysMetrics.register(
-		new Histogram('socket_latency_ms', 'Latência de operações de socket em ms', ['operation'])
+		new Histogram('socket_latency_ms', 'Socket operation latency in ms', ['operation'])
 	),
 
-	// Criptografia
+	// Encryption
 	encryptionOperations: baileysMetrics.register(
-		new Counter('encryption_operations_total', 'Total de operações de criptografia', ['operation'])
+		new Counter('encryption_operations_total', 'Total encryption operations', ['operation'])
 	),
 
 	// Cache
-	cacheHits: baileysMetrics.register(new Counter('cache_hits_total', 'Total de cache hits', ['cache'])),
-	cacheMisses: baileysMetrics.register(new Counter('cache_misses_total', 'Total de cache misses', ['cache'])),
-	cacheSize: baileysMetrics.register(new Gauge('cache_size', 'Tamanho atual do cache', ['cache'])),
+	cacheHits: baileysMetrics.register(new Counter('cache_hits_total', 'Total cache hits', ['cache'])),
+	cacheMisses: baileysMetrics.register(new Counter('cache_misses_total', 'Total cache misses', ['cache'])),
+	cacheSize: baileysMetrics.register(new Gauge('cache_size', 'Current cache size', ['cache'])),
 }
 
 /**
- * Helper para criar endpoint HTTP de métricas
+ * Helper to create HTTP metrics endpoint
  */
 export function createMetricsHandler(registry: MetricsRegistry = baileysMetrics) {
 	return async (_req: unknown, res: { setHeader: (name: string, value: string) => void; end: (body: string) => void }) => {
