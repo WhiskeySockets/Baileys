@@ -123,7 +123,8 @@ export class LIDMappingStore {
 			const cached = this.mappingCache.get(`pn:${pnUser}`)
 			if (cached && typeof cached === 'string') {
 				if (!addResolvedPair(pn, decoded, cached)) {
-					return null
+					this.logger.warn(`Invalid entry for ${pn} (pair not resolved)`)
+					continue
 				}
 
 				continue
@@ -147,7 +148,8 @@ export class LIDMappingStore {
 				const cached = this.mappingCache.get(`pn:${pnUser}`)
 				if (cached && typeof cached === 'string') {
 					if (!addResolvedPair(pn, decoded, cached)) {
-						return null
+						this.logger.warn(`Invalid entry for ${pn} (pair not resolved)`)
+  					continue
 					}
 				} else {
 					this.logger.trace(`No LID mapping found for PN user ${pnUser}; batch getting from USync`)
@@ -169,6 +171,7 @@ export class LIDMappingStore {
 		if (Object.keys(usyncFetch).length > 0) {
 			const result = await this.pnToLIDFunc?.(Object.keys(usyncFetch)) // this function already adds LIDs to mapping
 			if (result && result.length > 0) {
+				await this.storeLIDPNMappings(result)
 				for (const pair of result) {
 					const pnDecoded = jidDecode(pair.pn)
 					const pnUser = pnDecoded?.user
@@ -189,11 +192,11 @@ export class LIDMappingStore {
 					}
 				}
 			} else {
-				return null
+				this.logger.warn('USync fetch yielded no results for pending PNs')
 			}
 		}
 
-		return Object.values(successfulPairs)
+		return Object.values(successfulPairs).length > 0 ? Object.values(successfulPairs) : null
 	}
 
 	/**
@@ -248,6 +251,7 @@ export class LIDMappingStore {
 					pnUser = stored[`${lidUser}_reverse`]
 					if (pnUser && typeof pnUser === 'string') {
 						this.mappingCache.set(`lid:${lidUser}`, pnUser)
+						this.mappingCache.set(`pn:${pnUser}`, lidUser)
 					}
 				}
 
