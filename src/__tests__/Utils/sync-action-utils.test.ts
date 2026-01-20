@@ -1,9 +1,7 @@
 import { jest } from '@jest/globals'
-import type { BaileysEventMap, Contact } from '../../Types'
 import type { ILogger } from '../../Utils/logger'
 import { processContactAction } from '../../Utils/sync-action-utils'
 
-type LidMapping = BaileysEventMap['lid-mapping.update']
 
 describe('processContactAction', () => {
 	const mockLogger: ILogger = {
