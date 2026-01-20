@@ -866,7 +866,6 @@ export class SystemMetricsCollector {
 	// CPU tracking for delta calculation
 	private lastCpuUsage: { user: number; system: number } | null = null
 	private lastCpuTime: number = 0
-	private cpuCount: number
 
 	// Process metrics
 	public readonly processUptime: Gauge
@@ -889,14 +888,14 @@ export class SystemMetricsCollector {
 	constructor(registry: MetricsRegistry) {
 		this.registry = registry
 		this.processStartTime = Date.now()
-		this.cpuCount = os.cpus().length
 
 		// Initialize process metrics
 		this.processUptime = registry.register(
 			new Gauge('process_uptime_seconds', 'Process uptime in seconds')
 		)
+		// FIX: Updated description - can exceed 100% on multi-core (100% = 1 core)
 		this.processCpuUsage = registry.register(
-			new Gauge('process_cpu_usage_percent', 'Process CPU usage percentage (0-100)', ['type'])
+			new Gauge('process_cpu_usage_percent', 'Process CPU usage (100% = 1 core fully used)', ['type'])
 		)
 		this.processMemoryUsage = registry.register(
 			new Gauge('process_memory_bytes', 'Process memory usage in bytes', ['type'])
@@ -977,6 +976,9 @@ export class SystemMetricsCollector {
 	 * Calculate CPU usage percentage by measuring delta between calls
 	 * FIX: process.cpuUsage() returns cumulative microseconds, not percentage
 	 * We need to calculate the delta and convert to percentage
+	 *
+	 * NOTE: Values can exceed 100% on multi-core systems (e.g., 200% = 2 cores fully used)
+	 * This follows the standard Unix/Prometheus convention for process CPU metrics
 	 */
 	private collectCpuUsage(): void {
 		const currentCpuUsage = process.cpuUsage()
@@ -990,14 +992,15 @@ export class SystemMetricsCollector {
 				const systemDelta = currentCpuUsage.system - this.lastCpuUsage.system
 
 				// Convert to percentage: (microseconds used / microseconds elapsed) * 100
-				// Divide by CPU count to normalize across cores
+				// FIX: Removed division by cpuCount - this was giving artificially low values
+				// Standard convention: 100% = 1 core fully utilized, can go up to numCPUs * 100%
 				const elapsedMicros = elapsedMs * 1000
-				const userPercent = (userDelta / elapsedMicros) * 100 / this.cpuCount
-				const systemPercent = (systemDelta / elapsedMicros) * 100 / this.cpuCount
+				const userPercent = (userDelta / elapsedMicros) * 100
+				const systemPercent = (systemDelta / elapsedMicros) * 100
 
-				// Clamp to 0-100 range
-				this.processCpuUsage.set({ type: 'user' }, Math.min(100, Math.max(0, userPercent)))
-				this.processCpuUsage.set({ type: 'system' }, Math.min(100, Math.max(0, systemPercent)))
+				// Clamp to 0 minimum (no upper limit as it can exceed 100% with multiple cores)
+				this.processCpuUsage.set({ type: 'user' }, Math.max(0, userPercent))
+				this.processCpuUsage.set({ type: 'system' }, Math.max(0, systemPercent))
 			}
 		}
 
@@ -1031,7 +1034,7 @@ export class MetricsServer {
 	private systemCollector: SystemMetricsCollector | null = null
 	private collectInterval: NodeJS.Timeout | null = null
 	private config: MetricsConfig
-	private isStarting: boolean = false // FIX: Race condition protection
+	private startPromise: Promise<void> | null = null // FIX: Cache Promise for race condition
 
 	constructor(registry: MetricsRegistry, config?: Partial<MetricsConfig>) {
 		this.registry = registry
@@ -1047,29 +1050,27 @@ export class MetricsServer {
 
 	/**
 	 * Start the metrics HTTP server
-	 * FIX: Added race condition protection for concurrent start() calls
+	 * FIX: Properly handles concurrent start() calls by caching and returning the same Promise
 	 */
 	start(): Promise<void> {
-		return new Promise((resolve, reject) => {
-			if (!this.config.enabled) {
-				resolve()
-				return
-			}
+		// If disabled, return resolved promise
+		if (!this.config.enabled) {
+			return Promise.resolve()
+		}
 
-			// FIX: Race condition - check if already running or starting
-			if (this.server) {
-				resolve()
-				return
-			}
+		// If already running, return resolved promise
+		if (this.server) {
+			return Promise.resolve()
+		}
 
-			if (this.isStarting) {
-				// Another start() call is in progress, wait a bit and resolve
-				setTimeout(() => resolve(), 100)
-				return
-			}
+		// FIX: If start is in progress, return the cached promise
+		// This ensures all concurrent callers wait for the same result
+		if (this.startPromise) {
+			return this.startPromise
+		}
 
-			this.isStarting = true
-
+		// Cache the promise so concurrent calls get the same one
+		this.startPromise = new Promise<void>((resolve, reject) => {
 			// Initialize system collector if enabled (only once)
 			if (this.config.includeSystem && !this.systemCollector) {
 				this.systemCollector = new SystemMetricsCollector(this.registry)
@@ -1109,13 +1110,13 @@ export class MetricsServer {
 			})
 
 			this.server.on('error', (error) => {
-				this.isStarting = false
+				this.startPromise = null // Reset so retry is possible
+				this.server = null
 				reject(error)
 			})
 
 			// FIX: Use configurable host instead of hardcoded 0.0.0.0
 			this.server.listen(this.config.port, this.config.host, () => {
-				this.isStarting = false
 				const labelsInfo = Object.keys(this.config.defaultLabels).length > 0
 					? ` with labels: ${JSON.stringify(this.config.defaultLabels)}`
 					: ''
@@ -1126,6 +1127,8 @@ export class MetricsServer {
 				resolve()
 			})
 		})
+
+		return this.startPromise
 	}
 
 	/**
