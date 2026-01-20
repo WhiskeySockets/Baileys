@@ -1133,9 +1133,13 @@ export class MetricsServer {
 
 	/**
 	 * Stop the metrics HTTP server
+	 * FIX: Clears startPromise to allow restart after stop
 	 */
 	stop(): Promise<void> {
 		return new Promise((resolve) => {
+			// FIX: Clear cached promise so start() can be called again
+			this.startPromise = null
+
 			if (this.collectInterval) {
 				clearInterval(this.collectInterval)
 				this.collectInterval = null
