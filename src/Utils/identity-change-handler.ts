@@ -1,5 +1,6 @@
 import NodeCache from '@cacheable/node-cache'
 import { areJidsSameUser, type BinaryNode, getBinaryNodeChild, jidDecode } from '../WABinary'
+import { isStringNullOrEmpty } from './generics'
 import type { ILogger } from './logger'
 
 export type IdentityChangeResult =
@@ -57,7 +58,7 @@ export async function handleIdentityChange(
 
 	ctx.debounceCache.set(from, true)
 
-	const isOfflineNotification = node.attrs.offline !== null
+	const isOfflineNotification = !isStringNullOrEmpty(node.attrs.offline)
 	const hasExistingSession = await ctx.validateSession(from)
 
 	if (!hasExistingSession.exists) {
