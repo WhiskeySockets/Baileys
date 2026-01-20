@@ -132,3 +132,12 @@ export const DEFAULT_CACHE_TTLS = {
 	CALL_OFFER: 5 * 60, // 5 minutes
 	USER_DEVICES: 5 * 60 // 5 minutes
 }
+
+/**
+ * Batch sizes for status message operations
+ * Matches WhatsApp Web's WAWebManageE2ESessionsJob constants
+ */
+export const STATUS_BATCH_SIZES = {
+	/** Maximum JIDs to fetch prekeys for in one request (WhatsApp Web: SESSION_CHECK = 50) */
+	SESSION_CHECK: 50
+} as const

@@ -120,6 +120,38 @@ export const debouncedTimeout = (intervalMs = 1000, task?: () => void) => {
 
 export const delay = (ms: number) => delayCancellable(ms).delay
 
+/**
+ * Runs an async operation in batches to avoid overwhelming the server.
+ * @param items Items to process
+ * @param batchSize Items per batch (must be positive integer)
+ * @param operation Function to run on each batch
+ * @param delayMs Delay between batches (default: 0)
+ */
+export async function runInBatches<T, R>(
+	items: T[],
+	batchSize: number,
+	operation: (batch: T[]) => Promise<R>,
+	delayMs = 0
+): Promise<R[]> {
+	if (!Number.isInteger(batchSize) || batchSize <= 0) {
+		throw new Error(`runInBatches: batchSize must be a positive integer, got ${batchSize}`)
+	}
+
+	const results: R[] = []
+	for (let i = 0; i < items.length; i += batchSize) {
+		const batch = items.slice(i, i + batchSize)
+		results.push(await operation(batch))
+
+		// Delay between batches (skip after last batch)
+		const hasMoreBatches = i + batchSize < items.length
+		if (delayMs > 0 && hasMoreBatches) {
+			await delay(delayMs)
+		}
+	}
+
+	return results
+}
+
 export const delayCancellable = (ms: number) => {
 	const stack = new Error().stack
 	let timeout: NodeJS.Timeout

@@ -32,6 +32,18 @@ export type LTHashState = {
 	}
 }
 
+/**
+ * Status sender key tracking data
+ * Matches WhatsApp Web's STATUS_SENDER_KEY structure for tracking
+ * which devices have received the sender key for status broadcasts
+ */
+export type StatusSenderKeyData = {
+	/** Set to true when key rotation is needed (e.g., contact removed from status privacy list) */
+	rotateKey: boolean
+	/** Map of device JIDs that have received the sender key */
+	senderKey: { [jid: string]: boolean }
+}
+
 export type SignalCreds = {
 	readonly signedIdentityKey: KeyPair
 	readonly signedPreKey: SignedKeyPair
@@ -76,6 +88,8 @@ export type SignalDataTypeMap = {
 	session: Uint8Array
 	'sender-key': Uint8Array
 	'sender-key-memory': { [jid: string]: boolean }
+	/** Status-specific sender key tracking (matches WhatsApp Web STATUS_SENDER_KEY) */
+	'status-sender-key': StatusSenderKeyData
 	'app-state-sync-key': proto.Message.IAppStateSyncKeyData
 	'app-state-sync-version': LTHashState
 	'lid-mapping': string

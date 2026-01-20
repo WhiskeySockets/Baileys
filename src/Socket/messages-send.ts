@@ -1,7 +1,7 @@
 import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto/index.js'
-import { DEFAULT_CACHE_TTLS, WA_DEFAULT_EPHEMERAL } from '../Defaults'
+import { DEFAULT_CACHE_TTLS, STATUS_BATCH_SIZES, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import type {
 	AnyMessageContent,
 	MediaConnInfo,
@@ -31,6 +31,8 @@ import {
 	MessageRetryManager,
 	normalizeMessageContent,
 	parseAndInjectE2ESessions,
+	runInBatches,
+	StatusSenderKeyManager,
 	unixTimestampSeconds
 } from '../Utils'
 import { getUrlInfo } from '../Utils/link-preview'
@@ -96,6 +98,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	// Initialize message retry manager if enabled
 	const messageRetryManager = enableRecentMessageCache ? new MessageRetryManager(logger, maxMsgRetryCount) : null
+
+	// Initialize status sender key manager for optimized status broadcast
+	const statusSenderKeyManager = new StatusSenderKeyManager(authState.keys, logger)
 
 	// Prevent race conditions in Signal session encryption by user
 	const encryptionMutex = makeKeyedMutex()
@@ -452,34 +457,42 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				).map(a => a.lid)
 			]
 
-			logger.debug({ jidsRequiringFetch, wireJids }, 'fetching sessions')
-			const result = await query({
-				tag: 'iq',
-				attrs: {
-					xmlns: 'encrypt',
-					type: 'get',
-					to: S_WHATSAPP_NET
-				},
-				content: [
-					{
-						tag: 'key',
-						attrs: {},
-						content: wireJids.map(jid => {
-							const attrs: { [key: string]: string } = { jid }
-							if (force) attrs.reason = 'identity'
-							return { tag: 'user', attrs }
-						})
-					}
-				]
-			})
-			await parseAndInjectE2ESessions(result, signalRepository)
-			didFetchNewSession = true
+			logger.debug(
+				{ jidsRequiringFetch, wireJids, batches: Math.ceil(wireJids.length / STATUS_BATCH_SIZES.SESSION_CHECK) },
+				'fetching sessions in batches'
+			)
 
-			// Cache fetched sessions using wire JIDs
-			for (const wireJid of wireJids) {
-				const signalId = signalRepository.jidToSignalProtocolAddress(wireJid)
-				peerSessionsCache.set(signalId, true)
-			}
+			// Batch prekey requests to match WhatsApp Web's SESSION_CHECK limit (50 JIDs per request)
+			await runInBatches(wireJids, STATUS_BATCH_SIZES.SESSION_CHECK, async batch => {
+				const result = await query({
+					tag: 'iq',
+					attrs: {
+						xmlns: 'encrypt',
+						type: 'get',
+						to: S_WHATSAPP_NET
+					},
+					content: [
+						{
+							tag: 'key',
+							attrs: {},
+							content: batch.map(jid => {
+								const attrs: { [key: string]: string } = { jid }
+								if (force) attrs.reason = 'identity'
+								return { tag: 'user', attrs }
+							})
+						}
+					]
+				})
+				await parseAndInjectE2ESessions(result, signalRepository)
+
+				// Cache fetched sessions from this batch
+				for (const wireJid of batch) {
+					const signalId = signalRepository.jidToSignalProtocolAddress(wireJid)
+					peerSessionsCache.set(signalId, true)
+				}
+			})
+
+			didFetchNewSession = true
 		}
 
 		return didFetchNewSession
@@ -694,7 +707,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			if (isGroupOrStatus && !isRetryResend) {
-				const [groupData, senderKeyMap] = await Promise.all([
+				// For groups: fetch group data and sender key map in parallel
+				// For status: we'll use getStatusSkDistribList() after getting devices
+				const [groupData, groupSenderKeyMap] = await Promise.all([
 					(async () => {
 						let groupData = useCachedGroupMetadata && cachedGroupMetadata ? await cachedGroupMetadata(jid) : undefined // todo: should we rely on the cache specially if the cache is outdated and the metadata has new fields?
 						if (groupData && Array.isArray(groupData?.participants)) {
@@ -706,6 +721,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						return groupData
 					})(),
 					(async () => {
+						// Only fetch sender key map for groups (not status)
+						// Status uses getStatusSkDistribList() after devices are known
 						if (!participant && !isStatus) {
 							// what if sender memory is less accurate than the cached metadata
 							// on participant change in group, we should do sender memory manipulation
@@ -727,7 +744,18 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}
 
 				if (isStatus && statusJidList) {
-					participantsList.push(...statusJidList)
+					// Convert status JIDs to LID format for consistent addressing
+					const lidJids = await Promise.all(
+						statusJidList.map(async pnJid => {
+							const lidJid = await signalRepository.lidMapping.getLIDForPN(pnJid)
+							logger.trace(
+								lidJid ? { pn: pnJid, lid: lidJid } : { jid: pnJid },
+								lidJid ? 'status: converted PN to LID' : 'status: no LID mapping, using original JID'
+							)
+							return lidJid ?? pnJid
+						})
+					)
+					participantsList.push(...lidJids)
 				}
 
 				const additionalDevices = await getUSyncDevices(participantsList, !!useUserDevicesCache, false)
@@ -739,6 +767,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						addressing_mode: groupData?.addressingMode || 'lid'
 					}
 				}
+				// Note: Status messages use LID JIDs but omit addressing_mode attribute
 
 				const patched = await patchMessageBeforeSending(message)
 				if (Array.isArray(patched)) {
@@ -756,25 +785,47 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					meId: groupSenderIdentity
 				})
 
-				const senderKeyRecipients: string[] = []
-				for (const device of devices) {
-					const deviceJid = device.jid
-					const hasKey = !!senderKeyMap[deviceJid]
-					if (
-						(!hasKey || !!participant) &&
-						!isHostedLidUser(deviceJid) &&
-						!isHostedPnUser(deviceJid) &&
-						device.device !== 99
-					) {
-						//todo: revamp all this logic
-						// the goal is to follow with what I said above for each group, and instead of a true false map of ids, we can set an array full of those the app has already sent pkmsgs
-						senderKeyRecipients.push(deviceJid)
-						senderKeyMap[deviceJid] = true
+				let senderKeyRecipients: string[] = []
+				let statusParticipantList: string[] = []
+
+				// Filter eligible devices (exclude hosted users and agent devices)
+				const isEligibleDevice = (d: DeviceWithJid): boolean =>
+					!isHostedLidUser(d.jid) && !isHostedPnUser(d.jid) && d.device !== 99
+
+				if (isStatus) {
+					const eligibleDevices = devices.filter(isEligibleDevice).map(d => d.jid)
+
+					if (participant) {
+						// Retry: force sender key to all devices
+						senderKeyRecipients = eligibleDevices
+						logger.debug(
+							{ participant, deviceCount: eligibleDevices.length },
+							'status retry: forcing sender key to all devices'
+						)
+					} else {
+						const { skDistribList, participantList } =
+							await statusSenderKeyManager.getStatusSkDistribList(eligibleDevices)
+						senderKeyRecipients = skDistribList
+						statusParticipantList = participantList
+						logger.debug(
+							{ skDistribList: skDistribList.length, participantList: participantList.length },
+							'status sender key distribution list'
+						)
+					}
+				} else {
+					// Group: use traditional sender key map
+					for (const device of devices) {
+						if (!isEligibleDevice(device)) continue
+						const hasKey = groupSenderKeyMap[device.jid]
+						if (!hasKey || participant) {
+							senderKeyRecipients.push(device.jid)
+							groupSenderKeyMap[device.jid] = true
+						}
 					}
 				}
 
 				if (senderKeyRecipients.length) {
-					logger.debug({ senderKeyJids: senderKeyRecipients }, 'sending new sender key')
+					logger.debug({ senderKeyJids: senderKeyRecipients.length, isStatus }, 'sending sender key distribution')
 
 					const senderKeyMsg: proto.IMessage = {
 						senderKeyDistributionMessage: {
@@ -783,13 +834,32 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						}
 					}
 
-					const senderKeySessionTargets = senderKeyRecipients
-					await assertSessions(senderKeySessionTargets)
+					await assertSessions(senderKeyRecipients)
 
 					const result = await createParticipantNodes(senderKeyRecipients, senderKeyMsg, extraAttrs)
 					shouldIncludeDeviceIdentity = shouldIncludeDeviceIdentity || result.shouldIncludeDeviceIdentity
 
 					participants.push(...result.nodes)
+				}
+
+				// Add participantList nodes for devices that already have sender key (no <enc> needed)
+				// WhatsApp Web uses USER_JID (not DEVICE_JID) for participantList, so deduplicate
+				if (isStatus && statusParticipantList.length > 0) {
+					const uniqueUserJids = new Set<string>()
+					for (const deviceJid of statusParticipantList) {
+						const decoded = jidDecode(deviceJid)
+						const userJid = decoded ? jidEncode(decoded.user, decoded.server) : deviceJid
+						uniqueUserJids.add(userJid)
+					}
+
+					for (const userJid of uniqueUserJids) {
+						participants.push({ tag: 'to', attrs: { jid: userJid }, content: undefined })
+					}
+
+					logger.debug(
+						{ devices: statusParticipantList.length, uniqueUsers: uniqueUserJids.size },
+						'added status participantList (users with existing sender key)'
+					)
 				}
 
 				binaryNodeContent.push({
@@ -798,7 +868,19 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					content: ciphertext
 				})
 
-				await authState.keys.set({ 'sender-key-memory': { [jid]: senderKeyMap } })
+				// Add meta node for status messages
+				if (isStatus && !participant) {
+					binaryNodeContent.push({ tag: 'meta', attrs: { status_setting: 'contacts' }, content: undefined })
+				}
+
+				// Persist sender key state
+				if (isStatus) {
+					if (senderKeyRecipients.length) {
+						await statusSenderKeyManager.markStatusHasSenderKey(senderKeyRecipients)
+					}
+				} else {
+					await authState.keys.set({ 'sender-key-memory': { [jid]: groupSenderKeyMap } })
+				}
 			} else {
 				// ADDRESSING CONSISTENCY: Match own identity to conversation context
 				// TODO: investigate if this is true
