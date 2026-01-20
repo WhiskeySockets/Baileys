@@ -1,6 +1,12 @@
 /**
  * Prometheus Metrics Exposition - Enterprise Grade
  *
+ * Uses prom-client for full Prometheus compatibility including:
+ * - Native OpenMetrics format export
+ * - Default Node.js metrics collection
+ * - Proper histogram buckets
+ * - Registry management
+ *
  * Provides:
  * - Counters for event counting
  * - Gauges for instantaneous values
@@ -27,6 +33,7 @@
 
 import { createServer, IncomingMessage, ServerResponse, Server } from 'http'
 import * as os from 'os'
+import * as promClient from 'prom-client'
 
 // ============================================
 // Configuration
@@ -157,24 +164,32 @@ export interface SummaryValue {
 }
 
 // ============================================
-// Counter Class
+// Counter Class (prom-client backed)
 // ============================================
 
 /**
  * Counter class - monotonically increasing metric
+ * Now backed by prom-client for full Prometheus compatibility
  *
  * Counters only go up (or reset to zero). They are used for
  * counting events like requests, errors, tasks completed, etc.
  */
 export class Counter implements BaseMetric {
 	readonly type = 'counter' as const
-	private values: Map<string, MetricValue> = new Map()
+	private promCounter: promClient.Counter<string>
+	private localValues: Map<string, MetricValue> = new Map() // For getValues() compatibility
 
 	constructor(
 		public name: string,
 		public help: string,
 		public labelNames: string[] = []
-	) {}
+	) {
+		this.promCounter = new promClient.Counter({
+			name,
+			help,
+			labelNames,
+		})
+	}
 
 	/**
 	 * Increment the counter
@@ -194,14 +209,21 @@ export class Counter implements BaseMetric {
 			throw new Error('Counter cannot be decremented')
 		}
 
-		const key = this.labelsToKey(labels)
-		const existing = this.values.get(key)
+		// Use prom-client
+		if (Object.keys(labels).length > 0) {
+			this.promCounter.labels(labels).inc(incValue)
+		} else {
+			this.promCounter.inc(incValue)
+		}
 
+		// Also track locally for getValues() compatibility
+		const key = this.labelsToKey(labels)
+		const existing = this.localValues.get(key)
 		if (existing) {
 			existing.value += incValue
 			existing.timestamp = Date.now()
 		} else {
-			this.values.set(key, {
+			this.localValues.set(key, {
 				labels,
 				value: incValue,
 				timestamp: Date.now(),
@@ -210,30 +232,31 @@ export class Counter implements BaseMetric {
 	}
 
 	/**
-	 * Get current value
+	 * Get current value (from local cache)
 	 */
 	get(labels: Labels = {}): number {
 		const key = this.labelsToKey(labels)
-		return this.values.get(key)?.value ?? 0
+		return this.localValues.get(key)?.value ?? 0
 	}
 
 	/**
 	 * Reset the counter
 	 */
 	reset(labels?: Labels): void {
+		this.promCounter.reset()
 		if (labels) {
 			const key = this.labelsToKey(labels)
-			this.values.delete(key)
+			this.localValues.delete(key)
 		} else {
-			this.values.clear()
+			this.localValues.clear()
 		}
 	}
 
 	/**
-	 * Get all values
+	 * Get all values (from local cache for compatibility)
 	 */
 	getValues(): MetricValue[] {
-		return Array.from(this.values.values())
+		return Array.from(this.localValues.values())
 	}
 
 	private labelsToKey(labels: Labels): string {
@@ -251,24 +274,32 @@ export class Counter implements BaseMetric {
 }
 
 // ============================================
-// Gauge Class
+// Gauge Class (prom-client backed)
 // ============================================
 
 /**
  * Gauge class - value that can increase and decrease
+ * Now backed by prom-client for full Prometheus compatibility
  *
  * Gauges represent a snapshot of a value at a point in time.
  * Examples: temperature, current memory usage, queue size.
  */
 export class Gauge implements BaseMetric {
 	readonly type = 'gauge' as const
-	private values: Map<string, MetricValue> = new Map()
+	private promGauge: promClient.Gauge<string>
+	private localValues: Map<string, MetricValue> = new Map() // For getValues() compatibility
 
 	constructor(
 		public name: string,
 		public help: string,
 		public labelNames: string[] = []
-	) {}
+	) {
+		this.promGauge = new promClient.Gauge({
+			name,
+			help,
+			labelNames,
+		})
+	}
 
 	/**
 	 * Set value
@@ -284,8 +315,16 @@ export class Gauge implements BaseMetric {
 			setValue = value ?? 0
 		}
 
+		// Use prom-client
+		if (Object.keys(labels).length > 0) {
+			this.promGauge.labels(labels).set(setValue)
+		} else {
+			this.promGauge.set(setValue)
+		}
+
+		// Also track locally for getValues() compatibility
 		const key = this.labelsToKey(labels)
-		this.values.set(key, {
+		this.localValues.set(key, {
 			labels,
 			value: setValue,
 			timestamp: Date.now(),
@@ -306,11 +345,22 @@ export class Gauge implements BaseMetric {
 			incValue = value ?? 1
 		}
 
-		const key = this.labelsToKey(labels)
-		const existing = this.values.get(key)
-		const currentValue = existing?.value ?? 0
+		// Use prom-client
+		if (Object.keys(labels).length > 0) {
+			this.promGauge.labels(labels).inc(incValue)
+		} else {
+			this.promGauge.inc(incValue)
+		}
 
-		this.set(labels, currentValue + incValue)
+		// Also track locally
+		const key = this.labelsToKey(labels)
+		const existing = this.localValues.get(key)
+		const currentValue = existing?.value ?? 0
+		this.localValues.set(key, {
+			labels,
+			value: currentValue + incValue,
+			timestamp: Date.now(),
+		})
 	}
 
 	/**
@@ -327,11 +377,22 @@ export class Gauge implements BaseMetric {
 			decValue = value ?? 1
 		}
 
-		const key = this.labelsToKey(labels)
-		const existing = this.values.get(key)
-		const currentValue = existing?.value ?? 0
+		// Use prom-client
+		if (Object.keys(labels).length > 0) {
+			this.promGauge.labels(labels).dec(decValue)
+		} else {
+			this.promGauge.dec(decValue)
+		}
 
-		this.set(labels, currentValue - decValue)
+		// Also track locally
+		const key = this.labelsToKey(labels)
+		const existing = this.localValues.get(key)
+		const currentValue = existing?.value ?? 0
+		this.localValues.set(key, {
+			labels,
+			value: currentValue - decValue,
+			timestamp: Date.now(),
+		})
 	}
 
 	/**
@@ -342,30 +403,31 @@ export class Gauge implements BaseMetric {
 	}
 
 	/**
-	 * Get current value
+	 * Get current value (from local cache)
 	 */
 	get(labels: Labels = {}): number {
 		const key = this.labelsToKey(labels)
-		return this.values.get(key)?.value ?? 0
+		return this.localValues.get(key)?.value ?? 0
 	}
 
 	/**
 	 * Reset the gauge
 	 */
 	reset(labels?: Labels): void {
+		this.promGauge.reset()
 		if (labels) {
 			const key = this.labelsToKey(labels)
-			this.values.delete(key)
+			this.localValues.delete(key)
 		} else {
-			this.values.clear()
+			this.localValues.clear()
 		}
 	}
 
 	/**
-	 * Get all values
+	 * Get all values (from local cache for compatibility)
 	 */
 	getValues(): MetricValue[] {
-		return Array.from(this.values.values())
+		return Array.from(this.localValues.values())
 	}
 
 	private labelsToKey(labels: Labels): string {
@@ -401,18 +463,20 @@ export class Gauge implements BaseMetric {
 }
 
 // ============================================
-// Histogram Class
+// Histogram Class (prom-client backed)
 // ============================================
 
 /**
  * Histogram class - distribution of values in buckets
+ * Now backed by prom-client for full Prometheus compatibility
  *
  * Histograms sample observations and count them in configurable buckets.
  * They also provide sum and count of observations.
  */
 export class Histogram implements BaseMetric {
 	readonly type = 'histogram' as const
-	private values: Map<string, HistogramValue> = new Map()
+	private promHistogram: promClient.Histogram<string>
+	private localValues: Map<string, HistogramValue> = new Map() // For getValues() compatibility
 	private buckets: number[]
 
 	constructor(
@@ -422,6 +486,12 @@ export class Histogram implements BaseMetric {
 		buckets: number[] = DEFAULT_BUCKETS
 	) {
 		this.buckets = [...buckets].sort((a, b) => a - b)
+		this.promHistogram = new promClient.Histogram({
+			name,
+			help,
+			labelNames,
+			buckets: this.buckets,
+		})
 	}
 
 	/**
@@ -438,8 +508,16 @@ export class Histogram implements BaseMetric {
 			observeValue = value ?? 0
 		}
 
+		// Use prom-client
+		if (Object.keys(labels).length > 0) {
+			this.promHistogram.labels(labels).observe(observeValue)
+		} else {
+			this.promHistogram.observe(observeValue)
+		}
+
+		// Also track locally for getValues() compatibility
 		const key = this.labelsToKey(labels)
-		let histValue = this.values.get(key)
+		let histValue = this.localValues.get(key)
 
 		if (!histValue) {
 			histValue = {
@@ -448,7 +526,7 @@ export class Histogram implements BaseMetric {
 				sum: 0,
 				count: 0,
 			}
-			this.values.set(key, histValue)
+			this.localValues.set(key, histValue)
 		}
 
 		// Increment appropriate buckets (cumulative)
@@ -487,30 +565,31 @@ export class Histogram implements BaseMetric {
 	}
 
 	/**
-	 * Get histogram values
+	 * Get histogram values (from local cache)
 	 */
 	get(labels: Labels = {}): HistogramValue | undefined {
 		const key = this.labelsToKey(labels)
-		return this.values.get(key)
+		return this.localValues.get(key)
 	}
 
 	/**
 	 * Reset the histogram
 	 */
 	reset(labels?: Labels): void {
+		this.promHistogram.reset()
 		if (labels) {
 			const key = this.labelsToKey(labels)
-			this.values.delete(key)
+			this.localValues.delete(key)
 		} else {
-			this.values.clear()
+			this.localValues.clear()
 		}
 	}
 
 	/**
-	 * Get all values
+	 * Get all values (from local cache for compatibility)
 	 */
 	getValues(): HistogramValue[] {
-		return Array.from(this.values.values())
+		return Array.from(this.localValues.values())
 	}
 
 	/**
@@ -765,75 +844,18 @@ export class MetricsRegistry {
 
 	/**
 	 * Return metrics in Prometheus exposition format
+	 * Uses prom-client's native metrics() for proper OpenMetrics format
 	 */
 	async getMetricsOutput(): Promise<string> {
-		const lines: string[] = []
-
-		for (const [name, metric] of this.metricsMap) {
-			lines.push(`# HELP ${name} ${metric.help}`)
-			lines.push(`# TYPE ${name} ${metric.type}`)
-
-			if (metric instanceof Counter || metric instanceof Gauge) {
-				for (const value of metric.getValues()) {
-					const labelsStr = this.formatLabels({ ...this.defaultLabels, ...value.labels })
-					lines.push(`${name}${labelsStr} ${value.value}`)
-				}
-			} else if (metric instanceof Histogram) {
-				for (const value of metric.getValues()) {
-					const labelsStr = this.formatLabels({ ...this.defaultLabels, ...value.labels })
-					const buckets = metric.getBuckets()
-
-					for (const bucket of buckets) {
-						const bucketLabels = this.formatLabels({
-							...this.defaultLabels,
-							...value.labels,
-							le: String(bucket),
-						})
-						lines.push(`${name}_bucket${bucketLabels} ${value.buckets.get(bucket) ?? 0}`)
-					}
-
-					// +Inf bucket (total count)
-					const infLabels = this.formatLabels({
-						...this.defaultLabels,
-						...value.labels,
-						le: '+Inf',
-					})
-					lines.push(`${name}_bucket${infLabels} ${value.count}`)
-					lines.push(`${name}_sum${labelsStr} ${value.sum}`)
-					lines.push(`${name}_count${labelsStr} ${value.count}`)
-				}
-			} else if (metric instanceof Summary) {
-				for (const value of metric.getValues()) {
-					const labelsStr = this.formatLabels({ ...this.defaultLabels, ...value.labels })
-
-					for (const percentile of metric.getPercentiles()) {
-						const quantileLabels = this.formatLabels({
-							...this.defaultLabels,
-							...value.labels,
-							quantile: String(percentile),
-						})
-						const percentileValue = metric.getPercentile(value.labels, percentile)
-						if (percentileValue !== undefined) {
-							lines.push(`${name}${quantileLabels} ${percentileValue}`)
-						}
-					}
-
-					lines.push(`${name}_sum${labelsStr} ${value.sum}`)
-					lines.push(`${name}_count${labelsStr} ${value.count}`)
-				}
-			}
-
-			lines.push('')
-		}
-
-		return lines.join('\n')
+		// Use prom-client's register for native Prometheus format
+		return await promClient.register.metrics()
 	}
 
 	/**
-	 * Return content type for Prometheus
+	 * Return content type for Prometheus (using prom-client)
 	 */
 	contentType(): string {
-		return 'text/plain; version=0.0.4; charset=utf-8'
+		return promClient.register.contentType
 	}
 
 	private formatLabels(labels: Labels): string {
@@ -1071,6 +1093,14 @@ export class MetricsServer {
 
 		// Cache the promise so concurrent calls get the same one
 		this.startPromise = new Promise<void>((resolve, reject) => {
+			// Enable prom-client's default Node.js metrics collection
+			if (this.config.collectDefaultMetrics) {
+				promClient.collectDefaultMetrics({
+					prefix: this.config.prefix ? `${this.config.prefix}_` : '',
+					labels: this.config.defaultLabels,
+				})
+			}
+
 			// Initialize system collector if enabled (only once)
 			if (this.config.includeSystem && !this.systemCollector) {
 				this.systemCollector = new SystemMetricsCollector(this.registry)
