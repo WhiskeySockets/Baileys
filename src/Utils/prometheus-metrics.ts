@@ -38,6 +38,60 @@ import * as promClient from 'prom-client'
 // Create a custom registry to avoid conflicts with global registry
 const customRegistry = new promClient.Registry()
 
+// Flags to prevent multiple configuration calls (thread-safety and memory leak prevention)
+let defaultMetricsCollected = false
+let registryConfigured = false
+let configuredPrefix = ''
+
+/**
+ * Configure the custom registry with default labels
+ * Thread-safe: Only executes once, subsequent calls are no-ops
+ * To clear default labels, pass an empty object {} explicitly
+ */
+function configureRegistry(defaultLabels?: Labels): void {
+	if (registryConfigured) {
+		return // Already configured, ignore subsequent calls
+	}
+	registryConfigured = true
+
+	// Allow setting empty labels to clear previous (useful for testing/reconfiguration)
+	if (defaultLabels !== undefined) {
+		customRegistry.setDefaultLabels(defaultLabels)
+	}
+}
+
+/**
+ * Set the metric prefix - thread-safe, only first call takes effect
+ */
+function setMetricPrefix(prefix: string): void {
+	if (configuredPrefix === '') {
+		configuredPrefix = prefix
+	}
+}
+
+function getFullMetricName(name: string): string {
+	return configuredPrefix ? `${configuredPrefix}_${name}` : name
+}
+
+/**
+ * Reset all configuration flags - FOR TESTING ONLY
+ * Allows reconfiguration in test environments
+ */
+export function resetMetricsConfiguration(): void {
+	registryConfigured = false
+	defaultMetricsCollected = false
+	configuredPrefix = ''
+	// Clear all metrics from custom registry
+	customRegistry.clear()
+}
+
+/**
+ * Get the current configured prefix - FOR TESTING/DEBUGGING
+ */
+export function getConfiguredPrefix(): string {
+	return configuredPrefix
+}
+
 // ============================================
 // Configuration
 // ============================================
@@ -186,8 +240,9 @@ export class Counter implements BaseMetric {
 		public help: string,
 		public labelNames: string[] = []
 	) {
+		const fullName = getFullMetricName(name)
 		this.promCounter = new promClient.Counter({
-			name,
+			name: fullName,
 			help,
 			labelNames,
 			registers: [customRegistry], // Use custom registry, not global
@@ -290,8 +345,9 @@ export class Gauge implements BaseMetric {
 		public help: string,
 		public labelNames: string[] = []
 	) {
+		const fullName = getFullMetricName(name)
 		this.promGauge = new promClient.Gauge({
-			name,
+			name: fullName,
 			help,
 			labelNames,
 			registers: [customRegistry], // Use custom registry, not global
@@ -460,8 +516,9 @@ export class Histogram implements BaseMetric {
 		buckets: number[] = DEFAULT_BUCKETS
 	) {
 		this.buckets = [...buckets].sort((a, b) => a - b)
+		const fullName = getFullMetricName(name)
 		this.promHistogram = new promClient.Histogram({
-			name,
+			name: fullName,
 			help,
 			labelNames,
 			buckets: this.buckets,
@@ -645,8 +702,9 @@ export class Summary implements BaseMetric {
 		options: { percentiles?: number[]; maxAgeSeconds?: number; ageBuckets?: number } = {}
 	) {
 		this.percentiles = options.percentiles ?? DEFAULT_PERCENTILES
+		const fullName = getFullMetricName(name)
 		this.promSummary = new promClient.Summary({
-			name,
+			name: fullName,
 			help,
 			labelNames,
 			percentiles: this.percentiles,
@@ -1116,13 +1174,21 @@ export class MetricsServer {
 			return this.startPromise
 		}
 
+		// Configure prefix and registry BEFORE creating Promise to avoid race conditions
+		// These functions are thread-safe and only execute once
+		setMetricPrefix(this.config.prefix)
+		configureRegistry(this.config.defaultLabels)
+
 		// Cache the promise so concurrent calls get the same one
 		this.startPromise = new Promise<void>((resolve, reject) => {
-			// Enable prom-client's default Node.js metrics collection
-			if (this.config.collectDefaultMetrics) {
+
+			// Enable prom-client's default Node.js metrics collection (only once to prevent memory leak)
+			if (this.config.collectDefaultMetrics && !defaultMetricsCollected) {
+				defaultMetricsCollected = true
 				promClient.collectDefaultMetrics({
 					prefix: this.config.prefix ? `${this.config.prefix}_` : '',
 					labels: this.config.defaultLabels,
+					register: customRegistry, // Use custom registry, not global
 				})
 			}
 
@@ -1227,6 +1293,13 @@ export class MetricsServer {
  * Load metrics configuration from environment
  */
 const metricsConfig = loadMetricsConfig()
+
+// Initialize prefix and defaultLabels for all metrics created after this point
+setMetricPrefix(metricsConfig.prefix)
+configureRegistry({
+	prefix: metricsConfig.prefix,
+	defaultLabels: metricsConfig.defaultLabels,
+})
 
 /**
  * Global registry for Baileys metrics
