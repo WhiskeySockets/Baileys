@@ -49,6 +49,7 @@ import {
 	prepareCollectionSyncNode,
 	SyncErrorAction
 } from '../Utils/sync-action-utils'
+import { buildTcTokenFromJid } from '../Utils/tc-token-utils'
 import {
 	type BinaryNode,
 	getBinaryNodeChild,
@@ -629,7 +630,10 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * type = "image for the high res picture"
 	 */
 	const profilePictureUrl = async (jid: string, type: 'preview' | 'image' = 'preview', timeoutMs?: number) => {
-		// TOOD: Add support for tctoken, existingID, and newsletter + group options
+		const baseContent: BinaryNode[] = [{ tag: 'picture', attrs: { type, query: 'url' } }]
+
+		const tcTokenContent = await buildTcTokenFromJid({ authState, jid, baseContent })
+
 		jid = jidNormalizedUser(jid)
 		const result = await query(
 			{
@@ -640,7 +644,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					type: 'get',
 					xmlns: 'w:profile:picture'
 				},
-				content: [{ tag: 'picture', attrs: { type, query: 'url' } }]
+				content: tcTokenContent
 			},
 			timeoutMs
 		)
@@ -711,24 +715,19 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * @param toJid the jid to subscribe to
 	 * @param tcToken token for subscription, use if present
 	 */
-	const presenceSubscribe = (toJid: string, tcToken?: Buffer) =>
-		sendNode({
+	const presenceSubscribe = async (toJid: string) => {
+		const tcTokenContent = await buildTcTokenFromJid({ authState, jid: toJid })
+
+		return sendNode({
 			tag: 'presence',
 			attrs: {
 				to: toJid,
 				id: generateMessageTag(),
 				type: 'subscribe'
 			},
-			content: tcToken
-				? [
-						{
-							tag: 'tctoken',
-							attrs: {},
-							content: tcToken
-						}
-					]
-				: undefined
+			content: tcTokenContent
 		})
+	}
 
 	const handlePresenceUpdate = ({ tag, attrs, content }: BinaryNode) => {
 		let presence: PresenceData | undefined
@@ -1218,6 +1217,14 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			} catch (error) {
 				logger.warn({ error }, 'failed to resync blocked collections after key arrival')
 			}
+		}
+	})
+
+	ev.on('lid-mapping.update', async ({ lid, pn }) => {
+		try {
+			await signalRepository.lidMapping.storeLIDPNMappings([{ lid, pn }])
+		} catch (error) {
+			logger.warn({ lid, pn, error }, 'Failed to store LID-PN mapping')
 		}
 	})
 

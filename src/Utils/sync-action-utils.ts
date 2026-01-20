@@ -1,13 +1,10 @@
 import { Boom } from '@hapi/boom'
-import type { LTHashState, WAPatchName } from '../Types'
-import type { BinaryNode } from '../WABinary'
+import { proto } from '../../WAProto/index.js'
+import type { BaileysEventEmitter, BaileysEventMap, Contact, LTHashState, WAPatchName } from '../Types'
+import { type BinaryNode, isLidUser, isPnUser } from '../WABinary'
+import type { ILogger } from './logger'
 
-/**
- * Custom error class for missing app-state-sync-key errors.
- * Matches WhatsApp Web's SyncdMissingKeyError pattern.
- */
 export class SyncdMissingKeyError extends Boom {
-	/** The key ID that was not found */
 	readonly keyId: string
 
 	constructor(keyId: string, data?: object) {
@@ -16,46 +13,26 @@ export class SyncdMissingKeyError extends Boom {
 			data: { keyId, ...data }
 		})
 		this.keyId = keyId
-		// Maintain proper prototype chain for instanceof checks
 		Object.setPrototypeOf(this, SyncdMissingKeyError.prototype)
 	}
 }
 
-/** Message pattern that identifies a missing sync key error */
 const MISSING_KEY_MESSAGE_PATTERN = 'failed to find key'
 
-/**
- * Check if an error message indicates a missing sync key error.
- */
 function hasMissingKeyMessage(message: string | undefined): boolean {
 	return message?.includes(MISSING_KEY_MESSAGE_PATTERN) ?? false
 }
 
-/**
- * Type guard to check if an error is a missing sync key error.
- *
- * Matches errors that are:
- * - `SyncdMissingKeyError` instances (preferred)
- * - `Boom` errors with 404 status AND missing-key message pattern
- * - Plain `Error` objects with missing-key message pattern
- *
- * This is intentionally strict to avoid false positives from other 404 errors
- * (e.g., profile picture not found, resource not found, etc.)
- */
+/** Type guard to check if an error is a missing sync key error */
 export function isSyncdMissingKeyError(error: unknown): error is SyncdMissingKeyError | Boom | Error {
-	// Direct instance check - most reliable
 	if (error instanceof SyncdMissingKeyError) {
 		return true
 	}
 
-	// Legacy Boom errors - require BOTH 404 status AND message pattern
 	if (error instanceof Boom) {
-		const is404 = error.output?.statusCode === 404
-		const hasPattern = hasMissingKeyMessage(error.message)
-		return is404 && hasPattern
+		return error.output?.statusCode === 404 && hasMissingKeyMessage(error.message)
 	}
 
-	// Plain Error fallback - check message pattern only
 	if (error instanceof Error) {
 		return hasMissingKeyMessage(error.message)
 	}
@@ -63,31 +40,18 @@ export function isSyncdMissingKeyError(error: unknown): error is SyncdMissingKey
 	return false
 }
 
-/**
- * Manages collections that are blocked waiting for app-state-sync-keys.
- * Mirrors WhatsApp Web's WAWebSyncdCollectionsStateMachine blocked state handling.
- */
+/** Manages collections blocked waiting for app-state-sync-keys */
 export class BlockedCollectionsManager {
 	private readonly blocked = new Set<WAPatchName>()
 
-	/**
-	 * Mark a collection as blocked (waiting for keys)
-	 */
 	block(collection: WAPatchName): void {
 		this.blocked.add(collection)
 	}
 
-	/**
-	 * Check if a collection is blocked
-	 */
 	isBlocked(collection: WAPatchName): boolean {
 		return this.blocked.has(collection)
 	}
 
-	/**
-	 * Get all blocked collections and clear the blocked set.
-	 * Returns empty array if no collections are blocked.
-	 */
 	flush(): WAPatchName[] {
 		if (this.blocked.size === 0) {
 			return []
@@ -98,47 +62,25 @@ export class BlockedCollectionsManager {
 		return collections
 	}
 
-	/**
-	 * Get count of blocked collections
-	 */
 	get size(): number {
 		return this.blocked.size
 	}
 
-	/**
-	 * Check if there are any blocked collections
-	 */
 	get hasBlocked(): boolean {
 		return this.blocked.size > 0
 	}
 
-	/**
-	 * Get blocked collections without clearing (for logging/debugging)
-	 */
 	getBlocked(): readonly WAPatchName[] {
 		return Array.from(this.blocked)
 	}
 }
 
-// ============================================================================
-// Sync Error Classification
-// ============================================================================
-
-/**
- * Classification of sync errors for determining retry behavior.
- */
 export enum SyncErrorAction {
-	/** Error is due to missing key - block collection and wait for keys */
 	BLOCK_ON_KEY = 'BLOCK_ON_KEY',
-	/** Error is retriable - reset state and try again */
 	RETRY = 'RETRY',
-	/** Error is irrecoverable - stop trying this collection */
 	ABORT = 'ABORT'
 }
 
-/**
- * Result of classifying a sync error.
- */
 export interface SyncErrorClassification {
 	action: SyncErrorAction
 	error: unknown
@@ -146,88 +88,102 @@ export interface SyncErrorClassification {
 	errorStack?: string
 }
 
-/**
- * Classify a sync error to determine the appropriate action.
- *
- * @param error - The error that occurred during sync
- * @param attemptCount - Number of attempts made so far for this collection
- * @param maxAttempts - Maximum retry attempts allowed
- * @returns Classification with recommended action
- */
 export function classifySyncError(error: unknown, attemptCount: number, maxAttempts: number): SyncErrorClassification {
 	const errorMessage = error instanceof Error ? error.message : String(error)
 	const errorStack = error instanceof Error ? error.stack : undefined
 
-	// Check for missing key error first
 	if (isSyncdMissingKeyError(error)) {
-		return {
-			action: SyncErrorAction.BLOCK_ON_KEY,
-			error,
-			errorMessage,
-			errorStack
-		}
+		return { action: SyncErrorAction.BLOCK_ON_KEY, error, errorMessage, errorStack }
 	}
 
-	// Check for irrecoverable errors
 	const isTypeError = error instanceof Error && error.name === 'TypeError'
-	const maxAttemptsReached = attemptCount >= maxAttempts
-
-	if (isTypeError || maxAttemptsReached) {
-		return {
-			action: SyncErrorAction.ABORT,
-			error,
-			errorMessage,
-			errorStack
-		}
+	if (isTypeError || attemptCount >= maxAttempts) {
+		return { action: SyncErrorAction.ABORT, error, errorMessage, errorStack }
 	}
 
-	// Default: retriable error
-	return {
-		action: SyncErrorAction.RETRY,
-		error,
-		errorMessage,
-		errorStack
-	}
+	return { action: SyncErrorAction.RETRY, error, errorMessage, errorStack }
 }
 
-// ============================================================================
-// Collection Sync Node Preparation
-// ============================================================================
-
-/**
- * State information for a collection being synced.
- */
 export interface CollectionSyncState {
 	name: WAPatchName
 	state: LTHashState
 	isNewSync: boolean
 }
 
-/**
- * Prepare a sync query node for a collection.
- *
- * @param name - Collection name
- * @param state - Current LT hash state for the collection
- * @returns Binary node for the sync query
- */
 export function prepareCollectionSyncNode(name: WAPatchName, state: LTHashState): BinaryNode {
 	return {
 		tag: 'collection',
 		attrs: {
 			name,
 			version: state.version.toString(),
-			// return snapshot if being synced from scratch (version 0)
 			return_snapshot: (!state.version).toString()
 		}
 	}
 }
 
-/**
- * Prepare sync query nodes for multiple collections.
- *
- * @param collections - Array of collection sync states
- * @returns Array of binary nodes for the sync query
- */
 export function prepareCollectionSyncNodes(collections: readonly CollectionSyncState[]): BinaryNode[] {
 	return collections.map(({ name, state }) => prepareCollectionSyncNode(name, state))
+}
+
+export type ContactsUpsertResult = {
+	event: 'contacts.upsert'
+	data: Contact[]
+}
+
+export type LidMappingUpdateResult = {
+	event: 'lid-mapping.update'
+	data: BaileysEventMap['lid-mapping.update']
+}
+
+export type SyncActionResult = ContactsUpsertResult | LidMappingUpdateResult
+
+export const processContactAction = (
+	action: proto.SyncActionValue.IContactAction,
+	id: string | undefined,
+	logger?: ILogger
+): SyncActionResult[] => {
+	const results: SyncActionResult[] = []
+
+	if (!id) {
+		logger?.warn(
+			{ hasFullName: !!action.fullName, hasLidJid: !!action.lidJid, hasPnJid: !!action.pnJid },
+			'contactAction sync: missing id in index'
+		)
+		return results
+	}
+
+	const lidJid = action.lidJid
+	const idIsPn = isPnUser(id)
+	const phoneNumber = idIsPn ? id : action.pnJid || undefined
+
+	results.push({
+		event: 'contacts.upsert',
+		data: [
+			{
+				id,
+				name: action.fullName || undefined,
+				lid: lidJid || undefined,
+				phoneNumber
+			}
+		]
+	})
+
+	if (lidJid && isLidUser(lidJid) && idIsPn) {
+		results.push({
+			event: 'lid-mapping.update',
+			data: { lid: lidJid, pn: id }
+		})
+	}
+
+	return results
+}
+
+export const emitSyncActionResults = (ev: BaileysEventEmitter, results: SyncActionResult[]): void => {
+	for (const result of results) {
+		if (result.event === 'contacts.upsert') {
+			ev.emit('contacts.upsert', result.data)
+		} else {
+			ev.emit('lid-mapping.update', result.data)
+		}
+	}
 }

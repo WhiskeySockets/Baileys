@@ -42,32 +42,32 @@ export const makeBusinessSocket = (config: SocketConfig) => {
 		}
 
 		if (args.hours !== undefined) {
-		    node.push({
-		        tag: 'business_hours',
-		        attrs: { timezone: args.hours.timezone },
-		        content: args.hours.days.map(dayConfig => {
-		            const base = {
-		                tag: 'business_hours_config',
-		                attrs: { 
-		                    day_of_week: dayConfig.day, 
-		                    mode: dayConfig.mode 
-		                }
-		            } as const
-		
-		            if (dayConfig.mode === 'specific_hours') {
-		                return {
-		                    ...base,
-		                    attrs: {
-		                        ...base.attrs,
-		                        open_time: dayConfig.openTimeInMinutes,
-		                        close_time: dayConfig.closeTimeInMinutes
-		                    }
-		                }
-		            }
-		
-		            return base
-		        })
-		    })
+			node.push({
+				tag: 'business_hours',
+				attrs: { timezone: args.hours.timezone },
+				content: args.hours.days.map(dayConfig => {
+					const base = {
+						tag: 'business_hours_config',
+						attrs: {
+							day_of_week: dayConfig.day,
+							mode: dayConfig.mode
+						}
+					} as const
+
+					if (dayConfig.mode === 'specific_hours') {
+						return {
+							...base,
+							attrs: {
+								...base.attrs,
+								open_time: dayConfig.openTimeInMinutes,
+								close_time: dayConfig.closeTimeInMinutes
+							}
+						}
+					}
+
+					return base
+				})
+			})
 		}
 
 		const result = await query({
