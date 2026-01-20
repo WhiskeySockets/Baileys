@@ -60,7 +60,8 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	fireInitQueries: true,
 	auth: undefined as unknown as AuthenticationState,
 	markOnlineOnConnect: true,
-	syncFullHistory: true,
+	// Conservative default - set to true only if you need full message history
+	syncFullHistory: false,
 	patchMessageBeforeSending: msg => msg,
 	shouldSyncHistoryMessage: () => true,
 	shouldIgnoreJid: () => false,
@@ -123,14 +124,45 @@ export const MEDIA_KEYS = Object.keys(MEDIA_PATH_MAP) as MediaType[]
 
 export const MIN_PREKEY_COUNT = 5
 
-export const INITIAL_PREKEY_COUNT = 812
+// Conservative prekey count (upstream uses 812, but 30 is safer for rate limiting)
+export const INITIAL_PREKEY_COUNT = 30
 
 export const UPLOAD_TIMEOUT = 30000 // 30 seconds
-export const MIN_UPLOAD_INTERVAL = 5000 // 5 seconds minimum between uploads
+// Conservative upload interval to avoid rate limiting (was 5000)
+export const MIN_UPLOAD_INTERVAL = 60_000 // 60 seconds minimum between uploads
 
+/**
+ * Cache TTL configuration (in seconds)
+ */
 export const DEFAULT_CACHE_TTLS = {
 	SIGNAL_STORE: 5 * 60, // 5 minutes
 	MSG_RETRY: 60 * 60, // 1 hour
 	CALL_OFFER: 5 * 60, // 5 minutes
 	USER_DEVICES: 5 * 60 // 5 minutes
 }
+
+/**
+ * Maximum cache keys per store type - prevents memory leaks
+ * Based on RSocket's battle-tested configuration
+ */
+export const DEFAULT_CACHE_MAX_KEYS = {
+	SIGNAL_STORE: 10_000,
+	MSG_RETRY: 10_000,
+	CALL_OFFER: 500,
+	USER_DEVICES: 5_000,
+	PLACEHOLDER_RESEND: 5_000,
+	LID_PER_SOCKET: 2_000,
+	LID_GLOBAL: 10_000
+}
+
+/**
+ * Retry configuration with exponential backoff
+ * Delays in milliseconds: 1s, 2s, 5s, 10s, 20s
+ */
+export const RETRY_BACKOFF_DELAYS = [1000, 2000, 5000, 10000, 20000]
+
+/**
+ * Jitter factor for retry delays (0.15 = ±15% randomization)
+ * Helps prevent thundering herd problem
+ */
+export const RETRY_JITTER_FACTOR = 0.15
