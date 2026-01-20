@@ -5,7 +5,7 @@
  * - BAILEYS_LOG: Enable/disable logging (default: true)
  * - BAILEYS_LOG_LEVEL: Log level - trace/debug/info/warn/error/fatal/silent (default: info)
  * - USE_STRUCTURED_LOGS: Use structured logger with advanced features (default: false)
- * - LOG_FORMAT: Output format - 'json' or 'pretty' (default: json in production, pretty otherwise)
+ * - LOG_FORMAT: Output format - 'json' or 'pretty' (default: json)
  * - LOGGER_INFO: Enable info level (default: true)
  * - LOGGER_WARN: Enable warn level (default: true)
  * - LOGGER_ERROR: Enable error level (default: true)
@@ -13,7 +13,10 @@
  * @module Utils/logger
  */
 
+import { createRequire } from 'module'
 import P, { type Logger as PinoLogger } from 'pino'
+
+const require = createRequire(import.meta.url)
 
 export interface ILogger {
 	level: string
@@ -44,18 +47,25 @@ interface LoggerConfig {
  * Load logger configuration from environment
  */
 function loadLoggerConfig(): LoggerConfig {
-	const isProduction = process.env.NODE_ENV === 'production'
-
 	return {
 		enabled: process.env.BAILEYS_LOG !== 'false',
 		level: process.env.BAILEYS_LOG_LEVEL || 'info',
-		format: (process.env.LOG_FORMAT as 'json' | 'pretty') || (isProduction ? 'json' : 'pretty'),
+		format: (process.env.LOG_FORMAT as 'json' | 'pretty') || 'json',
 		useStructuredLogs: process.env.USE_STRUCTURED_LOGS === 'true',
 		levelFilters: {
 			info: process.env.LOGGER_INFO !== 'false',
 			warn: process.env.LOGGER_WARN !== 'false',
 			error: process.env.LOGGER_ERROR !== 'false',
 		},
+	}
+}
+
+function canUsePrettyTransport(): boolean {
+	try {
+		require.resolve('pino-pretty')
+		return true
+	} catch {
+		return false
 	}
 }
 
@@ -117,8 +127,8 @@ function createLogger(): ILogger {
 		timestamp: () => `,"time":"${new Date().toJSON()}"`,
 	}
 
-	// Add pretty printing in non-production or when explicitly set
-	if (config.format === 'pretty') {
+	// Add pretty printing when explicitly set and available
+	if (config.format === 'pretty' && canUsePrettyTransport()) {
 		pinoOptions.transport = {
 			target: 'pino-pretty',
 			options: {
