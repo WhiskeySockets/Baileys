@@ -9,8 +9,12 @@ import { downloadContentFromMessage } from './messages-media'
 import {
 	isHostedLidUser,
 	isHostedPnUser,
+	isJidBroadcast,
+	isJidGroup,
+	isJidNewsletter,
 	isLidUser,
 	isPnUser,
+	jidDecode,
 	jidNormalizedUser
 } from '../WABinary/index.js'
 
@@ -40,6 +44,32 @@ export const downloadHistory = async (msg: proto.Message.IHistorySyncNotificatio
 }
 
 /**
+ * Checks if a JID represents a person (can have LID-PN mapping).
+ * Excludes groups, broadcasts, newsletters, and bots.
+ *
+ * @param jid - The JID to check
+ * @returns true if the JID can have LID-PN mapping
+ */
+export function isPersonJid(jid: string | undefined): boolean {
+	if (!jid) {
+		return false
+	}
+
+	// Groups, broadcasts, and newsletters don't have LID-PN mappings
+	if (isJidGroup(jid) || isJidBroadcast(jid) || isJidNewsletter(jid)) {
+		return false
+	}
+
+	// Only person JIDs (LID or PN formats) can have mappings
+	return !!(
+		isLidUser(jid) ||
+		isHostedLidUser(jid) ||
+		isPnUser(jid) ||
+		isHostedPnUser(jid)
+	)
+}
+
+/**
  * Extracts LID-PN mapping from a conversation object.
  *
  * WhatsApp uses two identifier systems:
@@ -48,6 +78,11 @@ export const downloadHistory = async (msg: proto.Message.IHistorySyncNotificatio
  *
  * Conversations may have their ID in either format, with the alternate
  * format stored in `lidJid` or `pnJid` properties respectively.
+ *
+ * Skips non-person JIDs:
+ * - `@g.us` (groups)
+ * - `@broadcast` (broadcast lists)
+ * - `@newsletter` (channels)
  *
  * @param chatId - The conversation ID (may be LID or PN format)
  * @param lidJid - The LID JID if chat ID is PN format
@@ -63,12 +98,22 @@ export const downloadHistory = async (msg: proto.Message.IHistorySyncNotificatio
  * // Chat ID is PN, lidJid contains LID
  * extractLidPnFromConversation('5511999999999@s.whatsapp.net', '123456789@lid', undefined)
  * // Returns: { lid: '123456789@lid', pn: '5511999999999@s.whatsapp.net' }
+ *
+ * @example
+ * // Newsletter - returns undefined (no mapping)
+ * extractLidPnFromConversation('123456789@newsletter', undefined, undefined)
+ * // Returns: undefined
  */
 export function extractLidPnFromConversation(
 	chatId: string,
 	lidJid: string | undefined | null,
 	pnJid: string | undefined | null
 ): LIDMapping | undefined {
+	// Skip non-person JIDs (groups, broadcasts, newsletters)
+	if (!isPersonJid(chatId)) {
+		return undefined
+	}
+
 	// Check if chat ID is in LID format
 	const chatIsLid = isLidUser(chatId) || isHostedLidUser(chatId)
 	// Check if chat ID is in PN format
@@ -94,15 +139,84 @@ export function extractLidPnFromConversation(
 }
 
 /**
+ * Extracts LID-PN mapping from a message's alternative JID fields.
+ *
+ * Messages may contain alternate JID formats in:
+ * - `key.remoteJidAlt` - Alternative remote JID format
+ * - `key.participantAlt` - Alternative participant JID format (for groups)
+ *
+ * @param remoteJid - The primary remote JID
+ * @param remoteJidAlt - The alternative remote JID (may be LID or PN)
+ * @param participant - The primary participant JID (for group messages)
+ * @param participantAlt - The alternative participant JID
+ * @returns LID-PN mapping if extractable, undefined otherwise
+ */
+export function extractLidPnFromMessage(
+	remoteJid: string | undefined | null,
+	remoteJidAlt: string | undefined | null,
+	participant: string | undefined | null,
+	participantAlt: string | undefined | null
+): LIDMapping | undefined {
+	// For group messages, use participant fields
+	const primaryJid = participant || remoteJid
+	const altJid = participantAlt || remoteJidAlt
+
+	if (!primaryJid || !altJid) {
+		return undefined
+	}
+
+	// Skip non-person JIDs
+	if (!isPersonJid(primaryJid) && !isPersonJid(altJid)) {
+		return undefined
+	}
+
+	const primaryDecoded = jidDecode(primaryJid)
+	const altDecoded = jidDecode(altJid)
+
+	if (!primaryDecoded || !altDecoded) {
+		return undefined
+	}
+
+	// Determine which is LID and which is PN
+	const primaryIsLid = primaryDecoded.server === 'lid' || primaryDecoded.server === 'hosted.lid'
+	const altIsLid = altDecoded.server === 'lid' || altDecoded.server === 'hosted.lid'
+
+	if (primaryIsLid && !altIsLid) {
+		// Primary is LID, alt is PN
+		return {
+			lid: jidNormalizedUser(primaryJid),
+			pn: jidNormalizedUser(altJid)
+		}
+	}
+
+	if (!primaryIsLid && altIsLid) {
+		// Primary is PN, alt is LID
+		return {
+			lid: jidNormalizedUser(altJid),
+			pn: jidNormalizedUser(primaryJid)
+		}
+	}
+
+	return undefined
+}
+
+/**
  * Processes a history sync message and extracts chats, contacts, messages,
  * and LID-PN mappings.
  *
- * LID-PN mappings are extracted from two sources:
+ * LID-PN mappings are extracted from three sources:
  * 1. Top-level `phoneNumberToLidMappings` array in the history sync payload
  * 2. Individual conversation objects that contain both LID and PN identifiers
+ *    (via `lidJid` and `pnJid` properties)
+ * 3. Message objects with alternate JID fields (`remoteJidAlt`, `participantAlt`)
  *
- * This dual extraction ensures maximum mapping coverage, as WhatsApp may
- * provide mappings in either or both locations depending on the sync type.
+ * This multi-source extraction ensures maximum mapping coverage, as WhatsApp may
+ * provide mappings in different locations depending on the sync type and context.
+ *
+ * Skipped JID types (no LID-PN mapping):
+ * - `@g.us` (groups)
+ * - `@broadcast` (broadcast lists)
+ * - `@newsletter` (channels)
  *
  * @param item - The history sync protocol buffer to process
  * @returns Processed data including chats, contacts, messages, and LID-PN mappings
@@ -171,6 +285,18 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 				for (const item of msgs) {
 					const message = item.message! as WAMessage
 					messages.push(message)
+
+					// Source 3: Extract LID-PN mapping from message's alternative JID fields
+					// Messages may have remoteJidAlt or participantAlt with alternate format
+					const messageMapping = extractLidPnFromMessage(
+						message.key.remoteJid,
+						message.key.remoteJidAlt,
+						message.key.participant,
+						message.key.participantAlt
+					)
+					if (messageMapping) {
+						addLidPnMapping(messageMapping)
+					}
 
 					if (!chat.messages?.length) {
 						// keep only the most recent message in the chat array
