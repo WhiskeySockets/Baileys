@@ -20,15 +20,15 @@ import type { CircuitBreaker } from './circuit-breaker.js'
 /**
  * Retry configuration with custom progressive backoff
  * Fixed delay steps in milliseconds: 1s → 2s → 5s → 10s → 20s
- * Defined locally to avoid circular dependency with Defaults
+ * Exported for external use (e.g., custom retry logic)
  */
-const RETRY_BACKOFF_DELAYS = [1000, 2000, 5000, 10000, 20000]
+export const RETRY_BACKOFF_DELAYS = [1000, 2000, 5000, 10000, 20000] as const
 
 /**
  * Jitter factor for retry delays (0.15 = ±15% randomization)
  * Helps prevent thundering herd problem
  */
-const RETRY_JITTER_FACTOR = 0.15
+export const RETRY_JITTER_FACTOR = 0.15 as const
 
 /**
  * Backoff strategies
@@ -656,14 +656,19 @@ export const retryConfigs = {
 	/**
 	 * RSocket-style retry with stepped delays
 	 * Uses fixed delay array: 1s, 2s, 5s, 10s, 20s (with ±15% jitter)
-	 * Unlike exponential, this uses exact delays from RETRY_BACKOFF_DELAYS
+	 *
+	 * NOTE: Values are hardcoded instead of referencing RETRY_BACKOFF_DELAYS/RETRY_JITTER_FACTOR
+	 * to prevent "Cannot access before initialization" errors in ESM environments.
+	 * This occurs when modules are loaded in specific orders due to indirect circular imports
+	 * (e.g., via prometheus-metrics.ts -> circuit-breaker.ts chain).
+	 * Keep these values in sync with the constants above (lines 25, 31).
 	 */
 	rsocket: {
-		maxAttempts: RETRY_BACKOFF_DELAYS.length,
-		baseDelay: RETRY_BACKOFF_DELAYS[0],
-		maxDelay: RETRY_BACKOFF_DELAYS[RETRY_BACKOFF_DELAYS.length - 1],
+		maxAttempts: 5, // = RETRY_BACKOFF_DELAYS.length
+		baseDelay: 1000, // = RETRY_BACKOFF_DELAYS[0]
+		maxDelay: 20000, // = RETRY_BACKOFF_DELAYS[4]
 		backoffStrategy: 'stepped' as const,
-		jitter: RETRY_JITTER_FACTOR,
+		jitter: 0.15, // = RETRY_JITTER_FACTOR
 	},
 }
 

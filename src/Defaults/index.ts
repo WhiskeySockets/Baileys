@@ -169,15 +169,6 @@ export const DEFAULT_CACHE_MAX_KEYS = {
 	LID_GLOBAL: 10_000
 }
 
-/**
- * Retry configuration with custom progressive backoff
- * Fixed delay steps in milliseconds: 1s → 2s → 5s → 10s → 20s
- * Use with 'stepped' backoff strategy in retry-utils.ts
- */
-export const RETRY_BACKOFF_DELAYS = [1000, 2000, 5000, 10000, 20000]
-
-/**
- * Jitter factor for retry delays (0.15 = ±15% randomization)
- * Helps prevent thundering herd problem
- */
-export const RETRY_JITTER_FACTOR = 0.15
+// Re-export retry constants for backwards compatibility
+// Actual definitions are in retry-utils.ts to avoid ESM initialization order issues
+export { RETRY_BACKOFF_DELAYS, RETRY_JITTER_FACTOR } from '../Utils/retry-utils'
