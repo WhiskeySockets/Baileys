@@ -16,6 +16,7 @@ import type {
 	WAPatchName
 } from '../Types'
 import { WAMessageStatus, WAMessageStubType } from '../Types'
+import { logMessageReceived } from '../Utils/baileys-logger'
 import {
 	aesDecryptCTR,
 	aesEncryptGCM,
@@ -1318,6 +1319,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				cleanMessage(msg, authState.creds.me!.id, authState.creds.me!.lid!)
 
 				await upsertMessage(msg, node.attrs.offline ? 'append' : 'notify')
+
+				// Log with [BAILEYS] prefix
+				if (msg.key.id && msg.key.remoteJid) {
+					logMessageReceived(msg.key.id, msg.key.remoteJid)
+				}
 			})
 		} catch (error) {
 			logger.error({ error, node: binaryNodeToString(node) }, 'error in handling message')
