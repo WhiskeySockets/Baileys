@@ -3,6 +3,7 @@ import { inflate } from 'zlib'
 import { proto } from '../../WAProto/index.js'
 import type { Chat, Contact, LIDMapping, WAMessage } from '../Types'
 import { WAMessageStubType } from '../Types'
+import { isHostedLidUser, isHostedPnUser, isLidUser, isPnUser } from '../WABinary'
 import { toNumber } from './generics'
 import { normalizeMessageContent } from './messages'
 import { downloadContentFromMessage } from './messages-media'
@@ -49,6 +50,15 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 					lid: chat.lidJid || undefined,
 					phoneNumber: chat.pnJid || undefined
 				})
+
+				const chatId = chat.id!
+				const isLid = isLidUser(chatId) || isHostedLidUser(chatId)
+				const isPn = isPnUser(chatId) || isHostedPnUser(chatId)
+				if (isLid && chat.pnJid) {
+					lidPnMappings.push({ lid: chatId, pn: chat.pnJid })
+				} else if (isPn && chat.lidJid) {
+					lidPnMappings.push({ lid: chat.lidJid, pn: chatId })
+				}
 
 				const msgs = chat.messages || []
 				delete chat.messages

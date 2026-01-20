@@ -91,4 +91,124 @@ describe('processHistoryMessage', () => {
 			})
 		})
 	})
+
+	describe('LID-PN mapping extraction from conversations', () => {
+		it('should extract mapping when chat.id is LID and pnJid exists', () => {
+			const historySync: proto.IHistorySync = {
+				syncType: proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP,
+				conversations: [
+					{
+						id: '11111111111111@lid',
+						pnJid: '1234567890123@s.whatsapp.net'
+					}
+				]
+			}
+
+			const result = processHistoryMessage(historySync)
+
+			expect(result.lidPnMappings).toContainEqual({
+				lid: '11111111111111@lid',
+				pn: '1234567890123@s.whatsapp.net'
+			})
+		})
+
+		it('should extract mapping when chat.id is PN and lidJid exists', () => {
+			const historySync: proto.IHistorySync = {
+				syncType: proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP,
+				conversations: [
+					{
+						id: '1234567890123@s.whatsapp.net',
+						lidJid: '11111111111111@lid'
+					}
+				]
+			}
+
+			const result = processHistoryMessage(historySync)
+
+			expect(result.lidPnMappings).toContainEqual({
+				lid: '11111111111111@lid',
+				pn: '1234567890123@s.whatsapp.net'
+			})
+		})
+
+		it('should not extract mapping for group chats', () => {
+			const historySync: proto.IHistorySync = {
+				syncType: proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP,
+				conversations: [
+					{
+						id: '123456789012345678@g.us',
+						lidJid: '11111111111111@lid',
+						pnJid: '1234567890123@s.whatsapp.net'
+					}
+				]
+			}
+
+			const result = processHistoryMessage(historySync)
+
+			expect(result.lidPnMappings).toEqual([])
+		})
+
+		it('should combine mappings from phoneNumberToLidMappings and conversations', () => {
+			const historySync: proto.IHistorySync = {
+				syncType: proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP,
+				phoneNumberToLidMappings: [{ lidJid: '11111111111111@lid', pnJid: '1111111111111@s.whatsapp.net' }],
+				conversations: [
+					{
+						id: '22222222222222@lid',
+						pnJid: '2222222222222@s.whatsapp.net'
+					}
+				]
+			}
+
+			const result = processHistoryMessage(historySync)
+
+			expect(result.lidPnMappings).toHaveLength(2)
+			expect(result.lidPnMappings).toContainEqual({
+				lid: '11111111111111@lid',
+				pn: '1111111111111@s.whatsapp.net'
+			})
+			expect(result.lidPnMappings).toContainEqual({
+				lid: '22222222222222@lid',
+				pn: '2222222222222@s.whatsapp.net'
+			})
+		})
+
+		it('should extract mapping for hosted LID users', () => {
+			const historySync: proto.IHistorySync = {
+				syncType: proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP,
+				conversations: [
+					{
+						id: '11111111111111@hosted.lid',
+						pnJid: '1234567890123@hosted'
+					}
+				]
+			}
+
+			const result = processHistoryMessage(historySync)
+
+			expect(result.lidPnMappings).toContainEqual({
+				lid: '11111111111111@hosted.lid',
+				pn: '1234567890123@hosted'
+			})
+		})
+
+		it('should extract mapping for hosted PN users', () => {
+			const historySync: proto.IHistorySync = {
+				syncType: proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP,
+				conversations: [
+					{
+						id: '1234567890123@hosted',
+						lidJid: '11111111111111@hosted.lid'
+					}
+				]
+			}
+
+			const result = processHistoryMessage(historySync)
+
+			expect(result.lidPnMappings).toContainEqual({
+				lid: '11111111111111@hosted.lid',
+				pn: '1234567890123@hosted'
+			})
+		})
+	})
 })
