@@ -15,7 +15,7 @@ import { trimUndefined } from './generics'
 import type { ILogger } from './logger'
 import { updateMessageWithReaction, updateMessageWithReceipt } from './messages'
 import { isRealMessage, shouldIncrementChatUnread } from './process-message'
-import { logEventBuffer, logBufferMetrics } from './baileys-logger'
+import { logEventBuffer } from './baileys-logger'
 
 // ============================================================================
 // BUFFER CONFIGURATION - Environment Variable Support
@@ -316,6 +316,19 @@ class AdaptiveTimeoutCalculator {
 		this.eventTimestamps = []
 		this.currentTimeout = (this.minTimeout + this.maxTimeout) / 2
 	}
+
+	/**
+	 * Get current adaptive mode based on timeout
+	 * Returns 'aggressive', 'balanced', or 'conservative'
+	 */
+	getMode(): 'aggressive' | 'balanced' | 'conservative' {
+		if (this.currentTimeout <= this.minTimeout * 1.5) {
+			return 'aggressive'
+		} else if (this.currentTimeout >= this.maxTimeout * 0.8) {
+			return 'conservative'
+		}
+		return 'balanced'
+	}
 }
 
 // ============================================================================
@@ -542,21 +555,12 @@ export const makeEventBuffer = (
 		// Record metrics
 		recordFlushMetrics(eventCount, force)
 
-		// Determine adaptive mode label
-		const currentTimeoutMs = config.enableAdaptiveTimeout ? adaptiveTimeout.getTimeout() : config.bufferTimeoutMs
-		let adaptiveMode = 'balanced'
-		if (currentTimeoutMs <= config.minBufferTimeoutMs * 1.5) {
-			adaptiveMode = 'aggressive'
-		} else if (currentTimeoutMs >= config.maxBufferTimeoutMs * 0.8) {
-			adaptiveMode = 'conservative'
-		}
-
-		// Log with [BAILEYS] prefix
+		// Log with [BAILEYS] prefix - use getMode() to avoid duplicating mode calculation logic
 		const flushDuration = Date.now() - flushStartTime
 		logEventBuffer('buffer_flush', {
 			flushCount: stats.totalFlushes,
 			historyCacheSize: stats.historyCacheSize,
-			mode: adaptiveMode,
+			mode: config.enableAdaptiveTimeout ? adaptiveTimeout.getMode() : 'fixed',
 			...(flushDuration > 5 ? { duration: `${flushDuration}ms` } : {})
 		})
 

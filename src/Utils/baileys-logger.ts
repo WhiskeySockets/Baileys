@@ -522,24 +522,96 @@ function isBaileysLogEnabled(): boolean {
 }
 
 /**
+ * Safely stringify a value, handling circular references, Errors, and special types
+ */
+function safeStringify(value: unknown, seen: WeakSet<object> = new WeakSet()): string {
+	// Handle primitives
+	if (value === null) return 'null'
+	if (value === undefined) return 'undefined'
+	if (typeof value === 'string') return value
+	if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+	if (typeof value === 'function') return '[Function]'
+	if (typeof value === 'symbol') return value.toString()
+	if (typeof value === 'bigint') return `${value}n`
+
+	// Handle objects
+	if (typeof value === 'object') {
+		// Check for circular reference
+		if (seen.has(value)) return '[Circular]'
+		seen.add(value)
+
+		// Handle Error objects
+		if (value instanceof Error) {
+			return `${value.name}: ${value.message}`
+		}
+
+		// Handle Date objects
+		if (value instanceof Date) {
+			return value.toISOString()
+		}
+
+		// Handle Arrays
+		if (Array.isArray(value)) {
+			if (value.length === 0) return '[]'
+			if (value.length <= 3) {
+				const items = value.map(v => safeStringify(v, seen))
+				return `[${items.join(', ')}]`
+			}
+			return `[Array(${value.length})]`
+		}
+
+		// Handle plain objects
+		try {
+			const keys = Object.keys(value as Record<string, unknown>)
+			if (keys.length === 0) return '{}'
+			if (keys.length <= 5) {
+				const pairs = keys.map(k => {
+					const v = (value as Record<string, unknown>)[k]
+					return `${k}: ${safeStringify(v, seen)}`
+				})
+				return `{${pairs.join(', ')}}`
+			}
+			return `{Object(${keys.length} keys)}`
+		} catch {
+			return '[Object]'
+		}
+	}
+
+	return String(value)
+}
+
+/**
  * Format data object for single-line or multi-line output
+ * Handles circular references, Error objects, arrays, and undefined values
  */
 function formatLogData(data: Record<string, unknown>, singleLine: boolean = true): string {
-	if (Object.keys(data).length === 0) return ''
+	if (!data || Object.keys(data).length === 0) return ''
+
+	const seen = new WeakSet<object>()
 
 	if (singleLine) {
 		// Single line format: { key1: value1, key2: value2 }
 		const pairs = Object.entries(data).map(([k, v]) => {
-			if (typeof v === 'object' && v !== null) {
-				return `${k}: ${JSON.stringify(v)}`
-			}
-			return `${k}: ${v}`
+			return `${k}: ${safeStringify(v, seen)}`
 		})
 		return `{ ${pairs.join(', ')} }`
 	}
 
-	// Multi-line format for complex objects
-	return JSON.stringify(data, null, 2)
+	// Multi-line format - use safe replacer for JSON.stringify
+	try {
+		return JSON.stringify(data, (key, value) => {
+			if (value instanceof Error) {
+				return { name: value.name, message: value.message, stack: value.stack }
+			}
+			if (typeof value === 'bigint') {
+				return `${value}n`
+			}
+			return value
+		}, 2)
+	} catch {
+		// Fallback for circular references or other issues
+		return safeStringify(data, seen)
+	}
 }
 
 /**
@@ -814,7 +886,8 @@ export function logInfo(message: string, data?: Record<string, unknown>, session
 	if (!isBaileysLogEnabled()) return
 
 	const prefix = sessionName ? `[BAILEYS] [${sessionName}]` : '[BAILEYS]'
-	const dataStr = data ? ' ' + formatLogData(data) : ''
+	const formatted = data ? formatLogData(data) : ''
+	const dataStr = formatted ? ' ' + formatted : ''
 	console.log(`${prefix} ℹ️ ${message}${dataStr}`)
 }
 
@@ -829,7 +902,8 @@ export function logWarn(message: string, data?: Record<string, unknown>, session
 	if (!isBaileysLogEnabled()) return
 
 	const prefix = sessionName ? `[BAILEYS] [${sessionName}]` : '[BAILEYS]'
-	const dataStr = data ? ' ' + formatLogData(data) : ''
+	const formatted = data ? formatLogData(data) : ''
+	const dataStr = formatted ? ' ' + formatted : ''
 	console.log(`${prefix} ⚠️ ${message}${dataStr}`)
 }
 
@@ -844,7 +918,8 @@ export function logError(message: string, data?: Record<string, unknown>, sessio
 	if (!isBaileysLogEnabled()) return
 
 	const prefix = sessionName ? `[BAILEYS] [${sessionName}]` : '[BAILEYS]'
-	const dataStr = data ? ' ' + formatLogData(data) : ''
+	const formatted = data ? formatLogData(data) : ''
+	const dataStr = formatted ? ' ' + formatted : ''
 	console.error(`${prefix} ❌ ${message}${dataStr}`)
 }
 
