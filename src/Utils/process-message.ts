@@ -12,6 +12,7 @@ import type {
 	RequestJoinMethod,
 	SignalKeyStoreWithTransaction,
 	SignalRepositoryWithLIDStore,
+	SocketConfig,
 	WAMessage,
 	WAMessageKey
 } from '../Types'
@@ -19,16 +20,17 @@ import { WAMessageStubType } from '../Types'
 import { getContentType, normalizeMessageContent } from '../Utils/messages'
 import {
 	areJidsSameUser,
+	isHostedLidUser,
+	isHostedPnUser,
 	isJidBroadcast,
-	isJidHostedLidUser,
-	isJidHostedPnUser,
 	isJidStatusBroadcast,
+	isLidUser,
 	jidDecode,
 	jidEncode,
 	jidNormalizedUser
 } from '../WABinary'
 import { aesDecryptGCM, hmacSign } from './crypto'
-import { toNumber } from './generics'
+import { getKeyAuthor, toNumber } from './generics'
 import { downloadAndProcessHistorySyncNotification } from './history'
 import type { ILogger } from './logger'
 
@@ -41,6 +43,7 @@ type ProcessMessageContext = {
 	logger?: ILogger
 	options: RequestInit
 	signalRepository: SignalRepositoryWithLIDStore
+	getMessage: SocketConfig['getMessage']
 }
 
 const REAL_MSG_STUB_TYPES = new Set([
@@ -53,21 +56,21 @@ const REAL_MSG_STUB_TYPES = new Set([
 const REAL_MSG_REQ_ME_STUB_TYPES = new Set([WAMessageStubType.GROUP_PARTICIPANT_ADD])
 
 /** Cleans a received message to further processing */
-export const cleanMessage = (message: WAMessage, meId: string) => {
+export const cleanMessage = (message: WAMessage, meId: string, meLid: string) => {
 	// ensure remoteJid and participant doesn't have device or agent in it
-	if (isJidHostedPnUser(message.key.remoteJid!) || isJidHostedLidUser(message.key.remoteJid!)) {
+	if (isHostedPnUser(message.key.remoteJid!) || isHostedLidUser(message.key.remoteJid!)) {
 		message.key.remoteJid = jidEncode(
 			jidDecode(message.key?.remoteJid!)?.user!,
-			isJidHostedPnUser(message.key.remoteJid!) ? 's.whatsapp.net' : 'lid'
+			isHostedPnUser(message.key.remoteJid!) ? 's.whatsapp.net' : 'lid'
 		)
 	} else {
 		message.key.remoteJid = jidNormalizedUser(message.key.remoteJid!)
 	}
 
-	if (isJidHostedPnUser(message.key.participant!) || isJidHostedLidUser(message.key.participant!)) {
+	if (isHostedPnUser(message.key.participant!) || isHostedLidUser(message.key.participant!)) {
 		message.key.participant = jidEncode(
 			jidDecode(message.key.participant!)?.user!,
-			isJidHostedPnUser(message.key.participant!) ? 's.whatsapp.net' : 'lid'
+			isHostedPnUser(message.key.participant!) ? 's.whatsapp.net' : 'lid'
 		)
 	} else {
 		message.key.participant = jidNormalizedUser(message.key.participant!)
@@ -90,7 +93,8 @@ export const cleanMessage = (message: WAMessage, meId: string) => {
 			// if the sender believed the message being reacted to is not from them
 			// we've to correct the key to be from them, or some other participant
 			msgKey.fromMe = !msgKey.fromMe
-				? areJidsSameUser(msgKey.participant || msgKey.remoteJid!, meId)
+				? areJidsSameUser(msgKey.participant || msgKey.remoteJid!, meId) ||
+					areJidsSameUser(msgKey.participant || msgKey.remoteJid!, meLid)
 				: // if the message being reacted to, was from them
 					// fromMe automatically becomes false
 					false
@@ -143,6 +147,17 @@ type PollContext = {
 	voterJid: string
 }
 
+type EventContext = {
+	/** normalised jid of the person that created the event */
+	eventCreatorJid: string
+	/** ID of the event creation message */
+	eventMsgId: string
+	/** event creation message enc key */
+	eventEncKey: Uint8Array
+	/** jid of the person that responded */
+	responderJid: string
+}
+
 /**
  * Decrypt a poll vote
  * @param vote encrypted vote
@@ -173,6 +188,36 @@ export function decryptPollVote(
 	}
 }
 
+/**
+ * Decrypt an event response
+ * @param response encrypted event response
+ * @param ctx additional info about the event required for decryption
+ * @returns event response message
+ */
+export function decryptEventResponse(
+	{ encPayload, encIv }: proto.Message.IPollEncValue,
+	{ eventCreatorJid, eventMsgId, eventEncKey, responderJid }: EventContext
+) {
+	const sign = Buffer.concat([
+		toBinary(eventMsgId),
+		toBinary(eventCreatorJid),
+		toBinary(responderJid),
+		toBinary('Event Response'),
+		new Uint8Array([1])
+	])
+
+	const key0 = hmacSign(eventEncKey, new Uint8Array(32), 'sha256')
+	const decKey = hmacSign(sign, key0, 'sha256')
+	const aad = toBinary(`${eventMsgId}\u0000${responderJid}`)
+
+	const decrypted = aesDecryptGCM(encPayload!, decKey, encIv!, aad)
+	return proto.Message.EventResponseMessage.decode(decrypted)
+
+	function toBinary(txt: string) {
+		return Buffer.from(txt)
+	}
+}
+
 const processMessage = async (
 	message: WAMessage,
 	{
@@ -183,7 +228,8 @@ const processMessage = async (
 		signalRepository,
 		keyStore,
 		logger,
-		options
+		options,
+		getMessage
 	}: ProcessMessageContext
 ) => {
 	const meId = creds.me!.id
@@ -229,6 +275,7 @@ const processMessage = async (
 				)
 
 				if (process) {
+					// TODO: investigate
 					if (histNotification.syncType !== proto.HistorySync.HistorySyncType.ON_DEMAND) {
 						ev.emit('creds.update', {
 							processedHistoryMessages: [
@@ -239,6 +286,16 @@ const processMessage = async (
 					}
 
 					const data = await downloadAndProcessHistorySyncNotification(histNotification, options)
+
+					// Emit LID-PN mappings from history sync
+					// This is how WhatsApp Web learns mappings for chats with non-contacts
+					if (data.lidPnMappings?.length) {
+						logger?.debug({ count: data.lidPnMappings.length }, 'processing LID-PN mappings from history sync')
+						// eslint-disable-next-line max-depth
+						for (const mapping of data.lidPnMappings) {
+							ev.emit('lid-mapping.update', mapping)
+						}
+					}
 
 					ev.emit('messaging-history.set', {
 						...data,
@@ -302,13 +359,11 @@ const processMessage = async (
 							const webMessageInfo = proto.WebMessageInfo.decode(retryResponse.webMessageInfoBytes!)
 							// wait till another upsert event is available, don't want it to be part of the PDO response message
 							// TODO: parse through proper message handling utilities (to add relevant key fields)
-							setTimeout(() => {
-								ev.emit('messages.upsert', {
-									messages: [webMessageInfo as WAMessage],
-									type: 'notify',
-									requestId: response.stanzaId!
-								})
-							}, 500)
+							ev.emit('messages.upsert', {
+								messages: [webMessageInfo as WAMessage],
+								type: 'notify',
+								requestId: response.stanzaId!
+							})
 						}
 					}
 				}
@@ -331,6 +386,19 @@ const processMessage = async (
 						}
 					}
 				])
+				break
+			case proto.Message.ProtocolMessage.Type.GROUP_MEMBER_LABEL_CHANGE:
+				const labelAssociationMsg = protocolMsg.memberLabel
+				if (labelAssociationMsg?.label) {
+					ev.emit('group.member-tag.update', {
+						groupId: chat.id!,
+						label: labelAssociationMsg.label,
+						participant: message.key.participant!,
+						participantAlt: message.key.participantAlt!,
+						messageTimestamp: Number(message.messageTimestamp)
+					})
+				}
+
 				break
 			case proto.Message.ProtocolMessage.Type.LID_MIGRATION_MAPPING_SYNC:
 				const encodedPayload = protocolMsg.lidMigrationMappingSyncMessage?.encodedMappingPayload!
@@ -361,6 +429,60 @@ const processMessage = async (
 				key: content.reactionMessage?.key!
 			}
 		])
+	} else if (content?.encEventResponseMessage) {
+		const encEventResponse = content.encEventResponseMessage
+		const creationMsgKey = encEventResponse.eventCreationMessageKey!
+
+		// we need to fetch the event creation message to get the event enc key
+		const eventMsg = await getMessage(creationMsgKey)
+		if (eventMsg) {
+			try {
+				const meIdNormalised = jidNormalizedUser(meId)
+
+				// all jids need to be PN
+				const eventCreatorKey = creationMsgKey.participant || creationMsgKey.remoteJid!
+				const eventCreatorPn = isLidUser(eventCreatorKey)
+					? await signalRepository.lidMapping.getPNForLID(eventCreatorKey)
+					: eventCreatorKey
+				const eventCreatorJid = getKeyAuthor(
+					{ remoteJid: jidNormalizedUser(eventCreatorPn!), fromMe: meIdNormalised === eventCreatorPn },
+					meIdNormalised
+				)
+
+				const responderJid = getKeyAuthor(message.key, meIdNormalised)
+				const eventEncKey = eventMsg?.messageContextInfo?.messageSecret
+
+				if (!eventEncKey) {
+					logger?.warn({ creationMsgKey }, 'event response: missing messageSecret for decryption')
+				} else {
+					const responseMsg = decryptEventResponse(encEventResponse, {
+						eventEncKey,
+						eventCreatorJid,
+						eventMsgId: creationMsgKey.id!,
+						responderJid
+					})
+
+					const eventResponse = {
+						eventResponseMessageKey: message.key,
+						senderTimestampMs: responseMsg.timestampMs!,
+						response: responseMsg
+					}
+
+					ev.emit('messages.update', [
+						{
+							key: creationMsgKey,
+							update: {
+								eventResponses: [eventResponse]
+							}
+						}
+					])
+				}
+			} catch (err) {
+				logger?.warn({ err, creationMsgKey }, 'failed to decrypt event response')
+			}
+		} else {
+			logger?.warn({ creationMsgKey }, 'event creation message not found, cannot decrypt response')
+		}
 	} else if (message.messageStubType) {
 		const jid = message.key?.remoteJid!
 		//let actor = whatsappID (message.participant)
@@ -395,12 +517,12 @@ const processMessage = async (
 
 		switch (message.messageStubType) {
 			case WAMessageStubType.GROUP_PARTICIPANT_CHANGE_NUMBER:
-				participants = message.messageStubParameters || []
+				participants = message.messageStubParameters.map((a: any) => JSON.parse(a as string)) || []
 				emitParticipantsUpdate('modify')
 				break
 			case WAMessageStubType.GROUP_PARTICIPANT_LEAVE:
 			case WAMessageStubType.GROUP_PARTICIPANT_REMOVE:
-				participants = message.messageStubParameters || []
+				participants = message.messageStubParameters.map((a: any) => JSON.parse(a as string)) || []
 				emitParticipantsUpdate('remove')
 				// mark the chat read only if you left the group
 				if (participantsIncludesMe()) {
@@ -411,7 +533,7 @@ const processMessage = async (
 			case WAMessageStubType.GROUP_PARTICIPANT_ADD:
 			case WAMessageStubType.GROUP_PARTICIPANT_INVITE:
 			case WAMessageStubType.GROUP_PARTICIPANT_ADD_REQUEST_JOIN:
-				participants = message.messageStubParameters || []
+				participants = message.messageStubParameters.map((a: any) => JSON.parse(a as string)) || []
 				if (participantsIncludesMe()) {
 					chat.readOnly = false
 				}
@@ -419,11 +541,11 @@ const processMessage = async (
 				emitParticipantsUpdate('add')
 				break
 			case WAMessageStubType.GROUP_PARTICIPANT_DEMOTE:
-				participants = message.messageStubParameters || []
+				participants = message.messageStubParameters.map((a: any) => JSON.parse(a as string)) || []
 				emitParticipantsUpdate('demote')
 				break
 			case WAMessageStubType.GROUP_PARTICIPANT_PROMOTE:
-				participants = message.messageStubParameters || []
+				participants = message.messageStubParameters.map((a: any) => JSON.parse(a as string)) || []
 				emitParticipantsUpdate('promote')
 				break
 			case WAMessageStubType.GROUP_CHANGE_ANNOUNCE:
@@ -457,7 +579,7 @@ const processMessage = async (
 				emitGroupUpdate({ joinApprovalMode: approvalMode === 'on' })
 				break
 			case WAMessageStubType.GROUP_MEMBERSHIP_JOIN_APPROVAL_REQUEST_NON_ADMIN_ADD: // TODO: Add other events
-				const participant = message.messageStubParameters?.[0] as LIDMapping
+				const participant = JSON.parse(message.messageStubParameters?.[0]) as LIDMapping
 				const action = message.messageStubParameters?.[1] as RequestJoinAction
 				const method = message.messageStubParameters?.[2] as RequestJoinMethod
 				emitGroupRequestJoin(participant, action, method)

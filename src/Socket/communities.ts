@@ -288,7 +288,7 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 			const result = await communityQuery(jid, 'set', [
 				{
 					tag: action,
-					attrs: {},
+					attrs: action === 'remove' ? { linked_groups: 'true' } : {},
 					content: participants.map(jid => ({
 						tag: 'participant',
 						attrs: { jid }
@@ -390,10 +390,10 @@ export const makeCommunitiesSocket = (config: SocketConfig) => {
 							remoteJid: inviteMessage.groupJid,
 							id: generateMessageIDV2(sock.user?.id),
 							fromMe: false,
-							participant: key.remoteJid
+							participant: key.remoteJid // TODO: investigate if this makes any sense at all
 						},
 						messageStubType: WAMessageStubType.GROUP_PARTICIPANT_ADD,
-						messageStubParameters: [authState.creds.me!.id],
+						messageStubParameters: [JSON.stringify(authState.creds.me)],
 						participant: key.remoteJid,
 						messageTimestamp: unixTimestampSeconds()
 					},

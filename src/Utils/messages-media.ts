@@ -3,6 +3,7 @@ import { exec } from 'child_process'
 import * as Crypto from 'crypto'
 import { once } from 'events'
 import { createReadStream, createWriteStream, promises as fs, WriteStream } from 'fs'
+import type { Agent } from 'https'
 import type { IAudioMetadata } from 'music-metadata'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -199,7 +200,7 @@ export const generateProfilePicture = async (
 				quality: 50
 			})
 			.toBuffer()
-	} else if ('jimp' in lib && typeof lib.jimp?.Jimp === 'object') {
+	} else if ('jimp' in lib && typeof lib.jimp?.Jimp === 'function') {
 		const jimp = await (lib.jimp.Jimp as any).read(buffer)
 		const min = Math.min(jimp.width, jimp.height)
 		const cropped = jimp.crop({ x: 0, y: 0, w: min, h: min })
@@ -372,7 +373,7 @@ export const getHttpStream = async (url: string | URL, options: RequestInit & { 
 	}
 
 	// @ts-ignore Node18+ Readable.fromWeb exists
-	return Readable.fromWeb(response.body as any)
+	return response.body instanceof Readable ? response.body : Readable.fromWeb(response.body as any)
 }
 
 type EncryptedStreamOptions = {
@@ -410,10 +411,13 @@ export const encryptedStream = async (
 	const sha256Plain = Crypto.createHash('sha256')
 	const sha256Enc = Crypto.createHash('sha256')
 
-	const onChunk = (buff: Buffer) => {
+	const onChunk = async (buff: Buffer) => {
 		sha256Enc.update(buff)
 		hmac.update(buff)
-		encFileWriteStream.write(buff)
+		// Handle backpressure: if write returns false, wait for drain
+		if (!encFileWriteStream.write(buff)) {
+			await once(encFileWriteStream, 'drain')
+		}
 	}
 
 	try {
@@ -437,10 +441,10 @@ export const encryptedStream = async (
 			}
 
 			sha256Plain.update(data)
-			onChunk(aes.update(data))
+			await onChunk(aes.update(data))
 		}
 
-		onChunk(aes.final())
+		await onChunk(aes.final())
 
 		const mac = hmac.digest().slice(0, 10)
 		sha256Enc.update(mac)
@@ -450,9 +454,17 @@ export const encryptedStream = async (
 
 		encFileWriteStream.write(mac)
 
+		const encFinishPromise = once(encFileWriteStream, 'finish')
+		const originalFinishPromise = originalFileStream ? once(originalFileStream, 'finish') : Promise.resolve()
+
 		encFileWriteStream.end()
 		originalFileStream?.end?.()
 		stream.destroy()
+
+		// Wait for write streams to fully flush to disk
+		// This helps reduce memory pressure by allowing OS to release buffers
+		await encFinishPromise
+		await originalFinishPromise
 
 		logger?.debug('encrypted data successfully')
 
@@ -639,6 +651,161 @@ export function extensionForMediaMessage(message: WAMessageContent) {
 	return extension
 }
 
+const isNodeRuntime = (): boolean => {
+	return (
+		typeof process !== 'undefined' &&
+		process.versions?.node !== null &&
+		typeof process.versions.bun === 'undefined' &&
+		typeof (globalThis as any).Deno === 'undefined'
+	)
+}
+
+type MediaUploadResult = {
+	url?: string
+	direct_path?: string
+	meta_hmac?: string
+	ts?: number
+	fbid?: number
+}
+
+export type UploadParams = {
+	url: string
+	filePath: string
+	headers: Record<string, string>
+	timeoutMs?: number
+	agent?: Agent
+}
+
+export const uploadWithNodeHttp = async (
+	{ url, filePath, headers, timeoutMs, agent }: UploadParams,
+	redirectCount = 0
+): Promise<MediaUploadResult | undefined> => {
+	if (redirectCount > 5) {
+		throw new Error('Too many redirects')
+	}
+
+	const parsedUrl = new URL(url)
+	const httpModule = parsedUrl.protocol === 'https:' ? await import('https') : await import('http')
+
+	// Get file size for Content-Length header (required for Node.js streaming)
+	const fileStats = await fs.stat(filePath)
+	const fileSize = fileStats.size
+
+	return new Promise((resolve, reject) => {
+		const req = httpModule.request(
+			{
+				hostname: parsedUrl.hostname,
+				port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+				path: parsedUrl.pathname + parsedUrl.search,
+				method: 'POST',
+				headers: {
+					...headers,
+					'Content-Length': fileSize
+				},
+				agent,
+				timeout: timeoutMs
+			},
+			res => {
+				// Handle redirects (3xx)
+				if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+					res.resume() // Consume response to free resources
+					const newUrl = new URL(res.headers.location, url).toString()
+					resolve(
+						uploadWithNodeHttp(
+							{
+								url: newUrl,
+								filePath,
+								headers,
+								timeoutMs,
+								agent
+							},
+							redirectCount + 1
+						)
+					)
+					return
+				}
+
+				let body = ''
+				res.on('data', chunk => (body += chunk))
+				res.on('end', () => {
+					try {
+						resolve(JSON.parse(body))
+					} catch {
+						resolve(undefined)
+					}
+				})
+			}
+		)
+
+		req.on('error', reject)
+		req.on('timeout', () => {
+			req.destroy()
+			reject(new Error('Upload timeout'))
+		})
+
+		const stream = createReadStream(filePath)
+		stream.pipe(req)
+		stream.on('error', err => {
+			req.destroy()
+			reject(err)
+		})
+	})
+}
+
+const uploadWithFetch = async ({
+	url,
+	filePath,
+	headers,
+	timeoutMs,
+	agent
+}: UploadParams): Promise<MediaUploadResult | undefined> => {
+	// Convert Node.js Readable to Web ReadableStream
+	const nodeStream = createReadStream(filePath)
+	const webStream = Readable.toWeb(nodeStream) as ReadableStream
+
+	const response = await fetch(url, {
+		dispatcher: agent,
+		method: 'POST',
+		body: webStream,
+		headers,
+		duplex: 'half',
+		signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined
+	})
+
+	try {
+		return (await response.json()) as MediaUploadResult
+	} catch {
+		return undefined
+	}
+}
+
+/**
+ * Uploads media to WhatsApp servers.
+ *
+ * ## Why we have two upload implementations:
+ *
+ * Node.js's native `fetch` (powered by undici) has a known bug where it buffers
+ * the entire request body in memory before sending, even when using streams.
+ * This causes memory issues with large files (e.g., 1GB file = 1GB+ memory usage).
+ * See: https://github.com/nodejs/undici/issues/4058
+ *
+ * Other runtimes (Bun, Deno, browsers) correctly stream the request body without
+ * buffering, so we can use the web-standard Fetch API there.
+ *
+ * ## Future considerations:
+ * Once the undici bug is fixed, we can simplify this to use only the Fetch API
+ * across all runtimes. Monitor the GitHub issue for updates.
+ */
+const uploadMedia = async (params: UploadParams, logger?: ILogger): Promise<MediaUploadResult | undefined> => {
+	if (isNodeRuntime()) {
+		logger?.debug('Using Node.js https module for upload (avoids undici buffering bug)')
+		return uploadWithNodeHttp(params)
+	} else {
+		logger?.debug('Using web-standard Fetch API for upload')
+		return uploadWithFetch(params)
+	}
+}
+
 export const getWAUploadToServer = (
 	{ customUploadHosts, fetchAgent, logger, options }: SocketConfig,
 	refreshMediaConn: (force: boolean) => Promise<MediaConnInfo>
@@ -652,45 +819,42 @@ export const getWAUploadToServer = (
 
 		fileEncSha256B64 = encodeBase64EncodedStringForUpload(fileEncSha256B64)
 
+		// Prepare common headers
+		const customHeaders = (() => {
+			const hdrs = options?.headers
+			if (!hdrs) return {}
+			return Array.isArray(hdrs) ? Object.fromEntries(hdrs) : (hdrs as Record<string, string>)
+		})()
+
+		const headers = {
+			...customHeaders,
+			'Content-Type': 'application/octet-stream',
+			Origin: DEFAULT_ORIGIN
+		}
+
 		for (const { hostname } of hosts) {
 			logger.debug(`uploading to "${hostname}"`)
 
-			const auth = encodeURIComponent(uploadInfo.auth) // the auth token
+			const auth = encodeURIComponent(uploadInfo.auth)
 			const url = `https://${hostname}${MEDIA_PATH_MAP[mediaType]}/${fileEncSha256B64}?auth=${auth}&token=${fileEncSha256B64}`
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			let result: any
+
+			let result: MediaUploadResult | undefined
 			try {
-				const stream = createReadStream(filePath)
-				const response = await fetch(url, {
-					dispatcher: fetchAgent,
-					method: 'POST',
-					body: stream as any,
-					headers: {
-						...(() => {
-							const hdrs = options?.headers
-							if (!hdrs) return {}
-							return Array.isArray(hdrs) ? Object.fromEntries(hdrs) : (hdrs as Record<string, string>)
-						})(),
-						'Content-Type': 'application/octet-stream',
-						Origin: DEFAULT_ORIGIN
+				result = await uploadMedia(
+					{
+						url,
+						filePath,
+						headers,
+						timeoutMs,
+						agent: fetchAgent
 					},
-					duplex: 'half',
-					// Note: custom agents/proxy require undici Agent; omitted here.
-					signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined
-				})
-				let parsed: any = undefined
-				try {
-					parsed = await response.json()
-				} catch {
-					parsed = undefined
-				}
+					logger
+				)
 
-				result = parsed
-
-				if (result?.url || result?.directPath) {
+				if (result?.url || result?.direct_path) {
 					urls = {
-						mediaUrl: result.url,
-						directPath: result.direct_path,
+						mediaUrl: result.url!,
+						directPath: result.direct_path!,
 						meta_hmac: result.meta_hmac,
 						fbid: result.fbid,
 						ts: result.ts

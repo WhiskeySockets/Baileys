@@ -26,6 +26,7 @@ const getUserAgent = (config: SocketConfig): proto.ClientPayload.IUserAgent => {
 		device: 'Desktop',
 		osBuildNumber: '0.1',
 		localeLanguageIso6391: 'en',
+
 		mnc: '000',
 		mcc: '000',
 		localeCountryIso31661Alpha2: config.countryCode
@@ -39,7 +40,11 @@ const PLATFORM_MAP = {
 
 const getWebInfo = (config: SocketConfig): proto.ClientPayload.IWebInfo => {
 	let webSubPlatform = proto.ClientPayload.WebInfo.WebSubPlatform.WEB_BROWSER
-	if (config.syncFullHistory && PLATFORM_MAP[config.browser[0] as keyof typeof PLATFORM_MAP]) {
+	if (
+		config.syncFullHistory &&
+		PLATFORM_MAP[config.browser[0] as keyof typeof PLATFORM_MAP] &&
+		config.browser[1] === 'Desktop'
+	) {
 		webSubPlatform = PLATFORM_MAP[config.browser[0] as keyof typeof PLATFORM_MAP]
 	}
 
@@ -62,10 +67,12 @@ export const generateLoginNode = (userJid: string, config: SocketConfig): proto.
 	const { user, device } = jidDecode(userJid)!
 	const payload: proto.IClientPayload = {
 		...getClientPayload(config),
-		passive: false,
+		passive: true,
 		pull: true,
 		username: +user,
-		device: device
+		device: device,
+		// TODO: investigate (hard set as false atm)
+		lidDbMigrated: false
 	}
 	return proto.ClientPayload.fromObject(payload)
 }
@@ -74,7 +81,7 @@ const getPlatformType = (platform: string): proto.DeviceProps.PlatformType => {
 	const platformType = platform.toUpperCase()
 	return (
 		proto.DeviceProps.PlatformType[platformType as keyof typeof proto.DeviceProps.PlatformType] ||
-		proto.DeviceProps.PlatformType.DESKTOP
+		proto.DeviceProps.PlatformType.CHROME
 	)
 }
 
@@ -91,7 +98,29 @@ export const generateRegistrationNode = (
 	const companion: proto.IDeviceProps = {
 		os: config.browser[0],
 		platformType: getPlatformType(config.browser[1]),
-		requireFullSync: config.syncFullHistory
+		requireFullSync: config.syncFullHistory,
+		historySyncConfig: {
+			storageQuotaMb: 10240,
+			inlineInitialPayloadInE2EeMsg: true,
+			recentSyncDaysLimit: undefined,
+			supportCallLogHistory: false,
+			supportBotUserAgentChatHistory: true,
+			supportCagReactionsAndPolls: true,
+			supportBizHostedMsg: true,
+			supportRecentSyncChunkMessageCountTuning: true,
+			supportHostedGroupMsg: true,
+			supportFbidBotChatHistory: true,
+			supportAddOnHistorySyncMigration: undefined,
+			supportMessageAssociation: true,
+			supportGroupHistory: false,
+			onDemandReady: undefined,
+			supportGuestChat: undefined
+		},
+		version: {
+			primary: 10,
+			secondary: 15,
+			tertiary: 7
+		}
 	}
 
 	const companionProto = proto.DeviceProps.encode(companion).finish()

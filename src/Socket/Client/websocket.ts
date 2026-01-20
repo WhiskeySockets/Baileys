@@ -18,7 +18,7 @@ export class WebSocketClient extends AbstractSocketClient {
 		return this.socket?.readyState === WebSocket.CONNECTING
 	}
 
-	async connect(): Promise<void> {
+	connect() {
 		if (this.socket) {
 			return
 		}
@@ -40,12 +40,19 @@ export class WebSocketClient extends AbstractSocketClient {
 		}
 	}
 
-	async close(): Promise<void> {
+	async close() {
 		if (!this.socket) {
 			return
 		}
 
+		const closePromise = new Promise<void>(resolve => {
+			this.socket?.once('close', resolve)
+		})
+
 		this.socket.close()
+
+		await closePromise
+
 		this.socket = null
 	}
 	send(str: string | Uint8Array, cb?: (err?: Error) => void): boolean {
