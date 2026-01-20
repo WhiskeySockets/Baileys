@@ -16,6 +16,60 @@ import type { ILogger } from './logger'
 import { updateMessageWithReaction, updateMessageWithReceipt } from './messages'
 import { isRealMessage, shouldIncrementChatUnread } from './process-message'
 
+// ============================================================================
+// BUFFER CONFIGURATION - Environment Variable Support
+// ============================================================================
+
+/**
+ * Buffer configuration loaded from environment variables
+ * Allows runtime customization without code changes
+ */
+export interface BufferConfig {
+	/** Maximum buffer timeout in milliseconds */
+	bufferTimeoutMs: number
+	/** Minimum buffer timeout for adaptive algorithm */
+	minBufferTimeoutMs: number
+	/** Maximum buffer timeout for adaptive algorithm */
+	maxBufferTimeoutMs: number
+	/** Maximum history cache size before cleanup */
+	maxHistoryCacheSize: number
+	/** Maximum events before forcing a flush (overflow protection) */
+	maxBufferSize: number
+	/** Debounce delay for flush after buffered function */
+	flushDebounceMs: number
+	/** Enable adaptive timeout based on load */
+	enableAdaptiveTimeout: boolean
+	/** Enable Prometheus metrics */
+	enableMetrics: boolean
+	/** LRU cleanup percentage (0-1) when cache exceeds max */
+	lruCleanupRatio: number
+	/** Warn threshold for buffer size (percentage of max) */
+	bufferWarnThreshold: number
+}
+
+/**
+ * Load buffer configuration from environment variables
+ * Uses BAILEYS_BUFFER_* prefix for consistency
+ */
+export function loadBufferConfig(): BufferConfig {
+	return {
+		bufferTimeoutMs: parseInt(process.env.BAILEYS_BUFFER_TIMEOUT_MS || '30000', 10),
+		minBufferTimeoutMs: parseInt(process.env.BAILEYS_BUFFER_MIN_TIMEOUT_MS || '5000', 10),
+		maxBufferTimeoutMs: parseInt(process.env.BAILEYS_BUFFER_MAX_TIMEOUT_MS || '60000', 10),
+		maxHistoryCacheSize: parseInt(process.env.BAILEYS_BUFFER_MAX_HISTORY_CACHE || '10000', 10),
+		maxBufferSize: parseInt(process.env.BAILEYS_BUFFER_MAX_SIZE || '5000', 10),
+		flushDebounceMs: parseInt(process.env.BAILEYS_BUFFER_FLUSH_DEBOUNCE_MS || '100', 10),
+		enableAdaptiveTimeout: process.env.BAILEYS_BUFFER_ADAPTIVE_TIMEOUT !== 'false',
+		enableMetrics: process.env.BAILEYS_BUFFER_METRICS === 'true',
+		lruCleanupRatio: parseFloat(process.env.BAILEYS_BUFFER_LRU_CLEANUP_RATIO || '0.2'),
+		bufferWarnThreshold: parseFloat(process.env.BAILEYS_BUFFER_WARN_THRESHOLD || '0.8')
+	}
+}
+
+// ============================================================================
+// BUFFERABLE EVENTS
+// ============================================================================
+
 const BUFFERABLE_EVENT = [
 	'messaging-history.set',
 	'chats.upsert',
@@ -44,95 +98,437 @@ type BaileysEventData = Partial<BaileysEventMap>
 
 const BUFFERABLE_EVENT_SET = new Set<BaileysEvent>(BUFFERABLE_EVENT)
 
+// ============================================================================
+// BUFFER STATISTICS - For Metrics and Monitoring
+// ============================================================================
+
+/**
+ * Statistics about buffer operations for monitoring and debugging
+ */
+export interface BufferStatistics {
+	/** Total number of flushes performed */
+	totalFlushes: number
+	/** Total number of forced flushes (overflow/timeout) */
+	forcedFlushes: number
+	/** Total events buffered */
+	totalEventsBuffered: number
+	/** Current buffer size */
+	currentBufferSize: number
+	/** Peak buffer size reached */
+	peakBufferSize: number
+	/** Total buffer overflows prevented */
+	overflowsDetected: number
+	/** Current adaptive timeout */
+	currentTimeout: number
+	/** History cache size */
+	historyCacheSize: number
+	/** LRU cleanups performed */
+	lruCleanups: number
+	/** Average events per flush */
+	avgEventsPerFlush: number
+	/** Buffer creation timestamp */
+	createdAt: number
+	/** Last flush timestamp */
+	lastFlushAt: number | null
+}
+
+// ============================================================================
+// EXTENDED EVENT EMITTER TYPE
+// ============================================================================
+
 type BaileysBufferableEventEmitter = BaileysEventEmitter & {
 	/** Use to process events in a batch */
 	process(handler: (events: BaileysEventData) => void | Promise<void>): () => void
 	/**
 	 * starts buffering events, call flush() to release them
-	 * */
+	 */
 	buffer(): void
 	/** buffers all events till the promise completes */
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	createBufferedFunction<A extends any[], T>(work: (...args: A) => Promise<T>): (...args: A) => Promise<T>
 	/**
 	 * flushes all buffered events
+	 * @param force - If true, flush even if buffer is empty or not buffering
 	 * @returns returns true if the flush actually happened, otherwise false
 	 */
-	flush(): boolean
+	flush(force?: boolean): boolean
 	/** is there an ongoing buffer */
 	isBuffering(): boolean
+	/**
+	 * Destroy the buffer and clean up all resources
+	 * CRITICAL: Call this when done to prevent memory leaks
+	 */
+	destroy(): void
+	/** Check if buffer has been destroyed */
+	isDestroyed(): boolean
+	/** Get buffer statistics for monitoring */
+	getStatistics(): BufferStatistics
+	/** Get current configuration */
+	getConfig(): BufferConfig
 }
+
+// ============================================================================
+// LRU CACHE ENTRY WITH TIMESTAMP
+// ============================================================================
+
+interface LRUCacheEntry {
+	key: string
+	timestamp: number
+}
+
+/**
+ * Simple LRU tracking for history cache
+ * Tracks access times to enable partial cleanup
+ */
+class LRUTracker {
+	private entries: Map<string, number> = new Map()
+
+	add(key: string): void {
+		this.entries.set(key, Date.now())
+	}
+
+	has(key: string): boolean {
+		return this.entries.has(key)
+	}
+
+	touch(key: string): void {
+		if (this.entries.has(key)) {
+			this.entries.set(key, Date.now())
+		}
+	}
+
+	get size(): number {
+		return this.entries.size
+	}
+
+	/**
+	 * Remove oldest entries up to the specified ratio
+	 * @param ratio - Percentage of entries to remove (0-1)
+	 * @returns Array of removed keys
+	 */
+	cleanup(ratio: number): string[] {
+		const removeCount = Math.floor(this.entries.size * ratio)
+		if (removeCount === 0) return []
+
+		// Sort by timestamp (oldest first)
+		const sorted: LRUCacheEntry[] = []
+		this.entries.forEach((timestamp, key) => {
+			sorted.push({ key, timestamp })
+		})
+		sorted.sort((a, b) => a.timestamp - b.timestamp)
+
+		// Remove oldest entries
+		const removed: string[] = []
+		for (let i = 0; i < removeCount && i < sorted.length; i++) {
+			const entry = sorted[i]
+			if (entry) {
+				this.entries.delete(entry.key)
+				removed.push(entry.key)
+			}
+		}
+
+		return removed
+	}
+
+	clear(): void {
+		this.entries.clear()
+	}
+}
+
+// ============================================================================
+// ADAPTIVE TIMEOUT ALGORITHM
+// ============================================================================
+
+/**
+ * Adaptive timeout calculator based on buffer activity
+ * Adjusts timeout based on event rate to optimize batching
+ */
+class AdaptiveTimeoutCalculator {
+	private eventTimestamps: number[] = []
+	private readonly windowSize = 100 // Track last 100 events
+	private readonly minTimeout: number
+	private readonly maxTimeout: number
+	private currentTimeout: number
+
+	constructor(minTimeout: number, maxTimeout: number, initialTimeout: number) {
+		this.minTimeout = minTimeout
+		this.maxTimeout = maxTimeout
+		this.currentTimeout = initialTimeout
+	}
+
+	/**
+	 * Record an event and recalculate optimal timeout
+	 */
+	recordEvent(): void {
+		const now = Date.now()
+		this.eventTimestamps.push(now)
+
+		// Keep only recent events
+		if (this.eventTimestamps.length > this.windowSize) {
+			this.eventTimestamps.shift()
+		}
+
+		this.recalculateTimeout()
+	}
+
+	/**
+	 * Get current calculated timeout
+	 */
+	getTimeout(): number {
+		return this.currentTimeout
+	}
+
+	/**
+	 * Recalculate timeout based on event rate
+	 * High rate = shorter timeout (flush more often)
+	 * Low rate = longer timeout (batch more events)
+	 */
+	private recalculateTimeout(): void {
+		if (this.eventTimestamps.length < 2) {
+			return // Not enough data
+		}
+
+		const oldest = this.eventTimestamps[0]!
+		const newest = this.eventTimestamps[this.eventTimestamps.length - 1]!
+		const timeSpan = newest - oldest
+
+		if (timeSpan === 0) return
+
+		// Calculate events per second
+		const eventsPerSecond = (this.eventTimestamps.length / timeSpan) * 1000
+
+		// Adjust timeout inversely to event rate
+		// High rate (>100 eps) = min timeout
+		// Low rate (<1 eps) = max timeout
+		if (eventsPerSecond > 100) {
+			this.currentTimeout = this.minTimeout
+		} else if (eventsPerSecond < 1) {
+			this.currentTimeout = this.maxTimeout
+		} else {
+			// Linear interpolation between min and max
+			const ratio = Math.log10(eventsPerSecond + 1) / 2 // 0 to 1 scale
+			this.currentTimeout = this.maxTimeout - (this.maxTimeout - this.minTimeout) * ratio
+		}
+	}
+
+	reset(): void {
+		this.eventTimestamps = []
+		this.currentTimeout = (this.minTimeout + this.maxTimeout) / 2
+	}
+}
+
+// ============================================================================
+// MAIN EVENT BUFFER FACTORY
+// ============================================================================
 
 /**
  * The event buffer logically consolidates different events into a single event
  * making the data processing more efficient.
+ *
+ * Enterprise-grade features:
+ * - Environment variable configuration
+ * - Proper resource cleanup (destroy method)
+ * - Buffer overflow detection and prevention
+ * - Adaptive timeout based on event rate
+ * - LRU cache cleanup instead of full clear
+ * - Prometheus metrics integration
+ * - Force flush capability
+ * - Comprehensive statistics
  */
-export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter => {
+export const makeEventBuffer = (
+	logger: ILogger,
+	configOverride?: Partial<BufferConfig>
+): BaileysBufferableEventEmitter => {
+	// Load configuration
+	const config: BufferConfig = {
+		...loadBufferConfig(),
+		...configOverride
+	}
+
 	const ev = new EventEmitter()
-	const historyCache = new Set<string>()
+	const historyCache = new LRUTracker()
 
 	let data = makeBufferData()
 	let isBuffering = false
+	let destroyed = false
 	let bufferTimeout: NodeJS.Timeout | null = null
-	let flushPendingTimeout: NodeJS.Timeout | null = null // Add a specific timer for the debounced flush to prevent leak
+	let flushPendingTimeout: NodeJS.Timeout | null = null
 	let bufferCount = 0
-	const MAX_HISTORY_CACHE_SIZE = 10000 // Limit the history cache size to prevent memory bloat
-	const BUFFER_TIMEOUT_MS = 30000 // 30 seconds
+	let currentEventCount = 0
 
-	// take the generic event and fire it as a baileys event
+	// Statistics tracking
+	const stats: BufferStatistics = {
+		totalFlushes: 0,
+		forcedFlushes: 0,
+		totalEventsBuffered: 0,
+		currentBufferSize: 0,
+		peakBufferSize: 0,
+		overflowsDetected: 0,
+		currentTimeout: config.bufferTimeoutMs,
+		historyCacheSize: 0,
+		lruCleanups: 0,
+		avgEventsPerFlush: 0,
+		createdAt: Date.now(),
+		lastFlushAt: null
+	}
+
+	// Adaptive timeout calculator
+	const adaptiveTimeout = new AdaptiveTimeoutCalculator(
+		config.minBufferTimeoutMs,
+		config.maxBufferTimeoutMs,
+		config.bufferTimeoutMs
+	)
+
+	// Metrics integration (lazy loaded to avoid circular deps)
+	let metricsModule: typeof import('./prometheus-metrics') | null = null
+	if (config.enableMetrics) {
+		import('./prometheus-metrics').then(m => {
+			metricsModule = m
+		}).catch(() => {
+			logger.debug('Prometheus metrics not available for event buffer')
+		})
+	}
+
+	// Helper to record metrics
+	const recordMetrics = (eventType: string, count: number) => {
+		if (metricsModule) {
+			metricsModule.recordEventBuffered(eventType, count)
+		}
+	}
+
+	const recordFlushMetrics = (eventCount: number, forced: boolean) => {
+		if (metricsModule) {
+			metricsModule.recordBufferFlush(eventCount, forced)
+		}
+	}
+
+	// Cleanup helper
+	const clearAllTimers = () => {
+		if (bufferTimeout) {
+			clearTimeout(bufferTimeout)
+			bufferTimeout = null
+		}
+		if (flushPendingTimeout) {
+			clearTimeout(flushPendingTimeout)
+			flushPendingTimeout = null
+		}
+	}
+
+	// Take the generic event and fire it as a baileys event
 	ev.on('event', (map: BaileysEventData) => {
 		for (const event in map) {
 			ev.emit(event, map[event as keyof BaileysEventMap])
 		}
 	})
 
+	/**
+	 * Check for buffer overflow and handle it
+	 */
+	function checkBufferOverflow(): boolean {
+		if (currentEventCount >= config.maxBufferSize) {
+			stats.overflowsDetected++
+			logger.warn({
+				currentSize: currentEventCount,
+				maxSize: config.maxBufferSize
+			}, 'Buffer overflow detected, forcing flush')
+			flush(true)
+			return true
+		}
+
+		// Warn if approaching threshold
+		const threshold = config.maxBufferSize * config.bufferWarnThreshold
+		if (currentEventCount >= threshold && currentEventCount < config.maxBufferSize) {
+			logger.debug({
+				currentSize: currentEventCount,
+				threshold,
+				maxSize: config.maxBufferSize
+			}, 'Buffer approaching overflow threshold')
+		}
+
+		return false
+	}
+
+	/**
+	 * Perform LRU cleanup on history cache
+	 */
+	function cleanupHistoryCache(): void {
+		if (historyCache.size > config.maxHistoryCacheSize) {
+			const removed = historyCache.cleanup(config.lruCleanupRatio)
+			stats.lruCleanups++
+			logger.debug({
+				removed: removed.length,
+				remaining: historyCache.size,
+				maxSize: config.maxHistoryCacheSize
+			}, 'LRU cleanup performed on history cache')
+		}
+	}
+
 	function buffer() {
+		if (destroyed) {
+			logger.warn('Attempted to buffer on destroyed event buffer')
+			return
+		}
+
 		if (!isBuffering) {
 			logger.debug('Event buffer activated')
 			isBuffering = true
 			bufferCount = 0
+			currentEventCount = 0
 
-			if (bufferTimeout) {
-				clearTimeout(bufferTimeout)
-			}
+			clearAllTimers()
+
+			// Use adaptive timeout if enabled
+			const timeout = config.enableAdaptiveTimeout
+				? adaptiveTimeout.getTimeout()
+				: config.bufferTimeoutMs
+			stats.currentTimeout = timeout
 
 			bufferTimeout = setTimeout(() => {
 				if (isBuffering) {
-					logger.warn('Buffer timeout reached, auto-flushing')
-					flush()
+					logger.warn({ timeout }, 'Buffer timeout reached, auto-flushing')
+					stats.forcedFlushes++
+					flush(true)
 				}
-			}, BUFFER_TIMEOUT_MS)
+			}, timeout)
 		}
 
 		// Always increment count when requested
 		bufferCount++
 	}
 
-	function flush() {
-		if (!isBuffering) {
+	function flush(force: boolean = false): boolean {
+		if (destroyed) {
+			logger.warn('Attempted to flush destroyed event buffer')
 			return false
 		}
 
-		logger.debug({ bufferCount }, 'Flushing event buffer')
+		if (!isBuffering && !force) {
+			return false
+		}
+
+		const eventCount = currentEventCount
+		logger.debug({ bufferCount, eventCount, force }, 'Flushing event buffer')
+
 		isBuffering = false
 		bufferCount = 0
+		currentEventCount = 0
+		stats.totalFlushes++
+		stats.lastFlushAt = Date.now()
 
-		// Clear timeout
-		if (bufferTimeout) {
-			clearTimeout(bufferTimeout)
-			bufferTimeout = null
-		}
+		// Update average events per flush
+		stats.avgEventsPerFlush = stats.totalFlushes > 0
+			? (stats.avgEventsPerFlush * (stats.totalFlushes - 1) + eventCount) / stats.totalFlushes
+			: eventCount
 
-		if (flushPendingTimeout) {
-			clearTimeout(flushPendingTimeout)
-			flushPendingTimeout = null
-		}
+		// Clear timeouts
+		clearAllTimers()
 
-		// Clear history cache if it exceeds the max size
-		if (historyCache.size > MAX_HISTORY_CACHE_SIZE) {
-			logger.debug({ cacheSize: historyCache.size }, 'Clearing history cache')
-			historyCache.clear()
-		}
+		// Perform LRU cleanup instead of full clear
+		cleanupHistoryCache()
+		stats.historyCacheSize = historyCache.size
+
+		// Record metrics
+		recordFlushMetrics(eventCount, force)
 
 		const newData = makeBufferData()
 		const chatUpdates = Object.values(data.chatUpdates)
@@ -152,13 +548,49 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 
 		data = newData
 
-		logger.trace({ conditionalChatUpdatesLeft }, 'released buffered events')
+		logger.trace({ conditionalChatUpdatesLeft, eventCount }, 'released buffered events')
+
+		// Reset adaptive timeout calculator on flush
+		if (config.enableAdaptiveTimeout) {
+			adaptiveTimeout.reset()
+		}
 
 		return true
 	}
 
+	function destroy(): void {
+		if (destroyed) {
+			logger.debug('Event buffer already destroyed')
+			return
+		}
+
+		logger.debug('Destroying event buffer')
+		destroyed = true
+
+		// Flush any remaining events
+		if (isBuffering) {
+			flush(true)
+		}
+
+		// Clear all timers
+		clearAllTimers()
+
+		// Clear all data structures
+		data = makeBufferData()
+		historyCache.clear()
+
+		// Remove all event listeners
+		ev.removeAllListeners()
+
+		logger.debug('Event buffer destroyed successfully')
+	}
+
 	return {
 		process(handler) {
+			if (destroyed) {
+				throw new Error('Cannot process on destroyed event buffer')
+			}
+
 			const listener = async (map: BaileysEventData) => {
 				await handler(map)
 			}
@@ -169,6 +601,11 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 			}
 		},
 		emit<T extends BaileysEvent>(event: BaileysEvent, evData: BaileysEventMap[T]) {
+			if (destroyed) {
+				logger.warn({ event }, 'Attempted to emit on destroyed event buffer')
+				return false
+			}
+
 			// Check if this is a messages.upsert with a different type than what's buffered
 			// If so, flush the buffered messages first to avoid type overshadowing
 			if (event === 'messages.upsert') {
@@ -192,6 +629,28 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 			}
 
 			if (isBuffering && BUFFERABLE_EVENT_SET.has(event)) {
+				// Record event for adaptive timeout
+				if (config.enableAdaptiveTimeout) {
+					adaptiveTimeout.recordEvent()
+				}
+
+				// Track statistics
+				currentEventCount++
+				stats.totalEventsBuffered++
+				stats.currentBufferSize = currentEventCount
+				if (currentEventCount > stats.peakBufferSize) {
+					stats.peakBufferSize = currentEventCount
+				}
+
+				// Record metrics
+				recordMetrics(event, 1)
+
+				// Check for overflow
+				if (checkBufferOverflow()) {
+					// Buffer was flushed due to overflow, re-buffer this event
+					buffer()
+				}
+
 				append(data, historyCache, event as BufferableEvent, evData, logger)
 				return true
 			}
@@ -199,43 +658,92 @@ export const makeEventBuffer = (logger: ILogger): BaileysBufferableEventEmitter 
 			return ev.emit('event', { [event]: evData })
 		},
 		isBuffering() {
-			return isBuffering
+			return isBuffering && !destroyed
+		},
+		isDestroyed() {
+			return destroyed
 		},
 		buffer,
 		flush,
+		destroy,
+		getStatistics() {
+			return {
+				...stats,
+				currentBufferSize: currentEventCount,
+				historyCacheSize: historyCache.size,
+				currentTimeout: config.enableAdaptiveTimeout
+					? adaptiveTimeout.getTimeout()
+					: config.bufferTimeoutMs
+			}
+		},
+		getConfig() {
+			return { ...config }
+		},
 		createBufferedFunction(work) {
+			// Track the timeout for this specific function call
+			let functionTimeout: NodeJS.Timeout | null = null
+
 			return async (...args) => {
+				if (destroyed) {
+					throw new Error('Cannot execute buffered function on destroyed event buffer')
+				}
+
 				buffer()
 				try {
 					const result = await work(...args)
+
 					// If this is the only buffer, flush after a small delay
 					if (bufferCount === 1) {
-						setTimeout(() => {
-							if (isBuffering && bufferCount === 1) {
+						// Clear any existing function timeout to prevent orphaned timers
+						if (functionTimeout) {
+							clearTimeout(functionTimeout)
+						}
+						functionTimeout = setTimeout(() => {
+							functionTimeout = null
+							if (isBuffering && bufferCount === 1 && !destroyed) {
 								flush()
 							}
-						}, 100) // Small delay to allow nested buffers
+						}, config.flushDebounceMs)
 					}
 
 					return result
 				} catch (error) {
+					// Clear timeout on error
+					if (functionTimeout) {
+						clearTimeout(functionTimeout)
+						functionTimeout = null
+					}
 					throw error
 				} finally {
 					bufferCount = Math.max(0, bufferCount - 1)
-					if (bufferCount === 0) {
-						// Only schedule ONE timeout, not 10,000
+					if (bufferCount === 0 && !destroyed) {
+						// Only schedule ONE timeout, not multiple
 						if (!flushPendingTimeout) {
-							flushPendingTimeout = setTimeout(flush, 100)
+							flushPendingTimeout = setTimeout(() => {
+								flushPendingTimeout = null
+								if (!destroyed) {
+									flush()
+								}
+							}, config.flushDebounceMs)
 						}
 					}
 				}
 			}
 		},
-		on: (...args) => ev.on(...args),
+		on: (...args) => {
+			if (destroyed) {
+				throw new Error('Cannot add listener to destroyed event buffer')
+			}
+			return ev.on(...args)
+		},
 		off: (...args) => ev.off(...args),
 		removeAllListeners: (...args) => ev.removeAllListeners(...args)
 	}
 }
+
+// ============================================================================
+// BUFFER DATA STRUCTURE
+// ============================================================================
 
 const makeBufferData = (): BufferedEventData => {
 	return {
@@ -260,9 +768,13 @@ const makeBufferData = (): BufferedEventData => {
 	}
 }
 
+// ============================================================================
+// EVENT APPEND LOGIC
+// ============================================================================
+
 function append<E extends BufferableEvent>(
 	data: BufferedEventData,
-	historyCache: Set<string>,
+	historyCache: LRUTracker,
 	event: E,
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	eventData: any,
@@ -282,6 +794,9 @@ function append<E extends BufferableEvent>(
 					historyCache.add(id)
 
 					absorbingChatUpdate(chat)
+				} else {
+					// Touch existing entry for LRU tracking
+					historyCache.touch(id)
 				}
 			}
 
@@ -295,6 +810,8 @@ function append<E extends BufferableEvent>(
 					if (!historyCache.has(historyContactId) || hasAnyName) {
 						data.historySets.contacts[contact.id] = contact
 						historyCache.add(historyContactId)
+					} else {
+						historyCache.touch(historyContactId)
 					}
 				}
 			}
@@ -305,6 +822,8 @@ function append<E extends BufferableEvent>(
 				if (!existingMsg && !historyCache.has(key)) {
 					data.historySets.messages[key] = message
 					historyCache.add(key)
+				} else {
+					historyCache.touch(key)
 				}
 			}
 
@@ -589,6 +1108,10 @@ function append<E extends BufferableEvent>(
 	}
 }
 
+// ============================================================================
+// EVENT CONSOLIDATION
+// ============================================================================
+
 function consolidateEvents(data: BufferedEventData) {
 	const map: BaileysEventData = {}
 
@@ -669,6 +1192,10 @@ function consolidateEvents(data: BufferedEventData) {
 
 	return map
 }
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
 
 function concatChats<C extends Partial<Chat>>(a: C, b: Partial<Chat>) {
 	if (
