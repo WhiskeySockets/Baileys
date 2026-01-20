@@ -145,6 +145,9 @@ export function extractLidPnFromConversation(
  * - `key.remoteJidAlt` - Alternative remote JID format
  * - `key.participantAlt` - Alternative participant JID format (for groups)
  *
+ * IMPORTANT: Uses || (OR) to ensure BOTH JIDs are person JIDs before extracting.
+ * This prevents "poisoned" mappings where one side is a group/newsletter/broadcast.
+ *
  * @param remoteJid - The primary remote JID
  * @param remoteJidAlt - The alternative remote JID (may be LID or PN)
  * @param participant - The primary participant JID (for group messages)
@@ -165,8 +168,11 @@ export function extractLidPnFromMessage(
 		return undefined
 	}
 
-	// Skip non-person JIDs
-	if (!isPersonJid(primaryJid) && !isPersonJid(altJid)) {
+	// FIXED: Use || (OR) instead of && (AND)
+	// Both JIDs MUST be person JIDs to create a valid mapping.
+	// Using && would allow mixed scenarios (e.g., person + group) to proceed,
+	// resulting in invalid "poisoned" mappings.
+	if (!isPersonJid(primaryJid) || !isPersonJid(altJid)) {
 		return undefined
 	}
 

@@ -149,6 +149,86 @@ describe('extractLidPnFromMessage', () => {
 
 			expect(result).toBeUndefined()
 		})
+
+		// CRITICAL: Edge cases for the && vs || fix (bug fix validation)
+		it('should return undefined when primary is person but alt is GROUP', () => {
+			const result = extractLidPnFromMessage(
+				'123456789012345@lid',
+				'123456789@g.us', // group JID
+				undefined,
+				undefined
+			)
+
+			// With the fix (using ||), this should return undefined
+			// because group JIDs cannot be part of a valid LID-PN mapping
+			expect(result).toBeUndefined()
+		})
+
+		it('should return undefined when primary is person but alt is BROADCAST', () => {
+			const result = extractLidPnFromMessage(
+				'123456789012345@lid',
+				'status@broadcast', // broadcast JID
+				undefined,
+				undefined
+			)
+
+			expect(result).toBeUndefined()
+		})
+
+		it('should return undefined when primary is person but alt is NEWSLETTER', () => {
+			const result = extractLidPnFromMessage(
+				'123456789012345@lid',
+				'123456789@newsletter', // newsletter JID
+				undefined,
+				undefined
+			)
+
+			expect(result).toBeUndefined()
+		})
+
+		it('should return undefined when alt is person but primary is GROUP', () => {
+			const result = extractLidPnFromMessage(
+				'123456789@g.us', // group JID
+				'5511999999999@s.whatsapp.net',
+				undefined,
+				undefined
+			)
+
+			expect(result).toBeUndefined()
+		})
+
+		it('should return undefined when alt is person but primary is BROADCAST', () => {
+			const result = extractLidPnFromMessage(
+				'status@broadcast', // broadcast JID
+				'5511999999999@s.whatsapp.net',
+				undefined,
+				undefined
+			)
+
+			expect(result).toBeUndefined()
+		})
+
+		it('should return undefined when alt is person but primary is NEWSLETTER', () => {
+			const result = extractLidPnFromMessage(
+				'123456789@newsletter', // newsletter JID
+				'5511999999999@s.whatsapp.net',
+				undefined,
+				undefined
+			)
+
+			expect(result).toBeUndefined()
+		})
+
+		it('should return undefined when BOTH are non-person JIDs', () => {
+			const result = extractLidPnFromMessage(
+				'123456789@g.us', // group JID
+				'status@broadcast', // broadcast JID
+				undefined,
+				undefined
+			)
+
+			expect(result).toBeUndefined()
+		})
 	})
 })
 
@@ -174,7 +254,6 @@ describe('extractLidPnFromConversation', () => {
 				'5511999999999@hosted'
 			)
 
-			// jidNormalizedUser preserves hosted formats (they are distinct servers)
 			expect(result).toEqual({
 				lid: '123456789012345@hosted.lid',
 				pn: '5511999999999@hosted'
@@ -203,7 +282,6 @@ describe('extractLidPnFromConversation', () => {
 				undefined
 			)
 
-			// jidNormalizedUser preserves hosted formats (they are distinct servers)
 			expect(result).toEqual({
 				lid: '123456789012345@hosted.lid',
 				pn: '5511999999999@hosted'
@@ -263,7 +341,6 @@ describe('extractLidPnFromConversation', () => {
 		})
 
 		it('should return undefined for LID chat with lidJid (no pnJid)', () => {
-			// Edge case: LID chat has lidJid but no pnJid
 			const result = extractLidPnFromConversation(
 				'123456789012345@lid',
 				'987654321098765@lid',
@@ -274,7 +351,6 @@ describe('extractLidPnFromConversation', () => {
 		})
 
 		it('should return undefined for PN chat with pnJid (no lidJid)', () => {
-			// Edge case: PN chat has pnJid but no lidJid
 			const result = extractLidPnFromConversation(
 				'5511999999999@s.whatsapp.net',
 				undefined,
@@ -375,6 +451,45 @@ describe('processHistoryMessage', () => {
 				phoneNumber: '1234567890123@s.whatsapp.net'
 			})
 		})
+
+		it('should extract LID-PN mappings from conversation lidJid/pnJid properties', () => {
+			const historySync: proto.IHistorySync = {
+				syncType: proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP,
+				conversations: [
+					{
+						id: '1234567890123@s.whatsapp.net',
+						name: 'Test User',
+						lidJid: '11111111111111@lid',
+						pnJid: '1234567890123@s.whatsapp.net'
+					}
+				]
+			}
+
+			const result = processHistoryMessage(historySync)
+
+			expect(result.lidPnMappings).toContainEqual({
+				lid: '11111111111111@lid',
+				pn: '1234567890123@s.whatsapp.net'
+			})
+		})
+
+		it('should NOT extract LID-PN mappings from group conversations', () => {
+			const historySync: proto.IHistorySync = {
+				syncType: proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP,
+				conversations: [
+					{
+						id: '123456789@g.us',
+						name: 'Test Group',
+						lidJid: '11111111111111@lid',
+						pnJid: '1234567890123@s.whatsapp.net'
+					}
+				]
+			}
+
+			const result = processHistoryMessage(historySync)
+
+			expect(result.lidPnMappings).toEqual([])
+		})
 	})
 
 	describe('LID-PN extraction from conversations', () => {
@@ -433,7 +548,6 @@ describe('processHistoryMessage', () => {
 
 			const result = processHistoryMessage(historySync)
 
-			// Should have only 1 mapping (deduplicated)
 			expect(result.lidPnMappings).toHaveLength(1)
 			expect(result.lidPnMappings[0]).toEqual({
 				lid: '11111111111111@lid',
@@ -499,7 +613,6 @@ describe('processHistoryMessage', () => {
 
 			const result = processHistoryMessage(historySync)
 
-			// jidNormalizedUser preserves hosted formats (they are distinct servers)
 			expect(result.lidPnMappings).toEqual([
 				{ lid: '11111111111111@hosted.lid', pn: '5511999999999@hosted' }
 			])
@@ -545,7 +658,6 @@ describe('processHistoryMessage', () => {
 
 			const result = processHistoryMessage(historySync)
 
-			// Should still extract from phoneNumberToLidMappings
 			expect(result.lidPnMappings).toEqual([
 				{ lid: '11111111111111@lid', pn: '5511999999999@s.whatsapp.net' }
 			])
@@ -585,8 +697,6 @@ describe('processHistoryMessage', () => {
 	})
 
 	describe('LID-PN extraction from messages (remoteJidAlt)', () => {
-		// Note: remoteJidAlt and participantAlt are runtime extensions to IMessageKey
-		// defined in WAMessageKey type. We cast via unknown for test data.
 		it('should extract mapping from message with remoteJidAlt', () => {
 			const historySync = {
 				syncType: proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP,
@@ -682,7 +792,6 @@ describe('processHistoryMessage', () => {
 
 			const result = processHistoryMessage(historySync)
 
-			// Should have only 1 mapping (deduplicated across all 3 sources)
 			expect(result.lidPnMappings).toHaveLength(1)
 			expect(result.lidPnMappings[0]).toEqual({
 				lid: '11111111111111@lid',
