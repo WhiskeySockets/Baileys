@@ -18,8 +18,8 @@ import { metrics } from './prometheus-metrics.js'
 import type { CircuitBreaker } from './circuit-breaker.js'
 
 /**
- * Retry configuration with exponential backoff
- * Delays in milliseconds: 1s, 2s, 5s, 10s, 20s
+ * Retry configuration with custom progressive backoff
+ * Fixed delay steps in milliseconds: 1s → 2s → 5s → 10s → 20s
  * Defined locally to avoid circular dependency with Defaults
  */
 const RETRY_BACKOFF_DELAYS = [1000, 2000, 5000, 10000, 20000]
@@ -669,7 +669,7 @@ export const retryConfigs = {
 
 /**
  * Get retry delay with jitter applied
- * Uses RETRY_BACKOFF_DELAYS and RETRY_JITTER_FACTOR from Defaults
+ * Uses RETRY_BACKOFF_DELAYS and RETRY_JITTER_FACTOR defined locally
  *
  * @param attempt - Current attempt number (1-based)
  * @returns Delay in ms with jitter applied
