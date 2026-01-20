@@ -60,6 +60,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	fireInitQueries: true,
 	auth: undefined as unknown as AuthenticationState,
 	markOnlineOnConnect: true,
+	// Set to false if you don't need full message history (reduces bandwidth/storage)
 	syncFullHistory: true,
 	patchMessageBeforeSending: msg => msg,
 	shouldSyncHistoryMessage: () => true,
@@ -79,7 +80,11 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	cachedGroupMetadata: async () => undefined,
 	makeSignalRepository: makeLibSignalRepository,
 	// Circuit breaker configuration
-	enableCircuitBreaker: true
+	enableCircuitBreaker: true,
+	// Listener limits (memory leak prevention)
+	// 8 base WS events + 10 dynamic listeners + 2 buffer slots
+	maxWebSocketListeners: 20,
+	maxSocketClientListeners: 50
 }
 
 export const MEDIA_PATH_MAP: { [T in MediaType]?: string } = {
@@ -123,14 +128,50 @@ export const MEDIA_KEYS = Object.keys(MEDIA_PATH_MAP) as MediaType[]
 
 export const MIN_PREKEY_COUNT = 5
 
-export const INITIAL_PREKEY_COUNT = 812
+// Moderate prekey count (upstream uses 812, reduced to balance rate limiting and availability)
+export const INITIAL_PREKEY_COUNT = 200
 
 export const UPLOAD_TIMEOUT = 30000 // 30 seconds
-export const MIN_UPLOAD_INTERVAL = 5000 // 5 seconds minimum between uploads
+// Moderate upload interval to balance rate limiting and responsiveness (was 5000)
+export const MIN_UPLOAD_INTERVAL = 10_000 // 10 seconds minimum between uploads
 
+/**
+ * Cache TTL configuration (in seconds)
+ */
 export const DEFAULT_CACHE_TTLS = {
 	SIGNAL_STORE: 5 * 60, // 5 minutes
 	MSG_RETRY: 60 * 60, // 1 hour
 	CALL_OFFER: 5 * 60, // 5 minutes
 	USER_DEVICES: 5 * 60 // 5 minutes
 }
+
+/**
+ * Maximum cache keys per store type - prevents memory leaks
+ * Based on RSocket's battle-tested configuration
+ *
+ * Usage: Use these limits when initializing LRU caches to prevent unbounded growth
+ * Example:
+ *   import { DEFAULT_CACHE_MAX_KEYS } from './Defaults'
+ *   const cache = new LRUCache({ max: DEFAULT_CACHE_MAX_KEYS.SIGNAL_STORE })
+ */
+export const DEFAULT_CACHE_MAX_KEYS = {
+	SIGNAL_STORE: 10_000,
+	MSG_RETRY: 10_000,
+	CALL_OFFER: 500,
+	USER_DEVICES: 5_000,
+	PLACEHOLDER_RESEND: 5_000,
+	LID_PER_SOCKET: 2_000,
+	LID_GLOBAL: 10_000
+}
+
+/**
+ * Retry configuration with exponential backoff
+ * Delays in milliseconds: 1s, 2s, 5s, 10s, 20s
+ */
+export const RETRY_BACKOFF_DELAYS = [1000, 2000, 5000, 10000, 20000]
+
+/**
+ * Jitter factor for retry delays (0.15 = ±15% randomization)
+ * Helps prevent thundering herd problem
+ */
+export const RETRY_JITTER_FACTOR = 0.15
