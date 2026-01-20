@@ -38,6 +38,33 @@ import * as promClient from 'prom-client'
 // Create a custom registry to avoid conflicts with global registry
 const customRegistry = new promClient.Registry()
 
+// Flag to prevent multiple collectDefaultMetrics calls (memory leak prevention)
+let defaultMetricsCollected = false
+
+/**
+ * Configure the custom registry with prefix and default labels
+ * Should be called once during initialization
+ */
+function configureRegistry(config: { prefix?: string; defaultLabels?: Labels }): void {
+	if (config.defaultLabels && Object.keys(config.defaultLabels).length > 0) {
+		customRegistry.setDefaultLabels(config.defaultLabels)
+	}
+}
+
+/**
+ * Get the configured prefix for metric names
+ * Stored globally after first configuration
+ */
+let configuredPrefix = ''
+
+function setMetricPrefix(prefix: string): void {
+	configuredPrefix = prefix
+}
+
+function getFullMetricName(name: string): string {
+	return configuredPrefix ? `${configuredPrefix}_${name}` : name
+}
+
 // ============================================
 // Configuration
 // ============================================
@@ -186,8 +213,9 @@ export class Counter implements BaseMetric {
 		public help: string,
 		public labelNames: string[] = []
 	) {
+		const fullName = getFullMetricName(name)
 		this.promCounter = new promClient.Counter({
-			name,
+			name: fullName,
 			help,
 			labelNames,
 			registers: [customRegistry], // Use custom registry, not global
@@ -290,8 +318,9 @@ export class Gauge implements BaseMetric {
 		public help: string,
 		public labelNames: string[] = []
 	) {
+		const fullName = getFullMetricName(name)
 		this.promGauge = new promClient.Gauge({
-			name,
+			name: fullName,
 			help,
 			labelNames,
 			registers: [customRegistry], // Use custom registry, not global
@@ -460,8 +489,9 @@ export class Histogram implements BaseMetric {
 		buckets: number[] = DEFAULT_BUCKETS
 	) {
 		this.buckets = [...buckets].sort((a, b) => a - b)
+		const fullName = getFullMetricName(name)
 		this.promHistogram = new promClient.Histogram({
-			name,
+			name: fullName,
 			help,
 			labelNames,
 			buckets: this.buckets,
@@ -645,8 +675,9 @@ export class Summary implements BaseMetric {
 		options: { percentiles?: number[]; maxAgeSeconds?: number; ageBuckets?: number } = {}
 	) {
 		this.percentiles = options.percentiles ?? DEFAULT_PERCENTILES
+		const fullName = getFullMetricName(name)
 		this.promSummary = new promClient.Summary({
-			name,
+			name: fullName,
 			help,
 			labelNames,
 			percentiles: this.percentiles,
@@ -1118,11 +1149,20 @@ export class MetricsServer {
 
 		// Cache the promise so concurrent calls get the same one
 		this.startPromise = new Promise<void>((resolve, reject) => {
-			// Enable prom-client's default Node.js metrics collection
-			if (this.config.collectDefaultMetrics) {
+			// Configure registry with prefix and defaultLabels (once)
+			setMetricPrefix(this.config.prefix)
+			configureRegistry({
+				prefix: this.config.prefix,
+				defaultLabels: this.config.defaultLabels,
+			})
+
+			// Enable prom-client's default Node.js metrics collection (only once to prevent memory leak)
+			if (this.config.collectDefaultMetrics && !defaultMetricsCollected) {
+				defaultMetricsCollected = true
 				promClient.collectDefaultMetrics({
 					prefix: this.config.prefix ? `${this.config.prefix}_` : '',
 					labels: this.config.defaultLabels,
+					register: customRegistry, // Use custom registry, not global
 				})
 			}
 
@@ -1227,6 +1267,13 @@ export class MetricsServer {
  * Load metrics configuration from environment
  */
 const metricsConfig = loadMetricsConfig()
+
+// Initialize prefix and defaultLabels for all metrics created after this point
+setMetricPrefix(metricsConfig.prefix)
+configureRegistry({
+	prefix: metricsConfig.prefix,
+	defaultLabels: metricsConfig.defaultLabels,
+})
 
 /**
  * Global registry for Baileys metrics
