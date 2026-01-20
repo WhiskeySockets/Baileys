@@ -38,31 +38,58 @@ import * as promClient from 'prom-client'
 // Create a custom registry to avoid conflicts with global registry
 const customRegistry = new promClient.Registry()
 
-// Flag to prevent multiple collectDefaultMetrics calls (memory leak prevention)
+// Flags to prevent multiple configuration calls (thread-safety and memory leak prevention)
 let defaultMetricsCollected = false
+let registryConfigured = false
+let configuredPrefix = ''
 
 /**
- * Configure the custom registry with prefix and default labels
- * Should be called once during initialization
+ * Configure the custom registry with default labels
+ * Thread-safe: Only executes once, subsequent calls are no-ops
+ * To clear default labels, pass an empty object {} explicitly
  */
-function configureRegistry(config: { prefix?: string; defaultLabels?: Labels }): void {
-	if (config.defaultLabels && Object.keys(config.defaultLabels).length > 0) {
-		customRegistry.setDefaultLabels(config.defaultLabels)
+function configureRegistry(defaultLabels?: Labels): void {
+	if (registryConfigured) {
+		return // Already configured, ignore subsequent calls
+	}
+	registryConfigured = true
+
+	// Allow setting empty labels to clear previous (useful for testing/reconfiguration)
+	if (defaultLabels !== undefined) {
+		customRegistry.setDefaultLabels(defaultLabels)
 	}
 }
 
 /**
- * Get the configured prefix for metric names
- * Stored globally after first configuration
+ * Set the metric prefix - thread-safe, only first call takes effect
  */
-let configuredPrefix = ''
-
 function setMetricPrefix(prefix: string): void {
-	configuredPrefix = prefix
+	if (configuredPrefix === '') {
+		configuredPrefix = prefix
+	}
 }
 
 function getFullMetricName(name: string): string {
 	return configuredPrefix ? `${configuredPrefix}_${name}` : name
+}
+
+/**
+ * Reset all configuration flags - FOR TESTING ONLY
+ * Allows reconfiguration in test environments
+ */
+export function resetMetricsConfiguration(): void {
+	registryConfigured = false
+	defaultMetricsCollected = false
+	configuredPrefix = ''
+	// Clear all metrics from custom registry
+	customRegistry.clear()
+}
+
+/**
+ * Get the current configured prefix - FOR TESTING/DEBUGGING
+ */
+export function getConfiguredPrefix(): string {
+	return configuredPrefix
 }
 
 // ============================================
@@ -1147,14 +1174,13 @@ export class MetricsServer {
 			return this.startPromise
 		}
 
+		// Configure prefix and registry BEFORE creating Promise to avoid race conditions
+		// These functions are thread-safe and only execute once
+		setMetricPrefix(this.config.prefix)
+		configureRegistry(this.config.defaultLabels)
+
 		// Cache the promise so concurrent calls get the same one
 		this.startPromise = new Promise<void>((resolve, reject) => {
-			// Configure registry with prefix and defaultLabels (once)
-			setMetricPrefix(this.config.prefix)
-			configureRegistry({
-				prefix: this.config.prefix,
-				defaultLabels: this.config.defaultLabels,
-			})
 
 			// Enable prom-client's default Node.js metrics collection (only once to prevent memory leak)
 			if (this.config.collectDefaultMetrics && !defaultMetricsCollected) {
