@@ -656,14 +656,14 @@ export const retryConfigs = {
 	/**
 	 * RSocket-style retry with stepped delays
 	 * Uses fixed delay array: 1s, 2s, 5s, 10s, 20s (with ±15% jitter)
-	 * Unlike exponential, this uses exact delays from RETRY_BACKOFF_DELAYS
+	 * Values hardcoded to avoid initialization order issues in ESM
 	 */
 	rsocket: {
-		maxAttempts: RETRY_BACKOFF_DELAYS.length,
-		baseDelay: RETRY_BACKOFF_DELAYS[0],
-		maxDelay: RETRY_BACKOFF_DELAYS[RETRY_BACKOFF_DELAYS.length - 1],
+		maxAttempts: 5, // RETRY_BACKOFF_DELAYS.length
+		baseDelay: 1000, // RETRY_BACKOFF_DELAYS[0]
+		maxDelay: 20000, // RETRY_BACKOFF_DELAYS[4]
 		backoffStrategy: 'stepped' as const,
-		jitter: RETRY_JITTER_FACTOR,
+		jitter: 0.15, // RETRY_JITTER_FACTOR
 	},
 }
 
