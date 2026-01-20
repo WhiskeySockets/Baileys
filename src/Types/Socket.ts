@@ -165,4 +165,19 @@ export type SocketConfig = {
 
 	/** Circuit breaker configuration for message operations */
 	messageCircuitBreaker?: Partial<CircuitBreakerOptions>
+
+	// === Listener Limits (Memory Leak Prevention) ===
+
+	/**
+	 * Max WebSocket event listeners (default: 20)
+	 * Calculated as: 8 base WS events + 10 dynamic listeners + 2 buffer slots
+	 * WARNING: Setting to 0 disables limit and allows potential memory leaks!
+	 */
+	maxWebSocketListeners?: number
+
+	/**
+	 * Max SocketClient event listeners (default: 50)
+	 * WARNING: Setting to 0 disables limit and allows potential memory leaks!
+	 */
+	maxSocketClientListeners?: number
 }

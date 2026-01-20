@@ -31,7 +31,13 @@ export class WebSocketClient extends AbstractSocketClient {
 			agent: this.config.agent
 		})
 
-		this.socket.setMaxListeners(0)
+		// Set max listeners from config (default: 20)
+		// WARNING: 0 disables limit and allows potential memory leaks
+		const maxListeners = this.config.maxWebSocketListeners ?? 20
+		if (maxListeners === 0) {
+			this.config.logger?.warn('WebSocket setMaxListeners(0) allows UNLIMITED listeners - potential memory leak!')
+		}
+		this.socket.setMaxListeners(maxListeners)
 
 		const events = ['close', 'error', 'upgrade', 'message', 'open', 'ping', 'pong', 'unexpected-response']
 

@@ -80,7 +80,11 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	cachedGroupMetadata: async () => undefined,
 	makeSignalRepository: makeLibSignalRepository,
 	// Circuit breaker configuration
-	enableCircuitBreaker: true
+	enableCircuitBreaker: true,
+	// Listener limits (memory leak prevention)
+	// 8 base WS events + 10 dynamic listeners + 2 buffer slots
+	maxWebSocketListeners: 20,
+	maxSocketClientListeners: 50
 }
 
 export const MEDIA_PATH_MAP: { [T in MediaType]?: string } = {
