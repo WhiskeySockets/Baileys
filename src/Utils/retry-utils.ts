@@ -16,7 +16,19 @@
 import { EventEmitter } from 'events'
 import { metrics } from './prometheus-metrics.js'
 import type { CircuitBreaker } from './circuit-breaker.js'
-import { RETRY_BACKOFF_DELAYS, RETRY_JITTER_FACTOR } from '../Defaults/index.js'
+
+/**
+ * Retry configuration with exponential backoff
+ * Delays in milliseconds: 1s, 2s, 5s, 10s, 20s
+ * Defined locally to avoid circular dependency with Defaults
+ */
+const RETRY_BACKOFF_DELAYS = [1000, 2000, 5000, 10000, 20000]
+
+/**
+ * Jitter factor for retry delays (0.15 = ±15% randomization)
+ * Helps prevent thundering herd problem
+ */
+const RETRY_JITTER_FACTOR = 0.15
 
 /**
  * Backoff strategies
