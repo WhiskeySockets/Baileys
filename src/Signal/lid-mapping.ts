@@ -54,7 +54,7 @@ export class LIDMappingStore {
 			}
 
 			if (!existingLidUser) {
-				this.logger.trace(`Cache miss for PN user ${pnUser}; checking database`)
+				this.enableCache && this.logger.trace(`Cache miss for PN user ${pnUser}; checking database`)
 				const stored = await this.keys.get('lid-mapping', [pnUser])
 				existingLidUser = stored[pnUser]
 				if (existingLidUser && this.enableCache && this.mappingCache) {
