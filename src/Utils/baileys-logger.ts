@@ -331,28 +331,12 @@ export class BaileysLogger implements ILogger {
 			...(typeof sanitizedObj === 'object' && sanitizedObj !== null ? sanitizedObj : { value: sanitizedObj }),
 		}
 
-		// Structured log (using type-safe method call)
-		switch (level) {
-			case 'trace':
-				this.structuredLogger.trace(enrichedObj, msg)
-				break
-			case 'debug':
-				this.structuredLogger.debug(enrichedObj, msg)
-				break
-			case 'info':
-				this.structuredLogger.info(enrichedObj, msg)
-				break
-			case 'warn':
-				this.structuredLogger.warn(enrichedObj, msg)
-				break
-			case 'error':
-				this.structuredLogger.error(enrichedObj, msg)
-				break
-			case 'fatal':
-				this.structuredLogger.fatal(enrichedObj, msg)
-				break
-			default:
-				this.structuredLogger.info(enrichedObj, msg)
+		// Structured log (skip if level is 'silent')
+		if (level !== 'silent') {
+			const logMethod = (this.structuredLogger as unknown as Record<string, ((obj: unknown, msg?: string) => void) | undefined>)[level]
+			if (logMethod) {
+				logMethod.call(this.structuredLogger, enrichedObj, msg)
+			}
 		}
 
 		// Event handler

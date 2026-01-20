@@ -559,7 +559,9 @@ export function extractTraceHeaders(headers: Record<string, string | undefined>)
 		options.baggage = {}
 		const pairs = baggageHeader.split(',')
 		for (const pair of pairs) {
-			const [key, value] = pair.split('=')
+			const parts = pair.split('=')
+			const key = parts[0]
+			const value = parts[1]
 			if (key && value) {
 				options.baggage[key.trim()] = decodeURIComponent(value.trim())
 			}
