@@ -20,15 +20,15 @@ import type { CircuitBreaker } from './circuit-breaker.js'
 /**
  * Retry configuration with custom progressive backoff
  * Fixed delay steps in milliseconds: 1s → 2s → 5s → 10s → 20s
- * Defined locally to avoid circular dependency with Defaults
+ * Exported for external use (e.g., custom retry logic)
  */
-const RETRY_BACKOFF_DELAYS = [1000, 2000, 5000, 10000, 20000]
+export const RETRY_BACKOFF_DELAYS = [1000, 2000, 5000, 10000, 20000] as const
 
 /**
  * Jitter factor for retry delays (0.15 = ±15% randomization)
  * Helps prevent thundering herd problem
  */
-const RETRY_JITTER_FACTOR = 0.15
+export const RETRY_JITTER_FACTOR = 0.15
 
 /**
  * Backoff strategies

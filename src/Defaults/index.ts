@@ -169,15 +169,7 @@ export const DEFAULT_CACHE_MAX_KEYS = {
 	LID_GLOBAL: 10_000
 }
 
-/**
- * Retry configuration with custom progressive backoff
- * Fixed delay steps in milliseconds: 1s → 2s → 5s → 10s → 20s
- * Use with 'stepped' backoff strategy in retry-utils.ts
- */
-export const RETRY_BACKOFF_DELAYS = [1000, 2000, 5000, 10000, 20000]
-
-/**
- * Jitter factor for retry delays (0.15 = ±15% randomization)
- * Helps prevent thundering herd problem
- */
-export const RETRY_JITTER_FACTOR = 0.15
+// NOTE: RETRY_BACKOFF_DELAYS and RETRY_JITTER_FACTOR are defined in retry-utils.ts
+// to avoid circular dependency and initialization order issues.
+// Import from '@whiskeysockets/baileys' Utils if needed:
+// import { getRetryDelayWithJitter, getAllRetryDelaysWithJitter } from './Utils/retry-utils'
