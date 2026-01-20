@@ -36,6 +36,12 @@ import {
 } from '../Utils'
 import { getPlatformId } from '../Utils/browser-utils'
 import {
+	CircuitBreaker,
+	CircuitOpenError,
+	createConnectionCircuitBreaker,
+	createPreKeyCircuitBreaker
+} from '../Utils/circuit-breaker'
+import {
 	assertNodeErrorFree,
 	type BinaryNode,
 	binaryNodeToString,
@@ -71,8 +77,63 @@ export const makeSocket = (config: SocketConfig) => {
 		defaultQueryTimeoutMs,
 		transactionOpts,
 		qrTimeout,
-		makeSignalRepository
+		makeSignalRepository,
+		enableCircuitBreaker = true,
+		queryCircuitBreaker: queryCircuitBreakerConfig,
+		connectionCircuitBreaker: connectionCircuitBreakerConfig,
+		preKeyCircuitBreaker: preKeyCircuitBreakerConfig
 	} = config
+
+	// Initialize circuit breakers if enabled
+	let queryCircuitBreaker: CircuitBreaker | undefined
+	let connectionCircuitBreaker: CircuitBreaker | undefined
+	let preKeyCircuitBreaker: CircuitBreaker | undefined
+
+	if (enableCircuitBreaker) {
+		// Circuit breaker for query operations (most critical)
+		queryCircuitBreaker = createConnectionCircuitBreaker({
+			name: 'socket-query',
+			failureThreshold: 5,
+			failureWindow: 60000,
+			resetTimeout: 30000,
+			successThreshold: 2,
+			timeout: defaultQueryTimeoutMs || 60000,
+			onStateChange: (from, to) => {
+				logger.info({ from, to }, 'Query circuit breaker state changed')
+			},
+			onOpen: () => {
+				logger.warn('Query circuit breaker OPENED - blocking requests')
+			},
+			onClose: () => {
+				logger.info('Query circuit breaker CLOSED - resuming normal operation')
+			},
+			...queryCircuitBreakerConfig
+		})
+
+		// Circuit breaker for connection operations
+		connectionCircuitBreaker = createConnectionCircuitBreaker({
+			name: 'socket-connection',
+			failureThreshold: 3,
+			failureWindow: 30000,
+			resetTimeout: 60000,
+			successThreshold: 1,
+			onStateChange: (from, to) => {
+				logger.info({ from, to }, 'Connection circuit breaker state changed')
+			},
+			...connectionCircuitBreakerConfig
+		})
+
+		// Circuit breaker for pre-key operations
+		preKeyCircuitBreaker = createPreKeyCircuitBreaker({
+			name: 'socket-prekey',
+			onStateChange: (from, to) => {
+				logger.info({ from, to }, 'PreKey circuit breaker state changed')
+			},
+			...preKeyCircuitBreakerConfig
+		})
+
+		logger.info('Circuit breakers initialized for socket operations')
+	}
 
 	const publicWAMBuffer = new BinaryInfo()
 
@@ -110,8 +171,8 @@ export const makeSocket = (config: SocketConfig) => {
 	ws.connect()
 
 	const sendPromise = promisify(ws.send)
-	/** send a raw buffer */
-	const sendRawMessage = async (data: Uint8Array | Buffer) => {
+	/** send a raw buffer (internal implementation) */
+	const sendRawMessageInternal = async (data: Uint8Array | Buffer) => {
 		if (!ws.isOpen) {
 			throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
 		}
@@ -125,6 +186,22 @@ export const makeSocket = (config: SocketConfig) => {
 				reject(error)
 			}
 		})
+	}
+
+	/** send a raw buffer with circuit breaker protection */
+	const sendRawMessage = async (data: Uint8Array | Buffer) => {
+		if (connectionCircuitBreaker) {
+			try {
+				return await connectionCircuitBreaker.execute(() => sendRawMessageInternal(data))
+			} catch (error) {
+				if (error instanceof CircuitOpenError) {
+					logger.warn({ circuitName: error.circuitName }, 'Send blocked by connection circuit breaker')
+				}
+				throw error
+			}
+		}
+
+		return sendRawMessageInternal(data)
 	}
 
 	/** send a binary node */
@@ -185,7 +262,7 @@ export const makeSocket = (config: SocketConfig) => {
 	}
 
 	/** send a query, and wait for its response. auto-generates message ID if not provided */
-	const query = async (node: BinaryNode, timeoutMs?: number) => {
+	const queryInternal = async (node: BinaryNode, timeoutMs?: number) => {
 		if (!node.attrs.id) {
 			node.attrs.id = generateMessageTag()
 		}
@@ -204,6 +281,25 @@ export const makeSocket = (config: SocketConfig) => {
 		}
 
 		return result
+	}
+
+	/** send a query with circuit breaker protection */
+	const query = async (node: BinaryNode, timeoutMs?: number) => {
+		// If circuit breaker is enabled, wrap the query
+		if (queryCircuitBreaker) {
+			try {
+				return await queryCircuitBreaker.execute(() => queryInternal(node, timeoutMs))
+			} catch (error) {
+				// If circuit is open, log and rethrow with context
+				if (error instanceof CircuitOpenError) {
+					logger.warn({ circuitName: error.circuitName, state: error.state }, 'Query blocked by circuit breaker')
+				}
+				throw error
+			}
+		}
+
+		// Fallback to direct query if circuit breaker is disabled
+		return queryInternal(node, timeoutMs)
 	}
 
 	// Validate current key-bundle on server; on failure, trigger pre-key upload and rethrow
@@ -460,6 +556,12 @@ export const makeSocket = (config: SocketConfig) => {
 
 	/** generates and uploads a set of pre-keys to the server */
 	const uploadPreKeys = async (count = MIN_PREKEY_COUNT, retryCount = 0) => {
+		// Check if pre-key circuit breaker is open
+		if (preKeyCircuitBreaker?.isOpen()) {
+			logger.warn('PreKey circuit breaker is open, skipping upload')
+			throw new CircuitOpenError('socket-prekey', 'open')
+		}
+
 		// Check minimum interval (except for retries)
 		if (retryCount === 0) {
 			const timeSinceLastUpload = Date.now() - lastUploadTime
@@ -487,13 +589,27 @@ export const makeSocket = (config: SocketConfig) => {
 				return node // Only return node since update is already used
 			}, creds?.me?.id || 'upload-pre-keys')
 
-			// Upload to server (outside transaction, can fail without affecting local keys)
-			try {
+			// Upload to server with circuit breaker protection
+			const uploadToServer = async () => {
 				await query(node)
 				logger.info({ count }, 'uploaded pre-keys successfully')
 				lastUploadTime = Date.now()
+			}
+
+			try {
+				// Use circuit breaker if available
+				if (preKeyCircuitBreaker) {
+					await preKeyCircuitBreaker.execute(uploadToServer)
+				} else {
+					await uploadToServer()
+				}
 			} catch (uploadError) {
 				logger.error({ uploadError: (uploadError as Error).toString(), count }, 'Failed to upload pre-keys to server')
+
+				// Don't retry if circuit breaker is open
+				if (uploadError instanceof CircuitOpenError) {
+					throw uploadError
+				}
 
 				// Exponential backoff retry (max 3 retries)
 				if (retryCount < 3) {
@@ -616,6 +732,11 @@ export const makeSocket = (config: SocketConfig) => {
 
 		clearInterval(keepAliveReq)
 		clearTimeout(qrTimer)
+
+		// Clean up circuit breakers
+		queryCircuitBreaker?.destroy()
+		connectionCircuitBreaker?.destroy()
+		preKeyCircuitBreaker?.destroy()
 
 		ws.removeAllListeners('close')
 		ws.removeAllListeners('open')
@@ -1058,7 +1179,26 @@ export const makeSocket = (config: SocketConfig) => {
 		waitForConnectionUpdate: bindWaitForConnectionUpdate(ev),
 		sendWAMBuffer,
 		executeUSyncQuery,
-		onWhatsApp
+		onWhatsApp,
+		// Circuit breaker utilities
+		circuitBreakers: {
+			query: queryCircuitBreaker,
+			connection: connectionCircuitBreaker,
+			preKey: preKeyCircuitBreaker
+		},
+		/** Get circuit breaker statistics */
+		getCircuitBreakerStats: () => ({
+			query: queryCircuitBreaker?.getStats(),
+			connection: connectionCircuitBreaker?.getStats(),
+			preKey: preKeyCircuitBreaker?.getStats()
+		}),
+		/** Reset all circuit breakers to closed state */
+		resetCircuitBreakers: () => {
+			queryCircuitBreaker?.reset()
+			connectionCircuitBreaker?.reset()
+			preKeyCircuitBreaker?.reset()
+			logger.info('All circuit breakers reset to closed state')
+		}
 	}
 }
 

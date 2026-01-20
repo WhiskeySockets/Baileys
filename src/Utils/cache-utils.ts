@@ -500,7 +500,8 @@ export function withCache<T extends (...args: unknown[]) => unknown>(
 /**
  * Global singleton cache by namespace
  */
-const globalCaches: Map<string, Cache<unknown>> = new Map()
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const globalCaches: Map<string, Cache<any>> = new Map()
 
 export function getGlobalCache<V>(namespace: string, options?: CacheOptions<V>): Cache<V> {
 	if (!globalCaches.has(namespace)) {

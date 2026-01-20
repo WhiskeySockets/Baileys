@@ -331,8 +331,29 @@ export class BaileysLogger implements ILogger {
 			...(typeof sanitizedObj === 'object' && sanitizedObj !== null ? sanitizedObj : { value: sanitizedObj }),
 		}
 
-		// Structured log
-		this.structuredLogger[level](enrichedObj, msg)
+		// Structured log (using type-safe method call)
+		switch (level) {
+			case 'trace':
+				this.structuredLogger.trace(enrichedObj, msg)
+				break
+			case 'debug':
+				this.structuredLogger.debug(enrichedObj, msg)
+				break
+			case 'info':
+				this.structuredLogger.info(enrichedObj, msg)
+				break
+			case 'warn':
+				this.structuredLogger.warn(enrichedObj, msg)
+				break
+			case 'error':
+				this.structuredLogger.error(enrichedObj, msg)
+				break
+			case 'fatal':
+				this.structuredLogger.fatal(enrichedObj, msg)
+				break
+			default:
+				this.structuredLogger.info(enrichedObj, msg)
+		}
 
 		// Event handler
 		if (this.config.eventHandler) {
@@ -429,8 +450,10 @@ export class BaileysLogger implements ILogger {
 		if (process.env.NODE_ENV === 'production') {
 			// In production, mask part of the number
 			const parts = jid.split('@')
-			if (parts.length === 2 && parts[0].length > 4) {
-				return `${parts[0].substring(0, 4)}****@${parts[1]}`
+			const localPart = parts[0]
+			const domainPart = parts[1]
+			if (parts.length === 2 && localPart && domainPart && localPart.length > 4) {
+				return `${localPart.substring(0, 4)}****@${domainPart}`
 			}
 		}
 		return jid

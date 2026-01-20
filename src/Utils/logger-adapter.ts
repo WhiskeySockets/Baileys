@@ -120,7 +120,7 @@ export class LoggerAdapter implements ILogger {
 		}
 
 		if (this.config.levelMapping && level in this.config.levelMapping) {
-			return this.config.levelMapping[level]
+			return this.config.levelMapping[level] || 'info'
 		}
 
 		return (level as LogLevel) || 'info'
@@ -327,8 +327,12 @@ function createLogMethod(
 	return (obj: unknown, msg?: string) => {
 		if (typeof logger[level] === 'function') {
 			;(logger[level] as (obj: unknown, msg?: string) => void)(obj, msg)
-		} else if (typeof (console as Record<string, unknown>)[level] === 'function') {
-			;(console as Record<string, (...args: unknown[]) => void>)[level](obj, msg)
+		} else {
+			// Fallback to console
+			const consoleMethod = (console as unknown as Record<string, (...args: unknown[]) => void>)[level]
+			if (typeof consoleMethod === 'function') {
+				consoleMethod(obj, msg)
+			}
 		}
 	}
 }
