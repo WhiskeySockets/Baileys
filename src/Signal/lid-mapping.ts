@@ -24,9 +24,9 @@ export interface LIDMappingConfig {
 	enableMetrics: boolean
 	/** Batch size for bulk operations (default: 100) */
 	batchSize: number
-	/** Retry attempts for failed operations (default: 3) */
+	/** Retry attempts for failed operations (default: 3, max: 10) */
 	retryAttempts: number
-	/** Retry delay in milliseconds (default: 1000) */
+	/** Base retry delay in ms (default: 1000). Uses exponential backoff: delay * 2^(attempt-1) */
 	retryDelayMs: number
 	/** Enable debug logging (default: false) */
 	debugLogging: boolean
@@ -34,17 +34,33 @@ export interface LIDMappingConfig {
 
 /**
  * Load configuration from environment variables
+ * Includes bounds validation to prevent DoS from malicious values
  */
 export function loadLIDMappingConfig(): LIDMappingConfig {
+	// Helper to clamp values within safe bounds
+	const clamp = (value: number, min: number, max: number): number =>
+		Math.max(min, Math.min(max, isNaN(value) ? min : value))
+
+	const cacheTtlMs = parseInt(process.env.BAILEYS_LID_CACHE_TTL_MS || String(3 * 24 * 60 * 60 * 1000), 10)
+	const maxCacheSize = parseInt(process.env.BAILEYS_LID_MAX_CACHE_SIZE || '50000', 10)
+	const batchSize = parseInt(process.env.BAILEYS_LID_BATCH_SIZE || '100', 10)
+	const retryAttempts = parseInt(process.env.BAILEYS_LID_RETRY_ATTEMPTS || '3', 10)
+	const retryDelayMs = parseInt(process.env.BAILEYS_LID_RETRY_DELAY_MS || '1000', 10)
+
 	return {
-		cacheTtlMs: parseInt(process.env.BAILEYS_LID_CACHE_TTL_MS || String(3 * 24 * 60 * 60 * 1000), 10),
-		maxCacheSize: parseInt(process.env.BAILEYS_LID_MAX_CACHE_SIZE || '50000', 10),
+		// Cache TTL: minimum 1 minute, maximum 30 days
+		cacheTtlMs: clamp(cacheTtlMs, 60_000, 30 * 24 * 60 * 60 * 1000),
+		// Cache size: minimum 100, maximum 1,000,000
+		maxCacheSize: clamp(maxCacheSize, 100, 1_000_000),
 		cacheAutoPurge: process.env.BAILEYS_LID_CACHE_AUTO_PURGE !== 'false',
 		updateAgeOnGet: process.env.BAILEYS_LID_UPDATE_AGE_ON_GET !== 'false',
 		enableMetrics: process.env.BAILEYS_LID_METRICS === 'true',
-		batchSize: parseInt(process.env.BAILEYS_LID_BATCH_SIZE || '100', 10),
-		retryAttempts: parseInt(process.env.BAILEYS_LID_RETRY_ATTEMPTS || '3', 10),
-		retryDelayMs: parseInt(process.env.BAILEYS_LID_RETRY_DELAY_MS || '1000', 10),
+		// Batch size: minimum 1 (prevents infinite loop), maximum 1000
+		batchSize: clamp(batchSize, 1, 1000),
+		// Retry attempts: minimum 1, maximum 10
+		retryAttempts: clamp(retryAttempts, 1, 10),
+		// Retry delay: minimum 100ms, maximum 60 seconds
+		retryDelayMs: clamp(retryDelayMs, 100, 60_000),
 		debugLogging: process.env.BAILEYS_LID_DEBUG === 'true'
 	}
 }
@@ -180,9 +196,14 @@ export class LIDMappingStore {
 		})
 
 		// Load metrics module if enabled
+		// NOTE: This is loaded asynchronously. Metrics recorded immediately after
+		// construction may be lost until the module finishes loading.
+		// For critical metrics, consider calling warmCache() or another async method
+		// first to ensure the module has time to load.
 		if (this.config.enableMetrics) {
 			import('../Utils/prometheus-metrics').then(m => {
 				this.metricsModule = m
+				this.logger.debug('Prometheus metrics module loaded for LID mapping')
 			}).catch(() => {
 				this.logger.debug('Prometheus metrics not available for LID mapping')
 			})
@@ -197,6 +218,7 @@ export class LIDMappingStore {
 
 	/**
 	 * Get current configuration
+	 * Safe to call after destroy for debugging purposes
 	 */
 	getConfig(): LIDMappingConfig {
 		return { ...this.config }
@@ -204,12 +226,13 @@ export class LIDMappingStore {
 
 	/**
 	 * Get current statistics
+	 * Safe to call after destroy for final metrics collection
 	 */
 	getStatistics(): LIDMappingStatistics {
 		const totalLookups = this.stats.cacheHits + this.stats.cacheMisses
 		return {
 			...this.stats,
-			cacheSize: this.mappingCache.size,
+			cacheSize: this.destroyed ? 0 : this.mappingCache.size,
 			cacheHitRate: totalLookups > 0 ? (this.stats.cacheHits / totalLookups) * 100 : 0
 		}
 	}
@@ -271,10 +294,11 @@ export class LIDMappingStore {
 
 	/**
 	 * Get cache info for monitoring
+	 * Safe to call after destroy for final reporting
 	 */
 	getCacheInfo(): { size: number; maxSize: number; ttlMs: number } {
 		return {
-			size: this.mappingCache.size,
+			size: this.destroyed ? 0 : this.mappingCache.size,
 			maxSize: this.config.maxCacheSize,
 			ttlMs: this.config.cacheTtlMs
 		}
@@ -287,6 +311,12 @@ export class LIDMappingStore {
 	/**
 	 * Store LID-PN mapping - USER LEVEL
 	 * Enhanced with batch operations and retry logic
+	 *
+	 * @param pairs - Array of LID-PN mappings to store
+	 * @returns Statistics about the operation (stored, skipped, errors)
+	 *
+	 * Note: Return type changed from void to statistics object.
+	 * Existing callers that ignore the return value remain compatible.
 	 */
 	async storeLIDPNMappings(pairs: LIDMapping[]): Promise<{ stored: number; skipped: number; errors: number }> {
 		this.checkDestroyed()
@@ -408,6 +438,10 @@ export class LIDMappingStore {
 
 	/**
 	 * Get LIDs for multiple PNs - Optimized batch operation
+	 *
+	 * Note: PNs that fail database lookup are silently skipped and queued for
+	 * USync retry. Check statistics.failedOperations for failure counts.
+	 * The returned array may be smaller than input if some lookups failed.
 	 */
 	async getLIDsForPNs(pns: string[]): Promise<LIDMapping[] | null> {
 		this.checkDestroyed()
@@ -416,6 +450,7 @@ export class LIDMappingStore {
 
 		const usyncFetch: { [_: string]: number[] } = {}
 		const successfulPairs: { [_: string]: LIDMapping } = {}
+		const failedPns: string[] = []
 
 		for (const pn of pns) {
 			if (!isPnUser(pn) && !isHostedPnUser(pn)) continue
@@ -465,8 +500,9 @@ export class LIDMappingStore {
 						continue
 					}
 				} catch (error) {
-					this.logger.error({ error, pn }, 'Failed to get LID mapping')
+					this.logger.error({ error, pn }, 'Failed to get LID mapping from database')
 					this.stats.failedOperations++
+					failedPns.push(pn)
 					continue
 				}
 			}
@@ -491,6 +527,14 @@ export class LIDMappingStore {
 		// Fetch from USync if needed
 		if (Object.keys(usyncFetch).length > 0) {
 			await this.fetchFromUSync(usyncFetch, successfulPairs)
+		}
+
+		// Log warning if some PNs failed lookup
+		if (failedPns.length > 0) {
+			this.logger.warn(
+				{ failedCount: failedPns.length, totalRequested: pns.length },
+				'Some PNs failed during getLIDsForPNs - results may be incomplete'
+			)
 		}
 
 		this.recordMetrics('get-lid', Object.keys(successfulPairs).length)
@@ -584,9 +628,12 @@ export class LIDMappingStore {
 	}
 
 	/**
-	 * Delete mapping for a PN
+	 * Delete mapping from cache only (does not affect persistent storage)
+	 * Use this to force a fresh lookup on next access
+	 * @param pn - The phone number JID to remove from cache
+	 * @returns true if the PN was valid and cache was cleared
 	 */
-	async deleteMapping(pn: string): Promise<boolean> {
+	async deleteMappingFromCache(pn: string): Promise<boolean> {
 		this.checkDestroyed()
 
 		if (!isPnUser(pn) && !isHostedPnUser(pn)) return false
@@ -597,17 +644,21 @@ export class LIDMappingStore {
 		const pnUser = decoded.user
 		const lidUser = this.mappingCache.get(`pn:${pnUser}`)
 
-		// Remove from cache
+		// Remove from cache only - persistent storage maintains history
 		this.mappingCache.delete(`pn:${pnUser}`)
 		if (lidUser) {
 			this.mappingCache.delete(`lid:${lidUser}`)
 		}
 
-		// Note: We don't delete from persistent storage to maintain history
-		// This only clears the cache entry
-
 		this.logger.debug({ pnUser }, 'Mapping deleted from cache')
 		return true
+	}
+
+	/**
+	 * @deprecated Use deleteMappingFromCache instead - name clarifies cache-only behavior
+	 */
+	async deleteMapping(pn: string): Promise<boolean> {
+		return this.deleteMappingFromCache(pn)
 	}
 
 	// ========================================================================
@@ -654,9 +705,10 @@ export class LIDMappingStore {
 
 	/**
 	 * Validate a LID-PN mapping pair
+	 * Checks that one is a LID and the other is a PN (in either order)
 	 */
 	private isValidMapping(lid: string, pn: string): boolean {
-		return ((isLidUser(lid) && isPnUser(pn)) || (isPnUser(lid) && isLidUser(pn))) ?? false
+		return (isLidUser(lid) && isPnUser(pn)) || (isPnUser(lid) && isLidUser(pn)) || false
 	}
 
 	/**
@@ -680,6 +732,15 @@ export class LIDMappingStore {
 	/**
 	 * Retry an operation with exponential backoff
 	 * Supports both Promise and Awaitable return types
+	 *
+	 * Delay pattern: baseDelay * 2^(attempt-1)
+	 * - Attempt 1: immediate
+	 * - Attempt 2: baseDelay * 1 (e.g., 1000ms)
+	 * - Attempt 3: baseDelay * 2 (e.g., 2000ms)
+	 * - Attempt 4: baseDelay * 4 (e.g., 4000ms)
+	 *
+	 * Configure via: BAILEYS_LID_RETRY_ATTEMPTS (default: 3)
+	 *                BAILEYS_LID_RETRY_DELAY_MS (default: 1000)
 	 */
 	private async retryOperation<T>(
 		operation: () => T | Promise<T>,
