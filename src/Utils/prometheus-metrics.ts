@@ -1469,6 +1469,124 @@ export function trackOperation(
 }
 
 // ============================================
+// Event Buffer Metrics Integration
+// ============================================
+
+// Event buffer metrics (lazy initialized)
+let eventBufferMetrics: {
+	eventsBuffered: Counter | null
+	bufferFlushes: Counter | null
+	bufferFlushEvents: Histogram | null
+	bufferCurrentSize: Gauge | null
+	bufferPeakSize: Gauge | null
+	bufferHistoryCacheSize: Gauge | null
+	bufferOverflows: Counter | null
+	bufferLruCleanups: Counter | null
+} | null = null
+
+function getEventBufferMetrics() {
+	if (!eventBufferMetrics) {
+		eventBufferMetrics = {
+			eventsBuffered: new Counter(
+				'events_buffered_total',
+				'Total number of events buffered',
+				['event_type']
+			),
+			bufferFlushes: new Counter(
+				'buffer_flushes_total',
+				'Total number of buffer flushes',
+				['forced']
+			),
+			bufferFlushEvents: new Histogram(
+				'buffer_flush_events',
+				'Number of events per buffer flush',
+				[],
+				[1, 5, 10, 25, 50, 100, 250, 500, 1000]
+			),
+			bufferCurrentSize: new Gauge(
+				'buffer_current_size',
+				'Current number of events in buffer'
+			),
+			bufferPeakSize: new Gauge(
+				'buffer_peak_size',
+				'Peak buffer size reached'
+			),
+			bufferHistoryCacheSize: new Gauge(
+				'buffer_history_cache_size',
+				'Current size of history cache'
+			),
+			bufferOverflows: new Counter(
+				'buffer_overflows_total',
+				'Total number of buffer overflows detected'
+			),
+			bufferLruCleanups: new Counter(
+				'buffer_lru_cleanups_total',
+				'Total number of LRU cache cleanups performed'
+			)
+		}
+		// Register all metrics
+		if (eventBufferMetrics.eventsBuffered) baileysMetrics.register(eventBufferMetrics.eventsBuffered)
+		if (eventBufferMetrics.bufferFlushes) baileysMetrics.register(eventBufferMetrics.bufferFlushes)
+		if (eventBufferMetrics.bufferFlushEvents) baileysMetrics.register(eventBufferMetrics.bufferFlushEvents)
+		if (eventBufferMetrics.bufferCurrentSize) baileysMetrics.register(eventBufferMetrics.bufferCurrentSize)
+		if (eventBufferMetrics.bufferPeakSize) baileysMetrics.register(eventBufferMetrics.bufferPeakSize)
+		if (eventBufferMetrics.bufferHistoryCacheSize) baileysMetrics.register(eventBufferMetrics.bufferHistoryCacheSize)
+		if (eventBufferMetrics.bufferOverflows) baileysMetrics.register(eventBufferMetrics.bufferOverflows)
+		if (eventBufferMetrics.bufferLruCleanups) baileysMetrics.register(eventBufferMetrics.bufferLruCleanups)
+	}
+	return eventBufferMetrics
+}
+
+/**
+ * Record an event being buffered
+ * Used by event-buffer.ts for metrics integration
+ */
+export function recordEventBuffered(eventType: string, count: number = 1): void {
+	try {
+		const metrics = getEventBufferMetrics()
+		metrics.eventsBuffered?.inc({ event_type: eventType }, count)
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Record a buffer flush operation
+ * Used by event-buffer.ts for metrics integration
+ */
+export function recordBufferFlush(eventCount: number, forced: boolean): void {
+	try {
+		const metrics = getEventBufferMetrics()
+		metrics.bufferFlushes?.inc({ forced: forced ? 'true' : 'false' })
+		metrics.bufferFlushEvents?.observe({}, eventCount)
+		metrics.bufferCurrentSize?.set({}, 0) // Reset after flush
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Update buffer statistics gauge
+ * Used by event-buffer.ts for metrics integration
+ */
+export function updateBufferStatistics(stats: {
+	currentSize: number
+	peakSize: number
+	historyCacheSize: number
+	overflowsDetected: number
+	lruCleanups: number
+}): void {
+	try {
+		const metrics = getEventBufferMetrics()
+		metrics.bufferCurrentSize?.set({}, stats.currentSize)
+		metrics.bufferPeakSize?.set({}, stats.peakSize)
+		metrics.bufferHistoryCacheSize?.set({}, stats.historyCacheSize)
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+// ============================================
 // Global Instance
 // ============================================
 
