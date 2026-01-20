@@ -1,6 +1,12 @@
 /**
  * Prometheus Metrics Exposition - Enterprise Grade
  *
+ * Uses prom-client for full Prometheus compatibility including:
+ * - Native OpenMetrics format export
+ * - Default Node.js metrics collection
+ * - Proper histogram buckets
+ * - Registry management
+ *
  * Provides:
  * - Counters for event counting
  * - Gauges for instantaneous values
@@ -27,6 +33,10 @@
 
 import { createServer, IncomingMessage, ServerResponse, Server } from 'http'
 import * as os from 'os'
+import * as promClient from 'prom-client'
+
+// Create a custom registry to avoid conflicts with global registry
+const customRegistry = new promClient.Registry()
 
 // ============================================
 // Configuration
@@ -157,24 +167,32 @@ export interface SummaryValue {
 }
 
 // ============================================
-// Counter Class
+// Counter Class (prom-client backed)
 // ============================================
 
 /**
  * Counter class - monotonically increasing metric
+ * Now backed by prom-client for full Prometheus compatibility
  *
  * Counters only go up (or reset to zero). They are used for
  * counting events like requests, errors, tasks completed, etc.
  */
 export class Counter implements BaseMetric {
 	readonly type = 'counter' as const
-	private values: Map<string, MetricValue> = new Map()
+	private promCounter: promClient.Counter<string>
 
 	constructor(
 		public name: string,
 		public help: string,
 		public labelNames: string[] = []
-	) {}
+	) {
+		this.promCounter = new promClient.Counter({
+			name,
+			help,
+			labelNames,
+			registers: [customRegistry], // Use custom registry, not global
+		})
+	}
 
 	/**
 	 * Increment the counter
@@ -194,46 +212,48 @@ export class Counter implements BaseMetric {
 			throw new Error('Counter cannot be decremented')
 		}
 
-		const key = this.labelsToKey(labels)
-		const existing = this.values.get(key)
-
-		if (existing) {
-			existing.value += incValue
-			existing.timestamp = Date.now()
+		// Use prom-client as single source of truth
+		if (Object.keys(labels).length > 0) {
+			this.promCounter.labels(labels).inc(incValue)
 		} else {
-			this.values.set(key, {
-				labels,
-				value: incValue,
-				timestamp: Date.now(),
-			})
+			this.promCounter.inc(incValue)
 		}
 	}
 
 	/**
-	 * Get current value
+	 * Get current value (async, from prom-client)
 	 */
-	get(labels: Labels = {}): number {
+	async get(labels: Labels = {}): Promise<number> {
+		const metric = await this.promCounter.get()
 		const key = this.labelsToKey(labels)
-		return this.values.get(key)?.value ?? 0
+		const value = metric.values.find(v => this.labelsToKey(v.labels as Labels) === key)
+		return value?.value ?? 0
 	}
 
 	/**
 	 * Reset the counter
+	 * If labels provided, removes only that label combination
+	 * Otherwise resets all values
 	 */
 	reset(labels?: Labels): void {
-		if (labels) {
-			const key = this.labelsToKey(labels)
-			this.values.delete(key)
+		if (labels && Object.keys(labels).length > 0) {
+			// prom-client doesn't support removing specific label combinations
+			// Use remove() to remove the specific label set
+			this.promCounter.remove(labels)
 		} else {
-			this.values.clear()
+			this.promCounter.reset()
 		}
 	}
 
 	/**
-	 * Get all values
+	 * Get all values (async, from prom-client)
 	 */
-	getValues(): MetricValue[] {
-		return Array.from(this.values.values())
+	async getValues(): Promise<MetricValue[]> {
+		const metric = await this.promCounter.get()
+		return metric.values.map(v => ({
+			labels: v.labels as Labels,
+			value: v.value,
+		}))
 	}
 
 	private labelsToKey(labels: Labels): string {
@@ -251,24 +271,32 @@ export class Counter implements BaseMetric {
 }
 
 // ============================================
-// Gauge Class
+// Gauge Class (prom-client backed)
 // ============================================
 
 /**
  * Gauge class - value that can increase and decrease
+ * Now backed by prom-client for full Prometheus compatibility
  *
  * Gauges represent a snapshot of a value at a point in time.
  * Examples: temperature, current memory usage, queue size.
  */
 export class Gauge implements BaseMetric {
 	readonly type = 'gauge' as const
-	private values: Map<string, MetricValue> = new Map()
+	private promGauge: promClient.Gauge<string>
 
 	constructor(
 		public name: string,
 		public help: string,
 		public labelNames: string[] = []
-	) {}
+	) {
+		this.promGauge = new promClient.Gauge({
+			name,
+			help,
+			labelNames,
+			registers: [customRegistry], // Use custom registry, not global
+		})
+	}
 
 	/**
 	 * Set value
@@ -284,12 +312,12 @@ export class Gauge implements BaseMetric {
 			setValue = value ?? 0
 		}
 
-		const key = this.labelsToKey(labels)
-		this.values.set(key, {
-			labels,
-			value: setValue,
-			timestamp: Date.now(),
-		})
+		// Use prom-client as single source of truth
+		if (Object.keys(labels).length > 0) {
+			this.promGauge.labels(labels).set(setValue)
+		} else {
+			this.promGauge.set(setValue)
+		}
 	}
 
 	/**
@@ -306,11 +334,12 @@ export class Gauge implements BaseMetric {
 			incValue = value ?? 1
 		}
 
-		const key = this.labelsToKey(labels)
-		const existing = this.values.get(key)
-		const currentValue = existing?.value ?? 0
-
-		this.set(labels, currentValue + incValue)
+		// Use prom-client as single source of truth
+		if (Object.keys(labels).length > 0) {
+			this.promGauge.labels(labels).inc(incValue)
+		} else {
+			this.promGauge.inc(incValue)
+		}
 	}
 
 	/**
@@ -327,11 +356,12 @@ export class Gauge implements BaseMetric {
 			decValue = value ?? 1
 		}
 
-		const key = this.labelsToKey(labels)
-		const existing = this.values.get(key)
-		const currentValue = existing?.value ?? 0
-
-		this.set(labels, currentValue - decValue)
+		// Use prom-client as single source of truth
+		if (Object.keys(labels).length > 0) {
+			this.promGauge.labels(labels).dec(decValue)
+		} else {
+			this.promGauge.dec(decValue)
+		}
 	}
 
 	/**
@@ -342,30 +372,37 @@ export class Gauge implements BaseMetric {
 	}
 
 	/**
-	 * Get current value
+	 * Get current value (async, from prom-client)
 	 */
-	get(labels: Labels = {}): number {
+	async get(labels: Labels = {}): Promise<number> {
+		const metric = await this.promGauge.get()
 		const key = this.labelsToKey(labels)
-		return this.values.get(key)?.value ?? 0
+		const value = metric.values.find(v => this.labelsToKey(v.labels as Labels) === key)
+		return value?.value ?? 0
 	}
 
 	/**
 	 * Reset the gauge
+	 * If labels provided, removes only that label combination
+	 * Otherwise resets all values
 	 */
 	reset(labels?: Labels): void {
-		if (labels) {
-			const key = this.labelsToKey(labels)
-			this.values.delete(key)
+		if (labels && Object.keys(labels).length > 0) {
+			this.promGauge.remove(labels)
 		} else {
-			this.values.clear()
+			this.promGauge.reset()
 		}
 	}
 
 	/**
-	 * Get all values
+	 * Get all values (async, from prom-client)
 	 */
-	getValues(): MetricValue[] {
-		return Array.from(this.values.values())
+	async getValues(): Promise<MetricValue[]> {
+		const metric = await this.promGauge.get()
+		return metric.values.map(v => ({
+			labels: v.labels as Labels,
+			value: v.value,
+		}))
 	}
 
 	private labelsToKey(labels: Labels): string {
@@ -401,18 +438,19 @@ export class Gauge implements BaseMetric {
 }
 
 // ============================================
-// Histogram Class
+// Histogram Class (prom-client backed)
 // ============================================
 
 /**
  * Histogram class - distribution of values in buckets
+ * Now backed by prom-client for full Prometheus compatibility
  *
  * Histograms sample observations and count them in configurable buckets.
  * They also provide sum and count of observations.
  */
 export class Histogram implements BaseMetric {
 	readonly type = 'histogram' as const
-	private values: Map<string, HistogramValue> = new Map()
+	private promHistogram: promClient.Histogram<string>
 	private buckets: number[]
 
 	constructor(
@@ -422,6 +460,13 @@ export class Histogram implements BaseMetric {
 		buckets: number[] = DEFAULT_BUCKETS
 	) {
 		this.buckets = [...buckets].sort((a, b) => a - b)
+		this.promHistogram = new promClient.Histogram({
+			name,
+			help,
+			labelNames,
+			buckets: this.buckets,
+			registers: [customRegistry], // Use custom registry, not global
+		})
 	}
 
 	/**
@@ -438,28 +483,12 @@ export class Histogram implements BaseMetric {
 			observeValue = value ?? 0
 		}
 
-		const key = this.labelsToKey(labels)
-		let histValue = this.values.get(key)
-
-		if (!histValue) {
-			histValue = {
-				labels,
-				buckets: new Map(this.buckets.map((b) => [b, 0])),
-				sum: 0,
-				count: 0,
-			}
-			this.values.set(key, histValue)
+		// Use prom-client as single source of truth
+		if (Object.keys(labels).length > 0) {
+			this.promHistogram.labels(labels).observe(observeValue)
+		} else {
+			this.promHistogram.observe(observeValue)
 		}
-
-		// Increment appropriate buckets (cumulative)
-		for (const bucket of this.buckets) {
-			if (observeValue <= bucket) {
-				histValue.buckets.set(bucket, (histValue.buckets.get(bucket) ?? 0) + 1)
-			}
-		}
-
-		histValue.sum += observeValue
-		histValue.count++
 	}
 
 	/**
@@ -487,30 +516,85 @@ export class Histogram implements BaseMetric {
 	}
 
 	/**
-	 * Get histogram values
+	 * Get histogram values (async, from prom-client)
 	 */
-	get(labels: Labels = {}): HistogramValue | undefined {
+	async get(labels: Labels = {}): Promise<HistogramValue | undefined> {
+		const metric = await this.promHistogram.get()
 		const key = this.labelsToKey(labels)
-		return this.values.get(key)
+
+		// Find values matching labels
+		const matchingValues = metric.values.filter(v => {
+			const vLabels = { ...v.labels } as Labels
+			delete (vLabels as Record<string, unknown>)['le'] // Remove bucket label
+			return this.labelsToKey(vLabels) === key
+		})
+
+		if (matchingValues.length === 0) return undefined
+
+		const buckets = new Map<number, number>()
+		let sum = 0
+		let count = 0
+
+		for (const v of matchingValues) {
+			if (v.metricName?.endsWith('_bucket')) {
+				const le = parseFloat((v.labels as Record<string, string>)['le'] ?? '0')
+				buckets.set(le, v.value)
+			} else if (v.metricName?.endsWith('_sum')) {
+				sum = v.value
+			} else if (v.metricName?.endsWith('_count')) {
+				count = v.value
+			}
+		}
+
+		return { labels, buckets, sum, count }
 	}
 
 	/**
 	 * Reset the histogram
+	 * If labels provided, removes only that label combination
+	 * Otherwise resets all values
 	 */
 	reset(labels?: Labels): void {
-		if (labels) {
-			const key = this.labelsToKey(labels)
-			this.values.delete(key)
+		if (labels && Object.keys(labels).length > 0) {
+			this.promHistogram.remove(labels)
 		} else {
-			this.values.clear()
+			this.promHistogram.reset()
 		}
 	}
 
 	/**
-	 * Get all values
+	 * Get all values (async, from prom-client)
 	 */
-	getValues(): HistogramValue[] {
-		return Array.from(this.values.values())
+	async getValues(): Promise<HistogramValue[]> {
+		const metric = await this.promHistogram.get()
+		const grouped = new Map<string, HistogramValue>()
+
+		for (const v of metric.values) {
+			const vLabels = { ...v.labels } as Labels
+			delete (vLabels as Record<string, unknown>)['le']
+			const key = this.labelsToKey(vLabels)
+
+			if (!grouped.has(key)) {
+				grouped.set(key, {
+					labels: vLabels,
+					buckets: new Map(),
+					sum: 0,
+					count: 0,
+				})
+			}
+
+			const histValue = grouped.get(key)!
+			if (v.metricName?.endsWith('_bucket')) {
+				const le = parseFloat((v.labels as Record<string, string>)['le'] ?? '0')
+				histValue.buckets.set(le, v.value)
+			} else if (v.metricName?.endsWith('_sum')) {
+				histValue.sum = v.value
+			} else if (v.metricName?.endsWith('_count')) {
+				histValue.count = v.value
+			}
+		}
+
+		return Array.from(grouped.values())
 	}
 
 	/**
@@ -544,26 +628,32 @@ export class Histogram implements BaseMetric {
 
 /**
  * Summary class - value percentiles (quantiles)
+ * Now backed by prom-client for full Prometheus compatibility
  *
  * Summaries calculate quantiles over a sliding time window.
  * Useful for tracking latency distributions.
  */
 export class Summary implements BaseMetric {
 	readonly type = 'summary' as const
-	private values: Map<string, SummaryValue> = new Map()
+	private promSummary: promClient.Summary<string>
 	private percentiles: number[]
-	private maxAge: number // ms
-	private maxSize: number
 
 	constructor(
 		public name: string,
 		public help: string,
 		public labelNames: string[] = [],
-		options: { percentiles?: number[]; maxAge?: number; maxSize?: number } = {}
+		options: { percentiles?: number[]; maxAgeSeconds?: number; ageBuckets?: number } = {}
 	) {
 		this.percentiles = options.percentiles ?? DEFAULT_PERCENTILES
-		this.maxAge = options.maxAge ?? 600000 // 10 min
-		this.maxSize = options.maxSize ?? 1000
+		this.promSummary = new promClient.Summary({
+			name,
+			help,
+			labelNames,
+			percentiles: this.percentiles,
+			maxAgeSeconds: options.maxAgeSeconds ?? 600, // 10 min default
+			ageBuckets: options.ageBuckets ?? 5,
+			registers: [customRegistry], // Use custom registry, not global
+		})
 	}
 
 	/**
@@ -580,30 +670,11 @@ export class Summary implements BaseMetric {
 			observeValue = value ?? 0
 		}
 
-		const key = this.labelsToKey(labels)
-		let summaryValue = this.values.get(key)
-
-		if (!summaryValue) {
-			summaryValue = {
-				labels,
-				values: [],
-				sum: 0,
-				count: 0,
-			}
-			this.values.set(key, summaryValue)
-		}
-
-		summaryValue.values.push(observeValue)
-		summaryValue.sum += observeValue
-		summaryValue.count++
-
-		// Limit size to prevent memory leaks
-		if (summaryValue.values.length > this.maxSize) {
-			const removed = summaryValue.values.shift()
-			if (removed !== undefined) {
-				summaryValue.sum -= removed
-				summaryValue.count--
-			}
+		// Use prom-client as single source of truth
+		if (Object.keys(labels).length > 0) {
+			this.promSummary.labels(labels).observe(observeValue)
+		} else {
+			this.promSummary.observe(observeValue)
 		}
 	}
 
@@ -620,46 +691,78 @@ export class Summary implements BaseMetric {
 	}
 
 	/**
-	 * Calculate percentile
+	 * Get summary values (async, from prom-client)
 	 */
-	getPercentile(labels: Labels, percentile: number): number | undefined {
+	async get(labels: Labels = {}): Promise<SummaryValue | undefined> {
+		const metric = await this.promSummary.get()
 		const key = this.labelsToKey(labels)
-		const summaryValue = this.values.get(key)
 
-		if (!summaryValue || summaryValue.values.length === 0) {
-			return undefined
+		// Find values matching labels
+		const matchingValues = metric.values.filter(v => {
+			const vLabels = { ...v.labels } as Labels
+			delete (vLabels as Record<string, unknown>)['quantile']
+			return this.labelsToKey(vLabels) === key
+		})
+
+		if (matchingValues.length === 0) return undefined
+
+		let sum = 0
+		let count = 0
+
+		for (const v of matchingValues) {
+			if (v.metricName?.endsWith('_sum')) {
+				sum = v.value
+			} else if (v.metricName?.endsWith('_count')) {
+				count = v.value
+			}
 		}
 
-		const sorted = [...summaryValue.values].sort((a, b) => a - b)
-		const index = Math.ceil(percentile * sorted.length) - 1
-		return sorted[Math.max(0, index)]
-	}
-
-	/**
-	 * Get summary values
-	 */
-	get(labels: Labels = {}): SummaryValue | undefined {
-		const key = this.labelsToKey(labels)
-		return this.values.get(key)
+		return { labels, values: [], sum, count }
 	}
 
 	/**
 	 * Reset the summary
+	 * If labels provided, removes only that label combination
+	 * Otherwise resets all values
 	 */
 	reset(labels?: Labels): void {
-		if (labels) {
-			const key = this.labelsToKey(labels)
-			this.values.delete(key)
+		if (labels && Object.keys(labels).length > 0) {
+			this.promSummary.remove(labels)
 		} else {
-			this.values.clear()
+			this.promSummary.reset()
 		}
 	}
 
 	/**
-	 * Get all values
+	 * Get all values (async, from prom-client)
 	 */
-	getValues(): SummaryValue[] {
-		return Array.from(this.values.values())
+	async getValues(): Promise<SummaryValue[]> {
+		const metric = await this.promSummary.get()
+		const grouped = new Map<string, SummaryValue>()
+
+		for (const v of metric.values) {
+			const vLabels = { ...v.labels } as Labels
+			delete (vLabels as Record<string, unknown>)['quantile']
+			const key = this.labelsToKey(vLabels)
+
+			if (!grouped.has(key)) {
+				grouped.set(key, {
+					labels: vLabels,
+					values: [],
+					sum: 0,
+					count: 0,
+				})
+			}
+
+			const summaryValue = grouped.get(key)!
+			if (v.metricName?.endsWith('_sum')) {
+				summaryValue.sum = v.value
+			} else if (v.metricName?.endsWith('_count')) {
+				summaryValue.count = v.value
+			}
+		}
+
+		return Array.from(grouped.values())
 	}
 
 	/**
@@ -765,75 +868,19 @@ export class MetricsRegistry {
 
 	/**
 	 * Return metrics in Prometheus exposition format
+	 * Uses custom registry with configured prefix and defaultLabels
 	 */
 	async getMetricsOutput(): Promise<string> {
-		const lines: string[] = []
-
-		for (const [name, metric] of this.metricsMap) {
-			lines.push(`# HELP ${name} ${metric.help}`)
-			lines.push(`# TYPE ${name} ${metric.type}`)
-
-			if (metric instanceof Counter || metric instanceof Gauge) {
-				for (const value of metric.getValues()) {
-					const labelsStr = this.formatLabels({ ...this.defaultLabels, ...value.labels })
-					lines.push(`${name}${labelsStr} ${value.value}`)
-				}
-			} else if (metric instanceof Histogram) {
-				for (const value of metric.getValues()) {
-					const labelsStr = this.formatLabels({ ...this.defaultLabels, ...value.labels })
-					const buckets = metric.getBuckets()
-
-					for (const bucket of buckets) {
-						const bucketLabels = this.formatLabels({
-							...this.defaultLabels,
-							...value.labels,
-							le: String(bucket),
-						})
-						lines.push(`${name}_bucket${bucketLabels} ${value.buckets.get(bucket) ?? 0}`)
-					}
-
-					// +Inf bucket (total count)
-					const infLabels = this.formatLabels({
-						...this.defaultLabels,
-						...value.labels,
-						le: '+Inf',
-					})
-					lines.push(`${name}_bucket${infLabels} ${value.count}`)
-					lines.push(`${name}_sum${labelsStr} ${value.sum}`)
-					lines.push(`${name}_count${labelsStr} ${value.count}`)
-				}
-			} else if (metric instanceof Summary) {
-				for (const value of metric.getValues()) {
-					const labelsStr = this.formatLabels({ ...this.defaultLabels, ...value.labels })
-
-					for (const percentile of metric.getPercentiles()) {
-						const quantileLabels = this.formatLabels({
-							...this.defaultLabels,
-							...value.labels,
-							quantile: String(percentile),
-						})
-						const percentileValue = metric.getPercentile(value.labels, percentile)
-						if (percentileValue !== undefined) {
-							lines.push(`${name}${quantileLabels} ${percentileValue}`)
-						}
-					}
-
-					lines.push(`${name}_sum${labelsStr} ${value.sum}`)
-					lines.push(`${name}_count${labelsStr} ${value.count}`)
-				}
-			}
-
-			lines.push('')
-		}
-
-		return lines.join('\n')
+		// Use customRegistry (not global) for proper isolation
+		// Prefix and defaultLabels are applied when metrics are created
+		return await customRegistry.metrics()
 	}
 
 	/**
-	 * Return content type for Prometheus
+	 * Return content type for Prometheus (using prom-client)
 	 */
 	contentType(): string {
-		return 'text/plain; version=0.0.4; charset=utf-8'
+		return customRegistry.contentType
 	}
 
 	private formatLabels(labels: Labels): string {
@@ -1071,6 +1118,14 @@ export class MetricsServer {
 
 		// Cache the promise so concurrent calls get the same one
 		this.startPromise = new Promise<void>((resolve, reject) => {
+			// Enable prom-client's default Node.js metrics collection
+			if (this.config.collectDefaultMetrics) {
+				promClient.collectDefaultMetrics({
+					prefix: this.config.prefix ? `${this.config.prefix}_` : '',
+					labels: this.config.defaultLabels,
+				})
+			}
+
 			// Initialize system collector if enabled (only once)
 			if (this.config.includeSystem && !this.systemCollector) {
 				this.systemCollector = new SystemMetricsCollector(this.registry)
