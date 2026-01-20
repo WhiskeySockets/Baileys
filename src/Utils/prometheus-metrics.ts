@@ -38,11 +38,15 @@ import * as os from 'os'
 export interface MetricsConfig {
 	enabled: boolean
 	port: number
+	/** Host/IP to bind the metrics server (default: '127.0.0.1' for security) */
+	host: string
 	path: string
 	prefix: string
 	defaultLabels: Labels
 	includeSystem: boolean
 	collectDefaultMetrics: boolean
+	/** Interval in milliseconds for system metrics collection (default: 10000) */
+	collectIntervalMs: number
 }
 
 /**
@@ -69,11 +73,13 @@ export function loadMetricsConfig(): MetricsConfig {
 	return {
 		enabled: (process.env.BAILEYS_PROMETHEUS_ENABLED ?? process.env.METRICS_ENABLED) === 'true',
 		port: parseInt(process.env.BAILEYS_PROMETHEUS_PORT || process.env.METRICS_PORT || '9092', 10),
+		host: process.env.BAILEYS_PROMETHEUS_HOST || process.env.METRICS_HOST || '127.0.0.1',
 		path: process.env.BAILEYS_PROMETHEUS_PATH || process.env.METRICS_PATH || '/metrics',
 		prefix: process.env.BAILEYS_PROMETHEUS_PREFIX || process.env.METRICS_PREFIX || 'baileys',
 		defaultLabels: parseLabelsFromEnv(process.env.BAILEYS_PROMETHEUS_LABELS),
 		includeSystem: (process.env.BAILEYS_PROMETHEUS_COLLECT_DEFAULT ?? process.env.METRICS_INCLUDE_SYSTEM) !== 'false',
 		collectDefaultMetrics: (process.env.BAILEYS_PROMETHEUS_COLLECT_DEFAULT ?? process.env.METRICS_COLLECT_DEFAULT) !== 'false',
+		collectIntervalMs: parseInt(process.env.BAILEYS_PROMETHEUS_COLLECT_INTERVAL_MS || process.env.METRICS_COLLECT_INTERVAL_MS || '10000', 10),
 	}
 }
 
@@ -850,10 +856,17 @@ export class MetricsRegistry {
 /**
  * System metrics collector
  * Collects Node.js process and system-level metrics
+ *
+ * FIX: CPU usage now calculates delta between measurements to get actual percentage
  */
 export class SystemMetricsCollector {
 	private processStartTime: number
 	private registry: MetricsRegistry
+
+	// CPU tracking for delta calculation
+	private lastCpuUsage: { user: number; system: number } | null = null
+	private lastCpuTime: number = 0
+	private cpuCount: number
 
 	// Process metrics
 	public readonly processUptime: Gauge
@@ -876,13 +889,14 @@ export class SystemMetricsCollector {
 	constructor(registry: MetricsRegistry) {
 		this.registry = registry
 		this.processStartTime = Date.now()
+		this.cpuCount = os.cpus().length
 
 		// Initialize process metrics
 		this.processUptime = registry.register(
 			new Gauge('process_uptime_seconds', 'Process uptime in seconds')
 		)
 		this.processCpuUsage = registry.register(
-			new Gauge('process_cpu_usage_percent', 'Process CPU usage percentage', ['type'])
+			new Gauge('process_cpu_usage_percent', 'Process CPU usage percentage (0-100)', ['type'])
 		)
 		this.processMemoryUsage = registry.register(
 			new Gauge('process_memory_bytes', 'Process memory usage in bytes', ['type'])
@@ -918,6 +932,10 @@ export class SystemMetricsCollector {
 		this.eventLoopLag = registry.register(
 			new Histogram('nodejs_eventloop_lag_seconds', 'Event loop lag in seconds', [], DEFAULT_LATENCY_BUCKETS)
 		)
+
+		// Initialize CPU baseline
+		this.lastCpuUsage = process.cpuUsage()
+		this.lastCpuTime = Date.now()
 	}
 
 	/**
@@ -927,10 +945,8 @@ export class SystemMetricsCollector {
 		// Process uptime
 		this.processUptime.set((Date.now() - this.processStartTime) / 1000)
 
-		// CPU usage
-		const cpuUsage = process.cpuUsage()
-		this.processCpuUsage.set({ type: 'user' }, cpuUsage.user / 1000000) // Convert to seconds
-		this.processCpuUsage.set({ type: 'system' }, cpuUsage.system / 1000000)
+		// CPU usage - calculate delta to get actual percentage
+		this.collectCpuUsage()
 
 		// Memory usage
 		const memUsage = process.memoryUsage()
@@ -957,6 +973,39 @@ export class SystemMetricsCollector {
 		this.measureEventLoopLag()
 	}
 
+	/**
+	 * Calculate CPU usage percentage by measuring delta between calls
+	 * FIX: process.cpuUsage() returns cumulative microseconds, not percentage
+	 * We need to calculate the delta and convert to percentage
+	 */
+	private collectCpuUsage(): void {
+		const currentCpuUsage = process.cpuUsage()
+		const currentTime = Date.now()
+
+		if (this.lastCpuUsage && this.lastCpuTime) {
+			const elapsedMs = currentTime - this.lastCpuTime
+			if (elapsedMs > 0) {
+				// Calculate delta in microseconds
+				const userDelta = currentCpuUsage.user - this.lastCpuUsage.user
+				const systemDelta = currentCpuUsage.system - this.lastCpuUsage.system
+
+				// Convert to percentage: (microseconds used / microseconds elapsed) * 100
+				// Divide by CPU count to normalize across cores
+				const elapsedMicros = elapsedMs * 1000
+				const userPercent = (userDelta / elapsedMicros) * 100 / this.cpuCount
+				const systemPercent = (systemDelta / elapsedMicros) * 100 / this.cpuCount
+
+				// Clamp to 0-100 range
+				this.processCpuUsage.set({ type: 'user' }, Math.min(100, Math.max(0, userPercent)))
+				this.processCpuUsage.set({ type: 'system' }, Math.min(100, Math.max(0, systemPercent)))
+			}
+		}
+
+		// Store for next calculation
+		this.lastCpuUsage = currentCpuUsage
+		this.lastCpuTime = currentTime
+	}
+
 	private measureEventLoopLag(): void {
 		const start = process.hrtime.bigint()
 		setImmediate(() => {
@@ -972,6 +1021,9 @@ export class SystemMetricsCollector {
 
 /**
  * HTTP server for exposing metrics endpoint
+ *
+ * SECURITY: By default binds to 127.0.0.1 (localhost only)
+ * Set BAILEYS_PROMETHEUS_HOST=0.0.0.0 to expose on all interfaces
  */
 export class MetricsServer {
 	private server: Server | null = null
@@ -979,6 +1031,7 @@ export class MetricsServer {
 	private systemCollector: SystemMetricsCollector | null = null
 	private collectInterval: NodeJS.Timeout | null = null
 	private config: MetricsConfig
+	private isStarting: boolean = false // FIX: Race condition protection
 
 	constructor(registry: MetricsRegistry, config?: Partial<MetricsConfig>) {
 		this.registry = registry
@@ -986,7 +1039,15 @@ export class MetricsServer {
 	}
 
 	/**
+	 * Get the system collector (for external access, avoids duplicate creation)
+	 */
+	getSystemCollector(): SystemMetricsCollector | null {
+		return this.systemCollector
+	}
+
+	/**
 	 * Start the metrics HTTP server
+	 * FIX: Added race condition protection for concurrent start() calls
 	 */
 	start(): Promise<void> {
 		return new Promise((resolve, reject) => {
@@ -995,17 +1056,27 @@ export class MetricsServer {
 				return
 			}
 
+			// FIX: Race condition - check if already running or starting
 			if (this.server) {
 				resolve()
 				return
 			}
 
-			// Initialize system collector if enabled
-			if (this.config.includeSystem) {
+			if (this.isStarting) {
+				// Another start() call is in progress, wait a bit and resolve
+				setTimeout(() => resolve(), 100)
+				return
+			}
+
+			this.isStarting = true
+
+			// Initialize system collector if enabled (only once)
+			if (this.config.includeSystem && !this.systemCollector) {
 				this.systemCollector = new SystemMetricsCollector(this.registry)
+				// FIX: Use configurable interval instead of hardcoded 10000
 				this.collectInterval = setInterval(() => {
 					this.systemCollector?.collect()
-				}, 10000) // Collect every 10 seconds
+				}, this.config.collectIntervalMs)
 			}
 
 			this.server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
@@ -1018,8 +1089,15 @@ export class MetricsServer {
 						res.writeHead(200, { 'Content-Type': this.registry.contentType() })
 						res.end(metricsOutput)
 					} catch (error) {
-						res.writeHead(500, { 'Content-Type': 'text/plain' })
-						res.end('Error collecting metrics')
+						// FIX: More descriptive error message
+						const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+						console.error(`[Prometheus] Error collecting metrics: ${errorMessage}`)
+						res.writeHead(500, { 'Content-Type': 'application/json' })
+						res.end(JSON.stringify({
+							error: 'Failed to collect metrics',
+							message: errorMessage,
+							timestamp: new Date().toISOString()
+						}))
 					}
 				} else if (req.url === '/health' && req.method === 'GET') {
 					res.writeHead(200, { 'Content-Type': 'application/json' })
@@ -1030,12 +1108,21 @@ export class MetricsServer {
 				}
 			})
 
-			this.server.on('error', reject)
-			this.server.listen(this.config.port, () => {
+			this.server.on('error', (error) => {
+				this.isStarting = false
+				reject(error)
+			})
+
+			// FIX: Use configurable host instead of hardcoded 0.0.0.0
+			this.server.listen(this.config.port, this.config.host, () => {
+				this.isStarting = false
 				const labelsInfo = Object.keys(this.config.defaultLabels).length > 0
 					? ` with labels: ${JSON.stringify(this.config.defaultLabels)}`
 					: ''
-				console.log(`[Prometheus] Metrics server listening on http://0.0.0.0:${this.config.port}${this.config.path}${labelsInfo}`)
+				const securityNote = this.config.host === '0.0.0.0'
+					? ' (WARNING: exposed on all interfaces)'
+					: ''
+				console.log(`[Prometheus] Metrics server listening on http://${this.config.host}:${this.config.port}${this.config.path}${labelsInfo}${securityNote}`)
 				resolve()
 			})
 		})
@@ -1327,12 +1414,13 @@ export const metrics = {
  *
  * Provides a unified interface for managing metrics, HTTP server,
  * and system metrics collection.
+ *
+ * FIX: Removed duplicate SystemMetricsCollector - now uses server's collector
  */
 export class PrometheusMetricsManager {
 	public readonly registry: MetricsRegistry
 	public readonly metrics: typeof metrics
 	public readonly server: MetricsServer
-	private systemCollector: SystemMetricsCollector | null = null
 	private config: MetricsConfig
 
 	constructor(config?: Partial<MetricsConfig>) {
@@ -1344,16 +1432,15 @@ export class PrometheusMetricsManager {
 
 	/**
 	 * Initialize the metrics manager
+	 * FIX: No longer creates duplicate SystemMetricsCollector
+	 * The MetricsServer handles system metrics collection
 	 */
 	async initialize(): Promise<void> {
 		if (!this.config.enabled) {
 			return
 		}
 
-		if (this.config.includeSystem) {
-			this.systemCollector = new SystemMetricsCollector(this.registry)
-		}
-
+		// MetricsServer.start() creates SystemMetricsCollector if includeSystem is true
 		await this.server.start()
 	}
 
@@ -1368,7 +1455,8 @@ export class PrometheusMetricsManager {
 	 * Get metrics output in Prometheus format
 	 */
 	async getMetricsOutput(): Promise<string> {
-		this.systemCollector?.collect()
+		// Use server's system collector to avoid duplication
+		this.server.getSystemCollector()?.collect()
 		return this.registry.getMetricsOutput()
 	}
 
