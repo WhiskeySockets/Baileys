@@ -169,7 +169,6 @@ export const DEFAULT_CACHE_MAX_KEYS = {
 	LID_GLOBAL: 10_000
 }
 
-// NOTE: RETRY_BACKOFF_DELAYS and RETRY_JITTER_FACTOR are defined in retry-utils.ts
-// to avoid circular dependency and initialization order issues.
-// Import from '@whiskeysockets/baileys' Utils if needed:
-// import { getRetryDelayWithJitter, getAllRetryDelaysWithJitter } from './Utils/retry-utils'
+// Re-export retry constants for backwards compatibility
+// Actual definitions are in retry-utils.ts to avoid ESM initialization order issues
+export { RETRY_BACKOFF_DELAYS, RETRY_JITTER_FACTOR } from '../Utils/retry-utils'
