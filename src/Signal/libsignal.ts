@@ -23,9 +23,10 @@ import { LIDMappingStore } from './lid-mapping'
 export function makeLibSignalRepository(
 	auth: SignalAuthState,
 	logger: ILogger,
-	pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>
+	pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>,
+	enableCache = true
 ): SignalRepositoryWithLIDStore {
-	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction, logger, pnToLIDFunc)
+	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction, logger, pnToLIDFunc, enableCache)
 	const storage = signalStorage(auth, lidMapping)
 
 	const parsedKeys = auth.keys as SignalKeyStoreWithTransaction
