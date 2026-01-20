@@ -1222,8 +1222,22 @@ export class MetricsServer {
 
 			this.server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
 				// Parse URL to handle querystrings and trailing slashes
-				const parsedUrl = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`)
-				const pathname = parsedUrl.pathname.replace(/\/+$/, '') || '/' // Normalize trailing slashes
+				// Wrapped in try/catch to handle malformed URLs gracefully
+				let pathname: string
+				try {
+					const parsedUrl = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`)
+					pathname = parsedUrl.pathname.replace(/\/+$/, '') || '/'
+				} catch {
+					// Malformed URL - return 400 Bad Request
+					res.writeHead(400, { 'Content-Type': 'application/json' })
+					res.end(JSON.stringify({
+						error: 'Bad Request',
+						message: 'Malformed URL',
+						timestamp: new Date().toISOString()
+					}))
+					return
+				}
+
 				const configPath = this.config.path.replace(/\/+$/, '') || '/'
 
 				if (pathname === configPath && req.method === 'GET') {
