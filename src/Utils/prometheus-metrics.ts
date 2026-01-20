@@ -15,11 +15,12 @@
  * - Environment variable configuration
  *
  * Configuration via environment variables:
- * - METRICS_ENABLED: Enable/disable metrics (default: true)
- * - METRICS_PORT: Port for HTTP metrics server (default: 9090)
- * - METRICS_PATH: Path for metrics endpoint (default: /metrics)
- * - METRICS_PREFIX: Prefix for all metrics (default: baileys)
- * - METRICS_INCLUDE_SYSTEM: Include system metrics (default: true)
+ * - BAILEYS_PROMETHEUS_ENABLED: Enable/disable metrics (default: false)
+ * - BAILEYS_PROMETHEUS_PORT: Port for HTTP metrics server (default: 9092)
+ * - BAILEYS_PROMETHEUS_PATH: Path for metrics endpoint (default: /metrics)
+ * - BAILEYS_PROMETHEUS_PREFIX: Prefix for all metrics (default: baileys)
+ * - BAILEYS_PROMETHEUS_LABELS: JSON string with default labels (e.g. {"environment":"production"})
+ * - BAILEYS_PROMETHEUS_COLLECT_DEFAULT: Collect default Node.js metrics (default: true)
  *
  * @module Utils/prometheus-metrics
  */
@@ -39,21 +40,40 @@ export interface MetricsConfig {
 	port: number
 	path: string
 	prefix: string
+	defaultLabels: Labels
 	includeSystem: boolean
 	collectDefaultMetrics: boolean
 }
 
 /**
+ * Parse JSON labels from environment variable
+ */
+function parseLabelsFromEnv(envValue: string | undefined): Labels {
+	if (!envValue) return {}
+	try {
+		const parsed = JSON.parse(envValue)
+		if (typeof parsed === 'object' && parsed !== null) {
+			return parsed as Labels
+		}
+		return {}
+	} catch {
+		return {}
+	}
+}
+
+/**
  * Load configuration from environment variables
+ * Supports both BAILEYS_PROMETHEUS_* and METRICS_* prefixes for compatibility
  */
 export function loadMetricsConfig(): MetricsConfig {
 	return {
-		enabled: process.env.METRICS_ENABLED !== 'false',
-		port: parseInt(process.env.METRICS_PORT || '9090', 10),
-		path: process.env.METRICS_PATH || '/metrics',
-		prefix: process.env.METRICS_PREFIX || 'baileys',
-		includeSystem: process.env.METRICS_INCLUDE_SYSTEM !== 'false',
-		collectDefaultMetrics: process.env.METRICS_COLLECT_DEFAULT !== 'false',
+		enabled: (process.env.BAILEYS_PROMETHEUS_ENABLED ?? process.env.METRICS_ENABLED) === 'true',
+		port: parseInt(process.env.BAILEYS_PROMETHEUS_PORT || process.env.METRICS_PORT || '9092', 10),
+		path: process.env.BAILEYS_PROMETHEUS_PATH || process.env.METRICS_PATH || '/metrics',
+		prefix: process.env.BAILEYS_PROMETHEUS_PREFIX || process.env.METRICS_PREFIX || 'baileys',
+		defaultLabels: parseLabelsFromEnv(process.env.BAILEYS_PROMETHEUS_LABELS),
+		includeSystem: (process.env.BAILEYS_PROMETHEUS_COLLECT_DEFAULT ?? process.env.METRICS_INCLUDE_SYSTEM) !== 'false',
+		collectDefaultMetrics: (process.env.BAILEYS_PROMETHEUS_COLLECT_DEFAULT ?? process.env.METRICS_COLLECT_DEFAULT) !== 'false',
 	}
 }
 
@@ -1012,7 +1032,10 @@ export class MetricsServer {
 
 			this.server.on('error', reject)
 			this.server.listen(this.config.port, () => {
-				console.log(`Metrics server listening on port ${this.config.port}${this.config.path}`)
+				const labelsInfo = Object.keys(this.config.defaultLabels).length > 0
+					? ` with labels: ${JSON.stringify(this.config.defaultLabels)}`
+					: ''
+				console.log(`[Prometheus] Metrics server listening on http://0.0.0.0:${this.config.port}${this.config.path}${labelsInfo}`)
 				resolve()
 			})
 		})
@@ -1052,9 +1075,18 @@ export class MetricsServer {
 // ============================================
 
 /**
- * Global registry for Baileys metrics
+ * Load metrics configuration from environment
  */
-export const baileysMetrics = new MetricsRegistry({ prefix: 'baileys' })
+const metricsConfig = loadMetricsConfig()
+
+/**
+ * Global registry for Baileys metrics
+ * Uses prefix and default labels from environment variables
+ */
+export const baileysMetrics = new MetricsRegistry({
+	prefix: metricsConfig.prefix,
+	defaultLabels: metricsConfig.defaultLabels
+})
 
 /**
  * Pre-defined metrics for Baileys
