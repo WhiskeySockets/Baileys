@@ -509,4 +509,372 @@ export function setDefaultBaileysLogger(logger: BaileysLogger): void {
 	defaultBaileysLogger = logger
 }
 
+// ============================================================================
+// CONSOLE-FRIENDLY LOGGING FUNCTIONS WITH [BAILEYS] PREFIX
+// ============================================================================
+
+/**
+ * Check if Baileys logging is enabled via environment variable
+ * BAILEYS_LOG=false disables all [BAILEYS] console logs
+ */
+function isBaileysLogEnabled(): boolean {
+	return process.env.BAILEYS_LOG !== 'false'
+}
+
+/**
+ * Format data object for single-line or multi-line output
+ */
+function formatLogData(data: Record<string, unknown>, singleLine: boolean = true): string {
+	if (Object.keys(data).length === 0) return ''
+
+	if (singleLine) {
+		// Single line format: { key1: value1, key2: value2 }
+		const pairs = Object.entries(data).map(([k, v]) => {
+			if (typeof v === 'object' && v !== null) {
+				return `${k}: ${JSON.stringify(v)}`
+			}
+			return `${k}: ${v}`
+		})
+		return `{ ${pairs.join(', ')} }`
+	}
+
+	// Multi-line format for complex objects
+	return JSON.stringify(data, null, 2)
+}
+
+/**
+ * Event buffer logging types
+ */
+export type EventBufferLogType =
+	| 'buffer_start'
+	| 'buffer_flush'
+	| 'buffer_overflow'
+	| 'buffer_timeout'
+	| 'cache_cleanup'
+	| 'adaptive_mode'
+
+/**
+ * Log event buffer operations with emoji and [BAILEYS] prefix
+ *
+ * @example
+ * logEventBuffer('buffer_start')
+ * // Output: [BAILEYS] 📦 Event buffering started
+ *
+ * logEventBuffer('buffer_flush', { flushCount: 10, historyCacheSize: 5, mode: 'aggressive' })
+ * // Output: [BAILEYS] 🔄 Event buffer flushed { flushCount: 10, historyCacheSize: 5, mode: 'aggressive' }
+ */
+export function logEventBuffer(
+	type: EventBufferLogType,
+	data?: Record<string, unknown>,
+	sessionName?: string
+): void {
+	if (!isBaileysLogEnabled()) return
+
+	const prefix = sessionName ? `[BAILEYS] [${sessionName}]` : '[BAILEYS]'
+	const dataStr = data ? ' ' + formatLogData(data) : ''
+
+	switch (type) {
+		case 'buffer_start':
+			console.log(`${prefix} 📦 Event buffering started${dataStr}`)
+			break
+		case 'buffer_flush':
+			console.log(`${prefix} 🔄 Event buffer flushed${dataStr}`)
+			break
+		case 'buffer_overflow':
+			console.log(`${prefix} ⚠️ Buffer overflow detected${dataStr}`)
+			break
+		case 'buffer_timeout':
+			console.log(`${prefix} ⏰ Buffer timeout reached${dataStr}`)
+			break
+		case 'cache_cleanup':
+			console.log(`${prefix} 🧹 History cache cleanup${dataStr}`)
+			break
+		case 'adaptive_mode':
+			console.log(`${prefix} 🧠 Adaptive mode updated${dataStr}`)
+			break
+	}
+}
+
+/**
+ * Log buffer metrics in a formatted way
+ *
+ * @example
+ * logBufferMetrics({
+ *   itemsBuffered: 0,
+ *   flushCount: 120,
+ *   historyCacheSize: 0,
+ *   buffersInProgress: 0,
+ *   adaptive: { mode: 'aggressive', timeout: 1000, eventRate: 1.34, isHealthy: true }
+ * })
+ */
+export function logBufferMetrics(
+	metrics: {
+		itemsBuffered: number
+		flushCount: number
+		historyCacheSize: number
+		buffersInProgress: number
+		adaptive?: {
+			mode: string
+			timeout: number
+			eventRate: number
+			isHealthy: boolean
+		}
+	},
+	sessionName?: string
+): void {
+	if (!isBaileysLogEnabled()) return
+
+	const prefix = sessionName ? `[BAILEYS] [${sessionName}]` : '[BAILEYS]'
+
+	console.log(`${prefix} 📊 Buffer Metrics {`)
+	console.log(`${prefix}   itemsBuffered: ${metrics.itemsBuffered},`)
+	console.log(`${prefix}   flushCount: ${metrics.flushCount},`)
+	console.log(`${prefix}   historyCacheSize: ${metrics.historyCacheSize},`)
+	console.log(`${prefix}   buffersInProgress: ${metrics.buffersInProgress}${metrics.adaptive ? ',' : ''}`)
+	if (metrics.adaptive) {
+		console.log(`${prefix}   adaptive: {`)
+		console.log(`${prefix}     mode: '${metrics.adaptive.mode}',`)
+		console.log(`${prefix}     timeout: ${metrics.adaptive.timeout},`)
+		console.log(`${prefix}     eventRate: ${metrics.adaptive.eventRate.toFixed(2)},`)
+		console.log(`${prefix}     isHealthy: ${metrics.adaptive.isHealthy}`)
+		console.log(`${prefix}   }`)
+	}
+	console.log(`${prefix} }`)
+}
+
+/**
+ * Log message sent event
+ *
+ * @example
+ * logMessageSent('3EB02FA562D6CCC0876CDE', '5511999999999@s.whatsapp.net')
+ * // Output: [BAILEYS] 📤 Message sent: 3EB02FA562D6CCC0876CDE → 5511999999999@s.whatsapp.net
+ */
+export function logMessageSent(
+	messageId: string,
+	recipientJid: string,
+	sessionName?: string
+): void {
+	if (!isBaileysLogEnabled()) return
+
+	const prefix = sessionName ? `[BAILEYS] [${sessionName}]` : '[BAILEYS]'
+	console.log(`${prefix} 📤 Message sent: ${messageId} → ${recipientJid}`)
+}
+
+/**
+ * Log message received event
+ *
+ * @example
+ * logMessageReceived('A5E0349897A3F16F3F2778EEF94A065F', '238315571802285@lid')
+ * // Output: [BAILEYS] 📥 Message received: A5E0349897A3F16F3F2778EEF94A065F ← 238315571802285@lid
+ */
+export function logMessageReceived(
+	messageId: string,
+	senderJid: string,
+	sessionName?: string
+): void {
+	if (!isBaileysLogEnabled()) return
+
+	const prefix = sessionName ? `[BAILEYS] [${sessionName}]` : '[BAILEYS]'
+	console.log(`${prefix} 📥 Message received: ${messageId} ← ${senderJid}`)
+}
+
+/**
+ * Log connection event
+ *
+ * @example
+ * logConnection('connecting')
+ * // Output: [BAILEYS] 🔌 Connecting to WhatsApp...
+ *
+ * logConnection('open')
+ * // Output: [BAILEYS] ✅ Connected to WhatsApp
+ */
+export function logConnection(
+	event: 'connecting' | 'open' | 'close' | 'reconnecting' | 'error',
+	details?: Record<string, unknown>,
+	sessionName?: string
+): void {
+	if (!isBaileysLogEnabled()) return
+
+	const prefix = sessionName ? `[BAILEYS] [${sessionName}]` : '[BAILEYS]'
+	const dataStr = details ? ' ' + formatLogData(details) : ''
+
+	switch (event) {
+		case 'connecting':
+			console.log(`${prefix} 🔌 Connecting to WhatsApp...${dataStr}`)
+			break
+		case 'open':
+			console.log(`${prefix} ✅ Connected to WhatsApp${dataStr}`)
+			break
+		case 'close':
+			console.log(`${prefix} 🔴 Disconnected from WhatsApp${dataStr}`)
+			break
+		case 'reconnecting':
+			console.log(`${prefix} 🔄 Reconnecting to WhatsApp...${dataStr}`)
+			break
+		case 'error':
+			console.log(`${prefix} ❌ Connection error${dataStr}`)
+			break
+	}
+}
+
+/**
+ * Log authentication event
+ *
+ * @example
+ * logAuth('qr_generated')
+ * // Output: [BAILEYS] 📱 QR Code generated - scan with WhatsApp
+ */
+export function logAuth(
+	event: 'qr_generated' | 'pairing_code' | 'authenticated' | 'logout' | 'creds_updated',
+	details?: Record<string, unknown>,
+	sessionName?: string
+): void {
+	if (!isBaileysLogEnabled()) return
+
+	const prefix = sessionName ? `[BAILEYS] [${sessionName}]` : '[BAILEYS]'
+	const dataStr = details ? ' ' + formatLogData(details) : ''
+
+	switch (event) {
+		case 'qr_generated':
+			console.log(`${prefix} 📱 QR Code generated - scan with WhatsApp${dataStr}`)
+			break
+		case 'pairing_code':
+			console.log(`${prefix} 🔑 Pairing code generated${dataStr}`)
+			break
+		case 'authenticated':
+			console.log(`${prefix} ✅ Authentication successful${dataStr}`)
+			break
+		case 'logout':
+			console.log(`${prefix} 🚪 Logged out${dataStr}`)
+			break
+		case 'creds_updated':
+			console.log(`${prefix} 🔐 Credentials updated${dataStr}`)
+			break
+	}
+}
+
+/**
+ * Log circuit breaker event
+ *
+ * @example
+ * logCircuitBreaker('open', { failures: 5 })
+ * // Output: [BAILEYS] ⚡ Circuit breaker OPEN { failures: 5 }
+ */
+export function logCircuitBreaker(
+	state: 'open' | 'closed' | 'half_open',
+	details?: Record<string, unknown>,
+	sessionName?: string
+): void {
+	if (!isBaileysLogEnabled()) return
+
+	const prefix = sessionName ? `[BAILEYS] [${sessionName}]` : '[BAILEYS]'
+	const dataStr = details ? ' ' + formatLogData(details) : ''
+
+	switch (state) {
+		case 'open':
+			console.log(`${prefix} ⚡ Circuit breaker OPEN${dataStr}`)
+			break
+		case 'closed':
+			console.log(`${prefix} ✅ Circuit breaker CLOSED${dataStr}`)
+			break
+		case 'half_open':
+			console.log(`${prefix} 🔶 Circuit breaker HALF-OPEN${dataStr}`)
+			break
+	}
+}
+
+/**
+ * Log retry event
+ *
+ * @example
+ * logRetry(2, 3, 5000, 'connection')
+ * // Output: [BAILEYS] 🔁 Retry attempt 2/3 for connection (delay: 5000ms)
+ */
+export function logRetry(
+	attempt: number,
+	maxAttempts: number,
+	delayMs: number,
+	operation: string,
+	sessionName?: string
+): void {
+	if (!isBaileysLogEnabled()) return
+
+	const prefix = sessionName ? `[BAILEYS] [${sessionName}]` : '[BAILEYS]'
+	console.log(`${prefix} 🔁 Retry attempt ${attempt}/${maxAttempts} for ${operation} (delay: ${delayMs}ms)`)
+}
+
+/**
+ * Log generic Baileys info message
+ *
+ * @example
+ * logInfo('PreKey validation passed')
+ * // Output: [BAILEYS] ℹ️ PreKey validation passed
+ */
+export function logInfo(message: string, data?: Record<string, unknown>, sessionName?: string): void {
+	if (!isBaileysLogEnabled()) return
+
+	const prefix = sessionName ? `[BAILEYS] [${sessionName}]` : '[BAILEYS]'
+	const dataStr = data ? ' ' + formatLogData(data) : ''
+	console.log(`${prefix} ℹ️ ${message}${dataStr}`)
+}
+
+/**
+ * Log generic Baileys warning message
+ *
+ * @example
+ * logWarn('Rate limit approaching')
+ * // Output: [BAILEYS] ⚠️ Rate limit approaching
+ */
+export function logWarn(message: string, data?: Record<string, unknown>, sessionName?: string): void {
+	if (!isBaileysLogEnabled()) return
+
+	const prefix = sessionName ? `[BAILEYS] [${sessionName}]` : '[BAILEYS]'
+	const dataStr = data ? ' ' + formatLogData(data) : ''
+	console.log(`${prefix} ⚠️ ${message}${dataStr}`)
+}
+
+/**
+ * Log generic Baileys error message
+ *
+ * @example
+ * logError('Failed to send message', { error: 'timeout' })
+ * // Output: [BAILEYS] ❌ Failed to send message { error: 'timeout' }
+ */
+export function logError(message: string, data?: Record<string, unknown>, sessionName?: string): void {
+	if (!isBaileysLogEnabled()) return
+
+	const prefix = sessionName ? `[BAILEYS] [${sessionName}]` : '[BAILEYS]'
+	const dataStr = data ? ' ' + formatLogData(data) : ''
+	console.error(`${prefix} ❌ ${message}${dataStr}`)
+}
+
+/**
+ * Log LID mapping store event
+ */
+export function logLidMapping(
+	event: 'initialized' | 'lookup' | 'store' | 'batch_resolved',
+	data?: Record<string, unknown>,
+	sessionName?: string
+): void {
+	if (!isBaileysLogEnabled()) return
+
+	const prefix = sessionName ? `[BAILEYS] [${sessionName}]` : '[BAILEYS]'
+	const dataStr = data ? ' ' + formatLogData(data) : ''
+
+	switch (event) {
+		case 'initialized':
+			console.log(`${prefix} 🗂️ LID Mapping Store initialized${dataStr}`)
+			break
+		case 'lookup':
+			console.log(`${prefix} 🔍 LID lookup${dataStr}`)
+			break
+		case 'store':
+			console.log(`${prefix} 💾 LID stored${dataStr}`)
+			break
+		case 'batch_resolved':
+			console.log(`${prefix} 📦 LID batch resolved${dataStr}`)
+			break
+	}
+}
+
 export default BaileysLogger

@@ -15,6 +15,7 @@ import { trimUndefined } from './generics'
 import type { ILogger } from './logger'
 import { updateMessageWithReaction, updateMessageWithReceipt } from './messages'
 import { isRealMessage, shouldIncrementChatUnread } from './process-message'
+import { logEventBuffer, logBufferMetrics } from './baileys-logger'
 
 // ============================================================================
 // BUFFER CONFIGURATION - Environment Variable Support
@@ -431,6 +432,10 @@ export const makeEventBuffer = (
 				currentSize: currentEventCount,
 				maxSize: config.maxBufferSize
 			}, 'Buffer overflow detected, forcing flush')
+			logEventBuffer('buffer_overflow', {
+				currentSize: currentEventCount,
+				maxSize: config.maxBufferSize
+			})
 			flush(true)
 			return true
 		}
@@ -460,6 +465,10 @@ export const makeEventBuffer = (
 				remaining: historyCache.size,
 				maxSize: config.maxHistoryCacheSize
 			}, 'LRU cleanup performed on history cache')
+			logEventBuffer('cache_cleanup', {
+				removed: removed.length,
+				remaining: historyCache.size
+			})
 		}
 	}
 
@@ -471,6 +480,7 @@ export const makeEventBuffer = (
 
 		if (!isBuffering) {
 			logger.debug('Event buffer activated')
+			logEventBuffer('buffer_start')
 			isBuffering = true
 			bufferCount = 0
 			currentEventCount = 0
@@ -486,6 +496,7 @@ export const makeEventBuffer = (
 			bufferTimeout = setTimeout(() => {
 				if (isBuffering) {
 					logger.warn({ timeout }, 'Buffer timeout reached, auto-flushing')
+					logEventBuffer('buffer_timeout', { timeout })
 					stats.forcedFlushes++
 					flush(true)
 				}
@@ -507,6 +518,7 @@ export const makeEventBuffer = (
 		}
 
 		const eventCount = currentEventCount
+		const flushStartTime = Date.now()
 		logger.debug({ bufferCount, eventCount, force }, 'Flushing event buffer')
 
 		isBuffering = false
@@ -529,6 +541,24 @@ export const makeEventBuffer = (
 
 		// Record metrics
 		recordFlushMetrics(eventCount, force)
+
+		// Determine adaptive mode label
+		const currentTimeoutMs = config.enableAdaptiveTimeout ? adaptiveTimeout.getTimeout() : config.bufferTimeoutMs
+		let adaptiveMode = 'balanced'
+		if (currentTimeoutMs <= config.minBufferTimeoutMs * 1.5) {
+			adaptiveMode = 'aggressive'
+		} else if (currentTimeoutMs >= config.maxBufferTimeoutMs * 0.8) {
+			adaptiveMode = 'conservative'
+		}
+
+		// Log with [BAILEYS] prefix
+		const flushDuration = Date.now() - flushStartTime
+		logEventBuffer('buffer_flush', {
+			flushCount: stats.totalFlushes,
+			historyCacheSize: stats.historyCacheSize,
+			mode: adaptiveMode,
+			...(flushDuration > 5 ? { duration: `${flushDuration}ms` } : {})
+		})
 
 		const newData = makeBufferData()
 		const chatUpdates = Object.values(data.chatUpdates)
