@@ -60,8 +60,8 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	fireInitQueries: true,
 	auth: undefined as unknown as AuthenticationState,
 	markOnlineOnConnect: true,
-	// Conservative default - set to true only if you need full message history
-	syncFullHistory: false,
+	// Set to false if you don't need full message history (reduces bandwidth/storage)
+	syncFullHistory: true,
 	patchMessageBeforeSending: msg => msg,
 	shouldSyncHistoryMessage: () => true,
 	shouldIgnoreJid: () => false,
@@ -128,12 +128,12 @@ export const MEDIA_KEYS = Object.keys(MEDIA_PATH_MAP) as MediaType[]
 
 export const MIN_PREKEY_COUNT = 5
 
-// Conservative prekey count (upstream uses 812, but 30 is safer for rate limiting)
-export const INITIAL_PREKEY_COUNT = 30
+// Moderate prekey count (upstream uses 812, reduced to balance rate limiting and availability)
+export const INITIAL_PREKEY_COUNT = 200
 
 export const UPLOAD_TIMEOUT = 30000 // 30 seconds
-// Conservative upload interval to avoid rate limiting (was 5000)
-export const MIN_UPLOAD_INTERVAL = 60_000 // 60 seconds minimum between uploads
+// Moderate upload interval to balance rate limiting and responsiveness (was 5000)
+export const MIN_UPLOAD_INTERVAL = 10_000 // 10 seconds minimum between uploads
 
 /**
  * Cache TTL configuration (in seconds)
@@ -148,6 +148,11 @@ export const DEFAULT_CACHE_TTLS = {
 /**
  * Maximum cache keys per store type - prevents memory leaks
  * Based on RSocket's battle-tested configuration
+ *
+ * Usage: Use these limits when initializing LRU caches to prevent unbounded growth
+ * Example:
+ *   import { DEFAULT_CACHE_MAX_KEYS } from './Defaults'
+ *   const cache = new LRUCache({ max: DEFAULT_CACHE_MAX_KEYS.SIGNAL_STORE })
  */
 export const DEFAULT_CACHE_MAX_KEYS = {
 	SIGNAL_STORE: 10_000,
