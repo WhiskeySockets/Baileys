@@ -131,15 +131,17 @@ export function calculateDelay(
 	multiplier: number,
 	jitter: number
 ): number {
+	// Normalize attempt to ensure valid calculation (must be >= 1)
+	const normalizedAttempt = Math.max(attempt, 1)
 	let delay: number
 
 	switch (strategy) {
 		case 'exponential':
-			delay = baseDelay * Math.pow(multiplier, attempt - 1)
+			delay = baseDelay * Math.pow(multiplier, normalizedAttempt - 1)
 			break
 
 		case 'linear':
-			delay = baseDelay * attempt
+			delay = baseDelay * normalizedAttempt
 			break
 
 		case 'constant':
@@ -147,7 +149,7 @@ export function calculateDelay(
 			break
 
 		case 'fibonacci': {
-			const fib = fibonacciNumber(attempt)
+			const fib = fibonacciNumber(normalizedAttempt)
 			delay = baseDelay * fib
 			break
 		}
@@ -155,7 +157,7 @@ export function calculateDelay(
 		case 'stepped': {
 			// Uses pre-defined delay array directly (ignores baseDelay/multiplier)
 			// Falls back to last delay if attempt exceeds array length
-			const index = Math.min(attempt - 1, RETRY_BACKOFF_DELAYS.length - 1)
+			const index = Math.min(normalizedAttempt - 1, RETRY_BACKOFF_DELAYS.length - 1)
 			delay = RETRY_BACKOFF_DELAYS[index] ?? RETRY_BACKOFF_DELAYS[0] ?? baseDelay
 			break
 		}
@@ -164,14 +166,14 @@ export function calculateDelay(
 			delay = baseDelay
 	}
 
-	// Apply max delay cap
-	delay = Math.min(delay, maxDelay)
-
-	// Apply jitter
+	// Apply jitter BEFORE capping to maxDelay
 	if (jitter > 0) {
 		const jitterAmount = delay * jitter
 		delay = delay + (Math.random() * 2 - 1) * jitterAmount
 	}
+
+	// Apply max delay cap AFTER jitter to ensure we never exceed maxDelay
+	delay = Math.min(delay, maxDelay)
 
 	return Math.max(0, Math.round(delay))
 }
@@ -196,7 +198,15 @@ function fibonacciNumber(n: number): number {
  */
 async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 	return new Promise((resolve, reject) => {
-		const timer = setTimeout(resolve, ms)
+		let abortHandler: (() => void) | undefined
+
+		const timer = setTimeout(() => {
+			// Cleanup abort listener on normal completion to prevent memory leak
+			if (signal && abortHandler) {
+				signal.removeEventListener('abort', abortHandler)
+			}
+			resolve()
+		}, ms)
 
 		if (signal) {
 			if (signal.aborted) {
@@ -205,7 +215,7 @@ async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 				return
 			}
 
-			const abortHandler = () => {
+			abortHandler = () => {
 				clearTimeout(timer)
 				reject(new RetryAbortedError(0))
 			}
@@ -324,8 +334,9 @@ export async function retry<T>(
 				result = await operation(context)
 			}
 
-			// Success
-			if (config.collectMetrics) {
+			// Success - only count as retry success if this wasn't the first attempt
+			if (config.collectMetrics && attempt > 1) {
+				// This was a successful retry (not first attempt)
 				metrics.retries.inc({ operation: config.operationName })
 			}
 
@@ -339,9 +350,9 @@ export async function retry<T>(
 			const shouldRetry = await config.shouldRetry(lastError, attempt)
 
 			if (!shouldRetry || attempt >= config.maxAttempts) {
-				// Final failure
+				// Final failure - use dedicated retry exhausted metric
 				if (config.collectMetrics) {
-					metrics.errors.inc({ category: 'retry', code: 'exhausted' })
+					metrics.retryExhausted.inc({ operation: config.operationName })
 				}
 
 				config.onFailure(lastError, attempt)

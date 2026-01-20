@@ -20,13 +20,16 @@
  * - Circuit breaker metrics
  * - Environment variable configuration
  *
- * Configuration via environment variables:
+ * Configuration via environment variables (supports BAILEYS_PROMETHEUS_* and METRICS_* prefixes):
  * - BAILEYS_PROMETHEUS_ENABLED: Enable/disable metrics (default: false)
  * - BAILEYS_PROMETHEUS_PORT: Port for HTTP metrics server (default: 9092)
+ * - BAILEYS_PROMETHEUS_HOST: Host/IP to bind (default: 127.0.0.1)
  * - BAILEYS_PROMETHEUS_PATH: Path for metrics endpoint (default: /metrics)
  * - BAILEYS_PROMETHEUS_PREFIX: Prefix for all metrics (default: baileys)
  * - BAILEYS_PROMETHEUS_LABELS: JSON string with default labels (e.g. {"environment":"production"})
  * - BAILEYS_PROMETHEUS_COLLECT_DEFAULT: Collect default Node.js metrics (default: true)
+ * - BAILEYS_PROMETHEUS_INCLUDE_SYSTEM: Include system metrics like CPU/memory (default: true)
+ * - BAILEYS_PROMETHEUS_COLLECT_INTERVAL_MS: Interval for system metrics collection (default: 10000)
  *
  * @module Utils/prometheus-metrics
  */
@@ -140,8 +143,11 @@ export function loadMetricsConfig(): MetricsConfig {
 		host: process.env.BAILEYS_PROMETHEUS_HOST || process.env.METRICS_HOST || '127.0.0.1',
 		path: process.env.BAILEYS_PROMETHEUS_PATH || process.env.METRICS_PATH || '/metrics',
 		prefix: process.env.BAILEYS_PROMETHEUS_PREFIX || process.env.METRICS_PREFIX || 'baileys',
-		defaultLabels: parseLabelsFromEnv(process.env.BAILEYS_PROMETHEUS_LABELS),
-		includeSystem: (process.env.BAILEYS_PROMETHEUS_COLLECT_DEFAULT ?? process.env.METRICS_INCLUDE_SYSTEM) !== 'false',
+		// Support both env prefixes for labels
+		defaultLabels: parseLabelsFromEnv(process.env.BAILEYS_PROMETHEUS_LABELS ?? process.env.METRICS_LABELS),
+		// Separate flag for system metrics (CPU/memory) - independent from collectDefaultMetrics
+		includeSystem: (process.env.BAILEYS_PROMETHEUS_INCLUDE_SYSTEM ?? process.env.METRICS_INCLUDE_SYSTEM) !== 'false',
+		// Flag for prom-client default Node.js metrics
 		collectDefaultMetrics: (process.env.BAILEYS_PROMETHEUS_COLLECT_DEFAULT ?? process.env.METRICS_COLLECT_DEFAULT) !== 'false',
 		collectIntervalMs: parseInt(process.env.BAILEYS_PROMETHEUS_COLLECT_INTERVAL_MS || process.env.METRICS_COLLECT_INTERVAL_MS || '10000', 10),
 	}
@@ -160,6 +166,19 @@ export type MetricType = 'counter' | 'gauge' | 'histogram' | 'summary'
  * Metric labels
  */
 export type Labels = Record<string, string>
+
+/**
+ * Convert labels to a stable key string for lookups
+ * Sorts keys to ensure consistent ordering regardless of object property order
+ */
+function stableLabelsToKey(labels: Labels): string {
+	const sortedKeys = Object.keys(labels).sort()
+	const sortedObj: Labels = {}
+	for (const key of sortedKeys) {
+		sortedObj[key] = labels[key]!
+	}
+	return JSON.stringify(sortedObj)
+}
 
 /**
  * Default histogram buckets (in ms)
@@ -312,7 +331,7 @@ export class Counter implements BaseMetric {
 	}
 
 	private labelsToKey(labels: Labels): string {
-		return JSON.stringify(labels)
+		return stableLabelsToKey(labels)
 	}
 
 	/**
@@ -462,7 +481,7 @@ export class Gauge implements BaseMetric {
 	}
 
 	private labelsToKey(labels: Labels): string {
-		return JSON.stringify(labels)
+		return stableLabelsToKey(labels)
 	}
 
 	/**
@@ -662,7 +681,7 @@ export class Histogram implements BaseMetric {
 	}
 
 	private labelsToKey(labels: Labels): string {
-		return JSON.stringify(labels)
+		return stableLabelsToKey(labels)
 	}
 
 	/**
@@ -831,7 +850,7 @@ export class Summary implements BaseMetric {
 	}
 
 	private labelsToKey(labels: Labels): string {
-		return JSON.stringify(labels)
+		return stableLabelsToKey(labels)
 	}
 
 	/**
@@ -1202,7 +1221,26 @@ export class MetricsServer {
 			}
 
 			this.server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
-				if (req.url === this.config.path && req.method === 'GET') {
+				// Parse URL to handle querystrings and trailing slashes
+				// Wrapped in try/catch to handle malformed URLs gracefully
+				let pathname: string
+				try {
+					const parsedUrl = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`)
+					pathname = parsedUrl.pathname.replace(/\/+$/, '') || '/'
+				} catch {
+					// Malformed URL - return 400 Bad Request
+					res.writeHead(400, { 'Content-Type': 'application/json' })
+					res.end(JSON.stringify({
+						error: 'Bad Request',
+						message: 'Malformed URL',
+						timestamp: new Date().toISOString()
+					}))
+					return
+				}
+
+				const configPath = this.config.path.replace(/\/+$/, '') || '/'
+
+				if (pathname === configPath && req.method === 'GET') {
 					try {
 						// Collect system metrics before responding
 						this.systemCollector?.collect()
@@ -1211,7 +1249,6 @@ export class MetricsServer {
 						res.writeHead(200, { 'Content-Type': this.registry.contentType() })
 						res.end(metricsOutput)
 					} catch (error) {
-						// FIX: More descriptive error message
 						const errorMessage = error instanceof Error ? error.message : 'Unknown error'
 						console.error(`[Prometheus] Error collecting metrics: ${errorMessage}`)
 						res.writeHead(500, { 'Content-Type': 'application/json' })
@@ -1221,7 +1258,7 @@ export class MetricsServer {
 							timestamp: new Date().toISOString()
 						}))
 					}
-				} else if (req.url === '/health' && req.method === 'GET') {
+				} else if (pathname === '/health' && req.method === 'GET') {
 					res.writeHead(200, { 'Content-Type': 'application/json' })
 					res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }))
 				} else {

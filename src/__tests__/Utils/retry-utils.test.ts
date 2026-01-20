@@ -16,6 +16,8 @@ import {
 	retryConfigs,
 	getRetryDelayWithJitter,
 	getAllRetryDelaysWithJitter,
+	RETRY_BACKOFF_DELAYS,
+	RETRY_JITTER_FACTOR,
 	type RetryContext,
 } from '../../Utils/retry-utils.js'
 
@@ -613,5 +615,31 @@ describe('getAllRetryDelaysWithJitter', () => {
 		// At least one delay should differ between calls
 		const allSame = delays1.every((d, i) => d === delays2[i])
 		expect(allSame).toBe(false)
+	})
+})
+
+describe('retryConfigs.rsocket consistency', () => {
+	/**
+	 * This test ensures the hardcoded values in retryConfigs.rsocket
+	 * stay synchronized with RETRY_BACKOFF_DELAYS and RETRY_JITTER_FACTOR.
+	 *
+	 * The values are hardcoded to avoid ESM initialization order issues,
+	 * but this test will fail if someone updates the constants without
+	 * updating retryConfigs.rsocket.
+	 */
+	it('should have maxAttempts equal to RETRY_BACKOFF_DELAYS.length', () => {
+		expect(retryConfigs.rsocket.maxAttempts).toBe(RETRY_BACKOFF_DELAYS.length)
+	})
+
+	it('should have baseDelay equal to RETRY_BACKOFF_DELAYS[0]', () => {
+		expect(retryConfigs.rsocket.baseDelay).toBe(RETRY_BACKOFF_DELAYS[0])
+	})
+
+	it('should have maxDelay equal to last RETRY_BACKOFF_DELAYS element', () => {
+		expect(retryConfigs.rsocket.maxDelay).toBe(RETRY_BACKOFF_DELAYS[RETRY_BACKOFF_DELAYS.length - 1])
+	})
+
+	it('should have jitter equal to RETRY_JITTER_FACTOR', () => {
+		expect(retryConfigs.rsocket.jitter).toBe(RETRY_JITTER_FACTOR)
 	})
 })
