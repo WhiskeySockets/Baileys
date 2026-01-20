@@ -18,8 +18,8 @@ import { metrics } from './prometheus-metrics.js'
 import type { CircuitBreaker } from './circuit-breaker.js'
 
 /**
- * Retry configuration with exponential backoff
- * Delays in milliseconds: 1s, 2s, 5s, 10s, 20s
+ * Retry configuration with custom progressive backoff
+ * Fixed delay steps in milliseconds: 1s → 2s → 5s → 10s → 20s
  * Defined locally to avoid circular dependency with Defaults
  */
 const RETRY_BACKOFF_DELAYS = [1000, 2000, 5000, 10000, 20000]
@@ -33,7 +33,7 @@ const RETRY_JITTER_FACTOR = 0.15
 /**
  * Backoff strategies
  */
-export type BackoffStrategy = 'exponential' | 'linear' | 'constant' | 'fibonacci'
+export type BackoffStrategy = 'exponential' | 'linear' | 'constant' | 'fibonacci' | 'stepped'
 
 /**
  * Retry configuration options
@@ -149,6 +149,14 @@ export function calculateDelay(
 		case 'fibonacci': {
 			const fib = fibonacciNumber(attempt)
 			delay = baseDelay * fib
+			break
+		}
+
+		case 'stepped': {
+			// Uses pre-defined delay array directly (ignores baseDelay/multiplier)
+			// Falls back to last delay if attempt exceeds array length
+			const index = Math.min(attempt - 1, RETRY_BACKOFF_DELAYS.length - 1)
+			delay = RETRY_BACKOFF_DELAYS[index] ?? RETRY_BACKOFF_DELAYS[0] ?? baseDelay
 			break
 		}
 
@@ -646,21 +654,22 @@ export const retryConfigs = {
 	},
 
 	/**
-	 * RSocket-style retry (uses RETRY_BACKOFF_DELAYS from Defaults)
-	 * Delays: 1s, 2s, 5s, 10s, 20s with jitter
+	 * RSocket-style retry with stepped delays
+	 * Uses fixed delay array: 1s, 2s, 5s, 10s, 20s (with ±15% jitter)
+	 * Unlike exponential, this uses exact delays from RETRY_BACKOFF_DELAYS
 	 */
 	rsocket: {
 		maxAttempts: RETRY_BACKOFF_DELAYS.length,
 		baseDelay: RETRY_BACKOFF_DELAYS[0],
 		maxDelay: RETRY_BACKOFF_DELAYS[RETRY_BACKOFF_DELAYS.length - 1],
-		backoffStrategy: 'exponential' as const,
+		backoffStrategy: 'stepped' as const,
 		jitter: RETRY_JITTER_FACTOR,
 	},
 }
 
 /**
  * Get retry delay with jitter applied
- * Uses RETRY_BACKOFF_DELAYS and RETRY_JITTER_FACTOR from Defaults
+ * Uses RETRY_BACKOFF_DELAYS and RETRY_JITTER_FACTOR defined locally
  *
  * @param attempt - Current attempt number (1-based)
  * @returns Delay in ms with jitter applied

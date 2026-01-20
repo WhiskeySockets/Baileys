@@ -170,13 +170,14 @@ export type SocketConfig = {
 
 	/**
 	 * Max WebSocket event listeners (default: 20)
-	 * Calculated as: 8 base WS events + 10 dynamic listeners + 2 buffer slots
+	 * Calculation: 8 core WS events + 10 dynamic listeners + 2 buffer slots
 	 * WARNING: Setting to 0 disables limit and allows potential memory leaks!
 	 */
 	maxWebSocketListeners?: number
 
 	/**
 	 * Max SocketClient event listeners (default: 50)
+	 * Calculation: 20 core events + 20 dynamic listeners + 10 buffer slots
 	 * WARNING: Setting to 0 disables limit and allows potential memory leaks!
 	 */
 	maxSocketClientListeners?: number

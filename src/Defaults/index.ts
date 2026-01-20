@@ -4,7 +4,7 @@ import type { AuthenticationState, SocketConfig, WAVersion } from '../Types'
 import { Browsers } from '../Utils/browser-utils'
 import logger from '../Utils/logger'
 
-const version = [2, 3000, 1029027441]
+const version = [2, 3000, 1032141294]
 
 export const UNAUTHORIZED_CODES = [401, 403, 419]
 
@@ -82,8 +82,13 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	// Circuit breaker configuration
 	enableCircuitBreaker: true,
 	// Listener limits (memory leak prevention)
-	// 8 base WS events + 10 dynamic listeners + 2 buffer slots
+	// WebSocket: 8 core events (open, close, error, message, ping, pong, upgrade, unexpected-response)
+	//          + 10 dynamic listeners (reconnect handlers, custom events)
+	//          + 2 buffer slots for temporary listeners = 20 total
 	maxWebSocketListeners: 20,
+	// SocketClient: 20 core events (connection, messaging, presence, groups, calls, etc.)
+	//             + 20 dynamic listeners (user handlers, plugins)
+	//             + 10 buffer slots for high-load scenarios = 50 total
 	maxSocketClientListeners: 50
 }
 
@@ -165,8 +170,9 @@ export const DEFAULT_CACHE_MAX_KEYS = {
 }
 
 /**
- * Retry configuration with exponential backoff
- * Delays in milliseconds: 1s, 2s, 5s, 10s, 20s
+ * Retry configuration with custom progressive backoff
+ * Fixed delay steps in milliseconds: 1s → 2s → 5s → 10s → 20s
+ * Use with 'stepped' backoff strategy in retry-utils.ts
  */
 export const RETRY_BACKOFF_DELAYS = [1000, 2000, 5000, 10000, 20000]
 

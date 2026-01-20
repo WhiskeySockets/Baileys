@@ -14,6 +14,8 @@ import {
 	calculateDelay,
 	retryPredicates,
 	retryConfigs,
+	getRetryDelayWithJitter,
+	getAllRetryDelaysWithJitter,
 	type RetryContext,
 } from '../../Utils/retry-utils.js'
 
@@ -114,7 +116,7 @@ describe('retry', () => {
 
 	describe('callbacks', () => {
 		it('should call onRetry callback', async () => {
-			const onRetry = jest.fn()
+			const onRetry = jest.fn<(error: Error, attempt: number, delay: number) => void>()
 			let attempts = 0
 
 			await retry(
@@ -388,13 +390,13 @@ describe('RetryManager', () => {
 describe('retryPredicates', () => {
 	describe('always', () => {
 		it('should always return true', () => {
-			expect(retryPredicates.always(new Error(), 1)).toBe(true)
+			expect(retryPredicates.always()).toBe(true)
 		})
 	})
 
 	describe('never', () => {
 		it('should always return false', () => {
-			expect(retryPredicates.never(new Error(), 1)).toBe(false)
+			expect(retryPredicates.never()).toBe(false)
 		})
 	})
 
@@ -462,5 +464,154 @@ describe('retryConfigs', () => {
 
 	it('should have network config with predicate', () => {
 		expect(retryConfigs.network.shouldRetry).toBe(retryPredicates.onNetworkError)
+	})
+
+	it('should have rsocket config with stepped strategy', () => {
+		expect(retryConfigs.rsocket.backoffStrategy).toBe('stepped')
+		expect(retryConfigs.rsocket.maxAttempts).toBe(5)
+		expect(retryConfigs.rsocket.baseDelay).toBe(1000)
+		expect(retryConfigs.rsocket.maxDelay).toBe(20000)
+	})
+})
+
+describe('calculateDelay - stepped strategy', () => {
+	it('should use exact delays from RETRY_BACKOFF_DELAYS array', () => {
+		// Expected delays: [1000, 2000, 5000, 10000, 20000]
+		const delay1 = calculateDelay(1, 100, 50000, 'stepped', 2, 0)
+		const delay2 = calculateDelay(2, 100, 50000, 'stepped', 2, 0)
+		const delay3 = calculateDelay(3, 100, 50000, 'stepped', 2, 0)
+		const delay4 = calculateDelay(4, 100, 50000, 'stepped', 2, 0)
+		const delay5 = calculateDelay(5, 100, 50000, 'stepped', 2, 0)
+
+		expect(delay1).toBe(1000)
+		expect(delay2).toBe(2000)
+		expect(delay3).toBe(5000)
+		expect(delay4).toBe(10000)
+		expect(delay5).toBe(20000)
+	})
+
+	it('should use last delay for attempts beyond array length', () => {
+		const delay6 = calculateDelay(6, 100, 50000, 'stepped', 2, 0)
+		const delay10 = calculateDelay(10, 100, 50000, 'stepped', 2, 0)
+
+		expect(delay6).toBe(20000)
+		expect(delay10).toBe(20000)
+	})
+
+	it('should ignore baseDelay and multiplier parameters', () => {
+		// baseDelay=9999 and multiplier=99 should be ignored
+		const delay = calculateDelay(1, 9999, 50000, 'stepped', 99, 0)
+		expect(delay).toBe(1000) // First step from RETRY_BACKOFF_DELAYS
+	})
+
+	it('should still apply jitter to stepped delays', () => {
+		const delays = new Set<number>()
+
+		for (let i = 0; i < 20; i++) {
+			delays.add(calculateDelay(1, 100, 50000, 'stepped', 2, 0.15))
+		}
+
+		// With 15% jitter on 1000ms, delays should vary between ~850ms and ~1150ms
+		expect(delays.size).toBeGreaterThan(1)
+	})
+})
+
+describe('getRetryDelayWithJitter', () => {
+	it('should return delay for each attempt with jitter applied', () => {
+		// Test multiple times to verify jitter creates variation
+		const delays: number[] = []
+		for (let i = 0; i < 10; i++) {
+			delays.push(getRetryDelayWithJitter(1))
+		}
+
+		// All delays should be within ±15% of 1000ms (850-1150ms)
+		delays.forEach(delay => {
+			expect(delay).toBeGreaterThanOrEqual(850)
+			expect(delay).toBeLessThanOrEqual(1150)
+		})
+
+		// With jitter, we should have some variation
+		const uniqueDelays = new Set(delays)
+		expect(uniqueDelays.size).toBeGreaterThan(1)
+	})
+
+	it('should return correct base delays for each attempt', () => {
+		// Test without considering jitter - just verify rough ranges
+		// Attempt 1: 1000ms ±15% = 850-1150ms
+		// Attempt 2: 2000ms ±15% = 1700-2300ms
+		// Attempt 3: 5000ms ±15% = 4250-5750ms
+		// Attempt 4: 10000ms ±15% = 8500-11500ms
+		// Attempt 5: 20000ms ±15% = 17000-23000ms
+
+		const d1 = getRetryDelayWithJitter(1)
+		const d2 = getRetryDelayWithJitter(2)
+		const d3 = getRetryDelayWithJitter(3)
+		const d4 = getRetryDelayWithJitter(4)
+		const d5 = getRetryDelayWithJitter(5)
+
+		expect(d1).toBeGreaterThanOrEqual(850)
+		expect(d1).toBeLessThanOrEqual(1150)
+
+		expect(d2).toBeGreaterThanOrEqual(1700)
+		expect(d2).toBeLessThanOrEqual(2300)
+
+		expect(d3).toBeGreaterThanOrEqual(4250)
+		expect(d3).toBeLessThanOrEqual(5750)
+
+		expect(d4).toBeGreaterThanOrEqual(8500)
+		expect(d4).toBeLessThanOrEqual(11500)
+
+		expect(d5).toBeGreaterThanOrEqual(17000)
+		expect(d5).toBeLessThanOrEqual(23000)
+	})
+
+	it('should handle attempt 0 by using first delay', () => {
+		const delay = getRetryDelayWithJitter(0)
+		expect(delay).toBeGreaterThanOrEqual(850)
+		expect(delay).toBeLessThanOrEqual(1150)
+	})
+
+	it('should handle negative attempts by using first delay', () => {
+		const delay = getRetryDelayWithJitter(-5)
+		expect(delay).toBeGreaterThanOrEqual(850)
+		expect(delay).toBeLessThanOrEqual(1150)
+	})
+
+	it('should use last delay for attempts beyond array length', () => {
+		const delay6 = getRetryDelayWithJitter(6)
+		const delay100 = getRetryDelayWithJitter(100)
+
+		// Both should use 20000ms ±15% = 17000-23000ms
+		expect(delay6).toBeGreaterThanOrEqual(17000)
+		expect(delay6).toBeLessThanOrEqual(23000)
+
+		expect(delay100).toBeGreaterThanOrEqual(17000)
+		expect(delay100).toBeLessThanOrEqual(23000)
+	})
+})
+
+describe('getAllRetryDelaysWithJitter', () => {
+	it('should return array with 5 delays', () => {
+		const delays = getAllRetryDelaysWithJitter()
+		expect(delays).toHaveLength(5)
+	})
+
+	it('should return delays in increasing order (approximately)', () => {
+		const delays = getAllRetryDelaysWithJitter()
+
+		// Each delay should be roughly larger than the previous
+		// (with jitter, there's small chance of overlap at boundaries)
+		expect(delays[0]!).toBeLessThan(delays[2]!) // 1000 < 5000
+		expect(delays[1]!).toBeLessThan(delays[3]!) // 2000 < 10000
+		expect(delays[2]!).toBeLessThan(delays[4]!) // 5000 < 20000
+	})
+
+	it('should return different values on each call due to jitter', () => {
+		const delays1 = getAllRetryDelaysWithJitter()
+		const delays2 = getAllRetryDelaysWithJitter()
+
+		// At least one delay should differ between calls
+		const allSame = delays1.every((d, i) => d === delays2[i])
+		expect(allSame).toBe(false)
 	})
 })
