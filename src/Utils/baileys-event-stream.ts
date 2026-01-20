@@ -321,8 +321,8 @@ export class BaileysEventStream extends EventEmitter {
 		// Find correct position
 		let insertIndex = this.buffer.length
 		for (let i = 0; i < this.buffer.length; i++) {
-			const bufferItem = this.buffer[i]
-			if (bufferItem && PRIORITY_VALUES[bufferItem.priority] > eventPriorityValue) {
+			const bufferEvent = this.buffer[i]
+			if (bufferEvent && PRIORITY_VALUES[bufferEvent.priority] > eventPriorityValue) {
 				insertIndex = i
 				break
 			}

@@ -333,7 +333,7 @@ export class BaileysLogger implements ILogger {
 
 		// Structured log (skip if level is 'silent')
 		if (level !== 'silent') {
-			const logMethod = this.structuredLogger[level] as ((obj: unknown, msg?: string) => void) | undefined
+			const logMethod = (this.structuredLogger as unknown as Record<string, ((obj: unknown, msg?: string) => void) | undefined>)[level]
 			if (logMethod) {
 				logMethod.call(this.structuredLogger, enrichedObj, msg)
 			}
@@ -435,9 +435,9 @@ export class BaileysLogger implements ILogger {
 			// In production, mask part of the number
 			const parts = jid.split('@')
 			const localPart = parts[0]
-			const domain = parts[1]
-			if (parts.length === 2 && localPart && domain && localPart.length > 4) {
-				return `${localPart.substring(0, 4)}****@${domain}`
+			const domainPart = parts[1]
+			if (parts.length === 2 && localPart && domainPart && localPart.length > 4) {
+				return `${localPart.substring(0, 4)}****@${domainPart}`
 			}
 		}
 		return jid

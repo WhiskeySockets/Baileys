@@ -2,6 +2,7 @@ import type { Agent } from 'https'
 import type { URL } from 'url'
 import { proto } from '../../WAProto/index.js'
 import type { ILogger } from '../Utils/logger'
+import type { CircuitBreakerOptions } from '../Utils/circuit-breaker'
 import type { AuthenticationState, LIDMapping, SignalAuthState, TransactionCapabilityOptions } from './Auth'
 import type { GroupMetadata } from './GroupMetadata'
 import { type MediaConnInfo, type WAMessageKey } from './Message'
@@ -147,4 +148,21 @@ export type SocketConfig = {
 		logger: ILogger,
 		pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>
 	) => SignalRepositoryWithLIDStore
+
+	// === Circuit Breaker Configuration ===
+
+	/** Enable circuit breaker protection for socket operations (default: true) */
+	enableCircuitBreaker?: boolean
+
+	/** Circuit breaker configuration for query operations */
+	queryCircuitBreaker?: Partial<CircuitBreakerOptions>
+
+	/** Circuit breaker configuration for connection operations */
+	connectionCircuitBreaker?: Partial<CircuitBreakerOptions>
+
+	/** Circuit breaker configuration for pre-key operations */
+	preKeyCircuitBreaker?: Partial<CircuitBreakerOptions>
+
+	/** Circuit breaker configuration for message operations */
+	messageCircuitBreaker?: Partial<CircuitBreakerOptions>
 }

@@ -612,7 +612,7 @@ export class MetricsRegistry {
 	/**
 	 * Return metrics in Prometheus format
 	 */
-	async metrics(): Promise<string> {
+	async getMetricsOutput(): Promise<string> {
 		const lines: string[] = []
 
 		for (const [name, metric] of this.metricsMap) {
@@ -776,7 +776,7 @@ export const metrics = {
  */
 export function createMetricsHandler(registry: MetricsRegistry = baileysMetrics) {
 	return async (_req: unknown, res: { setHeader: (name: string, value: string) => void; end: (body: string) => void }) => {
-		const metricsOutput = await registry.metrics()
+		const metricsOutput = await registry.getMetricsOutput()
 		res.setHeader('Content-Type', registry.contentType())
 		res.end(metricsOutput)
 	}
