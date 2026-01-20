@@ -1296,10 +1296,7 @@ const metricsConfig = loadMetricsConfig()
 
 // Initialize prefix and defaultLabels for all metrics created after this point
 setMetricPrefix(metricsConfig.prefix)
-configureRegistry({
-	prefix: metricsConfig.prefix,
-	defaultLabels: metricsConfig.defaultLabels,
-})
+configureRegistry(metricsConfig.defaultLabels)
 
 /**
  * Global registry for Baileys metrics
