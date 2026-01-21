@@ -642,6 +642,14 @@ describe('processHistoryMessage', () => {
 		expect(result.lidPnMappings).toHaveLength(0)
 	})
 
+	// Empty payload test
+	it('should return empty lidPnMappings for empty payload', () => {
+		const payload = createHistorySync(proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP, {})
+
+		const result = processHistoryMessage(payload)
+		expect(result.lidPnMappings).toHaveLength(0)
+	})
+
 	// Return structure test
 	it('should return correct structure with all fields', () => {
 		const payload = createHistorySync(proto.HistorySync.HistorySyncType.INITIAL_BOOTSTRAP, {
