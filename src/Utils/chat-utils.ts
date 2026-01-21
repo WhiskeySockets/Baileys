@@ -264,7 +264,7 @@ export const decodeSyncdMutations = async (
 			})
 		}
 
-		return mutationKeys(keyEnc.keyData!)
+		return await mutationKeys(keyEnc.keyData!)
 	}
 }
 
