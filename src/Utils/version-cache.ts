@@ -13,6 +13,15 @@ interface VersionCacheEntry {
 }
 
 /**
+ * Logger interface for version cache operations
+ */
+export interface VersionCacheLogger {
+	info: (obj: unknown, msg?: string) => void
+	debug: (obj: unknown, msg?: string) => void
+	warn: (obj: unknown, msg?: string) => void
+}
+
+/**
  * In-memory cache to avoid file reads on every connection
  */
 let memoryCache: VersionCacheEntry | null = null
@@ -28,7 +37,11 @@ let fetchInProgress: Promise<VersionCacheEntry> | null = null
 const DEFAULT_CACHE_TTL_MS = 6 * 60 * 60 * 1000
 
 /**
- * Default cache file path
+ * Default cache file path.
+ *
+ * NOTE: Uses process.cwd() which may not be writable in some environments
+ * (containers, serverless, etc). In such cases, specify a custom `cacheFilePath`
+ * in the config pointing to a writable directory like `/tmp`.
  */
 const DEFAULT_CACHE_FILE = join(process.cwd(), '.baileys-version-cache.json')
 
@@ -38,10 +51,24 @@ const DEFAULT_CACHE_FILE = join(process.cwd(), '.baileys-version-cache.json')
 export interface VersionCacheConfig {
 	/** Cache TTL in milliseconds (default: 6 hours) */
 	cacheTtlMs?: number
-	/** Path to cache file (default: .baileys-version-cache.json in cwd) */
+	/**
+	 * Path to cache file (default: .baileys-version-cache.json in cwd)
+	 *
+	 * NOTE: If running in a container or serverless environment where cwd
+	 * is not writable, specify a writable path like '/tmp/.baileys-version-cache.json'
+	 */
 	cacheFilePath?: string
 	/** Logger instance */
-	logger?: { info: Function; debug: Function; warn: Function }
+	logger?: VersionCacheLogger
+}
+
+/**
+ * Result from refreshVersionCache with success status
+ */
+export interface RefreshVersionResult {
+	version: WAVersion
+	success: boolean
+	source: 'online' | 'fallback'
 }
 
 /**
@@ -81,9 +108,9 @@ function isCacheValid(entry: VersionCacheEntry | null, ttlMs: number): boolean {
  */
 async function fetchVersionOnce(
 	cacheFilePath: string,
-	logger?: VersionCacheConfig['logger']
+	logger?: VersionCacheLogger
 ): Promise<VersionCacheEntry> {
-	logger?.info('Fetching WhatsApp Web version (shared for all connections)...')
+	logger?.info({}, 'Fetching WhatsApp Web version (shared for all connections)...')
 
 	const result = await fetchLatestWaWebVersion()
 
@@ -125,7 +152,7 @@ async function fetchVersionOnce(
  */
 export async function getCachedVersion(
 	config: VersionCacheConfig = {}
-): Promise<{ version: WAVersion; fromCache: boolean; age: number }> {
+): Promise<{ version: WAVersion; fromCache: boolean; age: number; source: 'online' | 'fallback' | 'memory' | 'file' }> {
 	const {
 		cacheTtlMs = DEFAULT_CACHE_TTL_MS,
 		cacheFilePath = DEFAULT_CACHE_FILE,
@@ -136,7 +163,7 @@ export async function getCachedVersion(
 	if (isCacheValid(memoryCache, cacheTtlMs)) {
 		const age = Date.now() - memoryCache!.fetchedAt
 		logger?.debug({ age: Math.round(age / 1000) + 's' }, 'Using memory cached version')
-		return { version: memoryCache!.version, fromCache: true, age }
+		return { version: memoryCache!.version, fromCache: true, age, source: 'memory' }
 	}
 
 	// 2. Check file cache (survives restarts)
@@ -145,7 +172,7 @@ export async function getCachedVersion(
 		memoryCache = fileCache // Update memory cache
 		const age = Date.now() - fileCache!.fetchedAt
 		logger?.debug({ age: Math.round(age / 1000) + 's' }, 'Using file cached version')
-		return { version: fileCache!.version, fromCache: true, age }
+		return { version: fileCache!.version, fromCache: true, age, source: 'file' }
 	}
 
 	// 3. Need to fetch - but deduplicate concurrent requests
@@ -156,16 +183,29 @@ export async function getCachedVersion(
 	}
 
 	const entry = await fetchInProgress
-	return { version: entry.version, fromCache: false, age: 0 }
+	return { version: entry.version, fromCache: false, age: 0, source: entry.source }
 }
 
 /**
- * Clears the version cache (memory and file)
+ * Clears the version cache (memory and file).
+ * Also cancels any in-progress fetch to prevent it from restoring the cache.
  */
 export async function clearVersionCache(
 	cacheFilePath: string = DEFAULT_CACHE_FILE
 ): Promise<void> {
+	// Wait for any in-progress fetch to complete before clearing
+	// This prevents the fetch from restoring the cache after we clear it
+	if (fetchInProgress) {
+		try {
+			await fetchInProgress
+		} catch {
+			// Ignore fetch errors during clear
+		}
+	}
+
 	memoryCache = null
+	fetchInProgress = null
+
 	try {
 		await fs.unlink(cacheFilePath)
 	} catch {
@@ -174,19 +214,42 @@ export async function clearVersionCache(
 }
 
 /**
- * Forces a refresh of the cached version
+ * Forces a refresh of the cached version.
+ * Returns success status to indicate if online fetch succeeded or fell back to bundled version.
+ *
+ * @returns Object with version, success status, and source
  */
 export async function refreshVersionCache(
 	config: VersionCacheConfig = {}
-): Promise<WAVersion> {
+): Promise<RefreshVersionResult> {
 	const { cacheFilePath = DEFAULT_CACHE_FILE, logger } = config
+
+	// Wait for any existing fetch to complete first (deduplication)
+	if (fetchInProgress) {
+		try {
+			const existing = await fetchInProgress
+			// If there's already a fresh fetch in progress, return its result
+			return {
+				version: existing.version,
+				success: existing.source === 'online',
+				source: existing.source
+			}
+		} catch {
+			// Ignore and proceed with new fetch
+		}
+	}
 
 	// Clear existing cache
 	memoryCache = null
 
 	// Fetch fresh
 	const entry = await fetchVersionOnce(cacheFilePath, logger)
-	return entry.version
+
+	return {
+		version: entry.version,
+		success: entry.source === 'online',
+		source: entry.source
+	}
 }
 
 /**
@@ -200,6 +263,7 @@ export function getVersionCacheStatus(
 	age: number | null
 	isExpired: boolean
 	expiresIn: number | null
+	source: 'online' | 'fallback' | null
 } {
 	if (!memoryCache) {
 		return {
@@ -207,7 +271,8 @@ export function getVersionCacheStatus(
 			version: null,
 			age: null,
 			isExpired: true,
-			expiresIn: null
+			expiresIn: null,
+			source: null
 		}
 	}
 
@@ -219,6 +284,7 @@ export function getVersionCacheStatus(
 		version: memoryCache.version,
 		age,
 		isExpired,
-		expiresIn: isExpired ? 0 : cacheTtlMs - age
+		expiresIn: isExpired ? 0 : cacheTtlMs - age,
+		source: memoryCache.source
 	}
 }

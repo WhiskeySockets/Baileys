@@ -1,8 +1,20 @@
 import { DEFAULT_CONNECTION_CONFIG } from '../Defaults'
 import type { UserFacingSocketConfig, WAVersion } from '../Types'
-import { fetchLatestWaWebVersion } from '../Utils/generics'
 import { getCachedVersion, refreshVersionCache, clearVersionCache, getVersionCacheStatus } from '../Utils/version-cache'
+import type { VersionCacheLogger } from '../Utils/version-cache'
 import { makeCommunitiesSocket } from './communities'
+
+/**
+ * Adapts Baileys logger to VersionCacheLogger interface
+ */
+const createCacheLogger = (logger: any): VersionCacheLogger | undefined => {
+	if (!logger) return undefined
+	return {
+		info: (obj: unknown, msg?: string) => logger.info(obj, msg),
+		debug: (obj: unknown, msg?: string) => logger.debug(obj, msg),
+		warn: (obj: unknown, msg?: string) => logger.warn(obj, msg)
+	}
+}
 
 /**
  * Compares two WhatsApp versions
@@ -71,6 +83,7 @@ export const makeWASocketAutoVersion = async (config: UserFacingSocketConfig) =>
 	}
 
 	const logger = mergedConfig.logger
+	const cacheLogger = createCacheLogger(logger)
 	const checkIntervalMs = mergedConfig.versionCheckIntervalMs
 
 	// Track version separately to avoid mutating config (Fix #7)
@@ -94,7 +107,7 @@ export const makeWASocketAutoVersion = async (config: UserFacingSocketConfig) =>
 	try {
 		const { version, fromCache, age } = await getCachedVersion({
 			cacheTtlMs: checkIntervalMs,
-			logger: logger as any
+			logger: cacheLogger
 		})
 
 		logger?.info(
@@ -153,17 +166,28 @@ export const makeWASocketAutoVersion = async (config: UserFacingSocketConfig) =>
 
 				// Only refresh if cache is expired (one socket refreshes, others use cache)
 				let newVersion: WAVersion
+				let fetchSuccess = true
 
 				if (cacheStatus.isExpired) {
 					logger?.debug('Cache expired, refreshing...')
-					newVersion = await refreshVersionCache({ logger: logger as any })
+					const result = await refreshVersionCache({ logger: cacheLogger })
+					newVersion = result.version
+					fetchSuccess = result.success
+
+					// Don't update to fallback version on transient network errors
+					if (!fetchSuccess) {
+						logger?.warn(
+							{ fallbackVersion: result.version },
+							'Failed to fetch latest version, keeping current version'
+						)
+						return // Skip version update on fetch failure
+					}
+				} else if (cacheStatus.version) {
+					// Cache still valid, use cached version directly (no file I/O)
+					newVersion = cacheStatus.version
 				} else {
-					// Cache still valid, just check if different from our tracked version
-					const { version } = await getCachedVersion({
-						cacheTtlMs: checkIntervalMs,
-						logger: logger as any
-					})
-					newVersion = version
+					// No cache available, skip this check
+					return
 				}
 
 				// Double-check socket is still open after async operation (Fix #8)
