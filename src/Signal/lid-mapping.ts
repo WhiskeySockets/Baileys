@@ -522,7 +522,7 @@ export class LIDMappingStore {
 			for (const [pnUser, items] of pendingByPnUser.entries()) {
 				const lidUser = this.mappingCache.get(`pn:${pnUser}`)
 				for (const { pn, decoded } of items) {
-					if (lidUser) {
+					if (lidUser && decoded) {
 						const lidUserString = lidUser.toString()
 						if (!lidUserString) {
 							this.logger.warn({ pn, lidUser }, 'Invalid or empty LID user')
@@ -547,6 +547,8 @@ export class LIDMappingStore {
 					if (dbFailedPnUsers.has(pnUser)) {
 						failedPns.add(pn)
 					}
+
+					if (!decoded) continue
 
 					// Need to fetch from USync
 					if (this.config.debugLogging) {
