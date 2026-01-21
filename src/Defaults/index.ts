@@ -3,8 +3,10 @@ import { makeLibSignalRepository } from '../Signal/libsignal'
 import type { AuthenticationState, SocketConfig, WAVersion } from '../Types'
 import { Browsers } from '../Utils/browser-utils'
 import logger from '../Utils/logger'
+// Single source of truth for WhatsApp Web version - imported from JSON
+import baileysVersionData from './baileys-version.json'
 
-const version = [2, 3000, 1032141294]
+const version = baileysVersionData.version
 
 export const UNAUTHORIZED_CODES = [401, 403, 419]
 

@@ -1,106 +1,104 @@
 #!/usr/bin/env node
 /**
- * Script to update WhatsApp Web version across the codebase.
+ * Script to update WhatsApp Web version.
  * Fetches the latest version from web.whatsapp.com and updates:
- * - src/Defaults/baileys-version.json
- * - src/Defaults/index.ts
- * - src/Utils/generics.ts
+ * - src/Defaults/baileys-version.json (SINGLE SOURCE OF TRUTH)
+ *
+ * Other files (index.ts, generics.ts) import from this JSON file,
+ * so only one file needs to be updated.
  *
  * Usage: yarn update:version
  */
 
-import { readFileSync, writeFileSync } from 'fs'
+import { readFileSync, writeFileSync, appendFileSync } from 'fs'
 import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
-import { fetchLatestWaWebVersion } from '../src/Utils/generics.ts'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const ROOT_DIR = join(__dirname, '..')
+const VERSION_FILE_PATH = join(ROOT_DIR, 'src/Defaults/baileys-version.json')
 
-function updateBaileysVersionJson(version: [number, number, number]): boolean {
-	const filePath = join(ROOT_DIR, 'src/Defaults/baileys-version.json')
-	const content = {
-		version
-	}
+type WAVersion = [number, number, number]
+
+interface VersionResult {
+	version: WAVersion
+	isLatest: boolean
+	error?: unknown
+}
+
+/**
+ * Fetches the latest WhatsApp Web version from web.whatsapp.com
+ * Extracted here to avoid circular dependency with generics.ts
+ */
+async function fetchLatestWaWebVersion(): Promise<VersionResult> {
+	// Read current version as fallback
+	const currentContent = readFileSync(VERSION_FILE_PATH, 'utf-8')
+	const fallbackVersion = JSON.parse(currentContent).version as WAVersion
 
 	try {
-		const currentContent = readFileSync(filePath, 'utf-8')
+		const headers = {
+			'sec-fetch-site': 'none',
+			'user-agent':
+				'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+		}
+
+		const response = await fetch('https://web.whatsapp.com/sw.js', {
+			method: 'GET',
+			headers
+		})
+
+		if (!response.ok) {
+			throw new Error(`Failed to fetch sw.js: ${response.statusText}`)
+		}
+
+		const data = await response.text()
+		const regex = /\\?"client_revision\\?":\s*(\d+)/
+		const match = data.match(regex)
+
+		if (!match?.[1]) {
+			return {
+				version: fallbackVersion,
+				isLatest: false,
+				error: { message: 'Could not find client revision in the fetched content' }
+			}
+		}
+
+		return {
+			version: [2, 3000, +match[1]] as WAVersion,
+			isLatest: true
+		}
+	} catch (error) {
+		return {
+			version: fallbackVersion,
+			isLatest: false,
+			error
+		}
+	}
+}
+
+function updateBaileysVersionJson(version: WAVersion): boolean {
+	const content = { version }
+
+	try {
+		const currentContent = readFileSync(VERSION_FILE_PATH, 'utf-8')
 		const currentVersion = JSON.parse(currentContent).version as number[]
 
-		if (currentVersion[0] === version[0] && currentVersion[1] === version[1] && currentVersion[2] === version[2]) {
+		if (
+			currentVersion[0] === version[0] &&
+			currentVersion[1] === version[1] &&
+			currentVersion[2] === version[2]
+		) {
 			console.log(`✓ baileys-version.json already up to date`)
 			return false
 		}
 
-		writeFileSync(filePath, JSON.stringify(content) + '\n')
+		writeFileSync(VERSION_FILE_PATH, JSON.stringify(content) + '\n')
 		console.log(`✓ Updated baileys-version.json: [${currentVersion.join(', ')}] → [${version.join(', ')}]`)
+		console.log(`  (index.ts and generics.ts will automatically use the new version)`)
 		return true
 	} catch (error) {
 		console.error(`✗ Failed to update baileys-version.json:`, error)
-		throw error
-	}
-}
-
-function updateGenerics(version: [number, number, number]): boolean {
-	const filePath = join(ROOT_DIR, 'src/Utils/generics.ts')
-
-	try {
-		const content = readFileSync(filePath, 'utf-8')
-		const versionRegex = /const baileysVersion = \[(\d+),\s*(\d+),\s*(\d+)\]/
-		const match = content.match(versionRegex)
-
-		if (!match) {
-			throw new Error('Could not find baileysVersion declaration in generics.ts')
-		}
-
-		const currentVersion = [+match[1]!, +match[2]!, +match[3]!]
-
-		if (currentVersion[0] === version[0] && currentVersion[1] === version[1] && currentVersion[2] === version[2]) {
-			console.log(`✓ src/Utils/generics.ts already up to date`)
-			return false
-		}
-
-		const newContent = content.replace(
-			versionRegex,
-			`const baileysVersion = [${version[0]}, ${version[1]}, ${version[2]}]`
-		)
-
-		writeFileSync(filePath, newContent)
-		console.log(`✓ Updated src/Utils/generics.ts: [${currentVersion.join(', ')}] → [${version.join(', ')}]`)
-		return true
-	} catch (error) {
-		console.error(`✗ Failed to update src/Utils/generics.ts:`, error)
-		throw error
-	}
-}
-
-function updateIndex(version: [number, number, number]): boolean {
-	const filePath = join(ROOT_DIR, 'src/Defaults/index.ts')
-
-	try {
-		const content = readFileSync(filePath, 'utf-8')
-		const versionRegex = /const version = \[(\d+),\s*(\d+),\s*(\d+)\]/
-		const match = content.match(versionRegex)
-
-		if (!match) {
-			throw new Error('Could not find version declaration in index.ts')
-		}
-
-		const currentVersion = [+match[1]!, +match[2]!, +match[3]!]
-
-		if (currentVersion[0] === version[0] && currentVersion[1] === version[1] && currentVersion[2] === version[2]) {
-			console.log(`✓ src/Defaults/index.ts already up to date`)
-			return false
-		}
-
-		const newContent = content.replace(versionRegex, `const version = [${version[0]}, ${version[1]}, ${version[2]}]`)
-
-		writeFileSync(filePath, newContent)
-		console.log(`✓ Updated src/Defaults/index.ts: [${currentVersion.join(', ')}] → [${version.join(', ')}]`)
-		return true
-	} catch (error) {
-		console.error(`✗ Failed to update src/Defaults/index.ts:`, error)
 		throw error
 	}
 }
@@ -117,27 +115,19 @@ async function main() {
 
 	console.log(`Latest version: [${result.version.join(', ')}]\n`)
 
-	const updates = [
-		updateBaileysVersionJson(result.version),
-		updateGenerics(result.version),
-		updateIndex(result.version)
-	]
-
-	const hasUpdates = updates.some(Boolean)
+	const hasUpdates = updateBaileysVersionJson(result.version)
 
 	console.log('')
 	if (hasUpdates) {
 		console.log('Version update complete!')
-		// Set GitHub Actions output if running in CI
+		console.log('Note: Only baileys-version.json needs updating - other files import from it.')
 		if (process.env.GITHUB_OUTPUT) {
-			const { appendFileSync } = await import('fs')
 			appendFileSync(process.env.GITHUB_OUTPUT, `updated=true\n`)
 			appendFileSync(process.env.GITHUB_OUTPUT, `version=${result.version.join('.')}\n`)
 		}
 	} else {
-		console.log('All files are already up to date.')
+		console.log('Already up to date.')
 		if (process.env.GITHUB_OUTPUT) {
-			const { appendFileSync } = await import('fs')
 			appendFileSync(process.env.GITHUB_OUTPUT, `updated=false\n`)
 		}
 	}
