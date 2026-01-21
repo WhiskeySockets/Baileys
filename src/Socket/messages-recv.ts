@@ -2,7 +2,7 @@ import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
 import Long from 'long'
-import { proto } from '../../WAProto/index.js'
+import { proto } from '../../WAProto'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
 import type {
 	GroupParticipant,
@@ -42,7 +42,7 @@ import {
 	xmppPreKey,
 	xmppSignedPreKey
 } from '../Utils'
-import { makeMutex } from '../Utils/make-mutex'
+import { makeKeyedMutex } from '../Utils/make-mutex'
 import {
 	areJidsSameUser,
 	type BinaryNode,
@@ -90,7 +90,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	} = sock
 
 	/** this mutex ensures that each retryRequest will wait for the previous one to finish */
-	const retryMutex = makeMutex()
+	const retryMutex = makeKeyedMutex();
 
 	const msgRetryCache =
 		config.msgRetryCounterCache ||
@@ -1046,7 +1046,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			attrs.participant || attrs.from,
 			isLid ? authState.creds.me?.lid : authState.creds.me?.id
 		)
-		const remoteJid = !isNodeFromMe || isJidGroup(attrs.from) ? attrs.from : attrs.recipient
+		const remoteJid = !isNodeFromMe || isJidGroup(attrs.from) ? attrs.from : attrs.recipient;
 		const fromMe = !attrs.recipient || ((attrs.type === 'retry' || attrs.type === 'sender') && isNodeFromMe)
 
 		const key: proto.IMessageKey = {
@@ -1070,7 +1070,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		try {
 			await Promise.all([
-				receiptMutex.mutex(async () => {
+				receiptMutex.mutex(remoteJid!,async () => {
 					const status = getStatusFromReceiptType(attrs.type)
 					if (
 						typeof status !== 'undefined' &&
@@ -1144,7 +1144,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		try {
 			await Promise.all([
-				notificationMutex.mutex(async () => {
+				notificationMutex.mutex(remoteJid!,async () => {
 					const msg = await processNotification(node)
 					if (msg) {
 						const fromMe = areJidsSameUser(node.attrs.participant || remoteJid, authState.creds.me!.id)
@@ -1209,8 +1209,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			}
 		}
 
-		if (msg.key?.remoteJid && msg.key?.id && messageRetryManager) {
-			messageRetryManager.addRecentMessage(msg.key.remoteJid, msg.key.id, msg.message!)
+		const remoteJid = msg.key.remoteJid!;
+		const msgId = msg.key.id!;
+
+		if (messageRetryManager && remoteJid && msgId ) {
+			messageRetryManager.addRecentMessage(remoteJid, msgId, msg.message!)
 			logger.debug(
 				{
 					jid: msg.key.remoteJid,
@@ -1221,7 +1224,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		}
 
 		try {
-			await messageMutex.mutex(async () => {
+			await messageMutex.mutex(remoteJid,async () => {
 				await decrypt()
 				// message failed to decrypt
 				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
@@ -1238,7 +1241,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					logger.debug(`[handleMessage] Attempting retry request for failed decryption`)
 
 					// Handle both pre-key and normal retries in single mutex
-					await retryMutex.mutex(async () => {
+					await retryMutex.mutex(msgId,async () => {
 						try {
 							if (!ws.isOpen) {
 								logger.debug({ node }, 'Connection closed, skipping retry')
