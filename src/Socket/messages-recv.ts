@@ -21,6 +21,7 @@ import {
 	aesDecryptCTR,
 	aesEncryptGCM,
 	cleanMessage,
+	normalizeMessageJids,
 	Curve,
 	decodeMediaRetryNode,
 	decodeMessageNode,
@@ -1316,6 +1317,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 				}
 
+				await normalizeMessageJids(msg, signalRepository, logger)
 				cleanMessage(msg, authState.creds.me!.id, authState.creds.me!.lid!)
 
 				await upsertMessage(msg, node.attrs.offline ? 'append' : 'notify')
