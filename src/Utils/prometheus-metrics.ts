@@ -1385,6 +1385,24 @@ export const metrics = {
 		new Gauge('messages_queued', 'Current number of messages in queue', ['priority'])
 	),
 
+	// ========== CTWA (Click-to-WhatsApp Ads) Metrics ==========
+	/**
+	 * Messages from Facebook/Instagram ads that arrive as placeholder messages
+	 * and are recovered via PDO (Peer Data Operation) request
+	 */
+	ctwaRecoveryRequests: baileysMetrics.register(
+		new Counter('ctwa_recovery_requests_total', 'Total CTWA placeholder resend requests', ['status'])
+	),
+	ctwaMessagesRecovered: baileysMetrics.register(
+		new Counter('ctwa_messages_recovered_total', 'Total CTWA messages successfully recovered')
+	),
+	ctwaRecoveryLatency: baileysMetrics.register(
+		new Histogram('ctwa_recovery_latency_ms', 'CTWA message recovery latency in ms', [], [500, 1000, 2000, 3000, 5000, 8000, 10000])
+	),
+	ctwaRecoveryFailures: baileysMetrics.register(
+		new Counter('ctwa_recovery_failures_total', 'Total CTWA recovery failures', ['reason'])
+	),
+
 	// ========== Media Metrics ==========
 	mediaUploads: baileysMetrics.register(
 		new Counter('media_uploads_total', 'Total media uploads', ['type', 'status'])

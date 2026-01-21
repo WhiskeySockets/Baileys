@@ -4,6 +4,7 @@ import { randomBytes } from 'crypto'
 import Long from 'long'
 import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
+import { metrics } from '../Utils/prometheus-metrics.js'
 import type {
 	GroupParticipant,
 	MessageReceiptType,
@@ -67,8 +68,15 @@ import { extractGroupMetadata } from './groups'
 import { makeMessagesSocket } from './messages-send'
 
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
-	const { logger, retryRequestDelayMs, maxMsgRetryCount, getMessage, shouldIgnoreJid, enableAutoSessionRecreation } =
-		config
+	const {
+		logger,
+		retryRequestDelayMs,
+		maxMsgRetryCount,
+		getMessage,
+		shouldIgnoreJid,
+		enableAutoSessionRecreation,
+		enableCTWARecovery
+	} = config
 	const sock = makeMessagesSocket(config)
 	const {
 		ev,
@@ -1227,10 +1235,63 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await decrypt()
 				// message failed to decrypt
 				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
-					if (
-						msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT ||
-						msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT
-					) {
+					// Handle "Missing keys" - standard decryption failure, just ACK
+					if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
+						return sendMessageAck(node)
+					}
+
+					// Handle "Message absent from node" - likely a CTWA (Click-to-WhatsApp) ads message
+					// These messages are only encrypted for the primary phone, not linked devices
+					// We need to request the message content from the phone via PDO (Peer Data Operation)
+					if (msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT) {
+						if (enableCTWARecovery && msg.key) {
+							const startTime = Date.now()
+							logger.info(
+								{ msgId: msg.key.id, remoteJid: msg.key.remoteJid },
+								'CTWA: Message absent from node detected, requesting placeholder resend from phone'
+							)
+
+							try {
+								metrics.ctwaRecoveryRequests.inc({ status: 'requested' })
+
+								const requestId = await requestPlaceholderResend(msg.key)
+								if (requestId) {
+									logger.debug(
+										{ msgId: msg.key.id, requestId },
+										'CTWA: Placeholder resend request sent successfully'
+									)
+									// Note: The actual message will be emitted via 'messages.upsert'
+									// when the PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE is processed
+									// in process-message.ts:399-421
+								} else if (requestId === 'RESOLVED') {
+									// Message was received while we were waiting
+									logger.debug(
+										{ msgId: msg.key.id },
+										'CTWA: Message received during resend delay'
+									)
+									metrics.ctwaMessagesRecovered.inc()
+									metrics.ctwaRecoveryLatency.observe(Date.now() - startTime)
+								} else {
+									// Already requested (duplicate request prevented by cache)
+									logger.debug(
+										{ msgId: msg.key.id },
+										'CTWA: Resend already requested, skipping duplicate'
+									)
+								}
+							} catch (error) {
+								logger.warn(
+									{ error, msgId: msg.key.id },
+									'CTWA: Failed to request placeholder resend'
+								)
+								metrics.ctwaRecoveryFailures.inc({ reason: 'request_failed' })
+							}
+						} else {
+							logger.debug(
+								{ msgId: msg.key?.id, enableCTWARecovery },
+								'CTWA recovery disabled or missing key, skipping placeholder resend'
+							)
+						}
+
 						return sendMessageAck(node)
 					}
 

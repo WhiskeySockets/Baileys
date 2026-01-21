@@ -108,6 +108,21 @@ export type SocketConfig = {
 	enableRecentMessageCache: boolean
 
 	/**
+	 * Enable automatic recovery of Click-to-WhatsApp (CTWA) ads messages.
+	 *
+	 * When enabled, messages from Facebook/Instagram ads that arrive as
+	 * "placeholder messages" (Message absent from node) will be automatically
+	 * recovered by requesting resend from the primary phone device.
+	 *
+	 * This is necessary because Meta's ads endpoint doesn't encrypt messages
+	 * for linked devices - they only arrive on the primary phone.
+	 *
+	 * @default true
+	 * @see https://github.com/WhiskeySockets/Baileys/issues/1723
+	 */
+	enableCTWARecovery: boolean
+
+	/**
 	 * Returns if a jid should be ignored,
 	 * no event for that jid will be triggered.
 	 * Messages from that jid will also not be decrypted
