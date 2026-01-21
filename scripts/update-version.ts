@@ -9,6 +9,15 @@
  * Updates: src/Defaults/baileys-version.json (SINGLE SOURCE OF TRUTH)
  *
  * Usage: yarn update:version
+ *
+ * Environment variables:
+ * - WA_MIN_REVISION: Minimum valid revision number (default: 1000000000)
+ * - WA_MAX_REVISION: Maximum valid revision number (default: 9999999999)
+ *
+ * Exit codes:
+ * - 0: Success (version updated or already up to date)
+ * - 1: Fatal error (script failure)
+ * - 2: Fetch failed (all sources failed, fallback version used)
  */
 
 import { readFileSync, writeFileSync, appendFileSync } from 'fs'
@@ -29,14 +38,26 @@ interface VersionResult {
 	error?: unknown
 }
 
-// Configuration
+/**
+ * Configuration for the version update script.
+ *
+ * Revision bounds explanation:
+ * - WhatsApp Web uses a numeric "client_revision" that increments with each release
+ * - As of 2024, revisions are in the 10-digit range (e.g., 1032141294)
+ * - minRevision (1000000000) ensures we don't accept clearly invalid small numbers
+ *   that could result from parsing errors
+ * - maxRevision (9999999999) is the maximum 10-digit number, providing an upper sanity check
+ *
+ * These bounds can be overridden via environment variables if WhatsApp changes their
+ * versioning scheme in the future.
+ */
 const CONFIG = {
 	maxRetries: 3,
 	retryDelayMs: 2000, // Base delay, will be multiplied by attempt number
 	requestTimeoutMs: 10000,
-	// Version sanity checks
-	minRevision: 1000000000, // Minimum expected revision (to catch parsing errors)
-	maxRevision: 9999999999, // Maximum expected revision
+	// Version sanity checks - can be overridden via environment variables
+	minRevision: parseInt(process.env.WA_MIN_REVISION || '1000000000', 10),
+	maxRevision: parseInt(process.env.WA_MAX_REVISION || '9999999999', 10),
 }
 
 /**
@@ -65,7 +86,11 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
 }
 
 /**
- * Validates that a revision number looks reasonable
+ * Validates that a revision number looks reasonable.
+ * WhatsApp Web revisions are typically 10-digit numbers.
+ *
+ * @param revision - The revision number to validate
+ * @returns true if the revision is within expected bounds
  */
 function isValidRevision(revision: number): boolean {
 	return (
@@ -240,6 +265,13 @@ async function main() {
 	console.log('║     WhatsApp Web Version Update Script         ║')
 	console.log('╚════════════════════════════════════════════════╝\n')
 
+	// Log configuration
+	console.log('Configuration:')
+	console.log(`  Min revision: ${CONFIG.minRevision}`)
+	console.log(`  Max revision: ${CONFIG.maxRevision}`)
+	console.log(`  Max retries: ${CONFIG.maxRetries}`)
+	console.log(`  Request timeout: ${CONFIG.requestTimeoutMs}ms\n`)
+
 	console.log('Fetching latest WhatsApp Web version...\n')
 
 	const result = await fetchLatestWaWebVersion()
@@ -274,10 +306,18 @@ async function main() {
 		}
 	}
 
-	// Exit with error if we couldn't fetch latest (so CI knows)
+	// Exit with code 2 if fetch failed (Fix #3)
+	// This allows CI to distinguish between:
+	// - 0: Success
+	// - 1: Script error
+	// - 2: Fetch failed but fallback used
 	if (!result.isLatest) {
 		console.log('\n⚠ Warning: Could not fetch latest version from WhatsApp servers')
-		process.exit(0) // Don't fail the workflow, just warn
+		console.log('Exit code 2: Fetch failed, fallback version used')
+		if (process.env.GITHUB_OUTPUT) {
+			appendFileSync(process.env.GITHUB_OUTPUT, `fetch_failed=true\n`)
+		}
+		process.exit(2)
 	}
 }
 

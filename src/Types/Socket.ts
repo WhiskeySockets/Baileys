@@ -50,16 +50,13 @@ export type SocketConfig = {
 	/** version to connect with */
 	version: WAVersion
 	/**
-	 * Automatically fetch the latest WhatsApp Web version on connect.
-	 * When enabled, fetches from web.whatsapp.com before connecting.
-	 * Falls back to bundled version if fetch fails.
-	 * @default false
-	 */
-	fetchLatestVersion: boolean
-	/**
 	 * Interval in milliseconds to check for new WhatsApp Web versions.
 	 * When a new version is detected, it will be used on the next reconnection.
 	 * Set to 0 to disable periodic checks.
+	 *
+	 * Note: This option is only used by `makeWASocketAutoVersion()`.
+	 * The standard `makeWASocket()` does not perform automatic version checks.
+	 *
 	 * @default 21600000 (6 hours)
 	 */
 	versionCheckIntervalMs: number

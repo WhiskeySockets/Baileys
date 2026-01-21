@@ -67,8 +67,22 @@ export const makeWASocketAutoVersion = async (config: UserFacingSocketConfig) =>
 	}
 
 	const logger = mergedConfig.logger
-	let currentVersion = mergedConfig.version
+
+	// Track version separately to avoid mutating config (Fix #7)
+	let trackedVersion: WAVersion = [...mergedConfig.version] as WAVersion
 	let versionCheckInterval: ReturnType<typeof setInterval> | null = null
+	let isSocketClosed = false
+
+	/**
+	 * Cleans up the version check interval
+	 */
+	const cleanupInterval = () => {
+		if (versionCheckInterval) {
+			clearInterval(versionCheckInterval)
+			versionCheckInterval = null
+			logger?.debug('Stopped periodic version check')
+		}
+	}
 
 	// Fetch latest version before connecting
 	try {
@@ -78,7 +92,7 @@ export const makeWASocketAutoVersion = async (config: UserFacingSocketConfig) =>
 		if (result.isLatest) {
 			logger?.info({ version: result.version }, 'Using latest WhatsApp Web version')
 			mergedConfig.version = result.version
-			currentVersion = result.version
+			trackedVersion = [...result.version] as WAVersion
 		} else {
 			logger?.warn(
 				{ error: result.error, fallbackVersion: mergedConfig.version },
@@ -95,6 +109,17 @@ export const makeWASocketAutoVersion = async (config: UserFacingSocketConfig) =>
 	// Create the socket
 	const sock = makeWASocket(mergedConfig)
 
+	// Listen for connection close to cleanup interval (Fix #1, #6)
+	// This handles both explicit sock.end() and internal disconnections
+	sock.ev.on('connection.update', (update) => {
+		if (update.connection === 'close') {
+			isSocketClosed = true
+			cleanupInterval()
+		} else if (update.connection === 'open') {
+			isSocketClosed = false
+		}
+	})
+
 	// Setup periodic version check if interval > 0
 	const checkIntervalMs = mergedConfig.versionCheckIntervalMs
 	if (checkIntervalMs > 0) {
@@ -104,35 +129,48 @@ export const makeWASocketAutoVersion = async (config: UserFacingSocketConfig) =>
 		)
 
 		versionCheckInterval = setInterval(async () => {
+			// Skip if socket is closed (Fix #8 - race condition)
+			if (isSocketClosed) {
+				cleanupInterval()
+				return
+			}
+
 			try {
 				logger?.debug('Checking for WhatsApp Web version update...')
 				const result = await fetchLatestWaWebVersion()
 
-				if (result.isLatest && versionsAreDifferent(currentVersion, result.version)) {
-					const isCritical = isCriticalVersionChange(currentVersion, result.version)
+				// Double-check socket is still open after async operation (Fix #8)
+				if (isSocketClosed) {
+					cleanupInterval()
+					return
+				}
+
+				if (result.isLatest && versionsAreDifferent(trackedVersion, result.version)) {
+					const isCritical = isCriticalVersionChange(trackedVersion, result.version)
+					const previousVersion = trackedVersion
 
 					logger?.info(
 						{
-							currentVersion,
+							currentVersion: previousVersion,
 							newVersion: result.version,
 							isCritical
 						},
 						'New WhatsApp Web version detected! Will use on next reconnection.'
 					)
 
-					// Emit event for user to handle
-					sock.ev.emit('version.update', {
-						currentVersion,
-						newVersion: result.version,
-						isCritical
-					})
+					// Update tracked version for next reconnection (Fix #7)
+					trackedVersion = [...result.version] as WAVersion
 
-					// Update the version for next reconnection
-					// This is the "soft" update - it will be used when WhatsApp naturally reconnects
-					currentVersion = result.version
-					mergedConfig.version = result.version
+					// Emit event for user to handle (only if socket still open)
+					if (!isSocketClosed) {
+						sock.ev.emit('version.update', {
+							currentVersion: previousVersion,
+							newVersion: result.version,
+							isCritical
+						})
+					}
 				} else if (result.isLatest) {
-					logger?.debug({ version: currentVersion }, 'Version is up to date')
+					logger?.debug({ version: trackedVersion }, 'Version is up to date')
 				} else {
 					logger?.warn({ error: result.error }, 'Failed to check for version update')
 				}
@@ -140,17 +178,6 @@ export const makeWASocketAutoVersion = async (config: UserFacingSocketConfig) =>
 				logger?.warn({ error }, 'Error checking for version update')
 			}
 		}, checkIntervalMs)
-
-		// Clean up interval when socket closes
-		const originalEnd = sock.end.bind(sock)
-		sock.end = (error) => {
-			if (versionCheckInterval) {
-				clearInterval(versionCheckInterval)
-				versionCheckInterval = null
-				logger?.debug('Stopped periodic version check')
-			}
-			return originalEnd(error)
-		}
 	}
 
 	return sock

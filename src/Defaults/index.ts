@@ -52,7 +52,6 @@ const SIX_HOURS_MS = 6 * 60 * 60 * 1000
 
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	version: version as WAVersion,
-	fetchLatestVersion: false,
 	versionCheckIntervalMs: SIX_HOURS_MS,
 	browser: Browsers.macOS('Chrome'),
 	waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
