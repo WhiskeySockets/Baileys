@@ -1187,7 +1187,17 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	ev.on('lid-mapping.update', async ({ lid, pn }) => {
 		try {
-			await signalRepository.lidMapping.storeLIDPNMappings([{ lid, pn }])
+			const result = await signalRepository.lidMapping.storeLIDPNMappings([{ lid, pn }])
+			logger.debug(
+				{ lid, pn, stored: result.stored, skipped: result.skipped, errors: result.errors },
+				'stored LID-PN mapping from update event'
+			)
+			if (result.stored > 0) {
+				logger.info(
+					{ lid, pn },
+					'fallback LID mapping is now available from update event'
+				)
+			}
 		} catch (error) {
 			logger.warn({ lid, pn, error }, 'Failed to store LID-PN mapping')
 		}

@@ -44,4 +44,42 @@ describe('LIDMappingStore', () => {
 			expect(result).toBeNull()
 		})
 	})
+
+	describe('getLIDsForPNs', () => {
+		it('should resolve multiple PNs in a single batch', async () => {
+			const pnOne = '11111@s.whatsapp.net'
+			const pnTwo = '22222:5@s.whatsapp.net'
+
+			// @ts-ignore
+			mockKeys.get.mockResolvedValue({ '11111': 'aaaaa', '22222': 'bbbbb' } as SignalDataTypeMap['lid-mapping'])
+
+			const result = await lidMappingStore.getLIDsForPNs([pnOne, pnTwo])
+
+			expect(result).toEqual(
+				expect.arrayContaining([
+					{ pn: pnOne, lid: 'aaaaa@lid' },
+					{ pn: pnTwo, lid: 'bbbbb:5@lid' }
+				])
+			)
+		})
+	})
+
+	describe('getPNsForLIDs', () => {
+		it('should resolve multiple LIDs in a single batch', async () => {
+			const lidOne = '33333@lid'
+			const lidTwo = '44444:99@hosted.lid'
+
+			// @ts-ignore
+			mockKeys.get.mockResolvedValue({ '33333_reverse': '77777', '44444_reverse': '88888' } as SignalDataTypeMap['lid-mapping'])
+
+			const result = await lidMappingStore.getPNsForLIDs([lidOne, lidTwo])
+
+			expect(result).toEqual(
+				expect.arrayContaining([
+					{ lid: lidOne, pn: '77777@s.whatsapp.net' },
+					{ lid: lidTwo, pn: '88888:99@hosted' }
+				])
+			)
+		})
+	})
 })
