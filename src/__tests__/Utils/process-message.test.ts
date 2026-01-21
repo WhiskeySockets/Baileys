@@ -1,5 +1,6 @@
 import type { WAMessage } from '../../Types'
-import { cleanMessage } from '../../Utils/process-message'
+import type { SignalRepositoryWithLIDStore } from '../../Types'
+import { cleanMessage, normalizeMessageJids } from '../../Utils/process-message'
 
 const createBaseMessage = (key: Partial<WAMessage['key']>, message?: Partial<WAMessage['message']>): WAMessage => {
 	return {
@@ -134,5 +135,53 @@ describe('cleanMessage', () => {
 			const message = createBaseMessage({}, {})
 			expect(() => cleanMessage(message, meId, meLid)).not.toThrow()
 		})
+	})
+})
+
+describe('normalizeMessageJids', () => {
+	const signalRepository = {
+		lidMapping: {
+			getPNForLID: jest.fn()
+		}
+	} as unknown as SignalRepositoryWithLIDStore
+
+	beforeEach(() => {
+		jest.clearAllMocks()
+	})
+
+	it('should resolve remoteJid LID to PN when mapping exists', async () => {
+		const message = createBaseMessage({
+			remoteJid: '123456789@lid'
+		})
+
+		signalRepository.lidMapping.getPNForLID = jest.fn().mockResolvedValue('5511999999999@s.whatsapp.net')
+
+		await normalizeMessageJids(message, signalRepository)
+
+		expect(message.key.remoteJid).toBe('5511999999999@s.whatsapp.net')
+	})
+
+	it('should keep LID when no PN mapping exists', async () => {
+		const message = createBaseMessage({
+			remoteJid: '123456789@lid'
+		})
+
+		signalRepository.lidMapping.getPNForLID = jest.fn().mockResolvedValue(null)
+
+		await normalizeMessageJids(message, signalRepository)
+
+		expect(message.key.remoteJid).toBe('123456789@lid')
+	})
+
+	it('should resolve participant LID to PN when mapping exists', async () => {
+		const message = createBaseMessage({
+			participant: '999999999@lid'
+		})
+
+		signalRepository.lidMapping.getPNForLID = jest.fn().mockResolvedValue('5511888888888@s.whatsapp.net')
+
+		await normalizeMessageJids(message, signalRepository)
+
+		expect(message.key.participant).toBe('5511888888888@s.whatsapp.net')
 	})
 })
