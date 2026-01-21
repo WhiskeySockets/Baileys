@@ -47,9 +47,13 @@ export const PROCESSABLE_HISTORY_TYPES = [
 	proto.HistorySync.HistorySyncType.INITIAL_STATUS_V3
 ]
 
+// 6 hours in milliseconds
+const SIX_HOURS_MS = 6 * 60 * 60 * 1000
+
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	version: version as WAVersion,
 	fetchLatestVersion: false,
+	versionCheckIntervalMs: SIX_HOURS_MS,
 	browser: Browsers.macOS('Chrome'),
 	waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
 	connectTimeoutMs: 20_000,

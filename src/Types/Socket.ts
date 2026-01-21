@@ -56,6 +56,13 @@ export type SocketConfig = {
 	 * @default false
 	 */
 	fetchLatestVersion: boolean
+	/**
+	 * Interval in milliseconds to check for new WhatsApp Web versions.
+	 * When a new version is detected, it will be used on the next reconnection.
+	 * Set to 0 to disable periodic checks.
+	 * @default 21600000 (6 hours)
+	 */
+	versionCheckIntervalMs: number
 	/** override browser config */
 	browser: WABrowserDescription
 	/** agent used for fetch requests -- uploading/downloading media */

@@ -107,6 +107,18 @@ export type BaileysEventMap = {
 
 	/** Settings and actions sync events */
 	'chats.lock': { id: string; locked: boolean }
+	/**
+	 * Emitted when a new WhatsApp Web version is detected.
+	 * The new version will be used on the next reconnection (soft update).
+	 */
+	'version.update': {
+		/** Previous version */
+		currentVersion: [number, number, number]
+		/** New version detected */
+		newVersion: [number, number, number]
+		/** Whether the update is critical (major version change) */
+		isCritical: boolean
+	}
 	'settings.update':
 		| { setting: 'unarchiveChats'; value: boolean }
 		| { setting: 'locale'; value: string }
