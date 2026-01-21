@@ -4,7 +4,7 @@ import type { AuthenticationState, SocketConfig, WAVersion } from '../Types'
 import { Browsers } from '../Utils/browser-utils'
 import logger from '../Utils/logger'
 // Single source of truth for WhatsApp Web version - imported from JSON
-import baileysVersionData from './baileys-version.json'
+import baileysVersionData from './baileys-version.json' with { type: 'json' }
 
 const version = baileysVersionData.version
 
