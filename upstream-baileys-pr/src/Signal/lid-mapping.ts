@@ -92,9 +92,8 @@ export class LIDMappingStore {
 	/**
 	 * Get LIDs for multiple PNs - Optimized with batch database queries
 	 *
-	 * Change: Implements "Pending Queue" pattern. Groups cache misses and
-	 * fetches them from the database in a single batch query.
-	 * Impact: Reduces database round-trips from O(N) to O(1).
+	 * Uses "Pending Queue" pattern: Groups cache misses and fetches them
+	 * from the database in a single batch query, reducing O(N) to O(1) round-trips.
 	 */
 	async getLIDsForPNs(pns: string[]): Promise<LIDMapping[] | null> {
 		const usyncFetch: { [_: string]: number[] } = {}
