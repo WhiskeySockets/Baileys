@@ -1,6 +1,7 @@
 import { DEFAULT_CONNECTION_CONFIG } from '../Defaults'
 import type { UserFacingSocketConfig, WAVersion } from '../Types'
 import { fetchLatestWaWebVersion } from '../Utils/generics'
+import { getCachedVersion, refreshVersionCache, clearVersionCache, getVersionCacheStatus } from '../Utils/version-cache'
 import { makeCommunitiesSocket } from './communities'
 
 /**
@@ -41,13 +42,16 @@ const makeWASocket = (config: UserFacingSocketConfig) => {
  * and periodic version checks (soft update - transparent to user).
  *
  * Features:
- * - Fetches latest version on connect
+ * - **Shared cache**: 150 connections = 1 request (not 150)
+ * - **Persistent cache**: Survives server restarts
+ * - Fetches latest version on connect (uses cache if valid)
  * - Checks for new versions every 6 hours (configurable)
  * - Updates version on next natural reconnection (transparent)
  * - Emits 'version.update' event when new version is detected
  *
  * @example
  * ```typescript
+ * // All connections share the same cached version
  * const sock = await makeWASocketAutoVersion({
  *     auth: state,
  *     versionCheckIntervalMs: 6 * 60 * 60 * 1000 // 6 hours (default)
@@ -67,6 +71,7 @@ export const makeWASocketAutoVersion = async (config: UserFacingSocketConfig) =>
 	}
 
 	const logger = mergedConfig.logger
+	const checkIntervalMs = mergedConfig.versionCheckIntervalMs
 
 	// Track version separately to avoid mutating config (Fix #7)
 	let trackedVersion: WAVersion = [...mergedConfig.version] as WAVersion
@@ -84,25 +89,31 @@ export const makeWASocketAutoVersion = async (config: UserFacingSocketConfig) =>
 		}
 	}
 
-	// Fetch latest version before connecting
+	// Fetch latest version using SHARED CACHE
+	// 150 connections starting = 1 request (deduplication)
 	try {
-		logger?.info('Fetching latest WhatsApp Web version...')
-		const result = await fetchLatestWaWebVersion()
+		const { version, fromCache, age } = await getCachedVersion({
+			cacheTtlMs: checkIntervalMs,
+			logger: logger as any
+		})
 
-		if (result.isLatest) {
-			logger?.info({ version: result.version }, 'Using latest WhatsApp Web version')
-			mergedConfig.version = result.version
-			trackedVersion = [...result.version] as WAVersion
-		} else {
-			logger?.warn(
-				{ error: result.error, fallbackVersion: mergedConfig.version },
-				'Failed to fetch latest version, using bundled version'
-			)
-		}
+		logger?.info(
+			{
+				version,
+				fromCache,
+				ageMinutes: fromCache ? Math.round(age / 60000) : 0
+			},
+			fromCache
+				? 'Using cached WhatsApp Web version'
+				: 'Fetched fresh WhatsApp Web version'
+		)
+
+		mergedConfig.version = version
+		trackedVersion = [...version] as WAVersion
 	} catch (error) {
 		logger?.warn(
 			{ error, fallbackVersion: mergedConfig.version },
-			'Error fetching latest version, using bundled version'
+			'Error fetching version, using bundled version'
 		)
 	}
 
@@ -121,7 +132,6 @@ export const makeWASocketAutoVersion = async (config: UserFacingSocketConfig) =>
 	})
 
 	// Setup periodic version check if interval > 0
-	const checkIntervalMs = mergedConfig.versionCheckIntervalMs
 	if (checkIntervalMs > 0) {
 		logger?.info(
 			{ intervalHours: checkIntervalMs / (60 * 60 * 1000) },
@@ -137,7 +147,24 @@ export const makeWASocketAutoVersion = async (config: UserFacingSocketConfig) =>
 
 			try {
 				logger?.debug('Checking for WhatsApp Web version update...')
-				const result = await fetchLatestWaWebVersion()
+
+				// Check cache status first
+				const cacheStatus = getVersionCacheStatus(checkIntervalMs)
+
+				// Only refresh if cache is expired (one socket refreshes, others use cache)
+				let newVersion: WAVersion
+
+				if (cacheStatus.isExpired) {
+					logger?.debug('Cache expired, refreshing...')
+					newVersion = await refreshVersionCache({ logger: logger as any })
+				} else {
+					// Cache still valid, just check if different from our tracked version
+					const { version } = await getCachedVersion({
+						cacheTtlMs: checkIntervalMs,
+						logger: logger as any
+					})
+					newVersion = version
+				}
 
 				// Double-check socket is still open after async operation (Fix #8)
 				if (isSocketClosed) {
@@ -145,34 +172,32 @@ export const makeWASocketAutoVersion = async (config: UserFacingSocketConfig) =>
 					return
 				}
 
-				if (result.isLatest && versionsAreDifferent(trackedVersion, result.version)) {
-					const isCritical = isCriticalVersionChange(trackedVersion, result.version)
+				if (versionsAreDifferent(trackedVersion, newVersion)) {
+					const isCritical = isCriticalVersionChange(trackedVersion, newVersion)
 					const previousVersion = trackedVersion
 
 					logger?.info(
 						{
 							currentVersion: previousVersion,
-							newVersion: result.version,
+							newVersion: newVersion,
 							isCritical
 						},
 						'New WhatsApp Web version detected! Will use on next reconnection.'
 					)
 
 					// Update tracked version for next reconnection (Fix #7)
-					trackedVersion = [...result.version] as WAVersion
+					trackedVersion = [...newVersion] as WAVersion
 
 					// Emit event for user to handle (only if socket still open)
 					if (!isSocketClosed) {
 						sock.ev.emit('version.update', {
 							currentVersion: previousVersion,
-							newVersion: result.version,
+							newVersion: newVersion,
 							isCritical
 						})
 					}
-				} else if (result.isLatest) {
-					logger?.debug({ version: trackedVersion }, 'Version is up to date')
 				} else {
-					logger?.warn({ error: result.error }, 'Failed to check for version update')
+					logger?.debug({ version: trackedVersion }, 'Version is up to date')
 				}
 			} catch (error) {
 				logger?.warn({ error }, 'Error checking for version update')
@@ -182,5 +207,8 @@ export const makeWASocketAutoVersion = async (config: UserFacingSocketConfig) =>
 
 	return sock
 }
+
+// Export cache utilities for manual control
+export { getCachedVersion, refreshVersionCache, clearVersionCache, getVersionCacheStatus }
 
 export default makeWASocket
