@@ -1,7 +1,7 @@
 import { LRUCache } from 'lru-cache'
 import type { LIDMapping, SignalKeyStoreWithTransaction } from '../Types'
 import type { ILogger } from '../Utils/logger'
-import { isHostedPnUser, isLidUser, isPnUser, jidDecode, jidNormalizedUser, WAJIDDomains } from '../WABinary'
+import { isHostedLidUser, isHostedPnUser, isLidUser, isPnUser, jidDecode, jidNormalizedUser, WAJIDDomains } from '../WABinary'
 
 // ============================================================================
 // CONFIGURATION
@@ -450,7 +450,8 @@ export class LIDMappingStore {
 
 		const usyncFetch: { [_: string]: number[] } = {}
 		const successfulPairs: { [_: string]: LIDMapping } = {}
-		const failedPns: string[] = []
+		const failedPns = new Set<string>()
+		const pendingByPnUser = new Map<string, Array<{ pn: string; decoded: ReturnType<typeof jidDecode> }>>()
 
 		for (const pn of pns) {
 			if (!isPnUser(pn) && !isHostedPnUser(pn)) continue
@@ -459,69 +460,112 @@ export class LIDMappingStore {
 			if (!decoded) continue
 
 			const pnUser = decoded.user
-			let lidUser = this.mappingCache.get(`pn:${pnUser}`)
+			const cachedLidUser = this.mappingCache.get(`pn:${pnUser}`)
 
-			if (lidUser) {
+			if (cachedLidUser) {
 				this.stats.cacheHits++
-			} else {
-				this.stats.cacheMisses++
-
-				// Cache miss - check database
-				try {
-					const stored = await this.retryOperation(
-						() => this.keys.get('lid-mapping', [pnUser]),
-						'get-lid-for-pn'
-					)
-					lidUser = stored[pnUser]
-
-					if (lidUser) {
-						this.stats.dbHits++
-						this.mappingCache.set(`pn:${pnUser}`, lidUser)
-						this.mappingCache.set(`lid:${lidUser}`, pnUser)
-					} else {
-						this.stats.dbMisses++
-
-						// Need to fetch from USync
-						if (this.config.debugLogging) {
-							this.logger.trace({ pnUser }, 'No LID mapping found, queuing for USync')
-						}
-
-						const device = decoded.device || 0
-						let normalizedPn = jidNormalizedUser(pn)
-						if (isHostedPnUser(normalizedPn)) {
-							normalizedPn = `${pnUser}@s.whatsapp.net`
-						}
-
-						if (!usyncFetch[normalizedPn]) {
-							usyncFetch[normalizedPn] = [device]
-						} else {
-							usyncFetch[normalizedPn]?.push(device)
-						}
-						continue
-					}
-				} catch (error) {
-					this.logger.error({ error, pn }, 'Failed to get LID mapping from database')
-					this.stats.failedOperations++
-					failedPns.push(pn)
+				const lidUser = cachedLidUser.toString()
+				if (!lidUser) {
+					this.logger.warn({ pn, lidUser }, 'Invalid or empty LID user')
 					continue
 				}
-			}
 
-			lidUser = lidUser?.toString()
-			if (!lidUser) {
-				this.logger.warn({ pn, lidUser }, 'Invalid or empty LID user')
+				const pnDevice = decoded.device ?? 0
+				const deviceSpecificLid = this.buildDeviceSpecificJid(
+					lidUser,
+					pnDevice,
+					decoded.server === 'hosted' ? 'hosted.lid' : 'lid'
+				)
+
+				if (this.config.debugLogging) {
+					this.logger.trace({ pn, deviceSpecificLid, pnDevice }, 'getLIDForPN: mapping found')
+				}
+
+				successfulPairs[pn] = { lid: deviceSpecificLid, pn }
 				continue
 			}
 
-			// Push the PN device ID to the LID to maintain device separation
-			const pnDevice = decoded.device ?? 0
-			const deviceSpecificLid = this.buildDeviceSpecificJid(lidUser, pnDevice, decoded.server === 'hosted' ? 'hosted.lid' : 'lid')
+			this.stats.cacheMisses++
+			const pendingForUser = pendingByPnUser.get(pnUser) ?? []
+			pendingForUser.push({ pn, decoded })
+			pendingByPnUser.set(pnUser, pendingForUser)
+		}
 
-			if (this.config.debugLogging) {
-				this.logger.trace({ pn, deviceSpecificLid, pnDevice }, 'getLIDForPN: mapping found')
+		if (pendingByPnUser.size > 0) {
+			const pnUsers = [...pendingByPnUser.keys()]
+			const dbFailedPnUsers = new Set<string>()
+
+			for (const batch of this.chunkArray(pnUsers, this.config.batchSize)) {
+				try {
+					const stored = await this.retryOperation(
+						() => this.keys.get('lid-mapping', batch),
+						'get-lid-for-pn'
+					)
+
+					for (const pnUser of batch) {
+						const lidUser = stored[pnUser]
+						if (lidUser) {
+							this.stats.dbHits++
+							this.mappingCache.set(`pn:${pnUser}`, lidUser)
+							this.mappingCache.set(`lid:${lidUser}`, pnUser)
+						} else {
+							this.stats.dbMisses++
+						}
+					}
+				} catch (error) {
+					this.logger.error({ error, batch }, 'Failed to get LID mapping batch from database')
+					this.stats.failedOperations += batch.length
+					batch.forEach(pnUser => dbFailedPnUsers.add(pnUser))
+				}
 			}
 
-			successfulPairs[pn] = { lid: deviceSpecificLid, pn }
+			for (const [pnUser, items] of pendingByPnUser.entries()) {
+				const lidUser = this.mappingCache.get(`pn:${pnUser}`)
+				for (const { pn, decoded } of items) {
+					if (lidUser) {
+						const lidUserString = lidUser.toString()
+						if (!lidUserString) {
+							this.logger.warn({ pn, lidUser }, 'Invalid or empty LID user')
+							continue
+						}
+
+						const pnDevice = decoded.device ?? 0
+						const deviceSpecificLid = this.buildDeviceSpecificJid(
+							lidUserString,
+							pnDevice,
+							decoded.server === 'hosted' ? 'hosted.lid' : 'lid'
+						)
+
+						if (this.config.debugLogging) {
+							this.logger.trace({ pn, deviceSpecificLid, pnDevice }, 'getLIDForPN: mapping found')
+						}
+
+						successfulPairs[pn] = { lid: deviceSpecificLid, pn }
+						continue
+					}
+
+					if (dbFailedPnUsers.has(pnUser)) {
+						failedPns.add(pn)
+					}
+
+					// Need to fetch from USync
+					if (this.config.debugLogging) {
+						this.logger.trace({ pnUser }, 'No LID mapping found, queuing for USync')
+					}
+
+					const device = decoded.device || 0
+					let normalizedPn = jidNormalizedUser(pn)
+					if (isHostedPnUser(normalizedPn)) {
+						normalizedPn = `${pnUser}@s.whatsapp.net`
+					}
+
+					if (!usyncFetch[normalizedPn]) {
+						usyncFetch[normalizedPn] = [device]
+					} else {
+						usyncFetch[normalizedPn]?.push(device)
+					}
+				}
+			}
 		}
 
 		// Fetch from USync if needed
@@ -530,9 +574,9 @@ export class LIDMappingStore {
 		}
 
 		// Log warning if some PNs failed lookup
-		if (failedPns.length > 0) {
+		if (failedPns.size > 0) {
 			this.logger.warn(
-				{ failedCount: failedPns.length, totalRequested: pns.length },
+				{ failedCount: failedPns.size, totalRequested: pns.length },
 				'Some PNs failed during getLIDsForPNs - results may be incomplete'
 			)
 		}
@@ -545,59 +589,112 @@ export class LIDMappingStore {
 	 * Get PN for LID - USER LEVEL with device construction
 	 */
 	async getPNForLID(lid: string): Promise<string | null> {
+		const results = await this.getPNsForLIDs([lid])
+		return results?.[0]?.pn || null
+	}
+
+	/**
+	 * Get PNs for multiple LIDs - Optimized batch operation
+	 */
+	async getPNsForLIDs(lids: string[]): Promise<LIDMapping[] | null> {
 		this.checkDestroyed()
 		this.stats.totalOperations++
 		this.stats.lastOperationAt = Date.now()
 
-		if (!isLidUser(lid)) return null
+		const successfulPairs: { [_: string]: LIDMapping } = {}
+		const failedLids = new Set<string>()
+		const pendingByLidUser = new Map<string, Array<{ lid: string; decoded: ReturnType<typeof jidDecode> }>>()
 
-		const decoded = jidDecode(lid)
-		if (!decoded) return null
+		const addResolvedPair = (lid: string, decoded: ReturnType<typeof jidDecode>, pnUser: string): void => {
+			const lidDevice = decoded?.device ?? 0
+			const server = decoded?.domainType === WAJIDDomains.HOSTED_LID ? 'hosted' : 's.whatsapp.net'
+			const pnJid = this.buildDeviceSpecificJid(pnUser, lidDevice, server)
 
-		const lidUser = decoded.user
-		let pnUser = this.mappingCache.get(`lid:${lidUser}`)
+			if (this.config.debugLogging) {
+				this.logger.trace({ lid, pnJid }, 'Found reverse mapping')
+			}
 
-		if (pnUser) {
-			this.stats.cacheHits++
-		} else {
+			successfulPairs[lid] = { lid, pn: pnJid }
+		}
+
+		for (const lid of lids) {
+			if (!isLidUser(lid) && !isHostedLidUser(lid)) continue
+
+			const decoded = jidDecode(lid)
+			if (!decoded) continue
+
+			const lidUser = decoded.user
+			const cachedPnUser = this.mappingCache.get(`lid:${lidUser}`)
+
+			if (cachedPnUser && typeof cachedPnUser === 'string') {
+				this.stats.cacheHits++
+				addResolvedPair(lid, decoded, cachedPnUser)
+				continue
+			}
+
 			this.stats.cacheMisses++
+			const pendingForUser = pendingByLidUser.get(lidUser) ?? []
+			pendingForUser.push({ lid, decoded })
+			pendingByLidUser.set(lidUser, pendingForUser)
+		}
 
-			// Cache miss - check database
-			try {
-				const stored = await this.retryOperation(
-					() => this.keys.get('lid-mapping', [`${lidUser}_reverse`]),
-					'get-pn-for-lid'
-				)
-				pnUser = stored[`${lidUser}_reverse`]
+		if (pendingByLidUser.size > 0) {
+			const reverseKeys = [...pendingByLidUser.keys()].map(lidUser => `${lidUser}_reverse`)
+			const dbFailedReverseKeys = new Set<string>()
 
-				if (!pnUser || typeof pnUser !== 'string') {
-					this.stats.dbMisses++
+			for (const batch of this.chunkArray(reverseKeys, this.config.batchSize)) {
+				try {
+					const stored = await this.retryOperation(
+						() => this.keys.get('lid-mapping', batch),
+						'get-pn-for-lid'
+					)
+
+					for (const reverseKey of batch) {
+						const lidUser = reverseKey.replace(/_reverse$/, '')
+						const pnUser = stored[reverseKey]
+						if (pnUser && typeof pnUser === 'string') {
+							this.stats.dbHits++
+							this.mappingCache.set(`lid:${lidUser}`, pnUser)
+							this.mappingCache.set(`pn:${pnUser}`, lidUser)
+						} else {
+							this.stats.dbMisses++
+						}
+					}
+				} catch (error) {
+					this.logger.error({ error, batch }, 'Failed to get PN mapping batch from database')
+					this.stats.failedOperations += batch.length
+					batch.forEach(reverseKey => dbFailedReverseKeys.add(reverseKey))
+				}
+			}
+
+			for (const [lidUser, items] of pendingByLidUser.entries()) {
+				const pnUser = this.mappingCache.get(`lid:${lidUser}`)
+				for (const { lid, decoded } of items) {
+					if (pnUser && typeof pnUser === 'string') {
+						addResolvedPair(lid, decoded, pnUser)
+						continue
+					}
+
+					if (dbFailedReverseKeys.has(`${lidUser}_reverse`)) {
+						failedLids.add(lid)
+					}
+
 					if (this.config.debugLogging) {
 						this.logger.trace({ lidUser }, 'No reverse mapping found')
 					}
-					return null
 				}
-
-				this.stats.dbHits++
-				this.mappingCache.set(`lid:${lidUser}`, pnUser)
-			} catch (error) {
-				this.logger.error({ error, lid }, 'Failed to get PN for LID')
-				this.stats.failedOperations++
-				return null
 			}
 		}
 
-		// Construct device-specific PN JID
-		const lidDevice = decoded.device ?? 0
-		const server = decoded.domainType === WAJIDDomains.HOSTED_LID ? 'hosted' : 's.whatsapp.net'
-		const pnJid = this.buildDeviceSpecificJid(pnUser, lidDevice, server)
-
-		if (this.config.debugLogging) {
-			this.logger.trace({ lid, pnJid }, 'Found reverse mapping')
+		if (failedLids.size > 0) {
+			this.logger.warn(
+				{ failedCount: failedLids.size, totalRequested: lids.length },
+				'Some LIDs failed during getPNsForLIDs - results may be incomplete'
+			)
 		}
 
-		this.recordMetrics('get-pn', 1)
-		return pnJid
+		this.recordMetrics('get-pn', Object.keys(successfulPairs).length)
+		return Object.keys(successfulPairs).length > 0 ? Object.values(successfulPairs) : null
 	}
 
 	/**

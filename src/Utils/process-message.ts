@@ -107,6 +107,40 @@ export const cleanMessage = (message: WAMessage, meId: string, meLid: string) =>
 	}
 }
 
+export const normalizeMessageJids = async (
+	message: WAMessage,
+	signalRepository: SignalRepositoryWithLIDStore,
+	logger?: ILogger
+): Promise<void> => {
+	const resolveLidToPn = async (jid: string | undefined | null): Promise<string | undefined> => {
+		if (!jid) {
+			return undefined
+		}
+
+		if (isLidUser(jid) || isHostedLidUser(jid)) {
+			const pn = await signalRepository.lidMapping.getPNForLID(jid)
+			if (pn) {
+				logger?.debug({ lid: jid, pn }, 'Resolved LID to PN for inbound message')
+			} else {
+				logger?.debug({ lid: jid }, 'PN not found for inbound LID, keeping LID')
+			}
+			return pn || jid
+		}
+
+		return jid
+	}
+
+	const resolvedRemoteJid = await resolveLidToPn(message.key.remoteJid)
+	if (resolvedRemoteJid) {
+		message.key.remoteJid = resolvedRemoteJid
+	}
+
+	const resolvedParticipant = await resolveLidToPn(message.key.participant)
+	if (resolvedParticipant) {
+		message.key.participant = resolvedParticipant
+	}
+}
+
 // TODO: target:audit AUDIT THIS FUNCTION AGAIN
 export const isRealMessage = (message: WAMessage) => {
 	const normalizedContent = normalizeMessageContent(message.message)
@@ -291,6 +325,22 @@ const processMessage = async (
 					// This is how WhatsApp Web learns mappings for chats with non-contacts
 					if (data.lidPnMappings?.length) {
 						logger?.debug({ count: data.lidPnMappings.length }, 'processing LID-PN mappings from history sync')
+						try {
+							const result = await signalRepository.lidMapping.storeLIDPNMappings(data.lidPnMappings)
+							logger?.debug(
+								{ stored: result.stored, skipped: result.skipped, errors: result.errors },
+								'stored LID-PN mappings from history sync'
+							)
+							if (result.stored > 0) {
+								logger?.info(
+									{ stored: result.stored },
+									'fallback LID mappings are now available from history sync'
+								)
+							}
+						} catch (error) {
+							logger?.warn({ error }, 'Failed to store LID-PN mappings from history sync')
+						}
+
 						// eslint-disable-next-line max-depth
 						for (const mapping of data.lidPnMappings) {
 							ev.emit('lid-mapping.update', mapping)
