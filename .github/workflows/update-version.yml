@@ -2,9 +2,14 @@ name: Update WhatsApp Version
 
 on:
   schedule:
-    # Run on the 1st of every month at 02:00 UTC
-    - cron: '0 0 * * 0'
+    # Run daily at 06:00 UTC (when WhatsApp typically deploys updates)
+    - cron: '0 6 * * *'
   workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force update even if version is the same'
+        required: false
+        default: 'false'
 
 permissions:
   contents: write
@@ -16,10 +21,10 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup Node and Corepack
-        uses: actions/setup-node@v3.6.0
+        uses: actions/setup-node@v4
         with:
           node-version: 20.x
 
@@ -29,7 +34,7 @@ jobs:
           corepack prepare yarn@4.x --activate
 
       - name: Restore Yarn Cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: yarn-cache
         with:
           path: .yarn/cache
@@ -69,7 +74,9 @@ jobs:
 
           # Create new branch, commit, and push
           git checkout -b "$BRANCH_NAME"
-          git add src/Defaults/baileys-version.json src/Defaults/index.ts src/Utils/generics.ts
+
+          # Only add the single source of truth file
+          git add src/Defaults/baileys-version.json
           git commit -m "chore: update WhatsApp Web version"
           git push origin "$BRANCH_NAME"
 
@@ -80,9 +87,19 @@ jobs:
 
           This PR updates the WhatsApp Web client revision to the latest version fetched from \`web.whatsapp.com\`.
 
-          **Files updated:**
-          - \`src/Defaults/baileys-version.json\`
-          - \`src/Defaults/index.ts\`
-          - \`src/Utils/generics.ts\`" \
+          **Single source of truth:**
+          - \`src/Defaults/baileys-version.json\` (other files import from here)
+
+          **Update frequency:** Daily at 06:00 UTC" \
             --base master \
             --head "$BRANCH_NAME" || echo "PR already exists or could not be created"
+
+      - name: Summary
+        run: |
+          echo "### WhatsApp Version Update" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.check_changes.outputs.has_changes }}" == "true" ]; then
+            echo "✅ New version detected and PR created" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "ℹ️ Already up to date" >> $GITHUB_STEP_SUMMARY
+          fi
