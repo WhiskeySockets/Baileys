@@ -1,7 +1,10 @@
 import { Boom } from '@hapi/boom'
 import { createHash, randomBytes } from 'crypto'
 import { proto } from '../../WAProto/index.js'
-const baileysVersion = [2, 3000, 1032141294]
+// Single source of truth for WhatsApp Web version - imported from JSON
+import baileysVersionData from '../Defaults/baileys-version.json'
+
+const baileysVersion = baileysVersionData.version
 import type {
 	BaileysEventEmitter,
 	BaileysEventMap,

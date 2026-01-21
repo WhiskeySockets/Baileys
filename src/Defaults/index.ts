@@ -3,8 +3,10 @@ import { makeLibSignalRepository } from '../Signal/libsignal'
 import type { AuthenticationState, SocketConfig, WAVersion } from '../Types'
 import { Browsers } from '../Utils/browser-utils'
 import logger from '../Utils/logger'
+// Single source of truth for WhatsApp Web version - imported from JSON
+import baileysVersionData from './baileys-version.json'
 
-const version = [2, 3000, 1032141294]
+const version = baileysVersionData.version
 
 export const UNAUTHORIZED_CODES = [401, 403, 419]
 
@@ -45,8 +47,12 @@ export const PROCESSABLE_HISTORY_TYPES = [
 	proto.HistorySync.HistorySyncType.INITIAL_STATUS_V3
 ]
 
+// 6 hours in milliseconds
+const SIX_HOURS_MS = 6 * 60 * 60 * 1000
+
 export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	version: version as WAVersion,
+	versionCheckIntervalMs: SIX_HOURS_MS,
 	browser: Browsers.macOS('Chrome'),
 	waWebSocketUrl: 'wss://web.whatsapp.com/ws/chat',
 	connectTimeoutMs: 20_000,
