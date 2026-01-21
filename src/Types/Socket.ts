@@ -49,6 +49,13 @@ export type SocketConfig = {
 	logger: ILogger
 	/** version to connect with */
 	version: WAVersion
+	/**
+	 * Automatically fetch the latest WhatsApp Web version on connect.
+	 * When enabled, fetches from web.whatsapp.com before connecting.
+	 * Falls back to bundled version if fetch fails.
+	 * @default false
+	 */
+	fetchLatestVersion: boolean
 	/** override browser config */
 	browser: WABrowserDescription
 	/** agent used for fetch requests -- uploading/downloading media */
