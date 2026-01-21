@@ -9,7 +9,7 @@ import type { ILogger } from './logger'
 
 const IV_LENGTH = 12
 
-const EMPTY_BUFFER = Buffer.alloc(0)
+const EMPTY_BUFFER = Buffer.alloc(0) as Buffer
 
 const generateIV = (counter: number): Uint8Array => {
 	const iv = new ArrayBuffer(IV_LENGTH)
@@ -70,7 +70,7 @@ export const makeNoiseHandler = ({
 	let counter = 0
 	let sentIntro = false
 
-	let inBytes: Buffer = Buffer.alloc(0)
+	let inBytes: Buffer = Buffer.alloc(0) as Buffer
 
 	let transport: TransportState | null = null
 	let isWaitingForTransport = false
@@ -78,7 +78,7 @@ export const makeNoiseHandler = ({
 
 	let introHeader: Buffer
 	if (routingInfo) {
-		introHeader = Buffer.alloc(7 + routingInfo.byteLength + NOISE_HEADER.length)
+		introHeader = Buffer.alloc(7 + routingInfo.byteLength + NOISE_HEADER.length) as Buffer
 		introHeader.write('ED', 0, 'utf8')
 		introHeader.writeUint8(0, 2)
 		introHeader.writeUint8(1, 3)
@@ -87,7 +87,7 @@ export const makeNoiseHandler = ({
 		introHeader.set(routingInfo, 7)
 		introHeader.set(NOISE_HEADER, 7 + routingInfo.byteLength)
 	} else {
-		introHeader = Buffer.from(NOISE_HEADER)
+		introHeader = Buffer.from(NOISE_HEADER) as Buffer
 	}
 
 	const authenticate = (data: Uint8Array) => {
@@ -116,16 +116,16 @@ export const makeNoiseHandler = ({
 		return result
 	}
 
-	const localHKDF = async (data: Uint8Array) => {
+	const localHKDF = async (data: Uint8Array): Promise<[Buffer, Buffer]> => {
 		const key = await hkdf(Buffer.from(data), 64, { salt, info: '' })
-		return [key.subarray(0, 32), key.subarray(32)]
+		return [key.subarray(0, 32) as Buffer, key.subarray(32) as Buffer]
 	}
 
 	const mixIntoKey = async (data: Uint8Array) => {
 		const [write, read] = await localHKDF(data)
-		salt = write!
-		encKey = read!
-		decKey = read!
+		salt = Buffer.from(write!) as unknown as Buffer<ArrayBuffer>
+		encKey = Buffer.from(read!) as unknown as Buffer<ArrayBuffer>
+		decKey = Buffer.from(read!) as unknown as Buffer<ArrayBuffer>
 		counter = 0
 	}
 
@@ -234,7 +234,7 @@ export const makeNoiseHandler = ({
 
 			const dataLen = data.byteLength
 			const introSize = sentIntro ? 0 : introHeader.length
-			const frame = Buffer.allocUnsafe(introSize + 3 + dataLen)
+			const frame = Buffer.allocUnsafe(introSize + 3 + dataLen) as Buffer
 
 			if (!sentIntro) {
 				frame.set(introHeader)
