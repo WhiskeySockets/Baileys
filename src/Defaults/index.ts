@@ -70,6 +70,9 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	generateHighQualityLinkPreview: false,
 	enableAutoSessionRecreation: true,
 	enableRecentMessageCache: true,
+	// Enable automatic recovery of Click-to-WhatsApp ads messages
+	// These arrive as "placeholder messages" and need to be requested from the phone
+	enableCTWARecovery: true,
 	options: {},
 	appStateMacVerification: {
 		patch: false,
