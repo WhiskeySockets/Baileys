@@ -67,8 +67,15 @@ import { extractGroupMetadata } from './groups'
 import { makeMessagesSocket } from './messages-send'
 
 export const makeMessagesRecvSocket = (config: SocketConfig) => {
-	const { logger, retryRequestDelayMs, maxMsgRetryCount, getMessage, shouldIgnoreJid, enableAutoSessionRecreation } =
-		config
+	const {
+		logger,
+		retryRequestDelayMs,
+		maxMsgRetryCount,
+		getMessage,
+		shouldIgnoreJid,
+		enableAutoSessionRecreation,
+		enableCTWARecovery = true
+	} = config
 	const sock = makeMessagesSocket(config)
 	const {
 		ev,
@@ -1227,10 +1234,41 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await decrypt()
 				// message failed to decrypt
 				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
-					if (
-						msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT ||
-						msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT
-					) {
+					// Handle missing keys - no recovery possible
+					if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
+						return sendMessageAck(node)
+					}
+
+					// Handle CTWA (Click-to-WhatsApp) ads messages
+					// These messages arrive as "Message absent from node" because Meta's ads endpoint
+					// doesn't encrypt messages for linked devices (multi-device architecture)
+					// We request the original message from the primary phone via PDO
+					if (msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT) {
+						if (enableCTWARecovery && msg.key) {
+							logger.info(
+								{ msgId: msg.key.id, remoteJid: msg.key.remoteJid },
+								'CTWA: Message absent from node detected, requesting placeholder resend from phone'
+							)
+							try {
+								const requestId = await requestPlaceholderResend(msg.key)
+								if (requestId === 'RESOLVED') {
+									logger.info(
+										{ msgId: msg.key.id },
+										'CTWA: Message was received while waiting to request resend'
+									)
+								} else if (requestId) {
+									logger.debug(
+										{ msgId: msg.key.id, requestId },
+										'CTWA: Placeholder resend requested successfully'
+									)
+								}
+							} catch (error) {
+								logger.warn(
+									{ error, msgId: msg.key.id },
+									'CTWA: Failed to request placeholder resend'
+								)
+							}
+						}
 						return sendMessageAck(node)
 					}
 

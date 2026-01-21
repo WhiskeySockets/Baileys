@@ -166,6 +166,24 @@ export type SocketConfig = {
 	/** Circuit breaker configuration for message operations */
 	messageCircuitBreaker?: Partial<CircuitBreakerOptions>
 
+	// === CTWA (Click-to-WhatsApp) Ads Recovery ===
+
+	/**
+	 * Enable automatic recovery of CTWA (Click-to-WhatsApp) ads messages.
+	 *
+	 * Messages from Facebook/Instagram ads don't arrive on linked devices because
+	 * Meta's ads endpoint doesn't encrypt messages for multi-device architecture.
+	 * They arrive as "Message absent from node" placeholders.
+	 *
+	 * When enabled, the library will automatically request the original message
+	 * from the primary phone via PDO (Peer Data Operation) when a CTWA placeholder
+	 * is detected.
+	 *
+	 * @default true
+	 * @see https://github.com/WhiskeySockets/Baileys/issues/1723
+	 */
+	enableCTWARecovery?: boolean
+
 	// === Listener Limits (Memory Leak Prevention) ===
 
 	/**
