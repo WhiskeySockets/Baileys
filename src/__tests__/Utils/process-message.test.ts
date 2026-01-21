@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals'
 import type { WAMessage } from '../../Types'
 import type { SignalRepositoryWithLIDStore } from '../../Types'
 import { cleanMessage, normalizeMessageJids } from '../../Utils/process-message'
@@ -139,14 +140,17 @@ describe('cleanMessage', () => {
 })
 
 describe('normalizeMessageJids', () => {
-	const signalRepository = {
-		lidMapping: {
-			getPNForLID: jest.fn()
-		}
-	} as unknown as SignalRepositoryWithLIDStore
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	let mockGetPNForLID: any
+	let signalRepository: SignalRepositoryWithLIDStore
 
 	beforeEach(() => {
-		jest.clearAllMocks()
+		mockGetPNForLID = jest.fn()
+		signalRepository = {
+			lidMapping: {
+				getPNForLID: mockGetPNForLID
+			}
+		} as unknown as SignalRepositoryWithLIDStore
 	})
 
 	it('should resolve remoteJid LID to PN when mapping exists', async () => {
@@ -154,7 +158,7 @@ describe('normalizeMessageJids', () => {
 			remoteJid: '123456789@lid'
 		})
 
-		signalRepository.lidMapping.getPNForLID = jest.fn().mockResolvedValue('5511999999999@s.whatsapp.net')
+		mockGetPNForLID.mockResolvedValue('5511999999999@s.whatsapp.net')
 
 		await normalizeMessageJids(message, signalRepository)
 
@@ -166,7 +170,7 @@ describe('normalizeMessageJids', () => {
 			remoteJid: '123456789@lid'
 		})
 
-		signalRepository.lidMapping.getPNForLID = jest.fn().mockResolvedValue(null)
+		mockGetPNForLID.mockResolvedValue(null)
 
 		await normalizeMessageJids(message, signalRepository)
 
@@ -178,7 +182,7 @@ describe('normalizeMessageJids', () => {
 			participant: '999999999@lid'
 		})
 
-		signalRepository.lidMapping.getPNForLID = jest.fn().mockResolvedValue('5511888888888@s.whatsapp.net')
+		mockGetPNForLID.mockResolvedValue('5511888888888@s.whatsapp.net')
 
 		await normalizeMessageJids(message, signalRepository)
 
