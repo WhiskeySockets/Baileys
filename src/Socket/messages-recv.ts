@@ -3,7 +3,7 @@ import { Boom } from '@hapi/boom'
 import { randomBytes } from 'crypto'
 import Long from 'long'
 import { proto } from '../../WAProto/index.js'
-import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
+import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT, STATUS_EXPIRY_SECONDS } from '../Defaults'
 import type {
 	GroupParticipant,
 	MessageReceiptType,
@@ -1228,6 +1228,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 					if (msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT) {
 						return sendMessageAck(node)
+					}
+
+					// Skip retry for expired status messages (>24h old)
+					if (isJidStatusBroadcast(msg.key.remoteJid!)) {
+						const messageAge = unixTimestampSeconds() - toNumber(msg.messageTimestamp)
+						if (messageAge > STATUS_EXPIRY_SECONDS) {
+							logger.debug(
+								{ msgId: msg.key.id, messageAge, remoteJid: msg.key.remoteJid },
+								'skipping retry for expired status message'
+							)
+							return sendMessageAck(node)
+						}
 					}
 
 					const errorMessage = msg?.messageStubParameters?.[0] || ''
