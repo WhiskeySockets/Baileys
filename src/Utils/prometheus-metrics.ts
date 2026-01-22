@@ -1855,15 +1855,23 @@ export function recordEventBuffered(eventType: string, count: number = 1): void 
  * Record a buffer flush operation
  * Used by event-buffer.ts for metrics integration
  */
-export function recordBufferFlush(eventCount: number, forced: boolean): void {
+export function recordBufferFlush(eventCount: number, forced: boolean, historyCacheSize?: number): void {
 	try {
 		// Use the main metrics object which has the correct labels ['type', 'reason']
 		metrics.bufferFlushes?.inc({ type: 'event', reason: forced ? 'forced' : 'normal' })
+
+		// Update buffer cache size if provided
+		if (typeof historyCacheSize === 'number') {
+			metrics.bufferCacheSize?.set({}, historyCacheSize)
+		}
 
 		// Also update the lazy-loaded event buffer metrics for detailed tracking
 		const ebMetrics = getEventBufferMetrics()
 		ebMetrics.bufferFlushEvents?.observe({}, eventCount)
 		ebMetrics.bufferCurrentSize?.set({}, 0) // Reset after flush
+		if (typeof historyCacheSize === 'number') {
+			ebMetrics.bufferHistoryCacheSize?.set({}, historyCacheSize)
+		}
 	} catch {
 		// Metrics not initialized, ignore silently
 	}

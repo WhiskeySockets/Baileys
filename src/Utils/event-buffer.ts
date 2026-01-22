@@ -410,9 +410,9 @@ export const makeEventBuffer = (
 		}
 	}
 
-	const recordFlushMetrics = (eventCount: number, forced: boolean) => {
+	const recordFlushMetrics = (eventCount: number, forced: boolean, cacheSize: number) => {
 		if (metricsModule) {
-			metricsModule.recordBufferFlush(eventCount, forced)
+			metricsModule.recordBufferFlush(eventCount, forced, cacheSize)
 		}
 	}
 
@@ -553,7 +553,7 @@ export const makeEventBuffer = (
 		stats.historyCacheSize = historyCache.size
 
 		// Record metrics
-		recordFlushMetrics(eventCount, force)
+		recordFlushMetrics(eventCount, force, historyCache.size)
 
 		// Log with [BAILEYS] prefix - use getMode() to avoid duplicating mode calculation logic
 		const flushDuration = Date.now() - flushStartTime
