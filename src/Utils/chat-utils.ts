@@ -1,5 +1,5 @@
 import { Boom } from '@hapi/boom'
-import { proto } from '../../WAProto/index.js'
+import { proto } from '../../WAProto'
 import type {
 	BaileysEventEmitter,
 	Chat,
@@ -264,7 +264,7 @@ export const decodeSyncdMutations = async (
 			})
 		}
 
-		return mutationKeys(keyEnc.keyData!)
+		return await mutationKeys(keyEnc.keyData!)
 	}
 }
 
