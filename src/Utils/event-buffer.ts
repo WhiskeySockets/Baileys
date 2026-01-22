@@ -61,7 +61,7 @@ export function loadBufferConfig(): BufferConfig {
 		maxBufferSize: parseInt(process.env.BAILEYS_BUFFER_MAX_SIZE || '5000', 10),
 		flushDebounceMs: parseInt(process.env.BAILEYS_BUFFER_FLUSH_DEBOUNCE_MS || '100', 10),
 		enableAdaptiveTimeout: process.env.BAILEYS_BUFFER_ADAPTIVE_TIMEOUT !== 'false',
-		enableMetrics: process.env.BAILEYS_BUFFER_METRICS === 'true',
+		enableMetrics: process.env.BAILEYS_BUFFER_METRICS === 'true' || process.env.BAILEYS_PROMETHEUS_ENABLED === 'true',
 		lruCleanupRatio: parseFloat(process.env.BAILEYS_BUFFER_LRU_CLEANUP_RATIO || '0.2'),
 		bufferWarnThreshold: parseFloat(process.env.BAILEYS_BUFFER_WARN_THRESHOLD || '0.8')
 	}
