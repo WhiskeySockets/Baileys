@@ -9,6 +9,7 @@
  */
 
 import { proto } from '../../../WAProto/index.js'
+import { metrics } from '../../Utils/prometheus-metrics.js'
 import { NO_MESSAGE_FOUND_ERROR_TEXT } from '../../Utils/decode-wa-message.js'
 
 describe('CTWA Recovery', () => {
@@ -103,6 +104,51 @@ describe('CTWA Recovery', () => {
 			expect(result).toBeDefined()
 			// Key fields will be null for empty buffer (protobuf default)
 			expect(result.key).toBeNull()
+		})
+	})
+
+	describe('Metrics Integration', () => {
+		it('should have all required CTWA metrics defined', () => {
+			expect(metrics.ctwaRecoveryRequests).toBeDefined()
+			expect(typeof metrics.ctwaRecoveryRequests.inc).toBe('function')
+
+			expect(metrics.ctwaMessagesRecovered).toBeDefined()
+			expect(typeof metrics.ctwaMessagesRecovered.inc).toBe('function')
+
+			expect(metrics.ctwaRecoveryLatency).toBeDefined()
+			expect(typeof metrics.ctwaRecoveryLatency.observe).toBe('function')
+
+			expect(metrics.ctwaRecoveryFailures).toBeDefined()
+			expect(typeof metrics.ctwaRecoveryFailures.inc).toBe('function')
+		})
+
+		it('should be able to call recovery request metric with status label', () => {
+			// Should not throw when called with valid labels
+			expect(() => {
+				metrics.ctwaRecoveryRequests.inc({ status: 'requested' })
+			}).not.toThrow()
+		})
+
+		it('should be able to call recovered messages counter', () => {
+			// Should not throw when called
+			expect(() => {
+				metrics.ctwaMessagesRecovered.inc()
+			}).not.toThrow()
+		})
+
+		it('should be able to observe recovery latency', () => {
+			const latencyMs = 2500
+			// Should not throw when called with valid latency
+			expect(() => {
+				metrics.ctwaRecoveryLatency.observe(latencyMs)
+			}).not.toThrow()
+		})
+
+		it('should be able to call failure counter with reason', () => {
+			// Should not throw when called with valid labels
+			expect(() => {
+				metrics.ctwaRecoveryFailures.inc({ reason: 'request_failed' })
+			}).not.toThrow()
 		})
 	})
 

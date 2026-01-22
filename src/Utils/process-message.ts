@@ -16,6 +16,7 @@ import type {
 	WAMessage,
 	WAMessageKey
 } from '../Types'
+import { metrics, recordHistorySyncMessages } from './prometheus-metrics.js'
 import { WAMessageStubType } from '../Types'
 import { getContentType, normalizeMessageContent } from '../Utils/messages'
 import {
@@ -352,6 +353,11 @@ const processMessage = async (
 						isLatest: histNotification.syncType !== proto.HistorySync.HistorySyncType.ON_DEMAND ? isLatest : undefined,
 						peerDataRequestSessionId: histNotification.peerDataRequestSessionId
 					})
+
+					// Record history sync metrics
+					if (data.messages?.length) {
+						recordHistorySyncMessages(data.messages.length)
+					}
 				}
 
 				break
@@ -402,11 +408,24 @@ const processMessage = async (
 					await placeholderResendCache?.del(response.stanzaId!)
 					// TODO: IMPLEMENT HISTORY SYNC ETC (sticker uploads etc.).
 					const { peerDataOperationResult } = response
+					let recoveredCount = 0
 					for (const result of peerDataOperationResult!) {
 						const { placeholderMessageResendResponse: retryResponse } = result
 						//eslint-disable-next-line max-depth
 						if (retryResponse) {
 							const webMessageInfo = proto.WebMessageInfo.decode(retryResponse.webMessageInfoBytes!)
+
+							// Track CTWA message recovery success
+							recoveredCount++
+							logger?.info(
+								{
+									msgId: webMessageInfo.key?.id,
+									remoteJid: webMessageInfo.key?.remoteJid,
+									requestId: response.stanzaId
+								},
+								'CTWA: Successfully recovered message via placeholder resend'
+							)
+
 							// wait till another upsert event is available, don't want it to be part of the PDO response message
 							// TODO: parse through proper message handling utilities (to add relevant key fields)
 							ev.emit('messages.upsert', {
@@ -415,6 +434,16 @@ const processMessage = async (
 								requestId: response.stanzaId!
 							})
 						}
+					}
+
+					// Update metrics for recovered messages
+					if (recoveredCount > 0) {
+						metrics.ctwaMessagesRecovered.inc(recoveredCount)
+						metrics.ctwaRecoveryRequests.inc({ status: 'success' })
+						logger?.debug(
+							{ recoveredCount, requestId: response.stanzaId },
+							'CTWA: Placeholder resend response processed'
+						)
 					}
 				}
 

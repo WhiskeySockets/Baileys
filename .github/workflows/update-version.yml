@@ -2,9 +2,15 @@ name: Update WhatsApp Version
 
 on:
   schedule:
-    # Run on the 1st of every month at 02:00 UTC
-    - cron: '0 0 * * 0'
+    # Run daily at 06:00 UTC (when WhatsApp typically deploys updates)
+    - cron: '0 6 * * *'
   workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force create PR even if version unchanged (useful for re-triggering)'
+        required: false
+        default: 'false'
+        type: boolean
 
 permissions:
   contents: write
@@ -16,10 +22,10 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup Node and Corepack
-        uses: actions/setup-node@v3.6.0
+        uses: actions/setup-node@v4
         with:
           node-version: 20.x
 
@@ -29,7 +35,7 @@ jobs:
           corepack prepare yarn@4.x --activate
 
       - name: Restore Yarn Cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: yarn-cache
         with:
           path: .yarn/cache
@@ -42,23 +48,52 @@ jobs:
 
       - name: Update WhatsApp Web Version
         id: update_version
-        run: yarn update:version
+        run: |
+          # Run the update script, capture exit code
+          # Exit codes: 0=success, 1=error, 2=fetch failed (fallback used)
+          set +e
+          yarn update:version
+          EXIT_CODE=$?
+          set -e
+
+          echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
+
+          # Only fail on fatal errors (exit code 1)
+          if [ $EXIT_CODE -eq 1 ]; then
+            echo "::error::Script failed with fatal error"
+            exit 1
+          fi
+
+          # Exit code 2 means fetch failed but fallback was used - this is a warning
+          if [ $EXIT_CODE -eq 2 ]; then
+            echo "::warning::Could not fetch latest version from WhatsApp servers"
+          fi
 
       - name: Check for changes
         id: check_changes
         run: |
+          FORCE="${{ inputs.force }}"
+
           if git diff --quiet; then
             echo "has_changes=false" >> $GITHUB_OUTPUT
+            if [ "$FORCE" == "true" ]; then
+              echo "force_mode=true" >> $GITHUB_OUTPUT
+              echo "::notice::Force mode enabled - will create PR even without changes"
+            else
+              echo "force_mode=false" >> $GITHUB_OUTPUT
+            fi
           else
             echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "force_mode=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Create Pull Request
-        if: steps.check_changes.outputs.has_changes == 'true'
+        if: steps.check_changes.outputs.has_changes == 'true' || steps.check_changes.outputs.force_mode == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           BRANCH_NAME="update-version/stable"
+          FORCE="${{ inputs.force }}"
 
           # Configure git
           git config user.name "github-actions[bot]"
@@ -67,22 +102,61 @@ jobs:
           # Check if branch exists and delete it
           git push origin --delete "$BRANCH_NAME" 2>/dev/null || true
 
-          # Create new branch, commit, and push
+          # Create new branch
           git checkout -b "$BRANCH_NAME"
-          git add src/Defaults/baileys-version.json src/Defaults/index.ts src/Utils/generics.ts
-          git commit -m "chore: update WhatsApp Web version"
+
+          # Only add the single source of truth file
+          git add src/Defaults/baileys-version.json
+
+          # Create commit (allow empty if force mode)
+          if [ "$FORCE" == "true" ] && git diff --cached --quiet; then
+            git commit --allow-empty -m "chore: force WhatsApp Web version check"
+          else
+            git commit -m "chore: update WhatsApp Web version"
+          fi
+
           git push origin "$BRANCH_NAME"
 
           # Create PR using GitHub CLI
-          gh pr create \
-            --title "chore: update WhatsApp Web version" \
-            --body "Automated WhatsApp Web version update.
+          PR_BODY="Automated WhatsApp Web version update.
 
           This PR updates the WhatsApp Web client revision to the latest version fetched from \`web.whatsapp.com\`.
 
-          **Files updated:**
-          - \`src/Defaults/baileys-version.json\`
-          - \`src/Defaults/index.ts\`
-          - \`src/Utils/generics.ts\`" \
+          **Single source of truth:**
+          - \`src/Defaults/baileys-version.json\` (other files import from here)
+
+          **Update frequency:** Daily at 06:00 UTC"
+
+          if [ "$FORCE" == "true" ]; then
+            PR_BODY="$PR_BODY
+
+          > **Note:** This PR was created with force mode enabled."
+          fi
+
+          gh pr create \
+            --title "chore: update WhatsApp Web version" \
+            --body "$PR_BODY" \
             --base master \
             --head "$BRANCH_NAME" || echo "PR already exists or could not be created"
+
+      - name: Summary
+        run: |
+          echo "### WhatsApp Version Update" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          EXIT_CODE="${{ steps.update_version.outputs.exit_code }}"
+          HAS_CHANGES="${{ steps.check_changes.outputs.has_changes }}"
+          FORCE_MODE="${{ steps.check_changes.outputs.force_mode }}"
+
+          if [ "$EXIT_CODE" == "2" ]; then
+            echo "⚠️ Warning: Could not fetch latest version from WhatsApp servers" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "$HAS_CHANGES" == "true" ]; then
+            echo "✅ New version detected and PR created" >> $GITHUB_STEP_SUMMARY
+          elif [ "$FORCE_MODE" == "true" ]; then
+            echo "🔄 Force mode: PR created (no version change)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "ℹ️ Already up to date" >> $GITHUB_STEP_SUMMARY
+          fi

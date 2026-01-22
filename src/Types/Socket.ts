@@ -49,6 +49,17 @@ export type SocketConfig = {
 	logger: ILogger
 	/** version to connect with */
 	version: WAVersion
+	/**
+	 * Interval in milliseconds to check for new WhatsApp Web versions.
+	 * When a new version is detected, it will be used on the next reconnection.
+	 * Set to 0 to disable periodic checks.
+	 *
+	 * Note: This option is only used by `makeWASocketAutoVersion()`.
+	 * The standard `makeWASocket()` does not perform automatic version checks.
+	 *
+	 * @default 21600000 (6 hours)
+	 */
+	versionCheckIntervalMs: number
 	/** override browser config */
 	browser: WABrowserDescription
 	/** agent used for fetch requests -- uploading/downloading media */
@@ -106,6 +117,21 @@ export type SocketConfig = {
 
 	/** Enable recent message caching for retry handling */
 	enableRecentMessageCache: boolean
+
+	/**
+	 * Enable automatic recovery of Click-to-WhatsApp (CTWA) ads messages.
+	 *
+	 * When enabled, messages from Facebook/Instagram ads that arrive as
+	 * "placeholder messages" (Message absent from node) will be automatically
+	 * recovered by requesting resend from the primary phone device.
+	 *
+	 * This is necessary because Meta's ads endpoint doesn't encrypt messages
+	 * for linked devices - they only arrive on the primary phone.
+	 *
+	 * @default true
+	 * @see https://github.com/WhiskeySockets/Baileys/issues/1723
+	 */
+	enableCTWARecovery: boolean
 
 	/**
 	 * Returns if a jid should be ignored,

@@ -4,6 +4,7 @@ import { randomBytes } from 'crypto'
 import Long from 'long'
 import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
+import { metrics, recordMessageReceived, recordHistorySyncMessages, recordMessageRetry, recordMessageFailure } from '../Utils/prometheus-metrics.js'
 import type {
 	GroupParticipant,
 	MessageReceiptType,
@@ -74,7 +75,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		getMessage,
 		shouldIgnoreJid,
 		enableAutoSessionRecreation,
-		enableCTWARecovery = true
+		enableCTWARecovery
 	} = config
 	const sock = makeMessagesSocket(config)
 	const {
@@ -408,11 +409,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			if (messageRetryManager.hasExceededMaxRetries(msgId)) {
 				logger.debug({ msgId }, 'reached retry limit with new retry manager, clearing')
 				messageRetryManager.markRetryFailed(msgId)
+				recordMessageFailure('retry', 'max_retries_reached')
 				return
 			}
 
 			// Increment retry count using new system
 			const retryCount = messageRetryManager.incrementRetryCount(msgId)
+			recordMessageRetry('retry')
 
 			// Use the new retry count for the rest of the logic
 			const key = `${msgId}:${msgKey?.participant}`
@@ -424,11 +427,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			if (retryCount >= maxMsgRetryCount) {
 				logger.debug({ retryCount, msgId }, 'reached retry limit, clearing')
 				await msgRetryCache.del(key)
+				recordMessageFailure('retry', 'max_retries_reached')
 				return
 			}
 
 			retryCount += 1
 			await msgRetryCache.set(key, retryCount)
+			recordMessageRetry('retry')
 		}
 
 		const key = `${msgId}:${msgKey?.participant}`
@@ -1234,32 +1239,47 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				await decrypt()
 				// message failed to decrypt
 				if (msg.messageStubType === proto.WebMessageInfo.StubType.CIPHERTEXT && msg.category !== 'peer') {
-					// Handle missing keys - no recovery possible
+					// Handle "Missing keys" - standard decryption failure, just ACK
 					if (msg?.messageStubParameters?.[0] === MISSING_KEYS_ERROR_TEXT) {
 						return sendMessageAck(node)
 					}
 
-					// Handle CTWA (Click-to-WhatsApp) ads messages
-					// These messages arrive as "Message absent from node" because Meta's ads endpoint
-					// doesn't encrypt messages for linked devices (multi-device architecture)
-					// We request the original message from the primary phone via PDO
+					// Handle "Message absent from node" - likely a CTWA (Click-to-WhatsApp) ads message
+					// These messages are only encrypted for the primary phone, not linked devices
+					// We need to request the message content from the phone via PDO (Peer Data Operation)
 					if (msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT) {
 						if (enableCTWARecovery && msg.key) {
+							const startTime = Date.now()
 							logger.info(
 								{ msgId: msg.key.id, remoteJid: msg.key.remoteJid },
 								'CTWA: Message absent from node detected, requesting placeholder resend from phone'
 							)
+
 							try {
+								metrics.ctwaRecoveryRequests.inc({ status: 'requested' })
+
 								const requestId = await requestPlaceholderResend(msg.key)
-								if (requestId === 'RESOLVED') {
-									logger.info(
-										{ msgId: msg.key.id },
-										'CTWA: Message was received while waiting to request resend'
-									)
-								} else if (requestId) {
+								if (requestId) {
 									logger.debug(
 										{ msgId: msg.key.id, requestId },
-										'CTWA: Placeholder resend requested successfully'
+										'CTWA: Placeholder resend request sent successfully'
+									)
+									// Note: The actual message will be emitted via 'messages.upsert'
+									// when the PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE is processed
+									// in process-message.ts:399-421
+								} else if (requestId === 'RESOLVED') {
+									// Message was received while we were waiting
+									logger.debug(
+										{ msgId: msg.key.id },
+										'CTWA: Message received during resend delay'
+									)
+									metrics.ctwaMessagesRecovered.inc()
+									metrics.ctwaRecoveryLatency.observe(Date.now() - startTime)
+								} else {
+									// Already requested (duplicate request prevented by cache)
+									logger.debug(
+										{ msgId: msg.key.id },
+										'CTWA: Resend already requested, skipping duplicate'
 									)
 								}
 							} catch (error) {
@@ -1267,8 +1287,15 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 									{ error, msgId: msg.key.id },
 									'CTWA: Failed to request placeholder resend'
 								)
+								metrics.ctwaRecoveryFailures.inc({ reason: 'request_failed' })
 							}
+						} else {
+							logger.debug(
+								{ msgId: msg.key?.id, enableCTWARecovery },
+								'CTWA recovery disabled or missing key, skipping placeholder resend'
+							)
 						}
+
 						return sendMessageAck(node)
 					}
 
@@ -1364,6 +1391,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				if (msg.key.id && msg.key.remoteJid) {
 					logMessageReceived(msg.key.id, msg.key.remoteJid)
 				}
+
+				// Record message received metric
+				const msgContent = msg.message
+				const msgType = msgContent?.conversation ? 'text'
+					: msgContent?.imageMessage ? 'image'
+					: msgContent?.videoMessage ? 'video'
+					: msgContent?.audioMessage ? 'audio'
+					: msgContent?.documentMessage ? 'document'
+					: msgContent?.stickerMessage ? 'sticker'
+					: msgContent?.reactionMessage ? 'reaction'
+					: 'other'
+				recordMessageReceived(msgType)
 			})
 		} catch (error) {
 			logger.error({ error, node: binaryNodeToString(node) }, 'error in handling message')

@@ -61,7 +61,7 @@ export function loadBufferConfig(): BufferConfig {
 		maxBufferSize: parseInt(process.env.BAILEYS_BUFFER_MAX_SIZE || '5000', 10),
 		flushDebounceMs: parseInt(process.env.BAILEYS_BUFFER_FLUSH_DEBOUNCE_MS || '100', 10),
 		enableAdaptiveTimeout: process.env.BAILEYS_BUFFER_ADAPTIVE_TIMEOUT !== 'false',
-		enableMetrics: process.env.BAILEYS_BUFFER_METRICS === 'true',
+		enableMetrics: process.env.BAILEYS_BUFFER_METRICS === 'true' || process.env.BAILEYS_PROMETHEUS_ENABLED === 'true',
 		lruCleanupRatio: parseFloat(process.env.BAILEYS_BUFFER_LRU_CLEANUP_RATIO || '0.2'),
 		bufferWarnThreshold: parseFloat(process.env.BAILEYS_BUFFER_WARN_THRESHOLD || '0.8')
 	}
@@ -329,6 +329,31 @@ class AdaptiveTimeoutCalculator {
 		}
 		return 'balanced'
 	}
+
+	/**
+	 * Get current event rate in events per second
+	 */
+	getEventRate(): number {
+		if (this.eventTimestamps.length < 2) {
+			return 0
+		}
+		const oldest = this.eventTimestamps[0]!
+		const newest = this.eventTimestamps[this.eventTimestamps.length - 1]!
+		const timeSpan = newest - oldest
+		if (timeSpan === 0) return 0
+		return (this.eventTimestamps.length / timeSpan) * 1000
+	}
+
+	/**
+	 * Check if system is healthy based on current mode
+	 * Conservative mode with low event rate is healthy
+	 * Aggressive mode might indicate high load
+	 */
+	isHealthy(): boolean {
+		const mode = this.getMode()
+		// System is considered healthy if not in aggressive mode (high load)
+		return mode !== 'aggressive'
+	}
 }
 
 // ============================================================================
@@ -410,9 +435,9 @@ export const makeEventBuffer = (
 		}
 	}
 
-	const recordFlushMetrics = (eventCount: number, forced: boolean) => {
+	const recordFlushMetrics = (eventCount: number, forced: boolean, cacheSize: number) => {
 		if (metricsModule) {
-			metricsModule.recordBufferFlush(eventCount, forced)
+			metricsModule.recordBufferFlush(eventCount, forced, cacheSize)
 		}
 	}
 
@@ -449,6 +474,10 @@ export const makeEventBuffer = (
 				currentSize: currentEventCount,
 				maxSize: config.maxBufferSize
 			})
+			// Record overflow metric
+			if (metricsModule) {
+				metricsModule.recordBufferOverflow()
+			}
 			flush(true)
 			return true
 		}
@@ -482,6 +511,10 @@ export const makeEventBuffer = (
 				removed: removed.length,
 				remaining: historyCache.size
 			})
+			// Record metrics for cache cleanup
+			if (metricsModule) {
+				metricsModule.recordCacheCleanup(removed.length)
+			}
 		}
 	}
 
@@ -553,7 +586,12 @@ export const makeEventBuffer = (
 		stats.historyCacheSize = historyCache.size
 
 		// Record metrics
-		recordFlushMetrics(eventCount, force)
+		recordFlushMetrics(eventCount, force, historyCache.size)
+
+		// Update adaptive metrics
+		if (config.enableAdaptiveTimeout && metricsModule) {
+			metricsModule.updateAdaptiveMetrics(adaptiveTimeout.getEventRate(), adaptiveTimeout.isHealthy())
+		}
 
 		// Log with [BAILEYS] prefix - use getMode() to avoid duplicating mode calculation logic
 		const flushDuration = Date.now() - flushStartTime
@@ -599,11 +637,16 @@ export const makeEventBuffer = (
 		}
 
 		logger.debug('Destroying event buffer')
+		const hadPendingFlush = isBuffering
 		destroyed = true
 
 		// Flush any remaining events
-		if (isBuffering) {
+		if (hadPendingFlush) {
 			flush(true)
+			// Record final flush metric
+			if (metricsModule) {
+				metricsModule.recordBufferFinalFlush()
+			}
 		}
 
 		// Clear all timers
@@ -615,6 +658,11 @@ export const makeEventBuffer = (
 
 		// Remove all event listeners
 		ev.removeAllListeners()
+
+		// Record buffer destroyed metric
+		if (metricsModule) {
+			metricsModule.recordBufferDestroyed('normal', hadPendingFlush)
+		}
 
 		logger.debug('Event buffer destroyed successfully')
 	}

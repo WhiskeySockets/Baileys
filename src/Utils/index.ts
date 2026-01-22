@@ -33,5 +33,8 @@ export * from './cache-utils'
 export * from './circuit-breaker'
 export * from './retry-utils'
 
+// Version management
+export * from './version-cache'
+
 // Event streaming
 export * from './baileys-event-stream'

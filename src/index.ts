@@ -1,4 +1,4 @@
-import makeWASocket from './Socket/index'
+import makeWASocket, { makeWASocketAutoVersion } from './Socket/index'
 
 export * from '../WAProto/index.js'
 export * from './Utils/index'
@@ -9,5 +9,5 @@ export * from './WAM/index'
 export * from './WAUSync/index'
 
 export type WASocket = ReturnType<typeof makeWASocket>
-export { makeWASocket }
+export { makeWASocket, makeWASocketAutoVersion }
 export default makeWASocket
