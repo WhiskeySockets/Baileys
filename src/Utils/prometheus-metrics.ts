@@ -95,6 +95,31 @@ export function getConfiguredPrefix(): string {
 	return configuredPrefix
 }
 
+/**
+ * Check if a metric with the given name already exists in the custom registry
+ */
+function metricExists(name: string): boolean {
+	const fullName = getFullMetricName(name)
+	try {
+		const existing = customRegistry.getSingleMetric(fullName)
+		return existing !== undefined
+	} catch {
+		return false
+	}
+}
+
+/**
+ * Get an existing metric from the custom registry
+ */
+function getExistingMetric<T>(name: string): T | undefined {
+	const fullName = getFullMetricName(name)
+	try {
+		return customRegistry.getSingleMetric(fullName) as T | undefined
+	} catch {
+		return undefined
+	}
+}
+
 // ============================================
 // Configuration
 // ============================================
@@ -1051,10 +1076,15 @@ export class SystemMetricsCollector {
 			new Gauge('system_load_average', 'System load average', ['period'])
 		)
 
-		// Event loop lag
-		this.eventLoopLag = registry.register(
-			new Histogram('nodejs_eventloop_lag_seconds', 'Event loop lag in seconds', [], DEFAULT_LATENCY_BUCKETS)
-		)
+		// Event loop lag - check if already exists (may be created by collectDefaultMetrics)
+		const existingEventLoopLag = getExistingMetric<Histogram>('nodejs_eventloop_lag_seconds')
+		if (existingEventLoopLag) {
+			this.eventLoopLag = existingEventLoopLag
+		} else {
+			this.eventLoopLag = registry.register(
+				new Histogram('nodejs_eventloop_lag_seconds', 'Event loop lag in seconds', [], DEFAULT_LATENCY_BUCKETS)
+			)
+		}
 
 		// Initialize CPU baseline
 		this.lastCpuUsage = process.cpuUsage()
