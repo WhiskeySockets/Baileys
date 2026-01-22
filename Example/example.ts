@@ -188,7 +188,7 @@ const startSock = async() => {
 			}
 
 			if (events['contacts.upsert']) {
-				logger.debug(events['message-receipt.update'])
+				logger.debug(events['contacts.upsert'], 'contacts.upsert event fired')
 			}
 
 			if(events['messages.reaction']) {
@@ -215,11 +215,11 @@ const startSock = async() => {
 			}
 
 			if(events['chats.delete']) {
-				logger.debug('chats deleted ', events['chats.delete'])
+				logger.debug(events['chats.delete'], 'chats.delete event fired')
 			}
 
 			if(events['group.member-tag.update']) {
-				logger.debug('group member tag update', JSON.stringify(events['group.member-tag.update'], undefined, 2))
+				logger.debug(events['group.member-tag.update'], 'group.member-tag.update event fired')
 			}
 		}
 	)
