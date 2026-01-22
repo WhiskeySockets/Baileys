@@ -1234,6 +1234,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 						} catch (error) {
 							logger.error({ error }, 'Failed to request placeholder resend')
 						}
+
 						return sendMessageAck(node)
 					}
 
