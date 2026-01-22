@@ -1227,13 +1227,21 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 
 					if (msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT) {
-						logger.debug('Message absent from node, requesting placeholder resend from phone')
-						try {
-							const requestId = await requestPlaceholderResend(msg.key)
-							logger.debug({ requestId }, 'Requested placeholder resend from phone')
-						} catch (error) {
-							logger.error({ error }, 'Failed to request placeholder resend')
+						// Skip old messages
+						const messageAge = unixTimestampSeconds() - toNumber(msg.messageTimestamp)
+						const MAX_PLACEHOLDER_RESEND_AGE = 7 * 24 * 60 * 60 // 7 days
+
+						if (messageAge > MAX_PLACEHOLDER_RESEND_AGE) {
+							logger.debug({ msgId: msg.key.id, messageAge }, 'skipping placeholder resend for old message')
+							return sendMessageAck(node)
 						}
+
+						logger.debug('Message absent from node, requesting placeholder resend from phone')
+
+						// Fire and forget - don't block ACK
+						requestPlaceholderResend(msg.key).catch(error => {
+							logger.error({ error }, 'Failed to request placeholder resend')
+						})
 
 						return sendMessageAck(node)
 					}
