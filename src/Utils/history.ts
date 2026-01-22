@@ -6,6 +6,7 @@ import { WAMessageStubType } from '../Types'
 import { toNumber } from './generics'
 import { normalizeMessageContent } from './messages'
 import { downloadContentFromMessage } from './messages-media'
+import type { ILogger } from './logger.js'
 import {
 	isHostedLidUser,
 	isHostedPnUser,
@@ -255,11 +256,16 @@ const extractPnFromMessages = (messages: proto.IHistorySyncMsg[]): string | unde
  * - `@newsletter` (channels)
  *
  * @param item - The history sync protocol buffer to process
+ * @param logger - Optional logger instance for trace-level debugging
  * @returns Processed data including chats, contacts, messages, and LID-PN mappings
  *
  * @see https://github.com/WhiskeySockets/Baileys/issues/2263
  */
-export const processHistoryMessage = (item: proto.IHistorySync) => {
+export const processHistoryMessage = (item: proto.IHistorySync, logger?: ILogger) => {
+	logger?.trace(
+		{ syncType: item.syncType, progress: item.progress },
+		'processing history sync'
+	)
 	const messages: WAMessage[] = []
 	const contacts: Contact[] = []
 	const chats: Chat[] = []
@@ -393,13 +399,19 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 /**
  * Downloads and processes a history sync notification in one step.
  *
+ * Handles two cases:
+ * - Inline payload: Decodes directly from `initialHistBootstrapInlinePayload`
+ * - Remote download: Fetches from WhatsApp servers via `downloadHistory`
+ *
  * @param msg - The history sync notification message
  * @param options - Request options for the download
- * @returns Processed history data
+ * @param logger - Optional logger instance for trace-level debugging
+ * @returns Processed history data including chats, contacts, messages, and LID-PN mappings
  */
 export const downloadAndProcessHistorySyncNotification = async (
 	msg: proto.Message.IHistorySyncNotification,
-	options: RequestInit
+	options: RequestInit,
+	logger?: ILogger
 ) => {
 	let historyMsg: proto.HistorySync
 	if (msg.initialHistBootstrapInlinePayload) {
@@ -408,7 +420,7 @@ export const downloadAndProcessHistorySyncNotification = async (
 		historyMsg = await downloadHistory(msg, options)
 	}
 
-	return processHistoryMessage(historyMsg)
+	return processHistoryMessage(historyMsg, logger)
 }
 
 /**
