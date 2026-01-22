@@ -1922,6 +1922,18 @@ export function recordBufferOverflow(): void {
 	}
 }
 
+/**
+ * Record a connection error
+ * Used by socket.ts when connection fails
+ */
+export function recordConnectionError(errorType: string): void {
+	try {
+		metrics.connectionErrors?.inc({ error_type: errorType })
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
 // ============================================
 // Global Instance
 // ============================================

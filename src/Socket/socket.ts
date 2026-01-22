@@ -54,6 +54,7 @@ import {
 	jidEncode,
 	S_WHATSAPP_NET
 } from '../WABinary'
+import { recordConnectionError } from '../Utils/prometheus-metrics'
 import { BinaryInfo } from '../WAM/BinaryInfo.js'
 import { USyncQuery, USyncUser } from '../WAUSync/'
 import { WebSocketClient } from './Client'
@@ -729,6 +730,41 @@ export const makeSocket = (config: SocketConfig) => {
 
 		closed = true
 		logger.info({ trace: error?.stack }, error ? 'connection errored' : 'connection closed')
+
+		// Record connection error metric
+		if (error) {
+			const statusCode = (error as Boom)?.output?.statusCode || 0
+			let errorType = 'unknown'
+			switch (statusCode) {
+				case DisconnectReason.connectionClosed:
+					errorType = 'connection_closed'
+					break
+				case DisconnectReason.connectionLost:
+					errorType = 'connection_lost'
+					break
+				case DisconnectReason.connectionReplaced:
+					errorType = 'connection_replaced'
+					break
+				case DisconnectReason.timedOut:
+					errorType = 'timed_out'
+					break
+				case DisconnectReason.loggedOut:
+					errorType = 'logged_out'
+					break
+				case DisconnectReason.badSession:
+					errorType = 'bad_session'
+					break
+				case DisconnectReason.restartRequired:
+					errorType = 'restart_required'
+					break
+				case DisconnectReason.multideviceMismatch:
+					errorType = 'multidevice_mismatch'
+					break
+				default:
+					errorType = `error_${statusCode}`
+			}
+			recordConnectionError(errorType)
+		}
 
 		clearInterval(keepAliveReq)
 		clearTimeout(qrTimer)
