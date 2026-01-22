@@ -1900,6 +1900,30 @@ export async function shutdownMetrics(): Promise<void> {
 }
 
 // ============================================
+// Auto-initialization
+// ============================================
+
+/**
+ * Auto-start the Prometheus metrics server when module is loaded
+ * and BAILEYS_PROMETHEUS_ENABLED=true
+ *
+ * This ensures the /metrics endpoint is available without requiring
+ * manual initialization in the application code.
+ */
+if (metricsConfig.enabled) {
+	// Use setImmediate to avoid blocking module loading
+	setImmediate(() => {
+		initializeMetrics()
+			.then(() => {
+				console.log('[Prometheus] Auto-initialized metrics server successfully')
+			})
+			.catch((error) => {
+				console.error('[Prometheus] Failed to auto-initialize metrics server:', error)
+			})
+	})
+}
+
+// ============================================
 // Default Export
 // ============================================
 
