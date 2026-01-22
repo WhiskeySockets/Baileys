@@ -1391,6 +1391,12 @@ export const metrics = {
 	connectionLatency: baileysMetrics.register(
 		new Histogram('connection_latency_ms', 'Connection establishment latency in ms', [], [100, 250, 500, 1000, 2500, 5000, 10000])
 	),
+	activeConnections: baileysMetrics.register(
+		new Gauge('active_connections', 'Number of active WhatsApp connections')
+	),
+	connectionErrors: baileysMetrics.register(
+		new Counter('connection_errors_total', 'Total connection errors', ['error_type'])
+	),
 
 	// ========== Message Metrics ==========
 	messagesSent: baileysMetrics.register(
@@ -1472,6 +1478,18 @@ export const metrics = {
 	eventsProcessed: baileysMetrics.register(
 		new Counter('events_processed_total', 'Total events processed from buffer', ['event_type'])
 	),
+	bufferDestroyed: baileysMetrics.register(
+		new Counter('buffer_destroyed_total', 'Total buffers destroyed', ['reason', 'had_pending_flush'])
+	),
+	bufferFinalFlush: baileysMetrics.register(
+		new Counter('buffer_final_flush_total', 'Total final flushes during destruction')
+	),
+	bufferCacheCleanup: baileysMetrics.register(
+		new Counter('buffer_cache_cleanup_total', 'Total cache cleanup operations')
+	),
+	bufferCacheSize: baileysMetrics.register(
+		new Gauge('buffer_cache_size', 'Current buffer cache size')
+	),
 
 	// ========== Adaptive Flush Metrics ==========
 	adaptiveFlushInterval: baileysMetrics.register(
@@ -1488,6 +1506,12 @@ export const metrics = {
 	),
 	adaptiveFlushEfficiency: baileysMetrics.register(
 		new Gauge('adaptive_flush_efficiency_percent', 'Flush efficiency percentage')
+	),
+	adaptiveHealthStatus: baileysMetrics.register(
+		new Gauge('adaptive_health_status', 'Adaptive system health status (0=unhealthy, 1=healthy)')
+	),
+	adaptiveEventRate: baileysMetrics.register(
+		new Gauge('adaptive_event_rate', 'Current event rate per second')
 	),
 
 	// ========== Error Metrics ==========
