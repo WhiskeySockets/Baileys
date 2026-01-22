@@ -56,6 +56,7 @@ import {
 	S_WHATSAPP_NET
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
+import { recordMessageSent, recordMessageRetry, recordMessageFailure } from '../Utils/prometheus-metrics'
 import { makeNewsletterSocket } from './newsletter'
 
 export const makeMessagesSocket = (config: SocketConfig) => {
@@ -595,6 +596,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		const nodes = (await Promise.all(encryptionPromises)).filter(node => node !== null) as BinaryNode[]
 
 		if (recipientJids.length > 0 && nodes.length === 0) {
+			recordMessageFailure('send', 'encryption_failed')
 			throw new Boom('All encryptions failed', { statusCode: 500 })
 		}
 
@@ -1037,6 +1039,17 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			// Log with [BAILEYS] prefix
 			logMessageSent(msgId, destinationJid)
+
+			// Record message sent metric
+			const msgType = message.conversation ? 'text'
+				: message.imageMessage ? 'image'
+				: message.videoMessage ? 'video'
+				: message.audioMessage ? 'audio'
+				: message.documentMessage ? 'document'
+				: message.stickerMessage ? 'sticker'
+				: message.reactionMessage ? 'reaction'
+				: 'other'
+			recordMessageSent(msgType)
 
 			// Add message to retry cache if enabled
 			if (messageRetryManager && !participant) {

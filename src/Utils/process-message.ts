@@ -16,7 +16,7 @@ import type {
 	WAMessage,
 	WAMessageKey
 } from '../Types'
-import { metrics } from './prometheus-metrics.js'
+import { metrics, recordHistorySyncMessages } from './prometheus-metrics.js'
 import { WAMessageStubType } from '../Types'
 import { getContentType, normalizeMessageContent } from '../Utils/messages'
 import {
@@ -353,6 +353,11 @@ const processMessage = async (
 						isLatest: histNotification.syncType !== proto.HistorySync.HistorySyncType.ON_DEMAND ? isLatest : undefined,
 						peerDataRequestSessionId: histNotification.peerDataRequestSessionId
 					})
+
+					// Record history sync metrics
+					if (data.messages?.length) {
+						recordHistorySyncMessages(data.messages.length)
+					}
 				}
 
 				break

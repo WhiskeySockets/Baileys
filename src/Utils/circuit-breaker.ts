@@ -380,6 +380,11 @@ export class CircuitBreaker extends EventEmitter {
 				this.options.onOpen()
 				this.emit('open')
 
+				// Record circuit breaker trip metric
+				if (this.options.collectMetrics) {
+					metrics.circuitBreakerTrips?.inc({ name: this.options.name })
+				}
+
 				// Schedule transition to HALF_OPEN
 				this.resetTimer = setTimeout(() => {
 					this.transitionTo('half-open')

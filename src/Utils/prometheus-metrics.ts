@@ -95,6 +95,31 @@ export function getConfiguredPrefix(): string {
 	return configuredPrefix
 }
 
+/**
+ * Check if a metric with the given name already exists in the custom registry
+ */
+function metricExists(name: string): boolean {
+	const fullName = getFullMetricName(name)
+	try {
+		const existing = customRegistry.getSingleMetric(fullName)
+		return existing !== undefined
+	} catch {
+		return false
+	}
+}
+
+/**
+ * Get an existing metric from the custom registry
+ */
+function getExistingMetric<T>(name: string): T | undefined {
+	const fullName = getFullMetricName(name)
+	try {
+		return customRegistry.getSingleMetric(fullName) as T | undefined
+	} catch {
+		return undefined
+	}
+}
+
 // ============================================
 // Configuration
 // ============================================
@@ -1051,9 +1076,11 @@ export class SystemMetricsCollector {
 			new Gauge('system_load_average', 'System load average', ['period'])
 		)
 
-		// Event loop lag
+		// Event loop lag - use different name to avoid conflict with collectDefaultMetrics
+		// prom-client's collectDefaultMetrics creates nodejs_eventloop_lag_seconds
+		// We use system_eventloop_lag_seconds to avoid duplicate registration
 		this.eventLoopLag = registry.register(
-			new Histogram('nodejs_eventloop_lag_seconds', 'Event loop lag in seconds', [], DEFAULT_LATENCY_BUCKETS)
+			new Histogram('system_eventloop_lag_seconds', 'Event loop lag in seconds', [], DEFAULT_LATENCY_BUCKETS)
 		)
 
 		// Initialize CPU baseline
@@ -1364,6 +1391,12 @@ export const metrics = {
 	connectionLatency: baileysMetrics.register(
 		new Histogram('connection_latency_ms', 'Connection establishment latency in ms', [], [100, 250, 500, 1000, 2500, 5000, 10000])
 	),
+	activeConnections: baileysMetrics.register(
+		new Gauge('active_connections', 'Number of active WhatsApp connections')
+	),
+	connectionErrors: baileysMetrics.register(
+		new Counter('connection_errors_total', 'Total connection errors', ['error_type'])
+	),
 
 	// ========== Message Metrics ==========
 	messagesSent: baileysMetrics.register(
@@ -1445,6 +1478,18 @@ export const metrics = {
 	eventsProcessed: baileysMetrics.register(
 		new Counter('events_processed_total', 'Total events processed from buffer', ['event_type'])
 	),
+	bufferDestroyed: baileysMetrics.register(
+		new Counter('buffer_destroyed_total', 'Total buffers destroyed', ['reason', 'had_pending_flush'])
+	),
+	bufferFinalFlush: baileysMetrics.register(
+		new Counter('buffer_final_flush_total', 'Total final flushes during destruction')
+	),
+	bufferCacheCleanup: baileysMetrics.register(
+		new Counter('buffer_cache_cleanup_total', 'Total cache cleanup operations')
+	),
+	bufferCacheSize: baileysMetrics.register(
+		new Gauge('buffer_cache_size', 'Current buffer cache size')
+	),
 
 	// ========== Adaptive Flush Metrics ==========
 	adaptiveFlushInterval: baileysMetrics.register(
@@ -1461,6 +1506,12 @@ export const metrics = {
 	),
 	adaptiveFlushEfficiency: baileysMetrics.register(
 		new Gauge('adaptive_flush_efficiency_percent', 'Flush efficiency percentage')
+	),
+	adaptiveHealthStatus: baileysMetrics.register(
+		new Gauge('adaptive_health_status', 'Adaptive system health status (0=unhealthy, 1=healthy)')
+	),
+	adaptiveEventRate: baileysMetrics.register(
+		new Gauge('adaptive_event_rate', 'Current event rate per second')
 	),
 
 	// ========== Error Metrics ==========
@@ -1747,31 +1798,19 @@ export function trackOperation(
 // Event Buffer Metrics Integration
 // ============================================
 
-// Event buffer metrics (lazy initialized)
+// Event buffer metrics (lazy initialized) - for detailed buffer tracking
+// Note: bufferFlushes is NOT here - use metrics.bufferFlushes from main metrics object
 let eventBufferMetrics: {
-	eventsBuffered: Counter | null
-	bufferFlushes: Counter | null
 	bufferFlushEvents: Histogram | null
 	bufferCurrentSize: Gauge | null
 	bufferPeakSize: Gauge | null
 	bufferHistoryCacheSize: Gauge | null
-	bufferOverflows: Counter | null
 	bufferLruCleanups: Counter | null
 } | null = null
 
 function getEventBufferMetrics() {
 	if (!eventBufferMetrics) {
 		eventBufferMetrics = {
-			eventsBuffered: new Counter(
-				'events_buffered_total',
-				'Total number of events buffered',
-				['event_type']
-			),
-			bufferFlushes: new Counter(
-				'buffer_flushes_total',
-				'Total number of buffer flushes',
-				['forced']
-			),
 			bufferFlushEvents: new Histogram(
 				'buffer_flush_events',
 				'Number of events per buffer flush',
@@ -1790,24 +1829,11 @@ function getEventBufferMetrics() {
 				'buffer_history_cache_size',
 				'Current size of history cache'
 			),
-			bufferOverflows: new Counter(
-				'buffer_overflows_total',
-				'Total number of buffer overflows detected'
-			),
 			bufferLruCleanups: new Counter(
 				'buffer_lru_cleanups_total',
 				'Total number of LRU cache cleanups performed'
 			)
 		}
-		// Register all metrics
-		if (eventBufferMetrics.eventsBuffered) baileysMetrics.register(eventBufferMetrics.eventsBuffered)
-		if (eventBufferMetrics.bufferFlushes) baileysMetrics.register(eventBufferMetrics.bufferFlushes)
-		if (eventBufferMetrics.bufferFlushEvents) baileysMetrics.register(eventBufferMetrics.bufferFlushEvents)
-		if (eventBufferMetrics.bufferCurrentSize) baileysMetrics.register(eventBufferMetrics.bufferCurrentSize)
-		if (eventBufferMetrics.bufferPeakSize) baileysMetrics.register(eventBufferMetrics.bufferPeakSize)
-		if (eventBufferMetrics.bufferHistoryCacheSize) baileysMetrics.register(eventBufferMetrics.bufferHistoryCacheSize)
-		if (eventBufferMetrics.bufferOverflows) baileysMetrics.register(eventBufferMetrics.bufferOverflows)
-		if (eventBufferMetrics.bufferLruCleanups) baileysMetrics.register(eventBufferMetrics.bufferLruCleanups)
 	}
 	return eventBufferMetrics
 }
@@ -1818,7 +1844,7 @@ function getEventBufferMetrics() {
  */
 export function recordEventBuffered(eventType: string, count: number = 1): void {
 	try {
-		const metrics = getEventBufferMetrics()
+		// Use the main metrics object which has eventsBuffered with label ['event_type']
 		metrics.eventsBuffered?.inc({ event_type: eventType }, count)
 	} catch {
 		// Metrics not initialized, ignore silently
@@ -1829,12 +1855,23 @@ export function recordEventBuffered(eventType: string, count: number = 1): void 
  * Record a buffer flush operation
  * Used by event-buffer.ts for metrics integration
  */
-export function recordBufferFlush(eventCount: number, forced: boolean): void {
+export function recordBufferFlush(eventCount: number, forced: boolean, historyCacheSize?: number): void {
 	try {
-		const metrics = getEventBufferMetrics()
-		metrics.bufferFlushes?.inc({ forced: forced ? 'true' : 'false' })
-		metrics.bufferFlushEvents?.observe({}, eventCount)
-		metrics.bufferCurrentSize?.set({}, 0) // Reset after flush
+		// Use the main metrics object which has the correct labels ['type', 'reason']
+		metrics.bufferFlushes?.inc({ type: 'event', reason: forced ? 'forced' : 'normal' })
+
+		// Update buffer cache size if provided
+		if (typeof historyCacheSize === 'number') {
+			metrics.bufferCacheSize?.set({}, historyCacheSize)
+		}
+
+		// Also update the lazy-loaded event buffer metrics for detailed tracking
+		const ebMetrics = getEventBufferMetrics()
+		ebMetrics.bufferFlushEvents?.observe({}, eventCount)
+		ebMetrics.bufferCurrentSize?.set({}, 0) // Reset after flush
+		if (typeof historyCacheSize === 'number') {
+			ebMetrics.bufferHistoryCacheSize?.set({}, historyCacheSize)
+		}
 	} catch {
 		// Metrics not initialized, ignore silently
 	}
@@ -1852,10 +1889,197 @@ export function updateBufferStatistics(stats: {
 	lruCleanups: number
 }): void {
 	try {
-		const metrics = getEventBufferMetrics()
-		metrics.bufferCurrentSize?.set({}, stats.currentSize)
-		metrics.bufferPeakSize?.set({}, stats.peakSize)
-		metrics.bufferHistoryCacheSize?.set({}, stats.historyCacheSize)
+		const ebMetrics = getEventBufferMetrics()
+		ebMetrics.bufferCurrentSize?.set({}, stats.currentSize)
+		ebMetrics.bufferPeakSize?.set({}, stats.peakSize)
+		ebMetrics.bufferHistoryCacheSize?.set({}, stats.historyCacheSize)
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Record a cache cleanup operation
+ * Used by event-buffer.ts when LRU cleanup is performed
+ */
+export function recordCacheCleanup(removedCount: number): void {
+	try {
+		metrics.bufferCacheCleanup?.inc({})
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Record a buffer overflow event
+ * Used by event-buffer.ts when buffer exceeds max size
+ */
+export function recordBufferOverflow(): void {
+	try {
+		metrics.bufferOverflows?.inc({ type: 'event' })
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Record a connection error
+ * Used by socket.ts when connection fails
+ */
+export function recordConnectionError(errorType: string): void {
+	try {
+		metrics.connectionErrors?.inc({ error_type: errorType })
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Record buffer destruction
+ * Used by event-buffer.ts when buffer is destroyed
+ */
+export function recordBufferDestroyed(reason: string, hadPendingFlush: boolean): void {
+	try {
+		metrics.bufferDestroyed?.inc({ reason, had_pending_flush: hadPendingFlush ? 'true' : 'false' })
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Record final flush during buffer destruction
+ * Used by event-buffer.ts when buffer flushes remaining events on destroy
+ */
+export function recordBufferFinalFlush(): void {
+	try {
+		metrics.bufferFinalFlush?.inc({})
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Update adaptive system metrics
+ * Used by event-buffer.ts to report adaptive timeout health and event rate
+ */
+export function updateAdaptiveMetrics(eventRate: number, isHealthy: boolean): void {
+	try {
+		metrics.adaptiveEventRate?.set({}, eventRate)
+		metrics.adaptiveHealthStatus?.set({}, isHealthy ? 1 : 0)
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+// ============================================
+// WhatsApp Connection & Message Metrics
+// ============================================
+
+/**
+ * Increment active connections gauge
+ */
+export function incrementActiveConnections(): void {
+	try {
+		metrics.activeConnections?.inc({})
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Decrement active connections gauge
+ */
+export function decrementActiveConnections(): void {
+	try {
+		metrics.activeConnections?.dec({})
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Set active connections to specific value
+ */
+export function setActiveConnections(count: number): void {
+	try {
+		metrics.activeConnections?.set({}, count)
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Record a connection attempt
+ */
+export function recordConnectionAttempt(status: 'success' | 'failure'): void {
+	try {
+		metrics.connectionAttempts?.inc({ status })
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Record a message sent
+ */
+export function recordMessageSent(type: string = 'text'): void {
+	try {
+		metrics.messagesSent?.inc({ type })
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Record a message received
+ */
+export function recordMessageReceived(type: string = 'text'): void {
+	try {
+		metrics.messagesReceived?.inc({ type })
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Record a message retry attempt
+ */
+export function recordMessageRetry(type: string = 'text'): void {
+	try {
+		metrics.messageRetries?.inc({ type })
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Record a message failure
+ */
+export function recordMessageFailure(type: string = 'text', reason: string = 'unknown'): void {
+	try {
+		metrics.messageFailures?.inc({ type, reason })
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Update messages queued gauge
+ */
+export function setMessagesQueued(count: number, priority: string = 'normal'): void {
+	try {
+		metrics.messagesQueued?.set({ priority }, count)
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Record history sync messages
+ */
+export function recordHistorySyncMessages(count: number = 1): void {
+	try {
+		metrics.historySyncMessages?.inc({}, count)
 	} catch {
 		// Metrics not initialized, ignore silently
 	}
@@ -1881,11 +2105,58 @@ export function getMetricsManager(config?: Partial<MetricsConfig>): PrometheusMe
 }
 
 /**
+ * Initialize metrics with labels to zero values
+ * This ensures they appear in Prometheus output even before first increment
+ */
+function initializeMetricsWithLabels(): void {
+	try {
+		// Buffer destroyed metric
+		metrics.bufferDestroyed?.inc({ reason: 'normal', had_pending_flush: 'true' }, 0)
+		metrics.bufferDestroyed?.inc({ reason: 'normal', had_pending_flush: 'false' }, 0)
+		metrics.bufferDestroyed?.inc({ reason: 'error', had_pending_flush: 'true' }, 0)
+		metrics.bufferDestroyed?.inc({ reason: 'error', had_pending_flush: 'false' }, 0)
+
+		// Buffer flushes metric
+		metrics.bufferFlushes?.inc({ type: 'event', reason: 'normal' }, 0)
+		metrics.bufferFlushes?.inc({ type: 'event', reason: 'forced' }, 0)
+
+		// Connection metrics
+		metrics.connectionAttempts?.inc({ status: 'success' }, 0)
+		metrics.connectionAttempts?.inc({ status: 'failure' }, 0)
+		metrics.connectionErrors?.inc({ error_type: 'timeout' }, 0)
+		metrics.connectionErrors?.inc({ error_type: 'closed' }, 0)
+		metrics.connectionErrors?.inc({ error_type: 'unknown' }, 0)
+
+		// Message metrics
+		metrics.messagesSent?.inc({ type: 'text' }, 0)
+		metrics.messagesSent?.inc({ type: 'media' }, 0)
+		metrics.messagesSent?.inc({ type: 'other' }, 0)
+		metrics.messagesReceived?.inc({ type: 'text' }, 0)
+		metrics.messagesReceived?.inc({ type: 'media' }, 0)
+		metrics.messagesReceived?.inc({ type: 'notification' }, 0)
+		metrics.messagesReceived?.inc({ type: 'other' }, 0)
+		metrics.messageRetries?.inc({ type: 'text' }, 0)
+		metrics.messageRetries?.inc({ type: 'other' }, 0)
+		metrics.messageFailures?.inc({ type: 'text', reason: 'max_retries' }, 0)
+		metrics.messageFailures?.inc({ type: 'other', reason: 'max_retries' }, 0)
+
+		// Circuit breaker metric
+		metrics.circuitBreakerTrips?.inc({ name: 'main' }, 0)
+
+		console.log('[Prometheus] Initialized metrics with labels')
+	} catch (error) {
+		console.error('[Prometheus] Error initializing metrics with labels:', error)
+	}
+}
+
+/**
  * Initialize global metrics (call once at application startup)
  */
 export async function initializeMetrics(config?: Partial<MetricsConfig>): Promise<PrometheusMetricsManager> {
 	const manager = getMetricsManager(config)
 	await manager.initialize()
+	// Initialize metrics with labels to zero values
+	initializeMetricsWithLabels()
 	return manager
 }
 

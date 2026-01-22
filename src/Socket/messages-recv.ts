@@ -4,7 +4,7 @@ import { randomBytes } from 'crypto'
 import Long from 'long'
 import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
-import { metrics } from '../Utils/prometheus-metrics.js'
+import { metrics, recordMessageReceived, recordHistorySyncMessages, recordMessageRetry, recordMessageFailure } from '../Utils/prometheus-metrics.js'
 import type {
 	GroupParticipant,
 	MessageReceiptType,
@@ -409,11 +409,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			if (messageRetryManager.hasExceededMaxRetries(msgId)) {
 				logger.debug({ msgId }, 'reached retry limit with new retry manager, clearing')
 				messageRetryManager.markRetryFailed(msgId)
+				recordMessageFailure('retry', 'max_retries_reached')
 				return
 			}
 
 			// Increment retry count using new system
 			const retryCount = messageRetryManager.incrementRetryCount(msgId)
+			recordMessageRetry('retry')
 
 			// Use the new retry count for the rest of the logic
 			const key = `${msgId}:${msgKey?.participant}`
@@ -425,11 +427,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			if (retryCount >= maxMsgRetryCount) {
 				logger.debug({ retryCount, msgId }, 'reached retry limit, clearing')
 				await msgRetryCache.del(key)
+				recordMessageFailure('retry', 'max_retries_reached')
 				return
 			}
 
 			retryCount += 1
 			await msgRetryCache.set(key, retryCount)
+			recordMessageRetry('retry')
 		}
 
 		const key = `${msgId}:${msgKey?.participant}`
@@ -1387,6 +1391,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				if (msg.key.id && msg.key.remoteJid) {
 					logMessageReceived(msg.key.id, msg.key.remoteJid)
 				}
+
+				// Record message received metric
+				const msgContent = msg.message
+				const msgType = msgContent?.conversation ? 'text'
+					: msgContent?.imageMessage ? 'image'
+					: msgContent?.videoMessage ? 'video'
+					: msgContent?.audioMessage ? 'audio'
+					: msgContent?.documentMessage ? 'document'
+					: msgContent?.stickerMessage ? 'sticker'
+					: msgContent?.reactionMessage ? 'reaction'
+					: 'other'
+				recordMessageReceived(msgType)
 			})
 		} catch (error) {
 			logger.error({ error, node: binaryNodeToString(node) }, 'error in handling message')
