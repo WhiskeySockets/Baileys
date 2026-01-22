@@ -64,9 +64,9 @@ export const makeNoiseHandler = ({
 
 	const data = Buffer.from(NOISE_MODE)
 	let hash = data.byteLength === 32 ? data : sha256(data)
-	let salt = hash
-	let encKey = hash
-	let decKey = hash
+	let salt: Buffer = hash
+	let encKey: Buffer = hash
+	let decKey: Buffer = hash
 	let counter = 0
 	let sentIntro = false
 
@@ -118,21 +118,21 @@ export const makeNoiseHandler = ({
 
 	const localHKDF = async (data: Uint8Array): Promise<[Buffer, Buffer]> => {
 		const key = await hkdf(Buffer.from(data), 64, { salt, info: '' })
-		return [key.subarray(0, 32) as Buffer, key.subarray(32) as Buffer]
+		return [key.subarray(0, 32), key.subarray(32)]
 	}
 
 	const mixIntoKey = async (data: Uint8Array) => {
 		const [write, read] = await localHKDF(data)
-		salt = Buffer.from(write!) as unknown as Buffer<ArrayBuffer>
-		encKey = Buffer.from(read!) as unknown as Buffer<ArrayBuffer>
-		decKey = Buffer.from(read!) as unknown as Buffer<ArrayBuffer>
+		salt = write
+		encKey = read
+		decKey = read
 		counter = 0
 	}
 
 	const finishInit = async () => {
 		isWaitingForTransport = true
 		const [write, read] = await localHKDF(new Uint8Array(0))
-		transport = new TransportState(write!, read!)
+		transport = new TransportState(write, read)
 		isWaitingForTransport = false
 
 		logger.trace('Noise handler transitioned to Transport state')
