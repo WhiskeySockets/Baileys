@@ -326,8 +326,8 @@ export const processHistoryMessage = (item: proto.IHistorySync, logger?: ILogger
 
 				contacts.push({
 					id: chatId,
-					name: chat.name || undefined,
-					lid: chat.lidJid || undefined,
+					name: chat.displayName || chat.name || chat.username || undefined,
+					lid: chat.lidJid || chat.accountLid || undefined,
 					phoneNumber: chat.pnJid || undefined
 				})
 
