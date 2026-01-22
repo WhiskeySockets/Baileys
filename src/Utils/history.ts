@@ -6,6 +6,7 @@ import { WAMessageStubType } from '../Types'
 import { toNumber } from './generics'
 import { normalizeMessageContent } from './messages'
 import { downloadContentFromMessage } from './messages-media'
+import type { ILogger } from './logger.js'
 
 const inflatePromise = promisify(inflate)
 
@@ -25,12 +26,15 @@ export const downloadHistory = async (msg: proto.Message.IHistorySyncNotificatio
 	return syncData
 }
 
-export const processHistoryMessage = (item: proto.IHistorySync) => {
+export const processHistoryMessage = (item: proto.IHistorySync, logger?: ILogger) => {
 	const messages: WAMessage[] = []
 	const contacts: Contact[] = []
 	const chats: Chat[] = []
-	// Extract LID-PN mappings for all sync types
 	const lidPnMappings: LIDMapping[] = []
+
+	logger?.trace({ progress: item.progress }, 'processing history of type '+ item.syncType?.toString())
+
+	// Extract LID-PN mappings for all sync types
 	for (const m of item.phoneNumberToLidMappings || []) {
 		if (m.lidJid && m.pnJid) {
 			lidPnMappings.push({ lid: m.lidJid, pn: m.pnJid })
@@ -102,7 +106,8 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 
 export const downloadAndProcessHistorySyncNotification = async (
 	msg: proto.Message.IHistorySyncNotification,
-	options: RequestInit
+	options: RequestInit,
+	logger?: ILogger
 ) => {
 	let historyMsg: proto.HistorySync
 	if (msg.initialHistBootstrapInlinePayload) {
@@ -111,7 +116,7 @@ export const downloadAndProcessHistorySyncNotification = async (
 		historyMsg = await downloadHistory(msg, options)
 	}
 
-	return processHistoryMessage(historyMsg)
+	return processHistoryMessage(historyMsg, logger)
 }
 
 export const getHistoryMsg = (message: proto.IMessage) => {
