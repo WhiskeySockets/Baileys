@@ -1246,10 +1246,23 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					// These messages are only encrypted for the primary phone, not linked devices
 					// We need to request the message content from the phone via PDO (Peer Data Operation)
 					if (msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT) {
+						// Skip old messages - don't request resend for messages older than 7 days
+						const messageAge = unixTimestampSeconds() - toNumber(msg.messageTimestamp)
+						const MAX_PLACEHOLDER_RESEND_AGE = 7 * 24 * 60 * 60 // 7 days in seconds
+
+						if (messageAge > MAX_PLACEHOLDER_RESEND_AGE) {
+							logger.debug(
+								{ msgId: msg.key?.id, messageAge, maxAge: MAX_PLACEHOLDER_RESEND_AGE },
+								'CTWA: Skipping placeholder resend for old message'
+							)
+							metrics.ctwaRecoveryFailures.inc({ reason: 'message_too_old' })
+							return sendMessageAck(node)
+						}
+
 						if (enableCTWARecovery && msg.key) {
 							const startTime = Date.now()
 							logger.info(
-								{ msgId: msg.key.id, remoteJid: msg.key.remoteJid },
+								{ msgId: msg.key.id, remoteJid: msg.key.remoteJid, messageAge },
 								'CTWA: Message absent from node detected, requesting placeholder resend from phone'
 							)
 
