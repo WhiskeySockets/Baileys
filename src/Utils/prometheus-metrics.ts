@@ -1958,6 +1958,19 @@ export function recordBufferFinalFlush(): void {
 	}
 }
 
+/**
+ * Update adaptive system metrics
+ * Used by event-buffer.ts to report adaptive timeout health and event rate
+ */
+export function updateAdaptiveMetrics(eventRate: number, isHealthy: boolean): void {
+	try {
+		metrics.adaptiveEventRate?.set({}, eventRate)
+		metrics.adaptiveHealthStatus?.set({}, isHealthy ? 1 : 0)
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
 // ============================================
 // Global Instance
 // ============================================

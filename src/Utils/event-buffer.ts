@@ -329,6 +329,31 @@ class AdaptiveTimeoutCalculator {
 		}
 		return 'balanced'
 	}
+
+	/**
+	 * Get current event rate in events per second
+	 */
+	getEventRate(): number {
+		if (this.eventTimestamps.length < 2) {
+			return 0
+		}
+		const oldest = this.eventTimestamps[0]!
+		const newest = this.eventTimestamps[this.eventTimestamps.length - 1]!
+		const timeSpan = newest - oldest
+		if (timeSpan === 0) return 0
+		return (this.eventTimestamps.length / timeSpan) * 1000
+	}
+
+	/**
+	 * Check if system is healthy based on current mode
+	 * Conservative mode with low event rate is healthy
+	 * Aggressive mode might indicate high load
+	 */
+	isHealthy(): boolean {
+		const mode = this.getMode()
+		// System is considered healthy if not in aggressive mode (high load)
+		return mode !== 'aggressive'
+	}
 }
 
 // ============================================================================
@@ -562,6 +587,11 @@ export const makeEventBuffer = (
 
 		// Record metrics
 		recordFlushMetrics(eventCount, force, historyCache.size)
+
+		// Update adaptive metrics
+		if (config.enableAdaptiveTimeout && metricsModule) {
+			metricsModule.updateAdaptiveMetrics(adaptiveTimeout.getEventRate(), adaptiveTimeout.isHealthy())
+		}
 
 		// Log with [BAILEYS] prefix - use getMode() to avoid duplicating mode calculation logic
 		const flushDuration = Date.now() - flushStartTime
