@@ -39,7 +39,7 @@ export class LIDMappingStore {
 			const lidDecoded = jidDecode(lid)
 			const pnDecoded = jidDecode(pn)
 
-			if (!lidDecoded || !pnDecoded) return
+			if (!lidDecoded || !pnDecoded) continue
 
 			const pnUser = pnDecoded.user
 			const lidUser = lidDecoded.user
@@ -92,6 +92,26 @@ export class LIDMappingStore {
 		const usyncFetch: { [_: string]: number[] } = {}
 		// mapped from pn to lid mapping to prevent duplication in results later
 		const successfulPairs: { [_: string]: LIDMapping } = {}
+		const pending: Array<{ pn: string; pnUser: string; decoded: ReturnType<typeof jidDecode> }> = []
+
+		const addResolvedPair = (pn: string, decoded: ReturnType<typeof jidDecode>, lidUser: string) => {
+			const normalizedLidUser = lidUser.toString()
+			if (!normalizedLidUser) {
+				this.logger.warn(`Invalid or empty LID user for PN ${pn}: lidUser = "${lidUser}"`)
+				return false
+			}
+
+			// Push the PN device ID to the LID to maintain device separation
+			const pnDevice = decoded!.device !== undefined ? decoded!.device : 0
+			const deviceSpecificLid = `${normalizedLidUser}${!!pnDevice ? `:${pnDevice}` : ``}@${
+				decoded!.server === 'hosted' ? 'hosted.lid' : 'lid'
+			}`
+
+			this.logger.trace(`getLIDForPN: ${pn} → ${deviceSpecificLid} (user mapping with device ${pnDevice})`)
+			successfulPairs[pn] = { lid: deviceSpecificLid, pn }
+			return true
+		}
+
 		for (const pn of pns) {
 			if (!isPnUser(pn) && !isHostedPnUser(pn)) continue
 
@@ -100,19 +120,40 @@ export class LIDMappingStore {
 
 			// Check cache first for PN → LID mapping
 			const pnUser = decoded.user
-			let lidUser = this.mappingCache.get(`pn:${pnUser}`)
+			const cached = this.mappingCache.get(`pn:${pnUser}`)
+			if (cached && typeof cached === 'string') {
+				if (!addResolvedPair(pn, decoded, cached)) {
+					this.logger.warn(`Invalid entry for ${pn} (pair not resolved)`)
+					continue
+				}
 
-			if (!lidUser) {
-				// Cache miss - check database
-				const stored = await this.keys.get('lid-mapping', [pnUser])
-				lidUser = stored[pnUser]
+				continue
+			}
 
-				if (lidUser) {
+			pending.push({ pn, pnUser, decoded })
+		}
+
+		if (pending.length) {
+			const pnUsers = [...new Set(pending.map(item => item.pnUser))]
+			const stored = await this.keys.get('lid-mapping', pnUsers)
+			for (const pnUser of pnUsers) {
+				const lidUser = stored[pnUser]
+				if (lidUser && typeof lidUser === 'string') {
 					this.mappingCache.set(`pn:${pnUser}`, lidUser)
 					this.mappingCache.set(`lid:${lidUser}`, pnUser)
+				}
+			}
+
+			for (const { pn, pnUser, decoded } of pending) {
+				const cached = this.mappingCache.get(`pn:${pnUser}`)
+				if (cached && typeof cached === 'string') {
+					if (!addResolvedPair(pn, decoded, cached)) {
+						this.logger.warn(`Invalid entry for ${pn} (pair not resolved)`)
+						continue
+					}
 				} else {
 					this.logger.trace(`No LID mapping found for PN user ${pnUser}; batch getting from USync`)
-					const device = decoded.device || 0
+					const device = decoded!.device || 0
 					let normalizedPn = jidNormalizedUser(pn)
 					if (isHostedPnUser(normalizedPn)) {
 						normalizedPn = `${pnUser}@s.whatsapp.net`
@@ -123,23 +164,8 @@ export class LIDMappingStore {
 					} else {
 						usyncFetch[normalizedPn]?.push(device)
 					}
-
-					continue
 				}
 			}
-
-			lidUser = lidUser.toString()
-			if (!lidUser) {
-				this.logger.warn(`Invalid or empty LID user for PN ${pn}: lidUser = "${lidUser}"`)
-				return null
-			}
-
-			// Push the PN device ID to the LID to maintain device separation
-			const pnDevice = decoded.device !== undefined ? decoded.device : 0
-			const deviceSpecificLid = `${lidUser}${!!pnDevice ? `:${pnDevice}` : ``}@${decoded.server === 'hosted' ? 'hosted.lid' : 'lid'}`
-
-			this.logger.trace(`getLIDForPN: ${pn} → ${deviceSpecificLid} (user mapping with device ${pnDevice})`)
-			successfulPairs[pn] = { lid: deviceSpecificLid, pn }
 		}
 
 		if (Object.keys(usyncFetch).length > 0) {
@@ -166,44 +192,77 @@ export class LIDMappingStore {
 					}
 				}
 			} else {
-				return null
+				this.logger.warn('USync fetch yielded no results for pending PNs')
 			}
 		}
 
-		return Object.values(successfulPairs)
+		return Object.values(successfulPairs).length > 0 ? Object.values(successfulPairs) : null
 	}
 
 	/**
 	 * Get PN for LID - USER LEVEL with device construction
 	 */
 	async getPNForLID(lid: string): Promise<string | null> {
-		if (!isLidUser(lid)) return null
+		return (await this.getPNsForLIDs([lid]))?.[0]?.pn || null
+	}
 
-		const decoded = jidDecode(lid)
-		if (!decoded) return null
+	async getPNsForLIDs(lids: string[]): Promise<LIDMapping[] | null> {
+		const successfulPairs: { [_: string]: LIDMapping } = {}
+		const pending: Array<{ lid: string; lidUser: string; decoded: ReturnType<typeof jidDecode> }> = []
 
-		// Check cache first for LID → PN mapping
-		const lidUser = decoded.user
-		let pnUser = this.mappingCache.get(`lid:${lidUser}`)
-
-		if (!pnUser || typeof pnUser !== 'string') {
-			// Cache miss - check database
-			const stored = await this.keys.get('lid-mapping', [`${lidUser}_reverse`])
-			pnUser = stored[`${lidUser}_reverse`]
-
+		const addResolvedPair = (lid: string, decoded: ReturnType<typeof jidDecode>, pnUser: string) => {
 			if (!pnUser || typeof pnUser !== 'string') {
-				this.logger.trace(`No reverse mapping found for LID user: ${lidUser}`)
-				return null
+				return false
 			}
 
-			this.mappingCache.set(`lid:${lidUser}`, pnUser)
+			const lidDevice = decoded!.device !== undefined ? decoded!.device : 0
+			const pnJid = `${pnUser}:${lidDevice}@${
+				decoded!.domainType === WAJIDDomains.HOSTED_LID ? 'hosted' : 's.whatsapp.net'
+			}`
+
+			this.logger.trace(`Found reverse mapping: ${lid} → ${pnJid}`)
+			successfulPairs[lid] = { lid, pn: pnJid }
+			return true
 		}
 
-		// Construct device-specific PN JID
-		const lidDevice = decoded.device !== undefined ? decoded.device : 0
-		const pnJid = `${pnUser}:${lidDevice}@${decoded.domainType === WAJIDDomains.HOSTED_LID ? 'hosted' : 's.whatsapp.net'}`
+		for (const lid of lids) {
+			if (!isLidUser(lid)) continue
 
-		this.logger.trace(`Found reverse mapping: ${lid} → ${pnJid}`)
-		return pnJid
+			const decoded = jidDecode(lid)
+			if (!decoded) continue
+
+			const lidUser = decoded.user
+			const cached = this.mappingCache.get(`lid:${lidUser}`)
+			if (cached && typeof cached === 'string') {
+				addResolvedPair(lid, decoded, cached)
+				continue
+			}
+
+			pending.push({ lid, lidUser, decoded })
+		}
+
+		if (pending.length) {
+			const reverseKeys = [...new Set(pending.map(item => `${item.lidUser}_reverse`))]
+			const stored = await this.keys.get('lid-mapping', reverseKeys)
+
+			for (const { lid, lidUser, decoded } of pending) {
+				let pnUser = this.mappingCache.get(`lid:${lidUser}`)
+				if (!pnUser || typeof pnUser !== 'string') {
+					pnUser = stored[`${lidUser}_reverse`]
+					if (pnUser && typeof pnUser === 'string') {
+						this.mappingCache.set(`lid:${lidUser}`, pnUser)
+						this.mappingCache.set(`pn:${pnUser}`, lidUser)
+					}
+				}
+
+				if (pnUser && typeof pnUser === 'string') {
+					addResolvedPair(lid, decoded, pnUser)
+				} else {
+					this.logger.trace(`No reverse mapping found for LID user: ${lidUser}`)
+				}
+			}
+		}
+
+		return Object.values(successfulPairs).length ? Object.values(successfulPairs) : null
 	}
 }

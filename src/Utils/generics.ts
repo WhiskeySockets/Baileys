@@ -47,6 +47,10 @@ export const BufferJSON = {
 export const getKeyAuthor = (key: WAMessageKey | undefined | null, meId = 'me') =>
 	(key?.fromMe ? meId : key?.participantAlt || key?.remoteJidAlt || key?.participant || key?.remoteJid) || ''
 
+export const isStringNullOrEmpty = (value: string | null | undefined): value is null | undefined | '' =>
+	// eslint-disable-next-line eqeqeq
+	value == null || value === ''
+
 export const writeRandomPadMax16 = (msg: Uint8Array) => {
 	const pad = randomBytes(1)
 	const padLength = (pad[0]! & 0x0f) + 1
