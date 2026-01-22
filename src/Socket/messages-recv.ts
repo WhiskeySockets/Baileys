@@ -4,7 +4,7 @@ import { randomBytes } from 'crypto'
 import Long from 'long'
 import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT } from '../Defaults'
-import { metrics } from '../Utils/prometheus-metrics.js'
+import { metrics, recordMessageReceived, recordHistorySyncMessages } from '../Utils/prometheus-metrics.js'
 import type {
 	GroupParticipant,
 	MessageReceiptType,
@@ -1387,6 +1387,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				if (msg.key.id && msg.key.remoteJid) {
 					logMessageReceived(msg.key.id, msg.key.remoteJid)
 				}
+
+				// Record message received metric
+				const msgContent = msg.message
+				const msgType = msgContent?.conversation ? 'text'
+					: msgContent?.imageMessage ? 'image'
+					: msgContent?.videoMessage ? 'video'
+					: msgContent?.audioMessage ? 'audio'
+					: msgContent?.documentMessage ? 'document'
+					: msgContent?.stickerMessage ? 'sticker'
+					: msgContent?.reactionMessage ? 'reaction'
+					: 'other'
+				recordMessageReceived(msgType)
 			})
 		} catch (error) {
 			logger.error({ error, node: binaryNodeToString(node) }, 'error in handling message')

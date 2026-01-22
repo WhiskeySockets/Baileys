@@ -54,7 +54,12 @@ import {
 	jidEncode,
 	S_WHATSAPP_NET
 } from '../WABinary'
-import { recordConnectionError } from '../Utils/prometheus-metrics'
+import {
+	recordConnectionError,
+	recordConnectionAttempt,
+	incrementActiveConnections,
+	decrementActiveConnections
+} from '../Utils/prometheus-metrics'
 import { BinaryInfo } from '../WAM/BinaryInfo.js'
 import { USyncQuery, USyncUser } from '../WAUSync/'
 import { WebSocketClient } from './Client'
@@ -764,7 +769,11 @@ export const makeSocket = (config: SocketConfig) => {
 					errorType = `error_${statusCode}`
 			}
 			recordConnectionError(errorType)
+			recordConnectionAttempt('failure')
 		}
+
+		// Decrement active connections
+		decrementActiveConnections()
 
 		clearInterval(keepAliveReq)
 		clearTimeout(qrTimer)
@@ -1079,6 +1088,10 @@ export const makeSocket = (config: SocketConfig) => {
 		ev.emit('creds.update', { me: { ...authState.creds.me!, lid: node.attrs.lid } })
 
 		ev.emit('connection.update', { connection: 'open' })
+
+		// Record successful connection metrics
+		recordConnectionAttempt('success')
+		incrementActiveConnections()
 
 		if (node.attrs.lid && authState.creds.me?.id) {
 			const myLID = node.attrs.lid

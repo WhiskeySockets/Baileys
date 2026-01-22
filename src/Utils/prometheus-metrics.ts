@@ -1972,6 +1972,120 @@ export function updateAdaptiveMetrics(eventRate: number, isHealthy: boolean): vo
 }
 
 // ============================================
+// WhatsApp Connection & Message Metrics
+// ============================================
+
+/**
+ * Increment active connections gauge
+ */
+export function incrementActiveConnections(): void {
+	try {
+		metrics.activeConnections?.inc({})
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Decrement active connections gauge
+ */
+export function decrementActiveConnections(): void {
+	try {
+		metrics.activeConnections?.dec({})
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Set active connections to specific value
+ */
+export function setActiveConnections(count: number): void {
+	try {
+		metrics.activeConnections?.set({}, count)
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Record a connection attempt
+ */
+export function recordConnectionAttempt(status: 'success' | 'failure'): void {
+	try {
+		metrics.connectionAttempts?.inc({ status })
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Record a message sent
+ */
+export function recordMessageSent(type: string = 'text'): void {
+	try {
+		metrics.messagesSent?.inc({ type })
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Record a message received
+ */
+export function recordMessageReceived(type: string = 'text'): void {
+	try {
+		metrics.messagesReceived?.inc({ type })
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Record a message retry attempt
+ */
+export function recordMessageRetry(type: string = 'text'): void {
+	try {
+		metrics.messageRetries?.inc({ type })
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Record a message failure
+ */
+export function recordMessageFailure(type: string = 'text', reason: string = 'unknown'): void {
+	try {
+		metrics.messageFailures?.inc({ type, reason })
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Update messages queued gauge
+ */
+export function setMessagesQueued(count: number, priority: string = 'normal'): void {
+	try {
+		metrics.messagesQueued?.set({ priority }, count)
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Record history sync messages
+ */
+export function recordHistorySyncMessages(count: number = 1): void {
+	try {
+		metrics.historySyncMessages?.inc({}, count)
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+// ============================================
 // Global Instance
 // ============================================
 
