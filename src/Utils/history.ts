@@ -207,6 +207,36 @@ export function extractLidPnFromMessage(
 }
 
 /**
+ * Extracts phone number (PN) from message userReceipt fields.
+ *
+ * This is a fallback mechanism for LID chats that don't have a pnJid property.
+ * It looks at outgoing messages (fromMe: true) and extracts the recipient's
+ * phone number from the userReceipt.userJid field.
+ *
+ * @param messages - Array of history sync messages from a conversation
+ * @returns The extracted phone number JID, or undefined if not found
+ *
+ * @see https://github.com/WhiskeySockets/Baileys/pull/2282
+ */
+const extractPnFromMessages = (messages: proto.IHistorySyncMsg[]): string | undefined => {
+	for (const msgItem of messages) {
+		const message = msgItem.message
+		// Only extract from outgoing messages (fromMe: true) in 1:1 chats
+		// because userReceipt.userJid is the recipient's JID
+		if (!message?.key?.fromMe || !message.userReceipt?.length) {
+			continue
+		}
+
+		const userJid = message.userReceipt[0]?.userJid
+		if (userJid && (isPnUser(userJid) || isHostedPnUser(userJid))) {
+			return userJid
+		}
+	}
+
+	return undefined
+}
+
+/**
  * Processes a history sync message and extracts chats, contacts, messages,
  * and LID-PN mappings.
  *
@@ -276,6 +306,16 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 				)
 				if (conversationMapping) {
 					addLidPnMapping(conversationMapping)
+				} else if ((isLidUser(chatId) || isHostedLidUser(chatId)) && !chat.pnJid) {
+					// Source 2b: Fallback - extract PN from userReceipt in messages when pnJid is missing
+					// This handles edge cases where the conversation is LID but pnJid wasn't provided
+					const pnFromReceipt = extractPnFromMessages(chat.messages || [])
+					if (pnFromReceipt) {
+						addLidPnMapping({
+							lid: jidNormalizedUser(chatId),
+							pn: jidNormalizedUser(pnFromReceipt)
+						})
+					}
 				}
 
 				contacts.push({
