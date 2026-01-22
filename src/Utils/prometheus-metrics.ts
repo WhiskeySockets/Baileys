@@ -1798,31 +1798,19 @@ export function trackOperation(
 // Event Buffer Metrics Integration
 // ============================================
 
-// Event buffer metrics (lazy initialized)
+// Event buffer metrics (lazy initialized) - for detailed buffer tracking
+// Note: bufferFlushes is NOT here - use metrics.bufferFlushes from main metrics object
 let eventBufferMetrics: {
-	eventsBuffered: Counter | null
-	bufferFlushes: Counter | null
 	bufferFlushEvents: Histogram | null
 	bufferCurrentSize: Gauge | null
 	bufferPeakSize: Gauge | null
 	bufferHistoryCacheSize: Gauge | null
-	bufferOverflows: Counter | null
 	bufferLruCleanups: Counter | null
 } | null = null
 
 function getEventBufferMetrics() {
 	if (!eventBufferMetrics) {
 		eventBufferMetrics = {
-			eventsBuffered: new Counter(
-				'events_buffered_total',
-				'Total number of events buffered',
-				['event_type']
-			),
-			bufferFlushes: new Counter(
-				'buffer_flushes_total',
-				'Total number of buffer flushes',
-				['forced']
-			),
 			bufferFlushEvents: new Histogram(
 				'buffer_flush_events',
 				'Number of events per buffer flush',
@@ -1841,24 +1829,11 @@ function getEventBufferMetrics() {
 				'buffer_history_cache_size',
 				'Current size of history cache'
 			),
-			bufferOverflows: new Counter(
-				'buffer_overflows_total',
-				'Total number of buffer overflows detected'
-			),
 			bufferLruCleanups: new Counter(
 				'buffer_lru_cleanups_total',
 				'Total number of LRU cache cleanups performed'
 			)
 		}
-		// Register all metrics
-		if (eventBufferMetrics.eventsBuffered) baileysMetrics.register(eventBufferMetrics.eventsBuffered)
-		if (eventBufferMetrics.bufferFlushes) baileysMetrics.register(eventBufferMetrics.bufferFlushes)
-		if (eventBufferMetrics.bufferFlushEvents) baileysMetrics.register(eventBufferMetrics.bufferFlushEvents)
-		if (eventBufferMetrics.bufferCurrentSize) baileysMetrics.register(eventBufferMetrics.bufferCurrentSize)
-		if (eventBufferMetrics.bufferPeakSize) baileysMetrics.register(eventBufferMetrics.bufferPeakSize)
-		if (eventBufferMetrics.bufferHistoryCacheSize) baileysMetrics.register(eventBufferMetrics.bufferHistoryCacheSize)
-		if (eventBufferMetrics.bufferOverflows) baileysMetrics.register(eventBufferMetrics.bufferOverflows)
-		if (eventBufferMetrics.bufferLruCleanups) baileysMetrics.register(eventBufferMetrics.bufferLruCleanups)
 	}
 	return eventBufferMetrics
 }
@@ -1869,7 +1844,7 @@ function getEventBufferMetrics() {
  */
 export function recordEventBuffered(eventType: string, count: number = 1): void {
 	try {
-		const metrics = getEventBufferMetrics()
+		// Use the main metrics object which has eventsBuffered with label ['event_type']
 		metrics.eventsBuffered?.inc({ event_type: eventType }, count)
 	} catch {
 		// Metrics not initialized, ignore silently
@@ -1882,10 +1857,13 @@ export function recordEventBuffered(eventType: string, count: number = 1): void 
  */
 export function recordBufferFlush(eventCount: number, forced: boolean): void {
 	try {
-		const metrics = getEventBufferMetrics()
-		metrics.bufferFlushes?.inc({ forced: forced ? 'true' : 'false' })
-		metrics.bufferFlushEvents?.observe({}, eventCount)
-		metrics.bufferCurrentSize?.set({}, 0) // Reset after flush
+		// Use the main metrics object which has the correct labels ['type', 'reason']
+		metrics.bufferFlushes?.inc({ type: 'event', reason: forced ? 'forced' : 'normal' })
+
+		// Also update the lazy-loaded event buffer metrics for detailed tracking
+		const ebMetrics = getEventBufferMetrics()
+		ebMetrics.bufferFlushEvents?.observe({}, eventCount)
+		ebMetrics.bufferCurrentSize?.set({}, 0) // Reset after flush
 	} catch {
 		// Metrics not initialized, ignore silently
 	}
@@ -1903,10 +1881,10 @@ export function updateBufferStatistics(stats: {
 	lruCleanups: number
 }): void {
 	try {
-		const metrics = getEventBufferMetrics()
-		metrics.bufferCurrentSize?.set({}, stats.currentSize)
-		metrics.bufferPeakSize?.set({}, stats.peakSize)
-		metrics.bufferHistoryCacheSize?.set({}, stats.historyCacheSize)
+		const ebMetrics = getEventBufferMetrics()
+		ebMetrics.bufferCurrentSize?.set({}, stats.currentSize)
+		ebMetrics.bufferPeakSize?.set({}, stats.peakSize)
+		ebMetrics.bufferHistoryCacheSize?.set({}, stats.historyCacheSize)
 	} catch {
 		// Metrics not initialized, ignore silently
 	}
