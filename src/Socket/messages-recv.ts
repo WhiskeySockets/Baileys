@@ -1227,6 +1227,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 
 					if (msg.messageStubParameters?.[0] === NO_MESSAGE_FOUND_ERROR_TEXT) {
+						logger.debug('Message absent from node, requesting placeholder resend from phone')
+						try {
+							const requestId = await requestPlaceholderResend(msg.key)
+							logger.debug({ requestId }, 'Requested placeholder resend from phone')
+						} catch (error) {
+							logger.error({ error }, 'Failed to request placeholder resend')
+						}
 						return sendMessageAck(node)
 					}
 
