@@ -24,6 +24,7 @@ import { toNumber } from './generics'
 import type { ILogger } from './logger'
 import { LT_HASH_ANTI_TAMPERING } from './lt-hash'
 import { downloadContentFromMessage } from './messages-media'
+import { emitSyncActionResults, processContactAction } from './sync-action-utils'
 
 type FetchAppStateSyncKey = (keyId: string) => Promise<proto.Message.IAppStateSyncKeyData | null | undefined>
 
@@ -91,7 +92,7 @@ const makeLtHashGenerator = ({ indexValueMap, hash }: Pick<LTHashState, 'hash' |
 			const prevOp = indexValueMap[indexMacBase64]
 			if (operation === proto.SyncdMutation.SyncdOperation.REMOVE) {
 				if (!prevOp) {
-					throw new Boom('tried remove, but no previous op', { data: { indexMac, valueMac } })
+					// throw new Boom('tried remove, but no previous op', { data: { indexMac, valueMac } })
 				}
 
 				// remove from index value mac, since this mutation is erased
@@ -832,14 +833,8 @@ export const processSyncAction = (
 			]
 		})
 	} else if (action?.contactAction) {
-		ev.emit('contacts.upsert', [
-			{
-				id: id!,
-				name: action.contactAction.fullName!,
-				lid: action.contactAction.lidJid || undefined,
-				phoneNumber: action.contactAction.pnJid || undefined
-			}
-		])
+		const results = processContactAction(action.contactAction, id, logger)
+		emitSyncActionResults(ev, results)
 	} else if (action?.pushNameSetting) {
 		const name = action?.pushNameSetting?.name
 		if (name && me?.name !== name) {
@@ -903,6 +898,51 @@ export const processSyncAction = (
 							messageId: syncAction.index[3],
 							labelId: syncAction.index[1]
 						} as MessageLabelAssociation)
+		})
+	} else if (action?.localeSetting?.locale) {
+		ev.emit('settings.update', { setting: 'locale', value: action.localeSetting.locale })
+	} else if (action?.timeFormatAction) {
+		ev.emit('settings.update', { setting: 'timeFormat', value: action.timeFormatAction })
+	} else if (action?.pnForLidChatAction) {
+		if (action.pnForLidChatAction.pnJid) {
+			ev.emit('lid-mapping.update', { lid: id!, pn: action.pnForLidChatAction.pnJid })
+		}
+	} else if (action?.privacySettingRelayAllCalls) {
+		ev.emit('settings.update', {
+			setting: 'privacySettingRelayAllCalls',
+			value: action.privacySettingRelayAllCalls
+		})
+	} else if (action?.statusPrivacy) {
+		ev.emit('settings.update', { setting: 'statusPrivacy', value: action.statusPrivacy })
+	} else if (action?.lockChatAction) {
+		ev.emit('chats.lock', { id: id!, locked: !!action.lockChatAction.locked })
+	} else if (action?.privacySettingDisableLinkPreviewsAction) {
+		ev.emit('settings.update', {
+			setting: 'disableLinkPreviews',
+			value: action.privacySettingDisableLinkPreviewsAction
+		})
+	} else if (action?.notificationActivitySettingAction?.notificationActivitySetting) {
+		ev.emit('settings.update', {
+			setting: 'notificationActivitySetting',
+			value: action.notificationActivitySettingAction.notificationActivitySetting
+		})
+	} else if (action?.lidContactAction) {
+		ev.emit('contacts.upsert', [
+			{
+				id: id!,
+				name:
+					action.lidContactAction.fullName ||
+					action.lidContactAction.firstName ||
+					action.lidContactAction.username ||
+					undefined,
+				lid: id!,
+				phoneNumber: undefined
+			}
+		])
+	} else if (action?.privacySettingChannelsPersonalisedRecommendationAction) {
+		ev.emit('settings.update', {
+			setting: 'channelsPersonalisedRecommendation',
+			value: action.privacySettingChannelsPersonalisedRecommendationAction
 		})
 	} else {
 		logger?.debug({ syncAction, id }, 'unprocessable update')

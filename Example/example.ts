@@ -1,7 +1,7 @@
 import { Boom } from '@hapi/boom'
 import NodeCache from '@cacheable/node-cache'
 import readline from 'readline'
-import makeWASocket, { AnyMessageContent, BinaryInfo, CacheStore, delay, DisconnectReason, downloadAndProcessHistorySyncNotification, encodeWAM, fetchLatestBaileysVersion, getAggregateVotesInPollMessage, getHistoryMsg, isJidNewsletter, jidDecode, makeCacheableSignalKeyStore, normalizeMessageContent, PatchedMessageWithRecipientJID, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
+import makeWASocket, { AnyMessageContent, BinaryInfo, CacheStore, DEFAULT_CONNECTION_CONFIG, delay, DisconnectReason, downloadAndProcessHistorySyncNotification, encodeWAM, fetchLatestBaileysVersion, generateMessageIDV2, getAggregateVotesInPollMessage, getHistoryMsg, isJidNewsletter, jidDecode, makeCacheableSignalKeyStore, normalizeMessageContent, PatchedMessageWithRecipientJID, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
 //import MAIN_LOGGER from '../src/Utils/logger'
 import open from 'open'
 import fs from 'fs'
@@ -42,6 +42,10 @@ const question = (text: string) => new Promise<string>((resolve) => rl.question(
 // start a connection
 const startSock = async() => {
 	const { state, saveCreds } = await useMultiFileAuthState('baileys_auth_info')
+	// NOTE: For unit testing purposes only
+	if (process.env.ADV_SECRET_KEY) {
+		state.creds.advSecretKey = process.env.ADV_SECRET_KEY
+	}
 	// fetch latest version of WA Web
 	const { version, isLatest } = await fetchLatestBaileysVersion()
 	console.log(`using WA v${version.join('.')}, isLatest: ${isLatest}`)
@@ -49,6 +53,7 @@ const startSock = async() => {
 	const sock = makeWASocket({
 		version,
 		logger,
+		waWebSocketUrl: process.env.SOCKET_URL ?? DEFAULT_CONNECTION_CONFIG.waWebSocketUrl,
 		auth: {
 			creds: state.creds,
 			/** caching makes the store faster to send/recv messages */
@@ -63,27 +68,6 @@ const startSock = async() => {
 		getMessage
 	})
 
-
-	// Pairing code for Web clients
-	if (usePairingCode && !sock.authState.creds.registered) {
-		// todo move to QR event
-		const phoneNumber = await question('Please enter your phone number:\n')
-		const code = await sock.requestPairingCode(phoneNumber)
-		console.log(`Pairing code: ${code}`)
-	}
-
-	const sendMessageWTyping = async(msg: AnyMessageContent, jid: string) => {
-		await sock.presenceSubscribe(jid)
-		await delay(500)
-
-		await sock.sendPresenceUpdate('composing', jid)
-		await delay(2000)
-
-		await sock.sendPresenceUpdate('paused', jid)
-
-		await sock.sendMessage(jid, msg)
-	}
-
 	// the process function lets you process all events that just occurred
 	// efficiently in a batch
 	sock.ev.process(
@@ -93,7 +77,7 @@ const startSock = async() => {
 			// maybe it closed, or we received all offline message or connection opened
 			if(events['connection.update']) {
 				const update = events['connection.update']
-				const { connection, lastDisconnect } = update
+				const { connection, lastDisconnect, qr } = update
 				if(connection === 'close') {
 					// reconnect if not logged out
 					if((lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut) {
@@ -102,6 +86,16 @@ const startSock = async() => {
 						console.log('Connection closed. You are logged out.')
 					}
 				}
+
+				if (qr) {
+					// Pairing code for Web clients
+					if (usePairingCode && !sock.authState.creds.registered) {
+						const phoneNumber = await question('Please enter your phone number:\n')
+						const code = await sock.requestPairingCode(phoneNumber)
+						console.log(`Pairing code: ${code}`)
+					}
+				}
+
 				console.log('connection update', update)
 			}
 
@@ -135,7 +129,7 @@ const startSock = async() => {
 			// received a new message
       if (events['messages.upsert']) {
         const upsert = events['messages.upsert']
-        console.log('recv messages ', JSON.stringify(upsert, undefined, 2))
+        logger.debug(upsert, 'recv messages')
 
         if (!!upsert.requestId) {
           console.log("placeholder message received for request of id=" + upsert.requestId, upsert)
@@ -159,10 +153,9 @@ const startSock = async() => {
               }
 
               if (!msg.key.fromMe && doReplies && !isJidNewsletter(msg.key?.remoteJid!)) {
-
-                console.log('replying to', msg.key.remoteJid)
-                await sock!.readMessages([msg.key])
-                await sendMessageWTyping({ text: 'Hello there!' }, msg.key.remoteJid!)
+              	const id = generateMessageIDV2(sock.user?.id)
+              	logger.debug({id, orig_id: msg.key.id }, 'replying to message')
+                await sock.sendMessage(msg.key.remoteJid!, { text: 'pong '+msg.key.id }, {messageId: id })
               }
             }
           }
@@ -222,6 +215,10 @@ const startSock = async() => {
 
 			if(events['chats.delete']) {
 				console.log('chats deleted ', events['chats.delete'])
+			}
+
+			if(events['group.member-tag.update']) {
+				console.log('group member tag update', JSON.stringify(events['group.member-tag.update'], undefined, 2))
 			}
 		}
 	)

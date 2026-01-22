@@ -37,6 +37,7 @@ import {
 	MISSING_KEYS_ERROR_TEXT,
 	NACK_REASONS,
 	NO_MESSAGE_FOUND_ERROR_TEXT,
+	toNumber,
 	unixTimestampSeconds,
 	xmppPreKey,
 	xmppSignedPreKey
@@ -151,7 +152,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			await placeholderResendCache.set(messageKey?.id!, true)
 		}
 
-		await delay(5000)
+		await delay(2000)
 
 		if (!(await placeholderResendCache.get(messageKey?.id!))) {
 			logger.debug({ messageKey }, 'message received while resend requested')
@@ -169,10 +170,10 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		setTimeout(async () => {
 			if (await placeholderResendCache.get(messageKey?.id!)) {
-				logger.debug({ messageKey }, 'PDO message without response after 15 seconds. Phone possibly offline')
+				logger.debug({ messageKey }, 'PDO message without response after 8 seconds. Phone possibly offline')
 				await placeholderResendCache.del(messageKey?.id!)
 			}
-		}, 15_000)
+		}, 8_000)
 
 		return sendPeerDataOperationMessage(pdoMessage)
 	}
@@ -201,7 +202,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			return
 		}
 
-		logger.info({ operation, updates }, 'got mex newsletter notification')
+		logger.debug({ operation, updates }, 'got mex newsletter notification')
 
 		switch (operation) {
 			case 'NotificationNewsletterUpdate':
@@ -330,6 +331,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const sendMessageAck = async ({ tag, attrs, content }: BinaryNode, errorCode?: number) => {
+		// If ws not connected - logs it and return
+		if (!ws.isOpen) {
+			logger.warn({ attrs: attrs }, 'Client not connected, cannot send ack')
+			return
+		}
 		const stanza: BinaryNode = {
 			tag: 'ack',
 			attrs: {
@@ -431,12 +437,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		let shouldRecreateSession = false
 		let recreateReason = ''
 
-		if (enableAutoSessionRecreation && messageRetryManager) {
+		if (enableAutoSessionRecreation && messageRetryManager && retryCount > 1) {
 			try {
 				// Check if we have a session with this JID
 				const sessionId = signalRepository.jidToSignalProtocolAddress(fromJid)
 				const hasSession = await signalRepository.validateSession(fromJid)
-				const result = messageRetryManager.shouldRecreateSession(fromJid, retryCount, hasSession.exists)
+				const result = messageRetryManager.shouldRecreateSession(fromJid, hasSession.exists)
 				shouldRecreateSession = result.recreate
 				recreateReason = result.reason
 
@@ -467,8 +473,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				})
 			} else {
 				// Fallback to immediate request
-				const msgId = await requestPlaceholderResend(msgKey)
-				logger.debug(`sendRetryRequest: requested placeholder resend for message ${msgId}`)
+				const msgResentId = await requestPlaceholderResend(msgKey)
+				logger.debug(`sendRetryRequest: requested placeholder resend for message ${msgId} - ${msgResentId}`)
 			}
 		}
 
@@ -989,12 +995,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		let shouldRecreateSession = false
 		let recreateReason = ''
 
-		if (enableAutoSessionRecreation && messageRetryManager) {
+		if (enableAutoSessionRecreation && messageRetryManager && retryCount > 1) {
 			try {
 				const sessionId = signalRepository.jidToSignalProtocolAddress(participant)
 
 				const hasSession = await signalRepository.validateSession(participant)
-				const result = messageRetryManager.shouldRecreateSession(participant, retryCount, hasSession.exists)
+				const result = messageRetryManager.shouldRecreateSession(participant, hasSession.exists)
 				shouldRecreateSession = result.recreate
 				recreateReason = result.reason
 
@@ -1097,7 +1103,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 								'messages.update',
 								ids.map(id => ({
 									key: { ...key, id },
-									update: { status }
+									update: { status, messageTimestamp: toNumber(+(attrs.t ?? 0)) }
 								}))
 							)
 						}
@@ -1179,7 +1185,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 		const encNode = getBinaryNodeChild(node, 'enc')
 		// TODO: temporary fix for crashes and issues resulting of failed msmsg decryption
-		if (encNode && encNode.attrs.type === 'msmsg') {
+		if (encNode?.attrs.type === 'msmsg') {
 			logger.debug({ key: node.attrs.key }, 'ignored msmsg')
 			await sendMessageAck(node, NACK_REASONS.MissingMessageSecret)
 			return

@@ -37,7 +37,8 @@
     "preinstall": "node ./engine-requirements.js",
     "release": "release-it",
     "test": "node --experimental-vm-modules ./node_modules/.bin/jest --testMatch '**/*.test.ts'",
-    "test:e2e": "node --experimental-vm-modules ./node_modules/.bin/jest --testMatch '**/*.test-e2e.ts'"
+    "test:e2e": "node --experimental-vm-modules ./node_modules/.bin/jest --testMatch '**/*.test-e2e.ts'",
+    "update:version": "tsx ./scripts/update-version.ts"
   },
   "dependencies": {
     "@cacheable/node-cache": "^1.4.0",
@@ -55,7 +56,10 @@
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.31.0",
     "@types/jest": "^30.0.0",
-    "@types/node": "^20.9.0",
+    "@types/lodash": "^4.17.21",
+    "@types/node": "^24.10.1",
+    "@types/semver": "^7.7.1",
+    "@types/whatwg-url": "^13.0.0",
     "@types/ws": "^8.0.0",
     "@typescript-eslint/eslint-plugin": "^8",
     "@typescript-eslint/parser": "^8",

@@ -4,7 +4,7 @@ import type { AuthenticationState, SocketConfig, WAVersion } from '../Types'
 import { Browsers } from '../Utils/browser-utils'
 import logger from '../Utils/logger'
 
-const version = [2, 3000, 1027934701]
+const version = [2, 3000, 1032141294]
 
 export const UNAUTHORIZED_CODES = [401, 403, 419]
 
@@ -29,9 +29,10 @@ export const NOISE_WA_HEADER = Buffer.from([87, 65, 6, DICT_VERSION]) // last is
 /** from: https://stackoverflow.com/questions/3809401/what-is-a-good-regular-expression-to-match-a-url */
 export const URL_REGEX = /https:\/\/(?![^:@\/\s]+:[^:@\/\s]+@)[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(:\d+)?(\/[^\s]*)?/g
 
-// TODO: Add WA root CA
 export const WA_CERT_DETAILS = {
-	SERIAL: 0
+	SERIAL: 0,
+	ISSUER: 'WhatsAppLongTerm1',
+	PUBLIC_KEY: Buffer.from('142375574d0a587166aae71ebe516437c4a28b73e3695c6ce1f7f9545da8ee6b', 'hex')
 }
 
 export const PROCESSABLE_HISTORY_TYPES = [
@@ -85,11 +86,20 @@ export const MEDIA_PATH_MAP: { [T in MediaType]?: string } = {
 	document: '/mms/document',
 	audio: '/mms/audio',
 	sticker: '/mms/image',
-	'thumbnail-link': '/mms/image',
+	'thumbnail-link': '/mms/thumbnail-link',
 	'product-catalog-image': '/product/image',
 	'md-app-state': '',
 	'md-msg-hist': '/mms/md-app-state',
 	'biz-cover-photo': '/pps/biz-cover-photo'
+}
+
+export const MEDIA_NEWSLETTER_PATH_MAP: { [T in MediaType]?: string } = {
+	image: '/newsletter/newsletter-image',
+	video: '/newsletter/newsletter-video',
+	document: '/newsletter/newsletter-document',
+	audio: '/newsletter/newsletter-audio',
+	sticker: '/newsletter/newsletter-image',
+	'thumbnail-link': '/newsletter/newsletter-thumbnail-link',
 }
 
 export const MEDIA_HKDF_KEY_MAPPING = {
