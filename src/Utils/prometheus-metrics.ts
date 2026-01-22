@@ -1076,15 +1076,12 @@ export class SystemMetricsCollector {
 			new Gauge('system_load_average', 'System load average', ['period'])
 		)
 
-		// Event loop lag - check if already exists (may be created by collectDefaultMetrics)
-		const existingEventLoopLag = getExistingMetric<Histogram>('nodejs_eventloop_lag_seconds')
-		if (existingEventLoopLag) {
-			this.eventLoopLag = existingEventLoopLag
-		} else {
-			this.eventLoopLag = registry.register(
-				new Histogram('nodejs_eventloop_lag_seconds', 'Event loop lag in seconds', [], DEFAULT_LATENCY_BUCKETS)
-			)
-		}
+		// Event loop lag - use different name to avoid conflict with collectDefaultMetrics
+		// prom-client's collectDefaultMetrics creates nodejs_eventloop_lag_seconds
+		// We use system_eventloop_lag_seconds to avoid duplicate registration
+		this.eventLoopLag = registry.register(
+			new Histogram('system_eventloop_lag_seconds', 'Event loop lag in seconds', [], DEFAULT_LATENCY_BUCKETS)
+		)
 
 		// Initialize CPU baseline
 		this.lastCpuUsage = process.cpuUsage()
