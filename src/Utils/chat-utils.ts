@@ -930,7 +930,11 @@ export const processSyncAction = (
 		ev.emit('contacts.upsert', [
 			{
 				id: id!,
-				name: action.lidContactAction.fullName || undefined,
+				name:
+					action.lidContactAction.fullName ||
+					action.lidContactAction.firstName ||
+					action.lidContactAction.username ||
+					undefined,
 				lid: id!,
 				phoneNumber: undefined
 			}
