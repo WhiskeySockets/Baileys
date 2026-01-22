@@ -607,11 +607,16 @@ export const makeEventBuffer = (
 		}
 
 		logger.debug('Destroying event buffer')
+		const hadPendingFlush = isBuffering
 		destroyed = true
 
 		// Flush any remaining events
-		if (isBuffering) {
+		if (hadPendingFlush) {
 			flush(true)
+			// Record final flush metric
+			if (metricsModule) {
+				metricsModule.recordBufferFinalFlush()
+			}
 		}
 
 		// Clear all timers
@@ -623,6 +628,11 @@ export const makeEventBuffer = (
 
 		// Remove all event listeners
 		ev.removeAllListeners()
+
+		// Record buffer destroyed metric
+		if (metricsModule) {
+			metricsModule.recordBufferDestroyed('normal', hadPendingFlush)
+		}
 
 		logger.debug('Event buffer destroyed successfully')
 	}

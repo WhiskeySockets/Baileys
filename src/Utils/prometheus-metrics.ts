@@ -1934,6 +1934,30 @@ export function recordConnectionError(errorType: string): void {
 	}
 }
 
+/**
+ * Record buffer destruction
+ * Used by event-buffer.ts when buffer is destroyed
+ */
+export function recordBufferDestroyed(reason: string, hadPendingFlush: boolean): void {
+	try {
+		metrics.bufferDestroyed?.inc({ reason, had_pending_flush: hadPendingFlush ? 'true' : 'false' })
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
+/**
+ * Record final flush during buffer destruction
+ * Used by event-buffer.ts when buffer flushes remaining events on destroy
+ */
+export function recordBufferFinalFlush(): void {
+	try {
+		metrics.bufferFinalFlush?.inc({})
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
 // ============================================
 // Global Instance
 // ============================================
