@@ -1,7 +1,7 @@
 import NodeCache from '@cacheable/node-cache'
 import { jest } from '@jest/globals'
 import P from 'pino'
-import { handleIdentityChange, type IdentityChangeContext } from '../../Utils/identity-change-handler'
+import { handleIdentityChange, type IdentityChangeContext, type IdentityChangeResult } from '../../Utils/identity-change-handler'
 import { type BinaryNode } from '../../WABinary'
 
 const logger = P({ level: 'silent' })
@@ -13,7 +13,7 @@ describe('Identity Change Handling', () => {
 	let mockValidateSession: jest.Mock<ValidateSessionFn>
 	let mockAssertSessions: jest.Mock<AssertSessionsFn>
 	let identityAssertDebounce: NodeCache<boolean>
-	let mockMeId: string
+	let mockMeId: string | undefined
 	let mockMeLid: string | undefined
 
 	function createIdentityChangeNode(from: string, offline?: string): BinaryNode {
@@ -71,6 +71,7 @@ describe('Identity Change Handling', () => {
 			const result = await handleIdentityChange(node, createContext())
 
 			expect(result.action).toBe('session_refreshed')
+			expect((result as { hadExistingSession: boolean }).hadExistingSession).toBe(true)
 		})
 
 		it('should skip self-primary identity (PN match)', async () => {
@@ -89,22 +90,38 @@ describe('Identity Change Handling', () => {
 			expect(result.action).toBe('skipped_self_primary')
 		})
 
-		it('should skip when no existing session', async () => {
+		it('should skip self-primary identity when only meLid exists', async () => {
+			// FIX: Test for the case where meId is undefined but meLid matches
+			mockMeId = undefined
+			mockMeLid = 'mylid@lid'
+
+			const node = createIdentityChangeNode('mylid@lid')
+			const result = await handleIdentityChange(node, createContext())
+
+			expect(mockValidateSession).not.toHaveBeenCalled()
+			expect(result.action).toBe('skipped_self_primary')
+		})
+
+		it('should create session when no existing session exists', async () => {
+			// FIX: Identity change is the signal to rebuild session, even if none exists
+			// This is critical for key reset or device restore scenarios
 			mockValidateSession.mockResolvedValue({ exists: false })
+			mockAssertSessions.mockResolvedValue(true)
 
 			const node = createIdentityChangeNode('user@s.whatsapp.net')
 			const result = await handleIdentityChange(node, createContext())
 
-			expect(mockAssertSessions).not.toHaveBeenCalled()
-			expect(result.action).toBe('skipped_no_session')
+			expect(mockAssertSessions).toHaveBeenCalledWith(['user@s.whatsapp.net'], true)
+			expect(result.action).toBe('session_refreshed')
+			expect((result as { hadExistingSession: boolean }).hadExistingSession).toBe(false)
 		})
 
 		it('should skip session refresh during offline processing', async () => {
-			mockValidateSession.mockResolvedValue({ exists: true })
-
 			const node = createIdentityChangeNode('user@s.whatsapp.net', '0')
 			const result = await handleIdentityChange(node, createContext())
 
+			// FIX: validateSession should not be called for offline notifications
+			// because we skip before reaching that point
 			expect(mockAssertSessions).not.toHaveBeenCalled()
 			expect(result.action).toBe('skipped_offline')
 		})
@@ -118,6 +135,7 @@ describe('Identity Change Handling', () => {
 
 			expect(mockAssertSessions).toHaveBeenCalledWith(['user@s.whatsapp.net'], true)
 			expect(result.action).toBe('session_refreshed')
+			expect((result as { hadExistingSession: boolean }).hadExistingSession).toBe(true)
 		})
 	})
 
@@ -146,6 +164,24 @@ describe('Identity Change Handling', () => {
 			expect(result1.action).toBe('session_refreshed')
 			expect(result2.action).toBe('session_refreshed')
 			expect(mockAssertSessions).toHaveBeenCalledTimes(2)
+		})
+
+		it('should NOT set debounce cache when skipping due to offline', async () => {
+			// FIX: Debounce should only be set when we actually attempt refresh
+			const node = createIdentityChangeNode('user@s.whatsapp.net', '0')
+
+			const result1 = await handleIdentityChange(node, createContext())
+			expect(result1.action).toBe('skipped_offline')
+
+			// Now process the same JID online - it should NOT be debounced
+			mockValidateSession.mockResolvedValue({ exists: true })
+			mockAssertSessions.mockResolvedValue(true)
+
+			const onlineNode = createIdentityChangeNode('user@s.whatsapp.net')
+			const result2 = await handleIdentityChange(onlineNode, createContext())
+
+			expect(result2.action).toBe('session_refreshed')
+			expect(mockAssertSessions).toHaveBeenCalledTimes(1)
 		})
 	})
 
@@ -202,6 +238,50 @@ describe('Identity Change Handling', () => {
 
 			expect(mockValidateSession).toHaveBeenCalledWith('12345@lid')
 			expect(result.action).toBe('session_refreshed')
+		})
+
+		it('should process when both meId and meLid are undefined', async () => {
+			mockMeId = undefined
+			mockMeLid = undefined
+			mockValidateSession.mockResolvedValue({ exists: true })
+			mockAssertSessions.mockResolvedValue(true)
+
+			const node = createIdentityChangeNode('anyuser@s.whatsapp.net')
+			const result = await handleIdentityChange(node, createContext())
+
+			expect(result.action).toBe('session_refreshed')
+		})
+	})
+
+	describe('Result Types', () => {
+		it('should include hadExistingSession in session_refreshed result', async () => {
+			mockValidateSession.mockResolvedValue({ exists: true })
+			mockAssertSessions.mockResolvedValue(true)
+
+			const node = createIdentityChangeNode('user@s.whatsapp.net')
+			const result = await handleIdentityChange(node, createContext()) as Extract<IdentityChangeResult, { action: 'session_refreshed' }>
+
+			expect(result.action).toBe('session_refreshed')
+			expect(result.hadExistingSession).toBe(true)
+		})
+
+		it('should return hadExistingSession=false when creating new session', async () => {
+			mockValidateSession.mockResolvedValue({ exists: false })
+			mockAssertSessions.mockResolvedValue(true)
+
+			const node = createIdentityChangeNode('user@s.whatsapp.net')
+			const result = await handleIdentityChange(node, createContext()) as Extract<IdentityChangeResult, { action: 'session_refreshed' }>
+
+			expect(result.action).toBe('session_refreshed')
+			expect(result.hadExistingSession).toBe(false)
+		})
+
+		it('should include device number in skipped_companion_device result', async () => {
+			const node = createIdentityChangeNode('user:5@s.whatsapp.net')
+			const result = await handleIdentityChange(node, createContext()) as Extract<IdentityChangeResult, { action: 'skipped_companion_device' }>
+
+			expect(result.action).toBe('skipped_companion_device')
+			expect(result.device).toBe(5)
 		})
 	})
 })

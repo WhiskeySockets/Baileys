@@ -37,8 +37,7 @@ export type IdentityChangeResult =
 	| { action: 'skipped_self_primary' }
 	| { action: 'debounced' }
 	| { action: 'skipped_offline' }
-	| { action: 'skipped_no_session' }
-	| { action: 'session_refreshed' }
+	| { action: 'session_refreshed'; hadExistingSession: boolean }
 	| { action: 'session_refresh_failed'; error: unknown }
 
 /**
@@ -74,9 +73,12 @@ export type IdentityChangeContext = {
  *    as they don't require session refresh
  * 3. **Self-Primary Skip**: Skips notifications for the current user's own identity
  * 4. **Debouncing**: Prevents duplicate processing for the same JID within TTL window
- * 5. **Session Check**: Verifies an existing session exists before attempting refresh
- * 6. **Offline Handling**: Skips refresh during offline notification processing
- * 7. **Session Refresh**: Attempts to refresh the session with force flag
+ * 5. **Offline Handling**: Skips refresh during offline notification processing
+ * 6. **Session Refresh**: Attempts to refresh/create the session with force flag
+ *
+ * **Important**: Identity change notifications signal that we need to rebuild the session,
+ * regardless of whether an existing session exists. This is critical for cases where
+ * the local session was cleared (e.g., after key reset or device restore).
  *
  * @param node - The binary node containing the identity change notification
  * @param ctx - Context object with required dependencies
@@ -95,7 +97,7 @@ export type IdentityChangeContext = {
  *
  * switch (result.action) {
  *   case 'session_refreshed':
- *     console.log('Session successfully refreshed')
+ *     console.log('Session refreshed, had existing:', result.hadExistingSession)
  *     break
  *   case 'session_refresh_failed':
  *     console.error('Failed to refresh session:', result.error)
@@ -132,45 +134,49 @@ export async function handleIdentityChange(
 	}
 
 	// Skip self-primary identity changes
-	const isSelfPrimary = ctx.meId && (
-		areJidsSameUser(from, ctx.meId) ||
-		(ctx.meLid && areJidsSameUser(from, ctx.meLid))
-	)
-	if (isSelfPrimary) {
+	// FIX: Check meId and meLid independently to handle cases where only meLid exists
+	const matchesMeId = ctx.meId && areJidsSameUser(from, ctx.meId)
+	const matchesMeLid = ctx.meLid && areJidsSameUser(from, ctx.meLid)
+	if (matchesMeId || matchesMeLid) {
 		ctx.logger.info({ jid: from }, 'self primary identity changed')
 		return { action: 'skipped_self_primary' }
 	}
 
 	// Debounce to prevent duplicate processing
+	// Check early but don't set yet - we only want to debounce actual refresh attempts
 	if (ctx.debounceCache.get(from)) {
 		ctx.logger.debug({ jid: from }, 'skipping identity assert (debounced)')
 		return { action: 'debounced' }
 	}
 
-	// Mark as processing in debounce cache
-	ctx.debounceCache.set(from, true)
-
-	// Check if we have an existing session to refresh
-	const hasExistingSession = await ctx.validateSession(from)
-	if (!hasExistingSession.exists) {
-		ctx.logger.debug({ jid: from }, 'no old session, skipping session refresh')
-		return { action: 'skipped_no_session' }
-	}
-
-	ctx.logger.debug({ jid: from }, 'old session exists, will refresh session')
-
 	// Skip refresh during offline notification processing
 	// Offline notifications are processed in batch and shouldn't trigger immediate refreshes
+	// FIX: Check this BEFORE setting debounce cache to avoid incorrect debouncing
 	const isOfflineNotification = !isStringNullOrEmpty(node.attrs.offline)
 	if (isOfflineNotification) {
 		ctx.logger.debug({ jid: from }, 'skipping session refresh during offline processing')
 		return { action: 'skipped_offline' }
 	}
 
-	// Attempt session refresh
+	// Check if we have an existing session (for logging purposes only)
+	// FIX: We no longer skip refresh when no session exists - identity change is the
+	// signal to rebuild the session, which is critical after key reset or device restore
+	const hasExistingSession = await ctx.validateSession(from)
+
+	if (hasExistingSession.exists) {
+		ctx.logger.debug({ jid: from }, 'existing session found, will refresh')
+	} else {
+		ctx.logger.debug({ jid: from }, 'no existing session, will create new session')
+	}
+
+	// FIX: Set debounce cache only immediately before the actual refresh attempt
+	// This ensures we don't incorrectly debounce when we exit early (offline, etc.)
+	ctx.debounceCache.set(from, true)
+
+	// Attempt session refresh/creation
 	try {
 		await ctx.assertSessions([from], true)
-		return { action: 'session_refreshed' }
+		return { action: 'session_refreshed', hadExistingSession: hasExistingSession.exists }
 	} catch (error) {
 		ctx.logger.warn(
 			{ error, jid: from },
