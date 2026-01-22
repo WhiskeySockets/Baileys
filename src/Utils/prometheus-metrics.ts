@@ -2105,11 +2105,58 @@ export function getMetricsManager(config?: Partial<MetricsConfig>): PrometheusMe
 }
 
 /**
+ * Initialize metrics with labels to zero values
+ * This ensures they appear in Prometheus output even before first increment
+ */
+function initializeMetricsWithLabels(): void {
+	try {
+		// Buffer destroyed metric
+		metrics.bufferDestroyed?.inc({ reason: 'normal', had_pending_flush: 'true' }, 0)
+		metrics.bufferDestroyed?.inc({ reason: 'normal', had_pending_flush: 'false' }, 0)
+		metrics.bufferDestroyed?.inc({ reason: 'error', had_pending_flush: 'true' }, 0)
+		metrics.bufferDestroyed?.inc({ reason: 'error', had_pending_flush: 'false' }, 0)
+
+		// Buffer flushes metric
+		metrics.bufferFlushes?.inc({ type: 'event', reason: 'normal' }, 0)
+		metrics.bufferFlushes?.inc({ type: 'event', reason: 'forced' }, 0)
+
+		// Connection metrics
+		metrics.connectionAttempts?.inc({ status: 'success' }, 0)
+		metrics.connectionAttempts?.inc({ status: 'failure' }, 0)
+		metrics.connectionErrors?.inc({ error_type: 'timeout' }, 0)
+		metrics.connectionErrors?.inc({ error_type: 'closed' }, 0)
+		metrics.connectionErrors?.inc({ error_type: 'unknown' }, 0)
+
+		// Message metrics
+		metrics.messagesSent?.inc({ type: 'text' }, 0)
+		metrics.messagesSent?.inc({ type: 'media' }, 0)
+		metrics.messagesSent?.inc({ type: 'other' }, 0)
+		metrics.messagesReceived?.inc({ type: 'text' }, 0)
+		metrics.messagesReceived?.inc({ type: 'media' }, 0)
+		metrics.messagesReceived?.inc({ type: 'notification' }, 0)
+		metrics.messagesReceived?.inc({ type: 'other' }, 0)
+		metrics.messageRetries?.inc({ type: 'text' }, 0)
+		metrics.messageRetries?.inc({ type: 'other' }, 0)
+		metrics.messageFailures?.inc({ type: 'text', reason: 'max_retries' }, 0)
+		metrics.messageFailures?.inc({ type: 'other', reason: 'max_retries' }, 0)
+
+		// Circuit breaker metric
+		metrics.circuitBreakerTrips?.inc({ name: 'main' }, 0)
+
+		console.log('[Prometheus] Initialized metrics with labels')
+	} catch (error) {
+		console.error('[Prometheus] Error initializing metrics with labels:', error)
+	}
+}
+
+/**
  * Initialize global metrics (call once at application startup)
  */
 export async function initializeMetrics(config?: Partial<MetricsConfig>): Promise<PrometheusMetricsManager> {
 	const manager = getMetricsManager(config)
 	await manager.initialize()
+	// Initialize metrics with labels to zero values
+	initializeMetricsWithLabels()
 	return manager
 }
 
