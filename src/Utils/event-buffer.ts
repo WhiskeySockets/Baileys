@@ -482,6 +482,10 @@ export const makeEventBuffer = (
 				removed: removed.length,
 				remaining: historyCache.size
 			})
+			// Record metrics for cache cleanup
+			if (metricsModule) {
+				metricsModule.recordCacheCleanup(removed.length)
+			}
 		}
 	}
 

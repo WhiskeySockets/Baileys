@@ -1898,6 +1898,18 @@ export function updateBufferStatistics(stats: {
 	}
 }
 
+/**
+ * Record a cache cleanup operation
+ * Used by event-buffer.ts when LRU cleanup is performed
+ */
+export function recordCacheCleanup(removedCount: number): void {
+	try {
+		metrics.bufferCacheCleanup?.inc({})
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
 // ============================================
 // Global Instance
 // ============================================
