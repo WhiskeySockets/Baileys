@@ -167,7 +167,7 @@ export const prepareWAMessageMedia = async (
 
 	const isNewsletter = !!options.jid && isJidNewsletter(options.jid)
 	if (isNewsletter) {
-		logger?.info({ key: cacheableKey }, 'Preparing raw media for newsletter')
+		logger?.debug({ key: cacheableKey }, 'Preparing raw media for newsletter')
 		const { filePath, fileSha256, fileLength } = await getRawMediaUploadData(
 			uploadData.media,
 			options.mediaTypeOverride || mediaType,
@@ -217,7 +217,7 @@ export const prepareWAMessageMedia = async (
 		(mediaType === 'image' || mediaType === 'video') && typeof uploadData['jpegThumbnail'] === 'undefined'
 	const requiresWaveformProcessing = mediaType === 'audio' && uploadData.ptt === true
 	const requiresAudioBackground = options.backgroundColor && mediaType === 'audio' && uploadData.ptt === true
-	const requiresOriginalForSomeProcessing = requiresDurationComputation || requiresThumbnailComputation
+	const requiresOriginalForSomeProcessing = requiresDurationComputation || requiresThumbnailComputation || requiresWaveformProcessing
 	const { mediaKey, encFilePath, originalFilePath, fileEncSha256, fileSha256, fileLength } = await encryptedStream(
 		uploadData.media,
 		options.mediaTypeOverride || mediaType,
@@ -276,7 +276,9 @@ export const prepareWAMessageMedia = async (
 			}
 		})()
 	]).finally(async () => {
-		try {
+		// wait N seconds to give a chance processing finish it's job in case of errors
+                    setTimeout(
+                        async () => {try {
 			await fs.unlink(encFilePath)
 			if (originalFilePath) {
 				await fs.unlink(originalFilePath)
@@ -285,7 +287,7 @@ export const prepareWAMessageMedia = async (
 			logger?.debug('removed tmp files')
 		} catch (error) {
 			logger?.warn('failed to remove tmp file')
-		}
+		}}, 5000)
 	})
 
 	const obj = WAProto.Message.fromObject({
@@ -542,6 +544,10 @@ export const generateWAMessageContent = async (
 			messageSecret: message.poll.messageSecret || randomBytes(32)
 		}
 
+		if (isJidNewsletter(options.jid)) {
+			m.messageContextInfo = undefined
+		}
+
 		const pollCreationMessage = {
 			name: message.poll.name,
 			selectableOptionsCount: message.poll.selectableCount,
@@ -578,6 +584,21 @@ export const generateWAMessageContent = async (
 		}
 	} else {
 		m = await prepareWAMessageMedia(message, options)
+	}
+
+	if('sections' in message && !!message.sections) {
+		const amessage: any = message as any
+
+		const listMessage: proto.Message.IListMessage = {
+			sections: amessage.sections,
+			buttonText: amessage.buttonText,
+			title: amessage.title,
+			footerText: amessage.footer,
+			description: amessage.text,
+			listType: proto.Message.ListMessage.ListType.SINGLE_SELECT
+		}
+
+		m = { listMessage }
 	}
 
 	if ('viewOnce' in message && !!message.viewOnce) {
@@ -750,7 +771,9 @@ export const normalizeMessageContent = (content: WAMessageContent | null | undef
 			message?.documentWithCaptionMessage ||
 			message?.viewOnceMessageV2 ||
 			message?.viewOnceMessageV2Extension ||
-			message?.editedMessage
+			message?.editedMessage ||
+			message?.associatedChildMessage ||
+			message?.lottieStickerMessage
 		)
 	}
 }
@@ -1031,7 +1054,8 @@ export const downloadMediaMessage = async <Type extends 'buffer' | 'stream'>(
 			download = media
 		}
 
-		const stream = await downloadContentFromMessage(download, mediaType, options)
+		const decrypt = !isJidNewsletter(message.key.remoteJid || undefined)
+		const stream = await downloadContentFromMessage(download, mediaType, options, decrypt)
 		if (type === 'buffer') {
 			const bufferArray: Buffer[] = []
 			for await (const chunk of stream) {

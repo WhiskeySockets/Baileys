@@ -1,12 +1,19 @@
-import type { NewsletterCreateResponse, SocketConfig, WAMediaUpload } from '../Types'
+import type { NewsletterCreateResponse, SocketConfig, NewsletterFetchedUpdate, NewsletterReaction, WAMediaUpload } from '../Types'
 import type { NewsletterMetadata, NewsletterUpdate } from '../Types'
+import type { BinaryNode } from "../WABinary"
 import { QueryIds, XWAPaths } from '../Types'
+import { decryptMessageNode } from '../Utils'
 import { generateProfilePicture } from '../Utils/messages-media'
-import { getBinaryNodeChild } from '../WABinary'
+import {
+	getAllBinaryNodeChildren,
+	getBinaryNodeChild,
+	getBinaryNodeChildren,
+	S_WHATSAPP_NET
+} from '../WABinary'
 import { makeGroupsSocket } from './groups'
 import { executeWMexQuery as genericExecuteWMexQuery } from './mex'
 
-const parseNewsletterCreateResponse = (response: NewsletterCreateResponse): NewsletterMetadata => {
+export const parseNewsletterCreateResponse = (response: NewsletterCreateResponse): NewsletterMetadata => {
 	const { id, thread_metadata: thread, viewer_metadata: viewer } = response
 	return {
 		id: id,
@@ -17,10 +24,12 @@ const parseNewsletterCreateResponse = (response: NewsletterCreateResponse): News
 		invite: thread.invite,
 		subscribers: parseInt(thread.subscribers_count, 10),
 		verification: thread.verification,
-		picture: {
-			id: thread.picture.id,
-			directPath: thread.picture.direct_path
-		},
+		picture: thread?.picture
+			? {
+					id: thread.picture.id,
+					directPath: thread.picture.direct_path
+				}
+			: undefined,
 		mute_state: viewer.mute
 	}
 }
@@ -43,10 +52,15 @@ const parseNewsletterMetadata = (result: unknown): NewsletterMetadata | null => 
 
 export const makeNewsletterSocket = (config: SocketConfig) => {
 	const sock = makeGroupsSocket(config)
-	const { query, generateMessageTag } = sock
+	const { query, generateMessageTag, authState, signalRepository } = sock
 
-	const executeWMexQuery = <T>(variables: Record<string, unknown>, queryId: string, dataPath: string): Promise<T> => {
-		return genericExecuteWMexQuery<T>(variables, queryId, dataPath, query, generateMessageTag)
+	const executeWMexQuery = <T>(
+		variables: Record<string, unknown>,
+		queryId: string,
+		dataPath: string,
+		error = false
+	): Promise<T> => {
+		return genericExecuteWMexQuery<T>(variables, queryId, dataPath, query, generateMessageTag, error)
 	}
 
 	const newsletterUpdate = async (jid: string, updates: NewsletterUpdate) => {
@@ -60,8 +74,62 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 		return executeWMexQuery(variables, QueryIds.UPDATE_METADATA, 'xwa2_newsletter_update')
 	}
 
+	const parseFetchedUpdates = async (node: BinaryNode, type: 'messages' | 'updates') => {
+		let child: BinaryNode
+
+		if (type === 'messages') {
+			child = getBinaryNodeChild(node, 'messages') as BinaryNode
+		} else {
+			const parent = getBinaryNodeChild(node, 'message_updates')
+			child = getBinaryNodeChild(parent, 'messages') as BinaryNode
+		}
+
+		return await Promise.all(
+			getAllBinaryNodeChildren(child).map(async messageNode => {
+				messageNode.attrs.from = child?.attrs.jid as string
+
+				const views = getBinaryNodeChild(messageNode, 'views_count')?.attrs?.count
+				const reactionNode = getBinaryNodeChild(messageNode, 'reactions')
+				const reactions = getBinaryNodeChildren(reactionNode, 'reaction').map(
+					({ attrs }) => ({ count: +(attrs.count || 0), code: attrs.code }) as NewsletterReaction
+				)
+
+				let data: NewsletterFetchedUpdate
+				if (type === 'messages') {
+					const { fullMessage: message, decrypt } = await decryptMessageNode(
+						messageNode,
+						authState.creds.me!.id,
+						authState.creds.me!.lid || '',
+						signalRepository,
+						sock.config.logger
+					)
+
+					await decrypt()
+
+					data = {
+						server_id: messageNode.attrs.server_id as string,
+						views: views ? +views : undefined,
+						reactions,
+						message
+					}
+
+					return data
+				} else {
+					data = {
+						server_id: messageNode.attrs.server_id as string,
+						views: views ? +views : undefined,
+						reactions
+					}
+
+					return data
+				}
+			})
+		)
+	}
+
 	return {
 		...sock,
+		executeWMexQuery,
 		newsletterCreate: async (name: string, description?: string): Promise<NewsletterMetadata> => {
 			const variables = {
 				input: {
@@ -74,10 +142,15 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 				QueryIds.CREATE,
 				XWAPaths.xwa2_newsletter_create
 			)
-			return parseNewsletterCreateResponse(rawResponse)
+			return rawResponse as any
 		},
 
 		newsletterUpdate,
+
+		newsletterSubscribed: async (): Promise<NewsletterMetadata[]> => {
+			const result = await executeWMexQuery<any[]>({}, QueryIds.SUBSCRIBED, XWAPaths.xwa2_newsletter_subscribed)
+			return result.map(parseNewsletterMetadata).filter(a => a !== null) as NewsletterMetadata[]
+		},
 
 		newsletterSubscribers: async (jid: string) => {
 			return executeWMexQuery<{ subscribers: number }>(
@@ -94,19 +167,25 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 				fetch_viewer_metadata: true,
 				input: {
 					key,
-					type: type.toUpperCase()
+					type: type.toUpperCase(),
+					view_role: 'GUEST'
 				}
 			}
-			const result = await executeWMexQuery<unknown>(variables, QueryIds.METADATA, XWAPaths.xwa2_newsletter_metadata)
+			const result = await executeWMexQuery<unknown>(
+				variables,
+				QueryIds.METADATA,
+				XWAPaths.xwa2_newsletter_metadata,
+				false
+			)
 			return parseNewsletterMetadata(result)
 		},
 
 		newsletterFollow: (jid: string) => {
-			return executeWMexQuery({ newsletter_id: jid }, QueryIds.FOLLOW, XWAPaths.xwa2_newsletter_follow)
+			return executeWMexQuery({ newsletter_id: jid }, QueryIds.FOLLOW, XWAPaths.xwa2_newsletter_join_v2)
 		},
 
 		newsletterUnfollow: (jid: string) => {
-			return executeWMexQuery({ newsletter_id: jid }, QueryIds.UNFOLLOW, XWAPaths.xwa2_newsletter_unfollow)
+			return executeWMexQuery({ newsletter_id: jid }, QueryIds.UNFOLLOW, XWAPaths.xwa2_newsletter_leave_v2)
 		},
 
 		newsletterMute: (jid: string) => {
@@ -222,6 +301,26 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 
 		newsletterDelete: async (jid: string) => {
 			await executeWMexQuery({ newsletter_id: jid }, QueryIds.DELETE, XWAPaths.xwa2_newsletter_delete_v2)
+		},
+
+		newsletterFetchPreviewMessages: async (type: 'invite' | 'jid', key: string, count: number, after?: number) => {
+			const afterStr: any = after?.toString()
+			const result = await query({
+				tag: 'iq',
+				attrs: {
+					id: generateMessageTag(),
+					type: 'get',
+					xmlns: 'newsletter',
+					to: S_WHATSAPP_NET
+				},
+				content: [
+					{
+						tag: 'messages',
+						attrs: { type, ...(type === 'invite' ? { key } : { jid: key }), count: count.toString(), after: afterStr }
+					}
+				]
+			})
+			return await parseFetchedUpdates(result, 'messages')
 		}
 	}
 }

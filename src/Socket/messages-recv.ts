@@ -201,7 +201,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			return
 		}
 
-		logger.info({ operation, updates }, 'got mex newsletter notification')
+		logger.debug({ operation, updates }, 'got mex newsletter notification')
 
 		switch (operation) {
 			case 'NotificationNewsletterUpdate':
@@ -330,6 +330,11 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 	}
 
 	const sendMessageAck = async ({ tag, attrs, content }: BinaryNode, errorCode?: number) => {
+		// If ws not connected - logs it and return
+		if (!ws.isOpen) {
+			logger.warn({ attrs: attrs }, 'Client not connected, cannot send ack')
+			return
+		}
 		const stanza: BinaryNode = {
 			tag: 'ack',
 			attrs: {
@@ -467,8 +472,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				})
 			} else {
 				// Fallback to immediate request
-				const msgId = await requestPlaceholderResend(msgKey)
-				logger.debug(`sendRetryRequest: requested placeholder resend for message ${msgId}`)
+				const msgResentId = await requestPlaceholderResend(msgKey)
+				logger.debug(`sendRetryRequest: requested placeholder resend for message ${msgId} - ${msgResentId}`)
 			}
 		}
 

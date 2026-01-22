@@ -1,3 +1,5 @@
+import { proto } from '../../WAProto/index.js'
+
 export enum XWAPaths {
 	xwa2_newsletter_create = 'xwa2_newsletter_create',
 	xwa2_newsletter_subscribers = 'xwa2_newsletter_subscribers',
@@ -8,9 +10,12 @@ export enum XWAPaths {
 	xwa2_newsletter_unmute_v2 = 'xwa2_newsletter_unmute_v2',
 	xwa2_newsletter_follow = 'xwa2_newsletter_follow',
 	xwa2_newsletter_unfollow = 'xwa2_newsletter_unfollow',
+	xwa2_newsletter_join_v2 = 'xwa2_newsletter_join_v2',
+	xwa2_newsletter_leave_v2 = 'xwa2_newsletter_leave_v2',
 	xwa2_newsletter_change_owner = 'xwa2_newsletter_change_owner',
 	xwa2_newsletter_demote = 'xwa2_newsletter_demote',
-	xwa2_newsletter_delete_v2 = 'xwa2_newsletter_delete_v2'
+	xwa2_newsletter_delete_v2 = 'xwa2_newsletter_delete_v2',
+	xwa2_newsletter_subscribed = 'xwa2_newsletter_subscribed'
 }
 export enum QueryIds {
 	CREATE = '8823471724422422',
@@ -24,7 +29,8 @@ export enum QueryIds {
 	ADMIN_COUNT = '7130823597031706',
 	CHANGE_OWNER = '7341777602580933',
 	DEMOTE = '6551828931592903',
-	DELETE = '30062808666639665'
+	DELETE = '30062808666639665',
+	SUBSCRIBED = '6388546374527196'
 }
 export type NewsletterUpdate = {
 	name?: string
@@ -95,4 +101,17 @@ export interface NewsletterMetadata {
 		name?: string
 		description?: string
 	}
+}
+
+export type NewsletterReaction = { count: number; code: string }
+
+export type NewsletterFetchedUpdate = {
+	/**id of message in newsletter, starts from 100 */
+	server_id: string
+	/**count of views in this message */
+	views?: number
+	/**reactions in this message */
+	reactions: NewsletterReaction[]
+	/**the message, if you requested only updates, you will not receive message */
+	message?: proto.IWebMessageInfo
 }

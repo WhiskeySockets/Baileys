@@ -1231,6 +1231,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		removeMessageLabel,
 		star,
 		addOrEditQuickReply,
-		removeQuickReply
+		removeQuickReply,
+		config
 	}
 }
