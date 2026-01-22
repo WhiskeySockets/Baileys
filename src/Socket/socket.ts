@@ -10,6 +10,7 @@ import {
 	MIN_PREKEY_COUNT,
 	MIN_UPLOAD_INTERVAL,
 	NOISE_WA_HEADER,
+	PROCESSABLE_HISTORY_TYPES,
 	UPLOAD_TIMEOUT
 } from '../Defaults'
 import type { LIDMapping, SocketConfig } from '../Types'
@@ -80,8 +81,18 @@ export const makeSocket = (config: SocketConfig) => {
 	const generateMessageTag = () => `${uqTagId}${epoch++}`
 
 	if (printQRInTerminal) {
-		console.warn(
+		logger.warn(
+			{},
 			'⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.'
+		)
+	}
+
+	const syncDisabled =
+		PROCESSABLE_HISTORY_TYPES.map(syncType => config.shouldSyncHistoryMessage({ syncType })).filter(x => x === false)
+			.length === PROCESSABLE_HISTORY_TYPES.length
+	if (syncDisabled) {
+		logger.warn(
+			'⚠️ DANGER: DISABLING ALL SYNC BY shouldSyncHistoryMsg PREVENTS BAILEYS FROM ACCESSING INITIAL LID MAPPINGS, LEADING TO INSTABILIY AND SESSION ERRORS'
 		)
 	}
 

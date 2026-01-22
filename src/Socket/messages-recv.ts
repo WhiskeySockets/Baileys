@@ -761,6 +761,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const setPicture = getBinaryNodeChild(node, 'set')
 				const delPicture = getBinaryNodeChild(node, 'delete')
 
+				// TODO: WAJIDHASH stuff proper support inhouse
 				ev.emit('contacts.update', [
 					{
 						id: jidNormalizedUser(node?.attrs?.from) || (setPicture || delPicture)?.attrs?.hash || '',

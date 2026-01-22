@@ -4,6 +4,7 @@ import { proto } from '../../WAProto/index.js'
 import type { Chat, Contact, LIDMapping, WAMessage } from '../Types'
 import { WAMessageStubType } from '../Types'
 import { toNumber } from './generics'
+import type { ILogger } from './logger.js'
 import { normalizeMessageContent } from './messages'
 import { downloadContentFromMessage } from './messages-media'
 
@@ -25,12 +26,15 @@ export const downloadHistory = async (msg: proto.Message.IHistorySyncNotificatio
 	return syncData
 }
 
-export const processHistoryMessage = (item: proto.IHistorySync) => {
+export const processHistoryMessage = (item: proto.IHistorySync, logger?: ILogger) => {
 	const messages: WAMessage[] = []
 	const contacts: Contact[] = []
 	const chats: Chat[] = []
-	// Extract LID-PN mappings for all sync types
 	const lidPnMappings: LIDMapping[] = []
+
+	logger?.trace({ progress: item.progress }, 'processing history of type ' + item.syncType?.toString())
+
+	// Extract LID-PN mappings for all sync types
 	for (const m of item.phoneNumberToLidMappings || []) {
 		if (m.lidJid && m.pnJid) {
 			lidPnMappings.push({ lid: m.lidJid, pn: m.pnJid })
@@ -45,8 +49,8 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 			for (const chat of item.conversations! as Chat[]) {
 				contacts.push({
 					id: chat.id!,
-					name: chat.name || undefined,
-					lid: chat.lidJid || undefined,
+					name: chat.displayName || chat.name || chat.username || undefined,
+					lid: chat.lidJid || chat.accountLid || undefined,
 					phoneNumber: chat.pnJid || undefined
 				})
 
@@ -102,7 +106,8 @@ export const processHistoryMessage = (item: proto.IHistorySync) => {
 
 export const downloadAndProcessHistorySyncNotification = async (
 	msg: proto.Message.IHistorySyncNotification,
-	options: RequestInit
+	options: RequestInit,
+	logger?: ILogger
 ) => {
 	let historyMsg: proto.HistorySync
 	if (msg.initialHistBootstrapInlinePayload) {
@@ -111,7 +116,7 @@ export const downloadAndProcessHistorySyncNotification = async (
 		historyMsg = await downloadHistory(msg, options)
 	}
 
-	return processHistoryMessage(historyMsg)
+	return processHistoryMessage(historyMsg, logger)
 }
 
 export const getHistoryMsg = (message: proto.IMessage) => {
