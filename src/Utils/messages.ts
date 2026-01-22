@@ -74,6 +74,8 @@ const MIMETYPE_MAP: { [T in MediaType]?: string } = {
 	'product-catalog-image': 'image/jpeg'
 }
 
+const ButtonType = proto.Message.ButtonsMessage.HeaderType
+
 const MessageTypeProto = {
 	image: WAProto.Message.ImageMessage,
 	video: WAProto.Message.VideoMessage,
@@ -619,6 +621,73 @@ export const generateWAMessageContent = async (
 				mentionedJid: message.mentions
 			}
 		}
+	}
+
+	//buttons aqui
+	if (hasOptionalProperty(message, 'buttons') && !!message.buttons) {
+		const buttonsMessage: proto.Message.IButtonsMessage = {
+			buttons: message.buttons!.map(b => ({ ...b, type: proto.Message.ButtonsMessage.Button.Type.RESPONSE }))
+		}
+		if ('text' in message) {
+			buttonsMessage.contentText = message.text
+			buttonsMessage.headerType = ButtonType.EMPTY
+		} else {
+			if ('caption' in message) {
+				buttonsMessage.contentText = message.caption
+			}
+
+			const firstKey = Object.keys(m)[0]
+			if (firstKey) {
+				const type = firstKey.replace('Message', '').toUpperCase()
+				buttonsMessage.headerType = ButtonType[type as keyof typeof ButtonType]
+			}
+
+			Object.assign(buttonsMessage, m)
+		}
+
+		if ('footer' in message && !!message.footer) {
+			buttonsMessage.footerText = message.footer
+		}
+
+		m = { buttonsMessage }
+	} else if (hasOptionalProperty(message, 'templateButtons') && !!message.templateButtons) {
+		const msg: proto.Message.TemplateMessage.IHydratedFourRowTemplate = {
+			hydratedButtons: message.templateButtons
+		}
+
+		if ('text' in message) {
+			msg.hydratedContentText = message.text
+		} else {
+			if ('caption' in message) {
+				msg.hydratedContentText = message.caption
+			}
+
+			Object.assign(msg, m)
+		}
+
+		if ('footer' in message && !!message.footer) {
+			msg.hydratedFooterText = message.footer
+		}
+
+		m = {
+			templateMessage: {
+				fourRowTemplate: msg,
+				hydratedTemplate: msg
+			}
+		}
+	}
+
+	if (hasOptionalProperty(message, 'sections') && !!message.sections) {
+		const listMessage: proto.Message.IListMessage = {
+			sections: message.sections,
+			buttonText: message.buttonText,
+			title: message.title,
+			footerText: message.footer,
+			description: 'text' in message ? message.text : undefined,
+			listType: proto.Message.ListMessage.ListType.SINGLE_SELECT
+		}
+
+		m = { listMessage }
 	}
 
 	if (hasOptionalProperty(message, 'edit')) {
