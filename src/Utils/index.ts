@@ -17,6 +17,9 @@ export * from './process-message'
 export * from './message-retry-manager'
 export * from './browser-utils'
 
+// === Identity and Session Management ===
+export * from './identity-change-handler'
+
 // === Observability and Resilience Utilities ===
 
 // Structured logging
