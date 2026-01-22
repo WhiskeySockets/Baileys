@@ -449,6 +449,10 @@ export const makeEventBuffer = (
 				currentSize: currentEventCount,
 				maxSize: config.maxBufferSize
 			})
+			// Record overflow metric
+			if (metricsModule) {
+				metricsModule.recordBufferOverflow()
+			}
 			flush(true)
 			return true
 		}

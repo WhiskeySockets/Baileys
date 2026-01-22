@@ -1910,6 +1910,18 @@ export function recordCacheCleanup(removedCount: number): void {
 	}
 }
 
+/**
+ * Record a buffer overflow event
+ * Used by event-buffer.ts when buffer exceeds max size
+ */
+export function recordBufferOverflow(): void {
+	try {
+		metrics.bufferOverflows?.inc({ type: 'event' })
+	} catch {
+		// Metrics not initialized, ignore silently
+	}
+}
+
 // ============================================
 // Global Instance
 // ============================================
