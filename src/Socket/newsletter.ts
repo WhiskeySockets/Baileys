@@ -1,15 +1,16 @@
-import type { NewsletterCreateResponse, SocketConfig, NewsletterFetchedUpdate, NewsletterReaction, WAMediaUpload } from '../Types'
+import type {
+	NewsletterCreateResponse,
+	NewsletterFetchedUpdate,
+	NewsletterReaction,
+	SocketConfig,
+	WAMediaUpload
+} from '../Types'
 import type { NewsletterMetadata, NewsletterUpdate } from '../Types'
-import type { BinaryNode } from "../WABinary"
 import { QueryIds, XWAPaths } from '../Types'
 import { decryptMessageNode } from '../Utils'
 import { generateProfilePicture } from '../Utils/messages-media'
-import {
-	getAllBinaryNodeChildren,
-	getBinaryNodeChild,
-	getBinaryNodeChildren,
-	S_WHATSAPP_NET
-} from '../WABinary'
+import type { BinaryNode } from '../WABinary'
+import { getAllBinaryNodeChildren, getBinaryNodeChild, getBinaryNodeChildren, S_WHATSAPP_NET } from '../WABinary'
 import { makeGroupsSocket } from './groups'
 import { executeWMexQuery as genericExecuteWMexQuery } from './mex'
 
@@ -149,7 +150,7 @@ export const makeNewsletterSocket = (config: SocketConfig) => {
 
 		newsletterSubscribed: async (): Promise<NewsletterMetadata[]> => {
 			const result = await executeWMexQuery<any[]>({}, QueryIds.SUBSCRIBED, XWAPaths.xwa2_newsletter_subscribed)
-			return result.map(parseNewsletterMetadata).filter(a => a !== null) as NewsletterMetadata[]
+			return result.map(parseNewsletterMetadata).filter(a => a !== null)
 		},
 
 		newsletterSubscribers: async (jid: string) => {

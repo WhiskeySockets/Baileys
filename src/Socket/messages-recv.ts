@@ -336,6 +336,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			logger.warn({ attrs: attrs }, 'Client not connected, cannot send ack')
 			return
 		}
+
 		const stanza: BinaryNode = {
 			tag: 'ack',
 			attrs: {

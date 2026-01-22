@@ -225,7 +225,8 @@ export const prepareWAMessageMedia = async (
 		(mediaType === 'image' || mediaType === 'video') && typeof uploadData['jpegThumbnail'] === 'undefined'
 	const requiresWaveformProcessing = mediaType === 'audio' && uploadData.ptt === true
 	const requiresAudioBackground = options.backgroundColor && mediaType === 'audio' && uploadData.ptt === true
-	const requiresOriginalForSomeProcessing = requiresDurationComputation || requiresThumbnailComputation || requiresWaveformProcessing
+	const requiresOriginalForSomeProcessing =
+		requiresDurationComputation || requiresThumbnailComputation || requiresWaveformProcessing
 	const { mediaKey, encFilePath, originalFilePath, fileEncSha256, fileSha256, fileLength } = await encryptedStream(
 		uploadData.media,
 		options.mediaTypeOverride || mediaType,
@@ -285,17 +286,18 @@ export const prepareWAMessageMedia = async (
 		})()
 	]).finally(async () => {
 		// wait N seconds to give a chance processing finish it's job in case of errors
-                    setTimeout(
-                        async () => {try {
-			await fs.unlink(encFilePath)
-			if (originalFilePath) {
-				await fs.unlink(originalFilePath)
-			}
+		setTimeout(async () => {
+			try {
+				await fs.unlink(encFilePath)
+				if (originalFilePath) {
+					await fs.unlink(originalFilePath)
+				}
 
-			logger?.debug('removed tmp files')
-		} catch (error) {
-			logger?.warn('failed to remove tmp file')
-		}}, 5000)
+				logger?.debug('removed tmp files')
+			} catch (error) {
+				logger?.warn('failed to remove tmp file')
+			}
+		}, 5000)
 	})
 
 	const obj = WAProto.Message.fromObject({
@@ -611,7 +613,7 @@ export const generateWAMessageContent = async (
 		m = await prepareWAMessageMedia(message, options)
 	}
 
-	if('sections' in message && !!message.sections) {
+	if ('sections' in message && !!message.sections) {
 		const amessage: any = message as any
 
 		const listMessage: proto.Message.IListMessage = {
@@ -806,7 +808,7 @@ export const normalizeMessageContent = (content: WAMessageContent | null | undef
 			message?.editedMessage ||
 			message?.associatedChildMessage ||
 			message?.groupStatusMessage ||
-			message?.groupStatusMessageV2
+			message?.groupStatusMessageV2 ||
 			message?.lottieStickerMessage
 		)
 	}

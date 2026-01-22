@@ -99,7 +99,7 @@ export const MEDIA_NEWSLETTER_PATH_MAP: { [T in MediaType]?: string } = {
 	document: '/newsletter/newsletter-document',
 	audio: '/newsletter/newsletter-audio',
 	sticker: '/newsletter/newsletter-image',
-	'thumbnail-link': '/newsletter/newsletter-thumbnail-link',
+	'thumbnail-link': '/newsletter/newsletter-thumbnail-link'
 }
 
 export const MEDIA_HKDF_KEY_MAPPING = {

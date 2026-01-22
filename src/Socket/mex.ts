@@ -32,7 +32,7 @@ export const executeWMexQuery = async <T>(
 	dataPath: string,
 	query: (node: BinaryNode) => Promise<BinaryNode>,
 	generateMessageTag: () => string,
-	error: boolean = true
+	error = true
 ): Promise<T> => {
 	const result = await wMexQuery(variables, queryId, query, generateMessageTag)
 	const child = getBinaryNodeChild(result, 'result')

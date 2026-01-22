@@ -2,7 +2,6 @@ import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, WA_DEFAULT_EPHEMERAL } from '../Defaults'
-import { batched } from '../Utils/batched'
 import type {
 	AnyMessageContent,
 	MediaConnInfo,
@@ -35,6 +34,7 @@ import {
 	parseAndInjectE2ESessions,
 	unixTimestampSeconds
 } from '../Utils'
+import { batched } from '../Utils/batched'
 import { getUrlInfo } from '../Utils/link-preview'
 import { makeKeyedMutex } from '../Utils/make-mutex'
 import { getMessageReportingToken, shouldIncludeReportingToken } from '../Utils/reporting-utils'
@@ -48,8 +48,8 @@ import {
 	isHostedLidUser,
 	isHostedPnUser,
 	isJidGroup,
-	isLidUser,
 	isJidNewsletter,
+	isLidUser,
 	isPnUser,
 	jidDecode,
 	jidEncode,
@@ -697,6 +697,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				if (additionalNodes && additionalNodes.length > 0) {
 					;(stanza.content as BinaryNode[]).push(...additionalNodes)
 				}
+
 				logger.debug({ msgId }, `sending newsletter message to ${jid}`)
 				await sendNode(stanza)
 				return
@@ -1046,17 +1047,18 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			const content = normalizeMessageContent(message)!
 			const contentType = getContentType(content)!
 			// List only in DM
-			if((isPnUser(jid) || isLidUser(jid)) && contentType === 'listMessage'){
+			if ((isPnUser(jid) || isLidUser(jid)) && contentType === 'listMessage') {
 				const bizNode: BinaryNode = { tag: 'biz', attrs: {} }
-				bizNode.content = [{
-					tag: 'list',
-					attrs: {
-						type: 'product_list',
-						v: '2'
+				bizNode.content = [
+					{
+						tag: 'list',
+						attrs: {
+							type: 'product_list',
+							v: '2'
+						}
 					}
-				}];
-
-				(stanza.content as BinaryNode[]).push(bizNode)
+				]
+				;(stanza.content as BinaryNode[]).push(bizNode)
 			}
 
 			logger.debug({ msgId }, `sending message to ${participants.length} devices`)
@@ -1248,15 +1250,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						: disappearingMessagesInChat
 				await groupToggleEphemeral(jid, value)
 			} else {
-
 				// Newsletter fix for media
 				let mediaHandle = null
 				const waUploadToServerMediaHandle = async (encFilePath: any, opts: any) => {
 					opts.newsletter = isJidNewsletter(jid)
-					const result = await (waUploadToServer as any)(encFilePath, opts);
-					mediaHandle = result.handle;
-					return result;
-				};
+					const result = await (waUploadToServer as any)(encFilePath, opts)
+					mediaHandle = result.handle
+					return result
+				}
 
 				const fullMsg = await generateWAMessage(jid, content, {
 					logger,
@@ -1305,7 +1306,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						tag: 'meta',
 						attrs: {
 							polltype: 'creation',
-							contenttype: isJidNewsletter(jid) ? 'text' : undefined,
+							contenttype: isJidNewsletter(jid) ? 'text' : undefined
 						}
 					} as BinaryNode)
 				} else if (isEventMsg) {
@@ -1317,7 +1318,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					} as BinaryNode)
 				}
 
-				if (mediaHandle){
+				if (mediaHandle) {
 					additionalAttributes.media_id = mediaHandle
 				}
 
