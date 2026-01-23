@@ -1529,7 +1529,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			// Send each media item sequentially
 			for (let i = 0; i < medias.length; i++) {
-				const media = medias[i]
+				const media = medias[i]!
 
 				const result = await sendMediaWithRetry(media, i)
 				results.push(result)
