@@ -1261,44 +1261,75 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 						if (enableCTWARecovery && msg.key) {
 							const startTime = Date.now()
+							const msgId = msg.key.id!
+							const msgKey = msg.key
+
 							logger.info(
-								{ msgId: msg.key.id, remoteJid: msg.key.remoteJid, messageAge },
-								'CTWA: Message absent from node detected, requesting placeholder resend from phone'
+								{ msgId, remoteJid: msgKey.remoteJid, messageAge },
+								'CTWA: Message absent from node detected, scheduling placeholder resend from phone'
 							)
 
-							try {
+							// Use messageRetryManager to schedule the phone request with delay
+							// This aligns with the upstream philosophy: centralize phone requests in the manager
+							// Benefits: 3s delay (avoids spam), auto-cancellation if message arrives
+							if (messageRetryManager) {
+								metrics.ctwaRecoveryRequests.inc({ status: 'scheduled' })
+
+								messageRetryManager.schedulePhoneRequest(msgId, async () => {
+									try {
+										const requestId = await requestPlaceholderResend(msgKey)
+										if (requestId && requestId !== 'RESOLVED') {
+											logger.debug(
+												{ msgId, requestId },
+												'CTWA: Placeholder resend request sent successfully'
+											)
+											metrics.ctwaRecoveryRequests.inc({ status: 'sent' })
+											// Note: The actual message will be emitted via 'messages.upsert'
+											// when the PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE is processed
+											// in process-message.ts:399-421
+										} else if (requestId === 'RESOLVED') {
+											// Message was received while we were waiting
+											logger.debug(
+												{ msgId },
+												'CTWA: Message received during resend delay'
+											)
+											metrics.ctwaMessagesRecovered.inc()
+											metrics.ctwaRecoveryLatency.observe(Date.now() - startTime)
+										} else {
+											// Already requested (duplicate request prevented by cache)
+											logger.debug(
+												{ msgId },
+												'CTWA: Resend already requested, skipping duplicate'
+											)
+										}
+									} catch (error) {
+										logger.warn(
+											{ error, msgId },
+											'CTWA: Failed to request placeholder resend'
+										)
+										metrics.ctwaRecoveryFailures.inc({ reason: 'request_failed' })
+									}
+								})
+							} else {
+								// Fallback: direct call if messageRetryManager is not available
 								metrics.ctwaRecoveryRequests.inc({ status: 'requested' })
 
-								const requestId = await requestPlaceholderResend(msg.key)
-								if (requestId) {
-									logger.debug(
-										{ msgId: msg.key.id, requestId },
-										'CTWA: Placeholder resend request sent successfully'
-									)
-									// Note: The actual message will be emitted via 'messages.upsert'
-									// when the PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE is processed
-									// in process-message.ts:399-421
-								} else if (requestId === 'RESOLVED') {
-									// Message was received while we were waiting
-									logger.debug(
-										{ msgId: msg.key.id },
-										'CTWA: Message received during resend delay'
-									)
-									metrics.ctwaMessagesRecovered.inc()
-									metrics.ctwaRecoveryLatency.observe(Date.now() - startTime)
-								} else {
-									// Already requested (duplicate request prevented by cache)
-									logger.debug(
-										{ msgId: msg.key.id },
-										'CTWA: Resend already requested, skipping duplicate'
-									)
+								try {
+									const requestId = await requestPlaceholderResend(msgKey)
+									if (requestId && requestId !== 'RESOLVED') {
+										logger.debug(
+											{ msgId, requestId },
+											'CTWA: Placeholder resend request sent successfully (direct)'
+										)
+									} else if (requestId === 'RESOLVED') {
+										logger.debug({ msgId }, 'CTWA: Message received during resend delay')
+										metrics.ctwaMessagesRecovered.inc()
+										metrics.ctwaRecoveryLatency.observe(Date.now() - startTime)
+									}
+								} catch (error) {
+									logger.warn({ error, msgId }, 'CTWA: Failed to request placeholder resend')
+									metrics.ctwaRecoveryFailures.inc({ reason: 'request_failed' })
 								}
-							} catch (error) {
-								logger.warn(
-									{ error, msgId: msg.key.id },
-									'CTWA: Failed to request placeholder resend'
-								)
-								metrics.ctwaRecoveryFailures.inc({ reason: 'request_failed' })
 							}
 						} else {
 							logger.debug(
