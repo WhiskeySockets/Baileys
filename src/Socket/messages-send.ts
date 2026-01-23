@@ -1353,7 +1353,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				'Starting album message send'
 			)
 
-			// Generate album root message first
+			// Generate album root message first (with counts of expected media)
 			const albumRootMsg = await generateWAMessage(jid, {
 				album: { medias, delay: delayConfig, retryCount, continueOnFailure }
 			}, {
@@ -1367,15 +1367,37 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				}),
 				upload: waUploadToServer,
 				mediaCache: config.mediaCache,
-				...options
+				// Don't spread options here to avoid messageId collision
+				timestamp: options.timestamp,
+				quoted: options.quoted,
+				ephemeralExpiration: options.ephemeralExpiration,
+				mediaUploadTimeoutMs: options.mediaUploadTimeoutMs
 			})
 
 			const albumKey = albumRootMsg.key
+
+			// CRITICAL: Relay album root message to server first
+			// Without this, child media items reference a non-existent album key
+			await relayMessage(jid, albumRootMsg.message!, {
+				messageId: albumRootMsg.key.id!,
+				useCachedGroupMetadata: options.useCachedGroupMetadata
+			})
+
+			// Emit own event for album root if configured
+			if (config.emitOwnEvents) {
+				process.nextTick(async () => {
+					await messageMutex.mutex(() => upsertMessage(albumRootMsg, 'append'))
+				})
+			}
+
+			logger.debug({ albumKeyId: albumKey.id }, 'Album root message relayed')
+
 			const results: AlbumMediaResult[] = []
 
 			/**
 			 * Calculate adaptive delay based on media characteristics
-			 * Larger files and videos get more delay to prevent rate limiting
+			 * Videos get more delay (2x), later items get slightly more delay,
+			 * plus random jitter to prevent predictable patterns
 			 */
 			const calculateAdaptiveDelay = (media: AlbumMediaItem, index: number): number => {
 				const baseDelay = 500 // Base delay in ms
@@ -1418,6 +1440,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					attempts = attempt + 1
 					try {
 						// Generate message for this media item
+					// NOTE: Each item needs its own unique messageId, so we don't spread options.messageId
 						const mediaMsg = await generateWAMessage(jid, media as AnyMessageContent, {
 							logger,
 							userJid,
@@ -1429,18 +1452,23 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							}),
 							upload: waUploadToServer,
 							mediaCache: config.mediaCache,
-							...options
+							// Don't spread ...options to avoid messageId collision
+							// Each item gets a fresh ID from generateWAMessage
+							timestamp: options.timestamp,
+							quoted: options.quoted,
+							ephemeralExpiration: options.ephemeralExpiration,
+							mediaUploadTimeoutMs: options.mediaUploadTimeoutMs
 						})
 
-						// Attach to parent album via messageContextInfo with parentKey
+						// Attach to parent album via messageAssociation (correct proto structure)
+						// Uses AssociationType.MEDIA_ALBUM and parentMessageKey as per WhatsApp protocol
 						if (!mediaMsg.message!.messageContextInfo) {
 							mediaMsg.message!.messageContextInfo = {}
 						}
-						mediaMsg.message!.messageContextInfo.messageAddOnType = proto.MessageAddOnType.MEDIA_ALBUM
-
-						// Add reference to parent album message (as suggested by purpshell)
-						// This allows proper grouping and retry of individual items
-						;(mediaMsg.message!.messageContextInfo as any).parentMessageKey = albumKey
+						mediaMsg.message!.messageContextInfo.messageAssociation = {
+							associationType: proto.MessageAssociation.AssociationType.MEDIA_ALBUM,
+							parentMessageKey: albumKey
+						}
 
 						// Relay the message
 						await relayMessage(jid, mediaMsg.message!, {
@@ -1553,6 +1581,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		},
 
 		sendMessage: async (jid: string, content: AnyMessageContent, options: MiscMessageGenerationOptions = {}) => {
+			// Check for album misuse - must use sendAlbumMessage instead
+			if (typeof content === 'object' && 'album' in content) {
+				throw new Boom(
+					'Cannot send album messages with sendMessage(). Use sendAlbumMessage() instead, ' +
+					'which properly sends the album root and individual media items.',
+					{ statusCode: 400 }
+				)
+			}
+
 			const userJid = authState.creds.me!.id
 			if (
 				typeof content === 'object' &&

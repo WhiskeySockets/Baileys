@@ -319,7 +319,8 @@ export type AlbumMessageOptions = {
 	medias: AlbumMediaItem[]
 	/**
 	 * Delay strategy between media sends
-	 * - 'adaptive': Calculates delay based on media size (recommended)
+	 * - 'adaptive': Calculates delay based on media type (videos get 2x delay),
+	 *   position in album, and random jitter (recommended)
 	 * - number: Fixed delay in milliseconds
 	 * @default 'adaptive'
 	 */
@@ -348,7 +349,7 @@ export type AlbumMediaResult = {
 	message?: WAMessage
 	/** Error details (if failed) */
 	error?: Error
-	/** Number of retry attempts made */
+	/** Total number of attempts made (1 = success on first try, >1 = retries occurred) */
 	retryAttempts: number
 	/** Time taken to send this item in ms */
 	latencyMs: number
@@ -429,7 +430,12 @@ export type AnyRegularMessageContent = (
 			footer?: string
 	  }
 	| {
-			/** Album message - send multiple images/videos grouped together */
+			/**
+			 * Album message - send multiple images/videos grouped together
+			 * ⚠️ WARNING: Do NOT use with sendMessage() - use sendAlbumMessage() instead!
+			 * sendMessage only relays the root message and won't send individual media items
+			 * @internal Used internally by generateWAMessage
+			 */
 			album: AlbumMessageOptions
 	  }
 	| SharePhoneNumber
