@@ -625,8 +625,25 @@ export const generateWAMessageContent = async (
 				? proto.Message.ButtonsMessage.HeaderType.IMAGE
 				: proto.Message.ButtonsMessage.HeaderType.VIDEO
 
+		// Extract only media properties to avoid type errors
+		const mediaContent: AnyMediaMessageContent = mediaType === 'image'
+			? {
+				image: (message as any).image,
+				caption: (message as any).caption,
+				jpegThumbnail: (message as any).jpegThumbnail,
+				mimetype: (message as any).mimetype
+			  }
+			: {
+				video: (message as any).video,
+				caption: (message as any).caption,
+				jpegThumbnail: (message as any).jpegThumbnail,
+				gifPlayback: (message as any).gifPlayback,
+				ptv: (message as any).ptv,
+				mimetype: (message as any).mimetype
+			  }
+
 		// Prepare media
-		const mediaMessage = await prepareWAMessageMedia(message as any, options)
+		const mediaMessage = await prepareWAMessageMedia(mediaContent, options)
 
 		const buttonsMessage: proto.Message.IButtonsMessage = {
 			contentText: (message as any).caption || (message as any).text || '',

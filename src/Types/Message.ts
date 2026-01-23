@@ -295,11 +295,9 @@ export type AnyRegularMessageContent = (
 			Editable &
 			Partial<Buttonable> &
 			Partial<Templatable> &
-			Partial<Listable>)
+			Partial<Listable> &
+			Partial<Carouselable>)
 	| AnyMediaMessageContent
-	| ({
-			interactiveMessage: proto.Message.IInteractiveMessage
-	  } & Partial<Carouselable>)
 	| { event: EventMessageOptions }
 	| ({
 			poll: PollMessageOptions
