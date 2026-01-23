@@ -1,0 +1,88 @@
+name: Update WhatsApp Version
+
+on:
+  schedule:
+    # Run on the 1st of every month at 02:00 UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node and Corepack
+        uses: actions/setup-node@v3.6.0
+        with:
+          node-version: 20.x
+
+      - name: Enable Corepack and Set Yarn Version
+        run: |
+          corepack enable
+          corepack prepare yarn@4.x --activate
+
+      - name: Restore Yarn Cache
+        uses: actions/cache@v3
+        id: yarn-cache
+        with:
+          path: .yarn/cache
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Install packages
+        run: yarn install --immutable
+
+      - name: Update WhatsApp Web Version
+        id: update_version
+        run: yarn update:version
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        if: steps.check_changes.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH_NAME="update-version/stable"
+
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Check if branch exists and delete it
+          git push origin --delete "$BRANCH_NAME" 2>/dev/null || true
+
+          # Create new branch, commit, and push
+          git checkout -b "$BRANCH_NAME"
+          git add src/Defaults/baileys-version.json src/Defaults/index.ts src/Utils/generics.ts
+          git commit -m "chore: update WhatsApp Web version"
+          git push origin "$BRANCH_NAME"
+
+          # Create PR using GitHub CLI
+          gh pr create \
+            --title "chore: update WhatsApp Web version" \
+            --body "Automated WhatsApp Web version update.
+
+          This PR updates the WhatsApp Web client revision to the latest version fetched from \`web.whatsapp.com\`.
+
+          **Files updated:**
+          - \`src/Defaults/baileys-version.json\`
+          - \`src/Defaults/index.ts\`
+          - \`src/Utils/generics.ts\`" \
+            --base master \
+            --head "$BRANCH_NAME" || echo "PR already exists or could not be created"

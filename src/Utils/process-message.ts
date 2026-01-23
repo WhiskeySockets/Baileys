@@ -285,7 +285,17 @@ const processMessage = async (
 						})
 					}
 
-					const data = await downloadAndProcessHistorySyncNotification(histNotification, options)
+					const data = await downloadAndProcessHistorySyncNotification(histNotification, options, logger)
+
+					// Emit LID-PN mappings from history sync
+					// This is how WhatsApp Web learns mappings for chats with non-contacts
+					if (data.lidPnMappings?.length) {
+						logger?.debug({ count: data.lidPnMappings.length }, 'processing LID-PN mappings from history sync')
+						// eslint-disable-next-line max-depth
+						for (const mapping of data.lidPnMappings) {
+							ev.emit('lid-mapping.update', mapping)
+						}
+					}
 
 					ev.emit('messaging-history.set', {
 						...data,
@@ -349,13 +359,11 @@ const processMessage = async (
 							const webMessageInfo = proto.WebMessageInfo.decode(retryResponse.webMessageInfoBytes!)
 							// wait till another upsert event is available, don't want it to be part of the PDO response message
 							// TODO: parse through proper message handling utilities (to add relevant key fields)
-							setTimeout(() => {
-								ev.emit('messages.upsert', {
-									messages: [webMessageInfo as WAMessage],
-									type: 'notify',
-									requestId: response.stanzaId!
-								})
-							}, 500)
+							ev.emit('messages.upsert', {
+								messages: [webMessageInfo as WAMessage],
+								type: 'notify',
+								requestId: response.stanzaId!
+							})
 						}
 					}
 				}

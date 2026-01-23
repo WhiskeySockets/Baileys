@@ -4,7 +4,7 @@ import type { AuthenticationState, SocketConfig, WAVersion } from '../Types'
 import { Browsers } from '../Utils/browser-utils'
 import logger from '../Utils/logger'
 
-const version = [2, 3000, 1027934701]
+const version = [2, 3000, 1032141294]
 
 export const UNAUTHORIZED_CODES = [401, 403, 419]
 
@@ -21,6 +21,9 @@ export const WA_ADV_HOSTED_ACCOUNT_SIG_PREFIX = Buffer.from([6, 5])
 export const WA_ADV_HOSTED_DEVICE_SIG_PREFIX = Buffer.from([6, 6])
 
 export const WA_DEFAULT_EPHEMERAL = 7 * 24 * 60 * 60
+
+/** Status messages older than 24 hours are considered expired */
+export const STATUS_EXPIRY_SECONDS = 24 * 60 * 60
 
 export const NOISE_MODE = 'Noise_XX_25519_AESGCM_SHA256\0\0\0\0'
 export const DICT_VERSION = 3
@@ -62,7 +65,9 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	markOnlineOnConnect: true,
 	syncFullHistory: true,
 	patchMessageBeforeSending: msg => msg,
-	shouldSyncHistoryMessage: () => true,
+	shouldSyncHistoryMessage: ({ syncType }: proto.Message.IHistorySyncNotification) => {
+		return syncType !== proto.HistorySync.HistorySyncType.FULL
+	},
 	shouldIgnoreJid: () => false,
 	linkPreviewImageThumbnailWidth: 192,
 	transactionOpts: { maxCommitRetries: 10, delayBetweenTriesMs: 3000 },
