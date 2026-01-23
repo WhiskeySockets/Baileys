@@ -512,6 +512,144 @@ export const generateWAMessageContent = async (
 				}
 				break
 		}
+	}
+	// ⚠️ EXPERIMENTAL: Interactive messages - may not work and can cause account bans
+	// Process buttons for text messages
+	else if (hasNonNullishProperty(message, 'text') && hasNonNullishProperty(message, 'buttons')) {
+		const buttonsMessage: proto.Message.IButtonsMessage = {
+			contentText: (message as any).text,
+			footerText: (message as any).footerText,
+			headerType: (message as any).headerType || proto.Message.ButtonsMessage.HeaderType.EMPTY
+		}
+
+		// Add buttons
+		buttonsMessage.buttons = ((message as any).buttons as any[]).map((btn: any, idx: number) => ({
+			buttonId: btn.buttonId || `btn_${idx}`,
+			buttonText: { displayText: btn.buttonText?.displayText || btn.displayText || btn.text },
+			type: btn.type || proto.Message.ButtonsMessage.Button.Type.RESPONSE
+		}))
+
+		m.buttonsMessage = buttonsMessage
+		options.logger?.warn('[EXPERIMENTAL] Sending buttonsMessage - this may not work and can cause bans')
+	}
+	// Process templateButtons
+	else if (hasNonNullishProperty(message, 'text') && hasNonNullishProperty(message, 'templateButtons')) {
+		const templateMessage: proto.Message.ITemplateMessage = {
+			hydratedTemplate: {
+				hydratedContentText: (message as any).text,
+				hydratedFooterText: (message as any).footer
+			}
+		}
+
+		// Add template buttons
+		templateMessage.hydratedTemplate!.hydratedButtons = ((message as any).templateButtons as any[]).map((btn: any) => {
+			if (btn.quickReplyButton) {
+				return {
+					index: btn.index,
+					quickReplyButton: btn.quickReplyButton
+				}
+			} else if (btn.urlButton) {
+				return {
+					index: btn.index,
+					urlButton: btn.urlButton
+				}
+			} else if (btn.callButton) {
+				return {
+					index: btn.index,
+					callButton: btn.callButton
+				}
+			}
+			return btn
+		})
+
+		m.templateMessage = templateMessage
+		options.logger?.warn('[EXPERIMENTAL] Sending templateMessage - this may not work and can cause bans')
+	}
+	// Process list messages
+	else if (hasNonNullishProperty(message, 'sections')) {
+		const listMessage: proto.Message.IListMessage = {
+			title: (message as any).title,
+			description: (message as any).text,
+			buttonText: (message as any).buttonText || 'View options',
+			footerText: (message as any).footerText,
+			listType: proto.Message.ListMessage.ListType.SINGLE_SELECT
+		}
+
+		// Add sections
+		listMessage.sections = ((message as any).sections as any[]).map((section: any) => ({
+			title: section.title,
+			rows: section.rows.map((row: any) => ({
+				rowId: row.rowId || row.id,
+				title: row.title,
+				description: row.description
+			}))
+		}))
+
+		m.listMessage = listMessage
+		options.logger?.warn('[EXPERIMENTAL] Sending listMessage - this may not work and can cause bans')
+	}
+	// Process carousel/interactive messages
+	else if (hasNonNullishProperty(message, 'carousel')) {
+		const carousel = (message as any).carousel
+		const interactiveMessage: proto.Message.IInteractiveMessage = {
+			header: carousel.header || {
+				title: carousel.title || 'Carousel',
+				hasMediaAttachment: false
+			},
+			body: {
+				text: (message as any).text || carousel.description || ''
+			},
+			footer: carousel.footer ? { text: carousel.footer } : undefined,
+			carouselMessage: {
+				cards: carousel.cards.map((card: any) => ({
+					header: card.header,
+					body: card.body,
+					footer: card.footer,
+					nativeFlowMessage: card.nativeFlowMessage
+				})),
+				messageVersion: carousel.messageVersion || 1
+			}
+		}
+
+		m.interactiveMessage = interactiveMessage
+		options.logger?.warn('[EXPERIMENTAL] Sending carouselMessage - this may not work and can cause bans')
+	}
+	// Process buttons with media (image/video)
+	else if (
+		(hasNonNullishProperty(message, 'image') || hasNonNullishProperty(message, 'video')) &&
+		hasNonNullishProperty(message, 'buttons')
+	) {
+		const mediaType = hasNonNullishProperty(message, 'image') ? 'image' : 'video'
+		const headerType =
+			mediaType === 'image'
+				? proto.Message.ButtonsMessage.HeaderType.IMAGE
+				: proto.Message.ButtonsMessage.HeaderType.VIDEO
+
+		// Prepare media
+		const mediaMessage = await prepareWAMessageMedia(message as any, options)
+
+		const buttonsMessage: proto.Message.IButtonsMessage = {
+			contentText: (message as any).caption || (message as any).text || '',
+			footerText: (message as any).footerText,
+			headerType: headerType
+		}
+
+		// Add media
+		if (mediaType === 'image') {
+			buttonsMessage.imageMessage = mediaMessage.imageMessage
+		} else {
+			buttonsMessage.videoMessage = mediaMessage.videoMessage
+		}
+
+		// Add buttons
+		buttonsMessage.buttons = ((message as any).buttons as any[]).map((btn: any, idx: number) => ({
+			buttonId: btn.buttonId || `btn_${idx}`,
+			buttonText: { displayText: btn.buttonText?.displayText || btn.displayText || btn.text },
+			type: btn.type || proto.Message.ButtonsMessage.Button.Type.RESPONSE
+		}))
+
+		m.buttonsMessage = buttonsMessage
+		options.logger?.warn('[EXPERIMENTAL] Sending buttonsMessage with media - this may not work and can cause bans')
 	} else if (hasOptionalProperty(message, 'ptv') && message.ptv) {
 		const { videoMessage } = await prepareWAMessageMedia({ video: message.video }, options)
 		m.ptvMessage = videoMessage

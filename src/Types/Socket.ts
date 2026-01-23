@@ -134,6 +134,28 @@ export type SocketConfig = {
 	enableCTWARecovery: boolean
 
 	/**
+	 * ⚠️ EXPERIMENTAL: Enable interactive messages (buttons, lists, templates, carousel).
+	 *
+	 * **WARNING**: These features MAY NOT WORK and can cause ACCOUNT BANS.
+	 *
+	 * WhatsApp actively blocks non-business accounts from sending interactive messages.
+	 * Using this feature can result in:
+	 * - Messages not being delivered
+	 * - Temporary account restrictions
+	 * - Permanent account bans
+	 *
+	 * Use ONLY for:
+	 * - Testing in DEV environment
+	 * - DISPOSABLE test accounts
+	 * - Experimental research
+	 *
+	 * @default true (for dev/testing)
+	 * @see https://github.com/WhiskeySockets/Baileys/issues/56
+	 * @see https://github.com/WhiskeySockets/Baileys/issues/25
+	 */
+	enableInteractiveMessages: boolean
+
+	/**
 	 * Returns if a jid should be ignored,
 	 * no event for that jid will be triggered.
 	 * Messages from that jid will also not be decrypted

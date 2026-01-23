@@ -1436,6 +1436,20 @@ export const metrics = {
 		new Counter('ctwa_recovery_failures_total', 'Total CTWA recovery failures', ['reason'])
 	),
 
+	// ========== Interactive Messages Metrics (EXPERIMENTAL) ==========
+	interactiveMessagesSent: baileysMetrics.register(
+		new Counter('interactive_messages_sent_total', 'Total interactive messages sent (buttons/lists/templates/carousel)', ['type'])
+	),
+	interactiveMessagesSuccess: baileysMetrics.register(
+		new Counter('interactive_messages_success_total', 'Total interactive messages successfully sent', ['type'])
+	),
+	interactiveMessagesFailures: baileysMetrics.register(
+		new Counter('interactive_messages_failures_total', 'Total interactive message send failures', ['type', 'reason'])
+	),
+	interactiveMessagesLatency: baileysMetrics.register(
+		new Histogram('interactive_messages_latency_ms', 'Interactive message send latency in ms', ['type'], [100, 250, 500, 1000, 2500, 5000, 10000])
+	),
+
 	// ========== Media Metrics ==========
 	mediaUploads: baileysMetrics.register(
 		new Counter('media_uploads_total', 'Total media uploads', ['type', 'status'])

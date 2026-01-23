@@ -56,7 +56,7 @@ import {
 	S_WHATSAPP_NET
 } from '../WABinary'
 import { USyncQuery, USyncUser } from '../WAUSync'
-import { recordMessageSent, recordMessageRetry, recordMessageFailure } from '../Utils/prometheus-metrics'
+import { recordMessageSent, recordMessageRetry, recordMessageFailure, metrics } from '../Utils/prometheus-metrics'
 import { makeNewsletterSocket } from './newsletter'
 
 export const makeMessagesSocket = (config: SocketConfig) => {
@@ -68,7 +68,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		patchMessageBeforeSending,
 		cachedGroupMetadata,
 		enableRecentMessageCache,
-		maxMsgRetryCount
+		maxMsgRetryCount,
+		enableInteractiveMessages
 	} = config
 	const sock = makeNewsletterSocket(config)
 	const {
@@ -603,6 +604,33 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return { nodes, shouldIncludeDeviceIdentity }
 	}
 
+	// ⚠️ EXPERIMENTAL: Functions to detect and handle interactive messages
+	// These features may not work and can cause account bans
+	const getButtonType = (message: proto.IMessage): string | undefined => {
+		if (message.buttonsMessage) {
+			return 'buttons'
+		} else if (message.templateMessage) {
+			return 'template'
+		} else if (message.listMessage) {
+			return 'list'
+		} else if (message.buttonsResponseMessage) {
+			return 'buttons_response'
+		} else if (message.listResponseMessage) {
+			return 'list_response'
+		} else if (message.templateButtonReplyMessage) {
+			return 'template_reply'
+		} else if (message.interactiveMessage) {
+			return 'interactive'
+		}
+		return undefined
+	}
+
+	const getButtonArgs = (message: proto.IMessage): BinaryNodeAttributes => {
+		// Return appropriate attributes for each button type
+		// This is often empty but required for the 'biz' node structure
+		return {}
+	}
+
 	const relayMessage = async (
 		jid: string,
 		message: proto.IMessage,
@@ -963,6 +991,49 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					...(additionalAttributes || {})
 				},
 				content: binaryNodeContent
+			}
+
+			// ⚠️ EXPERIMENTAL: Inject 'biz' node for interactive messages
+			// This may not work and can cause account bans
+			const buttonType = getButtonType(message)
+			if (buttonType && enableInteractiveMessages) {
+				const startTime = Date.now()
+				logger.warn(
+					{ msgId, buttonType, to: destinationJid, enableInteractiveMessages },
+					'[EXPERIMENTAL] Injecting biz node for interactive message - may cause ban'
+				)
+
+				// Track that we're sending an interactive message
+				metrics.interactiveMessagesSent.inc({ type: buttonType })
+
+				try {
+					;(stanza.content as BinaryNode[]).push({
+						tag: 'biz',
+						attrs: {},
+						content: [
+							{
+								tag: buttonType,
+								attrs: getButtonArgs(message)
+							}
+						]
+					})
+
+					// Track success and latency after message is sent
+					metrics.interactiveMessagesSuccess.inc({ type: buttonType })
+					metrics.interactiveMessagesLatency.observe({ type: buttonType }, Date.now() - startTime)
+				} catch (error) {
+					logger.error(
+						{ error, msgId, buttonType },
+						'[EXPERIMENTAL] Failed to inject biz node for interactive message'
+					)
+					metrics.interactiveMessagesFailures.inc({ type: buttonType, reason: 'injection_failed' })
+				}
+			} else if (buttonType && !enableInteractiveMessages) {
+				logger.warn(
+					{ msgId, buttonType },
+					'[EXPERIMENTAL] Interactive message detected but feature disabled (enableInteractiveMessages=false)'
+				)
+				metrics.interactiveMessagesFailures.inc({ type: buttonType, reason: 'feature_disabled' })
 			}
 
 			// if the participant to send to is explicitly specified (generally retry recp)

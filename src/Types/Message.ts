@@ -195,7 +195,7 @@ export type AnyMediaMessageContent = (
 			fileName?: string
 			caption?: string
 	  } & Contextable)
-) & { mimetype?: string } & Editable
+) & { mimetype?: string } & Editable & Partial<Buttonable> & Partial<Templatable>
 
 export type ButtonReplyInfo = {
 	displayText: string
@@ -215,14 +215,91 @@ export type WASendableProduct = Omit<proto.Message.ProductMessage.IProductSnapsh
 	productImage: WAMediaUpload
 }
 
+// ⚠️ EXPERIMENTAL: Interactive message types
+// These features may not work and can cause account bans
+// Use only for testing with disposable accounts
+
+export type ButtonInfo = {
+	buttonId: string
+	buttonText: { displayText: string }
+	type?: proto.Message.ButtonsMessage.Button.Type
+}
+
+export type Buttonable = {
+	buttons: ButtonInfo[]
+	headerType?: proto.Message.ButtonsMessage.HeaderType
+	footerText?: string
+}
+
+export type TemplateButton =
+	| { index: number; quickReplyButton: { displayText: string; id: string } }
+	| { index: number; urlButton: { displayText: string; url: string } }
+	| { index: number; callButton: { displayText: string; phoneNumber: string } }
+
+export type Templatable = {
+	templateButtons: TemplateButton[]
+	footer?: string
+}
+
+export type ListSection = {
+	title: string
+	rows: Array<{
+		rowId: string
+		title: string
+		description?: string
+	}>
+}
+
+export type Listable = {
+	sections: ListSection[]
+	title?: string
+	buttonText?: string
+}
+
+export type CarouselCard = {
+	header: {
+		title: string
+		imageMessage?: {
+			url: string
+			mimetype: string
+		}
+		videoMessage?: {
+			url: string
+			mimetype: string
+		}
+		hasMediaAttachment: boolean
+	}
+	body: { text: string }
+	footer?: { text: string }
+	nativeFlowMessage?: {
+		buttons: Array<{
+			name: string
+			buttonParamsJson: string
+		}>
+	}
+}
+
+export type Carouselable = {
+	carousel: {
+		cards: CarouselCard[]
+		messageVersion?: number
+	}
+}
+
 export type AnyRegularMessageContent = (
 	| ({
 			text: string
 			linkPreview?: WAUrlInfo | null
 	  } & Mentionable &
 			Contextable &
-			Editable)
+			Editable &
+			Partial<Buttonable> &
+			Partial<Templatable> &
+			Partial<Listable>)
 	| AnyMediaMessageContent
+	| ({
+			interactiveMessage: proto.Message.IInteractiveMessage
+	  } & Partial<Carouselable>)
 	| { event: EventMessageOptions }
 	| ({
 			poll: PollMessageOptions
