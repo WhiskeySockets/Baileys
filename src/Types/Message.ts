@@ -363,8 +363,10 @@ export type AlbumSendResult = {
 	albumKey: WAMessageKey
 	/** Results for each media item */
 	results: AlbumMediaResult[]
-	/** Total number of items */
+	/** Total number of items in the album */
 	totalItems: number
+	/** Number of items that were actually attempted (may be < totalItems if stoppedEarly) */
+	attemptedItems: number
 	/** Number of successfully sent items */
 	successCount: number
 	/** Number of failed items */
@@ -373,6 +375,8 @@ export type AlbumSendResult = {
 	failedIndices: number[]
 	/** Overall success (all items sent) */
 	success: boolean
+	/** Whether the send was interrupted early due to continueOnFailure=false */
+	stoppedEarly: boolean
 	/** Total time taken in ms */
 	totalLatencyMs: number
 }

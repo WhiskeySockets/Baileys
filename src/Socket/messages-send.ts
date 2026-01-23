@@ -33,6 +33,7 @@ import {
 	getStatusCodeForMediaRetry,
 	getUrlFromDirectPath,
 	getWAUploadToServer,
+	hasNonNullishProperty,
 	MessageRetryManager,
 	normalizeMessageContent,
 	parseAndInjectE2ESessions,
@@ -1345,8 +1346,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			// Count media types for album root
-			const imageCount = medias.filter(m => 'image' in m).length
-			const videoCount = medias.filter(m => 'video' in m).length
+			// Use hasNonNullishProperty for consistency with generateWAMessageContent validation
+			const imageCount = medias.filter(m => hasNonNullishProperty(m as AnyMessageContent, 'image')).length
+			const videoCount = medias.filter(m => hasNonNullishProperty(m as AnyMessageContent, 'video')).length
 
 			logger.info(
 				{ jid, totalItems: medias.length, imageCount, videoCount, delayConfig, retryCount },
@@ -1550,6 +1552,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			// Calculate final results
+			const attemptedItems = results.length
+			const stoppedEarly = attemptedItems < medias.length
 			const successCount = results.filter(r => r.success).length
 			const failedCount = results.filter(r => !r.success).length
 			const failedIndices = results.filter(r => !r.success).map(r => r.index)
@@ -1559,10 +1563,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				albumKey,
 				results,
 				totalItems: medias.length,
+				attemptedItems,
 				successCount,
 				failedCount,
 				failedIndices,
-				success: failedCount === 0,
+				success: failedCount === 0 && !stoppedEarly,
+				stoppedEarly,
 				totalLatencyMs
 			}
 
@@ -1570,8 +1576,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				{
 					albumKeyId: albumKey.id,
 					totalItems: medias.length,
+					attemptedItems,
 					successCount,
 					failedCount,
+					stoppedEarly,
 					totalLatencyMs
 				},
 				'Album message send completed'
