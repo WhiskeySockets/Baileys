@@ -496,10 +496,10 @@ export const generateWAMessageContent = async (
 		let expectedVideoCount = 0
 
 		for (let i = 0; i < medias.length; i++) {
-			const media = medias[i]
-			if (hasNonNullishProperty(media, 'image')) {
+			const media = medias[i]!
+			if (hasNonNullishProperty(media as AnyMessageContent, 'image')) {
 				expectedImageCount++
-			} else if (hasNonNullishProperty(media, 'video')) {
+			} else if (hasNonNullishProperty(media as AnyMessageContent, 'video')) {
 				expectedVideoCount++
 			} else {
 				throw new Boom(`Album media at index ${i} must have 'image' or 'video' property`, { statusCode: 400 })
