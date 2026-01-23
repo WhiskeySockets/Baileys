@@ -1,21 +1,43 @@
+# OS
 .DS_Store
-.env
-.yarn/
-*.tgz
 */.DS_Store
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+.yarn/
+
+# Build
+lib/
+dist/
+*.tgz
+
+# Auth & Logs
 auth_info*.json
-baileys_auth_info*
+baileys_auth_info*/
 baileys_store*.json
+wa-logs*/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test
+coverage/
+TestData/
+
+# Misc
 browser-messages.json
 browser-token.json
 decoded-ws.json
-docs
-lib
 messages*.json
-node_modules
 output.csv
-Proxy
+Proxy/
 test.ts
-TestData
-wa-logs*
-coverage
+*.log

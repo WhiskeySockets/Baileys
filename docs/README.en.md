@@ -5,8 +5,8 @@
 <h1 align="center">Baileys-Joss</h1>
 
 <p align="center">
-  <b>🚀 WhatsApp Web API Library dengan Fitur Ekstra</b><br>
-  Fork dari <a href="https://github.com/WhiskeySockets/Baileys">Baileys</a> dengan penambahan fitur Interactive Button, LID/SenderPn Plotting, dan lainnya.
+  <b>🚀 WhatsApp Web API Library with Extra Features</b><br>
+  Fork of <a href="https://github.com/WhiskeySockets/Baileys">Baileys</a> with added Interactive Button, LID/SenderPn Plotting features, and more.
 </p>
 
 <p align="center">
@@ -29,13 +29,13 @@
 
 <p align="center">
   <b>📖 Documentation:</b>
-  <a href="./README.md">🇮🇩 Indonesia</a> |
-  <a href="./docs/README.en.md">🇺🇸 English</a>
+  <a href="../README.md">🇮🇩 Indonesia</a> |
+  <a href="./README.en.md">🇺🇸 English</a>
 </p>
 
 ---
 
-## ✨ Kenapa Baileys-Joss?
+## ✨ Why Baileys-Joss?
 
 | Feature | Baileys Original | Baileys-Joss |
 |---------|:----------------:|:------------:|
@@ -52,13 +52,13 @@
 ## 📦 Installation
 
 ```bash
-# Menggunakan npm
+# Using npm
 npm install baileys-joss
 
-# Menggunakan yarn
+# Using yarn
 yarn add baileys-joss
 
-# Menggunakan pnpm
+# Using pnpm
 pnpm add baileys-joss
 ```
 
@@ -68,7 +68,7 @@ pnpm add baileys-joss
 
 ### 1. 🎛️ Interactive Messages & Buttons
 
-Fitur button interactive yang lebih lengkap dan mudah digunakan:
+Complete and easy-to-use interactive button features:
 
 ```typescript
 import { 
@@ -83,11 +83,11 @@ import {
 
 // Quick Reply Buttons
 const quickButtons = generateQuickReplyButtons(
-    'Pilih opsi di bawah ini:',
+    'Choose an option below:',
     [
-        { id: 'btn-1', displayText: '✅ Setuju' },
-        { id: 'btn-2', displayText: '❌ Tolak' },
-        { id: 'btn-3', displayText: '📞 Hubungi CS' }
+        { id: 'btn-1', displayText: '✅ Agree' },
+        { id: 'btn-2', displayText: '❌ Decline' },
+        { id: 'btn-3', displayText: '📞 Contact Support' }
     ],
     { footer: 'Powered by Baileys-Joss' }
 )
@@ -96,55 +96,55 @@ await sock.sendMessage(jid, quickButtons)
 
 // URL Button
 const urlButton = generateUrlButtonMessage(
-    'Kunjungi website kami untuk info lebih lanjut',
-    [{ displayText: '🌐 Buka Website', url: 'https://example.com' }],
-    { title: 'Info Produk', footer: 'Click untuk membuka' }
+    'Visit our website for more information',
+    [{ displayText: '🌐 Open Website', url: 'https://example.com' }],
+    { title: 'Product Info', footer: 'Click to open' }
 )
 
 await sock.sendMessage(jid, urlButton)
 
-// Copy Code Button (untuk OTP, kode promo, dll)
+// Copy Code Button (for OTP, promo codes, etc.)
 const copyButton = generateCopyCodeButton(
-    'Kode OTP Anda adalah:',
+    'Your OTP code is:',
     '123456',
-    '📋 Copy Kode'
+    '📋 Copy Code'
 )
 
 await sock.sendMessage(jid, copyButton)
 
 // Combined Buttons (mix URL, Reply, Copy, Call)
 const combinedButtons = generateCombinedButtons(
-    'Pilih aksi:',
+    'Choose an action:',
     [
-        { type: 'reply', displayText: '🛒 Pesan Sekarang', id: 'order' },
+        { type: 'reply', displayText: '🛒 Order Now', id: 'order' },
         { type: 'url', displayText: '🌐 Website', url: 'https://example.com' },
-        { type: 'call', displayText: '📞 Telepon', phoneNumber: '+6281234567890' },
+        { type: 'call', displayText: '📞 Call Us', phoneNumber: '+6281234567890' },
         { type: 'copy', displayText: '📋 Copy Promo', copyCode: 'PROMO2024' }
     ],
-    { title: 'Menu Utama', footer: 'Baileys-Joss' }
+    { title: 'Main Menu', footer: 'Baileys-Joss' }
 )
 
 await sock.sendMessage(jid, combinedButtons)
 
 // List Message
 const listMessage = generateInteractiveListMessage({
-    title: '📋 Menu Produk',
-    buttonText: 'Lihat Menu',
-    description: 'Silahkan pilih produk yang diinginkan',
-    footer: 'Ketik nomor untuk memesan',
+    title: '📋 Product Menu',
+    buttonText: 'View Menu',
+    description: 'Please select the product you want',
+    footer: 'Type number to order',
     sections: [
         {
-            title: 'Makanan',
+            title: 'Food',
             rows: [
-                { rowId: 'nasi-goreng', title: 'Nasi Goreng', description: 'Rp 25.000' },
-                { rowId: 'mie-goreng', title: 'Mie Goreng', description: 'Rp 22.000' }
+                { rowId: 'fried-rice', title: 'Fried Rice', description: '$3.00' },
+                { rowId: 'fried-noodles', title: 'Fried Noodles', description: '$2.50' }
             ]
         },
         {
-            title: 'Minuman',
+            title: 'Drinks',
             rows: [
-                { rowId: 'es-teh', title: 'Es Teh', description: 'Rp 5.000' },
-                { rowId: 'kopi', title: 'Kopi', description: 'Rp 10.000' }
+                { rowId: 'iced-tea', title: 'Iced Tea', description: '$0.50' },
+                { rowId: 'coffee', title: 'Coffee', description: '$1.00' }
             ]
         }
     ]
@@ -155,7 +155,7 @@ await sock.sendMessage(jid, listMessage)
 
 ### 2. 📍 LID & SenderPn Plotting
 
-Utilities untuk mengelola JID, LID (Linked ID), dan senderPn:
+Utilities for managing JID, LID (Linked ID), and senderPn:
 
 ```typescript
 import { 
@@ -173,7 +173,7 @@ import {
     createJidPlotter
 } from 'baileys-joss'
 
-// Get info tentang current session (senderPn)
+// Get current session info (senderPn)
 const senderInfo = getCurrentSenderInfo(sock.authState)
 console.log('Phone:', senderInfo.phoneNumber)
 console.log('Phone JID:', senderInfo.phoneJid)
@@ -181,32 +181,32 @@ console.log('LID:', senderInfo.lid)
 console.log('Device ID:', senderInfo.deviceId)
 console.log('Name:', senderInfo.pushName)
 
-// Parse JID untuk info lengkap
+// Parse JID for complete info
 const jidInfo = parseJid('6281234567890@s.whatsapp.net')
 console.log('User:', jidInfo.user)
 console.log('Is LID:', jidInfo.isLid)
 console.log('Is PN:', jidInfo.isPn)
 console.log('Device:', jidInfo.device)
 
-// Check apakah JID adalah diri sendiri
+// Check if JID is self
 const isMe = isSelf(someJid, senderInfo)
 
-// Normalize berbagai format nomor
+// Normalize various phone formats
 const jid = normalizePhoneToJid('+62 812-3456-7890') // -> 6281234567890@s.whatsapp.net
 
-// Extract phone number dari JID
+// Extract phone number from JID
 const phone = extractPhoneNumber('6281234567890@s.whatsapp.net') // -> 6281234567890
 
-// Format untuk display
+// Format for display
 const display = formatJidDisplay('6281234567890:1@s.whatsapp.net', {
     showDevice: true,
     showType: true
 }) // -> 6281234567890:1 (PN)
 
-// Compare dua JID
+// Compare two JIDs
 const same = isSameUser('6281234567890@s.whatsapp.net', '6281234567890:1@s.whatsapp.net') // true
 
-// Get sender dari message
+// Get sender from message
 sock.ev.on('messages.upsert', async ({ messages }) => {
     for (const msg of messages) {
         const { chatJid, senderJid } = getRemoteJidFromMessage(msg)
@@ -215,7 +215,7 @@ sock.ev.on('messages.upsert', async ({ messages }) => {
     }
 })
 
-// Advanced: Create plotter dengan LID mapping support
+// Advanced: Create plotter with LID mapping support
 const plotter = createJidPlotter(
     sock.lidMapping.getLIDForPN.bind(sock.lidMapping),
     sock.lidMapping.getPNForLID.bind(sock.lidMapping)
@@ -279,11 +279,11 @@ async function startBot() {
                      msg.message.extendedTextMessage?.text || ''
         
         if (text === '/menu') {
-            // Kirim interactive buttons
+            // Send interactive buttons
             const buttons = generateQuickReplyButtons(
-                '🤖 Bot Menu\n\nPilih opsi:',
+                '🤖 Bot Menu\n\nChoose an option:',
                 [
-                    { id: 'help', displayText: '❓ Bantuan' },
+                    { id: 'help', displayText: '❓ Help' },
                     { id: 'info', displayText: 'ℹ️ Info' },
                     { id: 'order', displayText: '🛒 Order' }
                 ],
@@ -306,69 +306,69 @@ startBot()
 
 | Function | Description |
 |----------|-------------|
-| `generateInteractiveButtonMessage()` | Buat button message dengan media header |
-| `generateInteractiveListMessage()` | Buat list message dengan sections |
-| `generateTemplateMessage()` | Buat template message (Quick Reply, URL, Call) |
-| `generateNativeFlowMessage()` | Buat native flow message (format terbaru) |
-| `generateCopyCodeButton()` | Button untuk copy code |
-| `generateUrlButtonMessage()` | Button dengan URL |
+| `generateInteractiveButtonMessage()` | Create button message with media header |
+| `generateInteractiveListMessage()` | Create list message with sections |
+| `generateTemplateMessage()` | Create template message (Quick Reply, URL, Call) |
+| `generateNativeFlowMessage()` | Create native flow message (latest format) |
+| `generateCopyCodeButton()` | Button to copy code |
+| `generateUrlButtonMessage()` | Button with URL |
 | `generateQuickReplyButtons()` | Quick reply buttons |
-| `generateCombinedButtons()` | Gabungan berbagai jenis button |
+| `generateCombinedButtons()` | Combination of various button types |
 
 ### JID Plotting
 
 | Function | Description |
 |----------|-------------|
-| `parseJid()` | Parse JID dan extract info lengkap |
-| `getSenderPn()` | Get senderPn dari AuthenticationCreds |
-| `getCurrentSenderInfo()` | Get current sender info dari authState |
-| `isSelf()` | Check apakah JID adalah diri sendiri |
-| `plotJid()` | Plot JID (basic, tanpa LID mapping) |
-| `normalizePhoneToJid()` | Normalize nomor ke JID |
-| `extractPhoneNumber()` | Extract phone number dari JID |
-| `formatJidDisplay()` | Format JID untuk display |
-| `isSameUser()` | Compare dua JID |
-| `getJidVariants()` | Get semua variant JID dari nomor |
-| `constructJidWithDevice()` | Construct JID dengan device ID |
-| `getRemoteJidFromMessage()` | Get remoteJid dari message |
-| `createJidPlotter()` | Create plotter dengan LID mapping support |
+| `parseJid()` | Parse JID and extract complete info |
+| `getSenderPn()` | Get senderPn from AuthenticationCreds |
+| `getCurrentSenderInfo()` | Get current sender info from authState |
+| `isSelf()` | Check if JID is self |
+| `plotJid()` | Plot JID (basic, without LID mapping) |
+| `normalizePhoneToJid()` | Normalize phone number to JID |
+| `extractPhoneNumber()` | Extract phone number from JID |
+| `formatJidDisplay()` | Format JID for display |
+| `isSameUser()` | Compare two JIDs |
+| `getJidVariants()` | Get all JID variants from a number |
+| `constructJidWithDevice()` | Construct JID with device ID |
+| `getRemoteJidFromMessage()` | Get remoteJid from message |
+| `createJidPlotter()` | Create plotter with LID mapping support |
 
 ---
 
 ## 🤝 Contributing
 
-Kontribusi sangat diterima! Silahkan:
+Contributions are welcome! Please:
 
-1. Fork repository ini
-2. Buat branch fitur (`git checkout -b feature/AmazingFeature`)
-3. Commit changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push ke branch (`git push origin feature/AmazingFeature`)
-5. Buka Pull Request
+1. Fork this repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ---
 
 ## 💖 Support
 
-Jika project ini membantu, berikan ⭐ di [GitHub](https://github.com/firdausmntp/Baileys-Joss)!
+If this project helps you, give it a ⭐ on [GitHub](https://github.com/firdausmntp/Baileys-Joss)!
 
 ---
 
 ## ⚠️ Disclaimer
 
-Proyek ini tidak berafiliasi dengan WhatsApp. Gunakan dengan tanggung jawab dan sesuai dengan Terms of Service WhatsApp. **Jangan spam!**
+This project is not affiliated with WhatsApp. Use responsibly and in accordance with WhatsApp's Terms of Service. **Don't spam!**
 
 ---
 
 ## 📄 License
 
-MIT License - Lihat file [LICENSE](LICENSE) untuk detail.
+MIT License - See [LICENSE](../LICENSE) file for details.
 
 ---
 
 ## 🙏 Credits
 
 - [Baileys Original](https://github.com/WhiskeySockets/Baileys) - Base library
-- [WhiskeySockets](https://github.com/WhiskeySockets) - Maintainer Baileys
+- [WhiskeySockets](https://github.com/WhiskeySockets) - Baileys Maintainer
 
 ---
 

@@ -17,3 +17,25 @@ export * from './process-message'
 export * from './message-retry-manager'
 export * from './browser-utils'
 export * from './identity-change-handler'
+
+// =====================================================
+// Baileys-Joss Custom Features
+// =====================================================
+
+// Interactive Messages & Buttons
+export * from './interactive-message'
+
+// JID/LID/SenderPn Plotting
+export * from './jid-plotting'
+
+// View Once & Media Utilities
+export * from './view-once'
+
+// Anti-Delete / Message Store
+export * from './anti-delete'
+
+// Sticker Maker
+export * from './sticker-maker'
+
+// Group Utilities
+export * from './group-utils'

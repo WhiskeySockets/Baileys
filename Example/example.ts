@@ -1,7 +1,31 @@
 import { Boom } from '@hapi/boom'
 import NodeCache from '@cacheable/node-cache'
 import readline from 'readline'
-import makeWASocket, { CacheStore, DEFAULT_CONNECTION_CONFIG, DisconnectReason, fetchLatestBaileysVersion, generateMessageIDV2, getAggregateVotesInPollMessage, isJidNewsletter, makeCacheableSignalKeyStore, proto, useMultiFileAuthState, WAMessageContent, WAMessageKey } from '../src'
+import makeWASocket, { 
+	CacheStore, 
+	DEFAULT_CONNECTION_CONFIG, 
+	DisconnectReason, 
+	fetchLatestBaileysVersion, 
+	generateMessageIDV2, 
+	getAggregateVotesInPollMessage, 
+	isJidNewsletter, 
+	makeCacheableSignalKeyStore, 
+	proto, 
+	useMultiFileAuthState, 
+	WAMessageContent, 
+	WAMessageKey,
+	// Baileys-Joss: Interactive Message features
+	generateQuickReplyButtons,
+	generateInteractiveListMessage,
+	generateCombinedButtons,
+	generateCopyCodeButton,
+	generateUrlButtonMessage,
+	// Baileys-Joss: JID Plotting features
+	getCurrentSenderInfo,
+	parseJid,
+	isSelf,
+	getRemoteJidFromMessage
+} from '../src'
 import P from 'pino'
 
 const logger = P({
@@ -93,6 +117,20 @@ const startSock = async() => {
 					}
 				}
 
+				// Baileys-Joss: Log sender info when connected
+				if (connection === 'open') {
+					const senderInfo = getCurrentSenderInfo(sock.authState)
+					if (senderInfo) {
+						logger.info({
+							phone: senderInfo.phoneNumber,
+							phoneJid: senderInfo.phoneJid,
+							lid: senderInfo.lid,
+							deviceId: senderInfo.deviceId,
+							name: senderInfo.pushName
+						}, 'Baileys-Joss: Connected as')
+					}
+				}
+
 				logger.debug(update, 'connection update')
 			}
 
@@ -154,6 +192,140 @@ const startSock = async() => {
               	const id = generateMessageIDV2(sock.user?.id)
               	logger.debug({id, orig_id: msg.key.id }, 'replying to message')
                 await sock.sendMessage(msg.key.remoteJid!, { text: 'pong '+msg.key.id }, {messageId: id })
+              }
+
+              // ============================================
+              // Baileys-Joss: Interactive Button Examples
+              // ============================================
+              
+              // Test: Quick Reply Buttons
+              if (text === '/buttons' || text === '/tombol') {
+                const buttons = generateQuickReplyButtons(
+                  '🎛️ *Baileys-Joss Interactive Buttons*\n\nPilih salah satu opsi di bawah:',
+                  [
+                    { id: 'btn-1', displayText: '✅ Setuju' },
+                    { id: 'btn-2', displayText: '❌ Tolak' },
+                    { id: 'btn-3', displayText: '📞 Hubungi CS' }
+                  ],
+                  { footer: 'Powered by Baileys-Joss', title: 'Menu Pilihan' }
+                )
+                await sock.sendMessage(msg.key.remoteJid!, buttons)
+              }
+
+              // Test: List Message
+              if (text === '/list' || text === '/menu') {
+                const listMessage = generateInteractiveListMessage({
+                  title: '📋 Menu Produk',
+                  buttonText: 'Lihat Menu',
+                  description: 'Silahkan pilih produk yang diinginkan',
+                  footer: 'Ketik nomor untuk memesan',
+                  sections: [
+                    {
+                      title: '🍔 Makanan',
+                      rows: [
+                        { rowId: 'nasi-goreng', title: 'Nasi Goreng', description: 'Rp 25.000' },
+                        { rowId: 'mie-goreng', title: 'Mie Goreng', description: 'Rp 22.000' },
+                        { rowId: 'ayam-bakar', title: 'Ayam Bakar', description: 'Rp 35.000' }
+                      ]
+                    },
+                    {
+                      title: '🥤 Minuman',
+                      rows: [
+                        { rowId: 'es-teh', title: 'Es Teh', description: 'Rp 5.000' },
+                        { rowId: 'es-jeruk', title: 'Es Jeruk', description: 'Rp 7.000' },
+                        { rowId: 'kopi', title: 'Kopi', description: 'Rp 10.000' }
+                      ]
+                    }
+                  ]
+                })
+                await sock.sendMessage(msg.key.remoteJid!, listMessage)
+              }
+
+              // Test: Combined Buttons (URL, Reply, Copy, Call)
+              if (text === '/combined' || text === '/gabung') {
+                const combinedButtons = generateCombinedButtons(
+                  '🔥 *Promo Spesial!*\n\nDapatkan diskon 50% untuk pembelian pertama.',
+                  [
+                    { type: 'reply', displayText: '🛒 Pesan Sekarang', id: 'order' },
+                    { type: 'url', displayText: '🌐 Website', url: 'https://example.com' },
+                    { type: 'copy', displayText: '📋 Copy Promo', copyCode: 'DISKON50' }
+                  ],
+                  { title: '✨ Promo', footer: 'Berlaku s/d 31 Desember' }
+                )
+                await sock.sendMessage(msg.key.remoteJid!, combinedButtons)
+              }
+
+              // Test: Copy Code Button
+              if (text === '/otp' || text === '/code') {
+                const copyButton = generateCopyCodeButton(
+                  '🔐 *Kode OTP Anda*\n\nGunakan kode ini untuk verifikasi:',
+                  '123456',
+                  '📋 Copy Kode',
+                  { footer: 'Kode berlaku 5 menit' }
+                )
+                await sock.sendMessage(msg.key.remoteJid!, copyButton)
+              }
+
+              // Test: URL Button
+              if (text === '/link' || text === '/url') {
+                const urlButton = generateUrlButtonMessage(
+                  '🔗 *Kunjungi Website Kami*\n\nTemukan berbagai produk menarik!',
+                  [
+                    { displayText: '🌐 Buka Website', url: 'https://example.com' },
+                    { displayText: '📱 Download App', url: 'https://play.google.com' }
+                  ],
+                  { title: 'Link Penting', footer: 'Click untuk membuka' }
+                )
+                await sock.sendMessage(msg.key.remoteJid!, urlButton)
+              }
+
+              // Test: JID Info
+              if (text === '/jidinfo' || text === '/info') {
+                const jidDetails = getRemoteJidFromMessage(msg)
+                const parsedJid = parseJid(msg.key.remoteJid!)
+                const senderInfo = getCurrentSenderInfo(sock.authState)
+                
+                let infoText = '📍 *JID Information*\n\n'
+                infoText += `*Chat JID:* ${jidDetails?.chatJid}\n`
+                infoText += `*Sender JID:* ${jidDetails?.senderJid}\n\n`
+                
+                if (parsedJid) {
+                  infoText += `*User:* ${parsedJid.user}\n`
+                  infoText += `*Server:* ${parsedJid.server}\n`
+                  infoText += `*Device:* ${parsedJid.device}\n`
+                  infoText += `*Is LID:* ${parsedJid.isLid}\n`
+                  infoText += `*Is PN:* ${parsedJid.isPn}\n`
+                  infoText += `*Is Group:* ${parsedJid.isGroup}\n`
+                }
+                
+                if (senderInfo) {
+                  infoText += `\n*Your Phone:* ${senderInfo.phoneNumber}\n`
+                  infoText += `*Your LID:* ${senderInfo.lid || 'N/A'}\n`
+                  infoText += `*Is Self:* ${isSelf(msg.key.remoteJid!, senderInfo)}\n`
+                }
+
+                await sock.sendMessage(msg.key.remoteJid!, { text: infoText })
+              }
+
+              // Help command
+              if (text === '/help' || text === '/bantuan') {
+                const helpText = `🤖 *Baileys-Joss Commands*
+
+*Interactive Buttons:*
+/buttons - Quick reply buttons
+/list - List message dengan sections
+/combined - Combined buttons (URL, Reply, Copy)
+/otp - Copy code button
+/link - URL buttons
+
+*JID Plotting:*
+/jidinfo - Info tentang JID
+
+*Other:*
+/help - Tampilkan bantuan ini
+
+_Powered by Baileys-Joss_`
+                await sock.sendMessage(msg.key.remoteJid!, { text: helpText })
               }
             }
           }

@@ -63,10 +63,10 @@ export const makeNoiseHandler = ({
 	logger = logger.child({ class: 'ns' })
 
 	const data = Buffer.from(NOISE_MODE)
-	let hash = data.byteLength === 32 ? data : sha256(data)
-	let salt = hash
-	let encKey = hash
-	let decKey = hash
+	let hash: Buffer = data.byteLength === 32 ? data : sha256(data) as Buffer
+	let salt: Buffer = hash
+	let encKey: Buffer = hash
+	let decKey: Buffer = hash
 	let counter = 0
 	let sentIntro = false
 
@@ -123,9 +123,9 @@ export const makeNoiseHandler = ({
 
 	const mixIntoKey = async (data: Uint8Array) => {
 		const [write, read] = await localHKDF(data)
-		salt = write!
-		encKey = read!
-		decKey = read!
+		salt = write! as Buffer
+		encKey = read! as Buffer
+		decKey = read! as Buffer
 		counter = 0
 	}
 

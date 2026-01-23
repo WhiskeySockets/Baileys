@@ -1,18 +1,36 @@
 {
-  "name": "baileys",
+  "name": "baileys-joss",
   "type": "module",
-  "version": "7.0.0-rc.9",
-  "description": "A WebSockets library for interacting with WhatsApp Web",
+  "version": "1.0.0",
+  "description": "WhatsApp Web API with Interactive Buttons, List Messages, LID/SenderPn Plotting - A feature-rich Baileys fork",
   "keywords": [
     "whatsapp",
-    "automation"
+    "whatsapp-api",
+    "whatsapp-bot",
+    "whatsapp-web",
+    "baileys",
+    "baileys-fork",
+    "interactive-button",
+    "interactive-message",
+    "list-message",
+    "lid-mapping",
+    "automation",
+    "chatbot",
+    "wa-bot"
   ],
-  "homepage": "https://github.com/WhiskeySockets/Baileys/",
+  "homepage": "https://github.com/firdausmntp/Baileys-Joss#readme",
   "repository": {
-    "url": "git@github.com:WhiskeySockets/Baileys.git"
+    "type": "git",
+    "url": "git+https://github.com/firdausmntp/Baileys-Joss.git"
+  },
+  "bugs": {
+    "url": "https://github.com/firdausmntp/Baileys-Joss/issues"
   },
   "license": "MIT",
-  "author": "Rajeh Taher",
+  "author": {
+    "name": "firdausmntp",
+    "url": "https://github.com/firdausmntp"
+  },
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "files": [
@@ -21,12 +39,7 @@
     "engine-requirements.js"
   ],
   "scripts": {
-    "build:all": "npm run build && npm run build:docs",
-    "build:docs": "typedoc",
     "build": "tsc -P tsconfig.build.json && tsc-esm-fix --tsconfig=tsconfig.build.json --ext=.js",
-    "changelog:last": "conventional-changelog -p angular -r 2",
-    "changelog:preview": "conventional-changelog -p angular -u",
-    "changelog:update": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",
     "example": "tsx ./Example/example.ts",
     "gen:protobuf": "sh WAProto/GenerateStatics.sh",
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\"",
@@ -35,10 +48,8 @@
     "prepack": "npm run build",
     "prepare": "npm run build",
     "preinstall": "node ./engine-requirements.js",
-    "release": "release-it",
     "test": "node --experimental-vm-modules ./node_modules/.bin/jest --testMatch '**/*.test.ts'",
-    "test:e2e": "node --experimental-vm-modules ./node_modules/.bin/jest --testMatch '**/*.test-e2e.ts'",
-    "update:version": "tsx ./scripts/update-version.ts"
+    "test:e2e": "node --experimental-vm-modules ./node_modules/.bin/jest --testMatch '**/*.test-e2e.ts'"
   },
   "dependencies": {
     "@cacheable/node-cache": "^1.4.0",
@@ -61,8 +72,6 @@
     "@typescript-eslint/eslint-plugin": "^8",
     "@typescript-eslint/parser": "^8",
     "@whiskeysockets/eslint-config": "^1.0.0",
-    "conventional-changelog": "^7.1.1",
-    "conventional-changelog-angular": "^8.0.0",
     "esbuild-register": "^3.6.0",
     "eslint": "^9",
     "eslint-config-prettier": "^10.1.2",
@@ -77,12 +86,9 @@
     "pino-pretty": "^13.1.1",
     "prettier": "^3.5.3",
     "protobufjs-cli": "^1.1.3",
-    "release-it": "^15.10.3",
     "ts-jest": "^29.4.0",
     "tsc-esm-fix": "^3.1.2",
     "tsx": "^4.20.3",
-    "typedoc": "^0.27.9",
-    "typedoc-plugin-markdown": "4.4.2",
     "typescript": "^5.8.2"
   },
   "peerDependencies": {
@@ -102,7 +108,6 @@
       "optional": true
     }
   },
-  "packageManager": "yarn@4.9.2",
   "engines": {
     "node": ">=20.0.0"
   }

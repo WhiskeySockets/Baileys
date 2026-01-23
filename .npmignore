@@ -1,0 +1,45 @@
+# Source files (compiled files are in lib/)
+src/
+Example/
+Media/
+
+# Tests
+**/*.test.ts
+**/*.test-e2e.ts
+__tests__/
+
+# Config files
+.git/
+.gitignore
+.gitattributes
+.prettierrc
+.yarnrc.yml
+eslint.config.mts
+jest.config.ts
+tsconfig.json
+tsconfig.build.json
+
+# Lock files
+yarn.lock
+package-lock.json
+pnpm-lock.yaml
+
+# Misc
+*.log
+*.tgz
+.DS_Store
+Thumbs.db
+*.md
+!README.md
+
+# Development
+node_modules/
+coverage/
+.nyc_output/
+.vscode/
+.idea/
+
+# Auth files (don't publish!)
+baileys_auth_info/
+auth_info*/
+*.session
