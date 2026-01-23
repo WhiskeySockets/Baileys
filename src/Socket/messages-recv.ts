@@ -1286,7 +1286,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 											metrics.ctwaRecoveryRequests.inc({ status: 'sent' })
 											// Note: The actual message will be emitted via 'messages.upsert'
 											// when the PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE is processed
-											// in process-message.ts:399-421
+											// in the PDO response handler in src/Utils/process-message.ts
 										} else if (requestId === 'RESOLVED') {
 											// Message was received while we were waiting
 											logger.debug(
@@ -1322,9 +1322,19 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 											'CTWA: Placeholder resend request sent successfully (direct)'
 										)
 									} else if (requestId === 'RESOLVED') {
-										logger.debug({ msgId }, 'CTWA: Message received during resend delay')
+										// Message arrived during the internal 2s delay in requestPlaceholderResend
+										logger.debug(
+											{ msgId },
+											'CTWA: Message received before direct resend request completed'
+										)
 										metrics.ctwaMessagesRecovered.inc()
 										metrics.ctwaRecoveryLatency.observe(Date.now() - startTime)
+									} else {
+										// Already requested (duplicate request prevented by cache)
+										logger.debug(
+											{ msgId },
+											'CTWA: Resend already requested, skipping duplicate (direct)'
+										)
 									}
 								} catch (error) {
 									logger.warn({ error, msgId }, 'CTWA: Failed to request placeholder resend')
