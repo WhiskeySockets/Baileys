@@ -919,7 +919,7 @@ export const makeSocket = (config: SocketConfig) => {
 	// login complete
 	ws.on('CB:success', async (node: BinaryNode) => {
 		try {
-			updateServerTimeOffset(node);
+			updateServerTimeOffset(node)
 			await uploadPreKeysToServerIfRequired()
 			await sendPassiveIq('active')
 
@@ -939,7 +939,7 @@ export const makeSocket = (config: SocketConfig) => {
 		ev.emit('creds.update', { me: { ...authState.creds.me!, lid: node.attrs.lid } })
 
 		ev.emit('connection.update', { connection: 'open' })
-		void sendUnifiedSession();
+		void sendUnifiedSession()
 
 		if (node.attrs.lid && authState.creds.me?.id) {
 			const myLID = node.attrs.lid
