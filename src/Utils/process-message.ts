@@ -285,7 +285,7 @@ const processMessage = async (
 						})
 					}
 
-					const data = await downloadAndProcessHistorySyncNotification(histNotification, options)
+					const data = await downloadAndProcessHistorySyncNotification(histNotification, options, logger)
 
 					// Emit LID-PN mappings from history sync
 					// This is how WhatsApp Web learns mappings for chats with non-contacts
