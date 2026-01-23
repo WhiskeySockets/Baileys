@@ -1053,10 +1053,12 @@ export const makeSocket = (config: SocketConfig) => {
 		if (!tValue) {
 			return
 		}
+
 		const parsed = Number(tValue)
 		if (Number.isNaN(parsed) || parsed <= 0) {
 			return
 		}
+
 		const localMs = Date.now()
 		serverTimeOffsetMs = parsed * 1000 - localMs
 		logger.debug({ offset: serverTimeOffsetMs }, 'calculated server time offset')
