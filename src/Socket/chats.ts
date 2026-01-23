@@ -68,7 +68,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		getMessage
 	} = config
 	const sock = makeSocket(config)
-	const { ev, ws, authState, generateMessageTag, sendNode, query, signalRepository, onUnexpectedError } = sock
+	const { ev, ws, authState, generateMessageTag, sendNode, query, signalRepository, onUnexpectedError, sendUnifiedSession } = sock
 
 	let privacySettings: { [_: string]: string } | undefined
 
@@ -666,6 +666,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 			}
 
 			ev.emit('connection.update', { isOnline: type === 'available' })
+			void sendUnifiedSession()
 
 			await sendNode({
 				tag: 'presence',
