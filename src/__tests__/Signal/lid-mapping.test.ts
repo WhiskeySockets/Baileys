@@ -14,7 +14,7 @@ type LidMappingSetData = { 'lid-mapping': Record<string, string> }
 // Helper to create mock keys with fresh mocks
 function createMockKeys() {
 	return {
-		get: jest.fn<() => Promise<LidMappingResult>>(),
+		get: jest.fn<(type: string, keys: string[]) => Promise<LidMappingResult>>(),
 		set: jest.fn<(data: LidMappingSetData) => Promise<void>>(),
 		transaction: jest.fn<(work: () => Promise<void>) => Promise<void>>(async work => await work()),
 		isInTransaction: jest.fn<() => boolean>()
@@ -539,6 +539,109 @@ describe('LIDMappingStore', () => {
 
 			// Should return null gracefully when usync is not available
 			expect(result).toBeNull()
+		})
+	})
+
+	describe('history sync batch operations', () => {
+		it('should efficiently handle large batches like history sync (simulating WhatsApp Web behavior)', async () => {
+			// Simulate a history sync with many mappings (like WhatsApp Web's createLidPnMappingsInBatches)
+			const pairs: LIDMapping[] = []
+			for (let i = 0; i < 100; i++) {
+				pairs.push({
+					lid: `${10000 + i}@lid`,
+					pn: `55119${String(i).padStart(8, '0')}@s.whatsapp.net`
+				})
+			}
+
+			mockKeys.get.mockResolvedValue({})
+
+			await store.storeLIDPNMappings(pairs)
+
+			// Critical: Should only have ONE transaction and ONE set call (batched)
+			expect(mockKeys.transaction).toHaveBeenCalledTimes(1)
+			expect(mockKeys.set).toHaveBeenCalledTimes(1)
+
+			// Verify all mappings were included
+			const setCall = mockKeys.set.mock.calls[0]![0] as { 'lid-mapping': Record<string, string> }
+			expect(Object.keys(setCall['lid-mapping'])).toHaveLength(200) // 100 pairs * 2 (forward + reverse)
+		})
+
+		it('should batch fetch cache misses in a single DB call', async () => {
+			// Store many mappings first
+			const pairs: LIDMapping[] = []
+			for (let i = 0; i < 50; i++) {
+				pairs.push({
+					lid: `${20000 + i}@lid`,
+					pn: `55119${String(i).padStart(8, '0')}@s.whatsapp.net`
+				})
+			}
+
+			mockKeys.get.mockResolvedValue({})
+			await store.storeLIDPNMappings(pairs)
+
+			// Reset mocks
+			mockKeys.get.mockClear()
+
+			// Create a new store (no cache) and query multiple PNs
+			const freshStore = new LIDMappingStore(
+				mockKeys as unknown as SignalKeyStoreWithTransaction,
+				logger,
+				mockPnToLIDFunc
+			)
+
+			const pnsToQuery = pairs.slice(0, 10).map(p => p.pn)
+
+			// Mock DB response with all mappings
+			const dbResponse: { [key: string]: string } = {}
+			for (let i = 0; i < 10; i++) {
+				dbResponse[`119${String(i).padStart(8, '0')}`] = String(20000 + i)
+			}
+
+			mockKeys.get.mockResolvedValue(dbResponse)
+			mockPnToLIDFunc.mockResolvedValue(undefined)
+
+			await freshStore.getLIDsForPNs(pnsToQuery)
+
+			// Should batch all cache misses into ONE DB call
+			expect(mockKeys.get).toHaveBeenCalledTimes(1)
+		})
+
+		it('should handle mixed cache hits and misses efficiently', async () => {
+			// Pre-populate cache with some mappings
+			const cachedPairs: LIDMapping[] = [
+				{ lid: '30001@lid', pn: '5511900000001@s.whatsapp.net' },
+				{ lid: '30002@lid', pn: '5511900000002@s.whatsapp.net' }
+			]
+			mockKeys.get.mockResolvedValue({})
+			await store.storeLIDPNMappings(cachedPairs)
+
+			// Reset and prepare for query
+			mockKeys.get.mockClear()
+
+			// Query mix of cached and uncached
+			const queryPns = [
+				'5511900000001@s.whatsapp.net', // cached
+				'5511900000002@s.whatsapp.net', // cached
+				'5511900000003@s.whatsapp.net', // not cached
+				'5511900000004@s.whatsapp.net' // not cached
+			]
+
+			// Mock DB response for uncached only (using pnUser without @s.whatsapp.net)
+			mockKeys.get.mockResolvedValue({
+				'5511900000003': '30003',
+				'5511900000004': '30004'
+			})
+			mockPnToLIDFunc.mockResolvedValue(undefined)
+
+			const results = await store.getLIDsForPNs(queryPns)
+
+			// Should have results for all 4 items (2 cache hits + 2 DB hits)
+			expect(results).toHaveLength(4)
+
+			// DB should only be queried for cache misses
+			expect(mockKeys.get).toHaveBeenCalledTimes(1)
+			// Verify it was called with lid-mapping type and the uncached pnUsers
+			expect(mockKeys.get).toHaveBeenCalledWith('lid-mapping', ['5511900000003', '5511900000004'])
 		})
 	})
 })
