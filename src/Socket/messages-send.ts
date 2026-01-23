@@ -3,6 +3,10 @@ import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto/index.js'
 import { DEFAULT_CACHE_TTLS, WA_DEFAULT_EPHEMERAL } from '../Defaults'
 import type {
+	AlbumMediaItem,
+	AlbumMediaResult,
+	AlbumMessageOptions,
+	AlbumSendResult,
 	AnyMessageContent,
 	MediaConnInfo,
 	MessageReceiptType,
@@ -1290,6 +1294,264 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 			return message
 		},
+
+		/**
+		 * Send an album message (multiple images/videos grouped together)
+		 *
+		 * @param jid - The recipient JID
+		 * @param album - Album configuration with media items
+		 * @param options - Additional message generation options
+		 * @returns Complete result with status of each media item
+		 *
+		 * @example
+		 * ```typescript
+		 * const result = await sock.sendAlbumMessage('1234567890@s.whatsapp.net', {
+		 *   medias: [
+		 *     { image: { url: './photo1.jpg' }, caption: 'First photo' },
+		 *     { image: { url: './photo2.jpg' }, caption: 'Second photo' },
+		 *     { video: { url: './video.mp4' }, caption: 'A video' }
+		 *   ],
+		 *   delay: 'adaptive', // or fixed ms like 500
+		 *   retryCount: 3,
+		 *   continueOnFailure: true
+		 * })
+		 *
+		 * if (!result.success) {
+		 *   console.log('Failed items:', result.failedIndices)
+		 * }
+		 * ```
+		 */
+		sendAlbumMessage: async (
+			jid: string,
+			album: AlbumMessageOptions,
+			options: MiscMessageGenerationOptions = {}
+		): Promise<AlbumSendResult> => {
+			const startTime = Date.now()
+			const userJid = authState.creds.me!.id
+
+			const {
+				medias,
+				delay: delayConfig = 'adaptive',
+				retryCount = 3,
+				continueOnFailure = true
+			} = album
+
+			// Validation (also done in generateWAMessageContent, but double-check here)
+			if (!medias || medias.length < 2) {
+				throw new Boom('Album must have at least 2 media items', { statusCode: 400 })
+			}
+			if (medias.length > 10) {
+				throw new Boom('Album cannot have more than 10 media items (WhatsApp limit)', { statusCode: 400 })
+			}
+
+			// Count media types for album root
+			const imageCount = medias.filter(m => 'image' in m).length
+			const videoCount = medias.filter(m => 'video' in m).length
+
+			logger.info(
+				{ jid, totalItems: medias.length, imageCount, videoCount, delayConfig, retryCount },
+				'Starting album message send'
+			)
+
+			// Generate album root message first
+			const albumRootMsg = await generateWAMessage(jid, {
+				album: { medias, delay: delayConfig, retryCount, continueOnFailure }
+			}, {
+				logger,
+				userJid,
+				getUrlInfo: text => getUrlInfo(text, {
+					thumbnailWidth: linkPreviewImageThumbnailWidth,
+					fetchOpts: { timeout: 3_000, ...(httpRequestOptions || {}) },
+					logger,
+					uploadImage: generateHighQualityLinkPreview ? waUploadToServer : undefined
+				}),
+				upload: waUploadToServer,
+				mediaCache: config.mediaCache,
+				...options
+			})
+
+			const albumKey = albumRootMsg.key
+			const results: AlbumMediaResult[] = []
+
+			/**
+			 * Calculate adaptive delay based on media characteristics
+			 * Larger files and videos get more delay to prevent rate limiting
+			 */
+			const calculateAdaptiveDelay = (media: AlbumMediaItem, index: number): number => {
+				const baseDelay = 500 // Base delay in ms
+
+				// Videos get more delay
+				const isVideo = 'video' in media
+				const mediaTypeMultiplier = isVideo ? 2.0 : 1.0
+
+				// Later items in album get slightly more delay (cumulative load)
+				const positionMultiplier = 1 + (index * 0.1)
+
+				// Add some jitter to prevent predictable patterns
+				const jitter = Math.random() * 200
+
+				return Math.round(baseDelay * mediaTypeMultiplier * positionMultiplier + jitter)
+			}
+
+			/**
+			 * Get delay for this media item
+			 */
+			const getDelay = (media: AlbumMediaItem, index: number): number => {
+				if (delayConfig === 'adaptive') {
+					return calculateAdaptiveDelay(media, index)
+				}
+				return delayConfig
+			}
+
+			/**
+			 * Send a single media item with retry logic
+			 */
+			const sendMediaWithRetry = async (
+				media: AlbumMediaItem,
+				index: number
+			): Promise<AlbumMediaResult> => {
+				const itemStartTime = Date.now()
+				let lastError: Error | undefined
+				let attempts = 0
+
+				for (let attempt = 0; attempt <= retryCount; attempt++) {
+					attempts = attempt + 1
+					try {
+						// Generate message for this media item
+						const mediaMsg = await generateWAMessage(jid, media as AnyMessageContent, {
+							logger,
+							userJid,
+							getUrlInfo: text => getUrlInfo(text, {
+								thumbnailWidth: linkPreviewImageThumbnailWidth,
+								fetchOpts: { timeout: 3_000, ...(httpRequestOptions || {}) },
+								logger,
+								uploadImage: generateHighQualityLinkPreview ? waUploadToServer : undefined
+							}),
+							upload: waUploadToServer,
+							mediaCache: config.mediaCache,
+							...options
+						})
+
+						// Attach to parent album via messageContextInfo with parentKey
+						if (!mediaMsg.message!.messageContextInfo) {
+							mediaMsg.message!.messageContextInfo = {}
+						}
+						mediaMsg.message!.messageContextInfo.messageAddOnType = proto.MessageAddOnType.MEDIA_ALBUM
+
+						// Add reference to parent album message (as suggested by purpshell)
+						// This allows proper grouping and retry of individual items
+						;(mediaMsg.message!.messageContextInfo as any).parentMessageKey = albumKey
+
+						// Relay the message
+						await relayMessage(jid, mediaMsg.message!, {
+							messageId: mediaMsg.key.id!,
+							useCachedGroupMetadata: options.useCachedGroupMetadata
+						})
+
+						// Emit own event if configured
+						if (config.emitOwnEvents) {
+							process.nextTick(async () => {
+								await messageMutex.mutex(() => upsertMessage(mediaMsg, 'append'))
+							})
+						}
+
+						logger.debug(
+							{ index, msgId: mediaMsg.key.id, attempts },
+							'Album media item sent successfully'
+						)
+
+						return {
+							index,
+							success: true,
+							message: mediaMsg,
+							retryAttempts: attempts,
+							latencyMs: Date.now() - itemStartTime
+						}
+					} catch (error) {
+						lastError = error as Error
+						logger.warn(
+							{ index, attempt: attempts, error: lastError.message },
+							'Album media item send failed, will retry'
+						)
+
+						// Exponential backoff for retries
+						if (attempt < retryCount) {
+							const backoffDelay = Math.min(1000 * Math.pow(2, attempt), 10000)
+							await new Promise(resolve => setTimeout(resolve, backoffDelay))
+						}
+					}
+				}
+
+				// All retries exhausted
+				logger.error(
+					{ index, attempts, error: lastError?.message },
+					'Album media item failed after all retries'
+				)
+
+				return {
+					index,
+					success: false,
+					error: lastError,
+					retryAttempts: attempts,
+					latencyMs: Date.now() - itemStartTime
+				}
+			}
+
+			// Send each media item sequentially
+			for (let i = 0; i < medias.length; i++) {
+				const media = medias[i]
+
+				const result = await sendMediaWithRetry(media, i)
+				results.push(result)
+
+				// Check if we should stop on failure
+				if (!result.success && !continueOnFailure) {
+					logger.warn(
+						{ index: i, totalItems: medias.length },
+						'Album send stopped due to failure (continueOnFailure=false)'
+					)
+					break
+				}
+
+				// Apply delay before next item (except for last item)
+				if (i < medias.length - 1) {
+					const delay = getDelay(media, i)
+					logger.trace({ index: i, delayMs: delay }, 'Waiting before next album item')
+					await new Promise(resolve => setTimeout(resolve, delay))
+				}
+			}
+
+			// Calculate final results
+			const successCount = results.filter(r => r.success).length
+			const failedCount = results.filter(r => !r.success).length
+			const failedIndices = results.filter(r => !r.success).map(r => r.index)
+			const totalLatencyMs = Date.now() - startTime
+
+			const finalResult: AlbumSendResult = {
+				albumKey,
+				results,
+				totalItems: medias.length,
+				successCount,
+				failedCount,
+				failedIndices,
+				success: failedCount === 0,
+				totalLatencyMs
+			}
+
+			logger.info(
+				{
+					albumKeyId: albumKey.id,
+					totalItems: medias.length,
+					successCount,
+					failedCount,
+					totalLatencyMs
+				},
+				'Album message send completed'
+			)
+
+			return finalResult
+		},
+
 		sendMessage: async (jid: string, content: AnyMessageContent, options: MiscMessageGenerationOptions = {}) => {
 			const userJid = authState.creds.me!.id
 			if (

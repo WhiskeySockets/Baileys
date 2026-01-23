@@ -286,6 +286,96 @@ export type Carouselable = {
 	}
 }
 
+// ========== Album Message Types ==========
+
+/**
+ * Single media item in an album (image or video)
+ * Each item can have its own caption, thumbnail, and metadata
+ */
+export type AlbumMediaItem =
+	| ({
+			image: WAMediaUpload
+			caption?: string
+			jpegThumbnail?: string
+	  } & Mentionable &
+			Contextable &
+			WithDimensions)
+	| ({
+			video: WAMediaUpload
+			caption?: string
+			gifPlayback?: boolean
+			jpegThumbnail?: string
+			/** Duration in seconds */
+			seconds?: number
+	  } & Mentionable &
+			Contextable &
+			WithDimensions)
+
+/**
+ * Configuration for album message sending
+ */
+export type AlbumMessageOptions = {
+	/** Array of media items (images/videos) - min 2, max 10 */
+	medias: AlbumMediaItem[]
+	/**
+	 * Delay strategy between media sends
+	 * - 'adaptive': Calculates delay based on media size (recommended)
+	 * - number: Fixed delay in milliseconds
+	 * @default 'adaptive'
+	 */
+	delay?: 'adaptive' | number
+	/**
+	 * Number of retry attempts for failed media items
+	 * @default 3
+	 */
+	retryCount?: number
+	/**
+	 * Whether to continue sending remaining items if one fails
+	 * @default true
+	 */
+	continueOnFailure?: boolean
+}
+
+/**
+ * Result of a single media item send attempt
+ */
+export type AlbumMediaResult = {
+	/** Index in the original medias array */
+	index: number
+	/** Whether this item was sent successfully */
+	success: boolean
+	/** The sent message (if successful) */
+	message?: WAMessage
+	/** Error details (if failed) */
+	error?: Error
+	/** Number of retry attempts made */
+	retryAttempts: number
+	/** Time taken to send this item in ms */
+	latencyMs: number
+}
+
+/**
+ * Complete result of album message sending
+ */
+export type AlbumSendResult = {
+	/** Key of the album root message */
+	albumKey: WAMessageKey
+	/** Results for each media item */
+	results: AlbumMediaResult[]
+	/** Total number of items */
+	totalItems: number
+	/** Number of successfully sent items */
+	successCount: number
+	/** Number of failed items */
+	failedCount: number
+	/** Indices of failed items (for potential retry) */
+	failedIndices: number[]
+	/** Overall success (all items sent) */
+	success: boolean
+	/** Total time taken in ms */
+	totalLatencyMs: number
+}
+
 export type AnyRegularMessageContent = (
 	| ({
 			text: string
@@ -337,6 +427,10 @@ export type AnyRegularMessageContent = (
 			businessOwnerJid?: string
 			body?: string
 			footer?: string
+	  }
+	| {
+			/** Album message - send multiple images/videos grouped together */
+			album: AlbumMessageOptions
 	  }
 	| SharePhoneNumber
 	| RequestPhoneNumber

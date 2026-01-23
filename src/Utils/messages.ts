@@ -477,6 +477,45 @@ export const generateWAMessageContent = async (
 
 		m.interactiveMessage = interactiveMessage
 		options.logger?.warn('[EXPERIMENTAL] Sending carouselMessage - this may not work and can cause bans')
+	} else if (hasNonNullishProperty(message, 'album')) {
+		// Album message validation - actual sending is handled in messages-send.ts
+		const { medias } = message.album
+
+		// Validate minimum items (WhatsApp requirement)
+		if (!medias || medias.length < 2) {
+			throw new Boom('Album must have at least 2 media items', { statusCode: 400 })
+		}
+
+		// Validate maximum items (WhatsApp limit)
+		if (medias.length > 10) {
+			throw new Boom('Album cannot have more than 10 media items (WhatsApp limit)', { statusCode: 400 })
+		}
+
+		// Count and validate each media item
+		let expectedImageCount = 0
+		let expectedVideoCount = 0
+
+		for (let i = 0; i < medias.length; i++) {
+			const media = medias[i]
+			if (hasNonNullishProperty(media, 'image')) {
+				expectedImageCount++
+			} else if (hasNonNullishProperty(media, 'video')) {
+				expectedVideoCount++
+			} else {
+				throw new Boom(`Album media at index ${i} must have 'image' or 'video' property`, { statusCode: 400 })
+			}
+		}
+
+		// Create album root message
+		m.albumMessage = WAProto.Message.AlbumMessage.create({
+			expectedImageCount,
+			expectedVideoCount
+		})
+
+		options.logger?.info(
+			{ expectedImageCount, expectedVideoCount, totalItems: medias.length },
+			'Album message validated - sending will be handled by relayMessage'
+		)
 	} else if (hasNonNullishProperty(message, 'text')) {
 		// Normal text message processing
 		const extContent = { text: message.text } as WATextMessage
