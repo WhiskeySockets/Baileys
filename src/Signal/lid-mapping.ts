@@ -131,6 +131,7 @@ export class LIDMappingStore {
 					if (!addResolvedPair(pn, decoded, cached)) {
 						this.logger.warn(`Invalid entry for ${pn} (pair not resolved)`)
 					}
+
 					continue
 				}
 			}

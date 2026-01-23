@@ -83,7 +83,7 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	getMessage: async () => undefined,
 	cachedGroupMetadata: async () => undefined,
 	makeSignalRepository: makeLibSignalRepository,
-	enableLidMappingCache:true
+	enableLidMappingCache: true
 }
 
 export const MEDIA_PATH_MAP: { [T in MediaType]?: string } = {
