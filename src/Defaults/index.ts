@@ -108,7 +108,9 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	//             + 10 buffer slots for high-load scenarios = 50 total
 	maxSocketClientListeners: 50,
 	// Unified session telemetry (reduces detection of unofficial clients)
-	enableUnifiedSession: true
+	// NOTE: undefined means "check env var first, then default to true"
+	// This allows BAILEYS_UNIFIED_SESSION_ENABLED env var to have precedence
+	enableUnifiedSession: undefined
 }
 
 export const MEDIA_PATH_MAP: { [T in MediaType]?: string } = {

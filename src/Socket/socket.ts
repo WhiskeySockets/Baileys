@@ -94,8 +94,15 @@ export const makeSocket = (config: SocketConfig) => {
 		queryCircuitBreaker: queryCircuitBreakerConfig,
 		connectionCircuitBreaker: connectionCircuitBreakerConfig,
 		preKeyCircuitBreaker: preKeyCircuitBreakerConfig,
-		enableUnifiedSession = shouldEnableUnifiedSession()
+		// If enableUnifiedSession is explicitly set (true/false), use it
+		// Otherwise (undefined), check env var, then default to true
+		enableUnifiedSession: enableUnifiedSessionConfig
 	} = config
+
+	// Resolve enableUnifiedSession: explicit config > env var > default (true)
+	const enableUnifiedSession = enableUnifiedSessionConfig !== undefined
+		? enableUnifiedSessionConfig
+		: shouldEnableUnifiedSession()
 
 	// Initialize circuit breakers if enabled
 	let queryCircuitBreaker: CircuitBreaker | undefined
@@ -148,18 +155,8 @@ export const makeSocket = (config: SocketConfig) => {
 		logger.info('Circuit breakers initialized for socket operations')
 	}
 
-	// Initialize Unified Session Manager for telemetry
-	// Note: sendNode will be set after it's defined below
+	// Unified Session Manager will be initialized after sendNode is defined
 	let unifiedSessionManager: UnifiedSessionManager | undefined
-	if (enableUnifiedSession) {
-		unifiedSessionManager = createUnifiedSessionManager({
-			enabled: true,
-			logger,
-			enableCircuitBreaker
-			// sendNode will be configured after sendNode function is defined
-		})
-		logger.info('Unified session manager initialized')
-	}
 
 	const publicWAMBuffer = new BinaryInfo()
 
@@ -240,19 +237,19 @@ export const makeSocket = (config: SocketConfig) => {
 		return sendRawMessage(buff)
 	}
 
-	// Configure unified session manager with sendNode now that it's defined
-	if (unifiedSessionManager) {
-		// Create a wrapper that matches the expected signature
+	// Initialize Unified Session Manager now that sendNode is defined
+	// (single initialization to avoid duplicating circuit breakers and state)
+	if (enableUnifiedSession) {
 		const sendNodeForSession = async (node: BinaryNode): Promise<void> => {
 			await sendNode(node)
 		}
-		// Recreate with proper sendNode
 		unifiedSessionManager = createUnifiedSessionManager({
 			enabled: true,
 			logger,
 			enableCircuitBreaker,
 			sendNode: sendNodeForSession
 		})
+		logger.info('Unified session manager initialized')
 	}
 
 	/** Send unified_session telemetry */
@@ -741,6 +738,13 @@ export const makeSocket = (config: SocketConfig) => {
 			// if it's a binary node
 			if (!(frame instanceof Uint8Array)) {
 				const msgId = frame.attrs.id
+
+				// Update server time offset from any node with timestamp 't'
+				// This keeps the offset accurate even after long connections
+				const serverTime = extractServerTime(frame)
+				if (serverTime) {
+					unifiedSessionManager?.updateServerTimeOffset(serverTime)
+				}
 
 				if (logger.level === 'trace') {
 					logger.trace({ xml: binaryNodeToString(frame), msg: 'recv xml' })
