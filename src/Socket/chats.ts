@@ -68,7 +68,17 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		getMessage
 	} = config
 	const sock = makeSocket(config)
-	const { ev, ws, authState, generateMessageTag, sendNode, query, signalRepository, onUnexpectedError } = sock
+	const {
+		ev,
+		ws,
+		authState,
+		generateMessageTag,
+		sendNode,
+		query,
+		signalRepository,
+		onUnexpectedError,
+		sendUnifiedSession
+	} = sock
 
 	let privacySettings: { [_: string]: string } | undefined
 
@@ -659,13 +669,18 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	const sendPresenceUpdate = async (type: WAPresence, toJid?: string) => {
 		const me = authState.creds.me!
-		if (type === 'available' || type === 'unavailable') {
+		const isAvailableType = type === 'available'
+		if (isAvailableType || type === 'unavailable') {
 			if (!me.name) {
 				logger.warn('no name present, ignoring presence update request...')
 				return
 			}
 
-			ev.emit('connection.update', { isOnline: type === 'available' })
+			ev.emit('connection.update', { isOnline: isAvailableType })
+
+			if (isAvailableType) {
+				void sendUnifiedSession()
+			}
 
 			await sendNode({
 				tag: 'presence',
