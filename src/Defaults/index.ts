@@ -137,3 +137,10 @@ export const DEFAULT_CACHE_TTLS = {
 	CALL_OFFER: 5 * 60, // 5 minutes
 	USER_DEVICES: 5 * 60 // 5 minutes
 }
+
+export const TimeMs = {
+	Minute: 60 * 1000,
+	Hour: 60 * 60 * 1000,
+	Day: 24 * 60 * 60 * 1000,
+	Week: 7 * 24 * 60 * 60 * 1000
+}
