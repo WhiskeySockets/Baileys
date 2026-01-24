@@ -36,8 +36,14 @@ export * from './cache-utils'
 export * from './circuit-breaker'
 export * from './retry-utils'
 
+// Telemetry and detection mitigation
+export * from './unified-session'
+
 // Version management
 export * from './version-cache'
+
+// Health monitoring
+export * from './health-status'
 
 // Event streaming
 export * from './baileys-event-stream'

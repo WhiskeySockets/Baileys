@@ -229,4 +229,27 @@ export type SocketConfig = {
 	 * WARNING: Setting to 0 disables limit and allows potential memory leaks!
 	 */
 	maxSocketClientListeners?: number
+
+	// === Unified Session Telemetry ===
+
+	/**
+	 * Enable unified_session telemetry to reduce detection of unofficial clients.
+	 *
+	 * When enabled, sends time-based session identifiers that mimic official
+	 * WhatsApp Web client behavior. This may help reduce "Your account may be
+	 * at risk" warnings, though effectiveness is not guaranteed.
+	 *
+	 * Telemetry is sent at specific trigger points:
+	 * - After successful login
+	 * - After successful pairing
+	 * - When sending 'available' presence
+	 *
+	 * Can also be controlled via environment variable:
+	 * BAILEYS_UNIFIED_SESSION_ENABLED=true|false
+	 *
+	 * @default true
+	 * @see https://github.com/tulir/whatsmeow/pull/1057
+	 * @see https://github.com/WhiskeySockets/Baileys/pull/2294
+	 */
+	enableUnifiedSession?: boolean
 }

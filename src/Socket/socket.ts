@@ -60,6 +60,12 @@ import {
 	incrementActiveConnections,
 	decrementActiveConnections
 } from '../Utils/prometheus-metrics'
+import {
+	createUnifiedSessionManager,
+	extractServerTime,
+	shouldEnableUnifiedSession,
+	type UnifiedSessionManager
+} from '../Utils/unified-session'
 import { BinaryInfo } from '../WAM/BinaryInfo.js'
 import { USyncQuery, USyncUser } from '../WAUSync/'
 import { WebSocketClient } from './Client'
@@ -87,8 +93,16 @@ export const makeSocket = (config: SocketConfig) => {
 		enableCircuitBreaker = true,
 		queryCircuitBreaker: queryCircuitBreakerConfig,
 		connectionCircuitBreaker: connectionCircuitBreakerConfig,
-		preKeyCircuitBreaker: preKeyCircuitBreakerConfig
+		preKeyCircuitBreaker: preKeyCircuitBreakerConfig,
+		// If enableUnifiedSession is explicitly set (true/false), use it
+		// Otherwise (undefined), check env var, then default to true
+		enableUnifiedSession: enableUnifiedSessionConfig
 	} = config
+
+	// Resolve enableUnifiedSession: explicit config > env var > default (true)
+	const enableUnifiedSession = enableUnifiedSessionConfig !== undefined
+		? enableUnifiedSessionConfig
+		: shouldEnableUnifiedSession()
 
 	// Initialize circuit breakers if enabled
 	let queryCircuitBreaker: CircuitBreaker | undefined
@@ -140,6 +154,9 @@ export const makeSocket = (config: SocketConfig) => {
 
 		logger.info('Circuit breakers initialized for socket operations')
 	}
+
+	// Unified Session Manager will be initialized after sendNode is defined
+	let unifiedSessionManager: UnifiedSessionManager | undefined
 
 	const publicWAMBuffer = new BinaryInfo()
 
@@ -218,6 +235,28 @@ export const makeSocket = (config: SocketConfig) => {
 
 		const buff = encodeBinaryNode(frame)
 		return sendRawMessage(buff)
+	}
+
+	// Initialize Unified Session Manager now that sendNode is defined
+	// (single initialization to avoid duplicating circuit breakers and state)
+	if (enableUnifiedSession) {
+		const sendNodeForSession = async (node: BinaryNode): Promise<void> => {
+			await sendNode(node)
+		}
+		unifiedSessionManager = createUnifiedSessionManager({
+			enabled: true,
+			logger,
+			enableCircuitBreaker,
+			sendNode: sendNodeForSession
+		})
+		logger.info('Unified session manager initialized')
+	}
+
+	/** Send unified_session telemetry */
+	const sendUnifiedSession = async (trigger: 'login' | 'pairing' | 'presence' | 'manual' = 'manual'): Promise<void> => {
+		if (unifiedSessionManager) {
+			await unifiedSessionManager.send(trigger)
+		}
 	}
 
 	/**
@@ -700,6 +739,13 @@ export const makeSocket = (config: SocketConfig) => {
 			if (!(frame instanceof Uint8Array)) {
 				const msgId = frame.attrs.id
 
+				// Update server time offset from any node with timestamp 't'
+				// This keeps the offset accurate even after long connections
+				const serverTime = extractServerTime(frame)
+				if (serverTime) {
+					unifiedSessionManager?.updateServerTimeOffset(serverTime)
+				}
+
 				if (logger.level === 'trace') {
 					logger.trace({ xml: binaryNodeToString(frame), msg: 'recv xml' })
 				}
@@ -782,6 +828,9 @@ export const makeSocket = (config: SocketConfig) => {
 		queryCircuitBreaker?.destroy()
 		connectionCircuitBreaker?.destroy()
 		preKeyCircuitBreaker?.destroy()
+
+		// Clean up unified session manager
+		unifiedSessionManager?.destroy()
 
 		ws.removeAllListeners('close')
 		ws.removeAllListeners('open')
@@ -1061,6 +1110,11 @@ export const makeSocket = (config: SocketConfig) => {
 			ev.emit('connection.update', { isNewLogin: true, qr: undefined })
 
 			await sendNode(reply)
+
+			// Send unified_session telemetry on successful pairing
+			sendUnifiedSession('pairing').catch(err => {
+				logger.debug({ err }, 'Failed to send unified_session on pairing')
+			})
 		} catch (error: any) {
 			logger.info({ trace: error.stack }, 'error in pairing')
 			void end(error)
@@ -1092,6 +1146,17 @@ export const makeSocket = (config: SocketConfig) => {
 		// Record successful connection metrics
 		recordConnectionAttempt('success')
 		incrementActiveConnections()
+
+		// Update server time offset from success node
+		const serverTime = extractServerTime(node)
+		if (serverTime) {
+			unifiedSessionManager?.updateServerTimeOffset(serverTime)
+		}
+
+		// Send unified_session telemetry on successful login
+		sendUnifiedSession('login').catch(err => {
+			logger.debug({ err }, 'Failed to send unified_session on login')
+		})
 
 		if (node.attrs.lid && authState.creds.me?.id) {
 			const myLID = node.attrs.lid
@@ -1247,6 +1312,15 @@ export const makeSocket = (config: SocketConfig) => {
 			connectionCircuitBreaker?.reset()
 			preKeyCircuitBreaker?.reset()
 			logger.info('All circuit breakers reset to closed state')
+		},
+		// Unified Session Telemetry
+		/** Send unified_session telemetry manually */
+		sendUnifiedSession,
+		/** Get unified session manager state (for debugging) */
+		getUnifiedSessionState: () => unifiedSessionManager?.getState(),
+		/** Update server time offset (call when receiving server timestamps) */
+		updateServerTimeOffset: (serverTime: string | number) => {
+			unifiedSessionManager?.updateServerTimeOffset(serverTime)
 		}
 	}
 }

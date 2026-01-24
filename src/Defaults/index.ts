@@ -106,7 +106,11 @@ export const DEFAULT_CONNECTION_CONFIG: SocketConfig = {
 	// SocketClient: 20 core events (connection, messaging, presence, groups, calls, etc.)
 	//             + 20 dynamic listeners (user handlers, plugins)
 	//             + 10 buffer slots for high-load scenarios = 50 total
-	maxSocketClientListeners: 50
+	maxSocketClientListeners: 50,
+	// Unified session telemetry (reduces detection of unofficial clients)
+	// NOTE: undefined means "check env var first, then default to true"
+	// This allows BAILEYS_UNIFIED_SESSION_ENABLED env var to have precedence
+	enableUnifiedSession: undefined
 }
 
 export const MEDIA_PATH_MAP: { [T in MediaType]?: string } = {
@@ -189,3 +193,39 @@ export const DEFAULT_CACHE_MAX_KEYS = {
 // Re-export retry constants for backwards compatibility
 // Actual definitions are in retry-utils.ts to avoid ESM initialization order issues
 export { RETRY_BACKOFF_DELAYS, RETRY_JITTER_FACTOR } from '../Utils/retry-utils'
+
+// ============================================
+// Time Constants
+// ============================================
+
+/**
+ * Time constants in milliseconds for various timing calculations.
+ * Used by unified session, rate limiting, and other time-based features.
+ *
+ * @example
+ * ```typescript
+ * import { TimeMs } from './Defaults'
+ *
+ * // Calculate 3 days in milliseconds
+ * const threeDays = 3 * TimeMs.Day
+ *
+ * // Check if 1 week has passed
+ * if (Date.now() - lastUpdate > TimeMs.Week) {
+ *   // do something
+ * }
+ * ```
+ */
+export const TimeMs = {
+	/** One second in milliseconds (1,000) */
+	Second: 1_000,
+	/** One minute in milliseconds (60,000) */
+	Minute: 60_000,
+	/** One hour in milliseconds (3,600,000) */
+	Hour: 3_600_000,
+	/** One day in milliseconds (86,400,000) */
+	Day: 86_400_000,
+	/** One week in milliseconds (604,800,000) */
+	Week: 604_800_000,
+} as const
+
+export type TimeMsKey = keyof typeof TimeMs

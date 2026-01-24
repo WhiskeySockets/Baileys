@@ -68,7 +68,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		getMessage
 	} = config
 	const sock = makeSocket(config)
-	const { ev, ws, authState, generateMessageTag, sendNode, query, signalRepository, onUnexpectedError } = sock
+	const { ev, ws, authState, generateMessageTag, sendNode, query, signalRepository, onUnexpectedError, sendUnifiedSession } = sock
 
 	let privacySettings: { [_: string]: string } | undefined
 
@@ -674,6 +674,14 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					type
 				}
 			})
+
+			// Send unified_session telemetry when going online
+			// This mimics official WhatsApp Web client behavior
+			if (type === 'available') {
+				sendUnifiedSession('presence').catch(err => {
+					logger.debug({ err }, 'Failed to send unified_session on presence available')
+				})
+			}
 		} else {
 			const { server } = jidDecode(toJid)!
 			const isLid = server === 'lid'
