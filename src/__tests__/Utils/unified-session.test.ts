@@ -14,7 +14,15 @@ import {
 	shouldEnableUnifiedSession,
 	type UnifiedSessionOptions
 } from '../../Utils/unified-session.js'
-import { TimeMs } from '../../Defaults/index.js'
+
+// TimeMs constants for testing (matching unified-session.ts)
+const TimeMs = {
+	Second: 1_000,
+	Minute: 60_000,
+	Hour: 3_600_000,
+	Day: 86_400_000,
+	Week: 604_800_000,
+} as const
 
 // Mock the prometheus metrics to avoid side effects
 jest.mock('../../Utils/prometheus-metrics.js', () => ({
