@@ -27,11 +27,22 @@ import {
 // Time Constants (Enterprise-grade)
 // ============================================
 
-// Import TimeMs from Defaults (single source of truth)
-import { TimeMs } from '../Defaults/index.js'
-
-// Re-export for convenience (but not as main export to avoid conflicts)
-export { TimeMs }
+/**
+ * Time constants in milliseconds for unified session calculations.
+ * Defined locally to avoid circular dependency issues with Defaults/index.ts
+ */
+const TimeMs = {
+	/** One second in milliseconds */
+	Second: 1_000,
+	/** One minute in milliseconds */
+	Minute: 60_000,
+	/** One hour in milliseconds */
+	Hour: 3_600_000,
+	/** One day in milliseconds */
+	Day: 86_400_000,
+	/** One week in milliseconds */
+	Week: 604_800_000,
+} as const
 
 /**
  * Offset for session ID calculation (3 days in ms).
