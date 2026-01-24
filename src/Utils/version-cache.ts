@@ -86,11 +86,16 @@ async function readCacheFile(filePath: string): Promise<VersionCacheEntry | null
 /**
  * Writes the cache to file
  */
-async function writeCacheFile(filePath: string, entry: VersionCacheEntry): Promise<void> {
+async function writeCacheFile(
+	filePath: string,
+	entry: VersionCacheEntry,
+	logger?: VersionCacheLogger
+): Promise<void> {
 	try {
 		await fs.writeFile(filePath, JSON.stringify(entry, null, 2), 'utf-8')
-	} catch {
-		// Ignore write errors - cache is optional
+	} catch (error) {
+		// Log write errors for debugging - cache is optional but failures should be visible
+		logger?.warn({ error, filePath }, 'Failed to write version cache file')
 	}
 }
 
@@ -124,7 +129,7 @@ async function fetchVersionOnce(
 	memoryCache = entry
 
 	// Persist to file (async, don't wait)
-	writeCacheFile(cacheFilePath, entry).catch(() => {})
+	writeCacheFile(cacheFilePath, entry, logger).catch(() => {})
 
 	logger?.info(
 		{ version: entry.version, source: entry.source },

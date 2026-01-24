@@ -7,21 +7,32 @@ import { makeGroupsSocket } from './groups'
 import { executeWMexQuery as genericExecuteWMexQuery } from './mex'
 
 const parseNewsletterCreateResponse = (response: NewsletterCreateResponse): NewsletterMetadata => {
+	// Validate response structure before destructuring
+	if (!response?.id || !response?.thread_metadata) {
+		throw new Error('Invalid newsletter response: missing id or thread_metadata')
+	}
+
 	const { id, thread_metadata: thread, viewer_metadata: viewer } = response
+
+	// Validate required thread metadata fields
+	if (!thread.name?.text) {
+		throw new Error('Invalid newsletter response: missing thread name')
+	}
+
 	return {
 		id: id,
 		owner: undefined,
 		name: thread.name.text,
-		creation_time: parseInt(thread.creation_time, 10),
-		description: thread.description.text,
-		invite: thread.invite,
-		subscribers: parseInt(thread.subscribers_count, 10),
+		creation_time: parseInt(thread.creation_time, 10) || 0,
+		description: thread.description?.text || '',
+		invite: thread.invite || '',
+		subscribers: parseInt(thread.subscribers_count, 10) || 0,
 		verification: thread.verification,
-		picture: {
-			id: thread.picture.id,
-			directPath: thread.picture.direct_path
-		},
-		mute_state: viewer.mute
+		picture: thread.picture ? {
+			id: thread.picture.id || '',
+			directPath: thread.picture.direct_path || ''
+		} : { id: '', directPath: '' },
+		mute_state: viewer?.mute
 	}
 }
 
