@@ -10,4 +10,9 @@ export * from './WAUSync/index'
 
 export type WASocket = ReturnType<typeof makeWASocket>
 export { makeWASocket, makeWASocketAutoVersion }
+
+// Alias de compatibilidade para zpro.io
+// isJidUser é um alias para isPersonJid (mantém retrocompatibilidade)
+export { isPersonJid as isJidUser } from './Utils/history'
+
 export default makeWASocket
