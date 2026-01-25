@@ -50,6 +50,8 @@ import {
 	getBinaryNodeChildren,
 	jidDecode,
 	jidNormalizedUser,
+	isPnUser,
+	isLidUser,
 	reduceBinaryNodeToDictionary,
 	S_WHATSAPP_NET
 } from '../WABinary'
@@ -371,6 +373,30 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	}
 
 	const updateBlockStatus = async (jid: string, action: 'block' | 'unblock') => {
+		let lid: string
+		let pn_jid: string
+
+		if (isLidUser(jid)) {
+			lid = jid
+			const pn = await signalRepository.lidMapping.getPNForLID(jid)
+			if (!pn) {
+				throw new Boom(`Unable to resolve PN JID for LID: ${jid}`)
+			}
+
+			pn_jid = jidNormalizedUser(pn)
+		} else if (isPnUser(jid)) {
+			pn_jid = jidNormalizedUser(jid)
+
+			const mapped = await signalRepository.lidMapping.getLIDForPN(jid)
+			if (!mapped) {
+				throw new Boom(`Unable to resolve LID for PN JID: ${jid}`)
+			}
+
+			lid = mapped
+		} else {
+			throw new Boom(`Invalid jid: ${jid}`)
+		}
+
 		await query({
 			tag: 'iq',
 			attrs: {
@@ -383,7 +409,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					tag: 'item',
 					attrs: {
 						action,
-						jid
+						jid: lid,
+						pn_jid
 					}
 				}
 			]
