@@ -1349,6 +1349,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const call: WACallEvent = {
 			chatId: attrs.from!,
 			from,
+			callerPn: infoChild.attrs['caller_pn'],
 			id: callId,
 			date: new Date(+attrs.t! * 1000),
 			offline: !!attrs.offline,
@@ -1368,6 +1369,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		if (existingCall) {
 			call.isVideo = existingCall.isVideo
 			call.isGroup = existingCall.isGroup
+			call.callerPn = call.callerPn || existingCall.callerPn
 		}
 
 		// delete data once call has ended
