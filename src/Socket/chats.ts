@@ -373,14 +373,16 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	const updateBlockStatus = async (jid: string, action: 'block' | 'unblock') => {
 		let lid: string
-		let pn_jid: string | undefined
+		let pn_jid: string
 
 		if (isLidUser(jid)) {
 			lid = jid
 			const pn = await signalRepository.lidMapping.getPNForLID(jid)
-			if (pn) {
-				pn_jid = jidNormalizedUser(pn)
+			if (!pn) {
+				throw new Boom(`Unable to resolve PN JID for LID: ${jid}`)
 			}
+
+			pn_jid = jidNormalizedUser(pn)
 		} else if (isPnUser(jid)) {
 			pn_jid = jidNormalizedUser(jid)
 
@@ -407,7 +409,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					attrs: {
 						action,
 						jid: lid,
-						...(pn_jid ? { pn_jid } : {})
+						pn_jid
 					}
 				}
 			]
