@@ -43,6 +43,12 @@ import {
 } from '../Utils'
 import { makeMutex } from '../Utils/make-mutex'
 import processMessage from '../Utils/process-message'
+import {
+	BlockedCollectionsManager,
+	classifySyncError,
+	prepareCollectionSyncNode,
+	SyncErrorAction
+} from '../Utils/sync-action-utils'
 import { buildTcTokenFromJid } from '../Utils/tc-token-utils'
 import {
 	type BinaryNode,
@@ -98,6 +104,9 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 	// Timeout for AwaitingInitialSync state
 	let awaitingSyncTimeout: NodeJS.Timeout | undefined
+
+	/** Manager for collections blocked on missing app-state-sync-keys (will retry when keys arrive) */
+	const blockedCollections = new BlockedCollectionsManager()
 
 	const placeholderResendCache =
 		config.placeholderResendCache ||
@@ -510,15 +519,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 
 						logger.info(`resyncing ${name} from v${state.version}`)
 
-						nodes.push({
-							tag: 'collection',
-							attrs: {
-								name,
-								version: state.version.toString(),
-								// return snapshot if being synced from scratch
-								return_snapshot: (!state.version).toString()
-							}
-						})
+						nodes.push(prepareCollectionSyncNode(name, state))
 					}
 
 					const result = await query({
@@ -549,7 +550,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 									snapshot,
 									getAppStateSyncKey,
 									initialVersionMap[name],
-									appStateMacVerification.snapshot
+									appStateMacVerification.snapshot,
+									logger
 								)
 								states[name] = newState
 								Object.assign(globalMutationMap, mutationMap)
@@ -586,24 +588,39 @@ export const makeChatsSocket = (config: SocketConfig) => {
 								// collection is done with sync
 								collectionsToHandle.delete(name)
 							}
-						} catch (error: any) {
-							// if retry attempts overshoot
-							// or key not found
-							const isIrrecoverableError =
-								attemptsMap[name]! >= MAX_SYNC_ATTEMPTS ||
-								error.output?.statusCode === 404 ||
-								error.name === 'TypeError'
-							logger.info(
-								{ name, error: error.stack },
-								`failed to sync state from version${isIrrecoverableError ? '' : ', removing and trying from scratch'}`
-							)
-							await authState.keys.set({ 'app-state-sync-version': { [name]: null } })
-							// increment number of retries
-							attemptsMap[name] = (attemptsMap[name] || 0) + 1
+						} catch (error) {
+							const classification = classifySyncError(error, attemptsMap[name] ?? 0, MAX_SYNC_ATTEMPTS)
 
-							if (isIrrecoverableError) {
-								// stop retrying
-								collectionsToHandle.delete(name)
+							switch (classification.action) {
+								case SyncErrorAction.BLOCK_ON_KEY:
+									// Key not found - mark as blocked, will retry when keys arrive
+									logger.info(
+										{ name, error: classification.errorMessage },
+										'collection blocked waiting for app-state-sync-key'
+									)
+									blockedCollections.block(name)
+									collectionsToHandle.delete(name)
+									break
+
+								case SyncErrorAction.RETRY:
+									// Retriable error - reset state and try again
+									logger.info(
+										{ name, error: classification.errorStack ?? classification.errorMessage },
+										'failed to sync state from version, removing and trying from scratch'
+									)
+									await authState.keys.set({ 'app-state-sync-version': { [name]: null } })
+									attemptsMap[name] = (attemptsMap[name] ?? 0) + 1
+									break
+
+								case SyncErrorAction.ABORT:
+									// Irrecoverable error - stop trying
+									logger.info(
+										{ name, error: classification.errorStack ?? classification.errorMessage },
+										'failed to sync state from version'
+									)
+									await authState.keys.set({ 'app-state-sync-version': { [name]: null } })
+									collectionsToHandle.delete(name)
+									break
 							}
 						}
 					}
@@ -1198,6 +1215,24 @@ export const makeChatsSocket = (config: SocketConfig) => {
 				ev.flush()
 			}
 		}, 20_000)
+	})
+
+	// Retry blocked collections when app-state-sync-keys arrive
+	ev.on('creds.update', async update => {
+		if (update.myAppStateKeyId && blockedCollections.hasBlocked) {
+			const collectionsToRetry = blockedCollections.flush()
+
+			logger.info(
+				{ collections: collectionsToRetry, newKeyId: update.myAppStateKeyId },
+				'app-state-sync-key arrived, retrying blocked collections'
+			)
+
+			try {
+				await resyncAppState(collectionsToRetry, false)
+			} catch (error) {
+				logger.warn({ error }, 'failed to resync blocked collections after key arrival')
+			}
+		}
 	})
 
 	ev.on('lid-mapping.update', async ({ lid, pn }) => {
