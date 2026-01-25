@@ -1,7 +1,7 @@
-import NodeCache from '@cacheable/node-cache'
 import { AsyncLocalStorage } from 'async_hooks'
 import { Mutex } from 'async-mutex'
 import { randomBytes } from 'crypto'
+import { LRUCache } from 'lru-cache'
 import PQueue from 'p-queue'
 import { DEFAULT_CACHE_TTLS } from '../Defaults'
 import type {
@@ -38,13 +38,17 @@ export function makeCacheableSignalKeyStore(
 	logger?: ILogger,
 	_cache?: CacheStore
 ): SignalKeyStore {
-	const cache =
-		_cache ||
-		new NodeCache<SignalDataTypeMap[keyof SignalDataTypeMap]>({
-			stdTTL: DEFAULT_CACHE_TTLS.SIGNAL_STORE, // 5 minutes
-			useClones: false,
-			deleteOnExpire: true
-		})
+	const lruCache = new LRUCache<string, SignalDataTypeMap[keyof SignalDataTypeMap]>({
+		ttl: DEFAULT_CACHE_TTLS.SIGNAL_STORE * 1000,
+		ttlAutopurge: true
+	})
+
+	const cache: CacheStore = _cache ?? {
+		get: <T>(key: string) => lruCache.get(key) as T | undefined,
+		set: (key, value) => void lruCache.set(key, value as SignalDataTypeMap[keyof SignalDataTypeMap]),
+		del: key => void lruCache.delete(key),
+		flushAll: () => lruCache.clear()
+	}
 
 	// Mutex for protecting cache operations
 	const cacheMutex = new Mutex()
