@@ -43,11 +43,11 @@ import {
 	type FullJid,
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
+	isAnyLidUser,
+	isAnyPnUser,
 	isHostedLidUser,
 	isHostedPnUser,
 	isJidGroup,
-	isLidUser,
-	isPnUser,
 	jidDecode,
 	jidEncode,
 	jidNormalizedUser,
@@ -158,7 +158,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			node.attrs.t = unixTimestampSeconds().toString()
 		}
 
-		if (type === 'sender' && (isPnUser(jid) || isLidUser(jid))) {
+		if (type === 'sender' && (isAnyPnUser(jid) || isAnyLidUser(jid))) {
 			node.attrs.recipient = jid
 			node.attrs.to = participant!
 		} else {
@@ -280,7 +280,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		const requestedLidUsers = new Set<string>()
 		for (const jid of toFetch) {
-			if (isLidUser(jid) || isHostedLidUser(jid)) {
+			if (isAnyLidUser(jid)) {
 				const user = jidDecode(jid)?.user
 				if (user) requestedLidUsers.add(user)
 			}
@@ -444,11 +444,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		if (jidsRequiringFetch.length) {
 			// LID if mapped, otherwise original
 			const wireJids = [
-				...jidsRequiringFetch.filter(jid => !!isLidUser(jid) || !!isHostedLidUser(jid)),
+				...jidsRequiringFetch.filter(jid => isAnyLidUser(jid)),
 				...(
-					(await signalRepository.lidMapping.getLIDsForPNs(
-						jidsRequiringFetch.filter(jid => !!isPnUser(jid) || !!isHostedPnUser(jid))
-					)) || []
+					(await signalRepository.lidMapping.getLIDsForPNs(jidsRequiringFetch.filter(jid => isAnyPnUser(jid)))) || []
 				).map(a => a.lid)
 			]
 
@@ -907,7 +905,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			if (isRetryResend) {
-				const isParticipantLid = isLidUser(participant!.jid)
+				const isParticipantLid = isAnyLidUser(participant!.jid)
 				const isMe = areJidsSameUser(participant!.jid, isParticipantLid ? meLid : meId)
 
 				const encodedMessageToSend = isMe

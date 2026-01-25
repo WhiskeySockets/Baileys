@@ -1200,11 +1200,13 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		}, 20_000)
 	})
 
-	ev.on('lid-mapping.update', async ({ lid, pn }) => {
+	ev.on('lid-mapping.update', async mappings => {
 		try {
-			await signalRepository.lidMapping.storeLIDPNMappings([{ lid, pn }])
+			if (mappings.length > 0) {
+				await signalRepository.lidMapping.storeLIDPNMappings(mappings)
+			}
 		} catch (error) {
-			logger.warn({ lid, pn, error }, 'Failed to store LID-PN mapping')
+			logger.warn({ count: mappings.length, error }, 'Failed to store LID-PN mappings')
 		}
 	})
 

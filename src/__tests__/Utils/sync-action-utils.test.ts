@@ -76,7 +76,7 @@ describe('processContactAction', () => {
 
 			expect(results).toContainEqual({
 				event: 'lid-mapping.update',
-				data: { lid: '123456789@lid', pn: '5511999999999@s.whatsapp.net' }
+				data: [{ lid: '123456789@lid', pn: '5511999999999@s.whatsapp.net' }]
 			})
 		})
 
@@ -88,7 +88,7 @@ describe('processContactAction', () => {
 
 			expect(results).toContainEqual({
 				event: 'lid-mapping.update',
-				data: { lid: '173233882013816:99@lid', pn: '5511999999999@s.whatsapp.net' }
+				data: [{ lid: '173233882013816:99@lid', pn: '5511999999999@s.whatsapp.net' }]
 			})
 		})
 
@@ -153,7 +153,6 @@ describe('processContactAction', () => {
 
 	describe('PN extraction from index[1] (pnJid is always null)', () => {
 		it('extracts PN from id when pnJid is null', () => {
-			// In real WhatsApp data, pnJid is ALWAYS null - PN comes from index[1]
 			const action = { fullName: 'Test Contact', lidJid: '111222333@lid', pnJid: null }
 			const id = '5599887766@s.whatsapp.net'
 
@@ -163,8 +162,8 @@ describe('processContactAction', () => {
 			expect(contactData[0]!.phoneNumber).toBe('5599887766@s.whatsapp.net')
 			expect(contactData[0]!.lid).toBe('111222333@lid')
 
-			const mapping = results.find(r => r.event === 'lid-mapping.update')!.data
-			expect(mapping).toEqual({ lid: '111222333@lid', pn: '5599887766@s.whatsapp.net' })
+			const mappings = results.find(r => r.event === 'lid-mapping.update')!.data
+			expect(mappings).toEqual([{ lid: '111222333@lid', pn: '5599887766@s.whatsapp.net' }])
 		})
 
 		it('prefers id over pnJid when id is PN user', () => {
@@ -176,8 +175,8 @@ describe('processContactAction', () => {
 			const contactData = results.find(r => r.event === 'contacts.upsert')!.data
 			expect(contactData[0]!.phoneNumber).toBe('9999999999@s.whatsapp.net')
 
-			const mapping = results.find(r => r.event === 'lid-mapping.update')!.data
-			expect(mapping.pn).toBe('9999999999@s.whatsapp.net')
+			const mappings = results.find(r => r.event === 'lid-mapping.update')!.data
+			expect(mappings[0]!.pn).toBe('9999999999@s.whatsapp.net')
 		})
 	})
 })

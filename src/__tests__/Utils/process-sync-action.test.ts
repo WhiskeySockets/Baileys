@@ -158,10 +158,7 @@ describe('processSyncAction', () => {
 					phoneNumber: '5511999@s.whatsapp.net'
 				}
 			])
-			expect(ev.emit).toHaveBeenCalledWith('lid-mapping.update', {
-				lid: '123@lid',
-				pn: '5511999@s.whatsapp.net'
-			})
+			expect(ev.emit).toHaveBeenCalledWith('lid-mapping.update', [{ lid: '123@lid', pn: '5511999@s.whatsapp.net' }])
 		})
 
 		it('does not emit events when id is missing', () => {
@@ -298,7 +295,7 @@ describe('processSyncAction', () => {
 				'123@lid'
 			])
 			processSyncAction(syncAction, ev, mockMe, undefined, logger)
-			expect(ev.emit).toHaveBeenCalledWith('lid-mapping.update', { lid: '123@lid', pn: '5511999@s.whatsapp.net' })
+			expect(ev.emit).toHaveBeenCalledWith('lid-mapping.update', [{ lid: '123@lid', pn: '5511999@s.whatsapp.net' }])
 		})
 
 		it('does not emit when pnJid is missing', () => {

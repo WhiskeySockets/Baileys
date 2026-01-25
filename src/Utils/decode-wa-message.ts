@@ -5,22 +5,20 @@ import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import {
 	areJidsSameUser,
 	type BinaryNode,
-	isHostedLidUser,
-	isHostedPnUser,
+	isAnyLidUser,
+	isAnyPnUser,
 	isJidBroadcast,
 	isJidGroup,
 	isJidMetaAI,
 	isJidNewsletter,
-	isJidStatusBroadcast,
-	isLidUser,
-	isPnUser
+	isJidStatusBroadcast
 	//	transferDevice
 } from '../WABinary'
 import { unpadRandomMax16 } from './generics'
 import type { ILogger } from './logger'
 
 export const getDecryptionJid = async (sender: string, repository: SignalRepositoryWithLIDStore): Promise<string> => {
-	if (isLidUser(sender) || isHostedLidUser(sender)) {
+	if (isAnyLidUser(sender)) {
 		return sender
 	}
 
@@ -35,10 +33,9 @@ const storeMappingFromEnvelope = async (
 	decryptionJid: string,
 	logger: ILogger
 ): Promise<void> => {
-	// TODO: Handle hosted IDs
 	const { senderAlt } = extractAddressingContext(stanza)
 
-	if (senderAlt && isLidUser(senderAlt) && isPnUser(sender) && decryptionJid === sender) {
+	if (senderAlt && isAnyLidUser(senderAlt) && isAnyPnUser(sender) && decryptionJid === sender) {
 		try {
 			await repository.lidMapping.storeLIDPNMappings([{ lid: senderAlt, pn: sender }])
 			await repository.migrateSession(sender, senderAlt)
@@ -135,16 +132,13 @@ export function decodeMessageNode(stanza: BinaryNode, meId: string, meLid: strin
 	const isMe = (jid: string) => areJidsSameUser(jid, meId)
 	const isMeLid = (jid: string) => areJidsSameUser(jid, meLid)
 
-	if (isPnUser(from) || isLidUser(from) || isHostedLidUser(from) || isHostedPnUser(from)) {
+	if (isAnyPnUser(from) || isAnyLidUser(from)) {
 		if (recipient && !isJidMetaAI(recipient)) {
 			if (!isMe(from!) && !isMeLid(from!)) {
 				throw new Boom('receipient present, but msg not from me', { data: stanza })
 			}
 
-			if (isMe(from!) || isMeLid(from!)) {
-				fromMe = true
-			}
-
+			fromMe = true
 			chatId = recipient
 		} else {
 			chatId = from!
@@ -268,7 +262,6 @@ export const decryptMessageNode = (
 					const decryptionJid = await getDecryptionJid(author, repository)
 
 					if (tag !== 'plaintext') {
-						// TODO: Handle hosted devices
 						await storeMappingFromEnvelope(stanza, author, repository, decryptionJid, logger)
 					}
 

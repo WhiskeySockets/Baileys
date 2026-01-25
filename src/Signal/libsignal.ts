@@ -5,15 +5,7 @@ import type { LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction } from 
 import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import type { ILogger } from '../Utils/logger'
-import {
-	isHostedLidUser,
-	isHostedPnUser,
-	isLidUser,
-	isPnUser,
-	jidDecode,
-	transferDevice,
-	WAJIDDomains
-} from '../WABinary'
+import { isAnyLidUser, isAnyPnUser, jidDecode, transferDevice, WAJIDDomains } from '../WABinary'
 import type { SenderKeyStore } from './Group/group_cipher'
 import { SenderKeyName } from './Group/sender-key-name'
 import { SenderKeyRecord } from './Group/sender-key-record'
@@ -189,10 +181,10 @@ export function makeLibSignalRepository(
 			toJid: string
 		): Promise<{ migrated: number; skipped: number; total: number }> {
 			// TODO: use usync to handle this entire mess
-			if (!fromJid || (!isLidUser(toJid) && !isHostedLidUser(toJid))) return { migrated: 0, skipped: 0, total: 0 }
+			if (!fromJid || !isAnyLidUser(toJid)) return { migrated: 0, skipped: 0, total: 0 }
 
 			// Only support PN to LID migration
-			if (!isPnUser(fromJid) && !isHostedPnUser(fromJid)) {
+			if (!isAnyPnUser(fromJid)) {
 				return { migrated: 0, skipped: 0, total: 1 }
 			}
 

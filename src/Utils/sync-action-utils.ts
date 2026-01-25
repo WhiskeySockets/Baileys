@@ -52,11 +52,10 @@ export const processContactAction = (
 		]
 	})
 
-	// Emit lid-mapping.update if we have valid LID-PN pair
 	if (lidJid && isLidUser(lidJid) && idIsPn) {
 		results.push({
 			event: 'lid-mapping.update',
-			data: { lid: lidJid, pn: id }
+			data: [{ lid: lidJid, pn: id }]
 		})
 	}
 

@@ -904,8 +904,8 @@ export const processSyncAction = (
 	} else if (action?.timeFormatAction) {
 		ev.emit('settings.update', { setting: 'timeFormat', value: action.timeFormatAction })
 	} else if (action?.pnForLidChatAction) {
-		if (action.pnForLidChatAction.pnJid) {
-			ev.emit('lid-mapping.update', { lid: id!, pn: action.pnForLidChatAction.pnJid })
+		if (id && action.pnForLidChatAction.pnJid) {
+			ev.emit('lid-mapping.update', [{ lid: id, pn: action.pnForLidChatAction.pnJid }])
 		}
 	} else if (action?.privacySettingRelayAllCalls) {
 		ev.emit('settings.update', {
