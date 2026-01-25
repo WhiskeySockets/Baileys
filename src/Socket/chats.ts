@@ -1,7 +1,6 @@
 import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto/index.js'
-import { isPnUser, isLidUser } from '../WABinary'
 import { DEFAULT_CACHE_TTLS, PROCESSABLE_HISTORY_TYPES } from '../Defaults'
 import type {
 	BotListInfo,
@@ -51,6 +50,8 @@ import {
 	getBinaryNodeChildren,
 	jidDecode,
 	jidNormalizedUser,
+	isPnUser,
+	isLidUser,
 	reduceBinaryNodeToDictionary,
 	S_WHATSAPP_NET
 } from '../WABinary'
