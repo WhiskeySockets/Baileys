@@ -1,6 +1,7 @@
 import NodeCache from '@cacheable/node-cache'
 import { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto/index.js'
+import { isPnUser, isLidUser } from '../WABinary'
 import { DEFAULT_CACHE_TTLS, PROCESSABLE_HISTORY_TYPES } from '../Defaults'
 import type {
 	BotListInfo,
@@ -370,12 +371,29 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		return getBinaryNodeChildren(listNode, 'item').map(n => n.attrs.jid)
 	}
 
-	const updateBlockStatus = async (jid: string, pn_jid: string, action: 'block' | 'unblock') => {
-		if (!jid || !pn_jid) {
-			throw new Boom(
-				'jid and pn_jid is required'
-			)
+	const updateBlockStatus = async (jid: string, action: 'block' | 'unblock') => {
+		let lid: string
+		let pn_jid: string | undefined
+
+		if (isLidUser(jid)) {
+			lid = jid
+			const pn = await signalRepository.lidMapping.getPNForLID(jid)
+			if (pn) {
+				pn_jid = jidNormalizedUser(pn)
+			}
+		} else if (isPnUser(jid)) {
+			pn_jid = jidNormalizedUser(jid)
+
+			const mapped = await signalRepository.lidMapping.getLIDForPN(jid)
+			if (!mapped) {
+				throw new Boom(`Unable to resolve LID for PN JID: ${jid}`)
+			}
+
+			lid = mapped
+		} else {
+			throw new Boom(`Invalid jid: ${jid}`)
 		}
+
 		await query({
 			tag: 'iq',
 			attrs: {
@@ -388,8 +406,8 @@ export const makeChatsSocket = (config: SocketConfig) => {
 					tag: 'item',
 					attrs: {
 						action,
-						jid,
-						pn_jid
+						jid: lid,
+						...(pn_jid ? { pn_jid } : {})
 					}
 				}
 			]
