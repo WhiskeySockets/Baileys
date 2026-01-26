@@ -25,6 +25,7 @@ import type {
 	MessageWithContextInfo,
 	NativeButton,
 	NativeFlowButton,
+	ProductListMessageOptions,
 	WAMediaUpload,
 	WAMessage,
 	WAMessageContent,
@@ -748,6 +749,124 @@ export const generateListMessage = (options: ListMessageOptions): WAMessageConte
 	}
 }
 
+/**
+ * Generates a product list message (multi-product) from the WhatsApp Business catalog
+ * Allows sending multiple products organized in sections
+ *
+ * Note: Requires a WhatsApp Business account with a configured catalog.
+ * Does NOT require Meta Business Manager integration.
+ *
+ * @example
+ * ```typescript
+ * const msg = generateProductListMessage({
+ *   title: 'Our Best Sellers',
+ *   description: 'Check out our most popular products!',
+ *   buttonText: 'View Products',
+ *   footerText: 'Tap to browse our catalog',
+ *   businessOwnerJid: '5511999999999@s.whatsapp.net',
+ *   productSections: [
+ *     {
+ *       title: 'Electronics',
+ *       products: [
+ *         { productId: 'product_001' },
+ *         { productId: 'product_002' }
+ *       ]
+ *     },
+ *     {
+ *       title: 'Accessories',
+ *       products: [
+ *         { productId: 'product_003' },
+ *         { productId: 'product_004' }
+ *       ]
+ *     }
+ *   ],
+ *   headerImage: { productId: 'product_001' }
+ * })
+ * await sock.sendMessage(jid, msg)
+ * ```
+ */
+export const generateProductListMessage = (options: ProductListMessageOptions): WAMessageContent => {
+	const {
+		title,
+		description,
+		buttonText,
+		footerText,
+		businessOwnerJid,
+		productSections,
+		headerImage
+	} = options
+
+	// Validation
+	if (!title || title.trim().length === 0) {
+		throw new Boom('Product list title is required', { statusCode: 400 })
+	}
+
+	if (!description || description.trim().length === 0) {
+		throw new Boom('Product list description is required', { statusCode: 400 })
+	}
+
+	if (!buttonText || buttonText.trim().length === 0) {
+		throw new Boom('Product list buttonText is required', { statusCode: 400 })
+	}
+
+	if (!businessOwnerJid || businessOwnerJid.trim().length === 0) {
+		throw new Boom('businessOwnerJid is required (catalog owner JID)', { statusCode: 400 })
+	}
+
+	if (!productSections || productSections.length === 0) {
+		throw new Boom('At least one product section is required', { statusCode: 400 })
+	}
+
+	// Validate sections have products
+	for (const section of productSections) {
+		if (!section.products || section.products.length === 0) {
+			throw new Boom(`Section "${section.title}" must have at least one product`, { statusCode: 400 })
+		}
+	}
+
+	// Count total products (max 30 per WhatsApp limits)
+	const totalProducts = productSections.reduce((sum, section) => sum + section.products.length, 0)
+	if (totalProducts > 30) {
+		throw new Boom(`Maximum 30 products allowed, got ${totalProducts}`, { statusCode: 400 })
+	}
+
+	// Build product sections for the protocol
+	const formattedSections = productSections.map(section => ({
+		title: section.title,
+		products: section.products.map(product => ({
+			productId: product.productId
+		}))
+	}))
+
+	// Build product list info
+	const productListInfo: proto.Message.ListMessage.IProductListInfo = {
+		productSections: formattedSections,
+		businessOwnerJid: jidNormalizedUser(businessOwnerJid)
+	}
+
+	// Add header image if provided
+	if (headerImage) {
+		productListInfo.headerImage = {
+			productId: headerImage.productId,
+			jpegThumbnail: headerImage.jpegThumbnail
+		}
+	}
+
+	// Create list message with PRODUCT_LIST type
+	const listMessage: proto.Message.IListMessage = {
+		title,
+		description,
+		buttonText,
+		listType: proto.Message.ListMessage.ListType.PRODUCT_LIST,
+		productListInfo,
+		footerText: footerText || undefined
+	}
+
+	return {
+		listMessage: WAProto.Message.ListMessage.fromObject(listMessage)
+	}
+}
+
 // ========== Legacy Message Functions ==========
 
 /**
@@ -867,6 +986,22 @@ export const generateWAMessageContent = async (
 		const generated = generateListMessage(listOptions)
 		m.viewOnceMessage = generated.viewOnceMessage
 		options.logger?.info('Sending listMessage with viewOnceMessage wrapper')
+	}
+	// Check for productList (multi-product message from catalog)
+	else if (hasNonNullishProperty(message, 'productList')) {
+		const productMsg = message as any
+		const productListOptions: ProductListMessageOptions = {
+			title: productMsg.productList.title || productMsg.title || '',
+			description: productMsg.productList.description || productMsg.text || '',
+			buttonText: productMsg.productList.buttonText,
+			footerText: productMsg.productList.footerText || productMsg.footer,
+			businessOwnerJid: productMsg.productList.businessOwnerJid,
+			productSections: productMsg.productList.sections,
+			headerImage: productMsg.productList.headerImage
+		}
+		const generated = generateProductListMessage(productListOptions)
+		m.listMessage = generated.listMessage
+		options.logger?.info('Sending productListMessage (multi-product from catalog)')
 	}
 	// ⚠️ EXPERIMENTAL: Check for interactive messages FIRST (buttons, lists, templates)
 	// These use the older API which may not work reliably

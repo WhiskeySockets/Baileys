@@ -437,6 +437,87 @@ export type Carouselable = {
 	}
 }
 
+// ========== Product List Message Types ==========
+
+/**
+ * Product reference in a product list
+ * Uses the product ID from the WhatsApp Business catalog
+ */
+export type ProductItem = {
+	/** Product ID from the catalog */
+	productId: string
+}
+
+/**
+ * Section containing products in a product list message
+ */
+export type ProductSection = {
+	/** Section title */
+	title: string
+	/** Products in this section */
+	products: ProductItem[]
+}
+
+/**
+ * Header image configuration for product list
+ * Can reference a product's image from the catalog
+ */
+export type ProductListHeaderImage = {
+	/** Product ID whose image to use as header */
+	productId: string
+	/** Optional JPEG thumbnail */
+	jpegThumbnail?: Buffer
+}
+
+/**
+ * Options for generating a product list message (multi-product)
+ * Allows sending multiple products from the catalog in a single message
+ *
+ * @example
+ * ```typescript
+ * const msg = generateProductListMessage({
+ *   title: 'Our Best Sellers',
+ *   description: 'Check out our most popular products!',
+ *   buttonText: 'View Products',
+ *   footerText: 'Tap to browse',
+ *   businessOwnerJid: '5511999999999@s.whatsapp.net',
+ *   productSections: [
+ *     {
+ *       title: 'Electronics',
+ *       products: [
+ *         { productId: 'prod_001' },
+ *         { productId: 'prod_002' }
+ *       ]
+ *     },
+ *     {
+ *       title: 'Accessories',
+ *       products: [
+ *         { productId: 'prod_003' }
+ *       ]
+ *     }
+ *   ],
+ *   headerImage: { productId: 'prod_001' }
+ * })
+ * await sock.sendMessage(jid, msg)
+ * ```
+ */
+export type ProductListMessageOptions = {
+	/** Message title */
+	title: string
+	/** Message description/body text */
+	description: string
+	/** Button text to open the product list */
+	buttonText: string
+	/** Footer text (optional) */
+	footerText?: string
+	/** Business owner JID (the catalog owner) */
+	businessOwnerJid: string
+	/** Sections with products */
+	productSections: ProductSection[]
+	/** Header image configuration (optional) */
+	headerImage?: ProductListHeaderImage
+}
+
 // ========== Album Message Types ==========
 
 /**
