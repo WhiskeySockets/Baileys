@@ -262,9 +262,11 @@ export type Listable = {
  * Button types supported by WhatsApp Native Flow
  * - cta_url: Opens a URL
  * - cta_copy: Copies text to clipboard
+ * - cta_call: Initiates a phone call
  * - quick_reply: Sends a quick reply with ID
+ * - single_select: Opens a list selection
  */
-export type NativeFlowButtonType = 'cta_url' | 'cta_copy' | 'quick_reply'
+export type NativeFlowButtonType = 'cta_url' | 'cta_copy' | 'cta_call' | 'quick_reply' | 'single_select'
 
 /**
  * URL button - opens a link when clicked
@@ -273,6 +275,8 @@ export type UrlButton = {
 	type: 'url'
 	text: string
 	url: string
+	/** Optional merchant URL for tracking */
+	merchantUrl?: string
 }
 
 /**
@@ -294,9 +298,18 @@ export type QuickReplyButton = {
 }
 
 /**
+ * Call button - initiates a phone call when clicked
+ */
+export type CallButton = {
+	type: 'call'
+	text: string
+	phoneNumber: string
+}
+
+/**
  * Union type for all button types
  */
-export type NativeButton = UrlButton | CopyButton | QuickReplyButton
+export type NativeButton = UrlButton | CopyButton | QuickReplyButton | CallButton
 
 /**
  * Formatted button for Native Flow (internal use)
@@ -304,6 +317,44 @@ export type NativeButton = UrlButton | CopyButton | QuickReplyButton
 export type NativeFlowButton = {
 	name: string
 	buttonParamsJson: string
+}
+
+/**
+ * Row item in a list section
+ */
+export type ListRow = {
+	/** Unique ID returned when selected */
+	id: string
+	/** Display title */
+	title: string
+	/** Optional description */
+	description?: string
+}
+
+/**
+ * Section in a native list message (uses ListRow with id)
+ */
+export type NativeListSection = {
+	/** Section title */
+	title: string
+	/** Rows in this section */
+	rows: ListRow[]
+}
+
+/**
+ * Options for generating a list message
+ */
+export type ListMessageOptions = {
+	/** Button text to open the list */
+	buttonText: string
+	/** Sections with selectable items */
+	sections: NativeListSection[]
+	/** Main text/body of the message */
+	text: string
+	/** Title shown in header */
+	title?: string
+	/** Footer text */
+	footer?: string
 }
 
 /**
@@ -322,6 +373,8 @@ export type ButtonMessageOptions = {
 	headerImage?: WAMediaUpload
 	/** Header video (optional) */
 	headerVideo?: WAMediaUpload
+	/** Message version (default: 2) */
+	messageVersion?: number
 }
 
 /**
@@ -578,6 +631,39 @@ export type AnyRegularMessageContent = (
 				cards: CarouselCardInput[]
 			}
 			text?: string
+			footer?: string
+	  }
+	| {
+			/**
+			 * Native List Message - Interactive list with sections
+			 *
+			 * @example
+			 * ```typescript
+			 * await sock.sendMessage(jid, {
+			 *   text: 'Choose an option:',
+			 *   title: 'Menu',
+			 *   nativeList: {
+			 *     buttonText: 'View Options',
+			 *     sections: [
+			 *       {
+			 *         title: 'Category 1',
+			 *         rows: [
+			 *           { id: 'opt1', title: 'Option 1', description: 'Desc' },
+			 *           { id: 'opt2', title: 'Option 2' }
+			 *         ]
+			 *       }
+			 *     ]
+			 *   },
+			 *   footer: 'Select one'
+			 * })
+			 * ```
+			 */
+			nativeList: {
+				buttonText: string
+				sections: NativeListSection[]
+			}
+			text?: string
+			title?: string
 			footer?: string
 	  }
 	| {

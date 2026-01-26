@@ -17,6 +17,7 @@ import type {
 	ButtonMessageOptions,
 	CarouselMessageOptions,
 	DownloadableMessage,
+	ListMessageOptions,
 	MessageContentGenerationOptions,
 	MessageGenerationOptions,
 	MessageGenerationOptionsFromContent,
@@ -404,7 +405,7 @@ export const formatNativeFlowButton = (button: NativeButton): NativeFlowButton =
 				buttonParamsJson: JSON.stringify({
 					display_text: button.text,
 					url: button.url,
-					merchant_url: button.url
+					merchant_url: button.merchantUrl || button.url
 				})
 			}
 		case 'copy':
@@ -421,6 +422,14 @@ export const formatNativeFlowButton = (button: NativeButton): NativeFlowButton =
 				buttonParamsJson: JSON.stringify({
 					display_text: button.text,
 					id: button.id
+				})
+			}
+		case 'call':
+			return {
+				name: 'cta_call',
+				buttonParamsJson: JSON.stringify({
+					display_text: button.text,
+					phone_number: button.phoneNumber
 				})
 			}
 		default:
@@ -447,7 +456,7 @@ export const formatNativeFlowButton = (button: NativeButton): NativeFlowButton =
  * ```
  */
 export const generateButtonMessage = (options: ButtonMessageOptions): WAMessageContent => {
-	const { buttons, text, footer, headerTitle, headerImage, headerVideo } = options
+	const { buttons, text, footer, headerTitle, headerImage, headerVideo, messageVersion = 2 } = options
 
 	if (!buttons || buttons.length === 0) {
 		throw new Boom('At least one button is required', { statusCode: 400 })
@@ -475,7 +484,8 @@ export const generateButtonMessage = (options: ButtonMessageOptions): WAMessageC
 		header,
 		nativeFlowMessage: {
 			buttons: formattedButtons,
-			messageParamsJson: ''
+			messageParamsJson: JSON.stringify({}),
+			messageVersion
 		}
 	}
 
@@ -585,6 +595,152 @@ export const generateCarouselMessage = (options: CarouselMessageOptions): WAMess
 	}
 }
 
+/**
+ * Generates a list message using Native Flow format (single_select)
+ * Uses viewOnceMessage wrapper for better iOS/Android compatibility
+ *
+ * @example
+ * ```typescript
+ * const msg = generateListMessage({
+ *   buttonText: 'View Options',
+ *   text: 'Choose an option:',
+ *   title: 'Menu',
+ *   sections: [
+ *     {
+ *       title: 'Category 1',
+ *       rows: [
+ *         { id: 'opt1', title: 'Option 1', description: 'Description 1' },
+ *         { id: 'opt2', title: 'Option 2', description: 'Description 2' }
+ *       ]
+ *     }
+ *   ],
+ *   footer: 'Select one item'
+ * })
+ * await sock.sendMessage(jid, msg)
+ * ```
+ */
+export const generateListMessage = (options: ListMessageOptions): WAMessageContent => {
+	const { buttonText, sections, text, title, footer } = options
+
+	if (!sections || sections.length === 0) {
+		throw new Boom('At least one section is required', { statusCode: 400 })
+	}
+
+	// Build sections for single_select
+	const formattedSections = sections.map(section => ({
+		title: section.title,
+		rows: section.rows.map(row => ({
+			id: row.id,
+			title: row.title,
+			description: row.description || ''
+		}))
+	}))
+
+	// Create native flow message with single_select button
+	const nativeFlowMessage = {
+		buttons: [{
+			name: 'single_select',
+			buttonParamsJson: JSON.stringify({
+				title: buttonText,
+				sections: formattedSections
+			})
+		}],
+		messageParamsJson: JSON.stringify({}),
+		messageVersion: 2
+	}
+
+	// Build the interactive message
+	const interactiveMessage: proto.Message.IInteractiveMessage = {
+		body: { text: text || '' },
+		footer: footer ? { text: footer } : undefined,
+		header: title ? {
+			title,
+			subtitle: '',
+			hasMediaAttachment: false
+		} : undefined,
+		nativeFlowMessage
+	}
+
+	// Wrap in viewOnceMessage for better compatibility
+	return {
+		viewOnceMessage: {
+			message: {
+				messageContextInfo: {
+					deviceListMetadata: {},
+					deviceListMetadataVersion: 2
+				},
+				interactiveMessage
+			}
+		}
+	}
+}
+
+// ========== Legacy Message Functions ==========
+
+/**
+ * Generates a button message using the legacy buttonsMessage format
+ * ⚠️ WARNING: This format is deprecated and may not work on all devices
+ *
+ * @deprecated Use generateButtonMessage instead for better compatibility
+ */
+export const generateButtonMessageLegacy = (
+	buttons: Array<{ id?: string; text: string }>,
+	text: string,
+	footer?: string
+): WAMessageContent => {
+	const formattedButtons = buttons.map((button, index) => ({
+		buttonId: button.id || `btn_${index}`,
+		buttonText: { displayText: button.text },
+		type: proto.Message.ButtonsMessage.Button.Type.RESPONSE
+	}))
+
+	return {
+		buttonsMessage: WAProto.Message.ButtonsMessage.fromObject({
+			contentText: text,
+			footerText: footer,
+			buttons: formattedButtons,
+			headerType: proto.Message.ButtonsMessage.HeaderType.EMPTY
+		})
+	}
+}
+
+/**
+ * Generates a list message using the legacy listMessage format
+ * ⚠️ WARNING: This format is deprecated and may not work on all devices
+ *
+ * @deprecated Use generateListMessage instead for better compatibility
+ */
+export const generateListMessageLegacy = (
+	listInfo: {
+		sections: Array<{
+			title: string
+			rows: Array<{ id?: string; rowId?: string; title: string; description?: string }>
+		}>
+	},
+	title: string,
+	description: string,
+	buttonText: string,
+	footer?: string
+): WAMessageContent => {
+	return {
+		listMessage: WAProto.Message.ListMessage.fromObject({
+			title,
+			description,
+			buttonText,
+			footerText: footer,
+			listType: WAProto.Message.ListMessage.ListType.SINGLE_SELECT,
+			sections: listInfo.sections.map(section => ({
+				title: section.title,
+				rows: section.rows.map(row => ({
+					rowId: row.id || row.rowId,
+					title: row.title,
+					description: row.description
+				}))
+			}))
+		})
+	}
+}
+
 function hasOptionalProperty<T, K extends PropertyKey>(obj: T, key: K): obj is WithKey<T, K> {
 	return typeof obj === 'object' && obj !== null && key in obj && (obj as any)[key] !== null
 }
@@ -622,6 +778,20 @@ export const generateWAMessageContent = async (
 		const generated = generateCarouselMessage(carouselOptions)
 		m.viewOnceMessage = generated.viewOnceMessage
 		options.logger?.info('Sending carouselMessage with viewOnceMessage wrapper')
+	}
+	// Check for nativeList
+	else if (hasNonNullishProperty(message, 'nativeList')) {
+		const listMsg = message as any
+		const listOptions: ListMessageOptions = {
+			buttonText: listMsg.nativeList.buttonText,
+			sections: listMsg.nativeList.sections,
+			text: listMsg.text || '',
+			title: listMsg.title,
+			footer: listMsg.footer
+		}
+		const generated = generateListMessage(listOptions)
+		m.viewOnceMessage = generated.viewOnceMessage
+		options.logger?.info('Sending listMessage with viewOnceMessage wrapper')
 	}
 	// ⚠️ EXPERIMENTAL: Check for interactive messages FIRST (buttons, lists, templates)
 	// These use the older API which may not work reliably
