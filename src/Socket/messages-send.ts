@@ -51,6 +51,7 @@ import {
 	getBinaryNodeChildren,
 	isHostedLidUser,
 	isHostedPnUser,
+	isJidBot,
 	isJidGroup,
 	isLidUser,
 	isPnUser,
@@ -1096,8 +1097,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						]
 					})
 
-					// For private chats, add bot node (required for interactive messages to render)
-					if (!isJidGroup(destinationJid)) {
+					// For private 1:1 chats, add bot node (required for interactive messages to render)
+					// Only inject for actual user JIDs, not broadcasts, newsletters, or Meta AI bots
+					const isPrivateUserChat = (
+						isPnUser(destinationJid) ||
+						isLidUser(destinationJid) ||
+						destinationJid?.endsWith('@c.us')
+					) && !isJidBot(destinationJid)
+
+					if (isPrivateUserChat) {
 						;(stanza.content as BinaryNode[]).push({
 							tag: 'bot',
 							attrs: { biz_bot: '1' }
