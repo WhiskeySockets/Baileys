@@ -631,14 +631,23 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		// Check inside viewOnceMessage wrapper (modern nativeFlowMessage format)
 		// This is the recommended format for interactive messages
+		// Check all 7 types for consistency with direct message detection
 		const innerMessage = message.viewOnceMessage?.message
 		if (innerMessage) {
-			if (innerMessage.interactiveMessage) {
-				return 'interactive'
+			if (innerMessage.buttonsMessage) {
+				return 'buttons'
+			} else if (innerMessage.templateMessage) {
+				return 'template'
 			} else if (innerMessage.listMessage) {
 				return 'list'
-			} else if (innerMessage.buttonsMessage) {
-				return 'buttons'
+			} else if (innerMessage.buttonsResponseMessage) {
+				return 'buttons_response'
+			} else if (innerMessage.listResponseMessage) {
+				return 'list_response'
+			} else if (innerMessage.templateButtonReplyMessage) {
+				return 'template_reply'
+			} else if (innerMessage.interactiveMessage) {
+				return 'interactive'
 			}
 		}
 
