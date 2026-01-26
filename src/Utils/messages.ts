@@ -45,6 +45,14 @@ import {
 	type MediaDownloadOptions,
 	toBuffer
 } from './messages-media'
+import { shouldIncludeReportingToken } from './reporting-utils'
+
+type ExtractByKey<T, K extends PropertyKey> = T extends Record<K, any> ? T : never
+type RequireKey<T, K extends keyof T> = T & {
+	[P in K]-?: Exclude<T[P], null | undefined>
+}
+
+type WithKey<T, K extends PropertyKey> = T extends unknown ? (K extends keyof T ? RequireKey<T, K> : never) : never
 
 type MediaUploadData = {
 	media: WAMediaUpload
@@ -371,12 +379,29 @@ export const generateForwardMessageContent = (message: WAMessage, forceForward?:
 	return content
 }
 
+export const hasNonNullishProperty = <K extends PropertyKey>(
+	message: AnyMessageContent,
+	key: K
+): message is ExtractByKey<AnyMessageContent, K> => {
+	return (
+		typeof message === 'object' &&
+		message !== null &&
+		key in message &&
+		(message as any)[key] !== null &&
+		(message as any)[key] !== undefined
+	)
+}
+
+function hasOptionalProperty<T, K extends PropertyKey>(obj: T, key: K): obj is WithKey<T, K> {
+	return typeof obj === 'object' && obj !== null && key in obj && (obj as any)[key] !== null
+}
+
 export const generateWAMessageContent = async (
 	message: AnyMessageContent,
 	options: MessageContentGenerationOptions
 ) => {
 	let m: WAMessageContent = {}
-	if ('text' in message) {
+	if (hasNonNullishProperty(message, 'text')) {
 		const extContent = { text: message.text } as WATextMessage
 
 		let urlInfo = message.linkPreview
@@ -412,7 +437,7 @@ export const generateWAMessageContent = async (
 		}
 
 		m.extendedTextMessage = extContent
-	} else if ('contacts' in message) {
+	} else if (hasNonNullishProperty(message, 'contacts')) {
 		const contactLen = message.contacts.contacts.length
 		if (!contactLen) {
 			throw new Boom('require atleast 1 contact', { statusCode: 400 })
@@ -423,22 +448,22 @@ export const generateWAMessageContent = async (
 		} else {
 			m.contactsArrayMessage = WAProto.Message.ContactsArrayMessage.create(message.contacts)
 		}
-	} else if ('location' in message) {
+	} else if (hasNonNullishProperty(message, 'location')) {
 		m.locationMessage = WAProto.Message.LocationMessage.create(message.location)
-	} else if ('react' in message) {
+	} else if (hasNonNullishProperty(message, 'react')) {
 		if (!message.react.senderTimestampMs) {
 			message.react.senderTimestampMs = Date.now()
 		}
 
 		m.reactionMessage = WAProto.Message.ReactionMessage.create(message.react)
-	} else if ('delete' in message) {
+	} else if (hasNonNullishProperty(message, 'delete')) {
 		m.protocolMessage = {
 			key: message.delete,
 			type: WAProto.Message.ProtocolMessage.Type.REVOKE
 		}
-	} else if ('forward' in message) {
+	} else if (hasNonNullishProperty(message, 'forward')) {
 		m = generateForwardMessageContent(message.forward, message.force)
-	} else if ('disappearingMessagesInChat' in message) {
+	} else if (hasNonNullishProperty(message, 'disappearingMessagesInChat')) {
 		const exp =
 			typeof message.disappearingMessagesInChat === 'boolean'
 				? message.disappearingMessagesInChat
@@ -446,7 +471,7 @@ export const generateWAMessageContent = async (
 					: 0
 				: message.disappearingMessagesInChat
 		m = prepareDisappearingMessageSettingContent(exp)
-	} else if ('groupInvite' in message) {
+	} else if (hasNonNullishProperty(message, 'groupInvite')) {
 		m.groupInviteMessage = {}
 		m.groupInviteMessage.inviteCode = message.groupInvite.inviteCode
 		m.groupInviteMessage.inviteExpiration = message.groupInvite.inviteExpiration
@@ -468,7 +493,7 @@ export const generateWAMessageContent = async (
 		}
 	} else if ('stickerPack' in message) {
 		m = await prepareStickerPackMessage(message.stickerPack, options)
-	} else if ('pin' in message) {
+	} else if (hasNonNullishProperty(message, 'pin')) {
 		m.pinInChatMessage = {}
 		m.messageContextInfo = {}
 
@@ -477,7 +502,7 @@ export const generateWAMessageContent = async (
 		m.pinInChatMessage.senderTimestampMs = Date.now()
 
 		m.messageContextInfo.messageAddOnDurationInSecs = message.type === 1 ? message.time || 86400 : 0
-	} else if ('buttonReply' in message) {
+	} else if (hasNonNullishProperty(message, 'buttonReply')) {
 		switch (message.type) {
 			case 'template':
 				m.templateButtonReplyMessage = {
@@ -494,10 +519,10 @@ export const generateWAMessageContent = async (
 				}
 				break
 		}
-	} else if ('ptv' in message && message.ptv) {
+	} else if (hasOptionalProperty(message, 'ptv') && message.ptv) {
 		const { videoMessage } = await prepareWAMessageMedia({ video: message.video }, options)
 		m.ptvMessage = videoMessage
-	} else if ('product' in message) {
+	} else if (hasNonNullishProperty(message, 'product')) {
 		const { imageMessage } = await prepareWAMessageMedia({ image: message.product.productImage }, options)
 		m.productMessage = WAProto.Message.ProductMessage.create({
 			...message,
@@ -506,9 +531,9 @@ export const generateWAMessageContent = async (
 				productImage: imageMessage
 			}
 		})
-	} else if ('listReply' in message) {
+	} else if (hasNonNullishProperty(message, 'listReply')) {
 		m.listResponseMessage = { ...message.listReply }
-	} else if ('event' in message) {
+	} else if (hasNonNullishProperty(message, 'event')) {
 		m.eventMessage = {}
 		const startTime = Math.floor(message.event.startDate.getTime() / 1000)
 
@@ -530,7 +555,7 @@ export const generateWAMessageContent = async (
 		m.eventMessage.extraGuestsAllowed = message.event.extraGuestsAllowed
 		m.eventMessage.isScheduleCall = message.event.isScheduleCall ?? false
 		m.eventMessage.location = message.event.location
-	} else if ('poll' in message) {
+	} else if (hasNonNullishProperty(message, 'poll')) {
 		message.poll.selectableCount ||= 0
 		message.poll.toAnnouncementGroup ||= false
 
@@ -567,13 +592,13 @@ export const generateWAMessageContent = async (
 				m.pollCreationMessage = pollCreationMessage
 			}
 		}
-	} else if ('sharePhoneNumber' in message) {
+	} else if (hasNonNullishProperty(message, 'sharePhoneNumber')) {
 		m.protocolMessage = {
 			type: proto.Message.ProtocolMessage.Type.SHARE_PHONE_NUMBER
 		}
-	} else if ('requestPhoneNumber' in message) {
+	} else if (hasNonNullishProperty(message, 'requestPhoneNumber')) {
 		m.requestPhoneNumberMessage = {}
-	} else if ('limitSharing' in message) {
+	} else if (hasNonNullishProperty(message, 'limitSharing')) {
 		m.protocolMessage = {
 			type: proto.Message.ProtocolMessage.Type.LIMIT_SHARING,
 			limitSharing: {
@@ -587,11 +612,11 @@ export const generateWAMessageContent = async (
 		m = await prepareWAMessageMedia(message, options)
 	}
 
-	if ('viewOnce' in message && !!message.viewOnce) {
+	if (hasOptionalProperty(message, 'viewOnce') && !!message.viewOnce) {
 		m = { viewOnceMessage: { message: m } }
 	}
 
-	if ('mentions' in message && message.mentions?.length) {
+	if (hasOptionalProperty(message, 'mentions') && message.mentions?.length) {
 		const messageType = Object.keys(m)[0]! as Extract<keyof proto.IMessage, MessageWithContextInfo>
 		const key = m[messageType]
 		if ('contextInfo' in key! && !!key.contextInfo) {
@@ -603,7 +628,7 @@ export const generateWAMessageContent = async (
 		}
 	}
 
-	if ('edit' in message) {
+	if (hasOptionalProperty(message, 'edit')) {
 		m = {
 			protocolMessage: {
 				key: message.edit,
@@ -614,13 +639,20 @@ export const generateWAMessageContent = async (
 		}
 	}
 
-	if ('contextInfo' in message && !!message.contextInfo) {
+	if (hasOptionalProperty(message, 'contextInfo') && !!message.contextInfo) {
 		const messageType = Object.keys(m)[0]! as Extract<keyof proto.IMessage, MessageWithContextInfo>
 		const key = m[messageType]
 		if ('contextInfo' in key! && !!key.contextInfo) {
 			key.contextInfo = { ...key.contextInfo, ...message.contextInfo }
 		} else if (key!) {
 			key.contextInfo = message.contextInfo
+		}
+	}
+
+	if (shouldIncludeReportingToken(m)) {
+		m.messageContextInfo = m.messageContextInfo || {}
+		if (!m.messageContextInfo.messageSecret) {
+			m.messageContextInfo.messageSecret = randomBytes(32)
 		}
 	}
 
@@ -757,7 +789,10 @@ export const normalizeMessageContent = (content: WAMessageContent | null | undef
 			message?.documentWithCaptionMessage ||
 			message?.viewOnceMessageV2 ||
 			message?.viewOnceMessageV2Extension ||
-			message?.editedMessage
+			message?.editedMessage ||
+			message?.associatedChildMessage ||
+			message?.groupStatusMessage ||
+			message?.groupStatusMessageV2
 		)
 	}
 }

@@ -75,6 +75,7 @@ export function makeCacheableSignalKeyStore(
 						const item = fetched[id]
 						if (item) {
 							data[id] = item
+							// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 							await cache.set(getUniqueId(type, id), item as SignalDataTypeMap[keyof SignalDataTypeMap])
 						}
 					}

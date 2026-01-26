@@ -1,6 +1,6 @@
 import type { Boom } from '@hapi/boom'
 import { proto } from '../../WAProto/index.js'
-import type { AuthenticationCreds } from './Auth'
+import type { AuthenticationCreds, LIDMapping } from './Auth'
 import type { WACallEvent } from './Call'
 import type { Chat, ChatUpdate, PresenceData } from './Chat'
 import type { Contact } from './Contact'
@@ -36,7 +36,7 @@ export type BaileysEventMap = {
 	'chats.upsert': Chat[]
 	/** update the given chats */
 	'chats.update': ChatUpdate[]
-	'lid-mapping.update': { lid: string; pn: string }
+	'lid-mapping.update': LIDMapping
 	/** delete chats with given ID */
 	'chats.delete': string[]
 	/** presence of contact in a chat updated */
@@ -77,6 +77,14 @@ export type BaileysEventMap = {
 		participantPn?: string
 		action: RequestJoinAction
 		method: RequestJoinMethod
+	}
+	/*	update the labels assigned to a group participant */
+	'group.member-tag.update': {
+		groupId: string
+		participant: string
+		participantAlt?: string
+		label: string
+		messageTimestamp?: number
 	}
 
 	'blocklist.set': { blocklist: string[] }
