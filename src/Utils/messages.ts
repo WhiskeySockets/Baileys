@@ -817,10 +817,23 @@ export const generateProductListMessage = (options: ProductListMessageOptions): 
 		throw new Boom('At least one product section is required', { statusCode: 400 })
 	}
 
-	// Validate sections have products
+	// Validate sections have valid titles and products
 	for (const section of productSections) {
+		// Validate section title
+		if (!section.title || typeof section.title !== 'string' || section.title.trim().length === 0) {
+			throw new Boom('Each section must have a non-empty title', { statusCode: 400 })
+		}
+
+		// Validate section has products
 		if (!section.products || section.products.length === 0) {
 			throw new Boom(`Section "${section.title}" must have at least one product`, { statusCode: 400 })
+		}
+
+		// Validate each product has a valid productId
+		for (const product of section.products) {
+			if (!product || typeof product.productId !== 'string' || product.productId.trim().length === 0) {
+				throw new Boom(`Each product in section "${section.title}" must have a non-empty productId`, { statusCode: 400 })
+			}
 		}
 	}
 
@@ -844,8 +857,11 @@ export const generateProductListMessage = (options: ProductListMessageOptions): 
 		businessOwnerJid: jidNormalizedUser(businessOwnerJid)
 	}
 
-	// Add header image if provided
+	// Add header image if provided (with validation)
 	if (headerImage) {
+		if (!headerImage.productId || typeof headerImage.productId !== 'string' || headerImage.productId.trim().length === 0) {
+			throw new Boom('headerImage.productId must be a non-empty string', { statusCode: 400 })
+		}
 		productListInfo.headerImage = {
 			productId: headerImage.productId,
 			jpegThumbnail: headerImage.jpegThumbnail
@@ -991,12 +1007,12 @@ export const generateWAMessageContent = async (
 	else if (hasNonNullishProperty(message, 'productList')) {
 		const productMsg = message as any
 		const productListOptions: ProductListMessageOptions = {
-			title: productMsg.productList.title || productMsg.title || '',
-			description: productMsg.productList.description || productMsg.text || '',
+			title: productMsg.productList.title,
+			description: productMsg.productList.description,
 			buttonText: productMsg.productList.buttonText,
-			footerText: productMsg.productList.footerText || productMsg.footer,
+			footerText: productMsg.productList.footerText,
 			businessOwnerJid: productMsg.productList.businessOwnerJid,
-			productSections: productMsg.productList.sections,
+			productSections: productMsg.productList.productSections,
 			headerImage: productMsg.productList.headerImage
 		}
 		const generated = generateProductListMessage(productListOptions)
