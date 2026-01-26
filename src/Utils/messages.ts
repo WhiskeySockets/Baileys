@@ -14,12 +14,16 @@ import {
 import type {
 	AnyMediaMessageContent,
 	AnyMessageContent,
+	ButtonMessageOptions,
+	CarouselMessageOptions,
 	DownloadableMessage,
 	MessageContentGenerationOptions,
 	MessageGenerationOptions,
 	MessageGenerationOptionsFromContent,
 	MessageUserReceipt,
 	MessageWithContextInfo,
+	NativeButton,
+	NativeFlowButton,
 	WAMediaUpload,
 	WAMessage,
 	WAMessageContent,
@@ -387,6 +391,200 @@ export const hasNonNullishProperty = <K extends PropertyKey>(
 	)
 }
 
+// ========== Native Flow Button Utilities ==========
+
+/**
+ * Converts a NativeButton to the WhatsApp Native Flow format
+ */
+export const formatNativeFlowButton = (button: NativeButton): NativeFlowButton => {
+	switch (button.type) {
+		case 'url':
+			return {
+				name: 'cta_url',
+				buttonParamsJson: JSON.stringify({
+					display_text: button.text,
+					url: button.url,
+					merchant_url: button.url
+				})
+			}
+		case 'copy':
+			return {
+				name: 'cta_copy',
+				buttonParamsJson: JSON.stringify({
+					display_text: button.text,
+					copy_code: button.copyText
+				})
+			}
+		case 'reply':
+			return {
+				name: 'quick_reply',
+				buttonParamsJson: JSON.stringify({
+					display_text: button.text,
+					id: button.id
+				})
+			}
+		default:
+			throw new Boom('Invalid button type', { statusCode: 400 })
+	}
+}
+
+/**
+ * Generates a button message using Native Flow format wrapped in viewOnceMessage
+ * This is the modern approach for button messages that works on iOS and Android
+ *
+ * @example
+ * ```typescript
+ * const msg = generateButtonMessage({
+ *   buttons: [
+ *     { type: 'url', text: 'Visit Site', url: 'https://example.com' },
+ *     { type: 'copy', text: 'Copy Code', copyText: 'ABC123' },
+ *     { type: 'reply', text: 'Contact Support', id: 'btn_support' }
+ *   ],
+ *   text: 'Choose an option:',
+ *   footer: 'Powered by InfiniteAPI'
+ * })
+ * await sock.sendMessage(jid, msg)
+ * ```
+ */
+export const generateButtonMessage = (options: ButtonMessageOptions): WAMessageContent => {
+	const { buttons, text, footer, headerTitle, headerImage, headerVideo } = options
+
+	if (!buttons || buttons.length === 0) {
+		throw new Boom('At least one button is required', { statusCode: 400 })
+	}
+
+	if (buttons.length > 3) {
+		throw new Boom('Maximum 3 buttons allowed', { statusCode: 400 })
+	}
+
+	// Format buttons to Native Flow format
+	const formattedButtons = buttons.map(formatNativeFlowButton)
+
+	// Determine header configuration
+	const hasMedia = !!(headerImage || headerVideo)
+	const header: proto.Message.InteractiveMessage.IHeader = {
+		title: hasMedia ? '' : (headerTitle || ''),
+		subtitle: '',
+		hasMediaAttachment: hasMedia
+	}
+
+	// Build the interactive message
+	const interactiveMessage: proto.Message.IInteractiveMessage = {
+		body: { text: text || '' },
+		footer: footer ? { text: footer } : undefined,
+		header,
+		nativeFlowMessage: {
+			buttons: formattedButtons,
+			messageParamsJson: ''
+		}
+	}
+
+	// Wrap in viewOnceMessage for better compatibility
+	return {
+		viewOnceMessage: {
+			message: {
+				messageContextInfo: {
+					deviceListMetadata: {},
+					deviceListMetadataVersion: 2
+				},
+				interactiveMessage
+			}
+		}
+	}
+}
+
+/**
+ * Generates a carousel message with multiple cards, each with their own buttons
+ * Uses viewOnceMessage wrapper for better iOS/Android compatibility
+ *
+ * @example
+ * ```typescript
+ * const msg = generateCarouselMessage({
+ *   cards: [
+ *     {
+ *       title: 'Product 1',
+ *       body: 'Amazing product description',
+ *       footer: '$99.00',
+ *       buttons: [
+ *         { type: 'url', text: 'Buy Now', url: 'https://shop.com/item1' }
+ *       ]
+ *     },
+ *     {
+ *       title: 'Product 2',
+ *       body: 'Another great product',
+ *       footer: '$149.00',
+ *       buttons: [
+ *         { type: 'url', text: 'Buy Now', url: 'https://shop.com/item2' }
+ *       ]
+ *     }
+ *   ],
+ *   text: 'Check out our products!',
+ *   footer: 'Swipe to see more'
+ * })
+ * await sock.sendMessage(jid, msg)
+ * ```
+ */
+export const generateCarouselMessage = (options: CarouselMessageOptions): WAMessageContent => {
+	const { cards, text, footer } = options
+
+	if (!cards || cards.length < 2) {
+		throw new Boom('Carousel requires at least 2 cards', { statusCode: 400 })
+	}
+
+	if (cards.length > 10) {
+		throw new Boom('Maximum 10 cards allowed in carousel', { statusCode: 400 })
+	}
+
+	// Map cards to the carousel format
+	const carouselCards = cards.map((card) => {
+		const hasMedia = !!(card.image || card.video)
+
+		return {
+			header: {
+				title: card.title || '',
+				subtitle: '',
+				hasMediaAttachment: hasMedia,
+				...(card.image ? { imageMessage: card.image } : {}),
+				...(card.video ? { videoMessage: card.video } : {})
+			},
+			body: { text: card.body || '' },
+			footer: card.footer ? { text: card.footer } : undefined,
+			nativeFlowMessage: {
+				buttons: card.buttons.map(formatNativeFlowButton),
+				messageParamsJson: ''
+			}
+		}
+	})
+
+	// Build the interactive message with carousel
+	const interactiveMessage: proto.Message.IInteractiveMessage = {
+		body: { text: text || '' },
+		footer: footer ? { text: footer } : undefined,
+		header: {
+			title: '',
+			subtitle: '',
+			hasMediaAttachment: false
+		},
+		carouselMessage: {
+			cards: carouselCards,
+			messageVersion: 1
+		}
+	}
+
+	// Wrap in viewOnceMessage for better compatibility
+	return {
+		viewOnceMessage: {
+			message: {
+				messageContextInfo: {
+					deviceListMetadata: {},
+					deviceListMetadataVersion: 2
+				},
+				interactiveMessage
+			}
+		}
+	}
+}
+
 function hasOptionalProperty<T, K extends PropertyKey>(obj: T, key: K): obj is WithKey<T, K> {
 	return typeof obj === 'object' && obj !== null && key in obj && (obj as any)[key] !== null
 }
@@ -397,8 +595,37 @@ export const generateWAMessageContent = async (
 ) => {
 	let m: WAMessageContent = {}
 
+	// ========== NATIVE FLOW BUTTONS (Modern approach) ==========
+	// Check for nativeButtons first - this is the recommended modern approach
+	if (hasNonNullishProperty(message, 'nativeButtons')) {
+		const nativeMsg = message as any
+		const buttonOptions: ButtonMessageOptions = {
+			buttons: nativeMsg.nativeButtons,
+			text: nativeMsg.text || '',
+			footer: nativeMsg.footer,
+			headerTitle: nativeMsg.headerTitle,
+			headerImage: nativeMsg.headerImage,
+			headerVideo: nativeMsg.headerVideo
+		}
+		const generated = generateButtonMessage(buttonOptions)
+		m.viewOnceMessage = generated.viewOnceMessage
+		options.logger?.info('Sending nativeFlowMessage with viewOnceMessage wrapper')
+	}
+	// Check for nativeCarousel
+	else if (hasNonNullishProperty(message, 'nativeCarousel')) {
+		const carouselMsg = message as any
+		const carouselOptions: CarouselMessageOptions = {
+			cards: carouselMsg.nativeCarousel.cards,
+			text: carouselMsg.text,
+			footer: carouselMsg.footer
+		}
+		const generated = generateCarouselMessage(carouselOptions)
+		m.viewOnceMessage = generated.viewOnceMessage
+		options.logger?.info('Sending carouselMessage with viewOnceMessage wrapper')
+	}
 	// ⚠️ EXPERIMENTAL: Check for interactive messages FIRST (buttons, lists, templates)
-	if (hasNonNullishProperty(message, 'text') && hasNonNullishProperty(message, 'buttons')) {
+	// These use the older API which may not work reliably
+	else if (hasNonNullishProperty(message, 'text') && hasNonNullishProperty(message, 'buttons')) {
 		// Process buttons for text messages
 		const buttonsMessage: proto.Message.IButtonsMessage = {
 			contentText: (message as any).text,
@@ -458,7 +685,7 @@ export const generateWAMessageContent = async (
 		m.listMessage = listMessage
 		options.logger?.warn('[EXPERIMENTAL] Sending listMessage - this may not work and can cause bans')
 	} else if (hasNonNullishProperty(message, 'carousel')) {
-		// Process carousel/interactive messages
+		// Process carousel/interactive messages with viewOnceMessage wrapper
 		const carousel = (message as any).carousel
 		const interactiveMessage: proto.Message.IInteractiveMessage = {
 			header: carousel.header || { title: carousel.title || 'Carousel', hasMediaAttachment: false },
@@ -475,8 +702,17 @@ export const generateWAMessageContent = async (
 			}
 		}
 
-		m.interactiveMessage = interactiveMessage
-		options.logger?.warn('[EXPERIMENTAL] Sending carouselMessage - this may not work and can cause bans')
+		// Wrap in viewOnceMessage for better iOS/Android compatibility
+		m.viewOnceMessage = {
+			message: {
+				messageContextInfo: {
+					deviceListMetadata: {},
+					deviceListMetadataVersion: 2
+				},
+				interactiveMessage
+			}
+		}
+		options.logger?.warn('[EXPERIMENTAL] Sending carouselMessage with viewOnceMessage wrapper')
 	} else if (hasNonNullishProperty(message, 'album')) {
 		// Album message validation - actual sending is handled in messages-send.ts
 		const { medias } = message.album

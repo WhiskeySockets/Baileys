@@ -256,6 +256,104 @@ export type Listable = {
 	buttonText?: string
 }
 
+// ========== Native Flow Button Types ==========
+
+/**
+ * Button types supported by WhatsApp Native Flow
+ * - cta_url: Opens a URL
+ * - cta_copy: Copies text to clipboard
+ * - quick_reply: Sends a quick reply with ID
+ */
+export type NativeFlowButtonType = 'cta_url' | 'cta_copy' | 'quick_reply'
+
+/**
+ * URL button - opens a link when clicked
+ */
+export type UrlButton = {
+	type: 'url'
+	text: string
+	url: string
+}
+
+/**
+ * Copy button - copies text to clipboard when clicked
+ */
+export type CopyButton = {
+	type: 'copy'
+	text: string
+	copyText: string
+}
+
+/**
+ * Quick reply button - sends a reply with an ID
+ */
+export type QuickReplyButton = {
+	type: 'reply'
+	text: string
+	id: string
+}
+
+/**
+ * Union type for all button types
+ */
+export type NativeButton = UrlButton | CopyButton | QuickReplyButton
+
+/**
+ * Formatted button for Native Flow (internal use)
+ */
+export type NativeFlowButton = {
+	name: string
+	buttonParamsJson: string
+}
+
+/**
+ * Options for generating a button message
+ */
+export type ButtonMessageOptions = {
+	/** Array of buttons (2-3 recommended) */
+	buttons: NativeButton[]
+	/** Main text/body of the message */
+	text: string
+	/** Footer text (optional) */
+	footer?: string
+	/** Header title (optional, used if no media) */
+	headerTitle?: string
+	/** Header image (optional) */
+	headerImage?: WAMediaUpload
+	/** Header video (optional) */
+	headerVideo?: WAMediaUpload
+}
+
+/**
+ * Single card in a carousel message
+ */
+export type CarouselCardInput = {
+	/** Card title in header */
+	title: string
+	/** Card body text */
+	body: string
+	/** Card footer text (optional) */
+	footer?: string
+	/** Card image (optional) */
+	image?: WAMediaUpload
+	/** Card video (optional) */
+	video?: WAMediaUpload
+	/** Buttons for this card */
+	buttons: NativeButton[]
+}
+
+/**
+ * Options for generating a carousel message
+ */
+export type CarouselMessageOptions = {
+	/** Cards in the carousel (2-10 recommended) */
+	cards: CarouselCardInput[]
+	/** Main body text */
+	text?: string
+	/** Footer text */
+	footer?: string
+}
+
 export type CarouselCard = {
 	header: {
 		title: string
@@ -431,6 +529,55 @@ export type AnyRegularMessageContent = (
 			product: WASendableProduct
 			businessOwnerJid?: string
 			body?: string
+			footer?: string
+	  }
+	| {
+			/**
+			 * Native Flow Buttons - Modern button message format
+			 * Works reliably on iOS and Android with viewOnceMessage wrapper
+			 *
+			 * @example
+			 * ```typescript
+			 * await sock.sendMessage(jid, {
+			 *   text: 'Choose an option:',
+			 *   nativeButtons: [
+			 *     { type: 'url', text: 'Visit Site', url: 'https://example.com' },
+			 *     { type: 'copy', text: 'Copy Code', copyText: 'ABC123' },
+			 *     { type: 'reply', text: 'Contact Us', id: 'btn_contact' }
+			 *   ],
+			 *   footer: 'Powered by InfiniteAPI'
+			 * })
+			 * ```
+			 */
+			nativeButtons: NativeButton[]
+			text?: string
+			footer?: string
+			headerTitle?: string
+			headerImage?: WAMediaUpload
+			headerVideo?: WAMediaUpload
+	  }
+	| {
+			/**
+			 * Native Carousel Message - Multiple swipeable cards with buttons
+			 *
+			 * @example
+			 * ```typescript
+			 * await sock.sendMessage(jid, {
+			 *   text: 'Our Products',
+			 *   nativeCarousel: {
+			 *     cards: [
+			 *       { title: 'Item 1', body: 'Description', buttons: [...] },
+			 *       { title: 'Item 2', body: 'Description', buttons: [...] }
+			 *     ]
+			 *   },
+			 *   footer: 'Swipe for more'
+			 * })
+			 * ```
+			 */
+			nativeCarousel: {
+				cards: CarouselCardInput[]
+			}
+			text?: string
 			footer?: string
 	  }
 	| {
