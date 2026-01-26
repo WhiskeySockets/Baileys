@@ -395,11 +395,25 @@ export const hasNonNullishProperty = <K extends PropertyKey>(
 // ========== Native Flow Button Utilities ==========
 
 /**
+ * Validates that a string is not empty or whitespace-only
+ */
+const validateNonEmptyString = (value: string | undefined, fieldName: string): void => {
+	if (!value || value.trim().length === 0) {
+		throw new Boom(`Button ${fieldName} is required and cannot be empty`, { statusCode: 400 })
+	}
+}
+
+/**
  * Converts a NativeButton to the WhatsApp Native Flow format
+ * Includes validation for required fields
  */
 export const formatNativeFlowButton = (button: NativeButton): NativeFlowButton => {
+	// Validate common field
+	validateNonEmptyString(button.text, 'text')
+
 	switch (button.type) {
 		case 'url':
+			validateNonEmptyString(button.url, 'url')
 			return {
 				name: 'cta_url',
 				buttonParamsJson: JSON.stringify({
@@ -409,6 +423,7 @@ export const formatNativeFlowButton = (button: NativeButton): NativeFlowButton =
 				})
 			}
 		case 'copy':
+			validateNonEmptyString(button.copyText, 'copyText')
 			return {
 				name: 'cta_copy',
 				buttonParamsJson: JSON.stringify({
@@ -417,6 +432,7 @@ export const formatNativeFlowButton = (button: NativeButton): NativeFlowButton =
 				})
 			}
 		case 'reply':
+			validateNonEmptyString(button.id, 'id')
 			return {
 				name: 'quick_reply',
 				buttonParamsJson: JSON.stringify({
@@ -425,6 +441,7 @@ export const formatNativeFlowButton = (button: NativeButton): NativeFlowButton =
 				})
 			}
 		case 'call':
+			validateNonEmptyString(button.phoneNumber, 'phoneNumber')
 			return {
 				name: 'cta_call',
 				buttonParamsJson: JSON.stringify({
@@ -443,7 +460,7 @@ export const formatNativeFlowButton = (button: NativeButton): NativeFlowButton =
  *
  * @example
  * ```typescript
- * const msg = generateButtonMessage({
+ * const msg = await generateButtonMessage({
  *   buttons: [
  *     { type: 'url', text: 'Visit Site', url: 'https://example.com' },
  *     { type: 'copy', text: 'Copy Code', copyText: 'ABC123' },
@@ -451,11 +468,14 @@ export const formatNativeFlowButton = (button: NativeButton): NativeFlowButton =
  *   ],
  *   text: 'Choose an option:',
  *   footer: 'Powered by InfiniteAPI'
- * })
+ * }, options)
  * await sock.sendMessage(jid, msg)
  * ```
  */
-export const generateButtonMessage = (options: ButtonMessageOptions): WAMessageContent => {
+export const generateButtonMessage = async (
+	options: ButtonMessageOptions,
+	mediaOptions?: MessageContentGenerationOptions
+): Promise<WAMessageContent> => {
 	const { buttons, text, footer, headerTitle, headerImage, headerVideo, messageVersion = 2 } = options
 
 	if (!buttons || buttons.length === 0) {
@@ -464,6 +484,11 @@ export const generateButtonMessage = (options: ButtonMessageOptions): WAMessageC
 
 	if (buttons.length > 3) {
 		throw new Boom('Maximum 3 buttons allowed', { statusCode: 400 })
+	}
+
+	// Validate mutual exclusivity of media types
+	if (headerImage && headerVideo) {
+		throw new Boom('Cannot have both headerImage and headerVideo. Choose one.', { statusCode: 400 })
 	}
 
 	// Format buttons to Native Flow format
@@ -475,6 +500,19 @@ export const generateButtonMessage = (options: ButtonMessageOptions): WAMessageC
 		title: hasMedia ? '' : (headerTitle || ''),
 		subtitle: '',
 		hasMediaAttachment: hasMedia
+	}
+
+	// Process media if present
+	if (hasMedia && mediaOptions) {
+		if (headerImage) {
+			const { imageMessage } = await prepareWAMessageMedia({ image: headerImage }, mediaOptions)
+			header.imageMessage = imageMessage
+		} else if (headerVideo) {
+			const { videoMessage } = await prepareWAMessageMedia({ video: headerVideo }, mediaOptions)
+			header.videoMessage = videoMessage
+		}
+	} else if (hasMedia && !mediaOptions) {
+		throw new Boom('mediaOptions required for processing header media', { statusCode: 400 })
 	}
 
 	// Build the interactive message
@@ -509,7 +547,7 @@ export const generateButtonMessage = (options: ButtonMessageOptions): WAMessageC
  *
  * @example
  * ```typescript
- * const msg = generateCarouselMessage({
+ * const msg = await generateCarouselMessage({
  *   cards: [
  *     {
  *       title: 'Product 1',
@@ -530,11 +568,14 @@ export const generateButtonMessage = (options: ButtonMessageOptions): WAMessageC
  *   ],
  *   text: 'Check out our products!',
  *   footer: 'Swipe to see more'
- * })
+ * }, options)
  * await sock.sendMessage(jid, msg)
  * ```
  */
-export const generateCarouselMessage = (options: CarouselMessageOptions): WAMessageContent => {
+export const generateCarouselMessage = async (
+	options: CarouselMessageOptions,
+	mediaOptions?: MessageContentGenerationOptions
+): Promise<WAMessageContent> => {
 	const { cards, text, footer } = options
 
 	if (!cards || cards.length < 2) {
@@ -545,18 +586,50 @@ export const generateCarouselMessage = (options: CarouselMessageOptions): WAMess
 		throw new Boom('Maximum 10 cards allowed in carousel', { statusCode: 400 })
 	}
 
-	// Map cards to the carousel format
-	const carouselCards = cards.map((card) => {
+	// Validate cards
+	for (let i = 0; i < cards.length; i++) {
+		const card = cards[i]!
+
+		// Validate mutual exclusivity of media types
+		if (card.image && card.video) {
+			throw new Boom(`Card ${i}: Cannot have both image and video. Choose one.`, { statusCode: 400 })
+		}
+
+		// Validate buttons are not empty
+		if (!card.buttons || card.buttons.length === 0) {
+			throw new Boom(`Card ${i}: At least one button is required per card`, { statusCode: 400 })
+		}
+	}
+
+	// Check if any card has media
+	const hasAnyMedia = cards.some(card => card.image || card.video)
+	if (hasAnyMedia && !mediaOptions) {
+		throw new Boom('mediaOptions required for processing card media', { statusCode: 400 })
+	}
+
+	// Map cards to the carousel format (processing media)
+	const carouselCards = await Promise.all(cards.map(async (card) => {
 		const hasMedia = !!(card.image || card.video)
 
+		const header: any = {
+			title: card.title || '',
+			subtitle: '',
+			hasMediaAttachment: hasMedia
+		}
+
+		// Process media if present
+		if (hasMedia && mediaOptions) {
+			if (card.image) {
+				const { imageMessage } = await prepareWAMessageMedia({ image: card.image }, mediaOptions)
+				header.imageMessage = imageMessage
+			} else if (card.video) {
+				const { videoMessage } = await prepareWAMessageMedia({ video: card.video }, mediaOptions)
+				header.videoMessage = videoMessage
+			}
+		}
+
 		return {
-			header: {
-				title: card.title || '',
-				subtitle: '',
-				hasMediaAttachment: hasMedia,
-				...(card.image ? { imageMessage: card.image } : {}),
-				...(card.video ? { videoMessage: card.video } : {})
-			},
+			header,
 			body: { text: card.body || '' },
 			footer: card.footer ? { text: card.footer } : undefined,
 			nativeFlowMessage: {
@@ -564,7 +637,7 @@ export const generateCarouselMessage = (options: CarouselMessageOptions): WAMess
 				messageParamsJson: ''
 			}
 		}
-	})
+	}))
 
 	// Build the interactive message with carousel
 	const interactiveMessage: proto.Message.IInteractiveMessage = {
@@ -763,7 +836,8 @@ export const generateWAMessageContent = async (
 			headerImage: nativeMsg.headerImage,
 			headerVideo: nativeMsg.headerVideo
 		}
-		const generated = generateButtonMessage(buttonOptions)
+		// Pass options for media processing if header has image/video
+		const generated = await generateButtonMessage(buttonOptions, options)
 		m.viewOnceMessage = generated.viewOnceMessage
 		options.logger?.info('Sending nativeFlowMessage with viewOnceMessage wrapper')
 	}
@@ -775,7 +849,8 @@ export const generateWAMessageContent = async (
 			text: carouselMsg.text,
 			footer: carouselMsg.footer
 		}
-		const generated = generateCarouselMessage(carouselOptions)
+		// Pass options for media processing if cards have images/videos
+		const generated = await generateCarouselMessage(carouselOptions, options)
 		m.viewOnceMessage = generated.viewOnceMessage
 		options.logger?.info('Sending carouselMessage with viewOnceMessage wrapper')
 	}
