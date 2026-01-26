@@ -632,23 +632,23 @@ export type ProductCarouselCard = {
  * ```typescript
  * await sock.sendMessage(jid, {
  *   productCarousel: {
- *     catalogId: '123456789',
+ *     businessOwnerJid: '5511999999999@s.whatsapp.net',
  *     products: [
  *       { productId: 'iphone_15' },
  *       { productId: 'macbook_air' },
  *       { productId: 'apple_watch' }
- *     ]
- *   },
- *   body: 'Check out our featured products!'
+ *     ],
+ *     body: 'Check out our featured products!'
+ *   }
  * })
  * ```
  */
 export type ProductCarouselMessageOptions = {
-	/** Catalog ID from WhatsApp Business */
-	catalogId: string
+	/** JID of the business owner (catalog owner) - e.g., '5511999999999@s.whatsapp.net' */
+	businessOwnerJid: string
 	/** Products to display (2-10 cards required) */
 	products: ProductCarouselCard[]
-	/** Body text for the message */
+	/** Body text for the carousel message */
 	body?: string
 }
 
@@ -795,19 +795,18 @@ export type AnyRegularMessageContent = (
 			 * ```typescript
 			 * await sock.sendMessage(jid, {
 			 *   productCarousel: {
-			 *     catalogId: '123456789',
+			 *     businessOwnerJid: '5511999999999@s.whatsapp.net',
 			 *     products: [
 			 *       { productId: 'produto_001' },
 			 *       { productId: 'produto_002' },
 			 *       { productId: 'produto_003' }
-			 *     ]
-			 *   },
-			 *   body: 'Confira nossos produtos em destaque!'
+			 *     ],
+			 *     body: 'Confira nossos produtos em destaque!'
+			 *   }
 			 * })
 			 * ```
 			 */
 			productCarousel: ProductCarouselMessageOptions
-			body?: string
 	  }
 	| {
 			/**

@@ -888,10 +888,13 @@ export const generateProductListMessage = (options: ProductListMessageOptions): 
  * Generates a product carousel message using products from WhatsApp Business catalog
  * Uses viewOnceMessage wrapper for better iOS/Android compatibility
  *
+ * Each card in the carousel references a product from the business catalog using
+ * collectionMessage with bizJid (business owner) and id (product ID).
+ *
  * @example
  * ```typescript
  * const msg = generateProductCarouselMessage({
- *   catalogId: '123456789',
+ *   businessOwnerJid: '5511999999999@s.whatsapp.net',
  *   products: [
  *     { productId: 'produto_001' },
  *     { productId: 'produto_002' },
@@ -905,10 +908,10 @@ export const generateProductListMessage = (options: ProductListMessageOptions): 
 export const generateProductCarouselMessage = (
 	options: ProductCarouselMessageOptions
 ): WAMessageContent => {
-	const { catalogId, products, body } = options
+	const { businessOwnerJid, products, body } = options
 
-	if (!catalogId || typeof catalogId !== 'string' || catalogId.trim().length === 0) {
-		throw new Boom('catalogId is required and must be a non-empty string', { statusCode: 400 })
+	if (!businessOwnerJid || typeof businessOwnerJid !== 'string' || businessOwnerJid.trim().length === 0) {
+		throw new Boom('businessOwnerJid is required and must be a non-empty string', { statusCode: 400 })
 	}
 
 	if (!products || products.length < 2) {
@@ -927,13 +930,16 @@ export const generateProductCarouselMessage = (
 		}
 	}
 
-	// Build cards array with product references
-	const cards = products.map((product, index) => ({
-		card_index: index,
-		type: 'product' as const,
-		action: {
-			product_retailer_id: product.productId,
-			catalog_id: catalogId
+	// Normalize business owner JID
+	const normalizedBizJid = jidNormalizedUser(businessOwnerJid)
+
+	// Build cards array - each card is an IInteractiveMessage with collectionMessage
+	// collectionMessage references a product from the business catalog
+	const cards: proto.Message.IInteractiveMessage[] = products.map((product) => ({
+		collectionMessage: {
+			bizJid: normalizedBizJid,
+			id: product.productId,
+			messageVersion: 1
 		}
 	}))
 
@@ -941,7 +947,7 @@ export const generateProductCarouselMessage = (
 	const interactiveMessage: proto.Message.IInteractiveMessage = {
 		body: { text: body || '' },
 		carouselMessage: {
-			cards: cards as any,
+			cards,
 			messageVersion: 1
 		}
 	}
@@ -1100,9 +1106,9 @@ export const generateWAMessageContent = async (
 	else if (hasNonNullishProperty(message, 'productCarousel')) {
 		const productCarouselMsg = message as any
 		const productCarouselOptions: ProductCarouselMessageOptions = {
-			catalogId: productCarouselMsg.productCarousel.catalogId,
+			businessOwnerJid: productCarouselMsg.productCarousel.businessOwnerJid,
 			products: productCarouselMsg.productCarousel.products,
-			body: productCarouselMsg.body
+			body: productCarouselMsg.productCarousel.body
 		}
 		const generated = generateProductCarouselMessage(productCarouselOptions)
 		m.viewOnceMessage = generated.viewOnceMessage
