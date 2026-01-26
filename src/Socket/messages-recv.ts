@@ -82,6 +82,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		resyncAppState,
 		onUnexpectedError,
 		assertSessions,
+		invalidateCachedSessions,
 		sendNode,
 		relayMessage,
 		sendReceipt,
@@ -115,6 +116,24 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 	// Debounce identity-change session refreshes per JID to avoid bursts
 	const identityAssertDebounce = new NodeCache<boolean>({ stdTTL: 5, useClones: false })
+	const hasSessionRecord = async (jid: string) => {
+		const signalId = signalRepository.jidToSignalProtocolAddress(jid)
+		const { [signalId]: session } = await authState.keys.get('session', [signalId])
+		return !!session
+	}
+
+	let isOfflineResumeComplete = false
+
+	ev.on('connection.update', update => {
+		if (typeof update.receivedPendingNotifications === 'boolean') {
+			isOfflineResumeComplete = update.receivedPendingNotifications
+			return
+		}
+
+		if (update.connection === 'close') {
+			isOfflineResumeComplete = false
+		}
+	})
 
 	let sendActiveReceipts = false
 
@@ -555,8 +574,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				meId: authState.creds.me?.id,
 				meLid: authState.creds.me?.lid,
 				validateSession: signalRepository.validateSession,
+				hasSessionRecord,
+				deleteSession: async jids => {
+					try {
+						await signalRepository.deleteSession(jids)
+					} finally {
+						invalidateCachedSessions(jids)
+					}
+				},
 				assertSessions,
 				debounceCache: identityAssertDebounce,
+				isOfflineResumeComplete,
 				logger
 			})
 

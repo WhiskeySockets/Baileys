@@ -7,14 +7,19 @@ import { type BinaryNode } from '../../WABinary'
 const logger = P({ level: 'silent' })
 
 type ValidateSessionFn = (jid: string) => Promise<{ exists: boolean; reason?: string }>
+type HasSessionRecordFn = (jid: string) => Promise<boolean>
 type AssertSessionsFn = (jids: string[], force?: boolean) => Promise<boolean>
+type DeleteSessionFn = (jids: string[]) => Promise<void>
 
 describe('Identity Change Handling', () => {
 	let mockValidateSession: jest.Mock<ValidateSessionFn>
+	let mockHasSessionRecord: jest.MockedFunction<HasSessionRecordFn>
 	let mockAssertSessions: jest.Mock<AssertSessionsFn>
+	let mockDeleteSession: jest.MockedFunction<DeleteSessionFn>
 	let identityAssertDebounce: NodeCache<boolean>
 	let mockMeId: string
 	let mockMeLid: string | undefined
+	let isOfflineResumeComplete: boolean
 
 	function createIdentityChangeNode(from: string, offline?: string): BinaryNode {
 		return {
@@ -34,24 +39,31 @@ describe('Identity Change Handling', () => {
 		}
 	}
 
-	function createContext(): IdentityChangeContext {
+	function createContext(overrides: Partial<IdentityChangeContext> = {}): IdentityChangeContext {
 		return {
 			meId: mockMeId,
 			meLid: mockMeLid,
 			validateSession: mockValidateSession,
+			hasSessionRecord: mockHasSessionRecord,
+			deleteSession: mockDeleteSession,
 			assertSessions: mockAssertSessions,
 			debounceCache: identityAssertDebounce,
-			logger
+			isOfflineResumeComplete,
+			logger,
+			...overrides
 		}
 	}
 
 	beforeEach(() => {
 		jest.clearAllMocks()
 		mockValidateSession = jest.fn()
+		mockHasSessionRecord = jest.fn(async () => true) as jest.MockedFunction<HasSessionRecordFn>
 		mockAssertSessions = jest.fn()
+		mockDeleteSession = jest.fn(async () => undefined) as jest.MockedFunction<DeleteSessionFn>
 		identityAssertDebounce = new NodeCache<boolean>({ stdTTL: 5, useClones: false })
 		mockMeId = 'myuser@s.whatsapp.net'
 		mockMeLid = 'mylid@lid'
+		isOfflineResumeComplete = false
 	})
 
 	describe('Core Checks', () => {
@@ -64,7 +76,6 @@ describe('Identity Change Handling', () => {
 		})
 
 		it('should process primary device (device 0 or undefined)', async () => {
-			mockValidateSession.mockResolvedValue({ exists: true })
 			mockAssertSessions.mockResolvedValue(true)
 
 			const node = createIdentityChangeNode('user@s.whatsapp.net')
@@ -90,7 +101,7 @@ describe('Identity Change Handling', () => {
 		})
 
 		it('should skip when no existing session', async () => {
-			mockValidateSession.mockResolvedValue({ exists: false })
+			mockHasSessionRecord.mockResolvedValue(false)
 
 			const node = createIdentityChangeNode('user@s.whatsapp.net')
 			const result = await handleIdentityChange(node, createContext())
@@ -100,22 +111,33 @@ describe('Identity Change Handling', () => {
 		})
 
 		it('should skip session refresh during offline processing', async () => {
-			mockValidateSession.mockResolvedValue({ exists: true })
-
 			const node = createIdentityChangeNode('user@s.whatsapp.net', '0')
 			const result = await handleIdentityChange(node, createContext())
 
 			expect(mockAssertSessions).not.toHaveBeenCalled()
+			expect(mockDeleteSession).toHaveBeenCalledWith(['user@s.whatsapp.net'])
 			expect(result.action).toBe('skipped_offline')
 		})
 
+		it('should refresh session when offline resume is complete', async () => {
+			mockAssertSessions.mockResolvedValue(true)
+			isOfflineResumeComplete = true
+
+			const node = createIdentityChangeNode('user@s.whatsapp.net', '0')
+			const result = await handleIdentityChange(node, createContext())
+
+			expect(mockDeleteSession).toHaveBeenCalledWith(['user@s.whatsapp.net'])
+			expect(mockAssertSessions).toHaveBeenCalledWith(['user@s.whatsapp.net'], true)
+			expect(result.action).toBe('session_refreshed')
+		})
+
 		it('should refresh session when online with existing session', async () => {
-			mockValidateSession.mockResolvedValue({ exists: true })
 			mockAssertSessions.mockResolvedValue(true)
 
 			const node = createIdentityChangeNode('user@s.whatsapp.net')
 			const result = await handleIdentityChange(node, createContext())
 
+			expect(mockDeleteSession).toHaveBeenCalledWith(['user@s.whatsapp.net'])
 			expect(mockAssertSessions).toHaveBeenCalledWith(['user@s.whatsapp.net'], true)
 			expect(result.action).toBe('session_refreshed')
 		})
@@ -123,7 +145,6 @@ describe('Identity Change Handling', () => {
 
 	describe('Debounce', () => {
 		it('should debounce multiple identity changes for the same JID', async () => {
-			mockValidateSession.mockResolvedValue({ exists: true })
 			mockAssertSessions.mockResolvedValue(true)
 
 			const node = createIdentityChangeNode('user@s.whatsapp.net')
@@ -137,7 +158,6 @@ describe('Identity Change Handling', () => {
 		})
 
 		it('should allow different JIDs to process independently', async () => {
-			mockValidateSession.mockResolvedValue({ exists: true })
 			mockAssertSessions.mockResolvedValue(true)
 
 			const result1 = await handleIdentityChange(createIdentityChangeNode('user1@s.whatsapp.net'), createContext())
@@ -151,7 +171,6 @@ describe('Identity Change Handling', () => {
 
 	describe('Error Handling', () => {
 		it('should handle assertSessions failure gracefully', async () => {
-			mockValidateSession.mockResolvedValue({ exists: true })
 			const testError = new Error('Session assertion failed')
 			mockAssertSessions.mockRejectedValue(testError)
 
@@ -162,11 +181,20 @@ describe('Identity Change Handling', () => {
 			expect((result as { error: unknown }).error).toBe(testError)
 		})
 
-		it('should propagate validateSession errors', async () => {
-			mockValidateSession.mockRejectedValue(new Error('Database error'))
+		it('should propagate hasSessionRecord errors', async () => {
+			mockHasSessionRecord.mockRejectedValue(new Error('Database error'))
 
 			const node = createIdentityChangeNode('user@s.whatsapp.net')
 			await expect(handleIdentityChange(node, createContext())).rejects.toThrow('Database error')
+		})
+
+		it('should fall back to validateSession when session record lookup is missing', async () => {
+			mockValidateSession.mockRejectedValue(new Error('Database error'))
+
+			const node = createIdentityChangeNode('user@s.whatsapp.net')
+			await expect(handleIdentityChange(node, createContext({ hasSessionRecord: undefined }))).rejects.toThrow(
+				'Database error'
+			)
 		})
 	})
 
@@ -194,13 +222,12 @@ describe('Identity Change Handling', () => {
 		})
 
 		it('should handle LID JIDs correctly', async () => {
-			mockValidateSession.mockResolvedValue({ exists: true })
 			mockAssertSessions.mockResolvedValue(true)
 
 			const node = createIdentityChangeNode('12345@lid')
 			const result = await handleIdentityChange(node, createContext())
 
-			expect(mockValidateSession).toHaveBeenCalledWith('12345@lid')
+			expect(mockHasSessionRecord).toHaveBeenCalledWith('12345@lid')
 			expect(result.action).toBe('session_refreshed')
 		})
 	})

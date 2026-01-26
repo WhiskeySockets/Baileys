@@ -94,6 +94,18 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		useClones: false
 	})
 
+	const invalidateCachedSessions = (jids: string[]) => {
+		if (!jids.length) {
+			return
+		}
+
+		const uniqueJids = [...new Set(jids)]
+		for (const jid of uniqueJids) {
+			const signalId = signalRepository.jidToSignalProtocolAddress(jid)
+			peerSessionsCache.del(signalId)
+		}
+	}
+
 	// Initialize message retry manager if enabled
 	const messageRetryManager = enableRecentMessageCache ? new MessageRetryManager(logger, maxMsgRetryCount) : null
 
@@ -1143,6 +1155,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		...sock,
 		getPrivacyTokens,
 		assertSessions,
+		invalidateCachedSessions,
 		relayMessage,
 		sendReceipt,
 		sendReceipts,

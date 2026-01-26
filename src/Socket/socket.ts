@@ -987,8 +987,30 @@ export const makeSocket = (config: SocketConfig) => {
 		void end(new Boom('Multi-device beta not joined', { statusCode: DisconnectReason.multideviceMismatch }))
 	})
 
+	const OFFLINE_RESUME_TIMEOUT_MS = 60000
+
+	let offlineResumeTimeout: NodeJS.Timeout | null = null
+
+	const clearOfflineResumeTimeout = () => {
+		if (offlineResumeTimeout) {
+			clearTimeout(offlineResumeTimeout)
+			offlineResumeTimeout = null
+		}
+	}
+
+	const setOfflineResumeTimeout = () => {
+		clearOfflineResumeTimeout()
+		offlineResumeTimeout = setTimeout(() => {
+			logger.warn('offline resume completion marker not received after 60s, forcing completion')
+			ev.emit('connection.update', { receivedPendingNotifications: true })
+			offlineResumeTimeout = null
+		}, OFFLINE_RESUME_TIMEOUT_MS)
+	}
+
 	ws.on('CB:ib,,offline_preview', async (node: BinaryNode) => {
 		logger.info('offline preview received', JSON.stringify(node))
+		setOfflineResumeTimeout()
+
 		await sendNode({
 			tag: 'ib',
 			attrs: {},
@@ -1023,12 +1045,23 @@ export const makeSocket = (config: SocketConfig) => {
 		const offlineNotifs = +(child?.attrs.count || 0)
 
 		logger.info(`handled ${offlineNotifs} offline messages/notifications`)
+		clearOfflineResumeTimeout()
+
 		if (didStartBuffer) {
 			ev.flush()
 			logger.trace('flushed events for initial buffer')
 		}
 
+		// Emit synchronously to maintain original behavior
+		// ev.flush() is synchronous and ensures all buffered events are processed first
 		ev.emit('connection.update', { receivedPendingNotifications: true })
+	})
+
+	// Clear offline resume timeout on connection close
+	ev.on('connection.update', ({ connection }) => {
+		if (connection === 'close') {
+			clearOfflineResumeTimeout()
+		}
 	})
 
 	// update credentials when required

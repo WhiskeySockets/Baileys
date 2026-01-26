@@ -18,8 +18,11 @@ export type IdentityChangeContext = {
 	meId: string | undefined
 	meLid: string | undefined
 	validateSession: (jid: string) => Promise<{ exists: boolean; reason?: string }>
+	hasSessionRecord?: (jid: string) => Promise<boolean>
+	deleteSession: (jids: string[]) => Promise<void>
 	assertSessions: (jids: string[], force?: boolean) => Promise<boolean>
 	debounceCache: NodeCache<boolean>
+	isOfflineResumeComplete: boolean
 	logger: ILogger
 }
 
@@ -59,21 +62,31 @@ export async function handleIdentityChange(
 	ctx.debounceCache.set(from, true)
 
 	const isOfflineNotification = !isStringNullOrEmpty(node.attrs.offline)
-	const hasExistingSession = await ctx.validateSession(from)
+	const isOfflineProcessing = isOfflineNotification && !ctx.isOfflineResumeComplete
+	const hasSessionRecord = ctx.hasSessionRecord
+		? await ctx.hasSessionRecord(from)
+		: (await ctx.validateSession(from)).exists
 
-	if (!hasExistingSession.exists) {
+	if (!hasSessionRecord) {
 		ctx.logger.debug({ jid: from }, 'no old session, skipping session refresh')
 		return { action: 'skipped_no_session' }
 	}
 
 	ctx.logger.debug({ jid: from }, 'old session exists, will refresh session')
 
-	if (isOfflineNotification) {
-		ctx.logger.debug({ jid: from }, 'skipping session refresh during offline processing')
+	if (isOfflineProcessing) {
+		ctx.logger.debug({ jid: from }, 'offline processing in progress, clearing session without refresh')
+		try {
+			await ctx.deleteSession([from])
+		} catch (error) {
+			ctx.logger.warn({ error, jid: from }, 'failed to clear session during offline processing')
+		}
+
 		return { action: 'skipped_offline' }
 	}
 
 	try {
+		await ctx.deleteSession([from])
 		await ctx.assertSessions([from], true)
 		return { action: 'session_refreshed' }
 	} catch (error) {
