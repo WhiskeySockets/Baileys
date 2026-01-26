@@ -256,6 +256,157 @@ export type Listable = {
 	buttonText?: string
 }
 
+// ========== Native Flow Button Types ==========
+
+/**
+ * Button types supported by WhatsApp Native Flow
+ * - cta_url: Opens a URL
+ * - cta_copy: Copies text to clipboard
+ * - cta_call: Initiates a phone call
+ * - quick_reply: Sends a quick reply with ID
+ * - single_select: Opens a list selection
+ */
+export type NativeFlowButtonType = 'cta_url' | 'cta_copy' | 'cta_call' | 'quick_reply' | 'single_select'
+
+/**
+ * URL button - opens a link when clicked
+ */
+export type UrlButton = {
+	type: 'url'
+	text: string
+	url: string
+	/** Optional merchant URL for tracking */
+	merchantUrl?: string
+}
+
+/**
+ * Copy button - copies text to clipboard when clicked
+ */
+export type CopyButton = {
+	type: 'copy'
+	text: string
+	copyText: string
+}
+
+/**
+ * Quick reply button - sends a reply with an ID
+ */
+export type QuickReplyButton = {
+	type: 'reply'
+	text: string
+	id: string
+}
+
+/**
+ * Call button - initiates a phone call when clicked
+ */
+export type CallButton = {
+	type: 'call'
+	text: string
+	phoneNumber: string
+}
+
+/**
+ * Union type for all button types
+ */
+export type NativeButton = UrlButton | CopyButton | QuickReplyButton | CallButton
+
+/**
+ * Formatted button for Native Flow (internal use)
+ */
+export type NativeFlowButton = {
+	name: string
+	buttonParamsJson: string
+}
+
+/**
+ * Row item in a list section
+ */
+export type ListRow = {
+	/** Unique ID returned when selected */
+	id: string
+	/** Display title */
+	title: string
+	/** Optional description */
+	description?: string
+}
+
+/**
+ * Section in a native list message (uses ListRow with id)
+ */
+export type NativeListSection = {
+	/** Section title */
+	title: string
+	/** Rows in this section */
+	rows: ListRow[]
+}
+
+/**
+ * Options for generating a list message
+ */
+export type ListMessageOptions = {
+	/** Button text to open the list */
+	buttonText: string
+	/** Sections with selectable items */
+	sections: NativeListSection[]
+	/** Main text/body of the message */
+	text: string
+	/** Title shown in header */
+	title?: string
+	/** Footer text */
+	footer?: string
+}
+
+/**
+ * Options for generating a button message
+ */
+export type ButtonMessageOptions = {
+	/** Array of buttons (2-3 recommended) */
+	buttons: NativeButton[]
+	/** Main text/body of the message */
+	text: string
+	/** Footer text (optional) */
+	footer?: string
+	/** Header title (optional, used if no media) */
+	headerTitle?: string
+	/** Header image (optional) */
+	headerImage?: WAMediaUpload
+	/** Header video (optional) */
+	headerVideo?: WAMediaUpload
+	/** Message version (default: 2) */
+	messageVersion?: number
+}
+
+/**
+ * Single card in a carousel message
+ */
+export type CarouselCardInput = {
+	/** Card title in header */
+	title: string
+	/** Card body text */
+	body: string
+	/** Card footer text (optional) */
+	footer?: string
+	/** Card image (optional) */
+	image?: WAMediaUpload
+	/** Card video (optional) */
+	video?: WAMediaUpload
+	/** Buttons for this card */
+	buttons: NativeButton[]
+}
+
+/**
+ * Options for generating a carousel message
+ */
+export type CarouselMessageOptions = {
+	/** Cards in the carousel (2-10 recommended) */
+	cards: CarouselCardInput[]
+	/** Main body text */
+	text?: string
+	/** Footer text */
+	footer?: string
+}
+
 export type CarouselCard = {
 	header: {
 		title: string
@@ -431,6 +582,88 @@ export type AnyRegularMessageContent = (
 			product: WASendableProduct
 			businessOwnerJid?: string
 			body?: string
+			footer?: string
+	  }
+	| {
+			/**
+			 * Native Flow Buttons - Modern button message format
+			 * Works reliably on iOS and Android with viewOnceMessage wrapper
+			 *
+			 * @example
+			 * ```typescript
+			 * await sock.sendMessage(jid, {
+			 *   text: 'Choose an option:',
+			 *   nativeButtons: [
+			 *     { type: 'url', text: 'Visit Site', url: 'https://example.com' },
+			 *     { type: 'copy', text: 'Copy Code', copyText: 'ABC123' },
+			 *     { type: 'reply', text: 'Contact Us', id: 'btn_contact' }
+			 *   ],
+			 *   footer: 'Powered by InfiniteAPI'
+			 * })
+			 * ```
+			 */
+			nativeButtons: NativeButton[]
+			text?: string
+			footer?: string
+			headerTitle?: string
+			headerImage?: WAMediaUpload
+			headerVideo?: WAMediaUpload
+	  }
+	| {
+			/**
+			 * Native Carousel Message - Multiple swipeable cards with buttons
+			 *
+			 * @example
+			 * ```typescript
+			 * await sock.sendMessage(jid, {
+			 *   text: 'Our Products',
+			 *   nativeCarousel: {
+			 *     cards: [
+			 *       { title: 'Item 1', body: 'Description', buttons: [...] },
+			 *       { title: 'Item 2', body: 'Description', buttons: [...] }
+			 *     ]
+			 *   },
+			 *   footer: 'Swipe for more'
+			 * })
+			 * ```
+			 */
+			nativeCarousel: {
+				cards: CarouselCardInput[]
+			}
+			text?: string
+			footer?: string
+	  }
+	| {
+			/**
+			 * Native List Message - Interactive list with sections
+			 *
+			 * @example
+			 * ```typescript
+			 * await sock.sendMessage(jid, {
+			 *   text: 'Choose an option:',
+			 *   title: 'Menu',
+			 *   nativeList: {
+			 *     buttonText: 'View Options',
+			 *     sections: [
+			 *       {
+			 *         title: 'Category 1',
+			 *         rows: [
+			 *           { id: 'opt1', title: 'Option 1', description: 'Desc' },
+			 *           { id: 'opt2', title: 'Option 2' }
+			 *         ]
+			 *       }
+			 *     ]
+			 *   },
+			 *   footer: 'Select one'
+			 * })
+			 * ```
+			 */
+			nativeList: {
+				buttonText: string
+				sections: NativeListSection[]
+			}
+			text?: string
+			title?: string
 			footer?: string
 	  }
 	| {
