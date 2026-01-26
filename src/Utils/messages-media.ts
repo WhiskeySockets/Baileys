@@ -14,6 +14,7 @@ import { DEFAULT_ORIGIN, MEDIA_HKDF_KEY_MAPPING, MEDIA_PATH_MAP, type MediaType 
 import type {
 	BaileysEventMap,
 	DownloadableMessage,
+	FetchDispatcher,
 	MediaConnInfo,
 	MediaDecryptionKeyInfo,
 	MessageType,
@@ -673,7 +674,7 @@ export type UploadParams = {
 	filePath: string
 	headers: Record<string, string>
 	timeoutMs?: number
-	agent?: Agent
+	agent?: Agent | FetchDispatcher
 }
 
 export const uploadWithNodeHttp = async (
@@ -702,7 +703,7 @@ export const uploadWithNodeHttp = async (
 					...headers,
 					'Content-Length': fileSize
 				},
-				agent,
+				agent: agent as Agent,
 				timeout: timeoutMs
 			},
 			res => {
