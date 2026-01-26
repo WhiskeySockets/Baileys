@@ -25,6 +25,7 @@ import type {
 	MessageWithContextInfo,
 	NativeButton,
 	NativeFlowButton,
+ProductCarouselMessageOptions,
 	ProductListMessageOptions,
 	WAMediaUpload,
 	WAMessage,
@@ -883,6 +884,82 @@ export const generateProductListMessage = (options: ProductListMessageOptions): 
 	}
 }
 
+/**
+ * Generates a product carousel message using products from WhatsApp Business catalog
+ * Uses viewOnceMessage wrapper for better iOS/Android compatibility
+ *
+ * @example
+ * ```typescript
+ * const msg = generateProductCarouselMessage({
+ *   catalogId: '123456789',
+ *   products: [
+ *     { productId: 'produto_001' },
+ *     { productId: 'produto_002' },
+ *     { productId: 'produto_003' }
+ *   ],
+ *   body: 'Confira nossos produtos em destaque!'
+ * })
+ * await sock.sendMessage(jid, msg)
+ * ```
+ */
+export const generateProductCarouselMessage = (
+	options: ProductCarouselMessageOptions
+): WAMessageContent => {
+	const { catalogId, products, body } = options
+
+	if (!catalogId || typeof catalogId !== 'string' || catalogId.trim().length === 0) {
+		throw new Boom('catalogId is required and must be a non-empty string', { statusCode: 400 })
+	}
+
+	if (!products || products.length < 2) {
+		throw new Boom('Product carousel requires at least 2 products', { statusCode: 400 })
+	}
+
+	if (products.length > 10) {
+		throw new Boom('Maximum 10 products allowed in carousel', { statusCode: 400 })
+	}
+
+	// Validate each product has a valid productId
+	for (let i = 0; i < products.length; i++) {
+		const product = products[i]!
+		if (!product.productId || typeof product.productId !== 'string' || product.productId.trim().length === 0) {
+			throw new Boom(`Product at index ${i} must have a non-empty productId`, { statusCode: 400 })
+		}
+	}
+
+	// Build cards array with product references
+	const cards = products.map((product, index) => ({
+		card_index: index,
+		type: 'product' as const,
+		action: {
+			product_retailer_id: product.productId,
+			catalog_id: catalogId
+		}
+	}))
+
+	// Build the interactive message with carousel type
+	const interactiveMessage: proto.Message.IInteractiveMessage = {
+		body: { text: body || '' },
+		carouselMessage: {
+			cards: cards as any,
+			messageVersion: 1
+		}
+	}
+
+	// Wrap in viewOnceMessage for better compatibility
+	return {
+		viewOnceMessage: {
+			message: {
+				messageContextInfo: {
+					deviceListMetadata: {},
+					deviceListMetadataVersion: 2
+				},
+				interactiveMessage
+			}
+		}
+	}
+}
+
 // ========== Legacy Message Functions ==========
 
 /**
@@ -1003,7 +1080,7 @@ export const generateWAMessageContent = async (
 		m.viewOnceMessage = generated.viewOnceMessage
 		options.logger?.info('Sending listMessage with viewOnceMessage wrapper')
 	}
-	// Check for productList (multi-product message from catalog)
+// Check for productList (multi-product message from catalog)
 	else if (hasNonNullishProperty(message, 'productList')) {
 		const productMsg = message as any
 		const productListOptions: ProductListMessageOptions = {
@@ -1018,6 +1095,18 @@ export const generateWAMessageContent = async (
 		const generated = generateProductListMessage(productListOptions)
 		m.listMessage = generated.listMessage
 		options.logger?.info('Sending productListMessage (multi-product from catalog)')
+	}
+	// Check for productCarousel (WhatsApp Business catalog products)
+	else if (hasNonNullishProperty(message, 'productCarousel')) {
+		const productCarouselMsg = message as any
+		const productCarouselOptions: ProductCarouselMessageOptions = {
+			catalogId: productCarouselMsg.productCarousel.catalogId,
+			products: productCarouselMsg.productCarousel.products,
+			body: productCarouselMsg.body
+		}
+		const generated = generateProductCarouselMessage(productCarouselOptions)
+		m.viewOnceMessage = generated.viewOnceMessage
+		options.logger?.info('Sending productCarouselMessage with viewOnceMessage wrapper')
 	}
 	// ⚠️ EXPERIMENTAL: Check for interactive messages FIRST (buttons, lists, templates)
 	// These use the older API which may not work reliably

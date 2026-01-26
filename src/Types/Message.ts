@@ -613,6 +613,45 @@ export type AlbumSendResult = {
 	totalLatencyMs: number
 }
 
+// ========== Product Carousel Message Types ==========
+
+/**
+ * Single product card in a product carousel
+ * References a product from WhatsApp Business catalog
+ */
+export type ProductCarouselCard = {
+	/** Product retailer ID from the catalog */
+	productId: string
+}
+
+/**
+ * Options for generating a product carousel message
+ * Uses products from WhatsApp Business catalog
+ *
+ * @example
+ * ```typescript
+ * await sock.sendMessage(jid, {
+ *   productCarousel: {
+ *     catalogId: '123456789',
+ *     products: [
+ *       { productId: 'iphone_15' },
+ *       { productId: 'macbook_air' },
+ *       { productId: 'apple_watch' }
+ *     ]
+ *   },
+ *   body: 'Check out our featured products!'
+ * })
+ * ```
+ */
+export type ProductCarouselMessageOptions = {
+	/** Catalog ID from WhatsApp Business */
+	catalogId: string
+	/** Products to display (2-10 cards required) */
+	products: ProductCarouselCard[]
+	/** Body text for the message */
+	body?: string
+}
+
 export type AnyRegularMessageContent = (
 	| ({
 			text: string
@@ -746,6 +785,29 @@ export type AnyRegularMessageContent = (
 			text?: string
 			title?: string
 			footer?: string
+	  }
+	| {
+			/**
+			 * Product Carousel Message - Swipeable product cards from WhatsApp Business catalog
+			 * Requires: WhatsApp Business account with configured catalog
+			 *
+			 * @example
+			 * ```typescript
+			 * await sock.sendMessage(jid, {
+			 *   productCarousel: {
+			 *     catalogId: '123456789',
+			 *     products: [
+			 *       { productId: 'produto_001' },
+			 *       { productId: 'produto_002' },
+			 *       { productId: 'produto_003' }
+			 *     ]
+			 *   },
+			 *   body: 'Confira nossos produtos em destaque!'
+			 * })
+			 * ```
+			 */
+			productCarousel: ProductCarouselMessageOptions
+			body?: string
 	  }
 	| {
 			/**
