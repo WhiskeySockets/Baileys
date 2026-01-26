@@ -612,6 +612,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	// ⚠️ EXPERIMENTAL: Functions to detect and handle interactive messages
 	// These features may not work and can cause account bans
 	const getButtonType = (message: proto.IMessage): string | undefined => {
+		// Check direct message types (legacy formats)
 		if (message.buttonsMessage) {
 			return 'buttons'
 		} else if (message.templateMessage) {
@@ -627,6 +628,20 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		} else if (message.interactiveMessage) {
 			return 'interactive'
 		}
+
+		// Check inside viewOnceMessage wrapper (modern nativeFlowMessage format)
+		// This is the recommended format for interactive messages
+		const innerMessage = message.viewOnceMessage?.message
+		if (innerMessage) {
+			if (innerMessage.interactiveMessage) {
+				return 'interactive'
+			} else if (innerMessage.listMessage) {
+				return 'list'
+			} else if (innerMessage.buttonsMessage) {
+				return 'buttons'
+			}
+		}
+
 		return undefined
 	}
 
