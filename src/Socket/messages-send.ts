@@ -51,6 +51,7 @@ import {
 	getBinaryNodeChildren,
 	isHostedLidUser,
 	isHostedPnUser,
+	isJidBot,
 	isJidGroup,
 	isLidUser,
 	isPnUser,
@@ -611,6 +612,13 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 	// ⚠️ EXPERIMENTAL: Functions to detect and handle interactive messages
 	// These features may not work and can cause account bans
+	// Based on Itsukichan/Baileys and baileys_helpers implementation
+
+	/**
+	 * Detects the type of interactive message and returns the appropriate binary node tag
+	 * Returns 'native_flow' for modern nativeFlowMessage format (recommended)
+	 * Returns legacy types for older button formats
+	 */
 	const getButtonType = (message: proto.IMessage): string | undefined => {
 		// Check direct message types (legacy formats)
 		if (message.buttonsMessage) {
@@ -618,6 +626,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		} else if (message.templateMessage) {
 			return 'template'
 		} else if (message.listMessage) {
+			// Check if it's a product list (uses PRODUCT_LIST type)
+			if (message.listMessage.listType === proto.Message.ListMessage.ListType.PRODUCT_LIST) {
+				return 'native_flow'
+			}
 			return 'list'
 		} else if (message.buttonsResponseMessage) {
 			return 'buttons_response'
@@ -626,12 +638,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		} else if (message.templateButtonReplyMessage) {
 			return 'template_reply'
 		} else if (message.interactiveMessage) {
+			// Check if it has nativeFlowMessage (modern format)
+			if (message.interactiveMessage.nativeFlowMessage) {
+				return 'native_flow'
+			}
 			return 'interactive'
 		}
 
 		// Check inside viewOnceMessage wrapper (modern nativeFlowMessage format)
 		// This is the recommended format for interactive messages
-		// Check all 7 types for consistency with direct message detection
 		const innerMessage = message.viewOnceMessage?.message
 		if (innerMessage) {
 			if (innerMessage.buttonsMessage) {
@@ -639,6 +654,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			} else if (innerMessage.templateMessage) {
 				return 'template'
 			} else if (innerMessage.listMessage) {
+				if (innerMessage.listMessage.listType === proto.Message.ListMessage.ListType.PRODUCT_LIST) {
+					return 'native_flow'
+				}
 				return 'list'
 			} else if (innerMessage.buttonsResponseMessage) {
 				return 'buttons_response'
@@ -647,6 +665,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			} else if (innerMessage.templateButtonReplyMessage) {
 				return 'template_reply'
 			} else if (innerMessage.interactiveMessage) {
+				// Check if it has nativeFlowMessage (modern format)
+				if (innerMessage.interactiveMessage.nativeFlowMessage) {
+					return 'native_flow'
+				}
 				return 'interactive'
 			}
 		}
@@ -654,9 +676,37 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return undefined
 	}
 
+	/**
+	 * Returns the attributes for the interactive binary node based on message type
+	 * For native_flow: returns { v: '4', name: '' } or special attributes for payment flows
+	 */
 	const getButtonArgs = (message: proto.IMessage): BinaryNodeAttributes => {
-		// Return appropriate attributes for each button type
-		// This is often empty but required for the 'biz' node structure
+		const buttonType = getButtonType(message)
+
+		// For native_flow messages, check for special button types that need specific attributes
+		if (buttonType === 'native_flow') {
+			const interactiveMsg = message.interactiveMessage ||
+				message.viewOnceMessage?.message?.interactiveMessage
+
+			if (interactiveMsg?.nativeFlowMessage?.buttons?.[0]) {
+				const firstButtonName = interactiveMsg.nativeFlowMessage.buttons[0].name
+
+				// Special button types that require specific attributes
+				// Based on official WhatsApp client traffic
+				if (firstButtonName === 'review_and_pay' || firstButtonName === 'payment_info') {
+					return { v: '4', name: 'payment_info' }
+				} else if (firstButtonName === 'mpm') {
+					return { v: '4', name: 'mpm' }
+				} else if (firstButtonName === 'review_order') {
+					return { v: '4', name: 'order_details' }
+				}
+			}
+
+			// Default native_flow attributes
+			return { v: '4', name: '' }
+		}
+
+		// For other button types, return empty attributes
 		return {}
 	}
 
@@ -1046,6 +1096,25 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							}
 						]
 					})
+
+					// For private 1:1 chats, add bot node (required for interactive messages to render)
+					// Only inject for actual user JIDs, not broadcasts, newsletters, or Meta AI bots
+					const isPrivateUserChat = (
+						isPnUser(destinationJid) ||
+						isLidUser(destinationJid) ||
+						destinationJid?.endsWith('@c.us')
+					) && !isJidBot(destinationJid)
+
+					if (isPrivateUserChat) {
+						;(stanza.content as BinaryNode[]).push({
+							tag: 'bot',
+							attrs: { biz_bot: '1' }
+						})
+						logger.debug(
+							{ msgId, to: destinationJid },
+							'[EXPERIMENTAL] Added bot node for private chat interactive message'
+						)
+					}
 
 					// Track success and latency after message is sent
 					metrics.interactiveMessagesSuccess.inc({ type: buttonType })
