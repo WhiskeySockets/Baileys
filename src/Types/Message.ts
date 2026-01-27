@@ -637,18 +637,18 @@ export type ProductCarouselCard = {
  *       { productId: 'iphone_15' },
  *       { productId: 'macbook_air' },
  *       { productId: 'apple_watch' }
- *     ],
- *     body: 'Check out our featured products!'
- *   }
+ *     ]
+ *   },
+ *   body: 'Check out our featured products!'
  * })
  * ```
  */
 export type ProductCarouselMessageOptions = {
-	/** JID of the business owner (catalog owner) - e.g., '5511999999999@s.whatsapp.net' */
+	/** JID of the business owner (who owns the catalog) */
 	businessOwnerJid: string
 	/** Products to display (2-10 cards required) */
 	products: ProductCarouselCard[]
-	/** Body text for the carousel message */
+	/** Body text for the message */
 	body?: string
 }
 
@@ -755,6 +755,29 @@ export type AnyRegularMessageContent = (
 	  }
 	| {
 			/**
+			 * Product Carousel Message - Swipeable product cards from WhatsApp Business catalog
+			 * Requires: WhatsApp Business account with configured catalog
+			 *
+			 * @example
+			 * ```typescript
+			 * await sock.sendMessage(jid, {
+			 *   productCarousel: {
+			 *     businessOwnerJid: '5511999999999@s.whatsapp.net',
+			 *     products: [
+			 *       { productId: 'produto_001' },
+			 *       { productId: 'produto_002' },
+			 *       { productId: 'produto_003' }
+			 *     ]
+			 *   },
+			 *   body: 'Confira nossos produtos em destaque!'
+			 * })
+			 * ```
+			 */
+			productCarousel: ProductCarouselMessageOptions
+			body?: string
+	  }
+	| {
+			/**
 			 * Native List Message - Interactive list with sections
 			 *
 			 * @example
@@ -785,28 +808,6 @@ export type AnyRegularMessageContent = (
 			text?: string
 			title?: string
 			footer?: string
-	  }
-	| {
-			/**
-			 * Product Carousel Message - Swipeable product cards from WhatsApp Business catalog
-			 * Requires: WhatsApp Business account with configured catalog
-			 *
-			 * @example
-			 * ```typescript
-			 * await sock.sendMessage(jid, {
-			 *   productCarousel: {
-			 *     businessOwnerJid: '5511999999999@s.whatsapp.net',
-			 *     products: [
-			 *       { productId: 'produto_001' },
-			 *       { productId: 'produto_002' },
-			 *       { productId: 'produto_003' }
-			 *     ],
-			 *     body: 'Confira nossos produtos em destaque!'
-			 *   }
-			 * })
-			 * ```
-			 */
-			productCarousel: ProductCarouselMessageOptions
 	  }
 	| {
 			/**
