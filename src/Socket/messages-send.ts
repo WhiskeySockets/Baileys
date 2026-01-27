@@ -1147,6 +1147,26 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			const buttonType = getButtonType(message)
 			if (buttonType && enableInteractiveMessages) {
 				const startTime = Date.now()
+
+				// Debug: Log message structure to diagnose list detection
+				const interactiveMsg = message.interactiveMessage || message.viewOnceMessage?.message?.interactiveMessage
+				const listMsg = message.listMessage || message.viewOnceMessage?.message?.listMessage
+				const nativeFlowButtons = interactiveMsg?.nativeFlowMessage?.buttons?.map((b: any) => b?.name) || []
+				const isListDetected = isListNativeFlow(message)
+
+				logger.info(
+					{
+						msgId,
+						buttonType,
+						hasListMessage: !!listMsg,
+						hasInteractiveMessage: !!interactiveMsg,
+						hasNativeFlow: !!interactiveMsg?.nativeFlowMessage,
+						nativeFlowButtonNames: nativeFlowButtons,
+						isListDetected
+					},
+					'[DEBUG] Interactive message structure'
+				)
+
 				logger.warn(
 					{ msgId, buttonType, to: destinationJid, enableInteractiveMessages },
 					'[EXPERIMENTAL] Injecting biz node for interactive message - may cause ban'
