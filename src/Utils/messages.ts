@@ -25,7 +25,7 @@ import type {
 	MessageWithContextInfo,
 	NativeButton,
 	NativeFlowButton,
-ProductCarouselMessageOptions,
+	ProductCarouselMessageOptions,
 	ProductListMessageOptions,
 	WAMediaUpload,
 	WAMessage,
@@ -1086,7 +1086,7 @@ export const generateWAMessageContent = async (
 		m.viewOnceMessage = generated.viewOnceMessage
 		options.logger?.info('Sending listMessage with viewOnceMessage wrapper')
 	}
-// Check for productList (multi-product message from catalog)
+	// Check for productList (multi-product message from catalog)
 	else if (hasNonNullishProperty(message, 'productList')) {
 		const productMsg = message as any
 		const productListOptions: ProductListMessageOptions = {
