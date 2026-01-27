@@ -761,6 +761,25 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		return false
 	}
 
+	/**
+	 * Checks if the nativeFlowMessage is a list (single_select button)
+	 * Lists need type='list' in the biz node instead of type='native_flow'
+	 */
+	const isListNativeFlow = (message: proto.IMessage): boolean => {
+		const interactiveMsg = message.interactiveMessage ||
+			message.viewOnceMessage?.message?.interactiveMessage
+
+		const nativeFlow = interactiveMsg?.nativeFlowMessage
+		if (nativeFlow?.buttons?.length) {
+			// Check if any button is a list-type button (single_select or multi_select)
+			return nativeFlow.buttons.some(
+				(btn: any) => btn?.name === 'single_select' || btn?.name === 'multi_select'
+			)
+		}
+
+		return false
+	}
+
 	const relayMessage = async (
 		jid: string,
 		message: proto.IMessage,
@@ -1141,7 +1160,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					// This matches the working Astra-Api implementation
 					// For native_flow: biz > interactive(type=native_flow) > native_flow
 					// For list: biz > interactive(type=list) > list
-					const interactiveType = buttonType === 'list' ? 'list' : 'native_flow'
+					// Note: Lists sent as nativeFlowMessage still need type='list'
+					const isListMessage = buttonType === 'list' || isListNativeFlow(message)
+					const interactiveType = isListMessage ? 'list' : 'native_flow'
 					;(stanza.content as BinaryNode[]).push({
 						tag: 'biz',
 						attrs: {},
