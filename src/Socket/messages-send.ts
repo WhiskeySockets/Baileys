@@ -627,8 +627,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			return 'template'
 		} else if (message.listMessage) {
 			// Check if it's a product list (uses PRODUCT_LIST type)
+			// Product lists from WhatsApp Business catalog don't need biz node injection
 			if (message.listMessage.listType === proto.Message.ListMessage.ListType.PRODUCT_LIST) {
-				return 'native_flow'
+				return undefined // No biz node needed for catalog product lists
 			}
 			return 'list'
 		} else if (message.buttonsResponseMessage) {
@@ -672,8 +673,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			} else if (innerMessage.templateMessage) {
 				return 'template'
 			} else if (innerMessage.listMessage) {
+				// Product lists from WhatsApp Business catalog don't need biz node injection
 				if (innerMessage.listMessage.listType === proto.Message.ListMessage.ListType.PRODUCT_LIST) {
-					return 'native_flow'
+					return undefined // No biz node needed for catalog product lists
 				}
 				return 'list'
 			} else if (innerMessage.buttonsResponseMessage) {
