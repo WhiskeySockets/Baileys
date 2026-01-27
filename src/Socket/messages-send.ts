@@ -1176,13 +1176,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				metrics.interactiveMessagesSent.inc({ type: buttonType })
 
 				try {
-					// Use nested structure: biz > interactive > [type]
-					// This matches the working Astra-Api implementation
-					// For native_flow: biz > interactive(type=native_flow) > native_flow
-					// For list: biz > interactive(type=list) > list
-					// Note: Lists sent as nativeFlowMessage still need type='list'
-					const isListMessage = buttonType === 'list' || isListNativeFlow(message)
-					const interactiveType = isListMessage ? 'list' : 'native_flow'
+					// Use nested structure: biz > interactive > native_flow
+					// All interactive messages (buttons, lists, carousels) use native_flow
+					// Testing showed that type='list' causes error 479
+					const interactiveType = 'native_flow'
 					;(stanza.content as BinaryNode[]).push({
 						tag: 'biz',
 						attrs: {},
