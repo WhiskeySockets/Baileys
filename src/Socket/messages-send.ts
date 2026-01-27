@@ -642,6 +642,24 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			if (message.interactiveMessage.nativeFlowMessage) {
 				return 'native_flow'
 			}
+			// Check if it's a carousel with nativeFlowMessage buttons in cards
+			if (message.interactiveMessage.carouselMessage?.cards?.length) {
+				const hasNativeFlowButtons = message.interactiveMessage.carouselMessage.cards.some(
+					(card: any) => card?.nativeFlowMessage?.buttons?.length
+				)
+				if (hasNativeFlowButtons) {
+					return 'native_flow'
+				}
+			}
+			// Check if it's a collection/product carousel
+			if (message.interactiveMessage.carouselMessage?.cards?.length) {
+				const hasCollectionCards = message.interactiveMessage.carouselMessage.cards.some(
+					(card: any) => card?.collectionMessage
+				)
+				if (hasCollectionCards) {
+					return 'native_flow'
+				}
+			}
 			return 'interactive'
 		}
 
@@ -668,6 +686,24 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				// Check if it has nativeFlowMessage (modern format)
 				if (innerMessage.interactiveMessage.nativeFlowMessage) {
 					return 'native_flow'
+				}
+				// Check if it's a carousel with nativeFlowMessage buttons in cards
+				if (innerMessage.interactiveMessage.carouselMessage?.cards?.length) {
+					const hasNativeFlowButtons = innerMessage.interactiveMessage.carouselMessage.cards.some(
+						(card: any) => card?.nativeFlowMessage?.buttons?.length
+					)
+					if (hasNativeFlowButtons) {
+						return 'native_flow'
+					}
+				}
+				// Check if it's a collection/product carousel
+				if (innerMessage.interactiveMessage.carouselMessage?.cards?.length) {
+					const hasCollectionCards = innerMessage.interactiveMessage.carouselMessage.cards.some(
+						(card: any) => card?.collectionMessage
+					)
+					if (hasCollectionCards) {
+						return 'native_flow'
+					}
 				}
 				return 'interactive'
 			}
@@ -708,6 +744,21 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		// For other button types, return empty attributes
 		return {}
+	}
+
+	/**
+	 * Checks if the message is a carousel (media carousel or product carousel)
+	 * Carousels should NOT have the bot node injected as they are not bot messages
+	 */
+	const isCarouselMessage = (message: proto.IMessage): boolean => {
+		const interactiveMsg = message.interactiveMessage ||
+			message.viewOnceMessage?.message?.interactiveMessage
+
+		if (interactiveMsg?.carouselMessage?.cards?.length) {
+			return true
+		}
+
+		return false
 	}
 
 	const relayMessage = async (
@@ -1097,15 +1148,19 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						]
 					})
 
-					// For private 1:1 chats, add bot node (required for interactive messages to render)
+					// For private 1:1 chats, add bot node (required for some interactive messages to render)
 					// Only inject for actual user JIDs, not broadcasts, newsletters, or Meta AI bots
+					// IMPORTANT: Carousels (media carousel and product carousel) should NOT have bot node
+					// as they are regular interactive messages, not bot messages
 					const isPrivateUserChat = (
 						isPnUser(destinationJid) ||
 						isLidUser(destinationJid) ||
 						destinationJid?.endsWith('@c.us')
 					) && !isJidBot(destinationJid)
 
-					if (isPrivateUserChat) {
+					const isCarousel = isCarouselMessage(message)
+
+					if (isPrivateUserChat && !isCarousel) {
 						;(stanza.content as BinaryNode[]).push({
 							tag: 'bot',
 							attrs: { biz_bot: '1' }
@@ -1113,6 +1168,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						logger.debug(
 							{ msgId, to: destinationJid },
 							'[EXPERIMENTAL] Added bot node for private chat interactive message'
+						)
+					} else if (isCarousel) {
+						logger.debug(
+							{ msgId, to: destinationJid, buttonType },
+							'[EXPERIMENTAL] Skipping bot node for carousel message'
 						)
 					}
 
