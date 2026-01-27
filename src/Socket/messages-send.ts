@@ -1137,8 +1137,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				metrics.interactiveMessagesSent.inc({ type: buttonType })
 
 				try {
-					// Use nested structure: biz > interactive > native_flow
-					// This matches the working Pastorini/Astra-Api implementation
+					// Use nested structure: biz > interactive > [type]
+					// This matches the working Astra-Api implementation
+					// For native_flow: biz > interactive(type=native_flow) > native_flow
+					// For list: biz > interactive(type=list) > list
+					const interactiveType = buttonType === 'list' ? 'list' : 'native_flow'
 					;(stanza.content as BinaryNode[]).push({
 						tag: 'biz',
 						attrs: {},
@@ -1146,12 +1149,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 							{
 								tag: 'interactive',
 								attrs: {
-									type: 'native_flow',
+									type: interactiveType,
 									v: '1'
 								},
 								content: [
 									{
-										tag: 'native_flow',
+										tag: interactiveType,
 										attrs: {
 											v: '9',
 											name: 'mixed'
