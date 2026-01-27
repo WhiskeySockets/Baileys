@@ -1151,8 +1151,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				// Debug: Log message structure to diagnose list detection
 				const interactiveMsg = message.interactiveMessage || message.viewOnceMessage?.message?.interactiveMessage
 				const listMsg = message.listMessage || message.viewOnceMessage?.message?.listMessage
-				const nativeFlowButtons = interactiveMsg?.nativeFlowMessage?.buttons?.map((b: any) => b?.name) || []
+				const nativeFlowButtons = interactiveMsg?.nativeFlowMessage?.buttons || []
 				const isListDetected = isListNativeFlow(message)
+
+				// Log full button details including buttonParamsJson for debugging
+				const buttonDetails = nativeFlowButtons.map((b: any) => ({
+					name: b?.name,
+					paramsJson: b?.buttonParamsJson ? JSON.parse(b.buttonParamsJson) : null
+				}))
 
 				logger.info(
 					{
@@ -1161,7 +1167,8 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						hasListMessage: !!listMsg,
 						hasInteractiveMessage: !!interactiveMsg,
 						hasNativeFlow: !!interactiveMsg?.nativeFlowMessage,
-						nativeFlowButtonNames: nativeFlowButtons,
+						nativeFlowButtonNames: nativeFlowButtons.map((b: any) => b?.name),
+						buttonDetails: JSON.stringify(buttonDetails, null, 2),
 						isListDetected
 					},
 					'[DEBUG] Interactive message structure'
