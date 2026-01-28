@@ -1,5 +1,7 @@
-/* @ts-ignore */
+// @ts-ignore
 import * as libsignal from 'libsignal'
+// @ts-ignore
+import { PreKeyWhisperMessage } from 'libsignal/src/protobufs'
 import { LRUCache } from 'lru-cache'
 import type { LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
 import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
@@ -19,6 +21,31 @@ import { SenderKeyName } from './Group/sender-key-name'
 import { SenderKeyRecord } from './Group/sender-key-record'
 import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from './Group'
 import { LIDMappingStore } from './lid-mapping'
+
+/** Extract identity key from PreKeyWhisperMessage for identity change detection */
+function extractIdentityFromPkmsg(ciphertext: Uint8Array): Uint8Array | undefined {
+	try {
+		if (!ciphertext || ciphertext.length < 2) {
+			return undefined
+		}
+
+		// Version byte check (version 3)
+		const version = ciphertext[0]!
+		if ((version & 0xf) !== 3) {
+			return undefined
+		}
+
+		// Parse protobuf (skip version byte)
+		const preKeyProto = PreKeyWhisperMessage.decode(ciphertext.slice(1))
+		if (preKeyProto.identityKey?.length === 33) {
+			return new Uint8Array(preKeyProto.identityKey)
+		}
+
+		return undefined
+	} catch {
+		return undefined
+	}
+}
 
 export function makeLibSignalRepository(
 	auth: SignalAuthState,
@@ -78,6 +105,18 @@ export function makeLibSignalRepository(
 		async decryptMessage({ jid, type, ciphertext }) {
 			const addr = jidToSignalProtocolAddress(jid)
 			const session = new libsignal.SessionCipher(storage, addr)
+
+			// Extract and save sender's identity key before decryption for identity change detection
+			if (type === 'pkmsg') {
+				const identityKey = extractIdentityFromPkmsg(ciphertext)
+				if (identityKey) {
+					const addrStr = addr.toString()
+					const identityChanged = await storage.saveIdentity(addrStr, identityKey)
+					if (identityChanged) {
+						logger.info({ jid, addr: addrStr }, 'identity key changed or new contact, session will be re-established')
+					}
+				}
+			}
 
 			async function doDecrypt() {
 				let result: Buffer
@@ -356,27 +395,14 @@ const jidToSignalSenderKeyName = (group: string, user: string): SenderKeyName =>
 	return new SenderKeyName(group, jidToSignalProtocolAddress(user))
 }
 
-/**
- * Extended Signal storage interface with identity change detection.
- * Adds loadIdentityKey and saveIdentity methods to standard SignalStorage.
- */
-interface ExtendedSignalStorage extends libsignal.SignalStorage {
-	/**
-	 * Load a stored identity key for a remote address.
-	 */
-	loadIdentityKey(id: string): Promise<Uint8Array | undefined>
-	/**
-	 * Save an identity key with change detection.
-	 * If the key has changed, clears the session.
-	 * @returns true if identity was new or changed
-	 */
-	saveIdentity(id: string, identityKey: Uint8Array): Promise<boolean>
-}
-
 function signalStorage(
 	{ creds, keys }: SignalAuthState,
 	lidMapping: LIDMappingStore
-): SenderKeyStore & ExtendedSignalStorage {
+): SenderKeyStore &
+	libsignal.SignalStorage & {
+		loadIdentityKey(id: string): Promise<Uint8Array | undefined>
+		saveIdentity(id: string, identityKey: Uint8Array): Promise<boolean>
+	} {
 	// Shared function to resolve PN signal address to LID if mapping exists
 	const resolveLIDSignalAddress = async (id: string): Promise<string> => {
 		if (id.includes('.')) {
@@ -420,52 +446,35 @@ function signalStorage(
 		isTrustedIdentity: () => {
 			return true // TOFU - Trust on First Use (same as WhatsApp Web)
 		},
-		/**
-		 * Load a stored identity key for a remote address.
-		 * @param id Signal protocol address string
-		 */
 		loadIdentityKey: async (id: string) => {
 			const wireJid = await resolveLIDSignalAddress(id)
 			const { [wireJid]: key } = await keys.get('identity-key', [wireJid])
 			return key || undefined
 		},
-		/**
-		 * Save an identity key for a remote address, detecting changes.
-		 * If the identity key has changed, this will clear the existing session.
-		 * Reference: WhatsApp Web's saveIdentity (GysEGRAXCvh.js:49388-49403)
-		 *
-		 * @param id Signal protocol address string
-		 * @param identityKey The new identity key
-		 * @returns true if this was a new identity or identity changed
-		 */
 		saveIdentity: async (id: string, identityKey: Uint8Array): Promise<boolean> => {
 			const wireJid = await resolveLIDSignalAddress(id)
 			const { [wireJid]: existingKey } = await keys.get('identity-key', [wireJid])
 
-			// Compare keys
 			const keysMatch =
 				existingKey &&
 				existingKey.length === identityKey.length &&
 				existingKey.every((byte, i) => byte === identityKey[i])
 
 			if (existingKey && !keysMatch) {
-				// IDENTITY CHANGED - Clear session to force re-establishment
-				// This prevents MAC failures from session/identity mismatch
-				// Reference: WhatsApp Web's handleNewIdentity (GysEGRAXCvh.js:48414-48418)
+				// Identity changed - clear session and update key
 				await keys.set({
-					session: { [wireJid]: null }, // Delete session
-					'identity-key': { [wireJid]: identityKey } // Update identity
+					session: { [wireJid]: null },
+					'identity-key': { [wireJid]: identityKey }
 				})
-				return true // Identity changed
+				return true
 			}
 
 			if (!existingKey) {
-				// First contact - Trust on First Use (TOFU)
+				// New contact - Trust on First Use (TOFU)
 				await keys.set({ 'identity-key': { [wireJid]: identityKey } })
-				return true // New identity
+				return true
 			}
 
-			// Keys match, no change needed
 			return false
 		},
 		loadPreKey: async (id: number | string) => {

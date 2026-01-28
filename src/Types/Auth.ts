@@ -81,11 +81,6 @@ export type SignalDataTypeMap = {
 	'lid-mapping': string
 	'device-list': string[]
 	tctoken: { token: Buffer; timestamp?: string }
-	/**
-	 * Remote identity keys - used to detect identity changes.
-	 * When an identity key changes, sessions should be invalidated.
-	 * Reference: WhatsApp Web's saveIdentity (GysEGRAXCvh.js:49388-49403)
-	 */
 	'identity-key': Uint8Array
 }
 

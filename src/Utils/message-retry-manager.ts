@@ -39,11 +39,7 @@ export interface RetryStatistics {
 	phoneRequests: number
 }
 
-/**
- * Retry reason codes matching WhatsApp Web's Signal error codes.
- * These are sent in retry receipts to help the sender make informed decisions.
- * Reference: MpTzv7av1aW.js lines 27267-27282
- */
+// Retry reason codes matching WhatsApp Web's Signal error codes.
 export enum RetryReason {
 	UnknownError = 0,
 	SignalErrorNoSession = 1,
@@ -136,11 +132,6 @@ export class MessageRetryManager {
 	/**
 	 * Check if a session should be recreated based on retry count, history, and error code.
 	 * MAC errors (codes 4 and 7) trigger immediate session recreation regardless of timeout.
-	 * Reference: WhatsApp Web's handleNewIdentity flow (GysEGRAXCvh.js:43790-43809)
-	 *
-	 * @param jid The JID of the remote party
-	 * @param hasSession Whether we currently have a session with them
-	 * @param errorCode Optional error code from retry receipt (RetryReason enum)
 	 */
 	shouldRecreateSession(
 		jid: string,
@@ -158,7 +149,6 @@ export class MessageRetryManager {
 		}
 
 		// IMMEDIATE recreation for MAC errors - session is definitely out of sync
-		// This matches WhatsApp Web behavior (MpTzv7av1aW.js:27436-27439)
 		if (errorCode !== undefined && MAC_ERROR_CODES.has(errorCode)) {
 			this.sessionRecreateHistory.set(jid, Date.now())
 			this.statistics.sessionRecreations++
