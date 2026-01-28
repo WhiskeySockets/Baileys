@@ -622,27 +622,56 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	 * type = "preview" for a low res picture
 	 * type = "image for the high res picture"
 	 */
-	const profilePictureUrl = async (jid: string, type: 'preview' | 'image' = 'preview', timeoutMs?: number) => {
-		const baseContent: BinaryNode[] = [{ tag: 'picture', attrs: { type, query: 'url' } }]
+	const profilePictureUrl = async (jid: string, type: 'preview' | 'image' = 'preview') => {
+		const attrs: BinaryNode['attrs'] = {
+			query: 'url',
+			type
+		}
 
-		const tcTokenContent = await buildTcTokenFromJid({ authState, jid, baseContent })
+		const pictureContent: BinaryNode[] = []
 
-		jid = jidNormalizedUser(jid)
-		const result = await query(
+		const tcTokenData = await authState.keys.get('tctoken', [jid])
+
+		const tcTokenBuffer = tcTokenData?.[jid]?.token
+
+		if (tcTokenBuffer) {
+			pictureContent.push({
+				tag: 'tctoken',
+				attrs: {},
+				content: tcTokenBuffer
+			})
+		}
+
+		const content: BinaryNode[] = [
 			{
-				tag: 'iq',
-				attrs: {
-					target: jid,
-					to: S_WHATSAPP_NET,
-					type: 'get',
-					xmlns: 'w:profile:picture'
-				},
-				content: tcTokenContent
+				tag: 'picture',
+				attrs,
+				content: pictureContent.length ? pictureContent : undefined
+			}
+		]
+
+		const result = await query({
+			tag: 'iq',
+			attrs: {
+				type: 'get',
+				xmlns: 'w:profile:picture',
+				to: S_WHATSAPP_NET,
+				target: jid
 			},
-			timeoutMs
-		)
-		const child = getBinaryNodeChild(result, 'picture')
-		return child?.attrs?.url
+			content
+		})
+
+		const picture = getBinaryNodeChild(result, 'picture')
+		if (!picture) {
+			throw new Boom('picture node missing', { statusCode: 404 })
+		}
+
+		const status = picture.attrs?.status
+		if (status === '404' || status === '204') {
+			throw new Boom('profile picture not set', { statusCode: 404 })
+		}
+
+		return picture.attrs?.url
 	}
 
 	const createCallLink = async (type: 'audio' | 'video', event?: { startTime: number }, timeoutMs?: number) => {
