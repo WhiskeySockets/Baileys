@@ -764,6 +764,27 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 	}
 
 	/**
+	 * Checks if the message is a catalog/product message (catalog_message, single_product)
+	 * These messages may need different biz node handling or no biz node at all
+	 */
+	const isCatalogMessage = (message: proto.IMessage): boolean => {
+		const interactiveMsg = message.interactiveMessage ||
+			message.viewOnceMessage?.message?.interactiveMessage
+
+		const nativeFlow = interactiveMsg?.nativeFlowMessage
+		if (nativeFlow?.buttons?.length) {
+			// Check if any button is a catalog-type button
+			return nativeFlow.buttons.some(
+				(btn: any) => btn?.name === 'catalog_message' ||
+				              btn?.name === 'single_product' ||
+				              btn?.name === 'product_list'
+			)
+		}
+
+		return false
+	}
+
+	/**
 	 * Checks if the nativeFlowMessage is a list (single_select button)
 	 * Lists need type='list' in the biz node instead of type='native_flow'
 	 */
@@ -1147,7 +1168,12 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			// ⚠️ EXPERIMENTAL: Inject 'biz' node for interactive messages
 			// This may not work and can cause account bans
 			const buttonType = getButtonType(message)
-			if (buttonType && enableInteractiveMessages) {
+			const isCatalog = isCatalogMessage(message)
+			const isCarousel = isCarouselMessage(message)
+
+			// Catalog messages (catalog_message, single_product) don't need biz node injection
+			// They work with just the viewOnceMessage > interactiveMessage > nativeFlowMessage format
+			if (buttonType && enableInteractiveMessages && !isCatalog) {
 				const startTime = Date.now()
 
 				// Debug: Log message structure to diagnose list detection
@@ -1222,8 +1248,6 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						destinationJid?.endsWith('@c.us')
 					) && !isJidBot(destinationJid)
 
-					const isCarousel = isCarouselMessage(message)
-
 					if (isPrivateUserChat && !isCarousel) {
 						;(stanza.content as BinaryNode[]).push({
 							tag: 'bot',
@@ -1250,6 +1274,14 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					)
 					metrics.interactiveMessagesFailures.inc({ type: buttonType, reason: 'injection_failed' })
 				}
+			} else if (buttonType && isCatalog) {
+				// Catalog messages (catalog_message, single_product, product_list) work without biz node
+				// The viewOnceMessage > interactiveMessage > nativeFlowMessage format is sufficient
+				logger.info(
+					{ msgId, buttonType, to: destinationJid },
+					'[CATALOG] Sending catalog/product message without biz node injection'
+				)
+				metrics.interactiveMessagesSent.inc({ type: 'catalog' })
 			} else if (buttonType && !enableInteractiveMessages) {
 				logger.warn(
 					{ msgId, buttonType },
