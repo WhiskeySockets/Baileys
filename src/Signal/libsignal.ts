@@ -356,10 +356,27 @@ const jidToSignalSenderKeyName = (group: string, user: string): SenderKeyName =>
 	return new SenderKeyName(group, jidToSignalProtocolAddress(user))
 }
 
+/**
+ * Extended Signal storage interface with identity change detection.
+ * Adds loadIdentityKey and saveIdentity methods to standard SignalStorage.
+ */
+interface ExtendedSignalStorage extends libsignal.SignalStorage {
+	/**
+	 * Load a stored identity key for a remote address.
+	 */
+	loadIdentityKey(id: string): Promise<Uint8Array | undefined>
+	/**
+	 * Save an identity key with change detection.
+	 * If the key has changed, clears the session.
+	 * @returns true if identity was new or changed
+	 */
+	saveIdentity(id: string, identityKey: Uint8Array): Promise<boolean>
+}
+
 function signalStorage(
 	{ creds, keys }: SignalAuthState,
 	lidMapping: LIDMappingStore
-): SenderKeyStore & libsignal.SignalStorage {
+): SenderKeyStore & ExtendedSignalStorage {
 	// Shared function to resolve PN signal address to LID if mapping exists
 	const resolveLIDSignalAddress = async (id: string): Promise<string> => {
 		if (id.includes('.')) {
@@ -401,7 +418,55 @@ function signalStorage(
 			await keys.set({ session: { [wireJid]: session.serialize() } })
 		},
 		isTrustedIdentity: () => {
-			return true // todo: implement
+			return true // TOFU - Trust on First Use (same as WhatsApp Web)
+		},
+		/**
+		 * Load a stored identity key for a remote address.
+		 * @param id Signal protocol address string
+		 */
+		loadIdentityKey: async (id: string) => {
+			const wireJid = await resolveLIDSignalAddress(id)
+			const { [wireJid]: key } = await keys.get('identity-key', [wireJid])
+			return key || undefined
+		},
+		/**
+		 * Save an identity key for a remote address, detecting changes.
+		 * If the identity key has changed, this will clear the existing session.
+		 * Reference: WhatsApp Web's saveIdentity (GysEGRAXCvh.js:49388-49403)
+		 *
+		 * @param id Signal protocol address string
+		 * @param identityKey The new identity key
+		 * @returns true if this was a new identity or identity changed
+		 */
+		saveIdentity: async (id: string, identityKey: Uint8Array): Promise<boolean> => {
+			const wireJid = await resolveLIDSignalAddress(id)
+			const { [wireJid]: existingKey } = await keys.get('identity-key', [wireJid])
+
+			// Compare keys
+			const keysMatch =
+				existingKey &&
+				existingKey.length === identityKey.length &&
+				existingKey.every((byte, i) => byte === identityKey[i])
+
+			if (existingKey && !keysMatch) {
+				// IDENTITY CHANGED - Clear session to force re-establishment
+				// This prevents MAC failures from session/identity mismatch
+				// Reference: WhatsApp Web's handleNewIdentity (GysEGRAXCvh.js:48414-48418)
+				await keys.set({
+					session: { [wireJid]: null }, // Delete session
+					'identity-key': { [wireJid]: identityKey } // Update identity
+				})
+				return true // Identity changed
+			}
+
+			if (!existingKey) {
+				// First contact - Trust on First Use (TOFU)
+				await keys.set({ 'identity-key': { [wireJid]: identityKey } })
+				return true // New identity
+			}
+
+			// Keys match, no change needed
+			return false
 		},
 		loadPreKey: async (id: number | string) => {
 			const keyId = id.toString()
