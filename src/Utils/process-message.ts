@@ -564,55 +564,85 @@ const processMessage = async (
 				emitGroupRequestJoin(participant, action, method)
 				break
 		}
-	} /*  else if(content?.pollUpdateMessage) {
+	} else if (content?.pollUpdateMessage) {
 		const creationMsgKey = content.pollUpdateMessage.pollCreationMessageKey!
-		// we need to fetch the poll creation message to get the poll enc key
-		// TODO: make standalone, remove getMessage reference
-		// TODO: Remove entirely
+		// We need to fetch the poll creation message to get the poll encryption key (messageSecret)
 		const pollMsg = await getMessage(creationMsgKey)
-		if(pollMsg) {
-			const meIdNormalised = jidNormalizedUser(meId)
-			const pollCreatorJid = getKeyAuthor(creationMsgKey, meIdNormalised)
-			const voterJid = getKeyAuthor(message.key, meIdNormalised)
-			const pollEncKey = pollMsg.messageContextInfo?.messageSecret!
+		if (!pollMsg) {
+			logger?.warn({ creationMsgKey }, 'poll creation message not found, cannot decrypt update')
+			return
+		}
 
-			try {
-				const voteMsg = decryptPollVote(
-					content.pollUpdateMessage.vote!,
-					{
+		const mePn = jidNormalizedUser(meId)
+		const meLid = (creds.me as any)?.lid as string | undefined
+		const isLidChat = Boolean(creationMsgKey.remoteJid && isLidUser(creationMsgKey.remoteJid))
+
+		// WhatsApp may use PN or LID JIDs for poll vote auth (AAD/sign). Try plausible candidates.
+		const pollCreatorCandidates = [
+			// If this poll is in a LID chat, our LID may be the poll creator identity for auth.
+			isLidChat ? meLid : undefined,
+			mePn
+		].filter(Boolean) as string[]
+
+		const voterCandidates = [
+			(message.key as any)?.participantAlt,
+			(message.key as any)?.remoteJidAlt,
+			message.key?.participant,
+			message.key?.remoteJid
+		].filter(Boolean) as string[]
+
+		const uniq = <T>(arr: T[]) => Array.from(new Set(arr))
+		const uniqueCreators = uniq(pollCreatorCandidates)
+		const uniqueVoters = uniq(voterCandidates)
+
+		const pollEncKey = pollMsg.messageContextInfo?.messageSecret
+		if (!pollEncKey) {
+			logger?.warn({ creationMsgKey }, 'poll creation message missing messageSecret, cannot decrypt update')
+			return
+		}
+
+		let voteMsg: proto.Message.PollVoteMessage | null = null
+
+		for (const pollCreatorJid of uniqueCreators) {
+			for (const voterJid of uniqueVoters) {
+				try {
+					voteMsg = decryptPollVote(content.pollUpdateMessage.vote!, {
 						pollEncKey,
 						pollCreatorJid,
 						pollMsgId: creationMsgKey.id!,
-						voterJid,
-					}
-				)
-				ev.emit('messages.update', [
-					{
-						key: creationMsgKey,
-						update: {
-							pollUpdates: [
-								{
-									pollUpdateMessageKey: message.key,
-									vote: voteMsg,
-									senderTimestampMs: (content.pollUpdateMessage.senderTimestampMs! as Long).toNumber(),
-								}
-							]
-						}
-					}
-				])
-			} catch(err) {
-				logger?.warn(
-					{ err, creationMsgKey },
-					'failed to decrypt poll vote'
-				)
+						voterJid
+					})
+					break
+				} catch {
+					// try next combination
+				}
 			}
-		} else {
-			logger?.warn(
-				{ creationMsgKey },
-				'poll creation message not found, cannot decrypt update'
-			)
+
+			if (voteMsg) {
+				break
+			}
 		}
-		} */
+
+		if (!voteMsg) {
+			logger?.warn({ creationMsgKey, isLidChat }, 'failed to decrypt poll vote')
+			return
+		}
+
+		ev.emit('messages.update', [
+			{
+				key: creationMsgKey,
+				update: {
+					pollUpdates: [
+						{
+							pollUpdateMessageKey: message.key,
+							vote: voteMsg,
+							senderTimestampMs: (content.pollUpdateMessage.senderTimestampMs! as Long).toNumber()
+						}
+					]
+				}
+			}
+		])
+	}
 
 	if (Object.keys(chat).length > 1) {
 		ev.emit('chats.update', [chat])
