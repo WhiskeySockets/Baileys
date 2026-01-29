@@ -81,6 +81,7 @@ export type SignalDataTypeMap = {
 	'lid-mapping': string
 	'device-list': string[]
 	tctoken: { token: Buffer; timestamp?: string }
+	'identity-key': Uint8Array
 }
 
 export type SignalDataSet = { [T in keyof SignalDataTypeMap]?: { [id: string]: SignalDataTypeMap[T] | null } }
