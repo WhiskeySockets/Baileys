@@ -1,10 +1,14 @@
 /* @ts-ignore */
 import * as libsignal from 'libsignal'
+import { createHash } from 'crypto'
 import { LRUCache } from 'lru-cache'
 import type { LIDMapping, SignalAuthState, SignalKeyStoreWithTransaction } from '../Types'
+import type { BaileysEventEmitter } from '../Types/Events'
 import type { SignalRepositoryWithLIDStore } from '../Types/Signal'
 import { generateSignalPubKey } from '../Utils'
 import type { ILogger } from '../Utils/logger'
+import { metrics } from '../Utils/prometheus-metrics.js'
+import { CircuitBreaker } from '../Utils/circuit-breaker.js'
 import {
 	isHostedLidUser,
 	isHostedPnUser,
@@ -20,13 +24,243 @@ import { SenderKeyRecord } from './Group/sender-key-record'
 import { GroupCipher, GroupSessionBuilder, SenderKeyDistributionMessage } from './Group'
 import { LIDMappingStore } from './lid-mapping'
 
+// ============================================
+// Identity Key Detection Constants
+// ============================================
+
+/** Cache TTL for identity keys - 30 minutes */
+const IDENTITY_KEY_CACHE_TTL = 30 * 60 * 1000
+
+/** Maximum number of identity keys to cache */
+const IDENTITY_KEY_CACHE_MAX = 1000
+
+/** Curve25519 public key type byte (0x05) */
+const CURVE25519_KEY_TYPE = 0x05
+
+/** Expected length of a Curve25519 public key with type byte */
+const IDENTITY_KEY_LENGTH = 33
+
+/** PreKeyWhisperMessage version 3 */
+const PREKEY_MSG_VERSION = 3
+
+// ============================================
+// Identity Key Types
+// ============================================
+
+/**
+ * Result of identity key save operation
+ */
+export interface IdentitySaveResult {
+	/** Whether the identity key changed (true) or is new/unchanged (false for unchanged) */
+	changed: boolean
+	/** Whether this is a new contact (first time seeing their key) */
+	isNew: boolean
+	/** Fingerprint of the previous key (if changed) */
+	previousFingerprint?: string
+	/** Fingerprint of the current/new key */
+	currentFingerprint: string
+}
+
+/**
+ * Options for makeLibSignalRepository
+ */
+export interface LibSignalRepositoryOptions {
+	/** Event emitter for broadcasting identity changes */
+	ev?: BaileysEventEmitter
+	/** Circuit breaker for prekey operations (optional) */
+	preKeyCircuitBreaker?: CircuitBreaker
+}
+
+// ============================================
+// Identity Key Utility Functions
+// ============================================
+
+/**
+ * Generate a SHA-256 fingerprint of an identity key
+ * This is used to display to users for verification
+ *
+ * @param key - The identity key bytes
+ * @returns Hex string fingerprint
+ */
+function generateKeyFingerprint(key: Uint8Array): string {
+	return createHash('sha256').update(key).digest('hex').substring(0, 32)
+}
+
+/**
+ * Extract identity key from a PreKeyWhisperMessage
+ *
+ * The PreKeyWhisperMessage format (version 3):
+ * - Byte 0: Version byte (high nibble = current version, low nibble = 3)
+ * - Bytes 1+: Protobuf-encoded PreKeySignalMessage
+ *
+ * The protobuf contains:
+ * - registrationId (uint32)
+ * - preKeyId (uint32, optional)
+ * - signedPreKeyId (uint32)
+ * - baseKey (bytes, 33 bytes - Curve25519 public key)
+ * - identityKey (bytes, 33 bytes - Curve25519 public key)
+ * - message (bytes - the actual encrypted message)
+ *
+ * We manually parse the protobuf to extract identityKey without depending on
+ * the full protobuf library, making this compatible with any Signal implementation.
+ *
+ * @param ciphertext - The raw PreKeyWhisperMessage bytes
+ * @param logger - Logger for debug output
+ * @returns The identity key bytes or undefined if extraction fails
+ */
+function extractIdentityFromPkmsg(ciphertext: Uint8Array, logger?: ILogger): Uint8Array | undefined {
+	const timer = metrics.signalIdentityKeyOperations?.startTimer({ operation: 'extract' })
+
+	try {
+		// Minimum size: 1 byte version + at least 34 bytes for minimal protobuf with identity key
+		if (!ciphertext || ciphertext.length < 35) {
+			logger?.debug({ length: ciphertext?.length }, 'Ciphertext too short for identity extraction')
+			return undefined
+		}
+
+		const version = ciphertext[0]!
+		// Version byte format: high nibble = current version, low nibble = message type (3 = PreKey)
+		const messageType = version & 0x0f
+		if (messageType !== PREKEY_MSG_VERSION) {
+			logger?.debug({ version, messageType }, 'Not a PreKeyWhisperMessage (version 3)')
+			return undefined
+		}
+
+		// Parse protobuf manually - we're looking for field 5 (identityKey)
+		// Protobuf wire format: varint tag (field_number << 3 | wire_type), then value
+		// Wire type 2 = length-delimited (used for bytes)
+		let offset = 1 // Skip version byte
+
+		while (offset < ciphertext.length) {
+			// Read tag varint
+			const tagResult = readVarint(ciphertext, offset)
+			if (!tagResult) break
+
+			const tag = tagResult.value
+			offset = tagResult.nextOffset
+
+			const fieldNumber = tag >> 3
+			const wireType = tag & 0x07
+
+			if (wireType === 2) {
+				// Length-delimited field
+				const lengthResult = readVarint(ciphertext, offset)
+				if (!lengthResult) break
+
+				const length = lengthResult.value
+				offset = lengthResult.nextOffset
+
+				// Field 5 is identityKey
+				if (fieldNumber === 5) {
+					// Validate key length
+					if (length !== IDENTITY_KEY_LENGTH) {
+						logger?.debug({ length, expected: IDENTITY_KEY_LENGTH }, 'Invalid identity key length')
+						return undefined
+					}
+
+					if (offset + length > ciphertext.length) {
+						logger?.debug('Identity key extends beyond ciphertext bounds')
+						return undefined
+					}
+
+					const identityKey = ciphertext.slice(offset, offset + length)
+
+					// Validate key type byte (must be 0x05 for Curve25519)
+					if (identityKey[0] !== CURVE25519_KEY_TYPE) {
+						logger?.debug({ type: identityKey[0], expected: CURVE25519_KEY_TYPE }, 'Invalid identity key type')
+						return undefined
+					}
+
+					return new Uint8Array(identityKey)
+				}
+
+				offset += length
+			} else if (wireType === 0) {
+				// Varint
+				const varintResult = readVarint(ciphertext, offset)
+				if (!varintResult) break
+				offset = varintResult.nextOffset
+			} else if (wireType === 1) {
+				// 64-bit fixed
+				offset += 8
+			} else if (wireType === 5) {
+				// 32-bit fixed
+				offset += 4
+			} else {
+				// Unknown wire type, cannot continue
+				logger?.debug({ wireType }, 'Unknown wire type in protobuf')
+				break
+			}
+		}
+
+		logger?.debug('Identity key field not found in PreKeyWhisperMessage')
+		return undefined
+	} catch (error) {
+		logger?.debug({ error: (error as Error).message }, 'Failed to extract identity from pkmsg')
+		return undefined
+	} finally {
+		timer?.()
+	}
+}
+
+/**
+ * Read a varint from a buffer
+ *
+ * @param buffer - The buffer to read from
+ * @param offset - Starting offset
+ * @returns Object with value and nextOffset, or undefined if invalid
+ */
+function readVarint(buffer: Uint8Array, offset: number): { value: number; nextOffset: number } | undefined {
+	let result = 0
+	let shift = 0
+
+	while (offset < buffer.length) {
+		const byte = buffer[offset]!
+		result |= (byte & 0x7f) << shift
+
+		offset++
+		if ((byte & 0x80) === 0) {
+			return { value: result >>> 0, nextOffset: offset } // >>> 0 ensures unsigned
+		}
+
+		shift += 7
+		if (shift > 35) {
+			// Varint too long (max 5 bytes for 32-bit)
+			return undefined
+		}
+	}
+
+	return undefined
+}
+
 export function makeLibSignalRepository(
 	auth: SignalAuthState,
 	logger: ILogger,
-	pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>
+	pnToLIDFunc?: (jids: string[]) => Promise<LIDMapping[] | undefined>,
+	options?: LibSignalRepositoryOptions
 ): SignalRepositoryWithLIDStore {
+	const { ev, preKeyCircuitBreaker } = options || {}
 	const lidMapping = new LIDMappingStore(auth.keys as SignalKeyStoreWithTransaction, logger, pnToLIDFunc)
-	const storage = signalStorage(auth, lidMapping)
+
+	// Identity key cache to avoid repeated storage reads
+	const identityKeyCache = new LRUCache<string, Uint8Array>({
+		max: IDENTITY_KEY_CACHE_MAX,
+		ttl: IDENTITY_KEY_CACHE_TTL,
+		ttlAutopurge: true,
+		updateAgeOnGet: true,
+	})
+
+	// Update cache size metric periodically
+	const cacheMetricsInterval = setInterval(() => {
+		metrics.signalIdentityKeyCacheSize?.set(identityKeyCache.size)
+	}, 60000) // Every minute
+
+	// Cleanup interval on process exit
+	if (typeof process !== 'undefined') {
+		process.on('beforeExit', () => clearInterval(cacheMetricsInterval))
+	}
+
+	const storage = signalStorage(auth, lidMapping, identityKeyCache, ev, preKeyCircuitBreaker, logger)
 
 	const parsedKeys = auth.keys as SignalKeyStoreWithTransaction
 	const migratedSessionCache = new LRUCache<string, true>({
@@ -80,14 +314,51 @@ export function makeLibSignalRepository(
 			const session = new libsignal.SessionCipher(storage, addr)
 
 			async function doDecrypt() {
+				// For PreKeyWhisperMessage, extract and verify identity key BEFORE decryption
+				// This handles the case where a contact reinstalled WhatsApp (new identity key)
+				if (type === 'pkmsg') {
+					const identityKey = extractIdentityFromPkmsg(ciphertext, logger)
+					if (identityKey) {
+						const addrStr = addr.toString()
+						try {
+							const saveResult = await storage.saveIdentity(addrStr, identityKey)
+							if (saveResult.changed) {
+								logger.info(
+									{
+										jid,
+										addr: addrStr,
+										previousFingerprint: saveResult.previousFingerprint,
+										newFingerprint: saveResult.currentFingerprint,
+									},
+									'Identity key changed - contact may have reinstalled WhatsApp, session will be re-established'
+								)
+
+								// Reset prekey circuit breaker since we identified the cause
+								if (preKeyCircuitBreaker?.isOpen()) {
+									preKeyCircuitBreaker.reset()
+									logger.debug({ jid }, 'Reset prekey circuit breaker after identity key change detection')
+								}
+							} else if (saveResult.isNew) {
+								logger.debug(
+									{ jid, addr: addrStr, fingerprint: saveResult.currentFingerprint },
+									'New contact identity key saved (Trust On First Use)'
+								)
+							}
+						} catch (error) {
+							// Log but don't fail decryption - identity tracking is best-effort
+							logger.warn(
+								{ jid, error: (error as Error).message },
+								'Failed to save identity key during decryption'
+							)
+						}
+					}
+				}
+
 				let result: Buffer
-				switch (type) {
-					case 'pkmsg':
-						result = await session.decryptPreKeyWhisperMessage(ciphertext)
-						break
-					case 'msg':
-						result = await session.decryptWhisperMessage(ciphertext)
-						break
+				if (type === 'pkmsg') {
+					result = await session.decryptPreKeyWhisperMessage(ciphertext)
+				} else {
+					result = await session.decryptWhisperMessage(ciphertext)
 				}
 
 				return result
@@ -356,10 +627,37 @@ const jidToSignalSenderKeyName = (group: string, user: string): SenderKeyName =>
 	return new SenderKeyName(group, jidToSignalProtocolAddress(user))
 }
 
+/**
+ * Extended SignalStorage with identity key management
+ * This type adds identity key operations to the standard Signal storage
+ */
+type ExtendedSignalStorage = SenderKeyStore & libsignal.SignalStorage & {
+	/**
+	 * Load identity key for a contact
+	 * @param id - Signal protocol address string
+	 * @returns Identity key bytes or undefined if not found
+	 */
+	loadIdentityKey(id: string): Promise<Uint8Array | undefined>
+
+	/**
+	 * Save/update identity key for a contact
+	 * Handles Trust On First Use (TOFU) and change detection
+	 *
+	 * @param id - Signal protocol address string
+	 * @param identityKey - The identity key bytes (33 bytes with type prefix)
+	 * @returns Result indicating if key changed, is new, and fingerprints
+	 */
+	saveIdentity(id: string, identityKey: Uint8Array): Promise<IdentitySaveResult>
+}
+
 function signalStorage(
 	{ creds, keys }: SignalAuthState,
-	lidMapping: LIDMappingStore
-): SenderKeyStore & libsignal.SignalStorage {
+	lidMapping: LIDMappingStore,
+	identityKeyCache: LRUCache<string, Uint8Array>,
+	ev?: BaileysEventEmitter,
+	preKeyCircuitBreaker?: CircuitBreaker,
+	logger?: ILogger
+): ExtendedSignalStorage {
 	// Shared function to resolve PN signal address to LID if mapping exists
 	const resolveLIDSignalAddress = async (id: string): Promise<string> => {
 		if (id.includes('.')) {
@@ -401,7 +699,7 @@ function signalStorage(
 			await keys.set({ session: { [wireJid]: session.serialize() } })
 		},
 		isTrustedIdentity: () => {
-			return true // todo: implement
+			return true // todo: implement proper trust management
 		},
 		loadPreKey: async (id: number | string) => {
 			const keyId = id.toString()
@@ -442,6 +740,147 @@ function signalStorage(
 				privKey: Buffer.from(signedIdentityKey.private),
 				pubKey: Buffer.from(generateSignalPubKey(signedIdentityKey.public))
 			}
-		}
+		},
+
+		// ============================================
+		// Identity Key Management (NEW)
+		// ============================================
+
+		/**
+		 * Load identity key for a contact from cache or storage
+		 */
+		loadIdentityKey: async (id: string): Promise<Uint8Array | undefined> => {
+			const timer = metrics.signalIdentityKeyOperations?.startTimer({ operation: 'load' })
+
+			try {
+				const wireJid = await resolveLIDSignalAddress(id)
+
+				// Check cache first
+				const cached = identityKeyCache.get(wireJid)
+				if (cached) {
+					metrics.signalIdentityKeyCacheHits?.inc()
+					return cached
+				}
+
+				metrics.signalIdentityKeyCacheMisses?.inc()
+
+				// Load from storage
+				const { [wireJid]: key } = await keys.get('identity-key', [wireJid])
+
+				if (key) {
+					// Populate cache
+					identityKeyCache.set(wireJid, key)
+					return key
+				}
+
+				return undefined
+			} finally {
+				timer?.()
+			}
+		},
+
+		/**
+		 * Save identity key for a contact with change detection
+		 * Implements Trust On First Use (TOFU) and emits events on changes
+		 */
+		saveIdentity: async (id: string, identityKey: Uint8Array): Promise<IdentitySaveResult> => {
+			const timer = metrics.signalIdentityKeyOperations?.startTimer({ operation: 'save' })
+
+			try {
+				const wireJid = await resolveLIDSignalAddress(id)
+				const currentFingerprint = generateKeyFingerprint(identityKey)
+
+				// Load existing key (from cache or storage)
+				const { [wireJid]: existingKey } = await keys.get('identity-key', [wireJid])
+
+				// Check if keys match
+				const keysMatch =
+					existingKey &&
+					existingKey.length === identityKey.length &&
+					existingKey.every((byte, i) => byte === identityKey[i])
+
+				if (existingKey && !keysMatch) {
+					// IDENTITY KEY CHANGED - contact reinstalled WhatsApp or switched devices
+					const previousFingerprint = generateKeyFingerprint(existingKey)
+
+					// Delete old session and save new identity key atomically
+					await keys.set({
+						session: { [wireJid]: null },
+						'identity-key': { [wireJid]: identityKey },
+					})
+
+					// Update cache
+					identityKeyCache.set(wireJid, identityKey)
+
+					// Record metrics
+					metrics.signalIdentityChanges?.inc({ type: 'changed' })
+
+					// Emit event for application to notify user
+					if (ev) {
+						ev.emit('identity.changed', {
+							jid: wireJid,
+							previousKeyFingerprint: previousFingerprint,
+							newKeyFingerprint: currentFingerprint,
+							timestamp: Date.now(),
+							isNewContact: false,
+						})
+					}
+
+					logger?.warn(
+						{
+							event: 'identity_key_changed',
+							jid: wireJid,
+							previousFingerprint,
+							newFingerprint: currentFingerprint,
+						},
+						'Contact identity key changed - security code changed'
+					)
+
+					return {
+						changed: true,
+						isNew: false,
+						previousFingerprint,
+						currentFingerprint,
+					}
+				}
+
+				if (!existingKey) {
+					// NEW CONTACT - Trust On First Use (TOFU)
+					await keys.set({ 'identity-key': { [wireJid]: identityKey } })
+
+					// Update cache
+					identityKeyCache.set(wireJid, identityKey)
+
+					// Record metrics
+					metrics.signalIdentityChanges?.inc({ type: 'new' })
+
+					// Emit event for new contact
+					if (ev) {
+						ev.emit('identity.changed', {
+							jid: wireJid,
+							previousKeyFingerprint: null,
+							newKeyFingerprint: currentFingerprint,
+							timestamp: Date.now(),
+							isNewContact: true,
+						})
+					}
+
+					return {
+						changed: false,
+						isNew: true,
+						currentFingerprint,
+					}
+				}
+
+				// Key unchanged
+				return {
+					changed: false,
+					isNew: false,
+					currentFingerprint,
+				}
+			} finally {
+				timer?.()
+			}
+		},
 	}
 }
