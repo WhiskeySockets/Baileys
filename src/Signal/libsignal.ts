@@ -51,13 +51,18 @@ const PREKEY_MSG_VERSION = 3
  * Result of identity key save operation
  */
 export interface IdentitySaveResult {
-	/** Whether the identity key changed (true) or is new/unchanged (false for unchanged) */
+	/**
+	 * Whether the identity key changed from a previous known value.
+	 * - true: Key changed (contact reinstalled WhatsApp or switched devices)
+	 * - false: Key is new (first contact) OR unchanged (same key as before)
+	 * Use `isNew` to distinguish between new and unchanged cases.
+	 */
 	changed: boolean
 	/** Whether this is a new contact (first time seeing their key) */
 	isNew: boolean
-	/** Fingerprint of the previous key (if changed) */
+	/** Fingerprint of the previous key (only present if changed === true) */
 	previousFingerprint?: string
-	/** Fingerprint of the current/new key */
+	/** SHA-256 fingerprint of the current/new key (64 hex characters) */
 	currentFingerprint: string
 }
 
@@ -234,10 +239,13 @@ function readVarint(buffer: Uint8Array, offset: number): { value: number; nextOf
 		shift += 7
 		if (shift > 35) {
 			// Varint too long (max 5 bytes for 32-bit)
+			// This could indicate a malformed or malicious message
+			// Caller should log this condition at debug level
 			return undefined
 		}
 	}
 
+	// Incomplete varint - buffer ended before termination byte
 	return undefined
 }
 
