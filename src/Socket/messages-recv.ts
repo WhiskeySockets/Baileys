@@ -452,12 +452,18 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				// Check if we have a session with this JID
 				const sessionId = signalRepository.jidToSignalProtocolAddress(fromJid)
 				const hasSession = await signalRepository.validateSession(fromJid)
-				const result = messageRetryManager.shouldRecreateSession(fromJid, hasSession.exists)
+
+				// Extract error code from retry node if present (for MAC error detection)
+				const retryNode = getBinaryNodeChild(node, 'retry')
+				const errorAttr = retryNode?.attrs?.error as string | undefined
+				const errorCode = messageRetryManager.parseRetryErrorCode(errorAttr)
+
+				const result = messageRetryManager.shouldRecreateSession(fromJid, hasSession.exists, errorCode)
 				shouldRecreateSession = result.recreate
 				recreateReason = result.reason
 
 				if (shouldRecreateSession) {
-					logger.debug({ fromJid, retryCount, reason: recreateReason }, 'recreating session for retry')
+					logger.debug({ fromJid, retryCount, reason: recreateReason, errorCode }, 'recreating session for retry')
 					// Delete existing session to force recreation
 					await authState.keys.set({ session: { [sessionId]: null } })
 					forceIncludeKeys = true
@@ -1006,12 +1012,17 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const sessionId = signalRepository.jidToSignalProtocolAddress(participant)
 
 				const hasSession = await signalRepository.validateSession(participant)
-				const result = messageRetryManager.shouldRecreateSession(participant, hasSession.exists)
+
+				// Extract error code from retry node if present (for MAC error detection)
+				const errorAttr = retryNode?.attrs?.error as string | undefined
+				const errorCode = messageRetryManager.parseRetryErrorCode(errorAttr)
+
+				const result = messageRetryManager.shouldRecreateSession(participant, hasSession.exists, errorCode)
 				shouldRecreateSession = result.recreate
 				recreateReason = result.reason
 
 				if (shouldRecreateSession) {
-					logger.debug({ participant, retryCount, reason: recreateReason }, 'recreating session for outgoing retry')
+					logger.debug({ participant, retryCount, reason: recreateReason, errorCode }, 'recreating session for outgoing retry')
 					await authState.keys.set({ session: { [sessionId]: null } })
 				}
 			} catch (error) {

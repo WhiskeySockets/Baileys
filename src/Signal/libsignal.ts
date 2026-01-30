@@ -255,9 +255,9 @@ export function makeLibSignalRepository(
 		metrics.signalIdentityKeyCacheSize?.set(identityKeyCache.size)
 	}, 60000) // Every minute
 
-	// Cleanup interval on process exit
-	if (typeof process !== 'undefined') {
-		process.on('beforeExit', () => clearInterval(cacheMetricsInterval))
+	// Allow process to exit even with interval active (prevents blocking in short-lived scripts/tests)
+	if (typeof cacheMetricsInterval.unref === 'function') {
+		cacheMetricsInterval.unref()
 	}
 
 	const storage = signalStorage(auth, lidMapping, identityKeyCache, ev, preKeyCircuitBreaker, logger)
@@ -334,7 +334,8 @@ export function makeLibSignalRepository(
 								)
 
 								// Reset prekey circuit breaker since we identified the cause
-								if (preKeyCircuitBreaker?.isOpen()) {
+								// Reset regardless of state (could be open, half-open, or closed with accumulated failures)
+								if (preKeyCircuitBreaker) {
 									preKeyCircuitBreaker.reset()
 									logger.debug({ jid }, 'Reset prekey circuit breaker after identity key change detection')
 								}
