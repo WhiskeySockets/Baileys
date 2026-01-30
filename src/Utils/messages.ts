@@ -393,6 +393,21 @@ function hasOptionalProperty<T, K extends PropertyKey>(obj: T, key: K): obj is W
 	return typeof obj === 'object' && obj !== null && key in obj && (obj as any)[key] !== null
 }
 
+export const prepareDisappearingMessageSettingContent = (ephemeralExpiration?: number) => {
+	ephemeralExpiration = ephemeralExpiration || 0
+	const content: WAMessageContent = {
+		ephemeralMessage: {
+			message: {
+				protocolMessage: {
+					type: WAProto.Message.ProtocolMessage.Type.EPHEMERAL_SETTING,
+					ephemeralExpiration
+				}
+			}
+		}
+	}
+	return WAProto.Message.fromObject(content)
+}
+
 export const generateWAMessageContent = async (
 	message: AnyMessageContent,
 	options: MessageContentGenerationOptions
