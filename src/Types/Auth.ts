@@ -81,6 +81,8 @@ export type SignalDataTypeMap = {
 	'lid-mapping': string
 	'device-list': string[]
 	tctoken: { token: Buffer; timestamp?: string }
+	/** Identity key for Signal Protocol - used for detecting contact reinstalls */
+	'identity-key': Uint8Array
 }
 
 export type SignalDataSet = { [T in keyof SignalDataTypeMap]?: { [id: string]: SignalDataTypeMap[T] | null } }

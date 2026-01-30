@@ -134,6 +134,25 @@ export type BaileysEventMap = {
 				setting: 'channelsPersonalisedRecommendation'
 				value: proto.SyncActionValue.IPrivacySettingChannelsPersonalisedRecommendationAction
 		  }
+
+	/**
+	 * Emitted when a contact's Signal identity key changes.
+	 * This typically indicates the contact reinstalled WhatsApp or switched devices.
+	 * Applications can use this to notify users about the security code change,
+	 * similar to the "Security code changed" notification in the official WhatsApp client.
+	 */
+	'identity.changed': {
+		/** JID of the contact whose identity key changed */
+		jid: string
+		/** SHA-256 fingerprint of the previous identity key (hex string) */
+		previousKeyFingerprint: string | null
+		/** SHA-256 fingerprint of the new identity key (hex string) */
+		newKeyFingerprint: string
+		/** Timestamp when the change was detected */
+		timestamp: number
+		/** Whether this is a new contact (true) or an existing contact with changed key (false) */
+		isNewContact: boolean
+	}
 }
 
 export type BufferedEventData = {

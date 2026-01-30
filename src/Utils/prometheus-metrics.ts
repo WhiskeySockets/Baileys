@@ -1601,6 +1601,35 @@ export const metrics = {
 		new Gauge('prekey_count', 'Current prekey count')
 	),
 
+	// ========== Signal Identity Metrics ==========
+	/** Total identity key changes detected (contact reinstalled WhatsApp) */
+	signalIdentityChanges: baileysMetrics.register(
+		new Counter('signal_identity_changes_total', 'Total identity key changes detected', ['type'])
+	),
+	/** Total Signal MAC errors encountered */
+	signalMacErrors: baileysMetrics.register(
+		new Counter('signal_mac_errors_total', 'Total Signal MAC verification errors', ['action'])
+	),
+	/** Total Signal session recreations by reason */
+	signalSessionRecreations: baileysMetrics.register(
+		new Counter('signal_session_recreations_total', 'Total Signal session recreations', ['reason'])
+	),
+	/** Identity key cache statistics */
+	signalIdentityKeyCacheHits: baileysMetrics.register(
+		new Counter('signal_identity_key_cache_hits_total', 'Total identity key cache hits')
+	),
+	signalIdentityKeyCacheMisses: baileysMetrics.register(
+		new Counter('signal_identity_key_cache_misses_total', 'Total identity key cache misses')
+	),
+	/** Identity key operations latency */
+	signalIdentityKeyOperations: baileysMetrics.register(
+		new Histogram('signal_identity_key_operations_ms', 'Identity key operation latency in ms', ['operation'], [1, 5, 10, 25, 50, 100])
+	),
+	/** Current identity key cache size */
+	signalIdentityKeyCacheSize: baileysMetrics.register(
+		new Gauge('signal_identity_key_cache_size', 'Current identity key cache size')
+	),
+
 	// ========== Cache Metrics ==========
 	cacheHits: baileysMetrics.register(
 		new Counter('cache_hits_total', 'Total cache hits', ['cache'])
