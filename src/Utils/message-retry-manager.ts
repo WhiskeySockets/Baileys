@@ -109,7 +109,7 @@ export class MessageRetryManager {
 	/**
 	 * Check if a session should be recreated based on retry count and history
 	 */
-	shouldRecreateSession(jid: string, retryCount: number, hasSession: boolean): { reason: string; recreate: boolean } {
+	shouldRecreateSession(jid: string, hasSession: boolean): { reason: string; recreate: boolean } {
 		// If we don't have a session, always recreate
 		if (!hasSession) {
 			this.sessionRecreateHistory.set(jid, Date.now())
@@ -118,11 +118,6 @@ export class MessageRetryManager {
 				reason: "we don't have a Signal session with them",
 				recreate: true
 			}
-		}
-
-		// Only consider recreation if retry count > 1
-		if (retryCount < 2) {
-			return { reason: '', recreate: false }
 		}
 
 		const now = Date.now()
