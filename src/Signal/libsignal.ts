@@ -78,12 +78,13 @@ export interface LibSignalRepositoryOptions {
 /**
  * Generate a SHA-256 fingerprint of an identity key
  * This is used to display to users for verification
+ * Returns full 64-character hex string (256 bits) for cryptographic consistency
  *
  * @param key - The identity key bytes
- * @returns Hex string fingerprint
+ * @returns Full SHA-256 hex string fingerprint (64 characters)
  */
 function generateKeyFingerprint(key: Uint8Array): string {
-	return createHash('sha256').update(key).digest('hex').substring(0, 32)
+	return createHash('sha256').update(key).digest('hex')
 }
 
 /**
@@ -175,6 +176,11 @@ function extractIdentityFromPkmsg(ciphertext: Uint8Array, logger?: ILogger): Uin
 				}
 
 				offset += length
+				// Bounds check after skipping field
+				if (offset > ciphertext.length) {
+					logger?.debug({ offset, length: ciphertext.length }, 'Offset exceeds ciphertext bounds after length-delimited field')
+					break
+				}
 			} else if (wireType === 0) {
 				// Varint
 				const varintResult = readVarint(ciphertext, offset)
@@ -183,9 +189,11 @@ function extractIdentityFromPkmsg(ciphertext: Uint8Array, logger?: ILogger): Uin
 			} else if (wireType === 1) {
 				// 64-bit fixed
 				offset += 8
+				if (offset > ciphertext.length) break
 			} else if (wireType === 5) {
 				// 32-bit fixed
 				offset += 4
+				if (offset > ciphertext.length) break
 			} else {
 				// Unknown wire type, cannot continue
 				logger?.debug({ wireType }, 'Unknown wire type in protobuf')
