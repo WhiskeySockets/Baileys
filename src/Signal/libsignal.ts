@@ -51,13 +51,18 @@ const PREKEY_MSG_VERSION = 3
  * Result of identity key save operation
  */
 export interface IdentitySaveResult {
-	/** Whether the identity key changed (true) or is new/unchanged (false for unchanged) */
+	/**
+	 * Whether the identity key changed from a previous known value.
+	 * - true: Key changed (contact reinstalled WhatsApp or switched devices)
+	 * - false: Key is new (first contact) OR unchanged (same key as before)
+	 * Use `isNew` to distinguish between new and unchanged cases.
+	 */
 	changed: boolean
 	/** Whether this is a new contact (first time seeing their key) */
 	isNew: boolean
-	/** Fingerprint of the previous key (if changed) */
+	/** Fingerprint of the previous key (only present if changed === true) */
 	previousFingerprint?: string
-	/** Fingerprint of the current/new key */
+	/** SHA-256 fingerprint of the current/new key (64 hex characters) */
 	currentFingerprint: string
 }
 
@@ -78,12 +83,13 @@ export interface LibSignalRepositoryOptions {
 /**
  * Generate a SHA-256 fingerprint of an identity key
  * This is used to display to users for verification
+ * Returns full 64-character hex string (256 bits) for cryptographic consistency
  *
  * @param key - The identity key bytes
- * @returns Hex string fingerprint
+ * @returns Full SHA-256 hex string fingerprint (64 characters)
  */
 function generateKeyFingerprint(key: Uint8Array): string {
-	return createHash('sha256').update(key).digest('hex').substring(0, 32)
+	return createHash('sha256').update(key).digest('hex')
 }
 
 /**
@@ -175,6 +181,11 @@ function extractIdentityFromPkmsg(ciphertext: Uint8Array, logger?: ILogger): Uin
 				}
 
 				offset += length
+				// Bounds check after skipping field
+				if (offset > ciphertext.length) {
+					logger?.debug({ offset, length: ciphertext.length }, 'Offset exceeds ciphertext bounds after length-delimited field')
+					break
+				}
 			} else if (wireType === 0) {
 				// Varint
 				const varintResult = readVarint(ciphertext, offset)
@@ -183,9 +194,11 @@ function extractIdentityFromPkmsg(ciphertext: Uint8Array, logger?: ILogger): Uin
 			} else if (wireType === 1) {
 				// 64-bit fixed
 				offset += 8
+				if (offset > ciphertext.length) break
 			} else if (wireType === 5) {
 				// 32-bit fixed
 				offset += 4
+				if (offset > ciphertext.length) break
 			} else {
 				// Unknown wire type, cannot continue
 				logger?.debug({ wireType }, 'Unknown wire type in protobuf')
@@ -226,10 +239,13 @@ function readVarint(buffer: Uint8Array, offset: number): { value: number; nextOf
 		shift += 7
 		if (shift > 35) {
 			// Varint too long (max 5 bytes for 32-bit)
+			// This could indicate a malformed or malicious message
+			// Caller should log this condition at debug level
 			return undefined
 		}
 	}
 
+	// Incomplete varint - buffer ended before termination byte
 	return undefined
 }
 
@@ -255,9 +271,9 @@ export function makeLibSignalRepository(
 		metrics.signalIdentityKeyCacheSize?.set(identityKeyCache.size)
 	}, 60000) // Every minute
 
-	// Cleanup interval on process exit
-	if (typeof process !== 'undefined') {
-		process.on('beforeExit', () => clearInterval(cacheMetricsInterval))
+	// Allow process to exit even with interval active (prevents blocking in short-lived scripts/tests)
+	if (typeof cacheMetricsInterval.unref === 'function') {
+		cacheMetricsInterval.unref()
 	}
 
 	const storage = signalStorage(auth, lidMapping, identityKeyCache, ev, preKeyCircuitBreaker, logger)
@@ -334,7 +350,8 @@ export function makeLibSignalRepository(
 								)
 
 								// Reset prekey circuit breaker since we identified the cause
-								if (preKeyCircuitBreaker?.isOpen()) {
+								// Reset regardless of state (could be open, half-open, or closed with accumulated failures)
+								if (preKeyCircuitBreaker) {
 									preKeyCircuitBreaker.reset()
 									logger.debug({ jid }, 'Reset prekey circuit breaker after identity key change detection')
 								}
