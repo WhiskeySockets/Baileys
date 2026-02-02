@@ -76,7 +76,7 @@ describe('processContactAction', () => {
 
 			expect(results).toContainEqual({
 				event: 'lid-mapping.update',
-				data: { lid: '123456789@lid', pn: '5511999999999@s.whatsapp.net' }
+				data: [{ lid: '123456789@lid', pn: '5511999999999@s.whatsapp.net' }]
 			})
 		})
 
@@ -88,7 +88,7 @@ describe('processContactAction', () => {
 
 			expect(results).toContainEqual({
 				event: 'lid-mapping.update',
-				data: { lid: '173233882013816:99@lid', pn: '5511999999999@s.whatsapp.net' }
+				data: [{ lid: '173233882013816:99@lid', pn: '5511999999999@s.whatsapp.net' }]
 			})
 		})
 

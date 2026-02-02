@@ -10,10 +10,8 @@ import type { ILogger } from '../Utils/logger'
 import { metrics } from '../Utils/prometheus-metrics.js'
 import { CircuitBreaker } from '../Utils/circuit-breaker.js'
 import {
-	isHostedLidUser,
-	isHostedPnUser,
-	isLidUser,
-	isPnUser,
+	isAnyLidUser,
+	isAnyPnUser,
 	jidDecode,
 	transferDevice,
 	WAJIDDomains
@@ -477,10 +475,10 @@ export function makeLibSignalRepository(
 			toJid: string
 		): Promise<{ migrated: number; skipped: number; total: number }> {
 			// TODO: use usync to handle this entire mess
-			if (!fromJid || (!isLidUser(toJid) && !isHostedLidUser(toJid))) return { migrated: 0, skipped: 0, total: 0 }
+			if (!fromJid || !isAnyLidUser(toJid)) return { migrated: 0, skipped: 0, total: 0 }
 
 			// Only support PN to LID migration
-			if (!isPnUser(fromJid) && !isHostedPnUser(fromJid)) {
+			if (!isAnyPnUser(fromJid)) {
 				return { migrated: 0, skipped: 0, total: 1 }
 			}
 

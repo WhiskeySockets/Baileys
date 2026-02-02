@@ -1,7 +1,7 @@
 import { LRUCache } from 'lru-cache'
 import type { LIDMapping, SignalKeyStoreWithTransaction } from '../Types'
 import type { ILogger } from '../Utils/logger'
-import { isHostedLidUser, isHostedPnUser, isLidUser, isPnUser, jidDecode, jidNormalizedUser, WAJIDDomains } from '../WABinary'
+import { isAnyLidUser, isAnyPnUser, isHostedPnUser, jidDecode, jidNormalizedUser, WAJIDDomains } from '../WABinary'
 
 // ============================================================================
 // CONFIGURATION
@@ -325,8 +325,9 @@ export class LIDMappingStore {
 
 		const result = { stored: 0, skipped: 0, errors: 0 }
 
-		// Validate and prepare mappings
-		const validPairs: { [pnUser: string]: string } = {}
+		// Phase 1: Validate and collect cache misses
+		const cacheMissPnUsers: string[] = []
+		const pendingValidation = new Map<string, { pnUser: string; lidUser: string }>()
 
 		for (const { lid, pn } of pairs) {
 			if (!this.isValidMapping(lid, pn)) {
@@ -348,59 +349,90 @@ export class LIDMappingStore {
 			const lidUser = lidDecoded.user
 
 			// Check cache first
-			let existingLidUser = this.mappingCache.get(`pn:${pnUser}`)
+			const existingLidUser = this.mappingCache.get(`pn:${pnUser}`)
 
-			if (!existingLidUser) {
-				// Cache miss - check database
-				this.stats.cacheMisses++
-				try {
-					const stored = await this.retryOperation(
-						() => this.keys.get('lid-mapping', [pnUser]),
-						'get-mapping'
-					)
-					existingLidUser = stored[pnUser]
-
-					if (existingLidUser) {
-						this.stats.dbHits++
-						// Update cache with database value
-						this.mappingCache.set(`pn:${pnUser}`, existingLidUser)
-						this.mappingCache.set(`lid:${existingLidUser}`, pnUser)
-					} else {
-						this.stats.dbMisses++
+			if (existingLidUser !== undefined) {
+				// Cache hit
+				this.stats.cacheHits++
+				if (existingLidUser === lidUser) {
+					if (this.config.debugLogging) {
+						this.logger.debug({ pnUser, lidUser }, 'LID mapping already exists, skipping')
 					}
-				} catch (error) {
-					this.logger.error({ error, pnUser }, 'Failed to check existing mapping')
-					result.errors++
-					continue
+					result.skipped++
+				} else {
+					// Different mapping - will be stored
+					pendingValidation.set(pnUser, { pnUser, lidUser })
 				}
 			} else {
-				this.stats.cacheHits++
+				// Cache miss - queue for batch DB fetch
+				this.stats.cacheMisses++
+				cacheMissPnUsers.push(pnUser)
+				pendingValidation.set(pnUser, { pnUser, lidUser })
 			}
-
-			if (existingLidUser === lidUser) {
-				if (this.config.debugLogging) {
-					this.logger.debug({ pnUser, lidUser }, 'LID mapping already exists, skipping')
-				}
-				result.skipped++
-				continue
-			}
-
-			validPairs[pnUser] = lidUser
 		}
 
-		if (Object.keys(validPairs).length === 0) {
+		// Phase 2: Batch fetch all cache misses from DB
+		if (cacheMissPnUsers.length > 0) {
+			const batches = this.chunkArray(cacheMissPnUsers, this.config.batchSize)
+
+			for (const batch of batches) {
+				try {
+					const stored = await this.retryOperation(
+						() => this.keys.get('lid-mapping', batch),
+						'batch-get-mappings'
+					)
+
+					// Update cache and validate against DB
+					for (const pnUser of batch) {
+						const existingLidUser = stored[pnUser]
+
+						if (existingLidUser) {
+							this.stats.dbHits++
+							// Update cache with database value
+							this.mappingCache.set(`pn:${pnUser}`, existingLidUser)
+							this.mappingCache.set(`lid:${existingLidUser}`, pnUser)
+
+							// Check if this mapping should be skipped
+							const pending = pendingValidation.get(pnUser)
+							if (pending && existingLidUser === pending.lidUser) {
+								if (this.config.debugLogging) {
+									this.logger.debug(
+										{ pnUser, lidUser: pending.lidUser },
+										'LID mapping already exists in DB, skipping'
+									)
+								}
+								result.skipped++
+								pendingValidation.delete(pnUser)
+							}
+						} else {
+							this.stats.dbMisses++
+						}
+					}
+				} catch (error) {
+					this.logger.error({ error, batchSize: batch.length }, 'Failed to batch fetch existing mappings')
+					result.errors += batch.length
+					// Remove failed fetches from pending validation to avoid storing them
+					for (const pnUser of batch) {
+						pendingValidation.delete(pnUser)
+					}
+				}
+			}
+		}
+
+		// Phase 3: Store new/updated mappings
+		const validPairs = Array.from(pendingValidation.values())
+
+		if (validPairs.length === 0) {
 			return result
 		}
 
-		// Store in batches for better performance
-		const entries = Object.entries(validPairs)
-		const batches = this.chunkArray(entries, this.config.batchSize)
+		const storeBatches = this.chunkArray(validPairs, this.config.batchSize)
 
-		for (const batch of batches) {
+		for (const batch of storeBatches) {
 			try {
 				await this.retryOperation(async () => {
 					await this.keys.transaction(async () => {
-						for (const [pnUser, lidUser] of batch) {
+						for (const { pnUser, lidUser } of batch) {
 							await this.keys.set({
 								'lid-mapping': {
 									[pnUser]: lidUser,
@@ -422,7 +454,7 @@ export class LIDMappingStore {
 			}
 		}
 
-		this.logger.trace({ result, totalPairs: pairs.length }, 'Stored LID-PN mappings')
+		this.logger.trace({ result, totalPairs: pairs.length, cacheMisses: cacheMissPnUsers.length }, 'Stored LID-PN mappings with batch optimization')
 		this.recordMetrics('store', result.stored)
 
 		return result
@@ -454,7 +486,7 @@ export class LIDMappingStore {
 		const pendingByPnUser = new Map<string, Array<{ pn: string; decoded: ReturnType<typeof jidDecode> }>>()
 
 		for (const pn of pns) {
-			if (!isPnUser(pn) && !isHostedPnUser(pn)) continue
+			if (!isAnyPnUser(pn)) continue
 
 			const decoded = jidDecode(pn)
 			if (!decoded) continue
@@ -620,7 +652,7 @@ export class LIDMappingStore {
 		}
 
 		for (const lid of lids) {
-			if (!isLidUser(lid) && !isHostedLidUser(lid)) continue
+			if (!isAnyLidUser(lid)) continue
 
 			const decoded = jidDecode(lid)
 			if (!decoded) continue
@@ -705,7 +737,7 @@ export class LIDMappingStore {
 	async hasMappingForPN(pn: string): Promise<boolean> {
 		this.checkDestroyed()
 
-		if (!isPnUser(pn) && !isHostedPnUser(pn)) return false
+		if (!isAnyPnUser(pn)) return false
 
 		const decoded = jidDecode(pn)
 		if (!decoded) return false
@@ -735,7 +767,7 @@ export class LIDMappingStore {
 	async deleteMappingFromCache(pn: string): Promise<boolean> {
 		this.checkDestroyed()
 
-		if (!isPnUser(pn) && !isHostedPnUser(pn)) return false
+		if (!isAnyPnUser(pn)) return false
 
 		const decoded = jidDecode(pn)
 		if (!decoded) return false
@@ -807,7 +839,7 @@ export class LIDMappingStore {
 	 * Checks that one is a LID and the other is a PN (in either order)
 	 */
 	private isValidMapping(lid: string, pn: string): boolean {
-		return (isLidUser(lid) && isPnUser(pn)) || (isPnUser(lid) && isLidUser(pn)) || false
+		return (isAnyLidUser(lid) && isAnyPnUser(pn)) || (isAnyPnUser(lid) && isAnyLidUser(pn))
 	}
 
 	/**

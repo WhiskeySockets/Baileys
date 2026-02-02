@@ -56,7 +56,7 @@ export const processContactAction = (
 	if (lidJid && isLidUser(lidJid) && idIsPn) {
 		results.push({
 			event: 'lid-mapping.update',
-			data: { lid: lidJid, pn: id }
+			data: [{ lid: lidJid, pn: id }]
 		})
 	}
 
