@@ -48,7 +48,9 @@ jobs:
         uses: actions/cache@v4
         id: yarn-cache
         with:
-          path: .yarn/cache
+          path: |
+            node_modules
+            .yarn/install-state.gz
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn-
@@ -143,11 +145,24 @@ jobs:
           > **Note:** This PR was created with force mode enabled."
           fi
 
-          gh pr create \
+          # Create PR
+          PR_URL=$(gh pr create \
             --title "chore: update WhatsApp Web version" \
             --body "$PR_BODY" \
             --base master \
-            --head "$BRANCH_NAME" || echo "PR already exists or could not be created"
+            --head "$BRANCH_NAME" 2>&1) || true
+
+          if [[ "$PR_URL" == *"github.com"* ]]; then
+            echo "PR created: $PR_URL"
+
+            # Auto-merge the PR (squash merge)
+            echo "Attempting to auto-merge..."
+            gh pr merge "$BRANCH_NAME" --squash --auto --delete-branch || \
+              gh pr merge "$BRANCH_NAME" --squash --delete-branch || \
+              echo "Auto-merge not available - PR created for manual review"
+          else
+            echo "PR already exists or could not be created: $PR_URL"
+          fi
 
       - name: Summary
         run: |
