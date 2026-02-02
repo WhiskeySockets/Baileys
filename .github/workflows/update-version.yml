@@ -35,11 +35,14 @@ jobs:
           corepack prepare yarn@4.x --activate
 
       - name: Configure Git for HTTPS
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Force git to use HTTPS instead of SSH for GitHub repositories
-          # This fixes "Permission denied (publickey)" errors in CI
           git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
           git config --global url."https://github.com/".insteadOf "git@github.com:"
+          # Configure git to use GITHUB_TOKEN for authentication
+          git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
 
       - name: Restore Yarn Cache
         uses: actions/cache@v4
