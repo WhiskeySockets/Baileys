@@ -169,7 +169,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			node.attrs.t = unixTimestampSeconds().toString()
 		}
 
-		if (type === 'sender' && (isAnyPnUser(jid) || isAnyLidUser(jid))) {
+		if (type === 'sender' && (isPnUser(jid) || isLidUser(jid))) {
 			node.attrs.recipient = jid
 			node.attrs.to = participant!
 		} else {
@@ -1244,9 +1244,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					// Only inject for actual user JIDs, not broadcasts, newsletters, or Meta AI bots
 					// IMPORTANT: Carousels and catalog messages should NOT have bot node
 					// as they are regular interactive messages, not bot messages
+					// NOTE: Only for regular JIDs, NOT hosted JIDs (to avoid interference with interactive messages)
 					const isPrivateUserChat = (
-						isAnyPnUser(destinationJid) ||
-						isAnyLidUser(destinationJid) ||
+						isPnUser(destinationJid) ||
+						isLidUser(destinationJid) ||
 						destinationJid?.endsWith('@c.us')
 					) && !isJidBot(destinationJid)
 
