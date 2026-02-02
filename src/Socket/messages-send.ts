@@ -49,6 +49,8 @@ import {
 	type FullJid,
 	getBinaryNodeChild,
 	getBinaryNodeChildren,
+	isAnyLidUser,
+	isAnyPnUser,
 	isHostedLidUser,
 	isHostedPnUser,
 	isJidBot,
@@ -289,7 +291,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 
 		const requestedLidUsers = new Set<string>()
 		for (const jid of toFetch) {
-			if (isLidUser(jid) || isHostedLidUser(jid)) {
+			if (isAnyLidUser(jid)) {
 				const user = jidDecode(jid)?.user
 				if (user) requestedLidUsers.add(user)
 			}
@@ -453,10 +455,10 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		if (jidsRequiringFetch.length) {
 			// LID if mapped, otherwise original
 			const wireJids = [
-				...jidsRequiringFetch.filter(jid => !!isLidUser(jid) || !!isHostedLidUser(jid)),
+				...jidsRequiringFetch.filter(jid => isAnyLidUser(jid)),
 				...(
 					(await signalRepository.lidMapping.getLIDsForPNs(
-						jidsRequiringFetch.filter(jid => !!isPnUser(jid) || !!isHostedPnUser(jid))
+						jidsRequiringFetch.filter(jid => isAnyPnUser(jid))
 					)) || []
 				).map(a => a.lid)
 			]
@@ -1110,7 +1112,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			if (isRetryResend) {
-				const isParticipantLid = isLidUser(participant!.jid)
+				const isParticipantLid = isAnyLidUser(participant!.jid)
 				const isMe = areJidsSameUser(participant!.jid, isParticipantLid ? meLid : meId)
 
 				const encodedMessageToSend = isMe
@@ -1242,6 +1244,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 					// Only inject for actual user JIDs, not broadcasts, newsletters, or Meta AI bots
 					// IMPORTANT: Carousels and catalog messages should NOT have bot node
 					// as they are regular interactive messages, not bot messages
+					// NOTE: Only for regular JIDs, NOT hosted JIDs (to avoid interference with interactive messages)
 					const isPrivateUserChat = (
 						isPnUser(destinationJid) ||
 						isLidUser(destinationJid) ||

@@ -8,13 +8,11 @@ import { normalizeMessageContent } from './messages'
 import { downloadContentFromMessage } from './messages-media'
 import type { ILogger } from './logger.js'
 import {
-	isHostedLidUser,
-	isHostedPnUser,
+	isAnyLidUser,
+	isAnyPnUser,
 	isJidBroadcast,
 	isJidGroup,
 	isJidNewsletter,
-	isLidUser,
-	isPnUser,
 	jidDecode,
 	jidNormalizedUser
 } from '../WABinary/index.js'
@@ -62,12 +60,7 @@ export function isPersonJid(jid: string | undefined): boolean {
 	}
 
 	// Only person JIDs (LID or PN formats) can have mappings
-	return !!(
-		isLidUser(jid) ||
-		isHostedLidUser(jid) ||
-		isPnUser(jid) ||
-		isHostedPnUser(jid)
-	)
+	return isAnyLidUser(jid) || isAnyPnUser(jid)
 }
 
 /**
@@ -116,9 +109,9 @@ export function extractLidPnFromConversation(
 	}
 
 	// Check if chat ID is in LID format
-	const chatIsLid = isLidUser(chatId) || isHostedLidUser(chatId)
+	const chatIsLid = isAnyLidUser(chatId)
 	// Check if chat ID is in PN format
-	const chatIsPn = isPnUser(chatId) || isHostedPnUser(chatId)
+	const chatIsPn = isAnyPnUser(chatId)
 
 	if (chatIsLid && pnJid) {
 		// Chat ID is LID, pnJid contains the phone number
@@ -229,7 +222,7 @@ const extractPnFromMessages = (messages: proto.IHistorySyncMsg[]): string | unde
 		}
 
 		const userJid = message.userReceipt[0]?.userJid
-		if (userJid && (isPnUser(userJid) || isHostedPnUser(userJid))) {
+		if (userJid && isAnyPnUser(userJid)) {
 			return userJid
 		}
 	}
@@ -312,7 +305,7 @@ export const processHistoryMessage = (item: proto.IHistorySync, logger?: ILogger
 				)
 				if (conversationMapping) {
 					addLidPnMapping(conversationMapping)
-				} else if ((isLidUser(chatId) || isHostedLidUser(chatId)) && !chat.pnJid) {
+				} else if (isAnyLidUser(chatId) && !chat.pnJid) {
 					// Source 2b: Fallback - extract PN from userReceipt in messages when pnJid is missing
 					// This handles edge cases where the conversation is LID but pnJid wasn't provided
 					const pnFromReceipt = extractPnFromMessages(chat.messages || [])

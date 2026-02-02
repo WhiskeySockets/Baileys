@@ -342,9 +342,9 @@ const processMessage = async (
 							logger?.warn({ error }, 'Failed to store LID-PN mappings from history sync')
 						}
 
-						// eslint-disable-next-line max-depth
-						for (const mapping of data.lidPnMappings) {
-							ev.emit('lid-mapping.update', mapping)
+						// Emit all mappings at once for better performance
+						if (data.lidPnMappings.length > 0) {
+							ev.emit('lid-mapping.update', data.lidPnMappings)
 						}
 					}
 
