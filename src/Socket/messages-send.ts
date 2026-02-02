@@ -1112,7 +1112,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			}
 
 			if (isRetryResend) {
-				const isParticipantLid = isAnyLidUser(participant!.jid)
+				// Only check for regular LID users, NOT hosted LID users
+				// Hosted LID users should use meId for comparison, not meLid
+				const isParticipantLid = isLidUser(participant!.jid)
 				const isMe = areJidsSameUser(participant!.jid, isParticipantLid ? meLid : meId)
 
 				const encodedMessageToSend = isMe
