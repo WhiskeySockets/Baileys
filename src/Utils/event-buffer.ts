@@ -421,6 +421,8 @@ export const makeEventBuffer = (
 	// Metrics integration (lazy loaded to avoid circular deps)
 	let metricsModule: typeof import('./prometheus-metrics') | null = null
 	let metricsQueue: Array<() => void> = []
+	let metricsImportFailed = false
+	const MAX_METRICS_QUEUE_SIZE = 1000 // Cap to prevent unbounded growth
 
 	if (config.enableMetrics) {
 		import('./prometheus-metrics').then(m => {
@@ -431,6 +433,9 @@ export const makeEventBuffer = (
 			metricsQueue = []
 		}).catch(() => {
 			logger.debug('Prometheus metrics not available for event buffer')
+			metricsImportFailed = true
+			// Clear queue to prevent memory leak
+			metricsQueue = []
 		})
 	}
 
@@ -438,17 +443,17 @@ export const makeEventBuffer = (
 	const recordMetrics = (eventType: string, count: number) => {
 		if (metricsModule) {
 			metricsModule.recordEventBuffered(eventType, count)
-		} else {
-			// Buffer metric call until module loads
+		} else if (!metricsImportFailed && metricsQueue.length < MAX_METRICS_QUEUE_SIZE) {
+			// Buffer metric call until module loads (with size limit)
 			metricsQueue.push(() => metricsModule?.recordEventBuffered(eventType, count))
 		}
+		// If import failed or queue is full, silently drop metric
 	}
 
 	const recordFlushMetrics = (eventCount: number, forced: boolean, cacheSize: number) => {
 		if (metricsModule) {
 			metricsModule.recordBufferFlush(eventCount, forced, cacheSize)
-		} else {
-			// Buffer metric call until module loads
+		} else if (!metricsImportFailed && metricsQueue.length < MAX_METRICS_QUEUE_SIZE) {
 			metricsQueue.push(() => metricsModule?.recordBufferFlush(eventCount, forced, cacheSize))
 		}
 	}
@@ -489,7 +494,7 @@ export const makeEventBuffer = (
 			// Record overflow metric
 			if (metricsModule) {
 				metricsModule.recordBufferOverflow()
-			} else {
+			} else if (!metricsImportFailed && metricsQueue.length < MAX_METRICS_QUEUE_SIZE) {
 				metricsQueue.push(() => metricsModule?.recordBufferOverflow())
 			}
 			flush(true)
@@ -528,7 +533,7 @@ export const makeEventBuffer = (
 			// Record metrics for cache cleanup
 			if (metricsModule) {
 				metricsModule.recordCacheCleanup(removed.length)
-			} else {
+			} else if (!metricsImportFailed && metricsQueue.length < MAX_METRICS_QUEUE_SIZE) {
 				metricsQueue.push(() => metricsModule?.recordCacheCleanup(removed.length))
 			}
 		}
@@ -608,7 +613,7 @@ export const makeEventBuffer = (
 		if (config.enableAdaptiveTimeout) {
 			if (metricsModule) {
 				metricsModule.updateAdaptiveMetrics(adaptiveTimeout.getEventRate(), adaptiveTimeout.isHealthy())
-			} else {
+			} else if (!metricsImportFailed && metricsQueue.length < MAX_METRICS_QUEUE_SIZE) {
 				metricsQueue.push(() => metricsModule?.updateAdaptiveMetrics(adaptiveTimeout.getEventRate(), adaptiveTimeout.isHealthy()))
 			}
 		}
@@ -666,7 +671,7 @@ export const makeEventBuffer = (
 			// Record final flush metric
 			if (metricsModule) {
 				metricsModule.recordBufferFinalFlush()
-			} else {
+			} else if (!metricsImportFailed && metricsQueue.length < MAX_METRICS_QUEUE_SIZE) {
 				metricsQueue.push(() => metricsModule?.recordBufferFinalFlush())
 			}
 		}
@@ -684,7 +689,7 @@ export const makeEventBuffer = (
 		// Record buffer destroyed metric
 		if (metricsModule) {
 			metricsModule.recordBufferDestroyed('normal', hadPendingFlush)
-		} else {
+		} else if (!metricsImportFailed && metricsQueue.length < MAX_METRICS_QUEUE_SIZE) {
 			metricsQueue.push(() => metricsModule?.recordBufferDestroyed('normal', hadPendingFlush))
 		}
 

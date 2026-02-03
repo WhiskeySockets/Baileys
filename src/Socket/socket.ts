@@ -505,14 +505,11 @@ export const makeSocket = (config: SocketConfig) => {
 	let qrTimer: NodeJS.Timeout
 	let closed = false
 
-	// Auto-reconnect state for session errors
-	const MAX_RECONNECT_ATTEMPTS = 5
-	let reconnectAttempts = 0
-
 	// Session TTL and cleanup
 	const SESSION_TTL = 7 * 24 * 60 * 60 * 1000 // 7 days
 	let sessionStartTime: number | undefined
 	let ttlTimer: NodeJS.Timeout | undefined
+	let ttlGraceTimer: NodeJS.Timeout | undefined
 
 	/** log & process any unexpected errors */
 	const onUnexpectedError = (err: Error | Boom, msg: string) => {
@@ -739,6 +736,7 @@ export const makeSocket = (config: SocketConfig) => {
 	/**
 	 * PreKey Auto-Sync: Proactive validation every 6 hours
 	 * Prevents "Identity key field not found" errors by ensuring keys are always valid
+	 * Returns cleanup function to remove event listener
 	 */
 	const startPreKeyAutoSync = () => {
 		const SYNC_INTERVAL = 6 * 60 * 60 * 1000 // 6 hours
@@ -769,18 +767,21 @@ export const makeSocket = (config: SocketConfig) => {
 				isRunning = false
 			}
 
-			// PROTECTION 5: Reschedule AFTER completion (not from start)
-			syncTimer = setTimeout(syncLoop, SYNC_INTERVAL)
+			// PROTECTION 3: Prevent timer accumulation
+			// Only reschedule if connection is still open
+			if (!closed && ws.isOpen) {
+				syncTimer = setTimeout(syncLoop, SYNC_INTERVAL)
+			}
 		}
 
-		// PROTECTION 6: Initial delay (avoid duplicate at startup)
+		// PROTECTION 4: Initial delay (avoid duplicate at startup)
 		// CB:success already calls uploadPreKeysToServerIfRequired(), so wait 6h before first auto-sync
-		ev.on('connection.update', ({ connection }) => {
+		const connectionHandler = ({ connection }: { connection: any }) => {
 			if (connection === 'open') {
 				logger.info('🔑 Starting PreKey auto-sync timer (first sync in 6h)')
 				syncTimer = setTimeout(syncLoop, SYNC_INTERVAL)
 			} else if (connection === 'close') {
-				// PROTECTION 7: Cleanup on disconnect
+				// PROTECTION 5: Cleanup on disconnect
 				if (syncTimer) {
 					clearTimeout(syncTimer)
 					syncTimer = undefined
@@ -788,18 +789,30 @@ export const makeSocket = (config: SocketConfig) => {
 					logger.info('🔑 PreKey auto-sync stopped')
 				}
 			}
-		})
+		}
+
+		ev.on('connection.update', connectionHandler)
+
+		// PROTECTION 6: Return cleanup function
+		return () => {
+			ev.off('connection.update', connectionHandler)
+			if (syncTimer) {
+				clearTimeout(syncTimer)
+				syncTimer = undefined
+			}
+		}
 	}
 
-	// Initialize PreKey auto-sync
-	startPreKeyAutoSync()
+	// Initialize PreKey auto-sync and store cleanup function
+	const cleanupPreKeyAutoSync = startPreKeyAutoSync()
 
 	/**
 	 * Session TTL Management: Graceful cleanup after 7 days
 	 * Prevents memory leaks and allows credential rotation in long-running sessions
+	 * Returns cleanup function to remove event listener
 	 */
 	const startSessionTTL = () => {
-		ev.on('connection.update', ({ connection }) => {
+		const connectionHandler = ({ connection }: { connection: any }) => {
 			if (connection === 'open') {
 				sessionStartTime = Date.now()
 
@@ -816,8 +829,8 @@ export const makeSocket = (config: SocketConfig) => {
 						duration: duration
 					})
 
-					// PROTECTION 4: Graceful delay before cleanup
-					setTimeout(() => {
+					// PROTECTION 3: Graceful delay before cleanup (with proper cleanup)
+					ttlGraceTimer = setTimeout(() => {
 						logger.info('🕐 Proceeding with TTL cleanup after grace period')
 						end(new Error('SESSION_TTL_EXPIRED'))
 					}, 5000) // 5s grace period
@@ -826,19 +839,38 @@ export const makeSocket = (config: SocketConfig) => {
 				const ttlHours = SESSION_TTL / 1000 / 60 / 60
 				logger.info(`🕐 Session TTL started (${ttlHours}h = 7 days)`)
 			} else if (connection === 'close') {
-				// PROTECTION 3: Cleanup timer on disconnect
+				// PROTECTION 4: Cleanup ALL timers on disconnect
 				if (ttlTimer) {
 					clearTimeout(ttlTimer)
 					ttlTimer = undefined
-					sessionStartTime = undefined
-					logger.info('🕐 Session TTL timer cleared')
 				}
+				if (ttlGraceTimer) {
+					clearTimeout(ttlGraceTimer)
+					ttlGraceTimer = undefined
+				}
+				sessionStartTime = undefined
+				logger.info('🕐 Session TTL timers cleared')
 			}
-		})
+		}
+
+		ev.on('connection.update', connectionHandler)
+
+		// PROTECTION 5: Return cleanup function
+		return () => {
+			ev.off('connection.update', connectionHandler)
+			if (ttlTimer) {
+				clearTimeout(ttlTimer)
+				ttlTimer = undefined
+			}
+			if (ttlGraceTimer) {
+				clearTimeout(ttlGraceTimer)
+				ttlGraceTimer = undefined
+			}
+		}
 	}
 
-	// Initialize Session TTL
-	startSessionTTL()
+	// Initialize Session TTL and store cleanup function
+	const cleanupSessionTTL = startSessionTTL()
 
 	const onMessageReceived = async (data: Buffer) => {
 		await noise.decodeFrame(data, frame => {
@@ -947,6 +979,12 @@ export const makeSocket = (config: SocketConfig) => {
 
 		// Clean up transaction capability (PreKeyManager + queues)
 		keys.destroy?.()
+
+		// Clean up PreKey auto-sync event listener
+		cleanupPreKeyAutoSync()
+
+		// Clean up Session TTL event listener
+		cleanupSessionTTL()
 
 		ws.removeAllListeners('close')
 		ws.removeAllListeners('open')
@@ -1366,46 +1404,24 @@ export const makeSocket = (config: SocketConfig) => {
 
 	// update credentials when required
 	ev.on('creds.update', async update => {
-		// CRITICAL: Handle session errors with auto-reconnect
+		// CRITICAL: Handle session errors by emitting close event for consumer-level reconnect
 		if (update.error) {
-			logger.error({ error: update.error }, '🔴 Session error detected - initiating auto-reconnect')
+			logger.error({ error: update.error }, '🔴 Session error detected')
 
-			// PROTECTION 1: Max attempts guard
-			if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-				logger.error(`❌ Max reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) reached, giving up`)
-				ev.emit('connection.update', {
-					connection: 'close',
-					lastDisconnect: {
-						error: update.error,
-						date: new Date()
-					}
-				})
-				return
-			}
-
-			reconnectAttempts++
-			logger.info(`🔄 Reconnect attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`)
-
-			// PROTECTION 4: Cleanup before reconnect
-			await end(update.error)
-
-			// PROTECTION 2: Exponential backoff
-			const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000)
-			logger.info(`⏳ Waiting ${delay}ms before reconnect (exponential backoff)`)
-			await new Promise(resolve => setTimeout(resolve, delay))
-
-			// Attempt reconnect
-			logger.info(`🔄 Reconnecting now (attempt ${reconnectAttempts})`)
-			await connect()
-
-			// PROTECTION 3: Reset counter on success
-			ev.once('connection.update', ({ connection }) => {
-				if (connection === 'open') {
-					logger.info(`✅ Reconnect successful, resetting attempt counter`)
-					reconnectAttempts = 0
-				}
+			// Session errors indicate keys are desynchronized - socket must be recreated
+			// Emit close event so consumer can call makeWASocket() again
+			ev.emit('connection.update', {
+				connection: 'close',
+				lastDisconnect: {
+					error: update.error,
+					date: new Date()
+				},
+				// Include session error flag for consumer to detect
+				isSessionError: true
 			})
 
+			// Cleanup current socket
+			await end(update.error)
 			return
 		}
 

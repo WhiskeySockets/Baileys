@@ -153,6 +153,18 @@ export type BaileysEventMap = {
 		/** Whether this is a new contact (true) or an existing contact with changed key (false) */
 		isNewContact: boolean
 	}
+
+	/**
+	 * Emitted when the session TTL (Time-To-Live) expires after 7 days.
+	 * Applications can listen to this event to perform graceful cleanup,
+	 * flush pending operations, or rotate credentials before the socket closes.
+	 */
+	'session.ttl-expired': {
+		/** Timestamp when the session started (Date.now()) */
+		startTime: number | undefined
+		/** Duration of the session in milliseconds */
+		duration: number
+	}
 }
 
 export type BufferedEventData = {
