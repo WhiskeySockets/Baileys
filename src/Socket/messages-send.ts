@@ -1639,10 +1639,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 			// Emit own event for album root if configured
 			if (config.emitOwnEvents) {
 				process.nextTick(async () => {
-					const mutexKey = albumRootMsg.key.remoteJid || (() => {
+					let mutexKey = albumRootMsg.key.remoteJid
+					if (!mutexKey) {
 						logger.warn({ msgId: albumRootMsg.key.id }, 'Missing remoteJid in albumRootMsg, using msg.key.id as fallback')
-						return albumRootMsg.key.id || 'unknown'
-					})()
+						mutexKey = albumRootMsg.key.id || 'unknown'
+					}
 					await messageMutex.mutex(mutexKey, () => upsertMessage(albumRootMsg, 'append'))
 				})
 			}
@@ -1736,10 +1737,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						// Emit own event if configured
 						if (config.emitOwnEvents) {
 							process.nextTick(async () => {
-								const mutexKey = mediaMsg.key.remoteJid || (() => {
+								let mutexKey = mediaMsg.key.remoteJid
+								if (!mutexKey) {
 									logger.warn({ msgId: mediaMsg.key.id }, 'Missing remoteJid in mediaMsg, using msg.key.id as fallback')
-									return mediaMsg.key.id || 'unknown'
-								})()
+									mutexKey = mediaMsg.key.id || 'unknown'
+								}
 								await messageMutex.mutex(mutexKey, () => upsertMessage(mediaMsg, 'append'))
 							})
 						}
@@ -1939,10 +1941,11 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				})
 				if (config.emitOwnEvents) {
 					process.nextTick(async () => {
-						const mutexKey = fullMsg.key.remoteJid || (() => {
+						let mutexKey = fullMsg.key.remoteJid
+						if (!mutexKey) {
 							logger.warn({ msgId: fullMsg.key.id }, 'Missing remoteJid in fullMsg, using msg.key.id as fallback')
-							return fullMsg.key.id || 'unknown'
-						})()
+							mutexKey = fullMsg.key.id || 'unknown'
+						}
 						await messageMutex.mutex(mutexKey, () => upsertMessage(fullMsg, 'append'))
 					})
 				}

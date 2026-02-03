@@ -1265,14 +1265,23 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			)
 		}
 
+		// CRITICAL: Normalize JIDs BEFORE acquiring mutex to ensure messages from the same
+		// chat (arriving with different JID formats - LID vs PN) use the SAME mutex key.
+		// This prevents parallel processing of messages from the same conversation which
+		// would break message ordering guarantees.
+		// Addresses Copilot/Codex PR #75 critical review: JID normalization vulnerability
+		await normalizeMessageJids(msg, signalRepository, logger)
+
 		try {
-			// Use KeyedMutex with remoteJid to allow parallel processing of messages from different chats
-			// while maintaining order for messages within the same chat
-			// Fallback: msg.key.id (unique per message) > 'unknown' (serializes all unknown messages)
-			const mutexKey = msg.key.remoteJid || (() => {
-				logger.warn({ msgId: msg.key.id, fromMe: msg.key.fromMe }, 'Missing remoteJid in message key, using msg.key.id as fallback')
-				return msg.key.id || 'unknown'
-			})()
+			// Use KeyedMutex with NORMALIZED remoteJid for parallel processing across different chats
+			// while maintaining sequential order within the same chat
+			// Fallback chain: remoteJid (normalized) > msg.key.id (unique) > 'unknown' (serializes all)
+			let mutexKey = msg.key.remoteJid
+			if (!mutexKey) {
+				logger.warn({ msgId: msg.key.id, fromMe: msg.key.fromMe }, 'Missing remoteJid after normalization, using msg.key.id as fallback')
+				mutexKey = msg.key.id || 'unknown'
+			}
+
 			await messageMutex.mutex(mutexKey, async () => {
 				await decrypt()
 				// message failed to decrypt
@@ -1487,7 +1496,8 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 					}
 				}
 
-				await normalizeMessageJids(msg, signalRepository, logger)
+				// JID normalization moved BEFORE mutex acquisition (line 1273) to prevent race conditions
+				// cleanMessage still runs inside mutex to ensure atomic message processing
 				cleanMessage(msg, authState.creds.me!.id, authState.creds.me!.lid!)
 
 				await upsertMessage(msg, node.attrs.offline ? 'append' : 'notify')
