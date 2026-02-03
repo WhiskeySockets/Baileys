@@ -91,17 +91,17 @@ const makeLtHashGenerator = ({ indexValueMap, hash }: Pick<LTHashState, 'hash' |
 				// remove from index value mac, since this mutation is erased
 				delete indexValueMap[indexMacBase64]
 			} else {
-				addBuffs.push(new Uint8Array(valueMac))
+				addBuffs.push(valueMac)
 				// add this index into the history map
 				indexValueMap[indexMacBase64] = { valueMac }
 			}
 
 			if (prevOp) {
-				subBuffs.push(new Uint8Array(prevOp.valueMac))
+				subBuffs.push(prevOp.valueMac as Uint8Array)
 			}
 		},
 		finish: () => {
-			const result = LT_HASH_ANTI_TAMPERING.subtractThenAdd(new Uint8Array(hash), subBuffs, addBuffs)
+			const result = LT_HASH_ANTI_TAMPERING.subtractThenAdd(hash, subBuffs, addBuffs)
 
 			return {
 				hash: Buffer.from(result),
@@ -215,7 +215,7 @@ export const decodeSyncdMutations = async (
 			'record' in msgMutation && !!msgMutation.record ? msgMutation.record : (msgMutation as proto.ISyncdRecord)
 
 		const key = await getKey(record.keyId!.id!)
-		const content = new Uint8Array(record.value!.blob!)
+		const content = record.value!.blob!
 		const encContent = content.subarray(0, -32)
 		const ogValueMac = content.subarray(-32)
 		if (validateMacs) {
